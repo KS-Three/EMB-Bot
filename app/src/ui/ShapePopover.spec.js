@@ -161,3 +161,44 @@ test("a row's note describes that row's control (switch and select), and a row w
   expect(sel).toHaveAccessibleDescription("Sews as fill.");
   expect(getByLabelText("Angle")).not.toHaveAttribute("aria-describedby");
 });
+
+test("a number row honours step and min; defaults stay step 1, no min", () => {
+  const { getByRole } = renderPop({ name: "Shape 1 · Column", rows: [
+    { key: "widthMm", kind: "number", label: "Width", value: 4, hint: "mm", step: 0.1, min: 0.5 },
+    { key: "angle", kind: "number", label: "Fill angle", value: null },
+  ] });
+  const w = getByRole("spinbutton", { name: "Width" });
+  expect(w).toHaveAttribute("step", "0.1");
+  expect(w).toHaveAttribute("min", "0.5");
+  const a = getByRole("spinbutton", { name: "Fill angle" });
+  expect(a).toHaveAttribute("step", "1");
+  expect(a).not.toHaveAttribute("min");
+});
+
+test("the width row commits on change (blur/Enter), not on each keystroke; other number rows still on input", async () => {
+  const { events, getByRole } = renderPop({ name: "Shape 1 · Column", rows: [
+    { key: "widthMm", kind: "number", label: "Width", value: 4, step: 0.1, min: 0.5 },
+    { key: "angle", kind: "number", label: "Fill angle", value: null },
+  ] });
+  const w = getByRole("spinbutton", { name: "Width" });
+  await fireEvent.input(w, { target: { value: "6" } });
+  await fireEvent.input(w, { target: { value: "6." } });
+  expect(events).toEqual([]);
+  await fireEvent.input(w, { target: { value: "6.5" } });
+  await fireEvent.change(w);
+  expect(events).toEqual([{ kind: "change", detail: { key: "widthMm", value: "6.5" } }]);
+  events.length = 0;
+  await fireEvent.input(getByRole("spinbutton", { name: "Fill angle" }), { target: { value: "30" } });
+  expect(events).toEqual([{ kind: "change", detail: { key: "angle", value: "30" } }]);
+});
+
+test("a column model's width note renders, warn-styled and described", () => {
+  const model = popoverModel({
+    element: { id: 7, type: "manual", shapes: [{ id: "c2", kind: "column", points: [{ x: 0, y: 0 }, { x: 100, y: 0 }], curves: {}, widthPx: 40, colorRgb: [0, 0, 200] }] },
+    shapeId: "c2", fit: { mmPerPx: 0.2 }, fabric: { label: "Jersey / t-shirt", pullCompMm: 0.4 },
+  });
+  const { getByRole, getByText } = renderPop(model);
+  const note = getByText(/^Over 6\.5 mm sewn/);
+  expect(note).toHaveClass("warn");
+  expect(getByRole("spinbutton", { name: "Width" })).toHaveAttribute("aria-describedby", note.id);
+});

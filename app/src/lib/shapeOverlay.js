@@ -228,6 +228,22 @@ export function pulseAt(elapsedMs) {
 }
 
 /**
+ * How much of the outline overlay to show at `elapsed` ms when it is on screen
+ * ONLY because of the pulse (the Outlines toggle is off, the default since
+ * 2026-09-01). Starts at 1, falls to 0 at PULSE_MS, so the found shapes throb
+ * and then fade into the clean stitch view instead of blinking out.
+ *
+ * Why this exists: hiding outlines by default also hid the cue, so from
+ * 2026-09-01 a digitize landed with no "here is what I found" at all. Kent
+ * noticed it gone on 2026-10-08 ("my digitizing throbbing pulsating pinwheel
+ * disappeared, bring that back").
+ */
+export function pulseFadeAt(elapsedMs) {
+  if (!(elapsedMs >= 0) || elapsedMs >= PULSE_MS) return 0;
+  return 1 - elapsedMs / PULSE_MS;
+}
+
+/**
  * Decides WHEN the cue fires. Split out from the component because the rule is
  * a judgement call rather than a mechanism, and getting it wrong is invisible
  * in a screenshot.
@@ -309,13 +325,18 @@ export function hitOverlay(outlinesPx, px, py) {
   let bestEdge = null;
   for (const o of outlinesPx) {
     const pts = o.points;
-    for (let i = 0; i < pts.length; i++) {
-      const d = Math.hypot(px - pts[i][0], py - pts[i][1]);
-      if (d <= NODE_GRAB_PX) {
-        return { shapeId: o.id, kind: "node", index: i, atPx: [pts[i][0], pts[i][1]] };
+    // An OPEN outline is a stretch of thread, not a ring: it has no nodes to
+    // grab and no closing edge from its last point back to its first.
+    if (!o.open) {
+      for (let i = 0; i < pts.length; i++) {
+        const d = Math.hypot(px - pts[i][0], py - pts[i][1]);
+        if (d <= NODE_GRAB_PX) {
+          return { shapeId: o.id, kind: "node", index: i, atPx: [pts[i][0], pts[i][1]] };
+        }
       }
     }
-    for (let i = 0; i < pts.length; i++) {
+    const edges = o.open ? pts.length - 1 : pts.length;
+    for (let i = 0; i < edges; i++) {
       const a = pts[i];
       const b = pts[(i + 1) % pts.length];
       const s = distToSegment(px, py, a[0], a[1], b[0], b[1]);
@@ -340,7 +361,7 @@ export function hitShapeInterior(outlinesPx, px, py) {
   let best = null;
   for (const o of outlinesPx) {
     const pts = o.points;
-    if (!pts || pts.length < 3) continue;
+    if (o.open || !pts || pts.length < 3) continue;
     if (!pointInRing(pts, px, py)) continue;
     const area = Math.abs(ringArea(pts));
     if (!best || area < best.area) best = { shapeId: o.id, area };

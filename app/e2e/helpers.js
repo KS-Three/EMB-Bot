@@ -24,6 +24,30 @@ export async function pickGarment(page, label) {
   await expect(page.locator(".cfg-sub")).toContainText(label);
 }
 
+// Auto-fit is capped to the largest hoop (2026-10-13), so no garment produces an
+// oversize design by itself any more. A spec about the oversize path asks for
+// one the way a customer does: a typed width past the hoop (10 in = 254 mm,
+// clamped to the placement box on a Tote), then waits for the caption to say so.
+export async function makeOversize(page) {
+  const w = page.getByLabel("Width");
+  expect(await page.locator("select.unitselect").inputValue()).toBe("in");
+  await w.fill("10");
+  await w.dispatchEvent("change");
+  await expect(page.locator("span.stats").locator("xpath=..").locator(".warn", { hasText: "Exceeds" })).toBeVisible();
+}
+
+// The editor's power tools sit behind "Advanced ›" (spec 2026-09-30 §5):
+// rendered but hidden until opened, so a spec that reaches one calls this
+// first. Idempotent -- the choice is remembered for the page's life, so a
+// second call (or a spec that already opened it) leaves it open.
+export async function openAdvanced(page) {
+  const toggle = page.getByTestId("advanced-toggle");
+  await expect(toggle).toBeVisible({ timeout: 30_000 });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByTestId("advanced-body")).toBeVisible();
+}
+
 export async function pickTemplate(page, name) {
   await page.getByRole("button", { name: /^My designs/ }).click();
   await page.locator(".tcard", { hasText: name }).click();
@@ -65,4 +89,26 @@ export async function runDigitize(page) {
   await expect(run).toBeEnabled({ timeout: 30_000 });
   await expect(run).toHaveText("Auto Digitize Image");
   await run.click();
+}
+
+// Console guard: collects what a customer's DevTools would show in red —
+// console errors, uncaught page errors, failed requests — so a spec can fail
+// on them. Call BEFORE the first navigation. The Studio probes the digitizer
+// service's /health on load; where no service runs (a bare sandbox) that
+// probe is refused by design and the app falls back to the browser lane, so
+// it is ignored by default. Pass `ignore` (RegExps tested against the message
+// or URL) for anything else a spec provokes on purpose.
+const SERVICE_PROBE = /127\.0\.0\.1:8721\/health/;
+export function watchConsole(page, { ignore = [] } = {}) {
+  const skip = [SERVICE_PROBE, ...ignore];
+  const quiet = (s) => skip.some((re) => re.test(s));
+  const problems = [];
+  page.on("console", (m) => {
+    if (m.type() !== "error") return;
+    const text = m.text(), url = m.location().url || "";
+    if (!quiet(text) && !quiet(url)) problems.push("[console] " + text.slice(0, 160));
+  });
+  page.on("pageerror", (e) => { if (!quiet(e.message)) problems.push("[pageerror] " + e.message.slice(0, 160)); });
+  page.on("requestfailed", (r) => { if (!quiet(r.url())) problems.push("[requestfailed] " + r.url()); });
+  return { problems, expectClean: () => expect(problems).toEqual([]) };
 }

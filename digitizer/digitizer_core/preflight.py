@@ -3753,6 +3753,68 @@ def _curve_roughness_metrics(plan: StitchPlan) -> dict:
             "curve_traces": row["traces"]}
 
 
+def _glyph_legibility_metrics(p, result: PipelineResult, plan: StitchPlan,
+                              cfg: PipelineConfig) -> dict:
+    """Can the sewn lettering be READ -- per glyph, as NUMBERS only.
+
+    `glyph_read.read_design_words` over every word of text-tagged shapes
+    (`words.is_text`: the text cluster, or the one tagger's words under
+    `cfg.lettering_words`), the thread render against the artwork the design
+    was traced from. Per glyph it is `tools/glyph_legibility.py`'s read
+    (#906): `legibility` is the weakest of strokes (skeleton recall), clean
+    (thread off the ink) and counters (each counter of the artwork open in
+    the thread, one to one). The pull is the fabric's own compensation
+    (`fabric_for(cfg).pull_comp_mm`), taken back off the thread before the
+    read as the tool's `--pull-mm` does, so the push the engine added is not
+    billed as a closed bay.
+
+    Not the OCR check (`_legibility_findings`, `LETTERING_ILLEGIBLE`): that
+    one asks tesseract whether a whole cluster reads as the same WORD, and a
+    word model fills a lost arm or a shut counter back in (Fremont's THE
+    reads 1.00 over a missing arm). This reads SHAPE per glyph and asks
+    nothing of OCR, so it needs no tesseract.
+
+    No finding and no deduction (Kent 2026-10-02: the tool does not warn the
+    customer about what it should fix). None throughout when the design has
+    no text-tagged shape or no glyph is found -- never a clean read. Behind
+    `cfg.preflight_glyph_metric` (default OFF); see its comment for the cost.
+    """
+    from . import glyph_read
+    from .adapter import plan_to_design
+    pull = max(0.0, float(fabric_for(cfg).pull_comp_mm))
+    read = glyph_read.read_design_words(p, result.regions, plan_to_design(plan), cfg,
+                                        pull_mm=pull)
+    return glyph_read.design_metrics(read, pull)
+
+
+def _two_tone_view(p, plan: StitchPlan, cfg: PipelineConfig):
+    """The stage-1 re-read as the pipeline SEWED it: when `cfg.two_tone_snap`
+    fired (defect 58), a snapped copy of `p` (`two_tone.apply`, the
+    pipeline's own stage 1.3); otherwise `p` itself, untouched.
+
+    For the thread grader only. Unsnapped, it judged each thread against the
+    anti-alias grey the snap removed: White BLOCKED on golke (dE 14.6, the
+    art read 190 grey) and gaulke (33.9, 126 grey) under the thin roof lines
+    `two_tone.keep_lines` widens to the satin floor, where the art draws
+    them white (2026-10-08). The art is two inks, so two inks is the honest
+    yardstick. Every other check keeps the plain re-read.
+
+    The photograph gate is the pipeline's: a declared photograph, or stage
+    1.25's PHOTO_DETECTED on the plan (`_is_photo_class`'s re-read of the
+    same warning). Stage 0's photo CLASS is not a gate there, so it is not
+    one here (`logo_mfab_hat` snaps)."""
+    if not cfg.two_tone_snap or cfg.is_photographic is True:
+        return p
+    if cfg.is_photographic is None and any(
+            w.get("code") == _PHOTO_DETECTED for w in plan.warnings):
+        return p
+    import copy
+
+    from . import two_tone
+    q = copy.copy(p)
+    return q if two_tone.apply(q) else p
+
+
 def run_preflight(result: PipelineResult, plan: StitchPlan,
                   cfg: PipelineConfig | None = None,
                   image=None) -> dict:
@@ -3785,7 +3847,8 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
 
     worst_de: float | None = None
     if p is not None and result is not None:
-        thread_findings, worst_de = _thread_match_findings(p, result, plan, cfg)
+        thread_findings, worst_de = _thread_match_findings(
+            _two_tone_view(p, plan, cfg), result, plan, cfg)
         findings.extend(thread_findings)
     metrics["thread_match_checked"] = p is not None and result is not None
     metrics["thread_worst_delta_e"] = None if worst_de is None else round(worst_de, 1)
@@ -3907,6 +3970,14 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     metrics.update(_tiny_step_metrics(plan))
     metrics.update(_edge_wobble_metrics(result, plan))
     metrics.update(_curve_roughness_metrics(plan))
+    # Glyph legibility (shape, per glyph): metrics only, behind its flag. OFF
+    # writes no key, so the report is the pre-change one byte for byte.
+    if cfg.preflight_glyph_metric:
+        if p is not None and result is not None:
+            metrics.update(_glyph_legibility_metrics(p, result, plan, cfg))
+        else:       # no artwork or no regions: nothing to read against, all None
+            from .glyph_read import design_metrics
+            metrics.update(design_metrics([]))
 
     # Last, over the finished list: it tags findings, it does not make any.
     _tag_break_risk(findings, plan, result)

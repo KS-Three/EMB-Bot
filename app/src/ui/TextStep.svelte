@@ -2,8 +2,10 @@
   import FontSelect from "./FontSelect.svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import ColorRangesEditor from "./ColorRangesEditor.svelte";
+  import Advanced from "./Advanced.svelte";
   import { createEventDispatcher } from "svelte";
   import { tip } from "../lib/tip.js";
+  import { remapColorRanges } from "../lib/colorRanges.js";
 
   // Element-scoped text editor (Task 5, Slice 5): bound to whichever text
   // element is currently selected in ContentStep's element list, not a
@@ -48,6 +50,21 @@
     const s = textareaEl.selectionStart, e = textareaEl.selectionEnd;
     selection = e > s ? { start: s, end: e } : null;
   }
+
+  // Colour ranges are character indices, so every edit has to carry them
+  // along (lib/colorRanges.js) or a typo fixed before a coloured word slides
+  // the colour onto the wrong letters. The selection is re-read too: paste,
+  // autocorrect and dictation change the text without a key-up, which left
+  // the "Color …" offer pointing at text that no longer existed.
+  function onTextInput(e) {
+    const text = e.target.value;
+    const p = { text, textSource: null };
+    if (element.colorRanges && element.colorRanges.length) {
+      p.colorRanges = remapColorRanges(element.text || "", text, element.colorRanges, e.target.selectionEnd);
+    }
+    patch(p);
+    updateSelection();
+  }
 </script>
 
 {#if unconfirmedOcr}
@@ -61,7 +78,7 @@
   class="textin"
   rows="2"
   value={element.text}
-  on:input={(e) => patch({ text: e.target.value, textSource: null })}
+  on:input={onTextInput}
   on:select={updateSelection}
   on:mouseup={updateSelection}
   on:keyup={updateSelection}
@@ -80,6 +97,11 @@
   currentText={element.text}
   on:pick={(e) => patch({ fontKey: e.detail })}
 />
+<!-- Default slot: the size row (ContentStep). Advanced (spec 2026-09-30 §5)
+     holds everything below it, plus whatever ContentStep puts in the
+     "advanced" slot (the align row, the add-element row). -->
+<slot />
+<Advanced>
 <label class="letterspacing" use:tip={"letterSpacing"}>
   <span>Letter spacing<i class="tipmark" aria-hidden="true"></i></span>
   <input
@@ -175,6 +197,8 @@
   />
   <span class="label">{element.slantDeg || 0}°</span>
 </label>
+<slot name="advanced" />
+</Advanced>
 
 <style>
   /* Reuses DigitizePanel.svelte's ".dgp-lbadge" pill shape (font-size,
@@ -217,7 +241,7 @@
   }
   .weightbtn.active {
     background: var(--accent, #4f46e5);
-    color: #fff;
+    color: var(--accent-ink, #fff);
     border-color: var(--accent, #4f46e5);
   }
   .weightbtn:disabled { opacity: 0.45; cursor: not-allowed; }

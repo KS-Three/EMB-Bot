@@ -143,6 +143,14 @@ const CASES = [
   ["open: PowerShell subexpression on a variable from an earlier call, no lane named", "PowerShell", WIN, `Remove-Item (Join-Path $lane 'out') -Recurse`, false],
   ["closed: the same subexpression when the command names a lane", "PowerShell", WIN, `$x = "${WIN}\\.claude\\worktrees"; Remove-Item (Join-Path $lane 'out') -Recurse`, true],
 
+  // ---- footgun 2 residuals: the spellings and limits it documents ---------
+  ["tp: a lane reached through $HOME (the spelling the first replay let through)",
+    "Bash", WRONG_ROOT, `rm -rf "$HOME/Claude Personal/EMB-Bot/.claude/worktrees/manual-holes"`, true, "manual-holes"],
+  ["closed: $(cygpath ...) substitution when the command names a lane (documented residual)",
+    "Bash", GB, `cd "${LANE}" && rm -rf "$(cygpath -u "$OUT")"`, true, "cannot resolve"],
+  ["out of scope: git reset --hard and git rm inside the session's own lane are judged by neither guard",
+    "Bash", LANE, `git reset --hard origin/main && git rm -r --cached out`, false],
+
   // ---- git plumbing ------------------------------------------------------
   ["tp: git worktree remove of a lane", "Bash", GB, `git worktree remove --force .claude/worktrees/manual-holes`, true, "git worktree remove"],
   ["tp: git -C <repo> worktree remove of a lane from /tmp", "Bash", "/tmp", `git -C "${GB}" worktree remove .claude/worktrees/manual-holes`, true],

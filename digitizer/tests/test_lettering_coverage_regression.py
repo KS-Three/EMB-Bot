@@ -177,8 +177,21 @@ GARMENT = "left_chest"
 # (`tools/dropped_elements.py`, measurement bias 3). The new bar is the new
 # grid reading with ~3% of headroom, and `LOST_FRAC_FINE_BAR` below is the
 # guard that does not ride on the grid.
+#
+# RE-PINNED A SECOND TIME, 2026-10-06, by Kent's ruling, again attributed:
+# 0.29 -> 0.30. `satin_outer_rail_pitch` went ON that day (his flip, PR
+# #650): a curved satin column's body is stationed along its OUTER rail, so
+# the wordmark's bends carry more penetrations on the pushed rail, and this
+# number read 0.2819 -> 0.2908 with no spill behind it either -- the rails
+# did not move outward, the 0.4 mm ribbon the instrument lays along them
+# simply stopped scalloping between penetrations that are now 0.40 mm apart
+# instead of up to 0.52, and the scallops it filled lie outside the artwork
+# by the pull. Kent's words on the choice: raise to 0.30 with this reason.
+# **A third raise is not a re-pin, it is the instrument asking to be
+# rebuilt** -- twice now it has priced something other than spill as spill.
 LOST_FRAC_BAR_BEFORE_1003 = 0.26
-LOST_FRAC_BAR = 0.29
+LOST_FRAC_BAR_BEFORE_1006 = 0.29
+LOST_FRAC_BAR = 0.30
 
 # Today's measured value, recorded so a future reader can tell a PARTIAL cure
 # from a full one rather than reading a bare pass/fail. 0.3006 was the shipped
@@ -237,8 +250,12 @@ def test_lettering_coverage_has_not_regressed_since_the_rail_change():
         f"{LOST_FRAC_TODAY} with the pull on the rails, 2026-09-29, and "
         f"{LOST_FRAC_AFTER_1003} on 2026-10-03 when a 0.2 mm change at the "
         f"design's edge moved the instrument's 0.4 mm alignment grid -- the "
-        f"one time this bar moved, {LOST_FRAC_BAR_BEFORE_1003} -> "
-        f"{LOST_FRAC_BAR}, by Kent's ruling).\n"
+        f"first time this bar moved, {LOST_FRAC_BAR_BEFORE_1003} -> "
+        f"{LOST_FRAC_BAR_BEFORE_1006}, by Kent's ruling; and 0.2908 on "
+        f"2026-10-06 when the outer-rail pitch flip filled the ribbon's "
+        f"scallops along the pushed rail -- the second, "
+        f"{LOST_FRAC_BAR_BEFORE_1006} -> {LOST_FRAC_BAR}, by his ruling "
+        f"again, and the last this instrument gets).\n"
         f"BEFORE READING THIS AS SPILL, compare `widthMM` and `shift_x_mm` / "
         f"`shift_y_mm` with the last green run: if either moved, this is the "
         f"grid until `test_the_headline_holds_at_one_pixel_registration` "
@@ -318,8 +335,12 @@ def test_lettering_coverage_has_not_regressed_since_the_rail_change():
 # not move. The overshoot and uncovered readings ride the same alignment
 # grid as the headline (told at `LOST_FRAC_BAR`); at the alignment the old
 # readings were taken at they are 0.2481 and 1.29%.
+# Re-read 2026-10-06 with `satin_outer_rail_pitch` ON (Kent's flip, PR
+# #650): overshoot 0.2908, the ribbon-scallop reading told at
+# `LOST_FRAC_BAR`; the bar moves with the headline's, 0.29 -> 0.30, by the
+# same ruling.
 OVERSHOOT_TODAY = 0.2565
-OVERSHOOT_BAR = 0.29
+OVERSHOOT_BAR = 0.30
 BARE_BEFORE_RAIL_COMP = 0.0627     # and its bar was 0.068
 BARE_TODAY = 0.0710
 BARE_BAR = 0.077
@@ -463,17 +484,37 @@ def test_the_headline_holds_at_one_pixel_registration(monkeypatch):
 
 
 def test_the_one_pixel_guard_still_sees_spill(monkeypatch):
-    """A guard that cannot fail is not one. `satin_rails_follow_edge=True`
-    pushes each rail out to its own edge and is this fixture's measured
-    spill-maker (the headline test's docstring); at one pixel it must still
-    read over the bar, or the bar is guarding nothing."""
+    """A guard that cannot fail is not one. Each satin construction gets its
+    own measured spill-maker, and at one pixel the design must still read
+    over the bar, or the bar is guarding nothing.
+
+    * The skeleton tier: `satin_rails_follow_edge=True` pushes each rail out
+      to its own edge (the headline test's docstring).
+    * The Column lane (`lettering_columns`): `columns.RAIL_REACH_INSET_MM`
+      set to 0, its rails back ON the outline under the full pull -- the
+      lane as it stood before #837. With both knobs it reads 0.3126 here
+      at one pixel (2026-10-11), against 0.1365 for the lane as shipped.
+
+    Both are applied at once, so the test has teeth whichever construction
+    the config sends the letters through: until 2026-10-11 it set only the
+    skeleton flag, and run with the lane ON (#837's `lane_on_plugin.py`) the
+    wordmark's letters no longer passed through that tier -- it read 0.1538,
+    under the margin, while the lane itself could spill unseen. Each knob is
+    inert on the other's path (`column_runs` runs only under
+    `lettering_columns`), so with the lane OFF this reads exactly what it
+    always has."""
+    import digitizer_core.columns as columns
+
+    monkeypatch.setattr(columns, "RAIL_REACH_INSET_MM", 0.0)
     cfg = base_cfg(WIDTH_MM, GARMENT, satin_rails_follow_edge=True)
     _gen, _result, _plan, design = digitize_once(FIXTURE, cfg)
     fine = _fine(design, monkeypatch)
+    lane = bool(getattr(cfg, "lettering_columns", False))
     assert fine["lost_frac"] > LOST_FRAC_FINE_BAR + 0.02, (
-        f"`satin_rails_follow_edge=True` reads {fine['lost_frac']:.4f} at a "
-        f"one-pixel registration (0.2173 on 2026-10-03), which no longer "
-        f"clears the {LOST_FRAC_FINE_BAR} bar by a margin. Either the flag "
-        f"stopped spilling, or the fine guard stopped seeing it: find out "
-        f"which before trusting `test_the_headline_holds_at_one_pixel_"
+        f"the {'Column lane with its rails on the outline' if lane else '`satin_rails_follow_edge=True`'}"
+        f" reads {fine['lost_frac']:.4f} at a one-pixel registration "
+        f"({'0.3126 on 2026-10-11' if lane else '0.2173 on 2026-10-03, 0.2415 on 2026-10-11'}), which "
+        f"no longer clears the {LOST_FRAC_FINE_BAR} bar by a margin. Either the "
+        f"spill-maker stopped spilling, or the fine guard stopped seeing it: "
+        f"find out which before trusting `test_the_headline_holds_at_one_pixel_"
         f"registration` again.")

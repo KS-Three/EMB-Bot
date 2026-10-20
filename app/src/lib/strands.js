@@ -150,3 +150,44 @@ export function designToStrands(design, opts) {
   }
   return strands;
 }
+
+// ---- Sewn width: a satin strand with its pull compensation taken back ----
+//
+// Every satin column in a machine file is wider than its artwork by the
+// fabric's pull compensation on each rail (`_push_rails` service-side,
+// `src/satin.js` in the lettering lane): the cloth pulls the rails in as the
+// thread tightens, and the file pre-empts it. A preview drawn at the file's
+// width therefore shows every satin letter heavier than it sews — Hotel
+// Fremont's 0.76 mm letters are 1.23 in the file and so was the pro's own
+// file of the same logo (2026-10-06, `lib/sewnWidth.js` has the story). This
+// takes the pull back off: each satin strand (a cross, or the lean leg to the
+// next cross — both run rail to rail) loses `pullMm` at each end along its
+// own direction, which is the rail stepping back in by what it was pushed.
+// Fill, run, underlay, travel and kind-less strands are returned as they are,
+// and the input array is never mutated. A VIEW only: no stitch moves.
+//
+// A cross too short to give up two pulls keeps one thread width, centred:
+// SATIN_MIN_CROSS_MM is 0.5 in the file, so after a 0.3 mm pull each side a
+// minimum cross is still a 0.4 mm thread on cloth, not a vanished stitch.
+// 0.4 is preview.js's THREAD_WIDTH_MM; it is not imported here because
+// preview.js imports this module.
+export const SEWN_WIDTH_FLOOR_MM = 0.4;
+
+export function shrinkSatinStrands(strands, pullMm) {
+  if (!Array.isArray(strands) || strands.length === 0) return [];
+  const pull = Number(pullMm);
+  if (!(pull > 0)) return strands;
+  const out = new Array(strands.length);
+  for (let i = 0; i < strands.length; i++) {
+    const s = strands[i];
+    if (!s || s.kind !== "satin") { out[i] = s; continue; }
+    const dx = s.x1 - s.x0, dy = s.y1 - s.y0;
+    const len = Math.hypot(dx, dy);
+    if (!(len > 0)) { out[i] = s; continue; }
+    let cut = pull;
+    if (len - 2 * pull < SEWN_WIDTH_FLOOR_MM) cut = Math.max(0, (len - SEWN_WIDTH_FLOOR_MM) / 2);
+    const ux = (dx / len) * cut, uy = (dy / len) * cut;
+    out[i] = { ...s, x0: s.x0 + ux, y0: s.y0 + uy, x1: s.x1 - ux, y1: s.y1 - uy };
+  }
+  return out;
+}

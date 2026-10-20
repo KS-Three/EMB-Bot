@@ -18,6 +18,7 @@
 // A LEG IS MEASURED IN THE STREAM'S OWN UNITS, 0.1 mm, after everything the
 // builder does to a point. The lettering port of 2026-09-14 computed it in
 // pixels and no test asked what that was in millimetres.
+import "./_help.mjs";
 import { readFileSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -117,7 +118,7 @@ const all = [];
 let totOff = 0, totOn = 0;
 for (const [name, widthMm, regions] of DESIGNS) {
   for (const fillColumns of [false, true]) {
-    const off = build(regions, widthMm, { fillColumns });
+    const off = build(regions, widthMm, { fillColumns, ties: false });
     const on = build(regions, widthMm, { fillColumns, ties: true });
     const legs = lockLegs(off, on);
     all.push(...legs); totOff += off.stitchCount; totOn += on.stitchCount;

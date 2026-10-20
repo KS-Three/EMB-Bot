@@ -28,6 +28,7 @@
 // the engine itself (`opts.stats`); an engine from before the counting prints
 // a dash. Times are one run each, in milliseconds, on whatever else the
 // machine was doing.
+import "./_help.mjs";
 import { readdirSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";

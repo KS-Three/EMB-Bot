@@ -3,7 +3,7 @@ import { flatToRegions } from "./imageRegions.js";
 import { shapesToRegions } from "./manualShapes.js";
 import { shapePresetPoints, DEFAULT_SHAPE_SIZE_MM } from "./shapePresets.js";
 import { combineDesigns, bboxMmFromStitches } from "./combine.js";
-import { decodedFromDesignCached, digitizedBlockColors } from "./digitizer.js";
+import { decodedFromDesignCached, digitizedBlockColors, displayResult } from "./digitizer.js";
 
 // Generates a single element's Design, or null if the element isn't ready
 // to sew yet (empty text / no flattened image state). Throws only on real
@@ -62,6 +62,20 @@ export function fabricInForce(garmentId, fabricProfile) {
   }
 }
 
+// The fabric a column's width note is quoted on — the one generateAll sews
+// under — as { label, pullCompMm }, so "Sews X.X mm on <label>." agrees with
+// the stitches. null when there is no garment or it cannot be resolved.
+// Shared by the field's popover and the side panel's assign box.
+export function columnNoteFabric(garmentId, fabricProfile) {
+  if (!garmentId) return null;
+  try {
+    const f = fabricInForce(garmentId, fabricProfile);
+    return f ? { label: f.label, pullCompMm: f.pullCompMm } : null;
+  } catch {
+    return null;
+  }
+}
+
 export function generateElement(element, garment, runtime) {
   if (!element) return null;
 
@@ -88,7 +102,7 @@ export function generateElement(element, garment, runtime) {
     // and supplies the service's real thread palette as block colors, with
     // the user's per-block overrides on top.
     if (!element.result) return null;
-    const decoded = decodedFromDesignCached(element.result);
+    const decoded = decodedFromDesignCached(displayResult(element));
     if (!decoded) return null;
     return EMB.buildImportedDesign(decoded, {
       garment,
@@ -119,6 +133,13 @@ export function generateElement(element, garment, runtime) {
     return EMB.buildQualityDesign(regions, {
       garment, fabric, pxPerMm, satinMaxWidthMm: 3.0,
       underlay: element.underlay,
+      // Rows sewn column by column, as the manual and shape branches do --
+      // Kent's call 2026-10-08 (MASTER_SCOPE "Waiting on Kent" 22), made with
+      // the price in front of him (`tools/fill-columns-lanes.mjs`, 14 real
+      // logos): floats off the fill 188,952 -> 484, none new, cuts -14%; but
+      // stitches +10.4% (over +10% on 76 of 126 designs, +29.7% at worst),
+      // ten times the travel over sewn rows, up to 1.8 s a build. Not sewn.
+      fillColumns: true,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
       offsetYMm: element.offsetYMm || 0,
@@ -160,6 +181,25 @@ export function generateElement(element, garment, runtime) {
       // artwork branch above); this changes what already-saved manual designs
       // sew, which is the point.
       darkOnTop: false,
+      // Kent's call 2026-10-07 (MASTER_SCOPE defect 52, "Waiting on Kent" 22):
+      // a fill's rows are sewn column by column so no thread is carried
+      // across a cut-out or a notch. Without it every row floats (or, under
+      // 4 mm, STITCHES) across every hole the user drew. Manual is the lane
+      // where a customer draws holes on purpose, so it flipped first; the
+      // engine default stays off. Price: +3.3% stitches mean (up to +37%),
+      // travel along rims in place of floats. Not sewn. The shape and image
+      // branches pass it too since 2026-10-08.
+      fillColumns: true,
+      // 2026-10-08, sequenced after `fillColumns` (MASTER_SCOPE "Waiting on
+      // Kent" 28): a float the DST writer lays as three or more jump records
+      // IS a cut on a DST machine, so the stream says so with a `trim` there.
+      // No stitch moves; the trim count, the run time and `ties` then see the
+      // cut the machine makes. EXP and PES, which have a cut of their own,
+      // gain it too (a float under the fill becomes a cut there). Engine
+      // default stays off; the basic-shape branch passes it too, the image
+      // lane does not.
+      // docs/cut-floats-manual-2026-10-08.md. Not sewn.
+      cutFloats: true,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
@@ -196,6 +236,25 @@ export function generateElement(element, garment, runtime) {
       // can be stacked, and the two branches drifting apart is precisely how
       // the manual one ended up wrong.
       darkOnTop: false,
+      // Rows sewn column by column, as the manual branch does (MASTER_SCOPE
+      // defect 52, "Waiting on Kent" 22), 2026-10-08: a star's or a heart's
+      // rows otherwise float across every notch. Measured on every preset at
+      // 20, 50 and 100 mm on three garments (`tools/fill-columns-lanes.mjs`):
+      // floats off the fill 3,118 -> 25 (none new), cuts 60 -> 33, stitches
+      // +1.8%; a circle or rectangle is byte-identical; the worst is an
+      // 8-point star with thin tips at +16%. Not sewn.
+      fillColumns: true,
+      // 2026-10-08, after `fillColumns` (MASTER_SCOPE "Waiting on Kent" 28),
+      // as the manual branch does: a float the DST writer lays as three or
+      // more jump records IS a cut on a DST machine, so the stream says so
+      // with a `trim` there. Every preset, 7 sizes, every garment
+      // (`tools/cut-floats-shapes-sheet.mjs`, 2,870 designs): unasked DST cuts
+      // 2,799 -> 0, trims 961 -> 3,760, DST cuts and stitches unchanged, no
+      // needle point moved, no new thread. 12-point stars carry most of it
+      // (trims 2 -> 901). EXP and PES gain these cuts too, locked by
+      // `ties`, which is ON by default since 2026-10-20. Engine default stays off.
+      // docs/cut-floats-shapes-2026-10-08.md. Not sewn.
+      cutFloats: true,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
@@ -262,6 +321,25 @@ export function generateElement(element, garment, runtime) {
 // "size up for crisp letters" on a design already at the cap is advice the
 // customer cannot take — the levers that remain are fewer characters, a bolder
 // font, or a bigger placement.
+// The line-break lever as one click. letteringNote's own measurements show line
+// breaks are the fix a customer does not think of, and the Studio's text box
+// reads as a one-line field — measured 2026-10-08 at 1440x900: "Fritsch's
+// Stitches" auto-fit to left chest sews 102x7 mm with 93% of its strokes under
+// 1 mm; the same words over two lines sew 102x35 mm and the warning clears.
+// Splits a one-line text at the space nearest its middle; null when there is
+// no space to break at or the text already has more than one line.
+export function splitIntoTwoLines(text) {
+  if (typeof text !== "string" || text.includes("\n")) return null;
+  const t = text.trim();
+  const mid = t.length / 2;
+  let best = -1;
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] === " " && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i;
+  }
+  if (best < 0) return null;
+  return `${t.slice(0, best).trimEnd()}\n${t.slice(best + 1).trimStart()}`;
+}
+
 export function letteringNote(l, opts = {}) {
   if (!l || !(l.strokeMm > 0)) return "";
   const share = (mm) => mm / l.strokeMm;

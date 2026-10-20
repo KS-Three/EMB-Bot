@@ -1,0 +1,301 @@
+{
+ "design": "fremont_hat81",
+ "arm": "sk073",
+ "kind": "hat",
+ "overrides": {
+  "small_lettering_skeleton": true,
+  "small_lettering_skeleton_floor_mm": 0.73
+ },
+ "stitches": 15000,
+ "trims": 47,
+ "jumps": 143,
+ "thread_m": 23.728,
+ "size_mm": [
+  81.7,
+  44.3
+ ],
+ "md5": "ecb67ed0e1402beaa7362c7e8a11158e",
+ "shape_digests": {
+  "Sdea02c23": "fd295cba3ccba7e19ea286a06453e465",
+  "S78e6cd01": "23d98617f6fc00bda8de9b45c4ddf025",
+  "Sae62302c": "8a3d54dbe4640cd03aaf184020ecc075",
+  "Sdeaad264": "cf5d32ab823af6907a5826292766b3d9",
+  "Sbf647133": "304245bd6bf77af089b191cddfc8270e",
+  "S48c04454": "8085eb76526b069875eebed9f4233065",
+  "Sd965352d": "ae09c702bf5b4ffbfe97dd23832c981a",
+  "Seced5f9e": "9ecdc23df3711e25d7e4cc6f95f8ac40",
+  "Sd4bf6420": "e07bc292cac660d230a494fd9b887007",
+  "Se645801a": "c46eeb769e7213e20c151e2db4404a02",
+  "S9a48e915": "4fe82ae234251258943c6dec84eaf6e2",
+  "S9b4d2aca": "b13fd7eea5f4bc8f37e1f64cdddcd702",
+  "S00d683b7": "7cd34e822de9e08479adddc7d0c0d653",
+  "S31fdca10": "c3446d380fd4c9df8b00c61600ef2820",
+  "S8fa08a06": "c4d78d4c8834b8219f42ca015c4bf1e3",
+  "S9bac9a3c": "7c31e89cc50c6926d503b6d47b847a73",
+  "Scead5d18": "36b24a9b307775522df2ac7b50fa1ea9",
+  "S2d3c998a": "f683c0c3b4da775ad0f4be9c764fc91f",
+  "S9df2ea64": "6042ae3c5b42a40d296e95b04321206e",
+  "Se394be84": "c62c492834a4992270a7e24898b44d77",
+  "S1d0c7e50": "5eb4b928ef6755766bf805a0e51352fa",
+  "Sa9ce03f2": "0aafa723d4ec75b89df655f4ad108a62",
+  "Sdbbe51f4": "8531b879391d57b24e81cf09b403cfe7",
+  "S11b90a0d": "7f9162973001701065b3b464fcec5e63",
+  "S7f705b38": "2014bc46af65cc622dbbd08b617b627d",
+  "S5ac4eae6": "e3e30742b6bd836861b53863b0ed3ce8",
+  "S658eac5c": "a80d094fe1161974e0e0036090ae6b07",
+  "S8fa2e64e": "c70cde1c2dbb55a827ce25c418d3f553",
+  "Sa0fbbfd4": "407fc05cb1cdd0c5bb09aeac59cef6b2",
+  "S990f2088": "5bfacc6290b2a1e679f4b2b89b6d109d",
+  "Sdf13b84a": "791c1aecd61cc01abe7463e09b2a2aff",
+  "Sdeda9448": "abec2332670183c6e203abf9e66bc9be",
+  "Sf0a6f1de": "ba250822b28d67404b3862244441ea15",
+  "Se9a3bf6a": "77766f68ccf0e0e7232b95ce057c4936",
+  "S4d4622b2": "594f8b6dd262b51b0dbd1b0a2e59488a",
+  "Sd9179f1f": "0ef47fdb9eac84904b112d188606edae",
+  "Sb97332e9": "99995085564832198c120921dd1ddc66",
+  "S69d33103": "44d30dc30594d2e9f07a78fa3126d222",
+  "S752f9f04": "3897cb39c8fbd2c75ec0fe288675645a",
+  "Sb15b61d3": "eca1bc9b38f487cce02a8eb9ceca2813",
+  "Sfa2e761f": "8d229a9da8b7b2af5b21f1f19e206456",
+  "S171effb6": "895d3268f5bf9e7b36ec8565020f31f9",
+  "S00134e9e": "45eb478e50433d6fb98b13a9033f12a1",
+  "S43727200": "4dbe0082a6c1306bde1763a6964615a6",
+  "Scb69a1ff": "db42a3629a7c70e2566f5111dc5fddc8",
+  "S023364ff": "bd4c0e342ef9b6359623bb9668bc2e59",
+  "S49c34dd9": "6120e7c939ba8318432c2c7327c0ea6a",
+  "S5aaa542f": "05955f254c093a23031f3fa0fea9687a",
+  "S44d93a5d": "3660aa4c5c016b2181e455598dedd7f2",
+  "S8d5c1a24": "dd4b4f46609c90b0f7e763b002584088",
+  "S5baa3cf0": "428952ae03799425cd389475ba854baa",
+  "S46064f4a": "48631d4dca6283efb78b751de2244d51",
+  "Sc3eb615f": "2438cfe1bdb1052721de826bdc6739ac",
+  "S320c4cc2": "f6a9de72eba5b38ab8624b2e4d8774b1",
+  "S07602d9a": "a6051cbb6dcf38c9c5baffbbe3602d11",
+  "S0e192f7d": "86966ebf2ce67f23403d1482e77e0c91",
+  "S372b40a3": "aa9d37ca908136572776bb0c5fe71aee",
+  "S1004711b": "2538e2be8778c589790c7ca67ad5883b",
+  "S11d4f4f0": "ad4d8306e14b4a0972dda7ecf16c8be6",
+  "Sf957df68": "795e78239c6f071b444769594106b757",
+  "S81fe1352": "8fc01662345ef2725f9341509f16920b",
+  "S5c44075a": "3aebbf2b18251920c18ae4a5aa76e529",
+  "S19e408ea": "18bb6a0df30b35ef86e0c702f2ef658f",
+  "Sfe128fb6": "4a4ec3b64357f3290bfef22fbb3ddaab",
+  "S4b3533c4": "9c190df4f3cce489de02d3a75f4a8f46",
+  "S03c238ee": "693ffd395e1e52fdf25a7585542404d7",
+  "Sadc029cc": "855d9f30ea2aefc9e22df5c47238c203",
+  "Sc3156047": "4e2820d2c807c5ef50b5414fa44eb034",
+  "S06c24a1d": "693c43e66aa13e8c7d42abee61bec48c",
+  "S753ae2d8": "2129d4f5fb649d671bc34865815fd27c",
+  "S5e98b6ef": "8e659f1eaa0ecdd85f7a30fe05cd5212",
+  "S9d451632": "cec275e6caeca57413b5ab3eb8f80992",
+  "Sb683c45f": "252716eeb329b5069600d14756de0004",
+  "S37c5d25d": "22c32150ce2c2501c1c164dad1ade489",
+  "S0c83f398": "8bf2e96484f478e5b35a0c09234f7159",
+  "S0da0111f": "2ea9a1217126086aa2e84d1abdbd08c3",
+  "S9e72ec0d": "973a9575bab14cb60cdca9ebdfeac6b0",
+  "S22890c28": "24910ad672367b469634d57e6e8942e8",
+  "Saa2a4461": "bc9f10427b01caa464a733bffb600a23",
+  "S1fc6988a": "fb73d2b829d7ee63fc1beea244f89ef7",
+  "Sea545e1f": "f171b7f97f3801394252718cbfbf9020",
+  "Sd5cafbef": "8f0ef9060ed6bbc4fbcc260fe5269287",
+  "Se4c9e036": "fdcfe92b3bfd4372614cc14d3b65558d",
+  "Sd43d502e": "1f990517b7df9340b66b0bfeb6348bca",
+  "S57224820": "192b4cfc752fe05324d9bb7cdf0a08d2",
+  "Sec04db54": "4da0f0b34852b058ca47da7608464eb6",
+  "S9fde0480": "1c83d08049c479ae6a5244b31f974876",
+  "S591c594e": "b785434c4f87df7e0917348e4505b3cd",
+  "S4a3ba3f4": "479d4ec81e9aedf4a896f5a9cceedaff",
+  "S13197098": "8ba35d79bb45379c4a22f5a07508cc77",
+  "S066376ef": "43001eeef13de5f5eff4a495bb425b2a",
+  "Saf76a1bd": "b1fafd2157c4ead38ac5fdf9c9c64c20",
+  "Se58e299c": "4e1a8a45dbb13a0a9e6d1f346f2d58f7",
+  "Sa6ebf53d": "3c12dad71eace6ec60f57064a76fecb4",
+  "S1377425b": "e1d9c853d9301d544fc69694b18670fd",
+  "S931202c8": "bf9daea368e3225a162dba0868139074",
+  "Sb192e650": "be982bc25a937de5ae10a45d4e5bb702",
+  "S686b93ed": "0d635475a124c94b834701eabc4ff254",
+  "S022f2120": "38959f9ebf01c7011b9f4210f35ed524",
+  "S15110a1c": "8a33ee3eec41094ddb7c023049f2dc4f",
+  "S5f661f34": "69c689782d2d1348c3c83fdc16736902",
+  "S59028dd4": "eb719fec44c695070ee6dae0ebd5c601",
+  "Sc3232655": "37e2d4a1f4b3fbd70603d881e62ba2bb",
+  "Sfcfc30dc": "9e5d92f615aa22c1f3f786855a2a3cdc",
+  "Sf95f853e": "d73765e1d374e4a62556c60da4f37930",
+  "S29ca81ec": "285eac38a8fe1215b0a326a1dfcdc298",
+  "S4404fb0e": "03a9ed5e6a31288fa3d275a3434e6bac",
+  "S6b733863": "6d213cf7539ec872170657f35064f168",
+  "Sc7a53951": "8c65f8df180861dd0233fa5d31dd522e",
+  "S388f10f8": "afc3f38320fd3acdc6f6f86f80083644",
+  "S53452899": "ef43974846f6db7b5e9f33b88c93e014",
+  "S27f9def0": "2c0af5570f2bb96a0ffda5cb8e3f31a1",
+  "S7bcfc6af": "83416e9b5f7bf685c3b13af457757012",
+  "S040cecf6": "cb32c0eb9fb64a0742e3c706f194d99c",
+  "Se28600c7": "61ddbd3af534c9dfb5901013a003528e",
+  "Sc5044567": "0fb7ea194feba869e2534ab87885aa34",
+  "Sd578b131": "daaa343d4e23ddd1ceb75bc4a2cc3cbd",
+  "Sbbcf1247": "21feb5f7617734aaf778f54bf10a2d7f",
+  "S8375a54d": "6cc5ca9763030714a9f77727531cd289",
+  "S0599bec3": "6229d7254a8c07b18e465f4b01a24e16",
+  "S4bf4ffc4": "b42f3b94b8fe61f25f1fbe6723f2d484",
+  "S8b8c1577": "7a4591208e86c67888a13a139486792c",
+  "Sd77294ef": "10a5e01d5d64649f427b25b7ecb3a114",
+  "S376ae3ab": "45c630f182e99e88fcb5a546392abfee",
+  "S3eee602a": "4fce6d866900c8d8a55a5f454801cfba",
+  "Se2079fea": "9d1542c29c185bb624f7d4c10a1e4978",
+  "Sd5088a04": "058d18d2eb4cb409696714712269ee70",
+  "S58a28648": "e629c74dacc190d5bb8b25abac238a18",
+  "S038a4644": "cf978b64dff6c66c1e259d0153178533",
+  "Sc90dd3d5": "6996d283f5abcf0c5527b555209776c4",
+  "S48dcdbf2": "da29cbe82058f15e14672f25aa1fa428",
+  "S5ae80e5d": "55a00a98b0c62a714b383470b179a55f",
+  "Sa894db2a": "6abea3f107773e9c5f7ac30aad6b5a37",
+  "S2be4f2cd": "4560a4e8ed9182aefa8e153b8b2f6232",
+  "S45a2ce75": "c6caa2df8af588e1bb732eefdd863d9a",
+  "Sa7f06f5f": "62ca915acbebc5621fa04715a97ecefe",
+  "S89284286": "5b119892bf1fc56ce4a6121b69852b67",
+  "S3ed81ff4": "d17e192d733b2c23e317ab9c097bf8ec",
+  "Sd42090a3": "f86d541a62ea4921790ac0bab1a49bbc",
+  "Sded5054c": "41b99e6d83735b3e58508735fc2c9ba6",
+  "S8ba2a94d": "48f98fcb695f3e198789c7c5cdc4baa6",
+  "S7b6484e4": "39e5762b830e9f8f78e88ff8de2aea09",
+  "Sa94d90a4": "f163fbb061e6417fd0052c03c57f6220",
+  "S0aa55eb4": "6184b340aeeac3e836ce000848614d25",
+  "S1eb05300": "a0340b1a47c0752bb1b89d8ec246379b",
+  "Se2818280": "d86bd50b21fde558e21bd3e76afd607c",
+  "S8a8b7a65": "4898e69eaa1504ec1335a61e7252bdce",
+  "S8cf14e22": "050a6003b2092e6eef4817589c11ce07",
+  "S836ff021": "c02cc04ad3d3e575329c2f43510e97fe",
+  "S5d9b2373": "edc6efd7d13d4d0bcc4fd8a551960f94",
+  "Sfda161e2": "9826ae16a8890afa281b161c0b72ceef",
+  "Sd009e1f1": "9b78b695703d5b2ac8fa4168a7dc4f3c",
+  "S5e1c953c": "82d63123f1629f95bef7f201f18ec609",
+  "Sb66a55c6": "ab4da04c942f41a5c27ba4632e04b178",
+  "Sf5d7d13a": "58de3965a7a7d341180fa7daab8fcf7b",
+  "S4aa002e6": "f0b9ca6a97f3d4b42dc6d3e931cd05b5",
+  "S9dd25e26": "2c1f67d6db395834c3bee68932d1f6ce",
+  "S578eec74": "ff74eecfde028df8dce50f8058d27cfa",
+  "S1b0527a5": "bb03884a7035b49ea88cbd29f39fc28b",
+  "Sfe26555a": "f196745322cc752ee2c40f10d4b99ee6",
+  "S7c58ea3d": "4f999072ab4f6bcc03a2cd93361dc822",
+  "__edge_cap__": "be8be33df739b5bd9f21774a4d9e021b"
+ },
+ "uncovered_total_mm2": 0.0,
+ "uncovered_wanted_mm2": 2199.9,
+ "uncovered_worst_mm2": 0.0,
+ "uncovered_fires": false,
+ "uncovered_shapes": [],
+ "bare_mm2": 0.25,
+ "skeleton_shapes": 19,
+ "bean_shapes": 0,
+ "words": {
+  "est": {
+   "glyphs": 3,
+   "legibility": 0.941,
+   "legibility_space": 0.421,
+   "worst_glyph": 0.823,
+   "counters_open": [
+    0,
+    0
+   ],
+   "ocr": {
+    "recovered": 2,
+    "read": 2,
+    "ci95": [
+     0.342,
+     1.0
+    ]
+   }
+  },
+  "1895": {
+   "glyphs": 4,
+   "legibility": 0.772,
+   "legibility_space": 0.247,
+   "worst_glyph": 0.5,
+   "counters_open": [
+    2,
+    3
+   ],
+   "ocr": {
+    "recovered": 3,
+    "read": 4,
+    "ci95": [
+     0.301,
+     0.954
+    ]
+   }
+  },
+  "the": {
+   "glyphs": 3,
+   "legibility": 0.974,
+   "legibility_space": 0.186,
+   "worst_glyph": 0.946,
+   "counters_open": [
+    0,
+    0
+   ],
+   "ocr": {
+    "recovered": 1,
+    "read": 3,
+    "ci95": [
+     0.061,
+     0.792
+    ]
+   }
+  },
+  "tagline": {
+   "glyphs": 13,
+   "legibility": 0.917,
+   "legibility_space": 0.478,
+   "worst_glyph": 0.0,
+   "counters_open": [
+    4,
+    4
+   ],
+   "ocr": {
+    "recovered": 10,
+    "read": 11,
+    "ci95": [
+     0.623,
+     0.984
+    ]
+   }
+  },
+  "hotel": {
+   "glyphs": 5,
+   "legibility": 0.953,
+   "legibility_space": 0.61,
+   "worst_glyph": 0.921,
+   "counters_open": [
+    1,
+    1
+   ],
+   "ocr": {
+    "recovered": 5,
+    "read": 5,
+    "ci95": [
+     0.566,
+     1.0
+    ]
+   }
+  },
+  "fremont": {
+   "glyphs": 7,
+   "legibility": 0.836,
+   "legibility_space": 0.489,
+   "worst_glyph": 0.0,
+   "counters_open": [
+    2,
+    2
+   ],
+   "ocr": {
+    "recovered": 7,
+    "read": 7,
+    "ci95": [
+     0.646,
+     1.0
+    ]
+   }
+  }
+ },
+ "secs": 418
+}

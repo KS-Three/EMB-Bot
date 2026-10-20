@@ -1,0 +1,1680 @@
+"""Outline-cut: a letter polygon -> stroke pieces whose rails are the outline.
+
+The construction every commercial letter builder uses (Wilcom's turning
+satin, Ink/Stitch's fill-to-satin, the expired Viking US6934599 and Soft
+Sight US6804573 families; survey in
+`docs/lettering-architecture-rd-2026-10-07.md` §4): the letter's outline is
+cut into stroke pieces at its concave corners, and each piece's two rails
+are stretches of the OUTLINE itself. The skeleton is consulted only to find
+a piece's ends and to say whether it bends; it never positions a rail.
+That is the opposite of `stage6_satin`, whose rails are normals cast from a
+smoothed skeleton, and it is why one letter sews there as several slabs at
+unrelated angles (the "patchwork" of the R&D report §2) and here as one
+column per stroke.
+
+Ported from the spike `digitizer/tools/outline_cut_spike/oc.py` (lane
+`claude/outline-cut-columns`, 2026-10-05/06, 18 passes plus the second
+look), with ONE change of output: a piece is returned as a `Column` of
+STATIONS (rail-to-rail crosses, `columns.Column`) rather than as stitches,
+so the construction engine (`columns.column_runs`) owns pull compensation,
+split satin, underlay and order -- the rules a typed glyph already gets.
+The cut rules, thresholds and pairing are the spike's, unchanged; every
+threshold was set on Becker MAR and Gaulke INDUSTRIES and is named where
+it is used. The second-look refinement (`_refine`) is kept.
+
+Nothing here reads a config; `cfg.lettering_columns` (stage 7) decides
+whether a text-tagged shape comes this way at all.
+"""
+from __future__ import annotations
+
+import math
+from collections import deque
+from dataclasses import replace
+
+import cv2
+import numpy as np
+from shapely.geometry import LinearRing, LineString, MultiPoint, Point, Polygon
+from shapely.ops import nearest_points, polygonize, unary_union
+from .fast_skimage import medial_axis  # skimage's, tables cached — byte-identical
+
+from .columns import Column
+
+SIMPLIFY_MM = 0.12       # lumps under this (or W/16) are the trace, not the letter
+REFLEX_DEG = 55.0        # concave turn that counts as a junction corner
+CONVEX_DEG = 35.0        # convex turn that counts as a real corner
+PX = 12                  # px/mm for the per-piece skeleton
+_RAIL_STEP_MM = 0.08     # densification of an outline arc before pairing
+_DTW_STEP_MM = 0.1       # resampling step of the two rails for the matching
+REFINE_TRIGGER = 0.12    # share of thread in over-long crosses that says "two strokes"
+REFINE_GAIN = 0.6        # a second-look cut must take that share to this fraction
+_SLOT_STEP_MM = 0.1           # outline walk step for the slot backs
+REFINE_REFLEX_DEG = 30.0        # the second look reads softer concave corners than the junction rules
+# `fold_cuts` (ON by default since 2026-10-20): a cross leaning past this off its column's own
+# perpendicular is folded through a branch, and a piece with at least
+# FOLD_MIN of them gets the second look. 45 is the "crosses past 45 deg off
+# perpendicular" line of the 2026-09-03 stitch-angle rule; capitals at 80
+# and 120 mm read zero interior crosses past it, lowercase shoulders 2-5
+# per glyph (`tools/lowercase_angle.py`). Candidates, not fabric constants.
+FOLD_DEG = 45.0
+FOLD_MIN = 2
+# `fold_cuts`: a candidate cut whose pieces include a column shorter than
+# this many stroke widths along its middle is refused -- a stub (the u's
+# spur cut off its stem) sews as a knot of short crosses. Candidate.
+STUB_WIDTHS = 2.5
+OPENER_KEEP = 8      # ring-opening rays tried in pairs, shortest first
+# `fold_cuts`: a column whose cross turns more than this within one stroke
+# width carries a stroke round a corner (the u's bowl down into its spur
+# fans 87 deg; a bowl turns 30-55). Candidate.
+TURN_MAX_DEG = 60.0
+# `fold_cuts`: a curved column's station beside an end on a fold-look cut
+# whose rail end has moved less than this share of the pitch from the end
+# station is dropped (`_drop_stalls`). Well under the half pitch a tight
+# bowl's inner rail moves anyway (inner over outer radius): the 120 mm b's
+# stalled end moved 0.25, the bowls' ordinary ends 0.45-0.5. Candidate.
+STALL_FRAC = 0.3
+
+
+def _unit(v):
+    n = math.hypot(*v)
+    return (v[0] / n, v[1] / n) if n > 1e-9 else (0.0, 0.0)
+
+
+def stroke_width(poly: Polygon) -> float:
+    """2A/P: the mean stroke width of a ribbon-like shape."""
+    return 2.0 * poly.area / max(poly.length, 1e-9)
+
+
+def _run_len(c, i, step):
+    """Length of the straight run leaving vertex i in ring direction `step`."""
+    n = len(c)
+    p, q = c[i], c[(i + step) % n]
+    d0 = _unit((q[0] - p[0], q[1] - p[1]))
+    L, k = 0.0, i
+    for _ in range(n):
+        p, q = c[k], c[(k + step) % n]
+        dd = _unit((q[0] - p[0], q[1] - p[1]))
+        if dd[0] * d0[0] + dd[1] * d0[1] < math.cos(math.radians(14)):
+            break
+        L += math.hypot(q[0] - p[0], q[1] - p[1])
+        k = (k + step) % n
+    return L
+
+
+def corners(poly: Polygon, W: float, reflex_deg: float = REFLEX_DEG):
+    """-> (reflex, convex) corner records: p, d_in, d_out, bis, turn, len_in,
+    len_out. A corner is turn gathered over W/8 of outline, so a chamfered or
+    two-vertex corner counts once and a curve's vertices do not."""
+    reflex, convex = [], []
+    half = 0.125 * W
+    for ring in [poly.exterior] + list(poly.interiors):
+        c = list(ring.coords)[:-1]
+        n = len(c)
+        if n < 3:
+            continue
+        seg = [_unit((c[(i + 1) % n][0] - c[i][0], c[(i + 1) % n][1] - c[i][1])) for i in range(n)]
+        elen = [math.hypot(c[(i + 1) % n][0] - c[i][0], c[(i + 1) % n][1] - c[i][1]) for i in range(n)]
+        turn = []
+        for i in range(n):
+            u, v = seg[i - 1], seg[i]
+            turn.append(math.degrees(math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1])))
+        for i in range(n):
+            if abs(turn[i]) < 8:
+                continue
+            sg = 1 if turn[i] > 0 else -1
+            lo, d = i, 0.0
+            while d + elen[(lo - 1) % n] <= half and turn[(lo - 1) % n] * sg > 0 and (lo - 1) % n != i:
+                d += elen[(lo - 1) % n]
+                lo = (lo - 1) % n
+            hi, d = i, 0.0
+            while d + elen[hi] <= half and turn[(hi + 1) % n] * sg > 0 and (hi + 1) % n != i:
+                d += elen[hi]
+                hi = (hi + 1) % n
+            idx, k = [lo], lo
+            while k != hi:
+                k = (k + 1) % n
+                idx.append(k)
+            tot = abs(sum(turn[j] for j in idx))
+            if tot < min(reflex_deg, CONVEX_DEG):
+                continue
+            if max(idx, key=lambda j: (abs(turn[j]), -j)) != i:   # one corner per stretch: its sharpest vertex
+                continue
+            u, v = seg[(lo - 1) % n], seg[hi]
+            wedge = _unit((v[0] - u[0], v[1] - u[1]))
+            p = c[i]
+            solid_in_wedge = poly.contains(Point(p[0] + wedge[0] * 0.05, p[1] + wedge[1] * 0.05))
+            bis = wedge if solid_in_wedge else (-wedge[0], -wedge[1])
+            rec = dict(p=p, d_in=u, d_out=v, bis=bis, turn=tot,
+                       len_in=_run_len(c, lo, -1), len_out=_run_len(c, hi, 1))
+            if solid_in_wedge:
+                if tot >= CONVEX_DEG:
+                    convex.append(rec)
+            elif tot >= reflex_deg:
+                reflex.append(rec)
+    return reflex, convex
+
+
+def _cluster(cs, r):
+    """Corners closer than r are one corner: keep the sharpest."""
+    out = []
+    for c in sorted(cs, key=lambda c: -c["turn"]):
+        if all(math.hypot(c["p"][0] - o["p"][0], c["p"][1] - o["p"][1]) > r for o in out):
+            out.append(c)
+    return out
+
+
+def _inside(poly, a, b):
+    seg = LineString([a, b])
+    if seg.length < 1e-6:
+        return False
+    core = LineString([seg.interpolate(0.02, normalized=True).coords[0],
+                       seg.interpolate(0.98, normalized=True).coords[0]])
+    return poly.buffer(1e-6).contains(core)
+
+
+def _ray_hit(poly, p, d, far, bis=None):
+    """First boundary hit from p along d, past the start. An edge extension
+    leaves a corner ALONG the outline, so the start is nudged into the solid."""
+    q = (p[0] + d[0] * far, p[1] + d[1] * far)
+    start = (p[0] + d[0] * 0.03, p[1] + d[1] * 0.03)
+    if not poly.contains(Point(start)) and bis is not None:
+        start = (start[0] + bis[0] * 0.04, start[1] + bis[1] * 0.04)
+    if not poly.contains(Point(start)):
+        return None
+    hit = LineString([start, q]).intersection(poly.boundary)
+    if hit.is_empty:
+        return None
+    pts = []
+    for g in getattr(hit, "geoms", [hit]):
+        pts.extend(g.coords)
+    return min(pts, key=lambda t: math.hypot(t[0] - p[0], t[1] - p[1]))
+
+
+def _snap(poly, q, r):
+    best, bd = q, r
+    for ring in [poly.exterior] + list(poly.interiors):
+        for v in ring.coords:
+            dd = math.hypot(v[0] - q[0], v[1] - q[1])
+            if dd < bd:
+                best, bd = v, dd
+    return best
+
+
+def find_cuts(poly: Polygon, W: float):
+    """-> (cuts, reflex, convex). A cut is (p, q, rule, length) with rule in
+    "through" (two concave corners joined along an edge at both ends: a
+    stroke butting a through-stroke), "mitre" (a lone concave corner to the
+    convex apex across it) or "ext" (the longer edge run on through)."""
+    reflex, convex = corners(poly, W)
+    reflex = _cluster(reflex, 0.25 * W)
+    reflex = [r for r in reflex if max(r["len_in"], r["len_out"]) >= 0.25 * W]   # a dent is not a junction
+
+    def dot(a, b):
+        return a[0] * b[0] + a[1] * b[1]
+
+    def neg(a):
+        return (-a[0], -a[1])
+
+    def ext(r):
+        return [(r["d_in"], r["len_in"]), (neg(r["d_out"]), r["len_out"])]   # edge continued into the body
+
+    cuts, used = [], set()
+    pairs = []
+    for i, r in enumerate(reflex):
+        for j in range(i + 1, len(reflex)):
+            o = reflex[j]
+            p, q = r["p"], o["p"]
+            L = math.hypot(q[0] - p[0], q[1] - p[1])
+            if L > 3.0 * W or L < 1e-6:
+                continue
+            d = _unit((q[0] - p[0], q[1] - p[1]))
+            a1 = max(dot(d, e) for e, _ in ext(r))
+            a2 = max(dot(neg(d), e) for e, _ in ext(o))
+            if min(a1, a2) > 0.94 and _inside(poly, p, q):
+                pairs.append((L, i, j))
+    for L, i, j in sorted(pairs):
+        if i in used or j in used:
+            continue
+        used |= {i, j}
+        cuts.append((reflex[i]["p"], reflex[j]["p"], "through", L, 0))
+    for i, r in enumerate(reflex):
+        if i in used:
+            continue
+        p = r["p"]
+        la, lb = r["len_in"], r["len_out"]
+        mitres, elbow = [], False
+        for o in convex:
+            if o["turn"] < 45:      # the far side of an elbow is a real corner, not a vertex on a curve
+                continue
+            q = o["p"]
+            L = math.hypot(q[0] - p[0], q[1] - p[1])
+            if L < 0.6 * W or L > 2.6 * W:
+                continue
+            al = dot(_unit((q[0] - p[0], q[1] - p[1])), r["bis"])
+            if al > 0.6 and _inside(poly, p, q):
+                elbow = True
+                if al > 0.9 and L <= 1.8 * W:
+                    mitres.append((L, q))
+        mitres.sort()
+        if not elbow:
+            continue        # smooth on the far side: the stroke is bending here, not meeting another
+        if mitres and max(la, lb) < 1.6 * min(la, lb):
+            cuts.append((p, mitres[0][1], "mitre", mitres[0][0], 1))
+            continue
+        done = False
+        for e, le in sorted(ext(r), key=lambda t: -t[1]):
+            q = _ray_hit(poly, p, e, 3.2 * W, r["bis"])
+            if q is None:
+                continue
+            L = math.hypot(q[0] - p[0], q[1] - p[1])
+            if L < 0.25 * W:
+                continue        # ran straight into a whisker of the trace
+            if L <= 1.5 * le:
+                q = _snap(poly, q, 0.15 * W)
+                cuts.append((p, q, "ext", math.hypot(q[0] - p[0], q[1] - p[1]), 1))
+                done = True
+                break
+        if done:
+            continue
+        if mitres:
+            cuts.append((p, mitres[0][1], "mitre", mitres[0][0], 1))
+    cuts.sort(key=lambda t: (t[4], t[3]))
+    kept = []
+    for cu in cuts:
+        seg = LineString([cu[0], cu[1]])
+        if seg.length < 0.25 * W and cu[2] != "through":
+            continue
+        if any(seg.crosses(LineString([k[0], k[1]])) or seg.buffer(0.05).contains(LineString([k[0], k[1]]))
+               or LineString([k[0], k[1]]).buffer(0.05).contains(seg) for k in kept):
+            continue
+        kept.append(cu)
+    return [k[:4] for k in kept], reflex, convex
+
+
+def _depth_peaks(depth, W: float) -> list[int]:
+    """Indices of depth maxima at least W deep, each standing 0.5 W above
+    the lowest point between it and the previous kept peak (a plateau, or
+    a ripple on one wall, is one peak)."""
+    peaks: list[int] = []
+    for i in range(1, len(depth) - 1):
+        if depth[i] < W or depth[i] < depth[i - 1] or depth[i] < depth[i + 1]:
+            continue
+        if peaks and min(depth[peaks[-1]:i + 1]) > max(depth[peaks[-1]], depth[i]) - 0.5 * W:
+            if depth[i] > depth[peaks[-1]]:
+                peaks[-1] = i
+            continue
+        peaks.append(i)
+    return peaks
+
+
+def slot_cuts(poly: Polygon, W: float):
+    """-> (cuts, stem lines). The stem of an E or an F, read off the slots between
+    its arms. Each pocket of the convex hull is walked along the letter's
+    outline; the depth peaks (from the pocket's mouth) are the slot backs,
+    and two or more backs lined up parallel to the mouth (within 20 deg)
+    are points on the stem's inner edge. The stretches of that line inside
+    the letter are the arms' roots, and each one between 0.3 W and 2.5 W
+    is a cut: stem on one side, arms on the other.
+
+    Why not the corner rules: a traced E at 146 px rounds its slot ends, so
+    the junction rules find one 55-deg corner at most and `ext` carries the
+    slot's LONGER edge into the body -- three horizontal slabs, each a
+    fanning L (Becker's E, 2026-10-07). The pro's E is a stem and three
+    arms. One pocket can hold both slots when the middle arm stops short
+    of the hull, which is why the backs are depth peaks along the outline
+    and not one deepest point per pocket. A C, an S, a K or a T has one
+    peak per pocket and gets nothing here."""
+    cuts, stems = [], []
+    if not poly.is_valid:
+        return cuts, stems
+    hull = poly.convex_hull
+    pockets = hull.difference(poly)
+    for pk in getattr(pockets, "geoms", [pockets]):
+        if pk.geom_type != "Polygon" or pk.area < 0.5 * W * W:
+            continue
+        ring = pk.exterior
+        mo = ring.intersection(hull.exterior)
+        ms = [g for g in getattr(mo, "geoms", [mo]) if g.geom_type == "LineString" and g.length > 0.05]
+        if not ms:
+            continue
+        m = max(ms, key=lambda g: g.length)
+        a, b = m.coords[0], m.coords[-1]
+        mouth = LineString([a, b])
+        dense = [ring.interpolate(t).coords[0] for t in np.arange(0, ring.length, _SLOT_STEP_MM)]
+        on_mouth = [m.distance(Point(p)) < 0.02 for p in dense]
+        if not any(on_mouth) or all(on_mouth):
+            continue
+        k0 = on_mouth.index(True)
+        while on_mouth[k0 % len(dense)]:
+            k0 += 1
+        k0 %= len(dense)
+        dense, on_mouth = dense[k0:] + dense[:k0], on_mouth[k0:] + on_mouth[:k0]
+        pts = [p for p, h in zip(dense, on_mouth) if not h]
+        depth = [mouth.distance(Point(p)) for p in pts]
+        backs = [pts[i] for i in _depth_peaks(depth, W)]
+        if len(backs) < 2:
+            continue
+        t = _unit((b[0] - a[0], b[1] - a[1]))
+        if any(abs(_unit((q[0] - p[0], q[1] - p[1]))[0] * t[0]
+                   + _unit((q[0] - p[0], q[1] - p[1]))[1] * t[1]) < math.cos(math.radians(20))
+               for p, q in zip(backs, backs[1:])):
+            continue
+        # between consecutive backs the line crosses an arm's root, solid all
+        # the way: an M's bottom pocket also has two peaks (the legs' inner
+        # tops) but the line between them crosses the V's notch
+        cover = poly.buffer(0.05)
+        if not all(cover.covers(LineString([p, q])) for p, q in zip(backs, backs[1:])):
+            continue
+        u = _unit((backs[-1][0] - backs[0][0], backs[-1][1] - backs[0][1]))
+        far = 4 * W + math.dist(backs[0], backs[-1])
+        chord = LineString([(backs[0][0] - u[0] * far, backs[0][1] - u[1] * far),
+                            (backs[-1][0] + u[0] * far, backs[-1][1] + u[1] * far)])
+        inside = chord.intersection(poly)
+        found = []
+        for g in getattr(inside, "geoms", [inside]):
+            if g.is_empty or g.geom_type != "LineString":
+                continue
+            if 0.3 * W <= g.length <= 2.5 * W:
+                found.append((g.coords[0], g.coords[-1], "slot", g.length))
+        if len(found) < 2:
+            continue
+        # The piece behind the line must BE a stem: one stroke running along
+        # the line, no wider than a stroke. MARINE's M has three peaks in a
+        # row along its bottom pocket and read as an E on its side; behind
+        # that line is the M's whole top (both stems, the V's notch).
+        pieces = split(poly, found)
+        lines = [LineString([a2, b2]) for a2, b2, _, _ in found]
+        behind = [g for g in pieces
+                  if all(g.buffer(0.05).intersection(ln).length > 0.5 * ln.length for ln in lines)]
+        if len(behind) != 1:
+            continue
+        stem = behind[0]
+        n = (-u[1], u[0])
+        P = np.array(stem.exterior.coords)
+        if np.ptp(P @ np.array(n)) > 1.6 * W:
+            continue
+        cuts.extend(found)
+        stems.append(chord)
+    return cuts, stems
+
+
+def split(poly: Polygon, cuts) -> list[Polygon]:
+    """The polygon cut along `cuts` -> its pieces (scraps under 0.05 mm² dropped)."""
+    verts = {(round(x, 6), round(y, 6)) for ring in [poly.exterior] + list(poly.interiors) for x, y in ring.coords}
+    lines = [poly.exterior] + list(poly.interiors)
+    for a, b, _, _ in cuts:
+        d = _unit((b[0] - a[0], b[1] - a[1]))
+        # an end on a vertex is already a node; an end from a ray hit needs a hair of overshoot to cross the ring
+        ea = 0.0 if (round(a[0], 6), round(a[1], 6)) in verts else 0.01
+        eb = 0.0 if (round(b[0], 6), round(b[1], 6)) in verts else 0.01
+        lines.append(LineString([(a[0] - d[0] * ea, a[1] - d[1] * ea), (b[0] + d[0] * eb, b[1] + d[1] * eb)]))
+    pieces = [g for g in polygonize(unary_union(lines)) if poly.buffer(1e-6).contains(g.representative_point())]
+    return [g for g in pieces if g.area > 0.05]
+
+
+def _spine_ends(piece: Polygon):
+    """Longest skeleton path of the piece -> points (mm), or None."""
+    x0, y0, x1, y1 = piece.bounds
+    w, h = int((x1 - x0) * PX) + 5, int((y1 - y0) * PX) + 5
+    m = np.zeros((h, w), np.uint8)
+
+    def to_px(cs):
+        return np.round([((x - x0) * PX + 2, (y - y0) * PX + 2) for x, y in cs]).astype(np.int32)
+
+    cv2.fillPoly(m, [to_px(piece.exterior.coords)], 1)
+    for r in piece.interiors:
+        cv2.fillPoly(m, [to_px(r.coords)], 0)
+    # rng=0 as everywhere else in the engine (stage6_satin, shapefield): with
+    # rng=None skimage breaks ties from OS entropy, and the lane sewed a
+    # different design on every run (golden_tee 8,312 / 8,318 / 8,319 /
+    # 8,315 stitches, four runs, 2026-10-07).
+    sk, dist = medial_axis(m.astype(bool), return_distance=True, rng=0)
+    ys, xs = np.nonzero(sk)
+    if len(xs) < 2:
+        return None
+    S = set(zip(xs.tolist(), ys.tolist()))
+
+    def bfs(s):
+        seen = {s: None}
+        dq = deque([s])
+        last = s
+        while dq:
+            c = dq.popleft()
+            last = c
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    nb = (c[0] + dx, c[1] + dy)
+                    if nb in S and nb not in seen:
+                        seen[nb] = c
+                        dq.append(nb)
+        return last, seen
+
+    a, _ = bfs(next(iter(S)))
+    b, par = bfs(a)
+    path = []
+    c = b
+    while c is not None:
+        path.append(c)
+        c = par[c]
+    dv = np.array([dist[y, x] for x, y in path])
+    keep = dv >= 0.75 * np.median(dv)
+    idx = np.flatnonzero(keep)
+    if len(idx) < 2:
+        return None
+    path = path[idx[0]:idx[-1] + 1]
+    return [((x - 2) / PX + x0, (y - 2) / PX + y0) for x, y in path]
+
+
+def _arc(ring_pts, i, j):
+    n = len(ring_pts)
+    out = [ring_pts[i]]
+    k = i
+    while k != j:
+        k = (k + 1) % n
+        out.append(ring_pts[k])
+    return out
+
+
+def ring_rails(piece: Polygon):
+    """A piece that still wraps a counter (an O, an uncut bowl): outer ring
+    against the counter's ring, both started at the thinnest place and walked
+    the same way round."""
+    hole = max(piece.interiors, key=lambda h: Polygon(h).area)
+    ext = piece.exterior
+    pe, ph = nearest_points(ext, hole)
+
+    def walk(ring, start):
+        ring = LinearRing(ring.coords)
+        if not ring.is_ccw:
+            ring = LinearRing(list(ring.coords)[::-1])
+        t0 = ring.project(start)
+        L = ring.length
+        return [ring.interpolate((t0 + t) % L).coords[0] for t in np.arange(0, L, _RAIL_STEP_MM)]
+
+    return walk(ext, pe), walk(hole, ph)
+
+
+def rails(piece: Polygon, cut_lines, W: float):
+    """-> (rail_a, rail_b) as dense point lists running the same way, or None.
+    The piece's ends are where its spine leaves it; the two outline arcs
+    between those exits are the rails, each trimmed of the cap it runs across
+    and squared where the end is a free cap rather than a cut."""
+    if len(piece.interiors) > 0:
+        return ring_rails(piece)
+    sp = _spine_ends(piece)
+    if sp is None or len(sp) < 4:
+        return None
+    k = max(2, min(len(sp) // 3, int(PX * W * 0.5)))
+    d0 = _unit((sp[0][0] - sp[k][0], sp[0][1] - sp[k][1]))
+    d1 = _unit((sp[-1][0] - sp[-1 - k][0], sp[-1][1] - sp[-1 - k][1]))
+    ring = piece.exterior
+    dense = [ring.interpolate(t).coords[0] for t in np.arange(0, ring.length, _RAIL_STEP_MM)]
+
+    def exit_idx(p, d):
+        q = LineString([p, (p[0] + d[0] * 50, p[1] + d[1] * 50)]).intersection(ring)
+        if q.is_empty:
+            return None
+        pts = []
+        for g in getattr(q, "geoms", [q]):
+            pts.extend(g.coords)
+        e = min(pts, key=lambda t: math.hypot(t[0] - p[0], t[1] - p[1]))
+        return int(np.argmin([math.hypot(x - e[0], y - e[1]) for x, y in dense])), e
+
+    r0, r1 = exit_idx(sp[0], d0), exit_idx(sp[-1], d1)
+    if r0 is None or r1 is None or r0[0] == r1[0]:
+        return None
+    (i0, e0), (i1, e1) = r0, r1
+    A = _arc(dense, i0, i1)            # e0 -> e1
+    B = _arc(dense, i1, i0)[::-1]      # e0 -> e1 the other way round
+
+    def end_cut(e):
+        for ln in cut_lines:
+            if ln.distance(Point(e)) < 0.06:
+                return ln
+        return None
+
+    c0, c1 = end_cut(e0), end_cut(e1)
+
+    def trim(arc, d_start, cut, from_start):
+        pts = arc if from_start else arc[::-1]
+        i = 0
+        lim = int(1.6 * W / _RAIL_STEP_MM)
+        while i < len(pts) - 3 and i < lim:
+            p, q = pts[i], pts[i + 1]
+            if cut is not None:
+                if cut.distance(Point(q)) < 0.04:
+                    i += 1
+                    continue
+                break
+            t = _unit((q[0] - p[0], q[1] - p[1]))
+            if abs(t[0] * d_start[0] + t[1] * d_start[1]) < 0.6:   # still running across the end: a cap
+                i += 1
+                continue
+            break
+        pts = pts[i:]
+        return pts if from_start else pts[::-1]
+
+    A = trim(trim(A, d0, c0, True), d1, c1, False)
+    B = trim(trim(B, d0, c0, True), d1, c1, False)
+
+    # A free end is NOT squared (the spike's `square` cut the longer rail
+    # back to the shorter's reach): a slanted terminal is the longer rail
+    # running on past the shorter, and the DTW pairing below fans it, the
+    # last cross lying on the slant. Squaring left the S's tips and every
+    # slanted cap short (Becker's E arms 9.4 -> 3.5 mm2 bare without it).
+    if len(A) < 3 or len(B) < 3:
+        return None
+    return A, B
+
+
+def pair_rails(A, B, pitch_mm: float) -> list[tuple[tuple, tuple]]:
+    """Rail to rail: the two outline arcs paired by the monotone matching that
+    keeps every cross as short as it can be (dynamic time warping), so crosses
+    stay square to the stroke, fan round a bend, and close into a mitred end,
+    without any spine deciding the angle. A station is taken every `pitch_mm`
+    of progress along whichever rail is moving -- round a bend that is the
+    OUTER rail, so the outside stays covered and the inside takes the short
+    crosses. -> [(pa, pb), ...]."""
+    la, lb = LineString(A), LineString(B)
+    step = _DTW_STEP_MM
+    a = np.array([la.interpolate(t).coords[0] for t in np.arange(0, la.length + step, step)])
+    b = np.array([lb.interpolate(t).coords[0] for t in np.arange(0, lb.length + step, step)])
+    n, m = len(a), len(b)
+    D = np.hypot(a[:, None, 0] - b[None, :, 0], a[:, None, 1] - b[None, :, 1])
+    C = np.full((n, m), np.inf)
+    C[0, 0] = D[0, 0]
+    for j in range(1, m):
+        C[0, j] = C[0, j - 1] + D[0, j]
+    for i in range(1, n):
+        C[i, 0] = C[i - 1, 0] + D[i, 0]
+        row, prev = C[i], C[i - 1]
+        for j in range(1, m):
+            row[j] = D[i, j] + min(prev[j], prev[j - 1], row[j - 1])
+    i, j, path = n - 1, m - 1, [(n - 1, m - 1)]
+    while i > 0 or j > 0:
+        if i == 0:
+            j -= 1
+        elif j == 0:
+            i -= 1
+        else:
+            k = int(np.argmin((C[i - 1, j - 1], C[i - 1, j], C[i, j - 1])))
+            if k == 0:
+                i, j = i - 1, j - 1
+            elif k == 1:
+                i -= 1
+            else:
+                j -= 1
+        path.append((i, j))
+    path.reverse()
+    out, since = [], pitch_mm
+    for (i, j) in path:
+        if since >= pitch_mm - 1e-9:
+            out.append((tuple(a[i]), tuple(b[j])))
+            since = 0.0
+        since += step
+    return out
+
+
+def straight_axis(piece: Polygon, W: float, cut_lines=()):
+    """Unit axis of a straight stroke piece, or None if it bends. The axis is
+    the direction the piece's OWN outline runs (cut edges excluded), so a
+    mitred diagonal reads along its sides, not along its cuts."""
+    cs = list(piece.exterior.coords)
+    C = S = tot = 0.0
+    for p, q in zip(cs[:-1], cs[1:]):
+        L = math.hypot(q[0] - p[0], q[1] - p[1])
+        if L < 1e-6:
+            continue
+        mid = Point((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
+        if any(ln.distance(mid) < 0.03 for ln in cut_lines):
+            continue
+        th = 2 * math.atan2(q[1] - p[1], q[0] - p[0])
+        C += L * math.cos(th)
+        S += L * math.sin(th)
+        tot += L
+    u = None
+    if tot > 1e-6 and math.hypot(C, S) / tot >= 0.55:
+        th = math.atan2(S, C) / 2
+        u = np.array([math.cos(th), math.sin(th)])
+    else:
+        # caps and a serif can outweigh a short stem's sides: fall back to the spine's chord
+        sp = _spine_ends(piece)
+        if sp is None or len(sp) < 4:
+            return None
+        Q = np.array(sp)
+        chord = Q[-1] - Q[0]
+        Lc = float(np.hypot(*chord))
+        if Lc < 1e-6:
+            return None
+        u = chord / Lc
+        if np.abs((Q - Q[0]) @ np.array([-u[1], u[0]])).max() > max(0.12 * Lc, 0.2 * W):
+            return None
+    # along that axis the piece must be a stroke, not a slab: longer than it is wide
+    P = np.array(cs)
+    ext_u = np.ptp(P @ u)
+    ext_n = np.ptp(P @ np.array([-u[1], u[0]]))
+    if ext_u < 0.8 * ext_n:
+        return None
+    for snap in ((1.0, 0.0), (0.0, 1.0)):                # a stem that is nearly upright is upright
+        if abs(u[0] * snap[0] + u[1] * snap[1]) > math.cos(math.radians(7)):
+            u = np.array(snap)
+    return (float(u[0]), float(u[1]))
+
+
+def scan_stations(piece: Polygon, u, pitch_mm: float):
+    """Crosses square to axis u, each end ON the piece's outline, one every
+    `pitch_mm` along the axis. -> ([(pa, pb), ...], dropped_mm) or None.
+    A scanline that meets the piece in more than one segment stations the
+    longest and reports the rest as `dropped_mm`: an N whose stem and
+    diagonal were never cut apart scanned as one upright column and sewed
+    the diagonal only where it was the longer segment (Fremont, 2.1 mm2
+    bare of a 6.7 mm2 diagonal). The refinement reads dropped length as
+    over-long and cuts the piece."""
+    cs = np.array(piece.exterior.coords)
+    t = cs @ np.array(u)
+    out = []
+    dropped = 0.0
+    for tt in np.arange(t.min() + pitch_mm / 2, t.max(), pitch_mm):
+        hit = _scan_cross(piece, u, tt)
+        if hit is None:
+            continue
+        cross, extra = hit
+        dropped += extra
+        out.append(cross)
+    return (out, dropped) if len(out) >= 3 else None
+
+
+def _scan_cross(piece: Polygon, u, tt: float):
+    """The cross square to axis u at axis position tt: the longest segment
+    the scanline cuts from the piece, ordered along the normal. -> ((pa,
+    pb), length of the other segments), or None where it cuts nothing."""
+    n = (-u[1], u[0])
+    o = (u[0] * tt, u[1] * tt)
+    hit = LineString([(o[0] - n[0] * 200, o[1] - n[1] * 200),
+                      (o[0] + n[0] * 200, o[1] + n[1] * 200)]).intersection(piece)
+    segs = [g for g in getattr(hit, "geoms", [hit]) if g.geom_type == "LineString" and g.length > 0.05]
+    if not segs:
+        return None
+    g = max(segs, key=lambda g: g.length)
+    p, q = g.coords[0], g.coords[-1]
+    if (p[0] * n[0] + p[1] * n[1]) > (q[0] * n[0] + q[1] * n[1]):
+        p, q = q, p
+    return (tuple(p), tuple(q)), sum(h.length for h in segs) - g.length
+
+
+# A square terminal's last cross goes ON its cap face, this far inside it --
+# the satin tier's own terminal (`stage6_satin._CAP_INSET_MM`, `_extend_to_cap`).
+CAP_INSET_MM = 0.03
+# A cross at least this share of the column's median is full width: the end is
+# square, not a slant (`_fan_ends`' own 0.85) or a round cap.
+CAP_SQUARE_FRAC = 0.85
+# A cap face this close to a cut line is the cut, not a terminal.
+CAP_CUT_CLEAR_MM = 0.1
+
+
+def _cap_square_ends(st, piece: Polygon, u, cut_lines, pitch_mm: float):
+    """Square FREE terminals get their end cross on the cap face, the way the
+    satin tier ends a column (`_extend_to_cap`: the terminal station sits on
+    the cap, a hair inside). The scan starts half a pitch in and stops up to a
+    whole pitch short of the far end, so a flat-topped stem ended 0.2-0.4 mm
+    inside its artwork with no lengthwise pull to cover it: on Becker's MARINE
+    every stem top and foot read as unsewn ink (2026-10-11,
+    `docs/renders/columns-lost-frac-2026-10-11/`). Where an end qualifies, the
+    stations are re-laid evenly between the caps at no more than `pitch_mm`;
+    an end at a cut, a slant (left to `_fan_ends`) or a round cap keeps the
+    scan's own last station, and a column with neither end qualifying is
+    returned unchanged."""
+    if len(st) < 3:
+        return st
+    cs = np.array(piece.exterior.coords)
+    t = cs @ np.array(u)
+
+    def at(s):
+        return s[0][0] * u[0] + s[0][1] * u[1]
+
+    lengths = sorted(math.dist(a, b) for a, b in st)
+    med = lengths[len(lengths) // 2]
+
+    def cap(te: float, sign: int):
+        hit = _scan_cross(piece, u, te - sign * CAP_INSET_MM)
+        if hit is None:
+            return None
+        (a, b), _extra = hit
+        if math.dist(a, b) < CAP_SQUARE_FRAC * med:
+            return None                                   # slant or round cap
+        mid = Point((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+        if any(c.distance(mid) < CAP_CUT_CLEAR_MM for c in cut_lines):
+            return None                                   # a cut, not a terminal
+        return te - sign * CAP_INSET_MM
+
+    lo = cap(float(t.min()), -1) if math.dist(*st[0]) >= CAP_SQUARE_FRAC * med else None
+    hi = cap(float(t.max()), 1) if math.dist(*st[-1]) >= CAP_SQUARE_FRAC * med else None
+    if lo is None and hi is None:
+        return st
+    t0 = lo if lo is not None else at(st[0])
+    t1 = hi if hi is not None else at(st[-1])
+    if t1 - t0 < 2 * pitch_mm:
+        return st
+    k = int(math.ceil((t1 - t0) / pitch_mm - 1e-9))
+    out = []
+    for i in range(k + 1):
+        hit = _scan_cross(piece, u, t0 + (t1 - t0) * i / k)
+        if hit is not None:
+            out.append(hit[0])
+    return out if len(out) >= 3 else st
+
+
+def _straight_rails(piece: Polygon, u):
+    """The two outline sides of a straight piece, split at its extreme points
+    along u, both running +u. Kept on the Column so a consumer that wants
+    the rails (the sewn-width preview, a later per-rail rule) has them."""
+    cs = list(piece.exterior.coords)[:-1]
+    t = [p[0] * u[0] + p[1] * u[1] for p in cs]
+    i0, i1 = int(np.argmin(t)), int(np.argmax(t))
+    if i0 == i1:
+        return None
+    a = _arc(cs, i0, i1)
+    b = _arc(cs, i1, i0)[::-1]
+    n = (-u[1], u[0])
+
+    def side(r):
+        return sum(p[0] * n[0] + p[1] * n[1] for p in r) / len(r)
+
+    return (a, b) if side(a) <= side(b) else (b, a)
+
+
+def _slant_corner(piece: Polygon, P, tip, far, u, end: int, min_off: float):
+    """The slant's near corner, when the fan pivot P sits short of it: the
+    outline vertex on the slant side between P and the tip that stands
+    furthest outside the chord P -> tip, so long as it stands at least
+    `min_off` outside it (a traced slant's own jaggies stay under twice the
+    simplification) and lies ahead of P toward the tip. The slant side is
+    the arc from P to the tip that does not hold `far`, the long-side end
+    of the same cross. -> the corner, or None (the pivot is already there)."""
+    ring = LineString(piece.exterior.coords)
+    L = ring.length
+    dP, dT, dF = (ring.project(Point(p)) for p in (P, tip, far))
+
+    def between(d, a, b):                     # d on the ring arc a -> b, increasing
+        return (a <= d <= b) if a <= b else (d >= a or d <= b)
+
+    a, b = (dP, dT) if not between(dF, dP, dT) else (dT, dP)
+    cs = list(piece.exterior.coords)[:-1]
+    vx, vy = tip[0] - P[0], tip[1] - P[1]
+    n = math.hypot(vx, vy)
+    if n < 1e-9 or L < 1e-9:
+        return None
+    best, off = None, min_off
+    t0 = end * (P[0] * u[0] + P[1] * u[1])
+    for c in cs:
+        if not between(ring.project(Point(c)), a, b):
+            continue
+        d = abs((c[0] - P[0]) * vy - (c[1] - P[1]) * vx) / n
+        if d >= off and end * (c[0] * u[0] + c[1] * u[1]) > t0 + 1e-9:
+            best, off = c, d
+    return None if best is None else (float(best[0]), float(best[1]))
+
+
+def _fan_ends(st, piece: Polygon, u, pitch_mm: float, W: float):
+    """Stations square to the axis shrink toward a slanted end: past the
+    shorter side's corner the scan sees only the chord between the slant
+    and the longer side, and those crosses fall under the floor, so the
+    tip sews bare (Becker's E arms, every mitred diagonal). The pro fans
+    the end: the last full cross pivots on its slant-side end and sweeps
+    along the longer side to the tip, the final cross lying on the slant
+    itself. Read off the scan, not the outline (a traced outline's jaggies
+    are each off-axis and a rail-walking rule swept a fan across a whole
+    letter): the shrinking crosses are the ones under 0.85 of the median,
+    their far ends are the fan's targets, and the piece's extreme point
+    along the axis is the tip. Only within 1.6 W of the last full cross
+    (a terminal, not a taper), and only crosses the piece covers. The
+    shared pivot is what `_short_stitch_guard` is for."""
+    if len(st) < 4:
+        return st
+    n = (-u[1], u[0])
+
+    def proj(p):
+        return p[0] * u[0] + p[1] * u[1]
+
+    def projn(p):
+        return p[0] * n[0] + p[1] * n[1]
+
+    def mid(s):
+        return ((s[0][0] + s[1][0]) / 2, (s[0][1] + s[1][1]) / 2)
+
+    lengths = [math.dist(a, b) for a, b in st]
+    med = sorted(lengths)[len(lengths) // 2]
+    verts = list(piece.exterior.coords)
+    cover = piece.buffer(0.05)
+    for end in (1, -1):
+        order = st if end > 0 else st[::-1]            # order[-1] is this end's last station
+        k = len(order) - 1
+        shrink = []
+        while k > 0 and math.dist(*order[k]) < 0.85 * med:
+            shrink.append(order[k])
+            k -= 1
+        if not shrink or k < 1:
+            continue
+        full = order[k]
+        tip = max(verts, key=proj) if end > 0 else min(verts, key=proj)
+        if abs(proj(tip) - proj(mid(full))) > 1.6 * W:
+            continue
+        near = shrink[0]                                # the shrinking cross nearest the tip
+        move_a = abs(projn(near[0]) - projn(full[0]))
+        move_b = abs(projn(near[1]) - projn(full[1]))
+        # a slant draws ONE side in; a round cap or a taper draws both in
+        # alike and stays square (fanning it from one side would turn every
+        # round terminal lopsided for no bare cloth saved)
+        if max(move_a, move_b) < 2.0 * min(move_a, move_b):
+            continue
+        slant_a = move_a > move_b
+        P = full[0] if slant_a else full[1]
+        # The pivot belongs on the slant's NEAR corner, where the slant side
+        # turns into the end. The last cross over 0.85 of the median only
+        # lands there on a column of even width: on a piece that tapers
+        # toward its end (the Becker A's right leg, narrowing to its apex
+        # beside the cut) the crosses fall under the bar well before the
+        # slant starts, the pivot sat 1.2 mm down the side, and the triangle
+        # between it, the corner and the tip sewed bare -- 1.3 -> 6.7 mm2
+        # unsewn on that A against the satin tier (2026-10-11,
+        # `docs/renders/columns-slant-fan-2026-10-11/`). The crosses whose
+        # slant-side end has not reached the corner are the side's own and
+        # stay scan crosses; the fan starts at the corner.
+        corner = _slant_corner(piece, P, tip, (full[1] if slant_a else full[0]), u, end,
+                               max(pitch_mm, 2.0 * max(SIMPLIFY_MM, W / 16.0)))
+        if corner is not None:
+            tc = end * proj(corner)
+            j = k
+            while j + 1 < len(order) and end * proj(order[j + 1][0 if slant_a else 1]) <= tc + 1e-9:
+                j += 1
+            k, P = j, corner
+            shrink = order[k + 1:][::-1]
+        targets = [(s[1] if slant_a else s[0]) for s in reversed(shrink)]
+        # the final cross lies ON the slant: a last target within half a
+        # pitch of the tip is moved onto it rather than left up to 0.2 mm
+        # short of it, with no cross on the slant at all
+        if targets and math.dist(targets[-1], tip) <= 0.5 * pitch_mm:
+            targets[-1] = tip
+        else:
+            targets.append(tip)
+        fan = []
+        for q in targets:
+            if math.dist(P, q) < 1e-6 or not cover.covers(LineString([P, q])):
+                break                                   # a chord the piece does not cover: no fan here
+            fan.append((P, q) if slant_a else (q, P))
+        if len(fan) < len(targets):
+            continue                                    # keep the scan's own crosses, all of them
+        new = order[:k + 1] + fan
+        st = new if end > 0 else new[::-1]
+    return st
+
+
+# `cfg.lettering_columns_square_ends` (`mitre_ends`): a slanted end face is
+# mitred when it stands at least this far off square to the column (under it
+# the square cap's own rule is the end) and no more than this far (past it the
+# face runs nearly along the column and is a side, `columns.END_FACE_DEG`).
+MITRE_MIN_DEG = 8.0
+MITRE_MAX_DEG = 45.0
+
+
+def _ring_arc(ring: LineString, d0: float, d1: float, avoid: float, step: float):
+    """Points along the closed `ring` from arc position d0 to d1, going the
+    way that does NOT pass `avoid`, every `step` or closer, both ends kept.
+    -> (points, length)."""
+    L = ring.length
+
+    def fwd(a, b):                                     # length going forward a -> b
+        return (b - a) % L
+
+    if fwd(d0, avoid) < fwd(d0, d1):                   # forward passes `avoid`: go back
+        length, sgn = fwd(d1, d0), -1.0
+    else:
+        length, sgn = fwd(d0, d1), 1.0
+    n = max(1, int(math.ceil(length / step)))
+    pts = [ring.interpolate((d0 + sgn * length * k / n) % L).coords[0] for k in range(n + 1)]
+    return pts, length
+
+
+def _mitre_ends(st, piece: Polygon, u, cut_lines, pitch_mm: float, W: float):
+    """`cfg.lettering_columns_square_ends`: a column whose END is one straight
+    outline edge running across it at a slant -- the N's diagonal foot on the
+    baseline, where both sides draw in and `_fan_ends` does not fire -- ends
+    with its last cross ON that edge, a `CAP_INSET_MM` inside it, the way a
+    square cap ends on its face (`_cap_square_ends`). The crosses from the
+    last one clear of the face turn to it evenly: each rail walks its own
+    outline side to the face's corner, both in the same number of steps, no
+    step longer than `pitch_mm` on either rail -- a mitre, not a fan, since
+    neither rail pivots. The face is the end's longest edge that is not a cut
+    and stands `MITRE_MIN_DEG`..`MITRE_MAX_DEG` off square to the column,
+    found within 1.6 W of the end. Ends without one are returned as they
+    are, and so is any end whose new crosses the piece does not cover."""
+    if len(st) < 4:
+        return st
+    n = (-u[1], u[0])
+
+    def proj(p):
+        return p[0] * u[0] + p[1] * u[1]
+
+    def projn(p):
+        return p[0] * n[0] + p[1] * n[1]
+
+    ring = LineString(piece.exterior.coords)
+    cs = list(piece.exterior.coords)
+    cover = piece.buffer(0.05)
+    for end in (1, -1):
+        order = st if end > 0 else st[::-1]
+        last = order[-1]
+        if set(last) & set(order[-2]):
+            continue                                        # a fan already ends on its slant
+        t_last = end * proj(((last[0][0] + last[1][0]) / 2, (last[0][1] + last[1][1]) / 2))
+        face = None
+        for p, q in zip(cs[:-1], cs[1:]):
+            L = math.dist(p, q)
+            if L < 0.25 * W:
+                continue
+            m = ((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
+            if any(c.distance(Point(m)) < CAP_CUT_CLEAR_MM for c in cut_lines):
+                continue                                    # a cut, not a face
+            if end * proj(m) < t_last - 1.6 * W:
+                continue                                    # not at this end
+            f = ((q[0] - p[0]) / L, (q[1] - p[1]) / L)
+            off = math.degrees(math.acos(min(1.0, abs(f[0] * n[0] + f[1] * n[1]))))
+            if not (MITRE_MIN_DEG <= off <= MITRE_MAX_DEG):
+                continue
+            # the face must lie beyond the column's last cross, toward the end
+            if min(end * proj(p), end * proj(q)) < t_last - 0.5 * W:
+                continue
+            if face is None or L > face[2]:
+                face = (p, q, L, f)
+        if face is None:
+            continue
+        p, q, L, f = face
+        ca, cb = (p, q) if projn(p) < projn(q) else (q, p)   # the a side has the smaller normal
+        # the last cross clear of the face: both its ends before both corners
+        lim = min(end * proj(ca), end * proj(cb))
+        k = len(order) - 1
+        while k > 0 and max(end * proj(order[k][0]), end * proj(order[k][1])) > lim - 1e-9:
+            k -= 1
+        if k < 2:
+            continue
+        a_k, b_k = order[k]
+        # inset the face's corners along the face's inward normal
+        fn = (-f[1], f[0])
+        mid = ((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
+        if not piece.covers(Point(mid[0] + fn[0] * 0.02, mid[1] + fn[1] * 0.02)):
+            fn = (-fn[0], -fn[1])
+        ca_in = (ca[0] + fn[0] * CAP_INSET_MM, ca[1] + fn[1] * CAP_INSET_MM)
+        cb_in = (cb[0] + fn[0] * CAP_INSET_MM, cb[1] + fn[1] * CAP_INSET_MM)
+        d_face = ring.project(Point(mid))
+        rail_a, la = _ring_arc(ring, ring.project(Point(a_k)), ring.project(Point(ca)), d_face, 0.02)
+        rail_b, lb = _ring_arc(ring, ring.project(Point(b_k)), ring.project(Point(cb)), d_face, 0.02)
+        steps = max(1, int(math.ceil(max(la, lb) / pitch_mm - 1e-9)))
+        ra, rb = LineString(rail_a), LineString(rail_b)
+        new = []
+        for i in range(1, steps + 1):
+            if i == steps:
+                new.append((ca_in, cb_in))
+                break
+            new.append((ra.interpolate(i / steps, normalized=True).coords[0],
+                        rb.interpolate(i / steps, normalized=True).coords[0]))
+        if not all(cover.covers(LineString([a, b])) for a, b in new):
+            continue
+        new = [(tuple(map(float, a)), tuple(map(float, b))) for a, b in new]
+        out = order[:k + 1] + new
+        st = out if end > 0 else out[::-1]
+    return st
+
+
+def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
+                 mitre_ends: bool = False) -> Column | None:
+    """One piece -> its Column, or None when neither construction fits it.
+    `mitre_ends` (`cfg.lettering_columns_square_ends`): see `_mitre_ends`."""
+    if not piece.interiors:
+        u = straight_axis(piece, W, cut_lines)
+        if u is not None:
+            sc = scan_stations(piece, u, pitch_mm)
+            if sc:
+                st, dropped = sc
+                rr = _straight_rails(piece, u)
+                st = _cap_square_ends(st, piece, u, cut_lines, pitch_mm)
+                st = _fan_ends(st, piece, u, pitch_mm, W)
+                if mitre_ends:
+                    st = _mitre_ends(st, piece, u, cut_lines, pitch_mm, W)
+                return Column(stations=st, piece=piece, kind="straight", axis=u,
+                              width_mm=W, rail_a=rr[0] if rr else [], rail_b=rr[1] if rr else [],
+                              dropped_mm=dropped)
+    r = rails(piece, cut_lines, W)
+    if r is None:
+        return None
+    st = pair_rails(r[0], r[1], pitch_mm)
+    if len(st) < 3:
+        return None
+    return Column(stations=st, piece=piece, kind="ring" if piece.interiors else "curved",
+                  axis=None, width_mm=W, rail_a=list(r[0]), rail_b=list(r[1]))
+
+
+def _overlong(col: Column | None, W: float):
+    """-> (cross length in crosses far longer than the stroke is wide, total).
+    A piece that is one stroke has none; a piece that is still two strokes
+    sews across both, and that is how it shows."""
+    if col is None or not col.stations:
+        return 0.0, 0.0
+    thr = 1.6 * W
+    L = np.array([math.dist(a, b) for a, b in col.stations])
+    # scanline length the straight scan left unstationed is stroke the
+    # column does not sew: it counts as over-long, the same symptom
+    return float(L[L > thr].sum()) + col.dropped_mm, float(L.sum()) + col.dropped_mm
+
+
+def _folded(col: Column | None, ends: bool = False) -> int:
+    """-> how many of a column's interior crosses lean past FOLD_DEG off the
+    perpendicular to the column's own advance (the line between the cross
+    midpoints either side). One stroke has none away from its two ends; a
+    piece holding a stroke AND the stroke it branches from folds its
+    crosses through the branch (a lowercase shoulder: the u's bowl into its
+    right stem, the b's bowl into its stem -- `tools/lowercase_angle.py`).
+    `ends`: count ONLY the crosses within a width of either end instead --
+    a column closing onto a cut at a slant fans its last crosses past
+    FOLD_DEG there, which the sewn reading counts as folds."""
+    if col is None or len(col.stations) < 3:
+        return 0
+    st = col.stations
+    mids = [((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0) for a, b in st]
+    arc = [0.0]
+    for p, q in zip(mids[:-1], mids[1:]):
+        arc.append(arc[-1] + math.hypot(q[0] - p[0], q[1] - p[1]))
+    ring = col.kind == "ring"       # no ends: its seam is wherever the walk began
+    n = 0
+    for i in range(0 if ring else 1, len(st) if ring else len(st) - 1):
+        at_end = not ring and min(arc[i], arc[-1] - arc[i]) < col.width_mm
+        if at_end != ends:
+            continue        # an end fan is the mitre closing the column, not a fold
+        p, q = mids[i - 1], mids[(i + 1) % len(st)]
+        if math.hypot(q[0] - p[0], q[1] - p[1]) < 1e-9:
+            continue
+        adv = math.atan2(q[1] - p[1], q[0] - p[0]) + math.pi / 2.0
+        a, b = st[i]
+        cr = math.atan2(b[1] - a[1], b[0] - a[0])
+        lean = abs((math.degrees(cr - adv) + 90.0) % 180.0 - 90.0)
+        n += lean > FOLD_DEG
+    return n
+
+
+def _column_len(col: Column) -> float:
+    """Length of a column along its own middle (the cross midpoints)."""
+    mids = [((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0) for a, b in col.stations]
+    return sum(math.hypot(q[0] - p[0], q[1] - p[1]) for p, q in zip(mids[:-1], mids[1:]))
+
+
+def _max_turn(col: Column, W: float) -> float:
+    """The most a column's cross turns (deg) over one stroke width of its
+    middle. A bowl turns about 30 deg a width; a column that carries a
+    stroke round a corner into the next -- the u's bowl down into its spur,
+    an a's bowl top up into its stem -- fans 80-90 within one width, the
+    knot the eye reads at a junction, though no single cross there leans
+    past FOLD_DEG off its own (fanning) advance."""
+    st = col.stations
+    mids = [((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0) for a, b in st]
+    arc = [0.0]
+    for p, q in zip(mids[:-1], mids[1:]):
+        arc.append(arc[-1] + math.hypot(q[0] - p[0], q[1] - p[1]))
+    ang = [math.atan2(b[1] - a[1], b[0] - a[0]) for a, b in st]
+    most, j = 0.0, 0
+    for i in range(len(st)):
+        while j < len(st) - 1 and arc[j] - arc[i] < W:
+            j += 1
+        most = max(most, abs((math.degrees(ang[j] - ang[i]) + 90.0) % 180.0 - 90.0))
+    return most
+
+
+def _drop_stalls(col: Column, fold_lines, pitch_mm: float) -> Column:
+    """`fold_cuts`: a CURVED column that ends on a fold-look cut at a concave
+    corner pairs its end station with a next one whose rail end has barely
+    moved along the outline -- two penetrations a tenth of a millimetre
+    apart on one rail. Sewn, the pull pushes the second into the notch
+    beside the corner, the letter-grown hold drags it back, and the leg into
+    it sews SHORT: the 120 mm b's bowl ending on its stem foot (rail ends
+    0.10 and 0.38 mm on; a 0.56 mm leg against a 1.17 mm median, the one
+    short leg `tools/lowercase_angle.py`'s `junction_knots` read there). That
+    station is dropped when one of its rail ends has moved under STALL_FRAC
+    of the pitch; the end station stays, and so does the column's reach."""
+    if col.kind != "curved" or not fold_lines:
+        return col
+    st = list(col.stations)
+    for end in (0, -1):
+        if len(st) < 4:
+            break
+        i0, i1 = (0, 1) if end == 0 else (len(st) - 1, len(st) - 2)
+        a0, b0 = st[i0]
+        tol = 0.25 * col.width_mm
+        if not any(Point(a0).distance(ln) < tol and Point(b0).distance(ln) < tol
+                   for ln in fold_lines):
+            continue
+        a1, b1 = st[i1]
+        if min(math.dist(a0, a1), math.dist(b0, b1)) < STALL_FRAC * pitch_mm:
+            del st[i1]
+    return col if len(st) == len(col.stations) else replace(col, stations=st)
+
+
+SEWN_FOLD_DEG = 45.0    # a sewn station cross past this off its stations' advance is a fold
+SEWN_SHORT_FRAC = 0.5   # a satin leg under this share of its run's median leg is short
+# `fold_cuts` with the sewn judge: a candidate may leave at most this many
+# W^2 more of its piece outside its columns' crosses than the piece's own
+# construction does (`_uncovered`). The judge counts knots, and a column
+# that sews nothing knots nothing: unguarded, it kept an 80 mm b whose bowl
+# shoulder went unsewn (+1.7 W^2). Main ON's cures already give up to 0.42
+# (the 80 mm e and p: mitred ends). Candidate.
+COVER_SLACK = 0.5
+
+
+def _uncovered(pc: Polygon, cols) -> float:
+    """Area of `pc` outside every cross-to-cross quad its columns sew (the
+    convex hull of two consecutive stations)."""
+    quads = [MultiPoint([a0, b0, b1, a1]).convex_hull
+             for c in cols if c is not None
+             for (a0, b0), (a1, b1) in zip(c.stations[:-1], c.stations[1:])]
+    return pc.difference(unary_union(quads)).area if quads else pc.area
+
+
+def sewn_knots(runs) -> tuple[int, int, int]:
+    """`fold_cuts`' sewn judge (`_fold_refine`): one letter's satin runs, as
+    `columns.column_runs` lays them, -> (station folds, short legs, crossed
+    legs) -- the reading `tools/lowercase_angle.py` takes of the sewn plan
+    (`cross_records`' station lean past 45 deg; `junction_knots`), restated
+    here so the engine does not import a tool; a test holds the two equal.
+    A STATION cross is an even leg of the zigzag A1 B1 A2 B2; it folds when
+    it leans past SEWN_FOLD_DEG off the advance between its neighbouring
+    stations. A leg AT A JUNCTION (its midpoint within its run's median leg
+    of another satin run of the letter) is SHORT under SEWN_SHORT_FRAC of
+    that median, and CROSSED when it crosses a non-adjacent leg of its own
+    run -- the zigzag folding over itself where two columns meet."""
+    from .stage6_satin import strip_splits
+    from .stitches import strip_ties
+    sat = [np.asarray(strip_splits(strip_ties(list(r.points))), dtype=float)
+           for r in runs if r.kind == "satin"]
+    folds = 0
+    for pts in sat:
+        if len(pts) < 6:
+            continue
+        vec = pts[1:] - pts[:-1]
+        length = np.hypot(vec[:, 0], vec[:, 1])
+        idx = np.nonzero(length > 0.6)[0]
+        if len(idx) < 5:
+            continue
+        mids = (pts[idx] + pts[idx + 1]) / 2.0
+        cross = np.degrees(np.arctan2(vec[idx, 1], vec[idx, 0]))
+        sta = [k for k in range(len(idx)) if idx[k] % 2 == 0]
+        for j in range(1, len(sta) - 1):
+            a, b = mids[sta[j - 1]], mids[sta[j + 1]]
+            adv = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+            folds += abs((cross[sta[j]] - (adv + 90.0) + 90.0) % 180.0 - 90.0) > SEWN_FOLD_DEG
+    runs4 = [p for p in sat if len(p) >= 4]
+    lines = [LineString(p) for p in runs4]
+    short = crossed = 0
+    for k, pts in enumerate(runs4):
+        others = [ln for j, ln in enumerate(lines) if j != k]
+        if not others:
+            continue
+        legs = [LineString([pts[i], pts[i + 1]]) for i in range(len(pts) - 1)]
+        length = np.array([lg.length for lg in legs])
+        real = length > 0.05
+        if not real.any():
+            continue
+        med = float(np.median(length[real]))
+        hit = set()
+        for i in np.nonzero(real)[0]:
+            for j in np.nonzero(real[i + 2:])[0] + i + 2:
+                if legs[i].crosses(legs[j]):
+                    hit.update((int(i), int(j)))
+        for i in np.nonzero(real)[0]:
+            m = legs[i].interpolate(0.5, normalized=True)
+            if min(o.distance(m) for o in others) >= med:
+                continue
+            short += bool(length[i] < SEWN_SHORT_FRAC * med)
+            crossed += int(i) in hit
+    return folds, short, crossed
+
+
+def _ring_opener(pc: Polygon, cut) -> bool:
+    """A cut from a ring piece's outside to its counter: alone it leaves
+    the piece whole (an a's or a b's bowl still wraps its counter), two of
+    them open it."""
+    ends = [Point(cut[0]), Point(cut[1])]
+    on_ext = [pc.exterior.distance(e) < 0.02 for e in ends]
+    on_hole = [any(h.distance(e) < 0.02 for h in pc.interiors) for e in ends]
+    return (on_ext[0] and on_hole[1]) or (on_hole[0] and on_ext[1])
+
+
+def _carried_ring(pc: Polygon, col: Column | None, W: float) -> bool:
+    """`fold_cuts`: a RING piece that carries a stroke round a junction
+    corner -- its cross turns past TURN_MAX_DEG within one width
+    (`_max_turn`) AND its outline holds a corner the junction rules
+    themselves read (REFLEX_DEG). The 80 mm e: the junction rules miss the
+    through cut at its bar's left end by a hair (alignment 0.937 against
+    0.94; 0.985 at 120 mm), the over-long look cuts the left wall under the
+    bar instead, and what is left is a ring of counter AND bar that fans
+    83 deg round the bar's ends -- one sewn cross past 45 deg there, though
+    no cross leans past FOLD_DEG off its own fanning advance, so `_folded`
+    reads 0. A tight O also turns past TURN_MAX_DEG (61 at 50 mm) but holds
+    no junction corner, so it is not one."""
+    if col is None or not pc.interiors or _max_turn(col, W) <= TURN_MAX_DEG:
+        return False
+    return bool(corners(pc, W)[0])
+
+
+def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
+                 mitre_ends: bool = False, judge=None, against=None):
+    """`fold_cuts`: the second look for a piece that is not over-long but
+    FOLDS (`_folded` >= FOLD_MIN), or is a ring carried round a junction
+    corner (`_carried_ring`: the 80 mm e), which is taken only when no
+    column is carried after it. The junction rules leave a lone concave
+    corner uncut when its far side is smooth -- "the stroke is bending here"
+    (`find_cuts`) -- which is right for a bend and wrong for a lowercase
+    shoulder, where a curved stroke leaves a straight one tangentially and
+    the far side is that stroke's straight edge.
+
+    Candidates are `_refine`'s (the piece's soft concave corners, three rays
+    each), plus, on a ring piece, every PAIR of rays that each run from its
+    outside to its counter: one such cut leaves a bowl whole, two open it
+    (an a's or a b's or a g's bowl into the stem it shares, 2026-10-13).
+    Each candidate is judged on the pieces it finally sews -- after the
+    over-long second look its pieces would get -- and is refused when
+    any of them is unsewn or a STUB (a column under STUB_WIDTHS stroke
+    widths along its middle: the u's spur, cut off its stem, sewed as a
+    tangle of short crosses), or when it adds over-long thread. Of the
+    rest the one kept leaves the fewest folded crosses, then the fewest
+    pieces, then no column carried round a corner (`_max_turn` within
+    TURN_MAX_DEG), then the fewest end crosses past FOLD_DEG (a column
+    closing onto its cut at a slant), then the most sewn as STRAIGHT columns (a stem
+    whole, the bowl butting it: the b's and g's stems, which a split bowl
+    otherwise keeps half of), then the least turn; it must take the folds to
+    REFINE_GAIN of the piece's. -> (cuts, [(piece, lines, new cuts)]) to
+    take, or None.
+
+    `judge` (`letter_columns`' sewn judge, given by the Column lane):
+    `judge(pc, columns)` -> (station folds, short legs, crossed legs) of
+    the letter SEWN with `columns` in place of `pc` (`sewn_knots`). Every
+    look above reads the construction, and the construction does not show
+    the knot: at 80 mm the b's and the g's rings opened at a pair of cuts
+    sewed 10 and 15 crossed legs at their new junctions, against OFF's 5
+    and 10, while every candidate's stations read clean. With a judge, a
+    candidate that sews more short or more crossed legs than the piece
+    left whole is refused, the STUB refusal gives way to it (a stub that
+    sews no knot is no fault: the b's and g's cures cut a short stem foot),
+    the fewest sewn folds then the fewest knots lead the ranking, and the
+    cut must sew fewer folds, or as few and fewer knots, than the piece
+    left whole (the 80 mm p's ring: 14 crossed legs whole, 4 opened).
+    `against`: the sewn reading to beat instead of the piece left whole's
+    (OFF's cut of an over-long piece, `_judged_overlong`)."""
+    col0 = build_column(pc, cut_lines, W, pitch_mm)
+    f0 = _folded(col0)
+    carried = f0 < FOLD_MIN and _carried_ring(pc, col0, W)
+    if depth >= 3 or (f0 < FOLD_MIN and not carried):
+        return None
+    if judge is not None:
+        if against is not None:
+            base, unc0 = against
+        else:
+            whole = [build_column(pc, cut_lines, W, pitch_mm, mitre_ends=mitre_ends)]
+            base, unc0 = judge(pc, whole), _uncovered(pc, whole)
+    long0, _tot0 = _overlong(col0, W)
+    rf, _ = corners(pc, W, reflex_deg=REFINE_REFLEX_DEG)
+    cands, openers = [], []
+    for r in _cluster(rf, 0.25 * W):
+        p = r["p"]
+        for dvec in (r["d_in"], (-r["d_out"][0], -r["d_out"][1]), r["bis"]):
+            q = _ray_hit(pc, p, dvec, 2.4 * W, r["bis"])
+            if q is None:
+                continue
+            L = math.hypot(q[0] - p[0], q[1] - p[1])
+            if L < 0.25 * W:
+                continue
+            cut = (p, q, "fold", L)
+            if len(split(pc, [cut])) >= 2:
+                cands.append([cut])
+            elif pc.interiors and _ring_opener(pc, cut):
+                openers.append(cut)
+    # A junction is crossed by a SHORT cut (about a stroke): the shortest
+    # OPENER_KEEP openers hold the a's, b's and g's (0.7-1.4 W); every pair
+    # of 22 took a minute a glyph.
+    openers = sorted(openers, key=lambda c: c[3])[:OPENER_KEEP]
+    for i, c1 in enumerate(openers):
+        for c2 in openers[i + 1:]:
+            l1, l2 = LineString([c1[0], c1[1]]), LineString([c2[0], c2[1]])
+            if l1.distance(l2) < 0.25 * W:
+                continue        # the same junction twice, or two cuts that cross
+            cands.append([c1, c2])
+    best = None
+    for cand in cands:
+        subs = split(pc, cand)
+        if len(subs) < 2 or min(g.area for g in subs) < STUB_WIDTHS * 0.5 * W * W:
+            continue            # 0.4 W^2 is `_refine`'s scrap; half a stub's area is surely one
+        lines = cut_lines + [LineString([c[0], c[1]]) for c in cand]
+        final, cols = [], []
+        for g in subs:
+            c = build_column(g, lines, W, pitch_mm)
+            if c is not None:
+                lg, tot = _overlong(c, W)
+                if tot <= 0 or lg / tot < REFINE_TRIGGER:
+                    final.append((g, lines, []))        # what `_refine` would yield
+                    cols.append(c)
+                    continue
+            for sub, ls, extra in _refine(g, lines, W, pitch_mm, depth + 1):
+                final.append((sub, ls, extra))
+                cols.append(build_column(sub, ls, W, pitch_mm))
+        if any(c is None for c in cols):
+            continue                        # a cut that leaves a piece unsewn is no cure
+        if mitre_ends:
+            # judged as sewn: the 120 mm b's stem cut to the foot of its
+            # bowl mitres its end across the whole bowl join -- 11 folds
+            # and long diagonals that the unmitred column does not show
+            cols = [build_column(sub, ls, W, pitch_mm, mitre_ends=True) for sub, ls, _ in final]
+        if judge is None and any(_column_len(c) < STUB_WIDTHS * W for c in cols):
+            continue                        # a stub sews as a knot of short crosses
+        if sum(_overlong(c, W)[0] for c in cols) > long0 + 1e-9:
+            continue
+        turn = max(_max_turn(c, W) for c in cols)
+        score = (sum(_folded(c) for c in cols), len(cols), turn > TURN_MAX_DEG,
+                 sum(_folded(c, ends=True) for c in cols),
+                 -sum(len(c.stations) for c in cols if c.kind == "straight"), turn)
+        sewn = ()
+        if judge is not None:
+            fl = [LineString([c[0], c[1]]) for c in cand]
+            sewn_cols = [_drop_stalls(c, fl, pitch_mm) for c in cols]
+            if _uncovered(pc, sewn_cols) > unc0 + COVER_SLACK * W * W:
+                continue                    # it leaves the letter bare
+            k = judge(pc, sewn_cols)
+            if k[1] > base[1] or k[2] > base[2]:
+                continue                    # it knots where the piece whole did not
+            sewn = (k[0], k[1] + k[2])
+        if best is None or (sewn, score) < (best[3], best[0]):
+            best = (score, cand, final, sewn)
+    if best is None or best[0][0] > REFINE_GAIN * f0:
+        return None
+    if judge is not None and best[3] >= (base[0], base[1] + base[2]):
+        return None             # it sews no better than the piece left whole
+    if carried and best[0][2]:
+        return None             # a carried ring is cured only if nothing is carried after
+    return best[1], best[2]
+
+
+def _judged_overlong(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
+                     mitre_ends: bool, judge, ref, options):
+    """`fold_cuts` with the sewn judge: the over-long second look for a piece
+    that also FOLDS. `ref` is the cut OFF takes (or None: OFF leaves the
+    piece whole), `options` every single cut that earns REFINE_GAIN, stubs
+    included -- the stub refusal was a stand-in for the knot a stub sews,
+    and the judge reads the knot itself. Each is sewn (`judge`) on the
+    pieces it cuts, as is a RING's fold-look cure (`_fold_refine`: the
+    a's bowl, which one cut cannot open). One that sews more short or more
+    crossed legs than OFF's choice is refused; of the rest the fewest sewn
+    folds, then the fewest knots, then OFF's own choice, then the least
+    over-long thread. -> None (leave it whole), ("cut", option) or
+    ("fold", `_fold_refine`'s result).
+    Measured (`tools/lowercase_angle.py`, folds/short/crossed): the 120 mm p
+    keeps OFF's cut of its stem top, a 2.4 W straight stub (0/0/4; the ring
+    pair the stub refusal sent it to sewed 3/2/9), and the 80 mm m keeps
+    OFF's cuts (0/0/0; the stub refusal's pick carried a column 75 deg round
+    its arch and sewed 0/0/4)."""
+    def built(subs, lines):
+        return [build_column(g, lines, W, pitch_mm, mitre_ends=mitre_ends) for g in subs]
+    # OFF's cut leaving no stub was taken by the stub refusal too: another
+    # is taken over it only for fewer sewn FOLDS (a capital's over-long
+    # piece can fold; none sews fewer folds cut otherwise, so all 18 sew as
+    # OFF). OFF's cut leaving a stub is the stub refusal's own ground, and
+    # fewer knots alone then count as well.
+    stub = ref is None or any(
+        c is not None and _column_len(c) < STUB_WIDTHS * W
+        for c in (build_column(g, ref[3], W, pitch_mm) for g in ref[2]))
+    ref_cols = (built(ref[2], ref[3]) if ref is not None
+                else [build_column(pc, cut_lines, W, pitch_mm, mitre_ends=mitre_ends)])
+    ref_k, ref_unc = judge(pc, ref_cols), _uncovered(pc, ref_cols)
+    pick = None if ref is None else ("cut", ref)
+    key = ((ref_k[0], ref_k[1] + ref_k[2]), 0, ref[0] if ref is not None else 0.0)
+
+    def better(cols, tie, score):
+        nonlocal key
+        if _uncovered(pc, cols) > ref_unc + COVER_SLACK * W * W:
+            return False                # it leaves the letter bare
+        k = judge(pc, cols)
+        if k[1] > ref_k[1] or k[2] > ref_k[2] or (not stub and k[0] >= ref_k[0]):
+            return False
+        if ((k[0], k[1] + k[2]), tie, score) < key:
+            key = ((k[0], k[1] + k[2]), tie, score)
+            return True
+        return False
+    for opt in options:
+        if opt is not ref and better(built(opt[2], opt[3]), 1, opt[0]):
+            pick = ("cut", opt)
+    if pc.interiors:
+        fold = _fold_refine(pc, cut_lines, W, pitch_mm, depth, mitre_ends, judge,
+                            against=(ref_k, ref_unc) if ref is not None else None)
+        if fold is not None and better([build_column(sub, ls, W, pitch_mm, mitre_ends=mitre_ends)
+                                        for sub, ls, _ in fold[1]], 1, 0.0):
+            pick = ("fold", fold)
+    return pick
+
+
+def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
+            fold_cuts: bool = False, mitre_ends: bool = False, judge=None):
+    """Yield (piece, cut lines, new cuts). The junction rules missed a cut
+    wherever a piece still sews over-long; look again at that piece's own
+    concave corners and keep the one cut that most reduces it. With
+    `fold_cuts` (`cfg.lettering_columns_fold_cuts`, default ON since 2026-10-20) a piece
+    that is not over-long but folds its crosses gets the same second look
+    (`_fold_refine`); off, this is the shipped function, step for step.
+    `mitre_ends` is read only with `fold_cuts`: the fold look then judges
+    each candidate on the columns `letter_columns` will build, mitred ends
+    and all (`cfg.lettering_columns_square_ends`). `judge`: the fold look's
+    sewn judge (`_fold_refine`), read only with `fold_cuts`."""
+    long0, tot0 = _overlong(build_column(pc, cut_lines, W, pitch_mm), W)
+    if depth >= 3 or tot0 <= 0 or long0 / tot0 < REFINE_TRIGGER:
+        fold = (_fold_refine(pc, cut_lines, W, pitch_mm, depth, mitre_ends, judge)
+                if fold_cuts and tot0 > 0 else None)
+        if fold is None:
+            yield pc, cut_lines, []
+            return
+        first = True
+        for sub, lines, extra in fold[1]:
+            yield sub, lines, (list(fold[0]) if first else []) + extra
+            first = False
+        return
+    # Softer corners than the junction rules read (REFLEX_DEG): a low-res
+    # E's slots round off under 55 deg and the body sewed as one fan (Becker
+    # at 146 px: one corner at 55, four at 35). The piece has already
+    # proven itself over-long, so a soft corner here is a junction, not a
+    # bend -- and the cut still has to earn REFINE_GAIN.
+    rf, _ = corners(pc, W, reflex_deg=REFINE_REFLEX_DEG)
+    # `fold_cuts`: an over-long piece that also FOLDS (a lowercase a's bowl
+    # carried round into its stem, 80 mm) refuses a cut that leaves a stub,
+    # as `_fold_refine` does -- its spur cut off sewed as a four-cross knot.
+    # A piece that does not fold (every capital) is judged as shipped.
+    no_stubs = fold_cuts and _folded(build_column(pc, cut_lines, W, pitch_mm)) >= FOLD_MIN
+    # With the fold look's sewn judge, such a piece is judged SEWN instead
+    # (`_judged_overlong`): no stub is refused, and OFF's cut, every other
+    # cut that earns REFINE_GAIN and a ring's fold-look cure are compared.
+    judged = no_stubs and judge is not None
+    if judged:
+        no_stubs = False
+        options = []
+    best = stub_best = None
+    for r in _cluster(rf, 0.25 * W):
+        p = r["p"]
+        for dvec in (r["d_in"], (-r["d_out"][0], -r["d_out"][1]), r["bis"]):
+            q = _ray_hit(pc, p, dvec, 2.4 * W, r["bis"])
+            if q is None:
+                continue
+            L = math.hypot(q[0] - p[0], q[1] - p[1])
+            if L < 0.25 * W:
+                continue
+            cut = (p, q, "again", L)
+            subs = split(pc, [cut])
+            if len(subs) < 2 or min(g.area for g in subs) < 0.4 * W * W:
+                continue
+            lines = cut_lines + [LineString([p, q])]
+            cols = [build_column(g, lines, W, pitch_mm) for g in subs]
+            if no_stubs and any(c is not None and _column_len(c) < STUB_WIDTHS * W
+                                for c in cols):
+                # kept aside: the shipped choice, if nothing else cures it
+                score = sum(_overlong(c, W)[0] for c in cols)
+                if stub_best is None or score < stub_best[0]:
+                    stub_best = (score, cut, subs, lines)
+                continue
+            score = sum(_overlong(c, W)[0] for c in cols)
+            if judged and score <= REFINE_GAIN * long0 and all(c is not None for c in cols):
+                options.append((score, cut, subs, lines))
+            if best is None or score < best[0]:
+                best = (score, cut, subs, lines)
+    if judged:
+        pick = _judged_overlong(pc, cut_lines, W, pitch_mm, depth, mitre_ends, judge,
+                                best if best is not None and best[0] <= REFINE_GAIN * long0
+                                else None, options)
+        if pick is None:
+            yield pc, cut_lines, []
+            return
+        if pick[0] == "fold":
+            first = True
+            for sub, lines, extra in pick[1][1]:
+                yield sub, lines, (list(pick[1][0]) if first else []) + extra
+                first = False
+            return
+        best = pick[1]
+    elif best is None or best[0] > REFINE_GAIN * long0:
+        # `fold_cuts`: no single cut cures it -- an a's bowl, still holding
+        # the foot of its stem, is over-long AND a ring one cut cannot open
+        # -- so it gets the fold look, whose ring-opening pairs can. A RING
+        # only: an open over-long piece already had every single cut tried
+        # (open to any piece, it cut a 0.3 mm flourish on bridge).
+        fold = (_fold_refine(pc, cut_lines, W, pitch_mm, depth, mitre_ends, judge)
+                if fold_cuts and pc.interiors else None)
+        if fold is None:
+            # `fold_cuts`: the stub refusal found no cure, and neither did a
+            # ring's pairs -- the 50 mm G, whose bowl tail and stem foot sew
+            # as one folding, over-long piece unless the tail is cut off at
+            # 2.4 W. A stub is better than that fold: take the cut OFF takes.
+            if stub_best is not None and stub_best[0] <= REFINE_GAIN * long0:
+                best = stub_best
+            else:
+                yield pc, cut_lines, []
+                return
+        else:
+            first = True
+            for sub, lines, extra in fold[1]:
+                yield sub, lines, (list(fold[0]) if first else []) + extra
+                first = False
+            return
+    first = True
+    for g in best[2]:
+        for sub, lines, extra in _refine(g, best[3], W, pitch_mm, depth + 1, fold_cuts,
+                                         mitre_ends, judge):
+            yield sub, lines, ([best[1]] if first else []) + extra
+            first = False
+
+
+class LetterCut:
+    """What `letter_columns` returns: the cleaned polygon, its stroke width,
+    the cuts taken, and the Columns (one per piece the construction could
+    sew; `unsewn` holds the pieces it could not)."""
+
+    def __init__(self, poly, W, cuts, columns, unsewn):
+        self.poly = poly
+        self.W = W
+        self.cuts = cuts
+        self.columns = columns
+        self.unsewn = unsewn
+
+
+def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False,
+                   mitre_ends: bool = False, judge=None) -> LetterCut:
+    """A letter polygon -> its stroke Columns. `pitch_mm` is the progress
+    between consecutive stations along the moving rail -- the satin spacing
+    itself (`machine.SATIN_SPACING_MM`): a station is one cross, and the
+    crosses sit `pitch_mm` apart whichever rail each starts from.
+    `fold_cuts`: see `_fold_refine` and `_drop_stalls`
+    (`cfg.lettering_columns_fold_cuts`).
+    `mitre_ends`: see `_mitre_ends` (`cfg.lettering_columns_square_ends`).
+    `judge` (read only with `fold_cuts`): `judge(columns, poly)` -> the
+    (station folds, short legs, crossed legs) the letter sews with those
+    columns (`columns.lettering_columns_shape` sews them through
+    `column_runs` and reads them with `sewn_knots`); the fold look then
+    refuses a cut that knots (`_fold_refine`)."""
+    W = stroke_width(poly)
+    # a pinhole is the trace, not a counter
+    poly = Polygon(poly.exterior, [h for h in poly.interiors if Polygon(h).area > 0.05 * W * W])
+    # lumps under a sixteenth of the stroke are the trace, not the letter
+    poly = poly.simplify(max(SIMPLIFY_MM, W / 16.0), preserve_topology=True)
+    if poly.is_empty or poly.geom_type != "Polygon":
+        return LetterCut(poly, W, [], [], [])
+    W = stroke_width(poly)
+    cuts, _reflex, _convex = find_cuts(poly, W)
+    # An E or an F: the stem line through its slot backs replaces every
+    # junction-rule cut that ends on that line (those slice the stem
+    # crosswise) or crosses it.
+    scuts, stems = slot_cuts(poly, W)
+    if scuts:
+        slines = [LineString([a, b]) for a, b, _, _ in scuts]
+
+        def clashes(c):
+            # a junction cut that starts or ends ON the stem line slices the
+            # stem crosswise (the band E's slot corners), and one that
+            # crosses it splits an arm from its root
+            ln = LineString([c[0], c[1]])
+            if any(st.distance(Point(c[0])) < 0.35 * W or st.distance(Point(c[1])) < 0.35 * W
+                   for st in stems):
+                return True
+            return any(ln.crosses(sl) for sl in slines)
+
+        cuts = [c for c in cuts if not clashes(c)] + scuts
+    pieces = split(poly, cuts)
+    # a cut that only shaves off a scrap is not a junction: take it back out
+    while cuts:
+        small = [g for g in pieces if g.area < 0.4 * W * W]
+        if not small:
+            break
+        pc = min(small, key=lambda g: g.area)
+        near = [k for k in cuts if LineString([k[0], k[1]]).intersection(pc.buffer(0.02)).length > 0.5 * k[3]]
+        if not near:
+            break
+        cuts.remove(max(near, key=lambda k: k[3]))
+        pieces = split(poly, cuts)
+    cut_lines = [LineString([a, b]) for a, b, _, _ in cuts]
+    piece_judge = None
+    if fold_cuts and judge is not None:
+        # The fold look's sewn judge reads the WHOLE letter: a piece's
+        # candidate columns sewn beside the rest of the letter as the
+        # shipped look builds it (a junction knots with its neighbour).
+        rest = []
+        for pc in pieces:
+            for sub, lines, _extra in _refine(pc, cut_lines, W, pitch_mm, 0):
+                col = build_column(sub, lines, W, pitch_mm, mitre_ends=mitre_ends)
+                if col is not None:
+                    rest.append(col)
+
+        def piece_judge(pc, cols):
+            # in the letter's own order: the walk, and so which column of a
+            # junction sews first and tucks, follows it
+            out, put = [], False
+            for c in rest:
+                if c.piece.intersection(pc).area <= 0.02 * W * W:
+                    out.append(c)
+                elif not put:
+                    out += [k for k in cols if k is not None]
+                    put = True
+            if not put:
+                out += [k for k in cols if k is not None]
+            return judge(out, poly)
+    columns, unsewn = [], []
+    for pc in pieces:
+        for sub, lines, extra in (_refine(pc, cut_lines, W, pitch_mm, 0, True, mitre_ends,
+                                          piece_judge)
+                                  if fold_cuts else _refine(pc, cut_lines, W, pitch_mm, 0)):
+            cuts = cuts + extra
+            col = (build_column(sub, lines, W, pitch_mm, mitre_ends=True) if mitre_ends
+                   else build_column(sub, lines, W, pitch_mm))
+            if col is None:
+                unsewn.append(sub)
+            else:
+                columns.append(col)
+    if fold_cuts:
+        fold_lines = [LineString([c[0], c[1]]) for c in cuts if c[2] == "fold"]
+        columns = [_drop_stalls(c, fold_lines, pitch_mm) for c in columns]
+    return LetterCut(poly, W, cuts, columns, unsewn)

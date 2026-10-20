@@ -30,13 +30,64 @@ nothing; it counts, and it prices.**
       - `resnap` some region in the block carries stage 4's
                  `thread_resnapped_de00` stamp, i.e. the cone was INVENTED
                  after quantize and no layer declares it;
-      - `plain`  neither, on EITHER block — the fold's own territory, and a
-                 survivor here would be a defect in the fold rather than a gap
-                 in its reach.
+      - `edge_cap` the block sews nothing but the design-silhouette cap
+                 (`__edge_cap__`). Stage 7 appends the cap after ALL the
+                 artwork, one block per cone its stretches stand against
+                 (`edge_cap_follow_adjacent`), so every such block repeats a
+                 cone the artwork already sewed — by design, not by a missed
+                 fold. Its own fix is `edge_cap_fold_into_colour` (PR #714);
+                 `merge_duplicate_cones` cannot see it and never could;
+      - `plain`  none of the above, on EITHER block — the fold's own
+                 territory, and a survivor here would be a defect in the fold
+                 rather than a gap in its reach.
 
     A duplicate can be both `band` and `resnap`; both are printed. `plain` is
-    the residual and never appears beside another route: a duplicate with one
-    re-snapped block and one ordinary one was caused by the re-snap.
+    the artwork residual and never appears beside another ARTWORK route: a
+    duplicate with one re-snapped block and one ordinary one was caused by the
+    re-snap. A cap block beside ONE artwork block is `edge_cap` alone; beside
+    two, the artwork's own route prints with it.
+
+## Re-measured 2026-10-08 — the cap had taken over the `plain` column
+
+Before `edge_cap` was its own route, the cap blocks (default `"bean"` since
+2026-09-01, follow-adjacent since 2026-10-06) all read `plain`, which sent a
+reader to `merge_duplicate_cones` for a survivor that is not there:
+`logo_alpha`, `logo_whitebg`, `bg_uncertain` and `region_blobs` duplicate
+ONLY through the cap (each reads clean with `edge_cap="none"`). The 09-06
+band case no longer reproduces on `region_blobs`; it does on the two
+generated ramp fixtures. Real artwork survivors remain with the cap off —
+`drone_render` 80 mm sews `1102`, `3574`, `0134`, `1305` again in four
+run-dominated blocks at the end whose regions carry layer numbers (16-23)
+past the folded palette, i.e. assigned after the fold ran. The 2026-09-06
+table below is kept as the record.
+
+## Re-measured 2026-10-11 — the band route is EMPTY on main
+
+Built anyway, default OFF (PR #827), then REMOVED the same day on Kent's
+ruling because it was inert: a cfg flag and `stage7_sequence` pass that
+folded a cone's blend bands, the band fold the 09-06 table below argued
+against. Measured before and after on today's engine, the `band`
+column is zero everywhere this tool was pointed: 0 of 52 corpus combos,
+0 of 24 extra runs (six gradient fixtures at 50 and 120 mm, OFF and ON),
+and `region_blobs` on the `PRE_FLIP` engine. A blend design here sews one
+PARENT's bands per cone; `_shade_blocks` already shares a cone within one
+parent. ON matches OFF — stitch count, trims and cone order — on every
+combo measured. The survivors
+are `edge_cap` (its own flag), `resnap` (`drone_render`, `logo_bridge_bar`)
+and `plain` (`drone_render`, `logo_golden_tee`) — none a band. The tool
+still takes `key=value` config overrides, to re-run under any field:
+
+    .venv/bin/python -m tools.cone_revisits edge_cap=none
+
+## Re-measured 2026-10-20 — the cap's gap-1 repeats are closed
+
+A cap block wearing the LAST artwork block's cone now sews at that block's
+end (`stage7_sequence._cap_seam_joins`, under `merge_adjacent_same_thread`):
+same stitches, same cuts, one stop fewer. 43 -> 35 of 52 combos, 88 -> 79
+duplicates, `edge_cap` 74 -> 65, gap-1 9 -> 0; no other row moved. The 65
+left are gap >= 2 — a cap stretch whose cone sewed BEFORE other artwork;
+removing those moves the stretch ahead of that artwork, which is
+`edge_cap_fold_into_colour` (OFF).
 
 ## What it found, 2026-09-06 — 26 fixtures x 2 garments
 
@@ -91,6 +142,8 @@ from digitizer_core.pipeline import digitize
 # rule for the same reason; kept separate here so this tool measures the ids
 # rather than importing the thing it is auditing.
 _DERIVED = re.compile(r"-(?:blend|shade)\d+$")
+# stage 7's design-silhouette cap (`stage7_sequence`, `silhouette_cap`).
+_EDGE_CAP = "__edge_cap__"
 
 
 def _block_routes(plan, result) -> list[set[str]]:
@@ -104,6 +157,8 @@ def _block_routes(plan, result) -> list[set[str]]:
     for b in plan.blocks:
         sids = {run.shape_id for run in b.runs if run.shape_id}
         tags = set()
+        if sids and all(s == _EDGE_CAP for s in sids):
+            tags.add("edge_cap")
         if sids and all(_DERIVED.search(s) for s in sids):
             tags.add("band")
         # A derived id is "<region>-blend2"; the owning region is the stem.
@@ -125,24 +180,49 @@ def revisits(plan, result) -> list[dict]:
         if len(idx) < 2:
             continue
         tags = set()
-        for i in idx:
-            if i < len(routes):
-                tags |= routes[i]
+        caps = [i for i in idx if i < len(routes) and "edge_cap" in routes[i]]
+        art = [i for i in idx if i not in caps]
+        if caps:
+            tags.add("edge_cap")
+        # A cap block beside ONE artwork block is the cap's duplicate alone:
+        # the artwork block's own routes (a re-snapped parent, say) did not
+        # cause it. Only a cone the ARTWORK sews twice gets artwork routes.
+        if len(art) >= 2:
+            for i in art:
+                if i < len(routes):
+                    tags |= routes[i]
+            if not tags - {"edge_cap"}:
+                tags.add("plain")
         # `plain` is the RESIDUAL for the duplicate, not a label on one block.
         # A duplicate with one re-snapped block and one ordinary one was
         # caused by the re-snap; calling it "plain,resnap" would send a reader
         # to `merge_duplicate_cones` looking for a defect that is not there,
         # because `plain` means "the fold's own territory". A test pins this.
-        if not tags:
-            tags.add("plain")
         out.append({"cone": num, "blocks": idx, "gap": idx[-1] - idx[0],
                     "route": ",".join(sorted(tags))})
+    return out
+
+
+def _overrides(argv: list[str]) -> dict:
+    """`key=value` config overrides, e.g. `edge_cap=none`."""
+    out: dict = {}
+    for a in argv:
+        k, _, v = a.partition("=")
+        if v in ("True", "False"):
+            out[k] = v == "True"
+        else:
+            try:
+                out[k] = float(v)
+            except ValueError:
+                out[k] = v
     return out
 
 
 def main(argv: list[str]) -> int:
     from tests.conftest import TESTDATA
     from tools.corpus_scorecard import FIXTURES, MATRIX
+
+    extra = _overrides(argv)
 
     hdr = (f"{'fixture':40} {'garment':11} {'cone':>6} {'blocks':>14} "
            f"{'gap':>4}  route")
@@ -154,7 +234,7 @@ def main(argv: list[str]) -> int:
     for fx in FIXTURES:
         for m in MATRIX:
             art = TESTDATA / fx
-            cfg = PipelineConfig(**m)
+            cfg = PipelineConfig(**{**m, **extra})
             try:
                 result, plan = digitize(art, cfg)
             except Exception as exc:                      # pragma: no cover
@@ -185,4 +265,9 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":                                # pragma: no cover
+    import sys as _sys
+    if {"-h", "--help"} & set(_sys.argv[1:]):
+        _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        print(__doc__ or "No usage text; see the source.")
+        raise SystemExit(0)
     raise SystemExit(main(sys.argv[1:]))

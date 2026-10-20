@@ -266,6 +266,117 @@ def _border_connected(mask: np.ndarray) -> np.ndarray:
     return np.isin(labels, list(touching))
 
 
+# --- `cfg.bg_structural` (DEFAULT OFF) --------------------------------------
+# The background as ONE PAINT COLOUR UNDER SMOOTH SHADING: chroma (a*, b*)
+# constant, lightness a smooth polynomial surface over the frame. A
+# vignette, a soft spotlight, a scanner's uneven lamp all fit it; a hue
+# ramp, a photograph's scene and artwork crossing the frame do not. Two
+# questions are asked of that model, and only the second reads
+# `bg_tolerance_lab`:
+#   * DOES a background exist — the share of the border ring within
+#     BG_FIELD_JND of a QUADRATIC field fitted to the ring itself. A fixed
+#     perceptual line, so the verdict no longer moves with the flood
+#     tolerance (the coupling `docs/kent-review-2026-08-27.md` found:
+#     summit_badge flipped to BACKGROUND_ABSENT below 4.8). Quadratic, not
+#     the extent's quartic, because the ring is a one-dimensional loop: a
+#     quartic surface has the freedom to follow almost any smooth loop, and
+#     measured 2026-10-11 it called the full-bleed `photo_owl_pale` a
+#     background (the quadratic: 0.68 of the ring, under the 0.75 bar).
+#   * HOW FAR does it reach — the border-connected pixels within
+#     `bg_tolerance_lab` of the field, refitted at BG_FIELD_DEGREE on what it
+#     flooded, where the whole 2-D flood constrains it. A constant modal
+#     colour cannot follow summit_badge's vignette, which is why only the
+#     dark corners came off (28.3% of the canvas of ~71%); a quadratic left
+#     its two bottom corners, which fall off faster than the top.
+# 5.0 is `preflight.DELTA_E_VISIBLE`, the repo's existing visible-difference
+# line; restated here rather than imported so stage 1 does not import
+# preflight.
+BG_FIELD_JND = 5.0
+BG_RING_DEGREE = 2          # existence: lightness surface fitted to the ring
+BG_FIELD_DEGREE = 4         # extent: lightness surface refitted on the flood
+_FIELD_RING_ITERS = 6       # robust ring fit: refit on ring pixels within the JND
+_FIELD_FLOOD_ITERS = 3      # extent: refit on the flooded pixels, then flood again
+_FIELD_FIT_MAX_PX = 50_000  # least-squares sample cap (strided, deterministic)
+
+
+def _field_powers(degree: int) -> tuple[tuple[int, int], ...]:
+    """Every x^i y^j with i + j <= degree."""
+    return tuple((i, d - i) for d in range(degree + 1) for i in range(d + 1))
+
+
+def _unit_coords(n: int) -> np.ndarray:
+    return np.arange(n, dtype=np.float64) / max(n - 1, 1) - 0.5
+
+
+def _fit_shading(lab: np.ndarray, ys: np.ndarray, xs: np.ndarray, degree: int):
+    """(powers, L coefficients, a*, b*) of the shading field over the pixels."""
+    h, w = lab.shape[:2]
+    if len(ys) > _FIELD_FIT_MAX_PX:
+        step = int(np.ceil(len(ys) / _FIELD_FIT_MAX_PX))
+        ys, xs = ys[::step], xs[::step]
+    px = lab[ys, xs]
+    powers = _field_powers(degree)
+    x, y = _unit_coords(w)[xs], _unit_coords(h)[ys]
+    terms = np.stack([x ** i * y ** j for i, j in powers], axis=1)
+    coef, *_ = np.linalg.lstsq(terms, px[:, 0], rcond=None)
+    return powers, coef, float(np.median(px[:, 1])), float(np.median(px[:, 2]))
+
+
+def _shading_residual(lab: np.ndarray, field, ys=None, xs=None) -> np.ndarray:
+    """CIE76 distance from the shading field: (H, W), or at (ys, xs)."""
+    powers, coef, a0, b0 = field
+    h, w = lab.shape[:2]
+    if ys is None:
+        x, y, px = _unit_coords(w)[None, :], _unit_coords(h)[:, None], lab
+        pred = np.zeros((h, w), np.float64)
+    else:
+        x, y, px = _unit_coords(w)[xs], _unit_coords(h)[ys], lab[ys, xs]
+        pred = np.zeros(len(ys), np.float64)
+    for c, (i, j) in zip(coef, powers):
+        pred = pred + c * (x ** i) * (y ** j)
+    d0 = px[..., 0] - pred
+    d1 = px[..., 1] - a0
+    d2 = px[..., 2] - b0
+    return np.sqrt(d0 * d0 + d1 * d1 + d2 * d2)
+
+
+def _structural_background(rgb: np.ndarray, bg_color: np.ndarray,
+                           tol: float) -> tuple[np.ndarray, np.ndarray]:
+    """`(ring_close, close)` for `cfg.bg_structural`.
+
+    `ring_close` answers whether a background exists (and feeds the rival and
+    corner guards): pixels within BG_FIELD_JND of the quadratic shading
+    field fitted, robustly, to the border ring — seeded from the modal
+    border colour, then refitted on the ring pixels the field describes. It
+    never reads `tol`. `close` answers how far the background reaches:
+    pixels within `tol` of the field after it has been refitted, at
+    BG_FIELD_DEGREE, on its own border flood.
+    """
+    h, w = rgb.shape[:2]
+    lab = rgb_to_lab(rgb.reshape(-1, 3)).reshape(h, w, 3)
+    ys, xs = np.nonzero(_border_ring((h, w)))
+    ref = rgb_to_lab(np.asarray(bg_color, dtype=np.float64).reshape(1, 3))[0]
+    keep = np.linalg.norm(lab[ys, xs] - ref, axis=1) <= 2 * BG_FIELD_JND
+    if keep.sum() < 6:
+        keep = np.ones(len(ys), bool)
+    field = _fit_shading(lab, ys[keep], xs[keep], BG_RING_DEGREE)
+    for _ in range(_FIELD_RING_ITERS):
+        new = _shading_residual(lab, field, ys, xs) <= BG_FIELD_JND
+        if new.sum() < 6 or (new == keep).all():
+            break
+        keep = new
+        field = _fit_shading(lab, ys[keep], xs[keep], BG_RING_DEGREE)
+    ring_close = _shading_residual(lab, field) <= BG_FIELD_JND
+
+    for _ in range(_FIELD_FLOOD_ITERS):
+        fy, fx = np.nonzero(_border_connected(_shading_residual(lab, field) <= tol))
+        if len(fy) < 6:
+            break
+        field = _fit_shading(lab, fy, fx, BG_FIELD_DEGREE)
+    close = _shading_residual(lab, field) <= tol
+    return ring_close, close
+
+
 # The longest side the working grid will enlarge a raster to — the service's
 # own `DECODE_MAX_SIDE_PX`, and for its reason: that is the size the pipeline
 # is known to carry (a 7.4 MP photograph ran a job out of memory). 8 px/mm of
@@ -331,7 +442,12 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         bg = border_bg
     else:
         bg_color = _dominant_border_color(rgb)
-        close = _color_close_mask(rgb, bg_color, cfg.bg_tolerance_lab)
+        if cfg.bg_structural:
+            ring_close, close = _structural_background(
+                rgb, bg_color, cfg.bg_tolerance_lab)
+        else:
+            close = _color_close_mask(rgb, bg_color, cfg.bg_tolerance_lab)
+            ring_close = close
         # Before flooding, ask whether there is a background to flood. Without
         # alpha there is no ground truth, and _dominant_border_color always
         # returns SOMETHING — on full-bleed art that something is one band of
@@ -341,8 +457,8 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         # 19.7% reported as enclosed "holes" — 26% of the artwork never sewn
         # by default). A ring that does not agree with its own modal color is
         # a ring the artwork runs through.
-        agreement = _border_agreement(close)
-        rival = _ring_rival_fraction(rgb, close)
+        agreement = _border_agreement(ring_close)
+        rival = _ring_rival_fraction(rgb, ring_close)
         if agreement < cfg.bg_border_agreement_min:
             border_bg = enclosed = bg = np.zeros(rgb.shape[:2], bool)
             warnings.append(
@@ -356,7 +472,7 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         elif (
             cfg.bg_border_rival_min > 0
             and rival >= cfg.bg_border_rival_min
-            and _modal_corner_ownership(close) <= 2
+            and _modal_corner_ownership(ring_close) <= 2
         ):
             # The ring agrees with itself, but a second coherent color holds a
             # real share of it and the modal color does not even hold the

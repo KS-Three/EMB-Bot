@@ -2,6 +2,7 @@ import { test, expect } from "vitest";
 import {
   designRectPx, hitTest, dragResize, dragMove, clampOffsets, pickElement, clampPan,
   buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, alignOffset,
+  MIN_ZOOM, MAX_ZOOM, clampZoom,
 } from "./interact.js";
 
 // ---- designRectPx ---------------------------------------------------------
@@ -476,4 +477,25 @@ test("rotateHandlePx default hangs above the top edge; flip hangs below the bott
 test("rotateHandlePx flip:false matches the default exactly", () => {
   const r = { x: 0, y: 40, w: 60, h: 30 };
   expect(rotateHandlePx(r, 22, { flip: false })).toEqual(rotateHandlePx(r, 22));
+});
+
+// ---- zoom range (800% cap, 2026-10-08) -------------------------------------
+
+test("the field zooms from 100% to 800%, and no further either way", () => {
+  expect(MIN_ZOOM).toBe(1);
+  expect(MAX_ZOOM).toBe(8);
+  expect(clampZoom(20)).toBe(8);
+  expect(clampZoom(0.2)).toBe(1);
+  expect(clampZoom(3)).toBe(3);
+});
+
+test("the + button (x1.25) and the wheel (x1.15) both land exactly on 800%", () => {
+  // zoomBy() multiplies then clamps, so the last step must reach the cap
+  // rather than stall below it on a step that would overshoot.
+  for (const factor of [1.25, 1.15]) {
+    let z = 1, steps = 0;
+    while (z < MAX_ZOOM && steps < 100) { z = clampZoom(z * factor); steps++; }
+    expect(z).toBe(8);
+    expect(Math.round(z * 100)).toBe(800); // the zoom bar's label
+  }
 });

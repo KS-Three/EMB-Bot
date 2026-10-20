@@ -31,6 +31,7 @@
 //   node tools/long-stitch-census.mjs --doctrine      # the two monogram rows
 //   node tools/long-stitch-census.mjs --font manga_impact --text AB --garment full_back
 //   node tools/long-stitch-census.mjs --json out.json
+import "./_help.mjs";
 import { createRequire } from "module";
 import fs from "node:fs";
 import path from "node:path";

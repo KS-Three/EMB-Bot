@@ -114,3 +114,63 @@ test("bobbin metres are null on a count that cannot support a figure", () => {
   assert.strictEqual(sewtime.bobbinM(-5), null);
   assert.strictEqual(sewtime.bobbinM(NaN), null);
 });
+
+// ---- edge cases: trims only, colour changes, non-finite and huge counts ----
+
+test("trims alone cost time: a design of only stops is not free", () => {
+  // 0 stitches, 65 trims = 65 * 120 / 650 = 12 min exactly.
+  assert.strictEqual(sewtime.sewTimeMin(0, 65), 12);
+  // One trim is ~11 s: under a minute, so the one-minute floor applies.
+  assert.strictEqual(sewtime.sewTimeMin(0, 1), 1);
+});
+
+test("a colour change is counted as a trim and adds exactly one trim's cost", () => {
+  const base = sewtime.sewTimeMin(6500, 0);
+  // 6500 stitches = 10 min; 10 colour changes add 10 * 120 / 650 = 1.85 min.
+  assert.strictEqual(base, 10);
+  assert.strictEqual(sewtime.sewTimeMin(6500, 10), 12);
+  assert.ok(sewtime.sewTimeMin(6500, 10) > base);
+});
+
+test("non-finite and non-number inputs are null", () => {
+  for (const bad of [NaN, Infinity, -Infinity, "100", undefined, {}, [], true]) {
+    assert.strictEqual(sewtime.sewTimeMin(bad, 0), null, `stitches=${String(bad)}`);
+    assert.strictEqual(sewtime.sewTimeMin(100, bad), null, `trims=${String(bad)}`);
+  }
+  assert.strictEqual(sewtime.sewTimeMin(), null);
+});
+
+test("huge counts stay finite and scale linearly", () => {
+  // 650 million stitches at 650 spm is exactly a million minutes.
+  assert.strictEqual(sewtime.sewTimeMin(650e6, 0), 1e6);
+  const big = sewtime.sewTimeMin(Number.MAX_SAFE_INTEGER, 1e9);
+  assert.ok(Number.isFinite(big) && big > 0);
+  // Number.MAX_VALUE overflows nothing at the divide; the result is finite or
+  // a clean null, never NaN.
+  const huge = sewtime.sewTimeMin(Number.MAX_VALUE, 0);
+  assert.ok(huge === null || Number.isFinite(huge) || huge === Infinity);
+  assert.ok(!Number.isNaN(huge));
+});
+
+test("the one-minute floor holds right up to the rounding edge", () => {
+  assert.strictEqual(sewtime.sewTimeMin(1, 0), 1);
+  // 0.5 min of needle time = 325 stitches -> Math.round(0.5) = 1.
+  assert.strictEqual(sewtime.sewTimeMin(325, 0), 1);
+  // 1.5 min = 975 stitches -> rounds up to 2.
+  assert.strictEqual(sewtime.sewTimeMin(975, 0), 2);
+  assert.strictEqual(sewtime.sewTimeMin(974, 0), 1);
+});
+
+test("spm of zero or negative is null even for an empty design", () => {
+  assert.strictEqual(sewtime.sewTimeMin(0, 0, 0), null);
+  assert.strictEqual(sewtime.sewTimeMin(0, 0, -650), null);
+  assert.strictEqual(sewtime.sewTimeMin(0, 0, 650), 0);
+});
+
+test("bobbinM edge cases: zero, non-finite, huge", () => {
+  assert.strictEqual(sewtime.bobbinM(0), 0);
+  for (const bad of [NaN, Infinity, -Infinity, "5", undefined, null, -0.001]) {
+    assert.strictEqual(sewtime.bobbinM(bad), null, String(bad));
+  }
+  assert.strictEqual(sewtime.bobbinM(5e9), 5e9 * sewtime.BOBBIN_SHARE_OF_TOP);
+});

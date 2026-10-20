@@ -49,6 +49,9 @@ import satin_columns as sc  # noqa: E402
 from .test_textcluster import _OCR_GATE_PATH, _row  # noqa: E402
 
 FLOOR_MM = 1.0
+# Every digitize here pins `small_text_true_size` OFF (ON by default since
+# #955): the switch re-traces these sub-3 mm bars and sews them as bean
+# letters, so none reaches the widened-lettering tier this file is about.
 
 
 def _thin_bars(path: Path) -> None:
@@ -104,9 +107,12 @@ def _cluster_kinds(result, plan) -> dict[str, int]:
 def test_widened_lettering_sews_as_a_column_where_it_sewed_as_a_bean(tmp_path):
     art = tmp_path / "bars.png"
     _thin_bars(art)
-    off_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest")
-    on_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest",
-                            lettering_min_column_mm=FLOOR_MM)
+    # `lettering_columns=False` here and below: these pin the SKELETON tier's
+    # widened column and its bean-run fallback; the Column lane (ON by default
+    # since 2026-10-12) takes a text-tagged shape ahead of both.
+    off_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", small_text_true_size=False, lettering_columns=False)
+    on_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", small_text_true_size=False,
+                            lettering_min_column_mm=FLOOR_MM, lettering_columns=False)
     off, off_plan = digitize(art, off_cfg)
     with patch(_OCR_GATE_PATH, return_value=False):
         on, on_plan = digitize(art, on_cfg)
@@ -140,9 +146,10 @@ def test_bars_cut_into_a_panel_sew_the_same_column_over_the_ground(tmp_path):
     0.3 mm hairline it was."""
     art = tmp_path / "panel.png"
     _thin_bars_on_a_panel(art)
-    off_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", keep_thin_strokes=True)
-    on_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", keep_thin_strokes=True,
-                            lettering_min_column_mm=FLOOR_MM)
+    off_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", small_text_true_size=False, keep_thin_strokes=True,
+                             lettering_columns=False)
+    on_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", small_text_true_size=False, keep_thin_strokes=True,
+                            lettering_min_column_mm=FLOOR_MM, lettering_columns=False)
     off, off_plan = digitize(art, off_cfg)
     with patch(_OCR_GATE_PATH, return_value=False):
         on, on_plan = digitize(art, on_cfg)
@@ -170,7 +177,7 @@ def test_bars_cut_into_a_panel_sew_the_same_column_over_the_ground(tmp_path):
 def test_with_the_floor_unset_nothing_carries_the_tag_and_the_ladder_is_unchanged(tmp_path):
     art = tmp_path / "bars.png"
     _thin_bars(art)
-    result, plan = digitize(art, PipelineConfig(target_width_mm=50.0, garment_id="left_chest"))
+    result, plan = digitize(art, PipelineConfig(target_width_mm=50.0, garment_id="left_chest", small_text_true_size=False))
     assert not any(r.meta.get("text_cluster_widened_mm") for r in result.regions)
     kinds = _cluster_kinds(result, plan)
     assert kinds.get("satin", 0) == 0 and kinds.get("run", 0) > 0, kinds
@@ -179,8 +186,9 @@ def test_with_the_floor_unset_nothing_carries_the_tag_and_the_ladder_is_unchange
 def test_a_widened_glyph_the_satin_tier_declines_sews_the_bean_run_it_sewed_before(tmp_path):
     art = tmp_path / "bars.png"
     _thin_bars(art)
-    cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", lettering_min_column_mm=FLOOR_MM)
-    declined = RibbonVerdict(satin=False, reason="dt_irregular", metrics={})
+    cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", small_text_true_size=False, lettering_min_column_mm=FLOOR_MM,
+                         lettering_columns=False)
+    declined =RibbonVerdict(satin=False, reason="dt_irregular", metrics={})
     with patch(_OCR_GATE_PATH, return_value=False), \
             patch("digitizer_core.stage7_sequence.classify_ribbon", return_value=declined):
         result, plan = digitize(art, cfg)
@@ -200,8 +208,8 @@ def test_the_column_survives_when_its_thread_sews_before_the_ground(tmp_path):
     layers around widened lettering now plan against its sewn column."""
     art = tmp_path / "panel_first.png"
     _thin_bars_on_a_panel(art, lettering_thread_first=True)
-    cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", keep_thin_strokes=True,
-                         lettering_min_column_mm=FLOOR_MM)
+    cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", small_text_true_size=False, keep_thin_strokes=True,
+                         lettering_min_column_mm=FLOOR_MM, lettering_columns=False)
     with patch(_OCR_GATE_PATH, return_value=False):
         result, plan = digitize(art, cfg)
     widened = [r for r in result.regions if r.meta.get("text_cluster_widened_mm")]

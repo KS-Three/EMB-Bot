@@ -31,8 +31,9 @@ from collections import OrderedDict
 from functools import lru_cache
 
 import numpy as np
+import shapely
 from shapely import affinity
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import LineString, Point, Polygon, box
 
 from . import machine, stitches
 from .stitches import StitchRun
@@ -44,6 +45,10 @@ _OVERLAP_EPS_MM = 1e-6
 # the thread is better lifted and cut than dragged around the whole shape.
 _TRAVEL_DETOUR_FACTOR = 4.0
 _TRAVEL_DETOUR_FLOOR_MM = 20.0
+# How far past the farthest point a covered route can reach (`travel_path`'s
+# window) its unsewn ground is still built. Twenty times the 0.075 mm inset
+# its rings use, so a ring inside the window is the ring of the whole ground.
+_TRAVEL_WINDOW_MARGIN_MM = 1.5
 
 
 def _ring_moments(coords) -> tuple[float, float, float, float, float, float]:
@@ -470,6 +475,81 @@ def _brick_row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm:
     return _row_points_at_phase(x0, x1, y, phase, stitch_mm, reverse)
 
 
+def fur_style(name: str) -> tuple[float, float, float]:
+    """`machine.FUR_STYLES[name]` -> (stitch mm, random fraction, offset
+    fraction), refusing a name it does not know rather than sewing some
+    other fur under it. Every value is a gate-1 CANDIDATE — see machine.py."""
+    try:
+        return machine.FUR_STYLES[name]
+    except KeyError:
+        raise ValueError(f"fur_style must be one of {sorted(machine.FUR_STYLES)}, "
+                         f"got {name!r}") from None
+
+
+def _fur_row_rng(seed: int, row_index: int, y: float, x0: float, x1: float):
+    """A random stream owned by ONE row of ONE span, from `cfg.seed` and the
+    row's own place. Hashing the place (not drawing from a stream shared by
+    the whole fill) makes a row's stitches independent of the order rows are
+    generated in — `_fill_paths` builds every column twice, once from each
+    end — and of every other shape in the design. Rounded to a micron so a
+    last-bit difference in the rotation cannot re-roll the row."""
+    key = struct.pack("<qq3q", int(seed), int(row_index),
+                      *(int(round(v * 1e3)) for v in (y, x0, x1)))
+    word = int.from_bytes(hashlib.blake2b(key, digest_size=8).digest(), "little")
+    return np.random.default_rng(word)
+
+
+def _fur_row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float,
+                    staggers: int, reverse: bool, *, seed: int = 0,
+                    random_frac: float = 0.5, offset_frac: float = 0.5
+                    ) -> list[tuple[float, float]]:
+    """One row of the "fur" fill: random start offset, random stitch lengths.
+
+    `stitch_mm` is the fur's longest stitch L. The row's grid starts a random
+    `[0, offset_frac * L)` before `x0`, and each next point is a random
+    `[L * (1 - random_frac), L]` further on, never under `MIN_STITCH_MM`.
+    `staggers` is accepted, unused, for `_ROW_POINT_FNS`' shared signature:
+    the random offset IS the stagger.
+
+    Same boundary contract as `_row_points_at_phase`: both row ends land on
+    the boundary, a span under `TINY_STITCH_MM` is its midpoint, a span under
+    two `MIN_STITCH_MM` is the single stitch across it, and an interior point
+    is kept only when it clears both the last kept point and `x1` by
+    `MIN_STITCH_MM`. A step left longer than L by a skipped point is split
+    here, evenly, into steps of at most L; each piece is then over L / 2,
+    which `machine.FUR_STYLES` keeps at or above `MIN_STITCH_MM`. So along a
+    row of two minimum stitches or more, every step lies in
+    `[MIN_STITCH_MM, L]`.
+
+    Both traversals of a row give the same points, reversed: the stream
+    depends on the row, not on the direction it is sewn in.
+    """
+    span = x1 - x0
+    if span < machine.TINY_STITCH_MM:
+        mid = (x0 + x1) / 2.0
+        return [(mid, y)]
+    xs = [x0]
+    if span >= 2 * machine.MIN_STITCH_MM:
+        rng = _fur_row_rng(seed, row_index, y, x0, x1)
+        shortest = max(machine.MIN_STITCH_MM, stitch_mm * (1.0 - random_frac))
+        x = x0 - float(rng.random()) * offset_frac * stitch_mm
+        while True:
+            x += shortest + float(rng.random()) * (stitch_mm - shortest)
+            if x >= x1:
+                break
+            if x - xs[-1] >= machine.MIN_STITCH_MM and x1 - x >= machine.MIN_STITCH_MM:
+                xs.append(x)
+    xs.append(x1)
+    out = [xs[0]]
+    for a, b in zip(xs, xs[1:]):
+        n = math.ceil((b - a) / stitch_mm - 1e-9)
+        if n > 1:
+            out.extend(a + (b - a) * k / n for k in range(1, n))
+        out.append(b)
+    pts = [(vx, y) for vx in out]
+    return list(reversed(pts)) if reverse else pts
+
+
 def _densify(a: tuple[float, float], b: tuple[float, float], step_mm: float) -> list[tuple[float, float]]:
     """Points from a (exclusive) to b (inclusive), no step longer than step_mm."""
     d = math.dist(a, b)
@@ -600,11 +680,147 @@ def _ring_route(ring: LineString, a: tuple[float, float],
 _EXPOSED_TOLERANCE_MM = machine.TRAVEL_STITCH_MM
 
 
+class _Sewn:
+    """The fill laid so far in one shape, kept as its separate footprints.
+
+    It used to be one geometry, grown by `sewn.union(footprint)` per path, and
+    every covered bridge then asked questions of the WHOLE thing: the unsewn
+    ground was `cover.difference(sewn)` and its inset rings a buffer of that.
+    On owl_kent's 627-path blend region one pricing of an order cost 26 s,
+    almost all of it those three operations on shape-sized geometry
+    (2026-10-13, `docs/photo-cold-profile-2026-10-13.md`). A bridge only ever
+    looks at a neighbourhood -- `travel_path`'s length budget bounds how far
+    any route it returns can stray -- so `clipped` builds the sewn fill of
+    that window alone, and `on_line` measures a line against only the
+    footprints whose boxes meet it (footprints that miss the line's box
+    cannot touch the line). Both answer the same set question the single
+    geometry did; owl_kent's stitches came out byte-identical to the
+    single-geometry code, at 17 s of reorder against 48.
+    """
+
+    __slots__ = ("_parts", "_boxes", "_n")
+
+    def __init__(self) -> None:
+        self._parts = np.empty(64, dtype=object)
+        self._boxes = np.empty((64, 4))
+        self._n = 0
+
+    is_empty = False
+
+    def add(self, footprint) -> "_Sewn":
+        if self._n == len(self._boxes):
+            self._boxes = np.concatenate([self._boxes, np.empty_like(self._boxes)])
+            self._parts = np.concatenate([self._parts, np.empty_like(self._parts)])
+        self._boxes[self._n] = footprint.bounds
+        self._parts[self._n] = footprint
+        self._n += 1
+        return self
+
+    def _hits(self, x0: float, y0: float, x1: float, y1: float) -> np.ndarray:
+        b = self._boxes[:self._n]
+        return np.flatnonzero((b[:, 0] <= x1) & (b[:, 2] >= x0)
+                              & (b[:, 1] <= y1) & (b[:, 3] >= y0))
+
+    def clipped(self, x0: float, y0: float, x1: float, y1: float):
+        """The sewn fill inside the box: each footprint that meets it, cut to
+        it, then unioned -- the box's share of work, not the shape's."""
+        idx = self._hits(x0, y0, x1, y1)
+        if not len(idx):
+            return Polygon()
+        # `intersection`, not `clip_by_rect`: the faster clip builds
+        # three-point rings on a two-pass fill's footprints and GEOS refuses them.
+        return shapely.union_all(shapely.intersection(self._parts[idx],
+                                                      box(x0, y0, x1, y1)))
+
+    def on_line(self, line: LineString) -> float:
+        """Length of `line` over the sewn fill: the line cut by each nearby
+        footprint, and the pieces merged as intervals of distance along the
+        line -- the same set as cutting it by the union, without building
+        the union. (Unioning the pieces as geometry does NOT merge them: two
+        footprints' overlapping pieces differ in the last bits and are kept
+        twice, measured 50% over on owl_kent.)"""
+        idx = self._hits(*line.bounds)
+        if not len(idx):
+            return 0.0
+        pieces = shapely.get_parts(shapely.get_parts(
+            shapely.intersection(line, self._parts[idx])))
+        pieces = pieces[(shapely.get_type_id(pieces) == 1)     # LineStrings
+                        & ~shapely.is_empty(pieces)]
+        if not len(pieces):
+            return 0.0
+        s = shapely.line_locate_point(line, shapely.get_point(pieces, 0))
+        e = shapely.line_locate_point(line, shapely.get_point(pieces, -1))
+        total, hi = 0.0, -math.inf
+        for lo, up in sorted(zip(np.minimum(s, e), np.maximum(s, e))):
+            if up <= hi:
+                continue
+            total += up - max(lo, hi)
+            hi = up
+        return float(total)
+
+
+def _sewn_add(sewn, footprint) -> _Sewn:
+    return (sewn if sewn is not None else _Sewn()).add(footprint)
+
+
 def _exposed_mm(route: list[tuple[float, float]], sewn) -> float:
-    """Length of `route` lying over `sewn`, the footprint of fill already laid."""
+    """Length of `route` lying over `sewn`, the footprint of fill already laid
+    (a geometry, or a `_Sewn`)."""
     if sewn is None or sewn.is_empty or len(route) < 2:
         return 0.0
-    return float(LineString(route).intersection(sewn).length)
+    line = LineString(route)
+    if isinstance(sewn, _Sewn):
+        return sewn.on_line(line)
+    return float(line.intersection(sewn).length)
+
+
+# The unsewn ground a covered bridge routes through, and its inset rings,
+# memoized on the exact bytes of their inputs. Profiled cold on owl_kent
+# 2026-10-13 (`docs/photo-cold-profile-2026-10-13.md`): the rings' inset
+# buffer was 24% of the run's samples, and 223 of 749 calls rebuilt rings
+# from byte-identical ground -- the `sewn` footprints accumulate in the same
+# order in `_order_cost` and in `emit`, so two walks over the same columns ask
+# the same question. All three are pure functions of (`cover`, `sewn`), so a
+# hit is the geometry the miss would have built; nothing is approximated.
+# Bounded by entry count: an entry is one shape's ground at one step, up to
+# ~0.26 MB on owl_kent. Every one of owl_kent's 250 hits came back within 128
+# distinct entries (an offline LRU replay of the run's key sequence), and
+# `stitch_shape` empties the memo when it returns, so nothing is held between
+# shapes or jobs.
+_UNSEWN_MAX = 128
+_UNSEWN_MEMO: "OrderedDict[bytes, list]" = OrderedDict()
+
+
+def _unsewn_ground(cover: Polygon, sewn):
+    """-> (`cover` minus `sewn`, then two functions returning that ground
+    hair-widened by 0.01 mm and its inset rings as a tuple). Each of the two
+    is built on first request only, and kept."""
+    h = hashlib.blake2b(digest_size=32)
+    for g in (cover, sewn):
+        gb = g.wkb
+        h.update(struct.pack("<I", len(gb)))
+        h.update(gb)
+    key = h.digest()
+    entry = _UNSEWN_MEMO.get(key)
+    if entry is None:
+        entry = [cover.difference(sewn), None, None]
+        _UNSEWN_MEMO[key] = entry
+        while len(_UNSEWN_MEMO) > _UNSEWN_MAX:
+            _UNSEWN_MEMO.popitem(last=False)
+    else:
+        _UNSEWN_MEMO.move_to_end(key)
+
+    def slack():
+        if entry[1] is None:
+            entry[1] = entry[0].buffer(0.01)
+        return entry[1]
+
+    def rings() -> tuple:
+        if entry[2] is None:
+            entry[2] = tuple(_inset_ring(entry[0], min(machine.TRAVEL_INSET_MM,
+                                                       machine.FILL_ROW_MM / 2.0)))
+        return entry[2]
+    return entry[0], slack, rings
 
 
 def travel_path(poly: Polygon, ring, a: tuple[float, float],
@@ -711,12 +927,24 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
     # row — a route there rides the seam of the next column, which the next
     # column covers. Then the shape's own rings both ways round (rarely clear,
     # measured), then the exposed route of last resort.
-    unsewn = cover.difference(sewn)
+    ground, local = cover, sewn
+    if isinstance(sewn, _Sewn):
+        # Every route `along` accepts is at most `budget` long, so each of its
+        # points lies within budget/2 of the midpoint of a-b. The unsewn
+        # ground and its rings are built in that box (plus a margin, so the
+        # rings inside it are the rings of the whole ground), not across the
+        # whole shape -- see `_Sewn`. The route is still checked against the
+        # whole shape below.
+        half = budget / 2.0 + _TRAVEL_WINDOW_MARGIN_MM
+        mx, my = (a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0
+        ground = cover.intersection(box(mx - half, my - half, mx + half, my + half))
+        local = sewn.clipped(mx - half, my - half, mx + half, my + half)
+    unsewn, unsewn_slack, u_rings = _unsewn_ground(ground, local)
     if not unsewn.is_empty:
         # `a` is the last penetration of the column just sewn, so it lies
         # inside `sewn` by construction and a route can only LEAVE the unsewn
         # ground at its two ends; allow one travel stitch around each.
-        inside = unsewn.buffer(0.01).union(cover.intersection(
+        inside = unsewn_slack().union(cover.intersection(
             pa.buffer(_EXPOSED_TOLERANCE_MM).union(pb.buffer(_EXPOSED_TOLERANCE_MM))))
         stale = cache.get("unsewn_rings") if cache is not None else None
         if stale:
@@ -724,7 +952,7 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
             found = along(near[:_TRAVEL_RING_CANDIDATES], True, inside)
             if found is not None:
                 return found
-        u_rings = _inset_ring(unsewn, min(machine.TRAVEL_INSET_MM, machine.FILL_ROW_MM / 2.0))
+        u_rings = list(u_rings())
         if cache is not None:
             cache["unsewn_rings"] = u_rings
         u_rings.sort(key=lambda r: max(r.distance(pa), r.distance(pb)))
@@ -755,13 +983,54 @@ _ROUTABLE_PROBE_LIMIT = 40
 _TRIM_STITCH_EQUIVALENT = 25.0
 
 
+# `LineString(path).simplify(row_mm / 2).buffer(row_mm)` is the footprint a
+# sewn path leaves, and the covered-routing scorers ask for the SAME path's
+# footprint again on every order they price: `_order_cost` runs ~36 times per
+# fill shape and each run re-buffered every path (935 buffers, 11 s of a 22 s
+# restitch on the Instagram icon). Shapely geometries are immutable, so one
+# is shared. Keyed on the exact point tuple (a reversed path is a different
+# key on purpose: its buffer is the same set but not the same vertex order,
+# and the union that follows is order-sensitive in the last digit).
+_FOOTPRINT_MAX = 4096
+_FOOTPRINT_CACHE: "OrderedDict[tuple, object]" = OrderedDict()
+
+
+def _footprint(path, row_mm: float):
+    key = (row_mm, tuple(path))
+    hit = _FOOTPRINT_CACHE.get(key)
+    if hit is not None:
+        _FOOTPRINT_CACHE.move_to_end(key)
+        return hit
+    fp = LineString(path).simplify(row_mm / 2.0).buffer(row_mm)
+    _FOOTPRINT_CACHE[key] = fp
+    while len(_FOOTPRINT_CACHE) > _FOOTPRINT_MAX:
+        _FOOTPRINT_CACHE.popitem(last=False)
+    return fp
+
+
 def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                 slack: Polygon, entry: tuple[float, float] | None,
                 trim_at_mm: float, row_mm: float | None = None,
                 cut_bridges: bool = False,
                 ) -> tuple[int, float, float]:
     """-> (cuts, travel stitches, exposed travel stitches) this path ORDER
-    costs, by `fill_region`'s rule.
+    costs: the last figure `_order_cost_walk` yields."""
+    cost = (0, 0.0, 0.0)
+    for cost in _order_cost_walk(paths, poly, ring, slack, entry, trim_at_mm,
+                                 row_mm, cut_bridges):
+        pass
+    return cost
+
+
+def _order_cost_walk(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
+                     slack: Polygon, entry: tuple[float, float] | None,
+                     trim_at_mm: float, row_mm: float | None = None,
+                     cut_bridges: bool = False):
+    """Yields (cuts, travel stitches, exposed travel stitches) this path ORDER
+    has cost so far, after each path, by `fill_region`'s rule -- every figure
+    only grows, so a partial cost is a floor on the whole one, which is what
+    lets `_reorder_for_cover` stop pricing an order already beaten.
+    `_order_cost` is the last of them.
 
     `row_mm` turns on the covered routing `stitch_shape` uses when
     `under_cover` is set — the same `travel_path(..., sewn=...)` call with the
@@ -818,10 +1087,10 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                     exposed_mm += max(0.0, _exposed_mm([cur] + bridge, sewn)
                                       - _EXPOSED_TOLERANCE_MM)
         if row_mm is not None and len(path) > 1:
-            footprint = LineString(path).simplify(row_mm / 2.0).buffer(row_mm)
-            sewn = footprint if sewn is None else sewn.union(footprint)
+            footprint = _footprint(path, row_mm)
+            sewn = _sewn_add(sewn, footprint)
         cur = path[-1]
-    return cuts, float(travel_stitches), exposed_mm / machine.TRAVEL_STITCH_MM
+        yield cuts, float(travel_stitches), exposed_mm / machine.TRAVEL_STITCH_MM
 
 
 # What one EXPOSED travel stitch — thread lying on top of fill already sewn,
@@ -929,6 +1198,7 @@ def clear_fill_reorder_memo() -> None:
     a stale entry is impossible, because the key is the full input."""
     global _reorder_memo_points
     _REORDER_MEMO.clear()
+    _UNSEWN_MEMO.clear()
     _reorder_memo_points = 0
     _reorder_memo_stats["hit"] = 0
     _reorder_memo_stats["miss"] = 0
@@ -1105,8 +1375,20 @@ def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
     ends = [(p[0], p[-1]) for p in paths if p]
     if len(ends) != len(paths):
         return paths
-    before = _order_cost(paths, poly, ring, slack, entry, trim_at_mm, row_mm,
-                         cut_bridges=cut_bridges)
+    # The incoming order is priced lazily: only until it shows exposed travel
+    # (the one thing deciding whether to look for another order at all), and
+    # later only until it costs more than the candidate. Every figure in the
+    # walk only grows, so once the partial cost passes the candidate's the
+    # candidate wins whatever the rest would add -- the same answer the full
+    # price gives. On owl_kent's 627-path region the full price was 22.7 s.
+    walk = _order_cost_walk(paths, poly, ring, slack, entry, trim_at_mm, row_mm,
+                            cut_bridges=cut_bridges)
+    before = (0, 0.0, 0.0)
+    done = True
+    for before in walk:
+        if before[2] > 0.0:
+            done = False
+            break
     # Nothing exposed, nothing to win -- unless `cut_bridges` is why nothing is
     # exposed: the scorer lifts a dear bridge, so an order can read "one cut,
     # nothing on top" and still lose to the order this function would have
@@ -1160,17 +1442,21 @@ def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
             flipped.add(j)
         path = paths[j][::-1] if flip else paths[j]
         if len(path) > 1:
-            footprint = LineString(path).simplify(row_mm / 2.0).buffer(row_mm)
-            sewn = footprint if sewn is None else sewn.union(footprint)
+            footprint = _footprint(path, row_mm)
+            sewn = _sewn_add(sewn, footprint)
         cur = path[-1]
         remaining.discard(j)
 
     order.append(pinned)
     candidate = [paths[j][::-1] if j in flipped else paths[j] for j in order]
     assert candidate[-1][-1] == paths[-1][-1], "exit point must be unchanged"
-    after = _order_cost(candidate, poly, ring, slack, entry, trim_at_mm, row_mm,
-                        cut_bridges=cut_bridges)
-    return candidate if _score(after) < _score(before) else paths
+    after = _score(_order_cost(candidate, poly, ring, slack, entry, trim_at_mm,
+                               row_mm, cut_bridges=cut_bridges))
+    if not done:
+        for before in walk:
+            if _score(before) > after:
+                break
+    return candidate if after < _score(before) else paths
 
 
 # Which row-point function each fill `technique` dispatches to inside
@@ -1191,7 +1477,9 @@ _ROW_POINT_FNS = {
 def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float,
                 staggers: int, start_near: tuple[float, float] | None = None,
                 technique: str = "tatami", row_phase_mm: float = 0.0,
-                keep_row=None) -> list[list[tuple[float, float]]]:
+                keep_row=None, seed: int = 0,
+                fur: tuple[float, float, float] | None = None
+                ) -> list[list[tuple[float, float]]]:
     """Fill one polygon; -> continuous stitch paths in original (unrotated) mm space.
 
     Columns are visited nearest-first from the end of the previous one, and each
@@ -1213,8 +1501,20 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
     spacing), these three techniques only change how ONE row's own interior
     points are placed, so they need no travel-planning logic of their own
     and share this function outright instead of wrapping it.
+
+    "fur" (2026-10-14) is the one technique whose rows need more than the
+    shared signature: `_fur_row_points` takes `seed` and the style's random
+    and offset fractions, bound here. `fur` is `(stitch mm, random, offset)`
+    as `fur_style` returns it; its stitch length is the caller's `stitch_mm`
+    (stitch_shape passes the style's own). Neither keyword is read for any
+    other technique.
     """
-    row_point_fn = _ROW_POINT_FNS.get(technique, _row_points)
+    if technique == "fur":
+        _length, rand, offset = fur if fur is not None else fur_style("short")
+        row_point_fn = functools.partial(_fur_row_points, seed=seed,
+                                         random_frac=rand, offset_frac=offset)
+    else:
+        row_point_fn = _ROW_POINT_FNS.get(technique, _row_points)
     rotated = affinity.rotate(poly, -angle_deg, origin=(0, 0), use_radians=False)
     rows = _row_spans(rotated, row_mm, row_phase_mm, keep_row)
     if not rows:
@@ -1337,7 +1637,8 @@ def _density_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_m
 
 
 def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
-                    start_near: tuple[float, float] | None = None
+                    start_near: tuple[float, float] | None = None,
+                    all_pieces: bool = False,
                     ) -> list[list[tuple[float, float]]]:
     """Underlay runs for one shape, in the named style.
 
@@ -1347,16 +1648,51 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
 
     `start_near` is where the needle already is. A closed edge walk may begin
     anywhere on its ring, so it begins at the point nearest the needle.
+
+    The inset can split a shape at any neck narrower than twice
+    `UNDERLAY_INSET_MM`. By default only the LARGEST piece gets underlay and
+    every other piece sews its top stitching straight onto bare fabric --
+    Becker's chest logo, 88 mm2 of 1,152 (7.6%). `all_pieces`
+    (`PipelineConfig.underlay_all_pieces`, built OFF 2026-10-08) underlays
+    every piece, nearest-first from the needle, each starting where the last
+    one ended. A secondary piece smaller than one underlay stitch square
+    (`UNDERLAY_STITCH_MM` squared) is left bare: on Fremont thirteen such
+    slivers held 3.5 mm2 between them and cost fourteen trims.
     """
     if style == "none":
         return []
-    inner = poly.buffer(-machine.UNDERLAY_INSET_MM)
-    if inner.is_empty:
+    inset = poly.buffer(-machine.UNDERLAY_INSET_MM)
+    if inset.is_empty:
         return []
-    if inner.geom_type == "MultiPolygon":
-        inner = max(inner.geoms, key=lambda g: g.area)
-    if inner.geom_type != "Polygon":
+    pieces = [g for g in getattr(inset, "geoms", [inset])
+              if g.geom_type == "Polygon" and not g.is_empty]
+    if not pieces:
         return []
+    if not all_pieces:
+        return _underlay_piece(max(pieces, key=lambda g: g.area), style,
+                               angle_deg, start_near)
+    biggest = max(pieces, key=lambda g: g.area)
+    pieces = [g for g in pieces
+              if g is biggest or g.area >= machine.UNDERLAY_STITCH_MM ** 2]
+    out: list[list[tuple[float, float]]] = []
+    here = start_near
+    while pieces:
+        if here is None:
+            nxt = max(pieces, key=lambda g: g.area)
+        else:
+            nxt = min(pieces, key=lambda g: g.distance(Point(here)))
+        pieces.remove(nxt)
+        got = _underlay_piece(nxt, style, angle_deg, here)
+        if got:
+            out.extend(got)
+            here = got[-1][-1]
+    return out
+
+
+def _underlay_piece(inner: Polygon, style: str, angle_deg: float,
+                    start_near: tuple[float, float] | None
+                    ) -> list[list[tuple[float, float]]]:
+    """`_underlay_paths` for one already-inset piece."""
 
     def edge_run() -> list[list[tuple[float, float]]]:
         out = []
@@ -1415,6 +1751,35 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
     return edge_run() + lattice(90, machine.UNDERLAY_LATTICE_MM)
 
 
+def _sewn_paths(paths: list[list[tuple[float, float]]]
+                ) -> list[list[tuple[float, float]]]:
+    """The paths `emit` will actually sew: those with at least two points.
+
+    `_fill_paths` hands back one-point "columns" -- a column whose rows
+    place a single penetration between them, the sliver at a pointed tip or
+    a notch -- and `emit` skips
+    every one (`len(pts) < 2: continue`): no stitch, no bridge, and the
+    needle stays where the last real run ended. `_order_cost` did not skip
+    them. It priced a bridge TO each and then a bridge onward FROM it, so an
+    order was scored on travel that is never sewn, and a column order that
+    happened to visit a phantom between two real columns could win or lose
+    on a hop the machine never makes.
+
+    Measured 2026-10-08 (`tools/fill_score_agreement.py`, the nine logos at
+    80 mm): this is the ONLY place the scorer and the emitter disagree. Every
+    shape whose scored (cuts, travel, exposed) differed from what `emit` sewed
+    carried phantoms -- 16 of Golden Tee's 47 field paths, 38 of Bridge Bar's
+    214 -- and pricing the same order without them reproduces the sewn travel
+    and exposure exactly. Dropping them here sews the same penetrations; the
+    ORDER the two reorders pick can change, now chosen on what is sewn. So can
+    the shape's exit: both reorders pin the LAST path to hold the exit still,
+    and when that was a phantom they pinned a point the needle never reaches,
+    leaving the real exit wherever the reorder put the last real path. Here
+    the last real path is pinned instead, which is what that pin is for.
+    """
+    return [p for p in paths if len(p) >= 2]
+
+
 def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_mm: float, stitch_mm: float, underlay_style: str,
                  trim_at_mm: float,
@@ -1425,6 +1790,10 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_phase_mm: float = 0.0,
                  keep_row=None,
                  cut_bridges: bool = False,
+                 underlay_all_pieces: bool = False,
+                 sewn_paths_only: bool = False,
+                 seed: int = 0,
+                 fur_style_name: str = "short",
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
 
@@ -1475,10 +1844,28 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     tatami fallback is the one caller that turns it on, gated by
     `PipelineConfig.fill_density_boost`.
 
+    `sewn_paths_only` (`PipelineConfig.fill_order_sewn_paths`, default OFF):
+    drop the fill's one-point paths before either reorder prices an order.
+    `emit` never sews one (`len(pts) < 2`) and its needle never moves to
+    one, but `_order_cost` routed travel to each and moved its cursor there,
+    so the order was chosen against bridges that are never sewn and against
+    hops that do not exist -- see `_sewn_paths`.
+
+    `technique="fur"` (2026-10-14): tatami with a random start offset per row
+    and a random length per stitch (`_fur_row_points`), seeded by `seed`
+    (`cfg.seed`) so the same call sews the same file. `fur_style_name` picks
+    the `machine.FUR_STYLES` entry, whose own stitch length replaces
+    `stitch_mm` for the fill pass — the length IS the technique. Underlay is
+    unaffected. `seed` and `fur_style_name` are read for no other technique.
+
     Report keys: `too_thin` (nowhere wide enough for a fill), `jumps` (travel
     that had to lift the needle), `empty` (produced nothing).
     """
     report = {"too_thin": False, "jumps": 0, "empty": False}
+    fur = None
+    if technique == "fur":
+        fur = fur_style(fur_style_name)
+        stitch_mm = fur[0]
     angle = best_fill_angle_deg(poly, row_mm) if angle_deg is None else angle_deg
     if poly.buffer(-machine.MIN_FILL_WIDTH_MM / 2.0).is_empty:
         report["too_thin"] = True
@@ -1531,8 +1918,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                     runs.append(StitchRun(points=pts, kind=kind, jump=True,
                                           trim=d > trim_at_mm, shape_id=shape_id))
                     if under_cover and kind == stitches.FILL and len(pts) > 1:
-                        footprint = LineString(pts).simplify(row_mm / 2.0).buffer(row_mm)
-                        sewn = footprint if sewn is None else sewn.union(footprint)
+                        footprint = _footprint(pts, row_mm)
+                        sewn = _sewn_add(sewn, footprint)
                     continue
                 # The bridge starts where the last run ended and finishes where
                 # the next one begins, so both ends belong to their own runs.
@@ -1544,12 +1931,13 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                                           shape_id=shape_id))
             runs.append(StitchRun(points=pts, kind=kind, shape_id=shape_id))
             if under_cover and kind == stitches.FILL and len(pts) > 1:
-                footprint = LineString(pts).simplify(row_mm / 2.0).buffer(row_mm)
-                sewn = footprint if sewn is None else sewn.union(footprint)
+                footprint = _footprint(pts, row_mm)
+                sewn = _sewn_add(sewn, footprint)
 
     # `cross_tatami` is laid at its own, longer stitch; split at the
     # lattice's 2.5 mm every 4 mm stitch of it came out as two of 2 mm.
-    emit(_underlay_paths(poly, underlay_style, angle, start_near),
+    emit(_underlay_paths(poly, underlay_style, angle, start_near,
+                         all_pieces=underlay_all_pieces),
          stitches.UNDERLAY,
          machine.UNDERLAY_CROSS_STITCH_MM if underlay_style == "cross_tatami"
          else machine.UNDERLAY_STITCH_MM)
@@ -1566,7 +1954,10 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     else:
         fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
                                  machine.FILL_STAGGERS, entry, technique=technique,
-                                 row_phase_mm=row_phase_mm, keep_row=keep_row)
+                                 row_phase_mm=row_phase_mm, keep_row=keep_row,
+                                 seed=seed, fur=fur)
+    if sewn_paths_only:
+        fill_paths = _sewn_paths(fill_paths)
     # Memoized, not changed: both reorders are pure functions of this shape's
     # own inputs, so a hit returns exactly what the call would have. This is
     # the seam a review edit re-crosses for every UNCHANGED shape -- 80 of
@@ -1584,6 +1975,9 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
         fill_paths = _memoized(_k, lambda: _reorder_for_cover(
             _before, poly, ring, slack, entry, trim_at_mm, row_mm, cut_bridges))
     emit(fill_paths, stitches.FILL, stitch_mm)
+    # Every hit is within this shape (`cover` is in the key), so nothing
+    # after this point can use the unsewn-ground memo; let its geometry go.
+    _UNSEWN_MEMO.clear()
 
     if not runs:
         report["empty"] = True

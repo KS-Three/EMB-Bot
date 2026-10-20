@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import io
 import json
-import time
 from pathlib import Path
 
 import pystitch
@@ -19,7 +18,7 @@ fastapi = pytest.importorskip("fastapi", reason="service extra not installed")
 from digitizer_service.app import MAX_PIXELS  # noqa: E402
 from digitizer_service.jobs import JobRegistry, content_key  # noqa: E402
 
-from .conftest import requires_tesseract  # noqa: E402
+from .conftest import requires_tesseract, wait_for_job  # noqa: E402
 
 ART = Path(__file__).resolve().parents[1] / "testdata" / "logo_whitebg.png"
 # The enclosed-background repro: a gradient logo with white icon linework
@@ -49,11 +48,7 @@ def _digitize(client, config: dict | None = None, art: Path = ART) -> dict:
         )
     assert r.status_code == 202, r.text
     job_id = r.json()["job_id"]
-    for _ in range(600):
-        state = client.get(f"/jobs/{job_id}").json()
-        if state["state"] in ("done", "error"):
-            break
-        time.sleep(0.1)
+    state = wait_for_job(client, job_id)
     assert state["state"] == "done", state.get("detail") or state.get("error")
     return state
 
@@ -72,11 +67,7 @@ def _digitize_manual(client, shapes=None, config: dict | None = None) -> dict:
     r = client.post("/digitize-manual", json=body)
     assert r.status_code == 202, r.text
     job_id = r.json()["job_id"]
-    for _ in range(600):
-        state = client.get(f"/jobs/{job_id}").json()
-        if state["state"] in ("done", "error"):
-            break
-        time.sleep(0.1)
+    state = wait_for_job(client, job_id)
     assert state["state"] == "done", state.get("detail") or state.get("error")
     return state
 
@@ -144,10 +135,7 @@ def test_identical_request_is_served_from_cache(client):
     with ART.open("rb") as f:
         first = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
                             data={"config": json.dumps(cfg)}).json()
-    for _ in range(600):
-        if client.get(f"/jobs/{first['job_id']}").json()["state"] == "done":
-            break
-        time.sleep(0.1)
+    wait_for_job(client, first["job_id"])
 
     with ART.open("rb") as f:
         second = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
@@ -947,11 +935,7 @@ def test_boundary_override_with_a_hole_poking_outside_fails_the_job_cleanly_not_
         )
     assert r.status_code == 202, "the shell alone is valid, so submit succeeds"
     job_id = r.json()["job_id"]
-    for _ in range(600):
-        state = client.get(f"/jobs/{job_id}").json()
-        if state["state"] in ("done", "error"):
-            break
-        time.sleep(0.1)
+    state = wait_for_job(client, job_id)
     assert state["state"] == "error", "the job, not submission, must catch this"
     assert "boundary_override" in state["error"] and "hole" in state["error"].lower()
 
@@ -970,11 +954,7 @@ def test_an_inverted_crop_fails_the_job_naming_the_callers_own_rectangle(client)
         )
     assert r.status_code == 202
     job_id = r.json()["job_id"]
-    for _ in range(600):
-        state = client.get(f"/jobs/{job_id}").json()
-        if state["state"] in ("done", "error"):
-            break
-        time.sleep(0.1)
+    state = wait_for_job(client, job_id)
     assert state["state"] == "error"
     assert "crop is empty after clamping" in state["error"]
 
@@ -1092,11 +1072,7 @@ def test_merge_shape_ids_reaches_the_real_pipeline_as_a_400_free_submit_and_a_cl
         )
     assert r.status_code == 202, "well-formed request: two real, distinct, same-thread ids"
     job_id = r.json()["job_id"]
-    for _ in range(600):
-        state = client.get(f"/jobs/{job_id}").json()
-        if state["state"] in ("done", "error"):
-            break
-        time.sleep(0.1)
+    state = wait_for_job(client, job_id)
     assert state["state"] == "error"
     assert "does not touch or overlap" in state["error"]
 
@@ -1281,10 +1257,7 @@ def test_manual_identical_request_is_served_from_cache(client):
     shapes = _manual_shapes()
     first = client.post("/digitize-manual",
                         json={"shapes": shapes, "config": {}}).json()
-    for _ in range(600):
-        if client.get(f"/jobs/{first['job_id']}").json()["state"] == "done":
-            break
-        time.sleep(0.1)
+    wait_for_job(client, first["job_id"])
 
     second = client.post("/digitize-manual",
                          json={"shapes": shapes, "config": {}}).json()
@@ -1408,7 +1381,9 @@ def test_running_jobs_are_never_evicted():
     """A burst of submissions must not orphan work in flight."""
     import threading
 
-    registry = JobRegistry(workers=1)
+    # The in-flight bound (jobs.MAX_INFLIGHT) would refuse this burst with
+    # Busy long before eviction matters; this test is about eviction.
+    registry = JobRegistry(workers=1, max_inflight=100)
     release = threading.Event()
     slow, _ = registry.submit("slow", lambda: (release.wait(10), {"ok": True})[1])
 
@@ -1496,6 +1471,33 @@ def test_a_gradients_regions_carry_their_sew_facts(client):
     ids = {s["shape_id"] for s in shapes}
     for cone in state["stats"]["blocks"]:
         assert set(cone["shape_ids"]) <= ids, cone
+
+
+def test_sew_facts_flags_a_shape_that_sewed_through_the_blend_tier():
+    """`tier` stays "fill" for a gradient's bands; `blended` is the additive
+    fact the Shapes row reads to show the shades. Only `-blend<i>` runs set it."""
+    from types import SimpleNamespace as NS
+    from digitizer_service.app import _sew_facts
+    run = lambda sid, kind="fill": NS(shape_id=sid, kind=kind)
+    plan = NS(blocks=[
+        NS(runs=[run("g-blend0"), run("g-blend1"), run("plain", "satin")]),
+        NS(runs=[run("g-blend2")]),
+    ])
+    facts = _sew_facts(plan, {"g", "plain"})
+    assert facts["g"]["blended"] is True and facts["g"]["tier"] == "fill"
+    assert facts["plain"]["blended"] is False and facts["plain"]["tier"] == "satin"
+
+
+def test_a_gradients_review_shapes_report_blended(client):
+    state = _digitize(client, {"target_width_mm": 80.0}, art=REPRO)
+    shapes = state["review"]["shapes"]
+    assert all(isinstance(s["blended"], bool) for s in shapes)
+    blended = {s["shape_id"] for s in shapes if s["blended"]}
+    assert blended, "the repro's gradient regions should sew through the blend tier"
+    # Every blended shape is spread over several machine blocks.
+    for sid in blended:
+        n = sum(1 for c in state["stats"]["blocks"] if sid in c["shape_ids"])
+        assert n > 1, sid
 
 
 def test_every_stitch_format_health_advertises_decodes_to_the_same_design(client):

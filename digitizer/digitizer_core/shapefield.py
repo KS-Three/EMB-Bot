@@ -45,7 +45,7 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 from shapely.geometry import Polygon
-from skimage.morphology import medial_axis
+from .fast_skimage import medial_axis  # skimage's, tables cached — byte-identical
 
 # Mirrors stage6_satin._RASTER_PX_PER_MM / _RASTER_MAX_PX exactly. See the
 # module docstring for why this is a duplicate, not a shared import.

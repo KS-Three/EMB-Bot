@@ -70,6 +70,10 @@
   // alone. Null on a row without a note, which omits the attribute.
   const noteId = (row) => (row.note ? `shapepop-note-${row.key}` : null);
 
+  // Number rows that commit on change (blur / Enter), not on every keystroke:
+  // each commit re-sews, and "1." on the way to "1.5" is not a value.
+  const ON_COMMIT = new Set(["widthMm", "stitchLenMm"]);
+
   function onKey(e) {
     if (e.key === "Escape") {
       e.preventDefault();
@@ -121,9 +125,10 @@
       <label class="shapepop-row">
         <span class="shapepop-label">{row.label}</span>
         <input
-          type="number" step="1" placeholder="auto" aria-label={row.label} aria-describedby={noteId(row)}
+          type="number" step={row.step == null ? 1 : row.step} min={row.min} placeholder="auto" aria-label={row.label} aria-describedby={noteId(row)}
           value={row.value == null ? "" : row.value}
-          on:input={(e) => d("change", { key: row.key, value: e.currentTarget.value })}
+          on:input={(e) => { if (!ON_COMMIT.has(row.key)) d("change", { key: row.key, value: e.currentTarget.value }); }}
+          on:change={(e) => { if (ON_COMMIT.has(row.key)) d("change", { key: row.key, value: e.currentTarget.value }); }}
         />
         {#if row.hint}<span class="shapepop-hint">{row.hint}</span>{/if}
       </label>

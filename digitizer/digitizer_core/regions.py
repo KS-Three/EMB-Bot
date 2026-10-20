@@ -61,6 +61,7 @@ from shapely.ops import unary_union
 from shapely.validation import explain_validity
 
 from . import machine
+from .stitches import CAP_PIECE_PREFIX
 from .warnings_codes import (
     SHAPE_EDIT_UNKNOWN_ID,
     SHAPE_SPLIT_BY_USER,
@@ -214,8 +215,10 @@ def match_shape_ids(
 # rather than adding a new pass, so none of them need source pixels either.
 # See stage7_sequence.stitch_one's wave/chevron/brick branches, positioned
 # the same way as its crosshatch branch.
+# "fur" (2026-10-14) forces the randomised tatami (stage6_fill.
+# _fur_row_points) on one shape, the same reach as "brick".
 _TIER_VALUES = {"auto", "satin", "fill", "run", "sketch", "streamline", "crosshatch",
-                "wave", "chevron", "brick"}
+                "wave", "chevron", "brick", "fur"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim (mirrored in digitizer_service.app's
 # copy, which 400s the wire before this ever raises).
@@ -287,7 +290,10 @@ def apply_shape_edits(
     known = {r.shape_id for r in regions}
 
     removed = sorted({s for s in deleted_shape_ids if s in known})
-    unknown = {s for s in deleted_shape_ids if s not in known}
+    # A `cap:` id names a stretch of the silhouette cap, which stage 7 reads
+    # (`stage7_sequence._cap_follow_pieces`); it is not a missing shape.
+    unknown = {s for s in deleted_shape_ids
+               if s not in known and not s.startswith(CAP_PIECE_PREFIX)}
     if removed:
         gone = set(removed)
         regions = [r for r in regions if r.shape_id not in gone]
@@ -301,7 +307,8 @@ def apply_shape_edits(
             )
         )
 
-    unknown |= {s for s in shape_overrides if s not in known}
+    unknown |= {s for s in shape_overrides
+                if s not in known and not s.startswith(CAP_PIECE_PREFIX)}
     by_id = {r.shape_id: r for r in regions}
     # Sorted iteration: when two recolors both introduce new threads, the
     # palette order must not depend on dict insertion order.
@@ -369,6 +376,19 @@ def apply_shape_edits(
                     f"is not one of {sorted(_UNDERLAY_VALUES)}"
                 )
             r.meta["underlay_style"] = u
+
+        if ov.get("thread_wt") is not None:
+            # 2026-10-12 (`cfg.thread_wt`): the thread weight this shape's
+            # COLOUR BLOCK sews in. Stored per shape, resolved per block in
+            # `stage7_sequence.sequence` (finest weight a block's shapes
+            # name), because one colour is one needle.
+            wt = ov["thread_wt"]
+            if isinstance(wt, bool) or wt not in machine.THREAD_WEIGHTS:
+                raise ValueError(
+                    f"shape_overrides[{sid!r}].thread_wt {wt!r} is not one of "
+                    f"{list(machine.THREAD_WEIGHTS)}"
+                )
+            r.meta["thread_wt"] = int(wt)
 
         if ov.get("stitch_width_mm") is not None:
             # Contract v1.8 — the sewn column this shape should take, applied

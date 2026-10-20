@@ -50,6 +50,7 @@ from digitizer_core.warnings_codes import (EDGE_CAP_APPLIED,
                                            EDGE_CAP_OVER_BUDGET)
 
 from .conftest import TESTDATA
+from tests.conftest import own_thread_only
 
 BECKER = "becker_marine_logo.png"
 WHITEBG = "logo_whitebg.png"
@@ -97,6 +98,11 @@ def _run(fixture: str, width: float, cap: str = "bean",
                        edge_cap_over_budget=over_budget,
                        subpixel_edges_upscaled=False,
                        satin_lettering_split=False,
+                       # ...and the Column lane (`lettering_columns`, ON since
+                       # Kent's 2026-10-12 flip): it sews becker's MARINE
+                       # letters from their outline, so the edge-cap budget
+                       # these numbers price was read on the skeleton tier.
+                       lettering_columns=False,
                        # ...and the tracing grid at its pre-flip source line
                        # (`work_px_per_mm`, ON since 2026-10-01): becker
                        # traced at 5.8-7.2 px/mm is a third set of polygons,
@@ -153,13 +159,16 @@ def test_the_bill_splits_whole_rings_from_arcs_and_both_add_up(width):
     bill, block = _bill(plan), _cap_block(plan)
     assert bill is not None and block is not None
 
-    outline_runs = [r for r in block.runs if r.kind != stitches.TRAVEL]
+    # The cap's own runs: a cap in the last artwork block's cone sews at the
+    # end of that block (`_cap_seam_joins`), so the block also holds artwork.
+    cap_runs = [r for r in block.runs if r.shape_id == "__edge_cap__"]
+    outline_runs = [r for r in cap_runs if r.kind != stitches.TRAVEL]
     assert bill["whole_loops"] + bill["arcs"] == len(outline_runs), (
         f"{width} mm: the bill's run split {bill['whole_loops']}+"
         f"{bill['arcs']} does not add up to the {len(outline_runs)} outline "
         "runs the cap block actually carries")
     assert bill["edges"] == bill["whole_loops"] + bill["yielded"]
-    assert bill["stitches"] == block.stitch_count
+    assert bill["stitches"] == sum(len(r.points) for r in cap_runs)
 
 
 def test_the_ring_count_no_longer_falls_as_the_cap_gets_more_expensive():
@@ -282,7 +291,10 @@ def test_the_ceiling_does_not_fire_on_a_design_that_honestly_costs_a_quarter(wid
     """
     plan = _run(WHITEBG, width)
     bill = _bill(plan)
-    assert 20.0 < bill["percent"] < 27.0, bill["percent"]
+    # Ceiling 27 -> 28 on 2026-10-06: the cap now sews each stretch in the
+    # thread beside it (`edge_cap_follow_adjacent`), and every colour seam
+    # repeats one boundary point, so this design reads 27.0 where it read 26.3.
+    assert 20.0 < bill["percent"] < 28.0, bill["percent"]
     assert bill["over_budget"] is False
     assert _over(plan) is None
     assert bill["percent"] < EDGE_CAP_BUDGET_PCT / 1.4, (
@@ -316,7 +328,7 @@ def test_dropping_is_off_by_default_and_the_drop_never_executes(monkeypatch):
             return a
 
         monkeypatch.setattr(S, "EDGE_CAP_BUDGET_PCT", 1.0)
-        monkeypatch.setattr(S, "_over_budget_action", spy)
+        monkeypatch.setattr(S, "_over_budget_action", own_thread_only(spy, real))
         plan = digitize(TESTDATA / WHITEBG,
                         PipelineConfig(target_width_mm=CHEAP, edge_cap="bean",
                                        **({"edge_cap_over_budget": mode}

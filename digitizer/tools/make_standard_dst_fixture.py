@@ -43,6 +43,11 @@ def build() -> pystitch.EmbPattern:
 
 
 if __name__ == "__main__":
+    import sys as _sys
+    if {"-h", "--help"} & set(_sys.argv[1:]):
+        _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        print(__doc__ or "No usage text; see the source.")
+        raise SystemExit(0)
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     out = os.path.join(root, "test", "fixtures", "standard-tajima.dst")
     pattern = build()

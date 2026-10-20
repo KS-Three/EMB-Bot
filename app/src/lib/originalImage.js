@@ -77,11 +77,21 @@ export function flatContentBox(indices, w, h) {
   return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
 
+// Decoded originals, keyed by the (large) source string. Bounded: every distinct
+// upload used to stay here -- decoded bitmap plus its base64 key -- for the
+// whole session, and removing the element never evicted it. Map order is
+// insertion order, so re-inserting on a hit makes the first key the LRU one.
+export const ORIGINAL_CACHE_MAX = 8;
 const cache = new Map();
 export function loadOriginal(sourcePng) {
   const url = originalDataUrl(sourcePng);
   if (!url) return Promise.reject(new Error("no original"));
-  if (cache.has(sourcePng)) return cache.get(sourcePng);
+  if (cache.has(sourcePng)) {
+    const hit = cache.get(sourcePng);
+    cache.delete(sourcePng);
+    cache.set(sourcePng, hit);
+    return hit;
+  }
   const p = new Promise((resolve, reject) => {
     const im = new Image();
     im.onload = () => resolve(im);
@@ -89,5 +99,6 @@ export function loadOriginal(sourcePng) {
     im.src = url;
   });
   cache.set(sourcePng, p);
+  while (cache.size > ORIGINAL_CACHE_MAX) cache.delete(cache.keys().next().value);
   return p;
 }

@@ -46,6 +46,7 @@ from digitizer_core.stage4_vectorize import enforce_color_cap
 from digitizer_core.threads import chart_for
 
 from .conftest import TESTDATA, cfg
+from tests.conftest import own_thread_only
 
 CHART = chart_for(PipelineConfig())
 
@@ -253,7 +254,7 @@ def test_off_the_election_never_runs(monkeypatch):
             _c.append(1)
             return real(*a, **kw)
 
-        monkeypatch.setattr(P, "layer_palette_threads", shim)
+        monkeypatch.setattr(P, "layer_palette_threads", own_thread_only(shim, real))
         run_stages(TESTDATA / "logo_whitebg.png",
                    cfg(layer_palette_from_regions=on))
         monkeypatch.undo()

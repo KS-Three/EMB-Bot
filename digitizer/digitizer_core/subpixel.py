@@ -163,6 +163,45 @@ CORNER_FIT_RESIDUAL_PX = 0.25
 CORNER_FIT_MIN_SPAN_PX = 1.0
 CORNER_FIT_REACH_PX = 1.5 * math.sqrt(2.0)
 
+# `cfg.subpixel_corner_runs` (2026-10-11): three repairs to the native read
+# above, where it reverses the outline — a vertex turning back past 120 deg,
+# 7.1 per 100 mm on `becker_marine_logo.png` at its own 1.8 px/mm against
+# 0.0 with the read off (`docs/native-read-corners-2026-10-11.md`, the 10
+# worst rendered with their flags). Measured there, three mechanisms:
+#
+# 1. The side-line fit runs once PER FLAGGED VERTEX, and a corner is a RUN
+#    of flagged vertices (every vertex within about a corner-step of the
+#    turn sees it). On a sharp corner every vertex of the run gets the same
+#    meet; on a round turn of two or three source pixels — most of Becker's
+#    letters — each gets a different pair of short tangent lines, and
+#    their meets land out past the arc and out of order: a needle out and
+#    back. 86 of the 129 reversals had a fitted corner at or beside them.
+#    `_fit_corner_runs` fits ONE pair per run, from the read vertices before
+#    its first and after its last, and puts the whole run on that meet —
+#    refused when the meet falls behind either side's nearest point
+#    (`CORNER_RUN_FOLD_PX`), lies further than `CORNER_RUN_SUPPORT_PX`
+#    from every point the profile read placed in the run (a round turn's
+#    reads sit on the arc; a bevelled corner's within a bevel of the meet;
+#    a run nothing read gives no evidence either way), or further than
+#    `CORNER_RUN_REACH_PX` from the run's own trace (the ladder's eroded
+#    rectangle corners sit 1.48-1.61 px from their meet; this keeps them).
+# 2. A vertex the read could not place stays at its pixel CENTRE, half a
+#    pixel inside the edge every read neighbour sits on: an unread corner
+#    or a short rejected run is a notch, and its two sides turn back past
+#    120 deg. `_inherit_offsets` moves each such vertex out along its own
+#    normal by its read neighbours' offset, weighted by nearness — only
+#    BETWEEN two reads within `CORNER_INHERIT_STEPS_MULT` corner steps:
+#    one-sided, it dragged long unreadable gradient-lane boundaries off
+#    their truth (hotel_fremont at 1.8 px/mm, 0.072 -> 0.084 mm).
+# 3. Neighbouring vertices read along normals that disagree can cross:
+#    `drop_folds` drops a vertex that lands behind the last one kept,
+#    along the trace's own direction there (by more than
+#    `CORNER_RUN_FOLD_PX`, in the trace's pixels).
+CORNER_RUN_FOLD_PX = 0.0
+CORNER_RUN_SUPPORT_PX = 1.0
+CORNER_RUN_REACH_PX = 1.6
+CORNER_INHERIT_STEPS_MULT = 2.0
+
 
 def _fit_line(pts: np.ndarray) -> tuple[np.ndarray, np.ndarray, float, float] | None:
     """-> (point on the line, unit direction, rms residual px, span px) of
@@ -238,6 +277,99 @@ def _fit_corners(raw: np.ndarray, pts: np.ndarray, accepted: np.ndarray, protect
         protect[i] = False
 
 
+def _fit_corner_runs(raw: np.ndarray, pts: np.ndarray, accepted: np.ndarray, protect: np.ndarray,
+                     corner: np.ndarray, steps: int) -> None:
+    """`cfg.subpixel_corner_runs`: `_fit_corners` with ONE side-line pair
+    per run of consecutive `corner` vertices instead of one per vertex, in
+    place. See the note above `CORNER_RUN_FOLD_PX`."""
+    n = len(raw)
+    if n == 0 or not corner.any() or corner.all():
+        return
+    window = max(2, CORNER_FIT_STEPS_MULT * steps)
+    usable = accepted & ~corner
+    cos_corner = math.cos(math.radians(CORNER_DEG))
+    start = int(np.argmin(corner))                   # a non-corner vertex: no run wraps past it
+    order = (np.arange(n) + start) % n
+    flags = corner[order]
+    i = 0
+    while i < n:
+        if not flags[i]:
+            i += 1
+            continue
+        j = i
+        while j < n and flags[j]:
+            j += 1
+        run = order[i:j]
+        i = j
+        first, last = int(run[0]), int(run[-1])
+        prev_idx = (first - np.arange(1, window + 1)) % n
+        next_idx = (last + np.arange(1, window + 1)) % n
+        prev_pts = pts[prev_idx[usable[prev_idx]]]
+        next_pts = pts[next_idx[usable[next_idx]]]
+        a = _fit_line(prev_pts)
+        b = _fit_line(next_pts)
+        if a is None or b is None:
+            continue
+        pa, da, rms_a, span_a = a
+        pb, db, rms_b, span_b = b
+        if max(rms_a, rms_b) > CORNER_FIT_RESIDUAL_PX or min(span_a, span_b) < CORNER_FIT_MIN_SPAN_PX:
+            continue
+        if float((prev_pts[0] - prev_pts[-1]) @ da) < 0.0:
+            da = -da
+        if float((next_pts[-1] - next_pts[0]) @ db) < 0.0:
+            db = -db
+        if float(da @ db) > cos_corner:
+            continue
+        det = da[0] * (-db[1]) - da[1] * (-db[0])
+        if abs(det) < 1e-9:
+            continue
+        rhs = pb - pa
+        s = (rhs[0] * (-db[1]) - rhs[1] * (-db[0])) / det
+        meet = pa + s * da
+        if float(np.min(np.hypot(raw[run, 0] - meet[0], raw[run, 1] - meet[1]))) > CORNER_RUN_REACH_PX:
+            continue
+        # The meet must lie AHEAD of the side it ends and BEHIND the side it
+        # starts: one that falls behind either neighbour folds the ring back
+        # over it, a reversal by construction.
+        if float((meet - prev_pts[0]) @ da) < -CORNER_RUN_FOLD_PX:
+            continue
+        if float((next_pts[0] - meet) @ db) < -CORNER_RUN_FOLD_PX:
+            continue
+        # The meet must also be supported by the run itself: a true corner
+        # whose read was bevelled leaves its run's own points within a
+        # bevel of the meet; a round turn leaves them on the arc, and the
+        # two tangent lines meet out past it (a needle on the outline).
+        own = pts[run[accepted[run]]]
+        if len(own) and float(np.min(np.hypot(own[:, 0] - meet[0], own[:, 1] - meet[1]))) > CORNER_RUN_SUPPORT_PX:
+            continue
+        pts[run] = meet
+        accepted[run] = True
+        protect[run] = False
+
+
+def _inherit_offsets(raw: np.ndarray, pts: np.ndarray, accepted: np.ndarray, read: np.ndarray,
+                     normal: np.ndarray, ok: np.ndarray, reach: int) -> None:
+    """Move every vertex still not `accepted` out along its own normal by
+    the read offset of the nearest `read` vertices (profile reads, never a
+    corner) either side within `reach` steps, the nearer weighted more, in
+    place. Accepted stays False. See `CORNER_INHERIT_STEPS_MULT`."""
+    n = len(raw)
+    if n == 0 or accepted.all() or not read.any():
+        return
+    s_acc = ((pts - raw) * normal).sum(axis=1)
+    acc_idx = np.flatnonzero(read)
+    for i in np.flatnonzero(~accepted & ok):
+        # nearest accepted behind and ahead, round the ring
+        ahead = (acc_idx - i) % n
+        behind = (i - acc_idx) % n
+        ka, kb = int(np.argmin(ahead)), int(np.argmin(behind))
+        da, db = int(ahead[ka]), int(behind[kb])
+        if da > reach or db > reach:
+            continue
+        s = (s_acc[acc_idx[ka]] / da + s_acc[acc_idx[kb]] / db) / (1.0 / da + 1.0 / db)
+        pts[i] = raw[i] + float(s) * normal[i]
+
+
 def _oriented_normals(raw: np.ndarray, steps: int, inside) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """-> (normal from the chord `steps` behind to the vertex, normal from the
     vertex to `steps` ahead, ok) — each unit length and pointing OUTSIDE,
@@ -265,7 +397,8 @@ def subpixel_contour(raw_xy: np.ndarray, lab: np.ndarray, mask: np.ndarray,
                      min_contrast_de: float,
                      inside_fn=None,
                      step_scale: float = 1.0,
-                     corner_fit: bool = False) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+                     corner_fit: bool = False,
+                     corner_runs: bool = False) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """-> (points (N, 2) float64, accepted (N,) bool, corner (N,) bool).
 
     `raw_xy`: a closed contour of pixel centres, (x, y) in the frame of
@@ -396,9 +529,46 @@ def subpixel_contour(raw_xy: np.ndarray, lab: np.ndarray, mask: np.ndarray,
     # `CORNER_FIT_STEPS_MULT`. Only the native-resolution read asks for it;
     # at the default it is not run, so a native-resolution source's polygon
     # is untouched by this construction.
-    if corner_fit:
+    # `corner_runs` (`cfg.subpixel_corner_runs`, with `corner_fit` only):
+    # one fit per run of corners, then every vertex still unplaced moved
+    # out by its read neighbours' offset — see `CORNER_RUN_FOLD_PX`.
+    if corner_fit and corner_runs:
+        read = accepted.copy()
+        _fit_corner_runs(raw, pts, accepted, protect, corner, corner_steps)
+        _inherit_offsets(raw, pts, accepted, read, normal, ok,
+                         max(2, int(round(CORNER_INHERIT_STEPS_MULT * corner_steps))))
+    elif corner_fit:
         _fit_corners(raw, pts, accepted, protect, corner, corner_steps)
     return pts, accepted, protect
+
+
+def drop_folds(pts: np.ndarray, accepted: np.ndarray, protect: np.ndarray, raw: np.ndarray,
+               steps: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """`pts`/`accepted`/`protect` (a closed ring, index for index with the
+    trace `raw` it was read from) without every vertex that lands BEHIND the
+    last one kept, measured along the trace's own direction at that vertex
+    (the chord `steps` behind to `steps` ahead). See `CORNER_RUN_FOLD_PX`."""
+    n = len(pts)
+    if n < 2 * steps + 3:
+        return pts, accepted, protect
+    idx = np.arange(n)
+    tang = raw[(idx + steps) % n] - raw[(idx - steps) % n]
+    tlen = np.hypot(tang[:, 0], tang[:, 1])
+    ok = tlen > 1e-9
+    tang = tang / np.where(ok, tlen, 1.0)[:, None]
+    anchors = np.flatnonzero(accepted & ~protect & ok)
+    start = int(anchors[0]) if len(anchors) else 0
+    keep = np.zeros(n, dtype=bool)
+    keep[start] = True
+    last = pts[start]
+    for k in range(1, n):
+        i = (start + k) % n
+        if not ok[i] or float((pts[i] - last) @ tang[i]) > CORNER_RUN_FOLD_PX:
+            keep[i] = True
+            last = pts[i]
+    if keep.sum() < 3:
+        return pts, accepted, protect
+    return pts[keep], accepted[keep], protect[keep]
 
 
 def drop_isolated_rejects(pts: np.ndarray, accepted: np.ndarray,

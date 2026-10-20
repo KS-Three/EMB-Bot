@@ -1,5 +1,6 @@
 // Flatten pipeline preview: PNG -> quantize N -> modeFilter -> absorb -> flat PNG
 // (+ optional merges via MERGE env "0,1;3,4") -> digitize -> DST.
+import "./_help.mjs";
 import { createRequire } from "module";
 import fs from "node:fs";
 import { decodePNG, downscale, encodePNG } from "./png.mjs";

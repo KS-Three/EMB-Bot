@@ -6,6 +6,7 @@
 //     LETTER GLYPH, which is what buildLetteringDesign actually stitches
 //   - dropped fonts: broken metrics / degenerate geometry
 // Usage: node tools/qc-font.mjs <font.json> [...more]
+import "./_help.mjs";
 import { readFileSync } from "node:fs";
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";

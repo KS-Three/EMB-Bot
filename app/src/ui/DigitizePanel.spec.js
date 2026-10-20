@@ -23,6 +23,14 @@ import { render, fireEvent, waitFor } from "@testing-library/svelte";
 import "@testing-library/jest-dom/vitest";
 import Harness from "./DigitizePanel.testHarness.svelte";
 import { DEFAULT_DIGITIZE_PARAMS } from "../lib/project.js";
+import { advancedOpen } from "../lib/advanced.js";
+
+// Most of this panel's settings sit behind its "Advanced ›" fold (spec
+// 2026-09-30 §5), `hidden` while closed -- and Testing Library's role queries
+// skip hidden subtrees. This spec drives those settings, so it opens the fold
+// once; the fold itself is pinned in Advanced.spec.js and
+// ContentStep.advanced.spec.js.
+advancedOpen.set(true);
 
 // Only `loadImage` is controlled; the rest of lib/rasterize.js is the real
 // module, so `isVectorFile`/`rasterSize`/`UNREADABLE` are the shipped ones and
@@ -582,6 +590,32 @@ describe("Sequencer view", () => {
     expect(getByText("1000").closest("li")).not.toHaveTextContent("sews as");
   });
 
+  test("the Shapes row of a blended shape shows one swatch per shade and labels the tier", async () => {
+    const stats = {
+      blocks: [
+        { number: "1000", name: "Red", rgb: [200, 0, 0], shape_ids: ["a"] },
+        { number: "2100", name: "Dark green", rgb: [0, 120, 0], shape_ids: ["b"] },
+        { number: "2000", name: "Green", rgb: [0, 200, 0], shape_ids: ["b"] },
+        { number: "2200", name: "Light green", rgb: [0, 240, 0], shape_ids: ["b"] },
+      ],
+    };
+    const { container } = renderPanel(
+      [shapeRow("a", { layer: 0 }), shapeRow("b", { layer: 1, blended: true })],
+      { stats },
+    );
+    const plain = container.querySelector('[data-shape-id="a"]');
+    const blended = container.querySelector('[data-shape-id="b"]');
+    expect(blended.querySelectorAll(".dgp-lshades .dgp-seq-swatch")).toHaveLength(3);
+    expect(blended.querySelector(".dgp-lshades")).toHaveTextContent("2100");
+    expect(blended.querySelector(".dgp-lshades")).toHaveTextContent("2200");
+    expect(blended.querySelector("select option[value=auto]")).toHaveTextContent("Auto (blended, 3 shades)");
+    expect(blended).toHaveTextContent("base color only");
+    // A one-thread shape keeps the plain row and label.
+    expect(plain.querySelector(".dgp-lshades")).toBeNull();
+    expect(plain.querySelector("select option[value=auto]")).toHaveTextContent("Auto (fill)");
+    expect(plain).not.toHaveTextContent("base color only");
+  });
+
   test("a shape hidden or unstitched doesn't get its own block", async () => {
     const rows = [
       shapeRow("a", { layer: 0 }),
@@ -607,9 +641,47 @@ describe("Sequencer view", () => {
     expect(ov.a).toEqual({ layer: 1 });
     expect(ov.b).toEqual({ layer: 0 });
     expect(ov.c).toEqual({ layer: 0 });
-    // The third block ("d", layer 2) wasn't touched by a swap between the
-    // first two blocks.
-    expect(ov.d).toBeUndefined();
+    // The third block ("d", layer 2) does not swap, but it is PINNED where it
+    // sits: every sewable shape's layer is committed, so a later renumbering
+    // by the service cannot move it under the customer's order.
+    expect(ov.d).toEqual({ layer: 2 });
+  });
+
+  test("a block swap pins every sewable shape, and only those (not hidden or unstitched ones)", async () => {
+    // Stale-numbering case behind test_manual_sew_order.py: red/blue swap with
+    // an orange block in between and a hidden and an unstitched shape around.
+    const rows = [
+      shapeRow("red", { layer: 1, sewIndex: 0 }),
+      shapeRow("orange", { layer: 2, sewIndex: 1 }),
+      shapeRow("blue", { layer: 3, sewIndex: 2 }),
+      shapeRow("gone", { layer: 4, sewIndex: 3 }),
+      shapeRow("hole", { layer: 5, sewIndex: null, stitched: false }),
+    ];
+    const { getByRole, patches } = renderPanel(rows, { deletedShapeIds: ["gone"] });
+    await fireEvent.click(getByRole("button", { name: /Color sequence/ }));
+    const laterBtns = document.querySelectorAll('button[aria-label="Sew this color later"]');
+    await fireEvent.click(laterBtns[0]); // red past orange
+    const ov = patches[0].patch.shapeOverrides;
+    expect(ov.red).toEqual({ layer: 2 });
+    expect(ov.orange).toEqual({ layer: 1 });
+    expect(ov.blue).toEqual({ layer: 3 });
+    expect(ov.gone).toBeUndefined();
+    expect(ov.hole).toBeUndefined();
+  });
+
+  test("moving one shape across layers pins every other sewable shape's layer too", async () => {
+    const rows = [
+      shapeRow("a", { layer: 0, sewIndex: 0 }),
+      shapeRow("b", { layer: 1, sewIndex: 1 }),
+      shapeRow("c", { layer: 2, sewIndex: 2 }),
+    ];
+    const { patches } = renderPanel(rows);
+    const laterBtns = document.querySelectorAll('button[aria-label^="Sew later — "]');
+    await fireEvent.click(laterBtns[0]); // "a" past "b"'s layer (target 2)
+    const ov = patches[0].patch.shapeOverrides;
+    expect(ov.a).toEqual({ layer: 2 });
+    expect(ov.b).toEqual({ layer: 1 });
+    expect(ov.c).toEqual({ layer: 2 });
   });
 
   test("trims-per-1000 shows in the header when preflight data is present", () => {
@@ -1098,6 +1170,147 @@ describe("nothing runs until Auto Digitize Image is pressed", () => {
       params: { ...DEFAULT_DIGITIZE_PARAMS, target_width_mm: 123 },
     });
     expect(run()).toHaveClass("dgp-run-stale");
+  });
+});
+
+// ---- a re-digitize applies the changed result, settings unchanged ----------
+//
+// The 2026-10-15 report: the engine (the service) changed under an UNCHANGED
+// Studio config, the service's finished job read 14,824, yet the panel kept
+// showing the previous run's 14,812 and its old "Since last run" delta. The
+// apply path must land the new result on the element whenever a run finishes,
+// even when nothing in the Studio changed and the stitch count is close. (The
+// actual stuck instance was a transient poll failure abandoning a still-live
+// job — pinned at the unit level in digitizer.spec.js's pollJob tests; this
+// guards the panel half: a finished run is never silently kept-as-was.)
+describe("a finished re-digitize applies the new result even with settings unchanged", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  test("new stitch count and delta land; the previous run is not kept", async () => {
+    const mod = await import("../lib/digitizer.js");
+    vi.spyOn(mod, "digitize").mockResolvedValue({
+      design: { stitchCount: 14824, widthMM: 81, heightMM: 44, colorCount: 3, stitches: [], colors: [] },
+      warnings: [], review: null,
+      stats: { trims: 43, color_changes: 3 },
+      preflight: { score: 90, grade: "A", findings: [], metrics: { color_changes: 3 } },
+    });
+    // The element as it sits after the PREVIOUS run: 14,812 stitches, grade B.
+    const prior = {
+      result: { stitchCount: 14812, widthMM: 81, heightMM: 44, colorCount: 3, stitches: [], colors: [] },
+      stats: { trims: 46, color_changes: 3 },
+      preflight: { score: 88, grade: "B", findings: [], metrics: { color_changes: 3 } },
+      priorRun: { stitch_count: 14897, color_changes: 3, trims: 49, score: 85, grade: "C" },
+    };
+    const utils = render(Harness, {
+      props: { element: baseElement([], prior), health: { ok: true }, onPatch: () => {} },
+    });
+    const run = () => utils.container.querySelector(".dgp-run");
+    // Nothing changed in the Studio, so the button is solid (not stale) --
+    // this is precisely the "unchanged settings" case from the report.
+    expect(run()).not.toHaveClass("dgp-run-stale");
+    expect(utils.container.querySelector(".dgp-stats")).toHaveTextContent("14,812");
+
+    await fireEvent.click(run());
+
+    await waitFor(() =>
+      expect(utils.container.querySelector(".dgp-stats")).toHaveTextContent("14,824"));
+    expect(utils.container.querySelector(".dgp-stats")).not.toHaveTextContent("14,812");
+    // The delta is recomputed from THIS run's prior (14,812) to the new 14,824.
+    const delta = utils.getByTestId("digitize-delta").textContent;
+    expect(delta).toMatch(/\+12 stitches/);
+    expect(delta).toMatch(/−3 trims/);
+    expect(delta).toMatch(/B → A/);
+    expect(delta).not.toMatch(/−85 stitches/); // never the previous run's delta
+  });
+});
+
+// ---- a corner drag on the field is a Design width change -------------------
+//
+// The field's corner handles SCALE the baked stitches (generate.js passes
+// `sizeMm` to buildImportedDesign). Measured in the running Studio 2026-10-08
+// on logo_golden_tee.jpg: dragged 80 -> 62 mm, the caption still read 8,764
+// stitches — 1.66x the thread per mm² — while the Auto Digitize button stayed
+// SOLID, Design width still said 80, and the only word about it sat under the
+// fold. Its "Re-digitize at 62 mm" button then put the design BACK at 80 mm
+// and ran nothing: it cleared the scale and waited for the automatic re-run
+// Kent's 2026-10-05 ruling removed.
+describe("a resize on the field", () => {
+  let cfgs;
+  // 80 x 40 mm as digitized (0.1 mm units), so a sizeMm of 60 is a 75% drag.
+  const RESULT = {
+    stitches: [{ x: 0, y: 0, type: "stitch" }, { x: 800, y: 400, type: "stitch" }],
+    colors: [], stitchCount: 2, colorCount: 1, name: "t", widthMM: 80, heightMM: 40,
+  };
+  beforeEach(() => { cfgs = []; vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  async function panel(extra = {}) {
+    const mod = await import("../lib/digitizer.js");
+    const applied = mod.configKey(mod.buildDigitizeConfig(baseElement([], { result: RESULT }), {}));
+    vi.spyOn(mod, "digitize").mockImplementation((_img, cfg) => {
+      cfgs.push(cfg);
+      return Promise.resolve({ design: { ...RESULT }, warnings: [], review: null, stats: null, preflight: null });
+    });
+    const patches = [];
+    const utils = render(Harness, {
+      props: {
+        element: baseElement([], { result: RESULT, appliedConfig: applied, ...extra }),
+        health: { ok: true },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    const run = () => utils.container.querySelector(".dgp-run");
+    const width = () => utils.getByLabelText(/Design width/);
+    return { ...utils, patches, run, width };
+  }
+  const settle = () => vi.advanceTimersByTimeAsync(5000);
+
+  test("at its digitized size the design is current", async () => {
+    const { run, width } = await panel({ sizeMm: 80 });
+    expect(run()).not.toHaveClass("dgp-run-stale");
+    expect(width()).toHaveValue(80);
+  });
+
+  test("a drag turns the button transparent, says so, and Design width shows the dragged width", async () => {
+    const { run, width, getByTestId } = await panel({ sizeMm: 60 });
+    await settle();
+    expect(cfgs).toHaveLength(0);                       // still nothing runs on its own
+    expect(run()).toHaveClass("dgp-run-stale");
+    expect(width()).toHaveValue(60);
+    expect(getByTestId("digitize-stale")).toHaveTextContent(/Resized to 60 mm/);
+  });
+
+  test("Auto Digitize Image runs AT the dragged width and the scale goes on landing", async () => {
+    const { run, patches } = await panel({ sizeMm: 60 });
+    await fireEvent.click(run());
+    await settle();
+    expect(cfgs).toHaveLength(1);
+    expect(cfgs[0].target_width_mm).toBe(60);
+    const last = patches[patches.length - 1].patch;
+    expect(last.sizeMm).toBeNull();
+    expect(last.params.target_width_mm).toBe(60);
+    expect(run()).not.toHaveClass("dgp-run-stale");
+  });
+
+  test("Re-digitize at N mm RUNS, and never puts the design back at its old size first", async () => {
+    const { getByRole, patches } = await panel({ sizeMm: 60 });
+    await fireEvent.click(getByRole("button", { name: "Re-digitize at 60 mm" }));
+    await settle();
+    expect(cfgs).toHaveLength(1);
+    expect(cfgs[0].target_width_mm).toBe(60);
+    // The one patch is the landing: no earlier patch dropped the scale while
+    // the old 80 mm stitches were still the result.
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.result).toBeTruthy();
+    expect(patches[0].patch.sizeMm).toBeNull();
+  });
+
+  test("a typed width replaces the dragged one", async () => {
+    const { width, patches } = await panel({ sizeMm: 60 });
+    await fireEvent.change(width(), { target: { value: "70" } });
+    const last = patches[patches.length - 1].patch;
+    expect(last.params.target_width_mm).toBe(70);
+    expect(last.sizeMm).toBeNull();
   });
 });
 

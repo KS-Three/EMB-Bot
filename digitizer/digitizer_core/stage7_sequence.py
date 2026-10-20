@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import heapq
 import math
+from dataclasses import replace
 
 import shapely
 from shapely.geometry import LineString, Point, Polygon
@@ -60,15 +61,32 @@ from .config import PipelineConfig
 from .fabrics import Fabric
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
 from .beanletters import BEAN_LETTER_KEY
-from .stage5_overlap import PlannedRegion, widened_lettering
+from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
+from .columns import (is_lettering, is_thin_stem, lettering_columns_shape,
+                      small_print_clear,
+                      small_print_counter_set, small_print_counters)
+from .words import is_text, word_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
                             run_outline, silhouette_cap)
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
+# Imported under another name: `hairline_runs` is already this module's count
+# of `stage6_satin._hairline_stretches` strokes (the HAIRLINE_STROKES_AS_RUN
+# warning), a different, older thing.
+from .stage6_hairline import REST_KEY as HAIRLINE_REST_KEY
+from .stage6_hairline import hairline_candidates, rest_planned
+from .stage6_small_letter import REPORT_KEY as SMALL_LETTER_KEY
+from .stage6_small_letter import glyph_polygon, skeleton_letter_runs, text_line_members
+from .stage6_hairline import hairline_runs as hairline_tier_runs
+from .stage6_hairline import HairlineSet
+from .stage6_hairline_lines import applies as hairline_lines_apply
+from .stage6_hairline_lines import strand_blocks
+from .stage6_hairline_lines import supplement_test as hairline_supplement_test
+from .stage6_hairline_lines import supplements as hairline_lines_supplements
 from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
@@ -76,15 +94,18 @@ from .stage6_sketch import sketch_fill
 from .stage6_satin import classify_ribbon, satin_shape
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
+from .detail_spokes import spoke_runs
 from .threads import chart_for
 from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
+                             CLIP_DROPPED_SLIVER,
                              BORDER_SEAM_SHARED,
                              BORDER_SKIPPED_TOO_NARROW,
                              CONTOUR_DIRECTIONAL_COMP_UNSEWN,
-                             CONTOUR_RING_UNREACHABLE, EDGE_CAP_APPLIED,
+                             CONTOUR_RING_UNREACHABLE, DETAIL_SPOKES_SEWN,
+                             EDGE_CAP_APPLIED,
                              EDGE_CAP_EMPTY,
                              EDGE_CAP_LIGHTENED, EDGE_CAP_OVER_BUDGET,
-                             HAIRLINE_STROKES_AS_RUN,
+                             HAIRLINE_STROKES_AS_RUN, HAIRLINE_TIER_SEWN,
                              LONG_JUMPS_TRIMMED,
                              SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL,
                              SMALL_LETTERING_AS_BEAN,
@@ -234,9 +255,18 @@ def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float
     2026-09-19: split, never fill, for lettering). One helper, so the
     borders-last predicate, the classifier call and the emitter agree on
     what a letter is admitted at."""
-    if cfg.satin_lettering_split and region.meta.get("text_candidate"):
+    if cfg.satin_lettering_split and is_text(region, cfg):
         return math.inf, True, True
     return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
+
+
+def _word_tier(region, cfg: PipelineConfig) -> str | None:
+    """L3's per-word tier (`words.assign_word_tiers`) when
+    `cfg.lettering_word_tiers` is on, else None -- the one read every
+    stage-7 tier decision makes, so they cannot disagree."""
+    if not cfg.lettering_word_tiers:
+        return None
+    return region.meta.get("word_tier")
 
 
 def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
@@ -303,6 +333,13 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
         return True
     if tier == "auto" and region.meta.get(BEAN_LETTER_KEY):
         return False        # a bean letter (`beanletters.tag_bean_letters`): runs, not columns
+    wt = _word_tier(region, cfg)
+    if tier == "auto" and wt == "run":
+        return False        # L3: the word sews on the run tier
+    if tier == "auto" and wt in ("satin", "widened") and cfg.satin:
+        return True         # L3: the word sews satin, every letter of it
+    if tier == "auto" and cfg.lettering_columns and cfg.satin and is_lettering(region, cfg):
+        return True         # a Column letter (`cfg.lettering_columns`): satin on its artwork outline
     satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
     return (tier == "auto" and cfg.satin
             and classify_ribbon(region.polygon, satin_max_mm,
@@ -430,7 +467,7 @@ def _ring_points(geom) -> list[tuple[float, float]]:
 
 
 def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion],
-                run_tier_art=None):
+                run_tier_art=None, forbid=None):
     """Where this colour's needle may travel down without showing.
 
     -> (cover geometry, candidate waypoints), or (None, []) with nothing to go on.
@@ -549,6 +586,12 @@ def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion],
     # resulting simple capsules is cheap too. Same geometry, the order that
     # does not fall off GEOS's performance cliff.
     cover = unary_union([g.buffer(machine.LINK_COVER_TOL_MM) for g in parts])
+    if forbid is not None and not forbid.is_empty:
+        # `cfg.small_print_floor`: a letter's counter is bare fabric even
+        # where the thread around it, buffered to its width, closes over it.
+        cover = cover.difference(forbid)
+        if cover.is_empty:
+            return None, []
     shapely.prepare(cover)
     lean = raw.simplify(machine.LINK_COVER_TOL_MM / 2.0)
     return cover, _ring_points(raw if lean.is_empty else lean)
@@ -644,7 +687,7 @@ def _link_stitches(route: list[tuple[float, float]]) -> list[tuple[float, float]
 
 
 def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int,
-           run_tier_art=None) -> tuple[list[StitchRun], int]:
+           run_tier_art=None, forbid=None) -> tuple[list[StitchRun], int]:
     """Sew every needle-up move this colour can bury. -> (runs, in-shape links).
 
     Runs in one pass over the finished block, after every shape has stitched,
@@ -689,7 +732,7 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int
     """
     if len(runs) < 2 or not regions:
         return runs, 0
-    cover, waypoints = _link_cover(runs, regions, run_tier_art)
+    cover, waypoints = _link_cover(runs, regions, run_tier_art, forbid)
     if cover is None:
         return runs, 0
 
@@ -794,6 +837,43 @@ def _merge_adjacent_same_thread(blocks: list[StitchBlock],
         else:
             out.append(b)
     return out
+
+
+# The most stitches `cfg.satin_mid_entry` will spend to save one cut -- the
+# exchange rate `tools/trim_exchange_sweep.py` scores ordering changes at.
+_MID_ENTRY_MAX_STITCHES = 25
+
+
+def _satin_mid_entry(runs: list[StitchRun], cursor: tuple[float, float],
+                     trim_at: float) -> list[StitchRun]:
+    """Reach a satin column's start along its own centreline (cfg.satin_mid_entry).
+
+    -> `runs`, with a TRAVEL run prepended when the needle at `cursor` is over
+    `trim_at` from the first satin run's start but within it of a centreline
+    station (the midpoint of two consecutive satin points, which alternate
+    rails). The travel walks the stations back to the start at the travel
+    pitch; the satin then sews rail to rail over every stitch of it, so the
+    thread is under this shape's own top cover by construction. Anything else
+    -- an underlay first, a column already in reach, nothing in reach, a walk
+    dearer than `_MID_ENTRY_MAX_STITCHES` -- returns `runs` unchanged.
+    """
+    if not runs or runs[0].kind != stitches.SATIN or len(runs[0].points) < 4:
+        return runs
+    pts = runs[0].points
+    if math.dist(cursor, pts[0]) <= trim_at:
+        return runs
+    mids = [((pts[k][0] + pts[k + 1][0]) / 2, (pts[k][1] + pts[k + 1][1]) / 2)
+            for k in range(len(pts) - 1)]
+    j = min(range(len(mids)), key=lambda k: (math.dist(cursor, mids[k]), k))
+    if math.dist(cursor, mids[j]) > trim_at:
+        return runs
+    walk = [mids[j]]
+    for q in mids[j - 1::-1] if j else ():
+        if math.dist(walk[-1], q) >= machine.TRAVEL_STITCH_MM or q == mids[0]:
+            walk.extend(_densify(walk[-1], q, machine.TRAVEL_STITCH_MM))
+    if len(walk) > _MID_ENTRY_MAX_STITCHES:
+        return runs
+    return [StitchRun(walk, kind=stitches.TRAVEL, shape_id=runs[0].shape_id)] + runs
 
 
 def _within_margin(a, b, margin_mm: float) -> bool:
@@ -924,7 +1004,8 @@ def _hoist_same_thread(blocks: list[StitchBlock], trim_at: float,
 
 
 def _shade_blocks(ordered: list[StitchRun], base_thread: int, chart,
-                  trim_at: float, tie: bool = True) -> list[StitchBlock]:
+                  trim_at: float, tie: bool = True,
+                  **tie_kw) -> list[StitchBlock]:
     """One group's finished, chained run list -> one StitchBlock per shade,
     dark to light.
 
@@ -993,7 +1074,8 @@ def _shade_blocks(ordered: list[StitchRun], base_thread: int, chart,
         # same-thread blocks first — `apply_ties` is not idempotent, so it has
         # to run once, on the final block list.
         if tie:
-            _apply_ties(shade_runs)
+            # `tie_kw`: `cfg.small_letter_ties`' shape ids, or nothing.
+            _apply_ties(shade_runs, **tie_kw)
         thread = chart[key]
         out.append(
             StitchBlock(
@@ -1310,7 +1392,7 @@ def _sewn_linear_cover(blocks: list[StitchBlock]):
 
 
 def _satin_lettering_cover(cap_sewn: list[PlannedRegion],
-                           blocks: list[StitchBlock]):
+                           blocks: list[StitchBlock], cfg=None):
     """The outlines the cap leaves alone under `cfg.edge_cap_skip_lettering`
     (lettering construction plan step 5, 2026-09-19): every text-cluster
     member that sewed as SATIN, as the polygon it sewed -- the same
@@ -1335,7 +1417,7 @@ def _satin_lettering_cover(cap_sewn: list[PlannedRegion],
             elif r.kind == stitches.FILL:
                 fill_ids.add(r.shape_id)
     polys = [p.polygon for p in cap_sewn
-             if p.region.meta.get("text_candidate")
+             if is_text(p.region, cfg)
              and p.shape_id in satin_ids and p.shape_id not in fill_ids
              and p.polygon is not None and not p.polygon.is_empty]
     if not polys:
@@ -1345,7 +1427,8 @@ def _satin_lettering_cover(cap_sewn: list[PlannedRegion],
 
 def _gate_saving(silhouette, omit, gated_runs, *, style: str,
                  entry, trim_at_mm: float,
-                 width_mm: float | None) -> tuple[float, float]:
+                 width_mm: float | None,
+                 bean_stitch_mm: float | None = None) -> tuple[float, float]:
     """-> (what the cap's gate saved, in %, how much cover it had, in mm²).
 
     `1 - gated/ungated` over the SAME geometry: the same cap emitted twice,
@@ -1380,7 +1463,8 @@ def _gate_saving(silhouette, omit, gated_runs, *, style: str,
         return 0.0, cover_mm2
     ungated, _report = silhouette_cap(silhouette, "__edge_cap__", style=style,
                                       entry=entry, trim_at_mm=trim_at_mm,
-                                      width_mm=width_mm, omit=None)
+                                      width_mm=width_mm, omit=None,
+                                      bean_stitch_mm=bean_stitch_mm)
     ungated_st = sum(len(r.points) for r in ungated)
     if not ungated_st:
         return 0.0, cover_mm2
@@ -1513,6 +1597,198 @@ def _cap_thread(silhouette, sewn: list[PlannedRegion],
     return min(frontage, key=lambda ti: (-round(frontage[ti], 6), ti))
 
 
+# A cap stretch shorter than this (path mm) folds into the stretch before it
+# rather than sewing a colour change of its own: the nearest-edge vote flips
+# back and forth within a millimetre of a junction, and a cone swap for a
+# crumb costs more than the mismatch it cures.
+_CAP_PIECE_MIN_MM = 4.0
+
+
+def _cap_piece_id(pts, taken: set[str]) -> str:
+    """`cap:<x>:<y>` -- the stretch's midpoint along its own path, plan mm
+    rounded to 1 mm. Geometry only (never the thread), so recolouring a
+    stretch does not rename it; a clash takes `-2`, `-3`... in path order."""
+    half = sum(math.dist(a, b) for a, b in zip(pts, pts[1:])) / 2.0
+    run = 0.0
+    mid = pts[0]
+    for a, b in zip(pts, pts[1:]):
+        seg = math.dist(a, b)
+        if run + seg >= half:
+            f = (half - run) / seg if seg > 0 else 0.0
+            mid = (a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f)
+            break
+        run += seg
+    base = f"{stitches.CAP_PIECE_PREFIX}{round(mid[0])}:{round(mid[1])}"
+    pid, n = base, 1
+    while pid in taken:
+        n += 1
+        pid = f"{base}-{n}"
+    taken.add(pid)
+    return pid
+
+
+def _cap_fold_host(blocks: list[StitchBlock], n_art: int, c_index: int,
+                   cap_runs: list[StitchRun], clear_mm: float):
+    """-> the artwork block a cone's cap stretches can sew at the end of, or
+    None (`cfg.edge_cap_fold_into_colour`).
+
+    The host is the LAST artwork block in that cone, and only when no artwork
+    block after it sews a needle-down stitch within `clear_mm` of any of the
+    stretches. When nothing later touches the stretch, sewing it at the end
+    of its own colour leaves the same thread on top of the same rows as
+    sewing it in a block of its own at the very end; the difference is one
+    fewer machine stop. A cone with any touched stretch keeps its own block
+    for ALL of its stretches: a partial fold moves stitches and saves no stop.
+    Cap stretches of other cones are not "later artwork" -- appended or
+    already folded into a later host: they meet this cone's stretches end to
+    end on the ring, they do not lie over them. Which end lies on top at such
+    a junction can flip with the fold (a millimetre or two of bean, measured
+    by `tools/cap_fold_ab.py`'s diff_px); artwork rows cannot.
+    """
+    host_i = next((i for i in range(n_art - 1, -1, -1)
+                   if blocks[i].thread_index == c_index and blocks[i].runs
+                   and blocks[i].step is None), None)
+    if host_i is None:
+        return None
+    later = [LineString(r.points) for b in blocks[host_i + 1:n_art]
+             for r in b.runs
+             if len(r.points) >= 2 and r.shape_id != "__edge_cap__"]
+    if later:
+        tree = shapely.STRtree(later)
+        for r in cap_runs:
+            if len(r.points) < 2:
+                continue
+            reach = LineString(r.points).buffer(clear_mm)
+            if len(tree.query(reach, predicate="intersects")):
+                return None
+    return blocks[host_i]
+
+
+def _cap_seam_joins(blocks: list[StitchBlock], c_index: int,
+                    cfg: PipelineConfig) -> bool:
+    """True when a cap block in cone `c_index` would sew straight after a
+    block in that same cone -- the edge cap's repeated-cone route (MASTER_SCOPE
+    defect 18), read by `tools/cone_revisits.py` at gap 1.
+
+    `cfg.merge_adjacent_same_thread` already folds consecutive same-thread
+    ARTWORK blocks; this is the same rule at the one seam it did not reach.
+    The caller extends `blocks[-1]` with the cap's runs instead of appending a
+    block: they stay jump + trim + tied as a block start, so every stitch and
+    cut is the same and in the same order -- only the stop goes. Nothing moves
+    past anything, which is what separates it from
+    `cfg.edge_cap_fold_into_colour` (`_cap_fold_host`, OFF). An operator-step
+    block (appliqué, puff) is never joined: its stop is the operator's.
+    """
+    if not (cfg.merge_adjacent_same_thread and blocks):
+        return False
+    prev = blocks[-1]
+    return (prev.thread_index == c_index and prev.step is None
+            and bool(prev.runs))
+
+
+def _cap_follow_pieces(runs, sewn: list[PlannedRegion], cfg: PipelineConfig):
+    """Split the cap's runs into stretches, each tagged with the thread of the
+    sewn region whose edge it stands against.
+
+    -> list of (thread_index, StitchRun, was_split), in path order, or None
+    when there is nothing to vote with (the caller then keeps the single
+    block). Each stretch repeats the boundary point it shares with the next so
+    the cap stays one unbroken line across a colour change. `_cap_thread`
+    answers one cone for the whole ring, which is right for a one-colour edge
+    and wrong wherever the silhouette passes a second colour.
+
+    Every stretch carries a `cap:` id (`_cap_piece_id`) and is editable like a
+    shape: the id in `cfg.deleted_shape_ids` drops it, and a `thread_index` on
+    `cfg.shape_overrides[id]` sews it in that cone instead. Edits are applied
+    AFTER the split, so recolouring one stretch never moves another's seam.
+    """
+    bounds = [p.polygon.boundary for p in sewn]
+    threads = [p.region.thread_index for p in sewn]
+    if not bounds:
+        return None
+    try:
+        tree = shapely.STRtree(bounds)
+    except Exception:
+        return None
+
+    def seg_thread(a, b):
+        try:
+            seg = LineString([a, b])
+            if seg.length <= 0:
+                return None
+            idx = tree.nearest(seg.interpolate(0.5, normalized=True))
+        except Exception:
+            return None
+        return threads[int(idx)] if idx is not None else None
+
+    deleted = set(cfg.deleted_shape_ids or ())
+    overrides = cfg.shape_overrides or {}
+    chart_len = len(chart_for(cfg))
+    taken: set[str] = set()
+    out = []
+    for r in runs or ():
+        pts = list(getattr(r, "points", ()) or ())
+        if len(pts) < 2:
+            continue
+        labels = [seg_thread(a, b) for a, b in zip(pts, pts[1:])]
+        # Segments with no verdict take the one before (or after, at the start).
+        last = next((t for t in labels if t is not None), None)
+        for i, t in enumerate(labels):
+            if t is None:
+                labels[i] = last
+            else:
+                last = t
+        # Contiguous spans [start, end) of equal label.
+        spans = []
+        for i, t in enumerate(labels):
+            if spans and spans[-1][2] == t:
+                spans[-1][1] = i + 1
+            else:
+                spans.append([i, i + 1, t])
+
+        def span_mm(sp):
+            return sum(math.dist(pts[k], pts[k + 1]) for k in range(sp[0], sp[1]))
+
+        # Fold short spans into the previous one (the first folds forward).
+        merged = []
+        for sp in spans:
+            if merged and span_mm(sp) < _CAP_PIECE_MIN_MM:
+                merged[-1][1] = sp[1]
+            else:
+                merged.append(list(sp))
+        if len(merged) > 1 and span_mm(merged[0]) < _CAP_PIECE_MIN_MM:
+            merged[1][0] = merged[0][0]
+            merged.pop(0)
+        # Folding can leave neighbours with equal labels.
+        joined = []
+        for sp in merged:
+            if joined and joined[-1][2] == sp[2]:
+                joined[-1][1] = sp[1]
+            else:
+                joined.append(sp)
+        for k, (i0, i1, t) in enumerate(joined):
+            seg_pts = pts[i0:i1 + 1]
+            split = len(joined) > 1
+            pid = _cap_piece_id(seg_pts, taken)
+            if pid in deleted:
+                continue
+            ov = (overrides.get(pid) or {}).get("thread_index")
+            if isinstance(ov, int) and not isinstance(ov, bool) and 0 <= ov < chart_len:
+                t = ov
+            if split:
+                # The first stretch of a run starts where the run did, so it
+                # keeps the emitter's lift/cut; later ones start mid-ring.
+                piece = StitchRun(points=seg_pts, kind=r.kind,
+                                  jump=r.jump if k == 0 else True,
+                                  trim=r.trim if k == 0 else True,
+                                  shape_id=r.shape_id, role=r.role, piece=pid)
+            else:
+                r.piece = pid
+                piece = r
+            out.append((t, piece, split and k > 0))
+    return out
+
+
 def _border_seam_warning(seams: list[tuple[str, str, float]]) -> dict | None:
     """`BORDER_SEAM_SHARED`, built from the seams `_owned_by_later` handed to
     a later-sewn shape — or `None` when no two bordered shapes shared one.
@@ -1552,6 +1828,126 @@ def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
     return p.stitch_angle_deg
 
 
+def _sew_rest_pieces(pieces, stitch_one, entry, exit_near, trim_at):
+    """The thick branches of a hairline shape (`stage6_hairline.rest_planned`),
+    one ladder call per connected piece, nearest piece to the needle first.
+    -> (runs, merged report | None, filled). A piece the ladder cannot sew is
+    skipped; the reports' counts add and their flags OR."""
+    runs: list[StitchRun] = []
+    rep: dict | None = None
+    filled = False
+    cur = entry
+    todo = list(pieces)
+    while todo:
+        if cur is not None:
+            here = Point(cur)
+            todo.sort(key=lambda q: round(q.polygon.distance(here), 6))
+        piece = todo.pop(0)
+        got, got_rep, got_filled = stitch_one(piece, cur, exit_near)
+        if not got:
+            continue
+        if rep is None:
+            rep, filled = dict(got_rep), got_filled
+        else:
+            hop = math.dist(runs[-1].points[-1], got[0].points[0])
+            if hop >= TINY_STITCH_MM:
+                got[0].jump = True
+                got[0].trim = hop > trim_at
+                got_rep["jumps"] += 1
+            for key, val in got_rep.items():
+                if isinstance(val, bool):
+                    rep[key] = rep.get(key, False) or val
+                elif isinstance(val, (int, float)):
+                    rep[key] = rep.get(key, 0) + val
+            filled = filled or got_filled
+        runs.extend(got)
+        cur = runs[-1].points[-1]
+    return runs, rep, filled
+
+
+def _spoke_host(mark: PlannedRegion, planned: list[PlannedRegion]) -> PlannedRegion | None:
+    """The shape a spoked mark sits on: a planned region of another thread
+    whose ARTWORK covers the mark's centre -- in the layer stage 3 named,
+    else the latest-sewn such shape. None when nothing covers it (the host
+    was deleted in review, or sewed nothing)."""
+    spec = mark.region.meta["detail_spokes"]
+    centre = Point(spec["centre"])
+    hosts = [p for p in planned
+             if p is not mark and p.region.thread_index != mark.region.thread_index
+             and p.region.polygon.covers(centre)]
+    if not hosts:
+        return None
+    named = [p for p in hosts if p.layer == spec.get("host_layer")]
+    return max(named or hosts, key=lambda p: (p.sew_index, p.region.area_mm2))
+
+
+def spoke_floor_mm(design_width_mm: float | None) -> float:
+    """The spoke floor for a design `design_width_mm` wide:
+    `machine.DETAIL_SPOKE_MIN_MM` scaled from the pro's Hat file's width
+    (`machine.DETAIL_SPOKE_REF_WIDTH_MM`) -- 1.45 mm at 92.6, 1.25 at 80. An
+    unknown or empty width keeps the pro's own number."""
+    if not design_width_mm or design_width_mm <= 0:
+        return machine.DETAIL_SPOKE_MIN_MM
+    return machine.DETAIL_SPOKE_MIN_MM * float(design_width_mm) / machine.DETAIL_SPOKE_REF_WIDTH_MM
+
+
+def _place_spoke_marks(marks: list[PlannedRegion], planned: list[PlannedRegion],
+                       blocks: list[StitchBlock], cfg: PipelineConfig,
+                       trim_at: float, design_width_mm: float | None = None) -> dict:
+    """Sew each spoked detail mark (`cfg.detail_spokes`) AFTER its host.
+
+    The mark's run (`detail_spokes.spoke_runs`: centre -> tip -> centre per
+    tip, in the mark's own thread, each spoke at least
+    `spoke_floor_mm(design_width_mm)`) goes into the first block of that
+    thread that follows the host's block -- Fremont's white edge cap, so the
+    mark costs no colour change there -- or, when none follows, into a block
+    of its own inserted straight after the host's: the colour revisit the
+    pro's own file pays. A mark whose host cannot be found sews at the end
+    of the design. Mutates `blocks`; returns the warning's numbers.
+    """
+    chart = chart_for(cfg)
+    floor = spoke_floor_mm(design_width_mm)
+    count = spokes = colour_changes = 0
+    ids: list[str] = []
+    for mark in marks:
+        spec = mark.region.meta["detail_spokes"]
+        runs, report = spoke_runs(tuple(spec["centre"]), [tuple(t) for t in spec["tips"]],
+                                  mark.shape_id, min_mm=floor)
+        if report["empty"]:
+            continue
+        host = _spoke_host(mark, planned)
+        host_at: int | None = None
+        if host is not None:
+            hid = host.shape_id
+            for k, b in enumerate(blocks):
+                if any(r.shape_id == hid or r.shape_id.startswith(hid + "-") for r in b.runs):
+                    host_at = k
+        t_index = mark.region.thread_index
+        start = host_at + 1 if host_at is not None else len(blocks)
+        later = next((k for k in range(start, len(blocks))
+                      if blocks[k].thread_index == t_index and blocks[k].step is None), None)
+        if later is not None:
+            block = blocks[later]
+            runs[0].jump = True
+            runs[0].trim = math.dist(block.runs[-1].points[-1], runs[0].points[0]) > trim_at
+            _apply_ties(runs)
+            block.runs.extend(runs)
+        else:
+            # The needle always lifts into a new block and the thread is
+            # always cut coming out of the previous one.
+            runs[0].jump = True
+            runs[0].trim = True
+            _apply_ties(runs)
+            thread = chart[t_index]
+            blocks.insert(start, StitchBlock(thread_index=t_index, thread_number=thread.number,
+                                             rgb=tuple(thread.rgb), runs=runs))
+            colour_changes += 1
+        count += 1
+        spokes += report["spokes"]
+        ids.append(mark.shape_id)
+    return {"count": count, "spokes": spokes, "colour_changes": colour_changes, "ids": ids}
+
+
 def sequence(
     planned: list[PlannedRegion], fabric: Fabric, cfg: PipelineConfig,
     source_pixels: SourcePixels | None = None,
@@ -1560,8 +1956,19 @@ def sequence(
     streamline_mode: str | None = None,
     detail_layer: bool | None = None,
     palette_spools: list[int] | None = None,
+    hairline: dict | None = None,
+    ink_source=None,
+    counter_holes: list | None = None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings).
+
+    `counter_holes` (`cfg.open_cored_counters`, 2026-10-19): the polygons
+    of the cored counters stage 3 kept (`Region.meta["cored_counter"]`,
+    unstitched, so not in `planned`), from `plan_stitches`. A satin shape
+    whose polygon has one of them as a hole gets the small-print holds on
+    that hole (`cored_holes_of`): the plain tier's `satin_shape` and the
+    Column lane's `lettering_columns_shape` both take it, and no chained
+    link crosses one. None, the default, is byte-identical.
 
     `design_class` is stage 0's verdict (PipelineResult.design_class, handed
     through by plan_stitches). Only the photo classes change anything here —
@@ -1604,6 +2011,56 @@ def sequence(
     keeps. None (every pre-existing caller, every non-demand run) is
     byte-identical to the parameter not existing.
     """
+    # The Column lane keeps the OFF path's sew order (`cfg.lettering_columns`,
+    # 2026-10-12). Within a colour the pick below is nearest-neighbour from
+    # where the last shape ENDED, and a Column letter ends somewhere else than
+    # the satin tier's letter did -- usually nearer its exit target, which is
+    # the point of `satin_exit_toward_next`. That moved every pick after it:
+    # on golden_tee one letter's exit swapped a non-letter shape ahead of the
+    # next letter, so the colour's last shape changed, so the NEXT colour
+    # started from the other side and sewed its four shapes in reverse
+    # (S0eec8aa3 ... S75fc74c9, #828). A non-letter shape then starts and
+    # ends elsewhere, and its edges with the colours round it come out
+    # different. The lane is a letter-construction change, not a sequencing
+    # one, so the order is the OFF path's: the same plan sequenced once with
+    # the lane off (letters on the satin ladder, nothing else different),
+    # each shape ranked by where it first sews there, and the pick below
+    # follows that rank. Letters the OFF path sews back to back (a SPAN) stay
+    # back to back, but among themselves keep nearest-neighbour from the
+    # needle: that is the lane's own trim saving on a word (enthusiast 80 mm,
+    # 2026-10-12: 8 trims lane-ON against 15 OFF, and a strict OFF order
+    # inside the word cost a trim when it was tried),
+    # and it moves no other shape.
+    # Only when a shape the lane would take is present; the lane off, this
+    # is never computed and the plan is byte-identical. Costs one more
+    # stage 7 on lane-ON designs with letters (about 20 s on golden_tee,
+    # against ~200 s for stages 0-5).
+    off_rank: dict[str, int] | None = None
+    off_span: dict[str, int] = {}
+    lane_letters = ({p.shape_id for p in planned
+                     if str(p.region.meta.get("tier", "auto")).lower() == "auto"
+                     and is_lettering(p.region, cfg)}
+                    if cfg.lettering_columns and cfg.satin else set())
+    if lane_letters:
+        off_blocks, _off_warnings = sequence(
+            planned, fabric, replace(cfg, lettering_columns=False),
+            source_pixels=source_pixels, design_class=design_class,
+            fill_technique=fill_technique, streamline_mode=streamline_mode,
+            detail_layer=detail_layer, palette_spools=palette_spools,
+            hairline=hairline, ink_source=ink_source, counter_holes=counter_holes)
+        off_rank = {}
+        for _b in off_blocks:
+            for _r in _b.runs:
+                if _r.shape_id:
+                    off_rank.setdefault(_r.shape_id, len(off_rank))
+        _span, _prev = 0, False
+        for _sid in sorted(off_rank, key=off_rank.get):
+            _is = _sid in lane_letters
+            if _is and not _prev:
+                _span += 1
+            if _is:
+                off_span[_sid] = _span
+            _prev = _is
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     # Task A2: satin gets the same fabric-scaled density the fill row spacing
     # already has — the browser engine's own digitize.js already multiplies
@@ -1613,6 +2070,109 @@ def sequence(
     # on how a fabric preset reaches density. max(0.1, ...) mirrors row_mm's
     # own floor so a pathological preset cannot collapse spacing to zero.
     satin_spacing_mm = machine.SATIN_SPACING_MM * max(0.1, fabric.density_adjust)
+    # Thread weight (`cfg.thread_wt`, 2026-10-12; docs/hairline-prototype-
+    # 2026-10-12.md). One needle per colour, so the weight is per COLOUR
+    # BLOCK: a block takes the finest weight any of its shapes names through
+    # `shape_overrides[sid].thread_wt` (the operator threads that needle
+    # fine for the detail; the block's other shapes sew on the same thread),
+    # else the design's. Satin spacing is `thread_profile(wt).
+    # satin_spacing_mm` x the fabric's density adjust — at 40 wt that is
+    # `machine.SATIN_SPACING_MM` x the same factor, the very expression
+    # above, so the default plan is byte-identical. 60/75 are candidates
+    # (gate 1).
+    machine.thread_profile(cfg.thread_wt)     # a bad weight fails here, loudly
+    block_wt: dict[int, int] = {}
+    for _pr in planned:
+        _ov = _pr.region.meta.get("thread_wt")
+        if _ov is not None:
+            _t = _pr.region.thread_index
+            block_wt[_t] = max(block_wt.get(_t, 0), int(_ov))
+
+    def profile_for(pr: PlannedRegion) -> machine.ThreadProfile:
+        return machine.thread_profile(block_wt.get(pr.region.thread_index, cfg.thread_wt))
+
+    def satin_spacing_for(pr: PlannedRegion) -> float:
+        if not block_wt and cfg.thread_wt == machine.THREAD_WT_DEFAULT:
+            return satin_spacing_mm
+        return profile_for(pr).satin_spacing_mm * max(0.1, fabric.density_adjust)
+
+    sp_tree: list = []      # [STRtree, polygons], built on first use
+
+    def small_print_counters_of(pr: PlannedRegion) -> list:
+        """`cfg.small_print_floor` outside the Column lane: the counters the
+        run and fill tiers keep open (`columns.small_print_counter_set`), at
+        the block's own weight. A hole another sewn shape covers (a layered
+        letter's inner colour) is not a counter: it is ink, and holding
+        thread off it would open a gap of bare fabric at the seam. Empty
+        with the flag off."""
+        if not cfg.small_print_floor:
+            return []
+        counters = small_print_counter_set(
+            pr.region.polygon, pr.region.meta.get("small_counters"),
+            profile_for(pr).counter_min_width_mm, is_lettering(pr.region, cfg))
+        if not counters:
+            return []
+        if not sp_tree:
+            polys = [q.region.polygon for q in planned]
+            sp_tree.extend([shapely.STRtree(polys), polys])
+        tree, polys = sp_tree
+        bare = []
+        for c in counters:
+            pt = c.representative_point()
+            if not any(polys[i] is not pr.region.polygon and polys[i].covers(pt)
+                       for i in tree.query(pt)):
+                bare.append(c)
+        return bare
+
+    def small_print_cut(pr: PlannedRegion, poly, chord_mm: float | None = None,
+                        bar_mm: float | None = None):
+        """`poly` with `pr`'s counters cut out, grown by half the block's
+        laid width; `poly` itself, the same object, with the flag off.
+        `chord_mm` (the run tier's bean stitch): grown further so the
+        run's chords, not just its ring, keep that hold
+        (`columns._chord_hold`). `bar_mm` (the fill tier's row spacing): a
+        bar between two counters thinner than the hold is narrowed to it
+        about its middle, not kept edge to edge (`columns._narrow_bars`)."""
+        counters = small_print_counters_of(pr)
+        if not counters:
+            return poly
+        return small_print_clear(poly, counters, profile_for(pr).width_mm / 2.0,
+                                 art=pr.region.polygon, chord_mm=chord_mm, bar_mm=bar_mm)
+
+    def cored_holes_of(poly) -> list:
+        """`cfg.open_cored_counters`: the interiors of `poly` that are cored
+        counters (`counter_holes`, the counter regions stage 3 kept), each as
+        a polygon -- the shape's own traced ring, which a counter region
+        covers. [] with none, or with the flag off (no `counter_holes`)."""
+        if not counter_holes or not poly.interiors:
+            return []
+        out = []
+        for ring in poly.interiors:
+            hole = Polygon(ring)
+            if hole.is_empty:
+                continue
+            pt = hole.representative_point()
+            if any(c.covers(pt) for c in counter_holes):
+                out.append(hole)
+        return out
+    hairline_shapes_sewn = hairline_strands = hairline_dropped = 0
+    # (shape_id, artwork mm2) of each rest-piece part `rest_planned` cut off
+    # below the clip floor: counted in CLIP_DROPPED_SLIVER, as stage 5 counts
+    # its own.
+    hairline_rest_slivers: list[tuple[str, float]] = []
+    # Which shapes are strands (`stage6_hairline.hairline_candidates`):
+    # `plan_stitches` reads them once and hands the same dict to stage 5, so
+    # the ground under a strand and the strand itself agree. A direct caller
+    # that passes none gets them read here, from the traced polygons.
+    if cfg.hairline and hairline is None:
+        # On the line route (`cfg.hairline_from_lines`, a photo lane) no
+        # shape is carved: the strands come from lines, after every block.
+        hairline = (HairlineSet() if hairline_lines_apply(cfg, design_class)
+                    else hairline_candidates([p.region for p in planned], cfg))
+    # The letters `cfg.small_lettering_skeleton` may take (lines of text, see
+    # `stage6_small_letter.text_line_members`); empty with the flag off.
+    skeleton_letters = (text_line_members([p.region for p in planned])
+                        if cfg.small_lettering_skeleton else set())
     stitch_mm = cfg.fill_stitch_mm or FILL_STITCH_MM
     # Row 14's underlay split (see _PHOTO_FILL_UNDERLAY above for the craft
     # case). Precedence is unchanged in shape, only the FALLBACK moves: an
@@ -1691,6 +2251,13 @@ def sequence(
                       if cfg.border_abrupt_raggedness is not None
                       else machine.BORDER_ABRUPT_RAGGEDNESS)
     rescue = cfg.small_shape_rescue
+    # `cfg.lettering_columns_small_stem` (default ON, 2026-10-20): a lettering stem
+    # under the area floor goes to the Column lane, not the run tier. Off,
+    # `routes_to_run` below is today's, branch for branch. It also needs the
+    # lane itself (satin + lettering_columns): a stem the lane does not take
+    # would otherwise fall through to the classifier with no outline run.
+    small_stem = bool(cfg.lettering_columns_small_stem and cfg.lettering_columns
+                      and cfg.satin)
     # The config-to-emitter mapping the split-satin knobs document: False
     # sews raw crosses however long (a real house style — jolly-af ships
     # 7 mm stitches), None defers to the corpus-median machine default.
@@ -1722,6 +2289,16 @@ def sequence(
     # everything but this population); with the flag off nothing carries the
     # tag, so the ladder is byte-identical.
     def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
+        wt = _word_tier(pr.region, cfg)
+        if pr_tier == "auto" and wt == "run":
+            return True                 # L3: the word decided, not the shape's area
+        if pr_tier == "auto" and wt in ("satin", "widened") and cfg.satin:
+            return False                # L3: satin for the word; with satin off, the rescue stands
+        if (small_stem and pr_tier == "auto" and rescue
+                and pr.region.polygon.area < detail_mm2
+                and is_lettering(pr.region, cfg)
+                and is_thin_stem(pr.region.polygon, cfg.min_detail_mm)):
+            return False                # a lettering STEM under the area floor: the Column lane
         return pr_tier == "run" or (pr_tier == "auto" and rescue
                                     and pr.region.polygon.area < detail_mm2
                                     and not widened_lettering(pr.region))
@@ -1791,6 +2368,10 @@ def sequence(
     wave = technique == "wave"
     chevron = technique == "chevron"
     brick = technique == "brick"
+    # Fur (2026-10-14): randomised tatami, a fourth row-point variant in the
+    # same family, seeded by cfg.seed — see stage6_fill._fur_row_points.
+    # Reached only by naming it here or as the per-shape tier.
+    fur = technique == "fur"
 
     thin = empty = jumps = as_run = 0
     bean_letters = 0
@@ -1844,6 +2425,16 @@ def sequence(
     if applique_cursor is not None:
         cursor = applique_cursor
 
+    # `cfg.detail_spokes` (built OFF): a spoked detail mark leaves the colour
+    # loop here, the way an appliqué piece does, and is placed AFTER its host
+    # once every block exists (`_place_spoke_marks`, below the hairline
+    # blocks). It is thread on top of the host's finished fill: no link may
+    # route under it, no border yields to it, and the cap's silhouette does
+    # not include it. Empty on every plan without a tagged region.
+    spoke_marks = [p for p in planned if p.region.meta.get("detail_spokes")]
+    if spoke_marks:
+        planned = [p for p in planned if not p.region.meta.get("detail_spokes")]
+
     # Chaining's tier-blindness fix (see `_link_cover`'s docstring): the
     # artwork polygon of every shape that will predictably sew as an outline
     # RUN, tagged with its layer's sew index so each block can subtract the
@@ -1892,6 +2483,11 @@ def sequence(
     cap_sewn: list[PlannedRegion] = []
     merge_same_thread = bool(cfg.merge_adjacent_same_thread)
     hoist_same_thread = max(0.0, float(cfg.hoist_same_thread_margin_mm))
+    # `cfg.small_letter_ties` (default OFF): the shapes sewn below as bean
+    # letters or skeleton runs, whose runs `stitches.apply_ties` locks along
+    # their own centreline. Off, no tie call gains an argument.
+    small_letter_ids: set[str] = set()
+    tie_kw = {"small_letters": small_letter_ids} if cfg.small_letter_ties else {}
     # Seam ownership's "still to sew" set — see `border_later`'s declaration
     # above for the predicate and its blind spots.
     for _p in planned:
@@ -1944,20 +2540,183 @@ def sequence(
             # the ladder below, exactly as every rung does.
             if tier == "auto" and p.region.meta.get(BEAN_LETTER_KEY):
                 runs, report = bean_letter(p.region.meta[BEAN_LETTER_KEY], p.shape_id,
-                                           entry=entry, trim_at_mm=trim_at)
+                                           entry=entry, trim_at_mm=trim_at,
+                                           stitch_mm=cfg.bean_letter_stitch_mm,
+                                           serif_mm=cfg.bean_letter_serif_mm,
+                                           min_arm_mm=cfg.bean_letter_min_arm_mm,
+                                           corner_deg=cfg.bean_letter_corner_deg,
+                                           passes=cfg.bean_letter_passes,
+                                           **({"bay_hold_mm": cfg.bean_letter_bay_hold,
+                                               "stroke_mm": p.region.meta.get("ink_stroke_mm")}
+                                              if cfg.bean_letter_bay_hold else {}))
                 if not report["empty"]:
                     report["bean_letter"] = 1
-                    report["bean_word"] = p.region.meta.get("text_cluster_id")
+                    report["bean_word"] = word_key(p.region, cfg)
+                    small_letter_ids.add(p.shape_id)
+                    return runs, report, False
+            # The hairline tier (`cfg.hairline`, default OFF, 2026-10-12 —
+            # `stage6_hairline`'s docstring): a stroke at or under 1.5 laid
+            # widths of its block's thread sews as ONE run along its
+            # skeleton, ahead of the run rung's three-pass bean on the
+            # outline. On the ARTWORK polygon, for the run rung's own reason
+            # (a run does not pull; compensation would fatten the stroke).
+            # "auto" only; a shape it declines takes the ladder as before.
+            # Step 2: only a shape `hairline_candidates` admitted (the width
+            # gate read off the source, and a ground colour's slivers left
+            # to the ground), with its measurement reused, not retaken.
+            # Step 3 (docs/hairline-strand-gate-2026-10-12.md): the gate is
+            # per skeleton BRANCH. A shape with thick branches too has its
+            # thin ones sewn here as runs, and the rest of its polygon
+            # (`rest_planned`) goes down the ladder below as a shape of its
+            # own, FIRST — the hairlines are laid over it, like a strand over
+            # any ground.
+            if (tier == "auto" and cfg.hairline and p.shape_id in hairline
+                    and not p.region.meta.get(HAIRLINE_REST_KEY)):
+                prof = profile_for(p)
+                hm = hairline[p.shape_id]
+                rest_runs, rest_rep, rest_filled = _sew_rest_pieces(
+                    rest_planned(p, hm, floor=clip_piece_floor_mm2(cfg),
+                                 dropped=hairline_rest_slivers),
+                    stitch_one, entry, exit_near, trim_at)
+                runs, report = hairline_tier_runs(
+                    p.region.polygon, p.shape_id,
+                    max_width_mm=prof.hairline_max_width_mm,
+                    run_width_mm=prof.hairline_run_width_mm,
+                    stitch_mm=cfg.hairline_stitch_mm,
+                    entry=(rest_runs[-1].points[-1] if rest_runs else entry),
+                    trim_at_mm=trim_at, m=hm)
+                if not report["empty"]:
+                    report["hairline_tier"] = 1
+                    if rest_runs:
+                        hop = math.dist(rest_runs[-1].points[-1], runs[0].points[0])
+                        if hop >= TINY_STITCH_MM:
+                            runs[0].jump = True
+                            runs[0].trim = hop > trim_at
+                            report["jumps"] += 1
+                        merged = dict(rest_rep)
+                        merged.update(hairline_tier=1, strands=report["strands"],
+                                      dropped=report["dropped"], empty=False,
+                                      jumps=rest_rep["jumps"] + report["jumps"])
+                        return rest_runs + runs, merged, rest_filled
+                    return runs, report, False
+                if rest_runs:
+                    # Every hairline branch was under the loop floor: the
+                    # thick part is all there is to sew, and the dropped
+                    # branches are counted like any dropped strand.
+                    if report["dropped"]:
+                        rest_rep = dict(rest_rep, hairline_tier=1, strands=0,
+                                        dropped=report["dropped"])
+                    return rest_runs, rest_rep, rest_filled
+            # Small lettering as ONE skeleton run (`cfg.small_lettering_skeleton`,
+            # default OFF, 2026-10-13 -- `stage6_small_letter`'s docstring): a
+            # lettering shape the rescue below would sew as a bean run on its
+            # OUTLINE, whose stroke is at or under the block's laid width, sews
+            # one run down its middle instead, its dropped counters punched
+            # back first. On the ARTWORK polygon, for the run rung's reason. A
+            # glyph it declines (too wide, or its run would cross a counter)
+            # takes the rescue as before.
+            if (tier == "auto" and p.shape_id in skeleton_letters
+                    and routes_to_run(p, tier) and is_lettering(p.region, cfg)):
+                prof = profile_for(p)
+                # A line `cfg.small_text_cap_mm` enlarged was retraced from
+                # the source with its counters; stage 4's record is of the
+                # polygon before that, at the old size and place.
+                runs, report = skeleton_letter_runs(
+                    glyph_polygon(p.region.polygon,
+                                  None if p.region.meta.get("small_text_enlarged")
+                                  else p.region.meta.get("small_counters")),
+                    p.shape_id, max_width_mm=prof.width_mm,
+                    stitch_mm=cfg.hairline_stitch_mm,
+                    run_width_mm=prof.hairline_run_width_mm,
+                    entry=entry, trim_at_mm=trim_at, ink=ink_source,
+                    min_mm=(cfg.small_lettering_skeleton_floor_mm
+                            if cfg.small_lettering_skeleton_floor_mm is not None
+                            else machine.MIN_STITCH_MM),
+                    # a glyph under two needle floors, declined at the
+                    # floor above, tried again at this one (candidate)
+                    small_floor_mm=cfg.small_lettering_skeleton_small_floor_mm)
+                if not report["empty"]:
+                    report["as_run"] = 1
+                    report[SMALL_LETTER_KEY] = 1
+                    small_letter_ids.add(p.shape_id)
                     return runs, report, False
             outline_tried = False
+            # Small print (`cfg.small_print_floor`, default OFF) reaches the
+            # run and fill tiers through `small_print_cut`: the shape is
+            # sewn with each counter (`small_print_counters_of`) cut out of
+            # it, grown by half the block's laid width, so the outline run's
+            # ring and the fill's rows keep their thread off the counter,
+            # and nothing the tier routes inside the shape crosses it. Off,
+            # the polygon handed over is the same object as before.
+            # `cfg.small_dot_rung` (default ON, 2026-10-20): an outline under the loop
+            # floor (an i dot) sews as a tack ring. Off, the call is
+            # today's, argument for argument. Scoped
+            # (`cfg.small_dot_rung_lettering`), only a dot stage 3 admitted
+            # over a stem.
             if routes_to_run(p, tier):
-                runs, report = run_outline(p.region.polygon, p.shape_id,
-                                           entry=entry, trim_at_mm=trim_at)
+                runs, report = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
+                                           entry=entry, trim_at_mm=trim_at,
+                                           soft_vertices=cfg.run_soft_vertices,
+                                           **({"dot_rung": True} if cfg.small_dot_rung and (
+                                               not cfg.small_dot_rung_lettering
+                                               or p.region.meta.get("dot_rung")) else {}))
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
                 tier = "auto"
                 outline_tried = True
+            # Lettering as Columns (`cfg.lettering_columns`, 2026-10-07): a
+            # text-tagged shape is cut along its ARTWORK outline into stroke
+            # pieces and sewn as rail-on-outline Columns (`columns.py`),
+            # ahead of the classifier -- a letter is columns by definition,
+            # the same rule `satin_lettering_split` already applies to the
+            # width ceiling. Pull lands on the rails (the artwork polygon
+            # was kept in stage 5 because `_sews_satin` says so). "auto"
+            # only; a letter the cut cannot construct falls through to the
+            # ladder below, the contract every rung has.
+            if (tier == "auto" and cfg.lettering_columns and cfg.satin
+                    and is_lettering(p.region, cfg)):
+                _ax0, _ay0, _ax1, _ay1 = p.region.polygon.bounds
+                _small = max(_ax1 - _ax0, _ay1 - _ay0) < machine.SATIN_UNDERLAY_MIN_EXTENT_MM
+                # Small print (`cfg.small_print_floor`, default OFF): the
+                # counters stage 4's sliver floor dropped come back where at
+                # least one laid thread wide, and the columns hold their
+                # thread half a width off every counter -- both at the
+                # block's own weight. Off, the polygon and the call are
+                # today's, argument for argument.
+                _letter, _clear = p.region.polygon, 0.0
+                if cfg.small_print_floor:
+                    _prof = profile_for(p)
+                    _letter = small_print_counters(
+                        _letter, p.region.meta.get("small_counters"),
+                        _prof.counter_min_width_mm)
+                    _clear = _prof.width_mm / 2.0
+                # `cfg.open_cored_counters`: with the floor off, the floor's
+                # holds on the letter's cored counters alone; with it on,
+                # every hole is held already. Off, no `counter_holes`.
+                _cored = [] if cfg.small_print_floor else cored_holes_of(_letter)
+                if _cored:
+                    _clear = profile_for(p).width_mm / 2.0
+                runs, report = lettering_columns_shape(
+                    _letter, p.shape_id, trim_at_mm=trim_at,
+                    spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
+                    pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
+                    underlay_style="none" if _small else satin_underlay,
+                    start_near=entry,
+                    end_near=exit_near if cfg.satin_exit_toward_next else None,
+                    **({"counter_clear_mm": _clear} if _clear > 0 else {}),
+                    **({"counter_holes": _cored} if _cored else {}),
+                    # `cfg.lettering_columns_fold_cuts` (default ON, Kent 2026-10-20): off,
+                    # the call is today's, argument for argument
+                    **({"fold_cuts": True} if cfg.lettering_columns_fold_cuts else {}),
+                    # `cfg.lettering_columns_square_ends` (default ON, Kent 2026-10-13): same rule
+                    **({"square_ends": True} if cfg.lettering_columns_square_ends else {}),
+                    # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
+                    **({"inside_connectors": True}
+                       if cfg.lettering_columns_inside_connectors else {}))
+                if not report["empty"]:
+                    report["lettering_columns"] = 1
+                    return runs, report, False
             # Satin or fill is decided per shape, not per design: one logo
             # routinely holds both a big filled emblem and thin satin lettering.
             # Classified on the ARTWORK polygon, not the stage-5 grown one —
@@ -1999,12 +2758,15 @@ def sequence(
             rides_ramp = (tier == "auto" and source_pixels is not None
                           and region_rides_design_ramp(p.region.polygon, source_pixels))
             if ribbon is not None and ribbon.reason == "photo_width_floor":
-                runs, report = run_outline(p.region.polygon, p.shape_id,
-                                           entry=entry, trim_at_mm=trim_at)
+                runs, report = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
+                                           entry=entry, trim_at_mm=trim_at,
+                                           soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
-            if tier == "satin" or (ribbon is not None and ribbon.satin and not rides_ramp):
+            word_satin = (tier == "auto" and cfg.satin
+                          and _word_tier(p.region, cfg) in ("satin", "widened"))
+            if tier == "satin" or word_satin or (ribbon is not None and ribbon.satin and not rides_ramp):
                 # The house cross angle (2026-08-26). Per-shape intent beats
                 # the global, the same precedence border/underlay_style/
                 # fill_angle already use; None on both keeps today's output
@@ -2033,9 +2795,15 @@ def sequence(
                             and not widened_lettering(p.region)
                             and fabric.pull_comp_mm > 0)
                 rail_comp_mm = fabric.pull_comp_mm if on_rails else 0.0
+                # `cfg.open_cored_counters`: this shape's cored counters, held
+                # at half the block's laid width (`satin_shape`). Off, no
+                # `counter_holes`, and the call is today's.
+                _cored_s = cored_holes_of(p.polygon)
                 runs, report = satin_shape(
                     p.polygon,
                     p.shape_id,
+                    **({"counter_holes": _cored_s,
+                        "counter_clear_mm": profile_for(p).width_mm / 2.0} if _cored_s else {}),
                     underlay_style="none" if small else satin_underlay,
                     trim_at_mm=trim_at,
                     start_near=entry,
@@ -2045,9 +2813,15 @@ def sequence(
                     rail_comp_mm=rail_comp_mm,
                     rail_comp_floor_mm=cfg.min_detail_mm,
                     use_shapefield=use_shapefield,
-                    spacing_mm=satin_spacing_mm,
+                    spacing_mm=satin_spacing_for(p),
                     angle_deg=satin_angle_deg,
                     rails_follow_edge=cfg.satin_rails_follow_edge,
+                    outer_rail_pitch=cfg.satin_outer_rail_pitch,
+                    join_square=cfg.satin_join_square,
+                    free_end_square=cfg.satin_free_end_square,
+                    junction_square=(cfg.satin_junction_square
+                                     and bool(p.region.meta.get("text_candidate"))),
+                    slab_serifs=cfg.satin_slab_serifs,
                     patch_junctions=cfg.satin_patch_junctions,
                     crown_cover=cfg.satin_crown_cover,
                     polygon_axis=cfg.satin_polygon_axis,
@@ -2057,8 +2831,11 @@ def sequence(
                     end_near=exit_near if cfg.satin_exit_toward_next else None,
                     underlay_on_column=cfg.satin_underlay_on_column,
                     walk_cursor_reach_mm=cfg.satin_walk_cursor_reach_mm,
+                    hop_under_column=cfg.satin_hop_under_column,
                     cap_recentre=cfg.satin_cap_recentre,
                     tip_caps=cfg.satin_tip_caps,
+                    tip_corner_gate=cfg.satin_tip_corner_gate,
+                    hairline_tier=cfg.satin_hairline_tier,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two
                     # constants (DOCTRINE 2026-09-02). The fold guard rides
@@ -2082,15 +2859,19 @@ def sequence(
                     report["hairline_runs"] = sum(
                         1 for r in runs if r.kind == stitches.RUN)
                     return runs, report, False
-            if tier == "auto" and not outline_tried and widened_lettering(p.region):
+            if (tier == "auto" and not outline_tried
+                    and (widened_lettering(p.region) or word_satin)):
                 # Widened lettering the satin tier declined — the classifier
                 # read no ribbon in the column, or the skeleton could not
                 # resolve one — sews what it sewed before the floor: the bean
                 # run on its artwork outline. The floor can move a glyph from
                 # run to satin and nowhere else; a 1 mm tatami is not a tier
-                # it may fall to.
-                runs, report = run_outline(p.region.polygon, p.shape_id,
-                                           entry=entry, trim_at_mm=trim_at)
+                # it may fall to. The same holds for a letter its WORD sent
+                # to satin (`cfg.lettering_word_tiers`) that the satin tier
+                # could not sew.
+                runs, report = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
+                                           entry=entry, trim_at_mm=trim_at,
+                                           soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
@@ -2121,7 +2902,9 @@ def sequence(
                 # all-highlight shape sews nothing) and falls through to
                 # tatami below rather than dropping artwork — the standing
                 # contract of every tonal tier in this chain.
-                runs, report = sketch_fill(p.region, source_pixels, cfg)
+                runs, report = sketch_fill(
+                    p.region, source_pixels, cfg,
+                    thread_wt=block_wt.get(p.region.thread_index, cfg.thread_wt))
                 need_tatami = report["empty"]
             elif (streamline or tier == "streamline") and source_pixels is not None:
                 # The streamline thread-paint tier (row 10): the design-wide
@@ -2173,7 +2956,9 @@ def sequence(
                 # snap reads it, mono ignores it.
                 runs, report = streamline_fill(p.region, source_pixels, cfg,
                                                streamline_mode=streamline_mode,
-                                               shade_palette_indices=shade_palette)
+                                               shade_palette_indices=shade_palette,
+                                               thread_wt=block_wt.get(
+                                                   p.region.thread_index, cfg.thread_wt))
                 need_tatami = report["empty"]
             elif crosshatch or tier == "crosshatch":
                 # The cross-hatch fill tier: two tatami passes on the same
@@ -2212,6 +2997,8 @@ def sequence(
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
                     cut_bridges=cfg.fill_bridge_cut,
+                    underlay_all_pieces=cfg.underlay_all_pieces,
+                    sewn_paths_only=cfg.fill_order_sewn_paths,
                     start_near=entry,
                     technique="crosshatch",
                 )
@@ -2243,6 +3030,8 @@ def sequence(
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
                     cut_bridges=cfg.fill_bridge_cut,
+                    underlay_all_pieces=cfg.underlay_all_pieces,
+                    sewn_paths_only=cfg.fill_order_sewn_paths,
                     start_near=entry,
                     technique="wave",
                 )
@@ -2267,6 +3056,8 @@ def sequence(
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
                     cut_bridges=cfg.fill_bridge_cut,
+                    underlay_all_pieces=cfg.underlay_all_pieces,
+                    sewn_paths_only=cfg.fill_order_sewn_paths,
                     start_near=entry,
                     technique="chevron",
                 )
@@ -2289,8 +3080,34 @@ def sequence(
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
                     cut_bridges=cfg.fill_bridge_cut,
+                    underlay_all_pieces=cfg.underlay_all_pieces,
+                    sewn_paths_only=cfg.fill_order_sewn_paths,
                     start_near=entry,
                     technique="brick",
+                )
+                need_tatami = report["empty"]
+            elif fur or tier == "fur":
+                # The fur fill tier: tatami whose rows each take a random
+                # start offset and a random length per stitch, seeded by
+                # cfg.seed (stage6_fill._fur_row_points), at the stitch
+                # length machine.FUR_STYLES[cfg.fur_style] names instead of
+                # the design's own. Same slot/contract as brick above.
+                runs, report = stitch_shape(
+                    p.polygon,
+                    p.shape_id,
+                    angle_deg=_fill_angle_for(p, cfg),
+                    row_mm=row_mm,
+                    stitch_mm=stitch_mm,
+                    underlay_style=eff_underlay_style,
+                    trim_at_mm=trim_at,
+                    under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
+                    underlay_all_pieces=cfg.underlay_all_pieces,
+                    sewn_paths_only=cfg.fill_order_sewn_paths,
+                    start_near=entry,
+                    technique="fur",
+                    seed=cfg.seed,
+                    fur_style_name=cfg.fur_style,
                 )
                 need_tatami = report["empty"]
             elif scanline and source_pixels is not None:
@@ -2343,12 +3160,13 @@ def sequence(
                 # tier was never handed it. Sewn only under
                 # `cfg.blend_fallback_underlay`, on the fallback path.
                 runs, report = blend_fill(p.region, source_pixels, cfg,
-                                          start_near=entry, polygon=p.polygon,
+                                          start_near=entry,
+                                          polygon=small_print_cut(p, p.polygon, bar_mm=row_mm),
                                           row_mm=row_mm, stitch_mm=stitch_mm,
                                           underlay_style=eff_underlay_style)
             elif contour:
                 runs, report = contour_fill(
-                    p.polygon,
+                    small_print_cut(p, p.polygon),
                     p.shape_id,
                     spacing_mm=contour_spacing,
                     stitch_mm=stitch_mm,
@@ -2388,7 +3206,7 @@ def sequence(
                 # along and the axis it sews along stay one number by
                 # construction.
                 runs, report = stitch_shape(
-                    p.polygon,
+                    small_print_cut(p, p.polygon, bar_mm=row_mm),
                     p.shape_id,
                     angle_deg=_fill_angle_for(p, cfg),
                     row_mm=row_mm,
@@ -2397,6 +3215,8 @@ def sequence(
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
                     cut_bridges=cfg.fill_bridge_cut,
+                    underlay_all_pieces=cfg.underlay_all_pieces,
+                    sewn_paths_only=cfg.fill_order_sewn_paths,
                     start_near=entry,
                     density_boost=cfg.fill_density_boost,
                 )
@@ -2407,8 +3227,9 @@ def sequence(
             # to be a silent SHAPE_NOT_STITCHED; its outline still exists, and
             # sewing it as a run beats leaving a hole in the artwork.
             if rescue and not runs:
-                r_runs, r_report = run_outline(p.region.polygon, p.shape_id,
-                                               entry=entry, trim_at_mm=trim_at)
+                r_runs, r_report = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
+                                               entry=entry, trim_at_mm=trim_at,
+                                               soft_vertices=cfg.run_soft_vertices)
                 if r_runs:
                     r_report["as_run"] = 1
                     return r_runs, r_report, False
@@ -2547,7 +3368,27 @@ def sequence(
             # that will take their turn, not a reason to pre-empt them.
             pool = (([i for i in unpinned if i not in late] or unpinned)
                     if late else unpinned)
-            if due is not None and (sew_order[due] <= next_slot or not unpinned):
+            ranked = ([i for i in remaining if group[i].shape_id in off_rank]
+                      if off_rank is not None else [])
+            if ranked:
+                # The Column lane: the OFF path's order (top of this
+                # function). That order already obeyed the pins, the
+                # borders-last bias and cap order below. A shape the OFF
+                # path left empty has no rank and takes the rules below once
+                # every ranked shape in its colour has sewn. Inside a span of
+                # letters, nearest-neighbour from the needle -- unless a pin
+                # or cap order is in force, whose order the OFF rank IS.
+                pick = min(ranked, key=lambda i: off_rank[group[i].shape_id])
+                span = off_span.get(group[pick].shape_id)
+                if span is not None and cursor is not None and not cap_order:
+                    same = [i for i in ranked
+                            if off_span.get(group[i].shape_id) == span]
+                    if not any(i in sew_order for i in same):
+                        here = Point(cursor)
+                        pick = min(same, key=lambda i: (
+                            round(group[i].polygon.distance(here), 6),
+                            off_rank[group[i].shape_id]))
+            elif due is not None and (sew_order[due] <= next_slot or not unpinned):
                 pick = due
             elif cap_order:
                 # Replaces BOTH geometry branches, not just the seed: on a cap
@@ -2573,7 +3414,26 @@ def sequence(
             # emitter so its walk can end facing it. Read only; the pick
             # below is untouched.
             exit_near = None
-            if cfg.satin_exit_toward_next:
+            # The Column lane's order (above) is not nearest-neighbour, so
+            # the shape the needle goes to next is the one that order picks
+            # next: the lowest OFF rank left, or -- inside a span of letters
+            # -- the span's nearest letter to this one. Facing the nearest
+            # shape instead sent a letter's exit toward a shape that sews
+            # later. Lane-ON only; `off_rank` is None otherwise.
+            rest = [i for i in ranked if i != pick]
+            if cfg.satin_exit_toward_next and rest:
+                nxt = min(rest, key=lambda i: off_rank[group[i].shape_id])
+                span = off_span.get(group[nxt].shape_id)
+                if span is not None and not cap_order:
+                    same = [i for i in rest
+                            if off_span.get(group[i].shape_id) == span]
+                    if not any(i in sew_order for i in same):
+                        nxt = min(same, key=lambda i: (
+                            round(group[i].polygon.distance(p.polygon), 6),
+                            off_rank[group[i].shape_id]))
+                q = nearest_points(p.polygon, group[nxt].polygon)[1]
+                exit_near = (float(q.x), float(q.y))
+            elif cfg.satin_exit_toward_next:
                 cands = [i for i in pool if i != pick] or list(remaining)
                 if cands:
                     nxt = min(cands, key=lambda i: (
@@ -2590,6 +3450,10 @@ def sequence(
             if report.get("hairline_runs"):
                 hairline_runs += report["hairline_runs"]
                 hairline_shapes += 1
+            if report.get("hairline_tier"):
+                hairline_shapes_sewn += 1
+                hairline_strands += report["strands"]
+                hairline_dropped += report["dropped"]
             bordered += report.get("bordered", 0)
             lightened += report.get("lightened", 0)
             border_narrow += report.get("border_narrow", 0)
@@ -2607,6 +3471,8 @@ def sequence(
             if report["empty"] or not runs:
                 empty += 1
                 continue
+            if cfg.satin_mid_entry and cursor is not None:
+                runs = _satin_mid_entry(runs, cursor, trim_at)
             if cursor is not None:
                 d = math.dist(cursor, runs[0].points[0])
                 if d >= TINY_STITCH_MM:
@@ -2629,9 +3495,19 @@ def sequence(
         if cfg.chain_links:
             later_run_art = [g for i, g in run_tier_later
                              if i > group[0].sew_index]
+            # Small print: no link may cross a counter the block keeps
+            # open (`small_print_counters_of`); None with the flag off.
+            sp_forbid = None
+            _cs = ([c.buffer(-stitches.SAME_POINT_MM) for q in sewn
+                    for c in small_print_counters_of(q)]
+                   if cfg.small_print_floor else [])
+            # `cfg.open_cored_counters`: nor across a cored counter
+            _cs += [c.buffer(-stitches.SAME_POINT_MM) for c in (counter_holes or [])]
+            sp_forbid = unary_union(_cs) if _cs else None
             ordered, linked_in_shape = _chain(
                 ordered, sewn, group[0].region.thread_index,
-                unary_union(later_run_art) if later_run_art else None)
+                unary_union(later_run_art) if later_run_art else None,
+                forbid=sp_forbid)
             jumps -= linked_in_shape
 
         # Task 1 (photo/tonal v1): a blend-tier run carries the thread its
@@ -2644,7 +3520,7 @@ def sequence(
         # `sequence()` job.
         group_blocks = _shade_blocks(ordered, group[0].region.thread_index,
                                      chart_for(cfg), trim_at,
-                                     tie=not merge_same_thread)
+                                     tie=not merge_same_thread, **tie_kw)
         art_blocks.extend(group_blocks)
         cursor = group_blocks[-1].runs[-1].points[-1]
         cap_sewn.extend(sewn)
@@ -2666,7 +3542,7 @@ def sequence(
                                             hoist_same_thread)
             art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
         for _b in art_blocks:
-            _apply_ties(_b.runs)
+            _apply_ties(_b.runs, **tie_kw)
     blocks.extend(art_blocks)
 
     # --- The design-silhouette edge cap (cfg.edge_cap) ----------------------
@@ -2686,10 +3562,15 @@ def sequence(
     # it costs the operator no extra cone — but it is its own block, because
     # a block boundary is where the needle lifts and this pass starts
     # somewhere the previous colour did not end. When the picked thread
-    # happens to match the last artwork block, the same-thread merge above
-    # has already run and will not fold this one in; that is deliberate,
-    # not an oversight — the merge pass reasons about artwork groups, and
-    # the cap is a design-level pass whose own boundary is meaningful.
+    # happens to match the last artwork block, the cap sews at the end of
+    # that block instead (`_cap_seam_joins`, under the same
+    # `cfg.merge_adjacent_same_thread`, 2026-10-20): its first run keeps the
+    # lift and the cut, so the pass still starts fresh, and the stop between
+    # two blocks of one cone bought nothing. Until then this was the edge
+    # cap's repeated-cone route (defect 18).
+    # (`cfg.edge_cap_fold_into_colour`, default off, goes further: it sews a
+    # cone's stretches inside that cone's last artwork block even with other
+    # cones after it, when nothing later comes near them -- `_cap_fold_host`.)
     cap_style = str(cfg.edge_cap or "none").lower()
     cap_lightened = 0
     cap_empty_style = ""
@@ -2724,7 +3605,7 @@ def sequence(
         # The gate's published saving and cover then include it, which is
         # what they measure: what the cap was told not to sew.
         if cfg.edge_cap_skip_lettering:
-            _letters = _satin_lettering_cover(cap_sewn, blocks)
+            _letters = _satin_lettering_cover(cap_sewn, blocks, cfg)
             if _letters is not None:
                 cap_omit = (_letters if cap_omit is None
                             else unary_union([cap_omit, _letters]))
@@ -2736,6 +3617,8 @@ def sequence(
             trim_at_mm=trim_at,
             width_mm=cfg.border_width_mm,
             omit=cap_omit,
+            walk_covered=cfg.edge_cap_walk_covered,
+            bean_stitch_mm=cfg.edge_cap_bean_pitch_mm,
         )
         # What the gate actually saved on THIS design, measured — the number
         # whose absence let a +58.7% bill read like a +13% one. Computed only
@@ -2745,7 +3628,8 @@ def sequence(
         cap_gate_saved, cap_omit_mm2 = (
             _gate_saving(silhouette, cap_omit, c_runs, style=cap_style,
                          entry=cursor, trim_at_mm=trim_at,
-                         width_mm=cfg.border_width_mm)
+                         width_mm=cfg.border_width_mm,
+                         bean_stitch_mm=cfg.edge_cap_bean_pitch_mm)
             if c_runs else (0.0, 0.0))
         if c_runs:
             # The needle always lifts into a new block and the thread is
@@ -2753,12 +3637,32 @@ def sequence(
             # the detail layer below and every artwork block above get.
             c_runs[0].jump = True
             c_runs[0].trim = True
-            _apply_ties(c_runs)
+            # Per-stretch colour (cfg.edge_cap_follow_adjacent): decided on
+            # the bare runs, BEFORE ties, so each block's ties are laid on its
+            # own run ends. A one-colour edge is still one block, its runs the
+            # emitter's own, so that case sews exactly what it did before.
+            c_blocks = None
+            if cfg.edge_cap_follow_adjacent:
+                _pieces = _cap_follow_pieces(c_runs, cap_sewn, cfg)
+                if _pieces is not None:
+                    c_blocks = {}
+                    for t, piece, _mid in _pieces:
+                        c_blocks.setdefault(t, []).append((piece, _mid))
+            if c_blocks is None:
+                _apply_ties(c_runs)
+            else:
+                for _items in c_blocks.values():
+                    _items[0][0].jump = True
+                    _items[0][0].trim = True
+                    _apply_ties([it[0] for it in _items])
             # The bill, always. See EDGE_CAP_APPLIED: the cost is not
             # predictable from the design's size, it scales with how
             # fragmented the silhouette is, so the only honest thing is to
             # measure it on THIS design and say so.
-            _cap_st = sum(len(r.points) for r in c_runs)
+            _cap_st = sum(len(r.points)
+                          for r in (c_runs if c_blocks is None else
+                                    [it[0] for its in c_blocks.values()
+                                     for it in its]))
             # The artwork's own stitches: every block so far, the cap not yet
             # among them. (Identical to the post-append
             # `sum(...) - _cap_st` this replaced — `StitchBlock.stitch_count`
@@ -2772,19 +3676,61 @@ def sequence(
             if not cap_dropped:
                 jumps += c_report["jumps"]
                 cap_lightened = c_report["bean_loops"]
-                c_index = _cap_thread(silhouette, cap_sewn,
-                                      cap_sewn[0].region.thread_index,
-                                      runs=c_runs)
-                c_thread = chart_for(cfg)[c_index]
-                blocks.append(
-                    StitchBlock(
-                        thread_index=c_index,
-                        thread_number=c_thread.number,
-                        rgb=tuple(c_thread.rgb),
-                        runs=c_runs,
-                    )
-                )
-                cursor = c_runs[-1].points[-1]
+                if c_blocks is not None:
+                    chart = chart_for(cfg)
+                    n_art = len(blocks)
+                    fold_clear = (cfg.border_width_mm
+                                  or machine.BORDER_WIDTH_MM) / 2.0
+                    for c_index, _items in c_blocks.items():
+                        _runs = [it[0] for it in _items]
+                        # A stretch cut from the middle of a ring lifts to
+                        # reach it; cut the thread only when the hop is long.
+                        for k in range(1, len(_items)):
+                            if _items[k][1]:
+                                _runs[k].jump = True
+                                _runs[k].trim = (math.dist(
+                                    _runs[k - 1].points[-1], _runs[k].points[0])
+                                    >= trim_at)
+                        host = (_cap_fold_host(blocks, n_art, c_index, _runs,
+                                               fold_clear)
+                                if cfg.edge_cap_fold_into_colour else None)
+                        if host is None and _cap_seam_joins(blocks, c_index,
+                                                            cfg):
+                            host = blocks[-1]
+                        if host is not None:
+                            # Already jump + trim + tied as a block start;
+                            # it stays exactly that, one stop earlier.
+                            host.runs.extend(_runs)
+                            if host is blocks[-1]:
+                                cursor = _runs[-1].points[-1]
+                            continue
+                        c_thread = chart[c_index]
+                        blocks.append(
+                            StitchBlock(
+                                thread_index=c_index,
+                                thread_number=c_thread.number,
+                                rgb=tuple(c_thread.rgb),
+                                runs=_runs,
+                            )
+                        )
+                        cursor = _runs[-1].points[-1]
+                else:
+                    c_index = _cap_thread(silhouette, cap_sewn,
+                                          cap_sewn[0].region.thread_index,
+                                          runs=c_runs)
+                    if _cap_seam_joins(blocks, c_index, cfg):
+                        blocks[-1].runs.extend(c_runs)
+                    else:
+                        c_thread = chart_for(cfg)[c_index]
+                        blocks.append(
+                            StitchBlock(
+                                thread_index=c_index,
+                                thread_number=c_thread.number,
+                                rgb=tuple(c_thread.rgb),
+                                runs=c_runs,
+                            )
+                        )
+                    cursor = c_runs[-1].points[-1]
             cap_cost = {
                 "style": cap_style,
                 "stitches": _cap_st,
@@ -2814,6 +3760,8 @@ def sequence(
                 "budget_pct": EDGE_CAP_BUDGET_PCT,
                 "dropped": cap_dropped,
             }
+            if cfg.edge_cap_walk_covered:
+                cap_cost["walked"] = c_report["walked"]
         else:
             cap_empty_style = cap_style
 
@@ -2867,7 +3815,110 @@ def sequence(
             )
             cursor = d_runs[-1].points[-1]
 
+    # --- Hairline strands from lines (`cfg.hairline_from_lines`, OFF) -------
+    # `stage6_hairline_lines`: on a photo lane, the hairline tier's strands
+    # come from FDoG lines, sewn as runs over the finished fills, last of
+    # all — one block per polarity, in the design's own nearest thread.
+    # `cfg.hairline_lines_gradient` (OFF): on the gradient lane the same
+    # route runs as a SUPPLEMENT, after the region tier, sewing only the
+    # strands it laid nothing near (`hairline_lines_supplements`).
+    hair_lines = None
+    hl_supplement = hairline_lines_supplements(cfg, design_class)
+    if source_pixels is not None and (hairline_lines_apply(cfg, design_class)
+                                      or hl_supplement):
+        # `cfg.hairline_lines_chain` (OFF): a hop between two strands is
+        # sewn needle-down, not cut, when its whole length lies over thread
+        # the blocks above already laid (a half-thread-width of any laid
+        # stitch, `machine.COVERAGE_THREAD_W_MM`, the instrument
+        # `tools/hairline_travel.py` reads) -- never across bare cloth.
+        hop_ok = None
+        if getattr(cfg, "hairline_lines_chain", False):
+            laid = [shapely.LineString(r.points) for b in blocks for r in b.runs
+                    if r.kind != stitches.TRAVEL and len(r.points) >= 2]
+            laid_tree = shapely.STRtree(laid) if laid else None
+
+            def hop_ok(a, b, _tree=laid_tree):
+                if _tree is None:
+                    return False
+                n = max(2, int(math.dist(a, b) / 0.1))
+                pp = shapely.points([(a[0] + (b[0] - a[0]) * i / n,
+                                      a[1] + (b[1] - a[1]) * i / n)
+                                     for i in range(n + 1)])
+                hit = _tree.query(pp, predicate="dwithin",
+                                  distance=machine.COVERAGE_THREAD_W_MM / 2.0)
+                return len(set(hit[0].tolist())) == len(pp)
+        refuse = (hairline_supplement_test([p.region for p in planned],
+                                           set(hairline or {}), source_pixels, cfg)
+                  if hl_supplement else None)
+        hl_blocks, hair_lines = strand_blocks(
+            source_pixels, cfg, entry=cursor, trim_at_mm=trim_at,
+            allowed_threads=sorted({b.thread_index for b in blocks}),
+            block_wt=block_wt, hop_ok=hop_ok, refuse=refuse)
+        for hl_thread, hl_runs in hl_blocks:
+            hl_runs[0].jump = True
+            hl_runs[0].trim = True
+            _apply_ties(hl_runs)
+            t = chart_for(cfg)[hl_thread]
+            blocks.append(StitchBlock(thread_index=hl_thread, thread_number=t.number,
+                                      rgb=tuple(t.rgb), runs=hl_runs))
+            cursor = hl_runs[-1].points[-1]
+
+    # --- Spoked detail marks (cfg.detail_spokes) ----------------------------
+    # Last, once every block exists, so "the next block of the mark's thread
+    # after its host" can be read off the finished list -- on Fremont's hat
+    # that is the white bean edge cap, so the mark costs no colour change.
+    # The floor scales with the design's own width (the artwork's extent,
+    # which stage 4 scaled to the target width): 1.45 mm at the pro's 92.6.
+    spoke_report = None
+    if spoke_marks:
+        _xs = [p.region.polygon.bounds for p in planned + spoke_marks]
+        _design_w = (max(b[2] for b in _xs) - min(b[0] for b in _xs)) if _xs else None
+        spoke_report = _place_spoke_marks(spoke_marks, planned, blocks, cfg, trim_at,
+                                          design_width_mm=_design_w)
+
     warnings: list[dict] = list(applique_warnings)
+    if spoke_report is not None and spoke_report["count"]:
+        n, s = spoke_report["count"], spoke_report["spokes"]
+        warnings.append(
+            warn(
+                DETAIL_SPOKES_SEWN,
+                f"{n} small detail{'s' if n != 1 else ''} too small to outline "
+                f"sewed as {'a ' if n == 1 else ''}spoked mark{'s' if n != 1 else ''} "
+                f"({s} spoke{'s' if s != 1 else ''}) on top of the shape"
+                f"{'s' if n != 1 else ''} round {'them' if n != 1 else 'it'}"
+                + (f", adding {spoke_report['colour_changes']} colour change"
+                   f"{'s' if spoke_report['colour_changes'] != 1 else ''}"
+                   if spoke_report["colour_changes"] else "") + ".",
+                count=n,
+                spokes=s,
+                colour_changes=spoke_report["colour_changes"],
+                ids=spoke_report["ids"],
+            )
+        )
+    if hair_lines is not None:
+        warnings.append(
+            warn(
+                HAIRLINE_TIER_SEWN,
+                f"{hair_lines['strands']} hairline strand(s) sewn from detected "
+                f"lines; {hair_lines['dropped']} strand(s) under "
+                f"{machine.RUN_MIN_LOOP_MM:g} mm dropped.",
+                shapes=0,
+                strands=hair_lines["strands"],
+                dropped=hair_lines["dropped"],
+                source="lines_gradient" if hl_supplement else "lines",
+                found=hair_lines["found"],
+                refused_no_ridge=hair_lines["refused_no_ridge"],
+                sewn_by_polarity=hair_lines["sewn_by_polarity"],
+                # `cfg.hairline_lines_strand_test` / `hairline_lines_chain` /
+                # `hairline_lines_gradient` only (absent off).
+                **{k: hair_lines[k] for k in ("refused_bar", "exempt_mass", "thread_wt",
+                                              "hops", "hop_mm",
+                                              "refused_region", "refused_own_tone",
+                                              "refused_logo_edge", "refused_logo_flat",
+                                              "refused_logo_pattern")
+                   if k in hair_lines},
+            )
+        )
     if thin:
         warnings.append(
             warn(
@@ -2910,6 +3961,37 @@ def sequence(
                 "running stitch down the stroke instead.",
                 count=hairline_runs,
                 shapes=hairline_shapes,
+            )
+        )
+    if hairline_shapes_sewn:
+        warnings.append(
+            warn(
+                HAIRLINE_TIER_SEWN,
+                f"{hairline_shapes_sewn} hairline shape(s) sewed as "
+                f"{hairline_strands} single-run strand(s); {hairline_dropped} "
+                f"strand(s) under {machine.RUN_MIN_LOOP_MM:g} mm dropped.",
+                shapes=hairline_shapes_sewn,
+                strands=hairline_strands,
+                dropped=hairline_dropped,
+            )
+        )
+    if hairline_rest_slivers:
+        n = len(hairline_rest_slivers)
+        total = sum(a for _, a in hairline_rest_slivers)
+        warnings.append(
+            warn(
+                CLIP_DROPPED_SLIVER,
+                f"{n} sliver{'s' if n != 1 else ''} of artwork ({total:.2f} mm²) cut "
+                "off the thick part of a hairline shape, too small to sew on "
+                f"{'their' if n != 1 else 'its'} own, {'were' if n != 1 else 'was'} dropped.",
+                count=n,
+                ids=sorted({s for s, _ in hairline_rest_slivers}),
+                total_mm2=round(float(total), 3),
+                largest_mm2=round(float(max(a for _, a in hairline_rest_slivers)), 3),
+                floor_mm2=round(float(clip_piece_floor_mm2(cfg)), 4),
+                pieces=[{"id": s, "art_mm2": round(float(a), 3)}
+                        for s, a in hairline_rest_slivers],
+                source="hairline_rest",
             )
         )
     if blend_routed and not blend_decomposed:

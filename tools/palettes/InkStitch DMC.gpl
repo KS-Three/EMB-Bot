@@ -2,8 +2,6 @@ GIMP Palette
 Name: Ink/Stitch: DMC
 Columns: 4
 # RGB Value		                    Color Name Number
-255	255	255	                         White  White
-233	233	212	                          Ecru   Ecru
 255	255	255	                         White   0000
 255	236	191	                          Ecru   0000
 148	 91	128	            Lavender Very Dark   0208

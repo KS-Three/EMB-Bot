@@ -30,6 +30,7 @@
 
 import { loadPreferredPaletteId } from "./threads.js";
 import { DEFAULT_DIGITIZE_PARAMS } from "./project.js";
+import { owningShapeId, EDGE_CAP_ROLE } from "./borderMenu.js";
 
 // The service binds 127.0.0.1:8721 by default (digitizer_service/__main__.py).
 // The localStorage override is a dev/ops seam — e.g. a second instance on
@@ -423,6 +424,30 @@ export function editsKey(edits) {
   ]);
 }
 
+// A corner drag on the field SCALES a digitized design's baked stitches
+// (generate.js hands `sizeMm` to buildImportedDesign, the same path a .dst
+// import rides), so the stitch count stays put while the area moves:
+// 80 -> 62 mm keeps all 8,764 of logo_golden_tee's stitches on 0.6x the
+// area, 1.66x the thread per square mm. Since Kent's 2026-10-05 ruling
+// nothing re-runs on its own, so the drag has to READ as a design-width
+// change the Auto Digitize button is behind, exactly like typing a new
+// Design width -- this is the width that drag asks for, or null when the
+// design is at its digitized size (within RESIZE_TOLERANCE, the panel's
+// long-standing 2% note threshold, so a hand's jitter is not a change).
+//
+// `nativeWidthMm` is the result's width as drawn at the element's current
+// rotation (DigitizePanel's rotatedWidth), the same frame `sizeMm` is in;
+// the ratio is applied to the width the result was DIGITIZED at, so the
+// pull-comp margin a run adds is not compounded into the next target.
+export const RESIZE_TOLERANCE = 0.02;
+export function resizedTargetWidth(element, nativeWidthMm) {
+  if (!element || !element.result || !(element.sizeMm > 0) || !(nativeWidthMm > 0)) return null;
+  const f = element.sizeMm / nativeWidthMm;
+  if (Math.abs(f - 1) <= RESIZE_TOLERANCE) return null;
+  const base = { ...DEFAULT_DIGITIZE_PARAMS, ...(element.params || {}) }.target_width_mm || 80;
+  return Math.min(400, Math.max(10, Math.round(base * f * 10) / 10));
+}
+
 // Short identity for a whole digitize config (buildDigitizeConfig's output):
 // stored as element.appliedConfig when a result lands and compared against
 // the config the element would send NOW, which is how the panel knows the
@@ -495,9 +520,13 @@ function withoutBorders(edits) {
 export function editKind(prevEdits, nextEdits) {
   if (editsKey(prevEdits) === editsKey(nextEdits)) return "none";
   // Identical once the borders are taken out = borders were all that moved.
-  return editsKey(withoutBorders(prevEdits)) === editsKey(withoutBorders(nextEdits))
-    ? "border"
-    : "other";
+  if (editsKey(withoutBorders(prevEdits)) === editsKey(withoutBorders(nextEdits))) return "border";
+  // A deletion (or its undo) is a click that is complete when made, like a
+  // border — and since the canvas now hides the shape at once, the pause
+  // buys nothing but a longer wait for the real plan.
+  const noDeletes = (e) => ({ ...(e || {}), deleted_shape_ids: [] });
+  if (editsKey(noDeletes(prevEdits)) === editsKey(noDeletes(nextEdits))) return "delete";
+  return "other";
 }
 
 // Within-layer sew-order reorder (contract v1.2, the Layers panel's up/down
@@ -605,6 +634,41 @@ export function groupIntoBlocks(rows, ov) {
       sewIndexMax: indices.length ? Math.max(...indices) : null,
     };
   });
+}
+
+// Pin every sewable shape's layer to the block it sits in right now: {id:
+// layer}. A re-order that pins only the shapes it moved leaves the rest on
+// layer numbers from the PREVIOUS run, and the service renumbers layers
+// between runs whenever a tier change moves one (borders_last_layers) - the
+// pinned integers then name the wrong layers and the file sews a different
+// order than the one the customer arranged (test_manual_sew_order.py). The
+// same reason reorderWithinLayer commits a whole colour. Rows with no sew
+// position at all (effLayer 1e9) are left alone.
+export function pinSewableLayers(rows, ov) {
+  const out = {};
+  for (const r of rows) {
+    const layer = effLayer(r, ov);
+    if (layer < 1e9) out[r.id] = layer;
+  }
+  return out;
+}
+
+// Sequencer "sew this whole colour earlier/later": the layer map for the
+// whole sequence after swapping the block holding `layer` with its neighbour
+// `dir` places away (+1 later, -1 earlier), or null at either end.
+export function moveBlockLayers(rows, ov, layer, dir) {
+  const layers = groupIntoBlocks(sortShapes(rows, ov), ov).map((b) => b.layer);
+  const i = layers.indexOf(layer);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= layers.length) return null;
+  const other = layers[j];
+  const out = pinSewableLayers(rows, ov);
+  for (const r of rows) {
+    const rl = effLayer(r, ov);
+    if (rl === layer) out[r.id] = other;
+    else if (rl === other) out[r.id] = layer;
+  }
+  return out;
 }
 
 // The machine blocks a Sequencer row sews as: every cone in `blocks`
@@ -1087,6 +1151,8 @@ export function reviewFromJob(review, blocks = null) {
       sewIndex: s.sew_index,
       sewBlock: s.sew_block,
       tier: s.tier,
+      // Additive service flag: this shape sewed through the blend tier.
+      blended: s.blended === true,
       stitched: s.stitched !== false,
       // Whether the shape's colour is a flattening artifact rather than a
       // decision (contract v1.7, server-computed, read-only — see app.py's
@@ -1200,6 +1266,15 @@ async function httpDetail(r) {
   return "The digitizer service answered " + r.status + ".";
 }
 
+// httpDetail's sentence as an Error that remembers the status, so the Studio
+// can tell "image too large" (413) from "service fell over" (5xx) without
+// parsing prose. friendlyError.js decides what the customer reads.
+async function httpError(r) {
+  const e = new Error(await httpDetail(r));
+  e.status = r.status;
+  return e;
+}
+
 // POST /export (any EMB-Bot design -> a machine file, the pyembroidery-
 // convention path — digitizer_service/app.py's one export route for every
 // design type). Returns the same {bytes, filename, mime} shape
@@ -1215,7 +1290,7 @@ export async function exportViaService(design, format, label, fetchFn = globalTh
     body: JSON.stringify({ design, format, label }),
     signal: AbortSignal.timeout(10000),
   });
-  if (!r.ok) throw new Error(await httpDetail(r));
+  if (!r.ok) throw await httpError(r);
   const bytes = await r.blob();
   const cd = (r.headers && r.headers.get("Content-Disposition")) || "";
   const m = /filename="([^"]+)"/.exec(cd);
@@ -1242,7 +1317,7 @@ export async function startDigitize(image, config, fetchFn = globalThis.fetch) {
   }
   form.append("config", JSON.stringify(config));
   const r = await fetchFn(digitizerUrl() + "/digitize", { method: "POST", body: form });
-  if (!r.ok) throw new Error(await httpDetail(r));
+  if (!r.ok) throw await httpError(r);
   return r.json();
 }
 
@@ -1251,22 +1326,70 @@ export async function startDigitize(image, config, fetchFn = globalThis.fetch) {
 // opts.onState hears every observed state ("queued"/"running") for honest
 // pending UI; opts.isCancelled() stops the loop quietly (a torn-down panel
 // must not keep a timer alive — the job cache means re-asking is free).
+//
+// A job already running on the service keeps running even when a single poll
+// can't reach it. A photograph at 80 mm is ~4 minutes, polled every 500 ms,
+// so one poll out of hundreds hitting a connection reset (the box under
+// load), or a 502/503/504 from a busy or just-restarted service, is ordinary.
+// Throwing out of the loop there ABANDONS a job that is still computing: the
+// service finishes and caches it, but nothing is polling it any more, so
+// DigitizePanel.runDigitize lands in its catch, shows the offline banner,
+// resets to idle AND clears the resume mark (its finally) — and the element
+// is stuck on the PREVIOUS run's stitches and "Since last run" delta with no
+// way back but a manual re-digitize. (Measured 2026-10-15: a re-digitize that
+// read 14,812 while the service's own finished job was 14,824.) So a transient
+// poll failure retries on the next tick instead of ending the run; only a
+// sustained outage (maxTransientFailures in a row, the service genuinely
+// gone) or the overall timeout gives up. A real job error (state "error") and
+// a 4xx — a bad request, or a 404 for an evicted/missing job, which is a
+// verdict on THIS request, not a blip — still surface at once.
 export async function pollJob(jobId, opts = {}) {
   const fetchFn = opts.fetchFn || globalThis.fetch;
   const intervalMs = opts.intervalMs == null ? 500 : opts.intervalMs;
   const timeoutMs = opts.timeoutMs == null ? 300000 : opts.timeoutMs;
+  // ~10 s of back-to-back failures at the default 500 ms cadence: long enough
+  // to ride out a reset or a service restart, short enough that a service that
+  // is truly down still reports promptly.
+  const maxTransient = opts.maxTransientFailures == null ? 20 : opts.maxTransientFailures;
   const t0 = Date.now();
+  let transient = 0;
+  const overBudget = () => {
+    if (Date.now() - t0 <= timeoutMs) return false;
+    const e = new Error("Digitizing timed out. Check the service window, then digitize again.");
+    e.kind = "timeout";
+    return e;
+  };
   for (;;) {
     if (opts.isCancelled && opts.isCancelled()) return null;
-    const r = await fetchFn(digitizerUrl() + "/jobs/" + jobId);
-    if (!r.ok) throw new Error(await httpDetail(r));
-    const job = await r.json();
+    let job;
+    try {
+      const r = await fetchFn(digitizerUrl() + "/jobs/" + jobId);
+      if (!r.ok) {
+        // 5xx is the service (busy, restarting), not a verdict on this job —
+        // retry. 4xx (incl. 404 "no such job") is this request; surface now.
+        const err = await httpError(r);
+        if (r.status < 500) throw err;
+        throw Object.assign(err, { _transient: true });
+      }
+      job = await r.json();
+      transient = 0; // a clean read clears the streak
+    } catch (err) {
+      // A thrown fetch/parse error carries no HTTP status (network reset,
+      // truncated body) and is transient; a 5xx is tagged above; anything
+      // else (a 4xx httpError, a thrown non-Error) surfaces immediately.
+      const retryable = err && (err._transient || err.status == null);
+      if (!retryable) throw err;
+      if (++transient > maxTransient) throw err;
+      const timedOut = overBudget();
+      if (timedOut) throw timedOut;
+      await new Promise((res) => setTimeout(res, intervalMs));
+      continue;
+    }
     if (job.state === "done") return job;
     if (job.state === "error") throw new Error(job.error || "Digitizing failed.");
     if (opts.onState) opts.onState(job.state);
-    if (Date.now() - t0 > timeoutMs) {
-      throw new Error("Digitizing timed out. Check the service window, then digitize again.");
-    }
+    const timedOut = overBudget();
+    if (timedOut) throw timedOut;
     await new Promise((res) => setTimeout(res, intervalMs));
   }
 }
@@ -1311,13 +1434,20 @@ export function decodedFromDesign(design) {
     else if (s.type === "color") colorChanges++;
   }
   if (!stitchCount) return null;
+  // A design pruned optimistically (pruneDeletedShapes) keeps the frame of the
+  // design it was cut from, so deleting a shape does not re-centre and rescale
+  // everything left behind it.
+  const fr = design.frame;
+  if (fr && [fr.minX, fr.maxX, fr.minY, fr.maxY].every(Number.isFinite)) {
+    minX = fr.minX; maxX = fr.maxX; minY = fr.minY; maxY = fr.maxY;
+  }
   const cx = Math.round((minX + maxX) / 2);
   const cy = Math.round((minY + maxY) / 2);
   for (const s of stitches) {
     s.x -= cx;
     s.y -= cy;
   }
-  return {
+  const out = {
     stitches,
     stitchCount,
     jumpCount,
@@ -1327,6 +1457,110 @@ export function decodedFromDesign(design) {
     heightMM: (maxY - minY) / 10,
     label: design.name || "",
   };
+  // The run spans ride along (2026-10-06). `buildImportedDesign` has carried
+  // `decoded.runs` since #492 — "live for anything handed to this builder
+  // that was planned rather than decoded" — and this is the one planned
+  // design that reaches it, yet the spans were dropped here, so no digitized
+  // design ever reached the canvas with its kinds: the realistic render's
+  // satin/fill styling and the Sewn width view (strands.js) both key off
+  // them. The indices stay valid because the only record stripped above is
+  // the trailing `end` (adapter.py appends it last); a design whose `end`
+  // sat anywhere else would shift every span after it, so that one keeps
+  // its spans off rather than wrong.
+  const onlyTailEnd = src.length === stitches.length + 1 && src[src.length - 1] && src[src.length - 1].type === "end";
+  if (Array.isArray(design.runs) && (src.length === stitches.length || onlyTailEnd)) out.runs = design.runs;
+  return out;
+}
+
+// ---- optimistic delete ------------------------------------------------------
+//
+// A deleted shape used to stay fully sewn on the canvas until the restitch
+// landed (a pause, then a service round trip), so the click looked ignored.
+// `design.runs` says which stitches belong to which shape, so the pending
+// deletion can be shown at once: drop those stitches from the design the
+// canvas draws. The real restitch still runs and replaces this result; this
+// is only the preview in the gap, never what is exported.
+//
+// A removed shape leaves the cap alone (it belongs to the whole silhouette,
+// and only the service can say which stretches still stand in open air); a
+// removed cap stretch (`cap:` id) takes just that stretch.
+export function pruneDeletedShapes(design, deletedIds, knownIds) {
+  if (!design || !Array.isArray(design.runs) || !Array.isArray(design.stitches)) return design;
+  const del = new Set(deletedIds || []);
+  if (!del.size) return design;
+  const known = new Set([...(knownIds || []), ...del]);
+  const src = design.stitches;
+  const drop = new Uint8Array(src.length);
+  const gone = new Set();
+  design.runs.forEach((r, ri) => {
+    if (!r) return;
+    if (r.role === EDGE_CAP_ROLE || r.shape === "__edge_cap__") {
+      // One stretch of the cap goes when ITS id is named; the rest stay.
+      if (!r.piece || !del.has(r.piece)) return;
+    } else if (!del.has(owningShapeId(r.shape, known))) {
+      return;
+    }
+    gone.add(ri);
+    for (let i = Math.max(0, r.i0); i <= r.i1 && i < src.length; i++) drop[i] = 1;
+  });
+  if (!gone.size) return design;
+  // Frame of the UNPRUNED design — see decodedFromDesign.
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const st of src) {
+    if (st.type !== "stitch") continue;
+    if (st.x < minX) minX = st.x;
+    if (st.x > maxX) maxX = st.x;
+    if (st.y < minY) minY = st.y;
+    if (st.y > maxY) maxY = st.y;
+  }
+  const shift = new Int32Array(src.length + 1);
+  const stitches = [];
+  for (let i = 0; i < src.length; i++) {
+    shift[i] = stitches.length;
+    if (!drop[i]) stitches.push(src[i]);
+  }
+  shift[src.length] = stitches.length;
+  const runs = [];
+  design.runs.forEach((r, ri) => {
+    if (gone.has(ri)) return;
+    runs.push({ ...r, i0: shift[r.i0], i1: shift[r.i1 + 1] - 1 });
+  });
+  return { ...design, stitches, runs, frame: { minX, maxX, minY, maxY } };
+}
+
+// Deletions the current result does not know about yet: in the element's
+// deletedShapeIds, not in the list the result was digitized with.
+export function pendingDeletedIds(element) {
+  const now = (element && element.deletedShapeIds) || [];
+  if (!now.length) return [];
+  let applied = [];
+  try {
+    const parsed = JSON.parse((element && element.appliedEdits) || "null");
+    if (Array.isArray(parsed) && Array.isArray(parsed[0])) applied = parsed[0];
+  } catch {
+    applied = [];
+  }
+  const have = new Set(applied);
+  return now.filter((id) => !have.has(id));
+}
+
+const prunedCache = new WeakMap();
+// The result the canvas should draw for an element: its own, less any
+// deletion still waiting on its restitch. Cached per result + pending set so a
+// drag regenerating every frame keeps hitting decodedFromDesignCached.
+export function displayResult(element) {
+  const result = element && element.result;
+  if (!result) return result;
+  const pending = pendingDeletedIds(element);
+  if (!pending.length) return result;
+  const key = pending.join("|");
+  let hit = prunedCache.get(result);
+  if (!hit || hit.key !== key) {
+    const known = ((element.review && element.review.shapes) || []).map((r) => r && r.id);
+    hit = { key, design: pruneDeletedShapes(result, pending, known) };
+    prunedCache.set(result, hit);
+  }
+  return hit.design;
 }
 
 // Per-frame regen cache (drag/resize regenerate every element per frame —
@@ -1479,6 +1713,21 @@ export const SILENT_WARNINGS = new Set([
   "PHOTO_PALETTE_SELECTED",
   "PALETTE_THREAD_MISMATCH",
   "PHOTO_SAM2_SEGMENTATION_UNAVAILABLE",
+  // Photo-lane notes about what ran. Info only, nothing for a customer to do;
+  // preflight reads PHOTO_FACES_DETECTED server-side, not from this list.
+  "PHOTO_PREP_APPLIED", "PHOTO_FACES_DETECTED", "PHOTO_BACKGROUND_REMOVED",
+  "PHOTO_BLEND_DISSOLVED", "PHOTO_SHADE_DEMAND", "PHOTO_SAM2_SEGMENTED",
+  // The hairline tier's bookkeeping (cfg.hairline, built OFF 2026-10-12):
+  // strands sewn and short ones dropped. Engine-side only, per Kent's
+  // 2026-10-02 no-warnings ruling.
+  "HAIRLINE_TIER_SEWN",
+  // Stage 5's clip cut a shape in pieces and the ones too small to sew were
+  // dropped (cfg.clip_keep_pieces, built OFF 2026-10-12). Bookkeeping only.
+  "CLIP_DROPPED_SLIVER",
+  // A small detail sewed as a spoked mark on top of the shape round it
+  // (cfg.detail_spokes, built OFF 2026-10-15). The engine took the path;
+  // nothing for a customer to do.
+  "DETAIL_SPOKES_SEWN",
 ]);
 
 // Of the warnings that DO reach the panel, most are the engine reporting what
@@ -1514,6 +1763,10 @@ export const ATTENTION_WARNINGS = new Set([
   "SHAPE_EDIT_UNKNOWN_ID",
   // this machine could not run a step, and cropping the art is the workaround
   "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE", "PHOTO_FACE_PRIORS_UNAVAILABLE",
+  // the design is sewn, but something about it needs a look or a setting changed
+  "CLASSIFICATION_SEED_UNSTABLE", "CONTOUR_RING_UNREACHABLE", "EDGE_CAP_OVER_BUDGET",
+  "APPLIQUE_NO_FABRIC_VISIBLE", "APPLIQUE_PRECUT_TOO_NARROW", "APPLIQUE_PIECES_OVERLAP",
+  "APPLIQUE_STEP_EMPTY",
 ]);
 
 const WARNING_TEXT = {
@@ -1774,6 +2027,46 @@ const WARNING_TEXT = {
     plural(w.count || 0,
       "Two bordered shapes share an edge. It is outlined once, in the colour sewn on top; the shape underneath skips that stretch of its own border.",
       "{n} pairs of bordered shapes share an edge. Each is outlined once, in the colour sewn on top; the shape underneath skips that stretch of its own border."),
+  // Codes added to the map 2026-10-08 (test_warning_codes_mapped.py is the
+  // guard: a code the engine emits needs a line here or a place in
+  // SILENT_WARNINGS). Appliqué is not offered in the Studio yet, but a job
+  // that asks for it gets these, so they speak in plain words too.
+  CLASSIFICATION_SEED_UNSTABLE: () =>
+    "This artwork sits right on the line between two kinds of art, so the type shown above could have come out the other way. Check the stitch preview before you trust it.",
+  CONTOUR_RING_UNREACHABLE: (w) =>
+    plural(w.count || 0,
+      "One shape has a patch of bare fabric the contour rings couldn't reach. Check it in the stitch preview.",
+      "{n} shapes have a patch of bare fabric the contour rings couldn't reach. Check them in the stitch preview."),
+  CONTOUR_DIRECTIONAL_COMP_UNSEWN: () =>
+    "Directional compensation and contour stitching don't work together, so the compensation was applied in a direction that isn't sewn. Turn one of the two off.",
+  EDGE_CAP_OVER_BUDGET: (w) => {
+    const st = typeof w.stitches === "number" ? w.stitches.toLocaleString("en-US") : "";
+    const pc = typeof w.percent === "number" ? w.percent : "";
+    return (st && pc !== ""
+      ? `The design edge adds ${st} stitches, ${pc}% more than the rest of the design.`
+      : "The design edge adds a lot of stitches.")
+      + " It is sewn anyway. Make the design a different size, or turn the edge off, to bring that down.";
+  },
+  APPLIQUE_NO_FABRIC_VISIBLE: () =>
+    "An appliqué piece is too narrow to show any fabric, so it sews as plain stitching instead.",
+  APPLIQUE_CUTTING_LINE_SUPPRESSED: () =>
+    "An appliqué piece is too narrow to trim with scissors in the hoop, so its cutting line was left out.",
+  APPLIQUE_FORCED_PRE_CUT: () =>
+    "A hole in an appliqué piece is too small to get scissors into, so that piece has to be cut out before it goes on the hoop.",
+  APPLIQUE_COVER_MARGINAL: () =>
+    "An appliqué piece has very little room for error: a slightly crooked trim will leave raw fabric edge showing past the border stitching.",
+  APPLIQUE_PIECES_OVERLAP: (w) =>
+    plural(w.count || 0,
+      "Two appliqué pieces overlap, so their borders sew on top of each other. Move them apart, or sew them as separate pieces.",
+      "{n} pairs of appliqué pieces overlap, so their borders sew on top of each other. Move them apart, or sew them as separate pieces."),
+  APPLIQUE_STEP_EMPTY: () =>
+    "An appliqué piece couldn't be stitched and was left out.",
+  APPLIQUE_COVER_WIDTH_CLAMPED: (w) =>
+    plural(w.count || 0,
+      "One appliqué piece has a border stitched at the widest or narrowest width the machine allows, because the ideal width fell outside it. Check the border on the stitch preview.",
+      "{n} appliqué pieces have borders stitched at the widest or narrowest width the machine allows, because the ideal width fell outside it. Check the borders on the stitch preview."),
+  APPLIQUE_PRECUT_TOO_NARROW: () =>
+    "An appliqué piece is too narrow to cut out by hand before sewing. Make that piece wider, or sew it as plain stitching.",
   // The two "this machine cannot run it" seams a customer can act on. Their
   // engine messages used to interpolate a diagnostic — an absolute venv path,
   // a model path, a line of a worker's STDERR — which the panel rendered

@@ -92,6 +92,33 @@ def cap_block(plan):
     return None
 
 
+def cap_blocks(plan):
+    """EVERY block the cap sews. Since `edge_cap_follow_adjacent` the cap
+    sews each stretch in the thread beside it, so a design whose edge passes
+    two colours has two cap blocks."""
+    return [b for b in plan.blocks
+            if any(r.shape_id == "__edge_cap__" for r in b.runs)]
+
+
+def cap_stitches(plan) -> int:
+    """The cap's own stitches, counted off its runs. A cap stretch in the last
+    artwork block's cone sews at the end of that block (`_cap_seam_joins`),
+    so a block holding cap runs is not always cap-only."""
+    return sum(len(r.points) for b in plan.blocks for r in b.runs
+               if r.shape_id == "__edge_cap__")
+
+
+def art_blocks(plan):
+    """(thread_index, artwork runs) per block, cap runs left out and a
+    cap-only block dropped -- what the plan sews with the cap taken away."""
+    out = []
+    for b in plan.blocks:
+        runs = [r for r in b.runs if r.shape_id != "__edge_cap__"]
+        if runs:
+            out.append((b.thread_index, runs))
+    return out
+
+
 # --- the default: nothing happens -------------------------------------------
 
 def test_the_default_is_bean():
@@ -122,11 +149,11 @@ def test_turning_it_off_is_byte_identical_to_the_flag_not_existing():
     assert cap_block(off) is None
     capped = plan_for(BOTH)
     assert cap_block(capped) is not None, "the default should now cap"
-    art = [b for b in capped.blocks if b is not cap_block(capped)]
+    art = art_blocks(capped)
     assert len(art) == len(off.blocks)
-    for a, b in zip(art, off.blocks):
-        assert a.thread_index == b.thread_index
-        assert [r.points for r in a.runs] == [r.points for r in b.runs]
+    for (t, runs), b in zip(art, off.blocks):
+        assert t == b.thread_index
+        assert [r.points for r in runs] == [r.points for r in b.runs]
 
 
 def test_an_unknown_style_is_inert_rather_than_an_error():
@@ -158,8 +185,8 @@ def test_satin_costs_more_thread_than_bean():
     """The artifact's own measured ordering (bean +12.6%, satin +15.3% on
     the icon): a column is heavier than three traced passes. Pins the two
     styles as genuinely different tiers, not one emitter behind two names."""
-    bean = cap_block(plan_for(BOTH, edge_cap="bean")).stitch_count
-    satin = cap_block(plan_for(BOTH, edge_cap="satin")).stitch_count
+    bean = cap_stitches(plan_for(BOTH, edge_cap="bean"))
+    satin = cap_stitches(plan_for(BOTH, edge_cap="satin"))
     assert satin > bean
 
 
@@ -169,12 +196,11 @@ def test_a_cap_only_adds_stitches():
     base = plan_for(BOTH, edge_cap="none")
     for style in ("bean", "satin"):
         plan = plan_for(BOTH, edge_cap=style)
-        cap = cap_block(plan)
-        assert stitch_count(plan) == stitch_count(base) + cap.stitch_count
-        art = [b for b in plan.blocks if b is not cap]
+        assert stitch_count(plan) == stitch_count(base) + cap_stitches(plan)
+        art = art_blocks(plan)
         assert len(art) == len(base.blocks)
-        for a, b in zip(art, base.blocks):
-            assert [r.points for r in a.runs] == [r.points for r in b.runs]
+        for (_t, runs), b in zip(art, base.blocks):
+            assert [r.points for r in runs] == [r.points for r in b.runs]
 
 
 # --- where it sews, and in what -----------------------------------------------
@@ -189,9 +215,9 @@ def test_the_cap_sews_after_every_artwork_block():
     pass because these fixtures leave `detail_layer` off."""
     for style in ("bean", "satin"):
         plan = plan_for(BOTH, edge_cap=style)
-        cap = cap_block(plan)
-        cap_at = plan.blocks.index(cap)
-        art_at = [i for i, b in enumerate(plan.blocks) if b is not cap]
+        cap = cap_blocks(plan)
+        cap_at = min(plan.blocks.index(b) for b in cap)
+        art_at = [i for i, b in enumerate(plan.blocks) if b not in cap]
         assert cap_at > max(art_at)
 
 
@@ -303,7 +329,7 @@ def test_the_cap_always_reports_what_it_cost():
         w = _cap_warning(plan)
         assert w is not None, f"{style} cap reported no cost"
         assert w["style"] == style
-        assert w["stitches"] == cap_block(plan).stitch_count
+        assert w["stitches"] == cap_stitches(plan)
         assert w["edges"] >= 1
         assert w["percent"] > 0
         assert w["cracks_filled"] == 0      # two clean bars: nothing to fill

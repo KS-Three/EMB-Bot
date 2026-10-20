@@ -74,6 +74,11 @@ def _run(**kw):
     # stitch count this file's two arms are compared on. The cover's own price
     # is pinned in `tests/test_crown_cover.py`.
     kw.setdefault("satin_crown_cover", False)
+    # And on the skeleton tier: the Column lane (`lettering_columns`, ON by
+    # default since Kent's 2026-10-12 flip) takes the letters ahead of the
+    # edge cap this file prices. Its own cap behaviour is pinned in
+    # `tests/test_lettering_columns.py`.
+    kw.setdefault("lettering_columns", False)
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest",
                          max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)
@@ -245,10 +250,13 @@ def test_a_fill_sewn_text_candidate_keeps_its_cap():
     Pinned on `satin_lettering_split=False`: since step 4 flipped ON
     (2026-09-19) a text candidate never fills by default — it splits as
     satin — so the fill-sewn letter this test is about exists only on the
-    pre-flip engine. The case is still real there and the cap still owes it."""
+    pre-flip engine. The case is still real there and the cap still owes it.
+    Likewise `lettering_columns=False` (ON by default since 2026-10-12): the
+    Column lane would sew this "letter" as a column, not a fill."""
     slab = [_region(_bar(20, 30), "T", 3, 0, {"text_candidate": True})]
-    off = _plan_for(slab, edge_cap_skip_lettering=False, satin_lettering_split=False)
-    on = _plan_for(slab, satin_lettering_split=False)
+    off = _plan_for(slab, edge_cap_skip_lettering=False, satin_lettering_split=False,
+                    lettering_columns=False)
+    on = _plan_for(slab, satin_lettering_split=False, lettering_columns=False)
     kinds = {str(r.kind) for b in off.blocks for r in b.runs if r.shape_id == "T"}
     assert str(stitches.FILL) in kinds, kinds
     assert _cap_block(off) is not None, "a lone fill should be capped"

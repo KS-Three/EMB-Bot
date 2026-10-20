@@ -45,6 +45,14 @@ import "@testing-library/jest-dom/vitest";
 import { createRequire } from "node:module";
 import { preloadAllFontsSync } from "../lib/testFonts.js";
 import { CANVAS_W, CANVAS_H } from "../lib/manualShapes.js";
+import { advancedOpen } from "../lib/advanced.js";
+
+// The drawing tools live behind the panel's "Advanced ›" fold (spec
+// 2026-09-30 §5), which is `hidden` while closed -- and Testing Library's
+// role queries skip hidden subtrees. This spec drives the tools themselves,
+// so it opens the fold once; the fold's own behaviour is pinned in
+// Advanced.spec.js and ContentStep.advanced.spec.js.
+advancedOpen.set(true);
 
 let Harness;
 
@@ -236,7 +244,7 @@ describe("selecting and deleting a finished shape", () => {
     await fireEvent.click(getByRole("button", { name: "Delete shape" }));
     expect(patches).toHaveLength(1);
     expect(patches[0].patch.shapes).toEqual([]);
-    expect(getByText("No shapes yet — draw one above to get started.")).toBeTruthy();
+    expect(getByText("No shapes yet — open Advanced to draw one.")).toBeTruthy();
   });
 });
 
@@ -1113,4 +1121,291 @@ test("a canvas straddling the fold scrolls once it is more than a tenth clipped"
   const calls25 = withCanvasRect({ top: h - 100, bottom: h + 300 }, () =>
     withScrollSpy(() => { renderPanel(); }));
   expect(calls25).toHaveLength(1);
+});
+
+// ---- Column mode (manual columns, plan 2 Task 6) ---------------------------
+//
+// A column is an OPEN spine plus a drawn width (`widthPx`, authored canvas
+// px). Column mode never selects and never closes on the start point — a
+// spine may end where it began — and finishes on double-click, Enter or the
+// Finish button with two points or more. Its assign box has Dim, Color and a
+// Width in mm (through the element's fit), and nothing a column cannot use.
+
+function renderColumnPanel(shapes = [], { fit = null, fabric = null, garment = null } = {}) {
+  const patches = [];
+  const utils = render(Harness, {
+    props: { element: baseElement(shapes), fit, fabric, garment, onPatch: (d) => patches.push(d) },
+  });
+  const canvas = utils.container.querySelector("canvas");
+  return { ...utils, canvas, patches };
+}
+const COL = (extra = {}) => ({
+  id: "s1", kind: "column", points: [{ x: 100, y: 100 }, { x: 400, y: 100 }], curves: {},
+  widthPx: 24, colorRgb: [200, 30, 30], ...extra,
+});
+function columnBtn(getByRole) {
+  return getByRole("group", { name: "Drawing mode" }).querySelectorAll("button")[2];
+}
+
+describe("Column mode", () => {
+  test("the mode strip reads Shape | Hole | Column | Line", () => {
+    const { getByRole } = renderColumnPanel();
+    const labels = [...getByRole("group", { name: "Drawing mode" }).querySelectorAll("button")].map((b) => b.textContent.trim());
+    // plan 3 added Line (ruling 4's fourth mode)
+    expect(labels).toEqual(["Shape", "Hole", "Column", "Line"]);
+  });
+
+  test("its hint line says how to draw one", async () => {
+    const { getByRole, container } = renderColumnPanel();
+    await fireEvent.click(columnBtn(getByRole));
+    expect(container.querySelector(".mp-modehint").textContent.trim())
+      .toBe("Click along the middle of the stroke, then double-click to finish.");
+  });
+
+  test("two clicks and a double-click make a kind: column shape with a width and no stitch type or angle", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(columnBtn(getByRole));
+    await clickAt(canvas, 100, 100);
+    await clickAt(canvas, 300, 150);
+    await fireEvent.dblClick(canvas, { clientX: 300, clientY: 150, detail: 2 });
+    expect(patches).toHaveLength(1);
+    const s = patches[0].patch.shapes[0];
+    expect(s.kind).toBe("column");
+    expect(s.points).toEqual([{ x: 100, y: 100 }, { x: 300, y: 150 }]);
+    // no fit: the nominal canvas scale, 6 px per mm -> 4.0 mm is 24 px
+    expect(s.widthPx).toBeCloseTo(24, 9);
+    expect("stitchType" in s).toBe(false);
+    expect("angleDeg" in s).toBe(false);
+    expect(Array.isArray(s.colorRgb)).toBe(true);
+    // and the mode stays Column for the next one
+    expect(columnBtn(getByRole).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  test("with the element's fit, a new column is 4.0 mm through THAT fit", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel([], { fit: { mmPerPx: 0.25 } });
+    await fireEvent.click(columnBtn(getByRole));
+    await clickAt(canvas, 100, 100);
+    await clickAt(canvas, 300, 150);
+    await fireEvent.keyDown(canvas, { key: "Enter" });
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].widthPx).toBeCloseTo(16, 9);
+  });
+
+  test("with the garment, a new column is sized for the fit it will GET once the element fits it", async () => {
+    // The nominal 24 px of a lone column across half the canvas fits to far
+    // more than 4.0 mm; newColumnWidthPx solves for the post-fit width.
+    const { newColumnWidthPx } = await import("../lib/fieldNodeEdit.js");
+    const garment = (await import("../lib/emb.js")).EMB.getGarment("tote");
+    const { canvas, getByRole, patches } = renderColumnPanel([], { garment });
+    await fireEvent.click(columnBtn(getByRole));
+    await clickAt(canvas, 150, 200);
+    await clickAt(canvas, 450, 200);
+    await fireEvent.keyDown(canvas, { key: "Enter" });
+    expect(patches).toHaveLength(1);
+    const s = patches[0].patch.shapes[0];
+    const want = newColumnWidthPx(baseElement([]), [], { ...s, widthPx: 0 }, garment);
+    expect(want).toBeLessThan(24);
+    expect(s.widthPx).toBeCloseTo(want, 9);
+  });
+
+  test("Finish is off at one point and on at two", async () => {
+    const { canvas, getByRole } = renderColumnPanel();
+    await fireEvent.click(columnBtn(getByRole));
+    await clickAt(canvas, 100, 100);
+    expect(getByRole("button", { name: "Finish shape" })).toBeDisabled();
+    await clickAt(canvas, 300, 100);
+    expect(getByRole("button", { name: "Finish shape" })).not.toBeDisabled();
+  });
+
+  test("a click near the start adds a point — it does not finish", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel([], { fit: { mmPerPx: 1 } }); // 4 px wide
+    await fireEvent.click(columnBtn(getByRole));
+    await clickAt(canvas, 100, 100);
+    await clickAt(canvas, 300, 100);
+    await clickAt(canvas, 300, 160);
+    await clickAt(canvas, 106, 106); // within the closing radius of the first point
+    expect(patches).toHaveLength(0);
+    await fireEvent.click(getByRole("button", { name: "Finish shape" }));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].points).toHaveLength(4);
+  });
+
+  test("a click on a finished shape in Column mode places a point, it does not select", async () => {
+    const { canvas, getByRole, getByText, patches } = renderColumnPanel([BIG()]);
+    await fireEvent.click(columnBtn(getByRole));
+    await clickAt(canvas, 200, 200);
+    expect(getByRole("button", { name: "Undo point" })).not.toBeDisabled();
+    expect(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button").className).not.toContain("sel");
+    expect(patches).toHaveLength(0);
+  });
+
+  test("a spine that folds at its width is refused with the reason", async () => {
+    const { canvas, getByRole, container, patches } = renderColumnPanel();
+    await fireEvent.click(columnBtn(getByRole));
+    await clickAt(canvas, 100, 100);
+    await clickAt(canvas, 300, 100);
+    await clickAt(canvas, 110, 105); // hairpin 5 px off a 24 px column
+    expect(container.querySelector(".mp-draftissue").textContent)
+      .toContain("This column folds over itself — widen the bend or narrow the column.");
+    expect(getByRole("button", { name: "Finish shape" })).toBeDisabled();
+    await fireEvent.dblClick(canvas, { clientX: 110, clientY: 105, detail: 2 });
+    expect(patches).toHaveLength(0);
+  });
+
+  test("its list row reads Shape 1 · Column, and a click on its rails selects it in Shape mode", async () => {
+    const { canvas, getByText } = renderColumnPanel([COL()]);
+    const row = getByText("Shape 1 · Column", { selector: ".mp-shapename" });
+    await clickAt(canvas, 250, 108); // inside the rail ring (88..112), off the spine
+    expect(row.closest("button").className).toContain("sel");
+  });
+
+  test("the assign box: Dim, Color and Width — no Stitch type, Fill angle or Cut out", async () => {
+    const { getByText, queryByText, container } = renderColumnPanel([COL()]);
+    await fireEvent.click(getByText("Shape 1 · Column", { selector: ".mp-shapename" }).closest("button"));
+    expect(container.querySelector(".mp-assign h3").textContent.trim()).toBe("Shape 1 · Column");
+    expect(getByText("Dim")).toBeTruthy();
+    expect(getByText("Color")).toBeTruthy();
+    expect(getByText("Width")).toBeTruthy();
+    expect(queryByText("Stitch type")).toBeNull();
+    expect(queryByText("Fill angle")).toBeNull();
+    expect(queryByText("Cut out")).toBeNull();
+    // no fit: the nominal scale, 24 px / 6 px per mm
+    expect(container.querySelector(".mp-width input").value).toBe("4.0");
+  });
+
+  test("Width reads through the fit, quotes what it sews on the fabric, and writes widthPx back", async () => {
+    const fit = { mmPerPx: 0.2 }, fabric = { label: "Twill", pullCompMm: 0.3 };
+    const { getByText, container, patches } = renderColumnPanel([COL({ widthPx: 20 })], { fit, fabric });
+    await fireEvent.click(getByText("Shape 1 · Column", { selector: ".mp-shapename" }).closest("button"));
+    const input = container.querySelector(".mp-width input");
+    expect(input.value).toBe("4.0");
+    expect(container.querySelector(".mp-width-note").textContent.trim()).toBe("Sews 4.3 mm on Twill.");
+    await fireEvent.change(input, { target: { value: "6" } });
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].widthPx).toBeCloseTo(30, 9);
+    // With a real fit the width commits through the re-fit rule (spec §6
+    // amendment: "so nothing else moves"): the patch re-sizes the element.
+    expect(patches[0].patch.sizeMm).toBeGreaterThan(0);
+    await fireEvent.change(container.querySelector(".mp-width input"), { target: { value: "7" } });
+    const note = container.querySelector(".mp-width-note");
+    expect(note.textContent.trim()).toBe("Over 6.5 mm sewn — long satin stitches can snag. Consider a fill, or two columns.");
+    expect(note.className).toContain("warn");
+  });
+
+  test("a width the spine cannot carry is refused, and nothing is written", async () => {
+    const hook = COL({ points: [{ x: 100, y: 100 }, { x: 300, y: 100 }, { x: 110, y: 130 }] });
+    const { getByText, container, patches } = renderColumnPanel([hook], { fit: { mmPerPx: 0.25 } });
+    await fireEvent.click(getByText("Shape 1 · Column", { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.change(container.querySelector(".mp-width input"), { target: { value: "12" } });
+    expect(patches).toHaveLength(0);
+    expect(container.querySelector(".mp-width-note").textContent.trim())
+      .toBe("This column folds over itself — widen the bend or narrow the column.");
+  });
+
+  test("Shape and Hole modes still make closed shapes with no kind key", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(columnBtn(getByRole));
+    await fireEvent.click(modeButtons(getByRole).shapeBtn);
+    await drawTri(canvas);
+    expect(patches).toHaveLength(1);
+    expect("kind" in patches[0].patch.shapes[0]).toBe(false);
+  });
+});
+
+// ---- Line mode (open runs, plan 3 Task 5) ------------------------------------
+// A line is an open path that sews a running stitch. Line mode never selects
+// and never closes on the start point; double-click / Enter / Finish with two
+// points or more. Its assign box: Dim, Color, Passes, Stitch length and
+// "Make it a column"; a column's assign box gains "Make it a line".
+const LINE = (extra = {}) => ({
+  id: "s1", kind: "run", points: [{ x: 100, y: 100 }, { x: 400, y: 100 }], curves: {},
+  colorRgb: [30, 120, 30], ...extra,
+});
+function lineBtn(getByRole) {
+  return getByRole("group", { name: "Drawing mode" }).querySelectorAll("button")[3];
+}
+
+describe("Line mode", () => {
+  test("its hint line says how to draw one", async () => {
+    const { getByRole, container } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    expect(container.querySelector(".mp-modehint").textContent.trim()).toBe("Click along the line, then double-click to finish.");
+  });
+
+  test("two clicks and a double-click make a kind: run shape, with nothing else stored", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    await clickAt(canvas, 100, 100);
+    await clickAt(canvas, 300, 150);
+    await fireEvent.dblClick(canvas, { clientX: 300, clientY: 150, detail: 2 });
+    expect(patches).toHaveLength(1);
+    const s = patches[0].patch.shapes[0];
+    expect(s.kind).toBe("run");
+    expect(s.points).toEqual([{ x: 100, y: 100 }, { x: 300, y: 150 }]);
+    for (const k of ["stitchType", "angleDeg", "widthPx", "passes", "stitchLenMm"]) expect(k in s).toBe(false);
+    expect(lineBtn(getByRole).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  test("a click back near the start adds a point instead of finishing", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    await clickAt(canvas, 100, 100);
+    await clickAt(canvas, 300, 100);
+    await clickAt(canvas, 300, 250);
+    await clickAt(canvas, 102, 102);
+    expect(patches).toHaveLength(0);
+    await fireEvent.keyDown(canvas, { key: "Enter" });
+    expect(patches[0].patch.shapes[0].points).toHaveLength(4);
+  });
+
+  test("a click on a finished shape in Line mode places a point, it does not select", async () => {
+    const { canvas, getByRole, patches, container } = renderColumnPanel([COL()]);
+    await fireEvent.click(lineBtn(getByRole));
+    await clickAt(canvas, 250, 100);
+    expect(container.querySelector(".mp-assign")).toBeNull();
+    await clickAt(canvas, 250, 300);
+    await fireEvent.keyDown(canvas, { key: "Enter" });
+    expect(patches[0].patch.shapes[1].kind).toBe("run");
+  });
+
+  test("list row and assign box: Line, Color, Passes, Stitch length, Make it a column — no stitch type, width or cut out", async () => {
+    globalThis.EMB = { ...(globalThis.EMB || {}), LETTERING_GUARDS: { BEAN_PASSES: 3, BEAN_STITCH_MM: 0.73 } };
+    const { getByText, container } = renderColumnPanel([LINE()]);
+    await fireEvent.click(getByText("Shape 1 · Line", { selector: ".mp-shapename" }));
+    const box = container.querySelector(".mp-assign");
+    expect(box.querySelector("h3").textContent).toBe("Shape 1 · Line");
+    const labels = [...box.querySelectorAll(".mp-label")].map((l) => l.textContent.trim());
+    expect(labels).toEqual(["Dim", "Color", "Passes", "Stitch length"]);
+    const lit = box.querySelector(".mp-passes .mp-btn.active");
+    expect(lit.textContent.trim()).toBe("Bean (3 passes)");
+    expect(box.querySelector(".mp-stitchlen input").value).toBe("0.73");
+    expect([...box.querySelectorAll("button")].some((b) => b.textContent.trim() === "Make it a column")).toBe(true);
+    expect(box.querySelector(".mp-width")).toBeNull();
+  });
+
+  test("Passes and Stitch length write the record", async () => {
+    const { getByText, container, patches } = renderColumnPanel([LINE()]);
+    await fireEvent.click(getByText("Shape 1 · Line", { selector: ".mp-shapename" }));
+    await fireEvent.click(getByText("Single run"));
+    expect(patches.at(-1).patch.shapes[0].passes).toBe(1);
+    const input = container.querySelector(".mp-stitchlen input");
+    input.value = "1.2";
+    await fireEvent.change(input);
+    expect(patches.at(-1).patch.shapes[0].stitchLenMm).toBe(1.2);
+  });
+
+  test("Make it a column, then Make it a line: the spine is the one drawn", async () => {
+    const { getByText, patches } = renderColumnPanel([LINE({ curves: { 0: { x: 250, y: 160 } } })]);
+    await fireEvent.click(getByText("Shape 1 · Line", { selector: ".mp-shapename" }));
+    await fireEvent.click(getByText("Make it a column"));
+    const col = patches.at(-1).patch.shapes[0];
+    expect(col.kind).toBe("column");
+    expect(col.points).toEqual(LINE().points);
+    expect(col.curves).toEqual({ 0: { x: 250, y: 160 } });
+    // no fit, no garment: the nominal scale, 4.0 mm = 24 px
+    expect(col.widthPx).toBeCloseTo(24, 9);
+    // the harness applies the patch: the same row is now a column, still selected
+    await fireEvent.click(getByText("Make it a line"));
+    expect(patches.at(-1).patch.shapes[0]).toEqual({ id: "s1", kind: "run", points: LINE().points, curves: { 0: { x: 250, y: 160 } }, colorRgb: [30, 120, 30] });
+  });
 });

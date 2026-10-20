@@ -1,0 +1,67 @@
+{
+ "design": "screenshot",
+ "lines": [
+  {
+   "cluster": "TC111a95f5",
+   "members": [
+    "S3e79ef40",
+    "Sa59f1486",
+    "S4213de65"
+   ],
+   "n": 3,
+   "cap_mm": 3.294,
+   "min_counter_mm": null,
+   "counters": 0,
+   "bean": 3,
+   "box_mm": [
+    13.41,
+    13.76,
+    21.88,
+    17.06
+   ],
+   "changed": true,
+   "word": null,
+   "verdict": "changed (no reader)"
+  },
+  {
+   "cluster": "TC35577288",
+   "members": [
+    "S6e8a2495",
+    "S2326fdac",
+    "S59780e53",
+    "S4dc9c668",
+    "S4a9d4a9a",
+    "Sa4e1fd64",
+    "Sf5074b37",
+    "Sfc8436e3",
+    "S93270afb",
+    "Sb6f776a7",
+    "S7b1c5b71",
+    "S132d02dd",
+    "S16e882d6",
+    "S593b6998",
+    "S96bb6902",
+    "S3cdee8e9"
+   ],
+   "n": 16,
+   "cap_mm": 3.423,
+   "min_counter_mm": 1.15,
+   "counters": 5,
+   "bean": 16,
+   "box_mm": [
+    -29.25,
+    13.61,
+    29.18,
+    17.22
+   ],
+   "changed": true,
+   "word": null,
+   "verdict": "changed (no reader)"
+  }
+ ],
+ "secs": 428,
+ "stitches": [
+  8467,
+  8511
+ ]
+}

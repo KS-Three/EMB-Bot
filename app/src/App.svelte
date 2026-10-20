@@ -1,6 +1,7 @@
 <script>
-  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, removeElement, resolveArtworkType, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
+  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, withoutBlankStarter, removeElement, resolveArtworkType, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
   import { createHistory } from "./lib/history.js";
+  import { advancedOpen } from "./lib/advanced.js";
   import { applyTemplate } from "./lib/templates.js";
   import { onMount, tick } from "svelte";
   import { isSewable } from "./lib/flow.js";
@@ -40,10 +41,8 @@
   import GarmentStep from "./ui/GarmentStep.svelte";
   import ContentStep from "./ui/ContentStep.svelte";
   import Configurator from "./ui/Configurator.svelte";
-  import DownloadSheet from "./ui/DownloadSheet.svelte";
   import EmbroideryField from "./ui/EmbroideryField.svelte";
-  import ProjectsDrawer from "./ui/ProjectsDrawer.svelte";
-  import FontCredits from "./ui/FontCredits.svelte";
+  import ShortcutsHelp from "./ui/ShortcutsHelp.svelte";
   import Icon from "./ui/Icon.svelte";
   import "./ui/theme.css";
 
@@ -368,9 +367,33 @@
     applyHistorySnapshot(history.redo());
   }
 
+  // Delete / Backspace on the focused embroidery field removes the SELECTED
+  // ELEMENT, the keyboard twin of the row's "Remove element" button (Kent
+  // 2026-10-08). The field owns Delete for a selected hand-drawn shape or
+  // anchor and marks the event handled (preventDefault); this runs a tick
+  // later and stands down if so, so one keypress never removes a shape AND its
+  // element. Same floor as the button: the last element stays. Only a key
+  // aimed at the field canvas counts. Ctrl+Z restores it.
+  function deleteSelectedElementFromField(e) {
+    const t = e.target;
+    if (!t || !t.matches || !t.matches(".hoop canvas")) return;
+    if (document.querySelector('[aria-label="Stitch simulator"][aria-pressed="true"]')) return;
+    setTimeout(() => {
+      if (e.defaultPrevented) return;
+      const id = project.selectedId;
+      if (!id || project.elements.length <= 1) return;
+      if (!project.elements.some((el) => el.id === id)) return;
+      onRemoveElement(id);
+    }, 0);
+  }
+
   // Ctrl/Cmd+Z and Ctrl+Y / Ctrl/Cmd+Shift+Z — skipped while a text control
   // has focus so the browser's native input-level undo stays intact.
   function onGlobalKey(e) {
+    if (e.key === "Delete" || e.key === "Backspace") {
+      deleteSelectedElementFromField(e);
+      return;
+    }
     if (!(e.ctrlKey || e.metaKey)) return;
     const t = e.target;
     const tag = t && t.tagName;
@@ -475,6 +498,9 @@
   // (and the below-5mm warning) always reflects the real current design,
   // including while the user drags the field's resize handles.
   let designDims = null;
+  // Each hand-drawn element's fit, from EmbroideryField's "manualfits" — the
+  // side panel draws columns 4.0 mm wide through it (ContentStep -> ManualPanel).
+  let manualFits = {};
 
   // A shape selected ON THE FIELD (EmbroideryField's click-to-edit popover,
   // 2026-09-29): { elementId, shapeId, n }. Runtime only — never saved.
@@ -685,7 +711,9 @@
     const file = e.currentTarget.files && e.currentTarget.files[0];
     e.currentTarget.value = ""; // re-picking the same file must re-fire change
     if (!file) return;
-    project = addElement(project, resolveArtworkType(digitizerHealth), hoopWidthMm(project));
+    // Art uploaded onto a fresh design replaces its blank text box rather
+    // than landing beside it at a second element's 40%-of-hoop size.
+    project = addElement(withoutBlankStarter(project), resolveArtworkType(digitizerHealth), hoopWidthMm(project));
     pendingArtFile = { id: project.selectedId, file };
     persist();
   }
@@ -695,6 +723,10 @@
       if (artInput) artInput.click();
       return;
     }
+    // "Draw shapes" (the canvas right-click menu) asked for the drawing
+    // canvas, which lives behind Advanced (spec 2026-09-30 §5) -- opening the
+    // panel onto a closed fold would hide the one thing the customer asked for.
+    if (type === "manual") advancedOpen.set(true);
     project = addElement(project, type, hoopWidthMm(project));
     // addElement selects the new element, and its editor is always on
     // screen now — the configurator panel shows the Design section at all
@@ -1215,6 +1247,7 @@
 {/if}
 
 {#if drawerOpen}
+  {#await import("./ui/ProjectsDrawer.svelte") then { default: ProjectsDrawer }}
   <ProjectsDrawer
     {projects}
     {currentId}
@@ -1229,10 +1262,15 @@
     on:close={() => (drawerOpen = false)}
     notice={drawerNotice}
   />
+  {/await}
 {/if}
 
+<ShortcutsHelp />
+
 {#if creditsOpen}
-  <FontCredits on:close={() => (creditsOpen = false)} />
+  {#await import("./ui/FontCredits.svelte") then { default: FontCredits }}
+    <FontCredits on:close={() => (creditsOpen = false)} />
+  {/await}
 {/if}
 
 <div class="studio">
@@ -1250,6 +1288,7 @@
       on:select={(e) => onSelect(e.detail)}
       on:toggleselect={(e) => onToggleSelect(e.detail)}
       on:dims={(e) => onDims(e.detail)}
+      on:manualfits={(e) => (manualFits = e.detail || {})}
       on:stats={(e) => onStats(e.detail)}
       on:addelement={(e) => onAddElement(e.detail)}
       on:shapeselect={(e) => { fieldShapeSelect = { ...e.detail, n: (fieldShapeSelect ? fieldShapeSelect.n : 0) + 1 }; }}
@@ -1287,6 +1326,7 @@
           flat={runtime.flats[project.selectedId]}
           {sewnColors}
           {designDims}
+          {manualFits}
           {digitizerHealth}
           {showAddElementsHint}
           hoverShapeId={panelHoverShapeId}
@@ -1315,8 +1355,10 @@
     </Configurator>
     </div>
     {#if sheetOpen}
+     {#await import("./ui/DownloadSheet.svelte") then { default: DownloadSheet }}
       <DownloadSheet
         {project}
+        designName={projectName}
         {runtime}
         {digitizerHealth}
         {summaryRows}
@@ -1330,6 +1372,7 @@
         on:locate={(e) => onLocateShape(e.detail)}
         on:credits={(e) => openCredits(e.detail)}
       />
+     {/await}
     {/if}
   </aside>
 </div>

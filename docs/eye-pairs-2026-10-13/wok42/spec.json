@@ -1,0 +1,174 @@
+{
+ "schema": 1,
+ "sitting": "wok42-1013",
+ "registered": "2026-10-13",
+ "about": "MASTER_SCOPE Waiting-on-Kent item 42: a fresh BLINDED sitting. Pre-registered; nothing here was rendered or measured when it was committed (see PRE-REGISTRATION for the one identity spike that preceded it).",
+ "seed": 20261013,
+ "n_identical": 4,
+ "n_repeat": 4,
+ "base_flags": {
+  "lettering_columns": true,
+  "lettering_columns_skip_blobs": true,
+  "lettering_columns_ink_link": true
+ },
+ "base_note": "Today's defaults plus Kent's 2026-10-13 ruling to turn lettering_columns_skip_blobs and lettering_columns_ink_link ON. lettering_columns is already ON (default since 2026-10-12). Passed as an explicit --base so the kit renders the same engine whether or not those two flips have landed on main.",
+ "judged_fixtures": ["becker", "bridge", "drone", "enthusiast", "fremont", "gaulke", "golden_tee", "screenshot", "tires", "thermal"],
+ "logos": [
+  {
+   "name": "mfab",
+   "design": "mfab",
+   "source": {"kind": "file", "path": "testdata/art/logo_mfab_hat.png", "sha256_16": "53b2d2978b8b2019"},
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "kind": "client_art_already_committed",
+   "provenance": "M-FAB and Welding LLC. Customer artwork recovered from a vendor's two-panel preview by tools/pro_parity/preview_split.py and committed in PR #556 (2026-09-28), already public in this repo; low resolution (418 x 159). Not in REAL_ART, in no labelled or blind sitting, not byte-equal to any judged fixture. Added by no one in this PR."
+  },
+  {
+   "name": "toat",
+   "design": "toat",
+   "source": {"kind": "file", "path": "testdata/art/logo_toat_machine.png", "sha256_16": "d09766ed6ca95a87"},
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "kind": "client_art_already_committed",
+   "provenance": "To a T Machine LLC. Vendor-preview crop committed in PR #556 (2026-09-28), already public in this repo; 372 x 273. Not in REAL_ART, in no sitting. logo_toat_beanie.png is the same design (reserve, see reserve_logos)."
+  },
+  {
+   "name": "fritsch",
+   "design": "fritsch",
+   "source": {"kind": "generator", "id": "fritsch_serif", "module": "tools.make_hard_cases", "function": "serif_text"},
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "kind": "synthetic_generator",
+   "provenance": "cv2 Hershey triplex 'Fritsch', 900 x 260, drawn 4x and area-downscaled; the committed generator tools/make_hard_cases.py::serif_text (its output is not committed, the function is). Deterministic. No client art."
+  },
+  {
+   "name": "board80",
+   "design": "board80",
+   "source": {"kind": "generator", "id": "board_80", "module": "tools.small_print", "function": "synthetic_text"},
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "kind": "synthetic_generator",
+   "provenance": "cv2 Hershey simplex 'BOARD 80', 1500 x 260, a block word with counters; the committed generator tools/small_print.py::synthetic_text (tests pin it). Deterministic. No client art."
+  },
+  {
+   "name": "whitebg",
+   "design": "whitebg",
+   "source": {"kind": "file", "path": "testdata/logo_whitebg.png", "sha256_16": "f2d112b7bd834eb4"},
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "kind": "synthetic_committed",
+   "provenance": "The five-colour flat logo (circle, ring, bar, two blocks, dot) written by tools/make_test_logo.py, committed since 2026-07-29 and in the corpus scorecard FIXTURES. The only fixture there Stage 0 routes to the flat lane. Not in REAL_ART. logo_alpha.png is the same art on a transparent ground and is not used."
+  },
+  {
+   "name": "thin_script",
+   "design": "thin_script",
+   "source": {"kind": "file", "path": "testdata/synthetic/thin_script.png", "sha256_16": "eca7ad5b6cfcae4c"},
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "kind": "synthetic_committed",
+   "provenance": "Synthetic script strokes (loops under a flourish) committed 2026-10-11 with the hairline tier (PR #848); Stage 0 routes it flat. A fixture rather than a logo, kept because two of the six arms move it. No client art."
+  }
+ ],
+ "reserve_logos": [
+  {"name": "mfab_lc", "design": "mfab", "path": "testdata/art/logo_mfab_lc.png", "why_not_in": "the SAME design as mfab at another crop: not an independent logo, and it spends Kent's time on near-duplicates"},
+  {"name": "toat_beanie", "design": "toat", "path": "testdata/art/logo_toat_beanie.png", "why_not_in": "the SAME design as toat (two jobs, two crops)"},
+  {"name": "golke_roofing", "design": "gaulke", "path": "testdata/art/logo_golke_roofing.png", "why_not_in": "the clean file of the logo Kent already judged as gaulke and ruled off the comparison page; his call, not ours"}
+ ],
+ "not_qualified": {
+  "same_file_or_design_as_a_judged_fixture": ["logo_alpha (= whitebg art)", "photo/logo_drone_thermal_badge (byte-equal to drone)", "photo/enthusiast_logo (judged)", "art/logo_hotel_fremont_patch (= fremont)", "art/logo_golke_roofing (= gaulke, reserve)"],
+  "not_flat_art": ["photo/summit_badge (gradient badge)", "photo/repro_gradient_white_icon (gradient icon)", "photo/photo_* and region_blobs (photographs)", "fur_ramp and gradient_ramp_* (ramps)", "src/fonts/previews/* (stitch simulations of fonts, not artwork)"],
+  "no_lettering_and_no_arm_moves_it": ["ribbon_curve (one stroke)", "bg_uncertain (a block with a notch)", "black_ground_holes (a letterbox test)", "app/e2e/fixtures/* (squares and bars)"]
+ },
+ "arms": {
+  "design_angle": {
+   "flags": {"design_angle": true},
+   "stratum": "flow",
+   "variable": "stitch direction, across shapes: one design angle for shapes with no house of their own",
+   "moves": {},
+   "holds": ["trims_per_1000", "long_share", "thread_density_whole"],
+   "expected_pick": "tie",
+   "basis": "09-18 labelled sitting: design_angle read no difference on 8 of 9 logos, before better on tires (docs/kent-review-2026-09-18.md). flow_circvar measures direction spread WITHIN a shape, which this flag does not target, so it is registered with no required movement; whether flow_circvar moves is measured, not assumed."
+  },
+  "polygon_axis": {
+   "flags": {"satin_polygon_axis": "artwork"},
+   "stratum": "flow",
+   "variable": "stitch direction, within satin: the skeleton axis is read from the artwork polygon, not the grown one",
+   "moves": {},
+   "holds": ["trims_per_1000", "long_share", "thread_density_whole"],
+   "expected_pick": "tie",
+   "basis": "09-18 labelled sitting: no difference on 8 of 9, both bad on enthusiast (docs/kent-review-2026-09-18.md)."
+  },
+  "split_7mm": {
+   "flags": {"split_satin_above_mm": 7.0},
+   "stratum": "length",
+   "variable": "stitch length: satin crosses split above 7.0 mm, not 5.0 mm, so more long crosses",
+   "moves": {"long_share": "up"},
+   "holds": ["trims_per_1000", "thread_density_whole"],
+   "expected_pick": "base",
+   "basis": "PR #847: long_share (stitches over 4 mm) read BELOW chance against Kent, so he picks the side with FEWER long stitches. This arm adds long stitches, so the pre-registered pick is the base. 7.0 is the pro's own Becker style (docs/eye-pairs-2026-09-30); a candidate, not a setting."
+  },
+  "fill_row_030": {
+   "flags": {"fill_row_mm": 0.30},
+   "stratum": "density",
+   "variable": "thread density only: fill row spacing 0.30 mm against the shipped 0.15 mm, same construction",
+   "moves": {"thread_density_whole": "down"},
+   "holds": ["trims_per_1000", "flow_circvar", "long_share"],
+   "expected_pick": "base",
+   "basis": "His words: 'the before stitch density is better' (density-1007). #847 found thread_density does NOT track his picks overall (-0.11), so this is the arm that tests it with nothing else moving. 0.30 is a probe at twice the settled 0.15, never a proposed setting (ROADMAP gate 1)."
+  },
+  "underlay_on_column": {
+   "flags": {"satin_underlay_on_column": true},
+   "stratum": "trims",
+   "variable": "trims only: a stroke's underlay is built on its column's own stations, so the hop between them is a stitch, not a lift",
+   "moves": {"trims_per_1000": "down"},
+   "holds": ["flow_circvar", "long_share"],
+   "expected_pick": "arm",
+   "basis": "Built OFF 2026-09-19 for Kent's flip: Becker 61 -> 48 trims at +481 stitches, nine logos 478 -> 465 (config.py). Trims is the one instrument that tracks his eye (kappa +0.55 sides only, #842/#847). If he picks this arm with no visible change the trims lead is causal; a tie says trims only proxies something he sees."
+  },
+  "lane_off": {
+   "flags": {"lettering_columns": false},
+   "stratum": "construction",
+   "variable": "construction at matched pitch: the pre-flip satin skeleton tier for lettering (the Column lane's density correction of 2026-10-07 holds both sides at 0.40 mm)",
+   "moves": {"trims_per_1000": "up"},
+   "holds": [],
+   "expected_pick": "base",
+   "basis": "Kent took the lane's side on 5 of 6 columns-flip pairs and on becker and drone in density-1007 (docs/density-flow-instrument-2026-10-12.md section 10), and flipped it ON 2026-10-12. This is the positive control: every lead metric moves on it together, so it carries the signal the other five arms try to separate."
+  }
+ },
+ "reserve_arms": [
+  {"name": "words", "flags": {"lettering_words": true}, "replaces_stratum": "construction", "expected_pick": "arm", "moves": {}, "holds": [], "stratum": "construction", "variable": "which shapes the Column lane takes (one word tagger); Kent judged it AFTER better labelled on words-columns-1008"},
+  {"name": "exit_next_off", "flags": {"satin_exit_toward_next": false}, "replaces_stratum": "trims", "expected_pick": "base", "moves": {"trims_per_1000": "up"}, "holds": ["flow_circvar", "long_share"], "stratum": "trims", "variable": "trims only: a column no longer exits toward the next one (reverts a shipped ON flag)"},
+  {"name": "hop_under", "flags": {"satin_hop_under_column": true}, "replaces_stratum": "trims", "expected_pick": "arm", "moves": {"trims_per_1000": "down"}, "holds": ["flow_circvar", "long_share"], "stratum": "trims", "variable": "trims only: the in-shape hop to the next column is sewn needle-down where the column covers it"},
+  {"name": "per_stroke", "flags": {"satin_per_stroke": true}, "replaces_stratum": "flow", "expected_pick": "tie", "moves": {}, "holds": ["trims_per_1000", "long_share", "thread_density_whole"], "stratum": "flow", "variable": "satin vs fill call per stroke (differs on one of six logos, so a last resort)"}
+ ],
+ "manipulation": {
+  "rule": "An arm passes when, on at least 2 of the logos where its design differs from base AND on at least half of them, every `moves` metric changes in the stated direction by at least its threshold and every `holds` metric changes by less than its threshold. A failing arm is replaced by the first reserve of its stratum, once, before Kent sees a picture; the swap and the reason go in the manifest. An arm identical to base on 4 or more of the 6 logos is replaced the same way. Computed from the designs alone; no pick exists yet. (Amendment 2) A reserve that fails too, and a failing arm whose stratum has no reserve, STAY in the sitting flagged passes=false, never swapped a second time; the analysis reads the leads on all live pairs and, beside them, on the pairs of arms that passed alone.",
+  "thresholds": {
+   "trims_per_1000": {"kind": "abs", "value": 0.5},
+   "flow_circvar": {"kind": "abs", "value": 0.02},
+   "long_share": {"kind": "abs", "value": 0.02},
+   "thread_density_whole": {"kind": "rel", "value": 0.05}
+  },
+  "density_matched_tolerance": 0.10
+ },
+ "leads": {
+  "primary": [
+   {"metric": "flow_circvar", "direction": "lower", "why": "#847's one lead independent of trims (+0.16 ties in, one sitting's)"},
+   {"metric": "long_share", "direction": "lower", "why": "#847's reversed hypothesis, direction written down in advance: he picks FEWER long stitches"},
+   {"metric": "thread_density", "direction": "higher", "why": "his notes say denser is better; #847 found no support"},
+   {"metric": "trims_per_1000", "direction": "lower", "why": "the control: the one instrument that cleared chance in #842 and #847; if it does not replicate here nothing else in this sitting is read"}
+  ],
+  "secondary": [
+   {"metric": "longest_jump_mm", "direction": "lower"},
+   {"metric": "jumps_per_1000", "direction": "lower"},
+   {"metric": "turns_per_100mm", "direction": "lower"}
+  ]
+ },
+ "analysis": {
+  "statistics": ["kappa_sides_only_2x2", "kappa_ties_in_3x3_linear"],
+  "ci": "percentile bootstrap, 10000 resamples, seed 20261011, over pairs AND over designs (the `design` key of each logo)",
+  "reading_rule": "both intervals clear of zero and at least 10 pairs where Kent chose a side; otherwise 'no evidence either way' or 'n too small'",
+  "never_printed": "any raw agreement figure (ROADMAP gate 4)",
+  "population": "live pairs (arm differs from base). Identical and repeat pairs are controls and enter no agreement statistic."
+ }
+}

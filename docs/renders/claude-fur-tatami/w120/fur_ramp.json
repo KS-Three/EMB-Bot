@@ -1,0 +1,55 @@
+{
+ "fixture": "photo/fur_ramp.png",
+ "width_mm": 120.0,
+ "garment": "left_chest",
+ "zoom_box_mm": [
+  37.59,
+  -30.07,
+  60.65,
+  -6.87
+ ],
+ "fur_styles": {
+  "short": [
+   4.0,
+   0.5,
+   0.5
+  ],
+  "long": [
+   5.0,
+   0.8,
+   1.0
+  ]
+ },
+ "arms": {
+  "tatami": {
+   "sha256": "8892d5d8062b96d25dc7fbdbb62e8eeb17a266867d9981965720aa242b430fe1",
+   "stitches": 12970,
+   "trims": 7,
+   "along_row_n": 7949,
+   "along_row_min_mm": 1.0,
+   "along_row_median_mm": 3.0,
+   "along_row_max_mm": 3.0,
+   "along_row_under_min": 0
+  },
+  "fur short": {
+   "sha256": "e62e26e21e1c8d31be4651dd609516557dfdf58edc95715dc9738657bf886703",
+   "stitches": 12431,
+   "trims": 7,
+   "along_row_n": 7410,
+   "along_row_min_mm": 1.0,
+   "along_row_median_mm": 2.743,
+   "along_row_max_mm": 4.0,
+   "along_row_under_min": 0
+  },
+  "fur long": {
+   "sha256": "c908ed82be39046509f69e15720d7ac5f60499372fca703c32585d2430dd2386",
+   "stitches": 12300,
+   "trims": 7,
+   "along_row_n": 7279,
+   "along_row_min_mm": 1.0,
+   "along_row_median_mm": 2.702,
+   "along_row_max_mm": 5.0,
+   "along_row_under_min": 0
+  }
+ }
+}

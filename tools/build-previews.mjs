@@ -4,6 +4,7 @@
 // binary is fetched for browsing, which is the fix for the Stage A
 // open-dropdown-fetches-30MB problem.
 // Usage: node tools/build-previews.mjs
+import "./_help.mjs";
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join, dirname } from "node:path";

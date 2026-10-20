@@ -13,6 +13,10 @@
   const fillmod = _node ? dep("./fill.js") : root.EMB;
   const satinmod = _node ? dep("./satin.js") : root.EMB;
   const satinfontmod = _node ? dep("./satinfont.js") : root.EMB;
+  // Rail-native satin (satinFromRails, centerRun). `satinmod` is satin.js and
+  // has neither: in the browser the shared root.EMB hides that, under Node it
+  // is a TypeError. satinplay.js loads before this file in ENGINE_FILES.
+  const satinplaymod = _node ? dep("./satinplay.js") : root.EMB;
   const dstmod = _node ? dep("./dst.js") : root.EMB;
 
   // Physical constants this engine shares with the Python digitizer
@@ -116,7 +120,8 @@
   }
 
   // Lock the thread wherever it starts and wherever it gets cut: the rule of
-  // `stitches.apply_ties`, for BOTH builders (`ties: true`, default off).
+  // `stitches.apply_ties`, for BOTH builders (`ties`, ON by default since
+  // 2026-10-20, Kent; `ties: false` is the off arm).
   //
   // It is asked of the FINISHED record stream, not of the runs on their way
   // into it, for two reasons the lettering port (2026-09-14, inline, in px)
@@ -357,19 +362,52 @@
   // has no direction and so no normal, and its two ends were each moved along
   // the one real edge beside them -- the first by the whole mitre clamp, three
   // times the distance -- which made a wedge of the corner. A ring that says
-  // no point twice is moved exactly as it always was; one with fewer than
-  // three corners left has no outward side and is handed back as it came.
+  // no point twice, and has no near repeat (below), is moved as it always
+  // was; one with fewer than three corners left has no outward side and is
+  // handed back as it came.
   //
-  // "Twice" is to within rounding and no further. A point that is only NEAR
-  // the next one is a corner with a short edge, and where that edge doubles
-  // back -- an anchor a pixel from the last, as a double-click that slipped
-  // used to leave -- it still gets the whole clamp (MASTER_SCOPE defect 55:
-  // the gesture is cured, this is not).
+  // A point only NEAR the next -- an edge shorter than the offset itself --
+  // that turns BACK at either end, past a right angle, is a near repeat: an
+  // anchor a pixel from the last, as a double-click that slipped used to
+  // leave. Its direction is noise, and moving both its ends gave the sharp
+  // one most or all of the mitre clamp, a spike twice a clean corner's
+  // (MASTER_SCOPE defect 55). Such a point is dropped and the corner before
+  // it kept (nearRepeatsDropped). An edge as long as the offset, or a short
+  // one that turns back at neither end (a curve, a staircase of right
+  // angles), is moved exactly as it always was.
   function offsetRing(ring, dPx, outward) {
     const copy = ring ? ring.map((q) => ({ x: q.x, y: q.y })) : [];
     if (copy.length < 3 || !(Math.abs(dPx) > 1e-9)) return copy;
-    const pts = distinctCorners(ring), n = pts.length;
-    if (n < 3) return copy;
+    const pts = nearRepeatsDropped(distinctCorners(ring), Math.abs(dPx));
+    if (pts.length < 3) return copy;
+    return movedCorners(pts, dPx, outward);
+  }
+  // Does the path prev -> cur -> next turn back at `cur`: more than a right angle.
+  function turnsBack(prev, cur, next) {
+    return (cur.x - prev.x) * (next.x - cur.x) + (cur.y - prev.y) * (next.y - cur.y) < 0;
+  }
+  // The corners of `pts` (said once) less each near repeat: a corner whose
+  // edge FROM the one before is shorter than `d` and turns back at either
+  // end. The earlier corner is kept. Never below three corners.
+  function nearRepeatsDropped(pts, d) {
+    let out = pts;
+    for (let changed = true; changed && out.length > 3;) {
+      changed = false;
+      const n = out.length;
+      for (let i = 0; i < n; i++) {
+        const a = out[(i - 1 + n) % n], b = out[i];
+        if (!(Math.hypot(b.x - a.x, b.y - a.y) < d)) continue;
+        if (!turnsBack(out[(i - 2 + n) % n], a, b) && !turnsBack(a, b, out[(i + 1) % n])) continue;
+        out = out.filter((_, j) => j !== i);
+        changed = true;
+        break;
+      }
+    }
+    return out;
+  }
+  // offsetRing's move of corners `pts` (said once, three or more).
+  function movedCorners(pts, dPx, outward) {
+    const n = pts.length;
     // signed area (shoelace): >0 and <0 pick opposite outward-normal senses.
     let area2 = 0;
     for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; area2 += a.x * b.y - b.x * a.y; }
@@ -400,6 +438,36 @@
       out.push({ x: cur.x + dir * dispx, y: cur.y + dir * dispy });
     }
     return out;
+  }
+
+  // Rungs for an authored column (manual-digitizing spec §6, "Amended
+  // 2026-10-01"). With NO rungs satinplay's `correspond` pairs the two rails by
+  // whole-rail arc fraction, which is right only when both gain length at the
+  // same rate; on a column that is straight and then turns, the inside rail is
+  // shorter and every cross LEANS (measured: 24 px column, crosses to 34.7 px).
+  // When the rails carry the same point count they were emitted pair by pair
+  // (railA[i], railB[i] = the two ends of the cross at spine point i), so the
+  // interior pairs are handed over as rungs and the crosses follow them.
+  // Different counts -> no pairing to trust -> [] (arc fraction, as before).
+  //
+  // EVERY interior pair is a rung — no thinning, no spacing constant. Two
+  // thinning rules were tried and measured (2026-10-01) and both lost to this:
+  //   - "once the slower rail has advanced 24 px" left a tight bend with no
+  //     rung at all (the inside rail of a 24 px column on a 16 px bend moves
+  //     10 px through the whole turn): crosses to 28.7 px;
+  //   - "once the faster rail has advanced one column width" fixed that bend
+  //     and then skipped the pairs that mattered on a bezier column: 30.6 px
+  //     where every-pair gives 26.3.
+  // Dense rungs are safe in `correspond`: it sorts cuts by rail-A fraction,
+  // drops a rung whose rail-B anchor runs backward, and skips cuts closer than
+  // 1e-6. Their only cost is samples — each section gets at least 12 — which
+  // is linear in the rail's point count and nowhere near a concern.
+  function columnRungs(railA, railB) {
+    const n = railA ? railA.length : 0;
+    if (!railB || railB.length !== n || n < 3) return [];
+    const rungs = [];
+    for (let i = 1; i < n - 1; i++) rungs.push([railA[i], railB[i]]);
+    return rungs;
   }
 
   // How many of the nearest corners an edge run tries before it settles for a
@@ -448,8 +516,10 @@
   // underlayStitchPx, underlayRowPx, runningOutline, tatamiFill, insetRing,
   // pcaAngleDeg }. Styles: none | edge_run | center_run | zigzag | edge_zigzag |
   // edge_lattice | double_lattice | cross_tatami.
-  // With `fillColumns`: also { columns, openTol, clear(a, b) } -- `clear` says
-  // whether a float from a to b would be left uncut.
+  // With `fillColumns`: also { columns, openTol, clear(a, b), to() } -- `clear`
+  // says whether a float from a to b would be left uncut, and `to()` gives
+  // where the fill begins, or null when that is not known before the
+  // underlay is sewn.
   function underlayRuns(shape, styleName, ctx) {
     const style = styleName || "none";
     if (style === "none") return [];
@@ -548,22 +618,40 @@
     }
     // With `columns`, a tatami pass is told where the thread is (`from`: the
     // end of the run before it) so that it starts from a corner the thread can
-    // float to uncut, instead of always from the top left.
-    const entry = (from) => (ctx.columns ? { columns: true, openTol: ctx.openTol, ground: ctx.ground || undefined, from: from || undefined, clear: ctx.clear || undefined } : {});
+    // float to uncut, instead of always from the top left. And where the
+    // thread goes next (`to`: where the run after it begins, when that is
+    // known before this pass is sewn), so that it ends where the thread can
+    // float on from. `fillStart()` is where the fill begins, when the caller
+    // can say: asked only by the pass that is sewn last before it.
+    const entry = (from, to) => (ctx.columns ? { columns: true, openTol: ctx.openTol, ground: ctx.ground || undefined, from: from || undefined, to: to || undefined, clear: ctx.clear || undefined } : {});
+    const fillStart = () => (ctx.columns && ctx.to ? ctx.to() : null);
     function zigzag(from) {
-      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: zigRow, angleDeg: fillAngle + 90, maxStitch, markConnectors: true }, entry(from)))];
+      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: zigRow, angleDeg: fillAngle + 90, maxStitch, markConnectors: true }, entry(from, fillStart())))];
     }
-    function lattice(angleOff, from) {
-      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: latticeRow, angleDeg: fillAngle + angleOff, maxStitch, markConnectors: true }, entry(from)))];
+    const latticeOpts = (angleOff) => ({ rowSpacing: latticeRow, angleDeg: fillAngle + angleOff, maxStitch, markConnectors: true });
+    function lattice(angleOff, from, to) {
+      return [ctx.tatamiFill(rings, Object.assign(latticeOpts(angleOff), entry(from, to)))];
     }
+    // Where a lattice pass begins, where the plain walk sews it: such a pass
+    // begins at a point of its own, wherever the thread is (fill.js,
+    // `plainStart`). null where the column walk sews it.
+    const latticeStart = (angleOff) => (ctx.columns && ctx.plainStart ? ctx.plainStart(rings, Object.assign(latticeOpts(angleOff), entry(null, null))) : null);
     // `cross_tatami`: the crossing pass alone, at the pitch and stitch read off
     // Kent's commissioned files (docs/underlay-audit-2026-10-05.md; the Python
     // engine's UNDERLAY_CROSS_ROW_MM / UNDERLAY_CROSS_STITCH_MM). Not sewn by us.
     function crossPass(from) {
       const row = Math.max(0.02, 1.0 * pxPerFinalMm), stitch = Math.max(0.02, 4.0 * pxPerFinalMm);
-      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: row, angleDeg: fillAngle + 90, maxStitch: stitch, markConnectors: true }, entry(from)))];
+      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: row, angleDeg: fillAngle + 90, maxStitch: stitch, markConnectors: true }, entry(from, fillStart())))];
     }
     const then = (runs, next) => runs.concat(next(endOfRuns(runs)));
+    // Two lattice passes. With `columns`, the first is told where the second
+    // begins, where that is known; and a second that the column walk sews is
+    // told where the fill does.
+    function doubleLattice() {
+      const second = latticeStart(-45);
+      const runs = then(edgeRun(), (from) => lattice(45, from, second));
+      return then(runs, (from) => lattice(-45, from, second ? null : fillStart()));
+    }
     // Single running stitch along the shape's PCA-major axis, clipped to the
     // interior (longest contiguous inside segment through the centroid).
     function centerRun() {
@@ -590,10 +678,10 @@
       case "center_run": return centerRun();
       case "zigzag": return zigzag(null);
       case "edge_zigzag": return then(edgeRun(), zigzag);
-      case "edge_lattice": return then(edgeRun(), (from) => lattice(90, from));
-      case "double_lattice": return then(then(edgeRun(), (from) => lattice(45, from)), (from) => lattice(-45, from));
+      case "edge_lattice": return then(edgeRun(), (from) => lattice(90, from, fillStart()));
+      case "double_lattice": return doubleLattice();
       case "cross_tatami": return crossPass(null);
-      default: return then(edgeRun(), (from) => lattice(90, from));
+      default: return then(edgeRun(), (from) => lattice(90, from, fillStart()));
     }
   }
 
@@ -764,10 +852,14 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles, cutFloats }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles, cutFloats, satinSmallShapes }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
-  // satinfont.js's constant block.)
+  // satinfont.js's constant block — and `satinZigzag`, ON by default since 2026-10-13:
+  // constant rail order in the satin emitter, see satinplay.emitZigzag.
+  // Since 2026-10-20 it also reads `dedupeHoles` and `underlayDirection`,
+  // the same names and values as here, BOTH default OFF in that lane — the
+  // shape lane's `underlayDirection` is ON; see the two notes beside `ties`.)
   //   `densityMm` (legacy, pre-2026-09-04) is one number for BOTH fillRowMm
   //   and satinSpacingMm and is still honoured exactly as it was — see the
   //   two spacings just below for the split and the defaults.
@@ -813,11 +905,31 @@
     const pullCompMm = (fabric && fabric.pullCompMm != null) ? fabric.pullCompMm
       : (o.pullCompMm == null ? 0.2 : o.pullCompMm);
     const useUnderlay = o.underlay !== false;
+    // `underlayDirection` (default ON, Kent 2026-10-11; built OFF in PR #822; defect 57): a satin column starts at the end nearer where its underlay ends (satin.js startNear). `underlayDirection: false` restores the old order.
+    const underlayDirection = o.underlayDirection !== false;
+    // `satinSmallShapes` (built OFF 2026-10-20 and flipped ON the same day, Kent's ruling: flip it whole; `satinSmallShapes: false` is the off arm; defect 57's remainder): the medial satin caps a run-out end onto the outline (a sharp tip like a round one), sews a square or dot as the smallest column along its own axis, and sews a junction of three or more arms (a star's centre) once as one zone, the arms cut at it (satin.js smallShapesSatin). Off, medialSatin is byte for byte what it was before the option.
+    const satinSmallShapes = o.satinSmallShapes !== false;
     const perRegionAngle = o.perRegionAngle !== false;
     const garment = o.garment || { widthIn: 5, heightIn: 2.25 };
 
     // filter empty; accept {shapes:[{outer,holes}]} or legacy {polygons:[ring]}
-    const regions = colorRegions.filter((r) => r && ((r.shapes && r.shapes.length) || (r.polygons && r.polygons.length)));
+    // A NaN/Infinity vertex would poison the bbox and fit scale and put NaN in
+    // every stitch; drop such vertices up front. A region whose vertices are
+    // all finite is passed through as the same object.
+    const okPt = (q) => q && Number.isFinite(q.x) && Number.isFinite(q.y);
+    const cleanRing = (ring) => (!ring || ring.every(okPt) ? ring : ring.filter(okPt));
+    const cleanRegion = (r) => {
+      if (!r) return r;
+      const shapes = r.shapes && r.shapes.map((s) => {
+        if (!s) return s;
+        const outer = cleanRing(s.outer), holes = s.holes && s.holes.map(cleanRing);
+        return outer === s.outer && (!holes || holes.every((h, i) => h === s.holes[i])) ? s : Object.assign({}, s, { outer, holes });
+      });
+      const polygons = r.polygons && r.polygons.map(cleanRing);
+      const same = (!shapes || shapes.every((s, i) => s === r.shapes[i])) && (!polygons || polygons.every((q, i) => q === r.polygons[i]));
+      return same ? r : Object.assign({}, r, { shapes, polygons });
+    };
+    const regions = colorRegions.map(cleanRegion).filter((r) => r && ((r.shapes && r.shapes.length) || (r.polygons && r.polygons.length)));
     for (const r of regions) if (!r.polygons) r.polygons = r.shapes.map((s) => s.outer);
     if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, shapeOutlines: [], fit: null, _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
 
@@ -830,16 +942,23 @@
     // bbox in px across all polygons
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const r of regions) for (const p of r.polygons) for (const q of p) { if (q.x < minX) minX = q.x; if (q.x > maxX) maxX = q.x; if (q.y < minY) minY = q.y; if (q.y > maxY) maxY = q.y; }
+    // No usable geometry (every region's rings are empty): the box of zero
+    // points is +/-Infinity, which put NaN in widthMM/heightMM and in the fit
+    // centre. Collapse it to a point at the origin and report 0 x 0 mm, the
+    // same answer the no-regions return above gives. Any ring with a vertex
+    // leaves the box finite, so this never runs for a real design.
+    const noGeometry = !isFinite(minX);
+    if (noGeometry) { minX = minY = maxX = maxY = 0; }
     const bboxWmm = (maxX - minX) / pxPerMm, bboxHmm = (maxY - minY) / pxPerMm;
     const fit = garments.fitScale(bboxWmm || 1, bboxHmm || 1, garment);
     let sc = (fit.scale > 0 && isFinite(fit.scale)) ? fit.scale : 1;
-    let designWmm = fit.targetWmm, designHmm = fit.targetHmm;
+    let designWmm = noGeometry ? 0 : fit.targetWmm, designHmm = noGeometry ? 0 : fit.targetHmm;
     // Explicit width override (Slice 3): replaces the auto garment fit. Clamp the
     // requested width into [1, hoopWmm], then ALSO clamp so height still fits the
     // hoop — same two-constraint min() fitScale itself uses, just seeded from the
     // requested width instead of the natural bbox. Reported widthMM/heightMM
     // become the actual design dims (bbox*sc), not the (unused) fit target.
-    if (typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0) {
+    if (!noGeometry && typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0) {
       const bw = bboxWmm || 1, bh = bboxHmm || 1;
       const hoopWmm = units.inToMm(garment.widthIn), hoopHmm = units.inToMm(garment.heightIn);
       const clampedTargetWmm = Math.min(Math.max(o.targetWidthMm, 1), hoopWmm);
@@ -917,7 +1036,8 @@
     const underlayRowPx = Math.max(PX_LOOP_EPS, 2.5 * pxPerFinalMm);
     const pullCompPx = pullCompMm * pxPerFinalMm; // fill pull-comp offset (px)
     // Shared context for named underlay styles (used only in fabric mode).
-    // `fillColumns` (default off): every tatami pass of a FILL shape whose
+    // `fillColumns` (default off; the Studio's MANUAL lane passes it ON since
+    // 2026-10-07, Kent's call -- app/src/lib/generate.js): every tatami pass of a FILL shape whose
     // rows fork -- the fill and the underlay under it -- is sewn column by
     // column, so no thread is carried across a hole or a notch (fill.js,
     // `opts.columns`). Off, nothing reads it and every stitch is unchanged.
@@ -935,15 +1055,17 @@
     //    DRAWN (shrunk, it folds through itself), so there the fill covers no
     //    further at all, and the underlay went straight across a 1 mm slot.
     const fillColumns = !!o.fillColumns;
-    // `fillStagger` (default off): a shape's COVER fill puts the needle holes
+    // `fillStagger` (built off; ON by default since 2026-10-20, Kent, and
+    // `fillStagger: false` is the off arm): a shape's COVER fill puts the needle holes
     // between each row's ends on one grid, shifted row by row, where each row
     // now cuts itself evenly and the holes line up from row to row (fill.js,
     // "ROW STAGGER"). The underlay passes are left as they are: their rows are
     // 2 mm and more apart and lie under the cover, and the Python engine does
     // not stagger them either (`_underlay_paths`, staggers=1). Off, nothing
     // reads it and every stitch is unchanged.
-    const staggerOpts = o.fillStagger ? { stagger: FILL_STAGGERS, minStitch: MIN_STITCH_MM * pxPerFinalMm, splitTol: SPLIT_TOLERANCE_MM * pxPerFinalMm } : null;
-    // `dedupeHoles` (default off): no run lays a stitch straight after a
+    const staggerOpts = o.fillStagger !== false ? { stagger: FILL_STAGGERS, minStitch: MIN_STITCH_MM * pxPerFinalMm, splitTol: SPLIT_TOLERANCE_MM * pxPerFinalMm } : null;
+    // `dedupeHoles` (built off; ON by default since 2026-10-20, Kent, and
+    // `dedupeHoles: false` is the off arm): no run lays a stitch straight after a
     // stitch on the same point.
     //
     // `T` rounds to the stitch file's unit, 0.1 mm, so two penetrations nearer
@@ -965,7 +1087,7 @@
     // made. The price is the doubled hole with a jump between the two, a run
     // that begins where the last one ended: 15 on those 8,255 designs.
     // Off, nothing is noted and every stitch is unchanged.
-    const dedupeHoles = !!o.dedupeHoles;
+    const dedupeHoles = o.dedupeHoles !== false;
     // The rings a FILL is sewn to: the shape's own, or under a fabric preset
     // the pull-compensated ones (grow the outer, shrink the holes), so it sews
     // to true size on stretchy cloth. No-fabric fills stay unoffset.
@@ -1013,7 +1135,7 @@
     const edgeInsetPx = EDGE_RUN_INSET_MM * pxPerFinalMm;   // with `fillColumns`
     const underlayCtxBase = {
       pxPerFinalMm, maxStitch: maxPx, underlayStitchPx, underlayRowPx,
-      runningOutline: fillmod.runningOutline, tatamiFill: fillmod.tatamiFill,
+      runningOutline: fillmod.runningOutline, tatamiFill: fillmod.tatamiFill, plainStart: fillmod.plainStart,
       huggingOutline: fillmod.huggingOutline, edgeInsetPx,
       insetRing, pcaAngleDeg,
     };
@@ -1189,6 +1311,21 @@
         const area = Math.max(0, outerArea - holeArea), perim = polyPerim(poly) + holes.reduce((a, hh) => a + polyPerim(hh), 0);
         if (area <= 0 || perim <= 0) { dropOutline(poly); continue; }
         const widthMmFinal = (2 * area / perim) * mmPerPxFinal;
+        // A HAND-DRAWN LINE (manual-digitizing spec 2026-09-30 §2 and §7,
+        // ruling 1). Its `outer` is the path stroked at a hairline: a PROXY
+        // that gives the line a clickable outline, a bbox and a place in the
+        // sew order, and that nothing may sew. Three gates below keep it so —
+        // no underlay, no finishing outline, and runAlongPath as the top
+        // stitch in place of a fill of the proxy. Null for every shape that
+        // does not carry a path, which is every shape Image and Text mode
+        // produce, so those sew exactly as before.
+        const runSew = (shape.sewAs && shape.sewAs.kind === "run" && Array.isArray(shape.sewAs.path) && shape.sewAs.path.length >= 2) ? shape.sewAs : null;
+        if (runSew) {
+          // Too short to sew: the Python lane's lint floor (ruling 6).
+          let lenPx = 0;
+          for (let k = 1; k < runSew.path.length; k++) lenPx += Math.hypot(runSew.path[k].x - runSew.path[k - 1].x, runSew.path[k].y - runSew.path[k - 1].y);
+          if (!(lenPx * mmPerPxFinal >= fillmod.RUN_MIN_LOOP_MM)) { dropOutline(poly); continue; }
+        }
         // satin only for genuinely thin SOLID strokes; ring-with-hole goes to
         // even-odd fill (satinColumn can't represent holes)
         let thin = widthMmFinal <= satinMaxWidthMm && holes.length === 0;
@@ -1233,6 +1370,7 @@
             }
           } catch (e) { thin = false; }
         }
+        if (runSew) thin = false;   // a line is never a satin column
         const rings = [poly].concat(holes);
         // Per-SHAPE stitch angle: a fixed color override wins; otherwise this
         // shape's OWN PCA axis (outer+holes) so each element's stitches follow
@@ -1261,32 +1399,89 @@
         // Nothing here is re-derived or guessed.
         const runs = [];
         const runKinds = [];
+        // Authored rails, when the shape carries them (spec §6, "Amended
+        // 2026-10-01"). Null for every shape that does not — which is every
+        // shape Image and Text mode produce — so those sew exactly as before.
+        const column = (shape.sewAs && shape.sewAs.kind === "column") ? shape.sewAs : null;
+        const colRungs = column ? columnRungs(column.railA, column.railB) : [];
+        // The cover fill of a FILL shape: the rings it is sewn to, and what the
+        // pass is asked before what it is told (entryOf). Worked out once.
+        let plan = null;
+        const fillPlan = () => {
+          if (plan) return plan;
+          const fillRings = fillRingsOf(poly, holes, rings, islands);
+          // Large-fill center-out: qualify by this shape's final-mm bbox.
+          let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+          for (const q of poly) { if (q.x < bx0) bx0 = q.x; if (q.x > bx1) bx1 = q.x; if (q.y < by0) by0 = q.y; if (q.y > by1) by1 = q.y; }
+          const wMm = (bx1 - bx0) * mmPerPxFinal, hMm = (by1 - by0) * mmPerPxFinal;
+          const largeFill = wMm > centerOutMinMm && hMm > centerOutMinMm;
+          return (plan = { fillRings, largeFill, opts: Object.assign({ rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill, columns: fillColumns, openTol: rowPx }, staggerOpts) });
+        };
         // With `fillColumns`, on a FILL shape: would a float from a to b be
         // left uncut? Asked while the underlay is still being ordered, so it
         // needs the ground the fill WILL cover, before the fill is built.
         // `cover` is that ground: the true rings, or the pull-compensated ones
         // the fill is sewn to. `mustCut` is asked of every float of the shape.
         let clearFloat = null, cover = null, mustCut = null;
-        if (fillColumns && !thin) {
+        if (fillColumns && !thin && !runSew) {
           cover = rings;
-          try { cover = fillRingsOf(poly, holes, rings, islands); } catch (e) { cover = rings; }
+          try { cover = fillPlan().fillRings; } catch (e) { cover = rings; }
           const crosses = fillmod.openGroundTest(cover);
           mustCut = (a, b) => crosses(a, b, rowPx, 0, maxPx);
           clearFloat = (a, b) => !mustCut(a, b);
         }
-        // What a tatami pass of this shape is told about where the thread is:
-        // the end of the run before it. Nothing, without the flag.
-        const entryOf = (before) => {
-          const from = clearFloat ? endOfRuns(before) : null;
-          return from ? { from, clear: clearFloat } : {};
+        // What a tatami pass of this shape is told: where the thread is (the
+        // end of the run before it) and, when that is known, where it goes
+        // next (`to`). Nothing, without the flag.
+        const entryOf = (before, to) => {
+          if (!clearFloat) return {};
+          const told = {}, from = endOfRuns(before);
+          if (from) told.from = from;
+          if (to) told.to = to;
+          return (from || to) ? Object.assign(told, { clear: clearFloat }) : {};
         };
-        if (useUnderlay) {
+        // With `fillColumns`: where the fill begins, where the plain walk sews
+        // it. Such a fill begins at a point of its own, wherever the thread
+        // is (fill.js, `plainStart`), so the underlay can be told BEFORE the
+        // fill is sewn: an underlay pass the column walk sews then ends where
+        // the thread can float on to it (fill.js, "where the walk ends").
+        // null for a fill the column walk sews: it is told where the thread
+        // is in its turn, and the underlay before it is told nothing.
+        //
+        // Worked out only when a tatami pass of the underlay asks, and once.
+        // An underlay that is an edge run alone has no use for the answer,
+        // and finding out is a pass over the fill's rows.
+        let fillBegins;   // not asked yet
+        const fillStart = () => {
+          if (fillBegins === undefined) {
+            fillBegins = null;
+            if (clearFloat) {
+              try { fillBegins = fillmod.plainStart(fillPlan().fillRings, fillPlan().opts); } catch (e) { /* the fill fails in its turn, as it did */ }
+            }
+          }
+          return fillBegins;
+        };
+        // Gate 1 of a line's three: no underlay. Read as `thin`, the hairline
+        // proxy would take a center_run and turn a 3-pass bean into 4.
+        if (useUnderlay && !runSew) {
           if (fabric) {
             // Fabric mode: named underlay style per shape type.
             try {
               const style = thin ? (fabric.satinUnderlay || "center_run") : (fabric.fillUnderlay || "edge_lattice");
-              const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin, openTol: rowPx, ground: cover, clear: clearFloat }, underlayCtxBase);
-              for (const run of underlayRuns(shape, style, uctx)) if (run && run.length) { runs.push(run); runKinds.push("underlay"); }
+              const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin, openTol: rowPx, ground: cover, clear: clearFloat, to: fillStart }, underlayCtxBase);
+              // A column's centre run follows its RAILS (spec §6, "Amended
+              // 2026-10-01", correction 2): underlayRuns' center_run is a
+              // straight line along the ring's PCA axis, which only cuts a
+              // chord across a curved column. centerRun returns ONE point
+              // list, so it is wrapped to the array-of-runs form underlayRuns
+              // returns. Step = the underlay stitch length every other style
+              // here uses; two passes (its default), so the walk ends where
+              // the satin starts. Every other style still reads `outer`.
+              const uruns = (thin && column && style === "center_run")
+                ? [satinplaymod.centerRun(column.railA, column.railB, colRungs,
+                    { pxPerMm: pxPerFinalMm, stepMm: underlayStitchPx / pxPerFinalMm })]
+                : underlayRuns(shape, style, uctx);
+              for (const run of uruns) if (run && run.length) { runs.push(run); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           } else {
             // No-fabric path: byte-identical to pre-Phase-2 behavior. (With
@@ -1300,7 +1495,7 @@
                 runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx })); runKinds.push("underlay");
               }
               // (no `ground` here: with no fabric the fill is sewn to these same rings)
-              if (!thin) { runs.push(fillmod.tatamiFill(rings, Object.assign({ rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true, columns: fillColumns, openTol: rowPx }, entryOf(runs)))); runKinds.push("underlay"); }
+              if (!thin) { runs.push(fillmod.tatamiFill(rings, Object.assign({ rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true, columns: fillColumns, openTol: rowPx }, entryOf(runs, fillStart())))); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           }
         }
@@ -1311,27 +1506,53 @@
         // trace the TRUE edge and are never offset.
         let pts = [];
         try {
-          if (thin) {
+          if (runSew) {
+            // Gate 2: the top stitch is the path itself. No pull compensation
+            // (a run has no width to lose) and no tie (this builder has none,
+            // ruling 7). Defaults are the corpus's bean (ruling 6), read off
+            // satinfont's LETTERING_GUARDS rather than re-declared.
+            const guards = satinfontmod.LETTERING_GUARDS;
+            const passes = runSew.passes === 1 || runSew.passes === 3 ? runSew.passes : guards.BEAN_PASSES;
+            const lenMm = typeof runSew.stitchLenMm === "number" && isFinite(runSew.stitchLenMm) && runSew.stitchLenMm > 0
+              ? runSew.stitchLenMm : guards.BEAN_STITCH_MM;
+            pts = fillmod.runAlongPath(runSew.path, { stitchLenPx: lenMm * pxPerFinalMm, passes });
+          }
+          else if (thin) {
             // Medial-axis satin (rail-based) — clean on curves/terminals; falls
             // back to the outline-split satin internally for tiny/degenerate rings.
+            //
+            // AUTHORED RAILS (manual-digitizing spec §6, "Amended 2026-10-01"):
+            // a hand-drawn column hands over the two rails it was drawn with,
+            // so the satin is sewn between THOSE rather than between rails
+            // re-derived from the ring. Same options either way — pull comp
+            // stays inside the satin code. Reached only when `thin`, i.e.
+            // tierOverride "satin" with no hole; no split is asked for
+            // (`splitAboveMm` is deliberately not passed — ruling 5).
             const sat = satinmod.medialSatin || satinmod.satinColumn;
-            pts = sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
+            pts = column
+              ? satinplaymod.satinFromRails(column.railA, column.railB, colRungs,
+                  { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg })
+              : sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg, smallShapes: satinSmallShapes });
+            if (underlayDirection) pts = satinmod.startNear(pts, endOfRuns(runs));
             nSatin++;
           }
           else {
-            const fillRings = fillRingsOf(poly, holes, rings, islands);
-            // Large-fill center-out: qualify by this shape's final-mm bbox.
-            let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
-            for (const q of poly) { if (q.x < bx0) bx0 = q.x; if (q.x > bx1) bx1 = q.x; if (q.y < by0) by0 = q.y; if (q.y > by1) by1 = q.y; }
-            const wMm = (bx1 - bx0) * mmPerPxFinal, hMm = (by1 - by0) * mmPerPxFinal;
-            const largeFill = wMm > centerOutMinMm && hMm > centerOutMinMm;
-            pts = fillmod.tatamiFill(fillRings, Object.assign({ rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill, columns: fillColumns, openTol: rowPx }, staggerOpts, entryOf(runs))); nFill++;
-            if (largeFill && !pts.columnWalk) nCenterOut++;   // the column walk is not center-out
+            const f = fillPlan();
+            pts = fillmod.tatamiFill(f.fillRings, Object.assign({}, f.opts, entryOf(runs))); nFill++;
+            if (f.largeFill && !pts.columnWalk) nCenterOut++;   // the column walk is not center-out
           }
         } catch (e) { pts = []; }
-        runs.push(pts); runKinds.push(thin ? "satin" : "fill");
-        // finishing outline: running stitch along the outer edge (and holes)
-        if (o.outline) {
+        // A column whose rails sew no satin contributes NOTHING. centerRun
+        // still walks the midline of rails satinFromRails sews nothing between
+        // (two coincident rails: an underlay, no crosses), which left a bare
+        // centre run under a clickable outline. `runs` is this shape's own
+        // list, so dropping here discards its underlay with it. Column-only:
+        // a shape with no `sewAs` never takes this branch.
+        if (thin && column && !(pts && pts.length)) { nSatin--; dropOutline(poly); continue; }
+        runs.push(pts); runKinds.push(runSew ? "run" : thin ? "satin" : "fill");
+        // finishing outline: running stitch along the outer edge (and holes).
+        // Gate 3 of a line's three: it would run-stitch AROUND the hairline.
+        if (o.outline && !runSew) {
           try {
             const edgeLen = Math.max(0.02, 1.8 * pxPerFinalMm); // loop-safety floor only, see PX_LOOP_EPS note above
             for (const ring of rings) { runs.push(fillmod.runningOutline(ring, { stitchLen: edgeLen })); runKinds.push("run"); }
@@ -1371,18 +1592,20 @@
         started = true;
       }
     }
-    // `cutFloats` (default off): a float the DST writer would lay as three or
+    // `cutFloats` (default off; the Studio's MANUAL and basic-shape lanes pass it ON since
+    // 2026-10-08 -- app/src/lib/generate.js): a float the DST writer would lay as three or
     // more jump records is a cut to a machine, so it becomes one in the stream
     // too (cutLongFloats). Asked of the finished stream and before the locks,
     // so that `ties` holds each end it makes. Off, nothing reads the stream
     // here and every record is unchanged.
     if (o.cutFloats) nTrims += cutLongFloats(stitches, spans);
     stitches.push({ x: 0, y: 0, type: "end" });
-    // Lock stitches, OFF by default (`ties`, 2026-10-03): until now this
+    // Lock stitches (`ties`, built OFF 2026-10-03, ON by default since
+    // 2026-10-20, Kent): until then this
     // builder tied nothing, on any lane it serves -- manual draw, basic shapes,
     // SVG import, the flatten lane -- so every trim left two loose ends. Off,
     // the stream below is the one built above, untouched. See applyTies.
-    const tied = o.ties ? applyTies(stitches, spans) : null;
+    const tied = o.ties !== false ? applyTies(stitches, spans) : null;
     const sewn = tied ? tied.stitches : stitches;
     const stitchCount = sewn.filter((s) => s.type === "stitch").length;
     // designWmm/designHmm is the traced-polygon box this was fit to; the sewn
@@ -1521,7 +1744,13 @@
     // `crossFloor` passes straight through (default on — see satinfont's
     // width guards); `false` is the pre-2026-09-03 stitch stream, kept
     // reachable for the byte-identity pins in test/run-fonts.test.js.
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: satinSpacingMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, shortStitch: o.shortStitch !== false, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout, splitSatin: o.splitSatin, wideColumnFill: o.wideColumnFill, fillRowMm: letterFillRowMm, fillStitchMm: o.fillStitchMm });
+    // `satinZigzag` is ON here by default (Kent's ruling 2026-10-13, on a
+    // before/after render, NOT sewn): every satin stitch crosses the column.
+    // `false` is the alternating-rail stream every design before that date
+    // carries; layoutText itself still defaults off. Since 2026-10-14 (Kent)
+    // only columns under satinfont's SATIN_ZIGZAG_MAX_WIDTH_MM zigzag;
+    // `satinZigzagMaxMm` overrides that cap in final mm, `false` lifts it.
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: satinSpacingMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, shortStitch: o.shortStitch !== false, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout, splitSatin: o.splitSatin, satinZigzag: o.satinZigzag !== false, satinZigzagMaxMm: o.satinZigzagMaxMm, wideColumnFill: o.wideColumnFill, fillRowMm: letterFillRowMm, fillStitchMm: o.fillStitchMm });
     if (!lay.runs.length) return emptyWith(lay.unsupported, lay.lettering);
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     // Explicit placement offset (Slice 3): applied AFTER the center transform, in
@@ -1662,10 +1891,11 @@
     const maxStepPx = maxStitchMm / finalMmPerPx;   // longest single stitch (px)
     let nTrims = 0, nSatin = 0, lastPt = null, forceJumpNext = false;
 
-    // Lock stitches, OFF by default (2026-09-14). The Python lane ties every
+    // Lock stitches, built OFF (2026-09-14); ON by default since 2026-10-20
+    // (Kent), with `ties: false` the off arm. The Python lane ties every
     // block unconditionally and this lane tied nothing at all; `ties: true`
-    // closes that gap. It ships default-OFF for the reason every other flag in
-    // this repo did — it changes EVERY .dst/.pes a customer exports from
+    // closes that gap. It shipped default-OFF for the reason every other flag
+    // in this repo did — it changes EVERY .dst/.pes a customer exports from
     // lettering, and this house makes Kent rule a flip like that with the
     // measurement in front of him. With the flag off the stream is the one
     // built below, untouched, which is what the snapshot pins assert.
@@ -1676,7 +1906,53 @@
     // run that is not really stitching. They are put in once the stream is
     // finished (applyTies, 2026-10-03): until then they were pushed here as
     // each run went by, in px, and came out 0.2 to 2.0 mm long.
-    const ties = !!o.ties;
+    const ties = o.ties !== false;
+    // `dedupeHoles` (built OFF 2026-10-20 and flipped ON the same day, Kent;
+    // `dedupeHoles: false` is the off arm): the shape builder's rule
+    // (pushRun, "Waiting on Kent" 25), word for word, on this lane's stream.
+    // `T` rounds to the file's unit, so two penetrations nearer than 0.1 mm
+    // land on one point and the writers keep both: the needle goes down twice
+    // in one hole. Here that is mostly a run's first stitch on the point the
+    // run before it ended on — an underlay's closed walk returning to the
+    // satin's start, a glyph part beginning where the last one stopped — and
+    // the cross of a column narrowed to nothing. Measured on "FRITSCH" at
+    // 40 mm with the ladder's underlay: 257 records in fold_inkstitch (a
+    // bean font, whose run turns collapse onto one point — the library's
+    // most, a fifth of its records on "Stitches"), 146 in mai_en_fleur, 31
+    // in montecarlo, 18 in pixel10, 5 in medium_font
+    // (docs/renders/text-lane-flags/README.md). With the flag the first is
+    // laid and the second is not. ONLY a stitch whose record comes straight
+    // after a stitch on its point is left out: after a jump, a trim or a
+    // colour change the stitch is laid, whatever point it is on, for the
+    // reason pushRun gives (a cut is three jump records to a DST reader).
+    // `stitchAt` is the one place a stitch record enters the stream before
+    // applyTies, so the rule is asked once. Off, every stitch is unchanged.
+    const dedupeHoles = o.dedupeHoles !== false;
+    // `underlayDirection` (default OFF here, 2026-10-20; the shape lane's is
+    // ON since 2026-10-11, defect 57): a satin column begins at whichever of
+    // its two ends is nearer where its underlay finished, satin.startNear,
+    // the shape lane's rule. The ends are the midpoints of the column's first
+    // and last crosses, not its first and last stitches (see startNear's
+    // `ends`): a zigzag starts on one rail and ends on the other, so on a
+    // column wider than it is long the first STITCH is the farther one even
+    // when the thread sits at the column's own start.
+    // What it finds on the library: next to nothing. This lane's two underlay
+    // walks (satinplay.centerUnderlayFromGeom, edgeUnderlayFromGeom) are
+    // closed, built to finish back at the fraction the satin starts from, so
+    // the needle is already at the right end: of 11,516 columns across the
+    // 85 fonts, two words, two sizes, it turns 24, every one a closed ring
+    // (an O's two crosses meet) or a dot whose two ends are under 2 mm
+    // apart — no travel added, the thread moved by under 6 mm on a design
+    // of metres, 319 of 332 streams byte-identical. A column that starts at
+    // the wrong end would also cost what the turn saves, since the next part
+    // of the glyph begins where the satin was going to end. It is read so
+    // the two lanes take one set of flags. Asked only of a satin run that
+    // follows its own underlay with the needle down, which is where the
+    // shape lane asks it (endOfRuns). Read as `dedupeHoles` is, so the two
+    // lanes' flags take the same values (the shape lane's `!== false` is its
+    // ON default; this lane's default is OFF, so absent and `false` are one).
+    const underlayDirection = !!o.underlayDirection;
+    let prevRun = null;
     // RUN SPANS (`design.runs`) — what each stitch IS, for the renderer.
     //
     // The design model downstream is a flat {x,y,type} stream in which satin,
@@ -1703,8 +1979,22 @@
     // travel as a needle-DOWN running connector (tucked at a junction, covered);
     // jump=true means lift the needle (and trim if the hop is long).
     // runsOrdered is lay.runs verbatim except on cap garments (see capMode above).
+    // Every stitch record enters here. With `dedupeHoles` a stitch on the
+    // point of the stitch that is the record before it is not laid; any other
+    // record before it (a jump, a trim, a colour change) and it is. A run
+    // EVERY record of which sits on the record before it lays nothing, and
+    // pushSpan then gives it no span: a two-point needle-down walk whose both
+    // points round onto the stitch it leaves from (apesplit at 40 mm: 3 on
+    // FRITSCH, 8 on Stitches). The shape lane never meets this, since pushRun
+    // opens every run with a jump; here a span can go with its stitches.
+    const stitchAt = (d) => {
+      const p = stitches[stitches.length - 1];
+      if (dedupeHoles && p && p.type === "stitch" && p.x === d.x && p.y === d.y) return;
+      stitches.push({ x: d.x, y: d.y, type: "stitch" });
+    };
+    const mid = (p, q) => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });
     for (const run of runsOrdered) {
-      const pts = run.pts;
+      let pts = run.pts;
       if (!pts || pts.length < 2) continue;
       if (run.kind === "satin") nSatin++;
       const runRgb = colorForCharIdx(run.charIdx);
@@ -1718,6 +2008,23 @@
         ensureColor(runRgb);
         forceJumpNext = true;
       }
+      // `underlayDirection`: a satin column entered needle-down from its own
+      // underlay starts at the end nearer the underlay's last point (the
+      // thread's position, `lastPt`, in the same px frame as `pts`). The
+      // column's ends are its first and last crosses' midpoints: emitZigzag
+      // lays each station as its two rail points, so (0, 1) and (n-2, n-1)
+      // are the end stations. Under `splitSatin` (off by default) a cross
+      // wider than its split length carries split points, so pts[1] is then
+      // the first of those and the "end" sits off-centre by up to half the
+      // width; it matters only on a column wider than it is long with that
+      // flag on. startNear returns `pts` itself when the column already
+      // starts at the near end, which on the library is all but 24 rings
+      // and dots; `run.pts` is never changed in place.
+      if (underlayDirection && run.kind === "satin" && lastPt && !(run.jump || forceJumpNext) &&
+          prevRun && prevRun.kind === "underlay" && prevRun.charIdx === run.charIdx) {
+        const n = pts.length;
+        pts = satinmod.startNear(pts, lastPt, { a: mid(pts[0], pts[1]), b: mid(pts[n - 1], pts[n - 2]) });
+      }
       const start = pts[0];
       if (!lastPt) {
         const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
@@ -1730,15 +2037,22 @@
         const gap = Math.hypot(start.x - lastPt.x, start.y - lastPt.y);
         const steps = Math.max(1, Math.ceil(gap / maxStepPx));
         const ti0 = stitches.length;
-        for (let s = 1; s <= steps; s++) { const t = s / steps; const d = T({ x: lastPt.x + (start.x - lastPt.x) * t, y: lastPt.y + (start.y - lastPt.y) * t }); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
+        // The connector stops one step short: its last step lands on `start`,
+        // which the run below lays as its own first stitch. Laying it here too
+        // put the needle down twice in that hole at every needle-down run
+        // boundary (docs/lock-stitches-2026-10-03.md: 9,093 on KENT across the
+        // 85 fonts). Only the record pushed twice goes; a connector point that
+        // merely rounds onto its neighbour is `dedupeHoles`' question, not this.
+        for (let s = 1; s < steps; s++) { const t = s / steps; stitchAt(T({ x: lastPt.x + (start.x - lastPt.x) * t, y: lastPt.y + (start.y - lastPt.y) * t })); }
         // These connector stitches are needle-DOWN travel, not stitching — the
         // renderer de-emphasises them so they stop reading as part of a glyph.
         pushSpan(ti0, "travel", run.charIdx);
       }
       const ri0 = stitches.length;
-      for (const q of pts) { const d = T(q); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
+      for (const q of pts) stitchAt(T(q));
       pushSpan(ri0, SPAN_KIND[run.kind], run.charIdx);
       lastPt = pts[pts.length - 1];
+      prevRun = run;
     }
     // A trim cuts the thread and a jump that was not trimmed does not, so the
     // locks go either side of every trim and at both ends of the stream — the

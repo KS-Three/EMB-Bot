@@ -19,7 +19,7 @@
 // the loop. Referenced across the repo rather than copied into e2e/fixtures:
 // one file, one regeneration path, no chance of the two drifting.
 import { test, expect } from "@playwright/test";
-import { startStudio, typeText, openDownload } from "./helpers.js";
+import { startStudio, typeText, openDownload, openAdvanced } from "./helpers.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,6 +28,7 @@ const STANDARD_DST = path.resolve(__dirname, "../../test/fixtures/standard-tajim
 
 async function importFixture(page) {
   await startStudio(page);
+  await openAdvanced(page);
   await page.getByRole("button", { name: "Design file" }).click();
   await page.locator(".dp-upload input[type=file]").setInputFiles(STANDARD_DST);
   await expect(page.locator(".dp-stats")).toBeVisible({ timeout: 60_000 });
@@ -79,7 +80,7 @@ test("an imported design reaches Download and exports", async ({ page }) => {
   const anyway = page.getByRole("button", { name: "Download DST anyway", exact: true });
   if (await anyway.isVisible().catch(() => false)) await anyway.click();
   const d = await dl;
-  expect(d.suggestedFilename()).toBe("design.dst");
+  expect(d.suggestedFilename()).toBe("standard-tajima.dst");
 });
 
 test("no DST caveat appears on the Download step, and DST leads", async ({ page }) => {
@@ -129,6 +130,7 @@ test("a .pes fed to the DST lane is refused, with the way out named", async ({ p
   const pes = await (await dl).path();
 
   await startStudio(page);
+  await openAdvanced(page);
   await page.getByRole("button", { name: "Design file" }).click();
   await page.locator(".dp-upload input[type=file]").setInputFiles(pes);
 

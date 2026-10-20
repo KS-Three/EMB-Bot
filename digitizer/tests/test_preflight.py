@@ -164,7 +164,13 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     # in its own thread, which is a sixth colour block and a sixth cone. The
     # whole arithmetic is pinned in `tests/test_keep_thin_strokes.py`; this
     # number is the report reading it.
-    assert m["color_changes"] == 6
+    # 9, not 6, since 2026-10-06: `edge_cap_follow_adjacent` sews each stretch
+    # of the cap in the thread of the shape it stands against, and this
+    # fixture's edge touches three threads, so the one cap block became three
+    # (Kent's ask: the bean outline did not follow the colour beside it). Each
+    # extra colour is a real thread change; the cones are unchanged because
+    # every piece uses a thread the design already loads.
+    assert m["color_changes"] == 9
 
 
 # --- Thread color fidelity ---------------------------------------------------
@@ -1918,7 +1924,10 @@ def test_color_stops_past_the_single_needle_wall_warn():
         row, col = divmod(i, 4)
         y, x = 20 + row * 105, 20 + col * 110
         patches[y:y + 85, x:x + 90] = c
-    report = _digitize_report(patches, target_width_mm=100.0)
+    # `lettering_columns=False` (ON by default since Kent's 2026-10-12 flip):
+    # the twelve patches read as a line of lettering, the Column lane takes
+    # them, and the cap's per-patch pieces this count prices drop 23 -> 11.
+    report = _digitize_report(patches, target_width_mm=100.0, lettering_columns=False)
 
     hit = [f for f in report["findings"] if f["code"] == COLOR_STOPS_HEAVY]
     assert len(hit) == 1
@@ -1926,9 +1935,13 @@ def test_color_stops_past_the_single_needle_wall_warn():
     # 12 since the edge cap flipped on (2026-09-11): eleven artwork stops
     # plus the cap's own block. The WALL is still 11, so this fixture is
     # still over it — which is what the test is about.
-    assert hit[0]["extra"]["color_changes"] == 12
+    # 23 since 2026-10-06 (`edge_cap_follow_adjacent`): the cap now sews each
+    # stretch in the thread beside it, so this twelve-patch grid gets a cap
+    # piece per patch it borders instead of one block. Far over the wall
+    # either way; the finding is the same, the count is the new cost.
+    assert hit[0]["extra"]["color_changes"] == 23
     assert hit[0]["extra"]["max_stops"] == COLOR_STOPS_MAX
-    assert report["metrics"]["color_changes"] == 12
+    assert report["metrics"]["color_changes"] == 23
     json.dumps(report)
 
 
@@ -1942,9 +1955,10 @@ def test_a_design_at_the_stop_cap_is_not_warned(plan):
     assert COLOR_STOPS_HEAVY not in _codes(report)
     # +1 the edge cap's block (2026-09-11), +1 the teal run `keep_thin_
     # strokes` keeps (2026-09-13, Kent's ruling) — both pinned in the
-    # clean-report test above. Six is still well inside the 10-stop wall
-    # this test is about.
-    assert report["metrics"]["color_changes"] == 6
+    # clean-report test above. +2 since 2026-10-06 (the cap follows the
+    # adjacent colour: one block became three). Nine is still inside the
+    # 10-stop wall this test is about, and still unwarned.
+    assert report["metrics"]["color_changes"] == 9
 
 
 # --- Scoring -----------------------------------------------------------------
@@ -2227,7 +2241,11 @@ def test_the_letter_apex_is_reported_now_that_the_erosion_is_gone():
     engine leaves less of it.
     """
     art = TESTDATA / "photo/enthusiast_logo.png"
-    c = cfg(target_width_mm=80.0, max_colors=6, satin_crown_cover=False)
+    # `lettering_columns=False` (ON by default since Kent's 2026-10-12 flip):
+    # the apex hole is the skeleton tier's; the Column lane builds the A from
+    # its outline.
+    c = cfg(target_width_mm=80.0, max_colors=6, satin_crown_cover=False,
+            lettering_columns=False)
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
     m = report["metrics"]

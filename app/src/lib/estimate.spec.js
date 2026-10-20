@@ -98,7 +98,7 @@ test("the rows read in the order an operator uses them", async () => {
   // "~1 min" that stops a real job reading as "nothing to do".
   expect(sewSummary(D).map((r) => r.label)).toEqual(["Size", "Stitches", "Run time", "Thread changes", "Trims", "Thread", "Bobbin"]);
   expect(sewSummary(D).map((r) => r.value)).toEqual([
-    "30 × 10 mm", "7", "~1 min at 650 spm", "1", "1", "0.1 m (estimate)",
+    "30 × 10 mm (1.18 × 0.39 in)", "7", "~1 min at 650 spm", "1", "1", "0.1 m (estimate)",
     "under 0.1 m (3/5 of top thread)",
   ]);
 });
@@ -267,4 +267,12 @@ test("a design with nothing sewn still reports no rows at all", async () => {
   // exists to avoid.
   const { sewSummary } = await import("./estimate.js");
   expect(sewSummary({ widthMM: 10, heightMM: 10, stitches: [] })).toEqual([]);
+});
+
+test("sizeLabel: both units, inches rounded like the worksheet's Dimensions line", async () => {
+  const { sizeLabel } = await import("./estimate.js");
+  // pdfsheet prints `widthIn.toFixed(2) in x heightIn.toFixed(2) in (100.0 mm x 50.0 mm)`
+  // for a 100 x 50 mm design (pdfsheet.spec.js:145); the Review/quote row must agree.
+  expect(sizeLabel({ widthMM: 100, heightMM: 50 })).toBe("100 × 50 mm (3.94 × 1.97 in)");
+  expect(sizeLabel({ widthMM: 101.6, heightMM: 25.4 })).toBe("102 × 25 mm (4.00 × 1.00 in)");
 });

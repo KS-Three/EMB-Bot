@@ -48,8 +48,11 @@ def run():
     # `work_px_per_mm=None` likewise (ON since 2026-10-01): Becker is 1.8
     # px/mm, and traced on the working grid this fixture has no exposed
     # bridge left to take a census of.
+    # `lettering_columns` likewise held at its pre-flip `False` (ON since Kent's
+    # 2026-10-12 flip): the lane sews the MARINE letters as columns, not fill,
+    # so the exposed bridges this census needs are not there.
     cfg = PipelineConfig(target_width_mm=80.0, satin_lettering_split=False,
-                         work_px_per_mm=None)
+                         work_px_per_mm=None, lettering_columns=False)
     result, plan = digitize(ART, cfg)
     return result, plan, cfg
 

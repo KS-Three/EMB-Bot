@@ -20,6 +20,10 @@
   // seam (see its comment) — lets a spec seed the nested TraceImportPanel's
   // "already decoded an image" state without a real file upload.
   export let traceWorkImage = null;
+  // Forwarded to ManualPanel's `fit` / `fabric` (a column's width in mm).
+  export let fit = null;
+  export let fabric = null;
+  export let garment = null;
 
   function handle(e) {
     element = { ...element, ...e.detail.patch };
@@ -27,4 +31,4 @@
   }
 </script>
 
-<ManualPanel {element} {traceWorkImage} on:elupdate={handle} />
+<ManualPanel {element} {traceWorkImage} {fit} {fabric} {garment} on:elupdate={handle} />

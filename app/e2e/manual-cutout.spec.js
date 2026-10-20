@@ -23,7 +23,7 @@
 // canvas ~76 px. Each test closes it by its own X before reading any canvas
 // coordinate.
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, openAdvanced } from "./helpers.js";
 
 const STATS = "span.stats";
 const MIN_RUN = 12;
@@ -53,6 +53,7 @@ async function toContent(page) {
 async function openDrawing(page) {
   await page.locator(".hoop canvas").click({ button: "right" });
   await page.locator(".fieldmenu button").filter({ hasText: "Draw shapes" }).click();
+  await openAdvanced(page);
   await expect(page.locator(".mp-canvas")).toBeVisible();
 }
 

@@ -28,7 +28,7 @@ from digitizer_core import PipelineConfig, plan_stitches, run_stages
 from digitizer_core.adapter import _u, plan_to_design
 from digitizer_core import stitches as st
 
-from .conftest import TESTDATA
+from .conftest import PRE_FLIP, TESTDATA
 
 
 def _design(plan, name):
@@ -47,8 +47,13 @@ def becker():
     `border_runs`, the emitter whose own default role is ROLE_BORDER, which is
     exactly the collision the cap has to survive.
     """
+    # Pre-flip corners on purpose: with `subpixel_corner_runs` (ON since
+    # 2026-10-20, Kent's ruling) Becker's cleaner outline leaves the border
+    # tier no per-shape column at 80 mm, only the cap's, and the role this
+    # fixture exists to pin would go untested (`PRE_FLIP`).
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                         border="auto", edge_cap="satin")
+                         border="auto", edge_cap="satin",
+                         subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"])
     result = run_stages(TESTDATA / "becker_marine_logo.png", cfg)
     plan = plan_stitches(result, cfg)
     return plan, _design(plan, "Becker")

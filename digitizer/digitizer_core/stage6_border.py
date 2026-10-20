@@ -930,7 +930,10 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
                    entry: tuple[float, float] | None,
                    trim_at_mm: float,
                    width_mm: float | None = None,
-                   omit=None) -> tuple[list[StitchRun], dict]:
+                   omit=None,
+                   walk_covered: bool = False,
+                   bean_stitch_mm: float | None = None
+                   ) -> tuple[list[StitchRun], dict]:
     """Close the DESIGN's outer edge — one cap on the whole silhouette.
 
     The two tiers below already outline a SHAPE. This outlines the union of
@@ -987,11 +990,17 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
     caller reads one shape regardless of style: `loops`, `bean_loops`,
     `jumps`, `empty`, plus `style` (what actually ran), `holes_skipped`
     (cracks filled before capping), `arcs`/`yielded` (what the gate cut) and
-    `whole_loops` (rings capped as a complete circuit — see below).
+    `whole_loops` (rings capped as a complete circuit — see below) and
+    `walked` (hops between two arcs of one ring sewn along the covered
+    stretch instead — `walk_covered`, bean style only, default OFF).
+
+    `bean_stitch_mm` (`cfg.edge_cap_bean_pitch_mm`, default OFF): the bean
+    style's station pitch. None is `machine.BEAN_STITCH_MM`, byte for byte.
+    The satin style ignores it — its bean fallback is `border_runs`' own.
     """
     report = {"loops": 0, "bean_loops": 0, "jumps": 0, "empty": True,
               "style": "none", "holes_skipped": 0, "arcs": 0, "yielded": 0,
-              "whole_loops": 0}
+              "whole_loops": 0, "walked": 0}
     if silhouette is None or style not in ("bean", "satin"):
         return [], report
     if getattr(silhouette, "is_empty", True):
@@ -1009,8 +1018,11 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
     if style == "bean":
         runs, r = run_outline(silhouette, shape_id, entry=entry,
                               trim_at_mm=trim_at_mm, omit=omit,
-                              role=stitches.ROLE_EDGE_CAP)
+                              role=stitches.ROLE_EDGE_CAP,
+                              walk_covered=walk_covered,
+                              stitch_mm=bean_stitch_mm)
         report["loops"] = r["loops"]
+        report["walked"] = r["walked"]
     else:
         runs, r = border_runs(silhouette, shape_id, entry=entry,
                               trim_at_mm=trim_at_mm, style="auto",
@@ -1048,9 +1060,95 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
     return runs, report
 
 
+def _covered_walk(coords: list[tuple[float, float]],
+                  a: tuple[float, float], b: tuple[float, float],
+                  omit_prep, max_stitches: int,
+                  stitch_mm: float = machine.BEAN_STITCH_MM
+                  ) -> list[tuple[float, float]] | None:
+    """The ring's own path from `a` to `b`, if every station of it stands on
+    `omit`. -> points after `a` ending at `b`, or None.
+
+    `cfg.edge_cap_walk_covered`'s geometry. Two arcs of one ring are separated
+    by a stretch something linear already covers; the needle can lift over it
+    (a jump, and a trim past `trim_at_mm`) or walk it, one pass at bean
+    stations, on top of the stitching that covers it. Walked only when the
+    walk is entirely on that cover — measured at bean stations, the same
+    ruler the gate judged the ring with — and costs no more stitches than
+    `max_stitches`; otherwise None and the caller jumps as before. The
+    shorter way round the ring is the one tried.
+    """
+    line = LineString(coords)
+    total = line.length
+    if total <= 0:
+        return None
+    s0, s1 = line.project(Point(a)), line.project(Point(b))
+    fwd = (s1 - s0) % total
+    back = total - fwd
+    length = min(fwd, back)
+    n = max(1, int(math.ceil(length / stitch_mm)))
+    if n > max_stitches:
+        return None
+    step = (fwd if fwd <= back else -back) / n
+    out: list[tuple[float, float]] = []
+    for i in range(1, n):
+        q = line.interpolate((s0 + step * i) % total)
+        if not omit_prep.intersects(q):
+            return None
+        out.append((q.x, q.y))
+    out.append(tuple(b))
+    return out
+
+
+# `run_soft_vertices` (2026-10-08, built OFF; MASTER_SCOPE defect 46's
+# direction-change score). The run tier samples the stage-4 polygon at
+# `BEAN_STITCH_MM` of arc length, and that polygon is Douglas-Peucker output:
+# a curve arrives as straight chords meeting at shallow vertices, so the run
+# sews flat-flat-TURN — what Law 37's `curve_roughness_deg` counts. Of every
+# visible tier it measured roughest on the real-art fixtures (bridge 14.0,
+# summit 17.9, golden 12.4 deg against satin rails' 5.5-9.6). Each vertex
+# turning less than `curve_fidelity.CORNER_DEG` — a curve vertex, not an
+# intended corner — is cut into two, twice (Chaikin), the cut's sagitta held
+# under `simplify_tol_mm`'s default, so the sewn line stays within the
+# polygon's own tolerance band of it. Corners at or above CORNER_DEG are
+# kept exactly. No new constant: both numbers already exist.
+_SOFT_TOL_MM = 0.2      # == PipelineConfig.simplify_tol_mm's default
+_SOFT_PASSES = 2
+
+
+def _soften_ring(coords: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """A closed ring with its curve vertices cut, its corners untouched."""
+    from .curve_fidelity import CORNER_DEG
+    pts = [(float(x), float(y)) for x, y in coords]
+    if len(pts) > 1 and pts[0] == pts[-1]:
+        pts = pts[:-1]
+    corner = math.radians(CORNER_DEG)
+    for _ in range(_SOFT_PASSES):
+        n = len(pts)
+        if n < 3:
+            break
+        out = []
+        for i in range(n):
+            a, b, c = pts[i - 1], pts[i], pts[(i + 1) % n]
+            ux, uy, vx, vy = b[0] - a[0], b[1] - a[1], c[0] - b[0], c[1] - b[1]
+            la, lb = math.hypot(ux, uy), math.hypot(vx, vy)
+            th = abs(math.atan2(ux * vy - uy * vx, ux * vx + uy * vy)) if la > 1e-9 and lb > 1e-9 else 0.0
+            if th < 1e-6 or th >= corner:
+                out.append(b)
+                continue
+            d = min(0.25 * la, 0.25 * lb, _SOFT_TOL_MM / math.sin(th / 2))
+            out.append((b[0] - ux / la * d, b[1] - uy / la * d))
+            out.append((b[0] + vx / lb * d, b[1] + vy / lb * d))
+        pts = out
+    return pts + pts[:1]
+
+
 def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
                 trim_at_mm: float, omit=None,
-                role: str = "") -> tuple[list[StitchRun], dict]:
+                role: str = "",
+                soft_vertices: bool = False,
+                walk_covered: bool = False,
+                dot_rung: bool = False,
+                stitch_mm: float | None = None) -> tuple[list[StitchRun], dict]:
     """The run tier: a shape too small to fill or satin, sewn as bean runs on
     its own outline instead of being dropped.
 
@@ -1087,24 +1185,58 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
     pass a role is `silhouette_cap` (`ROLE_EDGE_CAP`), which borrows this
     emitter for the design's own outline.
 
+    `soft_vertices` (`cfg.run_soft_vertices`, built OFF): see
+    `_soften_ring`. Off, the ring is sampled exactly as before.
+
     Report keys: `loops`, `jumps`, `empty` (plus `too_thin`, always False,
     so stage 7 can treat every tier's report identically), and `arcs` /
     `yielded` when `omit` split a ring.
+
+    `walk_covered` (`cfg.edge_cap_walk_covered`, default OFF): between two
+    arcs of the SAME ring, walk the covered stretch instead of lifting over
+    it — see `_covered_walk`. Counted as `walked`; OFF never consults it.
+
+    `dot_rung` (`cfg.small_dot_rung`, built OFF; stage 7's run routing is
+    its only caller): an OUTER ring under `RUN_MIN_LOOP_MM` but at or over
+    `machine.DOT_RUNG_MIN_LOOP_MM` -- the outline of an i dot -- sews as a
+    tack ring, `DOT_RUNG_PASSES` passes at `DOT_RUNG_STITCH_MM`, instead of
+    being skipped. A sub-floor HOLE ring is still skipped: sewing the 8's
+    small counter ring shut that counter (measured, see the loop below).
+    Counted as `dot_rings` (the key exists only when asked). Every ring at or
+    over RUN_MIN_LOOP_MM sews exactly as without it.
+
+    `stitch_mm`: the bean's station pitch on every ring at or over
+    `RUN_MIN_LOOP_MM`. None (or <= 0) is `machine.BEAN_STITCH_MM`, byte for
+    byte. Only `silhouette_cap` passes one (`cfg.edge_cap_bean_pitch_mm`,
+    built OFF); the run tier never does. A dot-rung ring keeps its own pitch.
     """
+    bean_mm = stitch_mm if stitch_mm and stitch_mm > 0 else machine.BEAN_STITCH_MM
     report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False,
-              "arcs": 0, "yielded": 0}
+              "arcs": 0, "yielded": 0, "walked": 0}
+    if dot_rung:
+        report["dot_rings"] = 0
     runs: list[StitchRun] = []
     cursor = entry
     omit_prep = None
     if omit is not None and not getattr(omit, "is_empty", True):
         omit_prep = prep(omit.buffer(_OMIT_TOL_MM))
     for part in _parts(poly):
-        for ring in [part.exterior, *part.interiors]:
+        for k, ring in enumerate([part.exterior, *part.interiors]):
             coords = list(ring.coords)
             length = LineString(coords).length
+            ring_mm, passes = bean_mm, machine.BEAN_PASSES
             if length < machine.RUN_MIN_LOOP_MM:
-                continue           # smaller than the mark the thread makes
-            n = max(3, int(round(length / machine.BEAN_STITCH_MM)))
+                # The rung sews a closed PART (k == 0), never a counter: a
+                # tack ring on a sub-floor hole's edge shuts it (Fremont's
+                # 8, 2026-10-14: 1 of 2 counters open -> 0 of 2).
+                if (not dot_rung or k > 0
+                        or length < machine.DOT_RUNG_MIN_LOOP_MM):
+                    continue           # smaller than the mark the thread makes
+                ring_mm, passes = machine.DOT_RUNG_STITCH_MM, machine.DOT_RUNG_PASSES
+                report["dot_rings"] += 1
+            if soft_vertices:
+                coords = _soften_ring(coords)
+            n = max(3, int(round(length / ring_mm)))
             ring_pts, _total = _ring_arc_samples(coords, n)
             if not ring_pts:
                 continue
@@ -1117,14 +1249,14 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
                 arcs, whole = _ring_arcs(ring_pts, omit_prep, None)
                 if not whole:
                     report["yielded"] += 1
+            ring_cursor = None     # the needle's end on THIS ring, if any
             for arc in arcs:
                 if whole:
-                    pts = _bean_loop(ring_pts, cursor, machine.BEAN_STITCH_MM,
-                                     machine.BEAN_PASSES)
+                    pts = _bean_loop(ring_pts, cursor, ring_mm, passes)
                 else:
                     if len(arc) < 2 or LineString(arc).length < _ARC_MIN_MM:
                         continue       # a blob, not an edge
-                    pts = _bean_arc(arc, cursor, machine.BEAN_PASSES)
+                    pts = _bean_arc(arc, cursor, passes)
                     report["arcs"] += 1
                 if len(pts) < 2:
                     continue
@@ -1136,7 +1268,20 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
             # too double-counted every rescued shape's entry as a lifted
             # thread (measured on the benchmark: 13 phantom jumps warned).
                 jump = trim = False
-                if runs and cursor is not None:
+                walked = False
+                if (walk_covered and ring_cursor is not None
+                        and runs and cursor == ring_cursor
+                        and math.dist(cursor, pts[0]) >= machine.TINY_STITCH_MM):
+                    walk = _covered_walk(coords, cursor, pts[0], omit_prep,
+                                         machine.TRIM_COST_STITCHES, bean_mm)
+                    if walk is not None:
+                        # The walk heads this arc's run: the needle stays
+                        # down from the previous arc's end, so the hop check
+                        # below sees one bean station and books no jump.
+                        pts = walk[:-1] + pts
+                        report["walked"] += 1
+                        walked = True
+                if runs and cursor is not None and not walked:
                     d = math.dist(cursor, pts[0])
                     if d >= machine.TINY_STITCH_MM:
                         jump = True
@@ -1150,6 +1295,8 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
                                       kind=stitches.RUN, jump=jump, trim=trim,
                                       shape_id=shape_id, role=role))
                 cursor = pts[-1]
+                if not whole:
+                    ring_cursor = cursor
                 report["loops"] += 1
     report["empty"] = not runs
     return runs, report

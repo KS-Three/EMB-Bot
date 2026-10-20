@@ -37,6 +37,7 @@ from digitizer_core.stage6_streamline import (
 )
 from digitizer_core.stage7_sequence import sequence
 from digitizer_core.threads import CHART
+from tests.conftest import own_thread_only
 
 HERE = Path(__file__).resolve().parent
 TESTDATA = HERE.parent / "testdata"
@@ -215,7 +216,7 @@ def test_default_config_never_runs_the_tier(monkeypatch):
     def boom(*a, **k):  # pragma: no cover - the point is it never fires
         raise AssertionError("sketch_fill ran on a default config")
 
-    monkeypatch.setattr(s7, "sketch_fill", boom)
+    monkeypatch.setattr(s7, "sketch_fill", own_thread_only(boom, s7.sketch_fill))
     _result, plan = digitize(str(LOGO), PipelineConfig(
         target_width_mm=90.0, forced_class="flat"))
     assert plan.blocks

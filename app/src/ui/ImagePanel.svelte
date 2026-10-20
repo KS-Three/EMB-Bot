@@ -1,9 +1,18 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF, MIN_SWATCH_SHARE } from "../lib/flatten.js";
-  import { loadImage, rasterSize, isVectorFile, UNREADABLE } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
+  import { friendlyError } from "../lib/friendlyError.js";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
+  import Advanced from "./Advanced.svelte";
+  // Swatch labels sit on the ART's own colour, so one fixed label colour fails
+  // on half the palette (white on a light swatch). WCAG relative luminance:
+  // --ink beats white as the label above ~0.18.
+  const lightSwatch = (c) => {
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]) > 0.18;
+  };
 
   // Element-scoped image editor (Task 5, Slice 5). Pattern (see
   // TextStep.svelte for the same convention): settings patches dispatch an
@@ -166,7 +175,7 @@
       d("image", prep);
       flattenFrom(prep, element.nColors, element.removeBg);
     } catch (err) {
-      error = (err && err.message) || UNREADABLE;
+      error = friendlyError(err, "upload");
       fileName = "";
       patch({ sourcePng: null, name: "" });
       d("image", null);
@@ -295,10 +304,6 @@
   {:else if fileName}<span class="filename">{fileName}</span>{/if}
 </div>
 <p class="hint">Best results: logos and flat-color art. Photos with gradients won't stitch cleanly.</p>
-<p class="hint">
-  PNG with sharp, non-anti-aliased edges and a bigger image hold detail best. Art already has a
-  transparent background? Leave "Remove background" unchecked below.
-</p>
 
 {#if error}<p class="err">{error}</p>{/if}
 
@@ -307,10 +312,6 @@
 <label class="rangerow">
   Colors: {element.nColors}
   <input type="range" min="2" max="8" step="1" value={element.nColors} on:input={onColorsInput} />
-</label>
-<label class="checkrow">
-  <input type="checkbox" checked={element.removeBg} on:change={onRemoveBgChange} />
-  Remove background
 </label>
 
 <div class="swatches">
@@ -326,6 +327,7 @@
             type="button"
             class="swatch"
             class:sel={!!selected[i]}
+            class:lt={lightSwatch(c)}
             style="background: rgb({c[0]},{c[1]},{c[2]})"
             on:click={() => toggleSwatch(i)}
             title={(shares[i] * 100).toFixed(1) + "%"}
@@ -363,7 +365,22 @@
   {/if}
 </div>
 
-<div class="swatch-actions">
-  <button on:click={mergeSelected} disabled={!flat || selectedCount < 2}>Merge selected</button>
-  <button on:click={resetColors} disabled={!flat}>Reset colors</button>
-</div>
+<!-- Default slot: the size row (ContentStep). Advanced (spec 2026-09-30 §5):
+     background removal, merge / reset, and whatever ContentStep adds in the
+     "advanced" slot. -->
+<slot />
+<Advanced>
+  <p class="hint">
+    PNG with sharp, non-anti-aliased edges and a bigger image hold detail best. Art already has a
+    transparent background? Leave "Remove background" unchecked below.
+  </p>
+  <label class="checkrow">
+    <input type="checkbox" checked={element.removeBg} on:change={onRemoveBgChange} />
+    Remove background
+  </label>
+  <div class="swatch-actions">
+    <button on:click={mergeSelected} disabled={!flat || selectedCount < 2}>Merge selected</button>
+    <button on:click={resetColors} disabled={!flat}>Reset colors</button>
+  </div>
+  <slot name="advanced" />
+</Advanced>

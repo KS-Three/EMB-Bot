@@ -1,0 +1,53 @@
+{
+ "fixture": "photo/logo_bridge_bar.jpg",
+ "garment": "left_chest",
+ "gap_mm": 0.8,
+ "px_per_mm": 7.0,
+ "zoom_px_per_mm": 64.0,
+ "crop_mm": 5.0,
+ "crops": [
+  {
+   "crop": 1,
+   "shape_id": "Sb7247667",
+   "strip_mm2": 1.551,
+   "centre_mm": [
+    2.89,
+    22.28
+   ]
+  },
+  {
+   "crop": 2,
+   "shape_id": "S5d53f83f",
+   "strip_mm2": 1.366,
+   "centre_mm": [
+    3.78,
+    13.55
+   ]
+  },
+  {
+   "crop": 3,
+   "shape_id": "S0c90443f",
+   "strip_mm2": 1.092,
+   "centre_mm": [
+    21.9,
+    -20.3
+   ]
+  },
+  {
+   "crop": 4,
+   "shape_id": "S354f0f99",
+   "strip_mm2": 1.082,
+   "centre_mm": [
+    14.51,
+    17.29
+   ]
+  }
+ ],
+ "files": [
+  "logo_bridge_bar_full_off_vs_on.png",
+  "logo_bridge_bar_crop1_off_on_strip.png",
+  "logo_bridge_bar_crop2_off_on_strip.png",
+  "logo_bridge_bar_crop3_off_on_strip.png",
+  "logo_bridge_bar_crop4_off_on_strip.png"
+ ]
+}

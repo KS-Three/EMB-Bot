@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 30">
+  <!-- things a browser draws that the importer may drop, and whether it says so -->
+  <rect x="2" y="5" width="16" height="20" fill="#1f3a68"/>
+  <circle cx="32" cy="15" r="9" fill="none" stroke="#c8102e" stroke-width="2.5"/>
+  <polyline points="46,25 52,5 58,25" fill="none" stroke="#1f3a68" stroke-width="2"/>
+  <rect x="64" y="7" width="12" height="16" fill="#f2c230" stroke="#1f3a68" stroke-width="3"/>
+  <image x="82" y="7" width="16" height="16" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAG0lEQVR4nGP4dMjgv153+H8YzYDMAdEMBFUAADpfJ5FR996gAAAAAElFTkSuQmCC"/>
+</svg>

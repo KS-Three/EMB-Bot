@@ -39,8 +39,9 @@ from . import analysis as an
 from . import features as ft
 from .features import base_cfg, digitize_once, features_design_only, features_full
 from .filearm import design_from_file
-from .pairs import (ARMS, BASE, EXCLUDED_FIXTURES, ArmRun, build_pairs, design_hash,
-                    load_picks, now_iso, sealed_hash, unpicked)
+from .pairs import (ARMS, BASE, EXCLUDED_FIXTURES, N_IDENTICAL, N_REPEAT, SHUFFLE_SEED,
+                    ArmRun, build_pairs, design_hash, load_picks, now_iso, sealed_hash,
+                    unpicked)
 from .refarm import (add_worktree, discard_worktree, link_photo_prep, ref_environment,
                      run_ref_design)
 from .server import PORT, make_server
@@ -135,7 +136,7 @@ def _default_ref_runner(ref: str, *, repo=None, scratch=None):
 
 
 def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
-           ref_factory=None) -> int:
+           ref_factory=None, base: dict | None = None) -> int:
     """Digitize and render every (fixture, arm); -> the number now ready.
 
     Resume-safe: a row is reused only when its `source_sha256` matches the
@@ -153,10 +154,18 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
     it unknown. That costs the ref rows alone — deliberately not a
     `FEATURES_SCHEMA` bump, which would re-digitize every flag arm too.
     Never builds pairs: that is `pair()`.
+
+    `base` (`--base k=v,...`) is PipelineConfig flags laid under EVERY flag
+    arm, `base` included, so a sitting can judge one flag on top of another
+    built-OFF one (2026-10-08: `lettering_words` over `lettering_columns`,
+    Kent's pick). Recorded as `base_flags` on every row it touched; a
+    cached row on a different base is a cache miss and re-digitizes, so one
+    directory never mixes engines. Ref and file arms do not take it.
     """
     out = Path(out)
     for sub in ("designs", "renders"):
         (out / sub).mkdir(parents=True, exist_ok=True)
+    base = dict(base or {})
     # The default corpus minus the fixtures Kent has ruled off the page
     # (`EXCLUDED_FIXTURES`); an explicit `cases` list is taken as given.
     cases = ([c for c in corpus_cases() if c[0] not in EXCLUDED_FIXTURES]
@@ -194,6 +203,8 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                         and row.get("source_sha256") == src_hash
                         and row.get("schema") == FEATURES_SCHEMA
                         and ("__ref__" not in kw or row.get("env"))
+                        and ("__ref__" in kw or "__file__" in kw
+                             or row.get("base_flags", {}) == base)
                         and dpath.exists() and rpath.exists()):
                     if not hpath.exists():
                         _write_holes(hpath, json.loads(dpath.read_text(encoding="utf-8")))
@@ -230,10 +241,12 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                         row["design_only"] = True
                         row["from_file"] = str(rel)
                     else:
-                        cfg = base_cfg(width_mm, garment, **kw)
+                        cfg = base_cfg(width_mm, garment, **{**base, **kw})
                         gen, result, plan, design = digitize_once(path, cfg)
                         row = features_full(path, cfg, gen, result, plan, design)
                         row["design_class"] = result.design_class
+                        if base:
+                            row["base_flags"] = base
                 except Exception as exc:  # noqa: BLE001 - one bad arm must not
                     # take the other hundred down; it is recorded and dropped.
                     feats.setdefault(name, {})[arm] = {"error": f"{type(exc).__name__}: {exc}"}
@@ -282,8 +295,15 @@ def _place(src: Path, dst: Path) -> None:
         shutil.copy2(src, dst)
 
 
-def pair(out=OUT) -> int:
+def pair(out=OUT, *, seed: int = SHUFFLE_SEED, n_identical: int = N_IDENTICAL,
+         n_repeat: int = N_REPEAT, arms=None, balance_live: bool = False) -> int:
     """Build the sitting from every rendered arm; -> the pair count.
+
+    `seed`, `n_identical`, `n_repeat` and `arms` (the arm names to pair;
+    `base` is always kept) default to what every earlier sitting used, so the
+    CLI is unchanged; `tools.eye_pairs.sitting` passes a pre-registered seed
+    and the arm list its manipulation check left standing, and asks for the
+    arm on the left in exactly half of the LIVE pairs (`balance_live`).
 
     The identity of a sitting is the SEALED map — what each opaque id
     actually shows. `sitting.json` records its hash, and once picks exist
@@ -302,6 +322,8 @@ def pair(out=OUT) -> int:
             dpath = out / "designs" / f"{name}__{arm}.json"
             if "error" in row or not dpath.exists():
                 continue
+            if arms is not None and arm != BASE and arm not in arms:
+                continue
             # `--render` records the hash with the row. A row rendered before
             # it did has none — no FEATURES_SCHEMA bump came with the field,
             # on purpose — and is hashed from its design as before.
@@ -309,7 +331,8 @@ def pair(out=OUT) -> int:
                 json.loads(dpath.read_text(encoding="utf-8")))
             runs.append(ArmRun(name, arm, sewn,
                                design_only=bool(row.get("design_only", False))))
-    public, sealed, skipped = build_pairs(runs)
+    public, sealed, skipped = build_pairs(runs, seed=seed, n_identical=n_identical,
+                                          n_repeat=n_repeat, balance_live=balance_live)
     new_hash = sealed_hash(sealed)
 
     picks_log, sitting = out / "picks.jsonl", out / "sitting.json"
@@ -571,12 +594,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=OUT)
     ap.add_argument("--fixtures", help="comma-separated corpus names, e.g. becker,fremont")
     ap.add_argument("--arms", help="comma-separated arm ids")
+    ap.add_argument("--base", help="flags under every flag arm, base included, e.g. "
+                                   "lettering_columns=true (a fresh --out per base)")
     ap.add_argument("--port", type=int, default=PORT)
     ap.add_argument("--no-browser", action="store_true")
     args = ap.parse_args(argv)
     split = lambda s: [x for x in s.split(",") if x] if s else None  # noqa: E731
     if args.render:
-        render(args.out, fixtures=split(args.fixtures), only_arms=split(args.arms))
+        from tools.thin_strokes import parse_flags
+        render(args.out, fixtures=split(args.fixtures), only_arms=split(args.arms),
+               base=parse_flags(split(args.base)))
         return 0
     if args.pair:
         pair(args.out)

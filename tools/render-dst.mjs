@@ -15,6 +15,7 @@
 // one JSON output, so the preview a human checks before committing thread to
 // the gate-1 sew-out disagreed with the card it would sew, with nothing
 // comparing them.
+import "./_help.mjs";
 import fs from "node:fs";
 import zlib from "node:zlib";
 import { createRequire } from "node:module";

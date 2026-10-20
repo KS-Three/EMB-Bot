@@ -51,6 +51,7 @@ from digitizer_core.warnings_codes import (
 
 from .test_flat_lane_byte_identical import GOLDEN
 from .test_flat_lane_byte_identical import _snapshot as _golden_snapshot
+from tests.conftest import own_thread_only
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 
@@ -245,7 +246,9 @@ def test_flag_off_never_calls_the_seam_even_with_photo_prep_on(monkeypatch):
     monkeypatch.setattr(
         pipeline_module,
         "remove_background_seam",
-        lambda rgb, px_per_mm, cfg: called.append(1) or (None, "should not be called"),
+        own_thread_only(
+            lambda rgb, px_per_mm, cfg: called.append(1) or (None, "should not be called"),
+            pipeline_module.remove_background_seam),
     )
     result = run_stages(
         TESTDATA / "photo" / "region_blobs.png",
@@ -265,7 +268,9 @@ def test_flag_on_but_photo_prep_off_never_calls_the_seam(monkeypatch):
     monkeypatch.setattr(
         pipeline_module,
         "remove_background_seam",
-        lambda rgb, px_per_mm, cfg: called.append(1) or (None, "should not be called"),
+        own_thread_only(
+            lambda rgb, px_per_mm, cfg: called.append(1) or (None, "should not be called"),
+            pipeline_module.remove_background_seam),
     )
     run_stages(
         TESTDATA / "photo" / "region_blobs.png",
@@ -333,7 +338,7 @@ def test_bg_mask_reaches_photo_segment_when_rembg_succeeds(monkeypatch):
         return real_segment(p, cfg, face_regions=face_regions, bg_mask=bg_mask, split_tonal=split_tonal,
                             shade_demand=shade_demand, design_ramp=design_ramp, **kwargs)
 
-    monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
+    monkeypatch.setattr(pipeline_module, "photo_segment", own_thread_only(_spy, real_segment))
     monkeypatch.setattr(
         pipeline_module,
         "remove_background_seam",
@@ -365,7 +370,7 @@ def test_bg_mask_stays_none_when_rembg_is_unavailable(monkeypatch):
         return real_segment(p, cfg, face_regions=face_regions, bg_mask=bg_mask, split_tonal=split_tonal,
                             shade_demand=shade_demand, design_ramp=design_ramp, **kwargs)
 
-    monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
+    monkeypatch.setattr(pipeline_module, "photo_segment", own_thread_only(_spy, real_segment))
     monkeypatch.setattr(
         pipeline_module,
         "remove_background_seam",
@@ -390,7 +395,7 @@ def test_bg_mask_stays_none_when_the_flag_is_off(monkeypatch):
         return real_segment(p, cfg, face_regions=face_regions, bg_mask=bg_mask, split_tonal=split_tonal,
                             shade_demand=shade_demand, design_ramp=design_ramp, **kwargs)
 
-    monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
+    monkeypatch.setattr(pipeline_module, "photo_segment", own_thread_only(_spy, real_segment))
     run_stages(
         TESTDATA / "photo" / "region_blobs.png",
         _cfg(forced_class="photo_scene", photo_prep=True,

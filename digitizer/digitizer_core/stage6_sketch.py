@@ -72,7 +72,8 @@ from .stitches import StitchRun
 SKETCH_DARKNESS_SCALE = 0.5
 
 
-def sketch_fill(region: Region, source_pixels: SourcePixels, cfg
+def sketch_fill(region: Region, source_pixels: SourcePixels, cfg,
+                *, thread_wt: int | None = None
                 ) -> tuple[list[StitchRun], dict]:
     """One shape -> its sketch runs plus the standard tier report.
 
@@ -86,4 +87,5 @@ def sketch_fill(region: Region, source_pixels: SourcePixels, cfg
     mono_cfg = (cfg if str(cfg.streamline_mode or "mono").lower() == "mono"
                 else replace(cfg, streamline_mode="mono"))
     return streamline_fill(region, source_pixels, mono_cfg,
-                           darkness_scale=SKETCH_DARKNESS_SCALE)
+                           darkness_scale=SKETCH_DARKNESS_SCALE,
+                           thread_wt=thread_wt)

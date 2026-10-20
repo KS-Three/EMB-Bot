@@ -4,7 +4,7 @@
 // the same edit, so the popover can never disagree with them.
 import { describe, expect, test } from "vitest";
 import {
-  laneOf, popoverModel, popoverPatch, recolorPatch,
+  laneOf, popoverModel, popoverPatch, recolorPatch, runDefaults,
   DIGITIZED_TIERS, SHAPE_ANGLES, SHAPE_UNDERLAYS, BORDER_OPTIONS, SATIN_CUTOUT_NOTE,
 } from "./shapePopover.js";
 
@@ -228,5 +228,147 @@ describe("cut-outs in the popover", () => {
   test("digitized and preset lanes are unchanged", () => {
     expect(popoverModel({ element: digitizedEl, shapeId: "Sabc" }).rows.map((r) => r.key)).toEqual(["color", "stitchType", "angle", "underlay", "border", "editPoints", "delete"]);
     expect(popoverModel({ element: presetEl, shapeId: "" }).rows.map((r) => r.key)).toEqual(["color"]);
+  });
+});
+
+describe("a column", () => {
+  const spine = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }];
+  const colEl = {
+    id: 7, type: "manual", underlay: true, sizeMm: null, offsetXMm: 0, offsetYMm: 0,
+    shapes: [
+      { id: "s1", points: square, curves: {}, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null },
+      { id: "s2", kind: "column", points: spine, curves: {}, widthPx: 20, colorRgb: [0, 0, 200] },
+    ],
+  };
+  const fit = { mmPerPx: 0.2 };
+  const fabric = { label: "Jersey / t-shirt", pullCompMm: 0.4 };
+  const widthRow = (m) => m.rows.find((r) => r.key === "widthMm");
+
+  test("rows: color, width, make it a line, edit points, delete — no stitch type, angle or cut out", () => {
+    const m = popoverModel({ element: colEl, shapeId: "s2", fit, fabric });
+    expect(m.name).toBe("Shape 2 · Column");
+    // plan 3 (ruling 8) added "Make it a line" before Edit points
+    expect(m.rows.map((r) => r.key)).toEqual(["color", "widthMm", "toRun", "editPoints", "delete"]);
+    expect(m.rows[2]).toEqual({ key: "toRun", kind: "action", label: "Make it a line" });
+    expect(m.rows[0]).toEqual({ key: "color", kind: "thread", rgb: [0, 0, 200] });
+  });
+
+  test("width row: drawn mm to one decimal and what it sews at", () => {
+    const r = widthRow(popoverModel({ element: colEl, shapeId: "s2", fit, fabric }));
+    expect(r).toEqual({
+      key: "widthMm", kind: "number", label: "Width", value: 4, hint: "mm", step: 0.1, min: 0.5,
+      note: "Sews 4.4 mm on Jersey / t-shirt.",
+    });
+    expect(r.warn).toBeUndefined();
+  });
+
+  test("past 6.5 sewn it warns, on the unrounded value", () => {
+    const wide = { ...colEl, shapes: [colEl.shapes[0], { ...colEl.shapes[1], widthPx: 30.2 }] }; // 6.04 + 0.4 = 6.44
+    expect(widthRow(popoverModel({ element: wide, shapeId: "s2", fit, fabric })).warn).toBeUndefined();
+    const over = { ...colEl, shapes: [colEl.shapes[0], { ...colEl.shapes[1], widthPx: 30.6 }] }; // 6.12 + 0.4 = 6.52
+    const r = widthRow(popoverModel({ element: over, shapeId: "s2", fit, fabric }));
+    expect(r.note).toBe("Over 6.5 mm sewn — long satin stitches can snag. Consider a fill, or two columns.");
+    expect(r.warn).toBe(true);
+  });
+
+  test("no fit: value null, no note; fit without fabric: no note", () => {
+    const r0 = widthRow(popoverModel({ element: colEl, shapeId: "s2" }));
+    expect(r0.value).toBeNull();
+    expect(r0.note).toBeUndefined();
+    const r1 = widthRow(popoverModel({ element: colEl, shapeId: "s2", fit }));
+    expect(r1.value).toBe(4);
+    expect(r1.note).toBeUndefined();
+  });
+
+  test("a closed shape is unchanged by fit and fabric", () => {
+    expect(popoverModel({ element: colEl, shapeId: "s1", fit, fabric })).toEqual(popoverModel({ element: colEl, shapeId: "s1" }));
+  });
+
+  test("popoverPatch widthMm: replaces only that column, via the fit", () => {
+    const p = popoverPatch({ element: colEl, shapeId: "s2", fit }, "widthMm", "6");
+    expect(p.shapes[0]).toBe(colEl.shapes[0]);
+    expect(p.shapes[1].widthPx).toBeCloseTo(30, 12);
+    expect(popoverPatch({ element: colEl, shapeId: "s2", fit }, "widthMm", 5).shapes[1].widthPx).toBeCloseTo(25, 12);
+  });
+
+  test("popoverPatch widthMm: null with no fit, a non-column, or a non-positive / non-number value", () => {
+    const ctx = { element: colEl, shapeId: "s2", fit };
+    expect(popoverPatch({ element: colEl, shapeId: "s2" }, "widthMm", 5)).toBeNull();
+    expect(popoverPatch({ element: colEl, shapeId: "s1", fit }, "widthMm", 5)).toBeNull();
+    for (const v of ["", "abc", 0, -2, NaN, Infinity, null, undefined]) expect(popoverPatch(ctx, "widthMm", v)).toBeNull();
+  });
+
+  test("a column has no stitchType, angle or cutOut patch; color and delete still work", () => {
+    const ctx = { element: colEl, shapeId: "s2", fit };
+    for (const k of ["stitchType", "angle", "cutOut"]) expect(popoverPatch(ctx, k, "satin")).toBeNull();
+    expect(popoverPatch(ctx, "color", [1, 2, 3]).shapes[1].colorRgb).toEqual([1, 2, 3]);
+    expect(popoverPatch(ctx, "delete").shapes.map((s) => s.id)).toEqual(["s1"]);
+  });
+});
+
+describe("a line (run)", () => {
+  const path = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 50 }];
+  const lineEl = (extra = {}) => ({
+    id: 8, type: "manual", underlay: true, sizeMm: null, offsetXMm: 0, offsetYMm: 0,
+    shapes: [
+      { id: "s1", points: square, curves: {}, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null },
+      { id: "s3", kind: "run", points: path, curves: {}, colorRgb: [0, 120, 0], ...extra },
+    ],
+  });
+  const fit = { mmPerPx: 0.2 };
+  const withEngine = (fn) => {
+    const had = globalThis.EMB;
+    globalThis.EMB = { LETTERING_GUARDS: { BEAN_PASSES: 3, BEAN_STITCH_MM: 0.73 }, RUN_MIN_LOOP_MM: 2.2 };
+    try { return fn(); } finally { if (had === undefined) delete globalThis.EMB; else globalThis.EMB = had; }
+  };
+
+  test("runDefaults reads the engine's bean, and nulls with no engine", () => {
+    withEngine(() => expect(runDefaults()).toEqual({ passes: 3, stitchLenMm: 0.73 }));
+    const had = globalThis.EMB;
+    delete globalThis.EMB;
+    try { expect(runDefaults()).toEqual({ passes: null, stitchLenMm: null }); } finally { if (had !== undefined) globalThis.EMB = had; }
+  });
+
+  test("rows: color, passes, stitch length, make it a column, edit points, delete", () => {
+    const m = withEngine(() => popoverModel({ element: lineEl(), shapeId: "s3", fit }));
+    expect(m.name).toBe("Shape 3 · Line");
+    expect(m.rows.map((r) => r.key)).toEqual(["color", "passes", "stitchLenMm", "toColumn", "editPoints", "delete"]);
+    expect(m.rows[1]).toEqual({ key: "passes", kind: "choice", label: "Passes", value: "3",
+      options: [{ value: "1", label: "Single run" }, { value: "3", label: "Bean (3 passes)" }] });
+    expect(m.rows[2]).toEqual({ key: "stitchLenMm", kind: "number", label: "Stitch length", value: 0.73, hint: "mm", step: 0.1, min: 0.5 });
+    expect(m.rows[3]).toEqual({ key: "toColumn", kind: "action", label: "Make it a column" });
+  });
+
+  test("stored passes and stitch length are what the rows read", () => {
+    const m = withEngine(() => popoverModel({ element: lineEl({ passes: 1, stitchLenMm: 1.5 }), shapeId: "s3", fit }));
+    expect(m.rows[1].value).toBe("1");
+    expect(m.rows[2].value).toBe(1.5);
+  });
+
+  test("a line under 2.2 mm at this fit says it will not sew", () => {
+    const tiny = [{ x: 0, y: 0 }, { x: 10, y: 0 }];   // 10 px x 0.2 = 2.0 mm
+    const m = withEngine(() => popoverModel({ element: lineEl({ points: tiny }), shapeId: "s3", fit }));
+    expect(m.rows[2].note).toBe("Shorter than 2.2 mm — it will not sew.");
+    expect(m.rows[2].warn).toBe(true);
+    const ok = withEngine(() => popoverModel({ element: lineEl(), shapeId: "s3", fit }));
+    expect(ok.rows[2].note).toBeUndefined();
+  });
+
+  test("patches: passes, stitch length (blank = default), color, delete; no stitchType / angle / cutOut / width", () => {
+    const ctx = { element: lineEl(), shapeId: "s3", fit };
+    expect(popoverPatch(ctx, "passes", "1").shapes[1].passes).toBe(1);
+    expect(popoverPatch(ctx, "passes", "3").shapes[1].passes).toBe(3);
+    expect(popoverPatch(ctx, "passes", "2")).toBeNull();
+    expect(popoverPatch(ctx, "stitchLenMm", "1.2").shapes[1].stitchLenMm).toBe(1.2);
+    expect(popoverPatch(ctx, "stitchLenMm", "0.2").shapes[1].stitchLenMm).toBe(0.5);
+    expect("stitchLenMm" in popoverPatch({ ...ctx, element: lineEl({ stitchLenMm: 2 }) }, "stitchLenMm", "").shapes[1]).toBe(false);
+    expect(popoverPatch(ctx, "color", [1, 2, 3]).shapes[1].colorRgb).toEqual([1, 2, 3]);
+    expect(popoverPatch(ctx, "delete").shapes.map((s) => s.id)).toEqual(["s1"]);
+    for (const k of ["stitchType", "angle", "cutOut", "widthMm"]) expect(popoverPatch(ctx, k, "x")).toBeNull();
+    // conversions are actions, handled by the field (convertOpenShape)
+    expect(popoverPatch(ctx, "toColumn")).toBeNull();
+    // passes / stitch length on a closed shape: nothing
+    expect(popoverPatch({ ...ctx, shapeId: "s1" }, "passes", "1")).toBeNull();
+    expect(popoverPatch({ ...ctx, shapeId: "s1" }, "stitchLenMm", "1")).toBeNull();
   });
 });

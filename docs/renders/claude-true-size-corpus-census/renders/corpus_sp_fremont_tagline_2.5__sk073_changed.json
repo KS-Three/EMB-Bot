@@ -1,0 +1,255 @@
+{
+ "design": "sp_fremont_tagline_2.5",
+ "arm": "sk073",
+ "box_mm": [
+  -14.88,
+  -2.0,
+  13.04,
+  1.97
+ ],
+ "changed_shapes": [
+  {
+   "shape_id": "S040a4bdb",
+   "area_mm2": 2.58,
+   "bounds_mm": [
+    10.46,
+    -1.16,
+    13.04,
+    1.34
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S0841ec1d",
+   "area_mm2": 1.72,
+   "bounds_mm": [
+    6.49,
+    -1.14,
+    8.33,
+    1.34
+   ],
+   "bean": null,
+   "skeleton": {
+    "empty": false,
+    "jumps": 0,
+    "too_thin": false,
+    "admitted": true,
+    "width_mm": 0.2179,
+    "edges": 5,
+    "components": 1,
+    "retrace_mm": 0.0,
+    "sewn_mm": 6.1866,
+    "stitches": 6,
+    "min_stitch_mm": 0.8083,
+    "counters": 1,
+    "counter_crossings": 0,
+    "counter_depth_mm": 0.0,
+    "declined": null,
+    "width_traced_mm": 0.2548,
+    "hook_mm": 0.0,
+    "shape_tol_mm": 0.2,
+    "outside_mm": 0.0659,
+    "missed_share": 0.0603
+   }
+  },
+  {
+   "shape_id": "S0dc8ee1a",
+   "area_mm2": 2.06,
+   "bounds_mm": [
+    -14.88,
+    -1.16,
+    -12.96,
+    1.34
+   ],
+   "bean": null,
+   "skeleton": {
+    "empty": false,
+    "jumps": 0,
+    "too_thin": false,
+    "admitted": true,
+    "width_mm": 0.2945,
+    "edges": 10,
+    "components": 1,
+    "retrace_mm": 3.0759,
+    "sewn_mm": 7.2859,
+    "stitches": 9,
+    "min_stitch_mm": 0.7369,
+    "counters": 0,
+    "counter_crossings": 0,
+    "counter_depth_mm": 0.0,
+    "declined": null,
+    "width_traced_mm": 0.2619,
+    "hook_mm": 0.0,
+    "shape_tol_mm": 0.2,
+    "outside_mm": 0.1037,
+    "missed_share": 0.0853
+   }
+  },
+  {
+   "shape_id": "S57639643",
+   "area_mm2": 1.56,
+   "bounds_mm": [
+    -3.11,
+    -1.16,
+    -1.01,
+    1.34
+   ],
+   "bean": null,
+   "skeleton": {
+    "empty": true,
+    "jumps": 0,
+    "too_thin": false,
+    "admitted": true,
+    "width_mm": 0.2904,
+    "edges": 7,
+    "components": 1,
+    "retrace_mm": 1.1237,
+    "sewn_mm": 4.3836,
+    "stitches": 7,
+    "min_stitch_mm": 0.7306,
+    "counters": 0,
+    "counter_crossings": 0,
+    "counter_depth_mm": 0.0,
+    "declined": "shape",
+    "width_traced_mm": 0.2629,
+    "hook_mm": 0.0,
+    "shape_tol_mm": 0.2,
+    "outside_mm": 0.1368,
+    "missed_share": 0.1224
+   }
+  },
+  {
+   "shape_id": "Saf2aba3a",
+   "area_mm2": 1.16,
+   "bounds_mm": [
+    4.43,
+    -1.97,
+    4.73,
+    1.97
+   ],
+   "bean": null,
+   "skeleton": {
+    "empty": false,
+    "jumps": 0,
+    "too_thin": false,
+    "admitted": true,
+    "width_mm": 0.3564,
+    "edges": 3,
+    "components": 1,
+    "retrace_mm": 0.0,
+    "sewn_mm": 4.7828,
+    "stitches": 4,
+    "min_stitch_mm": 0.9469,
+    "counters": 0,
+    "counter_crossings": 0,
+    "counter_depth_mm": 0.0,
+    "declined": null,
+    "width_traced_mm": 0.2743,
+    "hook_mm": 0.0,
+    "shape_tol_mm": 0.2,
+    "outside_mm": 0.0077,
+    "missed_share": 0.0
+   }
+  },
+  {
+   "shape_id": "Sd8a4708f",
+   "area_mm2": 1.31,
+   "bounds_mm": [
+    -7.01,
+    -2.0,
+    -6.67,
+    1.97
+   ],
+   "bean": null,
+   "skeleton": {
+    "empty": false,
+    "jumps": 0,
+    "too_thin": false,
+    "admitted": true,
+    "width_mm": 0.3568,
+    "edges": 3,
+    "components": 1,
+    "retrace_mm": 0.0,
+    "sewn_mm": 4.9793,
+    "stitches": 4,
+    "min_stitch_mm": 1.0687,
+    "counters": 0,
+    "counter_crossings": 0,
+    "counter_depth_mm": 0.0,
+    "declined": null,
+    "width_traced_mm": 0.3055,
+    "hook_mm": 0.0,
+    "shape_tol_mm": 0.2,
+    "outside_mm": 0.0,
+    "missed_share": 0.0
+   }
+  },
+  {
+   "shape_id": "Sd9db0c07",
+   "area_mm2": 1.33,
+   "bounds_mm": [
+    8.48,
+    -1.16,
+    10.32,
+    1.34
+   ],
+   "bean": null,
+   "skeleton": {
+    "empty": false,
+    "jumps": 0,
+    "too_thin": false,
+    "admitted": true,
+    "width_mm": 0.2906,
+    "edges": 6,
+    "components": 1,
+    "retrace_mm": 2.8029,
+    "sewn_mm": 4.4023,
+    "stitches": 7,
+    "min_stitch_mm": 0.7342,
+    "counters": 0,
+    "counter_crossings": 0,
+    "counter_depth_mm": 0.0,
+    "declined": null,
+    "width_traced_mm": 0.2533,
+    "hook_mm": 0.0,
+    "shape_tol_mm": 0.2,
+    "outside_mm": 0.093,
+    "missed_share": 0.0928
+   }
+  },
+  {
+   "shape_id": "Sdd6a9eaa",
+   "area_mm2": 1.92,
+   "bounds_mm": [
+    -5.02,
+    -1.2,
+    -3.25,
+    1.38
+   ],
+   "bean": null,
+   "skeleton": {
+    "empty": false,
+    "jumps": 0,
+    "too_thin": false,
+    "admitted": true,
+    "width_mm": 0.3015,
+    "edges": 4,
+    "components": 1,
+    "retrace_mm": 0.3632,
+    "sewn_mm": 6.4292,
+    "stitches": 8,
+    "min_stitch_mm": 0.7433,
+    "counters": 0,
+    "counter_crossings": 0,
+    "counter_depth_mm": 0.0,
+    "declined": null,
+    "width_traced_mm": 0.2559,
+    "hook_mm": 0.0,
+    "shape_tol_mm": 0.2,
+    "outside_mm": 0.039,
+    "missed_share": 0.0307
+   }
+  }
+ ]
+}

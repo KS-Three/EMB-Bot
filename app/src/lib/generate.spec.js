@@ -559,6 +559,250 @@ test("generateElement: manual sizeMm target scales the design width, same rule t
   expect(d.widthMM).toBeLessThanOrEqual(40 + 1.5);
 });
 
+// Kent's call 2026-10-07 (MASTER_SCOPE defect 52, "Waiting on Kent" 22): the
+// manual lane passes `fillColumns`, so a fill lays no thread across a cut-out
+// the user drew. The same regions through the engine WITHOUT the flag cross
+// it on every row -- that half is what proves the reading below can see a
+// crossing at all, and the image and basic-shape lanes still sew that way.
+test("generateElement: a manual fill lays no thread across its cut-out (fillColumns, manual lane only)", async () => {
+  const { generateElement, fabricInForce } = await import("./generate.js");
+  const { defaultManualElement, defaultManualShape } = await import("./project.js");
+  const { shapesToRegions } = await import("./manualShapes.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const outer = {
+    ...defaultManualShape("s1"), stitchType: "fill",
+    points: [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 300 }, { x: 0, y: 300 }],
+  };
+  const hole = {
+    ...defaultManualShape("s2"), cutOut: true,
+    points: [{ x: 100, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 200 }, { x: 100, y: 200 }],
+  };
+  const el = { ...defaultManualElement("e1"), shapes: [outer, hole], sizeMm: 40, underlay: true };
+  // Thread laid through the middle half of the hole: a move counts unless the
+  // thread was cut since the last penetration (the `end` sentinel is no move).
+  const across = (d) => {
+    const xs = d.stitches.filter((s) => s.type === "stitch").map((s) => s.x);
+    const ys = d.stitches.filter((s) => s.type === "stitch").map((s) => s.y);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const r = (Math.max(...xs) - Math.min(...xs)) / 12;   // the hole is a third of the width; this is half of it
+    const inside = (x, y) => Math.abs(x - cx) < r && Math.abs(y - cy) < r;
+    let n = 0, cut = true, prev = null;
+    for (const s of d.stitches) {
+      if (s.type === "end") break;
+      if (s.type === "trim") { cut = true; prev = s; continue; }
+      if (prev && !cut) for (let k = 1; k < 40; k++) if (inside(prev.x + (s.x - prev.x) * k / 40, prev.y + (s.y - prev.y) * k / 40)) { n++; break; }
+      if (s.type === "stitch") cut = false;
+      prev = s;
+    }
+    return n;
+  };
+  const d = generateElement(el, garment, {});
+  expect(d.stitchCount).toBeGreaterThan(100);
+  expect(across(d)).toBe(0);
+  const { regions, pxPerMm } = shapesToRegions(el.shapes);
+  // The manual branch's own call, with only the flag left out.
+  const fabric = fabricInForce(garment.id, undefined);
+  const call = { garment, fabric, pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: 40, offsetXMm: 0, offsetYMm: 0 };
+  const on = EMB.buildQualityDesign(regions, { ...call, fillColumns: true, cutFloats: true });
+  expect(on.stitches).toEqual(d.stitches);
+  expect(across(EMB.buildQualityDesign(regions, call))).toBeGreaterThan(10);
+});
+
+// Floats (moves with the thread attached) that run more than 0.8 mm outside
+// every drawn shape of a design (`shapeOutlines`, mm, holes cut out): past
+// any preset's pull compensation, so over a hole, a notch or bare cloth.
+function floatsOffTheFill(d) {
+  const shapes = d.shapeOutlines.filter((o) => !o.dropped);
+  const inRing = (x, y, ring) => {
+    let c = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  };
+  const inside = (x, y) => shapes.some((o) => inRing(x, y, o.points) && !(o.holes || []).some((h) => inRing(x, y, h)));
+  const rings = shapes.flatMap((o) => [o.points].concat(o.holes || []));
+  const edge = (x, y) => Math.min(...rings.flatMap((ring) => ring.map(([ax, ay], i) => {
+    const [bx, by] = ring[(i + 1) % ring.length], dx = bx - ax, dy = by - ay;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(x - ax - t * dx, y - ay - t * dy);
+  })));
+  let n = 0, attached = false, prev = null;
+  for (const s of d.stitches) {
+    if (s.type === "end") break;
+    if (s.type === "trim" || s.type === "color") { attached = false; prev = s; continue; }
+    if (s.type === "jump" && attached && prev) {
+      for (let k = 1; k < 20; k++) {
+        const x = (prev.x + ((s.x - prev.x) * k) / 20) / 10, y = (prev.y + ((s.y - prev.y) * k) / 20) / 10;
+        if (!inside(x, y) && edge(x, y) > 0.8) { n++; break; }
+      }
+    }
+    if (s.type === "stitch") attached = true;
+    prev = s;
+  }
+  return n;
+}
+
+// 2026-10-08 ("Waiting on Kent" 22): the basic-shape lane passes
+// `fillColumns` too, so a star's rows no longer float across its notches. The
+// same regions through the engine without the flag do, on most rows -- that
+// half proves the reading can see a float leave the shape at all.
+test("generateElement: a star preset lays no float across its notches (fillColumns, shape lane)", async () => {
+  const { generateElement, fabricInForce } = await import("./generate.js");
+  const { defaultShapeElement } = await import("./project.js");
+  const { shapePresetPoints } = await import("./shapePresets.js");
+  const { shapesToRegions } = await import("./manualShapes.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const el = { ...defaultShapeElement("e1"), kind: "star", params: {}, sizeMm: 50, underlay: true };
+  const d = generateElement(el, garment, {});
+  expect(d.stitchCount).toBeGreaterThan(1000);
+  expect(floatsOffTheFill(d)).toBe(0);
+  // The shape branch's own call, with only the flag left out.
+  const { regions, pxPerMm } = shapesToRegions([
+    { id: "shape", points: shapePresetPoints("star", {}, 50), curves: {}, stitchType: "auto", colorRgb: el.colorRgb, angleDeg: null },
+  ]);
+  const call = { garment, fabric: fabricInForce(garment.id, undefined), pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: 50, offsetXMm: 0, offsetYMm: 0 };
+  expect(EMB.buildQualityDesign(regions, { ...call, fillColumns: true, cutFloats: true }).stitches).toEqual(d.stitches);
+  expect(floatsOffTheFill(EMB.buildQualityDesign(regions, call))).toBeGreaterThan(20);
+});
+
+// 2026-10-08 (MASTER_SCOPE "Waiting on Kent" 28, after `fillColumns`): the
+// basic-shape lane passes `cutFloats`, so a float the DST writer lays as three
+// or more jump records -- a cut on a DST machine -- has a `trim` in the
+// stream. The Studio's default shape element (a 50 mm circle) and a 25 mm
+// 12-point star each keep one with the flag off: that half proves the reading
+// can see one. The two streams sew the same needle points in the same order.
+test("generateElement: a preset shape leaves no float a DST machine reads as a cut (cutFloats, shape lane)", async () => {
+  const { generateElement, fabricInForce } = await import("./generate.js");
+  const { defaultShapeElement } = await import("./project.js");
+  const { shapePresetPoints } = await import("./shapePresets.js");
+  const { shapesToRegions } = await import("./manualShapes.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  // Floats with thread on that the writer lays as three jump records or more,
+  // counting the move to the stitch after (src/digitize.js cutLongFloats).
+  const unasked = (d) => {
+    const s = d.stitches;
+    let n = 0;
+    for (let i = 1; i < s.length; i++) {
+      if (s[i].type !== "jump" || s[i - 1].type !== "stitch") continue;
+      let j = i, recs = 0;
+      for (; j < s.length && s[j].type === "jump"; j++) recs += EMB.jumpRecords(s[j].x - s[j - 1].x, s[j].y - s[j - 1].y);
+      const next = s[j];
+      if (next && next.type === "stitch" && recs + EMB.jumpRecords(next.x - s[j - 1].x, next.y - s[j - 1].y) - 1 >= 3) n++;
+    }
+    return n;
+  };
+  const needles = (d) => d.stitches.filter((s) => s.type === "stitch").map((s) => [s.x, s.y]);
+  const trims = (d) => d.stitches.filter((s) => s.type === "trim").length;
+  // (The star was 20 mm until the spine change of 2026-10-04 reached main:
+  // that one's satin keeps no such float now. The 25 mm one keeps one.)
+  for (const [kind, params, sizeMm] of [["circle", {}, 50], ["star", { points: 12 }, 25]]) {
+    const el = { ...defaultShapeElement("e1"), kind, params, sizeMm };
+    const d = generateElement(el, garment, {});
+    expect(d.stitchCount).toBeGreaterThan(500);
+    expect(unasked(d)).toBe(0);
+    // The shape branch's own call, with only `cutFloats` left out.
+    const { regions, pxPerMm } = shapesToRegions([
+      { id: "shape", points: shapePresetPoints(kind, params, sizeMm), curves: {}, stitchType: "auto", colorRgb: el.colorRgb, angleDeg: null },
+    ]);
+    const call = { garment, fabric: fabricInForce(garment.id, undefined), pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: sizeMm, offsetXMm: 0, offsetYMm: 0, fillColumns: true };
+    expect(d.stitches).toEqual(EMB.buildQualityDesign(regions, { ...call, cutFloats: true }).stitches);
+    // `satinSmallShapes` (ON by default since 2026-10-20, Kent) sews the star's
+    // arms round one centre zone and leaves neither shape a float the writer
+    // lays as three records, so the half that proves the reading can see one
+    // builds the pre-flip satin, `satinSmallShapes: false`, on and off the flag.
+    const pre = { ...call, satinSmallShapes: false };
+    const preOff = EMB.buildQualityDesign(regions, pre), preOn = EMB.buildQualityDesign(regions, { ...pre, cutFloats: true });
+    expect(unasked(preOff)).toBeGreaterThan(0);
+    expect(unasked(preOn)).toBe(0);
+    expect(trims(preOn)).toBeGreaterThan(trims(preOff));
+    // `ties` is ON by default since 2026-10-20 and locks each cut it is given,
+    // so the needles are compared untied: cutFloats itself moves none.
+    const untied = { ...call, ties: false };
+    expect(needles(EMB.buildQualityDesign(regions, { ...untied, cutFloats: true }))).toEqual(needles(EMB.buildQualityDesign(regions, untied)));
+    expect(preOn._debug.nTies).toBeGreaterThan(preOff._debug.nTies);
+  }
+});
+
+// Kent's call 2026-10-08 ("Waiting on Kent" 22), with its price measured
+// (+10.4% stitches over 14 real logos): the image lane passes `fillColumns`
+// too, so a traced logo's counter is not crossed by a float on every row.
+test("generateElement: an image fill lays no float across its counter (fillColumns, image lane)", async () => {
+  const { generateElement, fabricInForce } = await import("./generate.js");
+  const { defaultImageElement } = await import("./project.js");
+  const { flatToRegions } = await import("./imageRegions.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  // One colour, a 100 px square with a 40 px counter; 255 is transparent.
+  const w = 120, h = 120, indices = new Uint8Array(w * h).fill(255);
+  for (let y = 10; y < 110; y++) for (let x = 10; x < 110; x++) if (x < 40 || x >= 80 || y < 40 || y >= 80) indices[y * w + x] = 0;
+  const flat = { palette: [[30, 60, 90]], indices, w, h };
+  const el = { ...defaultImageElement("e1"), underlay: true };
+  const d = generateElement(el, garment, { flats: { e1: flat } });
+  expect(d.stitchCount).toBeGreaterThan(1000);
+  expect(d.shapeOutlines[0].holes.length).toBe(1);
+  expect(floatsOffTheFill(d)).toBe(0);
+  // The image branch's own call, with only the flag left out.
+  const { regions, pxPerMm } = flatToRegions(flat, { threadRgb: el.threadRgb });
+  const call = { garment, fabric: fabricInForce(garment.id, undefined), pxPerMm, satinMaxWidthMm: 3.0, underlay: true, targetWidthMm: undefined, offsetXMm: 0, offsetYMm: 0 };
+  expect(EMB.buildQualityDesign(regions, { ...call, fillColumns: true }).stitches).toEqual(d.stitches);
+  expect(floatsOffTheFill(EMB.buildQualityDesign(regions, call))).toBeGreaterThan(20);
+});
+
+// 2026-10-08 (MASTER_SCOPE "Waiting on Kent" 28, after `fillColumns`): the
+// manual lane passes `cutFloats`, so a float the DST writer lays as three or
+// more jump records -- a cut on a DST machine -- has a `trim` in the stream.
+// A plain 40 mm square is the shape that keeps one with `fillColumns` on: the
+// move from the underlay to the fill crosses its face. The same call without
+// the flag leaves it a float, which is what proves the reading can see one;
+// and the two streams sew the same needle points in the same order.
+test("generateElement: a manual fill leaves no float a DST machine reads as a cut (cutFloats, manual lane)", async () => {
+  const { generateElement, fabricInForce } = await import("./generate.js");
+  const { defaultManualElement, defaultManualShape } = await import("./project.js");
+  const { shapesToRegions } = await import("./manualShapes.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const square = {
+    ...defaultManualShape("s1"), stitchType: "fill",
+    points: [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 300 }, { x: 0, y: 300 }],
+  };
+  const el = { ...defaultManualElement("e1"), shapes: [square], sizeMm: 40, underlay: true };
+  // Floats with thread on that the writer lays as three jump records or more,
+  // counting the move to the stitch after (src/digitize.js cutLongFloats).
+  const unasked = (d) => {
+    const s = d.stitches;
+    let n = 0;
+    for (let i = 1; i < s.length; i++) {
+      if (s[i].type !== "jump" || s[i - 1].type !== "stitch") continue;
+      let j = i, recs = 0;
+      for (; j < s.length && s[j].type === "jump"; j++) recs += EMB.jumpRecords(s[j].x - s[j - 1].x, s[j].y - s[j - 1].y);
+      const next = s[j];
+      if (next && next.type === "stitch" && recs + EMB.jumpRecords(next.x - s[j - 1].x, next.y - s[j - 1].y) - 1 >= 3) n++;
+    }
+    return n;
+  };
+  const needles = (d) => d.stitches.filter((s) => s.type === "stitch").map((s) => [s.x, s.y]);
+  const d = generateElement(el, garment, {});
+  expect(d.stitchCount).toBeGreaterThan(100);
+  expect(unasked(d)).toBe(0);
+  const { regions, pxPerMm } = shapesToRegions(el.shapes);
+  const fabric = fabricInForce(garment.id, undefined);
+  const call = { garment, fabric, pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: 40, offsetXMm: 0, offsetYMm: 0, fillColumns: true };
+  expect(d.stitches).toEqual(EMB.buildQualityDesign(regions, { ...call, cutFloats: true }).stitches);
+  const off = EMB.buildQualityDesign(regions, call);
+  expect(unasked(off)).toBeGreaterThan(0);
+  // `ties` is ON by default since 2026-10-20 and locks each cut it is given,
+  // so the needles are compared untied: cutFloats itself moves none.
+  const untied = { ...call, ties: false };
+  expect(needles(EMB.buildQualityDesign(regions, { ...untied, cutFloats: true }))).toEqual(needles(EMB.buildQualityDesign(regions, untied)));
+  expect(d._debug.nTies).toBeGreaterThan(off._debug.nTies);
+  expect(d.stitches.filter((s) => s.type === "trim").length).toBeGreaterThan(off.stitches.filter((s) => s.type === "trim").length);
+});
+
 test("generateAll combines a manual shape element with a text element into one multi-color design", async () => {
   const { generateAll } = await import("./generate.js");
   const { defaultManualElement, defaultManualShape } = await import("./project.js");
@@ -1110,4 +1354,15 @@ test("generateAll sews a shape element under the project's calibration profile",
   // 0.85 on the row spacing is more rows, so more stitches — the profile
   // reached the browser fill emitter, not just the label.
   expect(tighter.stitchCount).toBeGreaterThan(plain.stitchCount);
+});
+
+// The one-click line break the field offers beside a thin-lettering note.
+test("splitIntoTwoLines breaks at the space nearest the middle", async () => {
+  const { splitIntoTwoLines } = await import("./generate.js");
+  expect(splitIntoTwoLines("Fritsch's Stitches")).toBe("Fritsch's\nStitches");
+  expect(splitIntoTwoLines("Joe and Mary Smith")).toBe("Joe and\nMary Smith");
+  expect(splitIntoTwoLines("  Ann  Lee ")).toBe("Ann\nLee");
+  expect(splitIntoTwoLines("Fritsch")).toBeNull();
+  expect(splitIntoTwoLines("Two\nlines already")).toBeNull();
+  expect(splitIntoTwoLines(null)).toBeNull();
 });

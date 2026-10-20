@@ -23,6 +23,7 @@
 //
 // Usage: node tools/build-threads.mjs
 // Re-run whenever a palette file in tools/palettes/ is added or updated.
+import "./_help.mjs";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -82,6 +83,7 @@ function parseGpl(text) {
       code = "";
     }
     if (!name) { name = code; code = ""; }
+    name = name.replace(/\s+/g, " ");
     entries.push({ name, code, rgb });
   }
   return entries;
@@ -106,7 +108,15 @@ for (const file of files) {
   const meta = LEGACY[file] || (() => { const label = labelFor(file); return { id: idFor(label), label }; })();
   if (seenIds.has(meta.id)) throw new Error(`duplicate brand id "${meta.id}" from ${file}`);
   seenIds.add(meta.id);
-  const threads = parseGpl(readFileSync(join(PALETTE_DIR, file), "utf8"));
+  // Upstream charts repeat some rows verbatim (fil-tec-glide, robison-anton);
+  // a repeated name+code+rgb row adds nothing, so keep the first.
+  const seenRows = new Set();
+  const threads = parseGpl(readFileSync(join(PALETTE_DIR, file), "utf8")).filter((t) => {
+    const k = `${t.name}\u0000${t.code}\u0000${t.rgb}`;
+    if (seenRows.has(k)) return false;
+    seenRows.add(k);
+    return true;
+  });
   // Smallest legitimate chart shipped is 15 colors (Simthread Glow In The
   // Dark); anything under 10 means the file format changed on us -- fail the
   // build loudly rather than silently shipping a gutted chart.

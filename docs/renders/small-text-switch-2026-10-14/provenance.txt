@@ -1,0 +1,4 @@
+Renders made 2026-10-14 by digitizer/tools/small_lettering_compare.py --sheets on branch claude/small-text-switch.
+Input artwork: digitizer/testdata/photo/logo_hotel_fremont.webp (already in the repo; no new image, no new client artwork).
+Each sheet: the artwork, then "true" (restore 3.0, bean stroke 0.4, pitch 0.45, serif 0.45 -- the settings before this branch, run on this branch's code), then "switch" (small_text_true_size ON: the same with bean stroke 0.5 and shortest free arm 0.3).
+Renders of EMB-Bot's own stitch output (stitchviz, thread at its laid width), not photographs. Nothing was sewn.

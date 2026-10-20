@@ -1,0 +1,394 @@
+{
+ "file": "card_bayhold_edgecap_40wt.dst",
+ "bytes": 19682,
+ "wt": 40,
+ "blocks": 2,
+ "stitches_file": 6128,
+ "stitches_plan": 6128,
+ "colour_changes_file": 0,
+ "colour_changes_plan": 0,
+ "colours": 1,
+ "extent_mm": [
+  64.8,
+  73.0
+ ],
+ "within_hoop": true,
+ "x_range_mm": [
+  -32.4,
+  32.4
+ ],
+ "y_range_mm": [
+  -36.5,
+  36.5
+ ],
+ "max_needle_stitch_mm": 3.01,
+ "max_record_axis_mm": 11.8,
+ "stops": [
+  {
+   "stop": 1,
+   "thread": "dark",
+   "stitches": 6210,
+   "thread_m": 8.86
+  }
+ ],
+ "stitches_by_piece": {
+  "B:1895-hold0.2": 120,
+  "B:1895-hold0.25": 120,
+  "B:1895-off": 120,
+  "B:STAY-hold0.2": 184,
+  "B:STAY-hold0.25": 184,
+  "B:STAY-off": 184,
+  "B:THE-hold0.2": 222,
+  "B:THE-hold0.25": 222,
+  "B:THE-off": 222,
+  "B:strips": 180,
+  "P:off": 1175,
+  "P:p1.0": 1091,
+  "P:p1.2": 1055,
+  "P:p1.5": 1016,
+  "P:strips": 115
+ },
+ "under_1mm_by_piece": {
+  "B:1895-hold0.2": 106,
+  "B:1895-hold0.25": 106,
+  "B:1895-off": 109,
+  "B:STAY-hold0.2": 161,
+  "B:STAY-hold0.25": 161,
+  "B:STAY-off": 164,
+  "B:THE-hold0.2": 197,
+  "B:THE-hold0.25": 197,
+  "B:THE-off": 197,
+  "P:off": 437,
+  "P:p1.0": 197,
+  "P:p1.2": 116,
+  "P:p1.5": 116
+ },
+ "lock_legs_0p8": 223,
+ "trims": 34,
+ "blocks_mm": {
+  "B": [
+   -32.4,
+   -36.5,
+   8.3,
+   -7.6
+  ],
+  "P": [
+   -32.4,
+   -2.6,
+   32.4,
+   36.5
+  ]
+ },
+ "pieces_mm": {
+  "B:1895-hold0.2": [
+   -23.0,
+   -27.5,
+   -17.5,
+   -25.8
+  ],
+  "B:1895-hold0.25": [
+   -13.5,
+   -27.5,
+   -8.0,
+   -25.8
+  ],
+  "B:1895-off": [
+   -32.4,
+   -27.5,
+   -27.0,
+   -26.0
+  ],
+  "B:STAY-hold0.2": [
+   -20.4,
+   -10.1,
+   -12.3,
+   -7.7
+  ],
+  "B:STAY-hold0.25": [
+   -8.3,
+   -10.1,
+   -0.2,
+   -7.6
+  ],
+  "B:STAY-off": [
+   -32.4,
+   -10.1,
+   -24.4,
+   -7.8
+  ],
+  "B:THE-hold0.2": [
+   -18.8,
+   -19.3,
+   -9.3,
+   -16.7
+  ],
+  "B:THE-hold0.25": [
+   -5.3,
+   -19.3,
+   4.3,
+   -16.6
+  ],
+  "B:THE-off": [
+   -32.4,
+   -19.3,
+   -22.8,
+   -16.7
+  ],
+  "P:off": [
+   -32.4,
+   6.4,
+   -3.6,
+   18.2
+  ],
+  "P:p1.0": [
+   3.6,
+   6.4,
+   32.4,
+   18.2
+  ],
+  "P:p1.2": [
+   -32.4,
+   24.7,
+   -3.6,
+   36.5
+  ],
+  "P:p1.5": [
+   3.6,
+   24.7,
+   32.4,
+   36.5
+  ]
+ },
+ "pieces": [
+  {
+   "block": "B",
+   "arm": "1895-off",
+   "word": "1895",
+   "label": "off",
+   "cut": "b81",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "cut_stream_md5": "1541421fce6d1cce9097e7ed01480126",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.39,
+   "height_mm": 1.51
+  },
+  {
+   "block": "B",
+   "arm": "1895-hold0.2",
+   "word": "1895",
+   "label": "hold0.2",
+   "cut": "b81",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_bay_hold": 0.2
+   },
+   "cut_stream_md5": "fa685e6a286ace0d6e5027e32d286198",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.5,
+   "height_mm": 1.64
+  },
+  {
+   "block": "B",
+   "arm": "1895-hold0.25",
+   "word": "1895",
+   "label": "hold0.25",
+   "cut": "b81",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_bay_hold": 0.25
+   },
+   "cut_stream_md5": "3fc447bd589457f7a198b37cab60c778",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.5,
+   "height_mm": 1.65
+  },
+  {
+   "block": "B",
+   "arm": "THE-off",
+   "word": "THE",
+   "label": "off",
+   "cut": "b925",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "cut_stream_md5": "e0d9323ca24d90a268ef7eb2afd555a3",
+   "runs": 25,
+   "crossing_runs_dropped": 2,
+   "width_mm": 9.56,
+   "height_mm": 2.66
+  },
+  {
+   "block": "B",
+   "arm": "THE-hold0.2",
+   "word": "THE",
+   "label": "hold0.2",
+   "cut": "b925",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_bay_hold": 0.2
+   },
+   "cut_stream_md5": "3be34b6bdc3ecbe092a13d8d41384b64",
+   "runs": 25,
+   "crossing_runs_dropped": 2,
+   "width_mm": 9.56,
+   "height_mm": 2.66
+  },
+  {
+   "block": "B",
+   "arm": "THE-hold0.25",
+   "word": "THE",
+   "label": "hold0.25",
+   "cut": "b925",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_bay_hold": 0.25
+   },
+   "cut_stream_md5": "1f00488a63fcb0831462b80acb89438b",
+   "runs": 25,
+   "crossing_runs_dropped": 2,
+   "width_mm": 9.6,
+   "height_mm": 2.69
+  },
+  {
+   "block": "B",
+   "arm": "STAY-off",
+   "word": "STAY",
+   "label": "off",
+   "cut": "b925",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "cut_stream_md5": "e0d9323ca24d90a268ef7eb2afd555a3",
+   "runs": 20,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.03,
+   "height_mm": 2.29
+  },
+  {
+   "block": "B",
+   "arm": "STAY-hold0.2",
+   "word": "STAY",
+   "label": "hold0.2",
+   "cut": "b925",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_bay_hold": 0.2
+   },
+   "cut_stream_md5": "3be34b6bdc3ecbe092a13d8d41384b64",
+   "runs": 20,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.07,
+   "height_mm": 2.43
+  },
+  {
+   "block": "B",
+   "arm": "STAY-hold0.25",
+   "word": "STAY",
+   "label": "hold0.25",
+   "cut": "b925",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_bay_hold": 0.25
+   },
+   "cut_stream_md5": "1f00488a63fcb0831462b80acb89438b",
+   "runs": 20,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.11,
+   "height_mm": 2.53
+  },
+  {
+   "block": "P",
+   "arm": "off",
+   "label": "off",
+   "edge_cap_bean_pitch_mm": null,
+   "stitches_cut": 1183,
+   "cap_median_step_mm": 0.731,
+   "runs": 11,
+   "width_mm": 28.79,
+   "height_mm": 11.78
+  },
+  {
+   "block": "P",
+   "arm": "p1.0",
+   "label": "p1.0",
+   "edge_cap_bean_pitch_mm": 1.0,
+   "stitches_cut": 1099,
+   "cap_median_step_mm": 1.001,
+   "runs": 11,
+   "width_mm": 28.79,
+   "height_mm": 11.78
+  },
+  {
+   "block": "P",
+   "arm": "p1.2",
+   "label": "p1.2",
+   "edge_cap_bean_pitch_mm": 1.2,
+   "stitches_cut": 1063,
+   "cap_median_step_mm": 1.188,
+   "runs": 11,
+   "width_mm": 28.79,
+   "height_mm": 11.78
+  },
+  {
+   "block": "P",
+   "arm": "p1.5",
+   "label": "p1.5",
+   "edge_cap_bean_pitch_mm": 1.5,
+   "stitches_cut": 1024,
+   "cap_median_step_mm": 1.501,
+   "runs": 11,
+   "width_mm": 28.79,
+   "height_mm": 11.78
+  }
+ ],
+ "block_md5": {
+  "B": "af4ef574f783e1ceb1507757ca4a63a8",
+  "P": "63971725ed53095b950a16d3520aadc2"
+ },
+ "arm_md5": {
+  "B:1895-hold0.2": "8c07ef2a38a30fe877d755ae64120e54",
+  "B:1895-hold0.25": "223946631697a1df4e7213a83840b99d",
+  "B:1895-off": "29f3bab5265abfe49981814e5f97709a",
+  "B:STAY-hold0.2": "42b403b866c0858e304c3472c201e6b4",
+  "B:STAY-hold0.25": "7843c070208467601565f0d26bd49776",
+  "B:STAY-off": "7904d7a535eab79f9693793981381677",
+  "B:THE-hold0.2": "0a34ea4fb18029862567993cde8e914d",
+  "B:THE-hold0.25": "ddb619dbd9f5d181a4ca2ae8bc5d86f2",
+  "B:THE-off": "81bc44c54faafdf487cf7e76be2d729c",
+  "P:off": "7d700d3471c37d306a161e7e51b3442c",
+  "P:p1.0": "838ef1d3b82688238fd4d8ed08a23464",
+  "P:p1.2": "ca7592620861487efc60d8737b8c547f",
+  "P:p1.5": "0d17f681c9419c2b396e1d6f051cd281"
+ },
+ "trims_by_piece": {
+  "B:1895-hold0.2": 1,
+  "B:1895-hold0.25": 1,
+  "B:1895-off": 1,
+  "B:STAY-hold0.2": 1,
+  "B:STAY-hold0.25": 1,
+  "B:STAY-off": 1,
+  "B:THE-hold0.2": 1,
+  "B:THE-hold0.25": 1,
+  "B:THE-off": 1,
+  "P:off": 3,
+  "P:p1.0": 3,
+  "P:p1.2": 3,
+  "P:p1.5": 3
+ },
+ "dst_md5": "71f2d2ff9f477973b7035fbde9a56f31",
+ "sew_minutes": 13.6
+}

@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
-  import { generateAll, charList, letteringNote, emptyFieldHint } from "../lib/generate.js";
+  import { generateAll, charList, letteringNote, emptyFieldHint, splitIntoTwoLines, columnNoteFabric } from "../lib/generate.js";
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
@@ -8,12 +8,14 @@
   import { pickScaleBar } from "../lib/scalebar.js";
   import { tip } from "../lib/tip.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
+  import { sewnPullFor, hasSatinSpans } from "../lib/sewnWidth.js";
   import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
   import { EMB } from "../lib/emb.js";
-  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
+  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
-  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
+  import { fabricContrastNote } from "../lib/colorMatch.js";
+  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
   import {
     appliedBorders,
     borderMenuItems,
@@ -22,10 +24,14 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
   import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
-  import { resolveCutOuts } from "../lib/manualShapes.js";
-  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT } from "../lib/fieldNodeEdit.js";
+  import { capOutlinesMm, isCapPieceId } from "../lib/capPieces.js";
+  import { resolveCutOuts, isColumn, isRun, isOpenShape, shapeProblems } from "../lib/manualShapes.js";
+  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT, convertOpenShape } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
+  import DigitizeRing from "./DigitizeRing.svelte";
+  import { digitizeBusy } from "../lib/digitizeBusy.js";
   import Icon from "./Icon.svelte";
+  import { prefersReducedMotion } from "../lib/reducedMotion.js";
   import ShapePopover from "./ShapePopover.svelte";
 
   // Task 4 (Slice 5): the field now renders every element in the project
@@ -111,11 +117,24 @@
   // hairline strokes sewn as run, columns under 1 mm) — per element like the
   // 5 mm warn, because the fix is that element's size or font.
   let letterNote = "";
+  // The one-click line break offered beside a thin-lettering note: the
+  // element to patch and its text over two lines, or null.
+  let twoLinesFix = null;
+  // Thread vs garment colour. The canvas shows a neutral work bed, not the
+  // fabric (#648), so this caption note is the only place a design that will
+  // vanish into its garment says so. Reactive on the cached result so picking
+  // a fabric swatch updates it without a regenerate.
+  $: contrastNote = lastGenerateResult
+    ? fabricContrastNote(lastGenerateResult.combined && lastGenerateResult.combined.colors, project && project.fabricRgb)
+    : "";
 
   // Result of the last renderRealistic() call — { toCanvas, scale, designBBoxMm } —
   // kept around so pointer handlers and the selection overlay can hit-test /
   // draw against the exact transform that was just used to paint the canvas.
   let renderResult = null;
+  // Count of completed paints of a real design (paint() and repaintView()).
+  // Surfaced as data-paint-seq so a test waits on state, not on a timer.
+  let paintSeq = 0;
 
   // Per-element canvas rects computed from the last paint(), one per ready
   // element (see generate.js's generateAll perElement), each shaped
@@ -138,15 +157,25 @@
   // ephemeral field-viewport UI state, not project data, and never persisted.
   // Fed to renderRealistic's `view` opt (B1: POST-VIEW contract -- see
   // preview.js) on every paint, full or view-only.
+  // Range is MIN_ZOOM..MAX_ZOOM (100%-800%), from lib/interact.js.
   let view = { zoom: 1, panX: 0, panY: 0 };
-  const MIN_ZOOM = 1;
-  const MAX_ZOOM = 4;
   let rafViewScheduled = false;
 
   // Diagnostic overlays (view-only, ephemeral — same lifecycle as zoom/pan):
   // dashed needle-up travel lines and X markers at trims.
   let showJumps = false;
   let showTrims = false;
+  // Sewn width (2026-10-06): satin columns drawn with the fabric's pull
+  // compensation taken back off, the width the cloth shows rather than the
+  // width the file carries. A view toggle like jumps/trims — nothing in the
+  // design moves. The pull is the project's garment preset with its profile,
+  // the same number the service compensated with (lib/sewnWidth.js). Only a
+  // design with satin spans has anything for it to act on, so the toggle is
+  // disabled otherwise rather than silently doing nothing.
+  let sewnWidthView = false;
+  function toggleSewnWidth() { sewnWidthView = !sewnWidthView; scheduleViewRepaint(); }
+  $: sewnPullMm = sewnWidthView ? sewnPullFor(project) : 0;
+  $: canSewnWidth = !!(lastGenerateResult && lastGenerateResult.combined && hasSatinSpans(lastGenerateResult.combined)) && sewnPullFor(project) > 0;
   function toggleJumps() { showJumps = !showJumps; scheduleViewRepaint(); }
   function toggleTrims() { showTrims = !showTrims; scheduleViewRepaint(); }
   // Every shape of a digitized element used to be outlined in cyan, with a
@@ -329,6 +358,7 @@
       fabricRgb: project && project.fabricRgb,
       weave: true,
       surround: surroundColor(),
+      grid: gridColors(),
       view,
     });
   }
@@ -341,6 +371,19 @@
     if (typeof document === "undefined") return "#22252c";
     const v = getComputedStyle(document.documentElement).getPropertyValue("--surround").trim();
     return v || "#22252c";
+  }
+
+  // Work bed + measuring grid, read off theme tokens (fallbacks are the token
+  // values) so the canvas and the CSS can never drift.
+  function gridColors() {
+    const cs = typeof document === "undefined" ? null : getComputedStyle(document.documentElement);
+    const tok = (name, fb) => (cs && cs.getPropertyValue(name).trim()) || fb;
+    return {
+      bed: tok("--field-bed", "#7b8190"),
+      minor: tok("--field-grid-minor", "rgba(255,255,255,0.10)"),
+      major: tok("--field-grid-major", "rgba(255,255,255,0.22)"),
+      label: tok("--surround-muted", "#a3a9b6"),
+    };
   }
 
   function accentColor() {
@@ -541,8 +584,11 @@
     if (!project || !Array.isArray(project.elements)) return;
     const now = performance.now();
     for (const el of project.elements) {
-      if (el.type !== "digitized" || !digitizedRows(el)) continue;
-      pulses.seen(el.id, outlinePulseKey(el), now);
+      if (el.type !== "digitized") continue;
+      // An upload that has not been digitized yet is seen too, with a null
+      // key: that baseline is what makes its FIRST result a change, and so a
+      // pulse. Skipping it made the first result a silent first sighting.
+      pulses.seen(el.id, digitizedRows(el) ? outlinePulseKey(el) : null, now);
     }
     if (pulses.active(now)) schedulePulseFrame();
   }
@@ -638,7 +684,11 @@
     const toPx = ([x, y]) => { const c = renderResult.toCanvas(x, y); return [c.x, c.y]; };
     const controls = {};
     for (const k of Object.keys(mm.controls)) controls[k] = toPx(mm.controls[k]);
-    return { anchors: mm.anchors.map(toPx), controls, handles: mm.handles.map(toPx), fit, shape };
+    const ap = { anchors: mm.anchors.map(toPx), controls, handles: mm.handles.map(toPx), fit, shape };
+    // A column's two rails (the width the spine alone does not show). Built
+    // from the same `shape` as the anchors, so mid-drag they follow the drag.
+    if (mm.rails) ap.rails = { a: mm.rails.a.map(toPx), b: mm.rails.b.map(toPx) };
+    return ap;
   }
   // Canvas px -> authored canvas px, through the frozen fit. The canvas
   // basis is read off toCanvas for the same reason pxToMmDelta does.
@@ -682,8 +732,17 @@
     if (focusedAnchor.elId !== selectedShapeElId || focusedAnchor.shapeId !== selectedShapeId) return null;
     return focusedAnchor;
   }
-  // Removes one anchor of a hand-drawn shape: the floor message at three
-  // points, else the re-fit patch. Shared by Delete and the menu item.
+  // The fewest anchors a hand-drawn shape can have, and what to say there: a
+  // closed shape needs three to enclose anything, a column's open spine two.
+  function anchorFloor(shape) {
+    return isOpenShape(shape) ? 2 : 3;
+  }
+  function anchorFloorMessage(shape) {
+    if (isRun(shape)) return "A line needs at least 2 points.";
+    return isColumn(shape) ? "A column needs at least 2 points." : "A shape needs at least 3 points.";
+  }
+  // Removes one anchor of a hand-drawn shape: the floor message at the floor
+  // (per kind), else the re-fit patch. Shared by Delete and the menu item.
   function removeAnchorOf(elId, shapeId, index) {
     const el = project && (project.elements || []).find((x) => x.id === elId);
     const shape = el && manualShapeOf(el, shapeId);
@@ -696,11 +755,20 @@
       return false;
     }
     const smaller = removeAnchor(shape, index);
-    if (!smaller) { shapeEditError = "A shape needs at least 3 points."; return false; }
+    if (!smaller) { shapeEditError = anchorFloorMessage(shape); return false; }
     return commitNodeEdit(el, smaller);
   }
+  // The fabric a column's width note is quoted on (generate.js).
+  $: popFabric = columnNoteFabric(project && project.garmentId, project && project.fabricProfile);
+  // `peById` is named here on purpose: a column's width row reads the fit, and
+  // a `$:` only tracks what the statement itself reads — through manualFit()
+  // alone the width would stay stale after the regenerate that follows an edit.
   $: popModel = shapePop && selectedShapeId && project && selectedShapeElId === project.selectedId
-    ? popoverModel({ element: selectedShapeElement(), shapeId: selectedShapeId })
+    ? popoverModel({
+        element: selectedShapeElement(), shapeId: selectedShapeId,
+        fit: (peById[project.selectedId] && peById[project.selectedId].design && peById[project.selectedId].design.fit) || null,
+        fabric: popFabric,
+      })
     : null;
   // A shape that stopped existing (deleted, or gone in a new result) closes
   // it. Deliberately NOT closeShapePop(): nobody pressed anything here, and
@@ -772,7 +840,8 @@
     if (!el) return;
     const { key, value } = e.detail;
     const shapeId = selectedShapeId;
-    let patch = popoverPatch({ element: el, shapeId }, key, value);
+    const elFit = el.type === "manual" ? manualFit(el) : null;
+    let patch = popoverPatch({ element: el, shapeId, fit: elFit }, key, value);
     if (!patch && key === "color" && el.type === "digitized") {
       // A getter bound to THIS element's id, not to "whatever is selected":
       // the patch is rebuilt against the element as it stands once the thread
@@ -785,6 +854,20 @@
     if (!patch) {
       if (key === "color") shapeEditError = "Couldn't match that color to the job's thread chart.";
       return;
+    }
+    if (key === "widthMm" && el.type === "manual" && patch.shapes) {
+      // A column's rail ring is what the engine fits, so a new width changes
+      // the bbox: commit through the re-fit rule, like a node edit, so nothing
+      // else moves. A width the spine cannot carry (the rails fold over at a
+      // bend) is refused with the reason and the element is left as it was.
+      // shapeProblems is O(n^2) on a column — fine here, once per commit.
+      const wide = patch.shapes.find((sh) => sh && sh.id === shapeId);
+      const issues = wide ? shapeProblems(wide) : ["Nothing to fit."];
+      if (issues.length) { shapeEditError = issues[0]; return; }
+      const held = refitShapesPatch(el, elFit, patch.shapes);
+      if (held.error) { shapeEditError = held.error; return; }
+      shapeEditError = "";
+      patch = held;
     }
     if (key === "cutOut" && el.type === "manual" && patch.shapes) {
       // A cut-out emits no region, so the switch can change the bbox the engine
@@ -812,6 +895,17 @@
       selectedShapeElId = null;
       focusedAnchor = null;
       drawOverlay();
+      return;
+    }
+    if ((key === "toColumn" || key === "toRun") && el.type === "manual") {
+      // Run <-> column (ruling 8): the spine stays as drawn; a new column is
+      // 4.0 mm at the fit it is in, and the re-fit rule holds everything else
+      // still (the rails widen the bbox the engine fits). The popover stays
+      // open on the same shape, now the other kind.
+      const patch = convertOpenShape(el, manualFit(el), selectedShapeId, key === "toColumn" ? "column" : "run", null);
+      if (patch.error) { shapeEditError = patch.error; return; }
+      shapeEditError = "";
+      dispatch("elupdate", { id: el.id, patch });
       return;
     }
     if (key === "editPoints") {
@@ -854,7 +948,13 @@
     if (el.type === "digitized") {
       const rows = digitizedRows(el);
       if (!rows || !pe.bboxMm) return null;
-      return { rows, mm: shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el)) };
+      return {
+        rows,
+        mm: shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el)),
+        // The silhouette cap, one open polyline per stretch: selectable like a
+        // shape (see lib/capPieces.js), never editable as one.
+        caps: capOutlinesMm(el, pe.design),
+      };
     }
     const mm = designOutlinesInFieldMm(pe.design);
     // A cut-out emits no region, so the engine has no outline for it: the
@@ -891,7 +991,23 @@
         cutOut: !!o.cutOut,
       })),
       mmById: new Map(src.mm.map((o) => [o.id, o.points])),
+      caps: (src.caps || []).map((o) => ({
+        id: o.id,
+        open: true,
+        points: o.points.map(([x, y]) => {
+          const c = renderResult.toCanvas(x, y);
+          return [c.x, c.y];
+        }),
+      })),
     };
+  }
+
+  // The cap stretch under the pointer, if any (see the press handler for how
+  // it shares an edge with the outer shape's own outline).
+  function capHitAt(edit, p) {
+    const hidden = hiddenShapeIds(edit.el, edit.rows);
+    const live = (edit.caps || []).filter((o) => !hidden.has(o.id));
+    return live.length ? hitOverlay(live, p.x, p.y) : null;
   }
 
   function editableOutlinesPx() {
@@ -1275,8 +1391,13 @@
       if (!outlines.length) continue;
 
       const started = pulses.startedAt(el.id);
-      const pulse = started == null ? 0 : pulseAt(now - started);
-      if (pulse > 0) stillPulsing = true;
+      // Reduced motion: the outline pulse is pure animation, so it never plays.
+      const reduced = prefersReducedMotion();
+      const pulse = started == null || reduced ? 0 : pulseAt(now - started);
+      // The wave touches 0 between beats, so "still in the window" is read
+      // off the fade, not the beat.
+      const fade = started == null || reduced ? 0 : pulseFadeAt(now - started);
+      if (fade > 0) stillPulsing = true;
 
       // Hidden shapes stay out of the drawing but stayed IN the transform, so
       // toggling one off does not shift the others.
@@ -1324,7 +1445,13 @@
         // list drives this too, through App: a row's hover and click land
         // in `hoverShape` / `focusShape` above.)
         const orphan = !!(orphanCut && o.cutOut && orphanCut[o.id] == null);
-        if (!showOutlines && !editing && !hovered && !orphan) continue;
+        // A fresh result pulses whatever the toggle says, fading out as it
+        // goes: hiding the outlines by default (2026-09-01) silently hid the
+        // "we found these shapes" cue with them, and Kent asked for it back
+        // (2026-10-08).
+        const ghost = !showOutlines && !editing && !hovered && !orphan;
+        if (ghost && fade <= 0) continue;
+        ctx.globalAlpha = ghost ? fade : 1;
         // Mid node-drag the flattened ring is the STALE geometry: drawing it
         // beside the live authored outline showed two amber outlines. Idle,
         // the flattened ring stays underneath the authored one (spec §5) —
@@ -1389,9 +1516,36 @@
         }
       }
       ctx.restore();
+      drawCapOutline(ctx, el, src.caps || [], hidden);
     }
 
     if (stillPulsing) schedulePulseFrame();
+  }
+
+  // The selected cap stretch (and the one under a Layers hover) — a cased
+  // open line, amber when selected, like a shape's outline but with no ring
+  // and no nodes. Idle stretches stay undrawn; the stitching is its own cue.
+  function drawCapOutline(ctx, el, caps, hidden) {
+    for (const o of caps) {
+      if (hidden.has(o.id)) continue;
+      const editing = el.id === selectedShapeElId && o.id === selectedShapeId;
+      if (!editing) continue;
+      const pts = o.points.map(([x, y]) => renderResult.toCanvas(x, y));
+      if (pts.length < 2) continue;
+      ctx.save();
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.strokeStyle = "rgba(10, 22, 30, 0.6)";
+      ctx.lineWidth = 5.2;
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255, 214, 64, 0.95)";
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // The selected hand-drawn shape's AUTHORED geometry: the quadratic outline
@@ -1403,17 +1557,36 @@
   // live shape, so the outline follows the pointer before the regenerate.
   function drawAuthoredNodes(ctx, el, shapeId) {
     const ap = authoredPxFor(el, shapeId);
-    if (!ap || ap.anchors.length < 3) return;
+    // A column is an OPEN spine: two anchors are enough, there is no closing
+    // segment (n - 1 segments, n - 1 handles), and its two rails are drawn as
+    // thin lines so the width shows while the spine is edited.
+    // A line (run) is open the same way and has no rails to draw.
+    const open = !!ap && isOpenShape(ap.shape);
+    if (!ap || ap.anchors.length < (open ? 2 : 3)) return;
     const n = ap.anchors.length;
+    if (open && ap.rails) {
+      for (const rail of [ap.rails.a, ap.rails.b]) {
+        if (rail.length < 2) continue;
+        ctx.beginPath();
+        ctx.moveTo(rail[0][0], rail[0][1]);
+        for (let i = 1; i < rail.length; i++) ctx.lineTo(rail[i][0], rail[i][1]);
+        ctx.strokeStyle = "rgba(10, 22, 30, 0.45)";
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255, 214, 64, 0.8)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
     ctx.beginPath();
     ctx.moveTo(ap.anchors[0][0], ap.anchors[0][1]);
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < (open ? n - 1 : n); i++) {
       const next = ap.anchors[(i + 1) % n];
       const c = ap.controls[i];
       if (c) ctx.quadraticCurveTo(c[0], c[1], next[0], next[1]);
       else ctx.lineTo(next[0], next[1]);
     }
-    ctx.closePath();
+    if (!open) ctx.closePath();
     // A cut-out's authored outline is dashed like its idle one, including
     // mid-drag (`ap.shape` is the live drag's shape then). Dots stay solid.
     const dashed = !!(ap.shape && ap.shape.cutOut);
@@ -1585,6 +1758,7 @@
     if (!pe) {
       warn = false;
       letterNote = "";
+      twoLinesFix = null;
       dispatch("dims", null);
       return;
     }
@@ -1602,16 +1776,23 @@
     // past the box by construction (pull compensation — defect 34), so
     // comparing it to the box would read "capped" for every design.
     const el = project.elements.find((e) => e.id === pe.id);
-    const capWmm = (() => {
-      const g = EMB.getGarment(project.garmentId);
-      return g ? g.widthIn * 25.4 : Infinity;
-    })();
-    const atWidthCap = !!el && (el.sizeMm == null || el.sizeMm >= capWmm - 0.05);
+    // Auto-fit is capped to the largest hoop (EMB.autoFitBoxMm), so on the four
+    // garments whose placement is bigger than every hoop it sits BELOW the box
+    // and the letters can still grow by typing a width.
+    const g = EMB.getGarment(project.garmentId);
+    const boxWmm = g ? g.widthIn * 25.4 : Infinity;
+    const reqWmm = el && el.sizeMm == null ? (g ? EMB.autoFitBoxMm(g).w : Infinity) : el && el.sizeMm;
+    const atWidthCap = !!el && reqWmm >= boxWmm - 0.05;
     // `lines` only picks the wording of the cap-floor fix ("break it across
     // lines" vs "use more lines"); read off the element's own text, which is
     // what the customer would be editing.
     const lines = el && typeof el.text === "string" ? el.text.split("\n").length : 1;
     letterNote = letteringNote(pe.design && pe.design.lettering, { atWidthCap, lines });
+    // Only where breaking the line is the advice that helps: the design is
+    // already at the placement's width, so the letters can grow only if the
+    // line gets shorter.
+    const split = letterNote && atWidthCap && el && el.type === "text" ? splitIntoTwoLines(el.text) : null;
+    twoLinesFix = split ? { id: el.id, text: split } : null;
     // "Smaller than 5 mm" is advice about a design that IS there and is too
     // small to sew cleanly. On an element with no stitches at all it is not
     // advice, it is noise — and it sat directly in front of the message that
@@ -1620,6 +1801,23 @@
     warn = pe.design.stitchCount > 0 &&
       (widthMM < MIN_SIZE_MM || heightMM < MIN_SIZE_MM);
     dispatch("dims", { widthMM, heightMM });
+  }
+
+  // Each hand-drawn element's fit ({ id: { mmPerPx } }), for the side panel:
+  // a new column is 4.0 mm wide THROUGH this fit, and its Width row reads and
+  // writes mm through it. Only on a change, so a repaint that moved nothing
+  // re-renders nothing upstream.
+  let lastManualFits = "";
+  function emitManualFits(perElement) {
+    const fits = {};
+    const manual = new Set(((project && project.elements) || []).filter((x) => x && x.type === "manual").map((x) => x.id));
+    for (const pe of perElement || []) {
+      if (manual.has(pe.id) && pe.design && pe.design.fit && pe.design.fit.mmPerPx > 0) fits[pe.id] = { mmPerPx: pe.design.fit.mmPerPx };
+    }
+    const key = JSON.stringify(fits);
+    if (key === lastManualFits) return;
+    lastManualFits = key;
+    dispatch("manualfits", fits);
   }
 
   // ---- "which font CAN stitch this" ---------------------------------------
@@ -1742,6 +1940,7 @@
     hoopNote = "";
     unsupportedNote = "";
     letterNote = "";
+    twoLinesFix = null;
     renderResult = null;
     perElementRects = [];
     peById = {};
@@ -1847,10 +2046,12 @@
       fabricRgb: project.fabricRgb,
       weave: true,
       surround: surroundColor(),
+      grid: gridColors(),
       view,
       showJumps,
       showTrims,
       threadStyle: realisticView ? "realistic" : "flat",
+      sewnPullMm,
     });
     hasDesign = true;
 
@@ -1863,6 +2064,8 @@
     }
 
     drawOverlay();
+    paintSeq++;
+    emitManualFits(result.perElement);
     emitSelectedDims(result.perElement);
     reclampAll(result.perElement);
   }
@@ -1883,10 +2086,12 @@
         fabricRgb: project.fabricRgb,
         weave: true,
         surround: surroundColor(),
+        grid: gridColors(),
         view,
         showJumps,
         showTrims,
         threadStyle: realisticView ? "realistic" : "flat",
+        sewnPullMm,
         // While simulating, every repaint (zoom/pan included) draws only the
         // sewn-so-far prefix -- otherwise a mid-playback wheel event would
         // flash the finished design.
@@ -1906,6 +2111,7 @@
       // Selection chrome is hidden during playback -- the simulator is a
       // watch-mode, not an edit-mode (pointer editing is disabled below too).
       if (!simActive) drawOverlay();
+      paintSeq++;
     } else {
       clearToFabric();
     }
@@ -1965,9 +2171,16 @@
     originalView = false;
     originalToken++;
     simActive = true;
-    simIndex = 0;
     simSpeed = 1;
-    simPlay();
+    if (prefersReducedMotion()) {
+      // No autoplay: show the finished design; Play still replays on request.
+      simIndex = simTotal;
+      simPlaying = false;
+      repaintView();
+    } else {
+      simIndex = 0;
+      simPlay();
+    }
   }
 
   function stopSim() {
@@ -2165,7 +2378,7 @@
     const ccx = cw / 2, ccy = ch / 2;
     const p = anchorPx || { x: ccx, y: ccy };
     const oldZoom = view.zoom;
-    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, oldZoom * factor));
+    const newZoom = clampZoom(oldZoom * factor);
     if (newZoom === oldZoom) return;
     const k = newZoom / oldZoom;
     const rawPanX = (p.x - ccx) * (1 - k) + view.panX * k;
@@ -2275,7 +2488,7 @@
     // edges take a click (insert), which the "pointer" below already says.
     if (hoverEdit && hoverEdit.el.type === "manual" && selectedShapeId && selectedShapeElId === hoverEdit.el.id) {
       const ap = authoredPxFor(hoverEdit.el, selectedShapeId);
-      const ah = ap ? hitAuthored(ap, p.x, p.y) : null;
+      const ah = ap ? hitAuthored(ap, p.x, p.y, !isOpenShape(ap.shape)) : null;
       if (ah && ah.kind !== "edge") {
         canvas.style.cursor = "grab";
         return;
@@ -2360,10 +2573,10 @@
     const selEl = selectedShapeElement();
     if (selEl && selEl.type === "manual") {
       const ap = authoredPxFor(selEl, selectedShapeId);
-      const ah = ap ? hitAuthored(ap, p.x, p.y) : null;
+      const ah = ap ? hitAuthored(ap, p.x, p.y, !isOpenShape(ap.shape)) : null;
       if (ah && ah.kind === "anchor") {
         const model = popoverModel({ element: selEl, shapeId: selectedShapeId });
-        const atFloor = ap.shape.points.length <= 3;
+        const atFloor = ap.shape.points.length <= anchorFloor(ap.shape);
         return {
           elId: selEl.id,
           shapeId: selectedShapeId,
@@ -2373,7 +2586,7 @@
             id: "removepoint",
             label: "Remove point",
             value: null,
-            title: atFloor ? "A shape needs at least 3 points." : "Remove this point; its two edges become one.",
+            title: atFloor ? anchorFloorMessage(ap.shape) : "Remove this point; its two edges become one.",
             disabled: atFloor,
             anchor: ah.index,
           }],
@@ -2412,7 +2625,11 @@
       }
     }
     if (!hit) return null;
-    if (project.selectedId !== el.id) dispatch("select", el.id);
+    // Also when the element is only the PRIMARY of a multi-selection: the
+    // group panel has no "Auto Digitize Image" button, so an edit made there
+    // would sit unsewn with nothing in front to press. A plain select
+    // collapses the group to this element, as it does for any other element.
+    if (project.selectedId !== el.id || multiSel) dispatch("select", el.id);
     setSelectedShape(hit.shapeId);
     shapeEditError = "";
     drawOverlay();
@@ -2622,7 +2839,7 @@
       // on the outline falls through to the selection branch below.
       if (edit.el.type === "manual" && selectedShapeId && selectedShapeElId === edit.el.id) {
         const ap = authoredPxFor(edit.el, selectedShapeId);
-        const ah = ap ? hitAuthored(ap, p.x, p.y) : null;
+        const ah = ap ? hitAuthored(ap, p.x, p.y, !isOpenShape(ap.shape)) : null;
         if (ah) {
           canvas.setPointerCapture(e.pointerId);
           shapeEditError = "";
@@ -2655,7 +2872,18 @@
         }
       }
       // Hidden and deleted shapes are not drawn, so they are not grabbable.
-      const hit = hitOverlay(liveOutlinesPx(edit), p.x, p.y);
+      const shapeHit = hitOverlay(liveOutlinesPx(edit), p.x, p.y);
+      const capHit = capHitAt(edit, p);
+      // The cap rides the silhouette, which is also the outer shape's outline,
+      // so one press spot can mean either. The shape wins first (a press on an
+      // outline has always selected its shape); pressing the same spot again,
+      // with that shape already selected, selects the cap stretch instead, and
+      // the next press goes back to the shape. Nodes and double-click stay the
+      // shape's, so node editing is untouched.
+      const ownShape = !!shapeHit && shapeHit.shapeId === selectedShapeId
+        && edit.el.id === selectedShapeElId;
+      const wantsCap = !!capHit && (!shapeHit || (ownShape && shapeHit.kind !== "node" && !(e.detail >= 2)));
+      const hit = wantsCap ? capHit : shapeHit;
       if (hit) {
         // First click on a shape selects it and stops there — no geometry
         // moves until you have said which shape you mean. On the manual and
@@ -2665,7 +2893,8 @@
         // The popover waits for the RELEASE (endDrag's click test): a press
         // that turns into a drag opens nothing. Capture so the release
         // reaches endDrag even if it lands off the canvas.
-        if (hit.shapeId !== selectedShapeId || edit.el.id !== selectedShapeElId || edit.el.type !== "digitized") {
+        if (hit.shapeId !== selectedShapeId || edit.el.id !== selectedShapeElId || edit.el.type !== "digitized"
+            || isCapPieceId(hit.shapeId)) {
           selectedShapeId = hit.shapeId;
           selectedShapeElId = edit.el.id;
           shapeEditError = "";
@@ -3146,6 +3375,7 @@
     <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role -->
     <canvas
       bind:this={canvas}
+      data-paint-seq={paintSeq}
       width="760"
       height="560"
       tabindex="0"
@@ -3222,7 +3452,11 @@
         on:close={closeShapePop}
       />
     {/if}
-    {#if !hasDesign && !error && hint}
+    <!-- The digitize ring: only while a run is in flight, so it never
+         sits on the field at rest (e2e/field-chrome.spec.js's one-child rule
+         is measured with no run going). -->
+    {#if $digitizeBusy.size}<DigitizeRing />{/if}
+    {#if !hasDesign && !error && hint && !$digitizeBusy.size}
       <p class="fieldhint" class:on-dark={project && project.fabricRgb && isDark(project.fabricRgb)}>{hint}</p>
     {/if}
   </div>
@@ -3329,6 +3563,16 @@
         aria-label="Show trims"
         use:tip={"trims"}
       ><Icon name="scissors" /><span class="zoomlabel">Trims</span></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={sewnWidthView}
+        on:click={toggleSewnWidth}
+        disabled={!hasDesign || !canSewnWidth}
+        aria-pressed={sewnWidthView}
+        aria-label="Show columns as sewn"
+        use:tip={"sewnWidth"}
+      ><Icon name="nodes" /><span class="zoomlabel">Sewn width</span></button>
       <span class="zoomsep" aria-hidden="true"></span>
       <button
         type="button"
@@ -3382,6 +3626,6 @@
     <!-- &nbsp; before each separator, not a plain space: Svelte strips leading
          whitespace inside an element, so " · " rendered as "…hoop· This font".
          Pre-existing on the two older warnings; visible on all three now. -->
-    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{/if}{/if}
+    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{#if twoLinesFix}&nbsp;<button type="button" class="twolines" on:click={() => dispatch("elupdate", { id: twoLinesFix.id, patch: { text: twoLinesFix.text } })}>Put on two lines</button>{/if}{/if}{#if contrastNote}<span class="warn" data-testid="contrast-note">&nbsp;· {contrastNote}</span>{/if}{/if}
   </div>
 </div>

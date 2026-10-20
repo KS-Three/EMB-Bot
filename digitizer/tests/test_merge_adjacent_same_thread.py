@@ -201,10 +201,18 @@ def test_the_pipelines_own_output_no_longer_needs_the_merge():
     # requested-but-unavailable cutout skips prep entirely, which is this
     # pin's geometry (`test_background_removal.test_an_unavailable_cutout_
     # falls_back_to_no_prep_at_all`).
+    # `blend_fallback_underlay=False` pinned 2026-10-07, when it flipped ON:
+    # the underlay moves where the owl's gradient fills enter and leave, so
+    # stage 7 picks a different order and two existing thread-17 blocks
+    # (`..., 17, 155, 17, ...` -> `..., 17, 17, 155, ...`) land side by side.
+    # Same regions, same block count — an ORDER change, not a new split, and
+    # the shipped engine's merge (ON) folds it. Pinned for the same reason as
+    # `keep_thin_strokes` above.
     _r, off = digitize(img, PipelineConfig(target_width_mm=100.0,
                                            is_photographic=True,
                                            keep_thin_strokes=False,
                                            merge_adjacent_same_thread=False,
+                                           blend_fallback_underlay=False,
                                            photo_prep=False))
     seq = [b.thread_index for b in off.blocks]
     assert all(x != y for x, y in zip(seq, seq[1:])), (

@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 from shapely.geometry import Polygon
 
-from . import debugviz
+from . import debugviz, fur_regions, two_tone
 from .config import PipelineConfig
 from .fabrics import Fabric, apply_profile, fabric_for_garment, get_fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
@@ -63,14 +63,16 @@ from .stage4_vectorize import (enforce_color_cap, garment_sews_enclosed,
                                rehome_resnapped_regions, revalidate_threads,
                                tag_enclosed_background, vectorize)
 from .designangle import set_design_angle
-from .beanletters import tag_bean_letters
+from .beanletters import hold_bean_counters, tag_bean_letters
 from .stitchwidth import apply_stitch_widths, measure_stitch_widths
 from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           regularize_text_clusters,
                           set_lettering_house_angle)
 from .design_ramp import DesignRamp, fit_design_ramp
-from .stage5_overlap import resolve_overlaps
+from .stage5_overlap import PlannedRegion, resolve_overlaps
 from .stage6_blend import SourcePixels, legacy_design_ramp_angle
+from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
+from .stage6_hairline_lines import applies as hairline_lines_apply
 from .config import is_photographic
 from .stage7_sequence import (PHOTO_CLASSES, borders_last_layers,
                               depth_sort_layers, sequence)
@@ -212,6 +214,21 @@ class PipelineResult:
     # it. Defaults False — a hand-built PipelineResult, and every caller that
     # never turned detection on, reads exactly as before the field existed.
     detected_photographic: bool = False
+    # The artwork's own pixels for the hairline tier's width read
+    # (`stage6_hairline.InkSource`, 2026-10-12 step 2): references to arrays
+    # stage 1 already holds, no copy, and nothing is computed from them
+    # unless `cfg.hairline` is on at plan time — so a re-plan with the flag
+    # toggled has them. None on a hand-built result: the tier then gates on
+    # the traced width, as the prototype did.
+    ink_source: object | None = None
+    # The regions the fur gate read as FUR (`fur_regions`, only under
+    # `cfg.hair_regions_directional`); None when it did not run. Read in
+    # `finish_generation` because that is where the raster is, so a re-plan
+    # with the flag turned on over a result built with it off routes nothing.
+    hair_fur_ids: tuple | None = None
+    # The gate's whole read, per region (`fur_regions.read_regions`): the
+    # census a tool reports. None when the gate did not run.
+    hair_fur_read: dict | None = None
 
     @property
     def shape_ids(self) -> list[str]:
@@ -368,6 +385,80 @@ def _cone(chart, thread_index: int) -> dict:
     }
 
 
+def cored_counter_core(image, cfg: PipelineConfig, segmenter, p: Prep,
+                       exif_source=None) -> np.ndarray | None:
+    """`cfg.open_cored_counters`' glyph guard (2026-10-19): stage 1's
+    `enclosed_mask` kept to the cores a GLYPH holds, for
+    `stage3_segment.cored_counters`; None when nothing is left to ask.
+
+    The flag's one corpus move was five false positives on the phone
+    screenshot (a tyre-tread run curve, a grey satin mark, a bare hole in
+    a grey fill), none a letter's counter. The taggers that say what a
+    glyph is run after vectorization (`detect_text_clusters`,
+    `set_lettering_house_angle`, `words.tag_words`; the bean tagger reads
+    their clusters), while the walk that names a counter runs in stage 3,
+    on masks, twice -- once inside the gradient lane's segmenter. So the
+    question is put to the generation the flag would otherwise change:
+    `build_generation` runs once more with the flag OFF, every region
+    `columns.is_lettering` calls a letter is painted into the frame
+    (exterior less interiors, `tag_enclosed_background`'s transform), and
+    a core is kept when at least half its pixels lie under one. In that
+    generation a sub-floor counter is filled (stage 4's hole floor), so a
+    letter's core lies inside its letter; a core in a ground, a fill or a
+    guarded fragment lies under nothing and leaves the mask whole, so both
+    stage-3 calls find no counter there and take the path they take OFF --
+    byte-identical, by the same code. No new constant: the taggers' own
+    verdict, as the Column lane reads it.
+
+    Cost: one stages-0-4 run more, paid only when the enclosed mask has a
+    component between the run floor and the area floor (anything else is
+    noise or a full-size hole to `cored_counters`, and the pre-pass would
+    decide nothing). The PR that built it carries the measured cost.
+    """
+    import cv2
+    from .columns import is_lettering
+    from .machine import RUN_MIN_AREA_MM2
+
+    mask = p.enclosed_mask
+    if mask is None or not mask.any():
+        return None
+    ppm = p.px_per_mm
+    lo = RUN_MIN_AREA_MM2 * ppm ** 2
+    hi = (cfg.min_detail_mm * ppm) ** 2
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8), connectivity=8)
+    cand = [c for c in range(1, n) if lo <= stats[c, cv2.CC_STAT_AREA] < hi]
+    if not cand:
+        return None
+    off = build_generation(image, replace(cfg, open_cored_counters=False, debug_dir=None),
+                           segmenter, exif_source=exif_source)
+    glyphs = [r for r in off.regions if is_lettering(r, cfg)]
+    if not glyphs or off.p.enclosed_mask is None or off.p.enclosed_mask.shape != mask.shape:
+        return None
+    h, w = mask.shape
+    x0, y0, x1, y1 = off.p.art_bbox
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+
+    def ring_px(coords) -> np.ndarray:
+        arr = np.asarray(coords, dtype=np.float64)
+        px = np.empty_like(arr)
+        px[:, 0] = arr[:, 0] * off.p.px_per_mm + cx
+        px[:, 1] = arr[:, 1] * off.p.px_per_mm + cy
+        return np.round(px).astype(np.int32)
+
+    glyph = np.zeros((h, w), np.uint8)
+    for r in glyphs:
+        cv2.fillPoly(glyph, [ring_px(r.polygon.exterior.coords)], 1)
+        for interior in r.polygon.interiors:
+            cv2.fillPoly(glyph, [ring_px(interior.coords)], 0)
+    keep = np.zeros((h, w), bool)
+    for c in cand:
+        bx, by, bw, bh, area = (int(v) for v in stats[c, :5])
+        win = lab[by:by + bh, bx:bx + bw] == c
+        if int(glyph[by:by + bh, bx:bx + bw][win].sum()) * 2 >= area:
+            keep[by:by + bh, bx:bx + bw] |= win
+    return keep if keep.any() else None
+
+
 def build_generation(
     image: str | Path | bytes | np.ndarray,
     cfg: PipelineConfig | None = None,
@@ -467,6 +558,24 @@ def build_generation(
                 detail=signals.why,
             )
         )
+
+    # Stage 1.3 — two-tone snap (`cfg.two_tone_snap`, defect 58). Before any
+    # region former, so every lane reads two inks. Never on a photograph,
+    # declared or detected (`cfg.is_photographic` carries both by now), whose
+    # greys are its picture; a logo stage 0 merely CLASSES photo_scene
+    # (`logo_mfab_hat`) still snaps. Detection reads the foreground only, so
+    # the margin round the art cannot dilute a colour accent under the gate.
+    # `p.native_rgb` is left as the source drew it: stage 4's sub-pixel edge
+    # read wants its anti-alias ramp, and the ramp is real there. The
+    # snapped halo the border flood stopped short of is folded into the
+    # background (`two_tone.fold_fringe`). `bg_rgb`, `bg_edge_rgb` and
+    # `raw_rgb` keep their pre-snap colours on purpose: they describe the
+    # file's background, which the snap does not redraw.
+    # The whole of it lives in `two_tone.apply`, which preflight's thread
+    # grader replays on its own stage-1 re-read so it judges the raster the
+    # pipeline sewed.
+    if cfg.two_tone_snap and cfg.is_photographic is not True:
+        two_tone.apply(p)
 
     # Stage 1.5 — photo prep (plan §2 rows 3-4; build step 3 first slice).
     # DOUBLE-gated: the opt-in flag AND a photo classification, so neither
@@ -662,6 +771,15 @@ def build_generation(
     design_ramp = (fit_design_ramp(p)
                    if classification.class_ == "gradient" and cfg.design_ramp else None)
 
+    # `cfg.open_cored_counters` (2026-10-19): the core mask both stage-3
+    # calls below read, kept to the cores a glyph holds (`cored_counter_core`
+    # -- the taggers' own verdict, read off a flag-OFF generation). Logos
+    # only, the gate `keep_counters` has. None with the flag off, and the
+    # two calls are byte-identical to before the flag existed.
+    cored_core = (cored_counter_core(image, cfg, seg, p, exif_source=exif_source)
+                  if cfg.open_cored_counters and classification.class_ not in PHOTO_CLASSES
+                  else None)
+
     # "photo_subject"/"photo_scene"/"gradient" all branch here — only "flat"
     # still takes the plain quantize() call this pipeline has always made.
     # "gradient" joined 2026-08-04 (`docs/superpowers/plans/
@@ -704,6 +822,9 @@ def build_generation(
                 # Logos only, the same gate again: a photograph's fragments
                 # enclose each other everywhere.
                 keep_counters=bool(cfg.keep_counters and classification.class_ == "gradient"),
+                # `cfg.open_cored_counters`: the guarded core, gradient logos
+                # only (the gate `keep_counters` has); None everywhere else.
+                counter_core=cored_core if classification.class_ == "gradient" else None,
             )
             if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)
@@ -719,8 +840,16 @@ def build_generation(
     counters_on = bool(cfg.keep_counters and classification.class_ not in PHOTO_CLASSES)
     masks, small_warnings = resolve_small_regions(
         masks, cfg, p.px_per_mm, p.enclosed_mask,
-        layer_lab=rgb_to_lab(q.cluster_rgb) if (cfg.keep_thin_strokes or counters_on) else None,
-        keep_counters=counters_on)
+        layer_lab=rgb_to_lab(q.cluster_rgb) if (
+            cfg.keep_thin_strokes or counters_on
+            or (cfg.small_dot_rung and cfg.small_dot_rung_lettering)
+            # `cfg.detail_spokes` reads the same colours: a mark is a detail
+            # of ANOTHER colour than its host.
+            or cfg.detail_spokes) else None,
+        keep_counters=counters_on,
+        # `cfg.open_cored_counters`: the guarded core (`cored_counter_core`),
+        # logos only, the gate `keep_counters` has; None with the flag off.
+        counter_core=cored_core)
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
 
@@ -797,8 +926,30 @@ def build_generation(
     # identity edits/overrides run, not after. The chart is for the one-ink
     # link between ordinary glyphs (`textcluster._same_ink`): a word is sewn
     # in one colour, and the regions' `thread_index` values name THIS job's
-    # chart, not the default one.
-    detect_text_clusters(regions, p, chart=chart_for(cfg))
+    # chart, not the default one. `rescued_ink_link`: the same link in the
+    # rescued round (Fremont's THE at 80 mm, `cfg.text_cluster_rescued_ink_link`).
+    detect_text_clusters(regions, p, chart=chart_for(cfg),
+                         rescued_ink_link=bool(cfg.text_cluster_rescued_ink_link))
+
+    # Lettering too small to sew, grown the way a digitizer grows it
+    # (`cfg.small_text_cap_mm`, default None). Here, on the tagger's clusters
+    # and before every reader of a letter's geometry -- the regularizer, the
+    # word tagger, the priors, the house angle -- so each sees the line at
+    # the size it will be sewn. None: never called, byte-identical.
+    if cfg.small_text_restore_mm:
+        # True size: adopt the line's untagged letters and give every letter
+        # its counters back, before any reader of a letter's geometry.
+        from .config import true_size_min_counter
+        from .small_text import restore_small_text
+        from .stage6_hairline import block_thread_wt
+        restore_small_text(regions, p, cap_mm=cfg.small_text_restore_mm,
+                           keep_stray_lines=bool(cfg.small_text_keep_stray_lines),
+                           min_counter_mm=true_size_min_counter(cfg),
+                           thread_wts=block_thread_wt(regions, cfg),
+                           default_wt=int(cfg.thread_wt))
+    if cfg.small_text_cap_mm:
+        from .small_text import enlarge_small_text
+        enlarge_small_text(regions, p, cap_mm=cfg.small_text_cap_mm)
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
@@ -811,6 +962,37 @@ def build_generation(
     regularize_text_clusters(regions, p, min_column_mm=cfg.lettering_min_column_mm,
                              pull_mm=fabric_for(cfg).pull_comp_mm)
 
+    # ONE lettering tagger (`cfg.lettering_words`, default OFF; L1 of the
+    # lettering lane, `words.py`): each line of lettering found once, and
+    # every stitch-affecting lettering reader below and in stage 7 groups by
+    # it instead of by the text cluster or the house group. Here, on the
+    # polygons the regularizer left and before the priors refit, because the
+    # priors, the house angle and the stitch widths all read its groups.
+    # Off, `tag_words` is never called and no `word_*` key is written.
+    if cfg.lettering_words:
+        from .words import tag_words
+        tag_words(regions, chart=chart_for(cfg))
+        if cfg.lettering_word_tiers:
+            from .words import assign_word_tiers
+            assign_word_tiers(regions, floor_mm=cfg.lettering_min_column_mm,
+                              ceiling_mm=satin_ceiling_mm(cfg),
+                              pull_mm=fabric_for(cfg).pull_comp_mm)
+
+    # Letterform priors (2026-10-06, `cfg.letterform_priors_k`, DEFAULT None):
+    # refit each text-tagged letter of a low-resolution upload to lines and
+    # arcs under the word's shared stem direction, widths and baseline,
+    # moving nothing further than k source pixels. Here, after the tagger
+    # and the rescued-door redraw have run and BEFORE the OCR read, the house
+    # angle and the stitch-width measurement, so every later reading of a
+    # letter sees the polygon that will sew. Imported inside the branch on
+    # purpose: off, the module never loads and this step is byte-identical
+    # (`tests/test_letterform_priors.py` pins both).
+    if cfg.letterform_priors_k and p.input_px_per_mm > 0.0 and p.px_per_mm > 0.0:
+        from .letterform_priors import apply_letterform_priors
+        apply_letterform_priors(regions, src_px_mm=1.0 / p.input_px_per_mm,
+                                grid_px_mm=1.0 / p.px_per_mm, k=cfg.letterform_priors_k,
+                                words=cfg.lettering_words)
+
     # OCR-suggested text (Studio "Convert to text" entry point): a read-only,
     # additive per-member OCR read of each tagged member's FINAL polygon —
     # runs after regularization for the same "computed fact reflects this
@@ -818,6 +1000,9 @@ def build_generation(
     # feeds back into detection/regularization/geometry itself. See
     # `textcluster.py`'s module docstring, "OCR-suggested text" section.
     ocr_suggest_text(regions, p)
+    if cfg.lettering_words:
+        from .words import word_ocr_text
+        word_ocr_text(regions)
 
     # The house angle (Step 6): one angle per LINE OF LETTERING, applied to
     # both the satin and fill tiers, so a wordmark's letters agree instead of
@@ -828,16 +1013,28 @@ def build_generation(
     # `ocr_suggest_text` does. Metadata only, and only where the strokes carry
     # a direction that clears a chance-corrected significance test: everything
     # else keeps today's behaviour byte-identical.
+    house_groups = None
+    if cfg.lettering_words:
+        from .words import word_groups
+        house_groups = word_groups(regions)
     set_lettering_house_angle(regions, p, fourfold=cfg.satin_house_fourfold,
                               from_line=cfg.satin_house_from_line,
-                              anchor=cfg.satin_house_anchor)
+                              anchor=cfg.satin_house_anchor, groups=house_groups)
+    # The Column lane's ink link (`cfg.lettering_columns_ink_link`, default
+    # ON by Kent's ruling 2026-10-13): a house-group-only shape in a far ink
+    # is not a letter of the text. Here, once both old taggers have written
+    # their keys. Off, it is never called and no key is written.
+    if cfg.lettering_columns_ink_link and not cfg.lettering_words:
+        from .columns import tag_ink_strays
+        tag_ink_strays(regions, chart_for(cfg))
 
     # Stitch width (2026-09-29, `stitchwidth.py`): what column each shape
     # measures, and the one width a detected word's letters will share.
     # Metadata only, read off the FINAL polygons for the same reason the two
     # passes above are; the geometry moves in `finish_generation`, where the
     # review override and the fabric's pull are known.
-    measure_stitch_widths(regions, satin_max=satin_ceiling_mm(cfg))
+    measure_stitch_widths(regions, satin_max=satin_ceiling_mm(cfg),
+                          words=cfg.lettering_words)
 
     # Gradient class: the one shared fill-row angle for the whole design
     # (2026-08-03 angle-fragmentation fix) — the design ramp's row angle when
@@ -1018,13 +1215,18 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     apply_stitch_widths(regions, pull_mm=fabric_for(cfg).pull_comp_mm,
                         floor_sewn_mm=cfg.lettering_min_column_mm,
                         auto=cfg.stitch_width_auto,
-                        satin_max=satin_ceiling_mm(cfg))
+                        satin_max=satin_ceiling_mm(cfg),
+                        words=cfg.lettering_words)
     # Bean letters (`cfg.bean_letter_max_stroke_mm`, default None): read each
     # text cluster's INK and hand the small ones their bean paths. Here, not
     # in `build_generation`: it needs the review edits' `stitched` and `tier`
     # (a shape the user pinned keeps its tier), and it moves no geometry.
     # None tags nothing and reads nothing.
     tag_bean_letters(regions, p, cfg)
+    # Their needle points held off small counters
+    # (`cfg.bean_letter_counter_hold_mm`, default None: never called).
+    if cfg.bean_letter_counter_hold_mm:
+        hold_bean_counters(regions, p, cfg)
     # Stage 1's BACKGROUND_ENCLOSED sentence promised holes "left unstitched";
     # when the rule looked at a garment, say what it decided. On a COPY —
     # `p` is shared across forks (`Generation.fork`), its warnings are not
@@ -1205,6 +1407,9 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     want_tonal = want_tonal or any(
         str((ov or {}).get("tier", "")).lower() in ("sketch", "streamline")
         for ov in cfg.shape_overrides.values())
+    # The hairline line route reads its lines from the raster too
+    # (`stage6_hairline_lines`; only on a photo lane, flags off -> False).
+    want_tonal = want_tonal or hairline_lines_apply(cfg, gen.classification_class)
     if gen.classification_class == "gradient" or want_tonal:
         source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,
                                      origin_px=(art_cx, art_cy),
@@ -1338,6 +1543,19 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             )
         )
 
+    # Fur regions (`cfg.hair_regions_directional`, default OFF): read where
+    # the pixels are. The raster rides on the result only when the gate
+    # found fur, so a design with none is byte-identical with the flag on.
+    hair_fur_ids = read = None
+    if fur_regions.applies(cfg, gen.classification_class):
+        fur_sp = source_pixels or SourcePixels(
+            rgb=p.rgb, px_per_mm=p.px_per_mm, origin_px=(art_cx, art_cy),
+            gradient_class=False, subject_mask=gen.subject_mask)
+        read = fur_regions.read_regions(regions, fur_sp, cfg)
+        hair_fur_ids = tuple(sorted(s for s, v in read.items() if v["fur"]))
+        if hair_fur_ids and source_pixels is None:
+            source_pixels = fur_sp
+
     return PipelineResult(
         regions=regions,
         palette=palette,
@@ -1366,6 +1584,9 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             list(gen.quant_palette_spools)
             if gen.quant_palette_spools is not None else None
         ),
+        ink_source=InkSource.from_prep(p, (art_cx, art_cy)),
+        hair_fur_ids=hair_fur_ids,
+        hair_fur_read=read,
     )
 
 
@@ -1386,6 +1607,56 @@ def fabric_for(cfg: PipelineConfig) -> Fabric:
     compensation, row spacing and the trim distance alike."""
     base = get_fabric(cfg.fabric_id) if cfg.fabric_id else fabric_for_garment(cfg.garment_id)
     return apply_profile(base, cfg.fabric_profile)
+
+
+# A body counts as inside a border when this share of its area lies within the
+# border's outer outline while at most `_BORDER_OVERLAP_MAX` of it lies on the
+# border itself. Becker reads 1.00 / <= 0.06 for every body and 0.00 for every
+# free-standing letter, so neither number sits near a decision.
+_BORDER_INSIDE_MIN = 0.9
+_BORDER_OVERLAP_MAX = 0.25
+
+
+def _fill_inside_satin_border(regions, cfg, design_class):
+    """`cfg.fill_inside_satin_border`: route a shape inside a satin border FILL.
+
+    A border is a region with holes that is itself satin (by override or by
+    `is_satin_candidate`). Every auto-tier shape that sits within its outer
+    outline, rather than on it, gets `tier = "fill"` -- on a COPY, so the
+    caller's regions are untouched and `plan_stitches` stays re-runnable --
+    which is the field every stage-5/7 reader already honours. Only `auto`
+    shapes move: a per-shape override always wins.
+    """
+    from shapely.prepared import prep
+    from .stage6_satin import is_satin_candidate
+
+    satin_max = satin_ceiling_mm(cfg)
+    auto = [r for r in regions
+            if str(r.meta.get("tier", "auto")).lower() == "auto"]
+    demote: set[str] = set()
+    for b in regions:
+        poly = b.polygon
+        if poly.geom_type != "Polygon" or not poly.interiors:
+            continue
+        outline = Polygon(poly.exterior)
+        inside = prep(outline)
+        bodies = [r for r in auto
+                  if r is not b and r.shape_id not in demote
+                  and inside.intersects(r.polygon)
+                  and r.polygon.intersection(outline).area
+                  >= _BORDER_INSIDE_MIN * r.polygon.area
+                  and r.polygon.intersection(poly).area
+                  <= _BORDER_OVERLAP_MAX * r.polygon.area]
+        if not bodies:
+            continue
+        tier = str(b.meta.get("tier", "auto")).lower()
+        if tier != "satin" and not (tier == "auto" and is_satin_candidate(
+                poly, satin_max, design_class=design_class,
+                per_stroke=cfg.satin_per_stroke)):
+            continue
+        demote.update(r.shape_id for r in bodies)
+    return [replace(r, meta={**r.meta, "tier": "fill"})
+            if r.shape_id in demote else r for r in regions]
 
 
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
@@ -1460,8 +1731,55 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             )
         )
 
+    if cfg.fill_inside_satin_border:
+        stitched_regions = _fill_inside_satin_border(
+            stitched_regions, cfg, result.design_class)
+
+    # Fur regions on the streamline tier (`cfg.hair_regions_directional`,
+    # default OFF; `fur_regions`). Only regions the gate read in
+    # `finish_generation`, and only with the raster that read them. Not where
+    # every fill already sews streamline (photo_subject's auto-route, or the
+    # caller's own `fill_technique`): there a per-shape tier would only move
+    # the shape off the `auto` paths (the satin and border predictions) and
+    # change nothing about its fill (census, owl_kent `classical`).
+    already = (auto_photo_tier(cfg, result.design_class, result.faces_present)
+               or cfg.fill_technique or "tatami").lower() == fur_regions.TIER
+    if (fur_regions.applies(cfg, result.design_class) and not already
+            and getattr(result, "hair_fur_ids", None)
+            and result.source_pixels is not None):
+        stitched_regions = fur_regions.route(stitched_regions, result.hair_fur_ids)
+
+    # The hairline tier's shapes (`cfg.hairline`, default OFF), read ONCE so
+    # stage 5 (the ground under them) and stage 7 (the tier) agree on which
+    # shape is a strand. Off: None, and neither stage looks.
+    # On the line route (`cfg.hairline_from_lines` on a photo lane,
+    # `stage6_hairline_lines`) no shape is a strand: the set is empty and the
+    # strands come from FDoG lines in stage 7, over the untouched fills.
+    hairline = ((HairlineSet() if hairline_lines_apply(cfg, result.design_class)
+                 else hairline_candidates(stitched_regions, cfg,
+                                          ink=getattr(result, "ink_source", None)))
+                if cfg.hairline else None)
+    # `cfg.detail_spokes` (built OFF): a spoked detail mark is thread sewn on
+    # TOP of its host, whose own pixels it still has (stage 3 gave them to
+    # the host, so the host sews solid under it). Stage 5 never sees one:
+    # in the host's layer or after it the clip by earlier colours would
+    # empty it (its whole artwork lies under the host), before it the host's
+    # clip would carve the mark out of the host. It joins `planned` ungrown,
+    # at its host layer's sew index; stage 7 sews it after the host. Nothing
+    # here runs for a plan without a tagged region.
+    marks = [r for r in stitched_regions if r.meta.get("detail_spokes")]
+    if marks:
+        stitched_regions = [r for r in stitched_regions if not r.meta.get("detail_spokes")]
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
-                                                 design_class=result.design_class)
+                                                 design_class=result.design_class,
+                                                 hairline=hairline)
+    if marks:
+        sew_of = {p.layer: p.sew_index for p in planned}
+        last = max(sew_of.values(), default=0)
+        for r in marks:
+            host_layer = r.meta["detail_spokes"].get("host_layer")
+            planned.append(PlannedRegion(region=r, polygon=r.polygon,
+                                         sew_index=sew_of.get(host_layer, last)))
     if dbg:
         debugviz.stage5(dbg, planned, result.design_size_mm, chart_for(cfg))
 
@@ -1522,7 +1840,20 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                                     # `sequence` re-gates on cfg before
                                     # reading it (a re-plan with the flag
                                     # off must ignore a stale carrier).
-                                    palette_spools=result.palette_spools)
+                                    palette_spools=result.palette_spools,
+                                    hairline=hairline,
+                                    # `cfg.small_lettering_skeleton` reads its
+                                    # width gate off the artwork's pixels, as
+                                    # the hairline tier does; off, None.
+                                    ink_source=(getattr(result, "ink_source", None)
+                                                if cfg.small_lettering_skeleton else None),
+                                    # `cfg.open_cored_counters`: the counters
+                                    # stage 3 kept (unstitched, so not in
+                                    # `planned`), for the satin tiers' hold;
+                                    # None with the flag off.
+                                    counter_holes=([r.polygon for r in result.regions
+                                                    if r.meta.get("cored_counter")]
+                                                   if cfg.open_cored_counters else None) or None)
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a
@@ -1557,4 +1888,66 @@ def digitize(
     screen edits, and the plan a machine sews."""
     cfg = cfg or PipelineConfig()
     result = run_stages(image, cfg, segmenter)
-    return result, plan_stitches(result, cfg)
+    plan = plan_stitches(result, cfg)
+    if cfg.tonal_split_layer_cap and effective_split_tonal(cfg, result.design_class):
+        result, plan = _cap_tonal_layers(image, cfg, segmenter, result, plan)
+    if cfg.tonal_split_ceiling and effective_split_tonal(cfg, result.design_class):
+        # Defect 20: the split's parts stack thread past the pucker ceiling.
+        # Plan it whole too and keep whichever puts less fabric past it; a
+        # tie keeps the split, so a design the split does not overload is
+        # byte-identical to the flag being off.
+        whole_cfg = replace(cfg, split_tonal_regions=False)
+        whole = run_stages(image, whole_cfg, segmenter)
+        whole_plan = plan_stitches(whole, whole_cfg)
+        if area_past_ceiling_mm2(plan) > area_past_ceiling_mm2(whole_plan):
+            return whole, whole_plan
+    return result, plan
+
+
+# Re-runs `cfg.tonal_split_layer_cap` may spend. Each is a full generation,
+# so this bounds the flag's cost at (1 + rounds) x one digitize.
+TONAL_CAP_ROUNDS = 2
+
+
+def _cap_tonal_layers(image, cfg, segmenter, result, plan):
+    """Defect 20's per-region cap: keep whole every split parent that sits
+    under fabric past the 3.5-layer ceiling, and only those.
+
+    Each round adds the split plan's over-ceiling cells to
+    `cfg.tonal_split_veto_mm` and re-runs; a round is kept only if it lowers
+    the area past the ceiling, and the loop stops at the first that does
+    not. Nothing past the ceiling -> the inputs come back untouched, which
+    is what makes the flag byte-identical on a design it does not need.
+    """
+    from .layer_density import cells_past_ceiling_mm
+    best = area_past_ceiling_mm2(plan)
+    veto: tuple = tuple(cfg.tonal_split_veto_mm)
+    for _ in range(TONAL_CAP_ROUNDS):
+        hot = [pt for pt in cells_past_ceiling_mm(plan) if pt not in veto]
+        if not hot:
+            break
+        veto = veto + tuple(hot)
+        capped_cfg = replace(cfg, tonal_split_veto_mm=veto)
+        capped = run_stages(image, capped_cfg, segmenter)
+        capped_plan = plan_stitches(capped, capped_cfg)
+        area = area_past_ceiling_mm2(capped_plan)
+        if area >= best:
+            break
+        best, result, plan = area, capped, capped_plan
+    return result, plan
+
+
+def area_past_ceiling_mm2(plan: StitchPlan) -> float:
+    """Fabric area (mm2) whose coverage reaches `machine.COVERAGE_BLOCK_UNITS`.
+
+    Every cell counts, not only `DENSITY_STACKED`'s 25 mm2 patches: that
+    filter yields 0.0 mm2 on every corpus fixture (preflight's own
+    docstring), so it cannot tell a split that stacks from one that does not.
+    """
+    from . import machine, preflight   # preflight imports this module
+    got = preflight._coverage_map(plan)
+    if got is None:
+        return 0.0
+    grid, _origin = got
+    cells = int((grid >= machine.COVERAGE_BLOCK_UNITS).sum())
+    return cells * machine.COVERAGE_CELL_MM ** 2

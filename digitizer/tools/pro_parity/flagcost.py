@@ -61,6 +61,25 @@ OUT = Path(os.environ.get("PRO_PARITY_OUT", "pro_parity_out"))
 # Every flag that is ON by default and landed from 2026-09-01, with the value
 # that turns it off. Dates are the config.py line's, by `git log -S`.
 FLAGS: dict[str, object] = {
+    "subpixel_corner_runs": False,          # 2026-10-20, Kent's flip (item 41)
+    "lettering_columns_small_stem": False,  # 2026-10-20, Kent's flip (item 52)
+    "small_dot_rung": False,                # 2026-10-20, Kent's flip (item 52)
+    "small_dot_rung_lettering": False,      # 2026-10-20, flipped with the rung
+    "clip_keep_pieces": False,              # 2026-10-20, Kent's flip (item 46, after the halo lever)
+    "dissolve_phantom_blends": False,       # 2026-10-20, Kent's flip (item 46, PR #1003)
+    "detail_spokes": False,                 # 2026-10-16, Kent's flip ("ON, tightened")
+    "bean_letter_counter_hold_mm": None,    # 2026-10-15, Kent's flip (0.25)
+    "bean_letter_bay_hold": None,           # 2026-10-15, Kent's flip (0.2)
+    "text_cluster_rescued_ink_link": False,  # 2026-10-15, Fremont's THE at 80 mm
+    "small_text_true_size": False,          # 2026-10-14, Kent's flip
+    "small_text_true_size_min_counter_mm": None,  # 2026-10-15, its 0.45 mm counter guard
+    "small_text_keep_stray_lines": None,    # 2026-10-15, filled True by the switch
+    "lettering_columns_square_ends": False,  # 2026-10-13, Kent's flip
+    "lettering_columns_inside_connectors": False,  # 2026-10-13, Kent's flip
+    "small_glyph_keep": False,              # 2026-10-13, Kent's flip
+    "lettering_columns_icon_guard": False,  # 2026-10-13, Kent's flip
+    "lettering_columns_ink_link": False,    # 2026-10-13, Kent's flip
+    "lettering_columns_skip_blobs": False,  # 2026-10-13, Kent's flip
     "fill_bridge_cut": False,           # 2026-09-19
     "enclosed_by_garment": False,       # 2026-09-10
     "subpixel_edges": False,            # 2026-09-09

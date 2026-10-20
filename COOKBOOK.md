@@ -4,6 +4,12 @@ Handoff doc. Read this before touching code. Full blow-by-blow history lives in
 `.claude/memory/emb-bot-digitizer.md` (moved into the repo 2026-08-14, indexed
 by `.claude/memory/MEMORY.md`) — this file is the self-contained handoff.
 
+**Last refreshed 2026-10-20** over `5a4c019..0eb5e02` on `main` (2026-10-11 →
+10-19, 172 PRs merged; PR #990, merged during the refresh, is folded in). `.claude/hooks/nudge-cookbook-stale.js` nags once 20
+source commits have piled up past the last touch; the foreman then assigns
+ONE named session per refresh (the K3 standing rule under "Branches &
+worktrees"), and every other session puts status in its PR body, not here.
+
 ## What this is
 
 Browser-based embroidery auto-digitizer + guided lettering studio, plus a
@@ -243,6 +249,9 @@ hand-rolling it in JS.
   actually tells you whether a red run is a regression. *(a count lived here
   until 2026-08-21 and had drifted several hundred tests out of date;
   MASTER_SCOPE rule 6 bans counts in prose for exactly this reason)*
+  **A fresh cloud container has NO venv built and its bare `python3` is not
+  3.12** — "What a cloud worker session has" under "Running things" lists
+  what else is missing there (measured 2026-10-20).
 - **Pipeline**: image → **classify** (`stage0_classify.py`) → prep
   (background mask, `stage1_prep.py`) → segment, one of three stages
   depending on class/config: `stage2_quantize.py` (global k-means +
@@ -783,6 +792,25 @@ hand-rolling it in JS.
   (`[data-testid="art-file"]`) and only adds the element once a file comes
   back, handing it to the new panel as `pendingFile`.
 
+- **`pollJob` survives a transient poll failure (PR #981, 2026-10-15).**
+  `app/src/lib/digitizer.js` used to throw out of its loop on the FIRST poll
+  that could not reach the service. A photo at 80 mm is about four minutes
+  polled every 500 ms, so one connection reset or 5xx (a box under load, a
+  service just restarted) abandoned a job the service then finished and
+  cached: `DigitizePanel.runDigitize` landed in its `catch`, cleared the
+  status and the resume mark, and the element kept the PREVIOUS run's
+  stitches and "Since last run" delta — no console error, only an
+  `OFFLINE_DIGITIZE` banner in the DOM. The tell is a re-digitize whose
+  status clears long before the job could have finished (84 s into a 295 s
+  job, in the report) and then shows the old count. Now a fetch rejection,
+  a truncated body or a 5xx retries on the next tick up to
+  `maxTransientFailures` (20, about 10 s), the streak resetting on any clean
+  read; a real job error, any 4xx (a 404 is "no such job") and the overall
+  timeout still surface at once. `digitizer.spec.js` and
+  `DigitizePanel.spec.js` pin it fail-to-pass. The run-emb-bot smoke driver
+  had the same class of bug the next day (PR #982, "Running things"): a
+  poller that accepts a stale result reads as green.
+
 - **`digitizer/` cites its own docs relative to the package root**, i.e.
   bare `docs/dt-classifier-spike-2026-08-02.md` meaning
   `digitizer/docs/...` (8 such references vs 2 spelled-out ones, mostly in
@@ -968,7 +996,7 @@ colours.
 not an array. Destructure it; `.toHaveLength()` on the return value is a
 mistake this repo has already made.
 
-## Manual digitize: editing on the hoop, and cut-outs (2026-09-29 → 2026-10-01, PRs #562, #570 and the cut-outs PR)
+## Manual digitize: editing on the hoop, cut-outs, columns and lines (2026-09-29 → 2026-10-11, PRs #562, #570, the cut-outs PR, #831, #840)
 
 Three things landed in a week and none of them was written down here. Detail
 and measurements: `docs/scope/5-review-manual-editing.md`.
@@ -989,6 +1017,23 @@ edits made ON THE HOOP — node drag, insert/remove point, the Cut out switch.
 Adding or deleting a shape in the side panel, and Delete on the hoop, still
 re-fit.
 
+**Two more things a hand can draw since 2026-10-11 — a column and a line.**
+The side canvas's mode row reads Shape | Hole | Column | Line
+(`ManualPanel.svelte`). **Column mode** (PR #831) draws an open SPINE and gets
+a satin column: in `manualShapes.js` a column is an open spine plus a width
+in mm, `shapeRing` says what ring any shape presents, and a new column is born
+4.0 mm wide in the design it lands in, not at a fit it is about to change. The
+engine sews a region with authored rails as satin between them and its centre
+run along them (2026-10-01). **Line mode** (PR #840) draws an open path and
+sews a RUN along it: `runAlongPath` in `src/digitize.js` sews a region with an
+authored path as that run and nothing else of it. The popover converts a line
+into a column and back (run ↔ column swaps fields, never the spine), shows a
+column's width in mm and what it sews at, warns past 6.5 mm, and shows a
+line's passes and stitch length; `fieldNodeEdit` edits an open spine like a
+shape and converts through the re-fit rule above. Both are proven end to end
+in `app/e2e` (a drawn line sews thin, and run → column → run gives the same
+line back). Detail and measurements: `docs/scope/5-review-manual-editing.md`.
+
 **A hole is a shape marked `cutOut: true`** (spec
 `docs/superpowers/specs/2026-09-30-manual-digitizing-gaps-design.md` §5). It
 sews nothing and cuts the smallest shape that contains it.
@@ -1007,16 +1052,20 @@ sews nothing and cuts the smallest shape that contains it.
 - On the side canvas, **Hole mode's click always draws**; Shape mode's click
   inside a finished shape selects it. That asymmetry is deliberate — a hole
   starts inside a shape.
-- **A cut-out is clear of the needle, not yet of thread (2026-10-03).** The
+- **A cut-out is clear of the needle (2026-10-03), and of thread in the manual
+  lane since 2026-10-07 (shapes and image since 2026-10-08).** Without `fillColumns` the
   JS fill goes from one span of a split row straight to the next, so every
   row lays a float (or, under 4 mm, a stitch) across the hole. The Studio's
   field shows it only with its **Jumps** toggle on, which is off by default.
-  The cure is built OFF: `buildQualityDesign({ fillColumns: true })` sews a forked FILL
+  The cure, OFF by engine default: `buildQualityDesign({ fillColumns: true })` sews a forked FILL
   shape column by column (`fill.js` `opts.columns`, a port of the Python
   `_columns`) and goes ROUND a hole instead of crossing it. A satin shape is
-  untouched by it, and so is a fill with no hole and no inside corner. None
-  of `generate.js`'s three callers passes it; the flip is Kent's (MASTER_SCOPE
-  defect 52). It has not been sewn. Five things to know before touching it:
+  untouched by it, and so is a fill with no hole and no inside corner. Of
+  `generate.js`'s three callers all pass it: MANUAL since 2026-10-07
+  (`generate.spec.js` pins it with a cut-out), basic shapes and the image
+  lane since 2026-10-08 (pinned with a star's notches and a traced counter;
+  the image lane pays +10.4% stitches on real logos, Kent's call with that
+  price measured — `tools/fill-columns-lanes.mjs`). It has not been sewn. Eight things to know before touching it:
   - Every move is asked what ground it runs over (`groundUnder`): on the
     ground it may float, on the rim it is sewn, deeper than `openTol` into
     open ground it must go round or be cut.
@@ -1039,6 +1088,35 @@ sews nothing and cuts the smallest shape that contains it.
     10 px per mm): the outline the fill is sewn to closes one to a slit, and
     no sweep had one until an audit drew it (2026-10-03, "a move of no
     length").
+  - A pass has two ends and is told both: where the thread is (`from`) and,
+    when the run after it begins at a point of its own, where it goes next
+    (`to`). A pass the plain walk sews is that kind, and the builder asks
+    where it begins with a function of its own, `fill.plainStart`. Do NOT
+    ask a question through `tatamiFill`. It was first an option that made
+    `tatamiFill` answer null and had the pass built before its turn, and
+    three tools wrap `tatamiFill` to watch the passes: each took the null
+    for a pass, or the order of the calls for the order of the sewing. Two
+    were patched; a review found the third throwing
+    (`tools/sub-unit-stitch-census.mjs`, 2026-10-05). Before changing what
+    `tatamiFill` returns or when it is called, grep `tatamiFill = ` in
+    `tools/` and `test/`, and run all of `node --test`, not the two files
+    you are in.
+  - A walk that comes out cut is walked again from the other first columns
+    (`sewFrom`, eight at most) and the better walk is kept: fewer cuts, and
+    no more threads of fewer than four penetrations between two of them. So
+    before touching the walk, count the cuts by WHERE they are: inside a
+    pass, on the float into it, on the float out of it, and what kind of run
+    is on either side. The most of any kind left is not the walk's at all:
+    the float from an EDGE RUN into a plain walk (2026-10-04, "where a pass
+    ends").
+  - Count more than cuts, and sweep shapes the last sweep did not have. By
+    cuts alone a walk saved a cut by stranding a row, one stitch cut to and
+    cut from, and 56,120 designs of combs, badges and letters showed none:
+    the re-measure's mazes did. The same re-measure found a comb of 100
+    teeth with 615 cuts where no option has 1, its passes walked nine times
+    for nothing (5.0 s → 18.5 s). Mazes, spirals and combs of 24 teeth and
+    more belong in the sweep, and so do a pass's short threads, the thread
+    it sews, and the time it takes.
 
   To SEE thread rather than penetrations, run
   `node tools/fill-columns-sheet.mjs`: it draws four manual-lane shapes off
@@ -1053,7 +1131,7 @@ sews nothing and cuts the smallest shape that contains it.
   the flag; the flip is Kent's ("Waiting on Kent" 23).
   `node tools/lock-stitch-census.mjs` prints what a lock costs and how long
   its legs really are, on every shipped font and eleven shapes.
-- **Cutting long floats is built OFF for the shape builder (2026-10-04).**
+- **Cutting long floats is built OFF by default for the shape builder (2026-10-04).**
   A DST has no cut. `dst.js` lays three jump records for a `trim`, and also
   for any float over 24.2 mm, so a machine cuts where the stream has only a
   jump, and `ties` lays no lock there. `cutFloats: true` on
@@ -1067,8 +1145,12 @@ sews nothing and cuts the smallest shape that contains it.
   the FILE: `node tools/file-cut-census.mjs` writes every design with the
   three writers, reads each back with its own readers and says what every
   run of three jumps was; `--against <src>` says whether two engines differ
-  by cuts put in and nothing else. No Studio caller passes the flag; the
-  flip is Kent's ("Waiting on Kent" 28) and belongs after `fillColumns`.
+  by cuts put in and nothing else. The MANUAL and basic-shape branches of
+  `generate.js` pass it (2026-10-08, after `fillColumns`; `generate.spec.js`
+  pins it on a plain manual square, the default circle and a 12-point star;
+  `node tools/cut-floats-shapes-sheet.mjs` prints the per-family preset
+  table); the image lane does not ("Waiting on Kent" 28,
+  `docs/cut-floats-manual-2026-10-08.md`, `docs/cut-floats-shapes-2026-10-08.md`).
 - **Row stagger is built OFF for the shape builder (2026-10-03).**
   `fillStagger: true` on `buildQualityDesign` puts the cover fill's needle
   holes on one grid shifted row by row (`tatamiFill`'s `stagger`, `minStitch`
@@ -1095,19 +1177,20 @@ sews nothing and cuts the smallest shape that contains it.
   skeleton pixels from a node to the next node, under a guard of one step
   per grid cell. Three pixels that all touch are no node; a walk went round
   them until the guard ran out, and the satin emitter sewed what came back
-  (a 20 mm star off the shape tool: 48,645 stitches). `circling()` ends such
-  a walk, and a walk that ended by itself is untouched. Three things to know
-  before touching it:
+  (a 20 mm star off the shape tool: 48,645 stitches). A rule ended such a
+  walk and left every other one alone; it was replaced on 10-04 by one pixel
+  to one edge (next bullet), under which no walk can go round. Three things
+  to know before touching it:
   - It reached every lane that calls `medialSatin`, not stars: thin
     round-ended bars and 273 of 612 image-lane designs moved too. Sweep
     every caller before saying which designs a change moves.
-  - The walks still step onto pixels another edge has: a median 72 layings
-    too many for every 100 skeleton pixels on the shape tool's stars, and
-    "rings" are found in shapes with no hole. That,
-    and a stitch as long as the star or the bar, are MASTER_SCOPE defect
-    57, untouched. The Python port's cure for the first is a consumed set.
-    The knot had also been COVERING small round shapes: a 2 mm one now sews
-    four stitches, because such a ring is its only edge.
+  - The walks then still stepped onto pixels another edge had: a median 72
+    layings too many for every 100 skeleton pixels on the shape tool's
+    stars, and "rings" were found in shapes with no hole. Cured 10-04
+    (next bullet). A stitch as long as the star is still MASTER_SCOPE
+    defect 57.
+    The knot had also been COVERING small round shapes: a 2 mm one sewed
+    four stitches after it went.
   - `node tools/satin-walk-census.mjs` builds what the shape tool builds and
     says which designs sew out of line with their neighbours in size;
     `--against <tree>` says which designs differ from another engine's,
@@ -1131,8 +1214,11 @@ sews nothing and cuts the smallest shape that contains it.
   sets of designs and says what made each; `--on dedupeHoles=true --off
   dedupeHoles=true` runs it with the flag, and `--against <other src>` says
   whether two engines' streams differ only by such stitches. No Studio
-  caller passes the flag; the flip is Kent's ("Waiting on Kent" 25). The
-  lettering builder has no such rule. `docs/sub-unit-stitches-2026-10-03.md`.
+  caller passes the flag; the flip is Kent's ("Waiting on Kent" 25). Since
+  PR #990 (2026-10-20) `buildLetteringDesign` takes `dedupeHoles` and
+  `underlayDirection` too, both built OFF there (MASTER_SCOPE 25 + 40;
+  `test/text-lane-flags.test.js`, `tools/text-lane-flags-sheet.mjs`).
+  `docs/sub-unit-stitches-2026-10-03.md`.
 - **A ring may arrive CLOSED, and three readers still take its points
   (2026-10-03).** `[p0, ..., pn, p0]`: the first point said again at the end.
   `offsetRing` moves the corners said ONCE (`distinctCorners`) and
@@ -1153,6 +1239,41 @@ sews nothing and cuts the smallest shape that contains it.
   prints the wedge, closed against open, what each lane hands over, and the
   near repeat; `--hash` and `--compare` are the before and after of an engine
   change on rings that say no point twice.
+- **The browser satin's skeleton, its walk and its ends were put right
+  together (built 2026-10-04, on `main` from the 2026-10-11 port), and they
+  depend on each other.** `7bb83e9b` (2026-10-08) had put the first of the
+  three on `main` alone, with its own run-out (`extendToOutline`); the port
+  replaced that with this lane's. Three things in
+  `src/satin.js`:
+  - `thin` never deletes a pixel on the edge of its grid, and `ringToSpines`
+    laid shapes against the grid's top and left, so a shape's top row and
+    left column were its skeleton (a bar's was an L, and its last cross ran
+    the length of the bar). It leaves one cell there now. Rasterize nothing
+    for `thin` without an empty cell on every side.
+  - `skeletonEdges` is one pixel to one edge, a port of the Python tracer's
+    walk (`_skeleton_edges`). The wrong skeleton had been HIDING the old
+    walk's faults: with a true one, a C drawn by hand and set to satin came
+    out with its mouth sewn solid (447 stitches to 6,047) until the walk
+    was ported. Do not change one without the other's census.
+  - A free end of a spine is run on to the outline (`runOut` in
+    `railSatinFromSpine`), because a centre line stops half the stroke's
+    width short of its end; and the station that lands ON the outline
+    takes the widths of the one before it, because a ray cast from there
+    can leave through the stroke's end and cross a concavity.
+  It moves every satin shape of the browser lanes (the shape tool, drawn
+  shapes, the image lane's thin shapes) and no fill. `spineToRails` shares
+  the grid and the walk and has no run-out. What it leaves is MASTER_SCOPE
+  defect 57: a square or a dot up to 6 mm has no stroke and takes
+  `satinColumn`, which starts 12% in from each end; a bar's centre-run
+  underlay ends at the far end from where its column starts; a star's
+  centre. To measure a satin change, `tools/satin-walk-census.mjs`:
+  `--kind arc --satin` (hand-drawn curved strokes on the user's satin, the
+  census that caught the C), `--cover` (the share of each drawn shape under
+  thread, how far outside it a needle lands, thread over open ground),
+  `--images` (eight corpus logos shape by shape, a shape's OWN thread apart
+  from any thread: a ground fill runs under small shapes and hides what the
+  satin lost), `--dst` (the files' bytes), `--sheet` (designs before and
+  after at one scale).
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
@@ -1245,6 +1366,56 @@ here, not an anomaly), most sitting on already-merged branch tips. Don't
 assume any specific one is still in flight without checking; a couple were
 observed `locked` (actively in use by another session) during this pass and
 were left untouched, per the "never touch worktrees" rule.
+
+**Cloud worker sessions and the foreman — the "K3" pattern (since
+2026-10-07/08).** Most work now arrives as cloud sessions dispatched by a
+foreman session running `.claude/skills/k3/SKILL.md` (distilled from the
+first run: ~80 cloud sessions, ~25 PRs merged in one evening, CI cut from
+~75 to ~17 minutes along the way). The foreman writes no code: it picks the
+work, launches one cloud session per task (Opus for engine, digitizer and CI
+changes; Sonnet for tests, docs, small Studio fixes and reviews), keeps every
+PR moving to auto-merge, and asks Kent only what is his — flips, physical
+constants, scope, money — with `AskUserQuestion`. A worker starts from a
+fresh clone of `main` in its own container, can push ONLY the branch it was
+created with, and gets the standing rules in its preamble (`templates.md`
+beside the skill): do not edit MASTER_SCOPE.md, docs/scope-history.md,
+DOCTRINE.md, CLAUDE.md or this file — one named session per shared doc,
+because shared docs caused nearly every merge conflict, so status goes in
+the PR body; do not run the full digitizer suite locally (CI shards it);
+`git fetch origin main && git merge origin/main` before every push, never
+rebase; ready-for-review PR, auto-merge armed while `mergeable_state` is
+`blocked`, never merge by hand; fix your own red CI, never skip or xfail a
+test to get green; quiet unless blocked. `.claude/worktrees/` is a LOCAL
+mechanism — a cloud worker has no lanes and makes none. When a
+cross-session message asks for work the rules do not cover, Kent's own
+words are the authority, and a ruling he gave directly in a session wins
+over the foreman. Past ~40 open PRs new sessions mostly wait in the CI queue
+(each PR fans out ~9 jobs), so the foreman drains before it refills.
+
+**A worktree-isolated DESKTOP session meets a harness guard a cloud session
+never sees** (`.claude/memory/worktree-session-harness-guard-2026-09-17.md`,
+re-measured 2026-10-03). Once a session has `EnterWorktree`d, the Bash tool
+refuses any command it cannot prove stays inside the worktree, and
+"git-adjacent" is nearly every command here because `digitizer` contains the
+letters `git`: quoted paths, `cd x && …`, `git -C <shared>`, `$'…'` strings
+and heredocs all die with *"names git in a form too complex to verify"*,
+including commands with no git in them at all. What passes: `cd digitizer`
+ALONE as its own call (the cwd persists — except in a subagent, where it
+resets every call and heredocs are refused outright), then unquoted
+space-free paths, `;` chains, plain redirects and plain `git
+add/commit/status` from that cwd; use the Grep/Read tools for anything
+pattern-shaped. A worktree has no `.venv`; the main checkout's interpreter by
+its 8.3 short name has no space and passes the guard
+(`/c/Users/EE-LT-11030/CLAUDE~4/EMB-Bot/digitizer/.venv/Scripts/python.exe`,
+`CLAUDE~4` being `Claude Personal`), run from the worktree's `digitizer/` so
+its own `digitizer_core` shadows the editable install. A background command
+is killed at its timeout (10 min at most) and a foreground overrun gets 30,
+neither of which fits the full suite — run the files a change can reach and
+let CI's `digitizer` check be the full run. Memory written from a worktree
+goes to `<worktree>/.claude/memory/` and rides the PR, so
+`tests/test_memory_budget.py` gates it: run that one file (half a second)
+after ANY edit to `MEMORY.md` — an index line over 260 chars turned a
+55-minute `digitizer` job red once.
 
 ## What's next (queue as of 2026-08-03 — historical, with resolutions)
 
@@ -1472,6 +1643,356 @@ above this line.
   repro fixture now disable the guards explicitly (`repro_cfg` in
   `tests/test_enclosed_background.py`).
 
+## How-to: sharded CI, reading a golden mismatch, per-lane fill options, and the flags (2026-10-07 → 2026-10-20)
+
+Practical recipes only. What is built, ON or measured lives in MASTER_SCOPE;
+the reasoning lives in the code comments named below. Refreshed 2026-10-20
+over `5a4c019..0eb5e02` (2026-10-11 → 10-19).
+
+### Sharded digitizer CI (PR #669; wire scope PR #791; durations PR #838)
+
+- **Shape.** `digitizer shard 1/6 … 6/6` (matrix job `digitizer-shard`,
+  `timeout-minutes: 45`, `fail-fast: false` so a red PR shows every failure at
+  once) each run `pytest -n auto --dist loadgroup --no-loadscope-reorder` on
+  their own four-core runner; the required check named `digitizer` is an
+  aggregator that `needs` them, runs `if: always()`, and goes green only if
+  every shard succeeded AND `digitizer/tools/ci_shard_check.py` proves the
+  shards' manifests are one per shard, identical collected lists, pairwise
+  disjoint selections, together the whole suite. A red shard, a missing shard
+  or a dropped test all fail it. **A cancelled shard set ends the run
+  `cancelled`, not red** (a superseded push under cancel-in-progress
+  force-cancels the whole run), so a `digitizer` red whose shards all read
+  `cancelled` is a superseded run, not a failure — check the head SHA before
+  acting on it (`.claude/skills/k3/SKILL.md` §5).
+- **Wire scope (Kent's call 2026-10-08, PR #791).** A PR that touches neither
+  `digitizer/` nor `.github/` cannot change what the pipeline tests exercise,
+  so on such a PR shard 1 runs only the "wire" tests — the files that read
+  OUTSIDE `digitizer/` (the Studio's JS, `src/`, the fonts, `docs/`), printed
+  by `python -m tools.ci_wire_tests` from `digitizer/`, whose static rule
+  classifies a new test the moment it lands (20 files and ~3.6 of 166
+  test-minutes when written; 47 files on 2026-10-20) — and shards 2–6 write a marker and stop; `main`
+  still runs the full suite on every merge. The aggregator requires all six
+  shards to have reached the same decision. Motive, measured: 55 of the 100
+  PRs before it touched neither path and each paid ~48 runner-minutes.
+  **A docs-only or Studio-only PR therefore proves nothing about the
+  digitizer**; its full run is the merge to `main`, which is where PR #982's
+  skill-only diff found the Fremont md5 red (next section).
+- **Assignment.** `digitizer/tests/_ci_shard.py` (hooked from `conftest.py`)
+  gives whole test FILES to shards, longest first onto the lightest shard,
+  weighted by `digitizer/tests/.shard_durations.json` (per-file seconds).
+  Whole files, so module-scoped fixtures are computed once. A file missing
+  from the JSON gets the median, so a new test file needs no refresh — **but
+  add a new LONG file by hand** (`"tests/test_foo.py": <seconds>`), as every
+  lettering lane of 2026-10-13/15 did (`test_column_ends`,
+  `test_bean_counter_hold` at 80 s, `test_fremont_small_lettering` and
+  `test_fremont_triage` at 600 s), so the median does not drop a ten-minute
+  file onto an already-full shard. Inside a shard `tests/_xdist_groups.py`
+  sends tests that share a module fixture or a memoized pipeline run to ONE
+  worker and spreads the rest heaviest first; with the one-thread setting
+  below, shard 1/6 went 389 s → 248 s.
+- **Match CI's environment when you reproduce a shard.** CI sets
+  `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, `MKL_NUM_THREADS` and
+  `OPENCV_FOR_THREADS_NUM` to `1` (one native thread per xdist worker; left
+  alone, OpenCV and OpenBLAS start four threads PER WORKER and sixteen fight
+  over four cores — 389 s → 357 s from this alone, and no pinned result
+  depends on the thread count). Run one shard locally (inert unless the
+  variable is set; a plain `pytest` still runs everything):
+
+  ```bash
+  cd digitizer
+  OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENCV_FOR_THREADS_NUM=1 \
+  DIGITIZER_SHARD=2/6 DIGITIZER_SHARD_MANIFEST=/tmp/m2.json \
+    .venv/bin/python -m pytest tests/ -q -n auto --dist loadgroup --no-loadscope-reorder \
+    > log 2>&1; echo "EXIT=$?" >> log
+  ```
+
+  Add CI's two `--deselect` node IDs (workflow file) to reproduce its exact
+  selection. Run the aggregator's check on a folder of manifests with
+  `python digitizer/tools/ci_shard_check.py <dir>`.
+- **Changing the shard count** means editing the matrix list, the job name and
+  the `DIGITIZER_SHARD: k/6` denominator together — **and a cloud session's
+  token cannot push it.** A push that touches `.github/workflows/` is refused
+  for the token a cloud worker holds (PR #987, 2026-10-19, which dropped its
+  workflow edit and recorded the junit properties from the test instead). The
+  2026-10-08 workflow commits came from a session that could; a workflow
+  change goes through Kent or a session on his box.
+- **Refresh `.shard_durations.json`** when one shard keeps running far longer
+  than the rest (stale numbers cost balance, never coverage). Download the
+  `digitizer-shard-*` artifacts of one green run (each holds `junit.xml` and
+  `shard-manifest.json`) and:
+
+  ```bash
+  cd digitizer
+  python tools/ci_shard_durations.py shard-1/junit.xml shard-2/junit.xml … shard-6/junit.xml
+  ```
+
+  It rewrites the JSON in place; commit it. Relative weights are what matter,
+  so a local `--junitxml` also works. **Last full refresh: PR #838,
+  2026-10-11**, from `main` run 38184616285 (279 files, 202.9 test-minutes;
+  41 files had been sitting on the median). Its own measured result is the
+  honest budget: test-minutes balance to zero by construction, wall time did
+  not — the shard spread went 4.7 → 3.8 min and the slowest shard 12.0 →
+  11.5, because a shard's few long files leave a tail no refresh removes. If a
+  tighter spread matters, look at the longest files in the JSON, not at
+  another refresh.
+- **Trap.** The plugin pops `DIGITIZER_SHARD`/`DIGITIZER_SHARD_MANIFEST` from
+  the environment when it runs, so a child `pytest` (e.g. `test_doc_claims.py`
+  collects in a subprocess) sees the whole suite. Don't re-add them to a child.
+
+### Reading a golden or md5 mismatch (2026-10-19)
+
+A byte-identical pin can go red on a tree whose engine did not change, and
+FOUR wrong stories in a row were told about one such red before the right
+variable was recorded (`.claude/memory/detail-spokes-on-2026-10-18.md`;
+PRs #980, #983, #987, and the 2026-10-20 cap). Read a mismatch in this order:
+
+1. **Which IPP path read it.** A stitch stream's md5 differs by the code path
+   Intel IPP — bundled inside the OpenCV wheel — dispatches to on the host:
+   not by platform, not by test order, and not by numpy's SIMD, OpenCV's own
+   kernels or OpenBLAS's core type. Measured 2026-10-20 on an AVX-512 Sapphire
+   Rapids Xeon with CI's wheels, each candidate forced down in turn: numpy
+   (`NPY_DISABLE_CPU_FEATURES`, X86_V4 / ICL / SPR off), OpenCV's AVX512-SKX
+   kernels (`OPENCV_CPU_DISABLE=AVX512-SKX`) and OpenBLAS (`OPENBLAS_CORETYPE`
+   HASWELL / SKYLAKEX) all left `027d14e6`; `OPENCV_IPP=avx2` read `75f44f90`
+   (Kent's Ryzen 7 4700U, CI's EPYC 7763) and `OPENCV_IPP=avx512` read
+   `050452` — a Cascade Lake Xeon's red, byte-for-byte — because IPP's AVX-512
+   path sub-dispatches on the newer AVX-512 extensions, so Zen 4 (CI's EPYC
+   9V45 / 9V74) and Sapphire Rapids agree and Cascade Lake does not; `sse42`
+   and `disabled` read two more values nobody has. **So `tests/conftest.py`
+   caps the TEST environment at `OPENCV_IPP=avx2`** (Kent's call 2026-10-20;
+   OpenCV reads it lazily, on IPP's first use, so import order cannot defeat
+   it) and every host reads one value. The shipped service is not capped.
+   PR #987's two-value pin keyed on numpy's AVX512F was keyed on a bystander,
+   and its earlier env pin "did not take" because `OPENCV_CPU_DISABLE` wants
+   OpenCV's hyphenated names (`AVX512-SKX`, not `AVX512_SKX`; an unknown name
+   is ignored with a printed warning) and numpy 2.5 refuses `AVX512F` outright
+   (its groups are `X86_V3 X86_V4 AVX512_ICL AVX512_SPR`) — and neither was
+   the mover. **A switch proves a library is the mover only when the library
+   confirms it took**: `cv2.ipp.getIppVersion()` names the path (`(l9)` is
+   AVX2), `cv2.getCPUFeaturesLine()` marks a disabled feature with `?`, and
+   numpy's `__cpu_features__` drops what it disabled.
+   `tests/test_detail_spokes.py` holds the pattern: ONE md5 beside the counts,
+   `test_test_environment_caps_ipp_at_avx2` as the tripwire that separates
+   "the cap did not take" from "the engine changed", and junit properties
+   (`record_property`) naming the CPU model, the hardware's avx512 flags,
+   numpy's enabled SIMD, OpenCV's feature line and IPP's path on every run,
+   green or red. **Before theorising about a stream red, read those
+   properties** (or print `_host_cpu()` from that file locally). Four
+   requests through one service process returned byte-identical designs: it
+   is not a product defect. Pin a new stream the same way — one value, no
+   tolerance, the host named in the assertion message.
+2. **Is it one of CI's two deselects.** CI deselects TWO golden node IDs since
+   2026-10-08 (the `photo/enthusiast_logo.png` rows of
+   `test_flat_lane_byte_identical` and `test_stage2_photo_segment`); the towel
+   `test_pushcomp` row was re-pinned that day and its deselect removed (three
+   machines, AVX-512 and forced-AVX2 dispatch alike, compute the tuple in
+   `GOLDEN_FLAG_OFF`). PR #987's hypothesis that the two remaining rows were
+   host SIMD too was MEASURED FALSE on 2026-10-20 (PR #1006): a full run with
+   IPP capped at Kent's path on an AVX-512 Xeon still failed exactly those two,
+   so their key is engine-stale as the workflow says, and a re-capture, not a
+   SIMD story, is what revives them. The workflow is untouched.
+3. **Is it a pin a flip moved.** A flip re-pins the md5s of every test whose
+   fixture it reaches, and the flip PR says which (PR #977 moved two
+   `test_small_text_counter_guard` pins and gave the reason). A pin that moved
+   with no such PR is a regression.
+4. **Only then re-capture.** `tools/recapture_flat_lane_key.py` is still the
+   only sanctioned way to move a flat-lane golden, and the one-minute
+   `workflow_dispatch` recipe in failure class 1 under "Running things" still
+   applies — but a cloud token cannot push that workflow either (above).
+
+### Per-lane fill options in `app/src/lib/generate.js`
+
+`generateElement` passes engine options per lane; the engine defaults stay
+OFF, so a lane opts in by passing the key to `EMB.buildQualityDesign`:
+
+- **`fillColumns: true`** — a fill is sewn column by column so no thread
+  crosses a cut-out or notch. **All three lanes pass it since 2026-10-08**
+  (manual since 10-07; basic shapes and the image lane on 10-08, the image
+  lane at +10.4% stitches on real logos, Kent's call with that price
+  measured — `tools/fill-columns-lanes.mjs`). This bullet said "manual lane
+  only" for ten days after that. Test: `app/src/lib/generate.spec.js`.
+- **`cutFloats: true`** (`src/digitize.js`, default off) — a float the DST
+  writer would lay as three or more jump records becomes a real `trim` in the
+  stream (and so gets ties). **The manual and basic-shape lanes pass it
+  (2026-10-08, sequenced after `fillColumns`); the image lane does not**
+  (MASTER_SCOPE "Waiting on Kent" 28). `node tools/cut-floats-shapes-sheet.mjs`
+  prints the per-family preset table.
+- `ties`, `fillStagger`, `dedupeHoles` — no lane passes them ("Waiting on
+  Kent" 23 / 24 / 25; the cut-outs section above has each one's rule and
+  census tool).
+- The "Design file" (imported) lane reads `displayResult(element)` from
+  `digitizer.js` rather than `element.result`.
+
+### Digitizer flags: ON since 2026-10-11, and built OFF (all `PipelineConfig` fields)
+
+Check the live default before relying on this list —
+`grep -n "<flag>: " digitizer/digitizer_core/config.py` — and read the
+comment block above it, which carries the measurement and the flip in Kent's
+words. **Three registries travel with every flip, and a flip PR touches all
+three:** `tests/conftest.py`'s `PRE_FLIP` (the pre-flip value, so a test
+pricing one OTHER flag measures against the engine its arms were made on —
+the dict's comments are the flip log), `tools/pro_parity/flagcost.py`'s
+`FLAGS`, and `tests/test_off_flags_smoke.py`, which enumerates every bool
+field that defaults False and runs the pipeline with it True — a flag leaves
+that list by itself when it flips. `tools/off_flags_sheet.py` draws the OFF
+set.
+
+**Flipped ON since 2026-10-11 (Kent's calls, in order):**
+
+- `two_tone_snap` — ON 2026-10-11 (PR #821; Kent's approval 10-08, "fix the
+  roof-line bug, then flip"; defect 58): a black-and-white raster is
+  thresholded to its two inks before any region exists.
+- `clip_parent_keeps_ink` — ON 2026-10-12 (PR #856, Kent 10-12; half of
+  defect 61): after stage 5's clip the shape keeps the piece carrying its
+  INK, not the largest. `clip_keep_pieces` (PR #853) stays OFF.
+- `lettering_columns` — ON 2026-10-12 (PR #863, Kent's ruling 10-12): the
+  Column lane sews lettering as columns. Its guards followed on 10-13:
+  `lettering_columns_skip_blobs` + `lettering_columns_ink_link` (PR #890),
+  `lettering_columns_icon_guard` (PR #899), `lettering_columns_square_ends` +
+  `lettering_columns_inside_connectors` (PR #922). Still OFF in the family:
+  `lettering_columns_small_stem` (PR #896), `lettering_columns_fold_cuts` and
+  `lettering_words` (below).
+- `small_glyph_keep` — ON 2026-10-13 (PR #908; Kent, option A): stage 4 keeps
+  a rescued small glyph's counters and its ink under an earlier colour.
+- `small_text_true_size` — ON 2026-10-14 (PR #955; Kent, WoK 56 option A):
+  small lettering is re-traced at its true size and thin letters sew as bean
+  centrelines. **It is a SWITCH, not a flag**: ON, it fills seven other
+  fields from `config.SMALL_TEXT_TRUE_SIZE` (`small_text_keep_stray_lines`
+  among them — PR #960's THE fix, live only because the switch fills it), and
+  `None` on one of the seven no longer means off. Build a fresh
+  `PipelineConfig(..., small_text_true_size=False)` for the OFF engine;
+  `dataclasses.replace` keeps the filled values. Its counter guard is
+  `SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM` 0.45 mm × 40 / `thread_wt`, an unsewn
+  gate-1 candidate 0.011 mm above the measured loss
+  (`.claude/memory/small-text-true-size-guard-2026-10-15.md`). Measure small
+  text on `tools/fremont_triage.run_arm` (the Studio's own `/digitize`
+  request), not on `run_stages`: they cluster differently.
+- `text_cluster_rescued_ink_link` — ON from its first commit, 2026-10-15 (PR
+  #976, on Kent's directive to clear his five red circles; four of the five
+  were a stale service on his box): the text tagger's RESCUED round links on
+  one ink (CIEDE2000 20 on the job's chart), as round 2 has since 09-03, so
+  Fremont's rescued E at 80 mm no longer joins the tan date. Round-1
+  partitions identical on 12 of 17 corpus designs; the function's own default
+  stays False and the pipeline passes the config's value.
+- `bean_letter_counter_hold_mm` = 0.25 and `bean_letter_bay_hold` = 0.2 — ON
+  2026-10-15 (PR #977; Kent's "flip both holds ON" over stitching out first):
+  needle points held off a small counter (#952) and stations off an open bay
+  (#967). Plain defaults, deliberately not switch values, so an explicit
+  `None` is OFF everywhere and the sew-out card tools can pin it. Only
+  designs with bean letters move, by a few stitches each; both values are
+  gate-1 candidates the cards settle.
+- `detail_spokes` — built OFF 2026-10-15 (PR #980), ON 2026-10-16 "tightened"
+  (PR #983, merged 10-18): a sub-floor detail of another colour enclosed by
+  one shape with ≥ `MIN_TIPS` 4 tips sews as one spoked run on top of its
+  host (Fremont's Wisconsin star); the spoke floor is
+  `machine.DETAIL_SPOKE_MIN_MM` 1.45 × width / 92.6. Its Fremont OFF pin is
+  the SIMD-keyed md5 above.
+- Earlier than the range but corrected here, because this file had them
+  wrong: `blend_fallback_underlay` ON since 2026-10-07 (it said False);
+  `satin_slab_serifs` ON since 2026-10-08, together with
+  `satin_free_end_square` (it said OFF); `satin_join_square` True, capped by
+  `_STRAIGHT_MAX_MOVE_HALVES = 0.6` (a bend is not a corner);
+  `letterform_priors_k` 0.75.
+- Browser engine, same fortnight: `underlayDirection` ON (PR #836, Kent
+  10-11) and `satinZigzag` ON under a width cap (PRs #904 / #930, Kent
+  10-13 / 10-14) — "Architecture map", `satin.js` / `satinplay.js`.
+
+**Built OFF since 2026-10-11 and waiting on Kent (the ones a session will
+meet):**
+
+- `open_cored_counters` (PR #988, 2026-10-19): a small counter round a
+  page-coloured core stays a hole of its letter (golden_tee's O at 4–5 mm).
+  Opens the O only a little and makes five false positives on the phone
+  screenshot; the PR's own read is "stays OFF until the satin tiers hold off
+  the hole and a guard keeps it off non-lettering detail".
+- `lettering_columns_fold_cuts` (built OFF 2026-10-13, PRs #887 / #893; cures
+  PR #972, 10-15; sewn judge + coverage guard PR #986, 10-19): cuts a
+  lowercase shoulder where a column folds. FLIP-READY by its own numbers (no
+  glyph sews worse ON at 50 / 80 / 120 mm; lowercase folds 5 → 0 at 80 mm)
+  **and costs 2–3.4× the digitize time on lowercase**, because the judge sews
+  every candidate cut. Kent's call; the instrument is `tools/lowercase_angle.py`
+  plus `outline_cut.sewn_knots`.
+- `lettering_words` (built OFF 2026-10-08): the one-word-model lettering
+  tagger. MASTER_SCOPE 57 says NOT ripe — a flip would SHRINK the Column lane
+  on golden_tee (9 → 6 shapes); judge any flip with
+  `tools/script_lowercase_census.py`.
+- `thread_wt` (40, a PROFILE, not a flag) and the `hairline` tier (PR #848,
+  2026-10-11): thread weight moves satin spacing and the hairline tier's
+  admission and run width — deliberately not the minimum stitch, fill row
+  spacing or the stage-4 area floor; 60 and 75 are unsewn candidates.
+  `hairline` sews a one-thread stroke as one run instead of the three-pass
+  bean; every `hairline_*` sibling (`_over_ground`, `_from_lines`,
+  `_lines_strand_test`, `_lines_strand_mass`, `_lines_chain`,
+  `_lines_gradient`, `_lines_logo_refusal`, `_coverage_guard`) is OFF and
+  most are measured negatives — read `config.py` before building a ninth.
+- `forbid_gap_mm` (PR #846, 10-11; `None` is OFF): closes sub-threshold gaps
+  between colours (defect 47, Law 26); 0.8 is the documented candidate and
+  waits on card block 6.
+- `small_print_floor` (PRs #873 / #878 / #880, 10-12/13): no Column-lane
+  stitch over a letter counter; reaches the run and fill tiers.
+- Also OFF: `small_lettering_skeleton` (#913, #936),
+  `small_dot_rung_lettering` (#939, #975), `small_letter_ties` (#956),
+  `ink_ground_ring_mm` (#958), `bean_letter_passes` (#950),
+  `edge_cap_bean_pitch_mm` (#969), `preflight_glyph_metric` (#945),
+  `fill_technique="fur"` (#920, API-only), `hair_regions_directional` (#925, a
+  measured negative), `subpixel_corner_runs`, `bg_structural`,
+  `clip_keep_pieces` (#853). `coverage_edges` is DEPRECATED (Kent 2026-10-12:
+  no). `test_off_flags_smoke.py`'s `OFF_FLAGS` is the live list.
+
+**Determinism rule for `medial_axis`.** Always call
+`skimage.morphology.medial_axis(..., rng=0)`. With the default `rng=None`
+skimage breaks ties from OS entropy and the lane sews a different design on
+every run (golden_tee gave 8,312 / 8,318 / 8,319 / 8,315 stitches).
+`stage6_satin`, `shapefield` and `outline_cut` already pass it; any new
+caller must. Spot-check a new call site by running the same input twice in
+separate processes and diffing the stitch streams.
+
+### New `tools/` scripts (engine, run from repo root)
+
+- `node tools/file-cut-census.mjs [srcDir] [--set shapes|lettering|image|<set-file>] [--on flag[=value]] [--every K] [--jobs N] [--json out] [--keep dir] [--against otherSrc]`
+  — what a machine CUTS, read off the written PES/EXP/DST rather than the
+  builder's stream; `--against` diffs two engines. Set files:
+  `tools/file-cut-sweep-set.mjs` (the 8,255-design sweep),
+  `file-cut-satin-set.mjs` (hand-drawn shapes set to satin),
+  `file-cut-import-set.mjs` (imported stitch files and `combineDesigns` pairs).
+  `--every 10` is the quick look.
+- `node tools/travel-sheet.mjs out.svg [--against otherSrc]` — draws four
+  designs (satin T, thin star, imported file, lettering + import) from what a
+  third-party reader makes of each file: needle-down, sewn and travelled.
+- `node tools/crossval-stitch-formats.mjs` — the cross-validation harness
+  behind `node --test`'s format tests; needs a venv with `pystitch`.
+- `digitizer/tools/` additions (each has a docstring with usage):
+  `ci_shard_check.py`, `ci_shard_durations.py` (above); `fan_census.py`,
+  `n_fan_spies.py`, `letter_band.py` (letter-fan / lettering measurements);
+  `eye_pairs_price.py`, `eye_pairs_gallery.py` (labelled thread pairs for
+  Kent's sitting); `letterform_priors_spike/` (the refit spike).
+- Since 2026-10-11: `tools/underlay-direction-measure.mjs` / `-sheet.mjs` /
+  `-logo-sheet.mjs` (defect 57's instrument and renders),
+  `tools/satin-zigzag-cap.mjs` (the lettering zigzag's width cap, PR #930),
+  `tools/small-cap-census.mjs` (85 fonts × 5 caps) and
+  `tools/crossstitch-arm-census.mjs` (the worst X arm per font per cap
+  against the machine limit — why `crossfill` splits an arm past one DST
+  record into collinear sub-segments since 2026-10-13),
+  `tools/svg-import-gate.mjs` (the 2026-07-27 plan's SVG import risk gate,
+  measure only).
+- `digitizer/tools/` gained about sixty scripts in the same nine days
+  (`git diff --stat 5a4c019..main -- digitizer/tools`), nearly all
+  one-question instruments named in their PR bodies — list the directory
+  rather than this file. Three conventions now gate every one of them, each
+  enforced by a test: **`--help` answers in under 30 s and exits 0**
+  (`tests/test_tools_help.py`, PR #965 — a hand-parsed `argv` that took
+  `--help` as data ran a full 26 s digitize and passed on exit 0);
+  **a tool that writes or reads a `.md` is listed in
+  `tests/test_tools_console.py`'s `NAMES_ONLY` / `DOC_READERS`**; and
+  **a render committed under `docs/renders/` needs an entry in
+  `docs/asset-provenance.json`** (`node --test test/asset-provenance.test.js`,
+  which every lettering PR of the fortnight ran). Two to know by name:
+  `tools/fremont_triage.py` replays the Studio's own `/digitize` request for
+  Hotel Fremont at Kent's settings (`run_arm` is the number every PR table
+  quotes; `ARMS["small_glyph_keep_off"]` is the engine as he sewed it), and
+  `tools/small_lettering_compare.py --corpus` is the 17-design lettering
+  corpus (`corpus_designs`) those tables are measured over.
+
 ## Running things
 
 Pass counts are gone from this section on purpose — the counts-are-gone
@@ -1495,11 +2016,17 @@ command block.
 
 **CI now exists.** `.github/workflows/python-package-conda.yml` (PR #37
 rewrote Kent's initial stock conda template to run the three commands
-below for real) runs on every push and pull request — **four** jobs, engine
-/ studio / digitizer / studio-e2e, the digitizer job deselecting **three**
-golden tests by node ID (CI's OWN list, not the same set that fails on
-Kent's Windows machine — see the failure classes below). It was five until
-2026-08-22, when the remove-and-see check below was finally run. Every PR needs its
+below for real) runs on every push and pull request — **four** required
+checks, engine / studio / digitizer / studio-e2e (since 2026-10-08 `digitizer`
+is an aggregator over six `digitizer shard k/6` jobs — "Sharded digitizer CI"
+below), each shard deselecting **two**
+golden tests by node ID since 2026-10-08 (CI's OWN list, not the same set
+that fails on Kent's Windows machine — see the failure classes below). It was
+five until 2026-08-22, when the remove-and-see check below was finally run,
+and three until the towel row was re-pinned on 2026-10-08. A PR that touches
+neither `digitizer/` nor `.github/` gets the WIRE scope — shard 1 runs the
+wire files (47 on 2026-10-20) and the other five stop — so a green `digitizer` on such a PR proves
+nothing about the pipeline (the How-to section above). Every PR needs its
 Actions run green in addition to a local pass before merging.
 
 **The `runner_id: 0` outage is OVER — do not merge past a red check on its
@@ -1586,16 +2113,25 @@ failures are EXPECTED:
    re-captured. The concrete per-machine set lives in ONE place — the
    MASTER_SCOPE "Gotchas" matrix ("The golden divergence is PER-FIXTURE,
    not per-platform") — with cause detail in
-   `docs/pro-parity-real-art-2026-08-15.md` §0b. CI deselects THREE node
-   IDs (list + rationale in `.github/workflows/python-package-conda.yml`);
-   it was five until 2026-08-22, and this sentence said "five" for hours
-   after the workflow said three.
+   `docs/pro-parity-real-art-2026-08-15.md` §0b. CI deselects TWO node
+   IDs since 2026-10-08 (list + rationale in the shard job's header comment
+   in `.github/workflows/python-package-conda.yml`); it was five until
+   2026-08-22 and three until the towel `test_pushcomp` row was re-pinned —
+   this sentence said "five" for hours after the workflow said three, and
+   "three" for twelve days after it said two. **A stream md5 also differs
+   by the host's SIMD class** (AVX-512 runners against AVX2 machines, found
+   2026-10-19), which no platform matrix predicts: read "Reading a golden or
+   md5 mismatch" in the How-to section before calling any of this a
+   regression.
    **The remove-and-see check is no longer unowned — it was run 2026-08-22.**
    On Linux with the digitizer job's exact Python (3.12) and requirements.txt
    pinned exactly, two of the five deselects (`logo_alpha.png` on the flat-lane
    and photo-dispatch goldens) PASS and three FAIL; the same split holds on
    3.13, so it is not version skew. Those two are now removed from the
-   workflow, restoring the coverage they were costing, and the list is three.
+   workflow, restoring the coverage they were costing, and the list was
+   three — two since 2026-10-08, when the towel tuple proved identical on
+   three machines, AVX-512 and forced-AVX2 alike, and went back into
+   `tests/test_pushcomp.py`'s `GOLDEN_FLAG_OFF`.
    A golden failure outside the matrix's expected cell is a REAL regression,
    not this note being stale.
    **Re-capturing on the judging machine takes a minute, not a session
@@ -1700,12 +2236,16 @@ failures are EXPECTED:
 
 Anything red outside classes 1 and 4 is unexplained and yours to chase, and
 any skip outside classes 2-3 is a new one — chase that too.
-Runtime: 21:34 serial, measured 2026-08-17 on Kent's machine — which is
-why the command above carries `-n auto`: pytest-xdist is pinned in
-`requirements.txt`, and parallel runs are verified to produce the
-identical pass/fail set (see the workflow comment for how). A 4-core cloud
-container runs the full suite in ~7 min with `-n auto` (measured
-2026-08-22, twice, with exactly the documented Linux golden set failing).
+Runtime moves with the suite, so this file carries no figure: CLAUDE.md
+does (about 45 minutes for a full run on a four-core cloud container with
+`-n auto`, measured 2026-09-14, and 1.8× that when a second suite overlaps
+it — the "~7 min" that stood here was the 2026-08-22 suite). `-n auto` is
+in the command because pytest-xdist is pinned in `requirements.txt` and
+parallel runs are verified to produce the identical pass/fail set (the
+workflow comment says how). A worker session does not run the full suite
+at all: CI's six shards are the full run (the How-to section); run the
+files a change can reach, and `tests/.shard_durations.json` says what each
+one costs.
 
 `EMB-Bot-standalone.html` is **DELETED 2026-08-04, Kent's call**, and
 `EMB-Bot.html` itself (plus `src/app.js`) followed on **2026-08-08**
@@ -1715,9 +2255,73 @@ either. `tools/bundle.mjs` (the standalone's rebuild step) was doubly dead
 2026-08-11**. The Studio has no CDN runtime dependencies (jsPDF is
 npm-bundled, Inter via fontsource, fonts ship locally as `.embf`).
 
+### What a cloud worker session has, and has not (measured 2026-10-20)
+
+Every fact here was read off this session's own container; CLAUDE.md owns
+the venv trap in full.
+
+- **Four cores.** `nproc` 4, so `-n auto` is `-n 4` and a full digitizer run
+  is about 45 minutes (CLAUDE.md), 1.8× that if a second suite overlaps it.
+  The foreman's standing rule is not to run it: run the files a change can
+  reach and let CI's six shards be the full run.
+- **`python3` is NOT 3.12** — 3.11 on 2026-08-22, 3.13 here — and
+  `python3.12` is installed. Build the venv from `digitizer/` as
+  `python3.12 -m venv .venv && .venv/bin/pip install -e ".[service,dev]"`
+  (CLAUDE.md has why `requirements.txt` alone leaves a venv with no pystitch,
+  and why `[service]` alone cannot collect `test_service.py`); the
+  interpreter is `.venv/bin/python` wherever this file says `.venv/Scripts/`.
+- **No venv is built in a fresh container**: not `digitizer/.venv`, not
+  `rembg_isolated/venv`, not `sam2_isolated/venv`. A photo-class job
+  therefore takes the no-prep route, exactly CI's (failure class 4 below),
+  and `test_background_removal` shows its two skips (class 3); a photo-lane
+  number from a worker without the rembg venv is a CI number, not a
+  Kent's-box number, and the eye-pairs renders say so in their confound badge.
+- **No `tesseract`** on this image (it was preinstalled on the 2026-08-24
+  container; it is not here). `sudo apt-get install -y tesseract-ocr` takes
+  about a minute and is required before trusting a local run on anything
+  touching `textcluster.py`, `stage6_satin.py`'s skeleton helpers or
+  `shapefield.py` (class 2).
+- **The clone can be SHALLOW.** This one held 288 commits, so
+  `git log 5a4c019..origin/main` answered *"bad revision"* for a commit nine
+  days old, and `git cat-file -t` agreed — three independent checks will
+  confirm history that is merely not fetched (CLAUDE.md footgun 8's cousin).
+  `git fetch --unshallow origin` first; it brings every remote branch with it.
+- **The token cannot push a workflow file** (the How-to section), and
+  `git push --force-with-lease` and `git clean -fd` are blocked by the
+  sandbox ("Working conventions").
+- **No `scratch_*`, no `.claude/worktrees/`, no `.superpowers/`** — the
+  gitignored reference material lives on Kent's box only; "pull the corpus"
+  (`.claude/skills/pull-corpus/SKILL.md`) is how a fixture gets here.
+
+### Proving the Studio runs: the smoke driver (PR #982, 2026-10-16)
+
+`node .claude/skills/run-emb-bot/driver.mjs smoke --serve --port 5199` is the
+one command that proves both Studio lanes in a headless Chromium: the
+lettering lane always, the artwork auto-digitize lane when a digitizer
+service answers on 8721. It starts its own Vite on 5199, tears it down, and
+prints one caption per lane, both ending `… in hoop` (the canvas caption; the
+left panel's `.dgp-stats` is not it). Treat the counts as a shape, not a pin
+— `.claude/skills/run-emb-bot/SKILL.md` carries the latest measured pair and
+the commit it was read at.
+
+**The two lanes must report DIFFERENT captions.** Identical numbers on both
+lines were the 2026-10-16 false green: the Studio persists the current
+design in `localStorage` (`app/src/lib/projects.js`), lane 2's reload kept
+lane 1's lettering on the page, and the poller accepted that caption while
+the digitize still read "Sending your art…" — exit 0, both lines the same.
+The driver now clears `localStorage` before lane 2 and accepts only a
+caption that differs from the pre-click one (`waitCaption(ms, notEqual)`).
+The same run found lane 1 waiting 30 s for a wizard tile the 2026-09-30
+configurator redesign had removed; it now fills the `Type a name or word`
+placeholder, as `typeText` in `app/e2e/helpers.js` does. **If a smoke times
+out on a locator, check the e2e helpers before the app** — the driver is
+under no test. Same class as the Studio's own `pollJob` bug the day before
+(PR #981, "Hard-won lessons"): a poller that accepts a stale result reads as
+green.
+
 ### Prepping the pro-parity corpus — budget for Hotel Fremont
 
-`prep_all.py` re-digitizes all 23 customer designs and needs
+`digitizer/tools/pro_parity/prep_all.py` re-digitizes all 23 customer designs and needs
 `PRO_PARITY_ROOT` pointing at Kent's `Embroidery Files` and `PRO_PARITY_OUT`
 at a scratch dir OUTSIDE the tree (the loose files are customer work and this
 repo is public). Most designs take 2–20 minutes each.
@@ -2022,13 +2626,43 @@ and controllable to the user.
 - **`src/*.js`** — engine modules. Each is dual-mode: browser `<script>`
   (attaches to global `EMB`) and CommonJS (Node tests). Key ones:
   - `digitize.js` — the orchestrator. `buildQualityDesign` (image/logo path)
-    and `buildLetteringDesign` (text path) both live here.
+    and `buildLetteringDesign` (text path) both live here. Two region inputs
+    the manual lane's Column and Line modes depend on: a region with authored
+    rails sews satin between them (2026-10-01), and a region with an authored
+    path sews one run along it and nothing else of it (`runAlongPath`,
+    2026-10-11). Since 2026-10-12 (PR #860) the engine refuses five bad inputs
+    cleanly instead of emitting garbage — tatami `rowSpacing` ≤ 0 (`fill.js`),
+    an empty ring's NaN size (here), and DST/PES extent and colour overflow
+    (the writers); `test/engine-edge-cases.test.js` and
+    `test/export-edge-designs.test.js` pin them.
   - `satinplay.js` / `satinfont.js` / `satin.js` — satin column generation.
     `satinplay.js`'s `emitZigzag` + `satinFromRails` is the current quality
     lever for lettering (rails+rungs → clean zigzag, not auto-skeletonized).
     `satinfont.js` also routes bean/running-stitch runs, but ONLY at a length
     the font itself authored — gate 1 bars inventing one, so a run without a
     length is skipped, not defaulted.
+    **`satinZigzag` is ON in `buildLetteringDesign` since 2026-10-13** (PR
+    #904, Kent's ruling on a before/after render, NOT a sew-out): `emitZigzag`
+    used to alternate the leading rail (A1, B1, B2, A2 …) — a needle every
+    `SATIN_SPACING_MM` on each rail but only every other stitch crossing, one
+    crossing per station against the Python order's two, half the thread,
+    since the file was written (DOCTRINE 2026-10-13). **Capped since
+    2026-10-14** (PR #930, Kent): only a column narrower than
+    `satinfont.SATIN_ZIGZAG_MAX_WIDTH_MM` (= `SPLIT_SATIN_ABOVE_MM`) zigzags,
+    because where split satin fires the return leg becomes a cross with its
+    own comb and a wide-column design nearly doubles (manga_impact "AB" on a
+    Full Back 27,033 → 48,079). `satinZigzag: false` is the old stream,
+    `satinZigzagMaxMm` overrides the cap in final mm and `false` lifts it;
+    `layoutText` and the emitter themselves still default off.
+    `tools/satin-zigzag-cap.mjs` prices it. **`underlayDirection` is ON in
+    `buildQualityDesign` since 2026-10-11** (PR #836, Kent; built OFF in
+    #822; defect 57): a satin column starts at the end nearer where its
+    underlay ends (`satin.startNear`), so a bar's centre-run underlay no
+    longer ends at the far end from where its column starts;
+    `underlayDirection: false` restores the old order, and
+    `tools/underlay-direction-measure.mjs` plus the two `-sheet` scripts are
+    its instrument and renders. `buildLetteringDesign` takes the same flag
+    since PR #990 (2026-10-20), built OFF there beside `dedupeHoles`.
   - `crossfill.js` — cross-stitch fill for pixel-art lettering fonts. Written
     from first principles, NOT ported: Ink/Stitch's is GPL-3.0 and this product
     is sold. The grid is MEASURED from the glyph outlines, in glyph units, so
@@ -2077,13 +2711,32 @@ and controllable to the user.
     (`test/crossval-stitch-formats.test.js`, revived 2026-08-21 after the
     2026-08-11 pystitch swap left it silently skipping — the repo's only
     automated third-party format check; CI runs it loud, see "Running
-    things").
+    things"). **All three share ONE rule for a move too long for a record
+    (the chain rule, `dst.js`):** it is sewn, split into stitches at 12.1 mm
+    an axis, only when it CONTINUES a sewn run; the move to a stitch that
+    follows a jump, a cut, a colour change or the start of the file is
+    travel, laid as jumps up to its last record. `exp.js` took it last
+    (2026-10-07): until then its file had needle holes along such a move
+    that the other two had not. Check a change to one writer against the
+    other two at the FILE: `node tools/file-cut-census.mjs` counts the three
+    files' needle holes hole by hole, `--against <src>` says which designs'
+    files change. Its own three sets leave two lanes out, and they are the
+    two that mattered here: `--set tools/file-cut-satin-set.mjs` is a drawn
+    shape SET TO SATIN (the "manual" lane is all fills), and `--set
+    tools/file-cut-import-set.mjs` the lanes whose stream can OPEN with a
+    stitch (an imported stitch file, alone or as a project's second
+    element), which no builder's stream does.
 - **`app/src/`** — Svelte 5 Studio. `App.svelte` + `ui/` (steps/components) +
   `lib/` (non-DOM logic, each paired with a `.spec.js`): `project.js` (data
   model, v2 = `{version,garmentId,selectedId,elements:[...]}`), `generate.js`
   (bridges to engine), `combine.js` (multi-element stitch merge), `preview.js`
   (2.5D canvas render), `projects.js` (localStorage save/load registry),
   `threads.js` (named thread-color catalog), `hints.js` (onboarding),
+  `hoop.js` (hoop fitting — since PR #865, Kent's ruling 2026-10-13 "cap to
+  hoop", AUTO-fit sizes to the placement box capped to the largest hoop's
+  usable field (`EMB.autoFitBoxMm`), so auto-fit alone never makes an oversize
+  design, and `autoCapNote` says so beside the Size controls on a garment
+  whose area is bigger; `autofitHoopCap.spec.js`),
   `flow.js` (the step gates — its `isSewable` is the ONE definition of
   "this element has real content", read by the Next button, the review
   headline and the review recap; do not write a fourth), and three modules
@@ -2163,6 +2816,11 @@ here since it explains *why*, not *what's currently true*.
   `subagent-driven-development` in a git worktree, or ULTRACODE workflows for
   bigger slices) → review (multi-lens/adversarial before merge). This repo
   has done this ~10 times; deviating without reason will surprise Kent.
+  Since 2026-10-07 the build step mostly runs as cloud worker sessions
+  dispatched by a foreman (the K3 pattern under "Branches & worktrees");
+  the spec-then-plan habit and the adversarial review before merge are
+  unchanged, and the PR body is where a worker's measurements and its asks
+  to Kent go.
 - **Additive, back-compat engine changes.** New `opts.*` fields default to
   exactly today's output when absent — no migration step, no behavior change
   for existing callers. Keep doing this.
@@ -2179,7 +2837,9 @@ here since it explains *why*, not *what's currently true*.
   To clear untracked leftovers, `rm` the specific files after checking each
   against `main`; the blanket clean is refused. *(hit twice, 2026-09-12/13 —
   if this becomes routine, a Bash permission rule in `.claude/settings.json`
-  is Kent's call.)*
+  is Kent's call.)* The rest of what a cloud container lacks — a shallow
+  clone, no venvs, no tesseract, no workflow push — is under "Running
+  things", "What a cloud worker session has".
 - **Never edit a tracked file from a STALE working tree.** A branch left behind
   `main` will happily let you append to an old copy and commit the whole
   regression: on 2026-09-18 this nearly re-bloated `.claude/memory/MEMORY.md`

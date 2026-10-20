@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { EMB } from "../lib/emb.js";
   import { alignOffset } from "../lib/interact.js";
+  import { autoCapNote } from "../lib/hoop.js";
 
   export let project;
   // Dims of the last generated design ({ widthMM, heightMM }) or null when
@@ -12,6 +13,11 @@
   // handles: a drag patches project.sizeMm, which triggers a regenerate in
   // EmbroideryField, which redispatches "dims" here.
   export let designDims = null;
+  // Which half renders (progressive disclosure, spec 2026-09-30 §5): "size"
+  // is the W x H row a first-time customer needs, "fine" is the align row and
+  // belongs behind Advanced. ContentStep mounts one of each around the
+  // element's editor; the default draws both, as the panel always did.
+  export let part = "all";
 
   const d = createEventDispatcher();
   const MM_PER_INCH = 25.4;
@@ -153,12 +159,29 @@
     if (clampedMm !== requestedMm) target.value = fromMm(clampedMm, unit);
   }
 
+  // The field showing the capped number is not enough on its own: a customer
+  // who types a 1-inch height on a left-chest name watched "1" turn back into
+  // "0.29" with nothing saying why (2026-10-08). Height is aspect-locked to
+  // width, so a long name hits the placement's width long before any height
+  // they would ask for. Say what capped it and what would get them bigger.
+  // Cleared by the next request that fits, and whenever the garment changes.
+  $: autoCap = autoCapNote(project && EMB.getGarment(project.garmentId));
+  let capNote = "";
+  let capGarment = project && project.garmentId;
+  $: if (project && project.garmentId !== capGarment) { capGarment = project.garmentId; capNote = ""; }
+  function noteCap(requestedMm) {
+    capNote = requestedMm > hoopWmm
+      ? `Capped at ${fromMm(hoopWmm, unit)} ${unit} wide — the most the ${alignArea} allows. For bigger letters, use fewer characters or a larger placement under Garment.`
+      : "";
+  }
+
   function onWidthChange(e) {
     const v = parseFloat(e.target.value);
     if (!Number.isFinite(v)) return;
     const mm = toMm(v, unit);
     const clamped = Math.min(hoopWmm, Math.max(MIN_SIZE_MM, mm));
     resyncIfClamped(e.target, mm, clamped);
+    noteCap(mm);
     d("update", { sizeMm: clamped });
   }
 
@@ -178,10 +201,12 @@
     // solved through the aspect ratio: show the height the clamped width
     // produces, not the one that was asked for.
     if (clamped !== wMm) e.target.value = fromMm(clamped / aspect, unit);
+    noteCap(wMm);
     d("update", { sizeMm: clamped });
   }
 
   function autoFit() {
+    capNote = "";
     d("update", { sizeMm: null, offsetXMm: 0, offsetYMm: 0 });
   }
 
@@ -216,6 +241,7 @@
 </script>
 
 <div class="sizepanel">
+  {#if part !== "fine"}
   <h3>Size</h3>
   <div class="sizerow">
     <span class="sizelabel">W</span>
@@ -246,6 +272,16 @@
     </select>
     <button type="button" class="autofit" on:click={autoFit}>Auto-fit</button>
   </div>
+  {#if capNote}
+    <p class="capnote" role="status">{capNote}</p>
+  {:else if project.sizeMm == null && autoCap}
+    <p class="capnote autocap" role="status">{autoCap}</p>
+  {/if}
+  {#if warn}
+    <p class="warn">Smaller than 5 mm — thread can't stitch this cleanly</p>
+  {/if}
+  {/if}
+  {#if part !== "size"}
   <div class="alignrow">
     <span class="alignlabel">Align in {placementLabel || "placement"}</span>
     <div class="alignbtns">
@@ -263,13 +299,12 @@
       {/each}
     </div>
   </div>
-  {#if warn}
-    <p class="warn">Smaller than 5 mm — thread can't stitch this cleanly</p>
   {/if}
 </div>
 
 <style>
   .alignrow { margin-top: 10px; }
+  .capnote { margin: 8px 0 0; font-size: var(--fs-xs, 12px); color: var(--warn-text); }
   /* Type comes from theme.css's shared section-label rule. */
   .alignlabel { display: block; margin-bottom: 4px; }
   .alignbtns { display: flex; gap: 6px; }
@@ -283,7 +318,7 @@
   }
   .alignbtn.active {
     background: var(--accent, #4f46e5);
-    color: #fff;
+    color: var(--accent-ink, #fff);
     border-color: var(--accent, #4f46e5);
   }
   .alignbtn:disabled { opacity: 0.45; cursor: not-allowed; }

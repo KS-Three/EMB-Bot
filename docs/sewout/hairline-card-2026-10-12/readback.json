@@ -1,0 +1,264 @@
+{
+ "40wt": {
+  "short_by_block": {
+   "E:ground": 150,
+   "A:0.73 lines": 208,
+   "C:0.6 col": 109,
+   "C:0.8 col": 50,
+   "D:4.0 cap": 33,
+   "D:3.0 cap": 23,
+   "D:2.5 cap": 52
+  },
+  "short_unexpected": 0,
+  "stitches_by_block": {
+   "A": 840,
+   "B": 569,
+   "C": 563,
+   "D": 860,
+   "E": 1051
+  },
+  "stops": [
+   {
+    "stop": 1,
+    "thread": "ground (mid-tone)",
+    "stitches": 776,
+    "thread_m": 1.53
+   },
+   {
+    "stop": 2,
+    "thread": "dark",
+    "stitches": 3018,
+    "thread_m": 3.31
+   },
+   {
+    "stop": 3,
+    "thread": "light",
+    "stitches": 89,
+    "thread_m": 0.11
+   }
+  ],
+  "file": "hairline_card_40wt.dst",
+  "bytes": 13553,
+  "wt": 40,
+  "stitches_file": 3883,
+  "stitches_plan": 3883,
+  "colour_changes_file": 2,
+  "colour_changes_plan": 2,
+  "extent_mm": [
+   94.0,
+   82.0
+  ],
+  "within_hoop": true,
+  "x_range_mm": [
+   -47.0,
+   47.0
+  ],
+  "y_range_mm": [
+   -41.0,
+   41.0
+  ],
+  "under_1mm_not_lock": 611,
+  "lock_legs_0p8": 753,
+  "plan_extent_mm": [
+   94.0,
+   82.0
+  ],
+  "longest_move_mm": 13.6,
+  "blocks_mm": {
+   "A": [
+    -47.0,
+    -41.0,
+    -3.0,
+    14.5
+   ],
+   "B": [
+    3.0,
+    -41.0,
+    47.0,
+    -19.2
+   ],
+   "C": [
+    3.0,
+    -15.0,
+    47.0,
+    5.8
+   ],
+   "D": [
+    3.0,
+    8.0,
+    47.0,
+    32.7
+   ],
+   "E": [
+    -47.0,
+    18.0,
+    -3.0,
+    41.0
+   ]
+  },
+  "lettering": [
+   {
+    "cap_mm": 4.0,
+    "word": "SKEIN",
+    "design_width_mm": 16.9,
+    "runs": 18,
+    "kinds": [
+     "satin",
+     "travel"
+    ]
+   },
+   {
+    "cap_mm": 3.0,
+    "word": "SKEIN",
+    "design_width_mm": 13.2,
+    "runs": 17,
+    "kinds": [
+     "satin",
+     "travel"
+    ]
+   },
+   {
+    "cap_mm": 2.5,
+    "word": "SKEIN",
+    "design_width_mm": 11.35,
+    "runs": 16,
+    "kinds": [
+     "run",
+     "satin",
+     "travel"
+    ]
+   }
+  ]
+ },
+ "60wt": {
+  "short_by_block": {
+   "E:ground": 150,
+   "A:0.73 lines": 208,
+   "C:0.6 col": 133,
+   "C:0.8 col": 62,
+   "D:4.0 cap": 76,
+   "D:3.0 cap": 50,
+   "D:2.5 cap": 76
+  },
+  "short_unexpected": 0,
+  "stitches_by_block": {
+   "A": 840,
+   "B": 569,
+   "C": 659,
+   "D": 1039,
+   "E": 1051
+  },
+  "stops": [
+   {
+    "stop": 1,
+    "thread": "ground (mid-tone)",
+    "stitches": 776,
+    "thread_m": 1.53
+   },
+   {
+    "stop": 2,
+    "thread": "dark",
+    "stitches": 3293,
+    "thread_m": 3.54
+   },
+   {
+    "stop": 3,
+    "thread": "light",
+    "stitches": 89,
+    "thread_m": 0.11
+   }
+  ],
+  "file": "hairline_card_60wt.dst",
+  "bytes": 14375,
+  "wt": 60,
+  "stitches_file": 4158,
+  "stitches_plan": 4158,
+  "colour_changes_file": 2,
+  "colour_changes_plan": 2,
+  "extent_mm": [
+   94.0,
+   82.0
+  ],
+  "within_hoop": true,
+  "x_range_mm": [
+   -47.0,
+   47.0
+  ],
+  "y_range_mm": [
+   -41.0,
+   41.0
+  ],
+  "under_1mm_not_lock": 696,
+  "lock_legs_0p8": 838,
+  "plan_extent_mm": [
+   94.0,
+   82.0
+  ],
+  "longest_move_mm": 13.6,
+  "blocks_mm": {
+   "A": [
+    -47.0,
+    -41.0,
+    -3.0,
+    14.5
+   ],
+   "B": [
+    3.0,
+    -41.0,
+    47.0,
+    -19.2
+   ],
+   "C": [
+    3.0,
+    -15.0,
+    47.0,
+    5.8
+   ],
+   "D": [
+    3.0,
+    8.0,
+    47.0,
+    32.7
+   ],
+   "E": [
+    -47.0,
+    18.0,
+    -3.0,
+    41.0
+   ]
+  },
+  "lettering": [
+   {
+    "cap_mm": 4.0,
+    "word": "SKEIN",
+    "design_width_mm": 16.9,
+    "runs": 18,
+    "kinds": [
+     "satin",
+     "travel"
+    ]
+   },
+   {
+    "cap_mm": 3.0,
+    "word": "SKEIN",
+    "design_width_mm": 13.2,
+    "runs": 17,
+    "kinds": [
+     "satin",
+     "travel"
+    ]
+   },
+   {
+    "cap_mm": 2.5,
+    "word": "SKEIN",
+    "design_width_mm": 11.35,
+    "runs": 17,
+    "kinds": [
+     "run",
+     "satin",
+     "travel"
+    ]
+   }
+  ]
+ }
+}

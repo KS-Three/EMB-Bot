@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import math
 
+import pytest
 from shapely.geometry import LineString, Polygon
 from shapely.ops import unary_union
 
@@ -555,8 +556,37 @@ def test_chaining_cuts_the_benchmark_fixtures_trim_rate(enthusiast_logo_93mm):
 
 # --- The instrument that was missing ---------------------------------------
 
-def _thread_bare_mm(plan, step_mm: float = 0.1):
+def _thread_bare_mm(plan):
+    """(travel runs, exposed travel runs, mm of THREAD on bare fabric, worst
+    clearance) for one plan -- the chaining instrument, rebuilt 2026-10-14.
+
+    It used to bill a trimmed jump as thread. A TRAVEL run that follows a
+    trimmed jump (the walk-in to a column) is preceded by a FLIGHT: the needle
+    lifted and the thread was cut, so the flight lays no thread at all, and
+    only the walk's own stitches (and the leg out, unless the next run is a
+    trimmed jump too) are thread. #895 found it; ROADMAP gate 3 names this
+    instrument, so no OFF chaining tier may flip on a number that included
+    flights. It now reads `tools.hairline_travel.scan` -- one implementation,
+    not two -- which splits every TRAVEL run into its in / body / out legs and
+    drops a leg that is a flight. A dragged float (`jump` without `trim`) and
+    a chained link (`jump=False`) are still thread and still counted.
+
+    `_thread_bare_mm_untrimmed` below is the instrument as it shipped, kept
+    ONLY as the comparator `hairline_travel.measure_plan` reports beside the
+    corrected number. Do not gate on it.
+    """
+    from tools import hairline_travel as ht
+    s = ht.scan(plan)
+    return s["travel_runs"], s["exposed_runs"], s["thread"], s["worst_clear"]
+
+
+def _thread_bare_mm_untrimmed(plan, step_mm: float = 0.1):
     """(links, exposed links, mm on bare fabric, worst clearance) for one plan.
+
+    THE INSTRUMENT AS IT SHIPPED, UNTRIMMED: it never reads `run.jump` /
+    `run.trim`, so the flight after a trimmed jump is counted as thread on bare
+    fabric (#895). Kept for the old/new comparison only; the gate is
+    `_thread_bare_mm` above. What follows is the original docstring.
 
     THE THIRD INSTRUMENT, and the only honest one. `_uncovered_links` above and
     `tools/chain_probe.py` both rebuild the cover from the same polygons the
@@ -618,6 +648,49 @@ def _thread_bare_mm(plan, step_mm: float = 0.1):
     return links, exposed, bare_mm, worst
 
 
+def _walk_in_plan(*, jump: bool, trim: bool):
+    """Satin A at the origin; a far satin B reached by a 2-point walk-in TRAVEL
+    run (the shape a trimmed jump's lock-and-walk takes)."""
+    from types import SimpleNamespace
+    from digitizer_core.stitches import StitchRun
+
+    def row(x0, y, shape):
+        return StitchRun(points=[(x0 + i * 1.0, y) for i in range(11)],
+                         kind=stitches.SATIN, shape_id=shape)
+
+    walk = StitchRun(points=[(50.0, 20.0), (51.0, 20.0)], kind=stitches.TRAVEL,
+                     shape_id="B", jump=jump, trim=trim)
+    runs = [row(0, 0, "A"), walk, row(50, 20, "B")]
+    return SimpleNamespace(blocks=[SimpleNamespace(runs=runs)],
+                           stats=SimpleNamespace(stitch_count=sum(len(r.points) for r in runs),
+                                                 trims=int(trim)))
+
+
+def test_a_trimmed_jump_counts_zero_mm_of_walk_in_thread():
+    """The instrument's own defect, pinned (#895). The needle lifts, the thread
+    is cut and the machine flies ~35 mm to the walk's first point: there is no
+    thread on that flight, so `_thread_bare_mm` must bill none. The shipped
+    reading (`_thread_bare_mm_untrimmed`) billed all of it."""
+    plan = _walk_in_plan(jump=True, trim=True)
+    links, exposed, mm, worst = _thread_bare_mm(plan)
+    assert (links, exposed) == (1, 0), "the walk-in is a TRAVEL run, and no thread of it is bare"
+    assert mm == 0.0 and worst == 0.0
+    assert _thread_bare_mm_untrimmed(plan)[2] > 30.0, \
+        "the comparator no longer shows the defect this test exists for"
+
+
+def test_an_untrimmed_jump_and_a_chained_link_are_still_thread():
+    """The other two readings must survive the fix. A jump that is NOT trimmed
+    drags the thread across the cloth; a link (`jump=False`) is sewn needle
+    down. Both over bare fabric are exactly what this instrument forbids."""
+    for jump in (True, False):
+        plan = _walk_in_plan(jump=jump, trim=False)
+        links, exposed, mm, worst = _thread_bare_mm(plan)
+        assert (links, exposed) == (1, 1), f"jump={jump}"
+        assert mm > 30.0 and worst > 5.0, f"jump={jump}: {mm:.2f} mm, worst {worst:.2f}"
+        assert mm == pytest.approx(_thread_bare_mm_untrimmed(plan)[2], rel=0.05)
+
+
 def test_chaining_adds_no_bare_fabric_exposure_on_the_committed_fixture(enthusiast_logo_93mm):
     """The fix, measured. Replaces `test_chaining_currently_puts_thread_on_bare
     _fabric`, deleted in the same commit as its own docstring asked for.
@@ -647,6 +720,11 @@ def test_chaining_adds_no_bare_fabric_exposure_on_the_committed_fixture(enthusia
     result than logo_alpha's old 0.3011mm/0.2057mm floor, not a weaker one.
     Trims fall 19 -> 8 and total stitch count falls correspondingly — the win
     law 59 measured is real and it still doesn't cost a float to get.
+
+    (2026-10-14: that zero was the 2026-09 engine. Re-measured on the rebuilt
+    instrument, this fixture reads 3.31 mm chain OFF and 2.25 mm ON -- see
+    `test_chaining_adds_zero_bare_thread_on_every_acceptance_fixture`. The
+    assertions below are relative and unchanged; chaining still adds none.)
 
     `covered_by` (a later colour's own sewing polygon, standing in for thread
     that has not been planned yet) is unchanged and is not what this test
@@ -691,10 +769,36 @@ def test_chaining_adds_zero_bare_thread_on_every_acceptance_fixture(
       degenerate case where the future-colour cover is empty and any link
       must justify itself against laid thread alone.
 
-    Where the chain-off floor IS zero (benchmark, full_back, ribbon), the
-    equality pins the absolute number: `_thread_bare_mm == 0.0` with
-    chaining enabled.
+    Where the chain-off floor IS zero (left_chest, ribbon), the equality pins
+    the absolute number: `_thread_bare_mm == 0.0` with chaining enabled.
+
+    **RE-PINNED 2026-10-14 on the rebuilt instrument** (flights no longer
+    billed as thread; midpoint sampling). The docstring above is the 2026-08
+    picture, and the engine has moved since: benchmark and full_back no longer
+    have a zero chain-off floor. Measured on this tree, `mm` of thread over
+    bare fabric, chain OFF -> ON (the instrument as it shipped in brackets):
+
+    - benchmark   3.31 -> 2.25   [3.74 -> 2.43]
+    - full_back   2.54 -> 1.31   [7.75 -> 6.53]
+    - left_chest  0.00 -> 0.00   [0.00 -> 0.00]
+    - ribbon      0.00 -> 0.00   [0.00 -> 0.00]
+
+    Chaining REMOVES bare thread on both art fixtures (it never added any).
+    `CEILING_MM` below pins those numbers as ceilings with 0.5 mm of room for
+    the engine drift other lanes cause; a ceiling is the direction the gate
+    cares about, and re-measure rather than widening it.
+
+    **RE-PINNED 2026-10-15 for `small_text_true_size` ON by default (#955):**
+    the switch re-traces enthusiast's "ENTERPRISES INC" line and sews it as
+    bean letters, which moves both art fixtures' floors. Measured, chain OFF
+    -> ON: benchmark 3.97 -> 3.97, full_back 4.90 -> 4.90, left_chest and
+    ribbon 0.00 -> 0.00. Chaining still adds nothing (on == off); it no
+    longer removes any either. Ceilings: the measurement + 0.5 mm, as before.
     """
+    CEILING_MM = {("benchmark", False): 4.5, ("benchmark", True): 4.5,
+                  ("full_back", False): 5.4, ("full_back", True): 5.4,
+                  ("left_chest", False): 0.5, ("left_chest", True): 0.5,
+                  ("ribbon", False): 0.5, ("ribbon", True): 0.5}
     cases = [
         ("benchmark", enthusiast_logo_93mm,
          dict(target_width_mm=93.0, garment_id="left_chest")),
@@ -708,6 +812,8 @@ def test_chaining_adds_zero_bare_thread_on_every_acceptance_fixture(
         on = plan_stitches(result, cfg(**kw, chain_links=True))
         _l0, exp0, bare0, worst0 = _thread_bare_mm(off)
         _l1, exp1, bare1, worst1 = _thread_bare_mm(on)
+        assert bare0 <= CEILING_MM[(name, False)], f"{name}: chain-off floor {bare0:.2f} mm"
+        assert bare1 <= CEILING_MM[(name, True)], f"{name}: chain-on {bare1:.2f} mm"
         assert bare1 <= bare0 + 1e-9, (
             f"{name}: chaining ADDED bare thread — {bare1:.4f} mm on vs "
             f"{bare0:.4f} mm off")

@@ -19,12 +19,38 @@ from __future__ import annotations
 
 import numpy as np
 
-from .config import PipelineConfig
+from .config import PipelineConfig, true_size_min_counter
 from .ink_path import read_cluster_ink
+from .words import word_key
 
 BEAN_LETTER_KEY = "bean_letter_spines"
 # A weight group smaller than this is a few fused letters, not a second line.
 MIN_GROUP_MEMBERS = 3
+# An ink read is the LETTER only when the traced shape agrees with it: the
+# shape's own mean width (2 x area / perimeter) is at most this many times the
+# ink's stroke. Past it the read found texture INSIDE a bold letter, not the
+# letter -- drone's chrome "PRECISION" (7-8 mm caps, traced 1.6-2.0 mm wide,
+# ink 0.28-0.35 mm off the highlight between its bevel lines, 4.7-6.7x) went
+# bean and sewed as hollow outlines (+170.8 mm2 ARTWORK_UNCOVERED, PR #944).
+# Measured 2026-10-14 over every member the tagger read in the corpus: every
+# letter that went bean and should is 0.66-1.34x, bridge's counter-closed
+# blobs 2.11-2.28x (the case the ink read exists for). A CANDIDATE (ROADMAP
+# gate 1), set between those two populations; nothing sewn.
+INK_SHAPE_MAX_RATIO = 3.0
+
+
+def ink_reads_shape(polygon, stroke_mm: float | None) -> bool:
+    """False when `polygon` is far wider than the ink read `stroke_mm` says
+    (`INK_SHAPE_MAX_RATIO`): the read is not this letter's stroke. No read is
+    no agreement; no polygon is nothing to disagree with."""
+    if stroke_mm is None:
+        return False
+    if polygon is None or stroke_mm <= 0:
+        return True
+    perimeter = float(polygon.length)
+    if perimeter <= 0:
+        return True
+    return 2.0 * float(polygon.area) / perimeter <= INK_SHAPE_MAX_RATIO * stroke_mm
 
 
 def weight_groups(widths: list[float | None], line_mm: float) -> list[bool]:
@@ -53,6 +79,13 @@ def weight_groups(widths: list[float | None], line_mm: float) -> list[bool]:
     return [whole and w is not None for w in widths]
 
 
+def _ring(cfg: PipelineConfig) -> dict:
+    """`read_cluster_ink`'s ground ring, passed only when set, so the OFF
+    call is the call it always was (`cfg.ink_ground_ring_mm`)."""
+    ring = cfg.ink_ground_ring_mm
+    return {"ground_ring_mm": float(ring)} if ring and ring > 0 else {}
+
+
 def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
     """Tag the members that sew as bean letters; -> how many. None on the
     config tags nothing and reads nothing. A member the review screen pinned
@@ -62,14 +95,40 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
         return 0
     clusters: dict[str, list] = {}
     for r in regions:
-        cid = r.meta.get("text_cluster_id")
+        cid = word_key(r, cfg)
         if (cid and r.meta.get("stitched", True)
                 and str(r.meta.get("tier", "auto")).lower() == "auto"):
             clusters.setdefault(cid, []).append(r)
     tagged = 0
+    # The true-size switch's counter guard (`config.true_size_min_counter`):
+    # a line the restore step guarded is not read at all; any other line is
+    # measured only when it has a bean candidate -- the guard is read on the
+    # lines the switch would act on -- and one under it is left untagged and
+    # unmarked, as it sewed before the flip.
+    floor = true_size_min_counter(cfg)
+    if floor is not None:
+        from .small_text import GUARD_KEY, passes_counter_guard
+        from .stage6_hairline import block_thread_wt
+        wts = block_thread_wt(regions, cfg)
     for members in clusters.values():
-        inks = read_cluster_ink(p, members)
-        goes = weight_groups([i.stroke_mm for i in inks], float(line))
+        if floor is not None and any(r.meta.get(GUARD_KEY) for r in members):
+            continue
+        inks = read_cluster_ink(p, members, **_ring(cfg))
+        # A read the traced shape disagrees with is no read: left out of the
+        # decision and never bean (`INK_SHAPE_MAX_RATIO`).
+        widths = [i.stroke_mm if ink_reads_shape(getattr(r, "polygon", None), i.stroke_mm) else None
+                  for r, i in zip(members, inks)]
+        if cfg.lettering_word_tiers:
+            # L3: one tier per word -- the whole word goes bean or none of
+            # it does, on the median of its members' ink.
+            known = [w for w in widths if w is not None]
+            whole = bool(known) and float(np.median(known)) < float(line)
+            goes = [whole and w is not None for w in widths]
+        else:
+            goes = weight_groups(widths, float(line))
+        if (floor is not None and any(go and ink.spines for ink, go in zip(inks, goes))
+                and not passes_counter_guard(members, p, floor, wts, int(cfg.thread_wt))):
+            continue
         for r, ink, go in zip(members, inks, goes):
             if ink.stroke_mm is not None:
                 r.meta["ink_stroke_mm"] = round(ink.stroke_mm, 3)
@@ -77,3 +136,48 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
                 r.meta[BEAN_LETTER_KEY] = ink.spines
                 tagged += 1
     return tagged
+
+
+# The widest counter whose bean letter is held off it
+# (`cfg.bean_letter_counter_hold_mm`), across its widest point. Fremont's 81 mm
+# counters are 0.5-0.85 mm across (8, 9, the tagline's A's and P); past about
+# a millimetre a 0.4 mm thread centred on the stroke leaves most of a counter
+# bare anyway, and the letter is no longer the small lettering this is for.
+# A CANDIDATE (gate 1).
+COUNTER_HOLD_MAX_MM = 1.0
+
+
+def hold_bean_counters(regions, p, cfg: PipelineConfig) -> int:
+    """Re-read the ink of every cluster `tag_bean_letters` tagged, with each
+    needle point held `cfg.bean_letter_counter_hold_mm` off the ink's small
+    counters (`ink_path.hold_off_counters`), and swap in those spines. The
+    clusters are formed exactly as `tag_bean_letters` forms them, so the
+    skeleton is the same one and only points near a counter move. -> how many
+    members' spines changed. None on the config reads nothing."""
+    hold = cfg.bean_letter_counter_hold_mm
+    if not hold or hold <= 0 or p is None:
+        return 0
+    clusters: dict[str, list] = {}
+    for r in regions:
+        cid = word_key(r, cfg)
+        if (cid and r.meta.get("stitched", True)
+                and str(r.meta.get("tier", "auto")).lower() == "auto"):
+            clusters.setdefault(cid, []).append(r)
+    changed = 0
+    for members in clusters.values():
+        if not any(r.meta.get(BEAN_LETTER_KEY) for r in members):
+            continue
+        inks = read_cluster_ink(p, members, counter_hold_mm=float(hold),
+                                counter_max_mm=COUNTER_HOLD_MAX_MM, **_ring(cfg))
+        for r, ink in zip(members, inks):
+            old = r.meta.get(BEAN_LETTER_KEY)
+            # Same skeleton, same edges: only the points move. A read that
+            # disagrees on the spines' shape is not this letter's -- keep it.
+            if not old or len(ink.spines) != len(old) or any(
+                    len(a) != len(b) for a, b in zip(ink.spines, old)):
+                continue
+            if ink.spines != old:
+                r.meta[BEAN_LETTER_KEY] = ink.spines
+                r.meta["bean_counter_held"] = True
+                changed += 1
+    return changed

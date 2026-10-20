@@ -1,0 +1,80 @@
+
+becker-real  (source 1.81 px/mm, work 7.25)
+  variant              -      -      -   turn spikes/100mm nodes
+  shipped              -      -      -   47.4      7.1    1897
+  no native read       -      -      -   62.8      0.0    1548
+  no subpixel          -      -      -   62.8      0.0    1548
+  no curves            -      -      -   34.4      4.8     904
+  plain DP             -      -      -   62.8      0.0    1548
+
+bridge-real  (source 3.49 px/mm, work 8.00)
+  variant              -      -      -   turn spikes/100mm nodes
+  shipped              -      -      -   38.7      4.0    3496
+  no native read       -      -      -   29.1      2.2    2050
+  no subpixel          -      -      -   29.1      2.2    2050
+  no curves            -      -      -   33.9      3.7    2175
+  plain DP             -      -      -   29.1      2.2    2050
+
+fremontsil-flat-r1.8  (source 1.80 px/mm, work 7.20)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.121  0.272  0.112   67.0      1.4    2737
+  no native read   0.115  0.268  0.105   65.2      0.0    2485
+  no subpixel      0.115  0.268  0.105   65.2      0.0    2485
+  no curves        0.121  0.272  0.112   64.6      1.1    2484
+  plain DP         0.115  0.268  0.105   65.2      0.0    2485
+
+goldensil-flat-r1.8  (source 1.80 px/mm, work 7.20)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.094  0.264  0.128   69.2      1.8     452
+  no native read   0.085  0.230  0.119   67.2      0.0     419
+  no subpixel      0.085  0.230  0.119   67.2      0.0     419
+  no curves        0.093  0.271  0.128   68.1      2.0     429
+  plain DP         0.085  0.230  0.119   67.2      0.0     419
+
+fremontsil-flat-r3  (source 3.00 px/mm, work 8.00)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.062  0.172  0.048   66.1      6.3    3401
+  no native read   0.075  0.179  0.058   66.5      5.4    2986
+  no subpixel      0.075  0.179  0.058   66.5      5.4    2986
+  no curves        0.065  0.175  0.048   61.3      5.9    2704
+  plain DP         0.075  0.179  0.058   66.5      5.4    2986
+
+goldensil-flat-r3  (source 3.00 px/mm, work 8.00)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.061  0.159  0.076   49.2      3.1     425
+  no native read   0.058  0.159  0.071   54.9      2.9     458
+  no subpixel      0.058  0.159  0.071   54.9      2.9     458
+  no curves        0.063  0.162  0.076   47.7      3.1     391
+  plain DP         0.058  0.159  0.071   54.9      2.9     458
+
+fremont-gradient-r1.8  (source 1.80 px/mm, work 7.20)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.116  0.266  0.144   41.1      5.0    1941
+  no native read   0.107  0.242  0.138   30.9      2.1    1342
+  no subpixel      0.107  0.242  0.138   30.9      2.1    1342
+  no curves        0.117  0.264  0.144   35.3      4.0    1470
+  plain DP         0.107  0.242  0.138   30.9      2.1    1342
+
+golden-gradient-r1.8  (source 1.81 px/mm, work 7.25)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.108  0.330  0.101   54.7      6.8    2214
+  no native read   0.113  0.314  0.096   48.3      3.8    1651
+  no subpixel      0.113  0.314  0.096   48.3      3.8    1651
+  no curves        0.109  0.329  0.101   49.0      6.4    1647
+  plain DP         0.113  0.314  0.096   48.3      3.8    1651
+
+fremont-gradient-r3  (source 3.00 px/mm, work 8.00)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.060  0.176  0.045   56.9      7.8    3686
+  no native read   0.066  0.173  0.045   47.4      6.0    2571
+  no subpixel      0.066  0.173  0.045   47.4      6.0    2571
+  no curves        0.061  0.176  0.045   52.1      7.0    2711
+  plain DP         0.066  0.173  0.045   47.4      6.0    2571
+
+golden-gradient-r3  (source 3.01 px/mm, work 8.00)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.051  0.179  0.046   44.3      6.3    2032
+  no native read   0.067  0.192  0.050   38.8      5.0    1513
+  no subpixel      0.067  0.192  0.050   38.8      5.0    1513
+  no curves        0.054  0.181  0.046   39.7      6.0    1500
+  plain DP         0.067  0.192  0.050   38.8      5.0    1513

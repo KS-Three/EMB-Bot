@@ -52,6 +52,13 @@ TIE = "tie"
 ROLE_BORDER = "border"
 ROLE_EDGE_CAP = "edge_cap"
 
+# Id prefix of one stretch of the design-silhouette cap. A stretch is
+# addressable like a shape: the Studio sends `cap:<x>:<y>` in
+# `deleted_shape_ids` to drop it, or in `shape_overrides` with a
+# `thread_index` to recolour it. The id is the stretch's midpoint in plan mm,
+# rounded to 1 mm, so it survives an edit elsewhere in the design.
+CAP_PIECE_PREFIX = "cap:"
+
 # The machine command stream a plan compiles to — see `iter_machine_commands`.
 CMD_STITCH = "stitch"
 CMD_JUMP = "jump"
@@ -90,6 +97,9 @@ class StitchRun:
     # sites in this package leaves it alone, and it moves no stitch. Declared
     # LAST so no positional `StitchRun(points, kind)` call shifts.
     role: str = ""
+    # Which stretch of the silhouette cap this run is (`CAP_PIECE_PREFIX` id);
+    # "" for everything else. Declared after `role` for the same reason.
+    piece: str = ""
 
     @property
     def length_mm(self) -> float:
@@ -313,7 +323,7 @@ def split_long_moves(points: list[tuple[float, float]],
 # controlled where the geometry is generated, in `_row_points`, instead.
 
 
-def apply_ties(runs: list[StitchRun]) -> None:
+def apply_ties(runs: list[StitchRun], small_letters: set[str] | None = None) -> None:
     """Lock the thread wherever it starts and wherever it gets cut.
 
     Ties are folded into the run they protect rather than added as runs of
@@ -325,18 +335,34 @@ def apply_ties(runs: list[StitchRun]) -> None:
     block by the SAME rule rather than a second textual copy of it — the
     fallen piece is ordinary flat stitching, so §2.14's per-LAYER appliqué
     ties (`stage6_applique._tie_layers`) deliberately do not apply to it.
+
+    `small_letters` (`cfg.small_letter_ties`, default OFF; None is the
+    rule above, byte for byte): the shape ids stage 7 sewed as bean letters
+    or skeleton runs. A RUN of one of those is tied by `spread_tie_in` /
+    `spread_tie_off` instead of `tie_run`'s bounce, which on a 0.45 mm
+    station pitch lays four legs over ONE station gap of a 0.2 mm stroke.
     """
     if not runs:
         return
 
+    def small(run: StitchRun) -> bool:
+        return (small_letters is not None and run.kind == RUN
+                and run.shape_id in small_letters)
+
     def tie_in(run: StitchRun) -> None:
         if len(run.points) < 2:
+            return
+        if small(run):
+            run.points = spread_tie_in(run.points)
             return
         pts = tie_run(run.points[0], run.points[1]).points
         run.points = pts[:-1] + run.points
 
     def tie_off(run: StitchRun) -> None:
         if len(run.points) < 2:
+            return
+        if small(run):
+            run.points = spread_tie_off(run.points)
             return
         pts = tie_run(run.points[-1], run.points[-2]).points
         run.points = run.points + pts[1:]
@@ -378,6 +404,66 @@ def tie_run(at: tuple[float, float], toward: tuple[float, float], kind: str = TI
     if pts[-1] != at:
         pts.append(at)
     return StitchRun(points=pts, kind=kind, shape_id=shape_id)
+
+
+def _same(a: tuple[float, float], b: tuple[float, float]) -> bool:
+    return math.dist(a, b) < 1e-9
+
+
+def opened_by_retrace(points: list[tuple[float, float]],
+                      passes: int = machine.BEAN_PASSES) -> bool:
+    """True when the run sews its OWN opening stitch `passes` times or more:
+    a three-pass bean starts p0 -> p1, comes back over it, and goes out over
+    it again, so the thread's starting tail is already held under two later
+    stitches. A lock there adds thread and no hold."""
+    if len(points) < 2:
+        return False
+    a, b = points[0], points[1]
+    if _same(a, b):
+        return False
+    n = sum(1 for p, q in zip(points, points[1:])
+            if (_same(p, a) and _same(q, b)) or (_same(p, b) and _same(q, a)))
+    return n >= passes
+
+
+def _walk(stations: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Up to `machine.TIE_STITCHES` legs along `stations` (stations[0] is
+    where the walk starts, not returned), never more thread than the
+    bounce's three legs at `TIE_STITCH_MM` -- but always one leg."""
+    cap = machine.TIE_STITCHES * machine.TIE_STITCH_MM
+    out: list[tuple[float, float]] = []
+    run_mm = 0.0
+    for prev, cur in zip(stations, stations[1:machine.TIE_STITCHES + 1]):
+        step = math.dist(prev, cur)
+        if out and run_mm + step > cap + SPLIT_TOLERANCE_MM:
+            break
+        out.append(cur)
+        run_mm += step
+    return out
+
+
+def spread_tie_in(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """A small letter's start, locked along its own centreline
+    (`cfg.small_letter_ties`). A run its own passes already lock
+    (`opened_by_retrace`) is returned as it is: no tie. Otherwise the needle
+    enters a few stations IN and walks back to the start, and the run then
+    sews forward over those legs -- [p3, p2, p1] + [p0, p1, p2, p3, ...] --
+    so the lock is the letter's own stations, each gap sewn twice, instead
+    of four legs piled into the first gap."""
+    if len(points) < 2 or opened_by_retrace(points):
+        return list(points)
+    legs = _walk(points)
+    return list(reversed(legs)) + list(points)
+
+
+def spread_tie_off(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """A small letter's end, locked along its own centreline
+    (`cfg.small_letter_ties`): the needle walks back over the run's last
+    stations -- [..., p(n-1), pn] + [p(n-1), p(n-2), p(n-3)] -- and is cut
+    there, on thread it has just laid, inside the letter."""
+    if len(points) < 2:
+        return list(points)
+    return list(points) + _walk(list(reversed(points)))
 
 
 def strip_ties(points: list[tuple[float, float]]) -> list[tuple[float, float]]:

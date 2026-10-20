@@ -190,7 +190,10 @@ def marine() -> Path:
 # measured on the pre-step-3 pruner; `satin_corner_twigs` (ON since the same
 # day) changes the fixture's strokes, so this file measures the WALK alone
 # by holding the pruner at the state those numbers were read on.
-PRE_TWIGS = dict(satin_corner_twigs=False)
+# ... and on the skeleton tier: the Column lane (`lettering_columns`, ON by
+# default since Kent's 2026-10-12 flip) sews MARINE's letters with its own
+# Euler walk, so the skeleton walk this file prices needs the lane held off.
+PRE_TWIGS = dict(satin_corner_twigs=False, lettering_columns=False)
 
 
 def _plan(art: Path, **kw):

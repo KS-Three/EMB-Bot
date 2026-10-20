@@ -26,6 +26,7 @@ from digitizer_core.stage6_detail import (
     detail_runs,
     extract_detail_lines,
 )
+from tests.conftest import own_thread_only
 
 HERE = Path(__file__).resolve().parent
 PHOTO_DIR = HERE.parent / "testdata" / "photo"
@@ -203,6 +204,78 @@ def test_determinism():
            [(r.kind, r.jump, r.trim, r.points) for r in b_runs]
 
 
+# --- `cfg.detail_layer_stitch`: "bean" (default) or one "run" -----------------
+
+def _two_rings() -> np.ndarray:
+    img = np.full((240, 400), 245, np.uint8)
+    cv2.circle(img, (100, 120), 32, 30, 2, cv2.LINE_AA)
+    cv2.circle(img, (300, 120), 32, 30, 2, cv2.LINE_AA)
+    return img
+
+
+def _detail(img, **cfg):
+    return detail_runs(_source(img), PipelineConfig(**cfg), entry=None,
+                       trim_at_mm=_TRIM_AT)
+
+
+def test_default_stitch_is_the_bean_and_explicit_bean_is_identical():
+    """The default IS "bean", and naming it changes nothing: the OFF path of
+    the new option is the layer exactly as it sewed before it existed (the
+    PR body carries the md5 against main on owl_kent and both controls)."""
+    assert PipelineConfig().detail_layer_stitch == "bean"
+    a_runs, a_rep = _detail(_two_rings())
+    b_runs, b_rep = _detail(_two_rings(), detail_layer_stitch="bean")
+    assert a_rep == b_rep
+    assert [(r.kind, r.jump, r.trim, r.points) for r in a_runs] == \
+           [(r.kind, r.jump, r.trim, r.points) for r in b_runs]
+
+
+def test_run_sews_each_line_once_with_no_stitch_under_the_needle_floor():
+    """"run": one pass per line, kind RUN, no stitch under the needle floor
+    and the median at or under the candidate length — the bean's sub-1 mm
+    stations are gone."""
+    from digitizer_core.stage6_detail import DETAIL_RUN_STITCH_MM
+
+    runs, report = _detail(_circle_img(), detail_layer_stitch="run")
+    assert runs and report["lines"] == len(runs)
+    for r in runs:
+        assert r.kind == stitches.RUN and r.shape_id == "detail"
+        seg = [math.dist(a, b) for a, b in zip(r.points, r.points[1:])]
+        assert min(seg) >= machine.MIN_STITCH_MM - 1e-9
+        # `stitch_path` folds a sub-floor end stub into the last stitch, so
+        # one stitch per line may run up to a needle floor past the length.
+        assert max(seg) <= DETAIL_RUN_STITCH_MM + machine.MIN_STITCH_MM + 1e-9
+        assert float(np.median(seg)) <= DETAIL_RUN_STITCH_MM + 1e-9
+        # One pass: the polyline never retraces, so its length is the line's
+        # (a bean's is BEAN_PASSES times it).
+        assert r.length_mm >= 0.8 * DETAIL_MIN_LINE_MM
+    bean, _ = _detail(_circle_img())
+    run_mm = sum(r.length_mm for r in runs)
+    bean_mm = sum(r.length_mm for r in bean)
+    assert 0.9 <= run_mm * machine.BEAN_PASSES / bean_mm <= 1.1
+
+
+def test_run_keeps_the_bean_s_order_ends_and_hops():
+    """Same lines, same sew order, same ends (an odd bean ends at the far end
+    too), so every jump and trim is the bean's own."""
+    bean, b_rep = _detail(_two_rings())
+    run, r_rep = _detail(_two_rings(), detail_layer_stitch="run")
+    assert len(run) == len(bean) >= 2
+    assert r_rep["jumps"] == b_rep["jumps"]
+    assert r_rep["thread_index"] == b_rep["thread_index"]
+    for a, b in zip(bean, run):
+        assert (a.jump, a.trim) == (b.jump, b.trim)
+        assert math.dist(a.points[0], b.points[0]) < 1e-6
+        assert math.dist(a.points[-1], b.points[-1]) < 1e-6
+
+
+def test_an_unknown_stitch_mode_is_refused():
+    import pytest
+
+    with pytest.raises(ValueError, match="detail_layer_stitch"):
+        _detail(_circle_img(), detail_layer_stitch="satin")
+
+
 # --- The opt-in wiring (config -> pipeline -> stage 7) ------------------------
 
 def test_pipeline_plumbs_source_pixels_only_on_explicit_opt_in():
@@ -246,7 +319,7 @@ def test_default_config_never_runs_the_layer(monkeypatch):
     def boom(*a, **k):  # pragma: no cover - the point is it never fires
         raise AssertionError("detail_runs ran on a default config")
 
-    monkeypatch.setattr(s7, "detail_runs", boom)
+    monkeypatch.setattr(s7, "detail_runs", own_thread_only(boom, s7.detail_runs))
     _result, plan = digitize(str(LOGO), PipelineConfig(
         target_width_mm=90.0, forced_class="flat"))
     assert plan.blocks

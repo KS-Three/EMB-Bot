@@ -103,6 +103,7 @@ from skimage.color import deltaE_ciede2000
 from skimage import graph as skgraph
 
 from .config import PipelineConfig
+from .fast_skimage import deltaE_ciede2000_1
 from .palette import region_weight, select_palette
 from .stage1_prep import Prep
 from .stage2_quantize import Quant, _quantize_population
@@ -1077,9 +1078,15 @@ def _boundary_contrast_initial_adjust(rag) -> None:
 
 
 def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
-    da = g.nodes[dst]["mean color"].reshape(1, 3)
-    na = g.nodes[n]["mean color"].reshape(1, 3)
-    w = float(deltaE_ciede2000(da, na)[0])
+    da = g.nodes[dst]["mean color"]
+    na = g.nodes[n]["mean color"]
+    # The scalar twin of skimage's dE00 — the same float bit for bit, ~4x
+    # cheaper on one pair (`fast_skimage`). It is float64 only; skimage
+    # would compute a float32 pair in float32, so anything else goes there.
+    if da.dtype == np.float64 and na.dtype == np.float64:
+        w = deltaE_ciede2000_1(da, na)
+    else:
+        w = float(deltaE_ciede2000(da.reshape(1, 3), na.reshape(1, 3))[0])
     # The face-local threshold drop's recompute half — see
     # `_face_local_threshold`. No-face runs never set the attribute, so `w`
     # is untouched there (the pre-face-priors float, bit for bit).
@@ -1360,6 +1367,46 @@ TONAL_SPLIT_MAX_PARTS = 4
 # are confetti rather than areas. Small on purpose — removing quantisation
 # artefacts, not reshaping the subject.
 TONAL_SPLIT_CLEAN_PX = 3
+# Defect 20's per-region cap (`cfg.tonal_split_layer_cap`): how far, in mm,
+# a vetoed point may sit outside a region and still keep that region whole.
+# The points are 1 mm coverage cells measured on the SEWN plan, which reaches
+# past the pixel mask by pull compensation and stage 5's underlap, so a
+# point exactly on the mask would miss the parent whose seam stacked it.
+TONAL_SPLIT_VETO_MARGIN_MM = 1.5
+
+
+def tonal_veto_px(p: Prep, veto_mm) -> np.ndarray | None:
+    """Plan-mm points -> (N, 2) (row, col) pixel coordinates in `p`'s frame,
+    by inverting stage 4's `_to_mm` (origin at the art bbox centre, y down).
+    None when there is nothing to veto."""
+    if not veto_mm or p.px_per_mm <= 0:
+        return None
+    x0, y0, x1, y1 = p.art_bbox
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    xy = np.asarray(veto_mm, np.float64).reshape(-1, 2)
+    return np.stack([xy[:, 1] * p.px_per_mm + cy, xy[:, 0] * p.px_per_mm + cx], axis=1)
+
+
+def _veto_hits(r: RegionMask, veto_px: np.ndarray | None, margin_px: float) -> bool:
+    """True when a vetoed point lies on `r` or within `margin_px` of it."""
+    if veto_px is None or not len(veto_px):
+        return False
+    (oy, ox) = r.origin
+    h, w = r.crop.shape
+    rel = veto_px - np.array([oy, ox], np.float64)
+    near = ((rel[:, 0] >= -margin_px) & (rel[:, 0] < h + margin_px)
+            & (rel[:, 1] >= -margin_px) & (rel[:, 1] < w + margin_px))
+    if not near.any():
+        return False
+    pad = int(np.ceil(margin_px)) + 1
+    grown = np.pad(r.crop.astype(np.uint8), pad)
+    k = 2 * int(np.ceil(margin_px)) + 1
+    grown = cv2.dilate(grown, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k)))
+    rc = np.floor(rel[near]).astype(np.int64) + pad
+    ok = ((rc[:, 0] >= 0) & (rc[:, 0] < grown.shape[0])
+          & (rc[:, 1] >= 0) & (rc[:, 1] < grown.shape[1]))
+    rc = rc[ok]
+    return bool(len(rc) and grown[rc[:, 0], rc[:, 1]].any())
 
 
 def _percentile_extremes_deltae(lab: np.ndarray) -> float:
@@ -1436,7 +1483,8 @@ def _region_lab(pixels_rgb: np.ndarray, cfg: PipelineConfig) -> np.ndarray:
 
 
 def split_tonal_regions(
-    p: Prep, kept: list[RegionMask], split_tonal: bool = False
+    p: Prep, kept: list[RegionMask], split_tonal: bool = False,
+    veto_px: np.ndarray | None = None,
 ) -> tuple[list[RegionMask], int]:
     """Split regions whose own pixels span more tone than one thread can tell.
 
@@ -1444,6 +1492,11 @@ def split_tonal_regions(
     mask it came from, the parts of one input region are disjoint, and their
     union is exactly the original — so this can neither lose artwork nor
     create overlap for stage 5 to resolve.
+
+    `veto_px` ((N, 2) row/col, `tonal_veto_px`) keeps every region within
+    `TONAL_SPLIT_VETO_MARGIN_MM` of a listed point whole — defect 20's cap,
+    fed the cells an earlier plan stacked past the ceiling. None (every
+    caller but the cap) is the split exactly as before.
     """
     if not split_tonal:
         return kept, 0
@@ -1459,6 +1512,10 @@ def split_tonal_regions(
         px = r.area
         area_mm2 = px * px_area_mm2
         if area_mm2 < TONAL_SPLIT_MIN_AREA_MM2:
+            out.append(r)
+            continue
+        if veto_px is not None and _veto_hits(
+                r, veto_px, TONAL_SPLIT_VETO_MARGIN_MM * px_per_mm):
             out.append(r)
             continue
         # Crop-space throughout (2026-08-24). Boolean indexing walks the
@@ -1674,6 +1731,7 @@ def dissolve_phantom_blends(
     bg_edge_rgb: np.ndarray | None,
     px_per_mm: float,
     page_mask: np.ndarray | None = None,
+    source_scale: float = 1.0,
 ) -> tuple[np.ndarray, np.ndarray | None, list[dict]]:
     """Fold every merged label that is a COLOUR BLEND of its own two sides
     into whichever side it is nearer. -> (labels, drop_mask, warnings).
@@ -1729,6 +1787,21 @@ def dissolve_phantom_blends(
     # defect 11 was about, reached by a new route. Bincounts over one flat
     # index cost the foreground, once.
     edge = _edge_mask(labels, valid)
+    # The edge band is measured in SOURCE pixels, not working ones. Stage 1
+    # resamples to `cfg.work_px_per_mm` (8.0, ON since 2026-10-01), so a
+    # 5 px/mm JPEG arrives 1.6x upscaled and its ringing, 1-2 source pixels
+    # wide, is now 2-4 working pixels: its interior stops being edge, the
+    # band gate fails, and the dissolve goes quiet. Measured on Bridge Bar at
+    # 80 mm with the grid ON: 5 labels / 26.2 mm2 dissolved against 37 /
+    # 249.3 mm2 with it off. Widening the band by the upscale factor asks
+    # the question at the resolution the halo was made at; at scale <= 1.5
+    # the radius is 1 and this is the old one-pixel band, byte for byte.
+    radius = max(1, int(round(source_scale)))
+    for d in range(2, radius + 1):
+        for dy, dx in ((d, 0), (-d, 0), (0, d), (0, -d)):
+            shifted = np.roll(labels, (dy, dx), (0, 1))
+            shifted_valid = np.roll(valid, (dy, dx), (0, 1))
+            edge |= valid & shifted_valid & (shifted != labels)
     code_v = np.searchsorted(ids, labels[valid])
     counts = np.bincount(code_v, minlength=n_ids)
     edge_counts = np.bincount(code_v[edge[valid]], minlength=n_ids)
@@ -1780,11 +1853,22 @@ def dissolve_phantom_blends(
         # background, enclosed pixels excluded; None reduces to the old
         # behaviour for any caller that does not have it.
         outside = (~valid) if page_mask is None else page_mask
+        page_edge = np.zeros(labels.shape, bool)
         for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             touch = valid & np.roll(outside, (dy, dx), (0, 1))
+            page_edge |= touch
             for a in np.unique(code_frame[touch]):
                 if int(a) >= 0:
                     adj[int(a)].add(_PAGE)
+        # A pixel on the PAGE is on a boundary too. `_edge_mask` counts only
+        # label-against-label contacts, so the outer band of a rim halo loses
+        # its whole page side and reads under `_PHOTO_PHANTOM_EDGE_FRAC`. On
+        # Bridge Bar that was the Whale residual: eight neutral-grey bands
+        # (L* 49-53, between the black spokes and the page) read 0.43-0.49
+        # and were never offered to the dissolve; with page contact counted
+        # they read 0.50-0.54. The page is already an endpoint above, so
+        # counting it as an edge only makes the gate agree with that.
+        edge_counts = np.bincount(code_v[(edge | page_edge)[valid]], minlength=n_ids)
 
     # Each phantom names the side of its OWN step that it is nearer, which
     # is always one of its own neighbours. The flat lane instead sends a
@@ -2125,7 +2209,9 @@ def kept_masks_to_quant(
     # either region former so both the classical and SAM2 paths get it from
     # one implementation — the same reason this function exists.
     regions_before_split = len(kept)
-    kept, tonal_splits = split_tonal_regions(p, kept, split_tonal=split_tonal)
+    kept, tonal_splits = split_tonal_regions(
+        p, kept, split_tonal=split_tonal,
+        veto_px=tonal_veto_px(p, cfg.tonal_split_veto_mm))
 
     # --- 6. Palette selection (chart-restricted weighted k-medoids) -----------
     # (Step 5, the face-local threshold drop, already ran inside the RAG
@@ -2451,7 +2537,8 @@ def snap_region_edges(labels: np.ndarray, valid: np.ndarray, lab_img: np.ndarray
 
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
             split_tonal=False, shade_demand=False, design_ramp=None,
-            thin_population=False, snap_edges=False, keep_counters=False) -> Quant:
+            thin_population=False, snap_edges=False, keep_counters=False,
+            counter_core=None) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -2602,7 +2689,9 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
         merged, blend_drop, blend_warnings = dissolve_phantom_blends(
             merged, base_valid, true_lab, cfg,
             None if p.bg_from_alpha else p.bg_edge_rgb, p.px_per_mm,
-            page_mask=~valid)
+            page_mask=~valid,
+            source_scale=(p.px_per_mm / p.input_px_per_mm
+                          if p.input_px_per_mm > 0 else 1.0))
         if blend_drop is not None:
             # Page-side halo leaves the foreground before regions are cut
             # from it, so nothing downstream ever sees those pixels as
@@ -2658,7 +2747,18 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # `true_lab`, the raster's own colours, since every region here is layer 0.
     kept, floor_warnings = resolve_small_regions(
         regions, cfg, p.px_per_mm, chain_rescue=False,
-        lab_img=true_lab if keep_counters else None, keep_counters=keep_counters)
+        # `cfg.small_dot_rung_lettering` reads the same colours for its stem,
+        # and `cfg.detail_spokes` for a mark's "another colour than its host".
+        lab_img=true_lab if (keep_counters or (cfg.small_dot_rung
+                                               and cfg.small_dot_rung_lettering)
+                             or cfg.detail_spokes) else None,
+        keep_counters=keep_counters,
+        # `cfg.open_cored_counters`, the caller's gate (gradient logos) and
+        # the caller's mask (`pipeline.cored_counter_core`: stage 1's
+        # enclosed pixels, kept to the cores a glyph holds): the enclosed
+        # pixels left every region above, so a counter's bands are found
+        # round the hole they leave. None, byte-identical.
+        counter_core=counter_core)
 
     return kept_masks_to_quant(
         p,

@@ -1,0 +1,474 @@
+{
+ "50mm/shipped": {
+  "stitches": 3157,
+  "stops": 1,
+  "cones": 1,
+  "trims_per_1000": 7.29,
+  "artfid_coverage": 0.7843,
+  "artfid_structure": 0.8017,
+  "artfid_no_colour": 79.2,
+  "lost_elements": 13,
+  "lost_frac": 0.0325,
+  "unsewn_frac": 0.0031,
+  "overshoot_frac": 0.0294,
+  "uncovered_ink_frac": 0.034,
+  "uncovered_elements": 4,
+  "ragged_mm": 0.165,
+  "hausdorff_mm": 2.09,
+  "refusals": {},
+  "marine": {
+   "letters": 6,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    9
+   ],
+   "crosses": 381,
+   "long_crosses": 9,
+   "long_share": 0.0417,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 8.54
+  },
+  "becker_line": {
+   "letters": 5,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 0,
+   "long_crosses": 0,
+   "long_share": 0.0,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 0
+  },
+  "trims": 24,
+  "warnings": {
+   "BACKGROUND_UNCERTAIN": 1,
+   "BACKGROUND_ENCLOSED": 1,
+   "INPUT_LOW_RESOLUTION": 1,
+   "DUPLICATE_CONE_LAYERS_MERGED": 1
+  },
+  "secs": 103
+ },
+ "50mm/coverage_edges": {
+  "stitches": 3197,
+  "stops": 1,
+  "cones": 1,
+  "trims_per_1000": 5.32,
+  "artfid_coverage": 0.7846,
+  "artfid_structure": 0.7995,
+  "artfid_no_colour": 79.2,
+  "lost_elements": 6,
+  "lost_frac": 0.0176,
+  "unsewn_frac": 0.0043,
+  "overshoot_frac": 0.0133,
+  "uncovered_ink_frac": 0.0303,
+  "uncovered_elements": 6,
+  "ragged_mm": 0.151,
+  "hausdorff_mm": 2.53,
+  "refusals": {},
+  "marine": {
+   "letters": 6,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    4
+   ],
+   "crosses": 399,
+   "long_crosses": 4,
+   "long_share": 0.0162,
+   "fan_crosses": 4,
+   "fan_letters": 1,
+   "bare_mm2": 7.5
+  },
+  "becker_line": {
+   "letters": 5,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 0,
+   "long_crosses": 0,
+   "long_share": 0.0,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 0
+  },
+  "trims": 18,
+  "warnings": {
+   "BACKGROUND_UNCERTAIN": 1,
+   "BACKGROUND_ENCLOSED": 1,
+   "INPUT_LOW_RESOLUTION": 1,
+   "DUPLICATE_CONE_LAYERS_MERGED": 1
+  },
+  "secs": 88
+ },
+ "50mm/columns_words": {
+  "stitches": 2922,
+  "stops": 1,
+  "cones": 1,
+  "trims_per_1000": 5.13,
+  "artfid_coverage": 0.7772,
+  "artfid_structure": 0.7916,
+  "artfid_no_colour": 78.4,
+  "lost_elements": 15,
+  "lost_frac": 0.0395,
+  "unsewn_frac": 0.0031,
+  "overshoot_frac": 0.0363,
+  "uncovered_ink_frac": 0.0277,
+  "uncovered_elements": 2,
+  "ragged_mm": 0.165,
+  "hausdorff_mm": 2.92,
+  "refusals": {},
+  "marine": {
+   "letters": 6,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 372,
+   "long_crosses": 0,
+   "long_share": 0.0,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 0.34
+  },
+  "becker_line": {
+   "letters": 5,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 0,
+   "long_crosses": 0,
+   "long_share": 0.0,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 0
+  },
+  "trims": 16,
+  "warnings": {
+   "BACKGROUND_UNCERTAIN": 1,
+   "BACKGROUND_ENCLOSED": 1,
+   "INPUT_LOW_RESOLUTION": 1,
+   "DUPLICATE_CONE_LAYERS_MERGED": 1
+  },
+  "secs": 81
+ },
+ "50mm/coverage_columns": {
+  "stitches": 2869,
+  "stops": 1,
+  "cones": 1,
+  "trims_per_1000": 4.88,
+  "artfid_coverage": 0.7799,
+  "artfid_structure": 0.7957,
+  "artfid_no_colour": 78.7,
+  "lost_elements": 7,
+  "lost_frac": 0.0196,
+  "unsewn_frac": 0.0043,
+  "overshoot_frac": 0.0153,
+  "uncovered_ink_frac": 0.0243,
+  "uncovered_elements": 4,
+  "ragged_mm": 0.151,
+  "hausdorff_mm": 2.8,
+  "refusals": {},
+  "marine": {
+   "letters": 6,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 338,
+   "long_crosses": 0,
+   "long_share": 0.0,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 0.8
+  },
+  "becker_line": {
+   "letters": 5,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 0,
+   "long_crosses": 0,
+   "long_share": 0.0,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 0
+  },
+  "trims": 15,
+  "warnings": {
+   "BACKGROUND_UNCERTAIN": 1,
+   "BACKGROUND_ENCLOSED": 1,
+   "INPUT_LOW_RESOLUTION": 1,
+   "DUPLICATE_CONE_LAYERS_MERGED": 1
+  },
+  "secs": 65
+ },
+ "80mm/shipped": {
+  "stitches": 6842,
+  "stops": 1,
+  "cones": 1,
+  "trims_per_1000": 5.7,
+  "artfid_coverage": 0.8595,
+  "artfid_structure": 0.8467,
+  "artfid_no_colour": 85.4,
+  "lost_elements": 22,
+  "lost_frac": 0.0221,
+  "unsewn_frac": 0.0076,
+  "overshoot_frac": 0.0144,
+  "uncovered_ink_frac": 0.0482,
+  "uncovered_elements": 17,
+  "ragged_mm": 0.165,
+  "hausdorff_mm": 3.1,
+  "refusals": {},
+  "marine": {
+   "letters": 6,
+   "long_by_letter": [
+    9,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 607,
+   "long_crosses": 9,
+   "long_share": 0.0251,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 14.12
+  },
+  "becker_line": {
+   "letters": 5,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 0,
+   "long_crosses": 0,
+   "long_share": 0.0,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 0
+  },
+  "trims": 40,
+  "warnings": {
+   "BACKGROUND_UNCERTAIN": 1,
+   "BACKGROUND_ENCLOSED": 1,
+   "INPUT_LOW_RESOLUTION": 1,
+   "DUPLICATE_CONE_LAYERS_MERGED": 1
+  },
+  "secs": 78
+ },
+ "80mm/coverage_edges": {
+  "stitches": 7051,
+  "stops": 1,
+  "cones": 1,
+  "trims_per_1000": 4.96,
+  "artfid_coverage": 0.8546,
+  "artfid_structure": 0.8347,
+  "artfid_no_colour": 84.5,
+  "lost_elements": 23,
+  "lost_frac": 0.0238,
+  "unsewn_frac": 0.0112,
+  "overshoot_frac": 0.0126,
+  "uncovered_ink_frac": 0.045,
+  "uncovered_elements": 19,
+  "ragged_mm": 0.172,
+  "hausdorff_mm": 3.5,
+  "refusals": {},
+  "marine": {
+   "letters": 6,
+   "long_by_letter": [
+    13,
+    0,
+    0,
+    0,
+    4,
+    11
+   ],
+   "crosses": 703,
+   "long_crosses": 28,
+   "long_share": 0.0757,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 14.31
+  },
+  "becker_line": {
+   "letters": 5,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 0,
+   "long_crosses": 0,
+   "long_share": 0.0,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 0
+  },
+  "trims": 36,
+  "warnings": {
+   "BACKGROUND_UNCERTAIN": 1,
+   "BACKGROUND_ENCLOSED": 1,
+   "INPUT_LOW_RESOLUTION": 1,
+   "DUPLICATE_CONE_LAYERS_MERGED": 1
+  },
+  "secs": 73
+ },
+ "80mm/columns_words": {
+  "stitches": 6161,
+  "stops": 1,
+  "cones": 1,
+  "trims_per_1000": 3.73,
+  "artfid_coverage": 0.8513,
+  "artfid_structure": 0.8363,
+  "artfid_no_colour": 84.4,
+  "lost_elements": 24,
+  "lost_frac": 0.0288,
+  "unsewn_frac": 0.0134,
+  "overshoot_frac": 0.0154,
+  "uncovered_ink_frac": 0.0485,
+  "uncovered_elements": 24,
+  "ragged_mm": 0.169,
+  "hausdorff_mm": 3.1,
+  "refusals": {},
+  "marine": {
+   "letters": 6,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 556,
+   "long_crosses": 0,
+   "long_share": 0.0,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 3.97
+  },
+  "becker_line": {
+   "letters": 5,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 0,
+   "long_crosses": 0,
+   "long_share": 0.0,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 0
+  },
+  "trims": 24,
+  "warnings": {
+   "BACKGROUND_UNCERTAIN": 1,
+   "BACKGROUND_ENCLOSED": 1,
+   "INPUT_LOW_RESOLUTION": 1,
+   "DUPLICATE_CONE_LAYERS_MERGED": 1
+  },
+  "secs": 70
+ },
+ "80mm/coverage_columns": {
+  "stitches": 6029,
+  "stops": 1,
+  "cones": 1,
+  "trims_per_1000": 3.32,
+  "artfid_coverage": 0.8563,
+  "artfid_structure": 0.8368,
+  "artfid_no_colour": 84.7,
+  "lost_elements": 19,
+  "lost_frac": 0.0234,
+  "unsewn_frac": 0.0101,
+  "overshoot_frac": 0.0133,
+  "uncovered_ink_frac": 0.0371,
+  "uncovered_elements": 17,
+  "ragged_mm": 0.167,
+  "hausdorff_mm": 3.5,
+  "refusals": {},
+  "marine": {
+   "letters": 6,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 544,
+   "long_crosses": 0,
+   "long_share": 0.0,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 1.06
+  },
+  "becker_line": {
+   "letters": 5,
+   "long_by_letter": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "crosses": 0,
+   "long_crosses": 0,
+   "long_share": 0.0,
+   "fan_crosses": 0,
+   "fan_letters": 0,
+   "bare_mm2": 0
+  },
+  "trims": 21,
+  "warnings": {
+   "BACKGROUND_UNCERTAIN": 1,
+   "BACKGROUND_ENCLOSED": 1,
+   "INPUT_LOW_RESOLUTION": 1,
+   "DUPLICATE_CONE_LAYERS_MERGED": 1
+  },
+  "secs": 72
+ }
+}

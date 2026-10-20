@@ -78,6 +78,11 @@ def dump(name, path, garment, width):
 
 
 if __name__ == "__main__":
+    import sys as _sys
+    if {"-h", "--help"} & set(_sys.argv[1:]):
+        _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        print(__doc__ or "No usage text; see the source.")
+        raise SystemExit(0)
     if len(sys.argv) < 2:
         sys.exit(f"usage: {Path(__file__).name} <artwork> [garment] [width_mm]")
     dump("benchmark", Path(sys.argv[1]),

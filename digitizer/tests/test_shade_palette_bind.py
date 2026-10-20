@@ -52,6 +52,7 @@ from digitizer_core.stage6_streamline import (
     _shade_layers,
 )
 from digitizer_core.threads import CHART, rgb_to_lab
+from tests.conftest import own_thread_only
 
 _PX_PER_MM = 4.0
 FAB = get_fabric("pique_knit")
@@ -143,7 +144,7 @@ def test_sequence_passes_no_palette_when_the_flag_is_off(monkeypatch):
         seen.append(kw.get("shade_palette_indices", "MISSING"))
         return real(region, source_pixels, cfg, **kw)
 
-    monkeypatch.setattr(S7, "streamline_fill", spy)
+    monkeypatch.setattr(S7, "streamline_fill", own_thread_only(spy, real))
     poly = Polygon([(-35, -25), (35, -25), (35, 25), (-35, 25)])
     cfg = PipelineConfig(fill_technique="streamline", streamline_mode="layered",
                          shade_palette_bind=False)
@@ -167,7 +168,7 @@ def test_sequence_gate_is_the_strict_class_verdict(monkeypatch):
         seen.append(kw.get("shade_palette_indices", "MISSING"))
         return real(region, source_pixels, cfg, **kw)
 
-    monkeypatch.setattr(S7, "streamline_fill", spy)
+    monkeypatch.setattr(S7, "streamline_fill", own_thread_only(spy, real))
     poly = Polygon([(-35, -25), (35, -25), (35, 25), (-35, 25)])
     cfg = PipelineConfig(fill_technique="streamline", streamline_mode="layered",
                          shade_palette_bind=True)

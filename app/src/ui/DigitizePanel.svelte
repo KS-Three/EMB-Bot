@@ -2,7 +2,10 @@
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
+  import Advanced from "./Advanced.svelte";
   import { tip } from "../lib/tip.js";
+  import { markDigitizeBusy, rememberRun, forgetRun, wasRunning } from "../lib/digitizeBusy.js";
+  import { isCapPieceId } from "../lib/capPieces.js";
   import {
     buildDigitizeConfig,
     digitize,
@@ -13,6 +16,7 @@
     canonicalShapeEdits,
     editsKey,
     configKey,
+    resizedTargetWidth,
     reviewFromJob,
     reconcileReview,
     reorderWithinLayer,
@@ -22,6 +26,8 @@
     layerSiblings,
     effRgb,
     groupIntoBlocks,
+    pinSewableLayers,
+    moveBlockLayers,
     machineBlocksForRows,
     boundaryIssues,
     mergeGroupIssues,
@@ -44,7 +50,8 @@
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
-  import { loadImage, rasterSize, isVectorFile, uploadPlan, pngDimensionsFromBase64 } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile, uploadPlan, downscaleForService, pngDimensionsFromBase64 } from "../lib/rasterize.js";
+  import { friendlyError } from "../lib/friendlyError.js";
   import CropBox from "./CropBox.svelte";
   import { proposeCrop } from "../lib/cropProposal.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
@@ -170,6 +177,21 @@
           sourceFile = null;
         }
       }
+      // Over the service's byte or pixel limit: send the 2,800-px decode it
+      // would have made anyway, not the 1,200-px preview (rasterize.js).
+      if (!sourceFile && (plan.reason === "bytes" || plan.reason === "pixels") && sourceStoreAvailable()) {
+        try {
+          const lim = { max_upload_bytes: 12 * 1024 * 1024, ...((health && health.limits) || {}) };
+          const small = await downscaleForService(img, lim.max_upload_bytes);
+          if (small) {
+            const key = await sourceKeyFor(small.bytes);
+            await putSource(key, { bytes: small.bytes, type: "image/png", name: file.name });
+            sourceFile = { key, type: "image/png", size: small.bytes.length, width: small.width, height: small.height };
+          }
+        } catch {
+          sourceFile = null;
+        }
+      }
       sourceNote = "";
       // New artwork resets everything the old artwork produced — including
       // the layer list and its edits, which are keyed to the OLD art's
@@ -180,7 +202,7 @@
         appliedConfig: null, mergeGroups: [], splitLines: {},
       });
     } catch (err) {
-      error = String((err && err.message) || err);
+      error = friendlyError(err, "upload");
     } finally {
       fileBusy = false;
     }
@@ -431,8 +453,13 @@
     if (!el.sourcePng || !health || phase !== "idle") return;
     error = "";
     phase = "submitting";
+    rememberRun(el.id);
     try {
-      const cfg = buildDigitizeConfig(el, project);
+      // A field resize is a Design width change (resizedTargetWidth): the
+      // run digitizes at the dragged width, and the landing patch below
+      // makes that the design's own width instead of a scale on top of it.
+      const resizeTarget = resizedTargetWidth(el, nativeWidthOf(el));
+      const cfg = buildDigitizeConfig(withTargetWidth(el, resizeTarget), project);
       // The preview path is synchronous here on purpose: it is the
       // pre-2026-09-20 flow tick for tick, so nothing about restitch timing
       // moved for an element with no stored original.
@@ -489,11 +516,28 @@
         // this run was in flight is not in these stitches, and the button
         // has to come back transparent for it.
         appliedConfig: configKey(cfg),
+        ...resizeLanding(el, element, resizeTarget),
       });
     } catch (err) {
-      if (!destroyed) error = String((err && err.message) || err);
+      if (!destroyed) error = friendlyError(err, "digitize");
     } finally {
-      if (!destroyed) phase = "idle";
+      // A torn-down panel leaves the mark for the next one to resume.
+      if (!destroyed) {
+        phase = "idle";
+        forgetRun(el.id);
+      }
+    }
+  }
+
+  // A reload or an element switch killed the last panel mid-run: join the
+  // service's job (see lib/digitizeBusy.js). Waits for the health probe; with
+  // no stored art there is nothing to send, so the mark is dropped.
+  let resumeChecked = false;
+  $: if (!resumeChecked && element && health) {
+    resumeChecked = true;
+    if (wasRunning(element.id)) {
+      if (element.sourcePng) runDigitize(element);
+      else forgetRun(element.id);
     }
   }
 
@@ -514,7 +558,11 @@
   // `hasPendingEdits` (below, off `appliedEdits`) still catches that
   // project's unapplied shape edits.
   const mountKey = configKey(buildDigitizeConfig(element, project));
-  $: currentKey = configKey(buildDigitizeConfig(element, project));
+  // Read against the width a field resize asks for (resizedTargetWidth), so
+  // a corner drag turns the button transparent like a typed Design width.
+  // `mountKey` stays on the raw element: a project saved resized and never
+  // re-run opens transparent, which is the truth about its stitches.
+  $: currentKey = configKey(buildDigitizeConfig(withTargetWidth(element, resizeTarget), project));
   $: stale =
     !!element.result &&
     (currentKey !== (element.appliedConfig || mountKey) || hasPendingEdits);
@@ -540,6 +588,17 @@
   // ---- derived view state ---------------------------------------------------
 
   $: pending = phase !== "idle";
+  // The field shows the pinwheel while this run is in flight (lib/digitizeBusy).
+  // Keyed by the element the panel is showing; a switch to another element
+  // mid-run clears the old id rather than leaving its pinwheel up.
+  let busyId = null;
+  $: {
+    const id = element && element.id;
+    if (busyId != null && busyId !== id) markDigitizeBusy(busyId, false);
+    busyId = id;
+    markDigitizeBusy(id, pending);
+  }
+  onDestroy(() => markDigitizeBusy(busyId, false));
   // A run in flight OR a change the button has not been pressed for. Both
   // mean the same thing to anything READING the stitch plan — what is on the
   // canvas is the previous request.
@@ -662,12 +721,15 @@
 
   // Resize honesty (Kent's rule, same as DesignPanel): the field's resize
   // handles SCALE baked stitches, they don't re-digitize — density changes
-  // with size. Unlike a .dst import, here the fix is one click away:
-  // re-digitize at the resized width.
+  // with size. Unlike a .dst import, here the fix is the run button: the
+  // dragged width IS the design width until the next run (resizedTargetWidth),
+  // so the button goes transparent, Design width shows it, and a run lands
+  // the stitches at it.
   $: rotation = element.rotationDeg || 0;
   $: nativeWidthNow = rotatedWidth(decoded, rotation);
   $: scaleFactor = decoded && element.sizeMm ? element.sizeMm / Math.max(0.1, nativeWidthNow) : 1;
-  $: resized = Math.abs(scaleFactor - 1) > 0.02;
+  $: resizeTarget = resizedTargetWidth(element, decoded ? nativeWidthNow : 0);
+  $: resized = resizeTarget != null;
 
   function rotatedWidth(dec, deg) {
     if (!dec) return 0.1;
@@ -678,12 +740,40 @@
     return Math.abs(dec.widthMM * Math.cos(rad)) + Math.abs(dec.heightMM * Math.sin(rad));
   }
 
-  // "Re-digitize at N mm": make the dragged size the new digitize target.
-  // The params patch triggers the auto re-run; sizeMm clears in the same
-  // patch so the fresh native-size stitches aren't immediately re-scaled.
-  function redigitizeAtSize(el) {
-    const target = Math.round(el.sizeMm * 10) / 10;
-    patch({ params: { ...el.params, target_width_mm: target }, sizeMm: null });
+  // The same width for any element, not only the one on screen — runDigitize
+  // is handed the element it was clicked for.
+  function nativeWidthOf(el) {
+    const dec = el && el.result ? decodedFromDesignCached(el.result) : null;
+    return dec ? rotatedWidth(dec, el.rotationDeg || 0) : 0;
+  }
+
+  function withTargetWidth(el, target) {
+    return target == null ? el : { ...el, params: { ...el.params, target_width_mm: target } };
+  }
+
+  // What a landing run writes for a resize it was sent with. Until
+  // 2026-10-08 "Re-digitize at N mm" cleared `sizeMm` and set the width and
+  // waited for an automatic re-run the 2026-10-05 ruling had removed: the
+  // design jumped BACK to its old size on the canvas and nothing ran. Now the
+  // run itself carries the width, and only on landing does the scale go.
+  // Compared against the live element so an edit made mid-flight survives: a
+  // newly typed width is kept, and a second drag keeps its scale (re-read
+  // against the new result, so the button stays transparent for it).
+  function resizeLanding(sent, live, target) {
+    if (target == null) return {};
+    const out = {};
+    const sentW = sent.params && sent.params.target_width_mm;
+    const liveW = live.params && live.params.target_width_mm;
+    if (sentW === liveW) out.params = { ...live.params, target_width_mm: target };
+    if (live.sizeMm === sent.sizeMm) out.sizeMm = null;
+    return out;
+  }
+
+  // A typed width replaces a dragged one: the scale goes with it, or the drag
+  // would keep overriding the number in the box.
+  function setDesignWidth(v) {
+    if (resized) patch({ params: { ...element.params, target_width_mm: v }, sizeMm: null });
+    else setParam("target_width_mm", v);
   }
 
   // Same explicit-argument pattern as DesignPanel's blockRgb.
@@ -823,7 +913,7 @@
   $: orderedShapes = sortShapes(reviewShapes, overrides);
   $: knownIds = new Set(reviewShapes.map((s) => s.id));
   $: unmatchedCount = new Set(
-    [...Object.keys(overrides), ...deletedIds].filter((sid) => !knownIds.has(sid))
+    [...Object.keys(overrides), ...deletedIds].filter((sid) => !knownIds.has(sid) && !isCapPieceId(sid))
   ).size;
   // Pending = the element's canonical edits differ from the ones the current
   // result was digitized with. Canonical on both sides, so a toggled-then-
@@ -1205,7 +1295,16 @@
     if (sortShapes(reviewShapes, test).findIndex((r) => r.id === row.id) === i) {
       target = theirs + dir;
     }
-    setOverride(row.id, { layer: target });
+    // Pin every other sewable shape where it sits too (see moveBlock): a
+    // one-shape pin goes stale when the service renumbers layers.
+    const next = pinSewableLayers(sewableShapes, {
+      ...overrides,
+      [row.id]: { ...(overrides[row.id] || {}), layer: target },
+    });
+    next[row.id] = target;
+    const cur = { ...(element.shapeOverrides || {}) };
+    for (const sid of Object.keys(next)) cur[sid] = { ...(cur[sid] || {}), layer: next[sid] };
+    patch({ shapeOverrides: cur });
   }
 
   // "Sew earlier/later" WITHIN one color layer (contract v1.2): reorders the
@@ -1231,18 +1330,19 @@
   // numbers is unambiguous: each block keeps its own internal sew_order
   // untouched, only which layer integer it carries changes. One patch = one
   // undo step, the same convention every other edit in this panel follows.
+  //
+  // EVERY sewable shape's layer is committed, not just the two blocks that
+  // swapped (moveBlockLayers): a shape left on a layer number from the
+  // previous run gets renumbered under the customer's pins when a later tier
+  // change moves a layer, and the file sews a different order than the one
+  // arranged here. The catch: once ordered by hand, a later tier change no
+  // longer gets the automatic "satin sews last" move, and pieces made by
+  // split/merge afterwards come in unpinned.
   function moveBlock(layer, dir) {
-    const layers = sequencerBlocks.map((b) => b.layer);
-    const i = layers.indexOf(layer);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= layers.length) return;
-    const other = layers[j];
+    const next = moveBlockLayers(sewableShapes, overrides, layer, dir);
+    if (!next) return;
     const cur = { ...(element.shapeOverrides || {}) };
-    for (const row of sewableShapes) {
-      const rl = effLayer(row, overrides);
-      if (rl === layer) cur[row.id] = { ...(cur[row.id] || {}), layer: other };
-      else if (rl === other) cur[row.id] = { ...(cur[row.id] || {}), layer };
-    }
+    for (const sid of Object.keys(next)) cur[sid] = { ...(cur[sid] || {}), layer: next[sid] };
     patch({ shapeOverrides: cur });
   }
 
@@ -1251,10 +1351,10 @@
   // silently dropping a user's edit is the one thing this panel never does.
   function clearUnmatched() {
     const keep = {};
-    for (const sid of Object.keys(overrides)) if (knownIds.has(sid)) keep[sid] = overrides[sid];
+    for (const sid of Object.keys(overrides)) if (knownIds.has(sid) || isCapPieceId(sid)) keep[sid] = overrides[sid];
     patch({
       shapeOverrides: keep,
-      deletedShapeIds: deletedIds.filter((sid) => knownIds.has(sid)),
+      deletedShapeIds: deletedIds.filter((sid) => knownIds.has(sid) || isCapPieceId(sid)),
     });
   }
 
@@ -1742,6 +1842,8 @@
       sharper than a small one, and a PNG with a transparent background and sharp,
       non-anti-aliased edges digitizes cleanest.
     </p>
+    <slot />
+    <Advanced><slot name="advanced" /></Advanced>
   {:else}
     <div class="dgp-src">
       <CropBox
@@ -1786,10 +1888,43 @@
     {#if statusLine}<p class="dgp-status" role="status">{statusLine}</p>{/if}
     {#if stale && !pending && health}
       <p class="dgp-status" role="status" data-testid="digitize-stale">
-        Changed since the last run — press Auto Digitize Image to restitch.
+        {#if resized}
+          Resized to {resizeTarget.toFixed(0)} mm — the stitches are only scaled until you press
+          Auto Digitize Image to restitch at that width.
+        {:else}
+          Changed since the last run — press Auto Digitize Image to restitch.
+        {/if}
       </p>
     {/if}
 
+    <!-- Progressive disclosure (spec 2026-09-30 §5). Visible: the colour
+         count and what the last run made (the stats line). Everything else --
+         the other settings, how the art was read, the warnings, the tabs --
+         sits behind Advanced, rendered but hidden, so it keeps its state. -->
+    <div class="dgp-params">
+      <label class="dgp-param" use:tip={"colors"}>
+        <span>Colors (max {element.params.max_colors})<i class="tipmark" aria-hidden="true"></i></span>
+        <input
+          type="range"
+          min="2"
+          max="12"
+          step="1"
+          value={element.params.max_colors}
+          on:input={(e) => setParam("max_colors", parseInt(e.currentTarget.value, 10))}
+        />
+      </label>
+    </div>
+    {#if element.result}
+      <p class="dgp-stats">
+        {element.result.stitchCount.toLocaleString()} stitches ·
+        {element.result.widthMM.toFixed(0)}×{element.result.heightMM.toFixed(0)} mm ·
+        {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"}
+      </p>
+    {/if}
+
+    <!-- Default slot: the size row (ContentStep). -->
+    <slot />
+    <Advanced>
     <div class="dgp-params">
       <!-- Every setting carries `use:tip` (lib/tip.js) with its key in
            lib/settingHelp.js — hover the label or focus the control and the
@@ -1805,21 +1940,10 @@
           min="10"
           max="400"
           step="1"
-          value={element.params.target_width_mm}
-          on:change={(e) => setParam("target_width_mm", Math.max(10, parseFloat(e.currentTarget.value) || 80))}
+          value={resizeTarget ?? element.params.target_width_mm}
+          on:change={(e) => setDesignWidth(Math.min(400, Math.max(10, parseFloat(e.currentTarget.value) || 80)))}
         />
         <span class="dgp-unit">mm</span>
-      </label>
-      <label class="dgp-param" use:tip={"colors"}>
-        <span>Colors (max {element.params.max_colors})<i class="tipmark" aria-hidden="true"></i></span>
-        <input
-          type="range"
-          min="2"
-          max="12"
-          step="1"
-          value={element.params.max_colors}
-          on:input={(e) => setParam("max_colors", parseInt(e.currentTarget.value, 10))}
-        />
       </label>
       <label class="dgp-checkline" use:tip={"satinThin"}>
         <input
@@ -1977,11 +2101,6 @@
     {/if}
 
     {#if element.result}
-      <p class="dgp-stats">
-        {element.result.stitchCount.toLocaleString()} stitches ·
-        {element.result.widthMM.toFixed(0)}×{element.result.heightMM.toFixed(0)} mm ·
-        {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"}
-      </p>
       <!-- "Since last run" sits with the stats, above the tabs: a re-run
            can be started from any of them (Apply on Shapes, a spool on
            Threads), and its outcome should be read where you are. -->
@@ -2080,9 +2199,9 @@
           type="button"
           class="dgp-resizefix"
           disabled={pending || !health}
-          on:click={() => redigitizeAtSize(element)}
+          on:click={() => runDigitize(element)}
         >
-          Re-digitize at {element.sizeMm.toFixed(0)} mm
+          Re-digitize at {resizeTarget.toFixed(0)} mm
         </button>
       {/if}
       {/if}
@@ -2434,6 +2553,8 @@
               {@const textCand = !dead && !unstitched && !!row.textCandidate}
               {@const rgb = effRgb(row, overrides)}
               {@const tier = effTier(row, overrides)}
+              {@const rowShades = dead || unstitched ? [] : machineBlocksForRows(machineBlocks, [row])}
+              {@const blendShades = rowShades.length > 1 ? rowShades : []}
               {@const siblings = dead || unstitched ? [] : layerSiblings(row, sewableShapes, overrides)}
               {@const siblingIdx = siblings.findIndex((r) => r.id === row.id)}
               <li
@@ -2488,6 +2609,9 @@
                       {/if}
                     {:else}
                       <ThreadPicker {rgb} compact name={rowAria} on:pick={(e) => recolorShape(row.id, e.detail)} />
+                      {#if blendShades.length}
+                        <span class="dgp-lnote" title="Changes the base color only; the blend shades keep their own threads.">base color only</span>
+                      {/if}
                       <!-- The name is the row's handle onto the canvas: click
                            it and the field selects this shape, the amber
                            outline showing which one. Only a sewing row gets
@@ -2502,6 +2626,19 @@
                       >{rowName(row)}</button>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
                       <span class="dgp-ltier tier-{tier || 'none'}">{tier || "not sewn"}</span>
+                      {#if blendShades.length}
+                        <!-- Same markup as the Color sequence's "sews as". -->
+                        <span class="dgp-seq-shades dgp-lshades" title="This shape sews as {blendShades.length} threads">
+                          {#each blendShades as cone}
+                            <span class="dgp-seq-shade">
+                              <span
+                                class="dgp-seq-swatch dgp-seq-swatch-sm"
+                                style="background: rgb({cone.rgb[0]},{cone.rgb[1]},{cone.rgb[2]})"
+                              ></span>{cone.number}
+                            </span>
+                          {/each}
+                        </span>
+                      {/if}
                       <!-- The border this row actually has on it (borderMenu
                            .js's shapeBorderState), beside the tier badge
                            because the two answer the same question about the
@@ -2560,7 +2697,7 @@
                         aria-label={"Stitch type — " + rowAria}
                         use:tip={"shapeTier"}
                       >
-                        <option value="auto">Auto{row.tier ? " (" + row.tier + ")" : ""}</option>
+                        <option value="auto">Auto{blendShades.length ? " (blended, " + blendShades.length + " shades)" : row.tier ? " (" + row.tier + ")" : ""}</option>
                         <option value="satin">Satin</option>
                         <option value="fill">Fill</option>
                         <option value="run">Run</option>
@@ -2822,6 +2959,8 @@
       </label>
       {/if}
     {/if}
+    <slot name="advanced" />
+    </Advanced>
   {/if}
 </div>
 
@@ -3161,6 +3300,8 @@
   }
   .dgp-seq-shade { display: inline-flex; align-items: center; gap: 3px; }
   .dgp-seq-swatch-sm { width: 9px; height: 9px; }
+  .dgp-lshades { font-size: 10px; }
+  .dgp-lnote { font-size: 10px; opacity: 0.7; }
   .dgp-seq-btns { display: flex; gap: 2px; flex: none; }
   /* Bounded, with its own scroll. One shape per row and no ceiling meant a
      31-shape logo pushed everything after the list -- thread-per-color,

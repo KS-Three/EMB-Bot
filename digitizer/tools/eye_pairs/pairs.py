@@ -25,8 +25,10 @@ BASE = "base"
 # screen, not artwork a customer would send, and three sittings of verdicts on
 # it were all "both bad" or "disregard". It stays in `REAL_ART` for the
 # instruments (the corpus tables still count it); the render and the labelled
-# page skip it.
-EXCLUDED_FIXTURES = frozenset({"screenshot"})
+# page skip it. Gaulke joined it on the full-density Columns sitting of
+# 2026-10-08: "This image sucks, I wouldn't use this image in a comparison
+# going forward" -- a low-quality upload, judged "both bad" twice.
+EXCLUDED_FIXTURES = frozenset({"screenshot", "gaulke"})
 REF_ARM = "ref_0827"
 # `main` on 2026-08-27, the engine Kent's fourteen notes and his "60%" describe.
 REF_COMMIT = "25da2fe"
@@ -59,7 +61,11 @@ ARMS: dict[str, dict] = {
     # is the base now and no longer an arm.
     "wide_columns": {"wide_columns": True},
     "lettering_column": {"lettering_min_column_mm": 1.0},
-    "phantom_dissolve": {"dissolve_phantom_blends": True},
+    # `lettering_columns` (the outline-cut Column lane) shipped ON in #863, and
+    # `letterform_priors_k=0.75` is the config default (Kent, 2026-10-07): each
+    # is the base now and no longer an arm. See the retirement rule below.
+    # `phantom_dissolve` (`dissolve_phantom_blends`) shipped ON 2026-10-20
+    # (Kent, item 46): the base now, so no longer an arm.
     "directional_comp": {"directional_comp": True},
     REF_ARM: {"__ref__": REF_COMMIT},
     REF_0930AM: {"__ref__": REF_0930AM_COMMIT},
@@ -97,7 +103,29 @@ ARMS: dict[str, dict] = {
     # day (2 after, 0 before), so it is the base now and no longer an arm.
     "keep_counters": {"keep_counters": True},
     "bean_letters": {"bean_letter_max_stroke_mm": 1.0},
+    # L1, one lettering tagger (2026-10-08, built OFF; Kent picked the
+    # pairs): every lettering reader groups by one word model instead of
+    # the text cluster or the house group (`digitizer_core/words.py`).
+    "lettering_words": {"lettering_words": True},
 }
+
+# THE RETIREMENT RULE (one rule, 2026-10-14). An arm leaves ARMS the moment it
+# can no longer ask a pending question, and is NOT re-based to "flag OFF":
+#   (a) every flag it sets already equals the config default (Kent shipped it
+#       ON), so the arm is the base and every fixture would pair as
+#       `identical_to_base`; or
+#   (b) it sets a flag Kent ruled a no (deprecated), so it is no longer a
+#       candidate for a flip.
+# Re-basing would turn a shipped flag into a regression arm that no sitting
+# asked for, and it is not how `rail_comp`, `rail_envelope`, `cap_recentre`
+# and `patch_junctions` left. The row moves to `RETIRED_ARM_INTENT` in
+# `tools/eye_pairs_gallery.py`, so a sitting rendered before the flip still
+# names it. The deliberate exception is `rails_symmetric` (envelope OFF):
+# it began life as an OFF-against-shipped arm, so it differs from the base.
+# `tests/test_eye_pairs_pairs.py::test_no_arm_equals_the_base` enforces (a).
+# Retired here 2026-10-14: `lettering_columns` (ON, #863), `letterform_priors`
+# (default 0.75), `columns_words` (now exactly `lettering_words`, because the
+# lane is the base), `coverage_edges` and `coverage_columns` (deprecated).
 
 
 @dataclass(frozen=True)
@@ -122,6 +150,7 @@ def design_hash(design: dict) -> str:
 
 def build_pairs(runs: list[ArmRun], seed: int = SHUFFLE_SEED,
                 n_identical: int = N_IDENTICAL, n_repeat: int = N_REPEAT,
+                balance_live: bool = False,
                 ) -> tuple[list[dict], dict[str, dict], list[dict]]:
     """-> (public pairs in show order, sealed map, skipped arms)."""
     rng = random.Random(seed)
@@ -154,6 +183,17 @@ def build_pairs(runs: list[ArmRun], seed: int = SHUFFLE_SEED,
     # land 40/60 at this n, and a side habit would then read as a preference.
     flips = [i % 2 == 0 for i in range(len(order))]
     rng.shuffle(flips)
+    if balance_live:
+        # Half is taken over live + identical pairs above, and an identical
+        # pair shows no arm, so the LIVE pairs alone can land 1 of 4. A sitting
+        # of a few dozen live pairs wants the arm on the left in exactly half
+        # of them (one more on the right when the count is odd). Only this
+        # path draws again, so the default sealed map is untouched.
+        live_at = [i for i, e in enumerate(order) if e["kind"] == "live"]
+        mix = [True] * (len(live_at) // 2) + [False] * (len(live_at) - len(live_at) // 2)
+        rng.shuffle(mix)
+        for i, flip in zip(live_at, mix):
+            flips[i] = flip
     for entry, flip in zip(order, flips):
         entry["flip"] = flip
 

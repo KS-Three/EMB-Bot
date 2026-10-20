@@ -37,6 +37,7 @@ from digitizer_core.stitches import strip_ties
 
 from .test_lettering_split import FIXTURE as FIXTURE_127
 from .test_stroke_order_euler import FIXTURE as FIXTURE_80
+from tests.conftest import own_thread_only
 
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
@@ -52,7 +53,18 @@ def _crossing_pairs(points) -> int:
 
 
 def _run(fixture, width_mm: float, **kw):
-    cfg = PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
+    # On the skeleton tier, explicitly: the Column lane (`lettering_columns`,
+    # ON by default since Kent's 2026-10-12 flip) cuts MARINE's letters from
+    # their outline and never reaches the junction stack this file prices.
+    kw.setdefault("lettering_columns", False)
+    # ... and without the photo lane's phantom-blend dissolve
+    # (`dissolve_phantom_blends`, ON since Kent's 2026-10-20 flip, item 46):
+    # this fixture reads the gradient lane, and with the dissolve ON MARINE at 80 mm folds one
+    # letter (6 crossing pairs against 0, measured 2026-10-20).
+    # The numbers here were read without it; the dissolve's own price is
+    # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
+    kw.setdefault("dissolve_phantom_blends", False)
+    cfg =PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
                          max_colors=6, **kw)
     gen = build_generation(str(fixture), cfg)
     result = finish_generation(gen.fork(), cfg)
@@ -270,7 +282,7 @@ def test_an_explicit_cover_setting_wins_over_part_c():
         return real(poly, shape_id, **kw)
 
     import digitizer_core.stage7_sequence as s7
-    s7.satin_shape = spy
+    s7.satin_shape = own_thread_only(spy, real)
     try:
         _run(FIXTURE_80, 80.2, satin_patch_junctions=True)
     finally:
@@ -295,7 +307,7 @@ def test_asking_for_the_satin_cover_is_the_engine_as_shipped(monkeypatch):
             seen.append((shape_id, a[-4:]))             # the four floors
             return real(poly, runs, shape_id, *a, **k)
 
-        monkeypatch.setattr(s6, "_junction_cover_runs", spy)
+        monkeypatch.setattr(s6, "_junction_cover_runs", own_thread_only(spy, real))
         _cfg, _result, plan = _run(FIXTURE_80, 80.2, **kw)
         monkeypatch.undo()
         return seen, _points(plan)

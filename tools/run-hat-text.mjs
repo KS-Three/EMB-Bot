@@ -1,4 +1,5 @@
 // Build the PRECISION / THERMAL / AND DRONE stacked hat text as flat lettering.
+import "./_help.mjs";
 import { createRequire } from "module";
 import fs from "node:fs";
 const require = createRequire(import.meta.url);

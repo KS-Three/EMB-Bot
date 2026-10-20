@@ -18,7 +18,9 @@ from __future__ import annotations
 import cv2
 import math
 import numpy as np
+from shapely.errors import GEOSException
 from shapely.geometry import Polygon
+from shapely.ops import unary_union
 from shapely.validation import make_valid
 
 from . import machine
@@ -26,7 +28,8 @@ from .config import PipelineConfig
 from .regions import Region, assign_shape_ids
 from .stage1_prep import Prep
 from .stage3_segment import RegionMask
-from .subpixel import DROP_REJECTED_RUN_MAX, drop_isolated_rejects, subpixel_contour
+from .subpixel import (DROP_REJECTED_RUN_MAX, NORMAL_STEPS, drop_folds, drop_isolated_rejects,
+                       subpixel_contour)
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (COLOR_CAP_APPLIED,
                              THREAD_RESNAPPED_AFTER_DRIFT, warn)
@@ -311,7 +314,8 @@ def _native_profile_image(p: Prep) -> np.ndarray:
 
 def _native_subpixel(raw_int: np.ndarray, lab_native: np.ndarray, mask: np.ndarray,
                      mask_origin: tuple[int, int], p: Prep,
-                     min_contrast_de: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+                     min_contrast_de: float,
+                     corner_runs: bool = False) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """`subpixel_contour` in the SOURCE's frame for a raster stage 1
     upscaled: -> (moved points in the UPSCALED frame, accepted, corner).
 
@@ -336,9 +340,137 @@ def _native_subpixel(raw_int: np.ndarray, lab_native: np.ndarray, mask: np.ndarr
     moved, accepted, corner = subpixel_contour(down, lab_native, mask, mask_origin,
                                                min_contrast_de=min_contrast_de,
                                                inside_fn=inside, step_scale=max(sx, sy),
-                                               corner_fit=True)
+                                               corner_fit=True, corner_runs=corner_runs)
     up = np.stack([(moved[:, 0] + 0.5) * sx - 0.5, (moved[:, 1] + 0.5) * sy - 0.5], axis=1)
     return up, accepted, corner
+
+
+# `coverage_edges` applies to ONE class of source: a single ink with its
+# whole shape in alpha (`becker_marine_logo.png`: one RGB value, 256 alpha
+# levels). There every edge in the picture is an alpha edge, so the alpha
+# contour is the whole outline of every sewn region. With a second ink, two
+# colours meet along an edge alpha says nothing about, and the source is
+# left alone entirely. "One ink" is read on the fully opaque pixels, where
+# no exporter's under-alpha junk reaches: all but a hundredth of them within
+# this CIE76 distance of their median colour.
+_COVERAGE_ONE_INK_DE = 6.0
+_COVERAGE_OPAQUE_ALPHA = 250
+# The contour set is accepted only if it is the mask's shape to within these
+# area ratios; outside them the mask polygon is kept. The contour runs half
+# a source pixel outside the pixel-centre trace all the way round, so a thin
+# shape legitimately grows — the band is wide for that, and it exists to
+# catch a wrong match, not to grade the fit.
+_COVERAGE_AREA_BAND = (0.6, 1.8)
+
+
+def _one_ink_cutout(p: Prep) -> bool:
+    """Is the source a single ink with its shape in alpha — the one class
+    `coverage_edges` rewrites? See `_COVERAGE_ONE_INK_DE`."""
+    if p.native_alpha is None or p.native_rgb is None:
+        return False
+    opaque = p.native_alpha >= _COVERAGE_OPAQUE_ALPHA
+    if not opaque.any():
+        return False
+    lab = rgb_to_lab(p.native_rgb[opaque].reshape(-1, 3)).astype(np.float64)
+    spread = np.linalg.norm(lab - np.median(lab, axis=0), axis=1)
+    return float(np.percentile(spread, 99)) <= _COVERAGE_ONE_INK_DE
+
+
+def _coverage_parts(rm: RegionMask, poly: Polygon, p: Prep, eps_px: float,
+                    cx: float, cy: float, min_hole_mm2: float,
+                    curve_turn: float | None = None) -> list[Polygon] | None:
+    """`coverage_edges`: this mask's polygon(s) from the half-coverage
+    contour of the source's alpha, in mm — or None when the contour is not
+    recognisably the mask.
+
+    Only called on a one-ink alpha cutout stage 1 upscaled
+    (`_one_ink_cutout`). Everything is done on the source's own pixels in a
+    crop round the mask and carried up by cv2's half-pixel-centre rule
+    (`Prep.upscale`), the mapping `_native_subpixel` uses."""
+    from skimage.measure import find_contours  # local: only this flag needs it
+
+    alpha = p.native_alpha
+    ah, aw = alpha.shape[:2]
+    sx, sy = p.upscale
+    y0, x0 = rm.origin
+    h, w = rm.crop.shape
+
+    # Ink or hole? Most of an ink mask is opaque in the source; an enclosed
+    # transparent region (a counter, a letter body) is the other side of the
+    # same contour, so it is read from the inverted field and the two share
+    # one line instead of a contour and a staircase.
+    ys, xs = np.nonzero(rm.crop)
+    if not len(xs):
+        return None
+    xn = np.clip(np.floor((xs + x0 + 0.5) / sx).astype(int), 0, aw - 1)
+    yn = np.clip(np.floor((ys + y0 + 0.5) / sy).astype(int), 0, ah - 1)
+    is_ink = (alpha[yn, xn] >= 128).mean() >= 0.5
+
+    # The source pixels under the mask, two more each way so the ramp is
+    # whole, and one row of transparency round that so every contour closes.
+    nx0 = max(0, int(np.floor((x0 + 0.5) / sx)) - 2)
+    ny0 = max(0, int(np.floor((y0 + 0.5) / sy)) - 2)
+    nx1 = min(aw, int(np.ceil((x0 + w - 0.5) / sx)) + 3)
+    ny1 = min(ah, int(np.ceil((y0 + h - 0.5) / sy)) + 3)
+    field = alpha[ny0:ny1, nx0:nx1].astype(np.float64)
+    # The pad closes whatever runs off the crop; what that manufactures (the
+    # open background, on the inverted field) fails the overlap test below.
+    field = np.pad(field if is_ink else 255.0 - field, 1)
+
+    rings = []
+    for c in find_contours(field, 127.5):
+        # (row, col) in the padded crop -> source pixel centres -> the
+        # upscaled frame's.
+        xw = (c[:, 1] - 1 + nx0 + 0.5) * sx - 0.5
+        yw = (c[:, 0] - 1 + ny0 + 0.5) * sy - 0.5
+        raw = np.column_stack([xw, yw]).astype(np.float32)[:-1]
+        simp = cv2.approxPolyDP(raw.reshape(-1, 1, 2), eps_px, True).reshape(-1, 2)
+        if len(simp) < 3:
+            continue
+        # The same arc refinement every other ring gets, with the same
+        # near-floor lettering exemption — and every raw point counted as
+        # read, which is what a contour point is: the resolution gate
+        # exists for pixel-centre staircases, and this ring has none.
+        if curve_turn and _wide_enough_to_refine(simp, p.px_per_mm):
+            simp = _refine_curves(raw.astype(np.float64), simp.astype(np.float64), eps_px,
+                                  curve_turn, accepted=np.ones(len(raw), dtype=bool))
+        rings.append(_to_mm(simp, cx, cy, p.px_per_mm))
+    if not rings:
+        return None
+
+    # Even-odd: largest ring first, each next one cut out of or added to
+    # what is there — a hole, or an island inside a hole.
+    # A ring Douglas-Peucker left touching itself repairs to several
+    # polygons (and sometimes a stray line, which is dropped); the mask's own
+    # trace is repaired the same way before it is compared against. Any
+    # overlay GEOS still refuses hands the region back to its mask polygon —
+    # a declined rewrite, never a failed design.
+    def solid(g):
+        return g if g.is_valid else unary_union(_polygon_parts(make_valid(g)))
+
+    try:
+        geom = Polygon()
+        for r in sorted(rings, key=lambda r: -Polygon(r).area):
+            geom = geom.symmetric_difference(solid(Polygon(r)))
+        # The crop holds whatever else stands near the mask; keep what is
+        # the mask's own.
+        ref = solid(poly)
+        mine = []
+        for part in _polygon_parts(geom):
+            if part.is_empty or part.area <= 0.0:
+                continue
+            if part.intersection(ref).area < 0.5 * part.area:
+                continue
+            holes = [hole for hole in part.interiors if Polygon(hole).area >= min_hole_mm2]
+            mine.append(Polygon(part.exterior, holes))
+    except GEOSException:
+        return None
+    if not mine or ref.area <= 0.0:
+        return None
+    lo, hi = _COVERAGE_AREA_BAND
+    if not lo <= sum(m.area for m in mine) / ref.area <= hi:
+        return None
+    return mine
 
 
 def vectorize(
@@ -400,9 +532,16 @@ def vectorize(
     # source's frame, read against the source's pixels (with its alpha as a
     # fourth channel, `_native_profile_image`), and brought back up; see
     # `_native_subpixel`. Inert unless stage 1 upscaled.
+    # `subpixel_edges_min_px_per_mm`: a source delivering less than that
+    # skips the read and keeps the staircase polygon (None: no floor).
+    floor = cfg.subpixel_edges_min_px_per_mm
     native = (upscaled and bool(cfg.subpixel_edges) and bool(cfg.subpixel_edges_upscaled)
-              and p.native_rgb is not None)
+              and p.native_rgb is not None
+              and (floor is None or p.input_px_per_mm >= float(floor)))
     subpixel = bool(cfg.subpixel_edges) and (not upscaled or native)
+    # `coverage_edges`: only where stage 1 enlarged an alpha source, the one
+    # case whose mask is a staircase with the ramp still in the file.
+    coverage = bool(cfg.coverage_edges) and upscaled and _one_ink_cutout(p)
     # The refinement's resolution gate (`_CURVE_MIN_PX_PER_MM`) is what keeps
     # its one-pixel floor from reading raster texture as arcs. With the
     # profile reading on, the floor is keyed to acceptance chord by chord
@@ -420,7 +559,17 @@ def vectorize(
         h_img, w_img = p.rgb.shape[:2]
         lab_img = rgb_to_lab(p.rgb.reshape(-1, 3)).reshape(h_img, w_img, 3).astype(np.float32)
     min_area_mm2 = (cfg.min_detail_mm ** 2) * 0.25  # a sliver after simplification
+    small_print = bool(getattr(cfg, "small_print_floor", False))
+    # `cfg.small_lettering_skeleton`: record the counters the floor drops from
+    # a RESCUED shape (the record above, nothing cut), so stage 7 can punch
+    # them back before it reads the glyph's skeleton. Off, nothing recorded.
+    skeleton_letters = bool(getattr(cfg, "small_lettering_skeleton", False))
     min_detail_px2 = (cfg.min_detail_mm * p.px_per_mm) ** 2
+    # `cfg.small_glyph_keep`: a rescued small shape's holes answer to the run
+    # tier's floor, not the sliver floor -- its counters are the size of the
+    # glyph (Fremont's 8 and 9, 0.30-0.52 mm²). Off, the one floor as before.
+    small_hole_mm2 = (min(min_area_mm2, machine.RUN_MIN_AREA_MM2)
+                      if getattr(cfg, "small_glyph_keep", False) else min_area_mm2)
 
     regions: list[Region] = []
     dropped: list[float] = []
@@ -456,8 +605,14 @@ def vectorize(
         if not outers:
             note_drop(rm)
             continue
-        # A single connected component yields one meaningful shell; if
-        # simplification splintered it, keep the largest.
+        # A single connected component yields one meaningful shell. Every
+        # other outer contour is DROPPED here, with no warning — which is
+        # harmless only because stage 3 never hands over a mask with two
+        # islands: masks are 8-connected components and `union_from` only
+        # joins 8-adjacent ones (0 of 7,106 masks over the corpus, both
+        # garments, default and 6 colours, 2026-10-12;
+        # `tools/stage4_contours.py`, `tests/test_stage4_contours.py`). A
+        # change that builds multi-island masks must keep every island here.
         outer = max(outers, key=lambda i: cv2.contourArea(contours[i]))
 
         # Sub-detail masks are simplified at the floor only — see docstring.
@@ -482,7 +637,8 @@ def vectorize(
                 return raw_int, None, None
             if native:
                 moved, accepted, corner = _native_subpixel(raw_int, lab_img, padded, (x0 - 1, y0 - 1),
-                                                           p, cfg.merge_delta_e)
+                                                           p, cfg.merge_delta_e,
+                                                           corner_runs=bool(cfg.subpixel_corner_runs))
                 # A rejected run is measured in vertices, and the trace
                 # carries `upscale` of them per source pixel.
                 run_max = int(round(DROP_REJECTED_RUN_MAX * max(p.upscale)))
@@ -491,6 +647,12 @@ def vectorize(
                                                            min_contrast_de=cfg.merge_delta_e)
                 run_max = DROP_REJECTED_RUN_MAX
             share = float(accepted.mean()) if len(accepted) else 0.0
+            if native and cfg.subpixel_corner_runs:
+                # A moved vertex that lands behind the one before it, along
+                # the trace's own direction, folds the ring: dropped here.
+                moved, accepted, corner = drop_folds(
+                    moved, accepted, corner, raw_int.astype(np.float64),
+                    max(1, int(round(NORMAL_STEPS * max(p.upscale)))))
             moved, accepted = drop_isolated_rejects(moved, accepted, protect=corner, max_run=run_max)
             return moved.astype(np.float32).reshape(-1, 1, 2), share, accepted
 
@@ -521,20 +683,36 @@ def vectorize(
         shell = _to_mm(shell_px, cx, cy, p.px_per_mm)
 
         holes = []
+        small_counters: list = []      # `cfg.small_print_floor`: holes the floor drops
+        record_counters = small_print or (skeleton_letters and sub_detail)
         for i in range(len(contours)):
             if hier[i][3] != outer:
                 continue
             hole_src, _hole_share, hole_acc = ring_source(contours[i])
             h_px = cv2.approxPolyDP(hole_src, eps, True).reshape(-1, 2)
             if len(h_px) < 3:
+                if record_counters and len(hole_src.reshape(-1, 2)) >= 3:
+                    # a counter Douglas-Peucker collapsed: its raw ring
+                    small_counters.append(_to_mm(hole_src.reshape(-1, 2), cx, cy, p.px_per_mm))
                 continue
             if refine and _wide_enough_to_refine(h_px, p.px_per_mm):
                 h_px = _refine_curves(hole_src.reshape(-1, 2).astype(np.float64),
                                       h_px.astype(np.float64), eps, curve_turn,
                                       accepted=hole_acc, resolution_gated=resolution_gated)
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
-            if Polygon(ring).area >= min_area_mm2:
+            if Polygon(ring).area >= (small_hole_mm2 if sub_detail else min_area_mm2):
                 holes.append(ring)
+            elif record_counters:
+                if small_print:
+                    # `cfg.small_print_floor`: the counter's own ring, not
+                    # Douglas-Peucker's. A chord of a convex hole lies INSIDE
+                    # the hole, so at the work grid's eps a half-millimetre
+                    # counter came back a triangle or a quad a third
+                    # smaller (the synthetic 0's two counters at a 3 mm
+                    # cap: 0.435 mm2 recorded against 0.64 in the source),
+                    # and every hold downstream was measured from that.
+                    ring = _to_mm(hole_src.reshape(-1, 2), cx, cy, p.px_per_mm)
+                small_counters.append(ring)
 
         poly = Polygon(shell, holes)
         # A self-intersecting ring does not repair into ONE shape. Where the
@@ -548,7 +726,27 @@ def vectorize(
         # region — which is what they now are.
         parts = [poly] if poly.is_valid else _polygon_parts(make_valid(poly))
 
+        # `coverage_edges`: an alpha-bounded mask takes the source's own
+        # half-coverage contour in place of everything traced above.
+        covered = False
+        if coverage:
+            from_alpha = _coverage_parts(
+                rm, poly, p, eps, cx, cy, min_area_mm2,
+                curve_turn=None if sub_detail else (cfg.curve_turn_deg or None))
+            if from_alpha:
+                parts, covered = from_alpha, True
+
         thread = chart[thread_indices[rm.layer]]
+        # `cfg.small_dot_rung` (default ON, 2026-10-20), and its lettering scope.
+        dot_rung = bool(cfg.small_dot_rung and (not cfg.small_dot_rung_lettering
+                                                or getattr(rm, "dot_rung", False)))
+        # `cfg.detail_spokes` (default OFF): a mask stage 3 kept as a spoked
+        # mark bypasses the loop floor below (stage 7 sews spokes, not the
+        # outline) and carries its centre and tips in design mm, on its
+        # largest part only -- one mark per mask.
+        spoked = getattr(rm, "detail_spokes", None) if sub_detail else None
+        spoke_part = (max((q for q in parts if not q.is_empty), key=lambda q: q.area, default=None)
+                      if spoked is not None else None)
         kept = 0
         for part in parts:
             if part.is_empty:
@@ -558,16 +756,48 @@ def vectorize(
                 # a lower bound, so this is the authoritative test of whether
                 # the bean run has a sewable loop and the shape outweighs the
                 # thread.
+                # `cfg.small_dot_rung` (default ON, 2026-10-20): down to the dot rung's
+                # own loop floor, the ring the run tier then sews as a tack.
+                # Scoped (`cfg.small_dot_rung_lettering`), only for a mask
+                # stage 3 admitted over a stem.
                 rescueable = (sub_detail
-                              and part.area >= machine.RUN_MIN_AREA_MM2
-                              and part.exterior.length >= machine.RUN_MIN_LOOP_MM)
+                              and (part is spoke_part
+                                   or (part.area >= machine.RUN_MIN_AREA_MM2
+                                       and part.exterior.length >= (
+                                           machine.DOT_RUNG_MIN_LOOP_MM if dot_rung
+                                           else machine.RUN_MIN_LOOP_MM))))
                 if not rescueable:
                     continue
             meta = {"layer": rm.layer}
+            if cfg.small_dot_rung_lettering and dot_rung:
+                meta["dot_rung"] = True
             if sub_detail:
                 meta["rescued_small_shape"] = True
-            if outer_share is not None:
+            if part is spoke_part:
+                c_mm = _to_mm(np.array([spoked["centre"]], np.float64), cx, cy, p.px_per_mm)[0]
+                t_mm = _to_mm(np.array(spoked["tips"], np.float64), cx, cy, p.px_per_mm)
+                meta["detail_spokes"] = {
+                    "centre": [round(float(c_mm[0]), 4), round(float(c_mm[1]), 4)],
+                    "tips": [[round(float(x), 4), round(float(y), 4)] for x, y in t_mm],
+                    "host_layer": int(spoked["host_layer"]),
+                }
+            if covered:
+                meta["coverage_edges"] = True
+            elif outer_share is not None:
                 meta["subpixel_accepted"] = round(outer_share, 4)
+            if small_counters:
+                # Recorded, not cut: the polygon every stage reads is the
+                # floor's, and only the Column lane punches these back
+                # (`cfg.small_print_floor`, `columns.small_print_counters`).
+                mine_sc = [[[round(float(x), 4), round(float(y), 4)] for x, y in ring]
+                           for ring in small_counters
+                           if part.covers(Polygon(ring).representative_point())]
+                if mine_sc:
+                    meta["small_counters"] = mine_sc
+            if getattr(rm, "cored_counter", False):
+                # `cfg.open_cored_counters`: a counter stage 3 kept out of
+                # its letter; stage 7 holds the letter's satin off it.
+                meta["cored_counter"] = True
             regions.append(
                 Region(
                     shape_id="",

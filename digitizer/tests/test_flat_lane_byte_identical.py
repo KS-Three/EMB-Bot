@@ -253,6 +253,22 @@ old entries byte-for-byte there first, plus `--control ribbon_curve.png`.
 population is the CALLER's gate (`pipeline.build_generation` passes
 `keep_thin_strokes and class_ == "gradient"`), so all seven keys were verified
 identical rather than assumed so.
+
+**Seventh exception, TAKEN 2026-10-06 — `cfg.satin_outer_rail_pitch` ON by
+default (Kent's call after the Hotel Fremont deep dive, PR #650).** A curved
+satin column's body is stationed along its OUTER rail now, so every bend
+gains stations: `ribbon_curve.png` 991 -> 1009 coords (the ribbon IS a
+bend), `logo_whitebg.png` 4581 -> 4585 (one curved satin). `logo_alpha.png`
+was byte-identical on the capturing machine and left alone;
+`photo/enthusiast_logo.png` was refused by the guard for its standing
+platform reason and stays as deselected as it was. Captured on Kent's WSL
+Ubuntu 24.04 box (`requirements.txt` pins, tesseract present) with
+`tools/recapture_flat_lane_key.py --pre-change-tree` at a worktree of
+1c0a7df5 (the commit before the flip), which reproduced the two moved keys
+byte-for-byte there first — the machine proved itself on the old engine, so
+what moved is the engine. Not CI's own runner: the session's token lacked
+the `workflow` scope the temporary re-capture workflow needs, so CI's
+`digitizer` job is the judge of whether ubuntu-latest agrees.
 """
 
 from __future__ import annotations

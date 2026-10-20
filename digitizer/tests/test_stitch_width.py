@@ -383,7 +383,13 @@ def test_an_override_on_the_thin_bars_sews_them_as_columns_of_that_width(tmp_pat
     millimetre wide, read off the crosses, with no floor flag set."""
     art = tmp_path / "bars.png"
     _thin_bars(art)
-    base = PipelineConfig(target_width_mm=50.0, garment_id="left_chest")
+    # On the skeleton tier, explicitly: the Column lane (`lettering_columns`,
+    # ON by default since Kent's 2026-10-12 flip) takes these text-tagged bars
+    # ahead of the bean run and the width override this test is about.
+    # And with `small_text_true_size` OFF (ON by default since #955): the switch
+    # re-traces these sub-3 mm bars and bean-tags them, which is not this test.
+    base = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", lettering_columns=False,
+                          small_text_true_size=False)
     off, off_plan = digitize(art, base)
     bars = [r for r in off.regions if r.meta.get("text_cluster_id")]
     assert len(bars) >= 5
@@ -394,8 +400,8 @@ def test_an_override_on_the_thin_bars_sews_them_as_columns_of_that_width(tmp_pat
             kinds_off[run.kind] = kinds_off.get(run.kind, 0) + len(run.points)
     assert kinds_off.get(stitches.SATIN, 0) == 0 and kinds_off.get(stitches.RUN, 0) > 0, kinds_off
 
-    on_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest",
-                            shape_overrides={sid: {"stitch_width_mm": 1.0} for sid in ids})
+    on_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", lettering_columns=False,
+                            small_text_true_size=False, shape_overrides={sid: {"stitch_width_mm": 1.0} for sid in ids})
     on, on_plan = digitize(art, on_cfg)
     sized = [r for r in on.regions if r.shape_id in ids]
     assert all(r.meta.get(sw.SOURCE_KEY) == "override" and sw.SIZED_KEY in r.meta for r in sized), \

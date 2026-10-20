@@ -1,4 +1,5 @@
 // Generate a flat spot-color test logo (transparent bg) to validate digitizing.
+import "./_help.mjs";
 import fs from "node:fs";
 import { encodePNG } from "./png.mjs";
 const W = 512, H = 512;

@@ -418,6 +418,84 @@ test("pollJob throws the job's error for a failed job", async () => {
   await expect(pollJob("j1", { fetchFn, intervalMs: 0 })).rejects.toThrow(/bad art/);
 });
 
+// A re-digitize that keeps showing the PREVIOUS run's result (2026-10-15).
+// A long job (a photo at 80 mm is ~4 minutes) is polled ~every 500 ms, so a
+// single poll that can't reach the service -- a connection reset while the
+// box is loaded, a 502/503/504 from a busy or just-restarted service -- used
+// to throw straight out of the loop and ABANDON a job that was still running.
+// The service went on to finish and cache that job, but nothing was polling
+// it any more, so DigitizePanel's runDigitize landed in its catch, showed the
+// offline banner, reset to idle AND cleared the resume mark (its finally) --
+// leaving the element on the prior run's stitches and "Since last run" delta
+// with no way back but a manual re-digitize. A job alive on the service must
+// survive a transient poll blip.
+describe("pollJob survives a transient poll failure without abandoning a live job", () => {
+  it("retries a one-off fetch REJECT (connection reset) and returns the finished job", async () => {
+    stubStorage({});
+    const { pollJob } = await import("./digitizer.js");
+    const steps = [
+      async () => ({ ok: true, json: async () => ({ state: "running", job_id: "j1" }) }),
+      async () => { throw new TypeError("Failed to fetch"); },             // the blip
+      async () => ({ ok: true, json: async () => ({ state: "running", job_id: "j1" }) }),
+      async () => ({ ok: true, json: async () => ({ state: "done", job_id: "j1", design: { stitchCount: 14824, stitches: [] }, warnings: [] }) }),
+    ];
+    let i = 0;
+    const fetchFn = (...a) => steps[Math.min(i++, steps.length - 1)](...a);
+    const job = await pollJob("j1", { fetchFn, intervalMs: 0 });
+    expect(job.state).toBe("done");
+    expect(job.design.stitchCount).toBe(14824);
+  });
+
+  it("retries a 503 (busy / restarting service) and returns the finished job", async () => {
+    stubStorage({});
+    const { pollJob } = await import("./digitizer.js");
+    const steps = [
+      async () => ({ ok: false, status: 503, json: async () => ({ detail: "busy" }) }),
+      async () => ({ ok: true, json: async () => ({ state: "done", job_id: "j1", design: { stitchCount: 14824, stitches: [] }, warnings: [] }) }),
+    ];
+    let i = 0;
+    const fetchFn = () => steps[Math.min(i++, steps.length - 1)]();
+    const job = await pollJob("j1", { fetchFn, intervalMs: 0 });
+    expect(job.design.stitchCount).toBe(14824);
+  });
+
+  it("still gives up on a SUSTAINED outage rather than looping forever", async () => {
+    stubStorage({});
+    const { pollJob } = await import("./digitizer.js");
+    const fetchFn = async () => { throw new TypeError("Failed to fetch"); };
+    await expect(
+      pollJob("j1", { fetchFn, intervalMs: 0, maxTransientFailures: 3 }),
+    ).rejects.toThrow(/Failed to fetch|reach|service/i);
+  });
+
+  it("does NOT retry a 4xx (a bad request or an evicted/gone job) -- that is a verdict, not a blip", async () => {
+    stubStorage({});
+    const { pollJob } = await import("./digitizer.js");
+    let calls = 0;
+    const fetchFn = async () => { calls++; return { ok: false, status: 404, json: async () => ({ detail: "No such job. It may have been evicted." }) }; };
+    await expect(pollJob("j1", { fetchFn, intervalMs: 0, maxTransientFailures: 20 })).rejects.toThrow(/No such job/);
+    expect(calls).toBe(1); // surfaced on the first 404, not retried 20 times
+  });
+
+  it("a clean read between blips resets the budget, so scattered blips never add up to an outage", async () => {
+    stubStorage({});
+    const { pollJob } = await import("./digitizer.js");
+    // Two blips, each followed by a good running read, then done: with a
+    // budget of 1 this only passes if a success RESETS the streak.
+    const steps = [
+      async () => { throw new TypeError("Failed to fetch"); },
+      async () => ({ ok: true, json: async () => ({ state: "running", job_id: "j1" }) }),
+      async () => { throw new TypeError("Failed to fetch"); },
+      async () => ({ ok: true, json: async () => ({ state: "running", job_id: "j1" }) }),
+      async () => ({ ok: true, json: async () => ({ state: "done", job_id: "j1", design: { stitchCount: 14824, stitches: [] }, warnings: [] }) }),
+    ];
+    let i = 0;
+    const fetchFn = () => steps[Math.min(i++, steps.length - 1)]();
+    const job = await pollJob("j1", { fetchFn, intervalMs: 0, maxTransientFailures: 1 });
+    expect(job.state).toBe("done");
+  });
+});
+
 test("fetchHealth returns the payload when the service is up and null for down/non-ok/garbage", async () => {
   stubStorage({});
   const { fetchHealth } = await import("./digitizer.js");
@@ -1042,6 +1120,51 @@ test("groupIntoBlocks: a shape with no sewIndex at all doesn't poison its block'
   expect(blocks[0].sewIndexMax).toBeNull();
 });
 
+// ---- pinSewableLayers / moveBlockLayers (a hand re-order pins everything) --
+//
+// MASTER_SCOPE "Waiting on Kent" 16 / test_manual_sew_order.py: swap two
+// blocks, then set one block's tier to satin, and the service renumbers its
+// layers (borders_last_layers) under pins that only covered the swapped pair.
+// The Studio therefore commits the whole sequence, the way reorderWithinLayer
+// commits a whole colour.
+
+test("moveBlockLayers: swapping red and blue pins the orange block between them too", async () => {
+  stubStorage({});
+  const { moveBlockLayers, sortShapes, effLayer } = await import("./digitizer.js");
+  const rows = [
+    seqRow("red", { layer: 1, sewIndex: 0 }),
+    seqRow("orange", { layer: 2, sewIndex: 1 }),
+    seqRow("blue", { layer: 3, sewIndex: 2 }),
+  ];
+  const next = moveBlockLayers(rows, {}, 1, 1); // red later, past orange
+  expect(next).toEqual({ red: 2, orange: 1, blue: 3 });
+  // Every shape carries an explicit pin, so the displayed order is the pinned one.
+  const ov = Object.fromEntries(Object.entries(next).map(([id, layer]) => [id, { layer }]));
+  expect(sortShapes(rows, ov).map((r) => r.id)).toEqual(["orange", "red", "blue"]);
+  expect(rows.every((r) => Number.isInteger(ov[r.id].layer))).toBe(true);
+  expect(effLayer(rows[1], ov)).toBe(1);
+});
+
+test("moveBlockLayers: null at either end, and for a layer that is not a block", async () => {
+  stubStorage({});
+  const { moveBlockLayers } = await import("./digitizer.js");
+  const rows = [seqRow("a", { layer: 0 }), seqRow("b", { layer: 1, sewIndex: 1 })];
+  expect(moveBlockLayers(rows, {}, 0, -1)).toBeNull();
+  expect(moveBlockLayers(rows, {}, 1, 1)).toBeNull();
+  expect(moveBlockLayers(rows, {}, 7, 1)).toBeNull();
+});
+
+test("pinSewableLayers: commits each row's effective layer, leaves a row with no sew position alone", async () => {
+  stubStorage({});
+  const { pinSewableLayers } = await import("./digitizer.js");
+  const rows = [
+    seqRow("a", { layer: 0 }),
+    seqRow("b", { layer: 4, sewIndex: 1 }),
+    seqRow("c", { layer: null, sewIndex: null }),
+  ];
+  expect(pinSewableLayers(rows, { a: { layer: 3 } })).toEqual({ a: 3, b: 4 });
+});
+
 test("groupIntoBlocks: empty input is an empty list, not a throw", async () => {
   stubStorage({});
   const { groupIntoBlocks } = await import("./digitizer.js");
@@ -1331,6 +1454,36 @@ test("decodedFromDesign strips the end record, centers on the sewn bbox, and cou
   const first = dec.stitches.find((s) => s.type === "stitch");
   expect(first.x).toBe(-100);
   expect(first.y).toBe(-50);
+});
+
+test("decodedFromDesign carries the run spans when only the tail end is stripped, and drops them otherwise", async () => {
+  stubStorage({});
+  const { decodedFromDesign } = await import("./digitizer.js");
+  const runs = [{ i0: 1, i1: 2, kind: "satin", shape: "S1", role: "", block: 0 }];
+  const tailEnd = {
+    stitches: [
+      { x: 0, y: 0, type: "jump" },
+      { x: 0, y: 0, type: "stitch" },
+      { x: 10, y: 0, type: "stitch" },
+      { x: 0, y: 0, type: "end" },
+    ],
+    colors: [{ r: 0, g: 0, b: 0 }],
+    runs,
+  };
+  // Spans index the final array including the interleaved records; the
+  // trailing end sits past every span, so stripping it moves nothing and
+  // the spans ride through verbatim (buildImportedDesign carries them on).
+  expect(decodedFromDesign(tailEnd).runs).toBe(runs);
+  // No end at all: nothing stripped, spans valid.
+  const noEnd = { ...tailEnd, stitches: tailEnd.stitches.slice(0, 3) };
+  expect(decodedFromDesign(noEnd).runs).toBe(runs);
+  // An end in the MIDDLE shifts every index after it: the spans stay off
+  // rather than wrong (absent means "no run information" to the renderer).
+  const midEnd = { ...tailEnd, stitches: [tailEnd.stitches[0], { x: 0, y: 0, type: "end" }, ...tailEnd.stitches.slice(1)] };
+  expect(decodedFromDesign(midEnd).runs).toBeUndefined();
+  // No spans on the design: none invented.
+  const { runs: _r, ...plain } = tailEnd;
+  expect(decodedFromDesign(plain).runs).toBeUndefined();
 });
 
 test("digitizedBlockColors defaults every block to the service palette; a user override wins per block", async () => {
@@ -2188,6 +2341,12 @@ test("no translated warning speaks engine, and this is the tripwire that keeps i
     "DUPLICATE_CONE_LAYERS_MERGED", "BORDER_SEAM_SHARED",
     "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE", "PHOTO_FACE_PRIORS_UNAVAILABLE",
     "SMALL_LETTERING_AS_BEAN",
+    "CLASSIFICATION_SEED_UNSTABLE", "CONTOUR_RING_UNREACHABLE",
+    "CONTOUR_DIRECTIONAL_COMP_UNSEWN", "EDGE_CAP_OVER_BUDGET",
+    "APPLIQUE_NO_FABRIC_VISIBLE", "APPLIQUE_CUTTING_LINE_SUPPRESSED",
+    "APPLIQUE_FORCED_PRE_CUT", "APPLIQUE_COVER_MARGINAL",
+    "APPLIQUE_PIECES_OVERLAP", "APPLIQUE_STEP_EMPTY",
+    "APPLIQUE_COVER_WIDTH_CLAMPED", "APPLIQUE_PRECUT_TOO_NARROW",
   ];
   // Words that mean something to whoever wrote the engine and nothing to
   // whoever uploaded a logo. Each one was actually printed to a customer
@@ -2348,6 +2507,19 @@ describe("editKind (restitch pacing)", () => {
     expect(editKind(removed, none)).toBe("border");
   });
 
+  it("reads a deletion, and its undo, as 'delete' — and a delete beside a drag as 'other'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const none = await edits(el({}));
+    const gone = await edits(digitizedElement({ deletedShapeIds: ["s1"] }));
+    expect(editKind(none, gone)).toBe("delete");
+    expect(editKind(gone, none)).toBe("delete");
+    const both = await edits(digitizedElement({
+      deletedShapeIds: ["s1"],
+      shapeOverrides: { s2: { boundary_override: ring() } },
+    }));
+    expect(editKind(none, both)).toBe("other");
+  });
+
   it("reads borders on SEVERAL shapes at once as 'border'", async () => {
     const { editKind } = await import("./digitizer.js");
     const a = await edits(el({ s1: { border: "auto" } }));
@@ -2388,7 +2560,9 @@ describe("editKind (restitch pacing)", () => {
     expect(editKind(base, await edits(el({ s1: { underlay_style: "edge_run" } })))).toBe("other");
     expect(editKind(base, await edits(el({ s1: { thread_index: 3 } })))).toBe("other");
     expect(editKind(base, await edits(el({ s1: { fill_angle_deg: 45 } })))).toBe("other");
-    expect(editKind(base, await edits(digitizedElement({ deletedShapeIds: ["s1"] })))).toBe("other");
+    // A bare delete left this list on 2026-10-06 (Kent: deleting a shape
+    // "pinwheels") — it is the 'delete' kind above, and the canvas hides the
+    // shape at once while the restitch runs.
     expect(editKind(base, await edits(digitizedElement({ mergeGroups: [["s1", "s2"]] })))).toBe("other");
   });
 
@@ -2497,4 +2671,32 @@ test("configKey moves with anything a digitize would send, and only with that", 
   expect(key({ ...el, name: "other.png", offsetXMm: 12, rotationDeg: 30 })).toBe(base);
   // A full-frame crop is the same request as no crop.
   expect(key({ ...el, crop: { x0: 0, y0: 0, x1: 1, y1: 1 } })).toBe(base);
+});
+
+// A corner drag on the field scales baked stitches; resizedTargetWidth is the
+// Design width that drag asks for (DigitizePanel reads it as a pending change).
+describe("resizedTargetWidth", () => {
+  const el = (extra) => ({ result: { stitches: [] }, params: { target_width_mm: 80 }, sizeMm: null, ...extra });
+  it("is null when nothing was dragged, or the design is at its digitized size", async () => {
+    const { resizedTargetWidth } = await import("./digitizer.js");
+    expect(resizedTargetWidth(el({}), 80)).toBeNull();
+    expect(resizedTargetWidth(el({ sizeMm: 80 }), 80)).toBeNull();
+    expect(resizedTargetWidth(el({ sizeMm: 81.5 }), 80)).toBeNull();   // within 2%: jitter, not a change
+    expect(resizedTargetWidth(el({ sizeMm: 60, result: null }), 80)).toBeNull();
+    expect(resizedTargetWidth(el({ sizeMm: 60 }), 0)).toBeNull();
+  });
+  it("scales the width the design was DIGITIZED at, not the drawn width", async () => {
+    const { resizedTargetWidth } = await import("./digitizer.js");
+    expect(resizedTargetWidth(el({ sizeMm: 62 }), 80)).toBe(62);
+    // A result drawn 80.6 wide from an 80 mm target (pull-comp margin): the
+    // ratio lands on the target, so the margin does not compound per run.
+    expect(resizedTargetWidth(el({ sizeMm: 40.3 }), 80.6)).toBe(40);
+    // Rotated 90: sizeMm and the native width are both the drawn (height) axis.
+    expect(resizedTargetWidth(el({ sizeMm: 20 }), 40)).toBe(40);
+  });
+  it("stays inside the Design width field's own 10–400 mm range", async () => {
+    const { resizedTargetWidth } = await import("./digitizer.js");
+    expect(resizedTargetWidth(el({ sizeMm: 5 }), 80)).toBe(10);
+    expect(resizedTargetWidth(el({ sizeMm: 900 }), 80)).toBe(400);
+  });
 });

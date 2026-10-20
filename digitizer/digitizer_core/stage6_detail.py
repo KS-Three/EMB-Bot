@@ -110,6 +110,7 @@ from skimage.morphology import skeletonize
 
 from . import debugviz, machine, stitches
 from .stage6_blend import SourcePixels
+from .stage6_hairline import _CURL_TOL_WIDTHS, stitch_path
 from .stage6_streamline import _field_for
 from .stitches import StitchRun
 from .threads import chart_for, rgb_to_lab
@@ -181,6 +182,18 @@ DETAIL_SIMPLIFY_MM = 0.2
 # before it is even measured in mm.
 _MIN_TRACE_PX = 3
 
+# `cfg.detail_layer_stitch` (2026-10-14, default "bean"). "bean" is the
+# 0.73 mm triple run this layer has always sewn; "run" sews each line ONCE,
+# at DETAIL_RUN_STITCH_MM, through `stage6_hairline.stitch_path` (shortened
+# on a curl to `_CURL_TOL_WIDTHS` of one run's laid width at `cfg.thread_wt`,
+# never under `machine.MIN_STITCH_MM`). Why it exists: on owl_kent the bean
+# adds 5,267 stitches under the 1.0 mm needle floor (PR #928's table) —
+# every bean station is one.
+DETAIL_STITCH_MODES = ("bean", "run")
+# candidate: the hairline tier's run length (`hairline_stitch_mm`'s Melco
+# run floor, #843 §1), unsewn — gate 1; card v1 block A sews both.
+DETAIL_RUN_STITCH_MM = 1.5
+
 _EPS = 1e-12
 
 
@@ -206,6 +219,33 @@ def fdog_line_map(gray: np.ndarray, tangent: np.ndarray,
     `DETAIL_MIN_COHERENCE` (see that constant — the noise/structure
     separation is measured, not assumed). Deterministic, no RNG.
     """
+    return fdog_threshold(fdog_response(gray, tangent), tangent, coherence)
+
+
+def fdog_threshold(H: np.ndarray, tangent: np.ndarray,
+                   coherence: np.ndarray | None = None) -> np.ndarray:
+    """Step 4 of `fdog_line_map` on a response `fdog_response` computed:
+    the paper's binarization at the calibrated operating point, the
+    no-flow rule and the coherence gate. Split out (2026-10-13) so
+    `stage6_hairline_lines` can read the same response for its strength
+    without running the filter twice; `fdog_line_map` is this composed with
+    `fdog_response`, unchanged."""
+    tx = tangent[..., 0].astype(np.float32)
+    ty = tangent[..., 1].astype(np.float32)
+    Hs = FDOG_RESPONSE_GAIN * H.astype(np.float64)
+    line = (Hs < 0.0) & ((1.0 + np.tanh(Hs)) < FDOG_TAU)
+    # A pixel with no flow direction at all never carries a line: its "cross
+    # flow" sampled the same point repeatedly and its response is not a
+    # measurement of anything.
+    line &= ~((np.abs(tx) < _EPS) & (np.abs(ty) < _EPS))
+    if coherence is not None:
+        line &= coherence >= DETAIL_MIN_COHERENCE
+    return line
+
+
+def fdog_response(gray: np.ndarray, tangent: np.ndarray) -> np.ndarray:
+    """Steps 2-3 of `fdog_line_map`: the accumulated FDoG response H
+    (float32, (H, W)); negative where a dark line crosses the flow."""
     h, w = gray.shape
     g32 = gray.astype(np.float32)
     tx = tangent[..., 0].astype(np.float32)
@@ -251,17 +291,7 @@ def fdog_line_map(gray: np.ndarray, tangent: np.ndarray,
             dx, dy = stx, sty
             wgt = np.float32(_gauss(np.array([float(s)]), FDOG_SIGMA_M)[0])
             H += wgt * _remap(F, px, py)
-
-    # Step 4: the paper's binarization, at the calibrated operating point.
-    Hs = FDOG_RESPONSE_GAIN * H.astype(np.float64)
-    line = (Hs < 0.0) & ((1.0 + np.tanh(Hs)) < FDOG_TAU)
-    # A pixel with no flow direction at all never carries a line: its "cross
-    # flow" sampled the same point repeatedly and its response is not a
-    # measurement of anything.
-    line &= ~((np.abs(tx) < _EPS) & (np.abs(ty) < _EPS))
-    if coherence is not None:
-        line &= coherence >= DETAIL_MIN_COHERENCE
-    return line
+    return H
 
 
 # --- Skeleton tracing ---------------------------------------------------------
@@ -392,6 +422,15 @@ def extract_detail_lines(sp: SourcePixels) -> list[list[tuple[float, float]]]:
     `_mask_to_subject`. Without a mask (every job that did not opt into the
     rembg cutout) this reads the whole raster exactly as it always has.
     """
+    sampler, gray = field_gray(sp)
+    line_map = fdog_line_map(gray, sampler.field.tangent,
+                             sampler.field.coherence)
+    return lines_from_map(line_map, sp, sampler.scale)
+
+
+def field_gray(sp: SourcePixels):
+    """-> (the cached field sampler, the unit-range gray raster at the
+    field's working resolution) — what `extract_detail_lines` filters."""
     sampler = _field_for(sp)
     h, w = sp.rgb.shape[:2]
     if sampler.scale < 1.0:
@@ -401,9 +440,14 @@ def extract_detail_lines(sp: SourcePixels) -> list[list[tuple[float, float]]]:
     else:
         small = sp.rgb
     gray = cv2.cvtColor(small, cv2.COLOR_RGB2GRAY).astype(np.float64) / 255.0
+    return sampler, gray
 
-    line_map = fdog_line_map(gray, sampler.field.tangent,
-                             sampler.field.coherence)
+
+def lines_from_map(line_map: np.ndarray, sp: SourcePixels, scale: float,
+                   min_len_mm: float = DETAIL_MIN_LINE_MM) -> list[list[tuple[float, float]]]:
+    """A field-resolution line map -> mm polylines: confined to the subject
+    (`_mask_to_subject`), thinned, traced, simplified at
+    `DETAIL_SIMPLIFY_MM`, and kept when at least `min_len_mm` long."""
     line_map = _mask_to_subject(line_map, sp)
     if not line_map.any():
         return []
@@ -411,11 +455,11 @@ def extract_detail_lines(sp: SourcePixels) -> list[list[tuple[float, float]]]:
 
     lines: list[list[tuple[float, float]]] = []
     for path in _trace_polylines(skel):
-        mm = [sp.to_mm(x / sampler.scale, y / sampler.scale) for x, y in path]
+        mm = [sp.to_mm(x / scale, y / scale) for x, y in path]
         ls = LineString(mm).simplify(DETAIL_SIMPLIFY_MM, preserve_topology=False)
         if ls.is_empty or ls.geom_type != "LineString":
             continue
-        if ls.length < DETAIL_MIN_LINE_MM:
+        if ls.length < min_len_mm:
             continue
         lines.append([(float(x), float(y)) for x, y in ls.coords])
     return lines
@@ -488,6 +532,10 @@ def detail_runs(sp: SourcePixels, cfg, entry: tuple[float, float] | None,
     unlike a fill tier there is nothing to fall back to and nothing lost.
     """
     report: dict = {"lines": 0, "jumps": 0, "empty": True, "too_thin": False}
+    mode = getattr(cfg, "detail_layer_stitch", "bean")
+    if mode not in DETAIL_STITCH_MODES:
+        raise ValueError(f"detail_layer_stitch must be one of "
+                         f"{DETAIL_STITCH_MODES}, got {mode!r}")
     lines = extract_detail_lines(sp)
     if not lines:
         return [], report
@@ -520,10 +568,19 @@ def detail_runs(sp: SourcePixels, cfg, entry: tuple[float, float] | None,
         cur = pts[-1]
 
     runs: list[StitchRun] = []
+    run_tol = (_CURL_TOL_WIDTHS * machine.thread_profile(cfg.thread_wt).hairline_run_width_mm
+               if mode == "run" else 0.0)
     for pts in ordered:
-        stations = _resample(pts, machine.BEAN_STITCH_MM)
-        bean = _bean_line(stations, machine.BEAN_PASSES)
-        if len(bean) < 2:
+        if mode == "run":
+            # One pass, same end as the bean (an odd pass count ends at the
+            # far end too), so the sew order and every hop are unchanged.
+            path = stitch_path(pts, DETAIL_RUN_STITCH_MM, run_tol)
+            kind = stitches.RUN
+        else:
+            stations = _resample(pts, machine.BEAN_STITCH_MM)
+            path = _bean_line(stations, machine.BEAN_PASSES)
+            kind = stitches.BEAN
+        if len(path) < 2:
             continue
         # No travel, ever: this layer has no covering topcoat, so a hop
         # between lines is the plain jump-or-trim call (see module
@@ -531,13 +588,13 @@ def detail_runs(sp: SourcePixels, cfg, entry: tuple[float, float] | None,
         # stage 7's forced color change, exactly as it is for every block.
         jump = trim = False
         if runs:
-            d = math.dist(runs[-1].points[-1], bean[0])
+            d = math.dist(runs[-1].points[-1], path[0])
             if d >= machine.TINY_STITCH_MM:
                 jump = True
                 trim = d > trim_at_mm
                 report["jumps"] += 1
-        runs.append(StitchRun(points=stitches.split_long_moves(bean),
-                              kind=stitches.BEAN, jump=jump, trim=trim,
+        runs.append(StitchRun(points=stitches.split_long_moves(path),
+                              kind=kind, jump=jump, trim=trim,
                               shape_id="detail"))
     report["lines"] = len(runs)
     report["empty"] = not runs
@@ -545,5 +602,5 @@ def detail_runs(sp: SourcePixels, cfg, entry: tuple[float, float] | None,
     if cfg.debug_dir and runs:
         debugviz.stage6_detail_lines(Path(cfg.debug_dir), sp.rgb,
                                      [[sp.to_px(x, y) for x, y in r.points]
-                                      for r in runs if r.kind == stitches.BEAN])
+                                      for r in runs if r.kind == kind])
     return runs, report

@@ -49,7 +49,18 @@ MARINE_127 = (TESTDATA.parents[1] / "docs" / "renders"
 
 
 def _sew(art, width_mm, **kw):
-    cfg = PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
+    # On the skeleton tier, explicitly: the crown cover is that tier's, and the
+    # Column lane (`lettering_columns`, ON by default since Kent's 2026-10-12
+    # flip) builds the letters from their outline with no crowns to close.
+    kw.setdefault("lettering_columns", False)
+    # ... and without the photo lane's phantom-blend dissolve
+    # (`dissolve_phantom_blends`, ON since Kent's 2026-10-20 flip, item 46):
+    # MARINE reads the gradient lane, and with the dissolve ON the cover's
+    # `lost_frac` gate reads 0.1955 -> 0.1968 (CI 2026-10-20). The gate was
+    # read without it; the dissolve's own price is
+    # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
+    kw.setdefault("dissolve_phantom_blends", False)
+    cfg =PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
                          max_colors=6, **kw)
     gen = build_generation(str(art), cfg)
     result = finish_generation(gen.fork(), cfg)

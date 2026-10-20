@@ -99,6 +99,8 @@ in order, each a `<section>` with a 13px/500 heading, no numbers, no cards:
 5. **Advanced ›** — one `<details>`-style disclosure at the panel's foot,
    closed by default, remembered per session (not persisted). Holds
    everything in §5's second column.
+   **Amendment, Kent 2026-10-12:** the fold sits under each editor's essentials,
+   shipped in #845 (not at the panel's foot).
 
 `ContentStep.svelte` becomes the Design + Colors sections' body: keep the file,
 drop its `<h2>What are you making?</h2>`, and split its template into the two

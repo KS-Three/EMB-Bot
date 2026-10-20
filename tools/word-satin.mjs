@@ -1,5 +1,6 @@
 // Render a WORD from a pre-digitized font library to validate layout+kerning.
 // Usage: TEXT="GENEVA" FONT=test/fixtures/fonts/geneva_simple.json node tools/word-satin.mjs out.png
+import "./_help.mjs";
 import fs from "node:fs";
 import { createRequire } from "module";
 import { encodePNG } from "./png.mjs";

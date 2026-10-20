@@ -3,6 +3,11 @@ const { test } = require("node:test");
 const fs = require("node:fs");
 const DG = require("../src/digitize.js");
 
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent). A test whose subject is something else and whose pin (a hash, a
+// frozen count, "byte-identical to main") was taken on the engine before that
+// spreads this in: the pre-flip engine, so the pin still says what it said.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
 const sq = (x0, y0, s) => [{ x: x0, y: y0 }, { x: x0 + s, y: y0 }, { x: x0 + s, y: y0 + s }, { x: x0, y: y0 + s }];
 
 test("groupRingsIntoShapes: side-by-side letters stay separate shapes", () => {
@@ -1148,6 +1153,179 @@ test("fillColumns: the tip of a holed shape gets one penetration at most, not tw
   }
 });
 
+// --- where a pass ends (2026-10-03, after the corner fix's re-measure) ---------
+//
+// The move between two runs of a shape is cut where it leaves the ground the
+// fill covers. Each tatami pass was told where the thread was, and never
+// where it had to go next: an underlay sewn by the column walk ended wherever
+// its last column ended, and when the run after it begins at a point of its
+// own -- a fill or a lattice pass the plain walk sews -- the float between
+// them was cut. 2,261 such cuts on 45,416 designs (the re-measure's own
+// drawings, option on): the most of any kind the walk could do anything about.
+// With the corner fix 388 of those designs gained a cut, 330 of the 404 here.
+//
+// A pass the plain walk sews begins where it begins, wherever the thread is.
+// So it is BUILT first, and the pass before it is told (`to`, fill.js "where
+// the walk ends"; test/fill.test.js has it bare).
+
+test("fillColumns: an underlay ends where the thread can float on to the pass after it", () => {
+  const cases = {
+    // The re-measure's own drawing. The cap preset's zigzag ended on a barb
+    // of the arrow, and the fill begins at the middle of its tail.
+    "an arrow, the cap preset's zigzag": [ring([[300, 120], [180, 240], [180, 168], [0, 168], [0, 72], [180, 72], [180, 0]]), 300, "structured_cap", null],
+    // Two lattice passes, and the fill after them.
+    "an L under terry, rows at 45": [ring([[240, 0], [240, 60], [60, 60], [60, 180], [0, 180], [0, 0]]), 240, "terry_towel", 45],
+    // No preset: the one tatami underlay, across the fill's rows.
+    "a T, no preset, rows level": [ring([[0, 0], [240, 0], [240, 60], [150, 60], [150, 240], [90, 240], [90, 60], [0, 60]]), 240, null, 0],
+    // The FIRST lattice pass into the second, which is the one the plain walk sews here.
+    "two tips under terry, rows at 135": [ring([[0, 300], [25, 0], [50, 280], [75, 0], [100, 300]]), 100, "terry_towel", 135],
+  };
+  for (const name of Object.keys(cases)) {
+    const [outer, widthPx, fabricId, angleOverride] = cases[name];
+    const fabric = fabricId ? FABRICS.getFabric(fabricId) : null, pull = fabric ? fabric.pullCompMm : 0;
+    const shape = { outer, holes: [] };
+    if (angleOverride != null) shape.angleOverride = angleOverride;
+    const d = drawn(shape, widthPx, fabric ? { fabric } : {});
+    const cuts = cutsBy(d);
+    assert.strictEqual(cuts.between, 0, name + ": " + JSON.stringify(cuts));
+    assert.strictEqual(cuts.underlay, 0, name + ": " + JSON.stringify(cuts));
+    assert.ok(cuts.fill <= 1, name + ": only center-out's own cut is left, " + JSON.stringify(cuts));
+    // and the cut was not traded for thread off the fill
+    assert.deepStrictEqual(offCoverMm(d, shape, pull, 0.15), { sewn: 0, floats: 0 }, name);
+    assert.strictEqual(floatsOffCover(d, shape, pull), 0, name);
+    // every run is still there, in the order it was
+    const kinds = d.runs.map((r) => r.kind).join(" ");
+    assert.ok(/^(underlay )+fill$/.test(kinds), name + ": " + kinds);
+  }
+});
+
+test("fillColumns: a fill the plain walk sews is the fill it was, asked where it begins or not", () => {
+  // The underlay asks where the fill begins before the fill is sewn, and the
+  // asking must not move a stitch of it: where the plain walk begins and what
+  // it sews do not turn on where the thread is. The fill of each drawing
+  // above, record for record, against the same fill with the option off --
+  // where nothing is asked -- on a shape whose plain fill the option leaves
+  // alone (no turn of it runs outside the shape).
+  const fillOf = (d) => { const r = d.runs.find((x) => x.kind === "fill"); return d.stitches.slice(r.i0, r.i1 + 1); };
+  const l = { outer: ring([[240, 0], [240, 60], [60, 60], [60, 180], [0, 180], [0, 0]]), holes: [], angleOverride: 45 };
+  for (const fabricId of [null, "structured_cap", "terry_towel", "fleece_sweatshirt"]) {
+    const extra = fabricId ? { fabric: FABRICS.getFabric(fabricId) } : {};
+    const on = drawn(l, 240, extra), off = drawn(l, 240, Object.assign({ fillColumns: false }, extra));
+    assert.deepStrictEqual(fillOf(on), fillOf(off), fabricId || "no preset");
+    assert.strictEqual(on._debug.nFill, 1);
+    assert.strictEqual(on._debug.nCenterOut, off._debug.nCenterOut, fabricId || "no preset");
+  }
+});
+
+test("fillColumns: the re-measure's two combs are one thread each -- a pass that comes out cut is walked again", () => {
+  // The two drawings on which the corner fix's re-measure showed a design
+  // GAINING cuts, and more than one. Neither is a float between two passes:
+  // the walk itself strands a column. What a walk costs turns on its first
+  // column, so a pass that comes out with a cut is walked again from the other
+  // first columns the thread can float to, and the better walk is kept: here,
+  // the one with no cut (fill.js, "which column first"; test/fill.test.js has
+  // it bare).
+  const fabric = FABRICS.getFabric("terry_towel"), pull = fabric.pullCompMm;
+  const cases = {
+    // No cut before the corner fix and three after it, all inside the second
+    // lattice pass: threads of 315, 3, 3 and 1,756 penetrations.
+    "four teeth 1.1 mm wide, rows at 61.3": [{ outer: ring([[321.56, 0], [321.56, 11.42], [70.94, 11.42], [70.94, 30.17], [321.56, 30.17], [321.56, 41.59], [70.94, 41.59], [70.94, 60.34], [321.56, 60.34], [321.56, 71.76], [70.94, 71.76], [70.94, 90.51], [321.56, 90.51], [321.56, 101.93], [0, 101.93], [0, 0]]), holes: [], angleOverride: 61.3 }, 321.56],
+    // None before and two after: one on the float into the first lattice pass,
+    // one inside it, and between them a thread of two penetrations. (Before,
+    // "no cut" was 292 mm more thread, 99 mm of it travel round the outline.)
+    "three teeth 4 mm wide pointing down": [{ outer: ring([[0, 333], [41.7, 333], [41.7, 89.78], [49.85, 89.78], [49.85, 333], [91.55000000000001, 333], [91.55000000000001, 89.78], [99.70000000000002, 89.78], [99.7, 333], [141.4, 333], [141.4, 0], [0, 0]]), holes: [] }, 141.4],
+  };
+  for (const name of Object.keys(cases)) {
+    const [shape, widthPx] = cases[name];
+    const d = drawn(shape, widthPx, { fabric });
+    assert.deepStrictEqual(cutsBy(d), { all: 0, fill: 0, underlay: 0, between: 0 }, name);
+    assert.deepStrictEqual(threadsOf(d).map((t) => t.length), [d.stitchCount], name + ": one thread");
+    // and no cut was traded for thread off the fill
+    assert.deepStrictEqual(offCoverMm(d, shape, pull, 0.15), { sewn: 0, floats: 0 }, name);
+    assert.strictEqual(floatsOffCover(d, shape, pull), 0, name);
+    assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "underlay", "underlay", "fill"], name);
+  }
+});
+
+test("fillColumns: the float into a fill is not cut where a start further off can be floated to", () => {
+  // The preset a left chest uses has no tatami underlay: an edge run, then
+  // the fill. An eight-pointed star with its rows upright. The edge run ends
+  // on the star's top point, and the corners the fill's walk could begin at
+  // are out on the side points: of the eight nearest the thread can float to
+  // none, an inside corner of the star being in the way of each. The walk
+  // began at the nearest all the same, and the builder cut. A corner further
+  // off, across the body, CAN be floated to. A walk that comes out cut is
+  // walked again from the starts it had not looked at, and the cut on the
+  // float in is one of the cuts it counts.
+  const star = { outer: ring([[150, 0], [178.5, 80.5], [256, 44], [219.5, 121.5], [300, 150], [219.5, 178.5], [256, 256], [178.5, 219.5], [150, 300], [121.5, 219.5], [44, 256], [80.5, 178.5], [0, 150], [80.5, 121.5], [44, 44], [121.5, 80.5]]), holes: [], angleOverride: 90 };
+  for (const fabricId of ["pique_knit", "canvas_tote"]) {
+    const fabric = FABRICS.getFabric(fabricId);
+    const d = drawn(star, 300, { fabric });
+    assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "fill"], fabricId);
+    assert.deepStrictEqual(cutsBy(d), { all: 0, fill: 0, underlay: 0, between: 0 }, fabricId);
+    assert.deepStrictEqual(offCoverMm(d, star, fabric.pullCompMm, 0.15), { sewn: 0, floats: 0 }, fabricId);
+    assert.strictEqual(floatsOffCover(d, star, fabric.pullCompMm), 0, fabricId);
+  }
+});
+
+test("fillColumns: a comb whose second lattice pass needs the FIFTH other first column", () => {
+  // Why a walk that comes out cut is walked from eight other first columns
+  // and not from one or two. Twelve teeth 1.5 mm wide and 30 mm long under
+  // fleece, rows at 61.3: the second lattice pass crosses every tooth on a
+  // slant. Walked from the nearest first column it is cut twelve times, and
+  // so it is from each of the next four, which all sew upward from one tooth
+  // or another. The fifth sews downward from the first column of all, and is
+  // cut once. (On a sweep of 9,084 designs four tries left 18 cuts, on three
+  // combs, that eight do not; with no limit at all not one design differs.)
+  const comb = [];
+  for (let k = 0; k < 12; k++) comb.push([0, 30 * k], [0, 30 * k + 15], [k < 11 ? 300 : 360, 30 * k + 15], ...(k < 11 ? [[300, 30 * k + 30]] : []));
+  comb.push([360, 0]);
+  const shape = { outer: ring(comb), holes: [], angleOverride: 61.3 };
+  const fabric = FABRICS.getFabric("fleece_sweatshirt");
+  const d = drawn(shape, 360, { fabric });
+  assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "underlay", "underlay", "fill"]);
+  assert.deepStrictEqual(cutsBy(d), { all: 1, fill: 0, underlay: 1, between: 0 });
+  assert.deepStrictEqual(offCoverMm(d, shape, fabric.pullCompMm, 0.15), { sewn: 0, floats: 0 });
+  assert.strictEqual(floatsOffCover(d, shape, fabric.pullCompMm), 0);
+});
+
+test("fillColumns: a pass walked again is not left with a one-stitch thread for the cut it saves", () => {
+  // What the independent re-measure of "where a pass ends" found (2026-10-04).
+  // Its maze, a corridor 1.4 mm wide wound through a block 15 mm by 22 mm,
+  // under fleece. The first lattice pass comes out with three cuts; walked
+  // again it came out with two, and between them one row: a thread of two
+  // penetrations, cut to and cut from. A stitch like that holds nothing, so
+  // the cut it "saved" bought an underlay row that is as good as not sewn.
+  // A walk is judged by its cuts and by its threads of fewer than four
+  // penetrations (fill.js, "which column first"; test/fill.test.js has it bare).
+  const maze = ring([[0, 0], [41.81, 0], [41.81, 13.69], [13.69, 13.69], [13.69, 27.84], [55.96, 27.84], [55.96, 0], [125.61, 0], [125.61, 27.84], [139.76, 27.84], [139.76, 0], [153.73, 0], [153.73, 41.53], [111.92, 41.53], [111.92, 13.69], [97.77, 13.69], [97.77, 99.54], [55.96, 99.54], [55.96, 85.85], [83.8, 85.85], [83.8, 71.7], [41.81, 71.7], [41.81, 143.86], [55.96, 143.86], [55.96, 116.02], [97.77, 116.02], [97.77, 143.86], [111.92, 143.86], [111.92, 85.85], [139.76, 85.85], [139.76, 71.7], [111.92, 71.7], [111.92, 58.01], [153.73, 58.01], [153.73, 99.54], [125.61, 99.54], [125.61, 157.55], [83.8, 157.55], [83.8, 129.71], [69.65, 129.71], [69.65, 157.55], [27.84, 157.55], [27.84, 58.01], [83.8, 58.01], [83.8, 13.69], [69.65, 13.69], [69.65, 41.53], [13.69, 41.53], [13.69, 201.87], [27.84, 201.87], [27.84, 174.03], [125.61, 174.03], [125.61, 201.87], [139.76, 201.87], [139.76, 116.02], [153.73, 116.02], [153.73, 215.56], [55.96, 215.56], [55.96, 201.87], [111.92, 201.87], [111.92, 187.72], [41.81, 187.72], [41.81, 215.56], [0, 215.56]]);
+  const fleece = FABRICS.getFabric("fleece_sweatshirt");
+  for (const angleOverride of [0, 90]) {
+    const shape = { outer: maze, holes: [], angleOverride };
+    const d = drawn(shape, 153.73, { fabric: fleece });
+    const lens = threadsOf(d).map((t) => t.length), name = "the maze, rows at " + angleOverride;
+    assert.deepStrictEqual(lens.filter((n) => n < 4), [], name + ": threads " + JSON.stringify(lens));
+    assert.strictEqual(cutsBy(d).all, 3, name + ": the first walk's three, " + JSON.stringify(lens));
+    assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "underlay", "underlay", "fill"], name);
+    assert.strictEqual(floatsOffCover(d, shape, fleece.pullCompMm), 0, name);
+  }
+  // And of two walks with as many cuts, the one with fewer such threads.
+  // Eight teeth 1 mm wide and 20 mm long under terry (the corner fix's
+  // re-measure, its `pcomb-229`): seven cuts either way, and the first
+  // lattice pass kept a walk with a thread of two penetrations in it where a
+  // later walk, cut as often, has none.
+  const comb = [];
+  for (let k = 0; k < 8; k++) comb.push([16.71 * k, 278.11], [16.71 * k + 9.58, 278.11], ...(k < 7 ? [[16.71 * k + 9.58, 72.96], [16.71 * (k + 1), 72.96]] : []));
+  comb.push([126.55, 0], [0, 0]);
+  const terry = FABRICS.getFabric("terry_towel");
+  const shape = { outer: ring(comb), holes: [] };
+  const d = drawn(shape, 126.55, { fabric: terry });
+  const lens = threadsOf(d).map((t) => t.length);
+  assert.deepStrictEqual(lens.filter((n) => n < 4), [], "eight teeth: threads " + JSON.stringify(lens));
+  assert.strictEqual(cutsBy(d).all, 7, "eight teeth: " + JSON.stringify(lens));
+  assert.strictEqual(floatsOffCover(d, shape, terry.pullCompMm), 0);
+});
+
 test("buildQualityDesign: thin solid bar goes satin, branched shape goes fill", () => {
   // thin bar 200x8 px at pxPerMm 8 → ~1mm wide final (fits 4in garment, scale>1 but still thin)
   const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 8 }, { x: 0, y: 8 }];
@@ -1492,6 +1670,44 @@ test("offsetRing: a point said twice running anywhere in the ring is one corner"
   assert.deepStrictEqual(DG.offsetRing(hair, 6, true), want, "closed to within a hair");
 });
 
+// --- a NEAR repeat: an anchor a pixel or two from the last (defect 55) ------
+//
+// A double-click whose second click slipped left an anchor a pixel from the
+// last (the gesture is cured; saved shapes keep theirs). The short edge to it
+// turns back on itself, and offsetRing gave its sharp end the whole mitre
+// clamp: on terry a 40 mm box sewed 1.73 mm past its ring where a clean corner
+// sews 0.85 (tools/closed-ring-census.mjs, table 4). An edge shorter than the
+// offset that turns back past a right angle is now dropped onto the corner
+// before it; a curve or a staircase, whose short edges turn back nowhere, is
+// moved as it always was.
+test("offsetRing: an anchor a pixel or two from the last is moved as the corner it slipped from", () => {
+  const clean = DG.offsetRing(boxPx(0, 0, 400, 400), 6, true);
+  for (const mag of [0.6, 1, 2, 4]) for (let k = 0; k < 16; k++) {
+    const a = k * Math.PI / 8 + 0.2;
+    const slipped = boxPx(0, 0, 400, 400).concat([{ x: mag * Math.cos(a), y: 400 + mag * Math.sin(a) }]);
+    // never further out than the slip itself plus the offset (the clamp let it reach 3x the offset)
+    const worst = Math.max(...DG.offsetRing(slipped, 6, true).map((p) => Math.max(-p.x, -p.y, p.x - 400, p.y - 400)));
+    assert.ok(worst <= 6 + mag + 1e-9, mag + " px at " + k + ": " + worst.toFixed(2) + " px out, the slip itself and the offset are " + (6 + mag));
+  }
+  // the 1 px slip of the census: the box exactly
+  assert.deepStrictEqual(DG.offsetRing(boxPx(0, 0, 400, 400).concat([{ x: -0.2, y: 400.98 }]), 6, true), clean);
+  // short edges that turn back nowhere are untouched: a 400-gon (3 px edges) and a staircase of 2 px right angles
+  const fine = roundPx(200, 200, 200, 400);
+  assert.strictEqual(DG.offsetRing(fine, 6, true).length, 400);
+  const stairs = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+  for (let i = 0; i < 20; i++) stairs.push({ x: 100 - 2 * i, y: 2 * i + 2 }, { x: 98 - 2 * i, y: 2 * i + 2 });
+  assert.strictEqual(DG.offsetRing(stairs, 6, true).length, stairs.length);
+});
+
+test("defect 55: a box with a slipped anchor sews to the clean box's edge on terry", () => {
+  const extent = (d) => { const xs = d.stitches.filter((s) => s.type === "stitch").map((s) => s.x), ys = d.stitches.filter((s) => s.type === "stitch").map((s) => s.y); return [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]; };
+  const clean = sewnTo({ outer: boxPx(0, 0, 400, 400), holes: [] }, "terry_towel");
+  const slipped = sewnTo({ outer: boxPx(0, 0, 400, 400).concat([{ x: -0.2, y: 400.98 }]), holes: [] }, "terry_towel");
+  // to within a fill row's rounding (0.2 mm); before, 0.9 mm further out
+  const a = extent(slipped), b = extent(clean);
+  a.forEach((v, i) => assert.ok(Math.abs(v - b[i]) <= 2, "side " + i + ": " + v + " against " + b[i] + " (0.1 mm units)"));
+});
+
 test("offsetRing: a ring with fewer than three corners once the repeats are out is handed back as it was", () => {
   // Nothing to grow: no area, so no outward side. (An outline like this never
   // gets as far as its fill, a shape with no area being dropped first. A ring
@@ -1674,7 +1890,12 @@ test("buildQualityDesign: fabric densityAdjust loosens fill (fewer stitches)", (
 test("buildQualityDesign: fabric trimAtMm gates a mid-distance travel trim", () => {
   const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 1 };
   const anchor = { outer: sq(0, 0, 700), holes: [] };
-  const shapes = [anchor, { outer: sq(760, 340, 16), holes: [] }, { outer: sq(800, 340, 16), holes: [] }];
+  // The second dot sits below the first, 3.80 mm of travel from it: between
+  // the two thresholds. (Until 2026-10-04 it sat beside it at x 800, where
+  // the travel was 4.88 mm, a hair under the upper one, and the satin change
+  // of that day sews that dot from its other corner: 7.28. Here it is 3.80
+  // before that change and after.)
+  const shapes = [anchor, { outer: sq(760, 340, 16), holes: [] }, { outer: sq(760, 388, 16), holes: [] }];
   const region = [{ rgb: [0, 0, 0], shapes }];
   const t3 = DG.buildQualityDesign(region, Object.assign({ fabric: fab({ trimAtMm: 3.0, fillUnderlay: "none", satinUnderlay: "none" }) }, base))._debug.nTrims;
   const t5 = DG.buildQualityDesign(region, Object.assign({ fabric: fab({ trimAtMm: 5.0, fillUnderlay: "none", satinUnderlay: "none" }) }, base))._debug.nTrims;
@@ -1692,7 +1913,7 @@ test("buildQualityDesign: no-fabric single-shape output frozen (snapshot, Phase-
   const outer = sq(0, 0, 100), hole = sq(20, 20, 60);
   const d = DG.buildQualityDesign(
     [{ rgb: [10, 20, 30], shapes: [{ outer, holes: [hole] }] }],
-    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: true, satinMaxWidthMm: 3 }
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: true, satinMaxWidthMm: 3, ...TRIO_OFF }
   );
   // RE-FREEZE (resize-density fix, 2026-07-27): this fixture has pxPerMm:1
   // with a ~100mm shape against a 101.6mm (4in) hoop, so sc≈1 and
@@ -1708,8 +1929,10 @@ test("buildQualityDesign: no-fabric single-shape output frozen (snapshot, Phase-
   // rowPx no longer floor-clamped either). nCenterOut/large-fill sweep
   // structure is unaffected by this fix, so that invariant stays.
   assert.strictEqual(d._debug.nCenterOut, 1, "fixture shape is a large fill → center-out");
-  assert.strictEqual(d.stitches.length, 4923, "total record count frozen");
-  assert.strictEqual(d.stitchCount, 4772, "stitch count frozen (resize-density re-freeze)");
+  // +1 each (2026-10-08): the edge-run underlay now closes on its start
+  // corner instead of stopping up to one stitch short of it.
+  assert.strictEqual(d.stitches.length, 4924, "total record count frozen");
+  assert.strictEqual(d.stitchCount, 4773, "stitch count frozen (resize-density re-freeze, + the edge run's closing stitch)");
   const first20 = [
     { x: -504, y: 504, type: "jump" }, { x: -504, y: 504, type: "stitch" }, { x: -484, y: 504, type: "stitch" },
     { x: -464, y: 504, type: "stitch" }, { x: -444, y: 504, type: "stitch" }, { x: -424, y: 504, type: "stitch" },
@@ -2350,7 +2573,7 @@ test("buildLetteringDesign: the counter guard holds bold where a real font's cou
 test("buildLetteringDesign: short stitches move penetrations on the inside of bends and never change the stitch count", () => {
   const garment = { widthIn: 8, heightIn: 8 };
   const font = require("../test/fixtures/fonts/geneva_simple.json");
-  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false, targetWidthMm: 30 };
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false, targetWidthMm: 30, ...TRIO_OFF };
   const on = DG.buildLetteringDesign(font, "SOC", base);
   const off = DG.buildLetteringDesign(font, "SOC", { ...base, shortStitch: false });
   assert.strictEqual(on.stitchCount, off.stitchCount);
@@ -2469,13 +2692,13 @@ test("buildQualityDesign: fabric densityAdjust scales the satin pitch as well as
 
 test("buildLetteringDesign: satinSpacingMm names the satin pitch; default, named and legacy densityMm are one design", () => {
   const font = JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
-  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, underlay: false };
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, underlay: false, ...TRIO_OFF };
   const dflt = DG.buildLetteringDesign(font, "AB", base);
   const named = DG.buildLetteringDesign(font, "AB", { ...base, satinSpacingMm: 0.4 });
   const legacy = DG.buildLetteringDesign(font, "AB", { ...base, densityMm: 0.4 });
   assert.deepStrictEqual(dflt, named);
   assert.deepStrictEqual(dflt, legacy);
-  assert.strictEqual(dflt.stitchCount, 703, "the number satinfont.test.js pins — lettering never moved");
+  assert.strictEqual(dflt.stitchCount, 691, "the number satinfont.test.js pins — lettering never moved (703 until the connector stopped laying the run's first stitch twice, 2026-10-08)");
   // Lettering has no fill, so the fill ruling is invisible from here.
   const withFillRow = DG.buildLetteringDesign(font, "AB", { ...base, fillRowMm: 0.15 });
   assert.deepStrictEqual(withFillRow, dflt, "fillRowMm is not a lettering option and changes nothing");
@@ -2601,20 +2824,23 @@ test("engine parity: travel records never widen a design, so the JS and Python s
 // garments.js comment — while the Python lane has always tied every block
 // unconditionally (stitches.apply_ties, no config flag). A lettering file
 // exported from the Studio could start or end its thread with nothing holding
-// it. Default OFF: it changes every .dst/.pes a customer exports, so the flip
-// is Kent's, and with the flag off output must be byte-identical to before.
+// it. Default OFF until Kent flipped it ON (2026-10-20, with fillStagger and
+// dedupeHoles); `ties: false` is the off arm and must stay byte-identical to
+// the untied stream.
 
 const _tieFont = () => JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
 const _tieBase = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8 };
 const _fingerprint = (d) => d.stitches.map((s) => `${s.x},${s.y},${s.type}`).join(";");
 const _count = (d, k) => d.stitches.filter((s) => s.type === k).length;
 
-test("ties: OFF by default, and the flag off is byte-identical to omitting it", () => {
+test("ties: ON by default (Kent, 2026-10-20), and `ties: false` is the off arm", () => {
   const font = _tieFont();
   const omitted = DG.buildLetteringDesign(font, "Fritsch's", { ..._tieBase });
+  const explicitOn = DG.buildLetteringDesign(font, "Fritsch's", { ..._tieBase, ties: true });
   const explicitOff = DG.buildLetteringDesign(font, "Fritsch's", { ..._tieBase, ties: false });
-  assert.strictEqual(_fingerprint(omitted), _fingerprint(explicitOff));
-  assert.strictEqual((omitted._debug || {}).nTies || 0, 0, "no ties emitted with the flag off");
+  assert.strictEqual(_fingerprint(omitted), _fingerprint(explicitOn));
+  assert.ok(omitted._debug.nTies > 0, "omitting the flag ties");
+  assert.strictEqual((explicitOff._debug || {}).nTies || 0, 0, "no ties emitted with the flag off");
 });
 
 test("ties: ON adds lock stitches and NOT ONE trim", () => {
@@ -2776,18 +3002,19 @@ const _tieShapes = (extra) => DG.buildQualityDesign(
    { rgb: [200, 30, 30], shapes: [{ outer: sq(300, 0, 160), holes: [], tierOverride: "fill" }] }],
   Object.assign({ garment: { widthIn: 6, heightIn: 6 }, pxPerMm: 10, darkOnTop: false, underlay: true }, extra || {}));
 
-test("ties (shapes): OFF by default, and the flag off is byte-identical to omitting it", () => {
-  const omitted = _tieShapes(), explicitOff = _tieShapes({ ties: false });
-  assert.strictEqual(_fingerprint(omitted), _fingerprint(explicitOff));
-  assert.deepStrictEqual(omitted.runs, explicitOff.runs);
-  assert.strictEqual((omitted._debug || {}).nTies || 0, 0, "no ties emitted with the flag off");
-  assert.strictEqual(_lockLegs(omitted).length, 0, "and nothing in the untied design reads as a lock");
+test("ties (shapes): ON by default (Kent, 2026-10-20), and `ties: false` is the off arm", () => {
+  const omitted = _tieShapes(), explicitOn = _tieShapes({ ties: true }), explicitOff = _tieShapes({ ties: false });
+  assert.strictEqual(_fingerprint(omitted), _fingerprint(explicitOn));
+  assert.deepStrictEqual(omitted.runs, explicitOn.runs);
+  assert.ok(omitted._debug.nTies > 0, "omitting the flag ties");
+  assert.strictEqual((explicitOff._debug || {}).nTies || 0, 0, "no ties emitted with the flag off");
+  assert.strictEqual(_lockLegs(explicitOff).length, 0, "and nothing in the untied design reads as a lock");
 });
 
 test("ties (shapes): ON locks every thread where it starts and where it is cut", () => {
   // `apply_ties`' question: is the thread starting here, or being cut here.
   // Not "did the needle lift": a float that is not cut leaves the thread whole.
-  const off = _tieShapes(), on = _tieShapes({ ties: true });
+  const off = _tieShapes({ ties: false }), on = _tieShapes({ ties: true });
   const threads = _threads(on);
   assert.ok(_count(on, "trim") >= 3, "fixture: a colour change, a trim between shapes, a cut inside a fill");
   assert.ok(threads.some((t) => t.some((s, k) => k > 0 && s.type === "jump")), "fixture: a float inside a thread");
@@ -2813,7 +3040,7 @@ test("ties (shapes): ON locks every thread where it starts and where it is cut",
 
 test("ties (shapes): take the locks out and the design is the untied one, record for record", () => {
   // Nothing else moves. Each lock is the four records after its anchor.
-  const off = _tieShapes(), on = _tieShapes({ ties: true });
+  const off = _tieShapes({ ties: false }), on = _tieShapes({ ties: true });
   const s = on.stitches, kept = [];
   for (let i = 0; i < s.length; i++) {
     kept.push(s[i]);
@@ -2848,7 +3075,7 @@ test("ties: a lock adds no second penetration of the same hole -- both builders"
   const font = _tieFont();
   const lt = (ties) => DG.buildLetteringDesign(font, "Fritsch's Stitches", { ..._tieBase, ties });
   assert.strictEqual(_zeroLength(lt(true)), _zeroLength(lt(false)), "lettering");
-  assert.strictEqual(_zeroLength(_tieShapes({ ties: true })), _zeroLength(_tieShapes()), "shapes");
+  assert.strictEqual(_zeroLength(_tieShapes({ ties: true })), _zeroLength(_tieShapes({ ties: false })), "shapes");
 });
 
 test("ties (shapes): a lock never reaches past the stitch it lies on, and no sewn move gets longer", () => {
@@ -2865,7 +3092,7 @@ test("ties (shapes): a lock never reaches past the stitch it lies on, and no sew
     return m;
   };
   for (const extra of [{}, { fillColumns: true }, { fabric: FABRICS.getFabric("pique_knit") }]) {
-    const off = _tieShapes(extra), on = _tieShapes(Object.assign({ ties: true }, extra));
+    const off = _tieShapes(Object.assign({ ties: false }, extra)), on = _tieShapes(Object.assign({ ties: true }, extra));
     assert.deepStrictEqual(box(on), box(off), JSON.stringify(Object.keys(extra)) + ": the sewn box moved");
     assert.ok(longest(on) <= longest(off) + 1e-9, "a lock made a longer sewn move than the untied design has");
     assert.strictEqual(on.widthMM, off.widthMM);
@@ -2889,7 +3116,7 @@ test("ties (shapes): a lock belongs to the run it protects", () => {
     });
   }
   const kinds = (d) => d.runs.map((r) => r.kind + ":" + r.shape).join(",");
-  assert.strictEqual(kinds(_tieShapes({ ties: true })), kinds(_tieShapes()), "the runs themselves are the same runs");
+  assert.strictEqual(kinds(_tieShapes({ ties: true })), kinds(_tieShapes({ ties: false })), "the runs themselves are the same runs");
 });
 
 // applyTies, asked directly: the rules below only bite on streams no ordinary
@@ -3004,7 +3231,7 @@ test("ties (shapes): with the column flag off, a lock adds no sewn thread to a h
     for (const angleOverride of [null, 0, 30, 90]) {
       const sh = Object.assign({}, shape);
       if (angleOverride != null) sh.angleOverride = angleOverride;
-      const off = drawn(sh, widthPx, { fillColumns: false }), on = drawn(sh, widthPx, { fillColumns: false, ties: true });
+      const off = drawn(sh, widthPx, { fillColumns: false, ties: false }), on = drawn(sh, widthPx, { fillColumns: false, ties: true });
       locks += on._debug.nTies;
       assert.strictEqual(openGroundMm(on, shape, 0.15).sewn, openGroundMm(off, shape, 0.15).sewn, name + ", angle " + angleOverride);
     }
@@ -3162,7 +3389,7 @@ test("buildQualityDesign: stitches are byte-identical to main's on the shapeOutl
   const d = DG.buildQualityDesign(
     [{ rgb: [0, 0, 0], shapes: [{ outer: rect, holes: [], id: "s7", tierOverride: "fill" }] }],
     { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 6, underlay: false,
-      targetWidthMm: 40, offsetXMm: 5, offsetYMm: -3 }
+      targetWidthMm: 40, offsetXMm: 5, offsetYMm: -3, ...TRIO_OFF }
   );
   const hash = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex");
   // hash taken from main at 5371b120 on 2026-09-29; a change here means a
@@ -3237,6 +3464,295 @@ test("underlayRuns: a 3-point hole gets its own edge run and joins the lattice's
   assert.strictEqual(DG.underlayRuns({ outer: sq, holes: [tri.slice(0, 2)] }, "edge_run", ctx).length, 1);
 });
 
+// ---- authored rails: shape.sewAs = { kind: "column", railA, railB } --------
+// Manual-digitizing spec §6, "Amended 2026-10-01". A hand-drawn satin column
+// arrives as a region whose `outer` is the rail ring (railA + reversed railB)
+// AND whose two rails are handed over as drawn. With tierOverride "satin" and
+// no holes the engine sews satin BETWEEN THOSE RAILS instead of deriving
+// rails from the polygon, and its `center_run` underlay follows them.
+// Everything else still reads `outer`. A shape with no `sewAs` is untouched.
+const SP = require("../src/satinplay.js");
+const colOpts = (extra) => Object.assign({ garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 6, targetWidthMm: 50, underlay: false }, TRIO_OFF, extra);
+const straightCol = () => {
+  const railA = [{ x: 0, y: 0 }, { x: 300, y: 0 }], railB = [{ x: 0, y: 24 }, { x: 300, y: 24 }];
+  return { railA, railB, outer: railA.concat(railB.slice().reverse()) };
+};
+// Quarter circle, centreline radius 200 px, 24 px wide; both rails run the same way.
+const curvedCol = () => {
+  const arc = (r) => { const a = []; for (let i = 0; i <= 32; i++) { const t = (i / 32) * Math.PI / 2; a.push({ x: r * Math.cos(t), y: r * Math.sin(t) }); } return a; };
+  const railA = arc(188), railB = arc(212);
+  return { railA, railB, outer: railA.concat(railB.slice().reverse()) };
+};
+const colDesign = (col, shapeExtra, optExtra) => DG.buildQualityDesign(
+  [{ rgb: [0, 0, 0], shapes: [Object.assign({ outer: col.outer, holes: [], id: "c1", tierOverride: "satin" }, shapeExtra)] }],
+  colOpts(optExtra));
+const colSewAs = (col) => ({ sewAs: { kind: "column", railA: col.railA, railB: col.railB } });
+// The shape's stitches of one kind, read off the run spans (a span opens with
+// pushRun's positioning jump, which is not a stitch).
+const spanStitches = (d, kind, id) => {
+  const out = [];
+  for (const sp of d.runs) if (sp.kind === kind && sp.shape === id) {
+    for (let i = sp.i0; i <= sp.i1; i++) if (d.stitches[i].type === "stitch") out.push({ x: d.stitches[i].x, y: d.stitches[i].y });
+  }
+  return out;
+};
+// The engine's own T(), rebuilt from the exported fit (10 DST units per mm).
+const fitT = (f) => (q) => ({
+  x: Math.round((q.x - f.cxPx) * f.mmPerPx * 10) + Math.round(f.offsetXMm * 10),
+  y: Math.round((f.cyPx - q.y) * f.mmPerPx * 10) + Math.round(f.offsetYMm * 10),
+});
+const xyNoNegZero = (p) => ({ x: p.x + 0, y: p.y + 0 });
+
+test("sewAs column: the satin is satinFromRails on the authored rails, point for point", () => {
+  const col = straightCol();
+  const d = colDesign(col, colSewAs(col));
+  const got = spanStitches(d, "satin", "c1");
+  // no fabric: engine defaults are satin spacing 0.4 mm, pull comp 0.2 mm, no slant
+  const want = SP.satinFromRails(col.railA, col.railB, [],
+    { spacingMm: 0.4, pxPerMm: 1 / d.fit.mmPerPx, pullCompMm: 0.2, slantDeg: 0 }).map(fitT(d.fit));
+  assert.ok(want.length > 100, "the direct call sews a real column: " + want.length);
+  assert.deepStrictEqual(got.map(xyNoNegZero), want.map(xyNoNegZero));
+  assert.strictEqual(d._debug.nSatin, 1);
+  assert.strictEqual(d._debug.nFill, 0);
+});
+
+test("sewAs column: without sewAs the same outer sews exactly what it sewed before the field existed", () => {
+  const crypto = require("node:crypto");
+  const col = straightCol();
+  const d = colDesign(col, {});
+  const hash = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex");
+  // hash re-taken 2026-10-11 from origin/main 431c5026's own src/ (which never
+  // reads `sewAs`; main's satin moved since 358d8ab8's pin); a
+  // change here means a design with no column moved, which the plan forbids.
+  assert.strictEqual(hash, "09c0b6af4f7f167aa440f754aaa8b11ea99c8b3511c9d8aaef95eaaf4f083021");
+  // a sewAs of some other kind is not a column either
+  const other = colDesign(col, { sewAs: { kind: "run", railA: col.railA, railB: col.railB } });
+  assert.deepStrictEqual(other.stitches, d.stitches);
+});
+
+test("sewAs column: a curved column's center_run underlay follows the rails and stays inside the column", () => {
+  const col = curvedCol();
+  const fabric = fab({ satinUnderlay: "center_run" });
+  const d = colDesign(col, colSewAs(col), { underlay: true, fabric });
+  const f = d.fit;
+  const toPx = (s) => ({ x: (s.x - Math.round(f.offsetXMm * 10)) / (f.mmPerPx * 10) + f.cxPx, y: f.cyPx - (s.y - Math.round(f.offsetYMm * 10)) / (f.mmPerPx * 10) });
+  const und = spanStitches(d, "underlay", "c1").map(toPx);
+  assert.ok(und.length >= 10, "a centre run was sewn along the column: " + und.length + " stitches");
+  // even-odd point-in-polygon with a 0.5 px tolerance (T() rounds to 0.1 mm)
+  const inside = (p, ring) => {
+    let c = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = ring[i], b = ring[j];
+      if ((a.y > p.y) !== (b.y > p.y) && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) c = !c;
+    }
+    return c;
+  };
+  const distToRing = (p, ring) => {
+    let best = Infinity;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = ring[j], b = ring[i], dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
+      const t = L2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2)) : 0;
+      best = Math.min(best, Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t)));
+    }
+    return best;
+  };
+  for (const p of und) assert.ok(inside(p, col.outer) || distToRing(p, col.outer) <= 0.5, "underlay stitch outside the column: " + JSON.stringify(p));
+  // ...and it runs the column's whole length: it reaches both ends of the
+  // spine. The straight PCA line this replaces only ever cut a chord.
+  const near = (end) => Math.min(...und.map((p) => Math.hypot(p.x - end.x, p.y - end.y)));
+  assert.ok(near({ x: 200, y: 0 }) <= 6, "reaches the start of the spine: " + near({ x: 200, y: 0 }).toFixed(1) + " px away");
+  assert.ok(near({ x: 0, y: 200 }) <= 6, "reaches the end of the spine: " + near({ x: 0, y: 200 }).toFixed(1) + " px away");
+  // the other named styles still read `outer`: same stitches with or without rails
+  const edge = fab({ satinUnderlay: "edge_run" });
+  const eWith = spanStitches(colDesign(col, colSewAs(col), { underlay: true, fabric: edge }), "underlay", "c1");
+  const eWithout = spanStitches(colDesign(col, {}, { underlay: true, fabric: edge }), "underlay", "c1");
+  assert.ok(eWith.length > 0);
+  assert.deepStrictEqual(eWith, eWithout);
+});
+
+test("sewAs column: ignored when the shape has a hole or is forced to fill (sews as fill, as today)", () => {
+  const col = straightCol();
+  const hole = [{ x: 100, y: 6 }, { x: 200, y: 6 }, { x: 200, y: 18 }, { x: 100, y: 18 }];
+  for (const [name, extra] of [["hole", { holes: [hole] }], ["tierOverride fill", { tierOverride: "fill" }]]) {
+    const plain = colDesign(col, extra);
+    const withRails = colDesign(col, Object.assign({}, extra, colSewAs(col)));
+    assert.strictEqual(withRails._debug.nFill, 1, name + ": sews as fill");
+    assert.strictEqual(withRails._debug.nSatin, 0, name + ": no satin");
+    assert.deepStrictEqual(withRails.stitches, plain.stitches, name + ": identical to the same shape without sewAs");
+    // and the centre-run underlay is not taken from the rails either
+    const fabric = fab({ satinUnderlay: "center_run", fillUnderlay: "center_run" });
+    assert.deepStrictEqual(
+      colDesign(col, Object.assign({}, extra, colSewAs(col)), { underlay: true, fabric }).stitches,
+      colDesign(col, extra, { underlay: true, fabric }).stitches, name + ": underlay untouched");
+  }
+});
+
+test("sewAs column: without sewAs the fabric path (center_run underlay) is byte-identical too", () => {
+  const crypto = require("node:crypto");
+  const col = straightCol();
+  // `underlayDirection: false` pins the pre-flip stream (the flag went default ON 2026-10-11; built OFF in PR #822).
+  const d = colDesign(col, {}, { underlay: true, underlayDirection: false, fabric: fab({ satinUnderlay: "center_run" }) });
+  assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "satin"]);
+  const hash = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex");
+  // hash produced by origin/main 431c5026's own src/ (extracted with `git
+  // archive`, 2026-10-11; first pinned from 358d8ab8), which never reads
+  // `sewAs` — not by the code under test.
+  assert.strictEqual(hash, "b854ec65ff8ce8542bb8240ac5aa1e261186b5653e8e339d206c91e75826a431");
+});
+
+test("sewAs column: rails that cannot sew contribute nothing — no bare underlay, outline dropped", () => {
+  // centerRun still walks the midline of rails satinFromRails sews nothing
+  // between (measured: two coincident rails -> 51 underlay points, 0 satin),
+  // so on the Studio's normal path — a center_run fabric with underlay on —
+  // such a shape used to sew an underlay with no satin over it and keep a
+  // clickable outline. The other cases here already sewed nothing; they are
+  // pinned so that stays true, and so they stop counting as a satin.
+  const col = straightCol();
+  const other = { outer: sq(0, 60, 80), holes: [], id: "keep", tierOverride: "fill" };
+  const opts = colOpts({ underlay: true, fabric: fab({ satinUnderlay: "center_run" }) });
+  const build = (shapes) => DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes }], opts);
+  const bad = [
+    ["zero-width (coincident rails)", { kind: "column", railA: col.railA, railB: col.railA.map((p) => ({ x: p.x, y: p.y })) }],
+    ["railB reversed", { kind: "column", railA: col.railA, railB: col.railB.slice().reverse() }],
+    ["1-point rail", { kind: "column", railA: col.railA, railB: [col.railB[0]] }],
+    ["no rails", { kind: "column" }],
+  ];
+  for (const [name, sewAs] of bad) {
+    const shape = { outer: col.outer, holes: [], id: "c1", tierOverride: "satin", sewAs };
+    const alone = build([shape]);
+    assert.strictEqual(alone.stitchCount, 0, name + ": no stitches at all");
+    assert.deepStrictEqual(alone.runs, [], name + ": no spans");
+    assert.strictEqual(alone.shapeOutlines[0].dropped, true, name + ": outline dropped");
+    assert.strictEqual(alone._debug.nSatin, 0, name + ": not counted as a satin");
+    const d = build([shape, other]);
+    assert.deepStrictEqual(d.runs.filter((r) => r.shape === "c1"), [], name + ": no span for the column beside a good shape");
+    assert.deepStrictEqual(d.shapeOutlines.map((o) => o.dropped), [true, false], name);
+    assert.ok(spanStitches(d, "fill", "keep").length > 50, name + ": the other shape still sews");
+    assert.strictEqual(d._debug.nTrims, 0, name + ": and no travel was spent on the dropped column");
+  }
+});
+
+// Cross lengths (region px) of a column's satin: stitches come in lead/trail
+// pairs, one pair per cross. pullCompMm 0 so a cross is the drawn width.
+const colCrossPx = (d) => {
+  const st = spanStitches(d, "satin", "c1"), k = 10 * d.fit.mmPerPx, out = [];
+  for (let i = 0; i + 1 < st.length; i += 2) out.push(Math.hypot(st[i + 1].x - st[i].x, st[i + 1].y - st[i].y) / k);
+  return out;
+};
+// Rails as the Studio's railsFromSpine emits them: same point count, same
+// direction, railA[i] and railB[i] the two ends of the cross at spine point i.
+// A "J": 200 px straight, then a quarter turn of spine radius 60 — the two
+// rails' lengths differ (313 vs 275 px), and not uniformly along the column.
+const jCol = () => {
+  const railA = [], railB = [];
+  for (let i = 0; i <= 4; i++) { railA.push({ x: 50 * i, y: -12 }); railB.push({ x: 50 * i, y: 12 }); }
+  for (let i = 1; i <= 15; i++) {
+    const t = -Math.PI / 2 + (i / 15) * Math.PI / 2;
+    railA.push({ x: 200 + 72 * Math.cos(t), y: 60 + 72 * Math.sin(t) });
+    railB.push({ x: 200 + 48 * Math.cos(t), y: 60 + 48 * Math.sin(t) });
+  }
+  return { railA, railB, outer: railA.concat(railB.slice().reverse()) };
+};
+
+test("sewAs column: crosses follow the rails' own index pairing, so a curved column does not lean", () => {
+  // With no rungs satinplay pairs the rails by WHOLE-rail arc fraction, which
+  // is only right when both rails gain length at the same rate. A quarter
+  // circle does (concentric arcs), so it is the control; the J does not, and
+  // its crosses leaned. Rails of equal point count are paired index to index.
+  for (const [name, col] of [["quarter circle", curvedCol()], ["J", jCol()]]) {
+    assert.strictEqual(col.railA.length, col.railB.length);
+    const cross = colCrossPx(colDesign(col, colSewAs(col), { pullCompMm: 0 }));
+    assert.ok(cross.length > 50, name + ": sewed " + cross.length + " crosses");
+    const lo = Math.min(...cross), hi = Math.max(...cross);
+    assert.ok(lo >= 24 * 0.85 && hi <= 24 * 1.15, name + ": every cross within 15% of the drawn 24 px, got " + lo.toFixed(1) + ".." + hi.toFixed(1));
+  }
+  // the centre run takes the same pairing: it stays mid-column on the J
+  const j = jCol();
+  const d = colDesign(j, colSewAs(j), { underlay: true, fabric: fab({ satinUnderlay: "center_run", pullCompMm: 0 }) });
+  assert.ok(spanStitches(d, "underlay", "c1").length >= 10);
+});
+
+// The Studio's rail construction (app/src/lib/spineRails.js), re-stated
+// minimally so the engine test imports no app code: each spine point offset by
+// +/- half the width along the normal of the averaged adjacent tangents,
+// lengthened to a miter and clamped at 2x the half-width.
+const railsOfSpine = (spine, widthPx) => {
+  const n = spine.length, half = widthPx / 2, dirs = [], railA = [], railB = [];
+  for (let i = 0; i < n - 1; i++) { const dx = spine[i + 1].x - spine[i].x, dy = spine[i + 1].y - spine[i].y, L = Math.hypot(dx, dy); dirs.push({ x: dx / L, y: dy / L }); }
+  for (let i = 0; i < n; i++) {
+    const dIn = i > 0 ? dirs[i - 1] : dirs[0], dOut = i < n - 1 ? dirs[i] : dirs[n - 2];
+    let tx = dIn.x + dOut.x, ty = dIn.y + dOut.y; const tl = Math.hypot(tx, ty); tx /= tl; ty /= tl;
+    const cosHalf = tx * dIn.x + ty * dIn.y, reach = cosHalf > 0.5 ? half / cosHalf : half * 2;
+    railA.push({ x: spine[i].x - ty * reach, y: spine[i].y + tx * reach });
+    railB.push({ x: spine[i].x + ty * reach, y: spine[i].y - tx * reach });
+  }
+  return { railA, railB, outer: railA.concat(railB.slice().reverse()) };
+};
+// A straight lead-in along +x, then an arc of spine radius `r` turning through
+// `sweepDeg`, one spine point every `stepDeg`.
+const hookSpine = (leadPx, r, sweepDeg, stepDeg, tailPx) => {
+  const spine = [{ x: 0, y: 0 }, { x: leadPx, y: 0 }];
+  let t = -Math.PI / 2;
+  for (let k = 1; k <= sweepDeg / stepDeg; k++) {
+    t = -Math.PI / 2 + (k * stepDeg * Math.PI) / 180;
+    spine.push({ x: leadPx + r * Math.cos(t), y: r + r * Math.sin(t) });
+  }
+  if (tailPx) { const l = spine[spine.length - 1]; spine.push({ x: l.x - Math.sin(t) * tailPx, y: l.y + Math.cos(t) * tailPx }); }
+  return spine;
+};
+
+test("sewAs column: a tight bend and a short hook keep their pairing (every interior pair is a rung)", () => {
+  // Width 24 px on a bend of spine radius 16: the inside rail turns on a 4 px
+  // radius and barely advances (10 px through the whole bend) while the
+  // outside one travels 73 px. Rungs kept only once the SLOWER rail had
+  // advanced 24 px left the bend with none — where the two rails' lengths
+  // differ most — and a hook under 24 px of lead-in with no rung at all.
+  // Measured before: crosses to 28.7 px (bend) and 26.7 px (hook).
+  const fixtures = [
+    ["tight bend: 60 px lead-in, r16 through 150 deg (42 px), 15 px tail", hookSpine(60, 16, 150, 10, 15)],
+    ["short hook: 15 px lead-in, r16 through 90 deg (25 px)", hookSpine(15, 16, 90, 15, 0)],
+  ];
+  for (const [name, spine] of fixtures) {
+    const col = railsOfSpine(spine, 24);
+    const cross = colCrossPx(colDesign(col, colSewAs(col), { pullCompMm: 0 }));
+    assert.ok(cross.length > 10, name + ": sewed " + cross.length + " crosses");
+    const lo = Math.min(...cross), hi = Math.max(...cross);
+    // No cross is excluded: these bends turn 10-15 deg per point, nowhere near
+    // the miter clamp. 10%, not 20%: the old spacing's worst here was 1.20x.
+    assert.ok(lo >= 24 * 0.9 && hi <= 24 * 1.1, name + ": every cross within 10% of the drawn 24 px, got " + lo.toFixed(1) + ".." + hi.toFixed(1));
+  }
+});
+
+test("sewAs column: rails with different point counts still sew (no index pairing to use)", () => {
+  const col = curvedCol();
+  const railB = col.railB.filter((_, i) => i % 2 === 0); // 17 points against 33
+  const d = colDesign({ outer: col.outer }, { sewAs: { kind: "column", railA: col.railA, railB } }, { pullCompMm: 0 });
+  const cross = colCrossPx(d);
+  assert.ok(cross.length > 50, "sewed " + cross.length + " crosses");
+  assert.strictEqual(d.shapeOutlines[0].dropped, false);
+  const want = SP.satinFromRails(col.railA, railB, [], { spacingMm: 0.4, pxPerMm: 1 / d.fit.mmPerPx, pullCompMm: 0, slantDeg: 0 }).map(fitT(d.fit));
+  assert.deepStrictEqual(spanStitches(d, "satin", "c1").map(xyNoNegZero), want.map(xyNoNegZero));
+});
+
+test("sewAs column: satinFromRails is reached through a real binding under Node", () => {
+  // The top-stitch call sits in a best-effort try/catch, so an unbound name
+  // (the spec first wrote `satinplay.satinFromRails`, which digitize.js never
+  // bound) does not throw out of buildQualityDesign: it sews NOTHING and the
+  // shape is dropped. Rails that are deliberately not the outline's own make
+  // the binding the only way to this result.
+  const outer = [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 24 }, { x: 0, y: 24 }];
+  const railA = [{ x: 60, y: 6 }, { x: 240, y: 6 }], railB = [{ x: 60, y: 18 }, { x: 240, y: 18 }];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [], id: "c1", tierOverride: "satin", sewAs: { kind: "column", railA, railB } }] }],
+    colOpts());
+  const got = spanStitches(d, "satin", "c1");
+  assert.ok(got.length > 50, "the column sewed (an unbound satinplay sews 0): " + got.length);
+  assert.strictEqual(d.shapeOutlines[0].dropped, false);
+  const f = d.fit, xs = got.map((s) => s.x / 10 / f.mmPerPx + f.cxPx);
+  // pull comp pushes each rail OUT, not along: the run stays between the rails' ends
+  assert.ok(Math.min(...xs) >= 59 && Math.max(...xs) <= 241, "sewn between the RAILS' ends, not the outline's: " + Math.min(...xs).toFixed(1) + ".." + Math.max(...xs).toFixed(1));
+});
+
 // --- dedupeHoles: no second stitch in the hole the needle is in (2026-10-03) --
 //
 // The builder rounds every point to the stitch file's unit, 0.1 mm, so two
@@ -3245,7 +3761,10 @@ test("underlayRuns: a 3-point hole gets its own edge run and joins the lattice's
 // notch. The writers keep such a record, so the needle goes down twice in one
 // hole (docs/sub-unit-stitches-2026-10-03.md: 16,575 of them on 8,255 designs
 // with every flag absent). `dedupeHoles: true` lays the first and not the
-// second, in every run of the shape builder. Built OFF.
+// second, in every run of the shape builder. Built OFF; ON by default since
+// 2026-10-20 (Kent). The fixtures below pin `ties` and `fillStagger` OFF, the
+// stream this rule was built and measured on, and `dedupeHoles: false` is the
+// off arm; the one test with ties asks for them.
 //
 // "The second" is a stitch whose record comes straight after a stitch on the
 // same point, and nothing wider. After a jump or a cut the stitch is laid,
@@ -3253,17 +3772,25 @@ test("underlayRuns: a 3-point hole gets its own edge run and joins the lattice's
 // reader takes three jumps in a row for one, and taking the stitch out from
 // between two jumps could make a cut that was not there.
 const _holeStar = [[180, 0], [227, 115], [351, 124], [256, 205], [286, 326], [180, 260], [74, 326], [104, 205], [9, 124], [133, 115]].map(([x, y]) => ({ x, y }));
-const _holeTaper = [{ x: 0, y: 0 }, { x: 300, y: 10 }, { x: 0, y: 20 }];
+// A three-point needle; forced to satin it lays two stitches on one point at
+// its tip. (The 300 x 20 taper this was until 2026-10-08 did it only through
+// the medial axis sticking to the grid's edge, and the three-armed star it was
+// after that stopped doing it when the skeleton became one pixel wide,
+// test/satin-spine.test.js.)
+const _holeNeedle = [{ x: 0, y: 108 }, { x: 145, y: 0 }, { x: 6, y: 117 }];
+// `satinSmallShapes` went ON by default on 2026-10-20 too (Kent): the two
+// satin stars below float arm to arm only on the pre-flip satin, so every
+// fixture here builds with it OFF; the subject is the hole, not the star.
 const _holeRun = (shape, widthMm, extra) => DG.buildQualityDesign(
   [{ rgb: [0, 0, 0], shapes: [Object.assign({ holes: [] }, shape)] }],
-  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false }, extra));
+  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false, ties: false, fillStagger: false, satinSmallShapes: false }, extra));
 // Each a design that, with the flag off, puts two stitches on one point in the
 // kind of run named: [name, the run kind the pair is in, how it is built].
 const _holeCases = [
   ["plain walk, fill and underlay", "fill", (extra) => _holeRun({ outer: _holeStar, tierOverride: "fill" }, 34.2, extra)],
   ["plain walk under a preset", "fill", (extra) => _holeRun({ outer: _holeStar, tierOverride: "fill" }, 34.2, Object.assign({ fabric: FABRICS.getFabric("pique_knit") }, extra))],
   ["column walk under a preset", "fill", (extra) => _holeRun({ outer: _holeStar, holes: [sq(160, 160, 40)], tierOverride: "fill" }, 34.2, Object.assign({ fabric: FABRICS.getFabric("terry_towel"), fillColumns: true }, extra))],
-  ["satin", "satin", (extra) => _holeRun({ outer: _holeTaper, tierOverride: "satin" }, 30, extra)],
+  ["satin", "satin", (extra) => _holeRun({ outer: _holeNeedle, tierOverride: "satin" }, 6, extra)],
 ];
 // The stitches on a point the stitch before them is on, by the kind of run.
 const _secondByKind = (d) => {
@@ -3297,15 +3824,15 @@ const _holeSquares = (twoColours, extra) => {
   const a = { outer: sq(0, 0, 100), holes: [], tierOverride: "fill", angleOverride: 0 };
   const b = { outer: [{ x: 100, y: 99 }, { x: 130, y: 99 }, { x: 130, y: 130 }, { x: 100, y: 130 }], holes: [], tierOverride: "fill", angleOverride: 0 };
   const regions = twoColours ? [{ rgb: [0, 0, 0], shapes: [a] }, { rgb: [200, 0, 0], shapes: [b] }] : [{ rgb: [0, 0, 0], shapes: [a, b] }];
-  return DG.buildQualityDesign(regions, Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: 13, darkOnTop: false, underlay: false }, extra));
+  return DG.buildQualityDesign(regions, Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: 13, darkOnTop: false, underlay: false, ties: false, fillStagger: false }, extra));
 };
 
-test("dedupeHoles: OFF by default, and the flag off is byte-identical to omitting it", () => {
+test("dedupeHoles: ON by default (Kent, 2026-10-20), and `dedupeHoles: false` is the off arm", () => {
   for (const [name, kind, build] of _holeCases) {
-    const omitted = build(), off = build({ dedupeHoles: false });
-    assert.strictEqual(_fingerprint(off), _fingerprint(omitted), name);
-    assert.deepStrictEqual(off.runs, omitted.runs, name);
-    assert.ok(_secondByKind(omitted)[kind] > 0, `fixture, ${name}: left off, a ${kind} run has two stitches on one point`);
+    const omitted = build(), on = build({ dedupeHoles: true }), off = build({ dedupeHoles: false });
+    assert.strictEqual(_fingerprint(on), _fingerprint(omitted), name);
+    assert.deepStrictEqual(on.runs, omitted.runs, name);
+    assert.ok(_secondByKind(off)[kind] > 0, `fixture, ${name}: left off, a ${kind} run has two stitches on one point`);
   }
 });
 
@@ -3319,7 +3846,7 @@ test("dedupeHoles: ON, no run lays two stitches in a row on one point", () => {
 
 test("dedupeHoles: the stream is the one without it less those stitches, and nothing else moves", () => {
   for (const [name, , build] of _holeCases) {
-    const off = build(), on = build({ dedupeHoles: true });
+    const off = build({ dedupeHoles: false }), on = build({ dedupeHoles: true });
     assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)), name);
     assert.ok(on.stitches.length < off.stitches.length, name);
     for (const k of ["trim", "jump", "color", "end"]) assert.strictEqual(_count(on, k), _count(off, k), `${name}: the flag must take out no ${k}`);
@@ -3329,7 +3856,7 @@ test("dedupeHoles: the stream is the one without it less those stitches, and not
 
 test("dedupeHoles: every run still has its span, and the spans still hold every stitch", () => {
   for (const [name, , build] of _holeCases) {
-    const off = build(), on = build({ dedupeHoles: true });
+    const off = build({ dedupeHoles: false }), on = build({ dedupeHoles: true });
     assert.deepStrictEqual(on.runs.map((r) => r.kind), off.runs.map((r) => r.kind), name);
     let covered = 0, next = 0;
     for (const r of on.runs) {
@@ -3352,7 +3879,7 @@ test("dedupeHoles: three stitches in a row on one point leave one", () => {
     holes: [[{ x: 100, y: 0 }, { x: 180, y: 0 }, { x: 180, y: 50 }, { x: 130, y: 50 }]],
     tierOverride: "fill", angleOverride: 0,
   };
-  const off = _holeRun(shape, 10, { underlay: false }), on = _holeRun(shape, 10, { underlay: false, dedupeHoles: true });
+  const off = _holeRun(shape, 10, { underlay: false, dedupeHoles: false }), on = _holeRun(shape, 10, { underlay: false, dedupeHoles: true });
   assert.strictEqual(_show(off.stitches.slice(0, 5)), "j0,50 s0,50 s0,50 s0,50 s40,50", "fixture");
   assert.strictEqual(_show(on.stitches.slice(0, 3)), "j0,50 s0,50 s40,50");
   assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
@@ -3362,7 +3889,7 @@ test("dedupeHoles: a run's first stitch is laid even where the last run ended", 
   // The corner is sewn twice, with the second run's own jump between the two.
   // That stitch stays: taken out, a run that laid nothing would leave its jump
   // beside the next run's, and jumps in a row are how a file says "cut".
-  const off = _holeSquares(false), on = _holeSquares(false, { dedupeHoles: true });
+  const off = _holeSquares(false, { dedupeHoles: false }), on = _holeSquares(false, { dedupeHoles: true });
   const seam = (d) => _show(d.stitches.slice(d.runs[1].i0 - 1, d.runs[1].i0 + 3));
   assert.strictEqual(seam(off), "s35,-34 j35,-34 s35,-34 s65,-34", "fixture: the corner twice, a jump between");
   assert.strictEqual(seam(on), seam(off));
@@ -3370,22 +3897,24 @@ test("dedupeHoles: a run's first stitch is laid even where the last run ended", 
 });
 
 test("dedupeHoles: the stitch after a float is laid, even back on the point the thread left", () => {
-  // A three-armed star forced to satin: the column floats 9 mm across to the
-  // next arm and comes back to sew where it was. A float that long is two
-  // jump records and the way back a third, which a machine takes for a cut;
-  // the stitch after it would then be what holds the thread.
+  // A five-armed star forced to satin: the column floats 4 mm across to the
+  // next arm and comes back to sew where it was. The stitch after the float
+  // is the first of its thread there, and is what holds it. (Until the spine
+  // change of 2026-10-04 reached main this was a three-armed star, 17.4 mm,
+  // whose column floated and came back; its skeleton is one pixel wide now
+  // and it no longer does.)
   const star = [];
-  for (let i = 0; i < 6; i++) {
-    const a = -Math.PI / 2 + (i * Math.PI) / 3, r = i % 2 ? 30 : 100;
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? 25 : 100;
     star.push({ x: Math.round(100 + r * Math.cos(a)), y: Math.round(100 + r * Math.sin(a)) });
   }
-  const build = (extra) => _holeRun({ outer: star, tierOverride: "satin" }, 17.4, Object.assign({ underlay: false }, extra));
-  const off = build(), on = build({ dedupeHoles: true });
+  const build = (extra) => _holeRun({ outer: star, tierOverride: "satin" }, 8, Object.assign({ underlay: false }, extra));
+  const off = build({ dedupeHoles: false }), on = build({ dedupeHoles: true });
   const back = (d) => d.stitches.findIndex((s, i, st) => i >= 2 && s.type === "stitch" && st[i - 1].type === "jump" && !_same(s, st[i - 1]) && st[i - 2].type === "stitch" && _same(s, st[i - 2]));
   assert.ok(back(off) >= 2, "fixture: a stitch, a float away, and a stitch back on the same point");
-  assert.strictEqual(_show(off.stitches.slice(back(off) - 2, back(off) + 2)), "s-46,-30 j46,-30 s-46,-30 s-42,-26", "fixture");
+  assert.strictEqual(_show(off.stitches.slice(back(off) - 2, back(off) + 2)), "s11,6 j-18,-24 s11,6 s13,1", "fixture");
   assert.ok(back(on) >= 2, "with the flag the stitch back is still there");
-  assert.strictEqual(_show(on.stitches.slice(back(on) - 2, back(on) + 2)), "s-46,-30 j46,-30 s-46,-30 s-42,-26");
+  assert.strictEqual(_show(on.stitches.slice(back(on) - 2, back(on) + 2)), "s11,6 j-18,-24 s11,6 s13,1");
   assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
 });
 
@@ -3396,24 +3925,33 @@ test("dedupeHoles: the stitch after a float is laid, even on the point the float
   // only penetration the row gets, and the record before it is a jump.
   const outer = [[0, 0], [30, 0], [30, 60], [100, 60], [110, 2.9], [120, 60], [120, 80], [0, 80]].map(([x, y]) => ({ x, y }));
   const build = (extra) => _holeRun({ outer, tierOverride: "fill", angleOverride: 0 }, 12, Object.assign({ underlay: false }, extra));
-  const off = build(), on = build({ dedupeHoles: true });
+  const off = build({ dedupeHoles: false }), on = build({ dedupeHoles: true });
   assert.strictEqual(_show(off.stitches.slice(6, 11)), "s-30,37 j50,37 s50,37 s50,36 s50,36", "fixture: a float, a stitch on its point, and the next row sewn twice on one point");
   assert.strictEqual(_show(on.stitches.slice(6, 10)), "s-30,37 j50,37 s50,37 s50,36");
   assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
 });
 
 test("dedupeHoles: the stitch after a float is laid, even when the float went nowhere", () => {
-  // A three-point needle forced to satin, with no pull compensation. At the
-  // tip the column floats to a point that rounds onto the one it left and sews
-  // there: a stitch, a jump and a stitch, all three on one point. The stitch
-  // after the float is the first of its thread and stays; the two after it are
-  // seconds. Found by the independent re-measure, 2026-10-04: no other test
-  // here holds a float that does not move.
-  const outer = [[0, 108.1], [144.9, 0], [6.9, 116.8]].map(([x, y]) => ({ x, y }));
-  const build = (extra) => _holeRun({ outer, tierOverride: "satin" }, 5.8, Object.assign({ pxPerMm: 25, pullCompMm: 0, underlay: false, satinSpacingMm: 0.3 }, extra));
-  const off = build(), on = build({ dedupeHoles: true });
-  assert.strictEqual(_show(off.stitches.slice(-6)), "s26,21 j26,21 s26,21 s26,21 s26,21 e0,0", "fixture: a stitch, a float that goes nowhere, and three stitches on its point");
-  assert.strictEqual(_show(on.stitches.slice(-4)), "s26,21 j26,21 s26,21 e0,0");
+  // A thin four-armed star forced to satin, with no pull compensation. Where
+  // one arm's column ends on the next one's start, the column floats to a
+  // point that rounds onto the one it left and sews there: a stitch, a jump
+  // and a stitch, all on one point. The stitch after the float is the first
+  // of its thread and stays. Found by the independent re-measure, 2026-10-04:
+  // no other test here holds a float that does not move. (A three-point
+  // needle until the spine change of 2026-10-04 reached main: 6.9 wide at
+  // first, 5.6 from 2026-10-08. No needle between 3 and 15 floats nowhere
+  // and sews there now; this star does.)
+  const outer = [];
+  for (let i = 0; i < 8; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 4, r = i % 2 ? 10 : 100;
+    outer.push({ x: Math.round(100 + r * Math.cos(a)), y: Math.round(100 + r * Math.sin(a)) });
+  }
+  const build = (extra) => _holeRun({ outer, tierOverride: "satin" }, 5, Object.assign({ pullCompMm: 0, underlay: false }, extra));
+  const off = build({ dedupeHoles: false }), on = build({ dedupeHoles: true });
+  const nowhere = (d) => d.stitches.findIndex((x, i, st) => i > 0 && x.type === "jump" && st[i - 1].type === "stitch" && _same(x, st[i - 1]) && st[i + 1] && st[i + 1].type === "stitch" && _same(x, st[i + 1]));
+  const k0 = nowhere(off), k1 = nowhere(on);
+  assert.strictEqual(_show(off.stitches.slice(k0 - 1, k0 + 3)), "s-24,0 j-24,0 s-24,0 s-19,1", "fixture: a stitch, a float that goes nowhere, and a stitch on its point");
+  assert.strictEqual(_show(on.stitches.slice(k1 - 1, k1 + 3)), "s-24,0 j-24,0 s-24,0 s-19,1");
   assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
 });
 
@@ -3424,7 +3962,7 @@ test("dedupeHoles: a cut inside a run starts a new thread too", () => {
   const island = (extra) => _holeRun({ outer: box(0, 0, 80, 80), holes: [box(20, 20, 60, 60), box(30, 30, 50, 50)], tierOverride: "fill", angleOverride: 0 },
     8, Object.assign({ underlay: false, fillColumns: true }, extra));
   const cut = (d) => d.stitches.findIndex((s) => s.type === "trim");
-  const off = island(), on = island({ dedupeHoles: true });
+  const off = island({ dedupeHoles: false }), on = island({ dedupeHoles: true });
   assert.strictEqual(_show(off.stitches.slice(cut(off) - 1, cut(off) + 3)), "s40,-39 t10,-9 s10,-9 s-10,-9", "fixture: a cut, and a stitch on the cut point");
   assert.strictEqual(_show(on.stitches.slice(cut(on) - 1, cut(on) + 3)), "s40,-39 t10,-9 s10,-9 s-10,-9");
   // And where the cut lands on the point the thread has just left: a moat
@@ -3432,7 +3970,7 @@ test("dedupeHoles: a cut inside a run starts a new thread too", () => {
   const moat = (extra) => _holeRun({ outer: box(0, 0, 109.68, 109.68), holes: [box(48.37, 44.72, 94.05, 90.91), box(48.97, 45.32, 93.6, 90.51)], tierOverride: "fill", angleOverride: 90 },
     10.968, Object.assign({ underlay: false, fillColumns: true, fillRowMm: 0.02 }, extra));
   const spot = (d) => d.stitches.findIndex((s, i, st) => s.type === "trim" && i > 0 && i + 1 < st.length && st[i - 1].type === "stitch" && st[i + 1].type === "stitch" && _same(st[i - 1], st[i + 1]));
-  const offMoat = moat(), onMoat = moat({ dedupeHoles: true });
+  const offMoat = moat({ dedupeHoles: false }), onMoat = moat({ dedupeHoles: true });
   assert.ok(spot(offMoat) > 0, "fixture: a cut with a stitch on one point either side of it");
   assert.strictEqual(_show(offMoat.stitches.slice(spot(offMoat) - 1, spot(offMoat) + 2)), "s39,10 t39,10 s39,10", "fixture");
   assert.ok(spot(onMoat) > 0, "with the flag the stitch after that cut is still there");
@@ -3442,7 +3980,7 @@ test("dedupeHoles: a cut inside a run starts a new thread too", () => {
 test("dedupeHoles: a cut starts a new thread, and its first stitch is laid even on the spot", () => {
   // The same two squares in two colours. The thread is cut on the corner, and
   // the stitch after the cut is what holds the new thread: it stays.
-  const off = _holeSquares(true), on = _holeSquares(true, { dedupeHoles: true });
+  const off = _holeSquares(true, { dedupeHoles: false }), on = _holeSquares(true, { dedupeHoles: true });
   const seam = (d) => _show(d.stitches.slice(d.runs[1].i0 - 3, d.runs[1].i0 + 2));
   assert.strictEqual(seam(off), "s35,-34 t35,-34 c35,-34 j35,-34 s35,-34", "fixture");
   assert.strictEqual(seam(on), seam(off));
@@ -3451,7 +3989,7 @@ test("dedupeHoles: a cut starts a new thread, and its first stitch is laid even 
 
 test("dedupeHoles: with ties, every lock is still laid and none of them doubles a hole", () => {
   const star = (extra) => _holeRun({ outer: _holeStar, tierOverride: "fill" }, 34.2, extra);
-  const tied = star({ ties: true }), both = star({ ties: true, dedupeHoles: true });
+  const tied = star({ ties: true, dedupeHoles: false }), both = star({ ties: true, dedupeHoles: true });
   assert.ok(tied._debug.nTies >= 2 && _zeroLength(tied) > 0, "fixture: locks, and stitches on one point");
   assert.strictEqual(both._debug.nTies, tied._debug.nTies, "a lock for every thread end, as without the flag");
   assert.strictEqual(_lockLegs(both).length, both._debug.nTies);
@@ -3470,9 +4008,11 @@ test("dedupeHoles: with ties, every lock is still laid and none of them doubles 
 const _cfDst = require("../src/dst.js");
 const { decodeDST: _cfDecode } = require("../src/dstimport.js");
 const _cfPts = (a) => a.map(([x, y]) => ({ x, y }));
+// The fixtures were built and measured with the trio OFF (TRIO_OFF, top of
+// file); the tests that ask for ties set them.
 const _cfRun = (shape, widthMm, extra) => DG.buildQualityDesign(
   [{ rgb: [0, 0, 0], shapes: [Object.assign({ holes: [] }, shape)] }],
-  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false }, extra));
+  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false }, TRIO_OFF, extra));
 // Two prongs on a bar, sewn in rows: the plain walk floats from one prong to
 // the other across the gap on every row. `gap` in px, ten to the millimetre.
 const _cfProngs = (gap, extra) => _cfRun(
@@ -3489,14 +4029,16 @@ const _cfStar = (extra) => {
     const a = -Math.PI / 2 + (i * Math.PI) / 4, r = i % 2 ? 15 : 100;
     star.push({ x: Math.round((100 + r * Math.cos(a)) * 100) / 100, y: Math.round((100 + r * Math.sin(a)) * 100) / 100 });
   }
-  return _cfRun({ outer: star }, 20, Object.assign({ underlay: false }, extra));
+  // The float this star is here for is cast arm to arm, which the pre-flip
+  // satin does and `satinSmallShapes` (ON since 2026-10-20, Kent) does not.
+  return _cfRun({ outer: star }, 20, Object.assign({ underlay: false, satinSmallShapes: false }, extra));
 };
 const _cfCases = [
   ["a fill across a gap", (x) => _cfProngs(300, x)],
   ["an underlay and its fill", _cfBar],
   ["a satin star", _cfStar],
   ["a fill across a gap, column walk", (x) => _cfProngs(300, Object.assign({ fillColumns: true }, x))],
-  ["a hole, two colours, three shapes", _tieShapes],
+  ["a hole, two colours, three shapes", (x) => _tieShapes(Object.assign({}, TRIO_OFF, x))],
 ];
 // Every float with the thread on: the jump records between two stitches, and
 // how many records the writer lays in a row for it. The move to the stitch
@@ -3577,11 +4119,11 @@ test("cutFloats: a float inside a run becomes the cut where it stands", () => {
 
 test("cutFloats: at a run's opening jump the cut goes on the spot before it, outside the run", () => {
   const off = _cfBar(), on = _cfBar({ cutFloats: true });
-  assert.strictEqual(_show(off.stitches.slice(75, 78)), "s-298,64 j300,75 s300,75", "fixture: the underlay's edge run ends 60 mm from where the next pass opens");
-  assert.strictEqual(off.runs.filter((r) => r.i0 === 76).length, 1, "fixture: that jump opens a run");
-  assert.strictEqual(_show(on.stitches.slice(75, 79)), "s-298,64 t-298,64 j300,75 s300,75");
-  assert.strictEqual(on.runs.filter((r) => r.i0 === 77).length, 1, "the run opens on its jump, one record on");
-  assert.ok(!on.runs.some((r) => r.i0 <= 76 && r.i1 >= 76), "and the cut is in no run");
+  assert.strictEqual(_show(off.stitches.slice(76, 79)), "s-298,75 j300,75 s300,75", "fixture: the underlay's edge run ends 60 mm from where the next pass opens");
+  assert.strictEqual(off.runs.filter((r) => r.i0 === 77).length, 1, "fixture: that jump opens a run");
+  assert.strictEqual(_show(on.stitches.slice(76, 80)), "s-298,75 t-298,75 j300,75 s300,75");
+  assert.strictEqual(on.runs.filter((r) => r.i0 === 78).length, 1, "the run opens on its jump, one record on");
+  assert.ok(!on.runs.some((r) => r.i0 <= 77 && r.i1 >= 77), "and the cut is in no run");
   assert.strictEqual(on.stitches.length, off.stitches.length + 1);
 });
 
@@ -3596,14 +4138,18 @@ test("cutFloats: the move to the stitch after the float counts, as the writer la
   // The column floats 19 mm to the far arm, two jump records, and the stitch
   // after it is 20 mm back the other way: the writer lays that move as a jump
   // record and a stitch. Three jumps in a row.
+  // (Indices and counts re-read when the spine change of 2026-10-04 reached
+  // main: the star sews 197 stitches where it sewed 282, and one of its
+  // three floats is this kind where three of four were.)
   const off = _cfStar(), on = _cfStar({ cutFloats: true });
-  assert.strictEqual(_show(off.stitches.slice(92, 95)), "s-93,2 j98,0 s-98,0", "fixture");
-  assert.deepStrictEqual([_cfDst.jumpRecords(98 + 93, 0 - 2), _cfDst.jumpRecords(-98 - 98, 0)], [2, 2], "fixture: two records out, and two back of which the last is the stitch");
-  assert.strictEqual(_show(on.stitches.slice(92, 95)), "s-93,2 t98,0 s-98,0");
-  // one record out and two back is two jumps in a row: left
-  assert.strictEqual(_show(off.stitches.slice(236, 239)), "s-2,-93 j98,0 s-98,0", "fixture");
-  assert.strictEqual(_show(on.stitches.slice(236, 239)), "s-2,-93 j98,0 s-98,0");
-  assert.strictEqual(_count(on, "trim") - _count(off, "trim"), 3);
+  assert.strictEqual(_show(off.stitches.slice(50, 53)), "s97,2 j-98,0 s98,0", "fixture");
+  assert.deepStrictEqual([_cfDst.jumpRecords(-98 - 97, 0 - 2), _cfDst.jumpRecords(98 + 98, 0)], [2, 2], "fixture: two records out, and two back of which the last is the stitch");
+  assert.strictEqual(_show(on.stitches.slice(50, 53)), "s97,2 t-98,0 s98,0");
+  // two records out and the stitch beside where it lands is two jumps in a row: left
+  assert.strictEqual(_show(off.stitches.slice(100, 103)), "s2,-97 j-2,97 s2,97", "fixture");
+  assert.deepStrictEqual([_cfDst.jumpRecords(-2 - 2, 97 + 97), _cfDst.jumpRecords(2 + 2, 0)], [2, 1], "fixture: two records out, and the stitch is the next record");
+  assert.strictEqual(_show(on.stitches.slice(100, 103)), "s2,-97 j-2,97 s2,97");
+  assert.strictEqual(_count(on, "trim") - _count(off, "trim"), 1);
 });
 
 test("cutFloats: nothing is cut where no thread is attached", () => {
@@ -3801,10 +4347,10 @@ test("cutFloats: in the DST every stitch is where it was, and a short float made
   const off = _cfFileRecords(_cfStar()), on = _cfFileRecords(_cfStar({ cutFloats: true }));
   const sewn = (recs) => recs.filter((r) => !r.jump).map((r) => `${r.x},${r.y}`).join(" ");
   assert.strictEqual(sewn(on), sewn(off));
-  assert.strictEqual(on.length - off.length, 3, "three floats of two records, each laid as three");
+  assert.strictEqual(on.length - off.length, 1, "one float of two records, laid as three");
   const stops = (recs) => new Set(recs.filter((r) => r.jump).map((r) => `${r.x},${r.y}`));
   const onlyOn = [...stops(on)].filter((p) => !stops(off).has(p)), onlyOff = [...stops(off)].filter((p) => !stops(on).has(p));
-  assert.deepStrictEqual([onlyOn.length, onlyOff.length], [6, 3], "the frame stops at thirds where it stopped at the half");
+  assert.deepStrictEqual([onlyOn.length, onlyOff.length], [2, 1], "the frame stops at thirds where it stopped at the half");
   // a float that was three records already is the same bytes as a trim: the prongs' file does not change
   assert.deepStrictEqual(_cfFileRecords(_cfProngs(300, { cutFloats: true })), _cfFileRecords(_cfProngs(300)));
 });

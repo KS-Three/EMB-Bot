@@ -1,5 +1,8 @@
-import { test, expect, describe, it } from "vitest";
+import { test, expect, describe, it, beforeAll } from "vitest";
+import { createRequire } from "node:module";
+import { createHash } from "node:crypto";
 import {
+  COLUMN_DEFAULT_MM, isColumn, columnIssues, shapeRing, shapeProblems, isSewableShape, columnRails,
   isValidShape, isNearStart, shapesToRegions, CLOSE_RADIUS_PX, PX_PER_MM,
   shapeIssues, isDuplicateOfLast, MAX_SHAPE_POINTS,
   quadraticControlForPointOnCurve, curveHandlePoint, curveControlOrNull,
@@ -10,6 +13,7 @@ import {
   duplicateShape, PASTE_OFFSET_PX, CANVAS_W, CANVAS_H,
   shouldScrollCanvasIntoView,
   resolveCutOuts, manualShapeName, withCutOut, CUTOUT_NO_PARENT, CUTOUT_OVERLAP,
+  isRun, isOpenShape, runIssues, runPath, runToColumn, columnToRun, RUN_HAIRLINE_PX,
 } from "./manualShapes.js";
 
 // ---- isValidShape -----------------------------------------------------
@@ -1030,5 +1034,430 @@ describe("cut-out neighbours", () => {
     const copy = duplicateShape(rect("s1", 100, 100, 200, 200, { cutOut: true }), "s2");
     expect(copy.cutOut).toBe(true);
     expect(copy.id).toBe("s2");
+  });
+});
+
+// ---- Columns: an open spine plus a drawn width (spec 2026-09-30 §6, amended
+// 2026-10-01) -------------------------------------------------------------
+const column = (id, points, extra = {}) => ({ id, kind: "column", points, curves: {}, widthPx: 24, colorRgb: [20, 20, 20], ...extra });
+const NEEDS_2 = "A column needs at least 2 points.";
+const TOO_SHORT = "This column is too short to sew.";
+const FOLDS = "This column folds over itself — widen the bend or narrow the column.";
+
+describe("columns: the model", () => {
+  const straight = column("s1", [{ x: 50, y: 100 }, { x: 350, y: 100 }]);
+  const curved = column("s2", [{ x: 100, y: 300 }, { x: 300, y: 300 }, { x: 500, y: 300 }], { curves: { 0: { x: 200, y: 180 } } });
+
+  it("COLUMN_DEFAULT_MM is Kent's ruling 9", () => {
+    expect(COLUMN_DEFAULT_MM).toBe(4.0);
+  });
+
+  it("isColumn reads kind, and an absent kind is a closed shape", () => {
+    expect(isColumn(straight)).toBe(true);
+    expect(isColumn(rect("s1", 0, 0, 10, 10))).toBe(false);
+    expect(isColumn(null)).toBe(false);
+  });
+
+  it("shapeRing: a closed shape presents its flattened closed ring", () => {
+    const r = rect("s1", 0, 0, 100, 100, { curves: { 0: { x: 50, y: -40 } } });
+    expect(shapeRing(r)).toEqual(flattenShape(r.points, r.curves, true));
+    expect(shapeRing(rect("s1", 0, 0, 100, 100))).toEqual(rect("s1", 0, 0, 100, 100).points);
+  });
+
+  it("shapeRing: a column presents rail A then rail B reversed", () => {
+    const ring = shapeRing(straight);
+    expect(ring).toHaveLength(4);
+    const ys = ring.map((p) => p.y).sort((a, b) => a - b);
+    expect(ys[0]).toBeCloseTo(88, 9);
+    expect(ys[3]).toBeCloseTo(112, 9);
+    const rails = columnRails(straight);
+    expect(ring).toEqual(rails.railA.concat(rails.railB.slice().reverse()));
+    // a curved spine: the ring is the FLATTENED spine's, both sides
+    const spine = flattenShape(curved.points, curved.curves, false);
+    expect(shapeRing(curved)).toHaveLength(spine.length * 2);
+    // the closing curve key a closed shape would use is ignored on a spine
+    expect(shapeRing({ ...curved, curves: { ...curved.curves, 2: { x: 0, y: 0 } } })).toEqual(shapeRing(curved));
+  });
+
+  it("shapeRing / columnRails: nothing to offset gives [] / null", () => {
+    expect(shapeRing(column("s1", [{ x: 5, y: 5 }]))).toEqual([]);
+    expect(columnRails(column("s1", [{ x: 5, y: 5 }]))).toBeNull();
+    expect(shapeRing({ ...straight, widthPx: 0 })).toEqual([]);
+    expect(columnRails({ ...straight, widthPx: undefined })).toBeNull();
+    expect(columnRails(rect("s1", 0, 0, 10, 10))).toBeNull();
+  });
+
+  it("columnIssues: under two points", () => {
+    expect(columnIssues(column("s1", []))).toEqual([NEEDS_2]);
+    expect(columnIssues(column("s1", [{ x: 5, y: 5 }]))).toEqual([NEEDS_2]);
+    expect(columnIssues({ kind: "column", widthPx: 24 })).toEqual([NEEDS_2]);
+  });
+
+  it("columnIssues: too short is the FLATTENED spine's length, 4 px or under", () => {
+    expect(columnIssues(column("s1", [{ x: 0, y: 0 }, { x: 4, y: 0 }]))).toEqual([TOO_SHORT]);
+    expect(columnIssues(column("s1", [{ x: 0, y: 0 }, { x: 0, y: 0 }]))).toEqual([TOO_SHORT]);
+    expect(columnIssues(column("s1", [{ x: 0, y: 0 }, { x: 4.5, y: 0 }]))).toEqual([]);
+    // 3 px chord, bowed 40 px out: the path is long though the ends are close
+    expect(columnIssues(column("s1", [{ x: 0, y: 0 }, { x: 3, y: 0 }], { widthPx: 2, curves: { 0: { x: 1.5, y: 80 } } }))).not.toContain(TOO_SHORT);
+  });
+
+  it("columnIssues: a hairpin wider than its bend folds; the same hairpin narrowed does not", () => {
+    const hairpin = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 10 }, { x: -50, y: 10 }];
+    expect(columnIssues(column("s1", hairpin, { widthPx: 24 }))).toEqual([FOLDS]);
+    expect(columnIssues(column("s1", hairpin, { widthPx: 4 }))).toEqual([]);
+  });
+
+  it("columnIssues: a spine that ends on its own start is refused as a fold (its end caps meet)", () => {
+    const loop = [{ x: 100, y: 100 }, { x: 300, y: 100 }, { x: 300, y: 300 }, { x: 100, y: 300 }, { x: 100, y: 100 }];
+    expect(columnIssues(column("s1", loop))).toEqual([FOLDS]);
+  });
+
+  it("columnIssues: a spine that passes NEAR itself without its rails touching is fine", () => {
+    // a U whose legs are 60 px apart, 24 px wide: 36 px of daylight
+    const u = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 60 }, { x: 0, y: 60 }];
+    expect(columnIssues(column("s1", u))).toEqual([]);
+  });
+
+  it("columnIssues: too many points uses the closed shape's message", () => {
+    const pts = [];
+    for (let i = 0; i <= MAX_SHAPE_POINTS; i++) pts.push({ x: i * 3, y: 0 });
+    expect(columnIssues(column("s1", pts))).toEqual([`Too many points (max ${MAX_SHAPE_POINTS}).`]);
+  });
+
+  it("shapeProblems routes by kind", () => {
+    expect(shapeProblems(straight)).toEqual([]);
+    expect(shapeProblems(column("s1", [{ x: 5, y: 5 }]))).toEqual([NEEDS_2]);
+    expect(shapeProblems(rect("s1", 0, 0, 100, 100))).toEqual([]);
+    expect(shapeProblems({ points: [{ x: 0, y: 0 }, { x: 10, y: 0 }] })).toEqual(["Needs at least 3 points."]);
+    // a closed shape is judged on its FLATTENED ring, like shapesToRegions does
+    const bow = { points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }], curves: { 0: { x: 50, y: 400 } } };
+    expect(shapeProblems(bow)).toEqual(["This shape crosses itself."]);
+  });
+
+  it("columnIssues: a column with no usable width says it cannot sew (the too-short message)", () => {
+    const { widthPx, ...noWidth } = straight;
+    for (const bad of [noWidth, { ...straight, widthPx: 0 }, { ...straight, widthPx: -24 }, { ...straight, widthPx: NaN }, { ...straight, widthPx: "24" }]) {
+      expect(columnIssues(bad)).toEqual([TOO_SHORT]);
+      expect(shapeProblems(bad)).toEqual([TOO_SHORT]);
+      expect(isSewableShape(bad)).toBe(false);
+    }
+    expect(columnIssues(straight)).toEqual([]);
+  });
+
+  it("isSewableShape: a 2-point column sews; a cut-out and a broken shape do not", () => {
+    expect(isSewableShape(straight)).toBe(true);
+    expect(isSewableShape(curved)).toBe(true);
+    expect(isSewableShape(column("s1", [{ x: 5, y: 5 }]))).toBe(false);
+    expect(isSewableShape(rect("s1", 0, 0, 100, 100))).toBe(true);
+    expect(isSewableShape(rect("s1", 0, 0, 100, 100, { cutOut: true }))).toBe(false);
+    expect(isSewableShape({ points: [{ x: 0, y: 0 }, { x: 10, y: 0 }] })).toBe(false);
+    expect(isSewableShape(null)).toBe(false);
+    // no width, no rails: nothing would sew, so it is not sewable
+    expect(isSewableShape({ ...straight, widthPx: 0 })).toBe(false);
+    // a column cannot be a cut-out: a stray flag is ignored
+    expect(isSewableShape({ ...straight, cutOut: true })).toBe(true);
+  });
+
+  it("manualShapeName: Shape N · Column, whatever else the record carries", () => {
+    expect(manualShapeName(column("s7", straight.points))).toBe("Shape 7 · Column");
+    expect(manualShapeName(column("s7", straight.points, { cutOut: true, stitchType: "fill" }))).toBe("Shape 7 · Column");
+  });
+
+  it("withCutOut leaves a column exactly as it was", () => {
+    expect(withCutOut(straight, true)).toBe(straight);
+    expect("cutOut" in withCutOut(straight, true)).toBe(false);
+    expect(withCutOut(straight, false)).toBe(straight);
+  });
+});
+
+describe("columns: resolveCutOuts", () => {
+  // a fat column whose rail ring (x 0..300, y 0..300) contains the cut-out
+  const fat = column("s1", [{ x: 0, y: 150 }, { x: 300, y: 150 }], { widthPx: 300 });
+  const hole = rect("s2", 100, 100, 200, 200, { cutOut: true });
+
+  it("a column is never a parent, even when its ring contains the cut-out", () => {
+    const r = resolveCutOuts([fat, hole]);
+    expect(r.parentOf.s2).toBeNull();
+    expect(r.reasonOf.s2).toBe(CUTOUT_NO_PARENT);
+    expect(r.holesOf.s1).toBeUndefined();
+  });
+
+  it("a closed-looking spine (3+ points) is not a solid either", () => {
+    const ringLike = column("s1", [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 300 }, { x: 0, y: 300 }], { widthPx: 4 });
+    expect(resolveCutOuts([ringLike, hole]).parentOf.s2).toBeNull();
+  });
+
+  it("the cut-out still finds the real shape behind the column", () => {
+    const r = resolveCutOuts([rect("s3", -10, -10, 310, 310), fat, hole]);
+    expect(r.parentOf.s2).toBe("s3");
+  });
+
+  it("a column carrying a stray cutOut flag is not a cut-out", () => {
+    const r = resolveCutOuts([rect("s3", -10, -10, 310, 310), { ...fat, cutOut: true }, hole]);
+    expect("s1" in r.parentOf).toBe(false);
+    expect(r.holesOf.s3).toEqual(["s2"]);
+    // ...and on its own it does not even leave the no-cut-out fast path
+    expect(resolveCutOuts([rect("s3", -10, -10, 310, 310), { ...fat, cutOut: true }]).flat.size).toBe(0);
+  });
+});
+
+describe("columns: shapesToRegions", () => {
+  const straight = column("s4", [{ x: 50, y: 100 }, { x: 350, y: 100 }], { colorRgb: [9, 8, 7] });
+
+  it("a valid column emits its rail ring as outer, forced satin, with the rails as sewAs", () => {
+    const { regions, pxPerMm } = shapesToRegions([straight]);
+    expect(pxPerMm).toBe(PX_PER_MM);
+    expect(regions).toHaveLength(1);
+    const rails = columnRails(straight);
+    expect(regions[0]).toEqual({
+      rgb: [9, 8, 7],
+      shapes: [{
+        id: "s4",
+        outer: shapeRing(straight),
+        holes: [],
+        tierOverride: "satin",
+        angleOverride: null,
+        sewAs: { kind: "column", railA: rails.railA, railB: rails.railB },
+      }],
+    });
+    const s = regions[0].shapes[0];
+    expect(s.sewAs.railA).toHaveLength(s.sewAs.railB.length);
+    expect(s.sewAs.railA.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("a column ignores stitchType, angleDeg and cutOut on its record", () => {
+    const { regions } = shapesToRegions([{ ...straight, stitchType: "fill", angleDeg: 45, cutOut: true }]);
+    expect(regions).toHaveLength(1);
+    expect(regions[0].shapes[0].tierOverride).toBe("satin");
+    expect(regions[0].shapes[0].angleOverride).toBeNull();
+  });
+
+  it("an invalid column is skipped like an invalid shape", () => {
+    const { regions } = shapesToRegions([
+      column("s1", [{ x: 5, y: 5 }]),
+      column("s2", [{ x: 0, y: 0 }, { x: 3, y: 0 }]),
+      column("s3", [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 10 }, { x: -50, y: 10 }]),
+      { ...straight, id: "s5", widthPx: 0 },
+      straight,
+    ]);
+    expect(regions.map((r) => r.shapes[0].id)).toEqual(["s4"]);
+  });
+
+  it("draw order is kept, and a column never takes a hole", () => {
+    const { regions } = shapesToRegions([
+      rect("s1", 0, 0, 300, 300),
+      column("s2", [{ x: 0, y: 150 }, { x: 300, y: 150 }], { widthPx: 280 }),
+      rect("s3", 100, 100, 200, 200, { cutOut: true }),
+    ]);
+    expect(regions.map((r) => r.shapes[0].id)).toEqual(["s1", "s2"]);
+    expect(regions[0].shapes[0].holes).toHaveLength(1);
+    expect(regions[1].shapes[0].holes).toEqual([]);
+  });
+
+  it("shapes with no column emit exactly what they emitted before columns existed — no sewAs key at all", () => {
+    // Pinned literally, and seen green at 8ee893e1 before manualShapes.js changed.
+    const shapes = [
+      rect("s1", 0, 0, 300, 300, { stitchType: "satin", angleDeg: 30, colorRgb: [1, 2, 3] }),
+      rect("s2", 100, 100, 200, 200, { cutOut: true }),
+      { points: tri(400), stitchType: "auto" },
+      { id: "s9", points: tri(500), stitchType: "nonsense", colorRgb: [4, 5, 6], angleDeg: NaN },
+    ];
+    const { regions, pxPerMm } = shapesToRegions(shapes);
+    expect(pxPerMm).toBe(PX_PER_MM);
+    expect(regions).toEqual([
+      { rgb: [1, 2, 3], shapes: [{ id: "s1", outer: rect("s1", 0, 0, 300, 300).points, holes: [rect("s2", 100, 100, 200, 200).points], tierOverride: "satin", angleOverride: 30 }] },
+      { rgb: [20, 20, 20], shapes: [{ id: "", outer: tri(400), holes: [], tierOverride: null, angleOverride: null }] },
+      { rgb: [4, 5, 6], shapes: [{ id: "s9", outer: tri(500), holes: [], tierOverride: "fill", angleOverride: null }] },
+    ]);
+    for (const r of regions) expect(Object.keys(r.shapes[0])).toEqual(["id", "outer", "holes", "tierOverride", "angleOverride"]);
+  });
+});
+
+// ---- Through the REAL engine ------------------------------------------------
+// The module above can be right about its own shapes and the engine still sew
+// nothing: bad rails are silent there. So one curved column goes all the way
+// through, and one design with no column is hashed against the value the
+// same design produces under origin/main 431c5026's own src/digitize.js
+// (which never reads `sewAs`), re-taken 2026-10-11 after main's engine moved;
+// first pinned at 8ee893e1 (3556 stitches), before this module knew what a
+// column was. Re-taken 2026-10-20 when `ties`, `fillStagger` and `dedupeHoles`
+// went ON by default (Kent): the Studio passes none of them, so this design
+// takes all three. It read 3557 stitches, a436fa9d..., before that; the
+// change is the flip alone (no column code moved).
+const RECT_STITCH_COUNT_ON_MAIN = 3624;
+const RECT_HASH_ON_MAIN = "575fa9f5f5ca079bef0412805f6a5b28bed70e5e25840b386f93d873a5831018";
+
+describe("columns: through the real engine", () => {
+  let generateElement, garment;
+  beforeAll(async () => {
+    const require = createRequire(import.meta.url);
+    globalThis.window = globalThis;
+    for (const f of ["units","garments","fabrics","fill","geometry","quantize","flatten","satin","satinplay","satinfont","fontbin","dst","dstimport","exp","fonts","digitize"]) require("../../../src/" + f + ".js");
+    const { EMB } = await import("./emb.js");
+    ({ generateElement } = await import("./generate.js"));
+    garment = EMB.getGarment("left_chest");
+  }, 60000);
+  const el = (shapes) => ({ id: 4, type: "manual", shapes, underlay: true, sizeMm: 60, offsetXMm: 0, offsetYMm: 0 });
+  const hashOf = (d) => createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex");
+
+  it("a curved column sews satin between its rails", () => {
+    const col = column("s1", [{ x: 100, y: 300 }, { x: 300, y: 300 }, { x: 500, y: 300 }], { curves: { 0: { x: 200, y: 180 } }, widthPx: 24 });
+    const d = generateElement(el([col]), garment, {});
+    const satin = d.runs.filter((r) => r.kind === "satin" && r.shape === "s1");
+    const nSatin = satin.reduce((n, r) => n + (r.i1 - r.i0 + 1), 0);
+    expect(satin.length).toBeGreaterThan(0);
+    expect(nSatin).toBeGreaterThan(100);
+    expect(d._debug.nSatin).toBe(1);
+    expect(d._debug.nFill).toBe(0);
+    expect(d.shapeOutlines).toHaveLength(1);
+    expect(d.shapeOutlines[0].id).toBe("s1");
+    expect(d.shapeOutlines[0].dropped).toBe(false);
+    // Not a bow-tie. The engine sews a column as cross, step along the rail,
+    // cross, step: so the stitch lengths fall in two clean groups — steps of
+    // about the row spacing, and crosses of about the drawn width plus pull
+    // comp — with NOTHING in between. Rails running in opposite directions
+    // sew crosses of every length from zero (where they meet) up to the
+    // column's whole length, which fills exactly that gap. Stitches are 0.1 mm.
+    const drawnMm = 24 * d.fit.mmPerPx;
+    const lens = [];
+    for (const r of satin) {
+      for (let i = r.i0 + 1; i <= r.i1; i++) lens.push(Math.hypot(d.stitches[i].x - d.stitches[i - 1].x, d.stitches[i].y - d.stitches[i - 1].y) / 10);
+    }
+    const steps = lens.filter((l) => l <= 1.0);
+    const crosses = lens.filter((l) => l >= drawnMm * 0.9);
+    expect(steps.length + crosses.length).toBe(lens.length);     // the gap is empty
+    expect(crosses.length).toBeGreaterThan(100);
+    // The crosses do not lean. This column's rails differ in length (431 vs
+    // 450 px); paired by whole-rail arc fraction its crosses reached 1.61x the
+    // drawn width. The engine now takes every interior rail pair as a rung
+    // (src/digitize.js columnRungs). What is left is in the rails' own pairs
+    // through the bend (1.10x) plus this fabric's pull comp: measured
+    // 2026-10-01, widest cross 4.16 mm on 3.52 mm drawn = 1.18x. Bound = that
+    // plus a small margin.
+    expect(Math.max(...crosses)).toBeLessThan(drawnMm * 1.25);
+    crosses.sort((a, b) => a - b);
+    const median = crosses[crosses.length >> 1];
+    expect(median).toBeGreaterThan(drawnMm);                     // drawn + pull comp...
+    expect(median).toBeLessThan(drawnMm + 1.0);                  // ...and never a mm more
+    if (process.env.EMB_TASK_NUMBERS) {
+      console.log("COLUMN_ENGINE " + JSON.stringify({
+        stitchCount: d.stitchCount, satinStitches: nSatin, spans: d.runs.map((r) => r.kind + ":" + (r.i1 - r.i0 + 1)),
+        widthMM: d.widthMM, heightMM: d.heightMM, mmPerPx: d.fit.mmPerPx, drawnMm,
+        steps: { n: steps.length, max: Math.max(...steps) },
+        crosses: { n: crosses.length, min: crosses[0], median, p95: crosses[Math.floor(crosses.length * 0.95)], max: crosses[crosses.length - 1] },
+      }));
+    }
+  });
+
+  it("a design holding only a closed rectangle is byte-identical to before", () => {
+    const d = generateElement(el([rect("s1", 100, 100, 400, 250)]), garment, {});
+    expect(d.stitchCount).toBe(RECT_STITCH_COUNT_ON_MAIN);
+    expect(hashOf(d)).toBe(RECT_HASH_ON_MAIN);
+  });
+});
+
+// ---- runs: an open path that sews a running stitch (plan 3) -----------------
+describe("runs: the model", () => {
+  const run = (points, extra = {}) => ({ id: "s4", kind: "run", points, curves: {}, colorRgb: [20, 20, 20], ...extra });
+  const line = [{ x: 50, y: 100 }, { x: 350, y: 100 }];
+
+  it("isRun / isOpenShape", () => {
+    expect(isRun(run(line))).toBe(true);
+    expect(isRun({ kind: "column" })).toBe(false);
+    expect(isRun(null)).toBe(false);
+    expect(isOpenShape(run(line))).toBe(true);
+    expect(isOpenShape({ kind: "column" })).toBe(true);
+    expect(isOpenShape({ points: line })).toBe(false);
+  });
+
+  it("runIssues names each problem, and a self-crossing line is fine", () => {
+    expect(runIssues(run(line.slice(0, 1)))).toEqual(["A line needs at least 2 points."]);
+    expect(runIssues(run([{ x: 0, y: 0 }, { x: 3, y: 0 }]))).toEqual(["This line is too short to sew."]);
+    expect(runIssues(run(line))).toEqual([]);
+    // a hairpin that doubles back, and a figure-8 that crosses itself
+    expect(runIssues(run([{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 0, y: 0 }]))).toEqual([]);
+    expect(runIssues(run([{ x: 0, y: 0 }, { x: 100, y: 100 }, { x: 100, y: 0 }, { x: 0, y: 100 }]))).toEqual([]);
+    const many = Array.from({ length: MAX_SHAPE_POINTS + 1 }, (_, i) => ({ x: i, y: (i % 2) * 5 }));
+    expect(runIssues(run(many))).toEqual([`Too many points (max ${MAX_SHAPE_POINTS}).`]);
+  });
+
+  it("shapeRing is the path stroked at RUN_HAIRLINE_PX: closed, area length x hairline", () => {
+    const ring = shapeRing(run(line));
+    expect(ring.length).toBe(4);
+    let a = 0;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) a += ring[j].x * ring[i].y - ring[i].x * ring[j].y;
+    expect(Math.abs(a) / 2).toBeCloseTo(300 * RUN_HAIRLINE_PX, 6);
+    expect(shapeRing(run(line.slice(0, 1)))).toEqual([]);
+  });
+
+  it("shapeProblems / isSewableShape; a stray cutOut on a run is ignored", () => {
+    expect(shapeProblems(run(line))).toEqual([]);
+    expect(isSewableShape(run(line))).toBe(true);
+    expect(isSewableShape(run(line, { cutOut: true }))).toBe(true);
+    expect(isSewableShape(run(line.slice(0, 1)))).toBe(false);
+    const plain = run(line);
+    expect(withCutOut(plain, true)).toBe(plain);
+  });
+
+  it("manualShapeName reads Line", () => {
+    expect(manualShapeName(run(line))).toBe("Shape 4 · Line");
+  });
+
+  it("runPath flattens curves along the open path, with no closing segment", () => {
+    const r = run([{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], { curves: { 0: { x: 50, y: -40 } } });
+    const p = runPath(r);
+    expect(p).toEqual(flattenShape(r.points, r.curves, false));
+    expect(p[0]).toEqual({ x: 0, y: 0 });
+    expect(p[p.length - 1]).toEqual({ x: 100, y: 100 });
+    expect(p.length).toBeGreaterThan(3);
+  });
+
+  it("runToColumn / columnToRun swap fields and copy the spine, never recompute it", () => {
+    const r = run([{ x: 10, y: 20 }, { x: 200, y: 60 }, { x: 380, y: 30 }], { curves: { 1: { x: 300, y: 120 } }, passes: 1, stitchLenMm: 1.2, colorRgb: [1, 2, 3] });
+    const c = runToColumn(r, 24);
+    expect(c).toEqual({ id: "s4", kind: "column", points: r.points, curves: r.curves, colorRgb: [1, 2, 3], widthPx: 24 });
+    expect(c.points).not.toBe(r.points);
+    expect(c.curves).not.toBe(r.curves);
+    const back = columnToRun({ ...c, taperMm: null });
+    expect(back).toEqual({ id: "s4", kind: "run", points: r.points, curves: r.curves, colorRgb: [1, 2, 3] });
+    expect(back.points).not.toBe(c.points);
+    // not the right kind, or no width: handed back untouched
+    expect(runToColumn(c, 24)).toBe(c);
+    expect(runToColumn(r, 0)).toBe(r);
+    expect(columnToRun(r)).toBe(r);
+  });
+});
+
+describe("runs: resolveCutOuts and shapesToRegions", () => {
+  const rect = { id: "s1", points: [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 200 }, { x: 0, y: 200 }], curves: {}, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+  const r = { id: "s2", kind: "run", points: [{ x: 20, y: 250 }, { x: 200, y: 260 }, { x: 380, y: 240 }], curves: { 0: { x: 100, y: 320 } }, colorRgb: [200, 0, 0] };
+
+  it("a run is never a cut-out's parent, even when its path encloses one", () => {
+    const loop = { id: "s3", kind: "run", points: [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 300 }, { x: 0, y: 300 }, { x: 0, y: 10 }], curves: {}, colorRgb: [0, 0, 0] };
+    const hole = { id: "s9", points: [{ x: 100, y: 100 }, { x: 150, y: 100 }, { x: 150, y: 150 }], curves: {}, cutOut: true, colorRgb: [0, 0, 0] };
+    expect(resolveCutOuts([loop, hole]).parentOf.s9).toBe(null);
+  });
+
+  it("emits a sewAs run region; every other region exactly as before", () => {
+    const alone = shapesToRegions([rect]);
+    const both = shapesToRegions([rect, r]);
+    expect(both.regions[0]).toEqual(alone.regions[0]);
+    expect(both.regions.length).toBe(2);
+    const sh = both.regions[1].shapes[0];
+    expect(both.regions[1].rgb).toEqual([200, 0, 0]);
+    expect(sh.id).toBe("s2");
+    expect(sh.tierOverride).toBe("fill");
+    expect(sh.angleOverride).toBe(null);
+    expect(sh.holes).toEqual([]);
+    expect(sh.outer).toEqual(shapeRing(r));
+    expect(sh.sewAs).toEqual({ kind: "run", path: flattenShape(r.points, r.curves, false), passes: null, stitchLenMm: null });
+    // what the author set is handed over as set
+    const set = shapesToRegions([{ ...r, passes: 1, stitchLenMm: 1.5 }]).regions[0].shapes[0].sewAs;
+    expect(set.passes).toBe(1);
+    expect(set.stitchLenMm).toBe(1.5);
+  });
+
+  it("an invalid run is skipped", () => {
+    expect(shapesToRegions([{ ...r, points: r.points.slice(0, 1) }]).regions).toEqual([]);
   });
 });

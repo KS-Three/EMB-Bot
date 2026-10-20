@@ -260,7 +260,19 @@ overlay drew a large, obvious spike over unchanged stitching.
   because `finish_generation` (edits + palette + fork) now rides the paid
   tail. *(measured 2026-08-22 — `digitizer/tools/perf_stage_cache.py`,
   cold vs hit vs cache-cleared cold-edit over TestClient)*
-- **OPEN: the restitch trigger only exists on the Content step.**
+- **CLOSED 2026-10-11 (PR #839) — stale for the configurator, one real gap fixed.**
+  There are no steps any more: `Configurator.svelte` is one scroll and
+  `DigitizePanel` is always mounted for the selected digitized element;
+  nothing restitches on its own (Kent's 2026-10-05 ruling — the trigger is the
+  Auto Digitize Image button, transparent while an edit is pending); and a
+  canvas edit selects the element it edits. The gap was a right-click edit
+  under a multi-selection, accepted under the group panel with no run button
+  in front; `EmbroideryField`'s `shapeUnderPointer` now collapses the
+  selection to the edited element. Pinned per case by
+  `e2e/digitize-restitch-trigger.spec.js`; screenshots in
+  `docs/evidence/restitch-trigger-2026-10-11/`. The original entry, as written
+  for the wizard:
+- **(was OPEN) the restitch trigger only exists on the Content step.**
   `EmbroideryField` mounts on every step (`App.svelte`, outside the step
   conditional); `DigitizePanel`, which owns `runDigitize`, mounts only on
   `step === "content"`. A shape edited from Review/Create/Download saves and
@@ -1333,3 +1345,109 @@ inherited behaviour:
   `Shapes · N`), so an O reads "Shapes 2".
 - Deleting a parent re-homes its cut-outs by containment: delete an O drawn
   over a patch and the O's counter now cuts the patch.
+
+## 2026-10-11 — satin columns in hand-drawn shapes
+
+Plan 2 of `docs/superpowers/specs/2026-09-30-manual-digitizing-gaps-design.md`
+(§6 and its 2026-10-01 amendment; rulings 2, 5, 9, 12), plan
+`docs/superpowers/plans/2026-10-01-manual-columns.md`, branch
+`claude/manual-columns`.
+
+**What shipped.** A **Column** mode on the side canvas (`Shape | Hole |
+Column`): click along the middle of a stroke, double-click (or Enter, or
+Finish) to end it. The record is `{ id, kind: "column", points, curves,
+widthPx, colorRgb }` — an OPEN spine plus a drawn width in authored canvas
+px; no `stitchType`, no `angleDeg`, never a cut-out or a cut-out's parent.
+`railsFromSpine` (`app/src/lib/spineRails.js`) offsets the spine both ways
+with the same point count and direction, `shapesToRegions` hands the engine
+the rail ring as `outer` plus `sewAs: { kind: "column", railA, railB }`, and
+the engine sews `satinFromRails` between those rails with every interior
+rail pair as a rung, its `center_run` underlay following them too.
+`shapeRing(shape)` is the ONE ring any shape presents — engine, bbox,
+hit-testing, the placement-box guard. On the hoop a column edits open
+(n − 1 segments, no closing edge, a floor of 2 points), its rails are drawn
+beside the spine while selected, and its popover shows **Width** in mm with
+`Sews X.X mm on <fabric>.`, or past 6.5 mm sewn the warning (ruling 5) — it
+still sews. The side panel's assign box has the same Width row and note
+(`columnWidthNote`, shared). *(built 2026-10-11 — `ManualPanel.spec.js`,
+`fieldNodeEdit.spec.js`, `manualShapes.spec.js`, `test/digitize.test.js`,
+`app/e2e/manual-column.spec.js`)*
+
+**Ruling 12, proven twice.** Drawn width scales with the design; pull comp
+stays a fixed amount on top. Through the real engine (left chest, pull comp
+0.3 mm): S → drawn 2.0 / sewn 2.3 mm, 2S → 4.0 / 4.3 mm, sewn ratio 1.8696
+against a predicted 1.8696 *(measured 2026-10-01 — `fieldNodeEdit.spec.js`
+(c))*; in the running Studio, a 1.5× resize reads 1.5× the drawn width and
+the same sewn − drawn *(confirmed 2026-10-11 — `manual-column.spec.js` (c))*.
+Sewn width is drawn + pull comp ± one 0.1 mm grid step.
+
+**Three spec corrections and one found on the way.** (1) `digitize.js` had no
+`satinplay` binding. (2) A column's `center_run` is `satinplay.centerRun` on
+the rails, not the ring's straight PCA line. (3) "No rung list is needed" was
+false — with none, crosses on a curved 24 px column leaned to 38.7 px;
+every interior rail pair as a rung brings the worst to 26.3. (4) **A new
+column is 4.0 mm in the design it lands in** (ruling 9): the spec's "nominal
+6 px/mm in an empty element" made a first column across half the canvas sew
+over 6.5 mm once the element fitted it. `predictedFit` +
+`newColumnWidthPx` (`fieldNodeEdit.js`) solve for the fit it will get.
+*(fixed 2026-10-11 — `fieldNodeEdit.spec.js`, e2e (c) reads 4.0)*
+
+**Byte-identity.** A design with no column sews exactly as on main: the two
+engine pins and the Studio pin were re-taken from origin/main 431c5026's own
+`src/digitize.js`, which never reads `sewAs` *(re-pinned 2026-10-11)*.
+
+**Not built.** Taper; open runs and run ↔ column conversion (plan 3);
+auto-split of wide columns (a physical constant — gate 1); drawn two-rail
+columns. The side canvas's other edits still re-fit the element (plan 1's
+leftover); the Width row does not. The pull-comp attribution of ruling 12's
+fixed part is inferred from the pro's files, not sewn.
+
+## 2026-10-11 — open runs (Line mode), and run ↔ column
+
+Plan 3 of `docs/superpowers/specs/2026-09-30-manual-digitizing-gaps-design.md`
+(§2, §7; rulings 1, 4, 6, 7, 8), plan
+`docs/superpowers/plans/2026-10-11-manual-open-runs.md`, branch
+`claude/manual-open-runs` (PR #840).
+
+**What shipped.** A **Line** mode on the side canvas (`Shape | Hole | Column |
+Line`, ruling 4's word; the record and span kind are `run`): click along the
+line, double-click (or Enter, or Finish) to end it; it may cross itself. The
+record is `{ id, kind: "run", points, curves, colorRgb, passes?,
+stitchLenMm? }`, the same open spine a column has with no width.
+`shapesToRegions` hands the engine the path stroked 1 px wide as `outer` — a
+PROXY for hit-testing, the bbox and sew order — plus `sewAs: { kind: "run",
+path, passes, stitchLenMm }`. The engine (`src/digitize.js`) sews only
+`fill.runAlongPath(path)`, with ruling 1's three gates: no underlay, no
+finishing outline, no fill of the proxy. `runAlongPath` is a carry walk that
+lands on the last vertex exactly; 3 passes is a true bean (forward, back,
+forward over the same stations). Defaults are the corpus bean, 3 × 0.73 mm,
+read from `EMB.LETTERING_GUARDS` (ruling 6); a line under 2.2 mm sewn
+(`fill.RUN_MIN_LOOP_MM`, the one new declaration, mirroring `machine.py`)
+sews nothing and its outline is dropped. On the hoop a line edits open (floor
+2 points); its popover and the side panel's assign box show **Passes**
+(Single run / Bean) and **Stitch length**, and *Make it a column*. A column
+gains *Make it a line* (ruling 8): the spine is copied, never recomputed; a new
+column is 4.0 mm at the fit it is in and the re-fit rule holds everything else
+still. *(built 2026-10-11 — `test/manualrun.test.js`,
+`manualShapes.spec.js`, `fieldNodeEdit.spec.js`, `shapePopover.spec.js`,
+`ManualPanel.spec.js`, `app/e2e/manual-run.spec.js`)*
+
+**Read back from the DST.** A bent 3-point line (one curved segment) through
+the Studio's own chain → `encodeDST` → pystitch: 316 stitches along a
+76.53 mm path, worst 0.058 mm off it, 229.90 mm of thread laid (3.00 ×),
+median stitch 0.721 mm, no trims *(measured 2026-10-11 —
+`test/manualrun-dst.test.js`)*. In the running Studio, switching a bean line to a
+single run left 0.25–0.45× of its stitches (the asserted band), and run →
+column → run came back to
+the bean's exact count *(confirmed 2026-10-11 — `manual-run.spec.js` (b)+(c))*.
+Screenshot: `docs/screens/manual-run-2026-10-11.png`.
+
+**Byte-identity.** A design of a fill shape, a satin shape and a column, with
+underlay on jersey, is pinned at sha256 `9bede099…` / 2579 stitches, taken
+from origin/main 9e005c49's own `src/` before any engine edit
+*(pinned 2026-10-11 — `test/manualrun.test.js`)*.
+
+**Not built.** Lock stitches: a single-pass line sews unlocked (ruling 7 —
+its own PR with the bill measured). Closed ↔ open conversion; trace import
+emitting lines; drawing on the field. The walk chords corners (≤ ~0.26 mm at
+0.73 mm on a right angle); `huggingOutline` keeps them, if that ever matters.

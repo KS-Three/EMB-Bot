@@ -17,6 +17,7 @@
 // hole of the next row that near; "three in a line" has one on each of the
 // next two rows. The second is the one to read: a long step cut in half lands
 // near the next row's grid point by the rule itself, once, and goes no further.
+import "./_help.mjs";
 import { writeFileSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -159,7 +160,7 @@ console.log("\nLeft chest, the pique preset, underlay on, `fillColumns` off. A h
 console.log("| design | holes | with one under it: off | on | three in a line: off | on | stitches off | on | more |");
 console.log("|---|---|---|---|---|---|---|---|---|");
 for (const [name, widthMm, regions] of DESIGNS) {
-  const off = build(regions, widthMm, PIQUE), on = build(regions, widthMm, PIQUE, { fillStagger: true });
+  const off = build(regions, widthMm, PIQUE, { fillStagger: false }), on = build(regions, widthMm, PIQUE, { fillStagger: true });
   const a = measure(off.cover), b = measure(on.cover);
   console.log(`| ${name} | ${a.holes.toLocaleString()} | ${share(a.pairs, a.holes)} | ${share(b.pairs, b.holes)} | ${share(a.threes, a.holes)} | ${share(b.threes, b.holes)} | ${off.design.stitchCount.toLocaleString()} | ${on.design.stitchCount.toLocaleString()} | ${more(on.design.stitchCount, off.design.stitchCount)} |`);
 }
@@ -171,7 +172,7 @@ const presets = [null].concat(FAB.FABRICS.map((f) => f.id));
 for (const fillColumns of [false, true]) {
   const tot = { builds: 0, sOff: 0, sOn: 0, cOff: 0, cOn: 0 }, A = [], B = [];
   for (const fabricId of presets) for (const [, widthMm, regions] of DESIGNS) {
-    const off = build(regions, widthMm, fabricId, { fillColumns }), on = build(regions, widthMm, fabricId, { fillColumns, fillStagger: true });
+    const off = build(regions, widthMm, fabricId, { fillColumns, fillStagger: false }), on = build(regions, widthMm, fabricId, { fillColumns, fillStagger: true });
     A.push(...off.cover); B.push(...on.cover);
     tot.builds++; tot.sOff += off.design.stitchCount; tot.sOn += on.design.stitchCount;
     tot.cOff += count(off.design, "trim"); tot.cOn += count(on.design, "trim");
@@ -224,7 +225,7 @@ if (SHEET) {
     for (const ring of polys) for (const p of ring) h = Math.max(h, p.y / PX);
     [false, true].forEach((stagger, col) => {
       const { pts } = cell(polys, angleDeg, stagger), ox = 20 + col * W;
-      out += `<text x="${ox}" y="${y - 6}" class="t">${label}: ${stagger ? "fillStagger on" : "as shipped"}</text>`;
+      out += `<text x="${ox}" y="${y - 6}" class="t">${label}: ${stagger ? "fillStagger on" : "fillStagger off"}</text>`;
       for (const ring of polys) out += `<polygon class="o" points="${ring.map((p) => `${(ox + (p.x / PX) * Z).toFixed(1)},${(y + (p.y / PX) * Z).toFixed(1)}`).join(" ")}"/>`;
       let d = "";
       pts.forEach((p, i) => { d += `${i && !p.travel ? "L" : "M"}${(ox + (p.x / PX) * Z).toFixed(1)} ${(y + (p.y / PX) * Z).toFixed(1)}`; });

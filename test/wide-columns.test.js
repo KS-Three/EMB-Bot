@@ -20,6 +20,9 @@ const fb = require("../src/fontbin.js");
 const G = require("../src/garments.js");
 
 const BIN = path.join(__dirname, "..", "src", "fonts", "bin");
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent); a pin below taken before that, on another subject, builds with them OFF.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
 const font = JSON.parse(fs.readFileSync(__dirname + "/fixtures/fonts/geneva_simple.json", "utf8"));
 
 // A straight column `lenPx` long and `widPx` wide, in the y direction.
@@ -215,15 +218,22 @@ test("the Euler-walk underpath steps 2 mm ON THE FABRIC at any fit scale", () =>
 // ---- end to end, on the design DOCTRINE measured ------------------------
 
 const MANGA = path.join(BIN, "manga_impact.embf");
+// These measure the design at the FULL Full Back width (DOCTRINE 2026-09-07).
+// Auto-fit is capped to the largest hoop since 2026-10-13, so ask for the width
+// explicitly; the engine clamps a typed width to the placement box (304.8 mm).
+const FULL_BACK_MM = 1e4;
 
 test("the census reproduces DOCTRINE's own numbers, so the rest of this file means something", (t) => {
   if (!fs.existsSync(MANGA)) { t.skip("manga_impact.embf not built"); return; }
   const f = fb.decodeFontBin(fs.readFileSync(MANGA));
   // `splitSatin: false` because DOCTRINE's row was measured on the engine
   // before any of this; the split went default ON the same day this landed.
+  // `satinZigzag: false` likewise: DOCTRINE's row is the alternating-rail
+  // stream. With the zigzag (default ON 2026-10-13) the return leg is a cross
+  // too, and the same design reads 3,850 over-record segments, not 1,930.
   const d = DG.buildLetteringDesign(f, "AB", {
     garment: G.getGarment("full_back"), pxPerMm: 8, emMm: 18, rgb: [25, 25, 25],
-    pullCompMm: 0.2, splitSatin: false });
+    targetWidthMm: FULL_BACK_MM, pullCompMm: 0.2, splitSatin: false, satinZigzag: false });
   // DOCTRINE 2026-09-07: "a two-letter monogram on a Full Back gives 1,933 of
   // 5,828, worst 44.9 mm", on a design it records as 304.9 x 146.2 mm. The
   // stitch count moved by 3 with the underpath units fix (5,830 -> 5,863) and
@@ -239,10 +249,14 @@ test("the census reproduces DOCTRINE's own numbers, so the rest of this file mea
 test("split satin — the DEFAULT since Kent's ruling — takes that design to ZERO unsewable segments", (t) => {
   if (!fs.existsSync(MANGA)) { t.skip("manga_impact.embf not built"); return; }
   const f = fb.decodeFontBin(fs.readFileSync(MANGA));
-  const base = { garment: G.getGarment("full_back"), pxPerMm: 8, emMm: 18, rgb: [25, 25, 25], pullCompMm: 0.2 };
+  const base = { garment: G.getGarment("full_back"), pxPerMm: 8, emMm: 18, rgb: [25, 25, 25], targetWidthMm: FULL_BACK_MM, pullCompMm: 0.2 };
   const on = DG.buildLetteringDesign(f, "AB", base);
   const { n, worstAx } = overRecord(on);
   assert.strictEqual(n, 0, "not one sewn segment past a DST record");
+  // Every column here is over the zigzag's width cap (Kent's ruling
+  // 2026-10-14), so this is the alternating-rail stream again: worst 4.5,
+  // 21,211 penetrations. Uncapped, the zigzag read 4.7 and 42,258 (27,033 ->
+  // 48,079 stitches) — test/satin-zigzag-cap.test.js pins both sides.
   assert.ok(worstAx <= 4.5, `worst sewn segment ${worstAx} mm — the split segment is 3.0`);
   assert.ok(on.lettering.splitPenetrations > 20000, "and it says how many penetrations that cost");
 });
@@ -259,6 +273,8 @@ test("the wide-column fill takes it to zero too, at a very different price", (t)
   // The two are NOT the same trade. Pinned as an ordering, not as counts, so
   // the file does not go stale every time a glyph moves.
   assert.ok(split.stitchCount > off.stitchCount * 3, "the split multiplies penetrations");
+  // 28,649 against 12,492 — back to 2.29x since the zigzag's width cap
+  // (2026-10-14); the uncapped zigzag's 21,070 made it 1.36x.
   assert.ok(fill.stitchCount > split.stitchCount * 2, "and the fill multiplies them again");
   assert.ok(fill._debug.nTrims > off._debug.nTrims, "a fill on a curved column costs trims the satin did not");
 });
@@ -276,11 +292,11 @@ test("a RUN font's authored pitch is a length on the fabric, not on the layout",
   if (!fs.existsSync(p)) { t.skip("western_light.embf not built"); return; }
   const f = fb.decodeFontBin(fs.readFileSync(p));
   const d = DG.buildLetteringDesign(f, "A", {
-    garment: G.getGarment("left_chest"), pxPerMm: 8, emMm: 18, rgb: [25, 25, 25], pullCompMm: 0.2 });
+    garment: G.getGarment("left_chest"), pxPerMm: 8, emMm: 18, rgb: [25, 25, 25], pullCompMm: 0.2, ...TRIO_OFF });
   const { n, worstAx } = overRecord(d);
   assert.strictEqual(n, 0, "not one sewn segment past a DST record");
   assert.ok(worstAx <= 4.1, `worst sewn segment ${worstAx} mm`);
-  assert.strictEqual(d.stitchCount, 560, "92 before the frame was fixed");
+  assert.strictEqual(d.stitchCount, 559, "92 before the frame was fixed; 560 before the connector stopped doubling a run's first stitch (2026-10-08)");
 });
 
 test("and it is wrong shrinking too, which is what makes it a units bug", () => {

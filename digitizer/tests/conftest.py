@@ -1,11 +1,73 @@
 import os
+
+# The test environment's OpenCV runs Intel IPP's AVX2 code path on EVERY host.
+# A stitch stream's bytes follow the path IPP (bundled in the OpenCV wheel)
+# dispatches to -- not numpy's SIMD, not OpenCV's own kernels, not OpenBLAS's
+# core type: each was forced down on an AVX-512 Xeon with CI's wheels
+# (2026-10-20) and none moved the Fremont 80 mm OFF md5; only this did. IPP's
+# AVX2 path (l9) reads `75f44f90` on Kent's laptop and CI's EPYC 7763, its
+# full AVX-512 path reads `027d14e6` on CI's EPYC 9V45 / 9V74 and a Sapphire
+# Rapids Xeon, and its base AVX-512 set reads `050452` on a Cascade Lake Xeon,
+# so an uncapped pin is one value per IPP sub-path a runner happens to draw.
+# OpenCV reads OPENCV_IPP lazily (on IPP's first use, measured), so a cv2
+# import ahead of this line cannot defeat it; `setdefault` lets a shell
+# override it to measure another path. The shipped service is NOT capped: a
+# customer's AVX-512 machine sews the k0 stream. tests/test_detail_spokes.py
+# has the tripwire that reads IPP's path and the measured table.
+os.environ.setdefault("OPENCV_IPP", "avx2")
+
 import shutil
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
 
 from digitizer_core import PipelineConfig, run_stages
+
+# CI sharding (DIGITIZER_SHARD=k/n); a no-op when unset. See tests/_ci_shard.py.
+from tests._ci_shard import pytest_collection_modifyitems  # noqa: F401
+
+
+def own_thread_only(fake, real):
+    """Gate a module-global patch to the thread that installed it.
+
+    `monkeypatch.setattr(module, "fn", fake)` swaps the name for EVERY thread
+    in the process, and under xdist the service's `JobRegistry` pool (the
+    session-long `client` fixture's background thread, `digitizer_service.jobs`)
+    can still be sewing a job another test submitted while this test's patch is
+    live. Its calls then land in this test's counter, list or tripwire (CI on
+    #925, shard 5: `test_fill_bridge_cut` read `[True] * 4`; 6fb67c65 fixed that
+    one test inline). Build `fake` exactly as before, keep the original as
+    `real`, and install `own_thread_only(fake, real)`: `fake` runs for the
+    calling thread of THIS call (captured now, so call it from the test or the
+    fixture body, not from a helper that runs on another thread) and every
+    other thread gets the unpatched function. The pipeline is single-threaded
+    (the service pool is the only thread pool), so the test's own pipeline
+    calls all run on this thread.
+
+    Do NOT use it where the code under test deliberately runs on the service
+    pool (a test that drives `/digitize` through `client` and counts there).
+    """
+    import threading
+
+    me = threading.get_ident()
+
+    def gated(*args, **kwargs):
+        if threading.get_ident() == me:
+            return fake(*args, **kwargs)
+        return real(*args, **kwargs)
+
+    return gated
+
+
+# CI scheduling (`--dist loadgroup`); a no-op otherwise. See
+# tests/_xdist_groups.py. A plugin rather than a hook here because this
+# conftest already exports the shard hook under the same name.
+def pytest_configure(config):
+    from tests import _xdist_groups
+    if not config.pluginmanager.is_registered(_xdist_groups):
+        config.pluginmanager.register(_xdist_groups, "digitizer-xdist-groups")
 
 
 # SESSION-scoped, and shared by every module that needs a client. It must not
@@ -50,6 +112,83 @@ def client():
 
     with TestClient(app) as c:
         yield c
+
+
+# A client that is NEVER entered as a context manager, so no lifespan runs
+# and the shared app's job pool is never shut down (see `client` above).
+# For a throwaway app built inside a test, or for the shared app when a test
+# needs `raise_server_exceptions=False` to see the 500 a real server sends.
+# Lives here because `test_client_fixture_is_shared.py` allows `TestClient(`
+# calls in conftest only — that tripwire is about the lifespan, which this
+# fixture by construction never triggers.
+@pytest.fixture
+def make_client():
+    pytest.importorskip("fastapi", reason="service extra not installed")
+    from fastapi.testclient import TestClient
+
+    return lambda app, **kw: TestClient(app, **kw)
+
+
+# The deadline every service test waits on. Here, beside `client`, so one
+# rule serves every module that drives `/digitize` or `/digitize-manual`
+# through the shared app; the service import is inside the function for the
+# same reason `client`'s is (fastapi is the optional extra).
+#
+# WHY A DEADLINE TIED TO THE SERVICE, NOT A LOOP COUNT. Every module here
+# used to poll `for _ in range(600): ... sleep(0.1)`, a 60 s wall budget
+# (test_manual_sew_order.py had already quietly doubled its own to 1200).
+# That number measured the MACHINE, not the contract: `registry` is one
+# worker thread per process, so a job's wait is the queue ahead of it (the
+# cache-identity tests deliberately submit real digitizes and never read
+# them, so they are still sewing when the next test's job lands behind
+# them) PLUS its own run, and the own-run half moves with the host and its
+# load. `test_review_payload_carries_text_cluster_fields_over_http`
+# (`enthusiast_logo` at 90 mm, 24 tesseract spawns) measures 10.4 s serial
+# on a 4-core cloud box, 19 s under `-n 4` there, 12.4 s on the reference
+# box -- and tripped the 60 s budget as `'running' == 'done'` in CI on
+# 10ae9cc, three times in one `-n auto` session on 2026-09-03, and on
+# Kent's laptop under `-n 2` on 2026-10-19 (PR #987's body), each time
+# passing on re-run with nothing changed. 0 of 30 runs of this file alone
+# reproduced it here (2026-10-20, `-n 2`, `-n 4`, serial): the loss is to
+# contention, not to the code under test.
+#
+# The service's own guarantee is `JOB_TIMEOUT_S`: a RUNNING job past it is
+# reported `error` on the next read (`JobRegistry._expire_locked`), so a
+# genuine runaway still fails every caller's `state == "done"` assertion,
+# with `TIMED_OUT` in `error` and the registry's detail instead of a bare
+# `'running' == 'done'`. This waits for that terminal state and gives up
+# only past the service's own limit plus a margin, naming the registry's
+# counts when it does, so the next person reads "queued behind N" instead
+# of guessing.
+JOB_WAIT_MARGIN_S = 30.0
+
+
+def wait_for_job(client, job_id: str, *, interval_s: float = 0.1) -> dict:
+    """Poll `/jobs/{job_id}` until it is `done` or `error`; return that state.
+
+    Raises AssertionError past `JOB_TIMEOUT_S + JOB_WAIT_MARGIN_S`, naming
+    the states seen (and when), and `/health`'s registry counts.
+    """
+    from digitizer_service.jobs import JOB_TIMEOUT_S
+
+    t0 = time.monotonic()
+    deadline = t0 + JOB_TIMEOUT_S + JOB_WAIT_MARGIN_S
+    seen: dict[str, float] = {}
+    while True:
+        r = client.get(f"/jobs/{job_id}")
+        state = r.json()
+        if r.status_code != 200 or "state" not in state:
+            raise AssertionError(f"job {job_id}: HTTP {r.status_code} {state!r}")
+        seen.setdefault(state["state"], round(time.monotonic() - t0, 1))
+        if state["state"] in ("done", "error"):
+            return state
+        if time.monotonic() > deadline:
+            jobs = client.get("/health").json().get("jobs")
+            raise AssertionError(
+                f"job {job_id} still {state['state']!r} after "
+                f"{time.monotonic() - t0:.0f}s (state first seen at s: {seen}); "
+                f"registry {jobs}")
+        time.sleep(interval_s)
 
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
@@ -358,4 +497,101 @@ PRE_FLIP["satin_rail_comp"] = False
 # "should be there to lose"), not the flag under test getting worse. The
 # test that is ABOUT the snap is `tests/test_snap_region_edges.py`.
 PRE_FLIP["snap_region_edges"] = False
+# `two_tone_snap` joined the flipped set 2026-10-11 (defect 58, Kent's
+# approval 2026-10-08), for the reason every entry above gives. ON, a
+# black-and-white raster is thresholded to its two inks before any region
+# exists, so gaulke's grey halo -- the Silver `3971` escape, the 0.58 mm²
+# shard, the enclosed `4174` that the resnap and thread-match files take as
+# their PREMISE -- is never segmented at all. The test that is ABOUT the snap
+# is `tests/test_two_tone.py`.
+PRE_FLIP["two_tone_snap"] = False
+# `lettering_columns_square_ends` and `lettering_columns_inside_connectors`
+# joined the flipped set 2026-10-13 (Kent's ruling), for the reason every
+# entry above gives. ON, the Column lane ends every column on the letter's
+# own outline and keeps its connectors on the letter, so a lettering fixture's
+# stitches, trims and penetrations move; a test pricing one OTHER flag must
+# measure against the engine its arms were made on. The tests ABOUT them are
+# `tests/test_column_ends.py`.
+PRE_FLIP["lettering_columns_square_ends"] = False
+PRE_FLIP["lettering_columns_inside_connectors"] = False
+# `small_glyph_keep` joined the flipped set 2026-10-13 (Kent's ruling), for the
+# reason every entry above gives. ON, stage 4 keeps the counters and the ground
+# hole of a rescued small glyph, which on `screenshot_phone_ui_golke` adds one
+# cone (15 -> 16) under `revalidate_small_shapes` alone -- the premise
+# `test_revalidate_small_shapes` prices that flag against ("16 -> 16 cones").
+# The test that is ABOUT the keep is `tests/test_small_glyph_keep.py`.
+PRE_FLIP["small_glyph_keep"] = False
+# `small_text_true_size` joined the flipped set 2026-10-14 (Kent, WoK 56
+# option A, after PR #948's drone fix), for the reason every entry above
+# gives. ON, small lettering is re-traced at its true size and thin letters
+# sew as bean centrelines (`config.SMALL_TEXT_TRUE_SIZE`), which moves the
+# stitches, trims and tiers of every fixture with lettering under 3 mm caps.
+# The tests ABOUT it are `tests/test_small_text.py`,
+# `tests/test_bean_letters_pipeline.py` and `tests/test_bean_ink_shape_gate.py`.
+PRE_FLIP["small_text_true_size"] = False
+# ...and its counter guard (Kent, WoK 56 option A; 0.45 mm x 40 / thread_wt,
+# replacing a 1.6 mm cap-height guard), which came with the flip: None is no
+# guard. With the switch OFF the guard is never read
+# (`config.true_size_min_counter`), so this pin is the posture, not a second
+# lever. The tests ABOUT it are `tests/test_small_text_counter_guard.py`.
+PRE_FLIP["small_text_true_size_min_counter_mm"] = None
+# ...and the value the switch fills into `small_text_keep_stray_lines` (True,
+# PR #960's 65 mm THE fix, carried by the flip; VP 2026-10-15). None is the
+# pre-flip engine: never filled, read as False.
+PRE_FLIP["small_text_keep_stray_lines"] = None
+# ...and the one-ink link in the text tagger's RESCUED round (2026-10-15,
+# Fremont's THE at 80 mm: its one rescued letter joined the tan date and left
+# T and H short of a cluster). False is the pre-flip engine: round 1 links
+# on size alone. The tests ABOUT it are in `tests/test_textcluster.py`.
+PRE_FLIP["text_cluster_rescued_ink_link"] = False
+# The two bean-letter holds (Kent's flip 2026-10-15, "flip both holds ON"):
+# needle points 0.25 mm off a small counter (#952) and stations 0.2 mm off an
+# open bay (#967). Plain defaults, not switch values: None is OFF, the engine
+# as the sew-out cards were cut. The tests ABOUT them are
+# `tests/test_bean_counter_hold.py` and `tests/test_bean_bay_hold.py`.
+PRE_FLIP["bean_letter_counter_hold_mm"] = None
+PRE_FLIP["bean_letter_bay_hold"] = None
+# Spoked detail marks (Kent's flip 2026-10-16, "ON, tightened"): a small
+# enclosed detail of another colour with four or more tips sews as a spoked
+# mark on top of its host (Fremont's Wisconsin star). False is the pre-flip
+# engine: the detail is absorbed and painted over. The tests ABOUT it are in
+# `tests/test_detail_spokes.py`.
+PRE_FLIP["detail_spokes"] = False
+# Native-read corner runs (Kent's ruling 2026-10-20, MASTER_SCOPE item 41):
+# one side-line fit per corner run, an unread vertex takes its read
+# neighbours' offset, a vertex landing behind its predecessor drops. False is
+# the pre-flip engine: Becker's outline at 1.8 px/mm carries 7.1 reversals
+# per 100 mm. The tests ABOUT it are in `tests/test_subpixel_corner_runs.py`.
+PRE_FLIP["subpixel_corner_runs"] = False
+# The lowercase shoulder cut (Kent's flip 2026-10-20, after PR #986's sewn
+# judge): a lettering piece that folds its crosses through a shoulder takes a
+# second look, judged sewn. False is the pre-flip lane. The tests ABOUT it are
+# `tests/test_lowercase_angle.py`.
+PRE_FLIP["lettering_columns_fold_cuts"] = False
+# The small stem and the dot rung, scoped to lettering (Kent's flip
+# 2026-10-20, MASTER_SCOPE item 52; OFF/ON renders in PR #991). ON, a thin
+# lettering stem under the area floor sews satin in the Column lane, and an
+# i/j dot over a same-colour stem sews instead of being dropped, which moves
+# the stitches and trims of lettering fixtures. False is the pre-flip engine.
+# The tests ABOUT them are `tests/test_small_stem.py`,
+# `tests/test_small_dot_rung.py` and `tests/test_dot_rung_lettering.py`.
+PRE_FLIP["lettering_columns_small_stem"] = False
+PRE_FLIP["small_dot_rung"] = False
+PRE_FLIP["small_dot_rung_lettering"] = False
+# The photo lane's phantom-blend dissolve (defect 27; Kent banked it OFF
+# 2026-09-04 and flipped it ON 2026-10-20, MASTER_SCOPE item 46, on PR
+# #1003's pricing): a merged label that is mostly boundary and a blend of its
+# two sides folds into the nearer side, so a JPEG's halo cones are never
+# planned. False is the pre-flip engine, with every halo shard the colour
+# files take as their premise. The tests ABOUT it are
+# `tests/test_phantom_blend_photo.py`.
+PRE_FLIP["dissolve_phantom_blends"] = False
+# Stage 5's cut-off pieces (defect 61's second half; Kent flipped it ON
+# 2026-10-20, item 46, after the halo lever above): every piece of a split
+# shape whose artwork clears the stage-4 floor sews as a region of its own,
+# which adds regions and trims wherever a later colour's artwork crosses an
+# earlier one's. False is the pre-flip engine: the parent keeps its ink and
+# the other pieces drop. The tests ABOUT it are
+# `tests/test_clip_keep_pieces.py`.
+PRE_FLIP["clip_keep_pieces"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

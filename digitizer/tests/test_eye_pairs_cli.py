@@ -641,13 +641,15 @@ def test_verify_finds_no_drift_on_the_synthetic_image(rendered, capsys):
 
 
 def test_the_default_corpus_leaves_out_the_excluded_fixtures(monkeypatch):
-    """Kent's rule (2026-09-30): screenshot is off the page. The default
-    corpus drops it; an explicit `cases` list is taken as given."""
+    """Kent's rule (2026-09-30): screenshot is off the page, and gaulke
+    since 2026-10-08. The default corpus drops both; an explicit `cases`
+    list is taken as given."""
     from tools.eye_pairs.pairs import EXCLUDED_FIXTURES
     seen = {}
 
     def fake_corpus():
-        return [("screenshot", "x.png", 80.0, "left_chest"), ("becker", "y.png", 100.0, "left_chest")]
+        return [("screenshot", "x.png", 80.0, "left_chest"), ("gaulke", "z.png", 80.0, "left_chest"),
+                ("becker", "y.png", 100.0, "left_chest")]
 
     def fake_sha(path):
         return "0" * 64
@@ -667,7 +669,7 @@ def test_the_default_corpus_leaves_out_the_excluded_fixtures(monkeypatch):
             cli.render(Path(td), arms={})
         except RuntimeError:
             pass
-    assert "screenshot" in EXCLUDED_FIXTURES and seen["fixtures"] == ["becker"]
+    assert {"screenshot", "gaulke"} <= EXCLUDED_FIXTURES and seen["fixtures"] == ["becker"]
 
 
 def test_a_file_arm_reads_the_design_from_the_stitch_file_and_names_its_fixtures(rendered, tmp_path):
@@ -693,3 +695,32 @@ def test_a_file_arm_reads_the_design_from_the_stitch_file_and_names_its_fixtures
     ours = [(s["x"], s["y"]) for s in base["stitches"] if s["type"] == "stitch"]
     theirs = [(s["x"], s["y"]) for s in design["stitches"] if s["type"] == "stitch"]
     assert theirs == ours                                            # the file round-trips in our frame
+
+
+def test_a_base_reaches_every_flag_arm_and_a_new_base_is_a_cache_miss(rendered, tmp_path,
+                                                                        monkeypatch):
+    """`--base` (2026-10-08): flags laid under every flag arm, base included,
+    so one built-OFF flag can be judged on top of another. A row rendered on
+    another base must not answer from cache; ref arms do not take it."""
+    out, art, _n, _np, _seen = rendered
+    out2 = tmp_path / "out2"
+    shutil.copytree(out, out2)
+    calls = []
+    real = cli.digitize_once
+
+    def counting(image, cfg):
+        calls.append(cfg)
+        return real(image, cfg)
+
+    monkeypatch.setattr(cli, "digitize_once", counting)
+    seen: dict = {}
+    cli.render(out2, cases=[("tiny", art, 40.0, "left_chest")], arms=ARMS,
+               ref_factory=fake_factory(out2, seen), base={"stitch_width_auto": True})
+    assert len(calls) == 3 and all(c.stitch_width_auto for c in calls)
+    assert "commits" not in seen                 # the ref rows stay cached: no base for them
+    feats = json.loads((out2 / "features.json").read_text())["tiny"]
+    assert feats[BASE]["base_flags"] == {"stitch_width_auto": True}
+    calls.clear()
+    cli.render(out2, cases=[("tiny", art, 40.0, "left_chest")], arms=ARMS,
+               ref_factory=fake_factory(out2, seen), base={"stitch_width_auto": True})
+    assert calls == []                           # same base: all cache

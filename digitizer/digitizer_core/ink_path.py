@@ -82,7 +82,81 @@ def _carry_out(end, inward, width: np.ndarray) -> tuple[float, float]:
     return (ex + dx / n * r, ey + dy / n * r)
 
 
-def read_cluster_ink(p, members: list) -> list[MemberInk]:
+def small_counters(ink: np.ndarray, max_px: float) -> np.ndarray:
+    """The ink's SMALL COUNTERS as a mask: the not-ink pockets the ink closes
+    round (none touching the crop's edge, which is the ground round the
+    letters), no wider than `max_px` across -- twice the pocket's largest
+    inscribed radius. Working pixels."""
+    h, w = ink.shape
+    n, lab, stats, _c = cv2.connectedComponentsWithStats((~ink).astype(np.uint8), connectivity=4)
+    small = np.zeros(ink.shape, bool)
+    for k in range(1, n):
+        x, y, bw, bh, _a = stats[k]
+        if x <= 0 or y <= 0 or x + bw >= w or y + bh >= h:
+            continue
+        comp = lab[y:y + bh, x:x + bw] == k
+        inner = cv2.distanceTransform(np.pad(comp, 1).astype(np.uint8), cv2.DIST_L2, 5)
+        if 2.0 * float(inner.max()) <= max_px:
+            small[y:y + bh, x:x + bw] |= comp
+    return small
+
+
+def hold_off_counters(spines_px: list, ink: np.ndarray, hold_px: float,
+                      max_counter_px: float, counters: np.ndarray | None = None) -> list:
+    """Every spine point within `hold_px` of a SMALL counter of `ink`
+    (`small_counters`; pass `counters` to reuse one reading), moved to the
+    ink pixel within `hold_px` of it that is furthest from every small
+    counter, up to `hold_px` -- the nearest of equals. Working pixels in and
+    out; a point no move improves stays exactly where it is.
+
+    Why (`cfg.bean_letter_counter_hold_mm`): a bean letter sews its ink's
+    centreline, and on a stroke thinner than the thread -- Fremont's 1895 at
+    81 mm is 0.22 mm of ink under a 0.40 mm thread -- the thread centred on
+    the stroke lays half its width into the counter beside it, and the 8's
+    0.5 mm counters shut. Held off, the thread lies on the stroke's outer
+    side. A point between two counters (the 8's waist) has nowhere better to
+    go and stays on the ridge between them. The ink is never left: the needle
+    goes down only on ink pixels."""
+    small = small_counters(ink, max_counter_px) if counters is None else counters
+    if hold_px <= 0 or not small.any():
+        return spines_px
+    d_c = cv2.distanceTransform((~small).astype(np.uint8), cv2.DIST_L2, 5)
+    h, w = ink.shape
+    r = int(np.ceil(hold_px))
+    oy, ox = np.mgrid[-r:r + 1, -r:r + 1]
+    disc = np.hypot(ox, oy) <= hold_px
+    oy, ox = oy[disc], ox[disc]
+    reach = np.hypot(ox, oy)
+    moved: dict[tuple[int, int], tuple[float, float]] = {}
+
+    def held(pt):
+        x, y = pt
+        ix, iy = int(round(x)), int(round(y))
+        if not (0 <= ix < w and 0 <= iy < h) or d_c[iy, ix] >= hold_px:
+            return pt
+        key = (ix, iy)
+        if key not in moved:
+            qx, qy = ix + ox, iy + oy
+            ok = (qx >= 0) & (qx < w) & (qy >= 0) & (qy < h)
+            qx, qy, dist = qx[ok], qy[ok], reach[ok]
+            on_ink = ink[qy, qx]
+            if not on_ink.any():
+                moved[key] = pt
+            else:
+                qx, qy, dist = qx[on_ink], qy[on_ink], dist[on_ink]
+                gain = np.minimum(d_c[qy, qx], hold_px)
+                best = np.lexsort((qx, qy, dist, -gain))[0]
+                here = min(float(d_c[iy, ix]), hold_px)
+                moved[key] = ((float(qx[best]), float(qy[best]))
+                              if gain[best] > here + 1e-6 else pt)
+        return moved[key]
+
+    return [[held(q) for q in s] for s in spines_px]
+
+
+def read_cluster_ink(p, members: list, *, counter_hold_mm: float | None = None,
+                     counter_max_mm: float | None = None,
+                     ground_ring_mm: float | None = None) -> list[MemberInk]:
     """-> one `MemberInk` per member, in order. `p` is the prepared raster
     (`stage1_prep.Prep`), `members` the cluster's regions.
 
@@ -91,6 +165,19 @@ def read_cluster_ink(p, members: list) -> list[MemberInk]:
     the ground is read from the pixels round the cluster, whatever the
     background mask says of them: a white page is ground to a letter whether
     or not stage 1 called it background.
+
+    `counter_hold_mm` (with `counter_max_mm`, the widest counter it serves):
+    each spine's needle points held that far off the ink's small counters
+    (`hold_off_counters`). None: the spines exactly as read.
+
+    `ground_ring_mm` (`cfg.ink_ground_ring_mm`): read the ground colour only
+    from a ring this deep, starting `INK_GROUND_CLEAR_MM` out from the
+    members, instead of from every far pixel of the crop. A cluster whose crop
+    spans another dark object reads that object as ground: at 65 mm Fremont's
+    EST and 1895 are one cluster either side of the black Wisconsin state,
+    the ground came out dark, and every digit read 0.84-1.73 mm thick on a
+    1.3 mm letter (true stroke ~0.15), so none went bean (2026-10-14). Read
+    as two clusters they read 0.14-0.16. None: the crop-wide read, as before.
 
     Fails open: nothing to read is an empty `MemberInk`, never an error."""
     from .legibility import _plan_frame
@@ -111,7 +198,18 @@ def read_cluster_ink(p, members: list) -> list[MemberInk]:
     S = ppm * up                                   # working pixels per millimetre
     big = cv2.resize(np.ascontiguousarray(p.rgb[Y0:Y1, X0:X1]), None, fx=up, fy=up,
                      interpolation=cv2.INTER_CUBIC)
-    fg = cv2.resize((~p.bg_mask[Y0:Y1, X0:X1]).astype(np.float32), None, fx=up, fy=up,
+    # On a cutout the ink is the opaque pixels. `bg_mask` is only the
+    # transparency CONNECTED TO THE BORDER; a letter's counter is transparency
+    # too but sits in `enclosed_mask`, which stage 1 counts as foreground. Read
+    # as ink it filled every counter: Enthusiast's "ENTERPRISES" at 80 mm sewed
+    # its P's bowl and the top of its stem as nothing, and the P read as an "r"
+    # (2026-10-13). On the colour path the counter is read by its colour, so
+    # only the alpha path needs it.
+    fg_src = ~p.bg_mask[Y0:Y1, X0:X1]
+    enclosed = getattr(p, "enclosed_mask", None)
+    if bool(getattr(p, "bg_from_alpha", False)) and enclosed is not None:
+        fg_src = fg_src & ~enclosed[Y0:Y1, X0:X1]
+    fg = cv2.resize(fg_src.astype(np.float32), None, fx=up, fy=up,
                     interpolation=cv2.INTER_CUBIC)
     H, W = big.shape[:2]
 
@@ -146,7 +244,12 @@ def read_cluster_ink(p, members: list) -> list[MemberInk]:
         t = np.clip(fg, 0.0, 1.0)
     else:
         lab = cv2.cvtColor(big, cv2.COLOR_RGB2LAB).astype(np.float32)
-        ground = np.median(lab[far], axis=0)
+        ground_px = far
+        if ground_ring_mm and ground_ring_mm > 0:
+            ring = far & (d_any <= (INK_GROUND_CLEAR_MM + ground_ring_mm) * S)
+            if ring.any():
+                ground_px = ring
+        ground = np.median(lab[ground_px], axis=0)
         d = np.linalg.norm(lab - ground, axis=2)
         strong = inside & (d >= np.percentile(d[inside], 80))
         axis = np.median(lab[strong], axis=0) - ground
@@ -159,6 +262,8 @@ def read_cluster_ink(p, members: list) -> list[MemberInk]:
     if not ink.any():
         return [MemberInk() for _ in members]
     width = cv2.distanceTransform(ink.astype(np.uint8), cv2.DIST_L2, 5)
+    hold = bool(counter_hold_mm and counter_hold_mm > 0 and counter_max_mm and counter_max_mm > 0)
+    counters = None
 
     out: list[MemberInk] = []
     for i in range(len(members)):
@@ -185,6 +290,12 @@ def read_cluster_ink(p, members: list) -> list[MemberInk]:
                     px.insert(0, _carry_out(px[0], px[1:], width))
                 if e["free_end"]:
                     px.append(_carry_out(px[-1], px[-2::-1], width))
-            spines.append([((x / up + X0 - cx) / ppm, (y / up + Y0 - cy) / ppm) for x, y in px])
+            spines.append(px)
+        if hold:
+            if counters is None:
+                counters = small_counters(ink, counter_max_mm * S)
+            spines = hold_off_counters(spines, mine, counter_hold_mm * S, counter_max_mm * S,
+                                       counters=counters)
+        spines = [[((x / up + X0 - cx) / ppm, (y / up + Y0 - cy) / ppm) for x, y in px] for px in spines]
         out.append(MemberInk(stroke_mm=stroke_mm, spines=spines))
     return out

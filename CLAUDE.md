@@ -266,6 +266,20 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 7. **Three green checks is NOT a green PR — the fourth is the slow one.** CI runs
    four jobs on a PR. `engine` and `studio` finish in well under a minute
    (p50 0.5 and 0.8) and `studio-e2e` in about three (p50 2.7).
+   **SHARDED since PR #669 (2026-10-08): `digitizer` is now an aggregator over
+   six `digitizer shard k/6` jobs**, still `-n auto` each, and it goes green or
+   red seconds after the slowest shard. The first sharded run (split by file
+   COUNT, before `tests/.shard_durations.json` existed) took **24.1 minutes**
+   wall, first shard start to aggregator end, against 72–78 for the single
+   job on main the same day. Its shards ran 6.9–23.9 minutes, and the 23.9 was
+   the imbalance the durations file fixes: 235 test-minutes over 6 × 4 workers
+   is about 10 minutes of tests per shard, plus a minute of setup. **Budget
+   twenty-five, read fifteen as normal**, and if one shard keeps running
+   far longer than the others, refresh the durations
+   (`digitizer/tools/ci_shard_durations.py` over a run's `digitizer-shard-*`
+   JUnit artifacts) rather than adding shards. Its PR body has the balanced
+   run's measured time. Everything below is the pre-sharding history of the
+   single job. Keep it for the lesson about trends; its budgets no longer apply.
    **`digitizer` runs 33 to 55 minutes** — re-measured 2026-09-12 over the
    last 36 successful jobs: min **32.7**, p50 **49.7**, p90 54.6, max 55.4,
    with daily medians 48.6 (09-11) and 50.6 (09-12). **Budget an hour, and

@@ -1,0 +1,242 @@
+{
+ "design": "fremont_hat81",
+ "lines": [
+  {
+   "cluster": "TC3dcbc4a7",
+   "members": [
+    "Se9a3bf6a",
+    "Sa0fbbfd4",
+    "Sf0a6f1de",
+    "Sa6ebf53d",
+    "Sdf13b84a",
+    "S931202c8",
+    "S990f2088",
+    "S8fa2e64e",
+    "Sdeda9448",
+    "Se58e299c",
+    "S1377425b"
+   ],
+   "n": 11,
+   "cap_mm": 2.138,
+   "min_counter_mm": 0.549,
+   "counters": 4,
+   "bean": 11,
+   "box_mm": [
+    -12.02,
+    8.96,
+    14.16,
+    11.19
+   ],
+   "changed": true,
+   "word": "tagline",
+   "verdict": "WIN",
+   "main": {
+    "box_mm": [
+     -12.64,
+     8.02,
+     14.58,
+     12.29
+    ],
+    "ocr": [
+     11,
+     11
+    ],
+    "legibility": 0.614
+   },
+   "switch": {
+    "box_mm": [
+     -12.64,
+     8.02,
+     14.58,
+     12.29
+    ],
+    "ocr": [
+     11,
+     11
+    ],
+    "legibility": 0.996
+   }
+  },
+  {
+   "cluster": "TC9144c13a",
+   "members": [
+    "S022f2120",
+    "Sb192e650",
+    "S686b93ed",
+    "S15110a1c"
+   ],
+   "n": 4,
+   "cap_mm": 1.652,
+   "min_counter_mm": 0.55,
+   "counters": 3,
+   "bean": 4,
+   "box_mm": [
+    3.53,
+    -12.94,
+    9.14,
+    -11.26
+   ],
+   "changed": true,
+   "word": "1895",
+   "verdict": "WIN",
+   "main": {
+    "box_mm": [
+     3.0,
+     -13.51,
+     9.72,
+     -10.63
+    ],
+    "ocr": [
+     1,
+     4
+    ],
+    "legibility": 0.551
+   },
+   "switch": {
+    "box_mm": [
+     3.0,
+     -13.51,
+     9.72,
+     -10.63
+    ],
+    "ocr": [
+     2,
+     4
+    ],
+    "legibility": 0.916
+   }
+  },
+  {
+   "cluster": "TC935f0ed0",
+   "members": [
+    "S9a48e915",
+    "Sdbbe51f4",
+    "Sd4bf6420",
+    "S00d683b7",
+    "S9b4d2aca",
+    "Se394be84",
+    "Se645801a",
+    "Sa9ce03f2",
+    "S31fdca10",
+    "Seced5f9e",
+    "S1d0c7e50",
+    "S9df2ea64"
+   ],
+   "n": 12,
+   "cap_mm": 5.96,
+   "min_counter_mm": 2.15,
+   "counters": 3,
+   "bean": 0,
+   "box_mm": [
+    -37.68,
+    -3.12,
+    37.65,
+    3.06
+   ],
+   "changed": true,
+   "word": null,
+   "verdict": "changed (no reader)"
+  },
+  {
+   "cluster": "TCf0105614",
+   "members": [
+    "S8fa08a06",
+    "S9bac9a3c",
+    "Scead5d18"
+   ],
+   "n": 3,
+   "cap_mm": 2.657,
+   "min_counter_mm": null,
+   "counters": 0,
+   "bean": 3,
+   "box_mm": [
+    -4.37,
+    -7.63,
+    4.34,
+    -4.97
+   ],
+   "changed": true,
+   "word": "the",
+   "verdict": "WIN",
+   "main": {
+    "box_mm": [
+     -4.86,
+     -8.06,
+     5.02,
+     -4.49
+    ],
+    "ocr": [
+     1,
+     3
+    ],
+    "legibility": 0.974
+   },
+   "switch": {
+    "box_mm": [
+     -4.86,
+     -8.06,
+     5.02,
+     -4.49
+    ],
+    "ocr": [
+     3,
+     3
+    ],
+    "legibility": 0.998
+   }
+  },
+  {
+   "cluster": "TCf7561ab7",
+   "members": [
+    "S1b0527a5",
+    "Sfe26555a",
+    "S7c58ea3d"
+   ],
+   "n": 3,
+   "cap_mm": 1.62,
+   "min_counter_mm": null,
+   "counters": 0,
+   "bean": 3,
+   "box_mm": [
+    -9.17,
+    -12.94,
+    -3.79,
+    -11.26
+   ],
+   "changed": true,
+   "word": "est",
+   "verdict": "WIN",
+   "main": {
+    "box_mm": [
+     -9.72,
+     -13.51,
+     -3.24,
+     -10.63
+    ],
+    "ocr": [
+     1,
+     2
+    ],
+    "legibility": 0.967
+   },
+   "switch": {
+    "box_mm": [
+     -9.72,
+     -13.51,
+     -3.24,
+     -10.63
+    ],
+    "ocr": [
+     2,
+     2
+    ],
+    "legibility": 0.947
+   }
+  }
+ ],
+ "secs": 619,
+ "stitches": [
+  15625,
+  15330
+ ]
+}

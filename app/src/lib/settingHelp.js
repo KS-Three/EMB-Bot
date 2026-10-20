@@ -154,6 +154,12 @@ export const HELP = {
     changes: "The view only. Nothing about the design or the file changes.",
     when: "Flip between this and the stitches to check the digitizing against what you asked for.",
   },
+  sewnWidth: {
+    title: "Sewn width",
+    what: "Draws each satin column at the width it will show on the cloth. The file cuts every column wider on purpose, because the fabric pulls the stitches in as they tighten; this takes that allowance back off.",
+    changes: "The view only. The file keeps its full allowance, which is what the machine needs.",
+    when: "Lettering looks heavy against the original? Turn this on before judging the weight. Off shows the file as the machine reads it. Fills and running stitches are drawn as they are either way.",
+  },
   simulator: {
     title: "Stitch simulator",
     what: "Plays the design in the order the machine will sew it.",

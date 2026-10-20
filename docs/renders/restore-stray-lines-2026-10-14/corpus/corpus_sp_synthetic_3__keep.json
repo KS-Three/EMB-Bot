@@ -1,0 +1,47 @@
+{
+ "design": "sp_synthetic_3",
+ "arm": "keep",
+ "kind": "small_print",
+ "overrides": {
+  "small_text_true_size": true,
+  "small_text_keep_stray_lines": true
+ },
+ "stitches": 378,
+ "trims": 2,
+ "jumps": 4,
+ "thread_m": 0.267,
+ "size_mm": [
+  21.4,
+  3.4
+ ],
+ "md5": "88822294f988881fd2207163a98409c3",
+ "shape_digests": {
+  "Sfacb88b7": "a51c60e91c55323261a1d61acd03fa0c",
+  "Sc2dce934": "54bda8c5c8b427f416548d81232c9991",
+  "S00d683b7": "7f369ea3b5356cbad0fe4dfbf0c61d04",
+  "S8008d95a": "8a897ff09f365745034ea6f2dd4433e1",
+  "S51326b8e": "3ead4c972cd2bf0baf9fd8a2a7393f88",
+  "S15b52592": "7d1c78e6e25226224bd85dc03f9b6654",
+  "S5ead8211": "3815ff5366b51cd031599a4f065513c6"
+ },
+ "uncovered_total_mm2": 0.0,
+ "uncovered_wanted_mm2": 33.8,
+ "uncovered_worst_mm2": 0.0,
+ "uncovered_fires": false,
+ "uncovered_shapes": [],
+ "bare_mm2": 1.12,
+ "skeleton_shapes": 0,
+ "bean_shapes": 0,
+ "sp": {
+  "width_mm": 21.1,
+  "cap_mm": 3.0001447487101576,
+  "counters": 10,
+  "counters_shut": 2,
+  "counter_open": 0.6475325344672078,
+  "covered": 0.9798521524858675,
+  "spill": 0.5398427308305551,
+  "dust": 0.046875
+ },
+ "words": {},
+ "secs": 40
+}

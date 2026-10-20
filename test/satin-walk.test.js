@@ -57,8 +57,13 @@ test("skeletonEdges: a ring walk that never comes back to where it began has fou
     ".......",
   ]);
   const edges = satin.skeletonEdges(mask, w, h);
-  assert.deepStrictEqual(edges.map((e) => e.pts.length), [],
-    "a walk that did not close is not a closed edge");
+  assert.deepStrictEqual(edges.filter((e) => e.closed), [], "a walk that did not close is not a closed edge");
+  // Since 2026-10-04 (one pixel, one edge) such a walk is not thrown away
+  // either: it is an OPEN stroke, with the ends its pixels have. Neither end
+  // of this one is an end pixel, so the emitter neither trims it nor runs it
+  // out. ((4,2), the far hook's filler, is left unwalked.)
+  assert.deepStrictEqual(edges.map((e) => e.pts), [[[4, 1], [3, 2], [2, 2], [1, 2], [1, 3]]]);
+  assert.ok(!edges[0].freeStart && !edges[0].freeEnd);
 });
 
 test("skeletonEdges still walks a ring with no node as one closed edge", () => {
@@ -83,7 +88,10 @@ test("skeletonEdges still walks a ring with no node as one closed edge", () => {
 // and the options are the ones it passes: the defect is an accident of how
 // one outline lands on the raster, so a re-typed star would test another.
 const lib = (name) => import(pathToFileURL(path.join(__dirname, "..", "app", "src", "lib", name)).href);
-async function studioStar(points, innerRatio, sizeMm, garmentId = "left_chest") {
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent); a pin below taken before that, on another subject, builds with them OFF.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+async function studioStar(points, innerRatio, sizeMm, garmentId = "left_chest", extra) {
   const { shapePresetPoints } = await lib("shapePresets.js");
   const { shapesToRegions } = await lib("manualShapes.js");
   const ring = shapePresetPoints("star", { points, innerRatio }, sizeMm);
@@ -92,7 +100,7 @@ async function studioStar(points, innerRatio, sizeMm, garmentId = "left_chest") 
   ]);
   return digitize.buildQualityDesign(regions, {
     garment: garments.getGarment(garmentId), fabric: fabrics.getFabric(fabrics.fabricForGarment(garmentId)), pxPerMm,
-    darkOnTop: false, underlay: true, targetWidthMm: sizeMm, offsetXMm: 0, offsetYMm: 0,
+    darkOnTop: false, underlay: true, targetWidthMm: sizeMm, offsetXMm: 0, offsetYMm: 0, ...extra,
   });
 }
 const median = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
@@ -155,12 +163,25 @@ test("a small round shape whose ring walks all ran away is sewn once, across its
 });
 
 test("a star none of whose walks ran to the guard sews exactly what it sewed", async () => {
-  // Counts measured on origin/main at f887e27d, before the walk was touched.
-  // (Not every star beside the 20 mm one qualifies: the 30 mm one and the
-  // ratio-0.3 one had walks at the guard too, whose edges the emitter's
-  // smoothing happened to fold to a point, and those two do move.)
-  assert.strictEqual((await studioStar(12, 0.15, 12)).stitchCount, 444);
-  assert.strictEqual((await studioStar(12, 0.15, 18)).stitchCount, 713);
-  assert.strictEqual((await studioStar(12, 0.15, 23)).stitchCount, 999);
-  assert.strictEqual((await studioStar(8, 0.15, 20)).stitchCount, 592);
+  // On origin/main at f887e27d, before the walk was touched, these four sewed
+  // 444, 713, 999 and 592 stitches, and the walk fix left all four alone:
+  // that was this test. (Not every star beside the 20 mm one qualifies: the
+  // 30 mm one and the ratio-0.3 one had walks at the guard too, whose edges
+  // the emitter's smoothing happened to fold to a point, and those two do
+  // move.)
+  //
+  // The spine change of 2026-10-04 (a spare cell on the grid's top and left,
+  // a thinning that keeps a diagonal, one pixel to one edge, and a free end
+  // run out to the outline: test/satin-spine.test.js) moves every satin
+  // star, these four with it. They sew a third fewer stitches. The counts
+  // below are theirs since. (Main carried the first of those four parts alone
+  // from 2026-10-08, `7bb83e9b`, and read 462 / 751 / 1025 / 594 under it.)
+  // `satinSmallShapes` (ON by default since 2026-10-20, Kent) sews a star's
+  // centre as one zone and moves every satin star; these counts are the walk's
+  // subject, so they are pinned on the pre-flip satin.
+  const PRE_FLIP = { ...TRIO_OFF, satinSmallShapes: false };
+  assert.strictEqual((await studioStar(12, 0.15, 12, undefined, PRE_FLIP)).stitchCount, 297);
+  assert.strictEqual((await studioStar(12, 0.15, 18, undefined, PRE_FLIP)).stitchCount, 456);
+  assert.strictEqual((await studioStar(12, 0.15, 23, undefined, PRE_FLIP)).stitchCount, 644);
+  assert.strictEqual((await studioStar(8, 0.15, 20, undefined, PRE_FLIP)).stitchCount, 390);
 });

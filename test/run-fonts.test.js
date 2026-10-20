@@ -118,7 +118,10 @@ test("bean repeats backtrack each stitch (repeats:1 => triple stitch)", () => {
 // crosses past the 5.0 mm split threshold at 40 mm. 751 -> 786, +4.7%, all of
 // it intermediate penetrations on crosses that were already too long to lie
 // flat. The other four are untouched, which is the threshold doing its job.
-const SATIN_BASELINE = { montecarlo: 1166, alchemy: 786, venezia: 997, cats: 1243, apesplit: 2475 };
+// Re-pinned 2026-10-08 (was 1166 / 786 / 997 / 1243 / 2475): a needle-down
+// connector no longer lays the next run's first stitch twice. Every stitch
+// removed was a second penetration on the point before it; nothing else moved.
+const SATIN_BASELINE = { montecarlo: 1146, alchemy: 762, venezia: 937, cats: 1187, apesplit: 2214 };
 
 // These five are committed, so the guard below should never fire. It throws on
 // CI regardless: a pinned baseline whose font has vanished is not "nothing to
@@ -139,13 +142,18 @@ function binOrSkip(p, key) {
 // under the floor at this size — so the invariant is asserted on the legacy
 // stream, which the option keeps reachable. The floor's own effect is pinned
 // where it belongs, in test/satinfont.test.js.
+// `satinZigzag: false` (2026-10-13) for the same reason: the zigzag order
+// went default ON that day and moves alchemy (762 -> 797, its split return
+// legs), so the invariant stays on the stream it was pinned on.
+// `ties`, `fillStagger`, `dedupeHoles` false (2026-10-20) for the same reason:
+// all three went default ON that day (Kent).
 for (const [key, expected] of Object.entries(SATIN_BASELINE)) {
   test(`satin font ${key} stitches exactly as before run support`, () => {
     const p = path.join(BIN, key + ".embf");
     if (!binOrSkip(p, key)) return;
     const font = fb.decodeFontBin(fs.readFileSync(p));
     const text = font.glyphs["a"] ? "Emb" : "EMB";
-    const d = DG.buildLetteringDesign(font, text, { ...base, crossFloor: false });
+    const d = DG.buildLetteringDesign(font, text, { ...base, crossFloor: false, satinZigzag: false, ties: false, fillStagger: false, dedupeHoles: false });
     assert.strictEqual(d.stitches.length, expected, `${key} stitch count moved`);
   });
 }

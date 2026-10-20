@@ -232,3 +232,33 @@ test("medialSatin stitches an annulus as a ring without crossing the counter", (
   }
   assert.strictEqual(midInHole, 0, `no stitch may sew across the counter, got ${midInHole}`);
 });
+
+// A flat-sided stroke's skeleton was glued to its top edge and left end:
+// `rasterize` put the shape's first row and column on the grid's own edge
+// and `thin` never erodes an edge cell, so the rays from those stations
+// crossed the whole bar. A 38 mm x 1.9 mm bar sewed a 37.7 mm stitch and
+// needle points 1.5 mm outside it (2026-10-08).
+test("medialSatin: an axis-aligned bar sews crosses no longer than its width, inside it, end to end", () => {
+  const pxPerMm = 8;
+  for (const [w, L] of [[10, 300], [16, 150], [24, 60]]) {
+    for (const ring of [
+      [{ x: 0, y: 0 }, { x: L, y: 0 }, { x: L, y: w }, { x: 0, y: w }],
+      [{ x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: L }, { x: 0, y: L }],
+    ]) {
+      const out = satin.medialSatin(ring, { spacingMm: 0.4, pxPerMm, pullCompMm: 0.2 });
+      const tall = ring[2].y > ring[2].x;
+      const along = (p) => (tall ? p.y : p.x), across = (p) => (tall ? p.x : p.y);
+      const pull = 0.2 * pxPerMm;
+      let longest = 0;
+      for (let i = 1; i < out.length; i++) {
+        if (!out[i].travel) longest = Math.max(longest, Math.hypot(out[i].x - out[i - 1].x, out[i].y - out[i - 1].y));
+      }
+      const tag = `${w}x${L}${tall ? " tall" : ""}`;
+      assert.ok(longest <= w + pull + 1, `${tag}: longest stitch ${(longest / pxPerMm).toFixed(2)} mm on a ${(w / pxPerMm).toFixed(2)} mm bar`);
+      assert.ok(out.every((p) => across(p) >= -pull - 0.01 && across(p) <= w + pull + 0.01 && along(p) >= -pull - 0.01 && along(p) <= L + pull + 0.01), `${tag}: a needle point outside the bar`);
+      // the column still reaches each end, to within a stroke width
+      const lo = Math.min(...out.map(along)), hi = Math.max(...out.map(along));
+      assert.ok(lo <= w && hi >= L - w, `${tag}: column spans ${lo.toFixed(1)}..${hi.toFixed(1)} of 0..${L}`);
+    }
+  }
+});

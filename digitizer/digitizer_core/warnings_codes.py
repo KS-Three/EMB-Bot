@@ -193,6 +193,18 @@ PALETTE_THREAD_MISMATCH = "PALETTE_THREAD_MISMATCH"
 # Stage 5 (overlap resolution / pull compensation)
 HOLE_NEARLY_CLOSED = "HOLE_NEARLY_CLOSED"          # pull comp would swallow a hole; held open. extra: {"count": int}
 SAME_THREAD_SHAPES_MERGED = "SAME_THREAD_SHAPES_MERGED"  # pull comp would fuse two shapes of one thread; gap held open. extra: {"count": int}
+# `cfg.clip_keep_pieces` (defect 61, built OFF 2026-10-12): stage 5's clip by
+# the colours already sewn cut a shape in pieces; every piece whose artwork
+# clears `stage5_overlap.clip_piece_floor_mm2` sewed as its own region, and
+# these are the ones under it, dropped as the flag-off engine drops every
+# cut-off piece. ENGINE-SIDE ONLY: the Studio lists it in SILENT_WARNINGS
+# (Kent's 2026-10-02 no-warnings ruling). extra: {"count": int, "ids":
+# list[str], "total_mm2": float, "largest_mm2": float, "floor_mm2": float,
+# "pieces": [{"id": str, "art_mm2": float}]}
+# Also raised by stage 7 under `cfg.hairline`, with the same extra plus
+# "source": "hairline_rest": the parts of a hairline shape's thick remainder
+# (`stage6_hairline.rest_planned`) that stage 5's clip cut off below the floor.
+CLIP_DROPPED_SLIVER = "CLIP_DROPPED_SLIVER"
 
 # Stage 6 (stitch planning)
 SHAPE_TOO_THIN_TO_FILL = "SHAPE_TOO_THIN_TO_FILL"  # narrower than a fill can hold; satin's job (step 4). extra: {"count": int}
@@ -212,12 +224,40 @@ SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin
 # techniques and a person looking at the review screen should know why.
 # extra: {"count": int, "shapes": int}
 HAIRLINE_STROKES_AS_RUN = "HAIRLINE_STROKES_AS_RUN"
+# Stage 6 (the hairline TIER, `cfg.hairline`, default OFF, 2026-10-12 — a
+# different thing from the satin-internal stretches above). Shapes whose
+# skeleton width is at or under 1.5 thread widths sewed as ONE run along the
+# skeleton; strands under `machine.RUN_MIN_LOOP_MM` were dropped and are
+# counted here. ENGINE-SIDE ONLY: the Studio lists it in SILENT_WARNINGS
+# (Kent's 2026-10-02 ruling, "We shouldn't have to warn the user of
+# anything"). extra: {"shapes": int, "strands": int, "dropped": int}; on the
+# line route (`cfg.hairline_from_lines`, stage6_hairline_lines) also
+# {"source": "lines", "found", "refused_no_ridge", "sewn_by_polarity"}
+# (each {"dark": int, "light": int}), with "shapes" 0. As the gradient
+# supplement (`cfg.hairline_lines_gradient`) that is a SECOND warning beside
+# the region tier's, with "source": "lines_gradient", "refused_region" and
+# "refused_own_tone"; with `cfg.hairline_lines_logo_refusal` also
+# "refused_logo_edge", "refused_logo_flat" and "refused_logo_pattern".
+# With `cfg.hairline_lines_strand_test`, "refused_bar"; with
+# `cfg.hairline_lines_strand_mass` too, "exempt_mass" (bars kept as hair).
+HAIRLINE_TIER_SEWN = "HAIRLINE_TIER_SEWN"
 # `cfg.bean_letter_max_stroke_mm` (2026-10-02): lettering whose ink strokes are
 # under the line sewed as bean runs along the ink's skeleton instead of satin.
 # Info, not a problem -- Kent's ruling is that the engine takes the path and
 # says what it did, never asks the customer for a different file.
 # extra: {"count": int (shapes), "words": int (text clusters)}
 SMALL_LETTERING_AS_BEAN = "SMALL_LETTERING_AS_BEAN"
+
+# Stage 7 under `cfg.detail_spokes` (built OFF 2026-10-15, `detail_spokes.py`):
+# a small detail of another colour, enclosed by one shape and too small for
+# the run tier's outline, sewed as ONE run of spokes from its centre on top
+# of the shape round it (the pro's white asterisk on Fremont's black
+# Wisconsin). Info, not a problem -- the engine took the path (Kent's
+# 2026-10-02 ruling); ENGINE-SIDE ONLY, the Studio lists it in
+# SILENT_WARNINGS. extra: {"count": int (marks), "spokes": int (all marks'
+# spokes), "colour_changes": int (blocks ADDED to sew a mark after its host;
+# 0 when a later block of the mark's thread hosted it), "ids": list[str]}
+DETAIL_SPOKES_SEWN = "DETAIL_SPOKES_SEWN"
 
 # Stage 2 (photo segmentation)
 # A region owns exactly one thread, so a region whose own pixels span more

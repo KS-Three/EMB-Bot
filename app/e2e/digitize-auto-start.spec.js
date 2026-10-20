@@ -18,7 +18,7 @@
 // reuse a running service, start one from a venv if there isn't one, and SKIP
 // (never fail) on a machine with no digitizer venv.
 import { test, expect } from "@playwright/test";
-import { startStudio, typeText, pickGarment, openDownload, uploadArtwork } from "./helpers.js";
+import { startStudio, typeText, makeOversize, pickGarment, openDownload, uploadArtwork, openAdvanced } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -124,10 +124,14 @@ test("Upload file opens the file browser; cancelling adds nothing, choosing adds
 
   // The Artwork tile is the same door.
   chooserPromise = page.waitForEvent("filechooser");
+  await openAdvanced(page);
   await page.locator(".eladd-row button", { hasText: "Artwork" }).click();
   chooser = await chooserPromise;
   await chooser.setFiles(ART_PNG);
-  await expect(rows).toHaveCount(before + 1);
+  // A fresh design's only row is its empty text box, which the art REPLACES
+  // (art-first-size.spec.js) — so the count holds and the row is the art.
+  await expect(rows).toHaveCount(before);
+  await expect(rows.filter({ hasText: "Text · empty" })).toHaveCount(0);
   await expect(page.locator(".dgp-run")).toHaveText("Auto Digitize Image");
 });
 
@@ -204,6 +208,7 @@ test("a file loads without digitizing; the button runs it, and goes transparent 
   // ---- change something: transparent, stitches untouched, no request ------
   const statsBefore = await page.locator(".dgp-stats").innerText();
   const width = page.getByLabel("Design width");
+  await openAdvanced(page);
   await width.fill("50");
   await width.blur();
   await expect(run).toHaveClass(/dgp-run-stale/);
@@ -250,7 +255,7 @@ test("JEF downloads a real file through the service — the format with no brows
   const downloadPromise = page.waitForEvent("download");
   await jef.click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("design.jef");
+  expect(download.suggestedFilename()).toMatch(/^[a-z0-9-]+\.jef$/);
   const jefPath = await download.path();
   const jefBytes = readFileSync(jefPath);
   expect(jefBytes.length).toBeGreaterThan(512);
@@ -266,7 +271,7 @@ test("JEF downloads a real file through the service — the format with no brows
   const dstPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "DST", exact: true }).click();
   const dst = await dstPromise;
-  expect(dst.suggestedFilename()).toBe("design.dst");
+  expect(dst.suggestedFilename()).toMatch(/^[a-z0-9-]+\.dst$/);
   expect(readFileSync(await dst.path()).equals(jefBytes)).toBe(false);
 });
 
@@ -326,14 +331,15 @@ async function jefHoopCode(page) {
   const anyway = page.getByRole("button", { name: "Download JEF anyway", exact: true });
   if (await anyway.isVisible().catch(() => false)) await anyway.click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("design.jef");
+  expect(download.suggestedFilename()).toMatch(/^[a-z0-9-]+\.jef$/);
   return readFileSync(await download.path()).readInt32LE(JEF_HOOP_CODE_OFFSET);
 }
 
-async function reachDownloadWithText(page, garmentLabel, text) {
+async function reachDownloadWithText(page, garmentLabel, text, { oversize = false } = {}) {
   await startStudio(page);
   await pickGarment(page, garmentLabel);
   await typeText(page, text);
+  if (oversize) await makeOversize(page);
   await openDownload(page);
 }
 
@@ -341,8 +347,9 @@ test("the JEF caveat appears exactly when the file's hoop code is the bad one", 
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
 
-  // ---- over the band: Full Back's placement box is 304.8 mm ---------------
-  await reachDownloadWithText(page, "Full Back", "FRITSCHS");
+  // ---- over the band: Full Back auto-fit is capped to the 200 mm hoop (2026-10-13),
+  // so type a 10 in width (254 mm) to go past the band --------------------------
+  await reachDownloadWithText(page, "Full Back", "FRITSCHS", { oversize: true });
   const note = page.getByTestId("jef-hoop-header-note");
   await expect(note).toBeVisible();
   await expect(note).toContainText("110 × 110 mm");

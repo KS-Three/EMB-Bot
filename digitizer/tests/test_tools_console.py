@@ -42,8 +42,33 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
 #: reads doc text, so neither is exposed through a doc; listing them is what
 #: lets the sweep below stay exhaustive. (`sewout_walk_reach` widens its
 #: stdout all the same — its own sheet prints arrows, which is the OTHER
-#: exposure, swept separately below.)
-NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach"}
+#: exposure, swept separately below.) `counter_slots` WRITES its table as
+#: `<fixture>.md` and reads none. `hairline_renders` WRITES `table.md` and
+#: `hairline_card` writes the sew-out card's `README.md`, `scoring-sheet.md`
+#: and `readback.md` (2026-10-12): both print only JSON rows, and neither
+#: reads a doc. `hairline_photo_trial` (2026-10-12) likewise WRITES
+#: `table.md` and names its findings doc in comments; it prints JSON rows and
+#: one ASCII pipeline line, and reads no doc. `hairline_lines_trial`
+#: (2026-10-13) the same: WRITES `table.md`, names #876's doc in its
+#: docstring, prints JSON rows and an ASCII table, reads no doc.
+NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach", "counter_slots",
+              "hairline_renders", "hairline_card", "hairline_logo_bill",
+              "sewout_candidates_card",   # writes README / scoring sheet / readback .md, reads none
+              "sewout_card_v3",           # same: writes the v3 card's .md files, reads none (2026-10-13)
+              "sewout_card_v3_1",         # same: writes v3.1's README / scoring sheet / readback, reads none
+              "sewout_card_v3_2",         # same for v3.2 (README-v3.2 / scoring-sheet-v3.2 / readback-v3.2), reads none
+              "sewout_card_passes",       # same: writes the pass swatch's README, reads none (2026-10-14)
+              "sewout_card_lettering_arms",   # same: writes the lettering-arms card's README / scoring sheet, reads none
+              "sewout_card_bayhold_edgecap",  # same: writes the bay-hold / edge-cap card's README / scoring sheet, reads none
+              "hairline_photo_trial", "hairline_lines_trial",
+              "hairline_coverage",   # WRITES table.md, reads none (2026-10-13)
+              "hairline_travel",     # same: writes table.md, reads none (2026-10-13)
+              "hair_reach",          # same: writes table.md, reads none (2026-10-13)
+              "fur_regions_census",  # same: writes table.md, reads none (2026-10-13)
+              "fur_texture_census",  # same: writes table.md, reads none (2026-10-14)
+              "detail_vs_lines",     # same: writes table.md, reads none (2026-10-14)
+              "hairline_lines_gradient",  # same: writes table.md, reads none (2026-10-14)
+              "hairline_logo_refusal"}    # same: writes table.md, reads none (2026-10-15)
 
 
 def cp1252_stream() -> tuple[io.BytesIO, io.TextIOWrapper]:

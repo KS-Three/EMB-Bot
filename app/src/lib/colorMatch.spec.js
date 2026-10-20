@@ -1,6 +1,6 @@
 import { test, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { rgbToLab, ciede2000, rankThreads, samplePatch, matchWord } from "./colorMatch.js";
+import { rgbToLab, ciede2000, rankThreads, samplePatch, matchWord, fabricContrastNote } from "./colorMatch.js";
 import { loadPalette, nearestInList } from "./threads.js";
 
 // Pinned against the Python lane: every number in the fixture came out of
@@ -127,4 +127,33 @@ test("matchWord grades a difference in plain words on the bands preflight alread
   expect(matchWord(4.9)).toBe("clearly different");
   expect(matchWord(12)).toBe("a different colour");
   expect(matchWord(NaN)).toBe("");
+});
+
+// --- fabricContrastNote -----------------------------------------------------
+
+const rgbOf = ([r, g, b]) => ({ r, g, b });
+
+test("fabricContrastNote warns when the only thread vanishes into the fabric", () => {
+  // Black thread (the text default) on the Black and Navy swatches.
+  expect(fabricContrastNote([rgbOf([20, 20, 20])], [20, 20, 22])).toMatch(/^Thread color is too close to the fabric/);
+  expect(fabricContrastNote([rgbOf([20, 20, 20])], [25, 34, 60])).toMatch(/too close/);
+  // White thread on Natural.
+  expect(fabricContrastNote([rgbOf([255, 255, 255])], [235, 232, 223])).toMatch(/too close/);
+});
+
+test("fabricContrastNote stays quiet when the thread stands out", () => {
+  expect(fabricContrastNote([rgbOf([20, 20, 20])], [235, 232, 223])).toBe("");
+  // Royal on Navy, the nearest swatch pair that clears the bar.
+  expect(fabricContrastNote([rgbOf([32, 64, 150])], [25, 34, 60])).toBe("");
+});
+
+test("fabricContrastNote only speaks when EVERY colour is close — a garment-coloured region in a logo is often deliberate", () => {
+  expect(fabricContrastNote([rgbOf([20, 20, 20]), rgbOf([255, 255, 255])], [20, 20, 22])).toBe("");
+  expect(fabricContrastNote([rgbOf([20, 20, 20]), rgbOf([25, 34, 60])], [20, 20, 22])).toMatch(/^Every thread color is too close/);
+});
+
+test("fabricContrastNote is empty on missing input rather than throwing", () => {
+  expect(fabricContrastNote([], [20, 20, 22])).toBe("");
+  expect(fabricContrastNote(null, [20, 20, 22])).toBe("");
+  expect(fabricContrastNote([rgbOf([20, 20, 20])], null)).toBe("");
 });
