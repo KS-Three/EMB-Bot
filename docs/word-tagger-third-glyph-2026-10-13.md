@@ -203,3 +203,157 @@ left for the L3 / size-policy work rather than built here.
 for 21 of the 58 glyphs missing at 50 mm (36%), all of them at 50 mm
 (enthusiast 14, fremont 7), and 0 at 65, 80 and 100 mm. ROADMAP gate 2: not
 touched.
+
+## Follow-up: the line test frees bridge's badge (2026-10-20)
+
+MASTER_SCOPE item 37 asked for the word's SHAPE, not containment, as the
+rule. This follow-up builds it into the tagger, behind the same OFF flag
+(`cfg.lettering_words`), and measures it the way #889 and #900 measured.
+Tool: `tools/word_tagger_trace.py --nest-census` (the "before" is
+`--variant nested=box`). The flag stays OFF.
+
+### The misses on `main` 7220f3e, 50 mm, by cause
+
+The baseline on today's `main` is **54 of 190** (#889's 58 was measured on
+2026-10-13; since then fremont's three `other_word` misses are gone and the
+screenshot's `height_ratio` miss reads `nested`). By cause:
+
+| cause | glyphs | where | reachable by the tagger? |
+|---|---|---|---|
+| no region at 50 mm (segmentation) | 21 | enthusiast 14 (the whole ENTERPRISES INC subline), fremont 7 (EST 1895) | no: stage 0 / regions, ROADMAP gate 2 |
+| nested: a line of letters in a host's hole | 12 | bridge, all of BAR & RESTAURANT inside the 49.4 mm badge disc | **yes, this PR** (8; the other 4 fail `ink` / `small_component` as they do at 80 and 100 mm) |
+| nested: one glyph in a small ring-like host | 3 | gaulke 1 (host 2.72 mm), fremont 1 (3.82 mm), screenshot 1 (2.06 mm) | no: one glyph is not a line |
+| nested: gaulke's 2x2 window panes | 4 | gaulke "word2" (the 100 mm reference's own false positive) | the drop is right; #900 |
+| script / whole-word regions (`aspect`, `height_ratio`) | 5 | tires 4 (`ires` 0.168, two regions at aspect 3.3-3.8), bridge 1 (`Bridge` 2.6) | no: one region is not a group (#927) |
+| link rules on golden_tee's bevel slivers | 7 | aspect 1 (fused), merged 1, height_ratio 1 (0.458), small_component 2, stroke_cv 1 (0.620), ink 1 (39.3) | no honest labels; four different rules (#889) |
+| link rules on drone's THERMAL | 2 | stroke_cv 0.729, height_ratio 0.559 | size policy (L3), not a threshold |
+
+Full per-glyph list: `python -m tools.word_tagger_trace <fixture> --widths 50
+--variant nested=box` on each fixture.
+
+### The rule
+
+`words._drop_nested_words`: a host's box swallows a glyph as before
+(`textcluster._drop_nested`), unless the glyph is a member of a group that
+(1) lies inside the host's outline with its holes filled, (2) links into a
+word by the tagger's own link, and (3) has a LINE's shape: ordered along its
+principal axis, no step from one glyph to the next turns more than
+`words.LINE_TURN_MAX_DEG` (60) from the step before. (1) and (2) are #900's
+`ring` policy; (3) is new, and it is what tells one row from a block.
+
+Every linked word a host's box held, over nine logos at four sizes (the
+groups a `ring`, `box` or `hull` containment could free), and its largest
+turn:
+
+| fixture | mm | host | n | labelled letters | in outline | in hull | max turn |
+|---|---|---|---|---|---|---|---|
+| bridge | 50 | Sc050577e (badge disc) | 8 | 8 | 8 | 8 | 24.3 |
+| bridge | 65 | S86f3627b | 9 | 9 | 0 | 9 | 34.2 |
+| bridge | 65 | S2cb6c9d0 | 8 | 8 | 0 | 7 | 34.2 |
+| bridge | 80 | Sb7c53307 | 4 | 0 | 0 | 3 | 99.2 |
+| drone | 100 | S2af623d5 (body, 2x2 icon) | 4 | 0 | 4 | 4 | 133.1 |
+| screenshot | 100 | S618732e4 (app icon, 2x2) | 4 | 0 | 4 | 4 | 135.0 |
+| golden_tee | 80 | S597c2467 | 3 | 0 (reference) | 0 | 3 | 37.3 |
+| gaulke | 50 | S474b1932 (house, 2x2 panes) | 4 | 4 (reference) | 0 | 4 | 127.0 |
+| gaulke | 65 | Sb8bb2070 | 4 | 4 (reference) | 0 | 2 | 126.3 |
+| gaulke | 80 | S94b8296d | 4 | 4 (reference) | 0 | 2 | 127.4 |
+
+Every line of letters turns under 37 degrees (bridge's arc, the deepest on
+the labelled logos, 24-34 at every size); every block turns over 99. Any
+limit from 37 to 99 gives the same census; 60 is the middle. The straight
+band measures were tried first and REFUSED bridge: in its principal-axis
+frame BAR & RESTAURANT's baseline spreads 3.1 cap heights (an arc round a
+badge) against a 2x2 grid's 1.3, so a baseline / x-height band in one frame
+cannot keep the arc and lose the grid; the chain's turn can.
+
+### Census (36 cells; a false join is a non-letter newly in a word)
+
+| policy | gained | lost | new stray | new cross-line | lines completed | zero false joins |
+|---|---|---|---|---|---|---|
+| ring (#900) | 8 | 0 | 8 | 0 | +0 | NO |
+| **ring+line (shipped in the tagger)** | **8** | **0** | **0** | **0** | **+0** | **yes** |
+| box+line (a line-shaped word anywhere in the host's box) | 16 | 0 | 3 | 0 | +0 | NO |
+| hull+line (inside the host's convex hull) | 15 | 0 | 6 | 0 | +0 | NO |
+
+- `ring+line`'s 8 gains are bridge's BAR & RESTAURANT at 50 mm, and nothing
+  else moves at any size: the two 2x2 grids `ring` freed turn 133 and 135
+  degrees and stay swallowed.
+- `box+line` also frees the 65 mm bridge letters (7 more: at 65 mm the
+  badge is segmented into arc pieces whose BOXES hold the letters beside
+  their ink, outline 0.00) and one golden_tee glyph at 80 mm, at the cost of
+  three golden_tee 80 mm slivers (S597c2467's hole-less box, turn 37.3)
+  that are not in the 100 mm reference. golden_tee has no honest labels, so
+  whether those three are letter pieces is unknown; by the strict census
+  they are strays and the policy is not shipped. It is in the tool
+  (`--variant nested=box+line`) for the day golden_tee is labelled.
+- `hull+line` adds three bridge 80 mm strays on top (pieces in the hull of
+  a host at 80 mm).
+
+### After: misses and kappa
+
+| | 50 mm | 65 mm | 80 mm | 100 mm |
+|---|---|---|---|---|
+| missing / expected, before (`nested=box`) | 54 / 190 | 32 / 190 | 18 / 190 | 14 / 190 |
+| missing / expected, after | 46 / 190 | 32 / 190 | 18 / 190 | 14 / 190 |
+| `nested` refusals, before -> after | 19 -> 11 | 16 -> 16 | 5 -> 5 | 1 -> 1 |
+
+Detection kappa (`tools/word_tagger_eval.py`, the hand labels at the corpus
+sizes, 7 fixtures scored, gaulke STALE): pooled **0.923 [0.819, 0.975]
+before and after**, every fixture's tp/fp/fn identical. The corpus sizes
+are 80-100 mm, where the badge is over the 60 mm ceiling and never a host,
+so the eval cannot see this change. At 50 mm, with the labels carried by
+position (strict: a letter the carry lost counts as a non-letter), pooled
+kappa over the 7 labelled fixtures **0.830 -> 0.881** (bridge 0.000 ->
+0.672, 8/0/5; the other six identical); 65, 80 and 100 mm unchanged
+(0.845 / 0.923 / 0.847). All of it IN-SAMPLE: the labels are the ones the
+tagger's constants were fitted on, and the 60-degree limit was read off the
+same ten groups the census scores.
+
+### What was not reached, and why
+
+- **`no_region` (21):** segmentation. Gate 2.
+- **The 65 mm bridge letters (12, `nested`):** need a containment looser
+  than the outline (`box+line`), which has 3 strays on the unlabelled
+  fixture. Label golden_tee's 80 mm slivers, or rule on them, before that
+  ships.
+- **One glyph in a small ring-like host (3):** a line is three glyphs; a
+  glyph alone in a host has no shape to read. It is the same case as a
+  counter fragment riding on an O, and no size or shape rule here tells
+  them apart without a constant fitted to these three.
+- **Script (5), golden_tee's slivers (7), drone's THERMAL (2):** the
+  reasons #889 and #927 gave stand; `height_ratio` is a size-policy (L3)
+  question and would be a sew-out-free constant fitted in-sample.
+
+### Reproducing with the committed tool
+
+`python -m tools.word_tagger_trace <fixture> --widths 50 65 80 100
+--nest-census --json <fixture>.json` on each of the nine, then
+`--summarize *.json`. The tool's census scores every variant against the
+SHIPPED tagger, which is now `ring+line`, so its table reads the other way
+round from the one above: `nested=box` (the rule before this change) LOSES
+the 8, `ring` gains 0 and adds the 8 strays, `box+line` gains 8 more (the
+65 mm bridge letters and golden_tee's one) at 3 strays, `hull+line` 7 at 6.
+Pooled over the nine fixtures on 2026-10-20:
+
+| variant | gained | lost | new stray | new cross-line | lines completed | zero false joins |
+|---|---|---|---|---|---|---|
+| nested=box | 0 | 8 | 0 | 0 | +0 | yes |
+| nested=box+line | 8 | 0 | 3 | 0 | +0 | NO |
+| nested=hull+line | 7 | 0 | 6 | 0 | +0 | NO |
+| nested=ring | 0 | 0 | 8 | 0 | +0 | NO |
+| nested=frame | 20 | 0 | 19 | 0 | +3 | NO |
+| nested=outline | 20 | 8 | 21 | 0 | +3 | NO |
+| nested=frame+outline | 20 | 0 | 29 | 0 | +3 | NO |
+| nest_max_h=5 / 8 | 0 / 0 | 0 | 16 / 12 | 0 | +0 | NO |
+
+(#900's `frame` read 28 gained; 8 of those are now in the base.)
+
+Nothing sewn changes: `tag_words` is never called with the flag OFF
+(`pipeline.py`), and the 17-design corpus (`tools/small_lettering_compare
+--corpus <d> main`, every cell its own process) on `main` 7220f3e and on
+this branch reads the same stitch-stream md5, stitch count and trim count on
+every design: becker 04854a35, tires 86cc91a1, enthusiast f928ba3b, fremont
+44982871, bridge 55ecb0a9, golden_tee 9208ffe4, gaulke 9f1a2036, drone
+3471f5aa, screenshot a977a955, fremont_hat81 24debfc7, fremont_hat925
+36b10c2b, sp_synthetic 2.5 / 3 / 4 1ad15a6e / 5da6cf3d / 290e5ab0,
+sp_fremont_tagline 2.5 / 3 / 4 3dab6e76 / 57672f26 / 9a285662.

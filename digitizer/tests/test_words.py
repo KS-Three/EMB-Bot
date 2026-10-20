@@ -280,3 +280,173 @@ def test_truth_file_is_well_formed():
         ids = [s for line in fx["lines"].values() for s in line]
         assert ids and len(ids) == len(set(ids))
         assert not set(ids) & set(fx.get("ignore", []))
+
+
+# ------------------------------------------------------------------ the nesting drop
+#
+# `_drop_nested_words` (2026-10-20): a host's box swallows a glyph UNLESS the
+# glyph is one of a LINE of lettering lying in the host's hole, and a line
+# is a chain that never doubles back (`_is_line`, `LINE_TURN_MAX_DEG`). The
+# measured case is bridge's BAR & RESTAURANT inside its badge at 50 mm (PRs
+# #889, #900); the measured refusals are 2x2 icon grids in a shape's hole.
+
+from shapely.geometry import Point  # noqa: E402
+
+from digitizer_core.words import (LINE_TURN_MAX_DEG, _drop_nested_words, _is_line,  # noqa: E402
+                                  _max_turn_deg)
+
+
+def _ring(sid: str, cx: float, cy: float, r: float, stroke: float = 0.8) -> Region:
+    c = Point(cx, cy)
+    return _region(sid, c.buffer(r, 64).difference(c.buffer(r - stroke, 64)))
+
+
+def _panes(prefix: str, x0: float, y0: float, side: float = 1.5, pitch: float = 1.9) -> list[Region]:
+    """A 2x2 block of identical squares (an icon's window panes)."""
+    return [_region(f"{prefix}{i}", box(x0 + x, y0 + y, x0 + x + side, y0 + y + side))
+            for i, (x, y) in enumerate([(0, 0), (pitch, 0), (0, pitch), (pitch, pitch)])]
+
+
+def test_a_line_in_a_rings_hole_is_a_word():
+    """The badge case: a ring under the height ceiling passes every glyph
+    screen and its box holds the whole line in its hole. Before 2026-10-20
+    the line was swallowed."""
+    text = _text("a", "HELTFU", x0=-11.0, y0=-2.0)
+    regions = text + [_ring("ring", 0.0, 0.0, 15.0)]
+    words = detect_words(regions)
+    assert len(words) == 1 and _ids(words[0]) == [f"a{i}" for i in range(6)]
+    assert {c.region.shape_id for c in _candidates(regions)} == {r.shape_id for r in regions}
+
+
+def test_an_arched_line_in_a_rings_hole_is_a_word():
+    """BAR & RESTAURANT runs round its badge (24-34 deg between steps at
+    every size): the chain test tolerates an arc."""
+    regions = []
+    for i, ch in enumerate("HELTFUHE"):
+        g = rotate(_glyph(ch, 0.0, 0.0), -42 + 12 * i, origin=(W / 2, 14.0))
+        regions.append(_region(f"r{i}", g))
+    regions.append(_ring("ring", W / 2, 14.0, 19.0))
+    words = detect_words(regions)
+    assert len(words) == 1 and len(words[0].members) == 8
+    cands = [c for c in _candidates(regions) if c.region.shape_id != "ring"]
+    assert 5.0 < _max_turn_deg(cands) < LINE_TURN_MAX_DEG
+
+
+def test_a_grid_in_a_rings_hole_is_not_a_word():
+    """Why freeing whatever LINKS in a hole was a measured negative (#900):
+    four panes link like a word of four. A block has to double back
+    between its rows, so it fails the line test and stays swallowed."""
+    regions = _panes("p", -1.7, -1.7) + [_ring("ring", 0.0, 0.0, 6.0)]
+    assert detect_words(regions) == []
+    assert [c.region.shape_id for c in _candidates(regions)] == ["ring"]
+    raw = [c for c in _candidates(regions[:4])]          # the panes alone, no host
+    assert len(raw) == 4
+    assert _max_turn_deg(raw) >= 90.0 and not _is_line(raw)
+    # the plateau the limit sits in: every measured line under 37 deg, every
+    # measured block over 99 (the module's constant comment has the table)
+    assert 37.0 < LINE_TURN_MAX_DEG < 99.0
+
+
+def test_a_pair_a_crumb_and_a_line_beside_a_hosts_ink_are_swallowed_as_before():
+    # two glyphs are not a word, so the ring keeps them, and the crumb too
+    pair = _text("a", "HE", x0=-3.5, y0=-2.0) + [_region("crumb", box(-1.0, 7.0, -0.2, 8.5)),
+                                                 _ring("ring", 0.0, 0.0, 15.0)]
+    assert detect_words(pair) == []
+    assert [c.region.shape_id for c in _candidates(pair)] == ["ring"]
+    # a line in the host's BOX beside its ink (an L-shaped host): the
+    # exception is for the hole, not the box, so it is swallowed as before
+    host = _region("host", Polygon([(0, 0), (1, 0), (1, 29), (40, 29), (40, 30), (0, 30)]))
+    beside = _text("b", "HELT", x0=10.0, y0=5.0) + [host]
+    kept = {c.region.shape_id for c in _candidates(beside)}
+    if "host" in kept:                      # the host passed the glyph screens, as the badge does
+        assert kept == {"host"} and detect_words(beside) == []
+
+
+def test_the_row_test_values_and_the_plain_drop_without_a_host():
+    row = _candidates(_text("a", "HELTFU"))
+    assert _max_turn_deg(row) < 5.0 and _is_line(row)
+    assert _max_turn_deg(row[:2]) == 0.0 and not _is_line(row[:2])
+    # with no host holding three, the drop IS `textcluster._drop_nested`
+    from digitizer_core.textcluster import _drop_nested
+    regions = _text("a", "HELT") + [_region("frag", box(0.1, 0.5, 0.4, 2.0))]
+    raw = _candidates(regions)
+    assert [c.region.shape_id for c in raw] == [c.region.shape_id for c in _drop_nested(raw)]
+    assert "frag" not in {c.region.shape_id for c in raw}
+
+
+# --- the corpus cases the rule was measured on ------------------------------
+
+@pytest.fixture(scope="module")
+def bridge():
+    from digitizer_core.threads import chart_for
+    from tools.thin_strokes import REAL_ART, STUDIO_MAX_COLORS
+    fname, corpus_w, garment = REAL_ART["bridge"]
+    out = {}
+    for w in (corpus_w, 50.0):
+        cfg = PipelineConfig(target_width_mm=w, garment_id=garment, max_colors=STUDIO_MAX_COLORS)
+        out[w] = (build_generation(str(TESTDATA / fname), cfg).regions, chart_for(cfg))
+    return corpus_w, out
+
+
+def test_bridge_50mm_bar_and_restaurant_is_freed_from_the_badge(bridge):
+    """At 50 mm the badge disc (49.4 mm, under the 60 mm ceiling) held every
+    letter of BAR & RESTAURANT in its box and the tagger found no word
+    (#889: 12 of the 58 misses). Now the eight that link are one word and
+    nothing else is tagged: the labelled letters, carried to 50 mm by
+    position, are the only members."""
+    from tools.word_tagger_trace import carry
+    corpus_w, out = bridge
+    ref_regions, _ = out[corpus_w]
+    regions, chart = out[50.0]
+    truth = json.loads((TESTDATA / "lettering_truth.json").read_text())["fixtures"]["bridge"]
+    letters = {carry(ref_regions, corpus_w, regions, 50.0).get(s)
+               for s in truth["lines"]["BAR & RESTAURANT"]} - {None}
+    assert len(letters) == 12, "the carry lost a letter: re-read the fixture"
+    words = detect_words(regions, chart=chart)
+    assert len(words) == 1
+    members = set(_ids(words[0]))
+    assert members <= letters and len(members) == 8
+    # the host is still a candidate (it passes the screens) and in no word
+    badge = max(regions, key=lambda r: r.polygon.bounds[3] - r.polygon.bounds[1])
+    assert badge.shape_id not in members
+    assert 45.0 < badge.polygon.bounds[3] - badge.polygon.bounds[1] < 60.0
+
+
+@pytest.mark.parametrize("name", ["drone", "screenshot"])
+def test_the_icon_grids_in_a_hole_stay_out_at_100mm(name):
+    """#900's two strays under the `ring` policy: a 2x2 grid of panes in an
+    icon's hole (drone's body, the phone's app icon) linked like a word of
+    four. With the line test the tagger at 100 mm reads exactly what it read
+    under the rule before 2026-10-20."""
+    from dataclasses import replace
+    from digitizer_core.threads import chart_for
+    from tools import word_tagger_trace as T
+    from tools.thin_strokes import REAL_ART, STUDIO_MAX_COLORS
+    fname, _w, garment = REAL_ART[name]
+    cfg = PipelineConfig(target_width_mm=100.0, garment_id=garment, max_colors=STUDIO_MAX_COLORS)
+    regions = build_generation(str(TESTDATA / fname), cfg).regions
+    chart = chart_for(cfg)
+    memo: dict = {}
+    now = sorted(sorted(_ids(w)) for w in detect_words(regions, chart=chart))
+    before = sorted(T.trace(regions, chart, rules=replace(T.base_rules(), nested="box"), memo=memo).words)
+    ring = sorted(T.trace(regions, chart, rules=replace(T.base_rules(), nested="ring"), memo=memo).words)
+    assert now == before
+    extra = [w for w in ring if w not in before]
+    assert len(extra) == 1 and len(extra[0]) == 4, "the grid #900 measured is gone: re-read the census"
+    cands = T.trace(regions, chart, rules=replace(T.base_rules(), nested="ring"), memo=memo).cands
+    assert _max_turn_deg([cands[s] for s in extra[0]]) >= 90.0
+
+
+def test_the_hole_exception_is_deterministic_under_input_order():
+    """A word in a ring's hole, a grid in another's, a line beside an L
+    host and a plain row: the same words and ids from any input order."""
+    host = _region("host", Polygon([(60, 0), (61, 0), (61, 29), (100, 29), (100, 30), (60, 30)]))
+    regions = (_text("a", "HELTFU", x0=-11.0, y0=-2.0) + [_ring("ring", 0.0, 0.0, 15.0)]
+               + _panes("p", 28.3, -1.7) + [_ring("ring2", 30.0, 0.0, 6.0)]
+               + _text("b", "HELT", x0=70.0, y0=5.0) + [host] + _text("c", "FUTHEL", y0=40.0))
+    ref = [(w.word_id, _ids(w)) for w in detect_words(regions)]
+    assert sorted(ids for _wid, ids in ref) == [[f"a{i}" for i in range(6)], [f"c{i}" for i in range(6)]]
+    for seed in range(5):
+        shuffled = regions[:]
+        random.Random(seed).shuffle(shuffled)
+        assert [(w.word_id, _ids(w)) for w in detect_words(shuffled)] == ref

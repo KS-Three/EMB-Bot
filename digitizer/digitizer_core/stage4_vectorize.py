@@ -794,6 +794,10 @@ def vectorize(
                            if part.covers(Polygon(ring).representative_point())]
                 if mine_sc:
                     meta["small_counters"] = mine_sc
+            if getattr(rm, "cored_counter", False):
+                # `cfg.open_cored_counters`: a counter stage 3 kept out of
+                # its letter; stage 7 holds the letter's satin off it.
+                meta["cored_counter"] = True
             regions.append(
                 Region(
                     shape_id="",

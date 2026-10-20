@@ -82,8 +82,12 @@ SCRIPT_IDS = {"bridge": {"S71ddac97"}}     # script glyphs inside an otherwise-c
 
 
 def text_cluster_rules():
-    """The text cluster's LETTER door (`textcluster._letter_candidates`)."""
-    return replace(WT.base_rules(), aspect_max=1.4, min_height_mm=1.5, max_height_mm=60.0, cv_max=0.55)
+    """The text cluster's LETTER door (`textcluster._letter_candidates`).
+    The old taggers drop nested glyphs by the box rule (`nested="box"`,
+    `textcluster._drop_nested`); the word tagger's own drop
+    (`WT.SHIPPED_NEST`, since 2026-10-20) is L1's alone."""
+    return replace(WT.base_rules(), aspect_max=1.4, min_height_mm=1.5, max_height_mm=60.0, cv_max=0.55,
+                   nested="box")
 
 
 def rescued_rules():
@@ -91,14 +95,14 @@ def rescued_rules():
     calibration on rescued blobs, ratio 0.5, no height bounds, no ink link
     (it is run with `chart=None`)."""
     return replace(WT.base_rules(), aspect_max=1.4, min_height_mm=0.0, max_height_mm=math.inf,
-                   cv_max=0.32, height_ratio=0.5, ink_de=math.inf)
+                   cv_max=0.32, height_ratio=0.5, ink_de=math.inf, nested="box")
 
 
 def house_rules():
     """`textcluster._lettering_groups`: aspect and a skeleton, ratio 0.8, no
     ink, no height or CV screen (run with `chart=None`)."""
     return replace(WT.base_rules(), aspect_max=1.4, min_height_mm=0.0, max_height_mm=math.inf,
-                   cv_max=math.inf, ink_de=math.inf)
+                   cv_max=math.inf, ink_de=math.inf, nested="box")
 
 
 def _round(regions, rules, chart, memo, keep):

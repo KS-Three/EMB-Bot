@@ -851,11 +851,14 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles, cutFloats }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles, cutFloats, satinSmallShapes }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
   // satinfont.js's constant block — and `satinZigzag`, ON by default since 2026-10-13:
-  // constant rail order in the satin emitter, see satinplay.emitZigzag.)
+  // constant rail order in the satin emitter, see satinplay.emitZigzag.
+  // Since 2026-10-20 it also reads `dedupeHoles` and `underlayDirection`,
+  // the same names and values as here, BOTH default OFF in that lane — the
+  // shape lane's `underlayDirection` is ON; see the two notes beside `ties`.)
   //   `densityMm` (legacy, pre-2026-09-04) is one number for BOTH fillRowMm
   //   and satinSpacingMm and is still honoured exactly as it was — see the
   //   two spacings just below for the split and the defaults.
@@ -903,6 +906,8 @@
     const useUnderlay = o.underlay !== false;
     // `underlayDirection` (default ON, Kent 2026-10-11; built OFF in PR #822; defect 57): a satin column starts at the end nearer where its underlay ends (satin.js startNear). `underlayDirection: false` restores the old order.
     const underlayDirection = o.underlayDirection !== false;
+    // `satinSmallShapes` (default OFF, built 2026-10-20; defect 57's remainder): the medial satin caps a run-out end onto the outline, sews a square or dot as the smallest column along its own axis, and sews a junction of three or more arms (a star's centre) once as one zone, the arms cut at it (satin.js smallShapesSatin). Off, medialSatin is byte for byte what it was. The flip is Kent's (gate 3).
+    const satinSmallShapes = o.satinSmallShapes === true;
     const perRegionAngle = o.perRegionAngle !== false;
     const garment = o.garment || { widthIn: 5, heightIn: 2.25 };
 
@@ -1524,7 +1529,7 @@
             pts = column
               ? satinplaymod.satinFromRails(column.railA, column.railB, colRungs,
                   { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg })
-              : sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
+              : sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg, smallShapes: satinSmallShapes });
             if (underlayDirection) pts = satinmod.startNear(pts, endOfRuns(runs));
             nSatin++;
           }
@@ -1897,6 +1902,51 @@
     // finished (applyTies, 2026-10-03): until then they were pushed here as
     // each run went by, in px, and came out 0.2 to 2.0 mm long.
     const ties = !!o.ties;
+    // `dedupeHoles` (default OFF, 2026-10-20): the shape builder's rule
+    // (pushRun, "Waiting on Kent" 25), word for word, on this lane's stream.
+    // `T` rounds to the file's unit, so two penetrations nearer than 0.1 mm
+    // land on one point and the writers keep both: the needle goes down twice
+    // in one hole. Here that is mostly a run's first stitch on the point the
+    // run before it ended on — an underlay's closed walk returning to the
+    // satin's start, a glyph part beginning where the last one stopped — and
+    // the cross of a column narrowed to nothing. Measured on "FRITSCH" at
+    // 40 mm with the ladder's underlay: 257 records in fold_inkstitch (a
+    // bean font, whose run turns collapse onto one point — the library's
+    // most, a fifth of its records on "Stitches"), 146 in mai_en_fleur, 31
+    // in montecarlo, 18 in pixel10, 5 in medium_font
+    // (docs/renders/text-lane-flags/README.md). With the flag the first is
+    // laid and the second is not. ONLY a stitch whose record comes straight
+    // after a stitch on its point is left out: after a jump, a trim or a
+    // colour change the stitch is laid, whatever point it is on, for the
+    // reason pushRun gives (a cut is three jump records to a DST reader).
+    // `stitchAt` is the one place a stitch record enters the stream before
+    // applyTies, so the rule is asked once. Off, every stitch is unchanged.
+    const dedupeHoles = !!o.dedupeHoles;
+    // `underlayDirection` (default OFF here, 2026-10-20; the shape lane's is
+    // ON since 2026-10-11, defect 57): a satin column begins at whichever of
+    // its two ends is nearer where its underlay finished, satin.startNear,
+    // the shape lane's rule. The ends are the midpoints of the column's first
+    // and last crosses, not its first and last stitches (see startNear's
+    // `ends`): a zigzag starts on one rail and ends on the other, so on a
+    // column wider than it is long the first STITCH is the farther one even
+    // when the thread sits at the column's own start.
+    // What it finds on the library: next to nothing. This lane's two underlay
+    // walks (satinplay.centerUnderlayFromGeom, edgeUnderlayFromGeom) are
+    // closed, built to finish back at the fraction the satin starts from, so
+    // the needle is already at the right end: of 11,516 columns across the
+    // 85 fonts, two words, two sizes, it turns 24, every one a closed ring
+    // (an O's two crosses meet) or a dot whose two ends are under 2 mm
+    // apart — no travel added, the thread moved by under 6 mm on a design
+    // of metres, 319 of 332 streams byte-identical. A column that starts at
+    // the wrong end would also cost what the turn saves, since the next part
+    // of the glyph begins where the satin was going to end. It is read so
+    // the two lanes take one set of flags. Asked only of a satin run that
+    // follows its own underlay with the needle down, which is where the
+    // shape lane asks it (endOfRuns). Read as `dedupeHoles` is, so the two
+    // lanes' flags take the same values (the shape lane's `!== false` is its
+    // ON default; this lane's default is OFF, so absent and `false` are one).
+    const underlayDirection = !!o.underlayDirection;
+    let prevRun = null;
     // RUN SPANS (`design.runs`) — what each stitch IS, for the renderer.
     //
     // The design model downstream is a flat {x,y,type} stream in which satin,
@@ -1923,8 +1973,22 @@
     // travel as a needle-DOWN running connector (tucked at a junction, covered);
     // jump=true means lift the needle (and trim if the hop is long).
     // runsOrdered is lay.runs verbatim except on cap garments (see capMode above).
+    // Every stitch record enters here. With `dedupeHoles` a stitch on the
+    // point of the stitch that is the record before it is not laid; any other
+    // record before it (a jump, a trim, a colour change) and it is. A run
+    // EVERY record of which sits on the record before it lays nothing, and
+    // pushSpan then gives it no span: a two-point needle-down walk whose both
+    // points round onto the stitch it leaves from (apesplit at 40 mm: 3 on
+    // FRITSCH, 8 on Stitches). The shape lane never meets this, since pushRun
+    // opens every run with a jump; here a span can go with its stitches.
+    const stitchAt = (d) => {
+      const p = stitches[stitches.length - 1];
+      if (dedupeHoles && p && p.type === "stitch" && p.x === d.x && p.y === d.y) return;
+      stitches.push({ x: d.x, y: d.y, type: "stitch" });
+    };
+    const mid = (p, q) => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });
     for (const run of runsOrdered) {
-      const pts = run.pts;
+      let pts = run.pts;
       if (!pts || pts.length < 2) continue;
       if (run.kind === "satin") nSatin++;
       const runRgb = colorForCharIdx(run.charIdx);
@@ -1937,6 +2001,23 @@
         if (lastPt) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); stitches.push({ x: tp.x, y: tp.y, type: "color" }); nTrims++; }
         ensureColor(runRgb);
         forceJumpNext = true;
+      }
+      // `underlayDirection`: a satin column entered needle-down from its own
+      // underlay starts at the end nearer the underlay's last point (the
+      // thread's position, `lastPt`, in the same px frame as `pts`). The
+      // column's ends are its first and last crosses' midpoints: emitZigzag
+      // lays each station as its two rail points, so (0, 1) and (n-2, n-1)
+      // are the end stations. Under `splitSatin` (off by default) a cross
+      // wider than its split length carries split points, so pts[1] is then
+      // the first of those and the "end" sits off-centre by up to half the
+      // width; it matters only on a column wider than it is long with that
+      // flag on. startNear returns `pts` itself when the column already
+      // starts at the near end, which on the library is all but 24 rings
+      // and dots; `run.pts` is never changed in place.
+      if (underlayDirection && run.kind === "satin" && lastPt && !(run.jump || forceJumpNext) &&
+          prevRun && prevRun.kind === "underlay" && prevRun.charIdx === run.charIdx) {
+        const n = pts.length;
+        pts = satinmod.startNear(pts, lastPt, { a: mid(pts[0], pts[1]), b: mid(pts[n - 1], pts[n - 2]) });
       }
       const start = pts[0];
       if (!lastPt) {
@@ -1956,15 +2037,16 @@
         // boundary (docs/lock-stitches-2026-10-03.md: 9,093 on KENT across the
         // 85 fonts). Only the record pushed twice goes; a connector point that
         // merely rounds onto its neighbour is `dedupeHoles`' question, not this.
-        for (let s = 1; s < steps; s++) { const t = s / steps; const d = T({ x: lastPt.x + (start.x - lastPt.x) * t, y: lastPt.y + (start.y - lastPt.y) * t }); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
+        for (let s = 1; s < steps; s++) { const t = s / steps; stitchAt(T({ x: lastPt.x + (start.x - lastPt.x) * t, y: lastPt.y + (start.y - lastPt.y) * t })); }
         // These connector stitches are needle-DOWN travel, not stitching — the
         // renderer de-emphasises them so they stop reading as part of a glyph.
         pushSpan(ti0, "travel", run.charIdx);
       }
       const ri0 = stitches.length;
-      for (const q of pts) { const d = T(q); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
+      for (const q of pts) stitchAt(T(q));
       pushSpan(ri0, SPAN_KIND[run.kind], run.charIdx);
       lastPt = pts[pts.length - 1];
+      prevRun = run;
     }
     // A trim cuts the thread and a jump that was not trimmed does not, so the
     // locks go either side of every trim and at both ends of the stream — the

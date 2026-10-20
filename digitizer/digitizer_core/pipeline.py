@@ -385,6 +385,80 @@ def _cone(chart, thread_index: int) -> dict:
     }
 
 
+def cored_counter_core(image, cfg: PipelineConfig, segmenter, p: Prep,
+                       exif_source=None) -> np.ndarray | None:
+    """`cfg.open_cored_counters`' glyph guard (2026-10-19): stage 1's
+    `enclosed_mask` kept to the cores a GLYPH holds, for
+    `stage3_segment.cored_counters`; None when nothing is left to ask.
+
+    The flag's one corpus move was five false positives on the phone
+    screenshot (a tyre-tread run curve, a grey satin mark, a bare hole in
+    a grey fill), none a letter's counter. The taggers that say what a
+    glyph is run after vectorization (`detect_text_clusters`,
+    `set_lettering_house_angle`, `words.tag_words`; the bean tagger reads
+    their clusters), while the walk that names a counter runs in stage 3,
+    on masks, twice -- once inside the gradient lane's segmenter. So the
+    question is put to the generation the flag would otherwise change:
+    `build_generation` runs once more with the flag OFF, every region
+    `columns.is_lettering` calls a letter is painted into the frame
+    (exterior less interiors, `tag_enclosed_background`'s transform), and
+    a core is kept when at least half its pixels lie under one. In that
+    generation a sub-floor counter is filled (stage 4's hole floor), so a
+    letter's core lies inside its letter; a core in a ground, a fill or a
+    guarded fragment lies under nothing and leaves the mask whole, so both
+    stage-3 calls find no counter there and take the path they take OFF --
+    byte-identical, by the same code. No new constant: the taggers' own
+    verdict, as the Column lane reads it.
+
+    Cost: one stages-0-4 run more, paid only when the enclosed mask has a
+    component between the run floor and the area floor (anything else is
+    noise or a full-size hole to `cored_counters`, and the pre-pass would
+    decide nothing). The PR that built it carries the measured cost.
+    """
+    import cv2
+    from .columns import is_lettering
+    from .machine import RUN_MIN_AREA_MM2
+
+    mask = p.enclosed_mask
+    if mask is None or not mask.any():
+        return None
+    ppm = p.px_per_mm
+    lo = RUN_MIN_AREA_MM2 * ppm ** 2
+    hi = (cfg.min_detail_mm * ppm) ** 2
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8), connectivity=8)
+    cand = [c for c in range(1, n) if lo <= stats[c, cv2.CC_STAT_AREA] < hi]
+    if not cand:
+        return None
+    off = build_generation(image, replace(cfg, open_cored_counters=False, debug_dir=None),
+                           segmenter, exif_source=exif_source)
+    glyphs = [r for r in off.regions if is_lettering(r, cfg)]
+    if not glyphs or off.p.enclosed_mask is None or off.p.enclosed_mask.shape != mask.shape:
+        return None
+    h, w = mask.shape
+    x0, y0, x1, y1 = off.p.art_bbox
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+
+    def ring_px(coords) -> np.ndarray:
+        arr = np.asarray(coords, dtype=np.float64)
+        px = np.empty_like(arr)
+        px[:, 0] = arr[:, 0] * off.p.px_per_mm + cx
+        px[:, 1] = arr[:, 1] * off.p.px_per_mm + cy
+        return np.round(px).astype(np.int32)
+
+    glyph = np.zeros((h, w), np.uint8)
+    for r in glyphs:
+        cv2.fillPoly(glyph, [ring_px(r.polygon.exterior.coords)], 1)
+        for interior in r.polygon.interiors:
+            cv2.fillPoly(glyph, [ring_px(interior.coords)], 0)
+    keep = np.zeros((h, w), bool)
+    for c in cand:
+        bx, by, bw, bh, area = (int(v) for v in stats[c, :5])
+        win = lab[by:by + bh, bx:bx + bw] == c
+        if int(glyph[by:by + bh, bx:bx + bw][win].sum()) * 2 >= area:
+            keep[by:by + bh, bx:bx + bw] |= win
+    return keep if keep.any() else None
+
+
 def build_generation(
     image: str | Path | bytes | np.ndarray,
     cfg: PipelineConfig | None = None,
@@ -697,6 +771,15 @@ def build_generation(
     design_ramp = (fit_design_ramp(p)
                    if classification.class_ == "gradient" and cfg.design_ramp else None)
 
+    # `cfg.open_cored_counters` (2026-10-19): the core mask both stage-3
+    # calls below read, kept to the cores a glyph holds (`cored_counter_core`
+    # -- the taggers' own verdict, read off a flag-OFF generation). Logos
+    # only, the gate `keep_counters` has. None with the flag off, and the
+    # two calls are byte-identical to before the flag existed.
+    cored_core = (cored_counter_core(image, cfg, seg, p, exif_source=exif_source)
+                  if cfg.open_cored_counters and classification.class_ not in PHOTO_CLASSES
+                  else None)
+
     # "photo_subject"/"photo_scene"/"gradient" all branch here — only "flat"
     # still takes the plain quantize() call this pipeline has always made.
     # "gradient" joined 2026-08-04 (`docs/superpowers/plans/
@@ -739,8 +822,9 @@ def build_generation(
                 # Logos only, the same gate again: a photograph's fragments
                 # enclose each other everywhere.
                 keep_counters=bool(cfg.keep_counters and classification.class_ == "gradient"),
-                open_cored_counters=bool(cfg.open_cored_counters
-                                         and classification.class_ == "gradient"),
+                # `cfg.open_cored_counters`: the guarded core, gradient logos
+                # only (the gate `keep_counters` has); None everywhere else.
+                counter_core=cored_core if classification.class_ == "gradient" else None,
             )
             if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)
@@ -763,10 +847,9 @@ def build_generation(
             # of ANOTHER colour than its host.
             or cfg.detail_spokes) else None,
         keep_counters=counters_on,
-        # `cfg.open_cored_counters`: logos only, the gate `keep_counters` has.
-        counter_core=(p.enclosed_mask if (cfg.open_cored_counters
-                                          and classification.class_ not in PHOTO_CLASSES)
-                      else None))
+        # `cfg.open_cored_counters`: the guarded core (`cored_counter_core`),
+        # logos only, the gate `keep_counters` has; None with the flag off.
+        counter_core=cored_core)
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
 
@@ -1763,7 +1846,14 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                                     # width gate off the artwork's pixels, as
                                     # the hairline tier does; off, None.
                                     ink_source=(getattr(result, "ink_source", None)
-                                                if cfg.small_lettering_skeleton else None))
+                                                if cfg.small_lettering_skeleton else None),
+                                    # `cfg.open_cored_counters`: the counters
+                                    # stage 3 kept (unstitched, so not in
+                                    # `planned`), for the satin tiers' hold;
+                                    # None with the flag off.
+                                    counter_holes=([r.polygon for r in result.regions
+                                                    if r.meta.get("cored_counter")]
+                                                   if cfg.open_cored_counters else None) or None)
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a

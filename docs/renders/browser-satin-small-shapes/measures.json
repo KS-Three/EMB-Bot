@@ -1,0 +1,303 @@
+{
+ "garment": "left_chest",
+ "rows": [
+  {
+   "id": "star5",
+   "label": "5-point star, 10 mm, inner ratio 0.45",
+   "pinned": true,
+   "off": {
+    "tier": "satin",
+    "stitches": 131,
+    "longestMm": 8.02122185206219,
+    "upMm": 15.984943830564632,
+    "trims": 0,
+    "wMm": 10,
+    "hMm": 9.5,
+    "md5": "52ec3113edbb326b446cb6fa7f393108",
+    "farOutMm": 0.6428757589237846,
+    "cover": 0.9967159277504105,
+    "satinPts": 128
+   },
+   "on": {
+    "tier": "satin",
+    "stitches": 104,
+    "longestMm": 4.604345773288535,
+    "upMm": 17.011080979524724,
+    "trims": 0,
+    "wMm": 9.6,
+    "hMm": 9.4,
+    "md5": "5d5b2f4bbbd796f602812e0e1a14ada5",
+    "farOutMm": 0.18064701246628892,
+    "cover": 0.9685276409414341,
+    "satinPts": 101
+   }
+  },
+  {
+   "id": "round",
+   "label": "10 x 2 mm stroke, round ends",
+   "pinned": true,
+   "off": {
+    "tier": "satin",
+    "stitches": 55,
+    "longestMm": 2.4,
+    "upMm": 1.0295630140987,
+    "trims": 0,
+    "wMm": 10,
+    "hMm": 2.4,
+    "md5": "92d9d1fec2dc684d2430dd75d655d796",
+    "farOutMm": 0.3507053342781108,
+    "cover": 0.9670912951167728,
+    "satinPts": 50
+   },
+   "on": {
+    "tier": "satin",
+    "stitches": 55,
+    "longestMm": 2.4,
+    "upMm": 0.8246211251235321,
+    "trims": 0,
+    "wMm": 9.4,
+    "hMm": 2.4,
+    "md5": "4a7bede4224f357f83a70a7ab098c44d",
+    "farOutMm": 0.19999999999999996,
+    "cover": 0.9808917197452229,
+    "satinPts": 50
+   }
+  },
+  {
+   "id": "square",
+   "label": "1.5 mm square",
+   "pinned": true,
+   "off": {
+    "tier": "satin",
+    "stitches": 8,
+    "longestMm": 1.8,
+    "upMm": 0,
+    "trims": 0,
+    "wMm": 1.4,
+    "hMm": 1.8,
+    "md5": "795d20f7a8ebba5d7e7d5c660492803d",
+    "farOutMm": 0.15000000000000013,
+    "cover": 1,
+    "satinPts": 8
+   },
+   "on": {
+    "tier": "satin",
+    "stitches": 8,
+    "longestMm": 1.8,
+    "upMm": 0,
+    "trims": 0,
+    "wMm": 1.4,
+    "hMm": 1.8,
+    "md5": "795d20f7a8ebba5d7e7d5c660492803d",
+    "farOutMm": 0.15000000000000013,
+    "cover": 1,
+    "satinPts": 8
+   }
+  },
+  {
+   "id": "dot",
+   "label": "1 mm dot",
+   "pinned": true,
+   "off": {
+    "tier": "satin",
+    "stitches": 6,
+    "longestMm": 1.4142135623730951,
+    "upMm": 0,
+    "trims": 0,
+    "wMm": 1.6,
+    "hMm": 1.6,
+    "md5": "4aeeb8a9eb16656b49c9e60712ea9d1f",
+    "farOutMm": 0.3137446163225819,
+    "cover": 0.675,
+    "satinPts": 6
+   },
+   "on": {
+    "tier": "satin",
+    "stitches": 6,
+    "longestMm": 1.4,
+    "upMm": 0,
+    "trims": 0,
+    "wMm": 0.8,
+    "hMm": 1.4,
+    "md5": "e3246406994e0f0ac9f6ea41c6ab0455",
+    "farOutMm": 0.19999999999999996,
+    "cover": 1,
+    "satinPts": 6
+   }
+  },
+  {
+   "id": "star6",
+   "label": "6-point star, 10 mm, inner ratio 0.45",
+   "pinned": false,
+   "off": {
+    "tier": "satin",
+    "stitches": 170,
+    "longestMm": 9.84733466477097,
+    "upMm": 42.60079245140322,
+    "trims": 0,
+    "wMm": 10.2,
+    "hMm": 11.2,
+    "md5": "9f510647aaafdd98e0a5aa5e2dfe4fdd",
+    "farOutMm": 0.5764119878766225,
+    "cover": 0.9966651845264562,
+    "satinPts": 165
+   },
+   "on": {
+    "tier": "satin",
+    "stitches": 127,
+    "longestMm": 5.300943312279428,
+    "upMm": 22.25321219754629,
+    "trims": 0,
+    "wMm": 10,
+    "hMm": 11.2,
+    "md5": "9c38175a9a217369cd17de5c587f3e2c",
+    "farOutMm": 0.18340684396589121,
+    "cover": 0.9586482881280569,
+    "satinPts": 122
+   }
+  },
+  {
+   "id": "tee",
+   "label": "T, arms 10 x 2 mm, drawn and set to satin",
+   "pinned": false,
+   "off": {
+    "tier": "satin",
+    "stitches": 101,
+    "longestMm": 10.4,
+    "upMm": 20.001108826746957,
+    "trims": 0,
+    "wMm": 10.2,
+    "hMm": 10.4,
+    "md5": "6f3bad6de6955387f7ec5a89631fc438",
+    "farOutMm": 0.7,
+    "cover": 0.9905555555555555,
+    "satinPts": 96
+   },
+   "on": {
+    "tier": "satin",
+    "stitches": 98,
+    "longestMm": 2.5317977802344327,
+    "upMm": 20.488318345033225,
+    "trims": 0,
+    "wMm": 10,
+    "hMm": 10.2,
+    "md5": "1c08f824ed6fe1d5fb2c9b2f0766a1e1",
+    "farOutMm": 0.20000000000000107,
+    "cover": 0.9611111111111111,
+    "satinPts": 93
+   }
+  },
+  {
+   "id": "square6",
+   "label": "6 mm square",
+   "pinned": false,
+   "off": {
+    "tier": "satin",
+    "stitches": 47,
+    "longestMm": 7.778174593052023,
+    "upMm": 3.6400549446402595,
+    "trims": 0,
+    "wMm": 6.8,
+    "hMm": 6.8,
+    "md5": "71e1c44bfb46bbabdb3d0573b33e979e",
+    "farOutMm": 0.40000000000000036,
+    "cover": 0.8819444444444444,
+    "satinPts": 44
+   },
+   "on": {
+    "tier": "satin",
+    "stitches": 33,
+    "longestMm": 6.4,
+    "upMm": 3.6235341863986874,
+    "trims": 0,
+    "wMm": 6,
+    "hMm": 6.4,
+    "md5": "82db74436c0412dc9533fd2ed90681c7",
+    "farOutMm": 0.20000000000000062,
+    "cover": 0.9366666666666666,
+    "satinPts": 30
+   }
+  },
+  {
+   "id": "dot6",
+   "label": "6 mm dot",
+   "pinned": false,
+   "off": {
+    "tier": "satin",
+    "stitches": 27,
+    "longestMm": 6.2,
+    "upMm": 2.039607805437114,
+    "trims": 0,
+    "wMm": 6.2,
+    "hMm": 5,
+    "md5": "a191e5bfdf9a9457695092127e5e5da0",
+    "farOutMm": 0.13709659244354994,
+    "cover": 0.8958031837916064,
+    "satinPts": 24
+   },
+   "on": {
+    "tier": "satin",
+    "stitches": 33,
+    "longestMm": 6.2,
+    "upMm": 2.9966648127543394,
+    "trims": 0,
+    "wMm": 5.4,
+    "hMm": 6.2,
+    "md5": "fc57600c0668120393f2965d884b0692",
+    "farOutMm": 0.10000000000000053,
+    "cover": 0.9551374819102749,
+    "satinPts": 30
+   }
+  },
+  {
+   "id": "word_barstitch",
+   "label": "\"Fritsch\" in barstitch_regular, 12 mm",
+   "pinned": true,
+   "off": {
+    "tier": "satin",
+    "stitches": 1635,
+    "longestMm": 4.219004621945797,
+    "upMm": 151.00661230886382,
+    "trims": 6,
+    "wMm": 101.8,
+    "hMm": 25.3,
+    "md5": "5cb7310b4644edb28c192dfcd60d46c8"
+   },
+   "on": {
+    "tier": "satin",
+    "stitches": 1635,
+    "longestMm": 4.219004621945797,
+    "upMm": 151.00661230886382,
+    "trims": 6,
+    "wMm": 101.8,
+    "hMm": 25.3,
+    "md5": "5cb7310b4644edb28c192dfcd60d46c8"
+   }
+  },
+  {
+   "id": "word_venezia",
+   "label": "\"Stitches\" in venezia, 10 mm",
+   "pinned": true,
+   "off": {
+    "tier": "satin",
+    "stitches": 1859,
+    "longestMm": 4.632493928760188,
+    "upMm": 105.1631365913543,
+    "trims": 7,
+    "wMm": 102.7,
+    "hMm": 21.8,
+    "md5": "f4f5e3f98be5396c7814d9b777c7622b"
+   },
+   "on": {
+    "tier": "satin",
+    "stitches": 1859,
+    "longestMm": 4.632493928760188,
+    "upMm": 105.1631365913543,
+    "trims": 7,
+    "wMm": 102.7,
+    "hMm": 21.8,
+    "md5": "f4f5e3f98be5396c7814d9b777c7622b"
+   }
+  }
+ ]
+}

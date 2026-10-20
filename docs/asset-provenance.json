@@ -331,6 +331,12 @@
    "basis": "app/public"
   },
   {
+   "prefix": "docs/renders/browser-satin-small-shapes/",
+   "status": "synthetic",
+   "source": "Drawn by tools/satin-small-shapes.mjs from the Studio's own preset shapes (star, rectangle, circle), a hand-drawn T and two library-font words; no client art, no third-party stitch file",
+   "basis": "docs/renders/browser-satin-small-shapes/README.md"
+  },
+  {
    "prefix": "docs/renders/apex-verdict-2026-09-30/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
@@ -943,6 +949,12 @@
    "basis": "PR body of claude/dot-rung-lettering-scope; source fixtures carry their own entries above"
   },
   {
+   "prefix": "docs/renders/small-stem-dot/",
+   "status": "derived-render",
+   "source": "Rendered by digitizer/tools/small_stem_dot_renders.py: thread renders (digitizer_core.stitchviz via tools/fremont_triage's panel helpers) of EMB-Bot's own digitizes, cfg.lettering_columns_small_stem and cfg.small_dot_rung OFF beside ON (each alone, both, and both with cfg.small_dot_rung_lettering), of digitizer/testdata/synthetic/lowercase_aileron.png at 50 and 80 mm, of the word \"hijlij\" drawn at runtime in Pillow's bundled CC0 Aileron, of digitizer/testdata/photo/logo_hotel_fremont.webp on a Hat at 50 and 80 mm (the Studio's request) and as the small-print tagline crop at 2.5, 3 and 4 mm caps, and of digitizer/testdata/becker_marine_logo.png at 50 and 80 mm; the artwork panels are crops of those committed fixtures; no new artwork, no new client art",
+   "basis": "PR body of claude/dreamy-fermat-4x3aj9 (MASTER_SCOPE item 52 renders); source fixtures carry their own entries above"
+  },
+  {
    "prefix": "docs/renders/bean-holds-on/",
    "status": "derived-render",
    "source": "Thread renders (digitizer_core.stitchviz via tools/fremont_triage's panel helpers) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp on a Hat at 80, 81 and 92.5 mm, the two bean-letter holds OFF beside ON (cfg.bean_letter_counter_hold_mm 0.25, cfg.bean_letter_bay_hold 0.2); no new artwork, no new client art",
@@ -965,6 +977,18 @@
    "status": "derived-render",
    "source": "Thread renders (digitizer_core.stitchviz) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_golden_tee.jpg scaled so GOLF sits at 4 and 5 mm caps (tools/small_print.py's line), cfg.open_cored_counters OFF beside ON with cfg.small_print_floor off and on; one 16x nearest-neighbour crop of the committed fixture's own pixels round the O's counter (prep_raster_o_counter.png); and crops of digitizer/testdata/photo/screenshot_phone_ui_golke.jpg at 80 mm over the five shapes ON keeps as counters; the artwork crops are the committed fixtures; no new artwork, no new client art",
    "basis": "PR body of claude/golden-tee-o-counter; source fixtures have their own entries above"
+  },
+  {
+   "prefix": "docs/renders/golden-tee-o-counter-holdoff/",
+   "status": "derived-render",
+   "source": "Thread renders (digitizer_core.stitchviz, via tools/small_print.py's render_line) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_golden_tee.jpg scaled so GOLF sits at 4 and 5 mm caps, cropped to the O's counter at 120 px/mm: cfg.open_cored_counters OFF beside ON (the glyph guard and the satin hold-off built behind it), cfg.small_print_floor off and on, and one pair with the guard bypassed in a scratch run; the artwork is the committed fixture; no new artwork, no new client art",
+   "basis": "PR body of claude/golden-tee-o-counter-holdoff (the hold-off and the glyph guard behind open_cored_counters); the fixture has its own entry above"
+  },
+  {
+   "prefix": "docs/renders/text-lane-flags/",
+   "status": "derived-render",
+   "source": "Stitch-stream renders (tools/text-lane-flags-sheet.mjs) of buildLetteringDesign's own output for the words FRITSCH and Stitches in four library fonts (medium_font, mai_en_fleur, pixel10, colorful: src/fonts/bin/<key>.embf, each licensed by src/fonts/<key>.LICENSE.txt), dedupeHoles and underlayDirection OFF beside ON; census.json is the same tool's --census over every font in src/fonts/bin; no artwork, no client art, no third-party stitch files",
+   "basis": "PR bodies of claude/eager-gates-n7bbm1, #990 and its follow-up (MASTER_SCOPE 25 and 40, the text lane); docs/renders/text-lane-flags/README.md"
   },
   {
    "prefix": "docs/renders/",

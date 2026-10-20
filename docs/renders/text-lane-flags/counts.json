@@ -1,0 +1,303 @@
+{
+ "generated": "2026-10-20",
+ "garment": {
+  "widthIn": 5,
+  "heightIn": 2.25
+ },
+ "pxPerMm": 8,
+ "underlay": "ladder",
+ "text": "FRITSCH",
+ "dedupeHoles": [
+  {
+   "font": "medium_font",
+   "text": "FRITSCH",
+   "widthMm": 40,
+   "capMm": 5.41,
+   "off": {
+    "md5": "a4e9cff8e793cabe7382408bf66ac465",
+    "records": 590,
+    "stitches": 577,
+    "doubled": 5,
+    "byKind": {
+     "underlay": 5
+    }
+   },
+   "on": {
+    "md5": "689552b6cdb280197c21abfcd6c0273f",
+    "records": 585,
+    "stitches": 572,
+    "doubled": 0
+   },
+   "png": "medium_font_FRITSCH_40mm_dedupeHoles.png"
+  },
+  {
+   "font": "medium_font",
+   "text": "FRITSCH",
+   "widthMm": 100,
+   "capMm": 13.53,
+   "off": {
+    "md5": "a414327a26c87a9b0ae672ec6b7ff6a8",
+    "records": 1291,
+    "stitches": 1278,
+    "doubled": 0,
+    "byKind": {}
+   },
+   "on": {
+    "md5": "a414327a26c87a9b0ae672ec6b7ff6a8",
+    "records": 1291,
+    "stitches": 1278,
+    "doubled": 0
+   },
+   "png": "medium_font_FRITSCH_100mm_dedupeHoles.png"
+  },
+  {
+   "font": "mai_en_fleur",
+   "text": "FRITSCH",
+   "widthMm": 40,
+   "capMm": 6.79,
+   "off": {
+    "md5": "96e149414b624ad8f603e9fe8d3f4793",
+    "records": 2039,
+    "stitches": 1840,
+    "doubled": 146,
+    "byKind": {
+     "underlay": 20,
+     "travel": 103,
+     "run": 23
+    }
+   },
+   "on": {
+    "md5": "81dd80020e11f4eb0108850aabbb68a9",
+    "records": 1893,
+    "stitches": 1694,
+    "doubled": 0
+   },
+   "png": "mai_en_fleur_FRITSCH_40mm_dedupeHoles.png"
+  },
+  {
+   "font": "mai_en_fleur",
+   "text": "FRITSCH",
+   "widthMm": 100,
+   "capMm": 16.96,
+   "off": {
+    "md5": "6a0322664f1aece2224f1b6a0517579f",
+    "records": 6172,
+    "stitches": 5914,
+    "doubled": 78,
+    "byKind": {
+     "underlay": 73,
+     "travel": 4,
+     "satin": 1
+    }
+   },
+   "on": {
+    "md5": "d2f93da65eaa6a90659bb1b08cd1d3f2",
+    "records": 6094,
+    "stitches": 5836,
+    "doubled": 0
+   },
+   "png": "mai_en_fleur_FRITSCH_100mm_dedupeHoles.png"
+  },
+  {
+   "font": "pixel10",
+   "text": "FRITSCH",
+   "widthMm": 40,
+   "capMm": 8.39,
+   "off": {
+    "md5": "fd08f0d56f282821dfa08bc76303eae7",
+    "records": 3785,
+    "stitches": 3754,
+    "doubled": 18,
+    "byKind": {
+     "satin": 10,
+     "underlay": 7,
+     "travel": 1
+    }
+   },
+   "on": {
+    "md5": "210ebcfe8205a4f200c9a6fe85f1fb8c",
+    "records": 3767,
+    "stitches": 3736,
+    "doubled": 0
+   },
+   "png": "pixel10_FRITSCH_40mm_dedupeHoles.png"
+  },
+  {
+   "font": "pixel10",
+   "text": "FRITSCH",
+   "widthMm": 100,
+   "capMm": 20.98,
+   "off": {
+    "md5": "9152f6f964eba544506510c004b8f993",
+    "records": 6879,
+    "stitches": 6843,
+    "doubled": 0,
+    "byKind": {}
+   },
+   "on": {
+    "md5": "9152f6f964eba544506510c004b8f993",
+    "records": 6879,
+    "stitches": 6843,
+    "doubled": 0
+   },
+   "png": "pixel10_FRITSCH_100mm_dedupeHoles.png"
+  }
+ ],
+ "underlayDirection": [
+  {
+   "font": "medium_font",
+   "text": "FRITSCH",
+   "widthMm": 40,
+   "columnsAfterUnderlay": 19,
+   "nearStartOff": 19,
+   "nearStartOn": 19,
+   "turned": 0,
+   "identical": true,
+   "travelMm": [
+    21.8,
+    21.8
+   ],
+   "threadMm": [
+    616.1,
+    616.1
+   ],
+   "stitches": [
+    577,
+    577
+   ]
+  },
+  {
+   "font": "medium_font",
+   "text": "FRITSCH",
+   "widthMm": 100,
+   "columnsAfterUnderlay": 20,
+   "nearStartOff": 20,
+   "nearStartOn": 20,
+   "turned": 0,
+   "identical": true,
+   "travelMm": [
+    56.6,
+    56.6
+   ],
+   "threadMm": [
+    2627.4,
+    2627.4
+   ],
+   "stitches": [
+    1278,
+    1278
+   ]
+  },
+  {
+   "font": "mai_en_fleur",
+   "text": "FRITSCH",
+   "widthMm": 40,
+   "columnsAfterUnderlay": 80,
+   "nearStartOff": 80,
+   "nearStartOn": 80,
+   "turned": 0,
+   "identical": true,
+   "travelMm": [
+    232.7,
+    232.7
+   ],
+   "threadMm": [
+    852.8,
+    852.8
+   ],
+   "stitches": [
+    1840,
+    1840
+   ]
+  },
+  {
+   "font": "mai_en_fleur",
+   "text": "FRITSCH",
+   "widthMm": 100,
+   "columnsAfterUnderlay": 379,
+   "nearStartOff": 379,
+   "nearStartOn": 379,
+   "turned": 0,
+   "identical": true,
+   "travelMm": [
+    223.3,
+    223.3
+   ],
+   "threadMm": [
+    4601.2,
+    4601.2
+   ],
+   "stitches": [
+    5914,
+    5914
+   ]
+  },
+  {
+   "font": "pixel10",
+   "text": "FRITSCH",
+   "widthMm": 40,
+   "columnsAfterUnderlay": 152,
+   "nearStartOff": 152,
+   "nearStartOn": 152,
+   "turned": 0,
+   "identical": true,
+   "travelMm": [
+    139.4,
+    139.4
+   ],
+   "threadMm": [
+    3010.8,
+    3010.8
+   ],
+   "stitches": [
+    3754,
+    3754
+   ]
+  },
+  {
+   "font": "pixel10",
+   "text": "FRITSCH",
+   "widthMm": 100,
+   "columnsAfterUnderlay": 465,
+   "nearStartOff": 465,
+   "nearStartOn": 465,
+   "turned": 0,
+   "identical": true,
+   "travelMm": [
+    399.2,
+    399.2
+   ],
+   "threadMm": [
+    12726.7,
+    12726.7
+   ],
+   "stitches": [
+    6843,
+    6843
+   ]
+  },
+  {
+   "font": "colorful",
+   "text": "Stitches",
+   "widthMm": 100,
+   "columnsAfterUnderlay": 10,
+   "nearStartOff": 4,
+   "nearStartOn": 9,
+   "turned": 6,
+   "identical": false,
+   "travelMm": [
+    0,
+    0
+   ],
+   "threadMm": [
+    5239.6,
+    5240.2
+   ],
+   "stitches": [
+    3314,
+    3314
+   ],
+   "png": "colorful_Stitches_100mm_underlayDirection.png"
+  }
+ ]
+}
