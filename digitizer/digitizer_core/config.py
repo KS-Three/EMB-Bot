@@ -1009,6 +1009,24 @@ class PipelineConfig:
     # eight is visible by colour, and bridge does not move); or put the
     # ground's thread in the counter. OFF is the engine as it was.
     keep_counters: bool = False
+    # Keep a small counter open when its middle is the page colour and thin
+    # bands of other colours ring it (`stage3_segment.cored_counters`; MASTER_SCOPE
+    # 47's residue). golden_tee's bevelled O at a 4 and 5 mm cap: the counter is a
+    # white core (stage 1's `enclosed_mask`) inside a dark keyline, a grey bevel
+    # and two slivers, each under the area floor and each under a thread wide.
+    # `resolve_small_regions` folds every band into the O (5 mm) or keeps the
+    # keyline as a ring of its own that stage 4 fills to a Silver disc (4 mm), so
+    # either way thread lies in the counter (0.00 / 0.15 open, measured
+    # 2026-10-19). On, the hole of the innermost shape round the core that is NOT
+    # itself such a band (twice its largest distance-transform value under the
+    # thread's laid width, `machine.thread_profile`) is a counter when it is
+    # under `min_detail_mm`²; every sub-floor region inside it is kept out of the
+    # letter as `source="counter"` (tagged `counter` + `enclosed_background`,
+    # unsewn), so the letter's polygon carries the hole. No new constant: the
+    # floors are the area floor, `RUN_MIN_AREA_MM2` for the core, and the thread
+    # width. Logo classes only, the gate `keep_counters` uses. OFF is the engine
+    # as it was.
+    open_cored_counters: bool = False
     # Widen rescued lettering to a sewable column
     # (`textcluster.regularize_text_clusters`, plan §4d, PR 4). The strokes
     # `keep_thin_strokes` keeps are 0.3-0.5 mm of ink: under

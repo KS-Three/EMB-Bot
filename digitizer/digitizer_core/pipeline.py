@@ -739,6 +739,8 @@ def build_generation(
                 # Logos only, the same gate again: a photograph's fragments
                 # enclose each other everywhere.
                 keep_counters=bool(cfg.keep_counters and classification.class_ == "gradient"),
+                open_cored_counters=bool(cfg.open_cored_counters
+                                         and classification.class_ == "gradient"),
             )
             if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)
@@ -760,7 +762,11 @@ def build_generation(
             # `cfg.detail_spokes` reads the same colours: a mark is a detail
             # of ANOTHER colour than its host.
             or cfg.detail_spokes) else None,
-        keep_counters=counters_on)
+        keep_counters=counters_on,
+        # `cfg.open_cored_counters`: logos only, the gate `keep_counters` has.
+        counter_core=(p.enclosed_mask if (cfg.open_cored_counters
+                                          and classification.class_ not in PHOTO_CLASSES)
+                      else None))
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
 
