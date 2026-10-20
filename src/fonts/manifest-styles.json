@@ -1,0 +1,493 @@
+{
+ "version": 1,
+ "model": "gemma3:4b",
+ "reviewed": false,
+ "fonts": {
+  "alchemy": [
+   "outline",
+   "vintage",
+   "ornate",
+   "formal",
+   "serif"
+  ],
+  "cats": [
+   "outline",
+   "pixel",
+   "block",
+   "small"
+  ],
+  "ags_garamond_latin_grec": [
+   "serif",
+   "vintage",
+   "elegant"
+  ],
+  "allegria20": [
+   "script",
+   "handwritten",
+   "brush",
+   "italic"
+  ],
+  "allegria55": [
+   "script",
+   "handwritten",
+   "elegant",
+   "ornate"
+  ],
+  "ambigue": [
+   "script",
+   "outline",
+   "elegant",
+   "ornate"
+  ],
+  "amitaclo": [
+   "script",
+   "handwritten",
+   "ornate",
+   "decorative"
+  ],
+  "amitaclo_small": [
+   "handwritten",
+   "small",
+   "narrow-stroke"
+  ],
+  "apesplit": [
+   "handwritten",
+   "vintage",
+   "block",
+   "narrow-stroke"
+  ],
+  "apex_simple_AGS": [
+   "serif",
+   "vintage",
+   "small",
+   "narrow-stroke"
+  ],
+  "apex_simple_small_AGS": [
+   "small",
+   "narrow-stroke",
+   "script"
+  ],
+  "art_nouveau": [
+   "script",
+   "ornate",
+   "vintage",
+   "decorative",
+   "elegant"
+  ],
+  "auberge_marif": [
+   "script",
+   "handwritten",
+   "ornate",
+   "vintage",
+   "formal"
+  ],
+  "auberge_small": [
+   "script",
+   "handwritten",
+   "ornate",
+   "elegant"
+  ],
+  "barstitch_bold": [
+   "block",
+   "bold",
+   "pixel"
+  ],
+  "barstitch_mandala": [
+   "block",
+   "ornate",
+   "decorative"
+  ],
+  "barstitch_regular": [
+   "sans",
+   "block",
+   "pixel"
+  ],
+  "barstitch_textured": [
+   "pixel",
+   "block"
+  ],
+  "bathaus_FI": [
+   "outline",
+   "block",
+   "pixel",
+   "modern"
+  ],
+  "bathaus_FI_Small": [
+   "pixel",
+   "small",
+   "narrow-stroke"
+  ],
+  "caesarus_SC_FI": [
+   "serif",
+   "script",
+   "elegant"
+  ],
+  "caffeine_KOR": [
+   "handwritten",
+   "outline",
+   "block",
+   "vintage"
+  ],
+  "caffeine_tiny": [
+   "pixel",
+   "small",
+   "narrow-stroke"
+  ],
+  "califragilistic": [
+   "script",
+   "handwritten",
+   "vintage",
+   "decorative"
+  ],
+  "chicken_little": [
+   "script",
+   "handwritten",
+   "small",
+   "narrow-stroke"
+  ],
+  "chicken_little_small": [
+   "script",
+   "handwritten",
+   "small",
+   "vintage"
+  ],
+  "chicken_scratch": [
+   "handwritten",
+   "script",
+   "playful",
+   "decorative"
+  ],
+  "cogs_KOR": [
+   "outline",
+   "vintage",
+   "ornate",
+   "formal"
+  ],
+  "colorful": [
+   "outline",
+   "block",
+   "modern"
+  ],
+  "cooper_marif": [
+   "handwritten",
+   "serif",
+   "outline",
+   "vintage"
+  ],
+  "cyrillic": [
+   "block",
+   "outline",
+   "sans"
+  ],
+  "digory_doodles_bean": [
+   "handwritten",
+   "script",
+   "decorative",
+   "playful"
+  ],
+  "egyptian": [
+   "handwritten",
+   "script",
+   "vintage",
+   "small"
+  ],
+  "egyptian_small": [
+   "pixel",
+   "small",
+   "narrow-stroke"
+  ],
+  "eloquent": [
+   "serif",
+   "elegant",
+   "script",
+   "vintage"
+  ],
+  "eloquent_small": [
+   "pixel",
+   "small",
+   "narrow-stroke"
+  ],
+  "excalibur_KOR": [
+   "outline",
+   "block",
+   "vintage",
+   "formal"
+  ],
+  "excalibur_small": [
+   "script",
+   "narrow-stroke",
+   "small"
+  ],
+  "fold_inkstitch": [
+   "vintage",
+   "outline",
+   "block",
+   "gothic"
+  ],
+  "glacial_tiny": [
+   "pixel",
+   "small",
+   "narrow-stroke"
+  ],
+  "heavenly": [
+   "script",
+   "handwritten",
+   "elegant",
+   "ornate"
+  ],
+  "heavenly_small": [
+   "gothic",
+   "blackletter",
+   "narrow-stroke",
+   "small"
+  ],
+  "hebrew_font_large": [
+   "script",
+   "ornate",
+   "vintage",
+   "block"
+  ],
+  "hebrew_font_medium": [
+   "script",
+   "outline",
+   "vintage",
+   "ornate"
+  ],
+  "initials_medium": [
+   "script",
+   "vintage",
+   "ornate",
+   "monogram"
+  ],
+  "initials_XL": [
+   "blackletter",
+   "gothic",
+   "ornate",
+   "vintage",
+   "formal"
+  ],
+  "inkstitch_masego": [
+   "handwritten",
+   "script",
+   "vintage",
+   "decorative"
+  ],
+  "jacquard_12": [
+   "gothic",
+   "blackletter",
+   "serif",
+   "ornate"
+  ],
+  "jaquarda_bastarda_9": [
+   "blackletter",
+   "gothic",
+   "ornate",
+   "vintage"
+  ],
+  "jersey_15": [
+   "pixel",
+   "block",
+   "bold"
+  ],
+  "kum_tsoan_AGS": [
+   "serif",
+   "script",
+   "vintage",
+   "ornate"
+  ],
+  "kum_tsoan_tartan": [
+   "handwritten",
+   "script",
+   "vintage"
+  ],
+  "magnolia_bicolor": [
+   "script",
+   "handwritten",
+   "elegant",
+   "ornate"
+  ],
+  "magnolia_KOR": [
+   "script",
+   "handwritten",
+   "elegant",
+   "ornate"
+  ],
+  "magnolia_small": [
+   "script",
+   "small",
+   "narrow-stroke"
+  ],
+  "magnolia_tamed": [
+   "script",
+   "handwritten",
+   "vintage",
+   "ornate"
+  ],
+  "mai_en_fleur": [
+   "script",
+   "vintage",
+   "ornate",
+   "formal"
+  ],
+  "mam_script": [
+   "script",
+   "handwritten",
+   "brush",
+   "ornate"
+  ],
+  "manga_impact": [
+   "pixel",
+   "block",
+   "outline"
+  ],
+  "marifenda": [
+   "script",
+   "handwritten",
+   "ornate",
+   "elegant"
+  ],
+  "medium_font": [
+   "pixel",
+   "block",
+   "sans"
+  ],
+  "mimosa_large": [
+   "script",
+   "handwritten",
+   "pixel"
+  ],
+  "mimosa_medium": [
+   "script",
+   "handwritten",
+   "pixel",
+   "small"
+  ],
+  "montecarlo": [
+   "script",
+   "handwritten",
+   "elegant",
+   "ornate"
+  ],
+  "neon": [
+   "outline",
+   "block",
+   "modern"
+  ],
+  "neon_blinking": [
+   "outline",
+   "block",
+   "modern"
+  ],
+  "noble": [
+   "script",
+   "elegant",
+   "ornate",
+   "vintage"
+  ],
+  "ondulamarif_Medium": [
+   "script",
+   "handwritten",
+   "ornate",
+   "elegant"
+  ],
+  "ondulamarif_S": [
+   "script",
+   "handwritten",
+   "small",
+   "narrow-stroke"
+  ],
+  "ondulamarif_XL": [
+   "script",
+   "handwritten",
+   "ornate",
+   "vintage"
+  ],
+  "pacificlo": [
+   "script",
+   "vintage",
+   "ornate",
+   "decorative"
+  ],
+  "pacificlo_tiny": [
+   "script",
+   "handwritten",
+   "small",
+   "ornate"
+  ],
+  "perspective_tricolore_KOR": [
+   "pixel",
+   "small",
+   "narrow-stroke"
+  ],
+  "pisankris": [
+   "gothic",
+   "blackletter",
+   "ornate",
+   "vintage",
+   "serif"
+  ],
+  "pixel10": [
+   "pixel",
+   "block",
+   "small"
+  ],
+  "roaring_twenties_KOR": [
+   "retro",
+   "vintage",
+   "script",
+   "ornate"
+  ],
+  "roaring_twenties_KOR_small": [
+   "pixel",
+   "retro",
+   "small",
+   "narrow-stroke"
+  ],
+  "roman_ags": [
+   "serif",
+   "vintage",
+   "ornate",
+   "formal"
+  ],
+  "small_font": [
+   "pixel",
+   "small",
+   "narrow-stroke"
+  ],
+  "stebor_AGS": [
+   "script",
+   "serif",
+   "vintage",
+   "ornate"
+  ],
+  "sunset": [
+   "block",
+   "outline",
+   "retro",
+   "vintage"
+  ],
+  "venezia": [
+   "serif",
+   "outline",
+   "vintage",
+   "formal"
+  ],
+  "venezia_small": [
+   "pixel",
+   "small",
+   "narrow-stroke"
+  ],
+  "violin_serif": [
+   "serif",
+   "script",
+   "vintage",
+   "ornate"
+  ],
+  "western_light": [
+   "script",
+   "vintage",
+   "outline",
+   "light"
+  ]
+ }
+}

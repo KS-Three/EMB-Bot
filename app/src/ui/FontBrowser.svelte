@@ -19,7 +19,7 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { EMB } from "../lib/emb.js";
   import { renderRealistic } from "../lib/preview.js";
-  import { loadManifest, ensureFont, loadCoverage } from "../lib/fontLoader.js";
+  import { loadManifest, ensureFont, loadCoverage, loadFontStyles } from "../lib/fontLoader.js";
   import { fontsCovering } from "../lib/fontCoverage.js";
   import { filterFonts, sizeBand } from "../lib/fontFilter.js";
   import Icon from "./Icon.svelte";
@@ -41,6 +41,10 @@
   loadManifest().then((m) => { fonts = m.fonts; }).catch(() => { manifestFailed = true; });
 
   $: groups = ["All", ...GROUP_CANON.filter((g) => fonts.some((f) => f.group === g))];
+  // Style tags (null until loaded, or when the build has none): search then
+  // also matches by look — "bold script" — and otherwise stays name/key only.
+  let styles = null;
+  loadFontStyles().then((s) => { styles = s; });
 
   // Script coverage: which fonts can stitch EVERY character of the text the
   // customer already typed. Without this, a Russian or Greek name meant
@@ -57,7 +61,7 @@
   $: canFilterFit = !!fitKeys && fitKeys.size > 0 && fitKeys.size < fonts.length;
   $: noneFit = !!fitKeys && fonts.length > 0 && fitKeys.size === 0;
   $: if (!canFilterFit) fitOnly = false;
-  $: shown = filterFonts(fonts, query, group).filter((f) => !(fitOnly && fitKeys) || fitKeys.has(f.key));
+  $: shown = filterFonts(fonts, query, group, styles).filter((f) => !(fitOnly && fitKeys) || fitKeys.has(f.key));
   const misfit = (f) => !!fitKeys && fitKeys.size > 0 && !fitKeys.has(f.key);
   $: selectedName = (fonts.find((f) => f.key === selected) || {}).name || selected || "";
 
@@ -189,7 +193,7 @@
     <div class="fb-controls">
       <label class="fb-search">
         <span class="fb-search-label">Find a font</span>
-        <input type="text" bind:value={query} placeholder="Search by name…" autocomplete="off" />
+        <input type="text" bind:value={query} placeholder={styles ? "Name or look, e.g. bold script…" : "Search by name…"} autocomplete="off" />
       </label>
       <div class="fb-groups">
         {#each groups as g}

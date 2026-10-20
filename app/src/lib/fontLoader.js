@@ -98,6 +98,26 @@ export function loadCoverage() {
   return coveragePromise;
 }
 
+// Style tags per font — src/fonts/manifest-styles.json, written once by
+// tools/tag-font-styles.mjs. Resolves {key: [tag, ...]} or null. Optional by
+// design: a missing or unreadable file means the font search falls back to
+// name/key matching, exactly as before the tags existed. No model runs here.
+let stylesPromise = null;
+export function loadFontStyles() {
+  if (!stylesPromise) {
+    stylesPromise = readBytes("manifest-styles.json")
+      .then((b) => {
+        const s = JSON.parse(new TextDecoder().decode(b));
+        return s && s.fonts ? s.fonts : null;
+      })
+      .catch(() => {
+        stylesPromise = null;
+        return null;
+      });
+  }
+  return stylesPromise;
+}
+
 export function ensureFont(key) {
   const cached = (EMB.SATIN_FONTS || {})[key];
   if (cached) return Promise.resolve(cached);

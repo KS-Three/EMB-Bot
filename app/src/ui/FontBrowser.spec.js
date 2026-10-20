@@ -20,6 +20,7 @@ vi.mock("../lib/fontLoader.js", () => ({
       { key: "no_preview", name: "No Preview", group: "Sans" },
     ],
   }),
+  loadFontStyles: () => Promise.resolve({ good_font: ["script", "bold"], no_preview: ["sans"] }),
   ensureFont: () => Promise.reject(new Error("not used by this spec")),
 }));
 
@@ -60,4 +61,15 @@ test("a tile whose preview fails to load falls back to a placeholder", async () 
   // The healthy tile is untouched — a per-key flag, not a global one.
   expect([...container.querySelectorAll(".fb-tile-img img")]
     .some((i) => i.getAttribute("src").includes("good_font"))).toBe(true);
+});
+
+test("the search box finds a font by its style tag, not only its name", async () => {
+  const { container } = render(FontBrowser, { props: { selected: null, currentText: "" } });
+  await tick();
+  const box = container.querySelector(".fb-search input");
+  await fireEvent.input(box, { target: { value: "bold script" } });
+  await tick();
+  const srcs = [...container.querySelectorAll(".fb-tile-img img")].map((i) => i.getAttribute("src"));
+  expect(srcs.length, "only the bold script font should remain").toBe(1);
+  expect(srcs[0]).toContain("good_font");
 });
