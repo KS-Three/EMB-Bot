@@ -540,6 +540,11 @@ PRE_FLIP["bean_letter_bay_hold"] = None
 # engine: the detail is absorbed and painted over. The tests ABOUT it are in
 # `tests/test_detail_spokes.py`.
 PRE_FLIP["detail_spokes"] = False
+# The lowercase shoulder cut (Kent's flip 2026-10-20, after PR #986's sewn
+# judge): a lettering piece that folds its crosses through a shoulder takes a
+# second look, judged sewn. False is the pre-flip lane. The tests ABOUT it are
+# `tests/test_lowercase_angle.py`.
+PRE_FLIP["lettering_columns_fold_cuts"] = False
 # The small stem and the dot rung, scoped to lettering (Kent's flip
 # 2026-10-20, MASTER_SCOPE item 52; OFF/ON renders in PR #991). ON, a thin
 # lettering stem under the area floor sews satin in the Column lane, and an
