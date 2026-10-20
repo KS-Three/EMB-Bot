@@ -58,3 +58,23 @@ tip before `branch -D` is the reversible shape). The eight stranded lanes:
 removable per 10-11), `edge-run-start` (7 patches), `fill-columns-ends` (7),
 `outline-cut-columns` (2), `upload-crop` (duplicate, 21), `sitting-prep-wok42`
 (1 + a modified test), `serif-junction-fans` (#653 merged, tip 3 newer).
+
+## Status after the wrap-up session, 2026-10-20 evening
+
+Done since the census: the 363 branch deletes ran (0 of 363 exist; 103 local
+branches left). `quirky-dirac-0e9b52` and its reversed-flip diff were discarded
+through the app's `discard_kept_worktree` card (Kent's pick; its branch
+`claude/open-cored-counters-on` is kept and landed). The stale
+`.claude/pr_body.md` (#988's body) went to the Recycle Bin. **Kent chose to
+LEAVE the lanes:** 57 landed clean, 13 landed with unverified modified source,
+8 stranded, 3 app reuse-pool (detached `affectionate-yonath`,
+`dazzling-bouman`, `sharp-blackburn` — the app reaps those itself; never
+`git worktree remove` them). The 13 squash-landed lanes whose `git cherry`
+shows `+` lines (cap-follow, columns-density, field-node-edit,
+fill-columns-exit, gaulke-ground-sewn, join-square-enthusiast,
+join-square-merge, letterform-priors, n-fan, pr572-fix, satin-spine-port,
+small-text-true-size, star-satin-runaway) each have a tip inside a merged PR
+head — landed, not stranded; `cherry` alone over-counts after a squash merge.
+Two things a session cannot do here even with Kent's yes in chat:
+`git worktree remove` (the hook) and WRITING a script that names it (the
+auto-mode classifier denied the Write). Hand Kent the commands as text.
