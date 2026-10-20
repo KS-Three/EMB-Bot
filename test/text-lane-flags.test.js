@@ -1,5 +1,8 @@
 // The text lane's two flags (2026-10-20): `dedupeHoles` and `underlayDirection`
-// on buildLetteringDesign, both built OFF.
+// on buildLetteringDesign, both built OFF. `dedupeHoles` went ON by default
+// the same day (Kent, with `ties` and `fillStagger`), so its OFF arm here is
+// an explicit `dedupeHoles: false`, and `base` pins `ties` OFF: these pins
+// are main's untied stream, and the locks are not this file's subject.
 //
 // MASTER_SCOPE 25 said lettering "has its own and no flag yet" and 40 that
 // buildLetteringDesign "is still not covered". This wires the shape lane's
@@ -30,7 +33,7 @@ const fb = require("../src/fontbin.js");
 const satin = require("../src/satin.js");
 
 const BIN = path.join(__dirname, "..", "src", "fonts", "bin");
-const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, underlay: true };
+const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, underlay: true, ties: false };
 const load = (key) => fb.decodeFontBin(fs.readFileSync(path.join(BIN, key + ".embf")));
 // The library is committed; a missing font is a skip locally and a failure on CI,
 // as test/run-fonts.test.js has it: a pin nobody ran is not a pin.
@@ -40,6 +43,8 @@ function binOrSkip(key) {
   return false;
 }
 const build = (key, text, widthMm, extra) => DG.buildLetteringDesign(load(key), text, { ...base, targetWidthMm: widthMm, ...(extra || {}) });
+// dedupeHoles' off arm (it is ON when omitted).
+const OFF = { dedupeHoles: false };
 const md5 = (d) => crypto.createHash("md5").update(JSON.stringify(d.stitches)).digest("hex");
 const records = (d) => d.stitches.map((s) => `${s.x},${s.y},${s.type}`).join(";");
 const same = (p, q) => p.x === q.x && p.y === q.y;
@@ -85,29 +90,29 @@ const PINS = [
   ["pixel10", "FRITSCH", 100, "9152f6f964eba544506510c004b8f993", 6879, {}],
 ];
 
-test("both flags are OFF by default: the stream is main's (md5), and explicit false is byte-identical to omitting them", () => {
+test("both flags OFF is main's stream (md5); omitted, dedupeHoles is ON (Kent, 2026-10-20) and underlayDirection OFF", () => {
   for (const [key, text, w, hash, n] of PINS) {
     if (!binOrSkip(key)) continue;
-    const omitted = build(key, text, w);
-    assert.strictEqual(md5(omitted), hash, `${key} "${text}" ${w} mm: the OFF stream moved`);
-    assert.strictEqual(omitted.stitches.length, n, `${key} "${text}" ${w} mm: records`);
     const off = build(key, text, w, { dedupeHoles: false, underlayDirection: false });
-    assert.strictEqual(records(off), records(omitted), `${key} "${text}" ${w} mm: explicit false`);
-    assert.deepStrictEqual(off.runs, omitted.runs);
+    assert.strictEqual(md5(off), hash, `${key} "${text}" ${w} mm: the OFF stream moved`);
+    assert.strictEqual(off.stitches.length, n, `${key} "${text}" ${w} mm: records`);
+    const omitted = build(key, text, w), named = build(key, text, w, { dedupeHoles: true, underlayDirection: false });
+    assert.strictEqual(records(omitted), records(named), `${key} "${text}" ${w} mm: the defaults`);
+    assert.deepStrictEqual(omitted.runs, named.runs);
   }
 });
 
 test("dedupeHoles: left off, a run's first stitch repeats the point the run before it ended on (the fixtures, by kind)", () => {
   for (const [key, text, w, , , byKind] of PINS) {
     if (!binOrSkip(key)) continue;
-    assert.deepStrictEqual(secondByKind(build(key, text, w)), byKind, `${key} "${text}" ${w} mm`);
+    assert.deepStrictEqual(secondByKind(build(key, text, w, OFF)), byKind, `${key} "${text}" ${w} mm`);
   }
 });
 
 test("dedupeHoles ON: no stitch straight after a stitch on its point, and the stream is OFF's less exactly those records", () => {
   for (const [key, text, w] of PINS) {
     if (!binOrSkip(key)) continue;
-    const off = build(key, text, w), on = build(key, text, w, { dedupeHoles: true });
+    const off = build(key, text, w, OFF), on = build(key, text, w, { dedupeHoles: true });
     const label = `${key} "${text}" ${w} mm`;
     assert.strictEqual(seconds(on), 0, label);
     assert.deepStrictEqual(on.stitches, withoutSecond(off.stitches), label);
@@ -147,7 +152,7 @@ test("dedupeHoles ON: a run every record of which repeats the record before it l
   // onto the stitch they leave from. The shape lane never meets this (pushRun
   // opens every run with a jump); here the span goes with its stitches.
   for (const [text, spansOff, spansOn] of [["FRITSCH", 284, 281], ["Stitches", 324, 316]]) {
-    const off = build("apesplit", text, 40), on = build("apesplit", text, 40, { dedupeHoles: true });
+    const off = build("apesplit", text, 40, OFF), on = build("apesplit", text, 40, { dedupeHoles: true });
     const label = `apesplit "${text}" 40 mm`;
     assert.strictEqual(off.runs.length, spansOff, `${label}: fixture, spans OFF`);
     assert.strictEqual(on.runs.length, spansOn, `${label}: spans ON`);
@@ -168,7 +173,7 @@ test("dedupeHoles ON: the stitch after a jump, a trim or a colour change is laid
   // Two colours put a trim and a colour change in the middle of the word, and
   // the next glyph's run then opens with a jump onto the point it starts from.
   const two = { colorRanges: [{ startIdx: 0, endIdx: 3, colorRgb: [200, 0, 0] }] };
-  const off = build("mai_en_fleur", "FRITSCH", 40, two), on = build("mai_en_fleur", "FRITSCH", 40, { ...two, dedupeHoles: true });
+  const off = build("mai_en_fleur", "FRITSCH", 40, { ...two, ...OFF }), on = build("mai_en_fleur", "FRITSCH", 40, { ...two, dedupeHoles: true });
   assert.ok(count(off, "color") >= 1, "fixture: a colour change");
   assert.deepStrictEqual(on.stitches, withoutSecond(off.stitches));
   // after every record that is not a stitch, ON lays the same stitch OFF does
@@ -179,7 +184,7 @@ test("dedupeHoles ON: the stitch after a jump, a trim or a colour change is laid
 
 test("dedupeHoles ON with ties: every lock is laid and none of them doubles a hole", () => {
   if (!binOrSkip("mai_en_fleur")) return;
-  const tied = build("mai_en_fleur", "FRITSCH", 40, { ties: true });
+  const tied = build("mai_en_fleur", "FRITSCH", 40, { ties: true, ...OFF });
   const both = build("mai_en_fleur", "FRITSCH", 40, { ties: true, dedupeHoles: true });
   assert.ok(tied._debug.nTies > 0, "fixture: ties");
   assert.strictEqual(both._debug.nTies, tied._debug.nTies);
@@ -188,7 +193,7 @@ test("dedupeHoles ON with ties: every lock is laid and none of them doubles a ho
 
 test("dedupeHoles ON: a cross-stitch font's leg ends, laid twice in one hole, are laid once", () => {
   if (!binOrSkip("noble")) return;
-  const off = build("noble", "FRITSCH", 40), on = build("noble", "FRITSCH", 40, { dedupeHoles: true });
+  const off = build("noble", "FRITSCH", 40, OFF), on = build("noble", "FRITSCH", 40, { dedupeHoles: true });
   assert.deepStrictEqual(secondByKind(off), { none: 17 }, "fixture: noble's crosses lie in no span");
   assert.strictEqual(seconds(on), 0);
   assert.deepStrictEqual(on.stitches, withoutSecond(off.stitches));

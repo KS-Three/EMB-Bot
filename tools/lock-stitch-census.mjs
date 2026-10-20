@@ -118,7 +118,7 @@ const all = [];
 let totOff = 0, totOn = 0;
 for (const [name, widthMm, regions] of DESIGNS) {
   for (const fillColumns of [false, true]) {
-    const off = build(regions, widthMm, { fillColumns });
+    const off = build(regions, widthMm, { fillColumns, ties: false });
     const on = build(regions, widthMm, { fillColumns, ties: true });
     const legs = lockLegs(off, on);
     all.push(...legs); totOff += off.stitchCount; totOn += on.stitchCount;

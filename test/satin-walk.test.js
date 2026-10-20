@@ -88,7 +88,10 @@ test("skeletonEdges still walks a ring with no node as one closed edge", () => {
 // and the options are the ones it passes: the defect is an accident of how
 // one outline lands on the raster, so a re-typed star would test another.
 const lib = (name) => import(pathToFileURL(path.join(__dirname, "..", "app", "src", "lib", name)).href);
-async function studioStar(points, innerRatio, sizeMm, garmentId = "left_chest") {
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent); a pin below taken before that, on another subject, builds with them OFF.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+async function studioStar(points, innerRatio, sizeMm, garmentId = "left_chest", extra) {
   const { shapePresetPoints } = await lib("shapePresets.js");
   const { shapesToRegions } = await lib("manualShapes.js");
   const ring = shapePresetPoints("star", { points, innerRatio }, sizeMm);
@@ -97,7 +100,7 @@ async function studioStar(points, innerRatio, sizeMm, garmentId = "left_chest") 
   ]);
   return digitize.buildQualityDesign(regions, {
     garment: garments.getGarment(garmentId), fabric: fabrics.getFabric(fabrics.fabricForGarment(garmentId)), pxPerMm,
-    darkOnTop: false, underlay: true, targetWidthMm: sizeMm, offsetXMm: 0, offsetYMm: 0,
+    darkOnTop: false, underlay: true, targetWidthMm: sizeMm, offsetXMm: 0, offsetYMm: 0, ...extra,
   });
 }
 const median = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
@@ -173,8 +176,8 @@ test("a star none of whose walks ran to the guard sews exactly what it sewed", a
   // star, these four with it. They sew a third fewer stitches. The counts
   // below are theirs since. (Main carried the first of those four parts alone
   // from 2026-10-08, `7bb83e9b`, and read 462 / 751 / 1025 / 594 under it.)
-  assert.strictEqual((await studioStar(12, 0.15, 12)).stitchCount, 297);
-  assert.strictEqual((await studioStar(12, 0.15, 18)).stitchCount, 456);
-  assert.strictEqual((await studioStar(12, 0.15, 23)).stitchCount, 644);
-  assert.strictEqual((await studioStar(8, 0.15, 20)).stitchCount, 390);
+  assert.strictEqual((await studioStar(12, 0.15, 12, undefined, TRIO_OFF)).stitchCount, 297);
+  assert.strictEqual((await studioStar(12, 0.15, 18, undefined, TRIO_OFF)).stitchCount, 456);
+  assert.strictEqual((await studioStar(12, 0.15, 23, undefined, TRIO_OFF)).stitchCount, 644);
+  assert.strictEqual((await studioStar(8, 0.15, 20, undefined, TRIO_OFF)).stitchCount, 390);
 });

@@ -95,10 +95,11 @@ export function fontNames() {
 
 // The Studio's text call (app/src/lib/generate.js, `// text`), minus the element
 // fields a bare element does not set.
-function build(font, text, targetWidthMm) {
+// `extra`: more builder options (the pins test builds with `ties` and the rest OFF).
+function build(font, text, targetWidthMm, extra) {
   return DG.buildLetteringDesign(font, text, {
     garment: garments.getGarment(GARMENT), pxPerMm: 8,
-    rgb: [20, 20, 20], weightPreset: "normal", targetWidthMm,
+    rgb: [20, 20, 20], weightPreset: "normal", targetWidthMm, ...extra,
   });
 }
 
@@ -191,8 +192,8 @@ export function satinColumns(design) {
 const r2 = (x) => (typeof x === "number" ? +x.toFixed(2) : x);
 
 // One cell. `widthFor` is the calibration's trial/capMm pair for (font, text).
-export function measureCell(font, text, capMm, cal) {
-  const design = build(font, text, cal.trialWidth * capMm / cal.trialCap);
+export function measureCell(font, text, capMm, cal, extra) {
+  const design = build(font, text, cal.trialWidth * capMm / cal.trialCap, extra);
   const L = design.lettering;
   const cell = { cap: capMm, empty: !design.stitchCount || !L };
   const unsup = design.unsupported || (L && L.unsupported) || [];
@@ -214,8 +215,8 @@ export function measureCell(font, text, capMm, cal) {
 }
 
 // -> { trialWidth, trialCap } for a (font, text), or null if nothing sews.
-export function calibrate(font, text) {
-  const d = build(font, text, TRIAL_WIDTH_MM);
+export function calibrate(font, text, extra) {
+  const d = build(font, text, TRIAL_WIDTH_MM, extra);
   if (!d.stitchCount || !d.lettering || !(d.lettering.capMm > 0)) return null;
   return { trialWidth: TRIAL_WIDTH_MM, trialCap: d.lettering.capMm };
 }

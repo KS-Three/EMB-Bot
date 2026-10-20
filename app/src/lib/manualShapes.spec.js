@@ -1280,9 +1280,12 @@ describe("columns: shapesToRegions", () => {
 // same design produces under origin/main 431c5026's own src/digitize.js
 // (which never reads `sewAs`), re-taken 2026-10-11 after main's engine moved;
 // first pinned at 8ee893e1 (3556 stitches), before this module knew what a
-// column was.
-const RECT_STITCH_COUNT_ON_MAIN = 3557;
-const RECT_HASH_ON_MAIN = "a436fa9deac95f43a7a86d9d1dc81f7313aafd974690e870792be3dd813ca877";
+// column was. Re-taken 2026-10-20 when `ties`, `fillStagger` and `dedupeHoles`
+// went ON by default (Kent): the Studio passes none of them, so this design
+// takes all three. It read 3557 stitches, a436fa9d..., before that; the
+// change is the flip alone (no column code moved).
+const RECT_STITCH_COUNT_ON_MAIN = 3624;
+const RECT_HASH_ON_MAIN = "575fa9f5f5ca079bef0412805f6a5b28bed70e5e25840b386f93d873a5831018";
 
 describe("columns: through the real engine", () => {
   let generateElement, garment;
