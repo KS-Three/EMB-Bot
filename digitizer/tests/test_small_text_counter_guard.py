@@ -208,9 +208,16 @@ def test_bean_tagging_takes_the_restore_steps_verdict(monkeypatch):
 # off their counters and bays (1.55: `1644330929` -> `00098415bf`; 2.5:
 # `a502e7908a` -> `42401291c4`; 3 mm unchanged, nothing within a hold's reach).
 # "off" has no bean letters and did not move. A second move needs its own reason.
+# The second: the 3 mm "unguarded" pin moved 2026-10-20 when Kent flipped
+# `lettering_columns_fold_cuts` ON (`88822294f9` -> `6212f19180`; with the flag
+# False it still reads `88822294f9`). At 3 mm the line's letters reach the
+# Column lane and the shoulder cut takes its second look; by
+# `tools/lowercase_angle.py`'s reading the line sews no worse (station folds
+# past 45 deg 1 -> 1, short / crossed legs 0 / 18 -> 0 / 18, trims 2 -> 2,
+# 378 -> 366 stitches). 1.55 and 2.5 mm did not move (their lines sew bean).
 MD5 = {1.55: {"off": "dbb6380a91", "unguarded": "00098415bf"},
        2.5: {"off": "1ad15a6e07", "unguarded": "42401291c4"},
-       3: {"off": "5da6cf3d84", "unguarded": "88822294f9"}}
+       3: {"off": "5da6cf3d84", "unguarded": "6212f19180"}}
 
 
 def _md5(cap, **kw):
