@@ -25,7 +25,14 @@ gates that each one got wrong on the labelled logos replaced:
   * ADMISSION: every region whose box could be a glyph (one door, so a
     rescued glyph and an ordinary one are judged alike -- the text cluster's
     rescued door threw the Fremont PLAY letters away at the 0.32 CV it was
-    calibrated with on blobs), screened by height and stroke CV.
+    calibrated with on blobs), screened by height and stroke CV. A glyph
+    whose box sits inside a larger candidate's box is a fragment riding on
+    that candidate (`textcluster._drop_nested`) -- UNLESS it is a member of
+    a LINE of lettering lying in the candidate's hole (`_drop_nested_words`:
+    bridge's BAR & RESTAURANT inside its 49 mm badge at 50 mm). What makes
+    the line a line is its SHAPE, a chain that never doubles back
+    (`_is_line`), not how many glyphs it has: a 2x2 icon grid in a hole is
+    not one.
   * LINKS: one size (`textcluster.LETTER_HEIGHT_RATIO`), one weight, one
     ink (`textcluster._same_ink`), near each other -- `textcluster._linked`
     itself, with the chart.
@@ -60,8 +67,8 @@ import numpy as np
 from . import threads
 from .regions import Region
 from .textcluster import (ASPECT_RATIO_MIN, LETTER_HEIGHT_RATIO, MIN_CLUSTER_MEMBERS,
-                          _Candidate, _cluster, _drop_nested, _house_chains,
-                          _line_of_text_deg, _skeleton_stroke_stats, _stem_slant_deg)
+                          _Candidate, _cluster, _house_chains, _line_of_text_deg,
+                          _skeleton_stroke_stats, _stem_slant_deg)
 
 # Widest box a glyph is taken at. The text cluster's 1.4 was set on a
 # rescued-blob fixture whose non-letter fragments read 1.8-2.1; whole letters
@@ -124,6 +131,23 @@ PATTERN_MIN_TWINS = 5
 # heights (`tools/word_tagger_eval.py`); 5 is the middle of that plateau.
 PATTERN_REACH_HEIGHTS = 5.0
 
+# A LINE of lettering is a chain: its glyphs ordered along their line of
+# text, each step from one glyph to the next turns by no more than this
+# from the step before. A straight row turns 0; an arched word turns by
+# its angular pitch -- bridge's BAR & RESTAURANT round its badge, the
+# deepest arc on the labelled logos, 24-34 deg between steps at 50, 65, 80
+# and 100 mm. A BLOCK of two or more rows has to double back between its
+# rows, whichever way its glyphs are ordered: a 2x2 icon grid in a shape's
+# hole (drone 100 mm, the phone screenshot 100 mm), gaulke's 2x2 window
+# panes (50-80 mm) and a knot of a host's own fragments (bridge 80 mm)
+# measure 99-135 deg (`tools/word_tagger_trace.py --nest-census`, 2026-10-20;
+# every value over the nine logos at four sizes is in
+# `docs/word-tagger-third-glyph-2026-10-13.md`). Any limit from 37 to 99
+# gives the same census; 60 sits in the middle, and it is the one test
+# `_drop_nested_words` asks of a word in a hole. Not a cloth constant: no
+# sew-out settles which way a chain of glyphs turns.
+LINE_TURN_MAX_DEG = 60.0
+
 
 @dataclass
 class Word:
@@ -146,7 +170,10 @@ def _word_id(shape_ids: list[str]) -> str:
     return "WD" + hashlib.blake2s(key, digest_size=4).hexdigest()
 
 
-def _candidates(regions: list[Region]) -> list[_Candidate]:
+def _candidates(regions: list[Region], chart=None) -> list[_Candidate]:
+    """Every region that passes the glyph screens, less the nested ones
+    (`_drop_nested_words`; `chart` is the ink link its held-word test links
+    with, None for geometry alone)."""
     raw: list[_Candidate] = []
     for r in regions:
         x0, y0, x1, y1 = r.polygon.bounds
@@ -163,7 +190,7 @@ def _candidates(regions: list[Region]) -> list[_Candidate]:
         raw.append(_Candidate(region=r, height_mm=h, width_mm=w,
                               stroke_mean_mm=stats.mean_mm, stroke_cv=stats.cv,
                               cx=(x0 + x1) / 2.0, cy=(y0 + y1) / 2.0))
-    return _drop_nested(raw)
+    return _drop_nested_words(raw, chart)
 
 
 def _axis(cands: list[_Candidate]) -> tuple[float, float]:
@@ -198,6 +225,108 @@ def _split_lines(cands: list[_Candidate]) -> list[list[_Candidate]]:
     lo = [t[2] for t in proj[:i + 1]]
     hi = [t[2] for t in proj[i + 1:]]
     return _split_lines(lo) + _split_lines(hi)
+
+
+def _max_turn_deg(cands: list[_Candidate]) -> float:
+    """The members ordered along their principal axis (ties by shape id,
+    as `_split_lines` orders), and the largest turn, in degrees, between
+    one step from member to member and the next. 0 for fewer than three."""
+    if len(cands) < 3:
+        return 0.0
+    ux, uy = _axis(cands)
+    order = sorted(cands, key=lambda k: (k.cx * ux + k.cy * uy, k.region.shape_id))
+    c = np.array([[k.cx, k.cy] for k in order], float)
+    steps = np.diff(c, axis=0)
+    worst = 0.0
+    for a, b in zip(steps[:-1], steps[1:]):
+        na, nb = float(np.hypot(*a)), float(np.hypot(*b))
+        if na > 0.0 and nb > 0.0:
+            cos = max(-1.0, min(1.0, float(np.dot(a, b)) / (na * nb)))
+            worst = max(worst, math.degrees(math.acos(cos)))
+    return worst
+
+
+def _is_line(cands: list[_Candidate]) -> bool:
+    """Has this linked group the SHAPE of one line of lettering: a word's
+    worth of glyphs (`MIN_CLUSTER_MEMBERS`) in a chain that never doubles
+    back (`LINE_TURN_MAX_DEG`)? Straight or arched rows are; a block of two
+    rows, a 2x2 grid, a ring of pieces are not."""
+    return len(cands) >= MIN_CLUSTER_MEMBERS and _max_turn_deg(cands) <= LINE_TURN_MAX_DEG
+
+
+def _box_holds(outer, inner) -> bool:
+    """`textcluster._drop_nested`'s containment on two bounds tuples:
+    `inner`'s box inside `outer`'s and `outer`'s strictly larger."""
+    ox0, oy0, ox1, oy1 = outer
+    bx0, by0, bx1, by1 = inner
+    return (ox0 <= bx0 and oy0 <= by0 and ox1 >= bx1 and oy1 >= by1
+            and (ox1 - ox0) * (oy1 - oy0) > (bx1 - bx0) * (by1 - by0))
+
+
+def _shell(polygon):
+    """The polygon's outline with its holes filled -- what a glyph in a
+    ring's hole lies inside and a glyph beside the ring's ink does not."""
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+    geoms = getattr(polygon, "geoms", [polygon])
+    return unary_union([Polygon(g.exterior) for g in geoms if not g.is_empty])
+
+
+def _held_lines(cands: list[_Candidate], chart) -> dict[str, set[str]]:
+    """{host shape id: shape ids the host may NOT swallow}: for every
+    candidate whose box holds three or more others lying inside its
+    OUTLINE (half their area or more within `_shell`), the members of each
+    group among them that links into a word (`textcluster._cluster`, the
+    tagger's own link) and has a line's shape (`_is_line`)."""
+    boxes = [c.region.polygon.bounds for c in cands]
+    out: dict[str, set[str]] = {}
+    for i, host in enumerate(cands):
+        held = [c for j, c in enumerate(cands) if j != i and _box_holds(boxes[i], boxes[j])]
+        if len(held) < MIN_CLUSTER_MEMBERS:
+            continue
+        shell = _shell(host.region.polygon)
+        inside = [c for c in held
+                  if c.region.polygon.area > 0
+                  and c.region.polygon.intersection(shell).area >= 0.5 * c.region.polygon.area]
+        if len(inside) < MIN_CLUSTER_MEMBERS:
+            continue
+        free: set[str] = set()
+        for comp in _cluster(inside, LETTER_HEIGHT_RATIO, chart):
+            if _is_line(comp):
+                free.update(c.region.shape_id for c in comp)
+        if free:
+            out[host.region.shape_id] = free
+    return out
+
+
+def _drop_nested_words(cands: list[_Candidate], chart=None) -> list[_Candidate]:
+    """`textcluster._drop_nested` -- a candidate whose box sits inside a
+    larger candidate's box is a fragment riding on it and leaves -- with
+    ONE exception: a host does not swallow the members of a line of
+    lettering that lies in its hole (`_held_lines`). A badge whose ring is
+    under `WORD_MAX_HEIGHT_MM` passes every glyph screen, and at 50 mm its
+    box held all twelve of bridge's BAR & RESTAURANT (PR #889). Freeing
+    whatever LINKS in the hole frees a 2x2 icon grid with it (PR #900,
+    measured negative: 8 strays for 8 letters); asking for the line's shape
+    frees the letters alone (0 strays over nine logos at four sizes,
+    2026-10-20). A pair in a hole, a crumb, a glyph in a host's box beside
+    its ink are swallowed as before. With no hosts holding three, this IS
+    `_drop_nested`."""
+    boxes = [c.region.polygon.bounds for c in cands]
+    held = _held_lines(cands, chart) if len(cands) >= MIN_CLUSTER_MEMBERS + 1 else {}
+    out: list[_Candidate] = []
+    for i, c in enumerate(cands):
+        nested = False
+        for j, other in enumerate(cands):
+            if i == j or not _box_holds(boxes[j], boxes[i]):
+                continue
+            if c.region.shape_id in held.get(other.region.shape_id, ()):
+                continue
+            nested = True
+            break
+        if not nested:
+            out.append(c)
+    return out
 
 
 def _normalised(region: Region):
@@ -315,7 +444,7 @@ def detect_words(regions: list[Region], *, chart=None) -> list[Word]:
     if chart is None:
         chart = threads.CHART
     words: list[Word] = []
-    for comp in _cluster(_candidates(regions), LETTER_HEIGHT_RATIO, chart):
+    for comp in _cluster(_candidates(regions, chart), LETTER_HEIGHT_RATIO, chart):
         if len(comp) < MIN_CLUSTER_MEMBERS:
             continue
         # Pattern elements leave first, and the rest re-link without them:
