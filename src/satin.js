@@ -532,7 +532,9 @@
   // `contours` = [outer, ...holes]; rails stop at the nearest wall (so a stroke
   // beside a counter narrows against the counter edge, not the far outer edge).
   // opts._halfWidthPx is the ring's approx half-width (for trim sizing).
-  function railSatinFromSpine(contours, spinePx, opts, trimStart, trimEnd) {
+  // `extras` (small shapes, 2026-10-20; absent from every call that existed
+  // before, whose output it leaves byte for byte): { cap, cutStart, cutEnd }.
+  function railSatinFromSpine(contours, spinePx, opts, trimStart, trimEnd, extras) {
     const spacingMm = opts.spacingMm, pxPerMm = opts.pxPerMm;
     const pullCompMm = opts.pullCompMm || 0;
     const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
@@ -565,6 +567,15 @@
       return true;
     };
     const ranStart = trimStart && runOut(true), ranEnd = trimEnd && runOut(false);
+    // A JUNCTION END IS CUT at its zone's disc (smallShapesSatin below): the
+    // part of the spine inside the disc is dropped, and the station left on
+    // the disc's edge is treated as a run-out station, taking the width of
+    // the station before it. A spine the disc swallows whole sews nothing;
+    // the zone is sewn in its place.
+    const ex = extras || {};
+    const cutStart = !!ex.cutStart, cutEnd = !!ex.cutEnd;
+    if (cutStart) { spine = cutSpineAtDisc(spine, false, ex.cutStart); if (!spine) return []; }
+    if (cutEnd) { spine = cutSpineAtDisc(spine, true, ex.cutEnd); if (!spine) return []; }
     const denom = spacingMm * pxPerMm;
     const stepPx = denom > 0 ? denom : 4;
     const spineLen = chainLength(spine);
@@ -572,6 +583,7 @@
     spine = resampleChain(spine, Math.max(2, Math.ceil(spineLen / stepPx)));
 
     const N = spine.length;
+    const carried = (t) => (t === 0 && (ranStart || cutStart)) || (t === N - 1 && (ranEnd || cutEnd));
     const ang = new Array(N);
     for (let t = 0; t < N; t++) {
       const prev = spine[Math.max(0, t - 1)], next = spine[Math.min(N - 1, t + 1)];
@@ -594,7 +606,7 @@
       // mouth of a C, a stitch 20 mm long on a stroke 3 mm wide. It takes the
       // widths of the station before it (as it always has on a bar, where the
       // ray that leaves meets nothing).
-      if ((t === 0 && ranStart) || (t === N - 1 && ranEnd)) { dA[t] = NaN; dB[t] = NaN; continue; }
+      if (carried(t)) { dA[t] = NaN; dB[t] = NaN; continue; }
       const hp = rayContoursHit(contours, s.x, s.y, nx, ny);
       const hn = rayContoursHit(contours, s.x, s.y, -nx, -ny);
       dA[t] = hp ? Math.hypot(hp.x - s.x, hp.y - s.y) : NaN;
@@ -615,11 +627,30 @@
 
     const offset = (pullCompMm * pxPerMm) / 2;
     const ss = shortStitchOf(opts);
+    const cap = !!ex.cap;
     const out = [];
     for (let t = 0; t < N; t++) {
       const s = spine[t], nx = Math.cos(ang[t]), ny = Math.sin(ang[t]);
-      let pA = { x: s.x + nx * (dA[t] + offset), y: s.y + ny * (dA[t] + offset) };
-      let pB = { x: s.x - nx * (dB[t] + offset), y: s.y - ny * (dB[t] + offset) };
+      let pA, pB;
+      if (cap) {
+        // THE CAP. A station on the outline took the width of the station
+        // before it, and on a round end that cross stands on the apex as wide
+        // as the stroke a pitch back, its ends outside the curve; and the
+        // smoothing of the widths above overshoots a wall that turns (the
+        // station next to the end of a dot's column). Each end of a cross
+        // that lies outside the shape is pulled onto the nearest point of
+        // the outline (satinColumn's own fallback for a ray that misses), so
+        // the last cross of a round end becomes a chord of the cap and no
+        // needle of the column lands outside the drawn shape. The pull
+        // compensation is then put on outside it, as on every other cross.
+        const a0 = capToContours(contours, { x: s.x + nx * dA[t], y: s.y + ny * dA[t] });
+        const b0 = capToContours(contours, { x: s.x - nx * dB[t], y: s.y - ny * dB[t] });
+        pA = { x: a0.x + nx * offset, y: a0.y + ny * offset };
+        pB = { x: b0.x - nx * offset, y: b0.y - ny * offset };
+      } else {
+        pA = { x: s.x + nx * (dA[t] + offset), y: s.y + ny * (dA[t] + offset) };
+        pB = { x: s.x - nx * (dB[t] + offset), y: s.y - ny * (dB[t] + offset) };
+      }
       if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < 0.5) continue;
       if (ss) [pA, pB] = shortStitchStation(ss, t, pA, pB);
       if (t % 2 === 0) { out.push(pA); out.push(pB); } else { out.push(pB); out.push(pA); }
@@ -814,12 +845,257 @@
     strokes = strokes.filter((s) => { const L = chainLength(s.spine); return L > EPS && (L >= minEdgeLen || (s.freeStart && s.freeEnd)); });
     if (strokes.length === 0) {
       const gp = skeletonPath(mask, gw, gh);
-      if (gp.length < 3) return { strokes: [], contours, halfWidthPx };
+      if (gp.length < 3) return { strokes: [], contours, halfWidthPx, minEdgeLen };
       strokes = [{ spine: gp.map(toWorld), freeStart: true, freeEnd: true, closed: false }];
     }
     strokes.sort((a, b) => chainLength(b.spine) - chainLength(a.spine));
     if (strokes.length > 24) strokes = strokes.slice(0, 24);
-    return { strokes, contours, halfWidthPx };
+    return { strokes, contours, halfWidthPx, minEdgeLen };
+  }
+
+  // ---- Small shapes (2026-10-20; `opts.smallShapes`, OFF by default) ------
+  //
+  // Three things the skeleton satin does to a small shape, and a cure for each
+  // built from what this file already has. No new number: the thresholds are
+  // the ring's own half-width, ringToSpines' stroke floor, and the distance
+  // from a junction to the nearest wall.
+  //
+  //  - A ROUND END. A free end is run out to the outline, and the station that
+  //    lands there has no width of its own, so it takes the width of the
+  //    station before it: on a round end that cross stands on the apex as wide
+  //    as the stroke a pitch back, its two ends outside the curve (0.27 mm on a
+  //    10 x 2 mm bar, before pull compensation). THE CAP (railSatinFromSpine):
+  //    a carried rail point outside the shape is pulled onto the nearest point
+  //    of the outline, so the last cross is a chord of the cap.
+  //  - A BLOB: a square or a dot. Its skeleton is nothing, one pixel or two. A
+  //    6 mm square thins to two pixels whose direction is an accident of
+  //    thinning (on the diagonal: a 7.8 mm stitch); one pixel or none fell to
+  //    the outline-split column, whose end-cap trim starts 12% in from each end
+  //    (a 6 mm circle sewn 5.0 mm tall) and whose centre line is the ring's
+  //    farthest pair (a square's diagonal). THE SMALLEST COLUMN the engine
+  //    already uses is the two-pixel skeleton's: a spine through the middle,
+  //    run out to the outline both ways, crosses cast to the walls. A shape
+  //    none of whose strokes reaches ringToSpines' own floor for a stroke is
+  //    sewn as that column, its spine laid through the ring's centroid along
+  //    the ring's principal axis (the polygon's second moments: a square's or
+  //    a circle's are equal, and the axis is then level).
+  //  - A STAR'S CENTRE, and any junction of three or more arms. An arm's
+  //    stations run in to the node, and from a station inside the centre the
+  //    ray cast across the arm leaves it through its base and lands on another
+  //    arm's far wall: a 10 mm star's longest stitch is 7.7 mm, cast arm to
+  //    arm, and its centre is sewn once per arm. The arms are CUT where they
+  //    enter the disc inscribed at the junction (its radius the distance from
+  //    the junction to the nearest wall: on a regular star, exactly where a
+  //    cross stops meeting its own arm), each is sewn tip to base, and the
+  //    centre is sewn ONCE, as the smallest column over the polygon the arms'
+  //    base crosses bound: one convergent zone, the arms' needle-up moves
+  //    crossing it under its thread rather than running tip to tip.
+
+  // Even-odd test of a point against every contour (outer and holes).
+  function insideContours(contours, px, py) {
+    let c = false;
+    for (const ring of contours) {
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const a = ring[i], b = ring[j];
+        if ((a.y > py) !== (b.y > py) && px < (b.x - a.x) * (py - a.y) / (b.y - a.y) + a.x) c = !c;
+      }
+    }
+    return c;
+  }
+  // Nearest point on any contour (each closed) to (px,py).
+  function nearestOnContours(contours, px, py) {
+    let best = null, bd = Infinity;
+    for (const ring of contours) {
+      if (!ring || ring.length < 2) continue;
+      const q = nearestOnChain(ring.concat([ring[0]]), px, py);
+      const d = Math.hypot(q.x - px, q.y - py);
+      if (d < bd) { bd = d; best = q; }
+    }
+    return best;
+  }
+  // The cap: a point outside the shape is pulled onto its outline.
+  function capToContours(contours, p) {
+    if (insideContours(contours, p.x, p.y)) return p;
+    return nearestOnContours(contours, p.x, p.y) || p;
+  }
+  // Centroid and principal axis of a ring, from the polygon's own second
+  // moments (taken about the vertex mean so a symmetric ring cancels exactly).
+  // When the two moments agree to EPS the ring has no axis of its own (a
+  // square, a circle) and the column runs level.
+  function ringAxis(ring) {
+    const n = ring.length;
+    let mx = 0, my = 0;
+    for (const p of ring) { mx += p.x; my += p.y; }
+    mx /= n; my /= n;
+    let A = 0, cx = 0, cy = 0, xx = 0, yy = 0, xy = 0;
+    for (let i = 0; i < n; i++) {
+      const p = ring[i], q = ring[(i + 1) % n];
+      const px = p.x - mx, py = p.y - my, qx = q.x - mx, qy = q.y - my;
+      const c = px * qy - qx * py;
+      A += c; cx += (px + qx) * c; cy += (py + qy) * c;
+      xx += (px * px + px * qx + qx * qx) * c;
+      yy += (py * py + py * qy + qy * qy) * c;
+      xy += (px * qy + 2 * px * py + 2 * qx * qy + qx * py) * c;
+    }
+    A /= 2;
+    if (!(Math.abs(A) > EPS)) return { x: mx, y: my, ux: 1, uy: 0 };
+    cx /= 6 * A; cy /= 6 * A;
+    const cxx = xx / (12 * A) - cx * cx, cyy = yy / (12 * A) - cy * cy, cxy = xy / (24 * A) - cx * cy;
+    const d = cxx - cyy, e = 2 * cxy, scale = Math.abs(cxx) + Math.abs(cyy);
+    const theta = (Math.abs(d) <= EPS * scale && Math.abs(e) <= EPS * scale) ? 0 : 0.5 * Math.atan2(e, d);
+    return { x: mx + cx, y: my + cy, ux: Math.cos(theta), uy: Math.sin(theta) };
+  }
+  // Cut a spine where it enters the disc `z` = { x, y, r } from the start (or
+  // the end, `atEnd`): the part inside the disc is dropped and the spine now
+  // begins (ends) on the disc's edge. Null when the disc swallows it whole.
+  function cutSpineAtDisc(spine, atEnd, z) {
+    const pts = atEnd ? spine.slice().reverse() : spine.slice();
+    const dist = (p) => Math.hypot(p.x - z.x, p.y - z.y);
+    let k = 0;
+    while (k < pts.length && dist(pts[k]) < z.r) k++;
+    if (k >= pts.length) return null;
+    if (k === 0) return spine;
+    const a = pts[k - 1], b = pts[k];   // a inside the disc, b outside: the edge is crossed between them
+    const dx = b.x - a.x, dy = b.y - a.y, fx = a.x - z.x, fy = a.y - z.y;
+    const qa = dx * dx + dy * dy, qb = 2 * (fx * dx + fy * dy), qc = fx * fx + fy * fy - z.r * z.r;
+    const disc = qb * qb - 4 * qa * qc;
+    let t = 1;
+    if (qa > EPS && disc >= 0) { const t1 = (-qb + Math.sqrt(disc)) / (2 * qa); if (t1 >= 0 && t1 <= 1) t = t1; }
+    const kept = [{ x: a.x + dx * t, y: a.y + dy * t }].concat(pts.slice(k));
+    return atEnd ? kept.reverse() : kept;
+  }
+  // THE SMALLEST COLUMN: a spine through the middle of `poly` along its
+  // principal axis, half the ring's width long, run out to the outline both
+  // ways, crosses cast to `contours`, both ends capped.
+  function smallestColumn(contours, poly, opts) {
+    const ax = ringAxis(poly);
+    const half = estimateWidthMm(poly, 1) / 2;   // the ring's half-width, px
+    const h = half / 2;
+    if (!(h > EPS)) return [];
+    const spine = [{ x: ax.x - ax.ux * h, y: ax.y - ax.uy * h }, { x: ax.x + ax.ux * h, y: ax.y + ax.uy * h }];
+    return railSatinFromSpine(contours, spine, Object.assign({}, opts, { _halfWidthPx: half }), true, true, { cap: true });
+  }
+  // medialSatin with `opts.smallShapes`: the three cures above, in place of
+  // the stroke loop in medialSatin. Strokes that belong to no junction zone
+  // are sewn as there, with the cap.
+  function smallShapesSatin(ring, opts, strokes, contours, halfWidthPx, minEdgeLen) {
+    const o = Object.assign({ _halfWidthPx: halfWidthPx }, opts);
+    // A blob: no stroke reaches the floor a stroke must reach.
+    if (!strokes.some((s) => chainLength(s.spine) >= minEdgeLen)) {
+      const pts = smallestColumn(contours, ring, o);
+      return pts.length >= 4 ? pts : satinColumn(ring, opts);
+    }
+    // Junction zones: the non-free ends of the open strokes, grouped within a
+    // half-width of each other; a group of three or more is a zone, its disc
+    // reaching the nearest wall.
+    const ends = [];
+    strokes.forEach((s, i) => {
+      if (s.closed) return;
+      if (!s.freeStart) ends.push({ i, atEnd: false, p: s.spine[0] });
+      if (!s.freeEnd) ends.push({ i, atEnd: true, p: s.spine[s.spine.length - 1] });
+    });
+    const clusters = [];
+    for (const e of ends) {
+      let c = clusters.find((k) => Math.hypot(k.x - e.p.x, k.y - e.p.y) <= halfWidthPx);
+      if (!c) { c = { x: 0, y: 0, members: [] }; clusters.push(c); }
+      c.members.push(e);
+      c.x = c.members.reduce((a, m) => a + m.p.x, 0) / c.members.length;
+      c.y = c.members.reduce((a, m) => a + m.p.y, 0) / c.members.length;
+    }
+    const zones = [];
+    for (const c of clusters) {
+      if (c.members.length < 3) continue;
+      const wall = nearestOnContours(contours, c.x, c.y);
+      const r = wall ? Math.hypot(wall.x - c.x, wall.y - c.y) : 0;
+      if (!(r > EPS)) continue;
+      zones.push({ x: c.x, y: c.y, r, members: c.members, on: true });
+    }
+    // Each stroke's cuts, from the zones it ends in; then every stroke's
+    // column. A zone fewer than two of whose arms survive their cut is no
+    // zone (nothing bounds its polygon): it is dropped and its arms re-sewn
+    // uncut. Restoring a cut can only add survivors to another zone.
+    const cutsOf = (i) => {
+      const ex = { cap: true };
+      for (const z of zones) if (z.on) for (const m of z.members) if (m.i === i) { if (m.atEnd) ex.cutEnd = z; else ex.cutStart = z; }
+      return ex;
+    };
+    const sew = (i) => { const s = strokes[i]; return railSatinFromSpine(contours, s.spine, o, s.freeStart, s.freeEnd, cutsOf(i)); };
+    const cols = strokes.map((_, i) => sew(i));
+    for (const z of zones) {
+      const alive = new Set(z.members.filter((m) => cols[m.i].length >= 2).map((m) => m.i));
+      if (alive.size >= 2) continue;
+      z.on = false;
+      for (const m of z.members) cols[m.i] = sew(m.i);
+    }
+    // Sew order: strokes in no zone first, as medialSatin does; then each
+    // zone's arms in their order round it, each turned to end at the zone,
+    // and the zone itself last, over the arms' base crosses. A stroke that
+    // ends in two zones is sewn under the first; its cross at the other end
+    // still bounds the other zone's polygon.
+    const zoneOf = new Map();
+    for (const z of zones) if (z.on) for (const m of z.members) if (cols[m.i].length >= 2 && !zoneOf.has(m.i)) zoneOf.set(m.i, z);
+    const runs = [];
+    strokes.forEach((_, i) => { if (!zoneOf.has(i) && cols[i].length >= 2) runs.push(cols[i]); });
+    for (const z of zones) {
+      if (!z.on) continue;
+      // the member's column turned so its cross at this zone comes last: the pairs of a column read the same backwards
+      const towardZone = (m) => (m.atEnd ? cols[m.i] : cols[m.i].slice().reverse());
+      const baseOf = (pts) => [pts[pts.length - 2], pts[pts.length - 1]];
+      const arms = [], bases = [];
+      for (const m of z.members) {
+        if (cols[m.i].length < 2) continue;
+        const pts = towardZone(m), base = baseOf(pts);
+        bases.push(...base);
+        if (zoneOf.get(m.i) !== z || arms.some((a) => a.i === m.i)) continue;
+        const mid = { x: (base[0].x + base[1].x) / 2, y: (base[0].y + base[1].y) / 2 };
+        arms.push({ i: m.i, pts, base, angle: Math.atan2(mid.y - z.y, mid.x - z.x) });
+      }
+      // Round the zone, the arms alternate: one tip to base, the next base to
+      // tip, so the needle-up moves between them are base to base (across
+      // the zone, under its thread once it is sewn) and tip to tip in turn.
+      // One tip-to-tip move in two is the fewest a single path through the
+      // arms can have: an arm has one base and is sewn once. Which base
+      // vertex a column ends on is its zigzag's parity, so the way round
+      // and the arm to start from are chosen for the shortest needle-up
+      // distance in all, the move onto the zone included.
+      arms.sort((a, b) => a.angle - b.angle);
+      const corners = bases.map((p) => ({ x: p.x, y: p.y, angle: Math.atan2(p.y - z.y, p.x - z.x) })).sort((a, b) => a.angle - b.angle);
+      let zone = [];
+      if (corners.length >= 3) {
+        const zonePoly = corners.map((p) => ({ x: p.x, y: p.y }));
+        zone = smallestColumn([zonePoly], zonePoly, o);
+        if (zone.length < 2) zone = [];
+      }
+      if (!arms.length) { if (zone.length) runs.push(zone); continue; }
+      const gap = (a, b) => Math.hypot(b[0].x - a[a.length - 1].x, b[0].y - a[a.length - 1].y);
+      let best = null;
+      for (let start = 0; start < arms.length; start++) for (const back of [false, true]) {
+        const n = arms.length, seq = [];
+        for (let k = 0; k < n; k++) seq.push(arms[((back ? start - k : start + k) % n + n) % n]);
+        const order = seq.map((a, k) => (k % 2 ? a.pts.slice().reverse() : a.pts));
+        let L = 0;
+        for (let k = 1; k < order.length; k++) L += gap(order[k - 1], order[k]);
+        let tail = zone;
+        if (zone.length) {
+          const flipped = zone.slice().reverse();
+          if (gap(order[order.length - 1], flipped) < gap(order[order.length - 1], zone)) tail = flipped;
+          L += gap(order[order.length - 1], tail);
+        }
+        if (!best || L < best.L) best = { L, order, tail };
+      }
+      for (const c of best.order) runs.push(c);
+      if (best.tail.length) runs.push(best.tail);
+    }
+    const out = [];
+    let started = false;
+    for (const pts of runs) {
+      if (pts.length < 2) continue;
+      const first = started ? { x: pts[0].x, y: pts[0].y, travel: true } : pts[0];
+      out.push(first);
+      for (let k = 1; k < pts.length; k++) out.push(pts[k]);
+      started = true;
+    }
+    return out.length >= 4 ? out : satinColumn(ring, opts);
   }
 
   // Satin along the medial axis (skeleton). Decomposes branched letters (B, R,
@@ -830,7 +1106,8 @@
   // tiny rings. opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0, holes=[] }.
   function medialSatin(ring, opts) {
     if (!ring || ring.length < 3) return [];
-    const { strokes, contours, halfWidthPx } = ringToSpines(ring, opts);
+    const { strokes, contours, halfWidthPx, minEdgeLen } = ringToSpines(ring, opts);
+    if (opts && opts.smallShapes) return smallShapesSatin(ring, opts, strokes, contours, halfWidthPx, minEdgeLen);
     if (!strokes.length) return satinColumn(ring, opts);
     if (typeof globalThis !== "undefined" && globalThis.__DBG_SPINE) globalThis.__spine = strokes.reduce((acc, s) => acc.concat(s.spine), []);
 
@@ -973,5 +1250,9 @@
     pruneSkeleton,
     skeletonEdges,
     skeletonPath,
+    ringAxis,
+    cutSpineAtDisc,
+    capToContours,
+    smallestColumn,
   };
 });

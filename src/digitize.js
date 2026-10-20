@@ -851,7 +851,7 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles, cutFloats }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles, cutFloats, satinSmallShapes }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
   // satinfont.js's constant block — and `satinZigzag`, ON by default since 2026-10-13:
@@ -906,6 +906,8 @@
     const useUnderlay = o.underlay !== false;
     // `underlayDirection` (default ON, Kent 2026-10-11; built OFF in PR #822; defect 57): a satin column starts at the end nearer where its underlay ends (satin.js startNear). `underlayDirection: false` restores the old order.
     const underlayDirection = o.underlayDirection !== false;
+    // `satinSmallShapes` (default OFF, built 2026-10-20; defect 57's remainder): the medial satin caps a run-out end onto the outline, sews a square or dot as the smallest column along its own axis, and sews a junction of three or more arms (a star's centre) once as one zone, the arms cut at it (satin.js smallShapesSatin). Off, medialSatin is byte for byte what it was. The flip is Kent's (gate 3).
+    const satinSmallShapes = o.satinSmallShapes === true;
     const perRegionAngle = o.perRegionAngle !== false;
     const garment = o.garment || { widthIn: 5, heightIn: 2.25 };
 
@@ -1527,7 +1529,7 @@
             pts = column
               ? satinplaymod.satinFromRails(column.railA, column.railB, colRungs,
                   { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg })
-              : sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
+              : sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg, smallShapes: satinSmallShapes });
             if (underlayDirection) pts = satinmod.startNear(pts, endOfRuns(runs));
             nSatin++;
           }

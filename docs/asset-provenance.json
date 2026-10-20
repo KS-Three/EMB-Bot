@@ -331,6 +331,12 @@
    "basis": "app/public"
   },
   {
+   "prefix": "docs/renders/browser-satin-small-shapes/",
+   "status": "synthetic",
+   "source": "Drawn by tools/satin-small-shapes.mjs from the Studio's own preset shapes (star, rectangle, circle), a hand-drawn T and two library-font words; no client art, no third-party stitch file",
+   "basis": "docs/renders/browser-satin-small-shapes/README.md"
+  },
+  {
    "prefix": "docs/renders/apex-verdict-2026-09-30/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
