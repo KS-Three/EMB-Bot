@@ -423,10 +423,16 @@ class PipelineConfig:
     # flat lane above has always done it; this lane never has, and a JPEG
     # logo pays for the gap in cones — `logo_bridge_bar.jpg` sews the
     # ringing around its black spokes as four grey threads
-    # (`docs/kent-review-2026-09-03.md`). OFF by default: it moves the
-    # region set on every gradient-class design, so it waits on Kent's
-    # look at a render, not on a green suite.
-    dissolve_phantom_blends: bool = False
+    # (`docs/kent-review-2026-09-03.md`). Built OFF and banked OFF by Kent
+    # on 2026-09-04 (two mild negatives, Whale's leftover shards). ON by
+    # Kent's ruling 2026-10-20 on MASTER_SCOPE item 46, read off PR #1003's
+    # pricing (80 mm, left chest): bridge 17,653 -> 15,196 stitches and
+    # 89 -> 66 trims, and it cuts the thin grey halo `clip_keep_pieces`
+    # would sew from 19.06 to 3.06 mm²; golden_tee +25 stitches, +3 trims;
+    # drone, chrome, sunset and gaulke identical. The residual is defect
+    # 27's own (`0111` Whale shards, cause not established). False is the
+    # pre-flip engine (`tests/conftest.py`'s PRE_FLIP).
+    dissolve_phantom_blends: bool = True
     # Defect 58: a black-and-white logo sews four to six cones, because thin
     # strokes on a low-resolution source are mostly anti-alias grey. ON, a
     # raster `two_tone.detect` reads as two inks (achromatic, two modes, no
@@ -953,7 +959,8 @@ class PipelineConfig:
     #     bill collapses to +1 region and +1 trim (33 regions, 65 trims).
     #     Recorded as an OPEN LEAD, not a recommendation: that flag was ruled
     #     OFF and banked 2026-09-04 and the ruling stands; Kent did not rule
-    #     on it here, and nothing should flip it on this evidence.
+    #     on it here, and nothing should flip it on this evidence. (It was
+    #     flipped ON 2026-10-20 on other evidence: item 46, PR #1003.)
     #
     # What it buys, same sheet: Fremont 18 → 3 lost thin strokes (85.2% →
     # 92.5%, the sub-0.5 mm band 52.2% → 92.0%) and C 64 → B 76 as TRIM_HEAVY

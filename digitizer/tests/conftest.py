@@ -540,4 +540,12 @@ PRE_FLIP["bean_letter_bay_hold"] = None
 # engine: the detail is absorbed and painted over. The tests ABOUT it are in
 # `tests/test_detail_spokes.py`.
 PRE_FLIP["detail_spokes"] = False
+# The photo lane's phantom-blend dissolve (defect 27; Kent banked it OFF
+# 2026-09-04 and flipped it ON 2026-10-20, MASTER_SCOPE item 46, on PR
+# #1003's pricing): a merged label that is mostly boundary and a blend of its
+# two sides folds into the nearer side, so a JPEG's halo cones are never
+# planned. False is the pre-flip engine, with every halo shard the colour
+# files take as their premise. The tests ABOUT it are
+# `tests/test_phantom_blend_photo.py`.
+PRE_FLIP["dissolve_phantom_blends"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
