@@ -88,10 +88,12 @@ ARMS = {
     # 2026-10-13, Kent's ruling). The ON arm is "main". Kent's job also
     # predates `small_text_true_size` (ON since 2026-10-14) and the spoked
     # detail mark on the Wisconsin star (`detail_spokes`, ON since
-    # 2026-10-16, one more shape), so this arm, the engine as he sewed it,
-    # has those OFF too.
+    # 2026-10-16, one more shape), the small stem and the scoped dot rung
+    # (ON since 2026-10-20), so this arm, the engine as he sewed it, has
+    # those OFF too.
     "small_glyph_keep_off": {"small_glyph_keep": False, "small_text_true_size": False,
-                             "detail_spokes": False},
+                             "detail_spokes": False, "lettering_columns_small_stem": False,
+                             "small_dot_rung": False, "small_dot_rung_lettering": False},
 }
 ARM_ORDER = list(ARMS)
 
