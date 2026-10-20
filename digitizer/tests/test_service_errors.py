@@ -18,7 +18,6 @@ fixed here (tests only); each is listed in the PR body.
 from __future__ import annotations
 
 import json
-import time
 
 import cv2
 import numpy as np
@@ -27,6 +26,8 @@ import pytest
 fastapi = pytest.importorskip("fastapi", reason="service extra not installed")
 from digitizer_service.app import MAX_PIXELS, MAX_UPLOAD_BYTES  # noqa: E402
 from digitizer_service.formats import FORMATS  # noqa: E402
+
+from .conftest import wait_for_job  # noqa: E402
 
 _NOT_AN_IMAGE = "isn't an image the engine can read"
 
@@ -53,12 +54,7 @@ def _submit(client, data: bytes, config: dict | str | None = None, name="art.png
 
 
 def _wait(client, job_id: str) -> dict:
-    for _ in range(600):
-        state = client.get(f"/jobs/{job_id}").json()
-        if state["state"] in ("done", "error"):
-            return state
-        time.sleep(0.1)
-    raise AssertionError(f"job {job_id} never finished")
+    return wait_for_job(client, job_id)
 
 
 def _run(client, data: bytes, config: dict | None = None) -> dict:
