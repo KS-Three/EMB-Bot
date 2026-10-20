@@ -62,6 +62,50 @@ describe("filterFonts", () => {
   });
 });
 
+describe("filterFonts — style tags", () => {
+  const STYLES = {
+    geneva_simple: ["sans", "modern"],
+    aventurina: ["script", "elegant", "bold"],
+    cats: ["decorative", "playful", "outline"],
+    small_font: ["small", "sans"],
+  };
+  const keys = (q, g = "All") => filterFonts(FONTS, q, g, STYLES).map((f) => f.key);
+
+  it("matches by a style tag", () => {
+    expect(keys("script")).toEqual(["aventurina"]);
+    expect(keys("playful")).toEqual(["cats"]);
+  });
+  it("every word of a multi-word query must match", () => {
+    expect(keys("bold script")).toEqual(["aventurina"]);
+    expect(keys("bold sans")).toEqual([]);
+    expect(keys("sans modern")).toEqual(["geneva_simple"]);
+  });
+  it("matches a word to a tag by synonym and by prefix", () => {
+    expect(keys("cursive")).toEqual(["aventurina"]);
+    expect(keys("fancy")).toEqual(["cats"]);
+    expect(keys("deco")).toEqual(["cats"]);
+  });
+  it("a name or key hit still counts alongside tags", () => {
+    expect(keys("cats outline")).toEqual(["cats"]);
+    expect(keys("geneva simple")).toEqual(["geneva_simple"]);
+  });
+  it("composes with the group filter", () => {
+    expect(keys("sans", "Small")).toEqual(["small_font"]);
+  });
+  it("without a styles map it is exactly the old name/key search", () => {
+    expect(filterFonts(FONTS, "script", "All")).toEqual([]);
+    expect(filterFonts(FONTS, "bold script", "All", null)).toEqual([]);
+    expect(filterFonts(FONTS, "gen", "All", null).map((f) => f.key)).toEqual(["geneva_simple"]);
+  });
+  it("a font missing from the map is still found by name, never throws", () => {
+    expect(filterFonts(FONTS, "cats", "All", {}).map((f) => f.key)).toEqual(["cats"]);
+    expect(filterFonts(FONTS, "script", "All", {})).toEqual([]);
+  });
+  it("short fragments do not prefix-match tags (no stray hits on 2 letters)", () => {
+    expect(keys("sc")).toEqual([]);
+  });
+});
+
 describe("sizeBand", () => {
   it("derives 0.75x-2x from authored size", () => {
     expect(sizeBand(20)).toEqual({ min: 15, max: 40 });

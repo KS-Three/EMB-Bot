@@ -51,6 +51,12 @@ const coverageSrc = usePersonal
 const coverageOut = join(fontsOut, "manifest-coverage.json");
 if (existsSync(coverageSrc)) copyFileSync(coverageSrc, coverageOut);
 else if (existsSync(coverageOut)) unlinkSync(coverageOut);
+// Style tags for the font search (tools/tag-font-styles.mjs). Optional, same as
+// coverage: no file means name/key search only.
+const stylesSrc = join(srcDir, "fonts", "font-styles.json");
+const stylesOut = join(fontsOut, "font-styles.json");
+if (existsSync(stylesSrc)) copyFileSync(stylesSrc, stylesOut);
+else if (existsSync(stylesOut)) unlinkSync(stylesOut);
 const wantBins = new Set(readdirSync(binSrc).filter((f) => f.endsWith(".embf")));
 // Orphan-clean FIRST: switching between personal and sellable builds must not
 // leave the previous build's binaries being served. Without this, one personal
