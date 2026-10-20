@@ -159,13 +159,16 @@ def test_the_bill_splits_whole_rings_from_arcs_and_both_add_up(width):
     bill, block = _bill(plan), _cap_block(plan)
     assert bill is not None and block is not None
 
-    outline_runs = [r for r in block.runs if r.kind != stitches.TRAVEL]
+    # The cap's own runs: a cap in the last artwork block's cone sews at the
+    # end of that block (`_cap_seam_joins`), so the block also holds artwork.
+    cap_runs = [r for r in block.runs if r.shape_id == "__edge_cap__"]
+    outline_runs = [r for r in cap_runs if r.kind != stitches.TRAVEL]
     assert bill["whole_loops"] + bill["arcs"] == len(outline_runs), (
         f"{width} mm: the bill's run split {bill['whole_loops']}+"
         f"{bill['arcs']} does not add up to the {len(outline_runs)} outline "
         "runs the cap block actually carries")
     assert bill["edges"] == bill["whole_loops"] + bill["yielded"]
-    assert bill["stitches"] == block.stitch_count
+    assert bill["stitches"] == sum(len(r.points) for r in cap_runs)
 
 
 def test_the_ring_count_no_longer_falls_as_the_cap_gets_more_expensive():

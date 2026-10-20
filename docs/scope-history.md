@@ -20657,3 +20657,34 @@ to him carry the off/on float picture (`tools/fill-columns-image-sheet.mjs`;
 the first, becker at left chest: 1,113 floats off the fill → 0, cuts 14 →
 11, stitches +18.2%). Guarded by a traced-counter test that reads 351
 off-fill floats with the flag dropped. "Waiting on Kent" 22 resolved.
+
+## 2026-10-20 — The Fremont 80 mm OFF md5 is Intel IPP's code path: measured by forcing each library down
+
+PR #987 (10-19/20) pinned the stream as two md5s keyed on numpy's AVX512F
+flag; a Cascade Lake Xeon (AVX512F: yes) then read a THIRD value, `050452`.
+On one AVX-512 Sapphire Rapids-class Xeon (`Intel(R) Xeon(R) Processor @
+2.10GHz`, family 6 model 207) with CI's `requirements.txt` wheels (numpy
+2.5.1, opencv-contrib-python-headless 5.0.0.93 with IPP 2026.0.0, shapely
+2.1.2, scipy 1.18.0) and CI's thread env, `test_fremont_80_off_is_byte_identical`
+read, counts 14,824 / 43 in every row:
+
+| environment | the library's own report | md5 |
+|---|---|---|
+| as-is | IPP `k0`, full AVX-512 | `027d14e6` (CI's EPYC 9V45 / 9V74) |
+| `NPY_DISABLE_CPU_FEATURES` X86_V4 + ICL + SPR, or ICL + SPR only | numpy SIMD shrank as asked | `027d14e6` |
+| `OPENCV_CPU_DISABLE=AVX512_SKX` (#987's spelling) | "unknown CPU feature", ignored | `027d14e6` |
+| `OPENCV_CPU_DISABLE=AVX512-SKX` (OpenCV's spelling) | feature line `*AVX512-SKX?` | `027d14e6` |
+| `OPENBLAS_CORETYPE` HASWELL / SKYLAKEX / COOPERLAKE | `Core: Haswell` / `SkylakeX` | `027d14e6` |
+| `OPENCV_IPP=avx512` | `ippIP AVX-512F/CD/BW/DQ/VL (k0)`, capped | `050452` — the Cascade Lake red, byte-for-byte |
+| `OPENCV_IPP=avx2` | `ippIP AVX2 (l9)` | `75f44f90` — Kent's Ryzen 7 4700U, CI's EPYC 7763 |
+| `OPENCV_IPP=sse42` | `ippIP SSE4.2 (y8)` | `8275d819` |
+| `OPENCV_IPP=disabled` | IPP off | `f4845611` |
+
+So the mover is IPP's path, which sub-dispatches on the newer AVX-512
+extensions (Zen 4 and Sapphire Rapids agree, Cascade Lake does not), and a
+vendor key would have been wrong too — the Intel host read the AMD value.
+`OPENCV_IPP` is read lazily (set after `import cv2`, `getIppVersion()`
+reports `l9`). Single test 83.5 s uncapped, 83.0 s capped. Kent's call:
+`tests/conftest.py` caps the test environment at `OPENCV_IPP=avx2`; the pin
+is one md5 with `test_test_environment_caps_ipp_at_avx2` as its tripwire.
+The shipped service is not capped.

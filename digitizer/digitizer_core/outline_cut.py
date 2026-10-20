@@ -49,7 +49,7 @@ REFINE_TRIGGER = 0.12    # share of thread in over-long crosses that says "two s
 REFINE_GAIN = 0.6        # a second-look cut must take that share to this fraction
 _SLOT_STEP_MM = 0.1           # outline walk step for the slot backs
 REFINE_REFLEX_DEG = 30.0        # the second look reads softer concave corners than the junction rules
-# `fold_cuts` (default OFF): a cross leaning past this off its column's own
+# `fold_cuts` (ON by default since 2026-10-20): a cross leaning past this off its column's own
 # perpendicular is folded through a branch, and a piece with at least
 # FOLD_MIN of them gets the second look. 45 is the "crosses past 45 deg off
 # perpendicular" line of the 2026-09-03 stitch-angle rule; capitals at 80
@@ -1459,7 +1459,7 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     """Yield (piece, cut lines, new cuts). The junction rules missed a cut
     wherever a piece still sews over-long; look again at that piece's own
     concave corners and keep the one cut that most reduces it. With
-    `fold_cuts` (`cfg.lettering_columns_fold_cuts`, default OFF) a piece
+    `fold_cuts` (`cfg.lettering_columns_fold_cuts`, default ON since 2026-10-20) a piece
     that is not over-long but folds its crosses gets the same second look
     (`_fold_refine`); off, this is the shipped function, step for step.
     `mitre_ends` is read only with `fold_cuts`: the fold look then judges
