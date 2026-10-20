@@ -109,7 +109,7 @@ def trace(width_mm: float, small_stem: bool = False, word: str | None = None,
         path = FIXTURE.with_suffix(".png")
         meta = json.loads(FIXTURE.with_suffix(".json").read_text(encoding="utf-8"))
     cfg = PipelineConfig(target_width_mm=width_mm, forced_class="flat",
-                         **({"lettering_columns_small_stem": True} if small_stem else {}))
+                         lettering_columns_small_stem=small_stem)
     result, plan = digitize(path, cfg)
     to_px, s = mm_to_px(result, meta["image"])
     sewn = {}
@@ -193,7 +193,7 @@ def census(name: str, small_stem: bool = False) -> list[dict]:
     from tools.lowercase_angle import CORPUS
     rel, width, garment, *_ = CORPUS[name]
     cfg = PipelineConfig(target_width_mm=width, garment_id=garment,
-                         **({"lettering_columns_small_stem": True} if small_stem else {}))
+                         lettering_columns_small_stem=small_stem)
     result, plan = digitize(ROOT / "testdata" / rel, cfg)
     sewn = {}
     for _b, run in plan.iter_runs():

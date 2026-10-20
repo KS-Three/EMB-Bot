@@ -1625,7 +1625,13 @@ class PipelineConfig:
     # its own 2.39 mm ring, not by this floor. Rings at or over 2.2 mm sew
     # exactly as before. All three numbers are CANDIDATES (ROADMAP gate 1).
     # Off, byte-identical (md5-pinned in `tests/test_small_dot_rung.py`).
-    small_dot_rung: bool = False
+    # **FLIPPED ON 2026-10-20, Kent's call (via the foreman), WITH its
+    # lettering scope below**: PR #991's renders show the rung alone burying
+    # Fremont 80 mm Hat's Wisconsin star; scoped it is byte-identical to OFF
+    # on Fremont at 50 and 80 mm, the tagline cells and Becker, and keeps the
+    # synthetic i/j dots. `RUN_MIN_LOOP_MM` 2.2 stays (gate 1). False is the
+    # pre-flip engine (`PRE_FLIP`).
+    small_dot_rung: bool = True
     # The dot rung scoped to lettering (2026-10-15, built OFF; read only when
     # `small_dot_rung` is ON). PR #939's catch: stage 3 cannot tell an i dot
     # from a photo speck, so the rung ON admits specks (photo_sunset_backlit
@@ -1643,7 +1649,10 @@ class PipelineConfig:
     # numbers and `RUN_MIN_LOOP_MM` are untouched (ROADMAP gate 1). Off (or
     # with the rung off), byte-identical (md5-pinned in
     # `tests/test_dot_rung_lettering.py`); `tools/small_dot_rung.py` measures.
-    small_dot_rung_lettering: bool = False
+    # **FLIPPED ON 2026-10-20 with `small_dot_rung`** (Kent's call; the
+    # unscoped rung costs Fremont's star, PR #991). False is the unscoped
+    # rung; the pre-flip engine pins both False (`PRE_FLIP`).
+    small_dot_rung_lettering: bool = True
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run
@@ -2518,9 +2527,12 @@ class PipelineConfig:
     # The aspect bar is a CANDIDATE shape ratio set by the corpus (the
     # phone screenshot's stems under the floor read 3.1-4.1 at 0.63-0.90 mm
     # across and stay run, the i stem 6.5), and nothing here is sewn
-    # (ROADMAP gate 1). Built OFF (Kent's call to flip); False is
-    # byte-identical. Tests: `tests/test_small_stem.py`.
-    lettering_columns_small_stem: bool = False
+    # (ROADMAP gate 1). Built OFF; False is byte-identical. Tests:
+    # `tests/test_small_stem.py`. **FLIPPED ON 2026-10-20, Kent's call (via
+    # the foreman)**: PR #991 measured one shape moved (the 80 mm synthetic
+    # i stem, hollow run to satin) and Fremont, the tagline cells and Becker
+    # byte-identical. False is the pre-flip engine (`PRE_FLIP`).
+    lettering_columns_small_stem: bool = True
     # Under `lettering_columns` (old taggers, `lettering_words` off), refuse
     # a HOUSE-GROUP-ONLY shape whose thread is further than the text
     # cluster's own ink link (CIEDE2000 20) from every text-cluster letter's

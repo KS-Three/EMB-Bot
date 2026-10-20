@@ -453,7 +453,11 @@ def _md5(plan) -> str:
 
 @pytest.fixture(scope="module")
 def word():
-    kw = dict(target_width_mm=80.0, forced_class="flat")
+    # The small stem and the scoped dot rung (ON 2026-10-20, Kent) re-walk
+    # the e beside the i, which moves its one 45-degree fold; the fold-cut
+    # arms were measured without them (conftest.PRE_FLIP).
+    kw = dict(target_width_mm=80.0, forced_class="flat", lettering_columns_small_stem=False,
+              small_dot_rung=False, small_dot_rung_lettering=False)
 
     def boom(*_a, **_k):
         raise AssertionError("fold_cuts code reached with fold_cuts off")

@@ -273,3 +273,45 @@ def test_legacy_default_and_nothing_to_keep_are_byte_identical(rel):
                        ("pieces", {"clip_keep_pieces": True})):
         md5[tag] = _plan_md5(digitize(path, PipelineConfig(target_width_mm=80.0, **extra))[1])
     assert md5["default"] == md5["legacy"] == md5["pieces"]
+
+
+def test_coverage_kappa_is_chance_corrected():
+    """`tools.clip_keep_pieces.coverage_kappa` (ROADMAP gate 4): one for a
+    perfect match, zero for a plan that sews nothing, negative for one that
+    sews only where the artwork is not."""
+    from tools.clip_keep_pieces import coverage_kappa
+
+    art, bounds = box(0, 0, 5, 10), (0, 0, 10, 10)
+    assert coverage_kappa(art, art, bounds) == pytest.approx(1.0)
+    assert coverage_kappa(art, box(0, 0, 0, 0), bounds) == pytest.approx(0.0)
+    assert coverage_kappa(art, box(5, 0, 10, 10), bounds) == pytest.approx(-1.0)
+
+
+def _thin_kept_art(path, cfg_kw) -> float:
+    """Artwork mm² `clip_keep_pieces` keeps from parents under 0.5 mm mean
+    width (`tools.halo_spools.HALO_MAX_WIDTH_MM`) -- read without shape ids
+    or thread numbers, which move per platform."""
+    from tools.halo_spools import HALO_MAX_WIDTH_MM, _width_mm
+
+    cfg = PipelineConfig(**cfg_kw, clip_keep_pieces=True)
+    result = run_stages(path, cfg)
+    regions = [r for r in result.regions if r.meta.get("stitched", True)]
+    by_id = {r.shape_id: r for r in regions}
+    planned, _ = resolve_overlaps(regions, fabric_for(cfg), cfg, result.design_class)
+    return sum(p.region.polygon.area for p in planned
+               if p.region.meta.get(CLIP_PIECE_OF_KEY)
+               and _width_mm(by_id[p.region.meta[CLIP_PIECE_OF_KEY]].polygon) < HALO_MAX_WIDTH_MM)
+
+
+def test_bridge_halo_lever_takes_most_of_the_flips_halo():
+    """MASTER_SCOPE item 46: the flip's price on Bridge Bar is its grey JPEG
+    ringing kept as pieces, and the halo's own lever is the banked
+    `cfg.dissolve_phantom_blends`. Measured 2026-10-20 at 80 mm left chest:
+    lever OFF the flip keeps 19.1 mm² from thin grey parents (0111, 0465),
+    lever ON 3.06 mm² (0111's residual shards, defect 27's known leftover)."""
+    path = ROOT / "testdata" / "photo" / "logo_bridge_bar.jpg"
+    kw = dict(target_width_mm=80.0, garment_id="left_chest")
+    off = _thin_kept_art(path, kw)
+    on = _thin_kept_art(path, dict(kw, dissolve_phantom_blends=True))
+    assert off >= 10.0, "the fixture no longer exercises the halo pieces"
+    assert on <= 0.3 * off
