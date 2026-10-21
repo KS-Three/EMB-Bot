@@ -1671,6 +1671,22 @@ class PipelineConfig:
     # unscoped rung costs Fremont's star, PR #991). False is the unscoped
     # rung; the pre-flip engine pins both False (`PRE_FLIP`).
     small_dot_rung_lettering: bool = True
+    # Small SOLIDS as one satin dot (2026-10-20, built OFF). The run tier sews
+    # a shape under the area floor (`min_detail_mm` ** 2) as a bean circuit on
+    # its OUTLINE, which reads solid only when the stroke is narrower than the
+    # thread is wide. Proseal at the pro's 85.9 mm Hat: the "+" (1.52 x 1.52
+    # mm, 1.11 mm^2) and six teal spray hexagons (1.1-1.3 mm, 1.11-1.61 mm^2)
+    # sewed as rings with bare cloth inside; the pro's file sews each as one
+    # satin blob. ON: a rescued shape that is not lettering, has no hole, and
+    # whose ring would leave its inside bare -- `buffer(-laid / 2)` at or over
+    # `machine.RUN_MIN_AREA_MM2` (the run tier's own one-penetration floor;
+    # laid = the block's `thread_profile().width_mm`) -- sews ONE satin column
+    # along its long axis, each cross the shape's own width, on the ARTWORK
+    # polygon (`stage6_satin.small_solid_satin`, the junction cover's
+    # principal-spine column). No new constant; whether a 1.2 mm satin dot
+    # holds on a cap is a sew-out question (ROADMAP gate 1). A shape the
+    # column cannot sew keeps the ring. Off, byte-identical.
+    small_solids_satin: bool = False
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run

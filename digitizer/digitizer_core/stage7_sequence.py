@@ -91,7 +91,7 @@ from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
-from .stage6_satin import classify_ribbon, satin_shape
+from .stage6_satin import classify_ribbon, is_small_solid, satin_shape, small_solid_satin
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
 from .detail_spokes import spoke_runs
@@ -2665,6 +2665,21 @@ def sequence(
                     small_letter_ids.add(p.shape_id)
                     return runs, report, False
             outline_tried = False
+            # `cfg.small_solids_satin` (built OFF, 2026-10-20): a small SOLID
+            # -- no hole, not lettering, its inside left bare by a ring --
+            # sews one satin column across its own width instead. A column
+            # that comes out degenerate keeps the ring below. Off, unread.
+            if (cfg.small_solids_satin and cfg.satin and tier == "auto"
+                    and routes_to_run(p, tier)
+                    and not is_lettering(p.region, cfg)
+                    and is_small_solid(p.region.polygon, profile_for(p).width_mm)):
+                runs, report = small_solid_satin(
+                    p.region.polygon, p.shape_id, spacing_mm=satin_spacing_for(p),
+                    max_width_mm=_satin_ceiling_for(p.region, cfg, satin_max)[0],
+                    start_near=entry)
+                if not report["empty"]:
+                    report["small_solid"] = 1
+                    return runs, report, False
             # Small print (`cfg.small_print_floor`, default OFF) reaches the
             # run and fill tiers through `small_print_cut`: the shape is
             # sewn with each counter (`small_print_counters_of`) cut out of
