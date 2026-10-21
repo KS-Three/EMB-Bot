@@ -276,23 +276,17 @@ def digitize_dst(job: dict, overrides: dict, out: Path):
 
     from digitizer_core import small_text
 
-    base = pro_pair.request
     grow = small_text.enlarge_small_text
     rows: list = []
-
-    def request(width_mm, garment_id="hat_front"):
-        return {**base(width_mm, garment_id), **overrides}
 
     def enlarge(*a, **k):           # the growth's own report, kept
         out = grow(*a, **k)
         rows.extend(out)
         return out
-    pro_pair.request = request
     small_text.enlarge_small_text = enlarge
     try:
-        d = pro_pair.digitize(job["art"], job["width_mm"], job["garment"])
+        d = pro_pair.digitize(job["art"], job["width_mm"], job["garment"], extra=overrides)
     finally:
-        pro_pair.request = base
         small_text.enlarge_small_text = grow
     d.growth = rows
     out.mkdir(parents=True, exist_ok=True)
