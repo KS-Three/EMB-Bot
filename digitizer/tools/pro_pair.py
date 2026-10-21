@@ -49,11 +49,14 @@ LETTERING_KEYS = ("text_cluster_id", "lettering_group", "word_id", "bean_letter"
 
 
 # ------------------------------------------------------------------ pieces
-def request(width_mm: float, garment_id: str = "hat_front") -> dict:
-    """The Studio's /digitize config at `width_mm`, `garment_id` swapped in."""
+def request(width_mm: float, garment_id: str = "hat_front", extra: dict | None = None) -> dict:
+    """The Studio's /digitize config at `width_mm`, `garment_id` swapped in,
+    and `extra` (a customer option the Studio would send, e.g.
+    `{"sew_enclosed_white": true}`) merged over it."""
     from tools.fremont_triage import studio_request
     req = studio_request(width_mm)
     req["garment_id"] = garment_id
+    req.update(extra or {})
     return req
 
 
@@ -113,7 +116,8 @@ class Digitized:
     secs: float
 
 
-def digitize(art, width_mm: float, garment_id: str = "hat_front") -> Digitized:
+def digitize(art, width_mm: float, garment_id: str = "hat_front",
+             extra: dict | None = None) -> Digitized:
     """The Studio's request, through the service's parser, then the pipeline
     the product runs. Identical to the director's proseal_run.py."""
     from digitizer_service.app import _decode as svc_decode, _parse_config
@@ -122,7 +126,7 @@ def digitize(art, width_mm: float, garment_id: str = "hat_front") -> Digitized:
     from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
     art = Path(art)
     data = art.read_bytes()
-    cfg = PipelineConfig(**_parse_config(json.dumps(request(width_mm, garment_id))))
+    cfg = PipelineConfig(**_parse_config(json.dumps(request(width_mm, garment_id, extra))))
     pixels = svc_decode(data)
     t = time.time()
     gen = build_generation(pixels, cfg, exif_source=data)
@@ -394,12 +398,15 @@ def parse_args(argv=None):
     g.add_argument("--crop", nargs=4, type=float, metavar=("X0", "Y0", "X1", "Y1"),
                    help="mm from the top-left of each design's stitch extents")
     ap.add_argument("--shapes", default="", help="comma-separated region ids for spines/runs dumps")
+    ap.add_argument("--config", default="", help="JSON merged over the Studio request, "
+                    "e.g. '{\"sew_enclosed_white\": true}'")
     return ap.parse_args(argv)
 
 
 def main(argv=None) -> int:
     args = parse_args(argv)
-    return run(args, digitize(args.art, args.width, args.garment))
+    extra = json.loads(args.config) if args.config else None
+    return run(args, digitize(args.art, args.width, args.garment, extra))
 
 
 if __name__ == "__main__":

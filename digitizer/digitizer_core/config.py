@@ -1528,6 +1528,21 @@ class PipelineConfig:
     # engine is the 08-15 verdict's. Quality review 2026-09-08 item 9; plan
     # and census `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md`.
     enclosed_by_garment: bool = True
+    # Sew the white inside the design (`enclosed_white.py`, built OFF
+    # 2026-10-21): the CUSTOMER's option, never a default, because it changes
+    # the design. The pro does it on 5 of 11 jobs (rule R11,
+    # `docs/pro-digitizer-rules-2026-10-21.md`): badge fields, hollow
+    # letters, white letters and keylines. ON, every enclosed area sews,
+    # whatever the garment, in its own layer at the front of the sew order --
+    # except a letter's COUNTER, which stays open unless
+    # `sew_enclosed_counters` (or it sits inside a field that sews). Thread:
+    # `sew_enclosed_rgb`'s nearest; None keeps the art's own colour where it
+    # is known and sews white where it is not (an alpha hole). A review
+    # `stitched` or recolour of one area still wins. OFF is the engine as it
+    # was, byte for byte.
+    sew_enclosed_white: bool = False
+    sew_enclosed_counters: bool = False
+    sew_enclosed_rgb: tuple[int, int, int] | None = None
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white

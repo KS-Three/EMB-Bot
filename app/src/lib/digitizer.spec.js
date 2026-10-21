@@ -58,6 +58,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
   "forced_class", "edge_cap", "is_photographic", "garment_rgb", "crop",
   "stitch_width_auto", "detect_photographic", "faces_route_flat", "fabric_profile",
+  "sew_enclosed_white", "sew_enclosed_counters", "sew_enclosed_rgb",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -2699,4 +2700,28 @@ describe("resizedTargetWidth", () => {
     expect(resizedTargetWidth(el({ sizeMm: 5 }), 80)).toBe(10);
     expect(resizedTargetWidth(el({ sizeMm: 900 }), 80)).toBe(400);
   });
+});
+
+test("sew_enclosed_white rides buildDigitizeConfig only when on, with its thread and counters", async () => {
+  const { buildDigitizeConfig, hexToRgb } = await import("./digitizer.js");
+  const off = buildDigitizeConfig(digitizedElement(), PROJECT);
+  for (const k of ["sew_enclosed_white", "sew_enclosed_rgb", "sew_enclosed_counters"]) expect(k in off).toBe(false);
+  // Counters ticked but the option off sends nothing: they ride only with it.
+  const counterOnly = digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_counters: true } });
+  expect("sew_enclosed_counters" in buildDigitizeConfig(counterOnly, PROJECT)).toBe(false);
+  const on = buildDigitizeConfig(digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_white: true } }), PROJECT);
+  expect(on.sew_enclosed_white).toBe(true);
+  expect(on.sew_enclosed_rgb).toEqual([255, 255, 255]);
+  expect("sew_enclosed_counters" in on).toBe(false);
+  for (const k of Object.keys(on)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  const grey = buildDigitizeConfig(digitizedElement({ params: { ...digitizedElement().params,
+    sew_enclosed_white: true, sew_enclosed_hex: "#808080", sew_enclosed_counters: true } }), PROJECT);
+  expect(grey.sew_enclosed_rgb).toEqual([128, 128, 128]);
+  expect(grey.sew_enclosed_counters).toBe(true);
+  // A bad stored colour falls back to white rather than a 400.
+  const bad = buildDigitizeConfig(digitizedElement({ params: { ...digitizedElement().params,
+    sew_enclosed_white: true, sew_enclosed_hex: "white" } }), PROJECT);
+  expect(bad.sew_enclosed_rgb).toEqual([255, 255, 255]);
+  expect(hexToRgb("#0a0B0c")).toEqual([10, 11, 12]);
+  expect(hexToRgb("#fff")).toBeNull();
 });

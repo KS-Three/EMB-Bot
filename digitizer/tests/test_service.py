@@ -529,6 +529,19 @@ def test_a_malformed_garment_rgb_is_a_400_at_submit_not_a_failed_job(client, bad
     assert "garment_rgb" in r.json()["detail"]
 
 
+@pytest.mark.parametrize("bad", [
+    {"sew_enclosed_rgb": "#ffffff"},
+    {"sew_enclosed_rgb": [255, 255]},
+    {"sew_enclosed_rgb": [255, 255, 256]},
+])
+def test_a_malformed_sew_enclosed_rgb_is_a_400_at_submit(client, bad):
+    with ART.open("rb") as f:
+        r = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps(bad)})
+    assert r.status_code == 400, r.text
+    assert "sew_enclosed_rgb" in r.json()["detail"]
+
+
 def test_the_garment_rule_reaches_the_review_payload_over_http(client):
     """`garment_rgb` + `enclosed_by_garment` (item 9): the whitebg fixture's
     one white hole reports `stitched: False` by default, and on a navy
