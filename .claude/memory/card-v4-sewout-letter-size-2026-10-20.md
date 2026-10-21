@@ -1,6 +1,6 @@
 ---
 name: card-v4-sewout-letter-size-2026-10-20
-description: Card v4 sew-out (partial) beside the pro's Fremont patch — our small letters sew far smaller: 81 vs 92.5 mm design, AND the pro draws small words taller than the art while ours sit on the stroke centreline
+description: Card v4 sew-out beside the pro's Fremont patch — "our letters are much smaller" is stroke WIDTH, not letter size: ours is a centreline hairline in the art's footprint, the pro covers the stroke with 0.8-0.9 mm satin; plus 81 vs 92.5 mm
 metadata:
   type: project
 ---
@@ -9,29 +9,30 @@ metadata:
 twill beside the pro's Fremont patch; paused mid-way (block B and the start of H
 sewn). His verdict: "your lettering is much smaller than the pro's".
 
-Measured (pro DST from `Embroidery Files.zip`, Hotel Patch, letter blocks only;
-ours = `cuts/cut_today.json` scaled to 92.5 mm; art = `logo_hotel_fremont.webp`
-ink at 92.5 mm):
+**What it is (rendered, `pro_vs_ours_92mm.png` in that folder: pro stitches and
+ours over the art at 92.5 mm):** our EST / 1895 / THE sit in the SAME footprint as
+the art's letters — same height, same width — but as a single thin bean line down
+each stroke's centre. The pro covers the whole stroke with satin (0.8-0.9 mm
+columns), reaching the art's outline. A hairline reads as a smaller word on cloth.
+Second, smaller cause: the card was cut at Kent's 81 mm hat width; the pro patch
+is 92.5 mm (x1.14).
 
-| word | art (w x h) | ours @92.5 | pro |
-|---|---|---|---|
-| THE | 10.0 x 3.0 | 9.5 x 2.6 | 10.6 x 3.9 |
-| 1895 | 7.0 x 2.6 | 6.2 x 1.9 | 7.1 x 2.5 |
-| EST | ~6.1 x 1.8 (tan, threshold-clipped) | 5.9 x 1.9 | 6.7 x 2.5 |
-| tagline | 29.8 x 4.1 (bars) | 29.3 x 4.0 | 31.0 x 4.0 |
+**Retracted the same evening:** a first pass said the pro sews small words TALLER
+than the art (THE 3.9 vs 3.0 mm). That was a bounding box over the pro's whole
+black block in the word's box — satin overshoot, serif bars and neighbouring
+stitches — not letter height. Rendered, the pro's letters match the art's size.
+So this is NOT `small_text_cap_mm` (enlarging, Kent: "you can't change the font
+size for the final product"); it is width: satin to the art's outline instead of
+a centreline bean. The config comment at `SMALL_TEXT_TRUE_SIZE` records Kent
+choosing centreline over bold for THE (0.5 mm bean threshold); this cloth is the
+first evidence against that choice, and re-opening it is Kent's call.
 
-Two causes, multiplying: (1) the card was cut at Kent's 81 mm hat width, the pro
-patch is 92.5 mm (x1.14); (2) ours tracks the art's CENTRELINE (bean run), so a
-word loses about a stroke width, while the pro sews small words TALLER and
-wider than the art (THE +30% height) with 0.8-0.9 mm satin. On cloth the pro's
-THE is ~3.9 mm tall vs our ~2.3 mm.
+Also in the photos: thread loops at the start of B's arm 2 and the end of arm 3
+(tagline), and the first arm sewn red/green (operator thread; the DST has one
+colour).
 
-Also seen in the photos: thread loops/nests at the start of B's arm 2 and the end
-of arm 3 (tagline), and the first arm sewn in red/green (operator thread, not
-the file — the DST has one colour).
-
-**Why:** a sew-out card that compares bean settings at a size the pro never sews
-answers the wrong question first. **How to apply:** compare against the pro at
-the SAME design width (92.5 mm) before reading any small-lettering arm; treat
-"pro draws small text bigger than the art" as the open lever, not bean tuning.
+**Why:** a bounding box is not a letter: render before claiming a size. **How to
+apply:** before reading any small-lettering arm against the pro, compare at the
+same width (92.5 mm) and RENDER it; the lever is stroke coverage (bean vs satin to
+the outline), not letter scale.
 Related: [[pro-files-refute-scale-limit-2026-09-03]], [[lettering-thickness-fremont-2026-10-06]].
