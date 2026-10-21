@@ -52,6 +52,7 @@ import heapq
 import math
 from dataclasses import replace
 
+import numpy as np
 import shapely
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import nearest_points, unary_union
@@ -781,6 +782,187 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int
         run.trim = False
         out.append(run)
     return out, in_shape
+
+
+# How finely `_bury_trims_under_later` samples a candidate travel's thread
+# against the later thread. A sampling step, not a physical tolerance: a
+# gap in the later thread narrower than this can be missed, and a quarter of
+# a thread width is under anything a needle leaves open.
+_BURY_STEP_MM = 0.1
+# The raster `_bury_route` proposes a bent route on. It only PROPOSES: every
+# leg is re-tested exactly, so a coarser grid can lose a route but never
+# pass a bad one.
+_BURY_PX_PER_MM = 20.0
+
+
+def _bury_route(a, b, gap, k, cover, lines, idx, tree, half):
+    """A bent route from a to b under thread sewn at or after `k`, or None.
+
+    PROPOSED on a raster and DECIDED exactly: the later centrelines near the
+    hop are drawn one thread wide at `_BURY_PX_PER_MM`, eroded by half a
+    thread so a centreline in the mask keeps its whole thread inside, and a
+    geodesic path (skimage `MCP_Geometric`) is simplified to a few corners.
+    Every leg of it must then pass `cover.covers` -- the same sampled test
+    the straight hop took -- and the whole route chaining's stitch budget,
+    or the hop stays cut. The raster can only lose a route, never pass one.
+    """
+    import cv2
+    from skimage.graph import MCP_Geometric
+    budget = _link_budget_mm(gap)
+    mx, my = (a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0
+    r = budget / 2.0 + half
+    near = [idx[j] for j in tree.query(Point(mx, my).buffer(r))]
+    later = [lines[j] for j in near if j >= k]
+    if not later:
+        return None
+    ppm = _BURY_PX_PER_MM
+    x0, y0 = mx - r, my - r
+    n = int(math.ceil(2 * r * ppm)) + 1
+    mask = np.zeros((n, n), np.uint8)
+    lw = max(1, int(round(2 * half * ppm)))
+    for g in later:
+        pts = np.round((np.asarray(g.coords) - (x0, y0)) * ppm).astype(np.int32)
+        cv2.polylines(mask, [pts], False, 1, lw)
+    # Half a thread, plus what the simplify below may move a corner, plus a
+    # pixel: a simplified leg stays inside what the exact test accepts.
+    er = int(math.ceil((half + half / 2.0) * ppm)) + 1
+    mask = cv2.erode(mask, np.ones((2 * er + 1, 2 * er + 1), np.uint8))
+    ia = (int(round((a[1] - y0) * ppm)), int(round((a[0] - x0) * ppm)))
+    ib = (int(round((b[1] - y0) * ppm)), int(round((b[0] - x0) * ppm)))
+    for (yy, xx) in (ia, ib):
+        cv2.circle(mask, (xx, yy), int(machine.COVERAGE_THREAD_W_MM * ppm), 1, -1)
+    if not (0 <= ia[0] < n and 0 <= ia[1] < n and 0 <= ib[0] < n and 0 <= ib[1] < n):
+        return None
+    mcp = MCP_Geometric(np.where(mask > 0, 1.0, np.inf))
+    costs, _ = mcp.find_costs([ia], [ib])
+    if not np.isfinite(costs[ib]) or costs[ib] / ppm > budget:
+        return None
+    path = mcp.traceback(ib)
+    line = LineString([(x0 + c / ppm, y0 + rr / ppm) for rr, c in path]).simplify(half / 2.0)
+    route = [a] + list(line.coords)[1:-1] + [b]
+    if sum(math.dist(p, q) for p, q in zip(route, route[1:])) > budget:
+        return None
+    if not all(cover.covers(LineString([p, q])) for p, q in zip(route, route[1:])):
+        return None
+    return route
+
+
+def _bury_trims_under_later(blocks: list[StitchBlock]) -> int:
+    """Sew a cut hop needle-down where thread sewn LATER buries all of it.
+
+    -> how many trims became travel. `cfg.trim_bury_under_later` (built OFF
+    2026-10-21, `docs/trim-economy-2026-10-21.md`): the professional's files
+    read with `tools/trim_classes.py` show him almost never cutting a hop
+    whose straight line later thread covers (9 such trims over ten paired
+    jobs against our 43), and travelling under the work instead. This is
+    that one habit, and only that one.
+
+    It differs from `chain_links` on purpose, in the two places a float
+    could show. The cover is the REAL later thread -- every non-travel run
+    sewn after the hop, this block and every later artwork block, each
+    centreline buffered to half `COVERAGE_THREAD_W_MM` -- never a future
+    shape's polygon, so no inset predicts a shortfall. And the route is
+    tested at the travel's own edges as well as its centre, so the travel's
+    whole thread, not just its centreline, lies under later thread:
+    nothing on bare fabric and nothing on top of finished work. The one
+    allowance is a thread width around each end, where the needle already
+    penetrates: there the previous run's own thread counts as cover too.
+    The length budget and the stitching are chaining's own
+    (`_link_budget_mm`, `_link_stitches`, `LINK_MAX_GAP_MM`); a bent route
+    comes from `_bury_route`. No new physical constant.
+    The width test samples the travel's thread against the later
+    centrelines (an STRtree `dwithin` half a thread) rather than eroding a
+    union: GEOS's negative buffer of a block's zigzag union can come back
+    empty (a 33-row band, area 41.8 mm² -> 0.0), and the union itself was
+    12 s on one 76 mm logo.
+
+    Runs before ties, on art blocks whose sew order is final: later passes
+    (the edge cap, hairlines, spoke marks) only append or insert blocks, so
+    thread counted as later here is still sewn later. Their thread is not
+    counted as cover -- the cheap direction to be wrong in. The first run of
+    a block is never touched: that cut is a colour change.
+    """
+    seq = [(bi, r) for bi, b in enumerate(blocks) for r in b.runs]
+    if len(seq) < 2:
+        return 0
+    half = machine.COVERAGE_THREAD_W_MM / 2.0
+    lines: list[object] = []
+    for k, (_bi, r) in enumerate(seq):
+        pts = list(r.points)
+        if k > 0 and not r.jump and seq[k - 1][1].points:
+            pts = [seq[k - 1][1].points[-1]] + pts
+        if r.kind == stitches.TRAVEL or len(pts) < 2:
+            lines.append(None)
+            continue
+        lines.append(LineString(pts))
+    idx = [k for k, g in enumerate(lines) if g is not None]
+    if not idx:
+        return 0
+    order = np.array(idx)
+    tree = shapely.STRtree([lines[k] for k in idx])
+
+    class _UnderThread:
+        """`_link_route`'s cover. A segment passes when every sample of its
+        own thread -- every `_BURY_STEP_MM` along it, at its centre and both
+        edges -- lies within half a thread of a centreline sewn at or after
+        `k`. Within one thread width of either end, where the needle
+        penetrates anyway, thread sewn BEFORE counts too (the previous run's
+        own last stitch): nothing of the travel lands on bare fabric."""
+
+        def __init__(self, k, ends):
+            self.k, self.ends = k, ends
+
+        def covers(self, seg) -> bool:
+            (x0, y0), (x1, y1) = seg.coords[0], seg.coords[-1]
+            d = math.hypot(x1 - x0, y1 - y0)
+            n = max(2, int(math.ceil(d / _BURY_STEP_MM)) + 1)
+            t = np.linspace(0.0, 1.0, n)
+            cx, cy = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+            nx, ny = ((y0 - y1) / d, (x1 - x0) / d) if d > 0 else (0.0, 0.0)
+            px = np.concatenate([cx + o * nx for o in (-half, 0.0, half)])
+            py = np.concatenate([cy + o * ny for o in (-half, 0.0, half)])
+            at_end = np.zeros(len(px), bool)
+            for ex, ey in self.ends:
+                at_end |= np.hypot(px - ex, py - ey) <= machine.COVERAGE_THREAD_W_MM
+            hit_pt, hit_line = tree.query(shapely.points(px, py),
+                                          predicate="dwithin", distance=half)
+            ok = np.zeros(len(px), bool)
+            ok[hit_pt[(order[hit_line] >= self.k) | at_end[hit_pt]]] = True
+            return bool(ok.all())
+
+    buried = 0
+    for k in range(1, len(seq)):
+        bi, run = seq[k]
+        if not run.trim or seq[k - 1][0] != bi or not seq[k - 1][1].points or not run.points:
+            continue
+        a, b = seq[k - 1][1].points[-1], run.points[0]
+        gap = math.dist(a, b)
+        if gap > machine.LINK_MAX_GAP_MM:
+            continue
+        # Any buried route leaves the start's end allowance into later
+        # thread, so with no later centreline that close to `a` there is no
+        # route to find: most bare hops stop here, before the raster.
+        reach = machine.COVERAGE_THREAD_W_MM + half + _BURY_STEP_MM
+        if not (order[tree.query(Point(a), predicate="dwithin", distance=reach)] >= k).any():
+            continue
+        cover = _UnderThread(k, (a, b))
+        if cover.covers(LineString([a, b])):
+            route = [a, b]
+        else:
+            route = _bury_route(a, b, gap, k, cover, lines, idx, tree, half)
+        inner = _link_stitches(route) if route is not None else None
+        if inner is None:
+            continue
+        b_runs = blocks[bi].runs
+        at = next(i for i, r in enumerate(b_runs) if r is run)
+        if inner:
+            b_runs.insert(at, StitchRun(points=inner, kind=stitches.TRAVEL,
+                                        shape_id=run.shape_id,
+                                        shade_thread_index=run.shade_thread_index))
+        run.jump = False
+        run.trim = False
+        buried += 1
+    return buried
 
 
 # Lock-stitch application for a finished block. Hoisted verbatim to
@@ -3588,6 +3770,10 @@ def sequence(
             art_blocks = _hoist_same_thread(art_blocks, trim_at,
                                             hoist_same_thread)
             art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
+        # `cfg.trim_bury_under_later` (built OFF): before the ties, which
+        # lock every cut that is left.
+        if cfg.trim_bury_under_later:
+            _bury_trims_under_later(art_blocks)
         for _b in art_blocks:
             _apply_ties(_b.runs, **tie_kw)
     blocks.extend(art_blocks)
