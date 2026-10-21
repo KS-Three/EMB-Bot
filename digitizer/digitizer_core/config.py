@@ -3725,9 +3725,12 @@ class PipelineConfig:
     # nearest `garment_rgb` — the professional's habit on all 6 beanie files
     # (5 jobs) in his zip, where it flattens the knit's pile. No garment
     # colour, no knockdown. Every other garment is untouched either way.
-    # Built OFF 2026-10-21: the three constants are gate-1 candidates read
-    # from his files, unsewn; Kent flips. False is the engine byte for byte.
-    beanie_knockdown: bool = False
+    # Built OFF 2026-10-21 and flipped ON the same day by Kent over the
+    # renders (`docs/renders/beanie-knockdown-2026-10-21/`): the engine knows
+    # what a garment needs, as with backing, so a beanie gets one. The three
+    # constants are still the pro's, unsewn. False is the pre-flip engine
+    # byte for byte; only a beanie with a known garment colour changes.
+    beanie_knockdown: bool = True
     # One cone, one layer (defect 18, the SECOND spool-revisit mechanism).
     # Stage 2 quantizes to COLOURS, and two quantized colours can snap to one
     # physical cone: `drone_render` @ 80 mm declares 21 palette slots holding

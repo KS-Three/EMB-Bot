@@ -22,10 +22,10 @@ So the block is sewn in the cone nearest `cfg.garment_rgb`, and when the
 garment colour is unknown there is no knockdown: a design-coloured one would
 sew a visible 2 mm halo round the logo, which is worse than none.
 
-Built OFF (`cfg.beanie_knockdown`), and only ever for `garment_id ==
-"beanie"`. The three constants below are a professional's physical
-constants, not sewn here: ROADMAP gate 1 holds them as candidates until a
-sew-out on a knit settles them. Kent flips the default.
+`cfg.beanie_knockdown`, and only ever for `garment_id == "beanie"`. Built
+OFF and flipped ON by Kent on 2026-10-21 over the renders: like backing, it
+is the engine's call per garment, not the customer's. The three constants
+below are the professional's, read from his files and not sewn here.
 """
 from __future__ import annotations
 

@@ -1,11 +1,14 @@
-# Beanie knockdown, built OFF (2026-10-21)
+# Beanie knockdown, ON for beanies (2026-10-21)
 
 Rule R9 of [`pro-digitizer-rules-2026-10-21.md`](pro-digitizer-rules-2026-10-21.md):
 every beanie in the professional's zip opens with a **knockdown**, a sparse fill under
 the whole design, sewn first in its own colour block. It presses the knit's pile flat
 so the design sits on top instead of sinking between the ribs. We had nothing like it.
-This builds it behind `cfg.beanie_knockdown` (default **OFF**), in
-`digitizer/digitizer_core/knockdown.py`.
+This builds it behind `cfg.beanie_knockdown`, in
+`digitizer/digitizer_core/knockdown.py`. Built OFF, then **flipped ON by Kent the same
+day** over the renders below, with the ruling that the engine should know what a garment
+needs, the way it knows backing, rather than ask per logo. So every beanie with a known
+garment colour gets one; nothing else changes.
 
 ## What the pro's files say (read from the DST, block 0)
 
@@ -49,7 +52,7 @@ lines at 10 px/mm (so it reads about 0.2 mm short; see "ours" below, built at 2.
 
 **Keyed off the garment AND a flag.** It only ever fires for `garment_id == "beanie"`
 (the Studio already sends it, and `fabrics.GARMENT_FABRIC` maps it to jersey); the flag
-keeps it OFF until Kent flips it. **No garment colour, no knockdown**: one in a design
+exists so the pre-flip engine stays one switch away. **No garment colour, no knockdown**: one in a design
 colour would sew a visible 2 mm halo round the logo.
 
 `tools/pro_pair.py` gains `--set KEY=JSON` (repeatable) so a flag and `garment_rgb`
@@ -78,15 +81,16 @@ art | ours ON | pro at 20 px/mm (pro colours are pystitch's stand-ins: a DST has
 ## Gate 1
 
 `ROW_MM` 0.50, `STITCH_MM` 3.5 and `MARGIN_MM` 2.0 are a professional's physical
-constants read from his files, **not sewn here**. ROADMAP gate 1 holds them as
-candidates until a sew-out on a knit beanie. The rest (sew it first, one piece, no
-underlay, garment colour) is the pro's habit on 6 of 6 files, not a constant.
+constants read from his files, **not sewn here**. Kent flipped the default ON over
+them anyway (2026-10-21); they remain the pro's numbers, and a sew-out that disagrees
+moves the constants, not the rule. The rest (sew it first, one piece, no underlay,
+garment colour) is the pro's habit on 6 of 6 files.
 
 ## Not done
 
 - The badge case (knockdown level with a satin border rather than 2 mm past it).
 - Manual digitizing (`manual.py`) does not call it.
 - The browser engine (`src/`) has no knockdown.
-- OFF is byte-identical: `tests/test_beanie_knockdown.py` pins `logo_alpha.png` at
-  60 mm on a beanie (OFF) and on a hat (ON, which must not fire) against md5s captured
-  from `git archive 2e873933`.
+- OFF is the pre-flip engine byte for byte: `tests/test_beanie_knockdown.py` pins
+  `logo_alpha.png` at 60 mm on a beanie (OFF) and on a hat (ON, which must not fire)
+  against md5s captured from `git archive 2e873933`.

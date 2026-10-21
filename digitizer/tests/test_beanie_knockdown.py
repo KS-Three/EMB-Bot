@@ -1,4 +1,4 @@
-"""Beanie knockdown (`cfg.beanie_knockdown`, built OFF; `knockdown.py`).
+"""Beanie knockdown (`cfg.beanie_knockdown`, ON since Kent's 2026-10-21 flip; `knockdown.py`).
 
 Rule R9 of `docs/pro-digitizer-rules-2026-10-21.md`: on every beanie in the
 professional's zip the first colour block is a sparse tatami (0.5 mm rows, no
@@ -38,13 +38,13 @@ def _cfg(**kw):
 
 # --- construction -----------------------------------------------------------------
 
-def test_flag_is_off_by_default():
-    assert PipelineConfig().beanie_knockdown is False
+def test_flag_is_on_since_kents_flip():
+    assert PipelineConfig().beanie_knockdown is True
 
 
 def test_only_a_beanie_gets_one():
     assert knockdown.applies(_cfg(beanie_knockdown=True))
-    assert not knockdown.applies(_cfg())
+    assert not knockdown.applies(_cfg(beanie_knockdown=False))
     for g in ("hat_front", "left_chest", None):
         assert not knockdown.applies(replace(_cfg(beanie_knockdown=True), garment_id=g))
 
@@ -140,7 +140,7 @@ HAT_MD5 = "19a77b6b5ad43ff5528f4ddd590cfeb0"
 @pytest.fixture(scope="module")
 def runs():
     out = {}
-    for name, kw in {"off": {}, "on": {"beanie_knockdown": True}}.items():
+    for name, kw in {"off": {"beanie_knockdown": False}, "on": {}}.items():
         out[name] = digitize(TESTDATA / FIXTURE, _cfg(target_width_mm=60.0, **kw))[1]
     return out
 
@@ -171,8 +171,8 @@ def test_off_is_byte_identical(runs):
 
 def test_on_other_garments_changes_nothing():
     base = dict(target_width_mm=60.0, garment_rgb=KHAKI, garment_id="hat_front")
-    off = digitize(TESTDATA / FIXTURE, PipelineConfig(**base))[1]
-    on = digitize(TESTDATA / FIXTURE, PipelineConfig(beanie_knockdown=True, **base))[1]
+    off = digitize(TESTDATA / FIXTURE, PipelineConfig(beanie_knockdown=False, **base))[1]
+    on = digitize(TESTDATA / FIXTURE, PipelineConfig(**base))[1]
     assert _md5(on) == _md5(off) == HAT_MD5
 
 
