@@ -1446,3 +1446,127 @@ def test_the_pipeline_passes_the_rescued_ink_link_from_the_config():
     src = inspect.getsource(pipeline)
     assert "rescued_ink_link=bool(cfg.text_cluster_rescued_ink_link)" in src, (
         "the pipeline must pass the config's value to detect_text_clusters")
+
+
+# --- The letter door reads a glyph AS DRAWN (`counters_as_drawn`, 2026-10-20) --
+#
+# Proseal's tagline at the pro's 85.9 mm (Kent, "pros look cleaner"): SPRAY's
+# A and COATINGS' A sewed as solid satin triangles while every other letter
+# of their lines went bean. Measured on the lane: stage 4 had filled each A's
+# counter (0.37 and 0.39 mm2, under its 0.56 mm2 hole floor) into the
+# polygon, and the letter door's stroke CV, read on that near-solid triangle,
+# came out 0.596 and 0.556 against `LETTER_STROKE_CV_MAX` 0.55 -- the one
+# test either A failed. With the counter back in, 0.319 and 0.29, among their
+# line-mates' 0.14-0.37. The counter still exists, as a rescued speck of the
+# ground's ink inside the letter; the door just never looked at it.
+
+def _a_with_counter(shape_id: str, cx: float, cy: float, *, filled: bool,
+                    thread_index: int = 14) -> tuple[Region, Polygon]:
+    """A 3.1 mm cap sans A: a 2.6 mm triangle with 0.35 mm legs, a 0.3 mm
+    crossbar 0.7 mm above centre, the notch between the feet below it, and a
+    0.98 mm2 triangular counter above it. `filled` is the polygon stage 4
+    traces when the counter is under its hole floor -- counter filled, notch
+    kept -- and the second value is the counter itself, for the speck.
+    Measured (2026-10-20): filled stroke (0.343, CV 0.574), as drawn
+    (0.149, 0.26), against a 0.4 mm line-mate's 0.199 -- the filled A links
+    on stroke (0.58 >= `SIMILARITY_RATIO`) and fails only the CV bound, the
+    real pair's mode (0.556 / 0.596 filled, 0.29 / 0.32 drawn)."""
+    base, cap, leg, bar_y, bar_t = 2.6, 3.1, 0.35, 0.7, 0.3
+
+    def half_w(y: float) -> float:          # outer half-width at height y (y down)
+        return (y + cap / 2) / cap * (base / 2)
+
+    outer = Polygon([(cx - base / 2, cy + cap / 2), (cx + base / 2, cy + cap / 2), (cx, cy - cap / 2)])
+    counter = Polygon([(cx - (half_w(bar_y) - leg * 1.1), cy + bar_y),
+                       (cx + (half_w(bar_y) - leg * 1.1), cy + bar_y),
+                       (cx, cy - cap / 2 + leg * 1.4)])
+    y0, y1 = bar_y + bar_t, cap / 2 + 0.01
+    notch = Polygon([(cx - (half_w(y0) - leg * 1.1), cy + y0), (cx + (half_w(y0) - leg * 1.1), cy + y0),
+                     (cx + (half_w(y1) - leg * 1.1), cy + y1), (cx - (half_w(y1) - leg * 1.1), cy + y1)])
+    poly = outer.difference(notch)
+    if not filled:
+        poly = poly.difference(counter)
+    r = Region(shape_id=shape_id, polygon=poly, thread_index=thread_index,
+               thread_number="1", area_mm2=poly.area, meta={})
+    return r, counter
+
+
+def _speck(shape_id: str, poly: Polygon, thread_index: int) -> Region:
+    """The counter as stage 3 leaves it: a rescued small shape of the ground's
+    ink, inside the letter."""
+    return Region(shape_id=shape_id, polygon=poly, thread_index=thread_index,
+                  thread_number="1", area_mm2=poly.area,
+                  meta={"rescued_small_shape": True})
+
+
+def _tagline_with_an_a(*, speck_ink: int) -> tuple[list[Region], Region, Region]:
+    """Four 3.1 mm line-mates at 0.4 mm strokes, the filled A among them, and
+    its counter speck. The A as traced is the shape the door rejects."""
+    mates = _word("M", 4, x0=0.0, y=0.0, w=0.4, h=3.1, spacing=2.2, thread_index=14)
+    a, counter = _a_with_counter("A", 4 * 2.2 + 0.4, 0.0, filled=True)
+    return mates, a, _speck("Ctr", counter, speck_ink)
+
+
+def test_the_fixture_reproduces_the_rejection_and_the_counter_repairs_it():
+    """Pins the measurement the fix rests on, on the synthetic A: filled, the
+    CV is over `LETTER_STROKE_CV_MAX`; with the counter back, under it and
+    the stroke within `SIMILARITY_RATIO` of a 0.4 mm line-mate."""
+    filled, counter = _a_with_counter("A", 0.0, 0.0, filled=True)
+    drawn, _ = _a_with_counter("A", 0.0, 0.0, filled=False)
+    s_filled = _skeleton_stroke_stats(filled)
+    s_drawn = _skeleton_stroke_stats(drawn)
+    assert s_filled.cv > LETTER_STROKE_CV_MAX, s_filled
+    assert s_drawn.cv <= LETTER_STROKE_CV_MAX, s_drawn
+    mate = _stroke_mm_of(_rect(0.0, 0.0, 0.4, 3.1))
+    assert min(mate, s_drawn.mean_mm) / max(mate, s_drawn.mean_mm) >= SIMILARITY_RATIO
+
+
+def test_a_glyph_whose_counter_was_filled_joins_its_line_only_when_read_as_drawn():
+    """Off (the function's default, every direct caller byte-identical): the
+    A is no candidate and its line is tagged without it. On: the door
+    subtracts the enclosed speck of another ink before it measures, and the
+    A is a letter of its word."""
+    chart = threads.CHART
+    assert chart.delta_e(14, 149) > TEXT_CLUSTER_DELTA_E_MAX, "Smoky vs Not Quite Red"
+
+    mates, a, speck = _tagline_with_an_a(speck_ink=149)
+    detect_text_clusters(mates + [a, speck], _P)
+    assert all(r.meta.get("text_candidate") is True for r in mates)
+    assert "text_cluster_id" not in a.meta, "today's door: the filled A reads as a blob"
+
+    mates, a, speck = _tagline_with_an_a(speck_ink=149)
+    detect_text_clusters(mates + [a, speck], _P, counters_as_drawn=True)
+    assert a.meta.get("text_cluster_id") == mates[0].meta.get("text_cluster_id"), (
+        "read as drawn, the A is a letter of its line")
+    assert "text_cluster_id" not in speck.meta, "the counter is not a letter"
+    assert a.polygon.interiors == () or len(a.polygon.interiors) == 0, (
+        "the door measures a copy; the region's own polygon is untouched")
+
+
+def test_a_same_ink_speck_inside_a_glyph_is_not_a_counter():
+    """A rescued fragment of the letter's OWN ink inside its footprint is a
+    piece of the letter (a broken stroke), not a counter: nothing is
+    subtracted, and the filled A stays rejected as before."""
+    mates, a, speck = _tagline_with_an_a(speck_ink=14)
+    detect_text_clusters(mates + [a, speck], _P, counters_as_drawn=True)
+    assert "text_cluster_id" not in a.meta
+
+
+def test_the_pipeline_passes_counters_as_drawn_from_the_config():
+    """ON by default (`PipelineConfig.text_cluster_counters_as_drawn`), pinned
+    False in `PRE_FLIP` and in flagcost's table; the function's own default
+    stays False so every direct caller is the engine as it was."""
+    import inspect
+
+    from digitizer_core import pipeline
+    from digitizer_core.config import PipelineConfig
+    from tools.pro_parity import flagcost as fc
+
+    from .conftest import PRE_FLIP
+
+    assert PipelineConfig().text_cluster_counters_as_drawn is True
+    assert PRE_FLIP["text_cluster_counters_as_drawn"] is False
+    assert fc.FLAGS["text_cluster_counters_as_drawn"] is False
+    assert inspect.signature(detect_text_clusters).parameters["counters_as_drawn"].default is False
+    src = inspect.getsource(pipeline)
+    assert "counters_as_drawn=bool(cfg.text_cluster_counters_as_drawn)" in src
