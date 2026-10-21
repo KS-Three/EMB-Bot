@@ -52,7 +52,7 @@ STITCH_MM = 3.5
 MARGIN_MM = 2.0
 #: Simplify the grown outline to this before filling it: a buffer's round
 #: joins carry hundreds of vertices that move no row end visibly.
-SIMPLIFY_MM = 0.05
+OUTLINE_SIMPLIFY_MM = 0.05
 #: Pieces of the grown outline smaller than this are dropped (a stray speck
 #: of the design grown into a 3 mm disc is not worth a trim).
 MIN_PIECE_MM2 = 10.0
@@ -78,7 +78,7 @@ def outline(polys, margin_mm: float = MARGIN_MM) -> list[Polygon]:
     for g in getattr(solids, "geoms", [solids]):
         if g.geom_type != "Polygon" or g.is_empty:
             continue
-        solid = Polygon(g.exterior).simplify(SIMPLIFY_MM, preserve_topology=True)
+        solid = Polygon(g.exterior).simplify(OUTLINE_SIMPLIFY_MM, preserve_topology=True)
         if solid.area >= MIN_PIECE_MM2:
             pieces.append(solid)
     return sorted(pieces, key=lambda p: -p.area)
