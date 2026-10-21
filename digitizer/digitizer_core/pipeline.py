@@ -951,7 +951,8 @@ def build_generation(
     if cfg.small_text_cap_mm:
         from .small_text import enlarge_small_text
         enlarge_small_text(regions, p, cap_mm=cfg.small_text_cap_mm,
-                           max_width_scale=cfg.small_text_cap_max_width_scale)
+                           max_width_scale=cfg.small_text_cap_max_width_scale,
+                           min_stroke_mm=cfg.small_text_cap_min_stroke_mm)
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —

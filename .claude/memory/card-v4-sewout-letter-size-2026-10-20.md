@@ -37,6 +37,24 @@ limited), THE 1.3x but its T is swallowed into the black band beside it,
 the tagline is skipped `no_room` (boxed in by rope and border).
 (2) is `bean_letter_satin_mm` (OFF, added in PR #1024).
 
+**Built 2026-10-21 (PR #1024, all OFF):** `small_text_cap_max_width_scale`
+(condensed: tall not wide; bars across the line stop blocking it; a word's
+counter shapes move with it; grown letters carved 0.2 mm apart),
+`small_text_cap_min_stroke_mm`, and bean letters skip grown letters (THE's lost
+T). At cap 4.0 / width 1.05 the SIZE matches the pro (EST/1895 3.8, THE and
+tagline 4.0 mm).
+
+**The open gap is the Column lane on ~4 mm bold letters** (isolated harness:
+grown polygons -> `lettering_columns_shape`, satin/travel coloured). Three
+defects: (1) fixed `pull_comp_mm` 0.4 per rail (Hat) -- a 0.85 mm drawn stroke
+sews ~1.65 mm, the pro's ~0.85, so letters merge into blobs; (2) at the 0.6
+floor, serifs/bars under `SATIN_MIN_CROSS_MM` 0.5 go `columns_unsewn` (1-4 per
+letter; P's bowl lost) -- only the 0.4 pull rescues them; at 0.85 floor + pull
+0.1, 4 of 11 tagline letters still drop a piece; (3) curves (S, P bowl) and
+diagonals (A apex, Y fork) fan into stars. Knobs fight: pull small loses
+strokes, pull large bloats. Needs pull scaled to stroke width plus junction and
+curve construction for narrow columns -- an engine job, not a flag value.
+
 **Measuring trap, hit TWICE this session:** a word's height read inside a FIXED
 box around the art's word (`fremont_triage.ROIS` mapped onto the pro's extent)
 is capped by the box — it first said the pro was 30% taller (box caught

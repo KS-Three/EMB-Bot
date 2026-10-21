@@ -2719,6 +2719,14 @@ class PipelineConfig:
     # the pro". None: uniform, byte for byte. A CANDIDATE (gate 1): 1.05 is
     # the pro's on one file, unsewn here.
     small_text_cap_max_width_scale: float | None = None
+    # With `small_text_cap_mm`: the drawn stroke a grown letter is widened to
+    # (`small_text.MIN_STROKE_MM` 0.6 when None, byte for byte). The pro does
+    # not enlarge a thin font -- he re-sets the words bold: 0.8-0.9 mm columns
+    # on Fremont at 92.5 mm. Grown at 0.6, the art's 0.3-0.5 mm serifs and
+    # bars land under `SATIN_MIN_CROSS_MM` 0.5 and the Column lane drops them
+    # unsewn (2026-10-21, isolated lane on the grown tagline). A CANDIDATE
+    # (gate 1): 0.85 is the pro's on one file.
+    small_text_cap_min_stroke_mm: float | None = None
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose

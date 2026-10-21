@@ -322,7 +322,7 @@ def _sx(s: float, max_width_scale: float | None) -> float:
 
 
 def _place_line(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float,
-                max_width_scale: float | None = None):
+                max_width_scale: float | None = None, min_stroke_mm: float = MIN_STROKE_MM):
     """One scale and one vertical move for the whole line -- two halves of a
     date either side of an emblem must keep one baseline -- and each
     cluster's own smallest sideways move. -> (s, dy, [dx per item]) or None."""
@@ -336,7 +336,7 @@ def _place_line(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float,
         grown = []
         for it in items:
             c = it["hull"].centroid
-            widen = max(0.0, (MIN_STROKE_MM - min(s, sx) * it["stroke"]) / 2.0) if it["stroke"] > 0 else 0.0
+            widen = max(0.0, (min_stroke_mm - min(s, sx) * it["stroke"]) / 2.0) if it["stroke"] > 0 else 0.0
             grown.append(affinity.scale(it["hull"], sx, s, origin=(c.x, c.y)).buffer(widen + CLEAR_MM))
         for dy in shifts:
             dxs, placed = [], []
@@ -362,14 +362,19 @@ def _place_line(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float,
 
 
 def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
-                       max_width_scale: float | None = None) -> list[dict]:
+                       max_width_scale: float | None = None,
+                       min_stroke_mm: float | None = None) -> list[dict]:
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
 
     `max_width_scale` (`cfg.small_text_cap_max_width_scale`): grow the
     letters TALLER by the full scale but WIDER by at most this -- condensed,
     the way the professional's Fremont file sets its small words (height
-    1.55-2.1x the art, width 1.04-1.06x). None: uniform, byte for byte."""
+    1.55-2.1x the art, width 1.04-1.06x). None: uniform, byte for byte.
+
+    `min_stroke_mm` (`cfg.small_text_cap_min_stroke_mm`): the drawn stroke a
+    grown letter is widened to. None: `MIN_STROKE_MM`, byte for byte."""
+    min_stroke_mm = float(min_stroke_mm) if min_stroke_mm and min_stroke_mm > 0 else MIN_STROKE_MM
     report: list[dict] = []
     if not cap_mm or cap_mm <= 0 or not regions:
         return report
@@ -480,7 +485,8 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                         continue
                     blockers.append(r.polygon)
                 it["obstacles"] = unary_union(blockers) if blockers else None
-            found = _place_line(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm, max_width_scale)
+            found = _place_line(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm, max_width_scale,
+                                min_stroke_mm)
             if found is None:
                 for it in line:
                     it["row"]["skipped"] = "no_room"
@@ -511,7 +517,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
             if bars or inner:
                 line[0]["row"].update(bars=len(bars), inner=sum(len(v) for v in inner.values()))
             for it, dx in zip(line, dxs):
-                widen = max(0.0, (MIN_STROKE_MM - min(s, sx) * it["stroke"]) / 2.0) if it["stroke"] > 0 else 0.0
+                widen = max(0.0, (min_stroke_mm - min(s, sx) * it["stroke"]) / 2.0) if it["stroke"] > 0 else 0.0
                 origin = (it["hull"].centroid.x, it["hull"].centroid.y)
                 old_union = unary_union([r.polygon for r in it["group"]])
                 for r, shape in zip(it["group"], it["shapes"]):
