@@ -22,6 +22,9 @@ a TRIM per jump). Full record: `docs/trim-economy-2026-10-21.md`.
 - The edge cap is cut stretch by stretch: 39 of our 478 plan trims — the next
   trim lever.
 
+**Kent 2026-10-21: keep it OFF until a sew-out** — it goes on the next card
+(Golden Tee or Drone, OFF beside ON) to settle show-through under light satin.
+
 **Why:** a session handed "trims are 1.7x" would reach for a distance or
 chaining knob; per-trim classes show only a quarter of the gap is a cut-vs-travel
 choice. **How to apply:** classify before tuning; a flip of the new flag is gate
