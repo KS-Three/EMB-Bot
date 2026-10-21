@@ -564,3 +564,58 @@ def test_two_strays_are_not_a_line_and_are_still_stripped():
     regions.remove(glyphs[6])                       # the stray "line" is now two shapes
     small_text.restore_small_text(regions, p, cap_mm=3.0, keep_stray_lines=True)
     assert all("text_cluster_id" not in r.meta and r.meta.get("small_text_stray") for r in glyphs[4:6])
+
+
+# --- condensed growth (`cfg.small_text_cap_max_width_scale`, 2026-10-21) ------------
+# The pro's Fremont patch sets small words 1.55-2.1x the art's HEIGHT at 1.0-1.06x
+# its WIDTH; Kent 2026-10-21: "Yes, match the pro".
+
+def _width(regions) -> float:
+    gs = _glyphs(regions)
+    return max(r.polygon.bounds[2] for r in gs) - min(r.polygon.bounds[0] for r in gs)
+
+
+def test_condensed_growth_is_off_by_default_and_none_is_uniform_byte_for_byte():
+    assert PipelineConfig().small_text_cap_max_width_scale is None
+    a, pa = _scene()
+    b, pb = _scene()
+    _tag(a, {"Sg0", "Sg1", "Sg2", "Sg3"})
+    _tag(b, {"Sg0", "Sg1", "Sg2", "Sg3"})
+    enlarge_small_text(a, pa, cap_mm=3.7)
+    enlarge_small_text(b, pb, cap_mm=3.7, max_width_scale=None)
+    assert [r.polygon.wkb for r in a] == [r.polygon.wkb for r in b]
+
+
+def test_condensed_growth_grows_tall_not_wide():
+    regions, p = _scene()
+    _tag(regions, {"Sg0", "Sg1", "Sg2", "Sg3"})
+    w0 = _width(regions)
+    row = next(r for r in enlarge_small_text(regions, p, cap_mm=3.7, max_width_scale=1.05)
+               if r["cluster"] == "TCtest")
+    assert "skipped" not in row, row
+    assert row["width_scale"] == 1.05 and row["scale"] > 1.5
+    assert abs(_cap(regions) - 3.7) < 0.35
+    # wider only by the 1.05 cap and the stroke floor's widening
+    assert _width(regions) <= 1.05 * w0 + 2 * small_text.MIN_STROKE_MM, (w0, _width(regions))
+
+
+def test_a_bar_across_the_line_does_not_block_condensed_growth():
+    import copy
+    # a thin tall bar between two words, like the tagline's "|"
+    regions, p = _scene(text_at=((120, 262), (420, 262)), words=("EAT", "STAY"))
+    _tag(regions, {r.shape_id for r in _glyphs(regions)})
+    gs = _glyphs(regions)
+    gap = (gs[2].polygon.bounds[2] + gs[3].polygon.bounds[0]) / 2
+    y0 = min(g.polygon.bounds[1] for g in gs) - 0.6
+    y1 = max(g.polygon.bounds[3] for g in gs) + 0.6
+    regions.append(Region("Sbar", box(gap - 0.12, y0, gap + 0.12, y1), 2, "2", 0.5))
+    bar0 = regions[-1].polygon.wkb
+    uniform = next(r for r in enlarge_small_text(copy.deepcopy(regions), p, cap_mm=3.7)
+                   if r["cluster"] == "TCtest")
+    rep = enlarge_small_text(regions, p, cap_mm=3.7, max_width_scale=1.05)
+    row = next(r for r in rep if r["cluster"] == "TCtest")
+    assert "skipped" not in row and row.get("bars") == 1, row
+    # boxed in by the bar, uniform growth stops short; condensed reaches the cap
+    assert row["scale"] > uniform.get("scale", 1.0) + 0.1, (uniform, row)
+    assert abs(_cap(regions) - 3.7) < 0.35
+    assert regions[-1].polygon.wkb == bar0, "the bar stays where and as it was"
