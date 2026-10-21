@@ -6023,6 +6023,90 @@ def _principal_spine(patch: Polygon) -> tuple[list[tuple[float, float]], float] 
     return _resample(pts, n), short_side / 2.0
 
 
+def is_small_solid(poly: Polygon, laid_mm: float) -> bool:
+    """`cfg.small_solids_satin`'s test: would a bean ring on this outline
+    leave bare cloth inside? The ring's thread reaches half a laid width in
+    from the edge; what is left past that, at or over the run tier's own
+    one-penetration area (`machine.RUN_MIN_AREA_MM2`), is a hole the ring
+    sews round. A shape with a hole is a ring already and is not a solid."""
+    if poly.is_empty or poly.geom_type != "Polygon" or poly.interiors:
+        return False
+    return poly.buffer(-laid_mm / 2.0).area >= machine.RUN_MIN_AREA_MM2
+
+
+def small_solid_satin(poly: Polygon, shape_id: str, *, spacing_mm: float,
+                      max_width_mm: float,
+                      start_near: tuple[float, float] | None
+                      ) -> tuple[list[StitchRun], dict]:
+    """A small solid (`is_small_solid`) sewn as ONE satin column: crosses
+    along the short side of the shape's minimum-area rectangle, stationed
+    along its long side, each cross the shape's own chord there.
+
+    Not `satin_stroke`: its width profile is a median over stations, and a
+    dot has three -- tip, middle, tip -- so the median is a tip and the
+    middle cross collapses (measured on Proseal's spray hexagon S68217daf,
+    1.08 mm across: rails 0.24 mm apart, then no cross over
+    `SATIN_MIN_CROSS_MM`, then nothing). Here each station is the centre of
+    a band no longer than `spacing_mm` (the length split into
+    ceil(length / spacing) equal bands), so no band of the dot is wider than
+    the satin tier's own pitch. A cross runs from the artwork's first edge
+    to its last on its line, so both needle points are on the art; a
+    concave dot (Proseal's "+", 0.43 mm arms, read across its diagonal)
+    sews as the blob the pro's file sews, bridging its notches -- under the
+    detail floor the bean ring's own 0.73 mm stations cut those corners too
+    (it sewed the "+" as a quadrilateral). A chord under
+    `machine.SATIN_MIN_CROSS_MM` is dropped as the satin tier drops one, and
+    a cross wider than `max_width_mm` is not a dot. Rails alternate, so every
+    consecutive pair of points crosses the shape -- the satin tier's own
+    shape. No pull comp, no underlay: the run tier it replaces had neither,
+    and the polygon is the artwork's. Fewer than two crosses is an empty
+    report; the caller keeps the ring then."""
+    report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False}
+    rect = poly.minimum_rotated_rectangle
+    corners = list(getattr(getattr(rect, "exterior", None), "coords", []))
+    if len(corners) < 4 or spacing_mm <= 0:
+        return [], report
+    s0, s1 = math.dist(corners[0], corners[1]), math.dist(corners[1], corners[2])
+    a, b = (corners[0], corners[1]) if s0 >= s1 else (corners[1], corners[2])
+    long_side, short_side = max(s0, s1), min(s0, s1)
+    if long_side < 1e-6 or short_side > max_width_mm:
+        return [], report
+    ux, uy = (b[0] - a[0]) / long_side, (b[1] - a[1]) / long_side
+    vx, vy = -uy, ux
+    c = rect.centroid
+    proj = [(x - c.x) * ux + (y - c.y) * uy for x, y in poly.exterior.coords]
+    t0, t1 = min(proj), max(proj)
+    n = max(1, int(math.ceil((t1 - t0) / spacing_mm - 1e-9)))
+    reach = short_side + long_side + 1.0
+    crosses: list[tuple[tuple[float, float], tuple[float, float]]] = []
+    for k in range(n):
+        t = t0 + (k + 0.5) * (t1 - t0) / n
+        mx, my = c.x + ux * t, c.y + uy * t
+        line = LineString([(mx - vx * reach, my - vy * reach), (mx + vx * reach, my + vy * reach)])
+        inter = line.intersection(poly)
+        pieces = [g for g in getattr(inter, "geoms", [inter])
+                  if g.geom_type == "LineString" and g.length > 0]
+        if not pieces:
+            continue
+        # The cross spans the artwork's first to last edge on this line, so
+        # both needle points are on the art; between them it may bridge a
+        # notch (a "+" read across its diagonal), the blob the pro sews.
+        ends = [q for g in pieces for q in (g.coords[0], g.coords[-1])]
+        p0 = min(ends, key=lambda q: q[0] * vx + q[1] * vy)
+        p1 = max(ends, key=lambda q: q[0] * vx + q[1] * vy)
+        if math.dist(p0, p1) < machine.SATIN_MIN_CROSS_MM:
+            continue
+        # every cross runs the same way round: rail A on the -v side
+        crosses.append(((p0[0], p0[1]), (p1[0], p1[1])))
+    if len(crosses) < 2:
+        return [], report
+    pts = [q for cross in crosses for q in cross]
+    if start_near is not None and math.dist(start_near, pts[-1]) < math.dist(start_near, pts[0]):
+        pts = list(reversed(pts))
+    report["empty"] = False
+    return [StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)], report
+
+
 def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
                          start_near: tuple[float, float] | None,
                          split_above_mm: float | None, spacing_mm: float,
