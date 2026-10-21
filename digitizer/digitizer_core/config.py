@@ -3718,6 +3718,16 @@ class PipelineConfig:
     # tests/test_cap_center_out.py pins the default, the two keys, the
     # precedence against `sew_order` and `borders_last`, and the off-lane no-op.
     cap_center_out: bool = False
+    # Beanie knockdown (rule R9, `docs/pro-digitizer-rules-2026-10-21.md`;
+    # `knockdown.py`). ON, a design on `garment_id == "beanie"` opens with
+    # its own colour block: a sparse tatami (0.5 mm rows, 3.5 mm stitches, no
+    # underlay) over the whole design grown 2.0 mm, holes filled, in the cone
+    # nearest `garment_rgb` — the professional's habit on all 6 beanie files
+    # (5 jobs) in his zip, where it flattens the knit's pile. No garment
+    # colour, no knockdown. Every other garment is untouched either way.
+    # Built OFF 2026-10-21: the three constants are gate-1 candidates read
+    # from his files, unsewn; Kent flips. False is the engine byte for byte.
+    beanie_knockdown: bool = False
     # One cone, one layer (defect 18, the SECOND spool-revisit mechanism).
     # Stage 2 quantizes to COLOURS, and two quantized colours can snap to one
     # physical cone: `drone_render` @ 80 mm declares 21 palette slots holding
