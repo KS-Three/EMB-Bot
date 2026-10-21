@@ -321,6 +321,297 @@ def _sx(s: float, max_width_scale: float | None) -> float:
     return s if not max_width_scale or max_width_scale <= 0 else min(s, float(max_width_scale))
 
 
+# RE-SET (`cfg.small_text_cap_letter_gap_mm`, 2026-10-21, built OFF): the
+# professional's raised small words, read across his jobs
+# (`docs/pro-digitizer-rules-2026-10-21.md`, R4): every letter grown to the
+# cap, the gaps between letters closed to 0.15-0.35 mm of VISIBLE fabric
+# (1.38 -> 0.32 on Drone's AND DRONE, 0.37 -> 0.15 on Fremont's 1895), each
+# letter widened into what that frees, and the line as wide as there is room
+# for -- 1.01x the art on Drone (boxed by its dashes), 1.42-1.54x on
+# Fremont's date (moved into free space). Condensed growth keeps the art's
+# gaps scaled and widens every stroke outward into them: Fremont's grown
+# words sewed letter into letter, and Drone's line, 5% wider, hit its dashes
+# and was not grown at all.
+# Each side of a letter's polygon sews this much further out than the
+# polygon on the cloth: half the 40 wt laid thread less what the Column lane
+# holds inside under `lettering_columns_small_bold` (its 0.11 mm rail inset,
+# less a pull of 0.15 of the stroke). Read off our own file, not off a
+# fabric: at 0.25 the Fremont words sewed 0.40-0.55 mm visible gaps for
+# 0.25 asked (`tools/small_text_columns.py`, both files as DST), so 0.17 is
+# the bridge from a polygon gap to the visible gap the pro's are read in.
+SEWN_EDGE_MM = 0.17
+# A gap inside one cluster at least this many times its median letter gap,
+# and at least `WORD_SPACE_CAP` of the cap, is a SPACE between words: a
+# cluster can hold several (Fremont's EAT | STAY, Drone's AND DRONE). Kept
+# as drawn, never closed.
+WORD_SPACE_RATIO = 2.0
+WORD_SPACE_CAP = 0.5
+# Letter widths are searched from the uniform scale (`f` = s) down to this
+# share of the drawn width in `RESET_WIDTH_STEPS` steps, widest first. Below
+# 1 the letters are condensed -- the condensed growth's own idea -- where
+# the art's gaps were already tight and closing them frees nothing: the
+# Fremont tagline's 0.3-0.5 mm, against the 0.75 mm plus widening a sewn
+# 0.25 mm gap needs. A CANDIDATE, like every number of the re-set.
+RESET_MIN_WIDTH = 0.8
+RESET_WIDTH_STEPS = 8
+# A cluster alone on its line moves sideways at most this share of the cap
+# asked (`_place_line_reset`); height gives way first. Drone's AND DRONE at
+# full growth fitted only 2.75 mm off centre, its dome icon under the middle.
+RESET_MAX_SIDE_CAPS = 0.25
+# Spacing a letter by its true distance to the one before it settles in a
+# few moves (a diagonal pair -- A beside Y -- needs more than a square one).
+RESET_SPACING_ITERS = 6
+
+
+def _units(shapes) -> list[list[int]]:
+    """A word's shapes grouped into letters, left to right: a shape whose
+    x extent overlaps the letter before it by half the narrower of the two
+    is part of it (a split stroke, a dot over its stem)."""
+    units: list[list[int]] = []
+    lo = hi = 0.0
+    for i in sorted(range(len(shapes)), key=lambda k: shapes[k].bounds[0]):
+        x0, _y0, x1, _y1 = shapes[i].bounds
+        if units and min(hi, x1) - max(lo, x0) >= 0.5 * min(hi - lo, x1 - x0):
+            units[-1].append(i)
+            lo, hi = min(lo, x0), max(hi, x1)
+        else:
+            units.append([i])
+            lo, hi = x0, x1
+    return units
+
+
+def _words(spans: list[tuple[float, float]], cap: float) -> list[list[int]]:
+    """Letters (their x spans, left to right) grouped into words at the
+    spaces (`WORD_SPACE_RATIO`, `WORD_SPACE_CAP`)."""
+    gaps = [b[0] - a[1] for a, b in zip(spans, spans[1:])]
+    med = float(np.median(gaps)) if gaps else 0.0
+    words = [[0]] if spans else []
+    for k, g in enumerate(gaps):
+        if g >= max(WORD_SPACE_RATIO * med, WORD_SPACE_CAP * cap):
+            words.append([k + 1])
+        else:
+            words[-1].append(k + 1)
+    return words
+
+
+def _stroke_target(it: dict, s: float, min_stroke_mm: float, bold_scale: float | None) -> float:
+    """The drawn stroke a re-set letter is widened to: `min_stroke_mm`, or
+    with `bold_scale` (`cfg.small_text_cap_bold_scale`) the art's stroke
+    grown with the letter's HEIGHT and bolded by that factor when more. The
+    pro's sewn column over the art's stroke at his scale: 0.90 / (0.30 x
+    2.06) on Fremont, 1.26 / (0.59 x 1.57) on Drone, 1.26 / (0.61 x 1.29) on
+    Proseal -- 1.45, 1.36, 1.60."""
+    t = min_stroke_mm
+    if bold_scale and bold_scale > 0 and it["stroke"] > 0:
+        t = max(t, float(bold_scale) * s * it["stroke"])
+    return t
+
+
+def _bar_room(bar_w: float, widen: float, gap_mm: float) -> float:
+    """Polygon-to-polygon room a bar of the line (`|`) needs between the
+    letters either side: its width plus, each side, the letter gap the
+    letters keep from each other."""
+    return bar_w + 2.0 * (gap_mm + 2.0 * SEWN_EDGE_MM + widen)
+
+
+def _reset_word(it: dict, s: float, f: float, gap_mm: float, min_stroke_mm: float,
+                bold_scale: float | None, bars: list[Polygon] | None = None) -> dict:
+    """One cluster re-set (comment at `SEWN_EDGE_MM`): every letter scaled
+    `s` tall and `f` wide about its own centre, then laid left to right,
+    each letter moved until its true distance to the one before it, once
+    both are widened, is `gap_mm` of visible fabric; a space between words
+    kept as drawn, or opened to hold a bar of the line that stood in it
+    (`bars`, `_bar_room`). The cluster stays centred where it was.
+    -> {"f", "widen", "moves": [(cx, dx) per shape], "units": [(x0, x1, cx,
+    dx) per letter], "cy", "hull" (each word's convex hull), "ink", "laid"
+    (per letter), "span"}."""
+    shapes = it["shapes"]
+    units = it.setdefault("units", _units(shapes))
+    spans = []
+    for u in units:
+        xs = [v for i in u for v in (shapes[i].bounds[0], shapes[i].bounds[2])]
+        spans.append((min(xs), max(xs)))
+    words = it.setdefault("words", _words(spans, it["cap"]))
+    c = it["hull"].centroid
+    target = _stroke_target(it, s, min_stroke_mm, bold_scale)
+    widen = max(0.0, (target - min(s, f) * it["stroke"]) / 2.0) if it["stroke"] > 0 else 0.0
+    clear = gap_mm + 2.0 * SEWN_EDGE_MM + 2.0 * widen
+    scaled = [unary_union([affinity.scale(shapes[i], f, s, origin=((a + b) / 2.0, c.y)) for i in u])
+              for u, (a, b) in zip(units, spans)]
+    offs = [0.0] * len(units)
+    laid: list = [None] * len(units)
+    right = None
+    for word in words:
+        for k, ui in enumerate(word):
+            g = scaled[ui]
+            if right is None:
+                off = -g.bounds[0]
+            elif k == 0:                # a space: the art's, the widening on top
+                space = spans[ui][0] - spans[ui - 1][1] + 2.0 * widen
+                for bar in bars or ():
+                    bx0, _by0, bx1, _by1 = bar.bounds
+                    if spans[ui - 1][1] <= (bx0 + bx1) / 2.0 <= spans[ui][0]:
+                        space = max(space, _bar_room(bx1 - bx0, widen, gap_mm))
+                off = right + space - g.bounds[0]
+            else:
+                prev = laid[ui - 1]
+                off = prev.bounds[2] + clear - g.bounds[0]
+                for _ in range(RESET_SPACING_ITERS):
+                    d = prev.distance(affinity.translate(g, off, 0.0))
+                    if d <= 1e-9:
+                        off += 0.5 * clear      # overshot into it: back off
+                        continue
+                    if abs(d - clear) < 0.01:
+                        break
+                    off -= d - clear
+            offs[ui] = off
+            laid[ui] = affinity.translate(g, off, 0.0)
+            right = laid[ui].bounds[2] if right is None else max(right, laid[ui].bounds[2])
+    left = min(q.bounds[0] for q in laid)
+    shift = c.x - (left + right) / 2.0
+    moves = [None] * len(shapes)
+    rows = []
+    for ui, (u, (a, b)) in enumerate(zip(units, spans)):
+        dxu = offs[ui] + shift
+        rows.append((a, b, (a + b) / 2.0, dxu))
+        for i in u:
+            moves[i] = ((a + b) / 2.0, dxu)
+    laid = [affinity.translate(q, shift, 0.0) for q in laid]
+    hull = unary_union([unary_union([laid[ui] for ui in word]).convex_hull for word in words])
+    x0, _y0, x1, _y1 = it["hull"].bounds
+    return {"f": f, "widen": widen, "moves": moves, "units": rows, "cy": c.y, "hull": hull,
+            "ink": unary_union(laid), "laid": laid, "span": (right - left) / max(x1 - x0, 1e-9)}
+
+
+def _shifted(r: dict, t: float) -> dict:
+    """A `_reset_word` answer moved `t` sideways."""
+    return {**r, "moves": [(cx, d + t) for cx, d in r["moves"]],
+            "units": [(a, b, cx, d + t) for a, b, cx, d in r["units"]],
+            "laid": [affinity.translate(q, t, 0.0) for q in r["laid"]],
+            "ink": affinity.translate(r["ink"], t, 0.0), "hull": affinity.translate(r["hull"], t, 0.0)}
+
+
+def _reset_line(items: list[dict], s: float, f: float, gap_mm: float, min_stroke_mm: float,
+                bold_scale: float | None, bars: list[Polygon] | None = None) -> list[dict]:
+    """Every cluster of a line re-set (`_reset_word`), then the clusters laid
+    left to right as one line about the line's own centre: between two, the
+    art's space with the widening on top, or the room a bar standing there
+    needs (`_bar_room`). Grown each about its own centre, Fremont's STAY ran
+    into the bar before PLAY."""
+    rs = [_reset_word(it, s, f, gap_mm, min_stroke_mm, bold_scale, bars) for it in items]
+    if len(rs) < 2:
+        return rs
+    widen = max(r["widen"] for r in rs)
+    art = [it["hull"].bounds for it in items]
+    width = rs[0]["ink"].bounds[2] - rs[0]["ink"].bounds[0]
+    spaces = []
+    for k in range(1, len(rs)):
+        lo, hi = art[k - 1][2], art[k][0]
+        space = hi - lo + 2.0 * widen
+        for bar in bars or ():
+            bx0, _by0, bx1, _by1 = bar.bounds
+            if lo <= (bx0 + bx1) / 2.0 <= hi:
+                space = max(space, _bar_room(bx1 - bx0, widen, gap_mm))
+        spaces.append(space)
+        width += space + rs[k]["ink"].bounds[2] - rs[k]["ink"].bounds[0]
+    cursor = (art[0][0] + art[-1][2]) / 2.0 - width / 2.0
+    out = []
+    for k, r in enumerate(rs):
+        if k:
+            cursor += spaces[k - 1]
+        out.append(_shifted(r, cursor - r["ink"].bounds[0]))
+        cursor += r["ink"].bounds[2] - r["ink"].bounds[0]
+    return out
+
+
+def _bar_moves(bars: list[Polygon], resets: list[dict], dxs: list[float], gap_mm: float):
+    """Each bar of a re-set line moved sideways to the middle of the room
+    between the letters that stood either side of it in the art (a letter's
+    side is read from its ART centre); a bar at the line's end only steps
+    clear. -> [dx per bar], or None when a bar has no room."""
+    widen = max((r["widen"] for r in resets), default=0.0)
+    out = []
+    for bar in bars:
+        bx0, _by0, bx1, _by1 = bar.bounds
+        bc = (bx0 + bx1) / 2.0
+        lo, hi = -math.inf, math.inf
+        for r, dx in zip(resets, dxs):
+            for (_a, _b, cx, _d), g in zip(r["units"], r["laid"]):
+                if cx < bc:
+                    lo = max(lo, g.bounds[2] + dx)
+                else:
+                    hi = min(hi, g.bounds[0] + dx)
+        need = _bar_room(bx1 - bx0, widen, gap_mm)
+        if hi - lo < need:
+            return None
+        if math.isinf(lo) and math.isinf(hi):
+            out.append(0.0)
+        elif math.isinf(lo):
+            out.append(min(bc, hi - need / 2.0) - bc)
+        elif math.isinf(hi):
+            out.append(max(bc, lo + need / 2.0) - bc)
+        else:
+            out.append((lo + hi) / 2.0 - bc)
+    return out
+
+
+def _place_line_reset(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float,
+                      gap_mm: float, min_stroke_mm: float, bold_scale: float | None,
+                      bars: list[Polygon] | None = None):
+    """`_place_line` for a re-set line: the tallest scale, then the widest
+    letters (`f` from `s` down to `RESET_MIN_WIDTH`) at which every cluster
+    fits clear of every obstacle by `CLEAR_MM`, and every bar of the line
+    (`bars`) has room between its letters (`_bar_moves`).
+    -> (s, dy, [dx per item], [reset per item], [dx per bar]) or None."""
+    shifts = _offsets(MAX_SHIFT_CAPS * cap_mm)
+    # one cluster alone on its line stays near where it was drawn: a line
+    # set about its own centre, slid sideways, is off-centre in the design
+    side = shifts if len(items) > 1 else [v for v in shifts if abs(v) <= RESET_MAX_SIDE_CAPS * cap_mm]
+    steps = 8
+    for k in range(steps + 1):
+        s = s_max - (s_max - MIN_SCALE) * k / steps
+        if s < MIN_SCALE - 1e-9:
+            break
+        for j in range(RESET_WIDTH_STEPS + 1):
+            f = s - (s - RESET_MIN_WIDTH) * j / RESET_WIDTH_STEPS
+            resets = _reset_line(items, s, f, gap_mm, min_stroke_mm, bold_scale, bars)
+            grown = [r["hull"].buffer(r["widen"] + it.get("clear", CLEAR_MM))
+                     for it, r in zip(items, resets)]
+            # the smallest move wins, |dy| + the largest |dx|: taking the
+            # first dy that fits at any dx slid Drone's line 2.75 mm sideways
+            # where a quarter millimetre up kept it centred
+            best = None
+            for dy in shifts:
+                if best is not None and abs(dy) >= best[0]:
+                    break
+                dxs, placed = [], []
+                for it, g0 in zip(items, grown):
+                    hit = None
+                    for dx in side:
+                        if best is not None and abs(dy) + abs(dx) >= best[0]:
+                            break
+                        g = affinity.translate(g0, dx, dy)
+                        if not bounds.contains(g):
+                            continue
+                        if it["obstacles"] is not None and g.intersects(it["obstacles"]):
+                            continue
+                        if any(g.intersects(q) for q in placed):
+                            continue
+                        hit = (dx, g)
+                        break
+                    if hit is None:
+                        break
+                    dxs.append(hit[0])
+                    placed.append(hit[1])
+                if len(dxs) == len(items):
+                    moves = _bar_moves(bars or [], resets, dxs, gap_mm)
+                    if moves is not None:
+                        best = (abs(dy) + max(abs(v) for v in dxs), dy, dxs, moves)
+            if best is not None:
+                return s, best[1], best[2], resets, best[3]
+    return None
+
+
 def _place_line(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float,
                 max_width_scale: float | None = None, min_stroke_mm: float = MIN_STROKE_MM):
     """One scale and one vertical move for the whole line -- two halves of a
@@ -363,9 +654,19 @@ def _place_line(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float,
 
 def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        max_width_scale: float | None = None,
-                       min_stroke_mm: float | None = None) -> list[dict]:
+                       min_stroke_mm: float | None = None,
+                       letter_gap_mm: float | None = None,
+                       bold_scale: float | None = None) -> list[dict]:
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
+
+    `letter_gap_mm` (`cfg.small_text_cap_letter_gap_mm`): RE-SET each word
+    instead (comment at `SEWN_EDGE_MM`, `_place_line_reset`): letters this
+    much visible fabric apart, each widened into its gaps, the line as wide
+    as room allows; `max_width_scale` is not read. `bold_scale`
+    (`cfg.small_text_cap_bold_scale`, re-set only): the stroke a letter is
+    widened to grows with its height (`_stroke_target`). None: the growth
+    above, byte for byte.
 
     `max_width_scale` (`cfg.small_text_cap_max_width_scale`): grow the
     letters TALLER by the full scale but WIDER by at most this -- condensed,
@@ -439,11 +740,18 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
         else:
             lines.append([it])
 
+    reset = letter_gap_mm is not None and letter_gap_mm >= 0
     for line in lines:
         try:
             line.sort(key=lambda it: it["hull"].bounds[0])
             ids = {id(r) for it in line for r in it["group"]}
             cap = float(np.median([it["cap"] for it in line]))
+            if reset:
+                joined = _join_line_ends(line, regions, ids | claimed, cap)
+                if joined:
+                    ids |= {id(r) for r in joined}
+                    claimed.update(id(r) for r in joined)
+                    line[0]["row"]["joined"] = len(joined)
             # Condensed growth only (uniform keeps the old rule, byte for
             # byte), two kinds of shape in the line stop blocking it:
             # - a BAR across the line (the tagline's "|"): thin -- at most
@@ -455,7 +763,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
             #   and grows with that word, or the word grows over its holes.
             bars: list[Region] = []
             inner: dict[int, list[Region]] = {}
-            if max_width_scale and max_width_scale > 0:
+            if reset or (max_width_scale and max_width_scale > 0):
                 lx0 = min(it["hull"].bounds[0] for it in line)
                 lx1 = max(it["hull"].bounds[2] for it in line)
                 ly0 = min(it["hull"].bounds[1] for it in line)
@@ -485,8 +793,19 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                         continue
                     blockers.append(r.polygon)
                 it["obstacles"] = unary_union(blockers) if blockers else None
-            found = _place_line(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm, max_width_scale,
-                                min_stroke_mm)
+                if reset and it["obstacles"] is not None:
+                    # re-set: no more room than the art itself left, up to
+                    # CLEAR_MM -- Drone's A stands 0.97 mm off its dash in
+                    # the art (the pro's: 0.8 visible), and 0.8 plus the
+                    # widening around it slid the whole line 2.75 mm aside
+                    it["clear"] = min(CLEAR_MM, float(hull.distance(it["obstacles"])))
+            if reset:
+                found = _place_line_reset(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm,
+                                          float(letter_gap_mm), min_stroke_mm, bold_scale,
+                                          [r.polygon for r in bars])
+            else:
+                found = _place_line(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm, max_width_scale,
+                                    min_stroke_mm)
             if found is None:
                 for it in line:
                     it["row"]["skipped"] = "no_room"
@@ -503,6 +822,9 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                                     and r.polygon.intersection(it["hull"]).area < 0.5 * it["hull"].area:
                                 hits.append([r.thread_index, [round(v, 1) for v in r.polygon.bounds]])
                     it["row"]["blocked_by"] = hits[:6]
+                continue
+            if reset:
+                _reset_apply(regions, line, bars, inner, found)
                 continue
             s, dy, dxs = found
             sx = _sx(s, max_width_scale)
@@ -556,6 +878,137 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
             for it in line:
                 it["row"]["skipped"] = f"error:{type(exc).__name__}"
     return report
+
+
+# A re-set letter's counter is shrunk by the widening only while it keeps
+# at least this width (mm, twice its deepest inside point); past that, by as
+# much as leaves it so, or not at all. A sewn counter narrower than the
+# 40 wt laid thread closes on the cloth anyway.
+RESET_COUNTER_MIN_MM = 0.4
+
+
+def _widen_keep_counters(poly: Polygon, widen: float):
+    """`poly` widened by `widen` on its outline, each counter shrunk by at
+    most as much as keeps it `RESET_COUNTER_MIN_MM` wide. The growth's own
+    rule -- buffer whole, or by half, or not at all when that closes a
+    counter -- left a re-set A, whose counter is 0.3 mm, at half the
+    widening: its legs drawn 0.6 mm where its other strokes are 0.85, and
+    the left one sewn as a travel run. -> a Polygon, or `poly` unchanged."""
+    if widen <= 1e-6:
+        return poly
+    outer = [q for q in _polys(Polygon(poly.exterior).buffer(widen)) if q.area > 0]
+    if len(outer) != 1:
+        return poly
+    holes = []
+    for ring in poly.interiors:
+        hole = Polygon(ring)
+        keep = hole
+        for w in (widen, widen * 0.75, widen * 0.5, widen * 0.25):
+            cand = [q for q in _polys(hole.buffer(-w)) if q.area > 0]
+            if len(cand) == 1 and inscribed_width_mm(cand[0].exterior) >= RESET_COUNTER_MIN_MM:
+                keep = cand[0]
+                break
+        holes.append(keep)
+    out = outer[0].difference(unary_union(holes)) if holes else outer[0]
+    if not isinstance(out, Polygon) or not out.is_valid or out.is_empty \
+            or len(out.interiors) < len(poly.interiors):
+        return poly
+    return out
+
+
+def _join_line_ends(line: list[dict], regions: list[Region], taken: set[int], cap: float) -> list[Region]:
+    """Re-set only: a letter-sized shape standing on the line's own band
+    just past either end -- 0.8-1.25 cap tall, at most 2 caps wide and
+    within 1.5 cap of the end -- joins the end cluster and grows and moves
+    with it, whatever its thread. Drone's AND DRONE: our trace gives its
+    first A a thread of its own, so it is in no cluster; the re-set grew
+    the other seven letters and slid them 2.5 mm off it ("A   ND DRONE").
+    -> the shapes joined."""
+    lx0 = min(it["hull"].bounds[0] for it in line)
+    lx1 = max(it["hull"].bounds[2] for it in line)
+    ly0 = min(it["hull"].bounds[1] for it in line)
+    ly1 = max(it["hull"].bounds[3] for it in line)
+    joined = []
+    for side in ("left", "right"):
+        best = None
+        for r in regions:
+            if id(r) in taken or not isinstance(r.polygon, Polygon) or r.polygon.is_empty:
+                continue
+            x0, y0, x1, y1 = r.polygon.bounds
+            h = y1 - y0
+            if not (0.8 * cap <= h <= 1.25 * cap and x1 - x0 <= 2.0 * cap
+                    and min(y1, ly1) - max(y0, ly0) >= 0.8 * h):
+                continue
+            gap = lx0 - x1 if side == "left" else x0 - lx1
+            if -0.1 <= gap <= 1.5 * cap and (best is None or gap < best[0]):
+                best = (gap, r)
+        if best is None:
+            continue
+        r = best[1]
+        it = line[0] if side == "left" else line[-1]
+        it["group"].append(r)
+        it["shapes"].append(r.polygon)
+        it["hull"] = unary_union(it["shapes"]).convex_hull
+        it.pop("units", None)
+        it.pop("words", None)
+        taken.add(id(r))
+        joined.append(r)
+    return joined
+
+
+def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
+                 inner: dict[int, list[Region]], found) -> None:
+    """Write a re-set line (`_place_line_reset`'s answer) into its regions:
+    each shape scaled about its letter's centre and moved to its place, then
+    widened as the growth widens; a word's inner pieces go with the letter
+    they sit in. The meta keys are the growth's, so every reader downstream
+    sees a grown letter."""
+    s, dy, dxs, resets, bar_dxs = found
+    for k, (it, dx, rs) in enumerate(zip(line, dxs, resets)):
+        f, widen, cy = rs["f"], rs["widen"], rs["cy"]
+        for r in inner.get(k, []):
+            x = r.polygon.centroid.x
+            _a, _b, cx, dxu = min(rs["units"], key=lambda u: 0.0 if u[0] <= x <= u[1]
+                                  else min(abs(x - u[0]), abs(x - u[1])))
+            grown = affinity.translate(affinity.scale(r.polygon, f, s, origin=(cx, cy)), dxu + dx, dy)
+            if isinstance(grown, Polygon) and grown.is_valid and not grown.is_empty:
+                r.polygon = grown
+                r.area_mm2 = float(grown.area)
+                r.meta["small_text_inner"] = round(s, 3)
+        old_union = unary_union([r.polygon for r in it["group"]])
+        for r, shape, (cx, dxu) in zip(it["group"], it["shapes"], rs["moves"]):
+            moved = affinity.translate(affinity.scale(shape, f, s, origin=(cx, cy)), dxu + dx, dy)
+            final = _widen_keep_counters(moved, widen)
+            if not isinstance(final, Polygon) or not final.is_valid or final.is_empty:
+                continue
+            r.polygon = final
+            r.area_mm2 = float(final.area)
+            r.meta["small_text_enlarged"] = round(s, 3)
+            r.meta["small_text_reset"] = True       # the regularizer leaves it as set
+            r.meta[WIDENED_LETTERING_KEY] = round(max(widen, 1e-4), 4)
+            if r.meta.get("text_cluster_stroke_mm"):
+                r.meta["text_cluster_stroke_mm"] = float(r.meta["text_cluster_stroke_mm"]) * min(s, f) + widen
+        _fill_old_holes(regions, {id(r) for r in it["group"]}, old_union)
+        if inner.get(k):        # an inner piece stays inside its letter's (shrunk) counter
+            ink = unary_union([r.polygon for r in it["group"]])
+            for r in inner[k]:
+                rest = [q for q in _polys(r.polygon.difference(ink)) if q.area > 0]
+                if rest:
+                    r.polygon = max(rest, key=lambda q: q.area)
+                    r.area_mm2 = float(r.polygon.area)
+        it["row"].update(scale=round(s, 3), span=round(rs["span"], 3), width_scale=round(f, 3),
+                         shift_mm=(round(dx, 2), round(dy, 2)), adopted=len(it["group"]) - it["members"],
+                         retraced=it["traced"], widened_mm=round(widen, 3), letters=len(rs["units"]))
+    for bar, bdx in zip(bars, bar_dxs):     # each bar to the middle of its room
+        if abs(bdx) < 1e-9:
+            continue
+        old = bar.polygon
+        bar.polygon = affinity.translate(old, bdx, 0.0)
+        bar.meta["small_text_bar_moved_mm"] = round(bdx, 3)
+        _fill_old_holes(regions, {id(bar)}, old)
+    if bars or inner:
+        line[0]["row"].update(bars=len(bars), inner=sum(len(v) for v in inner.values()),
+                              bar_moves=[round(v, 2) for v in bar_dxs])
 
 
 # Fabric kept between two grown letters of one line (condensed growth). Each
