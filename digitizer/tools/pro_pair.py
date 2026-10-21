@@ -21,6 +21,7 @@ verdict. `tools/pro_parity/` (pairframe, scorecard, overlay) does that.
 
   python -m tools.pro_pair --art A --pro P --width MM [--garment hat_front]
       [--out DIR] [--band Y0 Y1 | --crop X0 Y0 X1 Y1] [--shapes id,id]
+      [--set KEY=JSON ...]
 """
 from __future__ import annotations
 
@@ -51,8 +52,7 @@ LETTERING_KEYS = ("text_cluster_id", "lettering_group", "word_id", "bean_letter"
 # ------------------------------------------------------------------ pieces
 def request(width_mm: float, garment_id: str = "hat_front", extra: dict | None = None) -> dict:
     """The Studio's /digitize config at `width_mm`, `garment_id` swapped in,
-    and `extra` (a customer option the Studio would send, e.g.
-    `{"sew_enclosed_white": true}`) merged over it."""
+    then `extra` (`--set KEY=JSON`: a flag, `garment_rgb`) laid over it."""
     from tools.fremont_triage import studio_request
     req = studio_request(width_mm)
     req["garment_id"] = garment_id
@@ -398,15 +398,27 @@ def parse_args(argv=None):
     g.add_argument("--crop", nargs=4, type=float, metavar=("X0", "Y0", "X1", "Y1"),
                    help="mm from the top-left of each design's stitch extents")
     ap.add_argument("--shapes", default="", help="comma-separated region ids for spines/runs dumps")
-    ap.add_argument("--config", default="", help="JSON merged over the Studio request, "
-                    "e.g. '{\"sew_enclosed_white\": true}'")
+    ap.add_argument("--set", action="append", default=[], metavar="KEY=JSON",
+                    help="a config field over the Studio request, e.g. beanie_knockdown=true "
+                         "or garment_rgb=[208,166,96]; repeatable")
     return ap.parse_args(argv)
+
+
+def parse_sets(items) -> dict:
+    """`--set KEY=JSON` pairs -> a dict; a bare word that is not JSON stays a string."""
+    out = {}
+    for item in items:
+        key, _, raw = item.partition("=")
+        try:
+            out[key.strip()] = json.loads(raw)
+        except json.JSONDecodeError:
+            out[key.strip()] = raw
+    return out
 
 
 def main(argv=None) -> int:
     args = parse_args(argv)
-    extra = json.loads(args.config) if args.config else None
-    return run(args, digitize(args.art, args.width, args.garment, extra))
+    return run(args, digitize(args.art, args.width, args.garment, parse_sets(args.set)))
 
 
 if __name__ == "__main__":

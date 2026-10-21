@@ -36,7 +36,7 @@ order, one layer per thread. The pro sews the fill first and the outline on
 top (R13), repeating a cone to keep that order (R12). The colour cap counts
 them as sewn area (`count_enclosed`).
 
-## Measured: `tools/pro_pair.py --config '{"sew_enclosed_white": true}'`
+## Measured: `tools/pro_pair.py --set sew_enclosed_white=true`
 
 Studio request, today's `main` (2e873933) plus this branch, at the pro's
 width. Stitches and trims are as `pro_pair` reads them (ours from our own

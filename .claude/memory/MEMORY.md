@@ -133,3 +133,4 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Small bold columns](small-bold-columns-2026-10-21.md) — `lettering_columns_small_bold` OFF: 4 mm letters at the pro's 0.85 mm satin, no fans; 8/9/S counters closed UPSTREAM by growth; crossed-legs metric is noise here
 - [Pro rules across all jobs](pro-rules-across-jobs-2026-10-21.md) — small text raised to ~4 mm on every job that has it; beanie knockdown 5/5; white interiors sewn; count trims from DST, never PES
 - [Sew white areas](sew-white-areas-2026-10-21.md) — R11 built OFF as a Studio option; counter = untagged white in a text-cluster letter; Machine field doubles trims (stage 5)
+- [Beanie knockdown ON](beanie-knockdown-2026-10-21.md) — Kent flipped it unsewn: garment-coloured 0.5 mm fill under the design, 2 mm margin, first; engine decides per garment like backing, never ask per logo
