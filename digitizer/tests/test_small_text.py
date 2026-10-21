@@ -619,3 +619,14 @@ def test_a_bar_across_the_line_does_not_block_condensed_growth():
     assert row["scale"] > uniform.get("scale", 1.0) + 0.1, (uniform, row)
     assert abs(_cap(regions) - 3.7) < 0.35
     assert regions[-1].polygon.wkb == bar0, "the bar stays where and as it was"
+
+
+def test_overlapping_grown_letters_are_carved_apart_left_to_right():
+    a = Region("Sa", box(0, 0, 1.0, 4.0), 7, "7", 4.0)
+    b = Region("Sb", box(0.9, 0, 1.9, 4.0), 7, "7", 4.0)        # overlaps a by 0.1
+    c = Region("Sc", box(5.0, 0, 6.0, 4.0), 7, "7", 4.0)        # clear of both
+    c0 = c.polygon.wkb
+    assert small_text._carve_neighbours([b, a, c]) == 1
+    assert a.polygon.equals(box(0, 0, 1.0, 4.0)), "the left letter keeps its shape"
+    assert b.polygon.distance(a.polygon) >= small_text.LETTER_GAP_MM - 1e-9
+    assert c.polygon.wkb == c0

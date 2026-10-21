@@ -541,10 +541,42 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 it["row"].update(scale=round(s, 3), width_scale=round(sx, 3), shift_mm=(round(dx, 2), round(dy, 2)),
                                  adopted=len(it["group"]) - it["members"], retraced=it["traced"],
                                  widened_mm=round(widen, 3))
+            if max_width_scale and max_width_scale > 0:
+                carved = _carve_neighbours([r for it in line for r in it["group"]
+                                            if r.meta.get("small_text_enlarged")])
+                if carved:
+                    line[0]["row"]["carved"] = carved
         except Exception as exc:  # fail open
             for it in line:
                 it["row"]["skipped"] = f"error:{type(exc).__name__}"
     return report
+
+
+# Fabric kept between two grown letters of one line (condensed growth). Each
+# letter sews its own columns; where two overlapped, Fremont's tagline at cap
+# 4.0 sewed both sets of crosses over each other (2026-10-21). Half the 40 wt
+# laid width: the pull stage 5 adds still closes most of it on the cloth.
+LETTER_GAP_MM = 0.2
+
+
+def _carve_neighbours(letters: list[Region]) -> int:
+    """Left to right, each grown letter gives way to the ones before it by
+    `LETTER_GAP_MM`. A letter the cut would split or empty is left alone.
+    -> how many letters were cut."""
+    letters = sorted(letters, key=lambda r: r.polygon.bounds[0])
+    done: list[Polygon] = []
+    cut = 0
+    for r in letters:
+        before = [q for q in done if q.distance(r.polygon) < LETTER_GAP_MM]
+        if before:
+            rest = r.polygon.difference(unary_union(before).buffer(LETTER_GAP_MM))
+            parts = [q for q in _polys(rest) if q.area > 0]
+            if len(parts) == 1 and parts[0].is_valid and parts[0].area >= 0.6 * r.polygon.area:
+                r.polygon = parts[0]
+                r.area_mm2 = float(parts[0].area)
+                cut += 1
+        done.append(r.polygon)
+    return cut
 
 
 def _fill_old_holes(regions: list[Region], ids: set[int], old_union) -> None:
