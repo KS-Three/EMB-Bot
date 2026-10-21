@@ -503,3 +503,103 @@ def test_the_cover_does_not_pay_for_noding_the_stitch_path():
     elapsed = time.time() - t0
     assert cover is not None and cover.area > 0.0
     assert elapsed < 4.0, f"_sewn_linear_cover took {elapsed:.1f}s"
+
+
+# --- a bean letter is a drawn line, not an edge (`edge_cap_skip_bean_letters`) --
+#
+# Proseal at the pro's 85.9 mm, Hat (2026-10-20): the tagline's two A's sew
+# as bean letters (five centre-line spines each) and the cap drew a SECOND
+# outline round each -- 63 and 45 cap stitches, the R/Y/P beside them none.
+# Their traced polygons are solid triangles, and a bean letter is not a
+# satin column, so stage 5 grows the polygon by the fill's pull (0.4 mm a
+# side, 3.54 -> 8.17 mm^2): the silhouette's edge there stood 0.4 mm off the
+# thread, outside the bean runs' half-thread cover, and the cap ringed it.
+# The letter's sewn line is the whole of what it laid; a run has no row end
+# for a cap to close. So, ON, a bean letter's polygon joins the cap's `omit`,
+# exactly as a satin letter's does under `edge_cap_skip_lettering`.
+
+def _a_letter(cx: float = 0.0):
+    """A small solid "A" (a 3 x 3.4 mm triangle, its counter filled, as
+    Proseal's traced) and the five centre-line spines it sews as."""
+    poly = Polygon([(cx - 1.5, 1.7), (cx, -1.7), (cx + 1.5, 1.7)])
+    spines = [
+        [[cx - 1.25, 1.55], [cx - 0.75, 0.45]],
+        [[cx - 0.75, 0.45], [cx, -1.4]],
+        [[cx - 0.75, 0.45], [cx + 0.75, 0.45]],
+        [[cx, -1.4], [cx + 0.75, 0.45]],
+        [[cx + 0.75, 0.45], [cx + 1.25, 1.55]],
+    ]
+    return poly, spines
+
+
+def _bean_design(**cfg_kw):
+    from digitizer_core.beanletters import BEAN_LETTER_KEY
+    a_poly, spines = _a_letter(cx=-20.0)
+    letter = region(a_poly, "A", 5, 1, {"text_candidate": True,
+                                        BEAN_LETTER_KEY: spines})
+    field = region(bar(15, 15, cx=10.0), "F", 3, 0)
+    return a_poly, plan_for([field, letter], edge_cap="bean", **cfg_kw)
+
+
+def _cap_points(plan):
+    return [p for b in plan.blocks for r in b.runs
+            if r.shape_id == "__edge_cap__" for p in r.points]
+
+
+def _near(points, poly, d=0.6):
+    from shapely.geometry import Point
+    zone = poly.buffer(d)
+    return [p for p in points if zone.contains(Point(p))]
+
+
+def test_bean_letters_skip_the_cap_is_on_and_priced():
+    from tools.pro_parity import flagcost as fc
+
+    from .conftest import PRE_FLIP
+    assert PipelineConfig().edge_cap_skip_bean_letters is True
+    assert PRE_FLIP["edge_cap_skip_bean_letters"] is False
+    assert fc.FLAGS["edge_cap_skip_bean_letters"] is False
+
+
+def test_off_the_cap_rings_a_solid_bean_letter():
+    """The defect, pinned on the pre-flip engine: the letter sews as runs
+    and the cap rings its grown polygon anyway."""
+    a_poly, off = _bean_design(edge_cap_skip_bean_letters=False)
+    kinds = {str(r.kind) for b in off.blocks for r in b.runs if r.shape_id == "A"}
+    assert kinds == {"run"}, kinds
+    assert len(_near(_cap_points(off), a_poly)) > 0
+
+
+def test_on_no_cap_stitch_stands_on_a_bean_letter():
+    a_poly, on = _bean_design()
+    assert _near(_cap_points(on), a_poly) == []
+
+
+def test_on_the_rest_of_the_cap_and_every_artwork_run_are_unchanged():
+    """The flag reaches the silhouette and nothing else: the field is ringed
+    on the same line either way -- the ring may START elsewhere, since the
+    needle no longer arrives from the letter's ring -- and every artwork run
+    is what it was."""
+    a_poly, off = _bean_design(edge_cap_skip_bean_letters=False)
+    _a, on = _bean_design()
+    away = a_poly.buffer(0.6)
+    from shapely.geometry import MultiPoint, Point
+    rest_off = [p for p in _cap_points(off) if not away.contains(Point(p))]
+    rest_on = _cap_points(on)
+    assert rest_off and rest_on
+    assert abs(len(rest_on) - len(rest_off)) <= 0.05 * len(rest_off)
+    # Same line: every ON station within a hair of the OFF ring and back.
+    assert MultiPoint(rest_on).hausdorff_distance(MultiPoint(rest_off)) < 0.75
+    assert ([(t, [r.points for r in rs]) for t, rs in art_blocks(on)]
+            == [(t, [r.points for r in rs]) for t, rs in art_blocks(off)])
+
+
+def test_a_design_of_nothing_but_bean_letters_gets_no_cap():
+    from digitizer_core.beanletters import BEAN_LETTER_KEY
+    a_poly, spines = _a_letter()
+    only = [region(a_poly, "A", 5, 0, {"text_candidate": True,
+                                        BEAN_LETTER_KEY: spines})]
+    on = plan_for(only, edge_cap="bean")
+    assert _cap_points(on) == []
+    off = plan_for(only, edge_cap="bean", edge_cap_skip_bean_letters=False)
+    assert _cap_points(off)

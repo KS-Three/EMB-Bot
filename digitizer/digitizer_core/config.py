@@ -3866,6 +3866,28 @@ class PipelineConfig:
     # uncovered area unchanged on all nine). False is the pre-flip cap byte
     # for byte.
     edge_cap_skip_lettering: bool = True
+    # No edge cap round a BEAN letter (2026-10-20, Proseal's two A's). A
+    # bean letter (`beanletters.tag_bean_letters`) sews its ink's centre-line
+    # spines as runs; its traced polygon is not what it laid. Stage 5 still
+    # grows that polygon by the fill's pull (a bean letter is not a satin
+    # column), so on Proseal at the pro's 85.9 mm (Hat) the tagline's two
+    # A's -- traced as solid triangles, counters filled -- planned at 7.46
+    # and 8.17 mm^2 against 2.95 and 3.54 traced, their edge 0.4 mm off the
+    # thread and outside the bean runs' half-thread cover, and the cap drew a
+    # second outline round each: 45 and 63 cap stitches, the R/Y/P beside
+    # them none (their polygons are not grown). ON, a text member that sewed
+    # as a bean letter -- bean meta, and no fill or satin run on it -- hands
+    # its polygon to the cap's `omit`, as a satin letter does under the flag
+    # above: its runs are already linear cover, and a run has no row end for
+    # a cap to close. The silhouette is untouched, so every other ring
+    # samples as before. Satin and fill letters are exactly as
+    # `edge_cap_skip_lettering` leaves them. Measured on Proseal 85.9 mm:
+    # cap 1,350 -> 1,242 points, the 108 cut all on the A's (2 of 23 runs),
+    # the other 21 cap runs and every artwork run identical point for point;
+    # the design 7,884 -> 7,776 stitches, trims 57 -> 55, and the cap-only
+    # block SPRAY's A pulled onto the end gone (7 -> 6 blocks).
+    # False is the pre-flip cap byte for byte.
+    edge_cap_skip_bean_letters: bool = True
     # Walk the covered stretch between two cap arcs (MASTER_SCOPE defect 19's
     # trim bill; built 2026-10-08, DEFAULT OFF). The gate splits a ring into
     # arcs wherever something linear already sews the edge, and the needle
