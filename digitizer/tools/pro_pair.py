@@ -21,6 +21,7 @@ verdict. `tools/pro_parity/` (pairframe, scorecard, overlay) does that.
 
   python -m tools.pro_pair --art A --pro P --width MM [--garment hat_front]
       [--out DIR] [--band Y0 Y1 | --crop X0 Y0 X1 Y1] [--shapes id,id]
+      [--set KEY=JSON ...]
 """
 from __future__ import annotations
 
@@ -49,11 +50,13 @@ LETTERING_KEYS = ("text_cluster_id", "lettering_group", "word_id", "bean_letter"
 
 
 # ------------------------------------------------------------------ pieces
-def request(width_mm: float, garment_id: str = "hat_front") -> dict:
-    """The Studio's /digitize config at `width_mm`, `garment_id` swapped in."""
+def request(width_mm: float, garment_id: str = "hat_front", extra: dict | None = None) -> dict:
+    """The Studio's /digitize config at `width_mm`, `garment_id` swapped in,
+    then `extra` (`--set KEY=JSON`: a flag, `garment_rgb`) laid over it."""
     from tools.fremont_triage import studio_request
     req = studio_request(width_mm)
     req["garment_id"] = garment_id
+    req.update(extra or {})
     return req
 
 
@@ -113,7 +116,8 @@ class Digitized:
     secs: float
 
 
-def digitize(art, width_mm: float, garment_id: str = "hat_front") -> Digitized:
+def digitize(art, width_mm: float, garment_id: str = "hat_front",
+             extra: dict | None = None) -> Digitized:
     """The Studio's request, through the service's parser, then the pipeline
     the product runs. Identical to the director's proseal_run.py."""
     from digitizer_service.app import _decode as svc_decode, _parse_config
@@ -122,7 +126,7 @@ def digitize(art, width_mm: float, garment_id: str = "hat_front") -> Digitized:
     from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
     art = Path(art)
     data = art.read_bytes()
-    cfg = PipelineConfig(**_parse_config(json.dumps(request(width_mm, garment_id))))
+    cfg = PipelineConfig(**_parse_config(json.dumps(request(width_mm, garment_id, extra))))
     pixels = svc_decode(data)
     t = time.time()
     gen = build_generation(pixels, cfg, exif_source=data)
@@ -394,12 +398,27 @@ def parse_args(argv=None):
     g.add_argument("--crop", nargs=4, type=float, metavar=("X0", "Y0", "X1", "Y1"),
                    help="mm from the top-left of each design's stitch extents")
     ap.add_argument("--shapes", default="", help="comma-separated region ids for spines/runs dumps")
+    ap.add_argument("--set", action="append", default=[], metavar="KEY=JSON",
+                    help="a config field over the Studio request, e.g. beanie_knockdown=true "
+                         "or garment_rgb=[208,166,96]; repeatable")
     return ap.parse_args(argv)
+
+
+def parse_sets(items) -> dict:
+    """`--set KEY=JSON` pairs -> a dict; a bare word that is not JSON stays a string."""
+    out = {}
+    for item in items:
+        key, _, raw = item.partition("=")
+        try:
+            out[key.strip()] = json.loads(raw)
+        except json.JSONDecodeError:
+            out[key.strip()] = raw
+    return out
 
 
 def main(argv=None) -> int:
     args = parse_args(argv)
-    return run(args, digitize(args.art, args.width, args.garment))
+    return run(args, digitize(args.art, args.width, args.garment, parse_sets(args.set)))
 
 
 if __name__ == "__main__":
