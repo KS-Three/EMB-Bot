@@ -3721,7 +3721,8 @@ class PipelineConfig:
     # Beanie knockdown (rule R9, `docs/pro-digitizer-rules-2026-10-21.md`;
     # `knockdown.py`). ON, a design on `garment_id == "beanie"` opens with
     # its own colour block: a sparse tatami (0.5 mm rows, 3.5 mm stitches, no
-    # underlay) over the whole design grown 2.0 mm, holes filled, in the cone
+    # underlay) over the whole design grown 2.0 mm (on a badge: out to its
+    # satin border's outer edge and no further), holes filled, in the cone
     # nearest `garment_rgb` — the professional's habit on all 6 beanie files
     # (5 jobs) in his zip, where it flattens the knit's pile. No garment
     # colour, no knockdown. Every other garment is untouched either way.

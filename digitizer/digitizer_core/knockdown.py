@@ -13,8 +13,11 @@ the design sits on top instead of sinking between the ribs. Read off the DSTs
   * outline: the design grown with every hole filled. The same raster read
     gives 1.6-1.8 mm median margin on the four free-standing logos and 1.32
     on ours built at 1.5, so it reads about 0.2 mm short: the pro's margin is
-    about 1.8-2.0 mm. On the two badge files it sits level with the badge's
-    satin edge instead (0 and ~0.7 mm), which this does not copy;
+    about 1.8-2.0 mm. On the two badge files it stops at the badge's satin
+    border instead: +0.74 mm past its outer edge on To a T, 0.95 mm under it
+    on Machine E (needle points against the design's outer edge). Kent
+    2026-10-21: stop at the satin border, so a badge's knockdown ends on
+    that edge (`badge_border`, `BADGE_EDGE_MM` 0);
   * thread: Khaki / PMS 155 on both PES files that carry the job — a colour
     the design does not use, i.e. the garment's.
 
@@ -56,6 +59,19 @@ OUTLINE_SIMPLIFY_MM = 0.05
 #: Pieces of the grown outline smaller than this are dropped (a stray speck
 #: of the design grown into a 3 mm disc is not worth a trim).
 MIN_PIECE_MM2 = 10.0
+#: Badge: where the knockdown stops relative to the satin border's OUTER edge
+#: (mm, + outside). Kent 2026-10-21: "stop at the satin border". See
+#: `badge_border`.
+BADGE_EDGE_MM = 0.0
+#: A badge border is a RING: its hole holds at least this share of the area
+#: inside its outer edge (To a T's: 95%), so a solid shape with counters is not
+#: one.
+BADGE_HOLE_SHARE = 0.5
+#: ...and every other shape lies inside its outer edge, give or take this
+#: much of their area (a stray speck just outside does not undo a badge).
+BADGE_OUTSIDE_SHARE = 0.01
+#: Slack on "inside its outer edge", mm: a shape abutting the ring's outside.
+BADGE_SLACK_MM = 0.3
 SHAPE_ID = "knockdown"
 
 
@@ -63,12 +79,51 @@ def applies(cfg) -> bool:
     return bool(getattr(cfg, "beanie_knockdown", False)) and cfg.garment_id == GARMENT
 
 
-def outline(polys, margin_mm: float = MARGIN_MM) -> list[Polygon]:
-    """The design's footprint grown by `margin_mm`, holes filled, largest first."""
+def badge_border(shapes, satin_ids) -> Polygon | None:
+    """The outer edge of the design's badge border, or None.
+
+    `shapes` are (shape_id, polygon) pairs, `satin_ids` the shapes stage 7
+    sewed as satin columns. A badge border is a satin RING (`BADGE_HOLE_SHARE`)
+    whose outer edge holds every other shape (`BADGE_OUTSIDE_SHARE`). On the
+    pro's two badge beanies (To a T, Machine E) the knockdown stops at that
+    border instead of running 2 mm past it; on every free-standing logo there
+    is no such shape and the margin applies."""
+    best = None
+    for sid, g in shapes:
+        if sid not in satin_ids or g.geom_type != "Polygon" or not g.interiors:
+            continue
+        outer = Polygon(g.exterior)
+        if outer.area <= 0 or (outer.area - g.area) < BADGE_HOLE_SHARE * outer.area:
+            continue
+        others = [o for oid, o in shapes if oid != sid and not o.is_empty]
+        total = sum(o.area for o in others)
+        if total <= 0:
+            continue
+        inside = outer.buffer(BADGE_SLACK_MM)
+        out = sum(o.difference(inside).area for o in others)
+        if out > BADGE_OUTSIDE_SHARE * total:
+            continue
+        if best is None or outer.area > best.area:
+            best = outer
+    return best
+
+
+def outline(polys, margin_mm: float = MARGIN_MM, badge: Polygon | None = None) -> list[Polygon]:
+    """The design's footprint grown by `margin_mm`, holes filled, largest first.
+
+    With `badge` (`badge_border`'s outer edge) everything inside it is covered
+    out to `BADGE_EDGE_MM` from that edge and no further; only a shape lying
+    outside it still gets the margin."""
     polys = [p for p in polys if p is not None and not p.is_empty]
     if not polys:
         return []
-    grown = unary_union([p.buffer(0) for p in polys]).buffer(margin_mm)
+    if badge is not None:
+        inside = badge.buffer(BADGE_SLACK_MM)
+        parts = [badge.buffer(BADGE_EDGE_MM, join_style=2) if BADGE_EDGE_MM else badge]
+        parts += [p.buffer(0).buffer(margin_mm) for p in polys if not inside.covers(p)]
+        grown = unary_union(parts)
+    else:
+        grown = unary_union([p.buffer(0) for p in polys]).buffer(margin_mm)
     # Filling holes is a second union, not a per-piece step: an island of the
     # design inside a wide counter grows into its own piece, which lies inside
     # its host once the host's hole is filled and would sew twice.
@@ -132,18 +187,38 @@ def _stay_down(runs: list[StitchRun], poly: Polygon) -> list[StitchRun]:
     return out
 
 
-def knockdown_block(polys, cfg, trim_at_mm: float) -> tuple[StitchBlock | None, dict]:
+def satin_shape_ids(blocks) -> set[str]:
+    """Shapes stage 7 sewed mostly as satin columns (satin/border points over
+    fill points)."""
+    sat: dict[str, int] = {}
+    fill: dict[str, int] = {}
+    for b in blocks:
+        for r in b.runs:
+            if r.kind in (stitches.SATIN, stitches.BORDER):
+                sat[r.shape_id] = sat.get(r.shape_id, 0) + len(r.points)
+            elif r.kind == stitches.FILL:
+                fill[r.shape_id] = fill.get(r.shape_id, 0) + len(r.points)
+    return {sid for sid, n in sat.items() if n > fill.get(sid, 0)}
+
+
+def knockdown_block(shapes, cfg, trim_at_mm: float,
+                    satin_ids=frozenset()) -> tuple[StitchBlock | None, dict]:
     """-> (the knockdown block, report) or (None, report) when it declines.
 
-    `polys` are the shapes the plan sews (stage 5's polygons). The block's
+    `shapes` are the plan's (shape_id, polygon) pairs (stage 5's polygons; a
+    bare polygon is accepted as one with no id), `satin_ids` the ones sewn as
+    satin (`satin_shape_ids`), which is how a badge border is told. The block's
     runs are tied like any colour block's: in at the start, off at the end and
     either side of every trim between pieces.
     """
-    report = {"applied": False, "reason": "", "pieces": 0, "area_mm2": 0.0}
+    report = {"applied": False, "reason": "", "pieces": 0, "area_mm2": 0.0, "badge": False}
     if cfg.garment_rgb is None:
         report["reason"] = "no garment colour"
         return None, report
-    pieces = outline(polys)
+    shapes = [s if isinstance(s, tuple) else (f"_{i}", s) for i, s in enumerate(shapes)]
+    badge = badge_border(shapes, satin_ids)
+    report["badge"] = badge is not None
+    pieces = outline([g for _, g in shapes], badge=badge)
     if not pieces:
         report["reason"] = "nothing to cover"
         return None, report
