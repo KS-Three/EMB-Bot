@@ -2570,6 +2570,8 @@ def sequence(
                                            passes=cfg.bean_letter_passes,
                                            **({"straight_mm": cfg.bean_letter_straight_mm}
                                               if cfg.bean_letter_straight_mm else {}),
+                                           **({"satin_mm": cfg.bean_letter_satin_mm}
+                                              if cfg.bean_letter_satin_mm else {}),
                                            **({"bay_hold_mm": cfg.bean_letter_bay_hold,
                                                "stroke_mm": p.region.meta.get("ink_stroke_mm")}
                                               if cfg.bean_letter_bay_hold else {}))

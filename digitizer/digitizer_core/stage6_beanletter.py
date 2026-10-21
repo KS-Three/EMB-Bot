@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
+
 from . import machine, stitches
 from .stage6_satin import _bean_along, _resample
 from .stitches import StitchRun
@@ -384,6 +386,37 @@ def hold_off_bays(pts: list, own_ink, bays, hold_mm: float, counters=()) -> list
     return out
 
 
+def _satin_along(spine: list, width_mm: float, stitch_mm: float | None) -> tuple[list, list]:
+    """A narrow satin column ON the spine (`cfg.bean_letter_satin_mm`): a
+    single centre run out along it (the underlay that holds the column down),
+    then a zigzag back, crosses `machine.SATIN_SPACING_MM` apart and
+    `width_mm` across, square to the spine. Returns (underlay, zigzag); the
+    zigzag ends at the spine's first point, where the run began.
+
+    Why: Kent's card v4 sew-out (2026-10-20) beside the pro's Fremont patch --
+    the 3-pass bean line sits in the art's footprint but reads as a hairline,
+    a smaller word; the pro sews the same letters as 0.8-0.9 mm satin down
+    each stroke (`docs/sewout/card-v4-2026-10-20/pro_vs_ours_92mm.png`)."""
+    length = _length(spine)
+    centre = _resample(spine, max(2, math.ceil(length / (stitch_mm or machine.BEAN_STITCH_MM)) + 1))
+    n = max(2, math.ceil(length / machine.SATIN_SPACING_MM) + 1)
+    pts = np.asarray(_resample(spine, n), float)[::-1]
+    tang = np.gradient(pts, axis=0)
+    norm = np.hypot(tang[:, 0], tang[:, 1])
+    norm[norm == 0] = 1.0
+    nrm = np.stack([-tang[:, 1], tang[:, 0]], axis=1) / norm[:, None]
+    half = width_mm / 2.0
+    side = np.where(np.arange(n) % 2 == 0, 1.0, -1.0)[:, None]
+    # Tapered ends: a cross within half a width of either end of the spine is
+    # narrowed in proportion, so a stroke finishes in a point, not a square of
+    # full-width crosses (on a 1.5 mm serif those squares read as spikes).
+    along = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(pts, axis=0).T))])
+    to_end = np.minimum(along, along[-1] - along)
+    taper = np.clip(to_end / half, 0.3, 1.0)[:, None] if half > 0 else 1.0
+    zig = pts + nrm * half * side * taper
+    return [tuple(map(float, q)) for q in centre], [tuple(map(float, q)) for q in zig]
+
+
 def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
                 trim_at_mm: float,
                 stitch_mm: float | None = None,
@@ -393,7 +426,8 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
                 passes: int | None = None,
                 bay_hold_mm: float | None = None,
                 stroke_mm: float | None = None,
-                straight_mm: float | None = None) -> tuple[list[StitchRun], dict]:
+                straight_mm: float | None = None,
+                satin_mm: float | None = None) -> tuple[list[StitchRun], dict]:
     """One letter's spines -> bean runs in sew order, plus `run_outline`'s
     report contract (and `strokes`, how many spines sewed).
 
@@ -427,7 +461,12 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
     exactly as laid, byte for byte.
 
     `straight_mm` (`cfg.bean_letter_straight_mm`): the longest stitch on a
-    straight stretch (`_station_piece`). None: the pitch, byte for byte."""
+    straight stretch (`_station_piece`). None: the pitch, byte for byte.
+
+    `satin_mm` (`cfg.bean_letter_satin_mm`): each spine sews as a narrow
+    satin column this wide on the spine (`_satin_along`) instead of bean
+    passes; passes, the straight pitch and the bay hold do not apply. None:
+    bean, byte for byte."""
     arm_floor = stitch_mm if stitch_mm and stitch_mm > 0 else _MIN_ARM_MM
     report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False,
               "arcs": 0, "yielded": 0, "strokes": 0}
@@ -453,7 +492,7 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
     # modelled from the spines AS READ (a cut serif hook is still ink). None
     # or no stroke: nothing is read and every station is where it was.
     own_ink = bays = counters = None
-    if bay_hold_mm and bay_hold_mm > 0 and stroke_mm and stroke_mm > 0 and todo:
+    if bay_hold_mm and bay_hold_mm > 0 and stroke_mm and stroke_mm > 0 and todo and not satin_mm:
         own_ink, ink = _letter_ink([list(map(tuple, s)) for s in spines], float(stroke_mm))
         bays, counters = letter_bays(ink) or None, letter_counters(ink)
     runs: list[StitchRun] = []
@@ -469,6 +508,22 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
         src = todo_ix.pop(i)
         if rev:
             spine.reverse()
+        if satin_mm and satin_mm > 0:
+            under, zig = _satin_along(spine, float(satin_mm), stitch_mm)
+            jump = trim = False
+            if runs:
+                d = math.dist(cursor, under[0])
+                if d >= machine.TINY_STITCH_MM:
+                    jump = True
+                    trim = d > trim_at_mm
+                    report["jumps"] += 1
+            runs.append(StitchRun(points=stitches.split_long_moves(under), kind=stitches.UNDERLAY,
+                                  jump=jump, trim=trim, shape_id=shape_id))
+            runs.append(StitchRun(points=stitches.split_long_moves([under[-1]] + zig), kind=stitches.SATIN,
+                                  jump=False, trim=False, shape_id=shape_id))
+            cursor = zig[-1]
+            report["strokes"] += 1
+            continue
         pts = (_bean_keep_corners(spine, stitch_mm, corner_deg, passes, straight_mm)
                if corner_deg or straight_mm else _bean_along(spine, stitch_mm, passes))
         if bays is not None:
