@@ -587,6 +587,10 @@ PRE_FLIP["lettering_columns_fold_cuts"] = False
 # The tests ABOUT them are `tests/test_small_stem.py`,
 # `tests/test_small_dot_rung.py` and `tests/test_dot_rung_lettering.py`.
 PRE_FLIP["lettering_columns_small_stem"] = False
+# The rail axis (2026-10-20): a short italic bar in the Column lane runs along
+# its rails, not its spine's chord, so an italic wordmark's arms move. False
+# is the pre-flip lane. The tests ABOUT it are `tests/test_column_rail_axis.py`.
+PRE_FLIP["lettering_columns_rail_axis"] = False
 PRE_FLIP["small_dot_rung"] = False
 PRE_FLIP["small_dot_rung_lettering"] = False
 # The photo lane's phantom-blend dissolve (defect 27; Kent banked it OFF

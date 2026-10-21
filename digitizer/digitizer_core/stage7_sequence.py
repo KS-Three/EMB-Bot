@@ -2735,6 +2735,8 @@ def sequence(
                     **({"fold_cuts": True} if cfg.lettering_columns_fold_cuts else {}),
                     # `cfg.lettering_columns_square_ends` (default ON, Kent 2026-10-13): same rule
                     **({"square_ends": True} if cfg.lettering_columns_square_ends else {}),
+                    # `cfg.lettering_columns_rail_axis` (default ON, 2026-10-20): same rule
+                    **({"rail_axis": True} if cfg.lettering_columns_rail_axis else {}),
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
                        if cfg.lettering_columns_inside_connectors else {}))

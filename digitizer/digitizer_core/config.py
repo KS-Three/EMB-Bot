@@ -2523,6 +2523,22 @@ class PipelineConfig:
     # ends past their face (#907: 1). ON by Kent's ruling 2026-10-13; False
     # is the pre-flip lane.
     lettering_columns_square_ends: bool = True
+    # Under `lettering_columns`, a short straight bar takes its RAILS'
+    # direction (2026-10-20, `outline_cut.straight_axis` / `_rail_pair_axis`).
+    # Proseal at the pro's 85.9 mm hat width: the E's middle arm (4.5 x 2.2
+    # mm, ends leaning with the italic) read 0.44 outline coherence against
+    # the 0.55 bar, fell back to the spine's chord -- which runs acute corner
+    # to acute corner -- and sewed its crosses at 77.6 deg beside the top
+    # and bottom arms' 90.0: an angle change inside one letter. Synthetic
+    # 3.5-4.5 mm bars leaning 8-20 deg read 10-22 deg off. ON, a piece that
+    # took the chord fallback (whose straightness gate is unchanged) runs
+    # along its two longest own sides when they are parallel within the
+    # upright snap's 7 deg and on opposite sides of the stroke -- and only
+    # where the chord is more than those 7 deg off them (Proseal's L stem,
+    # 5.1 off, keeps its chord; only the E arm moves there). No sewn
+    # constant: a direction, not a width or a pitch. False is the pre-flip
+    # lane, byte for byte. Tests: `tests/test_column_rail_axis.py`.
+    lettering_columns_rail_axis: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule

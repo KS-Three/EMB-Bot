@@ -27,6 +27,7 @@ whether a text-tagged shape comes this way at all.
 """
 from __future__ import annotations
 
+import contextvars
 import math
 from collections import deque
 from dataclasses import replace
@@ -614,12 +615,45 @@ def pair_rails(A, B, pitch_mm: float) -> list[tuple[tuple, tuple]]:
     return out
 
 
-def straight_axis(piece: Polygon, W: float, cut_lines=()):
+def _rail_pair_axis(own, W: float):
+    """`rail_axis`: the direction of a straight piece's RAILS -- its longest
+    own side and the longest own side parallel to it (within the 7 deg the
+    upright snap uses) that sits on the far side of the stroke (half a
+    stroke width off the first side's line). None when there is no such
+    pair. `own`: [(length, p, q)] of the piece's own (uncut) sides."""
+    if not own:
+        return None
+    own = sorted(own, key=lambda e: -e[0])
+    L1, p1, q1 = own[0]
+    d1 = np.array([q1[0] - p1[0], q1[1] - p1[1]]) / L1
+    n1 = np.array([-d1[1], d1[0]])
+    tol = math.cos(math.radians(7))
+    for L2, p2, q2 in own[1:]:
+        d2 = np.array([q2[0] - p2[0], q2[1] - p2[1]]) / L2
+        if abs(float(d1 @ d2)) < tol:
+            continue
+        mid = np.array([(p2[0] + q2[0]) / 2 - p1[0], (p2[1] + q2[1]) / 2 - p1[1]])
+        if abs(float(mid @ n1)) < 0.5 * W:
+            continue
+        if float(d1 @ d2) < 0:
+            d2 = -d2
+        u = L1 * d1 + L2 * d2
+        return u / float(np.hypot(*u))
+    return None
+
+
+def straight_axis(piece: Polygon, W: float, cut_lines=(), rail_axis: bool = False):
     """Unit axis of a straight stroke piece, or None if it bends. The axis is
     the direction the piece's OWN outline runs (cut edges excluded), so a
-    mitred diagonal reads along its sides, not along its cuts."""
+    mitred diagonal reads along its sides, not along its cuts.
+    `rail_axis` (`cfg.lettering_columns_rail_axis`): where the outline is
+    not coherent enough and the spine's chord is read instead, the chord
+    still decides whether the piece is straight, but the axis is its rails'
+    (`_rail_pair_axis`) -- a short italic bar's spine runs acute corner to
+    acute corner, 10-22 deg off its rails (`tests/test_column_rail_axis.py`)."""
     cs = list(piece.exterior.coords)
     C = S = tot = 0.0
+    own = []
     for p, q in zip(cs[:-1], cs[1:]):
         L = math.hypot(q[0] - p[0], q[1] - p[1])
         if L < 1e-6:
@@ -627,6 +661,7 @@ def straight_axis(piece: Polygon, W: float, cut_lines=()):
         mid = Point((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
         if any(ln.distance(mid) < 0.03 for ln in cut_lines):
             continue
+        own.append((L, p, q))
         th = 2 * math.atan2(q[1] - p[1], q[0] - p[0])
         C += L * math.cos(th)
         S += L * math.sin(th)
@@ -648,6 +683,12 @@ def straight_axis(piece: Polygon, W: float, cut_lines=()):
         u = chord / Lc
         if np.abs((Q - Q[0]) @ np.array([-u[1], u[0]])).max() > max(0.12 * Lc, 0.2 * W):
             return None
+        if rail_axis:
+            # the chord is kept within the upright snap's 7 deg of the rails
+            # (Proseal's L stem: 5.1 off, kept); past it the rails win
+            ra = _rail_pair_axis(own, W)
+            if ra is not None and abs(float(ra @ u)) < math.cos(math.radians(7)):
+                u = ra
     # along that axis the piece must be a stroke, not a slab: longer than it is wide
     P = np.array(cs)
     ext_u = np.ptp(P @ u)
@@ -1024,12 +1065,23 @@ def _mitre_ends(st, piece: Polygon, u, cut_lines, pitch_mm: float, W: float):
     return st
 
 
+# `rail_axis` for every `build_column` of one `letter_columns` call: the cut's
+# second looks build columns from a dozen sites, and each takes the letter's
+# reading of the rule from here rather than through a dozen signatures.
+_RAIL_AXIS: contextvars.ContextVar[bool] = contextvars.ContextVar("rail_axis", default=False)
+
+
 def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
-                 mitre_ends: bool = False) -> Column | None:
+                 mitre_ends: bool = False, rail_axis: bool | None = None) -> Column | None:
     """One piece -> its Column, or None when neither construction fits it.
-    `mitre_ends` (`cfg.lettering_columns_square_ends`): see `_mitre_ends`."""
+    `mitre_ends` (`cfg.lettering_columns_square_ends`): see `_mitre_ends`.
+    `rail_axis` (`cfg.lettering_columns_rail_axis`): see `straight_axis`;
+    None reads the enclosing `letter_columns` call's."""
+    if rail_axis is None:
+        rail_axis = _RAIL_AXIS.get()
     if not piece.interiors:
-        u = straight_axis(piece, W, cut_lines)
+        u = (straight_axis(piece, W, cut_lines, rail_axis=True) if rail_axis
+             else straight_axis(piece, W, cut_lines))
         if u is not None:
             sc = scan_stations(piece, u, pitch_mm)
             if sc:
@@ -1584,7 +1636,21 @@ class LetterCut:
 
 
 def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False,
-                   mitre_ends: bool = False, judge=None) -> LetterCut:
+                   mitre_ends: bool = False, judge=None, rail_axis: bool = False) -> LetterCut:
+    """See `_letter_columns`. `rail_axis` (`cfg.lettering_columns_rail_axis`):
+    every straight piece of this letter reads its axis by `straight_axis`'s
+    rail rule. False is the pre-flip cut, byte for byte."""
+    if not rail_axis:
+        return _letter_columns(poly, pitch_mm, fold_cuts, mitre_ends, judge)
+    token = _RAIL_AXIS.set(True)
+    try:
+        return _letter_columns(poly, pitch_mm, fold_cuts, mitre_ends, judge)
+    finally:
+        _RAIL_AXIS.reset(token)
+
+
+def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False,
+                    mitre_ends: bool = False, judge=None) -> LetterCut:
     """A letter polygon -> its stroke Columns. `pitch_mm` is the progress
     between consecutive stations along the moving rail -- the satin spacing
     itself (`machine.SATIN_SPACING_MM`): a station is one cross, and the
