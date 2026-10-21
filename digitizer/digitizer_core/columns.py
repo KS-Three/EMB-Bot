@@ -109,6 +109,15 @@ _ENTRY_INSET_MM = 0.3
 # 0.117 / 0.092 / 0.122; this is their mean. Pre-push, the shipped rails sit
 # a mean +0.11-0.12 mm inside (median +0.04-0.06), the lane's +0.03-0.05.
 RAIL_REACH_INSET_MM = 0.11
+# `cfg.lettering_columns_small_bold` (2026-10-21, built OFF): a letter under
+# `machine.SATIN_UNDERLAY_MIN_EXTENT_MM` (stage 7's `_small`) sews like the
+# pro's ~4 mm bold letters. Its pull is a share of its stroke width, not the
+# fabric's fixed `pull_comp_mm`: 0.4 mm a rail on Hat sewed the grown Fremont
+# tagline's 0.8 mm strokes 1.23 mm wide (median satin stitch) against the
+# pro's 0.86, and the letters ran together. Industry pull is a fraction of
+# the column; this share puts the median back at the pro's. A candidate
+# until sewn (gate 1).
+SMALL_BOLD_PULL_FRAC = 0.15
 
 
 @dataclass
@@ -1485,6 +1494,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 square_ends: bool = False,
                 inside_connectors: bool = False,
                 counter_poly: Polygon | None = None,
+                thin_floor: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
@@ -1502,7 +1512,12 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     penetration that starts on an end face on that face (`_hold_end_faces`).
     `inside_connectors` (`cfg.lettering_columns_inside_connectors`) keeps
     every needle-down connector within the rails' side reach of the letter
-    (`poly_hop` in step 3)."""
+    (`poly_hop` in step 3).
+    `thin_floor` (`cfg.lettering_columns_small_bold`): a column that would
+    keep fewer than three crosses over `min_cross_mm` has its thin ones
+    widened to it about their own middles (`_floor_crosses`) instead of
+    dropped, so a serif or bar thinner than the floor sews at the floor
+    rather than vanishing; a column that keeps three drops them as before."""
     from .stage6_satin import (_JUNCTION_TUCK_MM, _comb_thresholds,   # same package,
                                _short_stitch_guard, _split_points)      # same rules
 
@@ -1543,6 +1558,13 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                                     width_mm=col.width_mm, rail_a=col.rail_a, rail_b=col.rail_b))
             continue
         kept = [(a, b) for a, b in guarded if math.dist(a, b) >= min_cross_mm]
+        if thin_floor and len(kept) < 3 and len(guarded) >= 3:
+            # a whole piece under the floor (a serif, a bar): sewn at the
+            # floor rather than lost; a column that keeps three crosses
+            # drops its thin ones as before -- widened, a fan's converging
+            # tip crosses each other
+            kept = _floor_crosses(guarded, min_cross_mm)
+            report["floored"] = report.get("floored", 0) + 1
         report["thin_crosses"] += len(col.stations) - len(kept)
         if len(kept) < 3:
             report["columns_unsewn"] += 1
@@ -1812,6 +1834,35 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     return linked, report
 
 
+def _floor_crosses(stations, min_cross_mm: float):
+    """`cfg.lettering_columns_small_bold`: every cross under `min_cross_mm`
+    widened to it about its own middle, along its own direction -- or, for a
+    cross with none (both rails on one point, a fan's tip), along the
+    nearest cross that has one. A grown 4 mm letter's serifs and bars run
+    0.3-0.5 mm; dropped under the floor, P's whole bowl and E's arms went
+    unsewn on the Fremont tagline at the pro's pull."""
+    dirs = []
+    for a, b in stations:
+        d = math.dist(a, b)
+        dirs.append(((b[0] - a[0]) / d, (b[1] - a[1]) / d) if d > 1e-9 else None)
+    have = [i for i, u in enumerate(dirs) if u is not None]
+    out = []
+    for i, (a, b) in enumerate(stations):
+        if math.dist(a, b) >= min_cross_mm:
+            out.append((a, b))
+            continue
+        u = dirs[i]
+        if u is None:
+            if not have:
+                out.append((a, b))
+                continue
+            u = dirs[min(have, key=lambda k: abs(k - i))]
+        m = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+        h = min_cross_mm / 2
+        out.append(((m[0] - u[0] * h, m[1] - u[1] * h), (m[0] + u[0] * h, m[1] + u[1] * h)))
+    return out
+
+
 def _recorded_counters(cut_poly: Polygon, letter: Polygon) -> Polygon:
     """`cfg.small_print_floor`: the cut's polygon holding the letter's own
     counters (the recorded ones, `small_print_counters`) as holes, not the
@@ -1859,6 +1910,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             inside_connectors: bool = False,
                             counter_holes: list | None = None,
                             rail_axis: bool = False,
+                            small_bold: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -1871,8 +1923,15 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     is, the letter's other holes sewn as the lane sews them with the floor
     off. None, the floor's own reading: every hole of the letter.
     `fold_cuts`: `cfg.lettering_columns_fold_cuts` (`outline_cut._fold_refine`).
-    `rail_axis`: `cfg.lettering_columns_rail_axis` (`outline_cut.straight_axis`)."""
-    from .outline_cut import letter_columns
+    `rail_axis`: `cfg.lettering_columns_rail_axis` (`outline_cut.straight_axis`).
+    `small_bold`: `cfg.lettering_columns_small_bold`, stage 7 passes it for
+    a letter under `machine.SATIN_UNDERLAY_MIN_EXTENT_MM` only -- the pull a
+    `SMALL_BOLD_PULL_FRAC` share of the stroke width when that is less, and
+    the cross floor widening instead of dropping (`_floor_crosses`)."""
+    from .outline_cut import letter_columns, stroke_width
+
+    if small_bold:
+        pull_mm = min(pull_mm, SMALL_BOLD_PULL_FRAC * stroke_width(poly))
 
     # One station per `spacing_mm` along the rail, both ends of each sewn:
     # the engine's own meaning of satin spacing (a needle every `spacing_mm`
@@ -1882,7 +1941,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
              # `cfg.lettering_columns_square_ends`: a slanted end face is mitred
              **({"mitre_ends": True} if square_ends else {}),
              # `cfg.lettering_columns_rail_axis`: a short italic bar runs along its rails
-             **({"rail_axis": True} if rail_axis else {})}
+             **({"rail_axis": True} if rail_axis else {}),
+             **({"small_bold": True} if small_bold else {})}
     cored = bool(counter_holes) and counter_clear_mm > 0        # none named: the floor's reading
     run_kw = dict(trim_at_mm=trim_at_mm,
                   spacing_mm=spacing_mm, split_above_mm=split_above_mm,
@@ -1891,6 +1951,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   end_near=end_near, counter_clear_mm=counter_clear_mm,
                   **({"square_ends": True} if square_ends else {}),
                   **({"inside_connectors": True} if inside_connectors else {}),
+                  **({"thin_floor": True} if small_bold else {}),
                   **({"counter_poly": counter_hold_polygon(poly, counter_holes)} if cored else {}))
 
     def recorded(cpoly):

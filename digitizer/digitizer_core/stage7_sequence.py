@@ -2754,6 +2754,10 @@ def sequence(
                     **({"square_ends": True} if cfg.lettering_columns_square_ends else {}),
                     # `cfg.lettering_columns_rail_axis` (default ON, 2026-10-20): same rule
                     **({"rail_axis": True} if cfg.lettering_columns_rail_axis else {}),
+                    # `cfg.lettering_columns_small_bold` (default OFF, 2026-10-21):
+                    # a letter under 5 mm only (`_small`); off, today's call
+                    **({"small_bold": True}
+                       if cfg.lettering_columns_small_bold and _small else {}),
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
                        if cfg.lettering_columns_inside_connectors else {}))

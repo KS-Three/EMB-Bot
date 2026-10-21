@@ -2555,6 +2555,27 @@ class PipelineConfig:
     # constant: a direction, not a width or a pitch. False is the pre-flip
     # lane, byte for byte. Tests: `tests/test_column_rail_axis.py`.
     lettering_columns_rail_axis: bool = True
+    # Under `lettering_columns`, a letter under
+    # `machine.SATIN_UNDERLAY_MIN_EXTENT_MM` (5 mm, stage 7's `_small`) sews
+    # like the pro's ~4 mm bold letters (2026-10-21, built OFF). Kent ruled
+    # "match the pro" for Fremont's small words (`small_text_cap_mm` and its
+    # siblings grow them to ~4 mm); the lane then sewed them as blobs. At
+    # 92.5 mm Hat, grown to cap 4.0 / width 1.05 / stroke 0.85, the tagline,
+    # EST 1895 and THE measured: median satin stitch 1.23 mm against the
+    # pro's 0.86 (fixed 0.4 mm pull a rail on a 0.8 mm stroke), and 238
+    # crossed zigzag legs (serif blocks fanned from their inner corners).
+    # ON, four changes for those letters only (`columns.lettering_columns_shape`
+    # `small_bold`): the pull is `columns.SMALL_BOLD_PULL_FRAC` (0.15) of the
+    # stroke width when that is less (median 0.85 mm); a piece wholly under
+    # the 0.5 mm cross floor sews AT the floor instead of vanishing
+    # (`columns._floor_crosses`); no column pivots past
+    # `outline_cut.SMALL_BOLD_FAN_DEG` -- a straight piece ends square, never
+    # fanned, and a piece whose rail collapses to a point is stationed along
+    # its own length -- and the cut simplifies at 0.06 mm, not 0.12. A
+    # letter of 5 mm or more is not touched, ON or OFF. Every mm and share
+    # here is a candidate until sewn (gate 1). Kent flips. Tests:
+    # `tests/test_column_small_bold.py`.
+    lettering_columns_small_bold: bool = False
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
@@ -2708,6 +2729,25 @@ class PipelineConfig:
     # gate 1): 3.7 is the professional's on one file, unsewn here. The flip
     # is Kent's, on renders. Tests: `tests/test_small_text.py`.
     small_text_cap_mm: float | None = None
+    # With `small_text_cap_mm`: grow a line TALLER by the full scale but WIDER
+    # by at most this (`small_text.enlarge_small_text`'s `max_width_scale`).
+    # Measured 2026-10-21 on the professional's Fremont patch at 92.5 mm,
+    # letters read by colour block: EST / 1895 2.1x the art's height, the
+    # tagline 1.55x, THE ~1.25x -- at 1.0-1.06x the art's WIDTH, condensed
+    # bold block letters. Uniform growth left the tagline `no_room` (boxed in
+    # by its bars, rope and border); condensed, it fits as the pro's does.
+    # Kent 2026-10-21 reversed "you can't change the font size": "Yes, match
+    # the pro". None: uniform, byte for byte. A CANDIDATE (gate 1): 1.05 is
+    # the pro's on one file, unsewn here.
+    small_text_cap_max_width_scale: float | None = None
+    # With `small_text_cap_mm`: the drawn stroke a grown letter is widened to
+    # (`small_text.MIN_STROKE_MM` 0.6 when None, byte for byte). The pro does
+    # not enlarge a thin font -- he re-sets the words bold: 0.8-0.9 mm columns
+    # on Fremont at 92.5 mm. Grown at 0.6, the art's 0.3-0.5 mm serifs and
+    # bars land under `SATIN_MIN_CROSS_MM` 0.5 and the Column lane drops them
+    # unsewn (2026-10-21, isolated lane on the grown tagline). A CANDIDATE
+    # (gate 1): 0.85 is the pro's on one file.
+    small_text_cap_min_stroke_mm: float | None = None
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose

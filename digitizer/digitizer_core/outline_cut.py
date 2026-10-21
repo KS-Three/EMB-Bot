@@ -41,6 +41,11 @@ from .fast_skimage import medial_axis  # skimage's, tables cached — byte-ident
 from .columns import Column
 
 SIMPLIFY_MM = 0.12       # lumps under this (or W/16) are the trace, not the letter
+# `small_bold` (`cfg.lettering_columns_small_bold`): a letter under 5 mm
+# simplifies at half that floor. 0.12 mm is 3% of a 4 mm letter and cut the
+# grown Fremont serifs' corners into slants the construction then fanned
+# (crossed legs 26 -> 16, jumps 4 -> 2 on the tagline, EST 1895 and THE).
+SMALL_BOLD_SIMPLIFY_MM = 0.06
 REFLEX_DEG = 55.0        # concave turn that counts as a junction corner
 CONVEX_DEG = 35.0        # convex turn that counts as a real corner
 PX = 12                  # px/mm for the per-piece skeleton
@@ -1069,6 +1074,73 @@ def _mitre_ends(st, piece: Polygon, u, cut_lines, pitch_mm: float, W: float):
 # second looks build columns from a dozen sites, and each takes the letter's
 # reading of the rule from here rather than through a dozen signatures.
 _RAIL_AXIS: contextvars.ContextVar[bool] = contextvars.ContextVar("rail_axis", default=False)
+# `small_bold` the same way (`cfg.lettering_columns_small_bold`, stage 7 under
+# `machine.SATIN_UNDERLAY_MIN_EXTENT_MM`): see `build_column`.
+_SMALL_BOLD: contextvars.ContextVar[bool] = contextvars.ContextVar("small_bold", default=False)
+# `small_bold`: a column whose crosses pivot on one point through more than
+# this sweeps a starburst over a ~4 mm letter (a serif block's inner corner,
+# a stem flaring into its serif). The pro's Fremont letters have none: each
+# stroke and each serif is a straight column of one stitch direction.
+SMALL_BOLD_FAN_DEG = 45.0
+
+
+def pivot_sweep(st, eps: float = 0.03) -> float:
+    """The widest angle, in degrees, that consecutive crosses sharing one end
+    (within `eps`) sweep about it: 0 for a column with no pivot."""
+    best, i = 0.0, 0
+    while i < len(st) - 1:
+        for side in (0, 1):
+            j = i
+            while j + 1 < len(st) and math.dist(st[j + 1][side], st[i][side]) < eps:
+                j += 1
+            if j - i >= 2:
+                P, o = st[i][side], 1 - side
+                angs = [math.atan2(c[o][1] - P[1], c[o][0] - P[0]) for c in st[i:j + 1]]
+                best = max(best, max(abs(math.degrees((a - angs[0] + math.pi) % (2 * math.pi) - math.pi))
+                                     for a in angs))
+                i = j
+                break
+        else:
+            i += 1
+    return best
+
+
+def _long_axis(piece: Polygon):
+    """Unit direction of the long side of `piece`'s minimum rotated rectangle."""
+    cs = list(piece.minimum_rotated_rectangle.exterior.coords)
+    e = max(((cs[k], cs[k + 1]) for k in range(len(cs) - 1)), key=lambda pq: math.dist(*pq))
+    L = math.dist(*e)
+    if L < 1e-9:
+        return None
+    u = ((e[1][0] - e[0][0]) / L, (e[1][1] - e[0][1]) / L)
+    for snap in ((1.0, 0.0), (0.0, 1.0)):                # nearly upright is upright
+        if abs(u[0] * snap[0] + u[1] * snap[1]) > math.cos(math.radians(7)):
+            u = snap
+    return u
+
+
+def _straight_rescan(piece: Polygon, cut_lines, W: float, pitch_mm: float,
+                     mitre_ends: bool) -> Column | None:
+    """`small_bold`: `piece` stationed square to its own long axis, the way a
+    straight piece is (no fan), or None where the scan does not fit it. A
+    piece too short for three crosses at `pitch_mm` (THE's E, a 0.53 mm2
+    corner block) is scanned at the pitch that fits three."""
+    u = _long_axis(piece)
+    if u is None:
+        return None
+    sc = scan_stations(piece, u, pitch_mm)
+    if not sc:
+        t = np.array(piece.exterior.coords) @ np.array(u)
+        sc = scan_stations(piece, u, min(pitch_mm, float(np.ptp(t)) / 3.5))
+    if not sc:
+        return None
+    st, dropped = sc
+    st = _cap_square_ends(st, piece, u, cut_lines, pitch_mm)
+    if mitre_ends:
+        st = _mitre_ends(st, piece, u, cut_lines, pitch_mm, W)
+    rr = _straight_rails(piece, u)
+    return Column(stations=st, piece=piece, kind="straight", axis=u, width_mm=W,
+                  rail_a=rr[0] if rr else [], rail_b=rr[1] if rr else [], dropped_mm=dropped)
 
 
 def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
@@ -1088,7 +1160,8 @@ def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
                 st, dropped = sc
                 rr = _straight_rails(piece, u)
                 st = _cap_square_ends(st, piece, u, cut_lines, pitch_mm)
-                st = _fan_ends(st, piece, u, pitch_mm, W)
+                if not _SMALL_BOLD.get():       # small bold: a straight end, never a fan
+                    st = _fan_ends(st, piece, u, pitch_mm, W)
                 if mitre_ends:
                     st = _mitre_ends(st, piece, u, cut_lines, pitch_mm, W)
                 return Column(stations=st, piece=piece, kind="straight", axis=u,
@@ -1100,6 +1173,12 @@ def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
     st = pair_rails(r[0], r[1], pitch_mm)
     if len(st) < 3:
         return None
+    if _SMALL_BOLD.get() and not piece.interiors and pivot_sweep(st) > SMALL_BOLD_FAN_DEG:
+        # one rail collapsed to a point (a serif block's inner corner): the
+        # piece stationed straight along its own length instead
+        alt = _straight_rescan(piece, cut_lines, W, pitch_mm, mitre_ends)
+        if alt is not None and pivot_sweep(alt.stations) <= SMALL_BOLD_FAN_DEG:
+            return alt
     return Column(stations=st, piece=piece, kind="ring" if piece.interiors else "curved",
                   axis=None, width_mm=W, rail_a=list(r[0]), rail_b=list(r[1]))
 
@@ -1636,10 +1715,20 @@ class LetterCut:
 
 
 def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False,
-                   mitre_ends: bool = False, judge=None, rail_axis: bool = False) -> LetterCut:
+                   mitre_ends: bool = False, judge=None, rail_axis: bool = False,
+                   small_bold: bool = False) -> LetterCut:
     """See `_letter_columns`. `rail_axis` (`cfg.lettering_columns_rail_axis`):
     every straight piece of this letter reads its axis by `straight_axis`'s
-    rail rule. False is the pre-flip cut, byte for byte."""
+    rail rule. False is the pre-flip cut, byte for byte.
+    `small_bold` (`cfg.lettering_columns_small_bold`): no column of this
+    letter pivots past `SMALL_BOLD_FAN_DEG` (`build_column`). False is the
+    pre-flag cut, byte for byte."""
+    if small_bold:
+        token = _SMALL_BOLD.set(True)
+        try:
+            return letter_columns(poly, pitch_mm, fold_cuts, mitre_ends, judge, rail_axis)
+        finally:
+            _SMALL_BOLD.reset(token)
     if not rail_axis:
         return _letter_columns(poly, pitch_mm, fold_cuts, mitre_ends, judge)
     token = _RAIL_AXIS.set(True)
@@ -1667,7 +1756,8 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
     # a pinhole is the trace, not a counter
     poly = Polygon(poly.exterior, [h for h in poly.interiors if Polygon(h).area > 0.05 * W * W])
     # lumps under a sixteenth of the stroke are the trace, not the letter
-    poly = poly.simplify(max(SIMPLIFY_MM, W / 16.0), preserve_topology=True)
+    floor = SMALL_BOLD_SIMPLIFY_MM if _SMALL_BOLD.get() else SIMPLIFY_MM
+    poly = poly.simplify(max(floor, W / 16.0), preserve_topology=True)
     if poly.is_empty or poly.geom_type != "Polygon":
         return LetterCut(poly, W, [], [], [])
     W = stroke_width(poly)

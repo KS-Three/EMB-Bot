@@ -96,7 +96,12 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
     clusters: dict[str, list] = {}
     for r in regions:
         cid = word_key(r, cfg)
-        if (cid and r.meta.get("stitched", True)
+        # A letter `small_text_cap_mm` grew is left out: its ink is read
+        # from the SOURCE raster at the art's size and place, which no longer
+        # match the grown polygon -- Fremont's THE at cap 4.0 sewed most of
+        # its T as nothing and H, E at the old size (2026-10-21). It sews as
+        # the widened column the enlargement tagged it.
+        if (cid and r.meta.get("stitched", True) and not r.meta.get("small_text_enlarged")
                 and str(r.meta.get("tier", "auto")).lower() == "auto"):
             clusters.setdefault(cid, []).append(r)
     tagged = 0
@@ -160,7 +165,12 @@ def hold_bean_counters(regions, p, cfg: PipelineConfig) -> int:
     clusters: dict[str, list] = {}
     for r in regions:
         cid = word_key(r, cfg)
-        if (cid and r.meta.get("stitched", True)
+        # A letter `small_text_cap_mm` grew is left out: its ink is read
+        # from the SOURCE raster at the art's size and place, which no longer
+        # match the grown polygon -- Fremont's THE at cap 4.0 sewed most of
+        # its T as nothing and H, E at the old size (2026-10-21). It sews as
+        # the widened column the enlargement tagged it.
+        if (cid and r.meta.get("stitched", True) and not r.meta.get("small_text_enlarged")
                 and str(r.meta.get("tier", "auto")).lower() == "auto"):
             clusters.setdefault(cid, []).append(r)
     changed = 0
