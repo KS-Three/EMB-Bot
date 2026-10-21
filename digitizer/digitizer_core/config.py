@@ -4962,6 +4962,21 @@ class PipelineConfig:
     #   - A sew-out that says at what clearance a needle-down float actually
     #     shows — LINK_COVER_TOL_MM is still a thread spec, not a measurement.
     chain_links: bool = False
+    # `trim_bury_under_later` (BUILT OFF 2026-10-21, the trim-economy study,
+    # `docs/trim-economy-2026-10-21.md`): a cut hop inside a colour block is
+    # sewn needle-down instead when thread sewn AFTER it -- the rest of the
+    # block and every later artwork block, real stitches, not polygons --
+    # covers the travel's whole width (`stage7_sequence.
+    # _bury_trims_under_later`). Read with `tools/trim_classes.py` over the
+    # ten jobs with both artwork and the pro's DST, the pro cut 9 hops that
+    # later thread covers where we cut 43; he travels under the work. The
+    # narrow half of `chain_links`: never on top of finished thread, never
+    # under a predicted polygon, so no LINK_COVER_INSET_MM and no tolerance
+    # beyond half a thread at each end. Still chaining in the ROADMAP gate 3
+    # sense (needle-down thread a later pass is trusted to hide), so the
+    # flip is Kent's, after the sew-out says buried travel does not show.
+    # Off, byte-identical. Tests: `tests/test_trim_bury_under_later.py`.
+    trim_bury_under_later: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()
