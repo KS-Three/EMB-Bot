@@ -544,6 +544,10 @@ PRE_FLIP["small_text_keep_stray_lines"] = None
 # T and H short of a cluster). False is the pre-flip engine: round 1 links
 # on size alone. The tests ABOUT it are in `tests/test_textcluster.py`.
 PRE_FLIP["text_cluster_rescued_ink_link"] = False
+# The letter door reads a glyph's stroke as drawn, with a filled counter
+# punched back in (Proseal's two A's, 2026-10-20). False is the door before
+# it: the stroke read on the traced polygon. Tests: `tests/test_textcluster.py`.
+PRE_FLIP["text_cluster_counters_as_drawn"] = False
 # The two bean-letter holds (Kent's flip 2026-10-15, "flip both holds ON"):
 # needle points 0.25 mm off a small counter (#952) and stations 0.2 mm off an
 # open bay (#967). Plain defaults, not switch values: None is OFF, the engine

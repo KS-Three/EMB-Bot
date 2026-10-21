@@ -73,6 +73,7 @@ FLAGS: dict[str, object] = {
     "detail_spokes": False,                 # 2026-10-16, Kent's flip ("ON, tightened")
     "bean_letter_counter_hold_mm": None,    # 2026-10-15, Kent's flip (0.25)
     "bean_letter_bay_hold": None,           # 2026-10-15, Kent's flip (0.2)
+    "text_cluster_counters_as_drawn": False, # 2026-10-20, Proseal's two A's
     "text_cluster_rescued_ink_link": False,  # 2026-10-15, Fremont's THE at 80 mm
     "small_text_true_size": False,          # 2026-10-14, Kent's flip
     "small_text_true_size_min_counter_mm": None,  # 2026-10-15, its 0.45 mm counter guard
