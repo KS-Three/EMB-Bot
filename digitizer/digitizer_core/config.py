@@ -2728,6 +2728,18 @@ class PipelineConfig:
     # are a line. False: the pre-flip engine, byte for byte. Tests:
     # `tests/test_textcluster.py`.
     text_cluster_rescued_ink_link: bool = True
+    # The text tagger's LETTER door measures a glyph's stroke on the glyph
+    # as drawn: the traced polygon with every enclosed rescued speck of
+    # another ink punched back in as a hole (`textcluster._as_drawn`). Stage
+    # 4 fills a counter under its hole floor (`min_detail_mm`^2 / 4, 0.56
+    # mm2) into the letter and the counter survives only as a rescued speck
+    # of the ground's ink, so a small sans A traces as a near-solid triangle
+    # whose stroke CV (0.556 / 0.596 on Proseal's tagline at 85.9 mm, Kent
+    # 2026-10-20) fails `LETTER_STROKE_CV_MAX` 0.55 and the A sews as a satin
+    # blob beside its bean line-mates. Read as drawn the same A's are 0.29 /
+    # 0.32. Only the measurement moves; no bound changes. False: the door as
+    # it was, byte for byte (`PRE_FLIP`). Tests: `tests/test_textcluster.py`.
+    text_cluster_counters_as_drawn: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
