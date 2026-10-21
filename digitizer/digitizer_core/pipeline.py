@@ -1862,7 +1862,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # sewn first, on a beanie with a known garment colour — `knockdown.py`.
     if knockdown.applies(cfg):
         kd, _kd_report = knockdown.knockdown_block(
-            [p.polygon for p in planned], cfg, fabric.trim_at_mm)
+            [(p.region.shape_id, p.polygon) for p in planned], cfg, fabric.trim_at_mm,
+            knockdown.satin_shape_ids(blocks))
         if kd is not None:
             blocks = knockdown.prepend(blocks, kd)
 

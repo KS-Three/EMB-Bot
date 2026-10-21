@@ -31,15 +31,23 @@ lines at 10 px/mm (so it reads about 0.2 mm short; see "ours" below, built at 2.
 - **No underlay** (the rules doc's §1d: BARE or RUNONLY).
 - **Colour:** both PES files that carry the job name the knockdown cone **Khaki** /
   **PMS 155**, a colour the design never uses: the garment's. DST carries no colour.
-- **The badge files differ:** on To a T and Machine E the badge's own satin border is
-  the outline, so the knockdown stops level with it (0 to ~0.7 mm). Not copied here.
+- **The badge files differ:** on To a T and Machine E the knockdown stops at the
+  badge's satin border, not 2 mm past it. Needle points against the design's outer
+  edge: To a T **+0.74 mm** (p10/p90 0.59/0.85), Machine E **-0.95 mm**, under the
+  satin (-1.59/-0.36). Two files, opposite sides of the edge.
 
 ## What was built
 
 `knockdown.knockdown_block`, called from `pipeline.plan_stitches` after stage 7:
 
 1. Union of every planned shape (stage 5's polygons), grown by `MARGIN_MM` 2.0, holes
-   filled, pieces under 10 mm² dropped.
+   filled, pieces under 10 mm² dropped. **Badge** (Kent, 2026-10-21: "stop at the satin
+   border"): when one shape is a satin ring (its hole is at least half the area inside
+   its outer edge) and every other shape lies inside that outer edge (to within 1% of
+   their area, 0.3 mm slack), the knockdown covers out to that outer edge
+   (`BADGE_EDGE_MM` 0, between the pro's +0.74 and -0.95) and no further. A shape
+   outside the ring still gets the 2 mm margin. Stage 7's runs decide "satin": satin
+   and border points outnumber fill points for that shape.
 2. `stage6_fill.stitch_shape`, tatami, rows `ROW_MM` 0.50, stitch `STITCH_MM` 3.5,
    `underlay_style="none"`, angle auto.
 3. **Every lift inside a piece becomes a run along the edge** (`_stay_down`). Stage 6's
@@ -66,13 +74,15 @@ Read off our `ours.dst` with the same script as the pro's table.
 |---|---|---|---|---|---|---|---|---|
 | Becker @ 76.8 mm, khaki | 2,514 | 1 / 0 | 0.49 | 3.47 | 1.62 / 1.86 / 2.28 | 1.80 | 23 -> 23 | 5,698 -> 8,212 |
 | Roofing @ 90.8 mm, charcoal | 1,682 | 1 / 0 | 0.48 | 3.47 | 1.68 / 1.82 / 2.02 | 1.82 | 33 -> 33 | 6,092 -> 7,774 |
-| To a T @ 80.6 mm, khaki | 2,356 | 1 / 0 | 0.51 | 3.50 | 1.50 / 1.64 / 1.74 | 0.84 (badge) | 62 -> 62 | 17,714 -> 20,070 |
+| To a T @ 80.6 mm, khaki (badge) | 2,065 | 1 / 0 | 0.51 | 3.50 | 0.00 / 0.00 / 0.00 | 0.84 | 62 -> 62 | 17,714 -> 19,779 |
 
 Trims and stitches are pystitch's read of each `ours.dst`, OFF and ON alike. The
 knockdown costs no trim on any of the three and one colour change each. On the
 two free-standing logos the margin lands on the pro's (1.86 vs 1.80, 1.82 vs 1.82).
-On To a T, a badge, ours reaches about 0.8 mm further than his: he stops the
-knockdown at the badge's satin border.
+On To a T, a badge, ours stops on the border's outer edge (the raster reads 0.00 at
+every percentile, its 0.3 mm lines sitting on the edge), where his reads 0.84. Before
+the badge rule it ran 2 mm past (1.64 on this raster, 2,356 stitches), which showed as
+a garment-coloured ring outside the border.
 
 Renders: `docs/renders/beanie-knockdown-2026-10-21/` — `<job>_on.png` is
 art | ours ON | pro at 20 px/mm (pro colours are pystitch's stand-ins: a DST has none),
@@ -88,7 +98,6 @@ garment colour) is the pro's habit on 6 of 6 files.
 
 ## Not done
 
-- The badge case (knockdown level with a satin border rather than 2 mm past it).
 - Manual digitizing (`manual.py`) does not call it.
 - The browser engine (`src/`) has no knockdown.
 - OFF is the pre-flip engine byte for byte: `tests/test_beanie_knockdown.py` pins
