@@ -91,7 +91,7 @@ from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
-from .stage6_satin import classify_ribbon, satin_shape
+from .stage6_satin import classify_ribbon, is_small_solid, satin_shape, small_solid_satin
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
 from .detail_spokes import spoke_runs
@@ -1425,6 +1425,26 @@ def _satin_lettering_cover(cap_sewn: list[PlannedRegion],
     return unary_union(polys)
 
 
+def _bean_letter_ids(cap_sewn: list[PlannedRegion],
+                     blocks: list[StitchBlock]) -> set:
+    """The members of `cap_sewn` that sewed as BEAN LETTERS, which
+    `cfg.edge_cap_skip_bean_letters` keeps out of the silhouette: tagged
+    by `beanletters.tag_bean_letters`, on the "auto" tier the sequence loop
+    reads the tag on, and sewn with no fill or satin run -- read off the
+    runs the design laid, as `_satin_lettering_cover` reads its own, so a
+    letter whose bean emission came up empty and fell through to the ladder
+    keeps its cap."""
+    other: set = set()
+    for b in blocks:
+        for r in b.runs:
+            if r.shape_id and r.kind in (stitches.FILL, stitches.SATIN):
+                other.add(r.shape_id)
+    return {p.shape_id for p in cap_sewn
+            if p.region.meta.get(BEAN_LETTER_KEY)
+            and str(p.region.meta.get("tier", "auto")).lower() == "auto"
+            and p.shape_id not in other}
+
+
 def _gate_saving(silhouette, omit, gated_runs, *, style: str,
                  entry, trim_at_mm: float,
                  width_mm: float | None,
@@ -2647,6 +2667,21 @@ def sequence(
                     small_letter_ids.add(p.shape_id)
                     return runs, report, False
             outline_tried = False
+            # `cfg.small_solids_satin` (built OFF, 2026-10-20): a small SOLID
+            # -- no hole, not lettering, its inside left bare by a ring --
+            # sews one satin column across its own width instead. A column
+            # that comes out degenerate keeps the ring below. Off, unread.
+            if (cfg.small_solids_satin and cfg.satin and tier == "auto"
+                    and routes_to_run(p, tier)
+                    and not is_lettering(p.region, cfg)
+                    and is_small_solid(p.region.polygon, profile_for(p).width_mm)):
+                runs, report = small_solid_satin(
+                    p.region.polygon, p.shape_id, spacing_mm=satin_spacing_for(p),
+                    max_width_mm=_satin_ceiling_for(p.region, cfg, satin_max)[0],
+                    start_near=entry)
+                if not report["empty"]:
+                    report["small_solid"] = 1
+                    return runs, report, False
             # Small print (`cfg.small_print_floor`, default OFF) reaches the
             # run and fill tiers through `small_print_cut`: the shape is
             # sewn with each counter (`small_print_counters_of`) cut out of
@@ -2717,6 +2752,8 @@ def sequence(
                     **({"fold_cuts": True} if cfg.lettering_columns_fold_cuts else {}),
                     # `cfg.lettering_columns_square_ends` (default ON, Kent 2026-10-13): same rule
                     **({"square_ends": True} if cfg.lettering_columns_square_ends else {}),
+                    # `cfg.lettering_columns_rail_axis` (default ON, 2026-10-20): same rule
+                    **({"rail_axis": True} if cfg.lettering_columns_rail_axis else {}),
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
                        if cfg.lettering_columns_inside_connectors else {}))
@@ -3615,6 +3652,21 @@ def sequence(
             if _letters is not None:
                 cap_omit = (_letters if cap_omit is None
                             else unary_union([cap_omit, _letters]))
+        # A bean letter's outline is not an edge either (2026-10-20, see
+        # `cfg.edge_cap_skip_bean_letters`): it sewed its ink's centre
+        # lines, and its polygon -- pull-grown in stage 5, since a bean
+        # letter is not a satin column -- is not what it laid. Its polygon
+        # joins the cover exactly as a satin letter's does; the silhouette
+        # itself is untouched, so every other ring samples as it did.
+        if cfg.edge_cap_skip_bean_letters:
+            _beans = _bean_letter_ids(cap_sewn, blocks)
+            if _beans:
+                _bean_cover = unary_union([p.polygon for p in cap_sewn
+                                           if p.shape_id in _beans
+                                           and p.polygon is not None
+                                           and not p.polygon.is_empty])
+                cap_omit = (_bean_cover if cap_omit is None
+                            else unary_union([cap_omit, _bean_cover]))
         c_runs, c_report = silhouette_cap(
             silhouette,
             "__edge_cap__",

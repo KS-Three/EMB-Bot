@@ -544,6 +544,10 @@ PRE_FLIP["small_text_keep_stray_lines"] = None
 # T and H short of a cluster). False is the pre-flip engine: round 1 links
 # on size alone. The tests ABOUT it are in `tests/test_textcluster.py`.
 PRE_FLIP["text_cluster_rescued_ink_link"] = False
+# The letter door reads a glyph's stroke as drawn, with a filled counter
+# punched back in (Proseal's two A's, 2026-10-20). False is the door before
+# it: the stroke read on the traced polygon. Tests: `tests/test_textcluster.py`.
+PRE_FLIP["text_cluster_counters_as_drawn"] = False
 # The two bean-letter holds (Kent's flip 2026-10-15, "flip both holds ON"):
 # needle points 0.25 mm off a small counter (#952) and stations 0.2 mm off an
 # open bay (#967). Plain defaults, not switch values: None is OFF, the engine
@@ -583,6 +587,10 @@ PRE_FLIP["lettering_columns_fold_cuts"] = False
 # The tests ABOUT them are `tests/test_small_stem.py`,
 # `tests/test_small_dot_rung.py` and `tests/test_dot_rung_lettering.py`.
 PRE_FLIP["lettering_columns_small_stem"] = False
+# The rail axis (2026-10-20): a short italic bar in the Column lane runs along
+# its rails, not its spine's chord, so an italic wordmark's arms move. False
+# is the pre-flip lane. The tests ABOUT it are `tests/test_column_rail_axis.py`.
+PRE_FLIP["lettering_columns_rail_axis"] = False
 PRE_FLIP["small_dot_rung"] = False
 PRE_FLIP["small_dot_rung_lettering"] = False
 # The photo lane's phantom-blend dissolve (defect 27; Kent banked it OFF
@@ -601,4 +609,9 @@ PRE_FLIP["dissolve_phantom_blends"] = False
 # the other pieces drop. The tests ABOUT it are
 # `tests/test_clip_keep_pieces.py`.
 PRE_FLIP["clip_keep_pieces"] = False
+# The edge cap leaves a bean letter alone (2026-10-20, Proseal's two A's):
+# a text member sewn as bean runs gives the silhouette nothing, so no cap
+# rings its pull-grown polygon. False is the pre-flip cap. The tests ABOUT it
+# are in `tests/test_edge_cap.py`.
+PRE_FLIP["edge_cap_skip_bean_letters"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

@@ -929,7 +929,8 @@ def build_generation(
     # chart, not the default one. `rescued_ink_link`: the same link in the
     # rescued round (Fremont's THE at 80 mm, `cfg.text_cluster_rescued_ink_link`).
     detect_text_clusters(regions, p, chart=chart_for(cfg),
-                         rescued_ink_link=bool(cfg.text_cluster_rescued_ink_link))
+                         rescued_ink_link=bool(cfg.text_cluster_rescued_ink_link),
+                         counters_as_drawn=bool(cfg.text_cluster_counters_as_drawn))
 
     # Lettering too small to sew, grown the way a digitizer grows it
     # (`cfg.small_text_cap_mm`, default None). Here, on the tagger's clusters

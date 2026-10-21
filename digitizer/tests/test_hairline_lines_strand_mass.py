@@ -48,10 +48,14 @@ PINS = {"s882_lines": "37789a45fa1dac14c3ce6d824dc2ad9c",
 # the PINS predate both. And the straight-stretch bean stitch
 # (`bean_letter_straight_mm`, ON at 0.7 since Kent's flip later that day)
 # reaches the mane's strands the same way (`mane_lines` read `e81c2525...`
-# with it on, CI 2026-10-20): pinned None here too.
+# with it on, CI 2026-10-20): pinned None here too. Likewise the edge cap
+# leaving bean letters alone (`edge_cap_skip_bean_letters`, ON 2026-10-20):
+# it reaches the mane through the bean tagger like the holds above
+# (`mane_lines` read `d402f568...` with it on, Windows 2026-10-20): pinned
+# False here.
 HOLDS_OFF = dict(bean_letter_counter_hold_mm=None, bean_letter_bay_hold=None,
                  dissolve_phantom_blends=False, clip_keep_pieces=False,
-                 bean_letter_straight_mm=None)
+                 bean_letter_straight_mm=None, edge_cap_skip_bean_letters=False)
 
 
 def _syn_cfg(arm: str, width_mm: float) -> PipelineConfig:

@@ -659,7 +659,45 @@ def _candidates(regions: list[Region]) -> list[_Candidate]:
     return _drop_nested(raw)
 
 
-def _letter_candidates(regions: list[Region]) -> list[_Candidate]:
+def _as_drawn(region: Region, specks: list[Region], chart) -> Polygon:
+    """`region.polygon` with every rescued speck of ANOTHER ink that lies
+    inside it punched back in as a hole: the glyph as drawn. Stage 4 fills a
+    counter under its hole floor into the letter, and the counter survives
+    only as a rescued small shape of the ground's ink sitting inside the
+    polygon; this puts it back for the measurement only (the region keeps
+    its polygon). A speck of the glyph's own ink is a piece of the glyph (a
+    broken stroke), never a counter. With no `chart`, ink identity decides.
+    Fails open: a difference that empties or errors leaves the polygon."""
+    poly = region.polygon
+    out = poly
+    x0, y0, x1, y1 = poly.bounds
+    for s in specks:
+        if s is region:
+            continue
+        sx0, sy0, sx1, sy1 = s.polygon.bounds
+        if sx0 < x0 or sy0 < y0 or sx1 > x1 or sy1 > y1:
+            continue                                    # not inside the bbox
+        if chart is not None:
+            if _same_ink(region, s, chart):
+                continue
+        elif region.thread_index == s.thread_index:
+            continue
+        if not poly.buffer(1e-3).covers(s.polygon):
+            continue                                    # overlaps, not enclosed
+        try:
+            d = out.difference(s.polygon)
+        except Exception:                                # noqa: BLE001 -- fail open
+            continue
+        if d.is_empty:
+            continue
+        if d.geom_type != "Polygon":
+            d = max(d.geoms, key=lambda g: g.area)
+        out = d
+    return out
+
+
+def _letter_candidates(regions: list[Region], chart=None,
+                       counters_as_drawn: bool = False) -> list[_Candidate]:
     """The LETTER door: every NON-rescued region that could be one glyph of
     a word.
 
@@ -691,8 +729,21 @@ def _letter_candidates(regions: list[Region]) -> list[_Candidate]:
     `_cluster` is. A candidate has to find `MIN_CLUSTER_MEMBERS - 1` others of
     similar size and stroke weight, in one ink, near each other, before
     anything is tagged. One stray blob that passes here still tags nothing.
+
+    `counters_as_drawn` (`cfg.text_cluster_counters_as_drawn`, 2026-10-20):
+    the stroke is measured on the glyph AS DRAWN -- `_as_drawn`, the polygon
+    with every enclosed rescued speck of another ink punched back in as a
+    hole -- not on the polygon stage 4 traced, which fills a counter under
+    its hole floor. Proseal's tagline at 85.9 mm: both A's counters
+    (0.37-0.39 mm2, under the 0.56 mm2 floor) were filled, the solid triangle
+    read CV 0.556 / 0.596 against the 0.55 bound, and both A's sewed as satin
+    blobs beside their bean line-mates. Read as drawn they are 0.29 / 0.32,
+    among the line's 0.14-0.37. Needs `chart` for the one-ink test; without
+    it every speck counts. False: the door as it was, byte for byte.
     """
     raw: list[_Candidate] = []
+    specks = ([r for r in regions if r.meta.get("rescued_small_shape")]
+              if counters_as_drawn else [])
     for r in regions:
         if r.meta.get("rescued_small_shape"):
             continue
@@ -705,7 +756,8 @@ def _letter_candidates(regions: list[Region]) -> list[_Candidate]:
             continue
         if not (LETTER_MIN_HEIGHT_MM <= height_mm <= LETTER_MAX_HEIGHT_MM):
             continue
-        stats = _skeleton_stroke_stats(r)
+        stats = (_stats_of_polygon(_as_drawn(r, specks, chart)) if specks
+                 else _skeleton_stroke_stats(r))
         if stats is None or stats.cv > LETTER_STROKE_CV_MAX:
             continue
         raw.append(_Candidate(region=r, height_mm=height_mm, width_mm=width_mm,
@@ -801,7 +853,8 @@ def _text_cluster_id(shape_ids: list[str]) -> str:
 
 
 def detect_text_clusters(regions: list[Region], p: Prep, *,
-                         chart=None, rescued_ink_link: bool = False) -> None:
+                         chart=None, rescued_ink_link: bool = False,
+                         counters_as_drawn: bool = False) -> None:
     """Post-vectorization pass: tag every member of a qualifying group of
     glyph-shaped regions as a text candidate (`text_candidate`,
     `text_cluster_id`, `text_cluster_stroke_mm`, `text_cluster_all_rescued`
@@ -840,6 +893,12 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
        the Studio badge and Convert-to-text -- but a cluster with any
        non-rescued member is never redrawn (`text_cluster_all_rescued`,
        read by `regularize_text_clusters`).
+       `counters_as_drawn` (`cfg.text_cluster_counters_as_drawn`,
+       2026-10-20) has this door measure each glyph's stroke on the glyph
+       as drawn (`_as_drawn`): a counter stage 4 filled under its hole floor
+       is punched back in from the rescued speck it left. Only the
+       measurement moves; the candidate's polygon, bbox and every bound are
+       as before, and the rescued door is untouched.
 
     `chart` is the thread chart the regions' `thread_index` values name --
     `threads.chart_for(cfg)` from the pipeline; the default chart when not
@@ -888,7 +947,7 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
         taken.update(c.region.shape_id for c in group)
 
     pool = [c for c in rescued if c.region.shape_id not in taken]
-    pool += _letter_candidates(regions)
+    pool += _letter_candidates(regions, chart=chart, counters_as_drawn=counters_as_drawn)
     for group in _cluster(_drop_nested(pool), LETTER_HEIGHT_RATIO, chart):
         if len(group) < MIN_CLUSTER_MEMBERS:
             continue

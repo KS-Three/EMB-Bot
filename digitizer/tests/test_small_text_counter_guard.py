@@ -223,9 +223,26 @@ def test_bean_tagging_takes_the_restore_steps_verdict(monkeypatch):
 # -> `ceb3c8109d`, 318 -> 297; trims 1 -> 1 at both). With the knob None
 # both still read their 10-15 values, on CI and on a Windows box alike. 3 mm
 # did not move (its line sews the Column lane, no bean letters).
+# The fourth: the 3 mm "unguarded" pin moved 2026-10-20 when the text
+# tagger's letter door began reading a glyph as drawn
+# (`cfg.text_cluster_counters_as_drawn`, Proseal's two A's): the line's two
+# letters whose counters stage 4 had filled (traced stroke CV 0.38 / 0.45 on
+# a near-solid 0.88 / 0.93 mm read) are admitted by the door now, so the
+# cluster has 7 members instead of 5 and its median height reads 3.006 mm
+# against 2.998 -- and `restore_small_text`'s `cap >= cap_mm` gate (3.0)
+# calls the line tall enough and skips it. Before, the restore ADOPTED those
+# two and retraced every letter's counters from the source; now nothing
+# retraces, the two keep their filled counters into the Column lane, and the
+# stream equals the switch-OFF arm (`6212f19180` -> `5da6cf3d84`, 366 -> 474
+# stitches, trims 2 -> 4). This fixture sits ON the restore cap by
+# construction (it is the "3 mm" cell), so a 0.008 mm shift of a median
+# flips it; a real line does the same only within about +/-0.05 mm of the
+# cap. So at 3 mm this file's "the default is the switch" is now vacuous --
+# the switch is inert there -- and the cell pins the door's admission
+# instead. 1.55 and 2.5 mm (restored either way, under the cap) did not move.
 MD5 = {1.55: {"off": "dbb6380a91", "unguarded": "db84d85ef4"},
        2.5: {"off": "1ad15a6e07", "unguarded": "ceb3c8109d"},
-       3: {"off": "5da6cf3d84", "unguarded": "6212f19180"}}
+       3: {"off": "5da6cf3d84", "unguarded": "5da6cf3d84"}}
 
 
 def _md5(cap, **kw):

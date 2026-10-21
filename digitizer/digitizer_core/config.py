@@ -1671,6 +1671,22 @@ class PipelineConfig:
     # unscoped rung costs Fremont's star, PR #991). False is the unscoped
     # rung; the pre-flip engine pins both False (`PRE_FLIP`).
     small_dot_rung_lettering: bool = True
+    # Small SOLIDS as one satin dot (2026-10-20, built OFF). The run tier sews
+    # a shape under the area floor (`min_detail_mm` ** 2) as a bean circuit on
+    # its OUTLINE, which reads solid only when the stroke is narrower than the
+    # thread is wide. Proseal at the pro's 85.9 mm Hat: the "+" (1.52 x 1.52
+    # mm, 1.11 mm^2) and six teal spray hexagons (1.1-1.3 mm, 1.11-1.61 mm^2)
+    # sewed as rings with bare cloth inside; the pro's file sews each as one
+    # satin blob. ON: a rescued shape that is not lettering, has no hole, and
+    # whose ring would leave its inside bare -- `buffer(-laid / 2)` at or over
+    # `machine.RUN_MIN_AREA_MM2` (the run tier's own one-penetration floor;
+    # laid = the block's `thread_profile().width_mm`) -- sews ONE satin column
+    # along its long axis, each cross the shape's own width, on the ARTWORK
+    # polygon (`stage6_satin.small_solid_satin`, the junction cover's
+    # principal-spine column). No new constant; whether a 1.2 mm satin dot
+    # holds on a cap is a sew-out question (ROADMAP gate 1). A shape the
+    # column cannot sew keeps the ring. Off, byte-identical.
+    small_solids_satin: bool = False
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run
@@ -2523,6 +2539,22 @@ class PipelineConfig:
     # ends past their face (#907: 1). ON by Kent's ruling 2026-10-13; False
     # is the pre-flip lane.
     lettering_columns_square_ends: bool = True
+    # Under `lettering_columns`, a short straight bar takes its RAILS'
+    # direction (2026-10-20, `outline_cut.straight_axis` / `_rail_pair_axis`).
+    # Proseal at the pro's 85.9 mm hat width: the E's middle arm (4.5 x 2.2
+    # mm, ends leaning with the italic) read 0.44 outline coherence against
+    # the 0.55 bar, fell back to the spine's chord -- which runs acute corner
+    # to acute corner -- and sewed its crosses at 77.6 deg beside the top
+    # and bottom arms' 90.0: an angle change inside one letter. Synthetic
+    # 3.5-4.5 mm bars leaning 8-20 deg read 10-22 deg off. ON, a piece that
+    # took the chord fallback (whose straightness gate is unchanged) runs
+    # along its two longest own sides when they are parallel within the
+    # upright snap's 7 deg and on opposite sides of the stroke -- and only
+    # where the chord is more than those 7 deg off them (Proseal's L stem,
+    # 5.1 off, keeps its chord; only the E arm moves there). No sewn
+    # constant: a direction, not a width or a pitch. False is the pre-flip
+    # lane, byte for byte. Tests: `tests/test_column_rail_axis.py`.
+    lettering_columns_rail_axis: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
@@ -2728,6 +2760,18 @@ class PipelineConfig:
     # are a line. False: the pre-flip engine, byte for byte. Tests:
     # `tests/test_textcluster.py`.
     text_cluster_rescued_ink_link: bool = True
+    # The text tagger's LETTER door measures a glyph's stroke on the glyph
+    # as drawn: the traced polygon with every enclosed rescued speck of
+    # another ink punched back in as a hole (`textcluster._as_drawn`). Stage
+    # 4 fills a counter under its hole floor (`min_detail_mm`^2 / 4, 0.56
+    # mm2) into the letter and the counter survives only as a rescued speck
+    # of the ground's ink, so a small sans A traces as a near-solid triangle
+    # whose stroke CV (0.556 / 0.596 on Proseal's tagline at 85.9 mm, Kent
+    # 2026-10-20) fails `LETTER_STROKE_CV_MAX` 0.55 and the A sews as a satin
+    # blob beside its bean line-mates. Read as drawn the same A's are 0.29 /
+    # 0.32. Only the measurement moves; no bound changes. False: the door as
+    # it was, byte for byte (`PRE_FLIP`). Tests: `tests/test_textcluster.py`.
+    text_cluster_counters_as_drawn: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
@@ -3867,6 +3911,28 @@ class PipelineConfig:
     # uncovered area unchanged on all nine). False is the pre-flip cap byte
     # for byte.
     edge_cap_skip_lettering: bool = True
+    # No edge cap round a BEAN letter (2026-10-20, Proseal's two A's). A
+    # bean letter (`beanletters.tag_bean_letters`) sews its ink's centre-line
+    # spines as runs; its traced polygon is not what it laid. Stage 5 still
+    # grows that polygon by the fill's pull (a bean letter is not a satin
+    # column), so on Proseal at the pro's 85.9 mm (Hat) the tagline's two
+    # A's -- traced as solid triangles, counters filled -- planned at 7.46
+    # and 8.17 mm^2 against 2.95 and 3.54 traced, their edge 0.4 mm off the
+    # thread and outside the bean runs' half-thread cover, and the cap drew a
+    # second outline round each: 45 and 63 cap stitches, the R/Y/P beside
+    # them none (their polygons are not grown). ON, a text member that sewed
+    # as a bean letter -- bean meta, and no fill or satin run on it -- hands
+    # its polygon to the cap's `omit`, as a satin letter does under the flag
+    # above: its runs are already linear cover, and a run has no row end for
+    # a cap to close. The silhouette is untouched, so every other ring
+    # samples as before. Satin and fill letters are exactly as
+    # `edge_cap_skip_lettering` leaves them. Measured on Proseal 85.9 mm:
+    # cap 1,350 -> 1,242 points, the 108 cut all on the A's (2 of 23 runs),
+    # the other 21 cap runs and every artwork run identical point for point;
+    # the design 7,884 -> 7,776 stitches, trims 57 -> 55, and the cap-only
+    # block SPRAY's A pulled onto the end gone (7 -> 6 blocks).
+    # False is the pre-flip cap byte for byte.
+    edge_cap_skip_bean_letters: bool = True
     # Walk the covered stretch between two cap arcs (MASTER_SCOPE defect 19's
     # trim bill; built 2026-10-08, DEFAULT OFF). The gate splits a ring into
     # arcs wherever something linear already sews the edge, and the needle

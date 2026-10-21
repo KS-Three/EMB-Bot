@@ -1858,6 +1858,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             square_ends: bool = False,
                             inside_connectors: bool = False,
                             counter_holes: list | None = None,
+                            rail_axis: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -1869,7 +1870,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     (`counter_hold_polygon`), and the cut's polygon is handed over as it
     is, the letter's other holes sewn as the lane sews them with the floor
     off. None, the floor's own reading: every hole of the letter.
-    `fold_cuts`: `cfg.lettering_columns_fold_cuts` (`outline_cut._fold_refine`)."""
+    `fold_cuts`: `cfg.lettering_columns_fold_cuts` (`outline_cut._fold_refine`).
+    `rail_axis`: `cfg.lettering_columns_rail_axis` (`outline_cut.straight_axis`)."""
     from .outline_cut import letter_columns
 
     # One station per `spacing_mm` along the rail, both ends of each sewn:
@@ -1878,7 +1880,9 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     # and sewed every letter twice as dense.
     lc_kw = {**({"fold_cuts": True} if fold_cuts else {}),
              # `cfg.lettering_columns_square_ends`: a slanted end face is mitred
-             **({"mitre_ends": True} if square_ends else {})}
+             **({"mitre_ends": True} if square_ends else {}),
+             # `cfg.lettering_columns_rail_axis`: a short italic bar runs along its rails
+             **({"rail_axis": True} if rail_axis else {})}
     cored = bool(counter_holes) and counter_clear_mm > 0        # none named: the floor's reading
     run_kw = dict(trim_at_mm=trim_at_mm,
                   spacing_mm=spacing_mm, split_above_mm=split_above_mm,
