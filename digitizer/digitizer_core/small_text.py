@@ -315,7 +315,14 @@ def _offsets(reach: float) -> list[float]:
     return sorted((i * SHIFT_STEP_MM for i in range(-n, n + 1)), key=lambda v: (abs(v), v))
 
 
-def _place_line(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float):
+def _sx(s: float, max_width_scale: float | None) -> float:
+    """The sideways scale for height scale `s`: `s` itself (uniform), or at
+    most `max_width_scale` (`cfg.small_text_cap_max_width_scale`)."""
+    return s if not max_width_scale or max_width_scale <= 0 else min(s, float(max_width_scale))
+
+
+def _place_line(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float,
+                max_width_scale: float | None = None, min_stroke_mm: float = MIN_STROKE_MM):
     """One scale and one vertical move for the whole line -- two halves of a
     date either side of an emblem must keep one baseline -- and each
     cluster's own smallest sideways move. -> (s, dy, [dx per item]) or None."""
@@ -325,11 +332,12 @@ def _place_line(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float)
         s = s_max - (s_max - MIN_SCALE) * k / steps
         if s < MIN_SCALE - 1e-9:
             break
+        sx = _sx(s, max_width_scale)
         grown = []
         for it in items:
             c = it["hull"].centroid
-            widen = max(0.0, (MIN_STROKE_MM - s * it["stroke"]) / 2.0) if it["stroke"] > 0 else 0.0
-            grown.append(affinity.scale(it["hull"], s, s, origin=(c.x, c.y)).buffer(widen + CLEAR_MM))
+            widen = max(0.0, (min_stroke_mm - min(s, sx) * it["stroke"]) / 2.0) if it["stroke"] > 0 else 0.0
+            grown.append(affinity.scale(it["hull"], sx, s, origin=(c.x, c.y)).buffer(widen + CLEAR_MM))
         for dy in shifts:
             dxs, placed = [], []
             for it, g0 in zip(items, grown):
@@ -353,9 +361,20 @@ def _place_line(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float)
     return None
 
 
-def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float) -> list[dict]:
+def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
+                       max_width_scale: float | None = None,
+                       min_stroke_mm: float | None = None) -> list[dict]:
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
-    module docstring. -> one report row per text cluster it considered."""
+    module docstring. -> one report row per text cluster it considered.
+
+    `max_width_scale` (`cfg.small_text_cap_max_width_scale`): grow the
+    letters TALLER by the full scale but WIDER by at most this -- condensed,
+    the way the professional's Fremont file sets its small words (height
+    1.55-2.1x the art, width 1.04-1.06x). None: uniform, byte for byte.
+
+    `min_stroke_mm` (`cfg.small_text_cap_min_stroke_mm`): the drawn stroke a
+    grown letter is widened to. None: `MIN_STROKE_MM`, byte for byte."""
+    min_stroke_mm = float(min_stroke_mm) if min_stroke_mm and min_stroke_mm > 0 else MIN_STROKE_MM
     report: list[dict] = []
     if not cap_mm or cap_mm <= 0 or not regions:
         return report
@@ -425,30 +444,84 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float) -> list
             line.sort(key=lambda it: it["hull"].bounds[0])
             ids = {id(r) for it in line for r in it["group"]}
             cap = float(np.median([it["cap"] for it in line]))
+            # Condensed growth only (uniform keeps the old rule, byte for
+            # byte), two kinds of shape in the line stop blocking it:
+            # - a BAR across the line (the tagline's "|"): thin -- at most
+            #   half a cap wide -- at least 0.8 cap tall, crossing the line's
+            #   band inside its span. Left where and as it is; already as
+            #   tall as the grown letters on Fremont (4.2 mm art, 5.3 the pro).
+            # - a piece INSIDE one word -- a letter's counter kept as its own
+            #   ground-coloured shape (the A's of EAT | STAY | PLAY) -- moves
+            #   and grows with that word, or the word grows over its holes.
+            bars: list[Region] = []
+            inner: dict[int, list[Region]] = {}
+            if max_width_scale and max_width_scale > 0:
+                lx0 = min(it["hull"].bounds[0] for it in line)
+                lx1 = max(it["hull"].bounds[2] for it in line)
+                ly0 = min(it["hull"].bounds[1] for it in line)
+                ly1 = max(it["hull"].bounds[3] for it in line)
+                for r in regions:
+                    if id(r) in ids:
+                        continue
+                    b = r.polygon.bounds
+                    if (b[2] - b[0] <= 0.5 * cap and b[3] - b[1] >= 0.8 * cap and lx0 <= b[0] and b[2] <= lx1
+                            and b[1] <= ly0 + 0.25 * (ly1 - ly0) and b[3] >= ly1 - 0.25 * (ly1 - ly0)):
+                        bars.append(r)
+                        continue
+                    for k, it in enumerate(line):
+                        if r.polygon.area < 0.5 * cap * cap and r.polygon.within(it["hull"].buffer(0.05)):
+                            inner.setdefault(k, []).append(r)
+                            break
+            fids = {id(r) for r in bars} | {id(r) for rs in inner.values() for r in rs}
             for it in line:
                 hull = it["hull"]
                 near = hull.buffer(MAX_SCALE * max(cap_mm, hull.bounds[2] - hull.bounds[0]))
                 blockers = []
                 for r in regions:
-                    if id(r) in ids or not r.polygon.intersects(near):
+                    if id(r) in ids or id(r) in fids or not r.polygon.intersects(near):
                         continue
                     # The ground the line sits on is not in its way.
                     if r.polygon.intersection(hull).area >= 0.5 * hull.area:
                         continue
                     blockers.append(r.polygon)
                 it["obstacles"] = unary_union(blockers) if blockers else None
-            found = _place_line(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm)
+            found = _place_line(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm, max_width_scale,
+                                min_stroke_mm)
             if found is None:
                 for it in line:
                     it["row"]["skipped"] = "no_room"
+                    # What is in the way at the smallest growth, in place --
+                    # report only, nothing reads it.
+                    g = affinity.scale(it["hull"], _sx(MIN_SCALE, max_width_scale), MIN_SCALE,
+                                       origin=(it["hull"].centroid.x, it["hull"].centroid.y)).buffer(CLEAR_MM)
+                    hits = []
+                    if not design.contains(g):
+                        hits.append("design_edge")
+                    if it["obstacles"] is not None and g.intersects(it["obstacles"]):
+                        for r in regions:
+                            if id(r) not in ids and id(r) not in fids and r.polygon.intersects(g) \
+                                    and r.polygon.intersection(it["hull"]).area < 0.5 * it["hull"].area:
+                                hits.append([r.thread_index, [round(v, 1) for v in r.polygon.bounds]])
+                    it["row"]["blocked_by"] = hits[:6]
                 continue
             s, dy, dxs = found
+            sx = _sx(s, max_width_scale)
+            for k, (it, dx) in enumerate(zip(line, dxs)):
+                c = it["hull"].centroid
+                for r in inner.get(k, []):
+                    grown = affinity.translate(affinity.scale(r.polygon, sx, s, origin=(c.x, c.y)), dx, dy)
+                    if isinstance(grown, Polygon) and grown.is_valid and not grown.is_empty:
+                        r.polygon = grown
+                        r.area_mm2 = float(grown.area)
+                        r.meta["small_text_inner"] = round(s, 3)
+            if bars or inner:
+                line[0]["row"].update(bars=len(bars), inner=sum(len(v) for v in inner.values()))
             for it, dx in zip(line, dxs):
-                widen = max(0.0, (MIN_STROKE_MM - s * it["stroke"]) / 2.0) if it["stroke"] > 0 else 0.0
+                widen = max(0.0, (min_stroke_mm - min(s, sx) * it["stroke"]) / 2.0) if it["stroke"] > 0 else 0.0
                 origin = (it["hull"].centroid.x, it["hull"].centroid.y)
                 old_union = unary_union([r.polygon for r in it["group"]])
                 for r, shape in zip(it["group"], it["shapes"]):
-                    moved = affinity.translate(affinity.scale(shape, s, s, origin=origin), dx, dy)
+                    moved = affinity.translate(affinity.scale(shape, sx, s, origin=origin), dx, dy)
                     final = moved
                     for w in (widen, widen / 2.0):
                         if w <= 1e-6:
@@ -469,15 +542,47 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float) -> list
                     # lettering whose polygon IS its column. That is this.
                     r.meta[WIDENED_LETTERING_KEY] = round(max(widen, 1e-4), 4)
                     if r.meta.get("text_cluster_stroke_mm"):
-                        r.meta["text_cluster_stroke_mm"] = float(r.meta["text_cluster_stroke_mm"]) * s + widen
+                        r.meta["text_cluster_stroke_mm"] = float(r.meta["text_cluster_stroke_mm"]) * min(s, sx) + widen
                 _fill_old_holes(regions, {id(r) for r in it["group"]}, old_union)
-                it["row"].update(scale=round(s, 3), shift_mm=(round(dx, 2), round(dy, 2)),
+                it["row"].update(scale=round(s, 3), width_scale=round(sx, 3), shift_mm=(round(dx, 2), round(dy, 2)),
                                  adopted=len(it["group"]) - it["members"], retraced=it["traced"],
                                  widened_mm=round(widen, 3))
+            if max_width_scale and max_width_scale > 0:
+                carved = _carve_neighbours([r for it in line for r in it["group"]
+                                            if r.meta.get("small_text_enlarged")])
+                if carved:
+                    line[0]["row"]["carved"] = carved
         except Exception as exc:  # fail open
             for it in line:
                 it["row"]["skipped"] = f"error:{type(exc).__name__}"
     return report
+
+
+# Fabric kept between two grown letters of one line (condensed growth). Each
+# letter sews its own columns; where two overlapped, Fremont's tagline at cap
+# 4.0 sewed both sets of crosses over each other (2026-10-21). Half the 40 wt
+# laid width: the pull stage 5 adds still closes most of it on the cloth.
+LETTER_GAP_MM = 0.2
+
+
+def _carve_neighbours(letters: list[Region]) -> int:
+    """Left to right, each grown letter gives way to the ones before it by
+    `LETTER_GAP_MM`. A letter the cut would split or empty is left alone.
+    -> how many letters were cut."""
+    letters = sorted(letters, key=lambda r: r.polygon.bounds[0])
+    done: list[Polygon] = []
+    cut = 0
+    for r in letters:
+        before = [q for q in done if q.distance(r.polygon) < LETTER_GAP_MM]
+        if before:
+            rest = r.polygon.difference(unary_union(before).buffer(LETTER_GAP_MM))
+            parts = [q for q in _polys(rest) if q.area > 0]
+            if len(parts) == 1 and parts[0].is_valid and parts[0].area >= 0.6 * r.polygon.area:
+                r.polygon = parts[0]
+                r.area_mm2 = float(parts[0].area)
+                cut += 1
+        done.append(r.polygon)
+    return cut
 
 
 def _fill_old_holes(regions: list[Region], ids: set[int], old_union) -> None:

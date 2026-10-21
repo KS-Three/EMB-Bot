@@ -2708,6 +2708,25 @@ class PipelineConfig:
     # gate 1): 3.7 is the professional's on one file, unsewn here. The flip
     # is Kent's, on renders. Tests: `tests/test_small_text.py`.
     small_text_cap_mm: float | None = None
+    # With `small_text_cap_mm`: grow a line TALLER by the full scale but WIDER
+    # by at most this (`small_text.enlarge_small_text`'s `max_width_scale`).
+    # Measured 2026-10-21 on the professional's Fremont patch at 92.5 mm,
+    # letters read by colour block: EST / 1895 2.1x the art's height, the
+    # tagline 1.55x, THE ~1.25x -- at 1.0-1.06x the art's WIDTH, condensed
+    # bold block letters. Uniform growth left the tagline `no_room` (boxed in
+    # by its bars, rope and border); condensed, it fits as the pro's does.
+    # Kent 2026-10-21 reversed "you can't change the font size": "Yes, match
+    # the pro". None: uniform, byte for byte. A CANDIDATE (gate 1): 1.05 is
+    # the pro's on one file, unsewn here.
+    small_text_cap_max_width_scale: float | None = None
+    # With `small_text_cap_mm`: the drawn stroke a grown letter is widened to
+    # (`small_text.MIN_STROKE_MM` 0.6 when None, byte for byte). The pro does
+    # not enlarge a thin font -- he re-sets the words bold: 0.8-0.9 mm columns
+    # on Fremont at 92.5 mm. Grown at 0.6, the art's 0.3-0.5 mm serifs and
+    # bars land under `SATIN_MIN_CROSS_MM` 0.5 and the Column lane drops them
+    # unsewn (2026-10-21, isolated lane on the grown tagline). A CANDIDATE
+    # (gate 1): 0.85 is the pro's on one file.
+    small_text_cap_min_stroke_mm: float | None = None
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
