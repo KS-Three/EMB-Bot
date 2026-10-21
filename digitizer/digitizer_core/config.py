@@ -2784,6 +2784,19 @@ class PipelineConfig:
     # shorter stitches than 0.9). None is the pre-flip engine (`PRE_FLIP`);
     # the sew-out card tools pin None.
     bean_letter_straight_mm: float | None = 0.7
+    # Bean letters sewn as a narrow SATIN column on the spine, this wide in mm
+    # (`stage6_beanletter._satin_along`: a centre run out, a zigzag back,
+    # crosses `SATIN_SPACING_MM` apart), instead of 3-pass bean runs. Why:
+    # Kent's card v4 sew-out (2026-10-20) beside the pro's Fremont patch --
+    # "your lettering is much smaller than the pro's". Rendered at 92.5 mm
+    # (`docs/sewout/card-v4-2026-10-20/pro_vs_ours_92mm.png`) our EST / 1895 /
+    # THE sit in the art's own footprint, but as a hairline; the pro sews the
+    # same letters as 0.8-0.9 mm satin down each stroke. Same letter size --
+    # not `small_text_cap_mm`'s enlargement (Kent: "you can't change the font
+    # size"). With it set, passes, the straight pitch and the bay hold do not
+    # apply. None: bean, byte for byte. A CANDIDATE (gate 1), unsewn: 0.85 is
+    # the pro's median column; how wide before a counter closes is the cloth's.
+    bean_letter_satin_mm: float | None = None
     # The bean tagger's ink read takes its ground colour only from a ring this
     # deep round the cluster (`ink_path.read_cluster_ink`'s
     # `ground_ring_mm`), not from every far pixel of the crop. At 65 mm
