@@ -15,7 +15,7 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-from shapely.geometry import LineString, MultiPoint, Point, box
+from shapely.geometry import LineString, MultiPoint, Point, Polygon, box
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, digitize, knockdown, stitches
@@ -192,3 +192,57 @@ def test_a_lift_inside_the_knockdown_becomes_travel_along_the_edge():
     pts = [p for r in fixed for p in r.points]
     assert all(cover.contains(Point(p)) for p in pts)
     assert max(math.dist(a, b) for a, b in zip(pts, pts[1:])) <= knockdown.STITCH_MM + 1e-6
+
+
+# --- the badge case: stop at the satin border (Kent 2026-10-21) ------------------------
+
+def _badge():
+    hexagon = Polygon([(0, 20), (15, 0), (65, 0), (80, 20), (65, 40), (15, 40)])
+    ring = hexagon.difference(hexagon.buffer(-2.0))              # a 2 mm satin border
+    text = [box(20, 12, 30, 28), box(35, 12, 45, 28), box(50, 12, 60, 28)]
+    return hexagon, [("border", ring)] + [(f"t{i}", t) for i, t in enumerate(text)]
+
+
+def test_a_satin_ring_holding_everything_is_a_badge_border():
+    hexagon, shapes = _badge()
+    edge = knockdown.badge_border(shapes, {"border"})
+    assert edge is not None and edge.symmetric_difference(hexagon).area < 1e-6
+
+
+def test_the_badge_knockdown_stops_at_the_borders_outer_edge():
+    hexagon, shapes = _badge()
+    block, rep = knockdown.knockdown_block(shapes, _cfg(), 3.0, {"border"})
+    assert rep["badge"] and rep["pieces"] == 1
+    pts = [p for r in block.runs for p in r.points]
+    reach = hexagon.buffer(knockdown.BADGE_EDGE_MM + 0.05)
+    assert all(reach.contains(Point(p)) for p in pts)
+    xs = [p[0] for p in pts]
+    assert min(xs) == pytest.approx(0.0, abs=0.6) and max(xs) == pytest.approx(80.0, abs=0.6)
+
+
+@pytest.mark.parametrize("why", ["fill", "solid", "outsider"])
+def test_not_a_badge_keeps_the_margin(why):
+    hexagon, shapes = _badge()
+    satin = {"border"}
+    if why == "fill":                                            # the ring sews as fill
+        satin = set()
+    elif why == "solid":                                         # a field, not a ring
+        shapes = [("border", hexagon.difference(box(38, 18, 42, 22)))] + shapes[1:]
+    else:                                                        # a mark outside it
+        shapes = shapes + [("mark", box(85, 15, 95, 25))]
+    assert knockdown.badge_border(shapes, satin) is None
+    block, rep = knockdown.knockdown_block(shapes, _cfg(), 3.0, satin)
+    assert not rep["badge"]
+    xs = [p[0] for r in block.runs for p in r.points]
+    assert min(xs) == pytest.approx(-knockdown.MARGIN_MM, abs=0.6)
+
+
+def test_satin_shape_ids_reads_what_stage7_sewed():
+    blk = StitchBlock(thread_index=1, thread_number=CHART[1].number, rgb=CHART[1].rgb, runs=[
+        StitchRun(points=[(0, 0)] * 10, kind=stitches.SATIN, shape_id="a"),
+        StitchRun(points=[(0, 0)] * 3, kind=stitches.UNDERLAY, shape_id="a"),
+        StitchRun(points=[(0, 0)] * 5, kind=stitches.SATIN, shape_id="b"),
+        StitchRun(points=[(0, 0)] * 9, kind=stitches.FILL, shape_id="b"),
+        StitchRun(points=[(0, 0)] * 4, kind=stitches.BORDER, shape_id="c"),
+    ])
+    assert knockdown.satin_shape_ids([blk]) == {"a", "c"}

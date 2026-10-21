@@ -24,5 +24,7 @@ Traps found building it:
 - The margin raster read (0.3 mm lines, 10 px/mm) reads ~0.2 mm SHORT: ours built
   at 1.5 read 1.32, so the pro's "1.6-1.8" is ~1.8-2.0 true. Calibrate a raster
   instrument on our own known build before quoting the pro.
-- Not copied: on badge designs (To a T, Machine E) the pro stops the knockdown at
-  the satin border. Related: [[pro-rules-across-jobs-2026-10-21]].
+- Badges: Kent said "stop at the satin border". Built as `badge_border` (a satin
+  ring holding every other shape), so the knockdown ends at the ring's outer edge.
+  The pro's two badge files sit +0.74 and -0.95 mm from that edge.
+  Related: [[pro-rules-across-jobs-2026-10-21]].
