@@ -1,0 +1,551 @@
+{
+ "file": "card_v4_40wt.dst",
+ "bytes": 12560,
+ "wt": 40,
+ "blocks": 4,
+ "stitches_file": 3609,
+ "stitches_plan": 3609,
+ "colour_changes_file": 0,
+ "colour_changes_plan": 0,
+ "colours": 1,
+ "extent_mm": [
+  84.8,
+  45.4
+ ],
+ "within_hoop": true,
+ "x_range_mm": [
+  -42.4,
+  42.4
+ ],
+ "y_range_mm": [
+  -22.7,
+  22.7
+ ],
+ "max_needle_stitch_mm": 2.0,
+ "max_record_axis_mm": 11.9,
+ "stops": [
+  {
+   "stop": 1,
+   "thread": "dark",
+   "stitches": 3763,
+   "thread_m": 1.99
+  }
+ ],
+ "stitches_by_piece": {
+  "B:1895-0.7": 114,
+  "B:1895-0.9": 111,
+  "B:1895-off": 126,
+  "B:TAG-0.7": 481,
+  "B:TAG-0.9": 448,
+  "B:TAG-off": 523,
+  "B:strips": 169,
+  "H:1895-off": 108,
+  "H:1895-on": 114,
+  "H:THE-off": 132,
+  "H:THE-on": 132,
+  "H:strips": 99,
+  "K:EST-off": 82,
+  "K:EST-ties": 82,
+  "K:THE-off": 132,
+  "K:THE-ties": 135,
+  "K:strips": 99,
+  "P:1895-1": 48,
+  "P:1895-2": 81,
+  "P:1895-3": 114,
+  "P:THE-1": 64,
+  "P:THE-2": 90,
+  "P:THE-3": 132,
+  "P:strips": 147
+ },
+ "under_1mm_by_piece": {
+  "B:1895-0.7": 103,
+  "B:1895-0.9": 97,
+  "B:1895-off": 115,
+  "B:TAG-0.7": 431,
+  "B:TAG-0.9": 383,
+  "B:TAG-off": 473,
+  "H:1895-off": 97,
+  "H:1895-on": 103,
+  "H:THE-off": 118,
+  "H:THE-on": 118,
+  "K:EST-off": 70,
+  "K:EST-ties": 70,
+  "K:THE-off": 118,
+  "K:THE-ties": 121,
+  "P:1895-1": 37,
+  "P:1895-2": 70,
+  "P:1895-3": 103,
+  "P:THE-1": 50,
+  "P:THE-2": 76,
+  "P:THE-3": 118
+ },
+ "lock_legs_0p8": 208,
+ "trims": 52,
+ "blocks_mm": {
+  "B": [
+   -42.4,
+   -22.7,
+   41.3,
+   -4.0
+  ],
+  "H": [
+   -42.4,
+   -0.5,
+   -2.8,
+   9.3
+  ],
+  "K": [
+   3.2,
+   -0.5,
+   42.4,
+   9.3
+  ],
+  "P": [
+   -42.4,
+   12.8,
+   17.3,
+   22.7
+  ]
+ },
+ "pieces_mm": {
+  "B:1895-0.7": [
+   -42.4,
+   -5.7,
+   -36.9,
+   -4.0
+  ],
+  "B:1895-0.9": [
+   -25.4,
+   -5.7,
+   -19.9,
+   -4.0
+  ],
+  "B:1895-off": [
+   -33.9,
+   -5.7,
+   -28.4,
+   -4.0
+  ],
+  "B:TAG-0.7": [
+   -42.4,
+   -15.2,
+   -16.5,
+   -11.7
+  ],
+  "B:TAG-0.9": [
+   15.4,
+   -15.2,
+   41.3,
+   -11.7
+  ],
+  "B:TAG-off": [
+   -13.5,
+   -15.2,
+   12.4,
+   -11.7
+  ],
+  "H:1895-off": [
+   -33.9,
+   7.0,
+   -28.5,
+   8.5
+  ],
+  "H:1895-on": [
+   -42.4,
+   7.0,
+   -36.9,
+   8.7
+  ],
+  "H:THE-off": [
+   -11.1,
+   7.0,
+   -2.8,
+   9.3
+  ],
+  "H:THE-on": [
+   -22.5,
+   7.0,
+   -14.1,
+   9.3
+  ],
+  "K:EST-off": [
+   3.2,
+   7.0,
+   8.4,
+   8.7
+  ],
+  "K:EST-ties": [
+   11.4,
+   7.0,
+   16.6,
+   8.7
+  ],
+  "K:THE-off": [
+   22.6,
+   7.0,
+   31.0,
+   9.3
+  ],
+  "K:THE-ties": [
+   34.0,
+   7.0,
+   42.4,
+   9.3
+  ],
+  "P:1895-1": [
+   -25.4,
+   20.3,
+   -19.9,
+   22.0
+  ],
+  "P:1895-2": [
+   -33.9,
+   20.3,
+   -28.4,
+   22.0
+  ],
+  "P:1895-3": [
+   -42.4,
+   20.3,
+   -36.9,
+   22.0
+  ],
+  "P:THE-1": [
+   8.9,
+   20.3,
+   17.3,
+   22.7
+  ],
+  "P:THE-2": [
+   -2.5,
+   20.3,
+   5.9,
+   22.7
+  ],
+  "P:THE-3": [
+   -13.9,
+   20.3,
+   -5.5,
+   22.7
+  ]
+ },
+ "pieces": [
+  {
+   "block": "B",
+   "arm": "TAG-0.7",
+   "word": "TAG",
+   "label": "0.7",
+   "cut": "today",
+   "overrides": {},
+   "roi": "tagline",
+   "runs": 50,
+   "crossing_runs_dropped": 8,
+   "width_mm": 25.9,
+   "height_mm": 3.52
+  },
+  {
+   "block": "B",
+   "arm": "TAG-off",
+   "word": "TAG",
+   "label": "off",
+   "cut": "straight_off",
+   "overrides": {
+    "bean_letter_straight_mm": null
+   },
+   "roi": "tagline",
+   "runs": 50,
+   "crossing_runs_dropped": 8,
+   "width_mm": 25.9,
+   "height_mm": 3.52
+  },
+  {
+   "block": "B",
+   "arm": "TAG-0.9",
+   "word": "TAG",
+   "label": "0.9",
+   "cut": "straight_09",
+   "overrides": {
+    "bean_letter_straight_mm": 0.9
+   },
+   "roi": "tagline",
+   "runs": 50,
+   "crossing_runs_dropped": 8,
+   "width_mm": 25.9,
+   "height_mm": 3.52
+  },
+  {
+   "block": "B",
+   "arm": "1895-0.7",
+   "word": "1895",
+   "label": "0.7",
+   "cut": "today",
+   "overrides": {},
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.5,
+   "height_mm": 1.67
+  },
+  {
+   "block": "B",
+   "arm": "1895-off",
+   "word": "1895",
+   "label": "off",
+   "cut": "straight_off",
+   "overrides": {
+    "bean_letter_straight_mm": null
+   },
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.5,
+   "height_mm": 1.64
+  },
+  {
+   "block": "B",
+   "arm": "1895-0.9",
+   "word": "1895",
+   "label": "0.9",
+   "cut": "straight_09",
+   "overrides": {
+    "bean_letter_straight_mm": 0.9
+   },
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.5,
+   "height_mm": 1.67
+  },
+  {
+   "block": "H",
+   "arm": "1895-on",
+   "word": "1895",
+   "label": "on",
+   "cut": "today",
+   "overrides": {},
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.5,
+   "height_mm": 1.67
+  },
+  {
+   "block": "H",
+   "arm": "1895-off",
+   "word": "1895",
+   "label": "off",
+   "cut": "holds_off",
+   "overrides": {
+    "bean_letter_counter_hold_mm": null,
+    "bean_letter_bay_hold": null
+   },
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.4,
+   "height_mm": 1.5
+  },
+  {
+   "block": "H",
+   "arm": "THE-on",
+   "word": "THE",
+   "label": "on",
+   "cut": "today",
+   "overrides": {},
+   "roi": "the",
+   "runs": 14,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.39,
+   "height_mm": 2.33
+  },
+  {
+   "block": "H",
+   "arm": "THE-off",
+   "word": "THE",
+   "label": "off",
+   "cut": "holds_off",
+   "overrides": {
+    "bean_letter_counter_hold_mm": null,
+    "bean_letter_bay_hold": null
+   },
+   "roi": "the",
+   "runs": 14,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.37,
+   "height_mm": 2.3
+  },
+  {
+   "block": "K",
+   "arm": "EST-off",
+   "word": "EST",
+   "label": "off",
+   "cut": "today",
+   "overrides": {},
+   "roi": "est",
+   "runs": 9,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.2,
+   "height_mm": 1.66
+  },
+  {
+   "block": "K",
+   "arm": "EST-ties",
+   "word": "EST",
+   "label": "ties",
+   "cut": "ties_on",
+   "overrides": {
+    "small_letter_ties": true
+   },
+   "roi": "est",
+   "runs": 9,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.2,
+   "height_mm": 1.66
+  },
+  {
+   "block": "K",
+   "arm": "THE-off",
+   "word": "THE",
+   "label": "off",
+   "cut": "today",
+   "overrides": {},
+   "roi": "the",
+   "runs": 14,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.39,
+   "height_mm": 2.33
+  },
+  {
+   "block": "K",
+   "arm": "THE-ties",
+   "word": "THE",
+   "label": "ties",
+   "cut": "ties_on",
+   "overrides": {
+    "small_letter_ties": true
+   },
+   "roi": "the",
+   "runs": 14,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.39,
+   "height_mm": 2.33
+  },
+  {
+   "block": "P",
+   "arm": "1895-3",
+   "word": "1895",
+   "label": "3",
+   "cut": "today",
+   "overrides": {},
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.5,
+   "height_mm": 1.67
+  },
+  {
+   "block": "P",
+   "arm": "1895-2",
+   "word": "1895",
+   "label": "2",
+   "cut": "passes_2",
+   "overrides": {
+    "bean_letter_passes": 2
+   },
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 6,
+   "width_mm": 5.5,
+   "height_mm": 1.67
+  },
+  {
+   "block": "P",
+   "arm": "1895-1",
+   "word": "1895",
+   "label": "1",
+   "cut": "passes_1",
+   "overrides": {
+    "bean_letter_passes": 1
+   },
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.5,
+   "height_mm": 1.67
+  },
+  {
+   "block": "P",
+   "arm": "THE-3",
+   "word": "THE",
+   "label": "3",
+   "cut": "today",
+   "overrides": {},
+   "roi": "the",
+   "runs": 14,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.39,
+   "height_mm": 2.33
+  },
+  {
+   "block": "P",
+   "arm": "THE-2",
+   "word": "THE",
+   "label": "2",
+   "cut": "passes_2",
+   "overrides": {
+    "bean_letter_passes": 2
+   },
+   "roi": "the",
+   "runs": 14,
+   "crossing_runs_dropped": 3,
+   "width_mm": 8.39,
+   "height_mm": 2.33
+  },
+  {
+   "block": "P",
+   "arm": "THE-1",
+   "word": "THE",
+   "label": "1",
+   "cut": "passes_1",
+   "overrides": {
+    "bean_letter_passes": 1
+   },
+   "roi": "the",
+   "runs": 14,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.39,
+   "height_mm": 2.33
+  }
+ ],
+ "block_md5": {
+  "B": "0f87e58dfe12155d7e376ee195328488",
+  "H": "42783e5d6406dfbd5f390159c05e33b1",
+  "K": "3384bc0514075104ae2690727484ffd0",
+  "P": "53fd9c2cf65624c7bff94b1c4d25a8ec"
+ },
+ "arm_md5": {
+  "B:1895-0.7": "47b104d27e1bdf4410f60c168707e935",
+  "B:1895-0.9": "5484ac37390eef6f136a44899891aaa0",
+  "B:1895-off": "0b8a000c7fd8bde48066af9fb4f6564c",
+  "B:TAG-0.7": "9521c05560e7fdfdcd004d3276a9954d",
+  "B:TAG-0.9": "c7993d1eb447ed8c020b2b218896322d",
+  "B:TAG-off": "5504cfdd483bf5682ab65ff6abb0c2fd",
+  "H:1895-off": "08ca70785c1fbe966d3a571ba0a3bbaf",
+  "H:1895-on": "47b104d27e1bdf4410f60c168707e935",
+  "H:THE-off": "744d220cab9a2453329ede12f3f85517",
+  "H:THE-on": "d81bf0438efcdff89497f9d9fd308294",
+  "K:EST-off": "08bc82ce95e7ea778a2d16a975b7f722",
+  "K:EST-ties": "08bc82ce95e7ea778a2d16a975b7f722",
+  "K:THE-off": "d81bf0438efcdff89497f9d9fd308294",
+  "K:THE-ties": "7d01a264acebb56fc820f76b2879d841",
+  "P:1895-1": "3dd68c582d5680706adcc90b7af09360",
+  "P:1895-2": "b1425dbd7bc8192816c080f88ef4e98a",
+  "P:1895-3": "47b104d27e1bdf4410f60c168707e935",
+  "P:THE-1": "564385b1b6cb0f7b11757ee76893299b",
+  "P:THE-2": "316e3cc5c26dc745f8a358d9568a8c0c",
+  "P:THE-3": "d81bf0438efcdff89497f9d9fd308294"
+ },
+ "same_arms": [
+  "K EST: arms off, ties identical"
+ ]
+}
