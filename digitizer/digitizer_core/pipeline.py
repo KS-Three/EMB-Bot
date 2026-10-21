@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 from shapely.geometry import Polygon
 
-from . import debugviz, fur_regions, two_tone
+from . import debugviz, fur_regions, knockdown, two_tone
 from .config import PipelineConfig
 from .fabrics import Fabric, apply_profile, fabric_for_garment, get_fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
@@ -1857,6 +1857,15 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                                     counter_holes=([r.polygon for r in result.regions
                                                     if r.meta.get("cored_counter")]
                                                    if cfg.open_cored_counters else None) or None)
+
+    # `cfg.beanie_knockdown` (built OFF): a sparse fill under the whole design,
+    # sewn first, on a beanie with a known garment colour — `knockdown.py`.
+    if knockdown.applies(cfg):
+        kd, _kd_report = knockdown.knockdown_block(
+            [(p.region.shape_id, p.polygon) for p in planned], cfg, fabric.trim_at_mm,
+            knockdown.satin_shape_ids(blocks))
+        if kd is not None:
+            blocks = knockdown.prepend(blocks, kd)
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a
