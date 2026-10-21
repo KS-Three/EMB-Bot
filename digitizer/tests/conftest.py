@@ -605,4 +605,9 @@ PRE_FLIP["dissolve_phantom_blends"] = False
 # the other pieces drop. The tests ABOUT it are
 # `tests/test_clip_keep_pieces.py`.
 PRE_FLIP["clip_keep_pieces"] = False
+# The edge cap leaves a bean letter alone (2026-10-20, Proseal's two A's):
+# a text member sewn as bean runs gives the silhouette nothing, so no cap
+# rings its pull-grown polygon. False is the pre-flip cap. The tests ABOUT it
+# are in `tests/test_edge_cap.py`.
+PRE_FLIP["edge_cap_skip_bean_letters"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
