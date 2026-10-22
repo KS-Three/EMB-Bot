@@ -1,0 +1,224 @@
+{
+ "cards": {
+  "hat": {
+   "file": "card_cross_underlay_hat_40wt.dst",
+   "bytes": 16634,
+   "wt": 40,
+   "blocks": 2,
+   "stitches_file": 5324,
+   "stitches_plan": 5324,
+   "colour_changes_file": 0,
+   "colour_changes_plan": 0,
+   "colours": 1,
+   "extent_mm": [
+    85.6,
+    21.8
+   ],
+   "within_hoop": true,
+   "x_range_mm": [
+    -42.8,
+    42.8
+   ],
+   "y_range_mm": [
+    -10.9,
+    10.9
+   ],
+   "max_needle_stitch_mm": 4.02,
+   "max_record_axis_mm": 11.0,
+   "stops": [
+    {
+     "stop": 1,
+     "thread": "dark",
+     "stitches": 5324,
+     "thread_m": 10.68
+    }
+   ],
+   "stitches_by_piece": {
+    "U:cross": 2661,
+    "U:preset": 2635,
+    "U:strips": 28
+   },
+   "under_1mm_by_piece": {
+    "U:cross": 746,
+    "U:preset": 746
+   },
+   "lock_legs_0p8": 44,
+   "trims": 7,
+   "blocks_mm": {
+    "U1": [
+     -42.8,
+     -8.9,
+     -3.0,
+     10.9
+    ],
+    "U2": [
+     3.0,
+     -8.9,
+     42.8,
+     10.9
+    ]
+   },
+   "pieces_mm": {
+    "U:cross": [
+     3.0,
+     -8.9,
+     42.8,
+     10.9
+    ],
+    "U:preset": [
+     -42.8,
+     -8.9,
+     -3.0,
+     10.9
+    ]
+   },
+   "garment_id": "hat_front",
+   "pieces": [
+    {
+     "card": "hat",
+     "arm": "preset",
+     "teeth": 1,
+     "overrides": {
+      "fill_underlay_cross": false
+     },
+     "stitches": 2643,
+     "underlay_mm": 419.6,
+     "fill_mm": 4429.9,
+     "underlay_share_pct": 9.5,
+     "underlay_median_stitch_mm": 2.47,
+     "width_mm": 39.78,
+     "height_mm": 19.8
+    },
+    {
+     "card": "hat",
+     "arm": "cross",
+     "teeth": 2,
+     "overrides": {
+      "fill_underlay_cross": true
+     },
+     "stitches": 2669,
+     "underlay_mm": 576.4,
+     "fill_mm": 4429.9,
+     "underlay_share_pct": 13.0,
+     "underlay_median_stitch_mm": 2.4,
+     "width_mm": 39.78,
+     "height_mm": 19.8
+    }
+   ],
+   "arm_md5": {
+    "U:cross": "d8398fceb0edaadddf4d2dfcb015180a",
+    "U:preset": "92379a473bbb63a000140a6d789b1270"
+   }
+  },
+  "polo": {
+   "file": "card_cross_underlay_polo_40wt.dst",
+   "bytes": 15983,
+   "wt": 40,
+   "blocks": 2,
+   "stitches_file": 5109,
+   "stitches_plan": 5109,
+   "colour_changes_file": 0,
+   "colour_changes_plan": 0,
+   "colours": 1,
+   "extent_mm": [
+    85.2,
+    21.6
+   ],
+   "within_hoop": true,
+   "x_range_mm": [
+    -42.6,
+    42.6
+   ],
+   "y_range_mm": [
+    -10.8,
+    10.8
+   ],
+   "max_needle_stitch_mm": 4.02,
+   "max_record_axis_mm": 11.0,
+   "stops": [
+    {
+     "stop": 1,
+     "thread": "dark",
+     "stitches": 5109,
+     "thread_m": 10.19
+    }
+   ],
+   "stitches_by_piece": {
+    "U:cross": 2626,
+    "U:preset": 2455,
+    "U:strips": 28
+   },
+   "under_1mm_by_piece": {
+    "U:cross": 739,
+    "U:preset": 740
+   },
+   "lock_legs_0p8": 40,
+   "trims": 7,
+   "blocks_mm": {
+    "U1": [
+     -42.6,
+     -8.8,
+     -3.0,
+     10.8
+    ],
+    "U2": [
+     3.0,
+     -8.8,
+     42.6,
+     10.8
+    ]
+   },
+   "pieces_mm": {
+    "U:cross": [
+     3.0,
+     -8.8,
+     42.6,
+     10.8
+    ],
+    "U:preset": [
+     -42.6,
+     -8.8,
+     -3.0,
+     10.8
+    ]
+   },
+   "garment_id": "left_chest",
+   "pieces": [
+    {
+     "card": "polo",
+     "arm": "preset",
+     "teeth": 1,
+     "overrides": {
+      "fill_underlay_cross": false
+     },
+     "stitches": 2463,
+     "underlay_mm": 118.8,
+     "fill_mm": 4343.6,
+     "underlay_share_pct": 2.7,
+     "underlay_median_stitch_mm": 2.45,
+     "width_mm": 39.58,
+     "height_mm": 19.6
+    },
+    {
+     "card": "polo",
+     "arm": "cross",
+     "teeth": 2,
+     "overrides": {
+      "fill_underlay_cross": true
+     },
+     "stitches": 2634,
+     "underlay_mm": 561.7,
+     "fill_mm": 4346.9,
+     "underlay_share_pct": 12.9,
+     "underlay_median_stitch_mm": 2.37,
+     "width_mm": 39.58,
+     "height_mm": 19.6
+    }
+   ],
+   "arm_md5": {
+    "U:cross": "9d57e7421ed50dfb6d1a391d0d5d36c9",
+    "U:preset": "79835b1af6adc92c1e26492885a07349"
+   }
+  }
+ }
+}

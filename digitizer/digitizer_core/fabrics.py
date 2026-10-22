@@ -119,6 +119,27 @@ GARMENT_FABRIC = {
 DEFAULT_FABRIC_ID = "pique_knit"
 
 
+# The presets whose fill underlay `cfg.fill_underlay_cross` (built OFF
+# 2026-10-21) swaps to `cross_tatami`: hat (structured_cap), left chest
+# (pique_knit), beanie and sleeve (jersey_tee). The professional's own files
+# sew one crossing tatami pass under every dense fill on every job in the
+# zip — ~1.0 mm rows, ~4 mm stitches, ~90 degrees to the top fill
+# (`docs/underlay-audit-2026-10-05.md`, `docs/settings-vs-pro-2026-10-21.md`
+# rows 13-15). A fabric preset is a physical constant (ROADMAP gate 1), so
+# this is a flag with a sew-out card arm, and the table above is untouched.
+# Mirrored in `src/fabrics.js` (CROSS_UNDERLAY_FABRICS / fillUnderlayFor);
+# `test_fabric_wire.py` holds the pair.
+CROSS_UNDERLAY_FABRICS = ("structured_cap", "pique_knit", "jersey_tee")
+
+
+def fill_underlay_for(fabric: Fabric, cross: bool = False) -> str:
+    """The fill underlay a preset sews: its own, or `cross_tatami` when the
+    cross flag is on and the preset is one the pro's jobs cover."""
+    if cross and fabric.id in CROSS_UNDERLAY_FABRICS:
+        return "cross_tatami"
+    return fabric.fill_underlay
+
+
 def get_fabric(fabric_id: str | None) -> Fabric:
     """Look up a preset; an unknown id falls back to the default rather than
     raising, because a garment list that grows on the browser side must never
