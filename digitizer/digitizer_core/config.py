@@ -4966,6 +4966,21 @@ class PipelineConfig:
     # flip is Kent's, after the sew-out says buried travel does not show.
     # Off, byte-identical. Tests: `tests/test_trim_bury_under_later.py`.
     trim_bury_under_later: bool = False
+    # `cut_every_jump` (BUILT OFF 2026-10-21, `docs/settings-vs-pro-2026-10-21.md`
+    # row 25): no needle-up move is left uncut. Ours leaves 0-168 uncut
+    # jumps of 0.5-3.0 mm per job (every hop under `trim_at_mm`), each a
+    # float snipped by hand; the pro's 28 DSTs leave none. Each such jump is
+    # sewn needle-down where thread sewn LATER hides all of it -- the cover
+    # rule `trim_bury_under_later` uses, shared code -- and cut, locked both
+    # sides, everywhere else (`stage7_sequence._cut_or_bury_jumps`). Bury
+    # first because the pro's short cuts almost never lie under later
+    # thread (1 of 59 at <= 3 mm). Composes with `trim_bury_under_later`:
+    # that pass handles CUT hops inside art blocks and runs first; this one
+    # handles UNCUT jumps in every block and runs last, so the two touch
+    # disjoint hops. ROADMAP gate 1 (trimmer wear and tie knots against
+    # floats, and whether buried travel shows): Kent's flip, after a
+    # sew-out. Off, byte-identical. Tests: `tests/test_cut_every_jump.py`.
+    cut_every_jump: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()
