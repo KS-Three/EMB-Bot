@@ -110,6 +110,14 @@ export async function fetchHealth(fetchFn = globalThis.fetch) {
 // `forced_class` only as "flat" when the user set it on the reading row (see
 // the block above detect_photographic below).
 
+// "#rrggbb" -> [r, g, b] 0-255, or null for anything else (the service 400s a
+// malformed `sew_enclosed_rgb`, so a bad stored value falls back to white).
+export function hexToRgb(hex) {
+  if (typeof hex !== "string" || !/^#[0-9a-fA-F]{6}$/.test(hex)) return null;
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
 // `fabrics.py`'s PROFILE_FIELDS and no-op values, verbatim. Key filtering
 // only — the arithmetic lives in the engines (src/fabrics.js, fabrics.py).
 const FABRIC_PROFILE_FIELDS = ["pull_comp_delta_mm", "density_scale", "trim_at_delta_mm"];
@@ -150,6 +158,15 @@ export function buildDigitizeConfig(element, project) {
     // absent IS the service's own False, and existing designs keep their
     // cache key. See project.js's DEFAULT_DIGITIZE_PARAMS for why it is off.
     ...(p.stitch_width_auto ? { stitch_width_auto: true } : {}),
+    // Sent only when ON, like stitch_width_auto: absent IS the service's own
+    // False. The two follow-ons ride only with it.
+    ...(p.sew_enclosed_white
+      ? {
+          sew_enclosed_white: true,
+          sew_enclosed_rgb: hexToRgb(p.sew_enclosed_hex) || [255, 255, 255],
+          ...(p.sew_enclosed_counters ? { sew_enclosed_counters: true } : {}),
+        }
+      : {}),
   };
   if (p.fill_angle_deg != null) cfg.fill_angle_deg = p.fill_angle_deg;
   // Omitted when null, for a stronger reason than fill_angle_deg's. The

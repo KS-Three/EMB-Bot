@@ -584,16 +584,19 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
     # malformed one (a hex string, four channels, 300) would surface as a
     # TypeError deep in `stage4_vectorize.garment_sews_enclosed` — a 500.
     # Checked here as a 400 naming the shape, like forced_class above.
-    rgb = data.get("garment_rgb")
-    if rgb is not None and not (
-        isinstance(rgb, (list, tuple)) and len(rgb) == 3
-        and all(isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 255
-                for v in rgb)
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="garment_rgb must be three integers 0-255, e.g. [235, 232, 223].",
-        )
+    # `sew_enclosed_rgb` (the "Sew white areas" thread) has the same shape.
+    for key, example in (("garment_rgb", "[235, 232, 223]"),
+                         ("sew_enclosed_rgb", "[255, 255, 255]")):
+        rgb = data.get(key)
+        if rgb is not None and not (
+            isinstance(rgb, (list, tuple)) and len(rgb) == 3
+            and all(isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 255
+                    for v in rgb)
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=f"{key} must be three integers 0-255, e.g. {example}.",
+            )
     # `crop` is only read at job time (`digitizer_core.crop.validate_crop`), so
     # a malformed one used to fail there with whatever Python said first:
     # "cannot convert float NaN to integer" (the json module ACCEPTS NaN),

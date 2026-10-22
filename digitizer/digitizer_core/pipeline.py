@@ -69,6 +69,7 @@ from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           regularize_text_clusters,
                           set_lettering_house_angle)
 from .design_ramp import DesignRamp, fit_design_ramp
+from .enclosed_white import apply_enclosed_white
 from .stage5_overlap import PlannedRegion, resolve_overlaps
 from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
@@ -919,7 +920,8 @@ def build_generation(
         # alpha: False, the ranking the cap shipped with.
         resnap_warnings = list(resnap_warnings) + enforce_color_cap(
             regions, chart_for(cfg), cfg.max_colors,
-            count_enclosed=garment_sews_enclosed(p, cfg)[0])
+            count_enclosed=(garment_sews_enclosed(p, cfg)[0]
+                            or bool(cfg.sew_enclosed_white)))
 
     # Same ordering rationale as `tag_enclosed_background` immediately above:
     # a computed FACT re-derived every generation, so it belongs before shape
@@ -1195,9 +1197,17 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # a review `stitched` still wins over it, exactly as over the default.
     sews_by_garment, garment_de00 = garment_sews_enclosed(p, cfg)
     shape_overrides = cfg.shape_overrides or {}
+    # The customer's "sew the white inside" (`cfg.sew_enclosed_white`, built
+    # OFF): marks, recolours and front-layers the enclosed areas it sews;
+    # the default below reads its mark. Off, not called.
+    n_enclosed_white = 0
+    if cfg.sew_enclosed_white:
+        quant_indices, n_enclosed_white = apply_enclosed_white(
+            regions, quant_indices, cfg, chart_for(cfg), shape_overrides)
     n_by_garment = 0
     for r in regions:
-        default_stitched = not r.meta.get("enclosed_background", False)
+        default_stitched = not r.meta.get("enclosed_background", False) \
+            or bool(r.meta.get("sew_enclosed_white"))
         if (sews_by_garment and not default_stitched
                 and not r.meta.get("enclosed_colour_unknown", False)):
             default_stitched = True
@@ -1236,6 +1246,16 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # this request's to rewrite.
     prep_own_warnings = _with_garment_reading(
         p.warnings, cfg, p.bg_rgb, sews_by_garment, garment_de00, n_by_garment)
+    # The same sentence must not promise "left unstitched" over areas the
+    # customer asked to sew.
+    if n_enclosed_white:
+        prep_own_warnings = [
+            {**w, "message": w["message"] + (
+                f" {n_enclosed_white} of them SEW because \"Sew white areas\" is on"
+                " — toggle any off in review."),
+             "sewn_by_option": int(n_enclosed_white)}
+            if w.get("code") == BACKGROUND_ENCLOSED else w
+            for w in prep_own_warnings]
 
     thread_indices, layer_warnings = compact_layers(regions, quant_indices)
     # One cone, one layer (cfg.merge_duplicate_cones, default OFF — defect

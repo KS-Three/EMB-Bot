@@ -1966,6 +1966,40 @@
         />
         Even out lettering widths<i class="tipmark" aria-hidden="true"></i>
       </label>
+      <!-- Sew white areas (PipelineConfig.sew_enclosed_white, off by default:
+           it changes the design). The colour and the counters box show only
+           when it is on. One area at a time is in Edit shapes: its sew
+           switch and its colour. -->
+      <div class="dgp-sewwhite">
+        <label class="dgp-checkline" use:tip={"sewWhite"}>
+          <input
+            type="checkbox"
+            data-testid="sew-white"
+            checked={!!element.params.sew_enclosed_white}
+            on:change={(e) => setParam("sew_enclosed_white", e.currentTarget.checked)}
+          />
+          Sew white areas<i class="tipmark" aria-hidden="true"></i>
+        </label>
+        {#if element.params.sew_enclosed_white}
+          <input
+            type="color"
+            class="dgp-sewwhite-colour"
+            data-testid="sew-white-colour"
+            aria-label="Thread for white areas"
+            value={element.params.sew_enclosed_hex || "#ffffff"}
+            on:change={(e) => setParam("sew_enclosed_hex", e.currentTarget.value)}
+          />
+          <label class="dgp-checkline">
+            <input
+              type="checkbox"
+              data-testid="sew-white-counters"
+              checked={!!element.params.sew_enclosed_counters}
+              on:change={(e) => setParam("sew_enclosed_counters", e.currentTarget.checked)}
+            />
+            Fill letter holes too
+          </label>
+        {/if}
+      </div>
       <label class="dgp-param" use:tip={"fillAngle"}>
         <span>Fill angle<i class="tipmark" aria-hidden="true"></i></span>
         <select
@@ -3092,6 +3126,8 @@
   .dgp-param input[type="number"]:focus { border-color: var(--accent, #4f46e5); }
   .dgp-unit { color: var(--muted, #667); }
   .dgp-checkline { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs, 12px); }
+  .dgp-sewwhite { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+  .dgp-sewwhite-colour { width: 28px; height: 20px; padding: 0; border: 1px solid var(--line, #ddd); border-radius: 4px; }
   .dgp-run {
     margin-top: 12px;
     padding: 10px 20px;

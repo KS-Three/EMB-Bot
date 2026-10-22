@@ -1837,3 +1837,31 @@ describe("Settings / Shapes / Threads", () => {
     expect(tabNamed(container, "Threads").querySelector(".dgp-tab-count")).toHaveTextContent("2");
   });
 });
+
+// "Sew white areas" (PipelineConfig.sew_enclosed_white, built OFF 2026-10-21):
+// a customer option, off by default; its colour and counters box only show
+// when it is on.
+describe("Sew white areas", () => {
+  test("renders unchecked with no colour or counters control, and patches params on toggle", async () => {
+    const { getByTestId, queryByTestId, patches } = renderPanel([shapeRow("s1")]);
+    const box = getByTestId("sew-white");
+    expect(box.checked).toBe(false);
+    expect(queryByTestId("sew-white-colour")).toBeNull();
+    expect(queryByTestId("sew-white-counters")).toBeNull();
+    await fireEvent.change(box, { target: { checked: true } });
+    expect(patches[patches.length - 1].patch.params.sew_enclosed_white).toBe(true);
+    expect(patches[patches.length - 1].patch.params.max_colors).toBe(DEFAULT_DIGITIZE_PARAMS.max_colors);
+  });
+
+  test("on, the thread colour and the counters box patch their own params", async () => {
+    const { getByTestId, patches } = renderPanel([shapeRow("s1")], {
+      params: { ...DEFAULT_DIGITIZE_PARAMS, sew_enclosed_white: true },
+    });
+    const colour = getByTestId("sew-white-colour");
+    expect(colour.value).toBe("#ffffff");
+    await fireEvent.change(colour, { target: { value: "#c0c0c0" } });
+    expect(patches[patches.length - 1].patch.params.sew_enclosed_hex).toBe("#c0c0c0");
+    await fireEvent.change(getByTestId("sew-white-counters"), { target: { checked: true } });
+    expect(patches[patches.length - 1].patch.params.sew_enclosed_counters).toBe(true);
+  });
+});

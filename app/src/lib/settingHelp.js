@@ -42,6 +42,12 @@ export const HELP = {
     changes: "A letter traced fatter or thinner than its neighbours is evened out to them. Off, each letter sews the width it was drawn at.",
     when: "Turn it on when lettering looks lumpy in the preview. Leave it off for fonts whose strokes vary on purpose.",
   },
+  sewWhite: {
+    title: "Sew white areas",
+    what: "Sews the white or hollow areas inside the design — a badge's field, the inside of outlined letters, a white keyline — instead of leaving the garment showing there.",
+    changes: "Those areas fill with thread in the colour you pick (white unless you change it) and sew first, under their outlines. The holes inside letters stay open unless you tick \"Fill letter holes too\". It adds stitches.",
+    when: "Turn it on when the white in your artwork is part of the design, especially on a dark garment. Leave it off when the white is meant to be the garment.",
+  },
   fillAngle: {
     title: "Fill angle",
     what: "The direction the rows of thread run inside filled areas.",
