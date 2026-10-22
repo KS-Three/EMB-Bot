@@ -109,8 +109,8 @@ follow-up.
 
 ## Not in this change
 
-- The flip: Kent's. A sew-out should look at the slanted corner at real thread
-  width.
+- The flip. **Kent 2026-10-22: hold OFF; an OFF/ON fill swatch goes on the next
+  sew-out card**, which decides the slanted corner at real thread width.
 - A floor number for the turn (any value, any garment): gate 1.
 - The browser engine (`src/fill.js`).
 - The satin tier's patch fills, contour finish patches and knockdown: no cfg
