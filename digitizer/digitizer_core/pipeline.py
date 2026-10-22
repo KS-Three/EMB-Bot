@@ -77,7 +77,7 @@ from .stage6_hairline_lines import applies as hairline_lines_apply
 from .config import is_photographic
 from .stage7_sequence import (PHOTO_CLASSES, borders_last_layers,
                               depth_sort_layers, sequence)
-from .stitches import StitchPlan
+from .stitches import StitchPlan, cut_every_jump
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (
     BACKGROUND_ENCLOSED,
@@ -1885,6 +1885,10 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             [(p.region.shape_id, p.polygon) for p in planned], cfg, fabric.trim_at_mm,
             knockdown.satin_shape_ids(blocks))
         if kd is not None:
+            # `cfg.trim_every_jump`: stage 7 cut its own blocks' jumps; the
+            # knockdown block is built after it.
+            if cfg.trim_every_jump:
+                cut_every_jump([kd])
             blocks = knockdown.prepend(blocks, kd)
 
     # The plan's palette is the list of cones this plan actually sews, one per

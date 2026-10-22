@@ -4411,4 +4411,8 @@ def sequence(
     seam_warning = _border_seam_warning(border_seams)
     if seam_warning is not None:
         warnings.append(seam_warning)
+    # `cfg.trim_every_jump` (built OFF): last, after every pass that sets a
+    # jump, so no later pass can leave one uncut.
+    if cfg.trim_every_jump:
+        stitches.cut_every_jump(blocks, **tie_kw)
     return blocks, warnings

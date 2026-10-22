@@ -4966,6 +4966,20 @@ class PipelineConfig:
     # flip is Kent's, after the sew-out says buried travel does not show.
     # Off, byte-identical. Tests: `tests/test_trim_bury_under_later.py`.
     trim_bury_under_later: bool = False
+    # `trim_every_jump` (BUILT OFF 2026-10-21, `docs/trim-every-jump-2026-10-21.md`,
+    # `docs/settings-vs-pro-2026-10-21.md` row 25): the professional leaves no
+    # needle-up move uncut in any of his 28 DSTs; we left 0-168 jumps of
+    # 0.5-3.0 mm per job uncut, under `trim_at_mm`. On, every jump left
+    # inside a colour block is resolved (`stitches.cut_every_jump`, run at the
+    # end of stage 7 and on the knockdown block): a hop no longer than one run
+    # stitch (`RUN_STITCH_MM`, 2.0) is sewn needle-down as that stitch -- the
+    # same thread the jump laid, tight; the pro's shortest cut is 1.99-4.7 mm
+    # on the paired jobs -- and a longer one is cut and locked both sides.
+    # Needle-down travel (under cover, `trim_bury_under_later`, chaining) is
+    # not a jump and is untouched. Costs trims and lock stitches on the long
+    # hops; the flip is Kent's. Off, byte-identical.
+    # Tests: `tests/test_trim_every_jump.py`.
+    trim_every_jump: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()

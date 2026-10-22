@@ -345,27 +345,11 @@ def apply_ties(runs: list[StitchRun], small_letters: set[str] | None = None) -> 
     if not runs:
         return
 
-    def small(run: StitchRun) -> bool:
-        return (small_letters is not None and run.kind == RUN
-                and run.shape_id in small_letters)
-
     def tie_in(run: StitchRun) -> None:
-        if len(run.points) < 2:
-            return
-        if small(run):
-            run.points = spread_tie_in(run.points)
-            return
-        pts = tie_run(run.points[0], run.points[1]).points
-        run.points = pts[:-1] + run.points
+        _tie_in(run, small_letters)
 
     def tie_off(run: StitchRun) -> None:
-        if len(run.points) < 2:
-            return
-        if small(run):
-            run.points = spread_tie_off(run.points)
-            return
-        pts = tie_run(run.points[-1], run.points[-2]).points
-        run.points = run.points + pts[1:]
+        _tie_off(run, small_letters)
 
     # The first run needs a tie because the thread starts there, and a trimmed
     # run needs one because the thread starts there too. Ask both questions in
@@ -377,6 +361,78 @@ def apply_ties(runs: list[StitchRun], small_letters: set[str] | None = None) -> 
         if run.trim and i > 0:
             tie_off(runs[i - 1])
     tie_off(runs[-1])
+
+
+def _small(run: StitchRun, small_letters: set[str] | None) -> bool:
+    return (small_letters is not None and run.kind == RUN
+            and run.shape_id in small_letters)
+
+
+def _tie_in(run: StitchRun, small_letters: set[str] | None = None) -> None:
+    if len(run.points) < 2:
+        return
+    if _small(run, small_letters):
+        run.points = spread_tie_in(run.points)
+        return
+    pts = tie_run(run.points[0], run.points[1]).points
+    run.points = pts[:-1] + run.points
+
+
+def _tie_off(run: StitchRun, small_letters: set[str] | None = None) -> None:
+    if len(run.points) < 2:
+        return
+    if _small(run, small_letters):
+        run.points = spread_tie_off(run.points)
+        return
+    pts = tie_run(run.points[-1], run.points[-2]).points
+    run.points = run.points + pts[1:]
+
+
+def cut_every_jump(blocks: list[StitchBlock],
+                   small_letters: set[str] | None = None) -> tuple[int, int]:
+    """`cfg.trim_every_jump` (built OFF 2026-10-21): leave no needle-up move
+    uncut inside a block. -> (hops sewn needle-down, cuts added).
+
+    The professional's 28 DSTs leave NO needle-up move uncut (every move is
+    three or more jump records); ours left 0-168 jumps of 0.5-3.0 mm per job,
+    uncut because they sit under `trim_at_mm` (`docs/settings-vs-pro-
+    2026-10-21.md` row 25). An uncut jump is a float on top of the fabric, or
+    a loop where the next stitch pulls it.
+
+    Each one is resolved one of two ways, by its straight length:
+
+    - **no longer than `machine.RUN_STITCH_MM`** (one run stitch): sewn
+      needle-down, as one stitch. It lays the same thread the uncut jump
+      already laid, along the same line, but tight. Cutting these instead
+      took Fremont at 81 mm from 38 trims to 204 (the pro: 20), because 141
+      of its 166 jumps are run-to-run hops between small-text strokes under
+      2 mm. The pro's own shortest cut is 1.99-4.7 mm on the paired jobs
+      (1.4-4.6 over all 28 files): he does not cut hops this short.
+    - **longer**: cut, and locked both sides with `apply_ties`' own locks
+      (the run before is tied off, the run tied in), like every other cut.
+
+    Runs only on what the plan already decided is a JUMP: needle-down travel
+    (`jump` False: travel under cover, `trim_bury_under_later`, chaining,
+    in-shape links) is not a needle-up move and is left exactly as it is.
+    A block's first run is a machine stop, not a hop, and is left alone too.
+    """
+    sewn = cut = 0
+    for block in blocks:
+        prev: StitchRun | None = None
+        for run in block.runs:
+            if not run.points:
+                continue
+            if prev is not None and run.jump and not run.trim:
+                if math.dist(prev.points[-1], run.points[0]) <= machine.RUN_STITCH_MM:
+                    run.jump = False
+                    sewn += 1
+                else:
+                    run.trim = True
+                    _tie_off(prev, small_letters)
+                    _tie_in(run, small_letters)
+                    cut += 1
+            prev = run
+    return sewn, cut
 
 
 def tie_run(at: tuple[float, float], toward: tuple[float, float], kind: str = TIE,
