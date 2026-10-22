@@ -63,10 +63,10 @@ GARMENTS = {"hat": "hat_front", "polo": "left_chest"}
 ARMS = (("preset", {"fill_underlay_cross": False}),
         ("cross", {"fill_underlay_cross": True}))
 
-PLATE_W_MM, PLATE_H_MM, PPM = 39.0, 20.0, 20
+PLATE_W_MM, PLATE_H_MM, PPM = 41.0, 20.0, 20
 FIELD = (1.0, 1.0, 27.0, 19.0)       # x0, y0, x1, y1 mm: 26 x 18
 FIELD_RADIUS_MM = 4.0                # the top-right corner
-DISC_CENTRE_MM = (33.0, 10.0)
+DISC_CENTRE_MM = (35.0, 10.0)
 DISC_RADIUS_MM = 5.0                 # 10 mm across
 
 

@@ -12,8 +12,8 @@ hoop**, trims on.
 
 | File | Sew it on | Size | Stitches |
 |---|---|---|---|
-| `card_cross_underlay_hat_40wt.dst` | a cap front (or twill with your cap backing) | 85.6 x 21.8 mm | 5,324 |
-| `card_cross_underlay_polo_40wt.dst` | a polo (pique) with cutaway; stands for the beanie too | 85.2 x 21.6 mm | 5,109 |
+| `card_cross_underlay_hat_40wt.dst` | a cap front (or twill with your cap backing) | 89.6 x 21.8 mm | 5,301 |
+| `card_cross_underlay_polo_40wt.dst` | a polo (pique) with cutaway; stands for the beanie too | 89.2 x 21.6 mm | 5,078 |
 
 ## How to read it
 
@@ -31,10 +31,10 @@ the hoop comes off.
 
 | File | Teeth | Arm | Stitches | Underlay thread | % of the fill's |
 |---|---|---|---|---|---|
-| hat | 1 | preset | 2,643 | 419.6 mm | 9.5% |
-| hat | 2 | cross | 2,669 | 576.4 mm | 13.0% |
-| polo | 1 | preset | 2,463 | 118.8 mm | 2.7% |
-| polo | 2 | cross | 2,634 | 561.7 mm | 12.9% |
+| hat | 1 | preset | 2,631 | 418.4 mm | 9.5% |
+| hat | 2 | cross | 2,658 | 572.5 mm | 13.0% |
+| polo | 1 | preset | 2,448 | 119.2 mm | 2.8% |
+| polo | 2 | cross | 2,618 | 559.2 mm | 12.9% |
 
 ![hat](card_cross_underlay_hat_40wt.png)
 ![polo](card_cross_underlay_polo_40wt.png)

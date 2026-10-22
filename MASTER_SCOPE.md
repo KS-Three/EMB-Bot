@@ -383,8 +383,14 @@ about the facts.
    *(ruled 2026-10-20 — Kent; flipped 2026-10-20 — `src/digitize.js`, `test/satin-small-shapes.test.js`; built 2026-10-20 — PR #994)*
 27. **Underlay under fills.** `blend_fallback_underlay` flipped ON
    *(ruled 2026-10-07 — scope-history 10-07)*; `cross_tatami` is a picker
-   choice. The knit presets stay yours. **Not sewn.**
-   *(measured 2026-10-05 — [`docs/underlay-audit-2026-10-05.md`](docs/underlay-audit-2026-10-05.md))*
+   choice. **Since 2026-10-21 `fill_underlay_cross` (browser `crossUnderlay`)
+   puts it in the hat, left-chest and beanie presets — built OFF, your flip.**
+   Fremont hat at 92.6 mm: pass 2.0 → 1.0 mm rows, 4.9-7.6% → 8.9-10.6% of
+   the fill's thread (the pro 0.75 mm, 17.3%), −416 stitches, −15 trims. The
+   "bare" MFab hat / Becker beanie fills were satin the instrument misread
+   (`tools/pro_fill_underlay.py` known limits). Card:
+   `docs/sewout/card-cross-underlay-2026-10-21/`. **Not sewn.**
+   *(measured 2026-10-05 — [`docs/underlay-audit-2026-10-05.md`](docs/underlay-audit-2026-10-05.md); built 2026-10-21 — `tests/test_fill_underlay_cross.py`)*
 28. **`cutFloats` — ON for the manual and basic-shape lanes 2026-10-08, after 22**
    (manual #672, basic shapes #682); the image lane passes nothing. A float a DST machine reads as a
    cut gets a `trim`; no stitch moves. Manual, with `fillColumns`: 4,264 →
