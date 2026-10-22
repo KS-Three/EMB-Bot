@@ -796,6 +796,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
             cut_bridges=cfg.fill_bridge_cut,
             underlay_all_pieces=cfg.underlay_all_pieces,
             sewn_paths_only=cfg.fill_order_sewn_paths,
+            slant_turns=cfg.fill_turn_slant,
         )
         # Routed to blend, sewn flat. Stage 7 aggregates these across the
         # design so the warning the user reads can say decomposition did
@@ -1009,6 +1010,7 @@ def _emit_bands(region: Region, source_pixels: SourcePixels, cfg,
                 start_near=cur, under_cover=cfg.fill_travel_under_cover,
                 cut_bridges=cfg.fill_bridge_cut,
                 sewn_paths_only=cfg.fill_order_sewn_paths,
+                slant_turns=cfg.fill_turn_slant,
                 row_phase_mm=lattice_phase(part, part_row_mm, offset_rows),
                 keep_row=keep_row,
             )

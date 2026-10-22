@@ -31,9 +31,15 @@ TINY_STITCH_MM = 0.5
 
 # --- Fill ------------------------------------------------------------------
 
-# Run length along a tatami row. Measured across 19 professional files
-# (2026-07-30 corpus study, tools/study_pro.py): pro fills run 2.0-3.4 mm with
-# a median near 2.6; the old 4.0 sat outside the observed range entirely.
+# Run length along a tatami row. The 2026-07-30 corpus study's "2.0-3.4 mm,
+# median ~2.6" (law 7, tools/study_pro.py) that first set this is SUPERSEDED:
+# corpus law 20 (docs/corpus-laws-round3-2026-08-01.md) found that median was
+# short rows dragging the average down -- on rows >= 12 mm the corpus sews
+# p10 3.20 / median 3.49 / p90 4.00, a ~4.0 ceiling divided evenly per row.
+# Kent's pro reads the same: 3.45-3.52 on rows >= 10 mm in 10 of 11 jobs, a
+# FIXED length with staggered remainders (docs/settings-vs-pro-2026-10-21.md
+# row 11). Neither was ruled or built; 3.0 stays until a sew-out arm (gate 1)
+# says 3.5 sews better.
 FILL_STITCH_MM = 3.0
 # Row spacing = density. The two-pass-interleave hedge this comment used to
 # carry is REFUTED (docs/law19-fill-spacing-2026-08-02.md): our own fill and
@@ -95,6 +101,16 @@ BLEND_FEATHER_MM = 1.5
 # channels running through the fill — the single most recognisable mark of a
 # naive scanline fill.
 FILL_STAGGERS = 4
+
+# How far along the row the needle lands when a fill row turns into the next
+# one (`cfg.fill_turn_slant`, built OFF 2026-10-21). Stepping straight across
+# makes the turn one row spacing long, 0.10-0.22 mm at 0.15 rows; the pro's
+# turns, read from his own DSTs by `tools/fill_turns.py` (a short stitch
+# between two antiparallel row stitches), run p50 0.71-0.82 mm and p10 0.41
+# on Fremont, Becker, Drone and MFab, about 0.63-0.78 of it along the row.
+# Construction, not a fabric constant: the row spacing does not move and the
+# number came off a file, not a sew-out (ROADMAP gate 1 asks which kind).
+FILL_TURN_ALONG_MM = 0.7
 
 # Narrower than this cannot hold a tatami fill: the rows have nowhere to go and
 # the result is a lumpy running stitch. Satin's job — the classifier sends
@@ -827,7 +843,11 @@ SATIN_ZIGZAG_PITCH_MM = 1.45
 # --- Ties and trims --------------------------------------------------------
 
 TIE_STITCH_MM = 0.8   # one leg of a lock stitch
-TIE_STITCHES = 3      # three legs is the standard lock
+# Bounces out and back. `stitches.tie_run` closes the lock on its own anchor,
+# so a bounce tie SEWS four legs (out, back, out, back), not three -- the
+# pro's DSTs read 4 too (settings audit row 21). `stitches._walk` caps a
+# walked tie at this many legs.
+TIE_STITCHES = 3
 
 # A needle-up move longer than this is cut. Shorter ones are left as jumps:
 # trimming everything wears the trimmer and slows the machine, leaving long
