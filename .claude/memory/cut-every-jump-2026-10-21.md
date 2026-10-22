@@ -24,6 +24,9 @@ now shared as `_later_thread_burier`), and otherwise cuts it with
   blocks into travel and runs first; this one handles UNCUT jumps in every
   block and runs last. Disjoint hops, same cover rule.
 
+**Kent 2026-10-21: sew-out arm first** — Fremont hat OFF beside ON on the
+next card; stays OFF until then.
+
 **Why:** a session told "the pro cuts every jump" would flip this and
 2x Fremont's trims. **How to apply:** the flip is Kent's after a sew-out
 (gate 1: trimmer wear and tie knots against floats). Related:
