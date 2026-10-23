@@ -285,6 +285,18 @@ def _min_dim_mm(poly) -> float:
                        else poly.boundary.distance(centre))
 
 
+def _text_lean_house(region, cfg: PipelineConfig) -> float | None:
+    """`cfg.lettering_columns_text_lean` (2026-10-23): the house cross a
+    Column letter's straight columns lean to -- the word's
+    `satin_angle_deg` (the house pass, `set_lettering_house_angle`), else
+    the design's `cfg.satin_angle_deg`; None where neither names one, and
+    the lane stations square to each piece as before."""
+    angle = (region.meta or {}).get("satin_angle_deg")
+    if angle is None:
+        angle = cfg.satin_angle_deg
+    return None if angle is None else float(angle)
+
+
 def _border_by_size_width(region, cfg: PipelineConfig) -> float | None:
     """`cfg.border_by_size` (2026-10-23): the pro's border width for this
     shape, or None when the rule does not read it. -> width in mm.
@@ -3039,6 +3051,12 @@ def sequence(
                 _cored = [] if cfg.small_print_floor else cored_holes_of(_letter)
                 if _cored:
                     _clear = profile_for(p).width_mm / 2.0
+                # `cfg.lettering_columns_text_lean` (default OFF, 2026-10-23):
+                # the word's house cross on every straight column it can
+                # span (`column_lean`); off, or no house angle, None and the
+                # call below is today's, argument for argument
+                _lean = (_text_lean_house(p.region, cfg)
+                         if cfg.lettering_columns_text_lean else None)
                 runs, report = lettering_columns_shape(
                     _letter, p.shape_id, trim_at_mm=trim_at,
                     spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
@@ -3069,6 +3087,12 @@ def sequence(
                     # `cfg.satin_underlay_short_columns` (2026-10-22):
                     # the lane's centre walk under any span that holds a stitch
                     **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),
+                    # `cfg.lettering_columns_text_lean` (default OFF, 2026-10-23): the
+                    # word's house cross (`satin_angle_deg`, the house pass; else
+                    # the design's `satin_angle_deg`) on every straight column it
+                    # can span -- the pro's diagonals; off, or no house, the call
+                    # is today's, argument for argument
+                    **({"text_lean_deg": _lean} if _lean is not None else {}),
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
                        if cfg.lettering_columns_inside_connectors else {}))

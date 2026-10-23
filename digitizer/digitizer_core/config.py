@@ -1528,6 +1528,29 @@ class PipelineConfig:
     # engine is the 08-15 verdict's. Quality review 2026-09-08 item 9; plan
     # and census `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md`.
     enclosed_by_garment: bool = True
+    # A TRANSPARENT hole (alpha path) that the vectorizer has cut into
+    # several colour regions. `tag_enclosed_background` asks two ratios of
+    # one region against one connected component of stage 1's enclosed
+    # mask: the region is mostly the component, AND the component is mostly
+    # the region. The second ratio is what keeps a region that merely
+    # swallows a small enclosed sliver from being hidden — right for a hole
+    # found by COLOUR. On the alpha path the hole's pixels carry no colour
+    # of their own (`enclosed_colour_unknown`); `alpha_edge_extend` paints
+    # them with the nearest opaque colour, so a counter inside a two-tone
+    # letter is painted in two tones and vectorizes as two regions, each
+    # under the 0.6 share of its hole, and BOTH fail open and sew in the
+    # letter's thread. Measured 2026-10-23 on Precision Drone at the pro's
+    # 62.6 mm (`docs/lettering-5-10mm-2026-10-23.md`): PRECISION's O (6.3 mm
+    # cap) carries its 4.1 x 3.4 mm counter in its polygon, two regions of
+    # 7.1 and 4.9 mm² sit in it, neither tagged, and the O sews as a solid
+    # blob; the P and R counters (one region each) are tagged and stay open.
+    # ON, a region on the alpha path is tagged when IT is mostly inside one
+    # transparent component (the first ratio alone): nothing with a colour
+    # of its own can sit under alpha < 128, so the second ratio protects
+    # nothing there. The no-alpha path keeps both ratios. Layout, not a
+    # fabric number (ruling 2026-10-22: judged in the preview). OFF is the
+    # engine as it was, byte for byte.
+    enclosed_alpha_hole_parts: bool = False
     # Sew the white inside the design (`enclosed_white.py`, built OFF
     # 2026-10-21): the CUSTOMER's option, never a default, because it changes
     # the design. The pro does it on 5 of 11 jobs (rule R11,
@@ -2675,6 +2698,31 @@ class PipelineConfig:
     # arm (PR #1047) with the four `small_text_cap_*` values below, and Kent
     # flipped that arm as rendered; False is the off arm.
     lettering_columns_small_bold: bool = True
+    # Crosses square to the LINE OF TEXT in the Column lane (2026-10-23,
+    # `digitizer_core/column_lean.py`; `docs/lettering-10mm-up-2026-10-23.md`).
+    # The 10 mm and up band read against the pro's files: on Becker's
+    # MARINE (12.8-17.1 mm caps, four garments) he sews every stroke with
+    # the STEMS' cross -- square to the line of text -- diagonals included,
+    # so the N's diagonal, the A's legs and the M's V carry the same sheen as
+    # the stems and his junctions are plain overlaps. The lane stations each
+    # straight piece square to its own axis (`outline_cut.scan_stations`),
+    # so our diagonals read as another sheen and the M's V, where two leaned
+    # pieces meet two upright ones, sews as a tangle (crops in the doc).
+    # Kent's adopted convention (2026-09-03, `stitch-angle-convention`):
+    # stems square to the line of text, a 30 degree lean cap, spacing over
+    # cos of the lean -- the satin tier's `_clamp_to_span`, which the lane
+    # displaced for lettering on 2026-10-12 without carrying. ON, every
+    # straight column of a Column letter whose axis the word's house cross
+    # (`satin_angle_deg`, the house pass; else the design's) can span within
+    # the cap is re-stationed with its crosses along the clamped house, one
+    # every spacing / cos(lean) along the axis so the distance between
+    # crosses stays the satin spacing; a column the house already crosses
+    # square, a curved or ring column, and a letter with no house angle keep
+    # their stations byte for byte. Layout, not a cloth number (judged in
+    # the preview, Kent 2026-10-22); the flip is his, on the before | after
+    # | pro renders. OFF is the lane as it was, station for station. Tests:
+    # `tests/test_column_text_lean.py`.
+    lettering_columns_text_lean: bool = False
     # Under `lettering_columns`, each satin column's pull compensation is a
     # function of ITS OWN drawn stroke width, the way the professional's
     # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the
