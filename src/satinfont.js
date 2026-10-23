@@ -156,8 +156,16 @@
   }
 
   // Which rung of the ladder a given final-sewn cap height lands on.
-  function underlayModeForCapMm(capMm) {
-    if (!(capMm > 0) || capMm < UNDERLAY_CAP_MIN_MM) return null;
+  // `shortColumns` (opts.underlayShortColumns, built OFF 2026-10-22, the
+  // Python digitizer's `satin_underlay_short_columns`): the rung under
+  // UNDERLAY_CAP_MIN_MM becomes a centre run instead of nothing. Kent's
+  // pro runs a centre walk under 83-97% of his satin columns at every
+  // width, small letters included (docs/settings-vs-pro-2026-10-21.md row
+  // 5b); underlay is a physical constant (ROADMAP gate 1), so this waits
+  // on a sew-out and his flip. A cap of 0 or less stays null either way.
+  function underlayModeForCapMm(capMm, shortColumns) {
+    if (!(capMm > 0)) return null;
+    if (capMm < UNDERLAY_CAP_MIN_MM) return shortColumns === true ? "center" : null;
     return capMm > UNDERLAY_CAP_EDGE_MM ? "edge" : "center";
   }
 
@@ -824,7 +832,7 @@
     const forced = o.underlay === "none" || o.underlay === "center" || o.underlay === "edge" ? o.underlay : null;
     const underlayMode = o.underlay === false ? null
       : forced ? (forced === "none" ? null : forced)
-      : underlayModeForCapMm(capFinalMm);
+      : underlayModeForCapMm(capFinalMm, o.underlayShortColumns === true);
     const underlayOpts = underlayMode ? {
       underlay: underlayMode,
       underlayStepMm: UNDERLAY_STEP_MM / fitScale,
