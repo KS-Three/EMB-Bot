@@ -1225,6 +1225,15 @@ def regularize_text_clusters(regions: list[Region], p: Prep, *,
             r.meta["text_cluster_regularize_skip_reason"] = "has_interior_hole"
             continue
 
+        # A letter RE-SET by `small_text` (`cfg.small_text_cap_letter_gap_mm`)
+        # is already drawn at its target stroke and spaced against its
+        # neighbours; a skeleton redraw at the grown cluster radius widened
+        # Fremont's hole-free L 0.37 mm a side, into the P beside it.
+        if r.meta.get("small_text_reset"):
+            r.meta["text_cluster_regularize_skipped"] = True
+            r.meta["text_cluster_regularize_skip_reason"] = "small_text_reset"
+            continue
+
         radius_mm = r.meta.get("text_cluster_stroke_mm")
         widened_mm = 0.0
         if radius_mm and floor_radius_mm > radius_mm:

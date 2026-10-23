@@ -1,0 +1,224 @@
+{
+ "cards": {
+  "hat": {
+   "file": "card_cross_underlay_hat_40wt.dst",
+   "bytes": 16565,
+   "wt": 40,
+   "blocks": 2,
+   "stitches_file": 5301,
+   "stitches_plan": 5301,
+   "colour_changes_file": 0,
+   "colour_changes_plan": 0,
+   "colours": 1,
+   "extent_mm": [
+    89.6,
+    21.8
+   ],
+   "within_hoop": true,
+   "x_range_mm": [
+    -44.8,
+    44.8
+   ],
+   "y_range_mm": [
+    -10.9,
+    10.9
+   ],
+   "max_needle_stitch_mm": 4.02,
+   "max_record_axis_mm": 11.7,
+   "stops": [
+    {
+     "stop": 1,
+     "thread": "dark",
+     "stitches": 5301,
+     "thread_m": 10.64
+    }
+   ],
+   "stitches_by_piece": {
+    "U:cross": 2650,
+    "U:preset": 2623,
+    "U:strips": 28
+   },
+   "under_1mm_by_piece": {
+    "U:cross": 747,
+    "U:preset": 747
+   },
+   "lock_legs_0p8": 42,
+   "trims": 7,
+   "blocks_mm": {
+    "U1": [
+     -44.8,
+     -8.9,
+     -3.0,
+     10.9
+    ],
+    "U2": [
+     3.0,
+     -8.9,
+     44.8,
+     10.9
+    ]
+   },
+   "pieces_mm": {
+    "U:cross": [
+     3.0,
+     -8.9,
+     44.8,
+     10.9
+    ],
+    "U:preset": [
+     -44.8,
+     -8.9,
+     -3.0,
+     10.9
+    ]
+   },
+   "garment_id": "hat_front",
+   "pieces": [
+    {
+     "card": "hat",
+     "arm": "preset",
+     "teeth": 1,
+     "overrides": {
+      "fill_underlay_cross": false
+     },
+     "stitches": 2631,
+     "underlay_mm": 418.4,
+     "fill_mm": 4410.8,
+     "underlay_share_pct": 9.5,
+     "underlay_median_stitch_mm": 2.46,
+     "width_mm": 41.78,
+     "height_mm": 19.75
+    },
+    {
+     "card": "hat",
+     "arm": "cross",
+     "teeth": 2,
+     "overrides": {
+      "fill_underlay_cross": true
+     },
+     "stitches": 2658,
+     "underlay_mm": 572.5,
+     "fill_mm": 4410.8,
+     "underlay_share_pct": 13.0,
+     "underlay_median_stitch_mm": 2.39,
+     "width_mm": 41.78,
+     "height_mm": 19.75
+    }
+   ],
+   "arm_md5": {
+    "U:cross": "904aaf102567cb7c42b2f486db19178f",
+    "U:preset": "9ce0a6a9729b2ddb00668ed71a845002"
+   }
+  },
+  "polo": {
+   "file": "card_cross_underlay_polo_40wt.dst",
+   "bytes": 15890,
+   "wt": 40,
+   "blocks": 2,
+   "stitches_file": 5078,
+   "stitches_plan": 5078,
+   "colour_changes_file": 0,
+   "colour_changes_plan": 0,
+   "colours": 1,
+   "extent_mm": [
+    89.2,
+    21.6
+   ],
+   "within_hoop": true,
+   "x_range_mm": [
+    -44.6,
+    44.6
+   ],
+   "y_range_mm": [
+    -10.8,
+    10.8
+   ],
+   "max_needle_stitch_mm": 4.02,
+   "max_record_axis_mm": 11.7,
+   "stops": [
+    {
+     "stop": 1,
+     "thread": "dark",
+     "stitches": 5078,
+     "thread_m": 10.15
+    }
+   ],
+   "stitches_by_piece": {
+    "U:cross": 2610,
+    "U:preset": 2440,
+    "U:strips": 28
+   },
+   "under_1mm_by_piece": {
+    "U:cross": 738,
+    "U:preset": 739
+   },
+   "lock_legs_0p8": 42,
+   "trims": 7,
+   "blocks_mm": {
+    "U1": [
+     -44.6,
+     -8.8,
+     -3.0,
+     10.8
+    ],
+    "U2": [
+     3.0,
+     -8.8,
+     44.6,
+     10.8
+    ]
+   },
+   "pieces_mm": {
+    "U:cross": [
+     3.0,
+     -8.8,
+     44.6,
+     10.8
+    ],
+    "U:preset": [
+     -44.6,
+     -8.8,
+     -3.0,
+     10.8
+    ]
+   },
+   "garment_id": "left_chest",
+   "pieces": [
+    {
+     "card": "polo",
+     "arm": "preset",
+     "teeth": 1,
+     "overrides": {
+      "fill_underlay_cross": false
+     },
+     "stitches": 2448,
+     "underlay_mm": 119.2,
+     "fill_mm": 4322.0,
+     "underlay_share_pct": 2.8,
+     "underlay_median_stitch_mm": 2.44,
+     "width_mm": 41.58,
+     "height_mm": 19.55
+    },
+    {
+     "card": "polo",
+     "arm": "cross",
+     "teeth": 2,
+     "overrides": {
+      "fill_underlay_cross": true
+     },
+     "stitches": 2618,
+     "underlay_mm": 559.2,
+     "fill_mm": 4326.7,
+     "underlay_share_pct": 12.9,
+     "underlay_median_stitch_mm": 2.36,
+     "width_mm": 41.58,
+     "height_mm": 19.55
+    }
+   ],
+   "arm_md5": {
+    "U:cross": "beeaec76c7f7e3b5c0b9090c72e3674a",
+    "U:preset": "ab9692e018f42289a22489df199049d4"
+   }
+  }
+ }
+}

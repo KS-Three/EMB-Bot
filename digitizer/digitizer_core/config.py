@@ -2763,6 +2763,32 @@ class PipelineConfig:
     # unsewn (2026-10-21, isolated lane on the grown tagline). A CANDIDATE
     # (gate 1): 0.85 is the pro's on one file.
     small_text_cap_min_stroke_mm: float | None = None
+    # With `small_text_cap_mm`: RE-SET each grown word the way the
+    # professional sets raised small text (2026-10-21, built OFF;
+    # `small_text._place_line_reset`). Read across his jobs
+    # (`docs/pro-digitizer-rules-2026-10-21.md`, R4): letters grown to the
+    # cap, the gaps between them closed to 0.15-0.35 mm of visible fabric,
+    # each letter widened into what that frees, the line as wide as there is
+    # room for (Drone's AND DRONE 1.01x the art, boxed by its dashes;
+    # Fremont's date 1.42-1.54x). Condensed growth
+    # (`small_text_cap_max_width_scale`, not read when this is set) kept the
+    # art's gaps and widened every stroke into them: at 92.5 mm Hat with the
+    # Column lane's `lettering_columns_small_bold`, Fremont's EAT, STAY,
+    # PLAY and 1895 sewed letter into letter (visible gap 0), and Drone's
+    # line, 5% wider, hit its dashes and was left at 2.2 mm. This is the
+    # visible gap asked for between letters of one word, mm. None: today,
+    # byte for byte. A CANDIDATE (gate 1): 0.25 is the middle of the pro's
+    # 0.15-0.35, unsewn here.
+    small_text_cap_letter_gap_mm: float | None = None
+    # With `small_text_cap_letter_gap_mm`: the stroke a re-set letter is
+    # widened to grows with its HEIGHT -- this times the art's stroke times
+    # the height scale, or `small_text_cap_min_stroke_mm` when more. The
+    # pro's sewn column against the art's stroke at his scale is 1.45x on
+    # Fremont (0.90 mm), 1.36x on Drone (1.26), 1.60x on Proseal (1.26), so
+    # one fixed mm floor cannot match the three: 0.85 sews Drone 0.4 mm thin.
+    # None: the floor alone. A CANDIDATE (gate 1): 1.45, the pro's on
+    # Fremont, unsewn here.
+    small_text_cap_bold_scale: float | None = None
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
@@ -3069,6 +3095,18 @@ class PipelineConfig:
     # NOT `match_shape_ids`, which has no production caller).
     underlay_style: str | None = None
     underlay: bool = True
+    # The pro's fill underlay in the hat / left-chest / beanie presets (built
+    # OFF 2026-10-21): ON, `structured_cap`, `pique_knit` and `jersey_tee`
+    # sew `cross_tatami` (one crossing pass, `machine.UNDERLAY_CROSS_ROW_MM`
+    # rows, `UNDERLAY_CROSS_STITCH_MM` stitches) under a fill in place of
+    # their `edge_zigzag` / `edge_run`. Every dense fill on every job in the
+    # pro's zip has that pass (`docs/settings-vs-pro-2026-10-21.md` rows
+    # 13-15). Only the preset FALLBACK moves: `underlay_style` above, the
+    # per-shape override and the photo-class default still win as before.
+    # A fabric preset is gate 1 (a physical constant), so this waits on the
+    # sew-out card's arm and Kent's flip. OFF is the engine byte for byte.
+    # Browser twin: `crossUnderlay` (src/digitize.js).
+    fill_underlay_cross: bool = False
 
     # Which fill technique a fill-classified shape sews with.
     #
@@ -4984,6 +5022,21 @@ class PipelineConfig:
     # flip is Kent's, after the sew-out says buried travel does not show.
     # Off, byte-identical. Tests: `tests/test_trim_bury_under_later.py`.
     trim_bury_under_later: bool = False
+    # `cut_every_jump` (BUILT OFF 2026-10-21, `docs/settings-vs-pro-2026-10-21.md`
+    # row 25): no needle-up move is left uncut. Ours leaves 0-168 uncut
+    # jumps of 0.5-3.0 mm per job (every hop under `trim_at_mm`), each a
+    # float snipped by hand; the pro's 28 DSTs leave none. Each such jump is
+    # sewn needle-down where thread sewn LATER hides all of it -- the cover
+    # rule `trim_bury_under_later` uses, shared code -- and cut, locked both
+    # sides, everywhere else (`stage7_sequence._cut_or_bury_jumps`). Bury
+    # first because the pro's short cuts almost never lie under later
+    # thread (1 of 59 at <= 3 mm). Composes with `trim_bury_under_later`:
+    # that pass handles CUT hops inside art blocks and runs first; this one
+    # handles UNCUT jumps in every block and runs last, so the two touch
+    # disjoint hops. ROADMAP gate 1 (trimmer wear and tie knots against
+    # floats, and whether buried travel shows): Kent's flip, after a
+    # sew-out. Off, byte-identical. Tests: `tests/test_cut_every_jump.py`.
+    cut_every_jump: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()

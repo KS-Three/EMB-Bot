@@ -75,7 +75,7 @@ from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .config import is_photographic
-from .stage7_sequence import (PHOTO_CLASSES, borders_last_layers,
+from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
                               depth_sort_layers, sequence)
 from .stitches import StitchPlan
 from .threads import chart_for, rgb_to_lab
@@ -954,7 +954,9 @@ def build_generation(
         from .small_text import enlarge_small_text
         enlarge_small_text(regions, p, cap_mm=cfg.small_text_cap_mm,
                            max_width_scale=cfg.small_text_cap_max_width_scale,
-                           min_stroke_mm=cfg.small_text_cap_min_stroke_mm)
+                           min_stroke_mm=cfg.small_text_cap_min_stroke_mm,
+                           letter_gap_mm=cfg.small_text_cap_letter_gap_mm,
+                           bold_scale=cfg.small_text_cap_bold_scale)
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
@@ -1886,6 +1888,11 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             knockdown.satin_shape_ids(blocks))
         if kd is not None:
             blocks = knockdown.prepend(blocks, kd)
+            # `cfg.cut_every_jump` (built OFF): stage 7 already left its own
+            # blocks with no uncut jump; this reaches the knockdown's, with
+            # the whole design now sewn after it.
+            if cfg.cut_every_jump:
+                _cut_or_bury_jumps(blocks)
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a

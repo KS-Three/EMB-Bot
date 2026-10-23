@@ -11,6 +11,7 @@
   const units = _node ? dep("./units.js") : root.EMB;
   const garments = _node ? dep("./garments.js") : root.EMB;
   const fillmod = _node ? dep("./fill.js") : root.EMB;
+  const fabricsmod = _node ? dep("./fabrics.js") : root.EMB;
   const satinmod = _node ? dep("./satin.js") : root.EMB;
   const satinfontmod = _node ? dep("./satinfont.js") : root.EMB;
   // Rail-native satin (satinFromRails, centerRun). `satinmod` is satin.js and
@@ -83,6 +84,11 @@
   // `stitches.SPLIT_TOLERANCE_MM`, a micron. The wire test reads plain
   // decimals and cannot see this one; test/fill-stagger.test.js holds it.
   const SPLIT_TOLERANCE_MM = 1e-6;
+  // How far ALONG the row a fill's turn runs with `fillTurnSlant` --
+  // `machine.FILL_TURN_ALONG_MM`, the pro's p50 (0.71-0.83 over six of his
+  // DSTs) read off his files, not off cloth: construction, not a fabric
+  // constant (ROADMAP gate 1 asks which kind). The wire test holds the pair.
+  const FILL_TURN_ALONG_MM = 0.7;
 
   // A lock stitch at `at`, laid along the path toward `toward` — the exact
   // shape of `stitches.tie_run`, including the two rules its docstring earns:
@@ -852,7 +858,7 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles, cutFloats, satinSmallShapes }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, fillTurnSlant, dedupeHoles, cutFloats, satinSmallShapes, crossUnderlay }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
   // satinfont.js's constant block — and `satinZigzag`, ON by default since 2026-10-13:
@@ -1064,6 +1070,16 @@
     // not stagger them either (`_underlay_paths`, staggers=1). Off, nothing
     // reads it and every stitch is unchanged.
     const staggerOpts = o.fillStagger !== false ? { stagger: FILL_STAGGERS, minStitch: MIN_STITCH_MM * pxPerFinalMm, splitTol: SPLIT_TOLERANCE_MM * pxPerFinalMm } : null;
+    // `fillTurnSlant` (built OFF 2026-10-22; the JS twin of the Python engine's
+    // `cfg.fill_turn_slant`, PR #1036, which Kent holds OFF until a sew-out):
+    // at the end of each row of a shape's COVER fill the turn to the next row
+    // runs `FILL_TURN_ALONG_MM` along the row instead of stepping straight
+    // across one row spacing, the needle beside its own hole (fill.js, "THE
+    // SLANTED TURN"). The underlay passes are left as they are, as in Python
+    // (every fill technique's pass, never the underlay). `minStitch` is the
+    // floor a pulled row keeps; without the stagger nothing else reads it.
+    // Off, nothing reads it and every stitch is unchanged.
+    const slantOpts = o.fillTurnSlant ? { turnAlong: FILL_TURN_ALONG_MM * pxPerFinalMm, minStitch: MIN_STITCH_MM * pxPerFinalMm } : null;
     // `dedupeHoles` (built off; ON by default since 2026-10-20, Kent, and
     // `dedupeHoles: false` is the off arm): no run lays a stitch straight after a
     // stitch on the same point.
@@ -1415,7 +1431,7 @@
           for (const q of poly) { if (q.x < bx0) bx0 = q.x; if (q.x > bx1) bx1 = q.x; if (q.y < by0) by0 = q.y; if (q.y > by1) by1 = q.y; }
           const wMm = (bx1 - bx0) * mmPerPxFinal, hMm = (by1 - by0) * mmPerPxFinal;
           const largeFill = wMm > centerOutMinMm && hMm > centerOutMinMm;
-          return (plan = { fillRings, largeFill, opts: Object.assign({ rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill, columns: fillColumns, openTol: rowPx }, staggerOpts) });
+          return (plan = { fillRings, largeFill, opts: Object.assign({ rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill, columns: fillColumns, openTol: rowPx }, staggerOpts, slantOpts) });
         };
         // With `fillColumns`, on a FILL shape: would a float from a to b be
         // left uncut? Asked while the underlay is still being ordered, so it
@@ -1467,7 +1483,11 @@
           if (fabric) {
             // Fabric mode: named underlay style per shape type.
             try {
-              const style = thin ? (fabric.satinUnderlay || "center_run") : (fabric.fillUnderlay || "edge_lattice");
+              // `crossUnderlay` (built OFF 2026-10-21; twin of the
+              // digitizer's `cfg.fill_underlay_cross`): the hat / left-chest
+              // / beanie presets sew the pro's crossing pass under a fill.
+              const fillStyle = o.crossUnderlay ? fabricsmod.fillUnderlayFor(fabric, true) : fabric.fillUnderlay;
+              const style = thin ? (fabric.satinUnderlay || "center_run") : (fillStyle || "edge_lattice");
               const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin, openTol: rowPx, ground: cover, clear: clearFloat, to: fillStart }, underlayCtxBase);
               // A column's centre run follows its RAILS (spec §6, "Amended
               // 2026-10-01", correction 2): underlayRuns' center_run is a
