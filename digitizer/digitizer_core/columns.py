@@ -1977,6 +1977,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             rail_axis: bool = False,
                             small_bold: bool = False,
                             pull_by_stroke: bool = False,
+                            text_lean_deg: float | None = None,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -2000,7 +2001,13 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     (merge, tuck, link buffers) read the same way off the letter's mean
     stroke; neither ever above `pull_mm`, nor, under `small_bold`, above its
     share of the stroke. Read at digitize time on the drawn stroke, so a
-    resize keeps its pull (ruling 12, `column-width-on-resize-2026-10-01`)."""
+    resize keeps its pull (ruling 12, `column-width-on-resize-2026-10-01`).
+    `text_lean_deg` (`cfg.lettering_columns_text_lean`, 2026-10-23): the
+    word's house cross angle (degrees, `satin_angle_deg`); given, every
+    straight column the house can span within the lean cap is re-stationed
+    with its crosses along the house (`column_lean.lean_columns`), the way
+    the pro sews a diagonal with the stems' cross. None is the lane as it
+    was, station for station."""
     from .outline_cut import letter_columns, stroke_width
 
     if small_bold:
@@ -2046,15 +2053,24 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         from .outline_cut import sewn_knots
 
         def judge(cols, cpoly):
-            return sewn_knots(column_runs(cols, recorded(cpoly), shape_id, **run_kw)[0])
+            return sewn_knots(column_runs(leaned(cols), recorded(cpoly), shape_id, **run_kw)[0])
         lc_kw["judge"] = judge
+
+    def leaned(cols):
+        # `text_lean_deg`: the convention's crosses on every straight column
+        # the house can span; None hands the cut's columns back untouched
+        if text_lean_deg is None:
+            return cols
+        from .column_lean import lean_columns
+        return lean_columns(cols, text_lean_deg, spacing_mm)
+
     def sew(plain: bool = False, **extra):
         lk, rk = lc_kw, run_kw
         if plain:           # the lane's own construction, small_bold's pull kept
             lk = {k: v for k, v in lc_kw.items() if k != "small_bold"}
             rk = {k: v for k, v in run_kw.items() if k != "thin_floor"}
         cut = letter_columns(poly, pitch_mm=spacing_mm, **lk, **extra)
-        runs, report = column_runs(cut.columns, recorded(cut.poly), shape_id, **rk)
+        runs, report = column_runs(leaned(cut.columns), recorded(cut.poly), shape_id, **rk)
         report["cuts"] = len(cut.cuts)
         report["columns_unsewn"] += len(cut.unsewn)
         return runs, report
