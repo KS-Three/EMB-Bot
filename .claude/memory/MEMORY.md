@@ -63,13 +63,13 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Border seam ownership](border-seam-ownership-2026-09-09.md) — Kent RULED the colour sewn ON TOP owns a shared seam; the shape beneath skips it as open arcs
 - [The border on the canvas](canvas-border-menu-2026-09-09.md) — Right-click Add/Remove border on the canvas over the per-shape `border` override; satin tier never borders
 - [Wide columns in the lettering engine](wide-columns-lettering-2026-09-11.md) — 80 of 85 fonts broke a DST record; Kent RULED `splitSatin` ON, `wideColumnFill` off — 9 cross-stitch remain
-- [Stale diagnostics, two flips, and a bill that oscillates](stale-diagnostics-and-two-flips-2026-09-13.md) — A diagnostic on today's defaults goes stale once its fix ships — pin to `PRE_FLIP`; `keep_thin_strokes` ON
+- [Stale diagnostics, two flips, and a bill that oscillates](stale-diagnostics-and-two-flips-2026-09-13.md) — A diagnostic on today's defaults goes stale once its fix ships — pin to `PRE_FLIP`
 - [The index that stopped loading its newest entries](memory-index-overflow-2026-09-15.md) — 24,986-CHARACTER ceiling; past it the loader silently drops the NEWEST entries. Reclaim HOOKS, never entries
-- [Run-button commands need absolute paths](run-button-commands-need-absolute-paths.md) — Run buttons share ONE PowerShell whose cwd persists; `cd digitizer` works once — hand Kent an absolute cd
-- [The display revamp, and a fleet that outran its budget](display-revamp-and-a-fleet-that-outran-its-budget-2026-09-16.md) — `kind` is an OPEN set of eight; JEF/XXX/VP3 get jumps where DST gets stitches, NOT FIXED
-- [Tooling research, and a chaining gate already met](tooling-research-and-the-chaining-gate-2026-09-13.md) — No repo/MCP/plugin helps (don't re-search); vendors publish NO trim rule; card block 7 drafted, NOT built
+- [Run-button commands need absolute paths](run-button-commands-need-absolute-paths.md) — Run buttons share ONE PowerShell whose cwd persists; `cd digitizer` works once — give an absolute cd
+- [The display revamp, and a fleet that outran its budget](display-revamp-and-a-fleet-that-outran-its-budget-2026-09-16.md) — `kind` is an OPEN set of eight
+- [Tooling research, and a chaining gate already met](tooling-research-and-the-chaining-gate-2026-09-13.md) — No repo/MCP/plugin helps (don't re-search); vendors publish NO trim rule
 - [Photo edit tail 2026-09-17](photo-edit-tail-2026-09-17.md) — `fill_travel_under_cover` is ~58% of a photo edit tail; the reorder memo is exact ONLY while both stay pure
-- [A concurrent session designed the same tool](concurrent-session-designed-the-same-tool-2026-09-17.md) — three session collisions; check branches + live sessions FIRST; `claude stop` sticks, a bare kill respawns
+- [A concurrent session designed the same tool](concurrent-session-designed-the-same-tool-2026-09-17.md) — three session collisions; check branches + live sessions FIRST; `claude stop` sticks, a kill respawns
 - [Six pending flags, invisible at viewing size](six-flags-invisible-at-viewing-size-2026-09-18.md) — Kent: 29 of 34 pairs "no difference"; all six stay OFF, not the Ember-gap lever; 3 "both bad" logos lead
 - [Worktree session: the harness guard](worktree-session-harness-guard-2026-09-17.md) — `digitizer` spells `git`: quotes, `cd` chains refused; venv by 8.3 `CLAUDE~4`; preview_start reads MAIN
 - [The gap audit and the sourcing sweep](gap-audit-and-external-sourcing-2026-09-12.md) — 73 agents, 2 real defects the self-comparing suite missed; agents must RUN things; verify dies first
@@ -140,6 +140,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean EDGE CAP round a 2-4 mm hex the classifier sent to fill (aspect); pro sews one satin blob; `compact_solids_satin` OFF
 - [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out; only pull/comp and density need fabric. Fine lettering is the priority
 - [Border census](border-census-2026-10-23.md) — small rings = edge cap + run tier; pro borders by SIZE (>= 4 mm)
-- [Border by size](border-by-size-2026-10-23.md) — `border_by_size` OFF: at 6 mm+ the separator is STROKE vs satin ceiling; letters are the real population (lettering lane's); plain fills a coin flip
+- [Border by size](border-by-size-2026-10-23.md) — `border_by_size` OFF: at 6 mm+ the separator is STROKE vs satin ceiling; letters are the real population; plain fills a coin flip
 - [Pull comp by stroke](pull-comp-by-stroke-2026-10-22.md) — pro's hat pull FALLS with width: +0.58 at 0.85 mm, +0.42 at 2.6, 0 at 4; `pull_comp_by_stroke` OFF; small text stays small_bold's
 - [Flip sheet: layout flags OFF | ON | pro](flip-sheet-2026-10-23.md) — `tools/flip_sheet_renders.py`; diff is a MULTISET (locks sit on stations); x-ray tiles
+- [Narrow columns like the pro](narrow-columns-2026-10-23.md) — small_bold: serifs absorbed into the stroke, chord-read junctions, no chamfer mitre; 74→55 columns; `column_harness.py`
