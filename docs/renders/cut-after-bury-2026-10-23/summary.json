@@ -1,0 +1,152 @@
+[
+ {
+  "slug": "hotel_fremont_hat",
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "width": "92.5",
+  "off": {
+   "trims": 51,
+   "uncut": 172,
+   "stitches": 18611,
+   "under_later": 12,
+   "on_work": 38,
+   "bare_letters": 0,
+   "bare_other": 1
+  },
+  "bury": {
+   "trims": 37,
+   "uncut": 172,
+   "stitches": 18572,
+   "under_later": 0,
+   "on_work": 37,
+   "bare_letters": 0,
+   "bare_other": 0
+  },
+  "cut": {
+   "trims": 187,
+   "uncut": 1,
+   "stitches": 19779,
+   "under_later": 2,
+   "on_work": 185,
+   "bare_letters": 0,
+   "bare_other": 0
+  },
+  "after": {
+   "trims": 44,
+   "uncut": 1,
+   "stitches": 18646,
+   "under_later": 1,
+   "on_work": 43,
+   "bare_letters": 0,
+   "bare_other": 0
+  },
+  "pro": {
+   "trims": 20,
+   "uncut": 1,
+   "stitches": 17067,
+   "under_later": 0,
+   "on_work": 20,
+   "bare_letters": 0,
+   "bare_other": 0
+  }
+ },
+ {
+  "slug": "becker_hat_small",
+  "pro_file": "beckers logo hat 2 A.DST",
+  "width": "76.5",
+  "off": {
+   "trims": 15,
+   "uncut": 2,
+   "stitches": 5928,
+   "under_later": 0,
+   "on_work": 2,
+   "bare_letters": 6,
+   "bare_other": 7
+  },
+  "bury": {
+   "trims": 15,
+   "uncut": 2,
+   "stitches": 5928,
+   "under_later": 0,
+   "on_work": 2,
+   "bare_letters": 6,
+   "bare_other": 7
+  },
+  "cut": {
+   "trims": 16,
+   "uncut": 1,
+   "stitches": 5936,
+   "under_later": 0,
+   "on_work": 2,
+   "bare_letters": 7,
+   "bare_other": 7
+  },
+  "after": {
+   "trims": 16,
+   "uncut": 1,
+   "stitches": 5936,
+   "under_later": 0,
+   "on_work": 2,
+   "bare_letters": 7,
+   "bare_other": 7
+  },
+  "pro": {
+   "trims": 10,
+   "uncut": 1,
+   "stitches": 8694,
+   "under_later": 1,
+   "on_work": 4,
+   "bare_letters": 5,
+   "bare_other": 0
+  }
+ },
+ {
+  "slug": "mfab_hat",
+  "pro_file": "mf4b logo hat.DST",
+  "width": "104.9",
+  "off": {
+   "trims": 65,
+   "uncut": 33,
+   "stitches": 13721,
+   "under_later": 5,
+   "on_work": 20,
+   "bare_letters": 0,
+   "bare_other": 40
+  },
+  "bury": {
+   "trims": 61,
+   "uncut": 33,
+   "stitches": 13697,
+   "under_later": 1,
+   "on_work": 20,
+   "bare_letters": 0,
+   "bare_other": 40
+  },
+  "cut": {
+   "trims": 92,
+   "uncut": 1,
+   "stitches": 13945,
+   "under_later": 1,
+   "on_work": 35,
+   "bare_letters": 0,
+   "bare_other": 56
+  },
+  "after": {
+   "trims": 87,
+   "uncut": 1,
+   "stitches": 13909,
+   "under_later": 1,
+   "on_work": 30,
+   "bare_letters": 0,
+   "bare_other": 56
+  },
+  "pro": {
+   "trims": 18,
+   "uncut": 1,
+   "stitches": 17568,
+   "under_later": 1,
+   "on_work": 17,
+   "bare_letters": 0,
+   "bare_other": 0
+  }
+ }
+]

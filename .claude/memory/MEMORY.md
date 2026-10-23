@@ -134,8 +134,9 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Pro rules across all jobs](pro-rules-across-jobs-2026-10-21.md) — small text raised to ~4 mm on every job that has it; beanie knockdown 5/5; white interiors sewn; count trims from DST, never PES
 - [Sew white areas](sew-white-areas-2026-10-21.md) — R11 built OFF as a Studio option; counter = untagged white in a text-cluster letter; Machine field doubles trims (stage 5)
 - [Beanie knockdown ON](beanie-knockdown-2026-10-21.md) — Kent flipped it unsewn: garment-coloured fill under design
-- [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
-- [Cut every jump](cut-every-jump-2026-10-21.md) — `cut_every_jump` OFF: uncut 285 -> 0 over 9 jobs, but trims 434 -> 674 (pro 246); bury first (pro: 1 of 59 short cuts under later)
+- [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43); bare gap is R11 white
+- [Cut every jump](cut-every-jump-2026-10-21.md) — `cut_every_jump` OFF: uncut 285 -> 0 over 9 jobs, trims 434 -> 674 (pro 246); bury first
+- [Cut after bury](cut-after-bury-2026-10-23.md) — Fremont's 150 extra cuts were letter hops ON the field; the pro walks those: bury, walk on work, cut bare. 187 -> 44 (pro 20)
 - [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` OFF (hat/LC/beanie); MFab/Becker "BARE" fills were SATIN the tool misread — list run kinds first
 - [Small text re-set](small-text-reset-2026-10-21.md) — OFF: columns were already the pro's, SPACING was wrong; later stages undid the layout five ways; 5/S bays still close
 - [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean EDGE CAP round a 2-4 mm hex the classifier sent to fill (aspect); pro sews one satin blob; `compact_solids_satin` OFF

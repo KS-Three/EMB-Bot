@@ -1,6 +1,9 @@
 """`cfg.cut_every_jump` (built OFF 2026-10-21): no needle-up move is left
 uncut. Each jump that would not cut is sewn needle-down where thread sewn
-LATER hides all of it, and cut, locked on both sides, everywhere else.
+LATER hides all of it, else WALKED needle-down where its whole thread lies
+on thread already sewn (2026-10-23: the pro's own habit on a field, his
+shortest cut on Fremont is 3.4 mm), and cut, locked on both sides, only
+where it would cross bare fabric.
 
 The pro's 28 DSTs leave no needle-up move uncut; ours left 0-168 jumps of
 0.5-3.0 mm per job (`docs/settings-vs-pro-2026-10-21.md` row 25). The
@@ -15,12 +18,15 @@ from dataclasses import replace
 
 import pytest
 
-from digitizer_core import PipelineConfig, stitches
+from digitizer_core import PipelineConfig, machine, stitches
 from digitizer_core import stage7_sequence
 from digitizer_core.stage7_sequence import _cut_or_bury_jumps
 from digitizer_core.stitches import StitchBlock, StitchRun
 
-from .test_trim_bury_under_later import _bar, _md5, _plan, _region, _travel_is_hidden
+from shapely.geometry import LineString
+
+from .test_trim_bury_under_later import (HALF, _bar, _md5, _plan, _region, _thread,
+                                         _travel_is_hidden)
 
 
 def _new_travel(off_blocks, on_blocks):
@@ -74,6 +80,25 @@ def _hop_hidden(seq, k, path, direct) -> bool:
         return _travel_is_hidden(seq, k - 1, path)
     finally:
         run.jump = False
+
+
+def _hop_on_thread(seq, k, path, direct) -> bool:
+    """A WALKED hop: its whole thread lies on thread sewn at any time, so
+    none of it lands on bare fabric. The sampling tolerance is
+    `_travel_is_hidden`'s. For a direct hop run k is read as still lifted,
+    so the hop's own stitch does not count as its cover."""
+    run = seq[k]
+    if direct:
+        run.jump = True
+    try:
+        body = LineString(path).buffer(HALF)
+        every = _thread(seq, range(len(seq)), body.buffer(machine.COVERAGE_THREAD_W_MM))
+        if every is None:
+            return False
+        return body.difference(every).buffer(-stage7_sequence._BURY_STEP_MM / 4.0).is_empty
+    finally:
+        if direct:
+            run.jump = False
 
 
 def _near_bars(bridge_layer=None, **kw):
@@ -174,32 +199,82 @@ def _block(thread, runs):
                        rgb=(thread, thread, thread), runs=runs)
 
 
-def test_a_jump_over_thread_already_sewn_is_cut():
-    """Rows over the gap sew FIRST, in another block: travel across them
-    would lie on finished work, so the jump is cut, not sewn."""
+def test_a_jump_over_thread_already_sewn_is_walked_not_cut():
+    """Rows over the gap sew FIRST, in another block: no later thread
+    buries the hop, but its whole thread lies on work, so it is walked
+    needle-down on top (the pro's letter-to-letter habit on a field)
+    rather than cut. 2 mm is one link stitch: the needle goes down at
+    b's start."""
     a, b = _hop()
     blocks = [_block(1, _rows(-1.0, 3.0, -1.5, 21)), _block(0, [a, b])]
-    assert _cut_or_bury_jumps(blocks) == (0, 1)
+    assert _cut_or_bury_jumps(blocks) == (0, 1, 0)
+    assert not b.trim and not b.jump and blocks[1].runs[1] is b
+    seq = [r for bl in blocks for r in bl.runs]
+    assert _hop_on_thread(seq, seq.index(b), [a.points[-1], b.points[0]], True)
+
+
+def test_a_jump_half_on_work_half_bare_is_cut():
+    """The rows cover only the first half of the hop: a walk would put
+    thread on bare fabric, so it is cut."""
+    a, b = _hop()
+    blocks = [_block(1, _rows(-1.0, 1.0, -1.5, 21)), _block(0, [a, b])]
+    assert _cut_or_bury_jumps(blocks) == (0, 0, 1)
     assert b.trim and b.jump
+
+
+def test_bury_is_tried_before_the_walk():
+    """Rows over the gap both before (another block) and after (this
+    block): the hop is BURIED under the later rows, counted as such, and
+    walked only when nothing later covers it."""
+    a, b = _hop()
+    blocks = [_block(1, _rows(-1.0, 3.0, -1.5, 21)),
+              _block(0, [a, b] + _rows(-1.0, 3.0, -1.5, 21))]
+    assert _cut_or_bury_jumps(blocks) == (1, 0, 0)
+
+
+def test_one_buriable_one_walkable_one_bare_jump():
+    """One block, three 2 mm hops: under rows sewn later (buried), on rows
+    sewn earlier in another block (walked), across nothing (cut). The
+    moves INTO each pair are long and already cut, so they are not this
+    pass's."""
+    def hop(y):
+        p = StitchRun(points=[(-1.0, y), (0.0, y)], kind=stitches.FILL, shape_id=f"A{y}",
+                      jump=True, trim=True)
+        q = StitchRun(points=[(2.0, y), (3.0, y)], kind=stitches.FILL, jump=True,
+                      shape_id=f"B{y}")
+        return p, q
+    a1, b1 = hop(0.0)      # buried: rows at y 0 sewn after it, same block
+    a2, b2 = hop(20.0)     # walked: rows at y 20 sewn before it, block 1
+    a3, b3 = hop(40.0)     # cut: nothing there
+    blocks = [_block(1, _rows(-1.0, 3.0, 18.5, 21)),
+              _block(0, [a1, b1] + _rows(-1.0, 3.0, -1.5, 21) + [a2, b2, a3, b3])]
+    assert _cut_or_bury_jumps(blocks) == (1, 1, 1)
+    assert not b1.jump and not b1.trim
+    assert not b2.jump and not b2.trim
+    assert b3.jump and b3.trim and _locked_head(b3)
+    seq = [r for bl in blocks for r in bl.runs]
+    assert _hop_hidden(seq, seq.index(b1), [a1.points[-1], b1.points[0]], True)
+    assert _hop_on_thread(seq, seq.index(b2), [a2.points[-1], b2.points[0]], True)
+    assert not _hop_hidden(seq, seq.index(b2), [a2.points[-1], b2.points[0]], True)
 
 
 def test_a_jump_under_rows_sewn_later_is_sewn_down():
     a, b = _hop()
     block = _block(0, [a, b] + _rows(-1.0, 3.0, -1.5, 21))
-    assert _cut_or_bury_jumps([block]) == (1, 0)
+    assert _cut_or_bury_jumps([block]) == (1, 0, 0)
     # 2 mm is one link stitch: the needle simply goes down at b's start
     assert not b.jump and not b.trim and block.runs[1] is b
 
 
 def test_a_jump_under_another_colour_sewn_later_is_sewn_down():
     a, b = _hop()
-    assert _cut_or_bury_jumps([_block(0, [a, b]), _block(1, _rows(-1.0, 3.0, -1.5, 21))]) == (1, 0)
+    assert _cut_or_bury_jumps([_block(0, [a, b]), _block(1, _rows(-1.0, 3.0, -1.5, 21))]) == (1, 0, 0)
 
 
 def test_a_bare_jump_is_cut_with_both_locks():
     a, b = _hop()
     n_a, n_b = len(a.points), len(b.points)
-    assert _cut_or_bury_jumps([_block(0, [a, b])]) == (0, 1)
+    assert _cut_or_bury_jumps([_block(0, [a, b])]) == (0, 0, 1)
     assert b.trim and len(a.points) > n_a and len(b.points) > n_b
     assert _locked_head(b)
 
@@ -220,7 +295,7 @@ def test_a_cut_already_there_is_left_alone():
     block = StitchBlock(thread_index=0, thread_number="1000", rgb=(0, 0, 0),
                         runs=[a, b] + rows)
     before = [list(r.points) for r in block.runs]
-    assert _cut_or_bury_jumps([block]) == (0, 0)
+    assert _cut_or_bury_jumps([block]) == (0, 0, 0)
     assert [list(r.points) for r in block.runs] == before and b.trim
 
 
@@ -229,19 +304,24 @@ def test_a_colour_change_is_never_touched():
                     runs=[StitchRun(points=[(0.0, 0.0), (1.0, 0.0)], kind=stitches.FILL)])
     first = StitchRun(points=[(2.0, 0.0), (3.0, 0.0)], kind=stitches.FILL, jump=True)
     b = StitchBlock(thread_index=1, thread_number="1001", rgb=(9, 9, 9), runs=[first])
-    assert _cut_or_bury_jumps([a, b]) == (0, 0)
+    assert _cut_or_bury_jumps([a, b]) == (0, 0, 0)
     assert not first.trim
 
 
-# --- the invariant: no buried travel shows -----------------------------------
+# --- the invariant: nothing this pass sews lands on bare fabric -------------
+# A buried hop lies under later thread; a walked hop lies on thread sewn at
+# any time. Neither puts a millimetre on bare cloth.
 
 @pytest.mark.parametrize("layer", [1, None, 0])
-def test_no_buried_travel_lies_outside_later_thread(layer):
+def test_no_sewn_hop_lies_on_bare_fabric(layer):
     off = _near_bars(bridge_layer=layer)
     on = _near_bars(bridge_layer=layer, cut_every_jump=True)
     seq, hops = _new_hops(off, on)
     for k, path, direct in hops:
-        assert _hop_hidden(seq, k, path, direct), f"hop at {k} shows"
+        assert _hop_hidden(seq, k, path, direct) or _hop_on_thread(seq, k, path, direct), \
+            f"hop at {k} shows on bare fabric"
+        if layer == 1:
+            assert _hop_hidden(seq, k, path, direct), f"hop at {k}: later cover, yet not buried"
 
 
 @pytest.fixture(scope="module")
@@ -272,7 +352,8 @@ def test_committed_artwork_leaves_no_uncut_jump_and_no_travel_shows(roofing_hat)
     seq, hops = _new_hops(off, on)
     assert hops, "nothing sewn down: the fixture no longer exercises the bury"
     for k, path, direct in hops:
-        assert _hop_hidden(seq, k, path, direct), f"roofing: hop {k} shows"
+        assert _hop_hidden(seq, k, path, direct) or _hop_on_thread(seq, k, path, direct), \
+            f"roofing: hop {k} shows on bare fabric"
 
 
 def test_composes_with_trim_bury_under_later(roofing_hat):
@@ -284,4 +365,5 @@ def test_composes_with_trim_bury_under_later(roofing_hat):
     assert trims(both) <= trims(on)
     seq, hops = _new_hops(roofing_hat["off"], both)
     for k, path, direct in hops:
-        assert _hop_hidden(seq, k, path, direct), f"both: hop {k} shows"
+        assert _hop_hidden(seq, k, path, direct) or _hop_on_thread(seq, k, path, direct), \
+            f"both: hop {k} shows on bare fabric"
