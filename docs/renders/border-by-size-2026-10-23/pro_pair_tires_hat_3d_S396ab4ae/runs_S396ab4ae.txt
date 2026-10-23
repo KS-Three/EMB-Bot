@@ -1,0 +1,81 @@
+S396ab4ae thread 0020 bbox (-36.15, -6.74, 57.09, 17.86) holes 2 cluster None ink_stroke None spines 0
+  blk0 0020 S396ab4ae underlay role=''             pts=145 jump=True trim=True x -35.55-56.40 y -5.88-17.24
+  blk0 0020 S396ab4ae travel   role=''             pts=167 jump=False trim=False x -35.95-56.83 y -5.68-17.66
+  blk0 0020 S396ab4ae underlay role=''             pts= 14 jump=False trim=False x 38.90-46.58 y 1.99-13.40
+  blk0 0020 S396ab4ae travel   role=''             pts= 61 jump=False trim=False x 14.98-37.52 y -3.84-13.74
+  blk0 0020 S396ab4ae underlay role=''             pts= 13 jump=False trim=False x 18.40-27.24 y -0.65-8.49
+  blk0 0020 S396ab4ae travel   role=''             pts=110 jump=False trim=False x -35.95-16.69 y -6.54-17.45
+  blk0 0020 S396ab4ae underlay role=''             pts= 24 jump=False trim=False x -35.09--18.42 y 9.46-17.19
+  blk0 0020 S396ab4ae travel   role=''             pts=  2 jump=False trim=False x -24.36--22.57 y 10.07-10.68
+  blk0 0020 S396ab4ae underlay role=''             pts= 21 jump=False trim=False x -24.48--16.19 y -0.55-11.29
+  blk0 0020 S396ab4ae travel   role=''             pts= 43 jump=False trim=False x -35.95--14.99 y -0.83-17.66
+  blk0 0020 S396ab4ae underlay role=''             pts= 41 jump=False trim=False x -17.97-0.80 y -2.71-16.92
+  blk0 0020 S396ab4ae travel   role=''             pts=  2 jump=False trim=False x 1.31-1.81 y -2.65--0.80
+  blk0 0020 S396ab4ae underlay role=''             pts=  2 jump=False trim=False x 0.67-2.31 y -6.14--4.50
+  blk0 0020 S396ab4ae travel   role=''             pts= 21 jump=False trim=False x 0.67-8.76 y -6.54-1.66
+  blk0 0020 S396ab4ae underlay role=''             pts=  3 jump=False trim=False x 6.09-8.33 y -0.72-1.51
+  blk0 0020 S396ab4ae travel   role=''             pts=  1 jump=False trim=False x 6.57-6.57 y 1.52-1.52
+  blk0 0020 S396ab4ae underlay role=''             pts=  7 jump=False trim=False x -1.62-7.04 y -4.90-3.76
+  blk0 0020 S396ab4ae travel   role=''             pts=  5 jump=False trim=False x -0.42-4.39 y -3.11-4.05
+  blk0 0020 S396ab4ae underlay role=''             pts= 11 jump=False trim=False x 0.68-5.59 y 3.66-10.40
+  blk0 0020 S396ab4ae travel   role=''             pts=  3 jump=False trim=False x 1.12-2.00 y 10.21-14.63
+  blk0 0020 S396ab4ae underlay role=''             pts= 11 jump=False trim=False x -0.47-6.37 y 10.51-17.24
+  blk0 0020 S396ab4ae travel   role=''             pts=  1 jump=False trim=False x 7.87-7.87 y 16.97-16.97
+  blk0 0020 S396ab4ae underlay role=''             pts= 25 jump=False trim=False x 6.98-24.02 y 8.26-17.20
+  blk0 0020 S396ab4ae travel   role=''             pts=  1 jump=False trim=False x 16.81-16.81 y 8.23-8.23
+  blk0 0020 S396ab4ae underlay role=''             pts= 19 jump=False trim=False x 15.80-24.19 y -2.20-8.21
+  blk0 0020 S396ab4ae travel   role=''             pts=  3 jump=False trim=False x 24.28-28.26 y -1.98--1.54
+  blk0 0020 S396ab4ae underlay role=''             pts=  8 jump=False trim=False x 24.79-30.24 y -3.24-2.13
+  blk0 0020 S396ab4ae travel   role=''             pts=  1 jump=False trim=False x 29.59-29.59 y 3.33-3.33
+  blk0 0020 S396ab4ae underlay role=''             pts= 23 jump=False trim=False x 18.83-29.01 y 2.43-10.93
+  blk0 0020 S396ab4ae underlay role=''             pts= 28 jump=True trim=True x 24.50-41.44 y 9.46-16.95
+  blk0 0020 S396ab4ae travel   role=''             pts=  2 jump=False trim=False x 35.69-37.43 y 10.02-10.58
+  blk0 0020 S396ab4ae underlay role=''             pts= 20 jump=False trim=False x 35.77-44.06 y -0.39-11.15
+  blk0 0020 S396ab4ae travel   role=''             pts=  2 jump=False trim=False x 43.81-45.85 y -1.04--0.71
+  blk0 0020 S396ab4ae underlay role=''             pts= 11 jump=False trim=False x 43.05-49.72 y -4.98-4.01
+  blk0 0020 S396ab4ae travel   role=''             pts=  1 jump=False trim=False x 49.92-49.92 y 5.98-5.98
+  blk0 0020 S396ab4ae underlay role=''             pts=  9 jump=False trim=False x 46.03-50.13 y 3.86-10.91
+  blk0 0020 S396ab4ae travel   role=''             pts=  1 jump=False trim=False x 49.85-49.85 y 12.98-12.98
+  blk0 0020 S396ab4ae underlay role=''             pts= 13 jump=False trim=False x 41.38-50.16 y 10.97-16.46
+  blk0 0020 S396ab4ae travel   role=''             pts=  4 jump=False trim=False x 43.66-50.47 y 13.51-13.96
+  blk0 0020 S396ab4ae underlay role=''             pts= 10 jump=False trim=False x 50.52-56.43 y 9.00-14.11
+  blk0 0020 S396ab4ae travel   role=''             pts=  1 jump=False trim=False x 55.87-55.87 y 10.49-10.49
+  blk0 0020 S396ab4ae fill     role=''             pts=365 jump=False trim=False x 38.72-57.49 y 5.14-18.05
+  blk0 0020 S396ab4ae fill     role=''             pts=172 jump=False trim=False x 44.61-50.90 y -1.51-11.03
+  blk0 0020 S396ab4ae travel   role=''             pts=  3 jump=False trim=False x 44.15-44.45 y -3.77-0.59
+  blk0 0020 S396ab4ae fill     role=''             pts= 94 jump=False trim=False x 36.08-47.61 y -6.28-6.00
+  blk0 0020 S396ab4ae travel   role=''             pts=  3 jump=False trim=False x 45.26-46.83 y -3.43-0.79
+  blk0 0020 S396ab4ae fill     role=''             pts=189 jump=False trim=False x 31.01-44.48 y 2.90-17.29
+  blk0 0020 S396ab4ae travel   role=''             pts=  4 jump=False trim=False x 35.40-37.79 y 9.43-15.32
+  blk0 0020 S396ab4ae fill     role=''             pts=188 jump=False trim=False x 17.09-34.61 y 7.47-18.26
+  blk0 0020 S396ab4ae travel   role=''             pts=  2 jump=False trim=False x 16.45-18.76 y 10.99-11.65
+  blk0 0020 S396ab4ae fill     role=''             pts=215 jump=False trim=False x 14.07-28.59 y -4.44-10.33
+  blk0 0020 S396ab4ae travel   role=''             pts=  1 jump=False trim=False x 21.61-21.61 y -0.21--0.21
+  blk0 0020 S396ab4ae fill     role=''             pts= 78 jump=False trim=False x 23.39-30.85 y -4.07-3.37
+  blk0 0020 S396ab4ae travel   role=''             pts=  1 jump=False trim=False x 31.06-31.06 y -0.22--0.22
+  blk0 0020 S396ab4ae fill     role=''             pts=217 jump=False trim=False x 11.52-31.48 y -2.21-17.19
+  blk0 0020 S396ab4ae travel   role=''             pts=  1 jump=False trim=False x 31.04-31.04 y 0.01-0.01
+  blk0 0020 S396ab4ae fill     role=''             pts= 55 jump=False trim=False x 21.32-31.16 y 2.22-12.06
+  blk0 0020 S396ab4ae fill     role=''             pts= 14 jump=True trim=True x 14.15-21.12 y 3.57-10.74
+  blk0 0020 S396ab4ae fill     role=''             pts=127 jump=False trim=False x 6.86-23.98 y 4.52-18.26
+  blk0 0020 S396ab4ae travel   role=''             pts=  2 jump=False trim=False x 12.15-13.06 y 13.03-15.15
+  blk0 0020 S396ab4ae fill     role=''             pts=550 jump=False trim=False x -1.69-13.97 y -2.18-18.24
+  blk0 0020 S396ab4ae fill     role=''             pts=194 jump=False trim=False x -19.67-3.81 y -4.94-18.25
+  blk0 0020 S396ab4ae fill     role=''             pts=162 jump=False trim=False x -11.02-3.31 y -7.14-9.18
+  blk0 0020 S396ab4ae travel   role=''             pts=  2 jump=False trim=False x -2.01--1.05 y -2.58--0.36
+  blk0 0020 S396ab4ae fill     role=''             pts=129 jump=False trim=False x -16.38--0.09 y 1.86-18.16
+  blk0 0020 S396ab4ae travel   role=''             pts=  2 jump=False trim=False x -10.83--8.54 y 11.40-11.51
+  blk0 0020 S396ab4ae fill     role=''             pts=500 jump=False trim=False x -35.45--13.12 y -1.84-18.05
+  blk0 0020 S396ab4ae travel   role=''             pts=  1 jump=False trim=False x -35.46--35.46 y 15.60-15.60
+  blk0 0020 S396ab4ae fill     role=''             pts= 68 jump=False trim=False x -36.55--27.53 y 9.36-17.38
+  blk0 0020 S396ab4ae travel   role=''             pts=  3 jump=False trim=False x -26.20--24.87 y 8.22-9.36
+  blk0 0020 S396ab4ae fill     role=''             pts= 52 jump=False trim=False x -26.39--16.29 y -1.96-8.22
+  blk0 0020 S396ab4ae fill     role=''             pts=292 jump=True trim=True x 24.09-48.84 y -5.43-18.20
+  blk0 0020 S396ab4ae travel   role='border'       pts=  1 jump=False trim=False x 49.35-49.35 y -0.24--0.24
+  blk0 0020 S396ab4ae border   role='border'       pts=1789 jump=False trim=False x -36.42-57.49 y -7.14-18.26
+  blk0 0020 S396ab4ae border   role='border'       pts=136 jump=True trim=True x 37.80-47.68 y 0.86-14.59
+  blk0 0020 S396ab4ae border   role='border'       pts=121 jump=True trim=True x 17.42-28.36 y -1.66-9.57
+  blk0 0020 S91cf86bf underlay role=''             pts= 11 jump=True trim=True x -14.83--10.53 y -8.41--4.37
+  blk0 0020 S91cf86bf underlay role=''             pts=  7 jump=False trim=False x -14.06--10.94 y -8.26--4.32
+  blk0 0020 S91cf86bf fill     role=''             pts=152 jump=False trim=False x -15.94--9.42 y -9.52--3.22
+  blk0 0020 S91cf86bf border   role='border'       pts=111 jump=False trim=False x -15.94--9.43 y -9.52--3.22
