@@ -113,17 +113,17 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Closed-ring lane](embot-closed-ring-lane.md) — SNAPSHOT: #621 `offsetRing` on a repeated point, #625 stacked on it; defect 55's offset half is Kent's call
 - [Star-walk lane](embot-star-walk-lane.md) — SNAPSHOT: #624 ends `skeletonEdges`' endless walk; defect 57's cure order waits on Kent
 - [Build what was priced](build-what-was-priced.md) — SNAPSHOT: after Kent picks a priced option, build exactly that
-- [Underlay under fills](underlay-under-fills-2026-10-05.md) — Kent was right: gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
+- [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
 - [Fremont letters are not thicker than the pro's](lettering-thickness-fremont-2026-10-06.md) — file width = pro's (1.23 vs 1.40 scaled); Original view mis-scaled; real gap: curve outer rail 0.53 vs 0.33
-- [Lettering architecture R&D](lettering-architecture-2026-10-07.md) — five failures by letter size; patchwork is the skeleton-rail MODEL (pros put rails on the OUTLINE); Column lane OFF: cut + Euler walk + tuck + end fans
-- [L1 one tagger](word-tagger-l1-2026-10-08.md) — BUILT OFF `cfg.lettering_words`; kappa 0.907 level with text cluster 0.881, above either 0.637 (in-sample); line ARI 0.99 vs 0.65; Kent: AFTER better under the Column lane (10-08)
+- [Lettering architecture R&D](lettering-architecture-2026-10-07.md) — five failures by letter size; patchwork is the skeleton-rail MODEL; Column lane OFF: cut + Euler walk + tuck + end fans
+- [L1 one tagger](word-tagger-l1-2026-10-08.md) — BUILT OFF `cfg.lettering_words`; kappa 0.907 vs text cluster 0.881 (in-sample); Kent: AFTER better under the Column lane (10-08)
 - [N fan cure](n-fan-cure-2026-10-08.md) — `satin_tip_corner_gate` OFF: tip = convex corner; ≈ tip caps off; degree gate refuted
 - [fillColumns float pictures](fill-columns-float-pictures-2026-10-08.md) — STANDING: next 10 digitized images shown to Kent carry the off/on float sheet; count 1/10
 - [Column width on resize](column-width-on-resize-2026-10-01.md) — ruling 12: drawn width scales, pull comp fixed; store `widthPx`, mm is a view; no clamp 0.67-11.8 mm; columns lane done 10-11
-- [Letterform priors lane](letterform-priors-lane-2026-10-06.md) — "something new" on lettering was yesterday's lane (outline-cut); second pick: refit low-res text to lines+arcs, px-capped. Check sibling lanes before proposing new
+- [Letterform priors lane](letterform-priors-lane-2026-10-06.md) — "something new" on lettering was yesterday's lane (outline-cut); check sibling lanes before proposing new
 - [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); 25 lanes removable (Kent's), `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
 - [True-size guard below 81 mm](small-text-true-size-guard-2026-10-15.md) — 65 mm loss = strays bug + ink-ground bug + per-glyph OCR noise; guard 0.45 x 40/wt, unsewn; ink ring OFF; measure on run_arm
-- [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — Kent's red circles were a STALE SERVICE but one: THE garbled at 80 = rescued round linked across inks; `text_cluster_rescued_ink_link` ON; measure at the width the Studio SENDS
+- [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE but one: THE garbled at 80 = rescued round linked across inks; `text_cluster_rescued_ink_link` ON; measure at the Studio's width
 - [Bean holds ON](bean-holds-on-2026-10-15.md) — Kent flipped counter hold 0.25 + bay hold 0.2 as PLAIN defaults (None stays OFF); the three sew-out cards pin None explicitly; grep card tools before any bean flip
 - [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); Fremont OFF md5 follows Intel IPP's path in the OpenCV wheel; test env capped at OPENCV_IPP=avx2
 - [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins; flip + sharp tips Kent's
@@ -138,4 +138,5 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` OFF (hat/LC/beanie); MFab/Becker "BARE" fills were SATIN the tool misread — list run kinds first
 - [Small text re-set](small-text-reset-2026-10-21.md) — OFF: columns were already the pro's, SPACING was wrong; later stages undid the layout five ways; 5/S bays still close
 - [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean EDGE CAP round a 2-4 mm hex the classifier sent to fill (aspect); pro sews one satin blob; `compact_solids_satin` OFF
+- [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out; only pull/comp and density need fabric. Fine lettering is the priority
 - [Short column underlay](short-column-underlay-2026-10-22.md) — `satin_underlay_short_columns` OFF: pro centre-walks 83-97% of columns at EVERY width; "3.5 mm pitch" was a WIDTH; zigzag unsettled
