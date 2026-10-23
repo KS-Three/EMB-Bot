@@ -2944,6 +2944,15 @@ class PipelineConfig:
     # on cloth is a sew-out (ROADMAP gate 1): a CANDIDATE. False is
     # byte-identical. Not in `SMALL_TEXT_TRUE_SIZE`.
     small_letter_ties: bool = False
+    # No lock at the START of a run (2026-10-22, settings-vs-pro row 22).
+    # `stitches.apply_ties` already locks only where the thread is cut (the
+    # first run of a block, a trimmed run); the pro locks none of those
+    # either: 1 of 68 run starts across Fremont, Becker and MFab, all after a
+    # cut. On: every tie-in is stripped (`stitches.drop_tie_ins`), tie-offs
+    # stay -- about four stitches per cut. Whether a start holds without its
+    # knot is a sew-out (ROADMAP gate 1): a CANDIDATE. False is byte-identical.
+    # Not in `SMALL_TEXT_TRUE_SIZE`.
+    tie_in_off: bool = False
     # ONE switch for small lettering at its true size (2026-10-14, Kent:
     # "keep working on improvements on this"). True fills each of the
     # values above that is still None with `SMALL_TEXT_TRUE_SIZE`; a value set

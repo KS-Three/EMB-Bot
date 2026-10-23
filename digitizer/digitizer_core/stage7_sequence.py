@@ -4412,4 +4412,6 @@ def sequence(
     seam_warning = _border_seam_warning(border_seams)
     if seam_warning is not None:
         warnings.append(seam_warning)
+    if cfg.tie_in_off:
+        stitches.drop_tie_ins(blocks)
     return blocks, warnings
