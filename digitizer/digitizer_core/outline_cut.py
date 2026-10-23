@@ -1226,6 +1226,206 @@ def _absorb_serifs(columns: list, cuts: list, W: float, pitch_mm: float,
     return cols, cuts
 
 
+# `corner_fold` (`cfg.lettering_columns_corner_fold`, 2026-10-23): one column
+# round an L corner. Read off the professional's DSTs (Fremont HOTEL FREMONT
+# 7.5 mm, Drone PRECISION 6.3, Proseal PROSEAL 9.4, MFab AND WELDING 7.1; 57
+# corners, the scratch reader's rules in the PR): at a lone concave corner
+# with a convex apex across it his column keeps going -- the crosses pivot
+# on the inside corner, their outer ends walk the outline round the apex at
+# the satin pitch (outer arc 2.2-4.2 mm at 0.4 = the corner square's two
+# sides), the inner ends spread 0.4-0.8 mm along the crosses (his short
+# stitching), and the stroke widths either side read 1.0-1.3x of each
+# other (one 1.7, a serif). He cuts where two concave corners face each
+# other (a T junction, a slab serif's root): those are `find_cuts`'
+# "through" pairs and are never folded. The turn range holds the
+# corner-to-apex cross under `_overlong`'s 1.6 W (a 90-degree corner's is
+# 1.41 W; at 110 of turn, 1.74); the D's 45-degree bends folded too.
+# Candidates, not fabric constants: layout, judged in the preview.
+_CORNER_FOLD: contextvars.ContextVar[bool] = contextvars.ContextVar("corner_fold", default=False)
+FOLD_TURN_MIN_DEG = 35.0       # `CONVEX_DEG`: under it the outline is bending, not cornering
+FOLD_TURN_MAX_DEG = 110.0
+FOLD_WIDTH_RATIO = 1.6         # the mitre rule's own ratio, read on the legs' sewn crosses
+_FOLD_EPS_MM = 0.05            # a cross this far short of the corner is the leg's, not the corner's
+
+
+def _end_axis(col: Column, W: float, pitch_mm: float):
+    """Unit direction the column ADVANCES into its LAST station: a straight
+    column's axis, signed; else the chord of its last stroke width of
+    station midpoints."""
+    if col.kind == "straight" and col.axis is not None:
+        u = col.axis
+        m0, m1 = col.start, col.end
+        s = (m1[0] - m0[0]) * u[0] + (m1[1] - m0[1]) * u[1]
+        return tuple(u) if s >= 0 else (-u[0], -u[1])
+    st = col.stations
+    k = min(len(st) - 1, max(2, int(round(W / pitch_mm))))
+    a, b = st[-1 - k], st[-1]
+    m0 = ((a[0][0] + a[1][0]) / 2, (a[0][1] + a[1][1]) / 2)
+    m1 = ((b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2)
+    return _unit((m1[0] - m0[0], m1[1] - m0[1]))
+
+
+#: why the last `_fold_pair` calls refused (a harness reads it; the last
+#: 64 only, so a service process never grows it)
+_FOLD_WHY: list = []
+
+
+def _refused(why: str):
+    _FOLD_WHY.append(why)
+    del _FOLD_WHY[:-64]
+    return None
+
+
+def _fold_pair(A: Column, B: Column, p, q, poly: Polygon, W: float, pitch_mm: float) -> Column | None:
+    """`corner_fold`: columns A and B, meeting at the inside corner `p` with
+    the apex `q` across it, joined into ONE column that folds round the
+    corner (module constants above). Each column is turned to end at the
+    corner; its stations whose inner end has reached `p` along its own
+    advance (`_end_axis`) are the corner square's and are dropped, but only
+    if none of them lies past the apex (a column that runs on THROUGH the
+    corner is a stem the arm butts, not a leg of the L). The fold's crosses
+    run from `p` to the outline arc between the two legs' last outer ends,
+    the way that passes `q`, one per `pitch_mm`; A's legs, the fold, B's
+    legs. -> the folded Column, or None where the pair is not an L."""
+    def trimmed(c, other):
+        """c's stations with its corner-end crosses dropped, and its inner
+        slot; None where this end does not reach the corner, or runs on
+        past the corner square -- past the apex, or past the far end of
+        `other`'s crosses (a chamfered apex sits short of the square's far
+        side: Drone's C, whose bottom arm runs on to the stem's outer edge
+        0.85 mm past the chamfer's vertex)."""
+        u = _end_axis(c, W, pitch_mm)
+        tp = p[0] * u[0] + p[1] * u[1]
+        st = c.stations
+        far = max(e[0] * u[0] + e[1] * u[1] for s2 in (other.stations[0], other.stations[-1]) for e in s2)
+        k = min(range(len(st)), key=lambda i: abs((st[i][0][0] + st[i][1][0]) / 2 * u[0]
+                                                   + (st[i][0][1] + st[i][1][1]) / 2 * u[1] - tp))
+        s = 0 if math.dist(st[k][0], p) <= math.dist(st[k][1], p) else 1
+        tq = max(q[0] * u[0] + q[1] * u[1], far)
+        n = len(st)
+        # a cross is the corner square's when either end has reached the
+        # corner: a mitre end's fan pivots a hair short of it on the inside
+        # and reaches the apex on the outside
+        while n > 0 and max(st[n - 1][0][0] * u[0] + st[n - 1][0][1] * u[1],
+                            st[n - 1][1][0] * u[0] + st[n - 1][1][1] * u[1]) >= tp - _FOLD_EPS_MM:
+            if st[n - 1][s][0] * u[0] + st[n - 1][s][1] * u[1] > tq + 0.5 * pitch_mm:
+                return None                         # runs on past the apex: not a leg of this corner
+            n -= 1
+        reach = max(st[-1][0][0] * u[0] + st[-1][0][1] * u[1], st[-1][1][0] * u[0] + st[-1][1][1] * u[1])
+        if n == 0 or reach < tp - pitch_mm - _FOLD_EPS_MM:
+            return None                             # this end stops short of the corner
+        return st[:n], s                            # (a butting column's first cross sits half a pitch off its cut)
+
+    def orient(col, other):
+        # the end that reaches into the corner square and no further; a
+        # stem cut "ext" past an arm's root reaches it from the far end
+        # (its last crosses are the corner square's), not from the end
+        # nearest the corner by distance
+        best = None
+        for c in (col, col.reversed()):
+            t = trimmed(c, other)
+            if t is not None and (best is None or len(t[0]) > len(best[0])):
+                best = t
+        return best if best is not None else _refused('orient')
+    oa, ob = orient(A, B), orient(B, A)
+    if oa is None or ob is None:
+        return None
+    sa, ia = oa
+    sb, ib = ob
+    if len(sa) < 2 or len(sb) < 2:
+        return _refused('short_leg')
+    wa = sorted(math.dist(a, b) for a, b in sa)[len(sa) // 2]
+    wb = sorted(math.dist(a, b) for a, b in sb)[len(sb) // 2]
+    if max(wa, wb) > FOLD_WIDTH_RATIO * min(wa, wb):
+        return _refused('width_ratio')
+    # the outline round the apex: the ring the apex sits on, which must
+    # hold both legs' outer ends (the corner itself may sit on a counter's
+    # ring -- a P's stem meeting its bowl); of the two arcs between the
+    # outer ends the one that passes the apex, no longer than the pro's
+    # corner arcs (two sides of the corner square)
+    rings = [LineString(r.coords) for r in [poly.exterior] + list(poly.interiors)]
+    ring = min(rings, key=lambda r: r.distance(Point(q)))
+    ea, eb = sa[-1][1 - ia], sb[-1][1 - ib]
+    if any(ring.distance(Point(x)) > 0.1 * W for x in (ea, eb)):
+        return _refused('off_ring')
+    da, db, dq = (ring.project(Point(x)) for x in (ea, eb, q))
+    RL = ring.length
+    fwd = (db - da) % RL
+    if (dq - da) % RL <= fwd:
+        L, sgn = fwd, 1.0
+    else:
+        L, sgn = (da - db) % RL, -1.0
+    if L > 1.6 * (wa + wb) or L < 0.5 * pitch_mm:
+        return _refused('long_way')
+    m = max(1, int(math.ceil(L / 0.02)))
+    pts = [ring.interpolate((da + sgn * L * k / m) % RL).coords[0] for k in range(m + 1)]
+    n = max(1, int(math.ceil(L / pitch_mm - 1e-9)))
+    arc = LineString(pts)
+    cover = poly.buffer(0.05)
+    fan = []
+    for k in range(1, n):
+        t = arc.interpolate(k / n, normalized=True).coords[0]
+        t = (float(t[0]), float(t[1]))
+        if not cover.covers(LineString([p, t])):
+            return _refused('uncovered')                         # a cross the letter does not cover
+        fan.append((p, t) if ia == 0 else (t, p))
+    tail = [(s[ib], s[1 - ib]) if ia == 0 else (s[1 - ib], s[ib]) for s in sb[::-1]]
+    piece = unary_union([A.piece, B.piece]).buffer(0)
+    if piece.geom_type != "Polygon":
+        return _refused('piece')
+    return Column(stations=list(sa) + fan + tail, piece=piece, kind="folded", axis=None,
+                  width_mm=W, dropped_mm=A.dropped_mm + B.dropped_mm)
+
+
+def _fold_corners(columns: list, cuts: list, poly: Polygon, W: float, pitch_mm: float) -> tuple[list, list]:
+    """`corner_fold`: every lone concave corner of the letter with a convex
+    apex across it (`find_cuts`' own elbow reading) at which exactly two
+    columns meet is folded (`_fold_pair`); the cut between those two is
+    taken out. A corner of a through pair (a T junction) is not an L and
+    is left cut. -> (columns, cuts)."""
+    raw, reflex, convex = find_cuts(poly, W)
+    through = [Point(c[k]) for c in raw if c[2] == "through" for k in (0, 1)]
+    cols, cuts = list(columns), list(cuts)
+    for r in reflex:
+        p = r["p"]
+        if not FOLD_TURN_MIN_DEG <= r["turn"] <= FOLD_TURN_MAX_DEG:
+            continue
+        if any(t.distance(Point(p)) < 0.25 * W for t in through):
+            continue
+        apex = None
+        for o in convex:
+            if o["turn"] < 45:
+                continue
+            q = o["p"]
+            L = math.hypot(q[0] - p[0], q[1] - p[1])
+            if L < 0.6 * W or L > 2.6 * W:
+                continue
+            d = _unit((q[0] - p[0], q[1] - p[1]))
+            if d[0] * r["bis"][0] + d[1] * r["bis"][1] > 0.6 and _inside(poly, p, q):
+                if apex is None or L < apex[0]:
+                    apex = (L, q)
+        if apex is None:
+            continue
+        # the two columns whose pieces fill the corner: an E's slot cuts all
+        # end on the stem line, so a third piece can touch the corner point
+        near = Point(p).buffer(0.3 * W)
+        touching = sorted(((c.piece.intersection(near).area, i) for i, c in enumerate(cols)
+                           if c.kind != "ring" and not c.piece.interiors
+                           and c.piece.distance(Point(p)) < 0.05), reverse=True)
+        if len(touching) < 2 or (len(touching) > 2 and touching[2][0] > 0.1 * touching[1][0]):
+            continue
+        i, j = sorted((touching[0][1], touching[1][1]))
+        joined = _fold_pair(cols[i], cols[j], p, apex[1], poly, W, pitch_mm)
+        if joined is None:
+            continue
+        between = [k for k in cuts
+                   if all(Point(k[m]).distance(cols[n].piece) < 0.05 for m in (0, 1) for n in (i, j))]
+        cols = [c for n, c in enumerate(cols) if n not in (i, j)]
+        cols.insert(min(i, j), joined)
+        cuts = [k for k in cuts if k not in between]
+    return cols, cuts
+
+
 def pivot_sweep(st, eps: float = 0.03) -> float:
     """The widest angle, in degrees, that consecutive crosses sharing one end
     (within `eps`) sweep about it: 0 for a column with no pivot."""
@@ -1858,14 +2058,25 @@ class LetterCut:
 
 def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False,
                    mitre_ends: bool = False, judge=None, rail_axis: bool = False,
-                   small_bold: bool = False, simplify_mm: float | None = None) -> LetterCut:
+                   small_bold: bool = False, simplify_mm: float | None = None,
+                   corner_fold: bool = False) -> LetterCut:
     """See `_letter_columns`. `rail_axis` (`cfg.lettering_columns_rail_axis`):
     every straight piece of this letter reads its axis by `straight_axis`'s
     rail rule. False is the pre-flip cut, byte for byte.
     `small_bold` (`cfg.lettering_columns_small_bold`): no column of this
     letter pivots past `SMALL_BOLD_FAN_DEG` (`build_column`). False is the
     pre-flag cut, byte for byte. `simplify_mm` (`small_bold` only): this
-    cut's simplify floor instead of `SMALL_BOLD_SIMPLIFY_MM`."""
+    cut's simplify floor instead of `SMALL_BOLD_SIMPLIFY_MM`.
+    `corner_fold` (`cfg.lettering_columns_corner_fold`): the two columns
+    either side of each L corner joined into one that folds round it
+    (`_fold_corners`). False is the cut as it is, byte for byte."""
+    if corner_fold:
+        token = _CORNER_FOLD.set(True)
+        try:
+            return letter_columns(poly, pitch_mm, fold_cuts, mitre_ends, judge, rail_axis,
+                                  small_bold, simplify_mm)
+        finally:
+            _CORNER_FOLD.reset(token)
     if small_bold:
         token = _SMALL_BOLD.set(True)
         token2 = _SMALL_BOLD_SIMPLIFY.set(simplify_mm)
@@ -1981,4 +2192,6 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         columns = [_drop_stalls(c, fold_lines, pitch_mm) for c in columns]
     if _SMALL_BOLD.get():
         columns, cuts = _absorb_serifs(columns, cuts, W, pitch_mm, mitre_ends)
+    if _CORNER_FOLD.get():
+        columns, cuts = _fold_corners(columns, cuts, poly, W, pitch_mm)
     return LetterCut(poly, W, cuts, columns, unsewn)

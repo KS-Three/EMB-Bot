@@ -2999,6 +2999,9 @@ def sequence(
                     # LC and beanie presets only (`fabrics.PULL_BY_STROKE_FABRICS`)
                     **({"pull_by_stroke": True}
                        if pull_by_stroke_for(fabric, cfg.pull_comp_by_stroke) else {}),
+                    # `cfg.lettering_columns_corner_fold` (default OFF, 2026-10-23):
+                    # one column round an L corner; off, today's call
+                    **({"corner_fold": True} if cfg.lettering_columns_corner_fold else {}),
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
                        if cfg.lettering_columns_inside_connectors else {}))
