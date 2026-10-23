@@ -55,7 +55,7 @@ from dataclasses import replace
 import numpy as np
 import shapely
 from shapely.geometry import LineString, Point, Polygon
-from shapely.ops import nearest_points, unary_union
+from shapely.ops import nearest_points, polylabel, unary_union
 
 from . import machine, stitches
 from .config import PipelineConfig
@@ -270,6 +270,57 @@ def _word_tier(region, cfg: PipelineConfig) -> str | None:
     return region.meta.get("word_tier")
 
 
+def _min_dim_mm(poly) -> float:
+    """A shape's smallest dimension: twice its largest inscribed circle, the
+    measure `tools/border_census.py` ranks the pro's rings by (its distance
+    transform's maximum). `polylabel` is that circle's centre to within the
+    tolerance; 0 for anything that is not a plain polygon."""
+    if poly is None or poly.is_empty or poly.geom_type != "Polygon":
+        return 0.0
+    try:
+        centre = polylabel(poly, tolerance=0.05)
+    except Exception:  # noqa: BLE001 - a degenerate ring; no circle, no rule
+        return 0.0
+    return 2.0 * float(poly.exterior.distance(centre) if not poly.interiors
+                       else poly.boundary.distance(centre))
+
+
+def _border_by_size_width(region, cfg: PipelineConfig) -> float | None:
+    """`cfg.border_by_size` (2026-10-23): the pro's border width for this
+    shape, or None when the rule does not read it. -> width in mm.
+
+    Reads a non-lettering shape on the auto tier with no per-shape `border`
+    intent whose smallest dimension (`_min_dim_mm`) is at or over
+    `machine.BORDER_BY_SIZE_MIN_DIM_MM`, and only when the shape is mostly a
+    fill with a border round it -- at least `machine.BORDER_BY_SIZE_REACH_FRAC`
+    of its area within one column (plus `BORDER_HOST_MARGIN_MM`) of the core
+    the ring leaves -- so a 2.4 mm satin ring with a fat junction is not
+    re-filled as a border. One function, read by the satin prediction (`_sews_satin`),
+    the seam-ownership pass and the emitter's satin and border blocks, so a
+    shape is diverted to fill exactly where it will be bordered.
+    """
+    if not getattr(cfg, "border_by_size", False):
+        return None
+    meta = region.meta or {}
+    if str(meta.get("tier", "auto")).lower() != "auto" or meta.get("border") is not None:
+        return None
+    if is_lettering(region, cfg):
+        return None
+    poly = region.polygon
+    min_dim = _min_dim_mm(poly)
+    if min_dim < machine.BORDER_BY_SIZE_MIN_DIM_MM:
+        return None
+    width = machine.border_by_size_width_mm(min_dim)
+    grow = width + machine.BORDER_HOST_MARGIN_MM
+    core = poly.buffer(-grow)
+    if core.is_empty:
+        return None
+    reach = core.buffer(grow).intersection(poly).area
+    if reach < machine.BORDER_BY_SIZE_REACH_FRAC * poly.area:
+        return None
+    return width
+
+
 def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
                 design_class: str) -> bool:
     """Will this region reach the satin tier? — the borders-last predicate.
@@ -341,6 +392,8 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
         return True         # L3: the word sews satin, every letter of it
     if tier == "auto" and cfg.lettering_columns and cfg.satin and is_lettering(region, cfg):
         return True         # a Column letter (`cfg.lettering_columns`): satin on its artwork outline
+    if tier == "auto" and _border_by_size_width(region, cfg) is not None:
+        return False        # `cfg.border_by_size`: a big shape is a fill under a border, never whole satin
     satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
     return (tier == "auto" and cfg.satin
             and classify_ribbon(region.polygon, satin_max_mm,
@@ -2701,8 +2754,9 @@ def sequence(
             continue
         if _sews_satin(_p.region, cfg, satin_max, design_class):
             continue
-        if _border_wanted(_p.region, border_style, border_total_area,
-                          border_share_min, border_iso_max)[0]:
+        if (_border_wanted(_p.region, border_style, border_total_area,
+                           border_share_min, border_iso_max)[0]
+                or _border_by_size_width(_p.region, cfg) is not None):
             border_later[_p.shape_id] = _p.visible_geom
     for _group_key in sorted({nn_group_key(p) for p in planned}):
         group = [p for p in planned if nn_group_key(p) == _group_key]
@@ -3000,7 +3054,14 @@ def sequence(
                     return runs, report, False
             word_satin = (tier == "auto" and cfg.satin
                           and _word_tier(p.region, cfg) in ("satin", "widened"))
-            if tier == "satin" or word_satin or (ribbon is not None and ribbon.satin and not rides_ramp):
+            # `cfg.border_by_size` (built OFF, 2026-10-23): a big non-lettering
+            # shape the classifier admitted as satin sews as a fill under the
+            # pro's border instead (the border block below adds the ring);
+            # the prediction `_sews_satin` says the same, so seam ownership
+            # and borders-last already treat it as a fill. None when off.
+            by_size_width = _border_by_size_width(p.region, cfg)
+            if tier == "satin" or word_satin or (ribbon is not None and ribbon.satin and not rides_ramp
+                                                 and by_size_width is None):
                 # The house cross angle (2026-08-26). Per-shape intent beats
                 # the global, the same precedence border/underlay_style/
                 # fill_angle already use; None on both keeps today's output
@@ -3107,6 +3168,7 @@ def sequence(
             if (cfg.compact_solids_satin and cfg.satin and tier == "auto"
                     and ribbon is not None and not ribbon.satin
                     and ribbon.reason == "aspect" and not rides_ramp
+                    and by_size_width is None
                     and not is_lettering(p.region, cfg)
                     and is_small_solid(p.region.polygon, profile_for(p).width_mm)):
                 runs, report = small_solid_satin(
@@ -3499,6 +3561,14 @@ def sequence(
             want, style = _border_wanted(p.region, border_style,
                                          border_total_area, border_share_min,
                                          border_iso_max)
+            border_width_mm = cfg.border_width_mm
+            if not want and by_size_width is not None:
+                # `cfg.border_by_size`: the pro's ring at his width for the
+                # band, on a shape no per-shape intent spoke for (an explicit
+                # "off" already returned want=False with intent, and
+                # `_border_by_size_width` reads None on any intent at all).
+                want, style, border_width_mm = True, "auto", by_size_width
+                report["border_by_size"] = 1
             if want and runs:
                 # Seam ownership (`_owned_by_later`): a seam this shape
                 # shares with a bordered shape still to sew belongs to that
@@ -3510,7 +3580,7 @@ def sequence(
                 # seam rather than a touch. The seam tolerance is twice the
                 # contour simplification: each side of a seam is its own DP
                 # contour of the same pixel boundary (`_BORDER_SEAM_EPS_MM`).
-                border_width = cfg.border_width_mm or machine.BORDER_WIDTH_MM
+                border_width = border_width_mm or machine.BORDER_WIDTH_MM
                 omit, pairs = _owned_by_later(p.visible_geom, border_later,
                                               2.0 * border_width,
                                               eps_mm=2.0 * cfg.simplify_tol_mm)
@@ -3522,7 +3592,7 @@ def sequence(
                     entry=runs[-1].points[-1],
                     trim_at_mm=trim_at,
                     style=style,
-                    width_mm=cfg.border_width_mm,
+                    width_mm=border_width_mm,
                     omit=omit,
                 )
                 report["jumps"] += b_report["jumps"]
