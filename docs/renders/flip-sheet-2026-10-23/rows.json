@@ -1,0 +1,1294 @@
+[
+ {
+  "flag": "fill_turn_slant",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": 1036,
+  "about": "stitches under 0.5 mm",
+  "sets": {
+   "fill_turn_slant": true
+  },
+  "note": "PR #1036 was RED on CI when rendered (tests/test_cut_every_jump.py test_off_is_byte_identical_to_base[earlier-0], an OFF md5 pin stale after main moved); rendered from its branch, diffed against that branch's own OFF.",
+  "engine": "c9dc59dc",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot--claude-worktrees-short-column-underlay-880740\\ff18b147-39f7-4b69-8f17-b61146c5cc5d\\scratchpad\\branches\\pr1036",
+  "off": {
+   "stitches": 18611,
+   "trims": 51,
+   "about": 2161
+  },
+  "on": {
+   "stitches": 18361,
+   "trims": 51,
+   "about": 989
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "about": 295
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 3140,
+  "byte_identical": false,
+  "box_mm": [
+   -46.6,
+   -4.2,
+   -28.6,
+   6.8
+  ],
+  "in_window": 489,
+  "images": {
+   "off": "fill_turn_slant__hotel_fremont_hat__off.jpg",
+   "on": "fill_turn_slant__hotel_fremont_hat__on.jpg",
+   "pro": "fill_turn_slant__hotel_fremont_hat__pro.jpg",
+   "where": "fill_turn_slant__hotel_fremont_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_turn_slant",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1036,
+  "about": "stitches under 0.5 mm",
+  "sets": {
+   "fill_turn_slant": true
+  },
+  "note": "PR #1036 was RED on CI when rendered (tests/test_cut_every_jump.py test_off_is_byte_identical_to_base[earlier-0], an OFF md5 pin stale after main moved); rendered from its branch, diffed against that branch's own OFF.",
+  "engine": "c9dc59dc",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot--claude-worktrees-short-column-underlay-880740\\ff18b147-39f7-4b69-8f17-b61146c5cc5d\\scratchpad\\branches\\pr1036",
+  "off": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": 400
+  },
+  "on": {
+   "stitches": 5923,
+   "trims": 15,
+   "about": 376
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "about": 197
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 69,
+  "byte_identical": false,
+  "box_mm": [
+   -30.0,
+   -15.3,
+   -12.0,
+   -4.3
+  ],
+  "in_window": 69,
+  "images": {
+   "off": "fill_turn_slant__becker_hat_small__off.jpg",
+   "on": "fill_turn_slant__becker_hat_small__on.jpg",
+   "pro": "fill_turn_slant__becker_hat_small__pro.jpg",
+   "where": "fill_turn_slant__becker_hat_small__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_turn_slant",
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "pr": 1036,
+  "about": "stitches under 0.5 mm",
+  "sets": {
+   "fill_turn_slant": true
+  },
+  "note": "PR #1036 was RED on CI when rendered (tests/test_cut_every_jump.py test_off_is_byte_identical_to_base[earlier-0], an OFF md5 pin stale after main moved); rendered from its branch, diffed against that branch's own OFF.",
+  "engine": "c9dc59dc",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot--claude-worktrees-short-column-underlay-880740\\ff18b147-39f7-4b69-8f17-b61146c5cc5d\\scratchpad\\branches\\pr1036",
+  "off": {
+   "stitches": 13721,
+   "trims": 65,
+   "about": 717
+  },
+  "on": {
+   "stitches": 13702,
+   "trims": 65,
+   "about": 625
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19,
+   "about": 513
+  },
+  "pro_file": "mf4b logo hat.DST",
+  "diff": 245,
+  "byte_identical": false,
+  "box_mm": [
+   -13.7,
+   -14.9,
+   4.3,
+   -3.9
+  ],
+  "in_window": 206,
+  "images": {
+   "off": "fill_turn_slant__mfab_hat__off.jpg",
+   "on": "fill_turn_slant__mfab_hat__on.jpg",
+   "pro": "fill_turn_slant__mfab_hat__pro.jpg",
+   "where": "fill_turn_slant__mfab_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_underlay_cross",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": 1033,
+  "about": "underlay read under each fill (verdict: fills)",
+  "sets": {
+   "fill_underlay_cross": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 18611,
+   "trims": 51,
+   "about": "CROSS 1"
+  },
+  "on": {
+   "stitches": 18546,
+   "trims": 49,
+   "about": "CROSS 1"
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "about": "CROSS 1"
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 2737,
+  "byte_identical": false,
+  "box_mm": [
+   -11.0,
+   -13.2,
+   7.0,
+   -2.2
+  ],
+  "in_window": 258,
+  "images": {
+   "off": "fill_underlay_cross__hotel_fremont_hat__off.jpg",
+   "on": "fill_underlay_cross__hotel_fremont_hat__on.jpg",
+   "pro": "fill_underlay_cross__hotel_fremont_hat__pro.jpg",
+   "off_xray": "fill_underlay_cross__hotel_fremont_hat__off_xray.jpg",
+   "on_xray": "fill_underlay_cross__hotel_fremont_hat__on_xray.jpg",
+   "pro_xray": "fill_underlay_cross__hotel_fremont_hat__pro_xray.jpg",
+   "where": "fill_underlay_cross__hotel_fremont_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_underlay_cross",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1033,
+  "about": "underlay read under each fill (verdict: fills)",
+  "sets": {
+   "fill_underlay_cross": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": "BARE 1"
+  },
+  "on": {
+   "stitches": 5926,
+   "trims": 15,
+   "about": "BARE 1"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "about": "CROSS 2"
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 26,
+  "byte_identical": false,
+  "box_mm": [
+   -29.2,
+   -14.0,
+   -11.2,
+   -3.0
+  ],
+  "in_window": 26,
+  "images": {
+   "off": "fill_underlay_cross__becker_hat_small__off.jpg",
+   "on": "fill_underlay_cross__becker_hat_small__on.jpg",
+   "pro": "fill_underlay_cross__becker_hat_small__pro.jpg",
+   "off_xray": "fill_underlay_cross__becker_hat_small__off_xray.jpg",
+   "on_xray": "fill_underlay_cross__becker_hat_small__on_xray.jpg",
+   "pro_xray": "fill_underlay_cross__becker_hat_small__pro_xray.jpg",
+   "where": "fill_underlay_cross__becker_hat_small__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_underlay_cross",
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "pr": 1033,
+  "about": "underlay read under each fill (verdict: fills)",
+  "sets": {
+   "fill_underlay_cross": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 13721,
+   "trims": 65,
+   "about": "RUNONLY 2"
+  },
+  "on": {
+   "stitches": 13711,
+   "trims": 65,
+   "about": "RUNONLY 2"
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19,
+   "about": "CROSS 2"
+  },
+  "pro_file": "mf4b logo hat.DST",
+  "diff": 104,
+  "byte_identical": false,
+  "box_mm": [
+   -13.4,
+   -13.9,
+   4.6,
+   -2.9
+  ],
+  "in_window": 89,
+  "images": {
+   "off": "fill_underlay_cross__mfab_hat__off.jpg",
+   "on": "fill_underlay_cross__mfab_hat__on.jpg",
+   "pro": "fill_underlay_cross__mfab_hat__pro.jpg",
+   "off_xray": "fill_underlay_cross__mfab_hat__off_xray.jpg",
+   "on_xray": "fill_underlay_cross__mfab_hat__on_xray.jpg",
+   "pro_xray": "fill_underlay_cross__mfab_hat__pro_xray.jpg",
+   "where": "fill_underlay_cross__mfab_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "cut_every_jump",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": 1035,
+  "about": "uncut jumps",
+  "sets": {
+   "cut_every_jump": true
+  },
+  "note": "PR #1035 was RED on CI when rendered (the same OFF md5 pin as #1036); rendered from its branch, diffed against that branch's own OFF.",
+  "engine": "444270ca",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot--claude-worktrees-short-column-underlay-880740\\ff18b147-39f7-4b69-8f17-b61146c5cc5d\\scratchpad\\branches\\pr1035",
+  "off": {
+   "stitches": 18611,
+   "trims": 51,
+   "about": 172
+  },
+  "on": {
+   "stitches": 19818,
+   "trims": 201,
+   "about": 1
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "about": 1
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 1207,
+  "byte_identical": false,
+  "box_mm": [
+   -13.4,
+   10.0,
+   4.6,
+   21.0
+  ],
+  "in_window": 218,
+  "images": {
+   "off": "cut_every_jump__hotel_fremont_hat__off.jpg",
+   "on": "cut_every_jump__hotel_fremont_hat__on.jpg",
+   "pro": "cut_every_jump__hotel_fremont_hat__pro.jpg",
+   "where": "cut_every_jump__hotel_fremont_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "cut_every_jump",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1035,
+  "about": "uncut jumps",
+  "sets": {
+   "cut_every_jump": true
+  },
+  "note": "PR #1035 was RED on CI when rendered (the same OFF md5 pin as #1036); rendered from its branch, diffed against that branch's own OFF.",
+  "engine": "444270ca",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot--claude-worktrees-short-column-underlay-880740\\ff18b147-39f7-4b69-8f17-b61146c5cc5d\\scratchpad\\branches\\pr1035",
+  "off": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": 2
+  },
+  "on": {
+   "stitches": 5936,
+   "trims": 16,
+   "about": 1
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "about": 1
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 8,
+  "byte_identical": false,
+  "box_mm": [
+   -24.1,
+   23.4,
+   -6.1,
+   34.4
+  ],
+  "in_window": 8,
+  "images": {
+   "off": "cut_every_jump__becker_hat_small__off.jpg",
+   "on": "cut_every_jump__becker_hat_small__on.jpg",
+   "pro": "cut_every_jump__becker_hat_small__pro.jpg",
+   "where": "cut_every_jump__becker_hat_small__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "cut_every_jump",
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "pr": 1035,
+  "about": "uncut jumps",
+  "sets": {
+   "cut_every_jump": true
+  },
+  "note": "PR #1035 was RED on CI when rendered (the same OFF md5 pin as #1036); rendered from its branch, diffed against that branch's own OFF.",
+  "engine": "444270ca",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot--claude-worktrees-short-column-underlay-880740\\ff18b147-39f7-4b69-8f17-b61146c5cc5d\\scratchpad\\branches\\pr1035",
+  "off": {
+   "stitches": 13721,
+   "trims": 65,
+   "about": 33
+  },
+  "on": {
+   "stitches": 13969,
+   "trims": 96,
+   "about": 1
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19,
+   "about": 1
+  },
+  "pro_file": "mf4b logo hat.DST",
+  "diff": 248,
+  "byte_identical": false,
+  "box_mm": [
+   -5.4,
+   0.5,
+   12.6,
+   11.5
+  ],
+  "in_window": 72,
+  "images": {
+   "off": "cut_every_jump__mfab_hat__off.jpg",
+   "on": "cut_every_jump__mfab_hat__on.jpg",
+   "pro": "cut_every_jump__mfab_hat__pro.jpg",
+   "where": "cut_every_jump__mfab_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "sew_enclosed_white",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": 1031,
+  "about": "stitches in white thread",
+  "sets": {
+   "sew_enclosed_white": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 18611,
+   "trims": 51,
+   "about": "11317"
+  },
+  "on": {
+   "stitches": 18611,
+   "trims": 51,
+   "about": "11317"
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "about": "10305"
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "sew_enclosed_white",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1031,
+  "about": "stitches in white thread",
+  "sets": {
+   "sew_enclosed_white": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": "0"
+  },
+  "on": {
+   "stitches": 8512,
+   "trims": 21,
+   "about": "2654"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "about": "0"
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 8476,
+  "byte_identical": false,
+  "box_mm": [
+   -14.1,
+   -15.1,
+   3.9,
+   -4.1
+  ],
+  "in_window": 1215,
+  "images": {
+   "off": "sew_enclosed_white__becker_hat_small__off.jpg",
+   "on": "sew_enclosed_white__becker_hat_small__on.jpg",
+   "pro": "sew_enclosed_white__becker_hat_small__pro.jpg",
+   "where": "sew_enclosed_white__becker_hat_small__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "sew_enclosed_white",
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "pr": 1031,
+  "about": "stitches in white thread",
+  "sets": {
+   "sew_enclosed_white": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 13721,
+   "trims": 65,
+   "about": "3485"
+  },
+  "on": {
+   "stitches": 25512,
+   "trims": 108,
+   "about": "15998"
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19,
+   "about": "6680"
+  },
+  "pro_file": "mf4b logo hat.DST",
+  "diff": 24021,
+  "byte_identical": false,
+  "box_mm": [
+   12.2,
+   2.8,
+   30.2,
+   13.8
+  ],
+  "in_window": 2236,
+  "images": {
+   "off": "sew_enclosed_white__mfab_hat__off.jpg",
+   "on": "sew_enclosed_white__mfab_hat__on.jpg",
+   "pro": "sew_enclosed_white__mfab_hat__pro.jpg",
+   "where": "sew_enclosed_white__mfab_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "trim_bury_under_later",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": 1030,
+  "about": "trims whose hop later thread covers",
+  "sets": {
+   "trim_bury_under_later": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 18611,
+   "trims": 51,
+   "about": 12
+  },
+  "on": {
+   "stitches": 18572,
+   "trims": 37,
+   "about": 0
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "about": 0
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 185,
+  "byte_identical": false,
+  "box_mm": [
+   -6.8,
+   -11.5,
+   11.2,
+   -0.5
+  ],
+  "in_window": 52,
+  "images": {
+   "off": "trim_bury_under_later__hotel_fremont_hat__off.jpg",
+   "on": "trim_bury_under_later__hotel_fremont_hat__on.jpg",
+   "pro": "trim_bury_under_later__hotel_fremont_hat__pro.jpg",
+   "where": "trim_bury_under_later__hotel_fremont_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "trim_bury_under_later",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1030,
+  "about": "trims whose hop later thread covers",
+  "sets": {
+   "trim_bury_under_later": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": 0
+  },
+  "on": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": 0
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "about": 1
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "trim_bury_under_later",
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "pr": 1030,
+  "about": "trims whose hop later thread covers",
+  "sets": {
+   "trim_bury_under_later": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 13721,
+   "trims": 65,
+   "about": 5
+  },
+  "on": {
+   "stitches": 13697,
+   "trims": 61,
+   "about": 1
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19,
+   "about": 1
+  },
+  "pro_file": "mf4b logo hat.DST",
+  "diff": 40,
+  "byte_identical": false,
+  "box_mm": [
+   -37.4,
+   3.0,
+   -19.4,
+   14.0
+  ],
+  "in_window": 22,
+  "images": {
+   "off": "trim_bury_under_later__mfab_hat__off.jpg",
+   "on": "trim_bury_under_later__mfab_hat__on.jpg",
+   "pro": "trim_bury_under_later__mfab_hat__pro.jpg",
+   "where": "trim_bury_under_later__mfab_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "compact_solids_satin",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": 1040,
+  "about": "edge-cap rings (plan roles)",
+  "sets": {
+   "compact_solids_satin": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 18611,
+   "trims": 51,
+   "about": "1"
+  },
+  "on": {
+   "stitches": 18553,
+   "trims": 51,
+   "about": "1"
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "about": "n/a (DST has no roles)"
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 110,
+  "byte_identical": false,
+  "box_mm": [
+   1.3,
+   -3.3,
+   19.3,
+   7.7
+  ],
+  "in_window": 110,
+  "images": {
+   "off": "compact_solids_satin__hotel_fremont_hat__off.jpg",
+   "on": "compact_solids_satin__hotel_fremont_hat__on.jpg",
+   "pro": "compact_solids_satin__hotel_fremont_hat__pro.jpg",
+   "where": "compact_solids_satin__hotel_fremont_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "compact_solids_satin",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1040,
+  "about": "edge-cap rings (plan roles)",
+  "sets": {
+   "compact_solids_satin": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": "3"
+  },
+  "on": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": "3"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "about": "n/a (DST has no roles)"
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "compact_solids_satin",
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "pr": 1040,
+  "about": "edge-cap rings (plan roles)",
+  "sets": {
+   "compact_solids_satin": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 13721,
+   "trims": 65,
+   "about": "2"
+  },
+  "on": {
+   "stitches": 13721,
+   "trims": 65,
+   "about": "2"
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19,
+   "about": "n/a (DST has no roles)"
+  },
+  "pro_file": "mf4b logo hat.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "small_solids_satin",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": 1023,
+  "about": "edge-cap rings (plan roles)",
+  "sets": {
+   "small_solids_satin": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 18611,
+   "trims": 51,
+   "about": "1"
+  },
+  "on": {
+   "stitches": 17850,
+   "trims": 51,
+   "about": "1"
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "about": "n/a (DST has no roles)"
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 1527,
+  "byte_identical": false,
+  "box_mm": [
+   4.5,
+   9.8,
+   22.5,
+   20.8
+  ],
+  "in_window": 527,
+  "images": {
+   "off": "small_solids_satin__hotel_fremont_hat__off.jpg",
+   "on": "small_solids_satin__hotel_fremont_hat__on.jpg",
+   "pro": "small_solids_satin__hotel_fremont_hat__pro.jpg",
+   "where": "small_solids_satin__hotel_fremont_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "small_solids_satin",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1023,
+  "about": "edge-cap rings (plan roles)",
+  "sets": {
+   "small_solids_satin": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": "3"
+  },
+  "on": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": "3"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "about": "n/a (DST has no roles)"
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "small_solids_satin",
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "pr": 1023,
+  "about": "edge-cap rings (plan roles)",
+  "sets": {
+   "small_solids_satin": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 13721,
+   "trims": 65,
+   "about": "2"
+  },
+  "on": {
+   "stitches": 13661,
+   "trims": 65,
+   "about": "2"
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19,
+   "about": "n/a (DST has no roles)"
+  },
+  "pro_file": "mf4b logo hat.DST",
+  "diff": 190,
+  "byte_identical": false,
+  "box_mm": [
+   19.8,
+   5.6,
+   37.8,
+   16.6
+  ],
+  "in_window": 108,
+  "images": {
+   "off": "small_solids_satin__mfab_hat__off.jpg",
+   "on": "small_solids_satin__mfab_hat__on.jpg",
+   "pro": "small_solids_satin__mfab_hat__pro.jpg",
+   "where": "small_solids_satin__mfab_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "tie_in_off",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": 1042,
+  "about": "run starts that lock",
+  "sets": {
+   "tie_in_off": true
+  },
+  "note": "",
+  "engine": "ace14f08",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot--claude-worktrees-short-column-underlay-880740\\ff18b147-39f7-4b69-8f17-b61146c5cc5d\\scratchpad\\branches\\pr1042",
+  "off": {
+   "stitches": 18611,
+   "trims": 51,
+   "about": 82
+  },
+  "on": {
+   "stitches": 18391,
+   "trims": 51,
+   "about": 38
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "about": 3
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 220,
+  "byte_identical": false,
+  "box_mm": [
+   -16.1,
+   2.5,
+   1.9,
+   13.5
+  ],
+  "in_window": 44,
+  "images": {
+   "off": "tie_in_off__hotel_fremont_hat__off.jpg",
+   "on": "tie_in_off__hotel_fremont_hat__on.jpg",
+   "pro": "tie_in_off__hotel_fremont_hat__pro.jpg",
+   "where": "tie_in_off__hotel_fremont_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "tie_in_off",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1042,
+  "about": "run starts that lock",
+  "sets": {
+   "tie_in_off": true
+  },
+  "note": "",
+  "engine": "ace14f08",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot--claude-worktrees-short-column-underlay-880740\\ff18b147-39f7-4b69-8f17-b61146c5cc5d\\scratchpad\\branches\\pr1042",
+  "off": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": 16
+  },
+  "on": {
+   "stitches": 5864,
+   "trims": 15,
+   "about": 0
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "about": 0
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 64,
+  "byte_identical": false,
+  "box_mm": [
+   -17.4,
+   -20.7,
+   0.6,
+   -9.7
+  ],
+  "in_window": 16,
+  "images": {
+   "off": "tie_in_off__becker_hat_small__off.jpg",
+   "on": "tie_in_off__becker_hat_small__on.jpg",
+   "pro": "tie_in_off__becker_hat_small__pro.jpg",
+   "where": "tie_in_off__becker_hat_small__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "tie_in_off",
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "pr": 1042,
+  "about": "run starts that lock",
+  "sets": {
+   "tie_in_off": true
+  },
+  "note": "",
+  "engine": "ace14f08",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot--claude-worktrees-short-column-underlay-880740\\ff18b147-39f7-4b69-8f17-b61146c5cc5d\\scratchpad\\branches\\pr1042",
+  "off": {
+   "stitches": 13721,
+   "trims": 65,
+   "about": 75
+  },
+  "on": {
+   "stitches": 13449,
+   "trims": 65,
+   "about": 23
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19,
+   "about": 0
+  },
+  "pro_file": "mf4b logo hat.DST",
+  "diff": 272,
+  "byte_identical": false,
+  "box_mm": [
+   -39.0,
+   2.6,
+   -21.0,
+   13.6
+  ],
+  "in_window": 52,
+  "images": {
+   "off": "tie_in_off__mfab_hat__off.jpg",
+   "on": "tie_in_off__mfab_hat__on.jpg",
+   "pro": "tie_in_off__mfab_hat__pro.jpg",
+   "where": "tie_in_off__mfab_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "satin_underlay_short_columns",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": 1044,
+  "about": "satin columns under 5 mm sewn bare",
+  "sets": {
+   "satin_underlay_short_columns": true
+  },
+  "note": "",
+  "engine": "674f7bcf",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot--claude-worktrees-short-column-underlay-880740\\ff18b147-39f7-4b69-8f17-b61146c5cc5d\\scratchpad\\branches\\pr1044",
+  "off": {
+   "stitches": 18611,
+   "trims": 51,
+   "about": "9.0% (6 of 67)"
+  },
+  "on": {
+   "stitches": 18649,
+   "trims": 51,
+   "about": "0.0% (0 of 67)"
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "about": "1.6% (2 of 124)"
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 44,
+  "byte_identical": false,
+  "box_mm": [
+   -42.7,
+   -3.3,
+   -24.7,
+   7.7
+  ],
+  "in_window": 13,
+  "images": {
+   "off": "satin_underlay_short_columns__hotel_fremont_hat__off.jpg",
+   "on": "satin_underlay_short_columns__hotel_fremont_hat__on.jpg",
+   "pro": "satin_underlay_short_columns__hotel_fremont_hat__pro.jpg",
+   "off_xray": "satin_underlay_short_columns__hotel_fremont_hat__off_xray.jpg",
+   "on_xray": "satin_underlay_short_columns__hotel_fremont_hat__on_xray.jpg",
+   "pro_xray": "satin_underlay_short_columns__hotel_fremont_hat__pro_xray.jpg",
+   "where": "satin_underlay_short_columns__hotel_fremont_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "satin_underlay_short_columns",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1044,
+  "about": "satin columns under 5 mm sewn bare",
+  "sets": {
+   "satin_underlay_short_columns": true
+  },
+  "note": "",
+  "engine": "674f7bcf",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot--claude-worktrees-short-column-underlay-880740\\ff18b147-39f7-4b69-8f17-b61146c5cc5d\\scratchpad\\branches\\pr1044",
+  "off": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": "5.3% (3 of 57)"
+  },
+  "on": {
+   "stitches": 5938,
+   "trims": 15,
+   "about": "5.3% (3 of 57)"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "about": "0.0% (0 of 31)"
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 10,
+  "byte_identical": false,
+  "box_mm": [
+   -22.4,
+   -22.1,
+   -4.4,
+   -11.1
+  ],
+  "in_window": 6,
+  "images": {
+   "off": "satin_underlay_short_columns__becker_hat_small__off.jpg",
+   "on": "satin_underlay_short_columns__becker_hat_small__on.jpg",
+   "pro": "satin_underlay_short_columns__becker_hat_small__pro.jpg",
+   "off_xray": "satin_underlay_short_columns__becker_hat_small__off_xray.jpg",
+   "on_xray": "satin_underlay_short_columns__becker_hat_small__on_xray.jpg",
+   "pro_xray": "satin_underlay_short_columns__becker_hat_small__pro_xray.jpg",
+   "where": "satin_underlay_short_columns__becker_hat_small__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "satin_underlay_short_columns",
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "pr": 1044,
+  "about": "satin columns under 5 mm sewn bare",
+  "sets": {
+   "satin_underlay_short_columns": true
+  },
+  "note": "",
+  "engine": "674f7bcf",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot--claude-worktrees-short-column-underlay-880740\\ff18b147-39f7-4b69-8f17-b61146c5cc5d\\scratchpad\\branches\\pr1044",
+  "off": {
+   "stitches": 13721,
+   "trims": 65,
+   "about": "12.7% (13 of 102)"
+  },
+  "on": {
+   "stitches": 13833,
+   "trims": 65,
+   "about": "4.9% (5 of 103)"
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19,
+   "about": "0.0% (0 of 79)"
+  },
+  "pro_file": "mf4b logo hat.DST",
+  "diff": 356,
+  "byte_identical": false,
+  "box_mm": [
+   -47.2,
+   2.6,
+   -29.2,
+   13.6
+  ],
+  "in_window": 107,
+  "images": {
+   "off": "satin_underlay_short_columns__mfab_hat__off.jpg",
+   "on": "satin_underlay_short_columns__mfab_hat__on.jpg",
+   "pro": "satin_underlay_short_columns__mfab_hat__pro.jpg",
+   "off_xray": "satin_underlay_short_columns__mfab_hat__off_xray.jpg",
+   "on_xray": "satin_underlay_short_columns__mfab_hat__on_xray.jpg",
+   "pro_xray": "satin_underlay_short_columns__mfab_hat__pro_xray.jpg",
+   "where": "satin_underlay_short_columns__mfab_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "small_text_set",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": 1029,
+  "about": "median small-letter height, mm",
+  "sets": {
+   "small_text_cap_mm": 4.0,
+   "small_text_cap_max_width_scale": 1.05,
+   "small_text_cap_min_stroke_mm": 0.85,
+   "small_text_cap_letter_gap_mm": 0.25,
+   "small_text_cap_bold_scale": 1.45,
+   "lettering_columns_small_bold": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 18611,
+   "trims": 51,
+   "about": "2.15 (13 pieces)"
+  },
+  "on": {
+   "stitches": 18731,
+   "trims": 42,
+   "about": "4.40 (37 pieces)"
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "about": "4.25 (25 pieces)"
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 5244,
+  "byte_identical": false,
+  "box_mm": [
+   -7.6,
+   -15.3,
+   10.4,
+   -4.3
+  ],
+  "in_window": 1075,
+  "images": {
+   "off": "small_text_set__hotel_fremont_hat__off.jpg",
+   "on": "small_text_set__hotel_fremont_hat__on.jpg",
+   "pro": "small_text_set__hotel_fremont_hat__pro.jpg",
+   "where": "small_text_set__hotel_fremont_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "small_text_set",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1029,
+  "about": "median small-letter height, mm",
+  "sets": {
+   "small_text_cap_mm": 4.0,
+   "small_text_cap_max_width_scale": 1.05,
+   "small_text_cap_min_stroke_mm": 0.85,
+   "small_text_cap_letter_gap_mm": 0.25,
+   "small_text_cap_bold_scale": 1.45,
+   "lettering_columns_small_bold": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": "no small pieces"
+  },
+  "on": {
+   "stitches": 5928,
+   "trims": 15,
+   "about": "no small pieces"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "about": "5.75 (2 pieces)"
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "small_text_set",
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "pr": 1029,
+  "about": "median small-letter height, mm",
+  "sets": {
+   "small_text_cap_mm": 4.0,
+   "small_text_cap_max_width_scale": 1.05,
+   "small_text_cap_min_stroke_mm": 0.85,
+   "small_text_cap_letter_gap_mm": 0.25,
+   "small_text_cap_bold_scale": 1.45,
+   "lettering_columns_small_bold": true
+  },
+  "note": "",
+  "engine": "d4d9482d",
+  "engine_root": "C:\\Users\\EE-LT-11030\\Claude Personal\\EMB-Bot\\.claude\\worktrees\\short-column-underlay-880740",
+  "off": {
+   "stitches": 13721,
+   "trims": 65,
+   "about": "3.25 (33 pieces)"
+  },
+  "on": {
+   "stitches": 13721,
+   "trims": 65,
+   "about": "3.25 (33 pieces)"
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19,
+   "about": "2.25 (8 pieces)"
+  },
+  "pro_file": "mf4b logo hat.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ }
+]
