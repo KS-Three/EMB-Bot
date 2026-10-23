@@ -27,7 +27,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Font pipeline silent failures](font-pipeline-silent-failures.md) — font defects report healthy numbers; RENDER AND LOOK finds what tests miss; a guard must assert its reach
 - [Cache seam, photo floor, environment betrayals](cache-seam-photo-floor-2026-08-22.md) — Drive photo channel MEASURED BROKEN; proxied downloads lie, check Content-Length; satin floor is toggle-only
 - [The first real photographs](first-real-photos-2026-08-23.md) — four family photos: four defects no fixture could reach; 3 FIXED, `_shade_layers` palette escape left OPEN
-- [The renderer that made the real defect visible](thread-render-and-background-stitches-2026-08-24.md) — pre-2026-08-24 sheets were VECTOR PROOFS hiding 72.2% background sewing (FIXED); rembg: DEPLOY REQUIREMENT
+- [The renderer that made the real defect visible](thread-render-and-background-stitches-2026-08-24.md) — pre-08-24 sheets were VECTOR PROOFS hiding 72% background sewing (FIXED); rembg: DEPLOY REQUIREMENT
 - [Faces overturn the fill ruling](faces-overturn-the-fill-ruling-2026-08-25.md) — filled quantizes a face to one skin field — faces TABLED; Kent chose EXIF-or-face AUTO-DETECT
 - [The Studio's display layer](studio-display-layer-2026-08-25.md) — 787 green specs missed a white-on-white primary CTA. Drive the real app and read COMPUTED styles
 - [Why the letters are botched](letterform-fidelity-2026-08-26.md) — NO single root cause — four measured mechanisms; coverage and IoU cannot see a wrong-angle letter
@@ -70,7 +70,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Tooling research, and a chaining gate already met](tooling-research-and-the-chaining-gate-2026-09-13.md) — No repo/MCP/plugin helps (don't re-search); vendors publish NO trim rule
 - [Photo edit tail 2026-09-17](photo-edit-tail-2026-09-17.md) — `fill_travel_under_cover` is ~58% of a photo edit tail; the reorder memo is exact ONLY while both stay pure
 - [A concurrent session designed the same tool](concurrent-session-designed-the-same-tool-2026-09-17.md) — three session collisions; check branches + live sessions FIRST; `claude stop` sticks, a kill respawns
-- [Six pending flags, invisible at viewing size](six-flags-invisible-at-viewing-size-2026-09-18.md) — Kent: 29 of 34 pairs "no difference"; all six stay OFF, not the Ember-gap lever; 3 "both bad" logos lead
+- [Six pending flags, invisible at viewing size](six-flags-invisible-at-viewing-size-2026-09-18.md) — Kent: 29 of 34 pairs "no difference"; all six stay OFF, not the Ember-gap lever
 - [Worktree session: the harness guard](worktree-session-harness-guard-2026-09-17.md) — `digitizer` spells `git`: quotes, `cd` chains refused; venv by 8.3 `CLAUDE~4`; preview_start reads MAIN
 - [The gap audit and the sourcing sweep](gap-audit-and-external-sourcing-2026-09-12.md) — 73 agents, 2 real defects the self-comparing suite missed; agents must RUN things; verify dies first
 - [The foundation review and the eye-pairs build](eye-pairs-build-2026-09-17.md) — Kent picked F4; `tools/eye_pairs` built in one session; `uncovered_wanted_mm2` is a DENOMINATOR; spike first
@@ -82,7 +82,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [bridge: border and script](bridge-border-and-script-2026-09-30.md) — on/off border = JPEG halo (the dissolve folds it); script is not text; Kent's lever `SATIN_GAPS_TIGHT`
 - [The staircase on low-res uploads](native-ramp-edge-read-2026-09-18.md) — 0.68 mm stairs: NEAREST-upscaled alpha; `subpixel_edges_upscaled` ON (Kent); byte-identity is an EXPRESSION
 - [Lettering route review](../../docs/lettering-route-review-2026-09-19.md) — trace-as-shape stays: font ID is dead (IoU 0.9 = a WRONG font); the gap is CONSTRUCTION (41 vs 3 trims)
-- [Lettering construction plan](../../docs/superpowers/plans/2026-09-19-lettering-construction.md) — Kent: trace + font-engine rules; all steps built, ON but 3b (skeleton RULED, owes a sew-out); 9 trims vs 3
+- [Lettering construction plan](../../docs/superpowers/plans/2026-09-19-lettering-construction.md) — Kent: trace + font-engine rules; all built, ON but 3b (skeleton RULED, owes a sew-out); 9 trims vs 3
 - [The Studio never sent the file](../../DOCTRINE.md) — 1,200-px canvas re-encode rewrote RGB under alpha (Becker 59→175 trims); FIXED 09-20; `alpha_edge_extend` ON
 - [Junction construction plan](../../docs/superpowers/plans/2026-09-19-junction-construction.md) — folds are welds through 30-60° corners; `satin_junction_stack` ON refuses them (R 311→0); layers under pro's
 - [Exposed travel is the fill tier's](exposed-travel-is-the-fill-tier-2026-09-19.md) — `travel_cover`'s 245 mm is defect 21, not gate 3 (fill bridges, 0.0 on fabric); `fill_bridge_cut` ON (Kent)
@@ -107,7 +107,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Memory outside the repo](memory-outside-the-repo.md) — sessions rooted in `.claude-work` write memory to a folder this repo never sees; seven notes snapshotted here by 10-04
 - [Parallel agent with the embot](parallel-agent-with-embot.md) — SNAPSHOT: audit before a PR is OPEN, not just before arming; never `git stash` in a lane; a stacked PR targets main and says so
 - [Browser fill lane state](embot-browser-fill-lane-state.md) — SNAPSHOT 10-03: #606/#609/#611 built OFF, flips Kent's; island fix #613 merged PRE-audit, cures in #620; cleanup only Kent can run
-- [Handover numbers and stacked branches](embot-handover-numbers-and-stacked-branches.md) — SNAPSHOT: reproduce a handed-over number with its own script; a PR can merge at an older head than its session's branch
+- [Handover numbers and stacked branches](embot-handover-numbers-and-stacked-branches.md) — SNAPSHOT: reproduce a handed-over number with its own script; a PR can merge at an older head than its branch
 - [Sub-unit stitches lane](embot-sub-unit-stitches-lane.md) — SNAPSHOT 10-04: `dedupeHoles` built OFF (#623), Kent's "new flag, every run"; never look through a jump: three jumps are a cut in a DST
 - [Wrong-root sessions, global guards](wrong-root-sessions-and-global-guards-2026-10-04.md) — sessions rooted outside the repo ran with no project hooks; `embot-guards-global.js` covers them
 - [Closed-ring lane](embot-closed-ring-lane.md) — SNAPSHOT: #621 `offsetRing` on a repeated point, #625 stacked on it; defect 55's offset half is Kent's call
@@ -124,7 +124,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
 - [True-size guard below 81 mm](small-text-true-size-guard-2026-10-15.md) — 65 mm loss = strays bug + ink-ground bug + per-glyph OCR noise; guard 0.45 x 40/wt, unsewn; ink ring OFF; measure on run_arm
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
-- [Bean holds ON](bean-holds-on-2026-10-15.md) — Kent flipped counter hold 0.25 + bay hold 0.2 as PLAIN defaults (None stays OFF); the three sew-out cards pin None explicitly; grep card tools before any bean flip
+- [Bean holds ON](bean-holds-on-2026-10-15.md) — Kent flipped counter hold 0.25 + bay hold 0.2 as PLAIN defaults (None stays OFF); the three sew-out cards pin None explicitly
 - [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); Fremont OFF md5 follows OpenCV's Intel IPP path; test env capped OPENCV_IPP=avx2
 - [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins; flip + sharp tips Kent's
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
@@ -144,3 +144,4 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Pull comp by stroke](pull-comp-by-stroke-2026-10-22.md) — pro's hat pull FALLS with width: +0.58 at 0.85 mm, +0.42 at 2.6, 0 at 4; `pull_comp_by_stroke` OFF; small text stays small_bold's
 - [Flip sheet: layout flags OFF | ON | pro](flip-sheet-2026-10-23.md) — `tools/flip_sheet_renders.py`; diff is a MULTISET (locks sit on stations); x-ray tiles
 - [Narrow columns like the pro](narrow-columns-2026-10-23.md) — small_bold: serifs absorbed into the stroke, chord-read junctions, no chamfer mitre; 74→55 columns; `column_harness.py`
+- [5-10 mm lettering band](lettering-5-10mm-band-2026-10-23.md) — gap is corners (pro folds, we butt); Drone O sewn SHUT by a split alpha counter; `enclosed_alpha_hole_parts` OFF
