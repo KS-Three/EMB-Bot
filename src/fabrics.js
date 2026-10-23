@@ -6,7 +6,7 @@
   // Fabric presets drive pull compensation, underlay style, density, and trim
   // distance. Values encode known digitizing rules; Kent's sew-outs tune them.
   // Underlay ids: none | edge_run | center_run | edge_zigzag | edge_lattice |
-  //               double_lattice | zigzag
+  //               double_lattice | zigzag | cross_tatami
   const FABRICS = [
     {
       id: "structured_cap",
@@ -211,6 +211,19 @@
     };
   }
 
+  // The presets whose fill underlay the `crossUnderlay` option (built OFF
+  // 2026-10-21) swaps to `cross_tatami`: the pro sews one crossing pass under
+  // every dense fill on every job in the zip. Twin of the digitizer's
+  // `fabrics.CROSS_UNDERLAY_FABRICS` / `fill_underlay_for` (`cfg.
+  // fill_underlay_cross`); `test_fabric_wire.py` holds the pair. Gate 1:
+  // the table above is untouched, the swap is a flag Kent flips.
+  const CROSS_UNDERLAY_FABRICS = ["structured_cap", "pique_knit", "jersey_tee"];
+
+  function fillUnderlayFor(fabric, cross) {
+    if (cross && fabric && CROSS_UNDERLAY_FABRICS.includes(fabric.id)) return "cross_tatami";
+    return fabric ? fabric.fillUnderlay : undefined;
+  }
+
   // --- Hooping advice (2026-10-01, Kent's call) ------------------------------
   //
   // What the operator must hoop — stabilizer, topper, needle — from ONE
@@ -292,6 +305,8 @@
     fabricForGarment,
     hoopingAdvice,
     hoopingLine,
+    CROSS_UNDERLAY_FABRICS,
+    fillUnderlayFor,
     NEEDLE_BASIS,
     CUTAWAY_STITCHES,
     PROFILE_FIELDS,

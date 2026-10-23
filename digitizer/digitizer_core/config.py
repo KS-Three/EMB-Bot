@@ -2763,6 +2763,32 @@ class PipelineConfig:
     # unsewn (2026-10-21, isolated lane on the grown tagline). A CANDIDATE
     # (gate 1): 0.85 is the pro's on one file.
     small_text_cap_min_stroke_mm: float | None = None
+    # With `small_text_cap_mm`: RE-SET each grown word the way the
+    # professional sets raised small text (2026-10-21, built OFF;
+    # `small_text._place_line_reset`). Read across his jobs
+    # (`docs/pro-digitizer-rules-2026-10-21.md`, R4): letters grown to the
+    # cap, the gaps between them closed to 0.15-0.35 mm of visible fabric,
+    # each letter widened into what that frees, the line as wide as there is
+    # room for (Drone's AND DRONE 1.01x the art, boxed by its dashes;
+    # Fremont's date 1.42-1.54x). Condensed growth
+    # (`small_text_cap_max_width_scale`, not read when this is set) kept the
+    # art's gaps and widened every stroke into them: at 92.5 mm Hat with the
+    # Column lane's `lettering_columns_small_bold`, Fremont's EAT, STAY,
+    # PLAY and 1895 sewed letter into letter (visible gap 0), and Drone's
+    # line, 5% wider, hit its dashes and was left at 2.2 mm. This is the
+    # visible gap asked for between letters of one word, mm. None: today,
+    # byte for byte. A CANDIDATE (gate 1): 0.25 is the middle of the pro's
+    # 0.15-0.35, unsewn here.
+    small_text_cap_letter_gap_mm: float | None = None
+    # With `small_text_cap_letter_gap_mm`: the stroke a re-set letter is
+    # widened to grows with its HEIGHT -- this times the art's stroke times
+    # the height scale, or `small_text_cap_min_stroke_mm` when more. The
+    # pro's sewn column against the art's stroke at his scale is 1.45x on
+    # Fremont (0.90 mm), 1.36x on Drone (1.26), 1.60x on Proseal (1.26), so
+    # one fixed mm floor cannot match the three: 0.85 sews Drone 0.4 mm thin.
+    # None: the floor alone. A CANDIDATE (gate 1): 1.45, the pro's on
+    # Fremont, unsewn here.
+    small_text_cap_bold_scale: float | None = None
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
@@ -3069,6 +3095,18 @@ class PipelineConfig:
     # NOT `match_shape_ids`, which has no production caller).
     underlay_style: str | None = None
     underlay: bool = True
+    # The pro's fill underlay in the hat / left-chest / beanie presets (built
+    # OFF 2026-10-21): ON, `structured_cap`, `pique_knit` and `jersey_tee`
+    # sew `cross_tatami` (one crossing pass, `machine.UNDERLAY_CROSS_ROW_MM`
+    # rows, `UNDERLAY_CROSS_STITCH_MM` stitches) under a fill in place of
+    # their `edge_zigzag` / `edge_run`. Every dense fill on every job in the
+    # pro's zip has that pass (`docs/settings-vs-pro-2026-10-21.md` rows
+    # 13-15). Only the preset FALLBACK moves: `underlay_style` above, the
+    # per-shape override and the photo-class default still win as before.
+    # A fabric preset is gate 1 (a physical constant), so this waits on the
+    # sew-out card's arm and Kent's flip. OFF is the engine byte for byte.
+    # Browser twin: `crossUnderlay` (src/digitize.js).
+    fill_underlay_cross: bool = False
 
     # Which fill technique a fill-classified shape sews with.
     #

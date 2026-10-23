@@ -5,6 +5,16 @@ metadata:
   type: project
 ---
 
+**CORRECTION 2026-10-21 (`docs/settings-vs-pro-2026-10-21.md` row 25): the
+"NOT CUT (float)" set below is NOT needle-up jumps.** It is `prep_all.decode`'s
+"hop" class — two consecutive needle-DOWN stitches 7.5 mm or more apart (the
+16.1 mm one is a stitch in `beckers logo hat.PES`). Read from the raw DST
+records, the pro cuts EVERY needle-up move in all 28 DSTs (always 3+ jump
+records; shortest cut 1.4-4.6 mm by file), while ours leaves 0-168 uncut jumps
+of 0.5-3.0 mm per job. So "the pro floats up to 16.1 mm" is false for jumps;
+DOCTRINE 2026-09-06 already found zero floats on five files. Point 2 below
+(distance is not the pro's variable for CUTS) still stands.
+
 Measured 2026-08-15 across all 23 pro designs (910 needle-up moves, colour
 changes excluded), decoding each machine file's own TRIM/JUMP commands:
 
