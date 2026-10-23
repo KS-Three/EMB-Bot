@@ -2668,6 +2668,31 @@ class PipelineConfig:
     # here is a candidate until sewn (gate 1). Kent flips. Tests:
     # `tests/test_column_small_bold.py`.
     lettering_columns_small_bold: bool = False
+    # Crosses square to the LINE OF TEXT in the Column lane (2026-10-23,
+    # `digitizer_core/column_lean.py`; `docs/lettering-10mm-up-2026-10-23.md`).
+    # The 10 mm and up band read against the pro's files: on Becker's
+    # MARINE (12.8-17.1 mm caps, four garments) he sews every stroke with
+    # the STEMS' cross -- square to the line of text -- diagonals included,
+    # so the N's diagonal, the A's legs and the M's V carry the same sheen as
+    # the stems and his junctions are plain overlaps. The lane stations each
+    # straight piece square to its own axis (`outline_cut.scan_stations`),
+    # so our diagonals read as another sheen and the M's V, where two leaned
+    # pieces meet two upright ones, sews as a tangle (crops in the doc).
+    # Kent's adopted convention (2026-09-03, `stitch-angle-convention`):
+    # stems square to the line of text, a 30 degree lean cap, spacing over
+    # cos of the lean -- the satin tier's `_clamp_to_span`, which the lane
+    # displaced for lettering on 2026-10-12 without carrying. ON, every
+    # straight column of a Column letter whose axis the word's house cross
+    # (`satin_angle_deg`, the house pass; else the design's) can span within
+    # the cap is re-stationed with its crosses along the clamped house, one
+    # every spacing / cos(lean) along the axis so the distance between
+    # crosses stays the satin spacing; a column the house already crosses
+    # square, a curved or ring column, and a letter with no house angle keep
+    # their stations byte for byte. Layout, not a cloth number (judged in
+    # the preview, Kent 2026-10-22); the flip is his, on the before | after
+    # | pro renders. OFF is the lane as it was, station for station. Tests:
+    # `tests/test_column_text_lean.py`.
+    lettering_columns_text_lean: bool = False
     # Under `lettering_columns`, each satin column's pull compensation is a
     # function of ITS OWN drawn stroke width, the way the professional's
     # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the
