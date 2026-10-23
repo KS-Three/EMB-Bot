@@ -1702,6 +1702,29 @@ class PipelineConfig:
     # holds on a cap is a sew-out question (ROADMAP gate 1). A shape the
     # column cannot sew keeps the ring. Off, byte-identical.
     small_solids_satin: bool = False
+    # Compact solids sew as one satin column, not a fill with a ring round
+    # it (2026-10-22, built OFF; Proseal's blue bubbles). The rule above
+    # covers a solid UNDER the detail floor; this is the same answer for one
+    # the fill tier takes. Proseal at the pro's 85.9 mm Hat: the sixteen
+    # spray hexagons at or over the floor (2.0-3.7 mm across) fail the ribbon
+    # classifier's aspect test (`classify_ribbon`: a blob's length estimate
+    # is ~1.3 widths against the 3 a ribbon needs), sew as tatami rows, and
+    # the bean edge cap (`edge_cap="bean"`, every row end in open air) then
+    # draws a ring round each one -- the "satin border" Kent saw. The pro's
+    # DST sews every hexagon, 1.6 to 4.8 mm across, as ONE satin blob: 15-32
+    # stitches at 1.1-2.8 mm, nothing round it, and no fill anywhere in the
+    # spray. ON: a shape the classifier refused for ASPECT only (its width
+    # already fits the ceiling), not lettering, no hole, not riding a design
+    # ramp, whose ring would leave its inside bare (`is_small_solid`, the
+    # rule above's own test), sews `small_solid_satin` at the block's satin
+    # pitch and the design's satin ceiling. A satin run is linear cover, so
+    # the edge cap omits that edge on its own -- no cap rule changes. A
+    # shape the column cannot sew (a chord over the ceiling, fewer than two
+    # crosses) keeps the fill. No new constant: the ceiling is
+    # `machine.satin_ceiling_mm` (5.0 hat), the pitch the satin tier's own.
+    # Whether a 4.8 mm satin dot holds on a cap is the same gate-1 question
+    # the rule above carries. Off, byte-identical (tests/test_compact_solids_satin.py).
+    compact_solids_satin: bool = False
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run
