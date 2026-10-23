@@ -1725,6 +1725,37 @@ class PipelineConfig:
     # Whether a 4.8 mm satin dot holds on a cap is the same gate-1 question
     # the rule above carries. Off, byte-identical (tests/test_compact_solids_satin.py).
     compact_solids_satin: bool = False
+    # The pro's size rule for borders (2026-10-23, built OFF;
+    # `docs/border-census-2026-10-23.md`). Over 16 paired designs the pro
+    # rings about 1% of closed shapes under 2 mm, 7% at 2-4, 29% at 4-6 and
+    # 49% from 6 mm up, and contrast is not the variable; we ring 15% at 6 mm
+    # up because we sew those shapes bare (fill) or whole (satin). Re-read at
+    # 4 mm and up on Fremont, Becker, MFab and Gaulke: what separates his
+    # bordered big shapes from his unbordered ones is the STROKE against the
+    # satin ceiling -- every letter he sews as satin reads 4.2-5.4 mm wide in
+    # his file; every letter wider is a fill under a 1.9-2.5 mm satin border
+    # (BECKER 5 of 5, MFAB 4 of 4), and a plain 17 x 6.5 mm solid is bordered
+    # at 2.4 where we fill it bare. ON: a non-lettering shape on the auto tier
+    # with no per-shape `border` intent whose smallest dimension -- twice the
+    # largest inscribed circle, the census's own measure -- is at or over
+    # `machine.BORDER_BY_SIZE_MIN_DIM_MM` (6.0) sews as a fill with a satin
+    # border at the pro's median width for its band
+    # (`machine.border_by_size_width_mm`: 1.5 at 4-6 mm, 2.1 from 6 up), on
+    # the seam it owns under the 2026-09-09 rule; a shape the classifier
+    # admitted as satin at that size is diverted to the fill tier first, in
+    # the prediction (`_sews_satin`) and the emitter alike. A shape that is
+    # mostly ring -- under half its area within one column of the fill core
+    # the border leaves (`machine.BORDER_BY_SIZE_REACH_FRAC`; Becker's 2.4
+    # mm satin ring, whose junction knot passes the circle test, reaches
+    # 0.23 against the pro's bordered MFab bar at 0.90) -- keeps the tier it
+    # had. Lettering is not read: the letters his rule moves (MFAB, BECKER,
+    # stroke over the ceiling) are the lettering lane's, where the Column cut
+    # and `satin_lettering_split` decide. Plain fills at 6 mm and up are a
+    # coin flip per design in his files (MFab, Drone and the Fremont patch
+    # bordered; Bridge's and Gaulke's bare), so this is one pro's layout
+    # habit judged in the preview (Kent 2026-10-22), not a cloth constant.
+    # Off, byte-identical (tests/test_border_by_size.py).
+    border_by_size: bool = False
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run
