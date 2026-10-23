@@ -132,6 +132,28 @@ DEFAULT_FABRIC_ID = "pique_knit"
 CROSS_UNDERLAY_FABRICS = ("structured_cap", "pique_knit", "jersey_tee")
 
 
+# `cfg.pro_measured_values` (built OFF 2026-10-23): the three plain value gaps
+# `docs/settings-vs-pro-2026-10-21.md` rows 1, 2, 11 and 19 measured against 28
+# of the pro's DSTs, on the presets those jobs cover. Physical constants (gate
+# 1): a flag for the sew-out, nothing here is a default. Mirrored in
+# `src/fabrics.js` (PRO_MEASURED / proMeasuredFor); `test_fabric_wire.py`
+# holds the pair.
+PRO_VALUE_FABRICS = CROSS_UNDERLAY_FABRICS
+PRO_FILL_STITCH_MM = 3.49          # row 11: 3.45-3.52 on rows >= 10 mm, 10 of 11 jobs
+PRO_BEAN_STITCH_MM = 0.95          # row 19: 0.80-1.04 by job
+# row 1 (hat & LC 0.37, 9 jobs) and row 2 (beanie 0.35, 6 files)
+PRO_SATIN_SPACING_MM = {"structured_cap": 0.37, "pique_knit": 0.37, "jersey_tee": 0.35}
+
+
+def pro_values_for(fabric: Fabric, on: bool) -> dict:
+    """The pro-measured values one preset takes when the flag is on, else {}.
+    Keys: fill_stitch_mm, bean_stitch_mm, satin_spacing_mm."""
+    if not on or fabric.id not in PRO_VALUE_FABRICS:
+        return {}
+    return {"fill_stitch_mm": PRO_FILL_STITCH_MM, "bean_stitch_mm": PRO_BEAN_STITCH_MM,
+            "satin_spacing_mm": PRO_SATIN_SPACING_MM[fabric.id]}
+
+
 def fill_underlay_for(fabric: Fabric, cross: bool = False) -> str:
     """The fill underlay a preset sews: its own, or `cross_tatami` when the
     cross flag is on and the preset is one the pro's jobs cover."""

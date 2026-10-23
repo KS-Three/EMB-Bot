@@ -59,7 +59,7 @@ from shapely.ops import nearest_points, unary_union
 
 from . import machine, stitches
 from .config import PipelineConfig
-from .fabrics import Fabric, fill_underlay_for
+from .fabrics import Fabric, fill_underlay_for, pro_values_for
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
 from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
@@ -2273,7 +2273,11 @@ def sequence(
     # constant regardless of fabric, the one place the two engines disagreed
     # on how a fabric preset reaches density. max(0.1, ...) mirrors row_mm's
     # own floor so a pathological preset cannot collapse spacing to zero.
-    satin_spacing_mm = machine.SATIN_SPACING_MM * max(0.1, fabric.density_adjust)
+    # `cfg.pro_measured_values` (OFF): the pro's 0.37 / 0.35 mm in place of 0.40
+    # on the hat, left-chest and beanie presets; factor 1.0 otherwise.
+    pro = pro_values_for(fabric, cfg.pro_measured_values)
+    pro_satin = pro.get("satin_spacing_mm", machine.SATIN_SPACING_MM) / machine.SATIN_SPACING_MM
+    satin_spacing_mm = machine.SATIN_SPACING_MM * pro_satin * max(0.1, fabric.density_adjust)
     # Thread weight (`cfg.thread_wt`, 2026-10-12; docs/hairline-prototype-
     # 2026-10-12.md). One needle per colour, so the weight is per COLOUR
     # BLOCK: a block takes the finest weight any of its shapes names through
@@ -2298,7 +2302,7 @@ def sequence(
     def satin_spacing_for(pr: PlannedRegion) -> float:
         if not block_wt and cfg.thread_wt == machine.THREAD_WT_DEFAULT:
             return satin_spacing_mm
-        return profile_for(pr).satin_spacing_mm * max(0.1, fabric.density_adjust)
+        return profile_for(pr).satin_spacing_mm * pro_satin * max(0.1, fabric.density_adjust)
 
     sp_tree: list = []      # [STRtree, polygons], built on first use
 
@@ -2377,7 +2381,9 @@ def sequence(
     # `stage6_small_letter.text_line_members`); empty with the flag off.
     skeleton_letters = (text_line_members([p.region for p in planned])
                         if cfg.small_lettering_skeleton else set())
-    stitch_mm = cfg.fill_stitch_mm or FILL_STITCH_MM
+    stitch_mm = cfg.fill_stitch_mm or pro.get("fill_stitch_mm", FILL_STITCH_MM)
+    bean_letter_stitch_mm = cfg.bean_letter_stitch_mm or pro.get("bean_stitch_mm")
+    edge_cap_bean_pitch_mm = cfg.edge_cap_bean_pitch_mm or pro.get("bean_stitch_mm")
     # Row 14's underlay split (see _PHOTO_FILL_UNDERLAY above for the craft
     # case). Precedence is unchanged in shape, only the FALLBACK moves: an
     # explicit cfg.underlay_style still wins over the class default exactly
@@ -2746,7 +2752,7 @@ def sequence(
             if tier == "auto" and p.region.meta.get(BEAN_LETTER_KEY):
                 runs, report = bean_letter(p.region.meta[BEAN_LETTER_KEY], p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
-                                           stitch_mm=cfg.bean_letter_stitch_mm,
+                                           stitch_mm=bean_letter_stitch_mm,
                                            serif_mm=cfg.bean_letter_serif_mm,
                                            min_arm_mm=cfg.bean_letter_min_arm_mm,
                                            corner_deg=cfg.bean_letter_corner_deg,
@@ -3867,7 +3873,7 @@ def sequence(
             width_mm=cfg.border_width_mm,
             omit=cap_omit,
             walk_covered=cfg.edge_cap_walk_covered,
-            bean_stitch_mm=cfg.edge_cap_bean_pitch_mm,
+            bean_stitch_mm=edge_cap_bean_pitch_mm,
         )
         # What the gate actually saved on THIS design, measured — the number
         # whose absence let a +58.7% bill read like a +13% one. Computed only
@@ -3878,7 +3884,7 @@ def sequence(
             _gate_saving(silhouette, cap_omit, c_runs, style=cap_style,
                          entry=cursor, trim_at_mm=trim_at,
                          width_mm=cfg.border_width_mm,
-                         bean_stitch_mm=cfg.edge_cap_bean_pitch_mm)
+                         bean_stitch_mm=edge_cap_bean_pitch_mm)
             if c_runs else (0.0, 0.0))
         if c_runs:
             # The needle always lifts into a new block and the thread is

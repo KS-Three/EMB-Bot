@@ -4067,6 +4067,15 @@ class PipelineConfig:
     # (renders under docs/renders/edge-cap-bean-pitch/). A value <= 0 reads
     # as None. tests/test_edge_cap_bean_pitch.py pins OFF by md5.
     edge_cap_bean_pitch_mm: float | None = None
+    # The pro's own measured values (built OFF 2026-10-23; ROADMAP gate 1, a
+    # sew-out flips it). On a hat, left-chest or beanie preset it sews fill
+    # stitches at 3.49 mm (3.0 today), satin at 0.37 mm (0.35 on a beanie)
+    # against 0.40, and bean stitches (bean letters, the bean edge cap) at
+    # 0.95 against 0.73. An explicit `fill_stitch_mm`, `bean_letter_stitch_mm`
+    # or `edge_cap_bean_pitch_mm` still wins. Values and sources:
+    # `fabrics.pro_values_for`, docs/settings-vs-pro-2026-10-21.md rows 1, 2,
+    # 11, 19. False is the shipped plan byte for byte.
+    pro_measured_values: bool = False
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth

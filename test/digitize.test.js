@@ -1896,6 +1896,35 @@ test("crossUnderlay (built OFF): the hat/LC/beanie presets sew the cross pass, n
   assert.deepStrictEqual([...FABRICS.CROSS_UNDERLAY_FABRICS].sort(), ["jersey_tee", "pique_knit", "structured_cap"]);
 });
 
+test("proMeasuredValues (built OFF): fill stitch, satin pitch, bean pitch move on the output; other presets and OFF do not", () => {
+  // Twin of the digitizer's `cfg.pro_measured_values` (tests/test_pro_measured_values.py).
+  // Stitch coordinates are 0.1 mm units.
+  const fillBox = boxPx(0, 0, 400, 300), strip = boxPx(0, 0, 400, 20);
+  const path = [{ x: 0, y: 0 }, { x: 300, y: 0 }];
+  const sew = (id, shape, extra) => DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [Object.assign({ outer: shape.outer, holes: [], angleOverride: 0 }, shape.extra)] }],
+    Object.assign({ garment: { id: "hat_front", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: 40, darkOnTop: false,
+      underlay: false, fillColumns: false, fabric: FABRICS.getFabric(id) }, extra)).stitches;
+  const steps = (s) => { const d = []; for (let i = 1; i < s.length; i++) if (s[i].type === "stitch" && s[i - 1].type === "stitch") d.push(Math.hypot(s[i].x - s[i - 1].x, s[i].y - s[i - 1].y) / 10); return d.sort((a, b) => a - b); };
+  const cols = (s) => new Set(s.map((p) => p.x)).size;
+  const fill = { outer: fillBox, extra: { tierOverride: "fill" } };
+  const satin = { outer: strip, extra: { tierOverride: "satin" } };
+  const bean = { outer: strip, extra: { tierOverride: "satin", sewAs: { kind: "run", path } } };
+  const pitch = { structured_cap: 0.37, pique_knit: 0.37, jersey_tee: 0.35 };
+  for (const id of ["structured_cap", "pique_knit", "jersey_tee"]) {
+    const offF = steps(sew(id, fill, {})), onF = steps(sew(id, fill, { proMeasuredValues: true }));
+    assert.ok(offF.at(-1) <= 4.05 && onF.at(-1) <= 3.55 && onF.at(-1) > 3.4, id + " fill " + offF.at(-1) + " -> " + onF.at(-1));
+    const cOff = cols(sew(id, satin, {})), cOn = cols(sew(id, satin, { proMeasuredValues: true }));
+    assert.ok(Math.abs(40 / (cOff - 1) - 0.4) < 0.01 && Math.abs(40 / (cOn - 1) - pitch[id]) < 0.01, id + " satin " + cOff + " -> " + cOn);
+    const bOff = steps(sew(id, bean, {})), bOn = steps(sew(id, bean, { proMeasuredValues: true }));
+    assert.ok(Math.abs(bOff[bOff.length >> 1] - 0.73) < 0.08 && Math.abs(bOn[bOn.length >> 1] - 0.95) < 0.1, id + " bean " + bOff[bOff.length >> 1] + " -> " + bOn[bOn.length >> 1]);
+    assert.deepStrictEqual(sew(id, fill, { proMeasuredValues: false }), sew(id, fill, {}), id + " off");
+  }
+  for (const preset of FABRICS.FABRICS) {
+    if (FABRICS.PRO_MEASURED.fabrics.includes(preset.id)) continue;
+    for (const shape of [fill, satin, bean]) assert.deepStrictEqual(sew(preset.id, shape, { proMeasuredValues: true }), sew(preset.id, shape, {}), preset.id + " is not in the set");
+  }
+});
+
 test("buildQualityDesign: fabric densityAdjust loosens fill (fewer stitches)", () => {
   // large square + pxPerMm 8 keeps row spacing above the 0.8px floor so the
   // density multiplier actually changes the row count.
