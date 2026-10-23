@@ -133,6 +133,49 @@ SMALL_BOLD_PULL_FRAC = 0.15
 # zigzag across its 0.3 mm counter.
 SMALL_BOLD_COVER_MIN = 0.9
 SMALL_BOLD_PLAIN_GAIN = 0.05
+# `cfg.pull_comp_by_stroke` (2026-10-22, built OFF): each column's pull is
+# read off its OWN drawn stroke width, by the rule the professional's hat
+# files sew. Measured 2026-10-22 over the pro's files in `Embroidery
+# Files.zip` -- sewn satin cross (needle to needle, median per letter)
+# against the art's stroke (2 x EDT on the letter's skeleton, the art
+# scaled to the pro's design width), letters the pro kept at the art's size
+# only, per-job medians:
+#     drawn 0.85 -> sewn 1.43 (+0.58)  Fremont HOTEL FREMONT, hat and patch
+#     drawn 1.29 -> sewn 1.80 (+0.59)  Drone THERMAL
+#     drawn 2.61 -> sewn 3.02 (+0.42)  Proseal PROSEAL
+#     drawn 4.22 -> sewn 4.00 (-0.22)  Becker MARINE (art 0.53 mm/px: +/-0.6)
+# A fixed pull adds the same on every width; the pro's addition FALLS with
+# the width, and at 4 mm he adds nothing (his LC and beanie Becker files
+# agree: -0.45 / -0.40). The line through those four job medians:
+#     sewn = PULL_BY_STROKE_A * drawn + PULL_BY_STROKE_B
+# so the pull a rail gets (`pull_for_width`) is half the addition plus the
+# `RAIL_REACH_INSET_MM` each rail starts inside the outline, read on the
+# hat preset's 0.4 mm and scaled to another preset by its own pull, never
+# above the preset's own pull and never below zero. At 0.85 mm it is the
+# hat's 0.4 (the pro sews HOTEL FREMONT at exactly our width); at 2.6 mm
+# 0.23; at 4 mm 0.07. The thin-stroke floor the pro's RAISED small text
+# sews (0.9-1.26 mm columns) is not in this fit: he redraws those letters,
+# and `SMALL_BOLD_PULL_FRAC` is the lane's rule for them. Pull is a
+# physical constant (ROADMAP gate 1): Kent flips after a sew-out.
+PULL_BY_STROKE_A = 0.77
+PULL_BY_STROKE_B = 0.835
+PULL_BY_STROKE_FABRIC_MM = 0.4          # the preset the fit was read on
+
+
+def pull_for_width(width_mm: float, fabric_pull_mm: float) -> float:
+    """The pull one rail gets on a column `width_mm` wide, under
+    `cfg.pull_comp_by_stroke`, on a preset whose fixed pull is
+    `fabric_pull_mm` (module constants above)."""
+    add = (PULL_BY_STROKE_A - 1.0) * width_mm + PULL_BY_STROKE_B
+    pull = (add / 2.0 + RAIL_REACH_INSET_MM) * fabric_pull_mm / PULL_BY_STROKE_FABRIC_MM
+    return min(max(0.0, pull), max(0.0, fabric_pull_mm))
+
+
+def column_width(col: "Column") -> float:
+    """A column's own drawn stroke width: the median of its station
+    crosses (rail to rail, on the outline, before any inset or pull)."""
+    ws = sorted(math.dist(a, b) for a, b in col.stations)
+    return ws[len(ws) // 2] if ws else 0.0
 
 
 @dataclass
@@ -1510,6 +1553,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 inside_connectors: bool = False,
                 counter_poly: Polygon | None = None,
                 thin_floor: bool = False,
+                pull_of=None,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
@@ -1532,7 +1576,12 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     keep fewer than three crosses over `min_cross_mm` has its thin ones
     widened to it about their own middles (`_floor_crosses`) instead of
     dropped, so a serif or bar thinner than the floor sews at the floor
-    rather than vanishing; a column that keeps three drops them as before."""
+    rather than vanishing; a column that keeps three drops them as before.
+    `pull_of` (`cfg.pull_comp_by_stroke`): a callable, column width (mm) ->
+    the pull one rail gets; given, each column's rails are pushed by
+    `pull_of(column_width(col))` in place of `pull_mm`, read on its own
+    drawn stations. `pull_mm` stays the letter's pull everywhere else (the
+    merge radius, the tuck, the link rule's and the tuck cover's buffers)."""
     from .stage6_satin import (_JUNCTION_TUCK_MM, _comb_thresholds,   # same package,
                                _short_stitch_guard, _split_points)      # same rules
 
@@ -1547,7 +1596,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     ready: list[Column] = []
     hold = end_face_hold(columns, poly) if square_ends else None
     for col in columns:
-        a_pts, b_pts = sewn_rails(col, poly, pull_mm, pull_floor_mm, hold)
+        col_pull = pull_mm if pull_of is None else pull_of(column_width(col))
+        a_pts, b_pts = sewn_rails(col, poly, col_pull, pull_floor_mm, hold)
         if counter_clear_mm > 0:
             a_pts, b_pts = _clear_counters(a_pts, b_pts, cpoly, counter_clear_mm, min_cross_mm)
         # Short stitches on the inside of a bend (`satinplay.js` pullShort;
@@ -1926,6 +1976,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             counter_holes: list | None = None,
                             rail_axis: bool = False,
                             small_bold: bool = False,
+                            pull_by_stroke: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -1942,11 +1993,25 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     `small_bold`: `cfg.lettering_columns_small_bold`, stage 7 passes it for
     a letter under `machine.SATIN_UNDERLAY_MIN_EXTENT_MM` only -- the pull a
     `SMALL_BOLD_PULL_FRAC` share of the stroke width when that is less, and
-    the cross floor widening instead of dropping (`_floor_crosses`)."""
+    the cross floor widening instead of dropping (`_floor_crosses`).
+    `pull_by_stroke`: `cfg.pull_comp_by_stroke` (2026-10-22) -- `pull_mm`
+    is the preset's fixed pull, and each column's rails get
+    `pull_for_width(its own width, pull_mm)` instead, the letter's pull
+    (merge, tuck, link buffers) read the same way off the letter's mean
+    stroke; neither ever above `pull_mm`, nor, under `small_bold`, above its
+    share of the stroke. Read at digitize time on the drawn stroke, so a
+    resize keeps its pull (ruling 12, `column-width-on-resize-2026-10-01`)."""
     from .outline_cut import letter_columns, stroke_width
 
     if small_bold:
         pull_mm = min(pull_mm, SMALL_BOLD_PULL_FRAC * stroke_width(poly))
+    pull_of = None
+    if pull_by_stroke:
+        fabric_pull, cap = pull_mm, pull_mm      # the preset's, or small_bold's share
+
+        def pull_of(w: float) -> float:
+            return min(cap, pull_for_width(w, fabric_pull))
+        pull_mm = pull_of(stroke_width(poly))
 
     # One station per `spacing_mm` along the rail, both ends of each sewn:
     # the engine's own meaning of satin spacing (a needle every `spacing_mm`
@@ -1964,6 +2029,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
                   underlay_style=underlay_style, start_near=start_near,
                   end_near=end_near, counter_clear_mm=counter_clear_mm,
+                  **({"pull_of": pull_of} if pull_of is not None else {}),
                   **({"square_ends": True} if square_ends else {}),
                   **({"inside_connectors": True} if inside_connectors else {}),
                   **({"thin_floor": True} if small_bold else {}),
