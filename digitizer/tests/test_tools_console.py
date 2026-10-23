@@ -51,7 +51,8 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
 #: one ASCII pipeline line, and reads no doc. `hairline_lines_trial`
 #: (2026-10-13) the same: WRITES `table.md`, names #876's doc in its
 #: docstring, prints JSON rows and an ASCII table, reads no doc.
-NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach", "counter_slots",
+NAMES_ONLY = {"border_census",   # WRITES the census table's .md, reads none (2026-10-23)
+              "acceptance_ab", "sewout_walk_reach", "counter_slots",
               "hairline_renders", "hairline_card", "hairline_logo_bill",
               "sewout_candidates_card",   # writes README / scoring sheet / readback .md, reads none
               "sewout_card_v3",           # same: writes the v3 card's .md files, reads none (2026-10-13)
