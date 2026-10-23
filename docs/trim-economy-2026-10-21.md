@@ -104,9 +104,12 @@ shapes. Of 478 plan trims (29 of them colour stops):
 
 ### What memory says has been tried, and how it relates
 
-- **Distance is not the variable** (`pro-trim-threshold`). The pro floats up to
-  16.1 mm and cuts from 1.9 mm. This study agrees: what separates his cuts from
-  his travel is cover, not length. His median cut hop is 6.8-18.8 mm per job, ours
+- **Distance is not the variable** (`pro-trim-threshold`). The pro cuts from
+  1.9 mm and leaves no needle-up move uncut in his DSTs; the note's old "floats
+  up to 16.1 mm" was a needle-DOWN stitch 7.5 mm or more long (a `hop` in
+  `beckers logo hat.PES`), not a jump (`docs/settings-vs-pro-2026-10-21.md`).
+  This study agrees: what separates his cuts from his travel is cover, not
+  length. His median cut hop is 6.8-18.8 mm per job, ours
   4.9-15.9 mm.
 - **`chain_links`** (-33% on real logos; gate 1 and gate 3, OFF). It routes a
   link under a later colour's POLYGON (eroded by `LINK_COVER_INSET_MM`) or on
