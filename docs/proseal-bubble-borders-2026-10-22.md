@@ -99,9 +99,15 @@ no angle parameter today.
 
 ## What moves on the other paired jobs
 
-Hotel Fremont (hat, 92.6 mm) and MFab (hat, 104.9 mm) OFF/ON runs were still
-in flight when this PR opened; their numbers and renders land in a follow-up
-commit on this branch.
+Nothing. Both paired hat jobs plan the same bytes with the flag ON as OFF,
+so there is no ON render to show: no shape on either is a non-lettering
+solid the classifier refused for aspect (their small shapes are lettering,
+or already satin).
+
+| job (hat) | width | stitches | trims | md5 `ours.dst`, OFF = ON |
+|---|---|---|---|---|
+| Hotel Fremont | 92.6 mm | 47,370 | 242 | `335e772d59927b5e77e437ef1f591589` |
+| MFab | 104.9 mm | 38,101 | 187 | `b5bd870510c541e5193f55ccf4d1911e` |
 
 ## What is Kent's
 
