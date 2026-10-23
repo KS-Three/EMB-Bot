@@ -611,6 +611,42 @@ BORDER_WIDTH_MM = 1.70
 # penetrations on the same side of the column.
 BORDER_DENSITY_MM = 0.40
 
+# --- The pro's size rule for borders (`cfg.border_by_size`, 2026-10-23) ----
+#
+# Read off the pro's files in `docs/border-census-2026-10-23.md` (16 paired
+# designs, 805 closed shapes): he borders about half of the shapes whose
+# smallest dimension -- twice the largest inscribed circle -- is 6 mm or
+# more, 29% at 4-6, and almost nothing under 4. The threshold is the band
+# where his share crosses one half; at 4-6 bordering every shape would ring
+# three where he rings one. His border COLUMN width by band, the median of
+# the bordered rows' measured pro widths (census table, `pro (class, width)`):
+# 4-6 mm: 1.48 / 1.49 / 1.51 / 1.8 / 2.18 -> 1.5; 6 mm and up, 18 rows (the
+# five Becker files are one artwork) 1.22 ... 2.48, median 2.06 -> 2.1. A
+# layout habit of one pro, judged in the preview, not a cloth constant.
+BORDER_BY_SIZE_MIN_DIM_MM = 6.0
+BORDER_BY_SIZE_WIDTH_MM = ((6.0, 2.1), (4.0, 1.5))
+# A border is sewn ON a fill. The shape's CORE is what is left inside the
+# ring (eroded by the column plus `BORDER_HOST_MARGIN_MM`); its REACH is the
+# core grown back by the same amount -- the part of the shape a fill core
+# lies within one border width of. Under half the shape in reach and the
+# "border" is mostly a re-fill of a ring with a knot in it: Becker's 2.4 mm
+# satin ring (10.4 mm by the circle at its junction) reaches 0.23, MFab's big
+# satin ring 0.13, Fremont's ground between 155 letters 0.25; the pro's
+# bordered 17 x 6.5 bar on MFab reaches 0.90, Gaulke's 31 x 16 solid 0.87,
+# an 8 mm square 0.93. The core's own share does NOT separate them (bar
+# 0.07, Becker ring 0.05). Measured 2026-10-23 on the census's own regions.
+BORDER_BY_SIZE_REACH_FRAC = 0.5
+
+
+def border_by_size_width_mm(min_dim_mm: float) -> float:
+    """The pro's border column width for a shape of this smallest dimension
+    (`BORDER_BY_SIZE_WIDTH_MM`, widest band first); the general
+    `BORDER_WIDTH_MM` under the lowest band."""
+    for floor, width in BORDER_BY_SIZE_WIDTH_MM:
+        if min_dim_mm >= floor:
+            return width
+    return BORDER_WIDTH_MM
+
 # MEASURED, not a boundary condition (docs/corpus-laws-round3-2026-08-01.md,
 # law 40). Round two's over-a-fill detector fired ZERO times across 39 files
 # because it required a classify()-labelled fill run in the same colour
