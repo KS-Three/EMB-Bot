@@ -555,6 +555,28 @@ PRE_FLIP["text_cluster_counters_as_drawn"] = False
 # `tests/test_bean_counter_hold.py` and `tests/test_bean_bay_hold.py`.
 PRE_FLIP["bean_letter_counter_hold_mm"] = None
 PRE_FLIP["bean_letter_bay_hold"] = None
+# The eight layout flags Kent flipped 2026-10-23 off the flip sheet (PR
+# #1047, `docs/flip-sheet-2026-10-23.md`: OFF | ON | pro renders, judged by
+# numbers against the pro's file where the eye cannot tell at viewing
+# size). Same reason as every entry above: an arm measured before that day
+# was measured without them. The small-text set is the sheet's exact
+# `small_text_set` arm: the four cap values AND `lettering_columns_small_bold`.
+FLIP_2026_10_23 = {
+    "fill_turn_slant": False,
+    "trim_bury_under_later": False,
+    "tie_in_off": False,
+    "small_solids_satin": False,
+    "compact_solids_satin": False,
+    "satin_underlay_short_columns": False,
+    "fill_underlay_cross": False,
+    "small_text_cap_mm": None,
+    "small_text_cap_max_width_scale": None,
+    "small_text_cap_min_stroke_mm": None,
+    "small_text_cap_letter_gap_mm": None,
+    "small_text_cap_bold_scale": None,
+    "lettering_columns_small_bold": False,
+}
+PRE_FLIP.update(FLIP_2026_10_23)
 # Spoked detail marks (Kent's flip 2026-10-16, "ON, tightened"): a small
 # enclosed detail of another colour with four or more tips sews as a spoked
 # mark on top of its host (Fremont's Wisconsin star). False is the pre-flip

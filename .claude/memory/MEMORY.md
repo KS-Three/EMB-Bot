@@ -12,65 +12,65 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [EMB Bot Digitizer](emb-bot-digitizer.md) — history/decisions/gotchas, NOT live state (MASTER_SCOPE is); standing “flat art in, pro out” rule
 - [Ember architecture](ember-architecture.md) — competitor teardown: 2 Next.js apps + iframe, PixiJS/MobX/WASM; no ML in auto-digitize — our opening
 - [Ember feature teardown](ember-feature-teardown.md) — manual/pricing teardown; the fill-pattern library and the Bridge app are the biggest gaps
-- [Fill density convention](fill-density-convention.md) — Law 19 SETTLED: pro density is between same-direction rows; 0.40 tatami sewed half coverage; satin correct
+- [Fill density convention](fill-density-convention.md) — Law 19 SETTLED: pro density is between same-direction rows; 0.40 tatami sewed half coverage
 - [DST codec axis discrepancy](dst-codec-axis-discrepancy.md) — RESOLVED 2026-09-08 with no sew-out: JS DST nibble table was transposed; pre-fix `.dst` re-imports mirrored
 - [Ink/Stitch research](inkstitch-research.md) — GPL-3.0: port Ink/Stitch concepts clean-room, never code; `pystitch` (MIT) is copy-safe; read the doc first
-- [Pro trim threshold](pro-trim-threshold.md) — CORRECTED 10-21: the "16.1 mm floats" were needle-DOWN hops; the pro cuts every jump, we leave 1-3 mm ones
-- [Real-artwork parity](real-artwork-parity.md) — honest baseline 42.5; a pro scores only 75-84 vs a pro, so 95 is above the ceiling; synthetic refs flatter
+- [Pro trim threshold](pro-trim-threshold.md) — pro floats up to 16.1 mm uncut vs `trim_at_mm` 3.0; cut/float ranges overlap: distance is NOT the variable
+- [Real-artwork parity](real-artwork-parity.md) — honest baseline 42.5; a pro scores 75-84 vs a pro, so 95 is above the ceiling; synthetic refs flatter
 - [Satin gate attribution](satin-gate-attribution.md) — DT regularity loses pro satin ground; `explained` promotion 45.8 → 48.1; flat-art sub-1mm floor DISPROVED
 - [Windows goldens fail locally](windows-goldens-fail-locally.md) — golden set MOVES per-fixture; CORRECTED 2026-08-22: Linux fails CI's three; never re-capture on Windows
 - [Digitizer local env](digitizer-local-env.md) — Kent's box: no tesseract so OCR tests skip; rembg venv EXISTS per-checkout, inert outside photo classes
-- [Satin extremity drop and coverage check](satin-extremity-drop-and-coverage-check.md) — FIXED 2026-08-21: `_prune_spurs` cascade silently dropped satin tabs; `ARTWORK_UNCOVERED` catches it
-- [Real-artwork trim truth](real-artwork-trim-truth.md) — read before any trim work: `chain_links` -33% is the one large lever; "real logos rarely cut" is TAINTED
-- [Sew-out accepted as-is](sew-out-accepted-as-is.md) — Kent ruled the sew-out accepted as-is, NOT a to-do; gate 1 is a STANDING refusal; `split_tonal_regions` open
+- [Satin extremity drop and coverage check](satin-extremity-drop-and-coverage-check.md) — FIXED 08-21: `_prune_spurs` cascade dropped satin tabs silently; `ARTWORK_UNCOVERED` catches it
+- [Real-artwork trim truth](real-artwork-trim-truth.md) — read before trim work: `chain_links` -33% is the one large lever; "real logos rarely cut" is TAINTED
+- [Sew-out accepted as-is](sew-out-accepted-as-is.md) — Kent ruled the sew-out accepted as-is, NOT a to-do; gate 1 is a STANDING refusal
 - [Hotel Fremont pro-parity findings](hotel-fremont-pro-parity-findings.md) — UNREPRESENTATIVE fixture: reproduce defects, never size fixes; `forced_class=flat` makes it WORSE
 - [Font pipeline silent failures](font-pipeline-silent-failures.md) — font defects report healthy numbers; RENDER AND LOOK finds what tests miss; a guard must assert its reach
 - [Cache seam, photo floor, environment betrayals](cache-seam-photo-floor-2026-08-22.md) — Drive photo channel MEASURED BROKEN; proxied downloads lie, check Content-Length; satin floor is toggle-only
 - [The first real photographs](first-real-photos-2026-08-23.md) — four family photos: four defects no fixture could reach; 3 FIXED, `_shade_layers` palette escape left OPEN
-- [The renderer that made the real defect visible](thread-render-and-background-stitches-2026-08-24.md) — pre-2026-08-24 sheets were VECTOR PROOFS hiding 72.2% background sewing (FIXED); rembg: DEPLOY REQUIREMENT
-- [Faces overturn the fill ruling](faces-overturn-the-fill-ruling-2026-08-25.md) — filled quantizes a face to one skin field — faces TABLED; Kent chose EXIF-or-face AUTO-DETECT
+- [The renderer that made the real defect visible](thread-render-and-background-stitches-2026-08-24.md) — pre-08-24 sheets were VECTOR PROOFS hiding 72.2% background sewing (FIXED); rembg: DEPLOY REQUIREMENT
+- [Faces overturn the fill ruling](faces-overturn-the-fill-ruling-2026-08-25.md) — filled quantizes a face to one skin field; faces TABLED; Kent chose EXIF-or-face AUTO-DETECT
 - [The Studio's display layer](studio-display-layer-2026-08-25.md) — 787 green specs missed a white-on-white primary CTA. Drive the real app and read COMPUTED styles
 - [Why the letters are botched](letterform-fidelity-2026-08-26.md) — NO single root cause — four measured mechanisms; coverage and IoU cannot see a wrong-angle letter
-- [Art-fidelity self instrument, rebuilt from its artifact](artfidelity-self-rebuild-2026-08-27.md) — cloud container: UNPUSHED IS DELETED. Weights solved by least squares; colour component died twice
+- [Art-fidelity self instrument, rebuilt from its artifact](artfidelity-self-rebuild-2026-08-27.md) — cloud container: UNPUSHED IS DELETED; weights by least squares; colour component died twice
 - [Curve fidelity from the stitch path](curve-fidelity-from-stitch-path-2026-08-27.md) — the raster IS a polygon — read curves from `plan.iter_runs()`; `roughness_deg` is the per-design number
-- [Four thresholds on the wrong population](thresholds-on-the-wrong-population-2026-08-28.md) — a threshold calibrated on one population, applied to another, four times. Tell: a gate finds NOTHING
-- [Kent's eye vs the instruments](kent-eye-vs-instruments-2026-08-27.md) — Kent: 60% of Ember parity; instruments 83.7/80.0. ARTFID is a FIDELITY score, never a quality percentage
+- [Four thresholds on the wrong population](thresholds-on-the-wrong-population-2026-08-28.md) — a threshold calibrated on one population, applied to another, four times; tell: a gate finds NOTHING
+- [Kent's eye vs the instruments](kent-eye-vs-instruments-2026-08-27.md) — Kent: 60% of Ember parity; instruments 83.7/80.0; ARTFID is a FIDELITY score, never a quality percentage
 - [Does the yardstick agree with Kent's eye?](../../docs/yardstick-vs-kents-eye-2026-08-28.md) — phase-1 exit question, NOT settled (n = 6). Element COUNT matches his judgement, AREA does not
 - [The first physical stitch-out](first-physical-sewout-2026-09-01.md) — Instagram icon sewn, 6/10. Density UNSETTLED — two readings disagree 2x; quote only `tools/fill_pitch.py`
 - [Worktree add with empty var wipes cwd](worktree-add-empty-var-wipes-cwd.md) — `git worktree add` with an EMPTY path var, run inside a lane, wipes the checkout; commits survive
-- [Worktree guard judges targets](worktree-guard-judges-targets-2026-10-04.md) — rm/mv guard resolves each verb's TARGET; denies lane roots, other lanes, ancestors; own-lane deletes allowed (Kent 10-04)
+- [Worktree guard judges targets](worktree-guard-judges-targets-2026-10-04.md) — rm/mv guard resolves each verb's TARGET; denies lane roots, other lanes, ancestors; own-lane deletes allowed
 - [Worktree venv and baselines](worktree-venv-and-baselines.md) — worktrees have NO `.venv` — run main's python, cwd in the worktree; main is NEVER a baseline
 - [The baseline was sound, and a shallow clone said otherwise](baseline-attribution-and-studio-ui-2026-09-02.md) — RETRACTED: a SHALLOW clone misattributed the capture; check `--is-shallow-repository`
 - [Hotel Fremont fine details](hotel-fremont-fine-details-2026-09-02.md) — house angle NOT FIRING: slab serifs cancel in doubled-angle space, the 4th wrong-population case; fix is four-fold
 - [Round curves](round-curves-2026-09-03.md) — defect 22 `curve_turn_deg` ON at `_CURVE_MIN_EPS_PX` 4; defect 25 under it: float dust halving fills, FIXED
-- [Classifier stability](classifier-stability-2026-09-03.md) — MEASURED NEGATIVE, no engine change: 5 of 219 verdicts flip under boundary detail; eight cures all fail
+- [Classifier stability](classifier-stability-2026-09-03.md) — MEASURED NEGATIVE, no engine change: 5 of 219 verdicts flip under boundary detail; eight cures fail
 - [Rail dents](rail-dents-2026-09-03.md) — defect 23 FIXED; open half `satin_rails_follow_edge` OFF (Kent). “In every golden” was a bar artefact
 - [Stitch-angle convention](stitch-angle-convention-2026-09-03.md) — ADOPTED by Kent, built: lean cap 30 deg, spacing/cos, stems square to the LINE OF TEXT, Goldman join; four-fold ON
 - [Fill travel under cover](fill-travel-under-cover-2026-09-03.md) — defect 21 FIXED, ON by Kent's flip: routing alone moved NOTHING — column ORDER decides exposure
 - [Fine-lettering design review](fine-lettering-design-review-2026-09-03.md) — “Embroidery 101” IS Laws 45-58, gaps were enforcement; defect 24 FIXED in both engines; bold guard kept
-- [The pro's files refute the scale-limit story](pro-files-refute-scale-limit-2026-09-03.md) — the pro sews Fremont's tagline legibly at 92.5 mm — “too small to sew” REFUTED; ours is SLIC + bean floor
+- [The pro's files refute the scale-limit story](pro-files-refute-scale-limit-2026-09-03.md) — the pro sews Fremont's tagline legibly at 92.5 mm; "too small to sew" REFUTED; ours is SLIC + bean floor
 - [The five sew-out findings, density read as rows](sewout-five-points-2026-09-03.md) — Pro fills as ROWS: 0.14-0.17 mm pitch; per-pass `fill_pitch.py` over-reads a pro ~2.7x — never quote it
 - [Fill row spacing settled at 0.15](fill-row-ruling-2026-09-03.md) — Kent RULED `FILL_ROW_MM` 0.40 to 0.15; older coverage numbers read 2.67x smaller; rings held at 0.40
 - [Seams: instrument, card block 6, blend underlap](seams-2026-09-03.md) — `tools/seam_underlap.py` reads sewn seam depth; Fremont falls short — hole-held shapes get no tongue
 - [The satin raster ate every counter's edge](satin-hole-raster-2026-09-04.md) — `cv2.fillPoly` paints boundary pixels: holes lost half a pixel, rails 0.18 mm short — FIXED (`hole_px`)
 - [The gradient ruling: one region when the design ramp fits](gradient-ruling-2026-09-04.md) — RULING: one region when `design_ramp.py`'s plane gate passes — never gate on the colour profile
 - [The day the instruments were the defect](instruments-that-underreport-2026-09-06.md) — The score SATURATES at 0; a floored grade is no evidence either way. Read before quoting a grade
-- [The seam nothing guards, and what it says to customers](code-seam-and-customer-voice-2026-09-07.md) — A SWEEP is judged on today's yield, a TRIPWIRE on its failure cost; `test_code_wires.py` guards the wires
-- [A warning that read like a ruined job, bounded to nil](palette-mismatch-bounded-2026-09-07.md) — Blast radius NIL — nothing renders the layer list as cones. A warning's SEVERITY is set by its CONSUMERS
-- [Run the app — the screenshot found what reading did not](run-the-app-color-cap-2026-09-07.md) — Slider said max 6, caption 13 colors: the JOIN of three documented facts. Read before judging by reading
-- [Eight PRs: the DST axis, and a number the app asserted](slider-vs-design-and-the-axis-fix-2026-09-08.md) — DST axis FIXED both halves — for an ORIENTATION claim, render it; the app asserted numbers it never measured
+- [The seam nothing guards, and what it says to customers](code-seam-and-customer-voice-2026-09-07.md) — a SWEEP is judged on yield, a TRIPWIRE on failure cost; `test_code_wires.py` guards the wires
+- [A warning that read like a ruined job, bounded to nil](palette-mismatch-bounded-2026-09-07.md) — blast radius NIL: nothing renders the layer list as cones; a warning's SEVERITY is set by its CONSUMERS
+- [Run the app — the screenshot found what reading did not](run-the-app-color-cap-2026-09-07.md) — slider said max 6, caption 13 colors: the JOIN of three documented facts; run the app first
+- [Eight PRs: the DST axis, and a number the app asserted](slider-vs-design-and-the-axis-fix-2026-09-08.md) — DST axis FIXED both halves; for an ORIENTATION claim, render it; the app asserted unmeasured numbers
 - [Quality review 2026-09-08](quality-review-2026-09-08.md) — Fourteen ranked changes and build log; item 1 BLOCKED on Kent's tonal art. Read before digitizing work
 - [Border seam ownership](border-seam-ownership-2026-09-09.md) — Kent RULED the colour sewn ON TOP owns a shared seam; the shape beneath skips it as open arcs
 - [The border on the canvas](canvas-border-menu-2026-09-09.md) — Right-click Add/Remove border on the canvas over the per-shape `border` override; satin tier never borders
 - [Wide columns in the lettering engine](wide-columns-lettering-2026-09-11.md) — 80 of 85 fonts broke a DST record; Kent RULED `splitSatin` ON, `wideColumnFill` off — 9 cross-stitch remain
-- [Stale diagnostics, two flips, and a bill that oscillates](stale-diagnostics-and-two-flips-2026-09-13.md) — A diagnostic on today's defaults goes stale once its fix ships — pin to `PRE_FLIP`; `keep_thin_strokes` ON
-- [The index that stopped loading its newest entries](memory-index-overflow-2026-09-15.md) — 24,986-CHARACTER ceiling; past it the loader silently drops the NEWEST entries. Reclaim HOOKS, never entries
+- [Stale diagnostics, two flips, and a bill that oscillates](stale-diagnostics-and-two-flips-2026-09-13.md) — a diagnostic on today's defaults goes stale once its fix ships; pin to `PRE_FLIP`; `keep_thin_strokes` ON
+- [The index that stopped loading its newest entries](memory-index-overflow-2026-09-15.md) — 24,986-CHARACTER ceiling; past it the loader drops the NEWEST entries silently; reclaim HOOKS, never entries
 - [Run-button commands need absolute paths](run-button-commands-need-absolute-paths.md) — Run buttons share ONE PowerShell whose cwd persists; `cd digitizer` works once — hand Kent an absolute cd
 - [The display revamp, and a fleet that outran its budget](display-revamp-and-a-fleet-that-outran-its-budget-2026-09-16.md) — `kind` is an OPEN set of eight; JEF/XXX/VP3 get jumps where DST gets stitches, NOT FIXED
-- [Tooling research, and a chaining gate already met](tooling-research-and-the-chaining-gate-2026-09-13.md) — No repo/MCP/plugin helps (don't re-search); vendors publish NO trim rule; card block 7 drafted, NOT built
+- [Tooling research, and a chaining gate already met](tooling-research-and-the-chaining-gate-2026-09-13.md) — no repo/MCP/plugin helps (don't re-search); vendors publish NO trim rule; card block 7 drafted, unbuilt
 - [Photo edit tail 2026-09-17](photo-edit-tail-2026-09-17.md) — `fill_travel_under_cover` is ~58% of a photo edit tail; the reorder memo is exact ONLY while both stay pure
 - [A concurrent session designed the same tool](concurrent-session-designed-the-same-tool-2026-09-17.md) — three session collisions; check branches + live sessions FIRST; `claude stop` sticks, a bare kill respawns
-- [Six pending flags, invisible at viewing size](six-flags-invisible-at-viewing-size-2026-09-18.md) — Kent: 29 of 34 pairs "no difference"; all six stay OFF, not the Ember-gap lever; 3 "both bad" logos lead
+- [Six pending flags, invisible at viewing size](six-flags-invisible-at-viewing-size-2026-09-18.md) — Kent: 29 of 34 pairs "no difference"; all six stayed OFF; 3 "both bad" logos lead
 - [Worktree session: the harness guard](worktree-session-harness-guard-2026-09-17.md) — `digitizer` spells `git`: quotes, `cd` chains refused; venv by 8.3 `CLAUDE~4`; preview_start reads MAIN
 - [The gap audit and the sourcing sweep](gap-audit-and-external-sourcing-2026-09-12.md) — 73 agents, 2 real defects the self-comparing suite missed; agents must RUN things; verify dies first
 - [The foundation review and the eye-pairs build](eye-pairs-build-2026-09-17.md) — Kent picked F4; `tools/eye_pairs` built in one session; `uncovered_wanted_mm2` is a DENOMINATOR; spike first
@@ -82,9 +82,9 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [bridge: border and script](bridge-border-and-script-2026-09-30.md) — on/off border = JPEG halo (the dissolve folds it); script is not text; Kent's lever `SATIN_GAPS_TIGHT`
 - [The staircase on low-res uploads](native-ramp-edge-read-2026-09-18.md) — 0.68 mm stairs: NEAREST-upscaled alpha; `subpixel_edges_upscaled` ON (Kent); byte-identity is an EXPRESSION
 - [Lettering route review](../../docs/lettering-route-review-2026-09-19.md) — trace-as-shape stays: font ID is dead (IoU 0.9 = a WRONG font); the gap is CONSTRUCTION (41 vs 3 trims)
-- [Lettering construction plan](../../docs/superpowers/plans/2026-09-19-lettering-construction.md) — Kent: trace + font-engine rules; all steps built, ON but 3b (skeleton RULED, owes a sew-out); 9 trims vs 3
+- [Lettering construction plan](../../docs/superpowers/plans/2026-09-19-lettering-construction.md) — Kent: trace + font-engine rules; all steps built, ON but 3b (skeleton RULED, owes a sew-out)
 - [The Studio never sent the file](../../DOCTRINE.md) — 1,200-px canvas re-encode rewrote RGB under alpha (Becker 59→175 trims); FIXED 09-20; `alpha_edge_extend` ON
-- [Junction construction plan](../../docs/superpowers/plans/2026-09-19-junction-construction.md) — folds are welds through 30-60° corners; `satin_junction_stack` ON refuses them (R 311→0); layers under pro's
+- [Junction construction plan](../../docs/superpowers/plans/2026-09-19-junction-construction.md) — folds are welds through 30-60° corners; `satin_junction_stack` ON refuses them (R 311->0)
 - [Exposed travel is the fill tier's](exposed-travel-is-the-fill-tier-2026-09-19.md) — `travel_cover`'s 245 mm is defect 21, not gate 3 (fill bridges, 0.0 on fabric); `fill_bridge_cut` ON (Kent)
 - [Edge wobble is satin rails](edge-wobble-is-satin-rails-2026-09-19.md) — "right shapes, bad edges": outline clean (0.011 mm), SATIN RAILS wobble ~0.10 mm; run `edge_wobble.py` first
 - [Cap order, and a pair experiment](cap-order-and-the-pair-experiment-2026-09-19.md) — `cap_center_out` parked OFF: the pro's cap/LC pairs of one artwork (a controlled experiment) back bottom-up
@@ -103,46 +103,47 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Lock stitches, both JS builders](lock-stitches-2026-10-03.md) — `ties` built OFF for shapes too; the 09-14 lettering lock leg was 0.8 PIXELS. Assert lengths in OUTPUT units
 - [Row stagger for the browser fill](fill-stagger-2026-10-03.md) — JS fill holes lined up 94%; `fillStagger` built OFF (Kent's flip), +7% stitches. A channel is 3 rows, not 2
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: don't build on past sessions; answer "what's next" from ROADMAP/PRODUCT/MASTER_SCOPE on origin/main
-- [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only, nothing shown to the customer
+- [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only
 - [Memory outside the repo](memory-outside-the-repo.md) — sessions rooted in `.claude-work` write memory to a folder this repo never sees; seven notes snapshotted here by 10-04
-- [Parallel agent with the embot](parallel-agent-with-embot.md) — SNAPSHOT: audit before a PR is OPEN, not just before arming; never `git stash` in a lane; a stacked PR targets main and says so
-- [Browser fill lane state](embot-browser-fill-lane-state.md) — SNAPSHOT 10-03: #606/#609/#611 built OFF, flips Kent's; island fix #613 merged PRE-audit, cures in #620; cleanup only Kent can run
-- [Handover numbers and stacked branches](embot-handover-numbers-and-stacked-branches.md) — SNAPSHOT: reproduce a handed-over number with its own script; a PR can merge at an older head than its session's branch
-- [Sub-unit stitches lane](embot-sub-unit-stitches-lane.md) — SNAPSHOT 10-04: `dedupeHoles` built OFF (#623), Kent's "new flag, every run"; never look through a jump: three jumps are a cut in a DST
+- [Parallel agent with the embot](parallel-agent-with-embot.md) — SNAPSHOT: audit before a PR is OPEN; never `git stash` in a lane; a stacked PR targets main and says so
+- [Browser fill lane state](embot-browser-fill-lane-state.md) — SNAPSHOT 10-03: #606/#609/#611 built OFF; island fix #613 merged PRE-audit, cures in #620
+- [Handover numbers and stacked branches](embot-handover-numbers-and-stacked-branches.md) — SNAPSHOT: reproduce a handed-over number with its own script; a PR can merge at an older head than its branch
+- [Sub-unit stitches lane](embot-sub-unit-stitches-lane.md) — SNAPSHOT 10-04: `dedupeHoles` built OFF (#623); never look through a jump: three jumps are a cut in a DST
 - [Wrong-root sessions, global guards](wrong-root-sessions-and-global-guards-2026-10-04.md) — sessions rooted outside the repo ran with no project hooks; `embot-guards-global.js` covers them
 - [Closed-ring lane](embot-closed-ring-lane.md) — SNAPSHOT: #621 `offsetRing` on a repeated point, #625 stacked on it; defect 55's offset half is Kent's call
 - [Star-walk lane](embot-star-walk-lane.md) — SNAPSHOT: #624 ends `skeletonEdges`' endless walk; defect 57's cure order waits on Kent
 - [Build what was priced](build-what-was-priced.md) — SNAPSHOT: after Kent picks a priced option, build exactly that
-- [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
+- [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass (`cross_tatami`); preview cannot show underlay
 - [Fremont letters are not thicker than the pro's](lettering-thickness-fremont-2026-10-06.md) — file width = pro's (1.23 vs 1.40 scaled); Original view mis-scaled; real gap: curve outer rail 0.53 vs 0.33
-- [Lettering architecture R&D](lettering-architecture-2026-10-07.md) — five failures by letter size; patchwork is the skeleton-rail MODEL (pros put rails on the OUTLINE); Column lane OFF: cut + Euler walk + tuck + end fans
+- [Lettering architecture R&D](lettering-architecture-2026-10-07.md) — five failures by letter size; patchwork is the skeleton-rail MODEL (pros put rails on the OUTLINE); Column lane: cut + Euler walk + tuck
 - [L1 one tagger](word-tagger-l1-2026-10-08.md) — BUILT OFF `cfg.lettering_words`; kappa 0.907 vs text cluster 0.881 (in-sample); Kent: AFTER better under the Column lane (10-08)
 - [N fan cure](n-fan-cure-2026-10-08.md) — `satin_tip_corner_gate` OFF: tip = convex corner; ≈ tip caps off; degree gate refuted
 - [fillColumns float pictures](fill-columns-float-pictures-2026-10-08.md) — STANDING: next 10 digitized images shown to Kent carry the off/on float sheet; count 1/10
-- [Column width on resize](column-width-on-resize-2026-10-01.md) — ruling 12: drawn width scales, pull comp fixed; store `widthPx`, mm is a view; no clamp 0.67-11.8 mm; columns lane done 10-11
+- [Column width on resize](column-width-on-resize-2026-10-01.md) — ruling 12: drawn width scales, pull comp fixed; store `widthPx`, mm is a view; no clamp 0.67-11.8 mm
 - [Letterform priors lane](letterform-priors-lane-2026-10-06.md) — "something new" on lettering was yesterday's lane (outline-cut); check sibling lanes before proposing new
-- [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
-- [True-size guard below 81 mm](small-text-true-size-guard-2026-10-15.md) — 65 mm loss = strays bug + ink-ground bug + per-glyph OCR noise; guard 0.45 x 40/wt, unsewn; ink ring OFF; measure on run_arm
+- [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); a `-b X origin/main` lane pushes to main
+- [True-size guard below 81 mm](small-text-true-size-guard-2026-10-15.md) — 65 mm loss = strays bug + ink-ground bug + per-glyph OCR noise; guard 0.45 x 40/wt, unsewn; measure on run_arm
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
-- [Bean holds ON](bean-holds-on-2026-10-15.md) — Kent flipped counter hold 0.25 + bay hold 0.2 as PLAIN defaults (None stays OFF); the three sew-out cards pin None explicitly; grep card tools before any bean flip
-- [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); Fremont OFF md5 follows OpenCV's Intel IPP path; test env capped OPENCV_IPP=avx2
-- [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins; flip + sharp tips Kent's
+- [Bean holds ON](bean-holds-on-2026-10-15.md) — Kent flipped counter hold 0.25 + bay hold 0.2 as PLAIN defaults (None = OFF); sew-out cards pin None; grep card tools before a flip
+- [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); Fremont OFF md5 follows OpenCV's IPP path; OPENCV_IPP=avx2 in tests
+- [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
-- [Card v4 sew-out: pro raises small text](card-v4-sewout-letter-size-2026-10-20.md) — pro lifts every small word to ~4 mm (EST/1895 2.1x art) and satins it; ours traces art size as a hairline; measure by colour block
-- [Session ended mid-suite](session-ended-mid-suite-2026-10-20.md) — a ruled flip sat uncommitted in a lane behind a hung pytest; sweep lanes' TRACKED dirt and the newest session's last turn
-- [Small bold columns](small-bold-columns-2026-10-21.md) — `lettering_columns_small_bold` OFF: 4 mm letters at the pro's 0.85 mm satin, no fans; 8/9/S counters closed UPSTREAM by growth; crossed-legs metric is noise here
-- [Pro rules across all jobs](pro-rules-across-jobs-2026-10-21.md) — small text raised to ~4 mm on every job that has it; beanie knockdown 5/5; white interiors sewn; count trims from DST, never PES
+- [Card v4 sew-out: pro raises small text](card-v4-sewout-letter-size-2026-10-20.md) — pro lifts every small word to ~4 mm (2.1x art) and satins it; ours traced art size as a hairline; measure by colour block
+- [Session ended mid-suite](session-ended-mid-suite-2026-10-20.md) — a ruled flip sat uncommitted in a lane behind a hung pytest; sweep lanes' TRACKED dirt and the last turn
+- [Small bold columns](small-bold-columns-2026-10-21.md) — `lettering_columns_small_bold` ON 10-23: 4 mm letters at the pro's 0.85 mm satin, no fans; 8/9/S counters closed UPSTREAM by growth
+- [Pro rules across all jobs](pro-rules-across-jobs-2026-10-21.md) — small text raised to ~4 mm on every job; beanie knockdown 5/5; white interiors sewn; count trims from DST, never PES
 - [Sew white areas](sew-white-areas-2026-10-21.md) — R11 built OFF as a Studio option; counter = untagged white in a text-cluster letter; Machine field doubles trims (stage 5)
 - [Beanie knockdown ON](beanie-knockdown-2026-10-21.md) — Kent flipped it unsewn: garment-coloured fill under design
-- [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
-- [Fill turn slant](fill-turn-slant-2026-10-21.md) — `fill_turn_slant` OFF (#1036): turns 0.7 mm along the row; Kent held OFF pending the flip sheet
-- [Cut every jump](cut-every-jump-2026-10-21.md) — `cut_every_jump` OFF: uncut 285 -> 0 over 9 jobs, but trims 434 -> 674 (pro 246); bury first
-- [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
-- [Short column underlay](short-column-underlay-2026-10-22.md) — `satin_underlay_short_columns` OFF: pro centre-walks 83-97% of columns at EVERY width; no 3.5 mm pitch; zigzag unsettled
-- [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` OFF (hat/LC/beanie); MFab/Becker "BARE" fills were SATIN the tool misread — list run kinds first
-- [Small text re-set](small-text-reset-2026-10-21.md) — OFF: columns were already the pro's, SPACING was wrong; later stages undid the layout five ways; 5/S bays still close
-- [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean EDGE CAP round a 2-4 mm hex the classifier sent to fill (aspect); pro sews one satin blob; `compact_solids_satin` OFF
-- [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out; only pull/comp and density need fabric. Fine lettering is the priority
+- [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` ON 10-23
+- [Fill turn slant](fill-turn-slant-2026-10-21.md) — `fill_turn_slant`: turns 0.7 mm along the row; ON 10-23 (flip sheet)
+- [Cut every jump](cut-every-jump-2026-10-21.md) — `cut_every_jump` HELD OFF: trims 434 -> 674 (pro 246); bury first
+- [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off`: pro locks no run start (1 of 68); ON 10-23
+- [Short column underlay](short-column-underlay-2026-10-22.md) — `satin_underlay_short_columns`: pro centre-walks 83-97% of columns at EVERY width; ON 10-23
+- [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` (hat/LC/beanie) ON 10-23; MFab/Becker "BARE" fills were SATIN misread — list run kinds first
+- [Small text re-set](small-text-reset-2026-10-21.md) — columns were the pro's, SPACING was wrong; later stages undid the layout five ways; set ON 10-23
+- [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean EDGE CAP round a 2-4 mm hex sent to fill (aspect); `compact_solids_satin` ON 10-23
+- [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out; only pull/comp and density need fabric; fine lettering is the priority
 - [Border census](border-census-2026-10-23.md) — small rings = edge cap + run tier; pro borders by SIZE (>= 4 mm)
-- [Pull comp by stroke](pull-comp-by-stroke-2026-10-22.md) — pro's hat pull FALLS with width: +0.58 at 0.85 mm, +0.42 at 2.6, 0 at 4; `pull_comp_by_stroke` OFF; small text stays small_bold's
+- [Pull comp by stroke](pull-comp-by-stroke-2026-10-22.md) — pro's hat pull FALLS with width: +0.58 at 0.85 mm, +0.42 at 2.6, 0 at 4; `pull_comp_by_stroke` OFF (gate 1)
 - [Flip sheet: layout flags OFF | ON | pro](flip-sheet-2026-10-23.md) — `tools/flip_sheet_renders.py`; diff is a MULTISET (locks sit on stations); x-ray tiles
+- [Flip eight 2026-10-23](flip-eight-2026-10-23.md) — Kent: "flip the eight ON, hold two"; judged by NUMBERS vs the pro where the eye can't tell; `FLIP_2026_10_23`/`TRIO_OFF` pin the old engine

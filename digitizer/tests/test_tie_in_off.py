@@ -21,8 +21,8 @@ def _tied():
     return b
 
 
-def test_default_off():
-    assert PipelineConfig().tie_in_off is False
+def test_default_on_since_2026_10_23():
+    assert PipelineConfig().tie_in_off is True
 
 
 def test_off_locks_both_starts_and_both_ends():

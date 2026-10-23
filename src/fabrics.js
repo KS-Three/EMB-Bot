@@ -212,7 +212,7 @@
   }
 
   // The presets whose fill underlay the `crossUnderlay` option (built OFF
-  // 2026-10-21) swaps to `cross_tatami`: the pro sews one crossing pass under
+  // 2026-10-21, ON by default since 2026-10-23) swaps to `cross_tatami`: the pro sews one crossing pass under
   // every dense fill on every job in the zip. Twin of the digitizer's
   // `fabrics.CROSS_UNDERLAY_FABRICS` / `fill_underlay_for` (`cfg.
   // fill_underlay_cross`); `test_fabric_wire.py` holds the pair. Gate 1:

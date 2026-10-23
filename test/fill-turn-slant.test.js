@@ -122,10 +122,10 @@ function passes(extra) {
 }
 const count = (d, k) => d.stitches.filter((s) => s.type === k).length;
 
-test("OFF: the builder fixture sews the bytes main sewed, flag absent and flag false", () => {
+test("OFF: the builder fixture sews the bytes main sewed with the flag false; absent is ON since 2026-10-23", () => {
   for (const fc of [false, true]) for (const fs of [false, true]) {
     const id = `design_columns${fc ? "On" : "Off"}_stagger${fs ? "On" : "Off"}`;
-    assert.strictEqual(designFp(build({ fillColumns: fc, fillStagger: fs })), PINS[id], id + " (absent)");
+    assert.strictEqual(designFp(build({ fillColumns: fc, fillStagger: fs })), designFp(build({ fillColumns: fc, fillStagger: fs, fillTurnSlant: true })), id + " (absent = on)");
     assert.strictEqual(designFp(build({ fillColumns: fc, fillStagger: fs, fillTurnSlant: false })), PINS[id], id + " (false)");
   }
 });
@@ -319,7 +319,7 @@ test("fillTurnSlant (shapes): the constant is declared once in digitize.js as 0.
 
 test("fillTurnSlant (shapes): the design keeps its size, its colours, its cuts and its runs, and sheds its short turns", () => {
   for (const fc of [false, true]) {
-    const off = build({ fillColumns: fc }), on = build({ fillColumns: fc, fillTurnSlant: true });
+    const off = build({ fillColumns: fc, fillTurnSlant: false }), on = build({ fillColumns: fc, fillTurnSlant: true });
     assert.notStrictEqual(designFp(on), designFp(off), "the flag does something");
     assert.strictEqual(on.widthMM, off.widthMM);
     assert.strictEqual(on.heightMM, off.heightMM);

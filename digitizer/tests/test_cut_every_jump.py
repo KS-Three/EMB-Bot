@@ -20,6 +20,7 @@ from digitizer_core import stage7_sequence
 from digitizer_core.stage7_sequence import _cut_or_bury_jumps
 from digitizer_core.stitches import StitchBlock, StitchRun
 
+from .conftest import FLIP_2026_10_23
 from .test_trim_bury_under_later import _bar, _md5, _plan, _region, _travel_is_hidden
 
 
@@ -255,7 +256,10 @@ def roofing_hat():
     from tools.pro_pair import request
     from .conftest import TESTDATA
     data = (TESTDATA / "art" / "logo_golke_roofing.png").read_bytes()
-    conf = PipelineConfig(**_parse_config(json.dumps(request(114.2, "hat_front"))))
+    # on the engine the numbers were measured on: the 2026-10-23 flips off
+    # (`trim_bury_under_later` among them is this fixture's "both" arm)
+    conf = replace(PipelineConfig(**_parse_config(json.dumps(request(114.2, "hat_front")))),
+                   **FLIP_2026_10_23)
     gen = build_generation(_decode(data), conf, exif_source=data)
     out = {}
     for name, kw in (("off", {}), ("on", {"cut_every_jump": True}),
