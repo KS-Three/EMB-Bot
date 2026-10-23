@@ -137,6 +137,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
 - [Fill turn slant](fill-turn-slant-2026-10-21.md) — `fill_turn_slant` OFF (#1036): turns 0.7 mm along the row; Kent held OFF pending the flip sheet
 - [Cut every jump](cut-every-jump-2026-10-21.md) — `cut_every_jump` OFF: uncut 285 -> 0 over 9 jobs, but trims 434 -> 674 (pro 246); bury first
+- [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
 - [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` OFF (hat/LC/beanie); MFab/Becker "BARE" fills were SATIN the tool misread — list run kinds first
 - [Small text re-set](small-text-reset-2026-10-21.md) — OFF: columns were already the pro's, SPACING was wrong; later stages undid the layout five ways; 5/S bays still close
 - [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean EDGE CAP round a 2-4 mm hex the classifier sent to fill (aspect); pro sews one satin blob; `compact_solids_satin` OFF
