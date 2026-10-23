@@ -1,4 +1,4 @@
-"""`cfg.tie_in_off` (2026-10-22, default OFF, a gate-1 CANDIDATE): no lock at
+"""`cfg.tie_in_off` (2026-10-22, ON by default since 2026-10-23): no lock at
 the start of a run. The pro locks 1 of 68 run starts (settings-vs-pro row 22);
 `apply_ties` already locks only at cuts. Lengths are asserted in output
 millimetres, never pixels."""
@@ -47,6 +47,19 @@ def test_on_strips_tie_ins_keeps_tie_offs():
         tail = r.points[-4:]
         assert tail[-1] == (x_end, 0.0) and tail[-3] == (x_end, 0.0)
         assert abs(math.dist(tail[-1], tail[-2]) - machine.TIE_STITCH_MM) < 1e-9
+
+
+def test_the_count_per_shape_is_what_the_edge_caps_bill_reads():
+    """Stage 7 writes the cap's bill at the cap's emission, with its tie-ins
+    on; ON, the bill comes down by the locks the cap then loses, read off this
+    dict (`test_edge_cap_budget`'s identities on becker: 654 billed against
+    642 sewn before the fix)."""
+    b = _tied()
+    b.runs[0].shape_id, b.runs[1].shape_id = "__edge_cap__", "Sother"
+    by_shape = {}
+    removed = stitches.drop_tie_ins([b], by_shape)
+    assert removed == 8 and by_shape == {"__edge_cap__": 4, "Sother": 4}
+    assert stitches.drop_tie_ins([b], by_shape) == 0 and by_shape == {"__edge_cap__": 4, "Sother": 4}
 
 
 def test_bean_retrace_opening_is_not_stripped():

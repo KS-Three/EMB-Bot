@@ -52,7 +52,9 @@ FIXTURES = ("synthetic", "fremont_tagline")
 # with every run so a table says which engine it was measured on. True size
 # (`small_text_true_size`) is ON by default since 2026-10-14; the census's
 # rows were measured before that, so it pins the switch OFF (`OFF_FLIPS`).
-OFF_FLIPS = {"small_text_true_size": False}
+from tools.flip_eight_proof import BEFORE as _FLIP_2026_10_23  # noqa: E402
+# ...and the nine layout flags flipped 2026-10-23 (the rows predate them too)
+OFF_FLIPS = {"small_text_true_size": False, **_FLIP_2026_10_23}
 PINNED = {"small_glyph_keep": True, "small_lettering_skeleton": False,
           "small_text_cap_mm": None, "small_text_restore_mm": None}
 

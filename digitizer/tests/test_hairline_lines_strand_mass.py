@@ -16,6 +16,7 @@ import cv2
 import pytest
 
 from digitizer_core import PipelineConfig, machine
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.pipeline import digitize, plan_stitches, run_stages
 from digitizer_core.stage6_hairline_lines import extract_strands, strand_blocks
 from tests.test_hairline_lines import _md5
@@ -55,7 +56,8 @@ PINS = {"s882_lines": "37789a45fa1dac14c3ce6d824dc2ad9c",
 # False here.
 HOLDS_OFF = dict(bean_letter_counter_hold_mm=None, bean_letter_bay_hold=None,
                  dissolve_phantom_blends=False, clip_keep_pieces=False,
-                 bean_letter_straight_mm=None, edge_cap_skip_bean_letters=False)
+                 bean_letter_straight_mm=None, edge_cap_skip_bean_letters=False,
+                 **FLIP_2026_10_23)   # and the 2026-10-23 flips: the md5s predate them
 
 
 def _syn_cfg(arm: str, width_mm: float) -> PipelineConfig:

@@ -18,6 +18,7 @@ import numpy as np
 import pytest
 
 from digitizer_core import machine
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off where a test prices another flag
 
 from digitizer_core import (PipelineConfig, StitchBlock, StitchPlan,
                             StitchRun, machine, run_stages)
@@ -68,6 +69,20 @@ from digitizer_core.preflight import (
 from tests.conftest import PLAN_CFG_KW, TESTDATA, cfg
 
 ART = TESTDATA / "logo_whitebg.png"
+
+
+@pytest.fixture(scope="module")
+def pre_flip_plan():
+    """The fixture logo planned on the engine before the 2026-10-23 flips
+    (conftest.FLIP_2026_10_23). The clean-report promise and the coverage
+    layer units below were validated on that engine: the small-text set now
+    re-sets the logo's small words (a LETTERING_TOO_SMALL finding), and the
+    hat/LC cross pass lays a second layer under the fill (coverage p50 3.05
+    against the one-layer 2.67). Both are the flipped engine doing what Kent
+    ruled, not a regression the instruments should fail on."""
+    from digitizer_core import run_stages
+    result = run_stages(ART, cfg(**FLIP_2026_10_23))
+    return result, plan_stitches(result, cfg(**PLAN_CFG_KW, **FLIP_2026_10_23))
 PHOTO = TESTDATA / "photo"
 
 PHOTO_GUARD_CODES = {PHOTO_RESOLUTION_LOW, SUBJECT_CONTRAST_LOW,
@@ -96,11 +111,12 @@ def _codes(report: dict) -> set[str]:
 
 # --- A clean plan earns a clean report --------------------------------------
 
-def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
+def test_a_clean_real_plan_earns_a_clean_report(pre_flip_plan):
     """The fixture logo, planned by the real pipeline, scores 100 — every
-    threshold in the module was validated against this promise first."""
-    stitch_plan, _planned, _warnings = plan
-    report = run_preflight(whitebg, stitch_plan, cfg(**PLAN_CFG_KW), image=ART)
+    threshold in the module was validated against this promise first (on the
+    engine before the 2026-10-23 flips; see `pre_flip_plan`)."""
+    whitebg, stitch_plan = pre_flip_plan
+    report = run_preflight(whitebg, stitch_plan, cfg(**PLAN_CFG_KW, **FLIP_2026_10_23), image=ART)
 
     assert report["findings"] == []
     assert report["score"] == 100
@@ -771,7 +787,10 @@ def test_bridges_script_sews_its_gaps_closed_at_80mm_and_the_finding_says_where_
     spokes on the same logo leads the finding (the most closed gap); the
     script rides in `shapes`."""
     path = PHOTO / "logo_bridge_bar.jpg"
-    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6)
+    # the small-text set (ON 2026-10-23) re-sets the teal words and the finding
+    # then carries a resolution note; the finding's wording is pinned on the
+    # engine it was written for (conftest.FLIP_2026_10_23)
+    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6, **FLIP_2026_10_23)
     result, plan = digitize(path, c)
     report = run_preflight(result, plan, c, image=path)
     flagged = [f for f in report["findings"] if f["code"] == SATIN_GAPS_TIGHT]
@@ -1299,7 +1318,7 @@ def test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue(alpha):
     assert report["metrics"]["coverage_max"] < 5.0
 
 
-def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):
+def test_coverage_reads_stitch_geometry_through_ties_and_splits(pre_flip_plan):
     """The playbook's two parity traps, which would double every satin
     number. Stage 7 splices tie bounces INTO the runs they protect and a
     bounce is a 180 deg reversal; split satin inserts mid-cross penetrations
@@ -1307,8 +1326,8 @@ def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):
     real satin column across the reversal gate and gets it charged at twice
     its density. The fixture's real plan carries both, and its satin still
     prices at one layer."""
-    stitch_plan, _planned, _warnings = plan
-    m = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))["metrics"]
+    _whitebg, stitch_plan = pre_flip_plan
+    m = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW, **FLIP_2026_10_23))["metrics"]
 
     # Fill at 0.40 is the classic stack's floor. Re-measured 2026-08-05 after
     # corpus laws 23/26: pique_knit's edge_run underlay (was edge_lattice)

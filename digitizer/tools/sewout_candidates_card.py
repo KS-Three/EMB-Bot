@@ -57,6 +57,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from digitizer_core import PipelineConfig, machine, stitchviz  # noqa: E402
+from tools.flip_eight_proof import BEFORE as _FLIP_2026_10_23  # noqa: E402  -- the card was cut before the 2026-10-23 flips
 from digitizer_core.adapter import plan_to_design  # noqa: E402
 from digitizer_core.export import plan_to_pattern  # noqa: E402
 from digitizer_core.pipeline import digitize, fabric_for  # noqa: E402
@@ -184,7 +185,7 @@ def block_F(c: CardV2, x0: float, y0: float, report: list) -> None:
         for k, (state, on) in enumerate(F_STATES, start=1):
             cfg = PipelineConfig(target_width_mm=ink_w * cap / ink_h, forced_class="flat",
                                  thread_wt=c.wt, small_print_floor=on,
-                                 small_text_true_size=False)    # pre-flip (2026-10-14), as cut
+                                 small_text_true_size=False, **_FLIP_2026_10_23)    # pre-flip (2026-10-14 and 2026-10-23), as cut
             _res, plan = digitize(img, cfg)
             box = place(c, plan, x, top, "F", f"{cap}-{state}")
             c.add(0, hc.teeth(x, top - 0.8, k), f"F:label:{cap}-{state}")
@@ -234,7 +235,7 @@ def block_G(c: CardV2, x0: float, y0: float, report: list) -> None:
     bottom = top
     for k, (gap, name) in enumerate(G_ARMS, start=1):
         cfg = PipelineConfig(target_width_mm=ink_w, forced_class="flat", thread_wt=c.wt,
-                             forbid_gap_mm=gap, max_colors=2, small_text_true_size=False)
+                             forbid_gap_mm=gap, max_colors=2, small_text_true_size=False, **_FLIP_2026_10_23)
         _res, plan = digitize(img, cfg)
         box = place(c, plan, x, top, "G", f"gap-{name}", stretches=len(STOP_ORDER))
         c.add(0, hc.teeth(x, top - 0.8, k), f"G:label:gap-{name}")
@@ -260,7 +261,7 @@ def block_H(c: CardV2, x0: float, y0: float, report: list) -> None:
     right = x0
     for k, (state, on) in enumerate(H_STATES, start=1):
         cfg = PipelineConfig(target_width_mm=ink_w, forced_class="flat", thread_wt=c.wt,
-                             lettering_columns=on, small_text_true_size=False)
+                             lettering_columns=on, small_text_true_size=False, **_FLIP_2026_10_23)
         _res, plan = digitize(path, cfg)
         box = place(c, plan, x0, y, "H", f"reach-{state}")
         c.add(0, hc.teeth(x0, y - 0.8, k), f"H:label:reach-{state}")

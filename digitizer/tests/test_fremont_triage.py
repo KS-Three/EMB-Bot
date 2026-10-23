@@ -66,8 +66,11 @@ def test_fixture_is_the_transparent_upload():
 
 @pytest.fixture(scope="module")
 def main_run():
-    """The default config: `small_glyph_keep` is ON since 2026-10-13."""
-    return ft.run_arm("main", preflight=False)
+    """`small_glyph_keep` ON (2026-10-13) on the engine these pins were read
+    on: the 2026-10-23 flips off (the small-text set raises 1895 to ~4 mm
+    satin, which is a different test)."""
+    from tools.flip_eight_proof import BEFORE
+    return ft.run_arm("main", preflight=False, overrides=dict(BEFORE))
 
 
 @pytest.fixture(scope="module")
