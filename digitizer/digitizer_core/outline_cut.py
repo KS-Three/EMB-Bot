@@ -1077,6 +1077,10 @@ _RAIL_AXIS: contextvars.ContextVar[bool] = contextvars.ContextVar("rail_axis", d
 # `small_bold` the same way (`cfg.lettering_columns_small_bold`, stage 7 under
 # `machine.SATIN_UNDERLAY_MIN_EXTENT_MM`): see `build_column`.
 _SMALL_BOLD: contextvars.ContextVar[bool] = contextvars.ContextVar("small_bold", default=False)
+# `small_bold`'s simplify floor for this cut when not `SMALL_BOLD_SIMPLIFY_MM`
+# (`columns.lettering_columns_shape`'s coverage retry); None reads the constant.
+_SMALL_BOLD_SIMPLIFY: contextvars.ContextVar[float | None] = contextvars.ContextVar(
+    "small_bold_simplify", default=None)
 # `small_bold`: a column whose crosses pivot on one point through more than
 # this sweeps a starburst over a ~4 mm letter (a serif block's inner corner,
 # a stem flaring into its serif). The pro's Fremont letters have none: each
@@ -1716,18 +1720,21 @@ class LetterCut:
 
 def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False,
                    mitre_ends: bool = False, judge=None, rail_axis: bool = False,
-                   small_bold: bool = False) -> LetterCut:
+                   small_bold: bool = False, simplify_mm: float | None = None) -> LetterCut:
     """See `_letter_columns`. `rail_axis` (`cfg.lettering_columns_rail_axis`):
     every straight piece of this letter reads its axis by `straight_axis`'s
     rail rule. False is the pre-flip cut, byte for byte.
     `small_bold` (`cfg.lettering_columns_small_bold`): no column of this
     letter pivots past `SMALL_BOLD_FAN_DEG` (`build_column`). False is the
-    pre-flag cut, byte for byte."""
+    pre-flag cut, byte for byte. `simplify_mm` (`small_bold` only): this
+    cut's simplify floor instead of `SMALL_BOLD_SIMPLIFY_MM`."""
     if small_bold:
         token = _SMALL_BOLD.set(True)
+        token2 = _SMALL_BOLD_SIMPLIFY.set(simplify_mm)
         try:
             return letter_columns(poly, pitch_mm, fold_cuts, mitre_ends, judge, rail_axis)
         finally:
+            _SMALL_BOLD_SIMPLIFY.reset(token2)
             _SMALL_BOLD.reset(token)
     if not rail_axis:
         return _letter_columns(poly, pitch_mm, fold_cuts, mitre_ends, judge)
@@ -1756,7 +1763,8 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
     # a pinhole is the trace, not a counter
     poly = Polygon(poly.exterior, [h for h in poly.interiors if Polygon(h).area > 0.05 * W * W])
     # lumps under a sixteenth of the stroke are the trace, not the letter
-    floor = SMALL_BOLD_SIMPLIFY_MM if _SMALL_BOLD.get() else SIMPLIFY_MM
+    floor = ((_SMALL_BOLD_SIMPLIFY.get() or SMALL_BOLD_SIMPLIFY_MM) if _SMALL_BOLD.get()
+             else SIMPLIFY_MM)
     poly = poly.simplify(max(floor, W / 16.0), preserve_topology=True)
     if poly.is_empty or poly.geom_type != "Polygon":
         return LetterCut(poly, W, [], [], [])

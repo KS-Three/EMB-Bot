@@ -118,6 +118,21 @@ RAIL_REACH_INSET_MM = 0.11
 # the column; this share puts the median back at the pro's. A candidate
 # until sewn (gate 1).
 SMALL_BOLD_PULL_FRAC = 0.15
+# `small_bold`: a letter whose satin covers less of it than this (crosses
+# widened by half the 40 wt laid thread) is cut again at the plain
+# `outline_cut.SIMPLIFY_MM` and the better-covered of the two is sewn. The
+# 0.06 mm floor that keeps a condensed grown serif square cut the diagonal
+# legs off the bold re-set A's of Fremont's tagline
+# (`cfg.small_text_cap_letter_gap_mm`): 0.68-0.72 of each A sewn, 0.85-0.95
+# at 0.12. Every letter of #1025's condensed fixture covers 0.96 or more, so
+# none of them is cut twice. Still under it at 0.12, the letter is cut once
+# more with the lane's own construction (small_bold's pull kept) and that is
+# sewn when it covers at least `SMALL_BOLD_PLAIN_GAIN` more: the re-set A's
+# left leg went unsewn under small_bold's straight rescan at either floor
+# (0.83 / 0.85 / 0.95 -> 0.95 / 0.95 / 0.97), at the price of an apex
+# zigzag across its 0.3 mm counter.
+SMALL_BOLD_COVER_MIN = 0.9
+SMALL_BOLD_PLAIN_GAIN = 0.05
 
 
 @dataclass
@@ -1967,9 +1982,39 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         def judge(cols, cpoly):
             return sewn_knots(column_runs(cols, recorded(cpoly), shape_id, **run_kw)[0])
         lc_kw["judge"] = judge
-    cut = letter_columns(poly, pitch_mm=spacing_mm, **lc_kw)
-    held = recorded(cut.poly)
-    runs, report = column_runs(cut.columns, held, shape_id, **run_kw)
-    report["cuts"] = len(cut.cuts)
-    report["columns_unsewn"] += len(cut.unsewn)
+    def sew(plain: bool = False, **extra):
+        lk, rk = lc_kw, run_kw
+        if plain:           # the lane's own construction, small_bold's pull kept
+            lk = {k: v for k, v in lc_kw.items() if k != "small_bold"}
+            rk = {k: v for k, v in run_kw.items() if k != "thin_floor"}
+        cut = letter_columns(poly, pitch_mm=spacing_mm, **lk, **extra)
+        runs, report = column_runs(cut.columns, recorded(cut.poly), shape_id, **rk)
+        report["cuts"] = len(cut.cuts)
+        report["columns_unsewn"] += len(cut.unsewn)
+        return runs, report
+    runs, report = sew()
+    if small_bold:
+        from .outline_cut import SIMPLIFY_MM
+        cover = satin_cover(runs, poly)
+        if cover < SMALL_BOLD_COVER_MIN:
+            runs2, report2 = sew(simplify_mm=SIMPLIFY_MM)
+            cover2 = satin_cover(runs2, poly)
+            if cover2 > cover:
+                runs, report, cover = runs2, report2, cover2
+                report["resimplified"] = 1
+            if cover < SMALL_BOLD_COVER_MIN:
+                runs3, report3 = sew(plain=True)
+                if satin_cover(runs3, poly) >= cover + SMALL_BOLD_PLAIN_GAIN:
+                    runs, report = runs3, report3
+                    report["small_bold_plain"] = 1
     return runs, report
+
+
+def satin_cover(runs: list[StitchRun], poly: Polygon, half_mm: float = 0.2) -> float:
+    """Share of `poly` the satin of `runs` covers, each needle-to-needle
+    stitch widened by `half_mm` (half the 40 wt laid thread) each side."""
+    segs = [LineString([a, b]) for r in runs if r.kind == stitches.SATIN
+            for a, b in zip(r.points, r.points[1:]) if math.dist(a, b) > 1e-9]
+    if not segs or poly.area <= 0:
+        return 0.0
+    return unary_union([q.buffer(half_mm) for q in segs]).intersection(poly).area / poly.area
