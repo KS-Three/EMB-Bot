@@ -26,8 +26,10 @@ hat / LC / beanie presets (#1033; the pro's crossing pass under every dense
 fill), and the small-text set (#1029) **as the sheet's exact arm**:
 `small_text_cap_mm` 4.0, `max_width_scale` 1.05, `min_stroke_mm` 0.85,
 `letter_gap_mm` 0.25, `bold_scale` 1.45 AND `lettering_columns_small_bold`
-(Fremont's small letters 2.15 -> 4.40 mm median, pro 4.25). JS twins flipped
-with them: `fillTurnSlant`, `crossUnderlay`, `underlayShortColumns`.
+(Fremont's small letters 2.15 -> 4.40 mm median, pro 4.25). Kent then named
+`lettering_columns_small_bold` a NINTH flag in its own right ("Yes, add it to
+the flip"; PR #1046's construction sits behind it, under 5 mm only). JS twins
+flipped with them: `fillTurnSlant`, `crossUnderlay`, `underlayShortColumns`.
 
 **Held OFF, and why:** `cut_every_jump` (#1035) removes every uncut jump but
 Fremont's trims go 51 -> 201 against the pro's 21 — the pro buries, he does
