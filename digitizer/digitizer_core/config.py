@@ -2257,6 +2257,27 @@ class PipelineConfig:
     # Tee 48 -> 51 the cost. Built OFF for Kent's flip; with the exit lever
     # the fixture reads 8 and the nine 454.
     satin_underlay_on_column: bool = False
+    # `satin_underlay_short_columns` (built OFF 2026-10-22, Kent's flip after
+    # a sew-out -- underlay is a physical constant, ROADMAP gate 1): the
+    # columns our two short rules leave bare get the centre run the pro
+    # puts under his. Read on his 27 job DSTs (`tools/pro_satin_underlay.py`;
+    # TIRES HAT 3D is puff foam and bare by design): a centre run under
+    # 83-97% of satin columns in every length and width band, columns under
+    # 5 mm long bare 0-13% per job where ours are 46% (audit row 5b). Ours
+    # skip two ways: a shape whose artwork extent is under
+    # `machine.SATIN_UNDERLAY_MIN_EXTENT_MM` sews every column bare (law
+    # 50's first rung, stage 7, satin tier and Column lane alike), and a
+    # stroke whose spine is under `machine.UNDERLAY_STITCH_MM` gets no run
+    # at all (`stage6_satin._stroke_underlay`); the Column lane has its own
+    # 1.8 mm floor (`columns._centre_underlay`). ON, the small shape keeps
+    # the fabric's satin underlay style and both floors drop to one stitch
+    # (`machine.MIN_STITCH_MM`). The zigzag threshold, its pitch and the
+    # hairline tier do not move: the brief's "3.5 mm pitch" was row 5a's
+    # WIDTH threshold, and his zigzag's share and pitch swing with the
+    # reader's satin gate (0.6-1.3 mm per leg), so neither is settled.
+    # Browser twin: `underlayShortColumns` (src/satinfont.js, the lettering
+    # engine's cap-height rung). OFF is the engine byte for byte.
+    satin_underlay_short_columns: bool = False
     # `satin_cap_recentre` (built 2026-09-19 for Kent's flip): a free end
     # whose spine tail is a surviving CAP FORK is cut at the kink and rebuilt
     # square. A flat cap's medial axis forks toward both corners; on a plain

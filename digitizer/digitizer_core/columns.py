@@ -434,12 +434,25 @@ def _satin_points(stations, split_above_mm: float, comb_thresholds, split_points
     return pts
 
 
-def _centre_underlay(mids) -> list[tuple[float, float]] | None:
-    """Centre walk down the span, inset at both ends, out and back."""
+def _centre_underlay(mids, short_columns: bool = False) -> list[tuple[float, float]] | None:
+    """Centre walk down the span, inset at both ends, out and back.
+
+    `short_columns` (`cfg.satin_underlay_short_columns`, built OFF
+    2026-10-22): a span that holds one stitch (`machine.MIN_STITCH_MM`)
+    gets its walk, the end inset giving way first -- the pro runs a centre
+    walk under his serif blocks and 1.5 mm bars (Fremont's H at 92.5 mm
+    carried 13 bare spans of 1.1-2.0 mm under the lane's own 1.8 mm floor
+    with the satin tier's floor already lowered). Off, the floor is
+    `2 * _UNDERLAY_INSET_MM + MIN_STITCH_MM`, as shipped."""
     ln = LineString(mids)
-    if ln.length <= 2 * _UNDERLAY_INSET_MM + machine.MIN_STITCH_MM:
+    inset = _UNDERLAY_INSET_MM
+    if short_columns:
+        if ln.length < machine.MIN_STITCH_MM - 1e-6:
+            return None
+        inset = min(inset, max(0.0, (ln.length - machine.MIN_STITCH_MM) / 2.0))
+    elif ln.length <= 2 * inset + machine.MIN_STITCH_MM:
         return None
-    core = substring(ln, _UNDERLAY_INSET_MM, ln.length - _UNDERLAY_INSET_MM)
+    core = substring(ln, inset, ln.length - inset)
     path = _walk_points(list(core.coords), _UNDERLAY_STEP_MM)
     return path + path[-2::-1]
 
@@ -1510,6 +1523,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 inside_connectors: bool = False,
                 counter_poly: Polygon | None = None,
                 thin_floor: bool = False,
+                short_columns: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
@@ -1745,7 +1759,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         if leg["sat"]:
             report["spans"] += 1
             if underlay_style != "none":
-                ul = _centre_underlay(mids)
+                ul = _centre_underlay(mids, short_columns)
                 if (ul is not None and counter_clear_mm > 0
                         and not poly_link.covers(LineString(ul))):
                     ul = None       # small print: a split piece's centre over a counter
@@ -1922,6 +1936,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             counter_clear_mm: float = 0.0,
                             fold_cuts: bool = False,
                             square_ends: bool = False,
+                            short_columns: bool = False,
                             inside_connectors: bool = False,
                             counter_holes: list | None = None,
                             rail_axis: bool = False,
@@ -1967,6 +1982,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   **({"square_ends": True} if square_ends else {}),
                   **({"inside_connectors": True} if inside_connectors else {}),
                   **({"thin_floor": True} if small_bold else {}),
+                  # `cfg.satin_underlay_short_columns`: a walk under any span that holds a stitch
+                  **({"short_columns": True} if short_columns else {}),
                   **({"counter_poly": counter_hold_polygon(poly, counter_holes)} if cored else {}))
 
     def recorded(cpoly):

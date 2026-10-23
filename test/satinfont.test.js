@@ -1096,3 +1096,26 @@ test("satinZigzag: on by default in buildLetteringDesign; false is the alternati
   assert.strictEqual(on.heightMM, off.heightMM);
   assert.strictEqual(on._debug.nTrims, off._debug.nTrims);
 });
+
+test("underlayShortColumns (built OFF, 2026-10-22): a cap under 5 mm gets a center run instead of nothing; off, the ladder is unchanged", () => {
+  // The Python digitizer's `satin_underlay_short_columns`: Kent's pro runs a
+  // centre walk under 83-97% of his satin columns at every width, small
+  // letters included. Underlay is a physical constant (ROADMAP gate 1), so
+  // the rung moves only under the option; the other rungs do not move at all.
+  assert.strictEqual(SF.underlayModeForCapMm(4.99), null, "off: under 5 mm is bare");
+  assert.strictEqual(SF.underlayModeForCapMm(4.99, true), "center", "on: under 5 mm is a center run");
+  assert.strictEqual(SF.underlayModeForCapMm(2, true), "center");
+  assert.strictEqual(SF.underlayModeForCapMm(0, true), null, "a cap of 0 stays null");
+  assert.strictEqual(SF.underlayModeForCapMm(5, true), "center");
+  assert.strictEqual(SF.underlayModeForCapMm(10.01, true), "edge", "the edge rung is untouched");
+  const off = SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(4), underlay: true });
+  const on = SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(4), underlay: true, underlayShortColumns: true });
+  assert.strictEqual(off.cap.underlay, null);
+  assert.strictEqual(kinds(off).underlay, undefined, "off: a 4 mm cap emits no underlay run");
+  assert.strictEqual(on.cap.underlay, "center");
+  assert.ok(kinds(on).underlay > 0, "on: a 4 mm cap emits underlay runs");
+  assert.strictEqual(kinds(on).satin, kinds(off).satin, "the satin itself is the same count of runs");
+  // `underlay: false` still wins, as it always has
+  const none = SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(4), underlay: false, underlayShortColumns: true });
+  assert.strictEqual(kinds(none).underlay, undefined);
+});

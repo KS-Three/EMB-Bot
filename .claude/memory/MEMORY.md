@@ -38,7 +38,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Does the yardstick agree with Kent's eye?](../../docs/yardstick-vs-kents-eye-2026-08-28.md) — phase-1 exit question, NOT settled (n = 6). Element COUNT matches his judgement, AREA does not
 - [The first physical stitch-out](first-physical-sewout-2026-09-01.md) — Instagram icon sewn, 6/10. Density UNSETTLED — two readings disagree 2x; quote only `tools/fill_pitch.py`
 - [Worktree add with empty var wipes cwd](worktree-add-empty-var-wipes-cwd.md) — `git worktree add` with an EMPTY path var, run inside a lane, wipes the checkout; commits survive
-- [Worktree guard judges targets](worktree-guard-judges-targets-2026-10-04.md) — the rm/mv guard resolves each verb's path (cwd, cd, VAR=, ~, /c/) and denies lane roots, other lanes, ancestors; own-lane deletes allowed (Kent 10-04); replay tool measures it
+- [Worktree guard judges targets](worktree-guard-judges-targets-2026-10-04.md) — the rm/mv guard resolves each verb's TARGET and denies lane roots, other lanes, ancestors; own-lane deletes allowed (Kent 10-04)
 - [Worktree venv and baselines](worktree-venv-and-baselines.md) — worktrees have NO `.venv` — run main's python, cwd in the worktree; main is NEVER a baseline
 - [The baseline was sound, and a shallow clone said otherwise](baseline-attribution-and-studio-ui-2026-09-02.md) — RETRACTED: a SHALLOW clone misattributed the capture; 38/38 rows reproduce. Check `--is-shallow-repository`
 - [Hotel Fremont fine details](hotel-fremont-fine-details-2026-09-02.md) — house angle NOT FIRING: slab serifs cancel in doubled-angle space, the 4th wrong-population case; fix is four-fold
@@ -113,8 +113,8 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Closed-ring lane](embot-closed-ring-lane.md) — SNAPSHOT: #621 `offsetRing` on a repeated point, #625 stacked on it; defect 55's offset half is Kent's call
 - [Star-walk lane](embot-star-walk-lane.md) — SNAPSHOT: #624 ends `skeletonEdges`' endless walk; defect 57's cure order waits on Kent
 - [Build what was priced](build-what-was-priced.md) — SNAPSHOT: after Kent picks a priced option, build exactly that
-- [Underlay under fills](underlay-under-fills-2026-10-05.md) — Kent was right: gradient fills sewed with ZERO underlay; his pro sews a crossing pass, built as `cross_tatami`, in no preset. Law 26's instrument is lost. Preview cannot show underlay
-- [Fremont letters are not thicker than the pro's](lettering-thickness-fremont-2026-10-06.md) — file width = pro's (1.23 vs 1.40 scaled); the pro's DST in the Studio renders the SAME weight; Original view mis-scaled; real gap: curve outer rail 0.53 vs 0.33
+- [Underlay under fills](underlay-under-fills-2026-10-05.md) — Kent was right: gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
+- [Fremont letters are not thicker than the pro's](lettering-thickness-fremont-2026-10-06.md) — file width = pro's (1.23 vs 1.40 scaled); Original view mis-scaled; real gap: curve outer rail 0.53 vs 0.33
 - [Lettering architecture R&D](lettering-architecture-2026-10-07.md) — five failures by letter size; patchwork is the skeleton-rail MODEL (pros put rails on the OUTLINE); Column lane OFF: cut + Euler walk + tuck + end fans; density = BOTH station ends
 - [L1 one tagger](word-tagger-l1-2026-10-08.md) — BUILT OFF `cfg.lettering_words`; kappa 0.907 level with text cluster 0.881, above either 0.637 (in-sample); line ARI 0.99 vs 0.65; Kent: AFTER better under the Column lane (10-08)
 - [N fan cure](n-fan-cure-2026-10-08.md) — `satin_tip_corner_gate` OFF: tip = convex corner; ≈ tip caps off; degree gate refuted
@@ -125,7 +125,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [True-size guard below 81 mm](small-text-true-size-guard-2026-10-15.md) — 65 mm loss = strays bug + ink-ground bug + per-glyph OCR noise; guard 0.45 x 40/wt, unsewn; ink ring OFF; measure on run_arm
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — Kent's red circles were a STALE SERVICE but one: THE garbled at 80 (clean at 81) = rescued round linked across inks; `text_cluster_rescued_ink_link` ON; measure at the width the Studio SENDS
 - [Bean holds ON](bean-holds-on-2026-10-15.md) — Kent flipped counter hold 0.25 + bay hold 0.2 as PLAIN defaults (None stays OFF); the three sew-out cards pin None explicitly; grep card tools before any bean flip
-- [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); the Fremont OFF md5 follows Intel IPP's path in the OpenCV wheel, not numpy/OpenBLAS/platform/order; test env capped at OPENCV_IPP=avx2 (10-20)
+- [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); the Fremont OFF md5 follows Intel IPP's path; test env capped at OPENCV_IPP=avx2 (10-20)
 - [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins; flip + sharp tips Kent's
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; branches deleted 10-20, lanes LEFT (Kent): 57 clean, 13 dirty, 8 stranded
 - [Card v4 sew-out: pro raises small text](card-v4-sewout-letter-size-2026-10-20.md) — pro lifts every small word to ~4 mm (EST/1895 2.1x art) and satins it; ours traces art size as a hairline. Fixed-box size reads misled twice: measure by colour block
@@ -137,3 +137,4 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
 - [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` OFF (hat/LC/beanie); MFab/Becker "BARE" fills were SATIN the tool misread — list run kinds first
 - [Small text re-set](small-text-reset-2026-10-21.md) — OFF: columns were already the pro's, SPACING was wrong; later stages undid the layout five ways; 5/S bays still close
+- [Short column underlay](short-column-underlay-2026-10-22.md) — `satin_underlay_short_columns` OFF: pro centre-walks 83-97% of columns at EVERY width; "3.5 mm pitch" was row 5a's WIDTH; zigzag unsettled

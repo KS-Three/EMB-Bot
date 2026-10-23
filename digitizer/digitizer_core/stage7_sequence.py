@@ -2925,7 +2925,10 @@ def sequence(
                     _letter, p.shape_id, trim_at_mm=trim_at,
                     spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
                     pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
-                    underlay_style="none" if _small else satin_underlay,
+                    # `cfg.satin_underlay_short_columns` (OFF): a small letter
+                    # keeps the fabric's centre run, as the pro's do
+                    underlay_style=("none" if _small and not cfg.satin_underlay_short_columns
+                                    else satin_underlay),
                     start_near=entry,
                     end_near=exit_near if cfg.satin_exit_toward_next else None,
                     **({"counter_clear_mm": _clear} if _clear > 0 else {}),
@@ -2941,6 +2944,9 @@ def sequence(
                     # a letter under 5 mm only (`_small`); off, today's call
                     **({"small_bold": True}
                        if cfg.lettering_columns_small_bold and _small else {}),
+                    # `cfg.satin_underlay_short_columns` (default OFF, 2026-10-22):
+                    # the lane's centre walk under any span that holds a stitch
+                    **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
                        if cfg.lettering_columns_inside_connectors else {}))
@@ -3034,7 +3040,10 @@ def sequence(
                     p.shape_id,
                     **({"counter_holes": _cored_s,
                         "counter_clear_mm": profile_for(p).width_mm / 2.0} if _cored_s else {}),
-                    underlay_style="none" if small else satin_underlay,
+                    # `cfg.satin_underlay_short_columns` (OFF): a small shape
+                    # keeps the fabric's satin underlay, as the pro's do
+                    underlay_style=("none" if small and not cfg.satin_underlay_short_columns
+                                    else satin_underlay),
                     trim_at_mm=trim_at,
                     start_near=entry,
                     split_above_mm=split_above,
@@ -3060,6 +3069,7 @@ def sequence(
                     junction_stack=cfg.satin_junction_stack,
                     end_near=exit_near if cfg.satin_exit_toward_next else None,
                     underlay_on_column=cfg.satin_underlay_on_column,
+                    short_column_underlay=cfg.satin_underlay_short_columns,
                     walk_cursor_reach_mm=cfg.satin_walk_cursor_reach_mm,
                     hop_under_column=cfg.satin_hop_under_column,
                     cap_recentre=cfg.satin_cap_recentre,

@@ -5241,10 +5241,16 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
                      fold_guard: bool = False,
                      rail_comp_mm: float = 0.0,
                      rail_comp_floor_mm: float = 0.0,
-                     half_mm: float | None = None) -> list[StitchRun]:
+                     half_mm: float | None = None,
+                     min_run_mm: float = machine.UNDERLAY_STITCH_MM) -> list[StitchRun]:
     """Underlay for ONE stroke: a center run down its spine, plus a sparse
     zigzag for the styles that ask for it. Built from the same spine the satin
     will follow, so it always sits under the column.
+
+    `min_run_mm`: a spine shorter than this carries no run. The default is
+    one underlay stitch; `cfg.satin_underlay_short_columns` lowers it to
+    `machine.MIN_STITCH_MM`, the shortest stitch the engine lays, because
+    the pro runs a centre walk under columns down to two millimetres.
 
     Under rail-side comp (`rail_comp_mm` > 0) the free ends are run out to
     the caps the way `satin_stroke` runs the column's (`_retract_cap_corner`,
@@ -5272,7 +5278,7 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
             spine = _retract_cap_corner(spine, field, h, at_start=False)
             spine = _extend_to_cap(spine, poly, h, at_start=False, corner=st.capped_end)
     length = sum(math.dist(a, b) for a, b in zip(spine, spine[1:]))
-    if length < machine.UNDERLAY_STITCH_MM:
+    if length < min_run_mm:
         return []
     n = max(2, int(math.ceil(length / machine.UNDERLAY_STITCH_MM)))
     runs.append(StitchRun(points=_resample(spine, n), kind=stitches.UNDERLAY,
@@ -6468,6 +6474,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 hairline_tier: bool = False,
                 counter_holes: list | None = None,
                 counter_clear_mm: float = 0.0,
+                short_column_underlay: bool = False,
                 _seams_closed: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
@@ -6751,7 +6758,16 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                                               max_width_mm=max_width_mm, fold_guard=fold_guard,
                                               rail_comp_mm=rail_comp_mm,
                                               rail_comp_floor_mm=rail_comp_floor_mm,
-                                              half_mm=half_mm)
+                                              half_mm=half_mm,
+                                              # `cfg.satin_underlay_short_columns`: a run
+                                              # under any spine that holds one stitch.
+                                              # The skeleton of a 2 x 1 mm column is
+                                              # 0.9999999 mm long (half a width short
+                                              # of each cap), so the floor carries a
+                                              # tolerance; OFF keeps the exact compare.
+                                              min_run_mm=(machine.MIN_STITCH_MM - 1e-6
+                                                          if short_column_underlay
+                                                          else machine.UNDERLAY_STITCH_MM))
                              if k.get("underlay", True) else []),
                            StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)]
         # Under the Euler walk a stroke is walked THROUGH: the column enters
