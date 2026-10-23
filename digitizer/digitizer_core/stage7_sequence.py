@@ -59,7 +59,7 @@ from shapely.ops import nearest_points, unary_union
 
 from . import machine, stitches
 from .config import PipelineConfig
-from .fabrics import Fabric, fill_underlay_for
+from .fabrics import Fabric, fill_underlay_for, pull_by_stroke_for
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
 from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
@@ -2941,6 +2941,10 @@ def sequence(
                     # a letter under 5 mm only (`_small`); off, today's call
                     **({"small_bold": True}
                        if cfg.lettering_columns_small_bold and _small else {}),
+                    # `cfg.pull_comp_by_stroke` (default OFF, 2026-10-22): the hat,
+                    # LC and beanie presets only (`fabrics.PULL_BY_STROKE_FABRICS`)
+                    **({"pull_by_stroke": True}
+                       if pull_by_stroke_for(fabric, cfg.pull_comp_by_stroke) else {}),
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
                        if cfg.lettering_columns_inside_connectors else {}))
