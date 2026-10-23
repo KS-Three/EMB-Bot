@@ -90,6 +90,38 @@ def stroke_width(poly: Polygon) -> float:
     return 2.0 * poly.area / max(poly.length, 1e-9)
 
 
+# `small_bold` (2026-10-23): a junction corner's edge direction is read as a
+# CHORD over this many stroke widths of outline, not off the one edge that
+# meets the corner. The grown ~4 mm letters' outlines carry a 0.2 mm chamfer
+# at every corner (the trace, simplified at 0.06 mm), and the edge meeting
+# the corner under a T's bar was that chamfer, 30 degrees off the bar's
+# underside: the two corners either side of the stem never paired, the bar
+# was never cut through, and the stem sewed up into half the bar with
+# crosses along the bar (the pro's bar is one column across it).
+CHORD_W = 0.5
+
+
+def _chord_dir(c, i, step, reach: float):
+    """Unit direction of the chord from the point `reach` along the ring
+    from vertex i (direction `step`) TO vertex i -- for step -1 the outline
+    arriving at i, for step +1 the reverse of the outline leaving it, so
+    both point the way `d_in` / `-d_out` do."""
+    n = len(c)
+    L, k = 0.0, i
+    for _ in range(n):
+        q = c[(k + step) % n]
+        d = math.hypot(q[0] - c[k][0], q[1] - c[k][1])
+        if L + d >= reach:
+            frac = (reach - L) / d if d > 1e-9 else 0.0
+            far = (c[k][0] + (q[0] - c[k][0]) * frac, c[k][1] + (q[1] - c[k][1]) * frac)
+            break
+        L += d
+        k = (k + step) % n
+    else:
+        far = c[(i + step) % n]
+    return _unit((c[i][0] - far[0], c[i][1] - far[1]))
+
+
 def _run_len(c, i, step):
     """Length of the straight run leaving vertex i in ring direction `step`."""
     n = len(c)
@@ -150,7 +182,12 @@ def corners(poly: Polygon, W: float, reflex_deg: float = REFLEX_DEG):
             solid_in_wedge = poly.contains(Point(p[0] + wedge[0] * 0.05, p[1] + wedge[1] * 0.05))
             bis = wedge if solid_in_wedge else (-wedge[0], -wedge[1])
             rec = dict(p=p, d_in=u, d_out=v, bis=bis, turn=tot,
-                       len_in=_run_len(c, lo, -1), len_out=_run_len(c, hi, 1))
+                       len_in=_run_len(c, lo, -1), len_out=_run_len(c, hi, 1),
+                       # the outline's direction over half a stroke either
+                       # side, as a chord: `small_bold`'s junction reading
+                       # (`find_cuts`), which a corner chamfer cannot turn
+                       cd_in=_chord_dir(c, lo, -1, CHORD_W * W),
+                       cd_out=_chord_dir(c, hi, 1, CHORD_W * W))
             if solid_in_wedge:
                 if tot >= CONVEX_DEG:
                     convex.append(rec)
@@ -221,7 +258,14 @@ def find_cuts(poly: Polygon, W: float):
         return (-a[0], -a[1])
 
     def ext(r):
-        return [(r["d_in"], r["len_in"]), (neg(r["d_out"]), r["len_out"])]   # edge continued into the body
+        out = [(r["d_in"], r["len_in"]), (neg(r["d_out"]), r["len_out"])]   # edge continued into the body
+        if _SMALL_BOLD.get():
+            # the same two directions read as chords (`_chord_dir`): a
+            # corner chamfer no longer stands between a T's two
+            # under-bar corners and their through cut
+            out += [(r["cd_in"], max(r["len_in"], CHORD_W * W)),
+                    (r["cd_out"], max(r["len_out"], CHORD_W * W))]
+        return out
 
     cuts, used = [], set()
     pairs = []
@@ -960,6 +1004,9 @@ def _fan_ends(st, piece: Polygon, u, pitch_mm: float, W: float):
 # face runs nearly along the column and is a side, `columns.END_FACE_DEG`).
 MITRE_MIN_DEG = 8.0
 MITRE_MAX_DEG = 45.0
+# `small_bold`: a mitre face spans at least this share of the column's
+# median cross, measured across the column (see `_mitre_ends`).
+SMALL_BOLD_MITRE_SPAN = 0.6
 
 
 def _ring_arc(ring: LineString, d0: float, d1: float, avoid: float, step: float):
@@ -996,6 +1043,8 @@ def _mitre_ends(st, piece: Polygon, u, cut_lines, pitch_mm: float, W: float):
     if len(st) < 4:
         return st
     n = (-u[1], u[0])
+    lengths = sorted(math.dist(a, b) for a, b in st)
+    med = lengths[len(lengths) // 2]
 
     def proj(p):
         return p[0] * u[0] + p[1] * u[1]
@@ -1028,6 +1077,12 @@ def _mitre_ends(st, piece: Polygon, u, cut_lines, pitch_mm: float, W: float):
                 continue
             # the face must lie beyond the column's last cross, toward the end
             if min(end * proj(p), end * proj(q)) < t_last - 0.5 * W:
+                continue
+            # `small_bold`: a face is a slanted END, spanning most of the
+            # column; a corner chamfer of the grown outline (0.3 mm at 45
+            # degrees, every corner of a ~4 mm letter) spans a fifth of it
+            # and turned the last crosses into a fan at the corner
+            if _SMALL_BOLD.get() and abs(projn(q) - projn(p)) < SMALL_BOLD_MITRE_SPAN * med:
                 continue
             if face is None or L > face[2]:
                 face = (p, q, L, f)
@@ -1086,6 +1141,89 @@ _SMALL_BOLD_SIMPLIFY: contextvars.ContextVar[float | None] = contextvars.Context
 # a stem flaring into its serif). The pro's Fremont letters have none: each
 # stroke and each serif is a straight column of one stitch direction.
 SMALL_BOLD_FAN_DEG = 45.0
+# `small_bold` (2026-10-23): a serif is sewn as part of its stroke, never as
+# a block of its own. The pro's ~4 mm Fremont letters (patch DST, needle
+# paths read 2026-10-23) have no serif pieces: a T's stem zigzag simply
+# widens through its foot, an E's arm crosses grow taller at the arm's tip,
+# an A's legs end in wide flat crosses. The cut gave every slab serif its
+# own column -- a 1-1.5 mm2 block, three to six crosses, a cut, a travel
+# and a knot where the stem's last crosses turned to meet it. A piece under
+# `SERIF_MAX_AREA_W2` stroke widths squared that shares a cut with a
+# STRAIGHT column, at that column's end, is scanned WITH it along the
+# column's own axis when every cross of the union stays under
+# `SERIF_MAX_CROSS_W` widths (a serif, not a bar: an A's crossbar merged
+# into a leg would sweep across both). Read from the pro's file: foot
+# serif 1.3-1.6 mm across on a 0.85-0.95 mm stroke.
+SERIF_MAX_AREA_W2 = 2.5
+SERIF_MAX_CROSS_W = 2.2
+
+
+def _absorb_serifs(columns: list, cuts: list, W: float, pitch_mm: float,
+                   mitre_ends: bool) -> tuple[list, list]:
+    """`small_bold`: every serif block folded into the straight column it
+    ends (module constants above). -> (columns, cuts), the cuts between a
+    serif and its stroke taken out. Smallest pieces first, until nothing
+    merges; a piece that is not a serif by the rule is left as it is."""
+    cols = list(columns)
+    cuts = list(cuts)
+    changed = True
+    while changed:
+        changed = False
+        for i in sorted(range(len(cols)), key=lambda k: cols[k].piece.area):
+            c = cols[i]
+            if c.piece.interiors or c.piece.area > SERIF_MAX_AREA_W2 * W * W:
+                continue
+            near = c.piece.buffer(0.02)
+            best = None
+            for j, q in enumerate(cols):
+                if j == i or q.kind != "straight" or q.axis is None or q.piece.interiors:
+                    continue
+                shared = q.piece.exterior.intersection(near).length
+                if shared < 0.3 * W:
+                    continue
+                if best is None or shared > best[0]:
+                    best = (shared, j)
+            if best is None:
+                continue
+            j = best[1]
+            q = cols[j]
+            u = q.axis
+            # at the column's END, not along its side: the serif's middle
+            # lies past the column's inner stations
+            t = [a[0] * u[0] + a[1] * u[1] for a, _b in q.stations]
+            cm = c.piece.centroid
+            tc = cm.x * u[0] + cm.y * u[1]
+            if min(t) + W <= tc <= max(t) - W:
+                continue
+            union = unary_union([c.piece, q.piece])
+            if union.geom_type != "Polygon" or union.interiors:
+                continue
+            sc = scan_stations(union, u, pitch_mm)
+            if sc is None:
+                continue
+            st, dropped = sc
+            if dropped > 0.1 * W or max(math.dist(a, b) for a, b in st) > SERIF_MAX_CROSS_W * W:
+                continue
+            between = [k for k in cuts
+                       if Point(k[0]).distance(c.piece) < 0.05 and Point(k[1]).distance(c.piece) < 0.05
+                       and Point(k[0]).distance(q.piece) < 0.05 and Point(k[1]).distance(q.piece) < 0.05]
+            rest = [k for k in cuts if k not in between]
+            lines = [LineString([k[0], k[1]]) for k in rest]
+            st = _cap_square_ends(st, union, u, lines, pitch_mm)
+            if mitre_ends:
+                st = _mitre_ends(st, union, u, lines, pitch_mm, W)
+            if pivot_sweep(st) > SMALL_BOLD_FAN_DEG:
+                continue
+            rr = _straight_rails(union, u)
+            merged = Column(stations=st, piece=union, kind="straight", axis=u, width_mm=W,
+                            rail_a=rr[0] if rr else [], rail_b=rr[1] if rr else [],
+                            dropped_mm=dropped)
+            cols = [k for n, k in enumerate(cols) if n not in (i, j)]
+            cols.insert(min(i, j), merged)
+            cuts = rest
+            changed = True
+            break
+    return cols, cuts
 
 
 def pivot_sweep(st, eps: float = 0.03) -> float:
@@ -1841,4 +1979,6 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
     if fold_cuts:
         fold_lines = [LineString([c[0], c[1]]) for c in cuts if c[2] == "fold"]
         columns = [_drop_stalls(c, fold_lines, pitch_mm) for c in columns]
+    if _SMALL_BOLD.get():
+        columns, cuts = _absorb_serifs(columns, cuts, W, pitch_mm, mitre_ends)
     return LetterCut(poly, W, cuts, columns, unsewn)
