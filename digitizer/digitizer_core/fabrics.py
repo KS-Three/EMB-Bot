@@ -131,6 +131,20 @@ DEFAULT_FABRIC_ID = "pique_knit"
 # `test_fabric_wire.py` holds the pair.
 CROSS_UNDERLAY_FABRICS = ("structured_cap", "pique_knit", "jersey_tee")
 
+# The presets on which `cfg.pull_comp_by_stroke` (built OFF 2026-10-22)
+# reads the Column lane's pull off each column's own stroke width
+# (`columns.pull_for_width`): the same three the pro's hat, LC and beanie
+# files cover. The fit was read on the hat files (0.4 mm) and is scaled to
+# the other two by their own pull; the table above is untouched, and a
+# preset outside this tuple keeps its fixed pull with the flag on. Python
+# only: the Column lane has no browser twin.
+PULL_BY_STROKE_FABRICS = ("structured_cap", "pique_knit", "jersey_tee")
+
+
+def pull_by_stroke_for(fabric: Fabric, by_stroke: bool = False) -> bool:
+    """Does the Column lane read its pull per column on this preset?"""
+    return bool(by_stroke) and fabric.id in PULL_BY_STROKE_FABRICS
+
 
 # `cfg.pro_measured_values` (built OFF 2026-10-23): the three plain value gaps
 # `docs/settings-vs-pro-2026-10-21.md` rows 1, 2, 11 and 19 measured against 28

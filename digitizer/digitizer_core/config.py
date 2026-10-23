@@ -1702,6 +1702,29 @@ class PipelineConfig:
     # holds on a cap is a sew-out question (ROADMAP gate 1). A shape the
     # column cannot sew keeps the ring. Off, byte-identical.
     small_solids_satin: bool = False
+    # Compact solids sew as one satin column, not a fill with a ring round
+    # it (2026-10-22, built OFF; Proseal's blue bubbles). The rule above
+    # covers a solid UNDER the detail floor; this is the same answer for one
+    # the fill tier takes. Proseal at the pro's 85.9 mm Hat: the sixteen
+    # spray hexagons at or over the floor (2.0-3.7 mm across) fail the ribbon
+    # classifier's aspect test (`classify_ribbon`: a blob's length estimate
+    # is ~1.3 widths against the 3 a ribbon needs), sew as tatami rows, and
+    # the bean edge cap (`edge_cap="bean"`, every row end in open air) then
+    # draws a ring round each one -- the "satin border" Kent saw. The pro's
+    # DST sews every hexagon, 1.6 to 4.8 mm across, as ONE satin blob: 15-32
+    # stitches at 1.1-2.8 mm, nothing round it, and no fill anywhere in the
+    # spray. ON: a shape the classifier refused for ASPECT only (its width
+    # already fits the ceiling), not lettering, no hole, not riding a design
+    # ramp, whose ring would leave its inside bare (`is_small_solid`, the
+    # rule above's own test), sews `small_solid_satin` at the block's satin
+    # pitch and the design's satin ceiling. A satin run is linear cover, so
+    # the edge cap omits that edge on its own -- no cap rule changes. A
+    # shape the column cannot sew (a chord over the ceiling, fewer than two
+    # crosses) keeps the fill. No new constant: the ceiling is
+    # `machine.satin_ceiling_mm` (5.0 hat), the pitch the satin tier's own.
+    # Whether a 4.8 mm satin dot holds on a cap is the same gate-1 question
+    # the rule above carries. Off, byte-identical (tests/test_compact_solids_satin.py).
+    compact_solids_satin: bool = False
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run
@@ -2591,6 +2614,25 @@ class PipelineConfig:
     # here is a candidate until sewn (gate 1). Kent flips. Tests:
     # `tests/test_column_small_bold.py`.
     lettering_columns_small_bold: bool = False
+    # Under `lettering_columns`, each satin column's pull compensation is a
+    # function of ITS OWN drawn stroke width, the way the professional's
+    # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the
+    # measurements in its comment). The fixed `Fabric.pull_comp_mm` adds
+    # the same ~0.58 mm to every column on the hat; the pro adds +0.58 on a
+    # 0.85 mm stroke, +0.42 on 2.6 and nothing at 4 (Fremont, Drone,
+    # Proseal, Becker), so our wide hat strokes sew +0.15 to +0.27 mm wider
+    # than his (`docs/settings-vs-pro-2026-10-21.md` row 8). ON, on the hat
+    # / LC / beanie presets only (`fabrics.PULL_BY_STROKE_FABRICS`): a
+    # column's rails are pushed by the pull the fit gives its own width,
+    # never more than the preset's fixed pull (a 0.85 mm stroke gets the
+    # hat's 0.4 as today), and under `lettering_columns_small_bold` never
+    # more than that flag's share of the stroke. The letter-level pull (the
+    # merge radius, the tuck, the link rule's buffers) is read the same way
+    # off the letter's mean stroke. `min_detail_mm`'s hold across a counter
+    # is unchanged. Computed at digitize time on the drawn stroke, so a
+    # resize keeps it (ruling 12). A physical constant (ROADMAP gate 1):
+    # Kent flips after a sew-out. Tests: `tests/test_pull_comp_by_stroke.py`.
+    pull_comp_by_stroke: bool = False
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
