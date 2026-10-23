@@ -43,7 +43,8 @@ const spec = async (id) => { const T = await tool(); return T.SHAPES.find((s) =>
 // `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
 // (Kent). This file's pins and counts were taken with them OFF, and they are
 // not its subject, so every design here is built with them OFF.
-const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+// + the three JS twins Kent flipped ON 2026-10-23 (fill turn slant, cross underlay, short-column underlay)
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false, fillTurnSlant: false, crossUnderlay: false, underlayShortColumns: false };
 const shape = async (id, on) => { const T = await tool(); return T.buildShape(await spec(id), on, TRIO_OFF); };
 const word = async (id, on) => { const T = await tool(); return T.buildWord(await spec(id), on, TRIO_OFF); };
 const longestStitchMm = (d) => {

@@ -92,8 +92,9 @@ def on(small):
 
 # --- OFF ------------------------------------------------------------------------
 
-def test_flag_is_off_by_default():
-    assert PipelineConfig().lettering_columns_small_bold is False
+def test_flag_is_on_by_default_since_2026_10_23():
+    # flipped with the flip sheet's `small_text_set` arm (PR #1047)
+    assert PipelineConfig().lettering_columns_small_bold is True
 
 
 def test_off_is_byte_identical_to_base(letters):

@@ -935,9 +935,42 @@ def _bury_trims_under_later(blocks: list[StitchBlock]) -> int:
     counted as cover -- the cheap direction to be wrong in. The first run of
     a block is never touched: that cut is a colour change.
     """
+    seq, bury = _later_thread_burier(blocks)
+    buried = 0
+    for k in range(1, len(seq)):
+        bi, run = seq[k]
+        if not run.trim or seq[k - 1][0] != bi or not seq[k - 1][1].points or not run.points:
+            continue
+        inner = bury(k)
+        if inner is None:
+            continue
+        _sew_hop(blocks[bi].runs, run, inner)
+        buried += 1
+    return buried
+
+
+def _sew_hop(b_runs: list[StitchRun], run: StitchRun, inner) -> None:
+    """Turn the lift into `run` into needle-down travel along `inner`."""
+    at = next(i for i, r in enumerate(b_runs) if r is run)
+    if inner:
+        b_runs.insert(at, StitchRun(points=inner, kind=stitches.TRAVEL,
+                                    shape_id=run.shape_id,
+                                    shade_thread_index=run.shade_thread_index))
+    run.jump = False
+    run.trim = False
+
+
+def _later_thread_burier(blocks: list[StitchBlock]):
+    """-> (seq, bury): the flat sew order `[(block index, run)]`, and
+    `bury(k)`, the interior stitches of a needle-down route from the end of
+    `seq[k - 1]` to the start of `seq[k]` that lies wholly under thread sewn
+    at or after `k` (see `_bury_trims_under_later` for the cover rule), or
+    None when there is none. Shared by `_bury_trims_under_later` and
+    `_cut_or_bury_jumps`, so the two passes cannot disagree on what hides a
+    float. The cover is read once, from the runs as they stand now."""
     seq = [(bi, r) for bi, b in enumerate(blocks) for r in b.runs]
     if len(seq) < 2:
-        return 0
+        return seq, lambda _k: None
     half = machine.COVERAGE_THREAD_W_MM / 2.0
     lines: list[object] = []
     for k, (_bi, r) in enumerate(seq):
@@ -950,7 +983,7 @@ def _bury_trims_under_later(blocks: list[StitchBlock]) -> int:
         lines.append(LineString(pts))
     idx = [k for k, g in enumerate(lines) if g is not None]
     if not idx:
-        return 0
+        return seq, lambda _k: None
     order = np.array(idx)
     tree = shapely.STRtree([lines[k] for k in idx])
 
@@ -983,39 +1016,70 @@ def _bury_trims_under_later(blocks: list[StitchBlock]) -> int:
             ok[hit_pt[(order[hit_line] >= self.k) | at_end[hit_pt]]] = True
             return bool(ok.all())
 
-    buried = 0
-    for k in range(1, len(seq)):
-        bi, run = seq[k]
-        if not run.trim or seq[k - 1][0] != bi or not seq[k - 1][1].points or not run.points:
-            continue
-        a, b = seq[k - 1][1].points[-1], run.points[0]
+    def bury(k: int):
+        a, b = seq[k - 1][1].points[-1], seq[k][1].points[0]
         gap = math.dist(a, b)
         if gap > machine.LINK_MAX_GAP_MM:
-            continue
+            return None
         # Any buried route leaves the start's end allowance into later
         # thread, so with no later centreline that close to `a` there is no
         # route to find: most bare hops stop here, before the raster.
         reach = machine.COVERAGE_THREAD_W_MM + half + _BURY_STEP_MM
         if not (order[tree.query(Point(a), predicate="dwithin", distance=reach)] >= k).any():
-            continue
+            return None
         cover = _UnderThread(k, (a, b))
         if cover.covers(LineString([a, b])):
             route = [a, b]
         else:
             route = _bury_route(a, b, gap, k, cover, lines, idx, tree, half)
-        inner = _link_stitches(route) if route is not None else None
-        if inner is None:
+        return _link_stitches(route) if route is not None else None
+
+    return seq, bury
+
+
+def _cut_or_bury_jumps(blocks: list[StitchBlock],
+                       small_letters: set[str] | None = None) -> tuple[int, int]:
+    """Leave no needle-up move uncut. -> (sewn needle-down, cut).
+
+    `cfg.cut_every_jump` (built OFF 2026-10-21). Every jump inside a block
+    that does not cut (`jump` without `trim`: a hop shorter than
+    `trim_at_mm`, or a pass's own uncut lift) is a float on the finished
+    piece that someone snips by hand. The pro's 28 DSTs leave none: every
+    needle-up move is three or more jump records, a cut
+    (`docs/settings-vs-pro-2026-10-21.md` row 25). Each one here is first
+    offered to `_later_thread_burier` -- sewn needle-down where thread sewn
+    LATER (the rest of this shape, or anything after it) hides the whole
+    travel, never on bare fabric and never on top of finished work -- and
+    otherwise cut, with `apply_ties`' own locks on both sides of the cut.
+
+    Bury first, from the pro's own files: of his 59 non-colour cuts of
+    3 mm or less, ONE lies under thread he sews later (`tools/trim_classes.py`
+    over the 27 DSTs); the other 58 lie on bare fabric or on finished work,
+    exactly the two places this pass refuses to sew.
+
+    Runs on the finished block list (after ties, the edge cap, hairlines and
+    spoke marks), so thread counted as later is sewn later, and the ties it
+    adds are the only ones the new cuts get. The first run of a block is
+    never touched: that lift follows a colour change.
+    """
+    seq, bury = _later_thread_burier(blocks)
+    sewn = cut = 0
+    for k in range(1, len(seq)):
+        bi, run = seq[k]
+        prev = seq[k - 1][1]
+        if (not run.jump or run.trim or seq[k - 1][0] != bi
+                or not prev.points or not run.points):
             continue
-        b_runs = blocks[bi].runs
-        at = next(i for i, r in enumerate(b_runs) if r is run)
-        if inner:
-            b_runs.insert(at, StitchRun(points=inner, kind=stitches.TRAVEL,
-                                        shape_id=run.shape_id,
-                                        shade_thread_index=run.shade_thread_index))
-        run.jump = False
-        run.trim = False
-        buried += 1
-    return buried
+        inner = bury(k)
+        if inner is not None:
+            _sew_hop(blocks[bi].runs, run, inner)
+            sewn += 1
+            continue
+        run.trim = True
+        stitches.tie_in(run, small_letters)
+        stitches.tie_off(prev, small_letters)
+        cut += 1
+    return sewn, cut
 
 
 # Lock-stitch application for a finished block. Hoisted verbatim to
@@ -2979,7 +3043,10 @@ def sequence(
                     _letter, p.shape_id, trim_at_mm=trim_at,
                     spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
                     pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
-                    underlay_style="none" if _small else satin_underlay,
+                    # `cfg.satin_underlay_short_columns` (OFF): a small letter
+                    # keeps the fabric's centre run, as the pro's do
+                    underlay_style=("none" if _small and not cfg.satin_underlay_short_columns
+                                    else satin_underlay),
                     start_near=entry,
                     end_near=exit_near if cfg.satin_exit_toward_next else None,
                     **({"counter_clear_mm": _clear} if _clear > 0 else {}),
@@ -2999,6 +3066,9 @@ def sequence(
                     # LC and beanie presets only (`fabrics.PULL_BY_STROKE_FABRICS`)
                     **({"pull_by_stroke": True}
                        if pull_by_stroke_for(fabric, cfg.pull_comp_by_stroke) else {}),
+                    # `cfg.satin_underlay_short_columns` (2026-10-22):
+                    # the lane's centre walk under any span that holds a stitch
+                    **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
                        if cfg.lettering_columns_inside_connectors else {}))
@@ -3099,7 +3169,10 @@ def sequence(
                     p.shape_id,
                     **({"counter_holes": _cored_s,
                         "counter_clear_mm": profile_for(p).width_mm / 2.0} if _cored_s else {}),
-                    underlay_style="none" if small else satin_underlay,
+                    # `cfg.satin_underlay_short_columns` (OFF): a small shape
+                    # keeps the fabric's satin underlay, as the pro's do
+                    underlay_style=("none" if small and not cfg.satin_underlay_short_columns
+                                    else satin_underlay),
                     trim_at_mm=trim_at,
                     start_near=entry,
                     split_above_mm=split_above,
@@ -3125,6 +3198,7 @@ def sequence(
                     junction_stack=cfg.satin_junction_stack,
                     end_near=exit_near if cfg.satin_exit_toward_next else None,
                     underlay_on_column=cfg.satin_underlay_on_column,
+                    short_column_underlay=cfg.satin_underlay_short_columns,
                     walk_cursor_reach_mm=cfg.satin_walk_cursor_reach_mm,
                     hop_under_column=cfg.satin_hop_under_column,
                     cap_recentre=cfg.satin_cap_recentre,
@@ -3317,6 +3391,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="crosshatch",
                 )
@@ -3350,6 +3425,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="wave",
                 )
@@ -3376,6 +3452,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="chevron",
                 )
@@ -3400,6 +3477,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="brick",
                 )
@@ -3422,6 +3500,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="fur",
                     seed=cfg.seed,
@@ -3535,6 +3614,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     density_boost=cfg.fill_density_boost,
                 )
@@ -4508,4 +4588,10 @@ def sequence(
     seam_warning = _border_seam_warning(border_seams)
     if seam_warning is not None:
         warnings.append(seam_warning)
+    if cfg.tie_in_off:
+        stitches.drop_tie_ins(blocks)
+    # `cfg.cut_every_jump` (built OFF): last, over every block, so the
+    # thread it counts as later is the thread actually sewn later.
+    if cfg.cut_every_jump:
+        _cut_or_bury_jumps(blocks, tie_kw.get("small_letters"))
     return blocks, warnings

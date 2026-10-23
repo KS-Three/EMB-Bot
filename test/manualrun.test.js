@@ -18,7 +18,8 @@ const FAB = require("../src/fabrics.js");
 const G = SF.LETTERING_GUARDS;
 // `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
 // (Kent); a pin below taken before that, on another subject, builds with them OFF.
-const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+// + the three JS twins Kent flipped ON 2026-10-23 (fill turn slant, cross underlay, short-column underlay)
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false, fillTurnSlant: false, crossUnderlay: false, underlayShortColumns: false };
 
 // ---- the no-run pin ----------------------------------------------------------
 // A design with no run must sew exactly what it sewed before runs existed.

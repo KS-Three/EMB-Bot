@@ -1070,8 +1070,9 @@
     // not stagger them either (`_underlay_paths`, staggers=1). Off, nothing
     // reads it and every stitch is unchanged.
     const staggerOpts = o.fillStagger !== false ? { stagger: FILL_STAGGERS, minStitch: MIN_STITCH_MM * pxPerFinalMm, splitTol: SPLIT_TOLERANCE_MM * pxPerFinalMm } : null;
-    // `fillTurnSlant` (built OFF 2026-10-22; the JS twin of the Python engine's
-    // `cfg.fill_turn_slant`, PR #1036, which Kent holds OFF until a sew-out):
+    // `fillTurnSlant` (built OFF 2026-10-22, ON by default since 2026-10-23,
+    // Kent's flip on the flip sheet, and `fillTurnSlant: false` is the off
+    // arm; the JS twin of the Python engine's `cfg.fill_turn_slant`, PR #1036):
     // at the end of each row of a shape's COVER fill the turn to the next row
     // runs `FILL_TURN_ALONG_MM` along the row instead of stepping straight
     // across one row spacing, the needle beside its own hole (fill.js, "THE
@@ -1079,7 +1080,7 @@
     // (every fill technique's pass, never the underlay). `minStitch` is the
     // floor a pulled row keeps; without the stagger nothing else reads it.
     // Off, nothing reads it and every stitch is unchanged.
-    const slantOpts = o.fillTurnSlant ? { turnAlong: FILL_TURN_ALONG_MM * pxPerFinalMm, minStitch: MIN_STITCH_MM * pxPerFinalMm } : null;
+    const slantOpts = o.fillTurnSlant !== false ? { turnAlong: FILL_TURN_ALONG_MM * pxPerFinalMm, minStitch: MIN_STITCH_MM * pxPerFinalMm } : null;
     // `dedupeHoles` (built off; ON by default since 2026-10-20, Kent, and
     // `dedupeHoles: false` is the off arm): no run lays a stitch straight after a
     // stitch on the same point.
@@ -1483,10 +1484,12 @@
           if (fabric) {
             // Fabric mode: named underlay style per shape type.
             try {
-              // `crossUnderlay` (built OFF 2026-10-21; twin of the
-              // digitizer's `cfg.fill_underlay_cross`): the hat / left-chest
-              // / beanie presets sew the pro's crossing pass under a fill.
-              const fillStyle = o.crossUnderlay ? fabricsmod.fillUnderlayFor(fabric, true) : fabric.fillUnderlay;
+              // `crossUnderlay` (built OFF 2026-10-21, ON by default since
+              // 2026-10-23, Kent's flip on the flip sheet; `crossUnderlay:
+              // false` is the off arm; twin of the digitizer's
+              // `cfg.fill_underlay_cross`): the hat / left-chest / beanie
+              // presets sew the pro's crossing pass under a fill.
+              const fillStyle = o.crossUnderlay !== false ? fabricsmod.fillUnderlayFor(fabric, true) : fabric.fillUnderlay;
               const style = thin ? (fabric.satinUnderlay || "center_run") : (fillStyle || "edge_lattice");
               const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin, openTol: rowPx, ground: cover, clear: clearFloat, to: fillStart }, underlayCtxBase);
               // A column's centre run follows its RAILS (spec §6, "Amended
@@ -1770,7 +1773,7 @@
     // carries; layoutText itself still defaults off. Since 2026-10-14 (Kent)
     // only columns under satinfont's SATIN_ZIGZAG_MAX_WIDTH_MM zigzag;
     // `satinZigzagMaxMm` overrides that cap in final mm, `false` lifts it.
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: satinSpacingMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, shortStitch: o.shortStitch !== false, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout, splitSatin: o.splitSatin, satinZigzag: o.satinZigzag !== false, satinZigzagMaxMm: o.satinZigzagMaxMm, wideColumnFill: o.wideColumnFill, fillRowMm: letterFillRowMm, fillStitchMm: o.fillStitchMm });
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: satinSpacingMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, shortStitch: o.shortStitch !== false, letterSpacingMm: ls, underlay: o.underlay !== false, underlayShortColumns: o.underlayShortColumns !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout, splitSatin: o.splitSatin, satinZigzag: o.satinZigzag !== false, satinZigzagMaxMm: o.satinZigzagMaxMm, wideColumnFill: o.wideColumnFill, fillRowMm: letterFillRowMm, fillStitchMm: o.fillStitchMm });
     if (!lay.runs.length) return emptyWith(lay.unsupported, lay.lettering);
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     // Explicit placement offset (Slice 3): applied AFTER the center transform, in
