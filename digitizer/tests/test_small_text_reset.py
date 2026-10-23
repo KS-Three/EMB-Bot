@@ -204,9 +204,12 @@ def _lane_letters():
 
 def test_the_coverage_retry_changes_only_a_letter_it_covers_more_of(monkeypatch):
     """On #1025's 21 condensed grown letters the retry
-    (`columns.SMALL_BOLD_COVER_MIN`) fires on EST's E alone -- small_bold
-    left two of its arms as travel -- and the plain cut it keeps sews more
-    of it; every other letter is sewn exactly as before."""
+    (`columns.SMALL_BOLD_COVER_MIN`) fired on EST's E alone -- small_bold
+    left two of its arms as travel -- and the plain cut it kept sewed more
+    of it. Since the serif absorption and the chord junction reading
+    (2026-10-23, `test_small_bold_construction`) the E's arms sew whole
+    at the first cut, so the retry fires on NO letter: turning it off
+    changes nothing, and the E covers the floor without it."""
     from digitizer_core import columns
     from tests.test_column_small_bold import _letters
     small = {k: v for k, v in _letters().items() if not k.startswith("BIG_")}
@@ -223,8 +226,8 @@ def test_the_coverage_retry_changes_only_a_letter_it_covers_more_of(monkeypatch)
     monkeypatch.setattr(columns, "SMALL_BOLD_COVER_MIN", 0.0)
     before = sew()
     changed = sorted(k for k in now if now[k][0] != before[k][0])
-    assert changed == ["EST_E"], changed
-    assert before["EST_E"][1] < floor <= now["EST_E"][1]
+    assert changed == [], changed
+    assert before["EST_E"][1] >= floor and now["EST_E"][1] >= floor
 
 
 def test_every_re_set_letter_is_sewn_over_most_of_it():
