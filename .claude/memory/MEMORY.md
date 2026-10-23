@@ -27,7 +27,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Font pipeline silent failures](font-pipeline-silent-failures.md) — font defects report healthy numbers; RENDER AND LOOK finds what tests miss; a guard must assert its reach
 - [Cache seam, photo floor, environment betrayals](cache-seam-photo-floor-2026-08-22.md) — Drive photo channel MEASURED BROKEN; proxied downloads lie, check Content-Length; satin floor is toggle-only
 - [The first real photographs](first-real-photos-2026-08-23.md) — four family photos: four defects no fixture could reach; 3 FIXED, `_shade_layers` palette escape left OPEN
-- [The renderer that made the real defect visible](thread-render-and-background-stitches-2026-08-24.md) — pre-08-24 sheets were VECTOR PROOFS hiding 72% background sewing (FIXED); rembg: DEPLOY REQUIREMENT
+- [The renderer that made the real defect visible](thread-render-and-background-stitches-2026-08-24.md) — sheets were VECTOR PROOFS hiding 72% background sewing (FIXED)
 - [Faces overturn the fill ruling](faces-overturn-the-fill-ruling-2026-08-25.md) — filled quantizes a face to one skin field — faces TABLED; Kent chose EXIF-or-face AUTO-DETECT
 - [The Studio's display layer](studio-display-layer-2026-08-25.md) — 787 green specs missed a white-on-white primary CTA. Drive the real app and read COMPUTED styles
 - [Why the letters are botched](letterform-fidelity-2026-08-26.md) — NO single root cause — four measured mechanisms; coverage and IoU cannot see a wrong-angle letter
@@ -38,7 +38,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Does the yardstick agree with Kent's eye?](../../docs/yardstick-vs-kents-eye-2026-08-28.md) — phase-1 exit question, NOT settled (n = 6). Element COUNT matches his judgement, AREA does not
 - [The first physical stitch-out](first-physical-sewout-2026-09-01.md) — Instagram icon sewn, 6/10. Density UNSETTLED — two readings disagree 2x; quote only `tools/fill_pitch.py`
 - [Worktree add with empty var wipes cwd](worktree-add-empty-var-wipes-cwd.md) — `git worktree add` with an EMPTY path var, run inside a lane, wipes the checkout; commits survive
-- [Worktree guard judges targets](worktree-guard-judges-targets-2026-10-04.md) — rm/mv guard resolves each verb's TARGET; denies lane roots, other lanes, ancestors; own-lane deletes allowed (Kent 10-04)
+- [Worktree guard judges targets](worktree-guard-judges-targets-2026-10-04.md) — rm/mv guard judges the resolved TARGET; own-lane deletes allowed (Kent 10-04)
 - [Worktree venv and baselines](worktree-venv-and-baselines.md) — worktrees have NO `.venv` — run main's python, cwd in the worktree; main is NEVER a baseline
 - [The baseline was sound, and a shallow clone said otherwise](baseline-attribution-and-studio-ui-2026-09-02.md) — RETRACTED: a SHALLOW clone misattributed the capture; check `--is-shallow-repository`
 - [Hotel Fremont fine details](hotel-fremont-fine-details-2026-09-02.md) — house angle NOT FIRING: slab serifs cancel in doubled-angle space, the 4th wrong-population case; fix is four-fold
@@ -55,21 +55,21 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [The satin raster ate every counter's edge](satin-hole-raster-2026-09-04.md) — `cv2.fillPoly` paints boundary pixels: holes lost half a pixel, rails 0.18 mm short — FIXED (`hole_px`)
 - [The gradient ruling: one region when the design ramp fits](gradient-ruling-2026-09-04.md) — RULING: one region when `design_ramp.py`'s plane gate passes — never gate on the colour profile
 - [The day the instruments were the defect](instruments-that-underreport-2026-09-06.md) — The score SATURATES at 0; a floored grade is no evidence either way. Read before quoting a grade
-- [The seam nothing guards, and what it says to customers](code-seam-and-customer-voice-2026-09-07.md) — A SWEEP is judged on today's yield, a TRIPWIRE on its failure cost; `test_code_wires.py` guards the wires
-- [A warning that read like a ruined job, bounded to nil](palette-mismatch-bounded-2026-09-07.md) — Blast radius NIL — nothing renders the layer list as cones. A warning's SEVERITY is set by its CONSUMERS
-- [Run the app — the screenshot found what reading did not](run-the-app-color-cap-2026-09-07.md) — Slider said max 6, caption 13 colors: the JOIN of three documented facts. Read before judging by reading
+- [The seam nothing guards, and what it says to customers](code-seam-and-customer-voice-2026-09-07.md) — a SWEEP is judged on yield, a TRIPWIRE on failure cost; `test_code_wires.py`
+- [A warning that read like a ruined job, bounded to nil](palette-mismatch-bounded-2026-09-07.md) — blast radius NIL; a warning's severity is set by its CONSUMERS
+- [Run the app — the screenshot found what reading did not](run-the-app-color-cap-2026-09-07.md) — slider max 6 vs caption 13 colors: run the app before judging by reading
 - [Eight PRs: the DST axis, and a number the app asserted](slider-vs-design-and-the-axis-fix-2026-09-08.md) — DST axis FIXED both halves; for an ORIENTATION claim render it
 - [Quality review 2026-09-08](quality-review-2026-09-08.md) — Fourteen ranked changes and build log; item 1 BLOCKED on Kent's tonal art. Read before digitizing work
 - [Border seam ownership](border-seam-ownership-2026-09-09.md) — Kent RULED the colour sewn ON TOP owns a shared seam; the shape beneath skips it as open arcs
 - [The border on the canvas](canvas-border-menu-2026-09-09.md) — Right-click Add/Remove border on the canvas over the per-shape `border` override; satin tier never borders
 - [Wide columns in the lettering engine](wide-columns-lettering-2026-09-11.md) — 80 of 85 fonts broke a DST record; Kent RULED `splitSatin` ON, `wideColumnFill` off — 9 cross-stitch remain
 - [Stale diagnostics, two flips, and a bill that oscillates](stale-diagnostics-and-two-flips-2026-09-13.md) — A diagnostic on today's defaults goes stale once its fix ships — pin to `PRE_FLIP`
-- [The index that stopped loading its newest entries](memory-index-overflow-2026-09-15.md) — 24,986-CHARACTER ceiling; past it the loader silently drops the NEWEST entries. Reclaim HOOKS, never entries
+- [The index that stopped loading its newest entries](memory-index-overflow-2026-09-15.md) — 24,986-CHAR ceiling drops the NEWEST entries; reclaim HOOKS, never entries
 - [Run-button commands need absolute paths](run-button-commands-need-absolute-paths.md) — Run buttons share ONE PowerShell whose cwd persists; `cd digitizer` works once — give an absolute cd
-- [The display revamp, and a fleet that outran its budget](display-revamp-and-a-fleet-that-outran-its-budget-2026-09-16.md) — `kind` is an OPEN set of eight
+- [The display revamp, and a fleet that outran its budget](display-revamp-and-a-fleet-that-outran-its-budget-2026-09-16.md) — `kind` is an OPEN set of eight; JEF/XXX/VP3 get jumps where DST gets stitches, NOT FIXED
 - [Tooling research, and a chaining gate already met](tooling-research-and-the-chaining-gate-2026-09-13.md) — No repo/MCP/plugin helps (don't re-search); vendors publish NO trim rule
 - [Photo edit tail 2026-09-17](photo-edit-tail-2026-09-17.md) — `fill_travel_under_cover` is ~58% of a photo edit tail; the reorder memo is exact ONLY while both stay pure
-- [A concurrent session designed the same tool](concurrent-session-designed-the-same-tool-2026-09-17.md) — three session collisions; check branches + live sessions FIRST; `claude stop` sticks, a kill respawns
+- [A concurrent session designed the same tool](concurrent-session-designed-the-same-tool-2026-09-17.md) — check branches + live sessions FIRST
 - [Six pending flags, invisible at viewing size](six-flags-invisible-at-viewing-size-2026-09-18.md) — Kent: 29 of 34 pairs "no difference"; all six stay OFF, not the Ember-gap lever
 - [Worktree session: the harness guard](worktree-session-harness-guard-2026-09-17.md) — `digitizer` spells `git`: quotes, `cd` chains refused; venv by 8.3 `CLAUDE~4`; preview_start reads MAIN
 - [The gap audit and the sourcing sweep](gap-audit-and-external-sourcing-2026-09-12.md) — 73 agents, 2 real defects the self-comparing suite missed; agents must RUN things; verify dies first
@@ -91,7 +91,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Preview vs the file it hands over](preview-vs-file-split-dogleg-2026-09-20.md) — preview matches the .dst exactly; the split walked an L on diagonals (FIXED); axis-aligned fixtures hid it
 - [Rail wobble is the model's floor](rail-wobble-is-the-models-floor-2026-09-21.md) — satin 0.089 mm is the rail model's FLOOR; do not tune its six defences. Mean OUTWARD, tail inward
 - [lost_frac is two metrics](lost-frac-is-two-metrics-2026-09-20.md) — `lost_frac` sums two OPPOSITE defects; enthusiast is 100% overshoot, no ink lost. Never quote its MAGNITUDE
-- [SEEDS unservable request, and the worktree blind spot](seeds-request-and-the-worktree-blind-spot-2026-09-22.md) — a worktree lacks the rembg venv: a DIFFERENT pipeline; an unservable ask crashes SILENTLY
+- [SEEDS unservable request, and the worktree blind spot](seeds-request-and-the-worktree-blind-spot-2026-09-22.md) — a worktree lacks the rembg venv (DIFFERENT pipeline); the SEEDS crash was unservable
 - [Check what shipped before building it](check-shipped-before-building-2026-09-29.md) — Kent asked for a manual digitizer that had shipped; grep MASTER_SCOPE/PRODUCT, offer "show me", drive it
 - [Studio configurator redesign](studio-configurator-pr1-2026-09-30.md) — wizard → Tesla panel: all four PRs built; PR 3 = Advanced fold (hidden, not removed); Original view still open
 - [Fine detail and the work grid](fine-detail-work-grid-2026-09-30.md) — "RESTAURANT" was lost to the tracer's 4 px/mm grid, not the file; `work_px_per_mm` ON at 8 (Kent 10-01)
@@ -137,7 +137,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
 - [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` OFF (hat/LC/beanie); MFab/Becker "BARE" fills were SATIN the tool misread — list run kinds first
 - [Small text re-set](small-text-reset-2026-10-21.md) — OFF: columns were already the pro's, SPACING was wrong; later stages undid the layout five ways; 5/S bays still close
-- [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean EDGE CAP round a 2-4 mm hex the classifier sent to fill (aspect); pro sews one satin blob; `compact_solids_satin` OFF
+- [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean edge cap + run tier on small shapes; the pro fills bubbles bare
 - [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out; only pull/comp and density need fabric. Fine lettering is the priority
 - [Border census](border-census-2026-10-23.md) — small rings = edge cap + run tier; pro borders by SIZE (>= 4 mm)
 - [Border by size](border-by-size-2026-10-23.md) — `border_by_size` OFF: at 6 mm+ the separator is STROKE vs satin ceiling; letters are the population; fills a coin flip
@@ -145,3 +145,4 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Flip sheet: layout flags OFF | ON | pro](flip-sheet-2026-10-23.md) — `tools/flip_sheet_renders.py`; diff is a MULTISET (locks sit on stations); x-ray tiles
 - [Narrow columns like the pro](narrow-columns-2026-10-23.md) — small_bold: serifs absorbed into the stroke, chord-read junctions, no chamfer mitre; 74→55 columns; `column_harness.py`
 - [5-10 mm lettering band](lettering-5-10mm-band-2026-10-23.md) — gap is corners (pro folds, we butt); Drone O sewn SHUT by a split alpha counter; `enclosed_alpha_hole_parts` OFF
+- [10 mm and up lettering band](lettering-10mm-up-band-2026-10-23.md) — only MARINE compares (white faces unsewn); the pro crosses diagonals like stems; `lettering_columns_text_lean` OFF
