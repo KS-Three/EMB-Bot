@@ -866,7 +866,7 @@ def build_generation(
     # derived every generation — like `layer`, unlike the review-screen
     # fields a resent `shape_overrides` carries forward on a stable id — so it
     # belongs before shape edits, not after.
-    tag_enclosed_background(regions, p)
+    tag_enclosed_background(regions, p, alpha_hole_parts=cfg.enclosed_alpha_hole_parts)
     # A kept counter (`cfg.keep_counters`) wears the same tag, and `counter`
     # beside it to say which kind: it is a gap in the letter round it that
     # shows the cloth unless switched on, which is everything that tag means
