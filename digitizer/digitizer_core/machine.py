@@ -31,9 +31,14 @@ TINY_STITCH_MM = 0.5
 
 # --- Fill ------------------------------------------------------------------
 
-# Run length along a tatami row. Measured across 19 professional files
-# (2026-07-30 corpus study, tools/study_pro.py): pro fills run 2.0-3.4 mm with
-# a median near 2.6; the old 4.0 sat outside the observed range entirely.
+# Run length along a tatami row. History: the 2026-07-30 corpus study (19
+# files, tools/study_pro.py) read pro fills at 2.0-3.4 mm, median near 2.6
+# (law 7), and 3.0 was set from it. That reading is SUPERSEDED. The pro's own
+# files, re-read 2026-10-21 (docs/settings-vs-pro-2026-10-21.md row 11), give a
+# median of 3.49 mm [job medians 3.45-3.52] on rows >= 10 mm, on 10 of 11
+# jobs, with a FIXED length and staggered remainders; law 20 (2026-08-01)
+# proposed a 4.0 ceiling. Ours is 3.0 by even division per row (2.97-3.00 on
+# Fremont), 14% short. Not changed: 3.5 fixed + stagger is a sew-out arm.
 FILL_STITCH_MM = 3.0
 # Row spacing = density. The two-pass-interleave hedge this comment used to
 # carry is REFUTED (docs/law19-fill-spacing-2026-08-02.md): our own fill and
@@ -827,7 +832,11 @@ SATIN_ZIGZAG_PITCH_MM = 1.45
 # --- Ties and trims --------------------------------------------------------
 
 TIE_STITCH_MM = 0.8   # one leg of a lock stitch
-TIE_STITCHES = 3      # three legs is the standard lock
+# Bounce legs `stitches.tie_run` loops over. A tie EMITS ONE MORE: it appends a
+# return leg to `at` when the loop ends away from it, so 3 here sews 4 legs
+# (5 points, the pro's 4 on 287 of 298 runs; docs/settings-vs-pro-2026-10-21.md
+# row 21). `_walk` reads the same constant as its station cap.
+TIE_STITCHES = 3
 
 # A needle-up move longer than this is cut. Shorter ones are left as jumps:
 # trimming everything wears the trimmer and slows the machine, leaving long
