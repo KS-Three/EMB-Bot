@@ -1,0 +1,205 @@
+{
+ "file": "card_v6_40wt.dst",
+ "bytes": 9287,
+ "wt": 40,
+ "blocks": 2,
+ "stitches_file": 2791,
+ "stitches_plan": 2791,
+ "colour_changes_file": 0,
+ "colour_changes_plan": 0,
+ "colours": 1,
+ "extent_mm": [
+  86.6,
+  15.2
+ ],
+ "within_hoop": true,
+ "x_range_mm": [
+  -43.3,
+  43.3
+ ],
+ "y_range_mm": [
+  -7.6,
+  7.6
+ ],
+ "max_needle_stitch_mm": 1.99,
+ "max_record_axis_mm": 11.3,
+ "stops": [
+  {
+   "stop": 1,
+   "thread": "dark",
+   "stitches": 2925,
+   "thread_m": 2.2
+  }
+ ],
+ "stitches_by_piece": {
+  "R:1895-condensed": 240,
+  "R:1895-reset": 274,
+  "R:EST-condensed": 202,
+  "R:EST-reset": 200,
+  "R:TAG-condensed": 738,
+  "R:TAG-reset": 680,
+  "R:THE-condensed": 273,
+  "R:THE-reset": 290,
+  "R:strips": 28
+ },
+ "under_1mm_by_piece": {
+  "R:1895-condensed": 150,
+  "R:1895-reset": 155,
+  "R:EST-condensed": 103,
+  "R:EST-reset": 127,
+  "R:TAG-condensed": 386,
+  "R:TAG-reset": 324,
+  "R:THE-condensed": 143,
+  "R:THE-reset": 184
+ },
+ "lock_legs_0p8": 578,
+ "trims": 19,
+ "blocks_mm": {
+  "R1": [
+   -43.3,
+   -8.9,
+   32.2,
+   -2.6
+  ],
+  "R2": [
+   -43.3,
+   1.4,
+   43.3,
+   7.6
+  ]
+ },
+ "pieces_mm": {
+  "R:1895-condensed": [
+   -25.0,
+   -7.4,
+   -17.7,
+   -2.9
+  ],
+  "R:1895-reset": [
+   -22.0,
+   2.9,
+   -11.2,
+   7.3
+  ],
+  "R:EST-condensed": [
+   -36.1,
+   -7.4,
+   -29.0,
+   -3.0
+  ],
+  "R:EST-reset": [
+   -34.9,
+   2.9,
+   -26.0,
+   7.3
+  ],
+  "R:TAG-condensed": [
+   1.1,
+   -7.4,
+   32.2,
+   -2.6
+  ],
+  "R:TAG-reset": [
+   9.1,
+   2.9,
+   43.3,
+   7.6
+  ],
+  "R:THE-condensed": [
+   -13.7,
+   -7.4,
+   -2.9,
+   -2.9
+  ],
+  "R:THE-reset": [
+   -7.2,
+   2.9,
+   5.1,
+   7.2
+  ]
+ },
+ "pieces": [
+  {
+   "row": 1,
+   "arm": "condensed",
+   "word": "EST",
+   "letters": 3,
+   "runs": 19,
+   "width_mm": 7.07,
+   "height_mm": 4.4
+  },
+  {
+   "row": 1,
+   "arm": "condensed",
+   "word": "1895",
+   "letters": 4,
+   "runs": 23,
+   "width_mm": 7.32,
+   "height_mm": 4.48
+  },
+  {
+   "row": 1,
+   "arm": "condensed",
+   "word": "THE",
+   "letters": 3,
+   "runs": 33,
+   "width_mm": 10.81,
+   "height_mm": 4.42
+  },
+  {
+   "row": 1,
+   "arm": "condensed",
+   "word": "TAG",
+   "letters": 11,
+   "runs": 69,
+   "width_mm": 31.1,
+   "height_mm": 4.74
+  },
+  {
+   "row": 2,
+   "arm": "reset",
+   "word": "EST",
+   "letters": 3,
+   "runs": 15,
+   "width_mm": 8.9,
+   "height_mm": 4.38
+  },
+  {
+   "row": 2,
+   "arm": "reset",
+   "word": "1895",
+   "letters": 4,
+   "runs": 21,
+   "width_mm": 10.83,
+   "height_mm": 4.43
+  },
+  {
+   "row": 2,
+   "arm": "reset",
+   "word": "THE",
+   "letters": 3,
+   "runs": 39,
+   "width_mm": 12.31,
+   "height_mm": 4.28
+  },
+  {
+   "row": 2,
+   "arm": "reset",
+   "word": "TAG",
+   "letters": 11,
+   "runs": 79,
+   "width_mm": 34.17,
+   "height_mm": 4.68
+  }
+ ],
+ "arm_md5": {
+  "R:1895-condensed": "678efc21ce7f92621b7668d251798e81",
+  "R:1895-reset": "13691abca400c8c265ee8c1c66a199c2",
+  "R:EST-condensed": "4fea93fe399a7073134fba396c23fdb8",
+  "R:EST-reset": "97e1681fdf199ca5ec60d98be415e930",
+  "R:TAG-condensed": "6dd8f27b9ca10bd692d7997e9c6d3501",
+  "R:TAG-reset": "a29ab31beaae9b9a5a80a07599cbe130",
+  "R:THE-condensed": "03dd8af6b0c60d580e9fd1edeb0a2495",
+  "R:THE-reset": "0606892b9a6eb2fa7b819673b9574ccf"
+ }
+}
