@@ -38,7 +38,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Does the yardstick agree with Kent's eye?](../../docs/yardstick-vs-kents-eye-2026-08-28.md) — phase-1 exit question, NOT settled (n = 6). Element COUNT matches his judgement, AREA does not
 - [The first physical stitch-out](first-physical-sewout-2026-09-01.md) — Instagram icon sewn, 6/10. Density UNSETTLED — two readings disagree 2x; quote only `tools/fill_pitch.py`
 - [Worktree add with empty var wipes cwd](worktree-add-empty-var-wipes-cwd.md) — `git worktree add` with an EMPTY path var, run inside a lane, wipes the checkout; commits survive
-- [Worktree guard judges targets](worktree-guard-judges-targets-2026-10-04.md) — the rm/mv guard resolves each verb's path (cwd, cd, VAR=, ~, /c/) and denies lane roots, other lanes, ancestors; own-lane deletes allowed (Kent 10-04); replay tool measures it
+- [Worktree guard judges targets](worktree-guard-judges-targets-2026-10-04.md) — rm/mv guard resolves each verb's TARGET; denies lane roots, other lanes, ancestors; own-lane deletes allowed (Kent 10-04)
 - [Worktree venv and baselines](worktree-venv-and-baselines.md) — worktrees have NO `.venv` — run main's python, cwd in the worktree; main is NEVER a baseline
 - [The baseline was sound, and a shallow clone said otherwise](baseline-attribution-and-studio-ui-2026-09-02.md) — RETRACTED: a SHALLOW clone misattributed the capture; 38/38 rows reproduce. Check `--is-shallow-repository`
 - [Hotel Fremont fine details](hotel-fremont-fine-details-2026-09-02.md) — house angle NOT FIRING: slab serifs cancel in doubled-angle space, the 4th wrong-population case; fix is four-fold
@@ -104,12 +104,12 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Row stagger for the browser fill](fill-stagger-2026-10-03.md) — JS fill holes lined up 94%; `fillStagger` built OFF (Kent's flip), +7% stitches. A channel is 3 rows, not 2
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: don't build on past sessions; answer "what's next" from ROADMAP/PRODUCT/MASTER_SCOPE on origin/main
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only (`edge_wobble_*`, `curve_*`), nothing shown to the customer
-- [Memory outside the repo](memory-outside-the-repo.md) — sessions rooted in `.claude-work` write memory to a folder this repo never sees; seven notes snapshotted here by 10-04. A folder check reads session cwds, not names
+- [Memory outside the repo](memory-outside-the-repo.md) — sessions rooted in `.claude-work` write memory to a folder this repo never sees; seven notes snapshotted here by 10-04
 - [Parallel agent with the embot](parallel-agent-with-embot.md) — SNAPSHOT: audit before a PR is OPEN, not just before arming; never `git stash` in a lane; a stacked PR targets main and says so
 - [Browser fill lane state](embot-browser-fill-lane-state.md) — SNAPSHOT 10-03: #606/#609/#611 built OFF, flips Kent's; island fix #613 merged PRE-audit, cures in #620; cleanup only Kent can run
 - [Handover numbers and stacked branches](embot-handover-numbers-and-stacked-branches.md) — SNAPSHOT: reproduce a handed-over number with its own script; a PR can merge at an older head than its session's branch
 - [Sub-unit stitches lane](embot-sub-unit-stitches-lane.md) — SNAPSHOT 10-04: `dedupeHoles` built OFF (#623), Kent's "new flag, every run"; never look through a jump: three jumps are a cut in a DST
-- [Wrong-root sessions, global guards](wrong-root-sessions-and-global-guards-2026-10-04.md) — sessions rooted outside the repo ran with no project hooks; `embot-guards-global.js` covers them. A silent hook leaves no trace
+- [Wrong-root sessions, global guards](wrong-root-sessions-and-global-guards-2026-10-04.md) — sessions rooted outside the repo ran with no project hooks; `embot-guards-global.js` covers them
 - [Closed-ring lane](embot-closed-ring-lane.md) — SNAPSHOT: #621 `offsetRing` on a repeated point, #625 stacked on it; defect 55's offset half is Kent's call
 - [Star-walk lane](embot-star-walk-lane.md) — SNAPSHOT: #624 ends `skeletonEdges`' endless walk; defect 57's cure order waits on Kent
 - [Build what was priced](build-what-was-priced.md) — SNAPSHOT: after Kent picks a priced option, build exactly that
@@ -125,7 +125,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [True-size guard below 81 mm](small-text-true-size-guard-2026-10-15.md) — 65 mm loss = strays bug + ink-ground bug + per-glyph OCR noise; guard 0.45 x 40/wt, unsewn; ink ring OFF; measure on run_arm
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — Kent's red circles were a STALE SERVICE but one: THE garbled at 80 (clean at 81) = rescued round linked across inks; `text_cluster_rescued_ink_link` ON; measure at the width the Studio SENDS
 - [Bean holds ON](bean-holds-on-2026-10-15.md) — Kent flipped counter hold 0.25 + bay hold 0.2 as PLAIN defaults (None stays OFF); the three sew-out cards pin None explicitly; grep card tools before any bean flip
-- [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); the Fremont OFF md5 follows Intel IPP's path in the OpenCV wheel, not numpy/OpenBLAS/platform/order; test env capped at OPENCV_IPP=avx2 (10-20)
+- [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); Fremont OFF md5 follows OpenCV's Intel IPP path; test env capped OPENCV_IPP=avx2
 - [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins; flip + sharp tips Kent's
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; branches deleted 10-20, lanes LEFT (Kent): 57 clean, 13 dirty, 8 stranded
 - [Card v4 sew-out: pro raises small text](card-v4-sewout-letter-size-2026-10-20.md) — pro lifts every small word to ~4 mm (EST/1895 2.1x art) and satins it; ours traces art size as a hairline. Fixed-box size reads misled twice: measure by colour block
@@ -137,3 +137,4 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
 - [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` OFF (hat/LC/beanie); MFab/Becker "BARE" fills were SATIN the tool misread — list run kinds first
 - [Small text re-set](small-text-reset-2026-10-21.md) — OFF: columns were already the pro's, SPACING was wrong; later stages undid the layout five ways; 5/S bays still close
+- [Pull comp by stroke](pull-comp-by-stroke-2026-10-22.md) — pro's hat pull FALLS with width: +0.58 at 0.85 mm, +0.42 at 2.6, 0 at 4; `pull_comp_by_stroke` OFF; small text stays small_bold's

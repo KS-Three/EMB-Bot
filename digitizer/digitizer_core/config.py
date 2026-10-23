@@ -2591,6 +2591,25 @@ class PipelineConfig:
     # here is a candidate until sewn (gate 1). Kent flips. Tests:
     # `tests/test_column_small_bold.py`.
     lettering_columns_small_bold: bool = False
+    # Under `lettering_columns`, each satin column's pull compensation is a
+    # function of ITS OWN drawn stroke width, the way the professional's
+    # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the
+    # measurements in its comment). The fixed `Fabric.pull_comp_mm` adds
+    # the same ~0.58 mm to every column on the hat; the pro adds +0.58 on a
+    # 0.85 mm stroke, +0.42 on 2.6 and nothing at 4 (Fremont, Drone,
+    # Proseal, Becker), so our wide hat strokes sew +0.15 to +0.27 mm wider
+    # than his (`docs/settings-vs-pro-2026-10-21.md` row 8). ON, on the hat
+    # / LC / beanie presets only (`fabrics.PULL_BY_STROKE_FABRICS`): a
+    # column's rails are pushed by the pull the fit gives its own width,
+    # never more than the preset's fixed pull (a 0.85 mm stroke gets the
+    # hat's 0.4 as today), and under `lettering_columns_small_bold` never
+    # more than that flag's share of the stroke. The letter-level pull (the
+    # merge radius, the tuck, the link rule's buffers) is read the same way
+    # off the letter's mean stroke. `min_detail_mm`'s hold across a counter
+    # is unchanged. Computed at digitize time on the drawn stroke, so a
+    # resize keeps it (ruling 12). A physical constant (ROADMAP gate 1):
+    # Kent flips after a sew-out. Tests: `tests/test_pull_comp_by_stroke.py`.
+    pull_comp_by_stroke: bool = False
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
