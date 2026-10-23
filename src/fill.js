@@ -409,12 +409,19 @@
     // Variant j of a column: bit 1 = from the bottom, bit 0 = first row sewn
     // right to left. So j ^ 1 starts at the other end of the same row, and
     // j ^ 2 at the other end of the column on the same side.
+    // With `o.turnAlong` each variant's turns are slanted (slantTurns): the
+    // first and last points of a variant are never a turn's inner end, so a
+    // column's corners -- what the moves between columns are planned on --
+    // stay on the boundary, and `e` stays the edge each end was cut on.
     const walk = (col, fromBottom, firstReversed) => {
       const seq = fromBottom ? col.slice().reverse() : col;
+      const revAt = (k) => (k % 2 === 1) !== firstReversed;
+      const ends = o.turnAlong > 0 ? slantTurns(seq.map((r, k) => ({ y: r.y, x0: r.x0, x1: r.x1, rev: revAt(k) })), o.turnAlong, o.minStitch) : null;
       const key = [];
       seq.forEach((r, k) => {
-        const rev = (k % 2 === 1) !== firstReversed;
-        const lo = { x: r.x0, y: r.y, e: r.e0 }, hi = { x: r.x1, y: r.y, e: r.e1 };
+        const rev = revAt(k);
+        const x0 = ends ? ends[k][0] : r.x0, x1 = ends ? ends[k][1] : r.x1;
+        const lo = { x: x0, y: r.y, e: r.e0 }, hi = { x: x1, y: r.y, e: r.e1 };
         key.push(rev ? hi : lo, rev ? lo : hi);
       });
       return key;
@@ -973,6 +980,69 @@
     return slots;
   }
 
+  // THE SLANTED TURN (`turnAlong`, 2026-10-22): the JS twin of the Python
+  // engine's `stage6_fill._slant_turns` (`cfg.fill_turn_slant`, PR #1036,
+  // `docs/fill-turn-slant-2026-10-21.md`). Stepping straight from one row's
+  // exit to the next row's entry makes the turn one row spacing long where
+  // the edge runs square to the rows: 0.10-0.22 mm at the 0.15 row, the
+  // needle landing beside its own hole, and most of every sub-0.5 mm stitch
+  // on the pro's jobs. The pro's turn lands `FILL_TURN_ALONG_MM` (0.7 mm,
+  // his p50 0.71-0.83 over six DSTs) along the row.
+  //
+  // Of the two boundary points a turn joins, the one further OUT along the
+  // row stays on the boundary and the inner one is pulled in until the turn
+  // runs `along` along the row; the slanted thread then lies over the corner
+  // the pull left bare. On a narrowing (or square) edge the inner point is
+  // the next row's ENTRY; on a widening edge it is this row's EXIT. (Pulling
+  // the entry on a widening edge bared the outer corner and drew a staircase
+  // on every edge under ~60 degrees to the rows: the Python lane's first
+  // build, rendered 2026-10-21.) A column's last turn pulls the exit when the
+  // edge is near square, so the last row keeps its corner: the row above's
+  // pulled corner is under the last row's thread, the last row's would be
+  // under nothing. When the preferred row is too short to keep `minStitch`
+  // after the pull (near a tip), the other end of the turn is pulled instead.
+  // Left alone: a turn already that far along the row (a sloped edge), and
+  // one neither row can afford.
+  //
+  // `items`: the rows in walk order, each { y, rev, entry, exit } with `rev`
+  // the row sewn right to left and `entry`/`exit` the span ([x0, x1], changed
+  // in place) the row begins and ends on -- one and the same span on a
+  // column, the first and last of a row of several spans under the plain
+  // walk. A span pulled from both its turns is counted twice. The row grid
+  // and the interior penetrations are not this function's: the ends move,
+  // and the stagger reads its holes off the grid between them.
+  function slantSpans(items, along, minStitch) {
+    const want = along, min = minStitch || 0;
+    const pulled = new Map();
+    const got = (sp) => pulled.get(sp) || 0;
+    for (let k = 1; k < items.length; k++) {
+      const prev = items[k - 1], row = items[k];
+      if (prev.rev === row.rev) continue;            // not a boustrophedon pair: no turn to slant
+      const u = row.rev ? -1 : 1;                    // row k's direction
+      const exitX = u > 0 ? prev.exit[0] : prev.exit[1];
+      const entryX = u < 0 ? row.entry[1] : row.entry[0];
+      const alongNow = (entryX - exitX) * u;
+      if (Math.abs(alongNow) >= want) continue;
+      const dy = Math.abs(row.y - prev.y);
+      const last = k === items.length - 1;
+      const exitPull = [prev.exit, want + alongNow], entryPull = [row.entry, want - alongNow];
+      const order = alongNow < 0 || (last && alongNow < dy) ? [exitPull, entryPull] : [entryPull, exitPull];
+      let pick = null;
+      for (const [sp, d] of order) if (sp[1] - sp[0] - got(sp) - d >= min) { pick = [sp, d]; break; }
+      if (!pick) continue;
+      const [sp, d] = pick;
+      // Both ends sit on the turn's side: x0 when row k runs right, x1 when left.
+      if (u > 0) sp[0] += d; else sp[1] -= d;
+      pulled.set(sp, got(sp) + d);
+    }
+  }
+  // The rule on a column: `seq` is [{ y, x0, x1, rev }] in walk order -> [[x0, x1]].
+  function slantTurns(seq, along, minStitch) {
+    const items = seq.map((r) => { const sp = [r.x0, r.x1]; return { y: r.y, rev: !!r.rev, entry: sp, exit: sp }; });
+    slantSpans(items, along, minStitch);
+    return items.map((it) => [it.entry[0], it.entry[1]]);
+  }
+
   // The holes between the two ends of one row, a -> b, in the rows' frame.
   // `phase` is the row's shift along the grid, `stitch` the grid's pitch, and
   // `minStitch` how near an end a grid point may be and still be sewn.
@@ -1150,7 +1220,9 @@
     // that opts.centerOut can reorder whole rows (each row keeps its own
     // boustrophedon scan direction, which is keyed to its spatial rowIndex).
     const rowGroups = [];
+    const rowMeta = [];    // per group: its height, its direction, its spans in sewn order (the slanted turn)
     const rowSpans = [];   // the same rows as bare spans, for opts.columns
+    const turnAlong = opts.turnAlong > 0 ? opts.turnAlong : 0;
     let rowIndex = 0;
     for (let y = minY; y <= maxY + EPS; y += rowSpacing) {
       // Gather x-intersections with all edges using the half-open rule, each
@@ -1188,6 +1260,7 @@
           grp.push({ x: end, y });
         }
         rowGroups.push(grp);
+        rowMeta.push({ y, rev, ordered });
         rowSpans.push({ ri: rowIndex, y, spans, spanEdges });
       }
       rowIndex++;
@@ -1213,6 +1286,8 @@
     // preserves the connector-marking parity below and every inter-row move lands
     // on an even (connector) index.
     let orderedGroups = rowGroups;
+    let orderedMeta = rowMeta;
+    let sweepAt = -1;      // index (into the groups) of the lower sweep's first row
     // Index (into `key`) of the FIRST point of the lower sweep — the destination
     // of the single sweep-to-sweep reposition (top edge → back near center).
     // That one long move is a needle-up float; tag its destination point with
@@ -1224,17 +1299,42 @@
       const n = rowGroups.length;
       const mid = Math.floor(n / 2);
       orderedGroups = [];
-      for (let i = mid; i >= 0; i--) orderedGroups.push(rowGroups[i]); // upper sweep
+      orderedMeta = [];
+      for (let i = mid; i >= 0; i--) { orderedGroups.push(rowGroups[i]); orderedMeta.push(rowMeta[i]); } // upper sweep
       if (mid + 1 < n) {
         // count upper-sweep points; that offset is where the lower sweep begins.
         let upperCount = 0;
         for (let i = mid; i >= 0; i--) upperCount += rowGroups[i].length;
         lowerSweepStartIdx = upperCount;
+        sweepAt = orderedGroups.length;
       }
-      for (let i = mid + 1; i < n; i++) orderedGroups.push(rowGroups[i]); // lower sweep
+      for (let i = mid + 1; i < n; i++) { orderedGroups.push(rowGroups[i]); orderedMeta.push(rowMeta[i]); } // lower sweep
     }
     const key = [];
     for (const grp of orderedGroups) for (const p of grp) key.push(p);
+
+    // The slanted turn under the plain walk (`opts.turnAlong`; slantSpans has
+    // the rule). Each sweep is a column of rows: the move into the lower
+    // sweep's first row is the float back from the top, not a turn. A row of
+    // several spans begins on its first span and ends on its last, and a turn
+    // across a hole is already further along the row than the rule asks, so
+    // it is left as it is. Emitted from `slanted`; the plain-or-columns
+    // question below is asked of the turns as cut (`key`), the same question
+    // with the option off.
+    let slanted = key;
+    if (turnAlong) {
+      const items = orderedMeta.map((m) => {
+        const spans = m.ordered.map((sp) => [sp[0], sp[1]]);
+        return { y: m.y, rev: m.rev, entry: spans[0], exit: spans[spans.length - 1], spans };
+      });
+      if (sweepAt > 0) { slantSpans(items.slice(0, sweepAt), turnAlong, opts.minStitch); slantSpans(items.slice(sweepAt), turnAlong, opts.minStitch); }
+      else slantSpans(items, turnAlong, opts.minStitch);
+      slanted = [];
+      for (const it of items) for (const sp of it.spans) {
+        slanted.push({ x: it.rev ? sp[1] : sp[0], y: it.y });
+        slanted.push({ x: it.rev ? sp[0] : sp[1], y: it.y });
+      }
+    }
 
     // With `columns`, a shape is PLAIN -- and keeps the walk it has always
     // had, center-out included -- only when every row is a single span AND no
@@ -1289,7 +1389,7 @@
         const to = opts.to ? rotate(opts.to, cosN, sinN) : null;
         const clear = opts.clear ? ((a, b) => opts.clear(rotate(a, cosP, sinP), rotate(b, cosP, sinP))) : null;
         const walked = sewColumns(cut.columns, cut.above, { edges: ground, rings, ringOf, posOf },
-          { maxStitch, tol, pitch: rowSpacing, cosP, sinP, budget, from, to, clear, rowHoles });
+          { maxStitch, tol, pitch: rowSpacing, cosP, sinP, budget, from, to, clear, rowHoles, turnAlong, minStitch: opts.minStitch });
         // for a caller that counts which walk it got (center-out is the other one)
         Object.defineProperty(walked, "columnWalk", { value: true });
         return walked;
@@ -1307,10 +1407,10 @@
     if (startOnly) return key.length ? rotate(key[0], cosP, sinP) : null;
     const out = [];
     if (key.length === 0) return out;
-    out.push(rotate(key[0], cosP, sinP));
-    for (let i = 1; i < key.length; i++) {
-      const a = key[i - 1];
-      const b = key[i];
+    out.push(rotate(slanted[0], cosP, sinP));
+    for (let i = 1; i < slanted.length; i++) {
+      const a = slanted[i - 1];
+      const b = slanted[i];
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const dist = Math.hypot(dx, dy);
@@ -1481,5 +1581,6 @@
     crossesOpenGround,
     openGroundTest,
     staggerSlots,
+    slantTurns,
   };
 });
