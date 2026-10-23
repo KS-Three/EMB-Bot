@@ -57,6 +57,16 @@ every pass sewn at 0.75-0.8 mm.
 - Area reads 5-9% high (the footprint is dilated).
 - `min_fill_mm` is millimetres of DENSE THREAD, not area. The audit's
   "large fill" is the default 1,500.
+- SATIN READS AS A FILL, and our satin reads BARE. A satin column's crosses
+  are dense rows ~0.2 mm apart, so adjacent columns merge into one "fill".
+  Our split satin sews underlay-then-top PER COLUMN, and only running stitch
+  sewn before the region's FIRST dense row counts, so every column's centre
+  walk after the first is invisible. Measured 2026-10-21: MFab hat at
+  104.9 mm "BARE 2,521 mm2" is the black silhouette and the letters, all
+  satin, with 872 mm of underlay under the silhouette alone; Becker beanie's
+  four "BARE" fills are its ring and letters, satin, 1,324 mm under the ring.
+  Neither job sews a single tatami fill. Check the plan's run kinds
+  (`StitchRun.kind`) before calling one of ours bare.
 """
 from __future__ import annotations
 

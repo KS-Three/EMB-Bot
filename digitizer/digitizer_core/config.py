@@ -3095,6 +3095,18 @@ class PipelineConfig:
     # NOT `match_shape_ids`, which has no production caller).
     underlay_style: str | None = None
     underlay: bool = True
+    # The pro's fill underlay in the hat / left-chest / beanie presets (built
+    # OFF 2026-10-21): ON, `structured_cap`, `pique_knit` and `jersey_tee`
+    # sew `cross_tatami` (one crossing pass, `machine.UNDERLAY_CROSS_ROW_MM`
+    # rows, `UNDERLAY_CROSS_STITCH_MM` stitches) under a fill in place of
+    # their `edge_zigzag` / `edge_run`. Every dense fill on every job in the
+    # pro's zip has that pass (`docs/settings-vs-pro-2026-10-21.md` rows
+    # 13-15). Only the preset FALLBACK moves: `underlay_style` above, the
+    # per-shape override and the photo-class default still win as before.
+    # A fabric preset is gate 1 (a physical constant), so this waits on the
+    # sew-out card's arm and Kent's flip. OFF is the engine byte for byte.
+    # Browser twin: `crossUnderlay` (src/digitize.js).
+    fill_underlay_cross: bool = False
 
     # Which fill technique a fill-classified shape sews with.
     #

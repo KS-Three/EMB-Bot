@@ -218,6 +218,28 @@ def test_the_browser_fallback_default_matches_python_s():
         f"browser falls back to {m.group(1)!r}, Python to {DEFAULT_FABRIC_ID!r}")
 
 
+def test_the_cross_underlay_presets_agree_across_the_engines():
+    """`cfg.fill_underlay_cross` (Python) and `crossUnderlay` (browser), both
+    built OFF 2026-10-21, swap the same presets' fill underlay to
+    `cross_tatami`. The set is a third hand copy beside the table and the
+    garment map: a preset in one list and not the other sews the pro's
+    crossing pass in one engine and its old walk in the other."""
+    from digitizer_core.fabrics import CROSS_UNDERLAY_FABRICS, fill_underlay_for
+
+    src = FABRICS_JS.read_text(encoding="utf-8")
+    m = re.search(r"const CROSS_UNDERLAY_FABRICS = \[([^\]]*)\];", src)
+    assert m, "no `const CROSS_UNDERLAY_FABRICS = [...]` in src/fabrics.js"
+    js = re.findall(r'"([a-z_]+)"', m.group(1))
+    assert sorted(js) == sorted(CROSS_UNDERLAY_FABRICS)
+    ids = {f.id for f in FABRICS}
+    assert set(CROSS_UNDERLAY_FABRICS) <= ids
+    # OFF is the table, preset for preset; ON moves exactly the listed ones.
+    for f in FABRICS:
+        assert fill_underlay_for(f) == f.fill_underlay
+        assert fill_underlay_for(f, True) == (
+            "cross_tatami" if f.id in CROSS_UNDERLAY_FABRICS else f.fill_underlay)
+
+
 def test_the_cutaway_threshold_agrees_across_the_engines():
     """`CUTAWAY_STITCHES` (src/fabrics.js `hoopingAdvice` — the Studio's
     hooping card and the PDF worksheet) and `preflight.STITCHES_CUTAWAY_MIN`

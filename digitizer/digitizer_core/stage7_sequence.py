@@ -59,7 +59,7 @@ from shapely.ops import nearest_points, unary_union
 
 from . import machine, stitches
 from .config import PipelineConfig
-from .fabrics import Fabric
+from .fabrics import Fabric, fill_underlay_for
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
 from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
@@ -2424,7 +2424,8 @@ def sequence(
         # demand-built generation cannot leak into a flag-off re-plan.
         if cfg.shade_palette_demand and palette_spools:
             shade_palette = sorted(set(shade_palette) | set(palette_spools))
-    class_fill_underlay = _PHOTO_FILL_UNDERLAY if photo else fabric.fill_underlay
+    class_fill_underlay = (_PHOTO_FILL_UNDERLAY if photo
+                           else fill_underlay_for(fabric, cfg.fill_underlay_cross))
     underlay_style = (cfg.underlay_style or class_fill_underlay) if cfg.underlay else "none"
     satin_underlay = ((_PHOTO_SATIN_UNDERLAY if photo else fabric.satin_underlay)
                       if cfg.underlay else "none")
