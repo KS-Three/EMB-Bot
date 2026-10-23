@@ -11,6 +11,7 @@
   const units = _node ? dep("./units.js") : root.EMB;
   const garments = _node ? dep("./garments.js") : root.EMB;
   const fillmod = _node ? dep("./fill.js") : root.EMB;
+  const fabricsmod = _node ? dep("./fabrics.js") : root.EMB;
   const satinmod = _node ? dep("./satin.js") : root.EMB;
   const satinfontmod = _node ? dep("./satinfont.js") : root.EMB;
   // Rail-native satin (satinFromRails, centerRun). `satinmod` is satin.js and
@@ -857,7 +858,7 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, fillTurnSlant, dedupeHoles, cutFloats, satinSmallShapes }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, fillTurnSlant, dedupeHoles, cutFloats, satinSmallShapes, crossUnderlay }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
   // satinfont.js's constant block — and `satinZigzag`, ON by default since 2026-10-13:
@@ -1482,7 +1483,11 @@
           if (fabric) {
             // Fabric mode: named underlay style per shape type.
             try {
-              const style = thin ? (fabric.satinUnderlay || "center_run") : (fabric.fillUnderlay || "edge_lattice");
+              // `crossUnderlay` (built OFF 2026-10-21; twin of the
+              // digitizer's `cfg.fill_underlay_cross`): the hat / left-chest
+              // / beanie presets sew the pro's crossing pass under a fill.
+              const fillStyle = o.crossUnderlay ? fabricsmod.fillUnderlayFor(fabric, true) : fabric.fillUnderlay;
+              const style = thin ? (fabric.satinUnderlay || "center_run") : (fillStyle || "edge_lattice");
               const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin, openTol: rowPx, ground: cover, clear: clearFloat, to: fillStart }, underlayCtxBase);
               // A column's centre run follows its RAILS (spec §6, "Amended
               // 2026-10-01", correction 2): underlayRuns' center_run is a

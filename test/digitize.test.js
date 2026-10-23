@@ -1876,6 +1876,26 @@ test("cross_tatami underlay: one sparse pass across the fill, 1 mm rows, 4 mm st
   assert.ok(gaps.every((g) => Math.abs(g - 1.0) < 0.15), "row gaps " + JSON.stringify(gaps.slice(0, 8)));
 });
 
+test("crossUnderlay (built OFF): the hat/LC/beanie presets sew the cross pass, nothing else moves", () => {
+  // Twin of the digitizer's `cfg.fill_underlay_cross` (tests/test_fill_underlay_cross.py).
+  // OFF is the preset's own underlay; ON is exactly an explicit cross_tatami.
+  const box = { outer: boxPx(0, 0, 400, 300), holes: [], angleOverride: 0 };
+  for (const preset of FABRICS.FABRICS) {
+    const real = FABRICS.getFabric(preset.id);
+    const sew = (fabric, extra) => drawn(box, 400, Object.assign({ fillColumns: false, fabric }, extra)).stitches;
+    const off = sew(real, {});
+    assert.deepStrictEqual(sew(real, { crossUnderlay: false }), off, preset.id + " off");
+    const on = sew(real, { crossUnderlay: true });
+    if (FABRICS.CROSS_UNDERLAY_FABRICS.includes(preset.id)) {
+      assert.deepStrictEqual(on, sew(Object.assign({}, real, { fillUnderlay: "cross_tatami" }), {}), preset.id + " on");
+      assert.notDeepStrictEqual(on, off, preset.id + " on moved nothing");
+    } else {
+      assert.deepStrictEqual(on, off, preset.id + " is not in the set");
+    }
+  }
+  assert.deepStrictEqual([...FABRICS.CROSS_UNDERLAY_FABRICS].sort(), ["jersey_tee", "pique_knit", "structured_cap"]);
+});
+
 test("buildQualityDesign: fabric densityAdjust loosens fill (fewer stitches)", () => {
   // large square + pxPerMm 8 keeps row spacing above the 0.8px floor so the
   // density multiplier actually changes the row count.

@@ -59,7 +59,7 @@ from shapely.ops import nearest_points, unary_union
 
 from . import machine, stitches
 from .config import PipelineConfig
-from .fabrics import Fabric
+from .fabrics import Fabric, fill_underlay_for
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
 from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
@@ -2424,7 +2424,8 @@ def sequence(
         # demand-built generation cannot leak into a flag-off re-plan.
         if cfg.shade_palette_demand and palette_spools:
             shade_palette = sorted(set(shade_palette) | set(palette_spools))
-    class_fill_underlay = _PHOTO_FILL_UNDERLAY if photo else fabric.fill_underlay
+    class_fill_underlay = (_PHOTO_FILL_UNDERLAY if photo
+                           else fill_underlay_for(fabric, cfg.fill_underlay_cross))
     underlay_style = (cfg.underlay_style or class_fill_underlay) if cfg.underlay else "none"
     satin_underlay = ((_PHOTO_SATIN_UNDERLAY if photo else fabric.satin_underlay)
                       if cfg.underlay else "none")
@@ -3087,6 +3088,28 @@ def sequence(
                     # the fill tier.
                     report["hairline_runs"] = sum(
                         1 for r in runs if r.kind == stitches.RUN)
+                    return runs, report, False
+            # `cfg.compact_solids_satin` (built OFF, 2026-10-22): a solid the
+            # classifier refused for ASPECT only -- a blob whose width fits
+            # the ceiling -- sews one satin column across itself instead of
+            # tatami rows (which the bean edge cap then rings: Proseal's
+            # spray hexagons). The pro sews each as one satin blob. Same
+            # tests as the rescue's `small_solids_satin`, same emitter -- but
+            # on `p.polygon`, the stage-5 polygon the fill would have sewn
+            # (the satin tier sews `p.polygon` too), so the column reaches
+            # the silhouette the edge cap samples; on the artwork polygon it
+            # stopped a pull width short of it and the cap ringed it anyway.
+            # A column that comes out empty keeps the fill below. Off, unread.
+            if (cfg.compact_solids_satin and cfg.satin and tier == "auto"
+                    and ribbon is not None and not ribbon.satin
+                    and ribbon.reason == "aspect" and not rides_ramp
+                    and not is_lettering(p.region, cfg)
+                    and is_small_solid(p.region.polygon, profile_for(p).width_mm)):
+                runs, report = small_solid_satin(
+                    p.polygon, p.shape_id, spacing_mm=satin_spacing_for(p),
+                    max_width_mm=shape_max, start_near=entry)
+                if not report["empty"]:
+                    report["compact_satin"] = 1
                     return runs, report, False
             if (tier == "auto" and not outline_tried
                     and (widened_lettering(p.region) or word_satin)):
