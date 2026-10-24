@@ -3026,6 +3026,9 @@ def sequence(
                     # `cfg.lettering_columns_corner_fold` (default OFF, 2026-10-23):
                     # one column round an L corner; off, today's call
                     **({"corner_fold": True} if cfg.lettering_columns_corner_fold else {}),
+                    # `cfg.lettering_columns_inside_stagger` (default OFF, 2026-10-23):
+                    # the pro's inside at a pivot; off, today's call
+                    **({"inside_stagger": True} if cfg.lettering_columns_inside_stagger else {}),
                     # `cfg.lettering_columns_text_lean` (default OFF, 2026-10-23): the
                     # word's house cross (`satin_angle_deg`, the house pass; else
                     # the design's `satin_angle_deg`) on every straight column it
