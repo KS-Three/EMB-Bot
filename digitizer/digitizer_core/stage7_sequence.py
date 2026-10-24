@@ -72,6 +72,7 @@ from .words import is_text, word_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
+                            keyline_band, keyline_rest, keyline_runs,
                             run_outline, silhouette_cap)
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
@@ -3152,6 +3153,52 @@ def sequence(
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
+            # `cfg.enclosed_white_keyline` (built OFF, 2026-10-23): an enclosed
+            # field `sew_enclosed_white` sews that is a keyline band (MFab's
+            # white round its letters) sews as the pro's -- a satin loop
+            # round each letter hole, crosses on under the thread sewn after
+            # it (`covered_by`), any part the loops miss filled first, under
+            # them -- not as the skeleton's 253 columns. Read on the ARTWORK
+            # polygon: the letters' edges as drawn are the rails. Stage 5's
+            # sewing polygon is the band grown under every letter, and on
+            # MFab it holds 224 holes (868 -> 1,418 mm²), slivers where the
+            # letters were. Empty falls through.
+            art = p.region.polygon
+            if (cfg.enclosed_white_keyline and cfg.satin and tier == "auto"
+                    and p.region.meta.get("sew_enclosed_white") == "field"
+                    and keyline_band(art, machine.KEYLINE_WIDTH_MM,
+                                     machine.KEYLINE_REACH_FRAC)):
+                k_runs: list[StitchRun] = []
+                k_jumps = 0
+                rest = keyline_rest(art, machine.KEYLINE_WIDTH_MM,
+                                    cfg.overlap_mm, machine.MIN_FILL_WIDTH_MM)
+                for piece in rest:
+                    f_runs, f_report = stitch_shape(
+                        piece, p.shape_id,
+                        angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
+                        stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
+                        trim_at_mm=trim_at,
+                        start_near=k_runs[-1].points[-1] if k_runs else entry)
+                    k_runs += f_runs
+                    k_jumps += f_report["jumps"]
+                # Closed by the seam tolerance (twice the contour
+                # simplification, as `_owned_by_later` reads a seam): the band
+                # and the letters are vectorized apart, and the hairline gaps
+                # between them clamped 1,702 of MFab's crosses (687 under
+                # 1 mm) where 53 clamp closed. Nothing sewn later, nothing to
+                # close: the crosses keep to the band and its own tongue.
+                k_reach = unary_union([art, p.polygon])
+                if p.covered_by is not None:
+                    seam = 2.0 * cfg.simplify_tol_mm
+                    k_reach = k_reach.union(p.covered_by).buffer(seam).buffer(-seam)
+                l_runs, l_report = keyline_runs(
+                    art, p.shape_id, reach=k_reach,
+                    entry=k_runs[-1].points[-1] if k_runs else entry,
+                    trim_at_mm=trim_at, underlay=satin_underlay != "none")
+                if not l_report["empty"]:
+                    return (k_runs + l_runs,
+                            {"jumps": k_jumps + l_report["jumps"], "empty": False,
+                             "keyline_loops": l_report["loops"]}, False)
             word_satin = (tier == "auto" and cfg.satin
                           and _word_tier(p.region, cfg) in ("satin", "widened"))
             # `cfg.border_by_size` (built OFF, 2026-10-23): a big non-lettering

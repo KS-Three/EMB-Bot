@@ -638,6 +638,19 @@ BORDER_BY_SIZE_WIDTH_MM = ((6.0, 2.1), (4.0, 1.5))
 BORDER_BY_SIZE_REACH_FRAC = 0.5
 
 
+# The keyline band (`cfg.enclosed_white_keyline`, 2026-10-23): the pro's
+# keyline column, read off his DSTs with one zigzag reader (consecutive
+# anti-parallel stitches of like length; the cross length is the column):
+# MFab's white keyline block median 2.33 mm (p25 1.43, p75 2.43), Becker's
+# two keyline blocks 2.09 and 2.06 -> 2.1, the same figure as his border on
+# shapes 6 mm and up. A layout width, judged in the preview, not a cloth
+# constant. A band reads as a keyline when this share of it lies within
+# that width of a hole: MFab's band 0.998 at 2.1, a hollow letter's body
+# (Becker's B, two counters in a 5.4 mm field) far under it.
+KEYLINE_WIDTH_MM = 2.1
+KEYLINE_REACH_FRAC = 0.9
+
+
 def border_by_size_width_mm(min_dim_mm: float) -> float:
     """The pro's border column width for a shape of this smallest dimension
     (`BORDER_BY_SIZE_WIDTH_MM`, widest band first); the general
