@@ -147,6 +147,17 @@ def test_a_bad_manifest_is_refused(tmp_path, edit, needle):
     assert needle in str(e.value)
 
 
+def test_the_pair_budget_is_arithmetic_on_measured_change_rates(tmp_path, capsys):
+    """The instrument doc's 48-60 assumed every arm moves every logo; over the
+    7 in-scope corpus logos the five arms moved 7+3+6+6+4 = 26 of 35 cells."""
+    path = write_manifest(tmp_path, names=LOGOS[:7])
+    e = fs.expected_pairs(fs.load_manifest(path))
+    assert e["pooled"] == 26.0 and e["decided"] == pytest.approx(11.2)
+    assert e["logos_for_budget"] == 13                 # 48 / (26 / 7) = 12.9
+    assert fs.main(["check", "--manifest", str(path)]) == 0
+    assert "expected: ~26.0 pooled pairs" in capsys.readouterr().out
+
+
 def test_too_few_logos_is_refused_for_a_sitting_but_not_a_dry_run(tmp_path, monkeypatch):
     monkeypatch.setattr(fs, "MIN_LOGOS", 8)                     # the pre-registered floor
     m = fs.load_manifest(write_manifest(tmp_path, names=LOGOS[:3]))
