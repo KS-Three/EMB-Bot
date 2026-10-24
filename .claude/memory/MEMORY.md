@@ -55,6 +55,7 @@ the OLDEST lines whole to the archive.
 - [Flag Before After: the labelled page, found and finished](flag-before-after-2026-09-18.md) — the scratch copy is `--labelled` now; re-read the db just before a SAME-URL republish
 - [Flip sheet: layout flags OFF | ON | pro](flip-sheet-2026-10-23.md) — `tools/flip_sheet_renders.py`; diff is a MULTISET (locks sit on stations); x-ray tiles
 - [Flip sheet, inlined](flip-sheet-inline-2026-10-24.md) — `report --inline` = ONE HTML (data URIs; app viewer breaks relative paths); a flag with a `base` diffs against its own OFF
+- [Flip sheet wave 2](flip-sheet-wave2-2026-10-24.md) — four flags OFF|ON|pro; per-flag fixtures, shared base OFF arms, MFab art fallback; Tires monoline invisible at viewing size (trims 9 → 32)
 - [Inside stagger at pivots](inside-stagger-2026-10-23.md) — pro ALSO alternates; ours piled the full ends in one hole (16-79 vs 2-5) at 35% depth vs his 20%; `lettering_columns_inside_stagger` OFF
 - [Instagram: gradient lane, not classifier](instagram-gradient-lane-edges-2026-09-30.md) — real IG file classifies gradient CORRECTLY; the SLIC lane's edges were the defect, snap ON. Render first
 - [Keyline band](keyline-band-2026-10-23.md) — `enclosed_white_keyline` OFF: satin loop per letter on the ARTWORK polygon; MFab 25,512 → 19,214 (pro 17,568); seam-close the reach
@@ -104,12 +105,11 @@ the OLDEST lines whole to the archive.
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
 - [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
-- [WITHDRAWN: warn sooner on small files](warn-sooner-small-files-handoff-2026-10-01.md) — Kent 10-02: no warnings, the engine takes the path; replaced by bean letters, built OFF in PR #601
 
+- [WITHDRAWN: warn sooner on small files](warn-sooner-small-files-handoff-2026-10-01.md) — Kent 10-02: no warnings, the engine takes the path; replaced by bean letters, built OFF in PR #601
 - [Wide letters: MFab's W](wide-letters-mfab-w-2026-10-23.md) — W never reached the lane: tagger aspect 1.4 (W+E touch, 2.55; W alone 1.58); `text_cluster_wide_letters` OFF; measure MFab with main's rembg
 - [Word legibility instrument](word-legibility-instrument-2026-10-24.md) — `tools/word_legibility.py`: per word, ours vs pro, chance-corrected cc; MFab + pro small words not locatable (n/loc, never 0); coarse, saturates at 1.00
 - [L1 one tagger](word-tagger-l1-2026-10-08.md) — BUILT OFF `cfg.lettering_words`; kappa 0.907 vs text cluster 0.881 (in-sample); Kent: AFTER better under the Column lane (10-08)
 - [Worktree guard judges targets](worktree-guard-judges-targets-2026-10-04.md) — rm/mv guard judges the resolved TARGET; own-lane deletes allowed (Kent 10-04)
 - [Worktree session: the harness guard](worktree-session-harness-guard-2026-09-17.md) — `digitizer` spells `git`: quotes, `cd` chains refused; venv by 8.3 `CLAUDE~4`; preview_start reads MAIN
 - [Wrong-root sessions, global guards](wrong-root-sessions-and-global-guards-2026-10-04.md) — sessions rooted outside the repo ran with no project hooks; `embot-guards-global.js` covers them
-- [Flip sheet wave 2](flip-sheet-wave2-2026-10-24.md) — four flags OFF|ON|pro; per-flag fixtures, shared base OFF arms, MFab art fallback; Tires monoline invisible at viewing size (trims 9 → 32)
