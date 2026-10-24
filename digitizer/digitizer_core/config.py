@@ -2772,6 +2772,27 @@ class PipelineConfig:
     # so ON-eligible from renders. False is the pre-flag cut, byte for byte.
     # Tests: `tests/test_column_corner_fold.py`.
     lettering_columns_corner_fold: bool = False
+    # Under `lettering_columns`, the INSIDE of every pivot -- an L fold's
+    # corner (`lettering_columns_corner_fold`), an S's curl, a bowl -- is
+    # sewn the way the professional's files sew it (2026-10-23, built OFF;
+    # `columns._inside_stagger`, in place of `_short_stitch_guard`). Read
+    # with one rule on his hat DSTs and ours (Fremont, Drone, MFab, Proseal,
+    # Becker; `tools/inside_stagger.py`): his full-length inner ends walk
+    # ~0.3 mm per pair along the inner edge and almost never share a hole
+    # (2-5 re-entries per band), and about one cross in three is shortened
+    # by ~20% of its length. The guard shortens every other crowded cross
+    # by 35% (capped 0.6 mm) and leaves the full ones in one hole (16-79
+    # re-entries per band, 28-56% of the long steps under 0.1 mm). ON: a
+    # crowded penetration (under `SATIN_SHORT_STITCH_AT_MM` from the one
+    # before it on its rail) is pulled `columns.STAGGER_SHORT_FRAC` (20%) of
+    # its cross, never two in a row (two in five); where a rail's ends pile
+    # into one hole the full-length ones are spaced along the rail's course
+    # round the pile, `STAGGER_WALK_MM` apart where the corner has room
+    # (`columns._inside_stagger`). Layout, judged
+    # in the preview (Kent, 2026-10-22), so ON-eligible from renders and
+    # numbers. False is the guard, byte for byte.
+    # Tests: `tests/test_column_inside_stagger.py`.
+    lettering_columns_inside_stagger: bool = False
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
