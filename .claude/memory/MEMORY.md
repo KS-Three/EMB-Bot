@@ -99,3 +99,4 @@ checks). Near the ceiling, move the OLDEST lines whole to the archive, same orde
 - [Enclosed white like the pro](enclosed-white-like-pro-2026-10-23.md) — pro sews bodies/bands, leaves letter counters: flag matches 32/34 (Tires loops xfail); MFab 1.45x is band CONSTRUCTION
 - [Inside stagger at pivots](inside-stagger-2026-10-23.md) — pro ALSO alternates; ours piled the full ends in one hole (16-79 vs 2-5) at 35% depth vs his 20%; `lettering_columns_inside_stagger` OFF
 - [Wide letters: MFab's W](wide-letters-mfab-w-2026-10-23.md) — W never reached the lane: tagger aspect 1.4 (W+E touch, 2.55; W alone 1.58); `text_cluster_wide_letters` OFF; measure MFab with main's rembg
+- [Keyline band](keyline-band-2026-10-23.md) — `enclosed_white_keyline` OFF: satin loop per letter on the ARTWORK polygon; MFab 25,512 → 19,214 (pro 17,568); seam-close the reach
