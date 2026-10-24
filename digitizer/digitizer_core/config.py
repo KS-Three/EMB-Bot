@@ -1577,6 +1577,24 @@ class PipelineConfig:
     # (ruling 2026-10-22: judged in the preview). OFF is the engine as it
     # was, byte for byte.
     enclosed_white_keyline: bool = False
+    # Border from the art's outline (`digitizer_core/art_outline.py`, built
+    # OFF 2026-10-24). The pro's border choice is not a stroke threshold: he
+    # borders a shape when the ART draws an outline round it (BECKER's faces
+    # in their black keyline, MFab's M-FAB in its white one) and satins the
+    # same stroke when it does not (MARINE). Census `tools/outline_census.py`:
+    # kappa 0.76 over 586 shapes on ten paired files. ON, an outline (a region
+    # whose hole holds a body at least as wide as the outline is thick; a
+    # letter's counters, sewn or not, excluded) sews as one satin
+    # loop round each hole at the pro's width -- one per outline, the art
+    # outline's own thickness clamped to `machine.OUTLINE_WIDTH_MM` (1.5-2.5),
+    # out past a thinner art outline but never into a body; where the art
+    # draws it thicker the rest is filled under. Its bodies sew as plain
+    # fills under it, never satin. Wins over `border_by_size` on a shape both
+    # read (no second ring in the body's own colour) and over
+    # `enclosed_white_keyline` on a keyline band that holds an outlined body.
+    # Layout (ruling 2026-10-22: judged in the preview).
+    # OFF is the engine as it was, byte for byte.
+    border_from_outline: bool = False
     # The pro's silhouette under-fill (`silhouette_underfill.py`, built OFF
     # 2026-10-24, Kent: "Build under-fill, OFF"). Read per colour block on
     # MFab hat (his black covers our band 1.00 and its holes 0.82) and the
