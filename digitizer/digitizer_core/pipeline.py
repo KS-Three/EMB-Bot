@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 from shapely.geometry import Polygon
 
-from . import debugviz, fur_regions, knockdown, two_tone
+from . import debugviz, fur_regions, knockdown, silhouette_underfill, two_tone
 from .config import PipelineConfig
 from .fabrics import Fabric, apply_profile, fabric_for_garment, get_fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
@@ -1760,6 +1760,14 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     if cfg.fill_inside_satin_border:
         stitched_regions = _fill_inside_satin_border(
             stitched_regions, cfg, result.design_class)
+
+    # `cfg.silhouette_underfill` (built OFF): a ring whose holes hold other
+    # shapes gets its outline filled once, underneath, and the ring and its
+    # contents sew on top -- on copies, layers moved with them
+    # (`silhouette_underfill`). The shapes left unsewn on purpose stay
+    # garment: the outline is cut back off them. Off, never called.
+    if cfg.silhouette_underfill:
+        stitched_regions, _underfill = silhouette_underfill.apply(stitched_regions, skipped)
 
     # Fur regions on the streamline tier (`cfg.hair_regions_directional`,
     # default OFF; `fur_regions`). Only regions the gate read in
