@@ -1,0 +1,119 @@
+{
+ "pro": {
+  "file": "mf4b logo hat.DST",
+  "stitches": 17568,
+  "trims": 19,
+  "colour_changes": 4,
+  "thread_colours": 0,
+  "width_mm": 104.9,
+  "height_mm": 40.2,
+  "blocks": [
+   {
+    "block": 0,
+    "stitches": 9198,
+    "ring": 1.0,
+    "holes": 0.82,
+    "silhouette": 0.88
+   },
+   {
+    "block": 1,
+    "stitches": 5876,
+    "ring": 0.18,
+    "holes": 0.58,
+    "silhouette": 0.45
+   },
+   {
+    "block": 2,
+    "stitches": 1356,
+    "ring": 0.0,
+    "holes": 0.14,
+    "silhouette": 0.09
+   },
+   {
+    "block": 3,
+    "stitches": 796,
+    "ring": 0.03,
+    "holes": 0.07,
+    "silhouette": 0.06
+   },
+   {
+    "block": 4,
+    "stitches": 319,
+    "ring": 0.0,
+    "holes": 0.03,
+    "silhouette": 0.02
+   }
+  ],
+  "registration_iou": 0.992
+ },
+ "rings": [
+  {
+   "ring": "Sb250f949",
+   "host": "Sb250f949",
+   "ring_mm2": 1130.9,
+   "outline_mm2": 3600.6,
+   "merged": 22,
+   "inner": 58,
+   "host_is_ring": true
+  }
+ ],
+ "off": {
+  "stitches": 18916,
+  "trims": 81,
+  "colour_changes": 1,
+  "thread_colours": 0,
+  "width_mm": 105.3,
+  "height_mm": 40.2,
+  "travel_mm": 721.4,
+  "exposed_mm": 17.8,
+  "blocks": [
+   {
+    "block": 0,
+    "stitches": 13188,
+    "ring": 1.0,
+    "holes": 0.85,
+    "silhouette": 0.89
+   },
+   {
+    "block": 1,
+    "stitches": 5626,
+    "ring": 0.01,
+    "holes": 0.44,
+    "silhouette": 0.3
+   }
+  ]
+ },
+ "on": {
+  "stitches": 17540,
+  "trims": 37,
+  "colour_changes": 2,
+  "thread_colours": 0,
+  "width_mm": 105.3,
+  "height_mm": 40.4,
+  "travel_mm": 190.7,
+  "exposed_mm": 6.9,
+  "blocks": [
+   {
+    "block": 0,
+    "stitches": 10558,
+    "ring": 1.0,
+    "holes": 1.0,
+    "silhouette": 1.0
+   },
+   {
+    "block": 1,
+    "stitches": 5741,
+    "ring": 0.01,
+    "holes": 0.44,
+    "silhouette": 0.31
+   },
+   {
+    "block": 2,
+    "stitches": 1190,
+    "ring": 0.0,
+    "holes": 0.0,
+    "silhouette": 0.0
+   }
+  ]
+ }
+}

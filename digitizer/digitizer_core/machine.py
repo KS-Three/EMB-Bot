@@ -101,6 +101,16 @@ BLEND_FEATHER_MM = 1.5
 # naive scanline fill.
 FILL_STAGGERS = 4
 
+# How far along the row the needle lands when a fill row turns into the next
+# one (`cfg.fill_turn_slant`, built OFF 2026-10-21). Stepping straight across
+# makes the turn one row spacing long, 0.10-0.22 mm at 0.15 rows; the pro's
+# turns, read from his own DSTs by `tools/fill_turns.py` (a short stitch
+# between two antiparallel row stitches), run p50 0.71-0.82 mm and p10 0.41
+# on Fremont, Becker, Drone and MFab, about 0.63-0.78 of it along the row.
+# Construction, not a fabric constant: the row spacing does not move and the
+# number came off a file, not a sew-out (ROADMAP gate 1 asks which kind).
+FILL_TURN_ALONG_MM = 0.7
+
 # Narrower than this cannot hold a tatami fill: the rows have nowhere to go and
 # the result is a lumpy running stitch. Satin's job — the classifier sends
 # such shapes there, and only what satin also cannot take gets warned.

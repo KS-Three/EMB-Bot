@@ -858,7 +858,7 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, fillTurnSlant, dedupeHoles, cutFloats, satinSmallShapes, crossUnderlay }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, fillTurnSlant, dedupeHoles, cutFloats, satinSmallShapes, crossUnderlay, proMeasuredValues }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
   // satinfont.js's constant block — and `satinZigzag`, ON by default since 2026-10-13:
@@ -905,8 +905,12 @@
     // Both scale by the fabric's densityAdjust, as the Python engine scales
     // both (stage7_sequence.py's row_mm and satin_spacing_mm).
     const fillRowMm = (o.fillRowMm || o.densityMm || FILL_ROW_MM) * densityAdjust;
-    const satinSpacingMm = (o.satinSpacingMm || o.densityMm || SATIN_SPACING_MM) * densityAdjust;
-    const maxStitchMm = o.maxStitchMm || 4;
+    // `proMeasuredValues` (built OFF 2026-10-23; twin of `cfg.pro_measured_values`):
+    // the pro's satin spacing, fill stitch and bean pitch on the hat, left-chest
+    // and beanie presets. An explicit option still wins.
+    const pro = fabricsmod.proMeasuredFor(fabric, !!o.proMeasuredValues);
+    const satinSpacingMm = (o.satinSpacingMm || o.densityMm || (pro ? pro.satinSpacingMm : SATIN_SPACING_MM)) * densityAdjust;
+    const maxStitchMm = o.maxStitchMm || (pro ? pro.fillStitchMm : 4);
     const satinMaxWidthMm = o.satinMaxWidthMm || 3.0;
     const pullCompMm = (fabric && fabric.pullCompMm != null) ? fabric.pullCompMm
       : (o.pullCompMm == null ? 0.2 : o.pullCompMm);
@@ -1534,7 +1538,7 @@
             const guards = satinfontmod.LETTERING_GUARDS;
             const passes = runSew.passes === 1 || runSew.passes === 3 ? runSew.passes : guards.BEAN_PASSES;
             const lenMm = typeof runSew.stitchLenMm === "number" && isFinite(runSew.stitchLenMm) && runSew.stitchLenMm > 0
-              ? runSew.stitchLenMm : guards.BEAN_STITCH_MM;
+              ? runSew.stitchLenMm : (pro ? pro.beanStitchMm : guards.BEAN_STITCH_MM);
             pts = fillmod.runAlongPath(runSew.path, { stitchLenPx: lenMm * pxPerFinalMm, passes });
           }
           else if (thin) {

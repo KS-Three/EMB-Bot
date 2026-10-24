@@ -130,6 +130,7 @@ from .regions import Region
 from .stitchwidth import column_sized
 from .stage6_fill import best_fill_angle_deg, principal_angle_deg
 from .stage6_satin import is_satin_candidate
+from .silhouette_underfill import UNDERFILL_KEY
 from . import machine
 from .stage6_hairline import _BLOB_FACTOR as _HAIR_BLOB_FACTOR
 from .stage6_hairline import block_thread_wt
@@ -971,6 +972,15 @@ def resolve_overlaps(
         if best is not None:
             ground_under.setdefault(best.shape_id, []).append(b_.polygon)
     ground_under = {k: unary_union(v).buffer(0.1) for k, v in ground_under.items()}
+    # `cfg.silhouette_underfill` (built OFF): a ring's host sews the ring's
+    # outline, holes closed, under everything inside it -- the same path, so
+    # its footprint stays its artwork and nothing sewn later is clipped by
+    # the outline. No tag, no entry: byte-identical.
+    for r_ in regions:
+        sil = r_.meta.get(UNDERFILL_KEY)
+        if sil is not None:
+            prev = ground_under.get(r_.shape_id)
+            ground_under[r_.shape_id] = sil if prev is None else prev.union(sil)
 
     # Hairlines over their ground (`cfg.hairline_over_ground`, 2026-10-12
     # step 2): the same mechanism, for strands — the ground keeps its full
