@@ -100,6 +100,11 @@ class StitchRun:
     # Which stretch of the silhouette cap this run is (`CAP_PIECE_PREFIX` id);
     # "" for everything else. Declared after `role` for the same reason.
     piece: str = ""
+    # How many leading points `apply_ties` put in front of the run's own
+    # stitches as a lock (0: none). `drop_tie_ins` (`cfg.tie_in_off`) strips
+    # exactly that many, so a bean's own retraced opening is never mistaken
+    # for a lock. Declared last, like `role` and `piece`.
+    tie_in_pts: int = 0
 
     @property
     def length_mm(self) -> float:
@@ -352,11 +357,13 @@ def apply_ties(runs: list[StitchRun], small_letters: set[str] | None = None) -> 
     def tie_in(run: StitchRun) -> None:
         if len(run.points) < 2:
             return
+        before = len(run.points)
         if small(run):
             run.points = spread_tie_in(run.points)
-            return
-        pts = tie_run(run.points[0], run.points[1]).points
-        run.points = pts[:-1] + run.points
+        else:
+            pts = tie_run(run.points[0], run.points[1]).points
+            run.points = pts[:-1] + run.points
+        run.tie_in_pts = len(run.points) - before
 
     def tie_off(run: StitchRun) -> None:
         if len(run.points) < 2:
@@ -377,6 +384,22 @@ def apply_ties(runs: list[StitchRun], small_letters: set[str] | None = None) -> 
         if run.trim and i > 0:
             tie_off(runs[i - 1])
     tie_off(runs[-1])
+
+
+def drop_tie_ins(blocks: list[StitchBlock]) -> int:
+    """Strip every lock `apply_ties` put in front of a run (`cfg.tie_in_off`,
+    default OFF): the run starts at its own first stitch. Tie-OFFS stay. The
+    pro's files lock no run start, even after a cut (settings-vs-pro row 22).
+    Returns the number of points removed."""
+    removed = 0
+    for block in blocks:
+        for run in block.runs:
+            n = run.tie_in_pts
+            if n:
+                run.points = run.points[n:]
+                run.tie_in_pts = 0
+                removed += n
+    return removed
 
 
 def tie_run(at: tuple[float, float], toward: tuple[float, float], kind: str = TIE,
