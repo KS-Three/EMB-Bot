@@ -1685,6 +1685,17 @@ def _fill_inside_satin_border(regions, cfg, design_class):
             if r.shape_id in demote else r for r in regions]
 
 
+def _art_outlines(regions, cfg) -> dict | None:
+    """`cfg.border_from_outline`: {outline id: [(body id, hole, width mm)]}
+    from `art_outline.find_art_outlines`, or None with the flag off."""
+    if not cfg.border_from_outline:
+        return None
+    from .art_outline import find_art_outlines, outline_width_mm
+    by_id = {r.shape_id: r for r in regions}
+    return {oid: [(bid, hole, outline_width_mm(by_id[bid])) for bid, hole in bodies]
+            for oid, bodies in find_art_outlines(regions, cfg).items()} or None
+
+
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
     """Stages 5-7: regions -> stitches. Safe to re-run on one PipelineResult."""
     cfg = cfg or PipelineConfig()
@@ -1879,7 +1890,12 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                                     # None with the flag off.
                                     counter_holes=([r.polygon for r in result.regions
                                                     if r.meta.get("cored_counter")]
-                                                   if cfg.open_cored_counters else None) or None)
+                                                   if cfg.open_cored_counters else None) or None,
+                                    # `cfg.border_from_outline`: the art's own
+                                    # outlines over EVERY region (an unsewn
+                                    # body still makes its keyline one); None
+                                    # with the flag off.
+                                    art_outlines=_art_outlines(result.regions, cfg))
 
     # `cfg.beanie_knockdown` (built OFF): a sparse fill under the whole design,
     # sewn first, on a beanie with a known garment colour — `knockdown.py`.

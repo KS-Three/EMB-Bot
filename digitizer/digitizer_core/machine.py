@@ -641,6 +641,23 @@ KEYLINE_WIDTH_MM = 2.1
 KEYLINE_REACH_FRAC = 0.9
 
 
+# The art's own outline (`cfg.border_from_outline`, 2026-10-24;
+# `digitizer_core/art_outline.py`). A body is outlined when its stroke
+# (2 x area / perimeter) is at least OUTLINE_BODY_RATIO x the outline's band
+# round it (the holder's area within OUTLINE_PROBE_MM of the body, per mm of
+# the body's edge). Census cache, `tools/outline_census.py`: the pro's
+# bordered bodies read 1.34-3.14, every non-counter body he does not border
+# 0.87 or under -- 1.0 sits between, the geometric middle. The width is his
+# border column on outlined bodies by the body's smallest dimension (twice
+# the largest inscribed circle, the census measure), the medians of those
+# rows: 4-6 mm n=9 median 1.71 (1.48-2.18), 6 mm and up n=15 median 2.20
+# (1.80-2.51); no outlined body under 4 mm bordered, so the lower band runs
+# to 0. Layout, judged in the preview (Kent 2026-10-22), not a cloth constant.
+OUTLINE_PROBE_MM = 4.0
+OUTLINE_BODY_RATIO = 1.0
+OUTLINE_WIDTH_MM = ((6.0, 2.2), (0.0, 1.7))
+
+
 def border_by_size_width_mm(min_dim_mm: float) -> float:
     """The pro's border column width for a shape of this smallest dimension
     (`BORDER_BY_SIZE_WIDTH_MM`, widest band first); the general

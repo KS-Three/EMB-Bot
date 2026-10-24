@@ -73,7 +73,7 @@ from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
                             keyline_band, keyline_rest, keyline_runs,
-                            run_outline, silhouette_cap)
+                            outline_holes, run_outline, silhouette_cap)
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
 # Imported under another name: `hairline_runs` is already this module's count
@@ -2229,8 +2229,15 @@ def sequence(
     hairline: dict | None = None,
     ink_source=None,
     counter_holes: list | None = None,
+    art_outlines: dict | None = None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings).
+
+    `art_outlines` (`cfg.border_from_outline`, 2026-10-24): the art's own
+    outlines, `art_outline.find_art_outlines` over EVERY region (a body the
+    customer left unsewn still makes its keyline an outline), each body with
+    its width -- {outline id: [(body id, hole, width mm)]}, from
+    `plan_stitches`. None, the default, is byte-identical.
 
     `counter_holes` (`cfg.open_cored_counters`, 2026-10-19): the polygons
     of the cored counters stage 3 kept (`Region.meta["cored_counter"]`,
@@ -2317,7 +2324,8 @@ def sequence(
             source_pixels=source_pixels, design_class=design_class,
             fill_technique=fill_technique, streamline_mode=streamline_mode,
             detail_layer=detail_layer, palette_spools=palette_spools,
-            hairline=hairline, ink_source=ink_source, counter_holes=counter_holes)
+            hairline=hairline, ink_source=ink_source, counter_holes=counter_holes,
+            art_outlines=art_outlines)
         off_rank = {}
         for _b in off_blocks:
             for _r in _b.runs:
@@ -2759,11 +2767,28 @@ def sequence(
     # their own centreline. Off, no tie call gains an argument.
     small_letter_ids: set[str] = set()
     tie_kw = {"small_letters": small_letter_ids} if cfg.small_letter_ties else {}
+    # `cfg.border_from_outline` (built OFF, 2026-10-24): an outline in the
+    # art that sews (its id in `planned`) loops every looped hole at the
+    # width of the body it holds (`outline_holes`); its bodies sew as plain
+    # fills under it, never satin and never a border of their own -- the
+    # outline IS their border, so `border_by_size` does not ring them either
+    # (the rule wins where both read a shape). An outline that does not sew
+    # (MFab's white keyline with `sew_enclosed_white` off) leaves its bodies
+    # as they were.
+    outline_rings: dict[str, list] = {}
+    outline_bodies: set[str] = set()
+    if art_outlines and cfg.border_from_outline:
+        _sewn = {_p.shape_id for _p in planned}
+        for _oid, _bodies in art_outlines.items():
+            if _oid not in _sewn:
+                continue
+            outline_rings[_oid] = [(_hole, _w) for _bid, _hole, _w in _bodies]
+            outline_bodies.update(_bid for _bid, _hole, _w in _bodies)
     # Seam ownership's "still to sew" set — see `border_later`'s declaration
     # above for the predicate and its blind spots.
     for _p in planned:
         _p_tier = str(_p.region.meta.get("tier", "auto")).lower()
-        if routes_to_run(_p, _p_tier):
+        if routes_to_run(_p, _p_tier) or _p.shape_id in outline_bodies:
             continue
         if _sews_satin(_p.region, cfg, satin_max, design_class):
             continue
@@ -2956,6 +2981,67 @@ def sequence(
                     return runs, report, False
                 tier = "auto"
                 outline_tried = True
+            # `cfg.border_from_outline` (built OFF, 2026-10-24): the art's own
+            # outline sewn the pro's way -- one satin loop round each body it
+            # holds, rail on the body's edge, crosses out across the outline
+            # at his width for the body's size (`art_outline.outline_width_mm`),
+            # on under whatever sews later, never onto bare garment. His
+            # border is that width all round: where the art draws the outline
+            # thicker (BECKER's drop shadow) the loop does not follow it, and
+            # what no loop reaches is filled first, under them (a spanning
+            # cross fanned the loop's outer edge into a fringe). Ahead of the
+            # Column lane and the keyline band: an outline is neither a letter
+            # nor a field. Read on the ARTWORK polygon, as the keyline is (stage
+            # 5 grows a front-layer band under every later shape). Empty falls
+            # through to the ladder.
+            if tier == "auto" and cfg.satin and p.shape_id in outline_rings:
+                art = p.region.polygon
+                rings = outline_holes(art, outline_rings[p.shape_id],
+                                      machine.OUTLINE_WIDTH_MM[-1][1])
+                o_runs: list[StitchRun] = []
+                o_jumps = 0
+                for piece in keyline_rest(art, 0.0, cfg.overlap_mm,
+                                          machine.MIN_FILL_WIDTH_MM, looped=rings):
+                    f_runs, f_report = stitch_shape(
+                        piece, p.shape_id,
+                        angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
+                        stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
+                        trim_at_mm=trim_at,
+                        start_near=o_runs[-1].points[-1] if o_runs else entry)
+                    o_runs += f_runs
+                    o_jumps += f_report["jumps"]
+                seam = 2.0 * cfg.simplify_tol_mm
+                o_reach = unary_union([art, p.polygon])
+                if p.covered_by is not None:
+                    o_reach = o_reach.union(p.covered_by).buffer(seam).buffer(-seam)
+                l_runs, l_report = keyline_runs(
+                    art, p.shape_id, reach=o_reach,
+                    entry=o_runs[-1].points[-1] if o_runs else entry,
+                    trim_at_mm=trim_at, underlay=satin_underlay != "none",
+                    holes=rings)
+                if not l_report["empty"]:
+                    return (o_runs + l_runs,
+                            {"jumps": o_jumps + l_report["jumps"], "empty": False,
+                             "outline_loops": l_report["loops"]}, False)
+            # ... and the body it holds is a plain fill under that loop, on
+            # stage 5's polygon, grown by the pull here when stage 5 kept it
+            # on its artwork for satin rails (`satin_rail_comp`).
+            if tier == "auto" and p.shape_id in outline_bodies:
+                body = p.polygon
+                if p.satin_tier and fabric.pull_comp_mm > 0:
+                    body = body.buffer(fabric.pull_comp_mm, join_style=2)
+                runs, report = stitch_shape(
+                    small_print_cut(p, body, bar_mm=row_mm), p.shape_id,
+                    angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
+                    stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
+                    trim_at_mm=trim_at, under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
+                    underlay_all_pieces=cfg.underlay_all_pieces,
+                    sewn_paths_only=cfg.fill_order_sewn_paths,
+                    start_near=entry, density_boost=cfg.fill_density_boost)
+                if runs:
+                    report["outline_body"] = 1
+                    return runs, report, True
             # Lettering as Columns (`cfg.lettering_columns`, 2026-10-07): a
             # text-tagged shape is cut along its ARTWORK outline into stroke
             # pieces and sewn as rail-on-outline Columns (`columns.py`),
