@@ -90,15 +90,21 @@ byte for byte (a 3-dp rounding decomposes differently). T-shaped slabs
 (the E's middle arm) are a cap by the twig rule and stay a fan: next.
 
 **Where this sits (2026-10-07 morning):** #650 (outer-rail pitch, ON)
-MERGED. #651 (Sewn width toggle) open, auto-merge armed. #653
-(`satin_join_square` ON + `satin_slab_serifs` built OFF) open on lane
-`.claude/worktrees/serif-junction-fans`, auto-merge armed; the join-square
-flip moved no golden (byte-identical, no WSL re-capture needed); the full
-ON suite ran overnight (`sf_suite_on.log` in the session scratchpad) and
-its movers are the owed read. Kent's flip on the slab flag is the next
-prompt; the E's and F's middle arms (which the 10-06 entry named as the
-T-slab case) do NOT move under it — their slabs are too small to grow a
-skeleton half — so if he wants those, it is a different construction.
+MERGED. #651 (Sewn width toggle) MERGED. **#653 MERGED at 4ee5ec5f — the
+built-OFF head** — its auto-merge fired on CI's green minutes before the
+flip commit (efcb21e2) reached the branch, so `main` carries
+`satin_join_square` OFF; the flip, the memory note and `satin_slab_serifs`
+(built OFF, 61d317e2) went into a follow-up PR from the same lane
+`.claude/worktrees/serif-junction-fans` (opened 10-07; the stacked-branch
+trap from memory, met again — check `gh pr view --json state,headRefOid`
+before pushing more onto a branch whose PR has auto-merge armed). The
+join-square flip moved no golden (byte-identical, no WSL re-capture); the
+full ON suite ran overnight (`sf_suite_on.log` in that session's
+scratchpad) and its movers are read in the follow-up PR's body. Kent's
+flip on the slab flag is the next prompt; the E's and F's middle arms
+(which the 10-06 entry named as the T-slab case) do NOT move under it —
+their slabs are too small to grow a skeleton half — so if he wants those,
+it is a different construction.
 **Trap that cost half a session:** `satin_shape` skeletonises
 `_close_seams(poly)`, not `poly` — probe strokes through `satin_shape` (or
 on the closed polygon), never with a bare `extract_strokes` on a stage-5
