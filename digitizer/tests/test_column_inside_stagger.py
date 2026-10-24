@@ -87,8 +87,9 @@ def _same_hole(ends, window: int = 8, eps: float = 0.1) -> int:
 
 # --- the flag -------------------------------------------------------------------------
 
-def test_flag_is_off_by_default():
-    assert PipelineConfig().lettering_columns_inside_stagger is False
+def test_flag_is_on_by_default():
+    # Kent 2026-10-24, the flip sheet
+    assert PipelineConfig().lettering_columns_inside_stagger is True
 
 
 def test_stage7_wires_the_flag_and_nothing_else():

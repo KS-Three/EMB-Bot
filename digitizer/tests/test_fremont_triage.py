@@ -46,6 +46,8 @@ def test_request_is_what_the_studio_sends():
     client = (APP / "lib" / "digitizer.js").read_text(encoding="utf-8")
     assert "cfg.detect_photographic = true;" in client and req["detect_photographic"]
     assert "cfg.faces_route_flat = true;" in client and req["faces_route_flat"]
+    assert _js_default("sew_enclosed_white") == "true" and req["sew_enclosed_white"] is True
+    assert _js_default("sew_enclosed_hex") == '"#ffffff"' and req["sew_enclosed_rgb"] == [255, 255, 255]
     pills = (APP / "lib" / "garmentPills.js").read_text(encoding="utf-8")
     assert '{ id: "hat_front", short: "Hat" }' in pills and req["garment_id"] == "hat_front"
     project = (APP / "lib" / "project.js").read_text(encoding="utf-8")

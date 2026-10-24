@@ -78,8 +78,9 @@ def _segments(runs, kind=None):
             yield a, b
 
 
-def test_flag_default_is_off_and_the_width_is_the_pros():
-    assert PipelineConfig().enclosed_white_keyline is False
+def test_flag_default_is_on_and_the_width_is_the_pros():
+    # Kent 2026-10-24, the flip sheet
+    assert PipelineConfig().enclosed_white_keyline is True
     assert machine.KEYLINE_WIDTH_MM == 2.1
     assert machine.KEYLINE_REACH_FRAC == 0.9
 

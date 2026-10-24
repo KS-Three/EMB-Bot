@@ -1561,9 +1561,13 @@ class PipelineConfig:
     # `sew_enclosed_counters` (or it sits inside a field that sews). Thread:
     # `sew_enclosed_rgb`'s nearest; None keeps the art's own colour where it
     # is known and sews white where it is not (an alpha hole). A review
-    # `stitched` or recolour of one area still wins. OFF is the engine as it
-    # was, byte for byte.
-    sew_enclosed_white: bool = False
+    # `stitched` or recolour of one area still wins. ON by default since
+    # 2026-10-24 (Kent, from the flip sheet: "Yes, ON by default"; with the
+    # keyline band below, MFab 25,512 -> 19,214 stitches against the pro's
+    # 17,568). Still the customer's box: the Studio's "Sew white areas"
+    # sends False when unticked. False is the engine as it was, byte for
+    # byte.
+    sew_enclosed_white: bool = True
     sew_enclosed_counters: bool = False
     sew_enclosed_rgb: tuple[int, int, int] | None = None
     # The keyline band (`stage6_border.keyline_runs`, built OFF 2026-10-23):
@@ -1574,9 +1578,11 @@ class PipelineConfig:
     # rail on the letter's edge, crosses 2.1 mm out across the band and on
     # under the thread sewn after it, the rest filled under. Instead of the
     # satin tier's skeleton, which broke MFab's band into 253 columns. Layout
-    # (ruling 2026-10-22: judged in the preview). OFF is the engine as it
-    # was, byte for byte.
-    enclosed_white_keyline: bool = False
+    # (ruling 2026-10-22: judged in the preview). ON by default since
+    # 2026-10-24 (Kent, the flip sheet; MFab's white 15,998 stitches, 5,785
+    # under 1 mm -> 9,700 and 2,792, the pro's 6,680 and 564). False is the
+    # engine as it was, byte for byte.
+    enclosed_white_keyline: bool = True
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
@@ -2792,10 +2798,12 @@ class PipelineConfig:
     # into one hole the full-length ones are spaced along the rail's course
     # round the pile, `STAGGER_WALK_MM` apart where the corner has room
     # (`columns._inside_stagger`). Layout, judged
-    # in the preview (Kent, 2026-10-22), so ON-eligible from renders and
-    # numbers. False is the guard, byte for byte.
+    # in the preview (Kent, 2026-10-22). ON by default since 2026-10-24
+    # (Kent, the flip sheet; same-hole re-entries per zone Becker 1.14 ->
+    # 0.60, Fremont 0.37 -> 0.34, MFab 0.29 -> 0.17, the pro 0.11 / 0.16 /
+    # 0.22). False is the guard, byte for byte.
     # Tests: `tests/test_column_inside_stagger.py`.
-    lettering_columns_inside_stagger: bool = False
+    lettering_columns_inside_stagger: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
@@ -3071,9 +3079,10 @@ class PipelineConfig:
     # every one is tagged; and a glyph up to `WIDE_LETTER_ASPECT_MAX` 1.8 is
     # adopted by a line it links to (`_adopt_wide`), never making one.
     # Segmentation and tagging, not fabric: layout, judged in the preview.
-    # False: neither is called, byte for byte. Tests:
-    # `tests/test_wide_letters.py`.
-    text_cluster_wide_letters: bool = False
+    # ON by default since 2026-10-24 (Kent, the flip sheet; MFab moves,
+    # Fremont and Becker byte-identical). False: neither is called, byte
+    # for byte. Tests: `tests/test_wide_letters.py`.
+    text_cluster_wide_letters: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.

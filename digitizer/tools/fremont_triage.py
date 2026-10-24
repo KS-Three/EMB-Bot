@@ -69,6 +69,10 @@ def studio_request(width_mm: float = KENT_WIDTH_MM) -> dict:
         "edge_cap": "bean",
         "detect_photographic": True,
         "faces_route_flat": True,
+        # "Sew white areas", ticked by default since 2026-10-24: its thread
+        # rides with it (white, `hexToRgb(DEFAULT ... sew_enclosed_hex)`)
+        "sew_enclosed_white": True,
+        "sew_enclosed_rgb": [255, 255, 255],
         "garment_id": "hat_front",
         "garment_rgb": list(STUDIO_FABRIC_RGB),
     }

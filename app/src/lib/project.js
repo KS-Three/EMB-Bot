@@ -132,15 +132,15 @@ export const DEFAULT_DIGITIZE_PARAMS = {
   // only when true (absent IS false server-side), so existing designs keep
   // their cache key.
   stitch_width_auto: false,
-  // "Sew white areas" (PipelineConfig.sew_enclosed_white, built OFF
-  // 2026-10-21): sew the white or hollow areas INSIDE the design -- badge
-  // fields, hollow letters, keylines -- the way the pro does on 5 of 11 jobs,
-  // instead of leaving fabric. It changes the design, so it is the
-  // customer's box to tick, never a default. Letter counters stay open
-  // unless `sew_enclosed_counters`. The colour is the thread those areas
-  // sew in (the engine snaps it to the chart). Sent only when on, so
-  // existing designs keep their cache key.
-  sew_enclosed_white: false,
+  // "Sew white areas" (PipelineConfig.sew_enclosed_white): sew the white or
+  // hollow areas INSIDE the design -- badge fields, hollow letters,
+  // keylines -- the way the pro does on 5 of 11 jobs, instead of leaving
+  // fabric. Ticked by default since 2026-10-24 (Kent: "Yes, ON by
+  // default"); still the customer's box to untick. Letter counters stay
+  // open unless `sew_enclosed_counters`. The colour is the thread those
+  // areas sew in (the engine snaps it to the chart). A design saved before
+  // the flip keeps the `false` it stored.
+  sew_enclosed_white: true,
   sew_enclosed_counters: false,
   sew_enclosed_hex: "#ffffff",
 };

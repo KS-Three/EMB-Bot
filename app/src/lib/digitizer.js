@@ -158,15 +158,16 @@ export function buildDigitizeConfig(element, project) {
     // absent IS the service's own False, and existing designs keep their
     // cache key. See project.js's DEFAULT_DIGITIZE_PARAMS for why it is off.
     ...(p.stitch_width_auto ? { stitch_width_auto: true } : {}),
-    // Sent only when ON, like stitch_width_auto: absent IS the service's own
-    // False. The two follow-ons ride only with it.
+    // Sent BOTH ways since the service's default went ON (2026-10-24): an
+    // unticked box must reach the service as False, or the default would
+    // sew the white anyway. The two follow-ons ride only with it.
     ...(p.sew_enclosed_white
       ? {
           sew_enclosed_white: true,
           sew_enclosed_rgb: hexToRgb(p.sew_enclosed_hex) || [255, 255, 255],
           ...(p.sew_enclosed_counters ? { sew_enclosed_counters: true } : {}),
         }
-      : {}),
+      : { sew_enclosed_white: false }),
   };
   if (p.fill_angle_deg != null) cfg.fill_angle_deg = p.fill_angle_deg;
   // Omitted when null, for a stronger reason than fill_angle_deg's. The

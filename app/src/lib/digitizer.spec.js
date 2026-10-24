@@ -2702,12 +2702,14 @@ describe("resizedTargetWidth", () => {
   });
 });
 
-test("sew_enclosed_white rides buildDigitizeConfig only when on, with its thread and counters", async () => {
+test("sew_enclosed_white rides buildDigitizeConfig both ways, its thread and counters only when on", async () => {
   const { buildDigitizeConfig, hexToRgb } = await import("./digitizer.js");
-  const off = buildDigitizeConfig(digitizedElement(), PROJECT);
-  for (const k of ["sew_enclosed_white", "sew_enclosed_rgb", "sew_enclosed_counters"]) expect(k in off).toBe(false);
+  // Unticked reaches the service as False: its own default is ON (2026-10-24).
+  const off = buildDigitizeConfig(digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_white: false } }), PROJECT);
+  expect(off.sew_enclosed_white).toBe(false);
+  for (const k of ["sew_enclosed_rgb", "sew_enclosed_counters"]) expect(k in off).toBe(false);
   // Counters ticked but the option off sends nothing: they ride only with it.
-  const counterOnly = digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_counters: true } });
+  const counterOnly = digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_white: false, sew_enclosed_counters: true } });
   expect("sew_enclosed_counters" in buildDigitizeConfig(counterOnly, PROJECT)).toBe(false);
   const on = buildDigitizeConfig(digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_white: true } }), PROJECT);
   expect(on.sew_enclosed_white).toBe(true);
