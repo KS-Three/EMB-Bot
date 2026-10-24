@@ -1,6 +1,6 @@
 ---
 name: big-letter-construction-2026-10-24
-description: The pro's "163 columns to our 77" on MARINE is 35 junction patches plus a sheared top SLAB in the font, not more cuts per stroke; he cuts through reflex notches along the crosses and folds convex corners; what the cuts buy is cross direction only, which `lettering_columns_text_lean` (OFF) already gives with no new cuts. Don't copy the count.
+description: The pro's "163 columns to our 77" on MARINE is 35 junction patches, a sheared top SLAB in the font and junction cuts that keep diagonals' crosses horizontal -- not a length cap; he cuts through reflex notches along the crosses and folds convex corners; what the cuts buy is cross direction only, which `lettering_columns_text_lean` (OFF) already gives with no new cuts. Don't copy the count.
 metadata:
   type: project
 ---

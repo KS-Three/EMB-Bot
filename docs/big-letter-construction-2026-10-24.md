@@ -11,9 +11,11 @@ no engine change.**
 - **The count reproduces, but it is mostly not strokes.** With a new reader
   (below) the four MARINE files give the pro 108 pieces + 35 junction patches
   (143) against our 76 + 2. A quarter of his pieces are patches of 4-8
-  crosses inside a junction; most of the rest of the gap is one feature of the
-  font -- a **sheared slab across the top of every letter** that he sews as
-  its own piece.
+  crosses inside a junction. The rest of the gap (108 to 76) splits about
+  evenly between one feature of the font -- a **sheared slab across the top
+  of every letter** that he sews as its own piece (23 straight cut ends in the
+  top 35% of the cap) -- and junction cuts lower down that keep a diagonal's
+  crosses horizontal where it meets a stem (21 in the bottom 35%).
 - **His rule:** he cuts where the outline makes a NOTCH -- through each
   reflex vertex, along the cross direction (the slab's base at 22-30% of the
   cap, a diagonal leaving or joining a stem, a bar or arm butting a stem's
