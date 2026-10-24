@@ -957,7 +957,8 @@ def build_generation(
                            max_width_scale=cfg.small_text_cap_max_width_scale,
                            min_stroke_mm=cfg.small_text_cap_min_stroke_mm,
                            letter_gap_mm=cfg.small_text_cap_letter_gap_mm,
-                           bold_scale=cfg.small_text_cap_bold_scale)
+                           bold_scale=cfg.small_text_cap_bold_scale,
+                           **({"reach_edges": True} if cfg.small_text_cap_reach_edges else {}))
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
