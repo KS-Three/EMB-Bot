@@ -48,6 +48,12 @@ BEFORE: dict[str, object] = {
     "small_text_cap_letter_gap_mm": None,
     "small_text_cap_bold_scale": None,
     "lettering_columns_small_bold": False,
+    # PR #1057 (Kent 2026-10-23, same day, by the pro's numbers): the two layout
+    # flags and the corner fold, so every site that pins "before the 10-23 flips"
+    # pins them too.
+    "border_by_size": False,
+    "enclosed_alpha_hole_parts": False,
+    "lettering_columns_corner_fold": False,
 }
 HELD_OFF = ("cut_every_jump", "sew_enclosed_white")
 

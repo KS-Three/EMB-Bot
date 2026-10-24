@@ -42,6 +42,16 @@ reproduced both old entries on this machine before the capture
 (`tools/recapture_flat_lane_key.py --pre-change-tree`). `enthusiast_logo`
 stays the platform red.
 
+**Exception TAKEN 2026-10-24, `border_by_size` ON (Kent 2026-10-23, PR #1057):** the
+`logo_alpha.png` and `logo_whitebg.png` entries were re-captured after the pro's
+size rule for borders became a default: a shape whose smallest dimension is 6 mm
+or more at 80 mm sews as a fill under a satin ring, so stitches grow (alpha
+4757 -> 6224, whitebg 4726 -> 5536). Probed flag by flag on both keys: only
+`border_by_size` moves them; `enclosed_alpha_hole_parts` and
+`lettering_columns_corner_fold` leave all three flat fixtures byte-identical.
+`ribbon_curve.png` (satin-only) is the control. The pre-change tree (#1049's head,
+38ef4a85) reproduced both old entries on this machine before the capture
+(`tools/recapture_flat_lane_key.py --pre-change-tree`).
 **Exception TAKEN 2026-09-03, FILL_ROW_MM 0.40 -> 0.15 (Kent's ruling, DOCTRINE
 standing rulings):** the `logo_whitebg.png` and `logo_alpha.png` entries were
 re-captured after `machine.FILL_ROW_MM` moved to the professional's pitch —
