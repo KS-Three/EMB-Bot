@@ -103,7 +103,6 @@ checks). Near the ceiling, move the OLDEST lines whole to the archive, same orde
 - [Keyline band](keyline-band-2026-10-23.md) — `enclosed_white_keyline` OFF: satin loop per letter on the ARTWORK polygon; MFab 25,512 → 19,214 (pro 17,568); seam-close the reach
 - [Big-letter construction](big-letter-construction-2026-10-24.md) — MARINE's 163-vs-77 is 35 patches + a sheared top slab, no length cap; cuts buy cross direction only — `text_lean` (OFF) gives it, don't copy the count
 - [Fill turn slant](fill-turn-slant-2026-10-21.md) — `fill_turn_slant`: turns 0.7 mm along the row; ON 10-23
-- [Cut every jump](cut-every-jump-2026-10-21.md) — `cut_every_jump` HELD OFF: trims 434 -> 674 (pro 246); bury first
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off`: pro locks no run start (1 of 68); ON 10-23
 - [Flip eight 2026-10-23](flip-eight-2026-10-23.md) — Kent: "flip the eight ON, hold two" + small_bold; judged by NUMBERS vs the pro where the eye can't tell; `FLIP_2026_10_23`/`TRIO_OFF` pin the old engine
 - [Flip two](flip-two-2026-10-23.md) — border_by_size + enclosed_alpha_hole_parts + corner_fold ON (Kent 10-23); Becker untouched; local goldens red on Windows with flags OFF too
