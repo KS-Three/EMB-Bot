@@ -2334,6 +2334,27 @@ class PipelineConfig:
     # Tee 48 -> 51 the cost. Built OFF for Kent's flip; with the exit lever
     # the fixture reads 8 and the nine 454.
     satin_underlay_on_column: bool = False
+    # `satin_underlay_short_columns` (built OFF 2026-10-22, Kent's flip after
+    # a sew-out -- underlay is a physical constant, ROADMAP gate 1): the
+    # columns our two short rules leave bare get the centre run the pro
+    # puts under his. Read on his 27 job DSTs (`tools/pro_satin_underlay.py`;
+    # TIRES HAT 3D is puff foam and bare by design): a centre run under
+    # 83-97% of satin columns in every length and width band, columns under
+    # 5 mm long bare 0-13% per job where ours are 46% (audit row 5b). Ours
+    # skip two ways: a shape whose artwork extent is under
+    # `machine.SATIN_UNDERLAY_MIN_EXTENT_MM` sews every column bare (law
+    # 50's first rung, stage 7, satin tier and Column lane alike), and a
+    # stroke whose spine is under `machine.UNDERLAY_STITCH_MM` gets no run
+    # at all (`stage6_satin._stroke_underlay`); the Column lane has its own
+    # 1.8 mm floor (`columns._centre_underlay`). ON, the small shape keeps
+    # the fabric's satin underlay style and both floors drop to one stitch
+    # (`machine.MIN_STITCH_MM`). The zigzag threshold, its pitch and the
+    # hairline tier do not move: the brief's "3.5 mm pitch" was row 5a's
+    # WIDTH threshold, and his zigzag's share and pitch swing with the
+    # reader's satin gate (0.6-1.3 mm per leg), so neither is settled.
+    # Browser twin: `underlayShortColumns` (src/satinfont.js, the lettering
+    # engine's cap-height rung). OFF is the engine byte for byte.
+    satin_underlay_short_columns: bool = False
     # `satin_cap_recentre` (built 2026-09-19 for Kent's flip): a free end
     # whose spine tail is a surviving CAP FORK is cut at the kink and rebuilt
     # square. A flat cap's medial axis forks toward both corners; on a plain
@@ -2712,6 +2733,34 @@ class PipelineConfig:
     # resize keeps it (ruling 12). A physical constant (ROADMAP gate 1):
     # Kent flips after a sew-out. Tests: `tests/test_pull_comp_by_stroke.py`.
     pull_comp_by_stroke: bool = False
+    # Under `lettering_columns`, ONE satin column is folded round an
+    # L-shaped corner -- an E's arm meeting its stem, an L's foot, a T's bar
+    # end into its serif, a 7's elbow -- the way the professional's files
+    # sew every such corner (2026-10-23, built OFF; `outline_cut._fold_corners`).
+    # The cut takes a lone concave corner with a convex apex across it as a
+    # junction and cuts there (a "mitre" to the apex, an "ext" along the
+    # longer edge, an E's "slot" line), so the two strokes sew as two
+    # columns butted at the corner: over the 38 letters of Fremont HOTEL
+    # FREMONT, Drone PRECISION, Proseal PROSEAL and MFab AND WELDING ours
+    # read 156 columns / 242 butts / 75 gaps against the pro's 134 / 195 /
+    # 54 (`docs/lettering-5-10mm-2026-10-23.md`). His needle paths (all four
+    # DSTs, 57 corners read 2026-10-23) keep one column through the corner:
+    # the crosses pivot on the inside corner, their outer ends walk the
+    # outline round the apex at the satin pitch, and the next stroke's
+    # crosses carry on -- no cut, no butt, no travel; he cuts only where two
+    # concave corners face each other (a T junction, a slab serif's root).
+    # ON, after the cut: at every lone concave corner of the letter whose
+    # turn is `outline_cut.FOLD_TURN_MIN_DEG`..`FOLD_TURN_MAX_DEG`, that is
+    # not one of a through pair, and where exactly two columns of like
+    # width (within `FOLD_WIDTH_RATIO`) meet, both columns lose the crosses
+    # inside the corner square and are joined by crosses from the inside
+    # corner to the outline round the apex, one per pitch (kind "folded").
+    # The legs' own crosses, and so the sewn width, are untouched; the
+    # engine's short-stitch guard thins the pile on the inside corner as it
+    # does on an S's curl. Layout, judged in the preview (Kent, 2026-10-22),
+    # so ON-eligible from renders. False is the pre-flag cut, byte for byte.
+    # Tests: `tests/test_column_corner_fold.py`.
+    lettering_columns_corner_fold: bool = False
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule

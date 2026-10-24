@@ -28,6 +28,10 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parents[2]
 MEMDIR = REPO / ".claude" / "memory"
 INDEX = MEMDIR / "MEMORY.md"
+#: Index lines for notes dated before 2026-09-15, split out 2026-10-23. NOT
+#: auto-loaded, so it has no character ceiling — only the per-line cap.
+ARCHIVE = MEMDIR / "MEMORY-archive.md"
+INDEXES = ("MEMORY.md", "MEMORY-archive.md")
 
 #: Characters, not bytes and not lines. See `char_count`.
 BUDGET = 24_986
@@ -94,16 +98,30 @@ def unresolved(text: str) -> list[str]:
             if not (MEMDIR / rel).resolve().is_file()]
 
 
-def unregistered(text: str) -> list[str]:
-    """Note files on disk that no registry line points at.
+def unregistered(text: str, archive_text: str = "") -> list[str]:
+    """Note files on disk that no registry line (live OR archive) points at.
 
     The skill's orphan check, and the reason it matters here is narrower than
     tidiness: an unregistered note is one the recall step cannot reach, so it
     is written, committed, and inert.
     """
-    listed = {(MEMDIR / rel).resolve() for _t, rel, _h, _n in entries(text)}
+    listed = {(MEMDIR / rel).resolve()
+              for _t, rel, _h, _n in entries(text) + entries(archive_text)}
     return sorted(p.name for p in MEMDIR.glob("*.md")
-                  if p.name != "MEMORY.md" and p.resolve() not in listed)
+                  if p.name not in INDEXES and p.resolve() not in listed)
+
+
+def double_registered(text: str, archive_text: str) -> list[str]:
+    """Paths indexed more than once across the two files (or twice in one).
+
+    A note must sit in exactly one index: in both, the archive pass that moves
+    a line leaves a stale copy behind and the two files drift apart.
+    """
+    seen: dict[pathlib.Path, int] = {}
+    for _t, rel, _h, _n in entries(text) + entries(archive_text):
+        key = (MEMDIR / rel).resolve()
+        seen[key] = seen.get(key, 0) + 1
+    return sorted(k.name for k, n in seen.items() if n > 1)
 
 
 def main(argv: list[str]) -> int:
@@ -130,9 +148,18 @@ def main(argv: list[str]) -> int:
     print(f"\nlongest {max((r[3] for r in rows), default=0)}, "
           f"cap {LINE_CAP}, over cap {len(over)}")
 
-    bad, orphans = unresolved(text), unregistered(text)
+    archive_text = ARCHIVE.read_text(encoding="utf-8") if ARCHIVE.is_file() else ""
+    arows = entries(archive_text)
+    print(f"MEMORY-archive.md — {char_count(archive_text):,} chars, "
+          f"{len(arows)} entries, not auto-loaded; longest "
+          f"{max((r[3] for r in arows), default=0)}, "
+          f"over cap {sum(1 for r in arows if r[3] > LINE_CAP)}")
+
+    bad = unresolved(text) + unresolved(archive_text)
+    orphans = unregistered(text, archive_text)
     print(f"broken links: {bad or 'none'}")
     print(f"unregistered notes: {orphans or 'none'}")
+    print(f"indexed twice: {double_registered(text, archive_text) or 'none'}")
 
     if n > BUDGET:
         print(f"\nOVER BUDGET by {n - BUDGET:,} chars. The loader will drop "
