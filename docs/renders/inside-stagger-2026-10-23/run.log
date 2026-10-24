@@ -1,0 +1,45 @@
+{"job": "fremont", "arm": "pro", "zones": 24, "crosses": 163, "long_step": 0.32, "pile": 0.02, "depth": 0.29, "rel": 0.19, "short_frac": 0.28, "same_hole": 5, "under1": 8}
+{"job": "fremont", "arm": "off", "zones": 8, "crosses": 46, "long_step": 0.28, "pile": 0.05, "depth": 0.49, "rel": 0.35, "short_frac": 0.47, "same_hole": 6, "under1": 16}
+{"job": "fremont", "arm": "on", "zones": 7, "crosses": 42, "long_step": 0.47, "pile": 0.0, "depth": 0.33, "rel": 0.23, "short_frac": 0.21, "same_hole": 4, "under1": 7}
+{"job": "fremont", "arm": "fold", "zones": 18, "crosses": 124, "long_step": 0.36, "pile": 0.05, "depth": 0.5, "rel": 0.36, "short_frac": 0.44, "same_hole": 16, "under1": 37}
+{"job": "fremont", "arm": "fold_on", "zones": 17, "crosses": 125, "long_step": 0.23, "pile": 0.0, "depth": 0.34, "rel": 0.23, "short_frac": 0.27, "same_hole": 13, "under1": 8}
+{"job": "drone", "arm": "pro", "zones": 17, "crosses": 134, "long_step": 0.28, "pile": 0.02, "depth": 0.45, "rel": 0.23, "short_frac": 0.4, "same_hole": 2, "under1": 0}
+{"job": "drone", "arm": "off", "zones": 4, "crosses": 25, "long_step": 0.15, "pile": 0.33, "depth": 0.64, "rel": 0.3, "short_frac": 0.46, "same_hole": 4, "under1": 0}
+{"job": "drone", "arm": "on", "zones": 2, "crosses": 14, "long_step": 0.8, "pile": 0.0, "depth": 0.4, "rel": 0.21, "short_frac": 0.3, "same_hole": 3, "under1": 0}
+{"job": "drone", "arm": "fold", "zones": 15, "crosses": 144, "long_step": 0.24, "pile": 0.28, "depth": 0.62, "rel": 0.27, "short_frac": 0.48, "same_hole": 32, "under1": 2}
+{"job": "drone", "arm": "fold_on", "zones": 13, "crosses": 111, "long_step": 0.23, "pile": 0.0, "depth": 0.51, "rel": 0.22, "short_frac": 0.38, "same_hole": 17, "under1": 0}
+{"job": "mfab", "arm": "pro", "zones": 19, "crosses": 147, "long_step": 0.32, "pile": 0.07, "depth": 0.37, "rel": 0.23, "short_frac": 0.36, "same_hole": 4, "under1": 7}
+{"job": "mfab", "arm": "off", "zones": 9, "crosses": 64, "long_step": 0.22, "pile": 0.35, "depth": 0.61, "rel": 0.34, "short_frac": 0.42, "same_hole": 12, "under1": 6}
+{"job": "mfab", "arm": "on", "zones": 7, "crosses": 51, "long_step": 0.29, "pile": 0.0, "depth": 0.33, "rel": 0.18, "short_frac": 0.32, "same_hole": 2, "under1": 2}
+{"job": "mfab", "arm": "fold", "zones": 16, "crosses": 131, "long_step": 0.26, "pile": 0.33, "depth": 0.61, "rel": 0.32, "short_frac": 0.4, "same_hole": 27, "under1": 6}
+{"job": "mfab", "arm": "fold_on", "zones": 15, "crosses": 125, "long_step": 0.25, "pile": 0.0, "depth": 0.44, "rel": 0.22, "short_frac": 0.33, "same_hole": 8, "under1": 2}
+{"job": "proseal", "arm": "pro", "zones": 1, "crosses": 10, "long_step": 0.4, "pile": 0.0, "depth": 0.49, "rel": 0.2, "short_frac": 0.5, "same_hole": 0, "under1": 0}
+{"job": "proseal", "arm": "off", "zones": 12, "crosses": 138, "long_step": 0.09, "pile": 0.56, "depth": 0.6, "rel": 0.19, "short_frac": 0.48, "same_hole": 53, "under1": 0}
+{"job": "proseal", "arm": "on", "zones": 7, "crosses": 63, "long_step": 0.21, "pile": 0.0, "depth": 0.72, "rel": 0.22, "short_frac": 0.38, "same_hole": 3, "under1": 0}
+{"job": "proseal", "arm": "fold", "zones": 15, "crosses": 189, "long_step": 0.09, "pile": 0.6, "depth": 0.61, "rel": 0.18, "short_frac": 0.48, "same_hole": 79, "under1": 0}
+{"job": "proseal", "arm": "fold_on", "zones": 8, "crosses": 71, "long_step": 0.19, "pile": 0.0, "depth": 0.69, "rel": 0.22, "short_frac": 0.38, "same_hole": 3, "under1": 0}
+{"job": "becker", "arm": "pro", "zones": 4, "crosses": 28, "long_step": 0.3, "pile": 0.11, "depth": 0.57, "rel": 0.18, "short_frac": 0.32, "same_hole": 1, "under1": 0}
+| job | arm | zones | crosses | long_step | pile | depth | rel | short_frac | same_hole | under1 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| fremont | pro | 24 | 163 | 0.32 | 0.02 | 0.29 | 0.19 | 0.28 | 5 | 8 |
+| fremont | off | 8 | 46 | 0.28 | 0.05 | 0.49 | 0.35 | 0.47 | 6 | 16 |
+| fremont | on | 7 | 42 | 0.47 | 0.0 | 0.33 | 0.23 | 0.21 | 4 | 7 |
+| fremont | fold | 18 | 124 | 0.36 | 0.05 | 0.5 | 0.36 | 0.44 | 16 | 37 |
+| fremont | fold_on | 17 | 125 | 0.23 | 0.0 | 0.34 | 0.23 | 0.27 | 13 | 8 |
+| drone | pro | 17 | 134 | 0.28 | 0.02 | 0.45 | 0.23 | 0.4 | 2 | 0 |
+| drone | off | 4 | 25 | 0.15 | 0.33 | 0.64 | 0.3 | 0.46 | 4 | 0 |
+| drone | on | 2 | 14 | 0.8 | 0.0 | 0.4 | 0.21 | 0.3 | 3 | 0 |
+| drone | fold | 15 | 144 | 0.24 | 0.28 | 0.62 | 0.27 | 0.48 | 32 | 2 |
+| drone | fold_on | 13 | 111 | 0.23 | 0.0 | 0.51 | 0.22 | 0.38 | 17 | 0 |
+| mfab | pro | 19 | 147 | 0.32 | 0.07 | 0.37 | 0.23 | 0.36 | 4 | 7 |
+| mfab | off | 9 | 64 | 0.22 | 0.35 | 0.61 | 0.34 | 0.42 | 12 | 6 |
+| mfab | on | 7 | 51 | 0.29 | 0.0 | 0.33 | 0.18 | 0.32 | 2 | 2 |
+| mfab | fold | 16 | 131 | 0.26 | 0.33 | 0.61 | 0.32 | 0.4 | 27 | 6 |
+| mfab | fold_on | 15 | 125 | 0.25 | 0.0 | 0.44 | 0.22 | 0.33 | 8 | 2 |
+| proseal | pro | 1 | 10 | 0.4 | 0.0 | 0.49 | 0.2 | 0.5 | 0 | 0 |
+| proseal | off | 12 | 138 | 0.09 | 0.56 | 0.6 | 0.19 | 0.48 | 53 | 0 |
+| proseal | on | 7 | 63 | 0.21 | 0.0 | 0.72 | 0.22 | 0.38 | 3 | 0 |
+| proseal | fold | 15 | 189 | 0.09 | 0.6 | 0.61 | 0.18 | 0.48 | 79 | 0 |
+| proseal | fold_on | 8 | 71 | 0.19 | 0.0 | 0.69 | 0.22 | 0.38 | 3 | 0 |
+| becker | pro | 4 | 28 | 0.3 | 0.11 | 0.57 | 0.18 | 0.32 | 1 | 0 |
+EXIT=0
