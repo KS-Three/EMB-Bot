@@ -184,7 +184,7 @@ class Column:
 
     stations: list[tuple[tuple[float, float], tuple[float, float]]]
     piece: Polygon                      # the stroke piece these crosses cover
-    kind: str                           # "straight" | "curved" | "ring"
+    kind: str                           # "straight" | "curved" | "ring" | "folded" (corner_fold: legs + a fold)
     axis: tuple[float, float] | None    # unit axis of a straight piece
     width_mm: float                     # the letter's mean stroke width
     rail_a: list[tuple[float, float]] = field(default_factory=list)
@@ -645,7 +645,7 @@ def sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float,
     a_pts, b_pts = _inset_rails(col.stations, RAIL_REACH_INSET_MM)
     if pull_mm > 0:
         a_pts, b_pts = _push_rails(a_pts, b_pts, poly, pull_mm, pull_floor_mm)
-    if col.kind == "straight":
+    if col.kind in ("straight", "folded"):      # a folded column's ends are its legs' straight ends
         a_pts, b_pts = _reach_fan_faces(col.stations, a_pts, b_pts,
                                         pull_mm - RAIL_REACH_INSET_MM,
                                         **({"outline": poly} if hold is not None else {}))
@@ -1334,12 +1334,19 @@ def _inside_path(columns: list[Column], nodes, spans, a, b, reach_mm: float,
 
 # ---------------------------------------------------------------- the walk
 
-def _span_graph(columns: list[Column], merge_r: float):
+def _span_graph(columns: list[Column], merge_r: float, within: Polygon | None = None):
     """Columns -> (nodes, spans, junctions). A span is a stretch of one
     column between two station indices, with its two node ids; a column is
     cut where another column's END lands on its centreline away from its
     own ends, and each such landing is a junction (the butting column and
-    end, the through column and the station it lands on)."""
+    end, the through column and the station it lands on).
+    `within` (`cfg.lettering_columns_corner_fold`, a letter with a folded
+    column only): two ends within `merge_r` of each other are one node only
+    when the letter covers the line between them. The radius alone (1.3 W +
+    0.3 + the pull, 2.5 mm on Drone's E) made the E's top-arm and middle-arm
+    TIPS one node across the slot, which gave the top tip an even degree:
+    the walk could no longer start there, so it started at the bottom tip
+    and sewed the middle arm from the top tip with an 18.8 mm routed hop."""
     mids = [_mids(c.stations) for c in columns]
     ends = [(cj, 0, m[0]) for cj, m in enumerate(mids)] + [(cj, -1, m[-1]) for cj, m in enumerate(mids)]
     cuts_per: list[list[int]] = []
@@ -1367,7 +1374,7 @@ def _span_graph(columns: list[Column], merge_r: float):
 
     def node_of(p):
         for i, q in enumerate(nodes):
-            if math.dist(q, p) <= merge_r:
+            if math.dist(q, p) <= merge_r and (within is None or within.covers(LineString([q, p]))):
                 return i
         nodes.append(p)
         return len(nodes) - 1
@@ -1667,7 +1674,11 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     # 2. The span graph and the walk.
     W = sorted(c.width_mm for c in ready)[len(ready) // 2]
     merge_r = _MERGE_WIDTHS * W + _MERGE_PAD_MM + pull_mm
-    nodes, spans, junctions = _span_graph(ready, merge_r)
+    nodes, spans, junctions = _span_graph(
+        ready, merge_r,
+        # `cfg.lettering_columns_corner_fold`: a folded letter's nodes must
+        # be joined through the letter (`_span_graph`); off, the radius alone
+        poly.buffer(0.1 + pull_mm) if any(c.kind == "folded" for c in ready) else None)
     report["junctions"] = len(junctions)
     # The free end of a butting column (its other end, when nothing else
     # meets it there) is where its component's walk should start -- when
@@ -1682,6 +1693,15 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         touch[sp["nb"]] = touch.get(sp["nb"], 0) + 1
     prefer: set[int] = set()
     for j in junctions if roomy else ():
+        if ready[j["through"]].kind == "folded":
+            # `cfg.lettering_columns_corner_fold`: an arm butting a FOLDED
+            # column (an E's middle arm on the stem of its top-arm / stem /
+            # bottom-arm column) does not start the walk: the trail would
+            # then have to double one of the folded column's long spans to
+            # reach its far tip (Drone's E: 3.7 -> 18.8 mm of travel and a
+            # trim). Started at a tip, the walk runs out under the arm and
+            # sews it back onto the stem: a plain butt, one arm of travel.
+            continue
         n = len(ready[j["ci"]].stations)
         free_idx = n - 1 if j["end"] == 0 else 0
         for sp in spans:
@@ -1992,6 +2012,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             rail_axis: bool = False,
                             small_bold: bool = False,
                             pull_by_stroke: bool = False,
+                            corner_fold: bool = False,
                             text_lean_deg: float | None = None,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
@@ -2017,6 +2038,9 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     stroke; neither ever above `pull_mm`, nor, under `small_bold`, above its
     share of the stroke. Read at digitize time on the drawn stroke, so a
     resize keeps its pull (ruling 12, `column-width-on-resize-2026-10-01`).
+    `corner_fold`: `cfg.lettering_columns_corner_fold` (2026-10-23) -- one
+    column folded round each L corner of the letter
+    (`outline_cut._fold_corners`); off, the cut's columns as they are.
     `text_lean_deg` (`cfg.lettering_columns_text_lean`, 2026-10-23): the
     word's house cross angle (degrees, `satin_angle_deg`); given, every
     straight column the house can span within the lean cap is re-stationed
@@ -2044,7 +2068,9 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
              **({"mitre_ends": True} if square_ends else {}),
              # `cfg.lettering_columns_rail_axis`: a short italic bar runs along its rails
              **({"rail_axis": True} if rail_axis else {}),
-             **({"small_bold": True} if small_bold else {})}
+             **({"small_bold": True} if small_bold else {}),
+             # `cfg.lettering_columns_corner_fold`: one column round an L corner
+             **({"corner_fold": True} if corner_fold else {})}
     cored = bool(counter_holes) and counter_clear_mm > 0        # none named: the floor's reading
     run_kw = dict(trim_at_mm=trim_at_mm,
                   spacing_mm=spacing_mm, split_above_mm=split_above_mm,

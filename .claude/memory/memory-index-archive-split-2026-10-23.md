@@ -14,7 +14,7 @@ MEMORY.md only). Kent approved the split in chat 2026-10-23.
 whole, same order, to `.claude/memory/MEMORY-archive.md`. The live index keeps ONE
 pointer line to it, first in the list, naming the standing rulings (fill rows
 0.15, DST axis fixed, Ink/Stitch clean-room, Ember teardowns). Live index went
-25,011 -> 15,343 chars. The notes themselves did not move.
+25,011 -> ~15,600 chars. The notes themselves did not move.
 
 **The archive is NOT auto-loaded.** A session that needs pre-09-15 history or a
 standing ruling opens it by hand; the pointer line is the only thing that tells it
