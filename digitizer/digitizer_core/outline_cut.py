@@ -33,7 +33,7 @@ from dataclasses import replace
 
 import cv2
 import numpy as np
-from shapely.geometry import LinearRing, LineString, Point, Polygon
+from shapely.geometry import LinearRing, LineString, MultiPoint, Point, Polygon
 from shapely.ops import nearest_points, polygonize, unary_union
 from .fast_skimage import medial_axis  # skimage's, tables cached — byte-identical
 
@@ -1157,6 +1157,22 @@ def _drop_stalls(col: Column, fold_lines, pitch_mm: float) -> Column:
 
 SEWN_FOLD_DEG = 45.0    # a sewn station cross past this off its stations' advance is a fold
 SEWN_SHORT_FRAC = 0.5   # a satin leg under this share of its run's median leg is short
+# `fold_cuts` with the sewn judge: a candidate may leave at most this many
+# W^2 more of its piece outside its columns' crosses than the piece's own
+# construction does (`_uncovered`). The judge counts knots, and a column
+# that sews nothing knots nothing: unguarded, it kept an 80 mm b whose bowl
+# shoulder went unsewn (+1.7 W^2). Main ON's cures already give up to 0.42
+# (the 80 mm e and p: mitred ends). Candidate.
+COVER_SLACK = 0.5
+
+
+def _uncovered(pc: Polygon, cols) -> float:
+    """Area of `pc` outside every cross-to-cross quad its columns sew (the
+    convex hull of two consecutive stations)."""
+    quads = [MultiPoint([a0, b0, b1, a1]).convex_hull
+             for c in cols if c is not None
+             for (a0, b0), (a1, b1) in zip(c.stations[:-1], c.stations[1:])]
+    return pc.difference(unary_union(quads)).area if quads else pc.area
 
 
 def sewn_knots(runs) -> tuple[int, int, int]:
@@ -1295,8 +1311,11 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     if depth >= 3 or (f0 < FOLD_MIN and not carried):
         return None
     if judge is not None:
-        base = (against if against is not None else
-                judge(pc, [build_column(pc, cut_lines, W, pitch_mm, mitre_ends=mitre_ends)]))
+        if against is not None:
+            base, unc0 = against
+        else:
+            whole = [build_column(pc, cut_lines, W, pitch_mm, mitre_ends=mitre_ends)]
+            base, unc0 = judge(pc, whole), _uncovered(pc, whole)
     long0, _tot0 = _overlong(col0, W)
     rf, _ = corners(pc, W, reflex_deg=REFINE_REFLEX_DEG)
     cands, openers = [], []
@@ -1360,7 +1379,10 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
         sewn = ()
         if judge is not None:
             fl = [LineString([c[0], c[1]]) for c in cand]
-            k = judge(pc, [_drop_stalls(c, fl, pitch_mm) for c in cols])
+            sewn_cols = [_drop_stalls(c, fl, pitch_mm) for c in cols]
+            if _uncovered(pc, sewn_cols) > unc0 + COVER_SLACK * W * W:
+                continue                    # it leaves the letter bare
+            k = judge(pc, sewn_cols)
             if k[1] > base[1] or k[2] > base[2]:
                 continue                    # it knots where the piece whole did not
             sewn = (k[0], k[1] + k[2])
@@ -1393,9 +1415,8 @@ def _judged_overlong(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: i
     pair the stub refusal sent it to sewed 3/2/9), and the 80 mm m keeps
     OFF's cuts (0/0/0; the stub refusal's pick carried a column 75 deg round
     its arch and sewed 0/0/4)."""
-    def sewn(subs, lines):
-        return judge(pc, [build_column(g, lines, W, pitch_mm, mitre_ends=mitre_ends)
-                          for g in subs])
+    def built(subs, lines):
+        return [build_column(g, lines, W, pitch_mm, mitre_ends=mitre_ends) for g in subs]
     # OFF's cut leaving no stub was taken by the stub refusal too: another
     # is taken over it only for fewer sewn FOLDS (a capital's over-long
     # piece can fold; none sews fewer folds cut otherwise, so all 18 sew as
@@ -1404,13 +1425,17 @@ def _judged_overlong(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: i
     stub = ref is None or any(
         c is not None and _column_len(c) < STUB_WIDTHS * W
         for c in (build_column(g, ref[3], W, pitch_mm) for g in ref[2]))
-    ref_k = (sewn(ref[2], ref[3]) if ref is not None
-             else judge(pc, [build_column(pc, cut_lines, W, pitch_mm, mitre_ends=mitre_ends)]))
+    ref_cols = (built(ref[2], ref[3]) if ref is not None
+                else [build_column(pc, cut_lines, W, pitch_mm, mitre_ends=mitre_ends)])
+    ref_k, ref_unc = judge(pc, ref_cols), _uncovered(pc, ref_cols)
     pick = None if ref is None else ("cut", ref)
     key = ((ref_k[0], ref_k[1] + ref_k[2]), 0, ref[0] if ref is not None else 0.0)
 
-    def better(k, tie, score):
+    def better(cols, tie, score):
         nonlocal key
+        if _uncovered(pc, cols) > ref_unc + COVER_SLACK * W * W:
+            return False                # it leaves the letter bare
+        k = judge(pc, cols)
         if k[1] > ref_k[1] or k[2] > ref_k[2] or (not stub and k[0] >= ref_k[0]):
             return False
         if ((k[0], k[1] + k[2]), tie, score) < key:
@@ -1418,14 +1443,13 @@ def _judged_overlong(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: i
             return True
         return False
     for opt in options:
-        if opt is not ref and better(sewn(opt[2], opt[3]), 1, opt[0]):
+        if opt is not ref and better(built(opt[2], opt[3]), 1, opt[0]):
             pick = ("cut", opt)
     if pc.interiors:
         fold = _fold_refine(pc, cut_lines, W, pitch_mm, depth, mitre_ends, judge,
-                            against=ref_k if ref is not None else None)
-        if fold is not None and better(judge(pc, [build_column(sub, ls, W, pitch_mm,
-                                                               mitre_ends=mitre_ends)
-                                                  for sub, ls, _ in fold[1]]), 1, 0.0):
+                            against=(ref_k, ref_unc) if ref is not None else None)
+        if fold is not None and better([build_column(sub, ls, W, pitch_mm, mitre_ends=mitre_ends)
+                                        for sub, ls, _ in fold[1]], 1, 0.0):
             pick = ("fold", fold)
     return pick
 
