@@ -2991,6 +2991,28 @@ class PipelineConfig:
     # None: the floor alone. A CANDIDATE (gate 1): 1.45, the pro's on
     # Fremont, unsewn here.
     small_text_cap_bold_scale: float | None = None
+    # With `small_text_cap_letter_gap_mm`: the re-set reaches the two kinds
+    # of small line it refused as `no_room` (2026-10-24, L8; census
+    # `tools/small_text_floor_census.py`). Across the paired jobs the pro
+    # sews NO line under ~4 mm as drawn, as a run or not at all: ProSeal's
+    # "SPRAY FOAM + COATINGS" goes 3.0 -> 4.55 mm satin on the 86 mm hat and
+    # 2.6 -> 4.0 on the 75 mm beanie, inside the same design height (63.3
+    # against our 63.1 mm). Ours stayed a 3 mm bean line under the re-set,
+    # for reasons this fixes: (1) the design's EDGE is tested against the
+    # letters, not their `CLEAR_MM` halo, and gives way by half the line's
+    # growth -- a line on the bottom edge could never fit, at any growth
+    # (the pro's sews 0.6 mm past it); the halo still clears every shape;
+    # (2) a letter-sized shape standing on the line's band INSIDE its span
+    # joins the line whatever its thread, as `_join_line_ends` already does
+    # past either end -- ProSeal's A of SPRAY traces in a thread of its own
+    # and blocked its own line; (3) clusters of one line whose hulls overlap
+    # are placed as one (the beanie's COATINGS is two interleaved clusters),
+    # and words of one line keep a sewn letter gap apart, not two halos.
+    # Measured: ProSeal hat tagline 3.15 mm bean -> 4.35-4.45 satin (pro
+    # 4.55), beanie 2.8 -> 3.65-3.7 (pro 4.0); Fremont and Drone DSTs
+    # byte-identical. Geometry, not fabric: where the letters go. Tests:
+    # `tests/test_small_text_reach_edges.py`. False: today, byte for byte.
+    small_text_cap_reach_edges: bool = False
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
