@@ -27,7 +27,7 @@
 // reuse a running service, start one from a venv if there is none, SKIP
 // (never fail) with no digitizer venv. @playwright/test, not vitest.
 import { test, expect } from "@playwright/test";
-import { startStudio, pickGarment, uploadArtwork, runDigitize } from "./helpers.js";
+import { startStudio, pickGarment, uploadArtwork, runDigitize, pinDigitizeConfig } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -120,6 +120,7 @@ test.afterAll(() => {
 
 async function digitizedDesign(page) {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await pinDigitizeConfig(page, { border_by_size: false });
   await startStudio(page);
   await pickGarment(page, "Tote");
   await uploadArtwork(page, ART_PNG);

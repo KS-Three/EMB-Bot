@@ -71,7 +71,8 @@ test("the switch follows the cap: a number moves it, false lifts it", () => {
 
 // `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
 // (Kent); a pin below taken before that, on another subject, builds with them OFF.
-const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+// + the three JS twins Kent flipped ON 2026-10-23 (fill turn slant, cross underlay, short-column underlay)
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false, fillTurnSlant: false, crossUnderlay: false, underlayShortColumns: false };
 
 test("big text sews its pre-#904 stitch counts again", async () => {
   const T = await tool();

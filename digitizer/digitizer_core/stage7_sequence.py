@@ -3468,6 +3468,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="crosshatch",
                 )
@@ -3501,6 +3502,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="wave",
                 )
@@ -3527,6 +3529,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="chevron",
                 )
@@ -3551,6 +3554,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="brick",
                 )
@@ -3573,6 +3577,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="fur",
                     seed=cfg.seed,
@@ -3686,6 +3691,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     density_boost=cfg.fill_density_boost,
                 )
@@ -4155,7 +4161,10 @@ def sequence(
             # predictable from the design's size, it scales with how
             # fragmented the silhouette is, so the only honest thing is to
             # measure it on THIS design and say so.
-            _cap_st = sum(len(r.points)
+            # ...net of the start locks `cfg.tie_in_off` (ON since 2026-10-23)
+            # strips at the end of this function, so the bill is what the cap
+            # SEWS, dropped or applied (`test_edge_cap_budget`'s identities).
+            _cap_st = sum(len(r.points) - (r.tie_in_pts if cfg.tie_in_off else 0)
                           for r in (c_runs if c_blocks is None else
                                     [it[0] for its in c_blocks.values()
                                      for it in its]))
@@ -4166,6 +4175,8 @@ def sequence(
             # because the budget decision below has to happen before the
             # append, not after it.)
             _art_st = sum(b.stitch_count for b in blocks)
+            if cfg.tie_in_off:
+                _art_st -= sum(r.tie_in_pts for b in blocks for r in b.runs)
             _percent = round(100.0 * _cap_st / _art_st, 1) if _art_st else 0.0
             cap_over_budget = _art_st > 0 and _percent > EDGE_CAP_BUDGET_PCT
             cap_dropped = cap_over_budget and _over_budget_action(cfg) == "drop"
@@ -4569,6 +4580,11 @@ def sequence(
                 count=border_narrow,
             )
         )
+    # `cfg.tie_in_off` (ON by default since 2026-10-23): strip the run-start
+    # locks. The cap's bill above was counted net of them (`_cap_st`), so the
+    # readout is what the cap sews either way.
+    if cfg.tie_in_off:
+        stitches.drop_tie_ins(blocks)
     if cap_cost is not None:
         warnings.append(
             warn(

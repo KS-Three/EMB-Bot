@@ -1687,8 +1687,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 inside_connectors: bool = False,
                 counter_poly: Polygon | None = None,
                 thin_floor: bool = False,
-                short_columns: bool = False,
                 pull_of=None,
+                short_columns: bool = False,
                 inside_stagger: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the

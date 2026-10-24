@@ -76,7 +76,7 @@ checks). Near the ceiling, move the OLDEST lines whole to the archive, same orde
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
 - [Card v4 sew-out: pro raises small text](card-v4-sewout-letter-size-2026-10-20.md) — pro lifts small words to ~4 mm and satins them; ours traces art size; measure by colour
 - [Session ended mid-suite](session-ended-mid-suite-2026-10-20.md) — a ruled flip sat uncommitted in a lane behind a hung pytest; sweep lanes' TRACKED dirt and the newest session's last turn
-- [Small bold columns](small-bold-columns-2026-10-21.md) — `lettering_columns_small_bold` OFF: 4 mm letters at 0.85 mm satin; counters closed UPSTREAM by growth
+- [Small bold columns](small-bold-columns-2026-10-21.md) — `lettering_columns_small_bold` ON 10-23: 4 mm letters at the pro's 0.85 mm satin, no fans
 - [Pro rules across all jobs](pro-rules-across-jobs-2026-10-21.md) — small text raised to ~4 mm on every job; beanie knockdown 5/5; white interiors sewn; trims from DST, never PES
 - [Sew white areas](sew-white-areas-2026-10-21.md) — R11 built OFF as a Studio option; counter = untagged white in a text-cluster letter; Machine field doubles trims (stage 5)
 - [Beanie knockdown ON](beanie-knockdown-2026-10-21.md) — Kent flipped it unsewn: garment-coloured fill under design
@@ -93,7 +93,7 @@ checks). Near the ceiling, move the OLDEST lines whole to the archive, same orde
 - [Narrow columns like the pro](narrow-columns-2026-10-23.md) — small_bold: serifs absorbed into the stroke, chord-read junctions, no chamfer mitre; 74→55 columns; `column_harness.py`
 - [5-10 mm lettering band](lettering-5-10mm-band-2026-10-23.md) — gap is corners (pro folds, we butt); Drone O sewn SHUT by a split alpha counter; `enclosed_alpha_hole_parts` OFF
 - [10 mm and up lettering band](lettering-10mm-up-band-2026-10-23.md) — only MARINE compares (white faces unsewn); the pro crosses diagonals like stems; `lettering_columns_text_lean` OFF
-- [Short column underlay](short-column-underlay-2026-10-22.md) — `satin_underlay_short_columns` OFF: pro centre-walks 83-97% of columns at EVERY width; no 3.5 mm pitch; zigzag unsettled
+- [Short column underlay](short-column-underlay-2026-10-22.md) — `satin_underlay_short_columns` ON 10-23: pro centre-walks 83-97% of columns at EVERY width
 - [Opus team architecture](../../docs/superpowers/plans/2026-10-23-opus-team-architecture.md) — the plan a fresh director runs from: method, state, ranked queue L1-L10 / I1-I6, Kent's open decisions, brief template, traps
 - [Corner folds in the Column lane](column-corner-folds-2026-10-23.md) — pro FOLDS one column round every L corner (57 read), cuts only T junctions; `lettering_columns_corner_fold` OFF
 - [Index split into live + archive](memory-index-archive-split-2026-10-23.md) — pre-09-15 lines in MEMORY-archive.md (not auto-loaded); new entries go at the BOTTOM, one line per PR
@@ -104,3 +104,7 @@ checks). Near the ceiling, move the OLDEST lines whole to the archive, same orde
 - [Big-letter construction](big-letter-construction-2026-10-24.md) — MARINE's 163-vs-77 is 35 patches + a sheared top slab, no length cap; cuts buy cross direction only — `text_lean` (OFF) gives it, don't copy the count
 
 - [Flip sheet, inlined](flip-sheet-inline-2026-10-24.md) — `report --inline` = ONE HTML (data URIs; app viewer breaks relative paths); a flag with a `base` diffs against its own OFF
+- [Fill turn slant](fill-turn-slant-2026-10-21.md) — `fill_turn_slant`: turns 0.7 mm along the row; ON 10-23
+- [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off`: pro locks no run start (1 of 68); ON 10-23
+- [Flip eight 2026-10-23](flip-eight-2026-10-23.md) — Kent: "flip the eight ON, hold two" + small_bold; judged by NUMBERS vs the pro where the eye can't tell; `FLIP_2026_10_23`/`TRIO_OFF` pin the old engine
+- [Flip two](flip-two-2026-10-23.md) — border_by_size + enclosed_alpha_hole_parts + corner_fold ON (Kent 10-23); Becker untouched; local goldens red on Windows with flags OFF too

@@ -1350,7 +1350,11 @@ describe("columns: through the real engine", () => {
   });
 
   it("a design holding only a closed rectangle is byte-identical to before", () => {
-    const d = generateElement(el([rect("s1", 100, 100, 400, 250)]), garment, {});
+    // The two JS fill flips of 2026-10-23 (fillTurnSlant, crossUnderlay: ON by default, Kent's
+    // flip sheet) move this count 3624 -> 4033 by design; the constants below were captured
+    // before them, and this test is about the column feature leaving a plain closed shape alone,
+    // so the pre-flip arm is pinned explicitly.
+    const d = generateElement(el([rect("s1", 100, 100, 400, 250)]), garment, { fillTurnSlant: false, crossUnderlay: false });
     expect(d.stitchCount).toBe(RECT_STITCH_COUNT_ON_MAIN);
     expect(hashOf(d)).toBe(RECT_HASH_ON_MAIN);
   });

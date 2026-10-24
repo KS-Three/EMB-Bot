@@ -157,7 +157,10 @@ def test_chain_refuses_to_bridge_a_shade_boundary():
                    region(bar(16, 26), 0, "Sright", 0),
                    region(Polygon([(10, 0), (16, 0), (16, 10), (10, 10)]),
                           1, "Sbridge", 1)]
-        conf = PipelineConfig(garment_id="left_chest", chain_links=False)
+        # the hop must start as a plain CUT: `trim_bury_under_later` (ON since
+        # 2026-10-23) would sew it down under the bridge before `_chain` is asked
+        conf = PipelineConfig(garment_id="left_chest", chain_links=False,
+                              trim_bury_under_later=False, tie_in_off=False)
         planned, _ = resolve_overlaps(regions, fabric, conf)
         blocks, _ = sequence(planned, fabric, conf)
         sewn = [p for p in planned if p.sew_index == 0]

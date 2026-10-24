@@ -1,0 +1,19 @@
+S4e044819 thread 0020 bbox (-15.49, -23.48, 15.28, -7.49) holes 0 cluster None ink_stroke None spines 0
+  blk0 0020 S4e044819 underlay role=''             pts= 40 jump=True trim=True x 0.09-14.48 y -20.58--9.34
+  blk0 0020 S4e044819 underlay role=''             pts= 24 jump=False trim=False x -9.70-6.82 y -22.43--12.59
+  blk0 0020 S4e044819 underlay role=''             pts= 24 jump=False trim=False x -14.41-1.96 y -22.87--11.74
+  blk0 0020 S4e044819 travel   role=''             pts=  3 jump=False trim=False x -3.47--2.20 y -20.25--16.29
+  blk0 0020 S4e044819 underlay role=''             pts=  3 jump=False trim=False x -4.70--1.56 y -14.31--12.21
+  blk0 0020 S4e044819 travel   role=''             pts=  2 jump=False trim=False x -8.90--6.80 y -12.61--12.41
+  blk0 0020 S4e044819 underlay role=''             pts=  3 jump=False trim=False x -14.68--11.00 y -12.81--10.36
+  blk0 0020 S4e044819 travel   role=''             pts=  1 jump=False trim=False x -15.27--15.27 y -8.96--8.96
+  blk0 0020 S4e044819 fill     role=''             pts=997 jump=False trim=False x -15.89-15.66 y -23.87--7.10
+  blk0 0020 S4e044819 border   role='border'       pts=447 jump=False trim=False x -15.67-15.48 y -23.87--7.93
+  blk0 0020 S82b4fec1 travel   role=''             pts=  4 jump=False trim=False x -0.41-4.09 y -7.42--7.42
+  blk0 0020 S82b4fec1 travel   role=''             pts=  4 jump=False trim=False x -0.01-4.33 y -9.85--7.19
+  blk0 0020 S82b4fec1 underlay role=''             pts=  3 jump=False trim=False x -4.67--0.17 y -10.02--7.02
+  blk0 0020 S82b4fec1 satin    role=''             pts= 86 jump=False trim=False x -5.60-2.56 y -12.45--4.70
+  blk0 0020 S82b4fec1 travel   role=''             pts=  4 jump=False trim=False x -0.01-4.33 y -9.85--7.19
+  blk0 0020 S82b4fec1 underlay role=''             pts=  3 jump=False trim=False x -0.17-4.49 y -10.02--7.02
+  blk0 0020 S82b4fec1 satin    role=''             pts= 97 jump=False trim=False x -2.87-5.22 y -13.00--4.78
+  blk2 0020 __edge_cap__ run      role='edge_cap'     pts= 14 jump=True trim=True x 14.54-15.68 y -8.32--7.21

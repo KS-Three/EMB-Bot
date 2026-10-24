@@ -34,6 +34,7 @@ import pytest
 from shapely.geometry import Polygon
 
 from digitizer_core import PipelineConfig, machine
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core import stage6_satin as s6
 from digitizer_core import stitches
 from digitizer_core import textcluster as tc
@@ -71,6 +72,10 @@ def _run(**kw):
     # The numbers here were read without it; the dissolve's own price is
     # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
     kw.setdefault("dissolve_phantom_blends", False)
+    # ...and the 2026-10-23 flips (buried hops, no start locks, short-column
+    # underlay): every trim count here was read without them.
+    for k, v in FLIP_2026_10_23.items():
+        kw.setdefault(k, v)
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)
     result = finish_generation(gen.fork(), cfg)

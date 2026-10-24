@@ -19,6 +19,7 @@ from shapely.geometry import LineString, MultiPoint, Point, Polygon, box
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, digitize, knockdown, stitches
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.stitches import StitchBlock, StitchRun
 from digitizer_core.threads import CHART, rgb_to_lab
 from tests.conftest import TESTDATA
@@ -33,6 +34,9 @@ def _md5(plan) -> str:
 
 
 def _cfg(**kw):
+    # the md5s below were pinned before the 2026-10-23 flips; the knockdown is priced without them
+    for k, v in FLIP_2026_10_23.items():
+        kw.setdefault(k, v)
     return PipelineConfig(garment_id="beanie", garment_rgb=KHAKI, **kw)
 
 
@@ -170,7 +174,7 @@ def test_off_is_byte_identical(runs):
 
 
 def test_on_other_garments_changes_nothing():
-    base = dict(target_width_mm=60.0, garment_rgb=KHAKI, garment_id="hat_front")
+    base = dict(target_width_mm=60.0, garment_rgb=KHAKI, garment_id="hat_front", **FLIP_2026_10_23)
     off = digitize(TESTDATA / FIXTURE, PipelineConfig(beanie_knockdown=False, **base))[1]
     on = digitize(TESTDATA / FIXTURE, PipelineConfig(**base))[1]
     assert _md5(on) == _md5(off) == HAT_MD5

@@ -1,0 +1,427 @@
+{
+ "art": "MFab Logo.png",
+ "width_mm": 104.9,
+ "garment_id": "hat_front",
+ "secs": 224.1,
+ "stitches": 13577,
+ "trims": 64,
+ "colours": 3,
+ "regions": 87,
+ "warnings": [
+  "CLASSIFIED_GRADIENT",
+  "BACKGROUND_UNCERTAIN",
+  "BACKGROUND_ENCLOSED",
+  "INPUT_LOW_RESOLUTION",
+  "ABSORBED_SMALL_SHAPES",
+  "PHOTO_SEGMENT_REGION_COUNT",
+  "PHOTO_PALETTE_SELECTED",
+  "DROPPED_SMALL_SHAPES",
+  "DUPLICATE_CONE_LAYERS_MERGED",
+  "SHAPES_LEFT_UNSEWN",
+  "SAME_THREAD_SHAPES_MERGED",
+  "HOLE_NEARLY_CLOSED",
+  "CLIP_DROPPED_SLIVER",
+  "SMALL_SHAPES_AS_RUN",
+  "SMALL_LETTERING_AS_BEAN",
+  "BLEND_NO_REGIONS_DECOMPOSED",
+  "LONG_JUMPS_TRIMMED",
+  "BORDER_SKIPPED_TOO_NARROW",
+  "EDGE_CAP_APPLIED"
+ ],
+ "lettering": {
+  "text_cluster_id": 26,
+  "lettering_group": 25,
+  "rescued_small_shape": 29
+ },
+ "tiers": {
+  "?": 87
+ },
+ "preflight": {
+  "grade": "B",
+  "findings": [
+   {
+    "code": "LETTERING_TOO_SMALL",
+    "severity": "warn",
+    "message": "7 of 44 satin shapes sew below readable size at this scale \u2014 columns under 1 mm or details under 4 mm. Enlarging helps but does not fully clear it: the smallest shapes regenerate at any size. Remove or simplify the smallest lettering.",
+    "extra": {
+     "count": 7,
+     "satin_total": 44,
+     "shapes": [
+      {
+       "shape_id": "S461c3f1b",
+       "column_mm": 0.67,
+       "extent_mm": 1.2
+      },
+      {
+       "shape_id": "S59df3f59",
+       "column_mm": 0.81,
+       "extent_mm": 1.3
+      },
+      {
+       "shape_id": "S8250af01",
+       "column_mm": 0.92,
+       "extent_mm": 7.1
+      },
+      {
+       "shape_id": "Sb43df070",
+       "column_mm": 0.56,
+       "extent_mm": 2.3
+      },
+      {
+       "shape_id": "Sc8aabf3e",
+       "column_mm": 0.94,
+       "extent_mm": 7.1
+      },
+      {
+       "shape_id": "Sd812dd02",
+       "column_mm": 0.93,
+       "extent_mm": 7.0
+      },
+      {
+       "shape_id": "Sdfb04ab0",
+       "column_mm": 0.56,
+       "extent_mm": 2.3
+      }
+     ]
+    }
+   },
+   {
+    "code": "SATIN_GAPS_TIGHT",
+    "severity": "info",
+    "message": "1 satin shape sews the gaps between its own strokes closed at 105 mm: Sb1779555 (104.3 x 39.1 mm) has 60% of the space between its strokes narrower than 1.2 mm, the pull compensation (0.4 mm a side) plus a 0.4 mm thread on Structured cap. Connected lettering and marks with spokes do this; the lever is the size. Its tightest tenth of gap clears that at about 252 mm of design width.",
+    "extra": {
+     "count": 1,
+     "judged": 5,
+     "close_mm": 1.2,
+     "pull_mm": 0.4,
+     "thread_mm": 0.4,
+     "fabric": "Structured cap",
+     "design_width_mm": 105.1,
+     "worst_shape_id": "Sb1779555",
+     "worst_tight_frac": 0.6,
+     "shapes": [
+      {
+       "shape_id": "Sb1779555",
+       "width_mm": 104.3,
+       "height_mm": 39.1,
+       "channel_mm": 83.5,
+       "tight_mm": 50.1,
+       "tight_frac": 0.6,
+       "gap_p10_mm": 0.5,
+       "gap_p50_mm": 1.0,
+       "clear_width_mm": 252
+      }
+     ]
+    }
+   },
+   {
+    "code": "TRIM_HEAVY",
+    "severity": "warn",
+    "message": "4.6 trims per 1,000 stitches \u2014 professional files run 0.1 to 4.1. Each cut is 2-3 seconds of machine time. 55 of 63 are moves between shapes, so merging or removing the smallest is the cheapest thing to try; the other 8 are inside a shape and it will not touch them.",
+    "extra": {
+     "per_1000": 4.6,
+     "trims": 63,
+     "stitches": 13577,
+     "in_shape": 8,
+     "between_shapes": 55,
+     "worst_shape_id": "Sb1779555",
+     "shapes": [
+      {
+       "shape_id": "Sb1779555",
+       "trims": 6
+      },
+      {
+       "shape_id": "S02609ac7",
+       "trims": 2
+      },
+      {
+       "shape_id": "S49973987",
+       "trims": 2
+      },
+      {
+       "shape_id": "Saa8e3300",
+       "trims": 2
+      },
+      {
+       "shape_id": "S0f61c541",
+       "trims": 1
+      },
+      {
+       "shape_id": "S107b347d",
+       "trims": 1
+      },
+      {
+       "shape_id": "S127f7bff",
+       "trims": 1
+      },
+      {
+       "shape_id": "S201d3670",
+       "trims": 1
+      },
+      {
+       "shape_id": "S2bbece32",
+       "trims": 1
+      },
+      {
+       "shape_id": "S30ada526",
+       "trims": 1
+      },
+      {
+       "shape_id": "S35176882",
+       "trims": 1
+      },
+      {
+       "shape_id": "S3521299a",
+       "trims": 1
+      },
+      {
+       "shape_id": "S38bc9c06",
+       "trims": 1
+      },
+      {
+       "shape_id": "S39c89474",
+       "trims": 1
+      },
+      {
+       "shape_id": "S3d1e1a5a",
+       "trims": 1
+      },
+      {
+       "shape_id": "S3f5ba7f7",
+       "trims": 1
+      },
+      {
+       "shape_id": "S3fbf1f50",
+       "trims": 1
+      },
+      {
+       "shape_id": "S430e0c29",
+       "trims": 1
+      },
+      {
+       "shape_id": "S45aa7cca",
+       "trims": 1
+      },
+      {
+       "shape_id": "S461c3f1b",
+       "trims": 1
+      },
+      {
+       "shape_id": "S48296ab3",
+       "trims": 1
+      },
+      {
+       "shape_id": "S4d90f3b2",
+       "trims": 1
+      },
+      {
+       "shape_id": "S59df3f59",
+       "trims": 1
+      },
+      {
+       "shape_id": "S5d97d19e",
+       "trims": 1
+      },
+      {
+       "shape_id": "S5f711bd6",
+       "trims": 1
+      },
+      {
+       "shape_id": "S606e23d6",
+       "trims": 1
+      },
+      {
+       "shape_id": "S6aa0c193",
+       "trims": 1
+      },
+      {
+       "shape_id": "S7401b4b9",
+       "trims": 1
+      },
+      {
+       "shape_id": "S77255ce9",
+       "trims": 1
+      },
+      {
+       "shape_id": "S8160a2ba",
+       "trims": 1
+      },
+      {
+       "shape_id": "S8250af01",
+       "trims": 1
+      },
+      {
+       "shape_id": "S88202dcb",
+       "trims": 1
+      },
+      {
+       "shape_id": "S98865691",
+       "trims": 1
+      },
+      {
+       "shape_id": "S9e032db5",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sac694888",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sad3ab848",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sb2771a3d",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sb9337040",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sbcb0eed5",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sbf49e7ff",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sc058d13d",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sc4d2fcb1",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sc55457dc",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sc8aabf3e",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sd262d56f",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sd2bbdf5d",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sd34aedcc",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sd75f20fc",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sd812dd02",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sdbb6b935",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sdfb04ab0",
+       "trims": 1
+      },
+      {
+       "shape_id": "Se8873d48",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sf4975be9",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sfdf8653f",
+       "trims": 1
+      },
+      {
+       "shape_id": "__edge_cap__",
+       "trims": 1
+      }
+     ]
+    }
+   }
+  ],
+  "metrics": {
+   "thread_match_checked": false,
+   "thread_worst_delta_e": null,
+   "legibility_checked": false,
+   "legibility": null,
+   "legibility_clusters": null,
+   "legibility_readable": null,
+   "legibility_worst": null,
+   "ground_span_frac": null,
+   "ground_delta_e": null,
+   "ground_area_frac": null,
+   "input_px_per_mm": null,
+   "subject_bg_delta_l": null,
+   "satin_shapes": 44,
+   "satin_gaps_judged": 5,
+   "satin_gaps_tight_shapes": 1,
+   "satin_gaps_tight_worst_frac": 0.6,
+   "satin_short_fraction": 0.073,
+   "satin_steps": 9136,
+   "trims_per_1000": 4.6,
+   "fill_axis_concentration": 0.992,
+   "fill_advance_mm": null,
+   "satin_advance_mm": 0.4,
+   "coverage_p50": 1.42,
+   "coverage_p95": 4.01,
+   "coverage_max": 18.34,
+   "coverage_area_mm2": 3422.0,
+   "coverage_over_warn_mm2": 0.0,
+   "coverage_over_block_mm2": 0.0,
+   "uncovered_checked": false,
+   "uncovered_worst_mm2": null,
+   "uncovered_total_mm2": null,
+   "uncovered_wanted_mm2": null,
+   "link_segments": 0,
+   "link_thread_mm": 0.0,
+   "link_uncovered_mm": 0.0,
+   "link_uncovered_max_mm": 0.0,
+   "contour_starved_shapes": 0,
+   "same_hole_fraction": 0.08,
+   "faces_detected": 0,
+   "class_override_detected_class": null,
+   "color_changes": 2,
+   "stitch_count": 13577,
+   "tiny_steps": 466,
+   "tiny_step_fraction": 0.036,
+   "edge_wobble_satin_p95_mm": 0.2151,
+   "edge_wobble_satin_std_mm": 0.0987,
+   "edge_wobble_satin_max_mm": 0.9605,
+   "edge_wobble_border_p95_mm": 0.1627,
+   "edge_wobble_border_std_mm": 0.0752,
+   "edge_wobble_border_max_mm": 0.3316,
+   "edge_wobble_fill_p95_mm": 0.2809,
+   "edge_wobble_fill_std_mm": 0.1991,
+   "edge_wobble_fill_max_mm": 0.5637,
+   "edge_wobble_line_p95_mm": 0.0154,
+   "edge_wobble_line_std_mm": 0.0103,
+   "edge_wobble_line_max_mm": 0.0994,
+   "curve_roughness_deg": 7.2277,
+   "curve_turn_gini": 0.7366,
+   "curve_vertices": 5482,
+   "curve_corner_vertices": 4452,
+   "curve_traces": 233,
+   "raw_score": 76
+  }
+ },
+ "pro": {
+  "file": "mf4b logo hat.PES",
+  "stitches": 17568,
+  "trims": 46,
+  "colour_changes": 4,
+  "thread_colours": 5,
+  "width_mm": 104.9,
+  "height_mm": 40.2
+ }
+}

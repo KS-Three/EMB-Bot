@@ -49,13 +49,13 @@ def _kinds(runs, shape_id="Sblob"):
     return [r.kind for r in runs if r.shape_id == shape_id]
 
 
-def test_flag_default_is_off():
-    assert PipelineConfig().compact_solids_satin is False
+def test_flag_default_is_on_since_2026_10_23():
+    assert PipelineConfig().compact_solids_satin is True
 
 
 def test_off_a_3mm_hexagon_fills_and_the_edge_cap_rings_it():
     """The defect as it ships: tatami rows, then a bean cap round the edge."""
-    runs, _w = _plan(_hexagon(3.4))
+    runs, _w = _plan(_hexagon(3.4), compact_solids_satin=False)
     assert stitches.FILL in _kinds(runs)
     assert stitches.SATIN not in _kinds(runs)
     cap = [r for r in runs if r.shape_id == "__edge_cap__"]
@@ -121,8 +121,8 @@ def test_on_lettering_is_left_alone():
     # lettering; off, the tag stands and this rule must still step aside
     cfg_on = PipelineConfig(underlay=False, compact_solids_satin=True,
                             lettering_columns=False, lettering_columns_skip_blobs=False)
-    cfg_off = PipelineConfig(underlay=False, lettering_columns=False,
-                             lettering_columns_skip_blobs=False)
+    cfg_off = PipelineConfig(underlay=False, compact_solids_satin=False,
+                             lettering_columns=False, lettering_columns_skip_blobs=False)
     on, _ = sequence(planned, fabric_for_garment("hat_front"), cfg_on)
     off, _ = sequence(planned, fabric_for_garment("hat_front"), cfg_off)
     on_pts = [r.points for b in on for r in b.runs]
@@ -130,17 +130,22 @@ def test_on_lettering_is_left_alone():
     assert on_pts == off_pts
 
 
-def test_off_is_byte_identical_on_a_mixed_fixture():
-    """OFF is the shipped engine: a hexagon and a bar plan the same points
-    with the flag absent and with it explicitly False."""
+def test_default_is_on_and_false_is_the_off_arm_on_a_mixed_fixture():
+    """ON is the shipped engine since 2026-10-23: a hexagon and a bar plan
+    the same points with the flag absent and with it explicitly True; the
+    bar (no blob) plans the same under False too."""
     for poly in (_hexagon(3.4), Polygon([(0, 0), (12, 0), (12, 2), (0, 2)])):
         a, _ = _plan(poly)
-        b, _ = _plan(poly, compact_solids_satin=False)
+        b, _ = _plan(poly, compact_solids_satin=True)
         assert [r.points for r in a] == [r.points for r in b]
+    bar = Polygon([(0, 0), (12, 0), (12, 2), (0, 2)])
+    a, _ = _plan(bar)
+    b, _ = _plan(bar, compact_solids_satin=False)
+    assert [r.points for r in a] == [r.points for r in b]
 
 
-def test_the_flag_is_built_off_so_it_is_not_in_the_pre_flip_or_flagcost_tables():
+def test_the_flag_is_flipped_so_it_is_in_the_pre_flip_and_flagcost_tables():
     from tests.conftest import PRE_FLIP
     from tools.pro_parity.flagcost import FLAGS
-    assert "compact_solids_satin" not in PRE_FLIP
-    assert "compact_solids_satin" not in FLAGS
+    assert PRE_FLIP["compact_solids_satin"] is False
+    assert FLAGS["compact_solids_satin"] is False

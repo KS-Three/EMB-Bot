@@ -85,8 +85,9 @@ def _cap(regions) -> float:
     return float(np.median([r.polygon.bounds[3] - r.polygon.bounds[1] for r in _glyphs(regions)]))
 
 
-def test_off_is_the_default_and_nothing_is_asked_for_nothing():
-    assert PipelineConfig().small_text_cap_mm is None
+def test_the_default_is_the_pros_4mm_since_2026_10_23_and_nothing_is_asked_for_nothing():
+    assert PipelineConfig().small_text_cap_mm == 4.0
+    assert PipelineConfig(small_text_cap_mm=None).small_text_cap_mm is None
     regions, p = _scene()
     _tag(regions, {"Sg0", "Sg1", "Sg2", "Sg3"})
     before = [(r.shape_id, r.polygon.wkb, dict(r.meta)) for r in regions]
@@ -183,7 +184,7 @@ def test_the_flag_runs_end_to_end_and_none_never_calls_the_pass(monkeypatch):
     real = small_text.enlarge_small_text
     monkeypatch.setattr(small_text, "enlarge_small_text", own_thread_only(
         lambda *a, **k: (calls.append(k.get("cap_mm")), real(*a, **k))[1], real))
-    _, plan_off = digitize(fixture, PipelineConfig(target_width_mm=80.0))
+    _, plan_off = digitize(fixture, PipelineConfig(target_width_mm=80.0, small_text_cap_mm=None))
     assert calls == [], "None is byte-identical because nothing calls the pass"
     _, plan_on = digitize(fixture, PipelineConfig(target_width_mm=80.0, small_text_cap_mm=3.7))
     assert calls == [3.7]
@@ -575,8 +576,9 @@ def _width(regions) -> float:
     return max(r.polygon.bounds[2] for r in gs) - min(r.polygon.bounds[0] for r in gs)
 
 
-def test_condensed_growth_is_off_by_default_and_none_is_uniform_byte_for_byte():
-    assert PipelineConfig().small_text_cap_max_width_scale is None
+def test_condensed_growth_is_1_05_by_default_since_2026_10_23_and_none_is_uniform_byte_for_byte():
+    assert PipelineConfig().small_text_cap_max_width_scale == 1.05
+    assert PipelineConfig(small_text_cap_max_width_scale=None).small_text_cap_max_width_scale is None
     a, pa = _scene()
     b, pb = _scene()
     _tag(a, {"Sg0", "Sg1", "Sg2", "Sg3"})

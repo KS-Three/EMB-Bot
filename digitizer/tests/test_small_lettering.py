@@ -171,8 +171,13 @@ def test_stage_7_reports_hairline_strokes_sewn_as_runs():
 
 
 def test_no_underlay_under_a_letter_under_the_5_mm_rung_and_underlay_over_it():
+    # `satin_underlay_short_columns=False`: since 2026-10-23 (Kent's flip) the
+    # rung under 5 mm gets the pro's centre run by default; the ladder's two
+    # rungs are what this pins, so the flag is off here and the default is
+    # asserted at the end.
     result, plan = digitize(_two_bars_image(), PipelineConfig(target_width_mm=80.0,
-                                                              garment_id="left_chest"))
+                                                              garment_id="left_chest",
+                                                              satin_underlay_short_columns=False))
     shapes = _shapes_left_to_right(result)
     assert len(shapes) == 3, [s.shape_id for s in shapes]
     tall, short = shapes[1], shapes[2]
@@ -189,6 +194,13 @@ def test_no_underlay_under_a_letter_under_the_5_mm_rung_and_underlay_over_it():
     assert kinds[short.shape_id].get(stitches.SATIN, 0) >= 1, kinds
     assert kinds[tall.shape_id].get(stitches.UNDERLAY, 0) >= 1, "the 13.7 mm bar keeps its centre run"
     assert kinds[short.shape_id].get(stitches.UNDERLAY, 0) == 0, "the 3.9 mm bar sews bare"
+    # and the default since 2026-10-23: the pro's centre run under the short bar too
+    _r2, plan2 = digitize(_two_bars_image(), PipelineConfig(target_width_mm=80.0, garment_id="left_chest"))
+    short_default = {}
+    for _b, run in plan2.iter_runs():
+        if run.shape_id == short.shape_id:
+            short_default[run.kind] = short_default.get(run.kind, 0) + 1
+    assert short_default.get(stitches.UNDERLAY, 0) >= 1, short_default
 
 
 def test_the_rung_is_the_browser_engine_s_number():

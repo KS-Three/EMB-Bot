@@ -61,8 +61,9 @@ def _drone_letters():
     return out
 
 
-def test_flag_is_off_by_default():
-    assert PipelineConfig().lettering_columns_corner_fold is False
+def test_flag_is_on_by_default():
+    # Kent 2026-10-23 ("add to flip-two"), by the pro's fold count; False is the off arm
+    assert PipelineConfig().lettering_columns_corner_fold is True
 
 
 def test_off_never_reaches_the_new_code(monkeypatch):

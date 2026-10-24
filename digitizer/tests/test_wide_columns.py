@@ -45,7 +45,7 @@ def test_the_ceiling_is_one_number_and_the_flag_moves_it():
 def _apex_crossings(max_width_mm: float, fold_guard: bool) -> int:
     """`Sf5200f3f` forced through `satin_shape` exactly as
     `test_satin_crosses_do_not_self_overlap_across_a_wide_junction` does."""
-    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", border_by_size=False)
     result = run_stages(TESTDATA / "logo_alpha.png", c)
     region = next(r for r in result.regions if r.shape_id == "Sf5200f3f")
     runs, report = satin_shape(region.polygon, region.shape_id,
@@ -207,7 +207,7 @@ def test_a_six_millimetre_bar_sews_satin_only_on_the_flag(tmp_path):
     for flag in (False, True):
         # `target_width_mm` is the ARTWORK's width: the bar is the artwork,
         # so 40 mm keeps it 40 x 6.0 (60 would scale it to 60 x 9.0)
-        cfg = PipelineConfig(target_width_mm=40.0, wide_columns=flag)
+        cfg = PipelineConfig(target_width_mm=40.0, wide_columns=flag, border_by_size=False)
         result, plan = digitize(art, cfg)
         bar = max(result.regions, key=lambda r: r.area_mm2)
         ks = {}
