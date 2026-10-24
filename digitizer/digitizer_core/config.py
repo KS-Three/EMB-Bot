@@ -1566,6 +1566,17 @@ class PipelineConfig:
     sew_enclosed_white: bool = False
     sew_enclosed_counters: bool = False
     sew_enclosed_rgb: tuple[int, int, int] | None = None
+    # The keyline band (`stage6_border.keyline_runs`, built OFF 2026-10-23):
+    # read only with `sew_enclosed_white`. ON, an enclosed field it sews that
+    # is a KEYLINE -- a band with holes, at least `machine.KEYLINE_REACH_FRAC`
+    # of it within `machine.KEYLINE_WIDTH_MM` of a hole (MFab's white round
+    # its letters) -- sews as the pro's: one satin loop round each letter,
+    # rail on the letter's edge, crosses 2.1 mm out across the band and on
+    # under the thread sewn after it, the rest filled under. Instead of the
+    # satin tier's skeleton, which broke MFab's band into 253 columns. Layout
+    # (ruling 2026-10-22: judged in the preview). OFF is the engine as it
+    # was, byte for byte.
+    enclosed_white_keyline: bool = False
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
@@ -2733,6 +2744,55 @@ class PipelineConfig:
     # resize keeps it (ruling 12). A physical constant (ROADMAP gate 1):
     # Kent flips after a sew-out. Tests: `tests/test_pull_comp_by_stroke.py`.
     pull_comp_by_stroke: bool = False
+    # Under `lettering_columns`, ONE satin column is folded round an
+    # L-shaped corner -- an E's arm meeting its stem, an L's foot, a T's bar
+    # end into its serif, a 7's elbow -- the way the professional's files
+    # sew every such corner (2026-10-23, built OFF; `outline_cut._fold_corners`).
+    # The cut takes a lone concave corner with a convex apex across it as a
+    # junction and cuts there (a "mitre" to the apex, an "ext" along the
+    # longer edge, an E's "slot" line), so the two strokes sew as two
+    # columns butted at the corner: over the 38 letters of Fremont HOTEL
+    # FREMONT, Drone PRECISION, Proseal PROSEAL and MFab AND WELDING ours
+    # read 156 columns / 242 butts / 75 gaps against the pro's 134 / 195 /
+    # 54 (`docs/lettering-5-10mm-2026-10-23.md`). His needle paths (all four
+    # DSTs, 57 corners read 2026-10-23) keep one column through the corner:
+    # the crosses pivot on the inside corner, their outer ends walk the
+    # outline round the apex at the satin pitch, and the next stroke's
+    # crosses carry on -- no cut, no butt, no travel; he cuts only where two
+    # concave corners face each other (a T junction, a slab serif's root).
+    # ON, after the cut: at every lone concave corner of the letter whose
+    # turn is `outline_cut.FOLD_TURN_MIN_DEG`..`FOLD_TURN_MAX_DEG`, that is
+    # not one of a through pair, and where exactly two columns of like
+    # width (within `FOLD_WIDTH_RATIO`) meet, both columns lose the crosses
+    # inside the corner square and are joined by crosses from the inside
+    # corner to the outline round the apex, one per pitch (kind "folded").
+    # The legs' own crosses, and so the sewn width, are untouched; the
+    # engine's short-stitch guard thins the pile on the inside corner as it
+    # does on an S's curl. Layout, judged in the preview (Kent, 2026-10-22),
+    # so ON-eligible from renders. False is the pre-flag cut, byte for byte.
+    # Tests: `tests/test_column_corner_fold.py`.
+    lettering_columns_corner_fold: bool = False
+    # Under `lettering_columns`, the INSIDE of every pivot -- an L fold's
+    # corner (`lettering_columns_corner_fold`), an S's curl, a bowl -- is
+    # sewn the way the professional's files sew it (2026-10-23, built OFF;
+    # `columns._inside_stagger`, in place of `_short_stitch_guard`). Read
+    # with one rule on his hat DSTs and ours (Fremont, Drone, MFab, Proseal,
+    # Becker; `tools/inside_stagger.py`): his full-length inner ends walk
+    # ~0.3 mm per pair along the inner edge and almost never share a hole
+    # (2-5 re-entries per band), and about one cross in three is shortened
+    # by ~20% of its length. The guard shortens every other crowded cross
+    # by 35% (capped 0.6 mm) and leaves the full ones in one hole (16-79
+    # re-entries per band, 28-56% of the long steps under 0.1 mm). ON: a
+    # crowded penetration (under `SATIN_SHORT_STITCH_AT_MM` from the one
+    # before it on its rail) is pulled `columns.STAGGER_SHORT_FRAC` (20%) of
+    # its cross, never two in a row (two in five); where a rail's ends pile
+    # into one hole the full-length ones are spaced along the rail's course
+    # round the pile, `STAGGER_WALK_MM` apart where the corner has room
+    # (`columns._inside_stagger`). Layout, judged
+    # in the preview (Kent, 2026-10-22), so ON-eligible from renders and
+    # numbers. False is the guard, byte for byte.
+    # Tests: `tests/test_column_inside_stagger.py`.
+    lettering_columns_inside_stagger: bool = False
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
@@ -2995,6 +3055,22 @@ class PipelineConfig:
     # 0.32. Only the measurement moves; no bound changes. False: the door as
     # it was, byte for byte (`PRE_FLIP`). Tests: `tests/test_textcluster.py`.
     text_cluster_counters_as_drawn: bool = True
+    # A wide letter never reaches the Column lane: the text tagger's letter
+    # door refuses anything wider than `textcluster.ASPECT_RATIO_MAX` 1.4
+    # times its height. MFab's W of WELDING at 104.9 mm hits it twice: its
+    # right vertex touches the E's foot through the keyline, so W and E trace
+    # as ONE region (17.5 x 6.9 mm, aspect 2.55), and the W alone, with its
+    # long lead-in arm, is still 1.58. Under the photo path the A and N of
+    # AND touch the same way, which leaves the D short of a line of three and the
+    # whole word untagged. ON (2026-10-23, built OFF): such a region beside
+    # a line it could join is cut at every neck under a quarter of its own
+    # stroke (`textcluster._neck_split`), the pieces replacing it only when
+    # every one is tagged; and a glyph up to `WIDE_LETTER_ASPECT_MAX` 1.8 is
+    # adopted by a line it links to (`_adopt_wide`), never making one.
+    # Segmentation and tagging, not fabric: layout, judged in the preview.
+    # False: neither is called, byte for byte. Tests:
+    # `tests/test_wide_letters.py`.
+    text_cluster_wide_letters: bool = False
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
