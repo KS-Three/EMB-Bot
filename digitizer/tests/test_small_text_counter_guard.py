@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from digitizer_core import PipelineConfig, beanletters, digitize, small_text
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.config import (SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM, counter_floor_mm,
                                    true_size_min_counter)
 from digitizer_core.ink_path import MemberInk
@@ -248,6 +249,8 @@ MD5 = {1.55: {"off": "dbb6380a91", "unguarded": "db84d85ef4"},
 def _md5(cap, **kw):
     from tools import small_print
     ref = json.loads((TESTDATA / "small_print_synthetic_ref.json").read_text())
+    # the md5s were pinned before the 2026-10-23 flips; the guard is priced without them
+    kw = {**FLIP_2026_10_23, **kw}
     _r, plan = digitize(small_print.load("synthetic"),
                         PipelineConfig(target_width_mm=round(cap / ref["cap"], 2), **kw))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]

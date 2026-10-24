@@ -60,6 +60,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from digitizer_core import PipelineConfig, machine, stitchviz  # noqa: E402
+from tools.flip_eight_proof import BEFORE as _FLIP_2026_10_23  # the card was cut before the 2026-10-23 flips
 from digitizer_core.adapter import plan_to_design  # noqa: E402
 from digitizer_core.export import plan_to_pattern  # noqa: E402
 from digitizer_core.pipeline import digitize  # noqa: E402
@@ -242,7 +243,8 @@ def block_F3(c: CardV3, x0: float, y0: float, report: list) -> None:
     bottom = top
     for k, (arm, flags) in enumerate(F3_ARMS, start=1):
         cfg = PipelineConfig(target_width_mm=ink_w * mm_per_px, forced_class="flat", thread_wt=c.wt,
-                             garment_id=GARMENT, small_text_true_size=False, **flags)  # pre-flip (2026-10-14), as sewn
+                             garment_id=GARMENT, small_text_true_size=False,
+                             **{**_FLIP_2026_10_23, **flags})  # pre-flip (2026-10-14 and 2026-10-23), as sewn
         _res, plan = digitize(img, cfg)
         runs = [r for _b, r in plan.iter_runs()]
         box = place_runs(c, runs, x, top, "F3", arm)

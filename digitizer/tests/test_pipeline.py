@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 from digitizer_core import PipelineConfig, run_stages
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.regions import match_shape_ids
 
 from .conftest import TESTDATA, cfg, requires_tesseract
@@ -283,12 +284,14 @@ def test_full_pipeline_regularization_reduces_stroke_width_variance_on_benchmark
 
     with patch("digitizer_core.pipeline.regularize_text_clusters",
                lambda regions, p, **kwargs: None):
+        # the small-text set (ON 2026-10-23) re-sets this cluster's words; the
+        # regularizer is priced on the engine before it (conftest.FLIP_2026_10_23)
         before_result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
-                                    cfg(target_width_mm=90.0))
+                                    cfg(target_width_mm=90.0, **FLIP_2026_10_23))
     with patch("digitizer_core.textcluster._ocr_regularization_hurts_legibility",
                return_value=False):
         after_result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
-                                   cfg(target_width_mm=90.0))
+                                   cfg(target_width_mm=90.0, **FLIP_2026_10_23))
 
     before = _biggest_cluster_strokes(before_result)
     after = _biggest_cluster_strokes(after_result)

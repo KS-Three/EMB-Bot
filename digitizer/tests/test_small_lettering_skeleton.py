@@ -364,9 +364,9 @@ def test_stage7_leaves_an_untagged_small_shape_on_the_outline(script_result):
 
 # The flat-lane goldens' stitch streams, as `test_small_print.py` pins them.
 GOLDEN_MD5 = {
-    "logo_alpha.png": "50b666027292342f490cb50758a7fcde",
-    "logo_whitebg.png": "e1e001f4b23de052d9102a8acbce26d9",
-    "ribbon_curve.png": "f31c29f2d98d63ce919d762beb6da58a",
+    "logo_alpha.png": "2a707333635907ab6e355112bab1b5f3",
+    "logo_whitebg.png": "2c169b359b7bd05e901521a27c7b2083",
+    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
 }
 
 

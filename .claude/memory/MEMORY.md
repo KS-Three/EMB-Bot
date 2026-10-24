@@ -76,14 +76,14 @@ checks). Near the ceiling, move the OLDEST lines whole to the archive, same orde
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
 - [Card v4 sew-out: pro raises small text](card-v4-sewout-letter-size-2026-10-20.md) — pro lifts small words to ~4 mm and satins them; ours traces art size; measure by colour
 - [Session ended mid-suite](session-ended-mid-suite-2026-10-20.md) — a ruled flip sat uncommitted in a lane behind a hung pytest; sweep lanes' TRACKED dirt and the newest session's last turn
-- [Small bold columns](small-bold-columns-2026-10-21.md) — `lettering_columns_small_bold` OFF: 4 mm letters at 0.85 mm satin; counters closed UPSTREAM by growth
+- [Small bold columns](small-bold-columns-2026-10-21.md) — `lettering_columns_small_bold` ON 10-23: 4 mm letters at the pro's 0.85 mm satin, no fans
 - [Pro rules across all jobs](pro-rules-across-jobs-2026-10-21.md) — small text raised to ~4 mm on every job; beanie knockdown 5/5; white interiors sewn; trims from DST, never PES
 - [Sew white areas](sew-white-areas-2026-10-21.md) — R11 built OFF as a Studio option; counter = untagged white in a text-cluster letter; Machine field doubles trims (stage 5)
 - [Beanie knockdown ON](beanie-knockdown-2026-10-21.md) — Kent flipped it unsewn: garment-coloured fill under design
-- [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
-- [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` OFF (hat/LC/beanie); MFab/Becker "BARE" fills were SATIN the tool misread — list run kinds first
-- [Small text re-set](small-text-reset-2026-10-21.md) — OFF: columns were already the pro's, SPACING was wrong; later stages undid the layout five ways; 5/S bays still close
-- [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean edge cap + run tier on small shapes; the pro fills bubbles bare
+- [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` ON 10-23
+- [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` (hat/LC/beanie) ON 10-23; MFab/Becker "BARE" fills were SATIN misread
+- [Small text re-set](small-text-reset-2026-10-21.md) — columns were the pro's, SPACING was wrong; later stages undid the layout five ways; set ON 10-23
+- [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean EDGE CAP round a 2-4 mm hex sent to fill; `compact_solids_satin` ON 10-23
 - [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out
 - [Border census](border-census-2026-10-23.md) — small rings = edge cap + run tier; pro borders by SIZE (>= 4 mm)
 - [Border by size](border-by-size-2026-10-23.md) — `border_by_size` OFF: at 6 mm+ the separator is STROKE vs satin ceiling; letters are the population; fills a coin flip
@@ -92,7 +92,7 @@ checks). Near the ceiling, move the OLDEST lines whole to the archive, same orde
 - [Narrow columns like the pro](narrow-columns-2026-10-23.md) — small_bold: serifs absorbed into the stroke, chord-read junctions, no chamfer mitre; 74→55 columns; `column_harness.py`
 - [5-10 mm lettering band](lettering-5-10mm-band-2026-10-23.md) — gap is corners (pro folds, we butt); Drone O sewn SHUT by a split alpha counter; `enclosed_alpha_hole_parts` OFF
 - [10 mm and up lettering band](lettering-10mm-up-band-2026-10-23.md) — only MARINE compares (white faces unsewn); the pro crosses diagonals like stems; `lettering_columns_text_lean` OFF
-- [Short column underlay](short-column-underlay-2026-10-22.md) — `satin_underlay_short_columns` OFF: pro centre-walks 83-97% of columns at EVERY width; no 3.5 mm pitch; zigzag unsettled
+- [Short column underlay](short-column-underlay-2026-10-22.md) — `satin_underlay_short_columns` ON 10-23: pro centre-walks 83-97% of columns at EVERY width
 - [Opus team architecture](../../docs/superpowers/plans/2026-10-23-opus-team-architecture.md) — the plan a fresh director runs from: method, state, ranked queue L1-L10 / I1-I6, Kent's open decisions, brief template, traps
 - [Corner folds in the Column lane](column-corner-folds-2026-10-23.md) — pro FOLDS one column round every L corner (57 read), cuts only T junctions; `lettering_columns_corner_fold` OFF
 - [Index split into live + archive](memory-index-archive-split-2026-10-23.md) — pre-09-15 lines in MEMORY-archive.md (not auto-loaded); new entries go at the BOTTOM, one line per PR
@@ -101,5 +101,5 @@ checks). Near the ceiling, move the OLDEST lines whole to the archive, same orde
 - [Fill turn slant](fill-turn-slant-2026-10-21.md) — `fill_turn_slant`: turns 0.7 mm along the row; ON 10-23
 - [Cut every jump](cut-every-jump-2026-10-21.md) — `cut_every_jump` HELD OFF: trims 434 -> 674 (pro 246); bury first
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off`: pro locks no run start (1 of 68); ON 10-23
-- [Flip eight 2026-10-23](flip-eight-2026-10-23.md) — Kent: "flip the eight ON, hold two" + small_bold; judged by NUMBERS vs the pro; `FLIP_2026_10_23` pins the OFF arm
+- [Flip eight 2026-10-23](flip-eight-2026-10-23.md) — Kent: "flip the eight ON, hold two" + small_bold; judged by NUMBERS vs the pro where the eye can't tell; `FLIP_2026_10_23`/`TRIO_OFF` pin the old engine
 - [Flip two](flip-two-2026-10-23.md) — border_by_size + enclosed_alpha_hole_parts + corner_fold ON (Kent 10-23); Becker untouched; local goldens red on Windows with flags OFF too

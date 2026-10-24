@@ -28,6 +28,7 @@ import pytest
 from shapely.geometry import Point, Polygon
 
 from digitizer_core import PipelineConfig, digitize, machine
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.detail_spokes import MIN_TIPS, TIP_DEPTH, find_tips, spoke_runs
 from digitizer_core.regions import Region
 from digitizer_core.stage3_segment import RegionMask, resolve_small_regions
@@ -458,7 +459,8 @@ def _host_cpu() -> str:
 # longer stitch re-stations the tagline's bean letters (14,824 -> 14,749 at
 # 80 mm), which is not what this pin is about. The pin keeps the OFF md5
 # that every host was proven against, rather than re-capturing it here.
-_BEAN_PIN = {"bean_letter_straight_mm": None}
+# ...and the 2026-10-23 flips: the Fremont md5 was pinned without them
+_BEAN_PIN = {"bean_letter_straight_mm": None, **FLIP_2026_10_23}
 
 
 @pytest.fixture(scope="module")
@@ -544,9 +546,9 @@ def test_fremont_80_on_sews_the_star_white_after_the_black(fremont_on, fremont_o
 # --- OFF is byte-identical on the flat goldens ----------------------------------------
 
 GOLDEN_MD5 = {
-    "logo_alpha.png": "50b666027292342f490cb50758a7fcde",
-    "logo_whitebg.png": "e1e001f4b23de052d9102a8acbce26d9",
-    "ribbon_curve.png": "f31c29f2d98d63ce919d762beb6da58a",
+    "logo_alpha.png": "2a707333635907ab6e355112bab1b5f3",
+    "logo_whitebg.png": "2c169b359b7bd05e901521a27c7b2083",
+    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
 }
 
 

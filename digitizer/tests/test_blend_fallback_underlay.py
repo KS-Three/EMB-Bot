@@ -41,10 +41,12 @@ def _noise_fallback() -> tuple[Region, SourcePixels]:
 
 
 def _plain(poly, shape_id, style):
+    # the fallback contract is "exactly what stitch_shape sews under the same
+    # config", so the plain call carries the engine's fill-turn default too
     return stitch_shape(
         poly, shape_id, angle_deg=None, row_mm=machine.FILL_ROW_MM,
         stitch_mm=machine.FILL_STITCH_MM, underlay_style=style,
-        trim_at_mm=machine.TRIM_AT_MM)[0]
+        trim_at_mm=machine.TRIM_AT_MM, slant_turns=PipelineConfig().fill_turn_slant)[0]
 
 
 def _kinds(runs) -> list[str]:
@@ -141,7 +143,9 @@ def test_stage7_hands_the_blend_tier_the_fabrics_fill_underlay(monkeypatch):
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
                          blend_fallback_underlay=True)
     plan, handed, fallback_ids = _blend_calls(monkeypatch, cfg)
-    assert set(handed) == {fabric_for(cfg).fill_underlay}
+    from digitizer_core.fabrics import fill_underlay_for
+    # the preset's own underlay, or the cross pass under `fill_underlay_cross` (ON since 2026-10-23)
+    assert set(handed) == {fill_underlay_for(fabric_for(cfg), cfg.fill_underlay_cross)}
     assert fallback_ids
     assert _underlay_stitches(plan, fallback_ids) > 0
 
