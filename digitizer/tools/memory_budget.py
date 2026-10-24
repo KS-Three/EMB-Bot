@@ -14,6 +14,11 @@ session that was supposed to be using them, including the DST axis fix, the
 fill-row ruling and the wide-column census.
 
     .venv/bin/python -m tools.memory_budget
+    .venv/bin/python -m tools.memory_budget --sort     # put the entries in order
+
+Entries are alphabetical by link filename (2026-10-24): a PR inserts its line
+at its sorted place, not at the bottom, so two open PRs stop colliding on the
+last line of the file.
 
 The reclaim is the HOOK text, never an entry. Every note keeps its line; the
 line just stops carrying the note's contents. A hook exists to help a session
@@ -124,8 +129,69 @@ def double_registered(text: str, archive_text: str) -> list[str]:
     return sorted(k.name for k, n in seen.items() if n > 1)
 
 
+def sort_key(rel: str) -> tuple[str, str]:
+    """Where an entry sorts: its link target's FILENAME, case-folded (the
+    directory part of the one `../../docs/` entry does not count), then the
+    whole path so two equal names still order the same way every time."""
+    return (pathlib.PurePosixPath(rel).name.lower(), rel)
+
+
+def order_problems(text: str) -> list[str]:
+    """Why the live index is not in its sorted order; empty when it is.
+
+    Entries are kept ALPHABETICAL by link filename, with the archive pointer
+    first. Every PR used to append its line at the BOTTOM, so any two open PRs
+    conflicted there; an alphabetical insert collides only when two notes
+    sort next to each other. Each message says where the line belongs.
+    """
+    rows = entries(text)
+    problems: list[str] = []
+    if rows and rows[0][1] != ARCHIVE.name:
+        problems.append(f"the archive pointer ({ARCHIVE.name}) must be the FIRST entry, "
+                        f"under the header; the first entry is {rows[0][1]!r}")
+    body = [(t, rel) for t, rel, _h, _n in rows if rel != ARCHIVE.name]
+    keys = [sort_key(rel) for _t, rel in body]
+    want = sorted(body, key=lambda r: sort_key(r[1]))
+    descent = next((i for i in range(1, len(keys)) if keys[i] < keys[i - 1]), None)
+    if descent is not None:
+        # the misplaced line is the one whose removal leaves the rest in order:
+        # the latecomer appended at the bottom, or the line dropped in too early
+        rest = keys[:descent] + keys[descent + 1:]
+        odd = descent if rest == sorted(rest) else descent - 1
+        rel = body[odd][1]
+        j = [r[1] for r in want].index(rel)
+        before = want[j - 1][1] if j else "the archive pointer"
+        after = want[j + 1][1] if j + 1 < len(want) else "the end of the file"
+        problems.append(f"{rel!r} is out of order: it goes after {before!r} and before {after!r} "
+                        f"(entries are alphabetical by link filename; `python -m tools.memory_budget "
+                        f"--sort` rewrites the file in order)")
+    return problems
+
+
+def sorted_text(text: str) -> str:
+    """`text` with its registry lines in the order `order_problems` wants:
+    the header and any other prose where they are, the archive pointer first,
+    the rest alphabetical by link filename."""
+    lines = text.splitlines()
+    idx = [i for i, ln in enumerate(lines) if ENTRY.match(ln)]
+    if not idx:
+        return text
+    pointer = [lines[i] for i in idx if ENTRY.match(lines[i]).group("rel") == ARCHIVE.name]
+    rest = sorted((lines[i] for i in idx if ENTRY.match(lines[i]).group("rel") != ARCHIVE.name),
+                  key=lambda ln: sort_key(ENTRY.match(ln).group("rel")))
+    for i, ln in zip(idx, pointer + rest):
+        lines[i] = ln
+    return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+
+
 def main(argv: list[str]) -> int:
     utf8_console()
+    if "--sort" in argv:
+        before = INDEX.read_text(encoding="utf-8")
+        after = sorted_text(before)
+        INDEX.write_text(after, encoding="utf-8", newline="\n")
+        print("MEMORY.md entries sorted" if after != before else "MEMORY.md already in order")
+        return 0
     text = INDEX.read_text(encoding="utf-8")
     n = char_count(text)
     rows = entries(text)
@@ -160,6 +226,7 @@ def main(argv: list[str]) -> int:
     print(f"broken links: {bad or 'none'}")
     print(f"unregistered notes: {orphans or 'none'}")
     print(f"indexed twice: {double_registered(text, archive_text) or 'none'}")
+    print(f"order: {order_problems(text) or 'alphabetical by link filename'}")
 
     if n > BUDGET:
         print(f"\nOVER BUDGET by {n - BUDGET:,} chars. The loader will drop "
