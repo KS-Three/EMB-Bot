@@ -29,8 +29,8 @@ from __future__ import annotations
 import pytest
 
 from tools.memory_budget import (ARCHIVE, BUDGET, INDEX, LINE_CAP, char_count,
-                                 double_registered, entries, unregistered,
-                                 unresolved)
+                                 double_registered, entries, order_problems,
+                                 sorted_text, unregistered, unresolved)
 
 
 @pytest.fixture(scope="module")
@@ -145,3 +145,36 @@ def test_the_parser_is_not_vacuous(text, archive):
     assert len(set(titles)) == len(titles), "duplicate titles in the registry"
     paths = [r for _t, r, _h, _n in both]
     assert len(set(paths)) == len(paths), "the same note registered twice"
+
+
+def test_entries_are_alphabetical_by_link_filename(text):
+    """Every PR appended its index line at the BOTTOM, so any two open PRs
+    conflicted on the same last line of this file. An entry goes at its
+    alphabetical place instead (by link filename; the archive pointer stays
+    first), which collides only when two notes sort side by side."""
+    problems = order_problems(text)
+    assert not problems, (
+        "MEMORY.md entries are not in order. Put your line at its ALPHABETICAL "
+        "place by link filename (not at the bottom), or run "
+        "`cd digitizer && .venv/bin/python -m tools.memory_budget --sort`.\n"
+        + "\n".join(problems))
+    assert sorted_text(text) == text      # the sorter and the check agree
+
+
+def test_the_order_check_says_where_a_misplaced_line_goes():
+    """The check is only worth its failure message: pin that it names the
+    neighbours, and that the archive pointer must come first."""
+    def line(name):
+        return f"- [{name}]({name}.md) — hook\n"
+    ordered = ("# idx\n\n" + f"- [a]({ARCHIVE.name}) — arc\n"
+               + line("alpha") + line("bravo") + line("delta"))
+    assert order_problems(ordered) == []
+    appended = ordered + line("charlie")          # the old habit: append at the bottom
+    msg = order_problems(appended)
+    assert len(msg) == 1 and "'charlie.md'" in msg[0]
+    assert "after 'bravo.md'" in msg[0] and "before 'delta.md'" in msg[0]
+    assert sorted_text(appended).splitlines()[-1].startswith("- [delta]")
+    assert order_problems(f"- [a](bravo.md) — x\n- [b]({ARCHIVE.name}) — y\n")   # pointer not first
+    # the one `../../docs/` entry sorts by its filename, not its directory
+    assert order_problems(ordered + "- [d](../../docs/zulu.md) — x\n") == []
+    assert order_problems("- [d](../../docs/alpha.md) — x\n" + ordered)
