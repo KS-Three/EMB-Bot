@@ -3080,6 +3080,9 @@ def sequence(
                     # a letter under 5 mm only (`_small`); off, today's call
                     **({"small_bold": True}
                        if cfg.lettering_columns_small_bold and _small else {}),
+                    # `cfg.satin_underlay_short_columns` (default OFF, 2026-10-22):
+                    # the lane's centre walk under any span that holds a stitch
+                    **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),
                     # `cfg.pull_comp_by_stroke` (default OFF, 2026-10-22): the hat,
                     # LC and beanie presets only (`fabrics.PULL_BY_STROKE_FABRICS`)
                     **({"pull_by_stroke": True}
