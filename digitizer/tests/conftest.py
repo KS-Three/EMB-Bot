@@ -358,4 +358,11 @@ PRE_FLIP["satin_rail_comp"] = False
 # "should be there to lose"), not the flag under test getting worse. The
 # test that is ABOUT the snap is `tests/test_snap_region_edges.py`.
 PRE_FLIP["snap_region_edges"] = False
+# `bean_letter_max_stroke_mm` joined the flipped set 2026-10-03 (1.0, Kent's
+# call on the labelled sitting), and is in PRE_FLIP for the reason every entry
+# above is: ON it sews small thin lettering as bean runs along its ink and
+# sews the ground through under it, which moves stitches, trims and one colour
+# change on six of the eight real logos -- so an arm that prices one OTHER
+# flag was measured without it and must not silently pick it up.
+PRE_FLIP["bean_letter_max_stroke_mm"] = None
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

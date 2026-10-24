@@ -1322,7 +1322,15 @@ class PipelineConfig:
     # without cloth -- and the flip is his, on stitch renders
     # (`tools/bean_letters.py`). At 1.0 Fremont's main wordmark goes bean at
     # 80 mm: that is the rule as ruled, and the render is where he sees it.
-    bean_letter_max_stroke_mm: float | None = None
+    #
+    # FLIPPED ON at 1.0, 2026-10-03 (Kent's call, on the labelled sitting
+    # `docs/eye-pairs-2026-10-03/`): six of eight logos move, trims 455 -> 507
+    # across the eight (gaulke 33 -> 57, drone 138 -> 156), stitches 84,475 ->
+    # 84,413. No line spares Fremont while taking bridge -- Fremont's strokes
+    # (0.67 mm) are thinner than bridge's (0.75) -- and he took the look. A
+    # tier set on the review screen still wins. None is the pre-flip engine;
+    # tests read on it hold it there (`tests/conftest.py`, PRE_FLIP).
+    bean_letter_max_stroke_mm: float | None = 1.0
     # The bold-letter junction sewn as the pro sews it (junction construction
     # plan `2026-09-19-junction-construction.md`; Kent's ruling: A + B + C as
     # one flag). A: a weld through a node is REFUSED past

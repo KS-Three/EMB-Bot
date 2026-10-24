@@ -29,8 +29,11 @@ def _cfg(**kw) -> PipelineConfig:
 
 # --- the decision ------------------------------------------------------------
 
-def test_it_is_built_off():
-    assert PipelineConfig().bean_letter_max_stroke_mm is None
+def test_it_is_on_at_one_millimetre():
+    """Built OFF 2026-10-02, flipped ON at 1.0 by Kent on the labelled
+    sitting, 2026-10-03. None is the pre-flip engine, pinned below."""
+    assert PipelineConfig().bean_letter_max_stroke_mm == 1.0
+    assert PipelineConfig(bean_letter_max_stroke_mm=None).bean_letter_max_stroke_mm is None
 
 
 def test_one_weight_decides_by_its_median_and_carries_its_fused_pairs():
@@ -66,7 +69,7 @@ def bridge():
         result = finish_generation(gen.fork(), cfg)
         return cfg, result, plan_stitches(result, cfg)
 
-    return {"off": run(), "on": run(bean_letter_max_stroke_mm=LINE), "run": run, "gen": gen}
+    return {"off": run(bean_letter_max_stroke_mm=None), "on": run(), "run": run, "gen": gen}
 
 
 def _kinds(plan, shape_id: str) -> set[str]:
