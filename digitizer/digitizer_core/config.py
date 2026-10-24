@@ -1566,6 +1566,17 @@ class PipelineConfig:
     sew_enclosed_white: bool = False
     sew_enclosed_counters: bool = False
     sew_enclosed_rgb: tuple[int, int, int] | None = None
+    # The keyline band (`stage6_border.keyline_runs`, built OFF 2026-10-23):
+    # read only with `sew_enclosed_white`. ON, an enclosed field it sews that
+    # is a KEYLINE -- a band with holes, at least `machine.KEYLINE_REACH_FRAC`
+    # of it within `machine.KEYLINE_WIDTH_MM` of a hole (MFab's white round
+    # its letters) -- sews as the pro's: one satin loop round each letter,
+    # rail on the letter's edge, crosses 2.1 mm out across the band and on
+    # under the thread sewn after it, the rest filled under. Instead of the
+    # satin tier's skeleton, which broke MFab's band into 253 columns. Layout
+    # (ruling 2026-10-22: judged in the preview). OFF is the engine as it
+    # was, byte for byte.
+    enclosed_white_keyline: bool = False
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
