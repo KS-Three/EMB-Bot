@@ -1,0 +1,119 @@
+{
+ "pro": {
+  "file": "mf4b logo lc.DST",
+  "stitches": 15786,
+  "trims": 20,
+  "colour_changes": 4,
+  "thread_colours": 0,
+  "width_mm": 96.7,
+  "height_mm": 36.9,
+  "blocks": [
+   {
+    "block": 0,
+    "stitches": 8140,
+    "ring": 1.0,
+    "holes": 0.83,
+    "silhouette": 0.88
+   },
+   {
+    "block": 1,
+    "stitches": 5353,
+    "ring": 0.2,
+    "holes": 0.58,
+    "silhouette": 0.46
+   },
+   {
+    "block": 2,
+    "stitches": 1262,
+    "ring": 0.0,
+    "holes": 0.14,
+    "silhouette": 0.1
+   },
+   {
+    "block": 3,
+    "stitches": 716,
+    "ring": 0.02,
+    "holes": 0.07,
+    "silhouette": 0.06
+   },
+   {
+    "block": 4,
+    "stitches": 291,
+    "ring": 0.0,
+    "holes": 0.03,
+    "silhouette": 0.02
+   }
+  ],
+  "registration_iou": 0.99
+ },
+ "rings": [
+  {
+   "ring": "Sd6a15334",
+   "host": "Sd6a15334",
+   "ring_mm2": 958.2,
+   "outline_mm2": 3019.9,
+   "merged": 26,
+   "inner": 84,
+   "host_is_ring": true
+  }
+ ],
+ "off": {
+  "stitches": 16542,
+  "trims": 72,
+  "colour_changes": 1,
+  "thread_colours": 0,
+  "width_mm": 96.7,
+  "height_mm": 36.7,
+  "travel_mm": 404.4,
+  "exposed_mm": 18.5,
+  "blocks": [
+   {
+    "block": 0,
+    "stitches": 8380,
+    "ring": 0.25,
+    "holes": 0.62,
+    "silhouette": 0.5
+   },
+   {
+    "block": 1,
+    "stitches": 8051,
+    "ring": 0.99,
+    "holes": 0.73,
+    "silhouette": 0.81
+   }
+  ]
+ },
+ "on": {
+  "stitches": 16658,
+  "trims": 44,
+  "colour_changes": 2,
+  "thread_colours": 0,
+  "width_mm": 96.7,
+  "height_mm": 36.8,
+  "travel_mm": 48.7,
+  "exposed_mm": 8.6,
+  "blocks": [
+   {
+    "block": 0,
+    "stitches": 8331,
+    "ring": 1.0,
+    "holes": 1.0,
+    "silhouette": 1.0
+   },
+   {
+    "block": 1,
+    "stitches": 7164,
+    "ring": 0.03,
+    "holes": 0.5,
+    "silhouette": 0.35
+   },
+   {
+    "block": 2,
+    "stitches": 1094,
+    "ring": 0.01,
+    "holes": 0.0,
+    "silhouette": 0.0
+   }
+  ]
+ }
+}

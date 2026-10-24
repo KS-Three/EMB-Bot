@@ -59,7 +59,7 @@ from shapely.ops import nearest_points, polylabel, unary_union
 
 from . import machine, stitches
 from .config import PipelineConfig
-from .fabrics import Fabric, fill_underlay_for, pull_by_stroke_for
+from .fabrics import Fabric, fill_underlay_for, pro_values_for, pull_by_stroke_for
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
 from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
@@ -948,9 +948,42 @@ def _bury_trims_under_later(blocks: list[StitchBlock]) -> int:
     counted as cover -- the cheap direction to be wrong in. The first run of
     a block is never touched: that cut is a colour change.
     """
+    seq, bury = _later_thread_burier(blocks)
+    buried = 0
+    for k in range(1, len(seq)):
+        bi, run = seq[k]
+        if not run.trim or seq[k - 1][0] != bi or not seq[k - 1][1].points or not run.points:
+            continue
+        inner = bury(k)
+        if inner is None:
+            continue
+        _sew_hop(blocks[bi].runs, run, inner)
+        buried += 1
+    return buried
+
+
+def _sew_hop(b_runs: list[StitchRun], run: StitchRun, inner) -> None:
+    """Turn the lift into `run` into needle-down travel along `inner`."""
+    at = next(i for i, r in enumerate(b_runs) if r is run)
+    if inner:
+        b_runs.insert(at, StitchRun(points=inner, kind=stitches.TRAVEL,
+                                    shape_id=run.shape_id,
+                                    shade_thread_index=run.shade_thread_index))
+    run.jump = False
+    run.trim = False
+
+
+def _later_thread_burier(blocks: list[StitchBlock]):
+    """-> (seq, bury): the flat sew order `[(block index, run)]`, and
+    `bury(k)`, the interior stitches of a needle-down route from the end of
+    `seq[k - 1]` to the start of `seq[k]` that lies wholly under thread sewn
+    at or after `k` (see `_bury_trims_under_later` for the cover rule), or
+    None when there is none. Shared by `_bury_trims_under_later` and
+    `_cut_or_bury_jumps`, so the two passes cannot disagree on what hides a
+    float. The cover is read once, from the runs as they stand now."""
     seq = [(bi, r) for bi, b in enumerate(blocks) for r in b.runs]
     if len(seq) < 2:
-        return 0
+        return seq, lambda _k: None
     half = machine.COVERAGE_THREAD_W_MM / 2.0
     lines: list[object] = []
     for k, (_bi, r) in enumerate(seq):
@@ -963,7 +996,7 @@ def _bury_trims_under_later(blocks: list[StitchBlock]) -> int:
         lines.append(LineString(pts))
     idx = [k for k, g in enumerate(lines) if g is not None]
     if not idx:
-        return 0
+        return seq, lambda _k: None
     order = np.array(idx)
     tree = shapely.STRtree([lines[k] for k in idx])
 
@@ -996,39 +1029,70 @@ def _bury_trims_under_later(blocks: list[StitchBlock]) -> int:
             ok[hit_pt[(order[hit_line] >= self.k) | at_end[hit_pt]]] = True
             return bool(ok.all())
 
-    buried = 0
-    for k in range(1, len(seq)):
-        bi, run = seq[k]
-        if not run.trim or seq[k - 1][0] != bi or not seq[k - 1][1].points or not run.points:
-            continue
-        a, b = seq[k - 1][1].points[-1], run.points[0]
+    def bury(k: int):
+        a, b = seq[k - 1][1].points[-1], seq[k][1].points[0]
         gap = math.dist(a, b)
         if gap > machine.LINK_MAX_GAP_MM:
-            continue
+            return None
         # Any buried route leaves the start's end allowance into later
         # thread, so with no later centreline that close to `a` there is no
         # route to find: most bare hops stop here, before the raster.
         reach = machine.COVERAGE_THREAD_W_MM + half + _BURY_STEP_MM
         if not (order[tree.query(Point(a), predicate="dwithin", distance=reach)] >= k).any():
-            continue
+            return None
         cover = _UnderThread(k, (a, b))
         if cover.covers(LineString([a, b])):
             route = [a, b]
         else:
             route = _bury_route(a, b, gap, k, cover, lines, idx, tree, half)
-        inner = _link_stitches(route) if route is not None else None
-        if inner is None:
+        return _link_stitches(route) if route is not None else None
+
+    return seq, bury
+
+
+def _cut_or_bury_jumps(blocks: list[StitchBlock],
+                       small_letters: set[str] | None = None) -> tuple[int, int]:
+    """Leave no needle-up move uncut. -> (sewn needle-down, cut).
+
+    `cfg.cut_every_jump` (built OFF 2026-10-21). Every jump inside a block
+    that does not cut (`jump` without `trim`: a hop shorter than
+    `trim_at_mm`, or a pass's own uncut lift) is a float on the finished
+    piece that someone snips by hand. The pro's 28 DSTs leave none: every
+    needle-up move is three or more jump records, a cut
+    (`docs/settings-vs-pro-2026-10-21.md` row 25). Each one here is first
+    offered to `_later_thread_burier` -- sewn needle-down where thread sewn
+    LATER (the rest of this shape, or anything after it) hides the whole
+    travel, never on bare fabric and never on top of finished work -- and
+    otherwise cut, with `apply_ties`' own locks on both sides of the cut.
+
+    Bury first, from the pro's own files: of his 59 non-colour cuts of
+    3 mm or less, ONE lies under thread he sews later (`tools/trim_classes.py`
+    over the 27 DSTs); the other 58 lie on bare fabric or on finished work,
+    exactly the two places this pass refuses to sew.
+
+    Runs on the finished block list (after ties, the edge cap, hairlines and
+    spoke marks), so thread counted as later is sewn later, and the ties it
+    adds are the only ones the new cuts get. The first run of a block is
+    never touched: that lift follows a colour change.
+    """
+    seq, bury = _later_thread_burier(blocks)
+    sewn = cut = 0
+    for k in range(1, len(seq)):
+        bi, run = seq[k]
+        prev = seq[k - 1][1]
+        if (not run.jump or run.trim or seq[k - 1][0] != bi
+                or not prev.points or not run.points):
             continue
-        b_runs = blocks[bi].runs
-        at = next(i for i, r in enumerate(b_runs) if r is run)
-        if inner:
-            b_runs.insert(at, StitchRun(points=inner, kind=stitches.TRAVEL,
-                                        shape_id=run.shape_id,
-                                        shade_thread_index=run.shade_thread_index))
-        run.jump = False
-        run.trim = False
-        buried += 1
-    return buried
+        inner = bury(k)
+        if inner is not None:
+            _sew_hop(blocks[bi].runs, run, inner)
+            sewn += 1
+            continue
+        run.trim = True
+        stitches.tie_in(run, small_letters)
+        stitches.tie_off(prev, small_letters)
+        cut += 1
+    return sewn, cut
 
 
 # Lock-stitch application for a finished block. Hoisted verbatim to
@@ -2339,7 +2403,11 @@ def sequence(
     # constant regardless of fabric, the one place the two engines disagreed
     # on how a fabric preset reaches density. max(0.1, ...) mirrors row_mm's
     # own floor so a pathological preset cannot collapse spacing to zero.
-    satin_spacing_mm = machine.SATIN_SPACING_MM * max(0.1, fabric.density_adjust)
+    # `cfg.pro_measured_values` (OFF): the pro's 0.37 / 0.35 mm in place of 0.40
+    # on the hat, left-chest and beanie presets; factor 1.0 otherwise.
+    pro = pro_values_for(fabric, cfg.pro_measured_values)
+    pro_satin = pro.get("satin_spacing_mm", machine.SATIN_SPACING_MM) / machine.SATIN_SPACING_MM
+    satin_spacing_mm = machine.SATIN_SPACING_MM * pro_satin * max(0.1, fabric.density_adjust)
     # Thread weight (`cfg.thread_wt`, 2026-10-12; docs/hairline-prototype-
     # 2026-10-12.md). One needle per colour, so the weight is per COLOUR
     # BLOCK: a block takes the finest weight any of its shapes names through
@@ -2364,7 +2432,7 @@ def sequence(
     def satin_spacing_for(pr: PlannedRegion) -> float:
         if not block_wt and cfg.thread_wt == machine.THREAD_WT_DEFAULT:
             return satin_spacing_mm
-        return profile_for(pr).satin_spacing_mm * max(0.1, fabric.density_adjust)
+        return profile_for(pr).satin_spacing_mm * pro_satin * max(0.1, fabric.density_adjust)
 
     sp_tree: list = []      # [STRtree, polygons], built on first use
 
@@ -2443,7 +2511,9 @@ def sequence(
     # `stage6_small_letter.text_line_members`); empty with the flag off.
     skeleton_letters = (text_line_members([p.region for p in planned])
                         if cfg.small_lettering_skeleton else set())
-    stitch_mm = cfg.fill_stitch_mm or FILL_STITCH_MM
+    stitch_mm = cfg.fill_stitch_mm or pro.get("fill_stitch_mm", FILL_STITCH_MM)
+    bean_letter_stitch_mm = cfg.bean_letter_stitch_mm or pro.get("bean_stitch_mm")
+    edge_cap_bean_pitch_mm = cfg.edge_cap_bean_pitch_mm or pro.get("bean_stitch_mm")
     # Row 14's underlay split (see _PHOTO_FILL_UNDERLAY above for the craft
     # case). Precedence is unchanged in shape, only the FALLBACK moves: an
     # explicit cfg.underlay_style still wins over the class default exactly
@@ -2813,7 +2883,7 @@ def sequence(
             if tier == "auto" and p.region.meta.get(BEAN_LETTER_KEY):
                 runs, report = bean_letter(p.region.meta[BEAN_LETTER_KEY], p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
-                                           stitch_mm=cfg.bean_letter_stitch_mm,
+                                           stitch_mm=bean_letter_stitch_mm,
                                            serif_mm=cfg.bean_letter_serif_mm,
                                            min_arm_mm=cfg.bean_letter_min_arm_mm,
                                            corner_deg=cfg.bean_letter_corner_deg,
@@ -3404,6 +3474,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="crosshatch",
                 )
@@ -3437,6 +3508,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="wave",
                 )
@@ -3463,6 +3535,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="chevron",
                 )
@@ -3487,6 +3560,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="brick",
                 )
@@ -3509,6 +3583,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     technique="fur",
                     seed=cfg.seed,
@@ -3622,6 +3697,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry,
                     density_boost=cfg.fill_density_boost,
                 )
@@ -4050,7 +4126,7 @@ def sequence(
             width_mm=cfg.border_width_mm,
             omit=cap_omit,
             walk_covered=cfg.edge_cap_walk_covered,
-            bean_stitch_mm=cfg.edge_cap_bean_pitch_mm,
+            bean_stitch_mm=edge_cap_bean_pitch_mm,
         )
         # What the gate actually saved on THIS design, measured — the number
         # whose absence let a +58.7% bill read like a +13% one. Computed only
@@ -4061,7 +4137,7 @@ def sequence(
             _gate_saving(silhouette, cap_omit, c_runs, style=cap_style,
                          entry=cursor, trim_at_mm=trim_at,
                          width_mm=cfg.border_width_mm,
-                         bean_stitch_mm=cfg.edge_cap_bean_pitch_mm)
+                         bean_stitch_mm=edge_cap_bean_pitch_mm)
             if c_runs else (0.0, 0.0))
         if c_runs:
             # The needle always lifts into a new block and the thread is
@@ -4595,4 +4671,8 @@ def sequence(
     seam_warning = _border_seam_warning(border_seams)
     if seam_warning is not None:
         warnings.append(seam_warning)
+    # `cfg.cut_every_jump` (built OFF): last, over every block, so the
+    # thread it counts as later is the thread actually sewn later.
+    if cfg.cut_every_jump:
+        _cut_or_bury_jumps(blocks, tie_kw.get("small_letters"))
     return blocks, warnings
