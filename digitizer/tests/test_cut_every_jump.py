@@ -129,7 +129,12 @@ def test_off_never_reaches_the_new_code(monkeypatch):
 
 @pytest.mark.parametrize("case,layer", [("bare", None), ("later", 1), ("earlier", 0)])
 def test_off_is_byte_identical_to_base(case, layer):
-    assert _md5(_near_bars(bridge_layer=layer)) == OFF_MD5[case]
+    import sys
+    got = _md5(_near_bars(bridge_layer=layer))
+    # the full md5 and the platform in the message: the 'earlier' case reads
+    # differently on CI's Linux runner than on Windows (2026-10-24), and a
+    # truncated diff cannot be pinned
+    assert got == OFF_MD5[case], f"{case}: {got} on {sys.platform}"
 
 
 def test_the_fixture_has_an_uncut_jump_with_the_flag_off():

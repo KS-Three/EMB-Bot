@@ -1284,8 +1284,14 @@ describe("columns: shapesToRegions", () => {
 // went ON by default (Kent): the Studio passes none of them, so this design
 // takes all three. It read 3557 stitches, a436fa9d..., before that; the
 // change is the flip alone (no column code moved).
-const RECT_STITCH_COUNT_ON_MAIN = 3624;
-const RECT_HASH_ON_MAIN = "575fa9f5f5ca079bef0412805f6a5b28bed70e5e25840b386f93d873a5831018";
+// RE-PINNED 2026-10-24 for the 2026-10-23 flip (Kent: the flip sheet's layout
+// flags ON, PR #1049). 3624 -> 4033: `crossUnderlay` +459 (the left-chest
+// preset now sews the pro's crossing pass under the fill) and `fillTurnSlant`
+// -50 (the row turns lose their sub-0.5 mm steps); `underlayShortColumns`
+// moves nothing here. With all three false the call reproduces the old pin
+// exactly (3624, 575fa9f5...), so nothing else moved.
+const RECT_STITCH_COUNT_ON_MAIN = 4033;
+const RECT_HASH_ON_MAIN = "a055c8667c919c37b4858863bfaa807e337be4289dff2457aea974b96eeedc1c";
 
 describe("columns: through the real engine", () => {
   let generateElement, garment;
