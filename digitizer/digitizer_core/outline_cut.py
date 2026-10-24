@@ -1119,6 +1119,22 @@ def _max_turn(col: Column, W: float) -> float:
     return most
 
 
+def _tangled(col: Column) -> int:
+    """`fold_cuts`: how many pairs of legs of the column's zigzag (A1 B1 A2
+    B2 ..., the path both engines lay through its stations) cross each other
+    when not adjacent -- a fan folded over itself, the knot the sewn reading
+    counts as crossed legs at a junction (`tools/lowercase_angle.py`'s
+    `junction_knots`). A column that only turns, however hard, has none;
+    the 80 mm b's stem carried round into its bowl has 3."""
+    pts = [p for a, b in col.stations for p in (a, b)]
+    legs = [LineString([pts[i], pts[i + 1]]) for i in range(len(pts) - 1)]
+    n = 0
+    for i in range(len(legs)):
+        for j in range(i + 2, len(legs)):
+            n += legs[i].crosses(legs[j])
+    return n
+
+
 def _ring_opener(pc: Polygon, cut) -> bool:
     """A cut from a ring piece's outside to its counter: alone it leaves
     the piece whole (an a's or a b's bowl still wraps its counter), two of
@@ -1237,6 +1253,7 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
             continue
         turn = max(_max_turn(c, W) for c in cols)
         score = (sum(_folded(c) for c in cols), len(cols), turn > TURN_MAX_DEG,
+                 sum(_tangled(c) for c in cols),
                  sum(_folded(c, ends=True) for c in cols),
                  -sum(len(c.stations) for c in cols if c.kind == "straight"), turn)
         if best is None or score < best[0]:
