@@ -81,6 +81,10 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     detect_photographic: true,
     // ...and a detected face takes the flat lane (Kent's ruling 2026-09-30).
     faces_route_flat: true,
+    // Ticked by default since 2026-10-24 (DEFAULT_DIGITIZE_PARAMS), with its
+    // thread: the default white.
+    sew_enclosed_white: true,
+    sew_enclosed_rgb: [255, 255, 255],
     thread_brand: "madeira-rayon",
     garment_id: "left_chest",
   });
