@@ -202,3 +202,18 @@ def test_an_alpha_hole_sews_white():
     holes = [x for x in r.regions if x.meta.get("sew_enclosed_white")]
     assert holes and all(x.meta.get("enclosed_colour_unknown") for x in holes)
     assert all(x.thread_index == WHITE_T and x.meta["stitched"] for x in holes)
+
+
+# --- the known miss (census 2026-10-23, docs/enclosed-white-like-pro-2026-10-23.md)
+
+@pytest.mark.xfail(strict=True, reason=(
+    "Tires: the loops of a connected script word are letter counters the pro "
+    "leaves open, but the text cluster tags a one-blob script word with nothing, "
+    "so the option reads them as fields and sews them white. Flips to a pass when "
+    "the tagger (or a word reader) marks the holder as lettering; then drop the mark."))
+def test_a_loop_in_an_untagged_script_word_stays_open():
+    # A 925 mm2 untagged solid with two small holes, like TIRES at 114 mm.
+    word = _reg("Sword", _box(0, 0, 50, 20), [_box(5, 5, 12, 12), _box(30, 6, 36, 13)])
+    loop1 = _reg("Sloop1", _box(5, 5, 12, 12), thread=WHITE_T, enclosed_background=True)
+    loop2 = _reg("Sloop2", _box(30, 6, 36, 13), thread=WHITE_T, enclosed_background=True)
+    assert plan_enclosed_white([word, loop1, loop2], _cfg()) == {}
