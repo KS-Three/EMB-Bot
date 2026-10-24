@@ -1889,7 +1889,7 @@ class PipelineConfig:
     # is nearest-next (no Euler walk yet), junction overlap and short
     # stitches are not built, and the renders are Kent's to judge first.
     # Off, byte-identical. Tests: `tests/test_lettering_columns.py`.
-    lettering_columns: bool = False
+    lettering_columns: bool = True
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --
@@ -1909,7 +1909,7 @@ class PipelineConfig:
     # ARI 0.99 where both old taggers read 0.65 (gaulke's and the
     # screenshot's two lines were one group in each). Off, nothing calls it
     # and every reader is byte-identical. Tests: `tests/test_words.py`.
-    lettering_words: bool = False
+    lettering_words: bool = True
     # ONE TIER PER WORD (L3 of the lettering lane, mechanism only;
     # `words.assign_word_tiers`). Needs `lettering_words`; without it there
     # are no words and nothing changes. ON, a word's tier is decided once
