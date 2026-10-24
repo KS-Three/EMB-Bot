@@ -199,12 +199,71 @@ def _snap(poly, q, r):
     return best
 
 
-def find_cuts(poly: Polygon, W: float):
+def _stem_dir(poly: Polygon):
+    """`stem_whole`: the letter's stem direction -- the direction of the
+    longest straight run of its outline (`_run_len`'s 14 deg). An N's and an
+    M's outer stem edges run the letter's full height; a diagonal's edges
+    are cut short by the stems it meets. None for a ring with no run."""
+    c = list(poly.exterior.coords)[:-1]
+    best, d = 0.0, None
+    for i in range(len(c)):
+        L = _run_len(c, i, 1)
+        if L > best:
+            q = c[(i + 1) % len(c)]
+            best, d = L, _unit((q[0] - c[i][0], q[1] - c[i][1]))
+    return d
+
+
+def _beside_stem_edge(poly: Polygon, p, stem, W: float):
+    """`stem_whole`: the direction of the nearest straight outline edge along
+    the stem direction (within `_run_len`'s 14 deg, at least 0.25 W long --
+    the dent floor of `find_cuts`) that passes within 0.35 W of the corner
+    `p` (the slot-line clearance of `slot_cuts`), or None. Becker's N reaches
+    its right inner vertex through a 1.1 mm chamfer off the stem's edge
+    (2026-10-20). The edge's OWN direction is returned, not the stem's: an
+    A's two legs both read within 14 deg of its longer leg, and a ray along
+    the wrong leg's slope left the right leg's edge and cut across it."""
+    cosmax = math.cos(math.radians(14))
+    pt = Point(p)
+    best, bd = None, 0.35 * W
+    for ring in [poly.exterior] + list(poly.interiors):
+        c = list(ring.coords)
+        for a, b in zip(c[:-1], c[1:]):
+            L = math.dist(a, b)
+            if L < 0.25 * W:
+                continue
+            u = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
+            if abs(u[0] * stem[0] + u[1] * stem[1]) < cosmax:
+                continue
+            dd = LineString([a, b]).distance(pt)
+            if dd <= bd:
+                best, bd = u, dd
+    return best
+
+
+def _junction_reflex(poly: Polygon, W: float):
+    """The concave corners `find_cuts` treats as junctions (clustered, dents dropped)."""
+    reflex, _convex = corners(poly, W)
+    reflex = _cluster(reflex, 0.25 * W)
+    return [r for r in reflex if max(r["len_in"], r["len_out"]) >= 0.25 * W]
+
+
+def find_cuts(poly: Polygon, W: float, stem_whole: bool = False):
     """-> (cuts, reflex, convex). A cut is (p, q, rule, length) with rule in
     "through" (two concave corners joined along an edge at both ends: a
     stroke butting a through-stroke), "mitre" (a lone concave corner to the
-    convex apex across it) or "ext" (the longer edge run on through)."""
+    convex apex across it) or "ext" (the longer edge run on through).
+    `stem_whole` (`cfg.lettering_columns_stem_whole`): at an `ext` corner
+    where one edge runs along the letter's stem direction (`_stem_dir`), that
+    edge is continued first, so the stem stays one full-height column and the
+    stroke that meets it ends on its edge. Off, the longer edge run goes on
+    through -- at an N's inner vertex that is the DIAGONAL's edge (its run is
+    longer because the stem's inner edge is cut short by the diagonal), which
+    slices the stem obliquely and gives its foot to the diagonal: the stem's
+    end becomes a 56-deg cut that `_fan_ends` sweeps as a fan from the inner
+    vertex (Becker MARINE's N at 95.7 and 101.9 mm, 2026-10-20)."""
     reflex, convex = corners(poly, W)
+    stem = _stem_dir(poly) if stem_whole else None
     reflex = _cluster(reflex, 0.25 * W)
     reflex = [r for r in reflex if max(r["len_in"], r["len_out"]) >= 0.25 * W]   # a dent is not a junction
 
@@ -261,14 +320,27 @@ def find_cuts(poly: Polygon, W: float):
             cuts.append((p, mitres[0][1], "mitre", mitres[0][0], 1))
             continue
         done = False
-        for e, le in sorted(ext(r), key=lambda t: -t[1]):
+        cands = sorted(ext(r), key=lambda t: -t[1])
+        along = None
+        edge = _beside_stem_edge(poly, p, stem, W) if stem is not None else None
+        if edge is not None:
+            # the stem's inner edge, carried on from this corner into the
+            # stroke that meets it (a traced edge reaches the corner through
+            # a short chamfer, so the edge is found near p, not at it)
+            d = edge if dot(edge, r["bis"]) > 0 else neg(edge)
+            along = (d, 0.0)
+            cands = [along] + cands
+        for t in cands:
+            e, le = t
             q = _ray_hit(poly, p, e, 3.2 * W, r["bis"])
             if q is None:
                 continue
             L = math.hypot(q[0] - p[0], q[1] - p[1])
             if L < 0.25 * W:
                 continue        # ran straight into a whisker of the trace
-            if L <= 1.5 * le:
+            # the stem's own edge runs on through whatever it crosses, up to
+            # the ray's reach (the stroke it severs is the one that ends)
+            if L <= 1.5 * le or t is along:
                 q = _snap(poly, q, 0.15 * W)
                 cuts.append((p, q, "ext", math.hypot(q[0] - p[0], q[1] - p[1]), 1))
                 done = True
@@ -306,7 +378,7 @@ def _depth_peaks(depth, W: float) -> list[int]:
     return peaks
 
 
-def slot_cuts(poly: Polygon, W: float):
+def slot_cuts(poly: Polygon, W: float, stem_whole: bool = False):
     """-> (cuts, stem lines). The stem of an E or an F, read off the slots between
     its arms. Each pocket of the convex hull is walked along the letter's
     outline; the depth peaks (from the pocket's mouth) are the slot backs,
@@ -391,6 +463,17 @@ def slot_cuts(poly: Polygon, W: float):
         n = (-u[1], u[0])
         P = np.array(stem.exterior.coords)
         if np.ptp(P @ np.array(n)) > 1.6 * W:
+            continue
+        # `stem_whole`: a stem is one stroke, so it holds no junction corner
+        # of its own away from the arms' roots. MARINE's M at 95.7 mm read as
+        # an E on its side a second time: its whole top (both stems' heads
+        # and the V) stood 1.595 W behind the legs' tops, under the 1.6 W
+        # above by a hair, and the M sewed as five pieces fanning from the V
+        # (four, two of them full-height stems, at 101.9 mm). The V's notch
+        # is a junction corner on that piece; an E's stem has none.
+        if stem_whole and any(stem.exterior.distance(Point(r["p"])) < 0.05
+                              and all(ln.distance(Point(r["p"])) > 0.35 * W for ln in lines)
+                              for r in _junction_reflex(poly, W)):
             continue
         cuts.extend(found)
         stems.append(chord)
@@ -1584,7 +1667,7 @@ class LetterCut:
 
 
 def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False,
-                   mitre_ends: bool = False, judge=None) -> LetterCut:
+                   mitre_ends: bool = False, judge=None, stem_whole: bool = False) -> LetterCut:
     """A letter polygon -> its stroke Columns. `pitch_mm` is the progress
     between consecutive stations along the moving rail -- the satin spacing
     itself (`machine.SATIN_SPACING_MM`): a station is one cross, and the
@@ -1592,6 +1675,7 @@ def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False
     `fold_cuts`: see `_fold_refine` and `_drop_stalls`
     (`cfg.lettering_columns_fold_cuts`).
     `mitre_ends`: see `_mitre_ends` (`cfg.lettering_columns_square_ends`).
+    `stem_whole`: see `find_cuts` and `slot_cuts` (`cfg.lettering_columns_stem_whole`).
     `judge` (read only with `fold_cuts`): `judge(columns, poly)` -> the
     (station folds, short legs, crossed legs) the letter sews with those
     columns (`columns.lettering_columns_shape` sews them through
@@ -1605,11 +1689,11 @@ def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False
     if poly.is_empty or poly.geom_type != "Polygon":
         return LetterCut(poly, W, [], [], [])
     W = stroke_width(poly)
-    cuts, _reflex, _convex = find_cuts(poly, W)
+    cuts, _reflex, _convex = find_cuts(poly, W, stem_whole)
     # An E or an F: the stem line through its slot backs replaces every
     # junction-rule cut that ends on that line (those slice the stem
     # crosswise) or crosses it.
-    scuts, stems = slot_cuts(poly, W)
+    scuts, stems = slot_cuts(poly, W, stem_whole)
     if scuts:
         slines = [LineString([a, b]) for a, b, _, _ in scuts]
 

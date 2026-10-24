@@ -1858,6 +1858,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             square_ends: bool = False,
                             inside_connectors: bool = False,
                             counter_holes: list | None = None,
+                            stem_whole: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -1878,7 +1879,9 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     # and sewed every letter twice as dense.
     lc_kw = {**({"fold_cuts": True} if fold_cuts else {}),
              # `cfg.lettering_columns_square_ends`: a slanted end face is mitred
-             **({"mitre_ends": True} if square_ends else {})}
+             **({"mitre_ends": True} if square_ends else {}),
+             # `cfg.lettering_columns_stem_whole`: see `outline_cut.find_cuts`
+             **({"stem_whole": True} if stem_whole else {})}
     cored = bool(counter_holes) and counter_clear_mm > 0        # none named: the floor's reading
     run_kw = dict(trim_at_mm=trim_at_mm,
                   spacing_mm=spacing_mm, split_above_mm=split_above_mm,

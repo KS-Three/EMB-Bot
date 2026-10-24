@@ -2523,6 +2523,23 @@ class PipelineConfig:
     # ends past their face (#907: 1). ON by Kent's ruling 2026-10-13; False
     # is the pre-flip lane.
     lettering_columns_square_ends: bool = True
+    # Under `lettering_columns`, a STEM stays one column (2026-10-20,
+    # `outline_cut.find_cuts` / `slot_cuts`, `stem_whole`). Two cut rules
+    # divided Becker MARINE's N and M wrongly at the pro's sizes: (1) at an
+    # `ext` corner the LONGER edge run goes on through, and at an N's inner
+    # vertex that is the diagonal's edge (the stem's inner edge is short
+    # because the diagonal eats it), so the stem was sliced obliquely and
+    # its end sewed as a fan from the vertex (95.7 mm left chest: right stem
+    # cut from y 19.15 to 27.04; 101.9 mm hat: left stem). ON, the edge
+    # running along the letter's stem direction (its longest straight
+    # outline run) is continued first. (2) The E/F stem cut read the M at
+    # 95.7 mm as an E on its side: its whole top stood 1.595 W behind the
+    # legs, under the 1.6 W guard by a hair, and the M sewed as five
+    # fanning pieces. ON, a stem holding a junction corner of its own (the
+    # V's notch) is refused. Thresholds are the cut rules' own (14 deg
+    # straight run, 0.35 W off a slot line); no sewn constant. Measured
+    # numbers in the PR body; False is the pre-flip lane.
+    lettering_columns_stem_whole: bool = False
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
