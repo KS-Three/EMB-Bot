@@ -3055,6 +3055,22 @@ class PipelineConfig:
     # 0.32. Only the measurement moves; no bound changes. False: the door as
     # it was, byte for byte (`PRE_FLIP`). Tests: `tests/test_textcluster.py`.
     text_cluster_counters_as_drawn: bool = True
+    # A wide letter never reaches the Column lane: the text tagger's letter
+    # door refuses anything wider than `textcluster.ASPECT_RATIO_MAX` 1.4
+    # times its height. MFab's W of WELDING at 104.9 mm hits it twice: its
+    # right vertex touches the E's foot through the keyline, so W and E trace
+    # as ONE region (17.5 x 6.9 mm, aspect 2.55), and the W alone, with its
+    # long lead-in arm, is still 1.58. Under the photo path the A and N of
+    # AND touch the same way, which leaves the D short of a line of three and the
+    # whole word untagged. ON (2026-10-23, built OFF): such a region beside
+    # a line it could join is cut at every neck under a quarter of its own
+    # stroke (`textcluster._neck_split`), the pieces replacing it only when
+    # every one is tagged; and a glyph up to `WIDE_LETTER_ASPECT_MAX` 1.8 is
+    # adopted by a line it links to (`_adopt_wide`), never making one.
+    # Segmentation and tagging, not fabric: layout, judged in the preview.
+    # False: neither is called, byte for byte. Tests:
+    # `tests/test_wide_letters.py`.
+    text_cluster_wide_letters: bool = False
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
