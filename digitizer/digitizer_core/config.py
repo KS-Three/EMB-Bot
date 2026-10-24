@@ -1528,6 +1528,29 @@ class PipelineConfig:
     # engine is the 08-15 verdict's. Quality review 2026-09-08 item 9; plan
     # and census `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md`.
     enclosed_by_garment: bool = True
+    # A TRANSPARENT hole (alpha path) that the vectorizer has cut into
+    # several colour regions. `tag_enclosed_background` asks two ratios of
+    # one region against one connected component of stage 1's enclosed
+    # mask: the region is mostly the component, AND the component is mostly
+    # the region. The second ratio is what keeps a region that merely
+    # swallows a small enclosed sliver from being hidden — right for a hole
+    # found by COLOUR. On the alpha path the hole's pixels carry no colour
+    # of their own (`enclosed_colour_unknown`); `alpha_edge_extend` paints
+    # them with the nearest opaque colour, so a counter inside a two-tone
+    # letter is painted in two tones and vectorizes as two regions, each
+    # under the 0.6 share of its hole, and BOTH fail open and sew in the
+    # letter's thread. Measured 2026-10-23 on Precision Drone at the pro's
+    # 62.6 mm (`docs/lettering-5-10mm-2026-10-23.md`): PRECISION's O (6.3 mm
+    # cap) carries its 4.1 x 3.4 mm counter in its polygon, two regions of
+    # 7.1 and 4.9 mm² sit in it, neither tagged, and the O sews as a solid
+    # blob; the P and R counters (one region each) are tagged and stay open.
+    # ON, a region on the alpha path is tagged when IT is mostly inside one
+    # transparent component (the first ratio alone): nothing with a colour
+    # of its own can sit under alpha < 128, so the second ratio protects
+    # nothing there. The no-alpha path keeps both ratios. Layout, not a
+    # fabric number (ruling 2026-10-22: judged in the preview). OFF is the
+    # engine as it was, byte for byte.
+    enclosed_alpha_hole_parts: bool = False
     # Sew the white inside the design (`enclosed_white.py`, built OFF
     # 2026-10-21): the CUSTOMER's option, never a default, because it changes
     # the design. The pro does it on 5 of 11 jobs (rule R11,
@@ -1725,6 +1748,37 @@ class PipelineConfig:
     # Whether a 4.8 mm satin dot holds on a cap is the same gate-1 question
     # the rule above carries. Off, byte-identical (tests/test_compact_solids_satin.py).
     compact_solids_satin: bool = False
+    # The pro's size rule for borders (2026-10-23, built OFF;
+    # `docs/border-census-2026-10-23.md`). Over 16 paired designs the pro
+    # rings about 1% of closed shapes under 2 mm, 7% at 2-4, 29% at 4-6 and
+    # 49% from 6 mm up, and contrast is not the variable; we ring 15% at 6 mm
+    # up because we sew those shapes bare (fill) or whole (satin). Re-read at
+    # 4 mm and up on Fremont, Becker, MFab and Gaulke: what separates his
+    # bordered big shapes from his unbordered ones is the STROKE against the
+    # satin ceiling -- every letter he sews as satin reads 4.2-5.4 mm wide in
+    # his file; every letter wider is a fill under a 1.9-2.5 mm satin border
+    # (BECKER 5 of 5, MFAB 4 of 4), and a plain 17 x 6.5 mm solid is bordered
+    # at 2.4 where we fill it bare. ON: a non-lettering shape on the auto tier
+    # with no per-shape `border` intent whose smallest dimension -- twice the
+    # largest inscribed circle, the census's own measure -- is at or over
+    # `machine.BORDER_BY_SIZE_MIN_DIM_MM` (6.0) sews as a fill with a satin
+    # border at the pro's median width for its band
+    # (`machine.border_by_size_width_mm`: 1.5 at 4-6 mm, 2.1 from 6 up), on
+    # the seam it owns under the 2026-09-09 rule; a shape the classifier
+    # admitted as satin at that size is diverted to the fill tier first, in
+    # the prediction (`_sews_satin`) and the emitter alike. A shape that is
+    # mostly ring -- under half its area within one column of the fill core
+    # the border leaves (`machine.BORDER_BY_SIZE_REACH_FRAC`; Becker's 2.4
+    # mm satin ring, whose junction knot passes the circle test, reaches
+    # 0.23 against the pro's bordered MFab bar at 0.90) -- keeps the tier it
+    # had. Lettering is not read: the letters his rule moves (MFAB, BECKER,
+    # stroke over the ceiling) are the lettering lane's, where the Column cut
+    # and `satin_lettering_split` decide. Plain fills at 6 mm and up are a
+    # coin flip per design in his files (MFab, Drone and the Fremont patch
+    # bordered; Bridge's and Gaulke's bare), so this is one pro's layout
+    # habit judged in the preview (Kent 2026-10-22), not a cloth constant.
+    # Off, byte-identical (tests/test_border_by_size.py).
+    border_by_size: bool = False
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run
@@ -2280,6 +2334,27 @@ class PipelineConfig:
     # Tee 48 -> 51 the cost. Built OFF for Kent's flip; with the exit lever
     # the fixture reads 8 and the nine 454.
     satin_underlay_on_column: bool = False
+    # `satin_underlay_short_columns` (built OFF 2026-10-22, Kent's flip after
+    # a sew-out -- underlay is a physical constant, ROADMAP gate 1): the
+    # columns our two short rules leave bare get the centre run the pro
+    # puts under his. Read on his 27 job DSTs (`tools/pro_satin_underlay.py`;
+    # TIRES HAT 3D is puff foam and bare by design): a centre run under
+    # 83-97% of satin columns in every length and width band, columns under
+    # 5 mm long bare 0-13% per job where ours are 46% (audit row 5b). Ours
+    # skip two ways: a shape whose artwork extent is under
+    # `machine.SATIN_UNDERLAY_MIN_EXTENT_MM` sews every column bare (law
+    # 50's first rung, stage 7, satin tier and Column lane alike), and a
+    # stroke whose spine is under `machine.UNDERLAY_STITCH_MM` gets no run
+    # at all (`stage6_satin._stroke_underlay`); the Column lane has its own
+    # 1.8 mm floor (`columns._centre_underlay`). ON, the small shape keeps
+    # the fabric's satin underlay style and both floors drop to one stitch
+    # (`machine.MIN_STITCH_MM`). The zigzag threshold, its pitch and the
+    # hairline tier do not move: the brief's "3.5 mm pitch" was row 5a's
+    # WIDTH threshold, and his zigzag's share and pitch swing with the
+    # reader's satin gate (0.6-1.3 mm per leg), so neither is settled.
+    # Browser twin: `underlayShortColumns` (src/satinfont.js, the lettering
+    # engine's cap-height rung). OFF is the engine byte for byte.
+    satin_underlay_short_columns: bool = False
     # `satin_cap_recentre` (built 2026-09-19 for Kent's flip): a free end
     # whose spine tail is a surviving CAP FORK is cut at the kink and rebuilt
     # square. A flat cap's medial axis forks toward both corners; on a plain
@@ -2614,6 +2689,31 @@ class PipelineConfig:
     # here is a candidate until sewn (gate 1). Kent flips. Tests:
     # `tests/test_column_small_bold.py`.
     lettering_columns_small_bold: bool = False
+    # Crosses square to the LINE OF TEXT in the Column lane (2026-10-23,
+    # `digitizer_core/column_lean.py`; `docs/lettering-10mm-up-2026-10-23.md`).
+    # The 10 mm and up band read against the pro's files: on Becker's
+    # MARINE (12.8-17.1 mm caps, four garments) he sews every stroke with
+    # the STEMS' cross -- square to the line of text -- diagonals included,
+    # so the N's diagonal, the A's legs and the M's V carry the same sheen as
+    # the stems and his junctions are plain overlaps. The lane stations each
+    # straight piece square to its own axis (`outline_cut.scan_stations`),
+    # so our diagonals read as another sheen and the M's V, where two leaned
+    # pieces meet two upright ones, sews as a tangle (crops in the doc).
+    # Kent's adopted convention (2026-09-03, `stitch-angle-convention`):
+    # stems square to the line of text, a 30 degree lean cap, spacing over
+    # cos of the lean -- the satin tier's `_clamp_to_span`, which the lane
+    # displaced for lettering on 2026-10-12 without carrying. ON, every
+    # straight column of a Column letter whose axis the word's house cross
+    # (`satin_angle_deg`, the house pass; else the design's) can span within
+    # the cap is re-stationed with its crosses along the clamped house, one
+    # every spacing / cos(lean) along the axis so the distance between
+    # crosses stays the satin spacing; a column the house already crosses
+    # square, a curved or ring column, and a letter with no house angle keep
+    # their stations byte for byte. Layout, not a cloth number (judged in
+    # the preview, Kent 2026-10-22); the flip is his, on the before | after
+    # | pro renders. OFF is the lane as it was, station for station. Tests:
+    # `tests/test_column_text_lean.py`.
+    lettering_columns_text_lean: bool = False
     # Under `lettering_columns`, each satin column's pull compensation is a
     # function of ITS OWN drawn stroke width, the way the professional's
     # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the
@@ -2633,6 +2733,34 @@ class PipelineConfig:
     # resize keeps it (ruling 12). A physical constant (ROADMAP gate 1):
     # Kent flips after a sew-out. Tests: `tests/test_pull_comp_by_stroke.py`.
     pull_comp_by_stroke: bool = False
+    # Under `lettering_columns`, ONE satin column is folded round an
+    # L-shaped corner -- an E's arm meeting its stem, an L's foot, a T's bar
+    # end into its serif, a 7's elbow -- the way the professional's files
+    # sew every such corner (2026-10-23, built OFF; `outline_cut._fold_corners`).
+    # The cut takes a lone concave corner with a convex apex across it as a
+    # junction and cuts there (a "mitre" to the apex, an "ext" along the
+    # longer edge, an E's "slot" line), so the two strokes sew as two
+    # columns butted at the corner: over the 38 letters of Fremont HOTEL
+    # FREMONT, Drone PRECISION, Proseal PROSEAL and MFab AND WELDING ours
+    # read 156 columns / 242 butts / 75 gaps against the pro's 134 / 195 /
+    # 54 (`docs/lettering-5-10mm-2026-10-23.md`). His needle paths (all four
+    # DSTs, 57 corners read 2026-10-23) keep one column through the corner:
+    # the crosses pivot on the inside corner, their outer ends walk the
+    # outline round the apex at the satin pitch, and the next stroke's
+    # crosses carry on -- no cut, no butt, no travel; he cuts only where two
+    # concave corners face each other (a T junction, a slab serif's root).
+    # ON, after the cut: at every lone concave corner of the letter whose
+    # turn is `outline_cut.FOLD_TURN_MIN_DEG`..`FOLD_TURN_MAX_DEG`, that is
+    # not one of a through pair, and where exactly two columns of like
+    # width (within `FOLD_WIDTH_RATIO`) meet, both columns lose the crosses
+    # inside the corner square and are joined by crosses from the inside
+    # corner to the outline round the apex, one per pitch (kind "folded").
+    # The legs' own crosses, and so the sewn width, are untouched; the
+    # engine's short-stitch guard thins the pile on the inside corner as it
+    # does on an S's curl. Layout, judged in the preview (Kent, 2026-10-22),
+    # so ON-eligible from renders. False is the pre-flag cut, byte for byte.
+    # Tests: `tests/test_column_corner_fold.py`.
+    lettering_columns_corner_fold: bool = False
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
