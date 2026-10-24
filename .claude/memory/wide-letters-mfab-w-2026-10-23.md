@@ -30,7 +30,11 @@ region beside a line cut at necks under a quarter of its stroke; kept only
 if every piece is tagged) and `_adopt_wide` (aspect 1.4-1.8 joins a tagged
 line, never makes one). MFab hat ON: W 8 -> 4 columns (pro 7), 263 -> 149
 stitches (pro 154), 0 travel off the letter (was 67.5 mm); design 11,605 /
-65 -> 11,375 / 62.
+65 -> 11,375 / 62. Sized over the paired jobs at the pro's widths: ON is
+md5-identical on Becker, Fremont, Gaulke and Bridge; MFab LC's W (alone,
+aspect 1.49) is adopted; six letters over the two MFab files, nothing
+elsewhere. MFab LC's N of AND is untagged for a DIFFERENT reason (height
+ratio 0.79 against `LETTER_HEIGHT_RATIO` 0.8) -- not fixed here.
 
 **Why:** the lettering week's Column-lane work could not reach letters the
 tagger never admitted. **How to apply:** when a letter "never reaches the

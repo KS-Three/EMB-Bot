@@ -53,3 +53,26 @@ by `tools/column_harness.census`:
 OFF sews 343 mm of satin outside the merged polygon (+0.3 mm); ON the W
 38 mm (its acute tips), the E none. The whole design: 11,605 stitches / 65
 trims OFF, 11,375 / 62 ON.
+
+## Who else hits it (sizes the fix)
+
+Every paired job at the pro's width, OFF then ON, rembg on, the whole
+design's stitch list md5'd (`[x, y, kind, jump, trim]` per point):
+
+| job | width mm | text-tagged OFF / ON | split | adopted | letters newly tagged | stitches / trims OFF -> ON | md5 |
+|---|---|---|---|---|---|---|---|
+| Becker hat large | 101.9 | 11 / 11 | 0 | 0 | 0 | 9,411 / 28, same | identical |
+| Hotel Fremont hat | 92.6 | 33 / 33 | 0 | 0 | 0 | 18,629 / 58, same | identical |
+| Gaulke Roofing hat | 114.2 | 39 / 39 | 0 | 0 | 0 | 7,955 / 37, same | identical |
+| Bridge hat | 63.3 | 0 / 0 | 0 | 0 | 0 | 10,156 / 48, same | identical |
+| MFab left chest | 96.7 | 21 / 22 | 0 | 1 (the W, alone, aspect 1.49) | 1 | 11,917 / 74 -> 11,877 / 74 | moves |
+| MFab hat | 104.9 | 10 / 16 | 2 (W+E, A+N) | 1 (the W, 1.58) | W, E, A, N, D (+ the wedge `Sb189ad6d` joins AND, as in the no-rembg capture) | 11,605 / 65 -> 11,375 / 62 | moves |
+
+So the condition is MFab's lettering face, not a general one: six letters
+over the two MFab files, none on the other four jobs. Bridge's script
+stays untagged either way. Not this fix, a different condition: on MFab
+LC the N of AND (`S81d1d4a6`, 6.25 x 7.9 mm, aspect 0.79) carries neither
+tag -- it is 7.9 mm tall beside 6.25 mm letters, a height ratio of 0.79
+against `LETTER_HEIGHT_RATIO` 0.8. WELDING's N and G there carry
+`lettering_group` but no text cluster, so they reach the lane through the
+house group already.
