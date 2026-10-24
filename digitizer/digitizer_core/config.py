@@ -3651,6 +3651,24 @@ class PipelineConfig:
     # `tests/test_fill_sewn_paths.py`.
     fill_order_sewn_paths: bool = False
 
+    # Fill rows turn on a slant (2026-10-21, built OFF; the settings audit's
+    # gap #2, `docs/settings-vs-pro-2026-10-21.md` row 24). At the end of a
+    # fill row we stepped straight across to the next: one row spacing,
+    # 0.10-0.22 mm at the 0.15 row, the needle landing beside its own hole,
+    # and 40-90% of every sub-0.5 mm stitch on the pro's jobs. The pro's
+    # turns land the next row's first penetration ~0.7 mm along it
+    # (`machine.FILL_TURN_ALONG_MM`, read off his DSTs by
+    # `tools/fill_turns.py`). True pulls in the INNER of the two boundary
+    # points each turn joins -- the next row's entry on a narrowing edge, the
+    # row's own exit on a widening one -- so the turn runs that far along
+    # the row and its thread lies over the corner left bare
+    # (`stage6_fill._slant_turns`). The outer point stays on the boundary,
+    # so the edge keeps its line and takes a penetration every second row.
+    # Row spacing and the interior grid are unchanged. Construction, not a fabric constant (ROADMAP gate 1 asks
+    # which kind); the flip is Kent's. False is byte-identical.
+    # `tests/test_fill_turn_slant.py`.
+    fill_turn_slant: bool = False
+
     # Underlay under a gradient-class design's ordinary fills. Built OFF
     # 2026-10-05; ON since 2026-10-07 by Kent's ruling, because OFF a
     # gradient-class design sewed every fill with no underlay at all. Measured
@@ -4303,6 +4321,15 @@ class PipelineConfig:
     # (renders under docs/renders/edge-cap-bean-pitch/). A value <= 0 reads
     # as None. tests/test_edge_cap_bean_pitch.py pins OFF by md5.
     edge_cap_bean_pitch_mm: float | None = None
+    # The pro's own measured values (built OFF 2026-10-23; ROADMAP gate 1, a
+    # sew-out flips it). On a hat, left-chest or beanie preset it sews fill
+    # stitches at 3.49 mm (3.0 today), satin at 0.37 mm (0.35 on a beanie)
+    # against 0.40, and bean stitches (bean letters, the bean edge cap) at
+    # 0.95 against 0.73. An explicit `fill_stitch_mm`, `bean_letter_stitch_mm`
+    # or `edge_cap_bean_pitch_mm` still wins. Values and sources:
+    # `fabrics.pro_values_for`, docs/settings-vs-pro-2026-10-21.md rows 1, 2,
+    # 11, 19. False is the shipped plan byte for byte.
+    pro_measured_values: bool = False
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
