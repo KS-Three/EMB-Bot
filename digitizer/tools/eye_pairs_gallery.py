@@ -151,8 +151,11 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "lettering_columns=True",
         "Sew each text-tagged letter as Columns cut from its own outline (one "
         "column per stroke, rails on the outline, pull on the rails) instead of "
-        "the skeleton's slabs; no Euler walk yet, so trims between a letter's "
-        "columns are nearest-next."),
+        "the skeleton's slabs, walked as one Euler trail per letter -- satin on "
+        "a span's last visit, a running underpath on every earlier one, a "
+        "centre-walk underlay before each span -- so the needle leaves a "
+        "letter only between its components. Slanted terminals fan instead of "
+        "sewing bare (#660, a render-only top commit on this page)."),
     "phantom_dissolve": (
         "dissolve_phantom_blends=True",
         "Dissolve JPEG ringing colours on the photo/gradient lane, so a logo's "
