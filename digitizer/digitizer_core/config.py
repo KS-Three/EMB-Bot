@@ -1544,13 +1544,13 @@ class PipelineConfig:
     # cap) carries its 4.1 x 3.4 mm counter in its polygon, two regions of
     # 7.1 and 4.9 mm² sit in it, neither tagged, and the O sews as a solid
     # blob; the P and R counters (one region each) are tagged and stay open.
-    # ON, a region on the alpha path is tagged when IT is mostly inside one
+    # ON (default since Kent's ruling 2026-10-23), a region on the alpha path is tagged when IT is mostly inside one
     # transparent component (the first ratio alone): nothing with a colour
     # of its own can sit under alpha < 128, so the second ratio protects
     # nothing there. The no-alpha path keeps both ratios. Layout, not a
     # fabric number (ruling 2026-10-22: judged in the preview). OFF is the
     # engine as it was, byte for byte.
-    enclosed_alpha_hole_parts: bool = False
+    enclosed_alpha_hole_parts: bool = True
     # Sew the white inside the design (`enclosed_white.py`, built OFF
     # 2026-10-21): the CUSTOMER's option, never a default, because it changes
     # the design. The pro does it on 5 of 11 jobs (rule R11,
@@ -1781,8 +1781,8 @@ class PipelineConfig:
     # coin flip per design in his files (MFab, Drone and the Fremont patch
     # bordered; Bridge's and Gaulke's bare), so this is one pro's layout
     # habit judged in the preview (Kent 2026-10-22), not a cloth constant.
-    # Off, byte-identical (tests/test_border_by_size.py).
-    border_by_size: bool = False
+    # ON by default (Kent 2026-10-23, by the pro-count numbers); Off, byte-identical (tests/test_border_by_size.py).
+    border_by_size: bool = True
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run

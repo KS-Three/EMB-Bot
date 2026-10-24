@@ -577,6 +577,17 @@ FLIP_2026_10_23 = {
     "lettering_columns_small_bold": False,
 }
 PRE_FLIP.update(FLIP_2026_10_23)
+# The two layout flags Kent flipped 2026-10-23 by their numbers against the
+# pro (PR #1050 `border_by_size`, PR #1051 `enclosed_alpha_hole_parts`; the
+# flip's own OFF|ON|pro table is `docs/renders/flip-two-2026-10-23/`). Same
+# reason as every entry above: an arm measured before that day was measured
+# without them. The tests ABOUT them are `tests/test_border_by_size.py` and
+# `tests/test_enclosed_alpha_hole_parts.py`.
+FLIP_2026_10_23_TWO = {
+    "border_by_size": False,
+    "enclosed_alpha_hole_parts": False,
+}
+PRE_FLIP.update(FLIP_2026_10_23_TWO)
 # Spoked detail marks (Kent's flip 2026-10-16, "ON, tightened"): a small
 # enclosed detail of another colour with four or more tips sews as a spoked
 # mark on top of its host (Fremont's Wisconsin star). False is the pre-flip
