@@ -1273,7 +1273,8 @@ def garment_sews_enclosed(p: Prep, cfg: PipelineConfig) -> tuple[bool, float | N
     return de > float(cfg.enclosed_by_garment_de00), de
 
 
-def tag_enclosed_background(regions: list[Region], p: Prep) -> None:
+def tag_enclosed_background(regions: list[Region], p: Prep, *,
+                            alpha_hole_parts: bool = False) -> None:
     """Post-vectorization pass: mark `region.meta["enclosed_background"]`
     True for every Region that is (nearly) the same shape as one connected
     component of `Prep.enclosed_mask` — the bg-colored-but-not-border-
@@ -1310,10 +1311,22 @@ def tag_enclosed_background(regions: list[Region], p: Prep) -> None:
     tagger that silently hides a shape it mis-identified is worse than the
     original bug (a hole nobody can review), so uncertainty always resolves
     to "keep stitching it".
+
+    `alpha_hole_parts` (`cfg.enclosed_alpha_hole_parts`, 2026-10-23): on the
+    ALPHA path only, a region is tagged when it is mostly inside one
+    transparent component — the first ratio alone. A transparent hole has no
+    colour of its own, and `alpha_edge_extend` paints it with the nearest
+    opaque colour, so a counter inside a two-tone letter vectorizes as two
+    (or more) regions, each under 0.6 of its hole, and every one of them
+    failed open and sewed in the letter's thread (Precision Drone's O at
+    62.6 mm; the config comment has the numbers). Nothing with a colour of
+    its own sits under alpha < 128, so the second ratio protects nothing
+    there; the colour path keeps both.
     """
     mask = p.enclosed_mask
     if mask is None or not mask.any():
         return
+    parts_rule = bool(alpha_hole_parts and p.bg_from_alpha)
     h, w = mask.shape
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
@@ -1348,7 +1361,7 @@ def tag_enclosed_background(regions: list[Region], p: Prep) -> None:
             region_ratio = inter / region_area
             comp_ratio = inter / int(comp_area[lbl])
             if (region_ratio >= ENCLOSED_TAG_OVERLAP_THRESHOLD
-                    and comp_ratio >= ENCLOSED_TAG_OVERLAP_THRESHOLD):
+                    and (parts_rule or comp_ratio >= ENCLOSED_TAG_OVERLAP_THRESHOLD)):
                 r.meta["enclosed_background"] = True
                 # A hole found via ALPHA has no colour of its own: the RGB under
                 # the transparency is whatever the exporter flattened there, and

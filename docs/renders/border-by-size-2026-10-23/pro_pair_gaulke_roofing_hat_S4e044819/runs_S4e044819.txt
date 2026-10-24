@@ -1,0 +1,21 @@
+S4e044819 thread 0020 bbox (-15.49, -23.48, 15.28, -7.49) holes 0 cluster None ink_stroke None spines 0
+  blk0 0020 S4e044819 underlay role=''             pts= 38 jump=True trim=True x -14.80-14.58 y -22.84--9.00
+  blk0 0020 S4e044819 travel   role=''             pts= 23 jump=False trim=False x -15.28-15.07 y -15.03--7.81
+  blk0 0020 S4e044819 underlay role=''             pts= 28 jump=False trim=False x 0.61-14.52 y -20.28--9.60
+  blk0 0020 S4e044819 travel   role=''             pts=  1 jump=False trim=False x -1.24--1.24 y -13.93--13.93
+  blk0 0020 S4e044819 underlay role=''             pts=  2 jump=False trim=False x -4.08--3.09 y -12.69--12.03
+  blk0 0020 S4e044819 travel   role=''             pts=  7 jump=False trim=False x -12.51--4.20 y -13.26--10.73
+  blk0 0020 S4e044819 underlay role=''             pts=  2 jump=False trim=False x -14.78--12.79 y -11.02--9.69
+  blk0 0020 S4e044819 travel   role=''             pts=  7 jump=False trim=False x -13.27--4.19 y -20.98--11.30
+  blk0 0020 S4e044819 underlay role=''             pts= 17 jump=False trim=False x -14.16-1.21 y -22.78--12.51
+  blk0 0020 S4e044819 travel   role=''             pts=  1 jump=False trim=False x 2.61-2.61 y -22.51--22.51
+  blk0 0020 S4e044819 underlay role=''             pts= 17 jump=False trim=False x -9.04-6.32 y -22.24--12.78
+  blk0 0020 S4e044819 travel   role=''             pts=  3 jump=False trim=False x 7.90-11.06 y -20.36--18.32
+  blk0 0020 S4e044819 fill     role=''             pts=1036 jump=False trim=False x -15.89-15.68 y -23.88--7.10
+  blk0 0020 S4e044819 border   role='border'       pts=447 jump=True trim=False x -15.68-15.48 y -23.87--7.94
+  blk0 0020 S82b4fec1 travel   role=''             pts=  4 jump=False trim=False x -0.01-4.33 y -9.85--7.19
+  blk0 0020 S82b4fec1 underlay role=''             pts=  3 jump=False trim=False x -4.67--0.17 y -10.02--7.02
+  blk0 0020 S82b4fec1 satin    role=''             pts= 86 jump=False trim=False x -5.60-2.56 y -12.45--4.70
+  blk0 0020 S82b4fec1 travel   role=''             pts=  4 jump=False trim=False x -0.01-4.33 y -9.85--7.19
+  blk0 0020 S82b4fec1 underlay role=''             pts=  3 jump=False trim=False x -0.17-4.49 y -10.02--7.02
+  blk0 0020 S82b4fec1 satin    role=''             pts= 93 jump=False trim=False x -2.87-5.22 y -13.00--4.78
