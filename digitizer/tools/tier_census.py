@@ -142,9 +142,10 @@ def _cover(poly, segs) -> float:
         return int(round((x - b[0]) * RES)) + 1, int(round((y - b[1]) * RES)) + 1
 
     inside = np.zeros((h, w), np.uint8)
-    cv2.fillPoly(inside, [np.array([px(x, y) for x, y in poly.exterior.coords], np.int32)], 1)
-    for hole in poly.interiors:
-        cv2.fillPoly(inside, [np.array([px(x, y) for x, y in hole.coords], np.int32)], 0)
+    for part in getattr(poly, "geoms", [poly]):      # a MultiPolygon: every piece
+        cv2.fillPoly(inside, [np.array([px(x, y) for x, y in part.exterior.coords], np.int32)], 1)
+        for hole in part.interiors:
+            cv2.fillPoly(inside, [np.array([px(x, y) for x, y in hole.coords], np.int32)], 0)
     thr = np.zeros((h, w), np.uint8)
     t = max(1, int(round(THREAD_MM * RES)))
     for x0, y0, x1, y1 in segs[:, :4]:
