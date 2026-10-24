@@ -8,6 +8,7 @@ PATH (Kent's Windows box) and run in CI.
 """
 from __future__ import annotations
 
+import math
 import sys
 from pathlib import Path
 
@@ -139,8 +140,9 @@ def _fill_design(mask, offset_mm=(0.0, 0.0), pitch_mm=0.3):
         for a, b in zip(cols[::2], cols[1::2]):
             y = -(row / PPM + offset_mm[1]) * 10.0
             xa, xb = (a / PPM + offset_mm[0]) * 10.0, (b / PPM + offset_mm[0]) * 10.0
-            recs += [{"x": xa, "y": y, "type": "jump"}, {"x": xa, "y": y, "type": "stitch"},
-                     {"x": xb, "y": y, "type": "stitch"}]
+            recs += [{"x": xa, "y": y, "type": "jump"}]
+            n = max(1, int(math.ceil((xb - xa) / 25.0)))        # stitches of at most 2.5 mm: a longer one is travel
+            recs += [{"x": xa + (xb - xa) * i / n, "y": y, "type": "stitch"} for i in range(n + 1)]
     return _design(recs)
 
 
@@ -182,3 +184,10 @@ def test_read_job_scores_a_sewn_word_above_chance_at_a_readable_size():
     big = next(r for r in res["rows"] if r["file"] == "ours" and r.get("size") == "40mm")
     assert big["read"] is None and big["note"].startswith("skipped")
     assert res["figures"]["ours/40mm"]["cc"] is None
+
+
+def test_drop_travel_makes_only_the_long_stitches_jumps():
+    recs = [{"x": 0, "y": 0, "type": "stitch"}, {"x": 30, "y": 0, "type": "stitch"},       # 3 mm: thread
+            {"x": 330, "y": 0, "type": "stitch"}, {"x": 340, "y": 0, "type": "stitch"}]   # 30 mm: travel
+    out = wl.drop_travel(_design(recs))["stitches"]
+    assert [r["type"] for r in out] == ["stitch", "stitch", "jump", "stitch"]

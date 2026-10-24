@@ -107,3 +107,4 @@ checks). Near the ceiling, move the OLDEST lines whole to the archive, same orde
 - [Fill turn slant](fill-turn-slant-2026-10-21.md) — `fill_turn_slant` OFF (#1036): turns 0.7 mm along the row; Kent holds OFF until the next sew-out card's OFF/ON swatch
 - [Pro measured values](pro-measured-values-2026-10-23.md) — `pro_measured_values` OFF: fill 3.49, satin 0.37/0.35, bean 0.95 on hat/LC/beanie; Kent flips after sew-out
 - [Silhouette under-fill](silhouette-underfill-2026-10-24.md) — "pro fills it" was LAYERING, not tier (kappa 0.170 vs 0.198): ring outline filled under in the majority colour; `silhouette_underfill` OFF
+- [Word legibility instrument](word-legibility-instrument-2026-10-24.md) — `tools/word_legibility.py`: per word, ours vs pro, chance-corrected cc; MFab + pro small words not locatable (n/loc, never 0); coarse, saturates at 1.00
