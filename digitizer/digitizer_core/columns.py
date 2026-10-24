@@ -1558,6 +1558,120 @@ def _euler_trail(nodes, spans, start_near, prefer=frozenset(), prefer_within_mm=
 
 # --------------------------------------------------------------- the engine
 
+# `inside_stagger` (`cfg.lettering_columns_inside_stagger`, 2026-10-23): the
+# inside of a pivot -- an L fold's corner, an S's curl -- the professional's
+# way, in place of `_short_stitch_guard`'s alternate pull-back. Read off his
+# hat DSTs (Fremont, Drone, MFab, Proseal, Becker; one reader on both files,
+# `tools/inside_stagger.py`): his full-length inner ends step ~0.3 mm along
+# the inner edge (median 0.28-0.32 per pair; under 0.1 mm in 2-7% of
+# steps, 2-5 same-hole re-entries per band), and a third or more of the
+# crosses (0.28-0.40) are shortened by ~20% of their length (0.19-0.23 of the cross:
+# 0.29 mm on Fremont's 1.4 mm strokes, 0.57 on Becker's wider ones). The
+# guard shortens every other crowded cross by 35% (capped 0.6 mm) and leaves
+# the full ones in one hole: 28-56% of long steps under 0.1 mm, 16-79
+# same-hole re-entries per band. Layout, judged in the preview; candidates.
+STAGGER_SHORT_FRAC = 0.20      # a short stitch's pull, as a share of its own cross
+STAGGER_SHORT_GAPS = (1, 2)    # full-length crosses between short ones, in turn: two in five
+STAGGER_PILE_MM = 0.1          # two rail ends this close are one needle hole (the reader's)
+STAGGER_WALK_MM = 0.30         # a pile's full-length ends are spaced this far along the rail's course
+STAGGER_REACH = 2              # ... reaching at most this many stations into each leg for the room
+
+
+def _inside_stagger(rail_a: list, rail_b: list) -> list[tuple]:
+    """`inside_stagger`: (pa, pb) per station, each rail read on its own.
+    CROWDED: a penetration whose step from the one before it on its rail
+    (as the rail put them) is under `SATIN_SHORT_STITCH_AT_MM`. PILE: a
+    stretch of crowded steps holding one under `STAGGER_PILE_MM` -- the
+    inside corner of an L fold, every fold cross starting at one point, the
+    pull's push spreading them in clumps. A pile's full-length penetrations
+    are spaced evenly along the rail's own course through it, from the
+    penetration before the stretch to the one after it (up to
+    `STAGGER_REACH` stations into either leg, for `STAGGER_WALK_MM` each):
+    the inner ends walk the corner instead of re-entering one hole. SHORT:
+    a crowded penetration with `STAGGER_SHORT_GAPS` full-length crosses
+    before it on its rail (one, then two, in turn) is pulled
+    `STAGGER_SHORT_FRAC` of its cross toward the far rail, never under
+    `SATIN_MIN_CROSS_MM` -- a share of the cross, so a wide column's short
+    stitch is deeper (Becker's 0.57 mm against Fremont's 0.29). A curl's
+    crowded stretch with no pile keeps its ends where the rail put them,
+    short stitches apart."""
+    n = min(len(rail_a), len(rail_b))
+    out = [list(rail_a[:n]), list(rail_b[:n])]
+    shorts = []
+    for side in (0, 1):
+        rail, sewn = (rail_a, out[0]) if side == 0 else (rail_b, out[1])
+        step = [math.dist(rail[i], rail[i - 1]) if i else math.inf for i in range(n)]
+        short = [False] * n
+        gaps = 0                                    # short stitches so far: picks the next gap
+        since = STAGGER_SHORT_GAPS[0]               # full-length crosses since the last short one
+        for i in range(n):
+            if (step[i] < machine.SATIN_SHORT_STITCH_AT_MM
+                    and since >= STAGGER_SHORT_GAPS[gaps % len(STAGGER_SHORT_GAPS)]):
+                short[i], since, gaps = True, 0, gaps + 1
+            else:
+                since += 1
+        i, floor = 1, 0                             # no window reaches back past `floor`
+        while i < n:
+            if step[i] >= machine.SATIN_SHORT_STITCH_AT_MM:
+                i += 1
+                continue
+            # stations i..j: each within a crowded step of SOME end already
+            # in the stretch -- a fold's clumps sit a crowded step apart and
+            # hop back and forth, so a step from the one before breaks them up
+            j = i
+            while j + 1 < n and any(math.dist(rail[j + 1], rail[k]) < machine.SATIN_SHORT_STITCH_AT_MM
+                                    for k in range(i - 1, j + 1)):
+                j += 1
+            if min(step[i:j + 1]) < STAGGER_PILE_MM:
+                # the course from the penetration before the stretch to the
+                # one after, through the rail's own ends in order but only
+                # those that go ON along the way (a W's V hops between clumps
+                # and back, MFab; a pushed pile sticks out past the corner
+                # and back, Fremont -- 2026-10-23), widened a station each way
+                # into the legs until it holds `STAGGER_WALK_MM` per end --
+                # at most `STAGGER_REACH` stations: further, the legs' own
+                # crosses would lean to make room
+                lo, hi, reach = max(floor, i - 1), min(n - 1, j + 1), 0
+                while True:
+                    course = [rail[lo]]
+                    ux, uy = rail[hi][0] - rail[lo][0], rail[hi][1] - rail[lo][1]
+                    ul = math.hypot(ux, uy) or 1.0
+                    along = [((q[0] - rail[lo][0]) * ux + (q[1] - rail[lo][1]) * uy) / ul for q in rail]
+                    last = 0.0
+                    for k in range(lo + 1, hi):
+                        if along[k] - last >= STAGGER_PILE_MM:
+                            course.append(rail[k])
+                            last = along[k]
+                    course.append(rail[hi])
+                    full = [k for k in range(lo + 1, hi) if not short[k]]
+                    length = sum(math.dist(a, b) for a, b in zip(course, course[1:]))
+                    if (length >= (len(full) + 1) * STAGGER_WALK_MM or reach >= STAGGER_REACH
+                            or (lo == floor and hi == n - 1)):
+                        break
+                    lo, hi, reach = max(floor, lo - 1), min(n - 1, hi + 1), reach + 1
+                if len(course) >= 2 and full:
+                    path = LineString(course)
+                    for m, k in enumerate(full):
+                        t = path.interpolate((m + 1) / (len(full) + 1), normalized=True)
+                        sewn[k] = (float(t.x), float(t.y))
+                j, floor = max(j, hi - 1), hi
+            i = j + 1
+        shorts.append(short)
+    # the short stitches last, each against the far rail as sewn so far, so
+    # two crowded rails on one cross never pull it under the floor together
+    for side in (0, 1):
+        rail, sewn, far = (rail_a, out[0], out[1]) if side == 0 else (rail_b, out[1], out[0])
+        for i in range(n):
+            if shorts[side][i]:
+                p, q = rail[i], far[i]
+                cross = math.dist(p, q)
+                f = STAGGER_SHORT_FRAC
+                if cross > 1e-9:
+                    f = min(f, max(0.0, 1.0 - 1.01 * machine.SATIN_MIN_CROSS_MM / cross))
+                sewn[i] = (p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f)
+    return list(zip(out[0], out[1]))
+
+
 def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 trim_at_mm: float,
                 spacing_mm: float = machine.SATIN_SPACING_MM,
@@ -1575,6 +1689,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 thin_floor: bool = False,
                 pull_of=None,
                 short_columns: bool = False,
+                inside_stagger: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
@@ -1602,7 +1717,9 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     the pull one rail gets; given, each column's rails are pushed by
     `pull_of(column_width(col))` in place of `pull_mm`, read on its own
     drawn stations. `pull_mm` stays the letter's pull everywhere else (the
-    merge radius, the tuck, the link rule's and the tuck cover's buffers)."""
+    merge radius, the tuck, the link rule's and the tuck cover's buffers).
+    `inside_stagger` (`cfg.lettering_columns_inside_stagger`): the inside of
+    every pivot sewn by `_inside_stagger` instead of `_short_stitch_guard`."""
     from .stage6_satin import (_JUNCTION_TUCK_MM, _comb_thresholds,   # same package,
                                _short_stitch_guard, _split_points)      # same rules
 
@@ -1628,7 +1745,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         # is pulled back toward the outer rail, so the inside stops re-entering
         # one needle hole. The pro's S: the outer rail dense, the inner rail
         # short-stitched (lettering-thickness-fremont-2026-10-06).
-        guarded = _short_stitch_guard(a_pts, b_pts)
+        guarded = (_inside_stagger(a_pts, b_pts) if inside_stagger    # the pro's inside
+                   else _short_stitch_guard(a_pts, b_pts))
         if counter_clear_mm > 0:
             # Small print: no zigzag stitch over a counter
             # (`_counter_safe_pieces`); one column may sew as several.
@@ -2014,6 +2132,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             pull_by_stroke: bool = False,
                             corner_fold: bool = False,
                             text_lean_deg: float | None = None,
+                            inside_stagger: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -2046,7 +2165,10 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     straight column the house can span within the lean cap is re-stationed
     with its crosses along the house (`column_lean.lean_columns`), the way
     the pro sews a diagonal with the stems' cross. None is the lane as it
-    was, station for station."""
+    was, station for station.
+    `inside_stagger`: `cfg.lettering_columns_inside_stagger` (2026-10-23) --
+    the inside of every pivot walked and short-stitched the pro's way
+    (`_inside_stagger`); off, `_short_stitch_guard` as before."""
     from .outline_cut import letter_columns, stroke_width
 
     if small_bold:
@@ -2083,6 +2205,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   **({"thin_floor": True} if small_bold else {}),
                   # `cfg.satin_underlay_short_columns`: a walk under any span that holds a stitch
                   **({"short_columns": True} if short_columns else {}),
+                  # `cfg.lettering_columns_inside_stagger`: the pro's inside at a pivot
+                  **({"inside_stagger": True} if inside_stagger else {}),
                   **({"counter_poly": counter_hold_polygon(poly, counter_holes)} if cored else {}))
 
     def recorded(cpoly):
