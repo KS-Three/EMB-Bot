@@ -2717,7 +2717,10 @@ def sequence(
                     **({"square_ends": True} if cfg.lettering_columns_square_ends else {}),
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
-                       if cfg.lettering_columns_inside_connectors else {}))
+                       if cfg.lettering_columns_inside_connectors else {}),
+                    # `cfg.lettering_columns_cover_connectors` (2026-10-20): same rule
+                    **({"cover_connectors": True}
+                       if cfg.lettering_columns_cover_connectors else {}))
                 if not report["empty"]:
                     report["lettering_columns"] = 1
                     return runs, report, False

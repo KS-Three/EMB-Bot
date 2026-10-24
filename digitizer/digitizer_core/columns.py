@@ -1485,6 +1485,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 square_ends: bool = False,
                 inside_connectors: bool = False,
                 counter_poly: Polygon | None = None,
+                cover_connectors: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
@@ -1809,7 +1810,68 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         cur.trim = d > trim_at_mm
         report["jumps"] += 1
         linked.append(cur)
+    if cover_connectors:
+        linked = _cut_exposed_connectors(linked, trim_at_mm, report)
     return linked, report
+
+
+# A satin run's ground, for the exposed-connector reading: its stitch path
+# grown by this much each side (the survey's `travel_over.py` reading,
+# 2026-10-20 -- half a thread's width, so a connector that only grazes a
+# rail's penetrations does not read as lying on the column).
+_SEWN_HALO_MM = 0.25
+
+
+def _cut_exposed_connectors(runs: list[StitchRun], limit_mm: float, report: dict) -> list[StitchRun]:
+    """`cover_connectors` (`cfg.lettering_columns_cover_connectors`): a
+    connector -- a chain of consecutive travel runs and the needle-down hops
+    joining them, from where the last sewn run ends to where the next one
+    starts -- that would lie on top of satin already sewn for more than
+    `limit_mm` (the trim distance: the longest strand the sew-or-jump rule
+    already leaves on the fabric) and is not buried by satin sewn after it
+    is CUT: its travel dropped, the next run a jump (a trim past
+    `limit_mm`). The Euler walk orders spans at NODE resolution, and a node
+    is every column end within `merge_r` (1.3 widths plus pull: 6.8 mm on
+    Becker's 4.75 mm strokes), so two legs that meet "at one node" can end
+    and start 7 mm apart with a finished column between -- the M of
+    MARINE at 95.7 mm left_chest laid 30.5 mm of travel on its own satin."""
+    halo = [LineString(r.points).buffer(_SEWN_HALO_MM)
+            if r.kind == stitches.SATIN and len(r.points) >= 2 else None for r in runs]
+    out: list[StitchRun] = []
+    n, k = len(runs), 0
+    while k < n:
+        r = runs[k]
+        if k == 0 or r.kind != stitches.TRAVEL or r.jump:
+            out.append(r)
+            k += 1
+            continue
+        j = k + 1
+        while j < n and runs[j].kind == stitches.TRAVEL and not runs[j].jump:
+            j += 1
+        if j >= n or runs[j].jump:
+            out.extend(runs[k:j])
+            k = j
+            continue
+        a, b = runs[k - 1].points[-1], runs[j].points[0]
+        path = [a] + [p for t in runs[k:j] for p in t.points] + [b]
+        earlier = [g for g in halo[:k] if g is not None]
+        exposed = 0.0
+        if earlier:
+            on = LineString(path).intersection(unary_union(earlier))
+            later = [g for g in halo[j:] if g is not None]
+            if later and not on.is_empty:
+                on = on.difference(unary_union(later))
+            exposed = on.length
+        if exposed > limit_mm:
+            nxt = runs[j]
+            nxt.jump = True
+            nxt.trim = math.dist(a, b) > limit_mm
+            report["jumps"] += 1
+            report["connectors_cut"] = report.get("connectors_cut", 0) + 1
+        else:
+            out.extend(runs[k:j])
+        k = j
+    return out
 
 
 def _recorded_counters(cut_poly: Polygon, letter: Polygon) -> Polygon:
@@ -1858,6 +1920,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             square_ends: bool = False,
                             inside_connectors: bool = False,
                             counter_holes: list | None = None,
+                            cover_connectors: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -1904,7 +1967,11 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         lc_kw["judge"] = judge
     cut = letter_columns(poly, pitch_mm=spacing_mm, **lc_kw)
     held = recorded(cut.poly)
-    runs, report = column_runs(cut.columns, held, shape_id, **run_kw)
+    # `cover_connectors` acts on the sewn walk only: the fold judge above
+    # reads each candidate's walk as it was before the flag, so the cut the
+    # letter gets does not move with it.
+    runs, report = column_runs(cut.columns, held, shape_id, **run_kw,
+                               **({"cover_connectors": True} if cover_connectors else {}))
     report["cuts"] = len(cut.cuts)
     report["columns_unsewn"] += len(cut.unsewn)
     return runs, report

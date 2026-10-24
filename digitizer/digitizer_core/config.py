@@ -2539,6 +2539,24 @@ class PipelineConfig:
     # three in-letter hops with no on-letter route. Tests:
     # `tests/test_column_ends.py`.
     lettering_columns_inside_connectors: bool = True
+    # Under `lettering_columns`, a connector that would lie ON TOP of satin
+    # the letter has already sewn is CUT (2026-10-20, `columns.column_runs`,
+    # `cover_connectors`; `_cut_exposed_connectors`). The Euler walk orders
+    # spans at NODE resolution and a node is every column end within
+    # `merge_r` (1.3 widths + pad + pull: 6.8 mm on Becker's 4.75 mm
+    # strokes), so two legs that "meet" can end and start 7 mm apart with a
+    # finished column between, and the hop is a straight strand across it
+    # (the survey's MARINE M, N, E, 2026-10-20). ON, a connector chain whose
+    # part on earlier satin that no later satin buries passes `trim_at_mm`
+    # -- the strand the sew-or-jump rule already tolerates; no new constant
+    # -- is cut (a jump, a trim past `trim_at_mm`). Measured
+    # (`tools/column_travel_cover.py`, exposed mm OFF -> ON, trims):
+    # Becker 95.7 lc 30.3 -> 2.1 (27 -> 32), 101.9 hat 15.9 -> 1.9
+    # (28 -> 31), 76.5 lc 26.2 -> 2.8 (16 -> 21), 76.5 hat 32.9 -> 4.8
+    # (16 -> 22); Fremont / enthusiast in the PR body. Built OFF: the trims
+    # are the price, Kent's call to flip; False is byte-identical.
+    # Tests: `tests/test_column_travel_cover.py`.
+    lettering_columns_cover_connectors: bool = False
     # Under `lettering_columns`, let a thin STEM under the area floor reach
     # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
     # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2
