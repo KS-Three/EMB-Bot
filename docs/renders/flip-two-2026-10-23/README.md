@@ -31,3 +31,20 @@ Drone move. Becker's 4-6 band reads 2 vs the pro's 1 in both arms (not this flip
 Crops (`tools/pro_pair.py`, `sheet_band.png` = art | ours (ON) | pro, `runs_<id>.txt`
 the shape's runs): `mfab_S127f7bff` (the 17 x 6.5 mm bar), `gaulke_S4e044819`
 (the arch), `drone_O_Sb86e7811` (the O's polygon; the band shows "AND DRONE").
+
+## #1052's question: does ON border Becker's MARINE?
+
+No. Becker hat large OFF vs ON: the DST is byte-identical and no region's kinds
+change (17 regions). MFab changes one shape only, `S127f7bff`, the non-lettering
+bar (fill 368 -> 364 st + 219 border st); MFAB's letters are unchanged.
+`border_by_size` reads no lettering, so BECKER and MFAB letters stay the
+lettering lane's.
+
+## Logs
+
+`suite_local_full_pre-main-merge.log`: full local suite before merging main
+(235 failed, 5299 passed). Most reds are golden-md5 pins that go red on this
+Windows box with BOTH flags OFF as well (checked: `test_small_print` goldens
+with both set back to False still fail), so they are not these flips; CI is the
+oracle for pin moves. `rerun_failed_files_after_prepin.log`: those files again
+after the `PRE_FLIP` pins. `targeted_after_main_merge.log`: the flags' own tests.

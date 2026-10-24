@@ -2698,6 +2698,31 @@ class PipelineConfig:
     # arm (PR #1047) with the four `small_text_cap_*` values below, and Kent
     # flipped that arm as rendered; False is the off arm.
     lettering_columns_small_bold: bool = True
+    # Crosses square to the LINE OF TEXT in the Column lane (2026-10-23,
+    # `digitizer_core/column_lean.py`; `docs/lettering-10mm-up-2026-10-23.md`).
+    # The 10 mm and up band read against the pro's files: on Becker's
+    # MARINE (12.8-17.1 mm caps, four garments) he sews every stroke with
+    # the STEMS' cross -- square to the line of text -- diagonals included,
+    # so the N's diagonal, the A's legs and the M's V carry the same sheen as
+    # the stems and his junctions are plain overlaps. The lane stations each
+    # straight piece square to its own axis (`outline_cut.scan_stations`),
+    # so our diagonals read as another sheen and the M's V, where two leaned
+    # pieces meet two upright ones, sews as a tangle (crops in the doc).
+    # Kent's adopted convention (2026-09-03, `stitch-angle-convention`):
+    # stems square to the line of text, a 30 degree lean cap, spacing over
+    # cos of the lean -- the satin tier's `_clamp_to_span`, which the lane
+    # displaced for lettering on 2026-10-12 without carrying. ON, every
+    # straight column of a Column letter whose axis the word's house cross
+    # (`satin_angle_deg`, the house pass; else the design's) can span within
+    # the cap is re-stationed with its crosses along the clamped house, one
+    # every spacing / cos(lean) along the axis so the distance between
+    # crosses stays the satin spacing; a column the house already crosses
+    # square, a curved or ring column, and a letter with no house angle keep
+    # their stations byte for byte. Layout, not a cloth number (judged in
+    # the preview, Kent 2026-10-22); the flip is his, on the before | after
+    # | pro renders. OFF is the lane as it was, station for station. Tests:
+    # `tests/test_column_text_lean.py`.
+    lettering_columns_text_lean: bool = False
     # Under `lettering_columns`, each satin column's pull compensation is a
     # function of ITS OWN drawn stroke width, the way the professional's
     # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the
@@ -2717,6 +2742,34 @@ class PipelineConfig:
     # resize keeps it (ruling 12). A physical constant (ROADMAP gate 1):
     # Kent flips after a sew-out. Tests: `tests/test_pull_comp_by_stroke.py`.
     pull_comp_by_stroke: bool = False
+    # Under `lettering_columns`, ONE satin column is folded round an
+    # L-shaped corner -- an E's arm meeting its stem, an L's foot, a T's bar
+    # end into its serif, a 7's elbow -- the way the professional's files
+    # sew every such corner (2026-10-23, built OFF; `outline_cut._fold_corners`).
+    # The cut takes a lone concave corner with a convex apex across it as a
+    # junction and cuts there (a "mitre" to the apex, an "ext" along the
+    # longer edge, an E's "slot" line), so the two strokes sew as two
+    # columns butted at the corner: over the 38 letters of Fremont HOTEL
+    # FREMONT, Drone PRECISION, Proseal PROSEAL and MFab AND WELDING ours
+    # read 156 columns / 242 butts / 75 gaps against the pro's 134 / 195 /
+    # 54 (`docs/lettering-5-10mm-2026-10-23.md`). His needle paths (all four
+    # DSTs, 57 corners read 2026-10-23) keep one column through the corner:
+    # the crosses pivot on the inside corner, their outer ends walk the
+    # outline round the apex at the satin pitch, and the next stroke's
+    # crosses carry on -- no cut, no butt, no travel; he cuts only where two
+    # concave corners face each other (a T junction, a slab serif's root).
+    # ON, after the cut: at every lone concave corner of the letter whose
+    # turn is `outline_cut.FOLD_TURN_MIN_DEG`..`FOLD_TURN_MAX_DEG`, that is
+    # not one of a through pair, and where exactly two columns of like
+    # width (within `FOLD_WIDTH_RATIO`) meet, both columns lose the crosses
+    # inside the corner square and are joined by crosses from the inside
+    # corner to the outline round the apex, one per pitch (kind "folded").
+    # The legs' own crosses, and so the sewn width, are untouched; the
+    # engine's short-stitch guard thins the pile on the inside corner as it
+    # does on an S's curl. Layout, judged in the preview (Kent, 2026-10-22),
+    # so ON-eligible from renders. False is the pre-flag cut, byte for byte.
+    # Tests: `tests/test_column_corner_fold.py`.
+    lettering_columns_corner_fold: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule

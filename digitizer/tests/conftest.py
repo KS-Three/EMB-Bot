@@ -586,6 +586,8 @@ PRE_FLIP.update(FLIP_2026_10_23)
 FLIP_2026_10_23_TWO = {
     "border_by_size": False,
     "enclosed_alpha_hole_parts": False,
+    # PR #1054, Kent "add to flip-two": one column folded round an L corner.
+    "lettering_columns_corner_fold": False,
 }
 PRE_FLIP.update(FLIP_2026_10_23_TWO)
 # Spoked detail marks (Kent's flip 2026-10-16, "ON, tightened"): a small
