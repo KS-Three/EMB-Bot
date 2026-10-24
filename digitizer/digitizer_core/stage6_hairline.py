@@ -907,19 +907,15 @@ def stitch_path(pts, stitch_mm: float, tol_mm: float,
 REST_KEY = "_hairline_rest"
 
 
-def rest_planned(p, m: dict):
-    """The parts of a planned shape the per-strand gate left to the ladder:
-    one copy of `p` per connected piece of `m["rest"]` (the thick branches),
-    its artwork polygon the piece and its sewing polygon cut to match; []
-    when every branch is a hairline or the thick part came to nothing
-    sewable. One piece per copy because the ladder takes one Polygon.
-
-    The sewing polygon is `p.polygon` (underlap and pull compensation
-    included) clipped to the piece grown by the mean outward growth stage 5
-    gave this shape, so the thick branches keep their compensation and the
-    hairline ribbons' slot is not sewn twice. Each copy carries `REST_KEY`
-    in its region's meta so stage 7 does not offer it to the tier again."""
-    import dataclasses
+def rest_sew_parts(p, m: dict):
+    """-> [(piece, [sewing parts, largest first])]: each connected piece of
+    `m["rest"]` (the thick branches) with the connected parts of `p.polygon`
+    (underlap and pull compensation included) clipped to it grown by the mean
+    outward growth stage 5 gave this shape. A clip across a junction, or
+    stage 5's clip of the shape by an earlier colour, can leave a piece's
+    sewing polygon in several parts; `rest_planned` decides which to sew and
+    `tools/hairline_rest_pieces` counts what it leaves. A piece with no
+    sewable part is omitted."""
     rest = m.get("rest")
     if rest is None or rest.is_empty:
         return []
@@ -933,9 +929,37 @@ def rest_planned(p, m: dict):
         sew = [g for g in _parts(sew) if g.geom_type == "Polygon" and g.area > 1e-6]
         if not sew:
             continue
+        out.append((piece, sorted(sew, key=lambda g: -g.area)))
+    return out
+
+
+def rest_planned(p, m: dict):
+    """The parts of a planned shape the per-strand gate left to the ladder:
+    one copy of `p` per connected piece of `m["rest"]` (the thick branches),
+    its artwork polygon the piece and its sewing polygon cut to match; []
+    when every branch is a hairline or the thick part came to nothing
+    sewable. One piece per copy because the ladder takes one Polygon.
+
+    The sewing polygon is `p.polygon` (underlap and pull compensation
+    included) clipped to the piece grown by the mean outward growth stage 5
+    gave this shape, so the thick branches keep their compensation and the
+    hairline ribbons' slot is not sewn twice. Each copy carries `REST_KEY`
+    in its region's meta so stage 7 does not offer it to the tier again.
+
+    A piece's sewing polygon can come in several parts (`rest_sew_parts`);
+    only the largest is sewn. That drops the others' ink if a stage-5 clip
+    ever cuts a piece in two real parts while the shape holds together round
+    the outside. It does not on the corpus: 0 of 52 matrix rows, with and
+    without `hairline_over_ground` (`tools/hairline_rest_pieces`, PR #861
+    census; every second part measured is underlap OUTSIDE the piece, 0.000
+    mm2 of ink). `test_hairline_rest_pieces.py` is the tripwire, and pins the
+    latent drop on a synthetic cut."""
+    import dataclasses
+    out = []
+    for piece, sew in rest_sew_parts(p, m):
         # The sewing polygon of this piece: its largest connected part (a
         # clip across a junction can leave a stray fleck beside it).
-        sew = max(sew, key=lambda g: g.area)
+        sew = sew[0]
         region = dataclasses.replace(p.region, polygon=piece, area_mm2=float(piece.area),
                                      meta={**p.region.meta, REST_KEY: True})
         vis = None if p.visible is None else p.visible.intersection(sew)
