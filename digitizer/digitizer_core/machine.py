@@ -756,6 +756,16 @@ UNDERLAY_LATTICE_MM = 2.5    # row spacing, lattice underlay
 # design or a shape asks for it.
 UNDERLAY_CROSS_ROW_MM = 1.0
 UNDERLAY_CROSS_STITCH_MM = 4.0
+# How far inside the finished edge that pass stops. Its own number, not
+# `UNDERLAY_INSET_MM`: at the edge run's 1.0 mm the pass laid 12.3 / 10.0 /
+# 8.2% of the top fill's thread on Fremont, Bridge Bar and drone at 80 mm
+# against the professional's 16%, and covered 0.42 of Bridge Bar's fill to
+# within a row. Kent picked 0.4 on a probe of 1.0 / 0.6 / 0.4 / 0.2
+# (2026-10-06; 0.2 reaches his 16% and costs the most trims). NOT SEWN, and
+# not read off his files — the classifier's edge is about 0.3 mm fuzzy, too
+# coarse to choose with. What a smaller inset risks is underlay showing past
+# the fill's edge on cloth; only a sew-out says where that starts.
+UNDERLAY_CROSS_INSET_MM = 0.4
 
 # Satin's own zigzag-underlay pitch (corpus law 23, docs/corpus-laws-round3-
 # 2026-08-01.md). Deliberately a separate constant from UNDERLAY_ZIGZAG_MM:

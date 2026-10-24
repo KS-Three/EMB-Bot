@@ -19206,3 +19206,34 @@ fills in one colour judged apart; and the five tracked Becker DSTs — 10
 fills, 10 crossing passes, pitch 0.94–0.99 mm, stitch 3.99 mm, 15.3–17.1% of
 the top thread. Setting the sparse bar back to the research note's 0.9 mm
 fails the 0.75 mm case, as it should. No engine change.
+
+## 2026-10-06 — `cross_tatami` gets its own 0.4 mm inset (Kent's pick on a probe), and a correction: the bare patch was the inset, not the largest-piece rule
+
+**The probe.** Kent asked to close the gap between our pass and the
+professional's (8–12% of the fill's thread against his 16%). Before any
+design, a throwaway probe sewed the pass five ways on Fremont, Bridge Bar and
+drone at 80 mm and read each file back with `tools/pro_fill_underlay.py`.
+Underlaying every piece of an inset-split shape moved nothing on two logos
+and 1.4 points on the third. The inset moved all three: 1.0 mm 12.3 / 10.0 /
+8.2%, 0.6 mm 13.6 / 12.9 / 12.1, 0.4 mm 14.3 / 14.4 / 13.9, 0.2 mm 15.2 /
+16.1 / 15.5. Table and trims: `docs/renders/cross-pass-inset-2026-10-06/`.
+
+**The correction.** The 10-05 entry above and its render README blamed the
+bare patch low on Fremont, and part of the thread gap, on "the
+largest-piece-only rule". That was asserted from a render and is wrong: the
+patch is the 1.0 mm inset closing up around the tagline's letters, and at
+0.4 mm it is sewn.
+
+**The change.** `machine.UNDERLAY_CROSS_INSET_MM = 0.4`, used by
+`cross_tatami` alone; every other style keeps `UNDERLAY_INSET_MM` 1.0, and
+no preset names `cross_tatami`, so no default plan moves. Kent's pick of
+0.4 over 0.2 (his 16%, most trims) and 0.6. A physical constant, not sewn
+and not read off the professional's files: what a small inset risks is
+underlay past the fill's edge on cloth.
+
+**Through the real code:** Fremont 14,642 stitches, 34 trims, 14.3%; Bridge
+Bar 18,697, 113, 14.4%; drone 20,704, 151, 13.5%. The median stitch stays
+near 2.5 mm against his 3.99, and that is measured as row length, not a
+defect: 54–82% of the pass's rows on these logos are under 8 mm.
+`tests/test_cross_tatami_underlay.py`, 13. The browser pass is still not
+inset.

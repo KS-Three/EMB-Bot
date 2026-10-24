@@ -35,8 +35,14 @@ a picker choice in both engines, in no preset.
 **Read your own output with the instrument that read the pro's.** The unit
 tests were green and the first DST read back at 2.0 mm stitches:
 `stitch_shape` re-split underlay at 2.5 mm. On real logos ours still reads
-median 2.4 mm and 5–12% thread against his 3.99 and 16% (lettering cuts rows;
-1.0 mm inset; largest-piece-only) — say so before anyone calls it his recipe.
+median ~2.5 mm against his 3.99 — rows on real logos are short (54–82% under
+8 mm), which no setting closes — say so before anyone calls it his recipe.
+
+**Probe before designing.** I blamed the thread gap on the largest-piece-only
+rule and wrote it into a README; a five-variant throwaway probe showed that
+rule moves nothing and the edge INSET is the lever (1.0 mm: 8–12% of fill
+thread; 0.4: ~14%; 0.2: his 16%). Kent picked 0.4
+(`UNDERLAY_CROSS_INSET_MM`, 2026-10-06, not sewn, this style only).
 
 **How to apply:** flag 1 alone will not change what Kent sees in a fill's
 interior on a left chest; say so before he flips it. The Studio preview and

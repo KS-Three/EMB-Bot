@@ -51,6 +51,10 @@ audit's classifier — the instrument that read the professional's files
   shape only the largest piece gets a pass, which is the bare patch low in
   the middle of `fremont_cross.jpg`. Both are older rules this change does
   not touch (research option 3).
+  **Corrected 2026-10-06: the bare patch is NOT the largest-piece rule.** It
+  was the 1.0 mm inset closing up around the tagline's small letters; the
+  pass has its own 0.4 mm inset since, and the patch is sewn. Measured in
+  [`../cross-pass-inset-2026-10-06/`](../cross-pass-inset-2026-10-06/README.md).
 - **Becker shows nothing.** At 80 mm its one fill is too narrow for a row
   the classifier can see, and the plan barely moves.
 - **Bridge Bar pays 15 trims** (98 → 113), drone 8; Fremont gets 4 back.

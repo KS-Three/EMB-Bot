@@ -81,11 +81,27 @@ def test_no_stitch_is_longer_than_four_millimetres():
     assert longest > machine.UNDERLAY_STITCH_MM + 0.5
 
 
-def test_the_pass_stays_inside_the_inset_and_out_of_holes():
-    keep = HOLED.buffer(-machine.UNDERLAY_INSET_MM + 0.01)
+def test_the_pass_stays_inside_its_own_inset_and_out_of_holes():
+    keep = HOLED.buffer(-machine.UNDERLAY_CROSS_INSET_MM + 0.01)
     for path in _underlay_paths(HOLED, "cross_tatami", 0.0):
         for x, y in path:
             assert keep.covers(Point(x, y)), (x, y)
+
+
+def test_the_pass_reaches_to_its_own_inset_not_the_edge_runs():
+    """Kent's pick, 2026-10-06, on the probe: at the edge run's 1.0 mm the
+    pass laid 8-12% of the top fill's thread on three logos against the
+    professional's 16%; at 0.4 mm, about 14%. The other styles keep 1.0."""
+    assert machine.UNDERLAY_CROSS_INSET_MM == 0.4
+    assert machine.UNDERLAY_INSET_MM == 1.0
+
+    def nearest_to_edge(style):
+        return min(RECT.exterior.distance(Point(p))
+                   for path in _underlay_paths(RECT, style, 0.0) for p in path)
+
+    assert nearest_to_edge("cross_tatami") == pytest.approx(0.4, abs=0.01)
+    assert nearest_to_edge("zigzag") == pytest.approx(1.0, abs=0.01)
+    assert nearest_to_edge("edge_lattice") == pytest.approx(1.0, abs=0.01)
 
 
 def test_there_is_no_edge_run():

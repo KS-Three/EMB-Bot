@@ -1350,7 +1350,8 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
     """
     if style == "none":
         return []
-    inner = poly.buffer(-machine.UNDERLAY_INSET_MM)
+    inner = poly.buffer(-(machine.UNDERLAY_CROSS_INSET_MM if style == "cross_tatami"
+                          else machine.UNDERLAY_INSET_MM))
     if inner.is_empty:
         return []
     if inner.geom_type == "MultiPolygon":
