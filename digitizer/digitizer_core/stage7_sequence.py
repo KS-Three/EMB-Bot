@@ -3087,9 +3087,6 @@ def sequence(
                     # LC and beanie presets only (`fabrics.PULL_BY_STROKE_FABRICS`)
                     **({"pull_by_stroke": True}
                        if pull_by_stroke_for(fabric, cfg.pull_comp_by_stroke) else {}),
-                    # `cfg.satin_underlay_short_columns` (2026-10-22):
-                    # the lane's centre walk under any span that holds a stitch
-                    **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),
                     # `cfg.lettering_columns_text_lean` (default OFF, 2026-10-23): the
                     # word's house cross (`satin_angle_deg`, the house pass; else
                     # the design's `satin_angle_deg`) on every straight column it
