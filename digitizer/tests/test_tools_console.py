@@ -67,7 +67,8 @@ NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach", "counter_slots",
               "fur_regions_census",  # same: writes table.md, reads none (2026-10-13)
               "fur_texture_census",  # same: writes table.md, reads none (2026-10-14)
               "detail_vs_lines",     # same: writes table.md, reads none (2026-10-14)
-              "hairline_lines_gradient"}  # same: writes table.md, reads none (2026-10-14)
+              "hairline_lines_gradient",  # same: writes table.md, reads none (2026-10-14)
+              "hairline_logo_refusal"}    # same: writes table.md, reads none (2026-10-15)
 
 
 def cp1252_stream() -> tuple[io.BytesIO, io.TextIOWrapper]:
