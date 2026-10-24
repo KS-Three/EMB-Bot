@@ -1577,6 +1577,24 @@ class PipelineConfig:
     # (ruling 2026-10-22: judged in the preview). OFF is the engine as it
     # was, byte for byte.
     enclosed_white_keyline: bool = False
+    # The pro's silhouette under-fill (`silhouette_underfill.py`, built OFF
+    # 2026-10-24, Kent: "Build under-fill, OFF"). Read per colour block on
+    # MFab hat (his black covers our band 1.00 and its holes 0.82) and the
+    # Becker beanie (his letter colour covers 0.91 of the silhouette, 0.74
+    # of our ring), and Fremont hat (his ground covers 0.92 of its outline):
+    # a RING whose holes hold other shapes gets its outline, holes closed,
+    # filled once underneath in the colour covering most of that outline
+    # (the ring counts for its own), and the ring and its contents sew on
+    # top; inner shapes of the under-fill's colour merge into it. At
+    # today's defaults it reads a ring on MFab, Fremont, Bridge and the
+    # Drone (where no pro block covers over 0.51). On MFab that sews the white
+    # keyline ON TOP of the black -- the reverse of `enclosed_white_keyline`'s
+    # order, Kent's flip. Becker's letters are only sewn with
+    # `sew_enclosed_white`, so without it Becker has no ring to fill. No per-
+    # shape width rule exists for this (`tools/tier_census.py`, kappa 0.170
+    # today vs 0.198 for the best). Layout (ruling 2026-10-22: judged in the
+    # preview). OFF is the engine as it was, byte for byte.
+    silhouette_underfill: bool = False
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
@@ -3633,6 +3651,24 @@ class PipelineConfig:
     # `tests/test_fill_sewn_paths.py`.
     fill_order_sewn_paths: bool = False
 
+    # Fill rows turn on a slant (2026-10-21, built OFF; the settings audit's
+    # gap #2, `docs/settings-vs-pro-2026-10-21.md` row 24). At the end of a
+    # fill row we stepped straight across to the next: one row spacing,
+    # 0.10-0.22 mm at the 0.15 row, the needle landing beside its own hole,
+    # and 40-90% of every sub-0.5 mm stitch on the pro's jobs. The pro's
+    # turns land the next row's first penetration ~0.7 mm along it
+    # (`machine.FILL_TURN_ALONG_MM`, read off his DSTs by
+    # `tools/fill_turns.py`). True pulls in the INNER of the two boundary
+    # points each turn joins -- the next row's entry on a narrowing edge, the
+    # row's own exit on a widening one -- so the turn runs that far along
+    # the row and its thread lies over the corner left bare
+    # (`stage6_fill._slant_turns`). The outer point stays on the boundary,
+    # so the edge keeps its line and takes a penetration every second row.
+    # Row spacing and the interior grid are unchanged. Construction, not a fabric constant (ROADMAP gate 1 asks
+    # which kind); the flip is Kent's. False is byte-identical.
+    # `tests/test_fill_turn_slant.py`.
+    fill_turn_slant: bool = False
+
     # Underlay under a gradient-class design's ordinary fills. Built OFF
     # 2026-10-05; ON since 2026-10-07 by Kent's ruling, because OFF a
     # gradient-class design sewed every fill with no underlay at all. Measured
@@ -4285,6 +4321,15 @@ class PipelineConfig:
     # (renders under docs/renders/edge-cap-bean-pitch/). A value <= 0 reads
     # as None. tests/test_edge_cap_bean_pitch.py pins OFF by md5.
     edge_cap_bean_pitch_mm: float | None = None
+    # The pro's own measured values (built OFF 2026-10-23; ROADMAP gate 1, a
+    # sew-out flips it). On a hat, left-chest or beanie preset it sews fill
+    # stitches at 3.49 mm (3.0 today), satin at 0.37 mm (0.35 on a beanie)
+    # against 0.40, and bean stitches (bean letters, the bean edge cap) at
+    # 0.95 against 0.73. An explicit `fill_stitch_mm`, `bean_letter_stitch_mm`
+    # or `edge_cap_bean_pitch_mm` still wins. Values and sources:
+    # `fabrics.pro_values_for`, docs/settings-vs-pro-2026-10-21.md rows 1, 2,
+    # 11, 19. False is the shipped plan byte for byte.
+    pro_measured_values: bool = False
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
@@ -5222,6 +5267,21 @@ class PipelineConfig:
     # flip is Kent's, after the sew-out says buried travel does not show.
     # Off, byte-identical. Tests: `tests/test_trim_bury_under_later.py`.
     trim_bury_under_later: bool = False
+    # `cut_every_jump` (BUILT OFF 2026-10-21, `docs/settings-vs-pro-2026-10-21.md`
+    # row 25): no needle-up move is left uncut. Ours leaves 0-168 uncut
+    # jumps of 0.5-3.0 mm per job (every hop under `trim_at_mm`), each a
+    # float snipped by hand; the pro's 28 DSTs leave none. Each such jump is
+    # sewn needle-down where thread sewn LATER hides all of it -- the cover
+    # rule `trim_bury_under_later` uses, shared code -- and cut, locked both
+    # sides, everywhere else (`stage7_sequence._cut_or_bury_jumps`). Bury
+    # first because the pro's short cuts almost never lie under later
+    # thread (1 of 59 at <= 3 mm). Composes with `trim_bury_under_later`:
+    # that pass handles CUT hops inside art blocks and runs first; this one
+    # handles UNCUT jumps in every block and runs last, so the two touch
+    # disjoint hops. ROADMAP gate 1 (trimmer wear and tie knots against
+    # floats, and whether buried travel shows): Kent's flip, after a
+    # sew-out. Off, byte-identical. Tests: `tests/test_cut_every_jump.py`.
+    cut_every_jump: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()
