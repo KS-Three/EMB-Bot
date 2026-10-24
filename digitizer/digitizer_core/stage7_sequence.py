@@ -3091,26 +3091,41 @@ def sequence(
             # white round its letters) sews as the pro's -- a satin loop
             # round each letter hole, crosses on under the thread sewn after
             # it (`covered_by`), any part the loops miss filled first, under
-            # them -- not as the skeleton's 253 columns. Empty falls through.
+            # them -- not as the skeleton's 253 columns. Read on the ARTWORK
+            # polygon: the letters' edges as drawn are the rails. Stage 5's
+            # sewing polygon is the band grown under every letter, and on
+            # MFab it holds 224 holes (868 -> 1,418 mm²), slivers where the
+            # letters were. Empty falls through.
+            art = p.region.polygon
             if (cfg.enclosed_white_keyline and cfg.satin and tier == "auto"
                     and p.region.meta.get("sew_enclosed_white") == "field"
-                    and keyline_band(p.polygon, machine.KEYLINE_WIDTH_MM,
+                    and keyline_band(art, machine.KEYLINE_WIDTH_MM,
                                      machine.KEYLINE_REACH_FRAC)):
                 k_runs: list[StitchRun] = []
                 k_jumps = 0
-                rest = keyline_rest(p.polygon, machine.KEYLINE_WIDTH_MM,
+                rest = keyline_rest(art, machine.KEYLINE_WIDTH_MM,
                                     cfg.overlap_mm, machine.MIN_FILL_WIDTH_MM)
-                if rest:
-                    k_runs, f_report = stitch_shape(
-                        unary_union(rest), p.shape_id,
+                for piece in rest:
+                    f_runs, f_report = stitch_shape(
+                        piece, p.shape_id,
                         angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
                         stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
-                        trim_at_mm=trim_at, start_near=entry)
+                        trim_at_mm=trim_at,
+                        start_near=k_runs[-1].points[-1] if k_runs else entry)
+                    k_runs += f_runs
                     k_jumps += f_report["jumps"]
-                k_reach = (unary_union([p.polygon, p.covered_by])
-                           if p.covered_by is not None else p.polygon)
+                # Closed by the seam tolerance (twice the contour
+                # simplification, as `_owned_by_later` reads a seam): the band
+                # and the letters are vectorized apart, and the hairline gaps
+                # between them clamped 1,702 of MFab's crosses (687 under
+                # 1 mm) where 53 clamp closed. Nothing sewn later, nothing to
+                # close: the crosses keep to the band and its own tongue.
+                k_reach = unary_union([art, p.polygon])
+                if p.covered_by is not None:
+                    seam = 2.0 * cfg.simplify_tol_mm
+                    k_reach = k_reach.union(p.covered_by).buffer(seam).buffer(-seam)
                 l_runs, l_report = keyline_runs(
-                    p.polygon, p.shape_id, reach=k_reach,
+                    art, p.shape_id, reach=k_reach,
                     entry=k_runs[-1].points[-1] if k_runs else entry,
                     trim_at_mm=trim_at, underlay=satin_underlay != "none")
                 if not l_report["empty"]:

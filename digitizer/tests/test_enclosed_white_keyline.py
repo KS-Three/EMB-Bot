@@ -189,3 +189,34 @@ def test_on_with_satin_underlay_each_loop_walks_its_centre_first():
             mid = u.points[len(u.points) // 2]
             d = min(LEFT.exterior.distance(Point(mid)), RIGHT.exterior.distance(Point(mid)))
             assert abs(d - machine.KEYLINE_WIDTH_MM / 2) < 0.3
+
+
+def test_on_two_unreached_parts_each_fill_under_the_loops():
+    two = Polygon(OUTER.union(Polygon([(17, -1.5), (20, -1.5), (20, 1.5), (17, 1.5)]))
+                  .union(Polygon([(-20, -1.5), (-17, -1.5), (-17, 1.5), (-20, 1.5)])).exterior,
+                  [LEFT.exterior, RIGHT.exterior])
+    assert len(keyline_rest(two, machine.KEYLINE_WIDTH_MM, 0.25, machine.MIN_FILL_WIDTH_MM)) == 2
+    assert keyline_band(two, machine.KEYLINE_WIDTH_MM, machine.KEYLINE_REACH_FRAC)
+    on = _plan(two, enclosed_white_keyline=True)
+    kinds = [r.kind for r in on if r.kind != stitches.TRAVEL]
+    first_loop = kinds.index(stitches.SATIN)
+    assert stitches.FILL in kinds[:first_loop] and kinds.count(stitches.SATIN) == 2
+
+
+def test_on_the_loops_ride_the_artwork_not_stage5s_grown_polygon():
+    # stage 5 grows the first-sewn band under every letter (on MFab its sewing
+    # polygon held 224 holes, slivers of the letters); the loops read the art
+    grown = Polygon(OUTER.exterior, [LEFT.buffer(-1.0).exterior, RIGHT.buffer(-1.0).exterior])
+    meta = {"layer": 0, "sew_enclosed_white": "field"}
+    reg = Region(shape_id="Sband", polygon=BAND, thread_index=0, thread_number="0015",
+                 area_mm2=BAND.area, source="test", meta=meta)
+    planned = [PlannedRegion(region=reg, polygon=grown, sew_index=0,
+                             covered_by=unary_union([LEFT, RIGHT, RING]))]
+    blocks, _ = sequence(planned, fabric_for_garment("hat_front"),
+                         PipelineConfig(underlay=False, sew_enclosed_white=True,
+                                        enclosed_white_keyline=True))
+    loops = [r for b in blocks for r in b.runs if r.kind == stitches.SATIN]
+    assert len(loops) == 2
+    for r in loops:
+        assert min(min(LEFT.exterior.distance(Point(q)), RIGHT.exterior.distance(Point(q)))
+                   for q in r.points[0::2]) < 1e-6
