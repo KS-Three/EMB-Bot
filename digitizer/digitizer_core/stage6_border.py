@@ -70,7 +70,7 @@ import math
 
 import numpy as np
 from shapely.geometry import LineString, Point, Polygon
-from shapely.ops import nearest_points
+from shapely.ops import nearest_points, unary_union
 from shapely.prepared import prep
 
 from . import machine, stitches
@@ -431,14 +431,19 @@ def _pick_start(pts: list[tuple[float, float]], radii: np.ndarray,
 
 def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
                 width: float, inside, entry: tuple[float, float] | None,
-                k_tan: int, overlap_stitches: int | None = None
-                ) -> tuple[list[tuple[float, float]], int, int]:
+                k_tan: int, overlap_stitches: int | None = None,
+                clamp=None) -> tuple[list[tuple[float, float]], int, int]:
     """One closed circuit as a satin column. -> (points, crosses, clamped).
 
     Closure overlap is `machine.BORDER_CLOSURE_OVERLAP_MM` (a distance) unless
     `overlap_stitches` gives an exact station count instead — see
     `_loop_stations` for why appliqué's cover wants that path.
+
+    `clamp`, when given, is what a cross must stay inside instead of `inside`
+    (which still decides the side): `keyline_runs`' column may reach under
+    the thread sewn later. None is every other caller, unchanged.
     """
+    clamp = inside if clamp is None else clamp
     n = len(ring_pts)
     tans = _tangents(ring_pts, k_tan)
     sign = _inward_sign(ring_pts, tans, inside)
@@ -452,7 +457,7 @@ def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
         px, py = ring_pts[i]
         tx, ty = tans[i]
         nx, ny = -ty * sign, tx * sign
-        q, w = _clamped_cross(px, py, nx, ny, width, inside)
+        q, w = _clamped_cross(px, py, nx, ny, width, clamp)
         outer.append((px, py))
         inner.append(q)
         widths.append(w)
@@ -848,6 +853,148 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
 
     report["empty"] = not runs
     return runs, report
+
+
+# --- The keyline band (`cfg.enclosed_white_keyline`, built OFF 2026-10-23) --
+#
+# A KEYLINE is the thin band of one colour that outlines a group of letters
+# (MFab's white round M-FAB and AND WELDING LLC). Sewn on the satin tier its
+# medial axis breaks at every letter corner: MFab's 868 mm² band (17 letter
+# holes, medial width p25 0.72 / p50 1.20 mm) came out as 253 columns with
+# 203 underlay runs, 2,700 stitches under 1 mm in its satin and underlay. The
+# pro sews the band as one satin column round each LETTER, its rail on the
+# letter's edge and its crosses a fixed ~2.1 mm out across the band
+# (`machine.KEYLINE_WIDTH_MM`), lying under or over the neighbouring thread
+# where the band is narrower than that. So the column follows the hole
+# rings, never the band's own skeleton.
+
+def keyline_band(poly, width_mm: float, reach_frac: float) -> bool:
+    """True when `poly` is a keyline: a polygon with holes, at least
+    `reach_frac` of whose area lies within `width_mm` of a hole -- so one
+    column round each hole covers it. A hollow letter's body (Becker's,
+    counters inside a fat field) reaches a few percent and is not one."""
+    if poly is None or poly.is_empty or poly.geom_type != "Polygon":
+        return False
+    holes = _looped_holes(poly)
+    if not holes:
+        return False
+    near = poly.intersection(unary_union([h.buffer(width_mm) for h in holes]))
+    return near.area >= reach_frac * poly.area
+
+
+def _looped_holes(band) -> list[Polygon]:
+    """The holes a keyline loops: those whose ring is a loop's length
+    (`BORDER_MIN_LOOP_MM`), as the border tier counts one."""
+    return [Polygon(r) for r in band.interiors
+            if LineString(r.coords).length >= machine.BORDER_MIN_LOOP_MM]
+
+
+def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | None,
+                 trim_at_mm: float, width_mm: float | None = None,
+                 density_mm: float | None = None,
+                 underlay: bool = False) -> tuple[list[StitchRun], dict]:
+    """A keyline band as one satin loop round each of its holes. -> (runs,
+    report).
+
+    Each hole ring of `band` with a loop's length (`BORDER_MIN_LOOP_MM`) is
+    one closed circuit (`_satin_loop`): its rail on the ring, its crosses
+    `width_mm` out into the band, shortened only where they would leave
+    `reach` -- the band and whatever sews after it on top, so a cross runs on
+    under the next thread rather than shrinking to the band's local width.
+    Loops are taken nearest-first from `entry`; between them the needle
+    travels inside the band (`travel_path`) or lifts. What the loops do not
+    reach is `keyline_rest`'s, for the caller to fill under them.
+
+    `underlay`: each loop first walks its own centre line once at
+    `UNDERLAY_STITCH_MM`, ending where the satin starts -- the centre run a
+    satin column of this width takes; the skeleton it replaces carried a
+    zigzag. False sews the loops bare.
+
+    Report keys: `loops`, `crosses`, `clamped`, `jumps`, `empty`.
+    """
+    report = {"loops": 0, "crosses": 0, "clamped": 0, "jumps": 0, "empty": True}
+    width = machine.KEYLINE_WIDTH_MM if width_mm is None else float(width_mm)
+    density = machine.BORDER_DENSITY_MM if density_mm is None else float(density_mm)
+    step = density / 2.0
+    half = width / 2.0
+    side = prep(band.buffer(_SLACK_MM))
+    clamp = prep((reach if reach is not None else band).buffer(_SLACK_MM))
+    rings = [list(h.exterior.coords) for h in _looped_holes(band)]
+    runs: list[StitchRun] = []
+    cursor = entry
+    while rings:
+        if cursor is None:
+            i = 0
+        else:
+            i = min(range(len(rings)), key=lambda j: (
+                round(LineString(rings[j]).distance(Point(cursor)), 6), j))
+        coords = rings.pop(i)
+        n = max(8, int(round(LineString(coords).length / step)))
+        ring_pts, total = _ring_arc_samples(coords, n)
+        if not ring_pts:
+            continue
+        k_tan = max(1, int(round(half / step)))
+        pts, crosses, clamped = _satin_loop(ring_pts, total, total / n, width,
+                                            side, cursor, k_tan, clamp=clamp)
+        if len(pts) < 2:
+            continue
+        jump = trim = False
+        if cursor is not None:
+            bridge = travel_path(band, None, cursor, pts[0])
+            if bridge is None:
+                d = math.dist(cursor, pts[0])
+                if d >= machine.TINY_STITCH_MM:
+                    jump = True
+                    trim = d > trim_at_mm
+                    report["jumps"] += 1
+            elif len(bridge) > 1:
+                runs.append(StitchRun(points=bridge[:-1], kind=stitches.TRAVEL,
+                                      shape_id=shape_id))
+        if underlay:
+            centre = _keyline_centre(pts)
+            if len(centre) > 2:
+                runs.append(StitchRun(points=centre, kind=stitches.UNDERLAY,
+                                      jump=jump, trim=trim, shape_id=shape_id))
+                jump = trim = False
+        runs.append(StitchRun(points=stitches.split_long_moves(pts),
+                              kind=stitches.SATIN, jump=jump, trim=trim,
+                              shape_id=shape_id))
+        cursor = pts[-1]
+        report["loops"] += 1
+        report["crosses"] += crosses
+        report["clamped"] += clamped
+    report["empty"] = not runs
+    return runs, report
+
+
+def _keyline_centre(pts: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """A loop's centre line -- the midpoints of its crosses -- walked from
+    the loop's first cross round to it again at `UNDERLAY_STITCH_MM`, so it
+    ends where the satin starts."""
+    mids = [((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0) for a, b in zip(pts, pts[1:])]
+    if len(mids) < 3:
+        return []
+    line = LineString(mids + [mids[0], pts[0]])
+    k = max(3, int(math.ceil(line.length / machine.UNDERLAY_STITCH_MM)))
+    return [(line.interpolate(line.length * i / k).x, line.interpolate(line.length * i / k).y)
+            for i in range(k + 1)]
+
+
+def keyline_rest(band, width_mm: float, overlap_mm: float, min_dim_mm: float) -> list:
+    """The parts of `band` no keyline loop reaches (further than `width_mm`
+    from every looped hole), grown `overlap_mm` back under the loops, that
+    are at least `min_dim_mm` across -- the fill sewn under the keyline.
+    Empty on MFab at 2.1 mm (1.4 mm² unreached, in specks)."""
+    looped = _looped_holes(band)
+    rest = (band.difference(unary_union([h.buffer(width_mm) for h in looped]))
+            if looped else band)
+    out = []
+    for part in _parts(rest):
+        if part.buffer(-min_dim_mm / 2.0).is_empty:
+            continue
+        grown = part.buffer(overlap_mm).intersection(band)
+        out.extend(_parts(grown))
+    return out
 
 
 EDGE_CAP_STYLES = ("none", "bean", "satin")
