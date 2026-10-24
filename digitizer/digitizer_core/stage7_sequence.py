@@ -72,6 +72,7 @@ from .words import is_text, word_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
+                            keyline_band, keyline_rest, keyline_runs,
                             run_outline, silhouette_cap)
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
@@ -947,9 +948,42 @@ def _bury_trims_under_later(blocks: list[StitchBlock]) -> int:
     counted as cover -- the cheap direction to be wrong in. The first run of
     a block is never touched: that cut is a colour change.
     """
+    seq, bury = _later_thread_burier(blocks)
+    buried = 0
+    for k in range(1, len(seq)):
+        bi, run = seq[k]
+        if not run.trim or seq[k - 1][0] != bi or not seq[k - 1][1].points or not run.points:
+            continue
+        inner = bury(k)
+        if inner is None:
+            continue
+        _sew_hop(blocks[bi].runs, run, inner)
+        buried += 1
+    return buried
+
+
+def _sew_hop(b_runs: list[StitchRun], run: StitchRun, inner) -> None:
+    """Turn the lift into `run` into needle-down travel along `inner`."""
+    at = next(i for i, r in enumerate(b_runs) if r is run)
+    if inner:
+        b_runs.insert(at, StitchRun(points=inner, kind=stitches.TRAVEL,
+                                    shape_id=run.shape_id,
+                                    shade_thread_index=run.shade_thread_index))
+    run.jump = False
+    run.trim = False
+
+
+def _later_thread_burier(blocks: list[StitchBlock]):
+    """-> (seq, bury): the flat sew order `[(block index, run)]`, and
+    `bury(k)`, the interior stitches of a needle-down route from the end of
+    `seq[k - 1]` to the start of `seq[k]` that lies wholly under thread sewn
+    at or after `k` (see `_bury_trims_under_later` for the cover rule), or
+    None when there is none. Shared by `_bury_trims_under_later` and
+    `_cut_or_bury_jumps`, so the two passes cannot disagree on what hides a
+    float. The cover is read once, from the runs as they stand now."""
     seq = [(bi, r) for bi, b in enumerate(blocks) for r in b.runs]
     if len(seq) < 2:
-        return 0
+        return seq, lambda _k: None
     half = machine.COVERAGE_THREAD_W_MM / 2.0
     lines: list[object] = []
     for k, (_bi, r) in enumerate(seq):
@@ -962,7 +996,7 @@ def _bury_trims_under_later(blocks: list[StitchBlock]) -> int:
         lines.append(LineString(pts))
     idx = [k for k, g in enumerate(lines) if g is not None]
     if not idx:
-        return 0
+        return seq, lambda _k: None
     order = np.array(idx)
     tree = shapely.STRtree([lines[k] for k in idx])
 
@@ -995,39 +1029,70 @@ def _bury_trims_under_later(blocks: list[StitchBlock]) -> int:
             ok[hit_pt[(order[hit_line] >= self.k) | at_end[hit_pt]]] = True
             return bool(ok.all())
 
-    buried = 0
-    for k in range(1, len(seq)):
-        bi, run = seq[k]
-        if not run.trim or seq[k - 1][0] != bi or not seq[k - 1][1].points or not run.points:
-            continue
-        a, b = seq[k - 1][1].points[-1], run.points[0]
+    def bury(k: int):
+        a, b = seq[k - 1][1].points[-1], seq[k][1].points[0]
         gap = math.dist(a, b)
         if gap > machine.LINK_MAX_GAP_MM:
-            continue
+            return None
         # Any buried route leaves the start's end allowance into later
         # thread, so with no later centreline that close to `a` there is no
         # route to find: most bare hops stop here, before the raster.
         reach = machine.COVERAGE_THREAD_W_MM + half + _BURY_STEP_MM
         if not (order[tree.query(Point(a), predicate="dwithin", distance=reach)] >= k).any():
-            continue
+            return None
         cover = _UnderThread(k, (a, b))
         if cover.covers(LineString([a, b])):
             route = [a, b]
         else:
             route = _bury_route(a, b, gap, k, cover, lines, idx, tree, half)
-        inner = _link_stitches(route) if route is not None else None
-        if inner is None:
+        return _link_stitches(route) if route is not None else None
+
+    return seq, bury
+
+
+def _cut_or_bury_jumps(blocks: list[StitchBlock],
+                       small_letters: set[str] | None = None) -> tuple[int, int]:
+    """Leave no needle-up move uncut. -> (sewn needle-down, cut).
+
+    `cfg.cut_every_jump` (built OFF 2026-10-21). Every jump inside a block
+    that does not cut (`jump` without `trim`: a hop shorter than
+    `trim_at_mm`, or a pass's own uncut lift) is a float on the finished
+    piece that someone snips by hand. The pro's 28 DSTs leave none: every
+    needle-up move is three or more jump records, a cut
+    (`docs/settings-vs-pro-2026-10-21.md` row 25). Each one here is first
+    offered to `_later_thread_burier` -- sewn needle-down where thread sewn
+    LATER (the rest of this shape, or anything after it) hides the whole
+    travel, never on bare fabric and never on top of finished work -- and
+    otherwise cut, with `apply_ties`' own locks on both sides of the cut.
+
+    Bury first, from the pro's own files: of his 59 non-colour cuts of
+    3 mm or less, ONE lies under thread he sews later (`tools/trim_classes.py`
+    over the 27 DSTs); the other 58 lie on bare fabric or on finished work,
+    exactly the two places this pass refuses to sew.
+
+    Runs on the finished block list (after ties, the edge cap, hairlines and
+    spoke marks), so thread counted as later is sewn later, and the ties it
+    adds are the only ones the new cuts get. The first run of a block is
+    never touched: that lift follows a colour change.
+    """
+    seq, bury = _later_thread_burier(blocks)
+    sewn = cut = 0
+    for k in range(1, len(seq)):
+        bi, run = seq[k]
+        prev = seq[k - 1][1]
+        if (not run.jump or run.trim or seq[k - 1][0] != bi
+                or not prev.points or not run.points):
             continue
-        b_runs = blocks[bi].runs
-        at = next(i for i, r in enumerate(b_runs) if r is run)
-        if inner:
-            b_runs.insert(at, StitchRun(points=inner, kind=stitches.TRAVEL,
-                                        shape_id=run.shape_id,
-                                        shade_thread_index=run.shade_thread_index))
-        run.jump = False
-        run.trim = False
-        buried += 1
-    return buried
+        inner = bury(k)
+        if inner is not None:
+            _sew_hop(blocks[bi].runs, run, inner)
+            sewn += 1
+            continue
+        run.trim = True
+        stitches.tie_in(run, small_letters)
+        stitches.tie_off(prev, small_letters)
+        cut += 1
+    return sewn, cut
 
 
 # Lock-stitch application for a finished block. Hoisted verbatim to
@@ -3088,6 +3153,52 @@ def sequence(
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
+            # `cfg.enclosed_white_keyline` (built OFF, 2026-10-23): an enclosed
+            # field `sew_enclosed_white` sews that is a keyline band (MFab's
+            # white round its letters) sews as the pro's -- a satin loop
+            # round each letter hole, crosses on under the thread sewn after
+            # it (`covered_by`), any part the loops miss filled first, under
+            # them -- not as the skeleton's 253 columns. Read on the ARTWORK
+            # polygon: the letters' edges as drawn are the rails. Stage 5's
+            # sewing polygon is the band grown under every letter, and on
+            # MFab it holds 224 holes (868 -> 1,418 mm²), slivers where the
+            # letters were. Empty falls through.
+            art = p.region.polygon
+            if (cfg.enclosed_white_keyline and cfg.satin and tier == "auto"
+                    and p.region.meta.get("sew_enclosed_white") == "field"
+                    and keyline_band(art, machine.KEYLINE_WIDTH_MM,
+                                     machine.KEYLINE_REACH_FRAC)):
+                k_runs: list[StitchRun] = []
+                k_jumps = 0
+                rest = keyline_rest(art, machine.KEYLINE_WIDTH_MM,
+                                    cfg.overlap_mm, machine.MIN_FILL_WIDTH_MM)
+                for piece in rest:
+                    f_runs, f_report = stitch_shape(
+                        piece, p.shape_id,
+                        angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
+                        stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
+                        trim_at_mm=trim_at,
+                        start_near=k_runs[-1].points[-1] if k_runs else entry)
+                    k_runs += f_runs
+                    k_jumps += f_report["jumps"]
+                # Closed by the seam tolerance (twice the contour
+                # simplification, as `_owned_by_later` reads a seam): the band
+                # and the letters are vectorized apart, and the hairline gaps
+                # between them clamped 1,702 of MFab's crosses (687 under
+                # 1 mm) where 53 clamp closed. Nothing sewn later, nothing to
+                # close: the crosses keep to the band and its own tongue.
+                k_reach = unary_union([art, p.polygon])
+                if p.covered_by is not None:
+                    seam = 2.0 * cfg.simplify_tol_mm
+                    k_reach = k_reach.union(p.covered_by).buffer(seam).buffer(-seam)
+                l_runs, l_report = keyline_runs(
+                    art, p.shape_id, reach=k_reach,
+                    entry=k_runs[-1].points[-1] if k_runs else entry,
+                    trim_at_mm=trim_at, underlay=satin_underlay != "none")
+                if not l_report["empty"]:
+                    return (k_runs + l_runs,
+                            {"jumps": k_jumps + l_report["jumps"], "empty": False,
+                             "keyline_loops": l_report["loops"]}, False)
             word_satin = (tier == "auto" and cfg.satin
                           and _word_tier(p.region, cfg) in ("satin", "widened"))
             # `cfg.border_by_size` (built OFF, 2026-10-23): a big non-lettering
@@ -4548,4 +4659,8 @@ def sequence(
     seam_warning = _border_seam_warning(border_seams)
     if seam_warning is not None:
         warnings.append(seam_warning)
+    # `cfg.cut_every_jump` (built OFF): last, over every block, so the
+    # thread it counts as later is the thread actually sewn later.
+    if cfg.cut_every_jump:
+        _cut_or_bury_jumps(blocks, tie_kw.get("small_letters"))
     return blocks, warnings
