@@ -4,22 +4,18 @@ as a 0.1 mm thread over red penetrations, OFF left, ON right.
 Run: python -m tools.pro_values_render <out_dir>"""
 from __future__ import annotations
 
-import sys
 from pathlib import Path
-
-from PIL import Image, ImageDraw, ImageFont
-from shapely.geometry import Polygon
-
-from digitizer_core import PipelineConfig, get_fabric, stitches
-from digitizer_core.regions import Region
-from digitizer_core.stage5_overlap import resolve_overlaps
-from digitizer_core.stage7_sequence import sequence
-from digitizer_core.threads import CHART
 
 PX, W, H = 60, 12.0, 7.0          # px per mm, window mm
 
 
 def runs_for(poly, **kw):
+    from digitizer_core import PipelineConfig, get_fabric
+    from digitizer_core.regions import Region
+    from digitizer_core.stage5_overlap import resolve_overlaps
+    from digitizer_core.stage7_sequence import sequence
+    from digitizer_core.threads import CHART
+
     reg = Region(shape_id="S1", polygon=poly, thread_index=5, thread_number=CHART[5].number,
                  area_mm2=poly.area, meta={"layer": 0})
     fab, c = get_fabric("structured_cap"), PipelineConfig(underlay=False, **kw)
@@ -29,6 +25,8 @@ def runs_for(poly, **kw):
 
 
 def panel(runs, centre, label):
+    from PIL import Image, ImageDraw, ImageFont
+
     im = Image.new("RGB", (int(W * PX), int(H * PX) + 22), "white")
     d = ImageDraw.Draw(im)
     for r in runs:
@@ -45,6 +43,13 @@ def panel(runs, centre, label):
 
 
 def main(out: Path):
+    # Heavy imports live here, not at module top, so `--help` answers at once
+    # (tests/test_tools_help.py gives every tool 30 s and no side effects).
+    from PIL import Image
+    from shapely.geometry import Polygon
+
+    from digitizer_core import stitches
+
     out.mkdir(parents=True, exist_ok=True)
     field = Polygon([(-15, -10), (15, -10), (15, 10), (-15, 10)])
     stripe = Polygon([(-15, -1.2), (15, -1.2), (15, 1.2), (-15, 1.2)])
@@ -67,4 +72,8 @@ def main(out: Path):
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]))
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("out", type=Path, help="folder the OFF / ON sheets are written to")
+    main(ap.parse_args().out)
