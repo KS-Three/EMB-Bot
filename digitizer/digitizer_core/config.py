@@ -2312,6 +2312,7 @@ class PipelineConfig:
     # gate 1): 3.7 is the professional's on one file, unsewn here. The flip
     # is Kent's, on renders. Tests: `tests/test_small_text.py`.
     small_text_cap_mm: float | None = None
+    small_text_restore_mm: float | None = None
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
