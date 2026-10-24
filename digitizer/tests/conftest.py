@@ -407,7 +407,9 @@ def plan(whitebg):
     from digitizer_core.pipeline import fabric_for
     from digitizer_core.stage5_overlap import resolve_overlaps
 
-    c = cfg(**PLAN_CFG_KW)
+    # `border_by_size` ON (Kent 2026-10-23) rings the logo's big fills and moves
+    # every count the consumers pin; they price other things.
+    c = cfg(border_by_size=False, **PLAN_CFG_KW)
     planned, warnings = resolve_overlaps(whitebg.regions, fabric_for(c), c)
     return plan_stitches(whitebg, c), planned, warnings
 

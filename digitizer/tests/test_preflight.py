@@ -368,7 +368,7 @@ def test_each_shade_band_is_scored_against_the_cone_that_band_sews():
     from digitizer_core.stage1_prep import prep
 
     art = PHOTO / "gradient_ramp_linear.png"
-    c = cfg(**PLAN_CFG_KW)
+    c = cfg(border_by_size=False, **PLAN_CFG_KW)
     result, plan_ = digitize(art, c)
     p = prep(art, c)
 
@@ -425,7 +425,7 @@ def test_a_band_wearing_the_wrong_cone_is_no_longer_hidden_by_its_region():
     from digitizer_core.threads import chart_for
 
     art = PHOTO / "repro_gradient_white_icon.png"
-    c = cfg(**PLAN_CFG_KW)
+    c = cfg(border_by_size=False, **PLAN_CFG_KW)
     result, plan_ = digitize(art, c)
     p = prep(art, c)
     chart = chart_for(c)
@@ -471,7 +471,7 @@ def test_a_flat_design_scores_exactly_one_row_per_region_as_before():
     """
     from digitizer_core.stage1_prep import prep
 
-    c = cfg(**PLAN_CFG_KW)
+    c = cfg(border_by_size=False, **PLAN_CFG_KW)
     result, plan_ = digitize(ART, c)
     p = prep(ART, c)
 
@@ -1304,7 +1304,7 @@ def test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue(alpha):
     13.11 -> 3.24; the `> 10.0` floor this test used to assert is gone on
     purpose, not a regression -- re-asserted below as a ceiling instead so a
     future junction-cap regression still trips this test."""
-    c = cfg(target_width_mm=80.0, garment_id="left_chest")
+    c = cfg(target_width_mm=80.0, garment_id="left_chest", border_by_size=False)
     report = run_preflight(alpha, plan_stitches(alpha, c), c,
                            image=str(TESTDATA / "logo_alpha.png"))
 
@@ -1969,7 +1969,7 @@ def test_a_design_at_the_stop_cap_is_not_warned(plan):
     is at 11. The fixture's own 4 changes are pinned in the clean-report
     test; here the metric must read rather than go missing."""
     stitch_plan, _planned, _warnings = plan
-    report = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))
+    report = run_preflight(None, stitch_plan, cfg(border_by_size=False, **PLAN_CFG_KW))
 
     assert COLOR_STOPS_HEAVY not in _codes(report)
     # +1 the edge cap's block (2026-09-11), +1 the teal run `keep_thin_
@@ -2433,7 +2433,7 @@ def test_the_uncovered_check_actually_examines_a_blend_regions_ramp():
     so the honest report is "examined several thousand mm2, found nothing".
     """
     art = PHOTO / "gradient_ramp_radial.png"
-    c = cfg(**PLAN_CFG_KW)
+    c = cfg(border_by_size=False, **PLAN_CFG_KW)
     result, plan_ = digitize(art, c)
 
     assert all(r.shape_id not in {run.shape_id for _b, run in plan_.iter_runs()}
@@ -2460,7 +2460,7 @@ def test_a_bare_patch_inside_a_blend_region_is_found_and_named():
     region was never examined in the first place.
     """
     art = PHOTO / "gradient_ramp_radial.png"
-    c = cfg(**PLAN_CFG_KW)
+    c = cfg(border_by_size=False, **PLAN_CFG_KW)
     result, plan_ = digitize(art, c)
     region = result.regions[0]
 
