@@ -69,6 +69,7 @@ from .columns import (is_lettering, is_thin_stem, lettering_columns_shape,
                       small_print_clear,
                       small_print_counter_set, small_print_counters)
 from .words import is_text, word_key
+from .monoline import monoline_stroke
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
@@ -259,6 +260,8 @@ def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float
     what a letter is admitted at."""
     if cfg.satin_lettering_split and is_text(region, cfg):
         return math.inf, True, True
+    if cfg.monoline_script_satin and monoline_stroke(region, cfg, satin_max_mm):
+        return math.inf, True, True     # `monoline.py`: a script stroke, split never fill
     return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
 
 

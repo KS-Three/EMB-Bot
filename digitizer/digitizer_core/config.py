@@ -2104,6 +2104,14 @@ class PipelineConfig:
     # / 31. False is the pre-flip engine byte for byte: a text-cluster
     # member over the ceiling fills.
     satin_lettering_split: bool = True
+    # A monoline script stroke sews satin, never fill (`monoline.py`, built
+    # OFF 2026-10-24, L7). A shape the classifier refuses ONLY on
+    # `dt_p90_cap`, whose width is near-constant (dt_cv <= 0.25) along a long
+    # stroke (elongation >= 20) -- Tires' joined "ires" -- gets the lettering
+    # split's ceiling above: the pro sews it as satin columns, 8.9 % of his
+    # crosses over 5 mm, where we sewed a tatami. Layout (ruling 2026-10-22:
+    # judged in the preview). OFF is the engine as it was, byte for byte.
+    monoline_script_satin: bool = False
     # Bean letters (2026-10-02, `docs/superpowers/specs/2026-10-02-bean-letters-
     # design.md`; Kent: "the tool needs the ability to identify the image it's
     # being given and follow a path to produce the best output possible").
