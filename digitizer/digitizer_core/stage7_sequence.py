@@ -2984,12 +2984,14 @@ def sequence(
             # `cfg.border_from_outline` (built OFF, 2026-10-24): the art's own
             # outline sewn the pro's way -- one satin loop round each body it
             # holds, rail on the body's edge, crosses out across the outline
-            # at his width for the body's size (`art_outline.outline_width_mm`),
-            # on under whatever sews later, never onto bare garment. His
-            # border is that width all round: where the art draws the outline
-            # thicker (BECKER's drop shadow) the loop does not follow it, and
-            # what no loop reaches is filled first, under them (a spanning
-            # cross fanned the loop's outer edge into a fringe). Ahead of the
+            # at his width (`art_outline.outline_width_mm`: the art outline's
+            # own thickness, 1.5 to 2.5) all round -- his border is the
+            # outline WIDENED (a 0.94 mm ring sews at 1.5), so a cross may leave
+            # the band by up to the width, never into any hole of it (a body,
+            # its own or a neighbour's). Where the art draws the outline
+            # thicker (BECKER's drop shadow) the loop does not follow it: what
+            # no loop reaches is filled first, under them (a cross spanning to
+            # the far edge fanned the loop's outer edge into a fringe). Ahead of the
             # Column lane and the keyline band: an outline is neither a letter
             # nor a field. Read on the ARTWORK polygon, as the keyline is (stage
             # 5 grows a front-layer band under every later shape). Empty falls
@@ -2997,7 +2999,7 @@ def sequence(
             if tier == "auto" and cfg.satin and p.shape_id in outline_rings:
                 art = p.region.polygon
                 rings = outline_holes(art, outline_rings[p.shape_id],
-                                      machine.OUTLINE_WIDTH_MM[-1][1])
+                                      max(w for _h, w in outline_rings[p.shape_id]))
                 o_runs: list[StitchRun] = []
                 o_jumps = 0
                 for piece in keyline_rest(art, 0.0, cfg.overlap_mm,
@@ -3011,9 +3013,11 @@ def sequence(
                     o_runs += f_runs
                     o_jumps += f_report["jumps"]
                 seam = 2.0 * cfg.simplify_tol_mm
-                o_reach = unary_union([art, p.polygon])
+                o_holes = unary_union([Polygon(r) for r in art.interiors])
+                o_reach = unary_union([art.buffer(max(w for _h, w in rings), join_style=2),
+                                       p.polygon]).difference(o_holes)
                 if p.covered_by is not None:
-                    o_reach = o_reach.union(p.covered_by).buffer(seam).buffer(-seam)
+                    o_reach = o_reach.union(p.covered_by.difference(o_holes))
                 l_runs, l_report = keyline_runs(
                     art, p.shape_id, reach=o_reach,
                     entry=o_runs[-1].points[-1] if o_runs else entry,

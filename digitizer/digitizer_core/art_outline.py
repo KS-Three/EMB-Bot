@@ -6,7 +6,7 @@ other. What his bordered shapes share is an OUTLINE IN THE ART -- a thin
 band of another colour drawn round the shape -- and his border is that
 outline, sewn as one satin loop at 2.0-2.5 mm on top of the shape's fill:
 BECKER's white faces inside their black keyline, MFab's black M-FAB inside
-its white keyline, Hotel Fremont's two discs inside their black rings.
+its white keyline.
 
 An outline here is a region O with a hole that holds a BODY B:
 
@@ -15,24 +15,28 @@ An outline here is a region O with a hole that holds a BODY B:
     that do fill at least `FILL_FRAC` of the hole -- so a letter's counter
     sitting inside a face is not a body of the face's keyline, and MFab's
     F and hyphen, touching in one hole, are both bodies;
-  * B is not a COUNTER: not tagged `counter`, and not an enclosed
-    background area held by a letter (`enclosed_white`'s own rule) -- the
-    gap inside a satin O is not a shape the pro borders;
+  * B is not a COUNTER: not tagged `counter`, and not held by a letter at
+    all, sewn or not -- the inside of a satin O is not a shape the pro
+    borders, whatever colour it is (Hotel Fremont's O's hold white the field
+    sews, and looping them sewed a spiked sun where he sews the letter);
   * B is wider than its outline is thick: B's stroke (2 x area / perimeter)
     is at least `machine.OUTLINE_BODY_RATIO` x the outline's band round it
     (O's area within `machine.OUTLINE_PROBE_MM` of B, per mm of B's edge).
     Measured on the census cache (`tools/outline_census.py`): BECKER's faces
-    read 1.34-2.30, MFab's big letters 1.65-3.14, Fremont's discs 2.89; a
-    satin letter's counter, MFab's AND WELDING LLC inside the same keyline
-    (0.50-0.87, sewn satin by the pro) and every letter in Fremont's white
-    field (0.03-0.55) fall under it.
+    read 1.34-2.30, MFab's big letters 1.65-3.14; MFab's AND WELDING LLC
+    inside the same keyline (0.50-0.87, sewn satin by the pro) and every
+    letter in Fremont's white field (0.03-0.55) fall under it.
 
 The hole ring must be a loop the border tier would sew
-(`machine.BORDER_MIN_LOOP_MM`). Pure: reads geometry and tags.
+(`machine.BORDER_MIN_LOOP_MM`), and O must be a band: at least
+`machine.OUTLINE_REACH_FRAC` of it within `OUTLINE_PROBE_MM` of its looped
+holes (Becker's keyline 0.99-1.00, MFab's 1.00; Bridge's wheel, a ring with
+spokes, 0.67-0.71). Pure: reads geometry and tags.
 """
 from __future__ import annotations
 
 from shapely.geometry import LineString, Polygon
+from shapely.ops import unary_union
 
 from . import machine
 from .columns import is_lettering
@@ -50,9 +54,7 @@ TOUCH_FRAC = 0.25
 
 
 def _counter(body, holder, cfg) -> bool:
-    m = body.meta or {}
-    return bool(m.get("counter")) or (bool(m.get("enclosed_background"))
-                                      and is_lettering(holder, cfg))
+    return bool((body.meta or {}).get("counter")) or is_lettering(holder, cfg)
 
 
 def outline_measures(holder, body, hole: Polygon) -> tuple[float, float]:
@@ -79,6 +81,13 @@ def find_art_outlines(regions, cfg=None) -> dict[str, list[tuple[str, Polygon]]]
         holes = [Polygon(r) for r in poly.interiors
                  if LineString(r.coords).length >= machine.BORDER_MIN_LOOP_MM]
         if not holes:
+            continue
+        # a BAND: nearly all of it hugs its holes. Bridge's wheel (a ring
+        # with eight spokes round the yellow disc) is a drawing that holds
+        # the disc, 0.67-0.71 of it near the hole; every outline the pro
+        # borders reads 0.99 and up.
+        near = poly.intersection(unary_union(holes).buffer(machine.OUTLINE_PROBE_MM)).area
+        if near < machine.OUTLINE_REACH_FRAC * poly.area:
             continue
         ox0, oy0, ox1, oy1 = poly.bounds
         inside = []
@@ -114,12 +123,16 @@ def find_art_outlines(regions, cfg=None) -> dict[str, list[tuple[str, Polygon]]]
     return out
 
 
-def outline_width_mm(body) -> float:
-    """The pro's border width for an outlined body, by its smallest
-    dimension (`machine.OUTLINE_WIDTH_MM`, widest band first)."""
-    from .stage7_sequence import _min_dim_mm
-    d = _min_dim_mm(body.polygon)
-    for floor, width in machine.OUTLINE_WIDTH_MM:
-        if d >= floor:
-            return width
-    return machine.OUTLINE_WIDTH_MM[-1][1]
+def outline_width_mm(holder, bodies: list[tuple[object, Polygon]]) -> float:
+    """The pro's border width for one outline: the art's own outline
+    thickness round its bodies (the median `outline_measures` band),
+    clamped to `machine.OUTLINE_WIDTH_MM` -- his border is the outline
+    widened, one width all round. Census cache: Becker large 2.45 -> his
+    2.40, small 2.09 -> 2.00; MFab 2.02 / 1.92 against his 2.40 / 2.13 is the
+    widest miss. By the body's size instead, Becker large sewed 1.7 against
+    his 2.4. The 1.5 floor keeps a hairline keyline a column (Bridge's 1.08
+    mm bowl drawing would sew at 1.08)."""
+    import statistics
+    band = statistics.median(outline_measures(holder, b, hole)[0] for b, hole in bodies)
+    lo, hi = machine.OUTLINE_WIDTH_MM
+    return min(hi, max(lo, band))

@@ -579,7 +579,7 @@ def analyse(slug: str, cache: Path) -> dict:
         rs = ring_source(po.bounds, info.get("ring_runs", []), r["id"])
         if not r["kinds"] and not rs:
             # stage 7 sewed nothing for this shape; a loop here is a neighbour's
-            o = dict(o, cls="UNSEWN", width=None)
+            o = dict(o, cls="UNSEWN", width=None, raw_cls=o["cls"], raw_width=o["width"])
         bb = po.bounds
         rows.append({
             "id": r["id"], "area": round(po.area, 1),

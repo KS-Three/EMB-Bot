@@ -13,9 +13,9 @@ reading of the pro's file (`border_census.analyse`, class BORDER).
   python tools/outline_census.py prove --off DIR --on DIR [--only SLUG ...]
 
 `measure` reads a `border_census` cache (run `border_census.py run` first).
-Population: our shapes of at least 1 mm2, less COUNTERS (an enclosed
-background area held by a letter, or tagged `counter`: the census reads a
-satin letter riding its counter's edge as a "border" -- Gaulke's) and less
+Population: our shapes of at least 1 mm2, less COUNTERS (any shape a letter
+holds, sewn or not, or tagged `counter`: the census reads a satin letter
+riding its counter's edge as a "border" -- Gaulke's, Fremont's O's) and less
 the outline regions themselves (they ARE the outline; their pro class is
 listed apart). Label: the pro's class is BORDER. Feature: the shape is a body
 the rule finds an outline round. Cohen's kappa beside the raw agreement
@@ -73,7 +73,8 @@ def _counters(regions) -> set[str]:
     for r in regions:
         if r.meta.get("counter"):
             out.add(r.shape_id)
-        elif r.meta.get("enclosed_background"):
+        else:
+            # anything a letter holds, sewn or not (Fremont's O's hold white)
             h = _encloser(r, regions)
             if h is not None and is_lettering(h, None):
                 out.add(r.shape_id)
@@ -165,6 +166,21 @@ def measure_cmd(args) -> int:
         if ws:
             print(f"  {lo}-{hi} mm: n={len(ws)} median {statistics.median(ws):.2f} "
                   f"(range {min(ws):.2f}-{max(ws):.2f})")
+
+    # one width per outline: the art outline's own thickness, clamped
+    from digitizer_core import machine
+    lo, hi = machine.OUTLINE_WIDTH_MM
+    print("\nPer outline: the art band round its bodies (median), the rule's width, his width:\n")
+    print("| job | outline | bodies | art band | rule width | pro width (bordered bodies) |\n|---|---|---|---|---|---|")
+    by: dict[tuple, list] = {}
+    for r in all_rows:
+        if r["role"] == "body":
+            by.setdefault((r["slug"], r["outline"]), []).append(r)
+    for (s, o), bs in by.items():
+        band = statistics.median(b["band"] for b in bs)
+        pw = [b["pro"]["width"] for b in bs if b["pro"]["cls"] == "BORDER" and b["pro"]["width"]]
+        print(f"| {s} | {o} | {len(bs)} | {band:.2f} | {min(hi, max(lo, band)):.2f} | "
+              + (f"{statistics.median(pw):.2f} (n {len(pw)}) |" if pw else "- |"))
     return 0
 
 
@@ -175,7 +191,9 @@ def digitize_cmd(args) -> int:
     from digitizer_core.pipeline import plan_stitches
     row = next(r for r in bc.PAIRS if r[0] == args.slug)
     pro, art = bc.find_pair(*row[:3])
-    width = pp.pro_counts(pro)["width_mm"]
+    # --width when the pro's file is out of reach (Drive unmounted): his
+    # width from the census table; the pair is then rendered, not scored
+    width = args.width if args.width else pp.pro_counts(pro)["width_mm"]
     extra = json.loads(args.extra) if args.extra else {}
     d = pp.digitize(art, width, row[3], extra)
     bc.write_ours(Path(args.off) / args.slug, args.slug, row[3], width, pro, art, d.result, d.plan, d.secs)
@@ -208,6 +226,22 @@ def replan_cmd(args) -> int:
     return 0
 
 
+def _refind_pro(cache: Path, slug: str) -> None:
+    """A cache records the pro file where it was read; when that root has
+    gone (Drive unmounted), look it up again through `border_census.find`'s
+    roots (PRO_PARITY_ROOT first) and rewrite the record."""
+    from tools import border_census as bc
+    path = cache / slug / "ours.json"
+    info = json.loads(path.read_text(encoding="utf-8"))
+    if Path(info["pro"]).exists():
+        return
+    row = next(r for r in bc.PAIRS if r[0] == slug)
+    pro, _art = bc.find_pair(*row[:3])
+    if pro is not None:
+        info["pro"] = str(pro)
+        path.write_text(json.dumps(info), encoding="utf-8")
+
+
 def prove_cmd(args) -> int:
     from tools import border_census as bc
     off, on = Path(args.off), Path(args.on)
@@ -219,11 +253,17 @@ def prove_cmd(args) -> int:
     pooled = {"off": [], "on": []}
     for s in slugs:
         for tag, cache in (("off", off), ("on", on)):
+            _refind_pro(cache, s)
             if args.reanalyse or not (cache / s / "census.json").exists():
                 (cache / s / "census.json").write_text(json.dumps(bc.analyse(s, cache)), encoding="utf-8")
             rows = classify(cache, s)
             # the feature is OUR file's BORDER here, the label the pro's
             for r in rows:
+                # an unsewn body (BECKER's white faces) is still ringed by
+                # its outline's loop: read what rides its edge, not "UNSEWN"
+                if r["ours"]["cls"] == "UNSEWN":
+                    r["ours"] = dict(r["ours"], cls=r["ours"].get("raw_cls", "UNSEWN"),
+                                     width=r["ours"].get("raw_width"))
                 r["role_rule"] = r["role"]
                 if r["role"] in ("body", "none"):
                     r["role"] = "body" if r["ours"]["cls"] == "BORDER" else "none"
@@ -238,6 +278,23 @@ def prove_cmd(args) -> int:
             print(f"| {s} | {tag.upper()} " + _fmt(t) + f" {med(ow)} / {med(pw)} (n {len(ow)}/{len(pw)}) | {med(dif)} |")
     for tag in ("off", "on"):
         print(f"| **pooled** | {tag.upper()} " + _fmt(table(pooled[tag])) + " | |")
+
+    from tools import pro_pair as pp
+    print("\nThe outline regions themselves (the band the pro sews as his border), and the files:\n")
+    print("| job | outline | OFF class, width | ON class, width | pro class, width |\n|---|---|---|---|---|")
+    for s in slugs:
+        rows = {tag: {r["id"]: r for r in pooled[tag] if r["slug"] == s and r["role_rule"] == "outline"}
+                for tag in ("off", "on")}
+        for sid, r_off in rows["off"].items():
+            r_on = rows["on"].get(sid, r_off)
+            cell = lambda c: f"{c['cls']}, {c['width']}"
+            print(f"| {s} | {sid} | {cell(r_off['ours'])} | {cell(r_on['ours'])} | {cell(r_off['pro'])} |")
+    print("\n| job | OFF stitches / trims | ON stitches / trims | pro stitches / trims |\n|---|---|---|---|")
+    for s in slugs:
+        c = [pp.pro_counts(cache / s / "ours.dst") for cache in (off, on)]
+        info = json.loads((off / s / "ours.json").read_text(encoding="utf-8"))
+        pc = pp.pro_counts(info["pro"])
+        print(f"| {s} | " + " | ".join(f"{x['stitches']:,} / {x['trims']}" for x in c + [pc]) + " |")
     return 0
 
 
@@ -260,11 +317,12 @@ def render_cmd(args) -> int:
         cols = [tuple(c) for c in inf["blocks"]]
         designs.append(pairframe.design_for(cache / args.slug / "ours.dst", None, cols, f"{tag}"))
         labels.append(tag)
-    designs.append(pairframe.design_for(pro, None, None, pro.stem))
-    labels.append("pro")
+    if pro.exists():
+        designs.append(pairframe.design_for(pro, None, None, pro.stem))
+        labels.append("pro")
     if args.crop is None and args.band is None:
         imgs = [stitchviz.render_design(d, px_per_mm=pp.PPM) for d in designs]
-        name = f"{args.slug}_whole_off_on_pro.png"
+        name = f"{args.slug}_whole_off_on_pro.{args.ext}"
     else:
         hi = [stitchviz.render_design(d, px_per_mm=pp.PPM_CROP) for d in designs]
         if args.crop is not None:
@@ -273,7 +331,7 @@ def render_cmd(args) -> int:
             b0, b1 = args.band
             imgs = [im[int(im.shape[0] * b0):max(int(im.shape[0] * b0) + 1, int(im.shape[0] * b1)), :]
                     for im in hi]
-        name = f"{args.slug}_{args.name or 'crop'}_off_on_pro.png"
+        name = f"{args.slug}_{args.name or 'crop'}_off_on_pro.{args.ext}"
     cv2.imwrite(str(out / name), pp._hstack([pp._label(i, t) for i, t in zip(imgs, labels)]))
     print("wrote", out / name)
     return 0
@@ -292,6 +350,7 @@ def main(argv=None) -> int:
     d.add_argument("--off", required=True)
     d.add_argument("--on", required=True)
     d.add_argument("--extra", help="JSON laid over the Studio request (e.g. a flag both arms carry)")
+    d.add_argument("--width", type=float, help="design width, mm, when the pro's file is unreachable")
     d.set_defaults(fn=digitize_cmd)
     q = sub.add_parser("replan")
     q.add_argument("slug")
@@ -312,6 +371,7 @@ def main(argv=None) -> int:
     r.add_argument("--crop", nargs=4, type=float, metavar=("X0", "Y0", "X1", "Y1"))
     r.add_argument("--band", nargs=2, type=float, metavar=("Y0FRAC", "Y1FRAC"))
     r.add_argument("--name")
+    r.add_argument("--ext", default="png", help="png, or jpg for a committed render")
     r.set_defaults(fn=render_cmd)
     args = ap.parse_args(argv)
     return args.fn(args)

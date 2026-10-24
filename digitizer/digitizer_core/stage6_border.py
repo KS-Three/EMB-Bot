@@ -1046,8 +1046,8 @@ def outline_holes(outline, bodies: list[tuple[Polygon, float]],
     """The loops `cfg.border_from_outline` sews on an art outline: every
     looped hole of `outline` (`_looped_holes`) as (hole, width) -- a hole
     holding an outlined body (`bodies`: the art_outline pass's holes, each
-    with its body's width) at that width, the widest where two bodies share
-    one (MFab's F and hyphen), and every other looped hole at
+    with the outline's width) at that width, the widest where two bodies
+    share one (MFab's F and hyphen), and every other looped hole at
     `rest_width_mm`, so the band round a letter the rule does not border
     (MFab's AND WELDING LLC) still sews as the keyline loops do. Holes match
     on their rings, not object identity: the pass read the same polygon."""

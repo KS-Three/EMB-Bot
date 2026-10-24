@@ -647,15 +647,20 @@ KEYLINE_REACH_FRAC = 0.9
 # round it (the holder's area within OUTLINE_PROBE_MM of the body, per mm of
 # the body's edge). Census cache, `tools/outline_census.py`: the pro's
 # bordered bodies read 1.34-3.14, every non-counter body he does not border
-# 0.87 or under -- 1.0 sits between, the geometric middle. The width is his
-# border column on outlined bodies by the body's smallest dimension (twice
-# the largest inscribed circle, the census measure), the medians of those
-# rows: 4-6 mm n=9 median 1.71 (1.48-2.18), 6 mm and up n=15 median 2.20
-# (1.80-2.51); no outlined body under 4 mm bordered, so the lower band runs
-# to 0. Layout, judged in the preview (Kent 2026-10-22), not a cloth constant.
+# 0.87 or under -- 1.0 sits between, the geometric middle. His border width
+# is ONE per outline and follows the art's own outline thickness, not the
+# body's size (Becker large: every face at ~2.4, faces of 5.7 to 8.1 mm):
+# the outline's median band clamped to OUTLINE_WIDTH_MM -- 1.5, border_by_size's
+# 4-6 mm band (the pro's narrowest borders, 1.48-1.51, census #1043); 2.5,
+# his widest (2.51). Layout, judged in the preview (Kent 2026-10-22), not a
+# cloth constant.
 OUTLINE_PROBE_MM = 4.0
 OUTLINE_BODY_RATIO = 1.0
-OUTLINE_WIDTH_MM = ((6.0, 2.2), (0.0, 1.7))
+# ... and an outline is a BAND: this share of it within OUTLINE_PROBE_MM of
+# its looped holes (outlines 0.99-1.00, Bridge's spoked wheel 0.67-0.71) --
+# the same 0.9 the keyline band reads (KEYLINE_REACH_FRAC).
+OUTLINE_REACH_FRAC = 0.9
+OUTLINE_WIDTH_MM = (1.5, 2.5)
 
 
 def border_by_size_width_mm(min_dim_mm: float) -> float:

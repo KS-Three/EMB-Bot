@@ -1692,8 +1692,11 @@ def _art_outlines(regions, cfg) -> dict | None:
         return None
     from .art_outline import find_art_outlines, outline_width_mm
     by_id = {r.shape_id: r for r in regions}
-    return {oid: [(bid, hole, outline_width_mm(by_id[bid])) for bid, hole in bodies]
-            for oid, bodies in find_art_outlines(regions, cfg).items()} or None
+    out = {}
+    for oid, bodies in find_art_outlines(regions, cfg).items():
+        width = outline_width_mm(by_id[oid], [(by_id[bid], hole) for bid, hole in bodies])
+        out[oid] = [(bid, hole, width) for bid, hole in bodies]
+    return out or None
 
 
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
