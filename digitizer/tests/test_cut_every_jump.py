@@ -14,6 +14,7 @@ copy of it.
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import replace
 
 import pytest
@@ -151,9 +152,31 @@ def test_off_never_reaches_the_new_code(monkeypatch):
     _near_bars()
 
 
-@pytest.mark.parametrize("case,layer", [("bare", None), ("later", 1), ("earlier", 0)])
+@pytest.mark.parametrize("case,layer", [("bare", None), ("later", 1)])
 def test_off_is_byte_identical_to_base(case, layer):
     assert _md5(_near_bars(bridge_layer=layer)) == OFF_MD5[case]
+
+
+def test_off_earlier_bridge_is_the_plan_without_the_pass(monkeypatch):
+    """The "earlier" fixture (the bridge sewn BEFORE the bars) plans
+    differently on Linux CI than on the Windows box its base md5 was captured
+    on: every CI run of this test since 2026-10-22 read the same
+    `bb44fe221baf...ca6832549a9b6` against Windows' `d9cad9b8...`, across
+    shards and across a dozen merges of main, while `bare` and `later` match
+    on both. The flag's diff is a pure refactor plus a call behind
+    `cfg.cut_every_jump`, so the difference is the platform's, not the flag's
+    (the same class as the three CI-deselected goldens, CLAUDE.md).
+
+    So this case is held in-process, which both platforms can check: OFF
+    must equal the flag ON with its pass stubbed out, i.e. the flag's only
+    effect is the pass. The cross-commit pin is still asserted where it was
+    captured. `bare` and `later` keep pinning the `apply_ties` refactor on
+    every platform."""
+    off = _md5(_near_bars(bridge_layer=0))
+    if sys.platform == "win32":
+        assert off == OFF_MD5["earlier"]
+    monkeypatch.setattr(stage7_sequence, "_cut_or_bury_jumps", lambda *_a, **_k: (0, 0))
+    assert _md5(_near_bars(bridge_layer=0, cut_every_jump=True)) == off
 
 
 def test_the_fixture_has_an_uncut_jump_with_the_flag_off():
