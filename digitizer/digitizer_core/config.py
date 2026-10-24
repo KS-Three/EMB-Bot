@@ -2721,10 +2721,13 @@ class PipelineConfig:
     # crosses stays the satin spacing; a column the house already crosses
     # square, a curved or ring column, and a letter with no house angle keep
     # their stations byte for byte. Layout, not a cloth number (judged in
-    # the preview, Kent 2026-10-22); the flip is his, on the before | after
-    # | pro renders. OFF is the lane as it was, station for station. Tests:
+    # the preview, Kent 2026-10-22). ON by default since 2026-10-24 (Kent:
+    # "Flip it ON", on `docs/big-letter-construction-2026-10-24.md`: leaning
+    # crosses within 15 deg of the line of text 0.24 -> 0.51 at 76.5 mm and
+    # 0.17 -> 0.53 at 101.9 mm on MARINE, the pro 0.47-0.58, no piece added).
+    # False is the lane as it was, station for station. Tests:
     # `tests/test_column_text_lean.py`.
-    lettering_columns_text_lean: bool = False
+    lettering_columns_text_lean: bool = True
     # Under `lettering_columns`, each satin column's pull compensation is a
     # function of ITS OWN drawn stroke width, the way the professional's
     # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the

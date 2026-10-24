@@ -52,8 +52,9 @@ def _leans(cols) -> list[float]:
     return [cross_direction(c.axis, 0.0)[2] for c in cols if c.axis is not None]
 
 
-def test_flag_default_is_off():
-    assert PipelineConfig().lettering_columns_text_lean is False
+def test_flag_default_is_on():
+    # Kent 2026-10-24, "Flip it ON" (docs/big-letter-construction-2026-10-24.md)
+    assert PipelineConfig().lettering_columns_text_lean is True
 
 
 def test_cross_direction_is_the_satin_tiers_clamp():
