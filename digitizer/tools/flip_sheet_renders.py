@@ -89,7 +89,8 @@ FIXTURES: list[tuple[str, float | None]] = [
 ]
 
 #: Pairs `tools.border_census.PAIRS` lacks, in its row shape (slug, pro file,
-#: art, garment), for a flag's own `fixtures`.
+#: art, garment), for a flag's own `fixtures`. A job `tools.pro_intake`
+#: registered is found by its slug too (`--fixtures SLUG`).
 EXTRA_PAIRS = [
     ("proseal_beanie", "Proseal/PROSEALHAT BEANI.DST", "Proseal/PROSeal Logo.jpg", "beanie"),
 ]
@@ -248,7 +249,8 @@ def fixture_files(slug: str) -> dict:
     jump), pro PES if any (thread colours), art, garment, width."""
     from tools import border_census as bc
     from tools import pro_pair as pp
-    row = next(r for r in [*bc.PAIRS, *EXTRA_PAIRS] if r[0] == slug)
+    from tools.pro_intake import registered_pairs
+    row = next(r for r in [*bc.PAIRS, *EXTRA_PAIRS, *registered_pairs()] if r[0] == slug)
     pro, art = bc.find_pair(*row[:3])
     fallback = art is None and slug in ART_FALLBACK and ART_FALLBACK[slug].exists()
     if fallback:
