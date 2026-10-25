@@ -1206,11 +1206,12 @@ def _neck_splits(regions: list[Region], cands: list[_Candidate],
 #
 # `TOUCH_MAX_MM`: a neck narrower than this parts two letters -- the region
 # must part at an opening of half of it (and never more than `NECK_OPEN_FRAC`
-# of the stroke), and is then cut by the wide pass's own rule, so the
-# pieces are the ones that pass would make. Over the six paired jobs' lettering (Fremont hat and patch, MFab
-# hat and LC, Drone, ProSeal) the touches part at r 0.02-0.04 mm (necks of
-# 0.08 mm or less) and no single letter parts below r 0.125 (ProSeal's
-# 3 mm tagline: a 0.25 mm neck); 0.15 mm sits between them.
+# of the stroke), and is then cut by the wide pass's own rule, so the pieces
+# are the ones that pass would make. Over the six paired jobs' lettering
+# (Fremont hat and patch, MFab hat and LC, Drone, ProSeal) the touches part
+# at r 0.02-0.04 mm (necks of 0.08 mm or less) and no single letter parts
+# below r 0.125 (ProSeal's 3 mm tagline: a 0.25 mm neck); 0.15 mm sits
+# between them. Fremont's OTE / NT are not here: they trace apart.
 # `HEIGHT_BAND_MIN`: a glyph that spans a line member's cap band is adopted
 # down to this height ratio. The overshooting letters measured 0.65 (MFab
 # hat's G, already chained in) to 0.80; nothing that is not a letter spans a

@@ -78,15 +78,20 @@ from a letter of another line, which sits above or below the band.
   bottom region (E: 2.20 mm over 3.68 mm, aspect 2.17 and 1.38) -- the opposite
   failure, one letter in two regions. Neither rule; THERMAL stays house-group
   only.
-- **Drone `S0e857405`**, a glyph-height shape left of AND DRONE: spans the
-  line, ratio 0.98, left out of the cluster all the same (its line-mates came
-  through the rescued round). Not a height question; not touched.
-- **MFab LC AND, downstream**: ON tags the N correctly, but that line sews as
-  BEAN letters -- the ink read (`beanletters`) takes the art's thin black
-  keyline as the letters' ink (N 0.44 mm), so the A is a hollow bean outline
-  today and ON makes the N one too (`mfab_lc_AND_off_on_pro.png`). The pro
-  sews A, N and D as black satin. The rule is right; the bean tier on
-  keyline-outlined lettering is the next defect, and it already costs the A.
+- **Drone `S0e857405`**, a glyph-height shape left of AND DRONE (ratio 0.98,
+  spanning the line): the tagger DOES tag it, with its line; the small-text
+  restore step strips it afterwards (`small_text_stray`). Downstream of the
+  tagger, not a height question; not touched.
+- **MFab LC AND, downstream**: ON tags the N correctly, but that cluster sews
+  as BEAN letters under the true-size switch (`bean_letter_max_stroke_mm`
+  0.5): the ink read (`beanletters`) gives the N 0.44 mm on a letter traced
+  1.23 mm wide -- the art draws these letters as white faces in a thin black
+  outline -- so the A is a hollow bean outline today (222 run points, no
+  satin; ink 0.42 mm) and ON makes the N one too (`mfab_lc_AND_off_on_pro.png`).
+  The D escapes: its read, 0.35 mm, disagrees with its shape (mean width 1.11
+  over 3 x 0.35, `INK_SHAPE_MAX_RATIO`). The
+  pro sews A, N and D as black satin. The rule is right; the bean tier on
+  outlined lettering is the next defect, and it already costs the A.
 
 ## ON against OFF
 

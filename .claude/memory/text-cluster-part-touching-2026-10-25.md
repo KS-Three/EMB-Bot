@@ -31,9 +31,10 @@ Sized on six jobs: touches part at r 0.02-0.04, letters never below r 0.125.
 
 **ON:** Fremont, Drone, ProSeal md5-identical; MFab hat I gets its own clean
 column (trims inside letters 8 -> 5); LC 16 -> 12 trims, but AND's N goes HOLLOW:
-the line sews as bean letters because `beanletters`' ink read takes the art's
-black keyline as ink (N 0.44 mm). The A is already hollow OFF; the pro sews A/N/D
-satin. **Don't flip before that.**
+the cluster sews as bean letters under the true-size switch (line 0.5 mm) because
+`beanletters`' ink read gives 0.44 mm on a letter traced 1.23 mm wide (the art
+draws white faces in a thin black outline). The A is already hollow OFF; the pro
+sews A/N/D satin. **Don't flip before that.**
 
 **How to apply:** capture the regions entering `detect_text_clusters` (wrap it in
 the pipeline module) and re-run the tagger OFF/ON offline in seconds -- the six
