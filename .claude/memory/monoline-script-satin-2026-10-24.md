@@ -22,9 +22,16 @@ the ring otherwise).
   21-job cache (671 regions) it fires on ONE shape (Tires); the four other
   non-text `dt_p90_cap` shapes (Golden Tee, MFab) read dt_cv 0.39–0.43 and
   the pro fills them. n = 1 supporting row — say so.
-- **ON costs:** trims 10 → 24 (pro 10), column overlap median 7.6 mm vs his
-  0.4; the satin tier's skeleton decomposition at the r/e/s junctions. The
-  follow-up is construction (Column-lane-style walk), not the tier.
+- **ON's cuts, fixed (2026-10-25, same flag):** the pro's "ires" is 5
+  needle-down runs / 3 cuts and ALL 490 mm of his in-word travel lies under
+  thread he sews later. Ours cut between skeleton strokes (walk refuses sewn
+  spines; underlay -> column hops past trim_at) and left 56 mm of underlay ON
+  TOP of finished satin at the joins (the "stray at the e"). `monoline.py`:
+  `clear_finished_underlay` + `bury_hops` (route through the raster of satin
+  still to come, <= 1 mm exposed, <= max(20, 4 x direct)). Tires ON 6,101 /
+  24 -> 5,985 / 8 (pro 5,555 / 10); in-word runs 5, cuts 4. Left: 26 columns
+  vs his 9 and 7.6 mm stacked overlap — he sews PEN ORDER through crossings;
+  that is stroke construction, the next follow-up.
 - **Trap:** rembg times out under a loaded laptop → PHOTO_BACKGROUND_REMOVAL_
   UNAVAILABLE even with main's venv patched in (Tires 8,075 vs 8,001 st).
   Check the warning in every Tires run; render from a pickled generation.
