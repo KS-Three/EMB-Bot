@@ -318,6 +318,35 @@ def test_file_reader_without_a_dst_has_no_trims_and_says_why(two_letters):
     assert got["columns"]["v"] is not None                    # the other figures do not depend on it
 
 
+def test_rail_run_reads_a_straight_stem_on_its_outline_and_is_n_a_without_one(tmp_path):
+    """`rail_run`: rail wobble p90 on the RUN windows only (`letter_band.rail_classes`)."""
+    from shapely.geometry import box
+    stem = _write_dst(tmp_path / "stem.dst", [_column(10.0, 10.0, h=12.0)], trims_before=set())
+    reader = lb.FileReader(stem)
+    got = reader.line((6.0, 6.0, 16.0, 26.0), 12.0, 16.0, box(10.0, 10.0, 11.2, 22.0))
+    assert got["rail_run"]["v"] == pytest.approx(0.0, abs=1e-3)
+    assert got["rail_run"]["w"] > 10                         # weighted by the run windows it read
+    bare = reader.line((6.0, 6.0, 16.0, 26.0), 12.0, 16.0)
+    assert bare["rail_run"]["v"] is None and "no text-tagged region" in bare["rail_run"]["why"]
+
+
+def test_rail_run_of_a_line_too_short_for_a_window_is_n_a_not_zero(two_letters):
+    from shapely.geometry import box
+    got = lb.FileReader(two_letters).line((6.0, 6.0, 20.0, 17.0), 3.0, 11.5, box(10.0, 10.0, 15.2, 13.0))
+    assert got["rail_run"]["v"] is None and "no run windows" in got["rail_run"]["why"]
+
+
+def test_line_outline_is_our_text_regions_in_the_line_box():
+    info = {"regions": [
+        {"id": "a", "wkt": "POLYGON ((0 0, 2 0, 2 5, 0 5, 0 0))", "meta": {"text_candidate": True}},
+        {"id": "b", "wkt": "POLYGON ((3 0, 5 0, 5 5, 3 5, 3 0))", "meta": {"word_id": "w1"}},
+        {"id": "c", "wkt": "POLYGON ((0 0, 9 0, 9 5, 0 5, 0 0))", "meta": {}},                 # not text
+        {"id": "d", "wkt": "POLYGON ((30 0, 32 0, 32 5, 30 5, 30 0))", "meta": {"text_candidate": True}}]}
+    got = lb.line_outline(info, (0.0, 0.0, 6.0, 5.0))
+    assert got.area == pytest.approx(20.0)                    # a and b; not the field, not the far letter
+    assert lb.line_outline(info, (50.0, 50.0, 60.0, 60.0)) is None
+
+
 def test_a_fragment_under_half_the_drawn_height_is_refused_and_called_a_fragment(tmp_path):
     small = _write_dst(tmp_path / "bit.dst", [_column(10.0, 10.0, h=3.0)], trims_before=set())
     got = lb.FileReader(small).line((5.0, 5.0, 20.0, 20.0), 8.0, 11.5)
