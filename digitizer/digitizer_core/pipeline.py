@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 from shapely.geometry import Polygon
 
-from . import debugviz, fur_regions, knockdown, two_tone
+from . import debugviz, fur_regions, knockdown, silhouette_underfill, two_tone
 from .config import PipelineConfig
 from .fabrics import Fabric, apply_profile, fabric_for_garment, get_fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
@@ -75,7 +75,7 @@ from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .config import is_photographic
-from .stage7_sequence import (PHOTO_CLASSES, borders_last_layers,
+from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
                               depth_sort_layers, sequence)
 from .stitches import StitchPlan
 from .threads import chart_for, rgb_to_lab
@@ -957,7 +957,8 @@ def build_generation(
                            max_width_scale=cfg.small_text_cap_max_width_scale,
                            min_stroke_mm=cfg.small_text_cap_min_stroke_mm,
                            letter_gap_mm=cfg.small_text_cap_letter_gap_mm,
-                           bold_scale=cfg.small_text_cap_bold_scale)
+                           bold_scale=cfg.small_text_cap_bold_scale,
+                           **({"reach_edges": True} if cfg.small_text_cap_reach_edges else {}))
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
@@ -1761,6 +1762,14 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         stitched_regions = _fill_inside_satin_border(
             stitched_regions, cfg, result.design_class)
 
+    # `cfg.silhouette_underfill` (built OFF): a ring whose holes hold other
+    # shapes gets its outline filled once, underneath, and the ring and its
+    # contents sew on top -- on copies, layers moved with them
+    # (`silhouette_underfill`). The shapes left unsewn on purpose stay
+    # garment: the outline is cut back off them. Off, never called.
+    if cfg.silhouette_underfill:
+        stitched_regions, _underfill = silhouette_underfill.apply(stitched_regions, skipped)
+
     # Fur regions on the streamline tier (`cfg.hair_regions_directional`,
     # default OFF; `fur_regions`). Only regions the gate read in
     # `finish_generation`, and only with the raster that read them. Not where
@@ -1889,6 +1898,11 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             knockdown.satin_shape_ids(blocks))
         if kd is not None:
             blocks = knockdown.prepend(blocks, kd)
+            # `cfg.cut_every_jump` (built OFF): stage 7 already left its own
+            # blocks with no uncut jump; this reaches the knockdown's, with
+            # the whole design now sewn after it.
+            if cfg.cut_every_jump:
+                _cut_or_bury_jumps(blocks)
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a

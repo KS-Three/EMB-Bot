@@ -101,6 +101,16 @@ BLEND_FEATHER_MM = 1.5
 # naive scanline fill.
 FILL_STAGGERS = 4
 
+# How far along the row the needle lands when a fill row turns into the next
+# one (`cfg.fill_turn_slant`, built OFF 2026-10-21). Stepping straight across
+# makes the turn one row spacing long, 0.10-0.22 mm at 0.15 rows; the pro's
+# turns, read from his own DSTs by `tools/fill_turns.py` (a short stitch
+# between two antiparallel row stitches), run p50 0.71-0.82 mm and p10 0.41
+# on Fremont, Becker, Drone and MFab, about 0.63-0.78 of it along the row.
+# Construction, not a fabric constant: the row spacing does not move and the
+# number came off a file, not a sew-out (ROADMAP gate 1 asks which kind).
+FILL_TURN_ALONG_MM = 0.7
+
 # Narrower than this cannot hold a tatami fill: the rows have nowhere to go and
 # the result is a lumpy running stitch. Satin's job — the classifier sends
 # such shapes there, and only what satin also cannot take gets warned.
@@ -626,6 +636,19 @@ BORDER_BY_SIZE_WIDTH_MM = ((6.0, 2.1), (4.0, 1.5))
 # an 8 mm square 0.93. The core's own share does NOT separate them (bar
 # 0.07, Becker ring 0.05). Measured 2026-10-23 on the census's own regions.
 BORDER_BY_SIZE_REACH_FRAC = 0.5
+
+
+# The keyline band (`cfg.enclosed_white_keyline`, 2026-10-23): the pro's
+# keyline column, read off his DSTs with one zigzag reader (consecutive
+# anti-parallel stitches of like length; the cross length is the column):
+# MFab's white keyline block median 2.33 mm (p25 1.43, p75 2.43), Becker's
+# two keyline blocks 2.09 and 2.06 -> 2.1, the same figure as his border on
+# shapes 6 mm and up. A layout width, judged in the preview, not a cloth
+# constant. A band reads as a keyline when this share of it lies within
+# that width of a hole: MFab's band 0.998 at 2.1, a hollow letter's body
+# (Becker's B, two counters in a 5.4 mm field) far under it.
+KEYLINE_WIDTH_MM = 2.1
+KEYLINE_REACH_FRAC = 0.9
 
 
 def border_by_size_width_mm(min_dim_mm: float) -> float:

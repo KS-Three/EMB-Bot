@@ -385,6 +385,64 @@ def _row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float
                                 stitch_mm, reverse)
 
 
+def _slant_turns(seq: list[tuple[int, float, float, float]]
+                 ) -> list[tuple[float, float]]:
+    """The column's row spans, in walk order, with one end of every turn
+    pulled in so the turn slants (`cfg.fill_turn_slant`, 2026-10-21).
+
+    `seq` is a column as `_fill_paths` walks it: (row index, y, x0, x1), row
+    k sewn right to left when k is odd. Stepping straight from one row's
+    exit to the next row's entry makes the turn one row spacing long where
+    the edge runs square to the rows: 0.10-0.22 mm at the 0.15 row, the
+    needle landing beside its own hole, and most of every sub-0.5 mm stitch
+    on the pro's jobs. The pro's turn lands `machine.FILL_TURN_ALONG_MM`
+    along the row.
+
+    Of the two boundary points a turn joins, the one further OUT along the
+    row stays on the boundary and the inner one is pulled in until the turn
+    runs that far along the row; the slanted thread then lies over the
+    corner the pull left bare. On a narrowing (or square) edge the inner
+    point is the next row's ENTRY; on a widening edge it is this row's EXIT.
+    Pulling the entry on a widening edge instead (the first build) bared the
+    outer corner and drew a staircase on every edge under ~60 deg to the
+    rows, rendered 2026-10-21. A column's last turn pulls the exit when the
+    edge is near square, so the last row keeps its corner: the row above's
+    pulled corner is under the last row's thread, the last row's would be
+    under nothing.
+
+    When the preferred row is too short to keep `MIN_STITCH_MM` after the
+    pull (near a tip), the other end of the turn is pulled instead. Left
+    alone: a turn already that far along the row (a sloped edge), and one
+    neither row can afford. -> [(x0, x1)].
+    """
+    want = machine.FILL_TURN_ALONG_MM
+    spans = [[x0, x1] for _ri, _y, x0, x1 in seq]
+    pulled = [0.0] * len(seq)
+    for k in range(1, len(seq)):
+        u = -1.0 if k % 2 == 1 else 1.0           # row k's direction
+        exit_x = seq[k - 1][2] if u > 0 else seq[k - 1][3]
+        entry_x = seq[k][3] if u < 0 else seq[k][2]
+        along = (entry_x - exit_x) * u
+        if abs(along) >= want:
+            continue
+        dy = abs(seq[k][1] - seq[k - 1][1])
+        last = k == len(seq) - 1
+        exit_pull, entry_pull = (k - 1, want + along), (k, want - along)
+        for row, d in ((exit_pull, entry_pull) if along < 0 or (last and along < dy)
+                       else (entry_pull, exit_pull)):
+            if seq[row][3] - seq[row][2] - pulled[row] - d >= machine.MIN_STITCH_MM:
+                break
+        else:
+            continue
+        # Both ends sit on the turn's side: x0 when row k runs right, x1 when left.
+        if u > 0:
+            spans[row][0] += d
+        else:
+            spans[row][1] -= d
+        pulled[row] += d
+    return [(x0, x1) for x0, x1 in spans]
+
+
 def _wave_row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float,
                      staggers: int, reverse: bool) -> list[tuple[float, float]]:
     """`_row_points`, with every INTERIOR point's y perturbed by a subtle sine
@@ -1478,9 +1536,15 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
                 staggers: int, start_near: tuple[float, float] | None = None,
                 technique: str = "tatami", row_phase_mm: float = 0.0,
                 keep_row=None, seed: int = 0,
-                fur: tuple[float, float, float] | None = None
+                fur: tuple[float, float, float] | None = None,
+                slant_turns: bool = False,
                 ) -> list[list[tuple[float, float]]]:
     """Fill one polygon; -> continuous stitch paths in original (unrotated) mm space.
+
+    `slant_turns` (`cfg.fill_turn_slant`, default OFF): each column's spans
+    go through `_slant_turns`, so every turn lands `machine.
+    FILL_TURN_ALONG_MM` along the row instead of one row spacing straight
+    across. False is byte-identical.
 
     Columns are visited nearest-first from the end of the previous one, and each
     is entered from whichever of its two ends is closer, so ordering never
@@ -1526,7 +1590,8 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
     def col_points(col, from_bottom: bool) -> list[tuple[float, float]]:
         seq = list(reversed(col)) if from_bottom else col
         pts: list[tuple[float, float]] = []
-        for k, (ri, y, x0, x1) in enumerate(seq):
+        ends = _slant_turns(seq) if slant_turns else [(r[2], r[3]) for r in seq]
+        for k, ((ri, y, _x0, _x1), (x0, x1)) in enumerate(zip(seq, ends)):
             # Scan direction alternates per emitted row so consecutive rows meet
             # end to end; the absolute row index still drives the stagger phase.
             pts.extend(row_point_fn(x0, x1, y, ri, stitch_mm, staggers, reverse=k % 2 == 1))
@@ -1573,7 +1638,8 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
 
 
 def _crosshatch_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float,
-                           staggers: int, start_near: tuple[float, float] | None = None
+                           staggers: int, start_near: tuple[float, float] | None = None,
+                           slant_turns: bool = False,
                            ) -> list[list[tuple[float, float]]]:
     """Two overlapping tatami passes on the same shape -> concatenated paths
     in original (unrotated) mm space, one pass at `angle_deg`, one at
@@ -1594,9 +1660,11 @@ def _crosshatch_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitc
     of its own.
     """
     wide_row_mm = row_mm * machine.CROSSHATCH_ROW_SCALE_FACTOR
-    first_pass = _fill_paths(poly, angle_deg, wide_row_mm, stitch_mm, staggers, start_near)
+    first_pass = _fill_paths(poly, angle_deg, wide_row_mm, stitch_mm, staggers, start_near,
+                             slant_turns=slant_turns)
     entry = first_pass[-1][-1] if first_pass else start_near
-    second_pass = _fill_paths(poly, angle_deg + 90.0, wide_row_mm, stitch_mm, staggers, entry)
+    second_pass = _fill_paths(poly, angle_deg + 90.0, wide_row_mm, stitch_mm, staggers, entry,
+                              slant_turns=slant_turns)
     return first_pass + second_pass
 
 
@@ -1616,6 +1684,7 @@ def is_solid_fill(poly: Polygon) -> bool:
 
 def _density_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float,
                         staggers: int, start_near: tuple[float, float] | None = None,
+                        slant_turns: bool = False,
                         ) -> list[list[tuple[float, float]]]:
     """The density-targeted default for a SOLID fill shape: two overlapping
     tatami passes at the shape's own `row_mm` (unwidened) -- the "cross pass
@@ -1630,9 +1699,11 @@ def _density_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_m
     full-density passes landing at roughly double density *is* the point,
     so nothing widens.
     """
-    first_pass = _fill_paths(poly, angle_deg, row_mm, stitch_mm, staggers, start_near)
+    first_pass = _fill_paths(poly, angle_deg, row_mm, stitch_mm, staggers, start_near,
+                             slant_turns=slant_turns)
     entry = first_pass[-1][-1] if first_pass else start_near
-    second_pass = _fill_paths(poly, angle_deg + 90.0, row_mm, stitch_mm, staggers, entry)
+    second_pass = _fill_paths(poly, angle_deg + 90.0, row_mm, stitch_mm, staggers, entry,
+                              slant_turns=slant_turns)
     return first_pass + second_pass
 
 
@@ -1794,6 +1865,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  sewn_paths_only: bool = False,
                  seed: int = 0,
                  fur_style_name: str = "short",
+                 slant_turns: bool = False,
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
 
@@ -1857,6 +1929,11 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     the `machine.FUR_STYLES` entry, whose own stitch length replaces
     `stitch_mm` for the fill pass — the length IS the technique. Underlay is
     unaffected. `seed` and `fur_style_name` are read for no other technique.
+
+    `slant_turns` (`PipelineConfig.fill_turn_slant`, default OFF): the fill
+    pass's rows turn on a slant, `machine.FILL_TURN_ALONG_MM` along the row,
+    instead of stepping one row spacing straight across -- see
+    `_slant_turns`. Every fill technique's pass, never the underlay.
 
     Report keys: `too_thin` (nowhere wide enough for a fill), `jumps` (travel
     that had to lift the needle), `empty` (produced nothing).
@@ -1947,15 +2024,17 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     entry = runs[-1].points[-1] if runs else start_near
     if technique == "crosshatch":
         fill_paths = _crosshatch_fill_paths(poly, angle, row_mm, stitch_mm,
-                                            machine.FILL_STAGGERS, entry)
+                                            machine.FILL_STAGGERS, entry,
+                                            slant_turns=slant_turns)
     elif technique == "tatami" and density_boost and is_solid_fill(poly):
         fill_paths = _density_fill_paths(poly, angle, row_mm, stitch_mm,
-                                         machine.FILL_STAGGERS, entry)
+                                         machine.FILL_STAGGERS, entry,
+                                         slant_turns=slant_turns)
     else:
         fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
                                  machine.FILL_STAGGERS, entry, technique=technique,
                                  row_phase_mm=row_phase_mm, keep_row=keep_row,
-                                 seed=seed, fur=fur)
+                                 seed=seed, fur=fur, slant_turns=slant_turns)
     if sewn_paths_only:
         fill_paths = _sewn_paths(fill_paths)
     # Memoized, not changed: both reorders are pure functions of this shape's

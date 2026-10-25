@@ -349,41 +349,48 @@ def apply_ties(runs: list[StitchRun], small_letters: set[str] | None = None) -> 
     """
     if not runs:
         return
-
-    def small(run: StitchRun) -> bool:
-        return (small_letters is not None and run.kind == RUN
-                and run.shape_id in small_letters)
-
-    def tie_in(run: StitchRun) -> None:
-        if len(run.points) < 2:
-            return
-        before = len(run.points)
-        if small(run):
-            run.points = spread_tie_in(run.points)
-        else:
-            pts = tie_run(run.points[0], run.points[1]).points
-            run.points = pts[:-1] + run.points
-        run.tie_in_pts = len(run.points) - before
-
-    def tie_off(run: StitchRun) -> None:
-        if len(run.points) < 2:
-            return
-        if small(run):
-            run.points = spread_tie_off(run.points)
-            return
-        pts = tie_run(run.points[-1], run.points[-2]).points
-        run.points = run.points + pts[1:]
-
     # The first run needs a tie because the thread starts there, and a trimmed
     # run needs one because the thread starts there too. Ask both questions in
     # one pass: the first run of a color is always both, and tying it twice
     # doubles the lock into eight stitches of thread piled in one spot.
     for i, run in enumerate(runs):
         if i == 0 or run.trim:
-            tie_in(run)
+            tie_in(run, small_letters)
         if run.trim and i > 0:
-            tie_off(runs[i - 1])
-    tie_off(runs[-1])
+            tie_off(runs[i - 1], small_letters)
+    tie_off(runs[-1], small_letters)
+
+
+def _small_letter_run(run: StitchRun, small_letters: set[str] | None) -> bool:
+    return (small_letters is not None and run.kind == RUN
+            and run.shape_id in small_letters)
+
+
+def tie_in(run: StitchRun, small_letters: set[str] | None = None) -> None:
+    """`apply_ties`' lock at the head of `run`, where the thread starts.
+
+    Records how many points it put in front in `run.tie_in_pts`, so
+    `drop_tie_ins` (`cfg.tie_in_off`) can strip exactly the lock."""
+    if len(run.points) < 2:
+        return
+    before = len(run.points)
+    if _small_letter_run(run, small_letters):
+        run.points = spread_tie_in(run.points)
+    else:
+        pts = tie_run(run.points[0], run.points[1]).points
+        run.points = pts[:-1] + run.points
+    run.tie_in_pts = len(run.points) - before
+
+
+def tie_off(run: StitchRun, small_letters: set[str] | None = None) -> None:
+    """`apply_ties`' lock at the tail of `run`, before the thread is cut."""
+    if len(run.points) < 2:
+        return
+    if _small_letter_run(run, small_letters):
+        run.points = spread_tie_off(run.points)
+        return
+    pts = tie_run(run.points[-1], run.points[-2]).points
+    run.points = run.points + pts[1:]
 
 
 def drop_tie_ins(blocks: list[StitchBlock]) -> int:
