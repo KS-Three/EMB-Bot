@@ -26,8 +26,9 @@ PRs since it was written (`gh pr list`, flip-sheet PR bodies), not only against
 
 **Base = main + ruled-unmerged flips** (`BASE`, 16 flags of #1057/#1070 that
 exist on main), so arm (a) is what ships once they land. Card v4 replaced three
-cards whose baseline had gone stale. `tie_in_off` / `border_from_outline` are
-not flags on main and are absent.
+cards whose baseline had gone stale. `border_from_outline` was not a flag on
+main; `tie_in_off` landed as one (#1042) after the cut and is moot on a card,
+which strips every piece's locks and lays its own.
 
 **Pull does nothing on Fremont:** strokes ~0.85 mm, where the fit returns the
 hat's own 0.4. On the card's Fremont pieces (b)/(d) are (a)/(c) byte for byte;

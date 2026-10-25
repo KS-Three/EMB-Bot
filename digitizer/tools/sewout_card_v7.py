@@ -29,8 +29,9 @@ Every arm sits on `BASE`: the flips Kent has ruled (10-23 flip sheet, 10-24
 wave 2) whose flags are on main but whose flip PR (#1057, #1070) had not
 merged when this card was cut. Without them arm (a) would not be what ships
 by the time it is sewn -- card v4 replaced three cards for exactly that.
-`tie_in_off` and `border_from_outline` are ruled too but are not flags on
-main, so the card cannot carry them.
+`border_from_outline` is ruled too but was not a flag on main. `tie_in_off`
+(ruled; on main as an OFF flag since #1042, merged after the cut) is moot
+here: the card strips every piece's locks and lays its own (`Card.plan`).
 
 Three blocks, all on the Hat preset (the two jobs at the width the pro's file has):
 
@@ -625,8 +626,10 @@ OFF would follow a later default flip):
 
 Every arm also carries `BASE`, the flips Kent has ruled whose flags are on
 main but whose flip PRs (#1057, #1070) had not merged when this was cut, so
-row (a) is what ships: BASE_LIST. `tie_in_off` and `border_from_outline` are
-ruled too but are not flags on main yet; the card cannot carry them.
+row (a) is what ships: BASE_LIST. `border_from_outline` is ruled too but was
+not a flag on main (#1065). `tie_in_off` (ruled; an OFF flag on main since
+#1042, merged after the cut) does not reach the card: the card strips every
+piece's locks and lays its own, as every card tool does.
 
 ## The three blocks
 
@@ -680,7 +683,8 @@ DROPPED = """| Candidate | Not on this card because |
 | `fill_underlay_cross` | flipped ON 10-23 (layout). In BASE. Its constants match the pro already: row 1.0 / stitch 4.0 against his 0.98 / 3.99 (`docs/settings-vs-pro-2026-10-21.md` row 15). |
 | `trim_bury_under_later`, `small_solids_satin`, `compact_solids_satin` | flipped ON 10-23 (layout). In BASE. |
 | `cut_every_jump` | held by Kent until #1048's walk-on-the-work lands: a construction hold, not fabric. |
-| `tie_in_off`, `border_from_outline` | ruled ON, not flags on main yet (#1042, #1065). |
+| `tie_in_off` | ruled ON (10-23); its locks are the card's own on every piece, so no arm could show it. |
+| `border_from_outline` | ruled ON (10-24), not a flag on main yet (#1065). |
 | older gate-1 candidates (`bean_letter_*`, hairline / small-print flags, `chain_links`, ...) | not re-armed: cards v2-v6 carry them, and this card is the two flags Kent's 10-22 ruling leaves on fabric (queue item I5). The small-text set in BASE sews Fremont's small words as satin, so the bean-letter candidates no longer reach them. |
 | `edge_cap_bean_pitch_mm` | its question (a longer bean stitch than 0.73) is asked here: `pro_measured_values` sews the bean edge cap at the pro's 0.95. |
 """
