@@ -13,6 +13,7 @@ and one number the flag is about -- for OFF, ON and the pro.
     .venv/Scripts/python -m tools.flip_sheet_renders run [--flags A B] [--fixtures S ...]
         [--engine DIR] [--cache DIR] [--jobs 3]
     .venv/Scripts/python -m tools.flip_sheet_renders report [--out DOCS_MD] [--renders DIR]
+        [--inline SHEET.html [--date YYYY-MM-DD]]
 
 HOW. `run` digitizes each fixture the Studio's way (`tools.pro_pair.digitize`,
 the hat preset at the pro's width) once OFF and once per flag ON, writes
@@ -37,11 +38,21 @@ pro_fill_underlay` (fills BARE), `tools.trim_classes` (hops under later
 thread), `tools.small_text_columns` (letter pieces), and -- on the branch
 that carries it -- `tools.pro_satin_underlay` (short columns bare).
 
+`report --inline SHEET.html` also writes ONE self-contained page: every image
+is a base64 data URI, so a viewer that cannot resolve relative paths (the
+desktop app's file pane) shows the pictures. It stays under `INLINE_MAX_MB`
+by re-encoding the crops smaller until it fits.
+
+A flag with a `base` (`enclosed_white_keyline` only acts under
+`sew_enclosed_white`) is diffed against its OWN OFF -- the base sets alone,
+cached as arm `<flag>__off` -- not against the bare engine.
+
 Nothing here changes an engine default; the flips are Kent's.
 """
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import math
 import os
@@ -61,6 +72,8 @@ PPM = 40.0                  # crop renders: 0.4 mm thread = 16 px
 PAD_MM = 2.0                # stitchviz.render_design's pad
 WINDOW_MM = (18.0, 11.0)    # the crop, mm (w, h)
 GRID_MM = 0.05              # needle-point grid for the OFF/ON diff
+INLINE_MAX_MB = 15.0        # the inlined page's ceiling
+INLINE_LEVELS = [(None, None), (85, 720), (75, 600), (65, 480), (55, 360)]  # (jpeg q, max width)
 LOCK_LEG_MM = 1.0           # a lock's legs are at most this
 DEFAULT_CACHE = DIGITIZER / "debug_out" / "flip_sheet"
 DEFAULT_DOC = DIGITIZER.parent / "docs" / f"flip-sheet-{DATE}.md"
@@ -75,9 +88,34 @@ FIXTURES: list[tuple[str, float | None]] = [
     ("mfab_hat", None),
 ]
 
+#: Pairs `tools.border_census.PAIRS` lacks, in its row shape (slug, pro file,
+#: art, garment), for a flag's own `fixtures`.
+EXTRA_PAIRS = [
+    ("proseal_beanie", "Proseal/PROSEALHAT BEANI.DST", "Proseal/PROSeal Logo.jpg", "beanie"),
+]
+
+#: Art for a job whose customer file is only on Google Drive (G:), used when
+#: G: is not mounted: the committed corpus crops (#556), cut from the pro's
+#: preview at ~400 px. A cell digitized from one may differ from a PR's cell
+#: digitized from the customer's file; `fixture_files` says which it used
+#: (on 2026-10-24 MFab's counts matched #1064's exactly).
+ART_FALLBACK = {
+    "mfab_hat": DIGITIZER / "testdata" / "art" / "logo_mfab_hat.png",
+    "mfab_lc": DIGITIZER / "testdata" / "art" / "logo_mfab_lc.png",
+}
+
 #: The flags. `sets` is laid over the Studio request (`--set` in pro_pair);
 #: `metric` names a reader below; `about` is the column heading; `pr` the PR
 #: that built it. Add a row here and the next `run`/`report` carries it.
+#: Optional: `base` (the flag acts only on top of these; OFF is the base, not
+#: the bare engine), `base_name` (flags with the SAME base share one OFF arm
+#: under that name instead of digitizing it once each), `fixtures` (the jobs
+#: the flag is about; FIXTURES otherwise).
+_SMALL_TEXT_SET = {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1.05,
+                   "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
+                   "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True}
+_WHITE_SEWN = {"sew_enclosed_white": True, "enclosed_white_keyline": True}
+
 FLAGS: dict[str, dict] = {
     "fill_turn_slant": {
         "sets": {"fill_turn_slant": True}, "metric": "sub_half_mm",
@@ -111,11 +149,68 @@ FLAGS: dict[str, dict] = {
     "satin_underlay_short_columns": {
         "sets": {"satin_underlay_short_columns": True}, "metric": "short_bare", "xray": True,
         "about": "satin columns under 5 mm sewn bare", "pr": 1044},
+    "lettering_columns_inside_stagger": {
+        "sets": {"lettering_columns_inside_stagger": True}, "metric": "stagger",
+        "about": "satin inner ends landing in a hole already used (pivot zones found)", "pr": 1058,
+        "note": "Alone against OFF. PR #1058's headline pairs it with lettering_columns_corner_fold "
+                "(OFF on main); its fold -> fold+stagger same-hole counts are Fremont 16 -> 13, "
+                "MFab 27 -> 8 (pro 5 and 4)."},
+    "enclosed_white_keyline": {
+        "base": {"sew_enclosed_white": True},
+        "sets": {"sew_enclosed_white": True, "enclosed_white_keyline": True},
+        "metric": "white_under_1mm",
+        "about": "white-thread stitches (of them under 1 mm)", "pr": 1059,
+        "note": "Only acts with sew_enclosed_white ON, so OFF here is sew_enclosed_white ON with the "
+                "keyline OFF and ON adds the keyline; the bare engine is not the comparison. "
+                "PR #1059 was still open when rendered: run from a local merge of its branch "
+                "with main (not committed anywhere)."},
+    "text_cluster_wide_letters": {
+        "sets": {"text_cluster_wide_letters": True}, "metric": "tagged",
+        "about": "shapes the text tagger put in a line (the Column lane's input)", "pr": 1060,
+        "note": "The pro has no tags to count; its row is the DST's own stitches and trims."},
     "small_text_set": {
         "sets": {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1.05,
                  "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
                  "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True},
         "metric": "letter_height", "about": "median small-letter height, mm", "pr": 1029},
+    # ---- wave 2 (2026-10-24)
+    "small_text_cap_reach_edges": {
+        "base": dict(_SMALL_TEXT_SET), "base_name": "small_text_set",
+        "sets": {**_SMALL_TEXT_SET, "small_text_cap_reach_edges": True},
+        "fixtures": ["proseal_hat", "proseal_beanie", "hotel_fremont_hat"],
+        "metric": "small_lines", "about": "small lines: built, sewn height mm (census reader)",
+        "pr": 1066,
+        "note": "Acts only under #1029's re-set, so OFF is the re-set set (small_text_set) and ON "
+                "adds this flag. PR #1066: ProSeal hat tagline 3.15 mm bean -> 4.35/4.45 satin "
+                "(pro 4.55), beanie 2.8 -> 3.65/3.7 (pro 4.0); Fremont and Drone byte-identical."},
+    "monoline_script_satin": {
+        "sets": {"monoline_script_satin": True}, "fixtures": ["tires_hat_3d"],
+        "metric": "sub_1mm", "about": "stitches under 1 mm (whole design)", "pr": 1063,
+        "note": "The catch is TRIMS (the st / tr figures): PR #1063 whole design 8,001 st / 10 tr "
+                "OFF -> 6,101 / 24 ON, pro 5,555 / 10. In the word: under-1 mm stitches 2,515 -> "
+                "548 (pro 43), fill -> satin square to the stroke 0.00 -> 0.88 (pro 0.85). PR #1063 "
+                "was open when rendered: run from a local merge with main (not committed)."},
+    "border_from_outline": {
+        "base": dict(_WHITE_SEWN), "base_name": "white_sewn",
+        "sets": {**_WHITE_SEWN, "border_from_outline": True},
+        "fixtures": ["becker_hat_small", "mfab_hat", "gaulke_roofing_hat"],
+        "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1065,
+        "note": "Rendered with sew_enclosed_white and enclosed_white_keyline ON (Kent flipped both "
+                "2026-10-24); it does nothing on MFab without white sewn. PR #1065 with white sewn: "
+                "Becker small 8,512 / 21 -> 11,100 / 25 (faces fill, loops on top; pro 8,694 / 40), "
+                "MFab hat 25,512 / 108 -> 20,219 / 89 (pro 17,568 / 46); Gaulke no outline, same "
+                "bytes. Bridge NOT rendered: its pro files are only on G:, unmounted. PR #1065 was "
+                "open when rendered: run from a local merge with main (not committed)."},
+    "silhouette_underfill": {
+        "base": dict(_WHITE_SEWN), "base_name": "white_sewn",
+        "sets": {**_WHITE_SEWN, "silhouette_underfill": True},
+        "fixtures": ["mfab_hat", "mfab_lc", "becker_beanie"],
+        "metric": "travel_runs", "about": "travel runs in the plan (pro: n/a)", "pr": 1064,
+        "note": "Rendered with sew_enclosed_white and enclosed_white_keyline ON (Kent flipped both "
+                "2026-10-24), as PR #1064 measured it: MFab hat 18,916 / 81 -> 17,540 / 37 (pro "
+                "17,568 / 19), MFab LC 16,542 / 72 -> 16,658 / 44 (pro 15,786 / 20), Becker beanie "
+                "11,501 / 21 -> 13,726 / 20 (pro 11,411 / 11). White sews ON TOP of black on MFab "
+                "(the reverse of #1059's order): that order is Kent's call."},
 }
 
 
@@ -153,8 +248,11 @@ def fixture_files(slug: str) -> dict:
     jump), pro PES if any (thread colours), art, garment, width."""
     from tools import border_census as bc
     from tools import pro_pair as pp
-    row = next(r for r in bc.PAIRS if r[0] == slug)
+    row = next(r for r in [*bc.PAIRS, *EXTRA_PAIRS] if r[0] == slug)
     pro, art = bc.find_pair(*row[:3])
+    fallback = art is None and slug in ART_FALLBACK and ART_FALLBACK[slug].exists()
+    if fallback:
+        art = ART_FALLBACK[slug]
     if pro is None or art is None:
         raise SystemExit(f"{slug}: missing {'pro' if pro is None else 'art'} file")
     pes = pro if pro.suffix.lower() == ".pes" else None
@@ -163,12 +261,43 @@ def fixture_files(slug: str) -> dict:
     if width is None:
         width = pp.pro_counts(dst or pro)["width_mm"]
     return {"slug": slug, "garment": row[3], "art": Path(art), "pro_dst": Path(dst or pro),
-            "pro_pes": Path(pes) if pes else None, "width_mm": float(width)}
+            "pro_pes": Path(pes) if pes else None, "width_mm": float(width),
+            "art_fallback": fallback}
 
 
 # --------------------------------------------------------------------- run
+def is_off(arm: str) -> bool:
+    return arm == "off" or arm.endswith("__off")
+
+
+def off_arm(flag: str) -> str:
+    """The arm a flag is diffed against: bare `off`, or `<base_name>__off` when
+    it has a `base` (`base_name` defaults to the flag: one OFF arm per flag)."""
+    spec = FLAGS[flag]
+    return f"{spec.get('base_name', flag)}__off" if spec.get("base") else "off"
+
+
+def arm_sets(arm: str) -> dict:
+    if arm == "off":
+        return {}
+    if arm.endswith("__off"):
+        name = arm[: -len("__off")]
+        owner = next(f for f, s in FLAGS.items() if s.get("base") and s.get("base_name", f) == name)
+        return dict(FLAGS[owner]["base"])
+    return dict(FLAGS[arm]["sets"])
+
+
+def flag_fixtures(flag: str, asked: list[str] | None) -> list[str]:
+    """The jobs a flag is rendered on: its own `fixtures` (narrowed to `asked`
+    when given), else `asked`, else FIXTURES."""
+    own = FLAGS[flag].get("fixtures")
+    if own:
+        return [s for s in own if not asked or s in asked]
+    return list(asked) if asked else [s for s, _ in FIXTURES]
+
+
 def cell_dir(cache: Path, slug: str, arm: str, sha: str) -> Path:
-    return cache / slug / (f"{arm}__{sha}" if arm == "off" else arm)
+    return cache / slug / (f"{arm}__{sha}" if is_off(arm) else arm)
 
 
 def digitize_cell(slug: str, arm: str, cache: Path, engine: str | None) -> dict:
@@ -181,7 +310,7 @@ def digitize_cell(slug: str, arm: str, cache: Path, engine: str | None) -> dict:
     if (out / "stats.json").exists():
         return json.loads((out / "stats.json").read_text(encoding="utf-8"))
     fx = fixture_files(slug)
-    sets = {} if arm == "off" else dict(FLAGS[arm]["sets"])
+    sets = arm_sets(arm)
     d = pp.digitize(fx["art"], fx["width_mm"], fx["garment"], sets)
     out.mkdir(parents=True, exist_ok=True)
     write_dst(d.plan, out / "ours.dst")
@@ -194,7 +323,9 @@ def digitize_cell(slug: str, arm: str, cache: Path, engine: str | None) -> dict:
                      "jump": bool(getattr(run, "jump", False)), "trim": bool(getattr(run, "trim", False)),
                      "rgb": list(blk.rgb)})
     (out / "runs.json").write_text(json.dumps(runs), encoding="utf-8")
-    stats = {"slug": slug, "arm": arm, "sets": sets, "engine": sha,
+    tagged = sum(1 for r in d.result.regions
+                 if (getattr(r, "meta", None) or {}).get("text_cluster_id") is not None)
+    stats = {"slug": slug, "arm": arm, "sets": sets, "engine": sha, "tagged": tagged,
              "engine_root": str(engine_root()), "width_mm": fx["width_mm"],
              "garment": fx["garment"], "secs": round(d.secs, 1),
              "plan_stitches": d.plan.stats.stitch_count, "plan_trims": d.plan.stats.trims}
@@ -216,8 +347,8 @@ def run_cmd(a) -> int:
     bad = [f for f in flags if f not in FLAGS]
     if bad:
         raise SystemExit(f"unknown flags: {bad}; known: {list(FLAGS)}")
-    slugs = a.fixtures or [s for s, _ in FIXTURES]
-    jobs = [(s, arm, str(a.cache), a.engine) for s in slugs for arm in ["off", *flags]]
+    pairs = [(s, arm) for f in flags for s in flag_fixtures(f, a.fixtures) for arm in (off_arm(f), f)]
+    jobs = [(s, arm, str(a.cache), a.engine) for s, arm in dict.fromkeys(pairs)]
     if a.jobs <= 1:
         for j in jobs:
             print(_job(j), flush=True)
@@ -263,6 +394,60 @@ def sub_half_mm(stream, _fx, _cell) -> int:
         else:
             prev = None if c in (pystitch.TRIM, pystitch.COLOR_CHANGE) else prev
     return n
+
+
+def sub_1mm(stream, _fx, _cell) -> int:
+    """Needle-to-needle stitches under 1 mm (a fill's turns, a column's crowding)."""
+    import pystitch
+    n, prev = 0, None
+    for x, y, c in stream:
+        if c == pystitch.STITCH:
+            if prev is not None and math.dist(prev, (x, y)) < 1.0:
+                n += 1
+            prev = (x, y)
+        else:
+            prev = None if c in (pystitch.TRIM, pystitch.COLOR_CHANGE) else prev
+    return n
+
+
+def satin_loops(_stream, _fx, cell) -> int:
+    """Satin columns whose spine closes on itself -- a border laid along an
+    outline (`border_census.closed_satin_loops`, the census's own reader)."""
+    from tools.border_census import closed_satin_loops
+    from tools.study_pro import load_runs
+    return len(closed_satin_loops(load_runs(Path(cell["dst"]))[0]))
+
+
+def travel_runs(_stream, _fx, cell) -> str:
+    runs = cell.get("runs")
+    if runs is None:
+        return "n/a (DST has no roles)"
+    return str(sum(1 for r in runs if r["kind"] == "travel"))
+
+
+def small_lines(_stream, fx, cell) -> str:
+    """Each small line the census lists for this job (`small_text_floor_census.
+    ELEMENTS`, not its references): construction and sewn height, read by the
+    census's own reader. The art height is the listed box's; the pro is read
+    through `register` against our OFF file."""
+    from tools import small_text_floor_census as st
+    from tools.study_pro import load_runs
+    els = [e for e in st.ELEMENTS if e[0] == fx["slug"] and "(ref)" not in e[1]]
+    if not els:
+        return "no small lines listed"
+    runs = load_runs(Path(cell["dst"]))[0]
+    reg = st.register(fx["pro_dst"], fx["ours_ref"]) if cell.get("stats") is None else None
+    out = []
+    for _slug, label, box, *_ in els:
+        art_h = box[3] - box[1]
+        m_y, m_x, cy = max(2.5, 1.5 * art_h), 2.0 + 0.5 * art_h, 0.5 * (box[1] + box[3])
+        if reg is None:
+            e = st.read_element(runs, (box[0] - m_x, box[1] - m_y, box[2] + m_x, box[3] + m_y), art_h, cy)
+        else:
+            e = st.read_element(runs, st._map_box(box, reg, m_x * reg.scale, m_y * reg.scale),
+                                art_h * reg.scale, reg.scale * cy + reg.dy)
+        out.append(f"{label} {e['verdict'].lower()} {e.get('h_mm', '-')}")
+    return "; ".join(out)
 
 
 def fill_underlay(_stream, _fx, cell) -> str:
@@ -388,9 +573,64 @@ def letter_height(_stream, _fx, cell) -> str:
     return f"{hs[len(hs) // 2]:.2f} ({len(hs)} pieces)"
 
 
+def _needle_runs(stream) -> list[list[tuple[float, float]]]:
+    """Needle-down runs: stitches between cuts, colour changes and jumps."""
+    import pystitch
+    runs, cur = [], []
+    for x, y, c in stream:
+        if c == pystitch.STITCH:
+            cur.append((x, y))
+        elif cur:
+            runs.append(cur)
+            cur = []
+    if cur:
+        runs.append(cur)
+    return runs
+
+
+def stagger(stream, _fx, _cell) -> str:
+    """PR #1058's own number, by its own reader (`tools.inside_stagger`): inner ends
+    of a satin pivot that land within 0.1 mm of an earlier one, with the zones found."""
+    from tools import inside_stagger as ist
+    s = ist.summary(ist.read(_needle_runs(stream)))
+    return f"{s['same_hole']} same-hole ({s['zones']} zones)"
+
+
+def white_under_1mm(_stream, _fx, cell) -> str:
+    """Stitches in near-white thread (the file's own colours) and how many step under
+    1 mm from the one before inside the same block. Design x/y are tenths of a mm."""
+    design = cell.get("design")
+    if design is None:
+        return "n/a (no thread colours)"
+    colors = design.get("colors") or []
+    white = short = ci = 0
+    prev = None
+    for s in design.get("stitches") or []:
+        t = s.get("type")
+        if t == "color":
+            ci, prev = ci + 1, None
+        elif t == "stitch":
+            if ci < len(colors) and min(colors[ci].get(k, 0) for k in "rgb") >= 230:
+                white += 1
+                if prev is not None and math.dist(prev, (s["x"], s["y"])) < 10.0:
+                    short += 1
+            prev = (s["x"], s["y"])
+        else:
+            prev = None
+    return f"{white:,} ({short:,} under 1 mm)"
+
+
+def tagged(_stream, _fx, cell) -> str:
+    stats = cell.get("stats") or {}
+    return str(stats["tagged"]) if "tagged" in stats else "n/a (not in the DST)"
+
+
 METRICS = {"sub_half_mm": sub_half_mm, "fill_underlay": fill_underlay, "uncut_jumps": uncut_jumps,
            "white_stitches": white_stitches, "under_later": under_later, "rings": rings,
-           "locks": locks, "short_bare": short_bare, "letter_height": letter_height}
+           "locks": locks, "short_bare": short_bare, "letter_height": letter_height,
+           "stagger": stagger, "white_under_1mm": white_under_1mm, "tagged": tagged,
+           "sub_1mm": sub_1mm, "satin_loops": satin_loops, "travel_runs": travel_runs,
+           "small_lines": small_lines}
 
 
 # ------------------------------------------------------------------- diff
@@ -552,28 +792,33 @@ def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str]) -
     renders.mkdir(parents=True, exist_ok=True)
     rows = []
     pros: dict[str, tuple[dict, dict]] = {}
-    for slug in slugs:
+    for slug in dict.fromkeys(s for f in flags for s in flag_fixtures(f, slugs)):
         fx = fixture_files(slug)
         pros[slug] = (fx, pro_cell(fx))
     for flag in flags:
-        for slug in slugs:
+        for slug in flag_fixtures(flag, slugs):
             fx, pro = pros[slug]
             on_dir = cache / slug / flag
             row = {"flag": flag, "fixture": slug, "width_mm": fx["width_mm"], "pr": FLAGS[flag]["pr"],
                    "about": FLAGS[flag]["about"], "sets": FLAGS[flag]["sets"],
                    "note": FLAGS[flag].get("note", "")}
+            if fx.get("art_fallback"):
+                row["note"] = (row["note"] + " " if row["note"] else "") + (
+                    f"{slug}: digitized from the corpus crop {fx['art'].name} (the customer file "
+                    "is on G:, unmounted).")
             if not (on_dir / "stats.json").exists():
                 row["status"] = "not run"
                 rows.append(row)
                 continue
             on = load_cell(on_dir)
             sha = on["stats"]["engine"]
-            off_dir = cell_dir(cache, slug, "off", sha)
+            off_dir = cell_dir(cache, slug, off_arm(flag), sha)
             if not (off_dir / "stats.json").exists():
                 row["status"] = f"OFF cell missing for engine {sha}"
                 rows.append(row)
                 continue
             off = load_cell(off_dir)
+            fx["ours_ref"] = off["dst"]      # a reader that registers the pro needs one of ours
             row["engine"] = sha
             row["engine_root"] = on["stats"]["engine_root"]
             for c in (off, on, pro):
@@ -672,20 +917,42 @@ def markdown(rows: list[dict], renders: Path, doc: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-def html(rows: list[dict]) -> str:
+def summary_table(rows: list[dict]) -> str:
+    """One line per (flag, fixture): the flag's own number OFF | ON | pro, at a glance."""
+    out = ["<table class='sum'><tr><th>flag (PR)</th><th>fixture</th><th>OFF</th><th>ON</th>"
+           "<th>pro</th><th>needle points changed</th></tr>"]
+    for r in rows:
+        tag = f"<code>{r['flag']}</code> (#{r['pr']})"
+        if r.get("status") not in ("rendered", "no change"):
+            out.append(f"<tr><td>{tag}</td><td>{r['fixture']}</td><td colspan='4'>{r.get('status')}</td></tr>")
+            continue
+        change = "none (no change)" if r["status"] == "no change" else f"{r['diff']:,}"
+        out.append(f"<tr><td>{tag}</td><td>{r['fixture']}</td>"
+                   + "".join(f"<td>{_fmt(r[s])}</td>" for s in ("off", "on", "pro"))
+                   + f"<td>{change}</td></tr>")
+    out.append("</table>")
+    return "".join(out)
+
+
+def html(rows: list[dict], src=lambda name: name, date: str = DATE) -> str:
+    """The sheet. `src` maps a render's file name to the `<img src>` value: the
+    name itself for a page beside its renders, a data URI for the inlined one."""
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
-           f"<title>Flip sheet {DATE}</title>",
+           f"<title>Flip sheet {date}</title>",
            "<style>body{font-family:system-ui,sans-serif;margin:20px;background:#fafafa}"
            "h1{font-size:20px} .row{background:#fff;border:1px solid #ddd;border-radius:6px;"
            "padding:12px;margin:14px 0} .tiles{display:flex;gap:12px;flex-wrap:wrap}"
            ".tile{flex:1 1 300px} .tile img{width:100%;height:auto;border:1px solid #ccc;"
            "image-rendering:auto} .nums{font-size:14px;margin-top:6px} .nums b{display:inline-block;"
            "width:48px} code{background:#eee;padding:1px 4px;border-radius:3px}"
+           "table.sum{border-collapse:collapse;font-size:13px;background:#fff}"
+           "table.sum td,table.sum th{border:1px solid #ddd;padding:3px 8px;text-align:left}"
            ".nochange{color:#555} .flag{font-size:17px;margin:0 0 4px} .where{margin-top:10px;max-width:520px} .where img{width:100%;border:1px solid #ccc}</style></head><body>",
-           f"<h1>Flip sheet {DATE} &mdash; OFF | ON | pro</h1>",
+           f"<h1>Flip sheet {date} &mdash; OFF | ON | pro</h1>",
            "<p>Layout flags built OFF, each rendered where it changes stitches beside the "
            "professional's file for the same job (hat preset at the pro's width). 40 px/mm: a "
-           "0.4 mm thread is 16 px. The flips are Kent's.</p>"]
+           "0.4 mm thread is 16 px. The flips are Kent's.</p>",
+           summary_table(rows)]
     for r in rows:
         head = f"<p class='flag'><code>{r['flag']}</code> (PR #{r['pr']}) &middot; {r['fixture']} " \
                f"at {r['width_mm']} mm &middot; engine {r.get('engine', '-')}</p>"
@@ -700,14 +967,14 @@ def html(rows: list[dict]) -> str:
             out.append(f"<div class='row'>{head}<p class='nochange'><b>No change on this fixture</b> "
                        f"({why}).</p><div class='nums'>{nums}</div></div>")
             continue
-        tiles = "".join(f"<div class='tile'><img src='{r['images'][s]}' alt='{s}'>"
+        tiles = "".join(f"<div class='tile'><img src='{src(r['images'][s])}' alt='{s}'>"
                         f"<div class='nums'><b>{s.upper()}</b> {_fmt(r[s])}</div></div>"
                         for s in ("off", "on", "pro"))
         if "off_xray" in r["images"]:
-            tiles += "".join(f"<div class='tile'><img src='{r['images'][s + '_xray']}' alt='{s} x-ray'>"
+            tiles += "".join(f"<div class='tile'><img src='{src(r['images'][s + '_xray'])}' alt='{s} x-ray'>"
                              f"<div class='nums'><b>{s.upper()}</b> x-ray: sewing order reversed, "
                              f"underlay drawn on top</div></div>" for s in ("off", "on", "pro"))
-        where = (f"<div class='where'><img src='{r['images']['where']}' alt='where'>"
+        where = (f"<div class='where'><img src='{src(r['images']['where'])}' alt='where'>"
                  f"<div class='nums'>where the crop sits (OFF, red box)</div></div>")
         out.append(f"<div class='row'>{head}<p>{r['about']}. {r['diff']:,} needle points differ, "
                    f"{r['in_window']:,} in this {WINDOW_MM[0]:g} x {WINDOW_MM[1]:g} mm crop at "
@@ -717,9 +984,48 @@ def html(rows: list[dict]) -> str:
     return "\n".join(out)
 
 
+def data_uri(path: Path, quality: int | None = None, max_w: int | None = None) -> str:
+    """A render as a base64 JPEG data URI: its own bytes, or re-encoded smaller."""
+    raw = Path(path).read_bytes()
+    if quality is not None:
+        import cv2
+        import numpy as np
+        img = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
+        if max_w and img.shape[1] > max_w:
+            h = max(1, round(img.shape[0] * max_w / img.shape[1]))
+            img = cv2.resize(img, (max_w, h), interpolation=cv2.INTER_AREA)
+        ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, quality])
+        if not ok:
+            raise RuntimeError(f"cannot re-encode {path}")
+        raw = buf.tobytes()
+    return "data:image/jpeg;base64," + base64.b64encode(raw).decode("ascii")
+
+
+def inline_html(rows: list[dict], renders: Path, date: str = DATE,
+                max_mb: float = INLINE_MAX_MB) -> tuple[str, tuple]:
+    """ONE self-contained page: the sheet with every image inlined. Tries the
+    renders as written, then re-encodes smaller (`INLINE_LEVELS`) until the page
+    fits `max_mb`; returns the page and the (quality, max width) that fitted --
+    the last level if none did."""
+    renders = Path(renders)
+    page, level = "", INLINE_LEVELS[0]
+    for level in INLINE_LEVELS:
+        cache: dict[str, str] = {}
+
+        def src(name, _q=level[0], _w=level[1]):
+            if name not in cache:
+                cache[name] = data_uri(renders / name, _q, _w)
+            return cache[name]
+
+        page = html(rows, src, date)
+        if len(page.encode("utf-8")) <= max_mb * 1024 * 1024:
+            break
+    return page, level
+
+
 def report_cmd(a) -> int:
     flags = a.flags or list(FLAGS)
-    slugs = a.fixtures or [s for s, _ in FIXTURES]
+    slugs = a.fixtures or None
     rows = build_rows(Path(a.cache), Path(a.renders), flags, slugs)
     doc = Path(a.out)
     doc.parent.mkdir(parents=True, exist_ok=True)
@@ -727,6 +1033,12 @@ def report_cmd(a) -> int:
     (Path(a.renders) / "index.html").write_text(html(rows), encoding="utf-8")
     (Path(a.renders) / "rows.json").write_text(json.dumps(rows, indent=1, default=str), encoding="utf-8")
     print(f"wrote {doc} and {Path(a.renders) / 'index.html'} ({len(rows)} rows)")
+    if a.inline:
+        page, level = inline_html(rows, Path(a.renders), a.date)
+        Path(a.inline).parent.mkdir(parents=True, exist_ok=True)
+        Path(a.inline).write_text(page, encoding="utf-8")
+        print(f"wrote {a.inline}: {len(page.encode('utf-8')) / 1024 / 1024:.1f} MB, "
+              f"jpeg q/width {level[0]}/{level[1]} (None = renders as written)")
     return 0
 
 
@@ -747,6 +1059,9 @@ def parse_args(argv=None):
         else:
             p.add_argument("--out", type=Path, default=DEFAULT_DOC)
             p.add_argument("--renders", type=Path, default=DEFAULT_RENDERS)
+            p.add_argument("--inline", type=Path,
+                           help="also write ONE self-contained HTML (images as data URIs)")
+            p.add_argument("--date", default=DATE, help="date in the inlined page's title")
     return ap.parse_args(argv)
 
 
