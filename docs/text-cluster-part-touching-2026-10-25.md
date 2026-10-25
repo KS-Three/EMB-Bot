@@ -115,19 +115,29 @@ tagger on all six: every polygon's WKT and every meta key):
 | Fremont hat, patch, Drone, ProSeal | nothing |
 
 Whole design, md5 of `[x, y, kind, jump, trim]` per stitch. "Branch OFF" is
-the full pipeline on this branch with the flag off where it finished on the
-loaded laptop (Fremont hat: 47 minutes); on every job the tagger's OUTPUT OFF
-is byte-identical to HEAD's (above), and nothing else in the diff runs when the
-flag is off (one config field nothing else reads, one kwarg that passes nothing).
+the full pipeline with the flag off: on the branch for five jobs, and for MFab
+hat on main at #1080's squash (`a6be6b78`) against its parent (`05270805`,
+also `3673370d`), measured after the PR merged (2026-10-25).
 
 | job | width mm | main (82b0bf28) | branch OFF | ON | stitches / trims main -> ON |
 |---|---|---|---|---|---|
 | Fremont hat | 92.6 | `6ff9803b` | `6ff9803b` | `6ff9803b` | 18,573 / 58, same |
-| Fremont patch | 92.5 | `d2bcba27` | tagger-identical | `d2bcba27` | 20,733 / 49, same |
-| MFab hat | 104.9 | `3673370d` | tagger-identical | `39d95f28` | 11,125 / 62 -> 11,138 / 62 |
-| MFab LC | 96.7 | `f444ae5e` | tagger-identical | `288c3c5b` | 11,691 / 73 -> 11,822 / 73 |
-| Drone | 62.6 | `6239342f` | tagger-identical | `6239342f` | 14,077 / 116, same |
-| ProSeal hat | 85.9 | `7d89f371` | tagger-identical | `7d89f371` | 7,760 / 56, same |
+| Fremont patch | 92.5 | `d2bcba27` | `d2bcba27` | `d2bcba27` | 20,733 / 49, same |
+| MFab hat | 104.9 | `3673370d` | `3673370d` | `39d95f28` | 11,125 / 62 -> 11,138 / 62 |
+| MFab LC | 96.7 | `f444ae5e` | `f444ae5e` | `288c3c5b` | 11,691 / 73 -> 11,822 / 73 |
+| Drone | 62.6 | `6239342f` | `6239342f` | `6239342f` | 14,077 / 116, same |
+| ProSeal hat | 85.9 | `7d89f371` | `7d89f371` | `7d89f371` | 7,760 / 56, same |
+
+**Trap, hit twice measuring this table:** on a loaded laptop the rembg cutout
+can run past `photo_prep_background_removal_timeout_s` (60 s). The pipeline
+then drops the WHOLE photo prep (Kent's 2026-08-24 ruling) and sews the
+classical route. MFab hat came out `7296b420` (11,855 / 67, 59 regions into the
+tagger instead of 60) twice that way, and it looked like an OFF regression. It
+was not: the plan's warnings read `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`
+instead of `PHOTO_BACKGROUND_REMOVED`. Re-run with the timeout raised
+(`--set photo_prep_background_removal_timeout_s=600`), the same tree gives
+`3673370d`. Read that warning before calling any md5 mismatch on a photo-path
+job a regression.
 
 The flat goldens (`logo_alpha`, `logo_whitebg`, `ribbon_curve`) are pinned
 OFF and ON in the test: no touching or overshooting letter there.
