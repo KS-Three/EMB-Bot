@@ -1029,11 +1029,18 @@ def _later_thread_burier(blocks: list[StitchBlock]):
             ok[hit_pt[(order[hit_line] >= self.k) | at_end[hit_pt]]] = True
             return bool(ok.all())
 
-    def bury(k: int):
+    def bury(k: int, on_work: bool = False):
         a, b = seq[k - 1][1].points[-1], seq[k][1].points[0]
         gap = math.dist(a, b)
         if gap > machine.LINK_MAX_GAP_MM:
             return None
+        if on_work:
+            # `_cut_or_bury_jumps`' walk: the straight hop, every sample of
+            # its thread on SOME thread -- sewn before or after, any block
+            # -- so none of it lands on bare fabric. Straight only: a
+            # detour on top of finished work is more thread on show.
+            cover = _UnderThread(0, (a, b))
+            return _link_stitches([a, b]) if cover.covers(LineString([a, b])) else None
         # Any buried route leaves the start's end allowance into later
         # thread, so with no later centreline that close to `a` there is no
         # route to find: most bare hops stop here, before the raster.
@@ -1051,8 +1058,8 @@ def _later_thread_burier(blocks: list[StitchBlock]):
 
 
 def _cut_or_bury_jumps(blocks: list[StitchBlock],
-                       small_letters: set[str] | None = None) -> tuple[int, int]:
-    """Leave no needle-up move uncut. -> (sewn needle-down, cut).
+                       small_letters: set[str] | None = None) -> tuple[int, int, int]:
+    """Leave no needle-up move uncut. -> (buried, walked, cut).
 
     `cfg.cut_every_jump` (built OFF 2026-10-21). Every jump inside a block
     that does not cut (`jump` without `trim`: a hop shorter than
@@ -1067,8 +1074,22 @@ def _cut_or_bury_jumps(blocks: list[StitchBlock],
 
     Bury first, from the pro's own files: of his 59 non-colour cuts of
     3 mm or less, ONE lies under thread he sews later (`tools/trim_classes.py`
-    over the 27 DSTs); the other 58 lie on bare fabric or on finished work,
-    exactly the two places this pass refuses to sew.
+    over the 27 DSTs); the other 58 lie on bare fabric or on finished work.
+
+    Then WALK (2026-10-23, the cut-after-bury census): a jump that no later
+    thread buries but whose whole straight thread lies on thread already
+    sewn -- the small lettering on Fremont's field, letter to letter -- is
+    sewn needle-down on top of that work instead of cut. Read from the
+    pro's DSTs: on `HOTEL FREMONT HAT.DST` his shortest cut is 3.4 mm and
+    all 20 lie on work; at 131 of our 152 such hops he has no move at all,
+    he sews straight through on the field (R14's "travels along the work").
+    Over his 28 DSTs the shortest on-work cut is 1.91 mm, so a sub-`trim_at`
+    walk on work is his habit, not ours. Never on bare fabric: a bare hop
+    is still cut (MFab's white left as fabric, R11). Cutting those 150 was
+    what took Fremont to 187 trims against his 20 (the 2026-10-23 flip
+    sheet), the reason Kent held the flag OFF; walked, Fremont reads 44
+    (143 walked, 21 buried, 7 cut where a thread edge of the straight hop
+    leaves the work), MFab 87 (19 bare cuts, white left as fabric).
 
     Runs on the finished block list (after ties, the edge cap, hairlines and
     spoke marks), so thread counted as later is sewn later, and the ties it
@@ -1076,7 +1097,7 @@ def _cut_or_bury_jumps(blocks: list[StitchBlock],
     never touched: that lift follows a colour change.
     """
     seq, bury = _later_thread_burier(blocks)
-    sewn = cut = 0
+    buried = walked = cut = 0
     for k in range(1, len(seq)):
         bi, run = seq[k]
         prev = seq[k - 1][1]
@@ -1086,13 +1107,18 @@ def _cut_or_bury_jumps(blocks: list[StitchBlock],
         inner = bury(k)
         if inner is not None:
             _sew_hop(blocks[bi].runs, run, inner)
-            sewn += 1
+            buried += 1
+            continue
+        inner = bury(k, on_work=True)
+        if inner is not None:
+            _sew_hop(blocks[bi].runs, run, inner)
+            walked += 1
             continue
         run.trim = True
         stitches.tie_in(run, small_letters)
         stitches.tie_off(prev, small_letters)
         cut += 1
-    return sewn, cut
+    return buried, walked, cut
 
 
 # Lock-stitch application for a finished block. Hoisted verbatim to
@@ -4675,4 +4701,11 @@ def sequence(
     # thread it counts as later is the thread actually sewn later.
     if cfg.cut_every_jump:
         _cut_or_bury_jumps(blocks, tie_kw.get("small_letters"))
+    # `cfg.tie_in_off` (built OFF): after `cut_every_jump`, so a cut that
+    # pass adds loses its tie-in too (`stitches.tie_in` records it in
+    # `tie_in_pts`) -- no run start is locked, even after a cut. It only
+    # strips leading lock points; the sew order the pass above read is
+    # unchanged.
+    if cfg.tie_in_off:
+        stitches.drop_tie_ins(blocks)
     return blocks, warnings
