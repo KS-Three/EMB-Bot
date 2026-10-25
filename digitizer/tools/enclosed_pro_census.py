@@ -40,7 +40,7 @@ calibration jobs except `UNREADABLE`, with Cohen's kappa beside the raw count
   python -m tools.enclosed_pro_census table [--json OUT] [--md OUT]
   python -m tools.enclosed_pro_census time SLUG --width MM [--garment G] [--arms off,on]
   python -m tools.enclosed_pro_census one SLUG ARM [--width MM] [--garment G]
-  python -m tools.enclosed_pro_census render SLUG --what whole|faces|band --out X.jpg [--arms off,on]
+  python -m tools.enclosed_pro_census render SLUG --what whole|faces|band | --region ID --out X.jpg
 
 `time` runs its arms one after another, each in a fresh process, and prints
 the pipeline seconds `pro_pair.digitize` measures (art decode to plan, the
@@ -78,8 +78,7 @@ THREAD_MM = 0.5         # a stitch line drawn this wide: within 0.25 mm of it
 ERODE_MM = 0.35         # a region is read inside this margin of its own edge
 SEWN_MIN = 0.75         # thread share that reads as sewn (the doc: sewn ~1.0, open 0.1-0.52)
 SPECK_MM2 = 2.5         # under this with no holder: a speck (the doc's class)
-WHITE_BLOCK_MIN = 0.5   # share of a block's penetrations on the sewn whites
-WHITE_PAD_MM = 0.3      # the whites grown this much for that test (a keyline rides the edge)
+WHITE_MIN_MM2 = 20.0    # whites read as colour blocks only when this much sews (specks name noise)
 ROW_MIN_MM = 1.0        # a fill row stitch is at least this long ...
 ROW_COS = 0.99          # ... and parallel to a neighbour this closely
 RING_MM = (0.2, 1.2)    # the outline of a face is read in this ring outside it
@@ -128,7 +127,10 @@ SCORE_JOBS = ["becker_chest_small", "becker_hat_small", "becker_hat_large", "bec
               "becker_beanie", "mfab_hat", "mfab_lc", "tires_hat_3d", "hotel_fremont_patch",
               "golf_hat"]
 UNREADABLE = {"precision_drone": "the pro redrew the design and relaid the text (rule R15): "
-                                 "his thread over our specks says nothing about his whites"}
+                                 "his thread over our specks says nothing about his whites",
+              "becker_beanie": "both files sew a knockdown under the whole design (ours "
+                               "`beanie_knockdown`, his first block covers it all), so every "
+                               "enclosed region reads sewn on both sides; its faces still read"}
 META_KEEP = ("enclosed_background", "enclosed_colour_unknown", "text_candidate", "lettering_group",
              "text_cluster_id", "word_id", "counter", "sew_enclosed_white", "tier", "stitched",
              "layer", "fill_angle_deg")
@@ -688,7 +690,7 @@ def white_blocks(grid, stream, steps, white_geom, rgbs: list | None) -> dict | N
     thread colour (a lone DST has no colours: that one block). `under` names
     the other blocks sewn first that cover at least half of it (the pro's
     black under the MFab band, rule R13)."""
-    if white_geom is None or white_geom.is_empty:
+    if white_geom is None or white_geom.is_empty or white_geom.area < WHITE_MIN_MM2:
         return None
     inner = white_geom.buffer(-ERODE_MM)
     top, cover = layers(grid, steps, grid.poly(inner if not inner.is_empty else white_geom))
@@ -748,11 +750,15 @@ def table_cmd(a) -> int:
                              ("Score: all three white switches, arm `on`", SCORE_JOBS, "on"),
                              ("Score: arm `on_nobfo` (border_from_outline False)", SCORE_JOBS, "on_nobfo")):
         lines += [f"## {title}", "",
-                  "| job | region | mm² | min dim | holes | holder | role | plan | pro | ours | agree |",
-                  "|---|---|---|---|---|---|---|---|---|---|---|"]
+                  "| job | region | mm² | min dim | holes | holder | role | plan | pro | ours OFF | "
+                  "ours | agree |",
+                  "|---|---|---|---|---|---|---|---|---|---|---|---|"]
         pairs, misses, skipped = [], [], []
         for slug in jobs:
             rep = out.get(slug)
+            if rep is not None and not rep["rows"]:
+                lines.append(f"| {slug} ({rep['width']:g}) | none | | | | | | | | | | |")
+                continue
             if rep is None or arm not in rep["arms"]:
                 skipped.append(slug)
                 continue
@@ -769,13 +775,13 @@ def table_cmd(a) -> int:
                         ag = "yes" if ok else "**NO**"
                         pairs.append((ours_t >= SEWN_MIN, pro_t >= SEWN_MIN))
                         if not ok:
-                            misses.append(f"{slug} {row['id']} ({row['area']} mm², {row['role']})")
+                            off_t = (row["ours"].get("off") or {}).get("thread")
+                            misses.append(f"{slug} {row['id']} ({row['area']} mm², {row['role']}, "
+                                          f"ours OFF {_f(off_t)})")
                 lines.append(f"| {slug} ({rep['width']:g}) | {row['id']} | {row['area']:.1f} | "
                              f"{row['min_dim_mm']} | {row['holes']} | {row['holder'] or '—'} | "
                              f"{row['role']} | {o.get('kind') or 'open'} | {_f(pro_t)} | "
-                             f"{_f(ours_t)} | {ag} |")
-            if not rep["rows"]:
-                lines.append(f"| {slug} ({rep['width']:g}) | none | | | | | | | | | |")
+                             f"{_f((row['ours'].get('off') or {}).get('thread'))} | {_f(ours_t)} | {ag} |")
         agree = sum(1 for x, y in pairs if x == y)
         lines += ["", f"**{agree} of {len(pairs)} readable rows agree; Cohen's kappa "
                       f"{_f(kappa(pairs), 3)}.** Misses: {', '.join(misses) or 'none'}."
@@ -900,7 +906,14 @@ def render_cmd(a) -> int:
     sides.append((f"pro: {pc['stitches']:,} st, {pc['trims']} trims (DST)", pro_design))
 
     box = None
-    if a.what != "whole":
+    if a.region:
+        r = next((r for r in off_cell["regions"] if r["id"] == a.region), None)
+        if r is None:
+            raise SystemExit(f"{a.slug}: no region {a.region}")
+        x0, y0, x1, y1 = affinity.affine_transform(_geom(r, off_cell["dst_offset_mm"]),
+                                                   reg.matrix()).bounds
+        box = (x0 - 4.0, y0 - 4.0, x1 + 4.0, y1 + 4.0)
+    elif a.what != "whole":
         rg = [(_role(r), affinity.affine_transform(_geom(r, off_cell["dst_offset_mm"]), reg.matrix()))
               for r in off_cell["regions"] if r["meta"].get("enclosed_background")]
         box = _box(rg, a.what)
@@ -954,6 +967,7 @@ def main(argv=None) -> int:
     p = sub.add_parser("render", help="OFF | ON | pro, registered, one canvas")
     p.add_argument("slug")
     p.add_argument("--what", choices=["whole", "faces", "band"], default="whole")
+    p.add_argument("--region", help="crop round this region of the OFF cell instead (4 mm pad)")
     p.add_argument("--arms", type=arms, default=["off", "on"])
     p.add_argument("--ppm", type=float)
     p.add_argument("--out", type=Path, required=True)
