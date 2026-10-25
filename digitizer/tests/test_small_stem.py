@@ -34,7 +34,7 @@ from shapely.geometry import Point, box
 from digitizer_core import PipelineConfig, digitize
 from digitizer_core import columns, stage7_sequence
 from digitizer_core.columns import is_lettering, is_thin_stem
-from tests.conftest import own_thread_only
+from tests.conftest import LETTERING_2026_10_24_OFF, own_thread_only
 
 #: `tools/stem_trace.py --word tsivyl 15.9` / `--word HILTIL`: the fixture's
 #: 28.1 px per mm, where the i stem is 0.57 x 3.73 mm.
@@ -86,7 +86,8 @@ def run(tmp_path_factory, word, small_stem, guard=False):
                          lettering_columns_square_ends=False,
                          lettering_columns_inside_connectors=False,
                          small_dot_rung=False,
-                         lettering_columns_small_stem=small_stem)
+                         lettering_columns_small_stem=small_stem,
+                         **LETTERING_2026_10_24_OFF)        # the 2026-10-24 flips, as pinned
     if not guard:
         return digitize(path, cfg), cfg
 

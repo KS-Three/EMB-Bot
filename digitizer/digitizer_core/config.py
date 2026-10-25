@@ -2739,10 +2739,13 @@ class PipelineConfig:
     # crosses stays the satin spacing; a column the house already crosses
     # square, a curved or ring column, and a letter with no house angle keep
     # their stations byte for byte. Layout, not a cloth number (judged in
-    # the preview, Kent 2026-10-22); the flip is his, on the before | after
-    # | pro renders. OFF is the lane as it was, station for station. Tests:
+    # the preview, Kent 2026-10-22). ON by default since 2026-10-24 (Kent:
+    # "Flip it ON", on `docs/big-letter-construction-2026-10-24.md`: leaning
+    # crosses within 15 deg of the line of text 0.24 -> 0.51 at 76.5 mm and
+    # 0.17 -> 0.53 at 101.9 mm on MARINE, the pro 0.47-0.58, no piece added).
+    # False is the lane as it was, station for station. Tests:
     # `tests/test_column_text_lean.py`.
-    lettering_columns_text_lean: bool = False
+    lettering_columns_text_lean: bool = True
     # Under `lettering_columns`, each satin column's pull compensation is a
     # function of ITS OWN drawn stroke width, the way the professional's
     # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the
@@ -2807,10 +2810,12 @@ class PipelineConfig:
     # into one hole the full-length ones are spaced along the rail's course
     # round the pile, `STAGGER_WALK_MM` apart where the corner has room
     # (`columns._inside_stagger`). Layout, judged
-    # in the preview (Kent, 2026-10-22), so ON-eligible from renders and
-    # numbers. False is the guard, byte for byte.
+    # in the preview (Kent, 2026-10-22). ON by default since 2026-10-24
+    # (Kent, the flip sheet; same-hole re-entries per zone Becker 1.14 ->
+    # 0.60, Fremont 0.37 -> 0.34, MFab 0.29 -> 0.17, the pro 0.11 / 0.16 /
+    # 0.22). False is the guard, byte for byte.
     # Tests: `tests/test_column_inside_stagger.py`.
-    lettering_columns_inside_stagger: bool = False
+    lettering_columns_inside_stagger: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
@@ -3108,9 +3113,10 @@ class PipelineConfig:
     # every one is tagged; and a glyph up to `WIDE_LETTER_ASPECT_MAX` 1.8 is
     # adopted by a line it links to (`_adopt_wide`), never making one.
     # Segmentation and tagging, not fabric: layout, judged in the preview.
-    # False: neither is called, byte for byte. Tests:
-    # `tests/test_wide_letters.py`.
-    text_cluster_wide_letters: bool = False
+    # ON by default since 2026-10-24 (Kent, the flip sheet; MFab moves,
+    # Fremont and Becker byte-identical). False: neither is called, byte
+    # for byte. Tests: `tests/test_wide_letters.py`.
+    text_cluster_wide_letters: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
