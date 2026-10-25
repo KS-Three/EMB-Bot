@@ -187,10 +187,17 @@ def test_on_an_l_corner_is_left_to_the_corner_rules():
 
 
 def test_on_the_ms_v_tip_is_one_column_of_level_crosses():
+    # 76.5 mm: the crotch's cross runs on through the right stem, so the
+    # plain walk cuts at the stems' corners; the stems' edges, continued,
+    # bound it at the crotch instead -- the junction rules' own cut at
+    # 101.9 mm -- and nothing in the letter pivots any more
     poly, _sid, _kw, _ = _letters()["marine76_M"]
-    on = _cut(poly, True)
-    assert "mitre" not in [c[2] for c in on.cuts]
-    for f in (0.7, 0.85):
+    off, on = _cut(poly, False), _cut(poly, True)
+    rules = [c[2] for c in on.cuts]
+    assert "mitre" not in rules and "apex_stub" not in rules and "apex_stem" in rules
+    assert max(oc.pivot_sweep(c.stations) for c in off.columns) > 45.0
+    assert max(oc.pivot_sweep(c.stations) for c in on.columns) == 0.0
+    for f in (0.3, 0.7, 0.85):
         p = (-30.22 + 0.35 * f, 13.26 + 6.37 * f)
         hit = _covering(on.columns, p)
         assert len(hit) == 1

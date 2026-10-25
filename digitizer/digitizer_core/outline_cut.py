@@ -384,6 +384,7 @@ APEX_DEPTH_FRAC = 0.7          # the cut sits no further than this share of the 
 APEX_CLOSE_MID = 0.7
 APEX_CLOSE_FAR = 0.52
 APEX_SHOULDER_FAR = 0.36
+APEX_STEM_DEPTH = 0.4          # a cut this far toward the tip retries at the crotch (`_apex_stems`)
 
 
 @contextlib.contextmanager
@@ -436,7 +437,7 @@ def _apex_refused(why: str):
     return None
 
 
-def _apex_walk(poly: Polygon, p, q, others, W: float):
+def _apex_walk(poly: Polygon, p, q, others, W: float, stems=(), at_crotch: bool = False):
     """`apex_cut`: from the crotch `p` toward the tip `q`, the first cross
     square to the apex's axis spanning both strokes within the limits, if
     the strokes close there (module notes above). The axis is aimed from
@@ -444,8 +445,11 @@ def _apex_walk(poly: Polygon, p, q, others, W: float):
     blunt tip's corner sits off it, and a chamfered crotch skews its own
     bisector (MFab's W, 22 deg). -> its cut records (`_apex_pieces`) or
     None. `others`: the junction rules' cuts not from this crotch (cut
-    records), which bound a cross."""
-    clips = [LineString([c[0], c[1]]) for c in others]
+    records), which bound a cross. `stems` (`_apex_stems`): other corners'
+    edges continued, which bound it too, and become cuts where it ends on
+    one; with them, `at_crotch` takes only a cut through the crotch on a
+    V that holds its width between them before its point."""
+    clips = [LineString([c[0], c[1]]) for c in list(others) + list(stems)]
     far = 2.0 * APEX_REACH_W * W
     a = _unit((q[0] - p[0], q[1] - p[1]))
     for _ in range(2):
@@ -467,6 +471,8 @@ def _apex_walk(poly: Polygon, p, q, others, W: float):
         t += step
     else:
         return _apex_refused("wide")
+    if at_crotch and t > 0.0:
+        return _apex_refused("below_crotch")
     w = []
     for f in (0.5, 0.8):
         s = t + f * (L - t)
@@ -477,7 +483,7 @@ def _apex_walk(poly: Polygon, p, q, others, W: float):
     w0 = math.dist(*h)
     v_like = w[0] <= APEX_CLOSE_MID * w0 and w[1] <= APEX_CLOSE_FAR * w0
     shoulder = w[0] <= 1.05 * w0 and w[1] <= APEX_SHOULDER_FAR * w0
-    if not (v_like or shoulder):
+    if not (v_like or shoulder) or (at_crotch and not shoulder):
         return _apex_refused("not_closing")     # a stroke's end, not a tip
     if 2.0 * math.degrees(math.atan((w0 - w[1]) / (1.6 * (L - t)))) > APEX_MAX_DEG:
         return _apex_refused("square")          # strokes meeting square or wider: an L, folded or mitred
@@ -485,6 +491,11 @@ def _apex_walk(poly: Polygon, p, q, others, W: float):
     if (h1[0] - h0[0]) * a[1] - (h1[1] - h0[1]) * a[0] < 0:
         h0, h1 = h1, h0                 # the tip on the cross's left: `_apex_tip_piece` reads the side
     recs = _apex_pieces(p, t, m, h0, h1)
+    for e in (h0, h1):
+        for c in stems:
+            if LineString([c[0], c[1]]).distance(Point(e)) < 1e-6:
+                recs.append((c[0], e, "apex_stem", math.dist(c[0], e), 1))
+                break
     beyond = Point(m[0] + a[0] * min(0.1, 0.5 * (L - t)), m[1] + a[1] * min(0.1, 0.5 * (L - t)))
     tip = next((g for g in split(poly, [r[:4] for r in recs + list(others)]) if g.contains(beyond)), None)
     if tip is None or tip.distance(Point(q)) > 0.05 * W:
@@ -548,11 +559,34 @@ def _apex_cuts(poly: Polygon, W: float, cuts: list, reflex, convex) -> list:
         for q in _apex_tips(poly, p, r["bis"], convex, W):
             found = _apex_walk(poly, p, q, others, W)
             if found is not None:
+                stub = next((c for c in found if c[2] == "apex_stub"), None)
+                if stub is not None and stub[3] >= APEX_STEM_DEPTH * math.dist(p, q):
+                    # cut deep below the crotch: a V hanging between two
+                    # stems (the cross cannot fit until they end) is cut AT
+                    # it when the stems' edges, continued, bound its cross
+                    # (they are the junction rules' own cut at 101.9 mm)
+                    alt = _apex_walk(poly, p, q, others, W, _apex_stems(poly, W, p, reflex), True)
+                    found = alt if alt is not None else found
                 break
         if found is not None:
             drop += mine
             add += found
     return [c for c in cuts if c not in drop] + add
+
+
+def _apex_stems(poly: Polygon, W: float, p, reflex) -> list:
+    """`apex_cut`: the edges at the letter's other concave corners,
+    continued into it (`find_cuts`' "ext" reading) -- where a stem's edge
+    runs on up beside a V's crotch. Cut records."""
+    out = []
+    for r in reflex:
+        if math.hypot(r["p"][0] - p[0], r["p"][1] - p[1]) < 1e-6:
+            continue
+        for e in (r["d_in"], (-r["d_out"][0], -r["d_out"][1])):
+            q = _ray_hit(poly, r["p"], e, 3.2 * W, r["bis"])
+            if q is not None and math.dist(r["p"], q) >= 0.25 * W:
+                out.append((r["p"], q, "apex_stem", math.dist(r["p"], q), 1))
+    return out
 
 
 def _apex_tip_piece(pc: Polygon, crosses) -> tuple | None:
@@ -2412,7 +2446,7 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
             break
         pc = min(small, key=lambda g: g.area)
         near = [k for k in cuts if LineString([k[0], k[1]]).intersection(pc.buffer(0.02)).length > 0.5 * k[3]
-                and not (apex and k[2] in ("apex", "apex_stub"))]
+                and not (apex and k[2] in ("apex", "apex_stub", "apex_stem"))]
         if not near:
             break
         cuts.remove(max(near, key=lambda k: k[3]))
