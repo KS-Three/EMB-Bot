@@ -19,34 +19,41 @@ sections of ONE fill: 35 cuts on main (Fremont's field 23, Drone's fields
   each letter gap is then an island. That is the ORDER, not the router: of
   54 lifted fill bridges, a geodesic over unsewn ground exists for 4.
 
-**What this does, only where stage 6 would otherwise lift the needle:**
+**What this does, only where stage 6 would otherwise lift the needle (or
+lay travel on finished fill):**
 
 1. `bridge`: a bent route between two runs of one shape where `travel_path`
-   found none (or `fill_bridge_cut` lifted the one it found). A FILL route
-   must lie under the footprint of the paths still to sew -- the next
-   section's rows -- and off the fill already laid, as `travel_path`'s own
-   covered routing requires; an UNDERLAY route anywhere inside the shape
-   inset by `TRAVEL_INSET_MM`, which the fill sews over. Proposed on a raster
-   (`MCP_Geometric`, as `stage7_sequence._bury_route` does) and decided
-   exactly: every leg is tested against the shape and the allowed ground, so
-   the raster can lose a route and never pass a bad one. `travel_path`'s own
-   length budget, no new constant.
-2. `plan`: the section ORDER the pro would sew: sections that touch few
-   unsewn sections first (the gaps between letters), the ones that touch
-   many last (the bands above and below, which are the corridors the travel
-   runs under meanwhile), each entered at whichever end the needle reaches
-   under unsewn ground and left at an end that still touches unsewn ground.
-   The planner reasons on a raster; the result is priced with `_score` (the
-   same scorer, with the routes `bridge` adds) against the incoming order
-   and kept only if cheaper, and the last path is pinned, so the shape exits
-   where it did and no other shape moves -- `_reorder_for_fewer_cuts`'s
-   contract.
+   found none, or only one lying on finished fill past its tolerance. A FILL
+   route must lie under the footprint of the paths still to sew -- the next
+   sections' rows -- touching fill already laid only inside the footprint of
+   the column it leaves (two rows: the hop REPLACES a lift, so it may not
+   add thread on top of the work); an UNDERLAY route anywhere inside the
+   shape inset by `TRAVEL_INSET_MM`, which the fill sews over. Proposed on a
+   raster (`MCP_Geometric`, as `stage7_sequence._bury_route` does) and
+   decided exactly: every leg is tested against the shape and the allowed
+   ground, so the raster can lose a route and never pass a bad one.
+   `travel_path`'s own length budget, no new physical constant.
+2. `plan`: a section ORDER for that travel -- each step a section the
+   needle reaches under rows still to sew, left by an end from which another
+   is reachable, sections that would split the rest sewn last (or the
+   nearest; both are planned). `stage6_fill._plan_sections` prices each with
+   `_score` (the routes above included) and keeps one only if it is cheaper
+   AND cuts no more AND lays no more thread on finished fill than the
+   incoming order; the last path is pinned, so the shape exits where it did
+   and no other shape moves -- `_reorder_for_fewer_cuts`'s contract.
 
-Chaining territory: ROADMAP gate 3 applies, the flag stays OFF. It adds no
-thread anywhere the fill does not sew over afterwards, by construction; the
-measured exposure is in the doc. Read only inside `plan_stitches`
-(`enabled`), so a direct `stitch_shape` call outside it is the engine as it
-was.
+**Measured** (the doc has the table): Fremont hat 51 -> 41 trims (DST), all of it
+the field's underlay; the other four jobs unchanged; exposed travel
+(`tools/travel_cover`) and bare thread (`tools/hairline_travel`) equal OFF
+on all five, and the chaining benchmark is byte-identical on main and on
+#1057's head. The fill ORDER finds cuts to save (Drone's fields 10 -> 3,
+unconstrained) but every such order lays thread on finished fill or travels
+further than its cuts are worth, so the gate refuses it here: the pro's own
+answer on Fremont is a field without sections (`silhouette_underfill`).
+
+Chaining territory: ROADMAP gate 3 applies, the flag stays OFF. Read only
+inside `plan_stitches` (`enabled`), so a direct `stitch_shape` call outside
+it is the engine as it was.
 """
 from __future__ import annotations
 
