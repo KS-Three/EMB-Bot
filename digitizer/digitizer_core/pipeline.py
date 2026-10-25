@@ -933,7 +933,8 @@ def build_generation(
     detect_text_clusters(regions, p, chart=chart_for(cfg),
                          rescued_ink_link=bool(cfg.text_cluster_rescued_ink_link),
                          counters_as_drawn=bool(cfg.text_cluster_counters_as_drawn),
-                         **({"wide_letters": True} if cfg.text_cluster_wide_letters else {}))
+                         **({"wide_letters": True} if cfg.text_cluster_wide_letters else {}),
+                         **({"part_touching": True} if cfg.text_cluster_part_touching else {}))
 
     # Lettering too small to sew, grown the way a digitizer grows it
     # (`cfg.small_text_cap_mm`, default None). Here, on the tagger's clusters
@@ -1715,14 +1716,18 @@ def _art_outlines(regions, cfg, source_pixels=None) -> dict | None:
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
     """Stages 5-7: regions -> stitches. Safe to re-run on one PipelineResult."""
     cfg = cfg or PipelineConfig()
+    # `cfg.lettering_columns_apex_cut` (built OFF): `outline_cut` reads no
+    # config, so the flag is set there for the length of this plan
+    from .outline_cut import apex_cut_scope
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
     # fill reads it from here, so a `stitch_shape` call outside a plan is the
     # engine as it was.
-    with fill_section_travel.enabled(cfg):
+    with apex_cut_scope(cfg.lettering_columns_apex_cut), fill_section_travel.enabled(cfg):
         return _plan_stitches(result, cfg)
 
 
 def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
+    """`plan_stitches`' body."""
     # Same fold as `finish_generation`'s, one hop further out: stage 7's
     # photo sequencing and the shade bind read `is_photographic`, and this
     # entry point is routinely called with a config built from scratch.
@@ -1897,7 +1902,15 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     # just one field later.
     effective_detail_layer = cfg.detail_layer or (auto_tier is not None
                                                   and result.faces_present)
-    blocks, seq_warnings = sequence(planned, fabric, cfg,
+    # `cfg.lettering_columns_italic_lean` (built OFF): stage 7 runs with the
+    # tagged words' italic slants in scope (`column_lean.italic_lean`, reset
+    # on return), so an italic word's bars cross along its stems. Off,
+    # `sequence` is called directly and nothing is set.
+    seq_call = sequence
+    if cfg.lettering_columns_italic_lean:
+        from .column_lean import with_italic_lean
+        seq_call = with_italic_lean(sequence, [p.region for p in planned], cfg.lettering_words)
+    blocks, seq_warnings = seq_call(planned, fabric, cfg,
                                     source_pixels=result.source_pixels,
                                     design_class=result.design_class,
                                     fill_technique=effective_fill_technique,
