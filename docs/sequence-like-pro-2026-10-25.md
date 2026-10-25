@@ -96,16 +96,19 @@ Over the five jobs in the `cut` arm we cut 291 times, the pro 146: 145 extra.
 3. **Colour order cannot buy cuts.** We sew fewer colours than he does on four
    of five jobs (Fremont 4 vs 11, Becker 1 vs 5, MFab 3 vs 5, Drone 10 vs 23),
    and `merge_duplicate_cones` leaves no cone sewn twice.
-4. **The gap is construction.**
-   - Cuts inside one piece: 84 ours, 25 his (+59). By shape: Fremont's field
-     fill cuts itself 16 times between sections (his field: one piece, no cut),
-     Becker's ring 12 (satin splits and underlay hops), Drone's field 9, the edge
-     cap 4 to 6 per job.
-   - Pieces that stand alone: a greedy tour of our pieces is forced into 129
-     cuts against 96 for his (+33): MFab's 29 slivers in one colour (31 cuts for
-     1,438 stitches) and white left as fabric.
-   - Long buried travel: on Drone he walks 1,021 mm needle-down between pieces,
-     we walk 135 mm.
+4. **The gap is construction**, ranked:
+   1. Cuts inside one piece: 84 ours, 25 his (+59). Fremont's field block cuts
+      itself 16 times, 11 of them between the field shape's own fill sections
+      (his field: one piece, no cut). Becker's ring 12 (6 satin-to-satin
+      splits, the rest satin/underlay hops). Drone's field 9 fill sections. The
+      edge cap 19 over the five jobs (Fremont 1, Becker 3, MFab 6, Drone 5,
+      Gaulke 4).
+   2. Pieces that stand alone: a greedy tour of our pieces is forced into 129
+      cuts against 96 for his (+33): MFab's 29 slivers in one colour (31 cuts
+      for 1,438 stitches) and white left as fabric.
+   3. Long buried travel: on Drone he walks 1,021 mm needle-down between
+      pieces, we walk 135 mm; his 84 pieces cost him 38 between-piece cuts,
+      our 90 cost us 82.
 
 ## Where the cuts are, for whoever picks this up
 

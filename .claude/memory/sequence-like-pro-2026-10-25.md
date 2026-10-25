@@ -21,10 +21,16 @@ Five hat jobs (Fremont, Becker large, MFab, Drone, Gaulke), `main` a7a7259f
 - **Ours 291 cuts, his 146.** A reachable piece passed over (the only
   order-fixable class): 18 ours, 2 his. Dead ends 140 vs 129 that any
   greedy tour of our pieces is forced into. Order buys at most ~29.
-- **The rest is construction**: cuts inside one piece 84 vs 25 (Fremont
-  field sections 16, Becker ring 12, Drone field 9, edge cap); isolated
-  pieces +33 (MFab's 29 slivers); Drone's pro walks 1,021 mm buried vs 135.
-  We sew FEWER colours than he does on 4 of 5, so colour order buys nothing.
+- We sew FEWER colours than he does on 4 of 5, so colour order buys nothing.
+- **The gap is construction, ranked (cut arm, five jobs):**
+  1. Cuts INSIDE one piece, 84 vs 25 (+59): Fremont's field 16 (11 its own
+     fill sections), Becker's ring 12 (6 satin-to-satin splits), Drone's
+     field 9 fill sections, the edge cap 19 (1/3/6/5/4 by job).
+  2. Isolated pieces, +33 (any greedy order is forced into 129 cuts on ours,
+     96 on his): MFab's slivers (29 pieces, 31 cuts in 1,438 stitches) and
+     white left as fabric.
+  3. Buried walk between pieces: Drone's pro walks 1,021 mm needle-down, we
+     walk 135 mm (his 38 between-piece cuts for 84 pieces, our 82 for 90).
 
 **Why:** "sew like the pro" reads as "copy his order", and his order is a cap
 rule that spends travel (`cap_center_out`, parked OFF for exactly that,
