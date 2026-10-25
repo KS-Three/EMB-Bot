@@ -2459,6 +2459,12 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
     # junction-rule cut that ends on that line (those slice the stem
     # crosswise) or crosses it.
     scuts, stems = slot_cuts(poly, W)
+    if scuts and _APEX_CUT.get() and any(c[2] == "apex" for c in cuts):
+        # `apex_cut`: a letter with an acute tip is no E or F. MARINE's M at
+        # 95.7 mm read as one on its side past both guards in `slot_cuts`,
+        # and its slab notch and V crotch then fanned (12 cross ends in one
+        # hole at the crotch; his: one piece, 13 deg)
+        scuts, stems = [], []
     if scuts:
         slines = [LineString([a, b]) for a, b, _, _ in scuts]
 
