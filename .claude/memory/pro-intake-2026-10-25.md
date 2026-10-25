@@ -22,7 +22,7 @@ numbers from it, never names of new clients.
 **Traps found building it:**
 - Vendor JPGs are TWO-PANEL previews (art + his simulation, or two sims on every Becker),
   not "a render of his stitches". A preview is two panels of equal aspect (0.96-1.00 on
-  all 17); real art has no gutter or splits at <= 0.70. But art that repeats a motif
+  all 16); real art has no gutter or splits at <= 0.70. But art that repeats a motif
   ("AB  AB") splits the same way, so content AND name must agree; disagreement is
   `preview?` / `art?`, flagged, never used. Which panel is art stays the hand MANIFEST.
 - The geometric line finder alone puts graphics in the MINIMUM (a truck wheel 3.0 mm, a

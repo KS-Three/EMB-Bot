@@ -29,7 +29,7 @@ PER JOB (each top-level folder under the root):
   images   SOURCE ART vs the pro's PREVIEW, by content. A vendor preview is
            two panels of the SAME design (the art beside his stitch
            simulation, or two simulations: every Becker). Measured 2026-10-25
-           over the 17 previews in the folder: the panels' ink boxes agree in
+           over the 16 previews in the folder: the panels' ink boxes agree in
            aspect 0.96-1.00 and overlap (dilated IoU) 0.55-0.99, while every
            genuine artwork file has no gutter or splits into parts of aspect
            <= 0.70 (`PANEL_ASPECT_MIN`). The content decides and the name
