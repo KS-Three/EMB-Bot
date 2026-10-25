@@ -3201,6 +3201,25 @@ class PipelineConfig:
     # Fremont and Becker byte-identical). False: neither is called, byte
     # for byte. Tests: `tests/test_wide_letters.py`.
     text_cluster_wide_letters: bool = True
+    # Two more ways a letter misses the text tagger, both on MFab's AND
+    # WELDING (read per letter at the pro's widths, rembg on). The hat's I
+    # and N of WELDING touch at a neck under 0.08 mm and trace as ONE region
+    # of aspect 1.03, which the letter door admits as one glyph: the wide
+    # pass above only splits regions over aspect 1.4. The face's N and G
+    # overshoot the cap height (spike, tail): the left chest's AND N is 7.90
+    # mm beside 6.25 mm letters, a height ratio of 0.79 against the line's
+    # 0.8, so it is never tagged and sews off the Column lane. ON (built OFF
+    # 2026-10-25): the neck split looks at every letter-height region beside
+    # a line and parts a touch narrower than `textcluster.TOUCH_MAX_MM`
+    # (0.15) into pieces each at least 0.8 of the line's cap height; and a
+    # glyph taller than a line member that spans its cap band, down to a
+    # height ratio of `HEIGHT_BAND_MIN` (0.6), joins that line, never making
+    # one (`textcluster._adopt_band`). Fremont's OTE / NT are NOT this: they
+    # trace and tag as separate letters, and touch only in the sewn file.
+    # Segmentation and tagging, not fabric: layout, judged in the preview.
+    # False: neither runs, byte for byte. Tests:
+    # `tests/test_text_cluster_part_touching.py`.
+    text_cluster_part_touching: bool = False
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.

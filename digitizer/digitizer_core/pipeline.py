@@ -933,7 +933,8 @@ def build_generation(
     detect_text_clusters(regions, p, chart=chart_for(cfg),
                          rescued_ink_link=bool(cfg.text_cluster_rescued_ink_link),
                          counters_as_drawn=bool(cfg.text_cluster_counters_as_drawn),
-                         **({"wide_letters": True} if cfg.text_cluster_wide_letters else {}))
+                         **({"wide_letters": True} if cfg.text_cluster_wide_letters else {}),
+                         **({"part_touching": True} if cfg.text_cluster_part_touching else {}))
 
     # Lettering too small to sew, grown the way a digitizer grows it
     # (`cfg.small_text_cap_mm`, default None). Here, on the tagger's clusters

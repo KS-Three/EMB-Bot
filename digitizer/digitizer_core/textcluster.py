@@ -862,7 +862,8 @@ def _text_cluster_id(shape_ids: list[str]) -> str:
 def detect_text_clusters(regions: list[Region], p: Prep, *,
                          chart=None, rescued_ink_link: bool = False,
                          counters_as_drawn: bool = False,
-                         wide_letters: bool = False) -> None:
+                         wide_letters: bool = False,
+                         part_touching: bool = False) -> None:
     """Post-vectorization pass: tag every member of a qualifying group of
     glyph-shaped regions as a text candidate (`text_candidate`,
     `text_cluster_id`, `text_cluster_stroke_mm`, `text_cluster_all_rescued`
@@ -913,6 +914,12 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
        in `regions` (the list is edited in place) when every piece is
        tagged; a glyph up to `WIDE_LETTER_ASPECT_MAX` joins a line it links
        to (`_adopt_wide`). False: neither is called, byte for byte.
+       `part_touching` (`cfg.text_cluster_part_touching`, 2026-10-25, OFF):
+       the neck split looks at EVERY letter-height region beside a line, not
+       only a too-wide one, and cuts a touch narrower than `TOUCH_MAX_MM`
+       into letter-height pieces; and a glyph taller than its line that
+       spans the line's cap band joins it (`_adopt_band`). False: as above,
+       byte for byte.
 
     `chart` is the thread chart the regions' `thread_index` values name --
     `threads.chart_for(cfg)` from the pipeline; the default chart when not
@@ -962,7 +969,7 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
 
     pool = [c for c in rescued if c.region.shape_id not in taken]
     letters = _letter_candidates(regions, chart=chart, counters_as_drawn=counters_as_drawn)
-    if not wide_letters:
+    if not (wide_letters or part_touching):
         for group in _cluster(_drop_nested(pool + letters), LETTER_HEIGHT_RATIO, chart):
             if len(group) < MIN_CLUSTER_MEMBERS:
                 continue
@@ -975,8 +982,10 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
     # is adopted by a line it links to (`_adopt_wide`). A split is KEPT only
     # when every piece ends up tagged; one that does not is undone and the
     # round recomputed without it, until nothing more is undone (each pass
-    # can only drop splits, so this ends).
-    offered = _neck_splits(regions, pool + letters, chart)
+    # can only drop splits, so this ends). `part_touching` offers more
+    # splits (any letter-height region with a touch) and adopts glyphs that
+    # overshoot their line (`_adopt_band`) in the same loop.
+    offered = _neck_splits(regions, pool + letters, chart, touching=part_touching)
     kept = dict(offered)
     while True:
         trial = [p for r in regions for p in kept.get(r.shape_id, [r])]
@@ -984,9 +993,12 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
                                           counters_as_drawn=counters_as_drawn)
         groups = [g for g in _cluster(_drop_nested(cands), LETTER_HEIGHT_RATIO, chart)
                   if len(g) >= MIN_CLUSTER_MEMBERS]
-        wide = _letter_candidates(trial, chart=chart, counters_as_drawn=counters_as_drawn,
-                                  aspect=(ASPECT_RATIO_MAX, WIDE_LETTER_ASPECT_MAX))
-        groups = _adopt_wide(groups, wide, chart)
+        if wide_letters:
+            wide = _letter_candidates(trial, chart=chart, counters_as_drawn=counters_as_drawn,
+                                      aspect=(ASPECT_RATIO_MAX, WIDE_LETTER_ASPECT_MAX))
+            groups = _adopt_wide(groups, wide, chart)
+        if part_touching:
+            groups = _adopt_band(groups, _drop_nested(cands), chart)
         tagged = {c.region.shape_id for g in groups for c in g}
         still = {sid: pieces for sid, pieces in kept.items()
                  if all(p.shape_id in tagged for p in pieces)}
@@ -1052,12 +1064,17 @@ def _adopt_wide(groups: list[list[_Candidate]], wide: list[_Candidate],
         if best is not None:
             out[best[1]].append(w)
     return out
-def _neck_split(poly: Polygon, half_width_mm: float) -> list[Polygon] | None:
+def _neck_split(poly: Polygon, half_width_mm: float,
+                r_max: float | None = None) -> list[Polygon] | None:
     """`poly` cut at every neck under `NECK_OPEN_FRAC` of its stroke into
     two or more pieces that tile it, ordered left to right (then top to
-    bottom); None when it has no such neck or the cut does not tile."""
+    bottom); None when it has no such neck or the cut does not tile.
+    `r_max` (mm) caps the opening radius: a neck must also be narrower than
+    twice it (`part_touching`'s `TOUCH_MAX_MM`). None: the stroke alone."""
     from shapely.ops import unary_union
     r = NECK_OPEN_FRAC * half_width_mm
+    if r_max is not None:
+        r = min(r, r_max)
     if r <= 0:
         return None
     try:
@@ -1092,11 +1109,19 @@ def _neck_split(poly: Polygon, half_width_mm: float) -> list[Polygon] | None:
 
 
 def _neck_splits(regions: list[Region], cands: list[_Candidate],
-                 chart) -> dict[str, list[Region]]:
+                 chart, touching: bool = False) -> dict[str, list[Region]]:
     """source shape_id -> the pieces `_neck_split` cuts it into, for every
     region the letter door refuses on its aspect ratio alone and that sits
     within reach of a candidate it could share a line with (the `_linked`
-    terms short of the stroke, which the pieces are measured on later)."""
+    terms short of the stroke, which the pieces are measured on later).
+
+    `touching` (`part_touching`): every letter-height region within reach
+    of the line, whatever its aspect, and a region taller than the line
+    that spans its cap band (`_spans`) counts as beside it; the neck must
+    also be narrower than `TOUCH_MAX_MM` (the region parts into as many
+    pieces at an opening of half that), and every piece must be at least
+    `LETTER_HEIGHT_RATIO` of the line's cap height -- two letters touching,
+    never a serif or a spike cut off one."""
     import copy
     from .regions import _raw_id
     ids = {r.shape_id for r in regions}
@@ -1107,17 +1132,19 @@ def _neck_splits(regions: list[Region], cands: list[_Candidate],
             continue
         x0, y0, x1, y1 = r.polygon.bounds
         w, h = x1 - x0, y1 - y0
-        if h <= 0 or w / h <= ASPECT_RATIO_MAX:
+        if h <= 0 or (not touching and w / h <= ASPECT_RATIO_MAX):
             continue
         if not (LETTER_MIN_HEIGHT_MM <= h <= LETTER_MAX_HEIGHT_MM):
             continue
-        near = any(_similar(c.height_mm, h, LETTER_HEIGHT_RATIO)
-                   and _same_ink(r, c.region, chart)
-                   and Polygon.from_bounds(x0, y0, x1, y1).distance(
-                       Polygon.from_bounds(*c.region.polygon.bounds))
-                   <= PROXIMITY_HEIGHT_MULT * h
-                   for c in cands)
-        if not near:
+        box = Polygon.from_bounds(x0, y0, x1, y1)
+        beside = [c for c in cands
+                  if c.region is not r
+                  and (_similar(c.height_mm, h, LETTER_HEIGHT_RATIO)
+                       or (touching and _spans(r.polygon.bounds, c.region.polygon.bounds)))
+                  and _same_ink(r, c.region, chart)
+                  and box.distance(Polygon.from_bounds(*c.region.polygon.bounds))
+                  <= PROXIMITY_HEIGHT_MULT * h]
+        if not beside:
             continue
         stats = _skeleton_stroke_stats(r)
         if stats is None:
@@ -1125,12 +1152,24 @@ def _neck_splits(regions: list[Region], cands: list[_Candidate],
         polys = _neck_split(r.polygon, stats.mean_mm)
         if polys is None:
             continue
+        # the cut is the stroke rule's, so a split the wide pass makes is the
+        # same split here; a touch must ALSO part, into as many pieces, at an
+        # opening of half `TOUCH_MAX_MM` (a smaller opening leaves slivers of
+        # a straight edge in the neck, so it judges the neck, not the cut)
+        if touching:
+            narrow = _neck_split(r.polygon, stats.mean_mm, r_max=TOUCH_MAX_MM / 2.0)
+            if narrow is None or len(narrow) != len(polys):
+                continue
         # a piece wider than any letter the round admits can never be tagged,
         # so the split would only be undone: not offered (a ring border
         # beside its lettering, Becker's at 101.9 mm, pinches into two)
         if any((g.bounds[2] - g.bounds[0]) > WIDE_LETTER_ASPECT_MAX * (g.bounds[3] - g.bounds[1])
                for g in polys):
             continue
+        if touching:
+            cap = float(np.median([c.height_mm for c in beside]))
+            if any((g.bounds[3] - g.bounds[1]) < LETTER_HEIGHT_RATIO * cap for g in polys):
+                continue
         pieces = []
         for g in polys:
             c = g.centroid
@@ -1146,6 +1185,83 @@ def _neck_splits(regions: list[Region], cands: list[_Candidate],
                                  thread_number=r.thread_number, area_mm2=float(g.area),
                                  source=r.source, meta=meta))
         out[r.shape_id] = pieces
+    return out
+
+
+# --- Part touching (`cfg.text_cluster_part_touching`, 2026-10-25, built OFF) --
+#
+# Two ways a letter of MFab's AND WELDING never reaches the text cluster that
+# the wide-letter pass (above) does not cover, read per letter at the pro's
+# widths with rembg on (`docs/text-cluster-part-touching-2026-10-25.md`).
+# (1) Touching at a neck, but not too wide: on the hat (104.9 mm) the I and
+# N of WELDING trace as ONE region joined at a neck under 0.08 mm (an opening
+# of r 0.02 mm parts them), 8.75 x 8.47 mm, aspect 1.03 -- the door admits it
+# as one letter, so the Column lane sews "IN" as one glyph. The neck split
+# only ever looked at regions over `ASPECT_RATIO_MAX`. (2) Taller than the
+# line: the face's N and G carry a spike and a tail past the cap height. On
+# the left chest (96.7 mm) AND's N is 7.90 mm against A and D at 6.25-6.31
+# (ratio 0.79 against `LETTER_HEIGHT_RATIO` 0.8): no link, no tag, and it
+# sews off the lane; WELDING's N (0.77-0.79) and G (0.71) are house-grouped
+# only. Each SPANS the line's cap band and overshoots it.
+#
+# `TOUCH_MAX_MM`: a neck narrower than this parts two letters -- the region
+# must part at an opening of half of it (and never more than `NECK_OPEN_FRAC`
+# of the stroke), and is then cut by the wide pass's own rule, so the pieces
+# are the ones that pass would make. Over the six paired jobs' lettering
+# (Fremont hat and patch, MFab hat and LC, Drone, ProSeal) the touches part
+# at r 0.02-0.04 mm (necks of 0.08 mm or less) and no single letter parts
+# below r 0.125 (ProSeal's 3 mm tagline: a 0.25 mm neck); 0.15 mm sits
+# between them. Fremont's OTE / NT are not here: they trace apart.
+# `HEIGHT_BAND_MIN`: a glyph that spans a line member's cap band is adopted
+# down to this height ratio. The overshooting letters measured 0.65 (MFab
+# hat's G, already chained in) to 0.80; nothing that is not a letter spans a
+# line's band on the six jobs at any ratio, so 0.6 sits under the lowest.
+TOUCH_MAX_MM = 0.15
+HEIGHT_BAND_MIN = 0.6
+
+
+def _spans(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> bool:
+    """Does box `a` span box `b`'s cap band: top at or above b's top and
+    bottom at or below b's bottom, each within half of
+    `1 - LETTER_HEIGHT_RATIO` of b's height, and `a` no taller than b's
+    height over `HEIGHT_BAND_MIN`? A glyph's spike or tail overshoots its
+    line; a letter of another line sits above or below it."""
+    ha, hb = a[3] - a[1], b[3] - b[1]
+    if hb <= 0 or ha * HEIGHT_BAND_MIN > hb:
+        return False
+    tol = 0.5 * (1.0 - LETTER_HEIGHT_RATIO) * hb
+    return a[1] <= b[1] + tol and a[3] >= b[3] - tol
+
+
+def _adopt_band(groups: list[list[_Candidate]], cands: list[_Candidate],
+                chart) -> list[list[_Candidate]]:
+    """`groups` with every candidate outside them that is TALLER than a
+    member it links to on every `_linked` term but height (one ink, stroke,
+    reach), that spans the member's cap band (`_spans`) and is short of
+    `LETTER_HEIGHT_RATIO` of its height, added to the group of the nearest
+    such member. Like `_adopt_wide`: an adoptee joins a line, never makes or
+    bridges one, and the result does not depend on input order."""
+    out = [list(g) for g in groups]
+    members = {c.region.shape_id for g in groups for c in g}
+    for c in sorted(cands, key=lambda c: c.region.shape_id):
+        if c.region.shape_id in members:
+            continue
+        best: tuple[float, int] | None = None
+        for gi, g in enumerate(groups):
+            for m in g:
+                if not (m.height_mm < c.height_mm
+                        and not _similar(c.height_mm, m.height_mm, LETTER_HEIGHT_RATIO)
+                        and _spans(c.region.polygon.bounds, m.region.polygon.bounds)
+                        and _same_ink(c.region, m.region, chart)
+                        and _similar(c.stroke_mean_mm, m.stroke_mean_mm, SIMILARITY_RATIO)):
+                    continue
+                d = math.hypot(c.cx - m.cx, c.cy - m.cy)
+                if d > PROXIMITY_HEIGHT_MULT * c.height_mm:
+                    continue
+                if best is None or d < best[0]:
+                    best = (d, gi)
+        if best is not None:
+            out[best[1]].append(c)
     return out
 
 
