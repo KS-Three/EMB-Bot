@@ -42,6 +42,7 @@ from digitizer_core.columns import (_clear_counters, lettering_columns_shape,  #
                                     small_print_counters)
 from digitizer_core.pipeline import digitize  # noqa: E402
 from tools import small_print  # noqa: E402
+from tests.conftest import LETTERING_2026_10_24_OFF  # noqa: E402
 
 TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
 
@@ -174,7 +175,8 @@ def test_counters_open_on_the_synthetic_word_at_three_millimetres():
     # `small_print_floor` priced alone, on the engine it was measured on: the
     # true-size switch (ON since 2026-10-14, conftest PRE_FLIP) re-traces and
     # beans this line itself, which leaves the floor nothing to hold open.
-    pre = {"small_text_true_size": False}
+    # The 2026-10-24 lettering flips likewise: the counters were read without them.
+    pre = {"small_text_true_size": False, **LETTERING_2026_10_24_OFF}
     off, (r_off, _p, _a) = small_print.measure(image, PipelineConfig(target_width_mm=width, **pre), ref)
     on, (r_on, _p, _a) = small_print.measure(
         image, PipelineConfig(target_width_mm=width, small_print_floor=True, **pre), ref)

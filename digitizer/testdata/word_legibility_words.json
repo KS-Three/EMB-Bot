@@ -1,0 +1,30 @@
+{
+ "about": "Known text and box (fractions of the artwork INK box: x0, y0, x1, y1) of each word tools/word_legibility.py reads. Proposed by the tagger (--propose: glyph_read.word_boxes), tightened and named by hand against the art. Text and numbers only; no artwork.",
+ "jobs": {
+  "fremont": {"words": [
+   {"text": "EST", "box": [0.3825, 0.185, 0.4575, 0.2385]},
+   {"text": "1895", "box": [0.540, 0.185, 0.6175, 0.2385]},
+   {"text": "THE", "box": [0.440, 0.3125, 0.559, 0.388]},
+   {"text": "HOTEL", "box": [0.032, 0.418, 0.397, 0.577]},
+   {"text": "FREMONT", "box": [0.432, 0.418, 0.968, 0.577]},
+   {"text": "EAT", "box": [0.348, 0.704, 0.425, 0.771]},
+   {"text": "STAY", "box": [0.455, 0.704, 0.550, 0.771]},
+   {"text": "PLAY", "box": [0.580, 0.704, 0.680, 0.771]}
+  ]},
+  "becker": {"words": [
+   {"text": "BECKER", "box": [0.0, 0.0, 1.0, 0.64]},
+   {"text": "MARINE", "box": [0.03, 0.74, 0.97, 1.0]}
+  ]},
+  "mfab": {"words": [
+   {"text": "MFAB", "box": [0.03, 0.10, 0.98, 0.60]},
+   {"text": "AND", "box": [0.055, 0.62, 0.27, 0.83]},
+   {"text": "WELDING", "box": [0.305, 0.62, 0.74, 0.83]},
+   {"text": "LLC", "box": [0.755, 0.62, 0.93, 0.83]}
+  ]},
+  "proseal": {"words": [
+   {"text": "PROSEAL", "box": [0.0165, 0.7287, 0.959, 0.874]},
+   {"text": "SPRAY FOAM", "box": [0.065, 0.942, 0.505, 1.0]},
+   {"text": "COATINGS", "box": [0.587, 0.942, 0.925, 1.0]}
+  ]}
+ }
+}

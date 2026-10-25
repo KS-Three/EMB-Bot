@@ -3148,7 +3148,7 @@ def sequence(
                 _cored = [] if cfg.small_print_floor else cored_holes_of(_letter)
                 if _cored:
                     _clear = profile_for(p).width_mm / 2.0
-                # `cfg.lettering_columns_text_lean` (default OFF, 2026-10-23):
+                # `cfg.lettering_columns_text_lean` (default ON since 2026-10-24):
                 # the word's house cross on every straight column it can
                 # span (`column_lean`); off, or no house angle, None and the
                 # call below is today's, argument for argument
@@ -3190,7 +3190,7 @@ def sequence(
                     # `cfg.lettering_columns_inside_stagger` (default OFF, 2026-10-23):
                     # the pro's inside at a pivot; off, today's call
                     **({"inside_stagger": True} if cfg.lettering_columns_inside_stagger else {}),
-                    # `cfg.lettering_columns_text_lean` (default OFF, 2026-10-23): the
+                    # `cfg.lettering_columns_text_lean` (default ON since 2026-10-24): the
                     # word's house cross (`satin_angle_deg`, the house pass; else
                     # the design's `satin_angle_deg`) on every straight column it
                     # can span -- the pro's diagonals; off, or no house, the call

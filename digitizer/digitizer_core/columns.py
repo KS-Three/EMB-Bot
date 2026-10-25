@@ -1960,8 +1960,12 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 sewn[li] = Polygon([a for a, _ in sts] + [b for _, b in sts][::-1]).buffer(0)
                 continue
         # an underpath (an earlier visit), or a satin span too short to
-        # sew: the needle still has to reach the far end, under later thread
-        path = _walk_points(mids, _UNDERPATH_STEP_MM)
+        # sew: the needle still has to reach the far end, under later thread.
+        # A one-station leg has no far end: Becker at 100 mm left chest with
+        # `sew_enclosed_white` ON (2026-10-24) raised GEOS's "point array must
+        # contain 0 or >1 elements" here (`tests/test_satin_per_stroke_flag.py`'s
+        # Becker digitize is the regression); the link rule in step 4 moves on.
+        path = _walk_points(mids, _UNDERPATH_STEP_MM) if len(mids) >= 2 else []
         if (len(path) >= 2 and counter_clear_mm > 0
                 and not poly_link.covers(LineString(path))):
             # Small print: an underpath whose centreline crosses a counter
