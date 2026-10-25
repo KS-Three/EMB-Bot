@@ -335,7 +335,7 @@ def _border_by_size_width(region, cfg: PipelineConfig) -> float | None:
 
 
 def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
-                design_class: str) -> bool:
+                design_class: str, outlines=None) -> bool:
     """Will this region reach the satin tier? — the borders-last predicate.
 
     Mirrors `stitch_one`'s routing exactly: an explicit review-screen
@@ -396,7 +396,7 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
     tier = str(region.meta.get("tier", "auto")).lower()
     if tier == "satin":
         return True
-    if _white_field_fill(region, cfg):
+    if _white_field_fill(region, cfg, outlines):
         return False        # `cfg.sew_enclosed_white_fields_fill`: the pro fills a white face
     if tier == "auto" and region.meta.get(BEAN_LETTER_KEY):
         return False        # a bean letter (`beanletters.tag_bean_letters`): runs, not columns
@@ -2170,13 +2170,28 @@ def _border_seam_warning(seams: list[tuple[str, str, float]]) -> dict | None:
     )
 
 
-def _white_field_fill(region, cfg: PipelineConfig) -> bool:
+def _white_field_fill(region, cfg: PipelineConfig, outlines=None) -> bool:
     """`cfg.sew_enclosed_white_fields_fill`: a white field the option sews,
-    on the auto tier, sews as the pro's -- a fill (`machine.WHITE_FIELD_FILL_ANGLE_DEG`)."""
+    on the auto tier, sews as the pro's -- a fill (`machine.WHITE_FIELD_FILL_ANGLE_DEG`).
+
+    Never an OUTLINE: a shape the art-outline branch loops (`outlines`, the
+    ids `cfg.border_from_outline` found sewing) or a keyline band
+    `cfg.enclosed_white_keyline` claims is neither a letter nor a field
+    (the outline branch's own comment) and sews its satin loops. Forcing the
+    fill tier skipped both (MFab's white keyline sewed as tatami). A caller
+    that has no outline set (the layer-order prediction, before stage 7)
+    still sees the keyline-band exclusion."""
     meta = region.meta or {}
-    return bool(getattr(cfg, "sew_enclosed_white_fields_fill", False)
-                and meta.get("sew_enclosed_white")
-                and str(meta.get("tier", "auto")).lower() == "auto")
+    if not (getattr(cfg, "sew_enclosed_white_fields_fill", False)
+            and meta.get("sew_enclosed_white")
+            and str(meta.get("tier", "auto")).lower() == "auto"):
+        return False
+    if outlines is not None and region.shape_id in outlines:
+        return False
+    return not (cfg.enclosed_white_keyline and cfg.satin
+                and meta.get("sew_enclosed_white") == "field"
+                and keyline_band(region.polygon, machine.KEYLINE_WIDTH_MM,
+                                 machine.KEYLINE_REACH_FRAC))
 
 
 def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
@@ -2905,7 +2920,7 @@ def sequence(
         _p_tier = str(_p.region.meta.get("tier", "auto")).lower()
         if routes_to_run(_p, _p_tier) or _p.shape_id in outline_bodies:
             continue
-        if _sews_satin(_p.region, cfg, satin_max, design_class):
+        if _sews_satin(_p.region, cfg, satin_max, design_class, outline_rings):
             continue
         if (_border_wanted(_p.region, border_style, border_total_area,
                            border_share_min, border_iso_max)[0]
@@ -2923,7 +2938,7 @@ def sequence(
             # rather than dropping artwork — the same contract the auto
             # ladder already has between its own rungs.
             tier = str(p.region.meta.get("tier", "auto")).lower()
-            if _white_field_fill(p.region, cfg):
+            if _white_field_fill(p.region, cfg, outline_rings):
                 # `cfg.sew_enclosed_white_fields_fill`: a forced rung, so a
                 # field too narrow to fill falls back to the ladder below
                 tier = "fill"
@@ -3982,7 +3997,7 @@ def sequence(
         if cfg.borders_last:
             late = {i for i in range(len(group))
                     if _sews_satin(group[i].region, cfg, satin_max,
-                                   design_class)}
+                                   design_class, outline_rings)}
 
         remaining = list(range(len(group)))
         ordered: list[StitchRun] = []
