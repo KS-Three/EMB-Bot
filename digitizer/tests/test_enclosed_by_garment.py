@@ -54,10 +54,6 @@ WHITE, NATURAL, NAVY, BLACK = (255, 255, 255), (235, 232, 223), (28, 42, 84), (0
 
 
 def _cfg(**kw) -> PipelineConfig:
-    # `sew_enclosed_white` OFF unless a test says otherwise (ON by default
-    # since 2026-10-24): the garment rule is what this file is about, and the
-    # option would sew every hole whatever the garment
-    kw.setdefault("sew_enclosed_white", False)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 

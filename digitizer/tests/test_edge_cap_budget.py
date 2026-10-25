@@ -107,12 +107,7 @@ def _run(fixture: str, width: float, cap: str = "bean",
                        # (`work_px_per_mm`, ON since 2026-10-01): becker
                        # traced at 5.8-7.2 px/mm is a third set of polygons,
                        # and the sweep reads [54.1, 57.6, 54.5] flat.
-                       work_px_per_mm=None,
-                       # ...and `sew_enclosed_white` (ON since Kent's
-                       # 2026-10-24 flip): it sews becker's white BECKER
-                       # faces, more design under the cap than these
-                       # numbers were priced against.
-                       sew_enclosed_white=False, **extra))
+                       work_px_per_mm=None, **extra))
     return plan
 
 

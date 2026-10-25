@@ -1966,9 +1966,9 @@
         />
         Even out lettering widths<i class="tipmark" aria-hidden="true"></i>
       </label>
-      <!-- Sew white areas (PipelineConfig.sew_enclosed_white, ticked by
-           default since 2026-10-24, Kent). The colour and the counters box
-           show only when it is on. One area at a time is in Edit shapes: its sew
+      <!-- Sew white areas (PipelineConfig.sew_enclosed_white, off by default:
+           it changes the design). The colour and the counters box show only
+           when it is on. One area at a time is in Edit shapes: its sew
            switch and its colour. -->
       <div class="dgp-sewwhite">
         <label class="dgp-checkline" use:tip={"sewWhite"}>

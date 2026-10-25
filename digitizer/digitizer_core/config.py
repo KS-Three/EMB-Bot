@@ -1561,13 +1561,9 @@ class PipelineConfig:
     # `sew_enclosed_counters` (or it sits inside a field that sews). Thread:
     # `sew_enclosed_rgb`'s nearest; None keeps the art's own colour where it
     # is known and sews white where it is not (an alpha hole). A review
-    # `stitched` or recolour of one area still wins. ON by default since
-    # 2026-10-24 (Kent, from the flip sheet: "Yes, ON by default"; with the
-    # keyline band below, MFab 25,512 -> 19,214 stitches against the pro's
-    # 17,568). Still the customer's box: the Studio's "Sew white areas"
-    # sends False when unticked. False is the engine as it was, byte for
-    # byte.
-    sew_enclosed_white: bool = True
+    # `stitched` or recolour of one area still wins. OFF is the engine as it
+    # was, byte for byte.
+    sew_enclosed_white: bool = False
     sew_enclosed_counters: bool = False
     sew_enclosed_rgb: tuple[int, int, int] | None = None
     # The keyline band (`stage6_border.keyline_runs`, built OFF 2026-10-23):
@@ -1578,11 +1574,9 @@ class PipelineConfig:
     # rail on the letter's edge, crosses 2.1 mm out across the band and on
     # under the thread sewn after it, the rest filled under. Instead of the
     # satin tier's skeleton, which broke MFab's band into 253 columns. Layout
-    # (ruling 2026-10-22: judged in the preview). ON by default since
-    # 2026-10-24 (Kent, the flip sheet; MFab's white 15,998 stitches, 5,785
-    # under 1 mm -> 9,700 and 2,792, the pro's 6,680 and 564). False is the
-    # engine as it was, byte for byte.
-    enclosed_white_keyline: bool = True
+    # (ruling 2026-10-22: judged in the preview). OFF is the engine as it
+    # was, byte for byte.
+    enclosed_white_keyline: bool = False
     # The pro's silhouette under-fill (`silhouette_underfill.py`, built OFF
     # 2026-10-24, Kent: "Build under-fill, OFF"). Read per colour block on
     # MFab hat (his black covers our band 1.00 and its holes 0.82) and the

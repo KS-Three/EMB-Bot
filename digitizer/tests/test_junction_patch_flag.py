@@ -79,9 +79,6 @@ def _cfg(**kw) -> PipelineConfig:
     # by default since Kent's 2026-10-12 flip) sews the letters this file's
     # tatami patch lies under, from their outline, with no patch to fire.
     kw.setdefault("lettering_columns", False)
-    # ... and `sew_enclosed_white` OFF (ON since Kent's 2026-10-24 flip): it
-    # sews Becker's white faces, covering the crotch the patch is about
-    kw.setdefault("sew_enclosed_white", False)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 

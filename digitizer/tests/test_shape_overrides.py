@@ -116,10 +116,7 @@ def plan_for(regions: list[Region], **cfg_kw):
 
 @pytest.fixture(scope="module")
 def base():
-    # `sew_enclosed_white` OFF (ON by default since 2026-10-24, Kent): ON the
-    # ring's white hole sews in a front layer of its own, which shifts every
-    # block rank this file reads; the edits under test are the same either way
-    return digitize(ART, cfg(sew_enclosed_white=False))
+    return digitize(ART, cfg())
 
 
 @pytest.fixture(scope="module")
@@ -139,7 +136,6 @@ def edited(base):
     big_orange = max(orange, key=lambda r: r.area_mm2)  # the surviving 1305 shape
 
     c = cfg(
-        sew_enclosed_white=False,       # as `base`
         deleted_shape_ids=[tiny.shape_id, "SNOPE"],
         shape_overrides={
             # recolor + underlay style on the same shape: two edits, one
@@ -173,10 +169,7 @@ def test_noop_edits_are_byte_identical_to_the_shipped_engine():
     # baseline (see that file's own note): the design-silhouette cap flipped
     # ON 2026-09-11 and both sides of this comparison have to stand on the
     # engine the golden was captured from.
-    # And `sew_enclosed_white=False` since 2026-10-24 (ON by default, Kent),
-    # for the same reason: the baseline predates it.
-    noop = dict(deleted_shape_ids=[], shape_overrides={}, edge_cap="none",
-                sew_enclosed_white=False)
+    noop = dict(deleted_shape_ids=[], shape_overrides={}, edge_cap="none")
     stages = run_stages(ART, cfg(**noop))
     plan = plan_stitches(stages, cfg(garment_id="left_chest", **noop))
     blob = export_dst(plan)

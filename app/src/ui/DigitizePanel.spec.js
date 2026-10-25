@@ -1838,21 +1838,12 @@ describe("Settings / Shapes / Threads", () => {
   });
 });
 
-// "Sew white areas" (PipelineConfig.sew_enclosed_white, built OFF 2026-10-21,
-// ticked by default since 2026-10-24): a customer option; its colour and
-// counters box only show when it is on.
+// "Sew white areas" (PipelineConfig.sew_enclosed_white, built OFF 2026-10-21):
+// a customer option, off by default; its colour and counters box only show
+// when it is on.
 describe("Sew white areas", () => {
-  test("a new design renders it ticked (Kent 2026-10-24)", () => {
-    expect(DEFAULT_DIGITIZE_PARAMS.sew_enclosed_white).toBe(true);
-    const { getByTestId } = renderPanel([shapeRow("s1")]);
-    expect(getByTestId("sew-white").checked).toBe(true);
-    expect(getByTestId("sew-white-colour")).toBeTruthy();
-  });
-
-  test("unticked: no colour or counters control, and patches params on toggle", async () => {
-    const { getByTestId, queryByTestId, patches } = renderPanel([shapeRow("s1")], {
-      params: { ...DEFAULT_DIGITIZE_PARAMS, sew_enclosed_white: false },
-    });
+  test("renders unchecked with no colour or counters control, and patches params on toggle", async () => {
+    const { getByTestId, queryByTestId, patches } = renderPanel([shapeRow("s1")]);
     const box = getByTestId("sew-white");
     expect(box.checked).toBe(false);
     expect(queryByTestId("sew-white-colour")).toBeNull();

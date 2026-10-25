@@ -276,12 +276,8 @@ def test_copying_a_real_auto_digitized_design_through_manual_reproduces_it():
     tiny region existed in an early layer the two orders agreed. So this is
     a SECOND difference of the same kind as the enclosed-background one
     above — a notion auto carries that manual mode cannot — found by the
-    flip, recorded here, and not fixed by it.
-
-    And to `sew_enclosed_white=False` since 2026-10-24 (Kent flipped it ON):
-    ON, the ring's enclosed hole sews in its own layer at the FRONT of the
-    sew order, a third notion manual mode has no word for."""
-    c = cfg(keep_thin_strokes=False, sew_enclosed_white=False, **PLAN_CFG_KW)
+    flip, recorded here, and not fixed by it."""
+    c = cfg(keep_thin_strokes=False, **PLAN_CFG_KW)
     auto_result = run_stages(TESTDATA / "logo_whitebg.png", c)
     auto_plan = plan_stitches(auto_result, c)
 

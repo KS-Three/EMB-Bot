@@ -269,19 +269,6 @@ byte-for-byte there first — the machine proved itself on the old engine, so
 what moved is the engine. Not CI's own runner: the session's token lacked
 the `workflow` scope the temporary re-capture workflow needs, so CI's
 `digitizer` job is the judge of whether ubuntu-latest agrees.
-
-**Eighth exception, TAKEN 2026-10-24 — `cfg.sew_enclosed_white` ON by
-default (Kent, from the flip sheet: "Yes, ON by default").** The white
-enclosed by each logo now sews in its own front layer: `logo_alpha.png`
-4603 -> 5226 coords (EMPTY_THREAD_LAYER 1 -> 2), `logo_whitebg.png` 4585 ->
-5215 (EMPTY_THREAD_LAYER 0 -> 1); `ribbon_curve.png` encloses nothing and
-is byte-identical. Of the five flags flipped that day it is the only one
-that moves these keys: each of the other four alone (text_lean,
-inside_stagger, wide_letters, enclosed_white_keyline) reproduced both old
-md5s. Captured on Kent's Windows laptop with
-`tools/recapture_flat_lane_key.py --pre-change-tree` at an export of
-d184fd68 (the main the flip branched from), which reproduced both keys
-byte-for-byte first; CI's `digitizer` job is the judge for ubuntu-latest.
 """
 
 from __future__ import annotations

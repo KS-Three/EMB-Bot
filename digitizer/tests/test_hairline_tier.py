@@ -135,9 +135,7 @@ def test_against_todays_run_tier_on_one_strand():
 
 
 def test_off_is_the_default_and_on_routes_the_script_through_the_tier():
-    # `sew_enclosed_white` OFF: the script's enclosed loops sew with it ON
-    # (Kent's 2026-10-24 flip), which is not the tier's question
-    cfg = dict(target_width_mm=60.0, forced_class="flat", sew_enclosed_white=False)
+    cfg = dict(target_width_mm=60.0, forced_class="flat")
     result = run_stages(SYN / "thin_script.png", PipelineConfig(**cfg))
     off = plan_stitches(result, PipelineConfig(**cfg))
     on = plan_stitches(result, PipelineConfig(**cfg, hairline=True))

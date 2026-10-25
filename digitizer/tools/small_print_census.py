@@ -52,9 +52,7 @@ FIXTURES = ("synthetic", "fremont_tagline")
 # with every run so a table says which engine it was measured on. True size
 # (`small_text_true_size`) is ON by default since 2026-10-14; the census's
 # rows were measured before that, so it pins the switch OFF (`OFF_FLIPS`).
-# So were they before `sew_enclosed_white` (ON since Kent's 2026-10-24 flip),
-# which sews the synthetic word's enclosed white: 532 -> 639 stitches at 3 mm.
-OFF_FLIPS = {"small_text_true_size": False, "sew_enclosed_white": False}
+OFF_FLIPS = {"small_text_true_size": False}
 PINNED = {"small_glyph_keep": True, "small_lettering_skeleton": False,
           "small_text_cap_mm": None, "small_text_restore_mm": None}
 

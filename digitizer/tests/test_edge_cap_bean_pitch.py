@@ -99,8 +99,8 @@ def test_the_gate_still_cuts_at_the_new_pitch():
 
 # The flat-lane goldens' stitch streams with the cap off (`test_small_dot_rung.py`).
 GOLDEN_MD5 = {
-    "logo_alpha.png": "1fe7f432b8619088983a8f29e58d0f34",
-    "logo_whitebg.png": "96636184dbdec280deb28c78d84ff37f",
+    "logo_alpha.png": "50b666027292342f490cb50758a7fcde",
+    "logo_whitebg.png": "e1e001f4b23de052d9102a8acbce26d9",
     "ribbon_curve.png": "f31c29f2d98d63ce919d762beb6da58a",
 }
 
@@ -127,14 +127,10 @@ def test_cap_off_goldens_are_byte_identical_either_way(fixture, pitch):
 
 @pytest.mark.parametrize("fixture", sorted(CAP_OFF_MD5))
 def test_bean_cap_off_is_byte_identical_and_on_moves_only_the_cap(fixture):
-    # `sew_enclosed_white` OFF: CAP_OFF_MD5 predates its 2026-10-24 flip
-    # (Kent), which sews the white each golden encloses
-    _r, off = digitize(TESTDATA / fixture, PipelineConfig(target_width_mm=80.0,
-                                                          sew_enclosed_white=False))
+    _r, off = digitize(TESTDATA / fixture, PipelineConfig(target_width_mm=80.0))
     assert _md5(_coords(off)) == CAP_OFF_MD5[fixture]
     _r, on = digitize(TESTDATA / fixture,
-                      PipelineConfig(target_width_mm=80.0, edge_cap_bean_pitch_mm=1.5,
-                                     sew_enclosed_white=False))
+                      PipelineConfig(target_width_mm=80.0, edge_cap_bean_pitch_mm=1.5))
     assert _md5(_coords(on)) != CAP_OFF_MD5[fixture]
 
     def split(plan):

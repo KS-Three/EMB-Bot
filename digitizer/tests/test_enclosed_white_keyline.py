@@ -78,17 +78,16 @@ def _segments(runs, kind=None):
             yield a, b
 
 
-def test_flag_default_is_on_and_the_width_is_the_pros():
-    # Kent 2026-10-24, the flip sheet
-    assert PipelineConfig().enclosed_white_keyline is True
+def test_flag_default_is_off_and_the_width_is_the_pros():
+    assert PipelineConfig().enclosed_white_keyline is False
     assert machine.KEYLINE_WIDTH_MM == 2.1
     assert machine.KEYLINE_REACH_FRAC == 0.9
 
 
 def test_off_is_byte_identical_to_main():
-    # ON by default since 2026-10-24: False is the engine as it was
-    assert _md5(_plan(BAND, enclosed_white_keyline=False)) == OFF_MD5
-    assert _md5(_plan(BAND)) != OFF_MD5
+    a = _plan(BAND)
+    b = _plan(BAND, enclosed_white_keyline=False)
+    assert _md5(a) == _md5(b) == OFF_MD5
 
 
 def test_a_band_round_letters_is_a_keyline_and_a_letter_body_is_not():
@@ -101,7 +100,7 @@ def test_a_band_round_letters_is_a_keyline_and_a_letter_body_is_not():
 
 
 def test_on_one_satin_loop_per_letter_and_no_skeleton_columns():
-    off = _plan(BAND, enclosed_white_keyline=False)
+    off = _plan(BAND)
     on = _plan(BAND, enclosed_white_keyline=True)
     loops = [r for r in on if r.kind == stitches.SATIN]
     assert len(loops) == 2
@@ -158,7 +157,7 @@ def test_on_the_part_no_loop_reaches_is_filled_first_under_them():
 
 def test_on_reads_only_sew_enclosed_whites_fields():
     for field in (None, "counter", "counter_in_field"):
-        a = _plan(BAND, field=field, enclosed_white_keyline=False)
+        a = _plan(BAND, field=field)
         b = _plan(BAND, field=field, enclosed_white_keyline=True)
         assert _md5(a) == _md5(b)
 

@@ -81,10 +81,6 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     detect_photographic: true,
     // ...and a detected face takes the flat lane (Kent's ruling 2026-09-30).
     faces_route_flat: true,
-    // Ticked by default since 2026-10-24 (DEFAULT_DIGITIZE_PARAMS), with its
-    // thread: the default white.
-    sew_enclosed_white: true,
-    sew_enclosed_rgb: [255, 255, 255],
     thread_brand: "madeira-rayon",
     garment_id: "left_chest",
   });
@@ -2706,14 +2702,12 @@ describe("resizedTargetWidth", () => {
   });
 });
 
-test("sew_enclosed_white rides buildDigitizeConfig both ways, its thread and counters only when on", async () => {
+test("sew_enclosed_white rides buildDigitizeConfig only when on, with its thread and counters", async () => {
   const { buildDigitizeConfig, hexToRgb } = await import("./digitizer.js");
-  // Unticked reaches the service as False: its own default is ON (2026-10-24).
-  const off = buildDigitizeConfig(digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_white: false } }), PROJECT);
-  expect(off.sew_enclosed_white).toBe(false);
-  for (const k of ["sew_enclosed_rgb", "sew_enclosed_counters"]) expect(k in off).toBe(false);
+  const off = buildDigitizeConfig(digitizedElement(), PROJECT);
+  for (const k of ["sew_enclosed_white", "sew_enclosed_rgb", "sew_enclosed_counters"]) expect(k in off).toBe(false);
   // Counters ticked but the option off sends nothing: they ride only with it.
-  const counterOnly = digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_white: false, sew_enclosed_counters: true } });
+  const counterOnly = digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_counters: true } });
   expect("sew_enclosed_counters" in buildDigitizeConfig(counterOnly, PROJECT)).toBe(false);
   const on = buildDigitizeConfig(digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_white: true } }), PROJECT);
   expect(on.sew_enclosed_white).toBe(true);

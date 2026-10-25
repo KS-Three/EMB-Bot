@@ -164,12 +164,10 @@ def _pcfg(**kw) -> PipelineConfig:
 
 @pytest.fixture(scope="module")
 def whitebg_default():
-    # the engine as it was: the option OFF (its default is ON since 2026-10-24)
-    return digitize(WHITEBG, _pcfg(sew_enclosed_white=False))
+    return digitize(WHITEBG, _pcfg())
 
 
-def test_off_ignores_its_follow_ons(whitebg_default):
-    assert PipelineConfig().sew_enclosed_white is True      # Kent 2026-10-24
+def test_off_is_the_default_engine(whitebg_default):
     r, plan = digitize(WHITEBG, _pcfg(sew_enclosed_white=False, sew_enclosed_counters=True,
                                       sew_enclosed_rgb=(255, 0, 0)))
     assert _digest(plan) == _digest(whitebg_default[1])
