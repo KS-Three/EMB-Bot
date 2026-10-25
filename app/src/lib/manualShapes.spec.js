@@ -1284,8 +1284,8 @@ describe("columns: shapesToRegions", () => {
 // went ON by default (Kent): the Studio passes none of them, so this design
 // takes all three. It read 3557 stitches, a436fa9d..., before that; the
 // change is the flip alone (no column code moved).
-const RECT_STITCH_COUNT_ON_MAIN = 3624;
-const RECT_HASH_ON_MAIN = "575fa9f5f5ca079bef0412805f6a5b28bed70e5e25840b386f93d873a5831018";
+const RECT_STITCH_COUNT_ON_MAIN = 4033;  // 3624 before the 2026-10-23 fillTurnSlant + crossUnderlay flips (the engine's own defaults; generateElement passes no opts)
+const RECT_HASH_ON_MAIN = "a055c8667c919c37b4858863bfaa807e337be4289dff2457aea974b96eeedc1c";
 
 describe("columns: through the real engine", () => {
   let generateElement, garment;
@@ -1350,11 +1350,7 @@ describe("columns: through the real engine", () => {
   });
 
   it("a design holding only a closed rectangle is byte-identical to before", () => {
-    // The two JS fill flips of 2026-10-23 (fillTurnSlant, crossUnderlay: ON by default, Kent's
-    // flip sheet) move this count 3624 -> 4033 by design; the constants below were captured
-    // before them, and this test is about the column feature leaving a plain closed shape alone,
-    // so the pre-flip arm is pinned explicitly.
-    const d = generateElement(el([rect("s1", 100, 100, 400, 250)]), garment, { fillTurnSlant: false, crossUnderlay: false });
+    const d = generateElement(el([rect("s1", 100, 100, 400, 250)]), garment, {});
     expect(d.stitchCount).toBe(RECT_STITCH_COUNT_ON_MAIN);
     expect(hashOf(d)).toBe(RECT_HASH_ON_MAIN);
   });
