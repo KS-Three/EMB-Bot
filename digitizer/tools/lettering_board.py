@@ -38,6 +38,16 @@ PER LINE, PER FILE (the same code on `ours.dst` and on the pro's file):
   cc         `word_legibility`: tesseract reads each pinned word of the line
              at its native size, `cc = (raw - base) / (1 - base)` (ROADMAP gate
              4: no quality claim on a raw agreement number). Needs tesseract.
+  rail run   rail wobble p90 (mm) over the line's RUN windows only
+             (`letter_band.rail_classes`, 2026-10-25): `rail_jitter`'s
+             9-penetration windows that span no corner of the letters'
+             outline and stay on it. A per-letter rail p90 is mostly windows
+             that cross a notch, an end face or a cut (straight stems read
+             0.000-0.04 on their run windows while the letters read
+             0.10-0.26), which is construction, not wobble. The outline is
+             OUR text-tagged regions in the line's box (`ours.json`), carried
+             into the pro's frame by the pair's registration. The cell is
+             the line p90s' mean weighted by run windows.
 
 THE CELL. A job x band cell pools its lines, and only the lines BOTH files have
 a value for, so ours and the pro's always cover the same lines (the cell says
@@ -101,6 +111,7 @@ METRICS = {
     "trims": ("trims inside letters", "sum", "{:.0f}"),
     "stitches": ("stitches", "sum", "{:.0f}"),
     "satin_w": ("mean satin width mm", "mean", "{:.2f}"),
+    "rail_run": ("rail wobble p90 run windows mm", "mean", "{:.3f}"),
 }
 
 HEIGHT_RATIO = (0.5, 2.6)     # a read letter height, in the drawn one, that is still "the line"
@@ -306,7 +317,8 @@ def compare_boards(a, b):
                     continue
                 moved += 0 if same else 1
                 delta = y[key]["ours"] - x[key]["ours"]
-                d = f"{delta:+.2f}" if kind == "mean" else f"{delta:+d}"
+                d = (f"{delta:+.3f}" if f.endswith(".3f}") else f"{delta:+.2f}") if kind == "mean" \
+                    else f"{delta:+d}"
                 out.append(f"| {slug} | {band} | {head} | {f.format(x[key]['ours'])} -> {f.format(y[key]['ours'])} "
                            f"| {d} | {f.format(x[key]['pro'])} | {y[key]['n']}/{y[key]['of']} |")
     notes += [f"- gone: {k[0]} / {k[1]} (in A, not in B)" for k in ia if k not in ib]
@@ -523,9 +535,10 @@ class FileReader:
             self._trims = trim_classes.classify(self.path)
         return self._trims
 
-    def line(self, box, art_h, cy) -> dict:
+    def line(self, box, art_h, cy, outline=None) -> dict:
         """-> {"read": reader's summary, <metric>: slot}. Every figure is a
-        missing slot with its reason when the line was not found."""
+        missing slot with its reason when the line was not found. `outline`:
+        the line's letters in this file's frame, for `rail_run` (None: n/a)."""
         from tools import small_text_floor_census as sf
         keep: dict = {}
         e = sf.read_element(self.runs, box, art_h, cy, keep=keep)
@@ -540,7 +553,7 @@ class FileReader:
                                                "stroke_mm", "satin", "bean")}}
         if why:
             out["read"]["why"] = why
-            out.update({k: slot(None, why=why) for k in ("columns", "stitches", "satin_w", "trims")})
+            out.update({k: slot(None, why=why) for k in ("columns", "stitches", "satin_w", "trims", "rail_run")})
             return out
         from tools import column_harness, letter_band
         runs = point_runs(keep["segs"])
@@ -551,7 +564,36 @@ class FileReader:
         rows = self.trim_rows()
         out["trims"] = (slot(None, why=self.trim_why) if rows is None
                         else slot(trims_inside(rows, keep["comps"])))
+        out["rail_run"] = rail_run(runs, outline)
         return out
+
+
+def rail_run(runs, outline) -> dict:
+    """The `rail_run` slot: run-window rail wobble p90, weighted by its windows."""
+    if outline is None or outline.is_empty:
+        return slot(None, why="no text-tagged region of ours in the line's box")
+    from tools import letter_band
+    c = letter_band.rail_classes(runs, outline)
+    if not c["run"]:
+        return slot(None, why=f"no run windows ({c['n']} windows, every one on a corner or off the outline)")
+    return slot(round(c["run_p90"], 3), w=c["run"])
+
+
+def line_outline(info: dict, box, pad: float = 0.5):
+    """OUR text-tagged regions whose representative point lies in the line's
+    `box` (grown by `pad`), as one geometry in our frame; None for none."""
+    from shapely import wkt
+    from shapely.ops import unary_union
+    keys = ("text_candidate", "text_cluster_id", "lettering_group", "word_id")
+    got = []
+    for r in info.get("regions", []):
+        if not any((r.get("meta") or {}).get(k) for k in keys):
+            continue
+        g = wkt.loads(r["wkt"])
+        q = g.representative_point()
+        if box[0] - pad <= q.x <= box[2] + pad and box[1] - pad <= q.y <= box[3] + pad:
+            got.append(g)
+    return unary_union(got) if got else None
 
 
 # --- word legibility -------------------------------------------------------------
@@ -616,6 +658,7 @@ def line_cc(words, got):
 # --- one pair, the whole board -------------------------------------------------
 
 def read_pair(slug: str, spec: dict, cache: Path, ocr: bool = True, log=print) -> list[dict]:
+    from shapely.affinity import affine_transform
     from tools import small_text_floor_census as sf
     pair = resolve_pair(slug)
     if pair.pro is None:
@@ -644,8 +687,10 @@ def read_pair(slug: str, spec: dict, cache: Path, ocr: bool = True, log=print) -
         cy = 0.5 * (box[1] + box[3])
         ob = (box[0] - m_x, box[1] - m_y, box[2] + m_x, box[3] + m_y)
         pb = sf._map_box(box, reg, m_x * reg.scale, m_y * reg.scale)
-        o = ours.line(ob, art_h, cy)
-        p = pro.line(pb, art_h * reg.scale, reg.scale * cy + reg.dy)
+        letters = line_outline(info, box)
+        o = ours.line(ob, art_h, cy, letters)
+        p = pro.line(pb, art_h * reg.scale, reg.scale * cy + reg.dy,
+                     None if letters is None else affine_transform(letters, reg.matrix()))
         cc_o, cc_p = line_cc(ln.get("words", []), got) if spec.get("legibility_job") else (
             slot(None, why="no words pinned for this art"),) * 2
         out.append({"slug": slug, "text": ln["text"], "art_h": art_h, "band": band_of(art_h),
