@@ -358,7 +358,10 @@ def roofing_hat():
     from tools.pro_pair import request
     from .conftest import TESTDATA
     data = (TESTDATA / "art" / "logo_golke_roofing.png").read_bytes()
-    conf = PipelineConfig(**_parse_config(json.dumps(request(114.2, "hat_front"))))
+    # Measured on the engine before the 2026-10-23 flips (`trim_bury_under_later` and the
+    # rest were OFF): pin them off so "off" below is still the arm this flag is priced against.
+    from .conftest import FLIP_2026_10_23
+    conf = PipelineConfig(**{**_parse_config(json.dumps(request(114.2, "hat_front"))), **FLIP_2026_10_23})
     gen = build_generation(_decode(data), conf, exif_source=data)
     out = {}
     for name, kw in (("off", {}), ("on", {"cut_every_jump": True}),
