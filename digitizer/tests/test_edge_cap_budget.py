@@ -50,7 +50,7 @@ from digitizer_core.warnings_codes import (EDGE_CAP_APPLIED,
                                            EDGE_CAP_OVER_BUDGET)
 
 from .conftest import TESTDATA
-from tests.conftest import own_thread_only
+from tests.conftest import PRE_FLIP, own_thread_only
 
 BECKER = "becker_marine_logo.png"
 WHITEBG = "logo_whitebg.png"
@@ -96,6 +96,11 @@ def _run(fixture: str, width: float, cap: str = "bean",
         TESTDATA / fixture,
         PipelineConfig(target_width_mm=width, edge_cap=cap, border_by_size=False,
                        edge_cap_over_budget=over_budget,
+                       # held on the engine the bill was measured on: ON since
+                       # 2026-10-24, `border_from_outline` sews Becker's keyline
+                       # as one loop per face and the faces as fills, which
+                       # moves the cap's rings and its bill
+                       border_from_outline=PRE_FLIP["border_from_outline"],
                        subpixel_edges_upscaled=False,
                        satin_lettering_split=False,
                        # ...and the Column lane (`lettering_columns`, ON since

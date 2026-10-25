@@ -26,7 +26,7 @@ from digitizer_core import PipelineConfig, machine, stitches
 from digitizer_core.pipeline import digitize
 from digitizer_core.preflight import run_preflight
 from digitizer_core.stage6_satin import _uncovered_patches, satin_shape
-from tests.conftest import TESTDATA
+from tests.conftest import PRE_FLIP, TESTDATA
 
 BECKER = TESTDATA / "becker_marine_logo.png"
 
@@ -79,6 +79,10 @@ def _cfg(**kw) -> PipelineConfig:
     # by default since Kent's 2026-10-12 flip) sews the letters this file's
     # tatami patch lies under, from their outline, with no patch to fire.
     kw.setdefault("lettering_columns", False)
+    # ... and `border_from_outline` (ON since 2026-10-24): it sews Becker's
+    # keyline as one loop per face and the faces as fills, so the satin
+    # junctions this patches are gone
+    kw.setdefault("border_from_outline", PRE_FLIP["border_from_outline"])
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 

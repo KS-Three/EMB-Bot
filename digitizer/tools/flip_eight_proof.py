@@ -54,6 +54,14 @@ BEFORE: dict[str, object] = {
     "border_by_size": False,
     "enclosed_alpha_hole_parts": False,
     "lettering_columns_corner_fold": False,
+    # The 2026-10-24/25 flips on main (#1065 border_from_outline, the reach-edges
+    # cap, #1071's text lean / inside stagger / wide letters): a site that pins
+    # "the engine before the flips" pins these too.
+    "border_from_outline": False,
+    "small_text_cap_reach_edges": False,
+    "lettering_columns_text_lean": False,
+    "lettering_columns_inside_stagger": False,
+    "text_cluster_wide_letters": False,
 }
 HELD_OFF = ("cut_every_jump", "sew_enclosed_white")
 

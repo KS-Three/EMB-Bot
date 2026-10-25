@@ -209,13 +209,13 @@ def test_underlay_is_never_slanted():
 
 
 def test_the_config_reaches_every_fill_call_site():
-    """Same reach as `fill_order_sewn_paths`: stage 7's six tatami calls and
-    the blend tier's two."""
+    """Same reach as `fill_order_sewn_paths`: stage 7's seven tatami calls
+    (the seventh `border_from_outline`'s body fill) and the blend tier's two."""
     from pathlib import Path
     root = Path(sf.__file__).parent
     s7 = (root / "stage7_sequence.py").read_text(encoding="utf-8")
     sb = (root / "stage6_blend.py").read_text(encoding="utf-8")
     assert s7.count("slant_turns=cfg.fill_turn_slant") == \
-        s7.count("sewn_paths_only=cfg.fill_order_sewn_paths") == 6
+        s7.count("sewn_paths_only=cfg.fill_order_sewn_paths") == 7
     assert sb.count("slant_turns=cfg.fill_turn_slant") == \
         sb.count("sewn_paths_only=cfg.fill_order_sewn_paths") == 2

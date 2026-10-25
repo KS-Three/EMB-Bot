@@ -1,0 +1,5028 @@
+{
+ "meta": {
+  "date": "2026-10-25",
+  "git": "a7a7259f",
+  "sets": {},
+  "tesseract": "tesseract v5.4.0.20240606",
+  "pairs": [
+   "becker_hat_large",
+   "becker_lc_large",
+   "becker_hat_small",
+   "becker_chest_small",
+   "becker_beanie",
+   "hotel_fremont_hat",
+   "hotel_fremont_patch",
+   "mfab_hat",
+   "mfab_lc",
+   "proseal_hat",
+   "proseal_beanie",
+   "precision_drone",
+   "tires_hat_3d",
+   "gaulke_roofing_hat",
+   "gaulke_roofing_beanie",
+   "gaulke_roofing_lc"
+  ],
+  "files": {
+   "becker_hat_large": {
+    "pro": "beckers logo hat.DST",
+    "pro_pes": "beckers logo hat.PES",
+    "art": "becker_marine_logo.png"
+   },
+   "becker_lc_large": {
+    "pro": "beckers logolc.DST",
+    "pro_pes": "beckers logolc.PES",
+    "art": "becker_marine_logo.png"
+   },
+   "becker_hat_small": {
+    "pro": "beckers logo hat 2 A.DST",
+    "pro_pes": "beckers logo hat 2 A.PES",
+    "art": "becker_marine_logo.png"
+   },
+   "becker_chest_small": {
+    "pro": "beckers logo LC 2 A.DST",
+    "pro_pes": "beckers logo LC 2 A.PES",
+    "art": "becker_marine_logo.png"
+   },
+   "becker_beanie": {
+    "pro": "beckers logo hat 2 A a.PES",
+    "pro_pes": "beckers logo hat 2 A a.PES",
+    "art": "becker_marine_logo.png"
+   },
+   "hotel_fremont_hat": {
+    "pro": "HOTEL FREMONT HAT.DST",
+    "pro_pes": "HOTEL FREMONT HAT.PES",
+    "art": "logo_hotel_fremont.webp"
+   },
+   "hotel_fremont_patch": {
+    "pro": "HOTEL FREMONT .DST",
+    "pro_pes": "HOTEL FREMONT .PES",
+    "art": "logo_hotel_fremont.webp"
+   },
+   "mfab_hat": {
+    "pro": "mf4b logo hat.DST",
+    "pro_pes": "mf4b logo hat.PES",
+    "art": "logo_mfab_hat.png"
+   },
+   "mfab_lc": {
+    "pro": "mf4b logo lc.DST",
+    "pro_pes": "mf4b logo lc.PES",
+    "art": "logo_mfab_lc.png"
+   },
+   "proseal_hat": {
+    "pro": "PROSEALHAT.DST",
+    "pro_pes": null,
+    "art": "PROSeal Logo.jpg"
+   },
+   "proseal_beanie": {
+    "pro": "PROSEALHAT BEANI.DST",
+    "pro_pes": null,
+    "art": "PROSeal Logo.jpg"
+   },
+   "precision_drone": {
+    "pro": "PRECISION DRON HAT 2.DST",
+    "pro_pes": "PRECISION DRON HAT 2.PES",
+    "art": "drone_render.png"
+   },
+   "tires_hat_3d": {
+    "pro": "TIRES HAT 3D.DST",
+    "pro_pes": "TIRES HAT 3D.PES",
+    "art": "logo_script_tires.png"
+   },
+   "gaulke_roofing_hat": {
+    "pro": "c golke logo hat.DST",
+    "pro_pes": null,
+    "art": "logo_gaulke_roofing.png"
+   },
+   "gaulke_roofing_beanie": {
+    "pro": "c golke logo HAT BEANI.DST",
+    "pro_pes": null,
+    "art": "logo_gaulke_roofing.png"
+   },
+   "gaulke_roofing_lc": {
+    "pro": "c golke logo LC.DST",
+    "pro_pes": null,
+    "art": "logo_gaulke_roofing.png"
+   }
+  },
+  "skipped": [
+   {
+    "slug": "bridge_hat",
+    "why": "no lettering lines pinned (and the pro's file is not on this machine)"
+   },
+   {
+    "slug": "bridge_lc",
+    "why": "no lettering lines pinned (and the pro's file is not on this machine)"
+   },
+   {
+    "slug": "goldentee_hat",
+    "why": "GT is a 3D fill the pro layers under a satin GOLF: the line reader returned the same pro block (6 columns, 641 stitches) for both lines, and ours' GOLF read 22 mm against 9.3 drawn. Not a figure to quote (2026-10-25)."
+   }
+  ]
+ },
+ "lines": [
+  {
+   "slug": "becker_hat_large",
+   "text": "BECKER",
+   "art_h": 28.5,
+   "band": "10+",
+   "words": [
+    "BECKER"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 43.65,
+     "w_mm": 101.95,
+     "n": 2,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 2.86,
+     "satin": 0.72,
+     "bean": 0.01
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 4,
+     "h_mm": 42.25,
+     "w_mm": 62.65,
+     "n": 1,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 2.51,
+     "satin": 0.84,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 65,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 5553,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.4,
+     "w": 2680,
+     "why": null
+    },
+    "trims": {
+     "v": 19,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 0.213,
+     "w": 6,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 20,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 2301,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.486,
+     "w": 1770,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 6,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "becker_hat_large",
+   "text": "MARINE",
+   "art_h": 17.09,
+   "band": "10+",
+   "words": [
+    "MARINE"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 0,
+     "h_mm": 17.1,
+     "w_mm": 97.65,
+     "n": 9,
+     "gap_mm": 10.85,
+     "fused": 0,
+     "stroke_mm": 2.64,
+     "satin": 0.19,
+     "bean": 0.1
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 17.85,
+     "w_mm": 97.75,
+     "n": 6,
+     "gap_mm": 1.75,
+     "fused": 0,
+     "stroke_mm": 5.21,
+     "satin": 0.87,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 9,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 2093,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.44,
+     "w": 197,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 0.0,
+     "w": 6,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 19,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 2297,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 4.514,
+     "w": 1384,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 6,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "becker_lc_large",
+   "text": "BECKER",
+   "art_h": 26.88,
+   "band": "10+",
+   "words": [
+    "BECKER"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 40.85,
+     "w_mm": 95.65,
+     "n": 2,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 2.57,
+     "satin": 0.79,
+     "bean": 0.01
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 3,
+     "h_mm": 39.65,
+     "w_mm": 58.85,
+     "n": 1,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 2.4,
+     "satin": 0.83,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 60,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 4579,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.213,
+     "w": 2747,
+     "why": null
+    },
+    "trims": {
+     "v": 18,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 0.206,
+     "w": 6,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 18,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 2157,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.347,
+     "w": 1679,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 0.0,
+     "w": 6,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "becker_lc_large",
+   "text": "MARINE",
+   "art_h": 16.05,
+   "band": "10+",
+   "words": [
+    "MARINE"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 0,
+     "h_mm": 16.45,
+     "w_mm": 91.75,
+     "n": 9,
+     "gap_mm": 10.05,
+     "fused": 0,
+     "stroke_mm": 2.27,
+     "satin": 0.13,
+     "bean": 0.11
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 3,
+     "h_mm": 16.75,
+     "w_mm": 91.95,
+     "n": 6,
+     "gap_mm": 1.55,
+     "fused": 0,
+     "stroke_mm": 4.92,
+     "satin": 0.86,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 7,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1994,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.044,
+     "w": 130,
+     "why": null
+    },
+    "trims": {
+     "v": 2,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "MARINE: ours not located: best match costs 2.05 (> 2.0)"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 20,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 2180,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 4.353,
+     "w": 1304,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "MARINE: ours not located: best match costs 2.05 (> 2.0)"
+    }
+   }
+  },
+  {
+   "slug": "becker_hat_small",
+   "text": "BECKER",
+   "art_h": 21.49,
+   "band": "10+",
+   "words": [
+    "BECKER"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 32.95,
+     "w_mm": 76.75,
+     "n": 4,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 2.38,
+     "satin": 0.79,
+     "bean": 0.0
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 4,
+     "h_mm": 31.95,
+     "w_mm": 47.15,
+     "n": 1,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 2.04,
+     "satin": 0.79,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 58,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 3776,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.041,
+     "w": 2285,
+     "why": null
+    },
+    "trims": {
+     "v": 7,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 0.446,
+     "w": 6,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 16,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1787,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.951,
+     "w": 1402,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 0.0,
+     "w": 6,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "becker_hat_small",
+   "text": "MARINE",
+   "art_h": 12.83,
+   "band": "10+",
+   "words": [
+    "MARINE"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 0,
+     "h_mm": 13.2,
+     "w_mm": 73.45,
+     "n": 6,
+     "gap_mm": 1.15,
+     "fused": 0,
+     "stroke_mm": 3.13,
+     "satin": 0.3,
+     "bean": 0.07
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 13.55,
+     "w_mm": 73.45,
+     "n": 6,
+     "gap_mm": 1.15,
+     "fused": 0,
+     "stroke_mm": 4.02,
+     "satin": 0.8,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 11,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1737,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.731,
+     "w": 287,
+     "why": null
+    },
+    "trims": {
+     "v": 3,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 6,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 23,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1895,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 3.261,
+     "w": 1117,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 6,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "becker_chest_small",
+   "text": "BECKER",
+   "art_h": 21.49,
+   "band": "10+",
+   "words": [
+    "BECKER"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 32.75,
+     "w_mm": 76.65,
+     "n": 3,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 2.2,
+     "satin": 0.85,
+     "bean": 0.0
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 3,
+     "h_mm": 31.95,
+     "w_mm": 47.15,
+     "n": 1,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 2.04,
+     "satin": 0.79,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 52,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 3179,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.935,
+     "w": 2326,
+     "why": null
+    },
+    "trims": {
+     "v": 7,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 0.0,
+     "w": 6,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 16,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1787,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.951,
+     "w": 1402,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 0.0,
+     "w": 6,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "becker_chest_small",
+   "text": "MARINE",
+   "art_h": 12.83,
+   "band": "10+",
+   "words": [
+    "MARINE"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 13.1,
+     "w_mm": 73.35,
+     "n": 6,
+     "gap_mm": 1.35,
+     "fused": 0,
+     "stroke_mm": 3.8,
+     "satin": 0.51,
+     "bean": 0.05
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 3,
+     "h_mm": 13.55,
+     "w_mm": 73.45,
+     "n": 6,
+     "gap_mm": 1.15,
+     "fused": 0,
+     "stroke_mm": 4.02,
+     "satin": 0.8,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 13,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1566,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 3.136,
+     "w": 444,
+     "why": null
+    },
+    "trims": {
+     "v": 3,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "MARINE: ours not located: best match costs 2.05 (> 2.0)"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 23,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1895,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 3.261,
+     "w": 1117,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "MARINE: ours not located: best match costs 2.05 (> 2.0)"
+    }
+   }
+  },
+  {
+   "slug": "becker_beanie",
+   "text": "BECKER",
+   "art_h": 22.32,
+   "band": "10+",
+   "words": [
+    "BECKER"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 34.25,
+     "w_mm": 80.35,
+     "n": 3,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 2.33,
+     "satin": 0.81,
+     "bean": 0.01
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 5,
+     "h_mm": 31.95,
+     "w_mm": 47.15,
+     "n": 1,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 2.04,
+     "satin": 0.79,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 52,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 3700,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.045,
+     "w": 2408,
+     "why": null
+    },
+    "trims": {
+     "v": 16,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 0.0,
+     "w": 6,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 18,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1794,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.955,
+     "w": 1402,
+     "why": null
+    },
+    "trims": {
+     "v": null,
+     "w": null,
+     "why": "no DST of the pro's (the PES reader reports a TRIM at every jump)"
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 6,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "becker_beanie",
+   "text": "MARINE",
+   "art_h": 13.38,
+   "band": "10+",
+   "words": [
+    "MARINE"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 1,
+     "h_mm": 13.7,
+     "w_mm": 76.45,
+     "n": 7,
+     "gap_mm": 9.15,
+     "fused": 0,
+     "stroke_mm": 2.6,
+     "satin": 0.23,
+     "bean": 0.06
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 13.55,
+     "w_mm": 73.35,
+     "n": 3,
+     "gap_mm": 1.05,
+     "fused": 0,
+     "stroke_mm": 4.01,
+     "satin": 0.83,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 8,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1661,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.433,
+     "w": 216,
+     "why": null
+    },
+    "trims": {
+     "v": 2,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 6,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 25,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1962,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 3.269,
+     "w": 1186,
+     "why": null
+    },
+    "trims": {
+     "v": null,
+     "w": null,
+     "why": "no DST of the pro's (the PES reader reports a TRIM at every jump)"
+    },
+    "cc": {
+     "v": -0.13,
+     "w": 6,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "hotel_fremont_hat",
+   "text": "EST",
+   "art_h": 1.85,
+   "band": "<4",
+   "words": [
+    "EST"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 2,
+     "h_mm": 2.15,
+     "w_mm": 6.15,
+     "n": 3,
+     "gap_mm": 0.6,
+     "fused": 0,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.31
+    },
+    "pro": {
+     "verdict": "DROPPED",
+     "block": null,
+     "h_mm": null,
+     "w_mm": null,
+     "n": null,
+     "gap_mm": null,
+     "fused": null,
+     "stroke_mm": null,
+     "satin": null,
+     "bean": null,
+     "why": "no letter-like thread in the line's box"
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 93,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 3,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": null,
+     "w": null,
+     "why": "no letter-like thread in the line's box"
+    },
+    "stitches": {
+     "v": null,
+     "w": null,
+     "why": "no letter-like thread in the line's box"
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no letter-like thread in the line's box"
+    },
+    "trims": {
+     "v": null,
+     "w": null,
+     "why": "no letter-like thread in the line's box"
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 3,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "hotel_fremont_hat",
+   "text": "1895",
+   "art_h": 1.89,
+   "band": "<4",
+   "words": [
+    "1895"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 2,
+     "h_mm": 2.2,
+     "w_mm": 6.65,
+     "n": 4,
+     "gap_mm": 0.15,
+     "fused": 1,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.32
+    },
+    "pro": {
+     "verdict": "DROPPED",
+     "block": null,
+     "h_mm": null,
+     "w_mm": null,
+     "n": null,
+     "gap_mm": null,
+     "fused": null,
+     "stroke_mm": null,
+     "satin": null,
+     "bean": null,
+     "why": "no letter-like thread in the line's box"
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 132,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.164,
+     "w": 3,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "1895: pro not located: best match costs 3.99 (> 2.0)"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": null,
+     "w": null,
+     "why": "no letter-like thread in the line's box"
+    },
+    "stitches": {
+     "v": null,
+     "w": null,
+     "why": "no letter-like thread in the line's box"
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no letter-like thread in the line's box"
+    },
+    "trims": {
+     "v": null,
+     "w": null,
+     "why": "no letter-like thread in the line's box"
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "1895: pro not located: best match costs 3.99 (> 2.0)"
+    }
+   }
+  },
+  {
+   "slug": "hotel_fremont_hat",
+   "text": "THE",
+   "art_h": 3.04,
+   "band": "<4",
+   "words": [
+    "THE"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "BEAN",
+     "block": 1,
+     "h_mm": 2.95,
+     "w_mm": 9.95,
+     "n": 3,
+     "gap_mm": 0.75,
+     "fused": 0,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.56
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 7,
+     "h_mm": 4.0,
+     "w_mm": 10.65,
+     "n": 2,
+     "gap_mm": 0.25,
+     "fused": 0,
+     "stroke_mm": 0.89,
+     "satin": 0.83,
+     "bean": 0.01
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 178,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 3,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 10,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 203,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.763,
+     "w": 124,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 3,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "hotel_fremont_hat",
+   "text": "HOTEL FREMONT",
+   "art_h": 6.81,
+   "band": "6-10",
+   "words": [
+    "HOTEL",
+    "FREMONT"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 7.65,
+     "w_mm": 86.75,
+     "n": 11,
+     "gap_mm": 0.3,
+     "fused": 3,
+     "stroke_mm": 1.4,
+     "satin": 0.97,
+     "bean": 0.01
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 7,
+     "h_mm": 7.85,
+     "w_mm": 87.05,
+     "n": 12,
+     "gap_mm": 0.35,
+     "fused": 4,
+     "stroke_mm": 1.41,
+     "satin": 0.87,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 65,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1833,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.28,
+     "w": 1277,
+     "why": null
+    },
+    "trims": {
+     "v": 6,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 12,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 63,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 2203,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.236,
+     "w": 1807,
+     "why": null
+    },
+    "trims": {
+     "v": 2,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 12,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "hotel_fremont_hat",
+   "text": "EAT STAY",
+   "art_h": 2.44,
+   "band": "<4",
+   "words": [
+    "EAT",
+    "STAY"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "BEAN",
+     "block": 2,
+     "h_mm": 2.65,
+     "w_mm": 18.15,
+     "n": 4,
+     "gap_mm": -0.05,
+     "fused": 2,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.51
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 6,
+     "h_mm": 4.95,
+     "w_mm": 11.55,
+     "n": 1,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 0.9,
+     "satin": 0.72,
+     "bean": 0.01
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 287,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 3,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 10,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 244,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.78,
+     "w": 160,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 0.487,
+     "w": 3,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "hotel_fremont_hat",
+   "text": "PLAY",
+   "art_h": 2.44,
+   "band": "<4",
+   "words": [
+    "PLAY"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "BEAN",
+     "block": 2,
+     "h_mm": 2.55,
+     "w_mm": 8.45,
+     "n": 3,
+     "gap_mm": -0.35,
+     "fused": 1,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.53
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 7,
+     "h_mm": 5.65,
+     "w_mm": 1.45,
+     "n": 1,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 1.1,
+     "satin": 0.61,
+     "bean": 0.05
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 142,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "PLAY: pro no word-sized thread near the word"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 44,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.06,
+     "w": 24,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "PLAY: pro no word-sized thread near the word"
+    }
+   }
+  },
+  {
+   "slug": "hotel_fremont_patch",
+   "text": "EST",
+   "art_h": 1.85,
+   "band": "<4",
+   "words": [
+    "EST"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 2,
+     "h_mm": 2.15,
+     "w_mm": 6.25,
+     "n": 3,
+     "gap_mm": 0.6,
+     "fused": 0,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.37
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 8,
+     "h_mm": 4.45,
+     "w_mm": 9.15,
+     "n": 1,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 0.86,
+     "satin": 0.76,
+     "bean": 0.03
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 97,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "EST: pro not located: best match costs 2.04 (> 2.0)"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 7,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 204,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.781,
+     "w": 120,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "EST: pro not located: best match costs 2.04 (> 2.0)"
+    }
+   }
+  },
+  {
+   "slug": "hotel_fremont_patch",
+   "text": "1895",
+   "art_h": 1.89,
+   "band": "<4",
+   "words": [
+    "1895"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 2,
+     "h_mm": 2.15,
+     "w_mm": 6.65,
+     "n": 4,
+     "gap_mm": 0.15,
+     "fused": 1,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.37
+    },
+    "pro": {
+     "verdict": "DROPPED",
+     "block": null,
+     "h_mm": null,
+     "w_mm": null,
+     "n": null,
+     "gap_mm": null,
+     "fused": null,
+     "stroke_mm": null,
+     "satin": null,
+     "bean": null,
+     "why": "no letter-like thread in the line's box"
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 131,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "1895: pro not located: best match costs 2.02 (> 2.0)"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": null,
+     "w": null,
+     "why": "no letter-like thread in the line's box"
+    },
+    "stitches": {
+     "v": null,
+     "w": null,
+     "why": "no letter-like thread in the line's box"
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no letter-like thread in the line's box"
+    },
+    "trims": {
+     "v": null,
+     "w": null,
+     "why": "no letter-like thread in the line's box"
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "1895: pro not located: best match costs 2.02 (> 2.0)"
+    }
+   }
+  },
+  {
+   "slug": "hotel_fremont_patch",
+   "text": "THE",
+   "art_h": 3.03,
+   "band": "<4",
+   "words": [
+    "THE"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "BEAN",
+     "block": 1,
+     "h_mm": 2.95,
+     "w_mm": 9.95,
+     "n": 3,
+     "gap_mm": 0.75,
+     "fused": 0,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.57
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 7,
+     "h_mm": 4.25,
+     "w_mm": 10.95,
+     "n": 1,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 0.9,
+     "satin": 0.87,
+     "bean": 0.01
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 178,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 3,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 10,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 210,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.801,
+     "w": 126,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 3,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "hotel_fremont_patch",
+   "text": "HOTEL FREMONT",
+   "art_h": 6.8,
+   "band": "6-10",
+   "words": [
+    "HOTEL",
+    "FREMONT"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 7.25,
+     "w_mm": 86.45,
+     "n": 12,
+     "gap_mm": 0.45,
+     "fused": 1,
+     "stroke_mm": 1.0,
+     "satin": 0.94,
+     "bean": 0.02
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 7,
+     "h_mm": 7.85,
+     "w_mm": 87.05,
+     "n": 12,
+     "gap_mm": 0.35,
+     "fused": 4,
+     "stroke_mm": 1.41,
+     "satin": 0.87,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 66,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1797,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.92,
+     "w": 1274,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 12,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 61,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 2199,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.235,
+     "w": 1808,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 12,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "hotel_fremont_patch",
+   "text": "EAT STAY",
+   "art_h": 2.44,
+   "band": "<4",
+   "words": [
+    "EAT",
+    "STAY"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "BEAN",
+     "block": 2,
+     "h_mm": 2.65,
+     "w_mm": 18.15,
+     "n": 4,
+     "gap_mm": -0.05,
+     "fused": 2,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.51
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 8,
+     "h_mm": 4.3,
+     "w_mm": 21.55,
+     "n": 2,
+     "gap_mm": 2.35,
+     "fused": 0,
+     "stroke_mm": 0.9,
+     "satin": 0.8,
+     "bean": 0.02
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 295,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "EAT: pro no word-sized thread near the word; STAY: pro no word-sized thread near the word"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 20,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 419,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.787,
+     "w": 254,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "EAT: pro no word-sized thread near the word; STAY: pro no word-sized thread near the word"
+    }
+   }
+  },
+  {
+   "slug": "hotel_fremont_patch",
+   "text": "PLAY",
+   "art_h": 2.44,
+   "band": "<4",
+   "words": [
+    "PLAY"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "BEAN",
+     "block": 2,
+     "h_mm": 2.55,
+     "w_mm": 8.45,
+     "n": 3,
+     "gap_mm": -0.4,
+     "fused": 1,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.53
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 8,
+     "h_mm": 4.25,
+     "w_mm": 11.55,
+     "n": 1,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 0.85,
+     "satin": 0.74,
+     "bean": 0.02
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 143,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "PLAY: pro no word-sized thread near the word"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 11,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 220,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.763,
+     "w": 138,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "PLAY: pro no word-sized thread near the word"
+    }
+   }
+  },
+  {
+   "slug": "mfab_hat",
+   "text": "MFAB",
+   "art_h": 18.04,
+   "band": "10+",
+   "words": [
+    "MFAB"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 0,
+     "h_mm": 18.2,
+     "w_mm": 94.95,
+     "n": 9,
+     "gap_mm": 0.95,
+     "fused": 1,
+     "stroke_mm": 1.71,
+     "satin": 0.17,
+     "bean": 0.09
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 8.65,
+     "w_mm": 8.45,
+     "n": 1,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 2.49,
+     "satin": 0.9,
+     "bean": 0.0,
+     "why": "read 8.65 mm against 18.0 drawn: a fragment of the line, not the line"
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 15,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 3230,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.665,
+     "w": 438,
+     "why": null
+    },
+    "trims": {
+     "v": 12,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "MFAB: ours not located: best match costs 2.51 (> 2.0); pro not located: best match costs 2.49 (> 2.0)"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": null,
+     "w": null,
+     "why": "read 8.65 mm against 18.0 drawn: a fragment of the line, not the line"
+    },
+    "stitches": {
+     "v": null,
+     "w": null,
+     "why": "read 8.65 mm against 18.0 drawn: a fragment of the line, not the line"
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "read 8.65 mm against 18.0 drawn: a fragment of the line, not the line"
+    },
+    "trims": {
+     "v": null,
+     "w": null,
+     "why": "read 8.65 mm against 18.0 drawn: a fragment of the line, not the line"
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "MFAB: ours not located: best match costs 2.51 (> 2.0); pro not located: best match costs 2.49 (> 2.0)"
+    }
+   }
+  },
+  {
+   "slug": "mfab_hat",
+   "text": "AND WELDING LLC",
+   "art_h": 6.75,
+   "band": "6-10",
+   "words": [
+    "AND",
+    "WELDING",
+    "LLC"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 7.6,
+     "w_mm": 65.65,
+     "n": 17,
+     "gap_mm": 0.15,
+     "fused": 1,
+     "stroke_mm": 1.7,
+     "satin": 0.88,
+     "bean": 0.03
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 2,
+     "h_mm": 7.55,
+     "w_mm": 71.15,
+     "n": 10,
+     "gap_mm": 0.5,
+     "fused": 1,
+     "stroke_mm": 1.53,
+     "satin": 0.87,
+     "bean": 0.02
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 37,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1405,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.511,
+     "w": 921,
+     "why": null
+    },
+    "trims": {
+     "v": 7,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "AND: ours not located: best match costs 2.43 (> 2.0); pro no word-sized thread near the word; WELDING: ours not located: best match costs 2.67 (> 2.0); pro no word-sized thread near the word; LLC: ours not located: best match costs 2.25 (> 2.0); pro no word-sized thread near the word"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 30,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1366,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.41,
+     "w": 997,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "AND: ours not located: best match costs 2.43 (> 2.0); pro no word-sized thread near the word; WELDING: ours not located: best match costs 2.67 (> 2.0); pro no word-sized thread near the word; LLC: ours not located: best match costs 2.25 (> 2.0); pro no word-sized thread near the word"
+    }
+   }
+  },
+  {
+   "slug": "mfab_lc",
+   "text": "MFAB",
+   "art_h": 16.55,
+   "band": "10+",
+   "words": [
+    "MFAB"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 0,
+     "h_mm": 16.45,
+     "w_mm": 86.95,
+     "n": 11,
+     "gap_mm": 20.7,
+     "fused": 0,
+     "stroke_mm": 3.2,
+     "satin": 0.05,
+     "bean": 0.1
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 7.95,
+     "w_mm": 7.75,
+     "n": 1,
+     "gap_mm": null,
+     "fused": 0,
+     "stroke_mm": 2.3,
+     "satin": 0.88,
+     "bean": 0.0,
+     "why": "read 7.95 mm against 16.6 drawn: a fragment of the line, not the line"
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 10,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 2186,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.68,
+     "w": 133,
+     "why": null
+    },
+    "trims": {
+     "v": 9,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "MFAB: ours not located: best match costs 2.54 (> 2.0); pro not located: best match costs 2.49 (> 2.0)"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": null,
+     "w": null,
+     "why": "read 7.95 mm against 16.6 drawn: a fragment of the line, not the line"
+    },
+    "stitches": {
+     "v": null,
+     "w": null,
+     "why": "read 7.95 mm against 16.6 drawn: a fragment of the line, not the line"
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "read 7.95 mm against 16.6 drawn: a fragment of the line, not the line"
+    },
+    "trims": {
+     "v": null,
+     "w": null,
+     "why": "read 7.95 mm against 16.6 drawn: a fragment of the line, not the line"
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "MFAB: ours not located: best match costs 2.54 (> 2.0); pro not located: best match costs 2.49 (> 2.0)"
+    }
+   }
+  },
+  {
+   "slug": "mfab_lc",
+   "text": "AND WELDING LLC",
+   "art_h": 6.25,
+   "band": "6-10",
+   "words": [
+    "AND",
+    "WELDING",
+    "LLC"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 8.35,
+     "w_mm": 83.75,
+     "n": 17,
+     "gap_mm": 3.05,
+     "fused": 2,
+     "stroke_mm": 1.46,
+     "satin": 0.82,
+     "bean": 0.04
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 2,
+     "h_mm": 6.95,
+     "w_mm": 65.55,
+     "n": 9,
+     "gap_mm": 0.35,
+     "fused": 0,
+     "stroke_mm": 1.43,
+     "satin": 0.85,
+     "bean": 0.02
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 44,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1948,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.336,
+     "w": 1071,
+     "why": null
+    },
+    "trims": {
+     "v": 16,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "AND: ours not located: best match costs 3.56 (> 2.0); pro no word-sized thread near the word; WELDING: ours not located: best match costs 3.29 (> 2.0); pro no word-sized thread near the word; LLC: ours not located: best match costs 2.03 (> 2.0); pro no word-sized thread near the word"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 30,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1272,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.335,
+     "w": 911,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "AND: ours not located: best match costs 3.56 (> 2.0); pro no word-sized thread near the word; WELDING: ours not located: best match costs 3.29 (> 2.0); pro no word-sized thread near the word; LLC: ours not located: best match costs 2.03 (> 2.0); pro no word-sized thread near the word"
+    }
+   }
+  },
+  {
+   "slug": "proseal_hat",
+   "text": "PROSEAL",
+   "art_h": 9.22,
+   "band": "6-10",
+   "words": [
+    "PROSEAL"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 9.85,
+     "w_mm": 80.85,
+     "n": 7,
+     "gap_mm": 0.95,
+     "fused": 1,
+     "stroke_mm": 2.94,
+     "satin": 0.91,
+     "bean": 0.02
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 9.75,
+     "w_mm": 81.25,
+     "n": 7,
+     "gap_mm": 0.9,
+     "fused": 1,
+     "stroke_mm": 2.98,
+     "satin": 0.92,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 16,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1365,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.6,
+     "w": 937,
+     "why": null
+    },
+    "trims": {
+     "v": 2,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 7,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 13,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1317,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.435,
+     "w": 1090,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 7,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "proseal_hat",
+   "text": "SPRAY FOAM",
+   "art_h": 3.04,
+   "band": "<4",
+   "words": [
+    "SPRAY FOAM"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "BEAN",
+     "block": 1,
+     "h_mm": 3.15,
+     "w_mm": 36.15,
+     "n": 8,
+     "gap_mm": 1.55,
+     "fused": 0,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.4
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 4.55,
+     "w_mm": 40.45,
+     "n": 9,
+     "gap_mm": 0.2,
+     "fused": 1,
+     "stroke_mm": 1.2,
+     "satin": 0.84,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 403,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "SPRAY FOAM: ours not located: best match costs 2.54 (> 2.0); pro not located: best match costs 2.37 (> 2.0)"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 25,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 739,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.932,
+     "w": 569,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "SPRAY FOAM: ours not located: best match costs 2.54 (> 2.0); pro not located: best match costs 2.37 (> 2.0)"
+    }
+   }
+  },
+  {
+   "slug": "proseal_hat",
+   "text": "+ COATINGS",
+   "art_h": 3.15,
+   "band": "<4",
+   "words": [
+    "COATINGS"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 1,
+     "h_mm": 3.15,
+     "w_mm": 27.55,
+     "n": 8,
+     "gap_mm": 1.25,
+     "fused": 0,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.3
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 4.55,
+     "w_mm": 27.55,
+     "n": 7,
+     "gap_mm": 0.15,
+     "fused": 1,
+     "stroke_mm": 1.26,
+     "satin": 0.88,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 313,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 8,
+     "why": null
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 15,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 516,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.964,
+     "w": 418,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": 1.0,
+     "w": 8,
+     "why": null
+    }
+   }
+  },
+  {
+   "slug": "proseal_beanie",
+   "text": "PROSEAL",
+   "art_h": 8.05,
+   "band": "6-10",
+   "words": [
+    "PROSEAL"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 8.65,
+     "w_mm": 70.65,
+     "n": 7,
+     "gap_mm": 0.8,
+     "fused": 1,
+     "stroke_mm": 2.53,
+     "satin": 0.92,
+     "bean": 0.02
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 8.25,
+     "w_mm": 68.15,
+     "n": 7,
+     "gap_mm": 0.55,
+     "fused": 1,
+     "stroke_mm": 2.57,
+     "satin": 0.86,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 18,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1182,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.259,
+     "w": 825,
+     "why": null
+    },
+    "trims": {
+     "v": 2,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "PROSEAL: pro no word-sized thread near the word"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 18,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1237,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 2.104,
+     "w": 1045,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "PROSEAL: pro no word-sized thread near the word"
+    }
+   }
+  },
+  {
+   "slug": "proseal_beanie",
+   "text": "SPRAY FOAM",
+   "art_h": 2.56,
+   "band": "<4",
+   "words": [
+    "SPRAY FOAM"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "BEAN",
+     "block": 1,
+     "h_mm": 2.8,
+     "w_mm": 31.65,
+     "n": 8,
+     "gap_mm": 1.35,
+     "fused": 0,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.46
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 4.0,
+     "w_mm": 32.25,
+     "n": 8,
+     "gap_mm": 0.05,
+     "fused": 3,
+     "stroke_mm": 1.1,
+     "satin": 0.86,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 2,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 361,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "SPRAY FOAM: ours not located: best match costs 2.58 (> 2.0); pro no word-sized thread near the word"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 23,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 627,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.891,
+     "w": 461,
+     "why": null
+    },
+    "trims": {
+     "v": 2,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "SPRAY FOAM: ours not located: best match costs 2.58 (> 2.0); pro no word-sized thread near the word"
+    }
+   }
+  },
+  {
+   "slug": "proseal_beanie",
+   "text": "+ COATINGS",
+   "art_h": 2.66,
+   "band": "<4",
+   "words": [
+    "COATINGS"
+   ],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 1,
+     "h_mm": 2.8,
+     "w_mm": 28.65,
+     "n": 9,
+     "gap_mm": 1.15,
+     "fused": 0,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.35
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 4.0,
+     "w_mm": 29.25,
+     "n": 8,
+     "gap_mm": 0.05,
+     "fused": 3,
+     "stroke_mm": 1.17,
+     "satin": 0.84,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 2,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 340,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": null,
+     "w": null,
+     "why": "no satin crosses"
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "COATINGS: pro no word-sized thread near the word"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 18,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 534,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.898,
+     "w": 423,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "COATINGS: pro no word-sized thread near the word"
+    }
+   }
+  },
+  {
+   "slug": "precision_drone",
+   "text": "PRECISION",
+   "art_h": 5.99,
+   "band": "4-6",
+   "words": [],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 5,
+     "h_mm": 6.85,
+     "w_mm": 62.95,
+     "n": 8,
+     "gap_mm": 0.15,
+     "fused": 1,
+     "stroke_mm": 1.99,
+     "satin": 0.9,
+     "bean": 0.02
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 3,
+     "h_mm": 6.65,
+     "w_mm": 62.95,
+     "n": 9,
+     "gap_mm": 0.25,
+     "fused": 3,
+     "stroke_mm": 2.04,
+     "satin": 0.83,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 30,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1317,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.856,
+     "w": 832,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 23,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1123,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.704,
+     "w": 943,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   }
+  },
+  {
+   "slug": "precision_drone",
+   "text": "THERMAL",
+   "art_h": 4.48,
+   "band": "4-6",
+   "words": [],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 8,
+     "h_mm": 5.25,
+     "w_mm": 44.45,
+     "n": 5,
+     "gap_mm": 3.65,
+     "fused": 0,
+     "stroke_mm": 1.7,
+     "satin": 0.94,
+     "bean": 0.0
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 2,
+     "h_mm": 4.95,
+     "w_mm": 44.55,
+     "n": 7,
+     "gap_mm": 0.2,
+     "fused": 1,
+     "stroke_mm": 1.77,
+     "satin": 0.8,
+     "bean": 0.01
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 21,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 527,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.425,
+     "w": 414,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 22,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 667,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.62,
+     "w": 433,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   }
+  },
+  {
+   "slug": "precision_drone",
+   "text": "AND DRONE",
+   "art_h": 2.2,
+   "band": "<4",
+   "words": [],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 3.15,
+     "w_mm": 31.85,
+     "n": 7,
+     "gap_mm": 0.8,
+     "fused": 0,
+     "stroke_mm": 0.81,
+     "satin": 0.99,
+     "bean": 0.01
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 4.25,
+     "w_mm": 32.05,
+     "n": 7,
+     "gap_mm": 0.35,
+     "fused": 0,
+     "stroke_mm": 1.22,
+     "satin": 0.81,
+     "bean": 0.01
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 13,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 343,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.754,
+     "w": 257,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 13,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 544,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.034,
+     "w": 376,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   }
+  },
+  {
+   "slug": "tires_hat_3d",
+   "text": "Tires",
+   "art_h": 28.65,
+   "band": "10+",
+   "words": [],
+   "read": {
+    "ours": {
+     "verdict": "RUN",
+     "block": 0,
+     "h_mm": 21.5,
+     "w_mm": 115.15,
+     "n": 2,
+     "gap_mm": 1.95,
+     "fused": 0,
+     "stroke_mm": null,
+     "satin": 0.0,
+     "bean": 0.02
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 29.2,
+     "w_mm": 114.65,
+     "n": 3,
+     "gap_mm": -12.95,
+     "fused": 1,
+     "stroke_mm": 4.33,
+     "satin": 1.0,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 5539,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 0.847,
+     "w": 3,
+     "why": null
+    },
+    "trims": {
+     "v": 6,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 8,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 5222,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 3.815,
+     "w": 5013,
+     "why": null
+    },
+    "trims": {
+     "v": 7,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   }
+  },
+  {
+   "slug": "gaulke_roofing_hat",
+   "text": "C GOLKE INDUSTRIES",
+   "art_h": 6.52,
+   "band": "6-10",
+   "words": [],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 7.15,
+     "w_mm": 101.25,
+     "n": 15,
+     "gap_mm": 0.25,
+     "fused": 0,
+     "stroke_mm": 2.27,
+     "satin": 0.92,
+     "bean": 0.02
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 7.0,
+     "w_mm": 101.15,
+     "n": 16,
+     "gap_mm": 0.45,
+     "fused": 2,
+     "stroke_mm": 1.97,
+     "satin": 0.83,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 36,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1717,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.954,
+     "w": 1177,
+     "why": null
+    },
+    "trims": {
+     "v": 2,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 44,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1868,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.603,
+     "w": 1574,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   }
+  },
+  {
+   "slug": "gaulke_roofing_hat",
+   "text": "STEEL ROOFING & SUPPLY",
+   "art_h": 6.11,
+   "band": "6-10",
+   "words": [],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 6.75,
+     "w_mm": 114.55,
+     "n": 18,
+     "gap_mm": 0.55,
+     "fused": 2,
+     "stroke_mm": 1.63,
+     "satin": 0.93,
+     "bean": 0.02
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 6.55,
+     "w_mm": 114.55,
+     "n": 19,
+     "gap_mm": 0.4,
+     "fused": 3,
+     "stroke_mm": 1.51,
+     "satin": 0.79,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 52,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 2021,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.429,
+     "w": 1441,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 32,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 2192,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.279,
+     "w": 1858,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   }
+  },
+  {
+   "slug": "gaulke_roofing_beanie",
+   "text": "C GOLKE INDUSTRIES",
+   "art_h": 5.36,
+   "band": "4-6",
+   "words": [],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 6.0,
+     "w_mm": 83.25,
+     "n": 14,
+     "gap_mm": 0.25,
+     "fused": 2,
+     "stroke_mm": 1.84,
+     "satin": 0.89,
+     "bean": 0.03
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 5.9,
+     "w_mm": 80.85,
+     "n": 16,
+     "gap_mm": 0.25,
+     "fused": 4,
+     "stroke_mm": 1.77,
+     "satin": 0.8,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 34,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1419,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.591,
+     "w": 985,
+     "why": null
+    },
+    "trims": {
+     "v": 2,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 36,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1545,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.379,
+     "w": 1285,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   }
+  },
+  {
+   "slug": "gaulke_roofing_beanie",
+   "text": "STEEL ROOFING & SUPPLY",
+   "art_h": 5.02,
+   "band": "4-6",
+   "words": [],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 5.65,
+     "w_mm": 94.05,
+     "n": 16,
+     "gap_mm": 0.35,
+     "fused": 2,
+     "stroke_mm": 1.36,
+     "satin": 0.91,
+     "bean": 0.02
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 1,
+     "h_mm": 5.35,
+     "w_mm": 90.95,
+     "n": 17,
+     "gap_mm": 0.25,
+     "fused": 3,
+     "stroke_mm": 1.4,
+     "satin": 0.8,
+     "bean": 0.03
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 44,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1604,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.179,
+     "w": 1161,
+     "why": null
+    },
+    "trims": {
+     "v": 2,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 32,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1803,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.201,
+     "w": 1291,
+     "why": null
+    },
+    "trims": {
+     "v": 3,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   }
+  },
+  {
+   "slug": "gaulke_roofing_lc",
+   "text": "C GOLKE INDUSTRIES",
+   "art_h": 5.44,
+   "band": "4-6",
+   "words": [],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 5.95,
+     "w_mm": 84.35,
+     "n": 16,
+     "gap_mm": 0.25,
+     "fused": 0,
+     "stroke_mm": 1.8,
+     "satin": 0.89,
+     "bean": 0.03
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 6.05,
+     "w_mm": 84.85,
+     "n": 16,
+     "gap_mm": 0.45,
+     "fused": 0,
+     "stroke_mm": 1.7,
+     "satin": 0.79,
+     "bean": 0.0
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 35,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1435,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.534,
+     "w": 1026,
+     "why": null
+    },
+    "trims": {
+     "v": 1,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 36,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1575,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.364,
+     "w": 1311,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   }
+  },
+  {
+   "slug": "gaulke_roofing_lc",
+   "text": "STEEL ROOFING & SUPPLY",
+   "art_h": 5.1,
+   "band": "4-6",
+   "words": [],
+   "read": {
+    "ours": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 5.65,
+     "w_mm": 95.35,
+     "n": 19,
+     "gap_mm": 0.45,
+     "fused": 3,
+     "stroke_mm": 1.3,
+     "satin": 0.91,
+     "bean": 0.03
+    },
+    "pro": {
+     "verdict": "SATIN",
+     "block": 0,
+     "h_mm": 5.65,
+     "w_mm": 95.55,
+     "n": 19,
+     "gap_mm": 0.35,
+     "fused": 1,
+     "stroke_mm": 1.33,
+     "satin": 0.79,
+     "bean": 0.03
+    }
+   },
+   "ours": {
+    "columns": {
+     "v": 44,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1667,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.139,
+     "w": 1194,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   },
+   "pro": {
+    "columns": {
+     "v": 32,
+     "w": null,
+     "why": null
+    },
+    "stitches": {
+     "v": 1813,
+     "w": null,
+     "why": null
+    },
+    "satin_w": {
+     "v": 1.188,
+     "w": 1285,
+     "why": null
+    },
+    "trims": {
+     "v": 0,
+     "w": null,
+     "why": null
+    },
+    "cc": {
+     "v": null,
+     "w": null,
+     "why": "no words pinned for this art"
+    }
+   }
+  }
+ ],
+ "cells": {
+  "becker_beanie": {
+   "10+": {
+    "lines": [
+     "BECKER",
+     "MARINE"
+    ],
+    "cc": {
+     "ours": 0.5,
+     "pro": 0.435,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "columns": {
+     "ours": 60,
+     "pro": 43,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "trims": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 2,
+     "why": "no DST of the pro's (the PES reader reports a TRIM at every jump)"
+    },
+    "stitches": {
+     "ours": 5361,
+     "pro": 3756,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 2.077,
+     "pro": 2.557,
+     "n": 2,
+     "of": 2,
+     "why": null
+    }
+   }
+  },
+  "becker_chest_small": {
+   "10+": {
+    "lines": [
+     "BECKER",
+     "MARINE"
+    ],
+    "cc": {
+     "ours": 0.0,
+     "pro": 0.0,
+     "n": 1,
+     "of": 2,
+     "why": null
+    },
+    "columns": {
+     "ours": 65,
+     "pro": 39,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "trims": {
+     "ours": 10,
+     "pro": 2,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "stitches": {
+     "ours": 4745,
+     "pro": 3682,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 2.128,
+     "pro": 2.532,
+     "n": 2,
+     "of": 2,
+     "why": null
+    }
+   }
+  },
+  "becker_hat_large": {
+   "10+": {
+    "lines": [
+     "BECKER",
+     "MARINE"
+    ],
+    "cc": {
+     "ours": 0.106,
+     "pro": 1.0,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "columns": {
+     "ours": 74,
+     "pro": 39,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "trims": {
+     "ours": 20,
+     "pro": 1,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "stitches": {
+     "ours": 7646,
+     "pro": 4598,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 2.403,
+     "pro": 3.376,
+     "n": 2,
+     "of": 2,
+     "why": null
+    }
+   }
+  },
+  "becker_hat_small": {
+   "10+": {
+    "lines": [
+     "BECKER",
+     "MARINE"
+    ],
+    "cc": {
+     "ours": 0.723,
+     "pro": 0.5,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "columns": {
+     "ours": 69,
+     "pro": 39,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "trims": {
+     "ours": 10,
+     "pro": 2,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "stitches": {
+     "ours": 5513,
+     "pro": 3682,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 2.118,
+     "pro": 2.532,
+     "n": 2,
+     "of": 2,
+     "why": null
+    }
+   }
+  },
+  "becker_lc_large": {
+   "10+": {
+    "lines": [
+     "BECKER",
+     "MARINE"
+    ],
+    "cc": {
+     "ours": 0.206,
+     "pro": 0.0,
+     "n": 1,
+     "of": 2,
+     "why": null
+    },
+    "columns": {
+     "ours": 67,
+     "pro": 38,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "trims": {
+     "ours": 20,
+     "pro": 2,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "stitches": {
+     "ours": 6573,
+     "pro": 4337,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 2.205,
+     "pro": 3.224,
+     "n": 2,
+     "of": 2,
+     "why": null
+    }
+   }
+  },
+  "gaulke_roofing_beanie": {
+   "4-6": {
+    "lines": [
+     "C GOLKE INDUSTRIES",
+     "STEEL ROOFING & SUPPLY"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 2,
+     "why": "no words pinned for this art"
+    },
+    "columns": {
+     "ours": 78,
+     "pro": 68,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "trims": {
+     "ours": 4,
+     "pro": 4,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "stitches": {
+     "ours": 3023,
+     "pro": 3348,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 1.368,
+     "pro": 1.29,
+     "n": 2,
+     "of": 2,
+     "why": null
+    }
+   }
+  },
+  "gaulke_roofing_hat": {
+   "6-10": {
+    "lines": [
+     "C GOLKE INDUSTRIES",
+     "STEEL ROOFING & SUPPLY"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 2,
+     "why": "no words pinned for this art"
+    },
+    "columns": {
+     "ours": 88,
+     "pro": 76,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "trims": {
+     "ours": 2,
+     "pro": 2,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "stitches": {
+     "ours": 3738,
+     "pro": 4060,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 1.665,
+     "pro": 1.428,
+     "n": 2,
+     "of": 2,
+     "why": null
+    }
+   }
+  },
+  "gaulke_roofing_lc": {
+   "4-6": {
+    "lines": [
+     "C GOLKE INDUSTRIES",
+     "STEEL ROOFING & SUPPLY"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 2,
+     "why": "no words pinned for this art"
+    },
+    "columns": {
+     "ours": 79,
+     "pro": 68,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "trims": {
+     "ours": 1,
+     "pro": 0,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "stitches": {
+     "ours": 3102,
+     "pro": 3388,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 1.322,
+     "pro": 1.277,
+     "n": 2,
+     "of": 2,
+     "why": null
+    }
+   }
+  },
+  "hotel_fremont_hat": {
+   "<4": {
+    "lines": [
+     "EST",
+     "1895",
+     "THE",
+     "EAT STAY",
+     "PLAY"
+    ],
+    "cc": {
+     "ours": 1.0,
+     "pro": 0.829,
+     "n": 3,
+     "of": 5,
+     "why": null
+    },
+    "columns": {
+     "ours": 3,
+     "pro": 21,
+     "n": 3,
+     "of": 5,
+     "why": null
+    },
+    "trims": {
+     "ours": 0,
+     "pro": 1,
+     "n": 3,
+     "of": 5,
+     "why": null
+    },
+    "stitches": {
+     "ours": 607,
+     "pro": 491,
+     "n": 3,
+     "of": 5,
+     "why": null
+    },
+    "satin_w": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 5,
+     "why": "no satin crosses"
+    }
+   },
+   "6-10": {
+    "lines": [
+     "HOTEL FREMONT"
+    ],
+    "cc": {
+     "ours": 1.0,
+     "pro": 1.0,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "columns": {
+     "ours": 65,
+     "pro": 63,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "trims": {
+     "ours": 6,
+     "pro": 2,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "stitches": {
+     "ours": 1833,
+     "pro": 2203,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 1.28,
+     "pro": 1.236,
+     "n": 1,
+     "of": 1,
+     "why": null
+    }
+   }
+  },
+  "hotel_fremont_patch": {
+   "<4": {
+    "lines": [
+     "EST",
+     "1895",
+     "THE",
+     "EAT STAY",
+     "PLAY"
+    ],
+    "cc": {
+     "ours": 1.0,
+     "pro": 1.0,
+     "n": 1,
+     "of": 5,
+     "why": null
+    },
+    "columns": {
+     "ours": 3,
+     "pro": 48,
+     "n": 4,
+     "of": 5,
+     "why": null
+    },
+    "trims": {
+     "ours": 1,
+     "pro": 0,
+     "n": 4,
+     "of": 5,
+     "why": null
+    },
+    "stitches": {
+     "ours": 713,
+     "pro": 1053,
+     "n": 4,
+     "of": 5,
+     "why": null
+    },
+    "satin_w": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 5,
+     "why": "no satin crosses"
+    }
+   },
+   "6-10": {
+    "lines": [
+     "HOTEL FREMONT"
+    ],
+    "cc": {
+     "ours": 1.0,
+     "pro": 1.0,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "columns": {
+     "ours": 66,
+     "pro": 61,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "trims": {
+     "ours": 1,
+     "pro": 1,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "stitches": {
+     "ours": 1797,
+     "pro": 2199,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 0.92,
+     "pro": 1.235,
+     "n": 1,
+     "of": 1,
+     "why": null
+    }
+   }
+  },
+  "mfab_hat": {
+   "6-10": {
+    "lines": [
+     "AND WELDING LLC"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "AND: ours not located: best match costs 2.43 (> 2.0); pro no word-sized thread near the word; WELDING: ours not located: best match costs 2.67 (> 2.0); pro no word-sized thread near the word; LLC: ours not located: best match costs 2.25 (> 2.0); pro no word-sized thread near the word"
+    },
+    "columns": {
+     "ours": 37,
+     "pro": 30,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "trims": {
+     "ours": 7,
+     "pro": 0,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "stitches": {
+     "ours": 1405,
+     "pro": 1366,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 1.511,
+     "pro": 1.41,
+     "n": 1,
+     "of": 1,
+     "why": null
+    }
+   },
+   "10+": {
+    "lines": [
+     "MFAB"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "MFAB: ours not located: best match costs 2.51 (> 2.0); pro not located: best match costs 2.49 (> 2.0)"
+    },
+    "columns": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "read 8.65 mm against 18.0 drawn: a fragment of the line, not the line"
+    },
+    "trims": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "read 8.65 mm against 18.0 drawn: a fragment of the line, not the line"
+    },
+    "stitches": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "read 8.65 mm against 18.0 drawn: a fragment of the line, not the line"
+    },
+    "satin_w": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "read 8.65 mm against 18.0 drawn: a fragment of the line, not the line"
+    }
+   }
+  },
+  "mfab_lc": {
+   "6-10": {
+    "lines": [
+     "AND WELDING LLC"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "AND: ours not located: best match costs 3.56 (> 2.0); pro no word-sized thread near the word; WELDING: ours not located: best match costs 3.29 (> 2.0); pro no word-sized thread near the word; LLC: ours not located: best match costs 2.03 (> 2.0); pro no word-sized thread near the word"
+    },
+    "columns": {
+     "ours": 44,
+     "pro": 30,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "trims": {
+     "ours": 16,
+     "pro": 0,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "stitches": {
+     "ours": 1948,
+     "pro": 1272,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 1.336,
+     "pro": 1.335,
+     "n": 1,
+     "of": 1,
+     "why": null
+    }
+   },
+   "10+": {
+    "lines": [
+     "MFAB"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "MFAB: ours not located: best match costs 2.54 (> 2.0); pro not located: best match costs 2.49 (> 2.0)"
+    },
+    "columns": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "read 7.95 mm against 16.6 drawn: a fragment of the line, not the line"
+    },
+    "trims": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "read 7.95 mm against 16.6 drawn: a fragment of the line, not the line"
+    },
+    "stitches": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "read 7.95 mm against 16.6 drawn: a fragment of the line, not the line"
+    },
+    "satin_w": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "read 7.95 mm against 16.6 drawn: a fragment of the line, not the line"
+    }
+   }
+  },
+  "precision_drone": {
+   "<4": {
+    "lines": [
+     "AND DRONE"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "no words pinned for this art"
+    },
+    "columns": {
+     "ours": 13,
+     "pro": 13,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "trims": {
+     "ours": 0,
+     "pro": 0,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "stitches": {
+     "ours": 343,
+     "pro": 544,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 0.754,
+     "pro": 1.034,
+     "n": 1,
+     "of": 1,
+     "why": null
+    }
+   },
+   "4-6": {
+    "lines": [
+     "PRECISION",
+     "THERMAL"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 2,
+     "why": "no words pinned for this art"
+    },
+    "columns": {
+     "ours": 51,
+     "pro": 45,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "trims": {
+     "ours": 1,
+     "pro": 0,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "stitches": {
+     "ours": 1844,
+     "pro": 1790,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 1.713,
+     "pro": 1.678,
+     "n": 2,
+     "of": 2,
+     "why": null
+    }
+   }
+  },
+  "proseal_beanie": {
+   "<4": {
+    "lines": [
+     "SPRAY FOAM",
+     "+ COATINGS"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 2,
+     "why": "SPRAY FOAM: ours not located: best match costs 2.58 (> 2.0); pro no word-sized thread near the word"
+    },
+    "columns": {
+     "ours": 4,
+     "pro": 41,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "trims": {
+     "ours": 1,
+     "pro": 3,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "stitches": {
+     "ours": 701,
+     "pro": 1161,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "satin_w": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 2,
+     "why": "no satin crosses"
+    }
+   },
+   "6-10": {
+    "lines": [
+     "PROSEAL"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "PROSEAL: pro no word-sized thread near the word"
+    },
+    "columns": {
+     "ours": 18,
+     "pro": 18,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "trims": {
+     "ours": 2,
+     "pro": 1,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "stitches": {
+     "ours": 1182,
+     "pro": 1237,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 2.259,
+     "pro": 2.104,
+     "n": 1,
+     "of": 1,
+     "why": null
+    }
+   }
+  },
+  "proseal_hat": {
+   "<4": {
+    "lines": [
+     "SPRAY FOAM",
+     "+ COATINGS"
+    ],
+    "cc": {
+     "ours": 1.0,
+     "pro": 1.0,
+     "n": 1,
+     "of": 2,
+     "why": null
+    },
+    "columns": {
+     "ours": 0,
+     "pro": 40,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "trims": {
+     "ours": 0,
+     "pro": 0,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "stitches": {
+     "ours": 716,
+     "pro": 1255,
+     "n": 2,
+     "of": 2,
+     "why": null
+    },
+    "satin_w": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 2,
+     "why": "no satin crosses"
+    }
+   },
+   "6-10": {
+    "lines": [
+     "PROSEAL"
+    ],
+    "cc": {
+     "ours": 1.0,
+     "pro": 1.0,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "columns": {
+     "ours": 16,
+     "pro": 13,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "trims": {
+     "ours": 2,
+     "pro": 0,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "stitches": {
+     "ours": 1365,
+     "pro": 1317,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 2.6,
+     "pro": 2.435,
+     "n": 1,
+     "of": 1,
+     "why": null
+    }
+   }
+  },
+  "tires_hat_3d": {
+   "10+": {
+    "lines": [
+     "Tires"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 1,
+     "why": "no words pinned for this art"
+    },
+    "columns": {
+     "ours": 1,
+     "pro": 8,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "trims": {
+     "ours": 6,
+     "pro": 7,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "stitches": {
+     "ours": 5539,
+     "pro": 5222,
+     "n": 1,
+     "of": 1,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 0.847,
+     "pro": 3.815,
+     "n": 1,
+     "of": 1,
+     "why": null
+    }
+   }
+  },
+  "ALL": {
+   "<4": {
+    "lines": [
+     "EST",
+     "1895",
+     "THE",
+     "EAT STAY",
+     "PLAY",
+     "EST",
+     "1895",
+     "THE",
+     "EAT STAY",
+     "PLAY",
+     "SPRAY FOAM",
+     "+ COATINGS",
+     "SPRAY FOAM",
+     "+ COATINGS",
+     "AND DRONE"
+    ],
+    "cc": {
+     "ours": 1.0,
+     "pro": 0.923,
+     "n": 5,
+     "of": 15,
+     "why": null
+    },
+    "columns": {
+     "ours": 23,
+     "pro": 163,
+     "n": 12,
+     "of": 15,
+     "why": null
+    },
+    "trims": {
+     "ours": 2,
+     "pro": 4,
+     "n": 12,
+     "of": 15,
+     "why": null
+    },
+    "stitches": {
+     "ours": 3080,
+     "pro": 4504,
+     "n": 12,
+     "of": 15,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 0.754,
+     "pro": 1.034,
+     "n": 1,
+     "of": 15,
+     "why": null
+    }
+   },
+   "4-6": {
+    "lines": [
+     "PRECISION",
+     "THERMAL",
+     "C GOLKE INDUSTRIES",
+     "STEEL ROOFING & SUPPLY",
+     "C GOLKE INDUSTRIES",
+     "STEEL ROOFING & SUPPLY"
+    ],
+    "cc": {
+     "ours": null,
+     "pro": null,
+     "n": 0,
+     "of": 6,
+     "why": "no words pinned for this art"
+    },
+    "columns": {
+     "ours": 208,
+     "pro": 181,
+     "n": 6,
+     "of": 6,
+     "why": null
+    },
+    "trims": {
+     "ours": 6,
+     "pro": 4,
+     "n": 6,
+     "of": 6,
+     "why": null
+    },
+    "stitches": {
+     "ours": 7969,
+     "pro": 8526,
+     "n": 6,
+     "of": 6,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 1.426,
+     "pro": 1.366,
+     "n": 6,
+     "of": 6,
+     "why": null
+    }
+   },
+   "6-10": {
+    "lines": [
+     "HOTEL FREMONT",
+     "HOTEL FREMONT",
+     "AND WELDING LLC",
+     "AND WELDING LLC",
+     "PROSEAL",
+     "PROSEAL",
+     "C GOLKE INDUSTRIES",
+     "STEEL ROOFING & SUPPLY"
+    ],
+    "cc": {
+     "ours": 1.0,
+     "pro": 1.0,
+     "n": 3,
+     "of": 8,
+     "why": null
+    },
+    "columns": {
+     "ours": 334,
+     "pro": 291,
+     "n": 8,
+     "of": 8,
+     "why": null
+    },
+    "trims": {
+     "ours": 36,
+     "pro": 6,
+     "n": 8,
+     "of": 8,
+     "why": null
+    },
+    "stitches": {
+     "ours": 13268,
+     "pro": 13654,
+     "n": 8,
+     "of": 8,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 1.601,
+     "pro": 1.519,
+     "n": 8,
+     "of": 8,
+     "why": null
+    }
+   },
+   "10+": {
+    "lines": [
+     "BECKER",
+     "MARINE",
+     "BECKER",
+     "MARINE",
+     "BECKER",
+     "MARINE",
+     "BECKER",
+     "MARINE",
+     "BECKER",
+     "MARINE",
+     "MFAB",
+     "MFAB",
+     "Tires"
+    ],
+    "cc": {
+     "ours": 0.358,
+     "pro": 0.484,
+     "n": 8,
+     "of": 13,
+     "why": null
+    },
+    "columns": {
+     "ours": 336,
+     "pro": 206,
+     "n": 11,
+     "of": 13,
+     "why": null
+    },
+    "trims": {
+     "ours": 66,
+     "pro": 14,
+     "n": 9,
+     "of": 13,
+     "why": null
+    },
+    "stitches": {
+     "ours": 35377,
+     "pro": 25277,
+     "n": 11,
+     "of": 13,
+     "why": null
+    },
+    "satin_w": {
+     "ours": 2.19,
+     "pro": 3.13,
+     "n": 11,
+     "of": 13,
+     "why": null
+    }
+   }
+  }
+ }
+}
