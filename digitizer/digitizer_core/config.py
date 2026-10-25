@@ -2788,6 +2788,22 @@ class PipelineConfig:
     # False is the lane as it was, station for station. Tests:
     # `tests/test_column_text_lean.py`.
     lettering_columns_text_lean: bool = True
+    # Under `lettering_columns_text_lean`, the BARS of an italic word cross
+    # along the word's stems (2026-10-25, `column_lean.italic_bar`). Read per
+    # cross on ProSeal's italic PROSEAL (`tools/italic_cross.py`, the pro's
+    # hat 85.9 mm and beanie 75.0 mm, stems leaning ~11 deg): he crosses a
+    # bar 71-78 deg off the line of text on the slant's side -- parallel to
+    # the stems, an upright digitizing sheared -- where the lane crosses it
+    # square to itself, 80-90 deg either side. ON, a word whose letters'
+    # stems lean 5-30 deg off its line's normal (median of the letters,
+    # `letterform_priors.letter_lean_deg`) is italic, and each straight
+    # column of its letters within 25 deg of the line of text is
+    # re-stationed with its crosses along the stems (spacing over cos of
+    # the lean, as the text lean). Stems, diagonals and curves are the text
+    # lean's, unchanged. Layout, judged in the preview (Kent 2026-10-22).
+    # Built OFF (Kent flips); False never sets the italic words, so stage 7
+    # runs exactly as before. Tests: `tests/test_column_italic_lean.py`.
+    lettering_columns_italic_lean: bool = False
     # Under `lettering_columns`, each satin column's pull compensation is a
     # function of ITS OWN drawn stroke width, the way the professional's
     # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the
