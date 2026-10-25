@@ -240,6 +240,24 @@ def test_the_cross_underlay_presets_agree_across_the_engines():
             "cross_tatami" if f.id in CROSS_UNDERLAY_FABRICS else f.fill_underlay)
 
 
+def test_the_pro_measured_values_agree_across_the_engines():
+    """`cfg.pro_measured_values` / `proMeasuredValues`, built OFF 2026-10-23:
+    the same three numbers on the same presets in both engines."""
+    from digitizer_core import fabrics as py
+
+    src = FABRICS_JS.read_text(encoding="utf-8")
+    block = re.search(r"const PRO_MEASURED = \{(.*?)\n  \};", src, re.S)
+    assert block, "no `const PRO_MEASURED = {...}` in src/fabrics.js"
+    b = block.group(1)
+    assert sorted(re.findall(r'"([a-z_]+)"', re.search(r"fabrics: \[([^\]]*)\]", b).group(1))) \
+        == sorted(py.PRO_VALUE_FABRICS)
+    assert float(re.search(r"fillStitchMm: ([\d.]+)", b).group(1)) == py.PRO_FILL_STITCH_MM
+    assert float(re.search(r"beanStitchMm: ([\d.]+)", b).group(1)) == py.PRO_BEAN_STITCH_MM
+    js_sat = {k: float(v) for k, v in re.findall(r"(\w+): ([\d.]+)", re.search(
+        r"satinSpacingMm: \{([^}]*)\}", b).group(1))}
+    assert js_sat == py.PRO_SATIN_SPACING_MM
+
+
 def test_the_cutaway_threshold_agrees_across_the_engines():
     """`CUTAWAY_STITCHES` (src/fabrics.js `hoopingAdvice` — the Studio's
     hooping card and the PDF worksheet) and `preflight.STITCHES_CUTAWAY_MIN`

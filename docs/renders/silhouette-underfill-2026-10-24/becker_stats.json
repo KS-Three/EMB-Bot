@@ -1,0 +1,133 @@
+{
+ "pro": {
+  "file": "beckers beanie.DST",
+  "stitches": 11411,
+  "trims": 11,
+  "colour_changes": 5,
+  "thread_colours": 0,
+  "width_mm": 79.8,
+  "height_mm": 50.1,
+  "blocks": [
+   {
+    "block": 0,
+    "stitches": 2339,
+    "ring": 0.99,
+    "holes": 0.99,
+    "silhouette": 0.99
+   },
+   {
+    "block": 1,
+    "stitches": 2226,
+    "ring": 0.0,
+    "holes": 0.0,
+    "silhouette": 0.0
+   },
+   {
+    "block": 2,
+    "stitches": 1928,
+    "ring": 0.35,
+    "holes": 0.5,
+    "silhouette": 0.44
+   },
+   {
+    "block": 3,
+    "stitches": 1167,
+    "ring": 0.37,
+    "holes": 0.12,
+    "silhouette": 0.22
+   },
+   {
+    "block": 4,
+    "stitches": 1807,
+    "ring": 0.4,
+    "holes": 0.51,
+    "silhouette": 0.47
+   },
+   {
+    "block": 5,
+    "stitches": 1928,
+    "ring": 0.62,
+    "holes": 0.16,
+    "silhouette": 0.34
+   }
+  ],
+  "registration_iou": 0.967
+ },
+ "rings": [
+  {
+   "ring": "S10625c97",
+   "host": "S51503c0c",
+   "ring_mm2": 730.2,
+   "outline_mm2": 1749.3,
+   "merged": 4,
+   "inner": 8,
+   "host_is_ring": false
+  }
+ ],
+ "off": {
+  "stitches": 11501,
+  "trims": 21,
+  "colour_changes": 2,
+  "thread_colours": 0,
+  "width_mm": 83.5,
+  "height_mm": 53.9,
+  "travel_mm": 498.1,
+  "exposed_mm": 74.6,
+  "blocks": [
+   {
+    "block": 0,
+    "stitches": 2704,
+    "ring": 0.94,
+    "holes": 0.94,
+    "silhouette": 0.94
+   },
+   {
+    "block": 1,
+    "stitches": 2763,
+    "ring": 0.19,
+    "holes": 0.96,
+    "silhouette": 0.65
+   },
+   {
+    "block": 2,
+    "stitches": 6008,
+    "ring": 0.98,
+    "holes": 0.24,
+    "silhouette": 0.54
+   }
+  ]
+ },
+ "on": {
+  "stitches": 13726,
+  "trims": 20,
+  "colour_changes": 2,
+  "thread_colours": 0,
+  "width_mm": 83.5,
+  "height_mm": 53.9,
+  "travel_mm": 487.8,
+  "exposed_mm": 54.1,
+  "blocks": [
+   {
+    "block": 0,
+    "stitches": 2704,
+    "ring": 0.94,
+    "holes": 0.94,
+    "silhouette": 0.94
+   },
+   {
+    "block": 1,
+    "stitches": 4910,
+    "ring": 1.0,
+    "holes": 1.0,
+    "silhouette": 1.0
+   },
+   {
+    "block": 2,
+    "stitches": 6087,
+    "ring": 0.98,
+    "holes": 0.26,
+    "silhouette": 0.56
+   }
+  ]
+ }
+}

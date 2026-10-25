@@ -1577,6 +1577,24 @@ class PipelineConfig:
     # (ruling 2026-10-22: judged in the preview). OFF is the engine as it
     # was, byte for byte.
     enclosed_white_keyline: bool = False
+    # The pro's silhouette under-fill (`silhouette_underfill.py`, built OFF
+    # 2026-10-24, Kent: "Build under-fill, OFF"). Read per colour block on
+    # MFab hat (his black covers our band 1.00 and its holes 0.82) and the
+    # Becker beanie (his letter colour covers 0.91 of the silhouette, 0.74
+    # of our ring), and Fremont hat (his ground covers 0.92 of its outline):
+    # a RING whose holes hold other shapes gets its outline, holes closed,
+    # filled once underneath in the colour covering most of that outline
+    # (the ring counts for its own), and the ring and its contents sew on
+    # top; inner shapes of the under-fill's colour merge into it. At
+    # today's defaults it reads a ring on MFab, Fremont, Bridge and the
+    # Drone (where no pro block covers over 0.51). On MFab that sews the white
+    # keyline ON TOP of the black -- the reverse of `enclosed_white_keyline`'s
+    # order, Kent's flip. Becker's letters are only sewn with
+    # `sew_enclosed_white`, so without it Becker has no ring to fill. No per-
+    # shape width rule exists for this (`tools/tier_census.py`, kappa 0.170
+    # today vs 0.198 for the best). Layout (ruling 2026-10-22: judged in the
+    # preview). OFF is the engine as it was, byte for byte.
+    silhouette_underfill: bool = False
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
@@ -2991,6 +3009,28 @@ class PipelineConfig:
     # None: the floor alone. A CANDIDATE (gate 1): 1.45, the pro's on
     # Fremont, unsewn here.
     small_text_cap_bold_scale: float | None = None
+    # With `small_text_cap_letter_gap_mm`: the re-set reaches the two kinds
+    # of small line it refused as `no_room` (2026-10-24, L8; census
+    # `tools/small_text_floor_census.py`). Across the paired jobs the pro
+    # sews NO line under ~4 mm as drawn, as a run or not at all: ProSeal's
+    # "SPRAY FOAM + COATINGS" goes 3.0 -> 4.55 mm satin on the 86 mm hat and
+    # 2.6 -> 4.0 on the 75 mm beanie, inside the same design height (63.3
+    # against our 63.1 mm). Ours stayed a 3 mm bean line under the re-set,
+    # for reasons this fixes: (1) the design's EDGE is tested against the
+    # letters, not their `CLEAR_MM` halo, and gives way by half the line's
+    # growth -- a line on the bottom edge could never fit, at any growth
+    # (the pro's sews 0.6 mm past it); the halo still clears every shape;
+    # (2) a letter-sized shape standing on the line's band INSIDE its span
+    # joins the line whatever its thread, as `_join_line_ends` already does
+    # past either end -- ProSeal's A of SPRAY traces in a thread of its own
+    # and blocked its own line; (3) clusters of one line whose hulls overlap
+    # are placed as one (the beanie's COATINGS is two interleaved clusters),
+    # and words of one line keep a sewn letter gap apart, not two halos.
+    # Measured: ProSeal hat tagline 3.15 mm bean -> 4.35-4.45 satin (pro
+    # 4.55), beanie 2.8 -> 3.65-3.7 (pro 4.0); Fremont and Drone DSTs
+    # byte-identical. Geometry, not fabric: where the letters go. Tests:
+    # `tests/test_small_text_reach_edges.py`. False: today, byte for byte.
+    small_text_cap_reach_edges: bool = False
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
@@ -4303,6 +4343,15 @@ class PipelineConfig:
     # (renders under docs/renders/edge-cap-bean-pitch/). A value <= 0 reads
     # as None. tests/test_edge_cap_bean_pitch.py pins OFF by md5.
     edge_cap_bean_pitch_mm: float | None = None
+    # The pro's own measured values (built OFF 2026-10-23; ROADMAP gate 1, a
+    # sew-out flips it). On a hat, left-chest or beanie preset it sews fill
+    # stitches at 3.49 mm (3.0 today), satin at 0.37 mm (0.35 on a beanie)
+    # against 0.40, and bean stitches (bean letters, the bean edge cap) at
+    # 0.95 against 0.73. An explicit `fill_stitch_mm`, `bean_letter_stitch_mm`
+    # or `edge_cap_bean_pitch_mm` still wins. Values and sources:
+    # `fabrics.pro_values_for`, docs/settings-vs-pro-2026-10-21.md rows 1, 2,
+    # 11, 19. False is the shipped plan byte for byte.
+    pro_measured_values: bool = False
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
