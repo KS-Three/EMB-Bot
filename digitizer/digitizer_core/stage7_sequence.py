@@ -2186,15 +2186,19 @@ def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
     apart: the review's own angle, the global, the design angle
     (`cfg.design_angle`), stage 5's compensation axis, else None (stage 6
     derives its own)."""
+    if cfg.sew_enclosed_white_fields_fill and p.region.meta.get("sew_enclosed_white"):
+        # The pro's white faces. A face sits in its word's house-angle group,
+        # whose angle the text tagger writes into this same `fill_angle_deg`
+        # slot (Becker: 0 deg, the faces filled flat on 97% of rows), so only
+        # the REVIEW's own angle and the global one outrank it here.
+        ov = (cfg.shape_overrides or {}).get(p.region.shape_id) or {}
+        if ov.get("fill_angle_deg") is None and cfg.fill_angle_deg is None:
+            return machine.WHITE_FIELD_FILL_ANGLE_DEG
     shape_angle = p.region.meta.get("fill_angle_deg")
     if shape_angle is not None:
         return float(shape_angle)
     if cfg.fill_angle_deg is not None:
         return cfg.fill_angle_deg
-    if cfg.sew_enclosed_white_fields_fill and p.region.meta.get("sew_enclosed_white"):
-        # the pro's white faces, ahead of the design angle: on Becker that
-        # convention read 0 deg and the faces filled flat (97% of rows)
-        return machine.WHITE_FIELD_FILL_ANGLE_DEG
     design = p.region.meta.get("design_angle_deg")
     if design is not None:
         return float(design)

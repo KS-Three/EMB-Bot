@@ -94,14 +94,21 @@ def test_on_the_face_leaves_the_lane_and_fills_at_the_pros_angle():
     assert _median_off_white_angle(runs) < 3.0
 
 
-def test_on_the_pros_angle_beats_the_design_angle_but_not_the_review():
-    # Becker's design angle read 0 and filled the faces flat (2026-10-25)
-    runs, _ = _plan(_face(sew_enclosed_white="field", design_angle_deg=0.0),
+def test_on_the_pros_angle_beats_the_house_angle_but_not_the_review():
+    # The text tagger writes the word's house angle into `fill_angle_deg`;
+    # Becker's read 0 and filled the faces flat (2026-10-25)
+    runs, _ = _plan(_face(sew_enclosed_white="field", fill_angle_deg=0.0, design_angle_deg=0.0),
                     sew_enclosed_white_fields_fill=True)
     assert _median_off_white_angle(runs) < 3.0
+    # the review's own angle (`regions.apply_shape_overrides` writes the same slot)
     runs, _ = _plan(_face(sew_enclosed_white="field", fill_angle_deg=90.0),
-                    sew_enclosed_white_fields_fill=True)
-    assert _median_off_white_angle(runs) > 45.0          # the review's own angle
+                    sew_enclosed_white_fields_fill=True,
+                    shape_overrides={"Sface": {"fill_angle_deg": 90.0}})
+    assert _median_off_white_angle(runs) > 45.0
+    # and the design-wide one
+    runs, _ = _plan(_face(sew_enclosed_white="field"), sew_enclosed_white_fields_fill=True,
+                    fill_angle_deg=90.0)
+    assert _median_off_white_angle(runs) > 45.0
 
 
 def test_on_a_letter_without_the_option_is_untouched():
