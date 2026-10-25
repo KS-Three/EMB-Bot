@@ -212,6 +212,19 @@ FLAGS: dict[str, dict] = {
                 "17,568 / 19), MFab LC 16,542 / 72 -> 16,658 / 44 (pro 15,786 / 20), Becker beanie "
                 "11,501 / 21 -> 13,726 / 20 (pro 11,411 / 11). White sews ON TOP of black on MFab "
                 "(the reverse of #1059's order): that order is Kent's call."},
+    # ---- wave 3 (2026-10-25)
+    "border_from_outline_line_art_guard": {
+        "base": {"border_from_outline": True},
+        "sets": {"border_from_outline": True, "border_from_outline_line_art_guard": True},
+        "fixtures": ["bridge_hat", "bridge_lc", "becker_hat_small"],
+        "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1078,
+        "note": "Acts only with border_from_outline (ON since #1070), so OFF is today's engine. "
+                "PR #1078: Bridge's bowl drawing stops reading as an outline -- hat and LC sew "
+                "byte-identical to border_from_outline OFF; bowl window spike rays 22 -> 1 (hat), "
+                "21 -> 1 (LC), garment pinholes at the anchor 2 -> 0 (hat). Becker, MFab, Fremont "
+                "byte-identical. The pro's Bridge art carried no drawing: nothing of his to "
+                "compare in the bowl. Bridge's pro files are on G:; set PRO_PARITY_ROOT when it "
+                "is unmounted."},
 }
 
 
