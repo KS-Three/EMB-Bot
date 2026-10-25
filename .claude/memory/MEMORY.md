@@ -126,7 +126,8 @@ the OLDEST lines whole to the archive.
 - [White faces fill](white-faces-fill-2026-10-25.md) — sew_enclosed_white made Becker 8.4x slower (white faces sewed as Column letters); `sew_enclosed_white_fields_fill` OFF fills them at 22°; house angle hides in fill_angle_deg
 - [White re-rule packet](white-rerule-packet-2026-10-25.md) — under border_from_outline, white ALONE fills Becker's faces (0°) at ≤1.39x CPU; fields_fill costs up to 5.6x (MFab lc); keyline inert; census `tools/enclosed_pro_census.py` 29/31
 - [Wide letters: MFab's W](wide-letters-mfab-w-2026-10-23.md) — W never reached the lane: tagger aspect 1.4 (W+E touch, 2.55; W alone 1.58); `text_cluster_wide_letters` OFF; measure MFab with main's rembg
-- [Word legibility instrument](word-legibility-instrument-2026-10-24.md) — `tools/word_legibility.py`: per word, ours vs pro, chance-corrected cc; MFab + pro small words not locatable (n/loc, never 0); coarse, saturates at 1.00
+- [Word legibility instrument](word-legibility-instrument-2026-10-24.md) — `tools/word_legibility.py`: per word, ours vs pro, chance-corrected cc; n/loc is never 0; its two holes are closed in the reach note
+- [Word legibility reach](word-legibility-reach-2026-10-25.md) — all 17 pinned words located both files; `reach` (octaves, from cc) moves where cc sits at 1.00; the CROP's neighbours made the pro's small words unreadable; MFab/BECKER not verdicts
 - [L1 one tagger](word-tagger-l1-2026-10-08.md) — BUILT OFF `cfg.lettering_words`; kappa 0.907 vs text cluster 0.881 (in-sample); Kent: AFTER better under the Column lane (10-08)
 - [Worktree guard judges targets](worktree-guard-judges-targets-2026-10-04.md) — rm/mv guard judges the resolved TARGET; own-lane deletes allowed (Kent 10-04)
 - [Worktree session: the harness guard](worktree-session-harness-guard-2026-09-17.md) — `digitizer` spells `git`: quotes, `cd` chains refused; venv by 8.3 `CLAUDE~4`; preview_start reads MAIN
