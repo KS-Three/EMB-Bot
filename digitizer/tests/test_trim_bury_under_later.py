@@ -29,7 +29,7 @@ from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import _bury_trims_under_later, sequence
 from digitizer_core.stitches import StitchBlock, StitchRun
 
-from .conftest import PLAN_CFG_KW
+from .conftest import PLAN_CFG_KW, PRE_FLIP
 
 FABRIC = fabric_for_garment(PLAN_CFG_KW["garment_id"])   # trims at 3.0 mm
 HALF = machine.COVERAGE_THREAD_W_MM / 2.0
@@ -238,6 +238,9 @@ def becker_hat():
     from .conftest import TESTDATA
     data = (TESTDATA / "becker_marine_logo.png").read_bytes()
     conf = PipelineConfig(**_parse_config(json.dumps(request(101.9, "hat_front"))))
+    # held on the engine this was measured on: `border_from_outline` (ON since
+    # 2026-10-24) re-routes Becker's keyline as loops and leaves no buried hop
+    conf = replace(conf, border_from_outline=PRE_FLIP["border_from_outline"])
     gen = build_generation(_decode(data), conf, exif_source=data)
     out = []
     for on in (False, True):
