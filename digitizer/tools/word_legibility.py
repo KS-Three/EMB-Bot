@@ -113,7 +113,8 @@ BASELINE_SEED = 7
 WORDS_FILE = DIGITIZER / "testdata" / "word_legibility_words.json"
 
 #: job -> where the art and the pro's file live. "testdata:" is committed,
-#: "kent:" is the gitignored `scratch_kent/` folder (EMB_SCRATCH_KENT).
+#: "kent:" is the gitignored `scratch_kent/` folder (EMB_SCRATCH_KENT),
+#: "path:" absolute. `main` adds every job `tools.pro_intake` registered.
 JOBS: dict[str, dict] = {
     "fremont": {"art": "testdata:photo/logo_hotel_fremont.webp", "garment": "hat_front",
                 "pro": "kent:Embroidery Files/Hotel Fremont/Hotel Hat/HOTEL FREMONT HAT.PES"},
@@ -198,11 +199,25 @@ def resolve(spec: str) -> Path:
     kind, _sep, rel = spec.partition(":")
     if kind == "testdata":
         return DIGITIZER / "testdata" / rel
+    if kind == "path":
+        return Path(rel)
     root = kent_root()
     if root is None or not (root / rel).exists():
         raise SystemExit(f"{rel!r} not found: it is a gitignored third-party file. Set EMB_SCRATCH_KENT to "
                          f"the folder that holds 'Embroidery Files/' and 'proseal.jpg'.")
     return root / rel
+
+
+def registered_jobs() -> dict[str, dict]:
+    """The pairs `tools.pro_intake` registered (its gitignored registry beside
+    the job folders), in JOBS' shape; the pro's PES when the pair has one (a
+    DST draws one black block)."""
+    from tools.pro_intake import pair_record, registered_pairs
+    out = {}
+    for slug, pro, art, gid in registered_pairs():
+        pes = pair_record(slug)["pes"]
+        out[slug] = {"art": f"path:{art}", "garment": gid or "hat_front", "pro": f"path:{pes or pro}"}
+    return out
 
 
 def pinned_words(job: str) -> list[dict]:
@@ -669,6 +684,7 @@ def main(argv=None) -> int:
     ap.add_argument("--dump", type=Path, help="write every OCR crop here")
     ap.add_argument("--no-ocr", action="store_true")
     a = ap.parse_args(argv)
+    JOBS.update({j: s for j, s in registered_jobs().items() if j not in JOBS})
     if a.list:
         for j, spec in JOBS.items():
             print(j, spec["garment"], spec["art"], "|", spec["pro"], "|", [w["text"] for w in pinned_words(j)])

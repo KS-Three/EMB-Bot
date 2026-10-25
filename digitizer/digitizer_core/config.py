@@ -1577,6 +1577,48 @@ class PipelineConfig:
     # (ruling 2026-10-22: judged in the preview). OFF is the engine as it
     # was, byte for byte.
     enclosed_white_keyline: bool = False
+    # Border from the art's outline (`digitizer_core/art_outline.py`, built
+    # OFF 2026-10-24). The pro's border choice is not a stroke threshold: he
+    # borders a shape when the ART draws an outline round it (BECKER's faces
+    # in their black keyline, MFab's M-FAB in its white one) and satins the
+    # same stroke when it does not (MARINE). Census `tools/outline_census.py`:
+    # kappa 0.76 over 586 shapes on ten paired files. ON, an outline (a region
+    # whose hole holds a body at least as wide as the outline is thick; a
+    # letter's counters, sewn or not, excluded) sews as one satin
+    # loop round each hole at the pro's width -- one per outline, the art
+    # outline's own thickness clamped to `machine.OUTLINE_WIDTH_MM` (1.5-2.5),
+    # out past a thinner art outline but never into a body; where the art
+    # draws it thicker the rest is filled under. Its bodies sew as plain
+    # fills under it, never satin. Wins over `border_by_size` on a shape both
+    # read (no second ring in the body's own colour) and over
+    # `enclosed_white_keyline` on a keyline band that holds an outlined body.
+    # Layout (ruling 2026-10-22: judged in the preview).
+    # **ON since 2026-10-24, Kent's flip** from the wave-2 flip sheet (Becker
+    # small 8,512 / 21 -> 11,100 / 25 with white sewn, faces fill, loops on
+    # top; pro 8,694 / 40). False is the engine as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP pins it False.
+    border_from_outline: bool = True
+    # A white FIELD that `sew_enclosed_white` sews is never a letter
+    # (2026-10-25, built OFF; Kent: "Ship 3, fix white next"). Becker's five
+    # white BECKER faces sit inside the word's outline and carry its text
+    # tag, so stage 7 sewed each one -- 200-370 mm2, up to 27 x 34 mm -- as a
+    # Column-lane letter: 8.4x the digitize time at 100 mm (2,848 s against
+    # 340 s, cProfile; 2,590 s in `outline_cut._refine` / `_fold_refine` /
+    # `pair_rails`), and the wrong construction, since the pro sews those
+    # faces as a 22 deg tatami under the outline. ON, a region
+    # `sew_enclosed_white` marks is not lettering (`columns.is_lettering`),
+    # and on the auto tier it sews as a fill (`stage7_sequence._white_field_fill`;
+    # a forced rung, so a field too narrow to fill falls back to the ladder)
+    # at `machine.WHITE_FIELD_FILL_ANGLE_DEG`, unless the review or the
+    # global `fill_angle_deg` says otherwise -- ahead of the word's house
+    # angle, which the text tagger writes on every member of a house group
+    # and which read 0 on Becker (`stage7_sequence._fill_angle_for`). A
+    # review's own tier still wins. It already sews in its own front
+    # layer, so the outline lands on top. Layout (ruling 2026-10-22: judged
+    # in the preview). Read only with `sew_enclosed_white`. False is the
+    # engine as it was, byte for byte. Tests:
+    # `tests/test_white_fields_fill.py`.
+    sew_enclosed_white_fields_fill: bool = False
     # The pro's silhouette under-fill (`silhouette_underfill.py`, built OFF
     # 2026-10-24, Kent: "Build under-fill, OFF"). Read per colour block on
     # MFab hat (his black covers our band 1.00 and its holes 0.82) and the
@@ -3034,8 +3076,12 @@ class PipelineConfig:
     # Measured: ProSeal hat tagline 3.15 mm bean -> 4.35-4.45 satin (pro
     # 4.55), beanie 2.8 -> 3.65-3.7 (pro 4.0); Fremont and Drone DSTs
     # byte-identical. Geometry, not fabric: where the letters go. Tests:
-    # `tests/test_small_text_reach_edges.py`. False: today, byte for byte.
-    small_text_cap_reach_edges: bool = False
+    # `tests/test_small_text_reach_edges.py`. **ON since 2026-10-24, Kent's
+    # flip** from the wave-2 flip sheet; it acts only while the re-set
+    # (`small_text_cap_letter_gap_mm`) is set, so with that None it changes
+    # nothing. False: the re-set as #1029 built it, byte for byte;
+    # `tests/conftest.py` PRE_FLIP pins it False.
+    small_text_cap_reach_edges: bool = True
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose

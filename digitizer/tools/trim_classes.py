@@ -43,7 +43,8 @@ CLASSES = ("colour", "under_later", "on_work", "bare_letters", "bare_other")
 
 
 def classify(path) -> list[dict]:
-    """One row per trim: class, hop length (mm), the two coverage fractions."""
+    """One row per trim: class, hop length (mm), the two coverage fractions,
+    and the hop's two ends `a` -> `b` (mm, the file's own frame, y down)."""
     import cv2
     import numpy as np
     import pystitch
@@ -129,7 +130,9 @@ def classify(path) -> list[dict]:
             else:
                 cls = "bare_other"
             out.append({"cls": cls, "len_mm": round(length, 2),
-                        "f_later": round(later, 2), "f_covered": round(anywhere, 2)})
+                        "f_later": round(later, 2), "f_covered": round(anywhere, 2),
+                        "a": [round(a[0], 2), round(a[1], 2)],
+                        "b": [round(b[0], 2), round(b[1], 2)]})
             i = j
             continue
         i += 1

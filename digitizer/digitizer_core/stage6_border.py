@@ -348,6 +348,23 @@ def _clamped_cross(px: float, py: float, nx: float, ny: float, width: float,
     return (px, py), 0.0
 
 
+def _exact_cross(px: float, py: float, nx: float, ny: float, width: float,
+                 clamp) -> float:
+    """How far the cross from (px, py) along (nx, ny) stays inside `clamp`,
+    up to `width` mm: the length of the ray's piece that starts at the rail."""
+    ray = LineString([(px, py), (px + nx * width, py + ny * width)])
+    part = ray.intersection(clamp)
+    best = 0.0
+    for g in getattr(part, "geoms", [part]):
+        if g.is_empty or g.geom_type != "LineString":
+            continue
+        a, b = g.coords[0], g.coords[-1]
+        da, db = math.dist(a, (px, py)), math.dist(b, (px, py))
+        if min(da, db) < 1e-6:
+            best = max(best, da, db)
+    return best
+
+
 def _loop_stations(pts: list[tuple[float, float]], total: float, step: float,
                    start: int, overlap_mm: float,
                    overlap_stitches: int | None = None) -> list[int | float]:
@@ -432,7 +449,8 @@ def _pick_start(pts: list[tuple[float, float]], radii: np.ndarray,
 def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
                 width: float, inside, entry: tuple[float, float] | None,
                 k_tan: int, overlap_stitches: int | None = None,
-                clamp=None) -> tuple[list[tuple[float, float]], int, int]:
+                clamp=None, exact: bool = False
+                ) -> tuple[list[tuple[float, float]], int, int]:
     """One closed circuit as a satin column. -> (points, crosses, clamped).
 
     Closure overlap is `machine.BORDER_CLOSURE_OVERLAP_MM` (a distance) unless
@@ -442,6 +460,12 @@ def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
     `clamp`, when given, is what a cross must stay inside instead of `inside`
     (which still decides the side): `keyline_runs`' column may reach under
     the thread sewn later. None is every other caller, unchanged.
+
+    `exact`: a cross is cut where it leaves `clamp` (a plain geometry then,
+    not a prepared one), not shortened in `_CLAMP_STEPS`' coarse fractions --
+    `cfg.border_from_outline`'s loop on a keyline thinner than the pro's
+    width keeps the keyline's full width, where the steps cost up to 15%.
+    False is every other caller, unchanged.
     """
     clamp = inside if clamp is None else clamp
     n = len(ring_pts)
@@ -457,7 +481,11 @@ def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
         px, py = ring_pts[i]
         tx, ty = tans[i]
         nx, ny = -ty * sign, tx * sign
-        q, w = _clamped_cross(px, py, nx, ny, width, clamp)
+        if exact:
+            w = _exact_cross(px, py, nx, ny, width, clamp)
+            q = (px + nx * w, py + ny * w)
+        else:
+            q, w = _clamped_cross(px, py, nx, ny, width, clamp)
         outer.append((px, py))
         inner.append(q)
         widths.append(w)
@@ -892,7 +920,7 @@ def _looped_holes(band) -> list[Polygon]:
 def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | None,
                  trim_at_mm: float, width_mm: float | None = None,
                  density_mm: float | None = None,
-                 underlay: bool = False) -> tuple[list[StitchRun], dict]:
+                 underlay: bool = False, holes=None) -> tuple[list[StitchRun], dict]:
     """A keyline band as one satin loop round each of its holes. -> (runs,
     report).
 
@@ -910,6 +938,11 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
     satin column of this width takes; the skeleton it replaces carried a
     zigzag. False sews the loops bare.
 
+    `holes`, when given, is the loops to sew as [(hole polygon, width mm)]
+    instead of every looped hole at `width_mm`, each cross cut exactly where
+    it leaves `reach` (`_satin_loop`'s `exact`) -- `cfg.border_from_outline`,
+    `outline_holes`. None is `cfg.enclosed_white_keyline`'s call, unchanged.
+
     Report keys: `loops`, `crosses`, `clamped`, `jumps`, `empty`.
     """
     report = {"loops": 0, "crosses": 0, "clamped": 0, "jumps": 0, "empty": True}
@@ -919,7 +952,12 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
     half = width / 2.0
     side = prep(band.buffer(_SLACK_MM))
     clamp = prep((reach if reach is not None else band).buffer(_SLACK_MM))
-    rings = [list(h.exterior.coords) for h in _looped_holes(band)]
+    exact = holes is not None
+    if exact:
+        clamp = (reach if reach is not None else band).buffer(_SLACK_MM)
+    else:
+        holes = [(h, width) for h in _looped_holes(band)]
+    rings = [(list(h.exterior.coords), float(w)) for h, w in holes]
     runs: list[StitchRun] = []
     cursor = entry
     while rings:
@@ -927,15 +965,17 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
             i = 0
         else:
             i = min(range(len(rings)), key=lambda j: (
-                round(LineString(rings[j]).distance(Point(cursor)), 6), j))
-        coords = rings.pop(i)
+                round(LineString(rings[j][0]).distance(Point(cursor)), 6), j))
+        coords, width = rings.pop(i)
+        half = width / 2.0
         n = max(8, int(round(LineString(coords).length / step)))
         ring_pts, total = _ring_arc_samples(coords, n)
         if not ring_pts:
             continue
         k_tan = max(1, int(round(half / step)))
         pts, crosses, clamped = _satin_loop(ring_pts, total, total / n, width,
-                                            side, cursor, k_tan, clamp=clamp)
+                                            side, cursor, k_tan, clamp=clamp,
+                                            exact=exact)
         if len(pts) < 2:
             continue
         jump = trim = False
@@ -980,13 +1020,17 @@ def _keyline_centre(pts: list[tuple[float, float]]) -> list[tuple[float, float]]
             for i in range(k + 1)]
 
 
-def keyline_rest(band, width_mm: float, overlap_mm: float, min_dim_mm: float) -> list:
+def keyline_rest(band, width_mm: float, overlap_mm: float, min_dim_mm: float,
+                 looped=None) -> list:
     """The parts of `band` no keyline loop reaches (further than `width_mm`
     from every looped hole), grown `overlap_mm` back under the loops, that
     are at least `min_dim_mm` across -- the fill sewn under the keyline.
-    Empty on MFab at 2.1 mm (1.4 mm² unreached, in specks)."""
-    looped = _looped_holes(band)
-    rest = (band.difference(unary_union([h.buffer(width_mm) for h in looped]))
+    Empty on MFab at 2.1 mm (1.4 mm² unreached, in specks). `looped`: the
+    loops as `outline_holes` gives them, [(hole, width mm)], each hole
+    reaching its own width; None is every looped hole at `width_mm`."""
+    if looped is None:
+        looped = [(h, width_mm) for h in _looped_holes(band)]
+    rest = (band.difference(unary_union([h.buffer(w) for h, w in looped]))
             if looped else band)
     out = []
     for part in _parts(rest):
@@ -995,6 +1039,23 @@ def keyline_rest(band, width_mm: float, overlap_mm: float, min_dim_mm: float) ->
         grown = part.buffer(overlap_mm).intersection(band)
         out.extend(_parts(grown))
     return out
+
+
+def outline_holes(outline, bodies: list[tuple[Polygon, float]],
+                  rest_width_mm: float) -> list[tuple[Polygon, float]]:
+    """The loops `cfg.border_from_outline` sews on an art outline: every
+    looped hole of `outline` (`_looped_holes`) as (hole, width) -- a hole
+    holding an outlined body (`bodies`: the art_outline pass's holes, each
+    with the outline's width) at that width, the widest where two bodies
+    share one (MFab's F and hyphen), and every other looped hole at
+    `rest_width_mm`, so the band round a letter the rule does not border
+    (MFab's AND WELDING LLC) still sews as the keyline loops do. Holes match
+    on their rings, not object identity: the pass read the same polygon."""
+    want: dict = {}
+    for hole, w in bodies:
+        key = hole.exterior.wkb
+        want[key] = max(want.get(key, 0.0), float(w))
+    return [(h, want.get(h.exterior.wkb, rest_width_mm)) for h in _looped_holes(outline)]
 
 
 EDGE_CAP_STYLES = ("none", "bean", "satin")
