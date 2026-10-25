@@ -64,3 +64,13 @@ def test_uncut_run_never_gets_a_tie_in():
     b.runs[1].trim = False                      # a float, not a cut
     stitches.apply_ties(b.runs)
     assert b.runs[1].tie_in_pts == 0
+
+
+def test_a_run_tied_twice_loses_both_locks():
+    # `cut_every_jump` can tie a run `apply_ties` already tied; the count must
+    # add up, or `drop_tie_ins` leaves the inner lock in front of the run.
+    b = _tied()
+    stitches.tie_in(b.runs[1])
+    assert b.runs[1].tie_in_pts == 8
+    assert stitches.drop_tie_ins([b]) == 12
+    assert b.runs[1].points[:3] == [(20.0, 0.0), (23.0, 0.0), (26.0, 0.0)]
