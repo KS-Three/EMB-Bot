@@ -1588,9 +1588,10 @@ class PipelineConfig:
     # `sew_enclosed_white` marks is not lettering (`columns.is_lettering`),
     # and on the auto tier it sews as a fill (`stage7_sequence._white_field_fill`;
     # a forced rung, so a field too narrow to fill falls back to the ladder)
-    # at `machine.WHITE_FIELD_FILL_ANGLE_DEG`, unless the review, the global
-    # `fill_angle_deg` or the design angle says otherwise
-    # (`stage7_sequence._fill_angle_for`). A review's own tier still wins. It already sews in its own front
+    # at `machine.WHITE_FIELD_FILL_ANGLE_DEG`, unless the review or the
+    # global `fill_angle_deg` says otherwise -- ahead of the design angle,
+    # which read 0 on Becker (`stage7_sequence._fill_angle_for`). A
+    # review's own tier still wins. It already sews in its own front
     # layer, so the outline lands on top. Layout (ruling 2026-10-22: judged
     # in the preview). Read only with `sew_enclosed_white`. False is the
     # engine as it was, byte for byte. Tests:

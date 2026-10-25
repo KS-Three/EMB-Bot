@@ -2191,11 +2191,13 @@ def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
         return float(shape_angle)
     if cfg.fill_angle_deg is not None:
         return cfg.fill_angle_deg
+    if cfg.sew_enclosed_white_fields_fill and p.region.meta.get("sew_enclosed_white"):
+        # the pro's white faces, ahead of the design angle: on Becker that
+        # convention read 0 deg and the faces filled flat (97% of rows)
+        return machine.WHITE_FIELD_FILL_ANGLE_DEG
     design = p.region.meta.get("design_angle_deg")
     if design is not None:
         return float(design)
-    if cfg.sew_enclosed_white_fields_fill and p.region.meta.get("sew_enclosed_white"):
-        return machine.WHITE_FIELD_FILL_ANGLE_DEG     # the pro's white faces
     return p.stitch_angle_deg
 
 

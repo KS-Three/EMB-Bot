@@ -80,14 +80,28 @@ def test_off_the_face_is_a_column_letter():
     assert lane == 1
 
 
-def test_on_the_face_leaves_the_lane_and_fills_at_the_pros_angle():
-    runs, lane = _plan(_face(sew_enclosed_white="field"), sew_enclosed_white_fields_fill=True)
-    assert lane == 0
+def _median_off_white_angle(runs) -> float:
     angles = _row_angles(runs)
     assert len(angles) > 50, "a 16 x 24 mm face must sew as a fill"
     off = [min(abs(a - machine.WHITE_FIELD_FILL_ANGLE_DEG) % 180.0,
                180.0 - abs(a - machine.WHITE_FIELD_FILL_ANGLE_DEG) % 180.0) for a in angles]
-    assert sorted(off)[len(off) // 2] < 3.0, sorted(off)[len(off) // 2]
+    return sorted(off)[len(off) // 2]
+
+
+def test_on_the_face_leaves_the_lane_and_fills_at_the_pros_angle():
+    runs, lane = _plan(_face(sew_enclosed_white="field"), sew_enclosed_white_fields_fill=True)
+    assert lane == 0
+    assert _median_off_white_angle(runs) < 3.0
+
+
+def test_on_the_pros_angle_beats_the_design_angle_but_not_the_review():
+    # Becker's design angle read 0 and filled the faces flat (2026-10-25)
+    runs, _ = _plan(_face(sew_enclosed_white="field", design_angle_deg=0.0),
+                    sew_enclosed_white_fields_fill=True)
+    assert _median_off_white_angle(runs) < 3.0
+    runs, _ = _plan(_face(sew_enclosed_white="field", fill_angle_deg=90.0),
+                    sew_enclosed_white_fields_fill=True)
+    assert _median_off_white_angle(runs) > 45.0          # the review's own angle
 
 
 def test_on_a_letter_without_the_option_is_untouched():
