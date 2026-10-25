@@ -21,6 +21,7 @@ from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import sequence
+from tests.conftest import FLIP_2026_10_23
 
 FABRIC = fabric_for_garment("hat_front")
 
@@ -53,7 +54,8 @@ def becker():
 
 def _sew(regions, **kw):
     """`plan_stitches`' order: the pass (ON), stage 5, stage 7."""
-    cfg = PipelineConfig(underlay=False, **kw)
+    # OFF_MD5 was captured on main before the 2026-10-23 flips: pin them off (conftest)
+    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **kw})
     if cfg.silhouette_underfill:
         regions, _ = su.apply(regions)
     planned, _ = resolve_overlaps(regions, FABRIC, cfg)

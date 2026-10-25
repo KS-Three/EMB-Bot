@@ -138,8 +138,10 @@ def test_on_past_the_wide_bound_is_still_refused():
 
 # --- wiring and OFF ---------------------------------------------------------------
 
-def test_the_flag_is_off_and_the_pipeline_passes_nothing_when_off():
-    assert PipelineConfig().text_cluster_wide_letters is False
+def test_the_flag_is_on_and_the_pipeline_passes_nothing_when_off():
+    # ON by default since 2026-10-24 (Kent, the flip sheet); the function's own
+    # default stays off, so a caller that passes nothing gets the old door
+    assert PipelineConfig().text_cluster_wide_letters is True
     assert inspect.signature(tc.detect_text_clusters).parameters["wide_letters"].default is False
     from digitizer_core import pipeline
     src = inspect.getsource(pipeline)

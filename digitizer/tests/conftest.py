@@ -644,4 +644,16 @@ PRE_FLIP["clip_keep_pieces"] = False
 # rings its pull-grown polygon. False is the pre-flip cap. The tests ABOUT it
 # are in `tests/test_edge_cap.py`.
 PRE_FLIP["edge_cap_skip_bean_letters"] = False
+# Three lettering flags Kent flipped ON 2026-10-24 ("Flip it ON", then "Ship
+# 3, fix white next" on 2026-10-25), for the reason every entry above gives:
+# each moves lettering only. False is the engine before the flip. The tests
+# ABOUT them are `tests/test_column_text_lean.py`,
+# `tests/test_column_inside_stagger.py` and `tests/test_wide_letters.py`.
+PRE_FLIP["lettering_columns_text_lean"] = False
+PRE_FLIP["lettering_columns_inside_stagger"] = False
+PRE_FLIP["text_cluster_wide_letters"] = False
+#: The three, OFF: for a test that pins a number the flip moved but that is
+#: ABOUT something else (spread into a PipelineConfig).
+LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
+    "lettering_columns_text_lean", "lettering_columns_inside_stagger", "text_cluster_wide_letters")}
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

@@ -32,7 +32,7 @@ from digitizer_core import PipelineConfig, digitize, outline_cut
 from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.columns import lettering_columns_shape
 from tools import lowercase_angle as la
-from tests.conftest import own_thread_only
+from tests.conftest import LETTERING_2026_10_24_OFF, own_thread_only
 
 SHOULDERS = "ubgma"         # glyphs that fold OFF and come apart ON (120 mm)
 
@@ -457,8 +457,9 @@ def word():
     # The small stem and the scoped dot rung (ON 2026-10-20, Kent) re-walk
     # the e beside the i, which moves its one 45-degree fold; the fold-cut
     # arms were measured without them (conftest.PRE_FLIP).
-    kw = dict(target_width_mm=80.0, forced_class="flat", lettering_columns_small_stem=False, **FLIP_2026_10_23,
-              small_dot_rung=False, small_dot_rung_lettering=False)
+    kw = dict(target_width_mm=80.0, forced_class="flat", lettering_columns_small_stem=False,
+              small_dot_rung=False, small_dot_rung_lettering=False,
+              **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF)     # nor with the 2026-10-23/24 flips
 
     def boom(*_a, **_k):
         raise AssertionError("fold_cuts code reached with fold_cuts off")
