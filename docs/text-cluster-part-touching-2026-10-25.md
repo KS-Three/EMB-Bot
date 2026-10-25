@@ -29,9 +29,19 @@ lettering up to ~0.8 mm off. Trims are read from the DST only.
 `text_candidate` (the art leaves 0.45 mm between O and T, 0.77 mm between N
 and T). The fusion the 5-10 mm band (#1051) saw is in the SEWN file: the board's
 reader finds 11 components in ours (O and T are one, 14.25 mm wide) against
-the pro's 12 (`fremont_hat_OTE_off_on_pro.png`). That is stitch geometry --
-serif and pull reach in the Column lane -- not the tagger, and it is not built
-here. NT is apart in both files at main's defaults.
+the pro's 12 (`fremont_hat_OTE_off_on_pro.png`). That is stitch geometry,
+not the tagger, and it is not built here. NT is apart in both files at main's
+defaults.
+
+**Which: PULL, not serif reach.** The touch is the O's right flank against the
+T's hanging left serif. The trace leaves 0.62 mm there; our needle paths (the
+letters' own black block) come to 0.14 mm -- 0.48 mm closed, 0.40 of it the
+pull compensation both letters carry (`stitch_width_pull_mm` 0.4, 0.2 a side),
+and neither letter's needles reach more than 0.38 mm past its trace anywhere,
+so no serif overshoots. The board's reader paints 0.3 mm of thread and closes
+the last 0.14. The pro's needle paths stay 0.36 mm apart at the same place
+(his letters fitted locally). Pull compensation is ROADMAP gate 1 (fabric): a
+sew-out question, not a layout flip.
 
 **MFab's AND N is real, and there is a second miss beside it.**
 
