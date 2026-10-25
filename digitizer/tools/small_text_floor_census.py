@@ -232,9 +232,12 @@ def components(segs, kinds, box, art_h, cy):
     return list(keep.values()), idx
 
 
-def read_element(runs, box, art_h, cy):
+def read_element(runs, box, art_h, cy, keep=None):
     """One reader, one file: -> dict (see module doc). The letters' block is
-    the one with the most thread in letter-like components."""
+    the one with the most thread in letter-like components. `keep`, a dict,
+    is filled with `segs` / `kinds` (the line's own needle-down segments and
+    their kinds) and `comps` (its letter-like components' boxes), so a second
+    reader can read the SAME selection (`tools/lettering_board.py`)."""
     best = None
     for blk, segs in _segments(runs, box).items():
         kinds = seg_kinds(runs, segs)
@@ -245,6 +248,8 @@ def read_element(runs, box, art_h, cy):
     if best is None:
         return {"verdict": "DROPPED", "block": None}
     thread, blk, comps, segs, kinds = best
+    if keep is not None:
+        keep.update(segs=segs, kinds=kinds, comps=comps)
     hmax = max(c[3] - c[1] for c in comps)
     tall = sorted((c for c in comps if c[3] - c[1] >= TALL_FRAC * hmax), key=lambda c: c[0])
     h = statistics.median([c[3] - c[1] for c in tall])

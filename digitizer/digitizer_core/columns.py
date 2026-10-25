@@ -214,6 +214,8 @@ def is_lettering(region, cfg=None) -> bool:
     house-angle group (`set_lettering_house_angle`, `lettering_group`),
     which disagree on real logos (`tools/word_tagger_eval.py`)."""
     m = region.meta or {}
+    if getattr(cfg, "sew_enclosed_white_fields_fill", False) and m.get("sew_enclosed_white"):
+        return False        # a white field the option sews is never a letter
     if getattr(cfg, "lettering_words", False):
         tagged = bool(m.get("word_id"))
     else:
