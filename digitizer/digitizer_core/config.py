@@ -1577,6 +1577,27 @@ class PipelineConfig:
     # (ruling 2026-10-22: judged in the preview). OFF is the engine as it
     # was, byte for byte.
     enclosed_white_keyline: bool = False
+    # A white FIELD that `sew_enclosed_white` sews is never a letter
+    # (2026-10-25, built OFF; Kent: "Ship 3, fix white next"). Becker's five
+    # white BECKER faces sit inside the word's outline and carry its text
+    # tag, so stage 7 sewed each one -- 200-370 mm2, up to 27 x 34 mm -- as a
+    # Column-lane letter: 8.4x the digitize time at 100 mm (2,848 s against
+    # 340 s, cProfile; 2,590 s in `outline_cut._refine` / `_fold_refine` /
+    # `pair_rails`), and the wrong construction, since the pro sews those
+    # faces as a 22 deg tatami under the outline. ON, a region
+    # `sew_enclosed_white` marks is not lettering (`columns.is_lettering`),
+    # and on the auto tier it sews as a fill (`stage7_sequence._white_field_fill`;
+    # a forced rung, so a field too narrow to fill falls back to the ladder)
+    # at `machine.WHITE_FIELD_FILL_ANGLE_DEG`, unless the review or the
+    # global `fill_angle_deg` says otherwise -- ahead of the word's house
+    # angle, which the text tagger writes on every member of a house group
+    # and which read 0 on Becker (`stage7_sequence._fill_angle_for`). A
+    # review's own tier still wins. It already sews in its own front
+    # layer, so the outline lands on top. Layout (ruling 2026-10-22: judged
+    # in the preview). Read only with `sew_enclosed_white`. False is the
+    # engine as it was, byte for byte. Tests:
+    # `tests/test_white_fields_fill.py`.
+    sew_enclosed_white_fields_fill: bool = False
     # The pro's silhouette under-fill (`silhouette_underfill.py`, built OFF
     # 2026-10-24, Kent: "Build under-fill, OFF"). Read per colour block on
     # MFab hat (his black covers our band 1.00 and its holes 0.82) and the

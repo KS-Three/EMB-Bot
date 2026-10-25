@@ -649,6 +649,13 @@ BORDER_BY_SIZE_REACH_FRAC = 0.5
 # (Becker's B, two counters in a 5.4 mm field) far under it.
 KEYLINE_WIDTH_MM = 2.1
 KEYLINE_REACH_FRAC = 0.9
+# The row angle of a white FIELD the pro fills (`cfg.sew_enclosed_white_fields_fill`,
+# 2026-10-25): Becker's five white BECKER faces, his hat large DST, the long
+# stitches (3.0-3.8 mm) of the logo's top 55% -- 3,364 of 3,912 at 20-25 deg
+# in the file's own frame (`docs/lettering-10mm-up-2026-10-23.md` reads the
+# same faces as a 22 deg tatami at 0.15-0.17 mm pitch on all four Becker
+# files). A layout angle, judged in the preview, not a cloth constant.
+WHITE_FIELD_FILL_ANGLE_DEG = 22.0
 
 
 def border_by_size_width_mm(min_dim_mm: float) -> float:
