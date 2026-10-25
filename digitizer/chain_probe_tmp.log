@@ -1,0 +1,17 @@
+all15off 7.1
+only fill_turn_slant ON -> 7.1
+only trim_bury_under_later ON -> 7.1
+only tie_in_off ON -> 7.1
+only small_solids_satin ON -> 7.1
+only compact_solids_satin ON -> 7.1
+only satin_underlay_short_columns ON -> 4.99
+only fill_underlay_cross ON -> 7.1
+only small_text_cap_mm ON -> 7.1
+only small_text_cap_max_width_scale ON -> 7.1
+only small_text_cap_min_stroke_mm ON -> 7.1
+only small_text_cap_letter_gap_mm ON -> 7.1
+only small_text_cap_bold_scale ON -> 7.1
+only lettering_columns_small_bold ON -> 7.53
+only border_by_size ON -> 7.1
+only enclosed_alpha_hole_parts ON -> 7.1
+only lettering_columns_corner_fold ON -> 6.44
