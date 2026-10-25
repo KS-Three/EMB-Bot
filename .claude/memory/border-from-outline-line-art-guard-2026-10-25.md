@@ -1,12 +1,13 @@
 ---
 name: border-from-outline-line-art-guard-2026-10-25
-description: border_from_outline's live false positive is Bridge's hairline bowl drawing; guard `border_from_outline_line_art_guard` (OFF) = hairline AND leaves strokes. Thinness alone kills Machine's frame (pro widens it); dropped alone kills MFab. Pro's Bridge art had NO drawing.
+description: border_from_outline's live false positive is Bridge's hairline bowl drawing; guard `border_from_outline_line_art_guard` (Kent flipped ON 10-25) = hairline AND leaves strokes. Thinness alone kills Machine's frame (pro widens it); dropped alone kills MFab. Pro's Bridge art had NO drawing.
 metadata:
   type: project
 ---
 
 Task 9, 2026-10-25. Guard in `digitizer_core/art_outline.py`
-(`line_art_reading`, flag `cfg.border_from_outline_line_art_guard`, OFF),
+(`line_art_reading`, flag `cfg.border_from_outline_line_art_guard`, built
+OFF in #1078, ON since the flip below),
 tests `tests/test_outline_line_art_guard.py`, tool `tools/outline_census.py`
 (`measure --line-art-guard`, `defects`, `--guard` arms).
 
@@ -36,7 +37,12 @@ tests `tests/test_outline_line_art_guard.py`, tool `tools/outline_census.py`
 - The bowl's bodies include the anchor (black, the outline's own colour) in
   the LC: ON loops it into a bloated blob.
 
-**Why:** the defect is live on main since #1070; flipping the guard is Kent's.
+- **Kent flipped it ON 2026-10-25** ("Flip it ON", from #1078's bowl renders),
+  in the flip PR off `claude/flip-line-art-guard`. `PRE_FLIP` pins it False.
+  No pin moved back: every test #1070 re-pinned holds `border_from_outline`
+  OFF, where the guard is inert, and no Bridge test pinned the #1070 bytes.
+
+**Why:** the defect was live on main from #1070 until the flip.
 **How to apply:** read a "thin outline" claim against Machine's frame before
 building on line weight. Related: [[border-from-outline-2026-10-24]],
 [[flip-sheet-wave2-2026-10-24]], [[layout-judged-in-preview-2026-10-22]].

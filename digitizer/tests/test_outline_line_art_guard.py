@@ -1,4 +1,5 @@
-"""The line-art guard on `cfg.border_from_outline` (built OFF 2026-10-25).
+"""The line-art guard on `cfg.border_from_outline` (#1078; ON since
+2026-10-25, Kent's flip -- `PRE_FLIP` names the OFF arm).
 
 `border_from_outline` (ON since 2026-10-24) read Bridge Bar's bowl-and-waves
 drawing -- black hairlines, 0.8-1.0 mm, round yellow cells of the disc they
@@ -32,6 +33,10 @@ from digitizer_core.pipeline import _art_outlines
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage7_sequence import sequence
+from tests.conftest import PRE_FLIP
+
+#: the guard OFF: the engine before Kent's flip
+GUARD_OFF = PRE_FLIP["border_from_outline_line_art_guard"]
 
 #: Bridge's bowl, roughly: a 16 x 6 mm cell inside a 0.9 mm hairline, the
 #: drawing's two tips and one wave stroke running on past it
@@ -83,8 +88,10 @@ def _md5(runs) -> str:
     return h.hexdigest()
 
 
-def test_flag_default_is_off_and_the_thresholds_are_the_census_gaps():
-    assert PipelineConfig().border_from_outline_line_art_guard is False
+def test_flag_default_is_on_and_the_thresholds_are_the_census_gaps():
+    # Kent's flip 2026-10-25 ("Flip it ON", from #1078's bowl renders)
+    assert PipelineConfig().border_from_outline_line_art_guard is True
+    assert GUARD_OFF is False
     assert machine.OUTLINE_LINE_ART_FILL_SHARE == 0.5
     assert machine.OUTLINE_LINE_ART_DROP_FRAC == 0.02
 
@@ -122,10 +129,16 @@ def test_guard_drops_the_drawing_and_keeps_the_frame_and_the_keyline():
         assert find_art_outlines(_pair(outline, body), cfg) == find_art_outlines(_pair(outline, body))
 
 
-def test_guard_off_is_byte_identical_to_main():
-    assert _md5(_plan(BOWL, CELL, border_from_outline=True)) == BOWL_ON_MD5
+def test_guard_off_is_byte_identical_to_the_engine_before_it():
     assert _md5(_plan(BOWL, CELL, border_from_outline=True,
-                      border_from_outline_line_art_guard=False)) == BOWL_ON_MD5
+                      border_from_outline_line_art_guard=GUARD_OFF)) == BOWL_ON_MD5
+    assert _md5(_plan(FRAME, FIELD, border_from_outline=True,
+                      border_from_outline_line_art_guard=GUARD_OFF)) == FRAME_ON_MD5
+
+
+def test_the_default_sews_the_drawing_as_before_border_from_outline():
+    # ON by default: the bowl is the flag-OFF bytes, the frame keeps its border
+    assert _md5(_plan(BOWL, CELL, border_from_outline=True)) == BOWL_OFF_MD5
     assert _md5(_plan(FRAME, FIELD, border_from_outline=True)) == FRAME_ON_MD5
 
 
