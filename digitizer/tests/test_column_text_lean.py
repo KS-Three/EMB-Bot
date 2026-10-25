@@ -172,22 +172,25 @@ def _satin_cross_angles(runs) -> list[float]:
 
 
 def test_off_is_the_lane_as_it_was_with_a_house_angle_present():
+    # the default is ON since 2026-10-24, so the plain lane is the explicit
+    # False arm and the default is the leaned one
     n = _n_letter()
-    a = _plan(n, {"satin_angle_deg": 0.0})
+    a = _plan(n, {"satin_angle_deg": 0.0}, lettering_columns_text_lean=True)
     b = _plan(n, {"satin_angle_deg": 0.0}, lettering_columns_text_lean=False)
-    assert [r.points for r in a] == [r.points for r in b]
+    assert [r.points for r in a] != [r.points for r in b]
+    assert [r.points for r in _plan(n, {"satin_angle_deg": 0.0})] == [r.points for r in a]
 
 
 def test_on_with_no_house_angle_is_the_lane_as_it_was():
     n = _n_letter()
-    a = _plan(n)
+    a = _plan(n, lettering_columns_text_lean=False)
     b = _plan(n, lettering_columns_text_lean=True)
     assert [r.points for r in a] == [r.points for r in b]
 
 
 def test_on_the_n_diagonal_sews_with_the_stems_cross():
     n = _n_letter()
-    off = _plan(n, {"satin_angle_deg": 0.0})
+    off = _plan(n, {"satin_angle_deg": 0.0}, lettering_columns_text_lean=False)
     on = _plan(n, {"satin_angle_deg": 0.0}, lettering_columns_text_lean=True)
     assert [r.points for r in on] != [r.points for r in off]
     off_angles, on_angles = _satin_cross_angles(off), _satin_cross_angles(on)
@@ -202,7 +205,7 @@ def test_on_the_n_diagonal_sews_with_the_stems_cross():
 
 def test_the_wiring_reads_the_designs_house_when_the_word_has_none():
     n = _n_letter()
-    off = _plan(n, satin_angle_deg=0.0)
+    off = _plan(n, satin_angle_deg=0.0, lettering_columns_text_lean=False)
     on = _plan(n, satin_angle_deg=0.0, lettering_columns_text_lean=True)
     assert [r.points for r in on] != [r.points for r in off]
 

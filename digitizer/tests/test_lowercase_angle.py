@@ -31,7 +31,7 @@ from shapely.geometry import Polygon
 from digitizer_core import PipelineConfig, digitize, outline_cut
 from digitizer_core.columns import lettering_columns_shape
 from tools import lowercase_angle as la
-from tests.conftest import own_thread_only
+from tests.conftest import LETTERING_2026_10_24_OFF, own_thread_only
 
 SHOULDERS = "ubgma"         # glyphs that fold OFF and come apart ON (120 mm)
 
@@ -457,7 +457,8 @@ def word():
     # the e beside the i, which moves its one 45-degree fold; the fold-cut
     # arms were measured without them (conftest.PRE_FLIP).
     kw = dict(target_width_mm=80.0, forced_class="flat", lettering_columns_small_stem=False,
-              small_dot_rung=False, small_dot_rung_lettering=False)
+              small_dot_rung=False, small_dot_rung_lettering=False,
+              **LETTERING_2026_10_24_OFF)     # nor with the 2026-10-24 lettering flips
 
     def boom(*_a, **_k):
         raise AssertionError("fold_cuts code reached with fold_cuts off")

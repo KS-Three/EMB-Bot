@@ -21,7 +21,7 @@ from digitizer_core.config import (SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM, counter_
 from digitizer_core.ink_path import MemberInk
 from shapely.geometry import box
 
-from .conftest import own_thread_only
+from .conftest import LETTERING_2026_10_24_OFF, own_thread_only
 from .test_small_text import _glyphs, _scene, _tag, _two_lines
 
 TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
@@ -249,7 +249,9 @@ def _md5(cap, **kw):
     from tools import small_print
     ref = json.loads((TESTDATA / "small_print_synthetic_ref.json").read_text())
     _r, plan = digitize(small_print.load("synthetic"),
-                        PipelineConfig(target_width_mm=round(cap / ref["cap"], 2), **kw))
+                        # MD5 was pinned before the 2026-10-24 lettering flips
+                        PipelineConfig(target_width_mm=round(cap / ref["cap"], 2),
+                                       **{**LETTERING_2026_10_24_OFF, **kw}))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     return hashlib.md5(json.dumps(coords).encode()).hexdigest()[:10]

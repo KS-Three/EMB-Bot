@@ -323,6 +323,16 @@ def whitebg_pre_flip():
 
 
 @pytest.fixture(scope="session")
+def whitebg_sew_off():
+    """The same fixture with `cfg.sew_enclosed_white` OFF -- the engine
+    before Kent's 2026-10-24 flip, when the ring's tagged hole stayed
+    unstitched by default. For tests about the enclosed-background TAGGER
+    (which marks the hole either way); the option that then sews it is
+    `tests/test_sew_enclosed_white.py`'s."""
+    return run_stages(TESTDATA / "logo_whitebg.png", cfg(**SEW_WHITE_OFF))
+
+
+@pytest.fixture(scope="session")
 def alpha():
     return run_stages(TESTDATA / "logo_alpha.png", cfg())
 
@@ -614,4 +624,26 @@ PRE_FLIP["clip_keep_pieces"] = False
 # rings its pull-grown polygon. False is the pre-flip cap. The tests ABOUT it
 # are in `tests/test_edge_cap.py`.
 PRE_FLIP["edge_cap_skip_bean_letters"] = False
+# Five layout flags Kent flipped ON 2026-10-24 from the flip sheet, for the
+# reason every entry above gives. `sew_enclosed_white` sews the white each
+# design encloses in its own front layer (the flat goldens' logo_alpha and
+# logo_whitebg moved, nothing else of theirs), and `enclosed_white_keyline`
+# sews such a field that is a keyline as one satin loop per letter;
+# `lettering_columns_text_lean`, `lettering_columns_inside_stagger` and
+# `text_cluster_wide_letters` move lettering only. False is the engine
+# before the flip. The tests ABOUT them are `tests/test_sew_enclosed_white.py`,
+# `tests/test_enclosed_white_keyline.py`, `tests/test_column_text_lean.py`,
+# `tests/test_column_inside_stagger.py` and `tests/test_wide_letters.py`.
+PRE_FLIP["sew_enclosed_white"] = False
+PRE_FLIP["enclosed_white_keyline"] = False
+PRE_FLIP["lettering_columns_text_lean"] = False
+PRE_FLIP["lettering_columns_inside_stagger"] = False
+PRE_FLIP["text_cluster_wide_letters"] = False
+#: The 2026-10-24 five, OFF: for a test that pins a number or a premise the
+#: flip moved but that is ABOUT something else (spread into a PipelineConfig).
+#: `SEW_WHITE_OFF` is the one that moves the flat goldens and every enclosed-
+#: background premise; `LETTERING_2026_10_24_OFF` the three lettering ones.
+SEW_WHITE_OFF = {"sew_enclosed_white": False}
+LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
+    "lettering_columns_text_lean", "lettering_columns_inside_stagger", "text_cluster_wide_letters")}
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

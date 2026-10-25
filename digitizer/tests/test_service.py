@@ -492,7 +492,10 @@ def test_stitched_default_and_override_round_trip_over_http(client):
     # enclosed-background-tagged there. This test pins the service's restore
     # plumbing, which needs the flooded diagnosis-time state — and doubles as
     # proof the service accepts the new guard knobs over HTTP.
-    GUARDS_OFF = {"bg_border_agreement_min": 0.0, "bg_border_rival_min": 0.0}
+    # And "Sew white areas" unticked, as the Studio sends it (the service's
+    # default is ON since 2026-10-24, which would sew the tagged regions).
+    GUARDS_OFF = {"bg_border_agreement_min": 0.0, "bg_border_rival_min": 0.0,
+                  "sew_enclosed_white": False}
     first = _digitize(client, {"preflight": False, **GUARDS_OFF}, art=REPRO)
     shapes = first["review"]["shapes"]
     assert all("stitched" in s for s in shapes)
@@ -548,14 +551,18 @@ def test_the_garment_rule_reaches_the_review_payload_over_http(client):
     garment `stitched: True` with `enclosed_by_garment: True` beside it —
     the same shape id, a real stitch-count change, and the enclosed warning
     saying so. `null` is accepted and means "not known"."""
-    base = {"preflight": False, "garment_rgb": None}
+    # "Sew white areas" unticked throughout, as the Studio sends it: the
+    # service's default is ON since 2026-10-24 and sews the hole whatever
+    # the garment, which is not the rule under test
+    off = {"sew_enclosed_white": False}
+    base = {"preflight": False, "garment_rgb": None, **off}
     first = _digitize(client, base)
     holes = [s for s in first["review"]["shapes"] if s["stitched"] is False]
     assert len(holes) == 1 and holes[0]["enclosed_by_garment"] is False
     assert all(s["enclosed_by_garment"] is False for s in first["review"]["shapes"])
 
     navy = _digitize(client, {"preflight": False, "garment_rgb": [28, 42, 84],
-                              "enclosed_by_garment": True})
+                              "enclosed_by_garment": True, **off})
     after = {s["shape_id"]: s for s in navy["review"]["shapes"]}
     hole = after[holes[0]["shape_id"]]
     assert hole["stitched"] is True and hole["enclosed_by_garment"] is True
@@ -570,7 +577,7 @@ def test_the_garment_rule_reaches_the_review_payload_over_http(client):
     # White garment: the same request shape, the hole stays a hole, and the
     # rule says why.
     white = _digitize(client, {"preflight": False, "garment_rgb": [255, 255, 255],
-                               "enclosed_by_garment": True})
+                               "enclosed_by_garment": True, **off})
     w_hole = {s["shape_id"]: s for s in white["review"]["shapes"]}[holes[0]["shape_id"]]
     assert w_hole["stitched"] is False and w_hole["enclosed_by_garment"] is False
     assert white["design"]["stitchCount"] == first["design"]["stitchCount"]

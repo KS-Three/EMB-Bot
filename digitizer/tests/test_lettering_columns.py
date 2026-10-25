@@ -584,26 +584,29 @@ def _letter_census(result, plan):
 
 @pytest.fixture(scope="module")
 def becker_off():
+    # `sew_enclosed_white` OFF in every arm below (ON since Kent's 2026-10-24
+    # flip): it sews the white BECKER faces, which this MARINE census is not about
     # The lane is ON by default now (2026-10-12), so the OFF arm names it.
     cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest", max_colors=6,
-                         lettering_columns=False)
+                         lettering_columns=False, sew_enclosed_white=False)
     return digitize(str(BECKER), cfg)
 
 
 def test_off_is_byte_identical(becker_off):
     cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest", max_colors=6,
-                         lettering_columns=False)
+                         lettering_columns=False, sew_enclosed_white=False)
     _, plan = digitize(str(BECKER), cfg)
     assert _plan_points(plan) == _plan_points(becker_off[1])
     # ... and the default is the lane, not the skeleton tier
     _, dflt = digitize(str(BECKER), PipelineConfig(target_width_mm=100.0,
-                                                    garment_id="left_chest", max_colors=6))
+                                                    garment_id="left_chest", max_colors=6,
+                                                    sew_enclosed_white=False))
     assert _plan_points(dflt) != _plan_points(becker_off[1])
 
 
 def test_on_every_marine_letter_sews_columns_with_fewer_runs_and_trims(becker_off):
     cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest", max_colors=6,
-                         lettering_columns=True)
+                         lettering_columns=True, sew_enclosed_white=False)
     result, plan = digitize(str(BECKER), cfg)
     ids_on, satin_on, trims_on, fills_on = _letter_census(result, plan)
     ids_off, satin_off, trims_off, fills_off = _letter_census(*becker_off)

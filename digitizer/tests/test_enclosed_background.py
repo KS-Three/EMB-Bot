@@ -29,7 +29,7 @@ from digitizer_core.pipeline import plan_stitches, run_stages
 from digitizer_core.stage1_prep import prep
 from digitizer_core.warnings_codes import BACKGROUND_ENCLOSED
 
-from .conftest import TESTDATA, cfg, codes
+from .conftest import SEW_WHITE_OFF, TESTDATA, cfg, codes
 
 REPRO = TESTDATA / "photo" / "repro_gradient_white_icon.png"
 
@@ -45,6 +45,10 @@ REPRO = TESTDATA / "photo" / "repro_gradient_white_icon.png"
 def repro_cfg(**kw):
     kw.setdefault("bg_border_agreement_min", 0.0)
     kw.setdefault("bg_border_rival_min", 0.0)
+    # The tagger's default, read before `sew_enclosed_white` (ON since
+    # 2026-10-24) sews what it tags
+    for k, v in SEW_WHITE_OFF.items():
+        kw.setdefault(k, v)
     return cfg(**kw)
 
 
@@ -132,8 +136,10 @@ def test_repro_fixture_icon_regions_are_tagged_and_excluded_by_default():
     assert not (stitched_ids & tagged_ids), "tagged regions must not reach the stitch plan"
 
 
-def test_untagged_regions_default_to_stitched(whitebg):
-    for r in whitebg.regions:
+def test_untagged_regions_default_to_stitched(whitebg_sew_off):
+    # with `sew_enclosed_white` ON (the default since 2026-10-24) the tagged
+    # hole sews too: `tests/test_sew_enclosed_white.py`
+    for r in whitebg_sew_off.regions:
         if r.meta.get("enclosed_background"):
             assert r.meta["stitched"] is False
         else:

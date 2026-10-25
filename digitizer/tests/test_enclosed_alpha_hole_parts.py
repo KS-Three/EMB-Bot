@@ -26,7 +26,7 @@ from shapely.geometry import Point
 
 from digitizer_core.pipeline import run_stages
 
-from .conftest import TESTDATA, cfg
+from .conftest import SEW_WHITE_OFF, TESTDATA, cfg
 
 N = 240
 HOLE_R = 55
@@ -74,8 +74,10 @@ def test_off_reproduces_the_blob():
 def test_on_tags_every_part_of_the_transparent_hole():
     """ON: each part of the hole is enclosed background with no colour of its
     own, and none of them sews."""
+    # `sew_enclosed_white` OFF (ON by default since 2026-10-24): the tags
+    # are this flag's; whether a tagged hole then sews is that option's
     result = run_stages(two_tone_ring_with_transparent_middle(),
-                        cfg(target_width_mm=20.0, enclosed_alpha_hole_parts=True))
+                        cfg(target_width_mm=20.0, enclosed_alpha_hole_parts=True, **SEW_WHITE_OFF))
     parts = _hole_regions(result)
     assert len(parts) >= 2, [r.polygon.bounds for r in parts]
     for r in parts:

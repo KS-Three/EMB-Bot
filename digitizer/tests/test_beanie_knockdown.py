@@ -33,6 +33,9 @@ def _md5(plan) -> str:
 
 
 def _cfg(**kw):
+    # `sew_enclosed_white` OFF: the md5s below predate its flip (ON by
+    # default since 2026-10-24, Kent), which sews logo_alpha's white hole
+    kw.setdefault("sew_enclosed_white", False)
     return PipelineConfig(garment_id="beanie", garment_rgb=KHAKI, **kw)
 
 
@@ -170,7 +173,8 @@ def test_off_is_byte_identical(runs):
 
 
 def test_on_other_garments_changes_nothing():
-    base = dict(target_width_mm=60.0, garment_rgb=KHAKI, garment_id="hat_front")
+    base = dict(target_width_mm=60.0, garment_rgb=KHAKI, garment_id="hat_front",
+                sew_enclosed_white=False)      # HAT_MD5 predates its 2026-10-24 flip
     off = digitize(TESTDATA / FIXTURE, PipelineConfig(beanie_knockdown=False, **base))[1]
     on = digitize(TESTDATA / FIXTURE, PipelineConfig(**base))[1]
     assert _md5(on) == _md5(off) == HAT_MD5

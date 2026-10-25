@@ -29,14 +29,18 @@ def test_white_background_is_detected_without_crying_uncertain(whitebg):
     assert BACKGROUND_UNCERTAIN not in codes(whitebg)
 
 
-def test_ring_hole_is_reported_as_enclosed_background(whitebg):
+def test_ring_hole_is_reported_as_enclosed_background(whitebg_sew_off):
     """Outcome preserved (still unstitched by default, warning still fires),
     mechanism changed (2026-08-04): the ring's donut hole is no longer
     quietly folded into `bg` and excluded before it can become a Region —
     it is now a REAL, tagged Region that a review screen could restore.
     See docs/superpowers/plans/2026-08-04-enclosed-background-restore-
     design.md.
+
+    On `whitebg_sew_off` since 2026-10-24: `cfg.sew_enclosed_white` is ON by
+    default now and sews the hole it tags (`tests/test_sew_enclosed_white.py`).
     """
+    whitebg = whitebg_sew_off
     assert BACKGROUND_ENCLOSED in codes(whitebg)
 
     enclosed = [r for r in whitebg.regions if r.meta.get("enclosed_background")]
@@ -56,7 +60,7 @@ def test_ring_hole_is_reported_as_enclosed_background(whitebg):
     from digitizer_core import plan_stitches
     from .conftest import cfg as _cfg
 
-    plan = plan_stitches(whitebg, _cfg(garment_id="left_chest"))
+    plan = plan_stitches(whitebg, _cfg(garment_id="left_chest", sew_enclosed_white=False))
     stitched_shape_ids = {r.shape_id for _b, r in plan.iter_runs()}
     assert ring_hole.shape_id not in stitched_shape_ids
 

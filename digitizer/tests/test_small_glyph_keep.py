@@ -163,8 +163,8 @@ def test_a_glyph_with_ink_left_after_the_clip_plans_as_before():
 
 # The flat-lane goldens' stitch streams, as `test_small_print.py` pins them.
 GOLDEN_MD5 = {
-    "logo_alpha.png": "50b666027292342f490cb50758a7fcde",
-    "logo_whitebg.png": "e1e001f4b23de052d9102a8acbce26d9",
+    "logo_alpha.png": "1fe7f432b8619088983a8f29e58d0f34",
+    "logo_whitebg.png": "96636184dbdec280deb28c78d84ff37f",
     "ribbon_curve.png": "f31c29f2d98d63ce919d762beb6da58a",
 }
 

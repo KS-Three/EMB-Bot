@@ -37,9 +37,20 @@ from digitizer_core.pipeline import plan_stitches, run_stages
 from digitizer_core.stitches import FILL, StitchBlock, StitchPlan, StitchRun
 from digitizer_core.warnings_codes import SHAPES_LEFT_UNSEWN
 
-from .conftest import TESTDATA, cfg
+import pytest
 
-PLAN_CFG_KW = {"garment_id": "left_chest"}
+from .conftest import SEW_WHITE_OFF, TESTDATA, cfg
+
+# `sew_enclosed_white` OFF (ON by default since 2026-10-24, Kent): with it ON
+# whitebg's tagged hole sews and nothing is left out, which is the option's
+# job (`tests/test_sew_enclosed_white.py`); this file is about the warning a
+# left-out shape raises, so it reads the engine where one is left out.
+PLAN_CFG_KW = {"garment_id": "left_chest", **SEW_WHITE_OFF}
+
+
+@pytest.fixture(scope="module")
+def whitebg(whitebg_sew_off):
+    return whitebg_sew_off
 
 
 def _warning(plan, code):
@@ -209,13 +220,13 @@ def test_an_override_that_restores_a_shape_silences_the_warning():
     """`shape_overrides[sid]["stitched"] = True` puts the shape back — and
     with nothing left out, the warning stops firing. Pins that the warning
     tracks the real exclusion set rather than the enclosed tag."""
-    base = run_stages(TESTDATA / "logo_whitebg.png", cfg())
+    base = run_stages(TESTDATA / "logo_whitebg.png", cfg(**SEW_WHITE_OFF))
     skipped = [r.shape_id for r in base.regions if not r.meta.get("stitched", True)]
     assert skipped
 
     restored = run_stages(
         TESTDATA / "logo_whitebg.png",
-        cfg(shape_overrides={sid: {"stitched": True} for sid in skipped}),
+        cfg(shape_overrides={sid: {"stitched": True} for sid in skipped}, **SEW_WHITE_OFF),
     )
     plan = plan_stitches(restored, cfg(**PLAN_CFG_KW))
 

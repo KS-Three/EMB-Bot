@@ -69,6 +69,9 @@ def _sewn(path: Path, **kw):
         return real(poly, shape_id, **kwargs)
 
     s7.satin_shape = own_thread_only(spy, real)
+    # `sew_enclosed_white` OFF: measured before its 2026-10-24 flip (Kent),
+    # which sews the white a ring encloses
+    kw.setdefault("sew_enclosed_white", False)
     try:
         result, plan = digitize(path, PipelineConfig(garment_id="left_chest", **kw))
     finally:
@@ -617,7 +620,11 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
                                        # (ON 2026-10-20): ON, the envelope's reach
                                        # is 5.36 -> 5.07% bare, under the 0.5 pt
                                        # this arm was sized on (`PRE_FLIP`)
-                                       subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"]))
+                                       subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"],
+                                       # and before `sew_enclosed_white` (ON
+                                       # 2026-10-24): ON, the white BECKER
+                                       # faces sew and change the bare it reads
+                                       sew_enclosed_white=PRE_FLIP["sew_enclosed_white"]))
         polys = {rg.shape_id: rg.polygon for rg in r.regions}
         num, den = bare_area(polys, p)
         wob = EW.analyse_plan(polys, p, background=set())

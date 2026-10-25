@@ -53,7 +53,11 @@ def becker():
     # fixture exists to pin would go untested (`PRE_FLIP`).
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
                          border="auto", edge_cap="satin",
-                         subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"])
+                         subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"],
+                         # and `sew_enclosed_white` (ON since 2026-10-24): with
+                         # the white BECKER faces sewn, neither a per-shape
+                         # border nor the satin cap is emitted at 80 mm
+                         sew_enclosed_white=PRE_FLIP["sew_enclosed_white"])
     result = run_stages(TESTDATA / "becker_marine_logo.png", cfg)
     plan = plan_stitches(result, cfg)
     return plan, _design(plan, "Becker")

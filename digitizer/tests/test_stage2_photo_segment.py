@@ -381,8 +381,11 @@ def test_enclosed_background_survives_gradient_routing_through_slic_rag():
     (border agreement 0.355 < bg_border_agreement_min, BACKGROUND_ABSENT),
     so nothing is enclosed and the routing machinery under test never runs.
     See test_enclosed_background.py's repro_cfg comment — same reasoning."""
+    # `sew_enclosed_white` OFF: the TAG is under test, and with the option ON
+    # (Kent's 2026-10-24 flip) a tagged region sews
     cfg = PipelineConfig(target_width_mm=90.0,
-                         bg_border_agreement_min=0.0, bg_border_rival_min=0.0)
+                         bg_border_agreement_min=0.0, bg_border_rival_min=0.0,
+                         sew_enclosed_white=False)
     fixture = str(PHOTO_DIR / "repro_gradient_white_icon.png")
     c = classify(fixture, cfg)
     assert c.class_ == "gradient", "fixture drifted off the class this test needs"
