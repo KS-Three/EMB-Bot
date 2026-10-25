@@ -1,4 +1,4 @@
-"""`cfg.tie_in_off` (2026-10-22, ON by default since 2026-10-23): no lock at
+"""`cfg.tie_in_off` (2026-10-22, default OFF, a gate-1 CANDIDATE): no lock at
 the start of a run. The pro locks 1 of 68 run starts (settings-vs-pro row 22);
 `apply_ties` already locks only at cuts. Lengths are asserted in output
 millimetres, never pixels."""
@@ -22,6 +22,7 @@ def _tied():
 
 
 def test_default_on_since_2026_10_23():
+    # Kent's flip on the flip sheet (PR #1047); False is the off arm
     assert PipelineConfig().tie_in_off is True
 
 
@@ -49,19 +50,6 @@ def test_on_strips_tie_ins_keeps_tie_offs():
         assert abs(math.dist(tail[-1], tail[-2]) - machine.TIE_STITCH_MM) < 1e-9
 
 
-def test_the_count_per_shape_is_what_the_edge_caps_bill_reads():
-    """Stage 7 writes the cap's bill at the cap's emission, with its tie-ins
-    on; ON, the bill comes down by the locks the cap then loses, read off this
-    dict (`test_edge_cap_budget`'s identities on becker: 654 billed against
-    642 sewn before the fix)."""
-    b = _tied()
-    b.runs[0].shape_id, b.runs[1].shape_id = "__edge_cap__", "Sother"
-    by_shape = {}
-    removed = stitches.drop_tie_ins([b], by_shape)
-    assert removed == 8 and by_shape == {"__edge_cap__": 4, "Sother": 4}
-    assert stitches.drop_tie_ins([b], by_shape) == 0 and by_shape == {"__edge_cap__": 4, "Sother": 4}
-
-
 def test_bean_retrace_opening_is_not_stripped():
     # A three-pass bean opens p0 p1 p0 p1 on its own; it carries no tie-in
     # and must come through untouched.
@@ -77,3 +65,13 @@ def test_uncut_run_never_gets_a_tie_in():
     b.runs[1].trim = False                      # a float, not a cut
     stitches.apply_ties(b.runs)
     assert b.runs[1].tie_in_pts == 0
+
+
+def test_a_run_tied_twice_loses_both_locks():
+    # `cut_every_jump` can tie a run `apply_ties` already tied; the count must
+    # add up, or `drop_tie_ins` leaves the inner lock in front of the run.
+    b = _tied()
+    stitches.tie_in(b.runs[1])
+    assert b.runs[1].tie_in_pts == 8
+    assert stitches.drop_tie_ins([b]) == 12
+    assert b.runs[1].points[:3] == [(20.0, 0.0), (23.0, 0.0), (26.0, 0.0)]

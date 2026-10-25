@@ -367,7 +367,11 @@ def _small_letter_run(run: StitchRun, small_letters: set[str] | None) -> bool:
 
 
 def tie_in(run: StitchRun, small_letters: set[str] | None = None) -> None:
-    """`apply_ties`' lock at the head of `run`, where the thread starts."""
+    """`apply_ties`' lock at the head of `run`, where the thread starts.
+
+    Adds how many points it put in front to `run.tie_in_pts`, so
+    `drop_tie_ins` (`cfg.tie_in_off`) can strip exactly the locks: a run tied
+    twice (`apply_ties`, then a cut `cut_every_jump` adds) carries both."""
     if len(run.points) < 2:
         return
     before = len(run.points)
@@ -376,7 +380,7 @@ def tie_in(run: StitchRun, small_letters: set[str] | None = None) -> None:
     else:
         pts = tie_run(run.points[0], run.points[1]).points
         run.points = pts[:-1] + run.points
-    run.tie_in_pts = len(run.points) - before
+    run.tie_in_pts += len(run.points) - before
 
 
 def tie_off(run: StitchRun, small_letters: set[str] | None = None) -> None:
