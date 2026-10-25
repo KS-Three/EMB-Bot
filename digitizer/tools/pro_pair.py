@@ -22,6 +22,8 @@ verdict. `tools/pro_parity/` (pairframe, scorecard, overlay) does that.
   python -m tools.pro_pair --art A --pro P --width MM [--garment hat_front]
       [--out DIR] [--band Y0 Y1 | --crop X0 Y0 X1 Y1] [--shapes id,id]
       [--set KEY=JSON ...]
+  python -m tools.pro_pair --job SLUG [...]   # a pair `tools.pro_intake` registered:
+      art, the pro's DST, its width and garment filled in (any of the four still overrides)
 """
 from __future__ import annotations
 
@@ -388,10 +390,11 @@ def parse_args(argv=None):
                                  description=__doc__.split("\n\n")[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog=__doc__)
-    ap.add_argument("--art", required=True, type=Path, help="customer artwork")
-    ap.add_argument("--pro", required=True, type=Path, help="the pro's machine file (DST/PES/...)")
-    ap.add_argument("--width", required=True, type=float, help="target width, mm")
-    ap.add_argument("--garment", default="hat_front", help="Studio garment_id (hat_front, left_chest, ...)")
+    ap.add_argument("--job", help="a pair slug `tools.pro_intake` registered (fills the next four)")
+    ap.add_argument("--art", type=Path, help="customer artwork")
+    ap.add_argument("--pro", type=Path, help="the pro's machine file (DST/PES/...)")
+    ap.add_argument("--width", type=float, help="target width, mm")
+    ap.add_argument("--garment", help="Studio garment_id (hat_front, left_chest, ...); default hat_front")
     ap.add_argument("--out", type=Path, default=Path("../scratch_pro_pair"))
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--band", nargs=2, type=float, default=DEFAULT_BAND, metavar=("Y0FRAC", "Y1FRAC"))
@@ -401,7 +404,26 @@ def parse_args(argv=None):
     ap.add_argument("--set", action="append", default=[], metavar="KEY=JSON",
                     help="a config field over the Studio request, e.g. beanie_knockdown=true "
                          "or garment_rgb=[208,166,96]; repeatable")
-    return ap.parse_args(argv)
+    args = ap.parse_args(argv)
+    if args.job:
+        from tools.pro_intake import pair_record
+        rec = pair_record(args.job)
+        if rec is None:
+            ap.error(f"--job {args.job!r} is not registered: run `python -m tools.pro_intake` "
+                     "(or `--list` to see the slugs)")
+        args.art = args.art or rec["art"]
+        args.pro = args.pro or rec["dst"]
+        args.width = args.width or rec["width_mm"]
+        if args.garment is None and rec["garment_id"] is None:
+            print(f"--job {args.job!r}: its garment was not read from the file name; "
+                  "hat_front assumed (pass --garment)", file=sys.stderr)
+        args.garment = args.garment or rec["garment_id"]
+        if args.art is None:
+            ap.error(f"--job {args.job!r} has no source art registered (its flags say why); pass --art")
+    if args.art is None or args.pro is None or args.width is None:
+        ap.error("give --job, or all of --art, --pro and --width")
+    args.garment = args.garment or "hat_front"
+    return args
 
 
 def parse_sets(items) -> dict:

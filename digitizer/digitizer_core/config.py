@@ -2760,10 +2760,13 @@ class PipelineConfig:
     # crosses stays the satin spacing; a column the house already crosses
     # square, a curved or ring column, and a letter with no house angle keep
     # their stations byte for byte. Layout, not a cloth number (judged in
-    # the preview, Kent 2026-10-22); the flip is his, on the before | after
-    # | pro renders. OFF is the lane as it was, station for station. Tests:
+    # the preview, Kent 2026-10-22). ON by default since 2026-10-24 (Kent:
+    # "Flip it ON", on `docs/big-letter-construction-2026-10-24.md`: leaning
+    # crosses within 15 deg of the line of text 0.24 -> 0.51 at 76.5 mm and
+    # 0.17 -> 0.53 at 101.9 mm on MARINE, the pro 0.47-0.58, no piece added).
+    # False is the lane as it was, station for station. Tests:
     # `tests/test_column_text_lean.py`.
-    lettering_columns_text_lean: bool = False
+    lettering_columns_text_lean: bool = True
     # Under `lettering_columns`, each satin column's pull compensation is a
     # function of ITS OWN drawn stroke width, the way the professional's
     # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the
@@ -2828,10 +2831,12 @@ class PipelineConfig:
     # into one hole the full-length ones are spaced along the rail's course
     # round the pile, `STAGGER_WALK_MM` apart where the corner has room
     # (`columns._inside_stagger`). Layout, judged
-    # in the preview (Kent, 2026-10-22), so ON-eligible from renders and
-    # numbers. False is the guard, byte for byte.
+    # in the preview (Kent, 2026-10-22). ON by default since 2026-10-24
+    # (Kent, the flip sheet; same-hole re-entries per zone Becker 1.14 ->
+    # 0.60, Fremont 0.37 -> 0.34, MFab 0.29 -> 0.17, the pro 0.11 / 0.16 /
+    # 0.22). False is the guard, byte for byte.
     # Tests: `tests/test_column_inside_stagger.py`.
-    lettering_columns_inside_stagger: bool = False
+    lettering_columns_inside_stagger: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
@@ -3133,9 +3138,10 @@ class PipelineConfig:
     # every one is tagged; and a glyph up to `WIDE_LETTER_ASPECT_MAX` 1.8 is
     # adopted by a line it links to (`_adopt_wide`), never making one.
     # Segmentation and tagging, not fabric: layout, judged in the preview.
-    # False: neither is called, byte for byte. Tests:
-    # `tests/test_wide_letters.py`.
-    text_cluster_wide_letters: bool = False
+    # ON by default since 2026-10-24 (Kent, the flip sheet; MFab moves,
+    # Fremont and Becker byte-identical). False: neither is called, byte
+    # for byte. Tests: `tests/test_wide_letters.py`.
+    text_cluster_wide_letters: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
@@ -3227,6 +3233,15 @@ class PipelineConfig:
     # on cloth is a sew-out (ROADMAP gate 1): a CANDIDATE. False is
     # byte-identical. Not in `SMALL_TEXT_TRUE_SIZE`.
     small_letter_ties: bool = False
+    # No lock at the START of a run (2026-10-22, settings-vs-pro row 22).
+    # `stitches.apply_ties` already locks only where the thread is cut (the
+    # first run of a block, a trimmed run); the pro locks none of those
+    # either: 1 of 68 run starts across Fremont, Becker and MFab, all after a
+    # cut. On: every tie-in is stripped (`stitches.drop_tie_ins`), tie-offs
+    # stay -- about four stitches per cut. Whether a start holds without its
+    # knot is a sew-out (ROADMAP gate 1): a CANDIDATE. False is byte-identical.
+    # Not in `SMALL_TEXT_TRUE_SIZE`.
+    tie_in_off: bool = False
     # ONE switch for small lettering at its true size (2026-10-14, Kent:
     # "keep working on improvements on this"). True fills each of the
     # values above that is still None with `SMALL_TEXT_TRUE_SIZE`; a value set
@@ -5319,10 +5334,16 @@ class PipelineConfig:
     # jumps of 0.5-3.0 mm per job (every hop under `trim_at_mm`), each a
     # float snipped by hand; the pro's 28 DSTs leave none. Each such jump is
     # sewn needle-down where thread sewn LATER hides all of it -- the cover
-    # rule `trim_bury_under_later` uses, shared code -- and cut, locked both
-    # sides, everywhere else (`stage7_sequence._cut_or_bury_jumps`). Bury
-    # first because the pro's short cuts almost never lie under later
-    # thread (1 of 59 at <= 3 mm). Composes with `trim_bury_under_later`:
+    # rule `trim_bury_under_later` uses, shared code -- else WALKED
+    # needle-down where its whole thread lies on thread already sewn
+    # (2026-10-23: the pro's shortest cut on Fremont is 3.4 mm, all on
+    # work; he sews straight through at 131 of our 152 sub-trim hops on the
+    # field), and cut, locked both sides, only on bare fabric
+    # (`stage7_sequence._cut_or_bury_jumps`). Bury first because the pro's
+    # short cuts almost never lie under later thread (1 of 59 at <= 3 mm).
+    # Fremont hat 92.5 with bury ON: 37 -> 187 trims when every unburied
+    # jump was cut, 37 -> 44 with the walk (143 walked, 21 buried, 7 cut;
+    # pro 20). Composes with `trim_bury_under_later`:
     # that pass handles CUT hops inside art blocks and runs first; this one
     # handles UNCUT jumps in every block and runs last, so the two touch
     # disjoint hops. ROADMAP gate 1 (trimmer wear and tie knots against
