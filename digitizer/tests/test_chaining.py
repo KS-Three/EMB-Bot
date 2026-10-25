@@ -797,12 +797,7 @@ def test_chaining_adds_zero_bare_thread_on_every_acceptance_fixture(
     ribbon 0.00 -> 0.00. Chaining still adds nothing (on == off); it no
     longer removes any either. Ceilings: the measurement + 0.5 mm, as before.
     """
-    # RE-PINNED 2026-10-25 from CI (Linux, PR #1057): benchmark chain-off reads 4.97 mm
-    # under the twelve 2026-10-23 flips plus main's 10-24/25 flips (reach-edges cap,
-    # text lean, inside stagger, wide letters, border from outline); Windows reads
-    # lower. Ceiling = 4.97 + 0.5, as above. The invariant that matters, on <= off,
-    # is asserted below and unchanged.
-    CEILING_MM = {("benchmark", False): 5.5, ("benchmark", True): 5.5,
+    CEILING_MM = {("benchmark", False): 4.5, ("benchmark", True): 4.5,
                   ("full_back", False): 5.4, ("full_back", True): 5.4,
                   ("left_chest", False): 0.5, ("left_chest", True): 0.5,
                   ("ribbon", False): 0.5, ("ribbon", True): 0.5}

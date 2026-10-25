@@ -374,7 +374,13 @@ def enthusiast_logo_93mm():
     # test_chaining_adds_zero_bare_thread_on_every_acceptance_fixture's
     # documented claim that the floor IS zero there, while its on/off
     # equality assertion carried on passing.
-    return run_stages(TESTDATA / "photo/enthusiast_logo.png", cfg(target_width_mm=93.0))
+    # The small-text re-set (`small_text_cap_*`, ON since 2026-10-23) acts at STAGE
+    # level, so a plan-stage pin cannot undo it: it rebuilds the line and lifts this
+    # fixture's bare-thread floor 3.93 -> 7.10 mm (measured). The benchmark claims
+    # were made without it, so the fixture is built without it.
+    return run_stages(TESTDATA / "photo/enthusiast_logo.png",
+                      cfg(target_width_mm=93.0,
+                          **{k: v for k, v in FLIP_2026_10_23.items() if k.startswith("small_text_cap")}))
 
 
 @pytest.fixture(scope="session")
