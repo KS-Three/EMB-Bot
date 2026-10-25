@@ -22,7 +22,8 @@
     borderRequestPending,
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
-  import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
+  import { boundaryIssues } from "../lib/digitizer.js";
+  import { isElementStale } from "../lib/staleness.js";
   import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
   import { capOutlinesMm, isCapPieceId } from "../lib/capPieces.js";
   import { resolveCutOuts, isColumn, isRun, isOpenShape, shapeProblems } from "../lib/manualShapes.js";
@@ -1340,22 +1341,26 @@
     }
   }
 
-  // An element whose saved edits have not been stitched yet. Whole-element
+  // An element whose stitches are behind its settings: edits not stitched yet,
+  // but also a resize or a garment switched since the run (lib/staleness.js,
+  // the one rule the Digitize panel and Download read too). Whole-element
   // rather than per-shape on purpose: stage 5 resolves overlap BETWEEN shapes,
   // so editing one boundary genuinely moves its neighbours' stitches too.
   // Marking only the edited shape would be a more precise-looking half-truth.
   function isStale(el) {
-    if (!el || el.type !== "digitized" || !el.result) return false;
-    const edits = canonicalShapeEdits(el);
-    return editsKey(edits) !== (el.appliedEdits || editsKey({}));
+    return isElementStale(el, project);
   }
 
-  // Hatching over the stitches of an element whose edits have not been sewn
-  // yet. Drawn UNDER the outlines so the thing being edited stays crisp.
+  // Hatching over the stitches of an element that is behind its settings.
+  // Drawn UNDER the outlines so the thing being edited stays crisp. The ids it
+  // hatched are mirrored on the canvas (`data-stale-ids`) because a hatch is
+  // pixels, and a spec cannot ask pixels which element they belong to.
   function drawStaleWash(ctx) {
     if (!renderResult || !renderResult.toCanvas || !project) return;
+    const behind = [];
     for (const el of project.elements || []) {
       if (!isStale(el)) continue;
+      behind.push(el.id);
       const rect = perElementRects.find((r) => r.id === el.id);
       if (!rect) continue;
       ctx.save();
@@ -1376,6 +1381,12 @@
       ctx.stroke();
       ctx.restore();
     }
+    // setAttribute, never `canvas.dataset.x = …`: in this legacy-mode
+    // component a member assignment on a component-level variable invalidates
+    // it, and paint() reads `canvas`, so the assignment re-ran the paint that
+    // made it -- a loop that froze the page the moment a digitize landed.
+    const ids = behind.join(",");
+    if (canvas && canvas.getAttribute("data-stale-ids") !== ids) canvas.setAttribute("data-stale-ids", ids);
   }
 
   function drawShapeOutlines(ctx) {

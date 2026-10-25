@@ -1314,6 +1314,66 @@ describe("a resize on the field", () => {
   });
 });
 
+// ---- the run button is lit while Download is locked ------------------------
+//
+// Kent 2026-10-25, "block until re-digitized": Download (DownloadStep) stays
+// disabled while the stitches are behind the current size or garment, and the
+// run button is lit — a halo, no words (no-warnings ruling 2026-10-02). The
+// panel and Download read ONE rule (lib/staleness.js), so this pins the
+// panel's half: stale AND runnable lights it, current or unrunnable does not.
+describe("the run button while Download is locked", () => {
+  const RESULT = {
+    stitches: [{ x: 0, y: 0, type: "stitch" }, { x: 800, y: 400, type: "stitch" }],
+    colors: [], stitchCount: 2, colorCount: 1, name: "t", widthMM: 80, heightMM: 40,
+  };
+  const TEE = { garmentId: "left_chest" };
+  const HAT = { garmentId: "hat_front" };
+
+  async function panel({ project = TEE, health = { ok: true }, applied, extra = {} } = {}) {
+    const mod = await import("../lib/digitizer.js");
+    const key = mod.configKey(mod.buildDigitizeConfig(baseElement([], { result: RESULT }), applied || TEE));
+    const utils = render(Harness, {
+      props: {
+        element: baseElement([], { result: RESULT, appliedConfig: key, ...extra }),
+        project,
+        health,
+      },
+    });
+    const run = () => utils.container.querySelector(".dgp-run");
+    return { ...utils, run };
+  }
+
+  test("a design that matches its settings is neither stale nor lit", async () => {
+    const { run } = await panel();
+    expect(run()).not.toHaveClass("dgp-run-stale");
+    expect(run()).not.toHaveClass("dgp-run-lit");
+    expect(run().dataset.blocksDownload).toBe("false");
+  });
+
+  test("the garment switched after the run lights it, and says nothing in words", async () => {
+    const { run, queryByTestId, container } = await panel({ project: HAT });
+    expect(run()).toHaveClass("dgp-run-stale");
+    expect(run()).toHaveClass("dgp-run-lit");
+    expect(run().dataset.blocksDownload).toBe("true");
+    // The panel's long-standing "Changed since the last run" line is the one
+    // sentence it already had; the lock adds none.
+    expect(container.textContent).not.toMatch(/download/i);
+    expect(queryByTestId("digitize-stale")).not.toBeNull();
+  });
+
+  test("a resize lights it", async () => {
+    const { run } = await panel({ extra: { sizeMm: 62 } });
+    expect(run()).toHaveClass("dgp-run-lit");
+  });
+
+  test("with the service down the button cannot run, so it is not lit and Download is not locked", async () => {
+    const { run } = await panel({ project: HAT, health: null });
+    expect(run()).toBeDisabled();
+    expect(run()).not.toHaveClass("dgp-run-lit");
+    expect(run().dataset.blocksDownload).toBe("false");
+  });
+});
+
 describe("a file picked before the element existed", () => {
   beforeEach(() => {
     fakeStore.clear();
