@@ -1716,6 +1716,15 @@ def _art_outlines(regions, cfg, source_pixels=None) -> dict | None:
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
     """Stages 5-7: regions -> stitches. Safe to re-run on one PipelineResult."""
     cfg = cfg or PipelineConfig()
+    # `cfg.lettering_columns_apex_cut` (built OFF): `outline_cut` reads no
+    # config, so the flag is set there for the length of this plan
+    from .outline_cut import apex_cut_scope
+    with apex_cut_scope(cfg.lettering_columns_apex_cut):
+        return _plan_stitches(result, cfg)
+
+
+def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
+    """`plan_stitches`' body."""
     # Same fold as `finish_generation`'s, one hop further out: stage 7's
     # photo sequencing and the shade bind read `is_photographic`, and this
     # entry point is routinely called with a config built from scratch.

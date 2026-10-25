@@ -12,8 +12,10 @@ metadata:
 **Premise half false.** #1051 said our serifs fuse Fremont's OTE / NT. At the
 pro's width (hat and patch, rembg on) all 12 HOTEL FREMONT letters trace as 12
 regions and are all `text_candidate`. Only the SEWN file fuses O+T (board reader
-11 components vs the pro's 12): serif / pull reach in the Column lane, not the
-tagger. Check the trace before blaming the tagger for a fused read.
+11 components vs the pro's 12), and it is PULL: trace gap 0.62 mm at the O's flank
+vs the T's hanging serif, our needle paths 0.14 (0.40 of the 0.48 closed is the
+0.4 mm pull comp), no serif overshoot; the pro keeps 0.36. Gate 1, not layout.
+Check the trace before blaming the tagger for a fused read.
 
 **What the tagger does miss (MFab).** Hat: I+N of WELDING touch at a neck under
 0.08 mm, one region of aspect 1.03 the door admits as ONE glyph -- the wide pass
@@ -35,6 +37,12 @@ the cluster sews as bean letters under the true-size switch (line 0.5 mm) becaus
 `beanletters`' ink read gives 0.44 mm on a letter traced 1.23 mm wide (the art
 draws white faces in a thin black outline). The A is already hollow OFF; the pro
 sews A/N/D satin. **Don't flip before that.**
+
+**OFF is md5-identical to main on all six** -- but MFab hat twice read `7296b420`
+(11,855 / 67) on a loaded laptop: rembg ran past its 60 s timeout, the pipeline
+dropped the whole photo prep, and the plan said `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`.
+Raised to 600 s the same tree reads `3673370d`. Check that warning before calling
+a photo-path md5 mismatch a regression.
 
 **How to apply:** capture the regions entering `detect_text_clusters` (wrap it in
 the pipeline module) and re-run the tagger OFF/ON offline in seconds -- the six

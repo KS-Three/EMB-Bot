@@ -17,6 +17,7 @@ the OLDEST lines whole to the archive.
 - [Junction construction plan](../../docs/superpowers/plans/2026-09-19-junction-construction.md) — folds are welds through 30-60° corners; `satin_junction_stack` ON refuses them (R 311→0)
 - [Lettering construction plan](../../docs/superpowers/plans/2026-09-19-lettering-construction.md) — Kent: trace + font-engine rules; all built, ON but 3b (skeleton RULED, owes sew-out)
 - [Opus team architecture](../../docs/superpowers/plans/2026-10-23-opus-team-architecture.md) — the plan a fresh director runs from: method, state, ranked queue L1-L10 / I1-I6, Kent's open decisions, brief template, traps
+- [Apex cut](apex-cut-2026-10-25.md) — acute tips (M's V, W, MFab N, PROSEAL A): pro cuts along the cross, tip one level-crossed piece; `lettering_columns_apex_cut` OFF; corner_fold refuses them (long_way)
 - [Bean holds ON](bean-holds-on-2026-10-15.md) — Kent flipped counter hold 0.25 + bay hold 0.2 as PLAIN defaults (None stays OFF); the three sew-out cards pin None explicitly
 - [Beanie knockdown ON](beanie-knockdown-2026-10-21.md) — Kent flipped it unsewn: garment-coloured fill under design
 - [Big-letter construction](big-letter-construction-2026-10-24.md) — MARINE's 163-vs-77 is 35 patches + a sheared top slab, no length cap; cuts buy cross direction only — `text_lean` (OFF) gives it, don't copy the count
@@ -40,6 +41,7 @@ the OLDEST lines whole to the archive.
 - [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); Fremont OFF md5 follows OpenCV's Intel IPP path; test env capped OPENCV_IPP=avx2
 - [The display revamp, and a fleet that outran its budget](display-revamp-and-a-fleet-that-outran-its-budget-2026-09-16.md) — `kind` is an OPEN set of eight
 - [The Studio never sent the file](../../DOCTRINE.md) — 1,200-px canvas re-encode rewrote RGB under alpha (Becker 59→175 trims); FIXED 09-20; `alpha_edge_extend` ON
+- [Download stale guard](download-stale-guard-2026-10-25.md) — Kent 10-25 "block until re-digitized": machine-file buttons disabled while stitches trail size/garment/settings; one rule (staleness.js); run button lit; no text
 - [Edge wobble is satin rails](edge-wobble-is-satin-rails-2026-09-19.md) — "right shapes, bad edges": outline clean (0.011 mm), SATIN RAILS wobble ~0.10 mm; run `edge_wobble.py` first
 - [Browser fill lane state](embot-browser-fill-lane-state.md) — SNAPSHOT 10-03: #606/#609/#611 built OFF, flips Kent's; island fix #613 merged PRE-audit, cures in #620; cleanup only Kent can run
 - [Closed-ring lane](embot-closed-ring-lane.md) — SNAPSHOT: #621 `offsetRing` on a repeated point, #625 stacked on it; defect 55's offset half is Kent's call
@@ -67,6 +69,7 @@ the OLDEST lines whole to the archive.
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
 - [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
 - [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out
+- [Letter separation](letter-separation-2026-10-25.md) — W3-07: our 6 touching 5-10 mm pairs are PULL COMP (traced 0.60-0.87 apart, rails 0.29 out), not construction; pro keeps >= 0.10 mm, tips only
 - [Letterform priors lane](letterform-priors-lane-2026-10-06.md) — "something new" on lettering was yesterday's lane (outline-cut); check sibling lanes before proposing new
 - [10 mm and up lettering band](lettering-10mm-up-band-2026-10-23.md) — only MARINE compares (white faces unsewn); the pro crosses diagonals like stems; `lettering_columns_text_lean` OFF
 - [5-10 mm lettering band](lettering-5-10mm-band-2026-10-23.md) — gap is corners (pro folds, we butt); Drone O sewn SHUT by a split alpha counter; `enclosed_alpha_hole_parts` OFF
@@ -112,7 +115,7 @@ the OLDEST lines whole to the archive.
 - [True-size guard below 81 mm](small-text-true-size-guard-2026-10-15.md) — 65 mm loss = strays bug + ink-ground bug + per-glyph OCR noise; guard 0.45 x 40/wt, unsewn; ink ring OFF
 - [Split comb per column](split-comb-2026-09-30.md) — per-leg comb flickered on Becker's letters; `_comb_thresholds` 122 → 37; raising 5.0 is a sew-out (gate 1)
 - [Studio configurator redesign](studio-configurator-pr1-2026-09-30.md) — wizard → Tesla panel: all four PRs built; PR 3 = Advanced fold (hidden, not removed); Original view still open
-- [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch, not a tagger miss; MFab IN (<0.08 mm neck) + AND N (0.79); `text_cluster_part_touching` OFF; ON makes LC's N a hollow bean
+- [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch (pull, gate 1), not a tagger miss; MFab IN (<0.08 mm neck) + AND N (0.79); `text_cluster_part_touching` OFF; ON makes LC's N a hollow bean
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
@@ -120,6 +123,7 @@ the OLDEST lines whole to the archive.
 
 - [WITHDRAWN: warn sooner on small files](warn-sooner-small-files-handoff-2026-10-01.md) — Kent 10-02: no warnings, the engine takes the path; replaced by bean letters, built OFF in PR #601
 - [White faces fill](white-faces-fill-2026-10-25.md) — sew_enclosed_white made Becker 8.4x slower (white faces sewed as Column letters); `sew_enclosed_white_fields_fill` OFF fills them at 22°; house angle hides in fill_angle_deg
+- [White re-rule packet](white-rerule-packet-2026-10-25.md) — under border_from_outline, white ALONE fills Becker's faces (0°) at ≤1.39x CPU; fields_fill costs up to 5.6x (MFab lc); keyline inert; census `tools/enclosed_pro_census.py` 29/31
 - [Wide letters: MFab's W](wide-letters-mfab-w-2026-10-23.md) — W never reached the lane: tagger aspect 1.4 (W+E touch, 2.55; W alone 1.58); `text_cluster_wide_letters` OFF; measure MFab with main's rembg
 - [Word legibility instrument](word-legibility-instrument-2026-10-24.md) — `tools/word_legibility.py`: per word, ours vs pro, chance-corrected cc; n/loc is never 0; its two holes are closed in the reach note
 - [Word legibility reach](word-legibility-reach-2026-10-25.md) — all 17 pinned words located both files; `reach` (octaves, from cc) moves where cc sits at 1.00; the CROP's neighbours made the pro's small words unreadable; MFab/BECKER not verdicts

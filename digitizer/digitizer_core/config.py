@@ -2896,6 +2896,23 @@ class PipelineConfig:
     # 0.22). False is the guard, byte for byte.
     # Tests: `tests/test_column_inside_stagger.py`.
     lettering_columns_inside_stagger: bool = True
+    # Under `lettering_columns`, where two strokes meet at an acute tip --
+    # the M's V, each of a W's three apexes, a pointed A or N -- the tip
+    # sews as ONE column whose crosses span both strokes, cut off them along
+    # that cross (2026-10-25, built OFF; `outline_cut._apex_cuts`). Read
+    # with one rule on the professional's DSTs and ours (Becker MARINE at
+    # four widths, MFab AND WELDING hat and LC, PROSEAL;
+    # `tools/letter_pieces.py`): through every such tip he sews one piece,
+    # crosses within 16 deg of the line of text, 1.0-2.4 stroke widths
+    # across; the lane mitres it into two fanning half-width columns (the
+    # M's V, PROSEAL's A) or pivots one column through it (MFab's W, 30-89
+    # deg). `lettering_columns_corner_fold` does not reach these: it folds
+    # L corners and refuses an acute tip (`long_way`). Layout, judged in
+    # the preview (Kent, 2026-10-22), so ON-eligible from renders. False is
+    # the cut as it is, byte for byte. Set for the whole plan by
+    # `pipeline.plan_stitches` (`outline_cut.apex_cut_scope`).
+    # Tests: `tests/test_column_apex_cut.py`.
+    lettering_columns_apex_cut: bool = False
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule

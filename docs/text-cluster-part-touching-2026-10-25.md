@@ -29,9 +29,19 @@ lettering up to ~0.8 mm off. Trims are read from the DST only.
 `text_candidate` (the art leaves 0.45 mm between O and T, 0.77 mm between N
 and T). The fusion the 5-10 mm band (#1051) saw is in the SEWN file: the board's
 reader finds 11 components in ours (O and T are one, 14.25 mm wide) against
-the pro's 12 (`fremont_hat_OTE_off_on_pro.png`). That is stitch geometry --
-serif and pull reach in the Column lane -- not the tagger, and it is not built
-here. NT is apart in both files at main's defaults.
+the pro's 12 (`fremont_hat_OTE_off_on_pro.png`). That is stitch geometry,
+not the tagger, and it is not built here. NT is apart in both files at main's
+defaults.
+
+**Which: PULL, not serif reach.** The touch is the O's right flank against the
+T's hanging left serif. The trace leaves 0.62 mm there; our needle paths (the
+letters' own black block) come to 0.14 mm -- 0.48 mm closed, 0.40 of it the
+pull compensation both letters carry (`stitch_width_pull_mm` 0.4, 0.2 a side),
+and neither letter's needles reach more than 0.38 mm past its trace anywhere,
+so no serif overshoots. The board's reader paints 0.3 mm of thread and closes
+the last 0.14. The pro's needle paths stay 0.36 mm apart at the same place
+(his letters fitted locally). Pull compensation is ROADMAP gate 1 (fabric): a
+sew-out question, not a layout flip.
 
 **MFab's AND N is real, and there is a second miss beside it.**
 
@@ -105,19 +115,29 @@ tagger on all six: every polygon's WKT and every meta key):
 | Fremont hat, patch, Drone, ProSeal | nothing |
 
 Whole design, md5 of `[x, y, kind, jump, trim]` per stitch. "Branch OFF" is
-the full pipeline on this branch with the flag off where it finished on the
-loaded laptop (Fremont hat: 47 minutes); on every job the tagger's OUTPUT OFF
-is byte-identical to HEAD's (above), and nothing else in the diff runs when the
-flag is off (one config field nothing else reads, one kwarg that passes nothing).
+the full pipeline with the flag off: on the branch for five jobs, and for MFab
+hat on main at #1080's squash (`a6be6b78`) against its parent (`05270805`,
+also `3673370d`), measured after the PR merged (2026-10-25).
 
 | job | width mm | main (82b0bf28) | branch OFF | ON | stitches / trims main -> ON |
 |---|---|---|---|---|---|
 | Fremont hat | 92.6 | `6ff9803b` | `6ff9803b` | `6ff9803b` | 18,573 / 58, same |
-| Fremont patch | 92.5 | `d2bcba27` | tagger-identical | `d2bcba27` | 20,733 / 49, same |
-| MFab hat | 104.9 | `3673370d` | tagger-identical | `39d95f28` | 11,125 / 62 -> 11,138 / 62 |
-| MFab LC | 96.7 | `f444ae5e` | tagger-identical | `288c3c5b` | 11,691 / 73 -> 11,822 / 73 |
-| Drone | 62.6 | `6239342f` | tagger-identical | `6239342f` | 14,077 / 116, same |
-| ProSeal hat | 85.9 | `7d89f371` | tagger-identical | `7d89f371` | 7,760 / 56, same |
+| Fremont patch | 92.5 | `d2bcba27` | `d2bcba27` | `d2bcba27` | 20,733 / 49, same |
+| MFab hat | 104.9 | `3673370d` | `3673370d` | `39d95f28` | 11,125 / 62 -> 11,138 / 62 |
+| MFab LC | 96.7 | `f444ae5e` | `f444ae5e` | `288c3c5b` | 11,691 / 73 -> 11,822 / 73 |
+| Drone | 62.6 | `6239342f` | `6239342f` | `6239342f` | 14,077 / 116, same |
+| ProSeal hat | 85.9 | `7d89f371` | `7d89f371` | `7d89f371` | 7,760 / 56, same |
+
+**Trap, hit twice measuring this table:** on a loaded laptop the rembg cutout
+can run past `photo_prep_background_removal_timeout_s` (60 s). The pipeline
+then drops the WHOLE photo prep (Kent's 2026-08-24 ruling) and sews the
+classical route. MFab hat came out `7296b420` (11,855 / 67, 59 regions into the
+tagger instead of 60) twice that way, and it looked like an OFF regression. It
+was not: the plan's warnings read `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`
+instead of `PHOTO_BACKGROUND_REMOVED`. Re-run with the timeout raised
+(`--set photo_prep_background_removal_timeout_s=600`), the same tree gives
+`3673370d`. Read that warning before calling any md5 mismatch on a photo-path
+job a regression.
 
 The flat goldens (`logo_alpha`, `logo_whitebg`, `ribbon_curve`) are pinned
 OFF and ON in the test: no touching or overshooting letter there.
