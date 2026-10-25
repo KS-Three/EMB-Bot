@@ -4701,4 +4701,11 @@ def sequence(
     # thread it counts as later is the thread actually sewn later.
     if cfg.cut_every_jump:
         _cut_or_bury_jumps(blocks, tie_kw.get("small_letters"))
+    # `cfg.tie_in_off` (built OFF): after `cut_every_jump`, so a cut that
+    # pass adds loses its tie-in too (`stitches.tie_in` records it in
+    # `tie_in_pts`) -- no run start is locked, even after a cut. It only
+    # strips leading lock points; the sew order the pass above read is
+    # unchanged.
+    if cfg.tie_in_off:
+        stitches.drop_tie_ins(blocks)
     return blocks, warnings
