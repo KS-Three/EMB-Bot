@@ -1118,7 +1118,8 @@ def _neck_splits(regions: list[Region], cands: list[_Candidate],
     `touching` (`part_touching`): every letter-height region within reach
     of the line, whatever its aspect, and a region taller than the line
     that spans its cap band (`_spans`) counts as beside it; the neck must
-    also be narrower than `TOUCH_MAX_MM`, and every piece must be at least
+    also be narrower than `TOUCH_MAX_MM` (the region parts into as many
+    pieces at an opening of half that), and every piece must be at least
     `LETTER_HEIGHT_RATIO` of the line's cap height -- two letters touching,
     never a serif or a spike cut off one."""
     import copy
@@ -1148,10 +1149,17 @@ def _neck_splits(regions: list[Region], cands: list[_Candidate],
         stats = _skeleton_stroke_stats(r)
         if stats is None:
             continue
-        polys = _neck_split(r.polygon, stats.mean_mm,
-                            r_max=TOUCH_MAX_MM / 2.0 if touching else None)
+        polys = _neck_split(r.polygon, stats.mean_mm)
         if polys is None:
             continue
+        # the cut is the stroke rule's, so a split the wide pass makes is the
+        # same split here; a touch must ALSO part, into as many pieces, at an
+        # opening of half `TOUCH_MAX_MM` (a smaller opening leaves slivers of
+        # a straight edge in the neck, so it judges the neck, not the cut)
+        if touching:
+            narrow = _neck_split(r.polygon, stats.mean_mm, r_max=TOUCH_MAX_MM / 2.0)
+            if narrow is None or len(narrow) != len(polys):
+                continue
         # a piece wider than any letter the round admits can never be tagged,
         # so the split would only be undone: not offered (a ring border
         # beside its lettering, Becker's at 101.9 mm, pinches into two)
@@ -1196,9 +1204,10 @@ def _neck_splits(regions: list[Region], cands: list[_Candidate],
 # sews off the lane; WELDING's N (0.77-0.79) and G (0.71) are house-grouped
 # only. Each SPANS the line's cap band and overshoots it.
 #
-# `TOUCH_MAX_MM`: a neck narrower than this parts two letters (the opening
-# radius is half of it, and still never more than `NECK_OPEN_FRAC` of the
-# stroke). Over the six paired jobs' lettering (Fremont hat and patch, MFab
+# `TOUCH_MAX_MM`: a neck narrower than this parts two letters -- the region
+# must part at an opening of half of it (and never more than `NECK_OPEN_FRAC`
+# of the stroke), and is then cut by the wide pass's own rule, so the
+# pieces are the ones that pass would make. Over the six paired jobs' lettering (Fremont hat and patch, MFab
 # hat and LC, Drone, ProSeal) the touches part at r 0.02-0.04 mm (necks of
 # 0.08 mm or less) and no single letter parts below r 0.125 (ProSeal's
 # 3 mm tagline: a 0.25 mm neck); 0.15 mm sits between them.
