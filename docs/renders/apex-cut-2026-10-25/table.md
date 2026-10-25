@@ -6,7 +6,7 @@
 | MARINE beanie 79.8 | M | 6+3 / 4+0 / 5+1 | 0 / 0 / 1 | – / 1 / 3 | 24.3 / 27.9 | 0 / 2 |
 | MARINE beanie 79.8 | A | 7+2 / 3+0 / 3+0 | 1 / 1 / 1 | – / 1 / 1 | 18.1 / 18.1 | 0 / 0 |
 | MARINE beanie 79.8 | N | 4+1 / 3+0 / 3+0 | 1 / 1 / 1 | – / 2 / 2 | 12.7 / 12.7 | 1 / 1 |
-| MARINE LC 95.7 | M | 6+2 / 8+1 / 8+1 | 0 / 2 / 2 | 1 / 1 / 1 | 60.2 / 60.2 | 0 / 0 |
+| MARINE LC 95.7 | M | 6+2 / 8+1 / 5+0 | 0 / 2 / 0 | 1 / 1 / 1 | 60.2 / 18.9 | 0 / 0 |
 | MARINE LC 95.7 | A | 3+0 / 3+0 / 3+0 | 1 / 0 / 0 | 2 / 1 / 1 | 11.7 / 11.7 | 0 / 0 |
 | MARINE LC 95.7 | N | 5+0 / 3+0 / 3+0 | 1 / 1 / 1 | 1 / 2 / 2 | 53.1 / 53.1 | 1 / 1 |
 | MARINE hat 101.9 | M | 7+1 / 4+0 / 5+1 | 0 / 0 / 0 | 1 / 1 / 3 | 11.9 / 17.1 | 0 / 2 |
@@ -47,3 +47,25 @@
 | PROSEAL hat 85.9 | A | 54°, 1.46 W | 1/1/1 / 2/2/2 / 2/1/1 | 5° / 18° / 13° | 1.73 / 0.81 / 1.62 | 25° / 19° / 11° |
 | PROSEAL hat 85.9 | A | 60°, 1.50 W | 2/2/1 / 1/1/1 / 1/1/1 | 33° / 18° / 15° | 1.26 / 1.46 / 1.44 | 36° / 13° / 13° |
 | PROSEAL hat 85.9 | A | 72°, 1.78 W | 1/1/1 / 2/2/2 / 2/2/2 | 2° / 47° / 47° | 1.31 / 0.74 / 0.70 | 37° / 18° / 30° |
+
+## Slab notch and V crotch (the M's fans, after the T1 stem-rail finding)
+
+A disc of 0.75 W round a point half a stroke inside the slab notch (the concave vertex on the left outline, 12-45% down the cap) and round the middle of the V's crotch-to-tip line. pieces = non-patch pieces with 3+ crosses in the disc; sweep = the widest rotation of consecutive crosses of one piece (a fan); pile = the most cross ends of one piece within 0.15 mm of one point (a fan's pivot hole); angle = median cross vs the line of text.
+
+| job | letter | where | pieces pro / OFF / ON | sweep pro / OFF / ON | pile pro / OFF / ON | angle pro / OFF / ON |
+|---|---|---|---|---|---|---|
+| MARINE hat 76.5 | A | slab notch | 2 / 1 / 1 | 24° / 8° / 8° | 2 / 2 / 2 | 6° / 2° / 2° |
+| MARINE hat 76.5 | M | V crotch | 3 / 2 / 1 | 70° / 20° / 18° | 3 / 2 / 2 | 7° / 9° / 2° |
+| MARINE hat 76.5 | M | slab notch | 1 / 1 / 1 | 6° / 5° / 5° | 3 / 2 / 2 | 2° / 2° / 2° |
+| MARINE hat 76.5 | N | slab notch | 3 / 1 / 1 | 67° / 5° / 5° | 4 / 2 / 2 | 23° / 2° / 2° |
+| MARINE beanie 79.8 | A | slab notch | 2 / 1 / 1 | 20° / 7° / 7° | 2 / 2 / 2 | 10° / 2° / 2° |
+| MARINE beanie 79.8 | M | V crotch | 3 / 2 / 2 | 71° / 23° / 15° | 4 / 2 / 2 | 5° / 14° / 0° |
+| MARINE beanie 79.8 | M | slab notch | 2 / 1 / 1 | 28° / 5° / 5° | 3 / 2 / 2 | 4° / 2° / 2° |
+| MARINE beanie 79.8 | N | slab notch | 2 / 1 / 1 | 67° / 5° / 5° | 4 / 2 / 2 | 23° / 2° / 2° |
+| MARINE LC 95.7 | M | V crotch | 3 / 4 / 3 | 13° / 49° / 17° | 4 / 12 / 2 | 3° / 67° / 18° |
+| MARINE LC 95.7 | M | slab notch | 1 / 3 / 1 | 5° / 51° / 4° | 3 / 7 / 2 | 0° / 41° / 2° |
+| MARINE LC 95.7 | N | slab notch | 2 / 1 / 1 | 66° / 4° / 4° | 3 / 2 / 2 | 17° / 4° / 4° |
+| MARINE hat 101.9 | A | slab notch | 2 / 1 / 1 | 11° / 7° / 7° | 2 / 2 / 2 | 4° / 2° / 2° |
+| MARINE hat 101.9 | M | V crotch | 4 / 2 / 1 | 22° / 23° / 13° | 3 / 2 / 2 | 3° / 18° / 1° |
+| MARINE hat 101.9 | M | slab notch | 1 / 1 / 1 | 4° / 4° / 4° | 3 / 2 / 2 | 0° / 0° / 0° |
+| MARINE hat 101.9 | N | slab notch | 2 / 2 / 2 | 64° / 13° / 13° | 3 / 6 / 6 | 17° / 14° / 14° |

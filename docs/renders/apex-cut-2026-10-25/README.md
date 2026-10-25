@@ -15,6 +15,7 @@ satin on a black fill, so the per-letter render is the proof.
 |---|---|
 | `marine76_M_off_on_pro.png` | OFF: two columns meet down the V's middle to its point. ON: the V is one block of level crosses from its crotch to its point, and the right diagonal's top sews with the stem's, as his do. His top-left is the font's sheared slab. |
 | `marine80_M_off_on_pro.png` | the same at 79.8 mm (beanie) |
+| `marine96_M_off_on_pro.png` | 95.7 mm (LC large), the fan the T1 stem-rail worker saw. OFF: the slot rule reads this M as an E on its side, and the slab and V sew as big fans from one hole (12 cross ends at the crotch). ON: a letter with an acute tip skips the slot rule, so there are no fans, the crosses are level and the tip is merged. |
 | `marine102_M_off_on_pro.png` | 101.9 mm: the junction rules already cut beside the crotch, so the tip's cross sits there. |
 | `mfab105_W_off_on_pro.png` | OFF: each of the three tips fans (the dark knot at the left V's point). ON: each tip is one piece. Seven pieces, his seven. There is no house angle on this W, so the crosses are square to each apex's axis rather than level. |
 | `mfab97_W_off_on_pro.png` | the LC's W. ON carries two straight travel runs on top of the satin: the walk leaving a dead-end tip. |
