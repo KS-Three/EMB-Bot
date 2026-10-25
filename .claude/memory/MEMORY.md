@@ -68,6 +68,7 @@ the OLDEST lines whole to the archive.
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
 - [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
 - [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out
+- [Letter separation](letter-separation-2026-10-25.md) — W3-07: our 6 touching 5-10 mm pairs are PULL COMP (traced 0.60-0.87 apart, rails 0.29 out), not construction; pro keeps >= 0.10 mm, tips only
 - [Letterform priors lane](letterform-priors-lane-2026-10-06.md) — "something new" on lettering was yesterday's lane (outline-cut); check sibling lanes before proposing new
 - [10 mm and up lettering band](lettering-10mm-up-band-2026-10-23.md) — only MARINE compares (white faces unsewn); the pro crosses diagonals like stems; `lettering_columns_text_lean` OFF
 - [5-10 mm lettering band](lettering-5-10mm-band-2026-10-23.md) — gap is corners (pro folds, we butt); Drone O sewn SHUT by a split alpha counter; `enclosed_alpha_hole_parts` OFF
@@ -113,7 +114,7 @@ the OLDEST lines whole to the archive.
 - [True-size guard below 81 mm](small-text-true-size-guard-2026-10-15.md) — 65 mm loss = strays bug + ink-ground bug + per-glyph OCR noise; guard 0.45 x 40/wt, unsewn; ink ring OFF
 - [Split comb per column](split-comb-2026-09-30.md) — per-leg comb flickered on Becker's letters; `_comb_thresholds` 122 → 37; raising 5.0 is a sew-out (gate 1)
 - [Studio configurator redesign](studio-configurator-pr1-2026-09-30.md) — wizard → Tesla panel: all four PRs built; PR 3 = Advanced fold (hidden, not removed); Original view still open
-- [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch, not a tagger miss; MFab IN (<0.08 mm neck) + AND N (0.79); `text_cluster_part_touching` OFF; ON makes LC's N a hollow bean
+- [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch (pull, gate 1), not a tagger miss; MFab IN (<0.08 mm neck) + AND N (0.79); `text_cluster_part_touching` OFF; ON makes LC's N a hollow bean
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
