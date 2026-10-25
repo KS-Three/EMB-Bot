@@ -26,3 +26,13 @@ outline border barely; Tires monoline NO (black on black -- its catch is trims
 **How to apply:** for a flag that acts only under another flag set, give it a
 `base`, and a `base_name` when a sibling shares that base, or the sheet
 digitizes the same OFF twice.
+
+**Kent's ruling from this sheet (2026-10-24), PR #1070:** `border_from_outline`
+and `small_text_cap_reach_edges` ON; `silhouette_underfill`, `monoline_script_satin`
+held OFF. reach_edges is INERT until the re-set itself flips (#1049 closed).
+The full suite on the flip found three bugs in #1065's ON path, none of them
+visible on its own OFF-default CI: empty `outline_holes` crashed the digitize
+(max of []), the body fill lacked `slant_turns=`, and the gradient repro's
+sweep square read as an outline (riders now excluded, Kent's 09-04 gradient
+ruling). **How to apply:** a flag built OFF has never had the suite run with it
+ON; the flip's full run IS its first ON test, so expect engine bugs, not just pins.
