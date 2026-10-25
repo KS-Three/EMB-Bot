@@ -3070,33 +3070,36 @@ def sequence(
                 art = p.region.polygon
                 rings = outline_holes(art, outline_rings[p.shape_id],
                                       max(w for _h, w in outline_rings[p.shape_id]))
-                o_runs: list[StitchRun] = []
-                o_jumps = 0
-                for piece in keyline_rest(art, 0.0, cfg.overlap_mm,
-                                          machine.MIN_FILL_WIDTH_MM, looped=rings):
-                    f_runs, f_report = stitch_shape(
-                        piece, p.shape_id,
-                        angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
-                        stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
-                        trim_at_mm=trim_at,
-                        start_near=o_runs[-1].points[-1] if o_runs else entry)
-                    o_runs += f_runs
-                    o_jumps += f_report["jumps"]
-                seam = 2.0 * cfg.simplify_tol_mm
-                o_holes = unary_union([Polygon(r) for r in art.interiors])
-                o_reach = unary_union([art.buffer(max(w for _h, w in rings), join_style=2),
-                                       p.polygon]).difference(o_holes)
-                if p.covered_by is not None:
-                    o_reach = o_reach.union(p.covered_by.difference(o_holes))
-                l_runs, l_report = keyline_runs(
-                    art, p.shape_id, reach=o_reach,
-                    entry=o_runs[-1].points[-1] if o_runs else entry,
-                    trim_at_mm=trim_at, underlay=satin_underlay != "none",
-                    holes=rings)
-                if not l_report["empty"]:
-                    return (o_runs + l_runs,
-                            {"jumps": o_jumps + l_report["jumps"], "empty": False,
-                             "outline_loops": l_report["loops"]}, False)
+                # no hole of the outline survives on the artwork polygon (the
+                # region-level read found one): nothing to loop, fall through
+                if rings:
+                    o_runs: list[StitchRun] = []
+                    o_jumps = 0
+                    for piece in keyline_rest(art, 0.0, cfg.overlap_mm,
+                                              machine.MIN_FILL_WIDTH_MM, looped=rings):
+                        f_runs, f_report = stitch_shape(
+                            piece, p.shape_id,
+                            angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
+                            stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
+                            trim_at_mm=trim_at,
+                            start_near=o_runs[-1].points[-1] if o_runs else entry)
+                        o_runs += f_runs
+                        o_jumps += f_report["jumps"]
+                    seam = 2.0 * cfg.simplify_tol_mm
+                    o_holes = unary_union([Polygon(r) for r in art.interiors])
+                    o_reach = unary_union([art.buffer(max(w for _h, w in rings), join_style=2),
+                                           p.polygon]).difference(o_holes)
+                    if p.covered_by is not None:
+                        o_reach = o_reach.union(p.covered_by.difference(o_holes))
+                    l_runs, l_report = keyline_runs(
+                        art, p.shape_id, reach=o_reach,
+                        entry=o_runs[-1].points[-1] if o_runs else entry,
+                        trim_at_mm=trim_at, underlay=satin_underlay != "none",
+                        holes=rings)
+                    if not l_report["empty"]:
+                        return (o_runs + l_runs,
+                                {"jumps": o_jumps + l_report["jumps"], "empty": False,
+                                 "outline_loops": l_report["loops"]}, False)
             # ... and the body it holds is a plain fill under that loop, on
             # stage 5's polygon, grown by the pull here when stage 5 kept it
             # on its artwork for satin rails (`satin_rail_comp`).
@@ -3112,6 +3115,7 @@ def sequence(
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
+                    slant_turns=cfg.fill_turn_slant,
                     start_near=entry, density_boost=cfg.fill_density_boost)
                 if runs:
                     report["outline_body"] = 1
