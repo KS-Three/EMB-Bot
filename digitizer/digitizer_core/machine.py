@@ -678,7 +678,7 @@ OUTLINE_BODY_RATIO = 1.0
 # the same 0.9 the keyline band reads (KEYLINE_REACH_FRAC).
 OUTLINE_REACH_FRAC = 0.9
 OUTLINE_WIDTH_MM = (1.5, 2.5)
-# ... and, with `cfg.border_from_outline_line_art_guard` (built OFF
+# ... and, with `cfg.border_from_outline_line_art_guard` (#1078, ON since
 # 2026-10-25), an outline is LINE ART -- a drawing, not a keyline -- when it
 # is a hairline (under OUTLINE_LINE_ART_FILL_SHARE of it is MIN_FILL_WIDTH_MM
 # across) AND its loops leave strokes behind (OUTLINE_LINE_ART_DROP_FRAC of
