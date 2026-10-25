@@ -173,8 +173,6 @@ def find_pair(slug: str, pro_rel: str, art_rel: str):
 def digitize_one(slug: str, cache: Path) -> dict:
     """Digitize `slug` at the pro's width and cache ours.dst + ours.json."""
     from tools import pro_pair as pp
-    from digitizer_core.export import write_dst
-    from tools.fremont_triage import STUDIO_FABRIC_RGB
 
     row = next(r for r in PAIRS if r[0] == slug)
     pro, art = find_pair(*row[:3])
@@ -182,14 +180,22 @@ def digitize_one(slug: str, cache: Path) -> dict:
         raise SystemExit(f"{slug}: missing {'pro' if pro is None else 'art'} file")
     width = pp.pro_counts(pro)["width_mm"]
     d = pp.digitize(art, width, row[3])
-    out = cache / slug
+    return write_ours(cache / slug, slug, row[3], width, pro, art, d.result, d.plan, d.secs)
+
+
+def write_ours(out: Path, slug: str, garment: str, width: float, pro, art, result, plan,
+               secs: float) -> dict:
+    """Cache one plan as ours.dst + ours.json (what `analyse` reads)."""
+    from digitizer_core.export import write_dst
+    from tools.fremont_triage import STUDIO_FABRIC_RGB
+
     out.mkdir(parents=True, exist_ok=True)
-    write_dst(d.plan, out / "ours.dst")
+    write_dst(plan, out / "ours.dst")
 
     kinds: dict[str, dict] = {}
     rgbs: dict[str, list] = {}
     ring_runs = []
-    for blk, run in d.plan.iter_runs():
+    for blk, run in plan.iter_runs():
         role = getattr(run, "role", "") or ""
         if str(run.kind) in ("border", "bean", "run") or role in ("border", "edge_cap"):
             xs = [p[0] for p in run.points or []]
@@ -202,7 +208,7 @@ def digitize_one(slug: str, cache: Path) -> dict:
         k[key] = k.get(key, 0) + len(run.points or [])
         rgbs[str(run.shape_id)] = list(blk.rgb)
     regions = []
-    for r in d.result.regions:
+    for r in result.regions:
         m = getattr(r, "meta", {}) or {}
         from digitizer_core.threads import CHART
         try:
@@ -214,12 +220,13 @@ def digitize_one(slug: str, cache: Path) -> dict:
             "kinds": kinds.get(str(r.shape_id), {}),
             "meta": {k: m[k] for k in ("tier", "technique", "border", "text_cluster_id",
                                        "lettering_group", "rescued_small_shape",
-                                       "bean_letter", "small_text_stray") if k in m},
+                                       "bean_letter", "small_text_stray", "enclosed_background",
+                                       "counter", "text_candidate", "word_id") if k in m},
         })
-    info = {"slug": slug, "garment": row[3], "width_mm": width, "pro": str(pro), "art": str(art),
-            "ground_rgb": list(STUDIO_FABRIC_RGB), "secs": round(d.secs, 1),
-            "warnings": [w.get("code") for w in getattr(d.plan, "warnings", [])],
-            "blocks": [list(b.rgb) for b in d.plan.blocks], "ring_runs": ring_runs, "regions": regions}
+    info = {"slug": slug, "garment": garment, "width_mm": width, "pro": str(pro), "art": str(art),
+            "ground_rgb": list(STUDIO_FABRIC_RGB), "secs": round(secs, 1),
+            "warnings": [w.get("code") for w in getattr(plan, "warnings", [])],
+            "blocks": [list(b.rgb) for b in plan.blocks], "ring_runs": ring_runs, "regions": regions}
     (out / "ours.json").write_text(json.dumps(info), encoding="utf-8")
     return info
 
@@ -572,7 +579,7 @@ def analyse(slug: str, cache: Path) -> dict:
         rs = ring_source(po.bounds, info.get("ring_runs", []), r["id"])
         if not r["kinds"] and not rs:
             # stage 7 sewed nothing for this shape; a loop here is a neighbour's
-            o = dict(o, cls="UNSEWN", width=None)
+            o = dict(o, cls="UNSEWN", width=None, raw_cls=o["cls"], raw_width=o["width"])
         bb = po.bounds
         rows.append({
             "id": r["id"], "area": round(po.area, 1),
