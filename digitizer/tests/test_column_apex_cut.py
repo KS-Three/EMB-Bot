@@ -18,7 +18,8 @@ through it (MFab's W). `lettering_columns_corner_fold` refuses an acute tip
 small) and MFab's W and N at 104.9 mm Hat, each as stage 7 handed it to
 the lane (polygon and keyword arguments, `corner_fold` on, as #1057 flips
 it), captured 2026-10-25 from main at 82b0bf28 with the md5 of the runs the
-lane sewed then (`off_md5`); MARINE's A at 101.9 mm (hat large) likewise;
+lane sewed then (`off_md5`); MARINE's M at 95.7 mm (LC large) and A at
+101.9 mm (hat large) likewise;
 and MARINE's M at 101.9 mm, its region polygon only (`cut_only`), for the
 cut.
 """
@@ -140,7 +141,8 @@ def test_off_never_reaches_the_new_code(monkeypatch):
 
 # --- OFF: the defect, pinned, and byte for byte -------------------------------------
 
-@pytest.mark.parametrize("lab", ["marine76_M", "marine76_N", "marine102_A", "mfab105_W", "mfab105_N"])
+@pytest.mark.parametrize("lab", ["marine76_M", "marine76_N", "marine96_M", "marine102_A",
+                                 "mfab105_W", "mfab105_N"])
 def test_off_sews_exactly_what_main_sewed(lab):
     # md5 of the runs main sewed for this letter before the flag existed
     runs, _rep = _sew(lab, False)
@@ -218,6 +220,25 @@ def test_on_a_v_between_its_stems_cuts_at_the_crotch():
     for f in (0.5, 0.7, 0.85):
         p = (crotch[0] + (tip[0] - crotch[0]) * f, crotch[1] + (tip[1] - crotch[1]) * f)
         assert len(_covering(off.columns, p)) == 2
+        hit = _covering(on.columns, p)
+        assert len(hit) == 1
+        assert max(_cross_deg(s) for s in on.columns[hit[0]].stations) < 2.0
+
+
+def test_on_an_m_with_an_acute_tip_is_not_read_as_an_e():
+    # MARINE's M at 95.7 mm: the slot rule (an E's stem read off its slots)
+    # takes it past both its M guards, and the slab notch and the V crotch
+    # fan from one hole each (the T1 worker's LC large render). ON, a
+    # letter whose junction rules found a tip skips the slot rule
+    poly, _sid, _kw, _ = _letters()["marine96_M"]
+    off, on = _cut(poly, False), _cut(poly, True)
+    assert "slot" in [c[2] for c in off.cuts]
+    assert "slot" not in [c[2] for c in on.cuts] and "apex" in [c[2] for c in on.cuts]
+    assert max(oc.pivot_sweep(c.stations) for c in off.columns) > 75.0
+    assert max(oc.pivot_sweep(c.stations) for c in on.columns) < 60.0
+    # crotch (-37.8, 16.59), tip (-37.35, 24.54): one column of level crosses near the point
+    for f in (0.7, 0.85):
+        p = (-37.8 + 0.45 * f, 16.59 + 7.95 * f)
         hit = _covering(on.columns, p)
         assert len(hit) == 1
         assert max(_cross_deg(s) for s in on.columns[hit[0]].stations) < 2.0
