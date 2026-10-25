@@ -1686,12 +1686,24 @@ def _fill_inside_satin_border(regions, cfg, design_class):
             if r.shape_id in demote else r for r in regions]
 
 
-def _art_outlines(regions, cfg) -> dict | None:
+def _art_outlines(regions, cfg, source_pixels=None) -> dict | None:
     """`cfg.border_from_outline`: {outline id: [(body id, hole, width mm)]}
-    from `art_outline.find_art_outlines`, or None with the flag off."""
+    from `art_outline.find_art_outlines`, or None with the flag off.
+
+    A region that RIDES the design's ramp (Kent's gradient ruling 2026-09-04,
+    `stage6_blend.region_rides_design_ramp`) is part of the sweep and sews its
+    bands, so it is never an outline and never a body: the rule was measured
+    on flat art (`tools/outline_census.py`), and on the gradient repro it
+    looped the sweep square round the white frame in satin, one thread where
+    the source shades fuchsia to orange (found by the full suite the day the
+    flag flipped ON, 2026-10-24)."""
     if not cfg.border_from_outline:
         return None
     from .art_outline import find_art_outlines, outline_width_mm
+    if source_pixels is not None and getattr(source_pixels, "design_ramp", None) is not None:
+        from .stage6_blend import region_rides_design_ramp
+        regions = [r for r in regions
+                   if not region_rides_design_ramp(r.polygon, source_pixels)]
     by_id = {r.shape_id: r for r in regions}
     out = {}
     for oid, bodies in find_art_outlines(regions, cfg).items():
@@ -1907,7 +1919,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                                     # outlines over EVERY region (an unsewn
                                     # body still makes its keyline one); None
                                     # with the flag off.
-                                    art_outlines=_art_outlines(result.regions, cfg))
+                                    art_outlines=_art_outlines(result.regions, cfg,
+                                                               result.source_pixels))
 
     # `cfg.beanie_knockdown` (built OFF): a sparse fill under the whole design,
     # sewn first, on a beanie with a known garment colour — `knockdown.py`.
