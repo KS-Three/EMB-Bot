@@ -366,7 +366,10 @@ def find_cuts(poly: Polygon, W: float):
 # four-fifths of the way to `APEX_CLOSE_FAR` (the tips he merges read
 # 0.44-0.68 and 0.17-0.50, PROSEAL's flat-topped A the 0.68 and 0.50; a
 # stroke's end, MARINE's slab corners and N foot, a crossbar's root
-# 0.73-0.94 or 0.53-0.90) -- at a rate that puts the strokes
+# 0.73-0.94 or 0.53-0.90), or it holds its width to halfway and then
+# closes to `APEX_SHOULDER_FAR` (MARINE's M at 101.9 mm, whose V runs
+# between its stems' edges before its point: 1.02 and 0.34; the nearest
+# refused, 0.89 and 0.40) -- at a rate that puts the strokes
 # under `APEX_MAX_DEG` apart (an L corner is 90: MFab's square A, which he
 # folds -- `corner_fold`), and nothing past the cut is a junction (a
 # crossbar's root, an N's foot: no concave corner further than half a
@@ -380,6 +383,7 @@ APEX_CROSS_MM = 7.0            # ... and on MARINE's 3.8-5 mm ones
 APEX_DEPTH_FRAC = 0.7          # the cut sits no further than this share of the way to the tip
 APEX_CLOSE_MID = 0.7
 APEX_CLOSE_FAR = 0.52
+APEX_SHOULDER_FAR = 0.36
 
 
 @contextlib.contextmanager
@@ -471,7 +475,9 @@ def _apex_walk(poly: Polygon, p, q, others, W: float):
             return _apex_refused("open")
         w.append(math.dist(*hs))
     w0 = math.dist(*h)
-    if w[0] > APEX_CLOSE_MID * w0 or w[1] > APEX_CLOSE_FAR * w0:
+    v_like = w[0] <= APEX_CLOSE_MID * w0 and w[1] <= APEX_CLOSE_FAR * w0
+    shoulder = w[0] <= 1.05 * w0 and w[1] <= APEX_SHOULDER_FAR * w0
+    if not (v_like or shoulder):
         return _apex_refused("not_closing")     # a stroke's end, not a tip
     if 2.0 * math.degrees(math.atan((w0 - w[1]) / (1.6 * (L - t)))) > APEX_MAX_DEG:
         return _apex_refused("square")          # strokes meeting square or wider: an L, folded or mitred
@@ -485,8 +491,11 @@ def _apex_walk(poly: Polygon, p, q, others, W: float):
         return _apex_refused("no_tip")          # what lies past the cut does not reach the tip
     edge = LineString([h0, h1])
     rf, _cv = corners(tip, W, reflex_deg=REFINE_REFLEX_DEG)
-    # a concave corner AT the cut is a neighbour's crotch, one AT the point is the trace's
-    if any(edge.distance(Point(c["p"])) > 0.5 * W and math.dist(c["p"], q) > 0.75 * W for c in rf):
+    # a concave corner AT the cut is a neighbour's crotch, one on another
+    # cut is that cut's own junction (a chamfered stem root, MARINE's M at
+    # 101.9 mm), one AT the point is the trace's
+    if any(edge.distance(Point(c["p"])) > 0.5 * W and math.dist(c["p"], q) > 0.75 * W
+           and all(ln.distance(Point(c["p"])) > 0.3 * W for ln in clips) for c in rf):
         return _apex_refused("junction")        # the stroke runs on past the cut: not a tip
     return recs
 

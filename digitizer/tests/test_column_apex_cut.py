@@ -18,7 +18,8 @@ through it (MFab's W). `lettering_columns_corner_fold` refuses an acute tip
 small) and MFab's W and N at 104.9 mm Hat, each as stage 7 handed it to
 the lane (polygon and keyword arguments, `corner_fold` on, as #1057 flips
 it), captured 2026-10-25 from main at 82b0bf28 with the md5 of the runs the
-lane sewed then (`off_md5`).
+lane sewed then (`off_md5`); and MARINE's M at 101.9 mm (hat large), its
+region polygon only (`cut_only`), for the cut.
 """
 from __future__ import annotations
 
@@ -60,6 +61,8 @@ def _cut(poly, on: bool):
 def _letters():
     out = {}
     for lab, v in json.loads(LETTERS.read_text(encoding="utf-8")).items():
+        if v.get("cut_only"):
+            continue
         kw = dict(v["kw"])
         for k in ("start_near", "end_near"):
             if kw.get(k) is not None:
@@ -189,6 +192,24 @@ def test_on_the_ms_v_tip_is_one_column_of_level_crosses():
     assert "mitre" not in [c[2] for c in on.cuts]
     for f in (0.7, 0.85):
         p = (-30.22 + 0.35 * f, 13.26 + 6.37 * f)
+        hit = _covering(on.columns, p)
+        assert len(hit) == 1
+        assert max(_cross_deg(s) for s in on.columns[hit[0]].stations) < 2.0
+
+
+def test_on_a_v_between_its_stems_cuts_at_the_crotch():
+    # MARINE's M at 101.9 mm: the junction rules already cut beside the
+    # crotch, so the tip's cross fits there; the V then runs at its width
+    # between the stems' edges before it closes (a shoulder, then a point)
+    v = json.loads(LETTERS.read_text(encoding="utf-8"))["marine102_M"]
+    poly = Polygon(v["exterior"], v["holes"])
+    off, on = _cut(poly, False), _cut(poly, True)
+    assert "mitre" in [c[2] for c in off.cuts] and "mitre" not in [c[2] for c in on.cuts]
+    assert "apex_stub" not in [c[2] for c in on.cuts]       # the cross runs through the crotch
+    crotch, tip = (-40.25, 17.66), (-39.81, 26.18)
+    for f in (0.5, 0.7, 0.85):
+        p = (crotch[0] + (tip[0] - crotch[0]) * f, crotch[1] + (tip[1] - crotch[1]) * f)
+        assert len(_covering(off.columns, p)) == 2
         hit = _covering(on.columns, p)
         assert len(hit) == 1
         assert max(_cross_deg(s) for s in on.columns[hit[0]].stations) < 2.0
