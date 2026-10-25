@@ -33,7 +33,7 @@ The hole ring must be a loop the border tier would sew
 holes (Becker's keyline 0.99-1.00, MFab's 1.00; Bridge's wheel, a ring with
 spokes, 0.67-0.71). Pure: reads geometry and tags.
 
-`cfg.border_from_outline_line_art_guard` (built OFF 2026-10-25) refuses one
+`cfg.border_from_outline_line_art_guard` (#1078, ON since 2026-10-25) refuses one
 more class: LINE ART (`line_art_reading`). Bridge's bowl-and-waves drawing is
 a band by the reach rule (0.99-1.00) and holds yellow cells of the disc it is
 drawn on, so it read as an outline; sewn as one, its cells' tips fan spikes

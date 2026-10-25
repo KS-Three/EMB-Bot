@@ -1598,7 +1598,7 @@ class PipelineConfig:
     # top; pro 8,694 / 40). False is the engine as it was, byte for byte;
     # `tests/conftest.py` PRE_FLIP pins it False.
     border_from_outline: bool = True
-    # The rule's false positive (2026-10-25, built OFF): a hairline DRAWING is
+    # The rule's false positive (2026-10-25, #1078): a hairline DRAWING is
     # not an outline. Bridge Bar's bowl-and-waves (0.8-1.0 mm black lines round
     # yellow cells of the disc they sit on) reads as one, and ON sews each
     # cell a 1.5 mm satin loop -- spikes fanned at the cells' tips -- while the
@@ -1614,9 +1614,12 @@ class PipelineConfig:
     # positives gone, no true one lost); Becker, MFab, Fremont byte-identical.
     # The pro's Bridge files carry no drawing (his art was redrawn without
     # it), so this is our construction's limit, not his rule. Acts only with
-    # `border_from_outline`. Layout (ruling 2026-10-22: judged in the preview);
-    # flipping it is Kent's call.
-    border_from_outline_line_art_guard: bool = False
+    # `border_from_outline`. Layout (ruling 2026-10-22: judged in the preview).
+    # **ON since 2026-10-25, Kent's flip** ("Flip it ON", from #1078's OFF | ON
+    # | ON+guard | pro renders of the bowl: spike rays 22 -> 1, pinholes 3 -> 1
+    # on the hat). False is the engine as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP pins it False.
+    border_from_outline_line_art_guard: bool = True
     # A white FIELD that `sew_enclosed_white` sews is never a letter
     # (2026-10-25, built OFF; Kent: "Ship 3, fix white next"). Becker's five
     # white BECKER faces sit inside the word's outline and carry its text
