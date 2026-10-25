@@ -40,6 +40,9 @@ INK, GROUND = (170, 150, 120), (255, 255, 255)
 STROKE = 0.3                       # Fremont's date: 0.27-0.30 mm strokes on a 1.9 mm cap
 # the re-set as #1057 sets it (`small_text_cap_max_width_scale` is not read by it)
 KW = dict(cap_mm=4.0, min_stroke_mm=0.85, letter_gap_mm=0.25, bold_scale=1.45)
+# the same, as the PipelineConfig fields the pipeline reads them from
+KW_CFG = dict(small_text_cap_mm=4.0, small_text_cap_min_stroke_mm=0.85,
+              small_text_cap_letter_gap_mm=0.25, small_text_cap_bold_scale=1.45)
 
 
 def _arc(cx, cy, r_out, r_in, a0, a1, n=48):
@@ -281,3 +284,30 @@ def test_census_splits_the_pros_joined_digits():
     assert allot([3.7, 3.2, 3.8, 2.2, 9.95], 7) == [1, 1, 1, 1, 3]
     assert allot([9.2, 1.9, 8.35], 7) == [3, 1, 3]          # the patch: EST joined too
     assert allot([1.0] * 8, 7) is None                      # more pieces than letters: unread
+
+
+# --- the wiring ------------------------------------------------------------------
+
+def test_the_key_reaches_small_text_through_the_pipeline(monkeypatch):
+    """`cfg.extra["small_text_bay_mouth"]` is read by the pipeline's one call
+    to the growth: absent, the call carries no `bay_mouth` at all (today's
+    call, word for word); set, it carries `bay_mouth=True`. A tiny art --
+    two blobs on white -- through `build_generation`, the stage that grows."""
+    from digitizer_core import PipelineConfig, small_text
+    from digitizer_core.pipeline import build_generation
+    from tests.conftest import own_thread_only
+
+    img = np.full((160, 260, 3), 255, np.uint8)
+    img[30:130, 20:120] = (40, 40, 200)
+    img[30:130, 140:240] = (30, 160, 60)
+    calls = []
+    real = small_text.enlarge_small_text
+    monkeypatch.setattr(small_text, "enlarge_small_text", own_thread_only(
+        lambda *a, **k: (calls.append(dict(k)), real(*a, **k))[1], real))
+    reset = dict(target_width_mm=60.0, max_colors=4, **KW_CFG)
+    build_generation(img, PipelineConfig(**reset))
+    build_generation(img, PipelineConfig(**reset, extra={"small_text_bay_mouth": True}))
+    assert len(calls) == 2, calls
+    assert "bay_mouth" not in calls[0]
+    assert calls[1]["bay_mouth"] is True
+    assert {k: v for k, v in calls[1].items() if k != "bay_mouth"} == calls[0]

@@ -23,8 +23,9 @@ zip): every mouth open, n 18, 0.27-1.20, median 0.51 = `BAY_MOUTH_MM`
 from a pocket (ground inside the letter's 0.8 mm closing, >= 0.15 mm from
 thread) to the outside; 0 = enclosed, so an 8's counters read 0 by design.
 
-**Built (OFF, `cfg.extra["small_text_bay_mouth"]`, re-set only,
-`small_text._open_mouths`):** a pocket of the sewn extent (polygon +
+**Built (OFF, `cfg.extra["small_text_bay_mouth"]`, wired in pipeline.py's
+`enlarge_small_text` call -- absent key, the call is today's word for word --
+re-set only, `small_text._open_mouths`):** a pocket of the sewn extent (polygon +
 `SEWN_EDGE_MM`) that is constricted and under 0.51 and is a BAY of the
 letter (not a counter) -> the mouth's place is the bay's narrowest point in
 the letter AS DRAWN (`_pinch`; on the sewn extent the wall is as thick
