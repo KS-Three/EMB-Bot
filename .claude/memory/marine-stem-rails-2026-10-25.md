@@ -20,9 +20,11 @@ files (tol 0.40 / 0.52, unexplained <= 0.008): not grid-gated, not refused.
 sit on them at the 0.28 pull, std 0.004-0.015 mm -- neither the outline nor
 [[rail-wobble-is-the-models-floor-2026-09-21]] (that floor is the skeleton
 tier's; Column rails are the outline). (3) Stem window (35-92% of the cap,
-below the slab; upright pieces; one reader on both DSTs): ours 0.013-0.04
-(the DST's 0.1 mm rounding), the pro's 0.000 -- his stems land on one grid
-column. (4) Every station over 0.15 mm classified (`tools/rail_jitter_cause.py`,
+below the slab; upright pieces; one reader on both DSTs): ours 0.013-0.042
+on 19 of 24 letters (the DST's 0.1 mm rounding), the pro's 0.000 -- his
+stems land on one grid column. The rest (our LC-large M 0.137, hat-small R
+0.104, A 0.06-0.10; HIS E 0.22 on both large files) are pieces folding
+through a corner inside the window; their stations classify corner. (4) Every station over 0.15 mm classified (`tools/rail_jitter_cause.py`,
 fused rails): 318 CORNER (the slab's reflex notch, the M's V crotch, the A's
 counter / feet), 49 STRAY (a split leg or short stitch read as a rail), 6 on
 R's curved bowl, **0 on a straight stem in any file**.
