@@ -61,8 +61,10 @@ def _md5(regions, rep) -> str:
 
 # --- OFF -------------------------------------------------------------------------
 
-def test_off_by_default():
-    assert PipelineConfig().small_text_cap_reach_edges is False
+def test_on_by_default():
+    # Kent's flip 2026-10-24 (wave-2 flip sheet, PR #1069); inert while the
+    # re-set (`small_text_cap_letter_gap_mm`) is unset
+    assert PipelineConfig().small_text_cap_reach_edges is True
 
 
 def test_off_is_byte_identical_to_main():

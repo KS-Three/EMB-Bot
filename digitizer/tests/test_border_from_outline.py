@@ -54,6 +54,9 @@ def _plan(outline, body, *, body_sewn=True, body_meta=None, outline_meta=None, *
     planned = [PlannedRegion(region=o, polygon=outline, sew_index=1)]
     if body_sewn:
         planned.insert(0, PlannedRegion(region=b, polygon=body, sew_index=0))
+    # the flag is ON by default since 2026-10-24 (Kent); a call that does not
+    # name it is the OFF arm, as it was when these tests were written
+    cfg_kw.setdefault("border_from_outline", False)
     cfg = PipelineConfig(underlay=False, **cfg_kw)
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg,
                          art_outlines=_art_outlines([b, o], cfg))
@@ -76,8 +79,9 @@ def _crosses(runs, sid):
     return out
 
 
-def test_flag_default_is_off_and_the_widths_are_the_pros():
-    assert PipelineConfig().border_from_outline is False
+def test_flag_default_is_on_and_the_widths_are_the_pros():
+    # Kent's flip 2026-10-24 (wave-2 flip sheet, PR #1069)
+    assert PipelineConfig().border_from_outline is True
     assert machine.OUTLINE_WIDTH_MM == (1.5, 2.5)
     assert machine.OUTLINE_BODY_RATIO == 1.0
 
@@ -96,7 +100,7 @@ def test_off_ignores_the_outlines_even_when_handed_them():
     found = _art_outlines([b, o], on_cfg)
     assert found
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"),
-                         PipelineConfig(underlay=False), art_outlines=found)
+                         PipelineConfig(underlay=False, border_from_outline=False), art_outlines=found)
     assert _md5([r for blk in blocks for r in blk.runs]) == OFF_MD5
 
 
@@ -241,7 +245,8 @@ def test_on_an_outline_that_does_not_sew_leaves_its_body_alone():
     found = _art_outlines([b, o], cfg_on)
     planned = [PlannedRegion(region=b, polygon=FACE, sew_index=0)]
     on, _ = sequence(planned, fabric_for_garment("hat_front"), cfg_on, art_outlines=found)
-    off, _ = sequence(planned, fabric_for_garment("hat_front"), PipelineConfig(underlay=False))
+    off, _ = sequence(planned, fabric_for_garment("hat_front"),
+                      PipelineConfig(underlay=False, border_from_outline=False))
     assert _md5([r for x in on for r in x.runs]) == _md5([r for x in off for r in x.runs])
 
 

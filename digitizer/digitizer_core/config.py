@@ -1593,8 +1593,11 @@ class PipelineConfig:
     # read (no second ring in the body's own colour) and over
     # `enclosed_white_keyline` on a keyline band that holds an outlined body.
     # Layout (ruling 2026-10-22: judged in the preview).
-    # OFF is the engine as it was, byte for byte.
-    border_from_outline: bool = False
+    # **ON since 2026-10-24, Kent's flip** from the wave-2 flip sheet (Becker
+    # small 8,512 / 21 -> 11,100 / 25 with white sewn, faces fill, loops on
+    # top; pro 8,694 / 40). False is the engine as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP pins it False.
+    border_from_outline: bool = True
     # The pro's silhouette under-fill (`silhouette_underfill.py`, built OFF
     # 2026-10-24, Kent: "Build under-fill, OFF"). Read per colour block on
     # MFab hat (his black covers our band 1.00 and its holes 0.82) and the
@@ -3047,8 +3050,12 @@ class PipelineConfig:
     # Measured: ProSeal hat tagline 3.15 mm bean -> 4.35-4.45 satin (pro
     # 4.55), beanie 2.8 -> 3.65-3.7 (pro 4.0); Fremont and Drone DSTs
     # byte-identical. Geometry, not fabric: where the letters go. Tests:
-    # `tests/test_small_text_reach_edges.py`. False: today, byte for byte.
-    small_text_cap_reach_edges: bool = False
+    # `tests/test_small_text_reach_edges.py`. **ON since 2026-10-24, Kent's
+    # flip** from the wave-2 flip sheet; it acts only while the re-set
+    # (`small_text_cap_letter_gap_mm`) is set, so with that None it changes
+    # nothing. False: the re-set as #1029 built it, byte for byte;
+    # `tests/conftest.py` PRE_FLIP pins it False.
+    small_text_cap_reach_edges: bool = True
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
