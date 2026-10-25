@@ -3220,6 +3220,15 @@ class PipelineConfig:
     # on cloth is a sew-out (ROADMAP gate 1): a CANDIDATE. False is
     # byte-identical. Not in `SMALL_TEXT_TRUE_SIZE`.
     small_letter_ties: bool = False
+    # No lock at the START of a run (2026-10-22, settings-vs-pro row 22).
+    # `stitches.apply_ties` already locks only where the thread is cut (the
+    # first run of a block, a trimmed run); the pro locks none of those
+    # either: 1 of 68 run starts across Fremont, Becker and MFab, all after a
+    # cut. On: every tie-in is stripped (`stitches.drop_tie_ins`), tie-offs
+    # stay -- about four stitches per cut. Whether a start holds without its
+    # knot is a sew-out (ROADMAP gate 1): a CANDIDATE. False is byte-identical.
+    # Not in `SMALL_TEXT_TRUE_SIZE`.
+    tie_in_off: bool = False
     # ONE switch for small lettering at its true size (2026-10-14, Kent:
     # "keep working on improvements on this"). True fills each of the
     # values above that is still None with `SMALL_TEXT_TRUE_SIZE`; a value set
@@ -5312,10 +5321,16 @@ class PipelineConfig:
     # jumps of 0.5-3.0 mm per job (every hop under `trim_at_mm`), each a
     # float snipped by hand; the pro's 28 DSTs leave none. Each such jump is
     # sewn needle-down where thread sewn LATER hides all of it -- the cover
-    # rule `trim_bury_under_later` uses, shared code -- and cut, locked both
-    # sides, everywhere else (`stage7_sequence._cut_or_bury_jumps`). Bury
-    # first because the pro's short cuts almost never lie under later
-    # thread (1 of 59 at <= 3 mm). Composes with `trim_bury_under_later`:
+    # rule `trim_bury_under_later` uses, shared code -- else WALKED
+    # needle-down where its whole thread lies on thread already sewn
+    # (2026-10-23: the pro's shortest cut on Fremont is 3.4 mm, all on
+    # work; he sews straight through at 131 of our 152 sub-trim hops on the
+    # field), and cut, locked both sides, only on bare fabric
+    # (`stage7_sequence._cut_or_bury_jumps`). Bury first because the pro's
+    # short cuts almost never lie under later thread (1 of 59 at <= 3 mm).
+    # Fremont hat 92.5 with bury ON: 37 -> 187 trims when every unburied
+    # jump was cut, 37 -> 44 with the walk (143 walked, 21 buried, 7 cut;
+    # pro 20). Composes with `trim_bury_under_later`:
     # that pass handles CUT hops inside art blocks and runs first; this one
     # handles UNCUT jumps in every block and runs last, so the two touch
     # disjoint hops. ROADMAP gate 1 (trimmer wear and tie knots against
