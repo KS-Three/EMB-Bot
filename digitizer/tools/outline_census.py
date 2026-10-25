@@ -455,8 +455,12 @@ def defects_cmd(args) -> int:
     from tools.pro_parity import pairframe
     files = [(tag, cache / args.slug / "ours.dst") for tag, cache in _arms(args)]
     info = json.loads((Path(args.off) / args.slug / "ours.json").read_text(encoding="utf-8"))
-    if Path(info["pro"]).exists():
-        files.append(("pro", Path(info["pro"])))
+    # his DST beside a PES: the same format as ours, drawn in the same
+    # fallback greys (a PES's own black hides his construction on black)
+    pro = Path(info["pro"])
+    pro = next((q for q in (pro.with_suffix(".DST"), pro.with_suffix(".dst")) if q.exists()), pro)
+    if pro.exists():
+        files.append(("pro", pro))
     crop = tuple(args.crop)
     print(f"| {args.slug} {args.name or ''} | spike rays | fans | pinholes (mm2) |\n|---|---|---|---|")
     tiles = []
