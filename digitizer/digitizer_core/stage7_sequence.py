@@ -396,6 +396,8 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
     tier = str(region.meta.get("tier", "auto")).lower()
     if tier == "satin":
         return True
+    if _white_field_fill(region, cfg):
+        return False        # `cfg.sew_enclosed_white_fields_fill`: the pro fills a white face
     if tier == "auto" and region.meta.get(BEAN_LETTER_KEY):
         return False        # a bean letter (`beanletters.tag_bean_letters`): runs, not columns
     wt = _word_tier(region, cfg)
@@ -2168,6 +2170,15 @@ def _border_seam_warning(seams: list[tuple[str, str, float]]) -> dict | None:
     )
 
 
+def _white_field_fill(region, cfg: PipelineConfig) -> bool:
+    """`cfg.sew_enclosed_white_fields_fill`: a white field the option sews,
+    on the auto tier, sews as the pro's -- a fill (`machine.WHITE_FIELD_FILL_ANGLE_DEG`)."""
+    meta = region.meta or {}
+    return bool(getattr(cfg, "sew_enclosed_white_fields_fill", False)
+                and meta.get("sew_enclosed_white")
+                and str(meta.get("tier", "auto")).lower() == "auto")
+
+
 def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
     """The row angle a fill-tier shape sews at -- the precedence stated at
     the plain-tatami call in `stitch_one`, in one place so the five
@@ -2183,6 +2194,8 @@ def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
     design = p.region.meta.get("design_angle_deg")
     if design is not None:
         return float(design)
+    if cfg.sew_enclosed_white_fields_fill and p.region.meta.get("sew_enclosed_white"):
+        return machine.WHITE_FIELD_FILL_ANGLE_DEG     # the pro's white faces
     return p.stitch_angle_deg
 
 
@@ -2879,6 +2892,10 @@ def sequence(
             # rather than dropping artwork — the same contract the auto
             # ladder already has between its own rungs.
             tier = str(p.region.meta.get("tier", "auto")).lower()
+            if _white_field_fill(p.region, cfg):
+                # `cfg.sew_enclosed_white_fields_fill`: a forced rung, so a
+                # field too narrow to fill falls back to the ladder below
+                tier = "fill"
             # UNDERLAY-STYLE PRECEDENCE (shape-layers contract v1): the
             # shape's own review-screen style beats the design-wide one — in
             # BOTH directions, exactly like `border` beats `border_style`.
