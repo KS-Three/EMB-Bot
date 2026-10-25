@@ -678,6 +678,19 @@ OUTLINE_BODY_RATIO = 1.0
 # the same 0.9 the keyline band reads (KEYLINE_REACH_FRAC).
 OUTLINE_REACH_FRAC = 0.9
 OUTLINE_WIDTH_MM = (1.5, 2.5)
+# ... and, with `cfg.border_from_outline_line_art_guard` (built OFF
+# 2026-10-25), an outline is LINE ART -- a drawing, not a keyline -- when it
+# is a hairline (under OUTLINE_LINE_ART_FILL_SHARE of it is MIN_FILL_WIDTH_MM
+# across) AND its loops leave strokes behind (OUTLINE_LINE_ART_DROP_FRAC of
+# it or more lies further than the loop width from every looped hole and is
+# too thin for the rest-fill). Census of every outline the rule reads on 21
+# jobs (`tools/outline_census.py`): Bridge's bowl drawing 0.09-0.34 / 0.045-
+# 0.066; every keyline 0.74-0.98 (Becker, MFab, Drone); To-a-T Machine's
+# 0.8 mm hexagon frame 0.00 / 0.000 (a hairline the pro widens to 2.0-2.3, so
+# thinness alone is not the separator). Both cuts sit in their gaps. Layout,
+# judged in the preview, not a cloth constant.
+OUTLINE_LINE_ART_FILL_SHARE = 0.5
+OUTLINE_LINE_ART_DROP_FRAC = 0.02
 
 
 def border_by_size_width_mm(min_dim_mm: float) -> float:

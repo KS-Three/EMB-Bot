@@ -1598,6 +1598,25 @@ class PipelineConfig:
     # top; pro 8,694 / 40). False is the engine as it was, byte for byte;
     # `tests/conftest.py` PRE_FLIP pins it False.
     border_from_outline: bool = True
+    # The rule's false positive (2026-10-25, built OFF): a hairline DRAWING is
+    # not an outline. Bridge Bar's bowl-and-waves (0.8-1.0 mm black lines round
+    # yellow cells of the disc they sit on) reads as one, and ON sews each
+    # cell a 1.5 mm satin loop -- spikes fanned at the cells' tips -- while the
+    # drawing's own stroke ends, thinner than `machine.MIN_FILL_WIDTH_MM`,
+    # fall to a rest-fill that drops them (garment shows). ON, an outline that
+    # is a hairline AND leaves strokes beyond its loops
+    # (`art_outline.line_art_reading`, thresholds `machine.OUTLINE_LINE_ART_*`)
+    # is not one: the drawing sews as it did before `border_from_outline`
+    # (Bridge hat and LC byte-identical to the flag OFF), and its cells are
+    # free for another holder. A hairline that is a pure ring stays an outline:
+    # To-a-T Machine's 0.8 mm frame, which the pro widens to a 2.0-2.3 mm
+    # border. Census kappa 0.76 -> 0.85 (n 588, the five Bridge false
+    # positives gone, no true one lost); Becker, MFab, Fremont byte-identical.
+    # The pro's Bridge files carry no drawing (his art was redrawn without
+    # it), so this is our construction's limit, not his rule. Acts only with
+    # `border_from_outline`. Layout (ruling 2026-10-22: judged in the preview);
+    # flipping it is Kent's call.
+    border_from_outline_line_art_guard: bool = False
     # A white FIELD that `sew_enclosed_white` sews is never a letter
     # (2026-10-25, built OFF; Kent: "Ship 3, fix white next"). Becker's five
     # white BECKER faces sit inside the word's outline and carry its text
@@ -2788,6 +2807,22 @@ class PipelineConfig:
     # False is the lane as it was, station for station. Tests:
     # `tests/test_column_text_lean.py`.
     lettering_columns_text_lean: bool = True
+    # Under `lettering_columns_text_lean`, the BARS of an italic word cross
+    # along the word's stems (2026-10-25, `column_lean.italic_bar`). Read per
+    # cross on ProSeal's italic PROSEAL (`tools/italic_cross.py`, the pro's
+    # hat 85.9 mm and beanie 75.0 mm, stems leaning ~11 deg): he crosses a
+    # bar 71-78 deg off the line of text on the slant's side -- parallel to
+    # the stems, an upright digitizing sheared -- where the lane crosses it
+    # square to itself, 80-90 deg either side. ON, a word whose letters'
+    # stems lean 5-30 deg off its line's normal (median of the letters,
+    # `letterform_priors.letter_lean_deg`) is italic, and each straight
+    # column of its letters within 25 deg of the line of text is
+    # re-stationed with its crosses along the stems (spacing over cos of
+    # the lean, as the text lean). Stems, diagonals and curves are the text
+    # lean's, unchanged. Layout, judged in the preview (Kent 2026-10-22).
+    # Built OFF (Kent flips); False never sets the italic words, so stage 7
+    # runs exactly as before. Tests: `tests/test_column_italic_lean.py`.
+    lettering_columns_italic_lean: bool = False
     # Under `lettering_columns`, each satin column's pull compensation is a
     # function of ITS OWN drawn stroke width, the way the professional's
     # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the

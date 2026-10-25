@@ -32,6 +32,19 @@ The hole ring must be a loop the border tier would sew
 `machine.OUTLINE_REACH_FRAC` of it within `OUTLINE_PROBE_MM` of its looped
 holes (Becker's keyline 0.99-1.00, MFab's 1.00; Bridge's wheel, a ring with
 spokes, 0.67-0.71). Pure: reads geometry and tags.
+
+`cfg.border_from_outline_line_art_guard` (built OFF 2026-10-25) refuses one
+more class: LINE ART (`line_art_reading`). Bridge's bowl-and-waves drawing is
+a band by the reach rule (0.99-1.00) and holds yellow cells of the disc it is
+drawn on, so it read as an outline; sewn as one, its cells' tips fan spikes
+and the drawing's stroke ends, beyond every loop and under the fill floor,
+are dropped. An outline is line art when it is a hairline (under
+`machine.OUTLINE_LINE_ART_FILL_SHARE` of it is `machine.MIN_FILL_WIDTH_MM`
+across) AND its loops leave strokes (`machine.OUTLINE_LINE_ART_DROP_FRAC` of
+it beyond the loop width and too thin to fill). Either alone is wrong:
+To-a-T Machine's 0.8 mm frame is as thin as the bowl but is a pure ring the
+pro widens to 2.0-2.3 mm; MFab's keyline leaves 0.038 of itself in slivers
+along its outer edge but is a fill floor across over 0.74 of it.
 """
 from __future__ import annotations
 
@@ -67,19 +80,51 @@ def outline_measures(holder, body, hole: Polygon) -> tuple[float, float]:
     return band, stroke
 
 
-def find_art_outlines(regions, cfg=None) -> dict[str, list[tuple[str, Polygon]]]:
+def _looped(poly: Polygon) -> list[Polygon]:
+    return [Polygon(r) for r in poly.interiors
+            if LineString(r.coords).length >= machine.BORDER_MIN_LOOP_MM]
+
+
+def line_art_reading(holder, bodies: list[tuple[object, Polygon]]) -> tuple[float, float]:
+    """(fill share, dropped share) of an outline: the share of it at least
+    `machine.MIN_FILL_WIDTH_MM` across (an opening by half that), and the
+    share its loops leave and the rest-fill drops -- further than the loop
+    width (`outline_width_mm`) from every looped hole, in pieces too thin to
+    fill, as `stage6_border.keyline_rest` reads the band stage 7 sews."""
+    poly = holder.polygon
+    half = machine.MIN_FILL_WIDTH_MM / 2.0
+    fill = poly.buffer(-half).buffer(half).area / poly.area
+    width = outline_width_mm(holder, bodies)
+    rest = poly.difference(unary_union([h.buffer(width) for h in _looped(poly)]))
+    parts = getattr(rest, "geoms", [rest])
+    dropped = sum(p.area for p in parts
+                  if p.geom_type == "Polygon" and not p.is_empty and p.buffer(-half).is_empty)
+    return fill, dropped / poly.area
+
+
+def _line_art(holder, bodies) -> bool:
+    fill, dropped = line_art_reading(holder, bodies)
+    return (fill < machine.OUTLINE_LINE_ART_FILL_SHARE
+            and dropped >= machine.OUTLINE_LINE_ART_DROP_FRAC)
+
+
+def find_art_outlines(regions, cfg=None, *,
+                      line_art_guard: bool | None = None) -> dict[str, list[tuple[str, Polygon]]]:
     """-> {outline shape_id: [(body shape_id, hole polygon), ...]} for every
     region whose hole holds a body under the rule above, bodies in input
-    order. A body has at most one outline (the first holder that reads)."""
+    order. A body has at most one outline (the first holder that reads).
+    `line_art_guard` (None: `cfg.border_from_outline_line_art_guard`) drops
+    an outline that reads as line art, and frees its bodies."""
     regions = list(regions)
+    if line_art_guard is None:
+        line_art_guard = bool(getattr(cfg, "border_from_outline_line_art_guard", False))
     out: dict[str, list[tuple[str, Polygon]]] = {}
     taken: set[str] = set()
     for o in regions:
         poly = o.polygon
         if poly is None or poly.is_empty or poly.geom_type != "Polygon" or not poly.interiors:
             continue
-        holes = [Polygon(r) for r in poly.interiors
-                 if LineString(r.coords).length >= machine.BORDER_MIN_LOOP_MM]
+        holes = _looped(poly)
         if not holes:
             continue
         # a BAND: nearly all of it hugs its holes. Bridge's wheel (a ring
@@ -99,6 +144,7 @@ def find_art_outlines(regions, cfg=None) -> dict[str, list[tuple[str, Polygon]]]
             if bx0 < ox0 or by0 < oy0 or bx1 > ox1 or by1 > oy1:
                 continue
             inside.append(b)
+        found = []
         for hole in holes:
             ring = hole.exterior.buffer(HOLD_PAD_MM)
             pad = hole.buffer(HOLD_PAD_MM)
@@ -118,8 +164,13 @@ def find_art_outlines(regions, cfg=None) -> dict[str, list[tuple[str, Polygon]]]
                 band, stroke = outline_measures(o, b, hole)
                 if stroke < machine.OUTLINE_BODY_RATIO * band:
                     continue
-                out.setdefault(o.shape_id, []).append((b.shape_id, hole))
+                found.append((b, hole))
                 taken.add(b.shape_id)
+        if found and line_art_guard and _line_art(o, found):
+            taken.difference_update(b.shape_id for b, _hole in found)
+            continue
+        for b, hole in found:
+            out.setdefault(o.shape_id, []).append((b.shape_id, hole))
     return out
 
 

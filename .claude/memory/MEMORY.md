@@ -23,6 +23,7 @@ the OLDEST lines whole to the archive.
 - [Border by size](border-by-size-2026-10-23.md) — `border_by_size` OFF: at 6 mm+ the separator is STROKE vs satin ceiling; letters are the population; fills a coin flip
 - [Border census](border-census-2026-10-23.md) — small rings = edge cap + run tier; pro borders by SIZE (>= 4 mm)
 - [Border from outline](border-from-outline-2026-10-24.md) — pro borders what the ART outlines (kappa 0.76, n 588), not size/stroke; `border_from_outline` OFF: loop per body at his width, bodies fill
+- [Outline line-art guard](border-from-outline-line-art-guard-2026-10-25.md) — Bridge bowl = hairline drawing; guard OFF: hairline AND leaves strokes. Thin alone kills Machine's frame (pro widens it); pro's Bridge art had no drawing
 - [bridge: border and script](bridge-border-and-script-2026-09-30.md) — on/off border = JPEG halo (the dissolve folds it); script is not text; Kent's lever `SATIN_GAPS_TIGHT`
 - [Build what was priced](build-what-was-priced.md) — SNAPSHOT: after Kent picks a priced option, build exactly that
 - [The built-OFF sitting](built-off-sitting-2026-10-03.md) — `patch_junctions` had shipped already: render vs shipped first. Kent: `cap_recentre` ON, `bean_letters` OFF
@@ -61,6 +62,7 @@ the OLDEST lines whole to the archive.
 - [Flip sheet wave 2](flip-sheet-wave2-2026-10-24.md) — four flags OFF|ON|pro; per-flag fixtures, shared base OFF arms, MFab art fallback; Tires monoline invisible at viewing size (trims 9 → 32)
 - [Inside stagger at pivots](inside-stagger-2026-10-23.md) — pro ALSO alternates; ours piled the full ends in one hole (16-79 vs 2-5) at 35% depth vs his 20%; `lettering_columns_inside_stagger` OFF
 - [Instagram: gradient lane, not classifier](instagram-gradient-lane-edges-2026-09-30.md) — real IG file classifies gradient CORRECTLY; the SLIC lane's edges were the defect, snap ON. Render first
+- [Italic bars](italic-bars-2026-10-25.md) — pro crosses italic BARS along the slant; `lettering_columns_italic_lean` OFF moves straight bars (hat 0.31 -> 0.46, pro 0.54), not bowls; read per cross (`italic_cross.py`), never by piece axis
 - [Keyline band](keyline-band-2026-10-23.md) — `enclosed_white_keyline` OFF: satin loop per letter on the ARTWORK polygon; MFab 25,512 → 19,214 (pro 17,568); seam-close the reach
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
 - [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
