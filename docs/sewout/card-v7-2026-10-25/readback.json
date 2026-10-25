@@ -1,0 +1,371 @@
+{
+ "file": "card_v7_40wt.dst",
+ "bytes": 39512,
+ "wt": 40,
+ "blocks": 3,
+ "stitches_file": 12512,
+ "stitches_plan": 12512,
+ "colour_changes_file": 0,
+ "colour_changes_plan": 0,
+ "colours": 1,
+ "extent_mm": [
+  88.4,
+  93.2
+ ],
+ "within_hoop": true,
+ "x_range_mm": [
+  -44.2,
+  44.2
+ ],
+ "y_range_mm": [
+  -46.6,
+  46.6
+ ],
+ "max_needle_stitch_mm": 4.83,
+ "max_record_axis_mm": 12.0,
+ "stops": [
+  {
+   "stop": 1,
+   "thread": "dark",
+   "stitches": 12683,
+   "thread_m": 20.93
+  }
+ ],
+ "stitches_by_piece": {
+  "F:a": 3745,
+  "F:c": 3900,
+  "F:strips": 32,
+  "M:a": 568,
+  "M:b": 344,
+  "M:c": 612,
+  "M:d": 364,
+  "M:strips": 72,
+  "P:a": 1556,
+  "P:c": 1458,
+  "P:strips": 32
+ },
+ "under_1mm_by_piece": {
+  "F:a": 515,
+  "F:c": 523,
+  "M:a": 1,
+  "M:b": 2,
+  "M:c": 2,
+  "M:d": 5,
+  "P:a": 245,
+  "P:c": 219
+ },
+ "lock_legs_0p8": 725,
+ "trims": 59,
+ "blocks_mm": {
+  "F": [
+   -44.2,
+   -47.2,
+   44.2,
+   12.9
+  ],
+  "M": [
+   -44.2,
+   31.2,
+   43.6,
+   46.6
+  ],
+  "P": [
+   -44.2,
+   15.9,
+   29.4,
+   28.2
+  ]
+ },
+ "pieces_mm": {
+  "F:a": [
+   -44.2,
+   -44.6,
+   44.2,
+   -18.3
+  ],
+  "F:c": [
+   -44.2,
+   -13.3,
+   44.2,
+   12.9
+  ],
+  "M:a": [
+   -44.2,
+   33.8,
+   -25.1,
+   46.6
+  ],
+  "M:b": [
+   -21.1,
+   33.8,
+   -2.6,
+   46.6
+  ],
+  "M:c": [
+   2.0,
+   33.8,
+   21.1,
+   46.6
+  ],
+  "M:d": [
+   25.1,
+   33.8,
+   43.6,
+   46.6
+  ],
+  "P:a": [
+   -44.2,
+   18.5,
+   -9.4,
+   28.2
+  ],
+  "P:c": [
+   -5.4,
+   18.5,
+   29.4,
+   28.2
+  ]
+ },
+ "pieces": [
+  {
+   "block": "F",
+   "job": "fremont",
+   "arm": "a",
+   "teeth": 1,
+   "label": "both off",
+   "flags": {
+    "pull_comp_by_stroke": false,
+    "pro_measured_values": false
+   },
+   "runs": 258,
+   "satin": {
+    "width_mm": 1.42,
+    "stitch_mm": 1.42,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.0
+   },
+   "fill": {
+    "fill_stitch_mm": 1.89,
+    "cap_stitch_mm": null
+   },
+   "stitches_whole": 17509,
+   "trims_whole": 32,
+   "width_mm": 88.4,
+   "height_mm": 26.26
+  },
+  {
+   "block": "F",
+   "job": "fremont",
+   "arm": "c",
+   "teeth": 3,
+   "label": "pro values",
+   "flags": {
+    "pull_comp_by_stroke": false,
+    "pro_measured_values": true
+   },
+   "runs": 252,
+   "satin": {
+    "width_mm": 1.42,
+    "stitch_mm": 1.42,
+    "rail_step_mm": 0.37,
+    "split_pct": 0.0
+   },
+   "fill": {
+    "fill_stitch_mm": 2.32,
+    "cap_stitch_mm": null
+   },
+   "stitches_whole": 16651,
+   "trims_whole": 33,
+   "width_mm": 88.4,
+   "height_mm": 26.26
+  },
+  {
+   "block": "P",
+   "job": "plate",
+   "arm": "a",
+   "teeth": 1,
+   "label": "both off",
+   "flags": {
+    "pull_comp_by_stroke": false,
+    "pro_measured_values": false
+   },
+   "runs": 10,
+   "satin": {
+    "width_mm": null,
+    "stitch_mm": null,
+    "rail_step_mm": null,
+    "split_pct": null
+   },
+   "fill": {
+    "fill_stitch_mm": 3.0,
+    "cap_stitch_mm": 0.73
+   },
+   "stitches_whole": 1536,
+   "trims_whole": 4,
+   "width_mm": 34.79,
+   "height_mm": 9.66
+  },
+  {
+   "block": "P",
+   "job": "plate",
+   "arm": "c",
+   "teeth": 3,
+   "label": "pro values",
+   "flags": {
+    "pull_comp_by_stroke": false,
+    "pro_measured_values": true
+   },
+   "runs": 10,
+   "satin": {
+    "width_mm": null,
+    "stitch_mm": null,
+    "rail_step_mm": null,
+    "split_pct": null
+   },
+   "fill": {
+    "fill_stitch_mm": 3.49,
+    "cap_stitch_mm": 0.93
+   },
+   "stitches_whole": 1438,
+   "trims_whole": 4,
+   "width_mm": 34.79,
+   "height_mm": 9.66
+  },
+  {
+   "block": "M",
+   "job": "becker",
+   "arm": "a",
+   "teeth": 1,
+   "label": "both off",
+   "flags": {
+    "pull_comp_by_stroke": false,
+    "pro_measured_values": false
+   },
+   "runs": 11,
+   "satin": {
+    "width_mm": 4.4,
+    "stitch_mm": 2.29,
+    "rail_step_mm": 0.4,
+    "split_pct": 89.1
+   },
+   "fill": {
+    "fill_stitch_mm": null,
+    "cap_stitch_mm": null
+   },
+   "stitches_whole": 5874,
+   "trims_whole": 17,
+   "width_mm": 19.09,
+   "height_mm": 12.82
+  },
+  {
+   "block": "M",
+   "job": "becker",
+   "arm": "b",
+   "teeth": 2,
+   "label": "pull by stroke",
+   "flags": {
+    "pull_comp_by_stroke": true,
+    "pro_measured_values": false
+   },
+   "runs": 11,
+   "satin": {
+    "width_mm": 3.79,
+    "stitch_mm": 3.76,
+    "rail_step_mm": 0.4,
+    "split_pct": 5.1
+   },
+   "fill": {
+    "fill_stitch_mm": null,
+    "cap_stitch_mm": null
+   },
+   "stitches_whole": 5421,
+   "trims_whole": 17,
+   "width_mm": 18.49,
+   "height_mm": 12.82
+  },
+  {
+   "block": "M",
+   "job": "becker",
+   "arm": "c",
+   "teeth": 3,
+   "label": "pro values",
+   "flags": {
+    "pull_comp_by_stroke": false,
+    "pro_measured_values": true
+   },
+   "runs": 11,
+   "satin": {
+    "width_mm": 4.4,
+    "stitch_mm": 2.27,
+    "rail_step_mm": 0.36,
+    "split_pct": 89.6
+   },
+   "fill": {
+    "fill_stitch_mm": null,
+    "cap_stitch_mm": null
+   },
+   "stitches_whole": 6164,
+   "trims_whole": 16,
+   "width_mm": 19.1,
+   "height_mm": 12.82
+  },
+  {
+   "block": "M",
+   "job": "becker",
+   "arm": "d",
+   "teeth": 4,
+   "label": "both on",
+   "flags": {
+    "pull_comp_by_stroke": true,
+    "pro_measured_values": true
+   },
+   "runs": 11,
+   "satin": {
+    "width_mm": 3.79,
+    "stitch_mm": 3.76,
+    "rail_step_mm": 0.36,
+    "split_pct": 5.5
+   },
+   "fill": {
+    "fill_stitch_mm": null,
+    "cap_stitch_mm": null
+   },
+   "stitches_whole": 5675,
+   "trims_whole": 16,
+   "width_mm": 18.48,
+   "height_mm": 12.81
+  }
+ ],
+ "arm_md5": {
+  "F:a": "1d15cebef08cd8aba322fafb1d466682",
+  "F:c": "76cefdd2a3e30852762276f400ea86d1",
+  "M:a": "bb5bc260448b7034db6637d97b5572af",
+  "M:b": "651c8cc1b3ed9aa3cca3c3ddff96444c",
+  "M:c": "0ce1d5971aa36c253de694e6595a476c",
+  "M:d": "ebea94a95a54de1be627291c4dd784b3",
+  "P:a": "6456aae1ec94501cc6601e0cc7e0c952",
+  "P:c": "5faf495d7aa2599202b15b17ce983507"
+ },
+ "same_as": {
+  "fremont": {
+   "b": "a",
+   "d": "c"
+  },
+  "plate": {
+   "b": "a",
+   "d": "c"
+  },
+  "becker": {}
+ },
+ "minutes_at_650spm": 19.2,
+ "pro_satin": {
+  "M": {
+   "width_mm": 4.02,
+   "stitch_mm": 3.74,
+   "rail_step_mm": 0.4,
+   "split_pct": 7.1,
+   "file": "becker_hat_small_beckers_logo_hat_2_a.dst",
+   "stitches": 554
+  }
+ }
+}
