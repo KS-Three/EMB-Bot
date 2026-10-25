@@ -377,6 +377,7 @@ def find_cuts(poly: Polygon, W: float):
 # the preview (Kent, 2026-10-22).
 _APEX_CUT: contextvars.ContextVar[bool] = contextvars.ContextVar("apex_cut", default=False)
 APEX_MAX_DEG = 80.0            # his merged tips: legs 42-74 deg apart; his folds 90
+APEX_MIN_SIDES_DEG = 20.0      # a tip's two outer edges meet; a leg's two sides run parallel
 APEX_REACH_W = 4.0             # crotch to tip: the M's V 1.6-1.7 W, a W's 2.3-3.2 W
 APEX_CROSS_W = 2.4             # his widest merged cross on 1.1-1.2 mm strokes
 APEX_CROSS_MM = 7.0            # ... and on MARINE's 3.8-5 mm ones
@@ -500,6 +501,12 @@ def _apex_walk(poly: Polygon, p, q, others, W: float, stems=(), at_crotch: bool 
     tip = next((g for g in split(poly, [r[:4] for r in recs + list(others)]) if g.contains(beyond)), None)
     if tip is None or tip.distance(Point(q)) > 0.05 * W:
         return _apex_refused("no_tip")          # what lies past the cut does not reach the tip
+    cut_lines = [LineString([r[0], r[1]]) for r in recs] + clips
+    sides = _apex_sides(tip, cut_lines, h0, h1, W)
+    if sides is None or not APEX_MIN_SIDES_DEG <= sides <= APEX_MAX_DEG:
+        # one stroke's two parallel edges and its square end -- a leg's foot
+        # past a crossbar's root (MARINE's A at 101.9 mm), aimed at a corner
+        return _apex_refused("parallel")
     edge = LineString([h0, h1])
     rf, _cv = corners(tip, W, reflex_deg=REFINE_REFLEX_DEG)
     # a concave corner AT the cut is a neighbour's crotch, one on another
@@ -509,6 +516,40 @@ def _apex_walk(poly: Polygon, p, q, others, W: float, stems=(), at_crotch: bool 
            and all(ln.distance(Point(c["p"])) > 0.3 * W for ln in clips) for c in rf):
         return _apex_refused("junction")        # the stroke runs on past the cut: not a tip
     return recs
+
+
+def _apex_sides(tip: Polygon, cut_lines, h0, h1, W: float) -> float | None:
+    """`apex_cut`: the angle, in degrees, between the tip piece's own
+    straight runs of outline (the cuts left out, and runs under half a
+    stroke or a millimetre: a neighbour crotch's chamfer, 0.57 mm on MFab's
+    W, 0.91 mm at MARINE's stem roots) nearest the cut's two
+    ends -- on a tip the two strokes' outer edges, on a leg past a
+    crossbar its two parallel sides. None where one run serves both ends."""
+    cs = list(tip.exterior.coords)
+    runs: list = []                            # [length, unit direction, points] per straight run
+    for p0, p1 in zip(cs[:-1], cs[1:]):
+        L = math.dist(p0, p1)
+        if L < 1e-6:
+            continue
+        mid = Point((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2)
+        if any(ln.distance(mid) < 0.03 for ln in cut_lines):
+            runs.append(None)
+            continue
+        d = ((p1[0] - p0[0]) / L, (p1[1] - p0[1]) / L)
+        last = runs[-1] if runs else None
+        if last is not None and last[1][0] * d[0] + last[1][1] * d[1] >= math.cos(math.radians(14)):
+            last[0] += L
+            last[2].append(p1)
+        else:
+            runs.append([L, d, [p0, p1]])
+    runs = [r for r in runs if r is not None and r[0] >= min(0.5 * W, 1.0)]
+    if len(runs) < 2:
+        return None
+    near = [min(range(len(runs)), key=lambda i: LineString(runs[i][2]).distance(Point(e))) for e in (h0, h1)]
+    if near[0] == near[1]:
+        return None
+    u, v = runs[near[0]][1], runs[near[1]][1]
+    return math.degrees(math.acos(max(-1.0, min(1.0, abs(u[0] * v[0] + u[1] * v[1])))))
 
 
 def _apex_cross(poly: Polygon, m, n, clips, far: float):

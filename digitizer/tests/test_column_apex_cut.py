@@ -18,8 +18,9 @@ through it (MFab's W). `lettering_columns_corner_fold` refuses an acute tip
 small) and MFab's W and N at 104.9 mm Hat, each as stage 7 handed it to
 the lane (polygon and keyword arguments, `corner_fold` on, as #1057 flips
 it), captured 2026-10-25 from main at 82b0bf28 with the md5 of the runs the
-lane sewed then (`off_md5`); and MARINE's M at 101.9 mm (hat large), its
-region polygon only (`cut_only`), for the cut.
+lane sewed then (`off_md5`); MARINE's A at 101.9 mm (hat large) likewise;
+and MARINE's M at 101.9 mm, its region polygon only (`cut_only`), for the
+cut.
 """
 from __future__ import annotations
 
@@ -139,7 +140,7 @@ def test_off_never_reaches_the_new_code(monkeypatch):
 
 # --- OFF: the defect, pinned, and byte for byte -------------------------------------
 
-@pytest.mark.parametrize("lab", ["marine76_M", "marine76_N", "mfab105_W", "mfab105_N"])
+@pytest.mark.parametrize("lab", ["marine76_M", "marine76_N", "marine102_A", "mfab105_W", "mfab105_N"])
 def test_off_sews_exactly_what_main_sewed(lab):
     # md5 of the runs main sewed for this letter before the flag existed
     runs, _rep = _sew(lab, False)
@@ -234,11 +235,14 @@ def test_on_mfabs_w_is_seven_columns_like_the_pro_and_no_tip_fans():
     assert sum(c[2] == "apex" for c in on.cuts) >= 3
 
 
-def test_on_marines_n_is_left_as_it_is():
-    # its slab corner and its foot do not close as a V does (the pro sews
-    # the slab as its own piece, the foot's stem and diagonal side by side)
-    off, _ = _sew("marine76_N", False)
-    on, _ = _sew("marine76_N", True)
+@pytest.mark.parametrize("lab", ["marine76_N", "marine102_A"])
+def test_on_marines_n_and_a_are_left_as_they_are(lab):
+    # the N's slab corner and foot do not close as a V does (the pro sews
+    # the slab as its own piece, the foot's stem and diagonal side by side);
+    # the A's right leg past its crossbar closes on its foot's corner when
+    # aimed at it, but its two sides run parallel: a foot, not a tip
+    off, _ = _sew(lab, False)
+    on, _ = _sew(lab, True)
     assert _md5(on) == _md5(off)
 
 
