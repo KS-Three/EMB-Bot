@@ -5445,6 +5445,24 @@ class PipelineConfig:
     # floats, and whether buried travel shows): Kent's flip, after a
     # sew-out. Off, byte-identical. Tests: `tests/test_cut_every_jump.py`.
     cut_every_jump: bool = False
+    # A satin loop round a letter -- `enclosed_white_keyline`'s keyline loops
+    # and `border_from_outline`'s outline loops (`stage6_border.keyline_runs`)
+    # -- keeps its far rail at the satin pitch through the letter's convex
+    # corners, as the professional's keyline and outline satin do
+    # (2026-10-25, built OFF; `stage6_border._pivot_ring`). The loop casts
+    # each cross along a normal smoothed over half its width either side, so
+    # through a corner its far ends spread 1.1 mm apart where the pro's sit
+    # 0.4 mm apart: the spikes on MFab's white keyline at every M-FAB corner
+    # (#1059, #1065). The pro's corner is the same round arc, not a mitre
+    # (far ends 1.00 widths from the corner on MFab's keyline, 1.12 on
+    # Becker's outline; a mitre point is 1.43 / 1.55) -- the name is the
+    # brief's. ON: crosses put between any two whose far ends part by more
+    # than `LOOP_PIVOT_GAP` steps on a convex turn, one per step of the far
+    # rail; the near ends' pile short-stitched. Layout, judged in the preview
+    # (Kent, 2026-10-22). False is the loop as it was, byte for byte. Set for
+    # a plan by `stage6_border.loop_mitre_scope`.
+    # Tests: `tests/test_outline_loop_mitre.py`.
+    outline_loop_mitre: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()

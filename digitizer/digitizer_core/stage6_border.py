@@ -66,6 +66,8 @@ satin border is not following the outline of each color").
 """
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import math
 
 import numpy as np
@@ -446,10 +448,82 @@ def _pick_start(pts: list[tuple[float, float]], radii: np.ndarray,
     return best
 
 
+# `outline_loop_mitre` (`cfg.outline_loop_mitre`, 2026-10-25, built OFF): a
+# loop round a letter keeps its far rail at the satin pitch through the
+# letter's convex corners, as the professional's keyline and outline satin do.
+# A loop's crosses are cast along a normal smoothed over half a width either
+# side, so through a corner they rotate over about a width of outline while
+# their near ends advance one step each: the far ends spread round the arc,
+# 1.1 mm apart where the pro's sit 0.4 mm apart -- the "spikes" on MFab's
+# white keyline at every M-FAB corner (#1059, #1065). The pro's corner is
+# that same arc, NOT a mitre: through 15 clean corners of MFab's keyline his
+# far ends stand 1.00 widths from the corner (a mitre point would be 1.43),
+# 1.12 on Becker's outline satin (mitre 1.55). ON (`_pivot_ring`): wherever
+# two neighbouring crosses' far ends part by more than `LOOP_PIVOT_GAP`
+# steps while their near ends advance (a convex turn; a concave one bunches
+# them, which `_short_stitch_guard` already handles), crosses are put between
+# them -- near end on the outline between the two, direction turned between
+# the two -- one per step of the far rail. Their near ends then pile on the
+# corner as the pro's do, so the guard pulls back the near rail too: every
+# other cross of the pile stops short, the classic short stitch. A curve
+# whose far rail stays inside the gap keeps the loop as it was. A candidate,
+# not a fabric constant: layout, judged in the preview (Kent, 2026-10-22).
+# The flag is set for a plan by `loop_mitre_scope`.
+_LOOP_MITRE: contextvars.ContextVar[bool] = contextvars.ContextVar("loop_mitre", default=False)
+LOOP_PIVOT_GAP = 2.0       # far ends this many steps apart (0.8 mm at the 0.4 pitch): a fan
+
+
+@contextlib.contextmanager
+def loop_mitre_scope(on: bool):
+    """`cfg.outline_loop_mitre` for the length of one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _LOOP_MITRE.set(True)
+    try:
+        yield
+    finally:
+        _LOOP_MITRE.reset(token)
+
+
+def _pivot_ring(ring_pts: list[tuple[float, float]],
+                normals: list[tuple[float, float]], width: float, step: float):
+    """`outline_loop_mitre`: the ring's samples and their cross directions
+    with the convex turns' fans filled in (module notes above).
+    -> (points, normals), or None where no far rail gaps."""
+    n = len(ring_pts)
+    P = np.asarray(ring_pts, float)
+    N = np.asarray(normals, float)
+    F = P + N * width
+    out_p: list[tuple[float, float]] = []
+    out_n: list[tuple[float, float]] = []
+    added = False
+    for i in range(n):
+        j = (i + 1) % n
+        out_p.append(ring_pts[i])
+        out_n.append(normals[i])
+        far = F[j] - F[i]
+        gap = float(np.hypot(*far))
+        if gap <= LOOP_PIVOT_GAP * step or float(far @ (P[j] - P[i])) <= 0.0:
+            continue
+        # nearest to one step apart; never under two thirds of one, which
+        # `_short_stitch_guard` would read as one hole
+        k = max(1, int(gap / step + 0.5) - 1)
+        a0 = math.atan2(N[i][1], N[i][0])
+        da = (math.atan2(N[j][1], N[j][0]) - a0 + math.pi) % (2.0 * math.pi) - math.pi
+        for t in range(1, k + 1):
+            f = t / (k + 1)
+            q = P[i] + (P[j] - P[i]) * f
+            out_p.append((float(q[0]), float(q[1])))
+            out_n.append((math.cos(a0 + da * f), math.sin(a0 + da * f)))
+        added = True
+    return (out_p, out_n) if added else None
+
+
 def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
                 width: float, inside, entry: tuple[float, float] | None,
                 k_tan: int, overlap_stitches: int | None = None,
-                clamp=None, exact: bool = False
+                clamp=None, exact: bool = False, mitre: bool = False
                 ) -> tuple[list[tuple[float, float]], int, int]:
     """One closed circuit as a satin column. -> (points, crosses, clamped).
 
@@ -466,11 +540,22 @@ def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
     `cfg.border_from_outline`'s loop on a keyline thinner than the pro's
     width keeps the keyline's full width, where the steps cost up to 15%.
     False is every other caller, unchanged.
+
+    `mitre` (`cfg.outline_loop_mitre`, `keyline_runs`' loops): the far rail
+    kept at the satin pitch through convex turns (`_pivot_ring`), the near
+    rail's pile short-stitched. False is the loop as it was.
     """
     clamp = inside if clamp is None else clamp
     n = len(ring_pts)
     tans = _tangents(ring_pts, k_tan)
     sign = _inward_sign(ring_pts, tans, inside)
+    normals = None
+    if mitre:
+        pivoted = _pivot_ring(ring_pts, [(-ty * sign, tx * sign) for tx, ty in tans],
+                              width, step)
+        if pivoted is not None:
+            ring_pts, normals = pivoted
+            n = len(ring_pts)
     radii = _turn_radius(np.asarray(ring_pts, dtype=float), k_tan)
     start = _pick_start(ring_pts, radii, entry, machine.BORDER_JOIN_SEARCH_MM, step)
 
@@ -479,8 +564,11 @@ def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
     widths: list[float] = []
     for i in range(n):
         px, py = ring_pts[i]
-        tx, ty = tans[i]
-        nx, ny = -ty * sign, tx * sign
+        if normals is None:
+            tx, ty = tans[i]
+            nx, ny = -ty * sign, tx * sign
+        else:
+            nx, ny = normals[i]
         if exact:
             w = _exact_cross(px, py, nx, ny, width, clamp)
             q = (px + nx * w, py + ny * w)
@@ -528,13 +616,13 @@ def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
             rails.append(1)
         kept += 1
 
-    _short_stitch_guard(pts, partners, rails)
+    _short_stitch_guard(pts, partners, rails, (0, 1) if normals is not None else (1,))
     return pts, kept, clamped
 
 
 def _short_stitch_guard(pts: list[tuple[float, float]],
                         partners: list[tuple[float, float]],
-                        rails: list[int]) -> None:
+                        rails: list[int], guarded: tuple[int, ...] = (1,)) -> None:
     """Pull back an inner penetration that landed in its neighbour's hole.
 
     On the inside of a corner the inner rail is shorter than the outer one, so
@@ -542,10 +630,13 @@ def _short_stitch_guard(pts: list[tuple[float, float]],
     re-entering the same hole and the edge frays. Same rule and same constants
     the satin column already uses — the outer rail is never touched, because
     the outer rail is the one holding the density.
+
+    `guarded` (0, 1): `outline_loop_mitre`'s pivot piles the RING rail on a
+    convex corner the same way, so that rail is pulled back too.
     """
     pull = machine.SATIN_SHORT_STITCH_PULL
     for j in range(2, len(pts)):
-        if rails[j] != 1 or rails[j - 2] != 1:
+        if rails[j] not in guarded or rails[j - 2] != rails[j]:
             continue
         if math.dist(pts[j], pts[j - 2]) >= machine.SATIN_SHORT_STITCH_AT_MM:
             continue
@@ -973,9 +1064,10 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
         if not ring_pts:
             continue
         k_tan = max(1, int(round(half / step)))
+        # `cfg.outline_loop_mitre` (built OFF): the letter's convex corners mitred
         pts, crosses, clamped = _satin_loop(ring_pts, total, total / n, width,
                                             side, cursor, k_tan, clamp=clamp,
-                                            exact=exact)
+                                            exact=exact, mitre=_LOOP_MITRE.get())
         if len(pts) < 2:
             continue
         jump = trim = False
