@@ -27,8 +27,10 @@ numbers from it, never names of new clients.
   `preview?` / `art?`, flagged, never used. Which panel is art stays the hand MANIFEST.
 - The geometric line finder alone puts graphics in the MINIMUM (a truck wheel 3.0 mm, a
   strip inside GOLF 2.0). Tesseract confirms a line (3+ letters at conf 70+; real lines
-  read 73-96). ProSeal's honeycomb read "ODE" at 95, so a convexity gate (median
-  solidity <= 0.93) runs first.
+  read 72-96). ProSeal's honeycomb read "ODE" at 95, so a convexity gate (median
+  solidity <= 0.93) runs first. On the 11 logo jobs every confirmed line is a real word;
+  on `Test Files` (loose third-party ILLUSTRATIONS, no art, no garment: not a job) 3-4
+  piece shapes still read 70-75 ("WRR", "GHOP") -- its lettering column means nothing.
 - Names drift: "beckers beanie.DST" is "beckers logo hat 2 A a.PES" (matched by stitch
   count and extents); "Machine beanie E.JPG" vs "E (1).DST" needs copy marks stripped.
 - Gaulke Plowing's `c golke logo LC.DST` is byte-identical to Gaulke Roofing's: flagged

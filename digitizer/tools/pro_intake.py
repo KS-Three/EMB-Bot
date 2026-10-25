@@ -139,6 +139,10 @@ LINE_SOLIDITY_MAX = 0.93
 #: `legibility.ART_MIN_LETTERS`: a lone confident letter is not a word.
 OCR_CONF_MIN = 70.0
 OCR_MIN_LETTERS = 3
+#: ... and at least this many letters per piece the reader counted: a word
+#: reads about one letter per piece (0.94-2.2 on the 26 real lines; joined
+#: letters read MORE), a fur tuft read "7AGS" off 9 pieces (0.44)
+OCR_LETTERS_PER_PIECE = 0.75
 OCR_TRIES_PER_COLOUR = 3    # candidates read per colour, smallest first (real jobs needed 2 at most)
 FINE_CAP_MM = 5.0         # "fine lettering": the pro raises text under ~4 mm to ~4 (2026-10-21)
 
@@ -564,16 +568,18 @@ def line_image(g: list[dict], pad_mm: float = 1.0):
 
 def read_line(g: list[dict]) -> dict:
     """Tesseract on a line (`legibility.ocr`, psm 7, its three variants):
-    `ok` at the first variant reading `OCR_MIN_LETTERS`+ letters at
-    `OCR_CONF_MIN`+, else the most confident reading, not ok."""
+    `ok` at the first variant reading `OCR_MIN_LETTERS`+ letters (and
+    `OCR_LETTERS_PER_PIECE` per piece) at `OCR_CONF_MIN`+, else the most
+    confident reading, not ok."""
     from digitizer_core import legibility as core
     from tools import small_text_columns as stc
     from tools.word_legibility import norm
     img = line_image(g)
+    need = max(OCR_MIN_LETTERS, OCR_LETTERS_PER_PIECE * len(g))
     best = ("", 0.0)
     for blur_mm, thin_mm in core.VARIANTS_MM:
         txt, conf = core.ocr(img, 7, blur_mm * stc.PPM, thin_mm * stc.PPM)
-        if len(norm(txt)) >= OCR_MIN_LETTERS and conf >= OCR_CONF_MIN:
+        if len(norm(txt)) >= need and conf >= OCR_CONF_MIN:
             return {"text": norm(txt), "conf": round(conf, 1), "ok": True}
         if norm(txt) and conf > best[1]:
             best = (norm(txt), conf)

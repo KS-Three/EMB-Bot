@@ -339,6 +339,26 @@ def test_lettering_takes_the_smallest_line_tesseract_confirms(tmp_path, monkeypa
     assert [ln["lettering"] for ln in c["lines"]] == [False, True]
 
 
+def test_read_line_wants_a_word_not_a_confident_letter(monkeypatch):
+    from digitizer_core import legibility
+    reads = {}
+    monkeypatch.setattr(legibility, "ocr", lambda img, psm, blur, thin: reads[img.shape])
+    piece = {"ox": 0, "oy": 0, "mask": np.ones((40, 20), bool)}
+
+    def line(n):
+        return [dict(piece, ox=i * 30) for i in range(n)]
+
+    def verdict(n, text, conf):
+        img = pi.line_image(line(n))
+        reads[img.shape] = (text, conf)
+        return pi.read_line(line(n))["ok"]
+    assert verdict(3, "THE", 96.0) is True
+    assert verdict(3, "THE", 69.0) is False             # under OCR_CONF_MIN
+    assert verdict(3, "TE", 96.0) is False              # under OCR_MIN_LETTERS
+    assert verdict(9, "7AGS", 90.0) is False            # 4 letters off 9 pieces: not a word
+    assert verdict(5, "EATSTAYPLAY", 95.0) is True      # joined letters read more, not fewer
+
+
 def test_overlay_is_drawn(tmp_path):
     dst = synth.write_pattern(tmp_path / "x.DST", design())
     pi.census_of(dst, overlay=tmp_path / "ov.png", ocr=False)
