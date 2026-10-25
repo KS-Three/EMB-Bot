@@ -614,6 +614,13 @@ PRE_FLIP["clip_keep_pieces"] = False
 # rings its pull-grown polygon. False is the pre-flip cap. The tests ABOUT it
 # are in `tests/test_edge_cap.py`.
 PRE_FLIP["edge_cap_skip_bean_letters"] = False
+# Kent's wave-2 flips (2026-10-24, from the flip sheet of PR #1069), for the
+# reason every entry above gives. `border_from_outline` (#1065): an art outline
+# sews as one satin loop per body at the outline's width, its bodies as fills.
+# `small_text_cap_reach_edges` (#1066): the re-set reaches a line on the
+# design's edge; inert while the re-set itself is unset.
+PRE_FLIP["border_from_outline"] = False
+PRE_FLIP["small_text_cap_reach_edges"] = False
 # Three lettering flags Kent flipped ON 2026-10-24 ("Flip it ON", then "Ship
 # 3, fix white next" on 2026-10-25), for the reason every entry above gives:
 # each moves lettering only. False is the engine before the flip. The tests
