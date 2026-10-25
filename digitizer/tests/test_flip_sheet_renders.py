@@ -135,3 +135,41 @@ def test_white_under_1mm_counts_white_thread_only():
 def test_tagged_reads_the_cells_stats_and_the_pro_has_none():
     assert fsr.tagged(None, None, {"stats": {"tagged": 16}}) == "16"
     assert fsr.tagged(None, None, {"runs": None}).startswith("n/a")
+
+
+def test_wave_two_flags_are_on_the_sheet():
+    prs = {f: s["pr"] for f, s in fsr.FLAGS.items()}
+    assert prs["monoline_script_satin"] == 1063
+    assert prs["silhouette_underfill"] == 1064
+    assert prs["border_from_outline"] == 1065
+    assert prs["small_text_cap_reach_edges"] == 1066
+    for f in prs:
+        assert fsr.FLAGS[f]["metric"] in fsr.METRICS, f
+
+
+def test_flags_with_one_base_share_one_off_arm():
+    # Kent flipped sew_enclosed_white and the keyline 2026-10-24: both wave-2 white flags
+    # are diffed against that one OFF, digitized once per fixture
+    assert fsr.off_arm("border_from_outline") == fsr.off_arm("silhouette_underfill") == "white_sewn__off"
+    assert fsr.arm_sets("white_sewn__off") == {"sew_enclosed_white": True, "enclosed_white_keyline": True}
+    # the reach flag acts only under #1029's re-set: its OFF is that set, without the flag
+    off = fsr.arm_sets(fsr.off_arm("small_text_cap_reach_edges"))
+    assert off == fsr.FLAGS["small_text_set"]["sets"] and "small_text_cap_reach_edges" not in off
+    for f, spec in fsr.FLAGS.items():
+        if spec.get("base"):
+            extra = {k: v for k, v in spec["sets"].items() if k not in spec["base"]}
+            assert extra and fsr.arm_sets(fsr.off_arm(f)) == spec["base"], f
+
+
+def test_a_flag_with_fixtures_runs_only_on_them():
+    assert fsr.flag_fixtures("monoline_script_satin", None) == ["tires_hat_3d"]
+    assert fsr.flag_fixtures("monoline_script_satin", ["mfab_hat"]) == []
+    assert fsr.flag_fixtures("tie_in_off", None) == [s for s, _ in fsr.FIXTURES]
+    assert fsr.flag_fixtures("tie_in_off", ["mfab_hat"]) == ["mfab_hat"]
+
+
+def test_sub_1mm_counts_short_stitches_and_resets_at_a_cut():
+    import pystitch
+    S, T = pystitch.STITCH, pystitch.TRIM
+    stream = [(0, 0, S), (0.5, 0, S), (3, 0, S), (3, 0, T), (3.2, 0, S), (3.4, 0, S)]
+    assert fsr.sub_1mm(stream, None, None) == 2
