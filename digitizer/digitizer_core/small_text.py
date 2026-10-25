@@ -557,26 +557,44 @@ def _bar_moves(bars: list[Polygon], resets: list[dict], dxs: list[float], gap_mm
 
 def _place_line_reset(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float,
                       gap_mm: float, min_stroke_mm: float, bold_scale: float | None,
-                      bars: list[Polygon] | None = None):
+                      bars: list[Polygon] | None = None, edge_room: bool = False):
     """`_place_line` for a re-set line: the tallest scale, then the widest
     letters (`f` from `s` down to `RESET_MIN_WIDTH`) at which every cluster
     fits clear of every obstacle by `CLEAR_MM`, and every bar of the line
     (`bars`) has room between its letters (`_bar_moves`).
+
+    `edge_room` (`cfg.small_text_cap_reach_edges`): (1) the design's edge
+    (`bounds`) must hold the letters, not their `CLEAR_MM` halo -- the halo
+    keeps clear of SHAPES, and past the edge there are none -- and gives way
+    by half the line's growth, so a line drawn on the edge may grow about
+    its own centre: ProSeal's tagline sits ON the bottom edge and no growth
+    fitted; the pro's sews 0.6 mm past it (needles 27.2-32.0 mm against the
+    art's 28.3-31.5). (2) Clusters of one line keep the polygon gap of a
+    sewn letter gap from each other, not two halos: ProSeal's beanie words
+    stand 1.3 mm apart and each halo is ~1 mm.
     -> (s, dy, [dx per item], [reset per item], [dx per bar]) or None."""
     shifts = _offsets(MAX_SHIFT_CAPS * cap_mm)
     # one cluster alone on its line stays near where it was drawn: a line
     # set about its own centre, slid sideways, is off-centre in the design
     side = shifts if len(items) > 1 else [v for v in shifts if abs(v) <= RESET_MAX_SIDE_CAPS * cap_mm]
     steps = 8
+    word_gap = gap_mm + 2.0 * SEWN_EDGE_MM
+    line_cap = float(np.median([it["cap"] for it in items]))
     for k in range(steps + 1):
         s = s_max - (s_max - MIN_SCALE) * k / steps
         if s < MIN_SCALE - 1e-9:
             break
+        room = bounds
+        if edge_room:
+            e = 0.5 * (s - 1.0) * line_cap
+            b = bounds.bounds
+            room = box(b[0] - e, b[1] - e, b[2] + e, b[3] + e)
         for j in range(RESET_WIDTH_STEPS + 1):
             f = s - (s - RESET_MIN_WIDTH) * j / RESET_WIDTH_STEPS
             resets = _reset_line(items, s, f, gap_mm, min_stroke_mm, bold_scale, bars)
             grown = [r["hull"].buffer(r["widen"] + it.get("clear", CLEAR_MM))
                      for it, r in zip(items, resets)]
+            cores = [r["hull"].buffer(r["widen"]) for r in resets] if edge_room else grown
             # the smallest move wins, |dy| + the largest |dx|: taking the
             # first dy that fits at any dx slid Drone's line 2.75 mm sideways
             # where a quarter millimetre up kept it centred
@@ -585,19 +603,29 @@ def _place_line_reset(items: list[dict], bounds: Polygon, s_max: float, cap_mm: 
                 if best is not None and abs(dy) >= best[0]:
                     break
                 dxs, placed = [], []
-                for it, g0 in zip(items, grown):
+                for it, g0, c0 in zip(items, grown, cores):
                     hit = None
                     for dx in side:
                         if best is not None and abs(dy) + abs(dx) >= best[0]:
                             break
                         g = affinity.translate(g0, dx, dy)
-                        if not bounds.contains(g):
+                        if c0 is g0:
+                            if not room.contains(g):
+                                continue
+                            if it["obstacles"] is not None and g.intersects(it["obstacles"]):
+                                continue
+                            if any(g.intersects(q) for q in placed):
+                                continue
+                            hit = (dx, g)
+                            break
+                        c = affinity.translate(c0, dx, dy)
+                        if not room.contains(c):
                             continue
                         if it["obstacles"] is not None and g.intersects(it["obstacles"]):
                             continue
-                        if any(g.intersects(q) for q in placed):
+                        if any(c.distance(q) < word_gap for q in placed):
                             continue
-                        hit = (dx, g)
+                        hit = (dx, c)
                         break
                     if hit is None:
                         break
@@ -656,7 +684,8 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        max_width_scale: float | None = None,
                        min_stroke_mm: float | None = None,
                        letter_gap_mm: float | None = None,
-                       bold_scale: float | None = None) -> list[dict]:
+                       bold_scale: float | None = None,
+                       reach_edges: bool = False) -> list[dict]:
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
 
@@ -666,7 +695,13 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     as room allows; `max_width_scale` is not read. `bold_scale`
     (`cfg.small_text_cap_bold_scale`, re-set only): the stroke a letter is
     widened to grows with its height (`_stroke_target`). None: the growth
-    above, byte for byte.
+    above, byte for byte. `reach_edges` (`cfg.small_text_cap_reach_edges`,
+    re-set only): the design's edge bounds the letters, not their clearance,
+    and words of one line keep a sewn letter gap apart, not two halos
+    (`_place_line_reset`'s `edge_room`); a letter-sized shape inside the
+    line's span joins it (`_join_line_ends`' `inside`); clusters of one line
+    whose hulls overlap are placed as one (`_merge_overlapping`). False:
+    byte for byte.
 
     `max_width_scale` (`cfg.small_text_cap_max_width_scale`): grow the
     letters TALLER by the full scale but WIDER by at most this -- condensed,
@@ -744,10 +779,12 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     for line in lines:
         try:
             line.sort(key=lambda it: it["hull"].bounds[0])
+            if reset and reach_edges:
+                line[:] = _merge_overlapping(line)
             ids = {id(r) for it in line for r in it["group"]}
             cap = float(np.median([it["cap"] for it in line]))
             if reset:
-                joined = _join_line_ends(line, regions, ids | claimed, cap)
+                joined = _join_line_ends(line, regions, ids | claimed, cap, inside=reach_edges)
                 if joined:
                     ids |= {id(r) for r in joined}
                     claimed.update(id(r) for r in joined)
@@ -802,7 +839,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
             if reset:
                 found = _place_line_reset(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm,
                                           float(letter_gap_mm), min_stroke_mm, bold_scale,
-                                          [r.polygon for r in bars])
+                                          [r.polygon for r in bars], edge_room=reach_edges)
             else:
                 found = _place_line(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm, max_width_scale,
                                     min_stroke_mm)
@@ -916,13 +953,42 @@ def _widen_keep_counters(poly: Polygon, widen: float):
     return out
 
 
-def _join_line_ends(line: list[dict], regions: list[Region], taken: set[int], cap: float) -> list[Region]:
+def _merge_overlapping(line: list[dict]) -> list[dict]:
+    """`cfg.small_text_cap_reach_edges`: clusters of one line whose hulls
+    overlap are one word the tagger split letter by letter (ProSeal's
+    beanie COATINGS: C, O, A, N in one cluster, T, I, G, S in another) and
+    are placed as one; apart, neither ever fits. `line` sorted by x."""
+    out: list[dict] = []
+    for it in line:
+        if out and out[-1]["hull"].intersects(it["hull"]):
+            m = out[-1]
+            m["group"] = m["group"] + it["group"]
+            m["shapes"] = m["shapes"] + it["shapes"]
+            m["hull"] = unary_union(m["shapes"]).convex_hull
+            m["members"] += it["members"]
+            m["traced"] += it["traced"]
+            m["cap"] = float(np.median([m["cap"], it["cap"]]))
+            m["stroke"] = max(m["stroke"], it["stroke"])
+            m["mid"] = (m["hull"].bounds[1] + m["hull"].bounds[3]) / 2.0
+            m.pop("units", None)
+            m.pop("words", None)
+            it["row"]["merged_into"] = m["row"]["cluster"]
+            continue
+        out.append(it)
+    return out
+
+
+def _join_line_ends(line: list[dict], regions: list[Region], taken: set[int], cap: float,
+                    inside: bool = False) -> list[Region]:
     """Re-set only: a letter-sized shape standing on the line's own band
     just past either end -- 0.8-1.25 cap tall, at most 2 caps wide and
     within 1.5 cap of the end -- joins the end cluster and grows and moves
     with it, whatever its thread. Drone's AND DRONE: our trace gives its
     first A a thread of its own, so it is in no cluster; the re-set grew
     the other seven letters and slid them 2.5 mm off it ("A   ND DRONE").
+    `inside` (`cfg.small_text_cap_reach_edges`): the same shape standing
+    INSIDE the line's span joins the cluster nearest it -- ProSeal's A of
+    SPRAY traces in a thread of its own and was its own line's obstacle.
     -> the shapes joined."""
     lx0 = min(it["hull"].bounds[0] for it in line)
     lx1 = max(it["hull"].bounds[2] for it in line)
@@ -953,6 +1019,25 @@ def _join_line_ends(line: list[dict], regions: list[Region], taken: set[int], ca
         it.pop("words", None)
         taken.add(id(r))
         joined.append(r)
+    if inside:
+        for r in regions:
+            if id(r) in taken or not isinstance(r.polygon, Polygon) or r.polygon.is_empty:
+                continue
+            x0, y0, x1, y1 = r.polygon.bounds
+            h = y1 - y0
+            if not (0.8 * cap <= h <= 1.25 * cap and x1 - x0 <= 2.0 * cap
+                    and min(y1, ly1) - max(y0, ly0) >= 0.8 * h and lx0 <= x0 and x1 <= lx1):
+                continue
+            if x1 - x0 <= 0.5 * cap:
+                continue    # a bar across the line: `bars`' to keep where it is
+            it = min(line, key=lambda q: q["hull"].distance(r.polygon))
+            it["group"].append(r)
+            it["shapes"].append(r.polygon)
+            it["hull"] = unary_union(it["shapes"]).convex_hull
+            it.pop("units", None)
+            it.pop("words", None)
+            taken.add(id(r))
+            joined.append(r)
     return joined
 
 

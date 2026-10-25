@@ -224,6 +224,25 @@
     return fabric ? fabric.fillUnderlay : undefined;
   }
 
+  // The pro-measured values the `proMeasuredValues` option (built OFF
+  // 2026-10-23) takes on the hat / left-chest / beanie presets: fill stitch 3.49,
+  // satin spacing 0.37 (0.35 beanie), bean pitch 0.95 mm — docs/settings-vs-pro-
+  // 2026-10-21.md rows 1, 2, 11, 19. Twin of the digitizer's
+  // `fabrics.pro_values_for` (`cfg.pro_measured_values`); `test_fabric_wire.py`
+  // holds the pair. Gate 1: the table above is untouched.
+  const PRO_MEASURED = {
+    fabrics: ["structured_cap", "pique_knit", "jersey_tee"],
+    fillStitchMm: 3.49,
+    beanStitchMm: 0.95,
+    satinSpacingMm: { structured_cap: 0.37, pique_knit: 0.37, jersey_tee: 0.35 },
+  };
+
+  function proMeasuredFor(fabric, on) {
+    if (!on || !fabric || !PRO_MEASURED.fabrics.includes(fabric.id)) return null;
+    return { fillStitchMm: PRO_MEASURED.fillStitchMm, beanStitchMm: PRO_MEASURED.beanStitchMm,
+             satinSpacingMm: PRO_MEASURED.satinSpacingMm[fabric.id] };
+  }
+
   // --- Hooping advice (2026-10-01, Kent's call) ------------------------------
   //
   // What the operator must hoop — stabilizer, topper, needle — from ONE
@@ -307,6 +326,8 @@
     hoopingLine,
     CROSS_UNDERLAY_FABRICS,
     fillUnderlayFor,
+    PRO_MEASURED,
+    proMeasuredFor,
     NEEDLE_BASIS,
     CUTAWAY_STITCHES,
     PROFILE_FIELDS,

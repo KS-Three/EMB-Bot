@@ -88,9 +88,34 @@ FIXTURES: list[tuple[str, float | None]] = [
     ("mfab_hat", None),
 ]
 
+#: Pairs `tools.border_census.PAIRS` lacks, in its row shape (slug, pro file,
+#: art, garment), for a flag's own `fixtures`.
+EXTRA_PAIRS = [
+    ("proseal_beanie", "Proseal/PROSEALHAT BEANI.DST", "Proseal/PROSeal Logo.jpg", "beanie"),
+]
+
+#: Art for a job whose customer file is only on Google Drive (G:), used when
+#: G: is not mounted: the committed corpus crops (#556), cut from the pro's
+#: preview at ~400 px. A cell digitized from one may differ from a PR's cell
+#: digitized from the customer's file; `fixture_files` says which it used
+#: (on 2026-10-24 MFab's counts matched #1064's exactly).
+ART_FALLBACK = {
+    "mfab_hat": DIGITIZER / "testdata" / "art" / "logo_mfab_hat.png",
+    "mfab_lc": DIGITIZER / "testdata" / "art" / "logo_mfab_lc.png",
+}
+
 #: The flags. `sets` is laid over the Studio request (`--set` in pro_pair);
 #: `metric` names a reader below; `about` is the column heading; `pr` the PR
 #: that built it. Add a row here and the next `run`/`report` carries it.
+#: Optional: `base` (the flag acts only on top of these; OFF is the base, not
+#: the bare engine), `base_name` (flags with the SAME base share one OFF arm
+#: under that name instead of digitizing it once each), `fixtures` (the jobs
+#: the flag is about; FIXTURES otherwise).
+_SMALL_TEXT_SET = {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1.05,
+                   "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
+                   "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True}
+_WHITE_SEWN = {"sew_enclosed_white": True, "enclosed_white_keyline": True}
+
 FLAGS: dict[str, dict] = {
     "fill_turn_slant": {
         "sets": {"fill_turn_slant": True}, "metric": "sub_half_mm",
@@ -148,6 +173,44 @@ FLAGS: dict[str, dict] = {
                  "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
                  "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True},
         "metric": "letter_height", "about": "median small-letter height, mm", "pr": 1029},
+    # ---- wave 2 (2026-10-24)
+    "small_text_cap_reach_edges": {
+        "base": dict(_SMALL_TEXT_SET), "base_name": "small_text_set",
+        "sets": {**_SMALL_TEXT_SET, "small_text_cap_reach_edges": True},
+        "fixtures": ["proseal_hat", "proseal_beanie", "hotel_fremont_hat"],
+        "metric": "small_lines", "about": "small lines: built, sewn height mm (census reader)",
+        "pr": 1066,
+        "note": "Acts only under #1029's re-set, so OFF is the re-set set (small_text_set) and ON "
+                "adds this flag. PR #1066: ProSeal hat tagline 3.15 mm bean -> 4.35/4.45 satin "
+                "(pro 4.55), beanie 2.8 -> 3.65/3.7 (pro 4.0); Fremont and Drone byte-identical."},
+    "monoline_script_satin": {
+        "sets": {"monoline_script_satin": True}, "fixtures": ["tires_hat_3d"],
+        "metric": "sub_1mm", "about": "stitches under 1 mm (whole design)", "pr": 1063,
+        "note": "The catch is TRIMS (the st / tr figures): PR #1063 whole design 8,001 st / 10 tr "
+                "OFF -> 6,101 / 24 ON, pro 5,555 / 10. In the word: under-1 mm stitches 2,515 -> "
+                "548 (pro 43), fill -> satin square to the stroke 0.00 -> 0.88 (pro 0.85). PR #1063 "
+                "was open when rendered: run from a local merge with main (not committed)."},
+    "border_from_outline": {
+        "base": dict(_WHITE_SEWN), "base_name": "white_sewn",
+        "sets": {**_WHITE_SEWN, "border_from_outline": True},
+        "fixtures": ["becker_hat_small", "mfab_hat", "gaulke_roofing_hat"],
+        "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1065,
+        "note": "Rendered with sew_enclosed_white and enclosed_white_keyline ON (Kent flipped both "
+                "2026-10-24); it does nothing on MFab without white sewn. PR #1065 with white sewn: "
+                "Becker small 8,512 / 21 -> 11,100 / 25 (faces fill, loops on top; pro 8,694 / 40), "
+                "MFab hat 25,512 / 108 -> 20,219 / 89 (pro 17,568 / 46); Gaulke no outline, same "
+                "bytes. Bridge NOT rendered: its pro files are only on G:, unmounted. PR #1065 was "
+                "open when rendered: run from a local merge with main (not committed)."},
+    "silhouette_underfill": {
+        "base": dict(_WHITE_SEWN), "base_name": "white_sewn",
+        "sets": {**_WHITE_SEWN, "silhouette_underfill": True},
+        "fixtures": ["mfab_hat", "mfab_lc", "becker_beanie"],
+        "metric": "travel_runs", "about": "travel runs in the plan (pro: n/a)", "pr": 1064,
+        "note": "Rendered with sew_enclosed_white and enclosed_white_keyline ON (Kent flipped both "
+                "2026-10-24), as PR #1064 measured it: MFab hat 18,916 / 81 -> 17,540 / 37 (pro "
+                "17,568 / 19), MFab LC 16,542 / 72 -> 16,658 / 44 (pro 15,786 / 20), Becker beanie "
+                "11,501 / 21 -> 13,726 / 20 (pro 11,411 / 11). White sews ON TOP of black on MFab "
+                "(the reverse of #1059's order): that order is Kent's call."},
 }
 
 
@@ -185,8 +248,11 @@ def fixture_files(slug: str) -> dict:
     jump), pro PES if any (thread colours), art, garment, width."""
     from tools import border_census as bc
     from tools import pro_pair as pp
-    row = next(r for r in bc.PAIRS if r[0] == slug)
+    row = next(r for r in [*bc.PAIRS, *EXTRA_PAIRS] if r[0] == slug)
     pro, art = bc.find_pair(*row[:3])
+    fallback = art is None and slug in ART_FALLBACK and ART_FALLBACK[slug].exists()
+    if fallback:
+        art = ART_FALLBACK[slug]
     if pro is None or art is None:
         raise SystemExit(f"{slug}: missing {'pro' if pro is None else 'art'} file")
     pes = pro if pro.suffix.lower() == ".pes" else None
@@ -195,7 +261,8 @@ def fixture_files(slug: str) -> dict:
     if width is None:
         width = pp.pro_counts(dst or pro)["width_mm"]
     return {"slug": slug, "garment": row[3], "art": Path(art), "pro_dst": Path(dst or pro),
-            "pro_pes": Path(pes) if pes else None, "width_mm": float(width)}
+            "pro_pes": Path(pes) if pes else None, "width_mm": float(width),
+            "art_fallback": fallback}
 
 
 # --------------------------------------------------------------------- run
@@ -204,16 +271,29 @@ def is_off(arm: str) -> bool:
 
 
 def off_arm(flag: str) -> str:
-    """The arm a flag is diffed against: bare `off`, or `<flag>__off` when it has a `base`."""
-    return f"{flag}__off" if FLAGS[flag].get("base") else "off"
+    """The arm a flag is diffed against: bare `off`, or `<base_name>__off` when
+    it has a `base` (`base_name` defaults to the flag: one OFF arm per flag)."""
+    spec = FLAGS[flag]
+    return f"{spec.get('base_name', flag)}__off" if spec.get("base") else "off"
 
 
 def arm_sets(arm: str) -> dict:
     if arm == "off":
         return {}
     if arm.endswith("__off"):
-        return dict(FLAGS[arm[: -len("__off")]]["base"])
+        name = arm[: -len("__off")]
+        owner = next(f for f, s in FLAGS.items() if s.get("base") and s.get("base_name", f) == name)
+        return dict(FLAGS[owner]["base"])
     return dict(FLAGS[arm]["sets"])
+
+
+def flag_fixtures(flag: str, asked: list[str] | None) -> list[str]:
+    """The jobs a flag is rendered on: its own `fixtures` (narrowed to `asked`
+    when given), else `asked`, else FIXTURES."""
+    own = FLAGS[flag].get("fixtures")
+    if own:
+        return [s for s in own if not asked or s in asked]
+    return list(asked) if asked else [s for s, _ in FIXTURES]
 
 
 def cell_dir(cache: Path, slug: str, arm: str, sha: str) -> Path:
@@ -267,9 +347,8 @@ def run_cmd(a) -> int:
     bad = [f for f in flags if f not in FLAGS]
     if bad:
         raise SystemExit(f"unknown flags: {bad}; known: {list(FLAGS)}")
-    slugs = a.fixtures or [s for s, _ in FIXTURES]
-    arms = list(dict.fromkeys([*(off_arm(f) for f in flags), *flags]))
-    jobs = [(s, arm, str(a.cache), a.engine) for s in slugs for arm in arms]
+    pairs = [(s, arm) for f in flags for s in flag_fixtures(f, a.fixtures) for arm in (off_arm(f), f)]
+    jobs = [(s, arm, str(a.cache), a.engine) for s, arm in dict.fromkeys(pairs)]
     if a.jobs <= 1:
         for j in jobs:
             print(_job(j), flush=True)
@@ -315,6 +394,60 @@ def sub_half_mm(stream, _fx, _cell) -> int:
         else:
             prev = None if c in (pystitch.TRIM, pystitch.COLOR_CHANGE) else prev
     return n
+
+
+def sub_1mm(stream, _fx, _cell) -> int:
+    """Needle-to-needle stitches under 1 mm (a fill's turns, a column's crowding)."""
+    import pystitch
+    n, prev = 0, None
+    for x, y, c in stream:
+        if c == pystitch.STITCH:
+            if prev is not None and math.dist(prev, (x, y)) < 1.0:
+                n += 1
+            prev = (x, y)
+        else:
+            prev = None if c in (pystitch.TRIM, pystitch.COLOR_CHANGE) else prev
+    return n
+
+
+def satin_loops(_stream, _fx, cell) -> int:
+    """Satin columns whose spine closes on itself -- a border laid along an
+    outline (`border_census.closed_satin_loops`, the census's own reader)."""
+    from tools.border_census import closed_satin_loops
+    from tools.study_pro import load_runs
+    return len(closed_satin_loops(load_runs(Path(cell["dst"]))[0]))
+
+
+def travel_runs(_stream, _fx, cell) -> str:
+    runs = cell.get("runs")
+    if runs is None:
+        return "n/a (DST has no roles)"
+    return str(sum(1 for r in runs if r["kind"] == "travel"))
+
+
+def small_lines(_stream, fx, cell) -> str:
+    """Each small line the census lists for this job (`small_text_floor_census.
+    ELEMENTS`, not its references): construction and sewn height, read by the
+    census's own reader. The art height is the listed box's; the pro is read
+    through `register` against our OFF file."""
+    from tools import small_text_floor_census as st
+    from tools.study_pro import load_runs
+    els = [e for e in st.ELEMENTS if e[0] == fx["slug"] and "(ref)" not in e[1]]
+    if not els:
+        return "no small lines listed"
+    runs = load_runs(Path(cell["dst"]))[0]
+    reg = st.register(fx["pro_dst"], fx["ours_ref"]) if cell.get("stats") is None else None
+    out = []
+    for _slug, label, box, *_ in els:
+        art_h = box[3] - box[1]
+        m_y, m_x, cy = max(2.5, 1.5 * art_h), 2.0 + 0.5 * art_h, 0.5 * (box[1] + box[3])
+        if reg is None:
+            e = st.read_element(runs, (box[0] - m_x, box[1] - m_y, box[2] + m_x, box[3] + m_y), art_h, cy)
+        else:
+            e = st.read_element(runs, st._map_box(box, reg, m_x * reg.scale, m_y * reg.scale),
+                                art_h * reg.scale, reg.scale * cy + reg.dy)
+        out.append(f"{label} {e['verdict'].lower()} {e.get('h_mm', '-')}")
+    return "; ".join(out)
 
 
 def fill_underlay(_stream, _fx, cell) -> str:
@@ -495,7 +628,9 @@ def tagged(_stream, _fx, cell) -> str:
 METRICS = {"sub_half_mm": sub_half_mm, "fill_underlay": fill_underlay, "uncut_jumps": uncut_jumps,
            "white_stitches": white_stitches, "under_later": under_later, "rings": rings,
            "locks": locks, "short_bare": short_bare, "letter_height": letter_height,
-           "stagger": stagger, "white_under_1mm": white_under_1mm, "tagged": tagged}
+           "stagger": stagger, "white_under_1mm": white_under_1mm, "tagged": tagged,
+           "sub_1mm": sub_1mm, "satin_loops": satin_loops, "travel_runs": travel_runs,
+           "small_lines": small_lines}
 
 
 # ------------------------------------------------------------------- diff
@@ -657,16 +792,20 @@ def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str]) -
     renders.mkdir(parents=True, exist_ok=True)
     rows = []
     pros: dict[str, tuple[dict, dict]] = {}
-    for slug in slugs:
+    for slug in dict.fromkeys(s for f in flags for s in flag_fixtures(f, slugs)):
         fx = fixture_files(slug)
         pros[slug] = (fx, pro_cell(fx))
     for flag in flags:
-        for slug in slugs:
+        for slug in flag_fixtures(flag, slugs):
             fx, pro = pros[slug]
             on_dir = cache / slug / flag
             row = {"flag": flag, "fixture": slug, "width_mm": fx["width_mm"], "pr": FLAGS[flag]["pr"],
                    "about": FLAGS[flag]["about"], "sets": FLAGS[flag]["sets"],
                    "note": FLAGS[flag].get("note", "")}
+            if fx.get("art_fallback"):
+                row["note"] = (row["note"] + " " if row["note"] else "") + (
+                    f"{slug}: digitized from the corpus crop {fx['art'].name} (the customer file "
+                    "is on G:, unmounted).")
             if not (on_dir / "stats.json").exists():
                 row["status"] = "not run"
                 rows.append(row)
@@ -679,6 +818,7 @@ def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str]) -
                 rows.append(row)
                 continue
             off = load_cell(off_dir)
+            fx["ours_ref"] = off["dst"]      # a reader that registers the pro needs one of ours
             row["engine"] = sha
             row["engine_root"] = on["stats"]["engine_root"]
             for c in (off, on, pro):
@@ -885,7 +1025,7 @@ def inline_html(rows: list[dict], renders: Path, date: str = DATE,
 
 def report_cmd(a) -> int:
     flags = a.flags or list(FLAGS)
-    slugs = a.fixtures or [s for s, _ in FIXTURES]
+    slugs = a.fixtures or None
     rows = build_rows(Path(a.cache), Path(a.renders), flags, slugs)
     doc = Path(a.out)
     doc.parent.mkdir(parents=True, exist_ok=True)
