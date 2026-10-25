@@ -104,16 +104,23 @@ tagger on all six: every polygon's WKT and every meta key):
 | MFab LC | AND's N, WELDING's N and G gain `text_candidate` |
 | Fremont hat, patch, Drone, ProSeal | nothing |
 
-Whole design, md5 of `[x, y, kind, jump, trim]` per stitch:
+Whole design, md5 of `[x, y, kind, jump, trim]` per stitch. "Branch OFF" is
+the full pipeline on this branch with the flag off where it finished on the
+loaded laptop (Fremont hat: 47 minutes); on every job the tagger's OUTPUT OFF
+is byte-identical to HEAD's (above), and nothing else in the diff runs when the
+flag is off (one config field nothing else reads, one kwarg that passes nothing).
 
 | job | width mm | main (82b0bf28) | branch OFF | ON | stitches / trims main -> ON |
 |---|---|---|---|---|---|
-| Fremont hat | 92.6 | `6ff9803b` | BRANCH_FREMONT_HAT | `6ff9803b` | 18,573 / 58, same |
-| Fremont patch | 92.5 | `d2bcba27` | BRANCH_FREMONT_PATCH | `d2bcba27` | 20,733 / 49, same |
-| MFab hat | 104.9 | `3673370d` | BRANCH_MFAB_HAT | `39d95f28` | 11,125 / 62 -> 11,138 / 62 |
-| MFab LC | 96.7 | `f444ae5e` | BRANCH_MFAB_LC | `288c3c5b` | 11,691 / 73 -> 11,822 / 73 |
-| Drone | 62.6 | `6239342f` | BRANCH_DRONE | `6239342f` | 14,077 / 116, same |
-| ProSeal hat | 85.9 | `7d89f371` | BRANCH_PROSEAL | `7d89f371` | 7,760 / 56, same |
+| Fremont hat | 92.6 | `6ff9803b` | `6ff9803b` | `6ff9803b` | 18,573 / 58, same |
+| Fremont patch | 92.5 | `d2bcba27` | tagger-identical | `d2bcba27` | 20,733 / 49, same |
+| MFab hat | 104.9 | `3673370d` | tagger-identical | `39d95f28` | 11,125 / 62 -> 11,138 / 62 |
+| MFab LC | 96.7 | `f444ae5e` | tagger-identical | `288c3c5b` | 11,691 / 73 -> 11,822 / 73 |
+| Drone | 62.6 | `6239342f` | tagger-identical | `6239342f` | 14,077 / 116, same |
+| ProSeal hat | 85.9 | `7d89f371` | tagger-identical | `7d89f371` | 7,760 / 56, same |
+
+The flat goldens (`logo_alpha`, `logo_whitebg`, `ribbon_curve`) are pinned
+OFF and ON in the test: no touching or overshooting letter there.
 
 Lettering board, line AND WELDING LLC (ours OFF -> ON, the pro):
 
