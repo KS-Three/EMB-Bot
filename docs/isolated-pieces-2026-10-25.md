@@ -107,7 +107,8 @@ True.
 
 `digitizer_core/fragment_absorb.py`. The single line is in
 `pipeline._plan_stitches`, right after stage 5:
-`planned = absorb(planned, cfg)` (with its import on the line above), so
+`planned = absorb(planned, cfg, hairline)` (with its import on the line above;
+`hairline` keeps the hairline tier's strands its own), so
 `config.py` and `stage7_sequence.py` (#1057's) are untouched.
 
 On stage 5's planned regions: a fragment -- narrower everywhere than the

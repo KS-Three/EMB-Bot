@@ -116,7 +116,11 @@ def _join(body: Polygon, frag):
 
 def _merge(body, frag):
     """`_join` into the part of `body` nearest `frag` (a body stage 5 left
-    in parts keeps its other parts as they were). None if it cannot join."""
+    in parts keeps its other parts as they were). None if it cannot join,
+    or if either is not a polygon."""
+    if not isinstance(body, (Polygon, MultiPolygon)) or not isinstance(frag, (Polygon, MultiPolygon)) \
+            or body.is_empty or frag.is_empty:
+        return None
     parts = list(body.geoms) if isinstance(body, MultiPolygon) else [body]
     k = min(range(len(parts)), key=lambda i: parts[i].distance(frag))
     joined = _join(parts[k], frag)
@@ -126,16 +130,20 @@ def _merge(body, frag):
     return MultiPolygon([joined, *rest]) if rest else joined
 
 
-def absorb(planned: list, cfg) -> list:
+def absorb(planned: list, cfg, hairline=None) -> list:
     """`planned` (stage 5's `PlannedRegion`s) with every fragment unioned
     into its body; the list is new, the entries it replaces are copies, and
-    no other entry changes. Off: `planned` itself."""
+    no other entry changes. `hairline`: stage 5's `HairlineSet` (or None) --
+    a strand is narrow by design and its tier's, so neither it nor a shape
+    that tier handed back to the ground is touched. Off: `planned` itself."""
     if not enabled(cfg):
         return planned
+    tier = set(hairline or ()) | set(getattr(hairline, "fragments", ()) or ())
     regs = [p.region for p in planned]
-    frags = [i for i, r in enumerate(regs) if not _kept(r) and _narrow(r.polygon, PRO_MIN_SWING_MM)]
+    frags = [i for i, r in enumerate(regs) if r.shape_id not in tier and not _kept(r)
+             and _narrow(r.polygon, PRO_MIN_SWING_MM)]
     fset = set(frags)
-    bodies = [i for i, r in enumerate(regs) if i not in fset and not _kept(r)
+    bodies = [i for i, r in enumerate(regs) if i not in fset and r.shape_id not in tier and not _kept(r)
               and not (r.meta or {}).get("rescued_small_shape")]
     out = list(planned)
     for fi in frags:
@@ -155,10 +163,11 @@ def absorb(planned: list, cfg) -> list:
         sewn = _merge(b.polygon, fp.polygon)
         if art is None or sewn is None:
             continue
-        visible = None
-        if b.visible is not None and fp.visible is not None:
+        visible = None          # "not computed": callers read `polygon`
+        if b.visible is not None:
             added = sewn.difference(unary_union([b.polygon, fp.polygon]))
-            visible = unary_union([b.visible, fp.visible, added])
+            mine = fp.visible if fp.visible is not None else fp.polygon
+            visible = unary_union([b.visible, mine, added])
         region = dataclasses.replace(
             b.region, polygon=art, area_mm2=float(art.area),
             meta={**b.region.meta,

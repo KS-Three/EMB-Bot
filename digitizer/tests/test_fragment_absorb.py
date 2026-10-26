@@ -212,5 +212,18 @@ def test_off_is_the_plan_without_the_pass(monkeypatch):
     off = _md5(_plan(OFF))
     if sys.platform == "win32":
         assert off == OFF_MD5
-    monkeypatch.setattr(fa, "absorb", lambda regions, cfg: regions)
+    monkeypatch.setattr(fa, "absorb", lambda planned, cfg, *_a: planned)
     assert _md5(_plan(ON)) == off
+
+
+def test_a_hairline_strand_is_the_hairline_tiers():
+    """A strand (`cfg.hairline`'s set) is narrow by design: neither it nor a
+    shape that tier handed back to the ground is a fragment here."""
+    from digitizer_core.stage6_hairline import HairlineSet
+    planned = _planned([_r("Sband", BAND, 1, 1), _r("Sfrag", _sliver(0.0), 1, 1)])
+    strands = HairlineSet({"Sfrag": 1.0})
+    assert [p.region.shape_id for p in fa.absorb(planned, ON, strands)] == ["Sband", "Sfrag"]
+    handed_back = HairlineSet()
+    handed_back.fragments = {"Sfrag"}
+    assert [p.region.shape_id for p in fa.absorb(planned, ON, handed_back)] == ["Sband", "Sfrag"]
+    assert [p.region.shape_id for p in fa.absorb(planned, ON, None)] == ["Sband"]
