@@ -14,13 +14,17 @@ Run it:  .venv/Scripts/python -m digitizer_service
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import math
 import os
+import subprocess
 import threading
 from contextlib import asynccontextmanager
-from dataclasses import fields as dataclass_fields
+from dataclasses import asdict, fields as dataclass_fields
+from datetime import datetime, timezone
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -33,7 +37,7 @@ from starlette.concurrency import run_in_threadpool
 from digitizer_core.calibration import profile as calibration
 from digitizer_core.fabrics import fabric_for_garment, get_fabric, normalize_profile
 from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
-from digitizer_core import machine
+from digitizer_core import legibility, machine, stage1_photo_prep, stage2_sam2_segment
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
 from digitizer_core.manual import build_manual_result
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
@@ -169,6 +173,89 @@ registry = JobRegistry(workers=1)
 # edit re-runs only `finish_generation` + `plan_stitches` instead of the
 # whole pipeline (area 5's measured table: stages 0-4 are 53-81% of a job).
 generations = GenerationCache()
+
+
+# ---- the engine stamp -------------------------------------------------------
+# `/health` says WHICH engine answered, because a number is only as good as the
+# code that made it. On 2026-10-15 four of Kent's five red circles were a stale
+# service still holding old code on port 8721; nothing on the wire could tell
+# him. `VERSION` above cannot either: it is set by hand when the response
+# SHAPE changes, not when the engine does.
+#
+# commit / dirty / started_at are taken ONCE, when this module loads, because
+# they describe the code the process imported: a `git checkout` afterwards does
+# not change what is running, and a stamp read live would then claim it did.
+# `defaults_sha` is the opposite -- read per request -- because it is the
+# fingerprint of what a request that names no flag gets, and the point is to
+# see it move when a default is flipped or patched.
+_ENGINE_DIR = Path(__file__).resolve().parents[1]
+
+
+def _git(*args: str) -> str | None:
+    """stdout of `git <args>` in the digitizer directory; None when git is
+    absent, this is not a checkout, or the command fails."""
+    try:
+        done = subprocess.run(
+            ["git", *args], cwd=_ENGINE_DIR, capture_output=True, text=True,
+            timeout=10, check=False,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.stdout.strip() if done.returncode == 0 else None
+
+
+def _read_engine_checkout() -> dict:
+    """The checkout the engine was loaded from. `dirty` is a change to a
+    TRACKED file under the two packages the service imports; an edit to docs
+    or a tool does not make the running engine different, and an untracked
+    file is not imported unless something tracked names it."""
+    commit = _git("rev-parse", "HEAD")
+    dirty = None
+    if commit:
+        changed = _git("status", "--porcelain", "--untracked-files=no", "--",
+                       "digitizer_core", "digitizer_service")
+        dirty = None if changed is None else bool(changed)
+    return {
+        "commit": commit,
+        "dirty": dirty,
+        "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+
+
+_ENGINE_CHECKOUT = _read_engine_checkout()
+
+
+def _defaults_sha() -> str:
+    """sha256 of `asdict(PipelineConfig())`: every default a request that
+    names no flag runs under. `repr` for a value JSON cannot hold."""
+    blob = json.dumps(asdict(PipelineConfig()), sort_keys=True, default=repr)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def engine_stamp() -> dict:
+    return {**_ENGINE_CHECKOUT, "defaults_sha": _defaults_sha()}
+
+
+def _usable(unavailable_reason) -> bool:
+    """A probe returns None when the thing can run here, else a sentence why
+    not. An unexpected exception is 'cannot run', never a failed /health."""
+    try:
+        return unavailable_reason() is None
+    except Exception:  # noqa: BLE001 -- /health must answer
+        return False
+
+
+def capabilities() -> dict:
+    """What THIS machine can do, from the probes the pipeline itself asks, so
+    the answer cannot disagree with the warning a job would raise. Read-only:
+    files and PATH, nothing is launched. Each is ENVIRONMENT-ONLY (the probes'
+    own docstrings): a runtime failure inside a worker is not knowable here."""
+    return {
+        "background_removal": _usable(stage1_photo_prep.background_removal_unavailable_reason),
+        "ocr": bool(legibility.tesseract_available()),
+        "face_priors": _usable(stage1_photo_prep.face_detector_unavailable_reason),
+        "sam2": _usable(stage2_sam2_segment.sam2_segmentation_unavailable_reason),
+    }
 
 
 @asynccontextmanager
@@ -960,6 +1047,8 @@ def health() -> dict:
         "limits": {"max_upload_bytes": MAX_UPLOAD_BYTES, "max_pixels": MAX_PIXELS},
         "jobs": registry.stats(),
         "generations": generations.stats(),
+        "engine": engine_stamp(),
+        "capabilities": capabilities(),
     }
 
 
