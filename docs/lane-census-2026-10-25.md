@@ -10,6 +10,7 @@ chance-corrected (kappa, or cc), none is a raw agreement. No new client art: the
 (`tools.pro_pair.request`: `detect_photographic`, `faces_route_flat`, `max_colors` 6), at each job's pro width
 (the registered DST's extents) and garment. Word legibility read with tesseract v5.4.0.20240606 (Windows; not the 5.3.4 CI pins, so do
 not set a cc figure here against a CI-pinned one).
+`origin/main` then took #1101 and #1102 (both OFF flags); MFab LC and Becker beanie, auto and forced flat, were re-run on `46949f78` and their DSTs are byte-identical to the rows quoted here.
 
 ## The answer in six lines
 

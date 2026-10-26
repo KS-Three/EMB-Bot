@@ -201,7 +201,7 @@ def lanes():
     return {slug: {arm: lc.lane_of(lc.pinned_job(slug), arm) for arm in lc.RUN_ARMS} for slug in lc.PINNED}
 
 
-def test_fixture_widths_are_the_pro_files(lanes):
+def test_fixture_widths_are_the_pro_files():
     """The pinned width is what the registry reads off the pro's DST. Skipped where the
     pro file is not on the box (CI)."""
     for slug, spec in lc.PINNED.items():
