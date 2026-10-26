@@ -70,11 +70,13 @@ from .columns import (is_lettering, is_thin_stem, lettering_columns_shape,
                       small_print_clear,
                       small_print_counter_set, small_print_counters)
 from .words import is_text, word_key
+from .monoline import bury_hops, clear_finished_underlay, monoline_stroke
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
                             keyline_band, keyline_rest, keyline_runs,
-                            outline_holes, run_outline, silhouette_cap)
+                            outline_holes, run_outline, silhouette_cap,
+                            underfill_rim_after)
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
 # Imported under another name: `hairline_runs` is already this module's count
@@ -260,6 +262,8 @@ def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float
     what a letter is admitted at."""
     if cfg.satin_lettering_split and is_text(region, cfg):
         return math.inf, True, True
+    if cfg.monoline_script_satin and monoline_stroke(region, cfg, satin_max_mm):
+        return math.inf, True, True     # `monoline.py`: a script stroke, split never fill
     return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
 
 
@@ -3480,6 +3484,12 @@ def sequence(
                     # the fill tier.
                     report["hairline_runs"] = sum(
                         1 for r in runs if r.kind == stitches.RUN)
+                    if cfg.monoline_script_satin and monoline_stroke(p.region, cfg, satin_max):
+                        # `monoline`: no underlay left on the word's finished
+                        # satin, and the pro's travel, hidden under its own
+                        # columns still to come, where it cut
+                        report["underlay_cleared"] = clear_finished_underlay(runs, trim_at)
+                        report["buried_hops"] = bury_hops(runs, trim_at)
                     return runs, report, False
             # `cfg.compact_solids_satin` (built OFF, 2026-10-22): a solid the
             # classifier refused for ASPECT only -- a blob whose width fits
@@ -4100,6 +4110,9 @@ def sequence(
                     q = nearest_points(p.polygon, group[nxt].polygon)[1]
                     exit_near = (float(q.x), float(q.y))
             runs, report, filled = stitch_one(p, cursor, exit_near)
+            if cfg.silhouette_underfill_rim:   # built OFF: a ring host's rim after its fill
+                runs, report = underfill_rim_after(p, runs, report, trim_at_mm=trim_at,
+                                                   underlay=satin_underlay != "none")
             thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
             as_run += report.get("as_run", 0)
