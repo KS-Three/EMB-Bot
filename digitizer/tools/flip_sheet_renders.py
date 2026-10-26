@@ -229,7 +229,7 @@ FLAGS: dict[str, dict] = {
         "base": {"silhouette_underfill": True, **_WHITE_SEWN}, "base_name": "d2",
         "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "silhouette_underfill_rim": True},
         "fixtures": ["mfab_hat", "mfab_lc", "hotel_fremont_hat"],
-        "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": None,
+        "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1096,
         "note": "Acts only under silhouette_underfill, so OFF is arm d2 (under-fill + white sewn "
                 "+ keyline) and ON adds the rim: the ring host's outer edge as one closed satin "
                 "loop at 1.75 mm after its fill, in its colour. The pro: MFab one closed column "
