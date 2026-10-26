@@ -120,11 +120,28 @@ def scene():
     return regions, p
 
 
+def _rounded(v):
+    """Floats to 6 places, all the way down (lists, tuples, dicts)."""
+    if isinstance(v, float):
+        return round(v, 6)
+    if isinstance(v, (list, tuple)):
+        return type(v)(_rounded(x) for x in v)
+    if isinstance(v, dict):
+        return {k: _rounded(x) for k, x in v.items()}
+    return v
+
+
 def md5(regions, rep) -> str:
+    """Every region (id, thread, geometry, meta) and the report. Geometry to
+    10 nm and floats to 6 places: the OFF pin read CI's Linux and Windows
+    apart (2026-10-25) at a level no layout reads, the platforms' maths
+    libraries parting in a last bit."""
+    from shapely import wkt
     h = hashlib.md5()
     for r in regions:
-        h.update(repr((r.shape_id, r.thread_index, r.polygon.wkb.hex(), sorted(r.meta.items()))).encode())
-    h.update(repr(rep).encode())
+        h.update(repr((r.shape_id, r.thread_index, wkt.dumps(r.polygon, rounding_precision=5),
+                       _rounded(sorted(r.meta.items())))).encode())
+    h.update(repr(_rounded(rep)).encode())
     return h.hexdigest()
 
 
@@ -132,9 +149,10 @@ def glyphs(regions):
     return {r.meta["glyph"]: r for r in regions if r.shape_id.startswith("Sg")}
 
 
-#: md5 of `scene()` re-set WITHOUT the switch -- regions and report --
-#: captured on main's engine (c531c7b8), before this switch existed.
-OFF_MD5 = "13e6ef069ae0510d191ae73bb720fdce"
+#: `md5` of `scene()` re-set WITHOUT the switch -- regions and report --
+#: captured on main's engine (84e1592f's small_text.py), before this switch
+#: existed; this branch's engine gives the same.
+OFF_MD5 = "2b1d5e0606d63dc35e7fb49b1dfffd39"
 LETTERS = Path(__file__).resolve().parents[1] / "testdata" / "bay_mouth_letters.json"
 ZIP = Path(__file__).resolve().parents[2] / "Embroidery Files.zip"
 
@@ -167,7 +185,9 @@ def test_off_is_byte_identical_to_main():
     rep_a = enlarge_small_text(a, p, **KW)
     b, p = scene()
     rep_b = enlarge_small_text(b, p, **KW, bay_mouth=False)
-    assert md5(a, rep_a) == md5(b, rep_b) == OFF_MD5
+    got = md5(a, rep_a)
+    assert got == md5(b, rep_b)
+    assert got == OFF_MD5, f"OFF digest {got} (pinned {OFF_MD5})"
 
 
 def test_off_never_reaches_the_mouth_code(monkeypatch):
