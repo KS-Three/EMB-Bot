@@ -26,8 +26,19 @@ hosts) has its ring as the satin (0.51 of the outer edge, knockdown block
 excluded); Drone (he does not under-fill) 0.25; Gaulke, Tires, Proseal
 0.12-0.26. Bridge's pro files are on G: (unread).
 
-**Trap:** a beanie's knockdown block widens the silhouette past the design,
-so its rim reads 0.0 -- exclude block 0 (`RIM_EXCL=0`) before reading.
+**Result.** ON: rim share 1.00, one closed column on MFab hat/LC and Fremont
+hat/patch (pro: MFab one column, Fremont 8 -- he splits by pass). Plans +344
+to +448 stitches only: the bean edge cap drops where the rim covers the edge
+(the cap gate counts satin as cover). Becker hat small + beanie md5-identical.
+
+**Traps.** (1) Put the rim on the edge the fill SEWS (`p.polygon`, stage 5,
+pull-grown 0.4 mm on a hat), not the under-fill's artwork outline: on the
+outline it sat 0.40 mm inside, the edge cap stayed outside it, and the hat read
+0.63 rimmed. (2) A beanie's knockdown block widens the silhouette past the
+design, so its rim reads 0.0 -- exclude block 0 (`RIM_EXCL=0`). (3)
+`letter_pieces.chains` indexes the FUSED run: map back to the run's own index
+before ordering crosses against other stitches, or a fill and rim in one
+needle-down run read "fill after rim".
 
 **Open.** The Drone: `silhouette_underfill` fires there and he neither
 under-fills nor rims, so the rim inherits that over-reach (the under-fill's
