@@ -91,12 +91,21 @@ export function buildDoglegFixture() {
 }
 
 // A real shipped font at a real garment size, with shipping defaults.
+//
+// The "A" auto-fits its box, so the box is part of the fixture. It is the
+// left chest's round-inch 4x4 box, the one measured 2026-09-20: an id-less
+// garment of the same size, since the left chest itself fits the pro's
+// 96 x 64.5 mm box by default since 2026-10-26 (`proSized`). On that box the
+// "A" is 77.9 mm wide, `resized` scales it 3.85x instead of 2.95x, and the
+// split's rounding strays 0.069-0.071 mm off the drawn line, over the test's
+// 0.06: a finding about the split, kept apart from the box flip.
 export function buildLetteringFixture() {
   const font = fontbin.decodeFontBin(
     fs.readFileSync(path.join(ROOT, "src/fonts/bin/manga_impact.embf"))
   );
+  const lc = EMB.getGarment("left_chest");
   return EMB.buildLetteringDesign(font, "A", {
-    garment: EMB.getGarment("left_chest"), pxPerMm: 8, emMm: 18,
+    garment: { widthIn: lc.widthIn, heightIn: lc.heightIn }, pxPerMm: 8, emMm: 18,
     rgb: [25, 25, 25], pullCompMm: 0.2,
   });
 }
