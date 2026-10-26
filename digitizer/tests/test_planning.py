@@ -99,9 +99,17 @@ def test_a_counter_that_would_close_under_pull_compensation_is_held_open():
 
 # --- Stage 7 --------------------------------------------------------------
 
-def test_every_color_starts_and_ends_with_a_lock_stitch(plan):
+def test_every_color_starts_and_ends_with_a_lock_stitch(plan, whitebg):
+    # Since 2026-10-23 (`tie_in_off`, Kent's flip) a colour ENDS with a lock
+    # and starts bare, as the pro's files do; the start lock is the pre-flip
+    # engine's, so it is asserted on a plan with the flag off.
     stitch_plan, _, _ = plan
     for block in stitch_plan.blocks:
+        last = block.runs[-1]
+        tail = min(math.dist(last.points[-1], p) for p in last.points[-4:-1])
+        assert tail <= machine.TIE_STITCH_MM + 1e-6
+    locked = plan_stitches(whitebg, cfg(**PLAN_CFG_KW, tie_in_off=False))
+    for block in locked.blocks:
         first, last = block.runs[0], block.runs[-1]
         head = min(math.dist(first.points[0], p) for p in first.points[1:4])
         tail = min(math.dist(last.points[-1], p) for p in last.points[-4:-1])
@@ -196,7 +204,7 @@ def test_a_shape_is_entered_at_its_nearest_point_not_at_its_own_top_left_corner(
     # `edge_cap="none"`: eight synthetic bars, and the subject is the hop
     # between each PAIR of them. The cap sews a ninth run around their union
     # and its entry hop is not one of the seven this counts.
-    conf = PipelineConfig(edge_cap="none")
+    conf = PipelineConfig(edge_cap="none", border_by_size=False)  # eight 8 x 40 mm bars: no by-size ring
     regions = [
         Region(shape_id=f"S{i}",
                polygon=Polygon([(x, 0), (x + 8, 0), (x + 8, 40), (x, 40)]),

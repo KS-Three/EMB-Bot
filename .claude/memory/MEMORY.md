@@ -41,7 +41,6 @@ the OLDEST lines whole to the archive.
 - [Cut after bury](cut-after-bury-2026-10-23.md) — Fremont's 150 extra cuts were letter hops ON the field; the pro walks those: bury, walk on work, cut bare. 187 -> 44 (pro 20)
 - [Cut every jump](cut-every-jump-2026-10-21.md) — `cut_every_jump` OFF: uncut 285 -> 0, but trims 434 -> 674 (pro 246); bury first
 - [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); Fremont OFF md5 follows OpenCV's Intel IPP path; test env capped OPENCV_IPP=avx2
-- [The display revamp, and a fleet that outran its budget](display-revamp-and-a-fleet-that-outran-its-budget-2026-09-16.md) — `kind` is an OPEN set of eight
 - [The Studio never sent the file](../../DOCTRINE.md) — 1,200-px canvas re-encode rewrote RGB under alpha (Becker 59→175 trims); FIXED 09-20; `alpha_edge_extend` ON
 - [Download stale guard](download-stale-guard-2026-10-25.md) — Kent 10-25 "block until re-digitized": machine-file buttons disabled while stitches trail size/garment/settings; one rule (staleness.js); run button lit; no text
 - [Edge wobble is satin rails](edge-wobble-is-satin-rails-2026-09-19.md) — "right shapes, bad edges": outline clean (0.011 mm), SATIN RAILS wobble ~0.10 mm; run `edge_wobble.py` first
@@ -59,11 +58,14 @@ the OLDEST lines whole to the archive.
 - [fillColumns float pictures](fill-columns-float-pictures-2026-10-08.md) — STANDING: next 10 digitized images shown to Kent carry the off/on float sheet; count 1/10
 - [Row stagger for the browser fill](fill-stagger-2026-10-03.md) — JS fill holes lined up 94%; `fillStagger` built OFF (Kent's flip), +7% stitches. A channel is 3 rows, not 2
 - [Fill turn slant](fill-turn-slant-2026-10-21.md) — `fill_turn_slant` OFF (#1036): turns 0.7 mm along the row; Kent holds OFF until the next sew-out card's OFF/ON swatch
+- [Fine bars satin](fine-bars-satin-2026-10-25.md) — `fine_bars_satin` OFF: pro satins every free thin ink bar (5/5); STEM_MIN_ASPECT or < 1 cross, not 2.5 (rope); 37/38 cure, region kappa 0.905
 - [Fine detail and the work grid](fine-detail-work-grid-2026-09-30.md) — "RESTAURANT" was lost to the tracer's 4 px/mm grid, not the file; `work_px_per_mm` ON at 8 (Kent 10-01)
 - [Flag Before After: the labelled page, found and finished](flag-before-after-2026-09-18.md) — the scratch copy is `--labelled` now; re-read the db just before a SAME-URL republish
+- [Flip eight 2026-10-23](flip-eight-2026-10-23.md) — Kent: "flip the eight ON, hold two" + small_bold; judged by NUMBERS vs the pro; `FLIP_2026_10_23` pins the OFF arm
 - [Flip sheet: layout flags OFF | ON | pro](flip-sheet-2026-10-23.md) — `tools/flip_sheet_renders.py`; diff is a MULTISET (locks sit on stations); x-ray tiles
 - [Flip sheet, inlined](flip-sheet-inline-2026-10-24.md) — `report --inline` = ONE HTML (data URIs; app viewer breaks relative paths); a flag with a `base` diffs against its own OFF
 - [Flip sheet wave 2](flip-sheet-wave2-2026-10-24.md) — four flags OFF|ON|pro; per-flag fixtures, shared base OFF arms, MFab art fallback; Tires monoline invisible at viewing size (trims 9 → 32)
+- [Flip two](flip-two-2026-10-23.md) — border_by_size + enclosed_alpha_hole_parts + corner_fold ON (Kent 10-23); Becker untouched; local goldens red on Windows with flags OFF too
 - [Cuts inside one piece](in-piece-cuts-2026-10-25.md) — ours 109 vs pro 25: fill sections 35 (pro 0), satin split 40; `fill_section_travel` OFF routes underlay ring hops (Fremont 51 -> 41); fill-order gains all cost exposure
 - [Inside stagger at pivots](inside-stagger-2026-10-23.md) — pro ALSO alternates; ours piled the full ends in one hole (16-79 vs 2-5) at 35% depth vs his 20%; `lettering_columns_inside_stagger` OFF
 - [Instagram: gradient lane, not classifier](instagram-gradient-lane-edges-2026-09-30.md) — real IG file classifies gradient CORRECTLY; the SLIC lane's edges were the defect, snap ON. Render first
@@ -84,8 +86,8 @@ the OLDEST lines whole to the archive.
 - [lost_frac is two metrics](lost-frac-is-two-metrics-2026-09-20.md) — `lost_frac` sums two OPPOSITE defects; enthusiast is 100% overshoot, no ink lost. Never quote its MAGNITUDE
 - [MARINE stem rails](marine-stem-rails-2026-10-25.md) — #1052's "stem wobble" FALSE: refit stems straight, rails on them; jitter > 0.15 = corners 318 / strays 49 / straight stems 0; pro's 0.03 = cuts at notches; `rail_jitter_cause.py`
 - [Index split into live + archive](memory-index-archive-split-2026-10-23.md) — pre-09-15 lines in MEMORY-archive.md (not auto-loaded); new entries go at the BOTTOM, one line per PR
-- [The index that stopped loading its newest entries](memory-index-overflow-2026-09-15.md) — 24,986-CHAR ceiling drops the NEWEST entries; reclaim HOOKS, never entries
 - [Memory outside the repo](memory-outside-the-repo.md) — sessions rooted in `.claude-work` write memory to a folder this repo never sees; seven notes snapshotted here by 10-04
+- [MFab recipe trims](mfab-recipe-trims-2026-10-26.md) — the cuts were keyline slivers behind a dark hairline; `keyline_fold_slivers` (OFF) folds them in: hat 41→27, LC 54→29 on #1057's base; hat on-thread exposed travel 23→43 mm
 - [MFab under-fill panels](mfab-underfill-panels-2026-10-25.md) — Kent's MFab "chaos" = flip of under-fill + white + keyline + `silhouette_underfill_panels` (OFF): pro layering; under-fill alone dropped keyline-held bodies (stage 5 by band ink)
 - [Monoline script satin](monoline-script-satin-2026-10-24.md) — Tires "ires" sewed FILL on dt_p90_cap alone; `monoline_script_satin` OFF; pro hides ALL in-word travel under later satin: trims 24 -> 8 (pro 10)
 - [N fan cure](n-fan-cure-2026-10-08.md) — `satin_tip_corner_gate` OFF: tip = convex corner; ≈ tip caps off; degree gate refuted
@@ -106,6 +108,7 @@ the OLDEST lines whole to the archive.
 - [Rail wobble is the model's floor](rail-wobble-is-the-models-floor-2026-09-21.md) — satin 0.089 mm is the rail model's FLOOR; do not tune its six defences. Mean OUTWARD, tail inward
 - [Request contract + engine stamp](request-contract-and-engine-stamp-2026-10-25.md) — Studio request fixture (vitest+pytest); /health engine+capabilities; launcher replaces a stale idle service (Kent 10-25, -KeepStale opts out); polyneon moves Becker
 - [Re-set bays: keep the mouth](reset-bay-mouth-2026-10-25.md) — pro's bay letters NOT wider; he keeps a 0.51 mm mouth (n 18); `small_text_bay_mouth` (cfg.extra, OFF) cuts back the terminal that shuts it
+- [Re-set room and floor](reset-room-floor-2026-10-25.md) — ProSeal under 0.85: re-set widens RETRACED letters by a stale stroke tag (small_text.py:764); pro grows away from the near neighbour; tag fix alone: beanie no_room
 - [Run-button commands need absolute paths](run-button-commands-need-absolute-paths.md) — Run buttons share ONE PowerShell whose cwd persists; `cd digitizer` works once — give an absolute cd
 - [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins
 - [Second sitting: eleven flags and the 08-27 engine](second-sitting-eleven-flags-2026-09-28.md) — Kent: "VERY hard to tell"; today beats 08-27 on 7 of 9; `rail_comp` ON 09-29, envelope ON 09-30
@@ -127,10 +130,10 @@ the OLDEST lines whole to the archive.
 - [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch (pull, gate 1), not a tagger miss; MFab IN (<0.08 mm neck) + AND N (0.79); `text_cluster_part_touching` OFF; ON makes LC's N a hollow bean
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
+
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
 - [Under-fill outer rim](underfill-outer-rim-2026-10-25.md) — ring hosts own under-fill → pro rims whole outer edge in fill colour (MFab one closed 1.9 mm col); ours 0.0 → `silhouette_underfill_rim` OFF on the SEWN edge; edge cap drops
 - [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
-
 - [WITHDRAWN: warn sooner on small files](warn-sooner-small-files-handoff-2026-10-01.md) — Kent 10-02: no warnings, the engine takes the path; replaced by bean letters, built OFF in PR #601
 - [White faces fill](white-faces-fill-2026-10-25.md) — sew_enclosed_white made Becker 8.4x slower (white faces sewed as Column letters); `sew_enclosed_white_fields_fill` OFF fills them at 22°; house angle hides in fill_angle_deg
 - [White re-rule packet](white-rerule-packet-2026-10-25.md) — under border_from_outline, white ALONE fills Becker's faces (0°) at ≤1.39x CPU; fields_fill costs up to 5.6x (MFab lc); keyline inert; census `tools/enclosed_pro_census.py` 29/31

@@ -78,7 +78,8 @@ test("layoutText: charIdx accounts for a skipped space and a newline exactly lik
 // 40.2 × 23.0, so the widening is the rails, not the underlay reaching wider.
 // `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
 // (Kent); a pin below taken before that, on another subject, builds with them OFF.
-const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+// + the three JS twins Kent flipped ON 2026-10-23 (fill turn slant, cross underlay, short-column underlay)
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false, fillTurnSlant: false, crossUnderlay: false, underlayShortColumns: false };
 test("buildLetteringDesign: straight 'AB' targetWidthMm 40 reports the extent it actually sews", () => {
   const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, underlay: false, ...TRIO_OFF };
   const d = DG.buildLetteringDesign(font, "AB", base);
@@ -640,8 +641,9 @@ function acrossColumn(p, A, B) {
   return { d: best, t: bt };
 }
 
-test("underlay ladder: a 4mm cap gets none, an 8mm cap gets a center run, a 12mm cap gets an edge run", () => {
-  const at = (capMm) => SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(capMm), underlay: true });
+test("underlay ladder (short-column rung off): a 4mm cap gets none, an 8mm cap gets a center run, a 12mm cap gets an edge run", () => {
+  // `underlayShortColumns: false` is the pre-2026-10-23 ladder; the default now puts a center run under the 4 mm cap (test below)
+  const at = (capMm) => SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(capMm), underlay: true, underlayShortColumns: false });
   const small = at(4), mid = at(8), big = at(12);
   closeTo(small.cap.finalMm, 4, 0.01, "measured cap at the small size");
   closeTo(mid.cap.finalMm, 8, 0.01, "measured cap at the mid size");
@@ -653,7 +655,7 @@ test("underlay ladder: a 4mm cap gets none, an 8mm cap gets a center run, a 12mm
   assert.ok(kinds(mid).underlay > 0, "an 8mm cap emits underlay runs");
   assert.ok(kinds(big).underlay > 0, "a 12mm cap emits underlay runs");
   // the boundaries themselves
-  assert.strictEqual(SF.underlayModeForCapMm(4.99), null);
+  assert.strictEqual(SF.underlayModeForCapMm(4.99, false), null);
   assert.strictEqual(SF.underlayModeForCapMm(5), "center");
   assert.strictEqual(SF.underlayModeForCapMm(10), "center");
   assert.strictEqual(SF.underlayModeForCapMm(10.01), "edge");
@@ -776,7 +778,7 @@ test("cap height is MEASURED from the font's own H, not assumed equal to the em 
 
 test("fitScale moves the ladder, because the ladder is keyed to FINAL SEWN cap height", () => {
   const em = emForCap(12);       // 12mm cap at fitScale 1 -> edge
-  const opts = { ...UL_OPTS, emMm: em, underlay: true };
+  const opts = { ...UL_OPTS, emMm: em, underlay: true, underlayShortColumns: false };   // the pre-2026-10-23 ladder
   assert.strictEqual(SF.layoutText(font, "AB", opts).cap.underlay, "edge");
   assert.strictEqual(SF.layoutText(font, "AB", { ...opts, fitScale: 0.7 }).cap.underlay, "center"); // 8.4mm
   assert.strictEqual(SF.layoutText(font, "AB", { ...opts, fitScale: 0.3 }).cap.underlay, null);     // 3.6mm
@@ -807,8 +809,8 @@ test("underlay:false emits ZERO underlay runs at EVERY size, and travel is tagge
 });
 
 test("underlay can be forced to a rung, overriding the ladder", () => {
-  const at = (u) => SF.layoutText(font, "AB", { ...UL_OPTS, emMm: emForCap(4), underlay: u });
-  assert.strictEqual(at(true).cap.underlay, null, "the ladder says none at a 4mm cap");
+  const at = (u) => SF.layoutText(font, "AB", { ...UL_OPTS, emMm: emForCap(4), underlay: u, underlayShortColumns: false });
+  assert.strictEqual(at(true).cap.underlay, null, "the ladder says none at a 4mm cap (short-column rung off)");
   assert.strictEqual(at("none").cap.underlay, null);
   assert.strictEqual(at("center").cap.underlay, "center", "but it can be forced on");
   assert.strictEqual(at("edge").cap.underlay, "edge");
@@ -1097,22 +1099,24 @@ test("satinZigzag: on by default in buildLetteringDesign; false is the alternati
   assert.strictEqual(on._debug.nTrims, off._debug.nTrims);
 });
 
-test("underlayShortColumns (built OFF, 2026-10-22): a cap under 5 mm gets a center run instead of nothing; off, the ladder is unchanged", () => {
+test("underlayShortColumns (built OFF 2026-10-22, ON by default since 2026-10-23): a cap under 5 mm gets a center run instead of nothing; off, the ladder is unchanged", () => {
   // The Python digitizer's `satin_underlay_short_columns`: Kent's pro runs a
   // centre walk under 83-97% of his satin columns at every width, small
   // letters included. Underlay is a physical constant (ROADMAP gate 1), so
   // the rung moves only under the option; the other rungs do not move at all.
-  assert.strictEqual(SF.underlayModeForCapMm(4.99), null, "off: under 5 mm is bare");
+  assert.strictEqual(SF.underlayModeForCapMm(4.99, false), null, "off: under 5 mm is bare");
+  assert.strictEqual(SF.underlayModeForCapMm(4.99), "center", "default: on since 2026-10-23");
   assert.strictEqual(SF.underlayModeForCapMm(4.99, true), "center", "on: under 5 mm is a center run");
   assert.strictEqual(SF.underlayModeForCapMm(2, true), "center");
   assert.strictEqual(SF.underlayModeForCapMm(0, true), null, "a cap of 0 stays null");
   assert.strictEqual(SF.underlayModeForCapMm(5, true), "center");
   assert.strictEqual(SF.underlayModeForCapMm(10.01, true), "edge", "the edge rung is untouched");
-  const off = SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(4), underlay: true });
+  const off = SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(4), underlay: true, underlayShortColumns: false });
   const on = SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(4), underlay: true, underlayShortColumns: true });
   assert.strictEqual(off.cap.underlay, null);
   assert.strictEqual(kinds(off).underlay, undefined, "off: a 4 mm cap emits no underlay run");
   assert.strictEqual(on.cap.underlay, "center");
+  assert.strictEqual(SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(4), underlay: true }).cap.underlay, "center", "default is on");
   assert.ok(kinds(on).underlay > 0, "on: a 4 mm cap emits underlay runs");
   assert.strictEqual(kinds(on).satin, kinds(off).satin, "the satin itself is the same count of runs");
   // `underlay: false` still wins, as it always has

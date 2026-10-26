@@ -23,6 +23,11 @@ import numpy as np
 import pytest
 
 from digitizer_core import PipelineConfig
+from tests.conftest import FLIP_2026_10_23
+import json as _json
+# the instrument's arms on the engine before the 2026-10-23 flips (`small_solids_satin`
+# sews the kept marks as satin blobs the recall reader does not count as strokes)
+_PRE_FLIP_SPECS = [f"{k}={_json.dumps(v)}" for k, v in FLIP_2026_10_23.items()]
 from digitizer_core.stage1_prep import prep
 from digitizer_core.stage2_photo_segment import segment
 from digitizer_core.thin_ink import THIN_INK_MIN_PX, find_thin_ink, ground_share
@@ -112,8 +117,8 @@ def test_on_the_photo_lane_the_bars_a_superpixel_swallows_are_sewn_with_the_flag
     # the OFF arm names it: without that, both arms would be the same engine
     # and this pair would pass by agreeing with itself.
     off = ts.run(art, 50.0, "left_chest", forced_class="gradient",
-                 flag="keep_thin_strokes=false")
-    on = ts.run(art, 50.0, "left_chest", forced_class="gradient", flag="keep_thin_strokes")
+                 flag=["keep_thin_strokes=false", *_PRE_FLIP_SPECS])
+    on = ts.run(art, 50.0, "left_chest", forced_class="gradient", flag=["keep_thin_strokes", *_PRE_FLIP_SPECS])
     assert off["thin_strokes"] == 6 and on["thin_strokes"] == 6, (off["thin_strokes"], on["thin_strokes"])
     assert off["recall"] < 0.2, off["recall"]
     assert on["recall"] >= 0.8, on["recall"]

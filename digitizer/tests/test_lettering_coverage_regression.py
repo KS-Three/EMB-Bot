@@ -193,6 +193,10 @@ LOST_FRAC_BAR_BEFORE_1003 = 0.26
 LOST_FRAC_BAR_BEFORE_1006 = 0.29
 LOST_FRAC_BAR = 0.30
 
+from tests.conftest import FLIP_2026_10_23  # noqa: E402
+SMALL_TEXT_PRE_FLIP = {k: v for k, v in FLIP_2026_10_23.items()
+                       if k.startswith("small_text_cap") or k == "lettering_columns_small_bold"}
+
 # Today's measured value, recorded so a future reader can tell a PARTIAL cure
 # from a full one rather than reading a bare pass/fail. 0.3006 was the shipped
 # engine when this test was written; 0.2748 is what the two 2026-09-20 fixes
@@ -232,7 +236,11 @@ def test_lettering_coverage_has_not_regressed_since_the_rail_change():
     """
     assert FIXTURE.exists(), f"fixture missing: {FIXTURE}"
 
-    cfg = base_cfg(WIDTH_MM, GARMENT)
+    # The small-text set (ON 2026-10-23, Kent: "match the pro") grows this
+    # fixture's small words to ~4 mm by design, so artwork fidelity is not the
+    # question it asks any more; the instrument keeps reading the engine
+    # before that flip (conftest.FLIP_2026_10_23's small-text half).
+    cfg = base_cfg(WIDTH_MM, GARMENT, **SMALL_TEXT_PRE_FLIP)
     gen, result, plan, design = digitize_once(FIXTURE, cfg)
     row = features_full(FIXTURE, cfg, gen, result, plan, design)
 
@@ -357,7 +365,11 @@ def _run():
     The headline test above deliberately keeps its OWN run: it is main's
     guard, and a cache shared with it would couple the two.
     """
-    cfg = base_cfg(WIDTH_MM, GARMENT)
+    # The small-text set (ON 2026-10-23, Kent: "match the pro") grows this
+    # fixture's small words to ~4 mm by design, so artwork fidelity is not the
+    # question it asks any more; the instrument keeps reading the engine
+    # before that flip (conftest.FLIP_2026_10_23's small-text half).
+    cfg = base_cfg(WIDTH_MM, GARMENT, **SMALL_TEXT_PRE_FLIP)
     gen, result, plan, design = digitize_once(FIXTURE, cfg)
     return cfg, gen, result, plan, design
 

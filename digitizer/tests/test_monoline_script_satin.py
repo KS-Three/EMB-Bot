@@ -20,6 +20,7 @@ from shapely.geometry import LineString, Point
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, stitches
+from tests.conftest import FLIP_2026_10_23
 from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.machine import satin_ceiling_mm
 from digitizer_core.monoline import bury_hops, clear_finished_underlay, monoline_stroke
@@ -45,7 +46,8 @@ def _region(poly) -> Region:
 
 
 def _runs(poly, **cfg_kw):
-    cfg = PipelineConfig(underlay=False, **cfg_kw)
+    # the OFF md5s predate the 2026-10-23 flips (conftest): pinned off
+    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **cfg_kw})
     reg = _region(poly)
     blocks, _ = sequence([PlannedRegion(region=reg, polygon=poly, sew_index=0)],
                          fabric_for_garment("hat_front"), cfg)

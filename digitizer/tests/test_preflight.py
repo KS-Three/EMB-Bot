@@ -18,6 +18,7 @@ import numpy as np
 import pytest
 
 from digitizer_core import machine
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off where a test prices another flag
 
 from digitizer_core import (PipelineConfig, StitchBlock, StitchPlan,
                             StitchRun, machine, run_stages)
@@ -68,6 +69,20 @@ from digitizer_core.preflight import (
 from tests.conftest import PLAN_CFG_KW, TESTDATA, cfg
 
 ART = TESTDATA / "logo_whitebg.png"
+
+
+@pytest.fixture(scope="module")
+def pre_flip_plan():
+    """The fixture logo planned on the engine before the 2026-10-23 flips
+    (conftest.FLIP_2026_10_23). The clean-report promise and the coverage
+    layer units below were validated on that engine: the small-text set now
+    re-sets the logo's small words (a LETTERING_TOO_SMALL finding), and the
+    hat/LC cross pass lays a second layer under the fill (coverage p50 3.05
+    against the one-layer 2.67). Both are the flipped engine doing what Kent
+    ruled, not a regression the instruments should fail on."""
+    from digitizer_core import run_stages
+    result = run_stages(ART, cfg(**FLIP_2026_10_23))
+    return result, plan_stitches(result, cfg(**PLAN_CFG_KW, **FLIP_2026_10_23))
 PHOTO = TESTDATA / "photo"
 
 PHOTO_GUARD_CODES = {PHOTO_RESOLUTION_LOW, SUBJECT_CONTRAST_LOW,
@@ -96,11 +111,12 @@ def _codes(report: dict) -> set[str]:
 
 # --- A clean plan earns a clean report --------------------------------------
 
-def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
+def test_a_clean_real_plan_earns_a_clean_report(pre_flip_plan):
     """The fixture logo, planned by the real pipeline, scores 100 — every
-    threshold in the module was validated against this promise first."""
-    stitch_plan, _planned, _warnings = plan
-    report = run_preflight(whitebg, stitch_plan, cfg(**PLAN_CFG_KW), image=ART)
+    threshold in the module was validated against this promise first (on the
+    engine before the 2026-10-23 flips; see `pre_flip_plan`)."""
+    whitebg, stitch_plan = pre_flip_plan
+    report = run_preflight(whitebg, stitch_plan, cfg(**PLAN_CFG_KW, **FLIP_2026_10_23), image=ART)
 
     assert report["findings"] == []
     assert report["score"] == 100
@@ -352,7 +368,7 @@ def test_each_shade_band_is_scored_against_the_cone_that_band_sews():
     from digitizer_core.stage1_prep import prep
 
     art = PHOTO / "gradient_ramp_linear.png"
-    c = cfg(**PLAN_CFG_KW)
+    c = cfg(border_by_size=False, **PLAN_CFG_KW)
     result, plan_ = digitize(art, c)
     p = prep(art, c)
 
@@ -409,7 +425,7 @@ def test_a_band_wearing_the_wrong_cone_is_no_longer_hidden_by_its_region():
     from digitizer_core.threads import chart_for
 
     art = PHOTO / "repro_gradient_white_icon.png"
-    c = cfg(**PLAN_CFG_KW)
+    c = cfg(border_by_size=False, **PLAN_CFG_KW)
     result, plan_ = digitize(art, c)
     p = prep(art, c)
     chart = chart_for(c)
@@ -455,7 +471,7 @@ def test_a_flat_design_scores_exactly_one_row_per_region_as_before():
     """
     from digitizer_core.stage1_prep import prep
 
-    c = cfg(**PLAN_CFG_KW)
+    c = cfg(border_by_size=False, **PLAN_CFG_KW)
     result, plan_ = digitize(ART, c)
     p = prep(ART, c)
 
@@ -771,7 +787,10 @@ def test_bridges_script_sews_its_gaps_closed_at_80mm_and_the_finding_says_where_
     spokes on the same logo leads the finding (the most closed gap); the
     script rides in `shapes`."""
     path = PHOTO / "logo_bridge_bar.jpg"
-    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6)
+    # the small-text set (ON 2026-10-23) re-sets the teal words and the finding
+    # then carries a resolution note; the finding's wording is pinned on the
+    # engine it was written for (conftest.FLIP_2026_10_23)
+    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6, **FLIP_2026_10_23)
     result, plan = digitize(path, c)
     report = run_preflight(result, plan, c, image=path)
     flagged = [f for f in report["findings"] if f["code"] == SATIN_GAPS_TIGHT]
@@ -1285,7 +1304,7 @@ def test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue(alpha):
     13.11 -> 3.24; the `> 10.0` floor this test used to assert is gone on
     purpose, not a regression -- re-asserted below as a ceiling instead so a
     future junction-cap regression still trips this test."""
-    c = cfg(target_width_mm=80.0, garment_id="left_chest")
+    c = cfg(target_width_mm=80.0, garment_id="left_chest", border_by_size=False)
     report = run_preflight(alpha, plan_stitches(alpha, c), c,
                            image=str(TESTDATA / "logo_alpha.png"))
 
@@ -1299,7 +1318,7 @@ def test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue(alpha):
     assert report["metrics"]["coverage_max"] < 5.0
 
 
-def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):
+def test_coverage_reads_stitch_geometry_through_ties_and_splits(pre_flip_plan):
     """The playbook's two parity traps, which would double every satin
     number. Stage 7 splices tie bounces INTO the runs they protect and a
     bounce is a 180 deg reversal; split satin inserts mid-cross penetrations
@@ -1307,8 +1326,8 @@ def test_coverage_reads_stitch_geometry_through_ties_and_splits(plan):
     real satin column across the reversal gate and gets it charged at twice
     its density. The fixture's real plan carries both, and its satin still
     prices at one layer."""
-    stitch_plan, _planned, _warnings = plan
-    m = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))["metrics"]
+    _whitebg, stitch_plan = pre_flip_plan
+    m = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW, **FLIP_2026_10_23))["metrics"]
 
     # Fill at 0.40 is the classic stack's floor. Re-measured 2026-08-05 after
     # corpus laws 23/26: pique_knit's edge_run underlay (was edge_lattice)
@@ -1950,7 +1969,7 @@ def test_a_design_at_the_stop_cap_is_not_warned(plan):
     is at 11. The fixture's own 4 changes are pinned in the clean-report
     test; here the metric must read rather than go missing."""
     stitch_plan, _planned, _warnings = plan
-    report = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))
+    report = run_preflight(None, stitch_plan, cfg(border_by_size=False, **PLAN_CFG_KW))
 
     assert COLOR_STOPS_HEAVY not in _codes(report)
     # +1 the edge cap's block (2026-09-11), +1 the teal run `keep_thin_
@@ -2414,7 +2433,7 @@ def test_the_uncovered_check_actually_examines_a_blend_regions_ramp():
     so the honest report is "examined several thousand mm2, found nothing".
     """
     art = PHOTO / "gradient_ramp_radial.png"
-    c = cfg(**PLAN_CFG_KW)
+    c = cfg(border_by_size=False, **PLAN_CFG_KW)
     result, plan_ = digitize(art, c)
 
     assert all(r.shape_id not in {run.shape_id for _b, run in plan_.iter_runs()}
@@ -2441,7 +2460,7 @@ def test_a_bare_patch_inside_a_blend_region_is_found_and_named():
     region was never examined in the first place.
     """
     art = PHOTO / "gradient_ramp_radial.png"
-    c = cfg(**PLAN_CFG_KW)
+    c = cfg(border_by_size=False, **PLAN_CFG_KW)
     result, plan_ = digitize(art, c)
     region = result.regions[0]
 

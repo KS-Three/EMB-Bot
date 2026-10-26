@@ -7,7 +7,8 @@ const DG = require("../src/digitize.js");
 // (Kent). A test whose subject is something else and whose pin (a hash, a
 // frozen count, "byte-identical to main") was taken on the engine before that
 // spreads this in: the pre-flip engine, so the pin still says what it said.
-const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+// + the three JS twins Kent flipped ON 2026-10-23 (fill turn slant, cross underlay, short-column underlay)
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false, fillTurnSlant: false, crossUnderlay: false, underlayShortColumns: false };
 const sq = (x0, y0, s) => [{ x: x0, y: y0 }, { x: x0 + s, y: y0 }, { x: x0 + s, y: y0 + s }, { x: x0, y: y0 + s }];
 
 test("groupRingsIntoShapes: side-by-side letters stay separate shapes", () => {
@@ -446,12 +447,14 @@ test("fillColumns: the edge runs round the holes are entered where the thread al
   // nearest-first, entered at the corner the thread is nearest to and closed
   // back onto that corner, the move runs along the hole's own edge instead.
   const fabric = FABRICS.getFabric("pique_knit");
+  // `crossUnderlay: false`: this test is about the preset's EDGE RUNS; since
+  // 2026-10-23 the default swaps pique_knit's underlay for the cross pass
   const row = { outer: boxPx(0, 0, 400, 400), holes: [boxPx(40, 180, 80, 220), boxPx(130, 180, 170, 220), boxPx(230, 180, 270, 220), boxPx(320, 180, 360, 220)], angleOverride: 0 };
-  assert.deepStrictEqual(cutsBy(drawn(row, 400, { fabric })).between, 0, "a row of four holes");
+  assert.deepStrictEqual(cutsBy(drawn(row, 400, { fabric, crossUnderlay: false })).between, 0, "a row of four holes");
   const holes = [];
   for (let r = 0; r < 6; r++) for (let c = 0; c < 6; c++) holes.push(boxPx(40 + c * 95, 40 + r * 95, 80 + c * 95, 80 + r * 95));
   const badge = { outer: boxPx(0, 0, 600, 600), holes, angleOverride: 0 };
-  const d = drawn(badge, 600, { fabric });
+  const d = drawn(badge, 600, { fabric, crossUnderlay: false });
   assert.ok(cutsBy(d).between <= 3, "36 holes: " + JSON.stringify(cutsBy(d)));
   // and no cut was traded for a float: none in a hole, none off the fill
   assert.strictEqual(openGroundMm(d, badge, 0.5).floats, 0);
@@ -1876,16 +1879,16 @@ test("cross_tatami underlay: one sparse pass across the fill, 1 mm rows, 4 mm st
   assert.ok(gaps.every((g) => Math.abs(g - 1.0) < 0.15), "row gaps " + JSON.stringify(gaps.slice(0, 8)));
 });
 
-test("crossUnderlay (built OFF): the hat/LC/beanie presets sew the cross pass, nothing else moves", () => {
+test("crossUnderlay (built OFF, ON by default since 2026-10-23): the hat/LC/beanie presets sew the cross pass, nothing else moves", () => {
   // Twin of the digitizer's `cfg.fill_underlay_cross` (tests/test_fill_underlay_cross.py).
   // OFF is the preset's own underlay; ON is exactly an explicit cross_tatami.
   const box = { outer: boxPx(0, 0, 400, 300), holes: [], angleOverride: 0 };
   for (const preset of FABRICS.FABRICS) {
     const real = FABRICS.getFabric(preset.id);
     const sew = (fabric, extra) => drawn(box, 400, Object.assign({ fillColumns: false, fabric }, extra)).stitches;
-    const off = sew(real, {});
-    assert.deepStrictEqual(sew(real, { crossUnderlay: false }), off, preset.id + " off");
+    const off = sew(real, { crossUnderlay: false });
     const on = sew(real, { crossUnderlay: true });
+    assert.deepStrictEqual(sew(real, {}), on, preset.id + " default is on");
     if (FABRICS.CROSS_UNDERLAY_FABRICS.includes(preset.id)) {
       assert.deepStrictEqual(on, sew(Object.assign({}, real, { fillUnderlay: "cross_tatami" }), {}), preset.id + " on");
       assert.notDeepStrictEqual(on, off, preset.id + " on moved nothing");

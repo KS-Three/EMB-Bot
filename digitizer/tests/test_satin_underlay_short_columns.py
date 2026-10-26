@@ -39,8 +39,8 @@ def _length(r) -> float:
     return sum(math.dist(a, b) for a, b in zip(r.points, r.points[1:]))
 
 
-def test_default_is_off():
-    assert PipelineConfig().satin_underlay_short_columns is False
+def test_default_is_on_since_2026_10_23():
+    assert PipelineConfig().satin_underlay_short_columns is True
 
 
 def test_off_a_2mm_column_sews_bare_and_on_it_carries_a_centre_run():
@@ -98,8 +98,9 @@ def _plan(**cfg_kw):
 
 def test_a_small_shape_keeps_the_fabric_s_underlay_only_under_the_flag():
     assert machine.SATIN_UNDERLAY_MIN_EXTENT_MM == 5.0, "the rung this test is written against"
-    off = _plan()
+    off = _plan(satin_underlay_short_columns=False)
     on = _plan(satin_underlay_short_columns=True)
+    assert [r.points for r in on] == [r.points for r in _plan()], "ON is the default since 2026-10-23"
     assert stitches.SATIN in {r.kind for r in off}, "the letter is satin to begin with"
     assert not _underlay(off), "law 50's first rung: a 4 mm shape sews bare"
     assert _underlay(on), "ON: the structured cap's centre run goes under it"
