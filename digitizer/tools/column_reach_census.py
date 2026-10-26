@@ -687,10 +687,8 @@ def _pre_tag_of(region, pre_by_id: dict, pre_regions):
     return best
 
 
-def census_pair(slug: str, data: dict, labels: dict, *, detect=None, replay=None) -> dict:
-    """One pair's census. `detect`: {sid: bool} overriding `is_lettering`
-    (the held-out grid reads detection without stage 7); `replay`: a
-    precomputed `replay_text_door` of `data["pre_tag"]`."""
+def census_pair(slug: str, data: dict, labels: dict) -> dict:
+    """One pair's census: detection, reach, and a reason for every miss."""
     from digitizer_core.columns import is_lettering
     from digitizer_core.threads import chart_for
     from tools.word_tagger_eval import kappa
@@ -699,17 +697,15 @@ def census_pair(slug: str, data: dict, labels: dict, *, detect=None, replay=None
     line_of = {sid: line for line, ids in labels["lines"].items() for sid in ids}
     ignore = set(labels.get("ignore", []))
     scored = [r for r in regions if r.shape_id not in ignore]
-    det = {r.shape_id: (detect[r.shape_id] if detect is not None and r.shape_id in detect
-                        else bool(is_lettering(r, cfg))) for r in scored}
+    det = {r.shape_id: bool(is_lettering(r, cfg)) for r in scored}
     built = lane_built(rungs)
     reach = {sid: d and sid in built for sid, d in det.items()}
     t = [r.shape_id in line_of for r in scored]
     pre = data["pre_tag"]
     pre_by_id = {r.shape_id: r for r in pre}
-    if replay is None:
-        replay = replay_text_door(pre, chart,
-                                  counters_as_drawn=bool(getattr(cfg, "text_cluster_counters_as_drawn", True)),
-                                  rescued_ink_link=bool(getattr(cfg, "text_cluster_rescued_ink_link", True)))
+    replay = replay_text_door(pre, chart,
+                              counters_as_drawn=bool(getattr(cfg, "text_cluster_counters_as_drawn", True)),
+                              rescued_ink_link=bool(getattr(cfg, "text_cluster_rescued_ink_link", True)))
     misses = []
     for r in scored:
         sid = r.shape_id
@@ -725,10 +721,10 @@ def census_pair(slug: str, data: dict, labels: dict, *, detect=None, replay=None
             # reads a line as ONE thread by identity and strips the rest
             mates = [x for x in scored if line_of.get(x.shape_id) == line and x is not r]
             inks = [x.thread_index for x in mates]
-            main = max(sorted(set(inks)), key=inks.count) if inks else r.thread_index
-            if main != r.thread_index:
+            line_ink = max(sorted(set(inks)), key=inks.count) if inks else r.thread_index
+            if line_ink != r.thread_index:
                 row.update(reason="other_thread", where="small_text._core",
-                           value=round(float(chart.delta_e(r.thread_index, main)), 2),
+                           value=round(float(chart.delta_e(r.thread_index, line_ink)), 2),
                            threshold=0.0, detail="stripped as a small-text stray: not the line's thread")
             else:
                 row.update(reason="small_text_stray", where="small_text._core")
