@@ -153,6 +153,11 @@ def fold_keyline_slivers(regions):
                         and h.intersects(reach)):
                     continue
                 keep.append(ring)
+            # a sliver lies ALONG the field's edge; one that runs across a
+            # hole (MFab hat: the lower line's, cut in three) is no part of
+            # the keyline: a fold may shrink holes, never split one
+            if len(keep) > len(poly.interiors):
+                continue
             poly = Polygon(joined.exterior, keep)
             gone[r.shape_id] = f.shape_id
         if poly is not f.polygon:

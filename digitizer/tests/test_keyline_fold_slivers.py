@@ -88,12 +88,22 @@ def _c_sliver(pocket_w):
     return _reg("Sc", c, stitch_width_measured_mm=0.2)
 
 
-def test_a_slit_the_fold_closes_is_filled_and_a_real_pocket_stays():
+def test_a_slit_the_fold_closes_is_filled():
     f = _field()
-    out, _ = fold_keyline_slivers([f, _c_sliver(0.2)])
+    out, folded = fold_keyline_slivers([f, _c_sliver(0.2)])
+    assert folded == {"Sfield": ["Sc"]}
     assert len(out[0].polygon.interiors) == 1           # the letter's hole only
-    out, _ = fold_keyline_slivers([f, _c_sliver(1.5)])
-    assert len(out[0].polygon.interiors) == 2           # a 1.5 mm pocket is a hole
+
+
+def test_a_sliver_that_would_split_a_hole_does_not_fold():
+    # a 1.5 mm pocket closed off would be a new hole: that sliver runs
+    # across the hole, it does not hug the field's edge
+    f = _field()
+    out, folded = fold_keyline_slivers([f, _c_sliver(1.5)])
+    assert folded == {} and len(out) == 2
+    across = _reg("Sacross", box(9.0, 19.9, 31.0, 20.1), stitch_width_measured_mm=0.2)
+    out, folded = fold_keyline_slivers([f, across])
+    assert folded == {}
 
 
 def test_two_slivers_both_fold():
