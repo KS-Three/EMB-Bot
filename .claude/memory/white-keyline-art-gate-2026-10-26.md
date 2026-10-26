@@ -52,24 +52,27 @@ rim (#1096) included.
   move (#1057 did): prove "unchanged" with the verdict plus spot checks, not
   with old md5s.
 
-**The MFab extras (Kent 2026-10-26, "MFab extras into the gate").**
-`keyline_fold_slivers` and `skip_covered_shapes` joined the recipe. MFab DST
-trims went hat 40 -> 27 and LC 52 -> 27 (pro 18 / 19). Travel over finished
-thread rose: hat 22 -> 34 mm.
+**The MFab extras (Kent 2026-10-26, "MFab extras into the gate", then "Hold
+all four").** `keyline_fold_slivers`, `skip_covered_shapes` and
+`cfg.extra["absorb_fragments"]` (`RECIPE_EXTRA`) joined the recipe. MFab DST
+trims: hat 40 -> 30, LC 52 -> 25 (pro 18 / 19).
 
-**Fragment absorb (#1100) was held out.** In the recipe it bared garment
-inside the counters under AND / WELDING / LLC (LC 12 mm2 new). With it, the
-white field's own panel fill drops from 17 runs to 1.
+**Absorb first bared the counters under the riders** (LC 12 mm2 new bare).
 
-- **How it was pinned:** one extra per arm on the LC; the hat confirmed it.
-- **Refuted:** keeping the field's hole rings byte for byte did not fix it.
+- **The cause:** a fragment inside a `RIDER_HOLES_KEY` hole split the panel,
+  and the union rebuilt every other ring. Stage 7 matches rider holes by
+  WKB, so the panel was looped, not filled.
+- **The fix:** the join keeps the body's own rings, and the rider holes are
+  re-read on the joined polygon.
+- **What absorb costs, fixed:** 3 trims on the hat over fold + skip. It saves
+  2 on the LC.
 
 **How to apply:**
 
 - Before adding a switch to the recipe, measure new bare garment against the
   recipe without it, not only trims. `hairline_travel`'s bare THREAD read 0.0
   through all of this.
-- Any change to the white field's polygon after stage 5 can unclose the
-  panel under the riders.
+- Any pass that rebuilds a polygon after stage 5 must keep the hole rings
+  later passes match by WKB: rider holes, `outline_holes` widths.
 
 Related: [[mfab-recipe-trims-2026-10-26]], [[mfab-underfill-panels-2026-10-25]].
