@@ -283,6 +283,12 @@
    "basis": "docs/testdata-inventory.md (PR #705)"
   },
   {
+   "path": "app/e2e/fixtures/red-disc.png",
+   "status": "synthetic",
+   "source": "Synthetic e2e upload fixture: one red disc on transparent, drawn with Pillow for the corner-drag case (two-squares' box corners are shape nodes, so a drag there never resizes)",
+   "basis": "app/e2e/download-stale-artwork.spec.js (W3-10, 2026-10-25)"
+  },
+  {
    "path": "app/e2e/fixtures/trace-holes-and-colors.png",
    "status": "synthetic",
    "source": "Synthetic e2e upload fixture",
