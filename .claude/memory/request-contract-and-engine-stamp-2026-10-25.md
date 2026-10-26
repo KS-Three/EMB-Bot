@@ -30,8 +30,11 @@ passes alone.
   **Fremont 81 mm hat -- identical under isacord, madeira-rayon, polyneon**
   (162 regions, 5 clusters, 33 tagged). **Becker hat 101.9 mm -- identical under
   isacord and madeira-rayon, DIFFERENT under polyneon** (24 -> 29 regions, 3 -> 4
-  tagged letters, one cluster either way). So a flip number is the default-chart
-  request; a polyneon customer can get a different Becker. The brand ids are the
+  tagged letters, one cluster either way). The chart splits off small fragments
+  (7 regions exist only under polyneon, mostly 2-20 mm2; the two big ones shift
+  by ~4% area) and one 12 mm2 fragment at x -39.7 joins the cluster; nothing the
+  default tags is lost. So a flip number is the default-chart request; a
+  polyneon customer can get a different Becker. The brand ids are the
   service's (`madeira-rayon`, not `madeira`: `_parse_config` 400s on the bare
   name).
 - Structural check: a `PipelineConfig` field read only inside `pipeline.digitize`
