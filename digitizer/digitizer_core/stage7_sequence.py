@@ -980,6 +980,137 @@ def _sew_hop(b_runs: list[StitchRun], run: StitchRun, inner) -> None:
     run.trim = False
 
 
+def _thread_samples(pts, half: float) -> tuple[np.ndarray, np.ndarray]:
+    """Every `_BURY_STEP_MM` along each segment of `pts`, at its centre and
+    at both edges of a thread `2 * half` wide: `_UnderThread`'s samples."""
+    xs, ys = [], []
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        d = math.hypot(x1 - x0, y1 - y0)
+        n = max(2, int(math.ceil(d / _BURY_STEP_MM)) + 1)
+        t = np.linspace(0.0, 1.0, n)
+        cx, cy = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+        nx, ny = ((y0 - y1) / d, (x1 - x0) / d) if d > 0 else (0.0, 0.0)
+        for o in (-half, 0.0, half):
+            xs.append(cx + o * nx)
+            ys.append(cy + o * ny)
+    if not xs:
+        return np.zeros(0), np.zeros(0)
+    return np.concatenate(xs), np.concatenate(ys)
+
+
+def _skip_covered_shapes(blocks: list[StitchBlock], trim_at: float) -> list[str]:
+    """Drop every shape whose whole thread lies on thread of its OWN block
+    that other shapes sew. -> the shape ids dropped.
+
+    `cfg.skip_covered_shapes` (built OFF 2026-10-26, the MFab recipe's
+    trims, `docs/mfab-recipe-trims-2026-10-26.md`). With the recipe on,
+    MFab's white keyline comes out of the tracer as the field plus 31 (hat)
+    / 51 (LC) slivers, 0.1-0.3 mm wide along its inner edge, each sewn as
+    its own run with a cut either side. The professional has none: his
+    keyline satin passes over all of them (every one of our sliver stitches
+    lies within 0.3 mm of his white). The field's own loops and fill
+    already cover 62% (hat) and 95% (LC) of the sliver area -- after the
+    slivers on the hat, before them on the LC -- so most slivers are a
+    second layer of the same thread, under or on top of the first, and
+    their cuts buy nothing.
+
+    The cover rule is `_UnderThread`'s samples, restricted to the shape's
+    own block: every sample of the shape's thread -- every `_BURY_STEP_MM`
+    along each of its needle-down segments, at the centre and both edges --
+    within half a thread of a centreline of another shape's non-travel run
+    in the same block, sewn before or after it. Same block, so the cover is
+    the same thread: nothing changes colour and nothing can show through.
+    Shapes are judged last first, each against the shapes still kept, and a
+    shape that covers a dropped one is kept from then on, so a dropped
+    shape's cover is never dropped after it. Tier runs (`__` ids: the edge
+    cap) and a shape sewn in more than one block are never dropped. No new
+    constant.
+
+    The run after a dropped stretch lifts from whatever now precedes it,
+    cutting past `trim_at` (`_sew_rest_pieces`' rule); at the head of a
+    block it takes the block's own opening lift. Runs before ties, on art
+    blocks whose order is final, ahead of the burying pass.
+    """
+    half = machine.COVERAGE_THREAD_W_MM / 2.0
+    homes: dict[str, set[int]] = {}
+    for bi, b in enumerate(blocks):
+        for r in b.runs:
+            homes.setdefault(r.shape_id, set()).add(bi)
+    dropped: list[str] = []
+    for b in blocks:
+        runs = b.runs
+        own: list[list[tuple[float, float]]] = []
+        lines: list = []
+        for i, r in enumerate(runs):
+            pts = list(r.points)
+            if i > 0 and not r.jump and runs[i - 1].points:
+                pts = [runs[i - 1].points[-1]] + pts
+            own.append(pts)
+            lines.append(LineString(pts) if r.kind != stitches.TRAVEL and len(pts) >= 2 else None)
+        idx = [k for k, g in enumerate(lines) if g is not None]
+        if len(idx) < 2:
+            continue
+        order = np.array(idx)
+        owner = np.array([runs[k].shape_id for k in idx], dtype=object)
+        tree = shapely.STRtree([lines[k] for k in idx])
+        spans: dict[str, list[int]] = {}
+        for i, r in enumerate(runs):
+            spans.setdefault(r.shape_id, []).append(i)
+        keep = np.ones(len(runs), bool)
+        pinned: set[str] = set()
+        for sid in sorted(spans, key=lambda s: -spans[s][-1]):
+            mine = spans[sid]
+            if not sid or sid.startswith("__") or len(homes[sid]) > 1 or sid in pinned:
+                continue
+            # its own stitch points first (a subset of the samples below):
+            # a big shape fails here without being sampled at all
+            vx = np.array([p for i in mine for p in own[i]], float).reshape(-1, 2)
+            if not len(vx):
+                continue
+            hit_v, line_v = tree.query(shapely.points(vx[:, 0], vx[:, 1]), predicate="dwithin",
+                                       distance=half)
+            ok_v = keep[order[line_v]] & (owner[line_v] != sid)
+            if len(np.unique(hit_v[ok_v])) < len(vx):
+                continue
+            samples = [_thread_samples(own[i], half) for i in mine]
+            px = np.concatenate([s[0] for s in samples])
+            py = np.concatenate([s[1] for s in samples])
+            if not len(px):
+                continue
+            hit_pt, hit_line = tree.query(shapely.points(px, py), predicate="dwithin",
+                                          distance=half)
+            ok = keep[order[hit_line]] & (owner[hit_line] != sid)
+            covered = np.zeros(len(px), bool)
+            covered[hit_pt[ok]] = True
+            if covered.all():
+                keep[mine] = False
+                dropped.append(sid)
+                pinned.update(owner[hit_line[ok]].tolist())
+        if keep.all():
+            continue
+        out: list[StitchRun] = []
+        lead: StitchRun | None = None
+        lifted = False
+        for i, r in enumerate(runs):
+            if not keep[i]:
+                if not out and lead is None:
+                    lead = r
+                lifted = True
+                continue
+            if lifted and r.points:
+                prev = next((q for q in reversed(out) if q.points), None)
+                if prev is not None:
+                    d = math.dist(prev.points[-1], r.points[0])
+                    r.jump = d >= TINY_STITCH_MM
+                    r.trim = r.jump and d > trim_at
+                elif lead is not None:
+                    r.jump, r.trim = lead.jump, lead.trim
+                lifted = False
+            out.append(r)
+        b.runs[:] = out
+    return dropped
+
+
 def _later_thread_burier(blocks: list[StitchBlock]):
     """-> (seq, bury): the flat sew order `[(block index, run)]`, and
     `bury(k)`, the interior stitches of a needle-down route from the end of
@@ -2448,8 +2579,11 @@ def sequence(
                      and is_lettering(p.region, cfg)}
                     if cfg.lettering_columns and cfg.satin else set())
     if lane_letters:
+        # `skip_covered_shapes` off here too: the rank is read from what
+        # the OFF path SEWS, and a shape that pass drops would lose its rank
+        # and move every pick after it (MFab hat: the riders re-ordered).
         off_blocks, _off_warnings = sequence(
-            planned, fabric, replace(cfg, lettering_columns=False),
+            planned, fabric, replace(cfg, lettering_columns=False, skip_covered_shapes=False),
             source_pixels=source_pixels, design_class=design_class,
             fill_technique=fill_technique, streamline_mode=streamline_mode,
             detail_layer=detail_layer, palette_spools=palette_spools,
@@ -4266,6 +4400,11 @@ def sequence(
             art_blocks = _hoist_same_thread(art_blocks, trim_at,
                                             hoist_same_thread)
             art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
+        # `cfg.skip_covered_shapes` (built OFF): a shape its own colour's
+        # other thread wholly covers is not sewn; first, so the hops it
+        # leaves are offered to the burying pass below.
+        if cfg.skip_covered_shapes:
+            _skip_covered_shapes(art_blocks, trim_at)
         # `cfg.trim_bury_under_later` (built OFF): before the ties, which
         # lock every cut that is left.
         if cfg.trim_bury_under_later:

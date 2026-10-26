@@ -1677,6 +1677,20 @@ class PipelineConfig:
     # under it that the black under-fill gives up. Layout, judged in the
     # preview. OFF: nothing is read, byte for byte.
     silhouette_underfill_panels: bool = False
+    # `keyline_fold_slivers` (BUILT OFF 2026-10-26, the MFab recipe's trims,
+    # `docs/mfab-recipe-trims-2026-10-26.md`; read only with
+    # `sew_enclosed_white`): a sewn white field's slivers fold back into it
+    # (`silhouette_underfill.fold_keyline_slivers`), before the art outlines
+    # are read. MFab's keyline is drawn with a dark hairline on its inner
+    # edge, so it traces as the field plus 31 (hat) / 51 (LC) white slivers
+    # 0.1-0.3 mm wide on the letters' side, each its own run with a cut
+    # either side; the pro's keyline satin covers every one, its rail on the
+    # letter. A sliver: the field's thread, not routed, no text, measured
+    # under a thread wide, within a thread of the field. Folded, the field's
+    # hole sits on the letter and its loop crosses the sliver and the
+    # hairline. Layout: Kent's call from the renders. Off, byte-identical.
+    # Tests: `tests/test_keyline_fold_slivers.py`.
+    keyline_fold_slivers: bool = False
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
@@ -5500,6 +5514,18 @@ class PipelineConfig:
     # ON by default since 2026-10-23 (Kent's flip on the flip sheet, PR
     # #1047: `docs/flip-sheet-2026-10-23.md`); False is the off arm.
     trim_bury_under_later: bool = True
+    # `skip_covered_shapes` (BUILT OFF 2026-10-26, the MFab recipe's trims,
+    # `docs/mfab-recipe-trims-2026-10-26.md`): a shape whose whole thread
+    # lies on thread of its OWN colour block that other shapes sew, before
+    # or after it -- `_UnderThread`'s samples, centre and both edges, within
+    # half a thread -- is not sewn (`stage7_sequence._skip_covered_shapes`).
+    # MFab's keyline traces as the field plus 31 (hat) / 51 (LC) slivers
+    # 0.1-0.3 mm wide, each its own run with a cut either side; the pro's
+    # keyline satin covers all of them, and ours (the field's loops and
+    # fill) already covers 62% / 95% of their area. Same colour, so nothing
+    # changes what shows; it removes a second layer and its cuts. Off,
+    # byte-identical. Tests: `tests/test_skip_covered_shapes.py`.
+    skip_covered_shapes: bool = False
     # `cut_every_jump` (BUILT OFF 2026-10-21, `docs/settings-vs-pro-2026-10-21.md`
     # row 25): no needle-up move is left uncut. Ours leaves 0-168 uncut
     # jumps of 0.5-3.0 mm per job (every hop under `trim_at_mm`), each a
