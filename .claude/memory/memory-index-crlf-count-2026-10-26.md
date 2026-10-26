@@ -36,6 +36,11 @@ entries would hit it.
 `python -m tools.memory_budget` prints a CRLF line when it finds carriage returns.
 Pinned by `test_a_crlf_copy_is_counted_at_its_on_disk_length`.
 
+**Headroom bought, same day (foreman's call).** The CRLF-aware count left 100
+characters, with four PRs each adding a line. The 11 oldest live lines (dated
+before 2026-09-22 by the archive's own rule) moved to `MEMORY-archive.md`, which
+now says "before 2026-09-22": 24,886 -> 22,845 characters, 2,141 left.
+
 **Why:** a budget that reads a different file from the one the loader reads is a
 preference, not a check ([[memory-index-archive-split-2026-10-23]] is the same
 ceiling from the other side).
