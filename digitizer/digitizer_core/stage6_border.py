@@ -1167,6 +1167,31 @@ def underfill_rim_runs(outline, shape_id: str, *, entry: tuple[float, float] | N
                             holes=[(g, UNDERFILL_RIM_WIDTH_MM) for g in parts])
 
 
+def underfill_rim_after(p, runs: list[StitchRun], report: dict, *, trim_at_mm: float,
+                        underlay: bool) -> tuple[list[StitchRun], dict]:
+    """`cfg.silhouette_underfill_rim`: a sewn shape's runs, with the rim
+    (`underfill_rim_runs`) after them when the shape is a ring hosting its own
+    under-fill -- `silhouette_underfill` tagged it with the outline it fills
+    and itself as the ring. The rim stands on the edge the fill SEWS (stage
+    5's polygon, grown by the fabric's pull: 0.4 mm outside the artwork
+    outline on a hat, where the edge cap rides), so it covers the rows' ends
+    and the edge cap reads it as cover. Any other shape, or nothing sewn, is
+    returned as it came."""
+    from .silhouette_underfill import UNDERFILL_KEY, UNDERFILL_OF_KEY
+    meta = p.region.meta
+    if (meta.get(UNDERFILL_KEY) is None or meta.get(UNDERFILL_OF_KEY) != p.shape_id
+            or not runs or p.polygon.is_empty):
+        return runs, report
+    rim, rep = underfill_rim_runs(p.polygon, p.shape_id, entry=runs[-1].points[-1],
+                                  trim_at_mm=trim_at_mm, underlay=underlay)
+    if rep["empty"]:
+        return runs, report
+    report = dict(report)
+    report["jumps"] = report.get("jumps", 0) + rep["jumps"]
+    report["underfill_rim_loops"] = rep["loops"]
+    return runs + rim, report
+
+
 def outline_holes(outline, bodies: list[tuple[Polygon, float]],
                   rest_width_mm: float) -> list[tuple[Polygon, float]]:
     """The loops `cfg.border_from_outline` sews on an art outline: every
