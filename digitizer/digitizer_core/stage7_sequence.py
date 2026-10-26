@@ -71,6 +71,7 @@ from .columns import (is_fine_bar, is_lettering, is_thin_stem, lettering_columns
                       small_print_counter_set, small_print_counters)
 from .words import is_text, word_key
 from .monoline import bury_hops, clear_finished_underlay, monoline_stroke
+from .script_strokes import script_strokes_shape, script_word
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
@@ -412,6 +413,8 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
         return True         # L3: the word sews satin, every letter of it
     if tier == "auto" and cfg.lettering_columns and cfg.satin and is_lettering(region, cfg):
         return True         # a Column letter (`cfg.lettering_columns`): satin on its artwork outline
+    if tier == "auto" and cfg.script_strokes and cfg.satin and script_word(region, cfg):
+        return True         # a script word (`cfg.script_strokes`): pen-stroke columns
     if tier == "auto" and _border_by_size_width(region, cfg) is not None:
         return False        # `cfg.border_by_size`: a big shape is a fill under a border, never whole satin
     satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
@@ -2583,7 +2586,8 @@ def sequence(
         # the OFF path SEWS, and a shape that pass drops would lose its rank
         # and move every pick after it (MFab hat: the riders re-ordered).
         off_blocks, _off_warnings = sequence(
-            planned, fabric, replace(cfg, lettering_columns=False, skip_covered_shapes=False),
+            planned, fabric, replace(cfg, lettering_columns=False, skip_covered_shapes=False,
+                                     script_strokes=False),
             source_pixels=source_pixels, design_class=design_class,
             fill_technique=fill_technique, streamline_mode=streamline_mode,
             detail_layer=detail_layer, palette_spools=palette_spools,
@@ -3387,6 +3391,22 @@ def sequence(
                 if runs:
                     report["outline_body"] = 1
                     return runs, report, True
+            # A script word (`cfg.script_strokes`, built OFF 2026-10-26): the
+            # pen's strokes, one column each, on its ARTWORK polygon with the
+            # Column lane's emitter (`script_strokes.py`). Off, never read.
+            if (tier == "auto" and cfg.script_strokes and cfg.satin
+                    and script_word(p.region, cfg)):
+                runs, report = script_strokes_shape(
+                    p.region.polygon, p.shape_id, trim_at_mm=trim_at,
+                    spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
+                    pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
+                    underlay_style=satin_underlay, start_near=entry,
+                    end_near=exit_near if cfg.satin_exit_toward_next else None,
+                    inside_connectors=cfg.lettering_columns_inside_connectors,
+                    inside_stagger=cfg.lettering_columns_inside_stagger,
+                    ink=ink_source)
+                if not report["empty"]:
+                    return runs, report, False
             # Lettering as Columns (`cfg.lettering_columns`, 2026-10-07): a
             # text-tagged shape is cut along its ARTWORK outline into stroke
             # pieces and sewn as rail-on-outline Columns (`columns.py`),

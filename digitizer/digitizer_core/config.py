@@ -5579,6 +5579,20 @@ class PipelineConfig:
     # (Kent, 2026-10-22). False is the plan as it was, byte for byte.
     # Tests: `tests/test_underfill_rim.py`.
     silhouette_underfill_rim: bool = False
+    # A script word sews as the pen wrote it (2026-10-26, built OFF; Kent:
+    # "Measure, then build OFF"; `script_strokes.py`). A joined or italic word
+    # the letter door refuses (aspect over its 1.4 ceiling, a cluster of one)
+    # and that reads as written -- Bridge's "Bridge", Tires' "ires", To a T's
+    # "achine" -- is cut into pen strokes read on the artwork's own ink and
+    # sewn one satin column per stroke, crosses square to the stroke, through
+    # the Column lane's emitter, travel buried under strokes to come. The pro
+    # sews each such word that way (6-7 runs per word, square share 0.77-0.87);
+    # the satin tier welded Bridge's fused baseline into one 22.8 mm stroke.
+    # Width stays the drawn stroke plus the fabric's pull: the pro's thinner
+    # script needs a smaller pull, a gate-1 constant not built here. Layout,
+    # judged in the preview (Kent, 2026-10-22). False is the plan as it was,
+    # byte for byte. Tests: `tests/test_script_strokes.py`.
+    script_strokes: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()
