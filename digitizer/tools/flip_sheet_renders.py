@@ -258,6 +258,13 @@ FLAGS: dict[str, dict] = {
                 "loop at 1.75 mm after its fill, in its colour. The pro: MFab one closed column "
                 "1.94 (hat) / 1.86 (LC), Fremont the white ground's edge in two passes at "
                 "1.39-1.73. Becker's letter host gets none (its ring is the satin)."},
+    "fine_bars_satin": {
+        "sets": {"fine_bars_satin": True},
+        "fixtures": ["machine_hat", "hotel_fremont_hat", "precision_drone", "mfab_lc", "mfab_hat"],
+        "metric": "run_shapes", "about": "shapes sewn as a plain run ring (plan roles)", "pr": 1101,
+        "note": "Free-standing thin ink bars under the area floor: To a T's speed rules, Fremont's "
+                "separators, the drone's AND DRONE rule, MFab's LLC hairline. The pro satins each; "
+                "ours rings them OFF."},
 }
 
 
@@ -566,6 +573,14 @@ def rings(_stream, _fx, cell) -> str:
     return str(sum(1 for r in runs if r["role"] == "edge_cap"))
 
 
+def run_shapes(_stream, _fx, cell) -> str:
+    """Shapes sewn as a plain run -- the rescue's ring, not an edge cap."""
+    runs = cell.get("runs")
+    if runs is None:
+        return "n/a (DST has no roles)"
+    return str(len({r["shape"] for r in runs if r["kind"] == "run" and not r["role"]}))
+
+
 def locks(stream, _fx, _cell) -> int:
     """Run starts (after a trim, colour change or jump) whose first three
     stitches are all under LOCK_LEG_MM with a reversal among them."""
@@ -689,7 +704,7 @@ METRICS = {"sub_half_mm": sub_half_mm, "fill_underlay": fill_underlay, "uncut_ju
            "locks": locks, "short_bare": short_bare, "letter_height": letter_height,
            "stagger": stagger, "white_under_1mm": white_under_1mm, "tagged": tagged,
            "sub_1mm": sub_1mm, "satin_loops": satin_loops, "travel_runs": travel_runs,
-           "small_lines": small_lines}
+           "small_lines": small_lines, "run_shapes": run_shapes}
 
 
 # ------------------------------------------------------------------- diff
