@@ -1,9 +1,8 @@
-# Memory Index — Archive (before 2026-09-15)
+# Memory Index — Archive (before 2026-09-19)
 
 Same one-line format as `MEMORY.md`: `- [Title](file.md) — hook`. These are the
-index lines for every note dated before 2026-09-15 (filename date, else the date
+index lines for every note dated before 2026-09-19 (filename date, else the date
 the note file was first committed), moved out of the live index on 2026-10-23
-(and, 2026-10-26, the 2026-09-17 and 2026-09-18 notes, the oldest left, to make room)
 because it sat at its 24,986-character ceiling and every PR that added a note
 conflicted with every other. **This file is NOT auto-loaded** — open it when you
 need history or a standing ruling (fill row spacing 0.15, DST axis fixed,
