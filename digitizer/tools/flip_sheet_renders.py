@@ -225,6 +225,16 @@ FLAGS: dict[str, dict] = {
                 "byte-identical. The pro's Bridge art carried no drawing: nothing of his to "
                 "compare in the bowl. Bridge's pro files are on G:; set PRO_PARITY_ROOT when it "
                 "is unmounted."},
+    "silhouette_underfill_rim": {
+        "base": {"silhouette_underfill": True, **_WHITE_SEWN}, "base_name": "d2",
+        "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "silhouette_underfill_rim": True},
+        "fixtures": ["mfab_hat", "mfab_lc", "hotel_fremont_hat"],
+        "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1096,
+        "note": "Acts only under silhouette_underfill, so OFF is arm d2 (under-fill + white sewn "
+                "+ keyline) and ON adds the rim: the ring host's outer edge as one closed satin "
+                "loop at 1.75 mm after its fill, in its colour. The pro: MFab one closed column "
+                "1.94 (hat) / 1.86 (LC), Fremont the white ground's edge in two passes at "
+                "1.39-1.73. Becker's letter host gets none (its ring is the satin)."},
 }
 
 

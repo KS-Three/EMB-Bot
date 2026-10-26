@@ -74,7 +74,8 @@ from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
                             keyline_band, keyline_rest, keyline_runs,
-                            outline_holes, run_outline, silhouette_cap)
+                            outline_holes, run_outline, silhouette_cap,
+                            underfill_rim_after)
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
 # Imported under another name: `hairline_runs` is already this module's count
@@ -4082,6 +4083,9 @@ def sequence(
                     q = nearest_points(p.polygon, group[nxt].polygon)[1]
                     exit_near = (float(q.x), float(q.y))
             runs, report, filled = stitch_one(p, cursor, exit_near)
+            if cfg.silhouette_underfill_rim:   # built OFF: a ring host's rim after its fill
+                runs, report = underfill_rim_after(p, runs, report, trim_at_mm=trim_at,
+                                                   underlay=satin_underlay != "none")
             thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
             as_run += report.get("as_run", 0)
