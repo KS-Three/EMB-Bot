@@ -15,7 +15,7 @@ his white band (17 inside his band's piece, 5 joined to it within reach).
 `sew_enclosed_white` (Kent ruled it ON 2026-10-25) sews that field, and the
 fragments stop being isolated (22 -> 1). They are still separate shapes,
 though: each is sewn as its own run loop on top of the field, and stage 7
-cuts between them -- 18 of MFab's 77 trims with the field sewn, every one a
+cuts between them -- 16 of MFab's 77 trims with the field sewn, every one a
 cut from fragment to fragment (`tools/inpiece_cuts.py`'s shape-to-shape).
 
 **What this does.** After stage 5, on its planned regions: a fragment -- a

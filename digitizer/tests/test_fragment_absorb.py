@@ -3,7 +3,7 @@ narrower than the pro's narrowest sewn satin column, lying within one thread
 of a sewn body of its own thread, is sewn as part of that body.
 
 Measured on MFab hat with `sew_enclosed_white` ON
-(`docs/isolated-pieces-2026-10-25.md`): 30 white keyline fragments, 18 of
+(`docs/isolated-pieces-2026-10-25.md`): 30 white keyline fragments, 16 of
 the job's 77 trims cut fragment to fragment. Here, on hand-built shapes: who
 is a fragment, who is a body, what the union adds, and that OFF is the plan
 as it was.
