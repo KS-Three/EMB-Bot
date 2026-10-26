@@ -423,6 +423,92 @@ test("pollJob throws the job's error for a failed job", async () => {
   await expect(pollJob("j1", { fetchFn, intervalMs: 0 })).rejects.toThrow(/bad art/);
 });
 
+// The poll waits as long as the service runs a job (Kent, 2026-10-26: "Wait
+// up to 600 s (Recommended)"). The service fails a job RUNNING past 600 s and
+// does not count its queue; the Studio times a running job from the first
+// poll that read "running", plus a grace, so the service's own verdict lands
+// first. Fake timers: Date.now and setTimeout advance together.
+describe("pollJob waits as long as the digitizer runs a job", () => {
+  async function poller(stateAt) {
+    stubStorage({});
+    const { pollJob, SERVICE_JOB_TIMEOUT_MS, POLL_GRACE_MS, LONG_RUN_MS } = await import("./digitizer.js");
+    const t0 = Date.now();
+    const fetchFn = async () => ({ ok: true, json: async () => stateAt(Date.now() - t0) });
+    return { pollJob, fetchFn, SERVICE_JOB_TIMEOUT_MS, POLL_GRACE_MS, LONG_RUN_MS };
+  }
+  const MIN = 60 * 1000;
+
+  it("the limit is the service's 600 s plus a grace, not the old 300 s", async () => {
+    vi.useFakeTimers();
+    try {
+      const { pollJob, fetchFn, SERVICE_JOB_TIMEOUT_MS, POLL_GRACE_MS } = await poller(() => ({ state: "running" }));
+      expect(SERVICE_JOB_TIMEOUT_MS).toBe(600000);
+      expect(POLL_GRACE_MS).toBeGreaterThan(0);
+      expect(POLL_GRACE_MS).toBeLessThanOrEqual(60000);
+      let err = null;
+      const p = pollJob("j1", { fetchFn, intervalMs: 1000 }).catch((e) => { err = e; });
+      await vi.advanceTimersByTimeAsync(SERVICE_JOB_TIMEOUT_MS);     // ten minutes: still waiting
+      expect(err).toBeNull();
+      await vi.advanceTimersByTimeAsync(POLL_GRACE_MS + 2000);
+      await p;
+      expect(err && err.kind).toBe("timeout");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a job slow to leave the queue is timed from when it started RUNNING", async () => {
+    vi.useFakeTimers();
+    try {
+      // queued 9 minutes, then running 9.5 more, then done: 18.5 minutes in
+      // all, but no single span past the service's limit.
+      const { pollJob, fetchFn } = await poller((ms) =>
+        ms < 9 * MIN ? { state: "queued" } : ms < 18.5 * MIN ? { state: "running" } : { state: "done", design: { stitches: [] } });
+      let out = null;
+      const p = pollJob("j1", { fetchFn, intervalMs: 1000 }).then((j) => { out = j; }, (e) => { out = e; });
+      await vi.advanceTimersByTimeAsync(19 * MIN);
+      await p;
+      expect(out && out.state).toBe("done");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a queue that never moves still gives up, timed from the first poll", async () => {
+    vi.useFakeTimers();
+    try {
+      const { pollJob, fetchFn, SERVICE_JOB_TIMEOUT_MS, POLL_GRACE_MS } = await poller(() => ({ state: "queued" }));
+      let err = null;
+      const p = pollJob("j1", { fetchFn, intervalMs: 1000 }).catch((e) => { err = e; });
+      await vi.advanceTimersByTimeAsync(SERVICE_JOB_TIMEOUT_MS + POLL_GRACE_MS + 2000);
+      await p;
+      expect(err && err.kind).toBe("timeout");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("onState hears how long the job has run, past the old five minutes", async () => {
+    vi.useFakeTimers();
+    try {
+      const { pollJob, fetchFn, LONG_RUN_MS } = await poller((ms) =>
+        ms < 2000 ? { state: "queued" } : ms < 6 * MIN ? { state: "running" } : { state: "done", design: { stitches: [] } });
+      expect(LONG_RUN_MS).toBe(300000);
+      const seen = [];
+      const p = pollJob("j1", { fetchFn, intervalMs: 1000, onState: (s, info) => seen.push([s, info.runningMs]) });
+      await vi.advanceTimersByTimeAsync(7 * MIN);
+      await p;
+      expect(seen[0]).toEqual(["queued", 0]);
+      const running = seen.filter(([s]) => s === "running").map(([, ms]) => ms);
+      expect(running[0]).toBe(0);                                   // timed from the first "running" read
+      expect(running.every((ms, i) => i === 0 || ms >= running[i - 1])).toBe(true);
+      expect(Math.max(...running)).toBeGreaterThan(LONG_RUN_MS);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 // A re-digitize that keeps showing the PREVIOUS run's result (2026-10-15).
 // A long job (a photo at 80 mm is ~4 minutes) is polled ~every 500 ms, so a
 // single poll that can't reach the service -- a connection reset while the

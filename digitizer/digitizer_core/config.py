@@ -738,7 +738,13 @@ class PipelineConfig:
     # through this sandbox's proxy) — every call after that is cached and
     # takes ~1-2s. A slow/blocked download degrades to the no-op fallback
     # exactly like any other subprocess failure, never hangs the job.
-    photo_prep_background_removal_timeout_s: float = 60.0
+    # 120 since 2026-10-26, Kent: "Wait up to 600 s (Recommended)", whose
+    # option gave background removal 120 s instead of 60 "so a busy machine
+    # stops quietly skipping it, which changes the design". Measured that
+    # day on the MFab hat: the cutout took 12.9-15.5 s on a quiet laptop and
+    # 49-53 s on a loaded one, 7 s short of the old limit, and past it the
+    # photo digitizes with its background left in.
+    photo_prep_background_removal_timeout_s: float = 120.0
     # Stage 2 (photo path) — SAM2 region former (digitizer/sam2_isolated/,
     # see its README.md). A SEPARATE opt-in flag, gated on the PHOTO classes
     # only: this flag must be True AND stage 0 must classify the design

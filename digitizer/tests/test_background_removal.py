@@ -204,6 +204,29 @@ def test_subprocess_timeout_degrades_to_none_with_a_reason(monkeypatch):
     assert reason is not None and "timed out" in reason
 
 
+def test_the_cutout_waits_120_s_by_default(monkeypatch):
+    """Kent, 2026-10-26: "Wait up to 600 s (Recommended)" -- background removal
+    gets 120 s instead of 60, so a busy machine stops quietly digitizing a
+    photo with its background left in (the MFab hat's cutout took 49-53 s on
+    a loaded laptop). The default reaches the worker's subprocess."""
+    import digitizer_core.stage1_photo_prep as spp
+
+    assert PipelineConfig().photo_prep_background_removal_timeout_s == 120.0
+    monkeypatch.setattr(spp, "background_removal_unavailable_reason", lambda: None)
+    monkeypatch.setattr(spp, "REMBG_VENV_PYTHON", Path("/fake/python"))
+    monkeypatch.setattr(spp, "REMBG_WORKER_PATH", Path("/fake/worker.py"))
+    seen = {}
+
+    def _raise_timeout(*a, **kw):
+        seen["timeout"] = kw.get("timeout")
+        raise subprocess.TimeoutExpired(cmd="rembg_worker.py", timeout=kw.get("timeout"))
+
+    monkeypatch.setattr(spp.subprocess, "run", _raise_timeout)
+    _mask, reason = spp.remove_background_seam(_astronaut(64), 4.0, _cfg())
+    assert seen["timeout"] == 120.0
+    assert "120s" in reason
+
+
 def test_subprocess_nonzero_exit_degrades_to_none_with_a_reason(monkeypatch):
     import digitizer_core.stage1_photo_prep as spp
 
