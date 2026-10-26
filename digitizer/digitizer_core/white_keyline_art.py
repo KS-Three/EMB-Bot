@@ -31,11 +31,11 @@ THE RECIPE (`RECIPE`): `silhouette_underfill`, `sew_enclosed_white`,
 and `silhouette_underfill_rim` -- the five switches of #1094's flip sheet plus
 the under-fill's rim (#1096) -- and, from Kent's ruling of 2026-10-26 on the
 wave-3 flip sheet ("MFab extras into the gate"), `keyline_fold_slivers` and
-`skip_covered_shapes` (#1102), all ON together. Both act in `plan_stitches`.
-The ruling's third extra, `cfg.extra["absorb_fragments"]` (#1100), is held
-out: with the recipe it drops the white field's panel fill under AND /
-WELDING / LLC, leaving bare garment in their counters (MFab LC 12.5 mm2 new
-bare, alone or with the others; `docs/gate-mfab-extras-2026-10-26.md`).
+`skip_covered_shapes` (#1102) and `cfg.extra["absorb_fragments"]` (#1100,
+`RECIPE_EXTRA`), all ON together. Every one acts in `plan_stitches`. Absorb
+came in only with its panel fix (Kent 2026-10-26, "Hold all four": it bared
+the counters under AND / WELDING / LLC until the join kept the riders'
+panel; `docs/gate-mfab-extras-2026-10-26.md`).
 
 The verdict is carried on the result (`PipelineResult.white_keyline_art`) and
 folded into the config at each later entry point (`apply`), as stage 1.25's
@@ -52,6 +52,8 @@ from shapely.geometry import Polygon
 RECIPE = ("silhouette_underfill", "sew_enclosed_white", "enclosed_white_keyline",
           "silhouette_underfill_panels", "outline_loop_mitre", "silhouette_underfill_rim",
           "keyline_fold_slivers", "skip_covered_shapes")
+#: the recipe's `cfg.extra` keys (Kent 2026-10-26: "MFab extras into the gate")
+RECIPE_EXTRA = ("absorb_fragments",)
 
 
 def detect(regions, cfg) -> bool:
@@ -88,4 +90,5 @@ def apply(cfg, verdict: bool):
     on and the art is white-keyline art; otherwise the same config object."""
     if not (verdict and getattr(cfg, "white_keyline_art_recipe", False)):
         return cfg
-    return replace(cfg, **{k: True for k in RECIPE if hasattr(cfg, k)})
+    extra = {**(cfg.extra or {}), **{k: True for k in RECIPE_EXTRA}}
+    return replace(cfg, **{k: True for k in RECIPE if hasattr(cfg, k)}, extra=extra)

@@ -53,6 +53,18 @@ Off (the default) this returns its input untouched, and the plan is
 byte-identical. Not a physical constant: both numbers are read from files
 and geometry, and absorbing a piece is LAYOUT, judged from renders (Kent
 2026-10-22).
+
+**The panel under the riders (2026-10-26).** With the MFab recipe the white
+field carries `silhouette_underfill.RIDER_HOLES_KEY`: the holes the black
+riders (AND / WELDING / LLC) sit in, which stage 7 closes and fills, matching
+them to the artwork's hole rings byte for byte. A fragment lying INSIDE such a
+hole, joined to the field, split it into pieces no longer listed, and the
+union rebuilt every other ring: 1 of the LC's 7 rider holes still matched, the
+panel was looped instead of filled (rest fill 443 -> 6.5 mm2), and the
+counters under the riders sewed bare (12.5 mm2 new bare garment;
+`docs/gate-mfab-extras-2026-10-26.md`). So the join keeps the body's own
+rings as they were, and the rider holes are re-read on the joined polygon:
+every hole lying inside one of them is still the panel's.
 """
 from __future__ import annotations
 
@@ -60,6 +72,8 @@ import dataclasses
 
 from shapely.geometry import MultiPolygon, Polygon
 from shapely.ops import unary_union
+
+from .silhouette_underfill import RIDER_HOLES_KEY
 
 KEY = "absorb_fragments"
 PRO_MIN_SWING_MM = 0.70
@@ -105,13 +119,27 @@ def _join(body: Polygon, frag):
     # sews -- is not a hole of the body. A hole the body already had is kept
     # as it was; any other -- a new pocket, or a hair a bridge cut off one of
     # the body's own holes -- only if it is wide enough to sew.
-    own = [Polygon(h) for h in body.interiors]
+    own = [(Polygon(h), h) for h in body.interiors]
     keep = []
     for h in merged.interiors:
         hp = Polygon(h)
-        if any(hp.equals(o) for o in own) or not _narrow(hp, PRO_MIN_SWING_MM):
+        mine = next((ring for o, ring in own if hp.equals(o)), None)
+        if mine is not None:
+            keep.append(mine)       # the body's own ring as it was: later passes match rings by WKB
+        elif not _narrow(hp, PRO_MIN_SWING_MM):
             keep.append(h)
     return Polygon(merged.exterior, keep)
+
+
+def _panel_holes(holes, art):
+    """The body's rider holes (`RIDER_HOLES_KEY`) re-read on the joined
+    artwork `art`: every hole of `art` lying inside one of them, as `art`'s
+    own ring -- a fragment joined inside a panel splits it, and each piece is
+    still the panel stage 7 closes and fills."""
+    panel = unary_union(holes)
+    parts = list(art.geoms) if isinstance(art, MultiPolygon) else [art]
+    return [Polygon(r) for g in parts for r in g.interiors
+            if panel.contains(Polygon(r).representative_point())]
 
 
 def _merge(body, frag):
@@ -168,10 +196,11 @@ def absorb(planned: list, cfg, hairline=None) -> list:
             added = sewn.difference(unary_union([b.polygon, fp.polygon]))
             mine = fp.visible if fp.visible is not None else fp.polygon
             visible = unary_union([b.visible, mine, added])
-        region = dataclasses.replace(
-            b.region, polygon=art, area_mm2=float(art.area),
-            meta={**b.region.meta,
-                  "absorbed_fragments": [*b.region.meta.get("absorbed_fragments", []), f.shape_id]})
+        meta = {**b.region.meta,
+                "absorbed_fragments": [*b.region.meta.get("absorbed_fragments", []), f.shape_id]}
+        if meta.get(RIDER_HOLES_KEY):
+            meta[RIDER_HOLES_KEY] = _panel_holes(meta[RIDER_HOLES_KEY], art)
+        region = dataclasses.replace(b.region, polygon=art, area_mm2=float(art.area), meta=meta)
         out[best[1]] = dataclasses.replace(b, region=region, polygon=sewn, visible=visible)
         out[fi] = None
     return [p for p in out if p is not None]
