@@ -24,6 +24,7 @@ from shapely.geometry import LineString, Polygon, box
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, silhouette_underfill as su, stitches
+from tests.conftest import FLIP_2026_10_23
 from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
@@ -76,7 +77,8 @@ def _md5(blocks) -> str:
 
 def _sew(regs, outlines=None, **kw):
     """`plan_stitches`' order: the under-fill (`apply_cfg`), stage 5, stage 7."""
-    cfg = PipelineConfig(underlay=False, **kw)
+    # the OFF md5s predate the 2026-10-23 flips (conftest): pinned off
+    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **kw})
     report = None
     if cfg.silhouette_underfill:
         regs, report, outlines = su.apply_cfg(regs, (), cfg, outlines)
