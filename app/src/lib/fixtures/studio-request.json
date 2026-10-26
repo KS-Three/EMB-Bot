@@ -16,6 +16,12 @@
         "satin": true,
         "detail_layer": false,
         "edge_cap": "bean",
+        "sew_enclosed_white": true,
+        "sew_enclosed_rgb": [
+          255,
+          255,
+          255
+        ],
         "detect_photographic": true,
         "faces_route_flat": true,
         "garment_id": "hat_front",
@@ -36,6 +42,12 @@
         "satin": true,
         "detail_layer": false,
         "edge_cap": "bean",
+        "sew_enclosed_white": true,
+        "sew_enclosed_rgb": [
+          255,
+          255,
+          255
+        ],
         "detect_photographic": true,
         "faces_route_flat": true,
         "garment_id": "hat_front",
@@ -56,6 +68,12 @@
         "satin": true,
         "detail_layer": false,
         "edge_cap": "bean",
+        "sew_enclosed_white": true,
+        "sew_enclosed_rgb": [
+          255,
+          255,
+          255
+        ],
         "detect_photographic": true,
         "faces_route_flat": true,
         "garment_id": "left_chest",
@@ -76,6 +94,12 @@
         "satin": true,
         "detail_layer": false,
         "edge_cap": "bean",
+        "sew_enclosed_white": true,
+        "sew_enclosed_rgb": [
+          255,
+          255,
+          255
+        ],
         "detect_photographic": true,
         "faces_route_flat": true,
         "garment_id": "left_chest",
@@ -96,6 +120,12 @@
         "satin": true,
         "detail_layer": false,
         "edge_cap": "bean",
+        "sew_enclosed_white": true,
+        "sew_enclosed_rgb": [
+          255,
+          255,
+          255
+        ],
         "detect_photographic": true,
         "faces_route_flat": true,
         "garment_id": "beanie",
@@ -116,6 +146,12 @@
         "satin": true,
         "detail_layer": false,
         "edge_cap": "bean",
+        "sew_enclosed_white": true,
+        "sew_enclosed_rgb": [
+          255,
+          255,
+          255
+        ],
         "detect_photographic": true,
         "faces_route_flat": true,
         "garment_id": "beanie",

@@ -120,7 +120,9 @@ def test_on_a_letter_without_the_option_is_untouched():
 
 def test_on_without_sew_enclosed_white_is_byte_identical():
     def md5(**kw):
-        _r, plan = digitize(TESTDATA / "logo_whitebg.png", PipelineConfig(target_width_mm=80.0, **kw))
+        # `sew_enclosed_white` pinned OFF: ON by default since Kent's flip 2026-10-26
+        _r, plan = digitize(TESTDATA / "logo_whitebg.png",
+                            PipelineConfig(target_width_mm=80.0, sew_enclosed_white=False, **kw))
         c = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
              for _, r in plan.iter_runs() for x, y in r.points]
         return hashlib.md5(json.dumps(c).encode()).hexdigest()

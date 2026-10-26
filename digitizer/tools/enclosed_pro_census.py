@@ -89,7 +89,9 @@ GROUND_BGR = (128, 128, 128)  # renders: mid grey, so white thread and black bot
 WHITE3 = {"sew_enclosed_white": True, "enclosed_white_keyline": True,
           "sew_enclosed_white_fields_fill": True}
 ARMS = {
-    "off": {},
+    # OFF pinned: `sew_enclosed_white` is ON by default (and in the Studio's
+    # request) since Kent's flip 2026-10-26
+    "off": {"sew_enclosed_white": False},
     "white": {"sew_enclosed_white": True},                    # the 2026-10-23 census's ON
     "white_keyline": {"sew_enclosed_white": True, "enclosed_white_keyline": True},
     # the keyline as #1059 measured it, before `border_from_outline` (ON since
@@ -98,7 +100,7 @@ ARMS = {
                             "border_from_outline": False},
     "on": dict(WHITE3),                                       # all three white switches
     "on_nobfo": {**WHITE3, "border_from_outline": False},
-    "off_nobfo": {"border_from_outline": False},
+    "off_nobfo": {"sew_enclosed_white": False, "border_from_outline": False},
 }
 
 #: (slug, width override, art override). Width None: the pro's file width.

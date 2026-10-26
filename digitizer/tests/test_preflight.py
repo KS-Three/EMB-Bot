@@ -19,6 +19,7 @@ import pytest
 
 from digitizer_core import machine
 from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off where a test prices another flag
+from tests.conftest import FLIP_2026_10_26  # and the 2026-10-26 two (bay mouth, white sewn)
 from tests.conftest import WAVE3_2026_10_26_OFF
 
 from digitizer_core import (PipelineConfig, StitchBlock, StitchPlan,
@@ -80,10 +81,12 @@ def pre_flip_plan():
     re-sets the logo's small words (a LETTERING_TOO_SMALL finding), and the
     hat/LC cross pass lays a second layer under the fill (coverage p50 3.05
     against the one-layer 2.67). Both are the flipped engine doing what Kent
-    ruled, not a regression the instruments should fail on."""
+    ruled, not a regression the instruments should fail on. The 2026-10-26
+    flips are pinned with them (`FLIP_2026_10_26`): white sewn adds the ring
+    hole's block, a tenth colour change on a report validated at nine."""
     from digitizer_core import run_stages
-    result = run_stages(ART, cfg(**FLIP_2026_10_23))
-    return result, plan_stitches(result, cfg(**PLAN_CFG_KW, **FLIP_2026_10_23))
+    result = run_stages(ART, cfg(**FLIP_2026_10_23, **FLIP_2026_10_26))
+    return result, plan_stitches(result, cfg(**PLAN_CFG_KW, **FLIP_2026_10_23, **FLIP_2026_10_26))
 PHOTO = TESTDATA / "photo"
 
 PHOTO_GUARD_CODES = {PHOTO_RESOLUTION_LOW, SUBJECT_CONTRAST_LOW,
@@ -117,7 +120,8 @@ def test_a_clean_real_plan_earns_a_clean_report(pre_flip_plan):
     threshold in the module was validated against this promise first (on the
     engine before the 2026-10-23 flips; see `pre_flip_plan`)."""
     whitebg, stitch_plan = pre_flip_plan
-    report = run_preflight(whitebg, stitch_plan, cfg(**PLAN_CFG_KW, **FLIP_2026_10_23), image=ART)
+    report = run_preflight(whitebg, stitch_plan,
+                           cfg(**PLAN_CFG_KW, **FLIP_2026_10_23, **FLIP_2026_10_26), image=ART)
 
     assert report["findings"] == []
     assert report["score"] == 100
@@ -1980,9 +1984,10 @@ def test_a_design_at_the_stop_cap_is_not_warned(plan):
     # +1 the edge cap's block (2026-09-11), +1 the teal run `keep_thin_
     # strokes` keeps (2026-09-13, Kent's ruling) — both pinned in the
     # clean-report test above. +2 since 2026-10-06 (the cap follows the
-    # adjacent colour: one block became three). Nine is still inside the
+    # adjacent colour: one block became three). +1 since 2026-10-26: the ring
+    # hole's white block (`sew_enclosed_white`, Kent's flip). Ten is exactly the
     # 10-stop wall this test is about, and still unwarned.
-    assert report["metrics"]["color_changes"] == 9
+    assert report["metrics"]["color_changes"] == 10
 
 
 # --- Scoring -----------------------------------------------------------------

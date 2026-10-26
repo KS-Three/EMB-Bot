@@ -136,10 +136,13 @@ def test_against_todays_run_tier_on_one_strand():
 
 
 def test_off_is_the_default_and_on_routes_the_script_through_the_tier():
-    # on the engine before Kent's 2026-10-26 wave-3 flips: `fine_bars_satin`
-    # takes 27 of this script's thin strokes as satin AHEAD of the hairline
-    # tier (its precedence by design), and this test is about the tier
-    cfg = dict(target_width_mm=60.0, forced_class="flat", **WAVE3_2026_10_26_OFF)
+    # white pinned OFF (ON since 2026-10-26): the script's enclosed white would sew
+    # as a fill block both arms carry, and `dark_len` reads every run; and
+    # `fine_bars_satin` (Kent's wave-3 flip, 2026-10-26) takes 27 of this
+    # script's thin strokes as satin AHEAD of the hairline tier (its
+    # precedence by design) -- this test is about the tier, so both OFF
+    cfg = dict(target_width_mm=60.0, forced_class="flat", sew_enclosed_white=False,
+               **WAVE3_2026_10_26_OFF)
     result = run_stages(SYN / "thin_script.png", PipelineConfig(**cfg))
     off = plan_stitches(result, PipelineConfig(**cfg))
     on = plan_stitches(result, PipelineConfig(**cfg, hairline=True))

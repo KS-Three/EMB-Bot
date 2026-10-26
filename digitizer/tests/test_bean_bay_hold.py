@@ -332,7 +332,7 @@ def test_goldens_are_byte_identical_off_and_on_without_bean_letters(fixture, hol
     golden = json.loads((TESTDATA / "flat_lane_golden.json").read_text(encoding="utf-8"))[fixture]
     assert _md5(golden["stitch_coords"]) == GOLDEN_MD5[fixture]
     _result, plan = digitize(TESTDATA / fixture,
-                             PipelineConfig(target_width_mm=80.0, edge_cap="none",
+                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False,
                                             bean_letter_bay_hold=hold))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
