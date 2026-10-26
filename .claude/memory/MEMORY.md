@@ -35,7 +35,6 @@ the OLDEST lines whole to the archive.
 - [Corner folds in the Column lane](column-corner-folds-2026-10-23.md) — pro FOLDS one column round every L corner (57 read), cuts only T junctions; `lettering_columns_corner_fold` OFF
 - [Column rail fit: measured false](column-rail-fit-negative-2026-10-25.md) — 7 pairs: rails read 0.000-0.04 on RUN windows; per-letter wobble is real corners, a fit can't move it. Quote `rail_run`, don't plan a rail fit
 - [Column width on resize](column-width-on-resize-2026-10-01.md) — ruling 12: drawn width scales, pull comp fixed; store `widthPx`, mm is a view; no clamp
-- [A concurrent session designed the same tool](concurrent-session-designed-the-same-tool-2026-09-17.md) — check branches + live sessions FIRST
 - [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` OFF (hat/LC/beanie); MFab/Becker "BARE" fills were SATIN the tool misread — list run kinds first
 - [Cut after bury](cut-after-bury-2026-10-23.md) — Fremont's 150 extra cuts were letter hops ON the field; the pro walks those: bury, walk on work, cut bare. 187 -> 44 (pro 20)
 - [Cut every jump](cut-every-jump-2026-10-21.md) — `cut_every_jump` OFF: uncut 285 -> 0, but trims 434 -> 674 (pro 246); bury first
@@ -51,7 +50,6 @@ the OLDEST lines whole to the archive.
 - [Enclosed white like the pro](enclosed-white-like-pro-2026-10-23.md) — pro sews bodies/bands, leaves letter counters: flag matches 32/34 (Tires loops xfail); MFab 1.45x is band CONSTRUCTION
 - [Envelope junction escapes](envelope-junction-escapes-2026-09-30.md) — Kent's "fill a void": escapes refused, teeth dropped; the pro flows: BACK STITCHING; holes = the comb split
 - [Exposed travel is the fill tier's](exposed-travel-is-the-fill-tier-2026-09-19.md) — `travel_cover`'s 245 mm is defect 21, not gate 3 (fill bridges, 0.0 on fabric); `fill_bridge_cut` ON (Kent)
-- [The foundation review and the eye-pairs build](eye-pairs-build-2026-09-17.md) — Kent picked F4; `tools/eye_pairs` built in one session; `uncovered_wanted_mm2` is a DENOMINATOR; spike first
 - [Eye pairs, the follow-up](eye-pairs-followup-2026-09-18.md) — "merged" was OPEN and red; a test red only where tesseract EXISTS; the MERGE REF alone broke a word budget
 - [Fill columns: thread across holes](fill-columns-2026-10-03.md) — JS fill floated across every hole, unseen by its test; `fillColumns` built OFF, unsewn. Audit BEFORE arming
 - [fillColumns float pictures](fill-columns-float-pictures-2026-10-08.md) — STANDING: next 10 digitized images shown to Kent carry the off/on float sheet; count 1/10
@@ -131,6 +129,7 @@ the OLDEST lines whole to the archive.
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
 
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
+- [Under-fill knock-outs](underfill-knockouts-2026-10-26.md) — Fremont star: a covered host-colour mark is never merged; Becker: a letter host stops half a loop inside the ring's loops (white edge + white cap gone); Gaulke is sew_enclosed_white
 - [Under-fill outer rim](underfill-outer-rim-2026-10-25.md) — ring hosts own under-fill → pro rims whole outer edge in fill colour (MFab one closed 1.9 mm col); ours 0.0 → `silhouette_underfill_rim` OFF on the SEWN edge; edge cap drops
 - [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
 - [WITHDRAWN: warn sooner on small files](warn-sooner-small-files-handoff-2026-10-01.md) — Kent 10-02: no warnings, the engine takes the path; replaced by bean letters, built OFF in PR #601
