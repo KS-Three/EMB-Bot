@@ -15,7 +15,8 @@
 .DESCRIPTION
     Opens the Studio dev server (and, unless -NoDigitizer, the Python
     auto-digitizer service) in their own PowerShell windows, waits until the
-    Studio's port actually accepts a TCP connection, then opens the browser.
+    Studio's port accepts a TCP connection AND the digitizer answers /health,
+    then opens the browser.
 
     Both servers block their window until Ctrl+C, which is why each gets its
     own. Closing a window stops that server.
@@ -23,9 +24,22 @@
     The repo root is resolved from this script's own location, so the repo can
     be moved or cloned anywhere without editing this file.
 
+    If a digitizer is already listening on 8721 (another session's, for
+    instance) it is NOT started over. tools/service-check.mjs reads its
+    /health and compares the engine commit it was started from with this
+    checkout's HEAD: a stale service is reported with both commits and left
+    running. A service that is working a job is never stopped. A process on
+    the port that is not a digitizer is never touched.
+
 .PARAMETER NoDigitizer
     Skip the Python auto-digitizer. Text and lettering work without it; only
     image auto-digitize needs it.
+
+.PARAMETER ReplaceStale
+    Restart a digitizer on 8721 that is stale (its commit is not HEAD, or its
+    tracked tree was dirty when it started) and idle. Without this switch a
+    stale service is only reported. Never applies to a busy service or to a
+    process that is not a python digitizer.
 
 .PARAMETER Port
     Studio port to wait on and open. Defaults to 5173. Vite auto-increments
@@ -40,10 +54,14 @@
 
 .EXAMPLE
     .\tools\start-emb-bot.ps1 -NoDigitizer
+
+.EXAMPLE
+    .\tools\start-emb-bot.ps1 -ReplaceStale
 #>
 [CmdletBinding()]
 param(
     [switch]$NoDigitizer,
+    [switch]$ReplaceStale,
     [int]$Port = 5173,
     [int]$TimeoutSeconds = 180
 )
@@ -54,6 +72,9 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $appDir = Join-Path $repo 'app'
 $digitizerDir = Join-Path $repo 'digitizer'
+$serviceCheck = Join-Path $PSScriptRoot 'service-check.mjs'
+$digitizerPort = 8721
+$digitizerUrl = "http://127.0.0.1:$digitizerPort"
 
 if (-not (Test-Path -LiteralPath (Join-Path $appDir 'package.json'))) {
     throw "No app/package.json under '$repo'. Expected this script to live in the repo's tools/ directory."
@@ -71,25 +92,100 @@ function Start-ServerWindow {
     Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoExit', '-Command', $inner | Out-Null
 }
 
+# What is on the digitizer's port, decided by tools/service-check.mjs (which
+# holds every rule). Returns the verdict object {action, reason, lines}, or
+# $null when node is not on PATH or the check itself failed - the caller then
+# falls back to the old behaviour of just starting a digitizer.
+function Get-DigitizerVerdict {
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) { return $null }
+    $checkArgs = @($serviceCheck, '--json', '--repo', $repo, '--url', $digitizerUrl)
+    if ($ReplaceStale) { $checkArgs += '--replace' }
+    try {
+        $raw = & node @checkArgs 2>$null
+        if ($LASTEXITCODE -ne 0) { return $null }
+        return (($raw | Select-Object -Last 1) | ConvertFrom-Json)
+    }
+    catch {
+        return $null
+    }
+}
+
+# Stop the process listening on the digitizer's port - only if it is python.
+# service-check.mjs has already said the thing answering /health is a stale,
+# idle digitizer; this is the second lock, so a port that changed hands in
+# between is never killed.
+function Stop-DigitizerListener {
+    $conn = Get-NetTCPConnection -LocalPort $digitizerPort -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if (-not $conn) {
+        Write-Warning "No listener found on port $digitizerPort to stop."
+        return $false
+    }
+    $proc = Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue
+    if (-not $proc -or $proc.ProcessName -notlike 'python*') {
+        $name = if ($proc) { $proc.ProcessName } else { 'unknown' }
+        Write-Warning "The listener on port $digitizerPort is '$name', not python. Leaving it alone."
+        return $false
+    }
+    Write-Host "Stopping the stale digitizer (pid $($proc.Id))..."
+    Stop-Process -Id $proc.Id
+    $freeBy = (Get-Date).AddSeconds(15)
+    while ((Get-Date) -lt $freeBy) {
+        if (-not (Get-NetTCPConnection -LocalPort $digitizerPort -State Listen -ErrorAction SilentlyContinue)) { return $true }
+        Start-Sleep -Milliseconds 500
+    }
+    Write-Warning "Port $digitizerPort is still held 15 s after stopping pid $($proc.Id)."
+    return $false
+}
+
 Write-Host "Repo:   $repo"
 Write-Host 'Window 1: Studio (npm run dev)'
 Start-ServerWindow -Title 'EMB-Bot Studio' -Command "Set-Location -LiteralPath '$appDir'; npm install; npm run dev"
+
+# Whether to wait for the digitizer's /health before opening the browser:
+# not when it is skipped, when node is missing, or when something that is not
+# a digitizer holds the port (the wait would only run out the clock).
+$waitForHealth = $false
 
 if ($NoDigitizer) {
     Write-Host 'Window 2: skipped (-NoDigitizer) - image auto-digitize will be unavailable.'
 }
 else {
-    Write-Host 'Window 2: auto-digitizer (127.0.0.1:8721)'
-    # Self-healing: builds the venv on first run, then goes straight to the
-    # service. digitizer/pyproject.toml requires Python 3.12+, so the venv is
-    # created through the launcher with an explicit version rather than
-    # whatever a bare `python` resolves to.
-    $digitizerCommand = @(
-        "Set-Location -LiteralPath '$digitizerDir'"
-        "if (-not (Test-Path '.venv\Scripts\python.exe')) { py -3.12 -m venv .venv; .venv\Scripts\python -m pip install -e '.[service,dev]' }"
-        '.venv\Scripts\python -m digitizer_service'
-    ) -join '; '
-    Start-ServerWindow -Title 'EMB-Bot digitizer' -Command $digitizerCommand
+    $startDigitizer = $false
+    $verdict = Get-DigitizerVerdict
+    if ($null -eq $verdict) {
+        Write-Warning 'Could not check port 8721 (node missing or the check failed); starting a digitizer as before.'
+        $startDigitizer = $true
+    }
+    else {
+        foreach ($line in @($verdict.lines)) { Write-Host "Digitizer: $line" }
+        switch ($verdict.action) {
+            'start' { $startDigitizer = $true; $waitForHealth = $true }
+            'replace' {
+                if (Stop-DigitizerListener) { $startDigitizer = $true; $waitForHealth = $true }
+                else { Write-Warning 'The stale digitizer was left running.' }
+            }
+            'foreign' { }
+            default { $waitForHealth = $true }
+        }
+    }
+    if ($startDigitizer) {
+        Write-Host 'Window 2: auto-digitizer (127.0.0.1:8721)'
+        # Self-healing: builds the venv on first run, then goes straight to the
+        # service. digitizer/pyproject.toml requires Python 3.12+, so the venv is
+        # created through the launcher with an explicit version rather than
+        # whatever a bare `python` resolves to.
+        $digitizerCommand = @(
+            "Set-Location -LiteralPath '$digitizerDir'"
+            "if (-not (Test-Path '.venv\Scripts\python.exe')) { py -3.12 -m venv .venv; .venv\Scripts\python -m pip install -e '.[service,dev]' }"
+            '.venv\Scripts\python -m digitizer_service'
+        ) -join '; '
+        Start-ServerWindow -Title 'EMB-Bot digitizer' -Command $digitizerCommand
+        if ($null -eq $verdict) { $waitForHealth = [bool](Get-Command node -ErrorAction SilentlyContinue) }
+    }
+    else {
+        Write-Host 'Window 2: not started - see the Digitizer line above.'
+    }
 }
 
 Write-Host "Waiting for the Studio on port $Port (up to $TimeoutSeconds s)..."
@@ -122,6 +218,18 @@ while ((Get-Date) -lt $deadline) {
     }
     if ($ready) { break }
     Start-Sleep -Seconds 2
+}
+
+if ($ready -and $waitForHealth) {
+    # The Studio is serving; a browser opened now would reach it before the
+    # digitizer is up and show "service unavailable". Wait for /health too,
+    # with at least 30 s of its own (the venv build can outlast the Studio).
+    $left = [int][Math]::Max(30, ($deadline - (Get-Date)).TotalSeconds)
+    Write-Host "Waiting for the digitizer's /health on port $digitizerPort (up to $left s)..."
+    & node $serviceCheck --url $digitizerUrl --wait $left
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning 'The digitizer did not answer /health. Opening the Studio anyway; image auto-digitize will fail until it is up.'
+    }
 }
 
 if ($ready) {
