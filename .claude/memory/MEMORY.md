@@ -73,6 +73,7 @@ the OLDEST lines whole to the archive.
 - [Lane census](lane-census-2026-10-25.md) — Kent 10-26: 6b NOT built, the button stays. 4 of 14 pro jobs reach flat (all Becker), 8 gradient, 2 photo_scene; 6b as written = the button's file; kappas a wash
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
 - [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
+- [Layering census](layering-census-2026-10-26.md) — W4-06 FALSE: pro sews every contained piece ON its ground (162/162) = `silhouette_underfill`; 80 of 176 cuts cross their own ground (sews first), 5 a sibling
 - [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out
 - [Letter separation](letter-separation-2026-10-25.md) — W3-07: our 6 touching 5-10 mm pairs are PULL COMP (traced 0.60-0.87 apart, rails 0.29 out), not construction; pro keeps >= 0.10 mm, tips only
 - [Letterform priors lane](letterform-priors-lane-2026-10-06.md) — "something new" on lettering was yesterday's lane (outline-cut); check sibling lanes before proposing new
@@ -92,7 +93,6 @@ the OLDEST lines whole to the archive.
 - [Monoline script satin](monoline-script-satin-2026-10-24.md) — Tires "ires" sewed FILL on dt_p90_cap alone; `monoline_script_satin` OFF; pro hides ALL in-word travel under later satin: trims 24 -> 8 (pro 10)
 - [N fan cure](n-fan-cure-2026-10-08.md) — `satin_tip_corner_gate` OFF: tip = convex corner; ≈ tip caps off; degree gate refuted
 - [Narrow columns like the pro](narrow-columns-2026-10-23.md) — small_bold: serifs absorbed into the stroke, chord-read junctions, no chamfer mitre; 74→55 columns; `column_harness.py`
-- [The staircase on low-res uploads](native-ramp-edge-read-2026-09-18.md) — 0.68 mm stairs: NEAREST-upscaled alpha; `subpixel_edges_upscaled` ON (Kent); byte-identity is an EXPRESSION
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: don't build on past sessions; "what's next" comes from ROADMAP/PRODUCT/MASTER_SCOPE on main
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only, customer sees nothing
 - [The orphan-lane sweep](orphan-lane-sweep-2026-09-30.md) — `pro-overlay-diff` PARKED (Kent); squash merges blind `main..lane`, count added lines; Developer Mode ON
@@ -118,7 +118,6 @@ the OLDEST lines whole to the archive.
 - [Sew-out card v7](sewout-card-v7-2026-10-24.md) — only pull-by-stroke + pro values wait on fabric; BASE = ruled-unmerged flips; pull is a Fremont no-op, on MARINE it turns split satin plain like the pro
 - [Short column underlay](short-column-underlay-2026-10-22.md) — `satin_underlay_short_columns` OFF: pro centre-walks 83-97% of columns at EVERY width; no 3.5 mm pitch; zigzag unsettled
 - [Silhouette under-fill](silhouette-underfill-2026-10-24.md) — "pro fills it" was LAYERING, not tier (kappa 0.170 vs 0.198): ring outline filled under in the majority colour; `silhouette_underfill` OFF
-- [Six pending flags, invisible at viewing size](six-flags-invisible-at-viewing-size-2026-09-18.md) — Kent: 29 of 34 pairs "no difference"; all six stay OFF, not the Ember-gap lever
 - [Small bold columns](small-bold-columns-2026-10-21.md) — `lettering_columns_small_bold` OFF: 4 mm letters at 0.85 mm satin; counters closed UPSTREAM by growth
 - [Small-text floor](small-text-floor-2026-10-24.md) — pro re-sets every line under ~3.2 mm to 4-4.6 mm satin, never runs/drops; #1029 missed ProSeal (design-edge halo); `small_text_cap_reach_edges` OFF
 - [Small text re-set](small-text-reset-2026-10-21.md) — OFF: columns were already the pro's, SPACING was wrong; later stages undid the layout five ways; 5/S bays still close
@@ -128,8 +127,8 @@ the OLDEST lines whole to the archive.
 - [Studio configurator redesign](studio-configurator-pr1-2026-09-30.md) — wizard → Tesla panel: all four PRs built; PR 3 = Advanced fold (hidden, not removed); Original view still open
 - [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch (pull, gate 1), not a tagger miss; MFab IN + AND N are the misses; `text_cluster_part_touching` OFF; ON makes LC's N a hollow bean
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
-- [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
 
+- [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
 - [Under-fill knock-outs](underfill-knockouts-2026-10-26.md) — Fremont star: a covered host-colour mark is never merged; Becker: a letter host stops half a loop inside the ring's loops (white edge + white cap gone); Gaulke is sew_enclosed_white
 - [Under-fill outer rim](underfill-outer-rim-2026-10-25.md) — a self-hosting ring: pro rims its whole edge in the fill colour; `silhouette_underfill_rim` OFF, on the SEWN edge
