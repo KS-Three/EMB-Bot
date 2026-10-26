@@ -12,6 +12,7 @@ does to the field: one polygon, its hole moved onto the letter.
 from __future__ import annotations
 
 from shapely.geometry import Polygon, box
+from shapely.ops import unary_union
 
 from digitizer_core import machine
 from digitizer_core.regions import Region
@@ -76,6 +77,23 @@ def test_no_sewn_field_no_fold():
     regs = [plain, s]
     out, folded = fold_keyline_slivers(regs)
     assert out is regs and folded == {}
+
+
+def _c_sliver(pocket_w):
+    """A C-shaped sliver 0.2 mm wide, open toward the field's left hole edge
+    0.15 mm away: it closes a pocket `pocket_w` deep against the field."""
+    x0, x1 = 9.15, 9.15 + pocket_w + 0.2
+    c = unary_union([box(x0, 12.0, x1, 12.2), box(x0, 15.0, x1, 15.2),
+                     box(x1 - 0.2, 12.0, x1, 15.2)])
+    return _reg("Sc", c, stitch_width_measured_mm=0.2)
+
+
+def test_a_slit_the_fold_closes_is_filled_and_a_real_pocket_stays():
+    f = _field()
+    out, _ = fold_keyline_slivers([f, _c_sliver(0.2)])
+    assert len(out[0].polygon.interiors) == 1           # the letter's hole only
+    out, _ = fold_keyline_slivers([f, _c_sliver(1.5)])
+    assert len(out[0].polygon.interiors) == 2           # a 1.5 mm pocket is a hole
 
 
 def test_two_slivers_both_fold():

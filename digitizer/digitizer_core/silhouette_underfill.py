@@ -142,7 +142,18 @@ def fold_keyline_slivers(regions):
             joined = unary_union([poly, r.polygon, bridge]).buffer(0)
             if joined.geom_type != "Polygon":
                 continue
-            poly = joined
+            # the strip leaves slits where the two edges part (the sliver's
+            # ends): a hole thinner than a thread (2 * area / perimeter)
+            # within a thread of the sliver is part of the same gap
+            reach = r.polygon.buffer(machine.COVERAGE_THREAD_W_MM)
+            keep = []
+            for ring in joined.interiors:
+                h = Polygon(ring)
+                if (2.0 * h.area / max(h.length, 1e-9) < machine.COVERAGE_THREAD_W_MM
+                        and h.intersects(reach)):
+                    continue
+                keep.append(ring)
+            poly = Polygon(joined.exterior, keep)
             gone[r.shape_id] = f.shape_id
         if poly is not f.polygon:
             grown[f.shape_id] = poly
