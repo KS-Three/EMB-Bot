@@ -25,6 +25,13 @@ describe("digitize", () => {
     expect(friendlyError(Object.assign(new Error("Digitizing timed out."), { kind: "timeout" }), "digitize")).toBe(TIMEOUT_DIGITIZE);
     expect(friendlyError(timeoutErr(), "digitize")).toBe(TIMEOUT_DIGITIZE);
     expect(TIMEOUT_DIGITIZE).toMatch(/simpler|tighter/);
+    // Truthful since 2026-10-26 (Kent: "Wait up to 600 s"): the poll gives up
+    // only past the digitizer's own ten-minute limit, and the Studio cannot
+    // stop the digitizer, so it says it stopped WAITING, never that the job
+    // was stopped.
+    expect(TIMEOUT_DIGITIZE).toMatch(/ten minutes/);
+    expect(TIMEOUT_DIGITIZE).toMatch(/stopped waiting/);
+    expect(TIMEOUT_DIGITIZE).not.toMatch(/(it|job|design) was stopped|so it was stopped/i);
   });
   test("a job that errored with a traceback is replaced, one with a sentence is kept", () => {
     expect(friendlyError(new Error("Traceback (most recent call last):\n  File \"x.py\", line 3"), "digitize")).toBe(FAILED_DIGITIZE);
