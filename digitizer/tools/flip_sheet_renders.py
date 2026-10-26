@@ -116,8 +116,10 @@ _SMALL_TEXT_SET = {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1
                    "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
                    "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True}
 _WHITE_SEWN = {"sew_enclosed_white": True, "enclosed_white_keyline": True}
-#: the engine before the 2026-10-26 flips (both ON by default since)
-_WAVE3_OFF = {"small_text_bay_mouth": False, "sew_enclosed_white": False}
+#: the engine before the 2026-10-26 flips (both ON by default since), with rembg's
+#: timeout pinned: its 60 s default fails under load and reroutes MFab (photo_scene)
+_REMBG_900 = {"photo_prep_background_removal_timeout_s": 900.0}
+_WAVE3_OFF = {"small_text_bay_mouth": False, "sew_enclosed_white": False, **_REMBG_900}
 
 FLAGS: dict[str, dict] = {
     "fill_turn_slant": {
@@ -271,15 +273,16 @@ FLAGS: dict[str, dict] = {
     # but prove it first"). Both are ON by default from this PR, so OFF pins both False.
     "wave3_flips": {
         "base": dict(_WAVE3_OFF), "base_name": "wave3_off",
-        "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": True},
+        "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": True, **_REMBG_900},
         "fixtures": ["becker_hat_large", "mfab_hat", "hotel_fremont_hat"],
         "metric": "white_stitches", "about": "stitches in white thread", "pr": 1112,
         "note": "OFF pins both flips False (the engine before 2026-10-26); ON is the shipped "
                 "defaults, the Studio's request as it now goes (white ticked, sewn white). "
-                "fields_fill and the keyline stay OFF in both."},
+                "fields_fill and the keyline stay OFF in both; rembg's timeout pinned at 900 s in "
+                "both (route checked per cell)."},
     "small_text_bay_mouth": {
         "base": dict(_WAVE3_OFF), "base_name": "wave3_off",
-        "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": False},
+        "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": False, **_REMBG_900},
         "fixtures": ["hotel_fremont_hat"],
         "metric": "small_lines", "about": "small lines: built, sewn height mm (census reader)",
         "pr": 1112,
