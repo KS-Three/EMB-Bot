@@ -60,7 +60,14 @@ def studio_request(width_mm: float = KENT_WIDTH_MM) -> dict:
     file on a Hat project at `width_mm`: `buildDigitizeConfig` over
     `DEFAULT_DIGITIZE_PARAMS` (target width replaced), with `garment_id`
     and `garment_rgb` from the project. No thread brand (the Studio's own
-    palette is omitted), no crop, no edits, SAM2 off."""
+    palette is omitted), no crop, no edits, SAM2 off.
+
+    Pinned to the Studio's real output, not only to its source text:
+    `app/src/lib/fixtures/studio-request.json` is `buildDigitizeConfig` run
+    over a fresh element per garment and width, and
+    `tests/test_studio_request_contract.py` asserts this (and `pro_pair.
+    request`) equals it. Change a key here without the fixture and that
+    test goes red."""
     return {
         "target_width_mm": float(width_mm),
         "max_colors": 6,
