@@ -456,7 +456,7 @@ def _pick_start(pts: list[tuple[float, float]], radii: np.ndarray,
 # their near ends advance one step each: the far ends spread round the arc,
 # 1.1 mm apart where the pro's sit 0.4 mm apart -- the "spikes" on MFab's
 # white keyline at every M-FAB corner (#1059, #1065). The pro's corner is
-# that same arc, NOT a mitre: through 15 clean corners of MFab's keyline his
+# that same arc, NOT a mitre: through 12 clean corners of MFab's keyline his
 # far ends stand 1.00 widths from the corner (a mitre point would be 1.43),
 # 1.12 on Becker's outline satin (mitre 1.55). ON (`_pivot_ring`): wherever
 # two neighbouring crosses' far ends part by more than `LOOP_PIVOT_GAP`
