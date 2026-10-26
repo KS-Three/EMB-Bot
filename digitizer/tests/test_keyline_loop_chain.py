@@ -74,3 +74,19 @@ def test_each_loop_starts_where_it_comes_nearest_the_next():
     start = Point(first_satin.points[0])
     # the first loop (round B1, nearest the entry) starts on B1's side facing B2
     assert start.x > 19.0, start
+
+
+def test_where_no_buried_walk_exists_the_loops_are_as_they_were():
+    # two letters 20 mm apart in a wide band: no walk from one loop to the
+    # other lies under satin still to come, so ON sews exactly what OFF sews
+    # (the band bridge, or the cut) -- the chain never lays a long exposed walk
+    far = box(40, 10, 50, 30)
+    band = box(0, 0, 60, 40).difference(unary_union([B1, far]))
+    holes = [(B1, 2.0), (far, 2.0)]
+    sewn = []
+    for chain in (False, True):
+        with loop_chain_scope(chain):
+            sewn.append(keyline_runs(band, "Sband", reach=band, entry=(2.0, 2.0), trim_at_mm=3.0,
+                                     underlay=True, holes=holes))
+    assert _sig(sewn[0][0]) == _sig(sewn[1][0])
+    assert sewn[0][1] == sewn[1][1]
