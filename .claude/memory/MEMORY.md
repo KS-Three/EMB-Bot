@@ -106,7 +106,7 @@ the OLDEST lines whole to the archive.
 - [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean edge cap + run tier on small shapes; the pro fills bubbles bare
 - [Pull comp by stroke](pull-comp-by-stroke-2026-10-22.md) — pro's hat pull FALLS with width: +0.58 at 0.85 mm, +0.42 at 2.6, 0 at 4; `pull_comp_by_stroke` OFF; small text stays small_bold's
 - [Rail wobble is the model's floor](rail-wobble-is-the-models-floor-2026-09-21.md) — satin 0.089 mm is the rail model's FLOOR; do not tune its six defences. Mean OUTWARD, tail inward
-- [Request contract + engine stamp](request-contract-and-engine-stamp-2026-10-25.md) — Studio request fixture (vitest+pytest); /health engine+capabilities; launcher replaces a stale idle service (-KeepStale opts out); polyneon moves Becker
+- [Request contract + engine stamp](request-contract-and-engine-stamp-2026-10-25.md) — Studio request fixture; /health engine stamp; launcher replaces a stale idle service
 - [Re-set bays: keep the mouth](reset-bay-mouth-2026-10-25.md) — pro's bay letters NOT wider; he keeps a 0.51 mm mouth (n 18); `small_text_bay_mouth` (cfg.extra, OFF) cuts back the terminal that shuts it
 - [Re-set room and floor](reset-room-floor-2026-10-25.md) — ProSeal under 0.85: re-set widens RETRACED letters by a stale stroke tag (small_text.py:764); pro grows away from the near neighbour; tag fix alone: beanie no_room
 - [Run-button commands need absolute paths](run-button-commands-need-absolute-paths.md) — Run buttons share ONE PowerShell whose cwd persists; `cd digitizer` works once — give an absolute cd
@@ -127,7 +127,7 @@ the OLDEST lines whole to the archive.
 - [Split comb per column](split-comb-2026-09-30.md) — per-leg comb flickered on Becker's letters; `_comb_thresholds` 122 → 37; raising 5.0 is a sew-out (gate 1)
 - [Stage-0 flake](stage0-flake-output-alignment-2026-10-25.md) — W3-13: `cv2.magnitude` (IPP AVX2) answered by its OUTPUT buffer's alignment, not float32 box/mean/threads; `_magnitude` in float64. Hash each op under IPP paths first
 - [Studio configurator redesign](studio-configurator-pr1-2026-09-30.md) — wizard → Tesla panel: all four PRs built; PR 3 = Advanced fold (hidden, not removed); Original view still open
-- [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch (pull, gate 1), not a tagger miss; MFab IN + AND N are the misses; `text_cluster_part_touching` OFF; ON makes LC's N a hollow bean
+- [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch (gate 1); MFab IN/AND N are the misses; `text_cluster_part_touching` OFF
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
 
@@ -141,7 +141,7 @@ the OLDEST lines whole to the archive.
 - [White re-rule packet](white-rerule-packet-2026-10-25.md) — under border_from_outline, white ALONE fills Becker's faces (0°) at ≤1.39x CPU; fields_fill costs up to 5.6x (MFab lc); keyline inert; census 29/31
 - [Wide letters: MFab's W](wide-letters-mfab-w-2026-10-23.md) — W never reached the lane: tagger aspect 1.4 (W+E touch, 2.55; W alone 1.58); `text_cluster_wide_letters` OFF; measure MFab with main's rembg
 - [Word legibility instrument](word-legibility-instrument-2026-10-24.md) — `tools/word_legibility.py`: per word, ours vs pro, chance-corrected cc; n/loc is never 0; its two holes are closed in the reach note
-- [Word legibility reach](word-legibility-reach-2026-10-25.md) — all 17 pinned words located in both files; `reach` (octaves) moves where cc sits at 1.00; the CROP's neighbours made the pro's small words unreadable
+- [Word legibility reach](word-legibility-reach-2026-10-25.md) — all 17 words located in both files; `reach` moves where cc saturates; crop neighbours hid the pro's small words
 - [L1 one tagger](word-tagger-l1-2026-10-08.md) — BUILT OFF `cfg.lettering_words`; kappa 0.907 vs text cluster 0.881 (in-sample); Kent: AFTER better under the Column lane (10-08)
 - [Worktree guard judges targets](worktree-guard-judges-targets-2026-10-04.md) — rm/mv guard judges the resolved TARGET; own-lane deletes allowed (Kent 10-04)
 - [Wrong-root sessions, global guards](wrong-root-sessions-and-global-guards-2026-10-04.md) — sessions rooted outside the repo ran with no project hooks; `embot-guards-global.js` covers them
