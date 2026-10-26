@@ -1341,7 +1341,8 @@ export async function startDigitize(image, config, fetchFn = globalThis.fetch) {
 
 // Poll GET /jobs/{id} until done/error. done -> the full job payload
 // ({ design, review, stats, warnings }); error -> throws the job's error.
-// opts.onState hears every observed state ("queued"/"running") for honest
+// opts.onState(state, { runningMs }) hears every observed state
+// ("queued"/"running") and how long the job has been running, for honest
 // pending UI; opts.isCancelled() stops the loop quietly (a torn-down panel
 // must not keep a timer alive — the job cache means re-asking is free).
 //
@@ -1361,19 +1362,40 @@ export async function startDigitize(image, config, fetchFn = globalThis.fetch) {
 // gone) or the overall timeout gives up. A real job error (state "error") and
 // a 4xx — a bad request, or a 404 for an evicted/missing job, which is a
 // verdict on THIS request, not a blip — still surface at once.
+//
+// The overall timeout waits as long as the service runs a job. Kent,
+// 2026-10-26: "Wait up to 600 s (Recommended)" -- the Studio keeps waiting as
+// long as the digitizer does, so a slow job finishes instead of showing a
+// false "stopped". It used to give up at 300 s while the service ran on for
+// up to 600 s (digitizer_service/jobs.py JOB_TIMEOUT_S), and told the customer
+// the job was stopped when it was not. The service starts that clock when the
+// job RUNS, not while it is queued, and the poll does not say when that was,
+// so the Studio starts its own at the first poll that reads "running" -- at or
+// after the service's -- and adds POLL_GRACE_MS: the service's own verdict (a
+// job in state "error", in its own words) always arrives first. A job still
+// QUEUED after the same span is timed from the first poll: a queue that has
+// not moved in ten minutes means the job ahead holds the one worker past what
+// the service can stop.
+export const SERVICE_JOB_TIMEOUT_MS = 600000;
+export const POLL_GRACE_MS = 30000;
+// The old limit. A job running past it is still working, and the status line
+// says so (opts.onState's runningMs) instead of leaving the same words up.
+export const LONG_RUN_MS = 300000;
+
 export async function pollJob(jobId, opts = {}) {
   const fetchFn = opts.fetchFn || globalThis.fetch;
   const intervalMs = opts.intervalMs == null ? 500 : opts.intervalMs;
-  const timeoutMs = opts.timeoutMs == null ? 300000 : opts.timeoutMs;
+  const timeoutMs = opts.timeoutMs == null ? SERVICE_JOB_TIMEOUT_MS + POLL_GRACE_MS : opts.timeoutMs;
   // ~10 s of back-to-back failures at the default 500 ms cadence: long enough
   // to ride out a reset or a service restart, short enough that a service that
   // is truly down still reports promptly.
   const maxTransient = opts.maxTransientFailures == null ? 20 : opts.maxTransientFailures;
   const t0 = Date.now();
+  let runningSince = null;   // the first poll that read "running"
   let transient = 0;
   const overBudget = () => {
-    if (Date.now() - t0 <= timeoutMs) return false;
-    const e = new Error("Digitizing timed out. Check the service window, then digitize again.");
+    if (Date.now() - (runningSince == null ? t0 : runningSince) <= timeoutMs) return false;
+    const e = new Error("Digitizing timed out: no answer within the digitizer's own time limit.");
     e.kind = "timeout";
     return e;
   };
@@ -1405,7 +1427,10 @@ export async function pollJob(jobId, opts = {}) {
     }
     if (job.state === "done") return job;
     if (job.state === "error") throw new Error(job.error || "Digitizing failed.");
-    if (opts.onState) opts.onState(job.state);
+    if (job.state === "running" && runningSince == null) runningSince = Date.now();
+    if (opts.onState) {
+      opts.onState(job.state, { runningMs: runningSince == null ? 0 : Date.now() - runningSince });
+    }
     const timedOut = overBudget();
     if (timedOut) throw timedOut;
     await new Promise((res) => setTimeout(res, intervalMs));
