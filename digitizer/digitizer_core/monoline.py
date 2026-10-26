@@ -36,10 +36,13 @@ MONOLINE_ELONGATION_MIN = 20.0
 
 
 @lru_cache(maxsize=4096)
-def _verdict(wkb: bytes, satin_max_mm: float, area_weighted: bool) -> bool:
+def _verdict(wkb: bytes, satin_max_mm: float, area_weighted: bool,
+             per_stroke: bool) -> bool:
     from shapely import wkb as _wkb
     from .stage6_satin import classify_ribbon
-    v = classify_ribbon(_wkb.loads(wkb), satin_max_mm, area_weighted=area_weighted)
+    # the same flags the routing call reads for this shape, so the two agree
+    v = classify_ribbon(_wkb.loads(wkb), satin_max_mm, per_stroke=per_stroke,
+                        area_weighted=area_weighted)
     m = v.metrics
     return (v.reason == "dt_p90_cap"
             and m["dt_cv"] <= MONOLINE_CV_MAX
@@ -49,7 +52,8 @@ def _verdict(wkb: bytes, satin_max_mm: float, area_weighted: bool) -> bool:
 def monoline_stroke(region, cfg, satin_max_mm: float) -> bool:
     """Is `region` a monoline script stroke the width ceiling alone refuses?"""
     return _verdict(region.polygon.wkb, float(satin_max_mm),
-                    bool(getattr(cfg, "classify_area_weighted", False)))
+                    bool(getattr(cfg, "classify_area_weighted", False)),
+                    bool(cfg.satin_per_stroke))
 
 
 # --------------------------------------------------------------- the travel
