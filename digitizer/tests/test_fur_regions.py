@@ -82,7 +82,7 @@ def test_the_flag_is_off_by_default():
 @pytest.mark.parametrize("fixture", sorted(GOLDEN_MD5))
 def test_off_is_byte_identical_to_the_golden(fixture):
     _result, plan = digitize(TESTDATA / fixture,
-                             PipelineConfig(target_width_mm=80.0, edge_cap="none",
+                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False,
                                             hair_regions_directional=False))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
@@ -101,7 +101,7 @@ def test_a_flat_logo_is_unchanged_with_the_flag_on():
     """The flat lane never reads, so ON is the golden too."""
     fixture = "logo_alpha.png"
     result, plan = digitize(TESTDATA / fixture,
-                            PipelineConfig(target_width_mm=80.0, edge_cap="none",
+                            PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False,
                                            hair_regions_directional=True))
     assert result.hair_fur_read is None and result.hair_fur_ids is None
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]

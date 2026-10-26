@@ -135,7 +135,9 @@ def test_against_todays_run_tier_on_one_strand():
 
 
 def test_off_is_the_default_and_on_routes_the_script_through_the_tier():
-    cfg = dict(target_width_mm=60.0, forced_class="flat")
+    # white pinned OFF (ON since 2026-10-26): the script's enclosed white would sew
+    # as a fill block both arms carry, and `dark_len` reads every run
+    cfg = dict(target_width_mm=60.0, forced_class="flat", sew_enclosed_white=False)
     result = run_stages(SYN / "thin_script.png", PipelineConfig(**cfg))
     off = plan_stitches(result, PipelineConfig(**cfg))
     on = plan_stitches(result, PipelineConfig(**cfg, hairline=True))

@@ -43,6 +43,8 @@ def test_request_is_what_the_studio_sends():
     assert _js_default("edge_cap") == json.dumps(req["edge_cap"])
     assert _js_default("border") == "null" and "border" not in req
     assert _js_default("fill_angle_deg") == "null" and "fill_angle_deg" not in req
+    assert _js_default("sew_enclosed_white") == "true" and req["sew_enclosed_white"] is True
+    assert _js_default("sew_enclosed_hex") == '"#ffffff"' and req["sew_enclosed_rgb"] == [255, 255, 255]
     client = (APP / "lib" / "digitizer.js").read_text(encoding="utf-8")
     assert "cfg.detect_photographic = true;" in client and req["detect_photographic"]
     assert "cfg.faces_route_flat = true;" in client and req["faces_route_flat"]

@@ -45,6 +45,9 @@ REPRO = TESTDATA / "photo" / "repro_gradient_white_icon.png"
 def repro_cfg(**kw):
     kw.setdefault("bg_border_agreement_min", 0.0)
     kw.setdefault("bg_border_rival_min", 0.0)
+    # held out by default is this file's subject: `sew_enclosed_white` (ON since
+    # 2026-10-26) sews the regions it tags, so it is pinned OFF here
+    kw.setdefault("sew_enclosed_white", False)
     return cfg(**kw)
 
 
@@ -132,8 +135,9 @@ def test_repro_fixture_icon_regions_are_tagged_and_excluded_by_default():
     assert not (stitched_ids & tagged_ids), "tagged regions must not reach the stitch plan"
 
 
-def test_untagged_regions_default_to_stitched(whitebg):
-    for r in whitebg.regions:
+def test_untagged_regions_default_to_stitched(whitebg_white_off):
+    # with `sew_enclosed_white` OFF; ON, the tagged hole sews too
+    for r in whitebg_white_off.regions:
         if r.meta.get("enclosed_background"):
             assert r.meta["stitched"] is False
         else:

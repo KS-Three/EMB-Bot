@@ -157,8 +157,12 @@ def test_flags_with_one_base_share_one_off_arm():
     assert off == fsr.FLAGS["small_text_set"]["sets"] and "small_text_cap_reach_edges" not in off
     for f, spec in fsr.FLAGS.items():
         if spec.get("base"):
-            extra = {k: v for k, v in spec["sets"].items() if k not in spec["base"]}
+            # ON differs from its OFF: a key the base lacks, or (a flag already ON by
+            # default, its OFF pinned False -- the 2026-10-26 rows) a value it changes
+            missing = object()
+            extra = {k: v for k, v in spec["sets"].items() if spec["base"].get(k, missing) != v}
             assert extra and fsr.arm_sets(fsr.off_arm(f)) == spec["base"], f
+    assert fsr.off_arm("wave3_flips") == fsr.off_arm("small_text_bay_mouth") == "wave3_off__off"
 
 
 def test_a_flag_with_fixtures_runs_only_on_them():
@@ -201,7 +205,7 @@ def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
                    "silhouette_underfill_rim": 1096, "keyline_fold_slivers": 1102,
                    "skip_covered_shapes": 1102, "lettering_columns_italic_lean": 1079,
                    "monoline_script_satin": 1063, "fill_section_travel": 1091,
-                   "absorb_fragments": 1100, "small_text_bay_mouth": 1085}
+                   "absorb_fragments": 1100}
     cfg = PipelineConfig()
     for f in fsr.WAVE3:
         assert fsr.FLAGS[f]["metric"] in fsr.METRICS, f
@@ -211,10 +215,12 @@ def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
             assert not (cfg.extra or {}).get(f)
         else:
             assert getattr(cfg, f) is False, f
-    # the white switches are ruled through the MFab-art gate, not on this sheet
+    # the white switches are ruled through the MFab-art gate, not on this sheet; the bay
+    # mouth left it when #1112 flipped it (and `sew_enclosed_white`) ON, 2026-10-26
     for f in ("silhouette_underfill", "sew_enclosed_white", "enclosed_white_keyline",
-              "silhouette_underfill_panels"):
+              "silhouette_underfill_panels", "small_text_bay_mouth"):
         assert f not in fsr.WAVE3
+    assert cfg.small_text_bay_mouth is True and "small_text_bay_mouth" in fsr.FLAGS
 
 
 def test_every_flag_has_a_kind():
