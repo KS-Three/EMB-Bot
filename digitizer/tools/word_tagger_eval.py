@@ -33,6 +33,15 @@ how) rather than trusting a partial match.
     .venv/bin/python -m tools.word_tagger_eval --patterns    # what the
                                                              # pattern test removes
     .venv/bin/python -m tools.word_tagger_eval --json out.json
+    .venv/bin/python -m tools.word_tagger_eval --sizes 50,60,80,100
+
+`--sizes` scores every tagger at other artwork widths. Shape ids are
+centroid digests in mm, so a resize renames every shape and the labels
+cannot be read by id; they are CARRIED instead (`transfer_labels`): each
+region at the new size, scaled back to the corpus width about the design
+centre, takes the label of the labelled region its area mostly lies in
+(over half of it), else it is not a letter. At the corpus width the carry
+must reproduce the hand labels exactly, and the tool says when it does not.
 """
 from __future__ import annotations
 
@@ -152,6 +161,46 @@ def score_fixture(regions, truth: dict, preds: dict) -> dict:
     return out
 
 
+CARRY_MIN_SHARE = 0.5
+
+
+def transfer_labels(ref_regions, truth: dict, regions, scale: float) -> dict:
+    """The hand labels (`truth`: lines + ignore, by shape id of
+    `ref_regions`) carried onto `regions`, which were built at a width
+    `scale` times the corpus width. -> {"lines": {line: [ids]}, "ignore":
+    [ids]} keyed by `regions`' own ids. A region whose polygon, scaled by
+    1/scale about the design centre (the frame's origin), lies more than
+    `CARRY_MIN_SHARE` of its area inside ONE labelled region takes that
+    region's label; anything else is not a letter."""
+    from shapely import affinity
+    from shapely.strtree import STRtree
+    lab = {sid: ("line", line) for line, ids in truth["lines"].items() for sid in ids}
+    lab.update({sid: ("ignore", None) for sid in truth.get("ignore", [])})
+    refs = [r for r in ref_regions if r.shape_id in lab]
+    polys = [r.polygon.buffer(0) for r in refs]
+    tree = STRtree(polys) if polys else None
+    out: dict = {"lines": {}, "ignore": []}
+    for r in regions:
+        if tree is None:
+            break
+        p = affinity.scale(r.polygon, 1.0 / scale, 1.0 / scale, origin=(0, 0)).buffer(0)
+        if p.is_empty or p.area <= 0:
+            continue
+        best, share = None, 0.0
+        for i in tree.query(p):
+            s = p.intersection(polys[int(i)]).area / p.area
+            if s > share:
+                best, share = refs[int(i)], s
+        if best is None or share <= CARRY_MIN_SHARE:
+            continue
+        kind, line = lab[best.shape_id]
+        if kind == "ignore":
+            out["ignore"].append(r.shape_id)
+        else:
+            out["lines"].setdefault(line, []).append(r.shape_id)
+    return out
+
+
 def pooled(results: dict, name: str, rng=None) -> dict:
     t = [x for r in results.values() for x in r[name]["_t"]]
     p = [x for r in results.values() for x in r[name]["_p"]]
@@ -191,44 +240,35 @@ def _fmt(x):
     return "  n/a" if x is None else f"{x:5.2f}"
 
 
-def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("fixtures", nargs="*")
-    ap.add_argument("--patterns", action="store_true",
-                    help="print each linked component's pattern removals against its labels")
-    ap.add_argument("--json", type=Path)
-    args = ap.parse_args(argv)
-
+def _regions(path, width: float, garment: str, cache: Path | None):
+    """`build_generation`'s regions at `width` mm (Studio's six colours),
+    pickled under `cache` when one is given. The cache knows nothing of the
+    commit: clear it whenever segmentation may have moved."""
+    import pickle
     from digitizer_core import PipelineConfig
     from digitizer_core.pipeline import build_generation
-    from digitizer_core.threads import chart_for
-    from tools.thin_strokes import STUDIO_MAX_COLORS, corpus_cases
+    from tools.thin_strokes import STUDIO_MAX_COLORS
+    f = cache / f"{Path(path).stem}-{width:g}.pkl" if cache else None
+    if f is not None and f.exists():
+        return pickle.loads(f.read_bytes())
+    cfg = PipelineConfig(target_width_mm=width, garment_id=garment,
+                         max_colors=STUDIO_MAX_COLORS)
+    regions = build_generation(str(path), cfg).regions
+    if f is not None:
+        cache.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(pickle.dumps(regions))
+    return regions
 
-    truth = json.loads(TRUTH.read_text())
-    results: dict = {}
-    stale: list[str] = []
-    for name, path, width, garment in corpus_cases():
-        if name not in truth["fixtures"] or (args.fixtures and name not in args.fixtures):
-            continue
-        tr = truth["fixtures"][name]
-        cfg = PipelineConfig(target_width_mm=width, garment_id=garment,
-                             max_colors=STUDIO_MAX_COLORS)
-        regions = build_generation(str(path), cfg).regions
-        have = {r.shape_id for r in regions}
-        missing = [s for ids in tr["lines"].values() for s in ids if s not in have]
-        if missing:
-            stale.append(name)
-            print(f"{name}: STALE -- {len(missing)} labelled shape ids not in this "
-                  f"generation; re-label, do not score")
-            continue
-        chart = chart_for(cfg)
-        if args.patterns:
-            _print_patterns(name, regions, tr, chart)
-        results[name] = score_fixture(regions, tr, predictions(regions, chart))
 
-    if not results:
-        print("nothing scored")
-        return 1
+def _same_labels(a: dict, b: dict) -> bool:
+    def norm(t):
+        return ({k: sorted(v) for k, v in t["lines"].items() if v}, sorted(t.get("ignore", [])))
+    return norm(a) == norm(b)
+
+
+def _report(results: dict, title: str | None) -> dict:
+    if title:
+        print(f"\n===== {title} =====")
     print(f"\n{'fixture':12s} {'n':>4s} {'let':>4s}   " +
           "   ".join(f"{t:>21s}" for t in TAGGERS))
     print(f"{'':12s} {'':4s} {'':4s}   " + "   ".join(f"{'kappa  ARI  tp/fp/fn':>21s}" for _ in TAGGERS))
@@ -249,14 +289,80 @@ def main(argv=None) -> int:
     print("\nwords minus each, pooled kappa, paired fixture bootstrap 95%:")
     for t, (lo, hi) in deltas.items():
         print(f"  vs {t:13s} [{lo:+.3f}, {hi:+.3f}]")
+    clean = {k: {t: ({kk: vv for kk, vv in v.items() if not kk.startswith('_')}
+                     if isinstance(v, dict) else v) for t, v in r.items()}
+             for k, r in results.items()}
+    return {"fixtures": clean, "pooled": summary, "delta_vs_words": deltas}
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("fixtures", nargs="*")
+    ap.add_argument("--patterns", action="store_true",
+                    help="print each linked component's pattern removals against its labels")
+    ap.add_argument("--sizes", help="comma-separated artwork widths in mm; labels are "
+                    "carried by geometry (see the module docstring)")
+    ap.add_argument("--cache", type=Path, help="pickle each generation's regions here "
+                    "(clear it when segmentation may have moved)")
+    ap.add_argument("--json", type=Path)
+    args = ap.parse_args(argv)
+
+    from digitizer_core import PipelineConfig
+    from digitizer_core.threads import chart_for
+    from tools.thin_strokes import STUDIO_MAX_COLORS, corpus_cases
+
+    sizes = [float(s) for s in args.sizes.split(",")] if args.sizes else None
+    truth = json.loads(TRUTH.read_text())
+    by_size: dict[str, dict] = {}
+    stale: list[str] = []
+    for name, path, width, garment in corpus_cases():
+        if name not in truth["fixtures"] or (args.fixtures and name not in args.fixtures):
+            continue
+        tr = truth["fixtures"][name]
+        cfg = PipelineConfig(target_width_mm=width, garment_id=garment,
+                             max_colors=STUDIO_MAX_COLORS)
+        regions = _regions(path, width, garment, args.cache)
+        have = {r.shape_id for r in regions}
+        missing = [s for ids in tr["lines"].values() for s in ids if s not in have]
+        if missing:
+            stale.append(name)
+            print(f"{name}: STALE -- {len(missing)} labelled shape ids not in this "
+                  f"generation; re-label, do not score")
+            continue
+        chart = chart_for(cfg)
+        if args.patterns:
+            _print_patterns(name, regions, tr, chart)
+        if sizes is None:
+            by_size.setdefault("corpus", {})[name] = score_fixture(
+                regions, tr, predictions(regions, chart))
+            continue
+        if not _same_labels(transfer_labels(regions, tr, regions, 1.0), tr):
+            print(f"{name}: WARNING -- carrying the labels onto their own generation "
+                  f"does not reproduce them; the other sizes' labels are suspect")
+        for s in sizes:
+            if abs(s - width) < 1e-9:
+                regs, trs = regions, tr
+            else:
+                regs = _regions(path, s, garment, args.cache)
+                trs = transfer_labels(regions, tr, regs, s / width)
+            print(f"  {name} @ {s:g} mm: {len(regs)} regions, "
+                  f"{sum(len(v) for v in trs['lines'].values())} carried letters", flush=True)
+            by_size.setdefault(f"{s:g}", {})[name] = score_fixture(
+                regs, trs, predictions(regs, chart))
+
+    if not by_size:
+        print("nothing scored")
+        return 1
+    reports = {k: _report(res, None if sizes is None else f"{k} mm wide")
+               for k, res in by_size.items()}
     if stale:
         print(f"\nSTALE (not scored): {', '.join(stale)}")
     if args.json:
-        clean = {k: {t: ({kk: vv for kk, vv in v.items() if not kk.startswith('_')}
-                         if isinstance(v, dict) else v) for t, v in r.items()}
-                 for k, r in results.items()}
-        args.json.write_text(json.dumps({"fixtures": clean, "pooled": summary,
-                                         "delta_vs_words": deltas, "stale": stale}, indent=1))
+        if sizes is None:
+            out = {**reports["corpus"], "stale": stale}
+        else:
+            out = {"sizes": reports, "stale": stale}
+        args.json.write_text(json.dumps(out, indent=1))
     return 0
 
 
