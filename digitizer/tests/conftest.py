@@ -672,6 +672,16 @@ PRE_FLIP["text_cluster_wide_letters"] = False
 # False is the engine before the flip. The tests ABOUT it are in
 # `tests/test_outline_line_art_guard.py`.
 PRE_FLIP["border_from_outline_line_art_guard"] = False
+# `fine_bars_satin` (#1101) and `outline_loop_mitre` (#1059's loops, built
+# 2026-10-25), Kent's flips on the wave-3 flip sheet 2026-10-26: "Fine bars
+# as satin" and "Outline corners pivot". False is the engine before the
+# flip; the tests ABOUT them are `tests/test_fine_bars_satin.py` and
+# `tests/test_outline_loop_mitre.py`.
+PRE_FLIP["fine_bars_satin"] = False
+PRE_FLIP["outline_loop_mitre"] = False
+#: The two, OFF: for a test that pins a number either flip moved but that is
+#: ABOUT something else (spread into a PipelineConfig).
+WAVE3_2026_10_26_OFF = {k: PRE_FLIP[k] for k in ("fine_bars_satin", "outline_loop_mitre")}
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
