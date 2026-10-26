@@ -199,8 +199,9 @@ What the numbers say:
 ## Residuals
 
 - **M-FAB keyline corner spikes:** `keyline_runs` clamps 35-38% of the white
-  crosses by reach. That is the outline-loop corner mitre in `stage6_border.py`,
-  another lane's (apex-cut, task 10).
+  crosses by reach. That is the outline-loop corner in `stage6_border.py`,
+  another lane's: `outline_loop_mitre` (#1093, built OFF) merged while this
+  lane ran, and none of these arms turns it on.
 - **The loops are 0.5 mm narrow** against the pro's 2.2-2.4. `art_outline`
   measures the width (task 9).
 - **No black outer satin rim** (the pro: 1.84-1.92 mm).
