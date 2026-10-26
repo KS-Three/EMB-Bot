@@ -1,7 +1,7 @@
 # Lane census, 2026-10-25: auto vs "Sew as flat art" vs Kent's 6b, judged against the pro's files
 
 **Measurement only.** ROADMAP gate 2: this changes no routing and edits no engine file; building 6b,
-even OFF, waits on Kent's ruling from this table. Gate 4: every agreement figure below is
+even OFF, waited on Kent's ruling from this table (given 2026-10-26: not built, see "Ruling"). Gate 4: every agreement figure below is
 chance-corrected (kappa, or cc), none is a raw agreement. No new client art: the sheets draw only artwork this repo already ships under `testdata/`, beside the pro files it already ships; ProSeal's rows and sheet are not committed
 (see "Rows not shown"). Tool: `digitizer/tools/lane_census.py`; pins: `digitizer/tests/test_lane_census.py`.
 
@@ -11,6 +11,12 @@ chance-corrected (kappa, or cc), none is a raw agreement. No new client art: the
 (the registered DST's extents) and garment. Word legibility read with tesseract v5.4.0.20240606 (Windows; not the 5.3.4 CI pins, so do
 not set a cc figure here against a CI-pinned one).
 `origin/main` then took #1101 and #1102 (both OFF flags); MFab LC and Becker beanie, auto and forced flat, were re-run on `46949f78` and their DSTs are byte-identical to the rows quoted here.
+
+## Ruling (Kent, 2026-10-26)
+
+Shown this table and four of its sheets (Golden Tee, Fremont hat, Drone, Becker beanie), Kent ruled on 6b: **"Don't build; keep the button (Recommended)"**. The option as he saw it:
+auto stays the default, and "Sew as flat art" stays the manual fix, because the kappas give no reason to switch and flat costs trims on most jobs.
+**6b is ruled NOT built and the button stays.** (Relayed by the foreman session, 2026-10-26.) The census below is the evidence he ruled from; it changes nothing in the engine.
 
 ## The answer in six lines
 

@@ -1,9 +1,16 @@
 ---
 name: lane-census-2026-10-25
-description: lane census (W3-09, measurement only): 4 of 14 pro jobs reach flat (all Becker), 8 gradient, 2 photo_scene; 6b as written sews the button's file; two kappas a wash, flat +trims on 8 of 10
+description: lane census (W3-09): 4 of 14 pro jobs reach flat (all Becker), 8 gradient, 2 photo_scene; 6b as written = the button's file; kappas a wash. KENT RULED 2026-10-26: 6b NOT built, the button stays
 metadata:
   type: project
 ---
+
+**KENT'S RULING, 2026-10-26 (relayed by the foreman session), verbatim: "Don't build; keep the button
+(Recommended)".** The option as he saw it: auto stays the default, and "Sew as flat art" stays the manual fix,
+because the kappas give no reason to switch and flat costs trims on most jobs. He ruled from this table and four
+sheets (Golden Tee, Fremont hat, Drone, Becker beanie). **6b is ruled NOT built; the button stays.** Do not
+propose a 6b / "route by consequence" build again without new evidence the census could not see (edges, colour
+placement). Plan 2026-09-08's PR 6b, the open ruling DOCTRINE 2026-09-30 names, is answered.
 
 `digitizer/tools/lane_census.py` (2026-10-25/26, engine `d36ff80e`, doc `docs/lane-census-2026-10-25.md`).
 Auto vs forced flat ("Sew as flat art") vs Kent's 6b as written vs the planner's variant, at the Studio's
