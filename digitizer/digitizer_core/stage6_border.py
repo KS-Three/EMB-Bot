@@ -1146,13 +1146,66 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
     return runs, report
 
 
+def _bury_walks(runs: list[StitchRun]) -> None:
+    """`monoline.bury_hops`' walk for chained loops: each lift routed through
+    the satin still to come (`monoline._SatinRaster`, its pitch and cross
+    footprint), shortest path, taken when no more than `BURY_EXPOSED_MAX_MM`
+    of it lies outside and it is no longer than `max(20, 4 x direct)`. One
+    difference: the footprint is shrunk by half a thread first
+    (`COVERAGE_THREAD_W_MM`), so the walk's whole thread, not only its
+    centreline, lies under the satin -- a route hugging a loop's edge reads
+    exposed to `tools/travel_cover` (2.9 mm on one MFab hat walk) where the
+    satin's own raster calls it covered."""
+    import numpy as np
+    from skimage.graph import route_through_array
+    from scipy.ndimage import binary_erosion
+    from skimage.morphology import disk
+
+    from .monoline import BURY_EXPOSED_MAX_MM, BURY_PX_PER_MM, _SatinRaster
+    from .stage6_satin import _resample
+
+    cuts = [i for i, r in enumerate(runs) if i > 0 and r.jump and r.points
+            and runs[i - 1].points]
+    if not cuts or not any(r.kind == stitches.SATIN for r in runs):
+        return
+    ras = _SatinRaster(runs)
+    shrink = disk(max(1, int(round(machine.COVERAGE_THREAD_W_MM / 2.0 * BURY_PX_PER_MM))))
+    took = 0
+    for i0 in cuts:
+        i = i0 + took
+        a, b = runs[i - 1].points[-1], runs[i].points[0]
+        direct = math.dist(a, b)
+        if direct < machine.TINY_STITCH_MM:
+            continue
+        later = binary_erosion(ras.last >= i, structure=shrink)
+        if not later.any():
+            continue
+        path, _c = route_through_array(np.where(later, 1.0, 1000.0), ras.ij(a), ras.ij(b),
+                                       fully_connected=True, geometric=True)
+        route = [ras.xy(u) for u in path]
+        route[0], route[-1] = tuple(a), tuple(b)
+        exposed = sum(math.dist(p, q) for (p, q), (u, v) in
+                      zip(zip(route, route[1:]), zip(path, path[1:]))
+                      if not (later[u] and later[v]))
+        plen = sum(math.dist(p, q) for p, q in zip(route, route[1:]))
+        if exposed > BURY_EXPOSED_MAX_MM or plen > max(20.0, 4.0 * direct):
+            continue
+        coarse = list(LineString(route).simplify(1.0 / BURY_PX_PER_MM).coords)
+        n = max(2, int(math.ceil(plen / machine.TRAVEL_STITCH_MM)) + 1)
+        runs.insert(i, StitchRun(points=_resample(coarse, n), kind=stitches.TRAVEL,
+                                 shape_id=runs[i].shape_id))
+        runs[i + 1].jump = runs[i + 1].trim = False
+        ras.last[ras.last >= i] += 1        # the raster names runs by index
+        ras.first[(ras.first >= i) & (ras.first < 10 ** 9)] += 1
+        took += 1
+
+
 def _chain_walks(runs: list[StitchRun], band, trim_at_mm: float) -> int:
     """`cfg.keyline_loop_chain`: the lifts between chained loops, each walked
-    under the loops still to sew where it can be (`monoline.bury_hops`), else
+    under the loops still to sew where it can be (`_bury_walks`), else
     bridged inside the band as before (`travel_path`), else cut. -> how many
     lifts are left. The first loop's own entry is `keyline_runs`' as before."""
-    from .monoline import bury_hops
-    bury_hops(runs, trim_at_mm)
+    _bury_walks(runs)
     left = 0
     i = 1
     while i < len(runs):
