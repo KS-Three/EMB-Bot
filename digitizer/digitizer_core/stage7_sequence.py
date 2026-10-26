@@ -2579,8 +2579,11 @@ def sequence(
                      and is_lettering(p.region, cfg)}
                     if cfg.lettering_columns and cfg.satin else set())
     if lane_letters:
+        # `skip_covered_shapes` off here too: the rank is read from what
+        # the OFF path SEWS, and a shape that pass drops would lose its rank
+        # and move every pick after it (MFab hat: the riders re-ordered).
         off_blocks, _off_warnings = sequence(
-            planned, fabric, replace(cfg, lettering_columns=False),
+            planned, fabric, replace(cfg, lettering_columns=False, skip_covered_shapes=False),
             source_pixels=source_pixels, design_class=design_class,
             fill_technique=fill_technique, streamline_mode=streamline_mode,
             detail_layer=detail_layer, palette_spools=palette_spools,

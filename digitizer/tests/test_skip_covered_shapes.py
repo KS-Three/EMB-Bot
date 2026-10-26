@@ -130,6 +130,22 @@ def test_tier_runs_and_shapes_in_two_blocks_are_never_dropped():
     assert _skip_covered_shapes([b0, b1], TRIM_AT) == []
 
 
+def test_the_lanes_order_pass_drops_nothing(monkeypatch):
+    # with lettering in the plan, `sequence` first sequences itself with the
+    # Column lane off and ranks shapes by where they first sew; a shape that
+    # pass dropped would lose its rank and move every pick after it (MFab
+    # hat: the riders re-ordered, their travel exposed 4 mm more)
+    from digitizer_core import stage7_sequence as s7
+    real, seen = s7.sequence, []
+
+    def spy(planned, fabric, cfg, **kw):
+        seen.append((cfg.lettering_columns, cfg.skip_covered_shapes))
+        return real(planned, fabric, cfg, **kw)
+    monkeypatch.setattr(s7, "sequence", spy)
+    _sew(panel(), OUTLINES, silhouette_underfill_panels=True, skip_covered_shapes=True, **ON)
+    assert seen and all(not skip for _lane, skip in seen)
+
+
 def test_on_a_plan_with_nothing_covered_it_changes_nothing():
     # the panel fixture (the recipe on a synthetic MFab) has no covered shape
     on = _sew(panel(), OUTLINES, silhouette_underfill_panels=True, skip_covered_shapes=True, **ON)[3]
