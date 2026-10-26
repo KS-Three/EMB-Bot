@@ -1873,6 +1873,8 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
                                                  design_class=result.design_class,
                                                  hairline=hairline)
+    from .fragment_absorb import absorb   # `cfg.extra["absorb_fragments"]` (built OFF 2026-10-25)
+    planned = absorb(planned, cfg, hairline)
     if marks:
         sew_of = {p.layer: p.sew_index for p in planned}
         last = max(sew_of.values(), default=0)

@@ -1,8 +1,8 @@
-# Memory Index — Archive (before 2026-09-18)
+# Memory Index — Archive (before 2026-09-19)
 
 Same one-line format as `MEMORY.md`: `- [Title](file.md) — hook`. These are the
-index lines for every note dated before 2026-09-15 (filename date, else the date
-the note file was first committed), moved out of the live index on 2026-10-23 (the four dated 2026-09-17 followed on 2026-10-26)
+index lines for every note dated before 2026-09-19 (filename date, else the date
+the note file was first committed), moved out of the live index on 2026-10-23
 because it sat at its 24,986-character ceiling and every PR that added a note
 conflicted with every other. **This file is NOT auto-loaded** — open it when you
 need history or a standing ruling (fill row spacing 0.15, DST axis fixed,
@@ -76,3 +76,7 @@ live index; new archive lines go at the bottom.
 - [The foundation review and the eye-pairs build](eye-pairs-build-2026-09-17.md) — Kent picked F4; `tools/eye_pairs` built in one session; `uncovered_wanted_mm2` is a DENOMINATOR; spike first
 - [Photo edit tail 2026-09-17](photo-edit-tail-2026-09-17.md) — `fill_travel_under_cover` is ~58% of a photo edit tail; the reorder memo is exact ONLY while both stay pure
 - [Worktree session: the harness guard](worktree-session-harness-guard-2026-09-17.md) — `digitizer` spells `git`: quotes, `cd` chains refused; venv by 8.3 `CLAUDE~4`; preview_start reads MAIN
+- [Eye pairs, the follow-up](eye-pairs-followup-2026-09-18.md) — "merged" was OPEN and red; a test red only where tesseract EXISTS; the MERGE REF alone broke a word budget
+- [Flag Before After: the labelled page, found and finished](flag-before-after-2026-09-18.md) — the scratch copy is `--labelled` now; re-read the db just before a SAME-URL republish
+- [The staircase on low-res uploads](native-ramp-edge-read-2026-09-18.md) — 0.68 mm stairs: NEAREST-upscaled alpha; `subpixel_edges_upscaled` ON (Kent); byte-identity is an EXPRESSION
+- [Six pending flags, invisible at viewing size](six-flags-invisible-at-viewing-size-2026-09-18.md) — Kent: 29 of 34 pairs "no difference"; all six stay OFF, not the Ember-gap lever
