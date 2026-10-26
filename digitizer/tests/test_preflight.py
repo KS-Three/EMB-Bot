@@ -20,6 +20,7 @@ import pytest
 from digitizer_core import machine
 from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off where a test prices another flag
 from tests.conftest import FLIP_2026_10_26  # and the 2026-10-26 two (bay mouth, white sewn)
+from tests.conftest import WAVE3_2026_10_26_OFF
 
 from digitizer_core import (PipelineConfig, StitchBlock, StitchPlan,
                             StitchRun, machine, run_stages)
@@ -794,7 +795,11 @@ def test_bridges_script_sews_its_gaps_closed_at_80mm_and_the_finding_says_where_
     # the small-text set (ON 2026-10-23) re-sets the teal words and the finding
     # then carries a resolution note; the finding's wording is pinned on the
     # engine it was written for (conftest.FLIP_2026_10_23)
-    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6, **FLIP_2026_10_23)
+    # ... and before Kent's 2026-10-26 wave-3 flips: `fine_bars_satin` sews
+    # a bar satin and the small-lettering finding then carries a resolution
+    # note (measured: mitre alone moves nothing here)
+    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6, **FLIP_2026_10_23,
+                       **WAVE3_2026_10_26_OFF)
     result, plan = digitize(path, c)
     report = run_preflight(result, plan, c, image=path)
     flagged = [f for f in report["findings"] if f["code"] == SATIN_GAPS_TIGHT]

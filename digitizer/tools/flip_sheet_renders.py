@@ -377,8 +377,10 @@ FLAGS: dict[str, dict] = {
 
 #: The wave-3 sheet (2026-10-26): the flags its run and report carry. The bay mouth left
 #: it when #1112 flipped it ON; its row stays, for the OFF | ON | pro of that PR.
-WAVE3 = ["lettering_columns_apex_cut", "text_cluster_part_touching", "outline_loop_mitre",
-         "fine_bars_satin", "silhouette_underfill_rim", "keyline_fold_slivers",
+# `outline_loop_mitre` and `fine_bars_satin` left it when Kent flipped them ON,
+# 2026-10-26 ("Outline corners pivot", "Fine bars as satin"); their rows stay
+WAVE3 = ["lettering_columns_apex_cut", "text_cluster_part_touching",
+         "silhouette_underfill_rim", "keyline_fold_slivers",
          "skip_covered_shapes", "lettering_columns_italic_lean", "monoline_script_satin",
          "fill_section_travel", "absorb_fragments"]
 

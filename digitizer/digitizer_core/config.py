@@ -1918,8 +1918,11 @@ class PipelineConfig:
     # kappa 0.905; tests `tests/test_fine_bars_satin.py`. No width, pull, density or stitch
     # length moves: whether a 1 mm bar holds on a cap is the sew-out question
     # `small_solids_satin` already carries (gate 1). Layout (ruling 2026-10-22:
-    # judged in the preview). OFF is the engine as it was, byte for byte.
-    fine_bars_satin: bool = False
+    # judged in the preview). ON by default since Kent's flip on the wave-3
+    # flip sheet, 2026-10-26: "Fine bars as satin" ("For all art. Short thin
+    # bars ... sew as one satin bar like the pro's instead of a hollow ring").
+    # False is the engine before the flip (`PRE_FLIP`).
+    fine_bars_satin: bool = True
     # The pro's size rule for borders (2026-10-23, built OFF;
     # `docs/border-census-2026-10-23.md`). Over 16 paired designs the pro
     # rings about 1% of closed shapes under 2 mm, 7% at 2-4, 29% at 4-6 and
@@ -5597,10 +5600,14 @@ class PipelineConfig:
     # brief's. ON: crosses put between any two whose far ends part by more
     # than `LOOP_PIVOT_GAP` steps on a convex turn, one per step of the far
     # rail; the near ends' pile short-stitched. Layout, judged in the preview
-    # (Kent, 2026-10-22). False is the loop as it was, byte for byte. Set for
-    # a plan by `stage6_border.loop_mitre_scope`.
+    # (Kent, 2026-10-22). ON by default since Kent's flip on the wave-3 flip
+    # sheet, 2026-10-26: "Outline corners pivot" ("For all art. The satin
+    # loop round a letter turns its corners with tightly packed stitches, as
+    # the pro does, instead of fanning into spikes"). False is the loop as it
+    # was, byte for byte (`PRE_FLIP`). Set for a plan by
+    # `stage6_border.loop_mitre_scope`.
     # Tests: `tests/test_outline_loop_mitre.py`.
-    outline_loop_mitre: bool = False
+    outline_loop_mitre: bool = True
     # With `silhouette_underfill`, a ring that hosts its own under-fill gets
     # the fill's outer edge sewn as one closed satin loop, after the fill and
     # in its colour (2026-10-25, built OFF; `stage6_border.underfill_rim_runs`).

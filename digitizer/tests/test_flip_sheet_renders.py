@@ -201,7 +201,6 @@ def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
     from digitizer_core import PipelineConfig
     prs = {f: fsr.FLAGS[f]["pr"] for f in fsr.WAVE3}
     assert prs == {"lettering_columns_apex_cut": 1088, "text_cluster_part_touching": 1080,
-                   "outline_loop_mitre": 1093, "fine_bars_satin": 1101,
                    "silhouette_underfill_rim": 1096, "keyline_fold_slivers": 1102,
                    "skip_covered_shapes": 1102, "lettering_columns_italic_lean": 1079,
                    "monoline_script_satin": 1063, "fill_section_travel": 1091,
@@ -221,6 +220,9 @@ def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
               "silhouette_underfill_panels", "small_text_bay_mouth"):
         assert f not in fsr.WAVE3
     assert cfg.small_text_bay_mouth is True and "small_text_bay_mouth" in fsr.FLAGS
+    # ... and the two Kent flipped from this sheet, 2026-10-26: off the list, rows kept, ON
+    for f in ("outline_loop_mitre", "fine_bars_satin"):
+        assert f not in fsr.WAVE3 and f in fsr.FLAGS and getattr(cfg, f) is True, f
 
 
 def test_every_flag_has_a_kind():
