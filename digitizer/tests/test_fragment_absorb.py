@@ -200,9 +200,10 @@ def test_off_never_reaches_the_new_code(monkeypatch):
     _plan(OFF)
 
 
-# Captured on origin/main 7995d515, before the flag existed (the same
-# fixture planned by that tree's `plan_stitches`).
-OFF_MD5 = "93082348a3008bed0fd546247a3befd2"
+# Captured on origin/main b19dee77, which has no `fragment_absorb` (the same
+# fixture planned by that tree's `plan_stitches`). First captured on
+# 7995d515 (93082348...); #1057's flips moved the base plan, not this flag.
+OFF_MD5 = "e16ecce05b081f67fb5eb9123d6e68b7"
 
 
 def test_off_is_the_plan_without_the_pass(monkeypatch):
