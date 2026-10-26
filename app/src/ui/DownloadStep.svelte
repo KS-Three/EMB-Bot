@@ -12,6 +12,7 @@
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
   import { MACHINES, machineById, loadMachineId, saveMachineId } from "../lib/machines.js";
   import { friendlyError } from "../lib/friendlyError.js";
+  import { blocksDownload } from "../lib/staleness.js";
 
   // "Your machine" (2026-09-30): the customer picks the brand on the front
   // of their machine and gets ONE download button in the format it reads,
@@ -483,6 +484,26 @@
   }
   $: preflightBlocks = blockFindingsOf(project);
 
+  // ---- Stitches behind their settings: Download waits for the run ------
+  //
+  // The two confirms above never saw that the stitches on the canvas can be
+  // from before the customer's last change: a corner drag from 80 to 62 mm
+  // keeps every stitch on 0.6x the area (1.66x the thread per mm²), and a
+  // garment switched after the run leaves the file carrying the first
+  // garment's request. Kent's
+  // call 2026-10-25, "block until re-digitized": the machine-file buttons stay
+  // disabled while ANY digitized element is behind (lib/staleness.js, the same
+  // rule as the Digitize panel's button and the field's hatch), and the run
+  // button on the Content step is lit. No text here — his no-warnings ruling
+  // of 2026-10-02 — and nothing re-runs by itself: the run is his customer's
+  // click (2026-10-05).
+  //
+  // Scoped like the hoop gate, and for the same reason: PNG is a picture and
+  // the PDF worksheet a reference sheet, neither a file a machine stitches.
+  // A lock, not a confirm: a confirm would be a one-click way round it, and
+  // the cure for stale stitches is to make them current.
+  $: behind = blocksDownload(project, digitizerHealth);
+
   // The format the confirm is holding, or null when it is closed. Holding the
   // FORMAT rather than a boolean is what lets one dialog serve every button
   // without a second piece of state to keep in step.
@@ -491,6 +512,10 @@
   let confirmOpener = null;
 
   function askThenDl(fmt) {
+    // The buttons are disabled while the stitches are behind, so this is
+    // belt and braces: it is the one door every machine file goes through,
+    // and a click dispatched at a disabled button must still write nothing.
+    if (behind) return undefined;
     // `hoopFitNote` is silent when the design fits, when no hoop is known, and
     // when it only needs rotating — so the dialog appears on exactly the case
     // it is for, and every other download is one click as before. Preflight's
@@ -657,7 +682,7 @@
       type="button"
       class="primary machinepick-btn"
       data-testid="machine-download"
-      disabled={!machineFmtAvailable}
+      disabled={!machineFmtAvailable || behind}
       on:click={() => askThenDl(machine.format)}
     >Download {machine.format.toUpperCase()} for {machine.label}</button>
     {#if !machineFmtAvailable}
@@ -689,9 +714,9 @@
   </div>
 {/if}
 <div class="formats">
-  <button class:primary={!machine} on:click={() => askThenDl("dst")}>DST</button>
-  <button on:click={() => askThenDl("pes")}>PES</button>
-  <button on:click={() => askThenDl("exp")}>EXP</button>
+  <button class:primary={!machine} disabled={behind} on:click={() => askThenDl("dst")}>DST</button>
+  <button disabled={behind} on:click={() => askThenDl("pes")}>PES</button>
+  <button disabled={behind} on:click={() => askThenDl("exp")}>EXP</button>
   <!-- Same caveat convention the DST button above documents: the name stays
        exactly "JEF" so voice control and every existing query still reach it,
        the asterisk is the sighted marker and is aria-hidden, and the note
@@ -700,7 +725,7 @@
     data-testid="jef-button"
     class:caveat={jefHoopNote}
     aria-describedby={jefHoopNote ? "jef-hoop-note" : undefined}
-    disabled={!jefAvailable}
+    disabled={!jefAvailable || behind}
     title={jefTitle}
     on:click={() => askThenDl("jef")}
   >JEF{#if jefHoopNote}<span class="caveat-mark" aria-hidden="true">*</span>{/if}</button>
@@ -712,17 +737,17 @@
        caveat. -->
   <button
     data-testid="xxx-button"
-    disabled={!xxxAvailable}
+    disabled={!xxxAvailable || behind}
     title={xxxTitle}
     on:click={() => askThenDl("xxx")}
   >XXX</button>
   <button
     data-testid="vp3-button"
-    disabled={!vp3Available}
+    disabled={!vp3Available || behind}
     title={vp3Title}
     on:click={() => askThenDl("vp3")}
   >VP3</button>
-  <button on:click={() => askThenDl("svg")}>SVG</button>
+  <button disabled={behind} on:click={() => askThenDl("svg")}>SVG</button>
   <button on:click={dlPNG}>PNG</button>
   <button on:click={dlWorksheet} disabled={worksheetBusy}>PDF worksheet</button>
 </div>

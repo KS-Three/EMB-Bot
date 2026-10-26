@@ -16,7 +16,8 @@ so tesseract cannot read the art either), and 4 mm (Becker, Fremont FREMONT ours
 0.00 vs pro 1.00). The instrument is COARSE: most cells saturate at 1.00, so it is a
 tripwire for "reads / does not read", not a grade.
 
-**What it could not do.** MFab scores NOTHING (all 8 cells not located): the lettering
+**What it could not do (CLOSED 2026-10-25: see [[word-legibility-reach-2026-10-25]]; every pinned
+word is now located, and a finer `reach` number exists).** MFab scored NOTHING (all 8 cells not located): the lettering
 is white keyline on the art's white ground, so the art word mask and the thread
 disagree (best match costs 2.3-2.5 > 2.0). Pro 1895 / STAY / PLAY (Fremont) and
 SPRAY FOAM (ProSeal) are not located either: the pro sews them bigger, bolder and

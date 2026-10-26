@@ -425,6 +425,31 @@ def test_a_lines_cc_is_over_the_words_both_files_scored_weighted_by_letters():
     assert p["v"] == pytest.approx((0.5 * 5 + 1.0 * 7) / 12, abs=1e-3)
 
 
+def test_a_lines_reach_is_the_same_mean_over_the_words_both_files_have_a_reach_for():
+    r = lambda cc, reach: {"cc": cc, "raw": 0.9, "reach": reach}          # noqa: E731
+    got = {"HOTEL": {"ours": r(1.0, 4.0), "pro": r(1.0, 3.0), "why": {}},
+           "FREMONT": {"ours": r(1.0, 2.0), "pro": r(1.0, 5.0), "why": {}},
+           "EST": {"ours": r(1.0, None), "pro": r(1.0, 2.0), "why": {}}}   # no ladder was read for ours' EST
+    o, p = lb.line_cc(["HOTEL", "FREMONT", "EST"], got, "reach")
+    assert o["w"] == p["w"] == 12                                          # EST is in neither: one file has no reach
+    assert o["v"] == pytest.approx((4.0 * 5 + 2.0 * 7) / 12, abs=1e-3)
+    assert p["v"] == pytest.approx((3.0 * 5 + 5.0 * 7) / 12, abs=1e-3)
+    both = lb.line_cc(["EST"], got, "reach")[0]
+    assert both["v"] is None and "EST: no reach in ours" in both["why"]
+    assert lb.line_cc(["HOTEL", "FREMONT"], got)[0]["v"] == pytest.approx(1.0)       # the default is still cc
+
+
+def test_the_reach_column_is_a_board_metric_and_an_old_board_without_it_still_renders():
+    assert lb.METRICS["reach"][1] == "mean"
+    cells = lb.cells(sample_lines())
+    assert cells["ALL"]["<4"]["reach"]["ours"] is None and cells["ALL"]["<4"]["reach"]["why"] == "not read"
+    board = {"meta": {"date": "2026-10-25"}, "lines": sample_lines(),
+             "cells": {k: {b: {m: v for m, v in c.items() if m != "reach"} for b, c in bands.items()}
+                       for k, bands in cells.items()}}
+    md = lb.render_md(board)                      # a board written before `reach` existed has no cell for it
+    assert "word legibility reach (octaves)" in md and "not on this board" in md
+
+
 def test_a_line_whose_words_nobody_scored_is_n_a_and_names_each_word_and_file():
     got = {"EST": {"ours": _row(1.0), "pro": None, "why": {"pro": "not located: best match costs 2.3 (> 2.0)"}}}
     o, p = lb.line_cc(["EST"], got)
