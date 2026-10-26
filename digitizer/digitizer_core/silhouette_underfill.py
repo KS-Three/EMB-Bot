@@ -65,6 +65,25 @@ ON_RING_MAX = 0.25
 #: the holes must hold shapes: their sewn inner shapes cover this share of
 #: the holes' area (MFab 0.8+, Becker with its letters sewn 0.9+)
 HOLES_HELD_MIN = 0.5
+#: a shape of the under-fill's colour that inner shapes of OTHER colours cover
+#: this much of is never merged: they sew on top of the under-fill, so it
+#: cannot stand in for the shape there -- Fremont's white star (0.22 mm2) lies
+#: under the black state's fill, and merged into the white ground it was sewn
+#: over in black; unmerged it sews on its own, on top, as it does with the
+#: under-fill off. MFab's black letters sit in the HOLES of the white keyline
+#: field (covered 0.0) and merge as before.
+COVERED_KEEP_MIN = 0.5
+#: a LETTER host (the ring's colour loses: Becker's white letters) fills no
+#: further than the ring's black reaches, less this share of a loop's width:
+#: the ring's art outline sews loops of its width round the holes
+#: (`border_from_outline`), and on BECKER's lower band the art runs 2-4 mm past
+#: them (the drop shadow) -- an outline filled to its edge sewed white there,
+#: outside the black (~15 mm2 on the large sizes, 7-8 on the small). The loops'
+#: reach is pulled in at its OUTER edge only, so the fill stays one piece
+#: across the bars between letters (cut at half a loop round each letter it
+#: split, 6 -> 19 trims on Becker hat large), and half a width leaves the
+#: stage-5 pull growth under the black too.
+LETTER_HOST_INSET_W = 0.5
 
 #: every tag a lettering lane reads a shape by: a lettering RING (an O round
 #: a dot) is the lettering lane's, never a silhouette
@@ -211,9 +230,16 @@ def _inner(ring, regions, used: set[str]):
     return outline, out
 
 
-def plan(regions, unsewn=(), riders=()):
+def plan(regions, unsewn=(), riders=(), outlines=None):
     """-> [(ring, host, outline, merged ids, inner shapes)] for every ring
     this reads, the biggest first; a shape serves one ring at most.
+
+    A shape of the under-fill's colour that inner shapes of other colours
+    cover (`COVERED_KEEP_MIN`) is never merged. `outlines`
+    (`art_outline.find_art_outlines`' {outline id: [(body id, hole, width)]}):
+    a LETTER host under a ring that is an art outline fills no further than
+    the loops reach, less `LETTER_HOST_INSET_W` of their width. None: the
+    whole outline, as before.
 
     `unsewn` are the shapes left as garment on purpose (enclosed background,
     a review `stitched: false`): the outline is cut back off them, so the
@@ -249,6 +275,11 @@ def plan(regions, unsewn=(), riders=()):
         same = [r for r in inner if r.thread_index == colour
                 and str(r.meta.get("tier", "auto")).lower() == "auto"
                 and r.shape_id not in riders]
+        others = [r.polygon for r in inner if r.thread_index != colour]
+        if others:
+            over = unary_union(others)
+            same = [r for r in same
+                    if r.polygon.intersection(over).area < COVERED_KEEP_MIN * r.polygon.area]
         if ring.thread_index != colour and not same:
             continue
         if ring.thread_index == colour:
@@ -257,6 +288,13 @@ def plan(regions, unsewn=(), riders=()):
         else:
             host = max(same, key=lambda r: r.polygon.area)
             merged = [r.shape_id for r in same if r is not host]
+            bodies = (outlines or {}).get(ring.shape_id)
+            if bodies:
+                loops = unary_union([hole.buffer(w) for _b, hole, w in bodies])
+                inset = LETTER_HOST_INSET_W * max(w for _b, _h, w in bodies)
+                reach = unary_union([loops.buffer(-inset)]
+                                    + [Polygon(h) for h in ring.polygon.interiors])
+                outline = outline.intersection(reach)
         out.append((ring, host, outline, merged, inner))
         used.update({ring.shape_id, host.shape_id, *(r.shape_id for r in inner)})
     return out
@@ -356,7 +394,7 @@ def apply_cfg(regions, unsewn, cfg, outlines):
             and cfg.border_from_outline):
         riders = find_riders(regions, unsewn, outlines)
     if not riders:
-        out, report = apply(regions, unsewn)
+        out, report = apply(regions, unsewn, outlines=outlines)
         return out, report, outlines
     gone = set(riders)
     outlines = {oid: [b for b in bodies if b[0] not in gone]
@@ -379,7 +417,7 @@ def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0)
     by `overlap_mm`, so the black still tucks under its edge), and the riders
     sew in a layer of their own right after the field's -- black, white,
     black. Empty: as before, byte for byte."""
-    rings = plan(regions, unsewn, riders)
+    rings = plan(regions, unsewn, riders, outlines)
     if not rings:
         return regions, []
     panels = _panels(regions, set(riders), outlines, overlap_mm) if riders else {}
