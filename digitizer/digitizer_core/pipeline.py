@@ -1722,7 +1722,11 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
     # fill reads it from here, so a `stitch_shape` call outside a plan is the
     # engine as it was.
-    with apex_cut_scope(cfg.lettering_columns_apex_cut), fill_section_travel.enabled(cfg):
+    # `cfg.outline_loop_mitre` (built OFF 2026-10-25): `stage6_border`'s
+    # loops read no config either, the same way
+    from .stage6_border import loop_mitre_scope
+    with apex_cut_scope(cfg.lettering_columns_apex_cut), fill_section_travel.enabled(cfg), \
+            loop_mitre_scope(cfg.outline_loop_mitre):
         return _plan_stitches(result, cfg)
 
 

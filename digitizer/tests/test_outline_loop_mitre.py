@@ -80,6 +80,16 @@ def test_the_scope_sets_the_flag_and_puts_it_back():
         assert sb._LOOP_MITRE.get() is False
 
 
+def test_a_plan_sets_the_flag_from_its_config(monkeypatch):
+    from digitizer_core import pipeline
+    seen = []
+    monkeypatch.setattr(pipeline, "_plan_stitches", lambda _r, _c: seen.append(sb._LOOP_MITRE.get()))
+    pipeline.plan_stitches(object(), PipelineConfig())
+    pipeline.plan_stitches(object(), PipelineConfig(outline_loop_mitre=True))
+    assert seen == [False, True]
+    assert sb._LOOP_MITRE.get() is False
+
+
 def test_off_never_reaches_the_new_code(monkeypatch):
     def boom(*_a, **_k):
         raise AssertionError("outline_loop_mitre code reached with the flag off")
