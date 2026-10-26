@@ -367,6 +367,81 @@ def is_thin_stem(poly, min_long_mm: float,
         and long_side / short_side >= STEM_MIN_ASPECT
 
 
+# `cfg.fine_bars_satin` (built OFF 2026-10-25): a free-standing thin INK bar
+# under the area floor. The pro satins every such bar, at its drawn width
+# plus his ordinary pull, in 5 of 5 artworks that have them (To a T's speed
+# rules, the Precision Drone's AND DRONE rule, Hotel Fremont's separators,
+# Gaulke, Golden Tee: the small-symbols census, 2026-10-25), where the area
+# floor sends ours to a hollow bean ring 0.3-0.7 mm wide. In ours' polygons
+# the targets read aspect 4.8-24.7 (one 1.52 mm stub at 5.3, short side
+# 0.29) against Fremont's rope strands at 3.8 or less and Golden Tee's teal
+# keyline at 4.69, so a bar is a STEM by `STEM_MIN_ASPECT` -- or, the thin
+# margin, anything under a satin cross across (targets 0.38 mm or less,
+# rope 0.59 and up) -- at least two crosses long. An aspect of 2.5 admitted
+# 116 rope strands and the teal fragment (region kappa 0.29); this reached
+# 0.93 over 38 target regions in-sample. No constant of its own.
+def is_fine_bar(region, poly, sewn_neighbours, cfg) -> bool:
+    """A sub-floor shape the pro sews as ONE satin bar (see above).
+
+    All of:
+      * not lettering (`is_lettering`) -- the Column lane's population;
+      * one Polygon, no hole;
+      * at least 2 x `machine.SATIN_MIN_CROSS_MM` long, and a stem
+        (`is_thin_stem`, aspect `STEM_MIN_ASPECT`) or under one cross across;
+      * INK: its thread not within `cfg.enclosed_by_garment_de00` of the
+        garment (`cfg.garment_rgb`, when known), nor the thread of any sewn
+        `enclosed_background` region in `sewn_neighbours`;
+      * not a highlight: not lighter (CIE L*) than EVERY sewn region it
+        touches, where "touches" is within 0.25 mm. A bar that touches no
+        sewn region qualifies (21 of the 38 targets touch nothing).
+
+    `sewn_neighbours`: the design's other sewn Regions, any order; the ones
+    that touch are found here."""
+    from .threads import chart_for
+    if is_lettering(region, cfg):
+        return False
+    if not isinstance(poly, Polygon) or poly.is_empty or poly.interiors:
+        return False
+    long_min = 2.0 * machine.SATIN_MIN_CROSS_MM
+    rect = poly.minimum_rotated_rectangle
+    if not isinstance(rect, Polygon):
+        return False
+    pts = list(rect.exterior.coords)
+    short_side, long_side = sorted((math.dist(pts[0], pts[1]), math.dist(pts[1], pts[2])))
+    if long_side < long_min:
+        return False
+    if not (short_side < machine.SATIN_MIN_CROSS_MM
+            or is_thin_stem(poly, long_min, min_short_mm=0.0)):
+        return False
+    chart = chart_for(cfg)
+    lab = _lab_of(chart[region.thread_index].rgb)
+    if cfg.garment_rgb is not None and \
+            _de00(lab, _lab_of(tuple(cfg.garment_rgb)[:3])) <= cfg.enclosed_by_garment_de00:
+        return False
+    others = [n for n in sewn_neighbours if n.shape_id != region.shape_id]
+    if any(n.meta.get("enclosed_background") and n.thread_index == region.thread_index
+           for n in others):
+        return False
+    near = poly.buffer(0.25)
+    touching = [n for n in others if near.intersects(n.polygon)]
+    if touching and all(lab[0] > _lab_of(chart[n.thread_index].rgb)[0] for n in touching):
+        return False                # a highlight on everything it touches
+    return True
+
+
+def _lab_of(rgb) -> tuple[float, float, float]:
+    import numpy as np
+    from skimage.color import rgb2lab
+    v = rgb2lab(np.array([[rgb]], dtype=float) / 255.0)[0, 0]
+    return float(v[0]), float(v[1]), float(v[2])
+
+
+def _de00(a, b) -> float:
+    import numpy as np
+    from skimage.color import deltaE_ciede2000
+    return float(deltaE_ciede2000(np.array(a), np.array(b)))
+
+
 # `cfg.lettering_columns_icon_guard`: a house-group-only shape whose medial
 # axis is a TANGLE is a piece of drawing, not a letter. Neither guard above
 # reaches the phone screenshot's three 4.5-6 mm captures (S4a2d12c4,

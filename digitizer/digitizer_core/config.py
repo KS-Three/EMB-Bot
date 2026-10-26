@@ -1841,6 +1841,26 @@ class PipelineConfig:
     # Whether a 4.8 mm satin dot holds on a cap is the same gate-1 question
     # the rule above carries. Off, byte-identical (tests/test_compact_solids_satin.py).
     compact_solids_satin: bool = False
+    # Fine ink bars sew satin (`columns.is_fine_bar`, built OFF 2026-10-25,
+    # Kent: "measure what the pro does with small symbols and fine line art
+    # ... then propose a rule to build OFF"). The pro sews every free-standing
+    # thin ink bar as ONE satin at its drawn width plus his ordinary pull
+    # (about 0.86-1.10 mm of needle) in all 5 artworks that have them (To a
+    # T, Precision Drone, Hotel Fremont, Gaulke, Golden Tee); ours sends every
+    # bar under the area floor (`min_detail_mm`^2) to a hollow bean ring, so a
+    # parallel set of speed rules sews half bold, half thin. ON, a non-
+    # lettering, hole-free, ink-coloured stem under the floor -- aspect
+    # `STEM_MIN_ASPECT` or under one `SATIN_MIN_CROSS_MM` across, not lighter
+    # than everything it touches -- skips the run rescue for the ordinary
+    # satin tier, ahead of the hairline tier; `small_solids_satin` keeps the
+    # shapes it would take; no satin out of it falls back to the ring exactly.
+    # 38 target regions (To a T x4 30, Fremont separators 4, drone 2, MFab's
+    # LLC hairlines 2) and region kappa 0.93 in-sample; tests
+    # `tests/test_fine_bars_satin.py`. No width, pull, density or stitch
+    # length moves: whether a 1 mm bar holds on a cap is the sew-out question
+    # `small_solids_satin` already carries (gate 1). Layout (ruling 2026-10-22:
+    # judged in the preview). OFF is the engine as it was, byte for byte.
+    fine_bars_satin: bool = False
     # The pro's size rule for borders (2026-10-23, built OFF;
     # `docs/border-census-2026-10-23.md`). Over 16 paired designs the pro
     # rings about 1% of closed shapes under 2 mm, 7% at 2-4, 29% at 4-6 and

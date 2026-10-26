@@ -65,7 +65,7 @@ from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
-from .columns import (is_lettering, is_thin_stem, lettering_columns_shape,
+from .columns import (is_fine_bar, is_lettering, is_thin_stem, lettering_columns_shape,
                       small_print_clear,
                       small_print_counter_set, small_print_counters)
 from .words import is_text, word_key
@@ -2682,6 +2682,23 @@ def sequence(
     # exists so a towel's pull cannot flip a tier, and that stays true of
     # everything but this population); with the flag off nothing carries the
     # tag, so the ladder is byte-identical.
+    # `cfg.fine_bars_satin` (built OFF, 2026-10-25): a free-standing thin
+    # INK bar under the area floor (`columns.is_fine_bar`) skips the run
+    # rescue and takes the ordinary ladder to the satin tier, as the pro
+    # sews it; `stitch_one` falls back to today's ring if no satin comes
+    # out. Both ON, `small_solids_satin` tries first and keeps every shape
+    # it sews. Off, the set is empty and `routes_to_run` is today's.
+    fine_bars: set[str] = set()
+    if cfg.fine_bars_satin and cfg.satin and rescue:
+        _sewn = [_pr.region for _pr in planned]
+        for _pr in planned:
+            if (str(_pr.region.meta.get("tier", "auto")).lower() == "auto"
+                    and _pr.region.polygon.area < detail_mm2
+                    and not widened_lettering(_pr.region)
+                    and is_fine_bar(_pr.region, _pr.region.polygon, _sewn, cfg)):
+                fine_bars.add(_pr.shape_id)
+    fine_bar_trying: set[str] = set()
+
     def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
         wt = _word_tier(pr.region, cfg)
         if pr_tier == "auto" and wt == "run":
@@ -2693,6 +2710,8 @@ def sequence(
                 and is_lettering(pr.region, cfg)
                 and is_thin_stem(pr.region.polygon, cfg.min_detail_mm)):
             return False                # a lettering STEM under the area floor: the Column lane
+        if pr_tier == "auto" and pr.shape_id in fine_bars:
+            return False                # a fine ink bar: the satin tier (`is_fine_bar`)
         return pr_tier == "run" or (pr_tier == "auto" and rescue
                                     and pr.region.polygon.area < detail_mm2
                                     and not widened_lettering(pr.region))
@@ -2990,7 +3009,41 @@ def sequence(
             # (`rest_planned`) goes down the ladder below as a shape of its
             # own, FIRST — the hairlines are laid over it, like a strand over
             # any ground.
+            # `cfg.fine_bars_satin`: a fine bar goes down the ladder below
+            # ONCE (`fine_bar_trying`), the hairline tier skipped; satin out
+            # of it is the bar, anything else becomes today's ring exactly
+            # -- the run rung's own call -- so no mark is lost.
+            if tier == "auto" and p.shape_id in fine_bars and p.shape_id not in fine_bar_trying:
+                if cfg.small_solids_satin and is_small_solid(p.region.polygon, profile_for(p).width_mm):
+                    # both ON: `small_solids_satin` first, as its rung would
+                    runs, report = small_solid_satin(
+                        p.region.polygon, p.shape_id, spacing_mm=satin_spacing_for(p),
+                        max_width_mm=_satin_ceiling_for(p.region, cfg, satin_max)[0],
+                        start_near=entry)
+                    if not report["empty"]:
+                        report["small_solid"] = 1
+                        return runs, report, False
+                fine_bar_trying.add(p.shape_id)
+                try:
+                    runs, report, filled = stitch_one(p, entry, exit_near)
+                finally:
+                    fine_bar_trying.discard(p.shape_id)
+                if any(r.kind == stitches.SATIN for r in runs):
+                    report["fine_bar_satin"] = report.get("fine_bar_satin", 0) + 1
+                    return runs, report, filled
+                ring, ring_rep = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
+                                             entry=entry, trim_at_mm=trim_at,
+                                             soft_vertices=cfg.run_soft_vertices,
+                                             **({"dot_rung": True} if cfg.small_dot_rung and (
+                                                 not cfg.small_dot_rung_lettering
+                                                 or p.region.meta.get("dot_rung")) else {}))
+                if ring_rep["empty"]:
+                    return runs, report, filled
+                ring_rep["as_run"] = 1
+                ring_rep["fine_bar_fallback"] = 1
+                return ring, ring_rep, False
             if (tier == "auto" and cfg.hairline and p.shape_id in hairline
+                    and p.shape_id not in fine_bars
                     and not p.region.meta.get(HAIRLINE_REST_KEY)):
                 prof = profile_for(p)
                 hm = hairline[p.shape_id]
