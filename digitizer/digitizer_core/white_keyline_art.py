@@ -29,7 +29,13 @@ exists: a design with no enclosed background holding a hole pays nothing.
 THE RECIPE (`RECIPE`): `silhouette_underfill`, `sew_enclosed_white`,
 `enclosed_white_keyline`, `silhouette_underfill_panels`, `outline_loop_mitre`
 and `silhouette_underfill_rim` -- the five switches of #1094's flip sheet plus
-the under-fill's rim (#1096), all ON together.
+the under-fill's rim (#1096) -- and, from Kent's ruling of 2026-10-26 on the
+wave-3 flip sheet ("MFab extras into the gate"), `keyline_fold_slivers` and
+`skip_covered_shapes` (#1102), all ON together. Both act in `plan_stitches`.
+The ruling's third extra, `cfg.extra["absorb_fragments"]` (#1100), is held
+out: with the recipe it drops the white field's panel fill under AND /
+WELDING / LLC, leaving bare garment in their counters (MFab LC 12.5 mm2 new
+bare, alone or with the others; `docs/gate-mfab-extras-2026-10-26.md`).
 
 The verdict is carried on the result (`PipelineResult.white_keyline_art`) and
 folded into the config at each later entry point (`apply`), as stage 1.25's
@@ -44,7 +50,8 @@ from dataclasses import replace
 from shapely.geometry import Polygon
 
 RECIPE = ("silhouette_underfill", "sew_enclosed_white", "enclosed_white_keyline",
-          "silhouette_underfill_panels", "outline_loop_mitre", "silhouette_underfill_rim")
+          "silhouette_underfill_panels", "outline_loop_mitre", "silhouette_underfill_rim",
+          "keyline_fold_slivers", "skip_covered_shapes")
 
 
 def detect(regions, cfg) -> bool:

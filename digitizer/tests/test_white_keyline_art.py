@@ -86,6 +86,15 @@ def test_the_recipe_is_every_switch_on():
                                "silhouette_underfill_panels", "outline_loop_mitre"}
 
 
+def test_the_mfab_extras_ride_the_gate_kent_2026_10_26():
+    # "MFab extras into the gate": the sliver fold, the covered-shape skip and
+    # the black outer edge, on MFab-type art only. Fragment absorb is held out:
+    # with the recipe it bares the counters under the riders (the PR's doc)
+    assert {"keyline_fold_slivers", "skip_covered_shapes", "silhouette_underfill_rim"} <= set(wka.RECIPE)
+    from digitizer_core import fragment_absorb
+    assert not fragment_absorb.enabled(wka.apply(ON, True))
+
+
 def test_the_gates_plan_is_the_recipes(monkeypatch):
     from digitizer_core.pipeline import BackgroundInfo, PipelineResult, plan_stitches
 
