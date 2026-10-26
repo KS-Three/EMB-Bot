@@ -20,6 +20,7 @@ from digitizer_core import PipelineConfig, machine
 from digitizer_core.pipeline import plan_stitches, run_stages
 from digitizer_core.stage6_border import run_outline
 from digitizer_core.stage6_hairline import hairline_runs, measure, stitch_path
+from tests.conftest import WAVE3_2026_10_26_OFF
 
 SYN = Path(__file__).resolve().parent.parent / "testdata" / "synthetic"
 P40 = machine.thread_profile(40)
@@ -135,7 +136,10 @@ def test_against_todays_run_tier_on_one_strand():
 
 
 def test_off_is_the_default_and_on_routes_the_script_through_the_tier():
-    cfg = dict(target_width_mm=60.0, forced_class="flat")
+    # on the engine before Kent's 2026-10-26 wave-3 flips: `fine_bars_satin`
+    # takes 27 of this script's thin strokes as satin AHEAD of the hairline
+    # tier (its precedence by design), and this test is about the tier
+    cfg = dict(target_width_mm=60.0, forced_class="flat", **WAVE3_2026_10_26_OFF)
     result = run_stages(SYN / "thin_script.png", PipelineConfig(**cfg))
     off = plan_stitches(result, PipelineConfig(**cfg))
     on = plan_stitches(result, PipelineConfig(**cfg, hairline=True))

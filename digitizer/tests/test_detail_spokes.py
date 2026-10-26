@@ -38,7 +38,7 @@ from digitizer_core.stitches import RUN, StitchBlock, StitchRun
 from digitizer_core.threads import chart_for, rgb_to_lab
 from digitizer_core.warnings_codes import DETAIL_SPOKES_SEWN
 
-from .conftest import LETTERING_2026_10_24_OFF, TESTDATA
+from .conftest import LETTERING_2026_10_24_OFF, TESTDATA, WAVE3_2026_10_26_OFF
 
 
 def test_flag_defaults_on_since_kents_flip_and_the_floor_scales_from_the_pros():
@@ -467,14 +467,16 @@ _BEAN_PIN = {"bean_letter_straight_mm": None, **FLIP_2026_10_23}
 def fremont_off():
     from tools import fremont_triage as ft
     return ft.run_arm("main", 80.0, None, preflight=False,
-                      overrides={"detail_spokes": False, **_BEAN_PIN, **LETTERING_2026_10_24_OFF})
+                      overrides={"detail_spokes": False, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
+                                 **WAVE3_2026_10_26_OFF})   # fine bars moves Fremont's separators
 
 
 @pytest.fixture(scope="module")
 def fremont_on():
     from tools import fremont_triage as ft
     return ft.run_arm("main", 80.0, None, preflight=False,
-                      overrides={"detail_spokes": True, **_BEAN_PIN, **LETTERING_2026_10_24_OFF})
+                      overrides={"detail_spokes": True, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
+                                 **WAVE3_2026_10_26_OFF})
 
 
 def test_test_environment_caps_ipp_at_avx2():
