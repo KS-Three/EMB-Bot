@@ -491,14 +491,17 @@ def loop_mitre_scope(on: bool):
 # His MFab white is a few long satin chains; each loop is walked into from the
 # last, and 96-100% of every walk lies under white he sews after it
 # (`docs/keyline-loop-chain-2026-10-26.md`). Ours lifted loop to loop (hat
-# 9, LC 9 satin-to-satin cuts against his 5 / 6): each loop ends where it
-# began, at the point nearest the loop before, so the next loop is 7-22 mm
-# away across finished thread. Chained, each loop STARTS (and so ends) where
-# it comes nearest the loop sewn after it, and the walk into a loop is routed
-# under the loops still to sew (`monoline.bury_hops`: at most
-# `BURY_EXPOSED_MAX_MM` outside them, no longer than the satin walk's own cap)
-# -- under its own satin round to its start, the pro's walk. Only where no
-# buried walk exists does the band bridge (`travel_path`) or the cut stay.
+# 11, LC 9 white-loop cuts with the recipe's trim flags, against his 5 / 6):
+# each loop ends where it began, at the point nearest the loop before, so the
+# next loop is 7-22 mm away across finished thread. Chained, each loop STARTS
+# (and so ends) where it comes nearest the loop sewn after it, and the hop
+# into a loop is walked under the loops still to sew (`_bury_walks`, after
+# `monoline.bury_hops`: at most `BURY_EXPOSED_MAX_MM` outside them, no longer
+# than max(20, 4 x direct)) -- under its own satin round to its start, the
+# pro's walk. Where no buried walk exists the needle lifts (a cut past
+# `trim_at_mm`), never a bridge across finished thread. The band's first loop
+# is entered where it was (band bridge or lift) and walked round under its own
+# satin to its chained start; with no such walk it is the loop as it was.
 # Set for a plan by `loop_chain_scope`.
 _LOOP_CHAIN: contextvars.ContextVar[bool] = contextvars.ContextVar("loop_chain", default=False)
 
@@ -1095,53 +1098,45 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
         if not ring_pts:
             continue
         k_tan = max(1, int(round(half / step)))
-        mitre = _LOOP_MITRE.get()       # `cfg.outline_loop_mitre` (built OFF)
-        # `cfg.keyline_loop_chain` (built OFF): the loop starts where it comes
-        # nearest the next one -- so it ends there too -- when the walk into
-        # that start lies under its own satin (`_walk_into`); else it is the
-        # loop as it was, started nearest the needle
-        walk = lift = None
-        if chain and cursor is not None:
-            start_at = cursor
-            if rings:
-                here = LineString(coords)
-                nxt = min(range(len(rings)), key=lambda j: (
-                    round(LineString(rings[j][0]).distance(here), 6), j))
-                start_at = nearest_points(here, LineString(rings[nxt][0]))[0].coords[0]
-            cand = _satin_loop(ring_pts, total, total / n, width, side, start_at, k_tan,
-                               clamp=clamp, exact=exact, mitre=mitre)
-            if len(cand[0]) >= 2:
-                walk = _walk_into(cursor, cand[0], shape_id)
-                if walk is None and not runs and rings:
-                    # the band's first loop: when the needle lifts into it
-                    # anyway, it starts at the chained point all the same
-                    orig = _satin_loop(ring_pts, total, total / n, width, side, cursor,
-                                       k_tan, clamp=clamp, exact=exact, mitre=mitre)
-                    if len(orig[0]) >= 2 and travel_path(band, None, cursor, orig[0][0]) is None:
-                        lift = cand
-            if walk is not None or lift is not None:
-                pts, crosses, clamped = cand
-        if walk is None and lift is None:
-            # `cfg.outline_loop_mitre` (built OFF): the letter's convex corners mitred
-            pts, crosses, clamped = _satin_loop(ring_pts, total, total / n, width,
-                                                side, cursor, k_tan, clamp=clamp,
-                                                exact=exact, mitre=mitre)
+        start_at = cursor
+        if chain and rings:
+            # `cfg.keyline_loop_chain` (built OFF): the loop starts where it
+            # comes nearest the loop sewn after it, so it ends there too
+            here = LineString(coords)
+            nxt = min(range(len(rings)), key=lambda j: (
+                round(LineString(rings[j][0]).distance(here), 6), j))
+            start_at = nearest_points(here, LineString(rings[nxt][0]))[0].coords[0]
+        # `cfg.outline_loop_mitre` (built OFF): the letter's convex corners mitred
+        pts, crosses, clamped = _satin_loop(ring_pts, total, total / n, width, side,
+                                            start_at, k_tan, clamp=clamp, exact=exact,
+                                            mitre=_LOOP_MITRE.get())
+        walk = None
+        if chain and not runs and cursor is not None and len(pts) >= 2:
+            # the band's first loop is entered where it was, then walked
+            # round under its own satin to the chained start; with no such
+            # walk it is the loop as it was
+            was = _satin_loop(ring_pts, total, total / n, width, side, cursor, k_tan,
+                              clamp=clamp, exact=exact, mitre=_LOOP_MITRE.get())
+            walk = _walk_into(was[0][0], pts, shape_id) if len(was[0]) >= 2 else None
+            if walk is None:
+                pts, crosses, clamped = was
         if len(pts) < 2:
             continue
         jump = trim = False
-        if walk is not None:
-            if walk:
-                runs.append(StitchRun(points=walk, kind=stitches.TRAVEL, shape_id=shape_id))
-        elif lift is not None:
+        if chain and runs:
+            # loop to loop the needle lifts here; `_bury_walks` below walks
+            # it under the loops still to sew where it can, else it stays a
+            # lift -- no bridge across finished thread
             d = math.dist(cursor, pts[0])
             if d >= machine.TINY_STITCH_MM:
                 jump = True
                 trim = d > trim_at_mm
                 report["jumps"] += 1
         elif cursor is not None:
-            bridge = travel_path(band, None, cursor, pts[0])
+            to = walk[0] if walk else pts[0]
+            bridge = travel_path(band, None, cursor, to)
             if bridge is None:
-                d = math.dist(cursor, pts[0])
+                d = math.dist(cursor, to)
                 if d >= machine.TINY_STITCH_MM:
                     jump = True
                     trim = d > trim_at_mm
@@ -1149,6 +1144,10 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
             elif len(bridge) > 1:
                 runs.append(StitchRun(points=bridge[:-1], kind=stitches.TRAVEL,
                                       shape_id=shape_id))
+        if walk:
+            runs.append(StitchRun(points=walk, kind=stitches.TRAVEL, jump=jump, trim=trim,
+                                  shape_id=shape_id))
+            jump = trim = False
         if underlay:
             centre = _keyline_centre(pts)
             if len(centre) > 2:
@@ -1163,21 +1162,18 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
         report["crosses"] += crosses
         report["clamped"] += clamped
     if chain and runs:
-        # a lift left between loops: walked under the loops still to sew
-        # where it can be, else as it was (the band bridge or the cut above)
         report["jumps"] -= _bury_walks(runs)
     report["empty"] = not runs
     return runs, report
 
 
-def _walk_into(cursor, pts: list[tuple[float, float]], shape_id: str):
-    """`cfg.keyline_loop_chain`: the walk from the needle into a loop that
-    starts at `pts[0]`, wholly under that loop's own satin (`_bury_walks`'
-    rule) -> its stitches, [] when the needle is already there, None when no
-    such walk exists."""
-    if math.dist(cursor, pts[0]) < machine.TINY_STITCH_MM:
+def _walk_into(at, pts: list[tuple[float, float]], shape_id: str):
+    """`cfg.keyline_loop_chain`: the walk from `at` to a loop that starts at
+    `pts[0]`, under that loop's own satin (`_bury_walks`' rule) -> its
+    stitches, [] when `at` is already there, None when no such walk exists."""
+    if math.dist(at, pts[0]) < machine.TINY_STITCH_MM:
         return []
-    probe = [StitchRun(points=[tuple(cursor)], kind=stitches.TRAVEL, shape_id=shape_id),
+    probe = [StitchRun(points=[tuple(at)], kind=stitches.TRAVEL, shape_id=shape_id),
              StitchRun(points=stitches.split_long_moves(pts), kind=stitches.SATIN,
                        jump=True, shape_id=shape_id)]
     _bury_walks(probe)
@@ -1193,7 +1189,8 @@ def _bury_walks(runs: list[StitchRun]) -> int:
     (`COVERAGE_THREAD_W_MM`), so the walk's whole thread, not only its
     centreline, lies under the satin -- a route hugging a loop's edge reads
     exposed to `tools/travel_cover` (2.9 mm on one MFab hat walk) where the
-    satin's own raster calls it covered."""
+    satin's own raster calls it covered. A walk a few tenths inside a rail can
+    still read exposed there: its 1 mm cell is mostly off the satin."""
     import numpy as np
     from skimage.graph import route_through_array
     from scipy.ndimage import binary_erosion
