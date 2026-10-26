@@ -53,7 +53,7 @@ rim (#1096) included.
   with old md5s.
 
 **The MFab extras (Kent 2026-10-26, "MFab extras into the gate", then "Hold
-all four").** `keyline_fold_slivers`, `skip_covered_shapes` and
+all four", then on the fixed numbers "All four (Recommended)").** `keyline_fold_slivers`, `skip_covered_shapes` and
 `cfg.extra["absorb_fragments"]` (`RECIPE_EXTRA`) joined the recipe. MFab DST
 trims: hat 40 -> 30, LC 52 -> 25 (pro 18 / 19).
 

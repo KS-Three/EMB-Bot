@@ -13,6 +13,10 @@
 - Then, once absorb was found to bare the counters: **"Hold all four"**.
   The option read: "Nothing ships until absorb is fixed. Catch: MFab keeps
   40 / 52 trims meanwhile."
+- Then, on the fixed numbers below: **"All four (Recommended)"**. The option
+  read: "Your original pick. Hat trims 40 -> 30 and LC 52 -> 25 (pro 18 /
+  19)... No new bare garment. Catch: absorb adds 3 trims on the hat and saves
+  2 on the LC..."
 
 ## The change
 
