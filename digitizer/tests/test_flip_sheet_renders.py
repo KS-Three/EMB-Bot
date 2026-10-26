@@ -189,3 +189,79 @@ def test_a_row_with_a_third_cell():
     assert fsr._sides(row) == ("off", "on", "also", "pro")
     assert fsr._fmt_on(row).endswith("ON + MITRE: 3 st / 4 tr / y")
     assert fsr._sides({"on": {}}) == ("off", "on", "pro")
+
+
+# ---- wave 3 sheet (2026-10-26) -----------------------------------------------------------------
+
+def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
+    from digitizer_core import PipelineConfig
+    prs = {f: fsr.FLAGS[f]["pr"] for f in fsr.WAVE3}
+    assert prs == {"lettering_columns_apex_cut": 1088, "text_cluster_part_touching": 1080,
+                   "outline_loop_mitre": 1093, "fine_bars_satin": 1101,
+                   "silhouette_underfill_rim": 1096, "keyline_fold_slivers": 1102,
+                   "skip_covered_shapes": 1102, "lettering_columns_italic_lean": 1079,
+                   "monoline_script_satin": 1063, "fill_section_travel": 1091}
+    cfg = PipelineConfig()
+    for f in fsr.WAVE3:
+        assert fsr.FLAGS[f]["metric"] in fsr.METRICS, f
+        assert fsr.FLAGS[f].get("fixtures"), f
+        if f == "fill_section_travel":       # a cfg.extra key, not a field
+            assert not (cfg.extra or {}).get(f)
+        else:
+            assert getattr(cfg, f) is False, f
+    # the white switches are ruled through the MFab-art gate, not on this sheet
+    for f in ("silhouette_underfill", "sew_enclosed_white", "enclosed_white_keyline",
+              "silhouette_underfill_panels"):
+        assert f not in fsr.WAVE3
+
+
+def test_every_flag_has_a_kind():
+    for f in fsr.FLAGS:
+        assert fsr.flag_kind(f) in ("LAYOUT", "FABRIC"), f
+    for f in ("fill_turn_slant", "fill_underlay_cross", "tie_in_off", "satin_underlay_short_columns"):
+        assert fsr.flag_kind(f) == "FABRIC"
+    assert all(fsr.flag_kind(f) == "LAYOUT" for f in fsr.WAVE3)
+
+
+def test_bridge_is_a_wave_three_fixture():
+    for f in ("outline_loop_mitre", "fine_bars_satin", "silhouette_underfill_rim", "fill_section_travel"):
+        assert {"bridge_hat", "bridge_lc"} <= set(fsr.flag_fixtures(f, None)), f
+
+
+def test_an_extra_key_rides_the_parsed_config_for_one_digitize_only():
+    import json
+
+    import importlib
+    svc = importlib.import_module("digitizer_service.app")
+    from tools import pro_pair as pp
+    raw = json.dumps(pp.request(92.5, "hat_front"))
+    before = svc._parse_config
+    with fsr.config_extra({"fill_section_travel": True}):
+        kw = svc._parse_config(raw)
+        assert kw["extra"]["fill_section_travel"] is True
+    assert svc._parse_config is before
+    assert "fill_section_travel" not in (svc._parse_config(raw).get("extra") or {})
+    with fsr.config_extra(None):
+        assert svc._parse_config is before
+    # the request a cell sends never carries `extra` (the service refuses it)
+    assert fsr.arm_sets("fill_section_travel") == {"extra": {"fill_section_travel": True}}
+
+
+def test_counts_read_colour_changes_and_the_sheet_shows_them():
+    import pystitch
+    S, C, T = pystitch.STITCH, pystitch.COLOR_CHANGE, pystitch.TRIM
+    c = fsr.counts([(0, 0, S), (1, 0, S), (1, 0, T), (1, 0, C), (2, 0, S)])
+    assert c == {"stitches": 3, "trims": 1, "colours": 1}
+    assert fsr._fmt({**c, "about": "x"}) == "3 st / 1 tr / 1 cc / x"
+    assert fsr._fmt({"stitches": 3, "trims": 1, "about": "x"}) == "3 st / 1 tr / x"
+
+
+def test_the_page_groups_rows_by_flag_under_its_kind(tmp_path):
+    rows = _rows(tmp_path)
+    page = fsr.html(rows)
+    heads = re.findall(r"<h2 class='group'><code>([a-z_]+)</code>", page)
+    assert heads == ["fill_underlay_cross", "tie_in_off"]
+    assert page.count("<span class='kind fabric'>FABRIC</span>") == 2
+    head = fsr.flag_header("tie_in_off", [r for r in rows if r["flag"] == "tie_in_off"])
+    assert "becker_hat_small</td><td colspan='4'>not run" in head
+    assert "mfab_hat</td><td>101 st &middot; 3 tr &middot; - cc</td>" in head
