@@ -20,6 +20,11 @@ Which enclosed areas sew. Every `enclosed_background` region is one of:
     stays open unless `cfg.sew_enclosed_counters` -- or it sits inside a
     field that sews (the counters of the letters on Machine's badge), since a
     hole through a sewn field would show the garment through it.
+  * a COUNTER BY SHAPE (2026-10-26) -- a hole held by an UNTAGGED shape and
+    no wider than `COUNTER_MAX_STROKES` of that shape's strokes (Tires' script
+    loops: the joined word carries no tag), or a holder-less speck under
+    `SPECK_MM2` (a counter the vectorizer split off its letter), unless it
+    sits inside another field that sews. Open, like a counter.
   * anything else -- a FIELD (a badge, a keyline band) or a hollow letter's
     body (BECKER's interiors are themselves tagged lettering, inside an
     untagged keyline). These sew.
@@ -45,6 +50,7 @@ from __future__ import annotations
 
 import numpy as np
 from shapely.geometry import Polygon
+from shapely.ops import polylabel
 
 from .threads import rgb_to_lab
 
@@ -55,6 +61,20 @@ HOLD_FRAC = 0.8
 #: tolerance, mm, on the hole's ring for that test.
 HOLD_PAD_MM = 0.3
 WHITE = (255, 255, 255)
+#: A hole no wider than this many strokes of the UNTAGGED shape that holds
+#: it is that shape's counter, not a field. Width is twice the hole's
+#: inradius, stroke the holder's 2 x area / perimeter. Census over the
+#: paired jobs (`tools/enclosed_pro_census.py`'s rows, 2026-10-26): the pro
+#: leaves open Tires' two script loops (1.28, 0.80 strokes; the joined
+#: "ires" carries no letter tag), Golden Tee's S04c12d7a (1.04) and covers
+#: ProSeal's gun slot in the body's own thread (1.28); he sews white
+#: Machine's badge hole (1.78), MFab's band hole (2.87), Golden Tee's arc
+#: (7.59) and every band and badge field (7.5-71). 1.5 sits between.
+COUNTER_MAX_STROKES = 1.5
+#: An enclosed area with no holder smaller than this is a speck: a letter's
+#: counter the vectorizer split off its letter (ProSeal's P and A of SPRAY,
+#: 0.4-1.0 mm2), not a field -- `enclosed_pro_census.SPECK_MM2`'s class.
+SPECK_MM2 = 2.5
 
 
 def _is_letter(r, cfg) -> bool:
@@ -88,6 +108,23 @@ def _encloser(e, regions):
     return best
 
 
+def _counter_like(e, holder) -> bool:
+    """A counter by shape: a hole no wider than `COUNTER_MAX_STROKES` strokes
+    of its untagged holder, or, with no holder, a speck under `SPECK_MM2`."""
+    if holder is None:
+        return e.polygon.area < SPECK_MM2
+    hp = holder.polygon
+    if hp.length <= 0:
+        return False
+    stroke = 2.0 * hp.area / hp.length
+    ext = Polygon(e.polygon.exterior)
+    try:
+        width = 2.0 * ext.exterior.distance(polylabel(ext, tolerance=0.02))
+    except Exception:  # noqa: BLE001 - a degenerate ring reads as no counter
+        return False
+    return width <= COUNTER_MAX_STROKES * stroke
+
+
 def plan_enclosed_white(regions, cfg) -> dict[str, str]:
     """-> {shape_id: "field" | "counter" | "counter_in_field"} for every
     `enclosed_background` region this option SEWS (counters left open are
@@ -96,13 +133,26 @@ def plan_enclosed_white(regions, cfg) -> dict[str, str]:
     if not enclosed:
         return {}
     kind = {}
+    holders = {}
     for e in enclosed:
         if e.meta.get("counter"):
             kind[e.shape_id] = "counter"
             continue
         holder = None if _is_letter(e, cfg) else _encloser(e, regions)
+        holders[e.shape_id] = holder
         kind[e.shape_id] = ("counter" if holder is not None and _is_letter(holder, cfg)
                             else "field")
+    # An untagged holder's counter, or a speck split off a letter, that no
+    # other sewing field contains (a hole through a sewn field still sews
+    # with it, below, under the kind it always had).
+    base = {e.shape_id: Polygon(e.polygon.exterior) for e in enclosed
+            if kind[e.shape_id] == "field"}
+    for e in enclosed:
+        if (kind[e.shape_id] == "field" and not _is_letter(e, cfg)
+                and _counter_like(e, holders.get(e.shape_id))):
+            pt = e.polygon.representative_point()
+            if not any(f.contains(pt) for sid, f in base.items() if sid != e.shape_id):
+                kind[e.shape_id] = "counter"
     fields = [Polygon(e.polygon.exterior) for e in enclosed if kind[e.shape_id] == "field"]
     out = {}
     for e in enclosed:
