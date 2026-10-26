@@ -260,7 +260,7 @@ FLAGS: dict[str, dict] = {
                 "1.39-1.73. Becker's letter host gets none (its ring is the satin)."},
     "fine_bars_satin": {
         "sets": {"fine_bars_satin": True},
-        "fixtures": ["toat_machine_hat", "hotel_fremont_hat", "precision_drone", "mfab_hat"],
+        "fixtures": ["machine_hat", "hotel_fremont_hat", "precision_drone", "mfab_lc", "mfab_hat"],
         "metric": "run_shapes", "about": "shapes sewn as a plain run ring (plan roles)", "pr": 1101,
         "note": "Free-standing thin ink bars under the area floor: To a T's speed rules, Fremont's "
                 "separators, the drone's AND DRONE rule, MFab's LLC hairline. The pro satins each; "
