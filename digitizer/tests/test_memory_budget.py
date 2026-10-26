@@ -26,21 +26,28 @@ em-dashes; lines cannot see it at all (57 lines, one hook over 3,400 chars).
 """
 from __future__ import annotations
 
+import pathlib
+
 import pytest
 
 from tools.memory_budget import (ARCHIVE, BUDGET, INDEX, LINE_CAP, char_count,
                                  double_registered, entries, order_problems,
-                                 sorted_text, unregistered, unresolved)
+                                 read_stored, sorted_text, unregistered,
+                                 unresolved)
+
+#: The repo's `.gitattributes`, which pins the memory notes to LF.
+GITATTRIBUTES = pathlib.Path(__file__).resolve().parents[2] / ".gitattributes"
 
 
 @pytest.fixture(scope="module")
 def text() -> str:
-    return INDEX.read_text(encoding="utf-8")
+    # AS STORED (CRLF kept): the loader does not translate newlines either.
+    return read_stored(INDEX)
 
 
 @pytest.fixture(scope="module")
 def archive() -> str:
-    return ARCHIVE.read_text(encoding="utf-8")
+    return read_stored(ARCHIVE)
 
 
 def test_the_counter_is_characters_not_bytes_or_lines(text):
@@ -56,7 +63,67 @@ def test_the_counter_is_characters_not_bytes_or_lines(text):
     # A multi-byte character is ONE character, which is the whole distinction.
     assert char_count("a—b") == 3
     assert char_count("a—b") < len("a—b".encode("utf-8"))
-    assert char_count(text) == len(text)
+    # ...but the loader counts JavaScript string length, UTF-16 units: a
+    # character outside the BMP is TWO (found in the CLI binary, 2026-10-26).
+    assert char_count("a\U0001F600b") == 4
+    # It counts the text AFTER `trim()`, so the file's trailing newline is free,
+    # a BOM is stripped, and inner characters are not.
+    assert char_count("abc\n") == char_count("abc\r\n") == char_count(chr(0xFEFF) + "abc") == 3
+    assert char_count("a b") == 3
+    assert char_count(text) >= len(text.strip())      # never fewer than code points
+
+
+def _crlf(lf_text: str) -> str:
+    return lf_text.replace("\n", "\r\n")
+
+
+def test_a_crlf_copy_is_counted_at_its_on_disk_length(tmp_path):
+    """The loader does not translate newlines, so a CRLF working copy costs one
+    extra character per line, and the budget has to see it.
+
+    Found 2026-10-26: `Path.read_text` translated CRLF to LF, so on Kent's
+    Windows box this test read ~146 characters fewer than the loader (one CR
+    per line) and could pass on a copy the loader would cut. Build an index that
+    fits as LF and does not as CRLF, write it to disk both ways, and read it
+    back through the function the real check uses.
+    """
+    n_lines = 120
+    letters = BUDGET - 10 - (n_lines - 1)                # LF total: exactly 10 under
+    base, extra = divmod(letters, n_lines)
+    lf_text = "\n".join("x" * (base + (i < extra)) for i in range(n_lines)) + "\n"
+    lf_path, crlf_path = tmp_path / "lf.md", tmp_path / "crlf.md"
+    lf_path.write_bytes(lf_text.encode("utf-8"))
+    crlf_path.write_bytes(_crlf(lf_text).encode("utf-8"))
+
+    on_lf, on_crlf = read_stored(lf_path), read_stored(crlf_path)
+    assert "\r" not in on_lf and on_crlf.count("\r\n") == n_lines, "read_stored translated newlines"
+    assert char_count(on_lf) == BUDGET - 10
+    assert char_count(on_crlf) == BUDGET - 10 + (n_lines - 1)   # the last CR is trimmed with its LF
+    assert char_count(on_lf) <= BUDGET < char_count(on_crlf), (
+        "a CRLF copy of an index that just fits must be OVER budget, as the loader sees it")
+    # and the translating read is what would have hidden it
+    assert char_count(crlf_path.read_text(encoding="utf-8")) == char_count(on_lf)
+
+
+def test_read_stored_keeps_every_carriage_return(tmp_path):
+    """The same on every platform: `read_stored` decodes the bytes, so a CRLF
+    file comes back with its CRs and is counted with them."""
+    p = tmp_path / "MEMORY.md"
+    p.write_bytes(b"- [a](a.md) \xe2\x80\x94 hook\r\n- [b](b.md) \xe2\x80\x94 hook\r\n")
+    got = read_stored(p)
+    assert got.count("\r\n") == 2
+    assert char_count(got) == len("- [a](a.md) — hook\r\n- [b](b.md) — hook")
+
+
+def test_gitattributes_pins_the_memory_notes_to_lf():
+    """Without this a Windows `core.autocrlf=true` checkout writes CRLF into
+    the working copy the loader reads, and the index silently loses ~1 character
+    per line of headroom (146 of its 24,986 on 2026-10-26)."""
+    rules = [ln.split() for ln in GITATTRIBUTES.read_text(encoding="utf-8").splitlines()
+             if ln.strip() and not ln.lstrip().startswith("#")]
+    hit = [r for r in rules if r[0] == ".claude/memory/*.md"]
+    assert hit, ".gitattributes has no rule for .claude/memory/*.md"
+    assert "eol=lf" in hit[0] and "text" in hit[0], hit[0]
 
 
 def test_memory_index_is_within_its_budget(text):

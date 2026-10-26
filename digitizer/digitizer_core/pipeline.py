@@ -28,7 +28,8 @@ from pathlib import Path
 import numpy as np
 from shapely.geometry import Polygon
 
-from . import debugviz, fill_section_travel, fur_regions, knockdown, silhouette_underfill, two_tone
+from . import (debugviz, fill_section_travel, fur_regions, knockdown, silhouette_underfill, two_tone,
+               white_keyline_art)
 from .config import PipelineConfig
 from .fabrics import Fabric, apply_profile, fabric_for_garment, get_fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
@@ -230,6 +231,11 @@ class PipelineResult:
     # The gate's whole read, per region (`fur_regions.read_regions`): the
     # census a tool reports. None when the gate did not run.
     hair_fur_read: dict | None = None
+    # `cfg.white_keyline_art_recipe` (built OFF): `finish_generation` read this
+    # art as white-keyline art (`white_keyline_art.detect`), so `plan_stitches`
+    # folds the recipe into its caller's config the way it folds the photo
+    # verdict. False on a hand-built result and whenever the flag was off.
+    white_keyline_art: bool = False
 
     @property
     def shape_ids(self) -> list[str]:
@@ -1205,6 +1211,13 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # a review `stitched` still wins over it, exactly as over the default.
     sews_by_garment, garment_de00 = garment_sews_enclosed(p, cfg)
     shape_overrides = cfg.shape_overrides or {}
+    # `cfg.white_keyline_art_recipe` (built OFF, Kent 2026-10-26: "Gate to
+    # MFab art first"): white-keyline art -- a dark host round a white field
+    # outlining letters -- turns its recipe on here, before the first of its
+    # switches (`sew_enclosed_white`, just below) acts; the verdict rides the
+    # result to `plan_stitches`. Off, or any other art: cfg untouched.
+    keyline_art = white_keyline_art.detect(regions, cfg)
+    cfg = white_keyline_art.apply(cfg, keyline_art)
     # The customer's "sew the white inside" (`cfg.sew_enclosed_white`, built
     # OFF): marks, recolours and front-layers the enclosed areas it sews;
     # the default below reads its mark. Off, not called.
@@ -1618,6 +1631,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         ink_source=InkSource.from_prep(p, (art_cx, art_cy)),
         hair_fur_ids=hair_fur_ids,
         hair_fur_read=read,
+        white_keyline_art=keyline_art,
     )
 
 
@@ -1719,6 +1733,11 @@ def _art_outlines(regions, cfg, source_pixels=None) -> dict | None:
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
     """Stages 5-7: regions -> stitches. Safe to re-run on one PipelineResult."""
     cfg = cfg or PipelineConfig()
+    # `cfg.white_keyline_art_recipe` (built OFF): the verdict `finish_generation`
+    # read, folded in before anything below reads the recipe's switches (the
+    # loop mitre's scope is the first). Read with getattr: the scope tests
+    # hand this a stand-in result (None, a bare object).
+    cfg = white_keyline_art.apply(cfg, getattr(result, "white_keyline_art", False))
     # `cfg.lettering_columns_apex_cut` (built OFF): `outline_cut` reads no
     # config, so the flag is set there for the length of this plan
     from .outline_cut import apex_cut_scope
