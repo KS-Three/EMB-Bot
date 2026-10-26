@@ -2896,6 +2896,23 @@ class PipelineConfig:
     # 0.22). False is the guard, byte for byte.
     # Tests: `tests/test_column_inside_stagger.py`.
     lettering_columns_inside_stagger: bool = True
+    # Under `lettering_columns`, where two strokes meet at an acute tip --
+    # the M's V, each of a W's three apexes, a pointed A or N -- the tip
+    # sews as ONE column whose crosses span both strokes, cut off them along
+    # that cross (2026-10-25, built OFF; `outline_cut._apex_cuts`). Read
+    # with one rule on the professional's DSTs and ours (Becker MARINE at
+    # four widths, MFab AND WELDING hat and LC, PROSEAL;
+    # `tools/letter_pieces.py`): through every such tip he sews one piece,
+    # crosses within 16 deg of the line of text, 1.0-2.4 stroke widths
+    # across; the lane mitres it into two fanning half-width columns (the
+    # M's V, PROSEAL's A) or pivots one column through it (MFab's W, 30-89
+    # deg). `lettering_columns_corner_fold` does not reach these: it folds
+    # L corners and refuses an acute tip (`long_way`). Layout, judged in
+    # the preview (Kent, 2026-10-22), so ON-eligible from renders. False is
+    # the cut as it is, byte for byte. Set for the whole plan by
+    # `pipeline.plan_stitches` (`outline_cut.apex_cut_scope`).
+    # Tests: `tests/test_column_apex_cut.py`.
+    lettering_columns_apex_cut: bool = False
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
@@ -5428,6 +5445,24 @@ class PipelineConfig:
     # floats, and whether buried travel shows): Kent's flip, after a
     # sew-out. Off, byte-identical. Tests: `tests/test_cut_every_jump.py`.
     cut_every_jump: bool = False
+    # A satin loop round a letter -- `enclosed_white_keyline`'s keyline loops
+    # and `border_from_outline`'s outline loops (`stage6_border.keyline_runs`)
+    # -- keeps its far rail at the satin pitch through the letter's convex
+    # corners, as the professional's keyline and outline satin do
+    # (2026-10-25, built OFF; `stage6_border._pivot_ring`). The loop casts
+    # each cross along a normal smoothed over half its width either side, so
+    # through a corner its far ends spread 1.1 mm apart where the pro's sit
+    # 0.4 mm apart: the spikes on MFab's white keyline at every M-FAB corner
+    # (#1059, #1065). The pro's corner is the same round arc, not a mitre
+    # (far ends 1.00 widths from the corner on MFab's keyline, 1.12 on
+    # Becker's outline; a mitre point is 1.43 / 1.55) -- the name is the
+    # brief's. ON: crosses put between any two whose far ends part by more
+    # than `LOOP_PIVOT_GAP` steps on a convex turn, one per step of the far
+    # rail; the near ends' pile short-stitched. Layout, judged in the preview
+    # (Kent, 2026-10-22). False is the loop as it was, byte for byte. Set for
+    # a plan by `stage6_border.loop_mitre_scope`.
+    # Tests: `tests/test_outline_loop_mitre.py`.
+    outline_loop_mitre: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()

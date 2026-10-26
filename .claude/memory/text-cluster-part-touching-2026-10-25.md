@@ -38,6 +38,12 @@ the cluster sews as bean letters under the true-size switch (line 0.5 mm) becaus
 draws white faces in a thin black outline). The A is already hollow OFF; the pro
 sews A/N/D satin. **Don't flip before that.**
 
+**OFF is md5-identical to main on all six** -- but MFab hat twice read `7296b420`
+(11,855 / 67) on a loaded laptop: rembg ran past its 60 s timeout, the pipeline
+dropped the whole photo prep, and the plan said `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`.
+Raised to 600 s the same tree reads `3673370d`. Check that warning before calling
+a photo-path md5 mismatch a regression.
+
 **How to apply:** capture the regions entering `detect_text_clusters` (wrap it in
 the pipeline module) and re-run the tagger OFF/ON offline in seconds -- the six
 full digitizes took ~40 min a set on a loaded laptop. For pro per-letter reads,

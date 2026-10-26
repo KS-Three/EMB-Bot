@@ -55,6 +55,7 @@
   import CropBox from "./CropBox.svelte";
   import { proposeCrop } from "../lib/cropProposal.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
+  import { isElementStale, pendingEdits, canRedigitize, rotatedWidth, nativeWidthOf, withTargetWidth } from "../lib/staleness.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
   // The element stores the source image (processing size, PNG base64), the
@@ -558,14 +559,17 @@
   // `hasPendingEdits` (below, off `appliedEdits`) still catches that
   // project's unapplied shape edits.
   const mountKey = configKey(buildDigitizeConfig(element, project));
-  // Read against the width a field resize asks for (resizedTargetWidth), so
-  // a corner drag turns the button transparent like a typed Design width.
-  // `mountKey` stays on the raw element: a project saved resized and never
-  // re-run opens transparent, which is the truth about its stitches.
-  $: currentKey = configKey(buildDigitizeConfig(withTargetWidth(element, resizeTarget), project));
-  $: stale =
-    !!element.result &&
-    (currentKey !== (element.appliedConfig || mountKey) || hasPendingEdits);
+  // ONE rule, shared with the field's hatch and the Download step
+  // (lib/staleness.js): a field resize reads as a Design width change, so a
+  // corner drag turns the button transparent like a typed one. `mountKey` is
+  // the baseline for a project saved before `appliedConfig` existed, and stays
+  // on the raw element: a project saved resized and never re-run opens
+  // transparent, which is the truth about its stitches.
+  $: stale = isElementStale(element, project, { baselineKey: mountKey });
+  // Stale AND runnable is exactly when Download is locked (Kent 2026-10-25,
+  // "block until re-digitized"): this button is the one way out, so it is
+  // lit — no words, the no-warnings ruling of 2026-10-02.
+  $: lit = stale && canRedigitize(element, health);
 
   // The crop box's drag floor, sized to the raster it shows. The service
   // refuses a crop under `digitizer_core/crop.py` MIN_CROP_PX (16) on either
@@ -730,26 +734,6 @@
   $: scaleFactor = decoded && element.sizeMm ? element.sizeMm / Math.max(0.1, nativeWidthNow) : 1;
   $: resizeTarget = resizedTargetWidth(element, decoded ? nativeWidthNow : 0);
   $: resized = resizeTarget != null;
-
-  function rotatedWidth(dec, deg) {
-    if (!dec) return 0.1;
-    const rot = ((deg % 360) + 360) % 360;
-    if (rot === 0 || rot === 180) return dec.widthMM;
-    if (rot === 90 || rot === 270) return dec.heightMM;
-    const rad = (rot * Math.PI) / 180;
-    return Math.abs(dec.widthMM * Math.cos(rad)) + Math.abs(dec.heightMM * Math.sin(rad));
-  }
-
-  // The same width for any element, not only the one on screen — runDigitize
-  // is handed the element it was clicked for.
-  function nativeWidthOf(el) {
-    const dec = el && el.result ? decodedFromDesignCached(el.result) : null;
-    return dec ? rotatedWidth(dec, el.rotationDeg || 0) : 0;
-  }
-
-  function withTargetWidth(el, target) {
-    return target == null ? el : { ...el, params: { ...el.params, target_width_mm: target } };
-  }
 
   // What a landing run writes for a resize it was sent with. Until
   // 2026-10-08 "Re-digitize at N mm" cleared `sizeMm` and set the width and
@@ -918,9 +902,7 @@
   // Pending = the element's canonical edits differ from the ones the current
   // result was digitized with. Canonical on both sides, so a toggled-then-
   // untoggled edit reads as "nothing pending", exactly like the job cache.
-  $: hasPendingEdits =
-    reviewShapes.length > 0 &&
-    editsKey(canonicalShapeEdits(element)) !== (element.appliedEdits || editsKey({}));
+  $: hasPendingEdits = pendingEdits(element);
 
   // The shapes a within-layer reorder may touch: not hidden, not sitting out
   // as an unstitched enclosed area — the same live subset the up/down
@@ -1879,7 +1861,9 @@
       type="button"
       class="dgp-run"
       class:dgp-run-stale={stale && !pending}
+      class:dgp-run-lit={lit && !pending}
       data-stale={stale ? "true" : "false"}
+      data-blocks-download={lit ? "true" : "false"}
       disabled={pending || !health}
       on:click={() => runDigitize(element)}
     >
@@ -3153,6 +3137,13 @@
   .dgp-run.dgp-run-stale:hover:not(:disabled) {
     background: var(--tint, rgba(79, 70, 229, 0.08));
     border-color: var(--accent, #4f46e5);
+  }
+  /* Download is locked until this runs: a halo, so the one way out is easy to
+     find. No words go with it (no-warnings ruling 2026-10-02). It leaves the
+     fill alone, so the transparent look above is still what "out of date"
+     means. */
+  .dgp-run.dgp-run-lit {
+    box-shadow: 0 0 0 4px var(--tint-border, #ccd6fb);
   }
   .dgp-status { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 6px 0 0; }
   .dgp-error { font-size: var(--fs-xs, 12px); color: var(--danger, #b3261e); margin: 6px 0 0; }
