@@ -33,12 +33,13 @@ laptop (OFF 100 s) and "ge" stayed two slabs.
 
 **Built OFF, measured ON (one reader per file, the word's colour block;
 `docs/renders/script-strokes-2026-10-26/`):** square-to-stroke Bridge hat
-0.74 -> 0.84 (pro 0.77), LC 0.77 -> 0.89 (0.87), Tires 0.68 -> 0.95 (0.85),
-Machine 0.77 -> 0.84 (0.90); stacked overlap 3.89 / 5.32 / 6.10 -> 0.66 /
-0.72 / 1.02 mm (pro 0 / 0.67 / 0); Tires' word fill-in-a-border -> 11
-columns (pro 9), 6,428 -> 2,853 st (pro 3,337). Bridge LC reads as six
-letters; Bridge hat's "ge" stays a knot (trace). Bystanders Becker, MFab,
-Fremont, Golden Tee byte-identical ON.
+0.74 -> 0.84 (pro 0.77), LC 0.77 -> 0.87 (0.87), Tires 0.68 -> 0.95 (0.85),
+Machine 0.77 -> 0.85 (0.90); stacked overlap 3.89 / 5.32 / 6.10 -> 0.66 /
+1.84 / 0.91 mm (pro 0 / 0.67 / 0); Tires' word fill-in-a-border -> 10
+columns (pro 9), 6,428 -> 3,033 st (pro 3,337). Bridge LC reads as six
+letters; Bridge hat's "ge" stays a knot (trace). Legibility cc mixed (hat
+0.83 -> 0.35, LC 0.28 -> 0.52; n = 1, two of four blind): no claim.
+Bystanders Becker, MFab, Fremont, Golden Tee byte-identical ON.
 
 **Traps found:**
 - The trace CLOSED counters the art has (Bridge hat: g 1.28, e 0.57 + 0.61,
@@ -46,7 +47,7 @@ Fremont, Golden Tee byte-identical ON.
   ~0.8 mm underlap: 2.8 mm2 would show BARE CAP if a stroke opened them.
   So rails stay on the polygon; the pen PATH comes from the ink's core
   (t >= 0.85, where those counters are open), and a cross stops at the drawn
-  edge only where the polygon runs on > 0.4 mm past it (no fans), with a
+  edge only where it would run on into such a CLOSED counter (no fans), with a
   patch over what no stroke reaches.
 - An ink read at a flat 20 px/mm shattered Tires' 4.4 mm stroke (608 axis
   edges): read ~16 px across the stroke, and fall back to the polygon when
@@ -56,12 +57,18 @@ Fremont, Golden Tee byte-identical ON.
   one cross per pitch of the FASTER rail.
 - Sewing strokes one by one left to right cut the word 6 / 5 / 14 times
   (Bridge / Tires / Machine); the Column lane's Euler walk over the same
-  strokes: 2 / 2 / 1 (patches first). Order is not where the pro's look is.
+  strokes: 0 / 1 / 1 (patches first). Order is not where the pro's look is.
+- Free ends are not only skeleton ends: an end cut at a cusp, or whose only
+  neighbour was a dropped knot, must run on to its cap too, or stage 7's
+  EDGE CAP rings the bare outline (Tires' r) -- check `__edge_cap__` runs.
+- A photo trace runs past the ink along whole strokes (Tires' bevel): stop a
+  cross at the drawn edge only into a CLOSED pocket, never an open one.
 - A variable named `rd` in a Bash heredoc trips the worktree guard (reads as
   Windows `rd`).
-- My red changes the YELLOW block's cuts: `trim_bury_under_later` buries a
-  yellow hop only under real later thread, and three of OFF's buried hops
-  crossed the word.
+- The word can change the GROUND block's cuts: `trim_bury_under_later`
+  buries a yellow hop only under real later thread. With crosses one pitch
+  apart on the spine three of Bridge's buried yellow hops came back as cuts;
+  with the faster-rail pitch the yellow block is byte-identical again.
 
 Related: [[monoline-script-satin-2026-10-24]], [[bridge-border-and-script-2026-09-30]],
 [[lettering-architecture-2026-10-07]], [[column-corner-folds-2026-10-23]].

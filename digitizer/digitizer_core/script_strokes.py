@@ -935,7 +935,7 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     the earlier ones, so the needle crosses the word under thread still to
     come. Measured against sewing each stroke in turn, left to right: cuts
     inside the word 6 / 5 / 14 (Bridge hat / Tires / To a T hat) that way,
-    2 / 2 / 2 with the walk. Then `monoline.py`'s two clean-ups for a
+    0 / 1 / 1 with the walk. Then `monoline.py`'s two clean-ups for a
     joined word: underlay left on finished satin cut back, and any hop
     still cut routed under satin to come (`bury_hops`)."""
     from .columns import Column, column_runs
