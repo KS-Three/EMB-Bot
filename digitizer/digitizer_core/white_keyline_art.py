@@ -1,4 +1,4 @@
-"""White-keyline art turns its own recipe on (`cfg.white_keyline_art_recipe`, built OFF 2026-10-26).
+"""White-keyline art turns its own recipe on (`cfg.white_keyline_art_recipe`, ON since 2026-10-26).
 
 Kent's ruling, 2026-10-26: "Gate to MFab art first (Recommended)" -- the
 recipe turns on by default only where a dark shape carries white outlines
