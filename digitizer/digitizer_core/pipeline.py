@@ -1805,11 +1805,20 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
         stitched_regions = _fill_inside_satin_border(
             stitched_regions, cfg, result.design_class)
 
+    # `cfg.keyline_fold_slivers` (built OFF, read with `sew_enclosed_white`):
+    # a sewn white field's slivers fold back into it, on copies -- in the
+    # regions sewn and in those the outlines are read from, so the loops
+    # ride the folded field's holes.
+    outline_regions = result.regions
+    if cfg.keyline_fold_slivers and cfg.sew_enclosed_white:
+        outline_regions, _f = silhouette_underfill.fold_keyline_slivers(result.regions)
+        stitched_regions, _f = silhouette_underfill.fold_keyline_slivers(stitched_regions)
+
     # `cfg.border_from_outline`: the art's own outlines over EVERY region (an
     # unsewn body still makes its keyline one), computed once here -- the
     # under-fill's panels read them too -- and handed to stage 7; None with
     # the flag off.
-    art_outlines = _art_outlines(result.regions, cfg, result.source_pixels)
+    art_outlines = _art_outlines(outline_regions, cfg, result.source_pixels)
 
     # `cfg.silhouette_underfill` (built OFF): a ring whose holes hold other
     # shapes gets its outline filled once, underneath, and the ring and its

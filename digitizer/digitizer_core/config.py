@@ -1677,6 +1677,20 @@ class PipelineConfig:
     # under it that the black under-fill gives up. Layout, judged in the
     # preview. OFF: nothing is read, byte for byte.
     silhouette_underfill_panels: bool = False
+    # `keyline_fold_slivers` (BUILT OFF 2026-10-26, the MFab recipe's trims,
+    # `docs/mfab-recipe-trims-2026-10-26.md`; read only with
+    # `sew_enclosed_white`): a sewn white field's slivers fold back into it
+    # (`silhouette_underfill.fold_keyline_slivers`), before the art outlines
+    # are read. MFab's keyline is drawn with a dark hairline on its inner
+    # edge, so it traces as the field plus 31 (hat) / 51 (LC) white slivers
+    # 0.1-0.3 mm wide on the letters' side, each its own run with a cut
+    # either side; the pro's keyline satin covers every one, its rail on the
+    # letter. A sliver: the field's thread, not routed, no text, measured
+    # under a thread wide, within a thread of the field. Folded, the field's
+    # hole sits on the letter and its loop crosses the sliver and the
+    # hairline. Layout: Kent's call from the renders. Off, byte-identical.
+    # Tests: `tests/test_keyline_fold_slivers.py`.
+    keyline_fold_slivers: bool = False
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
@@ -1863,6 +1877,27 @@ class PipelineConfig:
     # ON by default since 2026-10-23 (Kent's flip on the flip sheet, PR
     # #1047: `docs/flip-sheet-2026-10-23.md`); False is the off arm.
     compact_solids_satin: bool = True
+    # Fine ink bars sew satin (`columns.is_fine_bar`, built OFF 2026-10-25,
+    # Kent: "measure what the pro does with small symbols and fine line art
+    # ... then propose a rule to build OFF"). The pro sews every free-standing
+    # thin ink bar as ONE satin at its drawn width plus his ordinary pull
+    # (about 0.86-1.10 mm of needle) in all 5 artworks that have them (To a
+    # T, Precision Drone, Hotel Fremont, Gaulke, Golden Tee); ours sends every
+    # bar under the area floor (`min_detail_mm`^2) to a hollow bean ring, so a
+    # parallel set of speed rules sews half bold, half thin. ON, a non-
+    # lettering, hole-free, ink-coloured stem under the floor -- aspect
+    # `STEM_MIN_ASPECT` or under one `SATIN_MIN_CROSS_MM` across, not lighter
+    # than everything it touches -- skips the run rescue for the ordinary
+    # satin tier, ahead of the hairline tier; `small_solids_satin` keeps the
+    # shapes it would take; no satin out of it falls back to the ring exactly.
+    # Measured over 16 paired jobs: 37 of the 38 target regions cure (To a T
+    # x4 30, Fremont separators 4, drone 2, MFab LC's LLC hairline; MFab hat's
+    # photo-class generation keeps its ring on `photo_width_floor`), region
+    # kappa 0.905; tests `tests/test_fine_bars_satin.py`. No width, pull, density or stitch
+    # length moves: whether a 1 mm bar holds on a cap is the sew-out question
+    # `small_solids_satin` already carries (gate 1). Layout (ruling 2026-10-22:
+    # judged in the preview). OFF is the engine as it was, byte for byte.
+    fine_bars_satin: bool = False
     # The pro's size rule for borders (2026-10-23, built OFF;
     # `docs/border-census-2026-10-23.md`). Over 16 paired designs the pro
     # rings about 1% of closed shapes under 2 mm, 7% at 2-4, 29% at 4-6 and
@@ -5479,6 +5514,18 @@ class PipelineConfig:
     # ON by default since 2026-10-23 (Kent's flip on the flip sheet, PR
     # #1047: `docs/flip-sheet-2026-10-23.md`); False is the off arm.
     trim_bury_under_later: bool = True
+    # `skip_covered_shapes` (BUILT OFF 2026-10-26, the MFab recipe's trims,
+    # `docs/mfab-recipe-trims-2026-10-26.md`): a shape whose whole thread
+    # lies on thread of its OWN colour block that other shapes sew, before
+    # or after it -- `_UnderThread`'s samples, centre and both edges, within
+    # half a thread -- is not sewn (`stage7_sequence._skip_covered_shapes`).
+    # MFab's keyline traces as the field plus 31 (hat) / 51 (LC) slivers
+    # 0.1-0.3 mm wide, each its own run with a cut either side; the pro's
+    # keyline satin covers all of them, and ours (the field's loops and
+    # fill) already covers 62% / 95% of their area. Same colour, so nothing
+    # changes what shows; it removes a second layer and its cuts. Off,
+    # byte-identical. Tests: `tests/test_skip_covered_shapes.py`.
+    skip_covered_shapes: bool = False
     # `cut_every_jump` (BUILT OFF 2026-10-21, `docs/settings-vs-pro-2026-10-21.md`
     # row 25): no needle-up move is left uncut. Ours leaves 0-168 uncut
     # jumps of 0.5-3.0 mm per job (every hop under `trim_at_mm`), each a
