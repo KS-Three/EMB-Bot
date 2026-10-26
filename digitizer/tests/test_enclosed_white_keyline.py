@@ -25,6 +25,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, machine, stitches
+from tests.conftest import FLIP_2026_10_23
 from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
@@ -58,7 +59,8 @@ def _plan(band: Polygon, field: str | None = "field", later=(LEFT, RIGHT), **cfg
                     thread_number="0020", area_mm2=poly.area, source="test",
                     meta={"layer": 1})
         planned.append(PlannedRegion(region=lr, polygon=poly, sew_index=1))
-    cfg = PipelineConfig(underlay=False, sew_enclosed_white=True, **cfg_kw)
+    # OFF_MD5 was captured on main before the 2026-10-23 flips: pin them off (conftest)
+    cfg = PipelineConfig(underlay=False, sew_enclosed_white=True, **{**FLIP_2026_10_23, **cfg_kw})
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg)
     return [r for b in blocks for r in b.runs if r.shape_id == "Sband"]
 

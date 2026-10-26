@@ -394,11 +394,12 @@ def tie_off(run: StitchRun, small_letters: set[str] | None = None) -> None:
     run.points = run.points + pts[1:]
 
 
-def drop_tie_ins(blocks: list[StitchBlock]) -> int:
+def drop_tie_ins(blocks: list[StitchBlock], removed_by_shape: dict[str, int] | None = None) -> int:
     """Strip every lock `apply_ties` put in front of a run (`cfg.tie_in_off`,
     default OFF): the run starts at its own first stitch. Tie-OFFS stay. The
     pro's files lock no run start, even after a cut (settings-vs-pro row 22).
-    Returns the number of points removed."""
+    Returns the number of points removed; `removed_by_shape`, when given, is
+    filled with the count per `shape_id` (the edge cap's bill reads its own)."""
     removed = 0
     for block in blocks:
         for run in block.runs:
@@ -407,6 +408,8 @@ def drop_tie_ins(blocks: list[StitchBlock]) -> int:
                 run.points = run.points[n:]
                 run.tie_in_pts = 0
                 removed += n
+                if removed_by_shape is not None:
+                    removed_by_shape[run.shape_id] = removed_by_shape.get(run.shape_id, 0) + n
     return removed
 
 

@@ -32,6 +32,11 @@ import cv2
 import numpy as np
 
 from digitizer_core import PipelineConfig, digitize, machine
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off where a test prices another flag
+import json as _json
+# the instrument's arms on the engine before the 2026-10-23 flips (`small_solids_satin`
+# sews the kept marks as satin blobs the recall reader does not count as strokes)
+_PRE_FLIP_SPECS = [f"{k}={_json.dumps(v)}" for k, v in FLIP_2026_10_23.items()]
 from digitizer_core.stage3_segment import RegionMask, resolve_small_regions
 from digitizer_core.threads import rgb_to_lab
 from digitizer_core.warnings_codes import ABSORBED_SMALL_SHAPES, DROPPED_SMALL_SHAPES
@@ -156,10 +161,12 @@ def test_on_the_primary_golden_off_absorbs_the_teal_patch_and_on_keeps_it_as_a_r
     run in its own thread. Since the 2026-09-13 flip ON is the shipped answer
     and the flat golden pins it; OFF is named explicitly here so the pre-flip
     arm stays tested. The orange dot is isolated and drops either way."""
+    # both arms on the engine before the 2026-10-23 flips: `small_solids_satin`
+    # would sew the kept patch as a satin blob, which is not the run this pins
     off, off_plan = digitize(TESTDATA / "logo_whitebg.png",
-                             PipelineConfig(target_width_mm=80.0, keep_thin_strokes=False))
+                             PipelineConfig(target_width_mm=80.0, keep_thin_strokes=False, **FLIP_2026_10_23))
     on, on_plan = digitize(TESTDATA / "logo_whitebg.png",
-                           PipelineConfig(target_width_mm=80.0, keep_thin_strokes=True))
+                           PipelineConfig(target_width_mm=80.0, keep_thin_strokes=True, **FLIP_2026_10_23))
     assert ABSORBED_SMALL_SHAPES in codes(off) and DROPPED_SMALL_SHAPES in codes(off)
     assert [r for r in off.regions if r.thread_number == "4531"] == [], "OFF: teal survived"
     teal = [r for r in on.regions if r.thread_number == "4531"]
@@ -195,8 +202,8 @@ def test_on_a_fixture_built_for_it_the_kept_marks_are_sewn_in_their_own_colour(t
     art = tmp_path / "strokes_on_panel.png"
     _strokes_on_a_panel(art)
     off = ts.run(art, 50.0, "left_chest", forced_class="flat",
-                 flag="keep_thin_strokes=false")
-    on = ts.run(art, 50.0, "left_chest", forced_class="flat", flag="keep_thin_strokes")
+                 flag=["keep_thin_strokes=false", *_PRE_FLIP_SPECS])
+    on = ts.run(art, 50.0, "left_chest", forced_class="flat", flag=["keep_thin_strokes", *_PRE_FLIP_SPECS])
     # The instrument sees six thin strokes either way (it reads the artwork);
     # OFF they are panel-coloured thread, so every one is lost.
     assert off["thin_strokes"] == 6 and on["thin_strokes"] == 6, (off["thin_strokes"], on["thin_strokes"])

@@ -65,6 +65,7 @@ BLEND = "photo/region_blobs.png"
 
 
 def _cfg(**kw) -> PipelineConfig:
+    kw.setdefault("border_by_size", False)  # priced on the engine before the 2026-10-23 border flip
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 

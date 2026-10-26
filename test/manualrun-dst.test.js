@@ -18,7 +18,8 @@ const DST = require("../src/dst.js");
 const SF = require("../src/satinfont.js");
 // `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
 // (Kent); a pin below taken before that, on another subject, builds with them OFF.
-const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+// + the three JS twins Kent flipped ON 2026-10-23 (fill turn slant, cross underlay, short-column underlay)
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false, fillTurnSlant: false, crossUnderlay: false, underlayShortColumns: false };
 
 test("a drawn line sews along its path: pystitch reads every stitch on it, end to end, as a 0.73 mm bean", async (t) => {
   const harness = await import("../tools/crossval-stitch-formats.mjs");

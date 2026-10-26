@@ -86,8 +86,10 @@ ARMS = {
 # The small stem and the scoped dot rung flipped ON 2026-10-20 (Kent); the
 # record predates them too, and the stem arms price the stem, so every arm
 # starts from both OFF (the record reproduces either way at 81 mm).
+from tools.flip_eight_proof import BEFORE as _FLIP_2026_10_23  # noqa: E402
+# ...and the nine layout flags of 2026-10-23: the record predates them too
 PRE_TRUE_SIZE = {"small_text_true_size": False, "lettering_columns_small_stem": False,
-                 "small_dot_rung": False, "small_dot_rung_lettering": False}
+                 "small_dot_rung": False, "small_dot_rung_lettering": False, **_FLIP_2026_10_23}
 ARMS = {name: (w, {**PRE_TRUE_SIZE, **o}, label) for name, (w, o, label) in ARMS.items()}
 # The four arms Kent named, in his order; the controls and alternatives follow.
 KENT_ARMS = ["main_81", "floor_81", "floor_stem_81", "floor_stem_92"]

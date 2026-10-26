@@ -86,9 +86,9 @@ def test_on_without_the_artwork_reads_nothing_and_says_none():
 # The three flat-lane goldens' stitch streams, as `test_small_print.py` pins
 # them: the flag is read by preflight only, so the plan cannot move.
 GOLDEN_MD5 = {
-    "logo_alpha.png": "50b666027292342f490cb50758a7fcde",
-    "logo_whitebg.png": "e1e001f4b23de052d9102a8acbce26d9",
-    "ribbon_curve.png": "f31c29f2d98d63ce919d762beb6da58a",
+    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
+    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
+    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
 }
 
 

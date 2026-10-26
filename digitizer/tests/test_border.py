@@ -51,9 +51,12 @@ def test_no_border_is_the_default_and_changes_nothing():
     """
     assert PipelineConfig().border is None
 
-    plain = digitize(TESTDATA / "logo_whitebg.png", cfg(garment_id="hat_front"))[1]
+    # `border_by_size` (ON since 2026-10-23) is a separate, size-driven ring; this
+    # test is about the `border` field's own default, so it is held off here.
+    plain = digitize(TESTDATA / "logo_whitebg.png",
+                     cfg(garment_id="hat_front", border_by_size=False))[1]
     off = digitize(TESTDATA / "logo_whitebg.png",
-                   cfg(garment_id="hat_front", border="off"))[1]
+                   cfg(garment_id="hat_front", border="off", border_by_size=False))[1]
     assert plain.stats.stitch_count == off.stats.stitch_count
     assert not [r for _b, r in off.iter_runs() if r.kind in ("border", "bean")]
 

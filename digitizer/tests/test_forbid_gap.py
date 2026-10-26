@@ -29,6 +29,7 @@ import pytest
 from shapely.geometry import box
 
 from digitizer_core import PipelineConfig, run_stages
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.fabrics import get_fabric
 from digitizer_core.pipeline import fabric_for
 from digitizer_core.regions import Region
@@ -199,11 +200,13 @@ def test_a_ring_gap_round_an_inset_shape_closes():
     ("photo/drone_render.png", 80.0, "left_chest", True),
 ])
 def test_fixture_reads_no_gap_under_the_candidate(rel, width, garment, gaps_off):
-    base = PipelineConfig(target_width_mm=width, garment_id=garment)
+    # on the engine the gap premise was read on: the 2026-10-23 flips off (the
+    # small-text set raises Fremont's small words into what was a clear gap)
+    base = PipelineConfig(target_width_mm=width, garment_id=garment, **FLIP_2026_10_23)
     result = run_stages(ROOT / "testdata" / rel, base)
     regions = [r for r in result.regions if r.meta.get("stitched", True)]
     fabric = fabric_for(base)
-    on_cfg = PipelineConfig(target_width_mm=width, garment_id=garment,
+    on_cfg = PipelineConfig(target_width_mm=width, garment_id=garment, **FLIP_2026_10_23,
                             forbid_gap_mm=CANDIDATE)
     wkb = []
     for cfg, want_any in ((base, gaps_off), (on_cfg, False)):

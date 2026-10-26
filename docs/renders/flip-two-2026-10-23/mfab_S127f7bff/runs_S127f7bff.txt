@@ -1,0 +1,8 @@
+S127f7bff thread 0020 bbox (-14.28, -14.54, 2.92, -8.03) holes 0 cluster None ink_stroke None spines 0
+  blk0 0020 S127f7bff underlay role=''             pts= 39 jump=True trim=True x -13.01-2.31 y -13.93--8.63
+  blk0 0020 S127f7bff fill     role=''             pts=364 jump=False trim=False x -14.76-3.32 y -14.94--7.63
+  blk0 0020 S127f7bff border   role='border'       pts=219 jump=False trim=False x -13.49-3.29 y -14.49--7.63
+  blk1 0015 Sc5d0b97c underlay role=''             pts=  2 jump=False trim=False x -14.48--13.68 y -14.63--12.20
+  blk1 0015 Sc5d0b97c satin    role=''             pts= 18 jump=False trim=False x -15.06--13.49 y -14.69--11.75
+  blk1 0015 Sc5d0b97c travel   role=''             pts=  9 jump=False trim=False x -14.44-1.42 y -14.59--14.45
+  blk1 0015 Sc5d0b97c underlay role=''             pts=  7 jump=False trim=False x -14.46-1.55 y -14.59--14.45

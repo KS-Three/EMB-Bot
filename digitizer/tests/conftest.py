@@ -374,7 +374,13 @@ def enthusiast_logo_93mm():
     # test_chaining_adds_zero_bare_thread_on_every_acceptance_fixture's
     # documented claim that the floor IS zero there, while its on/off
     # equality assertion carried on passing.
-    return run_stages(TESTDATA / "photo/enthusiast_logo.png", cfg(target_width_mm=93.0))
+    # The small-text re-set (`small_text_cap_*`, ON since 2026-10-23) acts at STAGE
+    # level, so a plan-stage pin cannot undo it: it rebuilds the line and lifts this
+    # fixture's bare-thread floor 3.93 -> 7.10 mm (measured). The benchmark claims
+    # were made without it, so the fixture is built without it.
+    return run_stages(TESTDATA / "photo/enthusiast_logo.png",
+                      cfg(target_width_mm=93.0,
+                          **{k: v for k, v in FLIP_2026_10_23.items() if k.startswith("small_text_cap")}))
 
 
 @pytest.fixture(scope="session")
@@ -407,7 +413,9 @@ def plan(whitebg):
     from digitizer_core.pipeline import fabric_for
     from digitizer_core.stage5_overlap import resolve_overlaps
 
-    c = cfg(**PLAN_CFG_KW)
+    # `border_by_size` ON (Kent 2026-10-23) rings the logo's big fills and moves
+    # every count the consumers pin; they price other things.
+    c = cfg(border_by_size=False, **PLAN_CFG_KW)
     planned, warnings = resolve_overlaps(whitebg.regions, fabric_for(c), c)
     return plan_stitches(whitebg, c), planned, warnings
 
@@ -555,6 +563,34 @@ PRE_FLIP["text_cluster_counters_as_drawn"] = False
 # `tests/test_bean_counter_hold.py` and `tests/test_bean_bay_hold.py`.
 PRE_FLIP["bean_letter_counter_hold_mm"] = None
 PRE_FLIP["bean_letter_bay_hold"] = None
+# The eight layout flags Kent flipped 2026-10-23 off the flip sheet (PR
+# #1047, `docs/flip-sheet-2026-10-23.md`: OFF | ON | pro renders, judged by
+# numbers against the pro's file where the eye cannot tell at viewing
+# size). Same reason as every entry above: an arm measured before that day
+# was measured without them. The small-text set is the sheet's exact
+# `small_text_set` arm: the four cap values AND `lettering_columns_small_bold`.
+FLIP_2026_10_23 = {
+    "fill_turn_slant": False,
+    "trim_bury_under_later": False,
+    "tie_in_off": False,
+    "small_solids_satin": False,
+    "compact_solids_satin": False,
+    "satin_underlay_short_columns": False,
+    "fill_underlay_cross": False,
+    "small_text_cap_mm": None,
+    "small_text_cap_max_width_scale": None,
+    "small_text_cap_min_stroke_mm": None,
+    "small_text_cap_letter_gap_mm": None,
+    "small_text_cap_bold_scale": None,
+    "lettering_columns_small_bold": False,
+    # PR #1057 (Kent 2026-10-23, same day, by the pro's numbers): the two layout
+    # flags and the corner fold, so every site that pins "before the 10-23 flips"
+    # pins them too.
+    "border_by_size": False,
+    "enclosed_alpha_hole_parts": False,
+    "lettering_columns_corner_fold": False,
+}
+PRE_FLIP.update(FLIP_2026_10_23)
 # Spoked detail marks (Kent's flip 2026-10-16, "ON, tightened"): a small
 # enclosed detail of another colour with four or more tips sews as a spoked
 # mark on top of its host (Fremont's Wisconsin star). False is the pre-flip

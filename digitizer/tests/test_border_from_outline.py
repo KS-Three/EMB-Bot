@@ -20,6 +20,7 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, machine, stitches
+from tests.conftest import FLIP_2026_10_23  # the OFF md5 predates the 2026-10-23 flips
 from digitizer_core.art_outline import find_art_outlines, outline_width_mm
 from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.pipeline import _art_outlines
@@ -57,7 +58,7 @@ def _plan(outline, body, *, body_sewn=True, body_meta=None, outline_meta=None, *
     # the flag is ON by default since 2026-10-24 (Kent); a call that does not
     # name it is the OFF arm, as it was when these tests were written
     cfg_kw.setdefault("border_from_outline", False)
-    cfg = PipelineConfig(underlay=False, **cfg_kw)
+    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **cfg_kw})
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg,
                          art_outlines=_art_outlines([b, o], cfg))
     return [r for blk in blocks for r in blk.runs]
@@ -100,7 +101,8 @@ def test_off_ignores_the_outlines_even_when_handed_them():
     found = _art_outlines([b, o], on_cfg)
     assert found
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"),
-                         PipelineConfig(underlay=False, border_from_outline=False), art_outlines=found)
+                         PipelineConfig(underlay=False, border_from_outline=False, **FLIP_2026_10_23),
+                         art_outlines=found)
     assert _md5([r for blk in blocks for r in blk.runs]) == OFF_MD5
 
 

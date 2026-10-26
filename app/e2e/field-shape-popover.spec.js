@@ -4,7 +4,7 @@
 // drag. Service bootstrap and fixture copied from field-border-menu.spec.js,
 // per this directory's convention of self-contained specs.
 import { test, expect } from "@playwright/test";
-import { pickGarment, uploadArtwork, runDigitize, openAdvanced } from "./helpers.js";
+import { pickGarment, uploadArtwork, runDigitize, openAdvanced, pinDigitizeConfig } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -320,6 +320,7 @@ test("digitized lane: click inside a square opens the Layers row's controls; Bor
   test.setTimeout(300_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   await toContent(page);
+  await pinDigitizeConfig(page, { border_by_size: false });
   await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   // Settle: the baseline is the stats text three consecutive reads, 300 ms

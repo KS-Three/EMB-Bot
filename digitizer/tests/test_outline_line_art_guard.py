@@ -33,7 +33,7 @@ from digitizer_core.pipeline import _art_outlines
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage7_sequence import sequence
-from tests.conftest import PRE_FLIP
+from tests.conftest import FLIP_2026_10_23, PRE_FLIP
 
 #: the guard OFF: the engine before Kent's flip
 GUARD_OFF = PRE_FLIP["border_from_outline_line_art_guard"]
@@ -74,7 +74,8 @@ def _plan(outline, body, **cfg_kw):
     b, o = _pair(outline, body)
     planned = [PlannedRegion(region=b, polygon=body, sew_index=0),
                PlannedRegion(region=o, polygon=outline, sew_index=1)]
-    cfg = PipelineConfig(underlay=False, **cfg_kw)
+    # the md5s predate the 2026-10-23 flips (conftest): pinned off
+    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **cfg_kw})
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg,
                          art_outlines=_art_outlines([b, o], cfg))
     return [r for blk in blocks for r in blk.runs]

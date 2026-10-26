@@ -259,7 +259,11 @@ def measure_image(image: Path, width_mm: float, row_mm: float | None) -> dict:
     from digitizer_core import PipelineConfig
     from digitizer_core.pipeline import digitize
 
-    kw = {"target_width_mm": width_mm}
+    # The calibration reads the row pitch off straight row turns and the cover
+    # pass alone: the slanted turn (`fill_turn_slant`, ON 2026-10-23) and the
+    # crossing underlay (`fill_underlay_cross`) are read off, as they were when
+    # the instrument was calibrated.
+    kw = {"target_width_mm": width_mm, "fill_turn_slant": False, "fill_underlay_cross": False}
     if row_mm is not None:
         kw["fill_row_mm"] = row_mm
     _result, plan = digitize(image, PipelineConfig(**kw))

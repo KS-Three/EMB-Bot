@@ -1544,13 +1544,13 @@ class PipelineConfig:
     # cap) carries its 4.1 x 3.4 mm counter in its polygon, two regions of
     # 7.1 and 4.9 mm² sit in it, neither tagged, and the O sews as a solid
     # blob; the P and R counters (one region each) are tagged and stay open.
-    # ON, a region on the alpha path is tagged when IT is mostly inside one
+    # ON (default since Kent's ruling 2026-10-23), a region on the alpha path is tagged when IT is mostly inside one
     # transparent component (the first ratio alone): nothing with a colour
     # of its own can sit under alpha < 128, so the second ratio protects
     # nothing there. The no-alpha path keeps both ratios. Layout, not a
     # fabric number (ruling 2026-10-22: judged in the preview). OFF is the
     # engine as it was, byte for byte.
-    enclosed_alpha_hole_parts: bool = False
+    enclosed_alpha_hole_parts: bool = True
     # Sew the white inside the design (`enclosed_white.py`, built OFF
     # 2026-10-21): the CUSTOMER's option, never a default, because it changes
     # the design. The pro does it on 5 of 11 jobs (rule R11,
@@ -1677,6 +1677,20 @@ class PipelineConfig:
     # under it that the black under-fill gives up. Layout, judged in the
     # preview. OFF: nothing is read, byte for byte.
     silhouette_underfill_panels: bool = False
+    # `keyline_fold_slivers` (BUILT OFF 2026-10-26, the MFab recipe's trims,
+    # `docs/mfab-recipe-trims-2026-10-26.md`; read only with
+    # `sew_enclosed_white`): a sewn white field's slivers fold back into it
+    # (`silhouette_underfill.fold_keyline_slivers`), before the art outlines
+    # are read. MFab's keyline is drawn with a dark hairline on its inner
+    # edge, so it traces as the field plus 31 (hat) / 51 (LC) white slivers
+    # 0.1-0.3 mm wide on the letters' side, each its own run with a cut
+    # either side; the pro's keyline satin covers every one, its rail on the
+    # letter. A sliver: the field's thread, not routed, no text, measured
+    # under a thread wide, within a thread of the field. Folded, the field's
+    # hole sits on the letter and its loop crosses the sliver and the
+    # hairline. Layout: Kent's call from the renders. Off, byte-identical.
+    # Tests: `tests/test_keyline_fold_slivers.py`.
+    keyline_fold_slivers: bool = False
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
@@ -1834,8 +1848,10 @@ class PipelineConfig:
     # polygon (`stage6_satin.small_solid_satin`, the junction cover's
     # principal-spine column). No new constant; whether a 1.2 mm satin dot
     # holds on a cap is a sew-out question (ROADMAP gate 1). A shape the
-    # column cannot sew keeps the ring. Off, byte-identical.
-    small_solids_satin: bool = False
+    # column cannot sew keeps the ring. False, byte-identical.
+    # ON by default since 2026-10-23 (Kent's flip on the flip sheet, PR
+    # #1047: `docs/flip-sheet-2026-10-23.md`); False is the off arm.
+    small_solids_satin: bool = True
     # Compact solids sew as one satin column, not a fill with a ring round
     # it (2026-10-22, built OFF; Proseal's blue bubbles). The rule above
     # covers a solid UNDER the detail floor; this is the same answer for one
@@ -1857,8 +1873,31 @@ class PipelineConfig:
     # crosses) keeps the fill. No new constant: the ceiling is
     # `machine.satin_ceiling_mm` (5.0 hat), the pitch the satin tier's own.
     # Whether a 4.8 mm satin dot holds on a cap is the same gate-1 question
-    # the rule above carries. Off, byte-identical (tests/test_compact_solids_satin.py).
-    compact_solids_satin: bool = False
+    # the rule above carries. False, byte-identical (tests/test_compact_solids_satin.py).
+    # ON by default since 2026-10-23 (Kent's flip on the flip sheet, PR
+    # #1047: `docs/flip-sheet-2026-10-23.md`); False is the off arm.
+    compact_solids_satin: bool = True
+    # Fine ink bars sew satin (`columns.is_fine_bar`, built OFF 2026-10-25,
+    # Kent: "measure what the pro does with small symbols and fine line art
+    # ... then propose a rule to build OFF"). The pro sews every free-standing
+    # thin ink bar as ONE satin at its drawn width plus his ordinary pull
+    # (about 0.86-1.10 mm of needle) in all 5 artworks that have them (To a
+    # T, Precision Drone, Hotel Fremont, Gaulke, Golden Tee); ours sends every
+    # bar under the area floor (`min_detail_mm`^2) to a hollow bean ring, so a
+    # parallel set of speed rules sews half bold, half thin. ON, a non-
+    # lettering, hole-free, ink-coloured stem under the floor -- aspect
+    # `STEM_MIN_ASPECT` or under one `SATIN_MIN_CROSS_MM` across, not lighter
+    # than everything it touches -- skips the run rescue for the ordinary
+    # satin tier, ahead of the hairline tier; `small_solids_satin` keeps the
+    # shapes it would take; no satin out of it falls back to the ring exactly.
+    # Measured over 16 paired jobs: 37 of the 38 target regions cure (To a T
+    # x4 30, Fremont separators 4, drone 2, MFab LC's LLC hairline; MFab hat's
+    # photo-class generation keeps its ring on `photo_width_floor`), region
+    # kappa 0.905; tests `tests/test_fine_bars_satin.py`. No width, pull, density or stitch
+    # length moves: whether a 1 mm bar holds on a cap is the sew-out question
+    # `small_solids_satin` already carries (gate 1). Layout (ruling 2026-10-22:
+    # judged in the preview). OFF is the engine as it was, byte for byte.
+    fine_bars_satin: bool = False
     # The pro's size rule for borders (2026-10-23, built OFF;
     # `docs/border-census-2026-10-23.md`). Over 16 paired designs the pro
     # rings about 1% of closed shapes under 2 mm, 7% at 2-4, 29% at 4-6 and
@@ -1888,8 +1927,8 @@ class PipelineConfig:
     # coin flip per design in his files (MFab, Drone and the Fremont patch
     # bordered; Bridge's and Gaulke's bare), so this is one pro's layout
     # habit judged in the preview (Kent 2026-10-22), not a cloth constant.
-    # Off, byte-identical (tests/test_border_by_size.py).
-    border_by_size: bool = False
+    # ON by default (Kent 2026-10-23, by the pro-count numbers); Off, byte-identical (tests/test_border_by_size.py).
+    border_by_size: bool = True
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run
@@ -2476,8 +2515,10 @@ class PipelineConfig:
     # WIDTH threshold, and his zigzag's share and pitch swing with the
     # reader's satin gate (0.6-1.3 mm per leg), so neither is settled.
     # Browser twin: `underlayShortColumns` (src/satinfont.js, the lettering
-    # engine's cap-height rung). OFF is the engine byte for byte.
-    satin_underlay_short_columns: bool = False
+    # engine's cap-height rung). False is the engine byte for byte.
+    # ON by default since 2026-10-23 (Kent's flip on the flip sheet, PR
+    # #1047: `docs/flip-sheet-2026-10-23.md`); False is the off arm.
+    satin_underlay_short_columns: bool = True
     # `satin_cap_recentre` (built 2026-09-19 for Kent's flip): a free end
     # whose spine tail is a surviving CAP FORK is cut at the kink and rebuilt
     # square. A flat cap's medial axis forks toward both corners; on a plain
@@ -2811,7 +2852,10 @@ class PipelineConfig:
     # letter of 5 mm or more is not touched, ON or OFF. Every mm and share
     # here is a candidate until sewn (gate 1). Kent flips. Tests:
     # `tests/test_column_small_bold.py`.
-    lettering_columns_small_bold: bool = False
+    # ON by default since 2026-10-23: it rode the flip sheet's `small_text_set`
+    # arm (PR #1047) with the four `small_text_cap_*` values below, and Kent
+    # flipped that arm as rendered; False is the off arm.
+    lettering_columns_small_bold: bool = True
     # Crosses square to the LINE OF TEXT in the Column lane (2026-10-23,
     # `digitizer_core/column_lean.py`; `docs/lettering-10mm-up-2026-10-23.md`).
     # The 10 mm and up band read against the pro's files: on Becker's
@@ -2902,7 +2946,7 @@ class PipelineConfig:
     # does on an S's curl. Layout, judged in the preview (Kent, 2026-10-22),
     # so ON-eligible from renders. False is the pre-flag cut, byte for byte.
     # Tests: `tests/test_column_corner_fold.py`.
-    lettering_columns_corner_fold: bool = False
+    lettering_columns_corner_fold: bool = True
     # Under `lettering_columns`, the INSIDE of every pivot -- an L fold's
     # corner (`lettering_columns_corner_fold`), an S's curl, a bowl -- is
     # sewn the way the professional's files sew it (2026-10-23, built OFF;
@@ -3095,7 +3139,10 @@ class PipelineConfig:
     # (nothing calls the pass). The intended value is a CANDIDATE (ROADMAP
     # gate 1): 3.7 is the professional's on one file, unsewn here. The flip
     # is Kent's, on renders. Tests: `tests/test_small_text.py`.
-    small_text_cap_mm: float | None = None
+    # 4.0 by default since 2026-10-23 (Kent's flip of the flip sheet's
+    # `small_text_set` arm, PR #1047, with the four companions below and
+    # `lettering_columns_small_bold`); None is the off arm.
+    small_text_cap_mm: float | None = 4.0
     # With `small_text_cap_mm`: grow a line TALLER by the full scale but WIDER
     # by at most this (`small_text.enlarge_small_text`'s `max_width_scale`).
     # Measured 2026-10-21 on the professional's Fremont patch at 92.5 mm,
@@ -3105,16 +3152,19 @@ class PipelineConfig:
     # by its bars, rope and border); condensed, it fits as the pro's does.
     # Kent 2026-10-21 reversed "you can't change the font size": "Yes, match
     # the pro". None: uniform, byte for byte. A CANDIDATE (gate 1): 1.05 is
-    # the pro's on one file, unsewn here.
-    small_text_cap_max_width_scale: float | None = None
+    # the pro's on one file, unsewn here. 1.05 by default since 2026-10-23
+    # (the flip sheet's arm; not read while `small_text_cap_letter_gap_mm`
+    # is set, which it is by default); None is the off arm.
+    small_text_cap_max_width_scale: float | None = 1.05
     # With `small_text_cap_mm`: the drawn stroke a grown letter is widened to
     # (`small_text.MIN_STROKE_MM` 0.6 when None, byte for byte). The pro does
     # not enlarge a thin font -- he re-sets the words bold: 0.8-0.9 mm columns
     # on Fremont at 92.5 mm. Grown at 0.6, the art's 0.3-0.5 mm serifs and
     # bars land under `SATIN_MIN_CROSS_MM` 0.5 and the Column lane drops them
     # unsewn (2026-10-21, isolated lane on the grown tagline). A CANDIDATE
-    # (gate 1): 0.85 is the pro's on one file.
-    small_text_cap_min_stroke_mm: float | None = None
+    # (gate 1): 0.85 is the pro's on one file. 0.85 by default since
+    # 2026-10-23 (the flip sheet's arm); None is the off arm.
+    small_text_cap_min_stroke_mm: float | None = 0.85
     # With `small_text_cap_mm`: RE-SET each grown word the way the
     # professional sets raised small text (2026-10-21, built OFF;
     # `small_text._place_line_reset`). Read across his jobs
@@ -3130,8 +3180,9 @@ class PipelineConfig:
     # line, 5% wider, hit its dashes and was left at 2.2 mm. This is the
     # visible gap asked for between letters of one word, mm. None: today,
     # byte for byte. A CANDIDATE (gate 1): 0.25 is the middle of the pro's
-    # 0.15-0.35, unsewn here.
-    small_text_cap_letter_gap_mm: float | None = None
+    # 0.15-0.35, unsewn here. 0.25 by default since 2026-10-23 (the flip
+    # sheet's arm); None is the off arm.
+    small_text_cap_letter_gap_mm: float | None = 0.25
     # With `small_text_cap_letter_gap_mm`: the stroke a re-set letter is
     # widened to grows with its HEIGHT -- this times the art's stroke times
     # the height scale, or `small_text_cap_min_stroke_mm` when more. The
@@ -3139,8 +3190,9 @@ class PipelineConfig:
     # Fremont (0.90 mm), 1.36x on Drone (1.26), 1.60x on Proseal (1.26), so
     # one fixed mm floor cannot match the three: 0.85 sews Drone 0.4 mm thin.
     # None: the floor alone. A CANDIDATE (gate 1): 1.45, the pro's on
-    # Fremont, unsewn here.
-    small_text_cap_bold_scale: float | None = None
+    # Fremont, unsewn here. 1.45 by default since 2026-10-23 (the flip
+    # sheet's arm); None is the off arm.
+    small_text_cap_bold_scale: float | None = 1.45
     # With `small_text_cap_letter_gap_mm`: the re-set reaches the two kinds
     # of small line it refused as `no_room` (2026-10-24, L8; census
     # `tools/small_text_floor_census.py`). Across the paired jobs the pro
@@ -3366,7 +3418,9 @@ class PipelineConfig:
     # stay -- about four stitches per cut. Whether a start holds without its
     # knot is a sew-out (ROADMAP gate 1): a CANDIDATE. False is byte-identical.
     # Not in `SMALL_TEXT_TRUE_SIZE`.
-    tie_in_off: bool = False
+    # ON by default since 2026-10-23 (Kent's flip on the flip sheet, PR
+    # #1047: `docs/flip-sheet-2026-10-23.md`); False is the off arm.
+    tie_in_off: bool = True
     # ONE switch for small lettering at its true size (2026-10-14, Kent:
     # "keep working on improvements on this"). True fills each of the
     # values above that is still None with `SMALL_TEXT_TRUE_SIZE`; a value set
@@ -3529,7 +3583,9 @@ class PipelineConfig:
     # A fabric preset is gate 1 (a physical constant), so this waits on the
     # sew-out card's arm and Kent's flip. OFF is the engine byte for byte.
     # Browser twin: `crossUnderlay` (src/digitize.js).
-    fill_underlay_cross: bool = False
+    # ON by default since 2026-10-23 (Kent's flip on the flip sheet, PR
+    # #1047: `docs/flip-sheet-2026-10-23.md`); False is the off arm.
+    fill_underlay_cross: bool = True
 
     # Which fill technique a fill-classified shape sews with.
     #
@@ -3854,7 +3910,9 @@ class PipelineConfig:
     # Row spacing and the interior grid are unchanged. Construction, not a fabric constant (ROADMAP gate 1 asks
     # which kind); the flip is Kent's. False is byte-identical.
     # `tests/test_fill_turn_slant.py`.
-    fill_turn_slant: bool = False
+    # ON by default since 2026-10-23 (Kent's flip on the flip sheet, PR
+    # #1047: `docs/flip-sheet-2026-10-23.md`); False is the off arm.
+    fill_turn_slant: bool = True
 
     # Underlay under a gradient-class design's ordinary fills. Built OFF
     # 2026-10-05; ON since 2026-10-07 by Kent's ruling, because OFF a
@@ -5452,8 +5510,22 @@ class PipelineConfig:
     # beyond half a thread at each end. Still chaining in the ROADMAP gate 3
     # sense (needle-down thread a later pass is trusted to hide), so the
     # flip is Kent's, after the sew-out says buried travel does not show.
-    # Off, byte-identical. Tests: `tests/test_trim_bury_under_later.py`.
-    trim_bury_under_later: bool = False
+    # False, byte-identical. Tests: `tests/test_trim_bury_under_later.py`.
+    # ON by default since 2026-10-23 (Kent's flip on the flip sheet, PR
+    # #1047: `docs/flip-sheet-2026-10-23.md`); False is the off arm.
+    trim_bury_under_later: bool = True
+    # `skip_covered_shapes` (BUILT OFF 2026-10-26, the MFab recipe's trims,
+    # `docs/mfab-recipe-trims-2026-10-26.md`): a shape whose whole thread
+    # lies on thread of its OWN colour block that other shapes sew, before
+    # or after it -- `_UnderThread`'s samples, centre and both edges, within
+    # half a thread -- is not sewn (`stage7_sequence._skip_covered_shapes`).
+    # MFab's keyline traces as the field plus 31 (hat) / 51 (LC) slivers
+    # 0.1-0.3 mm wide, each its own run with a cut either side; the pro's
+    # keyline satin covers all of them, and ours (the field's loops and
+    # fill) already covers 62% / 95% of their area. Same colour, so nothing
+    # changes what shows; it removes a second layer and its cuts. Off,
+    # byte-identical. Tests: `tests/test_skip_covered_shapes.py`.
+    skip_covered_shapes: bool = False
     # `cut_every_jump` (BUILT OFF 2026-10-21, `docs/settings-vs-pro-2026-10-21.md`
     # row 25): no needle-up move is left uncut. Ours leaves 0-168 uncut
     # jumps of 0.5-3.0 mm per job (every hop under `trim_at_mm`), each a

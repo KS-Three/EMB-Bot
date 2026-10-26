@@ -75,6 +75,27 @@ export async function closeDownload(page) {
 // presses "Auto Digitize Image" — pass `run: false` for the browser's own
 // flatten lane (service unreachable), which has no such button, or to assert
 // on the loaded-but-unrun state.
+// Pin config keys on every POST /digitize the Studio makes (the multipart
+// `config` field gets `extra` laid over it). The specs that press "Add
+// border" / Border: auto assert the restitch CHANGES the stats, which is only
+// a fair question while the shape has no ring yet. `border_by_size` (ON by
+// default since 2026-10-23, Kent) already rings a big square, so an explicit
+// border is then the same ring and the stats do not move; these specs pin the
+// baseline to the engine without it. The flag's own behaviour is pinned in
+// the digitizer's tests, not here.
+export async function pinDigitizeConfig(page, extra) {
+  await page.route("**/digitize", async (route) => {
+    const req = route.request();
+    const buf = req.postDataBuffer();
+    if (req.method() !== "POST" || !buf) return route.continue();
+    const text = buf.toString("latin1");
+    const m = /(name="config"\r\n\r\n)(\{[^\r\n]*\})/.exec(text);
+    if (!m) return route.continue();
+    const patched = text.replace(m[0], m[1] + JSON.stringify({ ...JSON.parse(m[2]), ...extra }));
+    return route.continue({ postData: Buffer.from(patched, "latin1") });
+  });
+}
+
 export async function uploadArtwork(page, file, { run = true } = {}) {
   await page.getByTestId("art-file").setInputFiles(file);
   if (!run) return;

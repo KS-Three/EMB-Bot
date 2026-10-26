@@ -22,7 +22,8 @@ const G = require("../src/garments.js");
 const BIN = path.join(__dirname, "..", "src", "fonts", "bin");
 // `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
 // (Kent); a pin below taken before that, on another subject, builds with them OFF.
-const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+// + the three JS twins Kent flipped ON 2026-10-23 (fill turn slant, cross underlay, short-column underlay)
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false, fillTurnSlant: false, crossUnderlay: false, underlayShortColumns: false };
 const font = JSON.parse(fs.readFileSync(__dirname + "/fixtures/fonts/geneva_simple.json", "utf8"));
 
 // A straight column `lenPx` long and `widPx` wide, in the y direction.
