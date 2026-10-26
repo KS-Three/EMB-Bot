@@ -204,16 +204,41 @@ def test_an_alpha_hole_sews_white():
     assert all(x.thread_index == WHITE_T and x.meta["stitched"] for x in holes)
 
 
-# --- the known miss (census 2026-10-23, docs/enclosed-white-like-pro-2026-10-23.md)
+# --- counters by shape (census 2026-10-26, `enclosed_white.COUNTER_MAX_STROKES`)
 
-@pytest.mark.xfail(strict=True, reason=(
-    "Tires: the loops of a connected script word are letter counters the pro "
-    "leaves open, but the text cluster tags a one-blob script word with nothing, "
-    "so the option reads them as fields and sews them white. Flips to a pass when "
-    "the tagger (or a word reader) marks the holder as lettering; then drop the mark."))
 def test_a_loop_in_an_untagged_script_word_stays_open():
-    # A 925 mm2 untagged solid with two small holes, like TIRES at 114 mm.
+    # Tires: the loops of a connected script word are counters the pro leaves
+    # open, but the text cluster tags a one-blob script word with nothing. A
+    # 925 mm2 untagged solid with two small holes, like TIRES at 114 mm: each
+    # hole is under 1.5 of the word's strokes across. (Was a strict xfail.)
     word = _reg("Sword", _box(0, 0, 50, 20), [_box(5, 5, 12, 12), _box(30, 6, 36, 13)])
     loop1 = _reg("Sloop1", _box(5, 5, 12, 12), thread=WHITE_T, enclosed_background=True)
     loop2 = _reg("Sloop2", _box(30, 6, 36, 13), thread=WHITE_T, enclosed_background=True)
     assert plan_enclosed_white([word, loop1, loop2], _cfg()) == {}
+    # ... and the customer's counters switch sews them like any counter
+    assert plan_enclosed_white([word, loop1, loop2], _cfg(sew_enclosed_counters=True)) == {
+        "Sloop1": "counter", "Sloop2": "counter"}
+
+
+def test_a_slot_in_an_untagged_drawing_stays_open():
+    # ProSeal's gun: a 2 mm slot in a body ~1.7 mm stroke wide (1.28 strokes)
+    body = _reg("Sbody", _box(0, 0, 12, 6), [_box(2, 2, 10, 4)])
+    slot = _reg("Sslot", _box(2, 2, 10, 4), thread=WHITE_T, enclosed_background=True)
+    assert plan_enclosed_white([body, slot], _cfg()) == {}
+
+
+def test_a_holderless_speck_stays_open_and_a_holderless_field_sews():
+    # a counter the vectorizer split off its letter (ProSeal's SPRAY: 0.4-1
+    # mm2) against the handle highlight, a 10 mm2 area with no holder either
+    speck = _reg("Sspeck", _box(0, 0, 1, 1), thread=WHITE_T, enclosed_background=True)
+    field = _reg("Sfield", _box(5, 0, 7, 5), thread=WHITE_T, enclosed_background=True)
+    assert plan_enclosed_white([speck, field], _cfg()) == {"Sfield": "field"}
+
+
+def test_a_counter_shaped_hole_inside_a_sewn_field_still_sews_as_before():
+    # MFab: pinholes in the white band sew with the band, kind unchanged
+    frame = _reg("Sframe", _box(0, 0, 30, 30), [_box(2, 2, 28, 28)])
+    band = _reg("Sband", _box(2, 2, 28, 28), [_box(10, 10, 11, 11)], thread=WHITE_T,
+                enclosed_background=True)
+    pin = _reg("Spin", _box(10, 10, 11, 11), thread=WHITE_T, enclosed_background=True)
+    assert plan_enclosed_white([frame, band, pin], _cfg()) == {"Sband": "field", "Spin": "field"}
