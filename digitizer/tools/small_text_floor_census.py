@@ -54,6 +54,33 @@ travel and the patch field, so EST / 1895 / PLAY read DROPPED or as one
 blob, and HOTEL FREMONT reads its band (16.95 mm); `tools/small_text_columns.py`
 reads those by colour block (`small-text-reset-2026-10-21` in memory). MFab's
 outline letters read 8.05 mm against 6.1 drawn: the outline, not a re-set.
+
+STEPS (2026-10-25, W3-11): where a re-set letter's stroke goes, step by step.
+
+  python -m tools.small_text_floor_census steps --cache DIR [--set K=JSON ...] SLUG ...
+
+digitizes each SLUG like `digitize`, with the re-set set explicit
+(`RESET_SET`, #1057's defaults; None on main when written) under any
+`--set`, and reads every re-set line (`enlarge_small_text`'s clusters) at
+each step it passes through:
+
+  est       the stroke the re-set is told the letters have: the tagger's
+            `text_cluster_stroke_mm` x 2 (`small_text.py`, `it["stroke"]`).
+  traced    the stroke of the shapes it actually grows -- the letters
+            `_retrace` re-read from the source raster -- by the SAME measure
+            (2 x the mean skeleton half-width, `textcluster._stats_of_polygon`).
+  target    `_stroke_target`: the floor, or the bold scale on `est`.
+  widen     what each side is buffered: (target - min(s, f) x est) / 2.
+  drawn     the letters' polygons as stage 7's Column lane receives them
+            (`p.region.polygon`; stage 5's grown polygon is not what the
+            lane sews), by the same measure. The re-set means drawn = target.
+  column    the plan's satin crosses on those letters (needle to needle,
+            median): what the lane built from `drawn`.
+  sewn      the census reader's `stroke_mm` on our DST, by `ELEMENTS` line.
+
+Where `traced` < `est`, drawn lands at target - min(s, f) x (est - traced):
+under the floor wherever the floor is the target. Read off `steps.json`
+(cache/SLUG) with `steps --table --cache DIR`.
 """
 from __future__ import annotations
 
@@ -139,6 +166,146 @@ def digitize_main(argv) -> int:
     return 0
 
 
+# ------------------------------------------------------------------ steps
+#: the re-set with #1057's defaults, explicit (None on main when written)
+RESET_SET = {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1.05,
+             "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
+             "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True}
+
+
+def stroke_mm(poly) -> float | None:
+    """2 x the mean skeleton half-width: the tagger's own measure, the one
+    `text_cluster_stroke_mm` (and so the re-set's `it["stroke"]`) is."""
+    from digitizer_core.textcluster import _stats_of_polygon
+    s = _stats_of_polygon(poly)
+    return None if s is None else 2.0 * s.mean_mm
+
+
+def _med(vals):
+    vals = [v for v in vals if v is not None]
+    return round(statistics.median(vals), 3) if vals else None
+
+
+def steps_main(argv) -> int:
+    """`steps` (module doc, STEPS)."""
+    import time
+    from digitizer_core import pipeline, small_text
+    from tools import border_census as bc
+    from tools import pro_pair as pp
+    ap = argparse.ArgumentParser(prog="small_text_floor_census steps")
+    ap.add_argument("--cache", required=True)
+    ap.add_argument("--set", action="append", default=[], metavar="KEY=JSON")
+    ap.add_argument("--table", action="store_true", help="print the cache's steps.json, digitize nothing")
+    ap.add_argument("slugs", nargs="*")
+    args = ap.parse_args(argv)
+    cache = Path(args.cache)
+    if args.table:
+        print(steps_table(sorted(cache.glob("*/steps.json"))))
+        return 0
+    extra = {**RESET_SET, **pp.parse_sets(args.set)}
+    known = {r[0] for r in bc.PAIRS}
+    bc.PAIRS += [r for r in EXTRA_PAIRS if r[0] not in known]
+    place, ro = small_text._place_line_reset, pipeline.resolve_overlaps
+    for slug in args.slugs:
+        row = next(r for r in bc.PAIRS if r[0] == slug)
+        pro, art = bc.find_pair(*row[:3])
+        if pro is None or art is None:
+            raise SystemExit(f"{slug}: missing {'pro' if pro is None else 'art'} file")
+        width = pp.pro_counts(pro)["width_mm"]
+        lines: list = []
+        letters: dict = {}
+
+        def hook_place(items, *a, **k):
+            found = place(items, *a, **k)
+            for n, it in enumerate(items):
+                rec = {"cluster": it["row"]["cluster"], "cap": round(it["cap"], 3),
+                       "est": round(it["stroke"], 3), "found": found is not None,
+                       "traced": _med([stroke_mm(s) for s in it["shapes"]])}
+                if found:
+                    s, _dy, _dxs, resets, _bars = found
+                    rec.update(s=round(s, 3), f=round(resets[n]["f"], 3), widen=round(resets[n]["widen"], 3),
+                               target=round(small_text._stroke_target(it, s, a[4], a[5]), 3))
+                lines.append(rec)
+            return found
+
+        def hook_ro(regions, *a, **k):
+            planned, warns = ro(regions, *a, **k)
+            for p in planned:
+                m = p.region.meta
+                if m.get("small_text_reset"):
+                    letters[p.region.shape_id] = {"cluster": m.get("text_cluster_id"),
+                                                  "drawn": stroke_mm(p.region.polygon),
+                                                  "bounds": [round(v, 2) for v in p.region.polygon.bounds]}
+            return planned, warns
+        small_text._place_line_reset, pipeline.resolve_overlaps = hook_place, hook_ro
+        try:
+            t = time.time()
+            d = pp.digitize(art, width, row[3], extra)
+        finally:
+            small_text._place_line_reset, pipeline.resolve_overlaps = place, ro
+        for _blk, run in d.plan.iter_runs():
+            lt = letters.get(str(run.shape_id))
+            if lt is not None and str(run.kind) == "satin":
+                pts = run.points or []
+                lt.setdefault("crosses", []).extend(math.dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1))
+        out = cache / slug
+        bc.write_ours(out, slug, row[3], width, pro, art, d.result, d.plan, time.time() - t)
+        # the census reader on our DST, per ELEMENTS line of this slug
+        from tools.study_pro import load_runs
+        runs = load_runs(out / "ours.dst")[0]
+        sewn = []
+        for el in (e for e in ELEMENTS if e[0] == slug and "(ref)" not in e[1]):
+            box = el[2]
+            ah = el[3] if len(el) > 3 else None
+            h = ah or (box[3] - box[1])
+            m_y, m_x = max(2.5, 1.5 * h), 2.0 + 0.5 * h
+            r = read_element(runs, (box[0] - m_x, box[1] - m_y, box[2] + m_x, box[3] + m_y), h,
+                             0.5 * (box[1] + box[3]))
+            sewn.append({"label": el[1], "box": list(box), "stroke_mm": r.get("stroke_mm"),
+                         "verdict": r.get("verdict")})
+        rec = {"slug": slug, "set": extra, "lines": lines, "sewn": sewn,
+               "letters": {k: {"cluster": v["cluster"], "bounds": v["bounds"],
+                               "drawn": None if v["drawn"] is None else round(v["drawn"], 3),
+                               "column": _med(v.get("crosses", [])), "crosses": len(v.get("crosses", []))}
+                           for k, v in letters.items()}}
+        (out / "steps.json").write_text(json.dumps(rec, default=str), encoding="utf-8")
+        print(slug, width, round(time.time() - t), "s", flush=True)
+    print(steps_table(sorted(cache.glob("*/steps.json"))))
+    return 0
+
+
+def steps_table(paths) -> str:
+    """One row per re-set cluster: est | traced | s / f | target | widen |
+    predicted drawn (target - min(s, f) x (est - traced)) | drawn | column |
+    sewn (the census line the cluster sits in)."""
+    head = ("| job | cluster (cap mm) | est | traced | traced / est | s / f | target | widen | "
+            "predicted drawn | drawn | column | sewn (line) |")
+    out = [head, "|" + "---|" * 12]
+    for p in paths:
+        rec = json.loads(Path(p).read_text(encoding="utf-8"))
+        for ln in rec["lines"]:
+            lts = [v for v in rec["letters"].values() if v.get("cluster") == ln["cluster"]]
+            drawn, col = _med([v["drawn"] for v in lts]), _med([v["column"] for v in lts])
+            sewn = ""
+            if lts:
+                xs = [(v["bounds"][0] + v["bounds"][2]) / 2.0 for v in lts]
+                ys = [(v["bounds"][1] + v["bounds"][3]) / 2.0 for v in lts]
+                cx, cy = statistics.median(xs), statistics.median(ys)
+                hit = [s for s in rec["sewn"] if s["box"][0] - 3 <= cx <= s["box"][2] + 3
+                       and s["box"][1] - 3 <= cy <= s["box"][3] + 3]
+                sewn = "; ".join(f"{s['stroke_mm']} ({s['label']})" for s in hit)
+            if not ln.get("found"):
+                out.append(f"| {rec['slug']} | {ln['cluster']} ({ln['cap']}) | {ln['est']} | {ln['traced']} | "
+                           f"| | | | | {drawn} | {col} | {sewn} |")
+                continue
+            ratio = round(ln["traced"] / ln["est"], 2) if ln["traced"] and ln["est"] else None
+            pred = (round(ln["target"] - min(ln["s"], ln["f"]) * (ln["est"] - ln["traced"]), 3)
+                    if ln["traced"] else None)
+            out.append(f"| {rec['slug']} | {ln['cluster']} ({ln['cap']}) | {ln['est']} | {ln['traced']} | {ratio} | "
+                       f"{ln['s']} / {ln['f']} | {ln['target']} | {ln['widen']} | {pred} | {drawn} | {col} | {sewn} |")
+    return "\n".join(out)
+
+
 # ------------------------------------------------------------------ reading
 def _segments(runs, box):
     """-> {block: [(x0, y0, x1, y1, run_idx, i)]} needle-down segments with
@@ -168,7 +335,12 @@ def seg_kinds(runs, segs) -> list[str]:
     re-enters the hole two stitches away on a 0.4-3.5 mm stitch) or 'other',
     per segment of `segs`."""
     from tools.border_pro import columns
-    sat_of = _SAT_CACHE.setdefault(id(runs), {})
+    # keyed by id() and holding `runs` itself: a freed list's id is reused
+    # by the next one, which then read the old list's satin flags
+    held = _SAT_CACHE.get(id(runs))
+    if held is None or held[0] is not runs:
+        held = _SAT_CACHE[id(runs)] = (runs, {})
+    sat_of = held[1]
     out = []
     for s in segs:
         ri, i = s[4], s[5]
@@ -190,12 +362,15 @@ def seg_kinds(runs, segs) -> list[str]:
     return out
 
 
-def components(segs, kinds, box, art_h, cy):
+def components(segs, kinds, box, art_h, cy, reach=None):
     """Paint `segs` (0.3 mm thread, 20 px/mm; a non-satin, non-bean stitch
     longer than `TRAVEL_MM` is travel between letters and is not painted) and
     keep the letter-like components: not touching the box edge (a field, a
     bar, a border running through), at least 0.3 x the art height tall, and
-    centred within max(1.5, art height) of the line's centre `cy`.
+    centred within `reach` -- by default max(1.5, art height) -- of the
+    line's centre `cy`. A line the pro MOVED further than that reads
+    DROPPED by default: Fremont's EST 1895 (cap 1.85) sits ~3 mm lower in
+    his file; `tools/reset_room_census.py` passes the search box's own reach.
     -> ([(x0, y0, x1, y1) mm], [indices of the segments inside them])."""
     import cv2
     import numpy as np
@@ -220,7 +395,7 @@ def components(segs, kinds, box, art_h, cy):
         if ch / PPM < 0.3 * art_h:
             continue
         bb = (cx / PPM + x0, cyy / PPM + y0, (cx + cw) / PPM + x0, (cyy + ch) / PPM + y0)
-        if abs(0.5 * (bb[1] + bb[3]) - cy) > max(1.5, art_h):
+        if abs(0.5 * (bb[1] + bb[3]) - cy) > (max(1.5, art_h) if reach is None else reach):
             continue
         keep[k] = bb
     idx = []
@@ -232,16 +407,17 @@ def components(segs, kinds, box, art_h, cy):
     return list(keep.values()), idx
 
 
-def read_element(runs, box, art_h, cy, keep=None):
+def read_element(runs, box, art_h, cy, keep=None, reach=None):
     """One reader, one file: -> dict (see module doc). The letters' block is
     the one with the most thread in letter-like components. `keep`, a dict,
     is filled with `segs` / `kinds` (the line's own needle-down segments and
     their kinds) and `comps` (its letter-like components' boxes), so a second
-    reader can read the SAME selection (`tools/lettering_board.py`)."""
+    reader can read the SAME selection (`tools/lettering_board.py`).
+    `reach`: `components`' centre reach (None: its default)."""
     best = None
     for blk, segs in _segments(runs, box).items():
         kinds = seg_kinds(runs, segs)
-        comps, idx = components(segs, kinds, box, art_h, cy)
+        comps, idx = components(segs, kinds, box, art_h, cy, reach)
         ln = sum(_seg_len(segs[j]) for j in idx)
         if comps and (best is None or ln > best[0]):
             best = (ln, blk, comps, [segs[j] for j in idx], [kinds[j] for j in idx])
@@ -448,6 +624,8 @@ def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
     if argv[:1] == ["digitize"]:
         return digitize_main(argv[1:])
+    if argv[:1] == ["steps"]:
+        return steps_main(argv[1:])
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--cache", action="append", required=True,
                     help="border_census-style cache(s) holding the OFF arm (searched in order)")
