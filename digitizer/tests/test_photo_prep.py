@@ -103,8 +103,10 @@ def _snapshot_with_prep_on(name: str) -> dict:
         # `edge_cap="none"` matches `_golden_snapshot`'s own config
         # (2026-09-11): both sides of a byte-identity comparison must stand on
         # the same engine, and the cap is not what photo_prep is measured
-        # against.
-        PipelineConfig(target_width_mm=80.0, photo_prep=True, edge_cap="none"),
+        # against. `sew_enclosed_white=False` likewise: the golden's pin since
+        # Kent's 2026-10-26 flip.
+        PipelineConfig(target_width_mm=80.0, photo_prep=True, edge_cap="none",
+                       sew_enclosed_white=False),
     )
     return {
         "shape_ids": sorted(r.shape_id for r in result.regions),

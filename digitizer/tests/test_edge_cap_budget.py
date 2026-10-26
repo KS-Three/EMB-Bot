@@ -362,9 +362,12 @@ def test_the_warning_moves_no_stitch(monkeypatch):
     import digitizer_core.stage7_sequence as S
 
     monkeypatch.setattr(S, "EDGE_CAP_BUDGET_PCT", 1.0)
+    # white pinned as `_run` pins it (ON since 2026-10-26): the two sides stand on
+    # one engine, and whitebg's ring hole sews white with it ON
     _result, forced = digitize(
         TESTDATA / WHITEBG,
-        PipelineConfig(target_width_mm=CHEAP, edge_cap="bean", border_by_size=False))
+        PipelineConfig(target_width_mm=CHEAP, edge_cap="bean", border_by_size=False,
+                       sew_enclosed_white=PRE_FLIP["sew_enclosed_white"]))
     monkeypatch.undo()
 
     assert _over(forced) is not None, "the forced ceiling did not fire"
