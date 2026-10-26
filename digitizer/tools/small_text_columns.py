@@ -27,6 +27,12 @@ HOW (the pro-rules doc's method, applied to BOTH files as DST):
   `gap_med` leaves out word spaces (wider than max(0.6, 0.35 cap)).
 - band_<line>_<side>.png in --out: the band's stitches, the line's own
   colour blocks dark, the rest pale -- look before quoting a number.
+- letters of a known word (`text_lines`, `word_letters`; the 5-10 mm band,
+  2026-10-25): a joined piece is shared out between the letters it holds and
+  parted -- at a 1.0 mm opening when they part there (a TIP touch), else at
+  the thread's narrowest column (FUSED); each pair of neighbours gets its
+  visible gap (0 when touching) and the thread they share. Used by
+  `tools/letter_gap_census.py`; `pieces` is unchanged.
 
 Ours is digitized exactly as `tools.pro_pair.digitize` does (the Studio's
 request through the service's parser), with `--set key=value` overrides
@@ -244,6 +250,243 @@ def line(pcs, xs, band) -> dict:
             "gap_med": round(float(np.median(letter_gaps)), 2) if letter_gaps else None,
             "gaps": [round(g, 2) for g in gaps], "touching": len(gaps) - len(vis),
             "x": [round(sel[0]["x0"], 1), round(sel[-1]["x1"], 1)]}
+
+
+# ------------------------------------------------------------------ letters of a word
+# The 5-10 mm band (2026-10-25, `tools/letter_gap_census.py`). At this size a
+# word's letters can TOUCH in thread -- the pro's Fremont O and T meet at a
+# serif tip -- so a piece may hold two or three letters, on either side. The
+# word's text is known, so a joined piece is shared out between the letters it
+# holds and CUT at the thread's own narrowest column; the gap of a cut pair is
+# 0 and its `contact_mm` is the thread crossing the cut. A pair still joined
+# after a FUSE_OPEN_MM opening is FUSED (a broad bridge), not a tip touch: that
+# opening is the 2026-10-23 band reader's (`docs/lettering-5-10mm-2026-10-23.md`).
+FUSE_OPEN_MM = 1.0
+#: a glyph's sewn width relative to a typical capital, used ONLY to share a
+#: joined piece out between its letters and to seed where each cut is looked
+#: for; anything not listed is 1.0
+LETTER_SHARE = {"I": 0.35, "1": 0.5, "J": 0.7, "L": 0.85, "F": 0.85, "E": 0.85, "T": 0.9,
+                "M": 1.25, "W": 1.45}
+#: a cut is the thread's narrowest column within this share of the letter's
+#: width either side of where the shares put it
+CUT_SEARCH = 0.35
+
+
+def text_lines(pcs, min_h: float = 4.0) -> list[dict]:
+    """Pieces at least `min_h` mm tall (no bar wider than 3x its height)
+    grouped into lines of text, top to bottom: a piece joins the first line
+    whose centre lies within 0.3 of the taller one's height and whose height
+    is 0.6-1.6x its own. -> [{"cy", "h", "pieces"}], pieces left to right."""
+    sel = [p for p in pcs if p["y1"] - p["y0"] >= min_h and (p["x1"] - p["x0"]) <= 3 * (p["y1"] - p["y0"])]
+    sel.sort(key=lambda p: (p["y0"] + p["y1"]) / 2)
+    lines: list[dict] = []
+    for p in sel:
+        cy, h = (p["y0"] + p["y1"]) / 2, p["y1"] - p["y0"]
+        for ln in lines:
+            if abs(ln["cy"] - cy) < 0.3 * max(ln["h"], h) and 0.6 < h / ln["h"] < 1.6:
+                ln["pieces"].append(p)
+                ln["cy"] = float(np.mean([(q["y0"] + q["y1"]) / 2 for q in ln["pieces"]]))
+                break
+        else:
+            lines.append({"cy": cy, "h": h, "pieces": [p]})
+    for ln in lines:
+        ln["pieces"].sort(key=lambda p: p["x0"])
+        ln["h"] = float(np.median([p["y1"] - p["y0"] for p in ln["pieces"]]))
+    return lines
+
+
+def _compose(parts) -> dict:
+    """One piece-shaped dict (ox, oy, mask, mm box) over several pieces."""
+    ox, oy = min(p["ox"] for p in parts), min(p["oy"] for p in parts)
+    x1 = max(p["ox"] + p["mask"].shape[1] for p in parts)
+    y1 = max(p["oy"] + p["mask"].shape[0] for p in parts)
+    m = np.zeros((y1 - oy, x1 - ox), bool)
+    for p in parts:
+        m[p["oy"] - oy:p["oy"] - oy + p["mask"].shape[0], p["ox"] - ox:p["ox"] - ox + p["mask"].shape[1]] |= p["mask"]
+    return {"block": parts[0]["block"], "ox": ox, "oy": oy, "mask": m,
+            "x0": ox / PPM, "y0": oy / PPM, "x1": x1 / PPM, "y1": y1 / PPM}
+
+
+def _x_units(pcs) -> list[dict]:
+    """A line's pieces merged into units, left to right: a piece whose x
+    extent overlaps the unit before it by half the narrower of the two is part
+    of it (a split stroke, a tail under its letter)."""
+    units: list[list] = []
+    for p in sorted(pcs, key=lambda q: q["x0"]):
+        if units:
+            last = units[-1]
+            lo, hi = min(q["x0"] for q in last), max(q["x1"] for q in last)
+            over = min(hi, p["x1"]) - max(lo, p["x0"])
+            if over > 0.5 * min(hi - lo, p["x1"] - p["x0"]):
+                last.append(p)
+                continue
+        units.append([p])
+    return [_compose(u) for u in units]
+
+
+def _share(widths, glyphs) -> list[tuple[int, int]] | None:
+    """Consecutive glyphs shared out over units of `widths` (mm), every unit
+    at least one: the split whose units' widths best match their letters'
+    LETTER_SHARE at one common scale (least squares). -> [(i0, i1)] per unit;
+    None when there are more units than glyphs."""
+    u, n = len(widths), len(glyphs)
+    if u > n or not u:
+        return None
+    sh = [LETTER_SHARE.get(g, 1.0) for g in glyphs]
+    s = sum(widths) / sum(sh)
+    cum = np.concatenate([[0.0], np.cumsum(sh)])
+    inf = float("inf")
+    best = [[inf] * (n + 1) for _ in range(u + 1)]
+    back = [[0] * (n + 1) for _ in range(u + 1)]
+    best[0][0] = 0.0
+    for k in range(1, u + 1):
+        for j in range(k, n - (u - k) + 1):
+            for i in range(k - 1, j):
+                if best[k - 1][i] == inf:
+                    continue
+                c = best[k - 1][i] + (widths[k - 1] - s * (cum[j] - cum[i])) ** 2
+                if c < best[k][j]:
+                    best[k][j], back[k][j] = c, i
+    out, j = [], n
+    for k in range(u, 0, -1):
+        i = back[k][j]
+        out.append((i, j))
+        j = i
+    return out[::-1]
+
+
+def _letter(unit, m, glyph, ui) -> dict:
+    """A piece-shaped letter from `m`, a mask in `unit`'s own pixels."""
+    rows, cols = np.flatnonzero(m.any(1)), np.flatnonzero(m.any(0))
+    if not len(rows):
+        rows = cols = np.array([0])
+    sub = m[rows[0]:rows[-1] + 1, cols[0]:cols[-1] + 1]
+    ox, oy = unit["ox"] + int(cols[0]), unit["oy"] + int(rows[0])
+    return {"block": unit["block"], "glyph": glyph, "unit": ui, "ox": ox, "oy": oy, "mask": sub,
+            "x0": ox / PPM, "y0": oy / PPM, "x1": (ox + sub.shape[1]) / PPM, "y1": (oy + sub.shape[0]) / PPM}
+
+
+def _cut_columns(unit, m, glyphs) -> tuple[list[np.ndarray], list[dict]]:
+    """`m` (a mask in `unit`'s pixels) holding `glyphs` that no opening parts,
+    cut at the thread's narrowest columns -> (letter masks, cuts); a cut is
+    {"x_mm", "y_mm", "contact_mm"}: contact is the thread crossing it."""
+    col = m.sum(0)
+    nz = np.flatnonzero(col)
+    a0, a1 = (int(nz[0]), int(nz[-1]) + 1) if len(nz) else (0, m.shape[1])
+    sh = [LETTER_SHARE.get(g, 1.0) for g in glyphs]
+    s = (a1 - a0) / sum(sh)
+    xs, cuts, at = [a0], [], float(a0)
+    for j in range(len(glyphs) - 1):
+        at += sh[j] * s
+        r = CUT_SEARCH * min(sh[j], sh[j + 1]) * s
+        lo, hi = max(xs[-1] + 1, int(at - r)), min(a1 - 1, int(at + r) + 1)
+        if hi <= lo:
+            lo, hi = xs[-1] + 1, max(xs[-1] + 2, a1 - 1)
+        seg = col[lo:hi]
+        cand = np.flatnonzero(seg == seg.min()) + lo
+        c = int(cand[np.argmin(np.abs(cand - at))])
+        rows = np.flatnonzero(m[:, c])
+        cuts.append({"x_mm": (unit["ox"] + c) / PPM,
+                     "y_mm": (unit["oy"] + float(rows.mean())) / PPM if len(rows) else unit["y0"],
+                     "contact_mm": round(float(col[c]) / PPM, 2)})
+        xs.append(c)
+    xs.append(a1)
+    out = []
+    for a, b in zip(xs, xs[1:]):
+        lm = np.zeros_like(m)
+        lm[:, a:b] = m[:, a:b]
+        out.append(lm)
+    return out, cuts
+
+
+def _cut(unit, glyphs, ui: int) -> tuple[list[dict], list[dict]]:
+    """A unit holding `glyphs` parted into letters -> (letters, joins), a join
+    per neighbour pair: {"x_mm", "y_mm", "contact_mm", "fused"}, own frame.
+
+    The unit is opened by FUSE_OPEN_MM: letters that part there merely TOUCH
+    at 0.4 mm thread, and each unit pixel goes to the nearest part (contact =
+    the boundary they share). Letters still joined are FUSED and are cut at
+    the thread's narrowest column (contact = the thread crossing the cut)."""
+    import cv2
+    m = unit["mask"]
+    if len(glyphs) == 1:
+        return [{**unit, "glyph": glyphs[0], "unit": ui}], []
+    k = int(round(FUSE_OPEN_MM * PPM)) | 1
+    opened = cv2.morphologyEx(m.astype(np.uint8), cv2.MORPH_OPEN,
+                              cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k)))
+    n, lab, st, _c = cv2.connectedComponentsWithStats(opened, 8)
+    parts = [{"block": unit["block"], "ox": int(st[i][0]), "oy": int(st[i][1]),
+              "mask": lab[st[i][1]:st[i][1] + st[i][3], st[i][0]:st[i][0] + st[i][2]] == i,
+              "x0": st[i][0] / PPM, "x1": (st[i][0] + st[i][2]) / PPM, "y0": 0.0, "y1": 0.0}
+             for i in range(1, n) if st[i][4] >= (0.5 * PPM) ** 2]
+    parts = _x_units(parts) if parts else []
+    groups = _share([p["x1"] - p["x0"] for p in parts], glyphs) if parts else None
+    if groups is None:          # nothing parts cleanly: one fused run, cut by columns
+        masks, cuts = _cut_columns(unit, m, glyphs)
+        return ([_letter(unit, lm, g, ui) for lm, g in zip(masks, glyphs)],
+                [{**c, "fused": True} for c in cuts])
+    # every unit pixel to its nearest part
+    dist = []
+    for p in parts:
+        pm = np.zeros(m.shape, np.uint8)
+        pm[p["oy"]:p["oy"] + p["mask"].shape[0], p["ox"]:p["ox"] + p["mask"].shape[1]] = p["mask"]
+        dist.append(cv2.distanceTransform(1 - pm, cv2.DIST_L2, 5))
+    owner = np.argmin(np.stack(dist), axis=0)
+    letters, joins = [], []
+    for pi, (i0, i1) in enumerate(groups):
+        pm = m & (owner == pi)
+        if pi:                  # touch with the part before: the boundary they share
+            prev = m & (owner == pi - 1)
+            near = cv2.dilate(prev.astype(np.uint8), np.ones((3, 3), np.uint8)) > 0
+            edge = pm & near
+            ys, xs = np.nonzero(edge)
+            joins.append({"x_mm": (unit["ox"] + float(xs.mean())) / PPM if len(xs) else letters[-1]["x1"],
+                          "y_mm": (unit["oy"] + float(ys.mean())) / PPM if len(ys) else unit["y0"],
+                          "contact_mm": round(len(ys) / PPM, 2), "fused": False})
+        if i1 - i0 == 1:
+            letters.append(_letter(unit, pm, glyphs[i0], ui))
+            continue
+        masks, cuts = _cut_columns(unit, pm, glyphs[i0:i1])
+        letters += [_letter(unit, lm, g, ui) for lm, g in zip(masks, glyphs[i0:i1])]
+        joins += [{**c, "fused": True} for c in cuts]
+    return letters, joins
+
+
+def word_letters(pcs, text: str) -> dict:
+    """The letters of `text` (one line; words split by spaces) in a line's
+    `pcs`, read the same way in any file (the block comment above). ->
+    {"letters", "pairs", "units", "note"}: each pair of neighbours is
+    {"pair", "i", "space", "gap_mm", "contact_mm", "fused", "x_mm", "y_mm"},
+    gap 0 when they touch; `space` marks the pair across a word space."""
+    glyphs = [c for c in text if not c.isspace()]
+    breaks, k = set(), 0
+    for c in text:
+        if c.isspace():
+            breaks.add(k - 1)
+        else:
+            k += 1
+    units = _x_units(pcs)
+    groups = _share([un["x1"] - un["x0"] for un in units], glyphs)
+    if groups is None:
+        return {"letters": [], "pairs": [], "units": len(units),
+                "note": f"{len(units)} pieces for {len(glyphs)} letters: a letter is in pieces"}
+    letters, cuts = [], {}
+    for ui, (un, (i0, i1)) in enumerate(zip(units, groups)):
+        lt, ct = _cut(un, glyphs[i0:i1], ui)
+        for j, c in enumerate(ct):
+            cuts[i0 + j] = c
+        letters += lt
+    pairs = []
+    for i in range(len(letters) - 1):
+        a, b = letters[i], letters[i + 1]
+        row = {"pair": a["glyph"] + b["glyph"], "i": i, "space": i in breaks}
+        if i in cuts:
+            row.update(gap_mm=0.0, **cuts[i])
+        else:
+            row.update(gap_mm=round(_gap(a, b), 2), contact_mm=0.0, fused=False,
+                       x_mm=(a["x1"] + b["x0"]) / 2, y_mm=(max(a["y0"], b["y0"]) + min(a["y1"], b["y1"])) / 2)
+        pairs.append(row)
+    return {"letters": letters, "pairs": pairs, "units": len(units), "note": None}
 
 
 def render_band(blocks, band, keep=None, ppm: float = 40.0, pad_mm: float = 1.0):

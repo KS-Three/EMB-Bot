@@ -614,6 +614,13 @@ PRE_FLIP["clip_keep_pieces"] = False
 # rings its pull-grown polygon. False is the pre-flip cap. The tests ABOUT it
 # are in `tests/test_edge_cap.py`.
 PRE_FLIP["edge_cap_skip_bean_letters"] = False
+# Kent's wave-2 flips (2026-10-24, from the flip sheet of PR #1069), for the
+# reason every entry above gives. `border_from_outline` (#1065): an art outline
+# sews as one satin loop per body at the outline's width, its bodies as fills.
+# `small_text_cap_reach_edges` (#1066): the re-set reaches a line on the
+# design's edge; inert while the re-set itself is unset.
+PRE_FLIP["border_from_outline"] = False
+PRE_FLIP["small_text_cap_reach_edges"] = False
 # Three lettering flags Kent flipped ON 2026-10-24 ("Flip it ON", then "Ship
 # 3, fix white next" on 2026-10-25), for the reason every entry above gives:
 # each moves lettering only. False is the engine before the flip. The tests
@@ -622,6 +629,13 @@ PRE_FLIP["edge_cap_skip_bean_letters"] = False
 PRE_FLIP["lettering_columns_text_lean"] = False
 PRE_FLIP["lettering_columns_inside_stagger"] = False
 PRE_FLIP["text_cluster_wide_letters"] = False
+# `border_from_outline_line_art_guard` (#1078), Kent's flip 2026-10-25 ("Flip
+# it ON", from the bowl renders), for the reason every entry above gives: ON,
+# a hairline drawing that leaves strokes beyond its loops (Bridge's bowl) is
+# not an art outline, so it sews as it did before `border_from_outline`.
+# False is the engine before the flip. The tests ABOUT it are in
+# `tests/test_outline_line_art_guard.py`.
+PRE_FLIP["border_from_outline_line_art_guard"] = False
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

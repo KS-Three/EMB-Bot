@@ -52,6 +52,7 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
 #: (2026-10-13) the same: WRITES `table.md`, names #876's doc in its
 #: docstring, prints JSON rows and an ASCII table, reads no doc.
 NAMES_ONLY = {"border_census",   # WRITES the census table's .md, reads none (2026-10-23)
+              "lettering_board",   # WRITES docs/scoreboards/lettering-board-<date>.md, reads none (2026-10-25)
               "flip_sheet_renders",   # WRITES docs/flip-sheet-<date>.md + index.html, reads none (2026-10-23)
               "acceptance_ab", "sewout_walk_reach", "counter_slots",
               "hairline_renders", "hairline_card", "hairline_logo_bill",
@@ -66,6 +67,7 @@ NAMES_ONLY = {"border_census",   # WRITES the census table's .md, reads none (20
               "sewout_card_v5",               # same: writes card v5's README / scoring sheet, reads none (2026-10-20)
               "sewout_card_cross_underlay",   # same: writes the cross-underlay card's README / scoring sheet, reads none (2026-10-21)
               "sewout_card_v6",               # same: writes card v6's README / scoring sheet, reads none (2026-10-21)
+              "sewout_card_v7",               # same: writes card v7's README, reads none (2026-10-25)
               "hairline_photo_trial", "hairline_lines_trial",
               "hairline_coverage",   # WRITES table.md, reads none (2026-10-13)
               "hairline_travel",     # same: writes table.md, reads none (2026-10-13)

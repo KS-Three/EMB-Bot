@@ -89,7 +89,8 @@ FIXTURES: list[tuple[str, float | None]] = [
 ]
 
 #: Pairs `tools.border_census.PAIRS` lacks, in its row shape (slug, pro file,
-#: art, garment), for a flag's own `fixtures`.
+#: art, garment), for a flag's own `fixtures`. A job `tools.pro_intake`
+#: registered is found by its slug too (`--fixtures SLUG`).
 EXTRA_PAIRS = [
     ("proseal_beanie", "Proseal/PROSEALHAT BEANI.DST", "Proseal/PROSeal Logo.jpg", "beanie"),
 ]
@@ -211,6 +212,19 @@ FLAGS: dict[str, dict] = {
                 "17,568 / 19), MFab LC 16,542 / 72 -> 16,658 / 44 (pro 15,786 / 20), Becker beanie "
                 "11,501 / 21 -> 13,726 / 20 (pro 11,411 / 11). White sews ON TOP of black on MFab "
                 "(the reverse of #1059's order): that order is Kent's call."},
+    # ---- wave 3 (2026-10-25)
+    "border_from_outline_line_art_guard": {
+        "base": {"border_from_outline": True},
+        "sets": {"border_from_outline": True, "border_from_outline_line_art_guard": True},
+        "fixtures": ["bridge_hat", "bridge_lc", "becker_hat_small"],
+        "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1078,
+        "note": "Acts only with border_from_outline (ON since #1070), so OFF is today's engine. "
+                "PR #1078: Bridge's bowl drawing stops reading as an outline -- hat and LC sew "
+                "byte-identical to border_from_outline OFF; bowl window spike rays 22 -> 1 (hat), "
+                "21 -> 1 (LC), garment pinholes at the anchor 2 -> 0 (hat). Becker, MFab, Fremont "
+                "byte-identical. The pro's Bridge art carried no drawing: nothing of his to "
+                "compare in the bowl. Bridge's pro files are on G:; set PRO_PARITY_ROOT when it "
+                "is unmounted."},
 }
 
 
@@ -248,7 +262,8 @@ def fixture_files(slug: str) -> dict:
     jump), pro PES if any (thread colours), art, garment, width."""
     from tools import border_census as bc
     from tools import pro_pair as pp
-    row = next(r for r in [*bc.PAIRS, *EXTRA_PAIRS] if r[0] == slug)
+    from tools.pro_intake import registered_pairs
+    row = next(r for r in [*bc.PAIRS, *EXTRA_PAIRS, *registered_pairs()] if r[0] == slug)
     pro, art = bc.find_pair(*row[:3])
     fallback = art is None and slug in ART_FALLBACK and ART_FALLBACK[slug].exists()
     if fallback:

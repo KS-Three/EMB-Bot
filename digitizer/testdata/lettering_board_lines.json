@@ -1,0 +1,66 @@
+{
+ "about": "The lines of lettering tools/lettering_board.py reads, per pair (slugs of tools.border_census.PAIRS and its extras). box: x0, y0, x1, y1 in OUR frame, mm, y down: the art traced at the pair's pro width, on main's defaults, so a flag that grows or moves a line still lands in it. art_h: the height the line is DRAWN at in that trace (small_text_floor_census.art_letters); it sets the line's size band and does not move with a flag. words: the texts tools/word_legibility.py pins for the line (word_legibility_words.json). Text and numbers only: no artwork, no pro file. --propose SLUG prints the rows to name.",
+ "left_off": {
+  "goldentee_hat": "GT is a 3D fill the pro layers under a satin GOLF: the line reader returned the same pro block (6 columns, 641 stitches) for both lines, and ours' GOLF read 22 mm against 9.3 drawn. Not a figure to quote (2026-10-25)."
+ },
+ "pairs": {
+  "becker_hat_large": {"legibility_job": "becker", "lines": [
+   {"text": "BECKER", "box": [-48.6, -30.3, 48.4, 8.2], "art_h": 28.5, "words": ["BECKER"]},
+   {"text": "MARINE", "box": [-49.6, 14.5, 47.7, 31.7], "art_h": 17.09, "words": ["MARINE"]}]},
+  "becker_lc_large": {"legibility_job": "becker", "lines": [
+   {"text": "BECKER", "box": [-45.7, -28.5, 45.4, 7.7], "art_h": 26.88, "words": ["BECKER"]},
+   {"text": "MARINE", "box": [-46.6, 13.6, 44.8, 29.8], "art_h": 16.05, "words": ["MARINE"]}]},
+  "becker_hat_small": {"legibility_job": "becker", "lines": [
+   {"text": "BECKER", "box": [-36.4, -22.8, 36.3, 6.0], "art_h": 21.49, "words": ["BECKER"]},
+   {"text": "MARINE", "box": [-37.3, 10.8, 35.8, 23.8], "art_h": 12.83, "words": ["MARINE"]}]},
+  "becker_chest_small": {"legibility_job": "becker", "lines": [
+   {"text": "BECKER", "box": [-36.4, -22.8, 36.3, 6.0], "art_h": 21.49, "words": ["BECKER"]},
+   {"text": "MARINE", "box": [-37.3, 10.8, 35.8, 23.8], "art_h": 12.83, "words": ["MARINE"]}]},
+  "becker_beanie": {"legibility_job": "becker", "lines": [
+   {"text": "BECKER", "box": [-38.0, -23.7, 37.9, 6.2], "art_h": 22.32, "words": ["BECKER"]},
+   {"text": "MARINE", "box": [-38.9, 11.3, 37.3, 24.8], "art_h": 13.38, "words": ["MARINE"]}]},
+  "hotel_fremont_hat": {"legibility_job": "fremont", "lines": [
+   {"text": "EST", "box": [-10.5, -14.8, -4.3, -12.9], "art_h": 1.85, "words": ["EST"]},
+   {"text": "1895", "box": [4.0, -14.8, 10.4, -12.9], "art_h": 1.89, "words": ["1895"]},
+   {"text": "THE", "box": [-5.0, -8.7, 5.0, -5.7], "art_h": 3.04, "words": ["THE"]},
+   {"text": "HOTEL FREMONT", "box": [-43.1, -3.6, 43.0, 3.5], "art_h": 6.81, "words": ["HOTEL", "FREMONT"]},
+   {"text": "EAT STAY", "box": [-13.7, 10.2, 4.4, 12.8], "art_h": 2.44, "words": ["EAT", "STAY"]},
+   {"text": "PLAY", "box": [7.8, 10.3, 16.2, 12.7], "art_h": 2.44, "words": ["PLAY"]}]},
+  "hotel_fremont_patch": {"legibility_job": "fremont", "lines": [
+   {"text": "EST", "box": [-10.5, -14.8, -4.3, -12.9], "art_h": 1.85, "words": ["EST"]},
+   {"text": "1895", "box": [4.0, -14.8, 10.4, -12.9], "art_h": 1.89, "words": ["1895"]},
+   {"text": "THE", "box": [-5.0, -8.7, 5.0, -5.7], "art_h": 3.03, "words": ["THE"]},
+   {"text": "HOTEL FREMONT", "box": [-43.0, -3.6, 43.0, 3.5], "art_h": 6.8, "words": ["HOTEL", "FREMONT"]},
+   {"text": "EAT STAY", "box": [-13.7, 10.2, 4.4, 12.8], "art_h": 2.44, "words": ["EAT", "STAY"]},
+   {"text": "PLAY", "box": [7.8, 10.3, 16.2, 12.7], "art_h": 2.44, "words": ["PLAY"]}]},
+  "mfab_hat": {"legibility_job": "mfab", "lines": [
+   {"text": "MFAB", "box": [-47.2, -13.9, 47.2, 4.4], "art_h": 18.04, "words": ["MFAB"]},
+   {"text": "AND WELDING LLC", "box": [-45.3, 4.5, 45.2, 12.9], "art_h": 6.75, "words": ["AND", "WELDING", "LLC"]}]},
+  "mfab_lc": {"legibility_job": "mfab", "lines": [
+   {"text": "MFAB", "box": [-43.2, -13.2, 43.1, 3.5], "art_h": 16.55, "words": ["MFAB"]},
+   {"text": "AND WELDING LLC", "box": [-41.7, 4.0, 41.5, 10.6], "art_h": 6.25, "words": ["AND", "WELDING", "LLC"]}]},
+  "proseal_hat": {"legibility_job": "proseal", "lines": [
+   {"text": "PROSEAL", "box": [-41.3, 14.5, 39.3, 23.7], "art_h": 9.22, "words": ["PROSEAL"]},
+   {"text": "SPRAY FOAM", "box": [-36.5, 28.3, -0.7, 31.5], "art_h": 3.04, "words": ["SPRAY FOAM"]},
+   {"text": "+ COATINGS", "box": [8.2, 28.3, 35.6, 31.5], "art_h": 3.15, "words": ["COATINGS"]}]},
+  "proseal_beanie": {"legibility_job": "proseal", "lines": [
+   {"text": "PROSEAL", "box": [-36.1, 12.6, 34.3, 20.7], "art_h": 8.05, "words": ["PROSEAL"]},
+   {"text": "SPRAY FOAM", "box": [-32.0, 24.7, -0.6, 27.5], "art_h": 2.56, "words": ["SPRAY FOAM"]},
+   {"text": "+ COATINGS", "box": [2.0, 24.7, 31.2, 27.6], "art_h": 2.66, "words": ["COATINGS"]}]},
+  "precision_drone": {"lines": [
+   {"text": "PRECISION", "box": [-31.1, 10.2, 31.2, 16.9], "art_h": 5.99},
+   {"text": "THERMAL", "box": [-22.1, 17.6, 22.0, 22.1], "art_h": 4.48},
+   {"text": "AND DRONE", "box": [-13.6, 24.1, 17.7, 26.3], "art_h": 2.2}]},
+  "tires_hat_3d": {"lines": [
+   {"text": "Tires", "box": [-57.1, -21.1, 57.1, 21.0], "art_h": 28.65}]},
+  "gaulke_roofing_hat": {"lines": [
+   {"text": "C GOLKE INDUSTRIES", "box": [-50.3, 8.2, 50.1, 14.8], "art_h": 6.52},
+   {"text": "STEEL ROOFING & SUPPLY", "box": [-57.0, 17.1, 56.9, 23.4], "art_h": 6.11}]},
+  "gaulke_roofing_beanie": {"lines": [
+   {"text": "C GOLKE INDUSTRIES", "box": [-41.3, 6.7, 41.2, 12.2], "art_h": 5.36},
+   {"text": "STEEL ROOFING & SUPPLY", "box": [-46.8, 14.0, 46.8, 19.2], "art_h": 5.02}]},
+  "gaulke_roofing_lc": {"lines": [
+   {"text": "C GOLKE INDUSTRIES", "box": [-42.0, 6.8, 41.8, 12.4], "art_h": 5.44},
+   {"text": "STEEL ROOFING & SUPPLY", "box": [-47.5, 14.2, 47.5, 19.5], "art_h": 5.1}]}
+ }
+}

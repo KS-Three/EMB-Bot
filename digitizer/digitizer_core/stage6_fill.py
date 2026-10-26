@@ -35,7 +35,7 @@ import shapely
 from shapely import affinity
 from shapely.geometry import LineString, Point, Polygon, box
 
-from . import machine, stitches
+from . import fill_section_travel, machine, stitches
 from .stitches import StitchRun
 
 # Spans on adjacent rows count as connected when they overlap by at least this
@@ -1069,13 +1069,13 @@ def _footprint(path, row_mm: float):
 def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                 slack: Polygon, entry: tuple[float, float] | None,
                 trim_at_mm: float, row_mm: float | None = None,
-                cut_bridges: bool = False,
+                cut_bridges: bool = False, hidden_row_mm: float | None = None,
                 ) -> tuple[int, float, float]:
     """-> (cuts, travel stitches, exposed travel stitches) this path ORDER
     costs: the last figure `_order_cost_walk` yields."""
     cost = (0, 0.0, 0.0)
     for cost in _order_cost_walk(paths, poly, ring, slack, entry, trim_at_mm,
-                                 row_mm, cut_bridges):
+                                 row_mm, cut_bridges, hidden_row_mm):
         pass
     return cost
 
@@ -1083,7 +1083,7 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
 def _order_cost_walk(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                      slack: Polygon, entry: tuple[float, float] | None,
                      trim_at_mm: float, row_mm: float | None = None,
-                     cut_bridges: bool = False):
+                     cut_bridges: bool = False, hidden_row_mm: float | None = None):
     """Yields (cuts, travel stitches, exposed travel stitches) this path ORDER
     has cost so far, after each path, by `fill_region`'s rule -- every figure
     only grows, so a partial cost is a floor on the whole one, which is what
@@ -1110,6 +1110,11 @@ def _order_cost_walk(paths: list[list[tuple[float, float]]], poly: Polygon, ring
     Only travel is returned, not total stitches: every order sews the SAME fill
     penetrations, so travel is the entire stitch difference between two orders.
 
+    `hidden_row_mm` (`fill_section_travel`, built OFF): where no route is
+    found, or only one that shows, `_hide_bridge` asks for one under the
+    paths not sewn yet, exactly as `emit` does under the flag. None, every
+    caller before the flag, is the walk as it was.
+
     Travel is counted as the POINTS `emit` will actually append (`bridge[:-1]`),
     NOT as `length / TRAVEL_STITCH_MM`. Those are not the same number and the
     difference is not small: `travel_path` densifies each leg of a ring route
@@ -1125,12 +1130,15 @@ def _order_cost_walk(paths: list[list[tuple[float, float]]], poly: Polygon, ring
     sewn = None
     cache: dict = {}
     cur = entry
-    for path in paths:
+    for i, path in enumerate(paths):
         if not path:
             continue
         if cur is not None:
             bridge = travel_path(poly, ring, cur, path[0], slack,
                                  sewn if row_mm is not None else None, cache)
+            if hidden_row_mm is not None:
+                bridge = _hide_bridge(bridge, poly, slack, cur, path[0], stitches.FILL,
+                                      paths[i:], hidden_row_mm, sewn)
             # The same question `emit` asks, so the order is scored with the
             # lifts that will actually be made.
             if (cut_bridges and bridge and row_mm is not None
@@ -1161,6 +1169,20 @@ def _order_cost_walk(paths: list[list[tuple[float, float]]], poly: Polygon, ring
 # Ratified by Kent 2026-09-03 on the measured trade: five cuts for 196 mm
 # less visible travel on the Hotel Fremont field.
 _EXPOSED_STITCH_WEIGHT = 2.0
+
+
+def _hide_bridge(bridge, poly: Polygon, slack: Polygon, a: tuple[float, float],
+                 b: tuple[float, float], kind: str, todo, row_mm: float, sewn):
+    """`fill_section_travel`: `travel_path`'s bridge, or a route hidden under
+    `todo` (the paths not sewn yet) where that found none or only one lying
+    over `sewn` past `_EXPOSED_TOLERANCE_MM`. A hidden route always wins over
+    one that shows; neither found, `bridge` comes back as it was."""
+    if bridge is not None and (kind != stitches.FILL or sewn is None
+                               or _exposed_mm([a] + bridge, sewn) <= _EXPOSED_TOLERANCE_MM):
+        return bridge
+    hidden = fill_section_travel.bridge(poly, slack, a, b, kind, todo=todo,
+                                        row_mm=row_mm, sewn=sewn)
+    return bridge if hidden is None else hidden
 
 
 def _score(cost: tuple) -> float:
@@ -1851,6 +1873,42 @@ def _sewn_paths(paths: list[list[tuple[float, float]]]
     return [p for p in paths if len(p) >= 2]
 
 
+def _plan_sections(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
+                   slack: Polygon, entry: tuple[float, float] | None,
+                   trim_at_mm: float, row_mm: float,
+                   cut_bridges: bool) -> list[list[tuple[float, float]]]:
+    """`fill_section_travel.plan`'s orders (both of its preferences), the
+    cheapest kept only when `_score` prices it under the incoming one. All
+    are priced on the paths `emit` sews (`_sewn_paths`) and with the hidden
+    routes the flag's `emit` adds, so the comparison is the sewn one. The
+    incoming order wins ties and comes back untouched, one-point paths and
+    all; the planner pins the last real path, so the shape exits where it
+    did and no later shape moves. Only under `under_cover`, which is what
+    tracks the fill already laid, so both are priced with covered routing."""
+    sewable = _sewn_paths(paths)
+    if len(sewable) < 3:
+        return paths
+    before = _order_cost(sewable, poly, ring, slack, entry, trim_at_mm, row_mm,
+                         cut_bridges, hidden_row_mm=row_mm)
+    if before[0] == 0:
+        return paths                     # no cut to buy
+    # Kept only if cheaper AND it neither cuts more nor lays more thread on
+    # finished fill than the incoming order: ROADMAP gate 3, the planner may
+    # not buy its cuts with exposure even where `_score`'s rate would.
+    best, best_score = paths, _score(before)
+    for prefer in ("whole", "near"):
+        candidate = fill_section_travel.plan(sewable, poly, entry, row_mm, prefer=prefer)
+        if candidate is sewable:
+            return paths                 # nothing the planner can plan
+        assert candidate[-1] is sewable[-1], "exit point must be unchanged"
+        cost = _order_cost(candidate, poly, ring, slack, entry, trim_at_mm, row_mm,
+                           cut_bridges, hidden_row_mm=row_mm)
+        if (_score(cost) < best_score and cost[0] <= before[0]
+                and cost[2] <= before[2] + 1e-9):
+            best, best_score = candidate, _score(cost)
+    return best
+
+
 def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_mm: float, stitch_mm: float, underlay_style: str,
                  trim_at_mm: float,
@@ -1967,10 +2025,18 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     two_pass = technique == "crosshatch" or (
         technique == "tatami" and density_boost and is_solid_fill(poly))
     cut_bridges = cut_bridges and under_cover and not two_pass
+    # `fill_section_travel` (built OFF): a hop `emit` would lift, or route
+    # over finished fill, goes under rows still to come instead where it can
+    # (inside the shape, for underlay), and the section order is planned for
+    # it. Fill only with `under_cover`, which is what knows the fill already
+    # laid. Read here, once; off, nothing below changes.
+    section_travel = fill_section_travel.active()
+    if section_travel:
+        fill_section_travel.reset()
 
     def emit(paths: list[list[tuple[float, float]]], kind: str, max_step: float) -> None:
         nonlocal sewn
-        for path in paths:
+        for i, path in enumerate(paths):
             # No tiny-stitch filter here, deliberately. Row turns are exactly one
             # row spacing long — 0.4 mm at standard density — and dropping them
             # deletes the penetration that lands on the shape's edge, which is
@@ -1986,6 +2052,10 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                 bridge = travel_path(poly, ring, runs[-1].points[-1], pts[0], slack,
                                      sewn if (under_cover and kind == stitches.FILL) else None,
                                      route_cache)
+                if section_travel and (kind == stitches.UNDERLAY or under_cover):
+                    bridge = _hide_bridge(
+                        bridge, poly, slack, runs[-1].points[-1], pts[0], kind, paths[i:], row_mm,
+                        sewn if (under_cover and kind == stitches.FILL) else None)
                 if (cut_bridges and bridge and under_cover and kind == stitches.FILL
                         and _cut_is_cheaper(runs[-1].points[-1], bridge, sewn, trim_at_mm)):
                     bridge = None       # dearer than the cut: lift, as if no route existed
@@ -2053,10 +2123,15 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
         _before = fill_paths
         fill_paths = _memoized(_k, lambda: _reorder_for_cover(
             _before, poly, ring, slack, entry, trim_at_mm, row_mm, cut_bridges))
+    if section_travel and under_cover and not two_pass:
+        fill_paths = _plan_sections(fill_paths, poly, ring, slack, entry, trim_at_mm,
+                                    row_mm, cut_bridges)
     emit(fill_paths, stitches.FILL, stitch_mm)
     # Every hit is within this shape (`cover` is in the key), so nothing
     # after this point can use the unsewn-ground memo; let its geometry go.
     _UNSEWN_MEMO.clear()
+    if section_travel:
+        fill_section_travel.reset()
 
     if not runs:
         report["empty"] = True

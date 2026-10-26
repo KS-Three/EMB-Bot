@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 from shapely.geometry import Polygon
 
-from . import debugviz, fur_regions, knockdown, silhouette_underfill, two_tone
+from . import debugviz, fill_section_travel, fur_regions, knockdown, silhouette_underfill, two_tone
 from .config import PipelineConfig
 from .fabrics import Fabric, apply_profile, fabric_for_garment, get_fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
@@ -933,7 +933,8 @@ def build_generation(
     detect_text_clusters(regions, p, chart=chart_for(cfg),
                          rescued_ink_link=bool(cfg.text_cluster_rescued_ink_link),
                          counters_as_drawn=bool(cfg.text_cluster_counters_as_drawn),
-                         **({"wide_letters": True} if cfg.text_cluster_wide_letters else {}))
+                         **({"wide_letters": True} if cfg.text_cluster_wide_letters else {}),
+                         **({"part_touching": True} if cfg.text_cluster_part_touching else {}))
 
     # Lettering too small to sew, grown the way a digitizer grows it
     # (`cfg.small_text_cap_mm`, default None). Here, on the tagger's clusters
@@ -1686,9 +1687,49 @@ def _fill_inside_satin_border(regions, cfg, design_class):
             if r.shape_id in demote else r for r in regions]
 
 
+def _art_outlines(regions, cfg, source_pixels=None) -> dict | None:
+    """`cfg.border_from_outline`: {outline id: [(body id, hole, width mm)]}
+    from `art_outline.find_art_outlines`, or None with the flag off.
+
+    A region that RIDES the design's ramp (Kent's gradient ruling 2026-09-04,
+    `stage6_blend.region_rides_design_ramp`) is part of the sweep and sews its
+    bands, so it is never an outline and never a body: the rule was measured
+    on flat art (`tools/outline_census.py`), and on the gradient repro it
+    looped the sweep square round the white frame in satin, one thread where
+    the source shades fuchsia to orange (found by the full suite the day the
+    flag flipped ON, 2026-10-24)."""
+    if not cfg.border_from_outline:
+        return None
+    from .art_outline import find_art_outlines, outline_width_mm
+    if source_pixels is not None and getattr(source_pixels, "design_ramp", None) is not None:
+        from .stage6_blend import region_rides_design_ramp
+        regions = [r for r in regions
+                   if not region_rides_design_ramp(r.polygon, source_pixels)]
+    by_id = {r.shape_id: r for r in regions}
+    out = {}
+    for oid, bodies in find_art_outlines(regions, cfg).items():
+        width = outline_width_mm(by_id[oid], [(by_id[bid], hole) for bid, hole in bodies])
+        out[oid] = [(bid, hole, width) for bid, hole in bodies]
+    return out or None
+
+
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
     """Stages 5-7: regions -> stitches. Safe to re-run on one PipelineResult."""
     cfg = cfg or PipelineConfig()
+    # `cfg.lettering_columns_apex_cut` (built OFF): `outline_cut` reads no
+    # config, so the flag is set there for the length of this plan
+    from .outline_cut import apex_cut_scope
+    from .stage6_border import loop_mitre_scope   # `cfg.outline_loop_mitre` (built OFF), the same way
+    # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
+    # fill reads it from here, so a `stitch_shape` call outside a plan is the
+    # engine as it was.
+    with apex_cut_scope(cfg.lettering_columns_apex_cut), fill_section_travel.enabled(cfg), \
+            loop_mitre_scope(cfg.outline_loop_mitre):
+        return _plan_stitches(result, cfg)
+
+
+def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
+    """`plan_stitches`' body."""
     # Same fold as `finish_generation`'s, one hop further out: stage 7's
     # photo sequencing and the shade bind read `is_photographic`, and this
     # entry point is routinely called with a config built from scratch.
@@ -1863,7 +1904,15 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # just one field later.
     effective_detail_layer = cfg.detail_layer or (auto_tier is not None
                                                   and result.faces_present)
-    blocks, seq_warnings = sequence(planned, fabric, cfg,
+    # `cfg.lettering_columns_italic_lean` (built OFF): stage 7 runs with the
+    # tagged words' italic slants in scope (`column_lean.italic_lean`, reset
+    # on return), so an italic word's bars cross along its stems. Off,
+    # `sequence` is called directly and nothing is set.
+    seq_call = sequence
+    if cfg.lettering_columns_italic_lean:
+        from .column_lean import with_italic_lean
+        seq_call = with_italic_lean(sequence, [p.region for p in planned], cfg.lettering_words)
+    blocks, seq_warnings = seq_call(planned, fabric, cfg,
                                     source_pixels=result.source_pixels,
                                     design_class=result.design_class,
                                     fill_technique=effective_fill_technique,
@@ -1888,7 +1937,13 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                                     # None with the flag off.
                                     counter_holes=([r.polygon for r in result.regions
                                                     if r.meta.get("cored_counter")]
-                                                   if cfg.open_cored_counters else None) or None)
+                                                   if cfg.open_cored_counters else None) or None,
+                                    # `cfg.border_from_outline`: the art's own
+                                    # outlines over EVERY region (an unsewn
+                                    # body still makes its keyline one); None
+                                    # with the flag off.
+                                    art_outlines=_art_outlines(result.regions, cfg,
+                                                               result.source_pixels))
 
     # `cfg.beanie_knockdown` (built OFF): a sparse fill under the whole design,
     # sewn first, on a beanie with a known garment colour — `knockdown.py`.

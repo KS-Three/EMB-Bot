@@ -1577,6 +1577,70 @@ class PipelineConfig:
     # (ruling 2026-10-22: judged in the preview). OFF is the engine as it
     # was, byte for byte.
     enclosed_white_keyline: bool = False
+    # Border from the art's outline (`digitizer_core/art_outline.py`, built
+    # OFF 2026-10-24). The pro's border choice is not a stroke threshold: he
+    # borders a shape when the ART draws an outline round it (BECKER's faces
+    # in their black keyline, MFab's M-FAB in its white one) and satins the
+    # same stroke when it does not (MARINE). Census `tools/outline_census.py`:
+    # kappa 0.76 over 586 shapes on ten paired files. ON, an outline (a region
+    # whose hole holds a body at least as wide as the outline is thick; a
+    # letter's counters, sewn or not, excluded) sews as one satin
+    # loop round each hole at the pro's width -- one per outline, the art
+    # outline's own thickness clamped to `machine.OUTLINE_WIDTH_MM` (1.5-2.5),
+    # out past a thinner art outline but never into a body; where the art
+    # draws it thicker the rest is filled under. Its bodies sew as plain
+    # fills under it, never satin. Wins over `border_by_size` on a shape both
+    # read (no second ring in the body's own colour) and over
+    # `enclosed_white_keyline` on a keyline band that holds an outlined body.
+    # Layout (ruling 2026-10-22: judged in the preview).
+    # **ON since 2026-10-24, Kent's flip** from the wave-2 flip sheet (Becker
+    # small 8,512 / 21 -> 11,100 / 25 with white sewn, faces fill, loops on
+    # top; pro 8,694 / 40). False is the engine as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP pins it False.
+    border_from_outline: bool = True
+    # The rule's false positive (2026-10-25, #1078): a hairline DRAWING is
+    # not an outline. Bridge Bar's bowl-and-waves (0.8-1.0 mm black lines round
+    # yellow cells of the disc they sit on) reads as one, and ON sews each
+    # cell a 1.5 mm satin loop -- spikes fanned at the cells' tips -- while the
+    # drawing's own stroke ends, thinner than `machine.MIN_FILL_WIDTH_MM`,
+    # fall to a rest-fill that drops them (garment shows). ON, an outline that
+    # is a hairline AND leaves strokes beyond its loops
+    # (`art_outline.line_art_reading`, thresholds `machine.OUTLINE_LINE_ART_*`)
+    # is not one: the drawing sews as it did before `border_from_outline`
+    # (Bridge hat and LC byte-identical to the flag OFF), and its cells are
+    # free for another holder. A hairline that is a pure ring stays an outline:
+    # To-a-T Machine's 0.8 mm frame, which the pro widens to a 2.0-2.3 mm
+    # border. Census kappa 0.76 -> 0.85 (n 588, the five Bridge false
+    # positives gone, no true one lost); Becker, MFab, Fremont byte-identical.
+    # The pro's Bridge files carry no drawing (his art was redrawn without
+    # it), so this is our construction's limit, not his rule. Acts only with
+    # `border_from_outline`. Layout (ruling 2026-10-22: judged in the preview).
+    # **ON since 2026-10-25, Kent's flip** ("Flip it ON", from #1078's OFF | ON
+    # | ON+guard | pro renders of the bowl: spike rays 22 -> 1, pinholes 3 -> 1
+    # on the hat). False is the engine as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP pins it False.
+    border_from_outline_line_art_guard: bool = True
+    # A white FIELD that `sew_enclosed_white` sews is never a letter
+    # (2026-10-25, built OFF; Kent: "Ship 3, fix white next"). Becker's five
+    # white BECKER faces sit inside the word's outline and carry its text
+    # tag, so stage 7 sewed each one -- 200-370 mm2, up to 27 x 34 mm -- as a
+    # Column-lane letter: 8.4x the digitize time at 100 mm (2,848 s against
+    # 340 s, cProfile; 2,590 s in `outline_cut._refine` / `_fold_refine` /
+    # `pair_rails`), and the wrong construction, since the pro sews those
+    # faces as a 22 deg tatami under the outline. ON, a region
+    # `sew_enclosed_white` marks is not lettering (`columns.is_lettering`),
+    # and on the auto tier it sews as a fill (`stage7_sequence._white_field_fill`;
+    # a forced rung, so a field too narrow to fill falls back to the ladder)
+    # at `machine.WHITE_FIELD_FILL_ANGLE_DEG`, unless the review or the
+    # global `fill_angle_deg` says otherwise -- ahead of the word's house
+    # angle, which the text tagger writes on every member of a house group
+    # and which read 0 on Becker (`stage7_sequence._fill_angle_for`). A
+    # review's own tier still wins. It already sews in its own front
+    # layer, so the outline lands on top. Layout (ruling 2026-10-22: judged
+    # in the preview). Read only with `sew_enclosed_white`. False is the
+    # engine as it was, byte for byte. Tests:
+    # `tests/test_white_fields_fill.py`.
+    sew_enclosed_white_fields_fill: bool = False
     # The pro's silhouette under-fill (`silhouette_underfill.py`, built OFF
     # 2026-10-24, Kent: "Build under-fill, OFF"). Read per colour block on
     # MFab hat (his black covers our band 1.00 and its holes 0.82) and the
@@ -2758,6 +2822,22 @@ class PipelineConfig:
     # False is the lane as it was, station for station. Tests:
     # `tests/test_column_text_lean.py`.
     lettering_columns_text_lean: bool = True
+    # Under `lettering_columns_text_lean`, the BARS of an italic word cross
+    # along the word's stems (2026-10-25, `column_lean.italic_bar`). Read per
+    # cross on ProSeal's italic PROSEAL (`tools/italic_cross.py`, the pro's
+    # hat 85.9 mm and beanie 75.0 mm, stems leaning ~11 deg): he crosses a
+    # bar 71-78 deg off the line of text on the slant's side -- parallel to
+    # the stems, an upright digitizing sheared -- where the lane crosses it
+    # square to itself, 80-90 deg either side. ON, a word whose letters'
+    # stems lean 5-30 deg off its line's normal (median of the letters,
+    # `letterform_priors.letter_lean_deg`) is italic, and each straight
+    # column of its letters within 25 deg of the line of text is
+    # re-stationed with its crosses along the stems (spacing over cos of
+    # the lean, as the text lean). Stems, diagonals and curves are the text
+    # lean's, unchanged. Layout, judged in the preview (Kent 2026-10-22).
+    # Built OFF (Kent flips); False never sets the italic words, so stage 7
+    # runs exactly as before. Tests: `tests/test_column_italic_lean.py`.
+    lettering_columns_italic_lean: bool = False
     # Under `lettering_columns`, each satin column's pull compensation is a
     # function of ITS OWN drawn stroke width, the way the professional's
     # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the
@@ -2828,6 +2908,23 @@ class PipelineConfig:
     # 0.22). False is the guard, byte for byte.
     # Tests: `tests/test_column_inside_stagger.py`.
     lettering_columns_inside_stagger: bool = True
+    # Under `lettering_columns`, where two strokes meet at an acute tip --
+    # the M's V, each of a W's three apexes, a pointed A or N -- the tip
+    # sews as ONE column whose crosses span both strokes, cut off them along
+    # that cross (2026-10-25, built OFF; `outline_cut._apex_cuts`). Read
+    # with one rule on the professional's DSTs and ours (Becker MARINE at
+    # four widths, MFab AND WELDING hat and LC, PROSEAL;
+    # `tools/letter_pieces.py`): through every such tip he sews one piece,
+    # crosses within 16 deg of the line of text, 1.0-2.4 stroke widths
+    # across; the lane mitres it into two fanning half-width columns (the
+    # M's V, PROSEAL's A) or pivots one column through it (MFab's W, 30-89
+    # deg). `lettering_columns_corner_fold` does not reach these: it folds
+    # L corners and refuses an acute tip (`long_way`). Layout, judged in
+    # the preview (Kent, 2026-10-22), so ON-eligible from renders. False is
+    # the cut as it is, byte for byte. Set for the whole plan by
+    # `pipeline.plan_stitches` (`outline_cut.apex_cut_scope`).
+    # Tests: `tests/test_column_apex_cut.py`.
+    lettering_columns_apex_cut: bool = False
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
@@ -3046,8 +3143,12 @@ class PipelineConfig:
     # Measured: ProSeal hat tagline 3.15 mm bean -> 4.35-4.45 satin (pro
     # 4.55), beanie 2.8 -> 3.65-3.7 (pro 4.0); Fremont and Drone DSTs
     # byte-identical. Geometry, not fabric: where the letters go. Tests:
-    # `tests/test_small_text_reach_edges.py`. False: today, byte for byte.
-    small_text_cap_reach_edges: bool = False
+    # `tests/test_small_text_reach_edges.py`. **ON since 2026-10-24, Kent's
+    # flip** from the wave-2 flip sheet; it acts only while the re-set
+    # (`small_text_cap_letter_gap_mm`) is set, so with that None it changes
+    # nothing. False: the re-set as #1029 built it, byte for byte;
+    # `tests/conftest.py` PRE_FLIP pins it False.
+    small_text_cap_reach_edges: bool = True
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
@@ -3129,6 +3230,25 @@ class PipelineConfig:
     # Fremont and Becker byte-identical). False: neither is called, byte
     # for byte. Tests: `tests/test_wide_letters.py`.
     text_cluster_wide_letters: bool = True
+    # Two more ways a letter misses the text tagger, both on MFab's AND
+    # WELDING (read per letter at the pro's widths, rembg on). The hat's I
+    # and N of WELDING touch at a neck under 0.08 mm and trace as ONE region
+    # of aspect 1.03, which the letter door admits as one glyph: the wide
+    # pass above only splits regions over aspect 1.4. The face's N and G
+    # overshoot the cap height (spike, tail): the left chest's AND N is 7.90
+    # mm beside 6.25 mm letters, a height ratio of 0.79 against the line's
+    # 0.8, so it is never tagged and sews off the Column lane. ON (built OFF
+    # 2026-10-25): the neck split looks at every letter-height region beside
+    # a line and parts a touch narrower than `textcluster.TOUCH_MAX_MM`
+    # (0.15) into pieces each at least 0.8 of the line's cap height; and a
+    # glyph taller than a line member that spans its cap band, down to a
+    # height ratio of `HEIGHT_BAND_MIN` (0.6), joins that line, never making
+    # one (`textcluster._adopt_band`). Fremont's OTE / NT are NOT this: they
+    # trace and tag as separate letters, and touch only in the sewn file.
+    # Segmentation and tagging, not fabric: layout, judged in the preview.
+    # False: neither runs, byte for byte. Tests:
+    # `tests/test_text_cluster_part_touching.py`.
+    text_cluster_part_touching: bool = False
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
@@ -5337,6 +5457,24 @@ class PipelineConfig:
     # floats, and whether buried travel shows): Kent's flip, after a
     # sew-out. Off, byte-identical. Tests: `tests/test_cut_every_jump.py`.
     cut_every_jump: bool = False
+    # A satin loop round a letter -- `enclosed_white_keyline`'s keyline loops
+    # and `border_from_outline`'s outline loops (`stage6_border.keyline_runs`)
+    # -- keeps its far rail at the satin pitch through the letter's convex
+    # corners, as the professional's keyline and outline satin do
+    # (2026-10-25, built OFF; `stage6_border._pivot_ring`). The loop casts
+    # each cross along a normal smoothed over half its width either side, so
+    # through a corner its far ends spread 1.1 mm apart where the pro's sit
+    # 0.4 mm apart: the spikes on MFab's white keyline at every M-FAB corner
+    # (#1059, #1065). The pro's corner is the same round arc, not a mitre
+    # (far ends 1.00 widths from the corner on MFab's keyline, 1.12 on
+    # Becker's outline; a mitre point is 1.43 / 1.55) -- the name is the
+    # brief's. ON: crosses put between any two whose far ends part by more
+    # than `LOOP_PIVOT_GAP` steps on a convex turn, one per step of the far
+    # rail; the near ends' pile short-stitched. Layout, judged in the preview
+    # (Kent, 2026-10-22). False is the loop as it was, byte for byte. Set for
+    # a plan by `stage6_border.loop_mitre_scope`.
+    # Tests: `tests/test_outline_loop_mitre.py`.
+    outline_loop_mitre: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()

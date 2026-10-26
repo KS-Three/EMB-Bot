@@ -649,6 +649,48 @@ BORDER_BY_SIZE_REACH_FRAC = 0.5
 # (Becker's B, two counters in a 5.4 mm field) far under it.
 KEYLINE_WIDTH_MM = 2.1
 KEYLINE_REACH_FRAC = 0.9
+# The row angle of a white FIELD the pro fills (`cfg.sew_enclosed_white_fields_fill`,
+# 2026-10-25): Becker's five white BECKER faces, his hat large DST, the long
+# stitches (3.0-3.8 mm) of the logo's top 55% -- 3,364 of 3,912 at 20-25 deg
+# in the file's own frame (`docs/lettering-10mm-up-2026-10-23.md` reads the
+# same faces as a 22 deg tatami at 0.15-0.17 mm pitch on all four Becker
+# files). A layout angle, judged in the preview, not a cloth constant.
+WHITE_FIELD_FILL_ANGLE_DEG = 22.0
+
+
+# The art's own outline (`cfg.border_from_outline`, 2026-10-24;
+# `digitizer_core/art_outline.py`). A body is outlined when its stroke
+# (2 x area / perimeter) is at least OUTLINE_BODY_RATIO x the outline's band
+# round it (the holder's area within OUTLINE_PROBE_MM of the body, per mm of
+# the body's edge). Census cache, `tools/outline_census.py`: the pro's
+# bordered bodies read 1.34-3.14, every non-counter body he does not border
+# 0.87 or under -- 1.0 sits between, the geometric middle. His border width
+# is ONE per outline and follows the art's own outline thickness, not the
+# body's size (Becker large: every face at ~2.4, faces of 5.7 to 8.1 mm):
+# the outline's median band clamped to OUTLINE_WIDTH_MM -- 1.5, border_by_size's
+# 4-6 mm band (the pro's narrowest borders, 1.48-1.51, census #1043); 2.5,
+# his widest (2.51). Layout, judged in the preview (Kent 2026-10-22), not a
+# cloth constant.
+OUTLINE_PROBE_MM = 4.0
+OUTLINE_BODY_RATIO = 1.0
+# ... and an outline is a BAND: this share of it within OUTLINE_PROBE_MM of
+# its looped holes (outlines 0.99-1.00, Bridge's spoked wheel 0.67-0.71) --
+# the same 0.9 the keyline band reads (KEYLINE_REACH_FRAC).
+OUTLINE_REACH_FRAC = 0.9
+OUTLINE_WIDTH_MM = (1.5, 2.5)
+# ... and, with `cfg.border_from_outline_line_art_guard` (#1078, ON since
+# 2026-10-25), an outline is LINE ART -- a drawing, not a keyline -- when it
+# is a hairline (under OUTLINE_LINE_ART_FILL_SHARE of it is MIN_FILL_WIDTH_MM
+# across) AND its loops leave strokes behind (OUTLINE_LINE_ART_DROP_FRAC of
+# it or more lies further than the loop width from every looped hole and is
+# too thin for the rest-fill). Census of every outline the rule reads on 21
+# jobs (`tools/outline_census.py`): Bridge's bowl drawing 0.09-0.34 / 0.045-
+# 0.066; every keyline 0.74-0.98 (Becker, MFab, Drone); To-a-T Machine's
+# 0.8 mm hexagon frame 0.00 / 0.000 (a hairline the pro widens to 2.0-2.3, so
+# thinness alone is not the separator). Both cuts sit in their gaps. Layout,
+# judged in the preview, not a cloth constant.
+OUTLINE_LINE_ART_FILL_SHARE = 0.5
+OUTLINE_LINE_ART_DROP_FRAC = 0.02
 
 
 def border_by_size_width_mm(min_dim_mm: float) -> float:

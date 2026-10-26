@@ -16,7 +16,14 @@ session's scratchpad so the next person re-measures instead of re-deriving:
            width complaint is settled against the pro's file, never the art.
   jitter   per rail, polygon-free: a line through every 9 same-rail
            penetrations and the centre point's residual; comparable between
-           ours and a DST because it needs no artwork.
+           ours and a DST because it needs no artwork. Beside it (2026-10-25)
+           the same windows by what they span (`rail_classes`): `run`
+           windows on one stretch of the letter's outline -- the only place
+           a wobble lives -- apart from `corner` and `stray` ones. The
+           per-letter p90 is mostly those two: straight stems' run windows
+           read 0.000-0.04 mm on seven pairs while their letters read
+           0.10-0.26. The pro's windows are classed by OUR outline, carried
+           into his frame by `small_text_floor_census.register`.
   lean     each cross against its own rail's direction. NOTE a symmetric
            zigzag has an inherent lean of atan(pitch / 2w) -- 9.7 deg on a
            1.2 mm column at 0.4 mm -- so compare like widths before reading
@@ -140,6 +147,58 @@ def rail_jitter(seqs):
                     _, _, vt = np.linalg.svd(w - c)
                     res.append(abs((w[WIN // 2] - c) @ vt[1]))
     return np.asarray(res)
+
+
+#: what `rail_classes` splits the windows into; `run` is `rail_jitter_cause`'s `straight`
+RAIL_CLASSES = ("run", "corner", "stray")
+
+
+def rail_classes(seqs, outline, fused=True):
+    """`rail_jitter`'s windows split by what they span (2026-10-25), each
+    class with its count and its own p90. -> {"n", "p90", "run", "run_p90",
+    "corner", "corner_p90", "stray", "stray_p90"} (a p90 is None for no windows).
+
+    A per-letter p90 mixes wobble with the windows that cross a real turn
+    in the rail: W3-03 read seven pairs (Becker x4, MFab, Fremont, Drone) and
+    found every straight stem's run windows at 0.000-0.04 mm while the
+    letters read 0.10-0.26 -- the rest is junction notches, end faces, the
+    art's own corners, and rails off the outline
+    (`.claude/memory/column-rail-fit-negative-2026-10-25.md`). So the
+    windows are classed by `rail_jitter_cause.cause`'s rule (#1077):
+      corner  a vertex of `outline` turning past 20 deg lies within 0.6 mm
+              of the window (a notch, an end face, a free terminal);
+      stray   a window point is over 0.6 mm off `outline` (a split or short
+              penetration, or a rail running along an internal cut);
+      run     neither: one stretch of outline, where a wobble would live.
+    `outline` is the letters' polygon(s) in the frame of `seqs`. `fused`
+    merges split legs first (`letter_pieces.fuse`), as #1077 classifies, so
+    a split cross is one cross; `p90` is over every classed window.
+
+    A run window is not always a wobble: on a fan's inside it reads our
+    inside stagger (`cfg.lettering_columns_inside_stagger`, the pivot ends
+    alternating ~0.4 mm by design -- MFab's 18 mm MFAB letters, 0.27), and
+    on a bowl it reads the bowl's own curvature (the reader's floor)."""
+    from tools import rail_jitter_cause as rjc
+    st = rjc.stations(seqs, fused)
+    C = rjc.corners(outline)
+    by = {k: [] for k in RAIL_CLASSES}
+    for r, w in st:
+        k = rjc.cause(w, C, outline)
+        by["run" if k == "straight" else k].append(r)
+
+    def p90(v):
+        return float(np.percentile(v, 90)) if v else None
+    out = {"n": len(st), "p90": p90([r for r, _w in st])}
+    for k, v in by.items():
+        out[k], out[f"{k}_p90"] = len(v), p90(v)
+    return out
+
+
+def fmt_classes(c):
+    f3 = lambda v: "-" if v is None else f"{v:.3f}"  # noqa: E731
+    return (f"run windows p90 {f3(c['run_p90'])} mm (n {c['run']} of {c['n']}); corner {c['corner']} "
+            f"(p90 {f3(c['corner_p90'])}), stray {c['stray']} (p90 {f3(c['stray_p90'])}); "
+            f"all classed {f3(c['p90'])}")
 
 
 def cross_lean(seqs):
@@ -322,6 +381,7 @@ def ours(image, cfg, band_frac):
     rows = []
     satin_seqs = []
     sil_seqs = []
+    outline = []
     for r in letters:
         sat = [run.points for run in runs_by.get(r.shape_id, []) if run.kind == "satin"]
         if not sat:
@@ -329,10 +389,12 @@ def ours(image, cfg, band_frac):
         st = _stats_of_polygon(r.polygon)
         art = 2.0 * st.mean_mm if st else float("nan")
         ws = np.asarray([w for pts in sat for _, _, w, _ in crosses_xy(strip_ties(pts))])
-        rows.append((r.shape_id, art, ws))
+        if len(ws):         # satin the cross reader cannot read has no width row (was a crash)
+            rows.append((r.shape_id, art, ws, rail_classes(sat, r.polygon)))
+        outline.append(r.polygon)
         satin_seqs += sat
         sil_seqs += [run.points for run in runs_by.get(r.shape_id, []) if run.kind in ("satin", "underlay", "run")]
-    return rows, satin_seqs, sil_seqs, band, W, H, plan
+    return rows, satin_seqs, sil_seqs, band, W, H, plan, outline
 
 
 def pro(path, colour, band_frac):
@@ -389,14 +451,16 @@ def main():
     image = Path(a.image) if Path(a.image).exists() else TESTDATA / a.image
     cfg = PipelineConfig(target_width_mm=a.width, garment_id=a.garment, **parse_flags(a.flag))
     fab = fabric_for(cfg)
-    rows, satin_seqs, sil_seqs, band, W, H, plan = ours(image, cfg, a.band)
+    rows, satin_seqs, sil_seqs, band, W, H, plan, outline = ours(image, cfg, a.band)
     print(f"ours: {image.name} at {a.width} mm / {a.garment} ({fab.id}, pull {fab.pull_comp_mm}/side); "
           f"{plan.stats.stitch_count} stitches, {plan.stats.trims} trims; band {band[0]:.1f}..{band[1]:.1f} mm, {len(rows)} letters")
-    print(f"  {'sid':10} {'art':>5} {'sewn':>5} {'p10':>5} {'p90':>5} {'n':>4} {'sewn/art':>8}")
+    print(f"  {'sid':10} {'art':>5} {'sewn':>5} {'p10':>5} {'p90':>5} {'n':>4} {'sewn/art':>8}  rail run p90 (run/all)")
     allw = []
-    for sid, art, ws in rows:
+    for sid, art, ws, cls in rows:
         allw.append(ws)
-        print(f"  {sid:10} {art:5.2f} {np.median(ws):5.2f} {np.percentile(ws, 10):5.2f} {np.percentile(ws, 90):5.2f} {len(ws):4d} {np.median(ws) / art:8.2f}")
+        rp = "    -" if cls["run_p90"] is None else f"{cls['run_p90']:.3f}"
+        print(f"  {sid:10} {art:5.2f} {np.median(ws):5.2f} {np.percentile(ws, 10):5.2f} {np.percentile(ws, 90):5.2f} {len(ws):4d} {np.median(ws) / art:8.2f}"
+              f"  {rp} ({cls['run']}/{cls['n']})")
     w = np.concatenate(allw)
     j = rail_jitter(satin_seqs)
     l = cross_lean(satin_seqs)
@@ -407,6 +471,9 @@ def main():
     print(f"  rail jitter |dev| med {np.median(j):.3f} p90 {np.percentile(j, 90):.3f} mm; lean med {np.median(l):.1f} p90 {np.percentile(l, 90):.1f} deg; "
           f"hair per letter mean {np.mean(h):.2f} ({' '.join(f'{v:.2f}' for v in h)}); fan ends {fe} over {fc} columns; "
           f"splayed ends {se} over {sc}")
+    from shapely.ops import unary_union
+    letters_poly = unary_union(outline)
+    print(f"  rail windows by class: {fmt_classes(rail_classes(satin_seqs, letters_poly))}")
     if a.pro:
         seqs, ws, pband, pW, pH = pro(a.pro, a.pro_colour, a.band)
         k = a.width / pW
@@ -419,6 +486,18 @@ def main():
         fe, fc = fan_ends(seqs)
         print(f"  rail jitter |dev| med {np.median(j):.3f} p90 {np.percentile(j, 90):.3f} mm; lean med {np.median(l):.1f} p90 {np.percentile(l, 90):.1f} deg; "
               f"hair per letter mean {np.mean(h):.2f} ({' '.join(f'{v:.2f}' for v in h)}); fan ends {fe} over {fc} columns")
+        # the pro's windows classed by OUR letter outline, carried into his
+        # frame by the floor census's registration (the lettering board's)
+        import tempfile
+        from shapely.affinity import affine_transform
+        from digitizer_core.export import write_dst
+        from tools.small_text_floor_census import register
+        with tempfile.TemporaryDirectory() as td:
+            dst = Path(td) / "ours.dst"
+            write_dst(plan, dst)
+            reg = register(Path(a.pro), dst)
+        print(f"  rail windows by class: {fmt_classes(rail_classes(seqs, affine_transform(letters_poly, reg.matrix())))}"
+              f" (registration IoU {reg.iou:.2f})")
 
 
 if __name__ == "__main__":
