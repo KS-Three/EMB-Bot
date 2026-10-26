@@ -134,7 +134,7 @@ the OLDEST lines whole to the archive.
 - [Under-fill outer rim](underfill-outer-rim-2026-10-25.md) — ring hosts own under-fill → pro rims whole outer edge in fill colour (MFab one closed 1.9 mm col); ours 0.0 → `silhouette_underfill_rim` OFF on the SEWN edge; edge cap drops
 - [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
 - [WITHDRAWN: warn sooner on small files](warn-sooner-small-files-handoff-2026-10-01.md) — Kent 10-02: no warnings, the engine takes the path; replaced by bean letters, built OFF in PR #601
-- [White counters open](white-counters-open-2026-10-26.md) — sew_enclosed_white: a hole <= 1.5 holder strokes, or a speck < 2.5 mm2, is a counter (Tires loops, ProSeal slot); beanies unreadable; MFab/Becker byte-identical
+- [White counters open](white-counters-open-2026-10-26.md) — holes <= 1.5 holder strokes stay open
 - [White faces fill](white-faces-fill-2026-10-25.md) — sew_enclosed_white made Becker 8.4x slower (white faces sewed as Column letters); `sew_enclosed_white_fields_fill` OFF fills them at 22°; house angle hides in fill_angle_deg
 - [White re-rule packet](white-rerule-packet-2026-10-25.md) — under border_from_outline, white ALONE fills Becker's faces (0°) at ≤1.39x CPU; fields_fill costs up to 5.6x (MFab lc); keyline inert; census `tools/enclosed_pro_census.py` 29/31
 - [Wide letters: MFab's W](wide-letters-mfab-w-2026-10-23.md) — W never reached the lane: tagger aspect 1.4 (W+E touch, 2.55; W alone 1.58); `text_cluster_wide_letters` OFF; measure MFab with main's rembg
