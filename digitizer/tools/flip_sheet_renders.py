@@ -271,7 +271,7 @@ FLAGS: dict[str, dict] = {
         "sets": {"photo_prep_background_removal_timeout_s": 900, "script_strokes": True},
         "fixtures": ["bridge_hat", "bridge_lc", "tires_hat_3d", "machine_hat"],
         "metric": "script_square", "about": "word's crosses square to the stroke (script_census)",
-        "pr": 0,
+        "pr": 1119,
         "note": "A script word sewn one satin column per pen stroke, crosses square to the stroke, "
                 "the path read on the art's ink. Both arms pin the rembg timeout at 900 s (Tires is "
                 "photo_scene). The pro RE-SET Bridge in a taller font of his own (not reproducible "
