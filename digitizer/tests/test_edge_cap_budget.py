@@ -101,6 +101,10 @@ def _run(fixture: str, width: float, cap: str = "bean",
                        # as one loop per face and the faces as fills, which
                        # moves the cap's rings and its bill
                        border_from_outline=PRE_FLIP["border_from_outline"],
+                       # ...and white sewn (`sew_enclosed_white`, ON since Kent's
+                       # 2026-10-26 flip): Becker's faces and whitebg's ring hole
+                       # sew, which moves the silhouette the cap rings
+                       sew_enclosed_white=PRE_FLIP["sew_enclosed_white"],
                        subpixel_edges_upscaled=False,
                        satin_lettering_split=False,
                        # ...and the Column lane (`lettering_columns`, ON since

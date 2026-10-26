@@ -102,7 +102,7 @@ def test_the_flag_alone_is_byte_identical_to_the_flat_golden(fixture):
     golden = json.loads((TESTDATA / "flat_lane_golden.json").read_text(encoding="utf-8"))[fixture]
     assert _coords_md5(golden["stitch_coords"]) == GOLDEN_MD5[fixture]
     _r, plan = digitize(TESTDATA / fixture,
-                        PipelineConfig(target_width_mm=80.0, edge_cap="none",
+                        PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False,
                                        hairline_lines_strand_mass=True))
     assert _md5(plan) == GOLDEN_MD5[fixture]
 

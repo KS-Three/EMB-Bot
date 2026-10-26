@@ -323,6 +323,16 @@ def whitebg_pre_flip():
 
 
 @pytest.fixture(scope="session")
+def whitebg_white_off():
+    """The same fixture with `sew_enclosed_white` OFF (it is ON by default since
+    Kent's flip 2026-10-26). ON, whitebg's ring hole sews white; OFF it is the
+    tagged, unstitched enclosed region a review screen can restore -- what the
+    tests about that path (the warning, the restore, the dead layer) need. Use
+    the plain `whitebg` for anything asking what the engine DOES."""
+    return run_stages(TESTDATA / "logo_whitebg.png", cfg(sew_enclosed_white=False))
+
+
+@pytest.fixture(scope="session")
 def alpha():
     return run_stages(TESTDATA / "logo_alpha.png", cfg())
 

@@ -560,7 +560,7 @@ def test_goldens_are_byte_identical_either_way(fixture, flag):
     golden = json.loads((TESTDATA / "flat_lane_golden.json").read_text(encoding="utf-8"))[fixture]
     assert _stream_md5_coords(golden["stitch_coords"]) == GOLDEN_MD5[fixture]
     _result, plan = digitize(TESTDATA / fixture,
-                             PipelineConfig(target_width_mm=80.0, edge_cap="none",
+                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False,
                                             detail_spokes=flag))
     assert _stream_md5(plan) == GOLDEN_MD5[fixture]
 

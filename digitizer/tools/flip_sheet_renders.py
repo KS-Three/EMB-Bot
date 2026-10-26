@@ -399,6 +399,10 @@ def digitize_cell(slug: str, arm: str, cache: Path, engine: str | None) -> dict:
         return json.loads((out / "stats.json").read_text(encoding="utf-8"))
     fx = fixture_files(slug)
     sets = arm_sets(arm)
+    # a lane has no rembg venv of its own: point stage 1 at the primary checkout's, or a
+    # photo_scene job (MFab) silently takes the no-background-removal route (2026-10-26)
+    from tools.enclosed_pro_census import _rembg
+    rembg = _rembg()
     d = pp.digitize(fx["art"], fx["width_mm"], fx["garment"], sets)
     out.mkdir(parents=True, exist_ok=True)
     write_dst(d.plan, out / "ours.dst")
@@ -416,7 +420,10 @@ def digitize_cell(slug: str, arm: str, cache: Path, engine: str | None) -> dict:
     stats = {"slug": slug, "arm": arm, "sets": sets, "engine": sha, "tagged": tagged,
              "engine_root": str(engine_root()), "width_mm": fx["width_mm"],
              "garment": fx["garment"], "secs": round(d.secs, 1),
-             "plan_stitches": d.plan.stats.stitch_count, "plan_trims": d.plan.stats.trims}
+             "plan_stitches": d.plan.stats.stitch_count, "plan_trims": d.plan.stats.trims,
+             "rembg": rembg,
+             "background_removed": any((w.get("code") == "PHOTO_BACKGROUND_REMOVED")
+                                       for w in (getattr(d.plan, "warnings", None) or []))}
     (out / "stats.json").write_text(json.dumps(stats, indent=1), encoding="utf-8")
     return stats
 

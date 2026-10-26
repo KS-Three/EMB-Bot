@@ -29,14 +29,16 @@ def test_white_background_is_detected_without_crying_uncertain(whitebg):
     assert BACKGROUND_UNCERTAIN not in codes(whitebg)
 
 
-def test_ring_hole_is_reported_as_enclosed_background(whitebg):
-    """Outcome preserved (still unstitched by default, warning still fires),
+def test_ring_hole_is_reported_as_enclosed_background(whitebg_white_off):
+    """With `sew_enclosed_white` OFF (ON by default since 2026-10-26, when the
+    hole sews white instead). Outcome preserved (still unstitched by default, warning still fires),
     mechanism changed (2026-08-04): the ring's donut hole is no longer
     quietly folded into `bg` and excluded before it can become a Region —
     it is now a REAL, tagged Region that a review screen could restore.
     See docs/superpowers/plans/2026-08-04-enclosed-background-restore-
     design.md.
     """
+    whitebg = whitebg_white_off
     assert BACKGROUND_ENCLOSED in codes(whitebg)
 
     enclosed = [r for r in whitebg.regions if r.meta.get("enclosed_background")]

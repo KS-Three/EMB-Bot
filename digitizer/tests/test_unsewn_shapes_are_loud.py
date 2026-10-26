@@ -39,6 +39,16 @@ from digitizer_core.warnings_codes import SHAPES_LEFT_UNSEWN
 
 from .conftest import TESTDATA, cfg
 
+import pytest
+
+
+@pytest.fixture(scope="module")
+def whitebg(whitebg_white_off):
+    """This module is about shapes LEFT UNSEWN: whitebg's ring hole, held out
+    with `sew_enclosed_white` OFF. ON (the default since 2026-10-26) the hole
+    sews white and there is nothing left out to name."""
+    return whitebg_white_off
+
 PLAN_CFG_KW = {"garment_id": "left_chest"}
 
 
@@ -209,13 +219,14 @@ def test_an_override_that_restores_a_shape_silences_the_warning():
     """`shape_overrides[sid]["stitched"] = True` puts the shape back — and
     with nothing left out, the warning stops firing. Pins that the warning
     tracks the real exclusion set rather than the enclosed tag."""
-    base = run_stages(TESTDATA / "logo_whitebg.png", cfg())
+    base = run_stages(TESTDATA / "logo_whitebg.png", cfg(sew_enclosed_white=False))
     skipped = [r.shape_id for r in base.regions if not r.meta.get("stitched", True)]
     assert skipped
 
     restored = run_stages(
         TESTDATA / "logo_whitebg.png",
-        cfg(shape_overrides={sid: {"stitched": True} for sid in skipped}),
+        cfg(sew_enclosed_white=False,
+            shape_overrides={sid: {"stitched": True} for sid in skipped}),
     )
     plan = plan_stitches(restored, cfg(**PLAN_CFG_KW))
 
