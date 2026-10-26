@@ -82,22 +82,17 @@ def test_any_other_art_leaves_the_config_the_same_object():
 def test_the_recipe_is_every_switch_on():
     got = wka.apply(ON, True)
     assert all(getattr(got, k) is True for k in wka.RECIPE)
-    assert all(got.extra.get(k) is True for k in wka.RECIPE_EXTRA)
     assert set(wka.RECIPE) >= {"silhouette_underfill", "sew_enclosed_white", "enclosed_white_keyline",
                                "silhouette_underfill_panels", "outline_loop_mitre"}
 
 
 def test_the_mfab_extras_ride_the_gate_kent_2026_10_26():
-    # "MFab extras into the gate": the sliver fold, the covered-shape skip,
-    # fragment absorb and the black outer edge, on MFab-type art only
+    # "MFab extras into the gate": the sliver fold, the covered-shape skip and
+    # the black outer edge, on MFab-type art only. Fragment absorb is held out:
+    # with the recipe it bares the counters under the riders (the PR's doc)
     assert {"keyline_fold_slivers", "skip_covered_shapes", "silhouette_underfill_rim"} <= set(wka.RECIPE)
-    assert "absorb_fragments" in wka.RECIPE_EXTRA
     from digitizer_core import fragment_absorb
-    mine = replace(ON, extra={"fill_section_travel": True})
-    got = wka.apply(mine, True)
-    assert fragment_absorb.enabled(got) and got.extra["fill_section_travel"] is True
-    assert mine.extra == {"fill_section_travel": True}     # the caller's dict untouched
-    assert not fragment_absorb.enabled(wka.apply(ON, False))
+    assert not fragment_absorb.enabled(wka.apply(ON, True))
 
 
 def test_the_gates_plan_is_the_recipes(monkeypatch):
@@ -112,8 +107,7 @@ def test_the_gates_plan_is_the_recipes(monkeypatch):
         return [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
                 for _b, r in plan.iter_runs() for x, y in r.points]
     gated = plan_stitches(result(True), ON)
-    recipe = plan_stitches(result(False), replace(PipelineConfig(), **{k: True for k in wka.RECIPE},
-                                                  extra={k: True for k in wka.RECIPE_EXTRA}))
+    recipe = plan_stitches(result(False), replace(PipelineConfig(), **{k: True for k in wka.RECIPE}))
     assert coords(gated) == coords(recipe)
     assert coords(plan_stitches(result(False), ON)) == coords(plan_stitches(result(False), PipelineConfig()))
 

@@ -26,15 +26,16 @@ nowhere else: Becker's outline is its black band (not background), To a T's
 and Drone's hold no letter. No new constant. A pre-pass only when a candidate
 exists: a design with no enclosed background holding a hole pays nothing.
 
-THE RECIPE (`RECIPE`, `RECIPE_EXTRA`): `silhouette_underfill`,
-`sew_enclosed_white`, `enclosed_white_keyline`, `silhouette_underfill_panels`,
-`outline_loop_mitre` and `silhouette_underfill_rim` -- the five switches of
-#1094's flip sheet plus the under-fill's rim (#1096) -- and, since Kent's
-ruling of 2026-10-26 on the wave-3 flip sheet ("MFab extras into the gate"),
-the MFab extras: `keyline_fold_slivers` and `skip_covered_shapes` (#1102) and
-`cfg.extra["absorb_fragments"]` (#1100), all ON together. They were measured
-apart; together they take MFab's trims toward the pro's
-(`docs/gate-mfab-extras-2026-10-26.md`). Every one acts in `plan_stitches`.
+THE RECIPE (`RECIPE`): `silhouette_underfill`, `sew_enclosed_white`,
+`enclosed_white_keyline`, `silhouette_underfill_panels`, `outline_loop_mitre`
+and `silhouette_underfill_rim` -- the five switches of #1094's flip sheet plus
+the under-fill's rim (#1096) -- and, from Kent's ruling of 2026-10-26 on the
+wave-3 flip sheet ("MFab extras into the gate"), `keyline_fold_slivers` and
+`skip_covered_shapes` (#1102), all ON together. Both act in `plan_stitches`.
+The ruling's third extra, `cfg.extra["absorb_fragments"]` (#1100), is held
+out: with the recipe it drops the white field's panel fill under AND /
+WELDING / LLC, leaving bare garment in their counters (MFab LC 12.5 mm2 new
+bare, alone or with the others; `docs/gate-mfab-extras-2026-10-26.md`).
 
 The verdict is carried on the result (`PipelineResult.white_keyline_art`) and
 folded into the config at each later entry point (`apply`), as stage 1.25's
@@ -51,8 +52,6 @@ from shapely.geometry import Polygon
 RECIPE = ("silhouette_underfill", "sew_enclosed_white", "enclosed_white_keyline",
           "silhouette_underfill_panels", "outline_loop_mitre", "silhouette_underfill_rim",
           "keyline_fold_slivers", "skip_covered_shapes")
-#: the recipe's `cfg.extra` keys (Kent 2026-10-26: "MFab extras into the gate")
-RECIPE_EXTRA = ("absorb_fragments",)
 
 
 def detect(regions, cfg) -> bool:
@@ -89,5 +88,4 @@ def apply(cfg, verdict: bool):
     on and the art is white-keyline art; otherwise the same config object."""
     if not (verdict and getattr(cfg, "white_keyline_art_recipe", False)):
         return cfg
-    extra = {**(cfg.extra or {}), **{k: True for k in RECIPE_EXTRA}}
-    return replace(cfg, **{k: True for k in RECIPE if hasattr(cfg, k)}, extra=extra)
+    return replace(cfg, **{k: True for k in RECIPE if hasattr(cfg, k)})
