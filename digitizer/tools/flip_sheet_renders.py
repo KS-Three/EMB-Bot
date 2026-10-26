@@ -261,7 +261,7 @@ FLAGS: dict[str, dict] = {
     "fine_bars_satin": {
         "sets": {"fine_bars_satin": True},
         "fixtures": ["toat_machine_hat", "hotel_fremont_hat", "precision_drone", "mfab_hat"],
-        "metric": "run_shapes", "about": "shapes sewn as a plain run ring (plan roles)",
+        "metric": "run_shapes", "about": "shapes sewn as a plain run ring (plan roles)", "pr": 1101,
         "note": "Free-standing thin ink bars under the area floor: To a T's speed rules, Fremont's "
                 "separators, the drone's AND DRONE rule, MFab's LLC hairline. The pro satins each; "
                 "ours rings them OFF."},
