@@ -46,7 +46,7 @@ export const HELP = {
     title: "Sew white areas",
     what: "Sews the white or hollow areas inside the design — a badge's field, the inside of outlined letters, a white keyline — instead of leaving the garment showing there.",
     changes: "Those areas fill with thread in the colour you pick (white unless you change it) and sew first, under their outlines. The holes inside letters stay open unless you tick \"Fill letter holes too\". It adds stitches.",
-    when: "Turn it on when the white in your artwork is part of the design, especially on a dark garment. Leave it off when the white is meant to be the garment.",
+    when: "It starts on. Keep it on when the white in your artwork is part of the design, especially on a dark garment. Turn it off when the white is meant to be the garment.",
   },
   fillAngle: {
     title: "Fill angle",

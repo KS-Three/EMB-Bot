@@ -2,7 +2,8 @@
 
 `enclosed_white_keyline` and `sew_enclosed_white_fields_fill` (#1076) are
 read only under `sew_enclosed_white`, so with it OFF the engine is the engine
-as it was. That is only worth asserting on art that HAS the white the options
+as it was. (`sew_enclosed_white` is ON by default since Kent's flip
+2026-10-26, so the OFF arm here pins it False.) That is only worth asserting on art that HAS the white the options
 act on: Becker, whose five white BECKER faces are why the fields-fill option
 exists (with them sewn as Column-lane letters, Becker at 100 mm took 8.4x the
 time). And it is only a measurement if the tripwires can fire: the control
@@ -70,7 +71,8 @@ def _md5(plan) -> str:
 def test_off_the_riders_never_reach_the_white_path_on_becker(monkeypatch):
     _apply_watch(monkeypatch, trip=True)
     routed = _field_fill_spy(monkeypatch)
-    result, plan = pipeline.digitize(BECKER, PipelineConfig(target_width_mm=WIDTH_MM, **RIDERS))
+    result, plan = pipeline.digitize(
+        BECKER, PipelineConfig(target_width_mm=WIDTH_MM, sew_enclosed_white=False, **RIDERS))
     assert routed == []
     assert not any((r.meta or {}).get("sew_enclosed_white") for r in result.regions)
     # not vacuous: the art carries the white letter faces the riders act on
@@ -78,7 +80,8 @@ def test_off_the_riders_never_reach_the_white_path_on_becker(monkeypatch):
              if r.meta.get("enclosed_background") and r.meta.get("text_candidate")]
     assert len(faces) >= 5, [r.shape_id for r in faces]
     # and the riders change nothing while `sew_enclosed_white` is OFF
-    _r, plain = pipeline.digitize(BECKER, PipelineConfig(target_width_mm=WIDTH_MM))
+    _r, plain = pipeline.digitize(BECKER, PipelineConfig(target_width_mm=WIDTH_MM,
+                                                         sew_enclosed_white=False))
     assert _md5(plan) == _md5(plain)
 
 

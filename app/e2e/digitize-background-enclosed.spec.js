@@ -45,7 +45,7 @@
 // from 2026-08-10 to -13 (tile-locator break), which is why the premise
 // loss went unnoticed.
 import { test, expect } from "@playwright/test";
-import { pickGarment, uploadArtwork, openAdvanced } from "./helpers.js";
+import { pickGarment, uploadArtwork, openAdvanced, runDigitize } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -150,7 +150,7 @@ test.afterAll(() => {
   if (serviceProc) serviceProc.kill("SIGTERM");
 });
 
-test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and restorable through the real service", async ({ page }) => {
+test("BACKGROUND_ENCLOSED: with Sew white areas unticked, enclosed icon linework is held out and restorable through the real service", async ({ page }) => {
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
 
@@ -159,7 +159,15 @@ test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and res
   // ---- reach the digitize panel (same route as the other digitize specs) --
   await pickGarment(page, "Tote");
 
-  await uploadArtwork(page, ART_SINGLE_PNG);
+  // "Sew white areas" starts ticked since Kent's flip 2026-10-26, and then this
+  // field simply sews. Unticked -- the customer's way back -- the Studio sends
+  // `sew_enclosed_white: false` and the area is held out, restorable below.
+  await uploadArtwork(page, ART_SINGLE_PNG, { run: false });
+  await openAdvanced(page);
+  const sewWhite = page.getByTestId("sew-white");
+  await expect(sewWhite).toBeChecked();
+  await sewWhite.uncheck();
+  await runDigitize(page);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await openShapeRows(page);
 
