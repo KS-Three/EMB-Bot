@@ -38,7 +38,10 @@ INDEX = MEMDIR / "MEMORY.md"
 ARCHIVE = MEMDIR / "MEMORY-archive.md"
 INDEXES = ("MEMORY.md", "MEMORY-archive.md")
 
-#: Characters, not bytes and not lines. See `char_count`.
+#: Characters, not bytes and not lines, counted on the file AS STORED. See
+#: `char_count`. This is 24.4 KiB, the figure the loader printed on 2026-09-15.
+#: The loader's own constant is 25,000 (`Xee=25000` in the 2026-10-06 CLI
+#: build), so the 14 characters between them are margin, kept on purpose.
 BUDGET = 24_986
 
 #: The per-line target the index states in its own header.
@@ -54,10 +57,47 @@ from tools._console import utf8_console                    # noqa: E402
 ENTRY = re.compile(r"^- \[(?P<title>.+?)\]\((?P<rel>.+?)\)\s*—\s*(?P<hook>.*)$")
 
 
-def char_count(text: str) -> int:
-    """`len(text)` — Unicode CHARACTERS. Not bytes, not lines, not words.
+#: What JavaScript's `String.prototype.trim` strips (the spec's WhiteSpace and
+#: LineTerminator), by code point. Python's `str.strip()` is a different set: it
+#: takes U+001C-U+001F and U+0085 and leaves U+FEFF.
+_JS_WHITESPACE = "".join(map(chr, (
+    0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20, 0xA0, 0x1680, *range(0x2000, 0x200B),
+    0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF)))
 
-    Calibrated against the loader's own report rather than assumed. On
+
+def read_stored(path: pathlib.Path) -> str:
+    """The file's text exactly as it sits on disk: no newline translation.
+
+    `Path.read_text` translates CRLF to LF, so on Kent's Windows box it showed
+    this budget a file ~146 characters shorter than the loader reads. Decoding
+    the bytes keeps every `\\r`.
+    """
+    return pathlib.Path(path).read_bytes().decode("utf-8")
+
+
+def char_count(text: str) -> int:
+    """What the loader's ceiling counts: UTF-16 units of the TRIMMED text, as stored.
+
+    **Read the file with `read_stored`, not `read_text`** (found 2026-10-26).
+    The loader does not translate newlines, so a CRLF working copy costs one
+    extra character per line, and `read_text` hid exactly that: this budget
+    could pass on a Windows copy the loader would cut. The count is
+    taken from the loader's own code in the CLI binary
+    (`~/.local/bin/claude.exe`, 2026-10-06 build; search it for "Only part of
+    it was loaded"):
+
+        uu="MEMORY.md",lL=200,Xee=25000
+        function _tt(t){let r=t.trim();
+          return{trimmed:r,lineCount:count(r,"\\n")+1,byteCount:r.length}}
+
+    `byteCount` is `r.length`, a JavaScript string length, so UTF-16 code
+    units: a non-BMP character (an emoji) is TWO, and a CR is one. It is also
+    computed AFTER `trim()`, so the trailing newline is free. `lL=200` is a
+    second, line ceiling; the index is far from it and the character ceiling
+    binds first while lines average over 125 characters.
+
+    Not bytes, not lines, not words. Calibrated against the loader's own report
+    rather than assumed. On
     2026-09-15 it called this file **47.3KB** with a **24.4KB** limit:
 
         bytes  48,929  ->  47.8 KiB   (wrong, and 0.5 KiB optimistic)
@@ -75,7 +115,7 @@ def char_count(text: str) -> int:
     memory, a number that barely moves — while single hooks ran past 3,400
     characters. A line budget would have read 57 and seen nothing wrong.
     """
-    return len(text)
+    return len(text.strip(_JS_WHITESPACE).encode("utf-16-le")) // 2
 
 
 def kib(n: int) -> float:
@@ -171,7 +211,9 @@ def order_problems(text: str) -> list[str]:
 def sorted_text(text: str) -> str:
     """`text` with its registry lines in the order `order_problems` wants:
     the header and any other prose where they are, the archive pointer first,
-    the rest alphabetical by link filename."""
+    the rest alphabetical by link filename. The line endings of `text` are kept
+    (CRLF in, CRLF out), so a copy read as stored round-trips unchanged."""
+    eol = "\r\n" if "\r\n" in text else "\n"
     lines = text.splitlines()
     idx = [i for i, ln in enumerate(lines) if ENTRY.match(ln)]
     if not idx:
@@ -181,24 +223,37 @@ def sorted_text(text: str) -> str:
                   key=lambda ln: sort_key(ENTRY.match(ln).group("rel")))
     for i, ln in zip(idx, pointer + rest):
         lines[i] = ln
-    return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+    return eol.join(lines) + (eol if text.endswith("\n") else "")
 
 
 def main(argv: list[str]) -> int:
     utf8_console()
     if "--sort" in argv:
-        before = INDEX.read_text(encoding="utf-8")
-        after = sorted_text(before)
+        before = read_stored(INDEX)
+        lf = before.replace("\r\n", "\n")          # the rewrite is LF either way
+        after = sorted_text(lf)
         INDEX.write_text(after, encoding="utf-8", newline="\n")
-        print("MEMORY.md entries sorted" if after != before else "MEMORY.md already in order")
+        print("MEMORY.md entries sorted" if after != lf
+              else "MEMORY.md already in order" if after == before
+              else "MEMORY.md already in order; rewritten with LF line endings")
         return 0
-    text = INDEX.read_text(encoding="utf-8")
+    text = read_stored(INDEX)
     n = char_count(text)
     rows = entries(text)
     left = BUDGET - n
 
-    print(f"MEMORY.md — {n:,} chars ({kib(n):.1f} KiB) against a {BUDGET:,} "
-          f"ceiling ({kib(BUDGET):.1f} KiB); {left:,} left, {len(rows)} entries")
+    print(f"MEMORY.md — {n:,} chars ({kib(n):.1f} KiB) as stored on disk, against a "
+          f"{BUDGET:,} ceiling ({kib(BUDGET):.1f} KiB); {left:,} left, {len(rows)} entries")
+    crs = text.count("\r")
+    if crs:
+        print(f"CRLF: this copy has {crs:,} carriage returns and the loader counts "
+              f"every one; with LF endings it is "
+              f"{char_count(text.replace(chr(13) + chr(10), chr(10))):,}. "
+              f"`.gitattributes` pins .claude/memory/*.md to LF; a pull that changes "
+              f"this file rewrites it as LF, or convert every note now with "
+              f"`git rm -q --cached -r .claude/memory` then "
+              f"`git checkout HEAD -- .claude/memory` (plain `git checkout --` skips "
+              f"files git thinks are unchanged).")
     if left > 0 and rows:
         print(f"room for roughly {left // max(1, n // len(rows))} more entries "
               f"at the current average of {n // len(rows)} chars\n")
@@ -214,7 +269,7 @@ def main(argv: list[str]) -> int:
     print(f"\nlongest {max((r[3] for r in rows), default=0)}, "
           f"cap {LINE_CAP}, over cap {len(over)}")
 
-    archive_text = ARCHIVE.read_text(encoding="utf-8") if ARCHIVE.is_file() else ""
+    archive_text = read_stored(ARCHIVE) if ARCHIVE.is_file() else ""
     arows = entries(archive_text)
     print(f"MEMORY-archive.md — {char_count(archive_text):,} chars, "
           f"{len(arows)} entries, not auto-loaded; longest "
