@@ -63,6 +63,7 @@ from .fabrics import Fabric, fill_underlay_for, pro_values_for, pull_by_stroke_f
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
 from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
+from .silhouette_underfill import RIDER_HOLES_KEY
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
 from .columns import (is_lettering, is_thin_stem, lettering_columns_shape,
@@ -3134,12 +3135,23 @@ def sequence(
                 art = p.region.polygon
                 rings = outline_holes(art, outline_rings[p.shape_id],
                                       max(w for _h, w in outline_rings[p.shape_id]))
+                # `cfg.silhouette_underfill_panels`: the holes the riders sit
+                # in are no loop's; the field fills them, closed, under the
+                # riders sewn after it (`silhouette_underfill._panels`)
+                rest_art = art
+                rider_holes = p.region.meta.get(RIDER_HOLES_KEY)
+                if rider_holes:
+                    ridden = {h.exterior.wkb for h in rider_holes}
+                    rings = [(h, w) for h, w in rings if h.exterior.wkb not in ridden]
+                    rest_art = Polygon(art.exterior,
+                                       [r for r in art.interiors
+                                        if Polygon(r).exterior.wkb not in ridden])
                 # no hole of the outline survives on the artwork polygon (the
                 # region-level read found one): nothing to loop, fall through
                 if rings:
                     o_runs: list[StitchRun] = []
                     o_jumps = 0
-                    for piece in keyline_rest(art, 0.0, cfg.overlap_mm,
+                    for piece in keyline_rest(rest_art, 0.0, cfg.overlap_mm,
                                               machine.MIN_FILL_WIDTH_MM, looped=rings):
                         f_runs, f_report = stitch_shape(
                             piece, p.shape_id,
