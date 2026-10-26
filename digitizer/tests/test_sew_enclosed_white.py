@@ -242,3 +242,16 @@ def test_a_counter_shaped_hole_inside_a_sewn_field_still_sews_as_before():
                 enclosed_background=True)
     pin = _reg("Spin", _box(10, 10, 11, 11), thread=WHITE_T, enclosed_background=True)
     assert plan_enclosed_white([frame, band, pin], _cfg()) == {"Sband": "field", "Spin": "field"}
+
+
+def test_a_lone_speck_does_not_move_the_white_to_the_front():
+    # Gaulke LC: one 0.4 mm2 speck was the only area the option sewed, and its
+    # front layer pulled the white roof line and window cross ahead of the
+    # black, which buried them. Left open, nothing re-layers.
+    roof = _reg("Sroof", _box(0, 0, 20, 1), thread=WHITE_T, layer=1)
+    house = _reg("Shouse", _box(0, 2, 20, 12), layer=0)
+    speck = _reg("Sspeck", _box(30, 0, 30.6, 0.6), thread=WHITE_T, enclosed_background=True, layer=1)
+    regions = [house, roof, speck]
+    threads, n = apply_enclosed_white(regions, [BLACK_T, WHITE_T], _cfg(), CHART)
+    assert (threads, n) == ([BLACK_T, WHITE_T], 0)
+    assert [r.meta["layer"] for r in regions] == [0, 1, 1]
