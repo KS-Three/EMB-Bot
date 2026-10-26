@@ -90,6 +90,78 @@ RIDER_OF_KEY = "underfill_rider_of"
 #: a word rides when MORE than this share of its letters are not outline bodies
 WORD_NONBODY_MIN = 0.5
 
+#: meta on a white field (`cfg.keyline_fold_slivers`): the sliver ids folded in
+FOLDED_KEY = "keyline_folded"
+
+
+def fold_keyline_slivers(regions):
+    """`cfg.keyline_fold_slivers` (built OFF 2026-10-26): every sliver of a
+    sewn white field's own thread folds back into the field. -> (regions,
+    {field id: [sliver ids]}): copies where changed, the list itself when
+    nothing folds.
+
+    MFab's keyline is drawn with a dark hairline along its inner edge, so the
+    tracer returns it as the field plus 31 (hat) / 51 (LC) white slivers,
+    0.1-0.3 mm wide, on the letters' side of the hairline, each sewn as its
+    own run with a cut either side. The professional sews one keyline: his
+    satin's rail is on the letter, and every one of our sliver stitches lies
+    within 0.3 mm of his white. Ours rides the field's hole -- the hairline's
+    outer edge -- so its crosses never reach the slivers.
+
+    A sliver here is a region in the field's thread that
+    `apply_enclosed_white` did not route (no `sew_enclosed_white`), is no
+    text, measured narrower than a thread (`stitch_width_measured_mm` under
+    `COVERAGE_THREAD_W_MM`), and lies within a thread of the field: a gap no
+    thread fits in. It folds in with the strip between them (each side grown
+    by half a thread, where both reach), so the field's hole moves onto the
+    letter and the loop crosses the sliver and the hairline as the pro's
+    does. A fold that would not come out one polygon is not made. No new
+    constant. Before `_art_outlines`, so the outline's holes, widths and
+    loops are read on the folded field."""
+    from . import machine
+    half = machine.COVERAGE_THREAD_W_MM / 2.0
+    fields = [r for r in regions
+              if r.meta.get("sew_enclosed_white") == "field" and r.meta.get("stitched", True)]
+    if not fields:
+        return regions, {}
+    gone: dict[str, str] = {}
+    grown: dict[str, Polygon] = {}
+    for f in fields:
+        poly = f.polygon
+        for r in regions:
+            if (r is f or r.shape_id in gone or r.thread_index != f.thread_index
+                    or not r.meta.get("stitched", True) or r.meta.get("sew_enclosed_white")
+                    or r.meta.get("text_cluster_id") is not None):
+                continue
+            w = r.meta.get("stitch_width_measured_mm")
+            if w is None or w >= machine.COVERAGE_THREAD_W_MM:
+                continue
+            if r.polygon.distance(poly) > machine.COVERAGE_THREAD_W_MM:
+                continue
+            bridge = r.polygon.buffer(half).intersection(poly.buffer(half))
+            joined = unary_union([poly, r.polygon, bridge]).buffer(0)
+            if joined.geom_type != "Polygon":
+                continue
+            poly = joined
+            gone[r.shape_id] = f.shape_id
+        if poly is not f.polygon:
+            grown[f.shape_id] = poly
+    if not gone:
+        return regions, {}
+    folded: dict[str, list[str]] = {}
+    for sid, fid in gone.items():
+        folded.setdefault(fid, []).append(sid)
+    out = []
+    for r in regions:
+        if r.shape_id in gone:
+            continue
+        if r.shape_id in grown:
+            g = grown[r.shape_id]
+            r = replace(r, polygon=g, area_mm2=g.area,
+                        meta={**r.meta, FOLDED_KEY: sorted(folded[r.shape_id])})
+        out.append(r)
+    return out, folded
+
 
 def _is_letter(r) -> bool:
     m = r.meta or {}

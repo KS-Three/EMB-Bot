@@ -1677,6 +1677,20 @@ class PipelineConfig:
     # under it that the black under-fill gives up. Layout, judged in the
     # preview. OFF: nothing is read, byte for byte.
     silhouette_underfill_panels: bool = False
+    # `keyline_fold_slivers` (BUILT OFF 2026-10-26, the MFab recipe's trims,
+    # `docs/mfab-recipe-trims-2026-10-26.md`; read only with
+    # `sew_enclosed_white`): a sewn white field's slivers fold back into it
+    # (`silhouette_underfill.fold_keyline_slivers`), before the art outlines
+    # are read. MFab's keyline is drawn with a dark hairline on its inner
+    # edge, so it traces as the field plus 31 (hat) / 51 (LC) white slivers
+    # 0.1-0.3 mm wide on the letters' side, each its own run with a cut
+    # either side; the pro's keyline satin covers every one, its rail on the
+    # letter. A sliver: the field's thread, not routed, no text, measured
+    # under a thread wide, within a thread of the field. Folded, the field's
+    # hole sits on the letter and its loop crosses the sliver and the
+    # hairline. Layout: Kent's call from the renders. Off, byte-identical.
+    # Tests: `tests/test_keyline_fold_slivers.py`.
+    keyline_fold_slivers: bool = False
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
