@@ -292,7 +292,7 @@ def summary(reading: dict) -> dict:
     return out
 
 
-def diagnose_plan(plan, margin_mm: float = 15.0) -> list[dict]:
+def diagnose_plan(plan, margin_mm: float = 15.0, regions=None) -> list[dict]:
     """Every cut left inside a colour block of OUR plan, and what refuses a
     buried walk there. -> one row per cut.
 
@@ -315,7 +315,14 @@ def diagnose_plan(plan, margin_mm: float = 15.0) -> list[dict]:
       (`off_mm`) is split by what that part lies on: this colour's own
       earlier stitches (`off_on_own_mm`: the order of shapes inside the
       colour), another colour sewn earlier (`off_on_earlier_mm`: the colour
-      order would have to change to bury it), or fabric (`off_bare_mm`)."""
+      order would have to change to bury it), or fabric (`off_bare_mm`).
+
+    `regions` (the plan's `Region`s, optional, added 2026-10-26 for W4-06):
+    `off_on_earlier_mm` is split once more, into `off_on_ground_mm` -- an
+    earlier shape whose outline (holes closed) holds 0.9 of either end's
+    shape: the ground the cut's colour sits on, which sews FIRST in any
+    back-to-front build -- and `off_on_sibling_mm`, the rest: another colour
+    beside it, which a colour order could put after the cut."""
     import cv2
     import numpy as np
     import shapely
@@ -337,6 +344,7 @@ def diagnose_plan(plan, margin_mm: float = 15.0) -> list[dict]:
     lw = max(1, int(round(2 * half * ppm)))
     er = int(math.ceil((half + half / 2.0) * ppm)) + 1
     kern = np.ones((2 * er + 1, 2 * er + 1), np.uint8)
+    holds = _holder(regions) if regions is not None else None
     rows = []
     for k in range(1, len(seq)):
         bi, run = seq[k]
@@ -360,6 +368,7 @@ def diagnose_plan(plan, margin_mm: float = 15.0) -> list[dict]:
         later = np.zeros((ny, nx), np.uint8)
         earlier = np.zeros((ny, nx), np.uint8)
         own = np.zeros((ny, nx), np.uint8)
+        ground = np.zeros((ny, nx), np.uint8)
         for j in tree.query(box):
             kk = idx[j]
             pts = np.round((np.asarray(lines[kk].coords) - (x0, y0)) * ppm).astype(np.int32)
@@ -367,6 +376,9 @@ def diagnose_plan(plan, margin_mm: float = 15.0) -> list[dict]:
                 cv2.polylines(later, [pts], False, 1, lw)
             else:
                 cv2.polylines(own if seq[kk][0] == bi else earlier, [pts], False, 1, lw)
+                if (holds is not None and seq[kk][0] != bi
+                        and (holds(seq[kk][1].shape_id, prev.shape_id) or holds(seq[kk][1].shape_id, run.shape_id))):
+                    cv2.polylines(ground, [pts], False, 1, lw)
         mask = cv2.erode(later, kern)
         ia = (int(round((a[1] - y0) * ppm)), int(round((a[0] - x0) * ppm)))
         ib = (int(round((b[1] - y0) * ppm)), int(round((b[0] - x0) * ppm)))
@@ -398,9 +410,41 @@ def diagnose_plan(plan, margin_mm: float = 15.0) -> list[dict]:
         row["off_on_own_mm"] = round(float(step[outside & on_own].sum()), 2)
         row["off_on_earlier_mm"] = round(float(step[outside & on_earlier].sum()), 2)
         row["off_bare_mm"] = round(row["off_mm"] - row["off_on_own_mm"] - row["off_on_earlier_mm"], 2)
+        if holds is not None:
+            on_ground = on_earlier & (ground[path[:, 0], path[:, 1]] > 0)
+            row["off_on_ground_mm"] = round(float(step[outside & on_ground].sum()), 2)
+            row["off_on_sibling_mm"] = round(row["off_on_earlier_mm"] - row["off_on_ground_mm"], 2)
         row["route_mm"] = round(float(step.sum()), 1)
         rows.append(row)
     return rows
+
+
+def _holder(regions, inside: float = 0.9):
+    """-> holds(container id, shape id): the container's outline (holes
+    closed) holds `inside` of the shape's area. Cached; an id with no region
+    (the edge cap) holds nothing and is held by nothing."""
+    from shapely.geometry import Polygon
+    poly = {r.shape_id: r.polygon for r in regions}
+    outline: dict = {}
+    memo: dict = {}
+
+    def _outline(sid):
+        if sid not in outline:
+            p = poly[sid]
+            parts = [p] if p.geom_type == "Polygon" else list(getattr(p, "geoms", []))
+            outline[sid] = Polygon(max(parts, key=lambda g: g.area).exterior) if parts else None
+        return outline[sid]
+
+    def holds(c, s) -> bool:
+        if c == s or c not in poly or s not in poly:
+            return False
+        if (c, s) not in memo:
+            o, p = _outline(c), poly[s]
+            memo[(c, s)] = bool(o is not None and p.area > 0 and o.intersects(p)
+                                and p.intersection(o).area >= inside * p.area)
+        return memo[(c, s)]
+
+    return holds
 
 
 def _q(xs, q):

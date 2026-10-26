@@ -1691,6 +1691,22 @@ class PipelineConfig:
     # hairline. Layout: Kent's call from the renders. Off, byte-identical.
     # Tests: `tests/test_keyline_fold_slivers.py`.
     keyline_fold_slivers: bool = False
+    # `white_keyline_art_recipe` (BUILT OFF 2026-10-26, `white_keyline_art`):
+    # the white-keyline recipe -- `silhouette_underfill`, `sew_enclosed_white`,
+    # `enclosed_white_keyline`, `silhouette_underfill_panels`,
+    # `outline_loop_mitre`, `silhouette_underfill_rim` -- turns ON by itself,
+    # but only on white-keyline art: a dark host round a white field that
+    # outlines letters (MFab's keyline round M-FAB). Kent, 2026-10-26: "Gate to
+    # MFab art first (Recommended)" -- as a default for all art the recipe
+    # damaged four of 20 other paired jobs (Gaulke, Tires, ProSeal, Becker).
+    # Read on the stage-4 regions in `finish_generation`, before the recipe's
+    # first switch acts; it holds on MFab hat and LC and on none of the other
+    # 20. ON by default since 2026-10-26, Kent's ruling, verbatim: "Gate to
+    # MFab art first (Recommended)" -- "The recipe turns on by default only
+    # where a dark shape carries white outlines round letters (the panels lane
+    # already detects this). Only MFab changes now." False is the off arm.
+    # Tests: `tests/test_white_keyline_art.py`.
+    white_keyline_art_recipe: bool = True
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white

@@ -27,6 +27,11 @@ D3 of Kent's 2026-10-26 ruling ("Gate to MFab art first"): the MFab recipe's
   knockdown covers every enclosed row (all read 1.0). The census misread
   ProSeal's 2 mm slot as sewn (0.95): the render shows it open — read the
   picture before trusting a small hole's coverage share.
+- **Gaulke LC/beanie (#1105's finding):** the option sewed ONE 0.4 mm2 speck, and
+  its white FRONT layer pulled the roof line and window cross ahead of the black,
+  which buried them. Speck left open -> nothing re-layers: recipe output is
+  byte-identical to defaults (LC 427097bf, beanie 836d635b). Their remaining gap
+  vs the pro (white satin vs open garment) is the DEFAULTS' (gate 1), not this file's.
 - ProSeal's SPRAY P/A white in the bystander images does not reproduce on
   main d36ff80e+ (small text re-set); the speck rule is preventive there.
 - Proof: MFab hat/LC and four Becker sizes md5-identical under the full
