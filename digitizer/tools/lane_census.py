@@ -88,7 +88,6 @@ if str(DIGITIZER) not in sys.path:
 
 PLAN_FILE = REPO / "docs" / "superpowers" / "plans" / "2026-09-08-real-logo-lane-and-thin-strokes.md"
 DEFAULT_CACHE = DIGITIZER / "debug_out" / "lane_census"
-OUT_DOC = REPO / "docs" / "lane-census-2026-10-25.md"
 OUT_RENDERS = REPO / "docs" / "renders" / "lane-census-2026-10-25"
 
 #: The Studio's colour budget (app/src/lib/project.js DEFAULT_DIGITIZE_PARAMS), which
