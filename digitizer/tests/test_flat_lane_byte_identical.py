@@ -322,8 +322,12 @@ def _snapshot(name: str) -> dict:
     # recapturing here would retire a pre-change baseline to record a change
     # it was never about. The cap's own arithmetic is pinned in
     # `tests/test_edge_cap.py`; the posture is `conftest.PRE_FLIP`'s.
+    # `sew_enclosed_white=False`, 2026-10-26, for the same reason: Kent's flip
+    # sews whitebg's ring hole and alpha's holes in a block of their own on top
+    # of geometry it does not touch (`tests/test_sew_enclosed_white.py`).
     result, plan = digitize(TESTDATA / name,
-                            PipelineConfig(target_width_mm=80.0, edge_cap="none"))
+                            PipelineConfig(target_width_mm=80.0, edge_cap="none",
+                                           sew_enclosed_white=False))
     return {
         "shape_ids": sorted(r.shape_id for r in result.regions),
         "areas_mm2": sorted(round(r.area_mm2, 4) for r in result.regions),

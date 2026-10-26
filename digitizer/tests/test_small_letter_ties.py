@@ -178,7 +178,7 @@ def test_help_is_cheap():
 
 def _md5(fixture: str, **kw) -> str:
     _result, plan = digitize(TESTDATA / fixture,
-                             PipelineConfig(target_width_mm=80.0, edge_cap="none", **kw))
+                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False, **kw))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     return hashlib.md5(json.dumps(coords).encode()).hexdigest()
@@ -246,6 +246,6 @@ def test_the_flag_reaches_every_tie_call_and_off_passes_nothing(monkeypatch):
     for name in ("off", "on"):
         arm["name"] = name
         digitize(TESTDATA / "logo_whitebg.png",
-                 PipelineConfig(target_width_mm=80.0, edge_cap="none", small_letter_ties=(name == "on")))
+                 PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False, small_letter_ties=(name == "on")))
     assert seen["off"] and all(kw == {} for kw in seen["off"])
     assert seen["on"] and all(set(kw) == {"small_letters"} for kw in seen["on"])

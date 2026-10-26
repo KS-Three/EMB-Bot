@@ -1,6 +1,6 @@
 ---
 name: fine-bars-satin-2026-10-25
-description: fine_bars_satin (OFF) — the pro satins every free-standing thin ink bar (5/5 artworks); ours rang them under the area floor. Aspect 2.5 was wrong (rope); STEM_MIN_ASPECT or under one cross. 37 of 38 targets cure; region kappa 0.905.
+description: fine_bars_satin (ON since Kent's flip 2026-10-26) — the pro satins every free-standing thin ink bar (5/5 artworks); ours rang them under the area floor. Aspect 2.5 was wrong (rope); STEM_MIN_ASPECT or under one cross. 37 of 38 targets cure; region kappa 0.905.
 metadata:
   type: project
 ---
@@ -42,6 +42,9 @@ Flag `cfg.fine_bars_satin`, predicate `columns.is_fine_bar`, tests
   rules (satin end cutback), not by this flag.
 
 **Why:** a parallel set of speed rules sewed half bold, half hollow ring.
-**How to apply:** the flip is Kent's (layout, judged in the preview); a 1 mm
+**ON since 2026-10-26** (Kent, wave-3 flip sheet: "Fine bars as satin"; `PRE_FLIP`
+names the OFF arm). Sheet: Machine hat 8,450 -> 8,378 st, rings 48 -> 42; Fremont
+17,381 -> 17,359; drone 13,438/95 -> 13,372/94; MFab and Bridge unchanged.
+**How to apply:** layout, judged in the preview; a 1 mm
 satin bar holding on a cap is the sew-out question small_solids_satin
 carries (gate 1). Related: [[small-text-floor-2026-10-24]].

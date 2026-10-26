@@ -300,6 +300,9 @@ def test_flat_lane_is_byte_identical_with_the_flag_on(fixture):
             # engine, and the design-silhouette cap is not what this
             # flag is being measured against.
             edge_cap="none",
+            # ...and `sew_enclosed_white=False`, as the golden pins it since
+            # Kent's 2026-10-26 flip (`test_flat_lane_byte_identical`)
+            sew_enclosed_white=False,
         ),
     )
     snap = {

@@ -1552,8 +1552,8 @@ class PipelineConfig:
     # engine as it was, byte for byte.
     enclosed_alpha_hole_parts: bool = True
     # Sew the white inside the design (`enclosed_white.py`, built OFF
-    # 2026-10-21): the CUSTOMER's option, never a default, because it changes
-    # the design. The pro does it on 5 of 11 jobs (rule R11,
+    # 2026-10-21 as the CUSTOMER's option, because it changes the design;
+    # still the customer's box, now ticked). The pro does it on 5 of 11 jobs (rule R11,
     # `docs/pro-digitizer-rules-2026-10-21.md`): badge fields, hollow
     # letters, white letters and keylines. ON, every enclosed area sews,
     # whatever the garment, in its own layer at the front of the sew order --
@@ -1561,9 +1561,15 @@ class PipelineConfig:
     # `sew_enclosed_counters` (or it sits inside a field that sews). Thread:
     # `sew_enclosed_rgb`'s nearest; None keeps the art's own colour where it
     # is known and sews white where it is not (an alpha hole). A review
-    # `stitched` or recolour of one area still wins. OFF is the engine as it
-    # was, byte for byte.
-    sew_enclosed_white: bool = False
+    # `stitched` or recolour of one area still wins. **ON since 2026-10-26,
+    # Kent's flip** ("A: sew_enclosed_white alone", from #1087's re-rule
+    # packet; "Flip, but prove it first": OFF | ON | pro measured on main
+    # with no thread added on bare fabric, PR body). The Studio's "Sew white
+    # areas" box is ticked by default to match and sends `false` when
+    # unticked. `sew_enclosed_white_fields_fill` and `enclosed_white_keyline`
+    # stay OFF. False is the engine as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP pins it False.
+    sew_enclosed_white: bool = True
     sew_enclosed_counters: bool = False
     sew_enclosed_rgb: tuple[int, int, int] | None = None
     # The keyline band (`stage6_border.keyline_runs`, built OFF 2026-10-23):
@@ -1912,8 +1918,11 @@ class PipelineConfig:
     # kappa 0.905; tests `tests/test_fine_bars_satin.py`. No width, pull, density or stitch
     # length moves: whether a 1 mm bar holds on a cap is the sew-out question
     # `small_solids_satin` already carries (gate 1). Layout (ruling 2026-10-22:
-    # judged in the preview). OFF is the engine as it was, byte for byte.
-    fine_bars_satin: bool = False
+    # judged in the preview). ON by default since Kent's flip on the wave-3
+    # flip sheet, 2026-10-26: "Fine bars as satin" ("For all art. Short thin
+    # bars ... sew as one satin bar like the pro's instead of a hollow ring").
+    # False is the engine before the flip (`PRE_FLIP`).
+    fine_bars_satin: bool = True
     # The pro's size rule for borders (2026-10-23, built OFF;
     # `docs/border-census-2026-10-23.md`). Over 16 paired designs the pro
     # rings about 1% of closed shapes under 2 mm, 7% at 2-4, 29% at 4-6 and
@@ -3235,6 +3244,20 @@ class PipelineConfig:
     # nothing. False: the re-set as #1029 built it, byte for byte;
     # `tests/conftest.py` PRE_FLIP pins it False.
     small_text_cap_reach_edges: bool = True
+    # Keep each bay's mouth open (`small_text._open_mouths`, W3-02, #1085;
+    # built OFF 2026-10-25 as `cfg.extra["small_text_bay_mouth"]`). The
+    # re-set's widening sews a bay shut where a terminal curls back to its
+    # own letter (Fremont's EST 1895 at 92.5 mm: E as B, S as 8, 5 as 3); the
+    # pro ends the terminal short and keeps a mouth (median 0.51 mm, n 18,
+    # `small_text.BAY_MOUTH_MM`). ON, such a terminal is cut back along its
+    # own stroke until the bay keeps that mouth; stroke, bold scale, counter
+    # floor and scale untouched. Acts only while the re-set
+    # (`small_text_cap_mm`) is set. Layout (ruling 2026-10-22: judged in the
+    # preview). **ON since 2026-10-26, Kent's flip** ("Flip ON"), promoted
+    # from `cfg.extra` to a field so the default can be ON. False is the
+    # re-set as it was, byte for byte; `tests/conftest.py` PRE_FLIP pins it
+    # False. Tests: `tests/test_small_text_bays.py`.
+    small_text_bay_mouth: bool = True
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
@@ -5577,10 +5600,14 @@ class PipelineConfig:
     # brief's. ON: crosses put between any two whose far ends part by more
     # than `LOOP_PIVOT_GAP` steps on a convex turn, one per step of the far
     # rail; the near ends' pile short-stitched. Layout, judged in the preview
-    # (Kent, 2026-10-22). False is the loop as it was, byte for byte. Set for
-    # a plan by `stage6_border.loop_mitre_scope`.
+    # (Kent, 2026-10-22). ON by default since Kent's flip on the wave-3 flip
+    # sheet, 2026-10-26: "Outline corners pivot" ("For all art. The satin
+    # loop round a letter turns its corners with tightly packed stitches, as
+    # the pro does, instead of fanning into spikes"). False is the loop as it
+    # was, byte for byte (`PRE_FLIP`). Set for a plan by
+    # `stage6_border.loop_mitre_scope`.
     # Tests: `tests/test_outline_loop_mitre.py`.
-    outline_loop_mitre: bool = False
+    outline_loop_mitre: bool = True
     # With `silhouette_underfill`, a ring that hosts its own under-fill gets
     # the fill's outer edge sewn as one closed satin loop, after the fill and
     # in its colour (2026-10-25, built OFF; `stage6_border.underfill_rim_runs`).
