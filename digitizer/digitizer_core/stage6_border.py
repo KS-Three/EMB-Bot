@@ -486,6 +486,36 @@ def loop_mitre_scope(on: bool):
         _LOOP_MITRE.reset(token)
 
 
+# `keyline_loop_chain` (`cfg.keyline_loop_chain`, 2026-10-26, built OFF): the
+# loops of one keyline / outline band sewn as the professional chains them.
+# His MFab white is a few long satin chains; each loop is walked into from the
+# last, and 96-100% of every walk lies under white he sews after it
+# (`docs/keyline-loop-chain-2026-10-26.md`). Ours lifted loop to loop (hat
+# 9, LC 9 satin-to-satin cuts against his 5 / 6): each loop ends where it
+# began, at the point nearest the loop before, so the next loop is 7-22 mm
+# away across finished thread. Chained, each loop STARTS (and so ends) where
+# it comes nearest the loop sewn after it, and the walk into a loop is routed
+# under the loops still to sew (`monoline.bury_hops`: at most
+# `BURY_EXPOSED_MAX_MM` outside them, no longer than the satin walk's own cap)
+# -- under its own satin round to its start, the pro's walk. Only where no
+# buried walk exists does the band bridge (`travel_path`) or the cut stay.
+# Set for a plan by `loop_chain_scope`.
+_LOOP_CHAIN: contextvars.ContextVar[bool] = contextvars.ContextVar("loop_chain", default=False)
+
+
+@contextlib.contextmanager
+def loop_chain_scope(on: bool):
+    """`cfg.keyline_loop_chain` for the length of one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _LOOP_CHAIN.set(True)
+    try:
+        yield
+    finally:
+        _LOOP_CHAIN.reset(token)
+
+
 def _pivot_ring(ring_pts: list[tuple[float, float]],
                 normals: list[tuple[float, float]], width: float, step: float):
     """`outline_loop_mitre`: the ring's samples and their cross directions
@@ -1051,6 +1081,7 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
     rings = [(list(h.exterior.coords), float(w)) for h, w in holes]
     runs: list[StitchRun] = []
     cursor = entry
+    chain = _LOOP_CHAIN.get()
     while rings:
         if cursor is None:
             i = 0
@@ -1064,14 +1095,28 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
         if not ring_pts:
             continue
         k_tan = max(1, int(round(half / step)))
+        # `cfg.keyline_loop_chain` (built OFF): start where the loop comes
+        # nearest the next one, so it ends there too
+        start_at = cursor
+        if chain and rings:
+            here = LineString(coords)
+            nxt = min(range(len(rings)), key=lambda j: (
+                round(LineString(rings[j][0]).distance(here), 6), j))
+            start_at = nearest_points(here, LineString(rings[nxt][0]))[0].coords[0]
         # `cfg.outline_loop_mitre` (built OFF): the letter's convex corners mitred
         pts, crosses, clamped = _satin_loop(ring_pts, total, total / n, width,
-                                            side, cursor, k_tan, clamp=clamp,
+                                            side, start_at, k_tan, clamp=clamp,
                                             exact=exact, mitre=_LOOP_MITRE.get())
         if len(pts) < 2:
             continue
         jump = trim = False
-        if cursor is not None:
+        if chain and runs and cursor is not None:
+            # lift for now: `_chain_walks` buries it, bridges it, or cuts it
+            d = math.dist(cursor, pts[0])
+            if d >= machine.TINY_STITCH_MM:
+                jump = True
+                trim = d > trim_at_mm
+        elif cursor is not None:
             bridge = travel_path(band, None, cursor, pts[0])
             if bridge is None:
                 d = math.dist(cursor, pts[0])
@@ -1095,8 +1140,39 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
         report["loops"] += 1
         report["crosses"] += crosses
         report["clamped"] += clamped
+    if chain and runs:
+        report["jumps"] += _chain_walks(runs, band, trim_at_mm)
     report["empty"] = not runs
     return runs, report
+
+
+def _chain_walks(runs: list[StitchRun], band, trim_at_mm: float) -> int:
+    """`cfg.keyline_loop_chain`: the lifts between chained loops, each walked
+    under the loops still to sew where it can be (`monoline.bury_hops`), else
+    bridged inside the band as before (`travel_path`), else cut. -> how many
+    lifts are left. The first loop's own entry is `keyline_runs`' as before."""
+    from .monoline import bury_hops
+    bury_hops(runs, trim_at_mm)
+    left = 0
+    i = 1
+    while i < len(runs):
+        r = runs[i]
+        if not (r.jump and r.points and runs[i - 1].points):
+            i += 1
+            continue
+        a, b = runs[i - 1].points[-1], r.points[0]
+        bridge = travel_path(band, None, a, b)
+        if bridge is None:
+            left += 1
+            i += 1
+            continue
+        r.jump = r.trim = False
+        if len(bridge) > 1:
+            runs.insert(i, StitchRun(points=bridge[:-1], kind=stitches.TRAVEL,
+                                     shape_id=r.shape_id))
+            i += 1
+        i += 1
+    return left
 
 
 def _keyline_centre(pts: list[tuple[float, float]]) -> list[tuple[float, float]]:
