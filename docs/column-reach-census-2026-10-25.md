@@ -1,6 +1,7 @@
 # Column reach census: which labelled letters reach the Column lane, and why not (2026-10-25)
 
-W3-06. Engine 4fcdb4e6 (`origin/main` when measured). Tool
+W3-06. Engines: 4fcdb4e6 (`origin/main` when the work started) and 46949f78 (merged main,
+after #1057 made the small-text re-set default). Tool
 `digitizer/tools/column_reach_census.py`; labels `digitizer/testdata/lettering_truth.json`.
 
 **Question.** The Column lettering lane (`cfg.lettering_columns`) carries the week's
@@ -8,14 +9,70 @@ construction gains (folds, lean, the inside stagger, small_bold), but only for l
 `columns.is_lettering` admits AND stage 7 hands to `lettering_columns_shape`. At the pro's
 widths, which hand-labelled letters of the paired jobs get there, and why do the rest not?
 
-**Answer.** 178 of 296 labelled letters reach the lane. Of the 118 misses, **two reasons
-hold 100 (85%), and neither is the text tagger**: the stage-7 route (80, of which 76 are
+**Answer, on merged main (46949f78).** 257 of 296 labelled letters reach the lane (reach
+kappa 0.878). The 39 left are concentrated: BECKER's white faces, never sewn (20,
+`sew_enclosed_white` held OFF), and aspect (10: Drone's THERMAL letters split in two by
+segmentation at 62.6 mm, MFab's F whose top bar the keyline cuts off, a whole-word script
+region, Drone's M at 1.415). Neither is a tagger ratio: no textcluster rescue raises
+leave-one-job-out kappa (below).
+
+**Answer, on 4fcdb4e6 (before #1057).** 178 of 296 reached. Of the 118 misses, **two reasons
+held 100 (85%), and neither was the text tagger**: the stage-7 route (80, of which 76 were
 small-text letters the bean rung takes ahead of the lane under `small_text_true_size`) and
-BECKER's white faces, which are never sewn (20, `sew_enclosed_white` OFF). The tagger-level
-misses are 18 and scattered: pieces of letters segmentation split, a script word, a
-half-height "+", one N at a height ratio of 0.798. No textcluster ratio rescue raises
-leave-one-job-out kappa. Under the small-text re-set flags already built OFF (#1029,
-#1066), the bean letters reach the lane: 54 -> 133 of 144 letters on the five pairs with lines under 4 mm, reach kappa 0.462 -> 0.934.
+the white faces (20). That top reason is the one #1057's flip of the small-text re-set has
+since fixed: 54 -> 133 of 144 letters on the five pairs with lines under 4 mm, reach kappa
+0.462 -> 0.934 (the re-set arm below; merged main reads the same on those five pairs).
+
+## The census on merged main (46949f78)
+
+| pair | job | width mm | letters | detected | reached | detect kappa | reach kappa | false + | aspect | height_ratio | other_thread | cluster_of_one | stage7_route | (of which bean) | other |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| hotel_fremont_hat | fremont | 92.6 | 33 | 33 | 33 | 0.338 | 1.000 | 58 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| hotel_fremont_patch | fremont | 92.5 | 33 | 33 | 33 | 0.338 | 1.000 | 58 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| precision_drone | drone | 62.6 | 28 | 19 | 19 | 0.694 | 0.694 | 3 | 6 | 0 | 0 | 0 | 2 | 0 | stroke_cv 1 |
+| proseal_hat | proseal | 85.9 | 25 | 24 | 24 | 0.969 | 0.969 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| proseal_beanie | proseal | 75.0 | 25 | 24 | 24 | 0.969 | 0.969 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| mfab_hat | mfab | 104.9 | 16 | 15 | 15 | 0.955 | 0.955 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| mfab_lc | mfab | 96.7 | 18 | 16 | 15 | 0.704 | 0.850 | 7 | 1 | 1 | 0 | 0 | 1 | 1 | 0 |
+| becker_hat_large | becker | 101.9 | 11 | 11 | 6 | 1.000 | 0.459 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | unsewn 5 |
+| becker_lc_large | becker | 95.7 | 11 | 11 | 6 | 1.000 | 0.459 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | unsewn 5 |
+| becker_hat_small | becker | 76.5 | 11 | 11 | 6 | 1.000 | 0.459 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | unsewn 5 |
+| becker_chest_small | becker | 76.5 | 11 | 11 | 6 | 1.000 | 0.459 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | unsewn 5 |
+| gaulke_roofing_hat | gaulke | 114.2 | 35 | 35 | 35 | 0.914 | 0.914 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| gaulke_roofing_lc | gaulke | 95.2 | 35 | 35 | 35 | 0.917 | 0.917 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tires_hat_3d | tires | 114.3 | 4 | 0 | 0 | 0.000 | 0.000 | 0 | 2 | 0 | 0 | 1 | 0 | 0 | stroke_cv 1 |
+| **all** | | | 296 | 278 | 257 | 0.660 [0.437, 0.933] | 0.878 [0.694, 0.963] | 130 | 10 | 3 | 0 | 1 | 3 | 1 | stroke_cv 2, unsewn 20 |
+
+Not scored: goldentee_hat (no hand labels (Golden Tee: its bevel has no honest letter call))
+
+| pair | line | shape | h x w mm | reason | value / threshold | partner | house | split |
+|---|---|---|---|---|---|---|---|---|
+| precision_drone | THERMAL | S07b6b7d7 | 4.52 x 6.39 | aspect | 1.415 / 1.400 |  | aspect |  |
+| precision_drone | THERMAL | S3fa78778 | 4.48 x 5.29 | guard:ink_stray |  |  |  |  |
+| precision_drone | THERMAL | S755bef70 | 2.13 x 5.29 | aspect | 2.486 / 1.400 |  | aspect |  |
+| precision_drone | THERMAL | Sb2de8c40 | 2.2 x 4.77 | aspect | 2.170 / 1.400 |  | aspect |  |
+| precision_drone | THERMAL | S023dfb17 | 2.53 x 4.15 | aspect | 1.644 / 1.400 |  | aspect |  |
+| precision_drone | THERMAL | S6bc433a5 | 2.61 x 1.55 | guard:ink_stray |  |  |  |  |
+| precision_drone | THERMAL | S885001f8 | 3.09 x 5.38 | aspect | 1.738 / 1.400 |  | aspect |  |
+| precision_drone | THERMAL | S4c4c677f | 2.13 x 6.11 | aspect | 2.867 / 1.400 |  | aspect |  |
+| precision_drone | THERMAL | S4ba0c4f5 | 4.48 x 4.88 | stroke_cv | 0.749 / 0.550 |  | group_of_1 |  |
+| proseal_hat | SPRAY FOAM + COATINGS | Sbcb723b0 | 1.52 x 1.52 | height_ratio | 0.483 / 0.800 | S497fc370 | group_of_1 |  |
+| proseal_beanie | SPRAY FOAM + COATINGS | S324e0b95 | 1.33 x 1.33 | height_ratio | 0.483 / 0.800 | S40dc3e40 | group_of_1 |  |
+| mfab_hat | M-FAB | Sfa7f5274 | 6.52 x 17.62 | aspect | 2.704 / 1.400 |  | aspect |  |
+| mfab_lc | M-FAB | Sa8d5d460 | 6.12 x 16.27 | aspect | 2.659 / 1.400 |  | aspect |  |
+| mfab_lc | AND WELDING LLC | Sbd0d3e9f | 6.25 x 6.32 | rung:bean_letter |  |  |  |  |
+| mfab_lc | AND WELDING LLC | S81d1d4a6 | 7.9 x 6.25 | height_ratio | 0.798 / 0.800 | Sbd0d3e9f | group_of_1 |  |
+| tires_hat_3d | Tires | S396ab4ae | 24.38 x 93.03 | aspect | 3.815 / 1.400 |  | aspect |  |
+| tires_hat_3d | Tires | S667dbd3b | 19.21 x 64.65 | aspect | 3.366 / 1.400 |  | aspect |  |
+| tires_hat_3d | Tires | Sdab4587a | 32.49 x 31.62 | cluster_of_one | 0 / 3 |  | group_of_1 |  |
+| tires_hat_3d | Tires | S91cf86bf | 5.29 x 5.5 | stroke_cv | 0.551 / 0.550 |  | group_of_1 |  |
+
+(The 20 BECKER `unsewn:white` rows are left out.) Against 4fcdb4e6: all 75 small-text bean
+letters now reach the lane, and so do Drone's A of AND, THERMAL's H and one E piece, and
+ProSeal beanie's `run_outline` letter; no letter that reached before misses now. MFab LC's
+A of AND still goes to the bean rung, as on 4fcdb4e6 (a 6.3 mm letter; why the bean tagger
+takes it is not traced here). Tires' regions moved a little on the new engine (its dot now
+reads stroke cv 0.551 against 0.55).
 
 ## Labels (gate: labels first, committed before anything else)
 
@@ -35,7 +92,7 @@ leave-one-job-out kappa. Under the small-text re-set flags already built OFF (#1
 - Golden Tee is digitized and left unscored: the truth file's own call (its bevel has no
   honest letter / non-letter split).
 
-## The census at the pro's widths (OFF = main's defaults)
+## The census on 4fcdb4e6 (OFF = that commit's defaults)
 
 | pair | job | width mm | letters | detected | reached | detect kappa | reach kappa | false + | aspect | height_ratio | other_thread | cluster_of_one | stage7_route | (of which bean) | other |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -110,13 +167,14 @@ window panes, tagged as a 2x2 word and built.
 ## Tagger rescues: in-sample only (held-out = today)
 
 Each textcluster constant moved for one census call (`grid`, `@NAME`; nothing shipped), on
-every labelled pair. Held-out: each JOB is scored at the value the OTHER jobs prefer.
+every labelled pair, on merged main (46949f78). Held-out: each JOB is scored at the value the
+OTHER jobs prefer.
 
 | pair | off det/letters, fp, kappa | h078 det/letters, fp, kappa | h075 det/letters, fp, kappa | h070 det/letters, fp, kappa | a150 det/letters, fp, kappa | a180 det/letters, fp, kappa | m2 det/letters, fp, kappa | de30 det/letters, fp, kappa |
 |---|---|---|---|---|---|---|---|---|
 | hotel_fremont_hat | 33/33, 58, 0.338 | 33/33, 58, 0.338 | 33/33, 58, 0.338 | 33/33, 58, 0.338 | 33/33, 59, 0.331 | 33/33, 59, 0.331 | 33/33, 60, 0.324 | 33/33, 58, 0.338 |
 | hotel_fremont_patch | 33/33, 58, 0.338 | 33/33, 58, 0.338 | 33/33, 58, 0.338 | 33/33, 58, 0.338 | 33/33, 59, 0.331 | 33/33, 59, 0.331 | 33/33, 60, 0.324 | 33/33, 58, 0.338 |
-| precision_drone | 16/28, 3, 0.602 | 16/28, 3, 0.602 | 16/28, 3, 0.602 | 16/28, 3, 0.602 | 16/28, 3, 0.602 | 16/28, 3, 0.602 | 16/28, 5, 0.561 | 18/28, 3, 0.664 |
+| precision_drone | 19/28, 3, 0.694 | 19/28, 3, 0.694 | 19/28, 3, 0.694 | 19/28, 3, 0.694 | 19/28, 3, 0.694 | 19/28, 3, 0.694 | 19/28, 5, 0.652 | 20/28, 3, 0.723 |
 | proseal_hat | 24/25, 0, 0.969 | 24/25, 0, 0.969 | 24/25, 0, 0.969 | 24/25, 0, 0.969 | 24/25, 0, 0.969 | 24/25, 0, 0.969 | 24/25, 0, 0.969 | 24/25, 0, 0.969 |
 | proseal_beanie | 24/25, 0, 0.969 | 24/25, 0, 0.969 | 24/25, 0, 0.969 | 24/25, 0, 0.969 | 24/25, 0, 0.969 | 24/25, 0, 0.969 | 24/25, 0, 0.969 | 24/25, 0, 0.969 |
 | mfab_hat | 15/16, 0, 0.955 | 15/16, 0, 0.955 | 15/16, 0, 0.955 | 15/16, 0, 0.955 | 15/16, 0, 0.955 | 14/15, 0, 0.953 | 15/16, 2, 0.870 | 15/16, 0, 0.955 |
@@ -131,16 +189,19 @@ every labelled pair. Held-out: each JOB is scored at the value the OTHER jobs pr
 
 | | off | h078 | h075 | h070 | a150 | a180 | m2 | de30 |
 |---|---|---|---|---|---|---|---|---|
-| pooled kappa, in-sample | 0.653 | 0.655 | 0.655 | 0.655 | 0.649 | 0.648 | 0.636 | 0.658 |
+| pooled kappa, in-sample | 0.660 | 0.663 | 0.663 | 0.663 | 0.656 | 0.656 | 0.644 | 0.663 |
 
-Best in-sample: de30. Held-out (leave one JOB out, the value best on the other jobs): 0.653 against today's 0.653. Picks: becker -> de30, drone -> h078, fremont -> de30, gaulke -> de30, mfab -> de30, proseal -> de30, tires -> de30
+Best in-sample: h078. Held-out (leave one JOB out, the value best on the other jobs): 0.660 against today's 0.660. Picks: becker -> h078, drone -> h078, fremont -> h078, gaulke -> h078, mfab -> de30, proseal -> h078, tires -> h078
 
+On 4fcdb4e6 the same grid read 0.653 today, 0.658 best in-sample (`de30`), and 0.653
+held out.
 
 `h078` admits MFab LC's N; `de30` admits Drone's T and H only by merging THERMAL's orange
 into PRECISION's grey cluster, the split `TEXT_CLUSTER_DELTA_E_MAX`'s own comment keeps on
-purpose. Each wins its own job; held-out stays 0.653 for all. **Reported, not built.**
+purpose. Each wins its own job; held-out stays at today's kappa (0.660 on merged main, 0.653 on
+4fcdb4e6). **Reported, not built.**
 
-## The top reason is stage 7: file:line and the rule
+## The top reason on 4fcdb4e6 was stage 7: file:line and the rule
 
 - `digitizer_core/stage7_sequence.py:2960`: the bean-letter rung
   (`p.region.meta.get(BEAN_LETTER_KEY)`) runs ahead of the Column lane
@@ -229,7 +290,7 @@ Medians per line over the letters each file could read:
 | proseal_beanie | SPRAY FOAM + COATINGS | 17 | reset | 8/17 | 1 | 2 | 39 | 1.11 | 0.0815 |
 | proseal_beanie | SPRAY FOAM + COATINGS | 17 | pro | 14/17 | 2 | 2.5 | 64 | 1.63 | 0.0355 |
 
-Ours under the re-set sews these letters as satin pieces, as the pro does, where OFF has none. Our crosses are shorter (ProSeal median max cross 0.99 mm against his 1.56): the stroke-weight half, gate 1.
+Ours under the re-set sews these letters as satin pieces, as the pro does, where OFF has none. Our crosses are shorter (ProSeal median max cross 0.99 mm against his 1.56): the stroke weight. Part of that is a mechanism bug, the 0.85 mm floor lost in the re-set's own widening (`docs/reset-room-2026-10-25.md` (b), W3-11); the rest is gate 1.
 
 <details><summary>Every rescued letter, every file</summary>
 

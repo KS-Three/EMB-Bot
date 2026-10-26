@@ -1261,6 +1261,10 @@ def run_census(cache: Path, slugs, arm: str = "off", truth: dict | None = None):
     truth = truth or load_truth()
     results, skipped = [], []
     for slug in slugs:
+        if slug not in truth.get(PAIRS_KEY, {}) and source_fixture(slug) is None:
+            skipped.append((slug, "no hand labels (Golden Tee: its bevel has no honest letter call)"
+                            if slug.startswith("goldentee") else "no hand labels"))
+            continue
         data = read_pickle(cache, slug, arm)
         if data is None:
             skipped.append((slug, "not digitized"))
