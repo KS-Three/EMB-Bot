@@ -52,8 +52,8 @@ def _field_fill_spy(monkeypatch) -> list[str]:
     real = s7._white_field_fill
     routed: list[str] = []
 
-    def spy(region, cfg):
-        got = real(region, cfg)
+    def spy(region, cfg, *a, **k):
+        got = real(region, cfg, *a, **k)
         if got:
             routed.append(region.shape_id)
         return got
