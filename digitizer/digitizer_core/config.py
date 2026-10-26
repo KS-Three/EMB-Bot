@@ -1701,8 +1701,12 @@ class PipelineConfig:
     # damaged four of 20 other paired jobs (Gaulke, Tires, ProSeal, Becker).
     # Read on the stage-4 regions in `finish_generation`, before the recipe's
     # first switch acts; it holds on MFab hat and LC and on none of the other
-    # 20. Off, byte-identical. Tests: `tests/test_white_keyline_art.py`.
-    white_keyline_art_recipe: bool = False
+    # 20. ON by default since 2026-10-26, Kent's ruling, verbatim: "Gate to
+    # MFab art first (Recommended)" -- "The recipe turns on by default only
+    # where a dark shape carries white outlines round letters (the panels lane
+    # already detects this). Only MFab changes now." False is the off arm.
+    # Tests: `tests/test_white_keyline_art.py`.
+    white_keyline_art_recipe: bool = True
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white

@@ -18,7 +18,7 @@ other paired jobs and damaged four:
 So the recipe turns on by itself only on MFab-type art, and the other jobs
 wait for their defects to be fixed.
 
-**The flag** is `white_keyline_art_recipe` (`digitizer_core/white_keyline_art.py`).
+**The flag** is `white_keyline_art_recipe` (`digitizer_core/white_keyline_art.py`), ON by default since 2026-10-26 (the flip PR after #1108).
 It reads the stage-4 regions in `finish_generation`, BEFORE
 `sew_enclosed_white` (the recipe's first switch) acts, using
 `art_outline.find_art_outlines`. It fires when an outline is:

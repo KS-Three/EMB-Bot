@@ -135,3 +135,27 @@ def test_diagnose_a_bare_hop_is_bare():
     (row,) = bw.diagnose_plan(_plan(ground_first=None))
     assert row["cls"] == "no_route"
     assert row["off_bare_mm"] > 3.0 and row["off_on_earlier_mm"] < 0.5
+
+
+def _regions(ground_holds: bool):
+    """The plan's shapes: A and B, and G either as a ground round both (its
+    outline holds them) or as the strip between them (a sibling)."""
+    from shapely.geometry import Polygon, box
+    from digitizer_core.regions import Region
+    a, b = box(0, 0, 4, 6), box(10, 0, 14, 6)
+    g = (Polygon(box(-1, -1, 15, 7).exterior.coords, [a.exterior.coords, b.exterior.coords])
+         if ground_holds else box(4, 1, 10, 5))
+    return [Region(shape_id=s, polygon=p, thread_index=i, thread_number=str(i), area_mm2=p.area)
+            for s, p, i in (("A", a, 1), ("B", b, 1), ("G", g, 0))]
+
+
+def test_diagnose_splits_the_earlier_colour_into_ground_and_sibling():
+    plan = _plan(ground_first=True)
+    (bare,) = [r for r in bw.diagnose_plan(plan) if r["pair"].startswith("A:")]
+    assert "off_on_ground_mm" not in bare                 # no regions: the rows as they were
+    (g,) = [r for r in bw.diagnose_plan(plan, regions=_regions(True)) if r["pair"].startswith("A:")]
+    (s,) = [r for r in bw.diagnose_plan(plan, regions=_regions(False)) if r["pair"].startswith("A:")]
+    for row in (g, s):
+        assert {k: row[k] for k in bare} == bare          # the split adds, it changes nothing
+    assert g["off_on_ground_mm"] == pytest.approx(g["off_on_earlier_mm"]) and g["off_on_sibling_mm"] == 0.0
+    assert s["off_on_ground_mm"] == 0.0 and s["off_on_sibling_mm"] == pytest.approx(s["off_on_earlier_mm"])

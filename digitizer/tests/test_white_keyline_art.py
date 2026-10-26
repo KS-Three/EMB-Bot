@@ -46,6 +46,12 @@ def keyline_art(field_meta=None, letter_meta=None, ring=True):
 ON = PipelineConfig(white_keyline_art_recipe=True)
 
 
+def test_on_by_default_kent_2026_10_26():
+    # "Gate to MFab art first (Recommended)": the recipe turns on by default
+    # only on white-keyline art
+    assert PipelineConfig().white_keyline_art_recipe is True
+
+
 def test_the_fixture_is_one_keyline_round_two_letters():
     assert FIELD.geom_type == "Polygon" and len(FIELD.interiors) == 2
 
@@ -55,7 +61,7 @@ def test_white_keyline_art_reads():
 
 
 @pytest.mark.parametrize("why, regs, cfg", [
-    ("flag off", keyline_art(), PipelineConfig()),
+    ("flag off", keyline_art(), PipelineConfig(white_keyline_art_recipe=False)),
     ("no outline pass", keyline_art(), replace(ON, border_from_outline=False)),
     ("field is not background", keyline_art(field_meta={}), ON),
     ("letters are not text", keyline_art(letter_meta={}), ON),
@@ -69,7 +75,7 @@ def test_each_part_refuses_alone(why, regs, cfg):
 
 def test_any_other_art_leaves_the_config_the_same_object():
     assert wka.apply(ON, False) is ON
-    off = PipelineConfig()
+    off = PipelineConfig(white_keyline_art_recipe=False)
     assert wka.apply(off, True) is off              # the flag off: a verdict changes nothing
 
 
