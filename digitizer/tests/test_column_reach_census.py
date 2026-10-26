@@ -115,6 +115,27 @@ def test_replay_tags_exactly_what_the_tagger_tags():
     assert tagged and rp["tagged"] == tagged
 
 
+def test_retag_with_nothing_set_is_the_tagger_byte_for_byte_and_never_leaks():
+    """The held-out grid reads a rescue by re-running the tagger on the
+    pair's pre-tag snapshot. With no keyword that IS `detect_text_clusters`
+    (every meta key, every region, in order); an `@NAME` constant is set
+    for that call only and the module is left exactly as it was."""
+    from digitizer_core import PipelineConfig
+    from digitizer_core import textcluster as T
+    chart = threads.CHART
+    regs, _lines = _scene(chart)
+    kw = {"rescued_ink_link": True, "counters_as_drawn": True, "wide_letters": True}
+    data = {"pre_tag": regs, "tag_kwargs": kw, "cfg": PipelineConfig(), "regions": regs}
+    real = copy.deepcopy(regs)
+    detect_text_clusters(real, None, chart=threads.chart_for(PipelineConfig()), **kw)
+    got = crc.retag(data)
+    assert [(r.shape_id, r.meta) for r in got] == [(r.shape_id, r.meta) for r in real]
+    before = T.LETTER_HEIGHT_RATIO
+    small = next(r for r in crc.retag(data, {"@LETTER_HEIGHT_RATIO": 0.6}) if r.shape_id == "L2small")
+    assert small.meta.get("text_candidate")          # the 0.7x E links at 0.6 ...
+    assert T.LETTER_HEIGHT_RATIO == before           # ... and the module never saw it
+
+
 def test_buckets_are_the_briefs_five():
     assert crc.bucket("aspect") == "aspect"
     assert crc.bucket("height_ratio") == "height_ratio"
@@ -151,6 +172,41 @@ def test_carry_is_exact_on_its_own_regions_and_under_a_resize():
     got = transfer_labels(regs, truth, big, 1.3)
     want = {"lines": {k: ["B" + s for s in v] for k, v in lines.items()}, "ignore": []}
     assert _same_labels(got, want)
+
+
+def test_carry_keeps_a_filled_counter_out_of_its_letter():
+    """Stage 4 fills a small counter into its letter and the counter
+    survives as a speck of the ground's ink inside it. Carried by geometry
+    the speck lies wholly in the labelled letter, but it is the counter:
+    `carry_labels` leaves it unlabelled, at a new width and in the same frame."""
+    o = box(0, 0, 3, 4)                                   # an O with its counter filled in
+    speck = box(1, 1, 2, 3)                               # the counter, in the ground's ink
+    src = [_region("O", o), _region("c", speck, ink=1),
+           _region("L", _glyph("L", 4, 0)), _region("E", _glyph("E", 8, 0))]
+    truth = {"lines": {"OLE": ["O", "L", "E"]}, "ignore": []}
+    big = [_region("B" + r.shape_id, shp_scale(r.polygon, 1.25, 1.25, origin=(0, 0)), r.thread_index)
+           for r in src]
+    got = crc.carry_labels(src, truth, big, 1.25)
+    assert sorted(got["lines"]["OLE"]) == ["BE", "BL", "BO"]
+    assert got["source"]["BO"] == "O"
+    same = crc.carry_labels(src, truth, src, 1.0)
+    assert sorted(same["lines"]["OLE"]) == ["E", "L", "O"]
+
+
+def test_held_out_scores_each_job_at_the_value_the_others_chose():
+    """A value that helps ONE job only is in-sample tuning: left out, that
+    job is scored at the value the other jobs prefer (today's), so the
+    held-out kappa is today's."""
+    def row(job, t, d):
+        return {"job": job, "_t": t, "_d": d}
+    t = [True, True, False, False]
+    base = [row("a", t, [True, True, False, False]), row("b", t, [True, False, False, False])]
+    tuned = [row("a", t, [True, True, False, False]), row("b", t, [True, True, False, False])]
+    res = crc.held_out({"off": base, "tuned": tuned}, "off")
+    assert res["in_sample"]["tuned"] > res["in_sample"]["off"]
+    # b's gain is b's own: left out, b is scored at what a prefers (a tie: today's)
+    assert res["picks"]["b"] == "off"
+    assert res["held_out"] == res["base"]
 
 
 def test_carry_reproduces_the_hand_labels_at_the_corpus_width():

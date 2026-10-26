@@ -18,6 +18,9 @@ LABELS. `testdata/lettering_truth.json`:
              centre), and at the corpus width the carry must give the hand
              labels back exactly (`carry_check`; the tool refuses a fixture
              whose carry does not).
+  relabels   a fixture whose 'fixtures' ids went stale (segmentation moved
+             since their commit) re-labelled on a later commit, as a NEW key;
+             read only when the 'fixtures' entry is stale (Gaulke's F).
   pairs      labels for pairs the corpus has none for (MFab, ProSeal), added
              2026-10-25 as NEW keys (agent-labelled, each with the width and
              garment it was labelled at): shape ids of the regions THIS tool's
@@ -26,8 +29,12 @@ LABELS. `testdata/lettering_truth.json`:
              width -- MFab on the rembg path, which a worktree must borrow
              from the primary checkout (`_rembg_venv`). `carry_from` names
              another pair to carry from instead (ProSeal's beanie).
-A labelled letter no region of the pair carries is LOST (`no_region`): the
-pair's segmentation merged it into another shape or dropped it.
+`carry_labels` refines the carry twice: same-frame labels go by id, and a
+speck of the ground's ink inside a labelled letter (a counter stage 4 filled
+in) is not a letter. A labelled letter no region of the pair carries is LOST
+(`no_region`): the pair's segmentation merged it into another shape or
+dropped it. One letter carried onto two regions (a letter the pair's
+segmentation SPLIT) is flagged `split` on each piece's miss row.
 
 PER LETTER (each labelled letter, on the final regions stage 7 plans):
   detected   `columns.is_lettering(region, cfg)`
@@ -40,8 +47,14 @@ THE REASON for a miss, the first that applies:
   stage7_route     tagged, but not built by the lane: a lane guard in
                    `columns.is_lettering` (`guard:solid_blob`, `guard:ink_stray`,
                    `guard:icon`), a rung ahead of the lane took it (the rung's
-                   name, e.g. `run_outline`, `bean_letter`, `keyline_runs`),
-                   or the lane was asked and declined (`lane_declined`)
+                   name, e.g. `rung:run_outline`, `rung:bean_letter` -- small
+                   text under `small_text_true_size`), or the lane was asked
+                   and declined (`lane_declined`)
+  unsewn           stage 7 never sees it (`stitched` False): `unsewn:white` is
+                   a white face left to the garment (`sew_enclosed_white` OFF)
+  other_thread     (also) tagged, then stripped by true-size restore
+                   (`small_text._core` reads a line as ONE thread by identity;
+                   the tagger links inks within `TEXT_CLUSTER_DELTA_E_MAX`)
   untagged: the text tagger's own test, replayed on the regions it was given
   (`pre_tag`) with its shipped constants (`replay_text_door`, parity-pinned
   against `detect_text_clusters`):
@@ -60,14 +73,29 @@ DETECTION is Cohen's kappa of "letter" (labelled) against `is_lettering`,
 over every scored region of a pair, and pooled (ROADMAP gate 4: never a raw
 agreement). REACH kappa is the same with "built by the lane".
 
+A TAGGER RESCUE is read without stage 7 (`grid`): the text tagger re-run on
+each pair's pre-tag snapshot with a keyword, or a textcluster constant moved
+for that call only (`@NAME`, a census reading, never a shipped value); a
+region whose tag it does not change keeps the pipeline's own verdict. Moving
+a ratio to admit one known miss is in-sample tuning by construction, so the
+grid also reports LEAVE-ONE-JOB-OUT kappa: each job scored at the value best
+on the other jobs (`held_out`). A rescue that does not raise that is reported,
+not built.
+
+    python -m tools.column_reach_census check --cache DIR                # carry exactness, corpus width
     python -m tools.column_reach_census digitize --cache DIR [SLUG ...]
     python -m tools.column_reach_census read --cache DIR [--json OUT] [--md OUT]
+    python -m tools.column_reach_census grid --cache DIR --value NAME=JSON ...
+    python -m tools.column_reach_census rescued --cache DIR --on ARM --crops DIR SLUG ...
     python -m tools.column_reach_census map --cache DIR SLUG --out PNG    # indexed regions, to label
 
-`digitize` caches one pickle per pair (`DIR/<slug>/<arm>.pkl`, 3-10 min a
-pair on the loaded laptop); `--arm NAME --kw key=json` runs the pipeline with
-`detect_text_clusters` given that keyword (a monkeypatch: the keyword is NOT
-wired through `pipeline.py`), for a prototype's ON arm.
+`digitize` caches one pickle per pair (`DIR/<slug>/<arm>.pkl`, 2-10 min a
+pair on the loaded laptop); `--arm NAME --set key=json` lays PipelineConfig
+fields over the Studio request, `--kw key=json` gives `detect_text_clusters`
+a keyword (a monkeypatch: never wired through `pipeline.py`). Another arm
+takes the OFF arm's labels by id. `rescued` lists the letters an arm brings
+to the lane that OFF does not, with `tools/letter_pieces.py` on each (off,
+on, the pro's file, registered) and an off | on | pro crop of each line.
 """
 from __future__ import annotations
 
@@ -119,6 +147,9 @@ RUNGS = ("bean_letter", "skeleton_letter_runs", "small_solid_satin", "run_outlin
 LANE = "lettering_columns_shape"
 
 BUCKETS = ("aspect", "height_ratio", "other_thread", "cluster_of_one", "stage7_route")
+#: a carried piece under this share of its letter's area, in another ink, is
+#: the letter's counter (`carry_labels`); a shape ratio, not a cloth value
+COUNTER_MAX_FRAC = 0.25
 
 
 # ------------------------------------------------------------------ labels
@@ -175,7 +206,8 @@ def carry_check(name: str, cache: Path | None, truth: dict | None = None) -> dic
         return {"fixture": name, "ok": False, "stale": sum(s not in have for s in ids),
                 "letters": len(ids), "which": which}
     ids = [s for v in tr["lines"].values() for s in v]
-    ok = _same_labels(transfer_labels(regions, tr, regions, 1.0), tr)
+    ok = (_same_labels(transfer_labels(regions, tr, regions, 1.0), tr)
+          and _same_labels(carry_labels(regions, tr, regions, 1.0, by_id=False), tr))
     return {"fixture": name, "ok": bool(ok), "stale": 0, "letters": len(ids), "which": which}
 
 
@@ -225,7 +257,6 @@ def labels_for(slug: str, data: dict, cache: Path | None, truth: dict | None = N
     """The hand labels on the pair's FINAL regions: {"lines": {line: [ids]},
     "ignore": [ids], "lost": [...], "how": str}; None when the pair has no
     labels (named, never scored 0)."""
-    from tools.word_tagger_eval import transfer_labels
     truth = truth or load_truth()
     pl = truth.get(PAIRS_KEY, {}).get(slug)
     regions = data["regions"]
@@ -247,16 +278,80 @@ def labels_for(slug: str, data: dict, cache: Path | None, truth: dict | None = N
         name = source_fixture(slug)
         if name is None or name not in truth["fixtures"]:
             return None
-        src_regions, w = corpus_regions(name, cache)
+        src_regions, w = corpus_regions(name, None if cache is None else Path(cache) / "_corpus")
         scale = data["width_mm"] / w
         lab, which = corpus_labels(name, src_regions, truth)
         if lab is None:
             return None
         how = f"carried from corpus {name} ({which}, {w:g} mm, scale {scale:.3f})"
-    carried = transfer_labels(src_regions, lab, regions, scale)
+    carried = carry_labels(src_regions, lab, regions, scale)
     carried["lost"] = _lost(src_regions, lab, carried, regions, scale)
     carried["how"] = how
     return carried
+
+
+def carry_labels(src_regions, truth: dict, regions, scale: float, by_id: bool = True) -> dict:
+    """`word_tagger_eval.transfer_labels`, with two refinements:
+
+      * a region whose id is a source region's keeps that region's label,
+        or its lack of one, when the frames are the same (scale 1: a pair
+        labelled on this tool's own pre-tag regions) -- geometry is only for
+        the ids the source does not have (a split piece);
+      * a region lying in an UNLABELLED source region that is itself nested
+        in the labelled one it would take (a counter stage 4 filled into its
+        letter, surviving as a speck of the ground's ink inside it) is not a
+        letter: the speck is the counter, not the glyph."""
+    from shapely import affinity
+    from tools.word_tagger_eval import transfer_labels
+    lab = {sid: line for line, ids in truth["lines"].items() for sid in ids}
+    ign = set(truth.get("ignore", []))
+    src_ids = {r.shape_id for r in src_regions}
+    same = by_id and abs(scale - 1.0) < 1e-9
+    out = transfer_labels(src_regions, truth, regions, scale)
+    got = {sid: line for line, ids in out["lines"].items() for sid in ids}
+    got_ign = set(out["ignore"])
+    unl = [r for r in src_regions if r.shape_id not in lab and r.shape_id not in ign]
+    res: dict = {"lines": {}, "ignore": [], "source": {}}
+    for r in regions:
+        sid = r.shape_id
+        if same and sid in src_ids:
+            if sid in lab:
+                res["lines"].setdefault(lab[sid], []).append(sid)
+                res["source"][sid] = sid
+            elif sid in ign:
+                res["ignore"].append(sid)
+            continue
+        if sid in got_ign:
+            res["ignore"].append(sid)
+            continue
+        if sid not in got:
+            continue
+        p = affinity.scale(r.polygon, 1.0 / scale, 1.0 / scale, origin=(0, 0)).buffer(0)
+        host = None
+        for src in src_regions:
+            if src.shape_id in lab and src.polygon.intersects(p):
+                share = src.polygon.buffer(0).intersection(p).area / max(p.area, 1e-12)
+                if host is None or share > host[1]:
+                    host = (src, share)
+        speck = False
+        if (host is not None and r.thread_index != host[0].thread_index
+                and p.area < COUNTER_MAX_FRAC * host[0].polygon.area):
+            # a small piece in ANOTHER ink than its letter: the letter's counter
+            # (the two generations' frames differ by a fraction of a mm, which
+            # can land a counter speck on the letter's ink instead of its hole)
+            speck = True
+        if host is not None and p.area > 0 and not speck:
+            hp = host[0].polygon.buffer(0)
+            for u in unl:
+                up = u.polygon.buffer(0)
+                if (up.area < hp.area and up.intersection(hp).area >= 0.9 * up.area
+                        and up.intersection(p).area >= 0.5 * p.area):
+                    speck = True
+                    break
+        if not speck:
+            res["lines"].setdefault(got[sid], []).append(sid)
+            res["source"][sid] = host[0].shape_id if host is not None else None
+    return res
 
 
 # ------------------------------------------------------------------ the text door, replayed
@@ -439,6 +534,8 @@ def house_reason(sid: str, mates: list[str], regions) -> str:
 
 def bucket(reason: str) -> str:
     """The brief's five buckets; anything else keeps its own name."""
+    if reason.startswith("unsewn:"):
+        return "unsewn"           # stage 7 never sees it: not a route, a scope ruling
     if reason.startswith(("guard:", "rung:")) or reason in ("lane_declined", "unsewn"):
         return "stage7_route"
     return reason
@@ -546,7 +643,15 @@ def route_reason(region, cfg, rungs: dict) -> str:
     if any(n == LANE for n, _e in calls):
         return "lane_declined"
     first = next((n for n, e in calls if not e), None)
-    return f"rung:{first}" if first else "unsewn"
+    if first:
+        return f"rung:{first}"
+    m = region.meta or {}
+    if m.get("stitched") is False:
+        # never handed to stage 7: a white face the design leaves to the
+        # garment (`enclosed_background`; `sew_enclosed_white` OFF), or a
+        # shape the review switched off
+        return "unsewn:white" if m.get("enclosed_background") else "unsewn:off"
+    return "unsewn"
 
 
 def guard_reason(region, cfg) -> str | None:
@@ -615,6 +720,18 @@ def census_pair(slug: str, data: dict, labels: dict, *, detect=None, replay=None
                "w_mm": round(r.polygon.bounds[2] - r.polygon.bounds[0], 2)}
         if det[sid]:
             row["reason"] = route_reason(r, cfg, rungs)
+        elif r.meta.get("small_text_stray"):
+            # the tagger tagged it; true-size restore (`small_text._core`)
+            # reads a line as ONE thread by identity and strips the rest
+            mates = [x for x in scored if line_of.get(x.shape_id) == line and x is not r]
+            inks = [x.thread_index for x in mates]
+            main = max(sorted(set(inks)), key=inks.count) if inks else r.thread_index
+            if main != r.thread_index:
+                row.update(reason="other_thread", where="small_text._core",
+                           value=round(float(chart.delta_e(r.thread_index, main)), 2),
+                           threshold=0.0, detail="stripped as a small-text stray: not the line's thread")
+            else:
+                row.update(reason="small_text_stray", where="small_text._core")
         elif guard_reason(r, cfg):
             row["reason"] = guard_reason(r, cfg)
         else:
@@ -633,6 +750,10 @@ def census_pair(slug: str, data: dict, labels: dict, *, detect=None, replay=None
                        "detail": "its pre-tag region was tagged; this piece was not"}
             row.update({k: (round(v, 3) if isinstance(v, float) else v) for k, v in why.items()})
             row["house"] = house_reason(sid, mates_final, regions)
+        src = labels.get("source", {}).get(sid)
+        pieces = sum(1 for v in labels.get("source", {}).values() if v is not None and v == src)
+        if pieces > 1:
+            row["split"] = pieces       # one labelled letter, this many regions here
         row["bucket"] = bucket(row["reason"])
         misses.append(row)
     for lost in labels.get("lost", []):
@@ -648,10 +769,122 @@ def census_pair(slug: str, data: dict, labels: dict, *, detect=None, replay=None
            "kappa_detect": kappa(t, [det[r.shape_id] for r in scored]),
            "kappa_reach": kappa(t, [reach[r.shape_id] for r in scored]),
            "false_pos": sum(1 for r in scored if r.shape_id not in line_of and det[r.shape_id]),
+           "false_pos_ids": [{"sid": r.shape_id,
+                              "h_mm": round(r.polygon.bounds[3] - r.polygon.bounds[1], 2),
+                              "w_mm": round(r.polygon.bounds[2] - r.polygon.bounds[0], 2),
+                              "text": bool(r.meta.get("text_candidate")),
+                              "house": bool(r.meta.get("lettering_group")),
+                              "built": r.shape_id in built}
+                             for r in scored if r.shape_id not in line_of and det[r.shape_id]],
            "misses": misses,
            "_t": t, "_d": [det[r.shape_id] for r in scored],
            "_r": [reach[r.shape_id] for r in scored]}
     return out
+
+
+def retag(data: dict, tagger_kw: dict | None = None) -> list:
+    """`detect_text_clusters` run again on the pair's pre-tag snapshot, with
+    the pipeline's own keywords plus `tagger_kw` -> the regions it leaves
+    (a split replaces its region), each carrying the house-group and
+    ink-stray marks the pipeline's later passes gave the region of that id
+    (a piece only ON makes has none). Detection without stage 7: what a
+    keyword does to `is_lettering`, cheaply, on every pair."""
+    from digitizer_core import textcluster as T
+    from digitizer_core.threads import chart_for
+    regions = copy.deepcopy(list(data["pre_tag"]))
+    kw = dict(data.get("tag_kwargs") or {})
+    consts = {}
+    for k, v in (tagger_kw or {}).items():
+        # "@NAME": a textcluster module constant, set for this call only (a
+        # census reading of "what if the ratio moved", never a shipped value)
+        if k.startswith("@"):
+            consts[k[1:]] = v
+        else:
+            kw[k] = v
+    saved = {k: getattr(T, k) for k in consts}
+    try:
+        for k, v in consts.items():
+            setattr(T, k, v)
+        T.detect_text_clusters(regions, None, chart=chart_for(data["cfg"]), **kw)
+    finally:
+        for k, v in saved.items():
+            setattr(T, k, v)
+    later = {r.shape_id: r.meta for r in data["regions"]}
+    for r in regions:
+        m = later.get(r.shape_id, {})
+        for key in ("lettering_group", "lettering_ink_stray", "sew_enclosed_white"):
+            if m.get(key):
+                r.meta[key] = m[key]
+            else:
+                r.meta.pop(key, None)
+    return regions
+
+
+def _tag_of(r):
+    m = r.meta or {}
+    return (bool(m.get("text_candidate")), m.get("text_cluster_id"))
+
+
+def detection(data: dict, labels: dict, tagger_kw: dict | None = None,
+              base_regions=None) -> dict:
+    """Detection with `tagger_kw` given to the text tagger, without stage 7:
+    a region whose tag the keyword does not change keeps the pipeline's own
+    verdict (`is_lettering` on the final region, after every later pass --
+    `restore_small_text` adopts letters after the tagger); one it changes,
+    or a piece only the keyword makes, is read on the retagged region.
+    Labels are carried from the final regions (by id; a new piece by
+    geometry). -> {"_t", "_d", "job", "letters", "detected", "false_pos",
+    "kappa", "changed"}."""
+    from digitizer_core.columns import is_lettering
+    from tools.word_tagger_eval import kappa
+    cfg = data["cfg"]
+    final = {r.shape_id: r for r in data["regions"]}
+    base = {r.shape_id: r for r in (base_regions if base_regions is not None else retag(data))}
+    regions = retag(data, tagger_kw) if tagger_kw else list(base.values())
+    lab = carry_labels(data["regions"], labels, regions, 1.0)
+    line_of = {sid: line for line, ids in lab["lines"].items() for sid in ids}
+    ignore = set(lab.get("ignore", []))
+    scored = [r for r in regions if r.shape_id not in ignore]
+    t = [r.shape_id in line_of for r in scored]
+    d, changed = [], []
+    for r in scored:
+        sid = r.shape_id
+        if sid in final and sid in base and _tag_of(base[sid]) == _tag_of(r):
+            d.append(bool(is_lettering(final[sid], cfg)))
+        else:
+            d.append(bool(is_lettering(r, cfg)))
+            changed.append(sid)
+    return {"_t": t, "_d": d, "job": CENSUS_PAIRS.get(data["slug"]), "letters": sum(t),
+            "detected": sum(a and b for a, b in zip(t, d)), "false_pos": sum(b and not a for a, b in zip(t, d)),
+            "kappa": kappa(t, d), "changed": changed}
+
+
+def held_out(grid: dict, base: str) -> dict:
+    """Leave-one-JOB-out. `grid`: {value name: [detection rows, one per
+    pair]}; `base`: the name of today's behaviour. For each job, the value
+    with the best pooled kappa over the OTHER jobs (ties to `base`, then by
+    name) scores that job's pairs; the held-out kappa pools those. ->
+    {"in_sample": {name: kappa}, "held_out": kappa, "picks": {job: name},
+     "base": kappa}."""
+    from tools.word_tagger_eval import kappa
+
+    def pooled(rows):
+        return kappa([x for r in rows for x in r["_t"]], [x for r in rows for x in r["_d"]])
+    names = list(grid)
+    jobs = sorted({r["job"] for r in grid[base]})
+    picks, t, d = {}, [], []
+    for j in jobs:
+        def score(n):
+            k = pooled([r for r in grid[n] if r["job"] != j])
+            return -1.0 if k is None else k
+        best = max(names, key=lambda n: (round(score(n), 9), n == base, n))
+        picks[j] = best
+        for r in grid[best]:
+            if r["job"] == j:
+                t += r["_t"]
+                d += r["_d"]
+    return {"in_sample": {n: pooled(grid[n]) for n in names}, "held_out": kappa(t, d),
+            "picks": picks, "base": pooled(grid[base])}
 
 
 def pooled_kappa(results: list[dict], key: str, rng=None, boot: int = 2000) -> dict:
@@ -684,12 +917,15 @@ def _k(x):
 
 def census_table(results: list[dict], skipped: list[tuple[str, str]]) -> str:
     md = ["| pair | job | width mm | letters | detected | reached | detect kappa | reach kappa | false + | "
-          + " | ".join(BUCKETS) + " | other |",
-          "|" + "---|" * (9 + len(BUCKETS) + 1)]
+          + " | ".join(BUCKETS) + " | (of which bean) | other |",
+          "|" + "---|" * (9 + len(BUCKETS) + 2)]
+    bean_tot = 0
     tot = {b: 0 for b in BUCKETS}
     tot_other: dict[str, int] = {}
     for r in results:
         cnt = {b: 0 for b in BUCKETS}
+        bean = sum(1 for m in r["misses"] if m["reason"] == "rung:bean_letter")
+        bean_tot += bean
         other: dict[str, int] = {}
         for m in r["misses"]:
             b = m["bucket"]
@@ -701,7 +937,7 @@ def census_table(results: list[dict], skipped: list[tuple[str, str]]) -> str:
                 tot_other[b] = tot_other.get(b, 0) + 1
         md.append(f"| {r['slug']} | {r['job']} | {r['width_mm']:.1f} | {r['letters']} | {r['detected']} | "
                   f"{r['reached']} | {_k(r['kappa_detect'])} | {_k(r['kappa_reach'])} | {r['false_pos']} | "
-                  + " | ".join(str(cnt[b]) for b in BUCKETS) + " | "
+                  + " | ".join(str(cnt[b]) for b in BUCKETS) + f" | {bean} | "
                   + (", ".join(f"{k} {v}" for k, v in sorted(other.items())) or "0") + " |")
     letters = sum(r["letters"] for r in results)
     reached = sum(r["reached"] for r in results)
@@ -712,7 +948,8 @@ def census_table(results: list[dict], skipped: list[tuple[str, str]]) -> str:
     def ci(k):
         return f"{_k(k['kappa'])} [{k['ci95'][0]:.3f}, {k['ci95'][1]:.3f}]" if "ci95" in k else _k(k["kappa"])
     md.append(f"| **all** | | | {letters} | {detected} | {reached} | {ci(kd)} | {ci(kr)} | "
-              f"{sum(r['false_pos'] for r in results)} | " + " | ".join(str(tot[b]) for b in BUCKETS) + " | "
+              f"{sum(r['false_pos'] for r in results)} | " + " | ".join(str(tot[b]) for b in BUCKETS)
+              + f" | {bean_tot} | "
               + (", ".join(f"{k} {v}" for k, v in sorted(tot_other.items())) or "0") + " |")
     if skipped:
         md += ["", "Not scored: " + "; ".join(f"{s} ({why})" for s, why in skipped)]
@@ -720,8 +957,8 @@ def census_table(results: list[dict], skipped: list[tuple[str, str]]) -> str:
 
 
 def miss_table(results: list[dict]) -> str:
-    md = ["| pair | line | shape | h x w mm | reason | value / threshold | partner | house |",
-          "|---|---|---|---|---|---|---|---|"]
+    md = ["| pair | line | shape | h x w mm | reason | value / threshold | partner | house | split |",
+          "|---|---|---|---|---|---|---|---|---|"]
     for r in results:
         for m in r["misses"]:
             vt = ""
@@ -732,7 +969,18 @@ def miss_table(results: list[dict]) -> str:
                 vt = f"cover {m['cover']:.2f} by {m['host']}"
             size = f"{m['h_mm']} x {m['w_mm']}" if "h_mm" in m else ""
             md.append(f"| {r['slug']} | {m['line']} | {m.get('sid') or m.get('source_id')} | {size} | "
-                      f"{m['reason']} | {vt} | {m.get('partner', '')} | {m.get('house', '')} |")
+                      f"{m['reason']} | {vt} | {m.get('partner', '')} | {m.get('house', '')} | "
+                      f"{('1 of ' + str(m['split'])) if m.get('split') else ''} |")
+    return "\n".join(md) + "\n"
+
+
+def false_pos_table(results: list[dict]) -> str:
+    md = ["| pair | shape | h x w mm | text cluster | house group | lane built |",
+          "|---|---|---|---|---|---|"]
+    for r in results:
+        for f in r.get("false_pos_ids", []):
+            md.append(f"| {r['slug']} | {f['sid']} | {f['h_mm']} x {f['w_mm']} | {f['text']} | "
+                      f"{f['house']} | {f['built']} |")
     return "\n".join(md) + "\n"
 
 
@@ -800,6 +1048,211 @@ def _parse_kw(items):
     return out
 
 
+def run_grid(cache: Path, slugs, values: dict, arm: str = "off") -> dict:
+    """Detection per pair under each keyword set in `values` ("off" is
+    today), and the leave-one-job-out held-out pick (`held_out`)."""
+    truth = load_truth()
+    grid: dict[str, list] = {n: [] for n in values}
+    rows = []
+    for slug in slugs:
+        data = read_pickle(cache, slug, arm)
+        if data is None:
+            continue
+        if arm == "off":
+            labels = labels_for(slug, data, cache, truth)
+        else:
+            # another arm's regions take the OFF arm's labels by id (the same
+            # pre-tag regions; a flag that moves a letter keeps its id)
+            off = read_pickle(cache, slug, "off")
+            base = labels_for(slug, off, cache, truth) if off is not None else None
+            labels = None
+            if base is not None:
+                labels = carry_labels(off["regions"], base, data["regions"], 1.0)
+                labels["lost"], labels["how"] = base.get("lost", []), base.get("how", "") + ", by id from off"
+        if labels is None:
+            continue
+        base = retag(data)
+        row = {"slug": slug, "job": CENSUS_PAIRS.get(slug)}
+        for n, kw in values.items():
+            det = detection(data, labels, kw or None, base_regions=base)
+            det["slug"] = slug
+            grid[n].append(det)
+            row[n] = {k: det[k] for k in ("letters", "detected", "false_pos", "kappa", "changed")}
+        rows.append(row)
+    ho = held_out(grid, "off")
+    best = max(ho["in_sample"], key=lambda n: (-1 if ho["in_sample"][n] is None else ho["in_sample"][n],
+                                                 n == "off", n))
+    return {"values": values, "pairs": rows, "in_sample": ho["in_sample"], "best_in_sample": best,
+            "held_out": ho["held_out"], "picks": ho["picks"], "base": ho["base"]}
+
+
+def grid_table(res: dict) -> str:
+    names = list(res["values"])
+    md = ["| pair | " + " | ".join(f"{n} det/letters, fp, kappa" for n in names) + " |",
+          "|---|" + "---|" * len(names)]
+    for row in res["pairs"]:
+        md.append(f"| {row['slug']} | " + " | ".join(
+            f"{row[n]['detected']}/{row[n]['letters']}, {row[n]['false_pos']}, {_k(row[n]['kappa'])}"
+            for n in names) + " |")
+    md += ["", "| | " + " | ".join(names) + " |", "|---|" + "---|" * len(names),
+           "| pooled kappa, in-sample | " + " | ".join(_k(res["in_sample"][n]) for n in names) + " |",
+           "", f"Best in-sample: {res['best_in_sample']}. Held-out (leave one JOB out, the value "
+           f"best on the other jobs): {_k(res['held_out'])} against today's {_k(res['base'])}. "
+           "Picks: " + ", ".join(f"{j} -> {n}" for j, n in res["picks"].items())]
+    return "\n".join(md) + "\n"
+
+
+def arm_dst(cache: Path, slug: str, arm: str) -> Path:
+    """The arm's plan as a DST beside its pickle (written once)."""
+    from digitizer_core.export import write_dst
+    f = pickle_path(cache, slug, arm).with_suffix(".dst")
+    if not f.exists():
+        write_dst(read_pickle(cache, slug, arm)["plan"], f)
+    return f
+
+
+#: `letter_pieces.MIN_CROSS` for the rescued-letter read: its 1.0 mm skips
+#: every cross of a small letter's column (ours 0.70-0.85 mm under the
+#: small-text re-set), so both files are read at this one lower floor
+PIECES_MIN_CROSS_MM = 0.5
+PIECES_MIN_IOU = 0.3
+
+
+def _pick_letter(letters: list[dict], box) -> tuple[dict | None, float]:
+    """The `letter_pieces` letter (a connected piece of cross coverage, which
+    can hold two touching letters) whose box best matches `box` by IoU, when
+    that is at least `PIECES_MIN_IOU`. -> (letter or None, iou)."""
+    best, best_iou = None, 0.0
+    ba = (box[2] - box[0]) * (box[3] - box[1])
+    for L in letters:
+        b = L["bbox"]
+        w = min(b[2], box[2]) - max(b[0], box[0])
+        h = min(b[3], box[3]) - max(b[1], box[1])
+        if w <= 0 or h <= 0:
+            continue
+        inter = w * h
+        iou = inter / (ba + (b[2] - b[0]) * (b[3] - b[1]) - inter)
+        if iou > best_iou:
+            best, best_iou = L, iou
+    return (best, best_iou) if best_iou >= PIECES_MIN_IOU else (None, best_iou)
+
+
+def rescued_pieces(cache: Path, slug: str, rescued: list[dict], arms=("off", "reset"),
+                   pad_mm: float = 0.6) -> list[dict]:
+    """`tools/letter_pieces` on each rescued letter, in every arm's DST and
+    the pro's (registered with `small_text_floor_census.register`, OFF's
+    frame): one row per letter and file, `letter_measures` beside it.
+    `rescued`: [{sid, line, box}] in our frame."""
+    from tools import letter_pieces as lp
+    from tools import lettering_board as lb
+    from tools.small_text_floor_census import _map_box, register
+    pro = lb.resolve_pair(slug).pro
+    dsts = {arm: arm_dst(cache, slug, arm) for arm in arms}
+    reg = register(pro, dsts[arms[0]])
+    saved, lp.MIN_CROSS = lp.MIN_CROSS, PIECES_MIN_CROSS_MM
+    try:
+        read = {arm: lp.read(p) for arm, p in dsts.items()}
+        read["pro"] = lp.read(pro)
+    finally:
+        lp.MIN_CROSS = saved
+    rows = []
+    def padded(b):
+        return (b[0] - pad_mm, b[1] - pad_mm, b[2] + pad_mm, b[3] + pad_mm)
+    for item in rescued:
+        for who in (*arms, "pro"):
+            # each file at its own letter: an arm's region box (a re-set
+            # letter grows and moves), the pro's the union mapped into his frame
+            b = (_map_box(padded(item["box"]), reg, 0.0, 0.0) if who == "pro"
+                 else padded(item.get("boxes", {}).get(who, item["box"])))
+            L, iou = _pick_letter(read[who]["letters"], b)
+            row = {"slug": slug, "sid": item["sid"], "line": item["line"], "file": who,
+                   "iou": round(iou, 2)}
+            row.update(lp.letter_measures(L) if L is not None else {"pieces": None})
+            rows.append(row)
+    return rows
+
+
+def line_crops(cache: Path, slug: str, lines: dict[str, tuple], out: Path, arms=("off", "reset")) -> list[Path]:
+    """OFF | each arm | pro stitch renders around each line box (our frame,
+    the pro's box mapped by registration), 40 px/mm. No artwork tile: the
+    art of some jobs is not in the repo, and only stitches are compared."""
+    import cv2
+    from digitizer_core import stitchviz
+    from tools import lettering_board as lb
+    from tools import pro_pair as pp
+    from tools.pro_parity import pairframe
+    from tools.small_text_floor_census import _map_box, register
+    ppm, pad = pp.PPM_CROP, pp.PAD_MM
+    pro = lb.resolve_pair(slug).pro
+    dsts = {arm: arm_dst(cache, slug, arm) for arm in arms}
+    reg = register(pro, dsts[arms[0]])
+    rend = {}
+    for arm, p in dsts.items():
+        blocks = [list(b.rgb) for b in read_pickle(cache, slug, arm)["plan"].blocks]
+        des = pairframe.design_for(p, None, blocks, slug)
+        rend[arm] = (stitchviz.render_design(des, px_per_mm=ppm), pp._design_top_left_mm(des))
+    pd = pairframe.design_for(pro, None, None, pro.stem)
+    rend["pro"] = (stitchviz.render_design(pd, px_per_mm=ppm), pp._design_top_left_mm(pd))
+    out.mkdir(parents=True, exist_ok=True)
+    files = []
+    for name, (x0, y0, x1, y1) in lines.items():
+        tiles = []
+        m = max(0.5, (y1 - y0) / 3.0)        # a re-set or pro letter stands taller than the art's
+        for who in (*arms, "pro"):
+            bx = _map_box((x0, y0, x1, y1), reg, m, m) if who == "pro" else (x0 - m, y0 - m, x1 + m, y1 + m)
+            img, (ox, oy) = rend[who]
+            tiles.append(pp._label(pp._crop_px(img, (bx[0] - ox, bx[1] - oy, bx[2] - ox, bx[3] - oy), pad, ppm),
+                                   who if who != arms[-1] or len(arms) == 1 else f"{who} (ON)"))
+        f = out / f"{slug}_{''.join(ch if ch.isalnum() else '_' for ch in name)}.png"
+        cv2.imwrite(str(f), pp._vstack(tiles, gap=8))
+        files.append(f)
+    return files
+
+
+def run_rescued(cache: Path, slugs, off: str, on: str, crops: Path | None) -> dict:
+    """The letters `on` brings to the lane that `off` does not, per pair:
+    their `letter_pieces` rows (off, on, pro) and a crop of each line."""
+    truth = load_truth()
+    rows, files = [], []
+    for slug in slugs:
+        a, b = read_pickle(cache, slug, off), read_pickle(cache, slug, on)
+        if a is None or b is None:
+            continue
+        la = labels_for(slug, a, cache, truth)
+        if la is None:
+            continue
+        lb_ = carry_labels(a["regions"], la, b["regions"], 1.0)
+        built_a, built_b = lane_built(a["rungs"]), lane_built(b["rungs"])
+        ra = {r.shape_id: r for r in a["regions"]}
+        rb = {r.shape_id: r for r in b["regions"]}
+        rescued, boxes = [], {}
+        for line, ids in lb_["lines"].items():
+            for sid in ids:
+                if sid in built_b and sid not in built_a and sid in ra:
+                    pa, pb = ra[sid].polygon.bounds, rb[sid].polygon.bounds
+                    bx = [min(pa[0], pb[0]), min(pa[1], pb[1]), max(pa[2], pb[2]), max(pa[3], pb[3])]
+                    rescued.append({"sid": sid, "line": line, "box": bx,
+                                    "boxes": {off: list(pa), on: list(pb)}})
+                    lo = boxes.get(line)
+                    boxes[line] = bx if lo is None else [min(lo[0], bx[0]), min(lo[1], bx[1]),
+                                                        max(lo[2], bx[2]), max(lo[3], bx[3])]
+        if not rescued:
+            continue
+        rows += rescued_pieces(cache, slug, rescued, (off, on))
+        if crops is not None:
+            files += [str(f) for f in line_crops(cache, slug, boxes, crops, (off, on))]
+    return {"rows": rows, "crops": files}
+
+
+def rescued_table(out: dict) -> str:
+    keys = ("pieces", "patches", "flat_share", "drift_p90", "long_share", "max_cross", "same_hole", "crosses")
+    md = ["| pair | line | letter | file | " + " | ".join(keys) + " |", "|" + "---|" * (4 + len(keys))]
+    for r in out["rows"]:
+        md.append(f"| {r['slug']} | {r['line']} | {r['sid']} | {r['file']} | "
+                  + " | ".join("n/a" if r.get(k) is None else str(r[k]) for k in keys) + " |")
+    return "\n".join(md) + "\n"
+
+
 def run_census(cache: Path, slugs, arm: str = "off", truth: dict | None = None):
     truth = truth or load_truth()
     results, skipped = [], []
@@ -808,7 +1261,17 @@ def run_census(cache: Path, slugs, arm: str = "off", truth: dict | None = None):
         if data is None:
             skipped.append((slug, "not digitized"))
             continue
-        labels = labels_for(slug, data, cache / "_corpus", truth)
+        if arm == "off":
+            labels = labels_for(slug, data, cache, truth)
+        else:
+            # another arm's regions take the OFF arm's labels by id (the same
+            # pre-tag regions; a flag that moves a letter keeps its id)
+            off = read_pickle(cache, slug, "off")
+            base = labels_for(slug, off, cache, truth) if off is not None else None
+            labels = None
+            if base is not None:
+                labels = carry_labels(off["regions"], base, data["regions"], 1.0)
+                labels["lost"], labels["how"] = base.get("lost", []), base.get("how", "") + ", by id from off"
         if labels is None:
             skipped.append((slug, "no hand labels (Golden Tee: its bevel has no honest letter call)"
                             if slug.startswith("goldentee") else "no hand labels"))
@@ -824,6 +1287,7 @@ def main(argv=None) -> int:
     d.add_argument("--cache", type=Path, required=True)
     d.add_argument("--arm", default="off")
     d.add_argument("--kw", action="append", help="detect_text_clusters keyword, key=json")
+    d.add_argument("--set", action="append", help="PipelineConfig field over the Studio request, key=json")
     d.add_argument("--force", action="store_true")
     d.add_argument("slugs", nargs="*")
     r = sub.add_parser("read")
@@ -832,6 +1296,20 @@ def main(argv=None) -> int:
     r.add_argument("--json", type=Path)
     r.add_argument("--md", type=Path)
     r.add_argument("slugs", nargs="*")
+    gr = sub.add_parser("grid", help="detection under text-tagger keywords, held-out by job")
+    gr.add_argument("--cache", type=Path, required=True)
+    gr.add_argument("--arm", default="off")
+    gr.add_argument("--value", action="append", required=True,
+                    help="NAME=JSON keywords for detect_text_clusters; NAME 'off' is {} (today)")
+    gr.add_argument("--json", type=Path)
+    gr.add_argument("slugs", nargs="*")
+    rs = sub.add_parser("rescued", help="letters reached in --on but not --off: pieces and crops")
+    rs.add_argument("--cache", type=Path, required=True)
+    rs.add_argument("--off", default="off")
+    rs.add_argument("--on", required=True)
+    rs.add_argument("--crops", type=Path)
+    rs.add_argument("--json", type=Path)
+    rs.add_argument("slugs", nargs="+")
     c = sub.add_parser("check")
     c.add_argument("--cache", type=Path, required=True)
     m = sub.add_parser("map")
@@ -851,7 +1329,7 @@ def main(argv=None) -> int:
                 print(f"{slug}: cached", flush=True)
                 continue
             try:
-                data = digitize_pair(slug, a.cache, a.arm, kw)
+                data = digitize_pair(slug, a.cache, a.arm, kw, _parse_kw(a.set) or None)
             except SystemExit as e:
                 print(f"{slug}: SKIPPED -- {e}", flush=True)
                 continue
@@ -870,6 +1348,22 @@ def main(argv=None) -> int:
             print(f"{name:12s} {res['which']:9s} letters {res['letters']:3d} stale {res['stale']:3d} "
                   f"carry {'exact' if res['ok'] else 'NOT EXACT'}", flush=True)
         return 1 if bad else 0
+    if a.cmd == "grid":
+        values = {"off": {}}
+        for v in a.value:
+            name, _, js = v.partition("=")
+            values[name] = json.loads(js) if js else {}
+        res = run_grid(a.cache, a.slugs or list(CENSUS_PAIRS), values, a.arm)
+        print(grid_table(res))
+        if a.json:
+            a.json.write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
+        return 0
+    if a.cmd == "rescued":
+        out = run_rescued(a.cache, a.slugs, a.off, a.on, a.crops)
+        print(rescued_table(out))
+        if a.json:
+            a.json.write_text(json.dumps(out, indent=1, default=str), encoding="utf-8")
+        return 0
     if a.cmd == "map":
         data = read_pickle(a.cache, a.slug, a.arm)
         crop = tuple(float(x) for x in a.crop.split(",")) if a.crop else None
@@ -878,7 +1372,8 @@ def main(argv=None) -> int:
             print(json.dumps(row))
         return 0
     results, skipped = run_census(a.cache, a.slugs or list(CENSUS_PAIRS), a.arm)
-    text = census_table(results, skipped) + "\n" + miss_table(results)
+    text = (census_table(results, skipped) + "\n" + miss_table(results)
+            + "\nFalse positives (detected, not a labelled letter):\n\n" + false_pos_table(results))
     print(text)
     if a.md:
         a.md.write_text(text, encoding="utf-8")
