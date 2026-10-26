@@ -27,19 +27,21 @@
     If a digitizer is already listening on 8721 (another session's, for
     instance) it is NOT started over. tools/service-check.mjs reads its
     /health and compares the engine commit it was started from with this
-    checkout's HEAD: a stale service is reported with both commits and left
-    running. A service that is working a job is never stopped. A process on
-    the port that is not a digitizer is never touched.
+    checkout's HEAD. A stale service (its commit is not HEAD, or its tracked
+    tree was dirty when it started) that is idle is stopped and replaced, with
+    both commits printed (Kent's ruling 2026-10-25); -KeepStale only reports it.
+    A service that is working a job is never stopped. A process on the port
+    that is not a digitizer is never touched.
 
 .PARAMETER NoDigitizer
     Skip the Python auto-digitizer. Text and lettering work without it; only
     image auto-digitize needs it.
 
-.PARAMETER ReplaceStale
-    Restart a digitizer on 8721 that is stale (its commit is not HEAD, or its
-    tracked tree was dirty when it started) and idle. Without this switch a
-    stale service is only reported. Never applies to a busy service or to a
-    process that is not a python digitizer.
+.PARAMETER KeepStale
+    Leave a stale, idle digitizer on 8721 running: report it with both commits
+    instead of replacing it. Without this switch a stale idle service is
+    stopped and a fresh one started. Replacement never applies to a busy
+    service or to a process that is not a python digitizer, switch or not.
 
 .PARAMETER Port
     Studio port to wait on and open. Defaults to 5173. Vite auto-increments
@@ -56,12 +58,12 @@
     .\tools\start-emb-bot.ps1 -NoDigitizer
 
 .EXAMPLE
-    .\tools\start-emb-bot.ps1 -ReplaceStale
+    .\tools\start-emb-bot.ps1 -KeepStale
 #>
 [CmdletBinding()]
 param(
     [switch]$NoDigitizer,
-    [switch]$ReplaceStale,
+    [switch]$KeepStale,
     [int]$Port = 5173,
     [int]$TimeoutSeconds = 180
 )
@@ -99,7 +101,7 @@ function Start-ServerWindow {
 function Get-DigitizerVerdict {
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) { return $null }
     $checkArgs = @($serviceCheck, '--json', '--repo', $repo, '--url', $digitizerUrl)
-    if ($ReplaceStale) { $checkArgs += '--replace' }
+    if ($KeepStale) { $checkArgs += '--keep-stale' }
     try {
         $raw = & node @checkArgs 2>$null
         if ($LASTEXITCODE -ne 0) { return $null }

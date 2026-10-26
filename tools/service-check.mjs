@@ -20,15 +20,15 @@
 //     is NEVER stopped: the verdict is "keep", with the reason printed.
 //   * Anything on the port that is not a digitizer, or does not answer, is
 //     never touched and never started over.
-//   * A stale, idle service is reported with both commits. It is replaced only
-//     when asked (`--replace`, the launcher's -ReplaceStale). Whether that
-//     becomes the default is Kent's call.
+//   * A stale, idle service is REPLACED, with both commits printed (Kent's
+//     ruling 2026-10-25: "Replace automatically"). `--keep-stale` (the
+//     launcher's -KeepStale) is the opt-out: it is then only reported.
 //
 // Verdict `action`: start | keep | busy | report | replace | foreign.
 //
 // Usage:
 //   node tools/service-check.mjs                    # human lines, exit 0
-//   node tools/service-check.mjs --json [--replace] # one JSON object, for the launcher
+//   node tools/service-check.mjs --json [--keep-stale] # one JSON object, for the launcher
 //   node tools/service-check.mjs --wait 90          # exit 0 once /health says digitizer, 1 after 90 s
 //   options: --url http://127.0.0.1:8721  --repo <checkout whose HEAD is the reference>
 import "./_help.mjs";
@@ -87,8 +87,8 @@ export function isDigitizer(health) {
 }
 
 // The verdict. `head` is the reference checkout's HEAD (a sha, or null when it
-// cannot be read); `replace` is the opt-in.
-export function decide({ url = DEFAULT_URL, status, health, head, replace = false }) {
+// cannot be read); `replace` is on by default, `false` is the -KeepStale opt-out.
+export function decide({ url = DEFAULT_URL, status, health, head, replace = true }) {
   const p = port(url);
   const out = (action, reason, extra = {}) => ({ action, reason, lines: [reason], ...extra });
 
@@ -132,8 +132,8 @@ export function decide({ url = DEFAULT_URL, status, health, head, replace = fals
   if (busy) {
     return out("busy", `digitizer on :${p} is STALE (${why}) but ${busyWhy}; keeping it. Stop it yourself when the job is done.`, info);
   }
-  if (replace) return out("replace", `digitizer on :${p} is STALE (${why}) and idle; replacing it (-ReplaceStale).`, info);
-  return out("report", `digitizer on :${p} is STALE (${why}) and idle. Re-run with -ReplaceStale to restart it; left running.`, info);
+  if (replace) return out("replace", `digitizer on :${p} is STALE (${why}) and idle; replacing it.`, info);
+  return out("report", `digitizer on :${p} is STALE (${why}) and idle; left running (-KeepStale).`, info);
 }
 
 export function headCommit(repo = path.resolve(HERE, "..")) {
@@ -173,7 +173,7 @@ if (isMain) {
     process.exitCode = r.ok ? 0 : 1;
   } else {
     const r = await probe(url);
-    const verdict = decide({ url, ...r, head: headCommit(flag("repo", path.resolve(HERE, ".."))), replace: argv.includes("--replace") });
+    const verdict = decide({ url, ...r, head: headCommit(flag("repo", path.resolve(HERE, ".."))), replace: !argv.includes("--keep-stale") });
     if (argv.includes("--json")) console.log(JSON.stringify(verdict));
     else console.log(verdict.lines.join("\n"));
   }

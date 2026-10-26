@@ -1,6 +1,6 @@
 ---
 name: request-contract-and-engine-stamp-2026-10-25
-description: W3-14 -- Studio request pinned as a fixture both ways (vitest + pytest), /health carries engine {commit,dirty,started_at,defaults_sha} + capabilities, launcher flags a stale idle service (-ReplaceStale opt-in; auto-replace is Kent's call)
+description: W3-14 -- Studio request pinned as a fixture both ways (vitest + pytest), /health carries engine {commit,dirty,started_at,defaults_sha} + capabilities, launcher REPLACES a stale idle service by default (Kent 10-25; -KeepStale opts out)
 metadata:
   type: project
 ---
@@ -60,13 +60,15 @@ digitizer AND (engine commit != HEAD OR dirty at start); no `engine` block at al
 = older than the stamp = stale; an `engine` with no commit = cannot tell = keep.
 **Never stopped:** a service whose `jobs` shows running/queued/inflight work (or
 that does not say), anything that is not a digitizer, anything on the port that
-did not answer. `start-emb-bot.ps1` reports a stale idle one with both commits
-and stops it only with `-ReplaceStale`, and then only after a second check that
-the listener is a python process; it also waits for `/health` as well as Vite
+did not answer. `start-emb-bot.ps1` stops a stale idle one and starts a fresh
+one, printing both commits (`-KeepStale` only reports it), and only after a
+second check that the listener is a python process; it also waits for `/health` as well as Vite
 before opening the browser. Driven end to end under Windows PowerShell 5.1
-against a fake stale digitizer: no flag -> `report`; `-ReplaceStale` -> stopped
-the child python (the venv stub's child owns the socket), port freed.
+against a fake stale digitizer: `-KeepStale` -> `report`; default -> stopped the
+child python (the venv stub's child owns the socket), port freed.
 
-**Open for Kent:** should a stale idle service be replaced AUTOMATICALLY (no
-flag)? Built opt-in. The catch either way: HEAD moving for a docs-only commit
-reads as stale, and a service started on uncommitted edits is stale every launch.
+**Kent's ruling 2026-10-25: "Replace automatically (Recommended)".** Built opt-in
+first (`-ReplaceStale`), flipped to the default the same day; `-KeepStale` is
+the opt-out. The catch: HEAD moving for a docs-only commit reads as stale, and a
+service started on uncommitted edits is stale every launch, so it is replaced
+every launch. Busy services and non-digitizers are still never stopped.

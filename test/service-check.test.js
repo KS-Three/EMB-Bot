@@ -1,8 +1,8 @@
 // tools/service-check.mjs: the launcher's decision about a digitizer already
 // on 8721 (W3-14). The rules under test, in the order a customer meets them:
 // keep a fresh service; keep a stale one that is working; report a stale idle
-// one; replace it only when asked; never touch anything that is not a
-// digitizer.
+// one; replace it by default (Kent 2026-10-25), unless -KeepStale; never touch
+// anything that is not a digitizer.
 import { test } from "node:test";
 import assert from "node:assert";
 import http from "node:http";
@@ -22,7 +22,7 @@ function health({ commit = HEAD, dirty = false, jobs = IDLE, engine = true } = {
   if (engine) h.engine = { commit, dirty, started_at: "2026-10-25T12:00:00+00:00", defaults_sha: "0".repeat(64) };
   return h;
 }
-const verdict = (over) => T.decide({ status: "answered", head: HEAD, replace: false, health: health(), ...over });
+const verdict = (over) => T.decide({ status: "answered", head: HEAD, replace: true, health: health(), ...over });
 
 // ---- keep (fresh) ----------------------------------------------------------
 
@@ -30,8 +30,8 @@ test("keep (fresh): the service's commit is HEAD and its tree was clean", () => 
   const v = verdict({});
   assert.strictEqual(v.action, "keep");
   assert.match(v.reason, /current \(commit 7995d51/);
-  // -ReplaceStale changes nothing about a service that is not stale.
-  assert.strictEqual(verdict({ replace: true }).action, "keep");
+  // Replacing by default changes nothing about a service that is not stale.
+  assert.strictEqual(verdict({ replace: false }).action, "keep");
 });
 
 // ---- keep (busy) -----------------------------------------------------------
@@ -60,41 +60,51 @@ test("an unreadable jobs block counts as busy: an unknown is never idle", () => 
   }
 });
 
-// ---- report (stale, idle, no flag) -----------------------------------------
+// ---- report (stale, idle, -KeepStale) --------------------------------------
 
-test("report (stale and idle, no flag): prints both commits and leaves it running", () => {
-  const v = verdict({ health: health({ commit: OLD }) });
+test("report (stale and idle, -KeepStale): prints both commits and leaves it running", () => {
+  const v = verdict({ health: health({ commit: OLD }), replace: false });
   assert.strictEqual(v.action, "report");
   assert.match(v.reason, /0123456/);
   assert.match(v.reason, /7995d51/);
-  assert.match(v.reason, /-ReplaceStale/);
+  assert.match(v.reason, /-KeepStale/);
 });
 
 test("a service on HEAD that started with tracked edits is stale too", () => {
-  const v = verdict({ health: health({ dirty: true }) });
+  assert.strictEqual(verdict({ health: health({ dirty: true }) }).action, "replace");
+  const v = verdict({ health: health({ dirty: true }), replace: false });
   assert.strictEqual(v.action, "report");
   assert.match(v.reason, /dirty/);
 });
 
 test("a digitizer with no engine stamp predates this checkout: stale", () => {
-  const v = verdict({ health: health({ engine: false }) });
+  assert.strictEqual(verdict({ health: health({ engine: false }) }).action, "replace");
+  const v = verdict({ health: health({ engine: false }), replace: false });
   assert.strictEqual(v.action, "report");
   assert.match(v.reason, /no engine stamp/);
-  assert.strictEqual(verdict({ health: health({ engine: false, jobs: { states: { running: 1 } } }), replace: true }).action, "busy");
+  assert.strictEqual(verdict({ health: health({ engine: false, jobs: { states: { running: 1 } } }) }).action, "busy");
 });
 
-// ---- replace (stale, idle, -ReplaceStale) ----------------------------------
+// ---- replace (stale, idle: the default) ------------------------------------
 
-test("replace (stale, idle, -ReplaceStale): the only path that stops a service", () => {
-  const v = verdict({ health: health({ commit: OLD }), replace: true });
+test("replace (stale, idle, the default): the only path that stops a service", () => {
+  const v = verdict({ health: health({ commit: OLD }) });
   assert.strictEqual(v.action, "replace");
   assert.strictEqual(v.serviceCommit, OLD);
   assert.strictEqual(v.headCommit, HEAD);
+  assert.match(v.reason, /0123456/);
+  assert.match(v.reason, /7995d51/);
   const actions = new Set();
   for (const h of [health(), health({ commit: OLD }), health({ commit: OLD, jobs: { inflight: 1 } }), health({ dirty: true })]) {
-    actions.add(verdict({ health: h, replace: true }).action);
+    actions.add(verdict({ health: h }).action);
   }
   assert.deepStrictEqual([...actions].sort(), ["busy", "keep", "replace"]);
+  // -KeepStale turns the same inputs into a report, never a stop.
+  const kept = new Set();
+  for (const h of [health(), health({ commit: OLD }), health({ commit: OLD, jobs: { inflight: 1 } }), health({ dirty: true })]) {
+    kept.add(verdict({ health: h, replace: false }).action);
+  }
+  assert.deepStrictEqual([...kept].sort(), ["busy", "keep", "report"]);
 });
 
 test("cannot tell is keep, never replace: no commit on either side", () => {
@@ -200,8 +210,8 @@ test("CLI: one JSON verdict per service, HEAD read from the repo, /health only e
   try {
     const run = (u, ...extra) => cli(["--url", u, "--json", ...extra]).then((r) => JSON.parse(r.stdout));
     const got = await Promise.all([
-      run(fresh.url, "--replace"), run(stale.url), run(stale.url, "--replace"),
-      run(working.url, "--replace"), run(vite.url, "--replace"), run(page.url, "--replace"), run(gone.url),
+      run(fresh.url), run(stale.url, "--keep-stale"), run(stale.url),
+      run(working.url), run(vite.url), run(page.url), run(gone.url),
     ]);
     assert.deepStrictEqual(got.map((v) => v.action),
       ["keep", "report", "replace", "busy", "foreign", "foreign", "start"], got.map((v) => v.reason).join("; "));
