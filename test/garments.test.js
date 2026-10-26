@@ -9,10 +9,13 @@ test("garment list has left_chest default 4x4", () => {
 });
 test("fit scales down to fit box, aspect preserved", () => {
   // bbox 100x50mm into left_chest (4in=101.6mm square)
-  const r = g.fitScale(100, 50, g.getGarment("left_chest"));
+  const r = g.fitScale(100, 50, g.getGarment("left_chest"), { proSized: false });
   assert.ok(r.scale > 1.0 && r.scale < 1.02); // width-limited ~1.016
   assert.ok(Math.abs(r.targetWmm - 101.6) < 0.5);
   assert.ok(Math.abs(r.targetHmm - 50 * r.scale) < 1e-6);
+  // ... and by default into the pro's 96 x 64.5 left chest (2026-10-26)
+  const pro = g.fitScale(100, 50, g.getGarment("left_chest"));
+  assert.ok(Math.abs(pro.targetWmm - 96.0) < 1e-9 && Math.abs(pro.targetHmm - 48.0) < 1e-9);
 });
 test("fit scales large design down", () => {
   const r = g.fitScale(400, 400, g.getGarment("left_chest"));
@@ -76,36 +79,38 @@ test("exceedsHoop against a chosen hoop is the orientation-aware ceiling", () =>
   assert.strictEqual(g.exceedsHoop(170, 120, g.getHoop("5x7")), false);
 });
 
-// ---- proSized: the pro's placement boxes (2026-10-26, OFF) -------------------
+// ---- proSized: the pro's placement boxes (2026-10-26; DEFAULT ON since Kent's
+// "64 mm (2.5 in) or more", 2026-10-26) -----------------------------------------
 
-test("proSized OFF: every fit, box and hoop is the one it was", () => {
+test("proSized is the default; { proSized: false } is the round-inch box as it was", () => {
   const boxes = [[100, 50], [50, 100], [400, 400], [62.6, 63.8], [114.3, 42.2], [10, 300]];
   for (const garment of g.GARMENTS) {
     for (const [w, h] of boxes) {
-      const before = g.fitScale(w, h, garment);
-      assert.deepStrictEqual(g.fitScale(w, h, garment, { proSized: false }), before);
-      assert.deepStrictEqual(g.fitScale(w, h, garment, {}), before);
+      const on = g.fitScale(w, h, garment, { proSized: true });
+      assert.deepStrictEqual(g.fitScale(w, h, garment), on);
+      assert.deepStrictEqual(g.fitScale(w, h, garment, {}), on);
     }
-    assert.deepStrictEqual(g.autoFitBoxMm(garment, { proSized: false }), g.autoFitBoxMm(garment));
-    assert.strictEqual(g.suggestHoop(garment, { proSized: false }), g.suggestHoop(garment));
+    assert.deepStrictEqual(g.autoFitBoxMm(garment), g.autoFitBoxMm(garment, { proSized: true }));
+    assert.strictEqual(g.suggestHoop(garment), g.suggestHoop(garment, { proSized: true }));
   }
-  // and today's numbers, pinned: a hat front is 5.0 x 2.25 in
-  const hat = g.autoFitBoxMm(g.getGarment("hat_front"));
+  // the round-inch numbers, pinned: a hat front is 5.0 x 2.25 in
+  const hat = g.autoFitBoxMm(g.getGarment("hat_front"), { proSized: false });
   assert.ok(Math.abs(hat.w - 127.0) < 1e-9 && Math.abs(hat.h - 57.15) < 1e-9);
+  assert.deepStrictEqual(g.autoFitBoxMm(g.getGarment("hat_front")), { w: 113.5, h: 64.0 });
 });
 
 test("proSized ON: a hat sews as tall as the pro's (Becker 62.1, Drone 63.8 against our 57.2)", () => {
   const hat = g.getGarment("hat_front");
   // Becker's art (ink aspect 1.593) and the Drone's (0.97): height-limited
-  const becker = g.fitScale(159.3, 100, hat, { proSized: true });
+  const becker = g.fitScale(159.3, 100, hat);
   assert.ok(becker.targetHmm > 62 && becker.targetHmm <= 64.0 + 1e-9);
   assert.ok(Math.abs(becker.targetWmm / 101.9 - 1) < 0.02, `${becker.targetWmm}`);
-  const drone = g.fitScale(97, 100, hat, { proSized: true });
+  const drone = g.fitScale(97, 100, hat);
   assert.ok(Math.abs(drone.targetHmm - 64.0) < 1e-9);
   // ... and a wide one no wider than his widest (Tires 114.3, ours today 127)
-  const tires = g.fitScale(270.2, 100, hat, { proSized: true });
+  const tires = g.fitScale(270.2, 100, hat);
   assert.ok(Math.abs(tires.targetWmm - 113.5) < 1e-9);
-  assert.ok(g.fitScale(270.2, 100, hat).targetWmm > 126.9);
+  assert.ok(g.fitScale(270.2, 100, hat, { proSized: false }).targetWmm > 126.9);
 });
 
 test("proSized ON: left chest and beanie boxes; a garment with no pro box keeps its own", () => {
@@ -125,8 +130,8 @@ test("proSized ON: left chest and beanie boxes; a garment with no pro box keeps 
 });
 
 test("proSized ON: the suggested hoop follows the pro's box (a 96 x 64.5 left chest fits a 4x4)", () => {
-  assert.strictEqual(g.suggestHoop(g.getGarment("left_chest")).id, "5x7");
-  assert.strictEqual(g.suggestHoop(g.getGarment("left_chest"), { proSized: true }).id, "4x4");
+  assert.strictEqual(g.suggestHoop(g.getGarment("left_chest"), { proSized: false }).id, "5x7");
+  assert.strictEqual(g.suggestHoop(g.getGarment("left_chest")).id, "4x4");
   assert.strictEqual(g.suggestHoop(g.getGarment("hat_front"), { proSized: true }).id, "5x7");
   assert.strictEqual(g.suggestHoop(g.getGarment("beanie"), { proSized: true }).id, "4x4");
 });

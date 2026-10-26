@@ -19,11 +19,13 @@ const caption = (page) => page.locator("span.stats").locator("xpath=..");
 
 test("oversize on a smaller hoop names a bigger hoop, and picking it clears the warning", async ({ page }) => {
   await startStudio(page);
-  await pickGarment(page, "Left Chest");
+  await pickGarment(page, "Hat Front");
   await typeText(page, "EMB TEST");
 
-  // Left chest suggests a hoop it fits; pick the smallest one by hand so the
-  // placement-box-sized design (101.6 mm) exceeds it (100 mm).
+  // Hat Front suggests a hoop it fits; pick the smallest one by hand so the
+  // placement-box-sized design (the pro's 113.5 mm) exceeds it (100 mm). It
+  // was the left chest until 2026-10-26, when that garment's auto-fit box
+  // became the pro's 96 mm, inside the 4x4 (`proSized`).
   const hoops = page.getByRole("group", { name: "Hoop size" });
   await hoops.getByRole("button", { name: /4×4 in/ }).click();
 

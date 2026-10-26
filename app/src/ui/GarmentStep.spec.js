@@ -76,13 +76,15 @@ test("renders the four hoop presets with their mm fields", () => {
 });
 
 test("with no manual pick, the per-garment suggestion is selected and tagged", () => {
-  // left_chest's 4x4in placement box (101.6 mm) just exceeds the 4x4 hoop's
-  // 100 mm field, so the engine suggests 5x7 — the real rule, not a stub.
+  // left_chest auto-fits the pro's 96 x 64.5 mm box (2026-10-26, Kent: "64 mm
+  // (2.5 in) or more"), inside the 4x4 hoop's 100 mm field, so the engine
+  // suggests 4x4 — the real rule, not a stub. (Its 4x4in inch box, 101.6 mm,
+  // stepped the suggestion up to 5x7.)
   const { container } = renderStep();
-  const suggested = hoopButton(container, "5×7 in");
+  const suggested = hoopButton(container, "4×4 in");
   expect(suggested).toHaveAttribute("aria-pressed", "true");
   expect(suggested.querySelector(".hooptile-chip")).toHaveTextContent("Suggested");
-  expect(hoopButton(container, "4×4 in")).toHaveAttribute("aria-pressed", "false");
+  expect(hoopButton(container, "5×7 in")).toHaveAttribute("aria-pressed", "false");
   // No override yet — nothing to reset to.
   expect(container.querySelector(".hoopreset")).toBeNull();
 });
@@ -93,26 +95,26 @@ test("picking a hoop dispatches the override, moves the selection, and keeps the
 
   expect(updates).toContainEqual({ hoopId: "8x8" });
   expect(hoopButton(container, "8×8 in")).toHaveAttribute("aria-pressed", "true");
-  expect(hoopButton(container, "5×7 in")).toHaveAttribute("aria-pressed", "false");
+  expect(hoopButton(container, "4×4 in")).toHaveAttribute("aria-pressed", "false");
   // The tag marks the suggestion, not the selection.
-  expect(hoopButton(container, "5×7 in").querySelector(".hooptile-chip")).toHaveTextContent("Suggested");
+  expect(hoopButton(container, "4×4 in").querySelector(".hooptile-chip")).toHaveTextContent("Suggested");
   expect(hoopButton(container, "8×8 in").querySelector(".hooptile-chip")).toBeNull();
 });
 
 test("the reset link returns control to the suggestion (hoopId null)", async () => {
   const { container, updates } = renderStep({ hoopId: "8x8" });
   const reset = container.querySelector(".hoopreset button");
-  expect(reset).toHaveTextContent(/suggested 5×7 in hoop/i);
+  expect(reset).toHaveTextContent(/suggested 4×4 in hoop/i);
 
   await fireEvent.click(reset);
   expect(updates).toContainEqual({ hoopId: null });
-  expect(hoopButton(container, "5×7 in")).toHaveAttribute("aria-pressed", "true");
+  expect(hoopButton(container, "4×4 in")).toHaveAttribute("aria-pressed", "true");
   expect(container.querySelector(".hoopreset")).toBeNull();
 });
 
 test("manually picking the suggested hoop itself shows no redundant reset link", () => {
-  const { container } = renderStep({ hoopId: "5x7" });
-  expect(hoopButton(container, "5×7 in")).toHaveAttribute("aria-pressed", "true");
+  const { container } = renderStep({ hoopId: "4x4" });
+  expect(hoopButton(container, "4×4 in")).toHaveAttribute("aria-pressed", "true");
   expect(container.querySelector(".hoopreset")).toBeNull();
 });
 
