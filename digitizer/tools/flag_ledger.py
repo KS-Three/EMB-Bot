@@ -51,6 +51,8 @@ from pathlib import Path
 DIGITIZER = Path(__file__).resolve().parent.parent
 if str(DIGITIZER) not in sys.path:
     sys.path.insert(0, str(DIGITIZER))
+from tools._console import utf8_console  # noqa: E402
+
 REPO = DIGITIZER.parent
 CONFIG = DIGITIZER / "digitizer_core" / "config.py"
 MEMORY = REPO / ".claude" / "memory"
@@ -230,12 +232,12 @@ def main(argv=None) -> int:
     ap.add_argument("--json", type=Path, help="also write the rows as JSON")
     ap.add_argument("--no-git", action="store_true", help="skip the `git log -S` PR lookup")
     a = ap.parse_args(argv)
+    utf8_console()
     led = ledger(use_git=not a.no_git)
     md = markdown(led)
     if a.md:
         a.md.write_text(md, encoding="utf-8")
     else:
-        sys.stdout.reconfigure(encoding="utf-8")
         print(md)
     if a.json:
         a.json.write_text(json.dumps(led, indent=1, default=str), encoding="utf-8")

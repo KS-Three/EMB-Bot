@@ -34,7 +34,8 @@ from tools._console import utf8_console
 TOOLS = pathlib.Path(__file__).resolve().parents[1] / "tools"
 
 #: Tools that read a Markdown doc at runtime and print strings out of it.
-DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
+DOC_READERS = {"scope_budget", "memory_budget", "doc_claims",
+               "flag_ledger"}   # reads .claude/memory notes, prints their names (2026-10-26)
 
 #: Tools that NAME a `.md` path without ever reading one — `acceptance_ab`
 #: points the reader at `rembg_isolated/README.md` in a message, and
