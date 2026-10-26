@@ -212,6 +212,25 @@ FLAGS: dict[str, dict] = {
                 "17,568 / 19), MFab LC 16,542 / 72 -> 16,658 / 44 (pro 15,786 / 20), Becker beanie "
                 "11,501 / 21 -> 13,726 / 20 (pro 11,411 / 11). White sews ON TOP of black on MFab "
                 "(the reverse of #1059's order): that order is Kent's call."},
+    # ---- MFab under-fill panels (2026-10-25, Kent: "the satin infill in between and around
+    # letters ... use the M-Fab logo"): defaults | b-fixed | pro, then d2 | d2 + panels | pro
+    "silhouette_underfill_alone": {
+        "sets": {"silhouette_underfill": True},
+        "fixtures": ["mfab_hat", "mfab_lc"],
+        "metric": "sub_1mm", "about": "stitches under 1 mm", "pr": None,
+        "note": "The under-fill ALONE, the white keyline unsewn (arm b). Before this PR the "
+                "keyline cut split the outline and stage 5 dropped every body it held, uncounted "
+                "(MFab LC: 26 merged shapes sewn by nobody); now every body sews as the host's "
+                "fill at one angle. Cells digitized with rembg from the main checkout's venv and "
+                "its timeout pinned at 900 s (the hat is photo_scene: route checked per arm)."},
+    "silhouette_underfill_panels": {
+        "base": {"silhouette_underfill": True, **_WHITE_SEWN}, "base_name": "d2",
+        "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "silhouette_underfill_panels": True},
+        "fixtures": ["mfab_hat", "mfab_lc"],
+        "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": None,
+        "note": "OFF is arm d2 (under-fill + white sewn + keyline). ON: AND WELDING and LLC ride "
+                "a closed white panel -- not merged into the black, sewn after the white (black, "
+                "white, black), white loops only round the M-FAB bodies. Same rembg pin as above."},
     # ---- wave 3 (2026-10-25)
     "border_from_outline_line_art_guard": {
         "base": {"border_from_outline": True},
