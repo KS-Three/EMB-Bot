@@ -959,7 +959,9 @@ def build_generation(
                            min_stroke_mm=cfg.small_text_cap_min_stroke_mm,
                            letter_gap_mm=cfg.small_text_cap_letter_gap_mm,
                            bold_scale=cfg.small_text_cap_bold_scale,
-                           **({"reach_edges": True} if cfg.small_text_cap_reach_edges else {}))
+                           **({"reach_edges": True} if cfg.small_text_cap_reach_edges else {}),
+                           # each bay's mouth kept open (W3-02, OFF): absent, today's bytes
+                           **({"bay_mouth": True} if cfg.extra.get("small_text_bay_mouth") else {}))
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
@@ -1803,13 +1805,24 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
         stitched_regions = _fill_inside_satin_border(
             stitched_regions, cfg, result.design_class)
 
+    # `cfg.border_from_outline`: the art's own outlines over EVERY region (an
+    # unsewn body still makes its keyline one), computed once here -- the
+    # under-fill's panels read them too -- and handed to stage 7; None with
+    # the flag off.
+    art_outlines = _art_outlines(result.regions, cfg, result.source_pixels)
+
     # `cfg.silhouette_underfill` (built OFF): a ring whose holes hold other
     # shapes gets its outline filled once, underneath, and the ring and its
     # contents sew on top -- on copies, layers moved with them
     # (`silhouette_underfill`). The shapes left unsewn on purpose stay
     # garment: the outline is cut back off them. Off, never called.
+    # `cfg.silhouette_underfill_panels` (built OFF, read only with the white
+    # sewn and `border_from_outline`): the small lettering on a white field
+    # rides it -- never merged into the black, sewn after the white on a
+    # closed white panel -- and is no outline's body. No riders: as before.
     if cfg.silhouette_underfill:
-        stitched_regions, _underfill = silhouette_underfill.apply(stitched_regions, skipped)
+        stitched_regions, _underfill, art_outlines = silhouette_underfill.apply_cfg(
+            stitched_regions, skipped, cfg, art_outlines)
 
     # Fur regions on the streamline tier (`cfg.hair_regions_directional`,
     # default OFF; `fur_regions`). Only regions the gate read in
@@ -1940,12 +1953,9 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
                                     counter_holes=([r.polygon for r in result.regions
                                                     if r.meta.get("cored_counter")]
                                                    if cfg.open_cored_counters else None) or None,
-                                    # `cfg.border_from_outline`: the art's own
-                                    # outlines over EVERY region (an unsewn
-                                    # body still makes its keyline one); None
-                                    # with the flag off.
-                                    art_outlines=_art_outlines(result.regions, cfg,
-                                                               result.source_pixels))
+                                    # `cfg.border_from_outline`: computed above,
+                                    # before the under-fill.
+                                    art_outlines=art_outlines)
 
     # `cfg.beanie_knockdown` (built OFF): a sparse fill under the whole design,
     # sewn first, on a beanie with a known garment colour — `knockdown.py`.

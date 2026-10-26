@@ -49,7 +49,7 @@ import math
 import cv2
 import numpy as np
 from shapely import affinity
-from shapely.geometry import MultiPolygon, Polygon, box
+from shapely.geometry import MultiPolygon, Point, Polygon, box
 from shapely.ops import unary_union
 
 from .regions import Region
@@ -685,7 +685,8 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        min_stroke_mm: float | None = None,
                        letter_gap_mm: float | None = None,
                        bold_scale: float | None = None,
-                       reach_edges: bool = False) -> list[dict]:
+                       reach_edges: bool = False,
+                       bay_mouth: bool = False) -> list[dict]:
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
 
@@ -701,7 +702,11 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     (`_place_line_reset`'s `edge_room`); a letter-sized shape inside the
     line's span joins it (`_join_line_ends`' `inside`); clusters of one line
     whose hulls overlap are placed as one (`_merge_overlapping`). False:
-    byte for byte.
+    byte for byte. `bay_mouth` (`cfg.extra["small_text_bay_mouth"]`, re-set
+    only): a terminal the widening would close a bay with is cut back along
+    its own stroke until the bay keeps the professional's mouth
+    (`_open_mouths`, `BAY_MOUTH_MM`); each cut is a row of the cluster's
+    `mouths`. False: byte for byte.
 
     `max_width_scale` (`cfg.small_text_cap_max_width_scale`): grow the
     letters TALLER by the full scale but WIDER by at most this -- condensed,
@@ -861,7 +866,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                     it["row"]["blocked_by"] = hits[:6]
                 continue
             if reset:
-                _reset_apply(regions, line, bars, inner, found)
+                _reset_apply(regions, line, bars, inner, found, bay_mouth=bay_mouth)
                 continue
             s, dy, dxs = found
             sx = _sx(s, max_width_scale)
@@ -953,6 +958,362 @@ def _widen_keep_counters(poly: Polygon, widen: float):
     return out
 
 
+# KEEP EACH BAY'S MOUTH OPEN (`cfg.extra["small_text_bay_mouth"]`, W3-02,
+# 2026-10-25, built OFF, re-set only). The re-set's widening sews a bay shut
+# wherever a terminal curls back to its own letter: Fremont's EST 1895 at
+# 92.5 mm sewed E as B (the arm serifs meet the middle arm), S as 8 (the
+# terminals meet the spine) and 5 as 3 (the bowl's tail meets the stem).
+# Widening the letter does not open them -- each gap is vertical; at 1.5x
+# wide the 5's bowl was still shut, and the hat's S and 5 were already wider
+# than the pro's. The professional ends the terminal short instead. So a
+# terminal that shuts a mouth is cut back along its own stroke until the
+# mouth, on the sewn extent (the polygon `SEWN_EDGE_MM` out), holds what his
+# hold. The stroke, the bold scale, the counter floor and the letter's scale
+# are never touched.
+#
+# The mouth every E, S and 5 of the professional's keeps, visible on the
+# 0.4 mm thread raster: `tools/bay_census.py --census` over his DSTs in
+# `Embroidery Files.zip` (Fremont Hat and Patch EST 1895, ProSeal hat and
+# beanie SPRAY), each file in its own frame, read by `bay_mouths` -- n 18,
+# range 0.27-1.20, median 0.51 (`tests/test_small_text_bays.py` recomputes
+# it). A layout number read off machine files, not a fabric one: whether it
+# stays open on cloth is a sew-out question (ROADMAP gate 1).
+BAY_MOUTH_MM = 0.51
+# A pocket is ground inside the glyph's morphological closing by a disc this
+# big (mm), at least `glyph_read.SPACE_MIN_HALF_MM` from the thread.
+BAY_REACH_MM = 0.8
+# The raster the switch reads a letter on (px/mm): the counter guard's.
+MOUTH_PX_PER_MM = COUNTER_PX_PER_MM
+# A cut is at most this share of the letter's drawn area; past it the mouth is
+# left as it was (reported), never a letter carved away.
+MOUTH_MAX_CUT_SHARE = 0.2
+# Cuts per letter at most.
+MOUTH_MAX_CUTS = 4
+
+
+def _ground(ink: np.ndarray, ppm: float):
+    """A glyph raster padded past `BAY_REACH_MM` -> (padded ink, ground, its
+    distance to the ink in mm, pad px)."""
+    pad = int(math.ceil((BAY_REACH_MM + 0.5) * ppm)) + 2
+    m = cv2.copyMakeBorder(ink.astype(np.uint8), pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=0)
+    ground = (m == 0).astype(np.uint8)
+    return m, ground, cv2.distanceTransform(ground, cv2.DIST_L2, 5) / ppm, pad
+
+
+def _neck(ground: np.ndarray, dt: np.ndarray, seed, ppm: float) -> float:
+    """The largest clearance (mm) at which ground point `seed` (padded px)
+    still reaches the raster's edge through ground at least that far from the
+    ink; 0 when the ink encloses it."""
+    def reaches(t: float) -> bool:
+        _n, lt = cv2.connectedComponents(((dt >= t) & (ground > 0)).astype(np.uint8), connectivity=8)
+        return lt[seed] != 0 and lt[seed] == lt[0, 0]
+
+    top = float(dt[seed])
+    lo = 0.5 / ppm
+    if top < lo or not reaches(lo):
+        return 0.0
+    if reaches(top):
+        return top
+    hi = top
+    while hi - lo > 0.25 / ppm:
+        mid = 0.5 * (lo + hi)
+        if reaches(mid):
+            lo = mid
+        else:
+            hi = mid
+    return lo
+
+
+def _pockets(ink: np.ndarray, ppm: float, at=None) -> list[dict]:
+    """`bay_mouths`' reading, seeds on the unpadded raster. `at` (unpadded
+    px): only the pocket holding that point, or the nearest within a quarter
+    millimetre of it."""
+    from .glyph_read import SPACE_MIN_HALF_MM
+    m, ground, dt, pad = _ground(ink, ppm)
+    r = max(1, int(round(BAY_REACH_MM * ppm)))
+    closed = cv2.morphologyEx(m, cv2.MORPH_CLOSE,
+                              cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1)))
+    deep = ((closed > 0) & (ground > 0) & (dt >= SPACE_MIN_HALF_MM)).astype(np.uint8)
+    n, lab = cv2.connectedComponents(deep, connectivity=8)
+    labels = range(1, n)
+    if at is not None:
+        y, x = at[0] + pad, at[1] + pad
+        k = int(round(0.25 * ppm))
+        win = lab[max(0, y - k):y + k + 1, max(0, x - k):x + k + 1]
+        if lab[y, x]:
+            labels = [int(lab[y, x])]
+        elif win.any():
+            wy, wx = np.nonzero(win)
+            j = int(np.argmin(np.hypot(wy + max(0, y - k) - y, wx + max(0, x - k) - x)))
+            labels = [int(win[wy[j], wx[j]])]
+        else:
+            labels = []
+    rows = []
+    for i in labels:
+        ys, xs = np.nonzero(lab == i)
+        k = int(np.argmax(dt[ys, xs]))
+        seed = (int(ys[k]), int(xs[k]))
+        rows.append({"mouth_mm": round(2.0 * _neck(ground, dt, seed, ppm), 3),
+                     "width_mm": round(2.0 * float(dt[seed]), 3),
+                     "area_mm2": round(len(ys) / ppm ** 2, 3), "seed": (seed[0] - pad, seed[1] - pad)})
+    return rows
+
+
+def bay_mouths(ink: np.ndarray, ppm: float) -> list[dict]:
+    """Every pocket of ground in ONE glyph's ink mask (bool, y down, `ppm`
+    px/mm) and its MOUTH: a pocket is ground inside the glyph's closing by a
+    `BAY_REACH_MM` disc at least `SPACE_MIN_HALF_MM` from the ink (a bay, or a
+    counter); its mouth is the widest clear passage from it to the outside --
+    twice the largest clearance at which its deepest point still reaches the
+    raster's edge -- 0 when the ink encloses it. `width_mm` is the pocket's own
+    widest circle, so a mouth narrower than it is a constriction. The one
+    reader of `tools/bay_census.py` (a machine file's thread raster) and of
+    the switch (`_open_mouths`, a letter's sewn extent). -> [{"mouth_mm",
+    "width_mm", "area_mm2", "seed": (row, col)}], narrowest mouth first."""
+    return sorted(_pockets(np.asarray(ink, bool), float(ppm)),
+                  key=lambda row: (row["mouth_mm"], row["seed"]))
+
+
+def _skeleton_branches(ink: np.ndarray, ppm: float):
+    """The medial axis of a letter raster, corner spurs pruned, as free-end
+    branches. -> (skeleton bool array, [[(row, col), ...] per branch, from its
+    free end inward, stopping before the junction it reaches])."""
+    from skimage.morphology import skeletonize
+    sk = np.pad(skeletonize(ink > 0), 1)          # a border, so every pixel has a full ring
+    thick = np.pad(cv2.distanceTransform(ink.astype(np.uint8), cv2.DIST_L2, 5), 1)
+    ring = ((-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1))
+
+    def crossings(p) -> int:
+        """0 -> 1 transitions round the 8-neighbourhood: 1 an end, 2 a line, 3+ a junction."""
+        v = [bool(sk[p[0] + dy, p[1] + dx]) for dy, dx in ring]
+        return sum(1 for a, b in zip(v, v[1:] + v[:1]) if not a and b)
+
+    def walk(end):
+        path, seen, cur = [], {end}, end
+        while True:
+            if cur != end and crossings(cur) >= 3:
+                return path, cur
+            path.append(cur)
+            nxt = [(cur[0] + dy, cur[1] + dx) for dy, dx in ring
+                   if sk[cur[0] + dy, cur[1] + dx] and (cur[0] + dy, cur[1] + dx) not in seen]
+            if not nxt:
+                return path, None
+            cur = min(nxt, key=lambda q: abs(q[0] - path[-1][0]) + abs(q[1] - path[-1][1]))
+            seen.update(nxt)
+
+    def ends():
+        ys, xs = np.nonzero(sk)
+        return [(int(y), int(x)) for y, x in zip(ys, xs) if crossings((y, x)) == 1]
+
+    for _ in range(3):              # a square stroke end forks into two corner spurs
+        pruned = False
+        for e in ends():
+            path, junction = walk(e)
+            if junction is not None and len(path) <= max(2.0, 1.2 * thick[junction]):
+                for q in path:
+                    sk[q] = False
+                pruned = True
+        if not pruned:
+            break
+    branches = [[(y - 1, x - 1) for y, x in walk(e)[0]] for e in ends()]
+    return sk[1:-1, 1:-1], branches
+
+
+# The terminal that shuts a mouth is the free end that POINTS at its pinch
+# (`_pinch`): its ink tip within `BAY_REACH_MM` of it, its own direction (the
+# last `TIP_BACK_MM` of its medial axis) within this many degrees of the way
+# to it, the most squarely pointing end tried first. The E's arm serif points
+# down at its pinch; the middle arm runs alongside (79 degrees off) and is not
+# cut -- least ink alone cut it off whole, one cut opening both mouths. A
+# curled tail ending in a slanted face points ~70 degrees off its pinch.
+TIP_BACK_MM = 0.3
+TIP_FACING_DEG = 75.0
+
+
+def _pinch(ground: np.ndarray, dt: np.ndarray, seed, neck: float, ppm: float):
+    """Where a bay's mouth is narrowest (padded px): the point between the
+    bay (the ground `seed` reaches clear of the ink by just more than its
+    `neck`) and the open ground outside that is nearest both -- the thinnest
+    wall of ink a shut mouth is sewn with, or the narrowest gap of an open
+    one."""
+    t = neck + 0.5 / ppm
+    _n, lt = cv2.connectedComponents(((dt >= t) & (ground > 0)).astype(np.uint8), connectivity=8)
+    if lt[seed] == 0 or lt[seed] == lt[0, 0]:
+        return None
+    da = cv2.distanceTransform((lt != lt[seed]).astype(np.uint8), cv2.DIST_L2, 5)
+    do = cv2.distanceTransform((lt != lt[0, 0]).astype(np.uint8), cv2.DIST_L2, 5)
+    k = int(np.argmin(da + do))
+    return divmod(k, lt.shape[1])
+
+
+def _facing(br, pinch, ppm: float, half: float = 0.0) -> float | None:
+    """How squarely free-end branch `br` (`_skeleton_branches`, unpadded px)
+    points at `pinch`: the cosine between its own direction and the way to
+    it, when its ink tip -- `half` px (the stroke's half width) past the axis
+    end at most -- is within `BAY_REACH_MM` of it and it points within
+    `TIP_FACING_DEG`; else None."""
+    if math.dist(br[0], pinch) > BAY_REACH_MM * ppm + half:
+        return None
+    back = br[min(len(br) - 1, max(2, int(round(TIP_BACK_MM * ppm))))]
+    dy, dx = br[0][0] - back[0], br[0][1] - back[1]
+    fy, fx = pinch[0] - br[0][0], pinch[1] - br[0][1]
+    norm = math.hypot(dy, dx) * math.hypot(fy, fx)
+    if norm < 1e-9:
+        return 1.0                  # the axis ends on the pinch itself
+    cos = (dy * fy + dx * fx) / norm
+    return cos if cos >= math.cos(math.radians(TIP_FACING_DEG)) else None
+
+
+def _open_mouths(poly: Polygon, widen: float, mouth_mm: float = BAY_MOUTH_MM):
+    """`poly` (a re-set letter, scaled and placed, before `_widen_keep_counters`)
+    with each terminal that shuts a bay cut back along its own stroke, until
+    the bay's mouth on the sewn extent (widened, then `SEWN_EDGE_MM` out) holds
+    `mouth_mm` or is no longer narrower than the bay (comment at
+    `BAY_MOUTH_MM`). A shut bay is a pocket of the sewn extent (`bay_mouths`)
+    narrower at its mouth than inside and narrower than `mouth_mm`, lying
+    where the letter itself is open (a counter of `poly` is never cut toward).
+    The mouth's place is where the letter AS DRAWN is narrowest (`_pinch`);
+    the terminal is the free end of the letter's medial axis pointing most
+    squarely at it (`_facing`); the cut is the ink within a length of that
+    end measured inside the ink -- the stroke's end, square across it -- the
+    shortest that opens the mouth. Fails open: a mouth no cut opens within
+    `MOUTH_MAX_CUT_SHARE` of the letter, or one with no such end, is left and
+    reported. -> (polygon, [row per shut mouth])."""
+    if not isinstance(poly, Polygon) or poly.is_empty:
+        return poly, []
+    from skimage.graph import MCP_Geometric
+    ppm = MOUTH_PX_PER_MM
+    pad = widen + SEWN_EDGE_MM + 0.5
+    bx0, by0, bx1, by1 = poly.bounds
+    ox, oy = bx0 - pad, by0 - pad
+    w = int(math.ceil((bx1 - bx0 + 2 * pad) * ppm)) + 1
+    h = int(math.ceil((by1 - by0 + 2 * pad) * ppm)) + 1
+
+    def raster(g) -> np.ndarray:
+        m = np.zeros((h, w), np.uint8)
+        for q in _polys(g):
+            cv2.fillPoly(m, [np.round((np.asarray(q.exterior.coords)[:, :2] - (ox, oy)) * ppm).astype(np.int32)], 1)
+            for ring in q.interiors:
+                cv2.fillPoly(m, [np.round((np.asarray(ring.coords)[:, :2] - (ox, oy)) * ppm).astype(np.int32)], 0)
+        return m
+
+    outline = Polygon(poly.exterior)
+
+    def sewn(g) -> np.ndarray:
+        return raster(_widen_keep_counters(g, widen).buffer(SEWN_EDGE_MM))
+
+    def shut(g) -> list[dict]:
+        out = []
+        for row in _pockets(sewn(g), ppm):
+            if row["mouth_mm"] >= mouth_mm or row["mouth_mm"] >= row["width_mm"] - 2.0 / ppm:
+                continue
+            y, x = row["seed"]
+            if outline.contains(Point(x / ppm + ox, y / ppm + oy)):
+                continue                    # a counter of the letter itself
+            out.append(row)
+        return out
+
+    def opened(g, seed) -> float | None:
+        """The mouth of the bay at `seed` (unpadded px) on `g`'s sewn extent,
+        read as `bay_mouths` reads it, when it holds `mouth_mm` or is no
+        longer narrower than the bay itself (an E's mouth can be no wider than
+        the slot between its arms); else None. A bay no longer a pocket at all
+        is not opened: it was cut past a bay into a notch."""
+        rows = _pockets(sewn(g), ppm, at=seed)
+        if not rows:
+            return None
+        row = rows[0]
+        if row["mouth_mm"] >= mouth_mm or 0 < row["mouth_mm"] >= row["width_mm"] - 2.0 / ppm:
+            return row["mouth_mm"]
+        return None
+
+    out_rows: list[dict] = []
+    tried: set = set()
+    area0 = poly.area
+    for _ in range(MOUTH_MAX_CUTS):
+        todo = [r for r in shut(poly) if r["seed"] not in tried]
+        if not todo:
+            break
+        target = todo[0]
+        tried.add(target["seed"])
+        ink = raster(poly)
+        _sk, branches = _skeleton_branches(ink, ppm)
+        if not branches:
+            out_rows.append({"mouth_mm": target["mouth_mm"], "left": "no_terminal"})
+            continue
+        sy, sx = target["seed"]
+        # where the mouth is: the bay's narrowest point in the letter AS DRAWN,
+        # which the widening shuts first (on the sewn extent the wall is as
+        # thick through an E's serif as across its shut mouth)
+        _m, ground, dt, p = _ground(ink, ppm)
+        at = (sy + p, sx + p)
+        pinch = _pinch(ground, dt, at, _neck(ground, dt, at, ppm), ppm) if ground[at] else None
+        if pinch is None:
+            out_rows.append({"mouth_mm": target["mouth_mm"], "left": "no_pinch"})
+            continue
+        pinch = (pinch[0] - p, pinch[1] - p)
+        thick = cv2.distanceTransform(ink, cv2.DIST_L2, 5)
+        back = max(2, int(round(TIP_BACK_MM * ppm)))
+        ends = sorted(((c, br) for br in branches
+                       if (c := _facing(br, pinch, ppm, max(float(thick[q]) for q in br[:back + 1]))) is not None),
+                      key=lambda cb: -cb[0])
+        best = None
+        for _c, br in ends:            # the end pointing most squarely at it first
+            # the ink within `length` of the tip measured INSIDE the ink: the
+            # stroke's end, square across it once past its own width, and on
+            # past a serif's junction into the stroke it ends (an S's beak)
+            geo, _tb = MCP_Geometric(np.where(ink > 0, 1.0, np.inf)).find_costs([br[0]])
+
+            def trial(length: float, geo=geo):
+                """The letter cut `length` mm back from this end -> (polygon,
+                mouth or None), or None when the cut is past the share or
+                splits the letter."""
+                cut = (ink > 0) & (geo <= length * ppm)
+                if cut.sum() / ppm ** 2 > MOUTH_MAX_CUT_SHARE * area0:
+                    return None
+                cs, _hier = cv2.findContours(cut.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+                piece = unary_union([Polygon((c.reshape(-1, 2) / ppm) + (ox, oy)).buffer(1.0 / ppm)
+                                     if len(c) >= 3 else Point(*(c.reshape(-1, 2)[0] / ppm + (ox, oy))).buffer(1.0 / ppm)
+                                     for c in cs])
+                rest = [q for q in _polys(poly.difference(piece)) if q.area > 0]
+                if not rest:
+                    return None
+                main = max(rest, key=lambda q: q.area)
+                if sum(q.area for q in rest) - main.area > 0.02 * area0 \
+                        or len(main.interiors) != len(poly.interiors) or not main.is_valid:
+                    return main, None
+                return main, opened(main, (sy, sx))
+
+            # the shortest cut that opens it: 0.2 mm strides, then 0.05 mm back
+            hit, lo = None, 0.0
+            for stride in range(1, 41):
+                t = trial(0.2 * stride)
+                if t is None:
+                    break
+                if t[1] is not None:
+                    hit = (0.2 * stride, *t)
+                    break
+                lo = 0.2 * stride
+            if hit is None:
+                continue
+            for length in (lo + 0.05, lo + 0.1, lo + 0.15):
+                t = trial(length)
+                if t is not None and t[1] is not None:
+                    hit = (length, *t)
+                    break
+            length, main, m = hit
+            best = (poly.area - main.area, main, round(length, 3), m, br[0])
+            break
+        if best is None:
+            out_rows.append({"mouth_mm": target["mouth_mm"], "left": "no_cut_opens_it"})
+            continue
+        gone, poly, length, m, tip = best
+        out_rows.append({"mouth_mm": target["mouth_mm"], "opened_mm": m,
+                         "cut_mm": round(length, 3), "cut_mm2": round(gone, 4),
+                         "tip": (round(tip[1] / ppm + ox, 2), round(tip[0] / ppm + oy, 2))})
+    return poly, out_rows
+
+
 def _merge_overlapping(line: list[dict]) -> list[dict]:
     """`cfg.small_text_cap_reach_edges`: clusters of one line whose hulls
     overlap are one word the tagger split letter by letter (ProSeal's
@@ -1042,12 +1403,14 @@ def _join_line_ends(line: list[dict], regions: list[Region], taken: set[int], ca
 
 
 def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
-                 inner: dict[int, list[Region]], found) -> None:
+                 inner: dict[int, list[Region]], found, bay_mouth: bool = False) -> None:
     """Write a re-set line (`_place_line_reset`'s answer) into its regions:
     each shape scaled about its letter's centre and moved to its place, then
     widened as the growth widens; a word's inner pieces go with the letter
     they sit in. The meta keys are the growth's, so every reader downstream
-    sees a grown letter."""
+    sees a grown letter. `bay_mouth`: a terminal that shuts a bay is cut back
+    first (`_open_mouths`), each cut a row of the cluster's `mouths`, with how
+    far the letter's sewn width and height moved."""
     s, dy, dxs, resets, bar_dxs = found
     for k, (it, dx, rs) in enumerate(zip(line, dxs, resets)):
         f, widen, cy = rs["f"], rs["widen"], rs["cy"]
@@ -1063,6 +1426,17 @@ def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
         old_union = unary_union([r.polygon for r in it["group"]])
         for r, shape, (cx, dxu) in zip(it["group"], it["shapes"], rs["moves"]):
             moved = affinity.translate(affinity.scale(shape, f, s, origin=(cx, cy)), dxu + dx, dy)
+            if bay_mouth:
+                cut, rows = _open_mouths(moved, widen)
+                if rows:
+                    if cut is not moved:
+                        a = _widen_keep_counters(moved, widen).bounds
+                        b = _widen_keep_counters(cut, widen).bounds
+                        for row in rows:
+                            row.update(dw_mm=round((b[2] - b[0]) - (a[2] - a[0]), 3),
+                                       dh_mm=round((b[3] - b[1]) - (a[3] - a[1]), 3))
+                    it["row"].setdefault("mouths", []).extend({"shape": r.shape_id, **row} for row in rows)
+                moved = cut
             final = _widen_keep_counters(moved, widen)
             if not isinstance(final, Polygon) or not final.is_valid or final.is_empty:
                 continue

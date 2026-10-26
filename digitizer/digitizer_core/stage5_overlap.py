@@ -1124,13 +1124,28 @@ def resolve_overlaps(
             # A bean letter sews the paths of its whole ink and a hairline
             # strand sews its whole ARTWORK polygon, so a piece the clip cuts
             # off them is sewn already: neither is split.
+            #
+            # `cfg.silhouette_underfill` (built OFF): an under-fill host's ink
+            # is its artwork AND the outline it fills. With the white keyline
+            # left unsewn, `silhouette_underfill.plan` cuts it out of that
+            # outline, which falls into the band and the bodies it held (MFab
+            # LC: 21 parts, M-FAB and every AND WELDING LLC letter, all merged
+            # into the host). Judged on the band's artwork alone each body
+            # piece read as pull growth and was dropped uncounted -- nothing
+            # sewed them. Judged on the outline each is a piece of its own,
+            # always kept, sewn as the host's fill on the host's axis. No
+            # outline: exactly as before.
+            sil = r.meta.get(UNDERFILL_KEY)
+            ink_art = poly if sil is None else poly.union(sil)
+            sil_keep = sil is not None
             pieces: list[Polygon] = []
-            splittable = ((parent_ink or keep_pieces)
+            splittable = ((parent_ink or keep_pieces or sil_keep)
                           and not r.meta.get("bean_letter_spines")
                           and not (hairline and r.shape_id in hairline))
             if splittable:
                 grown, pieces, dropped_ink = _split_clip(
-                    grown, poly, piece_floor, by_ink=parent_ink, keep=keep_pieces)
+                    grown, ink_art, piece_floor, by_ink=parent_ink or sil_keep,
+                    keep=keep_pieces or sil_keep)
                 slivers.extend((r.shape_id, a) for a in dropped_ink)
             else:
                 grown = _largest_polygon(grown)
@@ -1172,12 +1187,12 @@ def resolve_overlaps(
                     # Same judgement for a split a held hole makes, and the
                     # cut-off pieces keep their share of the holes too.
                     grown, more, dropped_ink = _split_clip(
-                        grown.difference(cut), poly, piece_floor,
-                        by_ink=parent_ink, keep=keep_pieces)
+                        grown.difference(cut), ink_art, piece_floor,
+                        by_ink=parent_ink or sil_keep, keep=keep_pieces or sil_keep)
                     slivers.extend((r.shape_id, a) for a in dropped_ink)
                     kept_after: list[Polygon] = []
                     for pc in pieces:
-                        k_, d_ = _judge_pieces(pc.difference(cut), poly, piece_floor)
+                        k_, d_ = _judge_pieces(pc.difference(cut), ink_art, piece_floor)
                         kept_after.extend(k_)
                         slivers.extend((r.shape_id, a) for a in d_)
                     pieces = kept_after + more
@@ -1205,10 +1220,18 @@ def resolve_overlaps(
             # sews the ARTWORK (the run rung's outline) does not sew it twice.
             parent = r
             extra: list[PlannedRegion] = []
+            # An under-fill host split into pieces (above) sews them at ONE
+            # angle, the host's: with no compensation axis each piece would
+            # take its own `best_fill_angle_deg`, so they share the one the
+            # silhouette (holes closed) takes, at stage 7's row spacing.
+            if sil_keep and pieces and axis is None:
+                axis = best_fill_angle_deg(
+                    Polygon(poly.exterior),
+                    (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust))
             if pieces:
                 art_left = poly
                 for k, pc in enumerate(pieces, start=2):
-                    share = _largest_polygon(poly.intersection(pc))
+                    share = _largest_polygon(ink_art.intersection(pc))
                     if share is None:
                         continue
                     art_left = art_left.difference(pc)
