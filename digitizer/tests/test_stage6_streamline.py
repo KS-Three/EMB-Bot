@@ -67,6 +67,7 @@ def _plan_for(regions: list[Region], source_pixels=None, **cfg_kw):
     """Stage 5 + stage 7 only — the same minimal-plan helper
     `test_stage6_sketch.py` uses for its per-shape-override tests, reused
     here for the streamline tier's own per-shape form."""
+    cfg_kw.setdefault("border_by_size", False)  # the tier under test, not the by-size ring (2026-10-23 flip)
     c = PipelineConfig(**cfg_kw)
     planned, _ = resolve_overlaps(regions, FAB, c)
     blocks, warnings = sequence(planned, FAB, c, source_pixels=source_pixels)

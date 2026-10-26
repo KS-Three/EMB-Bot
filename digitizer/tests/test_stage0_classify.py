@@ -117,6 +117,9 @@ def test_same_input_classified_twice_is_identical(path):
     """No RNG in the signal computation (the throwaway quantize is seeded),
     so this should be free -- pinned as a canary anyway, per this codebase's
     established pattern (see test_stage6_blend.py::test_blend_determinism).
+
+    It was not free: it went red twice in CI on `logo_whitebg.png` until
+    `gradient_smoothness` stopped depending on a buffer's address -- Test 5b.
     """
     a = classify(path, cfg())
     b = classify(path, cfg())
@@ -124,6 +127,101 @@ def test_same_input_classified_twice_is_identical(path):
     assert a.confidence == b.confidence
     assert a.signals == b.signals
     assert a.warnings == b.warnings
+
+
+# --- Test 5b: the signal must not follow the heap --------------------------
+#
+# CI went red twice (main run 40137455117, a PR run 40129814835, both shard 1)
+# on the test above, `logo_whitebg.png`, `gradient_smoothness` 0.0005601321504400403
+# against 0.0005601322072834591 -- once with the first call high, once with the
+# second. The brief blamed the float32 `boxFilter` and mean. Measured 2026-10-25
+# they are bit-stable at 1 and 8 threads, at every input and output alignment,
+# and under IPP's avx2 / sse42 / disabled paths. The one op that moves is
+# `cv2.magnitude`: Intel IPP's AVX2 kernel (the path conftest.py caps CI at)
+# gives a different answer for a 16-byte-aligned output buffer than for a
+# 32-byte-aligned one, and the buffer is numpy's, so its address is whatever the
+# allocator had free. Offsets 0/4/32/36 read ...2072834591, 12-28 read
+# ...1504400403, 8/40 a third value. The signal is near zero on this fixture
+# (a flat logo), so one rounding in a few pixels is visible; the others do not
+# show it.
+
+LOGO_WHITEBG = TESTDATA / "logo_whitebg.png"
+
+
+def _magnitude_into_buffer_at(offset: int):
+    """A stand-in for `cv2.magnitude` that hands IPP an OUTPUT buffer whose data
+    pointer sits `offset` bytes past a 64-byte boundary -- the one thing numpy's
+    allocator varies from call to call and the test cannot otherwise steer."""
+    real = cv2.magnitude
+
+    def magnitude(x, y):
+        raw = np.empty(x.size * 4 + 256, np.uint8)
+        start = (-raw.ctypes.data) % 64 + offset
+        dst = raw[start:start + x.size * 4].view(np.float32).reshape(x.shape)
+        assert dst.ctypes.data % 64 == offset
+        real(x, y, dst)
+        return dst
+
+    return magnitude
+
+
+@pytest.mark.parametrize("offset", range(0, 64, 4))
+def test_gradient_smoothness_does_not_follow_the_output_buffers_address(offset, monkeypatch):
+    """Every 4-byte shift of the buffer `mag` lands in must read the same value.
+    On a host whose IPP takes the AVX2 path (CI, capped by conftest.py; Kent's
+    laptop) this is red with `cv2.magnitude` in `_gradient_smoothness`; it is
+    vacuous only where IPP is off, which is exactly where the bug cannot show."""
+    from digitizer_core import stage0_classify as stage0
+
+    rgb, alpha = stage0._load(LOGO_WHITEBG)
+    fg = stage0._fg_mask(rgb, alpha)
+    want = stage0._gradient_smoothness(rgb, fg)
+
+    monkeypatch.setattr(stage0.cv2, "magnitude", _magnitude_into_buffer_at(offset))
+    assert stage0._gradient_smoothness(rgb, fg) == want
+
+
+def test_magnitude_is_the_exact_hypotenuse_rounded_once():
+    """`_magnitude` is sqrt(gx^2 + gy^2) in float64 -- both squares are exact
+    there, the sum rounds once, and sqrt is correctly rounded on every IEEE
+    host -- then rounded once to float32. Nothing in it can vary with SIMD
+    width, alignment, thread count or library path."""
+    from digitizer_core import stage0_classify as stage0
+
+    rng = np.random.default_rng(7)
+    gx = (rng.standard_normal((37, 53)) * 3).astype(np.float32)
+    gy = (rng.standard_normal((37, 53)) * 3).astype(np.float32)
+    gx[0, 0], gy[0, 0] = 3.0, 4.0
+    want = np.sqrt(gx.astype(np.float64) ** 2 + gy.astype(np.float64) ** 2).astype(np.float32)
+
+    got = stage0._magnitude(gx, gy)
+    assert got.dtype == np.float32 and got.shape == gx.shape
+    assert got[0, 0] == 5.0
+    assert np.array_equal(got, want)
+    # the same answer from a block size that does not divide the rows
+    assert np.array_equal(stage0._magnitude(gx, gy, rows=5), want)
+
+
+@pytest.mark.parametrize("threads", [1, 2, 8])
+def test_classifying_in_a_loop_is_bit_identical(threads):
+    """The same input classified N times is identical -- at any OpenCV thread
+    count and with the heap shifted between passes (live blocks of odd sizes
+    kept across calls, so numpy's next large block lands elsewhere). Precision
+    must not depend on timing or thread count: CI runs this on an xdist worker
+    with other tests' arrays still being freed around it."""
+    previous = cv2.getNumThreads()
+    cv2.setNumThreads(threads)
+    held = []
+    try:
+        first = classify(LOGO_WHITEBG, cfg())
+        for i in range(5):
+            held.append(np.empty(1_000_003 + 4099 * i + 12 * i, np.uint8))
+            again = classify(LOGO_WHITEBG, cfg())
+            assert again.signals == first.signals, (i, threads)
+            assert again.class_ == first.class_
+            assert again.confidence == first.confidence
+    finally:
+        cv2.setNumThreads(previous)
 
 
 # --- forced_class escape hatch ----------------------------------------------

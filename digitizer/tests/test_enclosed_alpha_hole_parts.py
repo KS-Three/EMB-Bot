@@ -63,7 +63,8 @@ def _hole_regions(result):
 def test_off_reproduces_the_blob():
     """OFF is the engine as it was: the transparent middle vectorizes as more
     than one region and at least one of them is left stitched — the Drone O."""
-    result = run_stages(two_tone_ring_with_transparent_middle(), cfg(target_width_mm=20.0))
+    result = run_stages(two_tone_ring_with_transparent_middle(),
+                        cfg(target_width_mm=20.0, enclosed_alpha_hole_parts=False))
     parts = _hole_regions(result)
     assert len(parts) >= 2, [r.polygon.bounds for r in parts]
     untagged = [r for r in parts if not r.meta.get("enclosed_background")]

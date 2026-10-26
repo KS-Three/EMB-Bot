@@ -94,7 +94,7 @@ def _run(fixture: str, width: float, cap: str = "bean",
     # more because the letters stopped being fill, not the mechanism moving.
     _result, plan = digitize(
         TESTDATA / fixture,
-        PipelineConfig(target_width_mm=width, edge_cap=cap,
+        PipelineConfig(target_width_mm=width, edge_cap=cap, border_by_size=False,
                        edge_cap_over_budget=over_budget,
                        # held on the engine the bill was measured on: ON since
                        # 2026-10-24, `border_from_outline` sews Becker's keyline
@@ -335,7 +335,7 @@ def test_dropping_is_off_by_default_and_the_drop_never_executes(monkeypatch):
         monkeypatch.setattr(S, "EDGE_CAP_BUDGET_PCT", 1.0)
         monkeypatch.setattr(S, "_over_budget_action", own_thread_only(spy, real))
         plan = digitize(TESTDATA / WHITEBG,
-                        PipelineConfig(target_width_mm=CHEAP, edge_cap="bean",
+                        PipelineConfig(target_width_mm=CHEAP, edge_cap="bean", border_by_size=False,
                                        **({"edge_cap_over_budget": mode}
                                           if mode != "warn" else {})))[1]
         monkeypatch.undo()
@@ -360,7 +360,7 @@ def test_the_warning_moves_no_stitch(monkeypatch):
     monkeypatch.setattr(S, "EDGE_CAP_BUDGET_PCT", 1.0)
     _result, forced = digitize(
         TESTDATA / WHITEBG,
-        PipelineConfig(target_width_mm=CHEAP, edge_cap="bean"))
+        PipelineConfig(target_width_mm=CHEAP, edge_cap="bean", border_by_size=False))
     monkeypatch.undo()
 
     assert _over(forced) is not None, "the forced ceiling did not fire"

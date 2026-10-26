@@ -29,7 +29,7 @@ from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import _bury_trims_under_later, sequence
 from digitizer_core.stitches import StitchBlock, StitchRun
 
-from .conftest import PLAN_CFG_KW, PRE_FLIP
+from .conftest import FLIP_2026_10_23, PLAN_CFG_KW, PRE_FLIP
 
 FABRIC = fabric_for_garment(PLAN_CFG_KW["garment_id"])   # trims at 3.0 mm
 HALF = machine.COVERAGE_THREAD_W_MM / 2.0
@@ -46,7 +46,9 @@ def _bar(x0, x1, y0=0.0, y1=10.0):
 
 
 def _plan(regions, **kw):
-    conf = PipelineConfig(**{**PLAN_CFG_KW, **kw})
+    # The synthetic bars are pinned on the engine the OFF md5s were captured
+    # on: the 2026-10-23 flips (this flag among them) off unless a test asks.
+    conf = PipelineConfig(**{**PLAN_CFG_KW, **FLIP_2026_10_23, **kw})
     planned, _ = resolve_overlaps(regions, FABRIC, conf)
     blocks, _ = sequence(planned, FABRIC, conf)
     return blocks

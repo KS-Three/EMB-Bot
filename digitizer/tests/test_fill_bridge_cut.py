@@ -176,6 +176,7 @@ def _stage7_hands_over(monkeypatch, **cfg_kw) -> list:
         return real(*a, **k)
 
     monkeypatch.setattr(stage7_sequence, "stitch_shape", recording)
+    cfg_kw.setdefault("border_by_size", False)  # a synthetic comb: the bridge cut, not the by-size ring
     cfg = PipelineConfig(**cfg_kw)
     poly = unary_union([box(-25, -20, 25, -10), box(-25, -10, -11, 20), box(11, -10, 25, 20)])
     chart = chart_for(cfg)
@@ -216,7 +217,7 @@ def test_the_lift_warning_does_not_claim_the_lift_was_forced(monkeypatch):
         return runs, {**report, "jumps": 2}
 
     monkeypatch.setattr(stage7_sequence, "stitch_shape", two_lifts)
-    cfg = PipelineConfig()
+    cfg = PipelineConfig(border_by_size=False)
     poly = box(-20, -10, 20, 10)
     chart = chart_for(cfg)
     region = Region(shape_id="Sbox00001", polygon=poly, thread_index=0,

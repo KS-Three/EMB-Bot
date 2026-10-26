@@ -291,6 +291,37 @@ def _unique_color_mass(rgb: np.ndarray, fg: np.ndarray, seed: int) -> float:
 
 # --- gradient_smoothness ------------------------------------------------------
 
+def _magnitude(gx: np.ndarray, gy: np.ndarray, rows: int = 256) -> np.ndarray:
+    """sqrt(gx^2 + gy^2) as float32, with an answer that depends on nothing but
+    the two inputs.
+
+    This replaces `cv2.magnitude`, whose Intel IPP AVX2 kernel (the path the
+    test environment is capped at, and Kent's laptop runs) returns a different
+    float32 for a 16-byte-aligned OUTPUT buffer than for a 32-byte-aligned one.
+    The buffer is numpy's, so its address is whatever the allocator had free:
+    `gradient_smoothness` on `logo_whitebg.png` read 0.0005601321504400403 or
+    0.0005601322072834591 from one process, first call or second, and the
+    classifier's own determinism test went red on main twice (CI runs 40137455117
+    and 40129814835). Offsets 0/4/32/36 read the second value, 12-28 the first,
+    8/40 a third; IPP sse42 and IPP disabled read the first, so no library path
+    is "the" answer.
+
+    Here both squares are exact in float64 (a float32's 24-bit significand
+    squared is 48 bits), the sum rounds once, and sqrt is correctly rounded on
+    every IEEE host, so the result is the same at any alignment, thread count or
+    SIMD width. It is not bit-equal to either IPP reading (IPP's kernel is not
+    correctly rounded): of the 44 images under testdata/, 9 move
+    `gradient_smoothness` by 1e-7 to 3.5e-7 relative, none changes class, and
+    one (`bg_uncertain.png`) moves confidence by 7e-8. No threshold moved. Blocked
+    by rows so the float64 temporaries stay a few megabytes on a large upload."""
+    out = np.empty(gx.shape, np.float32)
+    for s in range(0, gx.shape[0], rows):
+        a = gx[s:s + rows].astype(np.float64)
+        b = gy[s:s + rows].astype(np.float64)
+        out[s:s + rows] = np.sqrt(a * a + b * b)
+    return out
+
+
 def _gradient_smoothness(rgb: np.ndarray, fg: np.ndarray) -> float:
     """Mean local variance of the Sobel gradient magnitude, over the parts
     of the foreground that are NOT near a detected edge -- a hard color
@@ -303,7 +334,7 @@ def _gradient_smoothness(rgb: np.ndarray, fg: np.ndarray) -> float:
     gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32) / 255.0
     gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
     gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
-    mag = cv2.magnitude(gx, gy)
+    mag = _magnitude(gx, gy)
 
     edges = cv2.Canny((gray * 255).astype(np.uint8), CANNY_LOW, CANNY_HIGH)
     edges = cv2.dilate(edges, np.ones((CANNY_DILATE_PX, CANNY_DILATE_PX), np.uint8))

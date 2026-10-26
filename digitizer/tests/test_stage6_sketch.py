@@ -79,6 +79,7 @@ def _bar(w: float, h: float) -> Polygon:
 
 
 def _plan_for(regions: list[Region], source_pixels=None, **cfg_kw):
+    cfg_kw.setdefault("border_by_size", False)  # the tier under test, not the by-size ring (2026-10-23 flip)
     c = PipelineConfig(**cfg_kw)
     planned, _ = resolve_overlaps(regions, FAB, c)
     blocks, warnings = sequence(planned, FAB, c, source_pixels=source_pixels)

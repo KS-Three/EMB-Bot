@@ -66,7 +66,7 @@ from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_letteri
 from .silhouette_underfill import RIDER_HOLES_KEY
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
-from .columns import (is_lettering, is_thin_stem, lettering_columns_shape,
+from .columns import (is_fine_bar, is_lettering, is_thin_stem, lettering_columns_shape,
                       small_print_clear,
                       small_print_counter_set, small_print_counters)
 from .words import is_text, word_key
@@ -2836,6 +2836,23 @@ def sequence(
     # exists so a towel's pull cannot flip a tier, and that stays true of
     # everything but this population); with the flag off nothing carries the
     # tag, so the ladder is byte-identical.
+    # `cfg.fine_bars_satin` (built OFF, 2026-10-25): a free-standing thin
+    # INK bar under the area floor (`columns.is_fine_bar`) skips the run
+    # rescue and takes the ordinary ladder to the satin tier, as the pro
+    # sews it; `stitch_one` falls back to today's ring if no satin comes
+    # out. Both ON, `small_solids_satin` tries first and keeps every shape
+    # it sews. Off, the set is empty and `routes_to_run` is today's.
+    fine_bars: set[str] = set()
+    if cfg.fine_bars_satin and cfg.satin and rescue:
+        _sewn = [_pr.region for _pr in planned]
+        for _pr in planned:
+            if (str(_pr.region.meta.get("tier", "auto")).lower() == "auto"
+                    and _pr.region.polygon.area < detail_mm2
+                    and not widened_lettering(_pr.region)
+                    and is_fine_bar(_pr.region, _pr.region.polygon, _sewn, cfg)):
+                fine_bars.add(_pr.shape_id)
+    fine_bar_trying: set[str] = set()
+
     def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
         wt = _word_tier(pr.region, cfg)
         if pr_tier == "auto" and wt == "run":
@@ -2847,6 +2864,8 @@ def sequence(
                 and is_lettering(pr.region, cfg)
                 and is_thin_stem(pr.region.polygon, cfg.min_detail_mm)):
             return False                # a lettering STEM under the area floor: the Column lane
+        if pr_tier == "auto" and pr.shape_id in fine_bars:
+            return False                # a fine ink bar: the satin tier (`is_fine_bar`)
         return pr_tier == "run" or (pr_tier == "auto" and rescue
                                     and pr.region.polygon.area < detail_mm2
                                     and not widened_lettering(pr.region))
@@ -3144,7 +3163,41 @@ def sequence(
             # (`rest_planned`) goes down the ladder below as a shape of its
             # own, FIRST — the hairlines are laid over it, like a strand over
             # any ground.
+            # `cfg.fine_bars_satin`: a fine bar goes down the ladder below
+            # ONCE (`fine_bar_trying`), the hairline tier skipped; satin out
+            # of it is the bar, anything else becomes today's ring exactly
+            # -- the run rung's own call -- so no mark is lost.
+            if tier == "auto" and p.shape_id in fine_bars and p.shape_id not in fine_bar_trying:
+                if cfg.small_solids_satin and is_small_solid(p.region.polygon, profile_for(p).width_mm):
+                    # both ON: `small_solids_satin` first, as its rung would
+                    runs, report = small_solid_satin(
+                        p.region.polygon, p.shape_id, spacing_mm=satin_spacing_for(p),
+                        max_width_mm=_satin_ceiling_for(p.region, cfg, satin_max)[0],
+                        start_near=entry)
+                    if not report["empty"]:
+                        report["small_solid"] = 1
+                        return runs, report, False
+                fine_bar_trying.add(p.shape_id)
+                try:
+                    runs, report, filled = stitch_one(p, entry, exit_near)
+                finally:
+                    fine_bar_trying.discard(p.shape_id)
+                if any(r.kind == stitches.SATIN for r in runs):
+                    report["fine_bar_satin"] = report.get("fine_bar_satin", 0) + 1
+                    return runs, report, filled
+                ring, ring_rep = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
+                                             entry=entry, trim_at_mm=trim_at,
+                                             soft_vertices=cfg.run_soft_vertices,
+                                             **({"dot_rung": True} if cfg.small_dot_rung and (
+                                                 not cfg.small_dot_rung_lettering
+                                                 or p.region.meta.get("dot_rung")) else {}))
+                if ring_rep["empty"]:
+                    return runs, report, filled
+                ring_rep["as_run"] = 1
+                ring_rep["fine_bar_fallback"] = 1
+                return ring, ring_rep, False
             if (tier == "auto" and cfg.hairline and p.shape_id in hairline
+                    and p.shape_id not in fine_bars
                     and not p.region.meta.get(HAIRLINE_REST_KEY)):
                 prof = profile_for(p)
                 hm = hairline[p.shape_id]
@@ -4489,7 +4542,10 @@ def sequence(
             # predictable from the design's size, it scales with how
             # fragmented the silhouette is, so the only honest thing is to
             # measure it on THIS design and say so.
-            _cap_st = sum(len(r.points)
+            # ...net of the start locks `cfg.tie_in_off` (ON since 2026-10-23)
+            # strips at the end of this function, so the bill is what the cap
+            # SEWS, dropped or applied (`test_edge_cap_budget`'s identities).
+            _cap_st = sum(len(r.points) - (r.tie_in_pts if cfg.tie_in_off else 0)
                           for r in (c_runs if c_blocks is None else
                                     [it[0] for its in c_blocks.values()
                                      for it in its]))
@@ -4500,6 +4556,8 @@ def sequence(
             # because the budget decision below has to happen before the
             # append, not after it.)
             _art_st = sum(b.stitch_count for b in blocks)
+            if cfg.tie_in_off:
+                _art_st -= sum(r.tie_in_pts for b in blocks for r in b.runs)
             _percent = round(100.0 * _cap_st / _art_st, 1) if _art_st else 0.0
             cap_over_budget = _art_st > 0 and _percent > EDGE_CAP_BUDGET_PCT
             cap_dropped = cap_over_budget and _over_budget_action(cfg) == "drop"
@@ -4903,6 +4961,11 @@ def sequence(
                 count=border_narrow,
             )
         )
+    # `cfg.tie_in_off` (ON by default since 2026-10-23): strip the run-start
+    # locks. The cap's bill above was counted net of them (`_cap_st`), so the
+    # readout is what the cap sews either way.
+    if cfg.tie_in_off:
+        stitches.drop_tie_ins(blocks)
     if cap_cost is not None:
         warnings.append(
             warn(

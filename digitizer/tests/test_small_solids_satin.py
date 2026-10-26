@@ -47,13 +47,13 @@ def _plan(poly: Polygon, **cfg_kw):
     return [r for b in blocks for r in b.runs if r.shape_id == "Sdot"], warnings
 
 
-def test_flag_default_is_off():
-    assert PipelineConfig().small_solids_satin is False
+def test_flag_default_is_on_since_2026_10_23():
+    assert PipelineConfig().small_solids_satin is True
 
 
 def test_off_a_small_hexagon_sews_its_outline_ring():
     """The defect as it ships: a 1.3 mm hexagon is a bean ring."""
-    runs, _w = _plan(_hexagon(1.3))
+    runs, _w = _plan(_hexagon(1.3), small_solids_satin=False)
     assert runs and {r.kind for r in runs} == {"run"}
 
 
@@ -119,10 +119,10 @@ def test_on_a_thin_armed_plus_stays_a_run():
     assert runs and {r.kind for r in runs} == {"run"}
 
 
-def test_the_flag_is_built_off_so_it_is_not_in_the_pre_flip_or_flagcost_tables():
-    """Built OFF: the pre-flip engine IS the default, so neither table that
-    lists ON flags carries it. A flip adds it to both."""
+def test_the_flag_is_flipped_so_it_is_in_the_pre_flip_and_flagcost_tables():
+    """Flipped 2026-10-23: both tables that list ON flags carry it, pinned
+    to the pre-flip engine's False."""
     from tests.conftest import PRE_FLIP
     from tools.pro_parity.flagcost import FLAGS
-    assert "small_solids_satin" not in PRE_FLIP
-    assert "small_solids_satin" not in FLAGS
+    assert PRE_FLIP["small_solids_satin"] is False
+    assert FLAGS["small_solids_satin"] is False

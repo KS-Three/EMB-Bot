@@ -349,7 +349,7 @@ def test_blend_falls_back_to_ordinary_tatami_on_speckle():
     expected, expected_report = stitch_shape(
         poly, region.shape_id, angle_deg=None, row_mm=machine.FILL_ROW_MM,
         stitch_mm=machine.FILL_STITCH_MM, underlay_style="none",
-        trim_at_mm=machine.TRIM_AT_MM)
+        trim_at_mm=machine.TRIM_AT_MM, slant_turns=PipelineConfig().fill_turn_slant)
     assert [r.points for r in runs] == [r.points for r in expected]
     assert all(r.shape_id == region.shape_id for r in runs)
     # The stitch-planning half of the report must still be byte-identical to
@@ -394,7 +394,7 @@ def test_blend_fallback_uses_the_shared_design_angle_when_set():
     expected, expected_report = stitch_shape(
         poly, region.shape_id, angle_deg=33.0, row_mm=machine.FILL_ROW_MM,
         stitch_mm=machine.FILL_STITCH_MM, underlay_style="none",
-        trim_at_mm=machine.TRIM_AT_MM)
+        trim_at_mm=machine.TRIM_AT_MM, slant_turns=PipelineConfig().fill_turn_slant)
     assert [r.points for r in runs] == [r.points for r in expected]
     assert {k: v for k, v in report.items()
             if not k.startswith("blend_")} == expected_report
@@ -404,7 +404,7 @@ def test_blend_fallback_uses_the_shared_design_angle_when_set():
     unforced, _ = stitch_shape(
         poly, region.shape_id, angle_deg=None, row_mm=machine.FILL_ROW_MM,
         stitch_mm=machine.FILL_STITCH_MM, underlay_style="none",
-        trim_at_mm=machine.TRIM_AT_MM)
+        trim_at_mm=machine.TRIM_AT_MM, slant_turns=PipelineConfig().fill_turn_slant)
     assert [r.points for r in runs] != [r.points for r in unforced]
 
 
@@ -742,7 +742,7 @@ def test_blend_fallback_honors_start_near():
     expected, _ = stitch_shape(
         poly, region.shape_id, angle_deg=None, row_mm=machine.FILL_ROW_MM,
         stitch_mm=machine.FILL_STITCH_MM, underlay_style="none",
-        trim_at_mm=machine.TRIM_AT_MM, start_near=(0.0, 0.0))
+        trim_at_mm=machine.TRIM_AT_MM, start_near=(0.0, 0.0), slant_turns=PipelineConfig().fill_turn_slant)
     assert [r.points for r in near_a] == [r.points for r in expected]
 
 
@@ -1431,13 +1431,15 @@ def test_a_region_that_does_not_ride_a_radial_design_sews_level():
                     thread_number=CHART[0].number, area_mm2=bar.area)
     assert not region_rides_design_ramp(bar, painted)
 
-    runs, report = blend_fill(region, painted, PipelineConfig())
+    # `fill_turn_slant=False` (ON since 2026-10-23): the slanted row turns tilt
+    # the dominant-angle reading by ~1.3 deg; the LEVEL decision is what is pinned
+    runs, report = blend_fill(region, painted, PipelineConfig(fill_turn_slant=False))
     assert runs and report["blend_shades"] == 0
     assert report.get("blend_design_ramp", False) is False
     assert _angle_diff_deg(_dominant_angle_deg(runs), 0.0) <= 1.0
 
     bare = SourcePixels(rgb=rgb, px_per_mm=source.px_per_mm, origin_px=source.origin_px)
-    own_runs, own_report = blend_fill(region, bare, PipelineConfig())
+    own_runs, own_report = blend_fill(region, bare, PipelineConfig(fill_turn_slant=False))
     assert own_runs and own_report["blend_shades"] == 0
     assert _angle_diff_deg(_dominant_angle_deg(own_runs), 45.0) <= 5.0
 

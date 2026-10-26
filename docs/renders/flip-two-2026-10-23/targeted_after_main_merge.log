@@ -1,0 +1,103 @@
+bringing up nodes...
+bringing up nodes...
+
+..................................................F...F................. [ 92%]
+...FF.                                                                   [100%]
+================================== FAILURES ===================================
+________________________ test_no_note_is_indexed_twice ________________________
+[gw0] win32 -- Python 3.14.6 C:\Users\EE-LT-11030\Claude Personal\EMB-Bot\digitizer\.venv\Scripts\python.exe
+
+text = '# Memory Index\n\nOne line per memory: `- [Title](file.md) — hook`; the hook only helps you decide\nwhether to open t...ed_alpha_hole_parts + corner_fold ON (Kent 10-23); Becker untouched; local goldens red on Windows with flags OFF too\n'
+archive = '# Memory Index — Archive (before 2026-09-15)\n\nSame one-line format as `MEMORY.md`: `- [Title](file.md) — hook`. The...026-09-12.md) — 73 agents, 2 real defects the self-comparing suite missed; agents must RUN things; verify dies first\n'
+
+    def test_no_note_is_indexed_twice(text, archive):
+        """Exactly ONE index per note. A line copied rather than moved leaves the
+        two files disagreeing about the hook, and the live copy keeps costing
+        characters the archive was created to give back."""
+        dupes = double_registered(text, archive)
+>       assert not dupes, f"notes indexed more than once across the two files: {dupes}"
+E       AssertionError: notes indexed more than once across the two files: ['short-column-underlay-2026-10-22.md']
+E       assert not ['short-column-underlay-2026-10-22.md']
+
+tests\test_memory_budget.py:103: AssertionError
+_______________________ test_the_parser_is_not_vacuous ________________________
+[gw0] win32 -- Python 3.14.6 C:\Users\EE-LT-11030\Claude Personal\EMB-Bot\digitizer\.venv\Scripts\python.exe
+
+text = '# Memory Index\n\nOne line per memory: `- [Title](file.md) — hook`; the hook only helps you decide\nwhether to open t...ed_alpha_hole_parts + corner_fold ON (Kent 10-23); Becker untouched; local goldens red on Windows with flags OFF too\n'
+archive = '# Memory Index — Archive (before 2026-09-15)\n\nSame one-line format as `MEMORY.md`: `- [Title](file.md) — hook`. The...026-09-12.md) — 73 agents, 2 real defects the self-comparing suite missed; agents must RUN things; verify dies first\n'
+
+    def test_the_parser_is_not_vacuous(text, archive):
+        """Every assertion above passes trivially if `entries()` returns nothing.
+    
+        This is the shape of failure `test_code_wires.py` records from 2026-09-07:
+        a suite of "not in" checks that a parser finding nothing passes completely.
+        """
+        rows = entries(text)
+        assert len(rows) >= 50, len(rows)
+        assert len(entries(archive)) >= 30, len(entries(archive))
+        assert all(hook.strip() for _t, _r, hook, _n in rows), (
+            "entries with an empty hook, which the registry format exists to carry")
+        both = rows + entries(archive)
+        titles = [t for t, _r, _h, _n in both]
+>       assert len(set(titles)) == len(titles), "duplicate titles in the registry"
+E       AssertionError: duplicate titles in the registry
+E       assert 148 == 149
+E        +  where 148 = len({'10 mm and up lettering band', '5-10 mm lettering band', 'A concurrent session designed the same tool', 'A warning th...ad like a ruined job, bounded to nil', 'Art-fidelity self instrument, rebuilt from its artifact', 'Bean holds ON', ...})
+E        +    where {'10 mm and up lettering band', '5-10 mm lettering band', 'A concurrent session designed the same tool', 'A warning th...ad like a ruined job, bounded to nil', 'Art-fidelity self instrument, rebuilt from its artifact', 'Bean holds ON', ...} = set(['Memory archive: pre-09-15', 'Worktree guard judges targets', 'The index that stopped loading its newest entries', 'R...ands need absolute paths', 'The display revamp, and a fleet that outran its budget', 'Photo edit tail 2026-09-17', ...])
+E        +  and   149 = len(['Memory archive: pre-09-15', 'Worktree guard judges targets', 'The index that stopped loading its newest entries', 'R...ands need absolute paths', 'The display revamp, and a fleet that outran its budget', 'Photo edit tail 2026-09-17', ...])
+
+tests\test_memory_budget.py:145: AssertionError
+_____________ test_each_flag_moves_a_shape_it_is_supposed_to_move _____________
+[gw2] win32 -- Python 3.14.6 C:\Users\EE-LT-11030\Claude Personal\EMB-Bot\digitizer\.venv\Scripts\python.exe
+
+    def test_each_flag_moves_a_shape_it_is_supposed_to_move():
+        """Without this, the agreement tests below could pass on a fixture
+        neither flag can reach — which is how a latent gap stays latent."""
+        base = _emitted(_cfg())
+        aw = _emitted(_cfg(**FLAG_SETS["area_weighted"]))
+        pa = _emitted(_cfg(**FLAG_SETS["polygon_axis"]))
+        assert aw["TAIL"] and not base["TAIL"], \
+            f"TAIL must flip on classify_area_weighted: {base['TAIL']} -> {aw['TAIL']}"
+>       assert pa["KNOT"] and not base["KNOT"], \
+            f"KNOT must flip on satin_polygon_axis: {base['KNOT']} -> {pa['KNOT']}"
+E       AssertionError: KNOT must flip on satin_polygon_axis: False -> False
+E       assert (False)
+
+tests\test_prediction_matches_emitter.py:143: AssertionError
+______________ test_no_border_is_the_default_and_changes_nothing ______________
+[gw3] win32 -- Python 3.14.6 C:\Users\EE-LT-11030\Claude Personal\EMB-Bot\digitizer\.venv\Scripts\python.exe
+
+    def test_no_border_is_the_default_and_changes_nothing():
+        """The measured case for no border: our fill already ends both row ends on
+        the shape's edge, so there is no ragged edge for a border to cover, and an
+        unearned outline is a few hundred stitches of machine time for nothing.
+    
+        The default moved from the string "off" to None on 2026-08-25 so that "the
+        caller chose off" and "the caller chose nothing" stop being the same value
+        — see config.py's border block for why that distinction is load-bearing.
+        None still resolves to "off" for every class but the photo ones, which is
+        what keeps this fixture's assertion (a flat logo) true unchanged.
+        """
+        assert PipelineConfig().border is None
+    
+        # `border_by_size` (ON since 2026-10-23) is a separate, size-driven ring; this
+        # test is about the `border` field's own default, so it is held off here.
+        plain = digitize(TESTDATA / "logo_whitebg.png",
+                         cfg(garment_id="hat_front", border_by_size=False))[1]
+        off = digitize(TESTDATA / "logo_whitebg.png",
+                       cfg(garment_id="hat_front", border="off"))[1]
+>       assert plain.stats.stitch_count == off.stats.stitch_count
+E       AssertionError: assert 6041 == 6182
+E        +  where 6041 = PlanStats(stitch_count=6041, color_changes=10, trims=17, jumps=3, bbox_mm=(-40.39703725954704, -16.018479858855244, 39...543, 700.2990442437317, 377.3078087012797, 9.373550976557878, 522.546006641279, 174.1310279464611, 142.18932316764895]).stitch_count
+E        +    where PlanStats(stitch_count=6041, color_changes=10, trims=17, jumps=3, bbox_mm=(-40.39703725954704, -16.018479858855244, 39...543, 700.2990442437317, 377.3078087012797, 9.373550976557878, 522.546006641279, 174.1310279464611, 142.18932316764895]) = StitchPlan(blocks=[StitchBlock(thread_index=148, thread_number='1704', rgb=(232, 17, 45), runs=[StitchRun(points=[(-12...er_mm2': 79.2, 'over_budget': False, 'budget_pct': 40.0, 'dropped': False}], design_size_mm=(80.0, 31.117734724292102)).stats
+E        +  and   6182 = PlanStats(stitch_count=6182, color_changes=8, trims=13, jumps=0, bbox_mm=(-40.39703725954704, -16.018479858855244, 39....4, 1689.3994869403482, 12.4881667888543, 700.2990442437317, 12.214455774162897, 522.5438897305636, 28.023090918056447]).stitch_count
+E        +    where PlanStats(stitch_count=6182, color_changes=8, trims=13, jumps=0, bbox_mm=(-40.39703725954704, -16.018479858855244, 39....4, 1689.3994869403482, 12.4881667888543, 700.2990442437317, 12.214455774162897, 522.5438897305636, 28.023090918056447]) = StitchPlan(blocks=[StitchBlock(thread_index=148, thread_number='1704', rgb=(232, 17, 45), runs=[StitchRun(points=[(-12...ch of its own border.', 'count': 1, 'pairs': [['Sb253ebba', 'Sf5200f3f']]}], design_size_mm=(80.0, 31.117734724292102)).stats
+
+tests\test_border.py:60: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_memory_budget.py::test_no_note_is_indexed_twice - Assertion...
+FAILED tests/test_memory_budget.py::test_the_parser_is_not_vacuous - Assertio...
+FAILED tests/test_prediction_matches_emitter.py::test_each_flag_moves_a_shape_it_is_supposed_to_move
+FAILED tests/test_border.py::test_no_border_is_the_default_and_changes_nothing
+4 failed, 74 passed in 106.12s (0:01:46)
+EXIT=1

@@ -66,8 +66,9 @@ def _border_width(runs, shape_id="Sbig") -> float:
     return chords[len(chords) // 2]
 
 
-def test_flag_default_is_off():
-    assert PipelineConfig().border_by_size is False
+def test_flag_default_is_on():
+    # Kent 2026-10-23, by the pro-count numbers (docs/renders/flip-two-2026-10-23/)
+    assert PipelineConfig().border_by_size is True
 
 
 def test_threshold_and_band_widths_are_the_census_numbers():
@@ -78,7 +79,7 @@ def test_threshold_and_band_widths_are_the_census_numbers():
 
 
 def test_off_an_8mm_square_fills_with_no_border():
-    runs, _w = _plan(_square(8.0))
+    runs, _w = _plan(_square(8.0), border_by_size=False)
     assert stitches.FILL in _kinds(runs)
     assert stitches.BORDER not in _kinds(runs)
 
@@ -151,8 +152,8 @@ def test_on_a_per_shape_border_off_still_wins():
     assert stitches.BORDER not in _kinds(runs)
 
 
-def test_off_is_byte_identical_with_the_flag_explicitly_false():
+def test_the_default_is_the_flag_explicitly_true():
     for poly in (_square(8.0), _square(1.5), Polygon([(0, 0), (40, 0), (40, 4.5), (0, 4.5)])):
         a, _ = _plan(poly)
-        b, _ = _plan(poly, border_by_size=False)
+        b, _ = _plan(poly, border_by_size=True)
         assert [r.points for r in a] == [r.points for r in b]

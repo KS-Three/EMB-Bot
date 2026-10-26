@@ -31,6 +31,7 @@ import hashlib
 import pytest
 from shapely.geometry import Point, box
 
+from tests.conftest import FLIP_2026_10_23
 from digitizer_core import PipelineConfig, digitize
 from digitizer_core import columns, stage7_sequence
 from digitizer_core.columns import is_lettering, is_thin_stem
@@ -82,7 +83,10 @@ def run(tmp_path_factory, word, small_stem, guard=False):
     # So is the dot rung (ON 2026-10-20), which sews the i dot beside the
     # stem; the stem flag itself is ON by default since then, so every arm
     # sets it explicitly.
+    # ...and the 2026-10-23 flips (short-column underlay under the stem, the
+    # small-text set and small_bold): every arm here was priced without them.
     cfg = PipelineConfig(target_width_mm=width, forced_class="flat",
+                         **FLIP_2026_10_23,
                          lettering_columns_square_ends=False,
                          lettering_columns_inside_connectors=False,
                          small_dot_rung=False,

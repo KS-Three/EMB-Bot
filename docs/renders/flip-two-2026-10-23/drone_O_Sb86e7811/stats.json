@@ -1,0 +1,583 @@
+{
+ "art": "Precision Thermal Drone Logo.png",
+ "width_mm": 62.6,
+ "garment_id": "hat_front",
+ "secs": 864.6,
+ "stitches": 14200,
+ "trims": 109,
+ "colours": 11,
+ "regions": 114,
+ "warnings": [
+  "CLASSIFIED_GRADIENT",
+  "BACKGROUND_UNCERTAIN",
+  "BACKGROUND_ENCLOSED",
+  "ABSORBED_SMALL_SHAPES",
+  "PHOTO_SEGMENT_REGION_COUNT",
+  "PHOTO_PALETTE_SELECTED",
+  "THREAD_RESNAPPED_AFTER_DRIFT",
+  "COLOR_CAP_APPLIED",
+  "DUPLICATE_CONE_LAYERS_MERGED",
+  "SHAPES_LEFT_UNSEWN",
+  "SAME_THREAD_SHAPES_MERGED",
+  "HOLE_NEARLY_CLOSED",
+  "CLIP_DROPPED_SLIVER",
+  "SHAPE_TOO_THIN_TO_FILL",
+  "SMALL_SHAPES_AS_RUN",
+  "BLEND_NO_REGIONS_DECOMPOSED",
+  "LONG_JUMPS_TRIMMED",
+  "BORDER_SKIPPED_TOO_NARROW",
+  "EDGE_CAP_APPLIED"
+ ],
+ "lettering": {
+  "text_cluster_id": 18,
+  "lettering_group": 26,
+  "rescued_small_shape": 33
+ },
+ "tiers": {
+  "?": 114
+ },
+ "preflight": {
+  "grade": "B",
+  "findings": [
+   {
+    "code": "LETTERING_TOO_SMALL",
+    "severity": "warn",
+    "message": "20 of 67 satin shapes sew below readable size at this scale \u2014 columns under 1 mm or details under 4 mm. Enlarging helps but does not fully clear it: the smallest shapes regenerate at any size. Remove or simplify the smallest lettering.",
+    "extra": {
+     "count": 20,
+     "satin_total": 67,
+     "shapes": [
+      {
+       "shape_id": "S0f1c9168",
+       "column_mm": 0.79,
+       "extent_mm": 3.2
+      },
+      {
+       "shape_id": "S0f8c3f10",
+       "column_mm": 0.9,
+       "extent_mm": 2.1
+      },
+      {
+       "shape_id": "S1c47ea65",
+       "column_mm": 0.63,
+       "extent_mm": 3.9
+      },
+      {
+       "shape_id": "S3368c9b1",
+       "column_mm": 1.24,
+       "extent_mm": 1.9
+      },
+      {
+       "shape_id": "S45a4eabc",
+       "column_mm": 0.82,
+       "extent_mm": 3.6
+      },
+      {
+       "shape_id": "S52679037",
+       "column_mm": 0.57,
+       "extent_mm": 1.9
+      },
+      {
+       "shape_id": "S56a258a6",
+       "column_mm": 0.92,
+       "extent_mm": 3.5
+      },
+      {
+       "shape_id": "S5a5b6a9a",
+       "column_mm": 0.77,
+       "extent_mm": 3.8
+      },
+      {
+       "shape_id": "S6a243ed7",
+       "column_mm": 1.2,
+       "extent_mm": 1.7
+      },
+      {
+       "shape_id": "S6bc433a5",
+       "column_mm": 2.21,
+       "extent_mm": 3.1
+      },
+      {
+       "shape_id": "S9a280eb3",
+       "column_mm": 0.87,
+       "extent_mm": 3.5
+      },
+      {
+       "shape_id": "Sa366c76e",
+       "column_mm": 1.1,
+       "extent_mm": 3.5
+      },
+      {
+       "shape_id": "Sb0f0248b",
+       "column_mm": 1.45,
+       "extent_mm": 3.7
+      },
+      {
+       "shape_id": "Scf7eeca8",
+       "column_mm": 0.77,
+       "extent_mm": 3.4
+      },
+      {
+       "shape_id": "Sd92f5368",
+       "column_mm": 1.57,
+       "extent_mm": 1.7
+      },
+      {
+       "shape_id": "Sd9c245da",
+       "column_mm": 0.63,
+       "extent_mm": 1.4
+      },
+      {
+       "shape_id": "Sda97f040",
+       "column_mm": 1.59,
+       "extent_mm": 3.6
+      },
+      {
+       "shape_id": "Sf12546ac",
+       "column_mm": 0.95,
+       "extent_mm": 4.3
+      },
+      {
+       "shape_id": "Sf9ea138c",
+       "column_mm": 1.03,
+       "extent_mm": 3.7
+      },
+      {
+       "shape_id": "Sfe135325",
+       "column_mm": 0.82,
+       "extent_mm": 3.7
+      }
+     ]
+    }
+   },
+   {
+    "code": "TRIM_HEAVY",
+    "severity": "warn",
+    "message": "7.6 trims per 1,000 stitches \u2014 professional files run 0.1 to 4.1. Each cut is 2-3 seconds of machine time. 83 of 108 are moves between shapes, so merging or removing the smallest is the cheapest thing to try; the other 25 are inside a shape and it will not touch them.",
+    "extra": {
+     "per_1000": 7.6,
+     "trims": 108,
+     "stitches": 14200,
+     "in_shape": 25,
+     "between_shapes": 83,
+     "worst_shape_id": "S00c2fb94",
+     "shapes": [
+      {
+       "shape_id": "S00c2fb94",
+       "trims": 11
+      },
+      {
+       "shape_id": "__edge_cap__",
+       "trims": 5
+      },
+      {
+       "shape_id": "S09963415",
+       "trims": 4
+      },
+      {
+       "shape_id": "S1f7420c4",
+       "trims": 2
+      },
+      {
+       "shape_id": "S3b2df319",
+       "trims": 2
+      },
+      {
+       "shape_id": "S8cac826c",
+       "trims": 2
+      },
+      {
+       "shape_id": "Sc839deb3",
+       "trims": 2
+      },
+      {
+       "shape_id": "Scfc92133",
+       "trims": 2
+      },
+      {
+       "shape_id": "Sefc0e086",
+       "trims": 2
+      },
+      {
+       "shape_id": "S02375d12",
+       "trims": 1
+      },
+      {
+       "shape_id": "S023dfb17",
+       "trims": 1
+      },
+      {
+       "shape_id": "S07b6b7d7",
+       "trims": 1
+      },
+      {
+       "shape_id": "S0df9c24f",
+       "trims": 1
+      },
+      {
+       "shape_id": "S0e857405",
+       "trims": 1
+      },
+      {
+       "shape_id": "S0f2c8811",
+       "trims": 1
+      },
+      {
+       "shape_id": "S0fa53221",
+       "trims": 1
+      },
+      {
+       "shape_id": "S103d3d33",
+       "trims": 1
+      },
+      {
+       "shape_id": "S16310c8c",
+       "trims": 1
+      },
+      {
+       "shape_id": "S1c47ea65",
+       "trims": 1
+      },
+      {
+       "shape_id": "S1f33f20f",
+       "trims": 1
+      },
+      {
+       "shape_id": "S20080080",
+       "trims": 1
+      },
+      {
+       "shape_id": "S23e68312",
+       "trims": 1
+      },
+      {
+       "shape_id": "S296313aa",
+       "trims": 1
+      },
+      {
+       "shape_id": "S2c9243e0",
+       "trims": 1
+      },
+      {
+       "shape_id": "S2e761a1a",
+       "trims": 1
+      },
+      {
+       "shape_id": "S329b0d6f",
+       "trims": 1
+      },
+      {
+       "shape_id": "S3368c9b1",
+       "trims": 1
+      },
+      {
+       "shape_id": "S37bd7a05",
+       "trims": 1
+      },
+      {
+       "shape_id": "S3a6957ff",
+       "trims": 1
+      },
+      {
+       "shape_id": "S3fa78778",
+       "trims": 1
+      },
+      {
+       "shape_id": "S4435c281",
+       "trims": 1
+      },
+      {
+       "shape_id": "S45a4eabc",
+       "trims": 1
+      },
+      {
+       "shape_id": "S483b5b27",
+       "trims": 1
+      },
+      {
+       "shape_id": "S48ba45c5",
+       "trims": 1
+      },
+      {
+       "shape_id": "S4afa2e10",
+       "trims": 1
+      },
+      {
+       "shape_id": "S4ba0c4f5",
+       "trims": 1
+      },
+      {
+       "shape_id": "S4baeec3e",
+       "trims": 1
+      },
+      {
+       "shape_id": "S4c4c677f",
+       "trims": 1
+      },
+      {
+       "shape_id": "S52679037",
+       "trims": 1
+      },
+      {
+       "shape_id": "S53c11087",
+       "trims": 1
+      },
+      {
+       "shape_id": "S590dc683",
+       "trims": 1
+      },
+      {
+       "shape_id": "S5a5b6a9a",
+       "trims": 1
+      },
+      {
+       "shape_id": "S6661e557",
+       "trims": 1
+      },
+      {
+       "shape_id": "S6a243ed7",
+       "trims": 1
+      },
+      {
+       "shape_id": "S6ab2cecd",
+       "trims": 1
+      },
+      {
+       "shape_id": "S6f932a70",
+       "trims": 1
+      },
+      {
+       "shape_id": "S755bef70",
+       "trims": 1
+      },
+      {
+       "shape_id": "S774dab44",
+       "trims": 1
+      },
+      {
+       "shape_id": "S7c45067a",
+       "trims": 1
+      },
+      {
+       "shape_id": "S7eafb519",
+       "trims": 1
+      },
+      {
+       "shape_id": "S7eebec38",
+       "trims": 1
+      },
+      {
+       "shape_id": "S806fb2ad",
+       "trims": 1
+      },
+      {
+       "shape_id": "S86171fd3",
+       "trims": 1
+      },
+      {
+       "shape_id": "S885001f8",
+       "trims": 1
+      },
+      {
+       "shape_id": "S8978e8ba",
+       "trims": 1
+      },
+      {
+       "shape_id": "S8a62cc8d",
+       "trims": 1
+      },
+      {
+       "shape_id": "S8d99ec49",
+       "trims": 1
+      },
+      {
+       "shape_id": "S8f8aef71",
+       "trims": 1
+      },
+      {
+       "shape_id": "S932a2872",
+       "trims": 1
+      },
+      {
+       "shape_id": "S99b02b06",
+       "trims": 1
+      },
+      {
+       "shape_id": "S9a280eb3",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sa144ad80",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sa366c76e",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sa42ba7f1",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sa7215f98",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sb2f4aab3",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sb5e7d7ed",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sb86e7811",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sbcc6ee5e",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sbdad1237",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sc374e8c8-2",
+       "trims": 1
+      },
+      {
+       "shape_id": "Scf7eeca8",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sd464fe93",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sd92f5368",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sd9c245da",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sda3e8f12",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sda97f040",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sdfc5ddc9",
+       "trims": 1
+      },
+      {
+       "shape_id": "Se62759dd",
+       "trims": 1
+      },
+      {
+       "shape_id": "Se7b4214a",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sf0f1eab5",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sf3b9642d",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sf9ea138c",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sfc049caa",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sfcdc099d",
+       "trims": 1
+      }
+     ]
+    }
+   }
+  ],
+  "metrics": {
+   "thread_match_checked": false,
+   "thread_worst_delta_e": null,
+   "legibility_checked": false,
+   "legibility": null,
+   "legibility_clusters": null,
+   "legibility_readable": null,
+   "legibility_worst": null,
+   "ground_span_frac": null,
+   "ground_delta_e": null,
+   "ground_area_frac": null,
+   "input_px_per_mm": null,
+   "subject_bg_delta_l": null,
+   "satin_shapes": 67,
+   "satin_gaps_judged": 6,
+   "satin_gaps_tight_shapes": 0,
+   "satin_gaps_tight_worst_frac": null,
+   "satin_short_fraction": 0.23,
+   "satin_steps": 3895,
+   "trims_per_1000": 7.6,
+   "fill_axis_concentration": 1.0,
+   "fill_advance_mm": 0.149,
+   "satin_advance_mm": 0.4,
+   "coverage_p50": 3.01,
+   "coverage_p95": 5.51,
+   "coverage_max": 8.39,
+   "coverage_area_mm2": 2419.0,
+   "coverage_over_warn_mm2": 0.0,
+   "coverage_over_block_mm2": 0.0,
+   "uncovered_checked": false,
+   "uncovered_worst_mm2": null,
+   "uncovered_total_mm2": null,
+   "uncovered_wanted_mm2": null,
+   "link_segments": 0,
+   "link_thread_mm": 0.0,
+   "link_uncovered_mm": 0.0,
+   "link_uncovered_max_mm": 0.0,
+   "contour_starved_shapes": 0,
+   "same_hole_fraction": 0.08,
+   "faces_detected": 0,
+   "class_override_detected_class": null,
+   "color_changes": 10,
+   "stitch_count": 14200,
+   "tiny_steps": 834,
+   "tiny_step_fraction": 0.065,
+   "edge_wobble_satin_p95_mm": 0.1489,
+   "edge_wobble_satin_std_mm": 0.0684,
+   "edge_wobble_satin_max_mm": 0.5065,
+   "edge_wobble_border_p95_mm": 0.1723,
+   "edge_wobble_border_std_mm": 0.0799,
+   "edge_wobble_border_max_mm": 0.3566,
+   "edge_wobble_fill_p95_mm": 0.4516,
+   "edge_wobble_fill_std_mm": 0.2028,
+   "edge_wobble_fill_max_mm": 0.8702,
+   "edge_wobble_line_p95_mm": 0.0,
+   "edge_wobble_line_std_mm": 0.0,
+   "edge_wobble_line_max_mm": 0.0,
+   "curve_roughness_deg": 5.2227,
+   "curve_turn_gini": 0.7517,
+   "curve_vertices": 3399,
+   "curve_corner_vertices": 723,
+   "curve_traces": 177,
+   "raw_score": 76
+  }
+ },
+ "pro": {
+  "file": "PRECISION DRON HAT 2.PES",
+  "stitches": 14554,
+  "trims": 69,
+  "colour_changes": 22,
+  "thread_colours": 23,
+  "width_mm": 62.6,
+  "height_mm": 63.8
+ }
+}

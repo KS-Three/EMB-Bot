@@ -120,7 +120,7 @@ DEFAULT_FABRIC_ID = "pique_knit"
 
 
 # The presets whose fill underlay `cfg.fill_underlay_cross` (built OFF
-# 2026-10-21) swaps to `cross_tatami`: hat (structured_cap), left chest
+# 2026-10-21, ON by default since 2026-10-23) swaps to `cross_tatami`: hat (structured_cap), left chest
 # (pique_knit), beanie and sleeve (jersey_tee). The professional's own files
 # sew one crossing tatami pass under every dense fill on every job in the
 # zip — ~1.0 mm rows, ~4 mm stitches, ~90 degrees to the top fill

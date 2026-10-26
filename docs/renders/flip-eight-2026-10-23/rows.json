@@ -1,0 +1,92 @@
+[
+ {
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "engine": "aaab5909",
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "before": {
+   "stitches": 18611,
+   "trims": 51
+  },
+  "after": {
+   "stitches": 17485,
+   "trims": 27
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21
+  },
+  "diff": 11562,
+  "images": {
+   "whole": "hotel_fremont_hat__whole_before_after_pro.jpg",
+   "crop": "hotel_fremont_hat__crop_before_after_pro.jpg",
+   "where": "hotel_fremont_hat__where.jpg"
+  },
+  "box_mm": [
+   0.4,
+   8.7,
+   18.4,
+   19.7
+  ]
+ },
+ {
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "engine": "bc3de760",
+  "pro_file": "beckers logo hat 2 A.DST",
+  "before": {
+   "stitches": 5928,
+   "trims": 15
+  },
+  "after": {
+   "stitches": 5867,
+   "trims": 15
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11
+  },
+  "diff": 161,
+  "images": {
+   "whole": "becker_hat_small__whole_before_after_pro.jpg",
+   "crop": "becker_hat_small__crop_before_after_pro.jpg",
+   "where": "becker_hat_small__where.jpg"
+  },
+  "box_mm": [
+   -34.4,
+   -20.1,
+   -16.4,
+   -9.1
+  ]
+ },
+ {
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "engine": "bc3de760",
+  "pro_file": "mf4b logo hat.DST",
+  "before": {
+   "stitches": 13721,
+   "trims": 65
+  },
+  "after": {
+   "stitches": 13466,
+   "trims": 62
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19
+  },
+  "diff": 1041,
+  "images": {
+   "whole": "mfab_hat__whole_before_after_pro.jpg",
+   "crop": "mfab_hat__crop_before_after_pro.jpg",
+   "where": "mfab_hat__where.jpg"
+  },
+  "box_mm": [
+   -14.2,
+   -16.4,
+   3.8,
+   -5.4
+  ]
+ }
+]
