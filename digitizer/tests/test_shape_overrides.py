@@ -170,8 +170,8 @@ def test_noop_edits_are_byte_identical_to_the_shipped_engine():
     # ON 2026-09-11 and both sides of this comparison have to stand on the
     # engine the golden was captured from.
     noop = dict(deleted_shape_ids=[], shape_overrides={}, edge_cap="none")
-    stages = run_stages(ART, cfg(**noop))
-    plan = plan_stitches(stages, cfg(garment_id="left_chest", **noop))
+    stages = run_stages(ART, cfg(border_by_size=False, **noop))
+    plan = plan_stitches(stages, cfg(garment_id="left_chest", border_by_size=False, **noop))
     blob = export_dst(plan)
     want_hash, want_n, want_bytes = GOLDEN_FLAG_OFF[("logo_whitebg.png", "left_chest")]
     got_n = sum(len(r.points) for b in plan.blocks for r in b.runs)

@@ -23,6 +23,7 @@ import pytest
 from digitizer_core import PipelineConfig, stitches
 from digitizer_core.pipeline import plan_stitches, run_stages
 from digitizer_core.stitches import StitchRun
+from tests.conftest import FLIP_2026_10_23
 from tests.test_chaining import _thread_bare_mm_untrimmed
 from tests.test_thread_profile import TESTDATA
 from tools import hairline_travel as ht
@@ -104,7 +105,8 @@ def test_trim_anatomy_names_where_the_trims_are():
 @pytest.fixture(scope="module")
 def enthusiast():
     path = TESTDATA / "photo" / "enthusiast_logo.png"
-    base = dict(target_width_mm=80.0, garment_id="left_chest", thread_wt=40)
+    # priced on the engine before the 2026-10-23..25 flips (conftest.FLIP_2026_10_23)
+    base = dict(target_width_mm=80.0, garment_id="left_chest", thread_wt=40, **FLIP_2026_10_23)
     result = run_stages(path, PipelineConfig(**base))
     return {name: plan_stitches(result, PipelineConfig(**base, **kw))
             for name, kw in (("off", {}), ("on", dict(hairline=True)))}

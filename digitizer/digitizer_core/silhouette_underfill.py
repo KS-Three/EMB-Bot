@@ -71,6 +71,25 @@ HOLES_HELD_MIN = 0.5
 _LETTER_KEYS = ("text_candidate", "lettering_group", "word_id", "text_cluster_id",
                 "bean_letter_spines", "text_cluster_widened_mm")
 
+# --- Panels (`cfg.silhouette_underfill_panels`, 2026-10-25, built OFF) ----------
+#
+# The pro's MFab (hat and LC agree): black tatami under the whole silhouette,
+# the white keyline as satin loops round each M-FAB letter ON it, and the small
+# second line (AND WELDING, LLC) as black satin sewn AFTER the white on a white
+# panel that is CLOSED under them (white under them 1.000; black fill under
+# them 0.12-0.18). Under-fill alone merged those small letters into the black.
+# A RIDER is a text-tagged shape in the host's thread, sitting INSIDE_MIN in a
+# hole of a white field (`sew_enclosed_white == "field"`), whose word is mostly
+# NOT the art outline's bodies (WELDING's I is a body; its word is not). Riders
+# are never merged, sew in a layer of their own right after the field's, and
+# the field fills its rider holes as one closed panel under them.
+#: meta on a white field: the holes holding its riders, [Polygon]
+RIDER_HOLES_KEY = "underfill_rider_holes"
+#: meta on a rider: the field (shape id) it rides on
+RIDER_OF_KEY = "underfill_rider_of"
+#: a word rides when MORE than this share of its letters are not outline bodies
+WORD_NONBODY_MIN = 0.5
+
 
 def _is_letter(r) -> bool:
     m = r.meta or {}
@@ -104,14 +123,17 @@ def _inner(ring, regions, used: set[str]):
     return outline, out
 
 
-def plan(regions, unsewn=()):
+def plan(regions, unsewn=(), riders=()):
     """-> [(ring, host, outline, merged ids, inner shapes)] for every ring
     this reads, the biggest first; a shape serves one ring at most.
 
     `unsewn` are the shapes left as garment on purpose (enclosed background,
     a review `stitched: false`): the outline is cut back off them, so the
     under-fill never sews over fabric the design shows -- MFab's white
-    keyline without `sew_enclosed_white`. They never count as holding a hole."""
+    keyline without `sew_enclosed_white`. They never count as holding a hole.
+
+    `riders` (shape ids, `cfg.silhouette_underfill_panels`) are never merged:
+    they sew on their own, on top. Empty: as before."""
     used: set[str] = set()
     out = []
     for ring in sorted(_ring_candidates(regions), key=lambda r: -r.polygon.area):
@@ -137,7 +159,8 @@ def plan(regions, unsewn=()):
         # a shape with a review tier is an instruction: it sews as told, on
         # top, never merged and never the host
         same = [r for r in inner if r.thread_index == colour
-                and str(r.meta.get("tier", "auto")).lower() == "auto"]
+                and str(r.meta.get("tier", "auto")).lower() == "auto"
+                and r.shape_id not in riders]
         if ring.thread_index != colour and not same:
             continue
         if ring.thread_index == colour:
@@ -151,20 +174,137 @@ def plan(regions, unsewn=()):
     return out
 
 
-def apply(regions, unsewn=()):
+def _word(r):
+    m = r.meta or {}
+    return m.get("text_cluster_id") or m.get("stitch_width_group") or r.shape_id
+
+
+def _fields(regions):
+    return [r for r in regions
+            if (r.meta or {}).get("sew_enclosed_white") == "field"
+            and r.polygon is not None and r.polygon.geom_type == "Polygon"
+            and r.polygon.interiors]
+
+
+def _hole_of(r, field):
+    """The hole of `field` holding `INSIDE_MIN` of `r`, or None."""
+    for ring in field.polygon.interiors:
+        hole = Polygon(ring)
+        if r.polygon.intersection(hole).area >= INSIDE_MIN * r.polygon.area:
+            return hole
+    return None
+
+
+def find_riders(regions, unsewn=(), outlines=None) -> list[str]:
+    """`cfg.silhouette_underfill_panels`: the shape ids that ride a white
+    panel instead of merging into the under-fill (module note above).
+    `outlines`: `art_outline.find_art_outlines`' {outline id: [(body id,
+    hole, width)]} -- a body is lettering the keyline loops, not a rider."""
+    fields = _fields(regions)
+    if not fields:
+        return []
+    bodies = {b[0] for bs in (outlines or {}).values() for b in bs}
+    words: dict = {}
+    for r in regions:
+        if _is_letter(r):
+            words.setdefault(_word(r), []).append(r.shape_id)
+    rides = {w for w, ids in words.items()
+             if sum(1 for i in ids if i not in bodies) > WORD_NONBODY_MIN * len(ids)}
+    out = []
+    for _ring, host, _outline, _merged, inner in plan(regions, unsewn):
+        for r in inner:
+            if (r is host or r.thread_index != host.thread_index or not _is_letter(r)
+                    or _word(r) not in rides):
+                continue
+            if any(_hole_of(r, f) is not None for f in fields):
+                out.append(r.shape_id)
+    return sorted(out)
+
+
+def _panels(regions, riders: set[str], outlines, overlap_mm: float):
+    """{field id: (panel, [rider holes], [rider ids])}: the white a field
+    sews under its riders -- the parts no body loop reaches of the field with
+    its rider holes closed (`keyline_rest`, the loops `outline_holes` makes,
+    rider holes left out) that hold a rider hole, with those holes."""
+    from . import machine
+    from .stage6_border import keyline_rest, outline_holes
+    by_id = {r.shape_id: r for r in regions}
+    out = {}
+    for field in _fields(regions):
+        holes: dict = {}
+        ids = []
+        for rid in sorted(riders):
+            r = by_id.get(rid)
+            hole = None if r is None else _hole_of(r, field)
+            if hole is not None:
+                holes.setdefault(hole.exterior.wkb, hole)
+                ids.append(rid)
+        if not holes:
+            continue
+        closed = Polygon(field.polygon.exterior,
+                         [ring for ring in field.polygon.interiors
+                          if Polygon(ring).exterior.wkb not in holes])
+        bodies = [(h, w) for _b, h, w in (outlines or {}).get(field.shape_id, [])]
+        width = max((w for _h, w in bodies), default=machine.KEYLINE_WIDTH_MM)
+        looped = [(h, w) for h, w in outline_holes(field.polygon, bodies, width)
+                  if h.exterior.wkb not in holes]
+        rest = keyline_rest(closed, 0.0, overlap_mm, machine.MIN_FILL_WIDTH_MM, looped=looped)
+        held = [p for p in rest
+                if any(p.intersection(h).area > 0.5 * h.area for h in holes.values())]
+        out[field.shape_id] = (unary_union(held + list(holes.values())),
+                               list(holes.values()), ids)
+    return out
+
+
+def apply_cfg(regions, unsewn, cfg, outlines):
+    """`plan_stitches`' call, `cfg.silhouette_underfill` ON: -> (regions,
+    report, outlines). With `cfg.silhouette_underfill_panels` (read only with
+    `sew_enclosed_white` and `border_from_outline`) the riders are found,
+    dropped from the outlines' body lists (a rider is no outline's body: no
+    loop round it, no body fill) and passed on; with none, `apply` exactly
+    as before and the outlines untouched."""
+    riders = []
+    if (getattr(cfg, "silhouette_underfill_panels", False) and cfg.sew_enclosed_white
+            and cfg.border_from_outline):
+        riders = find_riders(regions, unsewn, outlines)
+    if not riders:
+        out, report = apply(regions, unsewn)
+        return out, report, outlines
+    gone = set(riders)
+    outlines = {oid: [b for b in bodies if b[0] not in gone]
+                for oid, bodies in (outlines or {}).items()}
+    outlines = {k: v for k, v in outlines.items() if v} or None
+    out, report = apply(regions, unsewn, riders=riders, outlines=outlines,
+                        overlap_mm=cfg.overlap_mm)
+    return out, report, outlines
+
+
+def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0):
     """`cfg.silhouette_underfill` ON: -> (regions as copies, report). The
     hosts carry `UNDERFILL_KEY` and the fill tier, merged shapes are gone,
     and each host's layer sews before its ring's and its inner colours'.
-    `unsewn`: see `plan`."""
-    rings = plan(regions, unsewn)
+    `unsewn`: see `plan`.
+
+    `riders` (`cfg.silhouette_underfill_panels`, `find_riders`): never merged;
+    each field holding some fills them a closed white panel (`_panels`,
+    tagged `RIDER_HOLES_KEY`), the host's outline gives that panel up (shrunk
+    by `overlap_mm`, so the black still tucks under its edge), and the riders
+    sew in a layer of their own right after the field's -- black, white,
+    black. Empty: as before, byte for byte."""
+    rings = plan(regions, unsewn, riders)
     if not rings:
         return regions, []
+    panels = _panels(regions, set(riders), outlines, overlap_mm) if riders else {}
+    cut = (unary_union([p for p, _h, _i in panels.values()]).buffer(-overlap_mm)
+           if panels else None)
     host_meta: dict[str, dict] = {}
     dropped: set[str] = set()
     order = sorted({r.meta["layer"] for r in regions})
     moved = False
     report = []
     for ring, host, outline, merged, inner in rings:
+        if cut is not None and not cut.is_empty and outline.intersects(cut):
+            outline = outline.difference(cut)
         host_meta[host.shape_id] = {UNDERFILL_KEY: outline, UNDERFILL_OF_KEY: ring.shape_id,
                                     "tier": "fill"}
         dropped.update(merged)
@@ -180,12 +320,32 @@ def apply(regions, unsewn=()):
             moved = True
         report.append({"ring": ring.shape_id, "host": host.shape_id,
                        "outline_mm2": round(outline.area, 1), "merged": sorted(merged)})
+    # riders: a layer of their own, right after their field's
+    rider_layer: dict[str, tuple] = {}
+    extra_meta: dict[str, dict] = {}
+    if panels:
+        by_id = {r.shape_id: r for r in regions}
+        for fid, (panel, holes, ids) in sorted(panels.items()):
+            f_layer = by_id[fid].meta["layer"]
+            key = ("rider", f_layer)
+            if key not in order:
+                order.insert(order.index(f_layer) + 1, key)
+                moved = True
+            extra_meta.setdefault(fid, {})[RIDER_HOLES_KEY] = holes
+            for rid in ids:
+                rider_layer[rid] = key
+                extra_meta.setdefault(rid, {})[RIDER_OF_KEY] = fid
+            report.append({"field": fid, "panel_mm2": round(panel.area, 1), "riders": ids})
     renum = {L: i for i, L in enumerate(order)} if moved else {L: L for L in order}
+
+    def layer_of(r):
+        return renum[rider_layer.get(r.shape_id, r.meta["layer"])]
     out = []
-    for i, r in sorted(enumerate(regions), key=lambda t: (renum[t[1].meta["layer"]], t[0])):
+    for i, r in sorted(enumerate(regions), key=lambda t: (layer_of(t[1]), t[0])):
         if r.shape_id in dropped:
             continue
-        meta = {**r.meta, "layer": renum[r.meta["layer"]]}
+        meta = {**r.meta, "layer": layer_of(r)}
         meta.update(host_meta.get(r.shape_id, {}))
+        meta.update(extra_meta.get(r.shape_id, {}))
         out.append(replace(r, meta=meta))
     return out, report

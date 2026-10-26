@@ -154,7 +154,8 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # 2026-10-12, Kent): it sews drone's lettering from the outline, and the fold's
 # thread price under it reads 17,041 against a 16,981 ceiling (CI, PR #863).
 # The engine these claims were measured on has the skeleton tier.
-PRE_FLIP_RC = {"robust_region_colour": False, "keep_thin_strokes": False,
+PRE_FLIP_RC = {"border_by_size": False, "enclosed_alpha_hole_parts": False,
+               "lettering_columns_corner_fold": False, "robust_region_colour": False, "keep_thin_strokes": False,
                "satin_corner_twigs": False, "satin_rail_comp": False,
                "lettering_columns": False}
 
@@ -299,12 +300,14 @@ def test_off_leaves_the_design_exactly_as_it_was(drone_off):
 
 @pytest.fixture(scope="module")
 def drone_shipped_off():
-    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=False))
+    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=False,
+                               border_by_size=False))
 
 
 @pytest.fixture(scope="module")
 def drone_shipped_on():
-    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True))
+    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True,
+                               border_by_size=False))
 
 
 def _artwork_revisits(plan) -> int:

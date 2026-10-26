@@ -13,7 +13,7 @@
 // (each e2e spec here duplicates that boilerplate rather than importing it,
 // matching this directory's own convention).
 import { test, expect } from "@playwright/test";
-import { pickGarment, uploadArtwork, runDigitize, openAdvanced } from "./helpers.js";
+import { pickGarment, uploadArtwork, runDigitize, openAdvanced, pinDigitizeConfig } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -96,6 +96,7 @@ test.afterAll(() => {
 async function digitize(page) {
   await page.goto("/");
   await pickGarment(page, "Tote");
+  await pinDigitizeConfig(page, { border_by_size: false });
   await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await page.waitForTimeout(1200); // let the field settle after the result lands

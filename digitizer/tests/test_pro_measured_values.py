@@ -33,6 +33,9 @@ def _plan(fabric_id, poly, meta=None, **cfg_kw):
     reg = Region(shape_id="S1", polygon=poly, thread_index=5,
                  thread_number=CHART[5].number, area_mm2=poly.area, meta=m)
     fab = get_fabric(fabric_id)
+    # these shapes price the pro-value flag alone: `border_by_size` (ON since 2026-10-23)
+    # would ring a 30 x 20 mm bar and move the bean pitch read
+    cfg_kw.setdefault("border_by_size", False)
     c = PipelineConfig(**cfg_kw)
     planned, _ = resolve_overlaps([reg], fab, c)
     blocks, _w = sequence(planned, fab, c)

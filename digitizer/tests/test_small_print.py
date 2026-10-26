@@ -38,6 +38,7 @@ from shapely.geometry import LineString, Point, Polygon
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from digitizer_core import PipelineConfig, machine, stitches  # noqa: E402
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.columns import (_clear_counters, lettering_columns_shape,  # noqa: E402
                                     small_print_counters)
 from digitizer_core.pipeline import digitize  # noqa: E402
@@ -50,9 +51,9 @@ TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
 # --- OFF is byte-identical ----------------------------------------------------
 
 GOLDEN_MD5 = {
-    "logo_alpha.png": "50b666027292342f490cb50758a7fcde",
-    "logo_whitebg.png": "e1e001f4b23de052d9102a8acbce26d9",
-    "ribbon_curve.png": "f31c29f2d98d63ce919d762beb6da58a",
+    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
+    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
+    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
 }
 
 
@@ -175,8 +176,8 @@ def test_counters_open_on_the_synthetic_word_at_three_millimetres():
     # `small_print_floor` priced alone, on the engine it was measured on: the
     # true-size switch (ON since 2026-10-14, conftest PRE_FLIP) re-traces and
     # beans this line itself, which leaves the floor nothing to hold open.
-    # The 2026-10-24 lettering flips likewise: the counters were read without them.
-    pre = {"small_text_true_size": False, **LETTERING_2026_10_24_OFF}
+    # The 2026-10-23/24 flips likewise: the counters were read without them.
+    pre = {"small_text_true_size": False, **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF}
     off, (r_off, _p, _a) = small_print.measure(image, PipelineConfig(target_width_mm=width, **pre), ref)
     on, (r_on, _p, _a) = small_print.measure(
         image, PipelineConfig(target_width_mm=width, small_print_floor=True, **pre), ref)
@@ -254,7 +255,7 @@ def _planned(letters, extra=()):
 
 def _sequenced(letters, on: bool, extra=(), **kw):
     blocks, _w = sequence(_planned(letters, extra), fabric_for_garment("left_chest"),
-                          PipelineConfig(small_print_floor=on, **kw))
+                          PipelineConfig(small_print_floor=on, **{**FLIP_2026_10_23, **kw}))
     return [r for b in blocks for r in b.runs]
 
 
@@ -387,11 +388,11 @@ def test_no_stitch_crosses_a_counter_on_fremonts_tagline_at_three_millimetres():
     image = small_print.load("fremont_tagline")
     # priced alone on the pre-flip engine (`small_text_true_size`, conftest PRE_FLIP)
     on = PipelineConfig(target_width_mm=FREMONT_3MM_WIDTH, small_print_floor=True,
-                        small_text_true_size=False)
+                        small_text_true_size=False, **FLIP_2026_10_23)
     res_on, plan_on = digitize(image, on)
     assert _counter_crossings(res_on, plan_on, on) == []
     # and the check bites: the same fixture OFF lays stitches over counters
-    off = PipelineConfig(target_width_mm=FREMONT_3MM_WIDTH, small_text_true_size=False)
+    off = PipelineConfig(target_width_mm=FREMONT_3MM_WIDTH, small_text_true_size=False, **FLIP_2026_10_23)
     res_off, plan_off = digitize(image, off)
     assert len(_counter_crossings(res_off, plan_off, off)) >= 1
 

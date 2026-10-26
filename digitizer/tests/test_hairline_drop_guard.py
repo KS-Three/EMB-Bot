@@ -17,6 +17,7 @@ import pytest
 from shapely.geometry import LineString
 from shapely.ops import unary_union
 
+from tests.conftest import FLIP_2026_10_23
 from digitizer_core import PipelineConfig, machine
 from digitizer_core import stage6_hairline as s6h
 from digitizer_core.pipeline import digitize, plan_stitches, run_stages
@@ -123,8 +124,11 @@ def enthusiast():
     # `small_text_true_size` is ON by default since #955 and sews the tagline as
     # bean letters, so the hairline tier never sees it: pinned OFF, the engine
     # this hairline guard was built and measured on.
+    # ...and the 2026-10-23 flips off (conftest.FLIP_2026_10_23): the small-text
+    # set raises this tagline to ~4 mm bold satin and the hairline tier then has
+    # nothing to drop or guard; the guard is priced on the engine it was built on
     base = dict(target_width_mm=80.0, garment_id="left_chest", thread_wt=40,
-                small_text_true_size=False)
+                small_text_true_size=False, **FLIP_2026_10_23)
     result = run_stages(path, PipelineConfig(**base))
     plans = {"off": plan_stitches(result, PipelineConfig(**base))}
     plans["on"] = plan_stitches(result, PipelineConfig(**base, hairline=True))

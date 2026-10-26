@@ -58,8 +58,8 @@ def _digest(runs) -> str:
     return h.hexdigest()
 
 
-def test_default_is_off_and_off_is_the_old_call():
-    assert PipelineConfig().fill_turn_slant is False
+def test_default_is_on_since_2026_10_23_and_off_is_the_old_call():
+    assert PipelineConfig().fill_turn_slant is True
     for poly in (_BOX, _DISC, _HOLED):
         clear_fill_reorder_memo()
         old, _ = stitch_shape(poly, "S1", angle_deg=30.0, row_mm=ROW, stitch_mm=STITCH,

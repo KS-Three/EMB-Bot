@@ -1,0 +1,275 @@
+{
+ "art": "Gaulke Roofing Logo.png",
+ "width_mm": 114.2,
+ "garment_id": "hat_front",
+ "secs": 300.5,
+ "stitches": 7509,
+ "trims": 34,
+ "colours": 3,
+ "regions": 53,
+ "warnings": [
+  "CLASSIFIED_GRADIENT",
+  "BACKGROUND_UNCERTAIN",
+  "BACKGROUND_ENCLOSED",
+  "ABSORBED_SMALL_SHAPES",
+  "PHOTO_SEGMENT_REGION_COUNT",
+  "PHOTO_PALETTE_SELECTED",
+  "DUPLICATE_CONE_LAYERS_MERGED",
+  "SHAPES_LEFT_UNSEWN",
+  "SAME_THREAD_SHAPES_MERGED",
+  "HOLE_NEARLY_CLOSED",
+  "BLEND_NO_REGIONS_DECOMPOSED",
+  "LONG_JUMPS_TRIMMED",
+  "EDGE_CAP_APPLIED"
+ ],
+ "lettering": {
+  "text_cluster_id": 39,
+  "lettering_group": 39,
+  "rescued_small_shape": 3
+ },
+ "tiers": {
+  "?": 53
+ },
+ "preflight": {
+  "grade": "B",
+  "findings": [
+   {
+    "code": "SATIN_GAPS_TIGHT",
+    "severity": "info",
+    "message": "1 satin shape sews the gaps between its own strokes closed at 114 mm: S82b4fec1 (58.1 x 18.1 mm) has 19% of the space between its strokes narrower than 1.2 mm, the pull compensation (0.4 mm a side) plus a 0.4 mm thread on Structured cap. Connected lettering and marks with spokes do this; the lever is the size. Its tightest tenth of gap clears that at about 196 mm of design width.",
+    "extra": {
+     "count": 1,
+     "judged": 3,
+     "close_mm": 1.2,
+     "pull_mm": 0.4,
+     "thread_mm": 0.4,
+     "fabric": "Structured cap",
+     "design_width_mm": 114.4,
+     "worst_shape_id": "S82b4fec1",
+     "worst_tight_frac": 0.19,
+     "shapes": [
+      {
+       "shape_id": "S82b4fec1",
+       "width_mm": 58.1,
+       "height_mm": 18.1,
+       "channel_mm": 54.3,
+       "tight_mm": 10.3,
+       "tight_frac": 0.19,
+       "gap_p10_mm": 0.7,
+       "gap_p50_mm": 4.0,
+       "clear_width_mm": 196
+      }
+     ]
+    }
+   },
+   {
+    "code": "TRIM_HEAVY",
+    "severity": "warn",
+    "message": "4.4 trims per 1,000 stitches \u2014 professional files run 0.1 to 4.1. Each cut is 2-3 seconds of machine time. 30 of 33 are moves between shapes, so merging or removing the smallest is the cheapest thing to try; the other 3 are inside a shape and it will not touch them.",
+    "extra": {
+     "per_1000": 4.4,
+     "trims": 33,
+     "stitches": 7509,
+     "in_shape": 3,
+     "between_shapes": 30,
+     "worst_shape_id": "S9092370f",
+     "shapes": [
+      {
+       "shape_id": "S9092370f",
+       "trims": 2
+      },
+      {
+       "shape_id": "Scd6b2ed5",
+       "trims": 2
+      },
+      {
+       "shape_id": "__edge_cap__",
+       "trims": 2
+      },
+      {
+       "shape_id": "S01a83c47",
+       "trims": 1
+      },
+      {
+       "shape_id": "S12a2723e",
+       "trims": 1
+      },
+      {
+       "shape_id": "S143a04ad",
+       "trims": 1
+      },
+      {
+       "shape_id": "S1644ba78",
+       "trims": 1
+      },
+      {
+       "shape_id": "S2fd31338",
+       "trims": 1
+      },
+      {
+       "shape_id": "S360d7d04",
+       "trims": 1
+      },
+      {
+       "shape_id": "S40929ceb",
+       "trims": 1
+      },
+      {
+       "shape_id": "S4a62d062",
+       "trims": 1
+      },
+      {
+       "shape_id": "S4faaf677",
+       "trims": 1
+      },
+      {
+       "shape_id": "S54fe11e7",
+       "trims": 1
+      },
+      {
+       "shape_id": "S692c3f01",
+       "trims": 1
+      },
+      {
+       "shape_id": "S7843f232",
+       "trims": 1
+      },
+      {
+       "shape_id": "S78912344",
+       "trims": 1
+      },
+      {
+       "shape_id": "S82b4fec1",
+       "trims": 1
+      },
+      {
+       "shape_id": "S88d15be5",
+       "trims": 1
+      },
+      {
+       "shape_id": "S99d08280",
+       "trims": 1
+      },
+      {
+       "shape_id": "S9dc6b87b",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sa61b6c22",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sad6e539d",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sae962aae",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sb79f24dd",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sd21b4c75",
+       "trims": 1
+      },
+      {
+       "shape_id": "Se1b8ec2e",
+       "trims": 1
+      },
+      {
+       "shape_id": "Se89f46be",
+       "trims": 1
+      },
+      {
+       "shape_id": "See7c8fe2",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sf886e9e6",
+       "trims": 1
+      },
+      {
+       "shape_id": "Sf8e2baf4",
+       "trims": 1
+      }
+     ]
+    }
+   }
+  ],
+  "metrics": {
+   "thread_match_checked": false,
+   "thread_worst_delta_e": null,
+   "legibility_checked": false,
+   "legibility": null,
+   "legibility_clusters": null,
+   "legibility_readable": null,
+   "legibility_worst": null,
+   "ground_span_frac": null,
+   "ground_delta_e": null,
+   "ground_area_frac": null,
+   "input_px_per_mm": null,
+   "subject_bg_delta_l": null,
+   "satin_shapes": 42,
+   "satin_gaps_judged": 3,
+   "satin_gaps_tight_shapes": 1,
+   "satin_gaps_tight_worst_frac": 0.19,
+   "satin_short_fraction": 0.04,
+   "satin_steps": 4997,
+   "trims_per_1000": 4.4,
+   "fill_axis_concentration": 0.994,
+   "fill_advance_mm": null,
+   "satin_advance_mm": 0.4,
+   "coverage_p50": 1.42,
+   "coverage_p95": 3.96,
+   "coverage_max": 6.35,
+   "coverage_area_mm2": 2073.0,
+   "coverage_over_warn_mm2": 0.0,
+   "coverage_over_block_mm2": 0.0,
+   "uncovered_checked": false,
+   "uncovered_worst_mm2": null,
+   "uncovered_total_mm2": null,
+   "uncovered_wanted_mm2": null,
+   "link_segments": 0,
+   "link_thread_mm": 0.0,
+   "link_uncovered_mm": 0.0,
+   "link_uncovered_max_mm": 0.0,
+   "contour_starved_shapes": 0,
+   "same_hole_fraction": 0.064,
+   "faces_detected": 0,
+   "class_override_detected_class": null,
+   "color_changes": 2,
+   "stitch_count": 7509,
+   "tiny_steps": 90,
+   "tiny_step_fraction": 0.013,
+   "edge_wobble_satin_p95_mm": 0.2709,
+   "edge_wobble_satin_std_mm": 0.114,
+   "edge_wobble_satin_max_mm": 1.5205,
+   "edge_wobble_border_p95_mm": 0.0619,
+   "edge_wobble_border_std_mm": 0.0535,
+   "edge_wobble_border_max_mm": 0.578,
+   "edge_wobble_fill_p95_mm": 0.4031,
+   "edge_wobble_fill_std_mm": 0.2715,
+   "edge_wobble_fill_max_mm": 0.5703,
+   "edge_wobble_line_p95_mm": null,
+   "edge_wobble_line_std_mm": null,
+   "edge_wobble_line_max_mm": null,
+   "curve_roughness_deg": 6.8315,
+   "curve_turn_gini": 0.7433,
+   "curve_vertices": 3403,
+   "curve_corner_vertices": 1357,
+   "curve_traces": 132,
+   "raw_score": 88
+  }
+ },
+ "pro": {
+  "file": "c golke logo hat.DST",
+  "stitches": 6138,
+  "trims": 42,
+  "colour_changes": 0,
+  "thread_colours": 0,
+  "width_mm": 114.2,
+  "height_mm": 48.5
+ }
+}

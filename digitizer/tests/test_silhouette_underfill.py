@@ -15,12 +15,14 @@ import hashlib
 import json
 
 from shapely.geometry import Polygon, box
+from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, silhouette_underfill as su, stitches
 from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import sequence
+from tests.conftest import FLIP_2026_10_23
 
 FABRIC = fabric_for_garment("hat_front")
 
@@ -53,7 +55,8 @@ def becker():
 
 def _sew(regions, **kw):
     """`plan_stitches`' order: the pass (ON), stage 5, stage 7."""
-    cfg = PipelineConfig(underlay=False, **kw)
+    # OFF_MD5 was captured on main before the 2026-10-23 flips: pin them off (conftest)
+    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **kw})
     if cfg.silhouette_underfill:
         regions, _ = su.apply(regions)
     planned, _ = resolve_overlaps(regions, FABRIC, cfg)
@@ -153,6 +156,43 @@ def test_a_shape_left_unsewn_stays_garment():
     assert abs(outline.area - (60 * 24 - key.polygon.area)) < 1e-6
     # held only by sewn shapes: a ring whose holes hold nothing sewn reads nothing
     assert su.plan([mfab()[1]], unsewn=[key]) == []
+
+
+def _sewn_cover(planned, blocks, poly):
+    """Share of `poly` the host and its stage-5 pieces sew, and the stitch
+    kinds those shapes sew with."""
+    ids = {p.region.shape_id for p in planned
+           if p.region.shape_id == "Sring" or p.region.meta.get("clip_piece_of") == "Sring"}
+    cover = unary_union([p.polygon for p in planned if p.region.shape_id in ids])
+    kinds = {r.kind for b in blocks for r in b.runs if r.shape_id in ids}
+    return cover.intersection(poly).area / poly.area, kinds
+
+
+def test_an_unsewn_keyline_round_two_bodies_leaves_both_sewn():
+    """MFab with the white unsewn (arm b): the keyline cut splits the outline
+    into the band and the two bodies it held. Every body still sews as the
+    host's fill -- stage 5 judged the pieces on the band's artwork alone and
+    dropped both bodies uncounted (MFab LC: 26 merged shapes, sewn by nobody)."""
+    regs = mfab()
+    key = regs.pop(0)
+    out, report = su.apply(regs, unsewn=[key])
+    assert report[0]["merged"] == ["Sl1", "Sl2"]
+    assert len(getattr(out[0].meta[su.UNDERFILL_KEY], "geoms", [None])) == 3   # band + 2 bodies
+    cfg = PipelineConfig(underlay=False, silhouette_underfill=True)
+    planned, _ = resolve_overlaps(out, FABRIC, cfg)
+    blocks, _ = sequence(planned, FABRIC, cfg)
+    l1, l2 = regs[1].polygon, regs[2].polygon
+    for body in (l1, l2):
+        cover, kinds = _sewn_cover(planned, blocks, body)
+        assert cover >= 0.95
+        assert stitches.FILL in kinds and stitches.SATIN not in kinds
+    # one angle: every piece sews on the host's axis
+    axes = {round(p.stitch_angle_deg, 6) for p in planned
+            if p.region.shape_id == "Sring" or p.region.meta.get("clip_piece_of") == "Sring"}
+    assert len(axes) == 1
+    # and the keyline stays garment
+    sewn = unary_union([p.polygon for p in planned])
+    assert sewn.intersection(key.polygon.buffer(-0.5)).area < 1e-6
 
 
 def test_no_ring_reads_without_a_reason():

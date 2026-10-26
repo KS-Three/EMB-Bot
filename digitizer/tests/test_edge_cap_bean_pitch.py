@@ -25,6 +25,7 @@ import pytest
 from shapely.geometry import Point, box
 
 from digitizer_core import PipelineConfig, digitize, machine, stitches
+from tests.conftest import FLIP_2026_10_23
 from digitizer_core.stage6_border import run_outline, silhouette_cap
 
 from .conftest import TESTDATA
@@ -99,9 +100,9 @@ def test_the_gate_still_cuts_at_the_new_pitch():
 
 # The flat-lane goldens' stitch streams with the cap off (`test_small_dot_rung.py`).
 GOLDEN_MD5 = {
-    "logo_alpha.png": "50b666027292342f490cb50758a7fcde",
-    "logo_whitebg.png": "e1e001f4b23de052d9102a8acbce26d9",
-    "ribbon_curve.png": "f31c29f2d98d63ce919d762beb6da58a",
+    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
+    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
+    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
 }
 
 # Default config (the bean cap ON) at 80 mm, measured on origin/main dcc54a11
@@ -127,10 +128,11 @@ def test_cap_off_goldens_are_byte_identical_either_way(fixture, pitch):
 
 @pytest.mark.parametrize("fixture", sorted(CAP_OFF_MD5))
 def test_bean_cap_off_is_byte_identical_and_on_moves_only_the_cap(fixture):
-    _r, off = digitize(TESTDATA / fixture, PipelineConfig(target_width_mm=80.0))
+    # both arms on the engine the md5s were pinned on: the 2026-10-23 flips off
+    _r, off = digitize(TESTDATA / fixture, PipelineConfig(target_width_mm=80.0, **FLIP_2026_10_23))
     assert _md5(_coords(off)) == CAP_OFF_MD5[fixture]
     _r, on = digitize(TESTDATA / fixture,
-                      PipelineConfig(target_width_mm=80.0, edge_cap_bean_pitch_mm=1.5))
+                      PipelineConfig(target_width_mm=80.0, edge_cap_bean_pitch_mm=1.5, **FLIP_2026_10_23))
     assert _md5(_coords(on)) != CAP_OFF_MD5[fixture]
 
     def split(plan):

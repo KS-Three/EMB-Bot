@@ -14,6 +14,7 @@ import pytest
 from shapely.geometry import LineString
 
 from digitizer_core import PipelineConfig, machine, stitches
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
 from tools.satin_islands import islands
 
@@ -25,6 +26,10 @@ def _cfg(**kw) -> PipelineConfig:
     # ON by default since Kent's 2026-10-12 flip) walks MARINE's letters
     # itself, so the satin tier's hop rule priced here has nothing to bury.
     kw.setdefault("lettering_columns", False)
+    # ...and the 2026-10-23 flips (`trim_bury_under_later` buries the same hops
+    # this flag prices, `tie_in_off` moves the locks the pairing reads)
+    for k, v in FLIP_2026_10_23.items():
+        kw.setdefault(k, v)
     return PipelineConfig(target_width_mm=100.0, garment_id="left_chest", **kw)
 
 

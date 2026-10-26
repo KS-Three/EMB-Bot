@@ -85,6 +85,7 @@ FLAG_SETS = {
     "polygon_axis": dict(satin_polygon_axis=True, satin_per_stroke=True),
     "both": dict(classify_area_weighted=True, satin_polygon_axis=True,
                  satin_per_stroke=True),
+    "border_by_size": dict(border_by_size=True),
     "neither": dict(),
 }
 
@@ -102,7 +103,10 @@ def _cfg(**flags) -> PipelineConfig:
     # `edge_cap="none"`: the design-silhouette cap (ON by default since
     # 2026-09-11) adds a block with no region behind it, so it has no
     # prediction to compare against and is not what this file is about.
-    return PipelineConfig(edge_cap="none", **flags)
+    # `border_by_size` (ON by default since 2026-10-23) diverts big shapes to the
+    # fill tier, which would hide what the classifier flags below decide; it is
+    # held off here and has its own arm in FLAG_SETS.
+    return PipelineConfig(edge_cap="none", **{"border_by_size": False, **flags})
 
 
 def _predicted(cfg: PipelineConfig) -> dict[str, bool]:

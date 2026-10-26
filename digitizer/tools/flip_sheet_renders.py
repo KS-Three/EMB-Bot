@@ -212,6 +212,29 @@ FLAGS: dict[str, dict] = {
                 "17,568 / 19), MFab LC 16,542 / 72 -> 16,658 / 44 (pro 15,786 / 20), Becker beanie "
                 "11,501 / 21 -> 13,726 / 20 (pro 11,411 / 11). White sews ON TOP of black on MFab "
                 "(the reverse of #1059's order): that order is Kent's call."},
+    # ---- MFab under-fill panels (2026-10-25, Kent: "the satin infill in between and around
+    # letters ... use the M-Fab logo"): defaults | b-fixed | pro, then d2 | d2 + panels | pro
+    "silhouette_underfill_alone": {
+        "sets": {"silhouette_underfill": True},
+        "fixtures": ["mfab_hat", "mfab_lc"],
+        "metric": "sub_1mm", "about": "stitches under 1 mm", "pr": 1094,
+        "note": "The under-fill ALONE, the white keyline unsewn (arm b). Before this PR the "
+                "keyline cut split the outline and stage 5 dropped every body it held, uncounted "
+                "(MFab LC: 26 merged shapes sewn by nobody); now every body sews as the host's "
+                "fill at one angle. Cells digitized with rembg from the main checkout's venv and "
+                "its timeout pinned at 900 s (the hat is photo_scene: route checked per arm)."},
+    "silhouette_underfill_panels": {
+        "base": {"silhouette_underfill": True, **_WHITE_SEWN}, "base_name": "d2",
+        "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "silhouette_underfill_panels": True},
+        "fixtures": ["mfab_hat", "mfab_lc"],
+        "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": 1094,
+        "also": {"name": "mitre", "label": "ON + MITRE",
+                 "sets": {"silhouette_underfill": True, **_WHITE_SEWN,
+                          "silhouette_underfill_panels": True, "outline_loop_mitre": True}},
+        "note": "OFF is arm d2 (under-fill + white sewn + keyline). ON: AND WELDING and LLC ride "
+                "a closed white panel -- not merged into the black, sewn after the white (black, "
+                "white, black), white loops only round the M-FAB bodies. ON + MITRE adds "
+                "`outline_loop_mitre` (#1093): the whole recipe. Same rembg pin as above."},
     # ---- wave 3 (2026-10-25)
     "border_from_outline_line_art_guard": {
         "base": {"border_from_outline": True},
@@ -225,6 +248,16 @@ FLAGS: dict[str, dict] = {
                 "byte-identical. The pro's Bridge art carried no drawing: nothing of his to "
                 "compare in the bowl. Bridge's pro files are on G:; set PRO_PARITY_ROOT when it "
                 "is unmounted."},
+    "silhouette_underfill_rim": {
+        "base": {"silhouette_underfill": True, **_WHITE_SEWN}, "base_name": "d2",
+        "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "silhouette_underfill_rim": True},
+        "fixtures": ["mfab_hat", "mfab_lc", "hotel_fremont_hat"],
+        "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1096,
+        "note": "Acts only under silhouette_underfill, so OFF is arm d2 (under-fill + white sewn "
+                "+ keyline) and ON adds the rim: the ring host's outer edge as one closed satin "
+                "loop at 1.75 mm after its fill, in its colour. The pro: MFab one closed column "
+                "1.94 (hat) / 1.86 (LC), Fremont the white ground's edge in two passes at "
+                "1.39-1.73. Becker's letter host gets none (its ring is the satin)."},
     "fine_bars_satin": {
         "sets": {"fine_bars_satin": True},
         "fixtures": ["toat_machine_hat", "hotel_fremont_hat", "precision_drone", "mfab_hat"],
@@ -299,6 +332,13 @@ def off_arm(flag: str) -> str:
     return f"{spec.get('base_name', flag)}__off" if spec.get("base") else "off"
 
 
+def also_arm(flag: str) -> str | None:
+    """The row's optional THIRD cell (`also`: {name, label, sets}), sewn beside ON
+    and cropped on ON's window -- e.g. d2 | d2 + panels | d2 + panels + mitre | pro."""
+    also = FLAGS[flag].get("also")
+    return f"{flag}__{also['name']}" if also else None
+
+
 def arm_sets(arm: str) -> dict:
     if arm == "off":
         return {}
@@ -306,6 +346,9 @@ def arm_sets(arm: str) -> dict:
         name = arm[: -len("__off")]
         owner = next(f for f, s in FLAGS.items() if s.get("base") and s.get("base_name", f) == name)
         return dict(FLAGS[owner]["base"])
+    if "__" in arm:
+        flag, _name = arm.split("__", 1)
+        return dict(FLAGS[flag]["also"]["sets"])
     return dict(FLAGS[arm]["sets"])
 
 
@@ -369,7 +412,8 @@ def run_cmd(a) -> int:
     bad = [f for f in flags if f not in FLAGS]
     if bad:
         raise SystemExit(f"unknown flags: {bad}; known: {list(FLAGS)}")
-    pairs = [(s, arm) for f in flags for s in flag_fixtures(f, a.fixtures) for arm in (off_arm(f), f)]
+    pairs = [(s, arm) for f in flags for s in flag_fixtures(f, a.fixtures)
+             for arm in (off_arm(f), f, also_arm(f)) if arm]
     jobs = [(s, arm, str(a.cache), a.engine) for s, arm in dict.fromkeys(pairs)]
     if a.jobs <= 1:
         for j in jobs:
@@ -856,6 +900,12 @@ def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str]) -
             row["off"] = measure(flag, off, fx)
             row["on"] = measure(flag, on, fx)
             row["pro"] = measure(flag, pro, fx)
+            also = None
+            if also_arm(flag) and (cache / slug / also_arm(flag) / "stats.json").exists():
+                also = load_cell(cache / slug / also_arm(flag))
+                also["engine_root"] = row["engine_root"]
+                row["also"] = measure(flag, also, fx)
+                row["also_label"] = FLAGS[flag]["also"]["label"]
             row["pro_file"] = fx["pro_dst"].name
             d = diff_points(needle_points(off["stream"]), needle_points(on["stream"]))
             row["diff"] = len(d)
@@ -870,13 +920,16 @@ def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str]) -
             row["in_window"] = sum(1 for p in d if box[0] <= p[0] <= box[2] and box[1] <= p[1] <= box[3])
             frame = _design_frame(off["design"])
             pbox = pro_box(pro["design_render"], frame, box)
-            tiles = {"off": render_crop(off["design"], box), "on": render_crop(on["design"], box),
-                     "pro": render_crop(pro["design_render"], pbox)}
+            tiles = {"off": render_crop(off["design"], box), "on": render_crop(on["design"], box)}
+            if also is not None:
+                tiles["also"] = render_crop(also["design"], box)
+            tiles["pro"] = render_crop(pro["design_render"], pbox)
             row["images"] = {}
             for side, img in tiles.items():
                 m = row[side]
                 name = f"{flag}__{slug}__{side}.jpg"
-                _write(renders / name, _label(img, f"{side.upper()}: {m['stitches']} st, {m['trims']} tr"))
+                _write(renders / name, _label(img, f"{_side_label(row, side)}: {m['stitches']} st, "
+                                                   f"{m['trims']} tr"))
                 row["images"][side] = name
             if FLAGS[flag].get("xray"):
                 xr = {"off": render_crop(reversed_design(off["design"]), box),
@@ -897,6 +950,21 @@ def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str]) -
 
 def _fmt(m: dict | None) -> str:
     return "-" if m is None else f"{m['stitches']:,} st / {m['trims']} tr / {m['about']}"
+
+
+def _sides(r: dict) -> tuple[str, ...]:
+    """The row's cells in order: OFF, ON, the optional third cell, the pro."""
+    return ("off", "on", *(("also",) if "also" in r else ()), "pro")
+
+
+def _side_label(r: dict, side: str) -> str:
+    return r.get("also_label", "ALSO") if side == "also" else side.upper()
+
+
+def _fmt_on(r: dict) -> str:
+    """ON, and the third cell beside it when the row has one."""
+    on = _fmt(r["on"])
+    return on if "also" not in r else f"{on}; {_side_label(r, 'also')}: {_fmt(r['also'])}"
 
 
 def markdown(rows: list[dict], renders: Path, doc: Path) -> str:
@@ -922,12 +990,12 @@ def markdown(rows: list[dict], renders: Path, doc: Path) -> str:
             continue
         if r["status"] == "no change":
             why = "byte-identical DST" if r["byte_identical"] else "0 needle points differ"
-            lines.append(f"| {tag} | {r['fixture']} | {r['engine']} | {_fmt(r['off'])} | {_fmt(r['on'])} | "
+            lines.append(f"| {tag} | {r['fixture']} | {r['engine']} | {_fmt(r['off'])} | {_fmt_on(r)} | "
                          f"{_fmt(r['pro'])} | **no change** ({why}) | - |")
             continue
         im = r["images"]
         crop = " ".join(f"[{s}]({rel}/{im[s]})" for s in im)
-        lines.append(f"| {tag} | {r['fixture']} | {r['engine']} | {_fmt(r['off'])} | {_fmt(r['on'])} | "
+        lines.append(f"| {tag} | {r['fixture']} | {r['engine']} | {_fmt(r['off'])} | {_fmt_on(r)} | "
                      f"{_fmt(r['pro'])} | {r['diff']:,} ({r['in_window']:,} in crop) | {crop} |")
     lines += ["", "## What each number is", ""]
     for flag, spec in FLAGS.items():
@@ -958,7 +1026,7 @@ def summary_table(rows: list[dict]) -> str:
             continue
         change = "none (no change)" if r["status"] == "no change" else f"{r['diff']:,}"
         out.append(f"<tr><td>{tag}</td><td>{r['fixture']}</td>"
-                   + "".join(f"<td>{_fmt(r[s])}</td>" for s in ("off", "on", "pro"))
+                   + f"<td>{_fmt(r['off'])}</td><td>{_fmt_on(r)}</td><td>{_fmt(r['pro'])}</td>"
                    + f"<td>{change}</td></tr>")
     out.append("</table>")
     return "".join(out)
@@ -991,15 +1059,15 @@ def html(rows: list[dict], src=lambda name: name, date: str = DATE) -> str:
         if r.get("status") not in ("rendered", "no change"):
             out.append(f"<div class='row'>{head}<p class='nochange'>{r.get('status')}</p></div>")
             continue
-        nums = "".join(f"<div><b>{s.upper()}</b> {_fmt(r[s])}</div>" for s in ("off", "on", "pro"))
+        nums = "".join(f"<div><b>{_side_label(r, s)}</b> {_fmt(r[s])}</div>" for s in _sides(r))
         if r["status"] == "no change":
             why = "byte-identical DST" if r["byte_identical"] else "0 needle points differ"
             out.append(f"<div class='row'>{head}<p class='nochange'><b>No change on this fixture</b> "
                        f"({why}).</p><div class='nums'>{nums}</div></div>")
             continue
         tiles = "".join(f"<div class='tile'><img src='{src(r['images'][s])}' alt='{s}'>"
-                        f"<div class='nums'><b>{s.upper()}</b> {_fmt(r[s])}</div></div>"
-                        for s in ("off", "on", "pro"))
+                        f"<div class='nums'><b>{_side_label(r, s)}</b> {_fmt(r[s])}</div></div>"
+                        for s in _sides(r))
         if "off_xray" in r["images"]:
             tiles += "".join(f"<div class='tile'><img src='{src(r['images'][s + '_xray'])}' alt='{s} x-ray'>"
                              f"<div class='nums'><b>{s.upper()}</b> x-ray: sewing order reversed, "

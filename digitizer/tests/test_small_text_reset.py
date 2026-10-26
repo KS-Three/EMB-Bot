@@ -40,10 +40,11 @@ def _heights(regions):
 
 # --- OFF -------------------------------------------------------------------------
 
-def test_both_flags_are_off_by_default():
+def test_both_flags_are_on_by_default_since_2026_10_23():
     cfg = PipelineConfig()
-    assert cfg.small_text_cap_letter_gap_mm is None
-    assert cfg.small_text_cap_bold_scale is None
+    assert cfg.small_text_cap_letter_gap_mm == 0.25
+    assert cfg.small_text_cap_bold_scale == 1.45
+    assert PipelineConfig(small_text_cap_letter_gap_mm=None).small_text_cap_letter_gap_mm is None
 
 
 def test_none_is_byte_identical_and_never_reaches_the_re_set(monkeypatch):
