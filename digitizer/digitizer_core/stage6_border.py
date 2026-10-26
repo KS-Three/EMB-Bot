@@ -1133,6 +1133,65 @@ def keyline_rest(band, width_mm: float, overlap_mm: float, min_dim_mm: float,
     return out
 
 
+# `cfg.silhouette_underfill_rim` (2026-10-25, built OFF): the under-fill host's
+# outer edge sewn as one closed satin loop, after its fill, in its colour. Where
+# a ring hosts its own under-fill (`silhouette_underfill`: MFab's black band,
+# Fremont's white ground), the pro rims the whole outer edge of the fill with
+# satin in the fill's colour, crosses square to the edge (6-7 deg off), width CV
+# 0.03 -- MFab hat and LC one closed column (1.94 / 1.86 mm, 312 / 286 mm of
+# edge), Fremont hat and patch the same edge in two passes of the ground's
+# colour (1.50-1.73 / 1.39-1.70 mm). Read from each file's own stitches
+# (scratch `outer_rim.py` reader, in the PR). Where a LETTER hosts (Becker's
+# beanie) the ring itself is the satin on top, and the Drone, which he does not
+# under-fill, has no rim (0.25 of its edge). The width is the median of the
+# four rims, 1.76; the loop is `keyline_runs`' with the corners pivoted as
+# `outline_loop_mitre` turns them (#1093).
+UNDERFILL_RIM_WIDTH_MM = 1.75
+
+
+def underfill_rim_runs(outline, shape_id: str, *, entry: tuple[float, float] | None,
+                       trim_at_mm: float, underlay: bool = False
+                       ) -> tuple[list[StitchRun], dict]:
+    """The under-fill's outer edge as one closed satin loop per part of
+    `outline` (the host's outline, holes closed): rail on the edge, crosses
+    `UNDERFILL_RIM_WIDTH_MM` in, cut where they would leave the outline.
+    -> (runs, report) as `keyline_runs`'."""
+    parts = [Polygon(g.exterior) for g in getattr(outline, "geoms", [outline])
+             if not g.is_empty and g.exterior.length >= machine.BORDER_MIN_LOOP_MM]
+    if not parts:
+        return [], {"loops": 0, "crosses": 0, "clamped": 0, "jumps": 0, "empty": True}
+    solid = unary_union(parts)
+    with loop_mitre_scope(True):
+        return keyline_runs(solid, shape_id, reach=solid, entry=entry, trim_at_mm=trim_at_mm,
+                            underlay=underlay,
+                            holes=[(g, UNDERFILL_RIM_WIDTH_MM) for g in parts])
+
+
+def underfill_rim_after(p, runs: list[StitchRun], report: dict, *, trim_at_mm: float,
+                        underlay: bool) -> tuple[list[StitchRun], dict]:
+    """`cfg.silhouette_underfill_rim`: a sewn shape's runs, with the rim
+    (`underfill_rim_runs`) after them when the shape is a ring hosting its own
+    under-fill -- `silhouette_underfill` tagged it with the outline it fills
+    and itself as the ring. The rim stands on the edge the fill SEWS (stage
+    5's polygon, grown by the fabric's pull: 0.4 mm outside the artwork
+    outline on a hat, where the edge cap rides), so it covers the rows' ends
+    and the edge cap reads it as cover. Any other shape, or nothing sewn, is
+    returned as it came."""
+    from .silhouette_underfill import UNDERFILL_KEY, UNDERFILL_OF_KEY
+    meta = p.region.meta
+    if (meta.get(UNDERFILL_KEY) is None or meta.get(UNDERFILL_OF_KEY) != p.shape_id
+            or not runs or p.polygon.is_empty):
+        return runs, report
+    rim, rep = underfill_rim_runs(p.polygon, p.shape_id, entry=runs[-1].points[-1],
+                                  trim_at_mm=trim_at_mm, underlay=underlay)
+    if rep["empty"]:
+        return runs, report
+    report = dict(report)
+    report["jumps"] = report.get("jumps", 0) + rep["jumps"]
+    report["underfill_rim_loops"] = rep["loops"]
+    return runs + rim, report
+
+
 def outline_holes(outline, bodies: list[tuple[Polygon, float]],
                   rest_width_mm: float) -> list[tuple[Polygon, float]]:
     """The loops `cfg.border_from_outline` sews on an art outline: every
