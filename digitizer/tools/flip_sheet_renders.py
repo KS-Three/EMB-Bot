@@ -273,7 +273,7 @@ FLAGS: dict[str, dict] = {
         "base": dict(_WAVE3_OFF), "base_name": "wave3_off",
         "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": True},
         "fixtures": ["becker_hat_large", "mfab_hat", "hotel_fremont_hat"],
-        "metric": "white_stitches", "about": "stitches in white thread", "pr": 1104,
+        "metric": "white_stitches", "about": "stitches in white thread", "pr": 1112,
         "note": "OFF pins both flips False (the engine before 2026-10-26); ON is the shipped "
                 "defaults, the Studio's request as it now goes (white ticked, sewn white). "
                 "fields_fill and the keyline stay OFF in both."},
@@ -282,7 +282,7 @@ FLAGS: dict[str, dict] = {
         "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": False},
         "fixtures": ["hotel_fremont_hat"],
         "metric": "small_lines", "about": "small lines: built, sewn height mm (census reader)",
-        "pr": 1104,
+        "pr": 1112,
         "note": "The bay mouth alone (white pinned OFF), so the crop lands on the re-set letters "
                 "the switch cuts back (#1085: EST 1895's E, S and 5)."},
 }
