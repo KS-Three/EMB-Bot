@@ -105,14 +105,15 @@ letter, and his satin spans the sliver, the hairline and the field
 | `keyline_fold_slivers` | own flag (read only with `sew_enclosed_white`) | A sewn white field's slivers fold back into it, before the art outlines are read. A sliver is in the field's thread, not routed by `sew_enclosed_white`, no text, measured under a thread wide, and within a thread of the field. It joins with the strip between them. A slit thinner than a thread that the fold closes is filled. A fold may shrink a hole but never split one: on the MFab hat a sliver ran across the lower line's hole and cut its panel in three. |
 | `fill_section_travel` | existing flag (#1091), unchanged | Routes the under-fill's underlay ring hops and fill sections inside the shape, under rows still to sew. |
 
-`trim_bury_under_later` is Kent's ruled flip (#1057, not merged when this ran),
-so the "ruled" base below carries it.
+`trim_bury_under_later` is one of Kent's ruled flips. #1057 merged them into
+main on 2026-10-26, after these arms ran, so the "ruled" base below is today's
+main: main's code before #1057, with #1057's 16 default values set.
 
 ## Result
 
 **Ruled base: the recipe plus #1057's 16 ruled defaults** (`BASE` in
-`tools/sewout_card_v7.py`, with `tie_in_off`), i.e. what ships once #1057
-lands. Cuts are by where they sit. Ours: each cut belongs to the plan run it
+`tools/sewout_card_v7.py`, with `tie_in_off`), i.e. main's defaults since
+#1057. Cuts are by where they sit. Ours: each cut belongs to the plan run it
 follows. The pro: the DST rule from #1094 (block tone + stitch construction).
 The DST column is the trim count read back from the file.
 
