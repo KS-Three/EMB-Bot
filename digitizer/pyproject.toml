@@ -69,6 +69,10 @@ digitizer_core = ["chart_data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# tests/_hexrepr.py: a failed md5 / sha256 `==` prints both values whole (pytest
+# cuts them to ~30 characters), so a CI log is enough to re-pin from. Here, not in
+# conftest.py, which open PRs edit. Needs `python -m pytest` (cwd on sys.path).
+addopts = "-p tests._hexrepr"
 
 # Non-blocking, local-only (tools/typecheck_service.py): digitizer_service only.
 # digitizer_core is followed silently — its errors are out of scope here.
