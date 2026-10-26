@@ -277,7 +277,7 @@ def test_copying_a_real_auto_digitized_design_through_manual_reproduces_it():
     a SECOND difference of the same kind as the enclosed-background one
     above — a notion auto carries that manual mode cannot — found by the
     flip, recorded here, and not fixed by it."""
-    c = cfg(keep_thin_strokes=False, **PLAN_CFG_KW)
+    c = cfg(keep_thin_strokes=False, border_by_size=False, **PLAN_CFG_KW)
     auto_result = run_stages(TESTDATA / "logo_whitebg.png", c)
     auto_plan = plan_stitches(auto_result, c)
 

@@ -42,6 +42,16 @@ reproduced both old entries on this machine before the capture
 (`tools/recapture_flat_lane_key.py --pre-change-tree`). `enthusiast_logo`
 stays the platform red.
 
+**Exception TAKEN 2026-10-24, `border_by_size` ON (Kent 2026-10-23, PR #1057):** the
+`logo_alpha.png` and `logo_whitebg.png` entries were re-captured after the pro's
+size rule for borders became a default: a shape whose smallest dimension is 6 mm
+or more at 80 mm sews as a fill under a satin ring, so stitches grow (alpha
+4757 -> 6224, whitebg 4726 -> 5536). Probed flag by flag on both keys: only
+`border_by_size` moves them; `enclosed_alpha_hole_parts` and
+`lettering_columns_corner_fold` leave all three flat fixtures byte-identical.
+`ribbon_curve.png` (satin-only) is the control. The pre-change tree (#1049's head,
+38ef4a85) reproduced both old entries on this machine before the capture
+(`tools/recapture_flat_lane_key.py --pre-change-tree`).
 **Exception TAKEN 2026-09-03, FILL_ROW_MM 0.40 -> 0.15 (Kent's ruling, DOCTRINE
 standing rulings):** the `logo_whitebg.png` and `logo_alpha.png` entries were
 re-captured after `machine.FILL_ROW_MM` moved to the professional's pitch —
@@ -269,6 +279,25 @@ byte-for-byte there first — the machine proved itself on the old engine, so
 what moved is the engine. Not CI's own runner: the session's token lacked
 the `workflow` scope the temporary re-capture workflow needs, so CI's
 `digitizer` job is the judge of whether ubuntu-latest agrees.
+
+**Exception TAKEN 2026-10-23, the flip sheet's nine layout flags ON by
+default (Kent: "flip the eight ON, hold two", then `lettering_columns_small_bold`
+as the ninth; `docs/flip-sheet-2026-10-23.md`, PR #1049):** the
+`logo_whitebg.png`, `logo_alpha.png` and `ribbon_curve.png` entries were
+re-captured after `fill_turn_slant`, `trim_bury_under_later`, `tie_in_off`,
+`small_solids_satin`, `compact_solids_satin`, `satin_underlay_short_columns`,
+`fill_underlay_cross` and the small-text set (`small_text_cap_mm` 4.0 and its
+four companions, with `lettering_columns_small_bold`) became plain defaults:
+whitebg 4585 → 4726, alpha 4603 → 4757, ribbon 1009 → 1005 stitch coords;
+region ids, areas and warnings unmoved on all three (the small-text set
+touches no line on these fixtures, so stage 2-5 output is the same and only
+the stitches moved: slanted fill turns, no start locks, buried under-later
+hops, satin blobs for the small solids, centre runs under short columns, the
+cross pass under the hat's fills). The pre-change tree (`origin/main` at
+ec84604a) reproduced all three old entries on this machine before the capture
+(`tools/recapture_flat_lane_key.py --pre-change-tree`, `machine OK` each).
+`photo/enthusiast_logo.png` stays un-re-pinned for the standing platform
+reason above; it moves under the flip too and CI deselects it either way.
 """
 
 from __future__ import annotations

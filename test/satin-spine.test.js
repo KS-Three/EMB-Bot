@@ -64,7 +64,8 @@ test("a bar's column runs from one end of the bar to the other", () => {
 const lib = (name) => import(pathToFileURL(path.join(__dirname, "..", "app", "src", "lib", name)).href);
 // `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
 // (Kent); a pin below taken before that, on another subject, builds with them OFF.
-const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+// + the three JS twins Kent flipped ON 2026-10-23 (fill turn slant, cross underlay, short-column underlay)
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false, fillTurnSlant: false, crossUnderlay: false, underlayShortColumns: false };
 async function studioShape(kind, params, sizeMm, garmentId = "left_chest", extra) {
   const { shapePresetPoints } = await lib("shapePresets.js");
   const { shapesToRegions } = await lib("manualShapes.js");

@@ -429,7 +429,8 @@ test("fillStagger (shapes): ON staggers the cover fill of every shape, by the Py
     assert.strictEqual(lined.threes, 0, "three holes in a line, of " + lined.n);
     assert.ok(lined.pairs < 0.1 * lined.n, lined.pairs + " of " + lined.n + " holes with one under them");
   }
-  for (const p of passes({ fillStagger: false }).seen.filter((q) => q.opts.rowSpacing === cover[0].opts.rowSpacing)) {
+  // `fillTurnSlant: false` too: the slanted turn (ON since 2026-10-23) moves the row ends off the line
+  for (const p of passes({ fillStagger: false, fillTurnSlant: false }).seen.filter((q) => q.opts.rowSpacing === cover[0].opts.rowSpacing)) {
     const lined = inLine(holesOf(p.pts, p.polys, p.opts.rowSpacing, p.opts.angleDeg), 0.3 * cover[0].opts.minStitch);
     assert.ok(lined.threes > 0.9 * lined.n, "the defect, flag off: " + lined.threes + " of " + lined.n + " holes are the head of three in a line");
   }

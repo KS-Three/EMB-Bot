@@ -49,8 +49,8 @@ def _underlay(runs):
     return [pts for kind, pts in runs if kind == stitches.UNDERLAY]
 
 
-def test_default_is_off():
-    assert PipelineConfig().fill_underlay_cross is False
+def test_default_is_on_since_2026_10_23():
+    assert PipelineConfig().fill_underlay_cross is True
 
 
 def test_the_table_itself_is_untouched():
@@ -61,14 +61,15 @@ def test_the_table_itself_is_untouched():
 @pytest.mark.parametrize("fabric_id", fabrics.CROSS_UNDERLAY_FABRICS)
 def test_off_sews_the_preset_s_own_underlay(fabric_id):
     own = get_fabric(fabric_id).fill_underlay
-    assert _plan(fabric_id) == _plan(fabric_id, underlay_style=own)
+    assert _plan(fabric_id, fill_underlay_cross=False) == _plan(fabric_id, underlay_style=own)
 
 
 @pytest.mark.parametrize("fabric_id", fabrics.CROSS_UNDERLAY_FABRICS)
 def test_on_sews_exactly_the_cross_pass(fabric_id):
     on = _plan(fabric_id, fill_underlay_cross=True)
     assert on == _plan(fabric_id, underlay_style="cross_tatami")
-    assert on != _plan(fabric_id)
+    assert on == _plan(fabric_id), "ON is the default since 2026-10-23"
+    assert on != _plan(fabric_id, fill_underlay_cross=False)
     assert _underlay(on), "the field sewed no underlay at all"
 
 
@@ -81,7 +82,7 @@ def test_the_set_covers_hat_left_chest_and_beanie():
 @pytest.mark.parametrize("fabric_id", sorted(
     {f.id for f in fabrics.FABRICS} - set(fabrics.CROSS_UNDERLAY_FABRICS)))
 def test_other_presets_do_not_move(fabric_id):
-    assert _plan(fabric_id, fill_underlay_cross=True) == _plan(fabric_id)
+    assert _plan(fabric_id, fill_underlay_cross=True) == _plan(fabric_id, fill_underlay_cross=False)
 
 
 def test_an_explicit_style_still_wins():
@@ -92,7 +93,7 @@ def test_an_explicit_style_still_wins():
 def test_a_shape_override_still_wins():
     meta = {"underlay_style": "edge_run"}
     assert (_plan("pique_knit", meta, fill_underlay_cross=True)
-            == _plan("pique_knit", meta))
+            == _plan("pique_knit", meta, fill_underlay_cross=False))
 
 
 def test_underlay_off_still_means_none():

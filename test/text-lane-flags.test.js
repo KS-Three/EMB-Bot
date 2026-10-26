@@ -44,7 +44,7 @@ function binOrSkip(key) {
 }
 const build = (key, text, widthMm, extra) => DG.buildLetteringDesign(load(key), text, { ...base, targetWidthMm: widthMm, ...(extra || {}) });
 // dedupeHoles' off arm (it is ON when omitted).
-const OFF = { dedupeHoles: false };
+const OFF = { dedupeHoles: false, underlayShortColumns: false };   // the pre-flip engine: dedupeHoles (10-20) and short-column underlay (10-23) off
 const md5 = (d) => crypto.createHash("md5").update(JSON.stringify(d.stitches)).digest("hex");
 const records = (d) => d.stitches.map((s) => `${s.x},${s.y},${s.type}`).join(";");
 const same = (p, q) => p.x === q.x && p.y === q.y;
@@ -112,7 +112,7 @@ test("dedupeHoles: left off, a run's first stitch repeats the point the run befo
 test("dedupeHoles ON: no stitch straight after a stitch on its point, and the stream is OFF's less exactly those records", () => {
   for (const [key, text, w] of PINS) {
     if (!binOrSkip(key)) continue;
-    const off = build(key, text, w, OFF), on = build(key, text, w, { dedupeHoles: true });
+    const off = build(key, text, w, OFF), on = build(key, text, w, { ...OFF, dedupeHoles: true });
     const label = `${key} "${text}" ${w} mm`;
     assert.strictEqual(seconds(on), 0, label);
     assert.deepStrictEqual(on.stitches, withoutSecond(off.stitches), label);
@@ -152,7 +152,7 @@ test("dedupeHoles ON: a run every record of which repeats the record before it l
   // onto the stitch they leave from. The shape lane never meets this (pushRun
   // opens every run with a jump); here the span goes with its stitches.
   for (const [text, spansOff, spansOn] of [["FRITSCH", 284, 281], ["Stitches", 324, 316]]) {
-    const off = build("apesplit", text, 40, OFF), on = build("apesplit", text, 40, { dedupeHoles: true });
+    const off = build("apesplit", text, 40, OFF), on = build("apesplit", text, 40, { ...OFF, dedupeHoles: true });
     const label = `apesplit "${text}" 40 mm`;
     assert.strictEqual(off.runs.length, spansOff, `${label}: fixture, spans OFF`);
     assert.strictEqual(on.runs.length, spansOn, `${label}: spans ON`);
@@ -193,7 +193,7 @@ test("dedupeHoles ON with ties: every lock is laid and none of them doubles a ho
 
 test("dedupeHoles ON: a cross-stitch font's leg ends, laid twice in one hole, are laid once", () => {
   if (!binOrSkip("noble")) return;
-  const off = build("noble", "FRITSCH", 40, OFF), on = build("noble", "FRITSCH", 40, { dedupeHoles: true });
+  const off = build("noble", "FRITSCH", 40, OFF), on = build("noble", "FRITSCH", 40, { ...OFF, dedupeHoles: true });
   assert.deepStrictEqual(secondByKind(off), { none: 17 }, "fixture: noble's crosses lie in no span");
   assert.strictEqual(seconds(on), 0);
   assert.deepStrictEqual(on.stitches, withoutSecond(off.stitches));

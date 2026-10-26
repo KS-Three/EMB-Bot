@@ -61,6 +61,20 @@ OUT = Path(os.environ.get("PRO_PARITY_OUT", "pro_parity_out"))
 # Every flag that is ON by default and landed from 2026-09-01, with the value
 # that turns it off. Dates are the config.py line's, by `git log -S`.
 FLAGS: dict[str, object] = {
+    # 2026-10-23, Kent's flip of eight layout flags off the flip sheet (PR #1047)
+    "fill_turn_slant": False,
+    "trim_bury_under_later": False,
+    "tie_in_off": False,
+    "small_solids_satin": False,
+    "compact_solids_satin": False,
+    "satin_underlay_short_columns": False,
+    "fill_underlay_cross": False,
+    "small_text_cap_mm": None,
+    "small_text_cap_max_width_scale": None,
+    "small_text_cap_min_stroke_mm": None,
+    "small_text_cap_letter_gap_mm": None,
+    "small_text_cap_bold_scale": None,
+    "lettering_columns_small_bold": False,
     "lettering_columns_rail_axis": False,   # 2026-10-20, Proseal E arm
     "bean_letter_straight_mm": None,        # 2026-10-20, Kent: "ON at 0.7 mm"
     "detail_spoke_scale": None,             # 2026-10-20, Kent: "Star is too big" (half)

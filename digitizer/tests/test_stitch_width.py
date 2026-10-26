@@ -31,6 +31,7 @@ import pytest
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 
+from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips off: these bars are priced on the skeleton tier before the small-text set and small solids
 from digitizer_core import PipelineConfig, stitches
 from digitizer_core import stitchwidth as sw
 from digitizer_core.pipeline import digitize, fabric_for
@@ -388,7 +389,7 @@ def test_an_override_on_the_thin_bars_sews_them_as_columns_of_that_width(tmp_pat
     # ahead of the bean run and the width override this test is about.
     # And with `small_text_true_size` OFF (ON by default since #955): the switch
     # re-traces these sub-3 mm bars and bean-tags them, which is not this test.
-    base = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", lettering_columns=False,
+    base = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", **FLIP_2026_10_23, lettering_columns=False,
                           small_text_true_size=False)
     off, off_plan = digitize(art, base)
     bars = [r for r in off.regions if r.meta.get("text_cluster_id")]
@@ -400,7 +401,7 @@ def test_an_override_on_the_thin_bars_sews_them_as_columns_of_that_width(tmp_pat
             kinds_off[run.kind] = kinds_off.get(run.kind, 0) + len(run.points)
     assert kinds_off.get(stitches.SATIN, 0) == 0 and kinds_off.get(stitches.RUN, 0) > 0, kinds_off
 
-    on_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", lettering_columns=False,
+    on_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", **FLIP_2026_10_23, lettering_columns=False,
                             small_text_true_size=False, shape_overrides={sid: {"stitch_width_mm": 1.0} for sid in ids})
     on, on_plan = digitize(art, on_cfg)
     sized = [r for r in on.regions if r.shape_id in ids]

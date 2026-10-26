@@ -30,7 +30,7 @@ from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import sequence
 
-from .conftest import PLAN_CFG_KW, cfg
+from .conftest import FLIP_2026_10_23, PLAN_CFG_KW, cfg
 
 FABRIC = fabric_for_garment(PLAN_CFG_KW["garment_id"])   # pique knit, trims at 3.0 mm
 
@@ -38,7 +38,9 @@ FABRIC = fabric_for_garment(PLAN_CFG_KW["garment_id"])   # pique knit, trims at 
 # turned it off). Every test in this file is a test OF chaining, so each one
 # turns it on for itself rather than inheriting a default — which also means
 # this file keeps telling the truth whichever way that default settles.
-CHAIN_ON = {**PLAN_CFG_KW, "chain_links": True}
+# `FLIP_2026_10_23` throughout: chaining is priced on the engine its numbers were
+# measured on (locks at every start, every under-later hop cut, straight turns).
+CHAIN_ON = {**PLAN_CFG_KW, **FLIP_2026_10_23, "chain_links": True}
 
 
 # --- Instruments -----------------------------------------------------------
@@ -203,7 +205,7 @@ def _bridged(right_x0: float, *, chain: bool = True):
                _region(_bar(right_x0, right_x0 + 10), 0, "Sright", 0),
                _region(Polygon([(10, 0), (right_x0, 0),
                                 (right_x0, 10), (10, 10)]), 1, "Sbridge", 1)]
-    conf = PipelineConfig(**{**PLAN_CFG_KW, "chain_links": chain})
+    conf = PipelineConfig(**{**PLAN_CFG_KW, **FLIP_2026_10_23, "chain_links": chain})
     planned, _ = resolve_overlaps(regions, FABRIC, conf)
     blocks, _ = sequence(planned, FABRIC, conf)
     return planned, blocks
@@ -506,7 +508,7 @@ def test_an_uncovered_needle_up_move_still_obeys_the_trim_distance(alpha):
 
 def test_chaining_off_restores_the_pure_distance_rule(alpha):
     """The escape hatch the pre-chaining goldens are pinned to."""
-    conf = cfg(**PLAN_CFG_KW, chain_links=False)
+    conf = cfg(**PLAN_CFG_KW, **FLIP_2026_10_23, chain_links=False)
     planned, _ = resolve_overlaps(alpha.regions, FABRIC, conf)
     blocks, _ = sequence(planned, FABRIC, conf)
     for block in blocks:
@@ -544,8 +546,8 @@ def test_chaining_cuts_the_benchmark_fixtures_trim_rate(enthusiast_logo_93mm):
     # fremont 4.55 -> 4.28 and drone 5.26 -> 5.24), because it adds stitches
     # as well as trims. Four of the six are already over this ceiling with the
     # cap OFF. The flip's plan doc carries the table.
-    off = plan_stitches(enthusiast_logo_93mm, cfg(target_width_mm=93.0, garment_id="left_chest", chain_links=False, edge_cap="none"))
-    on = plan_stitches(enthusiast_logo_93mm, cfg(target_width_mm=93.0, garment_id="left_chest", chain_links=True, edge_cap="none"))
+    off = plan_stitches(enthusiast_logo_93mm, cfg(**FLIP_2026_10_23, target_width_mm=93.0, garment_id="left_chest", chain_links=False, edge_cap="none"))
+    on = plan_stitches(enthusiast_logo_93mm, cfg(**FLIP_2026_10_23, target_width_mm=93.0, garment_id="left_chest", chain_links=True, edge_cap="none"))
     assert on.stats.trims < off.stats.trims, "chaining removed no trims at all"
     rate = 1000.0 * (on.stats.trims - 1) / on.stats.stitch_count
     assert rate <= 4.1, f"{rate:.1f} trims/1k is still outside the corpus band"
@@ -731,8 +733,8 @@ def test_chaining_adds_no_bare_fabric_exposure_on_the_committed_fixture(enthusia
     covers — see `config.py`'s `chain_links` docstring for what is still
     outstanding before the default flips.
     """
-    off = plan_stitches(enthusiast_logo_93mm, cfg(target_width_mm=93.0, garment_id="left_chest", chain_links=False))
-    on = plan_stitches(enthusiast_logo_93mm, cfg(target_width_mm=93.0, garment_id="left_chest", chain_links=True))
+    off = plan_stitches(enthusiast_logo_93mm, cfg(**FLIP_2026_10_23, target_width_mm=93.0, garment_id="left_chest", chain_links=False))
+    on = plan_stitches(enthusiast_logo_93mm, cfg(**FLIP_2026_10_23, target_width_mm=93.0, garment_id="left_chest", chain_links=True))
 
     l0, exp0, bare0, worst0 = _thread_bare_mm(off)
     l1, exp1, bare1, worst1 = _thread_bare_mm(on)
@@ -808,8 +810,8 @@ def test_chaining_adds_zero_bare_thread_on_every_acceptance_fixture(
         ("ribbon", ribbon, dict(garment_id="left_chest")),
     ]
     for name, result, kw in cases:
-        off = plan_stitches(result, cfg(**kw, chain_links=False))
-        on = plan_stitches(result, cfg(**kw, chain_links=True))
+        off = plan_stitches(result, cfg(**kw, **FLIP_2026_10_23, chain_links=False))
+        on = plan_stitches(result, cfg(**kw, **FLIP_2026_10_23, chain_links=True))
         _l0, exp0, bare0, worst0 = _thread_bare_mm(off)
         _l1, exp1, bare1, worst1 = _thread_bare_mm(on)
         assert bare0 <= CEILING_MM[(name, False)], f"{name}: chain-off floor {bare0:.2f} mm"
