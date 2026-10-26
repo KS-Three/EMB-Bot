@@ -1854,9 +1854,10 @@ class PipelineConfig:
     # than everything it touches -- skips the run rescue for the ordinary
     # satin tier, ahead of the hairline tier; `small_solids_satin` keeps the
     # shapes it would take; no satin out of it falls back to the ring exactly.
-    # 38 target regions (To a T x4 30, Fremont separators 4, drone 2, MFab's
-    # LLC hairlines 2) and region kappa 0.93 in-sample; tests
-    # `tests/test_fine_bars_satin.py`. No width, pull, density or stitch
+    # Measured over 16 paired jobs: 37 of the 38 target regions cure (To a T
+    # x4 30, Fremont separators 4, drone 2, MFab LC's LLC hairline; MFab hat's
+    # photo-class generation keeps its ring on `photo_width_floor`), region
+    # kappa 0.905; tests `tests/test_fine_bars_satin.py`. No width, pull, density or stitch
     # length moves: whether a 1 mm bar holds on a cap is the sew-out question
     # `small_solids_satin` already carries (gate 1). Layout (ruling 2026-10-22:
     # judged in the preview). OFF is the engine as it was, byte for byte.
