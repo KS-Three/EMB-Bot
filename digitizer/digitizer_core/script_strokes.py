@@ -147,13 +147,14 @@ REACH_HALVES = 1.5
 #: an arm's direction is read between these distances from its node, in
 #: half-widths: past the junction blob, inside the arm
 _ARM_FROM, _ARM_TO = 1.0, 3.0
-#: a free end runs on along its tangent this many half-widths, to its cap
-_CAP_HALVES = 2.0
-#: on an ink reading a cross stops at the DRAWN edge where the polygon runs
-#: on more than this past it -- a counter the trace closed (Bridge's g and e:
-#: 2.8 mm2 with no ground under them), which a cross to the polygon fanned
-#: across -- and at the polygon's own edge otherwise. The fabric's pull, so a
-#: trace a pull fatter than the ink still sews to its edge
+#: a free end runs on along its tangent up to this many half-widths, to its
+#: cap (stations off the polygon are not sewn)
+_CAP_HALVES = 3.0
+#: on an ink reading a cross stops at the DRAWN edge where it would run into a
+#: counter the trace closed (Bridge's g and e: 2.8 mm2 with no ground under
+#: them; a cross to the polygon fanned across them) more than this short of
+#: the polygon's edge -- and at the polygon's own edge otherwise. The fabric's
+#: pull, so a trace a pull fatter than the ink still sews to its edge
 CLOSED_GAP_MM = 0.4
 #: polygon the strokes leave uncovered (a closed counter, a fused join the
 #: pen path skips, a wedge between two strokes) is sewn as a straight patch
@@ -279,6 +280,9 @@ class _Grid:
     ox: float
     oy: float
     source: str
+    #: an ink reading's CLOSED pockets: ground the polygon covers and the
+    #: drawn stroke rings round (a counter the trace closed); None otherwise
+    counters: np.ndarray | None = None
 
     def to_mm(self, p) -> tuple[float, float]:
         return (self.ox + (p[0] + 0.5) / self.scale, self.oy + (p[1] + 0.5) / self.scale)
@@ -291,6 +295,15 @@ class _Grid:
         if 0 <= x < W and 0 <= y < H:
             return float(self.dist[y, x]) / self.scale
         return 0.0
+
+    def counter_at(self, p_mm) -> bool:
+        """Is `p_mm` in a closed pocket (`counters`)?"""
+        if self.counters is None:
+            return False
+        x = int(math.floor((p_mm[0] - self.ox) * self.scale))
+        y = int(math.floor((p_mm[1] - self.oy) * self.scale))
+        H, W = self.counters.shape
+        return bool(0 <= x < W and 0 <= y < H and self.counters[y, x])
 
     def edge_hit(self, s, u, reach: float) -> float:
         """Distance from `s` along unit `u` to where the drawn stroke ends
@@ -388,8 +401,20 @@ def ink_grid(ink, poly: Polygon) -> _Grid | None:
         x, y, w, h, a = stats[i]
         if x > 0 and y > 0 and x + w < W and y + h < H and a / R ** 2 < INK_MIN_HOLE_MM2:
             keep[ids == i] = 1
+    # the counters the trace closed: ground inside the polygon that the
+    # drawn stroke rings round. Ground inside the polygon that reaches its
+    # outside is not one (Tires' bevel: the photo trace runs past the ink
+    # along whole strokes)
+    pocket = ((m > 0) & (edge == 0)).astype(np.uint8)
+    outside = cv2.dilate((1 - m).astype(np.uint8), np.ones((3, 3), np.uint8))
+    counters = np.zeros_like(pocket)
+    n, ids, stats, _c = cv2.connectedComponentsWithStats(pocket, connectivity=4)
+    for i in range(1, n):
+        part = ids == i
+        if stats[i, cv2.CC_STAT_AREA] / R ** 2 >= INK_MIN_HOLE_MM2 and not outside[part].any():
+            counters[part] = 1
     return _Grid(mask=keep, dist=cv2.distanceTransform(edge, cv2.DIST_L2, 5), scale=R,
-                 ox=x0, oy=y0, source="ink")
+                 ox=x0, oy=y0, source="ink", counters=counters)
 
 
 # ------------------------------------------------------------ pen strokes
@@ -570,6 +595,23 @@ def pen_strokes(grid: _Grid) -> tuple[list[PenStroke], float]:
             if short and not (piece.free_start and piece.free_end):
                 continue
             out.append(piece)
+    # an end that met only what was dropped now meets nothing: it runs on
+    # to its cap like any free end (Tires' r: both arms of the shoulder knot)
+    lines = [LineString(st.spine) if len(st.spine) >= 2 else None for st in out]
+    reach = _ARM_TO * half
+    for i, st in enumerate(out):
+        if st.closed:
+            continue
+        for at_start in (True, False):
+            if st.free_start if at_start else st.free_end:
+                continue
+            end = Point(st.spine[0] if at_start else st.spine[-1])
+            if not any(j != i and ln is not None and ln.distance(end) <= reach
+                       for j, ln in enumerate(lines)):
+                if at_start:
+                    st.free_start = True
+                else:
+                    st.free_end = True
     return out, half
 
 
@@ -620,9 +662,11 @@ def _split_cusps(s: PenStroke, half: float) -> list[PenStroke]:
         i = k + 1
     if not cuts:
         return [PenStroke(pts, s.free_start, s.free_end, False)]
+    # a cusp is where the pen turns back at the outline (the top of an s):
+    # each piece runs on through it to the cap there, as a free end does
     bounds = [0, *cuts, n - 1]
-    return [PenStroke(pts[a:b + 1], s.free_start if k == 0 else False,
-                      s.free_end if k == len(bounds) - 2 else False, False)
+    return [PenStroke(pts[a:b + 1], s.free_start if k == 0 else True,
+                      s.free_end if k == len(bounds) - 2 else True, False)
             for k, (a, b) in enumerate(zip(bounds, bounds[1:]))]
 
 
@@ -710,14 +754,18 @@ def _stations(poly: Polygon, stroke: PenStroke, half: float, pitch_mm: float,
 
 def _drawn(grid: _Grid, s, u, hit: float) -> float:
     """Where a cross that would end `hit` along `u` ends on an ink reading:
-    at the drawn edge when the polygon runs on more than `CLOSED_GAP_MM`
-    past it -- a counter or a gap the trace closed, which a cross reaching
-    the polygon would sew through as a fan -- else at `hit`, the polygon's
-    own edge. A polygon grid is its own edge: `hit`."""
-    if grid.source != "ink":
+    at the drawn edge when, past it, the cross would run into a counter the
+    trace closed (`_Grid.counters`) -- more than `CLOSED_GAP_MM` short of
+    the polygon's edge, which a cross reaching the polygon fans across --
+    and at `hit`, the polygon's own edge, everywhere else. A polygon grid
+    has no counters of its own: `hit`."""
+    if grid.counters is None:
         return hit
     e = grid.edge_hit(s, u, hit)
-    return e if hit - e > CLOSED_GAP_MM else hit
+    if hit - e <= CLOSED_GAP_MM:
+        return hit
+    past = e + 1.0 / grid.scale
+    return e if grid.counter_at((s[0] + u[0] * past, s[1] + u[1] * past)) else hit
 
 
 def _cross_near(columns, at) -> tuple[float, float] | None:
