@@ -1734,8 +1734,9 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     cfg = cfg or PipelineConfig()
     # `cfg.white_keyline_art_recipe` (built OFF): the verdict `finish_generation`
     # read, folded in before anything below reads the recipe's switches (the
-    # loop mitre's scope is the first)
-    cfg = white_keyline_art.apply(cfg, result.white_keyline_art)
+    # loop mitre's scope is the first). Read with getattr: the scope tests
+    # hand this a stand-in result (None, a bare object).
+    cfg = white_keyline_art.apply(cfg, getattr(result, "white_keyline_art", False))
     # `cfg.lettering_columns_apex_cut` (built OFF): `outline_cut` reads no
     # config, so the flag is set there for the length of this plan
     from .outline_cut import apex_cut_scope
