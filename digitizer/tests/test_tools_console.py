@@ -34,7 +34,8 @@ from tools._console import utf8_console
 TOOLS = pathlib.Path(__file__).resolve().parents[1] / "tools"
 
 #: Tools that read a Markdown doc at runtime and print strings out of it.
-DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
+DOC_READERS = {"scope_budget", "memory_budget", "doc_claims",
+               "flag_ledger"}   # reads .claude/memory notes, prints their names (2026-10-26)
 
 #: Tools that NAME a `.md` path without ever reading one — `acceptance_ab`
 #: points the reader at `rembg_isolated/README.md` in a message, and
@@ -53,6 +54,7 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
 #: docstring, prints JSON rows and an ASCII table, reads no doc.
 NAMES_ONLY = {"border_census",   # WRITES the census table's .md, reads none (2026-10-23)
               "lettering_board",   # WRITES docs/scoreboards/lettering-board-<date>.md, reads none (2026-10-25)
+              "lane_census",       # NAMES the 6b plan's .md (`PLAN_FILE`, read by its test only), reads no doc at runtime (2026-10-26)
               "flip_sheet_renders",   # WRITES docs/flip-sheet-<date>.md + index.html, reads none (2026-10-23)
               "flip_eight_proof",     # WRITES docs/renders/flip-eight-2026-10-23/README.md, reads none (2026-10-23)
               "acceptance_ab", "sewout_walk_reach", "counter_slots",

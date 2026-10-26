@@ -27,4 +27,7 @@ def test_the_pipeline_files_are_out():
 
 
 def test_it_is_a_small_subset():
-    assert 0 < len(wire_files()) < 60
+    # 60 when the subset was cut (07e7fd5f); 80 since 2026-10-26, when the
+    # 60th wire file (test_flag_ledger: it reads .claude/memory) reached it --
+    # still under a fifth of the 427 test files
+    assert 0 < len(wire_files()) < 80
