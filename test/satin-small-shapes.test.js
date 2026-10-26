@@ -54,13 +54,16 @@ const longestStitchMm = (d) => {
 };
 
 // ---- OFF: byte-identical to main of 2026-10-20 (0eb5e02) ------------------
+// The two library-font words re-pinned 2026-10-26: the left chest auto-fits the
+// pro's 96 x 64.5 mm box by default now (`garments.proSized`, Kent 2026-10-26);
+// the shapes pass their own target width and do not move.
 const PINS = {
   star5: "52ec3113edbb326b446cb6fa7f393108",
   round: "92d9d1fec2dc684d2430dd75d655d796",
   square: "795d20f7a8ebba5d7e7d5c660492803d",
   dot: "4aeeb8a9eb16656b49c9e60712ea9d1f",
-  word_barstitch: "5cb7310b4644edb28c192dfcd60d46c8",
-  word_venezia: "f4f5e3f98be5396c7814d9b777c7622b",
+  word_barstitch: "bc221c91f75342c1d6f418c691464612",
+  word_venezia: "cac4f3edcde4fb8e9d9023a03aa5d4cb",
 };
 
 test("OFF: the four shapes and two library-font words sew the bytes main sewed", async () => {

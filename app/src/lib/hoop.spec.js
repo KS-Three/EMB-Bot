@@ -20,11 +20,13 @@ beforeAll(async () => {
 });
 
 test("effectiveHoop defaults to the per-garment suggestion when hoopId is null", () => {
-  // left_chest is a 4x4in (101.6mm) placement box — a hair over the 4x4
-  // hoop's 100mm field, so the suggestion steps up to 5x7.
+  // left_chest auto-fits the pro's 96 x 64.5 mm box (2026-10-26, Kent: "64 mm
+  // (2.5 in) or more"), inside the 4x4 hoop's 100 mm field; its 4x4in (101.6mm)
+  // inch box, a hair over that field, stepped the suggestion up to 5x7.
   const r = effectiveHoop({ garmentId: "left_chest", hoopId: null });
   expect(r.suggested).toBe(true);
-  expect(r.hoop.id).toBe("5x7");
+  expect(r.hoop.id).toBe("4x4");
+  expect(EMB.suggestHoop(EMB.getGarment("left_chest"), { proSized: false }).id).toBe("5x7");
 
   // sleeve (3x3in) genuinely fits the smallest hoop.
   expect(effectiveHoop({ garmentId: "sleeve", hoopId: null }).hoop.id).toBe("4x4");
