@@ -1,5 +1,7 @@
-"""`cfg.sew_enclosed_white` (2026-10-21, built OFF): the customer's option to
-sew the white or hollow areas inside a design instead of leaving fabric.
+"""`cfg.sew_enclosed_white` (2026-10-21, built OFF; ON since 2026-10-26, Kent's
+flip): the customer's option to sew the white or hollow areas inside a design
+instead of leaving fabric. The Studio's box is ticked by default and sends
+`false` when the customer unticks it.
 
 The pro does it on 5 of 11 jobs (rule R11,
 `docs/pro-digitizer-rules-2026-10-21.md`): badge fields, hollow letters,
@@ -163,19 +165,30 @@ def _pcfg(**kw) -> PipelineConfig:
 
 
 @pytest.fixture(scope="module")
-def whitebg_default():
-    return digitize(WHITEBG, _pcfg())
+def whitebg_off():
+    """The option OFF: the engine before Kent's 2026-10-26 flip (`conftest.PRE_FLIP`)."""
+    return digitize(WHITEBG, _pcfg(sew_enclosed_white=False))
 
 
-def test_off_is_the_default_engine(whitebg_default):
+def test_on_is_the_default_and_pre_flip_pins_it_off():
+    """Kent's flip 2026-10-26 ("A: sew_enclosed_white alone"): ON by default,
+    its fields-fill and keyline companions still OFF."""
+    from tests.conftest import PRE_FLIP
+    d = PipelineConfig()
+    assert d.sew_enclosed_white is True
+    assert d.sew_enclosed_white_fields_fill is False and d.enclosed_white_keyline is False
+    assert PRE_FLIP["sew_enclosed_white"] is False
+
+
+def test_off_ignores_its_companions(whitebg_off):
     r, plan = digitize(WHITEBG, _pcfg(sew_enclosed_white=False, sew_enclosed_counters=True,
                                       sew_enclosed_rgb=(255, 0, 0)))
-    assert _digest(plan) == _digest(whitebg_default[1])
+    assert _digest(plan) == _digest(whitebg_off[1])
     assert not any("sew_enclosed_white" in x.meta for x in r.regions)
 
 
-def test_whitebg_hole_sews_first_on_the_natural_garment(whitebg_default):
-    r0, plan0 = whitebg_default
+def test_whitebg_hole_sews_first_on_the_natural_garment(whitebg_off):
+    r0, plan0 = whitebg_off
     hole0 = [x for x in r0.regions if x.meta.get("enclosed_background")]
     assert len(hole0) == 1 and hole0[0].meta["stitched"] is False   # the garment rule declines
     r, plan = digitize(WHITEBG, _pcfg(sew_enclosed_white=True))

@@ -157,8 +157,12 @@ def test_flags_with_one_base_share_one_off_arm():
     assert off == fsr.FLAGS["small_text_set"]["sets"] and "small_text_cap_reach_edges" not in off
     for f, spec in fsr.FLAGS.items():
         if spec.get("base"):
-            extra = {k: v for k, v in spec["sets"].items() if k not in spec["base"]}
+            # ON differs from its OFF: a key the base lacks, or (a flag already ON by
+            # default, its OFF pinned False -- the 2026-10-26 rows) a value it changes
+            missing = object()
+            extra = {k: v for k, v in spec["sets"].items() if spec["base"].get(k, missing) != v}
             assert extra and fsr.arm_sets(fsr.off_arm(f)) == spec["base"], f
+    assert fsr.off_arm("wave3_flips") == fsr.off_arm("small_text_bay_mouth") == "wave3_off__off"
 
 
 def test_a_flag_with_fixtures_runs_only_on_them():

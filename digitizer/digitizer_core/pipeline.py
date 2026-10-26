@@ -960,8 +960,9 @@ def build_generation(
                            letter_gap_mm=cfg.small_text_cap_letter_gap_mm,
                            bold_scale=cfg.small_text_cap_bold_scale,
                            **({"reach_edges": True} if cfg.small_text_cap_reach_edges else {}),
-                           # each bay's mouth kept open (W3-02, OFF): absent, today's bytes
-                           **({"bay_mouth": True} if cfg.extra.get("small_text_bay_mouth") else {}))
+                           # each bay's mouth kept open (W3-02, ON since 2026-10-26):
+                           # False, the call as it was word for word
+                           **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}))
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —

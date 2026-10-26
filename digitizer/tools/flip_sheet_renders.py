@@ -116,6 +116,8 @@ _SMALL_TEXT_SET = {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1
                    "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
                    "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True}
 _WHITE_SEWN = {"sew_enclosed_white": True, "enclosed_white_keyline": True}
+#: the engine before the 2026-10-26 flips (both ON by default since)
+_WAVE3_OFF = {"small_text_bay_mouth": False, "sew_enclosed_white": False}
 
 FLAGS: dict[str, dict] = {
     "fill_turn_slant": {
@@ -265,6 +267,24 @@ FLAGS: dict[str, dict] = {
         "note": "Free-standing thin ink bars under the area floor: To a T's speed rules, Fremont's "
                 "separators, the drone's AND DRONE rule, MFab's LLC hairline. The pro satins each; "
                 "ours rings them OFF."},
+    # ---- wave-3 flips (2026-10-26, Kent: bay mouth "Flip ON", white "A ... alone", "Flip,
+    # but prove it first"). Both are ON by default from this PR, so OFF pins both False.
+    "wave3_flips": {
+        "base": dict(_WAVE3_OFF), "base_name": "wave3_off",
+        "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": True},
+        "fixtures": ["becker_hat_large", "mfab_hat", "hotel_fremont_hat"],
+        "metric": "white_stitches", "about": "stitches in white thread", "pr": 1104,
+        "note": "OFF pins both flips False (the engine before 2026-10-26); ON is the shipped "
+                "defaults, the Studio's request as it now goes (white ticked, sewn white). "
+                "fields_fill and the keyline stay OFF in both."},
+    "small_text_bay_mouth": {
+        "base": dict(_WAVE3_OFF), "base_name": "wave3_off",
+        "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": False},
+        "fixtures": ["hotel_fremont_hat"],
+        "metric": "small_lines", "about": "small lines: built, sewn height mm (census reader)",
+        "pr": 1104,
+        "note": "The bay mouth alone (white pinned OFF), so the crop lands on the re-set letters "
+                "the switch cuts back (#1085: EST 1895's E, S and 5)."},
 }
 
 

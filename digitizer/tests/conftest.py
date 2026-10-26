@@ -672,6 +672,14 @@ PRE_FLIP["text_cluster_wide_letters"] = False
 # False is the engine before the flip. The tests ABOUT it are in
 # `tests/test_outline_line_art_guard.py`.
 PRE_FLIP["border_from_outline_line_art_guard"] = False
+# Kent's wave-3 flips (2026-10-26), for the reason every entry above gives.
+# `small_text_bay_mouth` (#1085, "Flip ON"): the re-set cuts back a terminal
+# that shuts a bay. `sew_enclosed_white` (#1087's option A, "Flip, but prove
+# it first"): the white inside the design sews, its fields-fill and keyline
+# companions still OFF. False is the engine before the flip. The tests ABOUT
+# them are `tests/test_small_text_bays.py` and `tests/test_sew_enclosed_white.py`.
+FLIP_2026_10_26 = {"small_text_bay_mouth": False, "sew_enclosed_white": False}
+PRE_FLIP.update(FLIP_2026_10_26)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

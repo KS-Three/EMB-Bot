@@ -1,5 +1,5 @@
-"""Keep each bay's mouth open (`cfg.extra["small_text_bay_mouth"]`, W3-02,
-2026-10-25, built OFF; `small_text._open_mouths`).
+"""Keep each bay's mouth open (`cfg.small_text_bay_mouth`, W3-02,
+2026-10-25, built OFF; ON since 2026-10-26, Kent's flip; `small_text._open_mouths`).
 
 The re-set (`small_text_cap_letter_gap_mm`) grows Fremont's EST 1895 to the
 pro's ~4 mm in bold satin, and the widening sews three bays shut: the 5's
@@ -309,10 +309,11 @@ def test_census_splits_the_pros_joined_digits():
 # --- the wiring ------------------------------------------------------------------
 
 def test_the_key_reaches_small_text_through_the_pipeline(monkeypatch):
-    """`cfg.extra["small_text_bay_mouth"]` is read by the pipeline's one call
-    to the growth: absent, the call carries no `bay_mouth` at all (today's
-    call, word for word); set, it carries `bay_mouth=True`. A tiny art --
-    two blobs on white -- through `build_generation`, the stage that grows."""
+    """`cfg.small_text_bay_mouth` is read by the pipeline's one call to the
+    growth: False, the call carries no `bay_mouth` at all (the pre-flip call,
+    word for word); the default (ON since 2026-10-26, Kent's flip) carries
+    `bay_mouth=True`. A tiny art -- two blobs on white -- through
+    `build_generation`, the stage that grows."""
     from digitizer_core import PipelineConfig, small_text
     from digitizer_core.pipeline import build_generation
     from tests.conftest import own_thread_only
@@ -325,8 +326,11 @@ def test_the_key_reaches_small_text_through_the_pipeline(monkeypatch):
     monkeypatch.setattr(small_text, "enlarge_small_text", own_thread_only(
         lambda *a, **k: (calls.append(dict(k)), real(*a, **k))[1], real))
     reset = dict(target_width_mm=60.0, max_colors=4, **KW_CFG)
+    assert PipelineConfig().small_text_bay_mouth is True
+    from tests.conftest import PRE_FLIP
+    assert PRE_FLIP["small_text_bay_mouth"] is False
+    build_generation(img, PipelineConfig(**reset, small_text_bay_mouth=False))
     build_generation(img, PipelineConfig(**reset))
-    build_generation(img, PipelineConfig(**reset, extra={"small_text_bay_mouth": True}))
     assert len(calls) == 2, calls
     assert "bay_mouth" not in calls[0]
     assert calls[1]["bay_mouth"] is True
