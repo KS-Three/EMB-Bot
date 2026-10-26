@@ -109,7 +109,7 @@ def test_another_thread_is_not_absorbed():
 
 
 def test_a_gap_wider_than_a_thread_is_not_closed():
-    regions = [_r("Sband", BAND, 1, 1), _r("Sfrag", _sliver(0.0, gap=fa.GAP_MM + 0.1), 1, 1)]
+    regions = [_r("Sband", BAND, 1, 1), _r("Sfrag", _sliver(0.0, gap=fa.FRAGMENT_REACH_MM + 0.1), 1, 1)]
     assert _ids(_absorb(regions, ON)) == _ids(regions)
 
 
@@ -159,7 +159,7 @@ def test_two_rescued_specks_do_not_grow_a_body():
 
 def test_the_constants_are_the_census_and_the_thread():
     from tools import sequence_pro as sp
-    assert fa.GAP_MM == sp.THREAD_MM
+    assert fa.FRAGMENT_REACH_MM == sp.THREAD_MM
     assert fa.PRO_MIN_SWING_MM == 0.70
 
 

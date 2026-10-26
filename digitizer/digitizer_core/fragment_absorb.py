@@ -20,7 +20,7 @@ cut from fragment to fragment (`tools/inpiece_cuts.py`'s shape-to-shape).
 
 **What this does.** After stage 5, on its planned regions: a fragment -- a
 region narrower everywhere than the pro's narrowest sewn satin column
-(`PRO_MIN_SWING_MM`), not lettering -- lying within one thread (`GAP_MM`) of
+(`PRO_MIN_SWING_MM`), not lettering -- lying within one thread (`FRAGMENT_REACH_MM`) of
 a BODY of the SAME thread is unioned into that body, its artwork polygon
 into the body's artwork and its sewing polygon into the body's, and is not
 sewn on its own. A body is a shape in its own right: not narrow, not
@@ -46,7 +46,7 @@ colour's planned polygon is exactly stage 5's.
   taper inside a 79.8 mm2 Drone piece. Compared as our DRAWN width against
   his needle swing, which carries his pull compensation, so it absorbs fewer
   than a like-for-like width would.
-- `GAP_MM` 0.4: one thread, `tools/sequence_pro.THREAD_MM` -- the reader's
+- `FRAGMENT_REACH_MM` 0.4: one thread, `tools/sequence_pro.THREAD_MM` -- the reader's
   own "touching": a gap one thread wide is covered by the thread beside it.
 
 Off (the default) this returns its input untouched, and the plan is
@@ -63,7 +63,7 @@ from shapely.ops import unary_union
 
 KEY = "absorb_fragments"
 PRO_MIN_SWING_MM = 0.70
-GAP_MM = 0.4
+FRAGMENT_REACH_MM = 0.4
 
 #: a region carrying any of these is a letter (or a mark stage 3 kept on
 #: purpose), never a fragment and never a body to absorb into
@@ -87,12 +87,12 @@ def _kept(r) -> bool:
 
 def _join(body: Polygon, frag):
     """One polygon `body` with `frag` unioned in, joined across the gap by
-    the lens of points within half of `GAP_MM` of BOTH -- every stretch of a
+    the lens of points within half of `FRAGMENT_REACH_MM` of BOTH -- every stretch of a
     sliver lying within one thread of the body is joined, not only its
     nearest point, and nothing else of the body's outline moves. Specks of
     the lens touching neither shape are dropped. None if `frag` is still
     apart."""
-    g = GAP_MM / 2.0 + 0.02
+    g = FRAGMENT_REACH_MM / 2.0 + 0.02
     bridge = frag.buffer(g).intersection(body.buffer(g))
     merged = unary_union([body, frag, bridge]).buffer(0)
     if not isinstance(merged, Polygon):
@@ -154,7 +154,7 @@ def absorb(planned: list, cfg, hairline=None) -> list:
             if b.thread_index != f.thread_index or b.area_mm2 <= f.area_mm2:
                 continue
             d = b.polygon.distance(f.polygon)
-            if d <= GAP_MM and (best is None or d < best[0]):
+            if d <= FRAGMENT_REACH_MM and (best is None or d < best[0]):
                 best = (d, bi)
         if best is None:
             continue

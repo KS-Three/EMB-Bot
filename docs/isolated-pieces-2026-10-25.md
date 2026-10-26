@@ -113,7 +113,7 @@ True.
 
 On stage 5's planned regions: a fragment -- narrower everywhere than the
 pro's narrowest sewn column (`PRO_MIN_SWING_MM` 0.70, the census's p01), not
-lettering -- lying within one thread (`GAP_MM` 0.4, `sequence_pro.THREAD_MM`)
+lettering -- lying within one thread (`FRAGMENT_REACH_MM` 0.4, `sequence_pro.THREAD_MM`)
 of a BODY of the same thread is unioned into it, artwork polygon and sewing
 polygon both, across the gap by the lens of points within half a thread of
 both, and is not sewn on its own. A body is a shape in its own right: not
