@@ -1789,9 +1789,11 @@
     const el = project.elements.find((e) => e.id === pe.id);
     // Auto-fit is capped to the largest hoop (EMB.autoFitBoxMm), so on the four
     // garments whose placement is bigger than every hoop it sits BELOW the box
-    // and the letters can still grow by typing a width.
+    // and the letters can still grow by typing a width. The box is the one
+    // auto-fit aims at: the pro's on a hat, left chest or beanie (proSized,
+    // default since 2026-10-26), else the garment's inch box.
     const g = EMB.getGarment(project.garmentId);
-    const boxWmm = g ? g.widthIn * 25.4 : Infinity;
+    const boxWmm = g ? (EMB.placementBoxMm ? EMB.placementBoxMm(g).w : g.widthIn * 25.4) : Infinity;
     const reqWmm = el && el.sizeMm == null ? (g ? EMB.autoFitBoxMm(g).w : Infinity) : el && el.sizeMm;
     const atWidthCap = !!el && reqWmm >= boxWmm - 0.05;
     // `lines` only picks the wording of the cap-floor fix ("break it across
