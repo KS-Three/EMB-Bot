@@ -200,12 +200,14 @@ def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
                    "outline_loop_mitre": 1093, "fine_bars_satin": 1101,
                    "silhouette_underfill_rim": 1096, "keyline_fold_slivers": 1102,
                    "skip_covered_shapes": 1102, "lettering_columns_italic_lean": 1079,
-                   "monoline_script_satin": 1063, "fill_section_travel": 1091}
+                   "monoline_script_satin": 1063, "fill_section_travel": 1091,
+                   "absorb_fragments": 1100, "small_text_bay_mouth": 1085}
     cfg = PipelineConfig()
     for f in fsr.WAVE3:
         assert fsr.FLAGS[f]["metric"] in fsr.METRICS, f
         assert fsr.FLAGS[f].get("fixtures"), f
-        if f == "fill_section_travel":       # a cfg.extra key, not a field
+        if "extra" in fsr.FLAGS[f]["sets"]:   # a cfg.extra key, not a field
+            assert fsr.FLAGS[f]["sets"]["extra"] == {f: True}, f
             assert not (cfg.extra or {}).get(f)
         else:
             assert getattr(cfg, f) is False, f

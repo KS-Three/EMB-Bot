@@ -336,13 +336,33 @@ FLAGS: dict[str, dict] = {
         "note": "A cfg.extra key (the Studio's request cannot set it; the cell lays it on). Fill "
                 "sections join by a route hidden inside the field instead of a cut: PR #1091 Fremont "
                 "hat 51 -> 41 trims, exposure unchanged (the pro: 0 cuts inside a piece)."},
+    "absorb_fragments": {
+        "base": {"sew_enclosed_white": True}, "base_name": "w1",
+        "sets": {"sew_enclosed_white": True, "extra": {"absorb_fragments": True}},
+        "fixtures": ["mfab_hat", "mfab_lc"],
+        "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": 1100,
+        "note": "A cfg.extra key, read only with the white field sewn, so OFF is arm w1 "
+                "(sew_enclosed_white alone, #1100's arm): a white keyline fragment narrower than "
+                "the pro's narrowest satin, within one thread of its field, is sewn as part of the "
+                "field after stage 5. PR #1100: MFab hat 77 -> 60 trims (pro 18); white OFF it is "
+                "inert (DST byte-identical)."},
+    "small_text_bay_mouth": {
+        "sets": {"extra": {"small_text_bay_mouth": True}},
+        "fixtures": ["hotel_fremont_hat", "proseal_hat"],
+        "metric": "small_lines", "about": "small lines: built, sewn height mm (census reader)",
+        "pr": 1085,
+        "note": "A cfg.extra key on the re-set (ON on main since 10-23): the widening shuts a bay "
+                "where a terminal curls back to its own letter, so Fremont's EST 1895 sews as "
+                "BST 1893. ON cuts the terminal back along its stroke until the mouth holds the "
+                "pro's 0.51 mm (n 18). No letter's height moves, so read the picture, not the "
+                "column; ProSeal is the byte-identical control."},
 }
 
 #: The wave-3 sheet (2026-10-26): the flags its run and report carry.
 WAVE3 = ["lettering_columns_apex_cut", "text_cluster_part_touching", "outline_loop_mitre",
          "fine_bars_satin", "silhouette_underfill_rim", "keyline_fold_slivers",
          "skip_covered_shapes", "lettering_columns_italic_lean", "monoline_script_satin",
-         "fill_section_travel"]
+         "fill_section_travel", "absorb_fragments", "small_text_bay_mouth"]
 
 
 def flag_kind(flag: str) -> str:
