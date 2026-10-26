@@ -38,6 +38,14 @@ PER LINE, PER FILE (the same code on `ours.dst` and on the pro's file):
   cc         `word_legibility`: tesseract reads each pinned word of the line
              at its native size, `cc = (raw - base) / (1 - base)` (ROADMAP gate
              4: no quality claim on a raw agreement number). Needs tesseract.
+  reach      the finer number beside cc (2026-10-25): the same words, shown
+             smaller and smaller (the picture of the thread at its true
+             sewn size, shrunk in half-octave steps down to 3 px tall), cc at
+             each step; reach is the area under cc against the log of the
+             size, in OCTAVES: how many times the word can be halved, the
+             distance doubled, and still read. cc saturates at 1.00 for a
+             word that reads; reach does not, so it still moves when both
+             files read the word. Built from cc, so it is chance-corrected.
   rail run   rail wobble p90 (mm) over the line's RUN windows only
              (`letter_band.rail_classes`, 2026-10-25): `rail_jitter`'s
              9-penetration windows that span no corner of the letters'
@@ -107,6 +115,7 @@ BAND_NAMES = tuple(b[0] for b in BANDS)
 #: `mean` pools weighted by the slot's own weight (a mean of crosses, of letters).
 METRICS = {
     "cc": ("word legibility cc", "mean", "{:+.2f}"),
+    "reach": ("word legibility reach (octaves)", "mean", "{:.2f}"),
     "columns": ("columns", "sum", "{:.0f}"),
     "trims": ("trims inside letters", "sum", "{:.0f}"),
     "stitches": ("stitches", "sum", "{:.0f}"),
@@ -236,9 +245,11 @@ def render_md(board):
                 continue
             row = [slug, b, ", ".join(c["lines"]) if slug != "ALL" else str(c["cc"]["of"])]
             for k in METRICS:
-                row.append(fmt_pair(c[k], k))
-                if c[k]["ours"] is None or c[k]["pro"] is None:
-                    na.append((slug, b, METRICS[k][0], c[k]["why"]))
+                # a board written before a figure existed has no cell for it
+                ck = c.get(k) or {"ours": None, "pro": None, "n": 0, "of": 0, "why": "not on this board"}
+                row.append(fmt_pair(ck, k))
+                if ck["ours"] is None or ck["pro"] is None:
+                    na.append((slug, b, METRICS[k][0], ck["why"]))
             md.append("| " + " | ".join(row) + " |")
     if na:
         md += ["", "## n/a, and why", ""]
@@ -616,6 +627,9 @@ def read_words(pair: Pair, spec: dict, info: dict, ours_dst: Path, words_wanted,
     out = {}
     for w in pinned:
         t = w["text"]
+        if t in res.get("blind", {}):
+            out[t] = {"ours": None, "pro": None, "why": {"ours/pro": res["blind"][t]}}
+            continue
         row = {"ours": None, "pro": None, "why": {}}
         for f in ("ours", "pro"):
             mine = [r for r in res["rows"] if r["file"] == f and r["text"] == t]
@@ -632,9 +646,11 @@ def read_words(pair: Pair, spec: dict, info: dict, ours_dst: Path, words_wanted,
     return out
 
 
-def line_cc(words, got):
-    """A line's cc, ours and the pro's, over the words scored in BOTH files,
-    each weighted by its letters. -> (ours slot, pro slot)."""
+def line_cc(words, got, key="cc"):
+    """A line's `key` figure (`cc`, or `reach` for the finer one), ours and the
+    pro's, over the words scored in BOTH files, each weighted by its letters.
+    A word that has no `key` in one file (no ladder was read) is left out and
+    named. -> (ours slot, pro slot)."""
     from tools import word_legibility as wl
     if not words:
         w = slot(None, why="no words pinned for this line")
@@ -642,8 +658,10 @@ def line_cc(words, got):
     use, reasons = [], []
     for t in words:
         g = got.get(t)
-        if g and g["ours"] and g["pro"]:
+        if g and g["ours"] and g["pro"] and g["ours"].get(key) is not None and g["pro"].get(key) is not None:
             use.append((t, g))
+        elif g and g["ours"] and g["pro"]:
+            reasons.append(f"{t}: no {key} in " + " or ".join(f for f in ("ours", "pro") if g[f].get(key) is None))
         else:
             r = (g or {"why": {"ours": "word not pinned for this art"}})["why"]
             reasons.append(f"{t}: " + "; ".join(f"{f} {v}" for f, v in r.items()))
@@ -651,7 +669,7 @@ def line_cc(words, got):
         w = slot(None, why="; ".join(reasons) or "no word read")
         return w, w
     wt = sum(len(wl.norm(t)) for t, _ in use)
-    return tuple(slot(round(sum(g[f]["cc"] * len(wl.norm(t)) for t, g in use) / wt, 3), w=wt)
+    return tuple(slot(round(sum(g[f][key] * len(wl.norm(t)) for t, g in use) / wt, 3), w=wt)
                  for f in ("ours", "pro"))
 
 
@@ -693,10 +711,11 @@ def read_pair(slug: str, spec: dict, cache: Path, ocr: bool = True, log=print) -
                      None if letters is None else affine_transform(letters, reg.matrix()))
         cc_o, cc_p = line_cc(ln.get("words", []), got) if spec.get("legibility_job") else (
             slot(None, why="no words pinned for this art"),) * 2
+        rc_o, rc_p = line_cc(ln.get("words", []), got, "reach") if spec.get("legibility_job") else (cc_o, cc_p)
         out.append({"slug": slug, "text": ln["text"], "art_h": art_h, "band": band_of(art_h),
                     "words": ln.get("words", []),
                     "read": {"ours": o.pop("read"), "pro": p.pop("read")},
-                    "ours": {**o, "cc": cc_o}, "pro": {**p, "cc": cc_p}})
+                    "ours": {**o, "cc": cc_o, "reach": rc_o}, "pro": {**p, "cc": cc_p, "reach": rc_p}})
         log(f"  {slug} / {ln['text']}: ours {o['columns']['v']} cols, pro {p['columns']['v']} cols")
     return out
 
