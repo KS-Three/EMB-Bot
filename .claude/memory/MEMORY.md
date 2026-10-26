@@ -29,7 +29,7 @@ the OLDEST lines whole to the archive.
 - [Build what was priced](build-what-was-priced.md) — SNAPSHOT: after Kent picks a priced option, build exactly that
 - [The built-OFF sitting](built-off-sitting-2026-10-03.md) — `patch_junctions` had shipped already: render vs shipped first. Kent: `cap_recentre` ON, `bean_letters` OFF
 - [Buried walk between pieces](buried-walk-2026-10-26.md) — W4-03 FALSE: bury rule exists at the pro's p90; 0 of our 176 between-shape cuts have ANY route under later thread; his Drone metre = layering + colour revisits
-- [Cap frames sew 64 mm tall](cap-frame-height-2026-10-26.md) — PHYSICAL (Kent 10-26): his cap frames sew >= 64 mm (2.5 in); gate 1 for hat height settled
+- [Cap frames sew 64 mm tall](cap-frame-height-2026-10-26.md) — PHYSICAL, Kent 10-26: his cap frames sew >= 64 mm (2.5 in); hat-height gate 1 settled
 - [Cap order, and a pair experiment](cap-order-and-the-pair-experiment-2026-09-19.md) — `cap_center_out` parked OFF: the pro's cap/LC pairs of one artwork (a controlled experiment) back bottom-up
 - [Card v4 sew-out: pro raises small text](card-v4-sewout-letter-size-2026-10-20.md) — pro lifts small words to ~4 mm and satins them; ours traces art size; measure by colour
 - [Check what shipped before building it](check-shipped-before-building-2026-09-29.md) — Kent asked for a manual digitizer that had shipped; grep MASTER_SCOPE/PRODUCT, offer "show me", drive it
@@ -132,7 +132,7 @@ the OLDEST lines whole to the archive.
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
 
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
-- [Under-fill knock-outs](underfill-knockouts-2026-10-26.md) — Fremont star: a covered host-colour mark is never merged; Becker: a letter host stops half a loop inside the ring's loops (white edge + white cap gone); Gaulke is sew_enclosed_white
+- [Under-fill knock-outs](underfill-knockouts-2026-10-26.md) — Fremont star: a covered host-colour mark never merges; Becker: letter host stops inside the loops; Gaulke is sew_enclosed_white
 - [Under-fill outer rim](underfill-outer-rim-2026-10-25.md) — a self-hosting ring: pro rims its whole edge in the fill colour; `silhouette_underfill_rim` OFF, on the SEWN edge
 - [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
 - [WITHDRAWN: warn sooner on small files](warn-sooner-small-files-handoff-2026-10-01.md) — Kent 10-02: no warnings, the engine takes the path; replaced by bean letters, built OFF in PR #601
