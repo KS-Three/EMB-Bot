@@ -28,6 +28,7 @@ the OLDEST lines whole to the archive.
 - [bridge: border and script](bridge-border-and-script-2026-09-30.md) — on/off border = JPEG halo (the dissolve folds it); script is not text; Kent's lever `SATIN_GAPS_TIGHT`
 - [Build what was priced](build-what-was-priced.md) — SNAPSHOT: after Kent picks a priced option, build exactly that
 - [The built-OFF sitting](built-off-sitting-2026-10-03.md) — `patch_junctions` had shipped already: render vs shipped first. Kent: `cap_recentre` ON, `bean_letters` OFF
+- [Buried walk between pieces](buried-walk-2026-10-26.md) — W4-03 FALSE: bury rule exists at the pro's p90; 0 of our 176 between-shape cuts have ANY route under later thread; his Drone metre = layering + colour revisits
 - [Cap order, and a pair experiment](cap-order-and-the-pair-experiment-2026-09-19.md) — `cap_center_out` parked OFF: the pro's cap/LC pairs of one artwork (a controlled experiment) back bottom-up
 - [Card v4 sew-out: pro raises small text](card-v4-sewout-letter-size-2026-10-20.md) — pro lifts small words to ~4 mm and satins them; ours traces art size; measure by colour
 - [Check what shipped before building it](check-shipped-before-building-2026-09-29.md) — Kent asked for a manual digitizer that had shipped; grep MASTER_SCOPE/PRODUCT, offer "show me", drive it
@@ -95,7 +96,6 @@ the OLDEST lines whole to the archive.
 - [The orphan-lane sweep](orphan-lane-sweep-2026-09-30.md) — `pro-overlay-diff` PARKED (Kent); squash merges blind `main..lane`, count added lines; Developer Mode ON
 - [Outline loop pivot](outline-loop-pivot-2026-10-25.md) — loop corner spikes = SPARSE far ends (1.1 vs pro 0.4 mm), not a missing mitre: pro's arc is round (1.00 W); `outline_loop_mitre` OFF = dense pivot, no detector
 - [Parallel agent with the embot](parallel-agent-with-embot.md) — SNAPSHOT: audit before a PR is OPEN, not just before arming; never `git stash` in a lane; a stacked PR targets main and says so
-- [Photo edit tail 2026-09-17](photo-edit-tail-2026-09-17.md) — `fill_travel_under_cover` is ~58% of a photo edit tail; the reorder memo is exact ONLY while both stay pure
 - [Preview vs the file it hands over](preview-vs-file-split-dogleg-2026-09-20.md) — preview matches the .dst exactly; the split walked an L on diagonals (FIXED); axis-aligned fixtures hid it
 - [Pro intake](pro-intake-2026-10-25.md) — `python -m tools.pro_intake`: new job -> registered pair + census; registry gitignored (client names); preview vs art by content AND name; tesseract confirms lettering
 - [Pro measured values](pro-measured-values-2026-10-23.md) — `pro_measured_values` OFF: fill 3.49, satin 0.37/0.35, bean 0.95 on hat/LC/beanie; Kent flips after sew-out
