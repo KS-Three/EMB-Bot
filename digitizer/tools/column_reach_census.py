@@ -912,7 +912,7 @@ def pooled_kappa(results: list[dict], key: str, rng=None, boot: int = 2000) -> d
 # ------------------------------------------------------------------ tables
 
 def _k(x):
-    return "n/a" if x is None else f"{x + 0.0:.3f}"
+    return "n/a" if x is None else f"{round(x, 3) + 0.0:.3f}"
 
 
 def census_table(results: list[dict], skipped: list[tuple[str, str]]) -> str:
@@ -1116,6 +1116,9 @@ def arm_dst(cache: Path, slug: str, arm: str) -> Path:
 #: small-text re-set), so both files are read at this one lower floor
 PIECES_MIN_CROSS_MM = 0.5
 PIECES_MIN_IOU = 0.3
+#: the pro's blocks in a crop, in sew order (a picture only)
+PRO_BLOCK_COLOURS = ((40, 40, 40), (214, 72, 64), (52, 128, 214), (236, 190, 40),
+                     (64, 170, 110), (170, 90, 200), (240, 140, 50), (120, 120, 120))
 
 
 def _pick_letter(letters: list[dict], box) -> tuple[dict | None, float]:
@@ -1191,7 +1194,12 @@ def line_crops(cache: Path, slug: str, lines: dict[str, tuple], out: Path, arms=
         blocks = [list(b.rgb) for b in read_pickle(cache, slug, arm)["plan"].blocks]
         des = pairframe.design_for(p, None, blocks, slug)
         rend[arm] = (stitchviz.render_design(des, px_per_mm=ppm), pp._design_top_left_mm(des))
+    # a DST carries no colours (the reader's stand-ins drew Fremont's letters
+    # dark on a dark field): each of the pro's blocks gets its own clear colour
     pd = pairframe.design_for(pro, None, None, pro.stem)
+    pd["colors"] = [{"r": c[0], "g": c[1], "b": c[2], "name": ""}
+                    for c in (PRO_BLOCK_COLOURS[i % len(PRO_BLOCK_COLOURS)]
+                              for i in range(len(pd["colors"])))]
     rend["pro"] = (stitchviz.render_design(pd, px_per_mm=ppm), pp._design_top_left_mm(pd))
     out.mkdir(parents=True, exist_ok=True)
     files = []
