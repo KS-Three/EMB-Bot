@@ -287,5 +287,182 @@
     "Sf93252d9"
    ]
   }
+ },
+ "relabels": {
+  "about": "NEW keys only (2026-10-25, W3-06 column reach census, agent-labelled by eye on the drawn region map): a corpus fixture whose 'fixtures' labels went STALE because segmentation moved since their commit. The 'fixtures' entry is left exactly as it was; a reader that needs the fixture on a later engine reads this one. Same shape ids convention (build_generation at tools/thin_strokes.REAL_ART's width and garment, max_colors 6) on the commit named here.",
+  "gaulke": {
+   "commit": "4fcdb4e6",
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "labelled_by": "agent",
+   "change": "S93d1958b (the F of ROOFING) is Sbe29f71a on this commit: the region between the second O (-15.3..-6.4 mm) and the I (-1.9 mm) of STEEL ROOFING & SUPPLY. Every other id is the 'fixtures' label unchanged.",
+   "lines": {
+    "C GOLKE INDUSTRIES": [
+     "S0230f3d5",
+     "S09eb9ae3",
+     "S152127ae",
+     "S168575e5",
+     "S2ac9dc84",
+     "S340887b6",
+     "S396ab4ae",
+     "S44508e74",
+     "S5cda8b8d",
+     "S62b66dd3",
+     "S634d63cc",
+     "S682a7e69",
+     "S6d317e4d",
+     "S7a890655",
+     "Sd4acf570",
+     "Sdfc008ad"
+    ],
+    "STEEL ROOFING & SUPPLY": [
+     "S0c920d78",
+     "S1a7191f5",
+     "S2bc221f8",
+     "S2d2a0936",
+     "S2ffb8519",
+     "S3ba157e2",
+     "S410bde6c",
+     "S44974c8e",
+     "S4a2cf289",
+     "S63f04e76",
+     "S93841276",
+     "Sbe29f71a",
+     "S97506b61",
+     "S99ad308b",
+     "Sa8175815",
+     "Sbbd3a3df",
+     "Sc60e570f",
+     "Sd908e7f6",
+     "Se79874d5"
+    ]
+   }
+  }
+ },
+ "pairs": {
+  "about": "NEW keys only (2026-10-25, W3-06, tools/column_reach_census.py), agent-labelled by eye on the drawn region map: hand labels for paired jobs the corpus 'fixtures' have none for. Keys are shape ids of the regions the census hands to the text tagger (its 'pre_tag' snapshot: stage 4's regions before any tagger can split one), digitized with the Studio's request (tools.pro_pair.request) at the width and garment named, each the pro file's width. MFab is on the rembg photo path (the primary checkout's venv; without it the ids are wrong). Same conventions as 'fixtures': a line is one row of text at one size; counters, white keyline slivers and the badge outline are not letters; a region holding two touching letters is ONE letter (MFab's AN, WE, IN, LL); 'ignore' is scored neither way (a hyphen, and small pieces of a letter cut off by the keyline). 'carry_from' names a pair whose labels are carried by geometry instead (tools.word_tagger_eval.transfer_labels).",
+  "proseal_hat": {
+   "art": "Proseal/PROSeal Logo.jpg",
+   "width_mm": 85.9,
+   "garment": "hat_front",
+   "commit": "4fcdb4e6",
+   "labelled_by": "agent",
+   "lines": {
+    "PROSEAL": [
+     "Sab5d66ad",
+     "S921504bc",
+     "S39f0513a",
+     "Scfff0423",
+     "S7f0df88b",
+     "S29dcc431",
+     "Sc9fa15bd"
+    ],
+    "SPRAY FOAM + COATINGS": [
+     "Sa5d4a236",
+     "S21e0ed28",
+     "S7d45a1d4",
+     "Sa2014a25",
+     "S02d93c73",
+     "Sb5118d17",
+     "Sa7bc7c59",
+     "Sdfefde46",
+     "S8b97b810",
+     "Sbcb723b0",
+     "S497fc370",
+     "Sb12674e1",
+     "Sa862c243",
+     "S35d3fe62",
+     "Sa7559187",
+     "Sef34328d",
+     "Sb43e95d3",
+     "S40ff16e7"
+    ]
+   },
+   "ignore": []
+  },
+  "proseal_beanie": {
+   "carry_from": "proseal_hat",
+   "labelled_by": "agent",
+   "commit": "4fcdb4e6"
+  },
+  "mfab_hat": {
+   "art": "testdata/art/logo_mfab_hat.png",
+   "width_mm": 104.9,
+   "garment": "hat_front",
+   "commit": "4fcdb4e6",
+   "labelled_by": "agent",
+   "rembg": true,
+   "lines": {
+    "M-FAB": [
+     "Se555c614",
+     "S80235910",
+     "Sfa7f5274",
+     "S614fb7f2",
+     "Se29e6cf8"
+    ],
+    "AND WELDING LLC": [
+     "Sf9e9e13d",
+     "Scb0093ea",
+     "S6ee94d7e",
+     "S642c891d",
+     "Sb6e73968-2",
+     "S6bd1705f",
+     "Sd2b8aef9",
+     "S84441d08",
+     "S98cf32ff"
+    ]
+   },
+   "ignore": [
+    "S5da00417",
+    "Sb189ad6d",
+    "Se11ee830",
+    "Sc86b1771",
+    "Sb22b5123",
+    "Scb0093ea-2",
+    "Sb6e73968"
+   ]
+  },
+  "mfab_lc": {
+   "art": "testdata/art/logo_mfab_lc.png",
+   "width_mm": 96.7,
+   "garment": "left_chest",
+   "commit": "4fcdb4e6",
+   "labelled_by": "agent",
+   "rembg": true,
+   "lines": {
+    "M-FAB": [
+     "Sd9440a47",
+     "S50968abc",
+     "Sa8d5d460",
+     "Sada0e533",
+     "S03c02d63"
+    ],
+    "AND WELDING LLC": [
+     "Sbd0d3e9f",
+     "S81d1d4a6",
+     "S6815bbe5-2",
+     "S4339d1ab",
+     "S8e893e63",
+     "S44b0c00a",
+     "S3dd21776",
+     "Sed3e7ae9",
+     "S37071f19",
+     "Sdf884531",
+     "S70a45ed8",
+     "Sb22b5123",
+     "S9e026e71"
+    ]
+   },
+   "ignore": [
+    "S3c728931",
+    "S30c08aba",
+    "S3792b2a6",
+    "S6815bbe5",
+    "S3dd21776-2",
+    "See868822",
+    "S82880bad",
+    "Sefb7e3ba"
+   ]
+  }
  }
 }
