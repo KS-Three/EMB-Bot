@@ -9,7 +9,7 @@ satin tier. The fixture holds the targets (a 0.30 x 4.0 mm black bar, a
 0.30 x 1.6 mm stub) beside every control the census named: a 1.2 mm hex dot,
 a garment-white sliver, a light-grey bar on a dark-grey square (a
 highlight), a row of tan rope lenses (aspect 3.7), and a teal bar at aspect
-4.7. OFF byte-identical (md5 pinned on main's engine, 7995d515).
+4.7. OFF byte-identical (md5 pinned on main's engine, d36ff80e).
 """
 from __future__ import annotations
 
@@ -61,8 +61,8 @@ SHAPES = [
     ("Steal", box(0, 14, 3.6, 14.76), TEAL),
 ]
 TARGETS = {"Sbar", "Sstub"}
-#: the OFF md5 of `_md5(_runs())`, captured on main (7995d515)
-OFF_MD5 = "1992604979233f6b9b1e55a40ceea38b"
+#: the OFF md5 of `_md5(_runs())`, captured on main (d36ff80e)
+OFF_MD5 = "603bed4bde3d5ba9661d26d02edc4a5f"
 
 
 def _region(sid, poly, thread, **meta) -> Region:
