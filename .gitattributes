@@ -3,6 +3,12 @@
 # guard) — core.autocrlf=true checkouts must not convert them to CRLF.
 *.LICENSE.txt text eol=lf
 
+# The memory index is loaded by Claude Code WHOLE, with a hard ceiling counted
+# on the file as stored — a CR is a character (digitizer/tools/memory_budget.py).
+# core.autocrlf=true Windows checkouts must not turn it into CRLF, which costs
+# one extra character per line of ceiling (~146 of ~25,000 on 2026-10-26).
+.claude/memory/*.md text eol=lf
+
 # Binary artifacts: never eol-convert or diff as text.
 *.embf binary
 *.png binary

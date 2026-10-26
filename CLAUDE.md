@@ -126,48 +126,12 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
   written down anywhere else a session reads first, so each one rediscovers it;
   `.claude/skills/run-emb-bot/SKILL.md` already handles both layouts.
 
-- **Build that venv with `python3.12` explicitly, NOT the bare `python3`.**
-  `digitizer/pyproject.toml` sets `requires-python = ">=3.12"` and cloud
-  containers default `python3` to 3.11. `.claude/skills/run-emb-bot/SKILL.md`
-  has said this since it was written — it is repeated here because CLAUDE.md is
-  read first and the skill only when invoked.
-  **The trap is the `requirements.txt` path**, which does NOT enforce that floor
-  the way `pip install -e .` does: it gets as far as `numpy==2.5.1`, which
-  publishes no 3.11 wheel, and leaves a venv with no pystitch in it. The failure
-  is then quiet exactly where it matters — `node --test` SKIPS the six format
-  cross-validation tests and still reports green.
-  *(hit 2026-08-22; CI pins 3.12, which is why CI never saw it)*
-
-  **The `pip install -e ".[service]"` path has the MIRROR hole** — but ONLY
-  that path, and the difference matters. The `service` extra asks for
-  `fastapi>=0.115` UNPINNED, which now resolves `starlette` 1.6, whose
-  `TestClient` wants **`httpx2`** — a separate distribution that nothing here
-  pins. `service` is deliberately minimal (fastapi, uvicorn,
-  python-multipart), so on its own NEITHER package is present and the import
-  raises verbatim: *"The starlette.testclient module requires the httpx2
-  package to be installed."*
-
-  **Adding `dev` DOES save you, as of `starlette` 1.6.0** — so the skill's
-  recommended `pip install -e ".[service,dev]"` is complete, and this entry
-  used to say the opposite. `testclient.py` tries `httpx2`, then FALLS BACK to
-  `httpx`, and raises only when neither is installed; `dev` ships
-  `httpx>=0.27`, so you get a `StarletteDeprecationWarning` and all 123 tests.
-  Verified 2026-08-31 by uninstalling `httpx2` and re-collecting:
-  `123 tests collected`, warning only. Don't spend a session chasing a
-  phantom — but do keep the tripwire below, because the `[service]`-only path
-  still fails exactly as described, and an older `starlette` has no fallback.
-
-  When it DOES bite, it is a COLLECTION error on `tests/test_service.py`, so
-  its **123 tests never run** — and pytest reports that as a bland `4 errors`
-  line beside a large passing count, which is very easy to wave past. A
-  session did exactly that and then published an understated number in a PR
-  body. **Symptom:** a collection count ~123 short of the reference below
-  (`1309` against 1432 when this was found; `1441` against 1564 on
-  2026-08-31). **Fix:** `pip install httpx2`, or install the `dev` extra.
-  CI is unaffected — it installs from `requirements.txt`, which pins
-  `starlette==1.3.1` and `httpx==0.28.1`, a combination whose TestClient works.
-  *(found 2026-08-26 by chasing a suspicious number in my own PR body;
-  scoped down 2026-08-31 after the `[service,dev]` half was measured false)*
+- **Build the digitizer venv with `python3.12` explicitly, NOT the bare `python3`**
+  (cloud containers default to 3.11). On 3.11 the `requirements.txt` path leaves a
+  venv with no pystitch, and `node --test` then SKIPS the six format
+  cross-validation tests and still reports green. That trap and the
+  `[service]`-only `httpx2` hole (a collection count ~123 short) are in
+  [`digitizer/CLAUDE.md`](digitizer/CLAUDE.md).
 
 - Always `python -m pytest`, never `python foo.py` — a bare invocation does not put
   cwd on `sys.path`.
@@ -203,66 +167,41 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 
 2. **Never touch `.claude/worktrees/`.** It holds live, uncommitted work from parallel feature lanes — run `git worktree list` for the current set, don't trust any doc's snapshot (including this one). Never `git add -A` from the repo root without reviewing what it's about to stage. Never delete or move anything under this path.
 
-   **The hook that enforces this judges the TARGET, not the command text — since 2026-10-04.** `.claude/hooks/block-worktree-mutation.js` used to deny any Bash/PowerShell call that both named `.claude/worktrees/` and contained `rm`/`rmdir`/`rd`/`del`/`mv` as a word ANYWHERE — a scratchpad cleanup in a command that set `WT=…/.claude/worktrees/…`, a JS variable called `mv`, prose, `rm vt.log` inside the session's own lane. Measured 2026-10-03 over real transcripts: 1.6% of a wrong-root session's shell calls and 0.5% of a repo-rooted one's, every sampled catch a false positive, and the global hook on Kent's machine now runs it for every session. It now splits the call into simple commands, resolves each destructive verb's paths (payload `cwd`, a `cd`/`git -C` earlier in the same command, `VAR=` and `$name =` assignments, `~`, `$HOME`, `$PWD`, Git Bash `/c/…`, globs) and denies only a target that IS the `.claude/worktrees/` directory, a lane root (`rm -rf .`/`*` inside one included), a path inside a lane the command is NOT running in, a directory holding the lanes (`rm -rf <repo>`, `git clean -ffdx` at the root), `git worktree remove` of a lane, or `git worktree add` with an empty/unresolvable path from inside a lane (the 2026-08-31 incident). A target it cannot resolve (a variable from an EARLIER tool call, `$(…)`, xargs stdin) is denied only when the text also names `.claude/worktrees/` — failing closed on exactly the old guard's true positives. **A session may delete inside its OWN lane** (payload cwd, or a `cd` in the same command, inside that lane) — Kent's ruling 2026-10-04: `allow`; `files-only` and `deny` are one-word flips of `OWN_LANE` in the hook. When it denies you, the reason names the target and the rule; a wrong-root session cleaning inside a lane `cd`s in first. Evidence: `test/worktree-guard.test.js` (pipe-tests) and `tools/replay-worktree-guard.mjs`, which replays old rule vs new over real `*.jsonl` transcripts without executing anything. Memory: `worktree-guard-judges-targets-2026-10-04`. **Replayed over Kent's real transcripts the same day (5,021 shell calls since 10-01, run on his laptop): the old rule fired 74 times, the new guard 9** — three `git worktree remove <lane>` (true; Kent keeps lane removal his), three `$(cygpath …)` substitutions (the documented residual), and three false positives fixed that evening: a `${X:?}`/`${X:-w}`/`${X%%pat}` modifier on a variable the guard already knew, an assignment on the same line as `do`/`then`, and commit-message prose in a heredoc beginning `move (…` (issue #633). Nothing newly allowed touched a lane root or another session's lane. `git reset --hard` and `git rm` inside a lane are judged by neither guard — Kent's call 2026-10-04: out of scope.
+   **The hook (`.claude/hooks/block-worktree-mutation.js`) judges the resolved TARGET, not the command text** (since 2026-10-04). It denies a target that IS the `.claude/worktrees/` directory, a lane root (`rm -rf .`/`*` inside one included), a path inside a lane the command is NOT running in, a directory holding the lanes (`rm -rf <repo>`, `git clean -ffdx` at the root), `git worktree remove` of a lane, `git worktree add` with an empty/unresolvable path from inside a lane, and — failing closed — a target it cannot resolve (a variable from an EARLIER tool call, `$(…)`, xargs stdin) when the text names `.claude/worktrees/`. **A session may delete inside its OWN lane** (Kent 2026-10-04; `OWN_LANE` in the hook). To clean inside a lane from elsewhere, `cd` into it in the same command and spell the target there. `git reset --hard` and `git rm` inside a lane are out of scope (Kent 2026-10-04). Evidence and the transcript replay: `test/worktree-guard.test.js`, `tools/replay-worktree-guard.mjs`, memory `worktree-guard-judges-targets-2026-10-04`.
 
 3. **PowerShell text replacement mangles UTF-8 in this repo.** `(Get-Content -Raw) -replace ... | Set-Content` silently corrupts source file encoding (mojibake + BOM) — no error thrown. Use the Edit tool (or equivalent) for source edits, never a PowerShell regex round-trip.
 
 4. **`.claude/settings.json` (permissions + hooks) does NOT auto-apply inside nested worktrees.** Confirmed empirically 2026-08-03: a Claude session rooted at `.claude/worktrees/<name>/` does not inherit the main repo root's project settings — the PowerShell-corruption guard hook silently didn't fire there until the settings file was copied in. `.claude/` is committed now, so a worktree cut from a current ref carries its own copy — but a worktree cut from an older ref, or a session rooted outside any checkout, still runs bare. Verify the hooks/settings exist in the lane you're working in before trusting them. On Kent's machine a global SessionStart hook (`~/.claude/hooks/roadmap-gates-global.js`, added 2026-08-17) injects the ROADMAP gates for sessions rooted in nested worktrees (any ref — the walk-up finds the primary's ROADMAP.md) and in any secondary checkout that can reach a ROADMAP.md; a sibling checkout on a pre-ROADMAP ref gets nothing, and cloud sessions don't get that safety net at all.
 
-   **"Rooted outside any checkout" is not hypothetical — measured 2026-10-03, two ways.** (a) Eight Desktop sessions in one family — a parent started in `C:\Users\EE-LT-11030\.claude-work` (a leftover config folder, not a repo) and the seven it spawned, directly or through each other; a child session inherits its parent's root. They worked in the right lanes by absolute path — about 3,500 shell commands — with no project settings loaded: that folder holds no `.claude/settings.json`, and the 23 transcripts from that root carry no record of either roadmap hook or of any of the four PreToolUse guards, where repo-rooted transcripts carry the `roadmap-gates.js` record at every start. (A guard that passes silently leaves NO record, so a missing guard name proves nothing on its own; the SessionStart record is the usable tell.) No damage was found: none of those commands matched the replace guard, and the three bare `git add -A .` ran inside one lane's `digitizer/`. (b) A session started in a Desktop scratch workspace that then moves into a lane keeps `CLAUDE_PROJECT_DIR` on the scratch folder, so every guard dies with `Cannot find module ...\scratch-workspaces\...\.claude\hooks\...`. That is a NON-blocking hook error, so the command runs unguarded — 20 Bash calls in `library-filter` and `break-risk`, 2026-10-01/02. **The tell for (a):** `cwd` in a `list_sessions` row is not under `EMB-Bot`. **It also splits the memory:** a wrong-root session's notes land in `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, not in `.claude/memory/` — seven EMB-Bot notes were sitting there, unseen by every repo-rooted and cloud session. They are in `.claude/memory/` now as snapshots, each marked as one (four on 2026-10-03, two of those refreshed and three added on 2026-10-04, Kent's call), but a wrong-root session that is still running still writes there, so check that folder before trusting a snapshot's status. `memory-outside-the-repo` in memory has the detail.
-
-   **On Kent's machine both holes are closed for the shell guards since 2026-10-04** by a global PreToolUse hook, `~/.claude/hooks/embot-guards-global.js` (Kent's call). It carries no copy of any rule: it reads the guard list from the primary checkout's `.claude/settings.json`, runs those guards from its `.claude/hooks/`, and stays out wherever the project's own copy is healthy, so a guard added here is picked up there. A wrong-root session also gets the roadmap gates, and a pointer to this file, on its first repo command. Evidence: 18 pipe-tests beside the hook (`node --test`); a replay of 351 real commands from those sessions with 0 hook errors, which let one command through (a repo path spelled `$HOME\...`) and, with that fixed, denied all 60 the repo's own regexes catch; and two running wrong-root sessions receiving the gates within a minute of wiring, without a restart. **What it costs:** one `node` start per shell call in every session on the machine, and the guards themselves — a median of 1 to 2 seconds on the loaded laptop — only for a repo command whose project hooks are not healthy. **What it does not cover:** cloud sessions, and the work CLI profile (`~\claude\claude-work`), whose `settings.json` carries no hooks at all. The personal CLI profile (`~\claude\claude-personal`, what `claude-personal.cmd` uses, starting in the `Claude Personal\` container rather than in this repo) had none either; since 2026-10-04 it carries the same hooks block as `~/.claude/settings.json`, and a headless run under it recorded the guard hook firing and the gates arriving. A global hook lives in ONE profile's settings: a new profile folder starts with none. **One thing it makes more visible:** `block-worktree-mutation.js` now reaches a wrong-root session too, and since 2026-10-04 (PR #629) it judges the resolved TARGET of each `rm`/`mv`/`del`/`rd`, not the command text — footgun 2 has the full rule. In short it denies a lane root, the `.claude/worktrees/` directory, an ancestor holding the lanes, a path inside a lane the command is not running in, or a target it cannot resolve when the text names `.claude/worktrees/`. The last two are the ones a wrong-root session meets: it cleans inside a lane by absolute path, which is denied because the command is not running there, and it names its lane in nearly every command, so an `rm -rf "$OUT"` whose variable was set in an EARLIER tool call is denied, fail-closed. The recipe is one command that `cd`s into the lane and names the target there — the `cd` is how it proves where it runs, the spelled target is what the guard can resolve — and the deny reason says the first (`rm -rf <lane>/out` from `.claude-work` denied, `cd <lane> && rm vt.log` allowed; both are pipe-tests in `test/worktree-guard.test.js`, 2026-10-04). **The 1.6% / 0.5% figures are the OLD text rule's catch rate** — a wrong-root session's shell calls denied against a repo-rooted one's, measured 2026-10-03, every sampled catch a scratchpad cleanup or a JS variable called `mv` rather than a lane deletion. They are why the rule changed, not a description of the guard that runs now.
+   **"Rooted outside any checkout" happens — measured 2026-10-03.** (a) A session
+   started outside the repo (e.g. `C:\Users\EE-LT-11030\.claude-work`) and every
+   session it spawns loads no project settings at all — the tell is a
+   `list_sessions` row whose `cwd` is not under `EMB-Bot` — and writes its memory
+   to `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, not
+   `.claude/memory/`, so check that folder before trusting a snapshot there. (b)
+   A session started in a Desktop scratch workspace that moves into a lane keeps
+   `CLAUDE_PROJECT_DIR` on the scratch folder, so every guard fails NON-blocking
+   and commands run unguarded. On Kent's machine
+   `~/.claude/hooks/embot-guards-global.js` (2026-10-04) runs the repo's own
+   guards for both cases; cloud sessions and the work CLI profile
+   (`~\claude\claude-work`) get no such net, and a new profile folder starts
+   with none. A wrong-root session cleaning inside a lane `cd`s into it in the
+   same command and names the target (footgun 2). Detail: memory
+   `wrong-root-sessions-and-global-guards-2026-10-04`, `memory-outside-the-repo`.
 
 5. **`scratch_*` directories are gitignored but NOT disposable.** `scratch_corpus/` (37-file third-party DST corpus), `scratch_ink/` (Ink/Stitch font clone — `build-embf.mjs` needs it), `scratch_kent/` (Kent's commissioned files), `scratch_packs/`. "Gitignored" here means "kept out of the public repo on purpose", not "safe to delete" — only `scratch_ink/` has a Drive backup (`BACKUPS.md`). Details: `COOKBOOK.md` "Gitignored reference material that is NOT disposable".
 
 6. **Playwright MCP needs an explicit browser path in this class of sandbox.** `@playwright/mcp`'s bundled `playwright-core` expects a newer browser revision than what's pre-cached at `/opt/pw-browsers/`, and outbound access to Playwright's browser-download CDN is blocked (403) in this environment class — so the plain `npx @playwright/mcp@latest` config fails outright, with no download fallback. `.mcp.json` launches it through `tools/mcp-playwright.mjs` instead, which passes `--executable-path /opt/pw-browsers/chromium` only when that path exists (so a machine without it, e.g. Kent's local setup, still gets normal auto-download behavior). Don't simplify `.mcp.json` back to a bare `npx @playwright/mcp@latest` command. Confirmed 2026-08-03.
 
-   **`.mcp.json` carries a SECOND server since 2026-09-12 — `huggingface`, and it
-   deliberately sends NO token.** A remote HTTP server at
-   `https://huggingface.co/mcp`, added so a session can check a candidate model's
-   **license and maintenance status against the Hub** instead of against its own
-   README — which matters here specifically because this is a commercial product
-   in a public repo and the embroidery-adjacent prior art is largely GPL-3.0
-   (Ink/Stitch). **But a Hub licence TAG is a publisher declaration, not a licence
-   GRANT — never stop at the tag.** `ZhengPeng7/BiRefNet` reads `license:mit` in
-   search results AND in its model card's YAML front matter, yet the weights repo
-   ships **no LICENSE file at all** — 9 files, none a licence (`hf_fs find --name
-   *LICENSE*` returns zero entries, checked 2026-09-12) — and a 3-vote
-   adversarial review REFUTED *"BiRefNet is MIT for BOTH code and published
-   weights"* **0-3**. Read the actual file with `hf_fs` before calling any licence
-   settled; `docs/tooling-research-2026-09-12.md` §3 carries the full trail.
-   **The two endpoints also disagree on DOWNLOAD counts** — `hub_repo_search`
-   reported 42.9K for `BiRefNet_HR-matting` where `hub_repo_details` says 2.5M,
-   and 1.9M vs 20.0M for `facebook/sam3` — so treat a count as order-of-magnitude
-   and never quote one as a measured figure. **Anonymous access is real, measured
-   2026-09-12:** `initialize` returns HTTP 200 with no credential and
-   `tools/list` gives four tools — `hf_whoami`, `hub_repo_search`,
-   `hub_repo_details`, `hf_fs` (which reads files out of a Hub repo, so a
-   `LICENSE` can be read directly rather than inferred from a tag). A token
-   would add more (paper/space/doc search), but there is **no
-   `Authorization` header on purpose**: an unset `${HF_TOKEN}` expands to a bare
-   `Bearer `, and sending an empty credential is worse than sending none — it
-   turns a working anonymous server into a 401. Add the header only alongside a
-   real token, never speculatively.
-   **That 200 is no longer the common case — re-measured 2026-09-15: 4 of 11.**
-   The other seven were `500` or, mostly, `504` after a THIRTY-SECOND hang, on a
-   machine where `https://huggingface.co/` itself answers 200 in 0.15 s. So a
-   hang or a 5xx here is the MCP endpoint, not your config and not a missing
-   token — do not go add `${HF_TOKEN}` to `.mcp.json` over it (see the paragraph
-   above for why that makes it worse). Retry two or three times: the runs that
-   did connect completed the handshake and returned the same four tools,
-   unchanged. **This is also why a session can see the server's instructions and
-   still have NO `mcp__huggingface__*` tools** — `initialize` succeeded and
-   `tools/list` did not, which looks like the server is tool-less rather than
-   flaky. Hit exactly that way on 2026-09-15.
-   **The trap is `hub_repo_search`'s parameter name.** It takes **`repo_types`, an
-   ARRAY** (`["model"]`), not `repo_type`. Pass the singular and the call
-   SUCCEEDS and returns *"No repositories found for the given criteria"* — a wrong
-   argument reads exactly like a true negative, so a session concludes the model
-   does not exist on the Hub. Hit while adding this, on a model with 985K
-   downloads. **This is NOT a runtime dependency** — nothing in `digitizer/`,
-   `src/`, or `app/` calls it, and it moves no defect on its own; it is a
-   research-loop tool for license and maintenance questions.
+   **`.mcp.json` carries a SECOND server — `huggingface`, deliberately with NO
+   token.** An unset `${HF_TOKEN}` expands to a bare `Bearer `, which turns a
+   working anonymous server into a 401 — add the header only alongside a real
+   token, and never over a hang or a 5xx (the endpoint is flaky, not your
+   config). It is a research tool for model licence and maintenance checks,
+   not a runtime dependency; before using it, read the
+   [`hf-hub-check`](.claude/skills/hf-hub-check/SKILL.md) skill — a Hub
+   licence TAG is not a licence GRANT, and a wrong parameter name reads like a
+   true negative.
 
 7. **Three green checks is NOT a green PR — the fourth is the slow one.** CI runs
    four jobs on a PR. `engine` and `studio` finish in well under a minute
@@ -279,49 +218,16 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    far longer than the others, refresh the durations
    (`digitizer/tools/ci_shard_durations.py` over a run's `digitizer-shard-*`
    JUnit artifacts) rather than adding shards. Its PR body has the balanced
-   run's measured time. Everything below is the pre-sharding history of the
-   single job. Keep it for the lesson about trends; its budgets no longer apply.
-   **`digitizer` runs 33 to 55 minutes** — re-measured 2026-09-12 over the
-   last 36 successful jobs: min **32.7**, p50 **49.7**, p90 54.6, max 55.4,
-   with daily medians 48.6 (09-11) and 50.6 (09-12). **Budget an hour, and
-    read a 50-minute job as normal rather than stuck.** **Re-measured
-    2026-09-29 on PR #562: 1h 02m 50s — above the 09-12 range; the drift the
-    paragraph below predicts is happening.**
-   **Re-measured 2026-09-30: 65.2 minutes on PR #563, green** — the last
-   five successful jobs read 33.3 / 45.0 / 54.0 / 58.4 / 65.2, so the top
-   has moved past the hour the line above budgets. Budget seventy, read an
-   hour as normal, and spend the one `curl` on `/actions/runs/<id>/jobs`
-   before calling anything stuck: that job's test step was live the whole
-   time. **And 66.2 on PR #567 the same night, green** — a tree that took
-   four merges of `main` inside one PR; the record moves a minute at a
-   time now, so seventy is the budget until a job passes it.
-   **One did — 75.9 minutes (1h 15m 56s) on PR #575, 2026-09-30, green**,
-   on a diff that touched only `.claude/skills/`, so the job's length is the
-   suite's, not the change's. **Budget eighty**, read seventy-five as normal,
-   and still spend the `curl` before calling anything stuck.
-   **Passed by three seconds — 76.0 minutes (1h 15m 59s) on PR #631,
-   2026-10-04, green**, on a one-line `CLAUDE.md` change. It was not alone:
-   the eight successful jobs that followed it that evening read 40.0 / 53.9 /
-   42.1 / 51.7 / 57.6 / 71.8 / 75.5 / 53.4 in start order (job start and
-   completion stamps from `/actions/runs/<id>/jobs`), so three of nine sat
-   above seventy and the top is a band now, not one outlier. Eighty still
-   holds; read anything under it as normal, and the `curl` still comes
-   before any verdict. (A fifth job,
-   `art-fidelity-baseline`, is push-to-`main`-only and `continue-on-error` — it
-   never appears on a PR and gates nothing.)
+   run's measured time. (A fifth job, `art-fidelity-baseline`, is
+   push-to-`main`-only and `continue-on-error` — it never appears on a PR and
+   gates nothing.)
 
-   This line keeps going stale in one direction, so read the trend rather
-   than the number: "12–18" (medians 15.0–15.2, 2026-08-27/28) → "10 to 42"
-   (220 jobs, 2026-09-06, after the daily median walked 15.0 → 16.5 → 17.6 →
-   18.7 → 20.7 → **29.6**, max 41.8) → this. Every revision was TRUE WHEN
-   WRITTEN. **The 09-06 text is what makes this worth re-measuring rather
-   than nudging:** it said budget half an hour and read 35 minutes as normal,
-   and half an hour is now BELOW the fastest job on record — so a session
-   trusting it reads a perfectly healthy run as hung and goes looking for a
-   failure that is not there. That nearly happened on PR #469, whose
-   `digitizer` job took **53m 59s** and went green. If you are reading this
-   after 2026-09-12, assume it has drifted again and spend one `curl` on
-   `/actions/runs/<id>/jobs` before concluding anything about a long job.
+   **Every written budget for this job has gone stale in ONE direction** —
+   the single pre-sharding job drifted from 15 to 76 minutes between
+   2026-08-27 and 10-04, and each revision of this line was true when written
+   (history: [`docs/digitizer-ci-timing-history.md`](docs/digitizer-ci-timing-history.md)).
+   So spend one `curl` on `/actions/runs/<id>/jobs` before calling a long job
+   stuck.
 
    So a PR shows 3/4 green long
    before it is green, and merging there is how `main` has gone red — run 994
@@ -329,41 +235,16 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    `preview.js` has arrived unparseable on `main` **four** times, each one caught
    only by the job nobody waited for.
 
-   **Protection is ON as of 2026-08-27 — `main` now requires all four.**
-   Kent added it after runs 994 and 1006 showed what merging at 3/4 costs.
-   Measured state, all of it readable without admin:
-
-   - **Branch protection** requires `engine`, `studio`, `studio-e2e`,
-     `digitizer` — all `app_id: 15368` (GitHub Actions) — at
-     `enforcement_level: non_admins`, so Kent bypasses and a genuine hotfix
-     stays hand-mergeable. Deliberately NOT required: `Supabase Preview`
-     (third-party, reports `skipped`, requiring it could hang PRs).
-     Deliberately off: "Require branches to be up to date" (`main` moves
-     constantly here; it would force a merge-forward on every PR).
-   - **Two rulesets also landed alongside it.** `main-1` (id 21660818) blocks
-     `deletion` and `non_fast_forward` on `main` — keep it, nobody should be
-     force-pushing `main`. `main-2` (id 21660819) required the SAME four checks
-     with **no bypass actors**, which stacks on top of branch protection and
-     (per GitHub's docs — not measured here) cancels the `non_admins` hotfix
-     escape hatch. **Kent's call 2026-08-27: delete `main-2`** — leaving branch
-     protection as the single layer enforcing the four checks, at `non_admins`.
-     A session cannot do it: `DELETE /rulesets/21660819` returns 403 to a
-     session token.
-     **DONE — verified 2026-08-31, nothing left to chase here.**
-     `/rules/branches/main` now returns ONLY ruleset 21660818 (`main-1`,
-     `deletion` + `non_fast_forward`); `main-2` is gone. `/branches/main`
-     confirms the intended end state survived it: `protected: true`,
-     `enforcement_level: non_admins`, contexts exactly
-     `engine, studio, studio-e2e, digitizer`.
-
-   Read the live state with `GET /repos/KS-Three/EMB-Bot/rules/branches/main`
-   and `GET /repos/KS-Three/EMB-Bot/branches/main`.
-   **Use plain `curl` — the repo is public and both answer an UNAUTHENTICATED
-   request with HTTP 200.** Don't conclude "no access" from a tool that
-   refuses: `WebFetch` returns 403 on these same URLs, and a session that
-   stops there reports the ruleset state as unverifiable when one `curl` — no
-   token needed — settles it. `/branches/main/protection` is the genuinely
-   restricted one. *(measured 2026-08-31)*
+   **`main` requires all four** (branch protection, Kent 2026-08-27, after runs
+   994 and 1006), at `enforcement_level: non_admins` so Kent can hand-merge a
+   genuine hotfix. Deliberately NOT required: `Supabase Preview` (third-party,
+   reports `skipped`). Deliberately off: "require branches up to date" (`main`
+   moves constantly). Ruleset `main-1` blocks deletion and force-push on `main`
+   — keep it. Read the live state with **plain `curl`** on
+   `/repos/KS-Three/EMB-Bot/branches/main` and `/rules/branches/main`: both
+   answer an UNAUTHENTICATED request with 200, while `WebFetch` returns 403 on
+   the same URLs — that is not "no access". `/branches/main/protection` is the
+   genuinely restricted one.
 
    **Auto-merge WORKS now — arm it instead of waiting or watching.** Measured on
    PR #275, 2026-08-27: `mcp__github__enable_pr_auto_merge` returned *"Auto-merge
@@ -374,28 +255,17 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 
    - **Mark the PR ready for review FIRST.** On a draft it fails with
      *"Pull request is a draft"*. That is a third refusal message, distinct
-     from the two below. A session hits it whenever it opens a draft, and
+     from the two at the top of this file. A session hits it whenever it opens a draft, and
      ready-for-review is the default here since 2026-08-28 (top of this file).
    - **Arm it while `mergeable_state` is `blocked`.** That is the state
      required checks produce (required, not yet reported). It is NOT
-     `unstable`, which is what this repo used to show and what the note below
-     describes.
+     `unstable`, which is what this repo used to show.
 
-   **Why it used to refuse, for the record.** Before protection existed the tool
-   failed in BOTH available states — *"in unstable status (required checks are
-   failing)"* while checks were pending (nothing was failing; every check was
-   `success` or `in_progress`), and *"already in clean status … you can merge
-   directly"* once green. Tried on PRs #268, #269, #272. The cause was that the
-   repo had zero required checks, so the pending window the tool wants never
-   existed. Adding the required checks created that window.
-
-   **The CI double-run was fixed FIRST, on purpose** — see the `on:` block in
-   `.github/workflows/python-package-conda.yml`. While the workflow fired on
-   both `push` and `pull_request`, every PR head got two runs and every check
-   name appeared twice on one SHA; a phantom duplicate run pinned PR #272 at
-   `unstable` for ~25 minutes on 2026-08-26. Cosmetic then, a hard merge block
-   now that the checks are required. If you are reading this because a PR will
-   not merge, check for a second run on the same SHA before anything else.
+   **If a PR will not merge, check for a second CI run on the same SHA before
+   anything else.** While the workflow fired on both `push` and `pull_request`
+   every check name appeared twice on one SHA, and a phantom duplicate pinned
+   PR #272 at `unstable` for ~25 minutes; the `on:` block in
+   `.github/workflows/python-package-conda.yml` is the fix — keep it.
 
    Two related traps, both already bitten:
    - **`pytest` exit codes.** `pytest > log; echo $?` is fine, but whatever runs
@@ -411,8 +281,8 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
      with `-n auto`). Collection is its own tripwire, but read it as a GAP not
      a fixed number, since the total keeps growing: 1509 collected on
      2026-08-27, 1564 on 2026-08-31, and anything ~123 short of the current
-     total means `tests/test_service.py` failed to collect (the `httpx2` hole
-     above). *(measured 2026-08-31 — full local run, `python3.12` venv)*
+     total means `tests/test_service.py` failed to collect (the `httpx2` hole,
+     `digitizer/CLAUDE.md`). *(measured 2026-08-31 — full local run, `python3.12` venv)*
 
 8. **`git log --all -- <path>` will tell you a file NEVER existed when your
    remote refs are stale — and the wrong answer looks thorough.** A cloud
