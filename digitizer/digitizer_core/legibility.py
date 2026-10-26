@@ -188,10 +188,14 @@ ART_MIN_LETTERS = 3
 # Tesseract reads run this many at a time. Each read is its own child process
 # on one OpenMP thread (`_one_tesseract_thread`), and the reads are
 # independent, so running them side by side changes no reading, only the
-# wait. It is the largest wall-time item of a lettering job: 24 reads per text
-# cluster (two crops x three modes x three variants on the art, the render in
-# one mode), 144 on Fremont (OCR_TIMING). Four, not the core count: the
-# service shares the machine with the Studio's browser.
+# wait. Serial, it was a quarter to a third of a lettering job's wall
+# (profiled: Becker 31%, Fremont 24%, ProSeal 35%): 24 reads per text cluster
+# (two crops x three modes x three variants on the art, the render in one
+# mode), 144 on Fremont. Measured 2026-10-26 on Kent's laptop (8 logical
+# cores), the same result read both ways: preflight wall 46.2 -> 17.6 s on Fremont, 14.0
+# -> 6.1 on Becker, 20.9 -> 9.0 on the MFab hat, every DST and preflight
+# report byte-identical. Four, not the core count: the service shares the
+# machine with the Studio's browser.
 OCR_WORKERS = max(1, min(4, os.cpu_count() or 1))
 
 
