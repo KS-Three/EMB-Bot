@@ -1,0 +1,130 @@
+{
+  "_about": "buildDigitizeConfig over a fresh digitized element, per garment and width, default fabric colour, no thread brand, SAM2 seam off. Written by studioRequest.contract.spec.js (UPDATE_STUDIO_REQUEST_FIXTURE=1); read by digitizer/tests/test_studio_request_contract.py. Do not hand-edit.",
+  "fabric_rgb": [
+    235,
+    232,
+    223
+  ],
+  "cases": [
+    {
+      "name": "hat_front_80",
+      "garment_id": "hat_front",
+      "target_width_mm": 80,
+      "config": {
+        "target_width_mm": 80,
+        "max_colors": 6,
+        "satin": true,
+        "detail_layer": false,
+        "edge_cap": "bean",
+        "detect_photographic": true,
+        "faces_route_flat": true,
+        "garment_id": "hat_front",
+        "garment_rgb": [
+          235,
+          232,
+          223
+        ]
+      }
+    },
+    {
+      "name": "hat_front_81",
+      "garment_id": "hat_front",
+      "target_width_mm": 81,
+      "config": {
+        "target_width_mm": 81,
+        "max_colors": 6,
+        "satin": true,
+        "detail_layer": false,
+        "edge_cap": "bean",
+        "detect_photographic": true,
+        "faces_route_flat": true,
+        "garment_id": "hat_front",
+        "garment_rgb": [
+          235,
+          232,
+          223
+        ]
+      }
+    },
+    {
+      "name": "left_chest_80",
+      "garment_id": "left_chest",
+      "target_width_mm": 80,
+      "config": {
+        "target_width_mm": 80,
+        "max_colors": 6,
+        "satin": true,
+        "detail_layer": false,
+        "edge_cap": "bean",
+        "detect_photographic": true,
+        "faces_route_flat": true,
+        "garment_id": "left_chest",
+        "garment_rgb": [
+          235,
+          232,
+          223
+        ]
+      }
+    },
+    {
+      "name": "left_chest_81",
+      "garment_id": "left_chest",
+      "target_width_mm": 81,
+      "config": {
+        "target_width_mm": 81,
+        "max_colors": 6,
+        "satin": true,
+        "detail_layer": false,
+        "edge_cap": "bean",
+        "detect_photographic": true,
+        "faces_route_flat": true,
+        "garment_id": "left_chest",
+        "garment_rgb": [
+          235,
+          232,
+          223
+        ]
+      }
+    },
+    {
+      "name": "beanie_80",
+      "garment_id": "beanie",
+      "target_width_mm": 80,
+      "config": {
+        "target_width_mm": 80,
+        "max_colors": 6,
+        "satin": true,
+        "detail_layer": false,
+        "edge_cap": "bean",
+        "detect_photographic": true,
+        "faces_route_flat": true,
+        "garment_id": "beanie",
+        "garment_rgb": [
+          235,
+          232,
+          223
+        ]
+      }
+    },
+    {
+      "name": "beanie_81",
+      "garment_id": "beanie",
+      "target_width_mm": 81,
+      "config": {
+        "target_width_mm": 81,
+        "max_colors": 6,
+        "satin": true,
+        "detail_layer": false,
+        "edge_cap": "bean",
+        "detect_photographic": true,
+        "faces_route_flat": true,
+        "garment_id": "beanie",
+        "garment_rgb": [
+          235,
+          232,
+          223
+        ]
+      }
+    }
+  ]
+}

@@ -60,7 +60,12 @@ class Health(BaseModel):
             "status": "ok", "service": "digitizer", "version": "0.0.0", "auth": "none",
             "default_brand": "madeira", "brands": [], "formats": ["dst", "pes"],
             "limits": {"max_upload_bytes": 12582912, "max_pixels": 40000000},
-            "jobs": {"jobs": 0, "states": {}}, "generations": {"entries": 0, "max": 8},
+            "jobs": {"jobs": 0, "states": {}, "inflight": 0}, "generations": {"entries": 0, "max": 8},
+            "engine": {"commit": "0123456789abcdef0123456789abcdef01234567", "dirty": False,
+                       "started_at": "2026-10-25T12:00:00+00:00",
+                       "defaults_sha": "0" * 64},
+            "capabilities": {"background_removal": True, "ocr": True,
+                             "face_priors": True, "sam2": False},
         }}
     )
 
@@ -74,6 +79,17 @@ class Health(BaseModel):
     limits: dict[str, int]
     jobs: dict[str, Any]
     generations: dict[str, Any]
+    engine: dict[str, Any] = Field(description=(
+        "Which engine answered. `commit` and `dirty` (a tracked change under "
+        "digitizer_core/ or digitizer_service/) and `started_at` are read when "
+        "the process starts, so they name the code it LOADED, not what the "
+        "working tree holds now; `commit`/`dirty` are null when git is "
+        "unavailable. `defaults_sha` is the sha256 of the engine's default "
+        "config, read per request."))
+    capabilities: dict[str, bool] = Field(description=(
+        "What this machine can run, from the pipeline's own probes: "
+        "`background_removal`, `ocr` (tesseract on PATH), `face_priors` and "
+        "`sam2`. Environment checks only; a worker can still fail at run time."))
 
 
 class OpenObject(BaseModel):
