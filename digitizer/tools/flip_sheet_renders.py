@@ -217,7 +217,7 @@ FLAGS: dict[str, dict] = {
     "silhouette_underfill_alone": {
         "sets": {"silhouette_underfill": True},
         "fixtures": ["mfab_hat", "mfab_lc"],
-        "metric": "sub_1mm", "about": "stitches under 1 mm", "pr": None,
+        "metric": "sub_1mm", "about": "stitches under 1 mm", "pr": 1094,
         "note": "The under-fill ALONE, the white keyline unsewn (arm b). Before this PR the "
                 "keyline cut split the outline and stage 5 dropped every body it held, uncounted "
                 "(MFab LC: 26 merged shapes sewn by nobody); now every body sews as the host's "
@@ -227,7 +227,7 @@ FLAGS: dict[str, dict] = {
         "base": {"silhouette_underfill": True, **_WHITE_SEWN}, "base_name": "d2",
         "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "silhouette_underfill_panels": True},
         "fixtures": ["mfab_hat", "mfab_lc"],
-        "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": None,
+        "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": 1094,
         "note": "OFF is arm d2 (under-fill + white sewn + keyline). ON: AND WELDING and LLC ride "
                 "a closed white panel -- not merged into the black, sewn after the white (black, "
                 "white, black), white loops only round the M-FAB bodies. Same rembg pin as above."},
