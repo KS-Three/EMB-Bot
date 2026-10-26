@@ -37,16 +37,41 @@ const units =
   // compensation (defect 34), which would put a design fitted to exactly 200 mm
   // at 200.2 and trip the oversize check the cap exists to prevent.
   const HOOP_FIT_MARGIN_MM = 1;
-  function autoFitBoxMm(garment) {
+
+  // The professional's placement boxes (2026-10-26, `proSized`, default
+  // false): the box that, auto-fitting each artwork's own aspect, best
+  // reproduces the width he sewed it at, read from his stitch files by
+  // `digitizer/tools/garment_size_census.py` (median width error 1.1% on 12
+  // hats, 0.8% on 7 left chests). Our round-inch boxes miss him both ways:
+  // a hat front 57.2 mm tall sews 6 of his 12 hats smaller than he does (he
+  // sews to 63.8), and 127 mm wide sews his widest hats wider. The beanie's
+  // height (56) is his; its width is the box his own designs fit, because his
+  // two wide beanies disagree (93.8 and 110.5 mm). A garment with no entry
+  // keeps its box. Off, every call is the one it was.
+  const PRO_PLACEMENT_MM = {
+    hat_front: { w: 113.5, h: 64.0 },
+    left_chest: { w: 96.0, h: 64.5 },
+    beanie: { w: 94.5, h: 56.0 },
+  };
+
+  function placementBoxMm(garment, opts) {
+    const pro = opts && opts.proSized ? PRO_PLACEMENT_MM[garment.id] : null;
+    return pro
+      ? { w: pro.w, h: pro.h }
+      : { w: inToMm(garment.widthIn), h: inToMm(garment.heightIn) };
+  }
+
+  function autoFitBoxMm(garment, opts) {
     const hoop = HOOPS[HOOPS.length - 1];
+    const box = placementBoxMm(garment, opts);
     return {
-      w: Math.min(inToMm(garment.widthIn), hoop.widthMm - 2 * HOOP_FIT_MARGIN_MM),
-      h: Math.min(inToMm(garment.heightIn), hoop.heightMm - 2 * HOOP_FIT_MARGIN_MM),
+      w: Math.min(box.w, hoop.widthMm - 2 * HOOP_FIT_MARGIN_MM),
+      h: Math.min(box.h, hoop.heightMm - 2 * HOOP_FIT_MARGIN_MM),
     };
   }
 
-  function fitScale(bboxWmm, bboxHmm, garment) {
-    const { w: boxW, h: boxH } = autoFitBoxMm(garment);
+  function fitScale(bboxWmm, bboxHmm, garment, opts) {
+    const { w: boxW, h: boxH } = autoFitBoxMm(garment, opts);
     const scale = Math.min(boxW / bboxWmm, boxH / bboxHmm);
     return {
       scale,
@@ -94,10 +119,10 @@ const units =
   // than every preset (full back, blanket…) fall back to the largest hoop —
   // the design still fits IT, because fitScale clamps to the placement box
   // and the hoop check runs against the result.
-  function suggestHoop(garment) {
+  // `opts.proSized`: the pro's placement box (PRO_PLACEMENT_MM) instead.
+  function suggestHoop(garment, opts) {
     if (!garment) return HOOPS[HOOPS.length - 1];
-    const wmm = inToMm(garment.widthIn);
-    const hmm = inToMm(garment.heightIn);
+    const { w: wmm, h: hmm } = placementBoxMm(garment, opts);
     for (const hoop of HOOPS) {
       if (hoopFit(wmm, hmm, hoop) !== "exceeds") return hoop;
     }
@@ -117,6 +142,8 @@ const units =
     getGarment,
     fitScale,
     autoFitBoxMm,
+    placementBoxMm,
+    PRO_PLACEMENT_MM,
     HOOP_FIT_MARGIN_MM,
     TYPICAL_HOOP_MM,
     HOOPS,

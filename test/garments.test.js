@@ -75,3 +75,58 @@ test("exceedsHoop against a chosen hoop is the orientation-aware ceiling", () =>
   // rotated fit is NOT an excess — the message layer tells the user to rotate
   assert.strictEqual(g.exceedsHoop(170, 120, g.getHoop("5x7")), false);
 });
+
+// ---- proSized: the pro's placement boxes (2026-10-26, OFF) -------------------
+
+test("proSized OFF: every fit, box and hoop is the one it was", () => {
+  const boxes = [[100, 50], [50, 100], [400, 400], [62.6, 63.8], [114.3, 42.2], [10, 300]];
+  for (const garment of g.GARMENTS) {
+    for (const [w, h] of boxes) {
+      const before = g.fitScale(w, h, garment);
+      assert.deepStrictEqual(g.fitScale(w, h, garment, { proSized: false }), before);
+      assert.deepStrictEqual(g.fitScale(w, h, garment, {}), before);
+    }
+    assert.deepStrictEqual(g.autoFitBoxMm(garment, { proSized: false }), g.autoFitBoxMm(garment));
+    assert.strictEqual(g.suggestHoop(garment, { proSized: false }), g.suggestHoop(garment));
+  }
+  // and today's numbers, pinned: a hat front is 5.0 x 2.25 in
+  const hat = g.autoFitBoxMm(g.getGarment("hat_front"));
+  assert.ok(Math.abs(hat.w - 127.0) < 1e-9 && Math.abs(hat.h - 57.15) < 1e-9);
+});
+
+test("proSized ON: a hat sews as tall as the pro's (Becker 62.1, Drone 63.8 against our 57.2)", () => {
+  const hat = g.getGarment("hat_front");
+  // Becker's art (ink aspect 1.593) and the Drone's (0.97): height-limited
+  const becker = g.fitScale(159.3, 100, hat, { proSized: true });
+  assert.ok(becker.targetHmm > 62 && becker.targetHmm <= 64.0 + 1e-9);
+  assert.ok(Math.abs(becker.targetWmm / 101.9 - 1) < 0.02, `${becker.targetWmm}`);
+  const drone = g.fitScale(97, 100, hat, { proSized: true });
+  assert.ok(Math.abs(drone.targetHmm - 64.0) < 1e-9);
+  // ... and a wide one no wider than his widest (Tires 114.3, ours today 127)
+  const tires = g.fitScale(270.2, 100, hat, { proSized: true });
+  assert.ok(Math.abs(tires.targetWmm - 113.5) < 1e-9);
+  assert.ok(g.fitScale(270.2, 100, hat).targetWmm > 126.9);
+});
+
+test("proSized ON: left chest and beanie boxes; a garment with no pro box keeps its own", () => {
+  const lc = g.autoFitBoxMm(g.getGarment("left_chest"), { proSized: true });
+  assert.deepStrictEqual(lc, { w: 96.0, h: 64.5 });
+  const beanie = g.autoFitBoxMm(g.getGarment("beanie"), { proSized: true });
+  assert.deepStrictEqual(beanie, { w: 94.5, h: 56.0 });
+  for (const id of ["full_back", "sleeve", "tote", "jacket_back", "patch", "towel", "blanket"]) {
+    const garment = g.getGarment(id);
+    assert.deepStrictEqual(g.autoFitBoxMm(garment, { proSized: true }), g.autoFitBoxMm(garment), id);
+  }
+  // still capped to the largest hoop's field
+  for (const id of Object.keys(g.PRO_PLACEMENT_MM)) {
+    const b = g.autoFitBoxMm(g.getGarment(id), { proSized: true });
+    assert.ok(b.w <= 198 && b.h <= 198);
+  }
+});
+
+test("proSized ON: the suggested hoop follows the pro's box (a 96 x 64.5 left chest fits a 4x4)", () => {
+  assert.strictEqual(g.suggestHoop(g.getGarment("left_chest")).id, "5x7");
+  assert.strictEqual(g.suggestHoop(g.getGarment("left_chest"), { proSized: true }).id, "4x4");
+  assert.strictEqual(g.suggestHoop(g.getGarment("hat_front"), { proSized: true }).id, "5x7");
+  assert.strictEqual(g.suggestHoop(g.getGarment("beanie"), { proSized: true }).id, "4x4");
+});
