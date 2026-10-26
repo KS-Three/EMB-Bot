@@ -491,7 +491,7 @@ def loop_mitre_scope(on: bool):
 # His MFab white is a few long satin chains; each loop is walked into from the
 # last, and 96-100% of every walk lies under white he sews after it
 # (`docs/keyline-loop-chain-2026-10-26.md`). Ours lifted loop to loop (hat
-# 11, LC 9 white-loop cuts with the recipe's trim flags, against his 5 / 6):
+# 11, LC 11 white-loop cuts with the gate's recipe, against his 5 / 6):
 # each loop ends where it began, at the point nearest the loop before, so the
 # next loop is 7-22 mm away across finished thread. Chained, each loop STARTS
 # (and so ends) where it comes nearest the loop sewn after it, and the hop
