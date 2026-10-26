@@ -5442,6 +5442,18 @@ class PipelineConfig:
     # flip is Kent's, after the sew-out says buried travel does not show.
     # Off, byte-identical. Tests: `tests/test_trim_bury_under_later.py`.
     trim_bury_under_later: bool = False
+    # `skip_covered_shapes` (BUILT OFF 2026-10-26, the MFab recipe's trims,
+    # `docs/mfab-recipe-trims-2026-10-26.md`): a shape whose whole thread
+    # lies on thread of its OWN colour block that other shapes sew, before
+    # or after it -- `_UnderThread`'s samples, centre and both edges, within
+    # half a thread -- is not sewn (`stage7_sequence._skip_covered_shapes`).
+    # MFab's keyline traces as the field plus 31 (hat) / 51 (LC) slivers
+    # 0.1-0.3 mm wide, each its own run with a cut either side; the pro's
+    # keyline satin covers all of them, and ours (the field's loops and
+    # fill) already covers 62% / 95% of their area. Same colour, so nothing
+    # changes what shows; it removes a second layer and its cuts. Off,
+    # byte-identical. Tests: `tests/test_skip_covered_shapes.py`.
+    skip_covered_shapes: bool = False
     # `cut_every_jump` (BUILT OFF 2026-10-21, `docs/settings-vs-pro-2026-10-21.md`
     # row 25): no needle-up move is left uncut. Ours leaves 0-168 uncut
     # jumps of 0.5-3.0 mm per job (every hop under `trim_at_mm`), each a
