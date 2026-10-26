@@ -35,7 +35,6 @@ the OLDEST lines whole to the archive.
 - [Corner folds in the Column lane](column-corner-folds-2026-10-23.md) — pro FOLDS one column round every L corner (57 read), cuts only T junctions; `lettering_columns_corner_fold` OFF
 - [Column rail fit: measured false](column-rail-fit-negative-2026-10-25.md) — 7 pairs: rails read 0.000-0.04 on RUN windows; per-letter wobble is real corners, a fit can't move it. Quote `rail_run`, don't plan a rail fit
 - [Column width on resize](column-width-on-resize-2026-10-01.md) — ruling 12: drawn width scales, pull comp fixed; store `widthPx`, mm is a view; no clamp
-- [A concurrent session designed the same tool](concurrent-session-designed-the-same-tool-2026-09-17.md) — check branches + live sessions FIRST
 - [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` OFF (hat/LC/beanie); MFab/Becker "BARE" fills were SATIN the tool misread — list run kinds first
 - [Cut after bury](cut-after-bury-2026-10-23.md) — Fremont's 150 extra cuts were letter hops ON the field; the pro walks those: bury, walk on work, cut bare. 187 -> 44 (pro 20)
 - [Cut every jump](cut-every-jump-2026-10-21.md) — `cut_every_jump` OFF: uncut 285 -> 0, but trims 434 -> 674 (pro 246); bury first
@@ -135,6 +134,7 @@ the OLDEST lines whole to the archive.
 - [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
 - [WITHDRAWN: warn sooner on small files](warn-sooner-small-files-handoff-2026-10-01.md) — Kent 10-02: no warnings, the engine takes the path; replaced by bean letters, built OFF in PR #601
 - [White faces fill](white-faces-fill-2026-10-25.md) — sew_enclosed_white made Becker 8.4x slower (white faces sewed as Column letters); `sew_enclosed_white_fields_fill` OFF fills them at 22°; house angle hides in fill_angle_deg
+- [White-keyline art gate](white-keyline-art-gate-2026-10-26.md) — Kent: recipe ON only where a dark host holds a white field outlining letters; fires on MFab hat/LC only of 22 jobs
 - [White re-rule packet](white-rerule-packet-2026-10-25.md) — under border_from_outline, white ALONE fills Becker's faces (0°) at ≤1.39x CPU; fields_fill costs up to 5.6x (MFab lc); keyline inert; census `tools/enclosed_pro_census.py` 29/31
 - [Wide letters: MFab's W](wide-letters-mfab-w-2026-10-23.md) — W never reached the lane: tagger aspect 1.4 (W+E touch, 2.55; W alone 1.58); `text_cluster_wide_letters` OFF; measure MFab with main's rembg
 - [Word legibility instrument](word-legibility-instrument-2026-10-24.md) — `tools/word_legibility.py`: per word, ours vs pro, chance-corrected cc; n/loc is never 0; its two holes are closed in the reach note
