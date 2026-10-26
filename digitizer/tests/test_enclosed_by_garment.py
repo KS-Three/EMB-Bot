@@ -54,7 +54,10 @@ WHITE, NATURAL, NAVY, BLACK = (255, 255, 255), (235, 232, 223), (28, 42, 84), (0
 
 
 def _cfg(**kw) -> PipelineConfig:
-    return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
+    # The garment rule alone: `sew_enclosed_white` (ON since 2026-10-26) sews every
+    # enclosed area whatever the garment, so it is pinned OFF unless a test sets it.
+    return PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                          **{"sew_enclosed_white": False, **kw})
 
 
 def _digest(plan) -> str:
