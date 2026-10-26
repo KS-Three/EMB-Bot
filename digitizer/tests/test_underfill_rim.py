@@ -102,3 +102,57 @@ def test_the_rail_is_on_the_edge_not_the_crosses_far_end():
     on_edge = sum(LineString(o.exterior.coords).distance(Point(p)) < 0.05 for p in pts)
     # alternate penetrations: half on the edge
     assert abs(on_edge / len(pts) - 0.5) < 0.05
+
+
+# --- the plan: `stage7_sequence` appends the rim to a ring host's runs ----------
+# The fixtures are `test_silhouette_underfill`'s: MFab's band hosting its own
+# under-fill, Becker's ring whose under-fill a letter hosts.
+from tests.test_silhouette_underfill import _md5, _sew, becker, mfab  # noqa: E402
+
+#: captured on origin/main 37c676c2 (before this flag), the under-fill ON
+OFF_MD5 = {"mfab": "a429f57a0a79155e7d63ffea56fdabc6", "becker": "cd652df0ebca32d933202309b29e2bc4"}
+
+
+def test_off_is_the_plan_as_it_was():
+    assert _md5(_sew(mfab(), silhouette_underfill=True)[1]) == OFF_MD5["mfab"]
+    assert _md5(_sew(becker(), silhouette_underfill=True)[1]) == OFF_MD5["becker"]
+
+
+def test_off_never_reaches_the_rim(monkeypatch):
+    def boom(*_a, **_k):
+        raise AssertionError("silhouette_underfill_rim code reached with the flag off")
+    from digitizer_core import stage7_sequence as s7
+    monkeypatch.setattr(s7, "underfill_rim_after", boom)
+    _sew(mfab(), silhouette_underfill=True)
+
+
+def test_on_the_ring_host_sews_its_rim_right_after_its_fill():
+    planned, blocks = _sew(mfab(), silhouette_underfill=True, silhouette_underfill_rim=True)
+    # on the edge the fill sews: stage 5's polygon, grown by the hat's pull
+    ring = Polygon(next(p for p in planned if p.shape_id == "Sring").polygon.exterior)
+    assert ring.bounds[0] < 0 and ring.bounds[3] > 24
+    for b in blocks:
+        mine = [r for r in b.runs if r.shape_id == "Sring"]
+        if not mine:
+            continue
+        kinds = [r.kind for r in mine]
+        assert stitches.FILL in kinds and kinds[-1] == stitches.SATIN
+        # the satin after the last fill run is the rim: rail on the outer edge
+        last_fill = max(i for i, k in enumerate(kinds) if k == stitches.FILL)
+        rim = [p for r in mine[last_fill + 1:] if r.kind == stitches.SATIN for p in r.points]
+        on_edge = [p for p in rim if ring.exterior.distance(Point(p)) < 0.05]
+        assert len(on_edge) > 0.45 * len(rim)
+        assert all(ring.buffer(0.03).contains(Point(p)) for p in rim)
+        return
+    raise AssertionError("no block sews the ring host")
+
+
+def test_on_a_letter_host_has_no_rim_its_ring_is_the_satin():
+    off = _md5(_sew(becker(), silhouette_underfill=True)[1])
+    on = _md5(_sew(becker(), silhouette_underfill=True, silhouette_underfill_rim=True)[1])
+    assert on == off
+
+
+def test_without_the_underfill_the_rim_has_nothing_to_rim():
+    assert (_md5(_sew(mfab(), silhouette_underfill_rim=True)[1])
+            == _md5(_sew(mfab())[1]))
