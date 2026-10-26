@@ -1659,6 +1659,24 @@ class PipelineConfig:
     # today vs 0.198 for the best). Layout (ruling 2026-10-22: judged in the
     # preview). OFF is the engine as it was, byte for byte.
     silhouette_underfill: bool = False
+    # The small lettering on a white panel, as the pro sews MFab (hat and LC
+    # agree, 2026-10-25): block 0 black tatami at 22-25 deg under the whole
+    # silhouette with a 1.84-1.92 mm black satin rim; block 1 the white
+    # keyline as 2.2-2.4 mm satin loops round each M-FAB letter ON the black,
+    # and behind AND WELDING / LLC a white panel, CLOSED under them (white
+    # under the small letters 1.000), with a 1.3-1.4 mm satin edge; blocks
+    # 2 and 4 the small letters as black satin AFTER the white (36 columns,
+    # cross p50 1.55 / 1.46 mm), black fill under only 0.12-0.18 of them.
+    # Under-fill alone merges those letters into the black. ON (built OFF,
+    # read only with `silhouette_underfill`, `sew_enclosed_white` and
+    # `border_from_outline` all on): a text-tagged shape in the host's thread
+    # sitting in a hole of a sewn white field, whose word is mostly not the
+    # art outline's bodies, is a RIDER (`silhouette_underfill.find_riders`):
+    # never merged, sewn in its own layer right after the field's (black,
+    # white, black), and the field fills its rider holes as one closed panel
+    # under it that the black under-fill gives up. Layout, judged in the
+    # preview. OFF: nothing is read, byte for byte.
+    silhouette_underfill_panels: bool = False
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
