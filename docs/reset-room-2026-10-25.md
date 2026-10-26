@@ -9,6 +9,10 @@ zip, and ProSeal's art comes from Kent's `scratch_kent/`. Both files are read by
 one reader, each in its own frame. This is measurement only: no engine file is
 changed.
 
+`small_text.py:NNN` references are to main `97dde01a`, after #1085 merged; the
+re-set code they point at is unchanged from `7995d515`, and the bay-mouth switch
+#1085 added is OFF.
+
 Tools: `digitizer/tools/small_text_floor_census.py steps` (the stroke at each
 step) and the new `digitizer/tools/reset_room_census.py` (the line's move, its
 room, its neighbours). Crops (art | ours | pro): `docs/renders/reset-room-2026-10-25/`.
@@ -18,19 +22,19 @@ room, its neighbours). Crops (art | ours | pro): `docs/renders/reset-room-2026-1
 **The premise holds. This is a mechanism bug, not a reader artefact.** The
 re-set widens each letter by `(target - min(s, f) x stroke) / 2`
 (`small_text._reset_word`, `small_text.py:437`). The target is
-`_stroke_target` (`:406`). The stroke in both is `it["stroke"]` (`:759`): the
+`_stroke_target` (`:406`). The stroke in both is `it["stroke"]` (`:764`): the
 tagger's `text_cluster_stroke_mm` x 2, measured on polygons that are **not** the
 ones being widened. The re-set widens the letters `_retrace` has just re-read
-from the art (`:749-750`). Where those are thinner than the tag says, every
+from the art (`:754-755`). Where those are thinner than the tag says, every
 letter lands short of its target by `min(s, f) x (tag - traced)`:
 
 - ProSeal hat: the tag still describes the stage-4 tracer polygons, which are
   fatter than the half-threshold retrace of a 9.2 px/mm JPEG.
 - ProSeal beanie and Drone: `restore_small_text` had already replaced the
-  polygons with retraced ones (`:1288-1290`) and kept the old tag (`:1283`).
+  polygons with retraced ones (`:1662-1664`) and kept the old tag (`:1657`).
 
 The mechanism belongs to `small_text.py`, so to the W3-02 lane
-(`claude/reset-bays-open-w3`, PR #1085). Nothing is fixed here.
+(`claude/reset-bays-open-w3`; its PR #1085 merged on 2026-10-25). Nothing is fixed here.
 
 `small_text_floor_census.py steps`, per re-set cluster. *tag* (the tool's `est`) and *traced* use
 the same measure (2 x the mean skeleton half-width, `textcluster._stats_of_polygon`,
@@ -184,7 +188,7 @@ own centre, then takes the smallest slide that fits (`_place_line_reset`,
   the growth past that edge (+0.79).
 - **Drone: up, like the pro.** Every scale over x1.317 hits THERMAL above, or
   the icon and the dash below and beside it. The halo is capped at the art's
-  own clearance (`:838`). He grows to x1.57, leaving 0.15 to THERMAL and 0.30
+  own clearance (`:843`). He grows to x1.57, leaving 0.15 to THERMAL and 0.30
   to the icon (thread edge to edge).
 - **Fremont EST 1895: 3.0-3.25 mm down**, further than the pro's 0.74-2.07.
   The line ends up straddling THE, its baseline below THE's cap line, at x2.0

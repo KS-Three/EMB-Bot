@@ -1659,6 +1659,24 @@ class PipelineConfig:
     # today vs 0.198 for the best). Layout (ruling 2026-10-22: judged in the
     # preview). OFF is the engine as it was, byte for byte.
     silhouette_underfill: bool = False
+    # The small lettering on a white panel, as the pro sews MFab (hat and LC
+    # agree, 2026-10-25): block 0 black tatami at 22-25 deg under the whole
+    # silhouette with a 1.84-1.92 mm black satin rim; block 1 the white
+    # keyline as 2.2-2.4 mm satin loops round each M-FAB letter ON the black,
+    # and behind AND WELDING / LLC a white panel, CLOSED under them (white
+    # under the small letters 1.000), with a 1.3-1.4 mm satin edge; blocks
+    # 2 and 4 the small letters as black satin AFTER the white (36 columns,
+    # cross p50 1.55 / 1.46 mm), black fill under only 0.12-0.18 of them.
+    # Under-fill alone merges those letters into the black. ON (built OFF,
+    # read only with `silhouette_underfill`, `sew_enclosed_white` and
+    # `border_from_outline` all on): a text-tagged shape in the host's thread
+    # sitting in a hole of a sewn white field, whose word is mostly not the
+    # art outline's bodies, is a RIDER (`silhouette_underfill.find_riders`):
+    # never merged, sewn in its own layer right after the field's (black,
+    # white, black), and the field fills its rider holes as one closed panel
+    # under it that the black under-fill gives up. Layout, judged in the
+    # preview. OFF: nothing is read, byte for byte.
+    silhouette_underfill_panels: bool = False
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
@@ -2168,6 +2186,18 @@ class PipelineConfig:
     # / 31. False is the pre-flip engine byte for byte: a text-cluster
     # member over the ceiling fills.
     satin_lettering_split: bool = True
+    # A monoline script stroke sews satin, never fill (`monoline.py`, built
+    # OFF 2026-10-24, L7). A shape the classifier refuses ONLY on
+    # `dt_p90_cap`, whose width is near-constant (dt_cv <= 0.25) along a long
+    # stroke (elongation >= 20) -- Tires' joined "ires" -- gets the lettering
+    # split's ceiling above: the pro sews it as satin columns, 8.9 % of his
+    # crosses over 5 mm, where we sewed a tatami. The word's cuts follow the
+    # pro's travel (`monoline.bury_hops`): a hop his columns still to come
+    # cover sews needle-down under them (Tires ON trims 24 -> 8, pro 10), and
+    # underlay left on finished satin is cut back (56 mm on top at the joins
+    # -> 1.2). Layout (ruling 2026-10-22: judged in the preview). OFF is the
+    # engine as it was, byte for byte.
+    monoline_script_satin: bool = False
     # Bean letters (2026-10-02, `docs/superpowers/specs/2026-10-02-bean-letters-
     # design.md`; Kent: "the tool needs the ability to identify the image it's
     # being given and follow a path to produce the best output possible").
@@ -5463,6 +5493,20 @@ class PipelineConfig:
     # a plan by `stage6_border.loop_mitre_scope`.
     # Tests: `tests/test_outline_loop_mitre.py`.
     outline_loop_mitre: bool = False
+    # With `silhouette_underfill`, a ring that hosts its own under-fill gets
+    # the fill's outer edge sewn as one closed satin loop, after the fill and
+    # in its colour (2026-10-25, built OFF; `stage6_border.underfill_rim_runs`).
+    # Measured from each file's own stitches: the pro rims the whole outer edge
+    # of MFab's black fill as ONE closed column, 1.94 mm on the hat and 1.86 on
+    # the LC (width CV 0.03, crosses 6 deg off square to the edge), and
+    # Fremont's white ground the same way in two passes at 1.39-1.73 mm; a
+    # letter host (Becker) has the ring as its satin already, and the Drone,
+    # which he does not under-fill, has no rim. Width
+    # `stage6_border.UNDERFILL_RIM_WIDTH_MM`, the four rims' median (1.76);
+    # corners pivot as `outline_loop_mitre`'s do. Layout, judged in the preview
+    # (Kent, 2026-10-22). False is the plan as it was, byte for byte.
+    # Tests: `tests/test_underfill_rim.py`.
+    silhouette_underfill_rim: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()

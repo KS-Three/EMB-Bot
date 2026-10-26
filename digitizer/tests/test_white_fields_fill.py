@@ -125,3 +125,51 @@ def test_on_without_sew_enclosed_white_is_byte_identical():
              for _, r in plan.iter_runs() for x, y in r.points]
         return hashlib.md5(json.dumps(c).encode()).hexdigest()
     assert md5() == md5(sew_enclosed_white_fields_fill=True)
+
+
+# --- an outline is never a field (2026-10-25, `claude/mfab-underfill-panels`) ------
+
+def _keyline(fields_fill: bool, *, outlines: bool, **cfg_kw):
+    """MFab's white keyline round two letters, sewn before them: the band's
+    runs, sewn with or without the art-outline branch claiming it."""
+    from tests.test_enclosed_white_keyline import BAND, LEFT, RIGHT
+    reg = Region(shape_id="Sband", polygon=BAND, thread_index=0, thread_number="0015",
+                 area_mm2=BAND.area, source="test",
+                 meta={"layer": 0, "stitched": True, "sew_enclosed_white": "field"})
+    planned = [PlannedRegion(region=reg, polygon=BAND, sew_index=0,
+                             covered_by=LEFT.union(RIGHT))]
+    for i, poly in enumerate((LEFT, RIGHT)):
+        lr = Region(shape_id=f"Sletter{i}", polygon=poly, thread_index=1, thread_number="0020",
+                    area_mm2=poly.area, source="test", meta={"layer": 1, "stitched": True})
+        planned.append(PlannedRegion(region=lr, polygon=poly, sew_index=1))
+    art = ({"Sband": [("Sletter0", Polygon(LEFT.exterior), 2.0),
+                      ("Sletter1", Polygon(RIGHT.exterior), 2.0)]} if outlines else None)
+    cfg = PipelineConfig(underlay=False, sew_enclosed_white=True,
+                         sew_enclosed_white_fields_fill=fields_fill, **cfg_kw)
+    blocks, _w = s7.sequence(planned, fabric_for_garment("hat_front"), cfg, art_outlines=art)
+    return [r for b in blocks for r in b.runs if r.shape_id == "Sband"]
+
+
+def test_on_an_art_outline_keeps_its_satin_loops():
+    """`cfg.border_from_outline` claims the keyline: fields_fill ON must not
+    force it onto the fill tier -- it sewed as tatami, the loops never ran."""
+    off = _keyline(False, outlines=True)
+    on = _keyline(True, outlines=True)
+    assert stitches.SATIN in {r.kind for r in on}
+    assert [(r.kind, r.points) for r in on] == [(r.kind, r.points) for r in off]
+
+
+def test_on_a_keyline_band_keeps_its_satin_loops():
+    """The same for `cfg.enclosed_white_keyline`'s band, with no outline pass."""
+    off = _keyline(False, outlines=False, enclosed_white_keyline=True)
+    on = _keyline(True, outlines=False, enclosed_white_keyline=True)
+    assert stitches.SATIN in {r.kind for r in on}
+    assert [(r.kind, r.points) for r in on] == [(r.kind, r.points) for r in off]
+
+
+def test_on_a_plain_white_field_still_fills():
+    """No outline pass and no keyline flag: the field the option exists for
+    still leaves the satin tiers for the fill."""
+    on = _keyline(True, outlines=False)
+    assert {r.kind for r in on} <= {stitches.FILL, stitches.UNDERLAY, stitches.TRAVEL, stitches.RUN}
+    assert stitches.FILL in {r.kind for r in on}

@@ -1,6 +1,6 @@
 ---
 name: reset-room-floor-2026-10-25
-description: W3-11 -- ProSeal's re-set columns sew under the 0.85 floor because the re-set widens RETRACED letters by an amount computed from the tagger's stale/fat stroke tag (small_text.py:759 vs :749); the pro grows a line AWAY from its nearer neighbour (past the design edge on ProSeal) and re-lays no bar
+description: W3-11 -- ProSeal's re-set columns sew under the 0.85 floor because the re-set widens RETRACED letters by an amount computed from the tagger's stale/fat stroke tag (small_text.py:764 vs :754); the pro grows a line AWAY from its nearer neighbour (past the design edge on ProSeal) and re-lays no bar
 metadata:
   type: project
 ---
@@ -12,16 +12,16 @@ metadata:
 
 **Floor (b): a mechanism bug, not the reader.** `_reset_word` widens by
 `(target - min(s,f) x it["stroke"]) / 2` (`small_text.py:437`), and
-`it["stroke"]` (`:759`) is the tagger's `text_cluster_stroke_mm` x 2, measured
-on polygons that are NOT the `_retrace`d letters being widened (`:749-750`).
+`it["stroke"]` (`:764`) is the tagger's `text_cluster_stroke_mm` x 2, measured
+on polygons that are NOT the `_retrace`d letters being widened (`:754-755`).
 Two ways it goes stale: the stage-4 tracer polygons are fatter than a
 half-threshold retrace of a coarse JPEG (ProSeal hat, 9.2 px/mm), or
 `restore_small_text` already swapped in retraced polygons and kept the old tag
-(`:1283-1290`; beanie, Drone). Traced over tag: 0.67-0.91 on ProSeal and Drone,
+(`:1657-1664`; beanie, Drone). Traced over tag: 0.67-0.91 on ProSeal and Drone,
 0.92-1.03 on Fremont (27 px/mm). So drawn = target - min(s,f)(tag - traced):
 ProSeal sews 0.70-0.78 and Drone 0.81, where Fremont sews 0.87-0.98. The plan's
 crosses equal the DST reader to 0.02. The fix belongs to `small_text.py` (the
-W3-02 lane, #1085).
+W3-02 lane, whose #1085 merged 2026-10-25).
 
 **The fix alone is a trap:** a what-if replay with the tag set to the traced
 stroke sends the ProSeal BEANIE tagline to `no_room` (a bigger widening means a

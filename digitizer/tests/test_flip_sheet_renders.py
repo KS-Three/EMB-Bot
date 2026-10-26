@@ -173,3 +173,19 @@ def test_sub_1mm_counts_short_stitches_and_resets_at_a_cut():
     S, T = pystitch.STITCH, pystitch.TRIM
     stream = [(0, 0, S), (0.5, 0, S), (3, 0, S), (3, 0, T), (3.2, 0, S), (3.4, 0, S)]
     assert fsr.sub_1mm(stream, None, None) == 2
+
+
+def test_a_row_with_a_third_cell():
+    # d2 | d2 + panels | d2 + panels + mitre | pro (#1094): the third cell is its own arm,
+    # cached like ON (never per engine), its sets the row's ON plus what it adds
+    assert fsr.also_arm("silhouette_underfill_panels") == "silhouette_underfill_panels__mitre"
+    assert fsr.also_arm("tie_in_off") is None
+    sets = fsr.arm_sets("silhouette_underfill_panels__mitre")
+    on = fsr.FLAGS["silhouette_underfill_panels"]["sets"]
+    assert {k: v for k, v in sets.items() if k not in on} == {"outline_loop_mitre": True}
+    assert not fsr.is_off("silhouette_underfill_panels__mitre")
+    row = {"on": {"stitches": 1, "trims": 2, "about": "x"}, "also": {"stitches": 3, "trims": 4, "about": "y"},
+           "also_label": "ON + MITRE"}
+    assert fsr._sides(row) == ("off", "on", "also", "pro")
+    assert fsr._fmt_on(row).endswith("ON + MITRE: 3 st / 4 tr / y")
+    assert fsr._sides({"on": {}}) == ("off", "on", "pro")
