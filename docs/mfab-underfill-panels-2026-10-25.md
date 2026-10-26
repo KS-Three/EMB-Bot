@@ -187,6 +187,48 @@ What the numbers say:
   - Becker hat small: identical (md5 `2e1d3e2a` both ways, no riders).
   - Riders found on each other job: see the PR.
 
+## The whole recipe: d2 + panels + `outline_loop_mitre` (#1093)
+
+The fifth switch, `outline_loop_mitre` (#1093, built OFF), merged while this lane
+ran.
+
+| | hat | LC |
+|---|---|---|
+| d2+panels+mitre (st / trims) | 21,767 / 61 | 19,746 / 65 |
+| added stitches against d2+panels | 354 | 413 |
+| layering | unchanged (0.973 / 0.158) | unchanged (0.976 / 0.137) |
+| white crosses clamped | 39.0% | 37.8% |
+
+- The trims do not move.
+- The M-FAB keyline corners stop spiking: `hat_M_panels_vs_mitre_true.jpg` and
+  `lc_M_panels_vs_mitre_true.jpg`, d2+panels | +mitre | pro.
+
+**Where the cuts sit, d2+panels+mitre against the pro.** The pro is read by one
+DST rule: a cut belongs to the thread it ends, placed by its block's tone and its
+stitches (satin or fill rows). Ours is read by that rule and, exactly, off the
+plan: the run each cut follows, by shape.
+
+| | total | black under-fill | white loops | white panel / field fill | small black lettering | other white pieces |
+|---|---|---|---|---|---|---|
+| hat pro | 19 | 0 | 5 | 1 | 13 | 0 |
+| hat ours (plan) | 59 | 14 | 12 | 24 | 9 | 0 |
+| LC pro | 20 | 0 | 6 | 0 | 14 | 0 |
+| LC ours (plan) | 66 | 10 | 30 | 2 | 9 | 15 |
+
+**The riders are not the excess.** They take 9 cuts against the pro's 13-14 for
+the same lettering. The excess is in three places:
+
+1. **The white field's rest-fill.** `keyline_rest` fills each unlooped part of
+   the field as a separate piece, each with its own cut: 24 on the hat.
+2. **The black under-fill.** It is cut into pieces round the panel and the
+   holes: 10-14 cuts, where the pro sews one continuous run.
+3. **On the LC, the loops (30) and stray white pieces (15).** The stray pieces
+   are a 0.7 mm2 text-tagged white speck sewn satin, two keyline fragments of
+   ~26 mm2, and white slivers sewn as runs.
+
+The DST rule reads ours the same way, with more cuts in "other": a loop's cut
+often follows only its underlay walk.
+
 ## Crops (25 px/mm, each design in its own frame, the pro last)
 
 `docs/renders/mfab-underfill-panels-2026-10-25/` covers hat and LC.
