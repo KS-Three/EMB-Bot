@@ -47,20 +47,20 @@
    {"text": "PROSEAL", "box": [-36.1, 12.6, 34.3, 20.7], "art_h": 8.05, "words": ["PROSEAL"]},
    {"text": "SPRAY FOAM", "box": [-32.0, 24.7, -0.6, 27.5], "art_h": 2.56, "words": ["SPRAY FOAM"]},
    {"text": "+ COATINGS", "box": [2.0, 24.7, 31.2, 27.6], "art_h": 2.66, "words": ["COATINGS"]}]},
-  "precision_drone": {"lines": [
-   {"text": "PRECISION", "box": [-31.1, 10.2, 31.2, 16.9], "art_h": 5.99},
-   {"text": "THERMAL", "box": [-22.1, 17.6, 22.0, 22.1], "art_h": 4.48},
-   {"text": "AND DRONE", "box": [-13.6, 24.1, 17.7, 26.3], "art_h": 2.2}]},
-  "tires_hat_3d": {"lines": [
-   {"text": "Tires", "box": [-57.1, -21.1, 57.1, 21.0], "art_h": 28.65}]},
-  "gaulke_roofing_hat": {"lines": [
-   {"text": "C GOLKE INDUSTRIES", "box": [-50.3, 8.2, 50.1, 14.8], "art_h": 6.52},
-   {"text": "STEEL ROOFING & SUPPLY", "box": [-57.0, 17.1, 56.9, 23.4], "art_h": 6.11}]},
-  "gaulke_roofing_beanie": {"lines": [
-   {"text": "C GOLKE INDUSTRIES", "box": [-41.3, 6.7, 41.2, 12.2], "art_h": 5.36},
-   {"text": "STEEL ROOFING & SUPPLY", "box": [-46.8, 14.0, 46.8, 19.2], "art_h": 5.02}]},
-  "gaulke_roofing_lc": {"lines": [
-   {"text": "C GOLKE INDUSTRIES", "box": [-42.0, 6.8, 41.8, 12.4], "art_h": 5.44},
-   {"text": "STEEL ROOFING & SUPPLY", "box": [-47.5, 14.2, 47.5, 19.5], "art_h": 5.1}]}
+  "precision_drone": {"legibility_job": "precision_drone", "lines": [
+   {"text": "PRECISION", "box": [-31.1, 10.2, 31.2, 16.9], "art_h": 5.99, "words": ["PRECISION"]},
+   {"text": "THERMAL", "box": [-22.1, 17.6, 22.0, 22.1], "art_h": 4.48, "words": ["THERMAL"]},
+   {"text": "AND DRONE", "box": [-13.6, 24.1, 17.7, 26.3], "art_h": 2.2, "words": ["AND", "DRONE"]}]},
+  "tires_hat_3d": {"legibility_job": "tires", "lines": [
+   {"text": "Tires", "box": [-57.1, -21.1, 57.1, 21.0], "art_h": 28.65, "words": ["Tires"]}]},
+  "gaulke_roofing_hat": {"legibility_job": "gaulke_roofing", "lines": [
+   {"text": "C GOLKE INDUSTRIES", "box": [-50.3, 8.2, 50.1, 14.8], "art_h": 6.52, "words": ["GOLKE", "INDUSTRIES"]},
+   {"text": "STEEL ROOFING & SUPPLY", "box": [-57.0, 17.1, 56.9, 23.4], "art_h": 6.11, "words": ["STEEL", "ROOFING", "SUPPLY"]}]},
+  "gaulke_roofing_beanie": {"legibility_job": "gaulke_roofing", "lines": [
+   {"text": "C GOLKE INDUSTRIES", "box": [-41.3, 6.7, 41.2, 12.2], "art_h": 5.36, "words": ["GOLKE", "INDUSTRIES"]},
+   {"text": "STEEL ROOFING & SUPPLY", "box": [-46.8, 14.0, 46.8, 19.2], "art_h": 5.02, "words": ["STEEL", "ROOFING", "SUPPLY"]}]},
+  "gaulke_roofing_lc": {"legibility_job": "gaulke_roofing", "lines": [
+   {"text": "C GOLKE INDUSTRIES", "box": [-42.0, 6.8, 41.8, 12.4], "art_h": 5.44, "words": ["GOLKE", "INDUSTRIES"]},
+   {"text": "STEEL ROOFING & SUPPLY", "box": [-47.5, 14.2, 47.5, 19.5], "art_h": 5.1, "words": ["STEEL", "ROOFING", "SUPPLY"]}]}
  }
 }
