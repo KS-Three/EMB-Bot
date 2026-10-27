@@ -2625,17 +2625,17 @@
    ],
    "read": {
     "ours": {
-     "verdict": "SATIN",
-     "block": 2,
-     "h_mm": 6.95,
-     "w_mm": 5.75,
+     "verdict": "RUN",
+     "block": 1,
+     "h_mm": 8.85,
+     "w_mm": 8.75,
      "n": 1,
      "gap_mm": null,
      "fused": 0,
-     "stroke_mm": 2.03,
-     "satin": 0.86,
-     "bean": 0.03,
-     "why": "read 6.95 mm against 18.0 drawn: a fragment of the line, not the line"
+     "stroke_mm": 1.64,
+     "satin": 0.48,
+     "bean": 0.0,
+     "why": "read 8.85 mm against 18.0 drawn: a fragment of the line, not the line"
     },
     "pro": {
      "verdict": "SATIN",
@@ -2655,27 +2655,27 @@
     "columns": {
      "v": null,
      "w": null,
-     "why": "read 6.95 mm against 18.0 drawn: a fragment of the line, not the line"
+     "why": "read 8.85 mm against 18.0 drawn: a fragment of the line, not the line"
     },
     "stitches": {
      "v": null,
      "w": null,
-     "why": "read 6.95 mm against 18.0 drawn: a fragment of the line, not the line"
+     "why": "read 8.85 mm against 18.0 drawn: a fragment of the line, not the line"
     },
     "satin_w": {
      "v": null,
      "w": null,
-     "why": "read 6.95 mm against 18.0 drawn: a fragment of the line, not the line"
+     "why": "read 8.85 mm against 18.0 drawn: a fragment of the line, not the line"
     },
     "trims": {
      "v": null,
      "w": null,
-     "why": "read 6.95 mm against 18.0 drawn: a fragment of the line, not the line"
+     "why": "read 8.85 mm against 18.0 drawn: a fragment of the line, not the line"
     },
     "rail_run": {
      "v": null,
      "w": null,
-     "why": "read 6.95 mm against 18.0 drawn: a fragment of the line, not the line"
+     "why": "read 8.85 mm against 18.0 drawn: a fragment of the line, not the line"
     },
     "cc": {
      "v": null,
@@ -5606,35 +5606,35 @@
      "pro": null,
      "n": 0,
      "of": 1,
-     "why": "read 6.95 mm against 18.0 drawn: a fragment of the line, not the line"
+     "why": "read 8.85 mm against 18.0 drawn: a fragment of the line, not the line"
     },
     "trims": {
      "ours": null,
      "pro": null,
      "n": 0,
      "of": 1,
-     "why": "read 6.95 mm against 18.0 drawn: a fragment of the line, not the line"
+     "why": "read 8.85 mm against 18.0 drawn: a fragment of the line, not the line"
     },
     "stitches": {
      "ours": null,
      "pro": null,
      "n": 0,
      "of": 1,
-     "why": "read 6.95 mm against 18.0 drawn: a fragment of the line, not the line"
+     "why": "read 8.85 mm against 18.0 drawn: a fragment of the line, not the line"
     },
     "satin_w": {
      "ours": null,
      "pro": null,
      "n": 0,
      "of": 1,
-     "why": "read 6.95 mm against 18.0 drawn: a fragment of the line, not the line"
+     "why": "read 8.85 mm against 18.0 drawn: a fragment of the line, not the line"
     },
     "rail_run": {
      "ours": null,
      "pro": null,
      "n": 0,
      "of": 1,
-     "why": "read 6.95 mm against 18.0 drawn: a fragment of the line, not the line"
+     "why": "read 8.85 mm against 18.0 drawn: a fragment of the line, not the line"
     }
    }
   },

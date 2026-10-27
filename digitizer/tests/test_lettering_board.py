@@ -384,6 +384,12 @@ def test_the_line_is_read_from_the_satin_block_not_the_longer_fill_that_sews_bet
     assert lb.letter_block(fill + satin, box, 9.0, 14.5) == 1
 
 
+def test_a_small_satin_rule_does_not_displace_the_bean_or_fill_letters_it_sits_under():
+    box = (4.0, 4.0, 28.0, 26.0)
+    rule = _satin_runs(1, [10.0], h=9.0)                      # one short satin column against a 360 mm fill
+    assert lb.letter_block(_fill_rows(0) + rule, box, 9.0, 14.5) is None
+
+
 def test_a_line_with_no_satin_block_keeps_the_readers_own_pick():
     box = (4.0, 4.0, 28.0, 26.0)
     assert lb.letter_block(_fill_rows(0), box, 9.0, 14.5) is None
@@ -432,6 +438,17 @@ def test_a_screenshots_black_bars_come_off_so_the_ground_is_the_logos_not_the_ba
     r, a = lb.trim_letterbox(rgb, alpha)
     assert r.shape == (60, 200, 3) and a.shape == (60, 200)
     assert ground_colour(rgb, alpha).max() < 20 and ground_colour(r, a).min() > 200   # black before, white after
+
+
+def test_ink_touching_the_side_edge_under_a_flat_margin_is_not_mistaken_for_a_panel_border():
+    import numpy as np
+    rgb = np.full((300, 200, 3), 255.0, np.float32)
+    rgb[100:200, :] = 255.0
+    rgb[110:190, :40] = 0.0                                   # a tight crop: ink runs out to the left edge
+    rgb[110:190, 160:] = 0.0                                  # ... and the right one
+    alpha = np.full(rgb.shape[:2], 255, np.uint8)
+    r, a = lb.trim_letterbox(rgb, alpha)
+    assert r is rgb and a is alpha                            # the white margin stays: it is the ground
 
 
 def test_an_artwork_whose_margin_is_its_ground_is_left_exactly_as_it_was():
@@ -490,6 +507,8 @@ def _dst_with_blocks(path, n_blocks):
             pat.add_command(pystitch.COLOR_CHANGE)
         for k in range(6):
             pat.add_stitch_absolute(pystitch.STITCH, 100 * b + 10 * k, 5 * k)
+        if b == 0:                                              # a knockdown: the first block's box holds the later ones
+            pat.add_stitch_absolute(pystitch.STITCH, 600, 400)
     pat.add_command(pystitch.END)
     pystitch.write_dst(pat, str(path))
     return path
@@ -509,19 +528,53 @@ def test_a_beanies_dst_knockdown_block_is_drawn_as_cloth_so_it_does_not_bury_the
     assert lb.pro_words_design(one, "beanie", (255, 255, 255))["colors"] == wl.load_pro_design(one)["colors"]
 
 
+def test_a_beanie_dst_whose_first_block_is_lettering_of_its_own_is_not_called_a_knockdown(tmp_path):
+    import pystitch
+    pat = pystitch.EmbPattern()
+    for k in range(6):                                          # block 0: a small word, far from block 1
+        pat.add_stitch_absolute(pystitch.STITCH, 10 * k, 0)
+    pat.add_command(pystitch.COLOR_CHANGE)
+    for k in range(6):                                          # block 1: elsewhere, outside block 0's box
+        pat.add_stitch_absolute(pystitch.STITCH, 1000 + 10 * k, 800)
+    pat.add_command(pystitch.END)
+    path = tmp_path / "words.dst"
+    pystitch.write_dst(pat, str(path))
+    from tools import word_legibility as wl
+    assert lb.pro_words_design(path, "beanie", (255, 255, 255))["colors"] == wl.load_pro_design(path)["colors"]
+
+
 def test_the_board_records_the_flag_set_by_name_and_prints_what_is_off():
     flags = lb.effective_flags({})
     assert flags["sew_enclosed_white"] is True and flags["lettering_columns_corner_fold"] is True
     assert flags["cut_every_jump"] is False and all(isinstance(v, bool) for v in flags.values())
     assert lb.effective_flags({"cut_every_jump": True})["cut_every_jump"] is True        # `--set` shows
     line = lb._flags_line({"a_on": True, "b_off": False, "c_off": False})
-    assert "(1 ON, 2 OFF" in line and "OFF: b_off, c_off." in line
+    assert "(1 ON, 2 OFF" in line and "ON: a_on." in line and "OFF: b_off, c_off." in line
     assert lb._flags_line(None) == ""                                                    # an older board names none
 
 
 def test_the_cache_record_carries_the_flags_it_was_digitized_with(tmp_path):
     lb.prepare_cache(tmp_path, {})
     assert json.loads((tmp_path / lb.CACHE_RECORD).read_text())["flags"]["sew_enclosed_white"] is True
+
+
+def test_the_rembg_venv_the_board_borrows_is_given_back(tmp_path, monkeypatch):
+    import contextlib
+    from digitizer_core import stage1_photo_prep as s1
+
+    class FakeCensus:
+        def digitize_one(self, slug, cache):
+            _ours_json(cache, slug, [])
+            return {"width_mm": 100.0, "secs": 1.0, "warnings": []}
+
+    @contextlib.contextmanager
+    def fake_studio(_sets):
+        yield FakeCensus()
+    before = s1.REMBG_VENV_PYTHON
+    monkeypatch.setattr(lb, "_studio", fake_studio)
+    monkeypatch.setattr(lb, "rembg_from_primary", lambda: setattr(s1, "REMBG_VENV_PYTHON", tmp_path / "other") or "primary")
+    lb.digitize_missing(["becker_hat_large"], tmp_path, {}, log=lambda *_: None)
+    assert s1.REMBG_VENV_PYTHON == before
 
 
 def test_the_header_names_the_rembg_timeout_and_a_reroute():

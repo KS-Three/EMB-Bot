@@ -298,10 +298,10 @@ def _fmt_side(s, key):
 def _flags_line(flags) -> str:
     if not flags:
         return ""
-    off = sorted(k for k, v in flags.items() if not v)
-    return ("  Layout and lettering switches as digitized "
-            f"({sum(1 for v in flags.values() if v)} ON, {len(off)} OFF; every name and value is in the JSON's "
-            f"`meta.flags`). OFF: {', '.join(off)}.")
+    on, off = sorted(k for k, v in flags.items() if v), sorted(k for k, v in flags.items() if not v)
+    return ("\n\nLayout and lettering switches as digitized "
+            f"({len(on)} ON, {len(off)} OFF; values in the JSON's `meta.flags`). "
+            f"ON: {', '.join(on)}. OFF: {', '.join(off)}.")
 
 
 def _rembg_line(rembg) -> str:
@@ -548,8 +548,12 @@ def effective_flags(sets: dict) -> dict:
     nothing the day a flag flips; this is what `PipelineConfig` held."""
     import dataclasses
     from digitizer_core import PipelineConfig
-    from digitizer_service.app import _parse_config
+    try:
+        from digitizer_service.app import _parse_config
+    except ImportError:              # the service stack is not installed: the switches are not recorded, the board still runs
+        return {}
     from tools import pro_pair as pp
+    # the switches are the request's, not a pair's: width and garment do not set a bool field, so one request names them
     req = pp.request(100.0, "hat_front", {"photo_prep_background_removal_timeout_s": REMBG_TIMEOUT_S, **sets})
     cfg = PipelineConfig(**_parse_config(json.dumps(req)))
     return {f.name: getattr(cfg, f.name) for f in dataclasses.fields(cfg)
@@ -618,6 +622,16 @@ def digitize_missing(slugs, cache: Path, sets: dict, log=print, allow_reroute: b
     todo = [s for s in slugs if not (cache / s / "ours.json").exists()]
     if not todo:
         return failed
+    from digitizer_core import stage1_photo_prep as s1
+    saved_venv = s1.REMBG_VENV_PYTHON
+    try:
+        _digitize_todo(todo, cache, sets, log, allow_reroute, failed)
+    finally:
+        s1.REMBG_VENV_PYTHON = saved_venv
+    return failed
+
+
+def _digitize_todo(todo, cache: Path, sets: dict, log, allow_reroute: bool, failed: dict) -> None:
     log(f"rembg cutout runs from: {rembg_from_primary()}")
     with _studio(sets) as bc:
         for slug in todo:
@@ -634,7 +648,6 @@ def digitize_missing(slugs, cache: Path, sets: dict, log=print, allow_reroute: b
                 raise SystemExit(f"{slug} took the classical route ({REROUTED}) at rembg timeout "
                                  f"{base_timeout(sets):g} s: stopped, nothing published. Is the cutout venv "
                                  f"found, is the machine too loaded? {len(failed)} pair(s) failed before it.")
-    return failed
 
 
 def cache_engine(cache: Path, slugs) -> str:
@@ -693,6 +706,9 @@ def point_runs(segs):
 
 #: a block "is satin" for the line pick when this share of its letter-like thread is (`read_element`'s own SATIN verdict)
 SATIN_SHARE = 0.5
+#: ... and it displaces the longest block only when it holds at least this share of that block's thread: Becker's
+#: outline is 0.90 of the faces' fill, a satin underline under bean or fill letters is a small fraction of them
+SATIN_OF_LONGEST = 0.5
 
 
 def letter_block(runs, box, art_h, cy):
@@ -704,15 +720,16 @@ def letter_block(runs, box, art_h, cy):
     that reads as SATIN; among those, the one with the most thread. A line with no satin block
     (fill or bean lettering) keeps `read_element`'s own pick. -> a block id, or None for that."""
     from tools import small_text_floor_census as sf
-    best = None
+    best, longest = None, 0.0
     for blk, segs in sf._segments(runs, box).items():
         kinds = sf.seg_kinds(runs, segs)
         comps, idx = sf.components(segs, kinds, box, art_h, cy, None)
         total = sum(sf._seg_len(segs[j]) for j in idx)
         sat = sum(sf._seg_len(segs[j]) for j in idx if kinds[j] == "satin")
+        longest = max(longest, total if comps else 0.0)
         if comps and total and sat / total >= SATIN_SHARE and (best is None or total > best[0]):
             best = (total, blk)
-    return None if best is None else best[1]
+    return best[1] if best is not None and best[0] >= SATIN_OF_LONGEST * longest else None
 
 
 class FileReader:
@@ -724,6 +741,13 @@ class FileReader:
         self.runs = load_runs(self.path)[0]
         self.trim_why = trim_why
         self._trims = None
+        self._by_block: dict = {}
+
+    def block_runs(self, blk):
+        """The runs of one block: the same list every time, so `seg_kinds`' per-list cache holds one entry per block."""
+        if blk not in self._by_block:
+            self._by_block[blk] = [r for r in self.runs if r["block"] == blk]
+        return self._by_block[blk]
 
     def trim_rows(self):
         if self.trim_why:
@@ -740,7 +764,7 @@ class FileReader:
         from tools import small_text_floor_census as sf
         keep: dict = {}
         blk = letter_block(self.runs, box, art_h, cy)
-        runs = self.runs if blk is None else [r for r in self.runs if r["block"] == blk]
+        runs = self.runs if blk is None else self.block_runs(blk)
         e = sf.read_element(runs, box, art_h, cy, keep=keep)
         why = None
         if e.get("verdict") == "DROPPED":
@@ -800,6 +824,8 @@ def line_outline(info: dict, box, pad: float = 0.5):
 
 #: a screenshot's letterbox bar is one flat colour, and the first row of the panel inside it differs by more than this
 LETTERBOX_STEP = 40.0
+#: ... and a bar is BLACK (a screenshot's): a flat white or ground-coloured margin is never one
+LETTERBOX_BLACK = 16.0
 
 
 def trim_letterbox(rgb, alpha):
@@ -818,13 +844,43 @@ def trim_letterbox(rgb, alpha):
 
     def inner_edge(i):
         return np.median(np.concatenate([rgb[i, :3], rgb[i, -3:]]), axis=0)
-    if top > 0 and np.abs(inner_edge(top) - rgb[top - 1, 0]).max() <= LETTERBOX_STEP:
+    def is_bar(i, j):
+        """row `i` is the first panel row, row `j` the flat row outside it: a black bar, and not the panel's own colour"""
+        return rgb[j, 0].max() <= LETTERBOX_BLACK and np.abs(inner_edge(i) - rgb[j, 0]).max() > LETTERBOX_STEP
+    if top > 0 and not is_bar(top, top - 1):
         top = 0
-    if bot < rgb.shape[0] - 1 and np.abs(inner_edge(bot) - rgb[bot + 1, 0]).max() <= LETTERBOX_STEP:
+    if bot < rgb.shape[0] - 1 and not is_bar(bot, bot + 1):
         bot = rgb.shape[0] - 1
     if top == 0 and bot == rgb.shape[0] - 1:
         return rgb, alpha
-    return rgb[top:bot + 1], alpha[top:bot + 1]
+    r, a = rgb[top:bot + 1], alpha[top:bot + 1]
+    # a panel's border is its own ground (a screenshot's white page); ink touching the side edge of a tight
+    # crop is not, and a margin cut off it would leave the ink to be taken for the ground
+    from digitizer_core.glyph_read import ground_colour
+    ground = np.asarray(ground_colour(r, a), float)
+    edges = [inner_edge(i) for i, cut in ((top, top > 0), (bot, bot < rgb.shape[0] - 1)) if cut]
+    if any(np.abs(e - ground).max() > LETTERBOX_STEP for e in edges):
+        return rgb, alpha
+    return r, a
+
+
+def _first_block_covers_the_rest(design, slack: float = 20.0) -> bool:
+    """A knockdown is a fill under the WHOLE logo: block 0's box holds every later block's box (0.1 mm units,
+    `slack` of them). A first block that is lettering of its own does not."""
+    boxes, cur = [], []
+    for r in design["stitches"]:
+        if r["type"] == "color":
+            boxes.append(cur)
+            cur = []
+        elif r["type"] == "stitch":
+            cur.append((r["x"], r["y"]))
+    boxes.append(cur)
+    boxes = [(min(x for x, _ in b), min(y for _, y in b), max(x for x, _ in b), max(y for _, y in b)) for b in boxes if b]
+    if len(boxes) < 2:
+        return False
+    first, rest = boxes[0], boxes[1:]
+    return (first[0] - slack <= min(b[0] for b in rest) and first[1] - slack <= min(b[1] for b in rest)
+            and first[2] + slack >= max(b[2] for b in rest) and first[3] + slack >= max(b[3] for b in rest))
 
 
 def pro_words_design(pro_file, garment: str, ground) -> dict:
@@ -838,7 +894,7 @@ def pro_words_design(pro_file, garment: str, ground) -> dict:
     design = wl.load_pro_design(pro_file)
     if Path(pro_file).suffix.lower() == ".dst" and garment == "beanie":
         blocks = 1 + sum(1 for r in design["stitches"] if r["type"] == "color")
-        if blocks > 1:
+        if blocks > 1 and _first_block_covers_the_rest(design):
             design["colors"] = ([{"r": int(ground[0]), "g": int(ground[1]), "b": int(ground[2])}]
                                 + [{"r": 0, "g": 0, "b": 0}] * (blocks - 1))
     return design

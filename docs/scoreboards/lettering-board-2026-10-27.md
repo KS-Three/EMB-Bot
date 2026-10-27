@@ -1,6 +1,8 @@
 # Lettering board 2026-10-27
 
-Engine: `98603fb4`, flags: main defaults. OCR: tesseract v5.4.0.20240606. Photo prep: rembg timeout 900 s; no job rerouted. Each cell is `ours / pro`, pooled over the lines both files have a figure for (`n/of`). Bands are the DRAWN letter height, so a line stays in its band whatever a flag does to its sewn size. `n/a` is a figure that could not be read; the reason is under the board.  Layout and lettering switches as digitized (39 ON, 19 OFF; every name and value is in the JSON's `meta.flags`). OFF: cut_every_jump, enclosed_white_keyline, fill_density_boost, fill_inside_satin_border, fill_order_sewn_paths, keyline_fold_slivers, keyline_loop_chain, lettering_columns_apex_cut, lettering_word_tiers, lettering_words, monoline_script_satin, pro_measured_values, pull_comp_by_stroke, satin_underlay_on_column, script_strokes_drawn_width, sew_enclosed_white_fields_fill, silhouette_underfill, silhouette_underfill_panels, silhouette_underfill_rim.
+Engine: `98603fb4`, flags: main defaults. OCR: tesseract v5.4.0.20240606. Photo prep: rembg timeout 900 s; no job rerouted. Each cell is `ours / pro`, pooled over the lines both files have a figure for (`n/of`). Bands are the DRAWN letter height, so a line stays in its band whatever a flag does to its sewn size. `n/a` is a figure that could not be read; the reason is under the board.
+
+Layout and lettering switches as digitized (39 ON, 19 OFF; values in the JSON's `meta.flags`). ON: bean_ink_outlined_letters, border_by_size, border_from_outline, border_from_outline_line_art_guard, enclosed_alpha_hole_parts, enclosed_by_garment, fill_bridge_cut, fill_travel_under_cover, fill_turn_slant, fill_underlay_cross, fine_bars_satin, lettering_columns, lettering_columns_corner_fold, lettering_columns_fold_cuts, lettering_columns_icon_guard, lettering_columns_ink_link, lettering_columns_inside_connectors, lettering_columns_inside_stagger, lettering_columns_italic_lean, lettering_columns_rail_axis, lettering_columns_skip_blobs, lettering_columns_small_bold, lettering_columns_small_stem, lettering_columns_square_ends, lettering_columns_text_lean, satin_underlay_short_columns, script_strokes, sew_enclosed_white, small_text_bay_mouth, small_text_cap_reach_edges, small_text_keep_stray_lines, small_text_reset_grow_away, small_text_true_size, text_cluster_counters_as_drawn, text_cluster_part_touching, text_cluster_rescued_ink_link, text_cluster_wide_letters, trim_bury_under_later, white_keyline_art_recipe. OFF: cut_every_jump, enclosed_white_keyline, fill_density_boost, fill_inside_satin_border, fill_order_sewn_paths, keyline_fold_slivers, keyline_loop_chain, lettering_columns_apex_cut, lettering_word_tiers, lettering_words, monoline_script_satin, pro_measured_values, pull_comp_by_stroke, satin_underlay_on_column, script_strokes_drawn_width, sew_enclosed_white_fields_fill, silhouette_underfill, silhouette_underfill_panels, silhouette_underfill_rim.
 
 | pair | band | lines | word legibility cc | word legibility reach (octaves) | columns | trims inside letters | stitches | mean satin width mm | rail wobble p90 run windows mm |
 |---|---|---|---|---|---|---|---|---|---|
@@ -39,11 +41,11 @@ Engine: `98603fb4`, flags: main defaults. OCR: tesseract v5.4.0.20240606. Photo 
 - hotel_fremont_patch <4, rail wobble p90 run windows mm: no letter-like thread in the line's box
 - mfab_hat 10+, word legibility cc: MFAB: ours/pro the reader reads neither the art nor either file's thread (cc art -0.00, ours +0.14, pro +0.25)
 - mfab_hat 10+, word legibility reach (octaves): MFAB: ours/pro the reader reads neither the art nor either file's thread (cc art -0.00, ours +0.14, pro +0.25)
-- mfab_hat 10+, columns: read 6.95 mm against 18.0 drawn: a fragment of the line, not the line
-- mfab_hat 10+, trims inside letters: read 6.95 mm against 18.0 drawn: a fragment of the line, not the line
-- mfab_hat 10+, stitches: read 6.95 mm against 18.0 drawn: a fragment of the line, not the line
-- mfab_hat 10+, mean satin width mm: read 6.95 mm against 18.0 drawn: a fragment of the line, not the line
-- mfab_hat 10+, rail wobble p90 run windows mm: read 6.95 mm against 18.0 drawn: a fragment of the line, not the line
+- mfab_hat 10+, columns: read 8.85 mm against 18.0 drawn: a fragment of the line, not the line
+- mfab_hat 10+, trims inside letters: read 8.85 mm against 18.0 drawn: a fragment of the line, not the line
+- mfab_hat 10+, stitches: read 8.85 mm against 18.0 drawn: a fragment of the line, not the line
+- mfab_hat 10+, mean satin width mm: read 8.85 mm against 18.0 drawn: a fragment of the line, not the line
+- mfab_hat 10+, rail wobble p90 run windows mm: read 8.85 mm against 18.0 drawn: a fragment of the line, not the line
 - mfab_lc 10+, word legibility cc: MFAB: ours/pro the reader reads neither the art nor either file's thread (cc art +0.20, ours +0.20, pro +0.31)
 - mfab_lc 10+, word legibility reach (octaves): MFAB: ours/pro the reader reads neither the art nor either file's thread (cc art +0.20, ours +0.20, pro +0.31)
 - mfab_lc 10+, columns: read 7.85 mm against 16.6 drawn: a fragment of the line, not the line
@@ -82,7 +84,7 @@ Engine: `98603fb4`, flags: main defaults. OCR: tesseract v5.4.0.20240606. Photo 
 | hotel_fremont_patch | HOTEL FREMONT | 6-10 | 6.80 | 7.25 / 7.85 | +1.00 / +1.00 | 5.25 / 5.21 | 53 / 61 | 0 / 1 | 1792 / 2199 | 0.92 / 1.24 | 0.156 / 0.177 |
 | hotel_fremont_patch | EAT STAY | <4 | 2.44 | 4.85 / 4.30 | +0.00 / +1.00 | 0.00 / 3.04 | 21 / 20 | 0 / 0 | 395 / 419 | 0.85 / 0.79 | n/a / n/a |
 | hotel_fremont_patch | PLAY | <4 | 2.44 | 4.55 / 4.25 | +1.00 / +1.00 | 4.25 / 3.84 | 10 / 11 | 0 / 0 | 205 / 220 | 0.81 / 0.76 | n/a / n/a |
-| mfab_hat | MFAB | 10+ | 18.04 | 6.95 / 8.65 | n/a / n/a | n/a / n/a | n/a / n/a | n/a / n/a | n/a / n/a | n/a / n/a | n/a / n/a |
+| mfab_hat | MFAB | 10+ | 18.04 | 8.85 / 8.65 | n/a / n/a | n/a / n/a | n/a / n/a | n/a / n/a | n/a / n/a | n/a / n/a | n/a / n/a |
 | mfab_hat | AND WELDING LLC | 6-10 | 6.75 | 7.70 / 7.55 | +0.00 / +0.92 | 0.32 / 2.76 | 32 / 30 | 2 / 0 | 1634 / 1366 | 1.55 / 1.41 | 0.044 / 0.015 |
 | mfab_lc | MFAB | 10+ | 16.55 | 7.85 / 7.95 | n/a / n/a | n/a / n/a | n/a / n/a | n/a / n/a | n/a / n/a | n/a / n/a | n/a / n/a |
 | mfab_lc | AND WELDING LLC | 6-10 | 6.25 | 7.15 / 6.95 | +0.23 / +0.20 | 0.59 / 1.00 | 31 / 30 | 1 / 0 | 1622 / 1272 | 1.32 / 1.33 | 0.043 / 0.015 |
@@ -129,7 +131,7 @@ Engine: `98603fb4`, flags: main defaults. OCR: tesseract v5.4.0.20240606. Photo 
 - hotel_fremont_patch / PLAY, ours: no run windows (14 windows, every one on a corner or off the outline) (rail wobble p90 run windows mm)
 - hotel_fremont_patch / PLAY, pro: no run windows (0 windows, every one on a corner or off the outline) (rail wobble p90 run windows mm)
 - mfab_hat / MFAB, ours: MFAB: ours/pro the reader reads neither the art nor either file's thread (cc art -0.00, ours +0.14, pro +0.25) (word legibility cc, word legibility reach (octaves))
-- mfab_hat / MFAB, ours: read 6.95 mm against 18.0 drawn: a fragment of the line, not the line (columns, trims inside letters, stitches, mean satin width mm, rail wobble p90 run windows mm)
+- mfab_hat / MFAB, ours: read 8.85 mm against 18.0 drawn: a fragment of the line, not the line (columns, trims inside letters, stitches, mean satin width mm, rail wobble p90 run windows mm)
 - mfab_hat / MFAB, pro: MFAB: ours/pro the reader reads neither the art nor either file's thread (cc art -0.00, ours +0.14, pro +0.25) (word legibility cc, word legibility reach (octaves))
 - mfab_hat / MFAB, pro: read 8.65 mm against 18.0 drawn: a fragment of the line, not the line (columns, trims inside letters, stitches, mean satin width mm, rail wobble p90 run windows mm)
 - mfab_lc / MFAB, ours: MFAB: ours/pro the reader reads neither the art nor either file's thread (cc art +0.20, ours +0.20, pro +0.31) (word legibility cc, word legibility reach (octaves))
