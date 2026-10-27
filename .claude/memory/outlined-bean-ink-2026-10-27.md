@@ -47,5 +47,7 @@ byte-identical OFF and ON. So is the hat (its reads are 0.167 mm).
   premise capture tallied only non-jump runs and reported the A's bean runs
   (19 + 191 points) as vanished. Count every run's points.
 
-Flip is Kent's (layout: judged in the preview). See also
+**ON since 2026-10-27, Kent's flip** from the wave-5 sheet, with
+`text_cluster_part_touching` ("Both ON (Recommended)"; trade-offs in
+[[flip-sheet-wave5-2026-10-27]]). False is in `tests/conftest.py` PRE_FLIP. See also
 [[text-cluster-part-touching-2026-10-25]], [[mfab-underfill-panels-2026-10-25]].

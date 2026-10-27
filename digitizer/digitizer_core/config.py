@@ -2928,9 +2928,12 @@ class PipelineConfig:
     # re-stationed with its crosses along the stems (spacing over cos of
     # the lean, as the text lean). Stems, diagonals and curves are the text
     # lean's, unchanged. Layout, judged in the preview (Kent 2026-10-22).
-    # Built OFF (Kent flips); False never sets the italic words, so stage 7
-    # runs exactly as before. Tests: `tests/test_column_italic_lean.py`.
-    lettering_columns_italic_lean: bool = False
+    # Built OFF 2026-10-25; **ON since 2026-10-27, Kent's flip** on the
+    # wave-5 flip sheet (#1140: "Flip ON (Recommended)"; ProSeal hat and
+    # beanie bar angles only, trims 34 / 28 unchanged). False never sets the
+    # italic words, so stage 7 runs exactly as before; `tests/conftest.py`
+    # PRE_FLIP pins it False. Tests: `tests/test_column_italic_lean.py`.
+    lettering_columns_italic_lean: bool = True
     # Under `lettering_columns`, each satin column's pull compensation is a
     # function of ITS OWN drawn stroke width, the way the professional's
     # hat files sew (2026-10-22, built OFF; `columns.pull_for_width`, the
@@ -3380,9 +3383,13 @@ class PipelineConfig:
     # one (`textcluster._adopt_band`). Fremont's OTE / NT are NOT this: they
     # trace and tag as separate letters, and touch only in the sewn file.
     # Segmentation and tagging, not fabric: layout, judged in the preview.
-    # False: neither runs, byte for byte. Tests:
-    # `tests/test_text_cluster_part_touching.py`.
-    text_cluster_part_touching: bool = False
+    # **ON since 2026-10-27, Kent's flip** on the wave-5 flip sheet (#1140:
+    # "Both ON (Recommended)", together with `bean_ink_outlined_letters`,
+    # since each alone leaves a letter of MFab LC's AND hollow; both ON sew
+    # A N D solid black like the pro, LC trims 19 -> 14, hat 22 -> 18).
+    # False: neither runs, byte for byte; `tests/conftest.py` PRE_FLIP pins
+    # it False. Tests: `tests/test_text_cluster_part_touching.py`.
+    text_cluster_part_touching: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
@@ -3475,9 +3482,12 @@ class PipelineConfig:
     # shape-gate miss, and the letter sews as the black satin rider it is:
     # the A's crosses 44 -> 116 (pro 114), AND's 116 -> 292 (pro 324); the
     # hat, WELDING and LLC do not move. Layout (ruling 2026-10-22: judged in
-    # the preview): no width, stroke, ratio or line moves. False is the
-    # engine as it was, byte for byte. Tests: `tests/test_bean_outlined_ink.py`.
-    bean_ink_outlined_letters: bool = False
+    # the preview): no width, stroke, ratio or line moves. **ON since
+    # 2026-10-27, Kent's flip** on the wave-5 flip sheet (#1140: "Both ON
+    # (Recommended)", together with `text_cluster_part_touching`). False is
+    # the engine as it was, byte for byte; `tests/conftest.py` PRE_FLIP pins
+    # it False. Tests: `tests/test_bean_outlined_ink.py`.
+    bean_ink_outlined_letters: bool = True
     # Lock stitches on small letters laid ALONG the letter (2026-10-14,
     # `stitches.spread_tie_in` / `spread_tie_off`), for the runs of bean
     # letters and skeleton runs only. The ordinary lock bounces four legs of
@@ -5698,6 +5708,22 @@ class PipelineConfig:
     # the route returns first. Tests: `tests/test_script_strokes.py`,
     # `tests/test_script_flow.py`.
     script_strokes: bool = True
+    # Script strokes sewn at the art's drawn width where they crowd (2026-10-27,
+    # built OFF; Kent: "Build it OFF (Recommended)"; `script_strokes.py`). With
+    # `script_strokes` ON a cross reaches the traced polygon plus the pull, and
+    # on Bridge hat 24.9% of the word's thread is laid twice (the pro's 10.5%,
+    # both read off the files). On a word laying more twice than the pro ever
+    # does (`script_strokes.CROWD_WORD_SHARE`, 10.5%) a cross side whose thread
+    # would run more than `CROWD_DEPTH_MM` (1.0, the pro's median overlap
+    # depth) into another stroke's stops at the art's drawn half-width, the
+    # pull on top as today; every other side still reaches the polygon. Bridge
+    # hat 24.9 -> 19.3%, LC 18.5 -> 15.4, To a T 13.5 -> 11.5; bare polygon
+    # +1.3 / +0.9 mm2. Tires stays under the gate, byte for byte. Drawn width
+    # plus today's pull is not narrower than the drawn stroke: no width or
+    # pull constant moves, not gate 1.
+    # Layout, judged in the preview (Kent, 2026-10-22). False is the plan as it
+    # was, byte for byte. Tests: `tests/test_script_strokes.py`.
+    script_strokes_drawn_width: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()

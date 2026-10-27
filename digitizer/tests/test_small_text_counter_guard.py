@@ -149,9 +149,16 @@ def test_a_guarded_cluster_keeps_its_stray_line():
 
 
 def _candidate_ink(calls):
+    # each spine inside its own glyph, as a real read's is: a spine off the letter is
+    # an outline read, which `bean_ink_outlined_letters` (ON since 2026-10-27) leaves
+    # out, and then no line has a candidate for the guard to judge
+    def _inside(poly):
+        x, y = poly.representative_point().coords[0]
+        return [(x - 0.01, y), (x + 0.01, y)]
+
     def fake(_p, members, **_kw):
         calls.append(len(members))
-        return [MemberInk(stroke_mm=0.25, spines=[[(0.0, 0.0), (0.5, 0.5)]]) for _ in members]
+        return [MemberInk(stroke_mm=0.25, spines=[_inside(m.polygon)]) for m in members]
     return fake
 
 

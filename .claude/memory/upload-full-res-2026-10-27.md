@@ -1,6 +1,6 @@
 ---
 name: upload-full-res-2026-10-27
-description: SVG, GIF and EXIF-rotated JPEG uploads digitized from the 1,200-px preview; built OFF to send an upright 2,800-px render instead. Measured: no gain while the preview is above the 8 px/mm work grid (100 mm), clear gain below it (emulated jacket back). Flip and service-side EXIF are Kent's.
+description: SVG, GIF and EXIF-rotated JPEG uploads digitized from the 1,200-px preview; built OFF to send an upright 2,800-px render instead. 100 mm: no gain; real 250 mm jacket back: geometry tie, ON drops halo colours and trims; text-heavy art times out at 600 s in both arms. Kent 10-27: flip held, service EXIF left alone.
 metadata:
   type: project
 ---
@@ -33,24 +33,46 @@ the browser's bitmap. Preview in localStorage unchanged. No service change.
   letters (sheet `docs/renders/upload-full-res-2026-10-27/small_text_logo__off_on.png`);
   ON recovers all of it. vector_logo.svg: 0.931 / 0.926 / 0.932. The cap 2.7 mm line
   scores 0.28 in EVERY arm: below what the engine sews faithfully, not a resolution loss.
-- **250 mm is EMULATED, not run:** the real 250 mm design overran the service's 600 s
-  job limit under the laptop's load (OFF arm, `took too long`). Output depends on px per
-  mm and the features' size in mm, so the 100 mm design sent at 480 px stands in for it.
+- **250 mm jacket back, RUN 10-27** (Kent's "hold for a quiet-machine run"; service from
+  the main checkout 2c6b656c, `jacket_back`, Studio config, lock taken at STATE=OK with
+  both slots free, but other slot holders ran beside it, watchdog idle 6% at 09:17):
+  `vector_logo.svg` (`docs/renders/upload-full-res-jacket-back-vector-2026-10-27/`):
+
+  | send | px/mm | stitches | trims | colour chg | IoU | edge mean | digitize |
+  |---|---:|---:|---:|---:|---:|---:|---:|
+  | OFF 1,200 | 4.0 | 32,306 | 12 | 3 | 0.9768 | 0.252 mm | 55 s |
+  | ON 2,800 | 9.4 | 32,064 | 7 | 1 | 0.9764 | 0.255 mm | 59 s |
+
+  Geometry is a TIE (IoU, edge); ON removes the 4 px/mm artifacts: 2 halo colour changes
+  and 5 trims gone, circle rim notched at OFF, clean at ON (sheet `vector_logo__off_on.png`).
+  `small_text_logo.svg` at 250 mm with the white field sewn (Studio default): **BOTH arms
+  overran the service's 600 s limit** (OFF stopped at 600 s; ON posted behind OFF's
+  still-running job, then ran its own 600 s). Not an upload-resolution effect: the same
+  design at 100 mm took 277 s (OFF) and 408 s (ON, +47%) on a busy laptop, and area grows
+  6.25x. So lettering plus a sewn white field cannot finish at jacket-back size either
+  way; ON costs more CPU on top. A `--no-white` 250 mm run was NOT done (different
+  config from the Studio's).
+- **The service keeps computing after "reported failed":** `digitize job ... passed 600s;
+  reported failed` stops the poll, not the worker; the next job waited ~220 s behind it
+  (second job's first dnn line at 854 s uptime vs 29-32 s for a fresh job).
 - **Fixtures:** `tools/make-upload-fixtures.mjs` (reproducible): `small_text_logo.svg`
   (Medium Font, OFL, outlined to paths + frame), `rotated_exif6.jpg` (2,520 x 1,400
   upright, stored sideways), `rotated_exif6_upright.png` (exact twin: the stored JPEG
   decoded with orientation ignored and turned by hand). A twin JPEG would go up as the
   file itself, never through the canvas, so it cannot be the comparison. e2e: rotated
   JPEG's POST == twin through `renderForService`, 0 of 14,112,000 channels differ.
-- **Kent's calls:** (1) the flip; (2) should the service honour EXIF orientation at
-  decode (`cv2.imdecode(..., IMREAD_UNCHANGED)`, `app.py` ~L778)? Left alone: it would
-  change a default for every caller. Not needed for the Studio once ON.
+- **Kent's rulings, 2026-10-27:** (1) the flip: "Hold for a quiet-machine run
+  (Recommended)", it stays OFF until that run's sheet is read (the run is above; the flip
+  is still his); (2) service EXIF at decode (`cv2.imdecode(..., IMREAD_UNCHANGED)`,
+  `app.py` ~L778): "Leave it (Recommended)", no service change. API callers still get
+  sideways phone JPEGs; the Studio does not need it once ON.
 
 **Why:** a vector logo is the best small-lettering input a customer can give, and the
 preview threw its detail away; DOCTRINE 2026-09-19/20 priced the same canvas re-encode
 at 503 -> 609 trims on nine logos.
 **How to apply:** do NOT flip on the 100 mm table (it shows nothing). Judge from the
-sheet and the 4.6 px/mm row; the real jacket-back run needs a quiet machine. Traps that
+250 mm sheet: at real size ON is a clean-up (halo colours, trims, rim), not a geometry
+gain, and the text-heavy case times out in both arms. Traps that
 cost this session hours: (a) a service started from a WORKTREE lacks
 `rembg_isolated/venv` and `sam2_isolated` (gitignored): run the service from the main
 checkout ([[seeds-request-and-the-worktree-blind-spot-2026-09-22]]); (b) `rasterSize`
