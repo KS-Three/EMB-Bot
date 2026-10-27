@@ -26,7 +26,7 @@ Every OFF flag with its kind (layout / fabric / held), PR and flip-sheet row:
 
 | PR | What | State at close |
 |---|---|---|
-| #1143 | White recipe as plain defaults on every job (Kent: "Every job (Recommended)") | Draft. Becker counter fix in; post-fix 22-job re-proof running; MFab byte-identical check pending |
+| #1143 | White recipe as plain defaults on every job (Kent: "Every job (Recommended)") | Green at close; auto-merge could not be armed (already CLEAN), so it waits on Kent's merge click. 22 jobs: 7 byte-identical, 13 closer to the pro (Fremont patch trims 40 -> 21, pro 21; Fremont hat 34 -> 22, pro 21). Becker counters back to art size (hat large 26.1 mm², pro 24.2). MFab moves slightly: hat -112 stitches, trims 18 -> 19 (pro 19); LC +31 stitches |
 | #1151 | `text_cluster_nest_guard` (OFF): Bridge hat's wheel no longer nests away its letters | Merged. Bridge hat text pieces in the lane 0 -> 7 of 15, LC byte-identical, reach kappa unchanged; the flip precondition is in the body |
 | #1153 | Satin-split cuts inside one piece, measured (numbers only): ours 80, pro 30 | Merged. The flag's code is parked on `claude/slot-guard-candidate`, not in the PR |
 
@@ -42,7 +42,7 @@ Every OFF flag with its kind (layout / fabric / held), PR and flip-sheet row:
 | Script strokes | "Flip now, fix Bridge next (Recommended)" | #1136 ON; #1150 width (OFF) |
 | Bridge script width | "Build it OFF (Recommended)" | #1150 |
 | Left chest box | "Measure an area rule first (Recommended)" | #1148 (96 wide, 76.5 tall, 5,800 mm²) |
-| White recipe | "Every job (Recommended)" | #1143 |
+| White recipe | "Every job (Recommended)"; then, on the MFab move from the counter fix, "Accept, merge (Recommended)" | #1143 |
 | Layer pin | "Yes, pinned shape leads (Recommended)" | not built: queue item 1 |
 
 ## 3. Kent's flip queue (built OFF, waiting on his flip)
