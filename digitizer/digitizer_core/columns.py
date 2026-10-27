@@ -68,6 +68,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import nearest_points, substring, unary_union
 
 from . import machine, stitches
+from .letter_walk import SLOT_GUARD_GROW_MM
 from .stitches import StitchRun
 
 # A column end within this many stroke widths (plus a constant for the pull)
@@ -1958,6 +1959,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 short_columns: bool = False,
                 inside_stagger: bool = False,
                 apex_crosses: list | None = None,
+                slot_guard: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
@@ -2073,8 +2075,11 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     nodes, spans, junctions = _span_graph(
         ready, merge_r,
         # `cfg.lettering_columns_corner_fold`: a folded letter's nodes must
-        # be joined through the letter (`_span_graph`); off, the radius alone
-        poly.buffer(0.1 + pull_mm) if any(c.kind == "folded" for c in ready) else None,
+        # be joined through the letter (`_span_graph`); off, the radius alone.
+        # `slot_guard` (`cfg.lettering_columns_slot_guard`, `letter_walk`):
+        # every letter's, against the letter barely grown, so no slot closes
+        poly.buffer(SLOT_GUARD_GROW_MM) if slot_guard
+        else poly.buffer(0.1 + pull_mm) if any(c.kind == "folded" for c in ready) else None,
         **({"tips": tips} if tips else {}))
     report["junctions"] = len(junctions)
     # The free end of a butting column (its other end, when nothing else
@@ -2574,6 +2579,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             corner_fold: bool = False,
                             text_lean_deg: float | None = None,
                             inside_stagger: bool = False,
+                            slot_guard: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -2609,8 +2615,18 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     was, station for station.
     `inside_stagger`: `cfg.lettering_columns_inside_stagger` (2026-10-23) --
     the inside of every pivot walked and short-stitched the pro's way
-    (`_inside_stagger`); off, `_short_stitch_guard` as before."""
+    (`_inside_stagger`); off, `_short_stitch_guard` as before.
+    `slot_guard`: `cfg.lettering_columns_slot_guard` (2026-10-27) -- the
+    chosen cut's walk also tried with ends joined only through the letter,
+    kept where it is cheaper (`letter_walk.pick`); off, today's walk."""
     from .outline_cut import letter_columns, stroke_width
+
+    walk = column_runs
+    if slot_guard:
+        from .letter_walk import pick
+
+        def walk(cols, cpoly, sid, **kw):
+            return pick(column_runs, cols, cpoly, sid, **kw)
 
     if small_bold:
         pull_mm = min(pull_mm, SMALL_BOLD_PULL_FRAC * stroke_width(poly))
@@ -2661,6 +2677,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         from .outline_cut import sewn_knots
 
         def judge(cols, cpoly):
+            # today's walk: the pick (`slot_guard`) chooses how the chosen cut
+            # is walked, never which cut is chosen
             return sewn_knots(column_runs(leaned(cols), recorded(cpoly), shape_id, **run_kw)[0])
         lc_kw["judge"] = judge
 
@@ -2683,7 +2701,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         apex_x = [(c[0], c[1]) for c in cut.cuts if c[2] == "apex"]
         if apex_x:
             rk = {**rk, "apex_crosses": apex_x}
-        runs, report = column_runs(leaned(cut.columns), recorded(cut.poly), shape_id, **rk)
+        runs, report = walk(leaned(cut.columns), recorded(cut.poly), shape_id, **rk)
         report["cuts"] = len(cut.cuts)
         report["columns_unsewn"] += len(cut.unsewn)
         return runs, report
