@@ -969,8 +969,9 @@ def build_generation(
                            # each bay's mouth kept open (W3-02, ON since 2026-10-26):
                            # False, the call as it was word for word
                            **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}),
-                           # traced stroke + grown away from the near neighbour (W4-04, OFF)
-                           **({"grow_away": True} if cfg.extra.get("small_text_reset_grow_away") else {}))
+                           # traced stroke + grown away from the near neighbour (W4-04,
+                           # ON since 2026-10-26): False, the call as it was word for word
+                           **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
