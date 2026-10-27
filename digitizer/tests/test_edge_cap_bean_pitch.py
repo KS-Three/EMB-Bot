@@ -28,7 +28,7 @@ from digitizer_core import PipelineConfig, digitize, machine, stitches
 from tests.conftest import FLIP_2026_10_23, FLIP_2026_10_26
 from digitizer_core.stage6_border import run_outline, silhouette_cap
 
-from .conftest import TESTDATA
+from .conftest import FLAT_GOLDEN_MD5, TESTDATA
 
 
 def _md5(coords) -> str:
@@ -99,11 +99,7 @@ def test_the_gate_still_cuts_at_the_new_pitch():
 # --- the whole pipeline: OFF byte-identical, ON moves the cap only ----------------------
 
 # The flat-lane goldens' stitch streams with the cap off (`test_small_dot_rung.py`).
-GOLDEN_MD5 = {
-    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
-    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
-    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
-}
+GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
 # Default config (the bean cap ON) at 80 mm, measured on origin/main dcc54a11
 # before this change and on this branch with the knob None: equal.

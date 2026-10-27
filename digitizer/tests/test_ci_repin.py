@@ -8,6 +8,7 @@ so `tests/_hexrepr.py` prints them whole, and `tools/ci_repin.py` reads them bac
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import warnings
 from pathlib import Path
@@ -15,7 +16,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests import _ci_shard
+from tests import _ci_shard, _hexrepr
 from tools import ci_repin, ci_shard_durations
 
 pytest_plugins = ["pytester"]
@@ -26,6 +27,16 @@ ACTUAL = "bc28d37bc5554e21dab9cca8aed4db69"
 EXPECTED = "4793dc521a2e217dce6b8a80a7e5cb2f"
 ACTUAL_256 = "a" * 20 + "b" * 20 + "c" * 24
 EXPECTED_256 = "1" * 32 + "2" * 32
+
+# Synthetic digests for the nested (tuple / list / dict) cases: none of them is a
+# pin anywhere in the suite, so a run of the tool on the real tests never sees them.
+D_OLD = "0123456789abcdef" * 2          # 32 hex: an md5
+D_NEW = "fedcba9876543210" * 2
+D_OLD2 = "00112233445566778899aabbccddeeff"
+D_NEW2 = "ffeeddccbbaa99887766554433221100"
+P_OLD = "0123456789abcdef0123"          # 20 hex: a sha256 cut to 20, as test_pushcomp pins it
+P_NEW = "fedcba9876543210fedc"
+P_OLD2 = "89abcdef0123456789ab"
 
 
 # ------------------------------------------------------------ tests/_hexrepr.py
@@ -91,6 +102,80 @@ def test_other_strings_keep_pytests_own_output(pytester, monkeypatch):
             assert "{ACTUAL}" != "{ACTUAL}"
     """)
     res.assert_outcomes(passed=1, failed=4)
+    assert "hash mismatch" not in res.stdout.str()
+
+
+def test_a_failing_tuple_pin_shows_every_digest_whole(pytester, monkeypatch):
+    # test_pushcomp's shape: (sha256[:20], stitch count, byte count) == the pin.
+    # pytest's own headline cuts it to "('d26d5feef28..., 5380, 16733)".
+    res = _run(pytester, monkeypatch, f"""
+        def test_pin():
+            got = ("{P_NEW}", 5380, 16733)
+            assert got == ("{P_OLD}", 4726, 14765)
+    """)
+    res.assert_outcomes(failed=1)
+    out = res.stdout.str()
+    summary = [ln for ln in out.splitlines() if ln.startswith("FAILED ")]
+    assert P_NEW in summary[0] and P_OLD in summary[0] and "..." not in summary[0]
+    assert f"AssertionError: assert ('{P_NEW}', 5380, 16733) == ('{P_OLD}', 4726, 14765)" in summary[0]
+    lines = [ln.strip() for ln in out.splitlines()]
+    assert "hash mismatch inside a tuple, every changed element in full:" in lines
+    assert f"[0] left : '{P_NEW}'" in lines and f"[0] right: '{P_OLD}'" in lines
+    assert "[1] left : 5380" in lines and "[1] right: 4726" in lines
+    assert f"whole left : ('{P_NEW}', 5380, 16733)" in lines
+    assert f"whole right: ('{P_OLD}', 4726, 14765)" in lines
+    assert "assert assert" not in out
+
+
+def test_a_failing_dict_pin_shows_every_digest_whole_and_only_the_changed_ones_by_key(
+        pytester, monkeypatch):
+    res = _run(pytester, monkeypatch, f"""
+        def test_pin():
+            got = {{"flat": "{D_NEW}", "ring": "{D_OLD2}"}}
+            assert got == {{"flat": "{D_OLD}", "ring": "{D_OLD2}"}}
+    """)
+    res.assert_outcomes(failed=1)
+    out = res.stdout.str()
+    summary = [ln for ln in out.splitlines() if ln.startswith("FAILED ")]
+    assert D_NEW in summary[0] and D_OLD in summary[0] and D_OLD2 in summary[0]
+    assert "..." not in summary[0]
+    lines = [ln.strip() for ln in out.splitlines()]
+    assert "hash mismatch inside a dict, every changed element in full:" in lines
+    assert f"['flat'] left : '{D_NEW}'" in lines and f"['flat'] right: '{D_OLD}'" in lines
+    assert not any(ln.startswith("['ring']") for ln in lines)     # unchanged: not listed
+
+
+def test_a_digest_list_and_a_nested_container_are_covered_too(pytester, monkeypatch):
+    res = _run(pytester, monkeypatch, f"""
+        def test_list():
+            assert ["{D_NEW}", "{D_OLD2}"] == ["{D_OLD}", "{D_OLD2}"]
+        def test_nested():
+            assert {{"a": ["x", ("{D_NEW}", 1)]}} == {{"a": ["x", ("{D_OLD}", 1)]}}
+    """)
+    res.assert_outcomes(failed=2)
+    out = res.stdout.str()
+    lines = [ln.strip() for ln in out.splitlines()]
+    assert f"[0] left : '{D_NEW}'" in lines                       # the list
+    assert f"['a'][1][0] left : '{D_NEW}'" in lines                # the path into the nesting
+    assert f"['a'][1][0] right: '{D_OLD}'" in lines
+
+
+def test_containers_without_a_digest_keep_pytests_own_output(pytester, monkeypatch):
+    # a stitch-count tuple, short hex-looking ids and a tuple-vs-list compare are not hash
+    # pins: pytest's own diff stays (no rewrite, so nothing for ci_repin to mistake)
+    res = _run(pytester, monkeypatch, f"""
+        def test_counts():
+            assert (5380, 16733) == (4726, 14765)
+        def test_ids():
+            assert ["S09c5bd0d", "Sb253ebba"] == ["S09c5bd0d", "Sdf9f8b3c"]
+        def test_a_16_hex_string_is_not_a_digest():
+            assert ("abcdef0123456789",) == ("abcdef0123456780",)
+        def test_tuple_against_list():
+            assert ("{D_NEW}",) == ["{D_NEW}"]
+        def test_ne():
+            assert ("{D_NEW}", 1) != ("{D_NEW}", 1)
+    """)
+    res.assert_outcomes(failed=5)
     assert "hash mismatch" not in res.stdout.str()
 
 
@@ -335,6 +420,301 @@ def test_the_run_logs_come_from_the_failed_jobs_of_the_run():
     assert len(logs) == 2 and any("/jobs/11/logs" in log for log in logs)
     assert not any("/jobs/12/logs" in " ".join(c) for c in calls)
     assert any("--allow-escape-sequences" in c for c in calls)
+
+
+# ------------------------------- tuple / list / dict pins (tests/_hexrepr.py, nested)
+# Before: 44 of PR #1112's 128 round-1 failures were `assert (sha256[:20], n, bytes) == PIN`
+# (test_pushcomp, test_shape_overrides): the headline cut to '(d26d5feef28..., 5380, 16733)'
+# and the tool had nothing to read. Now the plugin writes them whole and the tool re-pins.
+N_DICT = "tests/test_golden_dict.py::test_flat_lane_md5s"
+N_TUPLE = "tests/test_golden_tuple.py::test_flag_off[art.png-left_chest]"
+N_TUPLE2 = "tests/test_golden_tuple.py::test_flag_off[art.png-towel]"
+
+DICT_FILE = f'''"""pins"""
+GOLDEN = {{
+    "flat": "{D_OLD}",      # captured on main
+    "ring": "{D_OLD2}",
+}}
+NOTE = "café"
+'''
+TUPLE_FILE = f'''"""pins"""
+GOLDEN_FLAG_OFF = {{
+    ("art.png", "left_chest"): ("{P_OLD}", 4726, 14765),   # main, Linux
+    ("art.png", "towel"): ("{P_OLD2}", 5983, 18542),
+}}
+NOTE = "café"
+'''
+
+
+def _nested_log(*entries):
+    """What a shard prints for a tuple / list / dict compare with tests/_hexrepr.py loaded:
+    (node, computed, pin) each, the explanation indented two under its FAILED line."""
+    out = [f"{T}81821Z =========================== short test summary info ============================"]
+    for node, left, right in entries:
+        lines = _hexrepr.nested_explanation(left, right)
+        out.append(f"{T}86795Z FAILED {node} - AssertionError: assert {lines[0]}")
+        out += [f"{T}87459Z   {ln}" for ln in lines[1:]]
+    out.append(f"{T}92770Z {len(entries)} failed, 899 passed in 754.45s (0:12:34)")
+    return "\n".join(out) + "\n"
+
+
+def _nplan(tmp_path, entries, nodes, files, **kw):
+    tests = _tests_dir(tmp_path, files)
+    rows = ci_repin.plan(ci_repin.summary_entries(_lines(_nested_log(*entries))), nodes, tests,
+                         explained="flip", **kw)
+    return tests, rows
+
+
+def test_a_dict_pin_is_re_pinned_digest_by_digest(tmp_path):
+    got = {"flat": D_NEW, "ring": D_OLD2}
+    pin = {"flat": D_OLD, "ring": D_OLD2}
+    tests, rows = _nplan(tmp_path, [(N_DICT, got, pin)], [N_DICT], {"test_golden_dict.py": DICT_FILE})
+    (row,) = rows
+    assert (row.node, row.old, row.new, row.refused) == (N_DICT, D_OLD, D_NEW, "")
+    ((path, (before, after)),) = ci_repin.patch(rows).items()
+    assert after == before.replace(D_OLD.encode(), D_NEW.encode())      # that digest, no other byte
+    assert "café".encode() in after
+
+
+def test_the_source_decides_which_side_of_a_nested_compare_is_the_pin(tmp_path):
+    # `assert PIN == computed`: the pin is on the left this time
+    got = {"flat": D_NEW, "ring": D_OLD2}
+    pin = {"flat": D_OLD, "ring": D_OLD2}
+    _tests, rows = _nplan(tmp_path, [(N_DICT, pin, got)], [N_DICT], {"test_golden_dict.py": DICT_FILE})
+    assert [(r.old, r.new, r.refused) for r in rows] == [(D_OLD, D_NEW, "")]
+
+
+def test_two_changed_digests_in_one_dict_are_two_ledger_rows(tmp_path):
+    got = {"flat": D_NEW, "ring": D_NEW2}
+    pin = {"flat": D_OLD, "ring": D_OLD2}
+    _tests, rows = _nplan(tmp_path, [(N_DICT, got, pin)], [N_DICT], {"test_golden_dict.py": DICT_FILE})
+    assert sorted((r.old, r.new) for r in rows) == sorted([(D_OLD, D_NEW), (D_OLD2, D_NEW2)])
+    assert all(r.node == N_DICT and not r.refused for r in rows)
+    (path, (before, after)), = ci_repin.patch(rows).items()
+    assert after == before.replace(D_OLD.encode(), D_NEW.encode()).replace(D_OLD2.encode(), D_NEW2.encode())
+
+
+def test_a_digest_only_tuple_change_swaps_the_digest_and_leaves_the_counts(tmp_path):
+    got, pin = (P_NEW, 4726, 14765), (P_OLD, 4726, 14765)
+    _tests, rows = _nplan(tmp_path, [(N_TUPLE, got, pin)], [N_TUPLE], {"test_golden_tuple.py": TUPLE_FILE})
+    (row,) = rows
+    assert (row.old, row.new, row.refused) == (P_OLD, P_NEW, "")
+    assert "whole literal" not in ci_repin.ledger(rows)
+    ((path, (before, after)),) = ci_repin.patch(rows).items()
+    assert after == before.replace(P_OLD.encode(), P_NEW.encode())
+
+
+def test_a_tuple_whose_counts_moved_too_moves_as_one_whole_literal(tmp_path):
+    got, pin = (P_NEW, 5380, 16733), (P_OLD, 4726, 14765)
+    _tests, rows = _nplan(tmp_path, [(N_TUPLE, got, pin)], [N_TUPLE], {"test_golden_tuple.py": TUPLE_FILE})
+    (row,) = rows
+    assert row.refused == ""
+    assert (row.old, row.new) == (repr(pin), repr(got))
+    text = ci_repin.ledger(rows)
+    assert "whole literal" in text and "5380" in text and "4726" in text   # the ledger says so
+    ((path, (before, after)),) = ci_repin.patch(rows).items()
+    expect = (before.replace(P_OLD.encode(), P_NEW.encode())
+                    .replace(b"4726, 14765", b"5380, 16733"))
+    assert after == expect
+    # the neighbouring tuple, the comment, the layout and the accent are untouched
+    assert f'("art.png", "towel"): ("{P_OLD2}", 5983, 18542),'.encode() in after
+    assert b"# main, Linux" in after and "café".encode() in after
+
+
+def test_a_whole_literal_keeps_the_quote_style_of_the_source(tmp_path):
+    src = f"G = {{'k': ('{P_OLD}', 4726, 14765)}}\n"
+    node = "tests/test_q.py::test_q"
+    _tests, rows = _nplan(tmp_path, [(node, (P_NEW, 5380, 16733), (P_OLD, 4726, 14765))], [node],
+                          {"test_q.py": src})
+    ((path, (before, after)),) = ci_repin.patch(rows).items()
+    assert after == f"G = {{'k': ('{P_NEW}', 5380, 16733)}}\n".encode()
+
+
+def test_a_changed_count_with_an_old_side_that_is_not_one_source_literal_is_refused(tmp_path):
+    # the pin is built from two names, so no single literal in the tests equals it
+    src = f'HASH = "{P_OLD}"\nCOUNT = 4726\nWANT = (HASH, COUNT)\n'
+    got, pin = (P_NEW, 5380), (P_OLD, 4726)
+    _tests, rows = _nplan(tmp_path, [(N_TUPLE, got, pin)], [N_TUPLE], {"test_golden_tuple.py": src})
+    (row,) = rows
+    assert row.refused
+    assert "4726" in row.refused and "5380" in row.refused        # the element is printed
+    assert "single literal" in row.refused
+    assert ci_repin.patch(rows) == {}
+
+
+def test_a_tuple_that_changed_length_or_a_dict_that_changed_keys_is_refused(tmp_path):
+    files = {"test_golden_tuple.py": TUPLE_FILE}
+    _tests, rows = _nplan(tmp_path, [(N_TUPLE, (P_NEW, 5380), (P_OLD, 4726, 14765))], [N_TUPLE], files)
+    assert rows[0].refused and "shape" in rows[0].refused
+    again = tmp_path / "again"
+    again.mkdir()
+    _tests, rows = _nplan(again, [(N_DICT, {"flat": D_NEW, "extra": 1}, {"flat": D_OLD, "ring": D_OLD2})],
+                          [N_DICT], {"test_golden_dict.py": DICT_FILE})
+    assert rows[0].refused and "shape" in rows[0].refused
+
+
+def test_neither_side_of_a_nested_compare_in_the_tests_means_no_pin_to_move(tmp_path):
+    got, pin = (P_NEW, 5380, 16733), (P_OLD, 4726, 14765)
+    _tests, rows = _nplan(tmp_path, [(N_TUPLE, got, pin)], [N_TUPLE], {"test_other.py": "X = 1\n"})
+    assert rows[0].refused and "neither" in rows[0].refused
+    again = tmp_path / "again"
+    again.mkdir()
+    _tests, rows = _nplan(again, [(N_DICT, {"flat": D_NEW}, {"flat": D_OLD})], [N_DICT],
+                          {"test_other.py": "X = 1\n"})
+    assert rows[0].refused and "neither" in rows[0].refused
+
+
+def test_both_sides_of_a_nested_compare_in_the_tests_cannot_be_oriented(tmp_path):
+    got, pin = (P_NEW, 5380, 16733), (P_OLD, 4726, 14765)
+    files = {"test_golden_tuple.py": TUPLE_FILE + f'ELSEWHERE = ("{P_NEW}", 5380, 16733)\n'}
+    _tests, rows = _nplan(tmp_path, [(N_TUPLE, got, pin)], [N_TUPLE], files)
+    assert rows[0].refused and "both" in rows[0].refused
+    again = tmp_path / "again"
+    again.mkdir()
+    both = DICT_FILE + f'ELSEWHERE = "{D_NEW}"\n'
+    _tests, rows = _nplan(again, [(N_DICT, {"flat": D_NEW}, {"flat": D_OLD})], [N_DICT],
+                          {"test_golden_dict.py": both})
+    assert rows[0].refused and "both" in rows[0].refused
+
+
+def test_a_nested_pin_held_in_two_places_is_not_moved_without_asking(tmp_path):
+    again = tmp_path / "again"
+    again.mkdir()
+    # a digest held twice (as every digest pin is today)
+    twice = {"test_golden_dict.py": DICT_FILE + f'AGAIN = "{D_OLD}"\n'}
+    _tests, rows = _nplan(tmp_path, [(N_DICT, {"flat": D_NEW}, {"flat": D_OLD})], [N_DICT], twice)
+    assert rows[0].refused and "2 occurrences" in rows[0].refused
+    # a whole tuple literal held twice
+    dup = {"test_golden_tuple.py": TUPLE_FILE + f'AGAIN = ("{P_OLD}", 4726, 14765)\n'}
+    got, pin = (P_NEW, 5380, 16733), (P_OLD, 4726, 14765)
+    third = tmp_path / "third"
+    third.mkdir()
+    _tests, rows = _nplan(third, [(N_TUPLE, got, pin)], [N_TUPLE], dup)
+    assert rows[0].refused and "2 " in rows[0].refused and "--all-occurrences" in rows[0].refused
+    fourth = tmp_path / "fourth"
+    fourth.mkdir()
+    _tests, rows = _nplan(fourth, [(N_TUPLE, got, pin)], [N_TUPLE], dup, all_occurrences=True)
+    assert rows[0].refused == ""
+    ((path, (before, after)),) = ci_repin.patch(rows).items()
+    assert after.count(P_NEW.encode()) == 2 and P_OLD.encode() not in after
+
+
+def test_one_nested_pin_cannot_take_two_values(tmp_path):
+    entries = [(N_DICT, {"flat": D_NEW}, {"flat": D_OLD}),
+               ("tests/test_golden_dict.py::test_other", {"flat": D_NEW2}, {"flat": D_OLD})]
+    _tests, rows = _nplan(tmp_path, entries, [e[0] for e in entries], {"test_golden_dict.py": DICT_FILE})
+    assert all("two values" in r.refused for r in rows)
+    again = tmp_path / "again"
+    again.mkdir()
+    entries = [(N_TUPLE, (P_NEW, 5380, 16733), (P_OLD, 4726, 14765)),
+               (N_TUPLE2, (P_NEW, 5381, 16733), (P_OLD, 4726, 14765))]
+    _tests, rows = _nplan(again, entries, [e[0] for e in entries], {"test_golden_tuple.py": TUPLE_FILE})
+    assert all("two values" in r.refused for r in rows)
+
+
+def test_two_nodes_moving_one_nested_pin_to_one_value_make_one_edit(tmp_path):
+    got, pin = (P_NEW, 5380, 16733), (P_OLD, 4726, 14765)
+    entries = [(N_TUPLE, got, pin), (N_TUPLE2, got, pin)]
+    _tests, rows = _nplan(tmp_path, entries, [e[0] for e in entries], {"test_golden_tuple.py": TUPLE_FILE})
+    assert all(not r.refused for r in rows)
+    ((path, (before, after)),) = ci_repin.patch(rows).items()
+    assert after.count(P_NEW.encode()) == 1 and after.count(b"5380, 16733") == 1
+
+
+def test_the_old_truncated_headline_alone_still_says_a_rerun_is_needed():
+    entries = ci_repin.summary_entries(_lines(
+        f"{T}81821Z === short test summary info ===\n"
+        f"{T}86795Z FAILED {N_TUPLE} - AssertionError: assert ('d26d5feef28..., 5380, 16733) == ('e9daab81cc9..., 4726, 14765)\n"
+        f"{T}87459Z   \n"))
+    pair, why = ci_repin.read_pair(entries[N_TUPLE])
+    assert pair is None and "truncated" in why and "re-run" in why
+
+
+def _nargv(tmp_path, trees, entries, *nodes, files=None, extra=()):
+    tests = _tests_dir(tmp_path, files or {"test_golden_tuple.py": TUPLE_FILE})
+    log = tmp_path / "shard2.log"
+    log.write_text(_nested_log(*entries), encoding="utf-8")
+    argv = ["12345", *nodes, "--log", str(log), "--tests-dir", str(tests),
+            "--base-tree", str(trees[0]), "--head-tree", str(trees[1]), *extra]
+    return tests / next(iter(files or {"test_golden_tuple.py": 0})), argv
+
+
+def test_a_tuple_pin_dry_run_prints_the_patch_and_apply_writes_it(tmp_path, same_trees, capsys):
+    entries = [(N_TUPLE, (P_NEW, 5380, 16733), (P_OLD, 4726, 14765))]
+    pin_file, argv = _nargv(tmp_path, same_trees, entries, N_TUPLE)
+    before = pin_file.read_bytes()
+    assert ci_repin.main(argv) == 0
+    out = capsys.readouterr().out
+    assert "whole literal" in out and P_OLD in out and P_NEW in out
+    assert "--- " in out and "+++ " in out and f"-    (\"art.png\", \"left_chest\"): (\"{P_OLD}\"" in out
+    assert pin_file.read_bytes() == before                    # dry run by default
+    assert ci_repin.main(argv + ["--apply"]) == 0
+    after = pin_file.read_bytes()
+    assert f'("art.png", "left_chest"): ("{P_NEW}", 5380, 16733),   # main, Linux'.encode() in after
+    assert "café".encode() in after
+
+
+def test_a_dict_pin_dry_run_prints_the_patch_and_apply_writes_it(tmp_path, same_trees, capsys):
+    entries = [(N_DICT, {"flat": D_NEW, "ring": D_OLD2}, {"flat": D_OLD, "ring": D_OLD2})]
+    pin_file, argv = _nargv(tmp_path, same_trees, entries, N_DICT, files={"test_golden_dict.py": DICT_FILE})
+    before = pin_file.read_bytes()
+    assert ci_repin.main(argv) == 0
+    assert "+++ " in capsys.readouterr().out and pin_file.read_bytes() == before
+    assert ci_repin.main(argv + ["--apply"]) == 0
+    assert pin_file.read_bytes() == before.replace(D_OLD.encode(), D_NEW.encode())
+
+
+def test_a_refused_nested_row_writes_nothing(tmp_path, same_trees, capsys):
+    entries = [(N_TUPLE, (P_NEW, 5380, 16733), (P_OLD, 4726, 14765)),
+               (N_TUPLE2, (P_NEW, 5380), (P_OLD2, 5983))]            # this one is not in the tests
+    pin_file, argv = _nargv(tmp_path, same_trees, entries, N_TUPLE, N_TUPLE2, extra=["--apply"])
+    before = pin_file.read_bytes()
+    assert ci_repin.main(argv) == 1
+    assert pin_file.read_bytes() == before                    # all or nothing
+
+
+def test_no_node_ids_lists_the_nested_candidates_too(tmp_path, capsys):
+    log = tmp_path / "shard2.log"
+    log.write_text(_nested_log((N_TUPLE, (P_NEW, 5380, 16733), (P_OLD, 4726, 14765)),
+                               (N_DICT, {"flat": D_NEW}, {"flat": D_OLD})), encoding="utf-8")
+    assert ci_repin.main(["12345", "--log", str(log), "--tests-dir", str(tmp_path)]) == 2
+    out = capsys.readouterr().out
+    assert N_TUPLE in out and N_DICT in out and "re-run needed" not in out
+
+
+def test_a_real_failing_tuple_pin_goes_from_the_plugin_through_the_tool_and_passes(
+        pytester, monkeypatch, tmp_path, same_trees):
+    """No hand-written log: the inner pytest prints it, the tool reads it, the patch fixes
+    the very test that failed."""
+    # No .pyc from the inner runs: this laptop sets the variable, CI does not, and the
+    # re-run below must read the patched source, not the first run's compiled copy.
+    monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
+    body = f'''
+        GOLDEN = {{("art.png", "left_chest"): ("{P_OLD}", 4726, 14765)}}
+
+        def test_flag_off():
+            digest = "{P_NEW}"            # computed in the real tests, never a tuple literal
+            stitches = 5380
+            size = 16733
+            assert (digest, stitches, size) == GOLDEN[("art.png", "left_chest")]
+    '''
+    res = _run(pytester, monkeypatch, body)
+    res.assert_outcomes(failed=1)
+    log = tmp_path / "shard.log"
+    log.write_text(res.stdout.str(), encoding="utf-8")
+    node = next(ln.split()[1] for ln in res.stdout.str().splitlines() if ln.startswith("FAILED "))
+    src = next(pytester.path.glob("test_*.py"))
+    argv = ["1", node, "--log", str(log), "--tests-dir", str(pytester.path),
+            "--base-tree", str(same_trees[0]), "--head-tree", str(same_trees[1])]
+    stat = src.stat()
+    assert ci_repin.main(argv + ["--apply"]) == 0
+    assert P_NEW in src.read_text(encoding="utf-8") and P_OLD not in src.read_text(encoding="utf-8")
+    # The new pin is as long as the old one, and a fast runner rewrites it inside the second
+    # the first run compiled it in: the same whole-second mtime and size, so a cached .pyc
+    # would still say "fresh" and the re-run would test the OLD pin. Make that the case here.
+    os.utime(src, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    again = pytester.runpytest_subprocess("-q", "-p", "no:cacheprovider", "-p", "tests._hexrepr")
+    again.assert_outcomes(passed=1)
 
 
 # ------------------------------------------------- shard plan (tests/_ci_shard.py)

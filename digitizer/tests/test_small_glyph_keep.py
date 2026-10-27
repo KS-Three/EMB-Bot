@@ -36,6 +36,8 @@ from digitizer_core.stage4_vectorize import vectorize
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.warnings_codes import SHAPE_NOT_STITCHED
 
+from .conftest import FLAT_GOLDEN_MD5
+
 TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
 PPM = 30.0
 
@@ -162,11 +164,7 @@ def test_a_glyph_with_ink_left_after_the_clip_plans_as_before():
 # --- OFF is byte-identical -----------------------------------------------------
 
 # The flat-lane goldens' stitch streams, as `test_small_print.py` pins them.
-GOLDEN_MD5 = {
-    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
-    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
-    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
-}
+GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
 
 def _md5(coords) -> str:

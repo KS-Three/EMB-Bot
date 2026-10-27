@@ -16,6 +16,8 @@ import os
 # has the tripwire that reads IPP's path and the measured table.
 os.environ.setdefault("OPENCV_IPP", "avx2")
 
+import hashlib
+import json
 import shutil
 import time
 from contextlib import contextmanager
@@ -406,6 +408,70 @@ def codes(result) -> set[str]:
     return {w["code"] for w in result.warnings}
 
 
+# --- Flip-proof pins (W5-06b) ------------------------------------------------
+# A default flip should cost only the goldens that DELIBERATELY ride the
+# defaults. Two sources make that so; `tests/test_pins_are_frozen.py` enforces
+# the second.
+#
+# 1. FLAT_GOLDEN_MD5: the flat lane's md5s, derived from
+#    `testdata/flat_lane_golden.json` and copied nowhere. Sixteen test files used
+#    to carry them as a literal; #1112's flip moved the golden and 79 of its 128
+#    first-round failures were that one literal.
+# 2. ENGINE_2026_10_27: the engine's declared defaults on that date, a FILE
+#    (`tests/engine_2026_10_27.json`), never computed at import, or it would
+#    follow every flip. A test that pins an md5 of something OTHER than the
+#    golden spreads it (`frozen_cfg(...)`), and then a flip cannot move it. Roll
+#    forward with a NEW dated file after a flip wave; old pins keep theirs.
+FLAT_GOLDEN_FIXTURES = ("logo_alpha.png", "logo_whitebg.png", "ribbon_curve.png")
+
+
+def _flat_golden_md5() -> dict[str, str]:
+    golden = json.loads((TESTDATA / "flat_lane_golden.json").read_text(encoding="utf-8"))
+    return {name: hashlib.md5(json.dumps(golden[name]["stitch_coords"]).encode()).hexdigest()
+            for name in FLAT_GOLDEN_FIXTURES}
+
+
+FLAT_GOLDEN_MD5 = _flat_golden_md5()
+
+#: fields the snapshot stores as JSON lists that PipelineConfig declares as tuples
+_ENGINE_TUPLE_FIELDS = ("tonal_split_veto_mm",)
+
+
+def read_engine_snapshot(name: str) -> dict:
+    """Every field of a dated snapshot file, as stored (`_about` left out)."""
+    raw = json.loads((Path(__file__).resolve().parent / name).read_text(encoding="utf-8"))
+    raw.pop("_about", None)
+    return raw
+
+
+def engine_snapshot(name: str) -> dict:
+    """A snapshot ready to spread into `PipelineConfig(**...)`. Tuples are
+    restored, and an EMPTY list / dict field is left out so each config builds
+    its own (a spread would hand every config the same mutable object). The
+    seven `SMALL_TEXT_TRUE_SIZE` fields are stored as the None they are
+    DECLARED as, which `PipelineConfig.__post_init__` fills while
+    `small_text_true_size` is True; `asdict()` would store the filled values and
+    a later `setattr(small_text_true_size=False)` could no longer clear them."""
+    out = {}
+    for key, value in read_engine_snapshot(name).items():
+        if key in _ENGINE_TUPLE_FIELDS:
+            value = tuple(value)
+        elif isinstance(value, (list, dict)) and not value:
+            continue
+        out[key] = value
+    return out
+
+
+ENGINE_2026_10_27 = engine_snapshot("engine_2026_10_27.json")
+
+
+def frozen_cfg(**kw) -> PipelineConfig:
+    """`PipelineConfig` on the 2026-10-27 engine, `kw` over it. A plain
+    `PipelineConfig(**ENGINE_2026_10_27, k=v)` raises when `k` is in the
+    snapshot, which is every field."""
+    return PipelineConfig(**{**ENGINE_2026_10_27, **kw})
+
+
 # --- Stitch planning (build step 3) ---------------------------------------
 
 PLAN_CFG_KW = {"garment_id": "left_chest"}   # pique knit: 0.3 mm pull comp
@@ -686,9 +752,13 @@ PRE_FLIP["border_from_outline_line_art_guard"] = False
 # `small_text_bay_mouth` (#1085, "Flip ON"): the re-set cuts back a terminal
 # that shuts a bay. `sew_enclosed_white` (#1087's option A, "Flip, but prove
 # it first"): the white inside the design sews, its fields-fill and keyline
-# companions still OFF. False is the engine before the flip. The tests ABOUT
-# them are `tests/test_small_text_bays.py` and `tests/test_sew_enclosed_white.py`.
-FLIP_2026_10_26 = {"small_text_bay_mouth": False, "sew_enclosed_white": False}
+# companions still OFF. `small_text_reset_grow_away` (#1113, "Flip ON
+# (Recommended)", the same day): the re-set widens by its traced stroke and
+# grows away from its near neighbour. False is the engine before the flip. The
+# tests ABOUT them are `tests/test_small_text_bays.py`,
+# `tests/test_sew_enclosed_white.py` and `tests/test_small_text_grow_away.py`.
+FLIP_2026_10_26 = {"small_text_bay_mouth": False, "sew_enclosed_white": False,
+                   "small_text_reset_grow_away": False}
 PRE_FLIP.update(FLIP_2026_10_26)
 # `fine_bars_satin` (#1101) and `outline_loop_mitre` (#1059's loops, built
 # 2026-10-25), Kent's flips on the wave-3 flip sheet 2026-10-26: "Fine bars

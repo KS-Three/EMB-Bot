@@ -17,13 +17,9 @@ import pytest
 
 from digitizer_core import PipelineConfig, beanletters, digitize
 
-from .conftest import TESTDATA
+from .conftest import FLAT_GOLDEN_MD5, TESTDATA
 
-GOLDEN_MD5 = {
-    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
-    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
-    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
-}
+GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
 
 def _md5(fixture: str, **kw) -> str:

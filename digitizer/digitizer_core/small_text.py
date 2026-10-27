@@ -555,7 +555,8 @@ def _bar_moves(bars: list[Polygon], resets: list[dict], dxs: list[float], gap_mm
     return out
 
 
-# GROW AWAY (`cfg.extra["small_text_reset_grow_away"]`, W4-04, built OFF).
+# GROW AWAY (`cfg.small_text_reset_grow_away`, W4-04, built OFF 2026-10-26,
+# ON since Kent's flip the same day).
 # W3-11 (`docs/reset-room-2026-10-25.md`) read two faults in the re-set
 # that only work as a pair:
 # - FLOOR: each letter was widened by `(target - min(s, f) x stroke) / 2`
@@ -703,7 +704,7 @@ def _place_line_reset(items: list[dict], bounds: Polygon, s_max: float, cap_mm: 
     sewn letter gap from each other, not two halos: ProSeal's beanie words
     stand 1.3 mm apart and each halo is ~1 mm.
 
-    `near` (`_near_side`, `cfg.extra["small_text_reset_grow_away"]`, a line
+    `near` (`_near_side`, `cfg.small_text_reset_grow_away`, a line
     with a near neighbour): the line's vertical moves are `_grow_away`'s --
     its near edge held, the far side taking the growth -- and the edge rule
     is `edge_room`'s, the far side's giving way by the whole growth. None:
@@ -849,7 +850,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     its own stroke until the bay keeps the professional's mouth
     (`_open_mouths`, `BAY_MOUTH_MM`); each cut is a row of the cluster's
     `mouths`. False: byte for byte. `grow_away`
-    (`cfg.extra["small_text_reset_grow_away"]`, re-set only; comment at
+    (`cfg.small_text_reset_grow_away`, ON since 2026-10-26, re-set only; comment at
     `GROW_AWAY_NEAR_MM`): each letter is widened by the RETRACED letters'
     stroke (`_traced_stroke`), not the tagger's tag, and a line with a near
     neighbour holds the edge facing it and grows the other way

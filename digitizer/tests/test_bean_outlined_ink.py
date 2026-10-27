@@ -35,7 +35,7 @@ from digitizer_core.pipeline import build_generation, finish_generation
 from digitizer_core.regions import Region
 from digitizer_core.stage1_prep import prep
 
-from .conftest import TESTDATA, own_thread_only
+from .conftest import FLAT_GOLDEN_MD5, TESTDATA, own_thread_only
 
 # --- the share of the spine inside the letter -----------------------------------
 
@@ -216,11 +216,7 @@ def test_on_bridge_keeps_its_eight_bean_letters():
 
 # --- OFF is the engine as it was; ON moves nothing without outlined letters ------
 
-GOLDEN_MD5 = {
-    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
-    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
-    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
-}
+GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
 
 def _md5(fixture: str, **kw) -> str:

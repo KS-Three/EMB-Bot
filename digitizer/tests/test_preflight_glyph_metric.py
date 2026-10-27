@@ -35,6 +35,7 @@ from digitizer_core import glyph_read  # noqa: E402
 from digitizer_core import preflight as pf  # noqa: E402
 from digitizer_core.config import PipelineConfig  # noqa: E402
 from digitizer_core.pipeline import digitize  # noqa: E402
+from tests.conftest import FLAT_GOLDEN_MD5  # noqa: E402
 
 TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
 GLYPH_KEYS = {"glyph_legibility_min", "glyph_legibility_mean", "counters_shut",
@@ -85,11 +86,7 @@ def test_on_without_the_artwork_reads_nothing_and_says_none():
 
 # The three flat-lane goldens' stitch streams, as `test_small_print.py` pins
 # them: the flag is read by preflight only, so the plan cannot move.
-GOLDEN_MD5 = {
-    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
-    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
-    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
-}
+GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
 
 @pytest.mark.parametrize("fixture", sorted(GOLDEN_MD5))

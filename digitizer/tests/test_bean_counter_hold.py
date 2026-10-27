@@ -28,7 +28,7 @@ from digitizer_core.beanletters import (BEAN_LETTER_KEY, COUNTER_HOLD_MAX_MM,
 from digitizer_core.ink_path import hold_off_counters, read_cluster_ink, small_counters
 from digitizer_core.stage6_beanletter import bean_letter
 
-from .conftest import TESTDATA
+from .conftest import FLAT_GOLDEN_MD5, TESTDATA
 
 PPM = 30.0          # Fremont's 81 mm prep is 30.9 px/mm
 THREAD_MM = 0.40    # 40 wt laid width
@@ -253,11 +253,7 @@ def test_corpus_rows_flag_a_new_uncovered_shape_and_the_changes():
 
 # --- OFF is byte-identical ----------------------------------------------------------
 
-GOLDEN_MD5 = {
-    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
-    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
-    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
-}
+GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
 
 def _md5(coords) -> str:
