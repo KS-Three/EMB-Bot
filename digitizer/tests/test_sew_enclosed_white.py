@@ -162,9 +162,9 @@ def _digest(plan) -> str:
 
 def _pcfg(**kw) -> PipelineConfig:
     # the option alone: the recipe it joined on every job 2026-10-27 pinned off (conftest)
-    from tests.conftest import FLIP_2026_10_27
+    from tests.conftest import RECIPE_2026_10_27
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", garment_rgb=NATURAL,
-                          **{**FLIP_2026_10_27, **kw})
+                          **{**RECIPE_2026_10_27, **kw})
 
 
 @pytest.fixture(scope="module")

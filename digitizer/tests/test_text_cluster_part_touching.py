@@ -171,8 +171,9 @@ def test_spans_reads_the_cap_band():
 
 # --- wiring and OFF ---------------------------------------------------------------
 
-def test_the_flag_is_off_and_the_pipeline_passes_nothing_when_off():
-    assert PipelineConfig().text_cluster_part_touching is False
+def test_the_flag_is_on_and_the_pipeline_passes_nothing_when_off():
+    # Kent's flip on the wave-5 flip sheet 2026-10-27 ("Both ON (Recommended)")
+    assert PipelineConfig().text_cluster_part_touching is True
     assert inspect.signature(tc.detect_text_clusters).parameters["part_touching"].default is False
     from digitizer_core import pipeline
     src = inspect.getsource(pipeline)

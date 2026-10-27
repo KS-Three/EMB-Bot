@@ -27,7 +27,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import FLIP_2026_10_27
+from tests.conftest import RECIPE_2026_10_27
 
 TOOLS = Path(__file__).resolve().parent.parent / "tools"
 if str(TOOLS) not in sys.path:
@@ -83,8 +83,8 @@ def test_a_fill_only_design_reads_as_wide_open():
     """
     # on the engine it was read on: since 2026-10-27 the white-keyline recipe
     # on every job rims Fremont's white ground in satin (the pro's rim), so
-    # the edge carries linear stitching by default (conftest `FLIP_2026_10_27`)
-    r = pro_silhouette.ours("fremont", 80.0, "none", overrides=FLIP_2026_10_27)
+    # the edge carries linear stitching by default (conftest `RECIPE_2026_10_27`)
+    r = pro_silhouette.ours("fremont", 80.0, "none", overrides=RECIPE_2026_10_27)
     assert r["silhouette_mm"] > 50.0
     assert r["uncovered_pct"] > 90.0, (
         f"fremont reads {r['uncovered_pct']:.1f}% uncovered — if this has "
@@ -98,7 +98,7 @@ def test_the_cap_closes_what_the_gate_leaves_open():
     and both emitters skip arcs shorter than a column is wide, so a design can
     legitimately finish with a few millimetres open.
     """
-    off = pro_silhouette.ours("fremont", 80.0, "none", overrides=FLIP_2026_10_27)
-    on = pro_silhouette.ours("fremont", 80.0, "bean", overrides=FLIP_2026_10_27)
+    off = pro_silhouette.ours("fremont", 80.0, "none", overrides=RECIPE_2026_10_27)
+    on = pro_silhouette.ours("fremont", 80.0, "bean", overrides=RECIPE_2026_10_27)
     assert on["uncovered_pct"] < off["uncovered_pct"] - 50.0
     assert on["stitches"] > off["stitches"], "a cap that costs nothing sewed nothing"

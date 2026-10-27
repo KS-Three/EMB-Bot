@@ -51,5 +51,9 @@ fit the letter locally (his lettering sits up to 0.8 mm off the whole-design
 registration) and read `letter_pieces` crosses on the letter's own block, never
 column counts in a box (MFab's white keyline wins the block vote).
 
+**ON since 2026-10-27, Kent's flip** from the wave-5 sheet, together with
+`bean_ink_outlined_letters` ("Both ON (Recommended)"), which cures the LC N
+misread above; [[outlined-bean-ink-2026-10-27]], [[flip-sheet-wave5-2026-10-27]].
+
 Related: [[wide-letters-mfab-w-2026-10-23]], [[lettering-5-10mm-band-2026-10-23]],
 [[word-legibility-instrument-2026-10-24]], [[lettering-board-2026-10-25]].

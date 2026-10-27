@@ -55,7 +55,8 @@ def ink_reads_shape(polygon, stroke_mm: float | None) -> bool:
 
 
 # An ink read is the letter's STROKE only when its skeleton runs inside the
-# traced letter (`cfg.bean_ink_outlined_letters`, 2026-10-27, built OFF;
+# traced letter (`cfg.bean_ink_outlined_letters`, 2026-10-27, built OFF, ON
+# since Kent's flip the same day;
 # `docs/outlined-bean-ink-2026-10-27.md`). MFab's AND / WELDING / LLC are
 # black letters on a black body, each ringed by a thin white keyline. The
 # read's ground -- the pixels far from the members -- is that black body, so

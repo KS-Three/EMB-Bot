@@ -94,8 +94,9 @@ def _cross_of(station) -> float:
 
 # --- the flag and the variable --------------------------------------------------------
 
-def test_flag_default_is_off():
-    assert PipelineConfig().lettering_columns_italic_lean is False
+def test_flag_default_is_on():
+    # Kent's flip on the wave-5 flip sheet 2026-10-27 ("Flip ON (Recommended)")
+    assert PipelineConfig().lettering_columns_italic_lean is True
 
 
 def test_the_word_reads_italic_and_upright_reads_nothing():
@@ -275,7 +276,7 @@ def test_plan_stitches_sets_the_words_only_when_on(whitebg, monkeypatch):
         seen.append(column_lean._ITALIC.get())
         return real(*a, **k)
     monkeypatch.setattr(pipeline, "sequence", spy)
-    pipeline.plan_stitches(whitebg, PipelineConfig(target_width_mm=80.0))
+    pipeline.plan_stitches(whitebg, PipelineConfig(target_width_mm=80.0, lettering_columns_italic_lean=False))
     pipeline.plan_stitches(whitebg, PipelineConfig(target_width_mm=80.0, lettering_columns_italic_lean=True))
     assert seen[0] is None and isinstance(seen[1], tuple)
     assert column_lean._ITALIC.get() is None
@@ -287,7 +288,7 @@ def test_off_never_reads_the_words(whitebg, monkeypatch):
     def boom(*_a, **_k):
         raise AssertionError("italic words read with the flag off")
     monkeypatch.setattr(column_lean, "italic_words", boom)
-    pipeline.plan_stitches(whitebg, PipelineConfig(target_width_mm=80.0))
+    pipeline.plan_stitches(whitebg, PipelineConfig(target_width_mm=80.0, lettering_columns_italic_lean=False))
 
 
 # --- the reader (tools/italic_cross.py) ---------------------------------------------------

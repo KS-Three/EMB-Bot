@@ -189,7 +189,11 @@ def test_thin_letters_whose_shape_agrees_still_go(monkeypatch):
     thin = [_region() for _ in range(3)]
     for r in thin:
         r.polygon = _box(0.25, 2.4)             # 2A/P ~0.23 mm, ink 0.25
-    _stub_ink(monkeypatch, {id(r): MemberInk(stroke_mm=0.25, spines=[SPINE]) for r in thin})
+    # the spine runs down the letter's middle, as a real read's does: `SPINE` lies on
+    # the box's edge and half past it, an outline read `bean_ink_outlined_letters`
+    # (ON since 2026-10-27) leaves out
+    spine = [(0.125, 0.1), (0.125, 2.3)]
+    _stub_ink(monkeypatch, {id(r): MemberInk(stroke_mm=0.25, spines=[spine]) for r in thin})
     assert tag_bean_letters(thin, object(), PipelineConfig(bean_letter_max_stroke_mm=0.4,
                                                         small_text_true_size=False)) == 3
 

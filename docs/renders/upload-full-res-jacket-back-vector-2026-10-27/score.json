@@ -1,0 +1,125 @@
+{
+  "widthMm": 250,
+  "garment": "jacket_back",
+  "pxPerMm": 10,
+  "rows": [
+    {
+      "svg": "vector_logo.svg",
+      "arm": "off",
+      "size": 1200,
+      "pxPerMm": 4.03,
+      "sendPx": "1200x480",
+      "secs": 55.3,
+      "stitches": 32306,
+      "trims": 12,
+      "jumps": 13,
+      "colorChanges": 3,
+      "sizeMm": [
+        250.4,
+        83.7
+      ],
+      "extentRatio": 1.194,
+      "scaleApplied": 0.8375,
+      "whole": {
+        "iou": 0.976820976256164,
+        "edge": {
+          "ab": {
+            "n": 7018,
+            "mean": 0.2397982462624025,
+            "p95": 0.36055512754639896,
+            "max": 0.5385164807134504
+          },
+          "ba": {
+            "n": 7101,
+            "mean": 0.26395356567777467,
+            "p95": 0.4,
+            "max": 0.5385164807134504
+          },
+          "both": {
+            "n": 14119,
+            "mean": 0.2519469057403034,
+            "p95": 0.4,
+            "max": 0.5385164807134504
+          }
+        },
+        "diag": {
+          "whiteStitches": 0,
+          "gtInkMm2": 8096.5,
+          "covInkMm2": 8283.4,
+          "gtBoxMm": [
+            21,
+            21,
+            231,
+            91
+          ],
+          "covBoxMm": [
+            21,
+            20.8,
+            231.1,
+            91.3
+          ]
+        }
+      },
+      "bands": []
+    },
+    {
+      "svg": "vector_logo.svg",
+      "arm": "on",
+      "size": 2800,
+      "pxPerMm": 9.41,
+      "sendPx": "2800x1120",
+      "secs": 58.7,
+      "stitches": 32064,
+      "trims": 7,
+      "jumps": 8,
+      "colorChanges": 1,
+      "sizeMm": [
+        250.3,
+        83.7
+      ],
+      "extentRatio": 1.1938,
+      "scaleApplied": 0.8377,
+      "whole": {
+        "iou": 0.9764434848685877,
+        "edge": {
+          "ab": {
+            "n": 7018,
+            "mean": 0.24209443444418613,
+            "p95": 0.36055512754639896,
+            "max": 0.5
+          },
+          "ba": {
+            "n": 7113,
+            "mean": 0.2682683845994996,
+            "p95": 0.4,
+            "max": 0.5
+          },
+          "both": {
+            "n": 14131,
+            "mean": 0.25526939074272753,
+            "p95": 0.4,
+            "max": 0.5
+          }
+        },
+        "diag": {
+          "whiteStitches": 0,
+          "gtInkMm2": 8096.5,
+          "covInkMm2": 8289.6,
+          "gtBoxMm": [
+            21,
+            21,
+            231,
+            91
+          ],
+          "covBoxMm": [
+            21,
+            20.8,
+            231,
+            91.2
+          ]
+        }
+      },
+      "bands": []
+    }
+  ]
+}

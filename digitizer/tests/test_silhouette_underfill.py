@@ -22,7 +22,7 @@ from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import sequence
-from tests.conftest import FLIP_2026_10_23, FLIP_2026_10_27
+from tests.conftest import FLIP_2026_10_23, RECIPE_2026_10_27
 
 FABRIC = fabric_for_garment("hat_front")
 
@@ -56,7 +56,7 @@ def becker():
 def _sew(regions, **kw):
     """`plan_stitches`' order: the pass (ON), stage 5, stage 7."""
     # OFF_MD5 was captured on main before the 2026-10-23 and 2026-10-27 flips: pin them off (conftest)
-    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **FLIP_2026_10_27, **kw})
+    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **RECIPE_2026_10_27, **kw})
     if cfg.silhouette_underfill:
         regions, _ = su.apply(regions)
     planned, _ = resolve_overlaps(regions, FABRIC, cfg)
@@ -179,7 +179,7 @@ def test_an_unsewn_keyline_round_two_bodies_leaves_both_sewn():
     out, report = su.apply(regs, unsewn=[key])
     assert report[0]["merged"] == ["Sl1", "Sl2"]
     assert len(getattr(out[0].meta[su.UNDERFILL_KEY], "geoms", [None])) == 3   # band + 2 bodies
-    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_27, "silhouette_underfill": True})
+    cfg = PipelineConfig(underlay=False, **{**RECIPE_2026_10_27, "silhouette_underfill": True})
     planned, _ = resolve_overlaps(out, FABRIC, cfg)
     blocks, _ = sequence(planned, FABRIC, cfg)
     l1, l2 = regs[1].polygon, regs[2].polygon

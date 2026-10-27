@@ -63,6 +63,7 @@ if str(DIGITIZER) not in sys.path:
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tools._console import utf8_console  # noqa: E402
+from tools import pro_renders  # noqa: E402
 
 RES = 10.0              # mask pixels per mm
 MIN_AREA_MM2 = 1.0      # shapes smaller than this are not listed
@@ -76,7 +77,9 @@ RING = ("BORDER", "OUTLINE")
 WIDTH_DIFF_MM = 0.4     # (c) rows
 SATIN_PAINT_MM = 0.5    # a chord is painted this thick so a column is solid
 OUT_DOC = DIGITIZER.parent / "docs" / "border-census-2026-10-23.md"
-OUT_CROPS = DIGITIZER.parent / "docs" / "renders" / "border-census-2026-10-23"
+#: art | ours | pro crops: local only (Kent 2026-10-27, "Stop new ones, keep old
+#: (Recommended)"; `tools.pro_renders`). The 2026-10-23 crops in docs/ stay.
+OUT_CROPS = pro_renders.out_dir("border-census-2026-10-23")
 
 #: (slug, pro file, customer art, garment_id) -- prep_both.DESIGNS' rows, with
 #: ProSeal added. Paths are relative to the Embroidery Files root.
@@ -797,13 +800,13 @@ def table_cmd(args) -> int:
             slug, _, sid = tag.partition(":")
             if (slug, sid) in by:
                 res, row = by[(slug, sid)]
-                crop_row(slug, row, cache, OUT_CROPS, f"{slug}_{sid}_{row_class(row) or 'none'}.png", res["reg"])
+                crop_row(slug, row, cache, OUT_CROPS, f"{slug}_{sid}_{row_class(row) or 'none'}_art_ours_pro.png", res["reg"])
     elif args.crops:
         for cls in "abc":
             sel = [(r, x) for r in results for x in r["rows"] if row_class(x) == cls]
             sel.sort(key=lambda t: -t[1]["area"])
             for i, (res, row) in enumerate(sel[:2]):
-                crop_row(res["slug"], row, cache, OUT_CROPS, f"class_{cls}_{i + 1}_{res['slug']}_{row['id']}.png", res["reg"])
+                crop_row(res["slug"], row, cache, OUT_CROPS, f"class_{cls}_{i + 1}_{res['slug']}_{row['id']}_art_ours_pro.png", res["reg"])
     return 0
 
 
@@ -823,7 +826,7 @@ def main(argv=None) -> int:
         p.add_argument("--jobs", type=int, default=3)
         p.add_argument("--redo", action="store_true")
         p.add_argument("--crop-ids", nargs="*", help="slug:shape_id pairs to crop (replaces --crops' picks)")
-        p.add_argument("--crops", action="store_true", help="write the per-class crops into docs/renders")
+        p.add_argument("--crops", action="store_true", help="write the per-class crops (art | ours | pro) into pro_renders/, never docs/")
         p.add_argument("--table-out", default=str(Path(os.environ.get("TEMP", ".")) / "border_census_table.md"))
         if name == "one":
             p.add_argument("slug")

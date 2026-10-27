@@ -28,7 +28,7 @@ R's bowl, which the pro fans round as we do), and a column whose lean
 would be nil keep their stations, byte for byte -- so the flag moves the
 diagonals and the slanted legs and nothing else.
 
-## Italic bars (`cfg.lettering_columns_italic_lean`, 2026-10-25, built OFF)
+## Italic bars (`cfg.lettering_columns_italic_lean`, 2026-10-25, built OFF; ON since 2026-10-27)
 
 On an ITALIC word the pro crosses each BAR along the word's slant --
 parallel to its stems, the way an upright digitizing looks once it is

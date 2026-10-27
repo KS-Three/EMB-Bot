@@ -13,7 +13,7 @@ test("fit scales down to fit box, aspect preserved", () => {
   assert.ok(r.scale > 1.0 && r.scale < 1.02); // width-limited ~1.016
   assert.ok(Math.abs(r.targetWmm - 101.6) < 0.5);
   assert.ok(Math.abs(r.targetHmm - 50 * r.scale) < 1e-6);
-  // ... and by default into the pro's 96 x 64.5 left chest (2026-10-26)
+  // ... and by default into the pro's 96 x 76.5 left chest, area 5,800 mm2 (2026-10-26; 2026-10-27)
   const pro = g.fitScale(100, 50, g.getGarment("left_chest"));
   assert.ok(Math.abs(pro.targetWmm - 96.0) < 1e-9 && Math.abs(pro.targetHmm - 48.0) < 1e-9);
 });
@@ -115,7 +115,7 @@ test("proSized ON: a hat sews as tall as the pro's (Becker 62.1, Drone 63.8 agai
 
 test("proSized ON: left chest and beanie boxes; a garment with no pro box keeps its own", () => {
   const lc = g.autoFitBoxMm(g.getGarment("left_chest"), { proSized: true });
-  assert.deepStrictEqual(lc, { w: 96.0, h: 64.5 });
+  assert.deepStrictEqual(lc, { w: 96.0, h: 76.5 });
   const beanie = g.autoFitBoxMm(g.getGarment("beanie"), { proSized: true });
   assert.deepStrictEqual(beanie, { w: 94.5, h: 56.0 });
   for (const id of ["full_back", "sleeve", "tote", "jacket_back", "patch", "towel", "blanket"]) {
@@ -129,9 +129,62 @@ test("proSized ON: left chest and beanie boxes; a garment with no pro box keeps 
   }
 });
 
-test("proSized ON: the suggested hoop follows the pro's box (a 96 x 64.5 left chest fits a 4x4)", () => {
+test("proSized ON: the suggested hoop follows the pro's box (a 96 x 76.5 left chest fits a 4x4)", () => {
   assert.strictEqual(g.suggestHoop(g.getGarment("left_chest"), { proSized: false }).id, "5x7");
   assert.strictEqual(g.suggestHoop(g.getGarment("left_chest")).id, "4x4");
   assert.strictEqual(g.suggestHoop(g.getGarment("hat_front"), { proSized: true }).id, "5x7");
   assert.strictEqual(g.suggestHoop(g.getGarment("beanie"), { proSized: true }).id, "4x4");
+});
+
+// ---- the left chest: 96 wide, 76.5 tall, and an area cap (2026-10-27). Kent, on Bridge LC (he sews it 76.6 x 76.5; the
+// 64.5 box fitted it 64.5 wide, -15.8%): "Raise LC box to 76.5 tall (Recommended)"; then, with the box alone sending
+// Machine's LC to 96.0 against his 89.5: "Measure an area rule first (Recommended)" ---------------------------
+
+const LC_JOBS = [   // [art aspect (w/h), the pro's sewn width mm]; digitizer/tools/garment_size_census.py
+  ["becker_lc_large", 1.593, 95.7], ["bridge_lc", 1.0, 76.6], ["c_gaulke_plowing_lc", 2.429, 95.2],
+  ["gaulke_roofing_lc", 2.352, 95.2], ["machine_lc", 1.385, 89.5], ["mfab_lc", 2.636, 96.7],
+];
+
+test("proSized ON: the left chest sews at the pro's area, 5,800 mm2, capped at 96 wide and 76.5 tall", () => {
+  const lc = g.getGarment("left_chest");
+  assert.strictEqual(g.autoFitAreaMm2(lc), 5800);
+  assert.deepStrictEqual(g.autoFitBoxMm(lc), { w: 96.0, h: 76.5 });
+  // squarish art is area-limited: a square is 76.2 x 76.2, not the box's 76.5 x 76.5
+  const sq = g.fitScale(100, 100, lc);
+  assert.ok(Math.abs(sq.targetWmm - Math.sqrt(5800)) < 1e-9 && Math.abs(sq.targetHmm - Math.sqrt(5800)) < 1e-9);
+  // wide art is width-limited at 96, its area under the cap
+  const wide = g.fitScale(240, 100, lc);
+  assert.ok(Math.abs(wide.targetWmm - 96.0) < 1e-9 && wide.targetWmm * wide.targetHmm < 5800);
+  // tall art is height-limited at 76.5
+  const tall = g.fitScale(50, 100, lc);
+  assert.ok(Math.abs(tall.targetHmm - 76.5) < 1e-9 && tall.targetWmm * tall.targetHmm < 5800);
+});
+
+test("proSized ON: Bridge LC lands at 76.2 (his 76.6; the 64.5 box gave 64.5) and Machine LC at 89.6 (his 89.5)", () => {
+  const lc = g.getGarment("left_chest");
+  const bridge = g.fitScale(100, 100, lc).targetWmm, machine = g.fitScale(138.5, 100, lc).targetWmm;
+  assert.ok(Math.abs(bridge / 76.6 - 1) < 0.01, `bridge ${bridge}`);
+  assert.ok(Math.abs(machine / 89.5 - 1) < 0.005, `machine ${machine}`);
+  // the 96 x 76.5 box alone would have sewn Machine at 96.0 (+7.3%): the area is what holds it
+  assert.ok(Math.abs(Math.min(96.0, 76.5 * 1.385) / 89.5 - 1) > 0.07);
+});
+
+test("proSized ON: every paired left chest is within 1% of his width, bar the two he sizes his own way (Becker's chest small, Gaulke Plowing's)", () => {
+  const lc = g.getGarment("left_chest");
+  for (const [id, aspect, proW] of LC_JOBS) {
+    const w = g.fitScale(aspect * 100, 100, lc).targetWmm;
+    assert.ok(Math.abs(w / proW - 1) < 0.01, `${id}: ${w} against ${proW}`);
+  }
+});
+
+test("proSized false: the round-inch left chest has no area cap, and no other garment has one", () => {
+  const lc = g.getGarment("left_chest");
+  assert.strictEqual(g.autoFitAreaMm2(lc, { proSized: false }), Infinity);
+  for (const garment of g.GARMENTS) {
+    if (garment.id !== "left_chest") assert.strictEqual(g.autoFitAreaMm2(garment), Infinity, garment.id);
+  }
+  // 4 in square, unchanged: a square sews 101.6 wide
+  assert.ok(Math.abs(g.fitScale(100, 100, lc, { proSized: false }).targetWmm - 101.6) < 1e-9);
+  // and the area cap never touches a hat, which the height stops at 64
+  assert.deepStrictEqual(g.fitScale(100, 100, g.getGarment("hat_front")), g.fitScale(100, 100, g.getGarment("hat_front"), { proSized: true }));
 });

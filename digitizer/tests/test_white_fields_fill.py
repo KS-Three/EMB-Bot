@@ -147,10 +147,10 @@ def _keyline(fields_fill: bool, *, outlines: bool, **cfg_kw):
     art = ({"Sband": [("Sletter0", Polygon(LEFT.exterior), 2.0),
                       ("Sletter1", Polygon(RIGHT.exterior), 2.0)]} if outlines else None)
     # the keyline flag OFF unless asked: `enclosed_white_keyline` is ON since
-    # 2026-10-27 (the white-keyline recipe on every job, conftest `FLIP_2026_10_27`)
-    from tests.conftest import FLIP_2026_10_27
+    # 2026-10-27 (the white-keyline recipe on every job, conftest `RECIPE_2026_10_27`)
+    from tests.conftest import RECIPE_2026_10_27
     cfg = PipelineConfig(underlay=False, sew_enclosed_white=True,
-                         sew_enclosed_white_fields_fill=fields_fill, **{**FLIP_2026_10_27, **cfg_kw})
+                         sew_enclosed_white_fields_fill=fields_fill, **{**RECIPE_2026_10_27, **cfg_kw})
     blocks, _w = s7.sequence(planned, fabric_for_garment("hat_front"), cfg, art_outlines=art)
     return [r for b in blocks for r in b.runs if r.shape_id == "Sband"]
 

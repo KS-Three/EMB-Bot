@@ -1960,7 +1960,7 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     # just one field later.
     effective_detail_layer = cfg.detail_layer or (auto_tier is not None
                                                   and result.faces_present)
-    # `cfg.lettering_columns_italic_lean` (built OFF): stage 7 runs with the
+    # `cfg.lettering_columns_italic_lean` (ON since 2026-10-27): stage 7 runs with the
     # tagged words' italic slants in scope (`column_lean.italic_lean`, reset
     # on return), so an italic word's bars cross along its stems. Off,
     # `sequence` is called directly and nothing is set.
