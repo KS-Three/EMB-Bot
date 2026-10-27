@@ -33,7 +33,7 @@ Gaulke STEEL ROOFING columns 46 / 38 / 39 against 32 (hat / beanie / LC; was 44-
   four Becker pairs' longest block was already the outline.
 - Tires is BLIND: both files locate, but tesseract does not read the script off the ART (cc -0.48).
   MFAB 10+ is n/a in both files since #1115: ours now sews the pro's white keyline and the reader finds a
-  fragment (hat 6.95 mm of 18.0 drawn, LC 7.85 of 16.6; his 8.65 and 7.95). Pro Drone DRONE: "no
+  fragment (hat 8.85 mm of 18.0 drawn, LC 7.85 of 16.6; his 8.65 and 7.95). Pro Drone DRONE: "no
   word-sized thread near the word"; its AND box takes the rope beside it.
 
 **How to apply.** A lettering PR runs `python -m tools.lettering_board --cache DIR` (needs the lock on this
