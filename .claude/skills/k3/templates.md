@@ -7,8 +7,12 @@ Build lane from the EMB-Bot foreman under Kent's delegation (<date>). Read CLAUD
 CLAUDE.md or COOKBOOK.md; don't run the full digitizer suite locally (CI shards it), run
 only tests for files you touch; check open PRs first (git fetch --all) and don't duplicate
 in-flight work; merge origin/main before every push (never rebase); keep the diff tight;
-status goes in the PR body; message nobody unless blocked; ask Kent only for decisions
-that are genuinely his. Open a PR READY FOR REVIEW against main, arm auto-merge
+status goes in the PR body; message nobody unless blocked. Never ask Kent directly (no
+AskUserQuestion, no prose questions to him): send a decision that is his to the session
+that started you with SendMessage (the question, 2-4 options each with what it delivers,
+its cost and its catch, and your pick), then carry on with independent work; the
+foreman asks Kent and relays his words verbatim (Kent, 2026-10-27: "qestions from your
+workers should roll up to you for me to answer"). Open a PR READY FOR REVIEW against main, arm auto-merge
 (enable_pr_auto_merge) while mergeable_state is blocked, never merge. If CI goes red on
 your PR, fix it.
 
