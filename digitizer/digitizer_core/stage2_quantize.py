@@ -52,6 +52,11 @@ class Quant:
     # (stage7_sequence) must offer `_shade_layers`, so they ride here ->
     # Generation.quant_palette_spools -> PipelineResult.palette_spools.
     palette_spools: list[int] | None = None
+    # The labels the lightness read of the thin population owns
+    # (`thin_ink.find_dark_thin_ink`, `cfg.keep_dark_thin_strokes`), so the
+    # colour cap can keep a dark stroke off its own ground's thread
+    # (`stage4_vectorize.enforce_color_cap`). None on every other path.
+    dark_ink_labels: frozenset[int] | None = None
 
 
 def _kmeans(pixels: np.ndarray, k: int, seed: int, iters: int = 60) -> np.ndarray:
