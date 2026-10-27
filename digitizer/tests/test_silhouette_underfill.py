@@ -169,6 +169,23 @@ def _sewn_cover(planned, blocks, poly):
     return cover.intersection(poly).area / poly.area, kinds
 
 
+def test_a_pinned_layer_beats_the_host_move():
+    """A review-screen layer (`shape_overrides`, handed in as `pinned`) wins
+    over the under-fill's reordering: the host never moves ahead of a pinned
+    shape's layer, and a pinned shape is never merged (it sews on its own, on
+    top, in its layer). Nothing pinned: the move and the merge as before."""
+    def layers(out):
+        return {r.shape_id: r.meta["layer"] for r in out}
+    free, _ = su.apply(mfab())
+    assert layers(free)["Sring"] < layers(free)["Skey"]          # black moves under the white
+    held, rep = su.apply(mfab(), pinned={"Skey"})
+    assert layers(held)["Sring"] > layers(held)["Skey"]          # the user's white still opens
+    assert rep[0]["merged"] == ["Sl1", "Sl2"]
+    kept, rep = su.apply(mfab(), pinned={"Sl1"})
+    assert "Sl1" in layers(kept) and rep[0]["merged"] == ["Sl2"]
+    assert su.apply(mfab(), pinned=())[0] == free
+
+
 def test_an_unsewn_keyline_round_two_bodies_leaves_both_sewn():
     """MFab with the white unsewn (arm b): the keyline cut splits the outline
     into the band and the two bodies it held. Every body still sews as the
