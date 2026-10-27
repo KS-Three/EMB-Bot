@@ -317,7 +317,9 @@ async function main() {
       for (const size of opts.sizes) {
         const arm = size === 1200 ? "off" : "on";
         if (opts.only && opts.only !== arm) continue;
-        const dim = rasterSize(natural, size, { vector: true });
+        // rasterSize reads { width, height } (a bare { w, h } silently draws 1 x 1).
+        const dim = rasterSize({ width: natural.w, height: natural.h }, size, { vector: true });
+        if (Math.max(dim.w, dim.h) !== size) throw new Error(`send size ${dim.w}x${dim.h} is not ${size} px on the long side`);
         const b64 = await call(PAGE.send, { w: dim.w, h: dim.h, high: size !== 1200 });
         const image = size === 1200 ? b64 : { bytes: new Uint8Array(Buffer.from(b64, "base64")), type: "image/png", name: `${name}.png` };
         const t0 = Date.now();
