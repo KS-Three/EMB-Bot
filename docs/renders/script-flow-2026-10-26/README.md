@@ -5,7 +5,9 @@ centerline letter path) was drawn by a pencil or hand". This builds on
 `script_strokes` as #1119 merged it (built OFF), before its flip, so the flip
 carries it. Engine `d7eaeb33` (this branch); each job built once, planned
 OFF, ON as #1119 merged (its module swapped in, same generation) and ON with
-the flow; the pro's file beside it.
+the flow; the pro's file read beside it for the numbers. The pictures are
+OURS only: the repo is public, and no render of the pro's stitch file is
+committed.
 
 ## What changed
 
@@ -74,8 +76,8 @@ Whole design (stitches / trims): Bridge hat 9,608 / 30 OFF -> 9,555 / 30 as #111
 
 | file | what |
 |---|---|
-| `angle_*.jpg` | every satin cross coloured by its direction (hue = angle mod 180): OFF, ON as #1119 merged, ON + flow, pro. A pen's satin changes colour smoothly; a jump in colour is a jump in the crosses |
-| `crops40_*.jpg` | OFF, ON + flow, pro at 40 px/mm, crosses visible (Tires and To a T drawn grey) |
+| `angle_*.jpg` | every satin cross coloured by its direction (hue = angle mod 180): OFF, ON as #1119 merged, ON + flow. A pen's satin changes colour smoothly; a jump in colour is a jump in the crosses |
+| `crops40_*.jpg` | OFF, ON as #1119 merged, ON + flow at 40 px/mm, crosses visible (Tires and To a T drawn grey) |
 
 ## What it does not do
 
