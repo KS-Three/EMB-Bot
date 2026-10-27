@@ -22,6 +22,7 @@ from digitizer_core.pipeline import digitize, plan_stitches, run_stages
 from digitizer_core.stage6_blend import SourcePixels
 from digitizer_core.stage6_hairline_lines import (
     LOGO_KEYS, SUPPLEMENT_KEYS, logo_line_test, strand_blocks, supplement_test)
+from tests.conftest import frozen_cfg
 from tests.test_hairline_lines import _md5
 from tests.test_hairline_lines_chain import _pair
 from tests.test_hairline_lines_chain import _sp as _pair_sp
@@ -69,7 +70,7 @@ PAIR_SUPPLEMENT_MD5 = "9321904438503b6d4cf4edd97c4d54bb"
 
 
 def test_the_supplement_without_the_refusal_is_pinned():
-    blocks, rep = _pair_blocks(PipelineConfig(**SUPP))
+    blocks, rep = _pair_blocks(frozen_cfg(**SUPP))
     assert rep["strands"] == 2
     assert not any(k in rep for k in LOGO_KEYS)
     assert _runs_md5(blocks) == PAIR_SUPPLEMENT_MD5

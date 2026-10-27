@@ -38,7 +38,7 @@ from digitizer_core.stitches import RUN, StitchBlock, StitchRun
 from digitizer_core.threads import chart_for, rgb_to_lab
 from digitizer_core.warnings_codes import DETAIL_SPOKES_SEWN
 
-from .conftest import LETTERING_2026_10_24_OFF, TESTDATA, WAVE3_2026_10_26_OFF
+from .conftest import FLAT_GOLDEN_MD5, LETTERING_2026_10_24_OFF, TESTDATA, WAVE3_2026_10_26_OFF
 
 
 def test_flag_defaults_on_since_kents_flip_and_the_floor_scales_from_the_pros():
@@ -547,11 +547,7 @@ def test_fremont_80_on_sews_the_star_white_after_the_black(fremont_on, fremont_o
 
 # --- OFF is byte-identical on the flat goldens ----------------------------------------
 
-GOLDEN_MD5 = {
-    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
-    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
-    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
-}
+GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
 
 @pytest.mark.parametrize("fixture", sorted(GOLDEN_MD5))

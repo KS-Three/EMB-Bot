@@ -24,9 +24,10 @@ from digitizer_core.pipeline import BackgroundInfo, PipelineResult, plan_stitche
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.threads import chart_for
+from tests.conftest import frozen_cfg
 
-ON = PipelineConfig(extra={fa.KEY: True})
-OFF = PipelineConfig()
+ON = frozen_cfg(extra={fa.KEY: True})
+OFF = frozen_cfg()
 
 # a white keyline band (thread 1) round a black body (thread 0); white
 # slivers 0.4 mm wide lie 0.15 mm inside the band's inner edge, on the black

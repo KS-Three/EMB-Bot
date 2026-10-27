@@ -31,6 +31,8 @@ from digitizer_core.stage4_vectorize import vectorize
 from digitizer_core.stage6_small_letter import (glyph_polygon, qualifies,
                                                 skeleton_letter_runs)
 
+from .conftest import FLAT_GOLDEN_MD5
+
 TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
 P40 = machine.thread_profile(40)
 STROKE = 0.24          # Fremont's tagline stroke, mm
@@ -363,11 +365,7 @@ def test_stage7_leaves_an_untagged_small_shape_on_the_outline(script_result):
 # --- OFF (and ON, here) is byte-identical ----------------------------------------
 
 # The flat-lane goldens' stitch streams, as `test_small_print.py` pins them.
-GOLDEN_MD5 = {
-    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
-    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
-    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
-}
+GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
 
 def _md5(coords) -> str:
