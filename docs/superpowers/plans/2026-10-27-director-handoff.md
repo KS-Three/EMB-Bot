@@ -27,8 +27,8 @@ Every OFF flag with its kind (layout / fabric / held), PR and flip-sheet row:
 | PR | What | State at close |
 |---|---|---|
 | #1143 | White recipe as plain defaults on every job (Kent: "Every job (Recommended)") | Draft. Becker counter fix in; post-fix 22-job re-proof running; MFab byte-identical check pending |
-| #1151 | `text_cluster_nest_guard` (OFF): Bridge hat's wheel no longer nests away its letters | Draft. Bridge hat text pieces in the lane 0 -> 7 of 15, LC byte-identical; reach census and ProSeal read running |
-| #1153 | `lettering_columns_slot_guard` (OFF): 3 of 8 in-letter cuts go | Unarmed. ON stage-7 CPU cost being measured, then re-armed |
+| #1151 | `text_cluster_nest_guard` (OFF): Bridge hat's wheel no longer nests away its letters | Armed. Bridge hat text pieces in the lane 0 -> 7 of 15, LC byte-identical, reach kappa unchanged; the flip precondition is in the body |
+| #1153 | Satin-split cuts inside one piece, measured (numbers only): ours 80, pro 30 | Armed. The flag's code is parked on `claude/slot-guard-candidate`, not in the PR |
 
 ## 2. Kent's rulings this run (verbatim, 2026-10-26/27)
 
@@ -54,9 +54,20 @@ no sew-out needed (Kent 10-22).
   Per-job travel rises on 5 jobs, which is the open trade.
 - `fill_section_travel`: held.
 - `script_strokes_drawn_width` (#1150).
-- `text_cluster_nest_guard` (#1151), once merged.
-- `lettering_columns_slot_guard` (#1153). **Not recommended:** −3 trims of 261. The
-  other 5 in-letter cuts need a construction change, not a merge rule.
+- `text_cluster_nest_guard` (#1151), once merged. Bridge hat: text pieces in the
+  Column lane 0 → 7 of 15, folds 2 → 5 (his 35). Reach kappa 0.815 is unchanged
+  on all 14 pairs.
+  - **Precondition before the flip:** ProSeal's round 1.7–3.5 mm bubbles get
+    tagged `text_candidate` (12 on the hat, 11 on the beanie). The Studio's text
+    badge and Convert-to-text would then offer them as text.
+  - The sewn output is byte-identical. Build a roundness guard at the tagger's
+    door first.
+- **Not on main, a parked candidate:** `lettering_columns_slot_guard`, on branch
+  `claude/slot-guard-candidate` (50c8bc0a).
+  - It cuts 3 trims of 261 and 7.1 mm of exposed travel, and nothing rises.
+  - It costs ×1.10 Column-lane CPU (×3.4 on Becker's plain letters).
+  - The director didn't build it, because it's too small a gain for the CPU it
+    costs. `docs/satin-split-cuts-2026-10-27.md` costs it out.
 
 **Fabric (gate 1; a sew-out card is the only unblock).** No sew-out date is set.
 - `pull_comp_by_stroke` and `pro_measured_values`.
@@ -70,23 +81,34 @@ no sew-out needed (Kent 10-22).
    A Studio layer override's pinned shape leads its layer: an ordering rule in
    stage 7 that acts only under an override. Today "pin to layer 0 opens the
    design" fails for a shape that joins a mixed layer (#1143's D3 tests and body).
-2. **Drone between-piece trims**, 104 vs the pro's 59. That is #1153's count on
-   main 8341d1f7; #1141's baseline read 92. In-piece cuts are already equal
-   (20 / 20), so the whole gap is between pieces.
-   - Measure on recipe-ON main.
-   - Classify every between-piece trim, ours against his: colour-block count and order, colour revisits,
-     shape-to-shape hops inside a block (buryable or not), and travel exposure.
-   - Memory `buried-walk-2026-10-26` says his metre is layering plus colour revisits.
-   - State his rule with its contradicting rows, and report before building. Gate 3: chaining stays as it is.
+2. **Drone badge ground, sewn whole under its details** (lever A, build OFF).
+   Measured 10-27 in `docs/drone-between-pieces-2026-10-27.md`. Trims are ours
+   104, recipe arm 94, pro 59. His 59 = 37 between-piece cuts + 22 colour changes.
+   - The lettering is at parity (21 cuts vs his 19); the badge is the gap
+     (50 vs 18).
+   - 91 of our 92 in-block cuts have no route under later thread at any length.
+     So no walk or bury rule moves them, and gate 3 is not in play.
+   - **His rule:** the dark ground is one early pass that walks under the later
+     colours (20 walks, 0 cuts, 85% buried). Ours is knock-out and cuts 7.
+   - **A:** a stage-5 overlap change, one OFF flag. Gain: at most the ground's 7
+     cuts. `silhouette_underfill` does not reach this ground.
+   - **B, only after A's numbers:** detail colours as local revisit passes (his
+     15 revisits, 0 cuts in blocks 5-14). Gain: up to ~40 badge cuts. Catch:
+     each revisit is a colour change, so net trims are unknown until built.
+     Needs a stage-7 colour-order flag, not chaining.
+   - Both are layout, so Kent flips from renders.
 3. **Band corner tip to a point**: #1143's named follow-up. The pro runs the
    outline satin out to a point; ours ends blunt (+1.1 mm² on Becker hat small).
 4. **Re-measure satin-split class A after #1143.** These are 16 keyline-band
    loop-to-loop lifts. The recipe carries `keyline_loop_chain`, so Becker's band lifts may already fall.
    Doc: `docs/satin-split-cuts-2026-10-27.md` (#1153).
-5. **The 5 in-letter cuts #1153 can't remove.** They need a construction change: end each satin where the
+5. **The in-letter cuts a merge rule can't remove** (5 of 8; the parked slot guard
+   takes the other 3). They need a construction change: end each satin where the
    next one starts, under satin still to come, as the pro does.
 6. **Rotation-aware letter aspect for arc text.** Bridge's 55 mm wheel text; the
-   nest guard (#1151) is the first half.
+   nest guard (#1151) is the first half and is necessary but not sufficient.
+   Ship it in the same worker as the nest guard's flip precondition: a roundness
+   guard at the tagger's door, so ProSeal's bubbles are never tagged as text.
 
 ## 5. CPU regime (the limiting factor on this laptop)
 
