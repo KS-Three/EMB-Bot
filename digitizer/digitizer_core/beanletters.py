@@ -18,6 +18,7 @@ for all of it, which is what carries bridge's two fused pairs (1.08 and
 from __future__ import annotations
 
 import numpy as np
+from shapely.geometry import LineString
 
 from .config import PipelineConfig, true_size_min_counter
 from .ink_path import read_cluster_ink
@@ -51,6 +52,45 @@ def ink_reads_shape(polygon, stroke_mm: float | None) -> bool:
     if perimeter <= 0:
         return True
     return 2.0 * float(polygon.area) / perimeter <= INK_SHAPE_MAX_RATIO * stroke_mm
+
+
+# An ink read is the letter's STROKE only when its skeleton runs inside the
+# traced letter (`cfg.bean_ink_outlined_letters`, 2026-10-27, built OFF;
+# `docs/outlined-bean-ink-2026-10-27.md`). MFab's AND / WELDING / LLC are
+# black letters on a black body, each ringed by a thin white keyline. The
+# read's ground -- the pixels far from the members -- is that black body, so
+# its ink axis points at the WHITE keyline: on the LC, AND's A and N read
+# 0.42-0.44 mm, a line round each letter a median 0.14-0.15 mm outside it
+# with 0.4-1.7% of its length inside, passed `INK_SHAPE_MAX_RATIO` at
+# 2.54-2.94 and went bean. A letter's own ink lies inside it: bridge's eight
+# bean letters, the fixture this rule was built on, read 98.4-100% inside;
+# the same MFab words on the hat, where the reader does find the letters
+# (0.167 mm, failing the ratio gate), 68-100%. Half sits between the two
+# populations: geometry, not cloth.
+INK_INSIDE_MIN_SHARE = 0.5
+
+
+def spines_inside(polygon, spines) -> float | None:
+    """-> the share of `spines`' length (polylines, design mm) lying inside
+    `polygon`; None with no polygon or no length to measure."""
+    if polygon is None or polygon.is_empty:
+        return None
+    total = inside = 0.0
+    for spine in spines:
+        if len(spine) < 2:
+            continue
+        line = LineString(spine)
+        total += line.length
+        inside += line.intersection(polygon).length
+    return inside / total if total > 0 else None
+
+
+def ink_inside_shape(polygon, spines) -> bool:
+    """False when the ink's spines run mostly outside `polygon`
+    (`INK_INSIDE_MIN_SHARE`): the read found the letter's outline, not its
+    stroke. Nothing to measure is nothing to disagree with."""
+    share = spines_inside(polygon, spines)
+    return share is None or share >= INK_INSIDE_MIN_SHARE
 
 
 def weight_groups(widths: list[float | None], line_mm: float) -> list[bool]:
@@ -123,6 +163,10 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
         # decision and never bean (`INK_SHAPE_MAX_RATIO`).
         widths = [i.stroke_mm if ink_reads_shape(getattr(r, "polygon", None), i.stroke_mm) else None
                   for r, i in zip(members, inks)]
+        if cfg.bean_ink_outlined_letters:
+            # So is a read of the letter's outline (`INK_INSIDE_MIN_SHARE`).
+            widths = [w if w is not None and ink_inside_shape(getattr(r, "polygon", None), i.spines)
+                      else None for w, r, i in zip(widths, members, inks)]
         if cfg.lettering_word_tiers:
             # L3: one tier per word -- the whole word goes bean or none of
             # it does, on the median of its members' ink.
