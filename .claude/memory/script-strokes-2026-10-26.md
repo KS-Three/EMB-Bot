@@ -1,12 +1,12 @@
 ---
 name: script-strokes-2026-10-26
-description: Kent "Measure, then build OFF", then "Flip it ON" (10-26) — a script word (Bridge, Tires "ires", To a T "Machine") sewn one satin column per pen stroke, path read on the art's INK, crosses turning with the pen (flow, #1135); `script_strokes` ON; Bridge is trace-limited and the pro re-set it
+description: Kent "Measure, then build OFF", then "Flip it ON" (10-26) — a script word (Bridge, Tires "ires", To a T "Machine") sewn one satin column per pen stroke, path read on the art's INK, crosses turning with the pen (flow, #1135); `script_strokes` ON; Bridge is trace-limited and the pro re-set it; `script_strokes_drawn_width` (OFF, 10-27: "Record it, no build", then "Build it OFF") stops crowded cross sides at the drawn width
 metadata:
   type: project
 ---
 
 **ON by default since Kent's flip, 2026-10-26: "Flip it ON (Recommended)"** (built OFF in #1119, flow in #1135, the flip PR after it; `PRE_FLIP` names the OFF arm). L7b, 2026-10-26, lane `claude/script-strokes-b22fb4`. Module
-`digitizer_core/script_strokes.py`; flag `script_strokes` (OFF); reader
+`digitizer_core/script_strokes.py`; flag `script_strokes` (ON since the flip, #1136); reader
 `tools/script_census.py FILE.dst@N#x1,x2` (per-letter split at x-fractions of
 the word, each file's own letters).
 
@@ -112,6 +112,58 @@ read, noisy); Tires 0.97, To a T 0.89 unchanged. Kinks unchanged (trace).
   (the route returns first): Tires OFF = mono ON byte-identical, and ON =
   ON + mono byte-identical. Still reachable for monoline strokes the door
   refuses.
+
+**Bridge's width: two rulings (2026-10-27).** First, on the numbers BEFORE
+pull: "Record it, no build (Recommended)". Then, on the numbers WITH pull
+(the thread's real footprint): **"Build it OFF (Recommended)"** -- built as
+`script_strokes_drawn_width` (below). Measured on the word alone, strokes
+and stations as built, only where a cross ENDS changed (scratch
+`widthrule.py`, `fusion.py`; numbers only):
+- **The trace is not fatter than the art:** traced polygon 157 / 229 mm2
+  against the drawn ink (half-max) 153 / 226, hat / LC. Our ~2.96 mm hat
+  needle is the drawn width (station 2.16, the same at the polygon or the
+  half-max edge) plus pull 0.4 a side. The pro re-set the word at 1.56 mm
+  against the drawn 1.76. Drawn width + today's pull is NOT narrower than
+  the drawn stroke, so no constant moves: not gate 1. Only a satin narrower
+  than the drawing (the pro's 1.56) would be.
+- Ending every cross at the drawn half-width (dt), Bridge hat:
+
+  | | before pull | with pull |
+  |---|---|---|
+  | thread two strokes share | 10.9 -> 2.9 mm2 | 21.3 -> 9.9 |
+  | pairs fused | 6 -> 5 | 11 -> 10 |
+  | polygon uncovered | 8.3 -> 32.2 | 3.1 -> 8.0 |
+
+  LC with pull 15.8 -> 3.9 mm2, uncovered 7.8 -> 20.2; Tires 50.5 -> 22.6,
+  uncovered 5.7 -> 38.7 (dt everywhere bares Tires); capped at the pro's
+  needle, hat uncovered 40.7.
+- Sewn overlap off the DSTs (share of column area two columns share): Bridge
+  hat OFF 63.5% -> ON 28.3% -> flow 24.9% (pro 10.5%); LC 74.7 -> 25.9 ->
+  18.5% (7.9%); Tires flow 6.8% (3.1%).
+- **Tires sews SPLIT satin ON:** crosses ~4.33 + 2 x 0.4 = 5.13 mm, past
+  `SPLIT_SATIN_ABOVE_MM` 5.0; `tools/satin_columns.py` reads 6.6% of its
+  penetrations in columns (OFF's fill-in-a-border 26.4%, the pro's 3D puff
+  file 94.1% at 4.16 mm, unsplit). `test_satin_columns`' plan-reader control
+  holds `script_strokes=False` for this.
+
+**`script_strokes_drawn_width` (built OFF 2026-10-27, the re-ruling).** On a
+word laying more thread twice than the pro anywhere (`CROWD_WORD_SHARE`
+10.5%, his Bridge hat), a cross SIDE whose thread runs > `CROWD_DEPTH_MM`
+1.0 mm (his median overlap depth) into another stroke's stops at the drawn
+half-width, pull on top; patches only where no PULLED thread reaches.
+Read off the DSTs, main -> ON (pro): laid twice Bridge hat 24.9 -> 19.3%
+(10.5), LC 18.5 -> 15.4 (7.9), To a T 13.5 -> 11.5 (3.4); deepest overlap
+2.33 -> 1.89 / 2.63 -> 1.82 mm (1.26 / 1.37). Cost: bare +1.3 / +0.9 mm2
+(white specks at joins), counters open 0.09 / 0.15 mm2, hat in-columns
+83.0 -> 78.5%; trims +0 / +1. `docs/renders/script-drawn-width-2026-10-27/`.
+- **Traps:** patching against the crosses alone (not the pulled thread)
+  re-laid the gap the pull covers: 4 -> 9 patches, read-off overlap ROSE
+  24.9 -> 27.8%. A word gate on plan-level shares needs the patches in it
+  (strokes alone: LC 9.6% sat under 10.5).
+- **Tires held off** (6.7% on the plan, byte-identical): forced on, bare
+  5.39 -> 14.16 mm2 for no less overlap (6.8 -> 7.1%). Its split satin stays
+  (67% of crosses over 5.0 mm); drawn width everywhere (4.93) would cure it
+  but bares 26 mm2 of the strokes.
 
 Related: [[monoline-script-satin-2026-10-24]], [[bridge-border-and-script-2026-09-30]],
 [[lettering-architecture-2026-10-07]], [[column-corner-folds-2026-10-23]].

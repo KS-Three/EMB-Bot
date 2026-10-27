@@ -73,6 +73,28 @@ crosses are 1.56 / 1.78 (needle to needle), ours 2.0-2.8 (the drawn stroke
 plus 0.4 mm a side). Matching him needs a smaller pull on script strokes: a
 physical constant (ROADMAP gate 1), NOT built here.
 
+WHERE STROKES CROWD (`cfg.script_strokes_drawn_width`, built OFF 2026-10-27;
+Kent: "Build it OFF (Recommended)"). The trace is not fatter than the art
+(Bridge: ink at half-max fills 153 of the hat polygon's 157 mm2, 226 of the
+LC's 229), but where it fused two strokes the art draws apart, a cross that
+reaches the polygon runs on into the other stroke's ink, and their threads
+lie on top of each other (read off the files, `tools/script_flow.py`'s
+columns: the share of a word's thread another column also lays, Bridge hat
+24.9 % ours, 10.5 % the pro's). With the flag, on a word that lays more of
+its thread twice than the pro ever does (`CROWD_WORD_SHARE`), a second pass
+over the same strokes stops each cross SIDE whose thread would run more
+than `CROWD_DEPTH_MM` into another stroke's at the drawn half-width at its
+station (`_uncrowd`), the pull on top as before; every other side still
+reaches the polygon, and a piece is patched only where no column's thread,
+pull included, reaches (`uncovered`). Measured off the files, main -> ON
+(the pro): thread laid twice Bridge hat 24.9 -> 19.3 % (10.5), LC 18.5 ->
+15.4 (7.9), To a T 13.5 -> 11.5 (3.4); deepest overlap 2.33 -> 1.89 mm
+(1.26), 2.63 -> 1.82 (1.37). Cost: bare polygon 1.3 -> 2.6 mm2 on Bridge
+hat, 6.8 -> 7.7 on LC; penetrations in a column 83.0 -> 78.5 % on the hat.
+Tires is under the gate and sews as before: cut, it left 8.8 mm2 more of
+the word bare for no less overlap. Not the drawn width everywhere: on Tires
+that left 26 mm2 of the strokes to patches (2.3 as built).
+
 WHAT IT CANNOT DO. Open the counters the trace closed (the ground is
 knocked out there), sew a fused word letter by letter (the pro's letters are
 apart, ours touch: the walk crosses the word under its own thread instead),
@@ -220,6 +242,15 @@ _MIN_STROKE_HALVES = 4.0
 #: and 1.3 the word's overlap moves by under 1.5 points: the rule is not
 #: tuned on it
 CROWD_DEPTH_MM = 1.0
+#: ... on a word whose strokes and patches, as built, lay more than this share
+#: of their thread twice (summed pairwise overlap of `sewn_ribbon`s over their
+#: summed area): the pro's most on any script word, read the same way off his
+#: files (Bridge hat 10.5 %; LC 7.9, Tires 3.1, To a T 3.4). Ours as built,
+#: on the plan: Bridge hat 19.9, LC 13.2, To a T 12.4 -- and Tires 6.7, whose
+#: strokes do not crowd: the cut there left 8.8 mm2 more of the word bare
+#: (read off the stitches) for no less overlap (6.8 -> 7.1 %), so it is held
+#: off and sews byte for byte as before
+CROWD_WORD_SHARE = 0.105
 #: half a thread: the ribbon a cross's needle points lay
 _THREAD_HALF_MM = 0.2
 
@@ -956,13 +987,23 @@ def _patch_stations(piece: Polygon, poly: Polygon, pitch_mm: float,
     return out
 
 
-def uncovered(poly: Polygon, columns) -> list[Polygon]:
+def uncovered(poly: Polygon, columns, pull_mm: float | None = None) -> list[Polygon]:
     """The pieces of `poly` no column's drawn ground reaches (its crosses
     plus half a thread), slivers under `PATCH_SLIVER_MM` (the pull covers
-    them) opened away, `PATCH_MIN_MM2` and up."""
+    them) opened away, `PATCH_MIN_MM2` and up. With `pull_mm`
+    (`cfg.script_strokes_drawn_width`) the ground is the thread each column
+    LAYS, its crosses pushed out by the pull (`sewn_ribbon`): a side cut
+    back to the drawn edge relies on the pull to reach it, and patching the
+    sliver the pull already covers laid the word's thread twice again (Bridge
+    hat, read on the plan: 4 patches as built, 9 with the cut, 2 against the
+    sewn thread)."""
     from shapely.ops import unary_union
-    ground = unary_union([c.piece for c in columns if not c.piece.is_empty])
-    rest = poly.difference(ground.buffer(0.15))
+    if pull_mm is not None:
+        rest = poly.difference(unary_union([r for r in (sewn_ribbon(c.stations, pull_mm) for c in columns)
+                                            if not r.is_empty]))
+    else:
+        ground = unary_union([c.piece for c in columns if not c.piece.is_empty])
+        rest = poly.difference(ground.buffer(0.15))
     rest = rest.buffer(-PATCH_SLIVER_MM).buffer(PATCH_SLIVER_MM).intersection(poly)
     parts = [g for g in getattr(rest, "geoms", [rest]) if g.geom_type == "Polygon"]
     return sorted((g for g in parts if g.area >= PATCH_MIN_MM2),
@@ -1056,6 +1097,21 @@ def script_columns(poly: Polygon, pitch_mm: float, ink=None, crowd_pull_mm: floa
     return out_cols, out_strokes, grid
 
 
+def _patches(poly: Polygon, cols, spacing_mm: float, pull_mm: float | None = None) -> list:
+    """A straight patch column over each piece of `poly` the strokes leave
+    uncovered (`uncovered`), its crosses the way the nearest stroke's lie."""
+    from .columns import Column
+    out = []
+    for piece in uncovered(poly, cols, pull_mm):
+        c = piece.representative_point()
+        sts = _patch_stations(piece, poly, spacing_mm, _cross_near(cols, (c.x, c.y)))
+        if len(sts) >= 3:
+            ws = sorted(math.dist(a, b) for a, b in sts)
+            out.append(Column(stations=sts, piece=_ribbon(sts), kind="curved", axis=None,
+                              width_mm=ws[len(ws) // 2]))
+    return out
+
+
 def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                          spacing_mm: float, split_above_mm: float | None = None,
                          pull_mm: float = 0.0, pull_floor_mm: float = 0.0,
@@ -1081,24 +1137,23 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     0 / 1 / 1 with the walk. Then `monoline.py`'s two clean-ups for a
     joined word: underlay left on finished satin cut back, and any hop
     still cut routed under satin to come (`bury_hops`)."""
-    from .columns import Column, column_runs
+    from .columns import column_runs
     from .monoline import bury_hops, clear_finished_underlay
-    cols, strokes, grid = script_columns(poly, spacing_mm, ink,
-                                         crowd_pull_mm=pull_mm if drawn_width else None)
+    cols, strokes, grid = script_columns(poly, spacing_mm, ink)
     if not cols:
         return [], {"empty": True, "too_thin": False, "jumps": 0}
     kw = dict(trim_at_mm=trim_at_mm, spacing_mm=spacing_mm, split_above_mm=split_above_mm,
               pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
               **({"inside_connectors": True} if inside_connectors else {}),
               **({"inside_stagger": True} if inside_stagger else {}))
-    patches = []
-    for piece in uncovered(poly, cols):
-        c = piece.representative_point()
-        sts = _patch_stations(piece, poly, spacing_mm, _cross_near(cols, (c.x, c.y)))
-        if len(sts) >= 3:
-            ws = sorted(math.dist(a, b) for a, b in sts)
-            patches.append(Column(stations=sts, piece=_ribbon(sts), kind="curved", axis=None,
-                                  width_mm=ws[len(ws) // 2]))
+    patches = _patches(poly, cols, spacing_mm)
+    crowded = False
+    if drawn_width and crowd_share([sewn_ribbon(c.stations, pull_mm)
+                                    for c in cols + patches]) > CROWD_WORD_SHARE:
+        again, a_strokes, a_grid = script_columns(poly, spacing_mm, ink, crowd_pull_mm=pull_mm)
+        if again:
+            cols, strokes, grid, crowded = again, a_strokes, a_grid, True
+            patches = _patches(poly, cols, spacing_mm, pull_mm)
     # the patches first, so the strokes lie over their edges; then the
     # strokes as one walk from where the patches left the needle
     under: list = []
@@ -1120,6 +1175,8 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
             runs[0].trim = d > trim_at_mm
         runs = under + runs
     report["script_strokes"] = len(strokes)
+    if drawn_width:
+        report["script_crowded"] = int(crowded)
     report["script_patches"] = len(patches)
     report["script_path_ink"] = int(grid.source == "ink")
     report["script_underlay_cleared"] = clear_finished_underlay(runs, trim_at_mm)

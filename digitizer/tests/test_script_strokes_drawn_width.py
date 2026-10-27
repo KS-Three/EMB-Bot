@@ -39,7 +39,7 @@ PULL = 0.4
 #: md5s of `_word_runs(...)` / `_runs(LOOPS, ...)` on the 2026-10-27 engine;
 #: the two OFF ones read the same on main (8341d1f7). LOOPS does not crowd,
 #: so it sews the same ON
-MD5 = {"bars_off": "ac5a08af949e8d728c6a255e829689a9", "bars_on": "f716a0bf1569d131dad667356b1dbe28",
+MD5 = {"bars_off": "ac5a08af949e8d728c6a255e829689a9", "bars_on": "89d46aba7a321619fdea8642fbcad82e",
        "loops_off": "326fa5bafba821f03680bb0fec7ddbf3", "loops_on": "326fa5bafba821f03680bb0fec7ddbf3"}
 
 
@@ -127,16 +127,40 @@ def test_sides_that_do_not_crowd_still_reach_the_polygon():
     assert _stations_md5(_columns(True, A, alone)) == _stations_md5(_columns(False, A, alone))
 
 
-def test_the_thread_laid_twice_halves_and_the_gap_is_patched():
+def test_the_thread_laid_twice_halves_and_the_pull_covers_the_gap():
     off = SS.crowd_share([SS.sewn_ribbon(c.stations, PULL) for c in _columns(False)])
     on = SS.crowd_share([SS.sewn_ribbon(c.stations, PULL) for c in _columns(True)])
     assert off > 0.3 and on < 0.6 * off
-    # the traced-shut gap no stroke reaches now is a patch, not bare garment
-    assert not SS.uncovered(BARS_TRACE, _columns(False))
-    assert sum(p.area for p in SS.uncovered(BARS_TRACE, _columns(True))) > 0.2
+    # the traced-shut gap between the drawn edges is wider than half a thread
+    # but the pull lays thread over it: a patch there would sew it twice
+    cols = _columns(True)
+    assert sum(p.area for p in SS.uncovered(BARS_TRACE, cols)) > 0.2
+    assert not SS.uncovered(BARS_TRACE, cols, PULL)
+    _runs_, report = SS.script_strokes_shape(BARS_TRACE, "Sword", trim_at_mm=3.0, spacing_mm=0.4,
+                                             pull_mm=PULL, ink=BARS_INK, drawn_width=True)
+    assert report["script_patches"] == 0
+    # and nothing of the trace is left bare once the pull is counted
+    sewn = [SS.sewn_ribbon(c.stations, PULL) for c in cols]
+    from shapely.ops import unary_union
+    assert BARS_TRACE.difference(unary_union(sewn)).area < 0.05
 
 
-def test_the_depth_is_the_pros():
+def test_only_a_word_that_crowds_is_cut():
+    """The word gate: BARS lay over a third of their thread twice, so they are
+    cut; LOOPS (one pen line, its crossings the only overlap) are under the
+    pro's 10.5 % and sew byte for byte as before."""
+    loops = SS.script_columns(LOOPS, 0.4)[0]
+    assert SS.crowd_share([SS.sewn_ribbon(c.stations, PULL) for c in loops]) < SS.CROWD_WORD_SHARE
+    _r, on = SS.script_strokes_shape(BARS_TRACE, "Sword", trim_at_mm=3.0, spacing_mm=0.4,
+                                     pull_mm=PULL, ink=BARS_INK, drawn_width=True)
+    _r, off = SS.script_strokes_shape(BARS_TRACE, "Sword", trim_at_mm=3.0, spacing_mm=0.4,
+                                      pull_mm=PULL, ink=BARS_INK)
+    assert on["script_crowded"] == 1 and "script_crowded" not in off
+
+
+def test_the_thresholds_are_the_pros():
     # his median overlap depth on Bridge hat / LC / To a T: 0.99 / 1.11 / 1.03 mm
     assert SS.CROWD_DEPTH_MM == 1.0
+    # his most thread laid twice on any script word (Bridge hat)
+    assert SS.CROWD_WORD_SHARE == 0.105
     assert math.isclose(SS._THREAD_HALF_MM, 0.2)
