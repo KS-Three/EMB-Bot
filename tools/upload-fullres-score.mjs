@@ -35,10 +35,13 @@
 //   --sizes: the long side in px of each send; 2800 is the full-resolution send, any
 //   other is a preview-style send. At 100 mm wide the 1,200-px preview is 11.5 px/mm,
 //   above the 8 px/mm work grid, so it and the 2,800-px send digitize alike. The case the
-//   upload exists for is a 250 mm jacket back, whose 1,200-px preview is 4.8 px/mm; a
-//   250 mm design cannot be digitized here inside the service's 600 s job limit, so that
-//   case is EMULATED on the 100 mm design with a 480-px send (4.6 px/mm): the output
-//   depends on px per mm and on the features' size in mm, not on the design's size.
+//   upload exists for is a 250 mm jacket back, whose 1,200-px preview is 4.8 px/mm. Run
+//   it for real with --width-mm 250 --garment jacket_back: vector_logo.svg finishes both
+//   arms in about a minute; small_text_logo.svg with the white field sewn (the Studio
+//   default) overruns the service's 600 s job limit in BOTH arms, and that arm is recorded
+//   as a failed row, not a crash. Without that run, the case is EMULATED on the 100 mm
+//   design with a 480-px send (4.6 px/mm): the output depends on px per mm and on the
+//   features' size in mm, not on the design's size.
 //   default svgs: app/e2e/fixtures/small_text_logo.svg, app/e2e/fixtures/vector_logo.svg
 import "./_help.mjs";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
