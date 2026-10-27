@@ -130,7 +130,7 @@ from .regions import Region
 from .stitchwidth import column_sized
 from .stage6_fill import best_fill_angle_deg, principal_angle_deg
 from .stage6_satin import is_satin_candidate
-from .silhouette_underfill import UNDERFILL_KEY
+from .silhouette_underfill import MERGED_ART_KEY, UNDERFILL_KEY
 from . import machine
 from .stage6_hairline import _BLOB_FACTOR as _HAIR_BLOB_FACTOR
 from .stage6_hairline import block_thread_wt
@@ -868,8 +868,14 @@ def resolve_overlaps(
         artwork buried 79% of it under the ground's own growth (measured
         2026-09-09, review of the first cut); a ground that sews BEFORE it
         reaches its tongue under the column, not just under the artwork.
-        With `cfg.forbid_gap_mm`, the artwork includes the strip it spans."""
+        With `cfg.forbid_gap_mm`, the artwork includes the strip it spans.
+        An under-fill host's includes the shapes merged into it
+        (`MERGED_ART_KEY`): their ink is down at its layer, so what sews on
+        top is trimmed against them as it was against the shapes."""
         art = span.get(r.shape_id, r.polygon)
+        merged = r.meta.get(MERGED_ART_KEY)
+        if merged is not None:
+            art = art.union(merged)
         if widened_lettering(r):
             return _grow(art, pull, axis_by_id[r.shape_id])
         return art

@@ -55,6 +55,13 @@ from shapely.ops import unary_union
 UNDERFILL_KEY = "silhouette_underfill"
 #: meta key on the host: the ring it fills under (shape id), for reports.
 UNDERFILL_OF_KEY = "silhouette_underfill_of"
+#: meta key on the host: the artwork of the shapes merged into it (one geometry).
+#: They no longer sew on their own, but their ink is still down at the host's layer:
+#: stage 5 plans the shapes sewn on top against it as it did against the shapes
+#: themselves (`stage5_overlap.sewn_footprint`). Becker's B: its white face merges
+#: into the white ground, and without this the black counter on it kept its whole
+#: pull and underlap growth over the face (25.3 -> 35.6 mm2 sewn, 2026-10-27).
+MERGED_ART_KEY = "underfill_merged_art"
 
 #: a ring smaller than this is a letter with a counter, not a silhouette
 RING_MIN_AREA_MM2 = 200.0
@@ -436,12 +443,16 @@ def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0,
     pinned = set(pinned)
     pinned_layers = {r.meta["layer"] for r in regions if r.shape_id in pinned}
     report = []
+    by_id = {r.shape_id: r for r in regions}
     for ring, host, outline, merged, inner in rings:
         merged = [m for m in merged if m not in pinned]
         if cut is not None and not cut.is_empty and outline.intersects(cut):
             outline = outline.difference(cut)
         host_meta[host.shape_id] = {UNDERFILL_KEY: outline, UNDERFILL_OF_KEY: ring.shape_id,
                                     "tier": "fill"}
+        art = [by_id[m].polygon for m in merged if by_id[m].polygon is not None]
+        if art:
+            host_meta[host.shape_id][MERGED_ART_KEY] = unary_union(art)
         dropped.update(merged)
         # every other colour in play -- the ring's, when it is not the host's,
         # and each inner colour -- must sew after the host's layer

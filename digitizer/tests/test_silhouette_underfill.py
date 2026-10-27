@@ -169,6 +169,40 @@ def _sewn_cover(planned, blocks, poly):
     return cover.intersection(poly).area / poly.area, kinds
 
 
+def test_the_host_carries_its_merged_shapes_art():
+    out, rep = su.apply(mfab())
+    host = next(r for r in out if r.shape_id == "Sring")
+    merged = {r.shape_id: r.polygon for r in mfab() if r.shape_id in rep[0]["merged"]}
+    assert host.meta[su.MERGED_ART_KEY].equals(unary_union(list(merged.values())))
+    assert su.MERGED_ART_KEY not in su.apply(mfab(), pinned={"Sl1", "Sl2"})[0][1].meta
+
+
+def test_a_counter_on_the_ground_keeps_its_art_kent_2026_10_27():
+    """Becker's B under the recipe on every job (2026-10-27): its white face
+    merges into the white ground, and the black counter sewn on top kept its
+    whole pull and underlap growth over the face -- 25.3 -> 35.6 mm2 sewn on
+    Becker hat large, the face thinned. With the merged art down at the
+    host's layer the counter plans as it did against the face: its artwork,
+    trimmed back to the hole. Without the key: grown over the white."""
+    face = _holed(box(4, 4, 56, 26), box(20, 10, 30, 20))
+    counter = box(20, 10, 30, 20)
+    ground = _holed(box(0, 0, 60, 30), box(4, 4, 56, 26))
+
+    def planned_counter(with_key):
+        meta = {su.UNDERFILL_KEY: Polygon(ground.exterior), su.UNDERFILL_OF_KEY: "Sground",
+                "tier": "fill"}
+        if with_key:
+            meta[su.MERGED_ART_KEY] = face
+        regs = [_reg("Sground", ground, 1, 0, **meta), _reg("Scounter", counter, 0, 1)]
+        cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **RECIPE_2026_10_27})
+        planned, _ = resolve_overlaps(regs, FABRIC, cfg)
+        return next(p for p in planned if p.shape_id == "Scounter").polygon
+
+    on, off = planned_counter(True), planned_counter(False)
+    assert on.difference(counter.buffer(1e-6)).area < 1e-6           # no growth over the face
+    assert off.area > counter.area + 0.2 * counter.length * FABRIC.pull_comp_mm   # the defect
+
+
 def test_a_pinned_layer_beats_the_host_move():
     """A review-screen layer (`shape_overrides`, handed in as `pinned`) wins
     over the under-fill's reordering: the host never moves ahead of a pinned
