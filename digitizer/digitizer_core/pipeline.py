@@ -1853,9 +1853,15 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     # sewn and `border_from_outline`): the small lettering on a white field
     # rides it -- never merged into the black, sewn after the white on a
     # closed white panel -- and is no outline's body. No riders: as before.
+    # A shape the review screen put on a layer keeps it: never merged into a
+    # host, and no host moves ahead of a layer the user set (`pinned`).
+    merged_into: dict[str, str] = {}
     if cfg.silhouette_underfill:
+        pinned = {sid for sid, ov in (cfg.shape_overrides or {}).items()
+                  if isinstance(ov, dict) and ov.get("layer") is not None}
         stitched_regions, _underfill, art_outlines = silhouette_underfill.apply_cfg(
-            stitched_regions, skipped, cfg, art_outlines)
+            stitched_regions, skipped, cfg, art_outlines, pinned=pinned)
+        merged_into.update({m: rep["host"] for rep in _underfill for m in rep.get("merged", ())})
 
     # Fur regions on the streamline tier (`cfg.hair_regions_directional`,
     # default OFF; `fur_regions`). Only regions the gate read in
@@ -1897,6 +1903,8 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
                                                  hairline=hairline)
     from .fragment_absorb import absorb   # `cfg.extra["absorb_fragments"]` (built OFF 2026-10-25)
     planned = absorb(planned, cfg, hairline)
+    merged_into.update({f: p.shape_id for p in planned
+                        for f in p.region.meta.get("absorbed_fragments", ())})
     if marks:
         sew_of = {p.layer: p.sew_index for p in planned}
         last = max(sew_of.values(), default=0)
@@ -2025,6 +2033,7 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
         warnings=[*result.warnings, *skip_warnings, *overlap_warnings,
                   *seq_warnings],
         design_size_mm=result.design_size_mm,
+        merged_into=merged_into,
     )
     if dbg:
         debugviz.stage6(dbg, plan, result.design_size_mm)

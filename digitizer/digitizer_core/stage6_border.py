@@ -1313,11 +1313,17 @@ def underfill_rim_after(p, runs: list[StitchRun], report: dict, *, trim_at_mm: f
     5's polygon, grown by the fabric's pull: 0.4 mm outside the artwork
     outline on a hat, where the edge cap rides), so it covers the rows' ends
     and the edge cap reads it as cover. Any other shape, or nothing sewn, is
-    returned as it came."""
+    returned as it came.
+
+    Nor a host sewn as shade bands (the blend tier: a region riding the
+    design's ramp): one thread all the way round a sweep crosses every shade
+    it fades through (`test_stage6_blend`'s riding region; 2026-10-27, when
+    the recipe went to every job)."""
     from .silhouette_underfill import UNDERFILL_KEY, UNDERFILL_OF_KEY
     meta = p.region.meta
     if (meta.get(UNDERFILL_KEY) is None or meta.get(UNDERFILL_OF_KEY) != p.shape_id
-            or not runs or p.polygon.is_empty):
+            or not runs or p.polygon.is_empty
+            or any(getattr(r, "shade_thread_index", None) is not None for r in runs)):
         return runs, report
     rim, rep = underfill_rim_runs(p.polygon, p.shape_id, entry=runs[-1].points[-1],
                                   trim_at_mm=trim_at_mm, underlay=underlay)

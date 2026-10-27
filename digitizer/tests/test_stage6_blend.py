@@ -1037,6 +1037,11 @@ def test_a_region_that_rides_the_design_ramp_is_never_sewn_as_satin():
         base = r.shape_id.split("-blend")[0]
         kinds.setdefault(base, set()).add(r.kind)
         shaded[base] = shaded.get(base, False) or r.shade_thread_index is not None
+    # A shape the under-fill merged into its host (2026-10-27, the white-keyline
+    # recipe on every job) sews as the host's bands: read it off the host.
+    for sid, host in plan.merged_into.items():
+        kinds.setdefault(sid, kinds.get(host, set()))
+        shaded.setdefault(sid, shaded.get(host, False))
     riders = [r for r in result.regions
               if r.meta.get("stitched", True) and r.area_mm2 >= 100.0
               and region_rides_design_ramp(r.polygon, result.source_pixels)]
@@ -1249,7 +1254,6 @@ def test_stage7_hands_the_blend_tier_the_compensated_polygon_and_the_tongue_is_s
     at 0.54 mm the whole time."""
     import digitizer_core.stage7_sequence as s7
     from digitizer_core.pipeline import fabric_for, plan_stitches, run_stages
-    from digitizer_core.stage5_overlap import resolve_overlaps
     from shapely.geometry import LineString
     from shapely.ops import unary_union
 
@@ -1262,10 +1266,23 @@ def test_stage7_hands_the_blend_tier_the_compensated_polygon_and_the_tongue_is_s
 
     monkeypatch.setattr(s7, "blend_fill", own_thread_only(spy, real))
 
+    # stage 5's polygons as `plan_stitches` hands them on: after the passes
+    # that reshape the regions first (the under-fill closes a host's holes,
+    # since 2026-10-27 on every job) and fragment absorb, read from inside it
+    from digitizer_core import fragment_absorb
+    real_absorb = fragment_absorb.absorb
+    got: list = []
+
+    def absorb(planned, *a, **k):
+        out = real_absorb(planned, *a, **k)
+        got.append(out)
+        return out
+
+    monkeypatch.setattr(fragment_absorb, "absorb", absorb)
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
     result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)
-    planned, _ = resolve_overlaps(result.regions, fabric_for(cfg), cfg, result.design_class)
     plan = plan_stitches(result, cfg)
+    planned = got[-1]
 
     assert seen, "the repro routes through the blend tier at defaults"
     by_id = {p.shape_id: p for p in planned}

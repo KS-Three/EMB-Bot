@@ -177,6 +177,11 @@ class StitchPlan:
     palette: list[dict]
     warnings: list[dict] = field(default_factory=list)
     design_size_mm: tuple[float, float] = (0.0, 0.0)
+    # Shapes that sew as part of ANOTHER region and own no run of their own:
+    # region id -> the region that sews it (`silhouette_underfill`'s merged
+    # shapes into their host, `fragment_absorb`'s fragments into their body).
+    # The review screen reads a merged shape's sew facts off its host.
+    merged_into: dict = field(default_factory=dict)
 
     def iter_runs(self):
         for b in self.blocks:

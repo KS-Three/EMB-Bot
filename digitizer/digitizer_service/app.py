@@ -845,6 +845,12 @@ def _sew_facts(plan, region_ids: set[str] | None = None) -> dict[str, dict]:
             f["_rank"] = max(f["_rank"], _KIND_TIER_RANK.get(run.kind, 0))
     for f in facts.values():
         f["tier"] = _RANK_TIER.get(f.pop("_rank"))
+    # A shape that sews as part of another region owns no run: the under-fill's
+    # merged shapes, absorbed fragments (`StitchPlan.merged_into`). It sews
+    # when and as its host does.
+    for sid, host in (getattr(plan, "merged_into", None) or {}).items():
+        if sid not in facts and host in facts and (not region_ids or sid in region_ids):
+            facts[sid] = dict(facts[host])
     return facts
 
 
