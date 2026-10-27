@@ -103,7 +103,7 @@ from skimage.color import deltaE_ciede2000
 from skimage import graph as skgraph
 
 from .config import PipelineConfig
-from .fast_skimage import deltaE_ciede2000_1
+from .fast_skimage import deltaE_ciede2000_1, rag_mean_color
 from .palette import region_weight, select_palette
 from .stage1_prep import Prep
 from .stage2_quantize import Quant, _quantize_population
@@ -2638,7 +2638,8 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
         # below, never from the merged label array's own 0/nonzero
         # convention, so it does not matter which numeric id background
         # ends up wearing.
-        rag = skgraph.rag_mean_color(lab_img, slic_labels, connectivity=2, mode="distance")
+        # skimage's graph, built without its per-pixel callback (`fast_skimage`).
+        rag = rag_mean_color(lab_img, slic_labels, connectivity=2, mode="distance")
         # Small-vs-large area-ratio merge protection (regression fix, see
         # `AREA_RATIO_PROTECT_THRESH`'s own docstring) — runs unconditionally,
         # unlike the face drop just below, and BEFORE it so a face-adjacent
