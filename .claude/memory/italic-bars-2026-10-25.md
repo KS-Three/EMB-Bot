@@ -38,4 +38,6 @@ small and Fremont 92.6 (full digitize md5), and on four lane fixtures.
 axis. Open: stems (ours +9, his +6) and the A's legs (house 10.8 vs his ~0)
 both follow the house square to the slant -- a shear-model house would fix the
 legs and overshoot the stems; bowls need a ring rule.
+**ON since 2026-10-27, Kent's flip** from the wave-5 sheet ("Flip ON
+(Recommended)"; [[flip-sheet-wave5-2026-10-27]]).
 Related: [[big-letter-construction-2026-10-24]], [[lettering-10mm-up-band-2026-10-23]].

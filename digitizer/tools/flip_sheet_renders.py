@@ -13,7 +13,7 @@ and one number the flag is about -- for OFF, ON and the pro.
     .venv/Scripts/python -m tools.flip_sheet_renders run [--flags A B] [--fixtures S ...]
         [--engine DIR] [--cache DIR] [--jobs 3]
     .venv/Scripts/python -m tools.flip_sheet_renders report [--out DOCS_MD] [--renders DIR]
-        [--inline SHEET.html [--date YYYY-MM-DD]]
+        [--pro-renders DIR] [--inline SHEET.html [--date YYYY-MM-DD]]
 
 HOW. `run` digitizes each fixture the Studio's way (`tools.pro_pair.digitize`,
 the hat preset at the pro's width) once OFF and once per flag ON, writes
@@ -42,6 +42,12 @@ that carries it -- `tools.pro_satin_underlay` (short columns bare).
 is a base64 data URI, so a viewer that cannot resolve relative paths (the
 desktop app's file pane) shows the pictures. It stays under `INLINE_MAX_MB`
 by re-encoding the crops smaller until it fits.
+
+The pro's crops never go under docs/ (Kent 2026-10-27: "Stop new ones, keep
+old (Recommended)"): `report` writes them to `--pro-renders`, gitignored
+`pro_renders/` by default, and ours to `--renders`. The inlined page reads
+both, so it keeps the pro's panels; it stays local. The markdown names the
+pro's crop without linking it.
 
 A flag with a `base` (`enclosed_white_keyline` only acts under
 `sew_enclosed_white`) is diffed against its OWN OFF -- the base sets alone,
@@ -78,6 +84,7 @@ if str(DIGITIZER) not in sys.path:
     sys.path.insert(0, str(DIGITIZER))
 
 from tools._console import utf8_console  # noqa: E402
+from tools import pro_renders  # noqa: E402
 
 DATE = "2026-10-23"
 PPM = 40.0                  # crop renders: 0.4 mm thread = 16 px
@@ -90,6 +97,11 @@ LOCK_LEG_MM = 1.0           # a lock's legs are at most this
 DEFAULT_CACHE = DIGITIZER / "debug_out" / "flip_sheet"
 DEFAULT_DOC = DIGITIZER.parent / "docs" / f"flip-sheet-{DATE}.md"
 DEFAULT_RENDERS = DIGITIZER.parent / "docs" / "renders" / f"flip-sheet-{DATE}"
+#: the pro's tiles (`pro`, `pro_xray`): local only, never docs/ (Kent 2026-10-27,
+#: "Stop new ones, keep old (Recommended)"; `tools.pro_renders`). Ours stay in
+#: `DEFAULT_RENDERS`; `--inline` reads both, so the local page keeps every panel.
+#: `report` names the pro's folder after `--renders`' own.
+DEFAULT_PRO_RENDERS = pro_renders.out_dir(DEFAULT_RENDERS.name)
 
 #: (slug in `tools.border_census.PAIRS`, width mm or None for the pro's).
 #: Fremont at 92.5: Kent's own job width (`fremont_triage.KENT_WIDTH_MM`),
@@ -436,10 +448,12 @@ FLAGS: dict[str, dict] = {
 #: The wave-3 sheet (2026-10-26): the flags its run and report carry. The bay mouth left
 #: it when #1112 flipped it ON; its row stays, for the OFF | ON | pro of that PR.
 # `outline_loop_mitre` and `fine_bars_satin` left it when Kent flipped them ON,
-# 2026-10-26 ("Outline corners pivot", "Fine bars as satin"); their rows stay
-WAVE3 = ["lettering_columns_apex_cut", "text_cluster_part_touching",
+# 2026-10-26 ("Outline corners pivot", "Fine bars as satin"); their rows stay.
+# `text_cluster_part_touching` and `lettering_columns_italic_lean` left it when Kent
+# flipped them ON from the wave-5 sheet, 2026-10-27; their rows stay
+WAVE3 = ["lettering_columns_apex_cut",
          "silhouette_underfill_rim", "keyline_fold_slivers",
-         "skip_covered_shapes", "lettering_columns_italic_lean", "monoline_script_satin",
+         "skip_covered_shapes", "monoline_script_satin",
          "fill_section_travel", "absorb_fragments"]
 
 #: The wave-5 sheet (2026-10-27): every layout flag still waiting on Kent, on main
@@ -1206,6 +1220,17 @@ def _write(path, img):
     cv2.imwrite(str(path), img, JPEG)
 
 
+def is_pro_image(name: str) -> bool:
+    """A tile drawn from the pro's file: `<flag>__<slug>__pro.jpg` or `__pro_xray.jpg`."""
+    return Path(name).stem.endswith(("__pro", "__pro_xray"))
+
+
+def image_file(name: str, renders: Path, pro_dir: Path | None = None) -> Path:
+    """Where tile `name` lives: the pro's under `pro_dir` when given, every
+    other under `renders`."""
+    return Path(pro_dir if pro_dir is not None and is_pro_image(name) else renders) / name
+
+
 def _label(img, text):
     import cv2
     im = img.copy()
@@ -1323,12 +1348,14 @@ def gate3_verdict(rows: list[dict]) -> str:
 
 
 def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str],
-               base_sha: str | None = None) -> list[dict]:
+               base_sha: str | None = None, pro_dir: Path | None = None) -> list[dict]:
     """One row per (flag, fixture). With `base_sha` (the sheet's OFF engine), a row
     whose cells ran on another engine says so: `stale` when its OFF is not the
     base's OFF byte for byte, `base_bytes` when it is (the base moved nowhere
-    this job sews)."""
+    this job sews). The pro's tiles go to `pro_dir` when given (`image_file`)."""
     renders.mkdir(parents=True, exist_ok=True)
+    if pro_dir is not None:
+        Path(pro_dir).mkdir(parents=True, exist_ok=True)
     rows = []
     pros: dict[str, tuple[dict, dict]] = {}
     for slug in dict.fromkeys(s for f in flags for s in flag_fixtures(f, slugs)):
@@ -1405,7 +1432,7 @@ def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str],
             for side, img in tiles.items():
                 m = row[side]
                 name = f"{flag}__{slug}__{side}.jpg"
-                _write(renders / name, _label(img, f"{_side_label(row, side)}: {m['stitches']} st, "
+                _write(image_file(name, renders, pro_dir), _label(img, f"{_side_label(row, side)}: {m['stitches']} st, "
                                                    f"{m['trims']} tr"))
                 row["images"][side] = name
             if FLAGS[flag].get("xray"):
@@ -1414,7 +1441,7 @@ def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str],
                       "pro": render_crop(reversed_design(pro["design_render"]), pbox)}
                 for side, img in xr.items():
                     name = f"{flag}__{slug}__{side}_xray.jpg"
-                    _write(renders / name, _label(img, f"{side.upper()} x-ray: first-sewn on top"))
+                    _write(image_file(name, renders, pro_dir), _label(img, f"{side.upper()} x-ray: first-sewn on top"))
                     row["images"][side + "_xray"] = name
             name = f"{flag}__{slug}__where.jpg"
             _write(renders / name, where_image(off["design"], box))
@@ -1488,7 +1515,10 @@ def markdown(rows: list[dict], renders: Path, doc: Path, date: str = DATE,
              "comp need fabric. Every row here is a layout flag built OFF, rendered where it "
              "changes stitches, beside the professional's file for the same job. The flips are "
              "Kent's; nothing in this PR changes a default.", "",
-             f"Open `{rel}/index.html` for the pictures side by side. Regenerate with "
+             f"Open `{rel}/index.html` for the pictures side by side. The pro's crops are not "
+             "committed (Kent 2026-10-27: \"Stop new ones, keep old (Recommended)\"): they are "
+             "written to `pro_renders/`, gitignored, and `report --inline` puts them on the local "
+             "page. Regenerate with "
              "`python -m tools.flip_sheet_renders run` then `report` (see the tool's docstring; "
              "a flag not on main runs with `--engine <checkout>`).", "",
              "Each cell: stitches / trims / the number the flag is about. Crops are 18 x 11 mm at "
@@ -1508,7 +1538,7 @@ def markdown(rows: list[dict], renders: Path, doc: Path, date: str = DATE,
                          f"{_fmt(r['pro'])} | **no change** ({why}) | - |")
             continue
         im = r["images"]
-        crop = " ".join(f"[{s}]({rel}/{im[s]})" for s in im)
+        crop = " ".join(f"{s} (local only)" if is_pro_image(im[s]) else f"[{s}]({rel}/{im[s]})" for s in im)
         lines.append(f"| {tag} | {r['fixture']} | {_engine_note(r)} | {_fmt(r['off'])} | {_fmt_on(r)} | "
                      f"{_fmt(r['pro'])} | {r['diff']:,} ({r['in_window']:,} in crop) | {crop} |")
     lines += ["", "## What each number is", ""]
@@ -1767,12 +1797,14 @@ def data_uri(path: Path, quality: int | None = None, max_w: int | None = None) -
 
 def inline_html(rows: list[dict], renders: Path, date: str = DATE,
                 max_mb: float = INLINE_MAX_MB, sheet: dict | None = None,
-                intro: list[str] | None = None, fragment: bool = False) -> tuple[str, tuple]:
+                intro: list[str] | None = None, fragment: bool = False,
+                pro_dir: Path | None = None) -> tuple[str, tuple]:
     """ONE self-contained page: the sheet with every image inlined. Tries the
     renders as written, then re-encodes smaller (`INLINE_LEVELS`) until the page
     fits `max_mb`; returns the page and the (quality, max width) that fitted --
     the last level if none did. `fragment`: the page without its document
-    wrapper (title, style, content), the form an Artifact publish wraps itself."""
+    wrapper (title, style, content), the form an Artifact publish wraps itself.
+    `pro_dir`: where the pro's tiles are (`image_file`); the page stays local."""
     renders = Path(renders)
     page, level = "", INLINE_LEVELS[0]
     for level in INLINE_LEVELS:
@@ -1780,7 +1812,7 @@ def inline_html(rows: list[dict], renders: Path, date: str = DATE,
 
         def src(name, _q=level[0], _w=level[1]):
             if name not in cache:
-                cache[name] = data_uri(renders / name, _q, _w)
+                cache[name] = data_uri(image_file(name, renders, pro_dir), _q, _w)
             return cache[name]
 
         if fragment:
@@ -1822,18 +1854,24 @@ def report_cmd(a) -> int:
     flags = a.flags or (list(W5) if a.w5 else list(FLAGS))
     date = a.date if a.date != DATE or not a.w5 else W5_DATE
     slugs = a.fixtures or None
-    rows = build_rows(Path(a.cache), Path(a.renders), flags, slugs, a.base)
+    renders = Path(a.renders)
+    pro_dir = pro_renders.refuse_docs(a.pro_renders or pro_renders.out_dir(renders.name))
+    rows = build_rows(Path(a.cache), renders, flags, slugs, a.base, pro_dir)
     intro = (w5_intro(a.base) if a.w5 else []) + list(a.intro or [])
     doc = Path(a.out)
     doc.parent.mkdir(parents=True, exist_ok=True)
-    doc.write_text(markdown(rows, Path(a.renders), doc, date, sheet, intro), encoding="utf-8")
-    (Path(a.renders) / "index.html").write_text(html(rows, date=date, sheet=sheet, intro=intro),
-                                                encoding="utf-8")
+    doc.write_text(markdown(rows, renders, doc, date, sheet, intro), encoding="utf-8")
+
+    def local(name):    # the page beside the renders reaches the pro's folder on this machine
+        return os.path.relpath(image_file(name, renders, pro_dir), renders).replace("\\", "/")
+
+    (renders / "index.html").write_text(html(rows, local, date=date, sheet=sheet, intro=intro),
+                                        encoding="utf-8")
     (Path(a.renders) / "rows.json").write_text(json.dumps(rows, indent=1, default=str), encoding="utf-8")
     print(f"wrote {doc} and {Path(a.renders) / 'index.html'} ({len(rows)} rows)")
     if a.inline:
-        page, level = inline_html(rows, Path(a.renders), date, sheet=sheet, intro=intro,
-                                  fragment=a.artifact)
+        page, level = inline_html(rows, renders, date, sheet=sheet, intro=intro,
+                                  fragment=a.artifact, pro_dir=pro_dir)
         Path(a.inline).parent.mkdir(parents=True, exist_ok=True)
         Path(a.inline).write_text(page, encoding="utf-8")
         print(f"wrote {a.inline}: {len(page.encode('utf-8')) / 1024 / 1024:.1f} MB, "
@@ -1866,6 +1904,9 @@ def parse_args(argv=None):
         else:
             p.add_argument("--out", type=Path, default=DEFAULT_DOC)
             p.add_argument("--renders", type=Path, default=DEFAULT_RENDERS)
+            p.add_argument("--pro-renders", type=Path,
+                           help="the pro's tiles: local only, never under docs/ (Kent 2026-10-27); "
+                                "default pro_renders/<the --renders folder's name>")
             p.add_argument("--inline", type=Path,
                            help="also write ONE self-contained HTML (images as data URIs)")
             p.add_argument("--date", default=DATE, help="date in the inlined page's title")

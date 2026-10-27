@@ -174,7 +174,7 @@ def test_an_outline_read_is_left_out_and_the_rest_decide(monkeypatch):
     _stub_ink(monkeypatch, {**{id(r): MemberInk(stroke_mm=0.35, spines=[[(0.2, 0.2), (0.2, 2.8)]]) for r in thin},
                             id(outlined): MemberInk(stroke_mm=0.45, spines=[OUTLINE])})
     regions = thin + [outlined]
-    assert tag_bean_letters(regions, object(), _cfg()) == 4              # OFF: the outline goes too
+    assert tag_bean_letters(regions, object(), _cfg(bean_ink_outlined_letters=False)) == 4  # OFF: the outline goes too
     for r in regions:
         r.meta.pop(BEAN_LETTER_KEY, None)
     assert tag_bean_letters(regions, object(), _cfg(bean_ink_outlined_letters=True)) == 3
@@ -185,7 +185,7 @@ def test_an_outline_read_is_left_out_and_the_rest_decide(monkeypatch):
 def test_the_gate_holds_under_word_tiers_too(monkeypatch):
     a = _region(BAR)
     _stub_ink(monkeypatch, {id(a): MemberInk(stroke_mm=0.45, spines=[OUTLINE])})
-    assert tag_bean_letters([a], object(), _cfg(lettering_word_tiers=True)) == 1
+    assert tag_bean_letters([a], object(), _cfg(lettering_word_tiers=True, bean_ink_outlined_letters=False)) == 1
     a.meta.pop(BEAN_LETTER_KEY)
     assert tag_bean_letters([a], object(), _cfg(lettering_word_tiers=True, bean_ink_outlined_letters=True)) == 0
 
@@ -227,13 +227,14 @@ def _md5(fixture: str, **kw) -> str:
     return hashlib.md5(json.dumps(coords).encode()).hexdigest()
 
 
-def test_the_default_is_off():
-    assert PipelineConfig().bean_ink_outlined_letters is False
+def test_the_default_is_on():
+    # Kent's flip on the wave-5 flip sheet 2026-10-27 ("Both ON (Recommended)")
+    assert PipelineConfig().bean_ink_outlined_letters is True
 
 
 @pytest.mark.parametrize("fixture", sorted(GOLDEN_MD5))
 def test_off_is_byte_identical(fixture):
-    assert _md5(fixture) == GOLDEN_MD5[fixture]
+    assert _md5(fixture, bean_ink_outlined_letters=False) == GOLDEN_MD5[fixture]
 
 
 @pytest.mark.parametrize("fixture", sorted(GOLDEN_MD5))

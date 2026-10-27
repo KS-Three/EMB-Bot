@@ -200,9 +200,9 @@ def test_a_row_with_a_third_cell():
 def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
     from digitizer_core import PipelineConfig
     prs = {f: fsr.FLAGS[f]["pr"] for f in fsr.WAVE3}
-    assert prs == {"lettering_columns_apex_cut": 1088, "text_cluster_part_touching": 1080,
+    assert prs == {"lettering_columns_apex_cut": 1088,
                    "silhouette_underfill_rim": 1096, "keyline_fold_slivers": 1102,
-                   "skip_covered_shapes": 1102, "lettering_columns_italic_lean": 1079,
+                   "skip_covered_shapes": 1102,
                    "monoline_script_satin": 1063, "fill_section_travel": 1091,
                    "absorb_fragments": 1100}
     cfg = PipelineConfig()
@@ -220,8 +220,10 @@ def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
               "silhouette_underfill_panels", "small_text_bay_mouth"):
         assert f not in fsr.WAVE3
     assert cfg.small_text_bay_mouth is True and "small_text_bay_mouth" in fsr.FLAGS
-    # ... and the two Kent flipped from this sheet, 2026-10-26: off the list, rows kept, ON
-    for f in ("outline_loop_mitre", "fine_bars_satin"):
+    # ... and the two Kent flipped from this sheet, 2026-10-26, and the two from wave 5,
+    # 2026-10-27: off the list, rows kept, ON
+    for f in ("outline_loop_mitre", "fine_bars_satin", "text_cluster_part_touching",
+              "lettering_columns_italic_lean"):
         assert f not in fsr.WAVE3 and f in fsr.FLAGS and getattr(cfg, f) is True, f
 
 
@@ -297,12 +299,16 @@ def test_wave_five_rows_are_layout_flags_each_asked_or_labelled():
     for f, s in fsr.W5.items():
         assert f in fsr.FLAGS and fsr.flag_kind(f) == "LAYOUT", f
         assert s["ask"] or s.get("label"), f          # a row shown and not asked says why
-    for f in asked:                                    # still OFF: the flips are Kent's
-        sets = fsr.FLAGS[f]["sets"]
-        if "extra" in sets:
-            assert not (cfg.extra or {}).get(f), f
+    # Kent's rulings on the four, 2026-10-27: bean ink with part_touching "Both ON
+    # (Recommended)", italic lean "Flip ON (Recommended)", fill_section_travel "Hold OFF
+    # (Recommended)"
+    ruled_on = {"bean_ink_outlined_letters", "text_cluster_part_touching",
+                "lettering_columns_italic_lean"}
+    for f in asked:
+        if "extra" in fsr.FLAGS[f]["sets"]:            # a cfg.extra key: held, still OFF
+            assert f not in ruled_on and not (cfg.extra or {}).get(f), f
         else:
-            assert getattr(cfg, f) is False, f
+            assert getattr(cfg, f) is (f in ruled_on), f
     # off the sheet, by the brief: ruled, held for fabric, or already ON (script_strokes: ruled
     # ON 2026-10-26, its flip in flight)
     for f in ("sew_enclosed_white_fields_fill", "cut_every_jump", "pull_comp_by_stroke",
@@ -454,3 +460,26 @@ def test_the_artifact_page_is_a_fragment_with_theme_tokens(tmp_path):
     assert "body{" in page and "background:var(--bg)" in page
     whole = fsr.html(rows)
     assert whole.startswith("<!doctype html>") and "viewport-fit=cover" in whole
+
+
+def test_the_pros_tiles_live_apart_and_the_local_page_keeps_them(tmp_path):
+    """Kent 2026-10-27, "Stop new ones, keep old (Recommended)": the pro's tiles
+    are written outside docs/. The inlined page (local) still shows all of
+    them; the markdown names them without a link into the gitignored folder."""
+    rows = _rows(tmp_path)
+    pro_dir = tmp_path / "pro"
+    pro_dir.mkdir()
+    for r in rows:
+        for name in (r.get("images") or {}).values():
+            if fsr.is_pro_image(name):
+                (tmp_path / name).rename(pro_dir / name)
+    assert sorted(p.name for p in pro_dir.iterdir()) == [
+        "fill_underlay_cross__mfab_hat__pro.jpg", "fill_underlay_cross__mfab_hat__pro_xray.jpg",
+        "tie_in_off__mfab_hat__pro.jpg"]
+    page, _ = fsr.inline_html(rows, tmp_path, "2026-10-27", pro_dir=pro_dir)
+    assert len(_imgs(page)) == 11 and all(s.startswith("data:image/jpeg;base64,") for s in _imgs(page))
+    md = fsr.markdown(rows, tmp_path / "renders", tmp_path / "doc.md")
+    assert "__pro" not in md and "pro (local only)" in md and "__off.jpg)" in md
+    assert fsr.image_file("a__b__pro.jpg", tmp_path, pro_dir) == pro_dir / "a__b__pro.jpg"
+    assert fsr.image_file("a__b__where.jpg", tmp_path, pro_dir) == tmp_path / "a__b__where.jpg"
+    assert fsr.image_file("a__b__pro.jpg", tmp_path) == tmp_path / "a__b__pro.jpg"

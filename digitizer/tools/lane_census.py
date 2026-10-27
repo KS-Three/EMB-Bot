@@ -88,7 +88,9 @@ if str(DIGITIZER) not in sys.path:
 
 PLAN_FILE = REPO / "docs" / "superpowers" / "plans" / "2026-09-08-real-logo-lane-and-thin-strokes.md"
 DEFAULT_CACHE = DIGITIZER / "debug_out" / "lane_census"
-OUT_RENDERS = REPO / "docs" / "renders" / "lane-census-2026-10-25"
+#: the `sheet` JPGs carry the pro's render: local only (Kent 2026-10-27, "Stop new
+#: ones, keep old (Recommended)"; `tools.pro_renders`). The 2026-10-25 sheets in docs/ stay.
+OUT_RENDERS = REPO / "pro_renders" / "lane-census-2026-10-25"
 
 #: The Studio's colour budget (app/src/lib/project.js DEFAULT_DIGITIZE_PARAMS), which
 #: `tools.pro_pair.request` carries.
@@ -961,7 +963,7 @@ def cmd_sheet(a) -> int:
         tiles.append((["pro", f"{p['stitches']} st, {p['trims']} tr"],
                       stitchviz.render_design(pro_design, px_per_mm=ppm)))
         img = pro_pair._hstack([_label_lines(im, text) for text, im in tiles], gap=16)
-        dest = a.out / f"{slug}.jpg"
+        dest = a.out / f"{slug}_lanes_pro.jpg"
         cv2.imwrite(str(dest), img, [cv2.IMWRITE_JPEG_QUALITY, 80])
         print("wrote", dest, flush=True)
     return 0

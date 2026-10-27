@@ -50,9 +50,10 @@ def test_a_flag_that_is_on_is_neither_a_row_nor_stale(real):
     assert "lettering_columns_small_bold" not in {s["name"] for s in real["stale"]}
     assert _row(real, "border_by_size") is None
     # Kent's 2026-10-26 flips: once HELD (white) and OFF (the bay mouth, the
-    # grow-away), now ON
+    # grow-away), now ON; and his 2026-10-27 wave-5 flips
     for name in ("sew_enclosed_white", "small_text_bay_mouth", "small_text_reset_grow_away",
-                 "script_strokes"):
+                 "script_strokes", "bean_ink_outlined_letters", "text_cluster_part_touching",
+                 "lettering_columns_italic_lean"):
         assert _row(real, name) is None
         assert name not in {s["name"] for s in real["stale"]}
 

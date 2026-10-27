@@ -1,6 +1,6 @@
 ---
 name: garment-size-like-pro-2026-10-26
-description: The pro's per-garment placement boxes read from his stitch files - hat 113.5x64, left chest 96x64.5, beanie 94.5x56 - against our round-inch 127x57.2 / 101.6 sq / 114.3x63.5; built OFF as `proSized` in src/garments.js; median width error 11-16% -> 1-3%. Hat height 64 vs our 57.2 is a cap-frame (gate 1) question for Kent.
+description: The pro's per-garment placement boxes read from his stitch files - hat 113.5x64, left chest 96x76.5 (height raised 10-27 for Bridge LC, Kent), beanie 94.5x56 - against our round-inch 127x57.2 / 101.6 sq / 114.3x63.5; built OFF as `proSized` in src/garments.js; median width error 11-16% -> 1-3%. Hat height 64 vs our 57.2 is a cap-frame (gate 1) question for Kent.
 metadata:
   type: project
 ---
@@ -27,6 +27,16 @@ cap vs his 62-64) and the wide ones WIDER (127 vs 114.3).
 **Rows the boxes miss:** size variants (Becker hat/chest small), Fremont hat
 (he sews it 22% smaller), MFab hat +8%, Bridge LC (he sews a square 76.6 where
 the box gives 64.5), the two Gaulke beanies disagree (93.8 / 110.5 wide).
+
+**LC is 96 wide, 76.5 tall AND area 5,800 mm2, Kent 2026-10-27.** The Bridge census named Bridge LC the box's one real
+miss (he sews 76.6 x 76.5; the 64.5 box fitted 64.5 wide, -15.8%); Kent: "Raise LC box to 76.5 tall (Recommended)". The
+box alone sent Machine's 1.385:1 LC to 96.0 against his 89.5 (+7.3%), so Kent: "Measure an area rule first
+(Recommended)". The three LCs no width cap holds (Bridge, Machine, Becker large) are sewn at one area of OUR art's
+box at his width, w^2 / aspect = 5,868 / 5,784 / 5,749 (mean 5,800; each held out, the other two predict it within 1%);
+the width-limited ones sit at 95.2-96.7. `PRO_PLACEMENT_MM.left_chest.areaMm2`, `autoFitAreaMm2`, in `fitScale`
+and the app's `predictedFit`. Bridge 76.2, Machine 89.6, wide LCs 96; median |err| 0.84% -> 0.72%, rows over 5% 3 -> 2.
+Not explained, by this or any box: Becker's chest small (+25.5%, a smaller variant) and Gaulke Plowing's LC (+7.4%, art
+aspect from his file). Hats are NOT area-limited (his areas 3,580-6,328, height stops them at 64): no area on hats.
 
 **Traps:** a lane has no `scratch_kent` -- find the registry up the tree;
 the registry spells job folders differently from the zip ("To a T-Becker

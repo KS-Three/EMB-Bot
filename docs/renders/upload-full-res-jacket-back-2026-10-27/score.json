@@ -1,0 +1,27 @@
+{
+  "widthMm": 250,
+  "garment": "jacket_back",
+  "pxPerMm": 10,
+  "rows": [
+    {
+      "svg": "small_text_logo.svg",
+      "arm": "off",
+      "size": 1200,
+      "pxPerMm": 4.61,
+      "sendPx": "1200x600",
+      "secs": 600.3,
+      "error": "error: That design took too long to digitize and was stopped. Try a smaller or simpler image, or crop to just the logo.",
+      "bands": []
+    },
+    {
+      "svg": "small_text_logo.svg",
+      "arm": "on",
+      "size": 2800,
+      "pxPerMm": 10.75,
+      "sendPx": "2800x1400",
+      "secs": 800.9,
+      "error": "error: That design took too long to digitize and was stopped. Try a smaller or simpler image, or crop to just the logo.",
+      "bands": []
+    }
+  ]
+}
