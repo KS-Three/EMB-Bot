@@ -25,8 +25,13 @@ tagger's clusters to name them from).
 
 PER LINE, PER FILE (the same code on `ours.dst` and on the pro's file):
   locate     `small_text_floor_census.register` maps the box into the pro's
-             frame; `read_element` picks the line's own thread (the block with
-             the most thread in letter-like components) and its letter heights.
+             frame; `read_element` picks the line's own thread and its letter
+             heights. The block it reads is the one that reads as SATIN with
+             the most thread in letter-like components (`letter_block`,
+             2026-10-27): once white sews, the white FACES of hollow lettering
+             (Becker's) are a longer block than the black outline, and the
+             line read was the faces' fill (0.43 mm "columns"). A line with no
+             satin block keeps `read_element`'s own pick.
   columns    `column_harness.census` on the line's needle-down runs.
   stitches   needle penetrations in the line's letters.
   satin w    mean of `letter_band.crosses_xy` widths over those runs (mm).
@@ -57,6 +62,18 @@ PER LINE, PER FILE (the same code on `ours.dst` and on the pro's file):
              into the pro's frame by the pair's registration. The cell is
              the line p90s' mean weighted by run windows.
 
+PHOTO PREP. The board digitizes with the rembg worker's timeout at 900 s
+(`REMBG_TIMEOUT_S`) and with stage 1 pointed at the primary checkout's rembg
+venv (a lane has none, and without one every photo-routed job silently takes
+the classical route). Both go into the cache record and the board's meta, and
+a board in which any job rerouted (PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE) is
+refused (`--allow-reroute` writes it marked). The 10-25 baseline had two:
+mfab_hat and tires_hat_3d.
+
+THE NEXT QUEUE. The lines to look at first, from the board's own figures:
+ours' columns over 1.3x the pro's, cuts inside letters 2+ over his, or cc /
+reach lower for ours (`next_queue`); the board prints and saves it.
+
 THE CELL. A job x band cell pools its lines, and only the lines BOTH files have
 a value for, so ours and the pro's always cover the same lines (the cell says
 `n` of `of`). A figure that could not be read is `n/a` with its reason, never
@@ -79,6 +96,11 @@ file is not on the machine (Bridge Bar) is listed under the board, not scored.
     python -m tools.lettering_board --cache DIR [--set flag=value ...] [--only SLUG ...]
     python -m tools.lettering_board --compare A.json B.json
     python -m tools.lettering_board --propose SLUG --cache DIR
+    ... --dump DIR     the word crops and each file's `located` picture: look at them before trusting a cc
+
+A word's cc reads the artwork with its letterbox bars off (`trim_letterbox`: Gaulke's
+art is a phone screenshot, and read whole its ground is BLACK), and a pinned word the
+art itself does not read (Tires, a script) is `blind`, dropped with that reason.
 
 `--cache DIR` holds each pair's `ours.dst` + `ours.json` (`border_census`
 format; the board digitizes what is missing). A cache is for ONE flag set: it
@@ -92,6 +114,7 @@ import contextlib
 import datetime
 import json
 import math
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -272,6 +295,15 @@ def _fmt_side(s, key):
     return "n/a" if s is None or s.get("v") is None else METRICS[key][2].format(s["v"])
 
 
+def _flags_line(flags) -> str:
+    if not flags:
+        return ""
+    off = sorted(k for k, v in flags.items() if not v)
+    return ("  Layout and lettering switches as digitized "
+            f"({sum(1 for v in flags.values() if v)} ON, {len(off)} OFF; every name and value is in the JSON's "
+            f"`meta.flags`). OFF: {', '.join(off)}.")
+
+
 def _rembg_line(rembg) -> str:
     if not rembg:
         return "Photo prep: not recorded (an older board)."
@@ -290,7 +322,8 @@ def render_md(board):
           f"OCR: {meta.get('tesseract') or 'none (cc is n/a)'}. {_rembg_line(meta.get('rembg'))} "
           "Each cell is `ours / pro`, pooled over the lines both files have a figure for "
           "(`n/of`). Bands are the DRAWN letter height, so a line stays in its band whatever a flag does to "
-          "its sewn size. `n/a` is a figure that could not be read; the reason is under the board.", ""]
+          "its sewn size. `n/a` is a figure that could not be read; the reason is under the board."
+          + _flags_line(meta.get("flags")), ""]
     head = ["pair", "band", "lines"] + [METRICS[k][0] for k in METRICS]
     md += ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
     na = []
@@ -503,6 +536,30 @@ def rembg_from_primary() -> str:
     return "none"
 
 
+#: the config fields a board names: the layout, lettering, small-text, white and border switches
+FLAG_PREFIXES = ("lettering_", "small_text_", "sew_enclosed_white", "white_keyline", "border_", "script_", "bean_",
+                 "text_cluster", "monoline", "keyline", "enclosed_", "silhouette_", "pull_comp", "fine_bars",
+                 "satin_underlay", "cut_", "trim_", "pro_measured", "fill_")
+
+
+def effective_flags(sets: dict) -> dict:
+    """Every layout / lettering switch (a bool config field) as the Studio's request sets it, `sets` and the
+    rembg timeout laid over it: the flag set a board was digitized with, by NAME. 'Main defaults' says
+    nothing the day a flag flips; this is what `PipelineConfig` held."""
+    import dataclasses
+    from digitizer_core import PipelineConfig
+    from digitizer_service.app import _parse_config
+    from tools import pro_pair as pp
+    req = pp.request(100.0, "hat_front", {"photo_prep_background_removal_timeout_s": REMBG_TIMEOUT_S, **sets})
+    cfg = PipelineConfig(**_parse_config(json.dumps(req)))
+    return {f.name: getattr(cfg, f.name) for f in dataclasses.fields(cfg)
+            if isinstance(getattr(cfg, f.name), bool) and f.name.startswith(FLAG_PREFIXES)}
+
+
+def base_timeout(sets: dict) -> float:
+    return float(sets.get("photo_prep_background_removal_timeout_s", REMBG_TIMEOUT_S))
+
+
 def rerouted_slugs(cache: Path, slugs) -> list[str]:
     """The cached jobs whose photo prep rerouted: their `ours.json` carries PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE."""
     out = []
@@ -548,14 +605,15 @@ def prepare_cache(cache: Path, sets: dict, trust: bool = False):
         raise SystemExit(f"{cache} has files but no {CACHE_RECORD}: it does not say which flags made it. "
                          f"--trust-cache records it as made with {sets or 'main defaults'}.")
     if not rec.exists():
-        rec.write_text(json.dumps({"sets": sets, "git": git_sha(), "rembg_timeout_s":
-                                   sets.get("photo_prep_background_removal_timeout_s", REMBG_TIMEOUT_S)}, indent=1),
-                       encoding="utf-8")
+        rec.write_text(json.dumps({"sets": sets, "git": git_sha(), "rembg_timeout_s": base_timeout(sets),
+                                   "flags": effective_flags(sets)}, indent=1), encoding="utf-8")
 
 
-def digitize_missing(slugs, cache: Path, sets: dict, log=print) -> dict:
+def digitize_missing(slugs, cache: Path, sets: dict, log=print, allow_reroute: bool = False) -> dict:
     """Digitize every slug the cache lacks. -> {slug: why} for the ones that
-    could not be (a missing file is a listed gap, not a dead run)."""
+    could not be (a missing file is a listed gap, not a dead run). A job whose photo prep
+    rerouted (`REROUTED`) stops the run at once, its folder removed so the next run redoes it:
+    the board would be refused at the end anyway, an hour later."""
     failed = {}
     todo = [s for s in slugs if not (cache / s / "ours.json").exists()]
     if not todo:
@@ -571,6 +629,11 @@ def digitize_missing(slugs, cache: Path, sets: dict, log=print) -> dict:
                 continue
             (cache / slug / ENGINE_STAMP).write_text(git_sha(), encoding="utf-8")
             log(f"digitized {slug} at {info['width_mm']} mm in {info['secs']} s")
+            if REROUTED in (info.get("warnings") or []) and not allow_reroute:
+                shutil.rmtree(cache / slug)
+                raise SystemExit(f"{slug} took the classical route ({REROUTED}) at rembg timeout "
+                                 f"{base_timeout(sets):g} s: stopped, nothing published. Is the cutout venv "
+                                 f"found, is the machine too loaded? {len(failed)} pair(s) failed before it.")
     return failed
 
 
@@ -764,6 +827,23 @@ def trim_letterbox(rgb, alpha):
     return rgb[top:bot + 1], alpha[top:bot + 1]
 
 
+def pro_words_design(pro_file, garment: str, ground) -> dict:
+    """The pro's file as the word reader draws it. A DST carries no thread colours, so every block is
+    drawn in one black; a BEANIE's DST sews a garment-coloured KNOCKDOWN fill first (block 0, over the
+    whole logo's footprint: Gaulke's is 1,981 stitches over 94 x 43 mm, ProSeal's 2,007), and drawn
+    black it buries the lettering -- the pro's words were 'not located' or scored 0.00 on a picture
+    that is one black blob. That first block is given the ground's colour, so it vanishes on bare
+    cloth the way the knockdown does, and the rest stay black. Any other file is returned as read."""
+    from tools import word_legibility as wl
+    design = wl.load_pro_design(pro_file)
+    if Path(pro_file).suffix.lower() == ".dst" and garment == "beanie":
+        blocks = 1 + sum(1 for r in design["stitches"] if r["type"] == "color")
+        if blocks > 1:
+            design["colors"] = ([{"r": int(ground[0]), "g": int(ground[1]), "b": int(ground[2])}]
+                                + [{"r": 0, "g": 0, "b": 0}] * (blocks - 1))
+    return design
+
+
 def read_words(pair: Pair, spec: dict, info: dict, ours_dst: Path, words_wanted, ocr: bool, dump=None):
     """word -> {"ours": row or None, "pro": row or None, "why": reason} at the
     words' native size, through `word_legibility.read_job`. `dump`: a folder for
@@ -777,8 +857,10 @@ def read_words(pair: Pair, spec: dict, info: dict, ours_dst: Path, words_wanted,
         return {}
     ours = design_from_pes(ours_dst)
     ours["colors"] = [{"r": int(c[0]), "g": int(c[1]), "b": int(c[2])} for c in info["blocks"]] or ours["colors"]
+    from digitizer_core.glyph_read import ground_colour
     rgb, alpha = trim_letterbox(*load_source(pair.art))
-    res = wl.read_job(job, ours, wl.load_pro_design(pro_file), pinned, rgb, alpha, use_ocr=ocr,
+    res = wl.read_job(job, ours, pro_words_design(pro_file, pair.garment, ground_colour(rgb, alpha)), pinned, rgb, alpha,
+                      use_ocr=ocr,
                       dump=None if dump is None else Path(dump) / pair.slug, heights=(),
                       ours_width_mm=info["width_mm"])
     out = {}
@@ -923,11 +1005,12 @@ def build(slugs, cache: Path, sets: dict, ocr: bool = True, date=None, log=print
             gone = " (and the pro's file is not on this machine)" if resolve_pair(slug).pro is None else ""
             skipped.append({"slug": slug, "why": left_off.get(slug) or "no lettering lines pinned" + gone})
     rec = cache / CACHE_RECORD
-    timeout = json.loads(rec.read_text(encoding="utf-8")).get("rembg_timeout_s") if rec.exists() else None
+    held = json.loads(rec.read_text(encoding="utf-8")) if rec.exists() else {}
+    timeout = held.get("rembg_timeout_s")
     meta = {"date": date or datetime.date.today().isoformat(), "git": cache_engine(cache, slugs), "sets": sets,
             "tesseract": tesseract_version() if ocr else None, "pairs": list(slugs), "files": files,
             "rembg": {"timeout_s": timeout, "rerouted": rerouted_slugs(cache, slugs)},
-            "skipped": skipped}
+            "flags": held.get("flags"), "skipped": skipped}
     return {"meta": meta, "lines": lines, "cells": cells(lines), "next_queue": next_queue(lines)}
 
 
@@ -1026,7 +1109,7 @@ def main(argv=None) -> int:
         raise SystemExit(f"--only {unknown}: no lines pinned for that pair; pinned: {', '.join(reg)}")
     slugs = [s for s in reg if not a.only or s in a.only]
     prepare_cache(a.cache, sets, a.trust_cache)
-    failed = digitize_missing(slugs, a.cache, sets)
+    failed = digitize_missing(slugs, a.cache, sets, allow_reroute=a.allow_reroute)
     board = build(slugs, a.cache, sets, ocr=not a.no_ocr, date=a.date, failed=failed, dump=a.dump)
     check_not_rerouted(board, a.allow_reroute)
     day = board["meta"]["date"]

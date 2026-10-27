@@ -461,6 +461,69 @@ def test_a_job_whose_rembg_cutout_failed_is_named_and_a_board_with_one_is_refuse
     lb.check_not_rerouted({"meta": {}})                             # an older board did not record it
 
 
+def test_the_run_stops_at_the_first_job_that_rerouted_and_leaves_no_folder_to_trust(tmp_path, monkeypatch):
+    import contextlib
+
+    class FakeCensus:
+        def digitize_one(self, slug, cache):
+            _ours_json(cache, slug, [lb.REROUTED] if slug == "tires_hat_3d" else [])
+            return {"width_mm": 100.0, "secs": 1.0, "warnings": [lb.REROUTED] if slug == "tires_hat_3d" else []}
+
+    @contextlib.contextmanager
+    def fake_studio(_sets):
+        yield FakeCensus()
+    monkeypatch.setattr(lb, "_studio", fake_studio)
+    monkeypatch.setattr(lb, "rembg_from_primary", lambda: "primary")
+    with pytest.raises(SystemExit, match="tires_hat_3d took the classical route"):
+        lb.digitize_missing(["becker_hat_large", "tires_hat_3d", "mfab_hat"], tmp_path, {}, log=lambda *_: None)
+    assert (tmp_path / "becker_hat_large" / "ours.json").exists()          # the finished pair is kept
+    assert not (tmp_path / "tires_hat_3d").exists() and not (tmp_path / "mfab_hat").exists()
+    lb.digitize_missing(["tires_hat_3d"], tmp_path, {}, log=lambda *_: None, allow_reroute=True)
+    assert (tmp_path / "tires_hat_3d" / "ours.json").exists()              # an explicit override keeps it
+
+
+def _dst_with_blocks(path, n_blocks):
+    import pystitch
+    pat = pystitch.EmbPattern()
+    for b in range(n_blocks):
+        if b:
+            pat.add_command(pystitch.COLOR_CHANGE)
+        for k in range(6):
+            pat.add_stitch_absolute(pystitch.STITCH, 100 * b + 10 * k, 5 * k)
+    pat.add_command(pystitch.END)
+    pystitch.write_dst(pat, str(path))
+    return path
+
+
+def test_a_beanies_dst_knockdown_block_is_drawn_as_cloth_so_it_does_not_bury_the_lettering(tmp_path):
+    two = _dst_with_blocks(tmp_path / "beanie.dst", 2)
+    got = lb.pro_words_design(two, "beanie", (250.4, 251.0, 249.9))
+    assert got["colors"] == [{"r": 250, "g": 251, "b": 249}, {"r": 0, "g": 0, "b": 0}]    # block 0 = the ground, the rest black
+    three = lb.pro_words_design(_dst_with_blocks(tmp_path / "b3.dst", 3), "beanie", (255, 255, 255))
+    assert [c["r"] for c in three["colors"]] == [255, 0, 0]
+    # a hat's or a chest's DST has no knockdown: read exactly as `load_pro_design` returns it
+    from tools import word_legibility as wl
+    for garment in ("hat_front", "left_chest"):
+        assert lb.pro_words_design(two, garment, (255, 255, 255))["colors"] == wl.load_pro_design(two)["colors"]
+    one = _dst_with_blocks(tmp_path / "one.dst", 1)                                      # one block: nothing to bury it
+    assert lb.pro_words_design(one, "beanie", (255, 255, 255))["colors"] == wl.load_pro_design(one)["colors"]
+
+
+def test_the_board_records_the_flag_set_by_name_and_prints_what_is_off():
+    flags = lb.effective_flags({})
+    assert flags["sew_enclosed_white"] is True and flags["lettering_columns_corner_fold"] is True
+    assert flags["cut_every_jump"] is False and all(isinstance(v, bool) for v in flags.values())
+    assert lb.effective_flags({"cut_every_jump": True})["cut_every_jump"] is True        # `--set` shows
+    line = lb._flags_line({"a_on": True, "b_off": False, "c_off": False})
+    assert "(1 ON, 2 OFF" in line and "OFF: b_off, c_off." in line
+    assert lb._flags_line(None) == ""                                                    # an older board names none
+
+
+def test_the_cache_record_carries_the_flags_it_was_digitized_with(tmp_path):
+    lb.prepare_cache(tmp_path, {})
+    assert json.loads((tmp_path / lb.CACHE_RECORD).read_text())["flags"]["sew_enclosed_white"] is True
+
+
 def test_the_header_names_the_rembg_timeout_and_a_reroute():
     assert "timeout 900 s; no job rerouted" in lb._rembg_line({"timeout_s": 900.0, "rerouted": []})
     bad = lb._rembg_line({"timeout_s": 900.0, "rerouted": ["tires_hat_3d"]})
