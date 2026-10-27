@@ -20,7 +20,7 @@ beforeAll(async () => {
 });
 
 test("effectiveHoop defaults to the per-garment suggestion when hoopId is null", () => {
-  // left_chest auto-fits the pro's 96 x 64.5 mm box (2026-10-26, Kent: "64 mm
+  // left_chest auto-fits the pro's 96 x 76.5 mm box (2026-10-26; 76.5 tall since 2026-10-27, Kent: "64 mm
   // (2.5 in) or more"), inside the 4x4 hoop's 100 mm field; its 4x4in (101.6mm)
   // inch box, a hair over that field, stepped the suggestion up to 5x7.
   const r = effectiveHoop({ garmentId: "left_chest", hoopId: null });

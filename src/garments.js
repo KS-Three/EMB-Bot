@@ -48,13 +48,30 @@ const units =
   // height (56) is his; its width is the box his own designs fit, because his
   // two wide beanies disagree (93.8 and 110.5 mm). A garment with no entry
   // keeps its box.
+  // The left chest is a width cap, a height cap AND an area cap (2026-10-27).
+  // Kent, on the census's one LC miss, Bridge's square logo (he sews it
+  // 76.6 x 76.5; a 64.5 box fitted it 64.5 wide, -15.8%): "Raise LC box to
+  // 76.5 tall (Recommended)". A 96 x 76.5 box alone then over-fits Machine's
+  // 1.385:1 LC (89.3 -> 96.0 wide against his 89.5, +7.3%), and Kent ruled
+  // "Measure an area rule first (Recommended)". Of his 7 left-chest designs,
+  // the three that no width cap holds -- Bridge, Machine, Becker's large --
+  // are sewn at the same area of OUR artwork's box at his width, 5,868 /
+  // 5,784 / 5,749 mm2 (w^2 / aspect; mean 5,800), and the ones that are
+  // width-limited sit at 95.2-96.7 wide. So the fit is min(96 wide, 76.5
+  // tall, `areaMm2` 5,800): Bridge 76.2 (his 76.6), Machine 89.6 (89.5),
+  // every wide LC at 96. Held out one at a time, the area predicts the third
+  // within 1% (-0.9 / +0.2 / +0.3). Two designs it does not explain, and no
+  // box does either: Becker's "chest small" (76.5 wide, a variant he sized
+  // smaller) and Gaulke Plowing's LC (89.4 against 96, +7.4%). Hats are not
+  // area-limited (his areas run 3,580-6,328 and the height stops them at
+  // 64), so only the left chest has an `areaMm2`.
   // DEFAULT ON since 2026-10-26. Kent, on the hat's 64 mm height against his
   // cap frames: "64 mm (2.5 in) or more" -- his frames sew it (gate 1 for hat
   // height, settled by his frames). `{ proSized: false }` is the round-inch
   // box as it was.
   const PRO_PLACEMENT_MM = {
     hat_front: { w: 113.5, h: 64.0 },
-    left_chest: { w: 96.0, h: 64.5 },
+    left_chest: { w: 96.0, h: 76.5, areaMm2: 5800 },
     beanie: { w: 94.5, h: 56.0 },
   };
 
@@ -63,6 +80,13 @@ const units =
     return pro
       ? { w: pro.w, h: pro.h }
       : { w: inToMm(garment.widthIn), h: inToMm(garment.heightIn) };
+  }
+
+  // The area cap on the auto-fit (mm2 of the artwork's bounding box), or Infinity: only
+  // the pro's left chest has one, and `{ proSized: false }` never does.
+  function autoFitAreaMm2(garment, opts) {
+    const pro = opts && opts.proSized === false ? null : PRO_PLACEMENT_MM[garment.id];
+    return pro && pro.areaMm2 > 0 ? pro.areaMm2 : Infinity;
   }
 
   function autoFitBoxMm(garment, opts) {
@@ -76,7 +100,8 @@ const units =
 
   function fitScale(bboxWmm, bboxHmm, garment, opts) {
     const { w: boxW, h: boxH } = autoFitBoxMm(garment, opts);
-    const scale = Math.min(boxW / bboxWmm, boxH / bboxHmm);
+    const scale = Math.min(boxW / bboxWmm, boxH / bboxHmm,
+      Math.sqrt(autoFitAreaMm2(garment, opts) / (bboxWmm * bboxHmm)));
     return {
       scale,
       targetWmm: bboxWmm * scale,
@@ -147,6 +172,7 @@ const units =
     getGarment,
     fitScale,
     autoFitBoxMm,
+    autoFitAreaMm2,
     placementBoxMm,
     PRO_PLACEMENT_MM,
     HOOP_FIT_MARGIN_MM,
