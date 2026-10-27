@@ -136,14 +136,22 @@ INK_MIN_PART_MM2 = 0.15
 
 # ----------------------------------------------------------- the pen strokes
 #: two arms at a junction whose directions continue within this many degrees
-#: of straight are one pen stroke
-WELD_MAX_DEG = 40.0
-#: a stroke turning more than this within one stroke width is a cusp: two
-#: strokes, the pro's "corner" cut
-CUSP_DEG = 75.0
+#: of straight are one pen stroke: the pen carries on through a junction and
+#: round a bend. The pro's columns hand over at a median 1 deg on Tires, 5 on
+#: To a T's "achine", 23 on Bridge LC (`tools/script_flow.py`); welded at 40
+#: ours turned 47-75 deg at the hand-over, at 60 (with `CUSP_DEG` 120) 3 /
+#: 22 / 20. At 90 Tires' junctions left 22 mm2 of the word to patches
+WELD_MAX_DEG = 60.0
+#: a stroke turning more than this within one stroke width is a cusp -- the
+#: pen reversing -- and is two strokes; anything gentler is one, its crosses
+#: turned round the bend by `CROSS_SIGMA_HALVES`
+CUSP_DEG = 120.0
 #: a cross reaches the outline, but no further from its station than this
-#: many of its stroke's local drawn half-widths (a junction blob is not a stroke)
-REACH_HALVES = 1.5
+#: many of its stroke's local drawn half-widths (a junction blob is not a
+#: stroke). 2.0, not 1.5: a cross turned round a bend reaches the outer corner
+#: on the diagonal (1.41 half-widths at 90 deg, more beyond); at 1.5 the
+#: bends left Tires 22 mm2 for patches, at 2.0 10
+REACH_HALVES = 2.0
 #: an arm's direction is read between these distances from its node, in
 #: half-widths: past the junction blob, inside the arm
 _ARM_FROM, _ARM_TO = 1.0, 3.0
@@ -164,8 +172,18 @@ PATCH_MIN_MM2 = 0.15
 PATCH_SLIVER_MM = 0.1
 #: ... each cross running on this far under the strokes round it
 PATCH_TUCK_MM = 0.3
-#: smoothing passes on a stroke's spine before it is stationed
-_SMOOTH_PASSES = 3
+#: the stations sit on the skeleton Gaussian-smoothed along its length with
+#: this many drawn half-widths of sigma (`smooth_spine`) -- little, so a cross
+#: keeps the stroke's middle and reaches both edges ...
+SPINE_SIGMA_HALVES = 0.75
+#: ... and each cross lies square to the pen path smoothed this much, so the
+#: crosses turn as a hand turns them. Read off the pro's own centrelines
+#: (`tools/script_flow.py`, kinks over 35 deg within 1 mm, per 10 mm): his
+#: 0.7 / 1.3 / 2.4 / 0.8 on Bridge hat / LC / Tires / To a T hat; ours at 1
+#: half-width 3.1 / 3.4 / 2.5 / 1.8, at 2: 2.1 / 1.8 / 1.0 / 1.4 -- the
+#: smallest sigma that brings every file near his
+CROSS_SIGMA_HALVES = 2.0
+_SPINE_STEP_MM = 0.1
 #: crosses are cast this many times per pitch along the spine, then kept one
 #: per pitch of the faster rail
 _STATION_SUBSTEPS = 4
@@ -615,13 +633,41 @@ def pen_strokes(grid: _Grid) -> tuple[list[PenStroke], float]:
     return out, half
 
 
+def smooth_spine(pts: list, sigma_mm: float, closed: bool) -> list[tuple[float, float]]:
+    """The pen's path through a skeleton polyline: resampled every
+    `_SPINE_STEP_MM` and Gaussian-smoothed along its arc length with
+    `sigma_mm` (wrapped round a closed stroke, the ends held for an open
+    one), so the crosses cast square to it turn as a hand turns them rather
+    than with every pixel step of the medial axis."""
+    from scipy.ndimage import gaussian_filter1d
+
+    from .stage6_satin import _resample
+    pts = list(pts)
+    if closed and len(pts) > 2 and math.dist(pts[0], pts[-1]) > 1e-9:
+        pts.append(pts[0])
+    L = _length(pts)
+    if L <= 0 or len(pts) < 3 or sigma_mm <= 0:
+        return pts
+    n = max(3, int(math.ceil(L / _SPINE_STEP_MM)) + 1)
+    a = np.asarray(_resample(pts, n), np.float64)
+    if closed:
+        a = a[:-1]
+    sig = sigma_mm / (L / (n - 1))
+    mode = "wrap" if closed else "nearest"
+    xs = gaussian_filter1d(a[:, 0], sig, mode=mode)
+    ys = gaussian_filter1d(a[:, 1], sig, mode=mode)
+    out = list(zip(xs.tolist(), ys.tolist()))
+    if closed:
+        out.append(out[0])
+    return out
+
+
 def _split_cusps(s: PenStroke, half: float) -> list[PenStroke]:
     """Smooth a stroke, then split it wherever it turns more than
     `CUSP_DEG` within one stroke width (2 half-widths each side), at the
     sharpest point of each such stretch, keeping pieces of at least
     `_MIN_PIECE_HALVES`. A closed stroke is smoothed and kept whole."""
-    from .stage6_satin import _smooth
-    pts = _smooth(s.spine, _SMOOTH_PASSES, s.closed)
+    pts = smooth_spine(s.spine, SPINE_SIGMA_HALVES * half, s.closed)
     n = len(pts)
     if n < 5 or s.closed:
         return [PenStroke(pts, s.free_start, s.free_end, s.closed)]
@@ -714,6 +760,11 @@ def _stations(poly: Polygon, stroke: PenStroke, half: float, pitch_mm: float,
     step = pitch_mm / _STATION_SUBSTEPS
     n = max(2, int(round(L / step)) + 1)
     pts = _resample(spine, n)
+    # the cross DIRECTION comes off the pen's smoothed path, the station
+    # itself stays on the stroke's middle: smoothing the positions as hard
+    # pulled the path inside every bend and left 56-116 mm2 of a word for
+    # patches to cover
+    dirs = _resample(smooth_spine(spine, CROSS_SIGMA_HALVES * half, stroke.closed), n)
     local = [grid.half_at(p) for p in pts]
     win = max(1, int(round(3.0 * half / step)))
     ref = []
@@ -726,9 +777,9 @@ def _stations(poly: Polygon, stroke: PenStroke, half: float, pitch_mm: float,
         if not poly.covers(Point(p)):
             continue
         if stroke.closed:
-            a, b = pts[(i - m) % (n - 1)], pts[(i + m) % (n - 1)]
+            a, b = dirs[(i - m) % (n - 1)], dirs[(i + m) % (n - 1)]
         else:
-            a, b = pts[max(0, i - m)], pts[min(n - 1, i + m)]
+            a, b = dirs[max(0, i - m)], dirs[min(n - 1, i + m)]
         tx, ty = b[0] - a[0], b[1] - a[1]
         tn = math.hypot(tx, ty)
         if tn < 1e-9:
@@ -982,3 +1033,4 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     report["script_hops_buried"] = bury_hops(runs, trim_at_mm)
     report["jumps"] = sum(1 for r in runs[1:] if r.jump)
     return runs, report
+
