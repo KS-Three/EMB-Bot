@@ -3264,6 +3264,25 @@ class PipelineConfig:
     # re-set as it was, byte for byte; `tests/conftest.py` PRE_FLIP pins it
     # False. Tests: `tests/test_small_text_bays.py`.
     small_text_bay_mouth: bool = True
+    # The re-set grows a line AWAY from its near neighbour, widened by its
+    # traced stroke (`small_text._traced_stroke` / `_near_side` /
+    # `_grow_away`, W4-04, #1113; built OFF 2026-10-26 as
+    # `cfg.extra["small_text_reset_grow_away"]`). The widening read the
+    # tagger's stale stroke tag, so ProSeal's retraced letters sewed
+    # 0.71-0.78 mm against 0.85; ON, they widen by their own stroke
+    # (0.81-0.82). A line whose art leaves a neighbour under 2 mm away holds
+    # the edge facing it (moving it at most 0.5 mm, the pro's 0.07-0.46) and
+    # grows the other way, the design edge giving by the whole growth: the
+    # ProSeal hat tagline holds its bar edge like the pro, the beanie's
+    # re-set goes x1.15 -> x1.56 (pro x1.49), Fremont's date no longer
+    # straddles THE. No clearance constant moved. Acts only while the re-set
+    # (`small_text_cap_mm`) is set. Layout (ruling 2026-10-22: judged in the
+    # preview). **ON since 2026-10-26, Kent's flip** ("Flip ON
+    # (Recommended)"), promoted from `cfg.extra` to a field so the default
+    # can be ON. False is the re-set as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP pins it False. Tests:
+    # `tests/test_small_text_grow_away.py`.
+    small_text_reset_grow_away: bool = True
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
@@ -5641,6 +5660,8 @@ class PipelineConfig:
     # ours lifted loop to loop. Layout, judged in the preview. False is the
     # loops as they were, byte for byte. Set for a plan by
     # `stage6_border.loop_chain_scope`. Tests: `tests/test_keyline_loop_chain.py`.
+    # ON for MFab-type art through `white_keyline_art.RECIPE` (Kent
+    # 2026-10-27: "MFab gate only (Recommended)"); OFF for all other art.
     keyline_loop_chain: bool = False
     # With `silhouette_underfill`, a ring that hosts its own under-fill gets
     # the fill's outer edge sewn as one closed satin loop, after the fill and
@@ -5665,10 +5686,13 @@ class PipelineConfig:
     # the Column lane's emitter, travel buried under strokes to come. The pro
     # sews each such word that way (6-7 runs per word, square share 0.77-0.87);
     # the satin tier welded Bridge's fused baseline into one 22.8 mm stroke.
-    # Width stays the drawn stroke plus the fabric's pull: the pro's thinner
-    # script needs a smaller pull, a gate-1 constant not built here. Layout,
-    # judged in the preview (Kent, 2026-10-22). False is the plan as it was,
-    # byte for byte. Tests: `tests/test_script_strokes.py`.
+    # The crosses turn along a smoothed pen path and hand over between columns
+    # with little turn (Kent 2026-10-26: "the cursive needs to flow"; read by
+    # `tools/script_flow.py`). Width stays the drawn stroke plus the fabric's
+    # pull: the pro's thinner script needs a smaller pull, a gate-1 constant
+    # not built here. Layout, judged in the preview (Kent, 2026-10-22). False
+    # is the plan as it was, byte for byte. Tests: `tests/test_script_strokes.py`,
+    # `tests/test_script_flow.py`.
     script_strokes: bool = False
 
     def __post_init__(self) -> None:

@@ -32,7 +32,7 @@ from digitizer_core.regions import Region, apply_shape_edits, match_shape_ids
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import sequence
 
-from .conftest import TESTDATA, cfg
+from .conftest import TESTDATA, cfg, frozen_cfg
 from .test_pushcomp import GOLDEN_FLAG_OFF
 
 ART = TESTDATA / "logo_whitebg.png"
@@ -176,8 +176,8 @@ def test_noop_edits_are_byte_identical_to_the_shipped_engine():
     # ... and `sew_enclosed_white=False` with it (ON since 2026-10-26), same reason
     noop = dict(deleted_shape_ids=[], shape_overrides={}, edge_cap="none",
                 sew_enclosed_white=False)
-    stages = run_stages(ART, cfg(border_by_size=False, **noop))
-    plan = plan_stitches(stages, cfg(garment_id="left_chest", border_by_size=False, **noop))
+    stages = run_stages(ART, frozen_cfg(border_by_size=False, **noop))
+    plan = plan_stitches(stages, frozen_cfg(garment_id="left_chest", border_by_size=False, **noop))
     blob = export_dst(plan)
     want_hash, want_n, want_bytes = GOLDEN_FLAG_OFF[("logo_whitebg.png", "left_chest")]
     got_n = sum(len(r.points) for b in plan.blocks for r in b.runs)

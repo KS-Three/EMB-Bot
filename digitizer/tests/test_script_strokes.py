@@ -4,9 +4,11 @@
 The fixtures: LOOPS, a joined cursive line (a prolate cycloid, three loops,
 0.9 mm pen) -- what the door must take; a FRAME (a ring round other art), a
 BAR and a SWOOSH -- what it must refuse. CROSS, two strokes crossing: the pen
-goes THROUGH a crossing, one stroke each. KNEE, a stroke turning 120 deg: a
-cusp, two strokes. OFF is byte-identical (md5 pinned on main's engine,
-27636c98).
+goes THROUGH a crossing, one stroke each. KNEE, a stroke turning back on
+itself (150 deg): a cusp, two strokes; ELL, a 90 deg bend: one stroke, the
+pen goes round it. ARC, a half circle: its crosses turn smoothly (Kent
+2026-10-26: "the cursive needs to flow"). OFF is byte-identical (md5 pinned
+on main's engine, 27636c98).
 """
 from __future__ import annotations
 
@@ -37,7 +39,11 @@ FRAME = box(0, 0, 30, 12).difference(box(1.2, 1.2, 28.8, 10.8))
 BAR = box(0, 0, 30, 3)
 SWOOSH = LineString([(x * 0.5, 3 * math.sin(x * 0.5 / 6)) for x in range(80)]).buffer(0.4)
 CROSS = LineString([(0, 0), (12, 12)]).buffer(0.7).union(LineString([(0, 12), (12, 0)]).buffer(0.7))
-KNEE = LineString([(0, 0), (8, 0), (4, 6.9)]).buffer(0.6, join_style=2)
+KNEE = LineString([(0, 0), (8, 0), (8 - 8 * math.cos(math.radians(30)), 8 * math.sin(math.radians(30)))]
+                  ).buffer(0.6, join_style=2)
+ELL = LineString([(0, 0), (10, 0), (10, 10)]).buffer(0.8, join_style=2)
+ARC = LineString([(8 * math.cos(math.radians(t)), 8 * math.sin(math.radians(t)))
+                  for t in range(0, 181, 3)]).buffer(0.9)
 
 #: the OFF md5s of `_runs(...)`, captured on main's engine (27636c98)
 OFF_MD5 = {"loops": "ad8bbbd5365e853c43fd8334b6c93028", "swoosh": "f9bde1428c3ad733da644eff8083ee3d"}
@@ -106,6 +112,22 @@ def test_the_pen_goes_through_a_crossing():
 def test_a_cusp_is_two_strokes():
     strokes, _half = SS.pen_strokes(SS.polygon_grid(KNEE))
     assert len(strokes) == 2
+
+
+def test_the_pen_goes_round_a_bend():
+    strokes, _half = SS.pen_strokes(SS.polygon_grid(ELL))
+    assert len(strokes) == 1
+
+
+def test_crosses_turn_smoothly_round_a_curve():
+    cols, _strokes, _grid = SS.script_columns(ARC, 0.4)
+    assert len(cols) == 1
+    angs = [math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])) % 180.0 for a, b in cols[0].stations]
+    turns = [((q - p + 90.0) % 180.0) - 90.0 for p, q in zip(angs, angs[1:])]     # signed, folded
+    assert max(abs(t) for t in turns) < 6.0     # no jump between neighbouring crosses
+    # and they turn WITH the arc: 180 deg less the smoothing's flat ends (~13 each)
+    assert 140.0 <= abs(sum(turns)) <= 190.0
+    assert sum(1 for p, q in zip(turns, turns[1:]) if p * q < -1.0) <= 3     # one way, not jitter
 
 
 def test_crosses_are_square_to_the_stroke_and_reach_its_drawn_width():

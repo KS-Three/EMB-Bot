@@ -31,6 +31,8 @@ from digitizer_core.stage6_streamline import (
 from digitizer_core.stage7_sequence import sequence
 from digitizer_core.threads import CHART
 
+from .conftest import frozen_cfg
+
 GRAY = 100                      # uniform mid-dark: the analytic d_sep applies
 DARKNESS = 1.0 - GRAY / 255.0
 
@@ -84,9 +86,9 @@ def test_d_sep_default_is_the_forty_weight_curve_and_only_the_dark_end_moves():
 ])
 def test_forty_weight_run_stream_md5_is_pinned(gray, pin):
     src = _source(gray)
-    default, _ = streamline_fill(_disc_region(), src, PipelineConfig())
-    explicit, _ = streamline_fill(_disc_region(), src, PipelineConfig(thread_wt=40))
-    kw, _ = streamline_fill(_disc_region(), src, PipelineConfig(), thread_wt=40)
+    default, _ = streamline_fill(_disc_region(), src, frozen_cfg())
+    explicit, _ = streamline_fill(_disc_region(), src, frozen_cfg(thread_wt=40))
+    kw, _ = streamline_fill(_disc_region(), src, frozen_cfg(), thread_wt=40)
     assert _md5(default) == _md5(explicit) == _md5(kw) == pin
 
 

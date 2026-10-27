@@ -4,15 +4,19 @@ Kent's ruling, 2026-10-26: "Measure, then build OFF (Recommended)". A script
 word sewn one satin column per pen stroke, crosses square to the stroke, the
 pen path read on the artwork's own ink. Engine `bde0f145` (this branch merged
 with main), each job built once and planned OFF and ON from the same
-generation; the pro's file beside it, each drawn in its own frame (crop by mm
-from each design's own top-left; the pro's DST has no colours).
+generation; the pro's file read beside it for the numbers below.
+
+The pictures are OURS only, OFF | ON: the repo is public, and no render of
+the pro's stitch file is committed. Re-rendered 2026-10-27 (#1135) without
+the pro's panel they first carried, on engine `d7eaeb33` with #1119's module
+swapped in for ON, so they can differ in detail from the numbers' engine.
 
 | file | job | crop |
 |---|---|---|
-| `bridge_hat_off_on_pro.jpg` | Bridge hat, 63.3 mm | 25 px/mm |
-| `bridge_lc_off_on_pro.jpg` | Bridge LC, 76.6 mm | 22 px/mm |
-| `tires_off_on_pro.jpg` | Tires hat, 114.3 mm ("ires" and the T's stem) | 12 px/mm, ours drawn grey |
-| `machine_hat_off_on_pro.jpg` | To a T Machine hat, 89.5 mm | 20 px/mm, ours drawn grey |
+| `bridge_hat_off_on.jpg` | Bridge hat, 63.3 mm | 25 px/mm |
+| `bridge_lc_off_on.jpg` | Bridge LC, 76.6 mm | 22 px/mm |
+| `tires_off_on.jpg` | Tires hat, 114.3 mm ("ires" and the T's stem) | 12 px/mm, drawn grey |
+| `machine_hat_off_on.jpg` | To a T Machine hat, 89.5 mm | 12 px/mm, drawn grey |
 
 ## The word, one reader for all three files (`tools/script_census.py`, the word's colour block)
 

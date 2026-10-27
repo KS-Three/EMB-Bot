@@ -27,7 +27,7 @@ from digitizer_core import PipelineConfig, digitize
 from digitizer_core import textcluster as tc
 from digitizer_core.regions import Region
 
-from .conftest import TESTDATA
+from .conftest import FLAT_GOLDEN_MD5, TESTDATA
 
 
 def _region(sid: str, poly) -> Region:
@@ -179,11 +179,7 @@ def test_the_flag_is_off_and_the_pipeline_passes_nothing_when_off():
     assert '**({"part_touching": True} if cfg.text_cluster_part_touching else {})' in src
 
 
-GOLDEN_MD5 = {
-    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
-    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
-    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
-}
+GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
 
 def _md5(coords) -> str:

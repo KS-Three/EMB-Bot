@@ -32,7 +32,14 @@ ART = TESTDATA / "photo" / "enthusiast_logo.png"
 @lru_cache(maxsize=None)
 def _enthusiast():
     """One digitize, reused; every test here only reads it (or deep-copies
-    the plan before touching it)."""
+    the plan before touching it).
+
+    On the shipped defaults, `small_text_reset_grow_away` ON (#1127) included:
+    ENTERPRISES INC. then holds its top edge 0.13 mm nearer ENTHUSIAST, whose
+    sewn underside filled 0.43 mm of the tagline's crop until each cluster
+    was cropped without the other clusters' ink (`legibility._mask_outside`'s
+    `others`). Before that, Linux tesseract read the tagline as "Sr eee"
+    (0.316) and #1127 pinned the flip OFF here."""
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
     result, plan = digitize(ART, cfg)
     return result, plan
