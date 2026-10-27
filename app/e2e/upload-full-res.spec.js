@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 const SERVICE_URL = "http://127.0.0.1:8721";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIX = (name) => path.join(__dirname, "fixtures", name);
-const SVG = FIX("small_text_logo.svg");        // viewBox 600 x 300
+const SVG = FIX("small_text_logo.svg");        // viewBox 1200 x 400
 const ROTATED = FIX("rotated_exif6.jpg");      // upright 2,520 x 1,400, stored 1,400 x 2,520
 const TWIN = FIX("rotated_exif6_upright.png"); // the same pixels upright, lossless (tools/make-upload-fixtures.mjs)
 const KEY = "embbot-upload-full-res";
@@ -186,9 +186,9 @@ test.describe("switch OFF (today): the three canvas-path kinds send the 1,200-px
   test("an SVG is sent as the 1,200-px canvas PNG and nothing is stored", async ({ context }) => {
     test.setTimeout(180_000);
     const { page, sent, stored } = await sendOf(context, SVG, { on: false });
-    expect(sent).toMatchObject({ name: "art.png", type: "image/png", png: true, width: 1200, height: 600 });
-    expect(sent.ink).toBeGreaterThan(0.11);   // measured 0.127: the lettering and frame are drawn
-    expect(sent.ink).toBeLessThan(0.15);
+    expect(sent).toMatchObject({ name: "art.png", type: "image/png", png: true, width: 1200, height: 400 });
+    expect(sent.ink).toBeGreaterThan(0.065);  // measured 0.075: the lettering and frame are drawn
+    expect(sent.ink).toBeLessThan(0.085);
     expect(stored).toEqual([]);
     await page.close();
   });
@@ -205,17 +205,17 @@ test.describe("switch OFF (today): the three canvas-path kinds send the 1,200-px
 test.describe("switch ON: they send an upright render at up to the service's 2,800-px decode", () => {
   test.beforeEach(() => test.skip(!serviceUp, skipReason));
 
-  test("an SVG is stored and sent as a 2,800 x 1,400 PNG; the preview stays 1,200 px", async ({ context }) => {
+  test("an SVG is stored and sent as a 2,800 x 933 PNG; the preview stays 1,200 px", async ({ context }) => {
     test.setTimeout(180_000);
     const { page, sent, stored, previewPx } = await sendOf(context, SVG, { on: true });
-    expect(sent).toMatchObject({ type: "image/png", png: true, width: 2800, height: 1400 });
-    expect(sent.ink).toBeGreaterThan(0.11);   // measured 0.128: the same art, not a blank canvas
-    expect(sent.ink).toBeLessThan(0.15);
+    expect(sent).toMatchObject({ type: "image/png", png: true, width: 2800, height: 933 });
+    expect(sent.ink).toBeGreaterThan(0.065);  // measured 0.074: the same art, not a blank canvas
+    expect(sent.ink).toBeLessThan(0.085);
     expect(stored).toHaveLength(1);
-    expect(stored[0]).toMatchObject({ type: "image/png", name: "small_text_logo.png", png: true, width: 2800, height: 1400 });
+    expect(stored[0]).toMatchObject({ type: "image/png", name: "small_text_logo.png", png: true, width: 2800, height: 933 });
     expect(stored[0].size).toBe(sent.size);
     // The localStorage preview is unchanged: still the 1,200-px canvas.
-    expect(previewPx).toEqual([1200, 600]);
+    expect(previewPx).toEqual([1200, 400]);
     await page.close();
   });
 

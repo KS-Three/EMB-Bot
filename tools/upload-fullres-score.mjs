@@ -27,11 +27,14 @@
 // (app/node_modules). A run is a service digitize: take the wave CPU lock first.
 //
 // Usage:
-//   node tools/upload-fullres-score.mjs [svg ...] [--width-mm 100] [--garment left_chest]
+//   node tools/upload-fullres-score.mjs [svg ...] [--width-mm 250] [--garment jacket_back] [--keep-white]
 //        [--px-per-mm 10] [--out docs/renders/upload-full-res-2026-10-27]
 //        [--only off|on] [--sizes 1200,2800] [--cache <dir>] [--from-cache]
 //   Every digitized design is cached under --cache (default: the OS temp dir);
 //   --from-cache re-scores from those files without touching the service.
+//   250 mm on a jacket back is the case the full-resolution upload exists for: the
+//   1,200-px preview is 4.8 px/mm there, under the 8 px/mm work grid. At 100 mm it is
+//   already above it and the two sends digitize alike (measured, see the memory note).
 //   default svgs: app/e2e/fixtures/small_text_logo.svg, app/e2e/fixtures/vector_logo.svg
 import "./_help.mjs";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -187,7 +190,7 @@ const PAGE = {
     let prev = null;
     for (const s of stitches) {
       const x = ox + s.x / 10 * S * scale, y = oy - s.y / 10 * S * scale;
-      if (s.type === "stitch" && prev) { ctx.moveTo(prev[0], prev[1]); ctx.lineTo(x, y); }
+      if (s.type === "stitch" && prev && !s.skip) { ctx.moveTo(prev[0], prev[1]); ctx.lineTo(x, y); }
       prev = [x, y];
     }
     ctx.stroke();
@@ -254,12 +257,13 @@ const PAGE = {
 const fmt = (n, d = 2) => (n == null ? "–" : Number(n).toFixed(d));
 
 function parseArgs(argv) {
-  const o = { svgs: [], widthMm: 100, garment: "left_chest", S: 10, out: "docs/renders/upload-full-res-2026-10-27", sizes: [1200, 2800], only: null,
+  const o = { svgs: [], widthMm: 250, garment: "jacket_back", keepWhite: false, S: 10, out: "docs/renders/upload-full-res-2026-10-27", sizes: [1200, 2800], only: null,
     cache: path.join(os.tmpdir(), "upload-fullres-score-cache"), fromCache: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--width-mm") o.widthMm = +argv[++i];
     else if (a === "--garment") o.garment = argv[++i];
+    else if (a === "--keep-white") o.keepWhite = true;
     else if (a === "--px-per-mm") o.S = +argv[++i];
     else if (a === "--out") o.out = argv[++i];
     else if (a === "--sizes") o.sizes = argv[++i].split(",").map(Number);
@@ -282,7 +286,10 @@ async function main() {
   const { chromium } = require("playwright");
 
   const el = defaultDigitizedElement("e1");
-  el.params = { ...el.params, target_width_mm: opts.widthMm };
+  // The white field inside the frame is paper in the SVG and a large fill in the sewn
+  // file (sew_enclosed_white, the Studio's default); scoring the ink does not need it
+  // and it multiplies the digitize time, so it is off unless --keep-white.
+  el.params = { ...el.params, target_width_mm: opts.widthMm, sew_enclosed_white: opts.keepWhite };
   const cfg = buildDigitizeConfig(el, { ...defaultProject(), garmentId: opts.garment });
   const outDir = path.resolve(ROOT, opts.out);
   mkdirSync(outDir, { recursive: true });
@@ -329,7 +336,7 @@ async function main() {
         const b64 = await call(PAGE.send, { w: dim.w, h: dim.h, high: size !== 1200 });
         const image = size === 1200 ? b64 : { bytes: new Uint8Array(Buffer.from(b64, "base64")), type: "image/png", name: `${name}.png` };
         mkdirSync(opts.cache, { recursive: true });
-        const cacheFile = path.join(opts.cache, `${name}__${arm}__${opts.widthMm}mm_${opts.garment}.json`);
+        const cacheFile = path.join(opts.cache, `${name}__${arm}__${opts.widthMm}mm_${opts.garment}${opts.keepWhite ? "_white" : ""}.json`);
         let job, secs;
         if (opts.fromCache && existsSync(cacheFile)) {
           ({ job, secs } = JSON.parse(readFileSync(cacheFile, "utf8")));
@@ -341,10 +348,21 @@ async function main() {
         }
         const design = job.design;
 
+        // The ink is scored, so thread near white is left out of the coverage: the
+        // Studio sews the white field inside a frame by default (sew_enclosed_white,
+        // fabric-coloured on a white garment), which the SVG draws as paper.
+        let ci = 0, whiteStitches = 0;
+        const marked = design.stitches.map((s) => {
+          if (s.type === "color") ci++;
+          const c = (design.colors || [])[ci];
+          const white = !!c && Math.min(c.r, c.g, c.b) > 235;
+          if (white && s.type === "stitch") whiteStitches++;
+          return { x: s.x, y: s.y, type: s.type, skip: white ? 1 : 0 };
+        });
         // Register by bounding-box centre; scale only when the extent is >3% off.
         const sewn = [];
         let prev = null;
-        for (const s of design.stitches) { if (s.type === "stitch" && prev) sewn.push(prev, s); prev = s; }
+        for (const s of marked) { if (s.type === "stitch" && prev && !s.skip) sewn.push(prev, s); prev = s; }
         let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
         for (const s of sewn) { x0 = Math.min(x0, s.x / 10); x1 = Math.max(x1, s.x / 10); y0 = Math.min(y0, -s.y / 10); y1 = Math.max(y1, -s.y / 10); }
         const gtW = (gtBox.x1 - gtBox.x0) * mmPerPx, gtH = (gtBox.y1 - gtBox.y0) * mmPerPx;
@@ -352,13 +370,13 @@ async function main() {
         const scale = Math.abs(ratio - 1) > 0.03 ? 1 / ratio : 1;
         const gcx = (gtBox.x0 + gtBox.x1) / 2 / S, gcy = (gtBox.y0 + gtBox.y1) / 2 / S;
         const ox = (gcx - ((x0 + x1) / 2) * scale) * S, oy = (gcy - ((y0 + y1) / 2) * scale) * S;   // y0,y1 are image-y (-stitch y)
-        const cov64 = await call(PAGE.coverage, { stitches: design.stitches, cw, ch, S, thread: 0.4, ox, oy, scale });
+        const cov64 = await call(PAGE.coverage, { stitches: marked, cw, ch, S, thread: 0.4, ox, oy, scale });
         const cov = { w: cw, h: ch, data: new Uint8Array(Buffer.from(cov64, "base64")) };
 
         const count = (m) => m.data.reduce((a, b) => a + b, 0);
         const covBox = bbox(cov);
         const diag = {
-          gtInkMm2: +(count(gt) * mmPerPx * mmPerPx).toFixed(1), covInkMm2: +(count(cov) * mmPerPx * mmPerPx).toFixed(1),
+          whiteStitches, gtInkMm2: +(count(gt) * mmPerPx * mmPerPx).toFixed(1), covInkMm2: +(count(cov) * mmPerPx * mmPerPx).toFixed(1),
           gtBoxMm: [gtBox.x0, gtBox.y0, gtBox.x1, gtBox.y1].map((v) => +(v * mmPerPx).toFixed(1)),
           covBoxMm: covBox && [covBox.x0, covBox.y0, covBox.x1, covBox.y1].map((v) => +(v * mmPerPx).toFixed(1)),
         };
@@ -408,7 +426,7 @@ async function main() {
 
   writeFileSync(path.join(outDir, "score.json"), JSON.stringify({ widthMm: opts.widthMm, garment: opts.garment, pxPerMm: opts.S, rows: results }, null, 2));
   const md = [
-    `Scored at ${opts.widthMm} mm wide, garment ${opts.garment}, ${opts.S} px/mm, coverage = sewn stitches drawn 0.4 mm wide.`,
+    `Scored at ${opts.widthMm} mm wide, garment ${opts.garment}, ${opts.S} px/mm, coverage = sewn stitches of non-white thread drawn 0.4 mm wide; sew_enclosed_white ${opts.keepWhite ? "on (the Studio default)" : "off (the SVG draws that field as paper, and it multiplies the digitize time)"}.`,
     "",
     "| svg | send | stitches | trims | jumps | colour chg | IoU | edge mean mm | edge p95 mm | edge max mm | digitize s |",
     "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
