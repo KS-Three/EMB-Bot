@@ -25,7 +25,7 @@ def test_schema_builds_and_lists_every_route():
     schema = app.openapi()
     listed = {(m, p) for p, ops in schema["paths"].items() for m in ops if m in _HTTP}
     assert listed == _routes()
-    assert len(listed) == 8
+    assert len(listed) == 9
 
 
 def test_every_operation_has_summary_and_error_responses():
