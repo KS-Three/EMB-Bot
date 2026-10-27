@@ -77,10 +77,11 @@ test("cutEveryJump omitted is cutEveryJump: false", () => {
   }
 });
 
-// The ON set: the Studio's default font, and the six that walk or bury the
-// most hops (of the 85, on these two designs), so the oracle has walks to
-// judge and not only locks.
-const ON_FONTS = ["medium_font", "mimosa_medium", "mai_en_fleur", "pixel10", "initials_XL", "jersey_15", "montecarlo"];
+// The ON set: the Studio's default font, the six that walk or bury the most
+// hops (of the 85, on these two designs), so the oracle has walks to judge
+// and not only locks, and `neon`, whose apostrophe is one penetration
+// between two hops on the cap (cutOrBuryJumps' `lone`).
+const ON_FONTS = ["medium_font", "mimosa_medium", "mai_en_fleur", "pixel10", "initials_XL", "jersey_15", "montecarlo", "neon"];
 const ON_DESIGNS = [[TEXTS[0], CAP, 50], [TEXTS[1], FLAT, 90]];
 let pairs = null;
 async function onPairs() {
@@ -109,9 +110,9 @@ test("ON: no uncut needle-up move is left in the DST (read from its bytes, and b
   assert.ok(before > 100, `the OFF files had ${before} uncut moves: nothing to cure`);
 });
 
-test("ON: every cut it adds is locked both sides", async () => {
+test("ON: every cut it adds is locked both sides, and no thread it leaves goes down in one place", async () => {
   const T = await oracle;
-  let added = 0;
+  let added = 0, lone = 0;
   for (const p of await onPairs()) {
     const offLocked = T.locksAtTrims(p.off.stitches), onLocked = T.locksAtTrims(p.on.stitches);
     const both = (l) => l.filter((x) => x.before && x.after).length;
@@ -119,8 +120,10 @@ test("ON: every cut it adds is locked both sides", async () => {
     assert.strictEqual(n, p.on._debug.cutEveryJump.cut, p.name + ": trims added");
     assert.strictEqual(both(onLocked) - both(offLocked), n, p.name + ": an added cut is not locked both sides");
     added += n;
+    lone += p.on._debug.cutEveryJump.lone;
   }
   assert.ok(added > 100, `${added} cuts added`);
+  assert.ok(lone > 0, "no one-place thread met: the set no longer reaches the rule");
 });
 
 test("ON: no needle-down segment it adds lies on bare fabric (the oracle)", async () => {
@@ -146,7 +149,7 @@ test("ON: trims and stitches against OFF", async (t) => {
     assert.strictEqual(count(p.on, "trim") - count(p.off, "trim"), dbg.cut, p.name);
     tOff += count(p.off, "trim"); tOn += count(p.on, "trim"); sOff += p.off.stitchCount; sOn += p.on.stitchCount;
     b += dbg.buried; w += dbg.walked; c += dbg.cut;
-    t.diagnostic(`${p.name}: buried ${dbg.buried}, walked ${dbg.walked}, cut ${dbg.cut}; trims ${count(p.off, "trim")} -> ${count(p.on, "trim")}, stitches ${p.off.stitchCount} -> ${p.on.stitchCount}`);
+    t.diagnostic(`${p.name}: buried ${dbg.buried}, walked ${dbg.walked}, cut ${dbg.cut}, lone ${dbg.lone}; trims ${count(p.off, "trim")} -> ${count(p.on, "trim")}, stitches ${p.off.stitchCount} -> ${p.on.stitchCount}`);
   }
   t.diagnostic(`all: buried ${b}, walked ${w}, cut ${c}; trims ${tOff} -> ${tOn}, stitches ${sOff} -> ${sOn}`);
 });
@@ -187,6 +190,17 @@ test("cutOrBuryJumps: a hop on bare fabric is cut, one on sewn thread walked, on
     const r = DG.cutOrBuryJumps(st, [], true);
     assert.deepStrictEqual([r.buried, r.walked, r.cut], [1, 0, 0]);
     assert.deepStrictEqual(r.stitches.slice(0, 5), [J(-10, 10), S(-10, 10), S(0, 10), S(20, 10), S(-4, 0)]);
+  }
+  // One penetration between two bare hops: cut both sides it lays no thread
+  // and takes no lock, so it is left out with the second cut, and the
+  // thread before it is cut once.
+  {
+    const st = [J(0, 0), ...line(0, 0, 10, 20), J(40, 0), S(40, 0), J(70, 0), ...line(0, 70, 80, 90)];
+    const spans = [{ i0: 1, i1: 3, kind: "run", shape: "c0", role: "", block: 0 }, { i0: 5, i1: 5, kind: "run", shape: "c1", role: "", block: 0 }, { i0: 7, i1: 9, kind: "run", shape: "c2", role: "", block: 0 }];
+    const r = DG.cutOrBuryJumps(st, spans, true);
+    assert.deepStrictEqual([r.buried, r.walked, r.cut, r.lone], [0, 0, 1, 1]);
+    assert.deepStrictEqual(r.stitches, [J(0, 0), ...line(0, 0, 10, 20), { x: 20, y: 0, type: "trim" }, J(70, 0), ...line(0, 70, 80, 90)]);
+    assert.deepStrictEqual(spans.map((s) => [s.i0, s.i1, s.shape]), [[1, 3, "c0"], [6, 8, "c2"]]);
   }
   // Travel is not cover (Python's `lines` leave TRAVEL out): the same walk
   // back over a needle-down connector is cut.

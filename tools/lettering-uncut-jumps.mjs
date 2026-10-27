@@ -46,6 +46,9 @@
 //                 the needle goes down there anyway);
 //   on sewn       every sample on thread of any order, not all of it later;
 //   bare          some sample on bare fabric.
+// Every needle-down segment of the file is thread here, the router's travel
+// included; the engine's pass does not count travel as cover (nor does
+// Python's), so a hop that lies only on travel is "on sewn" here and cut ON.
 // And, from the builder's stream (its run spans name the glyph), whether it
 // is inside one glyph or between two.
 //
@@ -381,7 +384,7 @@ async function main() {
     const e = DG.buildLetteringDesign(f.data, text, { ...opts, cutEveryJump: true });
     const onRecs = readDSTRecords(DST.encodeDST(e)), dbg = e._debug.cutEveryJump || {};
     add(r, "ON DST uncut", uncutMoves(onRecs).length);
-    add(r, "ON buried", dbg.buried || 0); add(r, "ON walked", dbg.walked || 0); add(r, "ON cut", dbg.cut || 0);
+    add(r, "ON buried", dbg.buried || 0); add(r, "ON walked", dbg.walked || 0); add(r, "ON cut", dbg.cut || 0); add(r, "ON lone penetrations left out", dbg.lone || 0);
     add(r, "trims ON", e.stitches.filter((s) => s.type === "trim").length);
     add(r, "stitches ON", e.stitchCount);
     const locks = locksAtTrims(e.stitches);

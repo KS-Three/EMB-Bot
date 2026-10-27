@@ -352,8 +352,9 @@
   // Asked of the finished stream in file units (0.1 mm), before the locks.
   // A sewn hop's inner stitches are RUN_STITCH_MM apart and get a `travel`
   // span in the glyph they lead into; the stitch after the hop is the next
-  // run's own first stitch, as before. -> { stitches, buried, walked, cut }:
-  // a new array; `spans` are moved in place.
+  // run's own first stitch, as before. -> { stitches, buried, walked, cut,
+  // lone }: a new array, and how many one-place threads were left out
+  // (below); `spans` are moved in place.
   function cutOrBuryJumps(stitches, spans, dedupe) {
     const U = units.DST_UNITS_PER_MM;
     const half = (COVERAGE_THREAD_W_MM / 2) * U, step = COVER_STEP_MM * U, pitch = RUN_STITCH_MM * U;
@@ -407,32 +408,68 @@
       }
       return true;
     };
-    const out = [], first = new Array(stitches.length), last = new Array(stitches.length), sewn = [];
-    let buried = 0, walked = 0, cut = 0, skip = -1;
-    for (let j = 0; j < stitches.length; j++) {
+    // Each hop: sewn along `route[j]`, or cut (`cutAt[j]`: a trim before it).
+    const route = new Array(stitches.length), cutAt = new Uint8Array(stitches.length), drop = new Uint8Array(stitches.length);
+    let buried = 0, walked = 0, lone = 0;
+    for (let j = 1; j + 1 < stitches.length; j++) {
       const s = stitches[j], a = stitches[j - 1], b = stitches[j + 1];
+      if (s.type !== "jump" || a.type !== "stitch" || b.type !== "stitch") continue;
+      const gap = Math.hypot(b.x - a.x, b.y - a.y), n = Math.ceil(gap / pitch), r = [a];
+      for (let k = 1; k < n; k++) r.push({ x: Math.round(a.x + ((b.x - a.x) * k) / n), y: Math.round(a.y + ((b.y - a.y) * k) / n), type: "stitch" });
+      r.push(b);
+      // Later thread is the run the hop lands on and all after it: every
+      // segment whose first record is the stitch after the jump, or later.
+      const how = gap > LINK_MAX_GAP_MM * U ? null : covered(r, j + 2) ? "buried" : covered(r, 0) ? "walked" : null;
+      if (how === "buried") buried++;
+      if (how === "walked") walked++;
+      if (how) route[j] = r; else cutAt[j] = 1;
+    }
+    // A thread these cuts leave going down in ONE place (a glyph part that
+    // is a single penetration, between two hops: `neon`'s, 2 in 143 designs
+    // of a seventh of the library) lays no thread and takes no lock
+    // (applyTies), so cut both sides it is a needle hole with two loose
+    // ends. It is left out, with one of the cuts beside it; OFF it only
+    // tacked the float down. A thread runs from one cut (a `trim`, a
+    // `color`, a new cut before a jump, either end of the stream) to the
+    // next: [i, j). The cut that stays is the one on its left; where that
+    // one is old, the new one on its right goes, and the thread after it
+    // then starts at the old cut.
+    const same = (p, q) => p.x === q.x && p.y === q.y;
+    const oldCut = (k) => stitches[k].type === "trim" || stitches[k].type === "color";
+    for (let i = 0, carry = -1; i < stitches.length;) {
+      if (oldCut(i)) { i++; carry = -1; continue; }
+      const leftNew = cutAt[i] ? i : carry;
+      carry = -1;
+      let j = i + 1;
+      while (j < stitches.length && !cutAt[j] && !oldCut(j)) j++;
+      const rightNew = j < stitches.length && cutAt[j] ? j : -1;
+      const pens = [];
+      for (let k = i; k < j; k++) if (stitches[k].type === "stitch") pens.push(stitches[k]);
+      let sewnHop = false;
+      for (let k = i; k < j; k++) if (route[k]) sewnHop = true;
+      if (pens.length && pens.every((p) => same(p, pens[0])) && (leftNew >= 0 || rightNew >= 0) && !sewnHop) {
+        for (let k = i; k < j; k++) drop[k] = 1;
+        if (leftNew >= 0 && rightNew >= 0) { cutAt[rightNew] = 0; carry = leftNew; } else if (rightNew >= 0) cutAt[rightNew] = 0; else cutAt[leftNew] = 0;
+        lone++;
+      }
+      i = j;
+    }
+    const out = [], first = new Array(stitches.length), last = new Array(stitches.length), sewn = [];
+    let cut = 0, skip = -1;
+    for (let j = 0; j < stitches.length; j++) {
+      const s = stitches[j], a = stitches[j - 1];
       first[j] = out.length;
-      if (j === skip) { last[j] = out.length - 1; continue; }
-      if (s.type === "jump" && a && a.type === "stitch" && b && b.type === "stitch") {
-        const gap = Math.hypot(b.x - a.x, b.y - a.y), n = Math.ceil(gap / pitch), route = [a];
-        for (let k = 1; k < n; k++) route.push({ x: Math.round(a.x + ((b.x - a.x) * k) / n), y: Math.round(a.y + ((b.y - a.y) * k) / n), type: "stitch" });
-        route.push(b);
-        // Later thread is the run the hop lands on and all after it: every
-        // segment whose first record is the stitch after the jump, or later.
-        const how = gap > LINK_MAX_GAP_MM * U ? null : covered(route, j + 2) ? "buried" : covered(route, 0) ? "walked" : null;
-        if (how) {
-          if (how === "buried") buried++; else walked++;
-          const i0 = out.length;
-          for (const p of route.slice(1, -1)) out.push(p);
-          if (out.length > i0) sewn.push({ i0, i1: out.length - 1, into: spanOf[j + 1] });
-          // A hop onto the hole it left from: the stitch after it is a
-          // second penetration, `dedupeHoles`' question.
-          if (!gap && dedupe) skip = j + 1;
-          last[j] = out.length - 1;
-          continue;
-        }
-        cut++;
-        out.push({ x: a.x, y: a.y, type: "trim" });
+      if (cutAt[j]) { cut++; out.push({ x: a.x, y: a.y, type: "trim" }); }
+      if (drop[j] || j === skip) { last[j] = out.length - 1; continue; }
+      if (route[j]) {
+        const i0 = out.length;
+        for (const p of route[j].slice(1, -1)) out.push(p);
+        if (out.length > i0) sewn.push({ i0, i1: out.length - 1, into: spanOf[j + 1] });
+        // A hop onto the hole it left from: the stitch after it is a
+        // second penetration, `dedupeHoles`' question.
+        if (route[j].length === 2 && same(route[j][0], route[j][1]) && dedupe) skip = j + 1;
+        last[j] = out.length - 1;
+        continue;
       }
       out.push(s);
       last[j] = out.length - 1;
@@ -448,7 +485,7 @@
     }
     kept.sort((p, q) => p.i0 - q.i0);
     if (spans) { spans.length = 0; for (const sp of kept) spans.push(sp); }
-    return { stitches: out, buried, walked, cut };
+    return { stitches: out, buried, walked, cut, lone };
   }
 
   // The size of a design is the size of its THREAD — measured from the records
@@ -2284,7 +2321,7 @@
     // under the needle floors, hairline spans sewn as run) — see
     // satinfont.layoutText. Null only on the empty paths above.
     const _debug = { nSatin, nFill: 0, nTrims, nTies };
-    if (cutEvery) _debug.cutEveryJump = { buried: cutEvery.buried, walked: cutEvery.walked, cut: cutEvery.cut };
+    if (cutEvery) _debug.cutEveryJump = { buried: cutEvery.buried, walked: cutEvery.walked, cut: cutEvery.cut, lone: cutEvery.lone };
     return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, runs: spans, unsupported: lay.unsupported || [], lettering: lay.lettering || null, _debug };
   }
 
