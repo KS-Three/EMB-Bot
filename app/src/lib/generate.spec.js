@@ -1224,8 +1224,9 @@ test("the reported size is thread, not the box the design was fit to", async () 
   // texts x 3 weights): 65.6% sewed outside their own placement box, by up to
   // 9.6 mm, and four told the ceiling check "fits" when the thread needed the
   // hoop rotated.
+  // (the box auto-fit aims at: the pro's 113.5 mm hat since 2026-10-26)
   const garment = EMB.getGarment("hat_front");
-  const boxWmm = garment.widthIn * 25.4;
+  const boxWmm = EMB.autoFitBoxMm(garment).w;
   const { combined } = generateAll({
     garmentId: "hat_front", fabricRgb: [255, 255, 255], selectedId: "e1",
     elements: [textElement({ id: "e1", text: "YOUR NAME" })],

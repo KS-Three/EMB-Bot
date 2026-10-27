@@ -136,7 +136,7 @@ def test_thread_wt_40_and_hairline_off_is_byte_identical_to_the_golden(fixture):
     golden = json.loads((TESTDATA / "flat_lane_golden.json").read_text(encoding="utf-8"))[fixture]
     assert _coords_md5(golden["stitch_coords"]) == GOLDEN_MD5[fixture]
     _result, plan = digitize(TESTDATA / fixture,
-                             PipelineConfig(target_width_mm=80.0, edge_cap="none",
+                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False,
                                             thread_wt=40, hairline=False))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]

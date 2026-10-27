@@ -37,9 +37,11 @@ test("every garment preset: auto-fit result fits the largest hoop, so no oversiz
 });
 
 test("the cap bites only where the placement box is bigger than the hoop", () => {
+  // against the placement box auto-fit aims at (the pro's for hat, left chest
+  // and beanie since 2026-10-26, Kent: "64 mm (2.5 in) or more"), not the inch box
   const capped = EMB.GARMENTS.filter((g) => {
-    const b = EMB.autoFitBoxMm(g);
-    return b.w < g.widthIn * 25.4 - 1e-9 || b.h < g.heightIn * 25.4 - 1e-9;
+    const b = EMB.autoFitBoxMm(g), p = EMB.placementBoxMm(g);
+    return b.w < p.w - 1e-9 || b.h < p.h - 1e-9;
   }).map((g) => g.id).sort();
   expect(capped).toEqual(["blanket", "full_back", "jacket_back", "tote"]);
 });

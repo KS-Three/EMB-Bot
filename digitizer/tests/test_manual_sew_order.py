@@ -61,7 +61,10 @@ fastapi = pytest.importorskip("fastapi", reason="service extra not installed")
 from .conftest import wait_for_job  # noqa: E402
 
 ART = Path(__file__).resolve().parents[1] / "testdata" / "logo_whitebg.png"
-BASE = {"target_width_mm": 80.0, "preflight": False}
+# `sew_enclosed_white` OFF, as the Studio sends it unticked: ON (Kent's flip
+# 2026-10-26) the ring hole sews white in a front layer of its own, which the
+# ported ordering rules below were not written against (a follow-up of #1112).
+BASE = {"target_width_mm": 80.0, "preflight": False, "sew_enclosed_white": False}
 STRICT = os.environ.get("EMBBOT_STRICT_MANUAL_SEW_ORDER") == "1"
 # A needle-down stitch within this distance of a shape's outline is that
 # shape's: a run-tier shape sews ON its outline, and a satin's pull

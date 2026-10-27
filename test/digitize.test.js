@@ -2459,7 +2459,10 @@ test("buildQualityDesign: opts absent (no targetWidthMm/offsets) stays back-comp
 test("buildLetteringDesign: cap garment sews the middle glyph first (center-out)", () => {
   const font = require("../test/fixtures/fonts/geneva_simple.json");
   const base = { pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false };
-  const flat = DG.buildLetteringDesign(font, "AVA", Object.assign({ garment: { widthIn: 5, heightIn: 2.25 } }, base));
+  // the flat garment gets the box the cap auto-fits by default (the pro's hat
+  // box since 2026-10-26), so the two differ in order only
+  const proHat = { widthIn: 113.5 / 25.4, heightIn: 64.0 / 25.4 };
+  const flat = DG.buildLetteringDesign(font, "AVA", Object.assign({ garment: proHat }, base));
   const cap = DG.buildLetteringDesign(font, "AVA", Object.assign({ garment: { id: "hat_front", widthIn: 5, heightIn: 2.25 } }, base));
   const firstStitch = (d) => d.stitches.find((s) => s.type === "stitch");
   const halfW = (d) => (d.widthMM * 10) / 2; // DST units

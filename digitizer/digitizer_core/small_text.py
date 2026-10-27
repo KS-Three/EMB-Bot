@@ -844,7 +844,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     (`_place_line_reset`'s `edge_room`); a letter-sized shape inside the
     line's span joins it (`_join_line_ends`' `inside`); clusters of one line
     whose hulls overlap are placed as one (`_merge_overlapping`). False:
-    byte for byte. `bay_mouth` (`cfg.extra["small_text_bay_mouth"]`, re-set
+    byte for byte. `bay_mouth` (`cfg.small_text_bay_mouth`, ON since 2026-10-26, re-set
     only): a terminal the widening would close a bay with is cut back along
     its own stroke until the bay keeps the professional's mouth
     (`_open_mouths`, `BAY_MOUTH_MM`); each cut is a row of the cluster's
@@ -1134,7 +1134,7 @@ def _widen_keep_counters(poly: Polygon, widen: float):
     return out
 
 
-# KEEP EACH BAY'S MOUTH OPEN (`cfg.extra["small_text_bay_mouth"]`, W3-02,
+# KEEP EACH BAY'S MOUTH OPEN (`cfg.small_text_bay_mouth`, W3-02,
 # 2026-10-25, built OFF, re-set only). The re-set's widening sews a bay shut
 # wherever a terminal curls back to its own letter: Fremont's EST 1895 at
 # 92.5 mm sewed E as B (the arm serifs meet the middle arm), S as 8 (the

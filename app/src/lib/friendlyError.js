@@ -19,9 +19,16 @@ export const OFFLINE_DIGITIZE =
   "(python -m digitizer_service, in the digitizer folder), then press Auto Digitize Image again. " +
   "Your artwork and settings are saved.";
 
+// Fires only when the Studio's poll gives up (lib/digitizer.js pollJob), and
+// since 2026-10-26 that is past the digitizer's own ten-minute limit -- Kent:
+// "Wait up to 600 s (Recommended)". It used to say the job "was stopped" at
+// five minutes while the service was still computing it. The Studio stops
+// waiting; it cannot stop the digitizer, so the message says only what it
+// knows.
 export const TIMEOUT_DIGITIZE =
-  "Digitizing took too long, so it was stopped. Crop the artwork tighter or use a simpler image, " +
-  "then press Auto Digitize Image again.";
+  "The digitizer didn’t finish this design in ten minutes, so the Studio stopped waiting. " +
+  "It may still be busy — check the digitizer window, then press Auto Digitize Image again. " +
+  "If it keeps happening, crop the artwork tighter or use a simpler image.";
 
 export const FAILED_DIGITIZE =
   "Digitizing didn’t work on this image. Press Auto Digitize Image to try again; if it keeps " +

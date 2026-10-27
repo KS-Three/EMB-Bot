@@ -380,9 +380,11 @@ def test_enclosed_background_survives_gradient_routing_through_slic_rag():
     the guard now correctly refuses to flood this full-bleed fixture at all
     (border agreement 0.355 < bg_border_agreement_min, BACKGROUND_ABSENT),
     so nothing is enclosed and the routing machinery under test never runs.
-    See test_enclosed_background.py's repro_cfg comment — same reasoning."""
+    See test_enclosed_background.py's repro_cfg comment — same reasoning, and
+    `sew_enclosed_white` OFF with it (ON since 2026-10-26 sews what is tagged)."""
     cfg = PipelineConfig(target_width_mm=90.0,
-                         bg_border_agreement_min=0.0, bg_border_rival_min=0.0)
+                         bg_border_agreement_min=0.0, bg_border_rival_min=0.0,
+                         sew_enclosed_white=False)
     fixture = str(PHOTO_DIR / "repro_gradient_white_icon.png")
     c = classify(fixture, cfg)
     assert c.class_ == "gradient", "fixture drifted off the class this test needs"

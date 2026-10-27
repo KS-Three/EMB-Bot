@@ -50,10 +50,13 @@ def becker():
     # Pre-flip corners on purpose: with `subpixel_corner_runs` (ON since
     # 2026-10-20, Kent's ruling) Becker's cleaner outline leaves the border
     # tier no per-shape column at 80 mm, only the cap's, and the role this
-    # fixture exists to pin would go untested (`PRE_FLIP`).
+    # fixture exists to pin would go untested (`PRE_FLIP`). White pinned OFF for
+    # the same reason: with `sew_enclosed_white` (ON since 2026-10-26) the faces
+    # sew under the outline loop and Becker keeps no per-shape border column.
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
                          border="auto", edge_cap="satin",
-                         subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"])
+                         subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"],
+                         sew_enclosed_white=PRE_FLIP["sew_enclosed_white"])
     result = run_stages(TESTDATA / "becker_marine_logo.png", cfg)
     plan = plan_stitches(result, cfg)
     return plan, _design(plan, "Becker")
