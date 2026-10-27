@@ -63,11 +63,13 @@ from __future__ import annotations
 import argparse
 import base64
 import contextlib
+import hashlib
 import json
 import math
 import os
 import subprocess
 import sys
+import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -131,6 +133,11 @@ _WHITE_SEWN = {"sew_enclosed_white": True, "enclosed_white_keyline": True}
 #: timeout pinned: its 60 s default fails under load and reroutes MFab (photo_scene)
 _REMBG_900 = {"photo_prep_background_removal_timeout_s": 900.0}
 _WAVE3_OFF = {"small_text_bay_mouth": False, "sew_enclosed_white": False, **_REMBG_900}
+#: The jobs that sew enclosed white off MFab (white ON by default since #1112): where
+#: the keyline switches can act now that MFab-type art has them through the gate (#1122)
+KEYLINE_OFF_MFAB = ("becker_hat_large", "becker_lc_large", "becker_hat_small", "becker_chest_small",
+                    "becker_beanie", "gaulke_roofing_hat", "golf_hat", "tires_hat_3d",
+                    "proseal_hat", "proseal_beanie")
 
 FLAGS: dict[str, dict] = {
     "fill_turn_slant": {
@@ -284,7 +291,9 @@ FLAGS: dict[str, dict] = {
         "metric": "run_shapes", "about": "shapes sewn as a plain run ring (plan roles)", "pr": 1101,
         "note": "Free-standing thin ink bars under the area floor: To a T's speed rules, Fremont's "
                 "separators, the drone's AND DRONE rule, MFab's LLC hairline. The pro satins each; "
-                "ours rings them OFF."},
+                "ours rings them OFF. Gate-1 caveat (config.py): no width, pull or density moves, "
+                "but whether a ~1 mm bar holds on a cap is the sew-out question small_solids_satin "
+                "already carries -- Kent flipped that one from renders on 10-23 with the same caveat."},
     # ---- wave-3 flips (2026-10-26, Kent: bay mouth "Flip ON", white "A ... alone", "Flip,
     # but prove it first"). Both are ON by default from this PR, so OFF pins both False.
     "wave3_flips": {
@@ -309,8 +318,14 @@ FLAGS: dict[str, dict] = {
         "fixtures": ["mfab_hat", "mfab_lc"],
         "metric": "tagged", "about": "shapes the text tagger put in a line (the Column lane's input)",
         "pr": 1080,
+        "also": {"name": "bean_ink", "label": "ON + BEAN INK", "fixtures": ["mfab_lc"],
+                 "sets": {"text_cluster_part_touching": True, "bean_ink_outlined_letters": True}},
         "note": "Two letters the tagger misses on MFab's AND WELDING: the hat's I and N touching at "
-                "a 0.08 mm neck (traced as one region), and the LC's AND N overshooting the cap height."},
+                "a 0.08 mm neck (traced as one region), and the LC's AND N overshooting the cap "
+                "height. Alone, the LC's newly tagged N goes bean on its white keyline and sews "
+                "hollow; ON + BEAN INK adds `bean_ink_outlined_letters` (#1128), which sews it "
+                "satin. The hat's plan does not move under bean ink (#1128), so its third cell is "
+                "left out."},
     "outline_loop_mitre": {
         "sets": {"outline_loop_mitre": True},
         "fixtures": ["becker_hat_large", "becker_hat_small", "bridge_hat", "bridge_lc"],
@@ -320,23 +335,36 @@ FLAGS: dict[str, dict] = {
                 "(far ends 1.00 W out; ours OFF 1.1 mm apart at the corner, his 0.4). Bridge's art "
                 "outline is guarded out (#1078), so Bridge should read no change."},
     "keyline_fold_slivers": {
-        "base": {"silhouette_underfill": True, **_WHITE_SEWN}, "base_name": "d2",
-        "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "keyline_fold_slivers": True},
-        "fixtures": ["mfab_hat", "mfab_lc"],
+        # wave 5: no base. White sews by default since #1112. On MFab-type art the gate sews
+        # this switch ON by itself since #1122 (with skip and absorb), so an MFab cell is OFF
+        # byte for byte: the row reads the jobs off MFab, where the trio moved them
+        "sets": {"keyline_fold_slivers": True},
+        "fixtures": list(KEYLINE_OFF_MFAB),
         "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": 1102,
-        "note": "Read only with sew_enclosed_white, so OFF is arm d2 (under-fill + white sewn + "
-                "keyline) and ON folds the white field's 31 (hat) / 51 (LC) hairline slivers back "
-                "into it. PR #1102 with skip_covered_shapes: hat 41 -> 27, LC 54 -> 29 trims (pro 19 / "
-                "20). The white switches themselves are ruled through the MFab-art gate, not here."},
+        "note": "Read only where white sews -- since #1112 that is every job with an enclosed "
+                "white field. ON folds a white field's hairline slivers back into it. ON on "
+                "MFab-type art through the gate since #1122 (Kent 2026-10-26, \"MFab extras into "
+                "the gate\"; docs/gate-mfab-extras-2026-10-26.md), so this row is the jobs off "
+                "MFab. Older bases' numbers (#1102's 41 -> 27) are not quoted: read the cells."},
     "skip_covered_shapes": {
-        "base": {"silhouette_underfill": True, **_WHITE_SEWN}, "base_name": "d2",
-        "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "skip_covered_shapes": True},
-        "fixtures": ["mfab_hat", "mfab_lc"],
+        "sets": {"skip_covered_shapes": True},
+        "fixtures": list(KEYLINE_OFF_MFAB),
         "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": 1102,
-        "note": "A shape whose whole thread lies on thread of its own colour block is not sewn: "
-                "MFab's keyline slivers, already 62% (hat) / 95% (LC) covered by the field. Same "
-                "colour, so nothing that shows changes; it removes a second layer and its cuts. OFF "
-                "is arm d2, as keyline_fold_slivers."},
+        "note": "A shape whose whole thread lies on thread of its own colour block is not sewn. "
+                "Same colour, so nothing that shows changes; it removes a second layer and its "
+                "cuts. ON on MFab-type art through the gate since #1122, so this row is the jobs "
+                "off MFab (white sewn by default since #1112)."},
+    "keyline_trio": {
+        # the detection pass: one combined arm per non-MFab white job; a flag gets its own
+        # cell on a job only where this arm's DST differs from OFF
+        "sets": {"keyline_fold_slivers": True, "skip_covered_shapes": True,
+                 "extra": {"absorb_fragments": True}},
+        "fixtures": list(KEYLINE_OFF_MFAB),
+        "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": 1102,
+        "note": "Not a flag: the detection pass. keyline_fold_slivers, skip_covered_shapes and "
+                "absorb_fragments all ON at once on every non-MFab job that sews white (since "
+                "#1112; MFab has all three through the gate, #1122). Where its DST equals OFF "
+                "none of the three acts on that job; where it differs, each flag gets its own cell."},
     "lettering_columns_italic_lean": {
         "sets": {"lettering_columns_italic_lean": True},
         "fixtures": ["proseal_hat", "proseal_beanie"],
@@ -346,21 +374,27 @@ FLAGS: dict[str, dict] = {
                 "the lane crosses them square to themselves."},
     "fill_section_travel": {
         "sets": {"extra": {"fill_section_travel": True}},
-        "fixtures": ["hotel_fremont_hat", "bridge_hat", "bridge_lc"],
+        # wave 3's three, plus (wave 5) the rest of PR #1091's five hats; Fremont first, the
+        # one it moved
+        "fixtures": ["hotel_fremont_hat", "bridge_hat", "bridge_lc", "becker_hat_large", "mfab_hat",
+                     "precision_drone", "gaulke_roofing_hat"],
         "metric": "travel_runs", "about": "travel runs in the plan (pro: n/a)", "pr": 1091,
         "note": "A cfg.extra key (the Studio's request cannot set it; the cell lays it on). Fill "
-                "sections join by a route hidden inside the field instead of a cut: PR #1091 Fremont "
-                "hat 51 -> 41 trims, exposure unchanged (the pro: 0 cuts inside a piece)."},
+                "sections join by a route hidden inside the field instead of a cut. PR #1091 read "
+                "Fremont's in-piece cuts 51 -> 41 on its own base and its other hats unmoved; on "
+                "this sheet it changes six of these seven jobs (Gaulke byte-identical), but the DST's "
+                "trims by one at most (Becker large +1, MFab hat and the drone -1)."},
     "absorb_fragments": {
-        "base": {"sew_enclosed_white": True}, "base_name": "w1",
-        "sets": {"sew_enclosed_white": True, "extra": {"absorb_fragments": True}},
-        "fixtures": ["mfab_hat", "mfab_lc"],
+        # wave 5: no base, as keyline_fold_slivers; the gate's on MFab since #1122
+        "sets": {"extra": {"absorb_fragments": True}},
+        "fixtures": list(KEYLINE_OFF_MFAB),
         "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": 1100,
-        "note": "A cfg.extra key, read only with the white field sewn, so OFF is arm w1 "
-                "(sew_enclosed_white alone, #1100's arm): a white keyline fragment narrower than "
-                "the pro's narrowest satin, within one thread of its field, is sewn as part of the "
-                "field after stage 5. PR #1100: MFab hat 77 -> 60 trims (pro 18); white OFF it is "
-                "inert (DST byte-identical)."},
+        "note": "A cfg.extra key, read only where white sews (every enclosed white field since "
+                "#1112): a white keyline fragment narrower than the pro's narrowest satin, within "
+                "one thread of its field, is sewn as part of the field after stage 5. ON on "
+                "MFab-type art through the gate since #1122, with its panel fix (the join keeps "
+                "the riders' panel), so this row is the jobs off MFab. Older bases' numbers "
+                "(#1100's 77 -> 60) are not quoted: read the cells."},
     "small_text_bay_mouth": {
         # a field since #1112 and ON by default (Kent 2026-10-26), so OFF pins it False
         "base": dict(_WAVE3_OFF), "base_name": "wave3_off",
@@ -385,6 +419,18 @@ FLAGS: dict[str, dict] = {
                 "photo_scene). The pro RE-SET Bridge in a taller font of his own (not reproducible "
                 "from a trace) and sews it thinner: his crosses 1.56 mm at hat against the drawn "
                 "1.76 + our 0.4 mm pull a side -- a smaller script pull is gate 1, not built."},
+    # ---- wave 5 (2026-10-27)
+    "bean_ink_outlined_letters": {
+        "sets": {"bean_ink_outlined_letters": True},
+        "fixtures": ["mfab_lc", "mfab_hat"],
+        "metric": "run_shapes", "about": "shapes sewn as a plain run (bean letters)", "pr": 1128,
+        "note": "MFab's small line is black letters on a black body, each ringed by a white "
+                "keyline, so the ink reader takes the keyline for the letter's ink (0.4-1.7% of "
+                "the spine inside the letter). OFF, the LC's AND A goes bean and sews as a white "
+                "letter with a thin black line round it. ON leaves out a read whose spines lie "
+                "less than half inside the letter: the A sews black satin (crosses 44 -> 116, "
+                "pro 114). The hat is the control: its reads are the letters' own ink and fail "
+                "the shape gate, so it should not move."},
 }
 
 #: The wave-3 sheet (2026-10-26): the flags its run and report carry. The bay mouth left
@@ -395,6 +441,40 @@ WAVE3 = ["lettering_columns_apex_cut", "text_cluster_part_touching",
          "silhouette_underfill_rim", "keyline_fold_slivers",
          "skip_covered_shapes", "lettering_columns_italic_lean", "monoline_script_satin",
          "fill_section_travel", "absorb_fragments"]
+
+#: The wave-5 sheet (2026-10-27): every layout flag still waiting on Kent, on main
+#: after #1112 (white and the bay mouth ON), #1121 (fine bars and the outline pivot
+#: ON), #1122 and #1134 (the keyline switches and the loop chain ride MFab's gate,
+#: #1115) and #1127 (the re-set grows away). `ask`: Kent rules it
+#: from this sheet. A row shown and not
+#: asked says why in `label`, and is drawn from cells already rendered (their
+#: engine on the row): it gets no new digitize.
+W5_DATE = "2026-10-27"
+W5: dict[str, dict] = {
+    "lettering_columns_italic_lean": {"ask": True},
+    # the detection pass on fa3150de (Tires again on 4a087210, after #1136 moved its OFF): the
+    # trio's DST is OFF's byte for byte on all ten white
+    # jobs off MFab, so keyline_fold_slivers, skip_covered_shapes and absorb_fragments get no
+    # row of their own (nothing a render could judge) and are not asked
+    "keyline_trio": {"ask": False, "label": "detection pass, not a flag: ON is OFF byte for byte "
+                                            "on all ten white jobs off MFab, so keyline_fold_slivers, "
+                                            "skip_covered_shapes and absorb_fragments act nowhere "
+                                            "off MFab; on MFab they are ON through the gate (#1122)"},
+    "fill_section_travel": {"ask": True},
+    "bean_ink_outlined_letters": {"ask": True},
+    "text_cluster_part_touching": {"ask": True},
+    "outline_loop_mitre": {"ask": False, "label": "Kent ruled ON 2026-10-26 (\"Outline corners "
+                           "pivot\"); flipped ON by #1121. Wave 3's cells only"},
+    "fine_bars_satin": {"ask": False, "label": "Kent ruled ON 2026-10-26 (\"Fine bars as satin\"); "
+                        "flipped ON by #1121. Wave 3's cells only"},
+    "lettering_columns_apex_cut": {"ask": False, "label": "existing cells only: claude/apex-walk-w5 "
+                                   "renders this letter set, and Kent rules from its sheet"},
+    "monoline_script_satin": {"ask": False, "label": "HELD by Kent 2026-10-24 (#1070); with "
+                              "script_strokes ON (#1136) Tires' script word never reaches it"},
+    "silhouette_underfill_rim": {"ask": False, "label": "ON on MFab via #1115; elsewhere waits on "
+                                 "silhouette_underfill (held 10-24), and alone it fails gate 3 "
+                                 "on MFab"},
+}
 
 
 def flag_kind(flag: str) -> str:
@@ -466,11 +546,14 @@ def off_arm(flag: str) -> str:
     return f"{spec.get('base_name', flag)}__off" if spec.get("base") else "off"
 
 
-def also_arm(flag: str) -> str | None:
-    """The row's optional THIRD cell (`also`: {name, label, sets}), sewn beside ON
-    and cropped on ON's window -- e.g. d2 | d2 + panels | d2 + panels + mitre | pro."""
+def also_arm(flag: str, slug: str | None = None) -> str | None:
+    """The row's optional THIRD cell (`also`: {name, label, sets[, fixtures]}), sewn
+    beside ON and cropped on ON's window -- e.g. d2 | d2 + panels | d2 + panels +
+    mitre | pro. With `slug`, None where the third cell's own `fixtures` leave it out."""
     also = FLAGS[flag].get("also")
-    return f"{flag}__{also['name']}" if also else None
+    if not also or (slug is not None and "fixtures" in also and slug not in also["fixtures"]):
+        return None
+    return f"{flag}__{also['name']}"
 
 
 def arm_sets(arm: str) -> dict:
@@ -538,10 +621,13 @@ def digitize_cell(slug: str, arm: str, cache: Path, engine: str | None) -> dict:
     from tools.enclosed_pro_census import _rembg
     rembg = _rembg()
     request_sets = {k: v for k, v in sets.items() if k != "extra"}
+    cpu0 = time.process_time()
     with config_extra(sets.get("extra")):
         d = pp.digitize(fx["art"], fx["width_mm"], fx["garment"], request_sets)
+    cpu = time.process_time() - cpu0
     out.mkdir(parents=True, exist_ok=True)
     write_dst(d.plan, out / "ours.dst")
+    travel = travel_instruments(d.plan, out / "ours.dst")
     (out / "design.json").write_text(json.dumps(d.design), encoding="utf-8")
     runs = []
     for bi, (blk, run) in enumerate(d.plan.iter_runs()):
@@ -555,13 +641,119 @@ def digitize_cell(slug: str, arm: str, cache: Path, engine: str | None) -> dict:
                  if (getattr(r, "meta", None) or {}).get("text_cluster_id") is not None)
     stats = {"slug": slug, "arm": arm, "sets": sets, "engine": sha, "tagged": tagged,
              "engine_root": str(engine_root()), "width_mm": fx["width_mm"],
-             "garment": fx["garment"], "secs": round(d.secs, 1),
+             "garment": fx["garment"], "secs": round(d.secs, 1), "cpu_s": round(cpu, 1),
              "plan_stitches": d.plan.stats.stitch_count, "plan_trims": d.plan.stats.trims,
              "rembg": rembg,
              "background_removed": any((w.get("code") == "PHOTO_BACKGROUND_REMOVED")
-                                       for w in (getattr(d.plan, "warnings", None) or []))}
+                                       for w in (getattr(d.plan, "warnings", None) or [])),
+             "md5": hashlib.md5((out / "ours.dst").read_bytes()).hexdigest(), **travel}
     (out / "stats.json").write_text(json.dumps(stats, indent=1), encoding="utf-8")
     return stats
+
+
+#: hairline_travel's half-thread clearance and the two wider bands #1112 read beside it:
+#: a rise only at 0.20 is travel overlapping a laid stitch by under half a thread
+BARE_BANDS_MM = (0.20, 0.25, 0.30)
+OFFBODY_PPM = 10.0          # travel off DST bodies: raster of the cell's own DST
+OFFBODY_TOL_PX = 2          # +0.2 mm round the opened bodies
+
+
+def bare_by_band(plan, bands=BARE_BANDS_MM) -> dict[str, float]:
+    """`tools.hairline_travel`'s bare thread (needle-down travel legs, flights left
+    out) at each clearance in `bands`: mm of leg further than that from every laid
+    stitch's centreline. The 0.20 band is the instrument's own `scan` number."""
+    import numpy as np
+    import shapely
+    from shapely.geometry import LineString
+    from tools import hairline_travel as ht
+    zone = ht._thread_zone(plan)
+    tot = {d: 0.0 for d in bands}
+    for lg in ht.legs(plan):
+        if lg["flight"] or zone is None or len(lg["pts"]) < 2:
+            continue
+        path = LineString(lg["pts"])
+        if path.length <= 0:
+            continue
+        n = max(2, int(path.length / ht.STEP_MM))
+        pts = shapely.line_interpolate_point(path, (np.arange(n) + 0.5) / n, normalized=True)
+        for d in bands:
+            hit = zone.query(pts, predicate="dwithin", distance=d)
+            cov = np.zeros(len(pts), bool)
+            cov[hit[0]] = True
+            tot[d] += float((~cov).sum()) * path.length / n
+    return {f"{d:.2f}": round(v, 2) for d, v in tot.items()}
+
+
+def _dst_bodies(path: Path):
+    """The DST's sewn bodies as a raster: each block's needle-down lines at a
+    thread's width, opened by `sequence_pro.OPEN_MM` (a lone walk line is not a
+    body), dilated `OFFBODY_TOL_PX`. -> (mask, mm -> px, (w, h), first stitch mm)."""
+    import cv2
+    import numpy as np
+    from tools import sequence_pro as sp
+    f = sp.read(path)
+    x0, y0, x1, y1 = f["extents"]
+    ox, oy = x0 - 2, y0 - 2
+    w, h = int((x1 - x0 + 4) * OFFBODY_PPM) + 2, int((y1 - y0 + 4) * OFFBODY_PPM) + 2
+    lw = max(1, int(round(sp.THREAD_MM * OFFBODY_PPM)))
+
+    def px(p):
+        return int(round((p[0] - ox) * OFFBODY_PPM)), int(round((p[1] - oy) * OFFBODY_PPM))
+    bodies = np.zeros((h, w), np.uint8)
+    k = int(round(sp.OPEN_MM * OFFBODY_PPM))
+    for block in f["blocks"]:
+        mv = sp.moves(block)
+        im = np.zeros((h, w), np.uint8)
+        for a, b in zip(mv, mv[1:]):
+            if not b["up"]:
+                cv2.line(im, px(a["p"]), px(b["p"]), 1, lw)
+        bodies |= cv2.morphologyEx(im, cv2.MORPH_OPEN, np.ones((k, k), np.uint8))
+    t = 2 * OFFBODY_TOL_PX + 1
+    near = cv2.dilate(bodies, np.ones((t, t), np.uint8))
+    first = next((x, y) for b in f["blocks"] for x, y, c in b if c == 0)   # pystitch.STITCH
+    return near, px, (w, h), first
+
+
+def travel_offbody(plan, dst: Path) -> float:
+    """mm of TRAVEL thread -- each run and its needle-down legs in and out -- off
+    every body of the cell's own DST: the bare-fabric question read against the
+    machine file, not the plan (#1112's second reading)."""
+    from digitizer_core import stitches
+    near, px, (w, h), first_dst = _dst_bodies(dst)
+    fp = next(pt for cmd, pt in stitches.iter_machine_commands(plan) if cmd == stitches.CMD_STITCH)
+    dx, dy = first_dst[0] - fp[0], first_dst[1] - fp[1]
+    runs = [r for _b, r in plan.iter_runs() if r.points]
+    tot = 0.0
+    for i, r in enumerate(runs):
+        if r.kind != stitches.TRAVEL:
+            continue
+        pts = list(r.points)
+        if i and not r.jump:
+            pts = [runs[i - 1].points[-1]] + pts
+        if i + 1 < len(runs) and not runs[i + 1].jump:
+            pts = pts + [runs[i + 1].points[0]]
+        for a, b in zip(pts, pts[1:]):
+            L = math.dist(a, b)
+            n = max(1, int(math.ceil(L / 0.25)))
+            for k in range(n):
+                t = (k + 0.5) / n
+                qx, qy = px((a[0] + (b[0] - a[0]) * t + dx, a[1] + (b[1] - a[1]) * t + dy))
+                if 0 <= qx < w and 0 <= qy < h and not near[qy, qx]:
+                    tot += L / n
+    return round(tot, 2)
+
+
+def travel_instruments(plan, dst: Path) -> dict:
+    """The travel numbers a row carries beside its counts. `bare_mm` (by clearance
+    band) is gate 3's instrument; `exposed_mm` (`tools.travel_cover`, which also
+    counts travel lying on EARLIER thread) and `offbody_mm` are information."""
+    from tools.travel_cover import travel_exposure
+    out = {"exposed_mm": round(travel_exposure(plan)["exposed_mm"], 1), "bare_mm": bare_by_band(plan)}
+    try:
+        out["offbody_mm"] = travel_offbody(plan, dst)
+    except Exception as e:  # noqa: BLE001 -- an unreadable file is a cell note, not a lost cell
+        out["offbody_mm"] = f"reader failed: {type(e).__name__}"
+    return out
 
 
 def _job(args):
@@ -579,7 +771,9 @@ def run_cmd(a) -> int:
     if bad:
         raise SystemExit(f"unknown flags: {bad}; known: {list(FLAGS)}")
     pairs = [(s, arm) for f in flags for s in flag_fixtures(f, a.fixtures)
-             for arm in (off_arm(f), f, also_arm(f)) if arm]
+             for arm in (off_arm(f), f, also_arm(f, s)) if arm]
+    if getattr(a, "off_only", False):     # OFF first: `adopt` then keeps ON cells whose OFF held
+        pairs = [(s, arm) for s, arm in pairs if is_off(arm)]
     jobs = [(s, arm, str(a.cache), a.engine) for s, arm in dict.fromkeys(pairs)]
     if a.jobs <= 1:
         for j in jobs:
@@ -588,6 +782,48 @@ def run_cmd(a) -> int:
         with ProcessPoolExecutor(max_workers=a.jobs) as ex:
             for line in ex.map(_job, jobs):
                 print(line, flush=True)
+    return 0
+
+
+def _md5(path: Path) -> str:
+    return hashlib.md5(Path(path).read_bytes()).hexdigest()
+
+
+def adopt(src: Path, dst: Path, flag: str, slug: str, base_sha: str | None) -> str:
+    """Copy an ON cell (and the OFF it was diffed against) from an older cache.
+
+    `base_sha` None: a row shown and not asked -- copied as it is, its engine on
+    the row. Otherwise only when the cell's `sets` are the row's today AND the OFF
+    it was diffed against is byte-identical to this cache's OFF at `base_sha`:
+    the base moved nowhere this job sews, so the old ON stands for the new one.
+    -> what happened, one line."""
+    import shutil
+    on = src / slug / flag
+    if not (on / "stats.json").exists():
+        return f"{slug}/{flag}: no cell in {src}"
+    st = json.loads((on / "stats.json").read_text(encoding="utf-8"))
+    off_old = cell_dir(src, slug, off_arm(flag), st["engine"])
+    if not (off_old / "ours.dst").exists():
+        return f"{slug}/{flag}: its OFF ({off_old.name}) is not in {src}"
+    if base_sha is not None:
+        if st.get("sets") != arm_sets(flag):
+            return f"{slug}/{flag}: not adopted, its sets {st.get('sets')} are not the row's"
+        off_new = cell_dir(dst, slug, off_arm(flag), base_sha)
+        if not (off_new / "ours.dst").exists():
+            return f"{slug}/{flag}: not adopted, no OFF at {base_sha} to compare"
+        if _md5(off_new / "ours.dst") != _md5(off_old / "ours.dst"):
+            return f"{slug}/{flag}: not adopted, OFF moved {st['engine']} -> {base_sha}"
+    for d in (on, off_old):
+        target = dst / slug / d.name
+        if not target.exists():
+            shutil.copytree(d, target)
+    return f"{slug}/{flag}: adopted from {st['engine']}"
+
+
+def adopt_cmd(a) -> int:
+    for f in a.flags:
+        for s in flag_fixtures(f, a.fixtures):
+            print(adopt(Path(a.source), Path(a.cache), f, s, a.base), flush=True)
     return 0
 
 
@@ -1043,6 +1279,9 @@ def pro_cell(fx: dict) -> dict:
     return cell
 
 
+TRAVEL_KEYS = ("exposed_mm", "bare_mm", "offbody_mm", "cpu_s", "md5")
+
+
 def measure(flag: str, cell: dict, fx: dict) -> dict:
     out = counts(cell["stream"])
     fn = METRICS[FLAGS[flag]["metric"]]
@@ -1050,11 +1289,45 @@ def measure(flag: str, cell: dict, fx: dict) -> dict:
         out["about"] = fn(cell["stream"], fx, cell)
     except Exception as e:  # noqa: BLE001 -- a reader that cannot read a file is a cell, not a crash
         out["about"] = f"reader failed: {type(e).__name__}"
+    stats = cell.get("stats") or {}
+    out.update({k: stats[k] for k in TRAVEL_KEYS if k in stats})   # ours only: plan instruments
     return out
 
 
-def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str]) -> list[dict]:
-    import cv2
+def bare_rise(off: dict, on: dict) -> dict | None:
+    """Gate 3's read for one cell pair: bare thread (`hairline_travel`, needle-down
+    legs) OFF -> ON at each clearance band. None when either cell predates the
+    instrument. `rises`: the bands where ON lays more bare thread than OFF."""
+    a, b = off.get("bare_mm"), on.get("bare_mm")
+    if not isinstance(a, dict) or not isinstance(b, dict):
+        return None
+    rises = [k for k in sorted(a) if b.get(k, 0.0) > a[k] + 0.005]
+    return {"off": a, "on": b, "rises": rises}
+
+
+def gate3_verdict(rows: list[dict]) -> str:
+    """A flag's gate-3 word over its rendered cells: 'gate 3' when ON raises bare
+    thread at the instrument's own band (0.20 mm) on any fixture -- and then it is
+    not asked -- 'clear' when no cell rises, 'n/a' when no cell carries it."""
+    reads = [r["bare"] for r in rows if r.get("bare")]
+    for r in rows:
+        reads += [x for x in (r.get("bare_also"),) if x]
+    if not reads:
+        return "n/a"
+    inst = f"{BARE_BANDS_MM[0]:.2f}"
+    hit = [x for x in reads if inst in x["rises"]]
+    if not hit:
+        return "clear"
+    wider = any(len(x["rises"]) > 1 for x in hit)
+    return "gate 3" if wider else f"gate 3 (at {inst} mm only: overlap under half a thread)"
+
+
+def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str],
+               base_sha: str | None = None) -> list[dict]:
+    """One row per (flag, fixture). With `base_sha` (the sheet's OFF engine), a row
+    whose cells ran on another engine says so: `stale` when its OFF is not the
+    base's OFF byte for byte, `base_bytes` when it is (the base moved nowhere
+    this job sews)."""
     renders.mkdir(parents=True, exist_ok=True)
     rows = []
     pros: dict[str, tuple[dict, dict]] = {}
@@ -1092,24 +1365,36 @@ def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str]) -
             row["off"] = measure(flag, off, fx)
             row["on"] = measure(flag, on, fx)
             row["pro"] = measure(flag, pro, fx)
+            row["bare"] = bare_rise(row["off"], row["on"])
+            if base_sha and sha != base_sha:
+                base_off = cell_dir(cache, slug, off_arm(flag), base_sha) / "ours.dst"
+                same = base_off.exists() and _md5(base_off) == _md5(off["dst"])
+                row["base_bytes" if same else "stale"] = sha
             also = None
-            if also_arm(flag) and (cache / slug / also_arm(flag) / "stats.json").exists():
-                also = load_cell(cache / slug / also_arm(flag))
+            also_dir = cache / slug / (also_arm(flag, slug) or "-")
+            if also_arm(flag, slug) and (also_dir / "stats.json").exists():
+                also = load_cell(also_dir)
                 also["engine_root"] = row["engine_root"]
                 row["also"] = measure(flag, also, fx)
                 row["also_label"] = FLAGS[flag]["also"]["label"]
+                row["bare_also"] = bare_rise(row["off"], row["also"])
             row["pro_file"] = fx["pro_dst"].name
             d = diff_points(needle_points(off["stream"]), needle_points(on["stream"]))
             row["diff"] = len(d)
             same_file = off["dst"].read_bytes() == on["dst"].read_bytes()
             row["byte_identical"] = same_file
-            if not d:
+            d_win = d
+            if also is not None:
+                d_also = diff_points(needle_points(off["stream"]), needle_points(also["stream"]))
+                row["diff_also"] = len(d_also)
+                d_win = d or d_also        # ON inert and the third cell not: crop on the third
+            if not d_win:
                 row["status"] = "no change"
                 rows.append(row)
                 continue
-            box = best_window(d)
+            box = best_window(d_win)
             row["box_mm"] = [round(v, 1) for v in box]
-            row["in_window"] = sum(1 for p in d if box[0] <= p[0] <= box[2] and box[1] <= p[1] <= box[3])
+            row["in_window"] = sum(1 for p in d_win if box[0] <= p[0] <= box[2] and box[1] <= p[1] <= box[3])
             frame = _design_frame(off["design"])
             pbox = pro_box(pro["design_render"], frame, box)
             tiles = {"off": render_crop(off["design"], box), "on": render_crop(on["design"], box)}
@@ -1136,7 +1421,7 @@ def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str]) -
             row["images"]["where"] = name
             row["status"] = "rendered"
             rows.append(row)
-            print(f"{flag}/{slug}: {len(d)} points differ, window {row['box_mm']}", flush=True)
+            print(f"{flag}/{slug}: {len(d_win)} points differ, window {row['box_mm']}", flush=True)
     return rows
 
 
@@ -1162,9 +1447,43 @@ def _fmt_on(r: dict) -> str:
     return on if "also" not in r else f"{on}; {_side_label(r, 'also')}: {_fmt(r['also'])}"
 
 
-def markdown(rows: list[dict], renders: Path, doc: Path) -> str:
+def _md_text(s: str) -> str:
+    """An HTML intro line as markdown: <code> to backticks, entities to text."""
+    import re
+    s = s.replace("<code>", "`").replace("</code>", "`").replace("&mdash;", "--")
+    return re.sub(r"<[^>]+>", "", s).replace("&amp;", "&")
+
+
+def _md_travel(m: dict | None) -> str:
+    return _travel(m).replace("&middot;", "/")
+
+
+def markdown(rows: list[dict], renders: Path, doc: Path, date: str = DATE,
+             sheet: dict | None = None, intro: list[str] | None = None) -> str:
     rel = os.path.relpath(renders, doc.parent).replace("\\", "/")
-    lines = [f"# Flip sheet {DATE}: OFF | ON | pro, one crop per flag and fixture", "",
+    lines = [f"# Flip sheet {date}: OFF | ON | pro, one crop per flag and fixture", ""]
+    for p in intro or []:
+        lines += [_md_text(p), ""]
+    if sheet:
+        lines += ["## What Kent is asked", "",
+                  "| flag (PR) | kind | on this sheet | gate 3 | fixtures |", "|---|---|---|---|---|"]
+        for flag in sheet:
+            fr = [r for r in rows if r["flag"] == flag]
+            if fr:
+                lines.append(f"| `{flag}` (#{FLAGS[flag]['pr']}) | {flag_kind(flag)} | "
+                             f"{ask_status(flag, fr, sheet)[1]} | {gate3_verdict(fr)} | "
+                             f"{', '.join(r['fixture'] for r in fr)} |")
+        lines += ["", "## Travel per cell (mm)", "",
+                  "exposed (`travel_cover`) / bare thread at 0.20/0.25/0.30 mm clearance "
+                  "(`hairline_travel`, gate 3) / travel off the DST's own bodies. The pro has no "
+                  "plan, so no cell.", "",
+                  "| flag | fixture | OFF | ON | third cell |", "|---|---|---|---|---|"]
+        for r in rows:
+            if r.get("status") in ("rendered", "no change"):
+                lines.append(f"| `{r['flag']}` | {r['fixture']} | {_md_travel(r.get('off'))} | "
+                             f"{_md_travel(r.get('on'))} | {_md_travel(r.get('also'))} |")
+        lines.append("")
+    lines += [
              "Kent's ruling 2026-10-22: stitch layout is judged in the preview; only pull and "
              "comp need fabric. Every row here is a layout flag built OFF, rendered where it "
              "changes stitches, beside the professional's file for the same job. The flips are "
@@ -1185,12 +1504,12 @@ def markdown(rows: list[dict], renders: Path, doc: Path) -> str:
             continue
         if r["status"] == "no change":
             why = "byte-identical DST" if r["byte_identical"] else "0 needle points differ"
-            lines.append(f"| {tag} | {r['fixture']} | {r['engine']} | {_fmt(r['off'])} | {_fmt_on(r)} | "
+            lines.append(f"| {tag} | {r['fixture']} | {_engine_note(r)} | {_fmt(r['off'])} | {_fmt_on(r)} | "
                          f"{_fmt(r['pro'])} | **no change** ({why}) | - |")
             continue
         im = r["images"]
         crop = " ".join(f"[{s}]({rel}/{im[s]})" for s in im)
-        lines.append(f"| {tag} | {r['fixture']} | {r['engine']} | {_fmt(r['off'])} | {_fmt_on(r)} | "
+        lines.append(f"| {tag} | {r['fixture']} | {_engine_note(r)} | {_fmt(r['off'])} | {_fmt_on(r)} | "
                      f"{_fmt(r['pro'])} | {r['diff']:,} ({r['in_window']:,} in crop) | {crop} |")
     lines += ["", "## What each number is", ""]
     for flag, spec in FLAGS.items():
@@ -1233,66 +1552,172 @@ def _counts(m: dict | None) -> str:
     return f"{m['stitches']:,} st &middot; {m['trims']} tr &middot; {m.get('colours', '-')} cc"
 
 
-def flag_header(flag: str, rows: list[dict]) -> str:
-    """A flag's section head: its kind, what it sets, and per fixture the
-    stitches, trims and colour changes OFF -> ON -> pro, so it is decided on
-    its own."""
+def _travel(m: dict | None) -> str:
+    """exposed travel / bare thread at each band / travel off DST bodies, mm."""
+    if not m or not isinstance(m.get("bare_mm"), dict):
+        return "-"
+    bare = "/".join(f"{m['bare_mm'][k]:.2f}" for k in sorted(m["bare_mm"]))
+    off = m.get("offbody_mm")
+    off = f"{off:.1f}" if isinstance(off, (int, float)) else str(off)
+    return f"exp {m['exposed_mm']:.1f} &middot; bare {bare} &middot; off-body {off}"
+
+
+def ask_status(flag: str, rows: list[dict], sheet: dict | None) -> tuple[str, str]:
+    """(badge class, text) for a flag on a sheet with an ask list: 'ask' when Kent
+    rules it here, 'gate3' when it was to be asked but ON raises bare thread (gate 3:
+    not asked), 'shown' with the sheet's reason otherwise. ('', '') off a sheet."""
+    if not sheet or flag not in sheet:
+        return "", ""
+    s = sheet[flag]
+    if not s.get("ask"):
+        return "shown", f"SHOWN, NOT ASKED: {s.get('label', '')}"
+    g = gate3_verdict(rows)
+    if g.startswith("gate 3"):
+        return "gate3", f"NOT ASKED: {g} -- ON raises bare thread"
+    return "ask", "ASKED: Kent rules it from this sheet" + (" (gate 3 clear)" if g == "clear" else "")
+
+
+def _engine_note(r: dict) -> str:
+    if r.get("stale"):
+        return f"engine {r['stale']}: not current base"
+    if r.get("base_bytes"):
+        return f"engine {r['base_bytes']} (its OFF is the current base's, byte for byte)"
+    return f"engine {r.get('engine', '-')}"
+
+
+def flag_header(flag: str, rows: list[dict], sheet: dict | None = None) -> str:
+    """A flag's section head: its kind, whether it is asked, what it sets, and per
+    fixture the stitches, trims and colour changes OFF -> ON -> pro beside the
+    travel instruments, so it is decided on its own."""
     kind = flag_kind(flag)
     why = ("judged from these renders (Kent 2026-10-22)" if kind == "LAYOUT"
            else "ROADMAP gate 1: needs a sew-out, the renders cannot decide it")
-    lines = [f"<h2 class='group'><code>{flag}</code> (PR #{FLAGS[flag]['pr']}) "
-             f"<span class='kind {kind.lower()}'>{kind}</span></h2>",
+    cls, ask = ask_status(flag, rows, sheet)
+    has_also = any("also" in r for r in rows)
+    lines = [f"<h2 class='group' id='{flag}'><code>{flag}</code> (PR #{FLAGS[flag]['pr']}) "
+             f"<span class='kind {kind.lower()}'>{kind}</span>"
+             + (f"<span class='ask {cls}'>{ask}</span>" if ask else "") + "</h2>",
              f"<p class='nochange'>{kind}: {why}. Sets <code>{json.dumps(FLAGS[flag]['sets'])}</code>.</p>",
-             "<table class='sum'><tr><th>fixture</th><th>OFF</th><th>ON</th><th>pro</th><th>change</th></tr>"]
+             "<div class='scroll'><table class='sum'><tr><th>fixture</th><th>engine</th><th>OFF</th>"
+             "<th>ON</th>" + ("<th>third cell</th>" if has_also else "") + "<th>pro</th><th>change</th>"
+             "<th>travel OFF (mm)</th><th>travel ON (mm)</th></tr>"]
+    width = 8 + has_also
     for r in rows:
         if r.get("status") not in ("rendered", "no change"):
-            lines.append(f"<tr><td>{r['fixture']}</td><td colspan='4'>{r.get('status')}</td></tr>")
+            lines.append(f"<tr><td>{r['fixture']}</td><td colspan='{width}'>{r.get('status')}</td></tr>")
             continue
         change = "none" if r["status"] == "no change" else f"{r['diff']:,} points"
-        lines.append(f"<tr><td>{r['fixture']}</td><td>{_counts(r['off'])}</td>"
-                     f"<td>{_counts(r['on'])}</td><td>{_counts(r['pro'])}</td><td>{change}</td></tr>")
-    lines.append("</table>")
+        also = (f"<td>{_side_label(r, 'also')}: {_counts(r['also'])}</td>" if "also" in r
+                else ("<td>-</td>" if has_also else ""))
+        lines.append(f"<tr><td>{r['fixture']}</td><td>{_engine_note(r)}</td><td>{_counts(r['off'])}</td>"
+                     f"<td>{_counts(r['on'])}</td>{also}<td>{_counts(r['pro'])}</td><td>{change}</td>"
+                     f"<td>{_travel(r.get('off'))}</td><td>{_travel(r.get('on'))}</td></tr>")
+    lines.append("</table></div>")
     return "".join(lines)
 
 
-def html(rows: list[dict], src=lambda name: name, date: str = DATE) -> str:
-    """The sheet. `src` maps a render's file name to the `<img src>` value: the
-    name itself for a page beside its renders, a data URI for the inlined one."""
-    out = ["<!doctype html><html><head><meta charset='utf-8'>",
-           f"<title>Flip sheet {date}</title>",
-           "<style>body{font-family:system-ui,sans-serif;margin:20px;background:#fafafa}"
-           "h1{font-size:20px} .row{background:#fff;border:1px solid #ddd;border-radius:6px;"
-           "padding:12px;margin:14px 0} .tiles{display:flex;gap:12px;flex-wrap:wrap}"
-           ".tile{flex:1 1 300px} .tile img{width:100%;height:auto;border:1px solid #ccc;"
-           "image-rendering:auto} .nums{font-size:14px;margin-top:6px} .nums b{display:inline-block;"
-           "width:48px} code{background:#eee;padding:1px 4px;border-radius:3px}"
-           "table.sum{border-collapse:collapse;font-size:13px;background:#fff}"
-           "table.sum td,table.sum th{border:1px solid #ddd;padding:3px 8px;text-align:left}"
-           "h2.group{font-size:19px;margin:34px 0 6px;padding-top:10px;border-top:3px solid #333}"
-           ".kind{font-size:13px;padding:2px 8px;border-radius:10px;margin-left:8px;color:#fff}"
-           ".kind.layout{background:#2d6cdf} .kind.fabric{background:#c0392b}"
-           ".nochange{color:#555} .flag{font-size:17px;margin:0 0 4px} .where{margin-top:10px;max-width:520px} .where img{width:100%;border:1px solid #ccc}</style></head><body>",
-           f"<h1>Flip sheet {date} &mdash; OFF | ON | pro</h1>",
+#: The page's look. Layout: one column of flag sections, each a header table over
+#: crop rows; tiles wrap to one column at phone width, wide tables scroll in place.
+PAGE_CSS = (
+    ":root{--bg:#f6f7f9;--surface:#ffffff;--fg:#1d232b;--muted:#5b6573;--line:#d9dee5;"
+    "--code:#eceff3;--layout:#2457c5;--fabric:#b23a2e;--ask:#1f7a4d;--gate:#a35a00;"
+    "--shown:#6b5ca5;--on-badge:#ffffff;"
+    "--sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;"
+    "--mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Consolas,monospace}"
+    "@media (prefers-color-scheme:dark){:root:not([data-theme='light']){--bg:#14181e;"
+    "--surface:#1c222a;--fg:#e4e8ee;--muted:#9aa5b3;--line:#323b47;--code:#262e38;"
+    "--layout:#7ea2f2;--fabric:#ef8a7f;--ask:#5fc493;--gate:#f0ad4e;--shown:#b3a6ea;"
+    "--on-badge:#14181e;color-scheme:dark}}"
+    ":root[data-theme='dark']{--bg:#14181e;--surface:#1c222a;--fg:#e4e8ee;--muted:#9aa5b3;"
+    "--line:#323b47;--code:#262e38;--layout:#7ea2f2;--fabric:#ef8a7f;--ask:#5fc493;"
+    "--gate:#f0ad4e;--shown:#b3a6ea;--on-badge:#14181e;color-scheme:dark}"
+    "body{font-family:var(--sans);background:var(--bg);color:var(--fg);line-height:1.45;"
+    "padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));"
+    "padding-right:max(16px,env(safe-area-inset-right,0px));margin:0}"
+    "main{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:14px}"
+    "h1{font-size:22px;margin:0;text-wrap:balance} p{margin:0;max-width:75ch}"
+    "code{font-family:var(--mono);font-size:.92em;background:var(--code);padding:1px 4px;"
+    "border-radius:3px;overflow-wrap:anywhere}"
+    ".scroll{overflow-x:auto;max-width:100%}"
+    "table.sum{border-collapse:collapse;font-size:13px;background:var(--surface);"
+    "font-variant-numeric:tabular-nums}"
+    "table.sum td,table.sum th{border:1px solid var(--line);padding:4px 8px;text-align:left;"
+    "vertical-align:top}"
+    "table.sum th{color:var(--muted);font-weight:600;font-size:12px;letter-spacing:.02em}"
+    "h2.group{font-size:19px;margin:26px 0 0;padding-top:12px;border-top:3px solid var(--fg);"
+    "display:flex;flex-wrap:wrap;align-items:center;gap:8px;text-wrap:balance}"
+    ".kind,.ask{font-size:12px;font-weight:600;padding:2px 9px;border-radius:10px;"
+    "color:var(--on-badge);letter-spacing:.03em}"
+    ".kind.layout{background:var(--layout)} .kind.fabric{background:var(--fabric)}"
+    ".ask.ask{background:var(--ask)} .ask.gate3{background:var(--gate)}"
+    ".ask.shown{background:var(--shown)}"
+    ".nochange{color:var(--muted)}"
+    ".row{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px;"
+    "display:flex;flex-direction:column;gap:8px;min-width:0}"
+    ".flag{font-size:16px;font-weight:600}"
+    ".tiles{display:flex;gap:12px;flex-wrap:wrap}"
+    ".tile{flex:1 1 280px;min-width:0}"
+    ".tile img,.where img{width:100%;height:auto;max-width:100%;border:1px solid var(--line);"
+    "display:block}"
+    ".nums{font-size:13px;margin-top:4px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}"
+    ".nums b{display:inline-block;min-width:48px}"
+    ".where{max-width:520px}"
+    "a{color:var(--layout)} a:focus-visible{outline:2px solid var(--layout);outline-offset:2px}"
+)
+FONT_LINK = ("<link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:"
+             "wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap'>")
+
+
+def ask_table(rows: list[dict], sheet: dict) -> str:
+    """The sheet's first table: every flag on it, asked or shown, with the reason and
+    its gate-3 read, linking to its section."""
+    out = ["<div class='scroll'><table class='sum'><tr><th>flag (PR)</th><th>kind</th>"
+           "<th>on this sheet</th><th>gate 3 (bare thread, ON vs OFF)</th><th>fixtures</th></tr>"]
+    for flag in sheet:
+        fr = [r for r in rows if r["flag"] == flag]
+        if not fr:
+            continue
+        cls, text = ask_status(flag, fr, sheet)
+        out.append(f"<tr><td><a href='#{flag}'><code>{flag}</code></a> (#{FLAGS[flag]['pr']})</td>"
+                   f"<td>{flag_kind(flag)}</td><td><span class='ask {cls}'>{text}</span></td>"
+                   f"<td>{gate3_verdict(fr)}</td><td>{', '.join(r['fixture'] for r in fr)}</td></tr>")
+    out.append("</table></div>")
+    return "".join(out)
+
+
+def html_parts(rows: list[dict], src=lambda name: name, date: str = DATE,
+               sheet: dict | None = None, intro: list[str] | None = None) -> tuple[str, str]:
+    """(head, body) of the sheet. `src` maps a render's file name to the `<img src>`
+    value: the name itself for a page beside its renders, a data URI for the
+    inlined one. With `sheet` (`W5`), the page opens on its ask list and each
+    flag's header says whether it is asked."""
+    head = (f"<title>Flip sheet {date}</title>\n"
+            "<meta name='claude:viewport-fit-sides' content='cover'>\n"
+            f"{FONT_LINK}\n<style>{PAGE_CSS}</style>")
+    out = ["<main>", f"<h1>Flip sheet {date} &mdash; OFF | ON | pro</h1>",
            "<p>Layout flags built OFF, each rendered where it changes stitches beside the "
            "professional's file for the same job (hat preset at the pro's width). 40 px/mm: a "
-           "0.4 mm thread is 16 px. The flips are Kent's.</p>",
-           summary_table(rows)]
+           "0.4 mm thread is 16 px. The flips are Kent's.</p>"]
+    out += [f"<p>{p}</p>" for p in intro or []]
+    if sheet:
+        out.append(ask_table(rows, sheet))
+    out.append(summary_table(rows))
     seen: set[str] = set()
     for r in rows:
         if r["flag"] not in seen:
             seen.add(r["flag"])
-            out.append(flag_header(r["flag"], [x for x in rows if x["flag"] == r["flag"]]))
-        head = f"<p class='flag'><code>{r['flag']}</code> (PR #{r['pr']}) &middot; {r['fixture']} " \
-               f"at {r['width_mm']} mm &middot; engine {r.get('engine', '-')}</p>"
+            out.append(flag_header(r["flag"], [x for x in rows if x["flag"] == r["flag"]], sheet))
+        head_row = f"<p class='flag'><code>{r['flag']}</code> (PR #{r['pr']}) &middot; {r['fixture']} " \
+                   f"at {r['width_mm']} mm &middot; {_engine_note(r)}</p>"
         if r.get("note"):
-            head += f"<p class='nochange'>&#9888; {r['note']}</p>"
+            head_row += f"<p class='nochange'>&#9888; {r['note']}</p>"
         if r.get("status") not in ("rendered", "no change"):
-            out.append(f"<div class='row'>{head}<p class='nochange'>{r.get('status')}</p></div>")
+            out.append(f"<div class='row'>{head_row}<p class='nochange'>{r.get('status')}</p></div>")
             continue
         nums = "".join(f"<div><b>{_side_label(r, s)}</b> {_fmt(r[s])}</div>" for s in _sides(r))
         if r["status"] == "no change":
             why = "byte-identical DST" if r["byte_identical"] else "0 needle points differ"
-            out.append(f"<div class='row'>{head}<p class='nochange'><b>No change on this fixture</b> "
+            out.append(f"<div class='row'>{head_row}<p class='nochange'><b>No change on this fixture</b> "
                        f"({why}).</p><div class='nums'>{nums}</div></div>")
             continue
         tiles = "".join(f"<div class='tile'><img src='{src(r['images'][s])}' alt='{s}'>"
@@ -1304,12 +1729,23 @@ def html(rows: list[dict], src=lambda name: name, date: str = DATE) -> str:
                              f"underlay drawn on top</div></div>" for s in ("off", "on", "pro"))
         where = (f"<div class='where'><img src='{src(r['images']['where'])}' alt='where'>"
                  f"<div class='nums'>where the crop sits (OFF, red box)</div></div>")
-        out.append(f"<div class='row'>{head}<p>{r['about']}. {r['diff']:,} needle points differ, "
+        third = (f" The third cell ({_side_label(r, 'also')}) differs from OFF at "
+                 f"{r['diff_also']:,} points." if "diff_also" in r else "")
+        out.append(f"<div class='row'>{head_row}<p>{r['about']}. {r['diff']:,} needle points differ, "
                    f"{r['in_window']:,} in this {WINDOW_MM[0]:g} x {WINDOW_MM[1]:g} mm crop at "
-                   f"{r['box_mm']} mm (plan frame). Sets <code>{json.dumps(r['sets'])}</code>.</p>"
+                   f"{r['box_mm']} mm (plan frame).{third} Sets <code>{json.dumps(r['sets'])}</code>.</p>"
                    f"<div class='tiles'>{tiles}</div>{where}</div>")
-    out.append("</body></html>")
-    return "\n".join(out)
+    out.append("</main>")
+    return head, "\n".join(out)
+
+
+def html(rows: list[dict], src=lambda name: name, date: str = DATE,
+         sheet: dict | None = None, intro: list[str] | None = None) -> str:
+    """The sheet as a whole document, for a file opened from disk."""
+    head, body = html_parts(rows, src, date, sheet, intro)
+    return ("<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+            "<meta name='viewport' content='width=device-width,initial-scale=1,viewport-fit=cover'>\n"
+            f"{head}</head><body>\n{body}\n</body></html>")
 
 
 def data_uri(path: Path, quality: int | None = None, max_w: int | None = None) -> str:
@@ -1330,11 +1766,13 @@ def data_uri(path: Path, quality: int | None = None, max_w: int | None = None) -
 
 
 def inline_html(rows: list[dict], renders: Path, date: str = DATE,
-                max_mb: float = INLINE_MAX_MB) -> tuple[str, tuple]:
+                max_mb: float = INLINE_MAX_MB, sheet: dict | None = None,
+                intro: list[str] | None = None, fragment: bool = False) -> tuple[str, tuple]:
     """ONE self-contained page: the sheet with every image inlined. Tries the
     renders as written, then re-encodes smaller (`INLINE_LEVELS`) until the page
     fits `max_mb`; returns the page and the (quality, max width) that fitted --
-    the last level if none did."""
+    the last level if none did. `fragment`: the page without its document
+    wrapper (title, style, content), the form an Artifact publish wraps itself."""
     renders = Path(renders)
     page, level = "", INLINE_LEVELS[0]
     for level in INLINE_LEVELS:
@@ -1345,24 +1783,57 @@ def inline_html(rows: list[dict], renders: Path, date: str = DATE,
                 cache[name] = data_uri(renders / name, _q, _w)
             return cache[name]
 
-        page = html(rows, src, date)
+        if fragment:
+            page = "\n".join(html_parts(rows, src, date, sheet, intro))
+        else:
+            page = html(rows, src, date, sheet, intro)
         if len(page.encode("utf-8")) <= max_mb * 1024 * 1024:
             break
     return page, level
 
 
+def w5_intro(base_sha: str | None) -> list[str]:
+    """The wave-5 sheet's opening lines: what OFF is, and what it is not."""
+    return [f"OFF is main's engine (<code>{base_sha or '-'}</code>): <code>sew_enclosed_white</code> "
+            "and <code>small_text_bay_mouth</code> ON (#1112), <code>fine_bars_satin</code> and "
+            "<code>outline_loop_mitre</code> ON (#1121), <code>small_text_reset_grow_away</code> "
+            "ON (#1113, #1127), <code>script_strokes</code> ON (#1136), and MFab's recipe turning "
+            "ON by itself on MFab hat and LC (#1115) with the three keyline switches (#1122) and "
+            "the loop chain (#1134) inside it. Every "
+            "asked cell was re-digitized on it, or kept from an earlier base only where that "
+            "job's OFF is byte-identical; a row drawn on another engine says so.",
+            "Not on this sheet: <code>script_strokes</code>, which Kent ruled ON 2026-10-26 and "
+            "#1136 flipped; #1119 and #1135 have its renders.",
+            "Not asked: <code>keyline_fold_slivers</code>, <code>skip_covered_shapes</code> and "
+            "<code>absorb_fragments</code>. All three ON at once (the <code>keyline_trio</code> "
+            "row) sew OFF's DST byte for byte on every white job off MFab, so no render can judge "
+            "them there; on MFab they are already ON through the gate (#1122).",
+            "Gate 3 is <code>tools/hairline_travel</code>'s bare thread (needle-down travel legs "
+            "further than the clearance from every laid stitch), read at 0.20 / 0.25 / 0.30 mm as "
+            "#1112 read it. A flag whose ON raises it is marked and not asked. Exposed travel "
+            "(<code>tools/travel_cover</code>, which also counts travel lying on EARLIER thread) and "
+            "travel off the DST's own bodies are information, with no veto.",
+            "Stitches, trims and colour changes are read off the DST for OFF, ON and the pro "
+            "(never his PES)."]
+
+
 def report_cmd(a) -> int:
-    flags = a.flags or list(FLAGS)
+    sheet = W5 if a.w5 else None
+    flags = a.flags or (list(W5) if a.w5 else list(FLAGS))
+    date = a.date if a.date != DATE or not a.w5 else W5_DATE
     slugs = a.fixtures or None
-    rows = build_rows(Path(a.cache), Path(a.renders), flags, slugs)
+    rows = build_rows(Path(a.cache), Path(a.renders), flags, slugs, a.base)
+    intro = (w5_intro(a.base) if a.w5 else []) + list(a.intro or [])
     doc = Path(a.out)
     doc.parent.mkdir(parents=True, exist_ok=True)
-    doc.write_text(markdown(rows, Path(a.renders), doc), encoding="utf-8")
-    (Path(a.renders) / "index.html").write_text(html(rows), encoding="utf-8")
+    doc.write_text(markdown(rows, Path(a.renders), doc, date, sheet, intro), encoding="utf-8")
+    (Path(a.renders) / "index.html").write_text(html(rows, date=date, sheet=sheet, intro=intro),
+                                                encoding="utf-8")
     (Path(a.renders) / "rows.json").write_text(json.dumps(rows, indent=1, default=str), encoding="utf-8")
     print(f"wrote {doc} and {Path(a.renders) / 'index.html'} ({len(rows)} rows)")
     if a.inline:
-        page, level = inline_html(rows, Path(a.renders), a.date)
+        page, level = inline_html(rows, Path(a.renders), date, sheet=sheet, intro=intro,
+                                  fragment=a.artifact)
         Path(a.inline).parent.mkdir(parents=True, exist_ok=True)
         Path(a.inline).write_text(page, encoding="utf-8")
         print(f"wrote {a.inline}: {len(page.encode('utf-8')) / 1024 / 1024:.1f} MB, "
@@ -1376,6 +1847,13 @@ def parse_args(argv=None):
                                  description=__doc__.split("\n\n")[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("adopt", help="copy cells from an older cache (see `adopt`)")
+    p.add_argument("--flags", nargs="+", required=True)
+    p.add_argument("--fixtures", nargs="*")
+    p.add_argument("--source", type=Path, required=True, help="the older cache")
+    p.add_argument("--cache", type=Path, default=DEFAULT_CACHE)
+    p.add_argument("--base", help="this cache's OFF engine: adopt only where OFF is byte-identical "
+                                  "(omit for rows shown and not asked: copied as they are)")
     for name in ("run", "report"):
         p = sub.add_parser(name)
         p.add_argument("--flags", nargs="*", help="flag names (default: all in FLAGS)")
@@ -1384,19 +1862,26 @@ def parse_args(argv=None):
         if name == "run":
             p.add_argument("--engine", help="a checkout root whose digitizer_core runs the cells")
             p.add_argument("--jobs", type=int, default=3)
+            p.add_argument("--off-only", action="store_true", help="digitize only the OFF arms")
         else:
             p.add_argument("--out", type=Path, default=DEFAULT_DOC)
             p.add_argument("--renders", type=Path, default=DEFAULT_RENDERS)
             p.add_argument("--inline", type=Path,
                            help="also write ONE self-contained HTML (images as data URIs)")
             p.add_argument("--date", default=DATE, help="date in the inlined page's title")
+            p.add_argument("--w5", action="store_true",
+                           help="the wave-5 sheet: W5's flags in its order, each marked asked or shown")
+            p.add_argument("--base", help="the sheet's OFF engine (short sha): rows on another say so")
+            p.add_argument("--artifact", action="store_true",
+                           help="write --inline without its document wrapper (an Artifact publish)")
+            p.add_argument("--intro", nargs="*", help="extra opening paragraphs (HTML)")
     return ap.parse_args(argv)
 
 
 def main(argv=None) -> int:
     utf8_console(sys.stdout)
     a = parse_args(argv)
-    return run_cmd(a) if a.cmd == "run" else report_cmd(a)
+    return {"run": run_cmd, "report": report_cmd, "adopt": adopt_cmd}[a.cmd](a)
 
 
 if __name__ == "__main__":
