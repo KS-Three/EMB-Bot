@@ -79,3 +79,9 @@ AGENTS.md
 # 2026-10-01; which tool was not identified). It is a key file, this repo is
 # PUBLIC, and until 2026-10-03 nothing kept `git add -A` from staging it.
 /daemon/
+
+# Renders of the professional's stitch files (digitizer/tools/pro_renders.py).
+# This repo is PUBLIC. Kent's ruling 2026-10-27: "Stop new ones, keep old
+# (Recommended)" -- the ~210 already under docs/ stay; new ones land here, local
+# only, and digitizer/tests/test_no_new_pro_renders.py fails on a new one in docs/.
+pro_renders/
