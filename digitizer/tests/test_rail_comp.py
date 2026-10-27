@@ -398,8 +398,14 @@ def test_the_flips_bare_artwork_is_hairlines_on_the_sides_and_a_hole_at_a_tapere
     # `lettering_columns=False` (ON by default since Kent's 2026-10-12 flip):
     # the rail comp's bare artwork is the skeleton tier's; the lane's rails
     # are priced in `tests/test_lettering_columns.py`.
+    # `small_text_reset_grow_away=False` (ON since Kent's 2026-10-26 flip):
+    # the re-set hands this tier its letters widened by their traced stroke,
+    # a different population under the same rails (ON, the hairline share
+    # read 66%, CI 2026-10-26). This test is about the rails, so it holds the
+    # letters as they were. The flip's own tests are
+    # `tests/test_small_text_grow_away.py`.
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6,
-                         lettering_columns=False)
+                         lettering_columns=False, small_text_reset_grow_away=False)
     gen = build_generation(str(TESTDATA / "photo" / "enthusiast_logo.png"), cfg)
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)

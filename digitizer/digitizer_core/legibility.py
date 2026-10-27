@@ -283,20 +283,54 @@ RENDER_MASK_GROW_MM = 1.0
 ART_MASK_GROW_MM = 1.0
 
 
-def _mask_outside(img: np.ndarray, polys, to_px, grow_px: float) -> np.ndarray:
-    """`img` with everything outside the union of `polys` (each mapped
-    through `to_px`, grown by `grow_px`) painted the image's own border
-    colour, so OCR sees the cluster's ink and not what shares its box —
-    Fremont's banner under HOTEL FREMON read as "DMZYY" until this."""
-    h, w = img.shape[:2]
-    mask = np.zeros((h, w), np.uint8)
+def _fill(polys, to_px, shape) -> np.ndarray:
+    mask = np.zeros(shape, np.uint8)
     for poly in polys:
         for ring in [poly.exterior]:
             pts = np.array([to_px(x, y) for x, y in ring.coords], np.int32)
             cv2.fillPoly(mask, [pts], 255)
-    if grow_px > 0:
-        k = int(round(grow_px)) * 2 + 1
-        mask = cv2.dilate(mask, np.ones((k, k), np.uint8))
+    return mask
+
+
+def _distance_to(mask: np.ndarray) -> np.ndarray:
+    """Pixels from each pixel to the nearest set pixel of `mask` (0 inside)."""
+    return cv2.distanceTransform(np.where(mask > 0, 0, 255).astype(np.uint8), cv2.DIST_L2, 5)
+
+
+def _mask_outside(img: np.ndarray, polys, to_px, grow_px: float, others=(),
+                  keep_rest: bool = False) -> np.ndarray:
+    """`img` with everything outside the union of `polys` (each mapped
+    through `to_px`, grown by `grow_px`) painted the image's own border
+    colour, so OCR sees the cluster's ink and not what shares its box —
+    Fremont's banner under HOTEL FREMON read as "DMZYY" until this.
+
+    `others` (the OTHER text clusters' members): a pixel nearer one of them
+    than any of `polys` is painted too, so a line set close under another
+    does not read that line's edge as its own. The grow alone could not do
+    it: ENTHUSIAST's sewn underside sat 0.57 mm over ENTERPRISES INC.'s box,
+    inside the 1.0 mm grow and the 1.0 mm pad, and Linux tesseract read the
+    line as "Sr eee" (2026-10-26, #1127). `keep_rest`: paint ONLY the other
+    clusters' ink (within `grow_px` of them), keeping whatever else shares
+    the box -- the unmasked crop. With no `others` in the crop, the crop is
+    the one it was, byte for byte."""
+    h, w = img.shape[:2]
+    if keep_rest:
+        mask = np.full((h, w), 255, np.uint8)
+        own = _fill(polys, to_px, (h, w))
+    else:
+        mask = own = _fill(polys, to_px, (h, w))
+        if grow_px > 0:
+            k = int(round(grow_px)) * 2 + 1
+            mask = cv2.dilate(mask, np.ones((k, k), np.uint8))
+    oth = _fill(others, to_px, (h, w)) if others else None
+    if oth is not None and oth.any() and own.any():
+        d_own, d_oth = _distance_to(own), _distance_to(oth)
+        theirs = d_oth < d_own
+        if keep_rest:
+            theirs &= d_oth <= grow_px
+        mask = np.where(theirs, 0, mask).astype(np.uint8)
+    elif keep_rest:
+        return img
     border = np.concatenate([img[0, :], img[-1, :], img[:, 0], img[:, -1]]).reshape(-1, img.shape[2]) \
         if img.ndim == 3 else np.concatenate([img[0, :], img[-1, :], img[:, 0], img[:, -1]])
     fill = np.median(border, axis=0)
@@ -305,9 +339,11 @@ def _mask_outside(img: np.ndarray, polys, to_px, grow_px: float) -> np.ndarray:
     return out
 
 
-def art_crop(p: Prep, box_mm, pad_mm: float = CROP_PAD_MM, members=None) -> np.ndarray:
+def art_crop(p: Prep, box_mm, pad_mm: float = CROP_PAD_MM, members=None, others=None,
+             keep_rest: bool = False) -> np.ndarray:
     """The prepped artwork inside `box_mm`, as BGR for OpenCV. With
-    `members` (polygons in mm), everything outside them is painted away."""
+    `members` (polygons in mm), everything outside them is painted away;
+    `others` and `keep_rest` are `_mask_outside`'s."""
     cx, cy, ppm = _plan_frame(p)
     h, w = p.rgb.shape[:2]
     x0 = max(0, int((box_mm[0] - pad_mm) * ppm + cx)); x1 = min(w, int(round((box_mm[2] + pad_mm) * ppm + cx)))
@@ -316,7 +352,7 @@ def art_crop(p: Prep, box_mm, pad_mm: float = CROP_PAD_MM, members=None) -> np.n
     if members:
         crop = _mask_outside(crop, members,
                              lambda x, y: (int(round(x * ppm + cx - x0)), int(round(y * ppm + cy - y0))),
-                             ART_MASK_GROW_MM * ppm)
+                             ART_MASK_GROW_MM * ppm, others=others or (), keep_rest=keep_rest)
     return crop
 
 
@@ -340,7 +376,8 @@ def render_to_px(design: dict, px_per_mm: float = RENDER_PX_PER_MM, pad_mm: floa
 
 
 def render_crop(img: np.ndarray, design: dict, box_mm, px_per_mm: float = RENDER_PX_PER_MM,
-                pad_mm: float = CROP_PAD_MM, members=None) -> np.ndarray:
+                pad_mm: float = CROP_PAD_MM, members=None, others=None,
+                keep_rest: bool = False) -> np.ndarray:
     to_px = render_to_px(design, px_per_mm)
     ax, ay = to_px(box_mm[0] - pad_mm, box_mm[1] - pad_mm)
     bx, by = to_px(box_mm[2] + pad_mm, box_mm[3] + pad_mm)
@@ -355,7 +392,8 @@ def render_crop(img: np.ndarray, design: dict, box_mm, px_per_mm: float = RENDER
         def local(x, y):
             px, py = to_px(x, y)
             return px - x0, py - y0
-        crop = _mask_outside(crop, members, local, RENDER_MASK_GROW_MM * px_per_mm)
+        crop = _mask_outside(crop, members, local, RENDER_MASK_GROW_MM * px_per_mm,
+                             others=others or (), keep_rest=keep_rest)
     return crop
 
 
@@ -376,12 +414,15 @@ def measure(p: Prep, result, plan, px_per_mm: float = RENDER_PX_PER_MM,
     if clusters:
         for cid, box in clusters:
             polys = [m.polygon for m in members[cid]]
+            # the other clusters' letters, painted out of both crops
+            others = [m.polygon for oc, ms in members.items() if oc != cid for m in ms]
             enclosed = all(m.meta.get("enclosed_background") for m in members[cid])
             sewn = any(m.shape_id in sewn_ids for m in members[cid])
-            a_img = art_crop(p, box, members=polys)
-            r_img = render_crop(img, design, box, px_per_mm, members=polys)
-            read = read_pair([a_img, art_crop(p, box)],
-                             [r_img, render_crop(img, design, box, px_per_mm)], art_ppm, px_per_mm)
+            a_img = art_crop(p, box, members=polys, others=others)
+            r_img = render_crop(img, design, box, px_per_mm, members=polys, others=others)
+            read = read_pair([a_img, art_crop(p, box, members=polys, others=others, keep_rest=True)],
+                             [r_img, render_crop(img, design, box, px_per_mm, members=polys, others=others,
+                                                 keep_rest=True)], art_ppm, px_per_mm)
             rows.append({"cluster": cid, "height_mm": round(box[3] - box[1], 2),
                          "enclosed": enclosed, "sewn": sewn, **read,
                          "similarity": similarity(read["art_text"], read["render_text"])

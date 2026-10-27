@@ -3264,6 +3264,25 @@ class PipelineConfig:
     # re-set as it was, byte for byte; `tests/conftest.py` PRE_FLIP pins it
     # False. Tests: `tests/test_small_text_bays.py`.
     small_text_bay_mouth: bool = True
+    # The re-set grows a line AWAY from its near neighbour, widened by its
+    # traced stroke (`small_text._traced_stroke` / `_near_side` /
+    # `_grow_away`, W4-04, #1113; built OFF 2026-10-26 as
+    # `cfg.extra["small_text_reset_grow_away"]`). The widening read the
+    # tagger's stale stroke tag, so ProSeal's retraced letters sewed
+    # 0.71-0.78 mm against 0.85; ON, they widen by their own stroke
+    # (0.81-0.82). A line whose art leaves a neighbour under 2 mm away holds
+    # the edge facing it (moving it at most 0.5 mm, the pro's 0.07-0.46) and
+    # grows the other way, the design edge giving by the whole growth: the
+    # ProSeal hat tagline holds its bar edge like the pro, the beanie's
+    # re-set goes x1.15 -> x1.56 (pro x1.49), Fremont's date no longer
+    # straddles THE. No clearance constant moved. Acts only while the re-set
+    # (`small_text_cap_mm`) is set. Layout (ruling 2026-10-22: judged in the
+    # preview). **ON since 2026-10-26, Kent's flip** ("Flip ON
+    # (Recommended)"), promoted from `cfg.extra` to a field so the default
+    # can be ON. False is the re-set as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP pins it False. Tests:
+    # `tests/test_small_text_grow_away.py`.
+    small_text_reset_grow_away: bool = True
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
@@ -3442,6 +3461,23 @@ class PipelineConfig:
     # crop-wide read, byte for byte. Not in `SMALL_TEXT_TRUE_SIZE`. A
     # CANDIDATE (gate 1): 0.8 mm was the ring tried.
     ink_ground_ring_mm: float | None = None
+    # A bean ink read whose skeleton runs mostly OUTSIDE the traced letter is
+    # no read (`beanletters.INK_INSIDE_MIN_SHARE`, W5-05, 2026-10-27, built
+    # OFF; `docs/outlined-bean-ink-2026-10-27.md`). MFab's AND / WELDING /
+    # LLC are black letters on a black body, each ringed by a thin white
+    # keyline; the read's ground is that black body, so it takes the WHITE
+    # keyline for the ink (AND's A and N on the LC: 0.42-0.44 mm, 0.4-1.7%
+    # of it inside the letter), passes `INK_SHAPE_MAX_RATIO` and goes bean,
+    # and the A sews as a WHITE letter with a thin black line round it (with
+    # `text_cluster_part_touching`, its N too). A letter's own ink lies
+    # inside it: bridge's bean letters 98.4-100%, the same words on the hat
+    # 68-100%. ON, an outline read is left out of the decision like a
+    # shape-gate miss, and the letter sews as the black satin rider it is:
+    # the A's crosses 44 -> 116 (pro 114), AND's 116 -> 292 (pro 324); the
+    # hat, WELDING and LLC do not move. Layout (ruling 2026-10-22: judged in
+    # the preview): no width, stroke, ratio or line moves. False is the
+    # engine as it was, byte for byte. Tests: `tests/test_bean_outlined_ink.py`.
+    bean_ink_outlined_letters: bool = False
     # Lock stitches on small letters laid ALONG the letter (2026-10-14,
     # `stitches.spread_tie_in` / `spread_tie_off`), for the runs of bean
     # letters and skeleton runs only. The ordinary lock bounces four legs of
@@ -5624,6 +5660,8 @@ class PipelineConfig:
     # ours lifted loop to loop. Layout, judged in the preview. False is the
     # loops as they were, byte for byte. Set for a plan by
     # `stage6_border.loop_chain_scope`. Tests: `tests/test_keyline_loop_chain.py`.
+    # ON for MFab-type art through `white_keyline_art.RECIPE` (Kent
+    # 2026-10-27: "MFab gate only (Recommended)"); OFF for all other art.
     keyline_loop_chain: bool = False
     # With `silhouette_underfill`, a ring that hosts its own under-fill gets
     # the fill's outer edge sewn as one closed satin loop, after the fill and

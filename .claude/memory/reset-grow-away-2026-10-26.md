@@ -1,6 +1,6 @@
 ---
 name: reset-grow-away-2026-10-26
-description: W4-04 -- `small_text_reset_grow_away` (cfg.extra, OFF) lands W3-11's pair: re-set letters widened by their RETRACED stroke, and a line with a neighbour the art leaves under 2 mm holds that edge (+-0.5 mm) while the far side, design edge included, takes the growth; beanie x1.15 -> x1.56, no no_room
+description: W4-04 -- `small_text_reset_grow_away` (ON since Kent's 2026-10-26 flip; built OFF in cfg.extra) lands W3-11's pair: re-set letters widened by their RETRACED stroke, and a line with a neighbour the art leaves under 2 mm holds that edge (+-0.5 mm) while the far side, design edge included, takes the growth; beanie x1.15 -> x1.56, no no_room
 metadata:
   type: project
 ---
@@ -50,3 +50,12 @@ NOT blocked by clearance under this flag (x1.56 vs pro x1.49).
 **Contradicting rows, reported not fitted:** Fremont hat EST 1895 (the pro
 dropped the rope and moved the date 2.07 down; ours holds by the rope), and
 THE (no near side; placed as before).
+
+**Flipped ON 2026-10-26** (Kent, from four of the renders -- ProSeal beanie,
+ProSeal hat, Fremont EST 1895, Drone: "Flip ON (Recommended)"). Promoted from
+`cfg.extra` to the `PipelineConfig` field `small_text_reset_grow_away`, default
+True. Its OFF arm is pinned in `tests/conftest.py`'s `FLIP_2026_10_26` (beside
+the bay mouth and white sewn), so every test that already spread that dict
+keeps its pin. Drone's x1.40 (pro x1.57) stays a sew-out item: the 0.8 mm halo
+is gate 1. **The synthetic OFF md5 splits by platform** (Windows 1dc31d54...,
+Linux CI 0f7d2332... on the same tree), so it is asserted on win32 only.

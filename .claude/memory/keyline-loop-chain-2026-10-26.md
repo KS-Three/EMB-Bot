@@ -24,6 +24,10 @@ does three things:
   never bridges across finished thread. The band's first loop is entered
   where it was, then walked round under its own satin.
 
+**Kent 2026-10-27: "MFab gate only (Recommended)".** The flag rides
+`white_keyline_art.RECIPE`, so it is ON for MFab-type art and OFF
+everywhere else (Becker's outline loops stay unchained).
+
 **Measured on main + #1122:** MFab white-loop cuts go 11 -> 5 on both jobs.
 DST trims go hat 30 -> 22 and LC 25 -> 19 (pro 18 / 19). The exposed walk,
 read the same way on both files, falls.
