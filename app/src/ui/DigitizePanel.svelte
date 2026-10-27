@@ -51,7 +51,8 @@
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
-  import { loadImage, rasterSize, isVectorFile, uploadPlan, downscaleForService, pngDimensionsFromBase64 } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile, uploadPlan, downscaleForService, pngDimensionsFromBase64,
+    uploadFullResEnabled, wantsFullRes, renderForService } from "../lib/rasterize.js";
   import { friendlyError } from "../lib/friendlyError.js";
   import CropBox from "./CropBox.svelte";
   import { proposeCrop } from "../lib/cropProposal.js";
@@ -166,17 +167,20 @@
       // (private window, storage blocked) is not a failed upload — the preview
       // path still works, it is just the pre-2026-09-20 result.
       let sourceFile = null;
-      const plan = uploadPlan(file, img, health && health.limits);
+      let plan = uploadPlan(file, img, health && health.limits);
       if (plan.asIs && sourceStoreAvailable()) {
         try {
           const bytes = new Uint8Array(await file.arrayBuffer());
           // Asked again WITH the bytes: a JPEG the browser rotated on decode
           // stays on the canvas path (uploadPlan's "orientation").
-          if (uploadPlan(file, img, health && health.limits, bytes).asIs) {
+          const withBytes = uploadPlan(file, img, health && health.limits, bytes);
+          if (withBytes.asIs) {
             const key = await sourceKeyFor(bytes);
             const type = file.type || plan.type || "";
             await putSource(key, { bytes, type, name: file.name });
             sourceFile = { key, type, size: bytes.length, width: img.width, height: img.height };
+          } else {
+            plan = withBytes;
           }
         } catch {
           sourceFile = null;
@@ -192,6 +196,23 @@
             const key = await sourceKeyFor(small.bytes);
             await putSource(key, { bytes: small.bytes, type: "image/png", name: file.name });
             sourceFile = { key, type: "image/png", size: small.bytes.length, width: small.width, height: small.height };
+          }
+        } catch {
+          sourceFile = null;
+        }
+      }
+      // An SVG, a GIF or an EXIF-rotated JPEG, with the full-resolution
+      // switch ON (rasterize.js, built OFF): the service cannot decode these
+      // as they are, so draw them upright at up to its 2,800-px decode size
+      // and keep THAT, instead of leaving them on the 1,200-px preview.
+      if (!sourceFile && wantsFullRes(plan, uploadFullResEnabled()) && sourceStoreAvailable()) {
+        try {
+          const lim = { max_upload_bytes: 12 * 1024 * 1024, ...((health && health.limits) || {}) };
+          const render = await renderForService(img, lim.max_upload_bytes, { vector: isVectorFile(file) });
+          if (render) {
+            const key = await sourceKeyFor(render.bytes);
+            await putSource(key, { bytes: render.bytes, type: "image/png", name: file.name.replace(/\.[^.]*$/, "") + ".png" });
+            sourceFile = { key, type: "image/png", size: render.bytes.length, width: render.width, height: render.height };
           }
         } catch {
           sourceFile = null;
