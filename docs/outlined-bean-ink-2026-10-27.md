@@ -47,7 +47,14 @@ crops and per-letter counts are identical OFF and ON (below).
 - The A, and with `part_touching` the N, come out as **white letters with a
   thin black line round them**, where the art and the pro have black satin
   letters on a white keyline.
-- DROP_MECHANISM
+- That thin black line IS the bean letter. Its runs sew (the A's 19 + 191
+  points, the N top's 116) along the read, which is the keyline, so they lie
+  outside the letter. The letter's own area shows the white panel the recipe
+  lays under its riders. No black lands inside the A.
+- An instrument trap, for the next reader of `plan.iter_runs()`: these runs
+  carry `jump=True`, which marks the lift INTO the run, not a run that does
+  not sew. A tally that skips jump runs reads this bean letter as unsewn,
+  and the premise capture did exactly that.
 
 ## The rule
 
@@ -117,7 +124,25 @@ goes from 116 crosses to 292 (pro 324).
 
 ### Lettering board (LC, the 6-10 mm line, ours / pro)
 
-BOARD_TABLE
+`python -m tools.lettering_board --only mfab_lc --trust-cache` on each arm's
+cache. Pro: 30 columns, 0 trims, 1,272 stitches, cc +0.20, reach 1.00,
+width 1.33, wobble 0.015-0.016.
+
+| arm | columns | trims inside letters | stitches | word legibility cc | reach (octaves) | mean satin width mm | rail wobble p90 mm |
+|---|---|---|---|---|---|---|---|
+| OFF | 25 | 5 | 1,535 | -0.07 | 0.37 | 1.33 | 0.032 |
+| **ON** | **31** | **4** | 1,482 | -0.07 | 0.37 | 1.32 | 0.032 |
+| OFF + part_touching | 22 | 2 | 1,751 | +0.06 | 0.57 | 1.33 | 0.035 |
+| **ON + part_touching** | **31** | **1** | 1,622 | +0.06 | 0.50 | 1.33 | 0.043 |
+
+- **Columns** reach the pro's count (30): the bean letters become satin
+  columns.
+- **Trims inside letters** fall by one on both bases.
+- **Word legibility:** cc (chance-corrected) does not move. Reach falls
+  0.57 -> 0.50 with part_touching, and wobble rises 0.035 -> 0.043 there.
+  Both are small set against the A and N now sewing black.
+- On the hat the plan is byte-identical OFF and ON, so its board and its
+  word legibility are unchanged by construction.
 
 ## Crops
 

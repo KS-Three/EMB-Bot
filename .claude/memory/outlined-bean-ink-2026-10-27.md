@@ -17,8 +17,13 @@ so the "ink" is the white keyline: a line round each letter, a median
 `INK_SHAPE_MAX_RATIO` (2.54-2.94 < 3.0), and go bean.
 
 **What it sewed.** Main's defaults: the A as a white letter with a thin black
-line round it. With part_touching: the N too. The pro sews both black satin
-on a white keyline.
+line round it. With part_touching: the N too. The thin line IS the bean
+letter: its runs follow the read, on the keyline, and the letter's area
+shows the riders' white panel. The pro sews both black satin on a white
+keyline.
+
+**Board (LC 6-10 mm line, ours/pro):** columns 25 -> 31 (pro 30), trims
+inside letters 5 -> 4 (pro 0), cc unmoved (-0.07; pro +0.20).
 
 **The rule.** A real read lies inside its letter:
 
@@ -33,9 +38,14 @@ on a white keyline.
 nothing, fail the ratio gate and never reach the decision. They are
 byte-identical OFF and ON. So is the hat (its reads are 0.167 mm).
 
-**Instrument trap.** A Generation pickled on an older main replays validly
-only with the cfg REBUILT from the Studio request on today's engine. One
-fresh digitize with the flag ON matched the replay byte for byte.
+**Instrument traps.**
+
+- A Generation pickled on an older main replays validly only with the cfg
+  REBUILT from the Studio request on today's engine. One fresh digitize with
+  the flag ON matched the replay byte for byte.
+- A plan run with `jump=True` still sews: the flag is the lift INTO it. The
+  premise capture tallied only non-jump runs and reported the A's bean runs
+  (19 + 191 points) as vanished. Count every run's points.
 
 Flip is Kent's (layout: judged in the preview). See also
 [[text-cluster-part-touching-2026-10-25]], [[mfab-underfill-panels-2026-10-25]].
