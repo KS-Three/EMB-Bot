@@ -116,6 +116,7 @@ the OLDEST lines whole to the archive.
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
 
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
+- [Golden Tee TM](tm-mark-golden-tee-2026-10-26.md) — Kent: NO build. Pro re-sets the 0.94 mm TM as a 4.3x2 mm double run; we drop it in stage 2 (thin_ink 3 px floor, its strokes 2 px); only mark in 19 arts / 27 pro files; a future TM/(R) drops silently
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
 - [Under-fill knock-outs](underfill-knockouts-2026-10-26.md) — Fremont star: a covered host-colour mark never merges; Becker: letter host stops inside the loops; Gaulke is sew_enclosed_white
 - [Under-fill outer rim](underfill-outer-rim-2026-10-25.md) — a self-hosting ring: pro rims its whole edge in the fill colour; `silhouette_underfill_rim` OFF, on the SEWN edge
