@@ -111,6 +111,10 @@ export function serviceDownscaleSize(img) {
 export async function downscaleForService(img, maxBytes, makeCanvas = () => document.createElement("canvas")) {
   const size = serviceDownscaleSize(img);
   if (!size) return null;
+  return drawPng(img, size, maxBytes, makeCanvas);
+}
+
+async function drawPng(img, size, maxBytes, makeCanvas) {
   const cv = makeCanvas();
   cv.width = size.w;
   cv.height = size.h;
@@ -122,6 +126,50 @@ export async function downscaleForService(img, maxBytes, makeCanvas = () => docu
   const blob = await new Promise((res) => cv.toBlob(res, "image/png"));
   if (!blob || blob.size > maxBytes) return null;
   return { bytes: new Uint8Array(await blob.arrayBuffer()), width: size.w, height: size.h };
+}
+
+// ---- full-resolution upload for the three canvas-path kinds (built OFF) -----
+//
+// An SVG ("vector"), a GIF ("format") and an EXIF-rotated phone JPEG
+// ("orientation") are the three uploads the service cannot decode as they
+// are, so they digitize from the 1,200-px preview canvas (`uploadPlan`). For
+// the best small-lettering inputs a customer can give, that costs the most: a
+// vector has no pixels to lose, and 1,200 px across a 250 mm jacket back is
+// 4.8 px/mm, under the 8 px/mm work grid.
+//
+// Switched ON, those three are drawn once more, upright, at up to
+// SERVICE_DECODE_MAX_PX with the "high" area filter, and that render is what
+// the source store keeps and the digitize sends -- so the .embproj carries it
+// too. An SVG is rendered AT the budget (it has no natural size); a GIF or a
+// phone JPEG is only scaled DOWN. A JPEG's EXIF rotation is already in the
+// browser's bitmap, which is why the service need not honour it.
+//
+// The switch is the stored string "1" under this key, OFF when absent or when
+// storage is blocked; flipping it for everyone is changing the one line in
+// `uploadFullResEnabled`.
+export const UPLOAD_FULL_RES_KEY = "embbot-upload-full-res";
+const FULL_RES_REASONS = new Set(["vector", "format", "orientation"]);
+
+export function uploadFullResEnabled(storage = typeof localStorage !== "undefined" ? localStorage : null) {
+  try {
+    return !!storage && storage.getItem(UPLOAD_FULL_RES_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** True when the switch is ON and `plan` (from `uploadPlan`) is one of the three canvas-path kinds. */
+export function wantsFullRes(plan, enabled) {
+  return !!enabled && !!plan && FULL_RES_REASONS.has(plan.reason);
+}
+
+/**
+ * Draw `img` upright at up to SERVICE_DECODE_MAX_PX and encode it as PNG
+ * bytes: { bytes, width, height }, or null when the result exceeds `maxBytes`
+ * or the canvas cannot draw (the caller keeps the preview path).
+ */
+export function renderForService(img, maxBytes, opts = {}, makeCanvas = () => document.createElement("canvas")) {
+  return drawPng(img, rasterSize(img, SERVICE_DECODE_MAX_PX, { vector: !!opts.vector }), maxBytes, makeCanvas);
 }
 
 // A JPEG's pixel size from its SOF marker, or null. A phone JPEG carries its

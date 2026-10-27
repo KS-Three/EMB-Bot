@@ -280,3 +280,57 @@ test("a re-digitize after the import sends the file itself, not the preview", as
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await expect(page.getByTestId("source-note")).toHaveCount(0);
 });
+
+// ---- the full-resolution render travels the same way (W5-08, built OFF) ------
+//
+// An SVG has no bytes the service can decode, so it used to leave NOTHING in
+// the store and the project carried only the 1,200-px preview. With the
+// upload-full-res switch ON (lib/rasterize.js) the panel stores the 2,800-px
+// PNG it drew, and everything above applies to it: the .embproj carries it
+// beside the project, and a wiped browser gets it back under the same key.
+const SVG_PATH = path.join(__dirname, "fixtures", "small_text_logo.svg");
+
+function storedKeys(page) {
+  return page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const open = indexedDB.open("embstudio-sources", 1);
+        open.onupgradeneeded = () => {
+          if (!open.result.objectStoreNames.contains("sources")) open.result.createObjectStore("sources");
+        };
+        open.onerror = () => resolve([]);
+        open.onsuccess = () => {
+          const db = open.result;
+          const all = db.transaction("sources", "readonly").objectStore("sources").getAllKeys();
+          all.onsuccess = () => { db.close(); resolve(all.result); };
+          all.onerror = () => { db.close(); resolve([]); };
+        };
+      })
+  );
+}
+
+test("with the switch ON the .embproj carries the SVG's 2,800-px render, and an import puts it back", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("embbot-upload-full-res", "1"));
+  await startStudio(page);
+  await pickGarment(page, "Tote");
+  await uploadArtwork(page, SVG_PATH, { run: false });
+  await expect.poll(async () => (await storedKeys(page)).length, { timeout: 60_000 }).toBe(1);
+  const [key] = await storedKeys(page);
+  await expect(page.locator("img.dgp-thumb")).toBeVisible();
+
+  const { filename, text, json } = await exportCurrent(page);
+  expect(Object.keys(json.sources)).toEqual([key]);
+  const src = json.sources[key];
+  expect(src.type).toBe("image/png");
+  expect(src.name).toBe("small_text_logo.png");
+  const png = Buffer.from(src.data, "base64");
+  expect(createHash("sha256").update(png).digest("hex")).toBe(key);
+  expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([2800, 1400]);
+  const el = json.project.elements.find((e) => e.type === "digitized");
+  expect(el.sourceFile).toMatchObject({ key, type: "image/png", width: 2800, height: 1400 });
+
+  await wipeBrowser(page);
+  await importFile(page, filename, text);
+  await expect.poll(() => storedLength(page, key), { timeout: 30_000 }).toBe(png.length);
+  await expect(page.getByTestId("source-note")).toHaveCount(0);
+});
