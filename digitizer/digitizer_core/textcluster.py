@@ -914,7 +914,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
        in `regions` (the list is edited in place) when every piece is
        tagged; a glyph up to `WIDE_LETTER_ASPECT_MAX` joins a line it links
        to (`_adopt_wide`). False: neither is called, byte for byte.
-       `part_touching` (`cfg.text_cluster_part_touching`, 2026-10-25, OFF):
+       `part_touching` (`cfg.text_cluster_part_touching`, 2026-10-25, ON
+       since 2026-10-27):
        the neck split looks at EVERY letter-height region beside a line, not
        only a too-wide one, and cuts a touch narrower than `TOUCH_MAX_MM`
        into letter-height pieces; and a glyph taller than its line that
@@ -1188,7 +1189,8 @@ def _neck_splits(regions: list[Region], cands: list[_Candidate],
     return out
 
 
-# --- Part touching (`cfg.text_cluster_part_touching`, 2026-10-25, built OFF) --
+# --- Part touching (`cfg.text_cluster_part_touching`, 2026-10-25, built OFF;
+# ON since 2026-10-27) --
 #
 # Two ways a letter of MFab's AND WELDING never reaches the text cluster that
 # the wide-letter pass (above) does not cover, read per letter at the pro's
