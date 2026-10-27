@@ -1752,6 +1752,74 @@ describe("the upload stores the file and a digitize sends it", () => {
     expect(fakeStore.size).toBe(0);
   });
 
+  // The three kinds above (an SVG, a GIF, an EXIF-rotated JPEG) with the
+  // upload-full-res switch ON (lib/rasterize.js, built OFF): the panel stores
+  // an upright render at up to the service's 2,800-px decode size, and the
+  // element carries its key, so a digitize and the .embproj send THAT.
+  describe("with the full-resolution upload switch ON", () => {
+    const KEY = "embbot-upload-full-res";
+    // A JPEG whose header says 100 wide x 50 high: a browser bitmap of 50 x 100
+    // against it is what an EXIF-rotated file looks like (rasterize.spec.js).
+    const jpegHeader = new Uint8Array([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0, 50, 0, 100, 0x03, 0, 0, 0, 0, 0, 0]);
+    beforeEach(() => {
+      localStorage.setItem(KEY, "1");
+      vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(function (cb) {
+        cb(new Blob([new Uint8Array(100)], { type: "image/png" }));
+      });
+    });
+    afterEach(() => localStorage.removeItem(KEY));
+
+    async function ingest(file, img) {
+      loadImageResult = () => Promise.resolve(img);
+      const patches = [];
+      const { container } = render(Harness, {
+        props: {
+          element: baseElement([], { sourcePng: null, result: null, review: null }),
+          health: { ok: true, limits: LIMITS },
+          onPatch: (d) => patches.push(d),
+        },
+      });
+      await upload(container, file);
+      await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+      return patches[0].patch;
+    }
+
+    test("an SVG is stored as a 2,800-px PNG render, named for what it is", async () => {
+      const p = await ingest(new File(["<svg xmlns='http://www.w3.org/2000/svg'/>"], "logo.svg", { type: "image/svg+xml" }), { width: 300, height: 150 });
+      expect(p.sourcePng).toBe("AAAA");     // the preview is still the canvas
+      expect(p.sourceFile).toEqual({ key: "key-100", type: "image/png", size: 100, width: 2800, height: 1400 });
+      expect(fakeStore.get("key-100")).toMatchObject({ type: "image/png", name: "logo.png" });
+      expect(fakeStore.get("key-100").bytes).toHaveLength(100);
+    });
+
+    test("a GIF is stored as a PNG render at its own size, never upscaled", async () => {
+      const p = await ingest(new File([new Uint8Array([71, 73, 70, 56])], "anim.gif", { type: "image/gif" }), { width: 600, height: 400 });
+      expect(p.sourceFile).toMatchObject({ type: "image/png", width: 600, height: 400 });
+      expect(fakeStore.get(p.sourceFile.key).name).toBe("anim.png");
+    });
+
+    test("an EXIF-rotated JPEG is stored upright, from the browser's already-rotated bitmap", async () => {
+      const p = await ingest(new File([jpegHeader], "phone.jpg", { type: "image/jpeg" }), { width: 3024, height: 4032 });
+      // The bitmap is portrait; the header (what cv2 would decode) is landscape.
+      expect(p.sourceFile).toMatchObject({ type: "image/png", width: 2100, height: 2800 });
+      expect(fakeStore.get(p.sourceFile.key)).toMatchObject({ type: "image/png", name: "phone.png" });
+    });
+
+    test("a PNG still goes up as the file itself, byte for byte — the switch is not about it", async () => {
+      const bytes = new Uint8Array([137, 80, 78, 71, 9, 9, 9]);
+      const p = await ingest(new File([bytes], "logo.png", { type: "image/png" }), { width: 1400, height: 316 });
+      expect(p.sourceFile).toEqual({ key: "key-7", type: "image/png", size: 7, width: 1400, height: 316 });
+      expect(fakeStore.get("key-7")).toEqual({ bytes, type: "image/png", name: "logo.png" });
+    });
+
+    test("a render the canvas cannot encode leaves the preview path, as with the switch OFF", async () => {
+      vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((cb) => cb(null));
+      const p = await ingest(new File(["<svg/>"], "logo.svg", { type: "image/svg+xml" }), { width: 300, height: 150 });
+      expect(p.sourceFile).toBeNull();
+      expect(fakeStore.size).toBe(0);
+    });
+  });
+
   test("a digitize sends the stored bytes while they are there, and the preview — saying so — once they are gone", async () => {
     const mod = await import("../lib/digitizer.js");
     const sent = [];

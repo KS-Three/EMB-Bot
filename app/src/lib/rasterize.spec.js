@@ -190,3 +190,79 @@ test("returns the encoded PNG, or null when it is still over the byte limit", as
   expect(ok.bytes.length).toBe(100);
   expect(await downscaleForService(img, 50, () => cv)).toBeNull();
 });
+
+// ---- full-resolution upload for the three canvas-path kinds (built OFF) -----
+//
+// An SVG ("vector"), a GIF ("format") and an EXIF-rotated phone JPEG
+// ("orientation") are the three uploads the service cannot decode as they are,
+// so they digitize from the 1,200-px preview canvas. Switched ON they are drawn
+// once more, upright, at up to the service's own decode size (2,800 px) with
+// the area-style filter, and THAT is what is stored and sent.
+import {
+  uploadFullResEnabled, wantsFullRes, renderForService, UPLOAD_FULL_RES_KEY,
+} from "./rasterize.js";
+
+const store = (initial) => ({ getItem: (k) => (k in initial ? initial[k] : null) });
+
+test("the switch is OFF by default and only the stored 1 turns it on", () => {
+  expect(uploadFullResEnabled(store({}))).toBe(false);
+  expect(uploadFullResEnabled(store({ [UPLOAD_FULL_RES_KEY]: "1" }))).toBe(true);
+  expect(uploadFullResEnabled(store({ [UPLOAD_FULL_RES_KEY]: "0" }))).toBe(false);
+  expect(uploadFullResEnabled(store({ [UPLOAD_FULL_RES_KEY]: "true" }))).toBe(false);
+  // Storage blocked (private window, site data off): the default, not an error.
+  expect(uploadFullResEnabled({ getItem() { throw new Error("blocked"); } })).toBe(false);
+  expect(uploadFullResEnabled(null)).toBe(false);
+});
+
+test("ON claims exactly the three kinds that keep the canvas path, and nothing else", () => {
+  const svg = { name: "logo.svg", type: "image/svg+xml", size: 10 };
+  const gif = { name: "anim.gif", type: "image/gif", size: 10 };
+  const jpg = { name: "phone.jpg", type: "image/jpeg", size: 1000 };
+  const rotated = uploadPlan(jpg, img(50, 100), null, new Uint8Array([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0, 50, 0, 100, 0x03, 0, 0, 0, 0, 0, 0]));
+  expect(rotated.reason).toBe("orientation");
+  for (const plan of [uploadPlan(svg, img(300, 150)), uploadPlan(gif, img(300, 150)), rotated]) {
+    expect(wantsFullRes(plan, true)).toBe(true);
+    expect(wantsFullRes(plan, false)).toBe(false);
+  }
+  // A plain PNG already goes as the file; over-limit rasters have their own downscale.
+  const png = { name: "a.png", type: "image/png", size: 10 };
+  expect(wantsFullRes(uploadPlan(png, img(300, 150)), true)).toBe(false);
+  expect(wantsFullRes(uploadPlan({ ...png, size: 13 * 1024 * 1024 }, img(300, 150)), true)).toBe(false);
+  expect(wantsFullRes(uploadPlan(png, img(7000, 6000)), true)).toBe(false);
+});
+
+function fakeCanvas(log, bytes = 100) {
+  const ctx = { drawImage: (...a) => log.draws.push(a) };
+  return {
+    set width(v) { log.w = v; }, set height(v) { log.h = v; },
+    getContext: () => { log.ctx = ctx; return new Proxy(ctx, { set: (t, k, v) => { log[k] = v; return true; } }); },
+    toBlob: (cb) => cb(new Blob([new Uint8Array(bytes)], { type: "image/png" })),
+  };
+}
+
+test("an SVG is rendered AT 2,800 px on its long side, smoothing high", async () => {
+  const log = { draws: [] };
+  const out = await renderForService({ width: 300, height: 150 }, 1e6, { vector: true }, () => fakeCanvas(log));
+  expect([out.width, out.height]).toEqual([2800, 1400]);
+  expect([log.w, log.h]).toEqual([2800, 1400]);
+  expect(log.draws[0].slice(1)).toEqual([0, 0, 2800, 1400]);
+  expect(log.imageSmoothingEnabled).toBe(true);
+  expect(log.imageSmoothingQuality).toBe("high");
+  expect(out.bytes.length).toBe(100);
+});
+
+test("a GIF or a rotated JPEG is only ever scaled DOWN, and a small one is redrawn upright at its own size", async () => {
+  const one = async (w, h) => {
+    const o = await renderForService({ width: w, height: h }, 1e6, {}, () => fakeCanvas({ draws: [] }));
+    return [o.width, o.height];
+  };
+  expect(await one(600, 400)).toEqual([600, 400]);        // a small GIF: no invented pixels
+  expect(await one(4000, 3000)).toEqual([2800, 2100]);    // a big GIF
+  expect(await one(3024, 4032)).toEqual([2100, 2800]);    // a phone JPEG, the bitmap the browser already rotated
+});
+
+test("the render is null when it still exceeds the byte limit or the canvas cannot draw", async () => {
+  const img0 = { width: 300, height: 150 };
+  expect(await renderForService(img0, 50, { vector: true }, () => fakeCanvas({ draws: [] }, 100))).toBeNull();
+  expect(await renderForService(img0, 1e6, { vector: true }, () => ({ set width(v) {}, set height(v) {}, getContext: () => null }))).toBeNull();
+});
