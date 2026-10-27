@@ -1,5 +1,5 @@
 {
- "_about": "Declared field defaults of digitizer_core.PipelineConfig (dataclasses.fields: default / default_factory), frozen 2026-10-27 at main 2c6b656c. NOT asdict(PipelineConfig()): that records the seven small_text_true_size fills, which a later setattr(small_text_true_size=False) would no longer clear. Tuples are stored as lists and restored on load. Never regenerate in place: roll forward with a NEW dated file (tests/test_pins_are_frozen.py).",
+ "_about": "Declared field defaults of digitizer_core.PipelineConfig (dataclasses.fields: default / default_factory), frozen 2026-10-27 at main 2c6b656c, plus small_text_reset_grow_away: false (its value before #1127 made it a field defaulting True). NOT asdict(PipelineConfig()): that records the seven small_text_true_size fills, which a later setattr(small_text_true_size=False) would no longer clear. Tuples are stored as lists and restored on load. Never regenerate in place: roll forward with a NEW dated file (tests/test_pins_are_frozen.py).",
  "aa_iterations": 2,
  "aa_phantom_edge_frac": 0.9,
  "alpha_edge_extend": true,
@@ -242,6 +242,7 @@
  "small_text_cap_mm": 4.0,
  "small_text_cap_reach_edges": true,
  "small_text_keep_stray_lines": null,
+ "small_text_reset_grow_away": false,
  "small_text_restore_mm": null,
  "small_text_true_size": true,
  "small_text_true_size_min_counter_mm": 0.45,

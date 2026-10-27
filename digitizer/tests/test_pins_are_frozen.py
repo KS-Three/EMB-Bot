@@ -68,7 +68,7 @@ RIDES_DEFAULTS = {
     "test_column_apex_cut.py": "live lane (apex cut / apex walk)",
     "test_keyline_loop_chain.py": "live lane (keyline_loop_chain)",
     "test_script_strokes.py": "live lane (script_strokes)",
-    "test_small_text_grow_away.py": "live lane (#1127 flips small_text_reset_grow_away)",
+    "test_small_text_grow_away.py": "the grow_away lane's own OFF/ON arms (flipped by #1127)",
 }
 
 _MD5 = re.compile(r"""["'][0-9a-f]{32}["']""")
@@ -166,13 +166,16 @@ def test_a_snapshot_stores_declared_not_filled_values(path):
     assert {k: snap[k] for k in SMALL_TEXT_TRUE_SIZE} == {k: None for k in SMALL_TEXT_TRUE_SIZE}
 
 
-def test_frozen_cfg_clears_the_true_size_fills_like_the_live_config():
-    live, frozen = PipelineConfig(), frozen_cfg()
-    assert frozen._true_size_filled == live._true_size_filled
-    for cfg in (live, frozen):
-        cfg.small_text_true_size = False
-    assert frozen.small_text_restore_mm is None and frozen.bean_letter_max_stroke_mm is None
-    assert PipelineConfig(small_text_true_size=False) == frozen_cfg(small_text_true_size=False)
+def test_frozen_cfg_fills_and_clears_the_true_size_fields_like_a_live_config():
+    # Not compared to the live PipelineConfig: that follows every flip, this must not.
+    frozen = frozen_cfg()
+    assert frozen.small_text_true_size is True
+    assert frozen._true_size_filled == tuple(SMALL_TEXT_TRUE_SIZE)
+    assert {k: getattr(frozen, k) for k in SMALL_TEXT_TRUE_SIZE} == SMALL_TEXT_TRUE_SIZE
+    frozen.small_text_true_size = False
+    assert all(getattr(frozen, k) is None for k in SMALL_TEXT_TRUE_SIZE)
+    off = frozen_cfg(small_text_true_size=False)
+    assert off._true_size_filled == () and all(getattr(off, k) is None for k in SMALL_TEXT_TRUE_SIZE)
 
 
 def test_a_spread_hands_each_config_its_own_containers_and_a_tuple():

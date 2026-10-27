@@ -31,8 +31,9 @@ change, zero hash values moved (CI green with no pin edits was the proof).
 
 **Roll-forward rule.** A new field (a flag built OFF, or a flip that makes one
 default-on) goes into `tests/engine_*.json` with its PRE-flip value in the same PR;
-the guard fails loudly until it does (#1127 turns `small_text_reset_grow_away` into
-a field defaulting True: it adds `false`). After a flip wave write a NEW dated file
+the guard fails loudly until it does (#1127 landed first and made
+`small_text_reset_grow_away` a field defaulting True; the guard caught it on the
+merge and the snapshot gained `false`). After a flip wave write a NEW dated file
 from `dataclasses.fields` (never edit in place), point new pins at it, and leave old
 pins on theirs.
 
