@@ -29,10 +29,13 @@
 // Usage:
 //   node tools/upload-fullres-score.mjs [svg ...] [--width-mm 100] [--garment left_chest]
 //        [--px-per-mm 10] [--out docs/renders/upload-full-res-2026-10-27]
-//        [--only off|on] [--sizes 1200,2800]
+//        [--only off|on] [--sizes 1200,2800] [--cache <dir>] [--from-cache]
+//   Every digitized design is cached under --cache (default: the OS temp dir);
+//   --from-cache re-scores from those files without touching the service.
 //   default svgs: app/e2e/fixtures/small_text_logo.svg, app/e2e/fixtures/vector_logo.svg
 import "./_help.mjs";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -251,7 +254,8 @@ const PAGE = {
 const fmt = (n, d = 2) => (n == null ? "–" : Number(n).toFixed(d));
 
 function parseArgs(argv) {
-  const o = { svgs: [], widthMm: 100, garment: "left_chest", S: 10, out: "docs/renders/upload-full-res-2026-10-27", sizes: [1200, 2800], only: null };
+  const o = { svgs: [], widthMm: 100, garment: "left_chest", S: 10, out: "docs/renders/upload-full-res-2026-10-27", sizes: [1200, 2800], only: null,
+    cache: path.join(os.tmpdir(), "upload-fullres-score-cache"), fromCache: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--width-mm") o.widthMm = +argv[++i];
@@ -260,6 +264,8 @@ function parseArgs(argv) {
     else if (a === "--out") o.out = argv[++i];
     else if (a === "--sizes") o.sizes = argv[++i].split(",").map(Number);
     else if (a === "--only") o.only = argv[++i];
+    else if (a === "--cache") o.cache = argv[++i];
+    else if (a === "--from-cache") o.fromCache = true;
     else o.svgs.push(a);
   }
   if (!o.svgs.length) o.svgs = ["app/e2e/fixtures/small_text_logo.svg", "app/e2e/fixtures/vector_logo.svg"];
@@ -322,9 +328,17 @@ async function main() {
         if (Math.max(dim.w, dim.h) !== size) throw new Error(`send size ${dim.w}x${dim.h} is not ${size} px on the long side`);
         const b64 = await call(PAGE.send, { w: dim.w, h: dim.h, high: size !== 1200 });
         const image = size === 1200 ? b64 : { bytes: new Uint8Array(Buffer.from(b64, "base64")), type: "image/png", name: `${name}.png` };
-        const t0 = Date.now();
-        const job = await digitize(image, cfg, {});
-        const secs = (Date.now() - t0) / 1000;
+        mkdirSync(opts.cache, { recursive: true });
+        const cacheFile = path.join(opts.cache, `${name}__${arm}__${opts.widthMm}mm_${opts.garment}.json`);
+        let job, secs;
+        if (opts.fromCache && existsSync(cacheFile)) {
+          ({ job, secs } = JSON.parse(readFileSync(cacheFile, "utf8")));
+        } else {
+          const t0 = Date.now();
+          job = await digitize(image, cfg, {});
+          secs = (Date.now() - t0) / 1000;
+          writeFileSync(cacheFile, JSON.stringify({ job: { design: job.design, stats: job.stats }, secs }));
+        }
         const design = job.design;
 
         // Register by bounding-box centre; scale only when the extent is >3% off.
@@ -337,11 +351,29 @@ async function main() {
         const ratio = ((x1 - x0) / gtW + (y1 - y0) / gtH) / 2;
         const scale = Math.abs(ratio - 1) > 0.03 ? 1 / ratio : 1;
         const gcx = (gtBox.x0 + gtBox.x1) / 2 / S, gcy = (gtBox.y0 + gtBox.y1) / 2 / S;
-        const ox = (gcx - ((x0 + x1) / 2) * scale) * S, oy = (gcy + ((y0 + y1) / 2) * scale) * S;
+        const ox = (gcx - ((x0 + x1) / 2) * scale) * S, oy = (gcy - ((y0 + y1) / 2) * scale) * S;   // y0,y1 are image-y (-stitch y)
         const cov64 = await call(PAGE.coverage, { stitches: design.stitches, cw, ch, S, thread: 0.4, ox, oy, scale });
         const cov = { w: cw, h: ch, data: new Uint8Array(Buffer.from(cov64, "base64")) };
 
-        const whole = { iou: iou(gt, cov), edge: edgeDeviation(gt, cov, mmPerPx) };
+        const count = (m) => m.data.reduce((a, b) => a + b, 0);
+        const covBox = bbox(cov);
+        const diag = {
+          gtInkMm2: +(count(gt) * mmPerPx * mmPerPx).toFixed(1), covInkMm2: +(count(cov) * mmPerPx * mmPerPx).toFixed(1),
+          gtBoxMm: [gtBox.x0, gtBox.y0, gtBox.x1, gtBox.y1].map((v) => +(v * mmPerPx).toFixed(1)),
+          covBoxMm: covBox && [covBox.x0, covBox.y0, covBox.x1, covBox.y1].map((v) => +(v * mmPerPx).toFixed(1)),
+        };
+        {
+          // GT only = red, sewn only = blue, both = near-black, neither = white.
+          const rgba = new Uint8ClampedArray(cw * ch * 4);
+          for (let i = 0; i < cw * ch; i++) {
+            const g = gt.data[i], c = cov.data[i];
+            const [r, gg, b] = g && c ? [30, 30, 40] : g ? [220, 60, 60] : c ? [70, 110, 230] : [255, 255, 255];
+            rgba.set([r, gg, b, 255], i * 4);
+          }
+          const { encodePNG } = await import("./png.mjs");
+          writeFileSync(path.join(outDir, `${name}__${arm}__overlay.png`), Buffer.from(encodePNG(cw, ch, rgba)));
+        }
+        const whole = { iou: iou(gt, cov), edge: edgeDeviation(gt, cov, mmPerPx), diag };
         const bands = lineBands.map((b) => ({
           name: b.name, iou: iou(gt, cov, b.rows), edge: edgeDeviation(gt, cov, mmPerPx, b.rows),
         }));
