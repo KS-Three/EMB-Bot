@@ -99,6 +99,50 @@ def test_prepare_for_ocr_gives_white_ground_either_way():
         assert border.min() == 255
 
 
+def _two_lines():
+    """A line of another cluster's ink 4 px over this cluster's letters, and
+    a stray mark (in no cluster) under them; px = mm, so the grow is 8 px."""
+    img = np.full((40, 60, 3), 255, np.uint8)
+    img[2:8, 5:55] = 0       # the other cluster's ink
+    img[12:30, 5:55] = 0     # this cluster's letters
+    img[34:37, 20:30] = 0    # a mark nobody tagged
+    return img, [box(5, 12, 55, 30)], [box(5, 2, 55, 8)], lambda x, y: (int(round(x)), int(round(y)))
+
+
+def test_the_mask_paints_another_clusters_ink_out_and_keeps_its_own():
+    """ENTERPRISES INC. under ENTHUSIAST (2026-10-26, #1127): the 1.0 mm grow
+    reached the line above, and its sewn edge read as part of the line. Each
+    pixel now goes to the cluster it is nearer; the letters stay whole."""
+    from digitizer_core.legibility import _mask_outside
+
+    img, own, other, px = _two_lines()
+    before = _mask_outside(img, own, px, 8.0)
+    assert before[2:8, 5:55].min() == 0, "precondition: the grow reaches the line above"
+    after = _mask_outside(img, own, px, 8.0, others=other)
+    assert after[2:8, 5:55].min() == 255
+    assert (after[12:30, 5:55] == 0).all()
+    assert (after[34:37, 20:30] == 0).all(), "within the grow and nearer this cluster"
+
+
+def test_the_unmasked_crop_loses_only_the_other_clusters_ink():
+    from digitizer_core.legibility import _mask_outside
+
+    img, own, other, px = _two_lines()
+    rest = _mask_outside(img, own, px, 8.0, others=other, keep_rest=True)
+    assert rest[2:8, 5:55].min() == 255
+    assert (rest[12:30, 5:55] == 0).all() and (rest[34:37, 20:30] == 0).all()
+
+
+def test_with_no_other_cluster_in_the_crop_the_crops_are_as_they_were():
+    from digitizer_core.legibility import _mask_outside
+
+    img, own, _other, px = _two_lines()
+    far = [box(100, 100, 110, 110)]
+    assert np.array_equal(_mask_outside(img, own, px, 8.0, others=far), _mask_outside(img, own, px, 8.0))
+    assert _mask_outside(img, own, px, 8.0, others=far, keep_rest=True) is img
+    assert _mask_outside(img, own, px, 8.0, others=(), keep_rest=True) is img
+
+
 @requires_tesseract
 def test_a_block_capital_word_reads_back_from_a_plain_raster():
     from legibility import ocr
