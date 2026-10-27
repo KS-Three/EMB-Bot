@@ -1,11 +1,11 @@
 ---
 name: script-strokes-2026-10-26
-description: Kent "Measure, then build OFF" — a script word (Bridge, Tires "ires", To a T "achine") sewn one satin column per pen stroke, path read on the art's INK; `script_strokes` OFF; Bridge is trace-limited (fused, counters closed, ground knocked out) and the pro re-set it
+description: Kent "Measure, then build OFF", then "Flip it ON" (10-26) — a script word (Bridge, Tires "ires", To a T "Machine") sewn one satin column per pen stroke, path read on the art's INK, crosses turning with the pen (flow, #1135); `script_strokes` ON; Bridge is trace-limited and the pro re-set it
 metadata:
   type: project
 ---
 
-L7b, 2026-10-26, lane `claude/script-strokes-b22fb4`. Module
+**ON by default since Kent's flip, 2026-10-26: "Flip it ON (Recommended)"** (built OFF in #1119, flow in #1135, the flip PR after it; `PRE_FLIP` names the OFF arm). L7b, 2026-10-26, lane `claude/script-strokes-b22fb4`. Module
 `digitizer_core/script_strokes.py`; flag `script_strokes` (OFF); reader
 `tools/script_census.py FILE.dst@N#x1,x2` (per-letter split at x-fractions of
 the word, each file's own letters).

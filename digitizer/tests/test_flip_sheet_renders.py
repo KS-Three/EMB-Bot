@@ -269,9 +269,188 @@ def test_counts_read_colour_changes_and_the_sheet_shows_them():
 def test_the_page_groups_rows_by_flag_under_its_kind(tmp_path):
     rows = _rows(tmp_path)
     page = fsr.html(rows)
-    heads = re.findall(r"<h2 class='group'><code>([a-z_]+)</code>", page)
+    heads = re.findall(r"<h2 class='group' id='[a-z_]+'><code>([a-z_]+)</code>", page)
     assert heads == ["fill_underlay_cross", "tie_in_off"]
     assert page.count("<span class='kind fabric'>FABRIC</span>") == 2
     head = fsr.flag_header("tie_in_off", [r for r in rows if r["flag"] == "tie_in_off"])
-    assert "becker_hat_small</td><td colspan='4'>not run" in head
-    assert "mfab_hat</td><td>101 st &middot; 3 tr &middot; - cc</td>" in head
+    assert "becker_hat_small</td><td colspan='8'>not run" in head
+    assert "mfab_hat</td><td>engine abc1234</td><td>101 st &middot; 3 tr &middot; - cc</td>" in head
+
+
+# ---- wave 5 sheet (2026-10-27) -----------------------------------------------------------------
+
+def test_wave_five_rows_are_layout_flags_each_asked_or_labelled():
+    from digitizer_core import PipelineConfig
+    cfg = PipelineConfig()
+    asked = [f for f, s in fsr.W5.items() if s["ask"]]
+    assert asked == ["lettering_columns_italic_lean", "fill_section_travel",
+                     "bean_ink_outlined_letters", "text_cluster_part_touching"]
+    # ruled ON from renders on 2026-10-26 and flipped by #1121: shown, not asked again
+    for f in ("outline_loop_mitre", "fine_bars_satin"):
+        assert not fsr.W5[f]["ask"] and "ruled ON" in fsr.W5[f]["label"], f
+    # the detection pass on fa3150de: the trio's DST is OFF's byte for byte on all ten white jobs
+    # off MFab, so the three keyline switches act nowhere a render could show; their one row is
+    # the trio's, shown, and none of the three is asked
+    assert not fsr.W5["keyline_trio"]["ask"] and "byte for byte" in fsr.W5["keyline_trio"]["label"]
+    for f in ("keyline_fold_slivers", "skip_covered_shapes", "absorb_fragments"):
+        assert f not in fsr.W5, f
+    for f, s in fsr.W5.items():
+        assert f in fsr.FLAGS and fsr.flag_kind(f) == "LAYOUT", f
+        assert s["ask"] or s.get("label"), f          # a row shown and not asked says why
+    for f in asked:                                    # still OFF: the flips are Kent's
+        sets = fsr.FLAGS[f]["sets"]
+        if "extra" in sets:
+            assert not (cfg.extra or {}).get(f), f
+        else:
+            assert getattr(cfg, f) is False, f
+    # off the sheet, by the brief: ruled, held for fabric, or already ON (script_strokes: ruled
+    # ON 2026-10-26, its flip in flight)
+    for f in ("sew_enclosed_white_fields_fill", "cut_every_jump", "pull_comp_by_stroke",
+              "pro_measured_values", "fill_turn_slant", "small_text_bay_mouth", "script_strokes"):
+        assert f not in fsr.W5, f
+
+
+def test_wave_five_part_touching_asks_beside_bean_ink():
+    # #1128: alone, the LC's newly tagged N sews hollow (bean on its keyline); the third cell
+    # adds bean ink, and the hat (bean ink does not move its plan) gets none
+    assert fsr.arm_sets("bean_ink_outlined_letters") == {"bean_ink_outlined_letters": True}
+    assert fsr.also_arm("text_cluster_part_touching", "mfab_lc") == \
+        "text_cluster_part_touching__bean_ink"
+    assert fsr.also_arm("text_cluster_part_touching", "mfab_hat") is None
+    assert fsr.arm_sets("text_cluster_part_touching__bean_ink") == {
+        "text_cluster_part_touching": True, "bean_ink_outlined_letters": True}
+    assert fsr.off_arm("bean_ink_outlined_letters") == fsr.off_arm("text_cluster_part_touching") == "off"
+
+
+def test_wave_five_keyline_rows_diff_against_the_shipped_engine():
+    # white sews by default (#1112) and the recipe fires by itself on MFab (#1115), the three
+    # keyline switches inside it (#1122): OFF is bare `off`, not a hand-built base
+    for f in ("keyline_fold_slivers", "skip_covered_shapes", "absorb_fragments", "keyline_trio",
+              "fill_section_travel", "lettering_columns_italic_lean"):
+        assert fsr.off_arm(f) == "off", f
+    assert fsr.arm_sets("absorb_fragments") == {"extra": {"absorb_fragments": True}}
+    trio = fsr.arm_sets("keyline_trio")
+    assert trio == {"keyline_fold_slivers": True, "skip_covered_shapes": True,
+                    "extra": {"absorb_fragments": True}}
+    # MFab-type art has all three through the gate since #1122: an MFab cell is OFF byte for
+    # byte, so every keyline row reads the jobs off MFab
+    for f in ("keyline_fold_slivers", "skip_covered_shapes", "absorb_fragments", "keyline_trio"):
+        fx = fsr.flag_fixtures(f, None)
+        assert fx and not any(s.startswith("mfab") for s in fx), f
+        assert set(fx) <= set(fsr.KEYLINE_OFF_MFAB), f
+        assert fsr.also_arm(f, fx[0]) is None, f
+
+
+def test_wave_five_fixtures_are_the_briefs():
+    fst = fsr.flag_fixtures("fill_section_travel", None)
+    assert fst[0] == "hotel_fremont_hat"
+    assert {"becker_hat_large", "mfab_hat", "precision_drone", "gaulke_roofing_hat"} <= set(fst)  # #1091's hats
+
+
+def test_gate_three_reads_bare_thread_at_the_instruments_band():
+    off = {"bare_mm": {"0.20": 1.00, "0.25": 0.40, "0.30": 0.0}}
+    same = {"bare_mm": dict(off["bare_mm"])}
+    overlap = {"bare_mm": {"0.20": 1.20, "0.25": 0.40, "0.30": 0.0}}
+    real = {"bare_mm": {"0.20": 1.50, "0.25": 0.90, "0.30": 0.2}}
+    less = {"bare_mm": {"0.20": 0.10, "0.25": 0.0, "0.30": 0.0}}
+    assert fsr.bare_rise(off, same)["rises"] == []
+    assert fsr.bare_rise(off, overlap)["rises"] == ["0.20"]
+    assert fsr.bare_rise(off, real)["rises"] == ["0.20", "0.25", "0.30"]
+    assert fsr.bare_rise({}, real) is None                        # a cell from before the instrument
+
+    def rows(*ons):
+        return [{"bare": fsr.bare_rise(off, on)} for on in ons]
+    assert fsr.gate3_verdict(rows(same, less)) == "clear"
+    assert fsr.gate3_verdict(rows(same, real)) == "gate 3"
+    assert fsr.gate3_verdict(rows(overlap)).startswith("gate 3 (at 0.20 mm only")
+    assert fsr.gate3_verdict([{"bare": None}]) == "n/a"
+    # a third cell that rises trips the row too
+    assert fsr.gate3_verdict([{"bare": fsr.bare_rise(off, same),
+                               "bare_also": fsr.bare_rise(off, real)}]) == "gate 3"
+
+
+def test_an_asked_flag_that_raises_bare_thread_is_not_asked():
+    sheet = {"outline_loop_mitre": {"ask": True}, "monoline_script_satin": {"ask": False, "label": "HELD"}}
+    off = {"bare_mm": {"0.20": 0.0, "0.25": 0.0, "0.30": 0.0}}
+    up = {"bare_mm": {"0.20": 0.5, "0.25": 0.5, "0.30": 0.5}}
+    clear = [{"bare": fsr.bare_rise(off, off)}]
+    assert fsr.ask_status("outline_loop_mitre", clear, sheet)[0] == "ask"
+    assert fsr.ask_status("outline_loop_mitre", [{"bare": fsr.bare_rise(off, up)}], sheet)[0] == "gate3"
+    cls, text = fsr.ask_status("monoline_script_satin", clear, sheet)
+    assert cls == "shown" and "HELD" in text
+    assert fsr.ask_status("tie_in_off", clear, sheet) == ("", "")
+
+
+def _plan(runs):
+    from types import SimpleNamespace as NS
+    return NS(blocks=[NS(runs=[NS(kind=k, points=pts, jump=False, trim=False, shape_id=f"s{i}")
+                               for i, (k, pts) in enumerate(runs)])])
+
+
+def test_bare_bands_read_a_travel_leg_by_its_clearance():
+    from digitizer_core import stitches
+    laid = (stitches.FILL, [(0.0, 0.0), (10.0, 0.0)])
+    far = _plan([laid, (stitches.TRAVEL, [(10.0, 1.0), (0.0, 1.0)])])
+    near = _plan([laid, (stitches.TRAVEL, [(10.0, 0.22), (0.0, 0.22)])])
+    on = _plan([laid, (stitches.TRAVEL, [(10.0, 0.0), (0.0, 0.0)])])
+    # the walk-in leg from the fill's end to the travel's start is a leg too: 1.0 / 0.22 mm long
+    b = fsr.bare_by_band(far)
+    assert all(10.0 <= v <= 11.2 for v in b.values()), b
+    b = fsr.bare_by_band(near)                  # 0.22 mm off: bare only at the half-thread band
+    assert b["0.20"] > 9.5 and b["0.25"] < 0.2 and b["0.30"] < 0.2, b
+    assert fsr.bare_by_band(on) == {"0.20": 0.0, "0.25": 0.0, "0.30": 0.0}
+
+
+def _cell(root, slug, arm, engine, dst=b"DST", sets=None):
+    import json
+    d = root / slug / arm
+    d.mkdir(parents=True)
+    (d / "ours.dst").write_bytes(dst)
+    (d / "stats.json").write_text(json.dumps({"engine": engine, "sets": sets or {}}))
+    return d
+
+
+def test_adopt_takes_an_old_on_cell_only_where_off_did_not_move(tmp_path):
+    old, new = tmp_path / "old", tmp_path / "new"
+    sets = fsr.arm_sets("lettering_columns_italic_lean")
+    _cell(old, "proseal_hat", "lettering_columns_italic_lean", "aaa", b"ON", sets)
+    _cell(old, "proseal_hat", "off__aaa", "aaa", b"OFF1")
+    _cell(new, "proseal_hat", "off__bbb", "bbb", b"OFF2")
+    r = fsr.adopt(old, new, "lettering_columns_italic_lean", "proseal_hat", "bbb")
+    assert "OFF moved" in r and not (new / "proseal_hat" / "lettering_columns_italic_lean").exists()
+    (new / "proseal_hat" / "off__bbb" / "ours.dst").write_bytes(b"OFF1")
+    r = fsr.adopt(old, new, "lettering_columns_italic_lean", "proseal_hat", "bbb")
+    assert "adopted" in r and (new / "proseal_hat" / "lettering_columns_italic_lean").exists()
+    assert (new / "proseal_hat" / "off__aaa").exists()          # the OFF it was diffed against
+
+
+def test_adopt_refuses_a_cell_built_for_another_row_definition(tmp_path):
+    old, new = tmp_path / "old", tmp_path / "new"
+    # wave 3's keyline cell carried the hand-built d2 base; the row now has none
+    _cell(old, "mfab_hat", "keyline_fold_slivers", "aaa", b"ON",
+          {"silhouette_underfill": True, "keyline_fold_slivers": True})
+    _cell(old, "mfab_hat", "off__aaa", "aaa", b"OFF")
+    _cell(new, "mfab_hat", "off__bbb", "bbb", b"OFF")
+    assert "not the row's" in fsr.adopt(old, new, "keyline_fold_slivers", "mfab_hat", "bbb")
+
+
+def test_a_shown_row_is_copied_as_it_is_with_its_engine(tmp_path):
+    old, new = tmp_path / "old", tmp_path / "new"
+    _cell(old, "tires_hat_3d", "monoline_script_satin", "aaa", b"ON")
+    _cell(old, "tires_hat_3d", "off__aaa", "aaa", b"OFF")
+    assert "adopted from aaa" in fsr.adopt(old, new, "monoline_script_satin", "tires_hat_3d", None)
+    assert fsr._engine_note({"engine": "aaa", "stale": "aaa"}) == "engine aaa: not current base"
+    assert "byte for byte" in fsr._engine_note({"engine": "aaa", "base_bytes": "aaa"})
+
+
+def test_the_artifact_page_is_a_fragment_with_theme_tokens(tmp_path):
+    rows = _rows(tmp_path)
+    page, _ = fsr.inline_html(rows, tmp_path, "2026-10-27", sheet=fsr.W5, fragment=True)
+    assert page.lstrip().startswith("<title>Flip sheet 2026-10-27</title>")
+    for tag in ("<!doctype", "<html", "<head", "<body"):
+        assert tag not in page.lower(), tag
+    assert "claude:viewport-fit-sides" in page
+    assert "prefers-color-scheme:dark" in page and ":root[data-theme='dark']" in page
+    assert "body{" in page and "background:var(--bg)" in page
+    whole = fsr.html(rows)
+    assert whole.startswith("<!doctype html>") and "viewport-fit=cover" in whole

@@ -53,6 +53,7 @@ the OLDEST lines whole to the archive.
 - [Flip sheet, inlined](flip-sheet-inline-2026-10-24.md) — `report --inline` = ONE HTML (data URIs; app viewer breaks relative paths); a flag with a `base` diffs against its own OFF
 - [Flip sheet wave 2](flip-sheet-wave2-2026-10-24.md) — four flags OFF|ON|pro; per-flag fixtures, shared base OFF arms, MFab art fallback; Tires monoline invisible at viewing size (trims 9 → 32)
 - [Flip sheet wave 3](flip-sheet-wave3-2026-10-26.md) — 12 OFF flags since 10-24 by flag + kind; monoline INERT on Tires, fill_section_travel / bay_mouth near-inert; OFF cells keyed per-cell by HEAD sha
+- [Flip sheet wave 5](flip-sheet-wave5-2026-10-27.md) — 4 asked on main ce8cc87d, gate 3 clear; bean_ink + part_touching fix MFab LC's AND only together; keyline trio inert off MFab, not asked
 - [Flip two](flip-two-2026-10-23.md) — border_by_size + enclosed_alpha_hole_parts + corner_fold ON (Kent 10-23); Becker untouched; local goldens red on Windows with flags OFF too
 - [Garment size like the pro](garment-size-like-pro-2026-10-26.md) — pro boxes hat 113.5x64, LC 96x64.5, beanie 94.5x56; `proSized` default ON (10-26)
 - [Cuts inside one piece](in-piece-cuts-2026-10-25.md) — ours 109 vs pro 25: fill sections 35 (pro 0), satin split 40; `fill_section_travel` OFF routes underlay ring hops (Fremont 51 -> 41); fill-order gains all cost exposure
@@ -99,7 +100,7 @@ the OLDEST lines whole to the archive.
 - [Re-set grows away](reset-grow-away-2026-10-26.md) — `small_text_reset_grow_away` ON (Kent 10-26): traced-stroke widening + hold the edge facing a near neighbour; beanie x1.15→1.56
 - [Re-set room and floor](reset-room-floor-2026-10-25.md) — ProSeal under 0.85: re-set widens RETRACED letters by a stale stroke tag (small_text.py:764); pro grows away from the near neighbour; tag fix alone: beanie no_room
 - [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins
-- [Script strokes](script-strokes-2026-10-26.md) — `script_strokes` OFF: script word = one column per pen stroke, path on the art's INK, rails on the polygon; Bridge trace-limited, pro re-set it
+- [Script strokes](script-strokes-2026-10-26.md) — `script_strokes` ON (Kent 10-26): script word = one column per pen stroke, path on the art's INK, crosses turn with the pen; sigma 2 leaned Bridge's crosses; monoline never sees a script word
 - [Sequence like the pro: order is not the gap](sequence-like-pro-2026-10-25.md) — L10 FALSE, not built: pro sews the cap rule and it costs him; ours passes over a reachable piece 18 of 145 extra cuts; gap is cuts inside a piece
 - [Session ended mid-suite](session-ended-mid-suite-2026-10-20.md) — a ruled flip sat uncommitted in a lane behind a hung pytest; sweep lanes' TRACKED dirt and the newest session's last turn
 - [Sew white areas](sew-white-areas-2026-10-21.md) — R11 built OFF as a Studio option; counter = untagged white in a text-cluster letter; Machine field doubles trims (stage 5)
