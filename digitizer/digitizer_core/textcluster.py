@@ -593,7 +593,25 @@ def _stroke_stats_mm(region: Region) -> float | None:
     return stats.mean_mm if stats is not None else None
 
 
-def _drop_nested(cands: list[_Candidate]) -> list[_Candidate]:
+# A frame is not a footprint (`cfg.text_cluster_nest_guard`, 2026-10-27, built
+# OFF). `_drop_nested` treats every candidate's bbox as the footprint of one
+# glyph, so a candidate that is no glyph nests away everything inside it. The
+# letter door admits any region up to `LETTER_MAX_HEIGHT_MM` 60 mm, and Bridge
+# hat's black wheel (62.6 x 55.1 mm, its bbox holding the whole design) passes:
+# 8 of the hat's 15 text pieces were dropped as nested and none reached the
+# Column lane, while the left chest's wheel (65.5 mm, refused at the door)
+# nested nothing and tagged 6 of 9. ON, a candidate taller than this many times
+# the MEDIAN height of the pool's non-rescued candidates does not count as a
+# nester. 6.0 sits in an empty band measured on those two jobs: the hat's wheel
+# is 13.7x its pool's median (4.01 mm) and the next tallest candidate 1.9x; the
+# left chest's tallest candidate is 2.7x (median 4.68 mm). A rescued fragment
+# riding inside a real glyph, the case `_drop_nested` exists for, sits in a
+# glyph-sized footprint and is unaffected. A census-side number, not a cloth
+# one: layout, judged in the preview.
+NEST_FOOTPRINT_MAX_X = 6.0
+
+
+def _drop_nested(cands: list[_Candidate], nest_guard: bool = False) -> list[_Candidate]:
     """Exclude a candidate whose bbox is fully contained within another,
     larger candidate's bbox. Real letters in a row sit side by side, never
     nested inside a sibling's footprint; a rescued small shape whose bbox
@@ -604,6 +622,11 @@ def _drop_nested(cands: list[_Candidate]) -> list[_Candidate]:
     is strictly larger) exclude neither side -- there is no basis to prefer
     one over the other, and dropping both would silently lose real
     candidates over a coincidence.
+
+    `nest_guard` (`cfg.text_cluster_nest_guard`): a candidate taller than
+    `NEST_FOOTPRINT_MAX_X` times the median height of the non-rescued
+    candidates is no glyph's footprint and nests nothing. False: as above,
+    byte for byte (the rescued door always calls it this way).
     """
     def bounds(c: _Candidate) -> tuple[float, float, float, float]:
         return c.region.polygon.bounds
@@ -613,12 +636,19 @@ def _drop_nested(cands: list[_Candidate]) -> list[_Candidate]:
         return (x1 - x0) * (y1 - y0)
 
     boxes = [bounds(c) for c in cands]
+    frame = [False] * len(cands)
+    if nest_guard:
+        heights = sorted(c.height_mm for c in cands if not c.region.meta.get("rescued_small_shape"))
+        if heights:
+            mid = len(heights) // 2
+            median = heights[mid] if len(heights) % 2 else (heights[mid - 1] + heights[mid]) / 2.0
+            frame = [median > 0 and c.height_mm > NEST_FOOTPRINT_MAX_X * median for c in cands]
     out: list[_Candidate] = []
     for i, c in enumerate(cands):
         bx0, by0, bx1, by1 = boxes[i]
         nested = False
         for j, other in enumerate(boxes):
-            if i == j:
+            if i == j or frame[j]:
                 continue
             ox0, oy0, ox1, oy1 = other
             if (ox0 <= bx0 and oy0 <= by0 and ox1 >= bx1 and oy1 >= by1
@@ -863,7 +893,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
                          chart=None, rescued_ink_link: bool = False,
                          counters_as_drawn: bool = False,
                          wide_letters: bool = False,
-                         part_touching: bool = False) -> None:
+                         part_touching: bool = False,
+                         nest_guard: bool = False) -> None:
     """Post-vectorization pass: tag every member of a qualifying group of
     glyph-shaped regions as a text candidate (`text_candidate`,
     `text_cluster_id`, `text_cluster_stroke_mm`, `text_cluster_all_rescued`
@@ -921,6 +952,11 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
        into letter-height pieces; and a glyph taller than its line that
        spans the line's cap band joins it (`_adopt_band`). False: as above,
        byte for byte.
+       `nest_guard` (`cfg.text_cluster_nest_guard`, 2026-10-27, OFF): the
+       nested-candidate drop of this round ignores a frame, a candidate
+       taller than `NEST_FOOTPRINT_MAX_X` times the pool's median glyph
+       height (Bridge hat's wheel nested 8 of 15 letters away). The rescued
+       round above keeps today's drop. False: byte for byte.
 
     `chart` is the thread chart the regions' `thread_index` values name --
     `threads.chart_for(cfg)` from the pipeline; the default chart when not
@@ -971,7 +1007,7 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
     pool = [c for c in rescued if c.region.shape_id not in taken]
     letters = _letter_candidates(regions, chart=chart, counters_as_drawn=counters_as_drawn)
     if not (wide_letters or part_touching):
-        for group in _cluster(_drop_nested(pool + letters), LETTER_HEIGHT_RATIO, chart):
+        for group in _cluster(_drop_nested(pool + letters, nest_guard), LETTER_HEIGHT_RATIO, chart):
             if len(group) < MIN_CLUSTER_MEMBERS:
                 continue
             tag(group)
@@ -992,14 +1028,14 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
         trial = [p for r in regions for p in kept.get(r.shape_id, [r])]
         cands = pool + _letter_candidates(trial, chart=chart,
                                           counters_as_drawn=counters_as_drawn)
-        groups = [g for g in _cluster(_drop_nested(cands), LETTER_HEIGHT_RATIO, chart)
+        groups = [g for g in _cluster(_drop_nested(cands, nest_guard), LETTER_HEIGHT_RATIO, chart)
                   if len(g) >= MIN_CLUSTER_MEMBERS]
         if wide_letters:
             wide = _letter_candidates(trial, chart=chart, counters_as_drawn=counters_as_drawn,
                                       aspect=(ASPECT_RATIO_MAX, WIDE_LETTER_ASPECT_MAX))
             groups = _adopt_wide(groups, wide, chart)
         if part_touching:
-            groups = _adopt_band(groups, _drop_nested(cands), chart)
+            groups = _adopt_band(groups, _drop_nested(cands, nest_guard), chart)
         tagged = {c.region.shape_id for g in groups for c in g}
         still = {sid: pieces for sid, pieces in kept.items()
                  if all(p.shape_id in tagged for p in pieces)}
