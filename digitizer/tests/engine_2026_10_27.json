@@ -16,6 +16,7 @@
  "applique_tackdown": null,
  "applique_trim_discipline": "normal",
  "bean_ink_outlined_letters": false,
+ "bean_only_lines": false,
  "bean_letter_bay_hold": 0.2,
  "bean_letter_corner_deg": null,
  "bean_letter_counter_hold_mm": 0.25,

@@ -14,6 +14,11 @@ indexed in exactly one of this file and `MEMORY.md`
 (`digitizer/tests/test_memory_budget.py` enforces both). Order is kept from the
 live index; new archive lines go at the bottom.
 
+- [Browser fill lane state](embot-browser-fill-lane-state.md) — SNAPSHOT 10-03: #606/#609/#611 built OFF, flips Kent's; island fix #613 merged PRE-audit, cures in #620; cleanup only Kent can run
+- [Closed-ring lane](embot-closed-ring-lane.md) — SNAPSHOT: #621 `offsetRing` on a repeated point, #625 stacked on it; defect 55's offset half is Kent's call
+- [Handover numbers and stacked branches](embot-handover-numbers-and-stacked-branches.md) — SNAPSHOT: reproduce a handed-over number with its own script
+- [Star-walk lane](embot-star-walk-lane.md) — SNAPSHOT: #624 ends `skeletonEdges`' endless walk; defect 57's cure order waits on Kent
+- [Sub-unit stitches lane](embot-sub-unit-stitches-lane.md) — SNAPSHOT 10-04: `dedupeHoles` built OFF (#623), Kent's "new flag, every run"
 - [Fritsch's Stitches](fritschs-stitches.md) — Kent's company is an embroidery business; assume that domain, ignore wheel/tire context
 - [EMB Bot Digitizer](emb-bot-digitizer.md) — history/decisions/gotchas, NOT live state (MASTER_SCOPE is); standing “flat art in, pro out” rule
 - [Ember architecture](ember-architecture.md) — competitor teardown: 2 Next.js apps + iframe, PixiJS/MobX/WASM; no ML in auto-digitize — our opening
