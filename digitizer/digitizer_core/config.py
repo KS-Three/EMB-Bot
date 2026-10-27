@@ -5691,7 +5691,8 @@ class PipelineConfig:
     # `tools/script_flow.py`). Width stays the drawn stroke plus the fabric's
     # pull: the pro's thinner script needs a smaller pull, a gate-1 constant
     # not built here. Layout, judged in the preview (Kent, 2026-10-22). ON by
-    # default since Kent's flip, 2026-10-26: "Flip it ON (Recommended)". False
+    # default since Kent's flip, 2026-10-26: "Flip it ON (Recommended)", and on
+    # the flow's sheet 2026-10-27: "Flip now, fix Bridge next (Recommended)". False
     # is the plan as it was, byte for byte (`tests/conftest.py` PRE_FLIP pins
     # it False). With it ON `monoline_script_satin` never sees a script word:
     # the route returns first. Tests: `tests/test_script_strokes.py`,
