@@ -39,23 +39,32 @@ traced polygon is read instead (`polygon_grid`).
 WHAT IT BUILDS (`script_columns`). The path's medial axis (the satin
 tier's own pruning and junction clustering) is cut into PEN STROKES: at a
 junction two arms that continue within `WELD_MAX_DEG` of straight are one
-stroke -- the pen goes THROUGH a crossing -- and the rest end there; a stroke
-that turns more than `CUSP_DEG` within a stroke width (a cusp: the i's foot
-turning into the join) is two. Each stroke is stationed at the satin pitch
-with crosses SQUARE to its own smoothed direction, reaching the traced
-POLYGON's outline on both sides, but never more than `REACH_HALVES` of its
-drawn local half-width, so a cross stops at a junction instead of sweeping
-through the stroke it meets. The polygon, not the ink, because the ground
-under the word is knocked out to the polygon: a counter the trace closed
-and the rails opened would show bare garment (Bridge hat: 2.8 mm2 with no
-ground under it). Where the polygon runs on past the drawn edge (that closed
-counter) the cross stops at the drawn edge (`CLOSED_GAP_MM`), and what no
-stroke reaches is a patch (`uncovered`). A stroke that ends on a longer one
-is cut back to its edge. Strokes and patches go to `columns.column_runs` as
-one word -- pull on the rails, the cross floor, split satin, the walk that
-sews each span's satin on its last visit and runs under it on the earlier
-ones -- then `monoline.py`'s clean-ups for a joined word (underlay off
-finished satin, hops buried under satin to come).
+stroke -- the pen goes THROUGH a crossing and round a bend -- and the rest
+end there; only where the stroke turns back on itself, more than `CUSP_DEG`
+within a stroke width (a cusp), is it two. Each stroke is stationed at the
+satin pitch on its lightly smoothed middle (`SPINE_SIGMA_HALVES`), and each
+cross lies SQUARE to the pen path smoothed harder (`CROSS_SIGMA_HALVES`), so
+the crosses turn as a hand turns them, reaching the traced POLYGON's outline
+on both sides but never more than `REACH_HALVES` of the drawn local
+half-width, so a cross stops at a junction instead of sweeping through the
+stroke it meets. The polygon, not the ink, because the ground under the word
+is knocked out to the polygon: a counter the trace closed and the rails
+opened would show bare garment (Bridge hat: 2.8 mm2 with no ground under it).
+Where a cross would run into such a closed counter it stops at the drawn
+edge (`CLOSED_GAP_MM`), and what no stroke reaches is a patch (`uncovered`).
+A stroke that ends on a longer one is cut back to its edge. Patches, then the
+strokes, go to `columns.column_runs` -- pull on the rails, the cross floor,
+split satin, the walk that sews each span's satin on its last visit and runs
+under it on the earlier ones -- then `monoline.py`'s clean-ups for a joined
+word (underlay off finished satin, hops buried under satin to come).
+
+FLOW (Kent 2026-10-26: "the cursive needs to flow, as if the direction (or
+centerline letter path) was drawn by a pencil or hand"). Read by
+`tools/script_flow.py` on our file and the pro's alike: the cross angle's
+turn per mm, its turn where one column hands over to the next, and kinks in
+the centreline. The welds, the cusp rule and the two sigmas above are set
+from it: where columns hand over, the pro's turn a median 1 deg (Tires), 5
+(To a T) and 23 (Bridge LC).
 
 WIDTH. The rails sit on the polygon's outline plus the fabric's own pull,
 as every Column letter's do. Measured on Bridge (the pipeline's ink read,
