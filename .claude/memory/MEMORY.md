@@ -68,7 +68,7 @@ the OLDEST lines whole to the archive.
 - [Isolated pieces](isolated-pieces-2026-10-25.md) — +33 = MFab white fragments + block accounting (compare ENTRIES); `absorb_fragments` OFF: MFab white-ON 77 -> 60
 - [Italic bars](italic-bars-2026-10-25.md) — pro crosses italic BARS along the slant; `lettering_columns_italic_lean` OFF moves straight bars (hat 0.31 -> 0.46, pro 0.54), not bowls; read per cross (`italic_cross.py`), never by piece axis
 - [Keyline band](keyline-band-2026-10-23.md) — `enclosed_white_keyline` OFF: satin loop per letter on the ARTWORK polygon; MFab 25,512 → 19,214 (pro 17,568); seam-close the reach
-- [Keyline loop chain](keyline-loop-chain-2026-10-26.md) — `keyline_loop_chain` OFF: loops start nearest the next, hops walked under white still to sew; MFab white-loop cuts 11→5 (pro 5/6)
+- [Keyline loop chain](keyline-loop-chain-2026-10-26.md) — MFab gate only (Kent 10-27): loop hops walked under later white; white-loop cuts 11→5 (pro 5/6)
 - [Lane census](lane-census-2026-10-25.md) — Kent 10-26: 6b NOT built, the button stays. 4 of 14 pro jobs reach flat (all Becker), 8 gradient, 2 photo_scene; 6b as written = the button's file; kappas a wash
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
 - [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
