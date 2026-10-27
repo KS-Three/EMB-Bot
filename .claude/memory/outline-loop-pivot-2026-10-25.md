@@ -1,6 +1,6 @@
 ---
 name: outline-loop-pivot-2026-10-25
-description: The keyline/outline loop's corner "spikes" are SPARSE far ends (1.1 mm apart vs the pro's 0.4), not a missing mitre -- the pro's corner on MFab's keyline is the same round arc ours is (far ends 1.00 W from the corner; a mitre would be 1.43). Built OFF as `outline_loop_mitre` (name from the brief): dense pivot, no corner detector. Becker's K/E corners the pro BUTTS square instead -- unbuilt.
+description: The keyline/outline loop's corner "spikes" are SPARSE far ends (1.1 mm apart vs the pro's 0.4), not a missing mitre -- the pro's corner on MFab's keyline is the same round arc ours is (far ends 1.00 W from the corner; a mitre would be 1.43). Built OFF, ON since Kent's flip 2026-10-26, as `outline_loop_mitre` (name from the brief): dense pivot, no corner detector. Becker's K/E corners the pro BUTTS square instead -- unbuilt.
 metadata:
   type: project
 ---
@@ -35,6 +35,10 @@ curves of radius above ~5 mm at 2.4 W are untouched.
 stitches 4,257 -> 5,311 (pro 5,360); Becker large outline 4,169 -> 4,814 (pro
 4,095), small 2,898 -> 3,398. OFF byte-identical to main on all three
 (border_from_outline ON). Kent's flip; layout, judged in the preview.
+
+**ON since 2026-10-26** (Kent, wave-3 flip sheet: "Outline corners pivot";
+`PRE_FLIP` names the OFF arm). Sheet: Becker hat large 7,859/19 -> 8,556/18,
+small 5,162/17 -> 5,659/17; Bridge byte-identical.
 
 **Open.** Becker's K top-left and E corners: the pro runs one column straight
 past the corner and stops the other square under it (a butt) -- neither a

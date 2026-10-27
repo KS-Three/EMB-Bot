@@ -74,6 +74,10 @@ def studio_request(width_mm: float = KENT_WIDTH_MM) -> dict:
         "satin": True,
         "detail_layer": False,
         "edge_cap": "bean",
+        # "Sew white areas", ticked by default since Kent's flip 2026-10-26,
+        # with the thread its colour picker starts on
+        "sew_enclosed_white": True,
+        "sew_enclosed_rgb": [255, 255, 255],
         "detect_photographic": True,
         "faces_route_flat": True,
         "garment_id": "hat_front",

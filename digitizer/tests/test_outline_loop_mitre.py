@@ -1,4 +1,5 @@
-"""`cfg.outline_loop_mitre` (2026-10-25, built OFF): a satin loop round a
+"""`cfg.outline_loop_mitre` (2026-10-25; ON since Kent's flip 2026-10-26, "Outline
+corners pivot" -- `PRE_FLIP` names the OFF arm): a satin loop round a
 letter keeps its far rail at the satin pitch through the letter's convex
 corners, as the professional's keyline and outline satin do
 (`stage6_border._pivot_ring`).
@@ -22,6 +23,7 @@ from shapely.geometry import Point, Polygon, box
 
 from digitizer_core import PipelineConfig, machine
 from digitizer_core import stage6_border as sb
+from tests.conftest import PRE_FLIP
 
 #: a 10 mm square letter in a 4 mm band round it (y down): its four corners are
 #: convex, the band is what the loop crosses into
@@ -67,8 +69,10 @@ def _max_step(seq) -> float:
     return max(math.dist(a, b) for a, b in zip(seq, seq[1:]))
 
 
-def test_flag_is_off_by_default():
-    assert PipelineConfig().outline_loop_mitre is False
+def test_flag_is_on_by_default():
+    # Kent's flip on the wave-3 flip sheet 2026-10-26: "Outline corners pivot"
+    assert PipelineConfig().outline_loop_mitre is True
+    assert PRE_FLIP["outline_loop_mitre"] is False
 
 
 def test_the_scope_sets_the_flag_and_puts_it_back():
@@ -84,9 +88,10 @@ def test_a_plan_sets_the_flag_from_its_config(monkeypatch):
     from digitizer_core import pipeline
     seen = []
     monkeypatch.setattr(pipeline, "_plan_stitches", lambda _r, _c: seen.append(sb._LOOP_MITRE.get()))
-    pipeline.plan_stitches(object(), PipelineConfig())
+    pipeline.plan_stitches(object(), PipelineConfig(outline_loop_mitre=PRE_FLIP["outline_loop_mitre"]))
     pipeline.plan_stitches(object(), PipelineConfig(outline_loop_mitre=True))
-    assert seen == [False, True]
+    pipeline.plan_stitches(object(), PipelineConfig())          # the default: ON
+    assert seen == [False, True, True]
     assert sb._LOOP_MITRE.get() is False
 
 

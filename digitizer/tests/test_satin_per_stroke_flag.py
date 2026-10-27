@@ -62,8 +62,11 @@ def test_on_moves_the_sewn_result_where_the_measurement_said_it_would():
     # Pre-flip polygons on purpose: with `subpixel_edges_upscaled` (Kent's
     # 2026-09-18 flip) becker's outline band is already satin at 100 mm and
     # the three shapes this rung promoted no longer exist as such, so the
-    # flag moves nothing there. The rung's mechanics are what this pins.
-    kw = dict(target_width_mm=100.0, garment_id="left_chest", subpixel_edges_upscaled=False)
+    # flag moves nothing there. The rung's mechanics are what this pins. White
+    # pinned OFF likewise (`sew_enclosed_white`, ON since 2026-10-26): the faces
+    # it sews are fills the rung does not promote, measured here as its cost.
+    kw = dict(target_width_mm=100.0, garment_id="left_chest", subpixel_edges_upscaled=False,
+              sew_enclosed_white=False)
     _off_r, off = digitize(art, PipelineConfig(**kw))
     _on_r, on = digitize(art, PipelineConfig(**kw, satin_per_stroke=True))
 

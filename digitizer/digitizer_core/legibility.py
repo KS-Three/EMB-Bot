@@ -36,8 +36,10 @@ the same skip the OCR tests take (`tests/conftest.py`, `requires_tesseract`).
 from __future__ import annotations
 
 import difflib
+import os
 import re
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import cv2
@@ -183,20 +185,51 @@ RENDER_CONF_MIN = 60.0
 ART_MIN_LETTERS = 3
 
 
+# Tesseract reads run this many at a time. Each read is its own child process
+# on one OpenMP thread (`_one_tesseract_thread`), and the reads are
+# independent, so running them side by side changes no reading, only the
+# wait. Serial, it was a quarter to a third of a lettering job's wall
+# (profiled: Becker 31%, Fremont 24%, ProSeal 35%): 24 reads per text cluster
+# (two crops x three modes x three variants on the art, the render in one
+# mode), 144 on Fremont. Measured 2026-10-26 on Kent's laptop (8 logical
+# cores), the same result read both ways: preflight wall 46.2 -> 17.6 s on Fremont, 14.0
+# -> 6.1 on Becker, 20.9 -> 9.0 on the MFab hat, every DST and preflight
+# report byte-identical. Four, not the core count: the service shares the
+# machine with the Studio's browser.
+OCR_WORKERS = max(1, min(4, os.cpu_count() or 1))
+
+
+def _ocr_all(calls) -> list[tuple[str, float]]:
+    """`ocr(*call)` for every call, in order, `OCR_WORKERS` at a time.
+
+    The one-thread limit is set ONCE around the whole batch: each `ocr`
+    still enters `_one_tesseract_thread` itself, but inside this outer one it
+    saves "1" and restores "1", so no worker can unset the variable while
+    another is launching its child."""
+    calls = list(calls)
+    with _one_tesseract_thread():
+        if OCR_WORKERS == 1 or len(calls) < 2:
+            return [ocr(*c) for c in calls]
+        with ThreadPoolExecutor(max_workers=OCR_WORKERS) as pool:
+            return list(pool.map(lambda c: ocr(*c), calls))
+
+
 def read_side(imgs, px_per_mm: float, psms) -> tuple[str, float, int]:
     """-> (text, confidence, psm): the most confident reading over the
     candidate crops, the psm modes and the preprocessing variants, letters
-    counted as the tie-break. A crop that reads nothing scores -1."""
+    counted as the tie-break. A crop that reads nothing scores -1.
+
+    The reads run together (`_ocr_all`); they are then judged in the order
+    the serial loop read them, so a tie goes the same way."""
+    calls = [(img, psm, blur_mm * px_per_mm, thin_mm * px_per_mm)
+             for img in imgs if img is not None and img.size != 0
+             for psm in psms
+             for blur_mm, thin_mm in VARIANTS_MM]
     best = ("", -1.0, psms[0])
-    for img in imgs:
-        if img is None or img.size == 0:
-            continue
-        for psm in psms:
-            for blur_mm, thin_mm in VARIANTS_MM:
-                txt, conf = ocr(img, psm, blur_mm * px_per_mm, thin_mm * px_per_mm)
-                key = (conf if normalise(txt) else -1.0, len(normalise(txt)))
-                if key > (best[1], len(normalise(best[0]))):
-                    best = (txt, conf, psm)
+    for (_img, psm, _b, _t), (txt, conf) in zip(calls, _ocr_all(calls)):
+        key = (conf if normalise(txt) else -1.0, len(normalise(txt)))
+        if key > (best[1], len(normalise(best[0]))):
+            best = (txt, conf, psm)
     return best
 
 

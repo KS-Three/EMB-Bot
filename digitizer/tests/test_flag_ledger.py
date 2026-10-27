@@ -2,10 +2,11 @@
 memory note, read off config.py (never written).
 
 Pinned on the real config: `pull_comp_by_stroke` (FABRIC, a physical
-constant), `sew_enclosed_white` and `cut_every_jump` (HELD, by their memory
-notes), `monoline_script_satin` (LAYOUT; `border_by_size`, the brief's
-layout pick, is ON since #1057), and `lettering_columns_small_bold`, which is
-ON and so is neither a row nor a stale comment. Then each rule on a small
+constant), `cut_every_jump` (HELD, by its memory note), `monoline_script_satin`
+(LAYOUT; `border_by_size`, the brief's layout pick, is ON since #1057), and
+`lettering_columns_small_bold`, `sew_enclosed_white` and `small_text_bay_mouth`,
+which are ON (the last two since Kent's 2026-10-26 flips, #1112) and so are
+neither rows nor stale comments. Then each rule on a small
 synthetic config and memory folder.
 """
 from __future__ import annotations
@@ -28,7 +29,6 @@ def _row(led, name):
 
 @pytest.mark.parametrize("name, kind", [
     ("pull_comp_by_stroke", "FABRIC"),
-    ("sew_enclosed_white", "HELD"),
     ("cut_every_jump", "HELD"),
     ("monoline_script_satin", "LAYOUT"),
 ])
@@ -49,6 +49,10 @@ def test_a_flag_that_is_on_is_neither_a_row_nor_stale(real):
     assert _row(real, "lettering_columns_small_bold") is None
     assert "lettering_columns_small_bold" not in {s["name"] for s in real["stale"]}
     assert _row(real, "border_by_size") is None
+    # Kent's 2026-10-26 flips: once HELD (white) and OFF (the bay mouth), now ON
+    for name in ("sew_enclosed_white", "small_text_bay_mouth"):
+        assert _row(real, name) is None
+        assert name not in {s["name"] for s in real["stale"]}
 
 
 def test_counts_add_up(real):

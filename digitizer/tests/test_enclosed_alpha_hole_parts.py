@@ -74,9 +74,11 @@ def test_off_reproduces_the_blob():
 
 def test_on_tags_every_part_of_the_transparent_hole():
     """ON: each part of the hole is enclosed background with no colour of its
-    own, and none of them sews."""
+    own, and none of them sews -- with `sew_enclosed_white` OFF (ON by default
+    since 2026-10-26, which sews a tagged alpha hole white)."""
     result = run_stages(two_tone_ring_with_transparent_middle(),
-                        cfg(target_width_mm=20.0, enclosed_alpha_hole_parts=True))
+                        cfg(target_width_mm=20.0, enclosed_alpha_hole_parts=True,
+                            sew_enclosed_white=False))
     parts = _hole_regions(result)
     assert len(parts) >= 2, [r.polygon.bounds for r in parts]
     for r in parts:

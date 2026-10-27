@@ -74,7 +74,10 @@ export function autoCapNote(garment) {
   if (!garment || !EMB.autoFitBoxMm || !EMB.HOOPS) return "";
   const hoop = EMB.HOOPS[EMB.HOOPS.length - 1];
   const box = EMB.autoFitBoxMm(garment);
-  const capped = box.w < garment.widthIn * 25.4 - 1e-9 || box.h < garment.heightIn * 25.4 - 1e-9;
+  // against the placement box auto-fit aims at (the pro's since 2026-10-26),
+  // not the garment's inch box: a hat's 113.5 mm is not a hoop cap
+  const place = EMB.placementBoxMm ? EMB.placementBoxMm(garment) : { w: garment.widthIn * 25.4, h: garment.heightIn * 25.4 };
+  const capped = box.w < place.w - 1e-9 || box.h < place.h - 1e-9;
   return capped
     ? `Auto-fit sizes this to the ${hoop.label} hoop, the largest this app offers — the ${garment.label} area is bigger. Type a width to go larger.`
     : "";

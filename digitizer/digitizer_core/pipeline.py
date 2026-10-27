@@ -966,8 +966,11 @@ def build_generation(
                            letter_gap_mm=cfg.small_text_cap_letter_gap_mm,
                            bold_scale=cfg.small_text_cap_bold_scale,
                            **({"reach_edges": True} if cfg.small_text_cap_reach_edges else {}),
-                           # each bay's mouth kept open (W3-02, OFF): absent, today's bytes
-                           **({"bay_mouth": True} if cfg.extra.get("small_text_bay_mouth") else {}))
+                           # each bay's mouth kept open (W3-02, ON since 2026-10-26):
+                           # False, the call as it was word for word
+                           **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}),
+                           # traced stroke + grown away from the near neighbour (W4-04, OFF)
+                           **({"grow_away": True} if cfg.extra.get("small_text_reset_grow_away") else {}))
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
@@ -1741,11 +1744,12 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # config, so the flag is set there for the length of this plan
     from .outline_cut import apex_cut_scope
     from .stage6_border import loop_mitre_scope   # `cfg.outline_loop_mitre` (built OFF), the same way
+    from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
     # fill reads it from here, so a `stitch_shape` call outside a plan is the
     # engine as it was.
     with apex_cut_scope(cfg.lettering_columns_apex_cut), fill_section_travel.enabled(cfg), \
-            loop_mitre_scope(cfg.outline_loop_mitre):
+            loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain):
         return _plan_stitches(result, cfg)
 
 

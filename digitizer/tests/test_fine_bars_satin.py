@@ -1,5 +1,6 @@
 """Fine ink bars sew satin, not a hollow bean ring (`cfg.fine_bars_satin`,
-built OFF 2026-10-25).
+built OFF 2026-10-25; ON since Kent's flip 2026-10-26, "Fine bars as satin" --
+`PRE_FLIP` names the OFF arm, and `_cfg` reads it unless a test sets the flag).
 
 The pro sews every free-standing thin ink bar as ONE satin at its drawn
 width plus his pull, in all 5 artworks that have them (the small-symbols
@@ -27,6 +28,7 @@ from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage6_satin import is_small_solid
 from digitizer_core.stage7_sequence import sequence
 from digitizer_core.threads import chart_for
+from tests.conftest import PRE_FLIP
 
 GARMENT = (235, 232, 223)        # the Studio's Natural
 
@@ -72,6 +74,7 @@ def _region(sid, poly, thread, **meta) -> Region:
 
 
 def _cfg(**kw) -> PipelineConfig:
+    kw.setdefault("fine_bars_satin", PRE_FLIP["fine_bars_satin"])     # the OFF arm unless set
     return PipelineConfig(underlay=False, garment_rgb=GARMENT, **kw)
 
 
@@ -100,8 +103,10 @@ def _of(runs, sid):
     return [r for r in runs if r.shape_id == sid]
 
 
-def test_default_off():
-    assert PipelineConfig().fine_bars_satin is False
+def test_default_on():
+    # Kent's flip on the wave-3 flip sheet 2026-10-26: "Fine bars as satin"
+    assert PipelineConfig().fine_bars_satin is True
+    assert PRE_FLIP["fine_bars_satin"] is False
 
 
 def test_off_is_byte_identical():

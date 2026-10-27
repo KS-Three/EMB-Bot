@@ -316,10 +316,13 @@ def test_a_layer_that_sews_nothing_names_its_own_shapes_cone():
     # seventh region, so layer 4 names `4531` and the machine loads six
     # spools, not the five the doc's §3 walked through; that is the flip's
     # arithmetic, pinned in `tests/test_keep_thin_strokes.py`, not this
-    # election's.
-    off, off_plan = digitize(TESTDATA / "logo_whitebg.png", cfg(keep_thin_strokes=False))
+    # election's. `sew_enclosed_white=False` the same way (ON by default since
+    # 2026-10-26): ON, the ring hole sews and no layer sews nothing.
+    off, off_plan = digitize(TESTDATA / "logo_whitebg.png",
+                             cfg(keep_thin_strokes=False, sew_enclosed_white=False))
     on, on_plan = digitize(TESTDATA / "logo_whitebg.png",
-                           cfg(layer_palette_from_regions=True, keep_thin_strokes=False))
+                           cfg(layer_palette_from_regions=True, keep_thin_strokes=False,
+                               sew_enclosed_white=False))
 
     assert _layer_cones(off) == _layer_cones(on), (
         "an unstitched layer's cone was already its own regions' cone; the "

@@ -47,12 +47,22 @@ A flag with a `base` (`enclosed_white_keyline` only acts under
 `sew_enclosed_white`) is diffed against its OWN OFF -- the base sets alone,
 cached as arm `<flag>__off` -- not against the bare engine.
 
+Each flag has a KIND (2026-10-26): LAYOUT, judged from these renders (Kent
+2026-10-22), or FABRIC, ROADMAP gate 1 -- it needs a sew-out (underlay, locks,
+anything the preview cannot show). The page groups its rows by flag, each
+under its kind with stitches, trims and colour changes OFF -> ON -> pro.
+
+A flag the Studio's request cannot carry (`cfg.extra` keys: the service's
+parser refuses `extra`) sets it as `sets: {"extra": {...}}`; the cell lays
+that onto the parsed config, for that digitize only.
+
 Nothing here changes an engine default; the flips are Kent's.
 """
 from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import json
 import math
 import os
@@ -111,20 +121,27 @@ ART_FALLBACK = {
 #: Optional: `base` (the flag acts only on top of these; OFF is the base, not
 #: the bare engine), `base_name` (flags with the SAME base share one OFF arm
 #: under that name instead of digitizing it once each), `fixtures` (the jobs
-#: the flag is about; FIXTURES otherwise).
+#: the flag is about; FIXTURES otherwise), `kind` ("LAYOUT", the default:
+#: judged from renders; "FABRIC": gate 1, a sew-out).
 _SMALL_TEXT_SET = {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1.05,
                    "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
                    "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True}
 _WHITE_SEWN = {"sew_enclosed_white": True, "enclosed_white_keyline": True}
+#: the engine before the 2026-10-26 flips (both ON by default since), with rembg's
+#: timeout pinned: its 60 s default fails under load and reroutes MFab (photo_scene)
+_REMBG_900 = {"photo_prep_background_removal_timeout_s": 900.0}
+_WAVE3_OFF = {"small_text_bay_mouth": False, "sew_enclosed_white": False, **_REMBG_900}
 
 FLAGS: dict[str, dict] = {
     "fill_turn_slant": {
+        "kind": "FABRIC",
         "sets": {"fill_turn_slant": True}, "metric": "sub_half_mm",
         "about": "stitches under 0.5 mm", "pr": 1036,
         "note": "PR #1036 was RED on CI when rendered (tests/test_cut_every_jump.py "
                 "test_off_is_byte_identical_to_base[earlier-0], an OFF md5 pin stale after main "
                 "moved); rendered from its branch, diffed against that branch's own OFF."},
     "fill_underlay_cross": {
+        "kind": "FABRIC",
         "sets": {"fill_underlay_cross": True}, "metric": "fill_underlay", "xray": True,
         "about": "underlay read under each fill (verdict: fills)", "pr": 1033},
     "cut_every_jump": {
@@ -145,9 +162,11 @@ FLAGS: dict[str, dict] = {
         "sets": {"small_solids_satin": True}, "metric": "rings",
         "about": "edge-cap rings (plan roles)", "pr": 1023},
     "tie_in_off": {
+        "kind": "FABRIC",
         "sets": {"tie_in_off": True}, "metric": "locks",
         "about": "run starts that lock", "pr": 1042},
     "satin_underlay_short_columns": {
+        "kind": "FABRIC",
         "sets": {"satin_underlay_short_columns": True}, "metric": "short_bare", "xray": True,
         "about": "satin columns under 5 mm sewn bare", "pr": 1044},
     "lettering_columns_inside_stagger": {
@@ -251,7 +270,7 @@ FLAGS: dict[str, dict] = {
     "silhouette_underfill_rim": {
         "base": {"silhouette_underfill": True, **_WHITE_SEWN}, "base_name": "d2",
         "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "silhouette_underfill_rim": True},
-        "fixtures": ["mfab_hat", "mfab_lc", "hotel_fremont_hat"],
+        "fixtures": ["mfab_hat", "mfab_lc", "hotel_fremont_hat", "bridge_hat", "bridge_lc"],
         "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1096,
         "note": "Acts only under silhouette_underfill, so OFF is arm d2 (under-fill + white sewn "
                 "+ keyline) and ON adds the rim: the ring host's outer edge as one closed satin "
@@ -260,11 +279,100 @@ FLAGS: dict[str, dict] = {
                 "1.39-1.73. Becker's letter host gets none (its ring is the satin)."},
     "fine_bars_satin": {
         "sets": {"fine_bars_satin": True},
-        "fixtures": ["machine_hat", "hotel_fremont_hat", "precision_drone", "mfab_lc", "mfab_hat"],
+        "fixtures": ["machine_hat", "hotel_fremont_hat", "precision_drone", "mfab_lc", "mfab_hat",
+                     "bridge_hat", "bridge_lc"],
         "metric": "run_shapes", "about": "shapes sewn as a plain run ring (plan roles)", "pr": 1101,
         "note": "Free-standing thin ink bars under the area floor: To a T's speed rules, Fremont's "
                 "separators, the drone's AND DRONE rule, MFab's LLC hairline. The pro satins each; "
                 "ours rings them OFF."},
+    # ---- wave-3 flips (2026-10-26, Kent: bay mouth "Flip ON", white "A ... alone", "Flip,
+    # but prove it first"). Both are ON by default from this PR, so OFF pins both False.
+    "wave3_flips": {
+        "base": dict(_WAVE3_OFF), "base_name": "wave3_off",
+        "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": True, **_REMBG_900},
+        "fixtures": ["becker_hat_large", "mfab_hat", "hotel_fremont_hat"],
+        "metric": "white_stitches", "about": "stitches in white thread", "pr": 1112,
+        "note": "OFF pins both flips False (the engine before 2026-10-26); ON is the shipped "
+                "defaults, the Studio's request as it now goes (white ticked, sewn white). "
+                "fields_fill and the keyline stay OFF in both; rembg's timeout pinned at 900 s in "
+                "both (route checked per cell)."},
+    # ---- wave 3 sheet (2026-10-26): every flag built OFF since 10-24 not already above
+    "lettering_columns_apex_cut": {
+        "sets": {"lettering_columns_apex_cut": True},
+        "fixtures": ["becker_hat_large", "mfab_hat", "proseal_hat"],
+        "metric": "sub_1mm", "about": "stitches under 1 mm (whole design)", "pr": 1088,
+        "note": "An acute tip -- the M's V, a W's apexes, a pointed A or N -- sews as ONE column "
+                "cut off its strokes along the cross, as the pro's does (#1088; #1090 skips the slot "
+                "rule for a letter with such a tip: MARINE's M at 95.7 mm). Corner fold is ON on main."},
+    "text_cluster_part_touching": {
+        "sets": {"text_cluster_part_touching": True},
+        "fixtures": ["mfab_hat", "mfab_lc"],
+        "metric": "tagged", "about": "shapes the text tagger put in a line (the Column lane's input)",
+        "pr": 1080,
+        "note": "Two letters the tagger misses on MFab's AND WELDING: the hat's I and N touching at "
+                "a 0.08 mm neck (traced as one region), and the LC's AND N overshooting the cap height."},
+    "outline_loop_mitre": {
+        "sets": {"outline_loop_mitre": True},
+        "fixtures": ["becker_hat_large", "becker_hat_small", "bridge_hat", "bridge_lc"],
+        "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1093,
+        "note": "The border_from_outline loops (ON on main) keep their far rail at the satin pitch "
+                "through a letter's convex corners: the pro's corner is a round pivot, not a mitre "
+                "(far ends 1.00 W out; ours OFF 1.1 mm apart at the corner, his 0.4). Bridge's art "
+                "outline is guarded out (#1078), so Bridge should read no change."},
+    "keyline_fold_slivers": {
+        "base": {"silhouette_underfill": True, **_WHITE_SEWN}, "base_name": "d2",
+        "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "keyline_fold_slivers": True},
+        "fixtures": ["mfab_hat", "mfab_lc"],
+        "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": 1102,
+        "note": "Read only with sew_enclosed_white, so OFF is arm d2 (under-fill + white sewn + "
+                "keyline) and ON folds the white field's 31 (hat) / 51 (LC) hairline slivers back "
+                "into it. PR #1102 with skip_covered_shapes: hat 41 -> 27, LC 54 -> 29 trims (pro 19 / "
+                "20). The white switches themselves are ruled through the MFab-art gate, not here."},
+    "skip_covered_shapes": {
+        "base": {"silhouette_underfill": True, **_WHITE_SEWN}, "base_name": "d2",
+        "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "skip_covered_shapes": True},
+        "fixtures": ["mfab_hat", "mfab_lc"],
+        "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": 1102,
+        "note": "A shape whose whole thread lies on thread of its own colour block is not sewn: "
+                "MFab's keyline slivers, already 62% (hat) / 95% (LC) covered by the field. Same "
+                "colour, so nothing that shows changes; it removes a second layer and its cuts. OFF "
+                "is arm d2, as keyline_fold_slivers."},
+    "lettering_columns_italic_lean": {
+        "sets": {"lettering_columns_italic_lean": True},
+        "fixtures": ["proseal_hat", "proseal_beanie"],
+        "metric": "sub_1mm", "about": "stitches under 1 mm (whole design)", "pr": 1079,
+        "note": "Under lettering_columns_text_lean (ON on main): the bars of an italic word cross "
+                "along its stems, 71-78 deg off the line of text as the pro's do on PROSEAL, where "
+                "the lane crosses them square to themselves."},
+    "fill_section_travel": {
+        "sets": {"extra": {"fill_section_travel": True}},
+        "fixtures": ["hotel_fremont_hat", "bridge_hat", "bridge_lc"],
+        "metric": "travel_runs", "about": "travel runs in the plan (pro: n/a)", "pr": 1091,
+        "note": "A cfg.extra key (the Studio's request cannot set it; the cell lays it on). Fill "
+                "sections join by a route hidden inside the field instead of a cut: PR #1091 Fremont "
+                "hat 51 -> 41 trims, exposure unchanged (the pro: 0 cuts inside a piece)."},
+    "absorb_fragments": {
+        "base": {"sew_enclosed_white": True}, "base_name": "w1",
+        "sets": {"sew_enclosed_white": True, "extra": {"absorb_fragments": True}},
+        "fixtures": ["mfab_hat", "mfab_lc"],
+        "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": 1100,
+        "note": "A cfg.extra key, read only with the white field sewn, so OFF is arm w1 "
+                "(sew_enclosed_white alone, #1100's arm): a white keyline fragment narrower than "
+                "the pro's narrowest satin, within one thread of its field, is sewn as part of the "
+                "field after stage 5. PR #1100: MFab hat 77 -> 60 trims (pro 18); white OFF it is "
+                "inert (DST byte-identical)."},
+    "small_text_bay_mouth": {
+        # a field since #1112 and ON by default (Kent 2026-10-26), so OFF pins it False
+        "base": dict(_WAVE3_OFF), "base_name": "wave3_off",
+        "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": False, **_REMBG_900},
+        "fixtures": ["hotel_fremont_hat", "proseal_hat"],
+        "metric": "small_lines", "about": "small lines: built, sewn height mm (census reader)",
+        "pr": 1085,
+        "note": "On the re-set: the widening shuts a bay where a terminal curls back to its own "
+                "letter, so Fremont's EST 1895 sews as BST 1893. ON cuts the terminal back along "
+                "its stroke until the mouth holds the pro's 0.51 mm (n 18). No letter's height "
+                "moves, so read the picture, not the column; ProSeal is the byte-identical control. "
+                "Flipped ON by #1112, so OFF here pins it (and white) False."},
     # ---- script words (2026-10-26, Kent: "Measure, then build OFF")
     "script_strokes": {
         "base": {"photo_prep_background_removal_timeout_s": 900}, "base_name": "rembg900",
@@ -278,6 +386,20 @@ FLAGS: dict[str, dict] = {
                 "from a trace) and sews it thinner: his crosses 1.56 mm at hat against the drawn "
                 "1.76 + our 0.4 mm pull a side -- a smaller script pull is gate 1, not built."},
 }
+
+#: The wave-3 sheet (2026-10-26): the flags its run and report carry. The bay mouth left
+#: it when #1112 flipped it ON; its row stays, for the OFF | ON | pro of that PR.
+# `outline_loop_mitre` and `fine_bars_satin` left it when Kent flipped them ON,
+# 2026-10-26 ("Outline corners pivot", "Fine bars as satin"); their rows stay
+WAVE3 = ["lettering_columns_apex_cut", "text_cluster_part_touching",
+         "silhouette_underfill_rim", "keyline_fold_slivers",
+         "skip_covered_shapes", "lettering_columns_italic_lean", "monoline_script_satin",
+         "fill_section_travel", "absorb_fragments"]
+
+
+def flag_kind(flag: str) -> str:
+    """LAYOUT (judged from renders, Kent 2026-10-22) or FABRIC (gate 1)."""
+    return FLAGS[flag].get("kind", "LAYOUT")
 
 
 # ------------------------------------------------------------------ engine
@@ -377,6 +499,29 @@ def cell_dir(cache: Path, slug: str, arm: str, sha: str) -> Path:
     return cache / slug / (f"{arm}__{sha}" if is_off(arm) else arm)
 
 
+@contextlib.contextmanager
+def config_extra(extra: dict | None):
+    """`cfg.extra` keys laid onto the config the service's parser builds, for
+    one digitize: the parser refuses `extra`, so a flag that lives there
+    (`fill_section_travel`) cannot ride the Studio's request. None: nothing."""
+    if not extra:
+        yield
+        return
+    import importlib
+    svc = importlib.import_module("digitizer_service.app")   # the package's `app` is the FastAPI object
+    parse = svc._parse_config
+
+    def with_extra(raw):
+        kw = parse(raw)
+        kw["extra"] = {**(kw.get("extra") or {}), **extra}
+        return kw
+    svc._parse_config = with_extra
+    try:
+        yield
+    finally:
+        svc._parse_config = parse
+
+
 def digitize_cell(slug: str, arm: str, cache: Path, engine: str | None) -> dict:
     """One (fixture, arm): ours.dst + design.json + runs.json + stats.json."""
     use_engine(Path(engine) if engine else None)
@@ -388,7 +533,13 @@ def digitize_cell(slug: str, arm: str, cache: Path, engine: str | None) -> dict:
         return json.loads((out / "stats.json").read_text(encoding="utf-8"))
     fx = fixture_files(slug)
     sets = arm_sets(arm)
-    d = pp.digitize(fx["art"], fx["width_mm"], fx["garment"], sets)
+    # a lane has no rembg venv of its own: point stage 1 at the primary checkout's, or a
+    # photo_scene job (MFab) silently takes the no-background-removal route (2026-10-26)
+    from tools.enclosed_pro_census import _rembg
+    rembg = _rembg()
+    request_sets = {k: v for k, v in sets.items() if k != "extra"}
+    with config_extra(sets.get("extra")):
+        d = pp.digitize(fx["art"], fx["width_mm"], fx["garment"], request_sets)
     out.mkdir(parents=True, exist_ok=True)
     write_dst(d.plan, out / "ours.dst")
     (out / "design.json").write_text(json.dumps(d.design), encoding="utf-8")
@@ -405,7 +556,10 @@ def digitize_cell(slug: str, arm: str, cache: Path, engine: str | None) -> dict:
     stats = {"slug": slug, "arm": arm, "sets": sets, "engine": sha, "tagged": tagged,
              "engine_root": str(engine_root()), "width_mm": fx["width_mm"],
              "garment": fx["garment"], "secs": round(d.secs, 1),
-             "plan_stitches": d.plan.stats.stitch_count, "plan_trims": d.plan.stats.trims}
+             "plan_stitches": d.plan.stats.stitch_count, "plan_trims": d.plan.stats.trims,
+             "rembg": rembg,
+             "background_removed": any((w.get("code") == "PHOTO_BACKGROUND_REMOVED")
+                                       for w in (getattr(d.plan, "warnings", None) or []))}
     (out / "stats.json").write_text(json.dumps(stats, indent=1), encoding="utf-8")
     return stats
 
@@ -452,7 +606,8 @@ def counts(stream) -> dict:
     import pystitch
     cmds = [c for *_, c in stream]
     return {"stitches": sum(1 for c in cmds if c == pystitch.STITCH),
-            "trims": sum(1 for c in cmds if c == pystitch.TRIM)}
+            "trims": sum(1 for c in cmds if c == pystitch.TRIM),
+            "colours": sum(1 for c in cmds if c == pystitch.COLOR_CHANGE)}
 
 
 def needle_points(stream) -> list[tuple[float, float]]:
@@ -984,7 +1139,10 @@ def build_rows(cache: Path, renders: Path, flags: list[str], slugs: list[str]) -
 
 
 def _fmt(m: dict | None) -> str:
-    return "-" if m is None else f"{m['stitches']:,} st / {m['trims']} tr / {m['about']}"
+    if m is None:
+        return "-"
+    cc = f" / {m['colours']} cc" if "colours" in m else ""
+    return f"{m['stitches']:,} st / {m['trims']} tr{cc} / {m['about']}"
 
 
 def _sides(r: dict) -> tuple[str, ...]:
@@ -1055,7 +1213,7 @@ def summary_table(rows: list[dict]) -> str:
     out = ["<table class='sum'><tr><th>flag (PR)</th><th>fixture</th><th>OFF</th><th>ON</th>"
            "<th>pro</th><th>needle points changed</th></tr>"]
     for r in rows:
-        tag = f"<code>{r['flag']}</code> (#{r['pr']})"
+        tag = f"<code>{r['flag']}</code> (#{r['pr']}, {flag_kind(r['flag'])})"
         if r.get("status") not in ("rendered", "no change"):
             out.append(f"<tr><td>{tag}</td><td>{r['fixture']}</td><td colspan='4'>{r.get('status')}</td></tr>")
             continue
@@ -1065,6 +1223,34 @@ def summary_table(rows: list[dict]) -> str:
                    + f"<td>{change}</td></tr>")
     out.append("</table>")
     return "".join(out)
+
+
+def _counts(m: dict | None) -> str:
+    if m is None:
+        return "-"
+    return f"{m['stitches']:,} st &middot; {m['trims']} tr &middot; {m.get('colours', '-')} cc"
+
+
+def flag_header(flag: str, rows: list[dict]) -> str:
+    """A flag's section head: its kind, what it sets, and per fixture the
+    stitches, trims and colour changes OFF -> ON -> pro, so it is decided on
+    its own."""
+    kind = flag_kind(flag)
+    why = ("judged from these renders (Kent 2026-10-22)" if kind == "LAYOUT"
+           else "ROADMAP gate 1: needs a sew-out, the renders cannot decide it")
+    lines = [f"<h2 class='group'><code>{flag}</code> (PR #{FLAGS[flag]['pr']}) "
+             f"<span class='kind {kind.lower()}'>{kind}</span></h2>",
+             f"<p class='nochange'>{kind}: {why}. Sets <code>{json.dumps(FLAGS[flag]['sets'])}</code>.</p>",
+             "<table class='sum'><tr><th>fixture</th><th>OFF</th><th>ON</th><th>pro</th><th>change</th></tr>"]
+    for r in rows:
+        if r.get("status") not in ("rendered", "no change"):
+            lines.append(f"<tr><td>{r['fixture']}</td><td colspan='4'>{r.get('status')}</td></tr>")
+            continue
+        change = "none" if r["status"] == "no change" else f"{r['diff']:,} points"
+        lines.append(f"<tr><td>{r['fixture']}</td><td>{_counts(r['off'])}</td>"
+                     f"<td>{_counts(r['on'])}</td><td>{_counts(r['pro'])}</td><td>{change}</td></tr>")
+    lines.append("</table>")
+    return "".join(lines)
 
 
 def html(rows: list[dict], src=lambda name: name, date: str = DATE) -> str:
@@ -1080,13 +1266,20 @@ def html(rows: list[dict], src=lambda name: name, date: str = DATE) -> str:
            "width:48px} code{background:#eee;padding:1px 4px;border-radius:3px}"
            "table.sum{border-collapse:collapse;font-size:13px;background:#fff}"
            "table.sum td,table.sum th{border:1px solid #ddd;padding:3px 8px;text-align:left}"
+           "h2.group{font-size:19px;margin:34px 0 6px;padding-top:10px;border-top:3px solid #333}"
+           ".kind{font-size:13px;padding:2px 8px;border-radius:10px;margin-left:8px;color:#fff}"
+           ".kind.layout{background:#2d6cdf} .kind.fabric{background:#c0392b}"
            ".nochange{color:#555} .flag{font-size:17px;margin:0 0 4px} .where{margin-top:10px;max-width:520px} .where img{width:100%;border:1px solid #ccc}</style></head><body>",
            f"<h1>Flip sheet {date} &mdash; OFF | ON | pro</h1>",
            "<p>Layout flags built OFF, each rendered where it changes stitches beside the "
            "professional's file for the same job (hat preset at the pro's width). 40 px/mm: a "
            "0.4 mm thread is 16 px. The flips are Kent's.</p>",
            summary_table(rows)]
+    seen: set[str] = set()
     for r in rows:
+        if r["flag"] not in seen:
+            seen.add(r["flag"])
+            out.append(flag_header(r["flag"], [x for x in rows if x["flag"] == r["flag"]]))
         head = f"<p class='flag'><code>{r['flag']}</code> (PR #{r['pr']}) &middot; {r['fixture']} " \
                f"at {r['width_mm']} mm &middot; engine {r.get('engine', '-')}</p>"
         if r.get("note"):
