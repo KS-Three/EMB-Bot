@@ -285,7 +285,9 @@ export function predictedFit(element, shapes, garment) {
   // a typed size clamps to the full placement box.
   const eng = globalThis.EMB; // this module stays engine-free; absent -> the uncapped box
   const auto = eng && eng.autoFitBoxMm ? eng.autoFitBoxMm(garment) : { w: boxW, h: boxH };
-  if (!typed) return { mmPerPx: Math.min(auto.w / wPx, auto.h / hPx) };
+  // the pro's left chest also caps the artwork's box AREA (garments.autoFitAreaMm2, Infinity elsewhere)
+  const area = eng && eng.autoFitAreaMm2 ? eng.autoFitAreaMm2(garment) : Infinity;
+  if (!typed) return { mmPerPx: Math.min(auto.w / wPx, auto.h / hPx, Math.sqrt(area / (wPx * hPx))) };
   return { mmPerPx: Math.min(Math.min(Math.max(element.sizeMm, 1), boxW) / wPx, boxH / hPx) };
 }
 

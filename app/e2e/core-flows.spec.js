@@ -142,7 +142,7 @@ test("zoomed in, dragging empty field pans the view", async ({ page }) => {
   await lettering(page);
   // The pan is read off the ink's centroid, which only follows the view while
   // the lettering stays inside the canvas. Since 2026-10-26 the left chest
-  // fits the pro's 96 x 64.5 mm box and suggests the 4x4 hoop, where the
+  // fits the pro's 96 x 64.5 mm box (76.5 tall since 2026-10-27) and suggests the 4x4 hoop, where the
   // design draws so large that two zoom steps push it past the canvas edges
   // and the centroid moves less than the view (36 px for a 120 px drag). The
   // 5x7 it suggested before keeps it inside.
