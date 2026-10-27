@@ -555,9 +555,139 @@ def _bar_moves(bars: list[Polygon], resets: list[dict], dxs: list[float], gap_mm
     return out
 
 
+# GROW AWAY (`cfg.extra["small_text_reset_grow_away"]`, W4-04, built OFF).
+# W3-11 (`docs/reset-room-2026-10-25.md`) read two faults in the re-set
+# that only work as a pair:
+# - FLOOR: each letter was widened by `(target - min(s, f) x stroke) / 2`
+#   with `stroke` the tagger's tag, measured on OTHER polygons (the stage-4
+#   tracer's, fat on a coarse JPEG, or the ones `restore_small_text`
+#   replaced). On ProSeal and Drone the retraced letters are 0.67-0.91 of
+#   the tag, so they sewed 0.70-0.81 mm against a 0.85 target. Here the
+#   stroke is the RETRACED letters' own (`_traced_stroke`).
+# - ROOM: the line was scaled about its centre and slid the least distance
+#   that fits. The professional grows a line AWAY from its nearer
+#   neighbour: the edge facing it moves at most 0.46 mm, 63-94% of the
+#   growth goes the other way -- past the design's own edge on ProSeal --
+#   and no bar or badge is re-laid. Here the near edge is held
+#   (`_near_side`, `_grow_away`) and, on the far side, the design's edge
+#   gives way by the whole growth. A line that cannot hold it at any scale
+#   is placed as before.
+# The stroke alone sent the ProSeal beanie's tagline to `no_room`: a bigger
+# widening grows the halo past the room it had between the bar and the
+# edge. `CLEAR_MM` and the halo are unchanged (a thread clearance is a
+# gate-1 constant). Layout, judged from renders; unsewn.
+# A neighbour is NEAR when the ART leaves less than this between it and
+# the line (mm, polygon to polygon, at the line's tightest column): ProSeal's
+# bar 1.65-1.8, Drone's icon 1.15, Fremont's rope 1.7-1.75. Fremont's THE,
+# 2.2 / 2.25 either side, has none, and the pro grew it about its centre on
+# the hat. A line with no near neighbour is placed as before. Read on the
+# art, not on lines already grown: Fremont's date, grown, stands 1.5 mm
+# over THE.
+GROW_AWAY_NEAR_MM = 2.0
+# Holding the near edge exactly is tried first; when that does not fit it
+# may move by up to this, toward its neighbour or away (the pro's moved
+# 0.07-0.46). Further away is the slide this replaces: Fremont's date, its
+# rope arcing down either side, went 2.3 mm down past it, onto THE.
+GROW_AWAY_NEAR_GIVE_MM = 0.5
+# Columns read across a line for its neighbours' gaps, this far apart (mm).
+GROW_AWAY_COLUMN_MM = 0.1
+
+
+def _traced_stroke(shapes) -> float:
+    """The stroke of the letters the re-set grows: 2 x the mean skeleton
+    half-width (`textcluster._stats_of_polygon`, the tag's own measure) of
+    each, median over the line. 0.0 when no letter measures."""
+    from .textcluster import _stats_of_polygon
+    vals = []
+    for g in shapes:
+        try:
+            st = _stats_of_polygon(g)
+        except Exception:  # an unfieldable shape is not measured
+            st = None
+        if st is not None and st.mean_mm > 0:
+            vals.append(2.0 * st.mean_mm)
+    return float(np.median(vals)) if vals else 0.0
+
+
+def _near_side(line: list[dict]) -> dict:
+    """Which side of a re-set line its nearer neighbour stands on: per column
+    of each cluster's letters, the fabric up to the next obstacle above and
+    below (`it["art_obstacles"]`, else `it["obstacles"]`) within
+    `GROW_AWAY_NEAR_MM`; the smaller of the two tightest columns names the
+    side. -> {"near": -1 (above, y down) / +1 (below) / 0 (none), "up",
+    "down" (mm, None when nothing that close), "edge" (the line's art edge
+    on the near side)}."""
+    from shapely.geometry import LineString
+    up = down = None
+    for it in line:
+        obs = it.get("art_obstacles", it["obstacles"])
+        if obs is None:
+            continue
+        ink = unary_union(it["shapes"])
+        x0, y0, x1, y1 = ink.bounds
+        reach = GROW_AWAY_NEAR_MM
+        x = x0 + 0.5 * GROW_AWAY_COLUMN_MM
+        while x < x1:
+            col = LineString([(x, y0 - reach), (x, y1 + reach)])
+            x += GROW_AWAY_COLUMN_MM
+            mine = col.intersection(ink)
+            if mine.is_empty:
+                continue
+            top, bot = mine.bounds[1], mine.bounds[3]
+            seg = col.intersection(obs)
+            for q in ([] if seg.is_empty else getattr(seg, "geoms", [seg])):
+                if q.is_empty:
+                    continue
+                qy0, qy1 = q.bounds[1], q.bounds[3]
+                if qy1 <= top + 1e-9:
+                    up = top - qy1 if up is None else min(up, top - qy1)
+                elif qy0 >= bot - 1e-9:
+                    down = qy0 - bot if down is None else min(down, qy0 - bot)
+    near = 0
+    if up is not None and up < GROW_AWAY_NEAR_MM and (down is None or up < down):
+        near = -1
+    elif down is not None and down < GROW_AWAY_NEAR_MM and (up is None or down < up):
+        near = 1
+    ly0 = min(it["hull"].bounds[1] for it in line)
+    ly1 = max(it["hull"].bounds[3] for it in line)
+    return {"near": near, "up": None if up is None else round(up, 3),
+            "down": None if down is None else round(down, 3),
+            "edge": ly0 if near < 0 else ly1}
+
+
+def _grow_away(near: dict, resets: list[dict], room: Polygon, shifts: list[float]):
+    """`_place_line_reset`'s room and vertical moves for a line grown away
+    from its near side (`_near_side`): the move that puts the re-set line's
+    near edge back on the art's comes first, then that edge moved by up to
+    `GROW_AWAY_NEAR_GIVE_MM`, toward its neighbour first, nearest first, on
+    two grids: steps of `SHIFT_STEP_MM` from the held edge, and `shifts`
+    themselves (Drone's AND DRONE fits between its dome icon and THERMAL
+    only 0.50 mm up, where the held edge's grid stood at 0.37, on the icon,
+    and 0.62, on THERMAL). Each costs how far the near edge moved. The
+    design's edge on the FAR side gives way by the whole growth of the held
+    line. -> (room, [(cost, dy)])."""
+    sign = near["near"]
+    top = min(r["hull"].bounds[1] for r in resets)
+    bot = max(r["hull"].bounds[3] for r in resets)
+    widen = max(r["widen"] for r in resets)
+    hold = near["edge"] - (top if sign < 0 else bot)
+    rx0, ry0, rx1, ry1 = room.bounds
+    if sign < 0:
+        ry1 = max(ry1, bot + hold + widen + 1e-6)
+    else:
+        ry0 = min(ry0, top + hold - widen - 1e-6)
+    give = int(GROW_AWAY_NEAR_GIVE_MM / SHIFT_STEP_MM + 1e-9)
+    # m: the near edge's move, + toward the neighbour
+    ms = {round(i * SHIFT_STEP_MM, 9) for i in range(-give, give + 1)}
+    ms |= {round(sign * (dy - hold), 9) for dy in shifts}
+    ms = sorted((m for m in ms if abs(m) <= GROW_AWAY_NEAR_GIVE_MM + 1e-9), key=lambda m: (abs(m), -m))
+    return box(rx0, ry0, rx1, ry1), [(abs(m), hold + sign * m) for m in ms]
+
+
 def _place_line_reset(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float,
                       gap_mm: float, min_stroke_mm: float, bold_scale: float | None,
-                      bars: list[Polygon] | None = None, edge_room: bool = False):
+                      bars: list[Polygon] | None = None, edge_room: bool = False,
+                      near: dict | None = None):
     """`_place_line` for a re-set line: the tallest scale, then the widest
     letters (`f` from `s` down to `RESET_MIN_WIDTH`) at which every cluster
     fits clear of every obstacle by `CLEAR_MM`, and every bar of the line
@@ -572,8 +702,16 @@ def _place_line_reset(items: list[dict], bounds: Polygon, s_max: float, cap_mm: 
     art's 28.3-31.5). (2) Clusters of one line keep the polygon gap of a
     sewn letter gap from each other, not two halos: ProSeal's beanie words
     stand 1.3 mm apart and each halo is ~1 mm.
+
+    `near` (`_near_side`, `cfg.extra["small_text_reset_grow_away"]`, a line
+    with a near neighbour): the line's vertical moves are `_grow_away`'s --
+    its near edge held, the far side taking the growth -- and the edge rule
+    is `edge_room`'s, the far side's giving way by the whole growth. None:
+    as before, byte for byte.
     -> (s, dy, [dx per item], [reset per item], [dx per bar]) or None."""
     shifts = _offsets(MAX_SHIFT_CAPS * cap_mm)
+    if near is not None:
+        edge_room = True
     # one cluster alone on its line stays near where it was drawn: a line
     # set about its own centre, slid sideways, is off-centre in the design
     side = shifts if len(items) > 1 else [v for v in shifts if abs(v) <= RESET_MAX_SIDE_CAPS * cap_mm]
@@ -595,22 +733,25 @@ def _place_line_reset(items: list[dict], bounds: Polygon, s_max: float, cap_mm: 
             grown = [r["hull"].buffer(r["widen"] + it.get("clear", CLEAR_MM))
                      for it, r in zip(items, resets)]
             cores = [r["hull"].buffer(r["widen"]) for r in resets] if edge_room else grown
+            fit_room, moves_y = room, [(abs(dy), dy) for dy in shifts]
+            if near is not None:
+                fit_room, moves_y = _grow_away(near, resets, room, shifts)
             # the smallest move wins, |dy| + the largest |dx|: taking the
             # first dy that fits at any dx slid Drone's line 2.75 mm sideways
             # where a quarter millimetre up kept it centred
             best = None
-            for dy in shifts:
-                if best is not None and abs(dy) >= best[0]:
+            for cost, dy in moves_y:
+                if best is not None and cost >= best[0]:
                     break
                 dxs, placed = [], []
                 for it, g0, c0 in zip(items, grown, cores):
                     hit = None
                     for dx in side:
-                        if best is not None and abs(dy) + abs(dx) >= best[0]:
+                        if best is not None and cost + abs(dx) >= best[0]:
                             break
                         g = affinity.translate(g0, dx, dy)
                         if c0 is g0:
-                            if not room.contains(g):
+                            if not fit_room.contains(g):
                                 continue
                             if it["obstacles"] is not None and g.intersects(it["obstacles"]):
                                 continue
@@ -619,7 +760,7 @@ def _place_line_reset(items: list[dict], bounds: Polygon, s_max: float, cap_mm: 
                             hit = (dx, g)
                             break
                         c = affinity.translate(c0, dx, dy)
-                        if not room.contains(c):
+                        if not fit_room.contains(c):
                             continue
                         if it["obstacles"] is not None and g.intersects(it["obstacles"]):
                             continue
@@ -634,7 +775,7 @@ def _place_line_reset(items: list[dict], bounds: Polygon, s_max: float, cap_mm: 
                 if len(dxs) == len(items):
                     moves = _bar_moves(bars or [], resets, dxs, gap_mm)
                     if moves is not None:
-                        best = (abs(dy) + max(abs(v) for v in dxs), dy, dxs, moves)
+                        best = (cost + max(abs(v) for v in dxs), dy, dxs, moves)
             if best is not None:
                 return s, best[1], best[2], resets, best[3]
     return None
@@ -686,7 +827,8 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        letter_gap_mm: float | None = None,
                        bold_scale: float | None = None,
                        reach_edges: bool = False,
-                       bay_mouth: bool = False) -> list[dict]:
+                       bay_mouth: bool = False,
+                       grow_away: bool = False) -> list[dict]:
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
 
@@ -706,7 +848,15 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     only): a terminal the widening would close a bay with is cut back along
     its own stroke until the bay keeps the professional's mouth
     (`_open_mouths`, `BAY_MOUTH_MM`); each cut is a row of the cluster's
-    `mouths`. False: byte for byte.
+    `mouths`. False: byte for byte. `grow_away`
+    (`cfg.extra["small_text_reset_grow_away"]`, re-set only; comment at
+    `GROW_AWAY_NEAR_MM`): each letter is widened by the RETRACED letters'
+    stroke (`_traced_stroke`), not the tagger's tag, and a line with a near
+    neighbour holds the edge facing it and grows the other way
+    (`_near_side`, `_grow_away`), or is placed as before when no scale
+    holds it; each row carries `stroke_mm` (tag, traced) and `grow_away`
+    (near side, gaps up and down, and `held` where there is a near side).
+    False: byte for byte.
 
     `max_width_scale` (`cfg.small_text_cap_max_width_scale`): grow the
     letters TALLER by the full scale but WIDER by at most this -- condensed,
@@ -728,6 +878,8 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
         return report
     xs0, ys0, xs1, ys1 = zip(*(r.polygon.bounds for r in regions))
     design = box(min(xs0), min(ys0), max(xs1), max(ys1))
+    # grow away: neighbours are read as the art draws them (`_near_side`)
+    art = {id(r): r.polygon for r in regions} if grow_away else None
     claimed: set[int] = set()
     items: list[dict] = []
     for cid in sorted(clusters):
@@ -841,10 +993,34 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                     # the art (the pro's: 0.8 visible), and 0.8 plus the
                     # widening around it slid the whole line 2.75 mm aside
                     it["clear"] = min(CLEAR_MM, float(hull.distance(it["obstacles"])))
+            held = None
+            if reset and grow_away:
+                for it in line:     # the letters it grows, after any merge or join
+                    traced_stroke = _traced_stroke(it["shapes"])
+                    it["row"]["stroke_mm"] = (round(it["stroke"], 3), round(traced_stroke, 3))
+                    if traced_stroke > 0:
+                        it["stroke_tag"], it["stroke"] = it["stroke"], traced_stroke
+                    hull = it["hull"]
+                    near = hull.buffer(MAX_SCALE * max(cap_mm, hull.bounds[2] - hull.bounds[0]))
+                    drawn = [art[id(r)] for r in regions
+                             if id(r) not in ids and id(r) not in fids and id(r) in art
+                             and art[id(r)].intersects(near) and art[id(r)].intersection(hull).area < 0.5 * hull.area]
+                    it["art_obstacles"] = unary_union(drawn) if drawn else None
+                side_read = _near_side(line)
+                for it in line:
+                    it["row"]["grow_away"] = {k: v for k, v in side_read.items() if k != "edge"}
+                held = side_read if side_read["near"] else None
             if reset:
                 found = _place_line_reset(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm,
                                           float(letter_gap_mm), min_stroke_mm, bold_scale,
-                                          [r.polygon for r in bars], edge_room=reach_edges)
+                                          [r.polygon for r in bars], edge_room=reach_edges, near=held)
+                if held is not None:
+                    for it in line:
+                        it["row"]["grow_away"]["held"] = found is not None
+                    if found is None:   # no scale holds the near edge: placed as before
+                        found = _place_line_reset(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm,
+                                                  float(letter_gap_mm), min_stroke_mm, bold_scale,
+                                                  [r.polygon for r in bars], edge_room=reach_edges)
             else:
                 found = _place_line(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm, max_width_scale,
                                     min_stroke_mm)
@@ -1446,7 +1622,9 @@ def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
             r.meta["small_text_reset"] = True       # the regularizer leaves it as set
             r.meta[WIDENED_LETTERING_KEY] = round(max(widen, 1e-4), 4)
             if r.meta.get("text_cluster_stroke_mm"):
-                r.meta["text_cluster_stroke_mm"] = float(r.meta["text_cluster_stroke_mm"]) * min(s, f) + widen
+                # grow away: the half-stroke drawn, from the traced stroke
+                half = 0.5 * it["stroke"] if "stroke_tag" in it else float(r.meta["text_cluster_stroke_mm"])
+                r.meta["text_cluster_stroke_mm"] = half * min(s, f) + widen
         _fill_old_holes(regions, {id(r) for r in it["group"]}, old_union)
         if inner.get(k):        # an inner piece stays inside its letter's (shrunk) counter
             ink = unary_union([r.polygon for r in it["group"]])

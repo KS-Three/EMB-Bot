@@ -945,6 +945,17 @@ def rails(piece: Polygon, cut_lines, W: float):
 
 
 def pair_rails(A, B, pitch_mm: float) -> list[tuple[tuple, tuple]]:
+    """`_pair_rails`, once per exact (A, B, pitch) inside a letter (`_MEMO`)."""
+    memo = _MEMO.get()
+    if memo is None:
+        return _pair_rails(A, B, pitch_mm)
+    key = ("pair_rails", _coords_key(A), _coords_key(B), float(pitch_mm))
+    if key not in memo:
+        memo[key] = _pair_rails(A, B, pitch_mm)
+    return list(memo[key])
+
+
+def _pair_rails(A, B, pitch_mm: float) -> list[tuple[tuple, tuple]]:
     """Rail to rail: the two outline arcs paired by the monotone matching that
     keeps every cross as short as it can be (dynamic time warping), so crosses
     stay square to the stroke, fan round a bend, and close into a mitred end,
@@ -1464,6 +1475,30 @@ _SMALL_BOLD: contextvars.ContextVar[bool] = contextvars.ContextVar("small_bold",
 # (`columns.lettering_columns_shape`'s coverage retry); None reads the constant.
 _SMALL_BOLD_SIMPLIFY: contextvars.ContextVar[float | None] = contextvars.ContextVar(
     "small_bold_simplify", default=None)
+# One letter's columns, built once per exact key (2026-10-26). The cut's
+# second looks (`_refine`, `_judged_overlong`, `_fold_refine`) build the same
+# column again and again -- the piece left whole, OFF's cut, each option's
+# pieces for the stub check and again to judge them -- and different pieces
+# often pair the same two rails. Measured on the MFab hat (gate ON): of 2,825
+# `build_column` calls 779 repeat one already made, and of 1,413 `pair_rails`
+# calls 941 repeat the same rails; the lane was 67 s of a 141 s digitize.
+# Both are pure functions of their arguments and the cut's context
+# variables, so inside `_letter_columns` each is computed once per key --
+# shapely WKB and float64 bytes, exact, never rounded -- and handed back as a
+# fresh copy; nothing about what is computed, or in what order the cut
+# decides, changes. Outside a letter the dict is None and nothing is cached.
+_MEMO: contextvars.ContextVar[dict | None] = contextvars.ContextVar("column_memo", default=None)
+
+
+def _coords_key(xs) -> tuple:
+    """Exact key of a coordinate sequence: its float64 bytes and shape."""
+    a = np.asarray(xs, dtype=float)
+    return a.shape, a.tobytes()
+
+
+def _lines_key(cut_lines) -> tuple:
+    """Exact key of a list of cut lines (LineStrings, or coordinate pairs)."""
+    return tuple(ln.wkb if hasattr(ln, "wkb") else _coords_key(ln) for ln in cut_lines or ())
 # `small_bold`: a column whose crosses pivot on one point through more than
 # this sweeps a starburst over a ~4 mm letter (a serif block's inner corner,
 # a stem flaring into its serif). The pro's Fremont letters have none: each
@@ -1818,9 +1853,34 @@ def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
     """One piece -> its Column, or None when neither construction fits it.
     `mitre_ends` (`cfg.lettering_columns_square_ends`): see `_mitre_ends`.
     `rail_axis` (`cfg.lettering_columns_rail_axis`): see `straight_axis`;
-    None reads the enclosing `letter_columns` call's."""
+    None reads the enclosing `letter_columns` call's. Inside a letter, once
+    per exact key (`_MEMO`); the caller always gets its own copy."""
     if rail_axis is None:
         rail_axis = _RAIL_AXIS.get()
+    memo = _MEMO.get()
+    if memo is None:
+        return _build_column(piece, cut_lines, W, pitch_mm, mitre_ends, rail_axis)
+    key = ("build_column", piece.wkb, _lines_key(cut_lines), float(W), float(pitch_mm),
+           bool(mitre_ends), bool(rail_axis), _SMALL_BOLD.get(), _SMALL_BOLD_SIMPLIFY.get(),
+           _APEX_CUT.get(), _CORNER_FOLD.get())
+    if key not in memo:
+        memo[key] = _build_column(piece, cut_lines, W, pitch_mm, mitre_ends, rail_axis)
+    return _fresh(memo[key])
+
+
+def _fresh(col: Column | None) -> Column | None:
+    """A cached column for a new caller: its own lists, each field's type
+    kept (the leaves are tuples of floats, and the piece is immutable)."""
+    if col is None:
+        return None
+    cp = lambda xs: list(xs) if isinstance(xs, list) else xs  # noqa: E731
+    return replace(col, stations=cp(col.stations), rail_a=cp(col.rail_a), rail_b=cp(col.rail_b),
+                   axis=col.axis.copy() if isinstance(col.axis, np.ndarray) else col.axis)
+
+
+def _build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
+                  mitre_ends: bool, rail_axis: bool) -> Column | None:
+    """`build_column`'s construction, `rail_axis` already read."""
     if not piece.interiors:
         u = (straight_axis(piece, W, cut_lines, rail_axis=True) if rail_axis
              else straight_axis(piece, W, cut_lines))
@@ -2444,6 +2504,12 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
     columns (`columns.lettering_columns_shape` sews them through
     `column_runs` and reads them with `sewn_knots`); the fold look then
     refuses a cut that knots (`_fold_refine`)."""
+    if _MEMO.get() is None:         # this letter's columns, each built once (`_MEMO`)
+        token = _MEMO.set({})
+        try:
+            return _letter_columns(poly, pitch_mm, fold_cuts, mitre_ends, judge)
+        finally:
+            _MEMO.reset(token)
     W = stroke_width(poly)
     # a pinhole is the trace, not a counter
     poly = Polygon(poly.exterior, [h for h in poly.interiors if Polygon(h).area > 0.05 * W * W])
