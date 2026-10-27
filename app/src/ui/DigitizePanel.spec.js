@@ -39,6 +39,20 @@ advancedOpen.set(true);
 // real loadImage would hang rather than reject — the failure has to be
 // injected to be observable at all.
 let loadImageResult = () => Promise.reject(new Error("stub"));
+// The panel reaches the engine since 2026-10-27 (lib/placement.js: the Design
+// width an upload starts at is the placement's auto-fit), and lib/emb.js
+// throws at import unless the engine global is up. The REAL units/garments
+// modules, loaded inside the hoisted mock so they exist before the harness
+// import; the buildLetteringDesign gate gets the stub every other spec uses.
+vi.mock("../lib/emb.js", async () => {
+  const { createRequire } = await import("node:module");
+  const require = createRequire(import.meta.url);
+  require("../../../src/units.js");
+  require("../../../src/garments.js");
+  globalThis.EMB.buildLetteringDesign =
+    globalThis.EMB.buildLetteringDesign || (() => { throw new Error("not used by this spec"); });
+  return { EMB: globalThis.EMB };
+});
 vi.mock("../lib/rasterize.js", async (importOriginal) => {
   const real = await importOriginal();
   return { ...real, loadImage: (...args) => loadImageResult(...args) };
@@ -1404,6 +1418,31 @@ describe("a file picked before the element existed", () => {
     expect(patches[0].patch.name).toBe("picked.png");
     await waitFor(() => expect(container.querySelector(".dgp-run")).toBeEnabled());
     expect(runs).toHaveLength(0);
+  });
+
+  // The Design width it starts at is the PLACEMENT's auto-fit of the image's
+  // aspect (lib/placement.js), not the flat 80: a 1400 x 316 banner on a hat
+  // front is width-bound at the pro's 113.5. A typed width is left alone.
+  test("starts the Design width at the placement's fit of the image, unless the customer typed one", async () => {
+    const upload = async (element, project) => {
+      const patches = [];
+      render(Harness, {
+        props: {
+          element, project, health: { ok: true },
+          pendingFile: new File([new Uint8Array([1, 2, 3])], "picked.png", { type: "image/png" }),
+          onPatch: (d) => patches.push(d),
+        },
+      });
+      await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+      return patches[0].patch;
+    };
+    const fresh = await upload(baseElement([], { sourcePng: null, result: null, review: null }), { garmentId: "hat_front" });
+    expect(fresh.params.target_width_mm).toBe(113.5);
+    expect(fresh.sourcePx.w).toBeGreaterThan(0);
+    const rear = await upload(baseElement([], { sourcePng: null, result: null, review: null }), { garmentId: "hat_front", placementId: "hat_rear" });
+    expect(rear.params.target_width_mm).toBe(88.9);
+    const typed = await upload(baseElement([], { sourcePng: null, result: null, review: null, widthTyped: true }), { garmentId: "hat_front" });
+    expect(typed.params.target_width_mm).toBe(baseElement([]).params.target_width_mm);
   });
 });
 

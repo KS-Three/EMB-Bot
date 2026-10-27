@@ -8,18 +8,32 @@
   import { garmentArt } from "./garmentArt.js";
   import { pillsFor } from "../lib/garmentPills.js";
   export let garmentId;
+  // WHERE on the garment (2026-10-27): null is the garment's default
+  // placement. A second row of pills, shown only for a garment with more
+  // than one placement (hats, shirts, jackets, beanies — src/garments.js
+  // GARMENT_PLACEMENTS); the pick re-fits every un-typed digitized image to
+  // the placement's box (App.apply -> lib/placement.js refitDigitized).
+  export let placementId = null;
   const d = createEventDispatcher();
 
   const garments = (EMB.GARMENTS || []).map((g) => ({ id: g.id, label: g.label || g.id }));
   $: pills = pillsFor(garmentId, garments);
+  $: placements = EMB.placementsFor ? EMB.placementsFor(garmentId) : [];
+  $: placementSel = placements.some((p) => p.id === placementId) ? placementId : garmentId;
 
   let open = false;
   let moreBtn = null;
   let menuEl = null;
 
+  // A new garment starts at its default placement: a hat's "Rear" means
+  // nothing on a tee, and the default is the box every pre-placement project
+  // sewed to.
   function pick(id) {
     open = false;
-    d("update", { garmentId: id });
+    d("update", { garmentId: id, placementId: null });
+  }
+  function pickPlacement(id) {
+    d("update", { placementId: id === garmentId ? null : id });
   }
   async function toggle() {
     open = !open;
@@ -74,6 +88,20 @@
       on:click={toggle}
     >More ›</button>
   </div>
+  {#if placements.length > 1}
+    <div class="gpills gpills-place" role="group" aria-label="Placement">
+      {#each placements as p (p.id)}
+        <button
+          type="button"
+          class="gpill gpill-place"
+          class:sel={p.id === placementSel}
+          aria-pressed={p.id === placementSel}
+          title={p.label}
+          on:click={() => pickPlacement(p.id)}
+        >{p.pill}</button>
+      {/each}
+    </div>
+  {/if}
   {#if open}
     <div class="gmenu" role="menu" aria-label="All garments" tabindex="-1" bind:this={menuEl} on:keydown={onMenuKey}>
       {#each garments as g (g.id)}

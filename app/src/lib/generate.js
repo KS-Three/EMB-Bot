@@ -1,4 +1,5 @@
 import { EMB } from "./emb.js";
+import { garmentOf } from "./placement.js";
 import { flatToRegions } from "./imageRegions.js";
 import { shapesToRegions } from "./manualShapes.js";
 import { shapePresetPoints, DEFAULT_SHAPE_SIZE_MM } from "./shapePresets.js";
@@ -448,7 +449,9 @@ export function charList(chars, max = 6) {
 // not an error, just nothing to contribute yet. Returns
 // { combined: null, perElement: [] } when nothing in the project is ready.
 export function generateAll(project, runtime) {
-  const garment = EMB.getGarment(project.garmentId);
+  // the garment AS PLACED (lib/placement.js): the placement's box is what
+  // fitScale fits lettering into and typed widths clamp to
+  const garment = garmentOf(project);
   // The calibration profile is project-level, like the garment; it rides
   // `runtime` into generateElement so the three browser lanes (image,
   // manual, shapes) sew the same adjusted preset the service does.
@@ -510,7 +513,7 @@ export function generateDesign(project) {
 // "no shapes" error message existing callers' catch blocks expect. Prefer
 // generateAll(project, runtime)/generateElement for anything new.
 export function generateImageDesign(flat, projectLike) {
-  const garment = EMB.getGarment(projectLike.garmentId);
+  const garment = garmentOf(projectLike);
   const element = {
     id: projectLike.id || "e1",
     type: "image",
