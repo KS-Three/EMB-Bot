@@ -210,6 +210,7 @@
  "satin_underlay_short_columns": true,
  "satin_walk_cursor_reach_mm": 0.0,
  "script_strokes": false,
+ "script_strokes_drawn_width": false,
  "seed": 0,
  "sew_enclosed_counters": false,
  "sew_enclosed_rgb": null,
