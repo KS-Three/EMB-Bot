@@ -149,7 +149,7 @@ INK_MIN_PART_MM2 = 0.15
 #: round a bend. Hand-overs turning more than 30 deg (`tools/script_flow.py`,
 #: the whole plan): the pro's 0 on Tires, 3 on To a T's "Machine", 0 on
 #: Bridge LC; ours as #1119 merged (welds at 40, cusps at 75, one sigma)
-#: 3 / 9 / 5, at 60 (with `CUSP_DEG` 120 and the two sigmas) 0 / 4 / 1. At
+#: 3 / 9 / 5, at 60 (with `CUSP_DEG` 120 and the two sigmas) 1 / 4 / 0. At
 #: 90 Tires' junctions left 22 mm2 of the word to patches
 WELD_MAX_DEG = 60.0
 #: a stroke turning more than this within one stroke width is a cusp -- the

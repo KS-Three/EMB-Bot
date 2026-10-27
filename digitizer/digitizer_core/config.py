@@ -5652,9 +5652,9 @@ class PipelineConfig:
     # with little turn (Kent 2026-10-26: "the cursive needs to flow"; read by
     # `tools/script_flow.py`). Width stays the drawn stroke plus the fabric's
     # pull: the pro's thinner script needs a smaller pull, a gate-1 constant
-    # not built here. Layout,
-    # judged in the preview (Kent, 2026-10-22). False is the plan as it was,
-    # byte for byte. Tests: `tests/test_script_strokes.py`.
+    # not built here. Layout, judged in the preview (Kent, 2026-10-22). False
+    # is the plan as it was, byte for byte. Tests: `tests/test_script_strokes.py`,
+    # `tests/test_script_flow.py`.
     script_strokes: bool = False
 
     def __post_init__(self) -> None:
