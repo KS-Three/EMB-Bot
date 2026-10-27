@@ -27,8 +27,8 @@ Every OFF flag with its kind (layout / fabric / held), PR and flip-sheet row:
 | PR | What | State at close |
 |---|---|---|
 | #1143 | White recipe as plain defaults on every job (Kent: "Every job (Recommended)") | Draft. Becker counter fix in; post-fix 22-job re-proof running; MFab byte-identical check pending |
-| #1151 | `text_cluster_nest_guard` (OFF): Bridge hat's wheel no longer nests away its letters | Armed. Bridge hat text pieces in the lane 0 -> 7 of 15, LC byte-identical, reach kappa unchanged; the flip precondition is in the body |
-| #1153 | Satin-split cuts inside one piece, measured (numbers only): ours 80, pro 30 | Armed. The flag's code is parked on `claude/slot-guard-candidate`, not in the PR |
+| #1151 | `text_cluster_nest_guard` (OFF): Bridge hat's wheel no longer nests away its letters | Merged. Bridge hat text pieces in the lane 0 -> 7 of 15, LC byte-identical, reach kappa unchanged; the flip precondition is in the body |
+| #1153 | Satin-split cuts inside one piece, measured (numbers only): ours 80, pro 30 | Merged. The flag's code is parked on `claude/slot-guard-candidate`, not in the PR |
 
 ## 2. Kent's rulings this run (verbatim, 2026-10-26/27)
 
@@ -151,9 +151,9 @@ Its exit codes wake a director: 3 means HOT persisted, and 4 means calm under
 
 ## 6. Cleanup left for Kent
 
-The worktree guard denies sessions `git worktree remove` of a lane. These four
-lanes are clean, pushed and merged (#1150, #1120, #1147, #1145), and their sessions
-are archived:
+The worktree guard denies sessions `git worktree remove` of a lane. These six
+lanes are clean, pushed and merged (#1150, #1120, #1147, #1145, #1153, #1151), and
+their sessions are archived:
 
 ```powershell
 cd "C:\Users\EE-LT-11030\Claude Personal\EMB-Bot"
@@ -161,9 +161,44 @@ git -c core.longpaths=true worktree remove .claude/worktrees/flip-sheet-inline-b
 git -c core.longpaths=true worktree remove .claude/worktrees/diagonal-junction-letters-62899f
 git -c core.longpaths=true worktree remove .claude/worktrees/script-italic-census-ac6aea
 git -c core.longpaths=true worktree remove .claude/worktrees/tagger-fused-serifs-e5a440
-git branch -d claude/golden-tee-faces claude/no-new-pro-renders
+git -c core.longpaths=true worktree remove .claude/worktrees/brave-williams-34ee5d
+git -c core.longpaths=true worktree remove .claude/worktrees/bridge-census-d2a759
+git branch -d claude/golden-tee-faces claude/no-new-pro-renders claude/satin-split-cuts-5b8621 claude/text-cluster-nest-guard
 ```
+
+The border lane (`.claude/worktrees/border-from-outline-4d16f7`) gets the same
+two steps once #1143 merges.
 
 **`claude/white-keyline-art-flip`** is local-only. It holds a WIP commit,
 "white_keyline_art_recipe ON by default", that #1115 superseded on main (the
 default is `True` there). Only `git branch -D` removes it, and that's Kent's call.
+
+## 7. The other foreman's handoff, and briefs ready to launch
+
+The "Embot stitch out files" foreman closed the same day. Its handoff is
+[`2026-10-27-k3-foreman-handoff.md`](2026-10-27-k3-foreman-handoff.md), copied verbatim:
+
+- what it merged;
+- the sew-out card v8 list;
+- the lettering board's next queue;
+- the Tires 19.95-of-28.65 mm gap;
+- its decisions waiting on Kent;
+- its own cleanup list.
+
+Three briefs it wrote are ready to launch as written, in
+[`2026-10-27-briefs/`](2026-10-27-briefs/):
+
+- **W6-01:** text-heavy art at jacket-back size never finishes (> 600 s). Profile,
+  then make a byte-identical speed fix.
+- **W6-02:** a timed-out job keeps the one service worker busy, and the next job
+  waits about 220 s. Give the worker back within seconds.
+- **W6-03:** Studio tests for manual sew order with "sew white areas" ON.
+
+`W6-house.md` holds that foreman's house rules. `director-preamble.md` holds this
+director's, the standing rules prepended to every brief. They agree on slots,
+the rembg route trap, frozen pins and the roll-up rule. Prepend one of them to
+any brief above or in §4.
+
+**The CPU watchdog is stopped too.** Slot 2 is no longer closed automatically, so
+the rule "slot 2 only when line 2 reads OK" depends on each worker reading
+`cpu_status.txt`. Start `tools/cpu_status_monitor.ps1` before launching a team.
