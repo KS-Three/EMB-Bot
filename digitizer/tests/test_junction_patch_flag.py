@@ -26,7 +26,7 @@ from digitizer_core import PipelineConfig, machine, stitches
 from digitizer_core.pipeline import digitize
 from digitizer_core.preflight import run_preflight
 from digitizer_core.stage6_satin import _uncovered_patches, satin_shape
-from tests.conftest import PRE_FLIP, TESTDATA
+from tests.conftest import FLIP_2026_10_27, PRE_FLIP, TESTDATA
 
 BECKER = TESTDATA / "becker_marine_logo.png"
 
@@ -83,6 +83,10 @@ def _cfg(**kw) -> PipelineConfig:
     # keyline as one loop per face and the faces as fills, so the satin
     # junctions this patches are gone
     kw.setdefault("border_from_outline", PRE_FLIP["border_from_outline"])
+    # ... and the white-keyline recipe on every job (2026-10-27): its under-fill
+    # sews a ground under the letters this patches
+    for k, v in FLIP_2026_10_27.items():
+        kw.setdefault(k, v)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 

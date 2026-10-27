@@ -161,7 +161,10 @@ def _digest(plan) -> str:
 
 
 def _pcfg(**kw) -> PipelineConfig:
-    return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", garment_rgb=NATURAL, **kw)
+    # the option alone: the recipe it joined on every job 2026-10-27 pinned off (conftest)
+    from tests.conftest import FLIP_2026_10_27
+    return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", garment_rgb=NATURAL,
+                          **{**FLIP_2026_10_27, **kw})
 
 
 @pytest.fixture(scope="module")
@@ -172,11 +175,12 @@ def whitebg_off():
 
 def test_on_is_the_default_and_pre_flip_pins_it_off():
     """Kent's flip 2026-10-26 ("A: sew_enclosed_white alone"): ON by default,
-    its fields-fill and keyline companions still OFF."""
+    its fields-fill companion still OFF; the keyline ON since 2026-10-27
+    (Kent 2026-10-27, "Every job (Recommended)")."""
     from tests.conftest import PRE_FLIP
     d = PipelineConfig()
     assert d.sew_enclosed_white is True
-    assert d.sew_enclosed_white_fields_fill is False and d.enclosed_white_keyline is False
+    assert d.sew_enclosed_white_fields_fill is False and d.enclosed_white_keyline is True
     assert PRE_FLIP["sew_enclosed_white"] is False
 
 

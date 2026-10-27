@@ -21,6 +21,7 @@ from digitizer_core import machine
 from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off where a test prices another flag
 from tests.conftest import FLIP_2026_10_26  # and the 2026-10-26 two (bay mouth, white sewn)
 from tests.conftest import WAVE3_2026_10_26_OFF
+from tests.conftest import FLIP_2026_10_27  # the white-keyline recipe on every job, pinned off likewise
 
 from digitizer_core import (PipelineConfig, StitchBlock, StitchPlan,
                             StitchRun, machine, run_stages)
@@ -430,7 +431,7 @@ def test_a_band_wearing_the_wrong_cone_is_no_longer_hidden_by_its_region():
     from digitizer_core.threads import chart_for
 
     art = PHOTO / "repro_gradient_white_icon.png"
-    c = cfg(border_by_size=False, **PLAN_CFG_KW)
+    c = cfg(border_by_size=False, **PLAN_CFG_KW, **FLIP_2026_10_27)
     result, plan_ = digitize(art, c)
     p = prep(art, c)
     chart = chart_for(c)
@@ -1266,7 +1267,7 @@ def test_organic_compact_regions_no_longer_stack_into_a_density_block():
     `DENSITY_STACKED` at all -- not just a severity step down."""
     for name in ("region_blobs.png", "summit_badge.png"):
         report = _digitize_report(str(PHOTO / name), target_width_mm=60.0,
-                                  garment_id="left_chest")
+                                  garment_id="left_chest", **FLIP_2026_10_27)
         hit = [f for f in report["findings"] if f["code"] == DENSITY_STACKED]
         assert not hit, f"{name}: still stacks -- {hit}"
 
@@ -1313,7 +1314,7 @@ def test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue(alpha):
     13.11 -> 3.24; the `> 10.0` floor this test used to assert is gone on
     purpose, not a regression -- re-asserted below as a ceiling instead so a
     future junction-cap regression still trips this test."""
-    c = cfg(target_width_mm=80.0, garment_id="left_chest", border_by_size=False)
+    c = cfg(target_width_mm=80.0, garment_id="left_chest", border_by_size=False, **FLIP_2026_10_27)
     report = run_preflight(alpha, plan_stitches(alpha, c), c,
                            image=str(TESTDATA / "logo_alpha.png"))
 
@@ -1985,9 +1986,10 @@ def test_a_design_at_the_stop_cap_is_not_warned(plan):
     # strokes` keeps (2026-09-13, Kent's ruling) — both pinned in the
     # clean-report test above. +2 since 2026-10-06 (the cap follows the
     # adjacent colour: one block became three). +1 since 2026-10-26: the ring
-    # hole's white block (`sew_enclosed_white`, Kent's flip). Ten is exactly the
-    # 10-stop wall this test is about, and still unwarned.
-    assert report["metrics"]["color_changes"] == 10
+    # hole's white block (`sew_enclosed_white`, Kent's flip). -1 since
+    # 2026-10-27: the white-keyline recipe on every job (Kent's flip). Nine, under
+    # the 10-stop wall this test is about, and unwarned.
+    assert report["metrics"]["color_changes"] == 9
 
 
 # --- Scoring -----------------------------------------------------------------

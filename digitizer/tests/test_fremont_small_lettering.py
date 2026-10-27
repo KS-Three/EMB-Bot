@@ -27,7 +27,7 @@ import pytest
 from tools import fremont_small_lettering as fsl
 from tools import fremont_triage as ft
 
-from tests.conftest import WAVE3_2026_10_26_OFF
+from tests.conftest import FLIP_2026_10_27, WAVE3_2026_10_26_OFF
 
 RECORD = (Path(__file__).resolve().parents[2] / "docs" / "renders"
           / "claude-fremont-small-lettering-tier" / "signatures.json")
@@ -164,7 +164,7 @@ def _live(name):
     # the record predates Kent's 2026-10-26 wave-3 flips: `fine_bars_satin`
     # sews the tagline box's two "|" separators satin, not what this is about
     run = ft.run_arm(name, width, None, preflight=False,
-                     overrides={**overrides, **WAVE3_2026_10_26_OFF})
+                     overrides={**overrides, **WAVE3_2026_10_26_OFF, **FLIP_2026_10_27})   # and the white-keyline recipe on every job (2026-10-27)
     return fsl.signature(fsl.analyze_arm(name, run))
 
 

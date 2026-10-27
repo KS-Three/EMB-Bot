@@ -69,8 +69,9 @@ DEFAULT_TOL_MM = machine.BORDER_HOST_MARGIN_MM
 # --------------------------------------------------------------------- ours --
 
 def ours(name: str, width_mm: float = 80.0, edge_cap: str = "none",
-         tol_mm: float = DEFAULT_TOL_MM) -> dict:
-    """Exact: the plan's own run kinds against the plan's own silhouette."""
+         tol_mm: float = DEFAULT_TOL_MM, overrides: dict | None = None) -> dict:
+    """Exact: the plan's own run kinds against the plan's own silhouette.
+    `overrides`: more `PipelineConfig` fields for the run."""
     from digitizer_core import PipelineConfig, digitize
     from digitizer_core.stage7_sequence import _sewn_linear_cover
     from fill_exposure import SHORT
@@ -78,7 +79,7 @@ def ours(name: str, width_mm: float = 80.0, edge_cap: str = "none",
     rel, kw = SHORT.get(name, (name, {}))
     result, plan = digitize(ROOT / "testdata" / rel,
                             PipelineConfig(target_width_mm=width_mm,
-                                           edge_cap=edge_cap, **kw))
+                                           edge_cap=edge_cap, **{**kw, **(overrides or {})}))
     polys = [r.polygon for r in result.regions if r.meta.get("stitched", True)]
     if not polys:
         return {"name": name, "silhouette_mm": 0.0}
