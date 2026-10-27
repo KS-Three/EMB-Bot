@@ -95,6 +95,18 @@ _UNDERLAY_INSET_MM = 0.4
 # The walk-in lands this far inside the letter's near edge (or a quarter
 # stroke, if less): inside the satin that will cover it, clear of the edge.
 _ENTRY_INSET_MM = 0.3
+# `apex_cut` (`cfg.lettering_columns_apex_cut`): a column end whose middle
+# lies within a pitch plus this many stroke widths of a merged tip's cross
+# meets the tip there (the last station of a cut piece sits up to a pitch
+# short of its cut: 0.0-0.42 mm on MFab's W, 0.14-0.2 at the tips' own ends)
+_APEX_END_WIDTHS = 0.25
+# ... and a tip column is one whose far cross has closed to this share of
+# the cross at its cut (the tips: 0.03-0.17; MARINE's slab-side wedge, built
+# on the same cross, does not close)
+_APEX_CLOSED = 0.5
+# ... and the needle leaving a tip's last cross steps this far past its cut
+# before it turns: half the 0.4 mm laid thread, off the tip's own edge
+_APEX_EXIT_MM = 0.2
 # Each rail starts this far INSIDE the outline, along its own cross, before
 # the pull pushes it out (or a quarter of the cross, if less) -- so the lane
 # reaches as far past the edge as the shipped satin tier does, under the same
@@ -1295,13 +1307,17 @@ def _bar_columns(poly: Polygon, ready: list[Column], spacing_mm: float) -> list[
 
 
 def _tuck_stations(col: Column, end: int, through: Polygon, tuck_mm: float,
-                   max_reach_mm: float, pitch_mm: float, poly_link):
+                   max_reach_mm: float, pitch_mm: float, poly_link, avoid=None):
     """Stations continuing `col` past the given end (0 or -1) into the piece
     it butts: one per `pitch_mm`, in order away from the column, until the
     cut line plus `tuck_mm` is reached (0 for a plain butt), never more
     than `max_reach_mm` past the cut, and stopping at the first cross the
     letter does not cover. The last station of a cut piece sits up to a
-    pitch short of the cut, so even a plain butt usually gains a station."""
+    pitch short of the cut, so even a plain butt usually gains a station.
+    `avoid` (`cfg.lettering_columns_apex_cut`, the merged tips): none when
+    the way to the cut line crosses it -- the piece is butted across a tip,
+    not at it (MARINE's M at 95.7 mm: each leg's end reached the other leg
+    over the V, and laid 3.4 mm of satin across it)."""
     sts = col.stations if end == 0 else col.stations[::-1]
     (a0, b0), (a1, b1) = sts[0], sts[1]
     m0 = ((a0[0] + b0[0]) / 2, (a0[1] + b0[1]) / 2)
@@ -1317,6 +1333,8 @@ def _tuck_stations(col: Column, end: int, through: Polygon, tuck_mm: float,
     else:
         gap = min((math.dist(m0, g) for g in _coords(ray.intersection(through.boundary))), default=reach)
     if gap >= reach:
+        return []
+    if avoid is not None and gap > 0 and LineString([m0, ray.interpolate(gap).coords[0]]).intersects(avoid):
         return []
     out = []
     k = 1
@@ -1411,7 +1429,69 @@ def _inside_path(columns: list[Column], nodes, spans, a, b, reach_mm: float,
 
 # ---------------------------------------------------------------- the walk
 
-def _span_graph(columns: list[Column], merge_r: float, within: Polygon | None = None):
+def _apex_tip_columns(columns: list[Column], crosses, tol: float, merge_r: float | None = None) -> dict:
+    """`apex_cut`: the columns that sew a merged tip -> {column index:
+    {"cut": the end (0 or -1) at its cross, "line": that cross, "ends":
+    the (column, end) pairs that meet it there}}. A tip column's piece is
+    the cut's tip piece (`outline_cut._apex_tip_piece`), one end lies on the
+    cross (within `tol`) and the far end has closed (`_APEX_CLOSED`): the
+    point. `merge_r` (`_span_graph`'s radius): or the far end is blunt and
+    the radius alone would join it to another column's end it lies apart
+    from (farther than `tol` from every other centreline): PROSEAL's bold,
+    flat-topped A (2.3 mm across the top, 4.3 at the cut), whose top fell
+    into one node with its left leg's foot 4.1 mm off -- sewn up into the
+    top, the walk hopped 3.3 mm back down over it. A blunt end the radius
+    leaves alone is a dead end the walk already doubles (MFab's 4, its IN).
+    A cross split at its crotch is two records; the line is both. An
+    end meets a tip when its middle lies within `tol` of the cross -- each
+    column's nearer end, to one tip. A tip nothing meets that way is left
+    out, and the walk takes it as it always has: MARINE's M at 76.5 mm,
+    whose V hangs between the flanks of its stems, which run on past it."""
+    from .outline_cut import _apex_tip_piece
+    lines = [LineString(c) for c in crosses]
+    tips = {}
+    for ci, c in enumerate(columns):
+        if len(c.stations) < 2 or _apex_tip_piece(c.piece, crosses) is None:
+            continue
+        d0 = min(ln.distance(Point(c.start)) for ln in lines)
+        d1 = min(ln.distance(Point(c.end)) for ln in lines)
+        cut = 0 if d0 <= d1 else -1
+        w_cut, w_far = math.dist(*c.stations[cut]), math.dist(*c.stations[-1 - cut])
+        if min(d0, d1) > tol:
+            continue
+        if w_far > _APEX_CLOSED * w_cut:
+            far = Point(c.end if cut == 0 else c.start)
+            others = [o for cj, o in enumerate(columns) if cj != ci]
+            if (merge_r is None or not others
+                    or min(far.distance(Point(e)) for o in others for e in (o.start, o.end)) > merge_r
+                    or min(far.distance(LineString(_mids(o.stations)) if len(o.stations) > 1
+                                        else Point(o.start)) for o in others) <= tol):
+                continue
+        m = Point(c.start if cut == 0 else c.end)
+        near = {i for i, ln in enumerate(lines) if ln.distance(m) <= tol}
+        # ... and the record it meets at the crotch, however far its middle
+        # lies: PROSEAL's bold A, its left half 1.4 mm off the cut's end
+        near |= {i for i, ln in enumerate(lines) if any(ln.distance(lines[k]) <= 1e-6 for k in near)}
+        tips[ci] = {"cut": cut, "line": unary_union([lines[i] for i in sorted(near)]),
+                    "at": (m.x, m.y), "ends": []}
+    for cj, c in enumerate(columns):
+        if cj in tips or not tips:
+            continue
+        # nearest the tip's own cut end first: the W's stub between two
+        # tips lies within 0.37-0.42 mm of BOTH crosses at both its ends
+        near = sorted((math.dist(tips[t]["at"], p), tips[t]["line"].distance(Point(p)), end, t)
+                      for end, p in ((0, c.start), (-1, c.end)) for t in tips)
+        took_end, took_tip = set(), set()
+        for _d, d, end, t in near:
+            if d <= tol and end not in took_end and t not in took_tip:
+                tips[t]["ends"].append((cj, end))
+                took_end.add(end)
+                took_tip.add(t)
+    return {t: v for t, v in tips.items() if v["ends"]}
+
+
+def _span_graph(columns: list[Column], merge_r: float, within: Polygon | None = None,
+                tips: dict | None = None):
     """Columns -> (nodes, spans, junctions). A span is a stretch of one
     column between two station indices, with its two node ids; a column is
     cut where another column's END lands on its centreline away from its
@@ -1423,8 +1503,20 @@ def _span_graph(columns: list[Column], merge_r: float, within: Polygon | None = 
     0.3 + the pull, 2.5 mm on Drone's E) made the E's top-arm and middle-arm
     TIPS one node across the slot, which gave the top tip an even degree:
     the walk could no longer start there, so it started at the bottom tip
-    and sewed the middle arm from the top tip with an 18.8 mm routed hop."""
+    and sewed the middle arm from the top tip with an 18.8 mm routed hop.
+    `tips` (`cfg.lettering_columns_apex_cut`, `_apex_tip_columns`): a merged
+    tip's two ends are nodes of their own, read off the cut, not the radius:
+    its point a free end, its cut end one node with the ends that lie on its
+    cross. A tip's ends land on no column and nothing lands on a tip. By the
+    radius alone (1.3 W + 0.3 + the pull) MFab's W fell into three
+    components (a trim) when its middle stroke's stub took a tip's node
+    first. An end on a tip's cross may still butt another column (the W's
+    stub, which the radius also puts on its third stroke: that tuck covers
+    the crotch); a butt that reaches its column across a tip lays no tuck
+    (`_tuck_stations`' `avoid`)."""
     mids = [_mids(c.stations) for c in columns]
+    tips = tips or {}
+    attach = {e: t for t, v in tips.items() for e in v["ends"]}     # (column, end) -> its tip
     ends = [(cj, 0, m[0]) for cj, m in enumerate(mids)] + [(cj, -1, m[-1]) for cj, m in enumerate(mids)]
     cuts_per: list[list[int]] = []
     junctions: list[dict] = []      # butting column `ci`/`end` meets `through` at station `k`
@@ -1434,6 +1526,8 @@ def _span_graph(columns: list[Column], merge_r: float, within: Polygon | None = 
         lo, hi = _END_FRAC * (n - 1), (1 - _END_FRAC) * (n - 1)
         for cj, end, p in ends:
             if cj == ci:
+                continue
+            if tips and (ci in tips or cj in tips):
                 continue
             best = min(range(n), key=lambda k: math.dist(m[k], p))
             if math.dist(m[best], p) <= merge_r and lo < best < hi:
@@ -1448,9 +1542,24 @@ def _span_graph(columns: list[Column], merge_r: float, within: Polygon | None = 
             uniq[-1] = n - 1
         cuts_per.append(uniq)
     nodes: list[tuple[float, float]] = []
+    fixed: dict[tuple[int, int], int] = {}      # (column, station) -> its node, read off the cut
+    for t, info in tips.items():
+        n = len(mids[t])
+        k_cut = 0 if info["cut"] == 0 else n - 1
+        for k in (k_cut, n - 1 - k_cut):
+            nodes.append(mids[t][k])
+            fixed[(t, k)] = len(nodes) - 1
+    for (cj, end), t in attach.items():
+        fixed[(cj, 0 if end == 0 else len(mids[cj]) - 1)] = fixed[(t, 0 if tips[t]["cut"] == 0
+                                                                  else len(mids[t]) - 1)]
+    own_nodes = set(fixed.values())
 
-    def node_of(p):
+    def node_of(p, key=None):
+        if key in fixed:
+            return fixed[key]
         for i, q in enumerate(nodes):
+            if i in own_nodes:
+                continue
             if math.dist(q, p) <= merge_r and (within is None or within.covers(LineString([q, p]))):
                 return i
         nodes.append(p)
@@ -1461,7 +1570,7 @@ def _span_graph(columns: list[Column], merge_r: float, within: Polygon | None = 
         own = []
         for i0, i1 in zip(cuts, cuts[1:]):
             own.append(dict(ci=ci, i0=i0, i1=i1,
-                            na=node_of(mids[ci][i0]), nb=node_of(mids[ci][i1])))
+                            na=node_of(mids[ci][i0], (ci, i0)), nb=node_of(mids[ci][i1], (ci, i1))))
         # A stub at a column's END whose two ends fall in ONE node is not a
         # span of its own (a bold letter's merge radius swallows the tail
         # past a junction): it rides with its neighbour, so the walk never
@@ -1477,7 +1586,7 @@ def _span_graph(columns: list[Column], merge_r: float, within: Polygon | None = 
 
 
 def _euler_trail(nodes, spans, start_near, prefer=frozenset(), prefer_within_mm=math.inf,
-                 end_near=None):
+                 end_near=None, dead_ends=frozenset(), span_mm=()):
     """Chinese-postman duplication plus Hierholzer, per component.
     -> list of components, each a list of (span index, from node, to node)
     in walk order; components ordered nearest-first from `start_near`.
@@ -1487,7 +1596,15 @@ def _euler_trail(nodes, spans, start_near, prefer=frozenset(), prefer_within_mm=
     the pairing below consumes every other odd node first. A preferred
     start farther than `prefer_within_mm` from the needle is not taken:
     on 4 mm caps it turned the entry hop into a trim on 7 of 39 letters
-    (gaulke 23 -> 30) for a tuck the letter is too small to show."""
+    (gaulke 23 -> 30) for a tuck the letter is too small to show.
+    `dead_ends` (`cfg.lettering_columns_apex_cut`): merged tips' points, and
+    `span_mm` each span's length. A component holding one is walked by
+    `postman`: a trail may START at a dead end, never end there -- an odd one
+    that does not start the trail is paired (its tip span doubled: run in
+    under it, satin out from the point). The pro sews every tip from its
+    point up; ended at the point, the walk sewed into it and hopped out of
+    a dead end."""
+    import heapq
     adj: list[list[tuple[int, int]]] = [[] for _ in nodes]     # (instance id, to)
     inst: list[tuple[int, int, int]] = []                        # (span, a, b)
 
@@ -1517,6 +1634,8 @@ def _euler_trail(nodes, spans, start_near, prefer=frozenset(), prefer_within_mm=
         comps.append(members)
 
     def trail(cnodes, cursor, exit_to=None):
+        if dead_ends and any(i in dead_ends for i in cnodes):
+            return postman(cnodes, cursor, exit_to)
         deg = {i: len(adj[i]) for i in cnodes}
         rank = sorted(cnodes, key=lambda i: i in prefer)       # preferred nodes last
         odd = [i for i in rank if deg[i] % 2 == 1]
@@ -1595,6 +1714,77 @@ def _euler_trail(nodes, spans, start_near, prefer=frozenset(), prefer_within_mm=
         else:
             near = [i for i in pool if i in prefer and math.dist(nodes[i], cursor) <= prefer_within_mm]
             start = min(near or pool, key=lambda i: math.dist(nodes[i], cursor))
+        return walk_from(start, cnodes)
+
+    def postman(cnodes, cursor, exit_to=None):
+        # `dead_ends`: the trail's two ends and the paths doubled to pair the
+        # other odd nodes are chosen TOGETHER, by millimetres -- the hop in,
+        # the hop out, and every doubled span's length (a min-weight perfect
+        # matching over shortest paths; a letter has a handful of odd nodes).
+        # The pairing above takes the first odd node by hops, not length: on
+        # MARINE's M at 95.7 mm it paired the tip's point with the far stem's
+        # foot and doubled 29 mm of strokes for a 3 mm tip.
+        odd = sorted(i for i in cnodes if len(adj[i]) % 2 == 1)
+        sp: dict[int, tuple[dict, dict]] = {}
+        for u in odd:
+            dist, prev, heap = {u: 0.0}, {}, [(0.0, u)]
+            while heap:
+                d, x = heapq.heappop(heap)
+                if d > dist[x]:
+                    continue
+                for iid, v in adj[x]:
+                    nd = d + span_mm[inst[iid][0]]
+                    if nd < dist.get(v, math.inf):
+                        dist[v], prev[v] = nd, (x, iid)
+                        heapq.heappush(heap, (nd, v))
+            sp[u] = (dist, prev)
+        memo: dict[frozenset, tuple[float, tuple]] = {}
+
+        def match(rest: frozenset):
+            if not rest:
+                return 0.0, ()
+            if rest not in memo:
+                u = min(rest)
+                memo[rest] = min(((sp[u][0][v] + match(rest - {u, v})[0], ((u, v),) + match(rest - {u, v})[1])
+                                  for v in rest if v != u), key=lambda t: t[0])
+            return memo[rest]
+
+        def hop(a, b):
+            return 0.0 if a is None or b is None else math.dist(a, b)
+
+        def reach(pool):
+            # the same reach as the pairing's: a start within the trim
+            # distance, or no farther than the nearest start
+            if cursor is None or not pool:
+                return pool
+            near = [i for i in pool if i in prefer and math.dist(nodes[i], cursor) <= prefer_within_mm]
+            pool = near or pool
+            d0 = min(math.dist(cursor, nodes[i]) for i in pool)
+            return [i for i in pool if math.dist(cursor, nodes[i]) <= max(prefer_within_mm, d0 + 1e-9)]
+        options = []        # (mm, start, end or None for a closed walk)
+        for a in reach(odd):
+            for b in odd:
+                if b != a and b not in dead_ends:
+                    options.append((hop(cursor, nodes[a]) + hop(nodes[b], exit_to)
+                                    + match(frozenset(odd) - {a, b})[0], a, b))
+        # a closed walk ends where it starts: never at a dead end (it would
+        # leave the point along its first visit, an underpath, and come back
+        # into it with the satin)
+        whole = match(frozenset(odd))[0]
+        for a in reach([i for i in cnodes if i not in dead_ends]):
+            options.append((whole + hop(cursor, nodes[a]) + hop(nodes[a], exit_to), a, None))
+        _mm, start, end = min(options, key=lambda o: (o[0], o[1], -1 if o[2] is None else o[2]))
+        rest = frozenset(odd) - ({start, end} if end is not None else set())
+        for u, v in match(rest)[1]:
+            x = v
+            while x != u:
+                p, iid = sp[u][1][x]
+                si, a, b = inst[iid]
+                add_inst(si, a, b)
+                x = p
+        return walk_from(start, cnodes)
+
+    def walk_from(start, cnodes):
         used: set[int] = set()
         ptr = {i: 0 for i in cnodes}
         stack, edge_stack, circuit = [start], [], []
@@ -1767,6 +1957,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 pull_of=None,
                 short_columns: bool = False,
                 inside_stagger: bool = False,
+                apex_crosses: list | None = None,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
@@ -1796,7 +1987,15 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     drawn stations. `pull_mm` stays the letter's pull everywhere else (the
     merge radius, the tuck, the link rule's and the tuck cover's buffers).
     `inside_stagger` (`cfg.lettering_columns_inside_stagger`): the inside of
-    every pivot sewn by `_inside_stagger` instead of `_short_stitch_guard`."""
+    every pivot sewn by `_inside_stagger` instead of `_short_stitch_guard`.
+    `apex_crosses` (`cfg.lettering_columns_apex_cut`, the cut's "apex"
+    crosses; None or empty is the walk as it was): each merged tip is a
+    dead end the walk enters from its cut and sews from its point
+    (`_apex_tip_columns`, `_span_graph`'s `tips`, `_euler_trail`'s
+    `dead_ends`), and its satin leaves on the rail nearer the next leg;
+    every other leg of the letter ends on the rail whose hop lies least
+    outside the satin still to come, and a hop keeps off a tip sewn before
+    it. The cut and every station are the flag's: only the walk moves."""
     from .stage6_satin import (_JUNCTION_TUCK_MM, _comb_thresholds,   # same package,
                                _short_stitch_guard, _split_points)      # same rules
 
@@ -1869,11 +2068,14 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     # 2. The span graph and the walk.
     W = sorted(c.width_mm for c in ready)[len(ready) // 2]
     merge_r = _MERGE_WIDTHS * W + _MERGE_PAD_MM + pull_mm
+    tip_tol = spacing_mm + _APEX_END_WIDTHS * W
+    tips = _apex_tip_columns(ready, apex_crosses, tip_tol, merge_r) if apex_crosses else {}
     nodes, spans, junctions = _span_graph(
         ready, merge_r,
         # `cfg.lettering_columns_corner_fold`: a folded letter's nodes must
         # be joined through the letter (`_span_graph`); off, the radius alone
-        poly.buffer(0.1 + pull_mm) if any(c.kind == "folded" for c in ready) else None)
+        poly.buffer(0.1 + pull_mm) if any(c.kind == "folded" for c in ready) else None,
+        **({"tips": tips} if tips else {}))
     report["junctions"] = len(junctions)
     # The free end of a butting column (its other end, when nothing else
     # meets it there) is where its component's walk should start -- when
@@ -1905,8 +2107,15 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             for key, idx in (("na", sp["i0"]), ("nb", sp["i1"])):
                 if idx == free_idx and touch.get(sp[key], 0) == 1:
                     prefer.add(sp[key])
+    # `apex_crosses`: a merged tip's point may start a trail, never end one
+    dead = frozenset(sp[key] for sp in spans if sp["ci"] in tips
+                     for key, idx in (("na", sp["i0"]), ("nb", sp["i1"]))
+                     if idx == (len(ready[sp["ci"]].stations) - 1 if tips[sp["ci"]]["cut"] == 0 else 0))
+    span_mm = [LineString(_mids(ready[sp["ci"]].stations[sp["i0"]:sp["i1"] + 1])).length
+               if sp["i1"] > sp["i0"] else 0.0 for sp in spans] if dead else ()
     components = _euler_trail(nodes, spans, start_near, frozenset(prefer), trim_at_mm,
-                              end_near=end_near)
+                              end_near=end_near,
+                              **({"dead_ends": dead, "span_mm": span_mm} if dead else {}))
 
     # 3. Emit: the last visit of a span sews satin, earlier visits run under it.
     #    (`poly_link` is the sew-or-jump rule's polygon, see step 4; the
@@ -1970,6 +2179,9 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     # M's V the left diagonal's tuck ran on past the vertex and 0.5 mm out
     # under the baseline (Fremont 81 mm, circle 6).
     tuck_cover = poly.buffer(max(0.0, pull_mm - RAIL_REACH_INSET_MM) + _FACE_EPS_MM) if square_ends else None
+    # `apex_crosses`: the merged tips' ground, which no tuck crosses to
+    # reach the column it butts (`_tuck_stations`' `avoid`)
+    tip_ground = unary_union([ready[t].piece for t in tips]).buffer(-_FACE_EPS_MM) if tips else None
     for j in junctions:
         n = len(ready[j["ci"]].stations)
         end_idx = 0 if j["end"] == 0 else n - 1
@@ -1985,7 +2197,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         before = mine[0] < max(theirs)
         ext = _tuck_stations(ready[j["ci"]], j["end"], ready[j["through"]].piece,
                              tuck_mm if before else 0.0, _TUCK_MAX_WIDTHS * W,
-                             spacing_mm, tuck_cover if square_ends else poly_link)
+                             spacing_mm, tuck_cover if square_ends else poly_link,
+                             **({"avoid": tip_ground} if tips else {}))
         if not ext:
             continue
         if before:
@@ -1999,14 +2212,104 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     runs: list[StitchRun] = []
     run_leg: list[int] = []         # the leg each run belongs to, for step 4
     sewn: dict[int, Polygon] = {}   # leg -> the ground its satin covers
+    tip_exit = None                 # `apex_crosses`: set by a tip's satin leg, read by the next
+    # `apex_crosses`: every column on a cut tip piece, handled or not, and
+    # the ground of those already sewn (a connector keeps off it)
+    if apex_crosses:
+        from .outline_cut import _apex_tip_piece
+        tip_cols = {ci for ci, c in enumerate(ready) if _apex_tip_piece(c.piece, apex_crosses) is not None}
+    else:
+        tip_cols = set()
+    tips_sewn: list[Polygon] = []
+    # ... each satin leg's ground on its stations (its tuck included), and
+    # every stitch's reach: half a 0.4 mm thread past them
+    leg_ground: list = []
+    laid = None
+    if apex_crosses:
+        for x in all_legs:
+            if not x["sat"]:
+                leg_ground.append(None)
+                continue
+            lo_, hi_ = min(x["i0"], x["i1"]), max(x["i0"], x["i1"])
+            st_ = ready[x["ci"]].stations[lo_:hi_ + 1]
+            st_ = x["head"] + (st_[::-1] if x["i1"] < x["i0"] else st_) + x["tail"]
+            leg_ground.append(Polygon([a for a, _ in st_] + [b for _, b in st_][::-1]).buffer(0)
+                              if len(st_) >= 2 else None)
+        laid = unary_union([g_ for g_ in leg_ground if g_ is not None]).buffer(_APEX_EXIT_MM)
     for li, leg in enumerate(all_legs):
         col = ready[leg["ci"]]
         lo, hi = min(leg["i0"], leg["i1"]), max(leg["i0"], leg["i1"])
         sts = col.stations[lo:hi + 1]
         if leg["i1"] < leg["i0"]:
             sts = sts[::-1]
+        # `apex_crosses`: the needle leaving a tip's satin, which ended at its
+        # cut: (the unit step out past the cut, its length); else None
+        leaving = (tip_exit if tip_exit is not None and runs and run_leg
+                   and run_leg[-1] == li - 1 and runs[-1].kind == stitches.SATIN else None)
+        tip_exit = None
         if leg["sat"]:
             sts = leg["head"] + sts + leg["tail"]
+            if leg["ci"] in tips and li + 1 < len(all_legs):
+                # `apex_crosses`: a tip's last cross spans both strokes, and the
+                # zigzag ends on its b rail; the hop to the next leg ran along
+                # that cross on top of the tip just sewn (PROSEAL's A, MFab's N:
+                # 2.5 mm a tip). Begun on the other rail, it ends beside the leg.
+                nxt = all_legs[li + 1]
+                nst = (nxt["head"] or ready[nxt["ci"]].stations[nxt["i0"]:nxt["i0"] + 1])[0]
+                goal = list(nst) if nxt["sat"] else _mids([nst])
+                if (min(math.dist(sts[-1][0], g) for g in goal)
+                        < min(math.dist(sts[-1][1], g) for g in goal)):
+                    sts = [(b, a) for a, b in sts]
+            if leg["ci"] in tips and len(sts) >= 2:
+                # sewn from the point up, the needle stops on the last cross,
+                # up to a pitch short of the cut: it steps out square to the
+                # cut, past it, before it goes anywhere -- along that cross it
+                # lay on the tip's own edge (MARINE's M at 95.7 mm: 2.1 mm)
+                m1, m0 = _mids(sts[-2:])
+                line = tips[leg["ci"]]["line"]
+                gap = line.distance(Point(m0))
+                L = math.dist(m0, m1)
+                if gap < line.distance(Point(_mids(sts[:1])[0])) and L > 1e-9:
+                    tip_exit = (((m0[0] - m1[0]) / L, (m0[1] - m1[1]) / L), gap + _APEX_EXIT_MM,
+                                leg["ci"])
+            elif leaving is not None and (underlay_style == "none"
+                                          or _centre_underlay(_mids(sts), short_columns) is None):
+                # ... and the leg after it begins on the rail beside that step
+                # (a leg with a centre walk is reached at its centre: its
+                # rails are the next leg's to choose, below -- PROSEAL's A
+                # ran its left leg out to the far rail, 4.7 mm from the bar)
+                (dx, dy), step, _t = leaving
+                e = runs[-1].points[-1]
+                e = (e[0] + dx * step, e[1] + dy * step)
+                if math.dist(e, sts[0][1]) < math.dist(e, sts[0][0]):
+                    sts = [(b, a) for a, b in sts]
+            elif apex_crosses and li + 1 < len(all_legs):
+                # ... and every other leg of a cut letter ends on the rail
+                # whose hop to the next leg's centre lies least on fabric no
+                # satin of the letter reaches, then least outside the satin
+                # still to come, then the shorter: the cut re-pieces the
+                # whole letter, and the rail a leg ended on, by its stations'
+                # count, put the hop on the far edge (MFab's 4: its top bar,
+                # 1.7 mm down the corner on bare fabric, 0.5 OFF). Read on
+                # the legs' stations, not their pieces: a piece fills the
+                # notch between two strokes that no stitch reaches (PROSEAL's
+                # small N: the shorter hop crossed it, 0.2 mm bare).
+                # A hop neither rail can make straight is routed (step 4),
+                # which this cannot read: the stations' rail stands.
+                nxt = all_legs[li + 1]
+                nst = (nxt["head"] or ready[nxt["ci"]].stations[nxt["i0"]:nxt["i0"] + 1])[0]
+                g = _mids([nst])[0]
+                later = unary_union([g_ for g_ in leg_ground[li + 1:] if g_ is not None])
+
+                def bare(e):
+                    if math.dist(e, g) < machine.TINY_STITCH_MM:      # no hop is sewn
+                        return (False, 0.0, 0.0, 0.0)
+                    hop = LineString([e, g])
+                    return (not poly_hop.covers(hop), round(hop.length - hop.intersection(laid).length, 2),
+                            round(hop.length - hop.intersection(later).length, 2), hop.length)
+                ba, bb = bare(sts[-1][0]), bare(sts[-1][1])
+                if not (ba[0] and bb[0]) and ba < bb:
+                    sts = [(b, a) for a, b in sts]
         mids = _mids(sts)
         # The walk is continuous along CENTRELINES; a zigzag ends on a
         # rail. From that rail point to the next leg's first penetration
@@ -2016,7 +2319,57 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         if runs and runs[-1].shape_id == shape_id:
             tail = runs[-1].points[-1]
             hop = math.dist(tail, mids[0])
-            if (machine.TINY_STITCH_MM <= hop <= max(trim_at_mm, _CONNECTOR_WIDTHS * W)
+            out = None
+            if leaving is not None:
+                # `apex_crosses`: out of the tip square to its cut, then to
+                # the leg's first stitch -- straight to it when no centre
+                # walk begins the leg, else to its centre. Where the straight
+                # way skims the tip (the leg begins on the cut: MARINE's M at
+                # 95.7 mm, 0.2 mm of it), it runs past the cut and turns in
+                # square to the leg.
+                (dx, dy), step, t = leaving
+                goal = (sts[0][0] if leg["sat"] and (underlay_style == "none"
+                                                      or _centre_underlay(mids, short_columns) is None)
+                        else mids[0])
+                s = (tail[0] + dx * step, tail[1] + dy * step)
+                ground = ready[t].piece.buffer(_FACE_EPS_MM)
+                for path in sorted(([tail, s, goal], [tail, s, (goal[0] + dx * step, goal[1] + dy * step), goal]),
+                                   key=lambda q: (round(LineString(q[1:]).intersection(ground).length, 2),
+                                                  LineString(q).length)):
+                    if (LineString(path).length <= max(trim_at_mm, _CONNECTOR_WIDTHS * W) + 2 * step
+                            and poly_hop.covers(LineString(path))):
+                        out = path
+                        break
+            elif (tips_sewn and machine.TINY_STITCH_MM <= hop <= max(trim_at_mm, _CONNECTOR_WIDTHS * W)
+                    and poly_hop.covers(LineString([tail, mids[0]]))):
+                # `apex_crosses`: a hop that runs on a tip sewn before it --
+                # along its cut, from the stroke beside it (MFab's IN: 0.12 mm
+                # at the N's foot) -- steps off it square to the hop and
+                # back, onto ground still to be sewn
+                ground = unary_union(tips_sewn)
+                goal = mids[0]
+
+                def skim(q):
+                    return round(LineString(q).intersection(ground).length, 2)
+                if skim([tail, goal]) > 0:
+                    ux, uy = (goal[0] - tail[0]) / hop, (goal[1] - tail[1]) / hop
+                    best = None
+                    for sgn in (1, -1):
+                        for d in (_APEX_EXIT_MM, 2 * _APEX_EXIT_MM):
+                            ox, oy = -uy * sgn * d, ux * sgn * d
+                            s = (tail[0] + ox, tail[1] + oy)
+                            for q in ([tail, s, goal], [tail, s, (goal[0] + ox, goal[1] + oy), goal]):
+                                if (LineString(q).length <= max(trim_at_mm, _CONNECTOR_WIDTHS * W) + 2 * d
+                                        and poly_hop.covers(LineString(q))):
+                                    key = (skim(q), LineString(q).length)
+                                    if key[0] < skim([tail, goal]) and (best is None or key < best[0]):
+                                        best = (key, q)
+                    if best is not None:
+                        out = best[1]
+            if out is not None:
+                runs.append(StitchRun(points=_walk_corners(out, _UNDERPATH_STEP_MM),
+                                      kind=stitches.TRAVEL, shape_id=shape_id))
+            elif (machine.TINY_STITCH_MM <= hop <= max(trim_at_mm, _CONNECTOR_WIDTHS * W)
                     and poly_hop.covers(LineString([tail, mids[0]]))):
                 runs.append(StitchRun(points=_walk_points([tail, mids[0]], _UNDERPATH_STEP_MM),
                                       kind=stitches.TRAVEL, shape_id=shape_id))
@@ -2035,6 +2388,13 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 runs.append(StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id))
                 run_leg.extend([li] * (len(runs) - len(run_leg)))
                 sewn[li] = Polygon([a for a, _ in sts] + [b for _, b in sts][::-1]).buffer(0)
+                if leg["ci"] in tip_cols:
+                    # its thread's reach (half a 0.4 mm thread) on its own
+                    # piece, past its last stitch: a hop leaving the tip
+                    # starts on it, whichever way it goes
+                    tips_sewn.append(sewn[li].buffer(_APEX_EXIT_MM).intersection(
+                        col.piece.buffer(_FACE_EPS_MM)).difference(
+                        Point(pts[-1]).buffer(2 * _APEX_EXIT_MM + _FACE_EPS_MM)))
                 continue
         # an underpath (an earlier visit), or a satin span too short to
         # sew: the needle still has to reach the far end, under later thread.
@@ -2318,6 +2678,11 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
             lk = {k: v for k, v in lc_kw.items() if k != "small_bold"}
             rk = {k: v for k, v in run_kw.items() if k != "thin_floor"}
         cut = letter_columns(poly, pitch_mm=spacing_mm, **lk, **extra)
+        # `cfg.lettering_columns_apex_cut`: the merged tips' crosses, for the
+        # walk (`column_runs`); a cut with none, the call is today's
+        apex_x = [(c[0], c[1]) for c in cut.cuts if c[2] == "apex"]
+        if apex_x:
+            rk = {**rk, "apex_crosses": apex_x}
         runs, report = column_runs(leaned(cut.columns), recorded(cut.poly), shape_id, **rk)
         report["cuts"] = len(cut.cuts)
         report["columns_unsewn"] += len(cut.unsewn)
