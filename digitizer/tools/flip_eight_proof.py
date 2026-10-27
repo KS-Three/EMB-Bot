@@ -12,7 +12,7 @@ professional's file for the same job. Counts are read off the DSTs with
 placed where the two arms differ most, and the whole design is drawn small
 beside it so the crop can be found.
 
-    .venv/Scripts/python -m tools.flip_eight_proof [--out docs/renders/flip-eight-2026-10-23]
+    .venv/Scripts/python -m tools.flip_eight_proof [--out DIR]
         [--fixtures hotel_fremont_hat becker_hat_small mfab_hat] [--cache DIR]
 
 Nothing here changes an engine default.
@@ -57,7 +57,9 @@ BEFORE: dict[str, object] = {
 }
 HELD_OFF = ("cut_every_jump", "sew_enclosed_white")
 
-DEFAULT_OUT = DIGITIZER.parent / "docs" / "renders" / "flip-eight-2026-10-23"
+#: every picture here has the pro beside ours: local only (Kent 2026-10-27, "Stop new
+#: ones, keep old (Recommended)"; `tools.pro_renders`). The 10-23 proof in docs/ stays.
+DEFAULT_OUT = fsr.pro_renders.out_dir("flip-eight-2026-10-23")
 DEFAULT_CACHE = DIGITIZER / "debug_out" / "flip_eight"
 SMALL_PPM = 6.0
 
