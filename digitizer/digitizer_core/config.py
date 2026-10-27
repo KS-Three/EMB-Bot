@@ -5686,10 +5686,13 @@ class PipelineConfig:
     # the Column lane's emitter, travel buried under strokes to come. The pro
     # sews each such word that way (6-7 runs per word, square share 0.77-0.87);
     # the satin tier welded Bridge's fused baseline into one 22.8 mm stroke.
-    # Width stays the drawn stroke plus the fabric's pull: the pro's thinner
-    # script needs a smaller pull, a gate-1 constant not built here. Layout,
-    # judged in the preview (Kent, 2026-10-22). False is the plan as it was,
-    # byte for byte. Tests: `tests/test_script_strokes.py`.
+    # The crosses turn along a smoothed pen path and hand over between columns
+    # with little turn (Kent 2026-10-26: "the cursive needs to flow"; read by
+    # `tools/script_flow.py`). Width stays the drawn stroke plus the fabric's
+    # pull: the pro's thinner script needs a smaller pull, a gate-1 constant
+    # not built here. Layout, judged in the preview (Kent, 2026-10-22). False
+    # is the plan as it was, byte for byte. Tests: `tests/test_script_strokes.py`,
+    # `tests/test_script_flow.py`.
     script_strokes: bool = False
 
     def __post_init__(self) -> None:

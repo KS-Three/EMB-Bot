@@ -70,5 +70,48 @@ Bystanders Becker, MFab, Fremont, Golden Tee byte-identical ON.
   apart on the spine three of Bridge's buried yellow hops came back as cuts;
   with the faster-rail pitch the yellow block is byte-identical again.
 
+**Flow (Kent 2026-10-26: "the cursive needs to flow, as if the direction (or
+centerline letter path) was drawn by a pencil or hand").** Reader
+`tools/script_flow.py FILE.dst@N [--box x0,y0,x1,y1]`: cross chains as
+`letter_pieces` cuts them but NOT cut at a turn; each cross against the one
+TWO on (a zigzag's neighbours lean opposite ways); a hand-over's angle is the
+axial mean of each end's two crosses (the lean cancels); `--box` because To a
+T's "Machine" shares its colour block with TO A T, LLC and the frame. Built:
+welds up to 60 deg (was 40), cusps only past 120 (was 75), stations on the
+spine smoothed 0.75 half-widths, crosses square to it smoothed 1.0.
+Measured on the whole plan (`docs/renders/script-flow-2026-10-26/`), #1119
+as merged -> flow (pro): hand-overs over 30 deg Bridge LC 5 -> 0 (0), hat
+6 -> 3 (3), Tires 3 -> 1 (0), To a T 9 -> 4 (3); largest turn between
+crosses 39 -> 31, 52 -> 34, 34 -> 27, 52 -> 44 deg. Cost: square-to-column
+on Bridge 0.87 -> 0.80 LC, 0.84 -> 0.65 hat (pro 0.87 / 0.77; ~70 crosses
+read, noisy); Tires 0.97, To a T 0.89 unchanged. Kinks unchanged (trace).
+
+- **Smoothing the cross direction harder looks smoother and is WRONG on small
+  script.** At 2 half-widths the crosses leaned off their own column round
+  Bridge's bowls: square-to-column (script_census) hat 0.88 / 0.72 / 0.37 and
+  LC 0.79 / 0.57 / 0.31 at 1 / 2 / 3 half-widths (pro 0.77 / 0.87); Tires and
+  To a T barely move. A Gaussian lags any curve tighter than ~5 sigmas. The
+  pro's crosses jump MORE than ours at any sigma (Bridge hat 39 over 15 deg):
+  he turns them sharply where his letters turn. Judge flow by hand-overs and
+  squareness, not by fewest jumps. A smoothing spline held to a pixel read the
+  same as sigma 1; odd-reflection end padding did not help either.
+- **Not built, measured (word alone, sigma 2):** pairing all arms at a 4-way junction
+  by least total turn, plus joining two nodes a dropped stub apart (Tires' e
+  loop meets its baseline 0.6 mm from where the baseline runs on, so the loop
+  was its own stroke): Tires' e runs on, but Bridge LC left 6.7 -> 11.0 mm2
+  to patches. Still showing in the 40 px/mm crops: the s's top (a cusp; the
+  pro cuts there too) and its foot (one 65 deg hand-over).
+- **The squareness reader is noisy on Bridge** (`script_census` read 0 to
+  117 crosses between near-identical stitchings); trust a trend across a
+  sweep, not one cell.
+- Kinks left on Bridge are the trace's width wobble, not the path: the
+  crosses change length 0.76 / 0.85 mm per mm, hat / LC (pro 0.19 / 0.22,
+  our LC OFF 0.86); rails stay on the traced polygon as briefed. Tires:
+  0.25 vs pro 0.30.
+- With `script_strokes` ON, `monoline_script_satin` never sees a script word
+  (the route returns first): Tires OFF = mono ON byte-identical, and ON =
+  ON + mono byte-identical. Still reachable for monoline strokes the door
+  refuses.
+
 Related: [[monoline-script-satin-2026-10-24]], [[bridge-border-and-script-2026-09-30]],
 [[lettering-architecture-2026-10-07]], [[column-corner-folds-2026-10-23]].
