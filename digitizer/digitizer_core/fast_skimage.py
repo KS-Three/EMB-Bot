@@ -1,5 +1,5 @@
-"""Byte-identical fast paths for two scikit-image calls the pipeline makes
-thousands of times per design.
+"""Byte-identical fast paths for scikit-image calls the pipeline makes
+thousands of times per design, or once at great cost.
 
 Profiled 2026-10-08 over the six `testdata/art` logos at left-chest size
 (89 mm): these two calls were the top hot spots by wall time.
@@ -17,16 +17,31 @@ formula, operation for operation and in the same order, on numpy float64
 scalars: every transcendental and power still goes through the SAME numpy
 ufunc (a 0-d input runs the same inner loop as a 1-element array), and the
 remaining +, -, *, / and sqrt are IEEE-exact either way. So the result is the
-same float, bit for bit — `tests/test_fast_skimage.py` checks both helpers
-against skimage itself.
+same float, bit for bit.
 
-Both lean on skimage internals, which is why `scikit-image` is pinned in
+`rag_mean_color` — profiled 2026-10-27 on the gradient lane: 37-53 s of
+Hotel Fremont's and Golden Tee's ~250 s, called once per photo. skimage
+builds the graph with `ndi.generic_filter` calling a Python function on every
+pixel (3.4M calls on Fremont), then sums colours in an `np.ndindex` loop.
+Here the neighbour pairs come from shifted arrays, and the SAME `add_edge`
+calls are replayed in the order the filter would have made them (first
+discovery of each pair, pixels in C order, footprint in row-major order), so
+node order, adjacency order, edge order and `max_id` all match;
+`merge_hierarchical` downstream depends on every one of them. Colour sums are
+`np.bincount`, which adds in pixel order in float64 like the loop did.
+Fremont 41 s -> 0.6 s, and all seven gradient fixtures' designs md5-identical.
+
+`tests/test_fast_skimage.py` checks every helper against skimage itself.
+They lean on skimage internals, which is why `scikit-image` is pinned in
 `requirements.txt`; the tests are the tripwire for a version bump.
 """
 from __future__ import annotations
 
+import math
+
 import numpy as np
 from scipy import ndimage as ndi
+from skimage.graph._rag import RAG
 from skimage.morphology._skeletonize import (
     _pattern_of,
     _skeletonize_loop,
@@ -182,3 +197,76 @@ def deltaE_ciede2000_1(lab1, lab2) -> float:
     dE2 = dE2 + np.power(H_term, 2)
     dE2 = dE2 + R_term
     return float(np.sqrt(np.maximum(dE2, 0)))
+
+
+def rag_mean_color(image, labels, connectivity=2, mode="distance", sigma=255.0):
+    """`skimage.graph.rag_mean_color` for a 2-D label image, without the
+    per-pixel Python callback. Same RAG, same insertion orders, same floats."""
+    labels = np.asarray(labels)
+    if labels.ndim != 2:
+        raise ValueError("fast rag_mean_color handles 2-D labels only")
+    h, w = labels.shape
+    # generic_filter hands its callback a float64 buffer, which
+    # `_add_edge_filter` casts back with `.astype(int)`; node keys are those.
+    lab = labels.astype(np.float64).astype(int)
+    offsets = np.argwhere(ndi.generate_binary_structure(2, connectivity)) - 1
+    padded = np.pad(lab, 1, mode="edge")  # mode='nearest'
+    centres, values, order = [], [], []
+    for k, (dr, dc) in enumerate(offsets):
+        nb = padded[1 + dr:1 + dr + h, 1 + dc:1 + dc + w]
+        idx = np.flatnonzero(nb != lab)
+        centres.append(lab.ravel()[idx])
+        values.append(nb.ravel()[idx])
+        order.append(idx.astype(np.int64) * len(offsets) + k)
+    c = np.concatenate(centres)
+    v = np.concatenate(values)
+    first_seen = np.argsort(np.concatenate(order), kind="stable")
+    c, v = c[first_seen], v[first_seen]
+
+    graph = RAG()
+    if len(c):
+        lo, hi = np.minimum(c, v), np.maximum(c, v)
+        pair = lo.astype(np.int64) * (int(hi.max()) + 1) + hi
+        _, first = np.unique(pair, return_index=True)
+        first.sort()
+        for i in first:
+            graph.add_edge(c[i], v[i])
+
+    for n in graph:
+        graph.nodes[n].update({
+            "labels": [n],
+            "pixel count": 0,
+            "total color": np.array([0, 0, 0], dtype=np.float64),
+        })
+
+    flat = labels.ravel()
+    counts = np.bincount(flat)
+    for label in np.flatnonzero(counts):
+        if label not in graph:
+            raise KeyError(label)  # skimage's loop fails on it the same way
+    pixels = image.reshape(-1, image.shape[-1])
+    sums = [np.bincount(flat, weights=pixels[:, ch], minlength=len(counts))
+            for ch in range(pixels.shape[1])]
+    for n in graph:
+        d = graph.nodes[n]
+        d["pixel count"] = int(counts[n])
+        for ch, s in enumerate(sums):
+            d["total color"][ch] = s[n]
+
+    # From here on, skimage's own body verbatim.
+    for n in graph:
+        graph.nodes[n]["mean color"] = (
+            graph.nodes[n]["total color"] / graph.nodes[n]["pixel count"]
+        )
+
+    for x, y, d in graph.edges(data=True):
+        diff = graph.nodes[x]["mean color"] - graph.nodes[y]["mean color"]
+        diff = np.linalg.norm(diff)
+        if mode == "similarity":
+            d["weight"] = math.e ** (-(diff**2) / sigma)
+        elif mode == "distance":
+            d["weight"] = diff
+        else:
+            raise ValueError(f"The mode '{mode}' is not recognised")
+
+    return graph
