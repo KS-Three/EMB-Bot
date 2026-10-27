@@ -5698,6 +5698,18 @@ class PipelineConfig:
     # the route returns first. Tests: `tests/test_script_strokes.py`,
     # `tests/test_script_flow.py`.
     script_strokes: bool = True
+    # Script strokes sewn at the art's drawn width where they crowd (2026-10-27,
+    # built OFF; Kent: "Build it OFF (Recommended)"; `script_strokes.py`). With
+    # `script_strokes` ON a cross reaches the traced polygon plus the pull, and
+    # on Bridge two strokes' threads share 15% of the word's (the pro's, read
+    # off his file, 10.5%). Here a cross side whose thread would run more than
+    # `script_strokes.CROWD_DEPTH_MM` (1.0, the pro's median overlap depth)
+    # into another stroke's stops at the art's drawn half-width, the pull on
+    # top as today; every other side still reaches the polygon, so a word whose
+    # strokes do not crowd sews as before. No width or pull constant moves.
+    # Layout, judged in the preview (Kent, 2026-10-22). False is the plan as it
+    # was, byte for byte. Tests: `tests/test_script_strokes.py`.
+    script_strokes_drawn_width: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()
