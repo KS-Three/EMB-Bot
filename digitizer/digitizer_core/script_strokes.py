@@ -62,9 +62,9 @@ FLOW (Kent 2026-10-26: "the cursive needs to flow, as if the direction (or
 centerline letter path) was drawn by a pencil or hand"). Read by
 `tools/script_flow.py` on our file and the pro's alike: the cross angle's
 turn per mm, its turn where one column hands over to the next, and kinks in
-the centreline. The welds, the cusp rule and the two sigmas above are set
-from it: where columns hand over, the pro's turn a median 1 deg (Tires), 5
-(To a T) and 23 (Bridge LC).
+the centreline. The welds, the cusp rule and the two sigmas below are set
+from it: of the pro's hand-overs, 0 turn more than 30 deg on Tires, 3 on To
+a T's "Machine", 0 on Bridge LC.
 
 WIDTH. The rails sit on the polygon's outline plus the fabric's own pull,
 as every Column letter's do. Measured on Bridge (the pipeline's ink read,
@@ -146,10 +146,11 @@ INK_MIN_PART_MM2 = 0.15
 # ----------------------------------------------------------- the pen strokes
 #: two arms at a junction whose directions continue within this many degrees
 #: of straight are one pen stroke: the pen carries on through a junction and
-#: round a bend. The pro's columns hand over at a median 1 deg on Tires, 5 on
-#: To a T's "achine", 23 on Bridge LC (`tools/script_flow.py`); welded at 40
-#: ours turned 47-75 deg at the hand-over, at 60 (with `CUSP_DEG` 120) 3 /
-#: 22 / 20. At 90 Tires' junctions left 22 mm2 of the word to patches
+#: round a bend. Hand-overs turning more than 30 deg (`tools/script_flow.py`,
+#: the whole plan): the pro's 0 on Tires, 3 on To a T's "Machine", 0 on
+#: Bridge LC; ours as #1119 merged (welds at 40, cusps at 75, one sigma)
+#: 3 / 9 / 5, at 60 (with `CUSP_DEG` 120 and the two sigmas) 0 / 4 / 1. At
+#: 90 Tires' junctions left 22 mm2 of the word to patches
 WELD_MAX_DEG = 60.0
 #: a stroke turning more than this within one stroke width is a cusp -- the
 #: pen reversing -- and is two strokes; anything gentler is one, its crosses
@@ -186,12 +187,16 @@ PATCH_TUCK_MM = 0.3
 #: keeps the stroke's middle and reaches both edges ...
 SPINE_SIGMA_HALVES = 0.75
 #: ... and each cross lies square to the pen path smoothed this much, so the
-#: crosses turn as a hand turns them. Read off the pro's own centrelines
-#: (`tools/script_flow.py`, kinks over 35 deg within 1 mm, per 10 mm): his
-#: 0.7 / 1.3 / 2.4 / 0.8 on Bridge hat / LC / Tires / To a T hat; ours at 1
-#: half-width 3.1 / 3.4 / 2.5 / 1.8, at 2: 2.1 / 1.8 / 1.0 / 1.4 -- the
-#: smallest sigma that brings every file near his
-CROSS_SIGMA_HALVES = 2.0
+#: crosses turn as a hand turns them -- but a Gaussian lags any curve
+#: tighter than about five sigmas, and leans the crosses off their own
+#: column there. On the word alone at 1 / 2 / 3 half-widths, crosses square
+#: to the column (`tools/script_census.py`) 0.88 / 0.72 / 0.37 on Bridge hat,
+#: 0.79 / 0.57 / 0.31 on Bridge LC (the pro 0.77 / 0.87; Tires and To a T
+#: 0.93-0.95 and 0.84-0.85 at any of them), for crosses turning over 15 deg
+#: from one to the next 31 / 25 / 17 on Bridge hat -- the pro's own 39: his
+#: crosses turn sharply where his letters do. A smoothing spline held to a
+#: pixel of the skeleton read the same as 1 (0.84 / 0.79, 33 jumps)
+CROSS_SIGMA_HALVES = 1.0
 _SPINE_STEP_MM = 0.1
 #: crosses are cast this many times per pitch along the spine, then kept one
 #: per pitch of the faster rail

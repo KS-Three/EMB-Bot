@@ -861,9 +861,11 @@ def white_under_1mm(_stream, _fx, cell) -> str:
     return f"{white:,} ({short:,} under 1 mm)"
 
 
-#: the colour block holding the script word, (ours, the pro's), for `script_square`
+#: the colour block holding the script word, (ours, the pro's), for
+#: `script_square` (To a T's moved to our second block when the white faces
+#: began to sew first, #1112)
 SCRIPT_BLOCKS = {"bridge_hat": (3, 4), "bridge_lc": (2, 4), "tires_hat_3d": (0, 1),
-                 "machine_hat": (0, 1)}
+                 "machine_hat": (1, 1)}
 
 
 def script_square(_stream, fx, cell) -> str:

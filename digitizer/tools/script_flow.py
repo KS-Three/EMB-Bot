@@ -18,8 +18,9 @@ whatever the advance.
 
 PER JOIN: two columns sewn one after the other whose ends meet (the next one's
 first cross within `JOIN_MM` of the last one's last): the cross angle's turn
-across the join. A pen carries the satin through a letter; a construction
-that stops and restarts at a new angle shows here.
+across the join, each end's angle the axial mean of its two end crosses (so
+the zigzag's lean cancels, as above). A pen carries the satin through a
+letter; a construction that stops and restarts at a new angle shows here.
 
 CENTRELINE: each column's cross midpoints, the heading taken over `HEADING_MM`
 of arc either side; a KINK is a heading change over `KINK_DEG` within
@@ -31,7 +32,12 @@ fractions of its own width (each file's letters where it draws them, as
 median midpoint. `backtracks`: a column sewn in a letter LEFT of the one sewn
 before it -- writing goes left to right.
 
-    python -m tools.script_flow FILE.dst@BLOCK[#x1,x2,...] [...] [--json OUT]
+BOX: `--box x0,y0,x1,y1` keeps only the columns whose median midpoint lies in
+that box, in fractions of the block's own needle-down extent -- for a word
+that shares its colour block with other lettering (To a T's "Machine" sits
+between "TO A T", "LLC" and the frame, in both files).
+
+    python -m tools.script_flow FILE.dst@BLOCK[#x1,x2,...] [...] [--box x0,y0,x1,y1] [--json OUT]
 """
 from __future__ import annotations
 
@@ -62,16 +68,30 @@ def _fold(d: float) -> float:
     return min(d, 180.0 - d)
 
 
-def columns_of(path: Path, block: int) -> list[list[tuple]]:
+def _axial(*deg: float) -> float:
+    """-> the mean of undirected angles (deg, 0-180)."""
+    c = sum(math.cos(math.radians(2 * d)) for d in deg)
+    s = sum(math.sin(math.radians(2 * d)) for d in deg)
+    return math.degrees(math.atan2(s, c)) / 2.0 % 180.0
+
+
+def columns_of(path: Path, block: int, box: tuple | None = None) -> list[list[tuple]]:
     """-> the block's cross chains in sewing order (each a list of
-    `letter_pieces.chains` crosses: (a, b, mid, dir_deg, len, idx, d))."""
-    out = []
-    for r in LP.runs_of(Path(path)):
-        if r["block"] != block:
-            continue
-        for ch in LP.chains(LP.fuse(r["pts"])):
-            out.append(ch)
-    return out
+    `letter_pieces.chains` crosses: (a, b, mid, dir_deg, len, idx, d)),
+    only those in `box` (see BOX) when it is given."""
+    runs = [r for r in LP.runs_of(Path(path)) if r["block"] == block]
+    out = [ch for r in runs for ch in LP.chains(LP.fuse(r["pts"]))]
+    if box is None or not runs:
+        return out
+    xy = np.concatenate([np.asarray(r["pts"], float) for r in runs])
+    (x0, y0), (x1, y1) = xy.min(0), xy.max(0)
+    lo = (x0 + box[0] * (x1 - x0), y0 + box[1] * (y1 - y0))
+    hi = (x0 + box[2] * (x1 - x0), y0 + box[3] * (y1 - y0))
+
+    def inside(ch):
+        m = np.median(np.array([s[2] for s in ch]), axis=0)
+        return lo[0] <= m[0] <= hi[0] and lo[1] <= m[1] <= hi[1]
+    return [ch for ch in out if inside(ch)]
 
 
 def _headings(mids: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -92,8 +112,9 @@ def _headings(mids: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return s, hd
 
 
-def flow(path: Path, block: int, letters: list[float] | None = None) -> dict:
-    chs = columns_of(path, block)
+def flow(path: Path, block: int, letters: list[float] | None = None,
+         box: tuple | None = None) -> dict:
+    chs = columns_of(path, block, box)
     cols = [c for c in chs if len(c) >= MIN_COLUMN]
     rates, jumps, kinks, spine_mm = [], [], 0, 0.0
     for c in cols:
@@ -125,7 +146,7 @@ def flow(path: Path, block: int, letters: list[float] | None = None) -> dict:
     for p, q in zip(cols, cols[1:]):
         gap = float(np.hypot(*(q[0][2] - p[-1][2])))
         if gap <= JOIN_MM:
-            joins.append(_fold(q[0][3] - p[-1][3]))
+            joins.append(_fold(_axial(q[0][3], q[1][3]) - _axial(p[-2][3], p[-1][3])))
     out = {"file": Path(path).name, "block": block, "columns": len(cols),
            "crosses": sum(len(c) for c in cols),
            "turn_per_mm_p50": round(float(np.percentile(rates, 50)), 1) if rates else None,
@@ -156,13 +177,15 @@ def flow(path: Path, block: int, letters: list[float] | None = None) -> dict:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("files", nargs="+", help="FILE.dst@N, optionally #x1,x2 letter cuts")
+    ap.add_argument("--box", help="x0,y0,x1,y1: fractions of the block's extent")
     ap.add_argument("--json", type=Path)
     a = ap.parse_args(argv)
+    box = tuple(float(v) for v in a.box.split(",")) if a.box else None
     res = []
     for f in a.files:
         f, _, cuts = f.partition("#")
         name, _, blk = f.rpartition("@")
-        res.append(flow(Path(name), int(blk), [float(c) for c in cuts.split(",")] if cuts else None))
+        res.append(flow(Path(name), int(blk), [float(c) for c in cuts.split(",")] if cuts else None, box))
         print(json.dumps(res[-1]))
     if a.json:
         a.json.write_text(json.dumps(res, indent=1), encoding="utf-8")
