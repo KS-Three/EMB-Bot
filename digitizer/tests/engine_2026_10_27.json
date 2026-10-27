@@ -120,6 +120,7 @@
  "ink_ground_ring_mm": null,
  "is_photographic": null,
  "keep_counters": false,
+ "keep_dark_thin_strokes": false,
  "keep_thin_strokes": true,
  "keyline_fold_slivers": false,
  "keyline_loop_chain": false,

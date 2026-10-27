@@ -993,6 +993,24 @@ class PipelineConfig:
     # holding OFF beside the teal patch being kept ON, and
     # `test_flag_defaults_on` there pins this default itself.
     keep_thin_strokes: bool = True
+    # Dark thin strokes on a SHADED ground, read by lightness
+    # (`thin_ink.find_dark_thin_ink`; gradient class only, the gate
+    # `keep_thin_strokes` has). `keep_thin_strokes` reads the artwork with the
+    # flat quantiser, so a stroke exists for it only when k-means gives it a
+    # colour of its own; hand lettering drawn on a shaded body does not get
+    # one. Kent's cartoon of 2026-10-27: "HUNNY" on a grey-green pot, ink
+    # 21.5 dE00 from the pot and 0.5-0.75 mm wide, sewed one letter of five
+    # (the merge on superpixel means absorbed the rest). ON, a black-hat on
+    # L* finds every dark feature under `min_detail_mm`, the thin floors and
+    # a one-ground ring test keep the strokes and refuse the outlines, and
+    # the strokes the merge then absorbs are carved out of their ground
+    # after it and come back as their own label block, the thin population's
+    # path (SEEDS and the merge run untouched: taking the pixels out before
+    # them moved the palette). Five letters sew, in one ink; the colour cap
+    # keeps that ink off the ground's thread (`enforce_color_cap`).
+    # The constants and the measurements behind them are in `thin_ink.py`.
+    # OFF until Kent flips it; nothing found is byte-identical to OFF.
+    keep_dark_thin_strokes: bool = False
     # A letter's counter on a COLOURED ground stays a hole
     # (`stage3_segment.resolve_small_regions`). Measured 2026-10-02 on clean
     # 4 mm "BAR & RESTAURANT": on white the counters are background, never

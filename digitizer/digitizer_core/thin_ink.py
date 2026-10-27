@@ -63,12 +63,14 @@ from dataclasses import dataclass
 
 import cv2
 import numpy as np
+from skimage.color import deltaE_ciede2000
 from skimage.morphology import skeletonize
 
 from . import machine
 from .config import PipelineConfig
 from .stage1_prep import Prep
 from .stage2_quantize import _quantize_population
+from .threads import chart_for, rgb_to_lab
 
 # A component narrower than this many PIXELS is halo, not ink — a raster
 # quantity (the same class as `stage4_vectorize._CURVE_MIN_PX_PER_MM` and
@@ -98,6 +100,10 @@ class ThinInk:
     spools: list[int]         # chart indices, one per label
     components: int
     length_mm: float
+    # How many of the LEADING labels are the lightness read's
+    # (`find_dark_thin_ink`): those regions get the colour cap's dark-ink
+    # rule (`stage4_vectorize.enforce_color_cap`). 0 for the quantiser read.
+    dark: int = 0
 
 
 def _link_length_px(skel: np.ndarray) -> float:
@@ -229,3 +235,263 @@ def find_thin_ink(p: Prep, cfg: PipelineConfig, valid: np.ndarray, *,
         out[mask & (labels == old)] = new
     return ThinInk(mask=mask, labels=out, spools=[spools[o] for o in used],
                    components=components, length_mm=length_px / ppm)
+
+
+# --- dark ink on a shaded ground (`cfg.keep_dark_thin_strokes`) ------------
+# `find_thin_ink` above reads the artwork with the flat lane's quantiser, so
+# a stroke only exists for it when k-means gives the stroke its OWN colour.
+# Hand lettering drawn on a shaded body does not get one: on Kent's cartoon
+# of 2026-10-27 the pen ink on a grey-green pot reads Lab (43.7, -1.0, 20.5)
+# against the pot's (66.1, -4.1, 18.6) -- 21.5 dE00 apart, and 0.5-0.75 mm
+# wide (4-6 px at the 8 px/mm working grid). k-means folds that into the
+# pot, the superpixels straddle it, and `MERGE_DELTAE00_THRESH` (26.0, on
+# superpixel MEANS) absorbs what is left: one letter of five sewed, half of
+# another. `tools.thin_strokes` saw 0 lost strokes, because its reader is
+# this same quantiser.
+#
+# `find_dark_thin_ink` reads LIGHTNESS instead of colour: a black-hat on L*
+# (the closing minus the image) is the depth of every dark feature that fits
+# inside the structuring element, so a stroke under the detail floor comes
+# out at its full contrast whatever the ground's colour or shading, and a
+# shaded ground -- which the closing follows -- comes out at zero. The three
+# tests after that are the thin population's own, through
+# `iter_thin_components` (width under `cfg.min_detail_mm` at p90, at least
+# `THIN_INK_MIN_PX`, length at least half a run loop), then this module's
+# one-ground rule read on the raster rather than on labels (`_dark_ring`).
+# Unlike the quantiser read, the kept pixels do NOT leave the SEEDS
+# foreground: the merge runs as it always has, and `absorbed_dark_ink` then
+# carves out only the strokes it folded into their ground (a stroke with a
+# merged label of its own already survived and is left alone). Measured on
+# the cartoon: taking the pixels out before SEEDS also took the nose and
+# toe lines out of the main population, the palette's medoids moved and
+# the pot split into two threads (34 -> 68 regions); carving after the
+# merge changed the letters and nothing else (34 -> 37 regions).
+#
+# Measured on that cartoon, 80 mm hat_front (`tools.fremont_triage.
+# studio_request` through the service's own decode and `_parse_config`):
+#   * kernel `2 * floor_px + 1` (25 px): at the floor itself (13 px) the pot's
+#     outline splits into pieces the ring test has to refuse one by one; at
+#     twice it the five letters are five components and nothing else inside
+#     the pot clears the floors.
+#   * `DARK_INK_DEPTH_L` (pixel membership, L* units): at 6 the letters bloat
+#     (p90 width 7.2-8.0 px from 6.0-6.4) and JPEG ripples on the body
+#     qualify (2.7-3.7 dE00 against their ring); at 8 and 10 the same five
+#     components come out with the same widths within 0.4 px. 8 keeps one
+#     more pixel of edge than 10.
+#   * `DARK_INK_MIN_CONTRAST_DE00` (component median against ring median):
+#     the five letters read 12.1-25.9, the toe lines 19.9, the nose 32.6; the
+#     ripples that pass the pixel test read 2.7-3.7 and nothing sits between.
+#   * `DARK_INK_GROUND_DE00`: the ring (2 px wide, 2 px out) is "one ground"
+#     when `THIN_INK_GROUND_SHARE` of it sits within this of its own median,
+#     pixels outside the foreground counted against. 13.0 is the boundary-
+#     contrast rule's absolute local threshold (`stage2_photo_segment.
+#     BOUNDARY_CONTRAST_MERGE_FACTOR`'s numerator, MERGE_DELTAE00_THRESH / 2),
+#     the one number that module already holds for "the same region". The
+#     letters' rings read 0.97-1.00; the cartoon's outlines, with body on one
+#     side and background or a different panel on the other, 0.01-0.46.
+# The constants are raster-and-colour quantities, not stitch ones: nothing
+# here needs a sew-out (ROADMAP gate 1).
+DARK_INK_DEPTH_L = 8.0
+DARK_INK_MIN_CONTRAST_DE00 = 10.0
+DARK_INK_GROUND_DE00 = 13.0
+_DARK_INK_GUARD_PX = 2
+
+
+def _dark_ring(lab: np.ndarray, valid: np.ndarray, comp: np.ndarray,
+               y0: int, x0: int) -> tuple[np.ndarray | None, int]:
+    """The Lab of the foreground pixels in the `_RING_PX`-wide ring that sits
+    `_DARK_INK_GUARD_PX` outside `comp` (a crop placed at (y0, x0)), and the
+    ring's full pixel count, background included. The guard keeps the
+    stroke's own anti-alias fringe out of the ground sample."""
+    h, w = valid.shape
+    ch, cw = comp.shape
+    pad = _DARK_INK_GUARD_PX + _RING_PX
+    wy0, wx0 = max(0, y0 - pad), max(0, x0 - pad)
+    wy1, wx1 = min(h, y0 + ch + pad), min(w, x0 + cw + pad)
+    window = np.zeros((wy1 - wy0, wx1 - wx0), np.uint8)
+    window[y0 - wy0:y0 - wy0 + ch, x0 - wx0:x0 - wx0 + cw] = comp
+    kg = np.ones((2 * _DARK_INK_GUARD_PX + 1,) * 2, np.uint8)
+    guarded = cv2.dilate(window, kg)
+    kr = np.ones((2 * _RING_PX + 1,) * 2, np.uint8)
+    ring = (cv2.dilate(guarded, kr) > 0) & (guarded == 0)
+    n = int(ring.sum())
+    if n == 0:
+        return None, 0
+    inside = ring & valid[wy0:wy1, wx0:wx1]
+    if not inside.any():
+        return None, n
+    return lab[wy0:wy1, wx0:wx1][inside], n
+
+
+def find_dark_thin_ink(p: Prep, cfg: PipelineConfig, valid: np.ndarray) -> ThinInk | None:
+    """Dark thin strokes on whatever ground they are drawn on, inside `valid`
+    (the photo lane's foreground with the enclosed population out), or None
+    when nothing qualifies -- the caller's path is then byte-identical to the
+    flag being off. The caller carves them out AFTER its merge, and only the
+    ones the merge absorbed (`absorbed_dark_ink`).
+
+    The kept components are grouped into inks (`_group_inks`) and each ink
+    wears the chart spool nearest its pixel-weighted mean colour
+    (`Chart.snap_palette`, the flat quantiser's snap), one label per spool.
+    """
+    if not valid.any():
+        return None
+    h, w = p.rgb.shape[:2]
+    lab = rgb_to_lab(p.rgb.reshape(-1, 3)).reshape(h, w, 3)
+    lightness = np.ascontiguousarray(lab[..., 0], dtype=np.float32)
+    floor_px = cfg.min_detail_mm * p.px_per_mm
+    k = 2 * int(round(floor_px)) + 1
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+    depth = cv2.morphologyEx(lightness, cv2.MORPH_BLACKHAT, kernel)
+    dark = (depth > DARK_INK_DEPTH_L) & valid
+    if not dark.any():
+        return None
+    labels = np.where(dark, 0, -1).astype(np.int32)
+    kept: list[tuple[ThinComponent, np.ndarray, np.ndarray]] = []   # component, ink Lab, its RGB pixels
+    for t in iter_thin_components(labels, 1, p.px_per_mm, cfg, ground_test=False):
+        bx, by, bw, bh = t.bbox
+        ring_lab, n_ring = _dark_ring(lab, valid, t.comp, by, bx)
+        if ring_lab is None:
+            continue
+        ground = np.median(ring_lab, axis=0)
+        same = deltaE_ciede2000(ring_lab, np.broadcast_to(ground, ring_lab.shape)) <= DARK_INK_GROUND_DE00
+        if float(same.sum()) / float(n_ring) < THIN_INK_GROUND_SHARE:
+            continue
+        crop = (slice(by, by + bh), slice(bx, bx + bw))
+        ink = np.median(lab[crop][t.comp], axis=0)
+        if ink[0] >= ground[0]:
+            continue
+        if float(deltaE_ciede2000(ink.reshape(1, 3), ground.reshape(1, 3))[0]) < DARK_INK_MIN_CONTRAST_DE00:
+            continue
+        kept.append((t, ink, p.rgb[crop][t.comp].astype(np.float64)))
+    if not kept:
+        return None
+    # One INK per colour group, snapped once from the group's pixel-weighted
+    # mean, rather than one spool per stroke: a pen's ink reads lighter where
+    # the ground under it is lighter (the five letters' medians span L* 30 to
+    # 47 on the cartoon, and snapped one by one they wore four spools), and
+    # the flat quantiser the thin population snaps from would have given one
+    # cluster to all of them. Two strokes are one ink when their medians sit
+    # within `DARK_INK_GROUND_DE00` of each other, linked transitively -- the
+    # same tolerance the ring test calls one ground.
+    inks = _group_inks([ink for _, ink, _ in kept])
+    chart = chart_for(cfg)
+    group_rgb = []
+    for members in inks:
+        px = [kept[i][2] for i in members]
+        group_rgb.append(np.concatenate(px, axis=0).mean(axis=0))
+    snapped = chart.snap_palette(np.array(group_rgb, dtype=np.float64))
+    spools = sorted(set(snapped))
+    mask = np.zeros((h, w), bool)
+    out = np.full((h, w), -1, np.int32)
+    length_px = 0.0
+    for members, spool in zip(inks, snapped):
+        for i in members:
+            t = kept[i][0]
+            bx, by, bw, bh = t.bbox
+            crop = (slice(by, by + bh), slice(bx, bx + bw))
+            mask[crop] |= t.comp
+            out[crop][t.comp] = spools.index(spool)
+            length_px += t.length_px
+    return ThinInk(mask=mask, labels=out, spools=spools, components=len(kept),
+                   length_mm=length_px / p.px_per_mm, dark=len(spools))
+
+
+def _group_inks(medians: list[np.ndarray]) -> list[list[int]]:
+    """Single-linkage groups of component indices whose median Labs sit
+    within `DARK_INK_GROUND_DE00` (CIEDE2000) of a member; each group in
+    first-seen order, members ascending."""
+    n = len(medians)
+    parent = list(range(n))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    if n > 1:
+        labs = np.array(medians, dtype=np.float64)
+        for i in range(n - 1):
+            d = deltaE_ciede2000(np.broadcast_to(labs[i], (n - i - 1, 3)), labs[i + 1:])
+            for j in np.nonzero(d <= DARK_INK_GROUND_DE00)[0]:
+                a, b = find(i), find(int(j) + i + 1)
+                if a != b:
+                    parent[max(a, b)] = min(a, b)
+    groups: dict[int, list[int]] = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(i)
+    return [groups[k] for k in sorted(groups)]
+
+
+def merge_thin_ink(a: ThinInk | None, b: ThinInk | None) -> ThinInk | None:
+    """Two populations as one label block: `b`'s labels after `a`'s. The
+    callers hand over DISJOINT masks (each is found inside the foreground the
+    other already left)."""
+    if a is None:
+        return b
+    if b is None:
+        return a
+    labels = a.labels.copy()
+    in_b = b.labels >= 0
+    labels[in_b] = b.labels[in_b] + len(a.spools)
+    return ThinInk(mask=a.mask | b.mask, labels=labels, spools=a.spools + b.spools,
+                   components=a.components + b.components,
+                   length_mm=a.length_mm + b.length_mm,
+                   # `a`'s dark labels lead; `b`'s count only when every label
+                   # of `a` is dark, so the dark block stays one leading run.
+                   dark=a.dark + (b.dark if a.dark == len(a.spools) else 0))
+
+
+def absorbed_dark_ink(dark: ThinInk, merged: np.ndarray, base_valid: np.ndarray) -> ThinInk | None:
+    """The components of `dark` that the merge folded into their ground, as
+    a population of their own; None when every one survived.
+
+    A component survived when the merged label most of its foreground pixels
+    carry is its OWN -- at least half of that label's foreground pixels lie
+    inside the component. The cartoon's nose and toe lines are such labels
+    (kept on their contrast, as on every run before this flag) and are left
+    exactly as they are. A component whose majority label is a ground's (the
+    pot's: 0.4% of that label inside the letter), or whose pixels the
+    quantiser read already owns (none left in `base_valid`), is absorbed."""
+    n, cc, stats, _ = cv2.connectedComponentsWithStats(dark.mask.astype(np.uint8), connectivity=8)
+    totals = np.bincount(merged[base_valid].astype(np.int64)) if base_valid.any() else np.zeros(1, np.int64)
+    keep = np.zeros_like(dark.mask)
+    for c in range(1, n):
+        bx, by, bw, bh, _a = (int(v) for v in stats[c, :5])
+        crop = (slice(by, by + bh), slice(bx, bx + bw))
+        comp = cc[crop] == c
+        inside = merged[crop][comp & base_valid[crop]].astype(np.int64)
+        if inside.size:
+            label = int(np.bincount(inside).argmax())
+            own = float(np.count_nonzero(inside == label)) / float(totals[label])
+            if own >= 0.5:
+                continue
+        keep[crop] |= comp
+    if not keep.any():
+        return None
+    return _restricted(dark, keep)
+
+
+def thin_without(thin: ThinInk | None, mask: np.ndarray) -> ThinInk | None:
+    """`thin` with the pixels of `mask` taken out of it (labels compacted to
+    the spools still used); None when nothing is left, or was."""
+    if thin is None:
+        return None
+    keep = thin.mask & ~mask
+    if not keep.any():
+        return None
+    return _restricted(thin, keep)
+
+
+def _restricted(thin: ThinInk, keep: np.ndarray) -> ThinInk:
+    used = sorted(set(int(v) for v in np.unique(thin.labels[keep])))
+    labels = np.full(thin.labels.shape, -1, np.int32)
+    for new, old in enumerate(used):
+        labels[keep & (thin.labels == old)] = new
+    n, _cc, _st, _ = cv2.connectedComponentsWithStats(keep.astype(np.uint8), connectivity=8)
+    # Length pro-rated by pixel share: a report's number, not a gate's.
+    return ThinInk(mask=keep, labels=labels, spools=[thin.spools[o] for o in used],
+                   components=n - 1,
+                   length_mm=thin.length_mm * float(keep.sum()) / float(thin.mask.sum()),
+                   dark=sum(1 for o in used if o < thin.dark))

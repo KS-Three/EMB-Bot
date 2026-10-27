@@ -1150,6 +1150,21 @@ def enforce_color_cap(regions: list[Region], chart, max_colors: int, *,
     alpha holes (`enclosed_colour_unknown`) never sew under that rule and
     stay out of the ranking either way. False is the pre-rule ranking byte
     for byte.
+
+    **Dark ink lands on a dark thread** (`meta["dark_ink"]`, the lightness
+    read of the thin population, `cfg.keep_dark_thin_strokes`). A thin
+    stroke's ink is a few mm² wearing a cone of its own, so it is the first
+    thread this cap drops, and the nearest kept colour to a dark stroke's
+    ink is its own GROUND: on Kent's cartoon (2026-10-27) the five letters'
+    Olive Drab went to Dark Rattan, the pot's thread, and the lettering the
+    flag had just rescued sewed invisible. A dark-ink region is remapped to
+    the nearest kept thread NOT LIGHTER than its dropped spool (Pony there,
+    20 dE00 off the pot; the darkest kept thread, Very Dark Brown, is what a
+    digitizer would letter in, and "darkest" rather than "nearest dark" is
+    Kent's call, not built); when no kept thread is that dark it takes the
+    plain nearest, as before. Every other region keeps the plain nearest,
+    and a design with no dark-ink regions is byte for byte the cap it
+    always was.
     """
     if max_colors < 1 or not regions:
         return []
@@ -1176,11 +1191,23 @@ def enforce_color_cap(regions: list[Region], chart, max_colors: int, *,
                              kept_lab[None, :, :])[0]
         remap[t] = kept[int(np.argmin(d))]
 
+    dark_remap: dict[int, int] = {}
+    for t in dropped if any(r.meta.get("dark_ink") for r in regions) else ():
+        not_lighter = [k for k in kept if chart.lab[k][0] <= chart.lab[t][0]]
+        if not not_lighter:
+            dark_remap[t] = remap[t]
+            continue
+        d = deltaE_ciede2000(np.array([chart.lab[t]])[:, None, :],
+                             np.array([chart.lab[k] for k in not_lighter])[None, :, :])[0]
+        dark_remap[t] = not_lighter[int(np.argmin(d))]
+
     moved = 0
     for r in regions:
         dst = remap.get(r.thread_index)
         if dst is None:
             continue
+        if r.meta.get("dark_ink"):
+            dst = dark_remap[r.thread_index]
         r.meta["color_cap_merged_from"] = r.thread_number
         r.thread_index = dst
         r.thread_number = chart[dst].number
