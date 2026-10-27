@@ -9,6 +9,7 @@
   import {
     buildDigitizeConfig,
     digitize,
+    LONG_RUN_MS,
     decodedFromDesignCached,
     describeWarnings,
     SILENT_WARNINGS,
@@ -104,6 +105,9 @@
 
   let error = "";
   let phase = "idle"; // idle | submitting | queued | running
+  // Running past the Studio's old 5-minute limit (lib/digitizer.js
+  // LONG_RUN_MS): the status line says it is still working.
+  let runningLong = false;
   let fileBusy = false;
   let destroyed = false;
   onDestroy(() => {
@@ -454,6 +458,7 @@
     if (!el.sourcePng || !health || phase !== "idle") return;
     error = "";
     phase = "submitting";
+    runningLong = false;
     rememberRun(el.id);
     try {
       // A field resize is a Design width change (resizedTargetWidth): the
@@ -466,8 +471,10 @@
       // moved for an element with no stored original.
       const image = el.sourceFile && el.sourceFile.key ? await imageToSend(el) : el.sourcePng;
       const job = await digitize(image, cfg, {
-        onState: (s) => {
-          if (!destroyed) phase = s === "running" ? "running" : "queued";
+        onState: (s, info) => {
+          if (destroyed) return;
+          phase = s === "running" ? "running" : "queued";
+          runningLong = s === "running" && !!info && info.runningMs > LONG_RUN_MS;
         },
         isCancelled: () => destroyed,
       });
@@ -525,6 +532,7 @@
       // A torn-down panel leaves the mark for the next one to resume.
       if (!destroyed) {
         phase = "idle";
+        runningLong = false;
         forgetRun(el.id);
       }
     }
@@ -608,6 +616,8 @@
   // canvas is the previous request.
   $: restitching = pending || stale;
   $: statusLine =
+    phase === "running" && runningLong
+      ? "Still digitizing — a large or detailed design can take up to ten minutes…" :
     phase === "running" ? "Digitizing your art…" :
     phase === "queued" ? "Waiting for the digitizer — another job is running…" :
     phase === "submitting" ? "Sending your art…" : "";
@@ -1950,8 +1960,9 @@
         />
         Even out lettering widths<i class="tipmark" aria-hidden="true"></i>
       </label>
-      <!-- Sew white areas (PipelineConfig.sew_enclosed_white, off by default:
-           it changes the design). The colour and the counters box show only
+      <!-- Sew white areas (PipelineConfig.sew_enclosed_white, on by default
+           since 2026-10-26, Kent's flip; it changes the design, so the box
+           stays the customer's). The colour and the counters box show only
            when it is on. One area at a time is in Edit shapes: its sew
            switch and its colour. -->
       <div class="dgp-sewwhite">

@@ -32,6 +32,7 @@ the OLDEST lines whole to the archive.
 - [Check what shipped before building it](check-shipped-before-building-2026-09-29.md) — Kent asked for a manual digitizer that had shipped; grep MASTER_SCOPE/PRODUCT, offer "show me", drive it
 - [CI pin hygiene](ci-pin-hygiene-2026-10-25.md) — hex `==` prints whole; `tools.ci_repin` re-pins from a run id (dry run unless --apply); shard map max/mean 1.28 → 1.00; advisory default-path-diff job
 - [Corner folds in the Column lane](column-corner-folds-2026-10-23.md) — pro FOLDS one column round every L corner (57 read), cuts only T junctions; `lettering_columns_corner_fold` OFF
+- [Column lane memo](column-lane-memo-2026-10-26.md) — lane rebuilt identical columns (779/2,825) and rail pairings (941/1,413); per-letter `_MEMO` on exact keys: stages 5-7 CPU -12% (MFab hat -20%), 7 DSTs byte-identical
 - [Column rail fit: measured false](column-rail-fit-negative-2026-10-25.md) — 7 pairs: rails read 0.000-0.04 on RUN windows; per-letter wobble is real corners, a fit can't move it. Quote `rail_run`, don't plan a rail fit
 - [Column reach census](column-reach-census-2026-10-25.md) — 257/296 reach on main; misses = white faces + split/script letters, not the tagger; ratio rescues fail held-out
 - [Column width on resize](column-width-on-resize-2026-10-01.md) — ruling 12: drawn width scales, pull comp fixed; store `widthPx`, mm is a view; no clamp
@@ -39,6 +40,7 @@ the OLDEST lines whole to the archive.
 - [Cut after bury](cut-after-bury-2026-10-23.md) — Fremont's 150 extra cuts were letter hops ON the field; the pro walks those: bury, walk on work, cut bare. 187 -> 44 (pro 20)
 - [Cut every jump](cut-every-jump-2026-10-21.md) — `cut_every_jump` OFF: uncut 285 -> 0, but trims 434 -> 674 (pro 246); bury first
 - [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); Fremont OFF md5 follows OpenCV's Intel IPP path; test env capped OPENCV_IPP=avx2
+- [Digitize speed](digitize-speed-2026-10-26.md) — tesseract reads batched 4 at a time (preflight 2.3-2.8x, byte-identical); a loaded laptop inflates process_time ~2.6x; Studio 300 s poll vs service 600 s
 - [Download stale guard](download-stale-guard-2026-10-25.md) — Kent 10-25 "block until re-digitized": machine-file buttons disabled while stitches trail size/garment/settings; one rule (staleness.js); run button lit; no text
 - [Browser fill lane state](embot-browser-fill-lane-state.md) — SNAPSHOT 10-03: #606/#609/#611 built OFF, flips Kent's; island fix #613 merged PRE-audit, cures in #620; cleanup only Kent can run
 - [Closed-ring lane](embot-closed-ring-lane.md) — SNAPSHOT: #621 `offsetRing` on a repeated point, #625 stacked on it; defect 55's offset half is Kent's call
@@ -51,7 +53,7 @@ the OLDEST lines whole to the archive.
 - [fillColumns float pictures](fill-columns-float-pictures-2026-10-08.md) — STANDING: next 10 digitized images shown to Kent carry the off/on float sheet; count 1/10
 - [Row stagger for the browser fill](fill-stagger-2026-10-03.md) — JS fill holes lined up 94%; `fillStagger` built OFF (Kent's flip), +7% stitches. A channel is 3 rows, not 2
 - [Fill turn slant](fill-turn-slant-2026-10-21.md) — `fill_turn_slant` OFF (#1036): turns 0.7 mm along the row; Kent holds OFF until the next sew-out card's OFF/ON swatch
-- [Fine bars satin](fine-bars-satin-2026-10-25.md) — `fine_bars_satin` OFF: pro satins every free thin ink bar (5/5); STEM_MIN_ASPECT or < 1 cross, not 2.5 (rope); 37/38 cure, region kappa 0.905
+- [Fine bars satin](fine-bars-satin-2026-10-25.md) — `fine_bars_satin` ON 10-26: pro satins every free thin ink bar (5/5); STEM_MIN_ASPECT or < 1 cross, not 2.5 (rope); 37/38 cure, region kappa 0.905
 - [Fine detail and the work grid](fine-detail-work-grid-2026-09-30.md) — "RESTAURANT" was lost to the tracer's 4 px/mm grid, not the file; `work_px_per_mm` ON at 8 (Kent 10-01)
 - [Flip eight 2026-10-23](flip-eight-2026-10-23.md) — Kent: "flip the eight ON, hold two" + small_bold; judged by NUMBERS vs the pro; `FLIP_2026_10_23` pins the OFF arm
 - [Flip sheet: layout flags OFF | ON | pro](flip-sheet-2026-10-23.md) — `tools/flip_sheet_renders.py`; diff is a MULTISET (locks sit on stations); x-ray tiles
@@ -66,6 +68,7 @@ the OLDEST lines whole to the archive.
 - [Isolated pieces](isolated-pieces-2026-10-25.md) — +33 = MFab white fragments + block accounting (compare ENTRIES); `absorb_fragments` OFF: MFab white-ON 77 -> 60
 - [Italic bars](italic-bars-2026-10-25.md) — pro crosses italic BARS along the slant; `lettering_columns_italic_lean` OFF moves straight bars (hat 0.31 -> 0.46, pro 0.54), not bowls; read per cross (`italic_cross.py`), never by piece axis
 - [Keyline band](keyline-band-2026-10-23.md) — `enclosed_white_keyline` OFF: satin loop per letter on the ARTWORK polygon; MFab 25,512 → 19,214 (pro 17,568); seam-close the reach
+- [Keyline loop chain](keyline-loop-chain-2026-10-26.md) — `keyline_loop_chain` OFF: loops start nearest the next, hops walked under white still to sew; MFab white-loop cuts 11→5 (pro 5/6)
 - [Lane census](lane-census-2026-10-25.md) — Kent 10-26: 6b NOT built, the button stays. 4 of 14 pro jobs reach flat (all Becker), 8 gradient, 2 photo_scene; 6b as written = the button's file; kappas a wash
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
 - [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
@@ -91,17 +94,20 @@ the OLDEST lines whole to the archive.
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: don't build on past sessions; "what's next" comes from ROADMAP/PRODUCT/MASTER_SCOPE on main
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only, customer sees nothing
 - [The orphan-lane sweep](orphan-lane-sweep-2026-09-30.md) — `pro-overlay-diff` PARKED (Kent); squash merges blind `main..lane`, count added lines; Developer Mode ON
-- [Outline loop pivot](outline-loop-pivot-2026-10-25.md) — corner spikes are SPARSE far ends, not a missing mitre (pro's arc is round); `outline_loop_mitre` OFF
+- [Outline loop pivot](outline-loop-pivot-2026-10-25.md) — corner spikes are SPARSE far ends, not a missing mitre (pro's arc is round); `outline_loop_mitre` ON 10-26
 - [Parallel agent with the embot](parallel-agent-with-embot.md) — SNAPSHOT: audit before a PR is OPEN, not just before arming; never `git stash` in a lane; a stacked PR targets main and says so
 - [Pro intake](pro-intake-2026-10-25.md) — `python -m tools.pro_intake`: new job -> registered pair + census; registry gitignored (client names); preview vs art by content AND name; tesseract confirms lettering
 - [Pro measured values](pro-measured-values-2026-10-23.md) — `pro_measured_values` OFF: fill 3.49, satin 0.37/0.35, bean 0.95 on hat/LC/beanie; Kent flips after sew-out
 - [Pro rules across all jobs](pro-rules-across-jobs-2026-10-21.md) — small text raised to ~4 mm on every job; beanie knockdown 5/5; white interiors sewn; trims from DST, never PES
 - [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean edge cap + run tier on small shapes; the pro fills bubbles bare
 - [Pull comp by stroke](pull-comp-by-stroke-2026-10-22.md) — pro's hat pull FALLS with width: +0.58 at 0.85 mm, +0.42 at 2.6, 0 at 4; `pull_comp_by_stroke` OFF; small text stays small_bold's
+- [Questions roll up to the director](questions-roll-up-to-director-2026-10-27.md) — Kent 10-27: a worker never asks Kent; SendMessage the decision (options, cost, catch, pick) to its starter
 - [Request contract + engine stamp](request-contract-and-engine-stamp-2026-10-25.md) — Studio request fixture; /health engine stamp; launcher replaces a stale idle service
 - [Re-set bays: keep the mouth](reset-bay-mouth-2026-10-25.md) — pro's bay letters NOT wider; he keeps a 0.51 mm mouth (n 18); `small_text_bay_mouth` (cfg.extra, OFF) cuts back the terminal that shuts it
+- [Re-set grows away](reset-grow-away-2026-10-26.md) — `small_text_reset_grow_away` OFF: traced-stroke widening + hold the edge facing a near neighbour; beanie x1.15→1.56
 - [Re-set room and floor](reset-room-floor-2026-10-25.md) — ProSeal under 0.85: re-set widens RETRACED letters by a stale stroke tag (small_text.py:764); pro grows away from the near neighbour; tag fix alone: beanie no_room
 - [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins
+- [Script strokes](script-strokes-2026-10-26.md) — `script_strokes` OFF: script word = one column per pen stroke, path on the art's INK, rails on the polygon; Bridge trace-limited, pro re-set it
 - [Second sitting: eleven flags and the 08-27 engine](second-sitting-eleven-flags-2026-09-28.md) — Kent: "VERY hard to tell"; today beats 08-27 on 7 of 9; `rail_comp` ON 09-29, envelope ON 09-30
 - [SEEDS unservable request, and the worktree blind spot](seeds-request-and-the-worktree-blind-spot-2026-09-22.md) — a worktree lacks the rembg venv (DIFFERENT pipeline)
 - [Sequence like the pro: order is not the gap](sequence-like-pro-2026-10-25.md) — L10 FALSE, not built: pro sews the cap rule and it costs him; ours passes over a reachable piece 18 of 145 extra cuts; gap is cuts inside a piece
@@ -117,6 +123,7 @@ the OLDEST lines whole to the archive.
 - [Split comb per column](split-comb-2026-09-30.md) — per-leg comb flickered on Becker's letters; `_comb_thresholds` 122 → 37; raising 5.0 is a sew-out (gate 1)
 - [Stage-0 flake](stage0-flake-output-alignment-2026-10-25.md) — W3-13: `cv2.magnitude` (IPP AVX2) answered by its OUTPUT buffer's alignment, not float32 box/mean/threads; `_magnitude` in float64. Hash each op under IPP paths first
 - [Studio configurator redesign](studio-configurator-pr1-2026-09-30.md) — wizard → Tesla panel: all four PRs built; PR 3 = Advanced fold (hidden, not removed); Original view still open
+- [Studio waits 600 s](studio-wait-600-2026-10-26.md) — Kent 10-26: poll waits as long as the service (from first "running" + 30 s); "Still digitizing" past 5 min; timeout says it stopped WAITING; rembg 60 -> 120 s
 - [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch (gate 1); MFab IN/AND N are the misses; `text_cluster_part_touching` OFF
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
 
@@ -126,9 +133,10 @@ the OLDEST lines whole to the archive.
 - [Under-fill outer rim](underfill-outer-rim-2026-10-25.md) — a self-hosting ring: pro rims its whole edge in the fill colour; `silhouette_underfill_rim` OFF, on the SEWN edge
 - [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
 - [WITHDRAWN: warn sooner on small files](warn-sooner-small-files-handoff-2026-10-01.md) — Kent 10-02: no warnings, the engine takes the path; replaced by bean letters, built OFF in PR #601
+- [Wave-3 flips](wave3-flips-2026-10-26.md) — bay mouth + sew_enclosed_white ON (Kent "ship both"); bare thread rose only in ProSeal's knockdown 0.20-0.25 mm band; Studio box ticked, sends false
 - [White counters open](white-counters-open-2026-10-26.md) — holes <= 1.5 holder strokes stay open
 - [White faces fill](white-faces-fill-2026-10-25.md) — sew_enclosed_white made Becker 8.4x slower (white faces sewed as Column letters); `sew_enclosed_white_fields_fill` OFF fills them at 22°; house angle hides in fill_angle_deg
-- [White-keyline art gate](white-keyline-art-gate-2026-10-26.md) — Kent: recipe ON only where a dark host holds a white field outlining letters; fires on MFab hat/LC only of 22 jobs
+- [White-keyline art gate](white-keyline-art-gate-2026-10-26.md) — Kent: recipe ON only on MFab-type art (2 of 22 jobs); + fold/skip/absorb (hat 40→30, LC 52→25); absorb bared counters till rider holes kept
 - [White re-rule packet](white-rerule-packet-2026-10-25.md) — under border_from_outline, white ALONE fills Becker's faces (0°) at ≤1.39x CPU; fields_fill costs up to 5.6x (MFab lc); keyline inert; census 29/31
 - [Wide letters: MFab's W](wide-letters-mfab-w-2026-10-23.md) — W never reached the lane: tagger aspect 1.4 (W+E touch, 2.55; W alone 1.58); `text_cluster_wide_letters` OFF; measure MFab with main's rembg
 - [Word legibility instrument](word-legibility-instrument-2026-10-24.md) — `tools/word_legibility.py`: per word, ours vs pro, chance-corrected cc; n/loc is never 0; its two holes are closed in the reach note

@@ -49,3 +49,32 @@ def test_flat_crosses_read_as_the_slant(tmp_path):
     assert g["square_share"] < 0.1
     assert abs(abs(g["slanted_dev_med"]) - SLANT) < 6
     assert abs(g["cross_vs_text_med"]) < 6
+
+
+def _word(tmp_path, gaps_mm=(0.0, 6.0), name: str = "word"):
+    """Upright 2 mm columns 10 mm tall at the given x offsets, joined into one
+    needle-down run by a short walk along the baseline: one word, one group."""
+    pat = pystitch.EmbPattern()
+    for k, x0 in enumerate(gaps_mm):
+        if k:       # the join: a walk along the baseline to the next column
+            for s in range(1, 13):
+                pat.add_stitch_absolute(pystitch.STITCH, (gaps_mm[k - 1] + 1.0 + s * 0.4) * 10, 0)
+        y, left = 0.0, True
+        while y >= -10.0:
+            pat.add_stitch_absolute(pystitch.STITCH, (x0 + (0.0 if left else 2.0)) * 10, y * 10)
+            y -= 0.2
+            left = not left
+        pat.add_stitch_absolute(pystitch.STITCH, (x0 + 1.0) * 10, y * 10)
+    pat.add_command(pystitch.END)
+    path = tmp_path / f"{name}.dst"
+    pystitch.write_dst(pat, str(path))
+    return path
+
+
+def test_a_word_cut_into_letters_counts_each_letters_columns(tmp_path):
+    word = max(sc.census(_word(tmp_path), letters=[0.5])["groups"], key=lambda g: g["area_mm2"])
+    rows = word["letters"]
+    assert [r["letter"] for r in rows] == [0, 1]
+    assert [r["columns"] for r in rows] == [1, 1]
+    assert all(r["breaks"] == 0 for r in rows)          # each letter one unbroken stretch
+    assert all(1.8 <= r["width_mm"] <= 2.2 for r in rows)

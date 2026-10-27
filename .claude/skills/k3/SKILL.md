@@ -131,4 +131,12 @@ merges he'll see in the Studio. One line per routine notification, or nothing. U
 `AskUserQuestion` for every decision, with the cost and catch on each option. Keep a
 running list of decisions waiting on him in `FOREMAN_STATE.md`.
 
+**Workers never ask Kent directly** (Kent, 2026-10-27: "qestions from your workers
+should roll up to you for me to answer"). A worker sends its decision (the question,
+2-4 options each with what it delivers, its cost and its catch, and its pick) to the
+session that started it with `SendMessage`, and carries on with independent work; no
+`AskUserQuestion` and no prose questions to Kent in a worker. The foreman or director
+asks Kent and relays his answer verbatim. The preamble in `templates.md` carries this,
+so every brief does.
+
 See `templates.md` for the preamble, rules broadcast, support-crew brief and sweep message.

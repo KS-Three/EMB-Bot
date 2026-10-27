@@ -174,9 +174,16 @@ def test_a_patch_never_sews_outside_the_artwork():
     """
     result, plan = digitize(BECKER, _cfg(satin_patch_junctions=True))
     by_id = {r.shape_id: r.polygon for r in result.regions}
+    # A patch is FILL inside a shape whose other runs are SATIN (the test above).
+    # A shape that only fills -- Becker's white faces, sewn since 2026-10-26 --
+    # grows under the outline that sews after it by design, and is not a patch.
+    kinds: dict[str, set] = {}
+    for _b, run in plan.iter_runs():
+        kinds.setdefault(run.shape_id, set()).add(run.kind)
     checked = 0
     for _b, run in plan.iter_runs():
-        if run.kind != stitches.FILL or run.shape_id not in by_id:
+        if (run.kind != stitches.FILL or run.shape_id not in by_id
+                or stitches.SATIN not in kinds[run.shape_id]):
             continue
         # A thread's own width of slack, and no more: the patch is clipped to
         # the polygon, but a stitch lands ON that boundary by construction.

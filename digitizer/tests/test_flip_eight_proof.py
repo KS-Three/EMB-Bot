@@ -20,7 +20,10 @@ def test_every_before_value_names_a_config_field_whose_default_moved():
 
 
 def test_the_two_held_flags_are_still_off():
+    # `HELD_OFF` is the 2026-10-23 sitting's record. One of the two has since
+    # been flipped: `sew_enclosed_white` ON 2026-10-26 (Kent, #1112).
     cfg = PipelineConfig()
     for name in HELD_OFF:
-        assert getattr(cfg, name) is False, name
         assert name not in BEFORE
+    assert cfg.cut_every_jump is False
+    assert cfg.sew_enclosed_white is True

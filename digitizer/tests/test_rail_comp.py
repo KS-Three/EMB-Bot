@@ -621,7 +621,10 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
                                        # ... and, the same way, `border_from_outline` (ON
                                        # 2026-10-24) sews Becker's faces as fills, so the
                                        # satin rails this prices are gone
-                                       border_from_outline=PRE_FLIP["border_from_outline"]))
+                                       border_from_outline=PRE_FLIP["border_from_outline"],
+                                       # ... and white sewn (ON 2026-10-26): the faces' fill
+                                       # changes the bare this arm was sized on
+                                       sew_enclosed_white=PRE_FLIP["sew_enclosed_white"]))
         polys = {rg.shape_id: rg.polygon for rg in r.regions}
         num, den = bare_area(polys, p)
         wob = EW.analyse_plan(polys, p, background=set())

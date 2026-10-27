@@ -127,6 +127,10 @@ _SMALL_TEXT_SET = {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1
                    "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
                    "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True}
 _WHITE_SEWN = {"sew_enclosed_white": True, "enclosed_white_keyline": True}
+#: the engine before the 2026-10-26 flips (both ON by default since), with rembg's
+#: timeout pinned: its 60 s default fails under load and reroutes MFab (photo_scene)
+_REMBG_900 = {"photo_prep_background_removal_timeout_s": 900.0}
+_WAVE3_OFF = {"small_text_bay_mouth": False, "sew_enclosed_white": False, **_REMBG_900}
 
 FLAGS: dict[str, dict] = {
     "fill_turn_slant": {
@@ -281,6 +285,17 @@ FLAGS: dict[str, dict] = {
         "note": "Free-standing thin ink bars under the area floor: To a T's speed rules, Fremont's "
                 "separators, the drone's AND DRONE rule, MFab's LLC hairline. The pro satins each; "
                 "ours rings them OFF."},
+    # ---- wave-3 flips (2026-10-26, Kent: bay mouth "Flip ON", white "A ... alone", "Flip,
+    # but prove it first"). Both are ON by default from this PR, so OFF pins both False.
+    "wave3_flips": {
+        "base": dict(_WAVE3_OFF), "base_name": "wave3_off",
+        "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": True, **_REMBG_900},
+        "fixtures": ["becker_hat_large", "mfab_hat", "hotel_fremont_hat"],
+        "metric": "white_stitches", "about": "stitches in white thread", "pr": 1112,
+        "note": "OFF pins both flips False (the engine before 2026-10-26); ON is the shipped "
+                "defaults, the Studio's request as it now goes (white ticked, sewn white). "
+                "fields_fill and the keyline stay OFF in both; rembg's timeout pinned at 900 s in "
+                "both (route checked per cell)."},
     # ---- wave 3 sheet (2026-10-26): every flag built OFF since 10-24 not already above
     "lettering_columns_apex_cut": {
         "sets": {"lettering_columns_apex_cut": True},
@@ -347,22 +362,39 @@ FLAGS: dict[str, dict] = {
                 "field after stage 5. PR #1100: MFab hat 77 -> 60 trims (pro 18); white OFF it is "
                 "inert (DST byte-identical)."},
     "small_text_bay_mouth": {
-        "sets": {"extra": {"small_text_bay_mouth": True}},
+        # a field since #1112 and ON by default (Kent 2026-10-26), so OFF pins it False
+        "base": dict(_WAVE3_OFF), "base_name": "wave3_off",
+        "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": False, **_REMBG_900},
         "fixtures": ["hotel_fremont_hat", "proseal_hat"],
         "metric": "small_lines", "about": "small lines: built, sewn height mm (census reader)",
         "pr": 1085,
-        "note": "A cfg.extra key on the re-set (ON on main since 10-23): the widening shuts a bay "
-                "where a terminal curls back to its own letter, so Fremont's EST 1895 sews as "
-                "BST 1893. ON cuts the terminal back along its stroke until the mouth holds the "
-                "pro's 0.51 mm (n 18). No letter's height moves, so read the picture, not the "
-                "column; ProSeal is the byte-identical control."},
+        "note": "On the re-set: the widening shuts a bay where a terminal curls back to its own "
+                "letter, so Fremont's EST 1895 sews as BST 1893. ON cuts the terminal back along "
+                "its stroke until the mouth holds the pro's 0.51 mm (n 18). No letter's height "
+                "moves, so read the picture, not the column; ProSeal is the byte-identical control. "
+                "Flipped ON by #1112, so OFF here pins it (and white) False."},
+    # ---- script words (2026-10-26, Kent: "Measure, then build OFF")
+    "script_strokes": {
+        "base": {"photo_prep_background_removal_timeout_s": 900}, "base_name": "rembg900",
+        "sets": {"photo_prep_background_removal_timeout_s": 900, "script_strokes": True},
+        "fixtures": ["bridge_hat", "bridge_lc", "tires_hat_3d", "machine_hat"],
+        "metric": "script_square", "about": "word's crosses square to the stroke (script_census)",
+        "pr": 1119,
+        "note": "A script word sewn one satin column per pen stroke, crosses square to the stroke, "
+                "the path read on the art's ink. Both arms pin the rembg timeout at 900 s (Tires is "
+                "photo_scene). The pro RE-SET Bridge in a taller font of his own (not reproducible "
+                "from a trace) and sews it thinner: his crosses 1.56 mm at hat against the drawn "
+                "1.76 + our 0.4 mm pull a side -- a smaller script pull is gate 1, not built."},
 }
 
-#: The wave-3 sheet (2026-10-26): the flags its run and report carry.
-WAVE3 = ["lettering_columns_apex_cut", "text_cluster_part_touching", "outline_loop_mitre",
-         "fine_bars_satin", "silhouette_underfill_rim", "keyline_fold_slivers",
+#: The wave-3 sheet (2026-10-26): the flags its run and report carry. The bay mouth left
+#: it when #1112 flipped it ON; its row stays, for the OFF | ON | pro of that PR.
+# `outline_loop_mitre` and `fine_bars_satin` left it when Kent flipped them ON,
+# 2026-10-26 ("Outline corners pivot", "Fine bars as satin"); their rows stay
+WAVE3 = ["lettering_columns_apex_cut", "text_cluster_part_touching",
+         "silhouette_underfill_rim", "keyline_fold_slivers",
          "skip_covered_shapes", "lettering_columns_italic_lean", "monoline_script_satin",
-         "fill_section_travel", "absorb_fragments", "small_text_bay_mouth"]
+         "fill_section_travel", "absorb_fragments"]
 
 
 def flag_kind(flag: str) -> str:
@@ -501,6 +533,10 @@ def digitize_cell(slug: str, arm: str, cache: Path, engine: str | None) -> dict:
         return json.loads((out / "stats.json").read_text(encoding="utf-8"))
     fx = fixture_files(slug)
     sets = arm_sets(arm)
+    # a lane has no rembg venv of its own: point stage 1 at the primary checkout's, or a
+    # photo_scene job (MFab) silently takes the no-background-removal route (2026-10-26)
+    from tools.enclosed_pro_census import _rembg
+    rembg = _rembg()
     request_sets = {k: v for k, v in sets.items() if k != "extra"}
     with config_extra(sets.get("extra")):
         d = pp.digitize(fx["art"], fx["width_mm"], fx["garment"], request_sets)
@@ -520,7 +556,10 @@ def digitize_cell(slug: str, arm: str, cache: Path, engine: str | None) -> dict:
     stats = {"slug": slug, "arm": arm, "sets": sets, "engine": sha, "tagged": tagged,
              "engine_root": str(engine_root()), "width_mm": fx["width_mm"],
              "garment": fx["garment"], "secs": round(d.secs, 1),
-             "plan_stitches": d.plan.stats.stitch_count, "plan_trims": d.plan.stats.trims}
+             "plan_stitches": d.plan.stats.stitch_count, "plan_trims": d.plan.stats.trims,
+             "rembg": rembg,
+             "background_removed": any((w.get("code") == "PHOTO_BACKGROUND_REMOVED")
+                                       for w in (getattr(d.plan, "warnings", None) or []))}
     (out / "stats.json").write_text(json.dumps(stats, indent=1), encoding="utf-8")
     return stats
 
@@ -822,6 +861,29 @@ def white_under_1mm(_stream, _fx, cell) -> str:
     return f"{white:,} ({short:,} under 1 mm)"
 
 
+#: the colour block holding the script word, (ours, the pro's), for `script_square`
+SCRIPT_BLOCKS = {"bridge_hat": (3, 4), "bridge_lc": (2, 4), "tires_hat_3d": (0, 1),
+                 "machine_hat": (0, 1)}
+
+
+def script_square(_stream, fx, cell) -> str:
+    """`tools.script_census` over the word's colour block (`SCRIPT_BLOCKS`):
+    the share of its satin crosses square to the stroke (within 20 deg, the
+    stroke read off the file's own coverage), over all the block's groups,
+    weighted by crosses read, and its satin columns."""
+    from tools import script_census as sc
+    blocks = SCRIPT_BLOCKS.get(fx["slug"])
+    if blocks is None:
+        return "n/a (no block named)"
+    res = sc.census(Path(cell["dst"]), blocks[1] if cell.get("runs") is None else blocks[0])
+    gs = [g for g in res["groups"] if g["read"] and g["square_share"] is not None]
+    read = sum(g["read"] for g in gs)
+    if not read:
+        return "no crosses read"
+    share = sum(g["square_share"] * g["read"] for g in gs) / read
+    return f"square {share:.2f} of {read} read, {sum(g['columns'] for g in res['groups'])} columns"
+
+
 def tagged(_stream, _fx, cell) -> str:
     stats = cell.get("stats") or {}
     return str(stats["tagged"]) if "tagged" in stats else "n/a (not in the DST)"
@@ -832,7 +894,7 @@ METRICS = {"sub_half_mm": sub_half_mm, "fill_underlay": fill_underlay, "uncut_ju
            "locks": locks, "short_bare": short_bare, "letter_height": letter_height,
            "stagger": stagger, "white_under_1mm": white_under_1mm, "tagged": tagged,
            "sub_1mm": sub_1mm, "satin_loops": satin_loops, "travel_runs": travel_runs,
-           "small_lines": small_lines, "run_shapes": run_shapes}
+           "small_lines": small_lines, "run_shapes": run_shapes, "script_square": script_square}
 
 
 # ------------------------------------------------------------------- diff

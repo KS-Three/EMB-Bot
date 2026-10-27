@@ -81,6 +81,10 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     detect_photographic: true,
     // ...and a detected face takes the flat lane (Kent's ruling 2026-09-30).
     faces_route_flat: true,
+    // "Sew white areas", ticked by default since Kent's flip 2026-10-26,
+    // with the thread its colour picker starts on.
+    sew_enclosed_white: true,
+    sew_enclosed_rgb: [255, 255, 255],
     thread_brand: "madeira-rayon",
     garment_id: "left_chest",
   });
@@ -417,6 +421,92 @@ test("pollJob throws the job's error for a failed job", async () => {
   const { pollJob } = await import("./digitizer.js");
   const fetchFn = async () => ({ ok: true, json: async () => ({ state: "error", error: "ValueError: bad art" }) });
   await expect(pollJob("j1", { fetchFn, intervalMs: 0 })).rejects.toThrow(/bad art/);
+});
+
+// The poll waits as long as the service runs a job (Kent, 2026-10-26: "Wait
+// up to 600 s (Recommended)"). The service fails a job RUNNING past 600 s and
+// does not count its queue; the Studio times a running job from the first
+// poll that read "running", plus a grace, so the service's own verdict lands
+// first. Fake timers: Date.now and setTimeout advance together.
+describe("pollJob waits as long as the digitizer runs a job", () => {
+  async function poller(stateAt) {
+    stubStorage({});
+    const { pollJob, SERVICE_JOB_TIMEOUT_MS, POLL_GRACE_MS, LONG_RUN_MS } = await import("./digitizer.js");
+    const t0 = Date.now();
+    const fetchFn = async () => ({ ok: true, json: async () => stateAt(Date.now() - t0) });
+    return { pollJob, fetchFn, SERVICE_JOB_TIMEOUT_MS, POLL_GRACE_MS, LONG_RUN_MS };
+  }
+  const MIN = 60 * 1000;
+
+  it("the limit is the service's 600 s plus a grace, not the old 300 s", async () => {
+    vi.useFakeTimers();
+    try {
+      const { pollJob, fetchFn, SERVICE_JOB_TIMEOUT_MS, POLL_GRACE_MS } = await poller(() => ({ state: "running" }));
+      expect(SERVICE_JOB_TIMEOUT_MS).toBe(600000);
+      expect(POLL_GRACE_MS).toBeGreaterThan(0);
+      expect(POLL_GRACE_MS).toBeLessThanOrEqual(60000);
+      let err = null;
+      const p = pollJob("j1", { fetchFn, intervalMs: 1000 }).catch((e) => { err = e; });
+      await vi.advanceTimersByTimeAsync(SERVICE_JOB_TIMEOUT_MS);     // ten minutes: still waiting
+      expect(err).toBeNull();
+      await vi.advanceTimersByTimeAsync(POLL_GRACE_MS + 2000);
+      await p;
+      expect(err && err.kind).toBe("timeout");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a job slow to leave the queue is timed from when it started RUNNING", async () => {
+    vi.useFakeTimers();
+    try {
+      // queued 9 minutes, then running 9.5 more, then done: 18.5 minutes in
+      // all, but no single span past the service's limit.
+      const { pollJob, fetchFn } = await poller((ms) =>
+        ms < 9 * MIN ? { state: "queued" } : ms < 18.5 * MIN ? { state: "running" } : { state: "done", design: { stitches: [] } });
+      let out = null;
+      const p = pollJob("j1", { fetchFn, intervalMs: 1000 }).then((j) => { out = j; }, (e) => { out = e; });
+      await vi.advanceTimersByTimeAsync(19 * MIN);
+      await p;
+      expect(out && out.state).toBe("done");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a queue that never moves still gives up, timed from the first poll", async () => {
+    vi.useFakeTimers();
+    try {
+      const { pollJob, fetchFn, SERVICE_JOB_TIMEOUT_MS, POLL_GRACE_MS } = await poller(() => ({ state: "queued" }));
+      let err = null;
+      const p = pollJob("j1", { fetchFn, intervalMs: 1000 }).catch((e) => { err = e; });
+      await vi.advanceTimersByTimeAsync(SERVICE_JOB_TIMEOUT_MS + POLL_GRACE_MS + 2000);
+      await p;
+      expect(err && err.kind).toBe("timeout");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("onState hears how long the job has run, past the old five minutes", async () => {
+    vi.useFakeTimers();
+    try {
+      const { pollJob, fetchFn, LONG_RUN_MS } = await poller((ms) =>
+        ms < 2000 ? { state: "queued" } : ms < 6 * MIN ? { state: "running" } : { state: "done", design: { stitches: [] } });
+      expect(LONG_RUN_MS).toBe(300000);
+      const seen = [];
+      const p = pollJob("j1", { fetchFn, intervalMs: 1000, onState: (s, info) => seen.push([s, info.runningMs]) });
+      await vi.advanceTimersByTimeAsync(7 * MIN);
+      await p;
+      expect(seen[0]).toEqual(["queued", 0]);
+      const running = seen.filter(([s]) => s === "running").map(([, ms]) => ms);
+      expect(running[0]).toBe(0);                                   // timed from the first "running" read
+      expect(running.every((ms, i) => i === 0 || ms >= running[i - 1])).toBe(true);
+      expect(Math.max(...running)).toBeGreaterThan(LONG_RUN_MS);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 // A re-digitize that keeps showing the PREVIOUS run's result (2026-10-15).
@@ -2702,12 +2792,19 @@ describe("resizedTargetWidth", () => {
   });
 });
 
-test("sew_enclosed_white rides buildDigitizeConfig only when on, with its thread and counters", async () => {
+test("sew_enclosed_white is sent both ways, its thread and counters only when on", async () => {
   const { buildDigitizeConfig, hexToRgb } = await import("./digitizer.js");
-  const off = buildDigitizeConfig(digitizedElement(), PROJECT);
-  for (const k of ["sew_enclosed_white", "sew_enclosed_rgb", "sew_enclosed_counters"]) expect(k in off).toBe(false);
-  // Counters ticked but the option off sends nothing: they ride only with it.
-  const counterOnly = digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_counters: true } });
+  // ON by default since 2026-10-26 (Kent's flip): a fresh element asks for it.
+  const fresh = buildDigitizeConfig(digitizedElement(), PROJECT);
+  expect(fresh.sew_enclosed_white).toBe(true);
+  expect(fresh.sew_enclosed_rgb).toEqual([255, 255, 255]);
+  // Unticked says `false`: absent is the service's own True now.
+  const offEl = digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_white: false } });
+  const off = buildDigitizeConfig(offEl, PROJECT);
+  expect(off.sew_enclosed_white).toBe(false);
+  for (const k of ["sew_enclosed_rgb", "sew_enclosed_counters"]) expect(k in off).toBe(false);
+  // Counters ticked but the option off sends no counters: they ride only with it.
+  const counterOnly = digitizedElement({ params: { ...offEl.params, sew_enclosed_counters: true } });
   expect("sew_enclosed_counters" in buildDigitizeConfig(counterOnly, PROJECT)).toBe(false);
   const on = buildDigitizeConfig(digitizedElement({ params: { ...digitizedElement().params, sew_enclosed_white: true } }), PROJECT);
   expect(on.sew_enclosed_white).toBe(true);

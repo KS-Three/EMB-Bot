@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """bay_census: is each bay of a small sewn letter OPEN, ours beside the
 professional's? The census behind `small_text.BAY_MOUTH_MM` and the proof
-sheet of `cfg.extra["small_text_bay_mouth"]` (W3-02, 2026-10-25).
+sheet of `cfg.small_text_bay_mouth` (W3-02, 2026-10-25; ON since 2026-10-26).
 
 WHY. The re-set (`small_text_cap_letter_gap_mm`) grows Fremont's EST 1895 to
 the pro's ~4 mm bold satin, and its widening sews three bays shut: E reads
@@ -55,9 +55,13 @@ if str(DIGITIZER) not in sys.path:
 
 ZIP = DIGITIZER.parent / "Embroidery Files.zip"
 #: the re-set as #1057 makes it the default (Kent 2026-10-23); None until then
+#: The re-set, with the switch itself pinned OFF in the request: the "on" arm
+#: turns it on at the call (`functools.partial` below), so OFF stays the
+#: pre-flip re-set now that the default is ON (2026-10-26).
 RESET = {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1.05,
          "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
-         "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True}
+         "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True,
+         "small_text_bay_mouth": False}
 ARMS = ("off", "on")
 #: letters whose mouths set the target: the three Fremont shut
 MOUTH_GLYPHS = "ES5"

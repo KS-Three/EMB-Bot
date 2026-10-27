@@ -102,6 +102,8 @@ test("a fresh upload sends no key the customer did not choose", () => {
   const allowed = new Set([
     "target_width_mm", "max_colors", "satin", "detail_layer", "edge_cap",
     "detect_photographic", "faces_route_flat", "garment_id", "garment_rgb",
+    // "Sew white areas", ticked by default since Kent's flip 2026-10-26
+    "sew_enclosed_white", "sew_enclosed_rgb",
   ]);
   for (const c of fixture.cases) {
     for (const k of Object.keys(c.config)) expect(allowed.has(k), `${c.name} sends ${k}`).toBe(true);
