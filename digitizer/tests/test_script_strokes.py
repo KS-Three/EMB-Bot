@@ -1,5 +1,6 @@
 """A script word sews as the pen wrote it (`cfg.script_strokes`, built OFF
-2026-10-26).
+2026-10-26; ON by default since Kent's flip the same day, "Flip it ON
+(Recommended)").
 
 The fixtures: LOOPS, a joined cursive line (a prolate cycloid, three loops,
 0.9 mm pen) -- what the door must take; a FRAME (a ring round other art), a
@@ -71,12 +72,14 @@ def _md5(runs) -> str:
 
 
 # ------------------------------------------------------------------- default
-def test_default_off():
-    assert PipelineConfig().script_strokes is False
+def test_default_on():
+    assert PipelineConfig().script_strokes is True
 
 
 def test_off_is_byte_identical():
-    assert _md5(_runs(LOOPS)) == OFF_MD5["loops"]
+    assert _md5(_runs(LOOPS, script_strokes=False)) == OFF_MD5["loops"]
+    assert _md5(_runs(SWOOSH, script_strokes=False)) == OFF_MD5["swoosh"]
+    # a shape the door refuses sews the same with it ON
     assert _md5(_runs(SWOOSH)) == OFF_MD5["swoosh"]
 
 
@@ -87,7 +90,7 @@ def test_the_door_takes_a_joined_word_and_nothing_else():
         assert not SS.script_reading(refused).is_script
     on = PipelineConfig(script_strokes=True)
     assert SS.script_word(_region(LOOPS), on)
-    assert not SS.script_word(_region(LOOPS), PipelineConfig())          # flag off: never read
+    assert not SS.script_word(_region(LOOPS), PipelineConfig(script_strokes=False))  # flag off: never read
     assert not SS.script_word(_region(LOOPS, tier="fill"), on)           # a pinned tier stands
     assert not SS.script_word(_region(LOOPS, text_candidate=True), on)   # text is the Column lane's
 

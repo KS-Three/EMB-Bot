@@ -51,7 +51,8 @@ def test_a_flag_that_is_on_is_neither_a_row_nor_stale(real):
     assert _row(real, "border_by_size") is None
     # Kent's 2026-10-26 flips: once HELD (white) and OFF (the bay mouth, the
     # grow-away), now ON
-    for name in ("sew_enclosed_white", "small_text_bay_mouth", "small_text_reset_grow_away"):
+    for name in ("sew_enclosed_white", "small_text_bay_mouth", "small_text_reset_grow_away",
+                 "script_strokes"):
         assert _row(real, name) is None
         assert name not in {s["name"] for s in real["stale"]}
 
