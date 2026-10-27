@@ -454,3 +454,26 @@ def test_the_artifact_page_is_a_fragment_with_theme_tokens(tmp_path):
     assert "body{" in page and "background:var(--bg)" in page
     whole = fsr.html(rows)
     assert whole.startswith("<!doctype html>") and "viewport-fit=cover" in whole
+
+
+def test_the_pros_tiles_live_apart_and_the_local_page_keeps_them(tmp_path):
+    """Kent 2026-10-27, "Stop new ones, keep old (Recommended)": the pro's tiles
+    are written outside docs/. The inlined page (local) still shows all of
+    them; the markdown names them without a link into the gitignored folder."""
+    rows = _rows(tmp_path)
+    pro_dir = tmp_path / "pro"
+    pro_dir.mkdir()
+    for r in rows:
+        for name in (r.get("images") or {}).values():
+            if fsr.is_pro_image(name):
+                (tmp_path / name).rename(pro_dir / name)
+    assert sorted(p.name for p in pro_dir.iterdir()) == [
+        "fill_underlay_cross__mfab_hat__pro.jpg", "fill_underlay_cross__mfab_hat__pro_xray.jpg",
+        "tie_in_off__mfab_hat__pro.jpg"]
+    page, _ = fsr.inline_html(rows, tmp_path, "2026-10-27", pro_dir=pro_dir)
+    assert len(_imgs(page)) == 11 and all(s.startswith("data:image/jpeg;base64,") for s in _imgs(page))
+    md = fsr.markdown(rows, tmp_path / "renders", tmp_path / "doc.md")
+    assert "__pro" not in md and "pro (local only)" in md and "__off.jpg)" in md
+    assert fsr.image_file("a__b__pro.jpg", tmp_path, pro_dir) == pro_dir / "a__b__pro.jpg"
+    assert fsr.image_file("a__b__where.jpg", tmp_path, pro_dir) == tmp_path / "a__b__where.jpg"
+    assert fsr.image_file("a__b__pro.jpg", tmp_path) == tmp_path / "a__b__pro.jpg"
