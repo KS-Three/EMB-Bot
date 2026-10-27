@@ -478,7 +478,8 @@ def fremont_on():
     from tools import fremont_triage as ft
     return ft.run_arm("main", 80.0, None, preflight=False,
                       overrides={"detail_spokes": True, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
-                                 **WAVE3_2026_10_26_OFF})
+                                 **WAVE3_2026_10_26_OFF,
+                                 **RECIPE_2026_10_27})      # as the OFF arm: this prices the spokes
 
 
 def test_test_environment_caps_ipp_at_avx2():
