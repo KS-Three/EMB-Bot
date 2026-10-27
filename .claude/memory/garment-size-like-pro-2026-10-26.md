@@ -28,11 +28,15 @@ cap vs his 62-64) and the wide ones WIDER (127 vs 114.3).
 (he sews it 22% smaller), MFab hat +8%, Bridge LC (he sews a square 76.6 where
 the box gives 64.5), the two Gaulke beanies disagree (93.8 / 110.5 wide).
 
-**LC height 64.5 -> 76.5, Kent 2026-10-27** ("Raise LC box to 76.5 tall (Recommended)"), after the Bridge census
-named Bridge LC the box's one real miss (he sews 76.6 x 76.5; the box fitted 64.5 wide, -15.8%). Of the 8 paired LC
-jobs two move: Bridge -15.8% -> -0.1%, and Machine's 1.385:1 art goes 89.3 -> 96.0 wide against his 89.5 (-0.2% ->
-+7.3%), because a design squarer than 1.255:1 stops being height-limited. Median |width error| stays 0.84%; rows over
-5% stay three (Becker chest small +25.5%, Gaulke Plowing LC +7.4%, now Machine). Wider LCs are width-limited: no move.
+**LC is 96 wide, 76.5 tall AND area 5,800 mm2, Kent 2026-10-27.** The Bridge census named Bridge LC the box's one real
+miss (he sews 76.6 x 76.5; the 64.5 box fitted 64.5 wide, -15.8%); Kent: "Raise LC box to 76.5 tall (Recommended)". The
+box alone sent Machine's 1.385:1 LC to 96.0 against his 89.5 (+7.3%), so Kent: "Measure an area rule first
+(Recommended)". The three LCs no width cap holds (Bridge, Machine, Becker large) are sewn at one area of OUR art's
+box at his width, w^2 / aspect = 5,868 / 5,784 / 5,749 (mean 5,800; each held out, the other two predict it within 1%);
+the width-limited ones sit at 95.2-96.7. `PRO_PLACEMENT_MM.left_chest.areaMm2`, `autoFitAreaMm2`, in `fitScale`
+and the app's `predictedFit`. Bridge 76.2, Machine 89.6, wide LCs 96; median |err| 0.84% -> 0.72%, rows over 5% 3 -> 2.
+Not explained, by this or any box: Becker's chest small (+25.5%, a smaller variant) and Gaulke Plowing's LC (+7.4%, art
+aspect from his file). Hats are NOT area-limited (his areas 3,580-6,328, height stops them at 64): no area on hats.
 
 **Traps:** a lane has no `scratch_kent` -- find the registry up the tree;
 the registry spells job folders differently from the zip ("To a T-Becker
