@@ -119,6 +119,7 @@ the OLDEST lines whole to the archive.
 - [Under-fill knock-outs](underfill-knockouts-2026-10-26.md) — Fremont star: a covered host-colour mark never merges; Becker: letter host stops inside the loops; Gaulke is sew_enclosed_white
 - [Under-fill outer rim](underfill-outer-rim-2026-10-25.md) — a self-hosting ring: pro rims its whole edge in the fill colour; `silhouette_underfill_rim` OFF, on the SEWN edge
 - [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
+- [Upload full-res](upload-full-res-2026-10-27.md) — SVG/GIF/EXIF JPEG go up as a 2,800-px render, OFF; helps only under 8 px/mm of preview; flip and service EXIF are Kent's
 - [Wave-3 flips](wave3-flips-2026-10-26.md) — bay mouth + sew_enclosed_white ON (Kent "ship both"); bare thread rose only in ProSeal's knockdown 0.20-0.25 mm band; Studio box ticked, sends false
 - [White counters open](white-counters-open-2026-10-26.md) — holes <= 1.5 holder strokes stay open
 - [White faces fill](white-faces-fill-2026-10-25.md) — sew_enclosed_white made Becker 8.4x slower (white faces sewed as Column letters); `sew_enclosed_white_fields_fill` OFF fills them at 22°; house angle hides in fill_angle_deg

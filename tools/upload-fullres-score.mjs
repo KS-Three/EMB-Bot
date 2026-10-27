@@ -393,7 +393,7 @@ async function main() {
             rgba.set([r, gg, b, 255], i * 4);
           }
           const { encodePNG } = await import("./png.mjs");
-          writeFileSync(path.join(outDir, `${name}__${arm}__overlay.png`), Buffer.from(encodePNG(cw, ch, rgba)));
+          writeFileSync(path.join(outDir, `${name}__${size}px__overlay.png`), Buffer.from(encodePNG(cw, ch, rgba)));
         }
         const whole = { iou: iou(gt, cov), edge: edgeDeviation(gt, cov, mmPerPx), diag };
         const bands = lineBands.map((b) => ({
@@ -439,7 +439,7 @@ async function main() {
   const withBands = results.filter((r) => r.bands.length);
   if (withBands.length) {
     md.push("", "Per line of lettering (small_text_logo.svg):", "", "| line | send | IoU | edge mean mm | edge p95 mm |", "|---|---|---:|---:|---:|");
-    for (const r of withBands) for (const b of r.bands) md.push(`| ${b.name} | ${r.arm.toUpperCase()} | ${fmt(b.iou, 4)} | ${fmt(b.edge.both.mean, 3)} | ${fmt(b.edge.both.p95, 3)} |`);
+    for (const r of withBands) for (const b of r.bands) md.push(`| ${b.name} | ${r.arm.toUpperCase()} ${r.size.toLocaleString("en-US")} px | ${fmt(b.iou, 4)} | ${fmt(b.edge.both.mean, 3)} | ${fmt(b.edge.both.p95, 3)} |`);
   }
   writeFileSync(path.join(outDir, "score.md"), md.join("\n") + "\n");
   console.log(md.join("\n"));
