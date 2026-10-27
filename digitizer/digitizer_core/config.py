@@ -3405,6 +3405,25 @@ class PipelineConfig:
     # False: neither runs, byte for byte; `tests/conftest.py` PRE_FLIP pins
     # it False. Tests: `tests/test_text_cluster_part_touching.py`.
     text_cluster_part_touching: bool = True
+    # A frame is not a footprint (2026-10-27, built OFF). The text tagger
+    # drops a letter candidate whose bbox sits inside a larger candidate's
+    # (`textcluster._drop_nested`: real letters never nest), and the letter
+    # door admits any region up to 60 mm tall. Bridge hat's black wheel
+    # (62.6 x 55.1 mm, its bbox holding the whole design) passes, so 8 of the
+    # hat's 15 text pieces nested away and none reached the Column lane (2 of
+    # the pro's 35 folds on its text); the left chest's wheel is 65.5 mm,
+    # refused at the door, and 6 of its 9 tag (20 folds against his 39). ON:
+    # a candidate taller than `textcluster.NEST_FOOTPRINT_MAX_X` (6.0) times
+    # the pool's median non-rescued candidate height nests nothing. The hat's
+    # wheel is 13.7x (median 4.01 mm), the next tallest candidate 1.9x, the
+    # left chest's tallest 2.7x. Segmentation and tagging, not fabric:
+    # layout, judged in the preview. NECESSARY, NOT SUFFICIENT: the counter-
+    # factual read 0 -> 8 of 15 pieces in the lane and folds 2 -> 5 against
+    # his 35; the letters set on the ring's left side stay out (aspect 1.47-
+    # 1.52, a rotation-aware door is the next lane). The house-angle group
+    # (`_lettering_groups`) and the rescued round keep today's drop. False:
+    # byte for byte. Tests: `tests/test_text_cluster_nest_guard.py`.
+    text_cluster_nest_guard: bool = False
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
@@ -5729,6 +5748,22 @@ class PipelineConfig:
     # the route returns first. Tests: `tests/test_script_strokes.py`,
     # `tests/test_script_flow.py`.
     script_strokes: bool = True
+    # Script strokes sewn at the art's drawn width where they crowd (2026-10-27,
+    # built OFF; Kent: "Build it OFF (Recommended)"; `script_strokes.py`). With
+    # `script_strokes` ON a cross reaches the traced polygon plus the pull, and
+    # on Bridge hat 24.9% of the word's thread is laid twice (the pro's 10.5%,
+    # both read off the files). On a word laying more twice than the pro ever
+    # does (`script_strokes.CROWD_WORD_SHARE`, 10.5%) a cross side whose thread
+    # would run more than `CROWD_DEPTH_MM` (1.0, the pro's median overlap
+    # depth) into another stroke's stops at the art's drawn half-width, the
+    # pull on top as today; every other side still reaches the polygon. Bridge
+    # hat 24.9 -> 19.3%, LC 18.5 -> 15.4, To a T 13.5 -> 11.5; bare polygon
+    # +1.3 / +0.9 mm2. Tires stays under the gate, byte for byte. Drawn width
+    # plus today's pull is not narrower than the drawn stroke: no width or
+    # pull constant moves, not gate 1.
+    # Layout, judged in the preview (Kent, 2026-10-22). False is the plan as it
+    # was, byte for byte. Tests: `tests/test_script_strokes.py`.
+    script_strokes_drawn_width: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()

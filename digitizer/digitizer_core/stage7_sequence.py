@@ -3404,7 +3404,7 @@ def sequence(
                     end_near=exit_near if cfg.satin_exit_toward_next else None,
                     inside_connectors=cfg.lettering_columns_inside_connectors,
                     inside_stagger=cfg.lettering_columns_inside_stagger,
-                    ink=ink_source)
+                    ink=ink_source, drawn_width=cfg.script_strokes_drawn_width)
                 if not report["empty"]:
                     return runs, report, False
             # Lettering as Columns (`cfg.lettering_columns`, 2026-10-07): a
