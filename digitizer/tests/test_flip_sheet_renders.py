@@ -200,9 +200,9 @@ def test_a_row_with_a_third_cell():
 def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
     from digitizer_core import PipelineConfig
     prs = {f: fsr.FLAGS[f]["pr"] for f in fsr.WAVE3}
-    assert prs == {"lettering_columns_apex_cut": 1088, "text_cluster_part_touching": 1080,
+    assert prs == {"lettering_columns_apex_cut": 1088,
                    "silhouette_underfill_rim": 1096, "keyline_fold_slivers": 1102,
-                   "skip_covered_shapes": 1102, "lettering_columns_italic_lean": 1079,
+                   "skip_covered_shapes": 1102,
                    "monoline_script_satin": 1063, "fill_section_travel": 1091,
                    "absorb_fragments": 1100}
     cfg = PipelineConfig()
@@ -220,8 +220,10 @@ def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
               "silhouette_underfill_panels", "small_text_bay_mouth"):
         assert f not in fsr.WAVE3
     assert cfg.small_text_bay_mouth is True and "small_text_bay_mouth" in fsr.FLAGS
-    # ... and the two Kent flipped from this sheet, 2026-10-26: off the list, rows kept, ON
-    for f in ("outline_loop_mitre", "fine_bars_satin"):
+    # ... and the two Kent flipped from this sheet, 2026-10-26, and the two from wave 5,
+    # 2026-10-27: off the list, rows kept, ON
+    for f in ("outline_loop_mitre", "fine_bars_satin", "text_cluster_part_touching",
+              "lettering_columns_italic_lean"):
         assert f not in fsr.WAVE3 and f in fsr.FLAGS and getattr(cfg, f) is True, f
 
 
@@ -297,12 +299,16 @@ def test_wave_five_rows_are_layout_flags_each_asked_or_labelled():
     for f, s in fsr.W5.items():
         assert f in fsr.FLAGS and fsr.flag_kind(f) == "LAYOUT", f
         assert s["ask"] or s.get("label"), f          # a row shown and not asked says why
-    for f in asked:                                    # still OFF: the flips are Kent's
-        sets = fsr.FLAGS[f]["sets"]
-        if "extra" in sets:
-            assert not (cfg.extra or {}).get(f), f
+    # Kent's rulings on the four, 2026-10-27: bean ink with part_touching "Both ON
+    # (Recommended)", italic lean "Flip ON (Recommended)", fill_section_travel "Hold OFF
+    # (Recommended)"
+    ruled_on = {"bean_ink_outlined_letters", "text_cluster_part_touching",
+                "lettering_columns_italic_lean"}
+    for f in asked:
+        if "extra" in fsr.FLAGS[f]["sets"]:            # a cfg.extra key: held, still OFF
+            assert f not in ruled_on and not (cfg.extra or {}).get(f), f
         else:
-            assert getattr(cfg, f) is False, f
+            assert getattr(cfg, f) is (f in ruled_on), f
     # off the sheet, by the brief: ruled, held for fabric, or already ON (script_strokes: ruled
     # ON 2026-10-26, its flip in flight)
     for f in ("sew_enclosed_white_fields_fill", "cut_every_jump", "pull_comp_by_stroke",

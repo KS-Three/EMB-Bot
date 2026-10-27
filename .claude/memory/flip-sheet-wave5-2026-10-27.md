@@ -1,6 +1,6 @@
 ---
 name: flip-sheet-wave5-2026-10-27
-description: Flip sheet wave 5 -- every layout flag still waiting on Kent, OFF|ON|pro on main ce8cc87d (4a087210); four asked, gate 3 clear on all; the keyline trio is inert off MFab so its three switches are not asked; adopt rule held byte for byte
+description: Flip sheet wave 5 -- every layout flag still waiting on Kent, OFF|ON|pro on main ce8cc87d (4a087210); four asked, gate 3 clear on all; Kent flipped bean ink + part_touching + italic lean ON, held fill_section_travel OFF; the keyline trio is inert off MFab so its three switches are not asked
 metadata:
   type: project
 ---
@@ -36,8 +36,15 @@ n/a and the verdict silently covers fewer jobs. Re-render an ASKED row's
 adopted cells (Bridge's fill_section_travel came back byte-identical to the
 adopted ones, confirming the OFF-md5 adopt rule, and gave the read).
 
-Kent's answers: (pending -- recorded here and in the PR body when the
-director relays them).
+Kent's answers, 2026-10-27, relayed by the director (flip PR off #1140):
+- bean ink + part_touching: "Both ON (Recommended)" -- both flipped ON.
+  Trade-offs taken with them: on #1128's lettering board (LC 6-10 mm line)
+  reach dips 0.57 -> 0.50 and rail wobble p90 rises 0.035 -> 0.043 mm; exposed
+  travel (`travel_cover`, no veto) rises on MFab, hat 23.3 -> 36.1 mm and LC
+  35.8 -> 41.1 mm with both, bare thread 0 at every clearance.
+- `fill_section_travel`: "Hold OFF (Recommended)" -- stays an OFF `cfg.extra` key.
+- `lettering_columns_italic_lean`: "Flip ON (Recommended)" -- flipped ON.
+The OFF arms are `tests/conftest.py`'s `FLIP_2026_10_27` (in PRE_FLIP).
 
 **How to apply:** before asking a cluster of flags, run one combined arm per
 job and ask only where its DST differs from OFF; and pair flags whose cures
