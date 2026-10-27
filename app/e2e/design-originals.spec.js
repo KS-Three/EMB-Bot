@@ -325,9 +325,9 @@ test("with the switch ON the .embproj carries the SVG's 2,800-px render, and an 
   expect(src.name).toBe("small_text_logo.png");
   const png = Buffer.from(src.data, "base64");
   expect(createHash("sha256").update(png).digest("hex")).toBe(key);
-  expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([2800, 933]);
+  expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([2800, 1400]);
   const el = json.project.elements.find((e) => e.type === "digitized");
-  expect(el.sourceFile).toMatchObject({ key, type: "image/png", width: 2800, height: 933 });
+  expect(el.sourceFile).toMatchObject({ key, type: "image/png", width: 2800, height: 1400 });
 
   await wipeBrowser(page);
   await importFile(page, filename, text);

@@ -27,14 +27,18 @@
 // (app/node_modules). A run is a service digitize: take the wave CPU lock first.
 //
 // Usage:
-//   node tools/upload-fullres-score.mjs [svg ...] [--width-mm 250] [--garment jacket_back] [--keep-white]
+//   node tools/upload-fullres-score.mjs [svg ...] [--width-mm 100] [--garment left_chest] [--no-white]
 //        [--px-per-mm 10] [--out docs/renders/upload-full-res-2026-10-27]
-//        [--only off|on] [--sizes 1200,2800] [--cache <dir>] [--from-cache]
+//        [--sizes 480,1200,2800] [--cache <dir>] [--from-cache]
 //   Every digitized design is cached under --cache (default: the OS temp dir);
 //   --from-cache re-scores from those files without touching the service.
-//   250 mm on a jacket back is the case the full-resolution upload exists for: the
-//   1,200-px preview is 4.8 px/mm there, under the 8 px/mm work grid. At 100 mm it is
-//   already above it and the two sends digitize alike (measured, see the memory note).
+//   --sizes: the long side in px of each send; 2800 is the full-resolution send, any
+//   other is a preview-style send. At 100 mm wide the 1,200-px preview is 11.5 px/mm,
+//   above the 8 px/mm work grid, so it and the 2,800-px send digitize alike. The case the
+//   upload exists for is a 250 mm jacket back, whose 1,200-px preview is 4.8 px/mm; a
+//   250 mm design cannot be digitized here inside the service's 600 s job limit, so that
+//   case is EMULATED on the 100 mm design with a 480-px send (4.6 px/mm): the output
+//   depends on px per mm and on the features' size in mm, not on the design's size.
 //   default svgs: app/e2e/fixtures/small_text_logo.svg, app/e2e/fixtures/vector_logo.svg
 import "./_help.mjs";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -140,8 +144,6 @@ export function bbox(m) {
 
 // ---- the browser half: draw the SVG and the stitches ----------------------------
 // Everything below the pure functions runs only when the file is executed.
-
-const ARM_NAMES = { 1200: "OFF · 1,200 px", 2800: "ON · 2,800 px" };
 
 // In the page: the SVG's natural size as the panel's <img> sees it, then the two
 // sends drawn the way the panel draws them.
@@ -257,13 +259,13 @@ const PAGE = {
 const fmt = (n, d = 2) => (n == null ? "–" : Number(n).toFixed(d));
 
 function parseArgs(argv) {
-  const o = { svgs: [], widthMm: 250, garment: "jacket_back", keepWhite: false, S: 10, out: "docs/renders/upload-full-res-2026-10-27", sizes: [1200, 2800], only: null,
+  const o = { svgs: [], widthMm: 100, garment: "left_chest", keepWhite: true, S: 10, out: "docs/renders/upload-full-res-2026-10-27", sizes: [1200, 2800], only: null,
     cache: path.join(os.tmpdir(), "upload-fullres-score-cache"), fromCache: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--width-mm") o.widthMm = +argv[++i];
     else if (a === "--garment") o.garment = argv[++i];
-    else if (a === "--keep-white") o.keepWhite = true;
+    else if (a === "--no-white") o.keepWhite = false;
     else if (a === "--px-per-mm") o.S = +argv[++i];
     else if (a === "--out") o.out = argv[++i];
     else if (a === "--sizes") o.sizes = argv[++i].split(",").map(Number);
@@ -286,9 +288,9 @@ async function main() {
   const { chromium } = require("playwright");
 
   const el = defaultDigitizedElement("e1");
-  // The white field inside the frame is paper in the SVG and a large fill in the sewn
-  // file (sew_enclosed_white, the Studio's default); scoring the ink does not need it
-  // and it multiplies the digitize time, so it is off unless --keep-white.
+  // The white field inside the frame is paper in the SVG and a fill in the sewn file
+  // (sew_enclosed_white, the Studio's default, kept). It is left out of the coverage
+  // below; --no-white drops it from the digitize too, which is much faster.
   el.params = { ...el.params, target_width_mm: opts.widthMm, sew_enclosed_white: opts.keepWhite };
   const cfg = buildDigitizeConfig(el, { ...defaultProject(), garmentId: opts.garment });
   const outDir = path.resolve(ROOT, opts.out);
@@ -328,15 +330,14 @@ async function main() {
       const panels = [{ label: "SVG (ground truth)", svg: true }];
       const rows = [];
       for (const size of opts.sizes) {
-        const arm = size === 1200 ? "off" : "on";
-        if (opts.only && opts.only !== arm) continue;
+        const arm = size >= 2800 ? "on" : "off";
         // rasterSize reads { width, height } (a bare { w, h } silently draws 1 x 1).
         const dim = rasterSize({ width: natural.w, height: natural.h }, size, { vector: true });
         if (Math.max(dim.w, dim.h) !== size) throw new Error(`send size ${dim.w}x${dim.h} is not ${size} px on the long side`);
-        const b64 = await call(PAGE.send, { w: dim.w, h: dim.h, high: size !== 1200 });
-        const image = size === 1200 ? b64 : { bytes: new Uint8Array(Buffer.from(b64, "base64")), type: "image/png", name: `${name}.png` };
+        const b64 = await call(PAGE.send, { w: dim.w, h: dim.h, high: size >= 2800 });
+        const image = size < 2800 ? b64 : { bytes: new Uint8Array(Buffer.from(b64, "base64")), type: "image/png", name: `${name}.png` };
         mkdirSync(opts.cache, { recursive: true });
-        const cacheFile = path.join(opts.cache, `${name}__${arm}__${opts.widthMm}mm_${opts.garment}${opts.keepWhite ? "_white" : ""}.json`);
+        const cacheFile = path.join(opts.cache, `${name}__${size}px__${opts.widthMm}mm_${opts.garment}${opts.keepWhite ? "" : "_nowhite"}.json`);
         let job, secs;
         if (opts.fromCache && existsSync(cacheFile)) {
           ({ job, secs } = JSON.parse(readFileSync(cacheFile, "utf8")));
@@ -367,6 +368,9 @@ async function main() {
         for (const s of sewn) { x0 = Math.min(x0, s.x / 10); x1 = Math.max(x1, s.x / 10); y0 = Math.min(y0, -s.y / 10); y1 = Math.max(y1, -s.y / 10); }
         const gtW = (gtBox.x1 - gtBox.x0) * mmPerPx, gtH = (gtBox.y1 - gtBox.y0) * mmPerPx;
         const ratio = ((x1 - x0) / gtW + (y1 - y0) / gtH) / 2;
+        // Pixels of the send per sewn mm of ink: the service scales the art's own
+        // bounding box to the target width, so the ink spans inkFrac of the send.
+        const inkFrac = gtW / mmW, pxPerMm = dim.w * inkFrac / opts.widthMm;
         const scale = Math.abs(ratio - 1) > 0.03 ? 1 / ratio : 1;
         const gcx = (gtBox.x0 + gtBox.x1) / 2 / S, gcy = (gtBox.y0 + gtBox.y1) / 2 / S;
         const ox = (gcx - ((x0 + x1) / 2) * scale) * S, oy = (gcy - ((y0 + y1) / 2) * scale) * S;   // y0,y1 are image-y (-stitch y)
@@ -397,18 +401,18 @@ async function main() {
         }));
         const st = job.stats || {};
         rows.push({
-          svg: path.basename(svgPath), arm, sendPx: `${dim.w}x${dim.h}`, secs: +secs.toFixed(1),
+          svg: path.basename(svgPath), arm, size, pxPerMm: +pxPerMm.toFixed(2), sendPx: `${dim.w}x${dim.h}`, secs: +secs.toFixed(1),
           stitches: st.stitch_count, trims: st.trims, jumps: st.jumps, colorChanges: st.color_changes,
           sizeMm: st.size_mm, extentRatio: +ratio.toFixed(4), scaleApplied: +scale.toFixed(4),
           whole, bands,
         });
-        panels.push({ label: ARM_NAMES[size] || `${size} px`, stitches: design.stitches, colors: design.colors || [], ox, oy, scale });
+        panels.push({ label: `${size >= 2800 ? "ON" : "OFF"} · ${size.toLocaleString("en-US")} px (${pxPerMm.toFixed(1)} px/mm)`, stitches: design.stitches, colors: design.colors || [], ox, oy, scale });
         console.error(`${name} ${arm}: ${st.stitch_count} stitches, ${st.trims} trims, iou ${fmt(whole.iou, 4)}, edge mean ${fmt(whole.edge.both.mean, 3)} mm (${secs.toFixed(0)} s)`);
       }
 
       // Sheet: each panel is the whole canvas (margin included) at 6 px/mm; the
       // second row zooms 2.5x on the smallest line of lettering.
-      const view = 6;
+      const view = 5;
       const sheetPanels = panels.map((p) => p.svg ? p : { ...p, ox: p.ox / S * view, oy: p.oy / S * view });
       const zoom = lineBands.length
         ? { x: margin + 0.26 * mmW, y: lineBands[2].rows[0] / S, h: (lineBands[2].rows[1] - lineBands[2].rows[0]) / S + 2, k: 2.5 }
@@ -430,7 +434,7 @@ async function main() {
     "",
     "| svg | send | stitches | trims | jumps | colour chg | IoU | edge mean mm | edge p95 mm | edge max mm | digitize s |",
     "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
-    ...results.map((r) => `| ${r.svg} | ${r.arm.toUpperCase()} ${r.sendPx} | ${r.stitches} | ${r.trims} | ${r.jumps} | ${r.colorChanges} | ${fmt(r.whole.iou, 4)} | ${fmt(r.whole.edge.both.mean, 3)} | ${fmt(r.whole.edge.both.p95, 3)} | ${fmt(r.whole.edge.both.max, 3)} | ${r.secs} |`),
+    ...results.map((r) => `| ${r.svg} | ${r.arm.toUpperCase()} ${r.sendPx} (${r.pxPerMm.toFixed(1)} px/mm) | ${r.stitches} | ${r.trims} | ${r.jumps} | ${r.colorChanges} | ${fmt(r.whole.iou, 4)} | ${fmt(r.whole.edge.both.mean, 3)} | ${fmt(r.whole.edge.both.p95, 3)} | ${fmt(r.whole.edge.both.max, 3)} | ${r.secs} |`),
   ];
   const withBands = results.filter((r) => r.bands.length);
   if (withBands.length) {

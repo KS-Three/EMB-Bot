@@ -286,7 +286,7 @@ test("rotated_exif6.jpg is stored sideways with EXIF orientation 6, so the brows
 test("small_text_logo.svg letters the words with paths, in three sizes, inside a frame", () => {
   const svg = fixture("small_text_logo.svg").toString("utf8");
   expect(svg).not.toMatch(/<text[\s>]/);
-  expect(svg).toMatch(/viewBox="0 0 1200 400"/);
+  expect(svg).toMatch(/viewBox="0 0 600 300"/);
   expect(svg.match(/<path /g).length).toBe(4);           // the frame and three lines of lettering
   expect(isVectorFile({ name: "small_text_logo.svg", type: "image/svg+xml" })).toBe(true);
 });
