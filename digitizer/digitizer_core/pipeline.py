@@ -821,6 +821,9 @@ def build_generation(
                 # "strokes" at 0.75), so the photo classes keep today's path
                 # until that residue is understood — byte-identical ON.
                 thin_population=bool(cfg.keep_thin_strokes and classification.class_ == "gradient"),
+                # Dark thin strokes read by lightness (`cfg.keep_dark_thin_
+                # strokes`): the same gate, for the same reason.
+                dark_population=bool(cfg.keep_dark_thin_strokes and classification.class_ == "gradient"),
                 # Gradient-class LOGOS only, like the thin population: the
                 # measurement behind it is a white icon on a sweep (Kent's
                 # Instagram file, 2026-09-30), and the photo classes keep
@@ -895,6 +898,13 @@ def build_generation(
     # escape hatch (55 block-level threads off a 12-cone list on a real
     # portrait; see `revalidate_threads`' docstring). Every other class
     # ignores both arguments and keeps the unrestricted re-snap.
+    # The lightness read's strokes (`cfg.keep_dark_thin_strokes`), named by
+    # label here, before the re-snap and the rehome can move a layer, for the
+    # colour cap's dark-ink rule below. No dark labels, nothing tagged.
+    if q.dark_ink_labels:
+        for r in regions:
+            if r.meta.get("layer") in q.dark_ink_labels:
+                r.meta["dark_ink"] = True
     resnap_warnings = revalidate_threads(
         regions, p, cfg,
         palette_indices=list(q.thread_indices),
