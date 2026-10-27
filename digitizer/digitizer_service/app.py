@@ -994,7 +994,8 @@ def _stats_payload(plan, design: dict, region_ids: set[str] | None = None) -> di
         # gradient's spools — the download's thread list (`design.colors`) was
         # right the whole time.
         "blocks": [
-            {**cone, "shape_ids": _block_shape_ids(block, region_ids),
+            {**cone, "shape_ids": _block_shape_ids(block, region_ids,
+                                                   getattr(plan, "merged_into", None)),
              **({"design_edge": True} if _is_edge_cap(block) else {})}
             for cone, block in zip(plan.palette, plan.blocks)
         ],
@@ -1023,10 +1024,12 @@ def _is_edge_cap(block) -> bool:
     return bool(sewing) and all(r.shape_id == _EDGE_CAP_SHAPE_ID for r in sewing)
 
 
-def _block_shape_ids(block, region_ids: set[str] | None = None) -> list[str]:
+def _block_shape_ids(block, region_ids: set[str] | None = None,
+                     merged_into: dict | None = None) -> list[str]:
     """The review shapes a block sews, first-appearance order. A blend band's
     run is tagged `<shape_id>-blend<i>`; the shape is what the review screen
-    knows, so the suffix comes off."""
+    knows, so the suffix comes off. A shape that sews as part of another
+    (`StitchPlan.merged_into`) is named right after the region that sews it."""
     seen: list[str] = []
     for run in block.runs:
         # `-blend<i>` was the only suffix this knew; the streamline tier
@@ -1036,6 +1039,9 @@ def _block_shape_ids(block, region_ids: set[str] | None = None) -> list[str]:
                else (run.shape_id.split("-blend")[0] if run.shape_id else ""))
         if sid and sid not in seen:
             seen.append(sid)
+    for sid, host in (merged_into or {}).items():
+        if host in seen and sid not in seen and (not region_ids or sid in region_ids):
+            seen.insert(seen.index(host) + 1, sid)
     return seen
 
 
