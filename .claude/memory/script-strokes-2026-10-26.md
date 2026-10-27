@@ -1,12 +1,12 @@
 ---
 name: script-strokes-2026-10-26
-description: Kent "Measure, then build OFF", then "Flip it ON" (10-26) — a script word (Bridge, Tires "ires", To a T "Machine") sewn one satin column per pen stroke, path read on the art's INK, crosses turning with the pen (flow, #1135); `script_strokes` ON; Bridge is trace-limited and the pro re-set it
+description: Kent "Measure, then build OFF", then "Flip it ON" (10-26) — a script word (Bridge, Tires "ires", To a T "Machine") sewn one satin column per pen stroke, path read on the art's INK, crosses turning with the pen (flow, #1135); `script_strokes` ON; Bridge is trace-limited and the pro re-set it; its fusion is drawn width + pull, a narrower satin is gate 1 (Kent 10-27: record, no build)
 metadata:
   type: project
 ---
 
 **ON by default since Kent's flip, 2026-10-26: "Flip it ON (Recommended)"** (built OFF in #1119, flow in #1135, the flip PR after it; `PRE_FLIP` names the OFF arm). L7b, 2026-10-26, lane `claude/script-strokes-b22fb4`. Module
-`digitizer_core/script_strokes.py`; flag `script_strokes` (OFF); reader
+`digitizer_core/script_strokes.py`; flag `script_strokes` (ON since the flip, #1136); reader
 `tools/script_census.py FILE.dst@N#x1,x2` (per-letter split at x-fractions of
 the word, each file's own letters).
 
@@ -112,6 +112,35 @@ read, noisy); Tires 0.97, To a T 0.89 unchanged. Kinks unchanged (trace).
   (the route returns first): Tires OFF = mono ON byte-identical, and ON =
   ON + mono byte-identical. Still reachable for monoline strokes the door
   refuses.
+
+**Bridge's width: recorded, NOT built (Kent 2026-10-27: "Record it, no build
+(Recommended)").** Bridge's letters still fuse where strokes crowd. Measured
+on the word alone, strokes and stations as built, only where a cross ENDS
+changed (scratch `widthrule.py`, `fusion.py`; numbers only):
+- **The trace is not fatter than the art:** traced polygon 157 / 229 mm2
+  against the drawn ink (half-max) 153 / 226, hat / LC. Our ~2.96 mm hat
+  needle is the drawn width (station 2.16, the same at the polygon or the
+  half-max edge) plus pull 0.4 a side. The pro re-set the word at 1.56 mm
+  against the drawn 1.76.
+- **Ending crosses at the drawn half-width (distance transform at the spine)
+  does not separate the letters:** hat ribbons shared 10.9 -> 2.9 mm2 before
+  pull, but 5 of 6 fused pairs stay fused and 24 mm2 more of the polygon
+  goes uncovered (8.3 -> 32.2, nearly all on ink: patches). With the pull's
+  footprint: 21.3 -> 9.9 mm2, 11 -> 10 pairs, uncovered 3.1 -> 8.0; LC
+  15.8 -> 3.9, 7 -> 7 pairs, 7.8 -> 20.2. Capped at the pro's 1.56 needle:
+  2.8 mm2, 6 pairs, 40.7 uncovered.
+- So the fusion is drawn width + pull on letters drawn close. Only a satin
+  NARROWER than the drawing (the pro's) separates them, and that is the
+  satin width / pull floor: **gate 1**, a sew-out.
+- Sewn overlap off the DSTs (share of column area two columns share): Bridge
+  hat OFF 63.5% -> ON 28.3% -> flow 24.9% (pro 10.5%); LC 74.7 -> 25.9 ->
+  18.5% (7.9%); Tires flow 6.8% (3.1%).
+- **Tires sews SPLIT satin ON:** crosses ~4.33 + 2 x 0.4 = 5.13 mm, past
+  `SPLIT_SATIN_ABOVE_MM` 5.0; `tools/satin_columns.py` reads 6.6% of its
+  penetrations in columns (OFF's fill-in-a-border 26.4%, the pro's 3D puff
+  file 94.1% at 4.16 mm, unsplit). The drawn-width end (4.93) would land
+  under the ceiling; not built either. `test_satin_columns`' plan-reader
+  control holds `script_strokes=False` for this.
 
 Related: [[monoline-script-satin-2026-10-24]], [[bridge-border-and-script-2026-09-30]],
 [[lettering-architecture-2026-10-07]], [[column-corner-folds-2026-10-23]].
