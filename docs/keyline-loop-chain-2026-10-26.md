@@ -167,3 +167,35 @@ the flag ON, Becker changes, as it should: its outline loops are the same
 - where no buried walk exists, ON cuts what OFF cuts and lays no exposed
   walk;
 - a plan sets the flag from its config.
+
+## Into the MFab gate (Kent 2026-10-27)
+
+Kent's ruling on #1125, 2026-10-27, verbatim: **"MFab gate only
+(Recommended)"**. The option read: "Only MFab-type art changes. Hat trims
+30 -> 22 and LC 25 -> 19 (pro 18 / 19). White-outline cuts 11 -> 5 (pro
+5-6). Catch: on the LC a 0.6 mm2 bare patch shows inside the A of AND..."
+
+`keyline_loop_chain` joins `white_keyline_art.RECIPE`. The gate turns it ON
+for MFab-type art. Everywhere else, Becker's outline loops included, it
+stays OFF. `detect` is untouched, so the gate fires where it did: MFab hat
+and LC only (#1108).
+
+**Proof on main `2c6b656c` + this change.** Each job was digitized once,
+then planned three ways:
+
+- **gate:** the new default;
+- **explicit ON:** the flag set by hand;
+- **prev:** the gate's recipe before this change.
+
+| | gate (new default) | explicit ON | prev (recipe before) |
+|---|---|---|---|
+| MFab hat DST | `a460ce03` | `a460ce03` | `fc1b53ee` |
+| MFab LC DST | `a9c83c56` | `a9c83c56` | `023334a5` |
+
+- **The gate sews exactly the ON arm.** Both are #1125's own ON arms byte
+  for byte; "prev" is #1125's OFF arm. Main has not moved MFab since #1125.
+- **The numbers are #1125's:** white-loop cuts 11 -> 5, DST trims hat
+  30 -> 22, LC 25 -> 19.
+- **Known residual, not this lane's:** the hollow A of AND. Main sews that A
+  as an outline (outlined small lettering, its own open lane), and the LC's
+  0.6 mm2 patch sits inside it.

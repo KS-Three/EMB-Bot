@@ -100,6 +100,15 @@ def test_the_mfab_extras_ride_the_gate_kent_2026_10_26():
     assert not fragment_absorb.enabled(wka.apply(ON, False))
 
 
+def test_the_loop_chain_rides_the_gate_kent_2026_10_27():
+    # "MFab gate only (Recommended)": the white loops chain on MFab-type art
+    # only; everywhere else `keyline_loop_chain` stays OFF
+    assert "keyline_loop_chain" in wka.RECIPE
+    assert wka.apply(ON, True).keyline_loop_chain is True
+    assert wka.apply(ON, False).keyline_loop_chain is False
+    assert PipelineConfig().keyline_loop_chain is False
+
+
 def test_the_gates_plan_is_the_recipes(monkeypatch):
     from digitizer_core.pipeline import BackgroundInfo, PipelineResult, plan_stitches
 

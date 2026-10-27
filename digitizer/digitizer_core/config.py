@@ -5660,6 +5660,8 @@ class PipelineConfig:
     # ours lifted loop to loop. Layout, judged in the preview. False is the
     # loops as they were, byte for byte. Set for a plan by
     # `stage6_border.loop_chain_scope`. Tests: `tests/test_keyline_loop_chain.py`.
+    # ON for MFab-type art through `white_keyline_art.RECIPE` (Kent
+    # 2026-10-27: "MFab gate only (Recommended)"); OFF for all other art.
     keyline_loop_chain: bool = False
     # With `silhouette_underfill`, a ring that hosts its own under-fill gets
     # the fill's outer edge sewn as one closed satin loop, after the fill and

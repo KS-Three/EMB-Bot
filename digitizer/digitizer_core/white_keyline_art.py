@@ -35,7 +35,10 @@ wave-3 flip sheet ("MFab extras into the gate"), `keyline_fold_slivers` and
 `RECIPE_EXTRA`), all ON together. Every one acts in `plan_stitches`. Absorb
 came in only with its panel fix (Kent 2026-10-26, "Hold all four": it bared
 the counters under AND / WELDING / LLC until the join kept the riders'
-panel; `docs/gate-mfab-extras-2026-10-26.md`).
+panel; `docs/gate-mfab-extras-2026-10-26.md`). And `keyline_loop_chain`
+(#1125): the white loops chained as the pro chains them, white-loop cuts
+11 -> 5 (Kent 2026-10-27, "MFab gate only (Recommended)": only MFab-type art
+changes; `docs/keyline-loop-chain-2026-10-26.md`).
 
 The verdict is carried on the result (`PipelineResult.white_keyline_art`) and
 folded into the config at each later entry point (`apply`), as stage 1.25's
@@ -51,7 +54,7 @@ from shapely.geometry import Polygon
 
 RECIPE = ("silhouette_underfill", "sew_enclosed_white", "enclosed_white_keyline",
           "silhouette_underfill_panels", "outline_loop_mitre", "silhouette_underfill_rim",
-          "keyline_fold_slivers", "skip_covered_shapes")
+          "keyline_fold_slivers", "skip_covered_shapes", "keyline_loop_chain")
 #: the recipe's `cfg.extra` keys (Kent 2026-10-26: "MFab extras into the gate")
 RECIPE_EXTRA = ("absorb_fragments",)
 
