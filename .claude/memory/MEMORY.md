@@ -106,6 +106,7 @@ the OLDEST lines whole to the archive.
 - [Re-set grows away](reset-grow-away-2026-10-26.md) — `small_text_reset_grow_away` OFF: traced-stroke widening + hold the edge facing a near neighbour; beanie x1.15→1.56
 - [Re-set room and floor](reset-room-floor-2026-10-25.md) — ProSeal under 0.85: re-set widens RETRACED letters by a stale stroke tag (small_text.py:764); pro grows away from the near neighbour; tag fix alone: beanie no_room
 - [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins
+- [Script strokes](script-strokes-2026-10-26.md) — `script_strokes` OFF: script word = one column per pen stroke, path on the art's INK, rails on the polygon; Bridge trace-limited, pro re-set it
 - [Second sitting: eleven flags and the 08-27 engine](second-sitting-eleven-flags-2026-09-28.md) — Kent: "VERY hard to tell"; today beats 08-27 on 7 of 9; `rail_comp` ON 09-29, envelope ON 09-30
 - [SEEDS unservable request, and the worktree blind spot](seeds-request-and-the-worktree-blind-spot-2026-09-22.md) — a worktree lacks the rembg venv (DIFFERENT pipeline)
 - [Sequence like the pro: order is not the gap](sequence-like-pro-2026-10-25.md) — L10 FALSE, not built: pro sews the cap rule and it costs him; ours passes over a reachable piece 18 of 145 extra cuts; gap is cuts inside a piece

@@ -1976,8 +1976,11 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
                                     # `cfg.small_lettering_skeleton` reads its
                                     # width gate off the artwork's pixels, as
                                     # the hairline tier does; off, None.
+                                    # `cfg.script_strokes` reads a script
+                                    # word's pen path off them too.
                                     ink_source=(getattr(result, "ink_source", None)
-                                                if cfg.small_lettering_skeleton else None),
+                                                if cfg.small_lettering_skeleton
+                                                or cfg.script_strokes else None),
                                     # `cfg.open_cored_counters`: the counters
                                     # stage 3 kept (unstitched, so not in
                                     # `planned`), for the satin tiers' hold;
