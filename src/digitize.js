@@ -89,6 +89,27 @@
   // DSTs) read off his files, not off cloth: construction, not a fabric
   // constant (ROADMAP gate 1 asks which kind). The wire test holds the pair.
   const FILL_TURN_ALONG_MM = 0.7;
+  // `cutEveryJump` (built OFF 2026-10-27, cutOrBuryJumps): the Python lane's
+  // own three numbers for a hop sewn needle-down instead of lifted, so the two
+  // `cut_every_jump`s judge one hop alike. The thread is
+  // `machine.COVERAGE_THREAD_W_MM` wide (stage7's `_UnderThread`), a sewn hop
+  // is stitched at `machine.RUN_STITCH_MM` (`_link_stitches`), and none is
+  // sewn over `machine.LINK_MAX_GAP_MM`. The wire test holds all three.
+  //
+  // The samples are NOT Python's: `stage7_sequence._BURY_STEP_MM` puts them
+  // 0.1 mm apart, and here they are 0.01. The test's oracle, a raster of the
+  // DST sampled every 0.01 mm, found what a 0.1 mm step walks over: a hop
+  // whose centre runs along a satin's rail, on the rounded ends of its
+  // stitches, dips off the thread between two stitch tips by up to 0.015 mm.
+  // On a seventh of the library (2,216 hops, tools/lettering-uncut-jumps.mjs
+  // --every 7 --on) the 0.1 mm step sewed 132 hops, 17 of their segments off
+  // the thread that way; the 0.01 mm step sews 104 and the oracle finds
+  // none. Ten times the samples on hops of a few millimetres costs nothing;
+  // a hop like that is cut.
+  const COVERAGE_THREAD_W_MM = 0.4;
+  const RUN_STITCH_MM = 2.0;
+  const LINK_MAX_GAP_MM = 40.0;
+  const COVER_STEP_MM = 0.01;
 
   // A lock stitch at `at`, laid along the path toward `toward` — the exact
   // shape of `stitches.tie_run`, including the two rules its docstring earns:
@@ -289,6 +310,145 @@
     stitches.length = 0;
     for (const s of out) stitches.push(s);
     return made;
+  }
+
+  // Leave no needle-up move uncut (`cutEveryJump` on the lettering builder,
+  // built OFF 2026-10-27): the twin of the Python lane's `cut_every_jump`
+  // (#1048, stage7_sequence._cut_or_bury_jumps), which goes on the next
+  // sew-out card beside it (Kent, 2026-10-26). Neither flips alone.
+  //
+  // A jump straight after a stitch, with no cut before it, is a float: one
+  // or two jump records, which no machine cuts, so a thread across the work
+  // that someone snips by hand. The trim policy cuts a hop only over
+  // `trimAtMm` (3), so typed lettering leaves 12 to 29 of them in a name at
+  // 50 to 90 mm, between letters and between a letter's parts; the pro's
+  // 28 DSTs leave none (docs/settings-vs-pro-2026-10-21.md row 25). Each is,
+  // in Python's order:
+  //   buried  sewn needle-down where thread sewn LATER hides every sample of
+  //           it (within a thread width of either end, where the needle goes
+  //           down anyway, thread of any order counts);
+  //   walked  else sewn needle-down where every sample lies on thread sewn
+  //           before or after (the pro's habit on finished work: his shortest
+  //           cut on Fremont is 3.4 mm, and at 131 of 152 such hops he has no
+  //           move at all);
+  //   cut     else a `trim` before the jump, and `applyTies` locks both sides
+  //           of it as it locks every cut. Only bare fabric is cut.
+  // A sample is on thread when it lies within half a thread
+  // (COVERAGE_THREAD_W_MM) of a needle-down segment of the stream; samples
+  // run every COVER_STEP_MM along each leg the hop would be sewn as (its
+  // stitches rounded to the file's unit, as written), at its centre and both
+  // its edges.
+  // Travel is not cover, as Python's `lines` leave TRAVEL out: a connector
+  // the router already sewed needle-down may itself lie on bare fabric. The
+  // cover is read once, from the stream as it stands, so a hop sewn here is
+  // cover for no other. Never a stitch across cloth (ROADMAP gate 3), and
+  // the test's oracle that holds that shares no code with this.
+  //
+  // One part of Python's pass is not here: a hop no straight line buries is
+  // offered a BENT route on a raster (`_bury_route`), and here it is walked
+  // or cut. Ours are short and mostly between letters on bare cloth, where
+  // no route exists.
+  //
+  // Asked of the finished stream in file units (0.1 mm), before the locks.
+  // A sewn hop's inner stitches are RUN_STITCH_MM apart and get a `travel`
+  // span in the glyph they lead into; the stitch after the hop is the next
+  // run's own first stitch, as before. -> { stitches, buried, walked, cut }:
+  // a new array; `spans` are moved in place.
+  function cutOrBuryJumps(stitches, spans, dedupe) {
+    const U = units.DST_UNITS_PER_MM;
+    const half = (COVERAGE_THREAD_W_MM / 2) * U, step = COVER_STEP_MM * U, pitch = RUN_STITCH_MM * U;
+    const spanOf = new Array(stitches.length);
+    (spans || []).forEach((sp, n) => { for (let i = sp.i0; i <= sp.i1; i++) spanOf[i] = n; });
+    // The cover, on a grid of 2 mm cells: each segment in every cell within
+    // half a thread of its box, so a point finds its segments in its own cell.
+    const G = 20, grid = new Map(), cell = (gx, gy) => gx + "," + gy;
+    for (let i = 1; i < stitches.length; i++) {
+      const p = stitches[i - 1], q = stitches[i];
+      if (p.type !== "stitch" || q.type !== "stitch" || (p.x === q.x && p.y === q.y)) continue;
+      if (spanOf[i] != null && spans[spanOf[i]].kind === "travel") continue;
+      const s = { ax: p.x, ay: p.y, dx: q.x - p.x, dy: q.y - p.y, i };
+      for (let gx = Math.floor((Math.min(p.x, q.x) - half) / G); gx <= Math.floor((Math.max(p.x, q.x) + half) / G); gx++) {
+        for (let gy = Math.floor((Math.min(p.y, q.y) - half) / G); gy <= Math.floor((Math.max(p.y, q.y) + half) / G); gy++) {
+          const k = cell(gx, gy);
+          if (!grid.has(k)) grid.set(k, []);
+          grid.get(k).push(s);
+        }
+      }
+    }
+    // Within half a thread of a segment whose second record is at or after
+    // `from`?
+    const onThread = (x, y, from) => {
+      for (const s of grid.get(cell(Math.floor(x / G), Math.floor(y / G))) || []) {
+        if (s.i < from) continue;
+        const L2 = s.dx * s.dx + s.dy * s.dy;
+        const t = Math.max(0, Math.min(1, ((x - s.ax) * s.dx + (y - s.ay) * s.dy) / L2));
+        if (Math.hypot(x - (s.ax + t * s.dx), y - (s.ay + t * s.dy)) <= half) return true;
+      }
+      return false;
+    };
+    // Every leg of `route` (the hop's two ends and the stitches between, as
+    // they will be written: rounded to the file's unit, so a leg is judged
+    // where it lands and not where the straight hop ran).
+    const covered = (route, from) => {
+      const a = route[0], b = route[route.length - 1];
+      for (let r = 1; r < route.length; r++) {
+        const p = route[r - 1], q = route[r];
+        const d = Math.hypot(q.x - p.x, q.y - p.y);
+        const n = Math.max(2, Math.ceil(d / step) + 1);
+        const nx = d > 0 ? (p.y - q.y) / d : 0, ny = d > 0 ? (q.x - p.x) / d : 0;
+        for (let k = 0; k < n; k++) {
+          const cx = p.x + ((q.x - p.x) * k) / (n - 1), cy = p.y + ((q.y - p.y) * k) / (n - 1);
+          for (const o of [-half, 0, half]) {
+            const x = cx + o * nx, y = cy + o * ny;
+            const end = Math.hypot(x - a.x, y - a.y) <= 2 * half || Math.hypot(x - b.x, y - b.y) <= 2 * half;
+            if (!onThread(x, y, end ? 0 : from)) return false;
+          }
+        }
+      }
+      return true;
+    };
+    const out = [], first = new Array(stitches.length), last = new Array(stitches.length), sewn = [];
+    let buried = 0, walked = 0, cut = 0, skip = -1;
+    for (let j = 0; j < stitches.length; j++) {
+      const s = stitches[j], a = stitches[j - 1], b = stitches[j + 1];
+      first[j] = out.length;
+      if (j === skip) { last[j] = out.length - 1; continue; }
+      if (s.type === "jump" && a && a.type === "stitch" && b && b.type === "stitch") {
+        const gap = Math.hypot(b.x - a.x, b.y - a.y), n = Math.ceil(gap / pitch), route = [a];
+        for (let k = 1; k < n; k++) route.push({ x: Math.round(a.x + ((b.x - a.x) * k) / n), y: Math.round(a.y + ((b.y - a.y) * k) / n), type: "stitch" });
+        route.push(b);
+        // Later thread is the run the hop lands on and all after it: every
+        // segment whose first record is the stitch after the jump, or later.
+        const how = gap > LINK_MAX_GAP_MM * U ? null : covered(route, j + 2) ? "buried" : covered(route, 0) ? "walked" : null;
+        if (how) {
+          if (how === "buried") buried++; else walked++;
+          const i0 = out.length;
+          for (const p of route.slice(1, -1)) out.push(p);
+          if (out.length > i0) sewn.push({ i0, i1: out.length - 1, into: spanOf[j + 1] });
+          // A hop onto the hole it left from: the stitch after it is a
+          // second penetration, `dedupeHoles`' question.
+          if (!gap && dedupe) skip = j + 1;
+          last[j] = out.length - 1;
+          continue;
+        }
+        cut++;
+        out.push({ x: a.x, y: a.y, type: "trim" });
+      }
+      out.push(s);
+      last[j] = out.length - 1;
+    }
+    const kept = [];
+    for (const sp of spans || []) {
+      sp.i0 = first[sp.i0]; sp.i1 = last[sp.i1];
+      if (sp.i0 <= sp.i1) kept.push(sp);
+    }
+    for (const t of sewn) {
+      const to = t.into != null ? spans[t.into] : null;
+      kept.push({ i0: t.i0, i1: t.i1, kind: "travel", shape: to ? to.shape : "", role: "", block: to ? to.block : 0 });
+    }
+    kept.sort((p, q) => p.i0 - q.i0);
+    if (spans) { spans.length = 0; for (const sp of kept) spans.push(sp); }
+    return { stitches: out, buried, walked, cut };
   }
 
   // The size of a design is the size of its THREAD — measured from the records
@@ -1649,7 +1809,8 @@
   // opts = { garment, pxPerMm=8, emMm=18, rgb=[20,20,20], satinSpacingMm
   //          (legacy spelling: densityMm), pullCompMm,
   //          letterSpacingMm, fabric, trimAtMm, mirrorX=false, mirrorY=false,
-  //          circleLayout (see satinfont.js layoutText) }.
+  //          circleLayout (see satinfont.js layoutText), cutEveryJump=false
+  //          (see cutOrBuryJumps) }.
   function buildLetteringDesign(fontData, text, opts) {
     const o = opts || {};
     const pxPerMm = o.pxPerMm || 8;
@@ -2081,6 +2242,16 @@
       lastPt = pts[pts.length - 1];
       prevRun = run;
     }
+    // `cutEveryJump` (built OFF 2026-10-27; see cutOrBuryJumps): every jump
+    // the trim policy left uncut is buried under later thread, walked on
+    // sewn thread, or cut, before the locks, so a new cut is locked like any
+    // other. Off, nothing reads the stream.
+    let cutEvery = null;
+    if (o.cutEveryJump) {
+      cutEvery = cutOrBuryJumps(stitches, spans, dedupeHoles);
+      stitches = cutEvery.stitches;
+      nTrims += cutEvery.cut;
+    }
     // A trim cuts the thread and a jump that was not trimmed does not, so the
     // locks go either side of every trim and at both ends of the stream — the
     // question `apply_ties` asks (`i == 0 or run.trim`), not "did the needle
@@ -2112,7 +2283,9 @@
     // `lettering`: the width-guard report (final sewn cap height, columns
     // under the needle floors, hairline spans sewn as run) — see
     // satinfont.layoutText. Null only on the empty paths above.
-    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, runs: spans, unsupported: lay.unsupported || [], lettering: lay.lettering || null, _debug: { nSatin, nFill: 0, nTrims, nTies } };
+    const _debug = { nSatin, nFill: 0, nTrims, nTies };
+    if (cutEvery) _debug.cutEveryJump = { buried: cutEvery.buried, walked: cutEvery.walked, cut: cutEvery.cut };
+    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, runs: spans, unsupported: lay.unsupported || [], lettering: lay.lettering || null, _debug };
   }
 
   // `tieRun` is exported for its own sake: its overshoot rule only fires when
@@ -2124,6 +2297,7 @@
   // `applyTies` likewise: which records it calls a cut, and what it does with
   // a thread that sews nothing, are asked of streams written out by hand.
   // `cutLongFloats` too: a float of several jumps, and one with no thread on
-  // it, are cases no small design makes on its own.
-  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns, tieRun, applyTies, cutLongFloats, FILL_ROW_MM, SATIN_SPACING_MM, THREAD_LENGTH_FACTOR, TIE_STITCH_MM, TIE_STITCHES };
+  // it, are cases no small design makes on its own. `cutOrBuryJumps` too: a
+  // hop under thread sewn later is a stream a test writes by hand.
+  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns, tieRun, applyTies, cutLongFloats, cutOrBuryJumps, FILL_ROW_MM, SATIN_SPACING_MM, THREAD_LENGTH_FACTOR, TIE_STITCH_MM, TIE_STITCHES };
 });
