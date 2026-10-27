@@ -343,7 +343,20 @@ async function main() {
           ({ job, secs } = JSON.parse(readFileSync(cacheFile, "utf8")));
         } else {
           const t0 = Date.now();
-          job = await digitize(image, cfg, {});
+          try {
+            job = await digitize(image, cfg, {});
+          } catch (e) {
+            // A 250 mm design can overrun the service's 600 s job limit: that is a
+            // finding for the arm, not a reason to lose the other arm's numbers.
+            secs = (Date.now() - t0) / 1000;
+            const inkFracF = (gtBox.x1 - gtBox.x0) * mmPerPx / mmW;
+            rows.push({
+              svg: path.basename(svgPath), arm, size, pxPerMm: +(dim.w * inkFracF / opts.widthMm).toFixed(2), sendPx: `${dim.w}x${dim.h}`,
+              secs: +secs.toFixed(1), error: `${e.kind || "error"}: ${String(e.message || e).slice(0, 160)}`, bands: [],
+            });
+            console.error(`${name} ${arm}: digitize FAILED after ${secs.toFixed(0)} s (${e.kind || "error"}: ${String(e.message || e).slice(0, 160)})`);
+            continue;
+          }
           secs = (Date.now() - t0) / 1000;
           writeFileSync(cacheFile, JSON.stringify({ job: { design: job.design, stats: job.stats }, secs }));
         }
@@ -434,7 +447,9 @@ async function main() {
     "",
     "| svg | send | stitches | trims | jumps | colour chg | IoU | edge mean mm | edge p95 mm | edge max mm | digitize s |",
     "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
-    ...results.map((r) => `| ${r.svg} | ${r.arm.toUpperCase()} ${r.sendPx} (${r.pxPerMm.toFixed(1)} px/mm) | ${r.stitches} | ${r.trims} | ${r.jumps} | ${r.colorChanges} | ${fmt(r.whole.iou, 4)} | ${fmt(r.whole.edge.both.mean, 3)} | ${fmt(r.whole.edge.both.p95, 3)} | ${fmt(r.whole.edge.both.max, 3)} | ${r.secs} |`),
+    ...results.map((r) => r.error
+      ? `| ${r.svg} | ${r.arm.toUpperCase()} ${r.sendPx} (${r.pxPerMm.toFixed(1)} px/mm) | digitize failed: ${r.error} | – | – | – | – | – | – | – | ${r.secs} |`
+      : `| ${r.svg} | ${r.arm.toUpperCase()} ${r.sendPx} (${r.pxPerMm.toFixed(1)} px/mm) | ${r.stitches} | ${r.trims} | ${r.jumps} | ${r.colorChanges} | ${fmt(r.whole.iou, 4)} | ${fmt(r.whole.edge.both.mean, 3)} | ${fmt(r.whole.edge.both.p95, 3)} | ${fmt(r.whole.edge.both.max, 3)} | ${r.secs} |`),
   ];
   const withBands = results.filter((r) => r.bands.length);
   if (withBands.length) {
