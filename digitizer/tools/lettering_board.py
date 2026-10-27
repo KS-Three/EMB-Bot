@@ -123,6 +123,14 @@ METRICS = {
     "rail_run": ("rail wobble p90 run windows mm", "mean", "{:.3f}"),
 }
 
+#: The rembg worker's timeout the board digitizes with (`hairline_photo_trial`'s, 2026-10-12). It DOES
+#: change output: on a loaded laptop the 120 s default times out and a photo-routed job (MFab, Tires)
+#: silently takes the classical route, so the cutout, the prep and the lettering that follows are a
+#: different pipeline's. It rides under `--set`, is recorded with the cache and the board, and a board
+#: with any job that still rerouted is refused.
+REMBG_TIMEOUT_S = 900.0
+REROUTED = "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE"
+
 HEIGHT_RATIO = (0.5, 2.6)     # a read letter height, in the drawn one, that is still "the line"
 #: slack, mm, the line's box is grown by above/below and either side before the reader looks. The
 #: floor census used 1.5 x the drawn height, which for an 18 mm word is 27 mm: room for the badge's
@@ -210,6 +218,44 @@ def cells(lines):
     return out
 
 
+# --- the next queue ----------------------------------------------------------------
+
+#: what puts a line on the next queue: ours' columns over this multiple of the pro's; cuts inside
+#: letters this many over the pro's; ours' cc / reach under the pro's by more than the gap (cc is a
+#: whole step on one letter, so its gap is only the rounding; reach moves in half-octave rungs, so a
+#: quarter of one is the least that is not noise)
+QUEUE_COLUMNS_RATIO = 1.3
+QUEUE_TRIMS_OVER = 2
+QUEUE_GAP = {"cc": 0.05, "reach": 0.25}
+
+
+def next_queue(lines) -> list[dict]:
+    """The lines a lettering PR should look at first, from the board's own figures (nothing is read
+    again): [{"slug", "text", "band", "why": [reasons]}], the line with the most reasons first. A
+    figure either file could not read puts no line on it."""
+    out = []
+    for ln in lines:
+        why = []
+
+        def both(key):
+            o, p = _slot(ln, "ours", key), _slot(ln, "pro", key)
+            return (o["v"], p["v"]) if o["v"] is not None and p["v"] is not None else (None, None)
+        o, p = both("columns")
+        if o is not None and p and o > QUEUE_COLUMNS_RATIO * p:
+            why.append(f"columns {o} / {p} (x{o / p:.2f})")
+        o, p = both("trims")
+        if o is not None and o - p >= QUEUE_TRIMS_OVER:
+            why.append(f"trims inside letters {o} / {p}")
+        for key in ("cc", "reach"):
+            o, p = both(key)
+            if o is not None and p - o > QUEUE_GAP[key]:
+                why.append(f"{METRICS[key][0]} {METRICS[key][2].format(o)} / {METRICS[key][2].format(p)}")
+        if why:
+            out.append({"slug": ln["slug"], "text": ln["text"], "band": ln.get("band") or band_of(ln.get("art_h")),
+                        "why": why})
+    return sorted(out, key=lambda r: -len(r["why"]))
+
+
 # --- the markdown ---------------------------------------------------------------
 
 def fmt_pair(p, key):
@@ -226,12 +272,22 @@ def _fmt_side(s, key):
     return "n/a" if s is None or s.get("v") is None else METRICS[key][2].format(s["v"])
 
 
+def _rembg_line(rembg) -> str:
+    if not rembg:
+        return "Photo prep: not recorded (an older board)."
+    t = f"{rembg['timeout_s']:g} s" if rembg.get("timeout_s") else "the default"
+    if rembg.get("rerouted"):
+        return (f"Photo prep: rembg timeout {t}; REROUTED to the classical route: {', '.join(rembg['rerouted'])} "
+                f"-- NOT a baseline.")
+    return f"Photo prep: rembg timeout {t}; no job rerouted."
+
+
 def render_md(board):
     meta, lines, cs = board["meta"], board["lines"], board["cells"]
     sets = meta.get("sets") or {}
     md = [f"# Lettering board {meta.get('date', '')}", "",
           f"Engine: `{meta.get('git', '?')}`, flags: {json.dumps(sets, sort_keys=True) if sets else 'main defaults'}. "
-          f"OCR: {meta.get('tesseract') or 'none (cc is n/a)'}. "
+          f"OCR: {meta.get('tesseract') or 'none (cc is n/a)'}. {_rembg_line(meta.get('rembg'))} "
           "Each cell is `ours / pro`, pooled over the lines both files have a figure for "
           "(`n/of`). Bands are the DRAWN letter height, so a line stays in its band whatever a flag does to "
           "its sewn size. `n/a` is a figure that could not be read; the reason is under the board.", ""]
@@ -276,6 +332,17 @@ def render_md(board):
     if why:
         md += ["", "### Line-level n/a", ""]
         md += [f"- {slug} / {text}, {side}: {w} ({', '.join(ks)})" for (slug, text, side, w), ks in why.items()]
+    queue = board.get("next_queue")
+    if queue:
+        md += ["", "## Next queue", "",
+               f"Lines where ours' columns are over {QUEUE_COLUMNS_RATIO}x the pro's, the cuts inside letters are "
+               f"{QUEUE_TRIMS_OVER}+ over his, or cc (gap over {QUEUE_GAP['cc']}) / reach (over {QUEUE_GAP['reach']} "
+               f"octave) is lower for ours. Most reasons first.", ""]
+        md += [f"- {q['slug']} / {q['text']} ({q['band']}): " + "; ".join(q["why"]) for q in queue]
+    left_out = [(ln["slug"], ln["text"], n) for ln in lines for n in ln.get("word_notes") or []]
+    if left_out:
+        md += ["", "### Pinned words left out of a line's cc", ""]
+        md += [f"- {slug} / {text}: {note}" for slug, text, note in left_out]
     skipped = meta.get("skipped") or []
     if skipped:
         md += ["", "## Pairs not on this board", ""] + [f"- {s['slug']}: {s['why']}" for s in skipped]
@@ -417,10 +484,40 @@ def git_sha() -> str:
         return "?"
 
 
+def rembg_from_primary() -> str:
+    """A lane has no rembg venv (it is not in git): without one stage 1 says
+    PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE and every photo-routed job takes the classical route, however
+    long the timeout. Point it at the primary checkout's. -> where the cutout runs from:
+    "worktree", "primary" or "none"."""
+    from digitizer_core import stage1_photo_prep as s1
+    if s1.background_removal_unavailable_reason() is None:
+        return "worktree"
+    common = subprocess.run(["git", "rev-parse", "--git-common-dir"], cwd=DIGITIZER,
+                            capture_output=True, text=True).stdout.strip()
+    cand = Path(common).resolve().parent / "digitizer" / "rembg_isolated" / "venv" / "Scripts" / "python.exe"
+    if not cand.is_file():
+        cand = cand.parent.parent / "bin" / "python"
+    if cand.is_file():
+        s1.REMBG_VENV_PYTHON = cand
+        return "primary"
+    return "none"
+
+
+def rerouted_slugs(cache: Path, slugs) -> list[str]:
+    """The cached jobs whose photo prep rerouted: their `ours.json` carries PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE."""
+    out = []
+    for slug in slugs:
+        f = cache / slug / "ours.json"
+        if f.exists() and REROUTED in (json.loads(f.read_text(encoding="utf-8")).get("warnings") or []):
+            out.append(slug)
+    return out
+
+
 @contextlib.contextmanager
 def _studio(sets: dict):
     """`border_census.digitize_one` with the board's pair list, its file
-    resolver, and the flag set laid over the Studio request."""
+    resolver, and the flag set laid over the Studio request (under it, the
+    rembg timeout the board always digitizes with, `REMBG_TIMEOUT_S`)."""
     from tools import border_census as bc
     from tools import pro_pair as pp
     saved_rows, saved_find, saved_dig = list(bc.PAIRS), bc.find_pair, pp.digitize
@@ -431,8 +528,8 @@ def _studio(sets: dict):
         p = resolve_pair(slug, find=saved_find)
         return p.pro, p.art
     bc.find_pair = find_pair
-    if sets:
-        pp.digitize = lambda art, w, g="hat_front", e=None: saved_dig(art, w, g, {**sets, **(e or {})})
+    base = {"photo_prep_background_removal_timeout_s": REMBG_TIMEOUT_S, **sets}
+    pp.digitize = lambda art, w, g="hat_front", e=None: saved_dig(art, w, g, {**base, **(e or {})})
     try:
         yield bc
     finally:
@@ -451,7 +548,9 @@ def prepare_cache(cache: Path, sets: dict, trust: bool = False):
         raise SystemExit(f"{cache} has files but no {CACHE_RECORD}: it does not say which flags made it. "
                          f"--trust-cache records it as made with {sets or 'main defaults'}.")
     if not rec.exists():
-        rec.write_text(json.dumps({"sets": sets, "git": git_sha()}, indent=1), encoding="utf-8")
+        rec.write_text(json.dumps({"sets": sets, "git": git_sha(), "rembg_timeout_s":
+                                   sets.get("photo_prep_background_removal_timeout_s", REMBG_TIMEOUT_S)}, indent=1),
+                       encoding="utf-8")
 
 
 def digitize_missing(slugs, cache: Path, sets: dict, log=print) -> dict:
@@ -461,6 +560,7 @@ def digitize_missing(slugs, cache: Path, sets: dict, log=print) -> dict:
     todo = [s for s in slugs if not (cache / s / "ours.json").exists()]
     if not todo:
         return failed
+    log(f"rembg cutout runs from: {rembg_from_primary()}")
     with _studio(sets) as bc:
         for slug in todo:
             try:
@@ -528,6 +628,30 @@ def point_runs(segs):
     return runs
 
 
+#: a block "is satin" for the line pick when this share of its letter-like thread is (`read_element`'s own SATIN verdict)
+SATIN_SHARE = 0.5
+
+
+def letter_block(runs, box, art_h, cy):
+    """The block a line is READ from. `read_element` takes the block with the most thread in
+    letter-like pieces, and once white sews (`sew_enclosed_white`, ON since #1112) the white FACES of
+    hollow lettering are such a block: Becker's BECKER was one 6,069 mm FILL of the faces against
+    5,456 mm of the black outline's satin, so the line read was the faces' rows (0.43 mm 'columns'
+    for 1.73 mm of satin) and the cell scored the white, not the letters. The letters are the block
+    that reads as SATIN; among those, the one with the most thread. A line with no satin block
+    (fill or bean lettering) keeps `read_element`'s own pick. -> a block id, or None for that."""
+    from tools import small_text_floor_census as sf
+    best = None
+    for blk, segs in sf._segments(runs, box).items():
+        kinds = sf.seg_kinds(runs, segs)
+        comps, idx = sf.components(segs, kinds, box, art_h, cy, None)
+        total = sum(sf._seg_len(segs[j]) for j in idx)
+        sat = sum(sf._seg_len(segs[j]) for j in idx if kinds[j] == "satin")
+        if comps and total and sat / total >= SATIN_SHARE and (best is None or total > best[0]):
+            best = (total, blk)
+    return None if best is None else best[1]
+
+
 class FileReader:
     """One machine file, read lines of lettering from in its own frame."""
 
@@ -552,7 +676,9 @@ class FileReader:
         the line's letters in this file's frame, for `rail_run` (None: n/a)."""
         from tools import small_text_floor_census as sf
         keep: dict = {}
-        e = sf.read_element(self.runs, box, art_h, cy, keep=keep)
+        blk = letter_block(self.runs, box, art_h, cy)
+        runs = self.runs if blk is None else [r for r in self.runs if r["block"] == blk]
+        e = sf.read_element(runs, box, art_h, cy, keep=keep)
         why = None
         if e.get("verdict") == "DROPPED":
             why = "no letter-like thread in the line's box"
@@ -609,9 +735,39 @@ def line_outline(info: dict, box, pad: float = 0.5):
 
 # --- word legibility -------------------------------------------------------------
 
-def read_words(pair: Pair, spec: dict, info: dict, ours_dst: Path, words_wanted, ocr: bool):
+#: a screenshot's letterbox bar is one flat colour, and the first row of the panel inside it differs by more than this
+LETTERBOX_STEP = 40.0
+
+
+def trim_letterbox(rgb, alpha):
+    """The artwork without flat bars across its top and bottom (a phone screenshot of the logo:
+    Gaulke's `photo/logo_gaulke_roofing.png` is 546 rows of logo between two black ones). The
+    word reader takes the ground from the whole picture, so 80% black bars make BLACK the ground,
+    the black thread of both files then vanishes on it, and the 'ink' is the white panel. A flat
+    run of rows at an edge is a BAR only when the first row after it, at its own left and right
+    edges, is a different colour (the panel's border): a margin that is the ground runs on into
+    the logo's own margin and stays, so every other artwork reads exactly as before. -> (rgb, alpha)."""
+    import numpy as np
+    live = np.flatnonzero(rgb.reshape(rgb.shape[0], -1).std(axis=1) > 1.0)
+    if not len(live):
+        return rgb, alpha
+    top, bot = int(live[0]), int(live[-1])
+
+    def inner_edge(i):
+        return np.median(np.concatenate([rgb[i, :3], rgb[i, -3:]]), axis=0)
+    if top > 0 and np.abs(inner_edge(top) - rgb[top - 1, 0]).max() <= LETTERBOX_STEP:
+        top = 0
+    if bot < rgb.shape[0] - 1 and np.abs(inner_edge(bot) - rgb[bot + 1, 0]).max() <= LETTERBOX_STEP:
+        bot = rgb.shape[0] - 1
+    if top == 0 and bot == rgb.shape[0] - 1:
+        return rgb, alpha
+    return rgb[top:bot + 1], alpha[top:bot + 1]
+
+
+def read_words(pair: Pair, spec: dict, info: dict, ours_dst: Path, words_wanted, ocr: bool, dump=None):
     """word -> {"ours": row or None, "pro": row or None, "why": reason} at the
-    words' native size, through `word_legibility.read_job`."""
+    words' native size, through `word_legibility.read_job`. `dump`: a folder for
+    the crops and each file's `located` picture (look at them before trusting a word)."""
     from tools import word_legibility as wl
     from tools.glyph_legibility import design_from_pes, load_source
     job = spec["legibility_job"]
@@ -621,9 +777,10 @@ def read_words(pair: Pair, spec: dict, info: dict, ours_dst: Path, words_wanted,
         return {}
     ours = design_from_pes(ours_dst)
     ours["colors"] = [{"r": int(c[0]), "g": int(c[1]), "b": int(c[2])} for c in info["blocks"]] or ours["colors"]
-    rgb, alpha = load_source(pair.art)
+    rgb, alpha = trim_letterbox(*load_source(pair.art))
     res = wl.read_job(job, ours, wl.load_pro_design(pro_file), pinned, rgb, alpha, use_ocr=ocr,
-                      heights=(), ours_width_mm=info["width_mm"])
+                      dump=None if dump is None else Path(dump) / pair.slug, heights=(),
+                      ours_width_mm=info["width_mm"])
     out = {}
     for w in pinned:
         t = w["text"]
@@ -673,9 +830,23 @@ def line_cc(words, got, key="cc"):
                  for f in ("ours", "pro"))
 
 
+def line_word_notes(words, got) -> list[str]:
+    """Each pinned word of a line that is NOT in its cc, with the reason (`blind` on the artwork,
+    `not located` in a file, a missing reading): a line's cc over three of its four words says
+    which one it left out. [] when every word was scored in both files."""
+    notes = []
+    for t in words:
+        g = got.get(t)
+        if g and g["ours"] and g["pro"] and g["ours"].get("cc") is not None and g["pro"].get("cc") is not None:
+            continue
+        why = (g or {"why": {"ours": "word not pinned for this art"}})["why"] or {"both": "no reading"}
+        notes.append(f"{t}: " + "; ".join(f"{f} {v}" for f, v in why.items()))
+    return notes
+
+
 # --- one pair, the whole board -------------------------------------------------
 
-def read_pair(slug: str, spec: dict, cache: Path, ocr: bool = True, log=print) -> list[dict]:
+def read_pair(slug: str, spec: dict, cache: Path, ocr: bool = True, log=print, dump=None) -> list[dict]:
     from shapely.affinity import affine_transform
     from tools import small_text_floor_census as sf
     pair = resolve_pair(slug)
@@ -692,7 +863,7 @@ def read_pair(slug: str, spec: dict, cache: Path, ocr: bool = True, log=print) -
     got = {}
     if spec.get("legibility_job") and wanted:
         try:
-            got = read_words(pair, spec, info, ours_dst, wanted, ocr)
+            got = read_words(pair, spec, info, ours_dst, wanted, ocr, dump)
         except Exception as e:  # noqa: BLE001 -- a broken legibility read is a n/a, not a dead board
             log(f"  {slug}: legibility read failed: {type(e).__name__}: {e}")
             got = {t: {"ours": None, "pro": None, "why": {"ours": f"legibility read failed: {type(e).__name__}"}}
@@ -713,7 +884,7 @@ def read_pair(slug: str, spec: dict, cache: Path, ocr: bool = True, log=print) -
             slot(None, why="no words pinned for this art"),) * 2
         rc_o, rc_p = line_cc(ln.get("words", []), got, "reach") if spec.get("legibility_job") else (cc_o, cc_p)
         out.append({"slug": slug, "text": ln["text"], "art_h": art_h, "band": band_of(art_h),
-                    "words": ln.get("words", []),
+                    "words": ln.get("words", []), "word_notes": line_word_notes(ln.get("words", []), got),
                     "read": {"ours": o.pop("read"), "pro": p.pop("read")},
                     "ours": {**o, "cc": cc_o, "reach": rc_o}, "pro": {**p, "cc": cc_p, "reach": rc_p}})
         log(f"  {slug} / {ln['text']}: ours {o['columns']['v']} cols, pro {p['columns']['v']} cols")
@@ -730,8 +901,8 @@ def tesseract_version():
         return "tesseract"
 
 
-def build(slugs, cache: Path, sets: dict, ocr: bool = True, date=None, log=print, failed=None) -> dict:
-    """`failed`: {slug: why} from `digitize_missing`."""
+def build(slugs, cache: Path, sets: dict, ocr: bool = True, date=None, log=print, failed=None, dump=None) -> dict:
+    """`failed`: {slug: why} from `digitize_missing`. `dump`: where the word crops and located pictures go."""
     reg = load_lines()
     lines, skipped, files = [], [], {}
     for slug in slugs:
@@ -739,7 +910,7 @@ def build(slugs, cache: Path, sets: dict, ocr: bool = True, date=None, log=print
             skipped.append({"slug": slug, "why": f"not digitized: {failed[slug]}"})
             continue
         try:
-            lines += read_pair(slug, reg[slug], cache, ocr, log)
+            lines += read_pair(slug, reg[slug], cache, ocr, log, dump)
             p = resolve_pair(slug)
             files[slug] = {"pro": p.pro.name, "pro_pes": p.pro_pes.name if p.pro_pes else None,
                            "art": p.art.name if p.art else None}
@@ -751,10 +922,13 @@ def build(slugs, cache: Path, sets: dict, ocr: bool = True, date=None, log=print
         if slug not in reg:
             gone = " (and the pro's file is not on this machine)" if resolve_pair(slug).pro is None else ""
             skipped.append({"slug": slug, "why": left_off.get(slug) or "no lettering lines pinned" + gone})
+    rec = cache / CACHE_RECORD
+    timeout = json.loads(rec.read_text(encoding="utf-8")).get("rembg_timeout_s") if rec.exists() else None
     meta = {"date": date or datetime.date.today().isoformat(), "git": cache_engine(cache, slugs), "sets": sets,
             "tesseract": tesseract_version() if ocr else None, "pairs": list(slugs), "files": files,
+            "rembg": {"timeout_s": timeout, "rerouted": rerouted_slugs(cache, slugs)},
             "skipped": skipped}
-    return {"meta": meta, "lines": lines, "cells": cells(lines)}
+    return {"meta": meta, "lines": lines, "cells": cells(lines), "next_queue": next_queue(lines)}
 
 
 # --- the tagger's clusters, to name new lines from -------------------------------
@@ -801,6 +975,16 @@ def propose(slug: str, cache: Path) -> None:
         print(f"  {r['cluster']}: {r['n']:2d} regions  box {r['box']}  drawn {r['art_h']} mm")
 
 
+def check_not_rerouted(board, allow: bool = False) -> None:
+    """Refuse to publish a board where a job's photo prep rerouted: its lettering was made by another
+    pipeline (the classical route, no cutout), so a delta against it is the reroute's, not the engine's."""
+    gone = board["meta"].get("rembg", {}).get("rerouted") or []
+    if gone and not allow:
+        raise SystemExit(f"not publishing: {', '.join(gone)} took the classical route ({REROUTED}); a board "
+                         f"with a rerouted job is another pipeline's. Delete those pairs from the cache and "
+                         f"digitize again, or --allow-reroute to write it marked.")
+
+
 # --- command line ----------------------------------------------------------------
 
 def parse_args(argv=None):
@@ -812,7 +996,10 @@ def parse_args(argv=None):
     ap.add_argument("--out-dir", type=Path, default=OUT_DIR)
     ap.add_argument("--date", default=None)
     ap.add_argument("--no-ocr", action="store_true")
+    ap.add_argument("--dump", type=Path, help="write each pair's word crops and `located` pictures here")
     ap.add_argument("--trust-cache", action="store_true")
+    ap.add_argument("--allow-reroute", action="store_true",
+                    help=f"write the board although a job's photo prep rerouted ({REROUTED}); marked NOT a baseline")
     ap.add_argument("--compare", nargs=2, type=Path, metavar=("A.json", "B.json"))
     ap.add_argument("--propose", metavar="SLUG")
     return ap.parse_args(argv)
@@ -840,7 +1027,8 @@ def main(argv=None) -> int:
     slugs = [s for s in reg if not a.only or s in a.only]
     prepare_cache(a.cache, sets, a.trust_cache)
     failed = digitize_missing(slugs, a.cache, sets)
-    board = build(slugs, a.cache, sets, ocr=not a.no_ocr, date=a.date, failed=failed)
+    board = build(slugs, a.cache, sets, ocr=not a.no_ocr, date=a.date, failed=failed, dump=a.dump)
+    check_not_rerouted(board, a.allow_reroute)
     day = board["meta"]["date"]
     tag = "" if not sets else "-" + "-".join(f"{k}" for k in sorted(sets))
     a.out_dir.mkdir(parents=True, exist_ok=True)

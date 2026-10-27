@@ -8,6 +8,7 @@ PATH (Kent's Windows box) and run in CI.
 """
 from __future__ import annotations
 
+import json
 import math
 import sys
 from pathlib import Path
@@ -394,3 +395,69 @@ def test_a_word_nobody_reads_is_blind_and_a_word_only_the_pro_reads_is_not():
     got = wl.blind_words(rows, ceilings)
     assert list(got) == ["AND"] and "neither the art nor either file" in got["AND"]
     assert wl.blind_words(rows, {"AND": {"cc": 0.9}}) == {}          # a word the art reads is one the reader CAN read
+
+
+# --- the pinned words of the lettering board's jobs ---------------------------------------------
+
+#: job -> (the committed artwork the board reads it from, the words the ART spells). Gaulke's art
+#: spells GOLKE (his pro files are 'c golke ...', the client's name is Gaulke): a misspelt known
+#: text lowers cc for BOTH files alike, so the error never shows in a comparison.
+BOARD_JOBS = {
+    "gaulke_roofing": ("photo/logo_gaulke_roofing.png", ["GOLKE", "INDUSTRIES", "STEEL", "ROOFING", "SUPPLY"]),
+    "precision_drone": ("photo/drone_render.png", ["PRECISION", "THERMAL", "AND", "DRONE"]),
+    "tires": ("logo_script_tires.png", ["Tires"]),
+}
+
+
+def test_every_pinned_word_of_every_job_is_well_formed():
+    data = json.loads(wl.WORDS_FILE.read_text(encoding="utf-8"))["jobs"]
+    assert {"fremont", "becker", "mfab", "proseal", *BOARD_JOBS} <= set(data)
+    for job, spec in data.items():
+        texts = [w["text"] for w in spec["words"]]
+        assert len(texts) == len(set(texts)), job
+        for w in spec["words"]:
+            x0, y0, x1, y1 = w["box"]
+            assert 0.0 <= x0 < x1 <= 1.0 and 0.0 <= y0 < y1 <= 1.0, (job, w)
+            assert len(set(wl.norm(w["text"]))) >= 2, (job, w, "cc is undefined for one letter repeated")
+
+
+@pytest.mark.parametrize("job", sorted(BOARD_JOBS))
+def test_each_word_of_the_boards_new_jobs_is_spelt_as_the_art_spells_it(job):
+    assert [w["text"] for w in wl.pinned_words(job)] == BOARD_JOBS[job][1]
+
+
+@pytest.mark.parametrize("job", sorted(BOARD_JOBS))
+def test_each_pinned_word_holds_ink_on_the_committed_art_and_no_two_words_share_it(job):
+    """The box is only a seed, but a box with no ink, or two boxes holding the same ink, scores a
+    word nobody wrote. Gaulke's screenshot is read with its letterbox bars off, as the board reads it."""
+    from digitizer_core.glyph_read import _bbox, ground_colour, soft_ink
+    from tools import lettering_board as lb
+    from tools.glyph_legibility import load_source
+    art = HERE.parent / "testdata" / BOARD_JOBS[job][0]
+    rgb, alpha = lb.trim_letterbox(*load_source(art))
+    G = ground_colour(rgb, alpha)
+    soft, _ = soft_ink(rgb, alpha, G)
+    sb = _bbox(soft)
+    tight = []
+    for w in wl.pinned_words(job):
+        x0, y0, x1, y1 = (int(v) for v in wl._ink_frac_box(sb, w["box"]))
+        ys, xs = np.where(soft[max(0, y0):y1, max(0, x0):x1] >= 0.5)
+        assert len(xs) > 200, (job, w["text"], "no ink in its box")
+        tight.append((w["text"], x0 + xs.min(), y0 + ys.min(), x0 + xs.max() + 1, y0 + ys.max() + 1))
+    for i, a in enumerate(tight):
+        for b in tight[i + 1:]:
+            wide = min(a[3], b[3]) - max(a[1], b[1])
+            tall = min(a[4], b[4]) - max(a[2], b[2])
+            assert not (wide > 0 and tall > 0), (job, a[0], b[0], "their ink overlaps")
+
+
+def test_gaulkes_screenshot_reads_on_a_white_ground_once_its_black_bars_are_off():
+    """`photo/logo_gaulke_roofing.png` is 546 rows of logo between two black bars: read whole, the ground is BLACK
+    and the black thread of both files vanishes on it (the board's first Gaulke cc was the art's, not the thread's)."""
+    from digitizer_core.glyph_read import ground_colour
+    from tools import lettering_board as lb
+    from tools.glyph_legibility import load_source
+    rgb, alpha = load_source(HERE.parent / "testdata" / "photo" / "logo_gaulke_roofing.png")
+    assert rgb.shape[0] == 2778 and ground_colour(rgb, alpha).max() < 20
+    r, a = lb.trim_letterbox(rgb, alpha)
+    assert r.shape[0] == a.shape[0] == 546 and ground_colour(r, a).min() > 240

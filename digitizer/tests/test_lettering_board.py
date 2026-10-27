@@ -359,6 +359,152 @@ def test_a_field_twenty_times_the_drawn_height_is_refused_not_scored(tmp_path):
     assert got["columns"]["v"] is None and "blob" in got["columns"]["why"]
 
 
+# --- which block a line is read from -------------------------------------------------------
+
+def _fill_rows(block, x0=8.0, y0=10.0, w=12.0, h=9.0, pitch=0.3):
+    """A fill: parallel straight rows of 2 mm stitches (a longer one reads as travel), each its own run
+    (no reversals, so not satin), at the 0.3 mm the reader paints thread so the rows join into one piece."""
+    runs, y = [], y0
+    while y <= y0 + h:
+        runs.append({"block": block, "pts": [(x0 + k * 2.0, y) for k in range(int(w / 2.0) + 1)]})
+        y += pitch
+    return runs
+
+
+def _satin_runs(block, xs, h=9.0):
+    return [{"block": block, "pts": _column(x, 10.0, h=h, w=1.2)} for x in xs]
+
+
+def test_the_line_is_read_from_the_satin_block_not_the_longer_fill_that_sews_between_the_letters():
+    box = (4.0, 4.0, 28.0, 26.0)
+    fill, satin = _fill_rows(0), _satin_runs(1, [10.0, 13.0, 16.0, 19.0])
+    from tools import small_text_floor_census as sf
+    # the premise: read_element's own pick (the most letter-like thread) IS the fill
+    assert sf.read_element(fill + satin, box, 9.0, 14.5)["block"] == 0
+    assert lb.letter_block(fill + satin, box, 9.0, 14.5) == 1
+
+
+def test_a_line_with_no_satin_block_keeps_the_readers_own_pick():
+    box = (4.0, 4.0, 28.0, 26.0)
+    assert lb.letter_block(_fill_rows(0), box, 9.0, 14.5) is None
+    assert lb.letter_block([], box, 9.0, 14.5) is None
+
+
+def test_the_reader_reports_the_satin_letters_of_a_file_whose_faces_sew_as_fill(tmp_path):
+    import pystitch
+    pat = pystitch.EmbPattern()
+    runs = _fill_rows(0) + _satin_runs(1, [10.0, 13.0, 16.0, 19.0])
+    changed = False
+    for run in runs:
+        if run["block"] == 1 and not changed:
+            pat.add_command(pystitch.COLOR_CHANGE)
+            changed = True
+        x, y = run["pts"][0]
+        pat.add_stitch_absolute(pystitch.JUMP, x * 10, y * 10)
+        for x, y in run["pts"]:
+            pat.add_stitch_absolute(pystitch.STITCH, x * 10, y * 10)
+    pat.add_command(pystitch.END)
+    path = tmp_path / "hollow.dst"
+    pystitch.write_dst(pat, str(path))
+    got = lb.FileReader(path).line((4.0, 4.0, 28.0, 26.0), 9.0, 14.5)
+    assert got["read"]["block"] == 1 and got["read"]["verdict"] == "SATIN"
+    assert got["satin_w"]["v"] == pytest.approx(1.2, abs=0.15)           # the columns, not the fill's rows
+
+
+# --- the artwork's letterbox ----------------------------------------------------------------
+
+def _screenshot(bar=0):
+    """White panel with a black bar of height `bar` above and below, and some dark 'text' on it."""
+    import numpy as np
+    panel = np.full((60, 200, 3), 255.0, np.float32)
+    panel[:, :6] = 230.0                                     # the panel's own light edge strips: its rows are not flat
+    panel[:, -6:] = 230.0
+    panel[20:40, 30:170] = 0.0
+    bars = np.zeros((bar, 200, 3), np.float32)
+    return np.concatenate([bars, panel, bars]) if bar else panel
+
+
+def test_a_screenshots_black_bars_come_off_so_the_ground_is_the_logos_not_the_bars():
+    import numpy as np
+    from digitizer_core.glyph_read import ground_colour
+    rgb = _screenshot(bar=300)
+    alpha = np.full(rgb.shape[:2], 255, np.uint8)
+    r, a = lb.trim_letterbox(rgb, alpha)
+    assert r.shape == (60, 200, 3) and a.shape == (60, 200)
+    assert ground_colour(rgb, alpha).max() < 20 and ground_colour(r, a).min() > 200   # black before, white after
+
+
+def test_an_artwork_whose_margin_is_its_ground_is_left_exactly_as_it_was():
+    import numpy as np
+    rgb = np.pad(_screenshot(bar=0), ((15, 15), (0, 0), (0, 0)), constant_values=255.0)   # flat WHITE margin: the ground
+    alpha = np.full(rgb.shape[:2], 255, np.uint8)
+    r, a = lb.trim_letterbox(rgb, alpha)
+    assert r is rgb and a is alpha
+
+
+# --- a rerouted photo prep ------------------------------------------------------------------
+
+def _ours_json(cache, slug, warnings):
+    (cache / slug).mkdir(parents=True)
+    (cache / slug / "ours.json").write_text(json.dumps({"warnings": warnings}), encoding="utf-8")
+
+
+def test_a_job_whose_rembg_cutout_failed_is_named_and_a_board_with_one_is_refused(tmp_path):
+    _ours_json(tmp_path, "mfab_hat", ["CLASSIFIED_PHOTO_SCENE", lb.REROUTED])
+    _ours_json(tmp_path, "becker_hat_large", ["BACKGROUND_UNCERTAIN"])
+    assert lb.rerouted_slugs(tmp_path, ["mfab_hat", "becker_hat_large", "never_digitized"]) == ["mfab_hat"]
+    board = {"meta": {"rembg": {"timeout_s": 900.0, "rerouted": ["mfab_hat"]}}}
+    with pytest.raises(SystemExit, match="mfab_hat took the classical route"):
+        lb.check_not_rerouted(board)
+    lb.check_not_rerouted(board, allow=True)                       # an explicit override writes it, marked
+    lb.check_not_rerouted({"meta": {"rembg": {"timeout_s": 900.0, "rerouted": []}}})
+    lb.check_not_rerouted({"meta": {}})                             # an older board did not record it
+
+
+def test_the_header_names_the_rembg_timeout_and_a_reroute():
+    assert "timeout 900 s; no job rerouted" in lb._rembg_line({"timeout_s": 900.0, "rerouted": []})
+    bad = lb._rembg_line({"timeout_s": 900.0, "rerouted": ["tires_hat_3d"]})
+    assert "REROUTED" in bad and "tires_hat_3d" in bad and "NOT a baseline" in bad
+    assert "not recorded" in lb._rembg_line(None)
+
+
+def test_the_cache_records_the_rembg_timeout_it_digitized_with(tmp_path):
+    lb.prepare_cache(tmp_path, {})
+    assert json.loads((tmp_path / lb.CACHE_RECORD).read_text())["rembg_timeout_s"] == lb.REMBG_TIMEOUT_S == 900.0
+
+
+# --- words a line's cc left out, and the next queue ------------------------------------------------
+
+def test_a_word_one_file_did_not_locate_is_named_beside_the_line_not_silently_dropped():
+    got = {"AND": {"ours": _row(1.0), "pro": _row(1.0), "why": {}},
+           "DRONE": {"ours": _row(1.0), "pro": None, "why": {"pro": "not located: best match costs 2.3 (> 2.0)"}},
+           "Tires": {"ours": None, "pro": None, "why": {"ours/pro": "blind: the art itself reads cc -0.48"}}}
+    assert lb.line_word_notes(["AND", "DRONE"], got) == ["DRONE: pro not located: best match costs 2.3 (> 2.0)"]
+    assert lb.line_word_notes(["Tires"], got) == ["Tires: ours/pro blind: the art itself reads cc -0.48"]
+    assert lb.line_word_notes(["NOPE"], got) == ["NOPE: ours word not pinned for this art"]
+    md = lb.render_md({"meta": {"date": "d"}, "cells": {}, "lines": [
+        {**line("precision_drone", "AND DRONE", band="<4"), "art_h": 2.2, "word_notes": ["DRONE: pro not located"]}]})
+    assert "Pinned words left out of a line's cc" in md and "precision_drone / AND DRONE: DRONE: pro not located" in md
+
+
+def test_the_next_queue_names_columns_over_1_3x_cuts_2_over_and_a_lower_cc_or_reach():
+    lines = [
+        line("a", "COLS", ours={"columns": slot(14)}, pro={"columns": slot(10)}),                   # x1.4: on
+        line("a", "NEAR", ours={"columns": slot(13)}, pro={"columns": slot(10)}),                   # x1.3 exactly: off
+        line("a", "CUTS", ours={"trims": slot(5)}, pro={"trims": slot(3)}),                         # +2: on
+        line("a", "FEWER", ours={"trims": slot(4)}, pro={"trims": slot(3)}),                        # +1: off
+        line("a", "CC", ours={"cc": slot(0.0, w=4), "reach": slot(1.0, w=4)},
+             pro={"cc": slot(1.0, w=4), "reach": slot(3.0, w=4)}),                                  # both lower: two reasons
+        line("a", "NOREAD", ours={"columns": slot(None, why="x")}, pro={"columns": slot(1)}),        # unread: never queued
+        line("a", "GOOD", ours={"cc": slot(1.0, w=4), "reach": slot(3.2, w=4)},
+             pro={"cc": slot(1.0, w=4), "reach": slot(3.4, w=4)}),                                  # 0.2 octave: noise
+    ]
+    q = lb.next_queue(lines)
+    assert [r["text"] for r in q] == ["CC", "COLS", "CUTS"]                # most reasons first
+    assert len(q[0]["why"]) == 2 and "x1.40" in q[1]["why"][0] and "trims inside letters 5 / 3" in q[2]["why"][0]
+    assert "## Next queue" in lb.render_md({"meta": {"date": "d"}, "cells": {}, "lines": lines, "next_queue": q})
+
+
 # --- end to end, on one small committed pair -----------------------------------------
 
 def _pair_is_on_this_machine(slug):
@@ -374,11 +520,9 @@ def becker_board(tmp_path_factory):
     if not _pair_is_on_this_machine(slug):
         pytest.skip("Becker's chest files are not on this machine")
     cache = tmp_path_factory.mktemp("board_cache")
-    # White pinned OFF: with `sew_enclosed_white` (ON since 2026-10-26) BECKER's white
-    # faces are the block with the most letter-like thread, so `read_element` reads the
-    # faces' fill (one 0.43 mm "column") instead of the letters' outline -- the board's
-    # own limitation on hollow lettering, reported in #1112, not what this smoke pins.
-    sets = {"sew_enclosed_white": False}
+    # Shipped defaults: `sew_enclosed_white` has been ON since 2026-10-26, and BECKER's white faces
+    # are then the block with the most letter-like thread (`letter_block` reads the outline instead).
+    sets = {}
     lb.prepare_cache(cache, sets)
     lb.digitize_missing([slug], cache, sets, log=lambda *_: None)
     return lb.build([slug], cache, sets, ocr=True, date="2026-10-25", log=lambda *_: None)
@@ -393,6 +537,15 @@ def test_smoke_the_board_reads_both_lines_of_becker_in_both_files(becker_board):
         for side in ("ours", "pro"):
             assert ln[side]["columns"]["v"] > 0 and ln[side]["stitches"]["v"] > 200
             assert 0.5 < ln[side]["satin_w"]["v"] < 5.0
+
+
+def test_smoke_becker_is_scored_on_its_letters_not_on_the_white_faces_that_sew_between_them(becker_board):
+    """#1112: with white sewn, the old pick read the faces' fill: ONE 0.43 mm 'column' of 4,959 stitches
+    in the ours cell, against the pro's 16 columns of 1.95 mm satin. The letters are 15-16 columns."""
+    by = {ln["text"]: ln for ln in becker_board["lines"]}
+    assert by["BECKER"]["ours"]["columns"]["v"] >= 8
+    assert by["BECKER"]["ours"]["satin_w"]["v"] > 1.0
+    assert by["BECKER"]["ours"]["stitches"]["v"] < 4000
 
 
 def test_smoke_every_figure_is_a_number_or_an_n_a_with_a_reason(becker_board):
