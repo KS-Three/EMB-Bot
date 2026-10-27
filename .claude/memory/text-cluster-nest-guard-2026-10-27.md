@@ -18,6 +18,16 @@ group's one piece out, so expect 7) and folds 2 -> 5 against his 35. The ring's 
 ring read aspect 1.47-1.52 against the door's 1.4 and heights of 0.45-0.8 of their line. A rotation-aware aspect test is
 the next lane, not built.
 
+**Proof (2026-10-27, #1151).** Reach census, 14 pairs scored, OFF = ON on every pair: reach kappa 0.815 [0.626, 0.929]
+(raw 0.922), detect kappa 0.623 [0.420, 0.885] (raw 0.818), 235 of 298 letters reach the lane, 147 false positives. Only
+ProSeal hat (40.0 mm frame, 12.7x the pool median) and beanie (34.9 mm, 11.9x) have a frame besides Bridge hat; the other 12
+re-tag nothing in the tagger replay (`nest_replay`: tags are the guard's only output), so they sew as OFF. Bridge hat with
+the real flag: 0 -> 7 of 15 text pieces in the lane, folds 2 -> 5 (his 35), zones 0 -> 3 (his 37), stitches 9,419 -> 9,311;
+Bridge LC byte-identical. **ProSeal's catch:** +12 (hat) / +11 (beanie) pieces tagged `text_candidate`, all ROUND (circularity
+0.87-0.96, 1.7-3.5 mm, none labelled): the bubbles. DST byte-identical OFF vs ON, `is_lettering` unchanged, so nothing sews
+differently; the cost is a false 'looks like text' tag (Studio badge, Convert to text). A roundness guard in the tagger door
+is the unbuilt narrowing.
+
 **How to apply:** this is a flag for Kent to flip from the reach census (`column_reach_census`, 13 pairs, OFF vs ON): read
 reach kappa, false positives per pair, and any large field or ring that stops swallowing fragments.
 Related: [[bridge-text-nested-2026-10-27]], [[column-reach-census-2026-10-25]].
