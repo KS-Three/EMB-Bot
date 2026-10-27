@@ -113,7 +113,13 @@ def test_our_own_plan_reads_through_the_plan_reader():
     instrument is not simply reporting low numbers."""
     from digitizer_core import PipelineConfig
     from digitizer_core.pipeline import plan_stitches, run_stages
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    # `script_strokes` (ON since Kent's 2026-10-26 flip) sews this fixture's
+    # word with crosses to its traced outline plus pull, and past the 5 mm
+    # split ceiling they split: a split cross's mid point sits on its chord,
+    # which this instrument (by design) does not read as a column -- 0.39
+    # against 0.65 OFF. The control is about the instrument, so it holds the
+    # satin tier's plan it was written on.
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", script_strokes=False)
     result = run_stages(str(HERE.parent / "testdata" / "logo_script_tires.png"), cfg)
     plan = plan_stitches(result, cfg)
     m = measure(passes_from_plan(plan))
