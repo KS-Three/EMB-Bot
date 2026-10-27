@@ -40,7 +40,7 @@ WHAT IT BUILDS (`script_columns`). The path's medial axis (the satin
 tier's own pruning and junction clustering) is cut into PEN STROKES: at a
 junction two arms that continue within `WELD_MAX_DEG` of straight are one
 stroke -- the pen goes THROUGH a crossing -- and the rest end there; a stroke
-that turns more than `CORNER_DEG` within a stroke width (a cusp: the i's foot
+that turns more than `CUSP_DEG` within a stroke width (a cusp: the i's foot
 turning into the join) is two. Each stroke is stationed at the satin pitch
 with crosses SQUARE to its own smoothed direction, reaching the traced
 POLYGON's outline on both sides, but never more than `REACH_HALVES` of its
@@ -130,7 +130,7 @@ INK_EDGE_T = 0.5
 #: ink and ground at least this far apart (Lab + alpha) or there is no reading
 INK_MIN_DE = 15.0
 #: ink further than this from the traced polygon is another shape's
-INK_REACH_MM = 0.6
+SCRIPT_INK_REACH_MM = 0.6
 #: a core part smaller than this is a speck, not a stroke (an i's dot is ~1 mm2)
 INK_MIN_PART_MM2 = 0.15
 
@@ -140,7 +140,7 @@ INK_MIN_PART_MM2 = 0.15
 WELD_MAX_DEG = 40.0
 #: a stroke turning more than this within one stroke width is a cusp: two
 #: strokes, the pro's "corner" cut
-CORNER_DEG = 75.0
+CUSP_DEG = 75.0
 #: a cross reaches the outline, but no further from its station than this
 #: many of its stroke's local drawn half-widths (a junction blob is not a stroke)
 REACH_HALVES = 1.5
@@ -336,7 +336,7 @@ def ink_grid(ink, poly: Polygon) -> _Grid | None:
     onto the ground-to-ink axis (ink: the polygon's core, ground: a ring
     just outside it), so 0 is ground and 1 is ink. The path mask is the
     ink's core (`INK_PATH_T` and up), the half-width read on the half-max
-    edge (`INK_EDGE_T`), both kept within `INK_REACH_MM` of the polygon.
+    edge (`INK_EDGE_T`), both kept within `SCRIPT_INK_REACH_MM` of the polygon.
     None when the two colours are not `INK_MIN_DE` apart or no core is
     found: the polygon is read instead."""
     import cv2
@@ -383,7 +383,7 @@ def ink_grid(ink, poly: Polygon) -> _Grid | None:
     if float(np.linalg.norm(v)) < INK_MIN_DE:
         return None
     t = ((lab - ground) @ v) / float(v @ v)
-    near = cv2.dilate(m, disk(INK_REACH_MM))
+    near = cv2.dilate(m, disk(SCRIPT_INK_REACH_MM))
     edge = ((t >= INK_EDGE_T) & (near > 0)).astype(np.uint8)
     path = ((t >= INK_PATH_T) & (near > 0)).astype(np.uint8)
     n, ids, stats, _c = cv2.connectedComponentsWithStats(path, connectivity=8)
@@ -512,7 +512,7 @@ def pen_strokes(grid: _Grid) -> tuple[list[PenStroke], float]:
     Arms meeting at a junction are paired most-straight first, and welded
     when they continue within `WELD_MAX_DEG`; every other arm ends there.
     Welded chains are one stroke each (a chain that comes back on itself
-    is closed). A stroke is then split at each cusp (`CORNER_DEG`)."""
+    is closed). A stroke is then split at each cusp (`CUSP_DEG`)."""
     edges, half_px = _skeleton(grid)
     if not edges:
         return [], 0.0
@@ -617,7 +617,7 @@ def pen_strokes(grid: _Grid) -> tuple[list[PenStroke], float]:
 
 def _split_cusps(s: PenStroke, half: float) -> list[PenStroke]:
     """Smooth a stroke, then split it wherever it turns more than
-    `CORNER_DEG` within one stroke width (2 half-widths each side), at the
+    `CUSP_DEG` within one stroke width (2 half-widths each side), at the
     sharpest point of each such stretch, keeping pieces of at least
     `_MIN_PIECE_HALVES`. A closed stroke is smoothed and kept whole."""
     from .stage6_satin import _smooth
@@ -649,11 +649,11 @@ def _split_cusps(s: PenStroke, half: float) -> list[PenStroke]:
     min_piece = _MIN_PIECE_HALVES * half
     i = 0
     while i < n:
-        if turn[i] <= CORNER_DEG:
+        if turn[i] <= CUSP_DEG:
             i += 1
             continue
         k = i
-        while k + 1 < n and turn[k + 1] > CORNER_DEG:
+        while k + 1 < n and turn[k + 1] > CUSP_DEG:
             k += 1
         best = max(range(i, k + 1), key=lambda q: (turn[q], -q))
         if (cum[best] - (cum[cuts[-1]] if cuts else 0.0) >= min_piece
