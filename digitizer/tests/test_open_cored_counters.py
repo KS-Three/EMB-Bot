@@ -17,7 +17,7 @@ import pytest
 from digitizer_core import PipelineConfig, digitize
 from digitizer_core.stage3_segment import RegionMask, cored_counters, resolve_small_regions
 
-from .conftest import TESTDATA
+from .conftest import FLAT_GOLDEN_MD5, TESTDATA
 
 PX_PER_MM = 20.0         # floor (1.5 mm x 20)^2 = 900 px; thread 0.4 mm = 8 px
 LAYER_LAB = np.array([[78.0, 11.0, 75.0],    # 0 the gold letter
@@ -163,11 +163,7 @@ def test_a_core_under_the_run_floor_is_noise():
 
 # --- OFF is byte-identical on the flat goldens; ON leaves them alone too --------------
 
-GOLDEN_MD5 = {
-    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
-    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
-    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
-}
+GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
 
 def _md5(coords) -> str:

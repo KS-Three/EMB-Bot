@@ -43,18 +43,14 @@ from digitizer_core.columns import (_clear_counters, lettering_columns_shape,  #
                                     small_print_counters)
 from digitizer_core.pipeline import digitize  # noqa: E402
 from tools import small_print  # noqa: E402
-from tests.conftest import LETTERING_2026_10_24_OFF  # noqa: E402
+from tests.conftest import FLAT_GOLDEN_MD5, LETTERING_2026_10_24_OFF  # noqa: E402
 
 TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
 
 
 # --- OFF is byte-identical ----------------------------------------------------
 
-GOLDEN_MD5 = {
-    "logo_alpha.png": "554e898c04a65643c086b43be64b9e2c",
-    "logo_whitebg.png": "d53de4bbf6881dc8465caec31e93e7c9",
-    "ribbon_curve.png": "98bf128674db0f829a210f32264318e6",
-}
+GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
 
 def _md5(coords) -> str:

@@ -31,7 +31,7 @@ from digitizer_core.stage6_satin import (is_satin_candidate, satin_shape,
                                          strip_splits)
 from digitizer_core.stage7_sequence import sequence
 
-from .conftest import cfg
+from .conftest import cfg, frozen_cfg
 
 PIQUE = get_fabric("pique_knit")          # 0.30 mm pull comp
 PULL = PIQUE.pull_comp_mm
@@ -369,10 +369,10 @@ def test_flag_off_is_byte_identical_to_the_shipped_engine(fixture, garment, requ
     # a change it was never about — `conftest.PRE_FLIP`'s posture. So is
     # `sew_enclosed_white=False` (Kent's flip 2026-10-26: whitebg's ring hole
     # sews in a block of its own, compensation untouched).
-    base = run_stages(TESTDATA / fixture, cfg(edge_cap="none", border_by_size=False,
-                                              sew_enclosed_white=False))
-    plan = plan_stitches(base, cfg(garment_id=garment, edge_cap="none", border_by_size=False,
-                                   sew_enclosed_white=False))
+    base = run_stages(TESTDATA / fixture, frozen_cfg(edge_cap="none", border_by_size=False,
+                                                     sew_enclosed_white=False))
+    plan = plan_stitches(base, frozen_cfg(garment_id=garment, edge_cap="none", border_by_size=False,
+                                          sew_enclosed_white=False))
     blob = export_dst(plan)
     want_hash, want_n, want_bytes = GOLDEN_FLAG_OFF[(fixture, garment)]
     got_n = sum(len(r.points) for b in plan.blocks for r in b.runs)
