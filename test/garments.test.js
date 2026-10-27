@@ -13,7 +13,7 @@ test("fit scales down to fit box, aspect preserved", () => {
   assert.ok(r.scale > 1.0 && r.scale < 1.02); // width-limited ~1.016
   assert.ok(Math.abs(r.targetWmm - 101.6) < 0.5);
   assert.ok(Math.abs(r.targetHmm - 50 * r.scale) < 1e-6);
-  // ... and by default into the pro's 96 x 64.5 left chest (2026-10-26)
+  // ... and by default into the pro's 96 x 76.5 left chest (2026-10-26; height 2026-10-27)
   const pro = g.fitScale(100, 50, g.getGarment("left_chest"));
   assert.ok(Math.abs(pro.targetWmm - 96.0) < 1e-9 && Math.abs(pro.targetHmm - 48.0) < 1e-9);
 });
@@ -115,7 +115,7 @@ test("proSized ON: a hat sews as tall as the pro's (Becker 62.1, Drone 63.8 agai
 
 test("proSized ON: left chest and beanie boxes; a garment with no pro box keeps its own", () => {
   const lc = g.autoFitBoxMm(g.getGarment("left_chest"), { proSized: true });
-  assert.deepStrictEqual(lc, { w: 96.0, h: 64.5 });
+  assert.deepStrictEqual(lc, { w: 96.0, h: 76.5 });
   const beanie = g.autoFitBoxMm(g.getGarment("beanie"), { proSized: true });
   assert.deepStrictEqual(beanie, { w: 94.5, h: 56.0 });
   for (const id of ["full_back", "sleeve", "tote", "jacket_back", "patch", "towel", "blanket"]) {
@@ -129,9 +129,42 @@ test("proSized ON: left chest and beanie boxes; a garment with no pro box keeps 
   }
 });
 
-test("proSized ON: the suggested hoop follows the pro's box (a 96 x 64.5 left chest fits a 4x4)", () => {
+test("proSized ON: the suggested hoop follows the pro's box (a 96 x 76.5 left chest fits a 4x4)", () => {
   assert.strictEqual(g.suggestHoop(g.getGarment("left_chest"), { proSized: false }).id, "5x7");
   assert.strictEqual(g.suggestHoop(g.getGarment("left_chest")).id, "4x4");
   assert.strictEqual(g.suggestHoop(g.getGarment("hat_front"), { proSized: true }).id, "5x7");
   assert.strictEqual(g.suggestHoop(g.getGarment("beanie"), { proSized: true }).id, "4x4");
+});
+
+// ---- the left chest is 76.5 tall (2026-10-27). Kent, on Bridge LC (he sews it 76.6 x 76.5; the 64.5
+// box fitted it 64.5 wide, -15.8%): "Raise LC box to 76.5 tall (Recommended)" ---------------------
+
+test("proSized ON: Bridge's square left chest reaches his 76.5 wide (it fitted 64.5 before)", () => {
+  const lc = g.getGarment("left_chest");
+  const r = g.fitScale(100, 100, lc);
+  assert.ok(Math.abs(r.targetWmm - 76.5) < 1e-9 && Math.abs(r.targetHmm - 76.5) < 1e-9);
+  // his Bridge LC is 76.6 x 76.5 mm (digitizer/tools/garment_size_census.py): within 0.2%
+  assert.ok(Math.abs(r.targetWmm / 76.6 - 1) < 0.002);
+});
+
+test("proSized ON: every left chest wider than 1.25:1 is width-limited by the 96 mm and did not move", () => {
+  const lc = g.getGarment("left_chest");
+  // the paired jobs' art aspects (width / height): Becker 1.593, Gaulke Plowing 1.870, Gaulke Roofing 2.352 and
+  // 2.429, MFab 2.636. Height-limited under the old 64.5 box only past 96 / 64.5 = 1.488; under 76.5 past 1.255.
+  for (const aspect of [1.593, 1.87, 2.352, 2.429, 2.636]) {
+    const now = g.fitScale(aspect * 100, 100, lc);
+    assert.ok(Math.abs(now.targetWmm - 96.0) < 1e-9, `aspect ${aspect}`);
+    const before = Math.min(96.0 / aspect, 64.5) * aspect;           // the 96 x 64.5 box this replaced
+    assert.ok(Math.abs(before - 96.0) < 1e-9, `aspect ${aspect} before`);
+  }
+});
+
+test("proSized ON: only a squarer left chest moves; Machine's 1.385:1 goes 89.3 -> 96.0 wide (his is 89.5)", () => {
+  const lc = g.getGarment("left_chest");
+  const now = g.fitScale(138.5, 100, lc);
+  assert.ok(Math.abs(now.targetWmm - 96.0) < 1e-9 && Math.abs(now.targetHmm - 96.0 / 1.385) < 1e-9);
+  const before = Math.min(96.0 / 1.385, 64.5) * 1.385;
+  assert.ok(Math.abs(before - 89.3) < 0.05);
+  // a square design is height-limited under either, and the hoop is still the 4x4
+  assert.strictEqual(g.suggestHoop(lc).id, "4x4");
 });

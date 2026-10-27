@@ -76,7 +76,7 @@ test("renders the four hoop presets with their mm fields", () => {
 });
 
 test("with no manual pick, the per-garment suggestion is selected and tagged", () => {
-  // left_chest auto-fits the pro's 96 x 64.5 mm box (2026-10-26, Kent: "64 mm
+  // left_chest auto-fits the pro's 96 x 76.5 mm box (2026-10-26; 76.5 tall since 2026-10-27, Kent: "64 mm
   // (2.5 in) or more"), inside the 4x4 hoop's 100 mm field, so the engine
   // suggests 4x4 — the real rule, not a stub. (Its 4x4in inch box, 101.6 mm,
   // stepped the suggestion up to 5x7.)

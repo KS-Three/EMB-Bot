@@ -48,13 +48,20 @@ const units =
   // height (56) is his; its width is the box his own designs fit, because his
   // two wide beanies disagree (93.8 and 110.5 mm). A garment with no entry
   // keeps its box.
+  // The left chest's height is 76.5 (2026-10-27). Kent, on the census's one
+  // LC miss, Bridge's square logo (he sews it 76.6 x 76.5; a 64.5 box fitted
+  // it 64.5 wide, -15.8%): "Raise LC box to 76.5 tall (Recommended)". The
+  // width stays 96, so a design wider than 1.25:1 is width-limited and does
+  // not move. Only a squarer one does: Bridge reaches 76.5 wide, and Machine's
+  // 1.385:1 LC goes from 89.3 wide (height-limited) to 96.0 against his 89.5
+  // (+7.3%).
   // DEFAULT ON since 2026-10-26. Kent, on the hat's 64 mm height against his
   // cap frames: "64 mm (2.5 in) or more" -- his frames sew it (gate 1 for hat
   // height, settled by his frames). `{ proSized: false }` is the round-inch
   // box as it was.
   const PRO_PLACEMENT_MM = {
     hat_front: { w: 113.5, h: 64.0 },
-    left_chest: { w: 96.0, h: 64.5 },
+    left_chest: { w: 96.0, h: 76.5 },
     beanie: { w: 94.5, h: 56.0 },
   };
 
