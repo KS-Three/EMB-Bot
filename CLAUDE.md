@@ -58,6 +58,13 @@ that needs a sew-out, scope, spending money. Routine judgement calls inside work
 he already approved are still yours to make; asking about those is its own kind
 of stall.
 
+**Exception: a worker session started by a foreman or director never asks Kent
+directly.** It sends the decision (question, 2-4 options with cost and catch,
+its pick) to the session that started it with `SendMessage`, and carries on
+with independent work. The director asks Kent and relays his words verbatim
+(Kent, 2026-10-27: "qestions from your workers should roll up to you for me to
+answer").
+
 ## Open PRs ready for review, not as drafts
 
 **Kent's call 2026-08-28.** Open a PR ready-for-review whenever you have
