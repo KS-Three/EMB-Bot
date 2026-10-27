@@ -1719,6 +1719,16 @@ class PipelineConfig:
     # already detects this). Only MFab changes now." False is the off arm.
     # Tests: `tests/test_white_keyline_art.py`.
     white_keyline_art_recipe: bool = True
+    # `white_keyline_art_every_job` (2026-10-27): the white-keyline recipe on
+    # EVERY job, not only white-keyline art -- `white_keyline_art.detect`
+    # returns True for all art while `white_keyline_art_recipe` and
+    # `border_from_outline` are on. Kent, 2026-10-27, verbatim: "Every job
+    # (Recommended)". Measured first (the bystander report v2, main 2c6b656c):
+    # on the 20 other paired jobs the recipe moved 13 closer to the pro, left 7
+    # byte-identical and moved none further; the four defects that held the
+    # first widening back (Gaulke, Tires, ProSeal, Becker) were fixed by then.
+    # False is the MFab-only gate, as it was. Tests: `tests/test_white_keyline_art.py`.
+    white_keyline_art_every_job: bool = True
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
@@ -5661,7 +5671,8 @@ class PipelineConfig:
     # loops as they were, byte for byte. Set for a plan by
     # `stage6_border.loop_chain_scope`. Tests: `tests/test_keyline_loop_chain.py`.
     # ON for MFab-type art through `white_keyline_art.RECIPE` (Kent
-    # 2026-10-27: "MFab gate only (Recommended)"); OFF for all other art.
+    # 2026-10-27: "MFab gate only (Recommended)"), and on every job since
+    # `white_keyline_art_every_job` (Kent 2026-10-27: "Every job (Recommended)").
     keyline_loop_chain: bool = False
     # With `silhouette_underfill`, a ring that hosts its own under-fill gets
     # the fill's outer edge sewn as one closed satin loop, after the fill and

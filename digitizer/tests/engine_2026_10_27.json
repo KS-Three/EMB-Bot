@@ -276,6 +276,7 @@
  "underlay_all_pieces": false,
  "underlay_style": null,
  "upscale_cap": 4.0,
+ "white_keyline_art_every_job": false,
  "white_keyline_art_recipe": true,
  "wide_columns": false,
  "work_px_per_mm": 8.0
