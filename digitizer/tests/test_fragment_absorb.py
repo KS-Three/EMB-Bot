@@ -18,7 +18,6 @@ from dataclasses import replace
 import pytest
 from shapely.geometry import Polygon, box
 
-from digitizer_core import PipelineConfig
 from digitizer_core import fragment_absorb as fa
 from digitizer_core.pipeline import BackgroundInfo, PipelineResult, plan_stitches
 from digitizer_core.regions import Region
