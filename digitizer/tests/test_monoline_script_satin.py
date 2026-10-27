@@ -46,8 +46,11 @@ def _region(poly) -> Region:
 
 
 def _runs(poly, **cfg_kw):
-    # the OFF md5s predate the 2026-10-23 flips (conftest): pinned off
-    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **cfg_kw})
+    # the OFF md5s predate the 2026-10-23 flips (conftest): pinned off; and
+    # `script_strokes` (ON since 2026-10-26) takes both fixtures before the
+    # monoline classifier sees them, so this file, about that classifier,
+    # holds it off
+    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, "script_strokes": False, **cfg_kw})
     reg = _region(poly)
     blocks, _ = sequence([PlannedRegion(region=reg, polygon=poly, sew_index=0)],
                          fabric_for_garment("hat_front"), cfg)
@@ -100,10 +103,18 @@ def test_on_leaves_a_thick_thin_stroke_to_the_fill():
 def test_prediction_agrees_with_the_emitter():
     """`_sews_satin` (borders-last, seam ownership) reads the same ceiling."""
     for flag in (False, True):
-        cfg = PipelineConfig(underlay=False, monoline_script_satin=flag)
+        cfg = PipelineConfig(underlay=False, monoline_script_satin=flag, script_strokes=False)
         predicted = _sews_satin(_region(MONO), cfg, satin_ceiling_mm(cfg), "flat")
         assert predicted is flag
         assert ("satin" in _kinds(_runs(MONO, monoline_script_satin=flag))) is flag
+
+
+def test_script_strokes_takes_a_script_word_first():
+    """With `script_strokes` ON a script word never reaches this classifier:
+    the monoline flag changes nothing (Tires, 2026-10-26: byte-identical)."""
+    on = _runs(MONO, script_strokes=True)
+    assert "satin" in _kinds(on) and "fill" not in _kinds(on)
+    assert _md5(_runs(MONO, script_strokes=True, monoline_script_satin=True)) == _md5(on)
 
 
 # ---------------------------------------------------------- the word's travel
