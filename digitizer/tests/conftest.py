@@ -784,6 +784,16 @@ WAVE3_2026_10_26_OFF = {k: PRE_FLIP[k] for k in ("fine_bars_satin", "outline_loo
 FLIP_2026_10_27 = {"bean_ink_outlined_letters": False, "text_cluster_part_touching": False,
                    "lettering_columns_italic_lean": False}
 PRE_FLIP.update(FLIP_2026_10_27)
+# The white-keyline recipe on every job (Kent 2026-10-27, "Every job
+# (Recommended)"): the seven switches of `white_keyline_art.RECIPE` that were
+# OFF, and `absorb_fragments` (a field since; `cfg.extra` was its only door,
+# unset = off). False is the engine before the flip. The tests ABOUT each are
+# its own file (`tests/test_silhouette_underfill.py` and its siblings).
+RECIPE_2026_10_27 = {k: False for k in (
+    "silhouette_underfill", "enclosed_white_keyline", "silhouette_underfill_panels",
+    "silhouette_underfill_rim", "keyline_fold_slivers", "skip_covered_shapes",
+    "keyline_loop_chain", "absorb_fragments")}
+PRE_FLIP.update(RECIPE_2026_10_27)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

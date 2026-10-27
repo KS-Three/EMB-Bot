@@ -8,6 +8,9 @@ outlines letters. This pins the read (each of its three parts refuses alone),
 that any other art leaves the config the very same object, that the gate's plan
 is the explicit recipe's, and the verdict on real art: MFab LC reads, Becker
 (white letter faces in a black band) does not.
+
+Kent, 2026-10-27: "Every job (Recommended)" -- the recipe's switches are plain
+defaults since, so the gate changes a config only where a caller turned one off.
 """
 from __future__ import annotations
 
@@ -50,6 +53,22 @@ def test_on_by_default_kent_2026_10_26():
     # "Gate to MFab art first (Recommended)": the recipe turns on by default
     # only on white-keyline art
     assert PipelineConfig().white_keyline_art_recipe is True
+
+
+def test_the_recipe_is_the_default_on_every_job_kent_2026_10_27():
+    # "Every job (Recommended)": every switch of the recipe ON by default, so
+    # the gate's apply on any art is the config the caller already had
+    from digitizer_core import fragment_absorb
+    cfg = PipelineConfig()
+    assert all(getattr(cfg, k) is True for k in wka.RECIPE)
+    assert fragment_absorb.enabled(cfg)
+    assert set(wka.RECIPE_EXTRA) == {fragment_absorb.KEY}
+    got = wka.apply(cfg, True)
+    assert all(getattr(got, k) == getattr(cfg, k) for k in wka.RECIPE)
+    # an explicit OFF still holds on art the gate does not read (the Studio's
+    # unticked "sew the white inside" sends sew_enclosed_white=False)
+    off = PipelineConfig(sew_enclosed_white=False, extra={fragment_absorb.KEY: False})
+    assert wka.apply(off, False) is off and not fragment_absorb.enabled(off)
 
 
 def test_the_fixture_is_one_keyline_round_two_letters():
@@ -97,16 +116,18 @@ def test_the_mfab_extras_ride_the_gate_kent_2026_10_26():
     got = wka.apply(mine, True)
     assert fragment_absorb.enabled(got) and got.extra["fill_section_travel"] is True
     assert mine.extra == {"fill_section_travel": True}     # the caller's dict untouched
-    assert not fragment_absorb.enabled(wka.apply(ON, False))
+    assert not fragment_absorb.enabled(wka.apply(replace(ON, absorb_fragments=False), False))
 
 
 def test_the_loop_chain_rides_the_gate_kent_2026_10_27():
-    # "MFab gate only (Recommended)": the white loops chain on MFab-type art
-    # only; everywhere else `keyline_loop_chain` stays OFF
+    # "MFab gate only (Recommended)": the white loops chain on MFab-type art;
+    # since 2026-10-27 ("Every job (Recommended)") on every job by default
     assert "keyline_loop_chain" in wka.RECIPE
     assert wka.apply(ON, True).keyline_loop_chain is True
-    assert wka.apply(ON, False).keyline_loop_chain is False
-    assert PipelineConfig().keyline_loop_chain is False
+    off = replace(ON, keyline_loop_chain=False)
+    assert wka.apply(off, True).keyline_loop_chain is True
+    assert wka.apply(off, False).keyline_loop_chain is False
+    assert PipelineConfig().keyline_loop_chain is True
 
 
 def test_the_gates_plan_is_the_recipes(monkeypatch):

@@ -450,11 +450,11 @@ FLAGS: dict[str, dict] = {
 # `outline_loop_mitre` and `fine_bars_satin` left it when Kent flipped them ON,
 # 2026-10-26 ("Outline corners pivot", "Fine bars as satin"); their rows stay.
 # `text_cluster_part_touching` and `lettering_columns_italic_lean` left it when Kent
-# flipped them ON from the wave-5 sheet, 2026-10-27; their rows stay
-WAVE3 = ["lettering_columns_apex_cut",
-         "silhouette_underfill_rim", "keyline_fold_slivers",
-         "skip_covered_shapes", "monoline_script_satin",
-         "fill_section_travel", "absorb_fragments"]
+# flipped them ON from the wave-5 sheet, 2026-10-27; their rows stay.
+#: (`silhouette_underfill_rim`, `keyline_fold_slivers`, `skip_covered_shapes` and
+#: `absorb_fragments` left it 2026-10-27: ON with the white-keyline recipe on every
+#: job, Kent "Every job (Recommended)"; their rows are kept)
+WAVE3 = ["lettering_columns_apex_cut", "monoline_script_satin", "fill_section_travel"]
 
 #: The wave-5 sheet (2026-10-27): every layout flag still waiting on Kent, on main
 #: after #1112 (white and the bay mouth ON), #1121 (fine bars and the outline pivot

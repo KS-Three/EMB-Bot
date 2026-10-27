@@ -1588,7 +1588,9 @@ class PipelineConfig:
     # satin tier's skeleton, which broke MFab's band into 253 columns. Layout
     # (ruling 2026-10-22: judged in the preview). OFF is the engine as it
     # was, byte for byte.
-    enclosed_white_keyline: bool = False
+    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
+    enclosed_white_keyline: bool = True
     # Border from the art's outline (`digitizer_core/art_outline.py`, built
     # OFF 2026-10-24). The pro's border choice is not a stroke threshold: he
     # borders a shape when the ART draws an outline round it (BECKER's faces
@@ -1670,7 +1672,9 @@ class PipelineConfig:
     # shape width rule exists for this (`tools/tier_census.py`, kappa 0.170
     # today vs 0.198 for the best). Layout (ruling 2026-10-22: judged in the
     # preview). OFF is the engine as it was, byte for byte.
-    silhouette_underfill: bool = False
+    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
+    silhouette_underfill: bool = True
     # The small lettering on a white panel, as the pro sews MFab (hat and LC
     # agree, 2026-10-25): block 0 black tatami at 22-25 deg under the whole
     # silhouette with a 1.84-1.92 mm black satin rim; block 1 the white
@@ -1688,7 +1692,9 @@ class PipelineConfig:
     # white, black), and the field fills its rider holes as one closed panel
     # under it that the black under-fill gives up. Layout, judged in the
     # preview. OFF: nothing is read, byte for byte.
-    silhouette_underfill_panels: bool = False
+    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
+    silhouette_underfill_panels: bool = True
     # `keyline_fold_slivers` (BUILT OFF 2026-10-26, the MFab recipe's trims,
     # `docs/mfab-recipe-trims-2026-10-26.md`; read only with
     # `sew_enclosed_white`): a sewn white field's slivers fold back into it
@@ -1702,7 +1708,9 @@ class PipelineConfig:
     # hole sits on the letter and its loop crosses the sliver and the
     # hairline. Layout: Kent's call from the renders. Off, byte-identical.
     # Tests: `tests/test_keyline_fold_slivers.py`.
-    keyline_fold_slivers: bool = False
+    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
+    keyline_fold_slivers: bool = True
     # `white_keyline_art_recipe` (BUILT OFF 2026-10-26, `white_keyline_art`):
     # the white-keyline recipe -- `silhouette_underfill`, `sew_enclosed_white`,
     # `enclosed_white_keyline`, `silhouette_underfill_panels`,
@@ -1719,6 +1727,13 @@ class PipelineConfig:
     # already detects this). Only MFab changes now." False is the off arm.
     # Tests: `tests/test_white_keyline_art.py`.
     white_keyline_art_recipe: bool = True
+    # `absorb_fragments` (2026-10-27): `fragment_absorb` -- a fragment sewn as
+    # part of the body of its own thread it lies against. Built OFF as
+    # `cfg.extra["absorb_fragments"]` (2026-10-25), which still wins when set;
+    # this field is its default. ON for every job with the rest of
+    # `white_keyline_art.RECIPE` (Kent 2026-10-27, verbatim: "Every job
+    # (Recommended)"). False is the pre-flip default.
+    absorb_fragments: bool = True
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
@@ -5635,7 +5650,9 @@ class PipelineConfig:
     # fill) already covers 62% / 95% of their area. Same colour, so nothing
     # changes what shows; it removes a second layer and its cuts. Off,
     # byte-identical. Tests: `tests/test_skip_covered_shapes.py`.
-    skip_covered_shapes: bool = False
+    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
+    skip_covered_shapes: bool = True
     # `cut_every_jump` (BUILT OFF 2026-10-21, `docs/settings-vs-pro-2026-10-21.md`
     # row 25): no needle-up move is left uncut. Ours leaves 0-168 uncut
     # jumps of 0.5-3.0 mm per job (every hop under `trim_at_mm`), each a
@@ -5690,8 +5707,10 @@ class PipelineConfig:
     # loops as they were, byte for byte. Set for a plan by
     # `stage6_border.loop_chain_scope`. Tests: `tests/test_keyline_loop_chain.py`.
     # ON for MFab-type art through `white_keyline_art.RECIPE` (Kent
-    # 2026-10-27: "MFab gate only (Recommended)"); OFF for all other art.
-    keyline_loop_chain: bool = False
+    # 2026-10-27: "MFab gate only (Recommended)"), then on every job (below).
+    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
+    keyline_loop_chain: bool = True
     # With `silhouette_underfill`, a ring that hosts its own under-fill gets
     # the fill's outer edge sewn as one closed satin loop, after the fill and
     # in its colour (2026-10-25, built OFF; `stage6_border.underfill_rim_runs`).
@@ -5705,7 +5724,9 @@ class PipelineConfig:
     # corners pivot as `outline_loop_mitre`'s do. Layout, judged in the preview
     # (Kent, 2026-10-22). False is the plan as it was, byte for byte.
     # Tests: `tests/test_underfill_rim.py`.
-    silhouette_underfill_rim: bool = False
+    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
+    silhouette_underfill_rim: bool = True
     # A script word sews as the pen wrote it (2026-10-26, built OFF; Kent:
     # "Measure, then build OFF"; `script_strokes.py`). A joined or italic word
     # the letter door refuses (aspect over its 1.4 ceiling, a cluster of one)

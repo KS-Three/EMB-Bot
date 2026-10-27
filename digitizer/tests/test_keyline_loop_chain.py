@@ -119,8 +119,8 @@ def test_a_plan_sets_the_flag_from_its_config(monkeypatch):
     from digitizer_core import PipelineConfig, pipeline
     seen = []
     monkeypatch.setattr(pipeline, "_plan_stitches", lambda _r, _c: seen.append(_LOOP_CHAIN.get()))
-    pipeline.plan_stitches(object(), PipelineConfig())
-    pipeline.plan_stitches(object(), PipelineConfig(keyline_loop_chain=True))
+    pipeline.plan_stitches(object(), PipelineConfig(keyline_loop_chain=False))
+    pipeline.plan_stitches(object(), PipelineConfig())   # ON by default (Kent 2026-10-27, "Every job (Recommended)")
     assert seen == [False, True]
     assert _LOOP_CHAIN.get() is False
 

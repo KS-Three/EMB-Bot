@@ -25,7 +25,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, machine, stitches
-from tests.conftest import FLIP_2026_10_23
+from tests.conftest import FLIP_2026_10_23, RECIPE_2026_10_27
 from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
@@ -59,8 +59,9 @@ def _plan(band: Polygon, field: str | None = "field", later=(LEFT, RIGHT), **cfg
                     thread_number="0020", area_mm2=poly.area, source="test",
                     meta={"layer": 1})
         planned.append(PlannedRegion(region=lr, polygon=poly, sew_index=1))
-    # OFF_MD5 was captured on main before the 2026-10-23 flips: pin them off (conftest)
-    cfg = PipelineConfig(underlay=False, sew_enclosed_white=True, **{**FLIP_2026_10_23, **cfg_kw})
+    # OFF_MD5 was captured on main before the 2026-10-23 and 2026-10-27 flips: pin them off (conftest)
+    cfg = PipelineConfig(underlay=False, sew_enclosed_white=True,
+                         **{**FLIP_2026_10_23, **RECIPE_2026_10_27, **cfg_kw})
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg)
     return [r for b in blocks for r in b.runs if r.shape_id == "Sband"]
 
@@ -80,8 +81,9 @@ def _segments(runs, kind=None):
             yield a, b
 
 
-def test_flag_default_is_off_and_the_width_is_the_pros():
-    assert PipelineConfig().enclosed_white_keyline is False
+def test_flag_default_is_on_and_the_width_is_the_pros():
+    # ON since the recipe went to every job (Kent 2026-10-27, "Every job (Recommended)")
+    assert PipelineConfig().enclosed_white_keyline is True
     assert machine.KEYLINE_WIDTH_MM == 2.1
     assert machine.KEYLINE_REACH_FRAC == 0.9
 
@@ -172,7 +174,8 @@ def test_on_a_per_shape_tier_still_wins():
     def run(**kw):
         planned = [PlannedRegion(region=reg, polygon=BAND, sew_index=0)]
         blocks, _ = sequence(planned, fabric_for_garment("hat_front"),
-                             PipelineConfig(underlay=False, sew_enclosed_white=True, **kw))
+                             PipelineConfig(underlay=False, sew_enclosed_white=True,
+                                            **{**RECIPE_2026_10_27, **kw}))
         return [r for b in blocks for r in b.runs]
     assert _md5(run()) == _md5(run(enclosed_white_keyline=True))
 

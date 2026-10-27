@@ -28,8 +28,9 @@ def _satin(runs):
     return [p for r in sat for p in r.points], sat
 
 
-def test_flag_is_off_by_default():
-    assert PipelineConfig().silhouette_underfill_rim is False
+def test_flag_is_on_by_default():
+    # ON since the recipe went to every job (Kent 2026-10-27, "Every job (Recommended)")
+    assert PipelineConfig().silhouette_underfill_rim is True
 
 
 def test_the_width_is_the_pros_measured_rim():

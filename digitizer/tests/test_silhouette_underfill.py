@@ -22,7 +22,7 @@ from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import sequence
-from tests.conftest import FLIP_2026_10_23
+from tests.conftest import FLIP_2026_10_23, RECIPE_2026_10_27
 
 FABRIC = fabric_for_garment("hat_front")
 
@@ -55,8 +55,8 @@ def becker():
 
 def _sew(regions, **kw):
     """`plan_stitches`' order: the pass (ON), stage 5, stage 7."""
-    # OFF_MD5 was captured on main before the 2026-10-23 flips: pin them off (conftest)
-    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **kw})
+    # OFF_MD5 was captured on main before the 2026-10-23 and 2026-10-27 flips: pin them off (conftest)
+    cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **RECIPE_2026_10_27, **kw})
     if cfg.silhouette_underfill:
         regions, _ = su.apply(regions)
     planned, _ = resolve_overlaps(regions, FABRIC, cfg)
@@ -74,8 +74,9 @@ def _md5(blocks) -> str:
 OFF_MD5 = {"mfab": "65da8df6f52b38595bf511d4a3cf5f5c", "becker": "73e9fc7eb9d781b86f2f503f647d366f"}
 
 
-def test_flag_default_is_off():
-    assert PipelineConfig().silhouette_underfill is False
+def test_flag_default_is_on():
+    # ON since the recipe went to every job (Kent 2026-10-27, "Every job (Recommended)")
+    assert PipelineConfig().silhouette_underfill is True
 
 
 def test_off_is_byte_identical_to_main():
@@ -168,6 +169,57 @@ def _sewn_cover(planned, blocks, poly):
     return cover.intersection(poly).area / poly.area, kinds
 
 
+def test_the_host_carries_its_merged_shapes_art():
+    out, rep = su.apply(mfab())
+    host = next(r for r in out if r.shape_id == "Sring")
+    merged = {r.shape_id: r.polygon for r in mfab() if r.shape_id in rep[0]["merged"]}
+    assert host.meta[su.MERGED_ART_KEY].equals(unary_union(list(merged.values())))
+    assert su.MERGED_ART_KEY not in su.apply(mfab(), pinned={"Sl1", "Sl2"})[0][1].meta
+
+
+def test_a_counter_on_the_ground_keeps_its_art_kent_2026_10_27():
+    """Becker's B under the recipe on every job (2026-10-27): its white face
+    merges into the white ground, and the black counter sewn on top kept its
+    whole pull and underlap growth over the face -- 25.3 -> 35.6 mm2 sewn on
+    Becker hat large, the face thinned. With the merged art down at the
+    host's layer the counter plans as it did against the face: its artwork,
+    trimmed back to the hole. Without the key: grown over the white."""
+    face = _holed(box(4, 4, 56, 26), box(20, 10, 30, 20))
+    counter = box(20, 10, 30, 20)
+    ground = _holed(box(0, 0, 60, 30), box(4, 4, 56, 26))
+
+    def planned_counter(with_key):
+        meta = {su.UNDERFILL_KEY: Polygon(ground.exterior), su.UNDERFILL_OF_KEY: "Sground",
+                "tier": "fill"}
+        if with_key:
+            meta[su.MERGED_ART_KEY] = face
+        regs = [_reg("Sground", ground, 1, 0, **meta), _reg("Scounter", counter, 0, 1)]
+        cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **RECIPE_2026_10_27})
+        planned, _ = resolve_overlaps(regs, FABRIC, cfg)
+        return next(p for p in planned if p.shape_id == "Scounter").polygon
+
+    on, off = planned_counter(True), planned_counter(False)
+    assert on.difference(counter.buffer(1e-6)).area < 1e-6           # no growth over the face
+    assert off.area > counter.area + 0.2 * counter.length * FABRIC.pull_comp_mm   # the defect
+
+
+def test_a_pinned_layer_beats_the_host_move():
+    """A review-screen layer (`shape_overrides`, handed in as `pinned`) wins
+    over the under-fill's reordering: the host never moves ahead of a pinned
+    shape's layer, and a pinned shape is never merged (it sews on its own, on
+    top, in its layer). Nothing pinned: the move and the merge as before."""
+    def layers(out):
+        return {r.shape_id: r.meta["layer"] for r in out}
+    free, _ = su.apply(mfab())
+    assert layers(free)["Sring"] < layers(free)["Skey"]          # black moves under the white
+    held, rep = su.apply(mfab(), pinned={"Skey"})
+    assert layers(held)["Sring"] > layers(held)["Skey"]          # the user's white still opens
+    assert rep[0]["merged"] == ["Sl1", "Sl2"]
+    kept, rep = su.apply(mfab(), pinned={"Sl1"})
+    assert "Sl1" in layers(kept) and rep[0]["merged"] == ["Sl2"]
+    assert su.apply(mfab(), pinned=())[0] == free
+
+
 def test_an_unsewn_keyline_round_two_bodies_leaves_both_sewn():
     """MFab with the white unsewn (arm b): the keyline cut splits the outline
     into the band and the two bodies it held. Every body still sews as the
@@ -178,7 +230,7 @@ def test_an_unsewn_keyline_round_two_bodies_leaves_both_sewn():
     out, report = su.apply(regs, unsewn=[key])
     assert report[0]["merged"] == ["Sl1", "Sl2"]
     assert len(getattr(out[0].meta[su.UNDERFILL_KEY], "geoms", [None])) == 3   # band + 2 bodies
-    cfg = PipelineConfig(underlay=False, silhouette_underfill=True)
+    cfg = PipelineConfig(underlay=False, **{**RECIPE_2026_10_27, "silhouette_underfill": True})
     planned, _ = resolve_overlaps(out, FABRIC, cfg)
     blocks, _ = sequence(planned, FABRIC, cfg)
     l1, l2 = regs[1].polygon, regs[2].polygon

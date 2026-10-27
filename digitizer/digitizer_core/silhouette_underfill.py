@@ -55,6 +55,13 @@ from shapely.ops import unary_union
 UNDERFILL_KEY = "silhouette_underfill"
 #: meta key on the host: the ring it fills under (shape id), for reports.
 UNDERFILL_OF_KEY = "silhouette_underfill_of"
+#: meta key on the host: the artwork of the shapes merged into it (one geometry).
+#: They no longer sew on their own, but their ink is still down at the host's layer:
+#: stage 5 plans the shapes sewn on top against it as it did against the shapes
+#: themselves (`stage5_overlap.sewn_footprint`). Becker's B: its white face merges
+#: into the white ground, and without this the black counter on it kept its whole
+#: pull and underlap growth over the face (25.3 -> 35.6 mm2 sewn, 2026-10-27).
+MERGED_ART_KEY = "underfill_merged_art"
 
 #: a ring smaller than this is a letter with a counter, not a silhouette
 RING_MIN_AREA_MM2 = 200.0
@@ -382,30 +389,30 @@ def _panels(regions, riders: set[str], outlines, overlap_mm: float):
     return out
 
 
-def apply_cfg(regions, unsewn, cfg, outlines):
+def apply_cfg(regions, unsewn, cfg, outlines, pinned=()):
     """`plan_stitches`' call, `cfg.silhouette_underfill` ON: -> (regions,
     report, outlines). With `cfg.silhouette_underfill_panels` (read only with
     `sew_enclosed_white` and `border_from_outline`) the riders are found,
     dropped from the outlines' body lists (a rider is no outline's body: no
     loop round it, no body fill) and passed on; with none, `apply` exactly
-    as before and the outlines untouched."""
+    as before and the outlines untouched. `pinned`: see `apply`."""
     riders = []
     if (getattr(cfg, "silhouette_underfill_panels", False) and cfg.sew_enclosed_white
             and cfg.border_from_outline):
         riders = find_riders(regions, unsewn, outlines)
     if not riders:
-        out, report = apply(regions, unsewn, outlines=outlines)
+        out, report = apply(regions, unsewn, outlines=outlines, pinned=pinned)
         return out, report, outlines
     gone = set(riders)
     outlines = {oid: [b for b in bodies if b[0] not in gone]
                 for oid, bodies in (outlines or {}).items()}
     outlines = {k: v for k, v in outlines.items() if v} or None
     out, report = apply(regions, unsewn, riders=riders, outlines=outlines,
-                        overlap_mm=cfg.overlap_mm)
+                        overlap_mm=cfg.overlap_mm, pinned=pinned)
     return out, report, outlines
 
 
-def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0):
+def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0, pinned=()):
     """`cfg.silhouette_underfill` ON: -> (regions as copies, report). The
     hosts carry `UNDERFILL_KEY` and the fill tier, merged shapes are gone,
     and each host's layer sews before its ring's and its inner colours'.
@@ -416,7 +423,13 @@ def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0)
     tagged `RIDER_HOLES_KEY`), the host's outline gives that panel up (shrunk
     by `overlap_mm`, so the black still tucks under its edge), and the riders
     sew in a layer of their own right after the field's -- black, white,
-    black. Empty: as before, byte for byte."""
+    black. Empty: as before, byte for byte.
+
+    `pinned` (shape ids the review screen put on a layer, `shape_overrides`):
+    the user's layer wins. A pinned shape is never merged (it sews on its own,
+    on top of the fill, in its layer), and a host's layer never moves ahead
+    of a pinned shape's layer -- at most to just after it. None pinned: as
+    before."""
     rings = plan(regions, unsewn, riders, outlines)
     if not rings:
         return regions, []
@@ -427,12 +440,19 @@ def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0)
     dropped: set[str] = set()
     order = sorted({r.meta["layer"] for r in regions})
     moved = False
+    pinned = set(pinned)
+    pinned_layers = {r.meta["layer"] for r in regions if r.shape_id in pinned}
     report = []
+    by_id = {r.shape_id: r for r in regions}
     for ring, host, outline, merged, inner in rings:
+        merged = [m for m in merged if m not in pinned]
         if cut is not None and not cut.is_empty and outline.intersects(cut):
             outline = outline.difference(cut)
         host_meta[host.shape_id] = {UNDERFILL_KEY: outline, UNDERFILL_OF_KEY: ring.shape_id,
                                     "tier": "fill"}
+        art = [by_id[m].polygon for m in merged if by_id[m].polygon is not None]
+        if art:
+            host_meta[host.shape_id][MERGED_ART_KEY] = unary_union(art)
         dropped.update(merged)
         # every other colour in play -- the ring's, when it is not the host's,
         # and each inner colour -- must sew after the host's layer
@@ -440,9 +460,13 @@ def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0)
                  if r.thread_index != host.thread_index]
         here = host.meta["layer"]
         first = min(ahead, default=here)
-        if order.index(first) < order.index(here):
+        to = order.index(first)
+        for L in pinned_layers:          # never ahead of a layer the user set
+            if L != here and order.index(L) < order.index(here):
+                to = max(to, order.index(L) + 1)
+        if to < order.index(here):
             order.remove(here)
-            order.insert(order.index(first), here)
+            order.insert(to, here)
             moved = True
         report.append({"ring": ring.shape_id, "host": host.shape_id,
                        "outline_mm2": round(outline.area, 1), "merged": sorted(merged)})

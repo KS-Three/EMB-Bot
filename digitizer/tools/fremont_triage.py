@@ -102,11 +102,17 @@ ARMS = {
     # 2026-10-16, one more shape), the small stem and the scoped dot rung,
     # the photo lane's phantom-blend dissolve (`dissolve_phantom_blends`) and
     # stage 5's cut-off pieces (`clip_keep_pieces`), all ON since 2026-10-20,
-    # so this arm, the engine as he sewed it, has those OFF too.
+    # so this arm, the engine as he sewed it, has those OFF too -- and the
+    # white-keyline recipe, on every job since 2026-10-27.
     "small_glyph_keep_off": {"small_glyph_keep": False, "small_text_true_size": False,
                              "detail_spokes": False, "lettering_columns_small_stem": False,
                              "small_dot_rung": False, "small_dot_rung_lettering": False,
-                             "dissolve_phantom_blends": False, "clip_keep_pieces": False},
+                             "dissolve_phantom_blends": False, "clip_keep_pieces": False,
+                             **{k: False for k in (
+                                 "silhouette_underfill", "enclosed_white_keyline",
+                                 "silhouette_underfill_panels", "silhouette_underfill_rim",
+                                 "keyline_fold_slivers", "skip_covered_shapes",
+                                 "keyline_loop_chain", "absorb_fragments")}},
 }
 ARM_ORDER = list(ARMS)
 

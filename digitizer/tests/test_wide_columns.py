@@ -27,7 +27,7 @@ from digitizer_core.machine import satin_ceiling_mm
 from digitizer_core.stage6_satin import satin_shape, strip_splits
 from digitizer_core.stitches import strip_ties
 
-from .conftest import TESTDATA
+from .conftest import RECIPE_2026_10_27, TESTDATA
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "tools"))
@@ -150,7 +150,11 @@ def _becker_coverage(monkeypatch, guard: bool) -> tuple[float, float]:
     cfg = PipelineConfig(target_width_mm=_FOLD_WIDTH_MM, wide_columns=True,
                          satin_corner_twigs=False, satin_junction_stack=False,
                          satin_rail_comp=False, satin_rails_follow_edge=False,
-                         letterform_priors_k=None, lettering_columns=False)
+                         letterform_priors_k=None, lettering_columns=False,
+                         # ... and an EIGHTH, 2026-10-27: the white-keyline recipe on every
+                         # job sews Becker's band as a ground under the letters (more layers
+                         # on the bend, 8.32 guarded). Held OFF, same rule.
+                         **RECIPE_2026_10_27)
     result, plan = digitize(art, cfg)
     m = run_preflight(result, plan, cfg, image=art)["metrics"]
     return float(m["coverage_max"]), float(m["uncovered_worst_mm2"])

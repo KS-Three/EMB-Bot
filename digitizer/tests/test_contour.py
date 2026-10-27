@@ -25,6 +25,7 @@ import shapely
 from shapely.geometry import LineString, Point, Polygon
 
 from digitizer_core import PipelineConfig, machine, plan_stitches
+from tests.conftest import RECIPE_2026_10_27
 from digitizer_core.export import export_dst
 from digitizer_core.stage6_contour import (_entry_arc, _ring_points, _step_count,
                                            contour_fill)
@@ -541,7 +542,9 @@ def test_every_stitch_of_a_contour_plan_stays_inside_its_shape(whitebg):
     from digitizer_core.pipeline import fabric_for
     from digitizer_core.stage5_overlap import resolve_overlaps
 
-    c = cfg(fill_technique="contour", **PLAN_CFG_KW)
+    # the white-keyline recipe on every job (2026-10-27) pinned off (conftest `RECIPE_2026_10_27`): the under-fill sews a host
+    # under the pieces it holds, outside its own planned polygon by design
+    c = cfg(fill_technique="contour", **PLAN_CFG_KW, **RECIPE_2026_10_27)
     fabric = fabric_for(c)
     planned, _w = resolve_overlaps(whitebg.regions, fabric, c)
     # A satin-tier shape's sewn footprint is its artwork grown by the pull:

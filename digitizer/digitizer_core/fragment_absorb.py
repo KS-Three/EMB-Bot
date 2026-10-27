@@ -86,7 +86,9 @@ _KEEP_KEYS = ("text_candidate", "text_cluster_id", "lettering_group", "word_id",
 
 
 def enabled(cfg) -> bool:
-    return bool((getattr(cfg, "extra", None) or {}).get(KEY))
+    """`cfg.extra["absorb_fragments"]` when set, else `cfg.absorb_fragments`
+    (ON since 2026-10-27, Kent: "Every job (Recommended)")."""
+    return bool((getattr(cfg, "extra", None) or {}).get(KEY, getattr(cfg, "absorb_fragments", False)))
 
 
 def _narrow(poly, width: float) -> bool:

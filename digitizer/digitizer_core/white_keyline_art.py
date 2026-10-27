@@ -1,5 +1,13 @@
 """White-keyline art turns its own recipe on (`cfg.white_keyline_art_recipe`, ON since 2026-10-26).
 
+EVERY JOB since 2026-10-27: Kent, verbatim, "Every job (Recommended)". Every
+switch in `RECIPE` is a plain `PipelineConfig` default since (and
+`cfg.absorb_fragments` is `RECIPE_EXTRA`'s), so on the defaults this gate
+changes nothing; it still turns the recipe on over a caller's explicit OFF on
+white-keyline art, as it did before. Measured first (bystander report v2,
+main 2c6b656c): on the 20 other paired jobs the recipe moved 13 closer to the
+pro, left 7 byte-identical and moved none further.
+
 Kent's ruling, 2026-10-26: "Gate to MFab art first (Recommended)" -- the
 recipe turns on by default only where a dark shape carries white outlines
 round letters; every other job stays as it is while the recipe's other

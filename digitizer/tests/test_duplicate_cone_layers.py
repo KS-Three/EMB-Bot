@@ -262,14 +262,29 @@ def test_an_explicit_layer_override_still_beats_the_fold(drone_on):
     renumbers when a layer empties, and the depth sort and borders-last both
     reorder before overrides apply — so interpreting an override in the
     post-fold numbering is the existing contract, not a new hazard."""
-    _res, plan = drone_on
-    sid = next(r.shape_id for b in plan.blocks for r in b.runs if r.shape_id)
+    res, plan = drone_on
+    # A shape NOT already near the front, of a thread layer 0 does not sew: pinned to
+    # layer 0 it must lead its own thread's block, and that block must move
+    # up. (Pinned into a layer that holds other threads, it does not open the
+    # design: stage 7 picks which thread of a mixed layer sews first, and it
+    # never followed an override -- measured on Drone 2026-10-27, on the
+    # engine before the white-keyline recipe went to every job as well.)
+    def first_block(p, sid):
+        return next(k for k, b in enumerate(p.blocks) for r in b.runs if r.shape_id == sid)
+    layer0 = {r.thread_index for r in res.regions if r.meta.get("layer") == 0}
+    sewn = [r.shape_id for b in plan.blocks for r in b.runs if r.shape_id]
+    by_id = {r.shape_id: r for r in res.regions}
+    # third block or later, so "sooner" holds whichever thread of layer 0 leads
+    sid = next(s for s in sewn if s in by_id and by_id[s].thread_index not in layer0
+               and first_block(plan, s) >= 2)
     _r2, pinned = digitize(DRONE, cfg(target_width_mm=80.0,
                                       merge_duplicate_cones=True,
                                       shape_overrides={sid: {"layer": 0}},
                                       **PRE_FLIP_RC))
-    first = next(r.shape_id for b in pinned.blocks for r in b.runs if r.shape_id)
-    assert first == sid, "a shape pinned to layer 0 must open the design"
+    k = first_block(pinned, sid)
+    lead = next(r.shape_id for r in pinned.blocks[k].runs if r.shape_id)
+    assert lead == sid, "a shape pinned to layer 0 must lead its own thread's block"
+    assert k < first_block(plan, sid), "and that block must sew sooner than unpinned"
 
 
 def test_off_leaves_the_design_exactly_as_it_was(drone_off):
