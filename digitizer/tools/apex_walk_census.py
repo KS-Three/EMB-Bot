@@ -25,7 +25,8 @@ instrument (n/a).
     python -m tools.apex_walk_census gen  JOB         # stages 1-4 once, pickled (~minutes)
     python -m tools.apex_walk_census arm  JOB ARM     # stages 5-7 for one arm off the pickle
     python -m tools.apex_walk_census table [--out MD] # per letter, every arm in the cache
-    python -m tools.apex_walk_census render --out DIR # OFF | ON | ON new | pro per letter
+    python -m tools.apex_walk_census render --out DIR # OFF | ON | ON new per letter
+                                                      # (--with-pro adds his: never commit it)
     python -m tools.apex_walk_census fixture --out testdata/apex_walk_letters.json
                                                       # the test's letters, sewn by THIS checkout
 
@@ -735,7 +736,7 @@ def _design(runs: list[dict]) -> dict:
     return {"stitches": st, "colors": [{"r": 30, "g": 30, "b": 30}]}
 
 
-def _paths(runs: list[dict], ppm: float, box) -> "np.ndarray":
+def _paths(runs: list[dict], ppm: float, box):
     """The needle path: satin dark, travel red, underlay orange, jumps blue."""
     import cv2
     import numpy as np
@@ -778,9 +779,12 @@ def _hstack(imgs, gap: int = 16):
     return np.hstack(cols)
 
 
-def render(rows: list[dict], out: Path, cache: Path = CACHE, names: dict | None = None) -> list[Path]:
-    """Per letter: OFF | ON | ON new | pro, threads at 8 and 40 px/mm, and
-    the needle paths (ours only: his file has no travel label) at 40."""
+def render(rows: list[dict], out: Path, cache: Path = CACHE, names: dict | None = None,
+           pro: bool = False) -> list[Path]:
+    """Per letter: OFF | ON | ON new, threads at 8 and 40 px/mm, and the
+    needle paths (ours only: his file has no travel label) at 40. `pro` adds
+    his stitches as a fourth panel, for a local look only: Kent's 2026-10-27
+    ruling commits no new image of a pro's stitch file under docs/renders."""
     import cv2
     from digitizer_core import stitchviz
     from tools import letter_pieces as LP
@@ -792,7 +796,7 @@ def render(rows: list[dict], out: Path, cache: Path = CACHE, names: dict | None 
         label = names.get((r["job"], r["sid"]), r["sid"])
         info = json.loads((cache / r["job"] / "gen.json").read_text(encoding="utf-8"))
         pro_runs = []
-        if r.get("pro"):
+        if pro and r.get("pro"):
             pb = r["pro"]["bbox"]
             for pr in LP.runs_of(Path(info["pro"])):
                 keep = [p for p in pr["pts"].tolist()
@@ -844,6 +848,9 @@ def parse_args(argv=None):
         t.add_argument("--json", type=Path)
         t.add_argument("--jobs", nargs="*", default=sorted(JOBS))
         t.add_argument("--names", type=Path, help="JSON {job: {shape_id: letter}} for the row labels")
+        if name == "render":
+            t.add_argument("--with-pro", action="store_true",
+                           help="add the pro's stitches as a fourth panel (local only: never commit)")
     return ap.parse_args(argv)
 
 
@@ -881,7 +888,8 @@ def main(argv=None) -> int:
                 args.out.write_text(md, encoding="utf-8")
             print(md)
         else:
-            for f in render(rows, args.out or (args.cache / "renders"), args.cache, names):
+            for f in render(rows, args.out or (args.cache / "renders"), args.cache, names,
+                            pro=args.with_pro):
                 print(f)
     return 0
 
