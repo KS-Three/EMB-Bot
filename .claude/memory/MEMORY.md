@@ -32,6 +32,7 @@ the OLDEST lines whole to the archive.
 - [Check what shipped before building it](check-shipped-before-building-2026-09-29.md) — Kent asked for a manual digitizer that had shipped; grep MASTER_SCOPE/PRODUCT, offer "show me", drive it
 - [CI pin hygiene](ci-pin-hygiene-2026-10-25.md) — hex `==` prints whole; `tools.ci_repin` re-pins from a run id (dry run unless --apply); shard map max/mean 1.28 → 1.00; advisory default-path-diff job
 - [Corner folds in the Column lane](column-corner-folds-2026-10-23.md) — pro FOLDS one column round every L corner (57 read), cuts only T junctions; `lettering_columns_corner_fold` OFF
+- [Column lane memo](column-lane-memo-2026-10-26.md) — lane rebuilt identical columns (779/2,825) and rail pairings (941/1,413); per-letter `_MEMO` on exact keys: stages 5-7 CPU -12% (MFab hat -20%), 7 DSTs byte-identical
 - [Column rail fit: measured false](column-rail-fit-negative-2026-10-25.md) — 7 pairs: rails read 0.000-0.04 on RUN windows; per-letter wobble is real corners, a fit can't move it. Quote `rail_run`, don't plan a rail fit
 - [Column reach census](column-reach-census-2026-10-25.md) — 257/296 reach on main; misses = white faces + split/script letters, not the tagger; ratio rescues fail held-out
 - [Column width on resize](column-width-on-resize-2026-10-01.md) — ruling 12: drawn width scales, pull comp fixed; store `widthPx`, mm is a view; no clamp
