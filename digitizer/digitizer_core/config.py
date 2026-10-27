@@ -5724,20 +5724,6 @@ class PipelineConfig:
     # Layout, judged in the preview (Kent, 2026-10-22). False is the plan as it
     # was, byte for byte. Tests: `tests/test_script_strokes.py`.
     script_strokes_drawn_width: bool = False
-    # A Column-lane letter's walk also tried with its column ends joined only
-    # through the letter, and kept where cheaper (2026-10-27, built OFF;
-    # `letter_walk.py`, `docs/satin-split-cuts-2026-10-27.md`). The span graph
-    # joins two ends within 1.3 W + 0.3 + the pull: 5 mm on Becker's bold
-    # letters, wider than an E's slot or an M's notch, so the walk hopped
-    # outside the letter and trimmed (six of the eight cuts inside a letter on
-    # seven paired jobs; the pro links each needle-down under later satin).
-    # ON, every letter is walked twice, today's way and with the corner fold's
-    # `within` guard on every letter, and keeps the guarded walk only where it
-    # cuts no more and leaves no more travel off later satin. On the guard
-    # alone four letters crossed finished satin instead (exposure +10 mm).
-    # Layout, judged in the preview (Kent, 2026-10-22). False is the plan as it
-    # was, byte for byte. Tests: `tests/test_column_slot_guard.py`.
-    lettering_columns_slot_guard: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()

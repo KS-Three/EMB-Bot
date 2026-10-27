@@ -8,9 +8,16 @@ bring it toward the pro's count?
 the cuts inside lettering. The other two are already ruled, or the pro does
 the same.
 
-**Built, OFF:** `lettering_columns_slot_guard` takes 3 of the 8 letter cuts.
-Trims go 261 → 258 over seven jobs, and exposed travel falls 7.1 mm. Nothing
-rises.
+**Not built (the director, 2026-10-27: stop at the finding).** The narrow
+cure for the letters, `lettering_columns_slot_guard`, takes 3 of the 8 letter
+cuts:
+
+- trims 261 → 258 over seven jobs;
+- exposed travel falls 7.1 mm, and nothing rises;
+- it pays for that with a second walk of every Column-lane letter.
+
+It is written up below as a costed candidate, and its code is parked on
+branch `claude/slot-guard-candidate`.
 
 Measured on main 8341d1f7 (2026-10-27). Seven jobs at the pro's widths, via
 `tools.pro_pair`: the five hats from #1072, plus Becker hat small and MFab LC.
@@ -62,6 +69,11 @@ mapped onto his by registration):
   MFab gate (#1134).
 - **Becker's gap is the chain's**, and Kent held the chain to MFab art (Kent
   2026-10-27, "MFab gate only (Recommended)").
+- **That changes with #1143** (border lane, in CI when this was written). It
+  turns the white recipe on as plain defaults on every job (Kent: "Every job
+  (Recommended)"), and the recipe includes `keyline_loop_chain`. So Becker's
+  bands, at 11 / 6 lifts against his 4 / 3, get the chain once it lands.
+  **Re-measure class A after #1143.**
 - **Burying the existing lifts with the loops left where they are buries 0
   of Becker's 7.** That was tested with `_bury_walks` over the band's own
   runs. Each loop ends where it began, on the far side from the next loop, so
@@ -177,9 +189,44 @@ more:
 - Gaulke E 0 → 1.7 mm;
 - MFab hat I 1.6 → 2.9 mm.
 
-## Built: `cfg.lettering_columns_slot_guard` (OFF)
+## Costed candidate: `cfg.lettering_columns_slot_guard` (built, not merged)
 
-The per-letter pick, as one flag (`digitizer_core/letter_walk.py`):
+**Where it is.** Branch `claude/slot-guard-candidate` (50c8bc0a). It is the
+per-letter pick as one OFF flag, with its tests, and is ready if Kent wants it.
+
+**Files:**
+
+- `digitizer_core/letter_walk.py` (new);
+- `columns.column_runs`: a `slot_guard` kwarg on the `_span_graph` call;
+- `columns.lettering_columns_shape`: the pick at the final sew;
+- one stage-7 kwarg;
+- one config block;
+- `tests/engine_2026_10_27.json`;
+- `tests/test_column_slot_guard.py`, with `testdata/slot_guard_letters.json`
+  (the 8 letters' lane arguments, captured from stage 7).
+
+**Why it was not merged** (the director): -3 trims across seven jobs is about
+2% of the trim gap. It costs a second `column_runs` on every Column-lane
+letter, and the lane is already the digitizer's largest CPU cost: the
+customer waits on every digitize.
+
+**Runtime.** Lane CPU, `lettering_columns_shape` per letter (one core, one
+repeat, inside a CPU slot), on every captured letter set:
+
+| letters | n | OFF s | ON s | × |
+|---|---|---|---|---|
+| the 8 cut letters | 8 | 6.50 | 7.44 | 1.14 |
+| Becker 80 mm | 6 | 1.14 | 3.92 | 3.44 |
+| Fremont 92.5 mm | 12 | 2.92 | 5.12 | 1.75 |
+| MFab hat 104.9 mm | 14 | 89.34 | 93.95 | 1.05 |
+| Drone 62.6 mm | 19 | 13.62 | 14.50 | 1.06 |
+| **all** | 59 | **113.5** | **124.9** | **1.10** |
+
+Where the fold-cut judge dominates (MFab), the second walk is noise. On plain
+letters (Becker) it triples the lane. Whole-plan wall times on the loaded
+machine did not separate the arms.
+
+How the candidate works:
 
 - `columns.column_runs` takes `slot_guard`: `within` = the letter grown
   `SLOT_GUARD_GROW_MM` (0.1), on every letter.
@@ -198,8 +245,10 @@ The per-letter pick, as one flag (`digitizer_core/letter_walk.py`):
   (gate 1).
 - **Gate 3 is clear.** Chaining and contour are untouched.
 
-Re-planned on this lane (main 98603fb4 + the flag) from each job's stage 0-5
-result at 8341d1f7.
+Re-planned on main 98603fb4 + the flag, from each job's stage 0-5 result at
+8341d1f7. MFab hat's runs took the rembg route (`PHOTO_BACKGROUND_REMOVED`),
+using the primary checkout's `rembg_isolated` venv; none was the classical
+route.
 
 **OFF is byte for byte the census**, on all seven DST md5s. ON:
 
@@ -221,7 +270,8 @@ result at 8341d1f7.
 - **Nothing rises on any job.** Becker's M also loses its 6.4 mm walk across
   its own finished top.
 
-Per letter, on the captured arguments (`testdata/slot_guard_letters.json`):
+Per letter, on the captured arguments (`testdata/slot_guard_letters.json`, on
+the candidate branch):
 
 | letter | cuts OFF / ON | on top mm OFF / ON | taken |
 |---|---|---|---|
@@ -261,7 +311,5 @@ starts, under satin still to come. Ours ends on a rail and crosses the column
 it just sewed to reach the next leg's centre. That is why the guard alone
 turned trims into on-top travel.
 
-**Five of the eight letter cuts remain.** Curing them is that construction,
-not a merge rule.
-
-**Not flipped.** Layout, judged in the preview: Kent's call.
+**All eight letter cuts stand on main.** The candidate would take three. The
+other five need that construction change, not a merge rule.

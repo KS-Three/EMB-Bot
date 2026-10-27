@@ -3489,11 +3489,7 @@ def sequence(
                     **({"text_lean_deg": _lean} if _lean is not None else {}),
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
-                       if cfg.lettering_columns_inside_connectors else {}),
-                    # `cfg.lettering_columns_slot_guard` (default OFF, 2026-10-27):
-                    # the walk also tried with ends joined through the letter,
-                    # kept where cheaper (`letter_walk`); off, today's call
-                    **({"slot_guard": True} if cfg.lettering_columns_slot_guard else {}))
+                       if cfg.lettering_columns_inside_connectors else {}))
                 if not report["empty"]:
                     report["lettering_columns"] = 1
                     return runs, report, False
