@@ -373,6 +373,18 @@ FLAGS: dict[str, dict] = {
                 "its stroke until the mouth holds the pro's 0.51 mm (n 18). No letter's height "
                 "moves, so read the picture, not the column; ProSeal is the byte-identical control. "
                 "Flipped ON by #1112, so OFF here pins it (and white) False."},
+    # ---- script words (2026-10-26, Kent: "Measure, then build OFF")
+    "script_strokes": {
+        "base": {"photo_prep_background_removal_timeout_s": 900}, "base_name": "rembg900",
+        "sets": {"photo_prep_background_removal_timeout_s": 900, "script_strokes": True},
+        "fixtures": ["bridge_hat", "bridge_lc", "tires_hat_3d", "machine_hat"],
+        "metric": "script_square", "about": "word's crosses square to the stroke (script_census)",
+        "pr": 1119,
+        "note": "A script word sewn one satin column per pen stroke, crosses square to the stroke, "
+                "the path read on the art's ink. Both arms pin the rembg timeout at 900 s (Tires is "
+                "photo_scene). The pro RE-SET Bridge in a taller font of his own (not reproducible "
+                "from a trace) and sews it thinner: his crosses 1.56 mm at hat against the drawn "
+                "1.76 + our 0.4 mm pull a side -- a smaller script pull is gate 1, not built."},
 }
 
 #: The wave-3 sheet (2026-10-26): the flags its run and report carry. The bay mouth left
@@ -849,6 +861,29 @@ def white_under_1mm(_stream, _fx, cell) -> str:
     return f"{white:,} ({short:,} under 1 mm)"
 
 
+#: the colour block holding the script word, (ours, the pro's), for `script_square`
+SCRIPT_BLOCKS = {"bridge_hat": (3, 4), "bridge_lc": (2, 4), "tires_hat_3d": (0, 1),
+                 "machine_hat": (0, 1)}
+
+
+def script_square(_stream, fx, cell) -> str:
+    """`tools.script_census` over the word's colour block (`SCRIPT_BLOCKS`):
+    the share of its satin crosses square to the stroke (within 20 deg, the
+    stroke read off the file's own coverage), over all the block's groups,
+    weighted by crosses read, and its satin columns."""
+    from tools import script_census as sc
+    blocks = SCRIPT_BLOCKS.get(fx["slug"])
+    if blocks is None:
+        return "n/a (no block named)"
+    res = sc.census(Path(cell["dst"]), blocks[1] if cell.get("runs") is None else blocks[0])
+    gs = [g for g in res["groups"] if g["read"] and g["square_share"] is not None]
+    read = sum(g["read"] for g in gs)
+    if not read:
+        return "no crosses read"
+    share = sum(g["square_share"] * g["read"] for g in gs) / read
+    return f"square {share:.2f} of {read} read, {sum(g['columns'] for g in res['groups'])} columns"
+
+
 def tagged(_stream, _fx, cell) -> str:
     stats = cell.get("stats") or {}
     return str(stats["tagged"]) if "tagged" in stats else "n/a (not in the DST)"
@@ -859,7 +894,7 @@ METRICS = {"sub_half_mm": sub_half_mm, "fill_underlay": fill_underlay, "uncut_ju
            "locks": locks, "short_bare": short_bare, "letter_height": letter_height,
            "stagger": stagger, "white_under_1mm": white_under_1mm, "tagged": tagged,
            "sub_1mm": sub_1mm, "satin_loops": satin_loops, "travel_runs": travel_runs,
-           "small_lines": small_lines, "run_shapes": run_shapes}
+           "small_lines": small_lines, "run_shapes": run_shapes, "script_square": script_square}
 
 
 # ------------------------------------------------------------------- diff

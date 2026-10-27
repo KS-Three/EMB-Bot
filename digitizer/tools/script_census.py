@@ -35,7 +35,16 @@ between its columns by `letter_pieces` kind, and each cut's OVERLAP: how far
 the next column runs (spine mm) inside thread the group already sewed.
 Entry and exit: the group's first and last needle-down stitch.
 
-    python -m tools.script_census FILE.dst[@BLOCK] [FILE.dst[@BLOCK] ...] [--json OUT]
+PER LETTER (`--letters X1,X2,...`, 2026-10-26): the largest group (the word)
+cut at those fractions of its own bbox width -- each file's letters where
+THAT file draws them, read off its render by eye, since the pro re-sets a
+word in a font of his own. A piece belongs to the letter holding the median
+of its cross midpoints. Per letter: columns, patches, the square share and
+median |dev| of its crosses, the median cross length of its columns
+(needle to needle, `width_mm`), the needle-down runs that sew it, and the
+restarts between its own columns in sewing order.
+
+    python -m tools.script_census FILE.dst[@BLOCK][#X1,X2,...] [...] [--json OUT]
 """
 from __future__ import annotations
 
@@ -151,7 +160,7 @@ def _fold(a: float) -> float:
     return d - 180.0 if d > 90.0 else d
 
 
-def census(path: Path, block: int | None = None) -> dict:
+def census(path: Path, block: int | None = None, letters: list[float] | None = None) -> dict:
     import cv2
     path = Path(path)
     st = stitches_of(path, block)
@@ -203,6 +212,14 @@ def census(path: Path, block: int | None = None) -> dict:
     for g in G.values():
         g.update(crosses=0, read=0, sq_len=0.0, len=0.0, devs=[], slanted=[], columns=0, patches=0,
                  cuts={}, overlaps=[])
+    word = max(G, key=lambda k: G[k]["area_mm2"]) if G and letters is not None else None
+    per_letter: dict[int, dict] = {}
+
+    def letter_of(cs) -> int:
+        bx = G[word]["bbox"]
+        xs = sorted((a[0] + b[0]) / 2 for a, b in cs)
+        f = (xs[len(xs) // 2] - bx[0]) / max(bx[2] - bx[0], 1e-9)
+        return sum(1 for c in letters if f >= c)
     for L in lp["letters"]:
         cross_of = L["crosses"]
         pieces = L["pieces"]
@@ -224,6 +241,16 @@ def census(path: Path, block: int | None = None) -> dict:
             if k not in G:
                 continue
             g = G[k]
+            Lr = None
+            if k == word:
+                Lr = per_letter.setdefault(letter_of(cs), dict(columns=0, patches=0, read=0, sq_len=0.0,
+                                                             len=0.0, devs=[], widths=[], order=[]))
+                Lr["order"].append(pieces[pi]["order"])
+                if pieces[pi]["role"] == "patch":
+                    Lr["patches"] += 1
+                else:
+                    Lr["columns"] += 1
+                    Lr["widths"].append(float(np.median([math.dist(a, b) for a, b in cs])))
             if pieces[pi]["role"] == "patch":
                 g["patches"] += 1
             else:
@@ -244,6 +271,11 @@ def census(path: Path, block: int | None = None) -> dict:
                 g["len"] += L_
                 g["sq_len"] += L_ * (abs(dev) <= SQUARE_DEG)
                 g["devs"].append(abs(dev))
+                if Lr is not None:
+                    Lr["read"] += 1
+                    Lr["len"] += L_
+                    Lr["sq_len"] += L_ * (abs(dev) <= SQUARE_DEG)
+                    Lr["devs"].append(abs(dev))
                 # stroke direction = normal + 90; slant from vertical (y down, + leans right)
                 sdir = (n + 90.0) % 180.0
                 slant = _fold(sdir - 90.0)    # (1, -1) runs up-right: 135 deg -> +45
@@ -290,25 +322,42 @@ def census(path: Path, block: int | None = None) -> dict:
         row.pop("sq_len")
         row.pop("len")
         row["overlap_med"] = round(float(np.median(row["overlaps"])), 2) if row["overlaps"] else None
+        if k == word:
+            row["letters"] = [_letter_row(li, per_letter[li]) for li in sorted(per_letter)]
         out.append(row)
     out.sort(key=lambda r: (r["bbox"][0]))
     return {"file": path.name, "block": block, "stitches": len(st["segs"]), "trims": len(st["trims"]),
             "groups": out}
 
 
+def _letter_row(li: int, L: dict) -> dict:
+    order = sorted(L["order"])
+    return {"letter": li, "columns": L["columns"], "patches": L["patches"],
+            "square_share": round(L["sq_len"] / L["len"], 3) if L["len"] else None,
+            "dev_med": round(float(np.median(L["devs"])), 1) if L["devs"] else None,
+            "width_mm": round(float(np.median(L["widths"])), 2) if L["widths"] else None,
+            # a column of this letter sewn NOT straight after another of its own
+            "breaks": sum(1 for a, b in zip(order, order[1:]) if b - a > 1)}
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("files", nargs="+", help="FILE.dst, or FILE.dst@N for colour block N only")
+    ap.add_argument("files", nargs="+", help="FILE.dst, or FILE.dst@N for colour block N only; "
+                                             "#X1,X2 after it cuts the word into letters there")
     ap.add_argument("--json", type=Path)
     a = ap.parse_args(argv)
     res = []
     for f in a.files:
+        f, _, cuts = f.partition("#")
         name, _, blk = f.rpartition("@") if "@" in f else (f, "", "")
-        res.append(census(Path(name), int(blk) if blk else None))
+        res.append(census(Path(name), int(blk) if blk else None,
+                          [float(c) for c in cuts.split(",")] if cuts else None))
     for r in res:
         print(f"== {r['file']} block {r['block']}: {r['stitches']} stitches, {r['trims']} trims")
         for g in r["groups"]:
-            print(json.dumps({k: v for k, v in g.items() if k not in ("overlaps",)}))
+            print(json.dumps({k: v for k, v in g.items() if k not in ("overlaps", "letters")}))
+            for L in g.get("letters", []):
+                print("   letter", json.dumps(L))
     if a.json:
         a.json.write_text(json.dumps(res, indent=1), encoding="utf-8")
     return 0

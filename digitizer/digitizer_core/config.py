@@ -3442,6 +3442,23 @@ class PipelineConfig:
     # crop-wide read, byte for byte. Not in `SMALL_TEXT_TRUE_SIZE`. A
     # CANDIDATE (gate 1): 0.8 mm was the ring tried.
     ink_ground_ring_mm: float | None = None
+    # A bean ink read whose skeleton runs mostly OUTSIDE the traced letter is
+    # no read (`beanletters.INK_INSIDE_MIN_SHARE`, W5-05, 2026-10-27, built
+    # OFF; `docs/outlined-bean-ink-2026-10-27.md`). MFab's AND / WELDING /
+    # LLC are black letters on a black body, each ringed by a thin white
+    # keyline; the read's ground is that black body, so it takes the WHITE
+    # keyline for the ink (AND's A and N on the LC: 0.42-0.44 mm, 0.4-1.7%
+    # of it inside the letter), passes `INK_SHAPE_MAX_RATIO` and goes bean,
+    # and the A sews as a WHITE letter with a thin black line round it (with
+    # `text_cluster_part_touching`, its N too). A letter's own ink lies
+    # inside it: bridge's bean letters 98.4-100%, the same words on the hat
+    # 68-100%. ON, an outline read is left out of the decision like a
+    # shape-gate miss, and the letter sews as the black satin rider it is:
+    # the A's crosses 44 -> 116 (pro 114), AND's 116 -> 292 (pro 324); the
+    # hat, WELDING and LLC do not move. Layout (ruling 2026-10-22: judged in
+    # the preview): no width, stroke, ratio or line moves. False is the
+    # engine as it was, byte for byte. Tests: `tests/test_bean_outlined_ink.py`.
+    bean_ink_outlined_letters: bool = False
     # Lock stitches on small letters laid ALONG the letter (2026-10-14,
     # `stitches.spread_tie_in` / `spread_tie_off`), for the runs of bean
     # letters and skeleton runs only. The ordinary lock bounces four legs of
@@ -5641,6 +5658,20 @@ class PipelineConfig:
     # (Kent, 2026-10-22). False is the plan as it was, byte for byte.
     # Tests: `tests/test_underfill_rim.py`.
     silhouette_underfill_rim: bool = False
+    # A script word sews as the pen wrote it (2026-10-26, built OFF; Kent:
+    # "Measure, then build OFF"; `script_strokes.py`). A joined or italic word
+    # the letter door refuses (aspect over its 1.4 ceiling, a cluster of one)
+    # and that reads as written -- Bridge's "Bridge", Tires' "ires", To a T's
+    # "achine" -- is cut into pen strokes read on the artwork's own ink and
+    # sewn one satin column per stroke, crosses square to the stroke, through
+    # the Column lane's emitter, travel buried under strokes to come. The pro
+    # sews each such word that way (6-7 runs per word, square share 0.77-0.87);
+    # the satin tier welded Bridge's fused baseline into one 22.8 mm stroke.
+    # Width stays the drawn stroke plus the fabric's pull: the pro's thinner
+    # script needs a smaller pull, a gate-1 constant not built here. Layout,
+    # judged in the preview (Kent, 2026-10-22). False is the plan as it was,
+    # byte for byte. Tests: `tests/test_script_strokes.py`.
+    script_strokes: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()

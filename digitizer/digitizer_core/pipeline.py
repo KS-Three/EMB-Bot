@@ -968,7 +968,9 @@ def build_generation(
                            **({"reach_edges": True} if cfg.small_text_cap_reach_edges else {}),
                            # each bay's mouth kept open (W3-02, ON since 2026-10-26):
                            # False, the call as it was word for word
-                           **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}))
+                           **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}),
+                           # traced stroke + grown away from the near neighbour (W4-04, OFF)
+                           **({"grow_away": True} if cfg.extra.get("small_text_reset_grow_away") else {}))
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
@@ -1974,8 +1976,11 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
                                     # `cfg.small_lettering_skeleton` reads its
                                     # width gate off the artwork's pixels, as
                                     # the hairline tier does; off, None.
+                                    # `cfg.script_strokes` reads a script
+                                    # word's pen path off them too.
                                     ink_source=(getattr(result, "ink_source", None)
-                                                if cfg.small_lettering_skeleton else None),
+                                                if cfg.small_lettering_skeleton
+                                                or cfg.script_strokes else None),
                                     # `cfg.open_cored_counters`: the counters
                                     # stage 3 kept (unstitched, so not in
                                     # `planned`), for the satin tiers' hold;
