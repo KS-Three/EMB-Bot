@@ -199,7 +199,7 @@ test("returns the encoded PNG, or null when it is still over the byte limit", as
 // once more, upright, at up to the service's own decode size (2,800 px) with
 // the area-style filter, and THAT is what is stored and sent.
 import {
-  uploadFullResEnabled, wantsFullRes, renderForService, UPLOAD_FULL_RES_KEY,
+  uploadFullResEnabled, wantsFullRes, renderForService, UPLOAD_FULL_RES_KEY, jpegDimensions,
 } from "./rasterize.js";
 
 const store = (initial) => ({ getItem: (k) => (k in initial ? initial[k] : null) });
@@ -259,6 +259,36 @@ test("a GIF or a rotated JPEG is only ever scaled DOWN, and a small one is redra
   expect(await one(600, 400)).toEqual([600, 400]);        // a small GIF: no invented pixels
   expect(await one(4000, 3000)).toEqual([2800, 2100]);    // a big GIF
   expect(await one(3024, 4032)).toEqual([2100, 2800]);    // a phone JPEG, the bitmap the browser already rotated
+});
+
+// The committed fixtures (tools/make-upload-fixtures.mjs) really are the two
+// cases the e2e specs name: a JPEG the browser rotates and cv2 does not, and
+// lettering that is outlines rather than <text>.
+import { readFileSync } from "node:fs";
+const fixture = (name) => readFileSync(new URL(`../../e2e/fixtures/${name}`, import.meta.url));
+
+test("rotated_exif6.jpg is stored sideways with EXIF orientation 6, so the browser's bitmap is upright and the header is not", () => {
+  const bytes = new Uint8Array(fixture("rotated_exif6.jpg"));
+  expect(jpegDimensions(bytes)).toEqual({ width: 1400, height: 2520 });          // what cv2.imdecode reads
+  // An APP1 "Exif" segment whose one IFD0 entry is Orientation (0x0112) = 6.
+  const exif = Buffer.from(bytes.subarray(0, 64)).indexOf("Exif\0\0", 0, "latin1");
+  expect(exif).toBeGreaterThan(0);
+  const tiff = exif + 6;
+  const le = Buffer.from(bytes.subarray(tiff, tiff + 20));
+  expect(le.toString("latin1", 0, 2)).toBe("II");
+  expect(le.readUInt16LE(10)).toBe(0x0112);
+  expect(le.readUInt16LE(18)).toBe(6);
+  // The browser decodes it upright, 2,520 x 1,400: uploadPlan names the reason.
+  const jpg = { name: "rotated_exif6.jpg", type: "image/jpeg", size: bytes.length };
+  expect(uploadPlan(jpg, img(2520, 1400), null, bytes)).toEqual({ asIs: false, reason: "orientation", type: "image/jpeg" });
+});
+
+test("small_text_logo.svg letters the words with paths, in three sizes, inside a frame", () => {
+  const svg = fixture("small_text_logo.svg").toString("utf8");
+  expect(svg).not.toMatch(/<text[\s>]/);
+  expect(svg).toMatch(/viewBox="0 0 600 300"/);
+  expect(svg.match(/<path /g).length).toBe(4);           // the frame and three lines of lettering
+  expect(isVectorFile({ name: "small_text_logo.svg", type: "image/svg+xml" })).toBe(true);
 });
 
 test("the render is null when it still exceeds the byte limit or the canvas cannot draw", async () => {

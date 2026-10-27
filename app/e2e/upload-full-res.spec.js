@@ -26,7 +26,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIX = (name) => path.join(__dirname, "fixtures", name);
 const SVG = FIX("small_text_logo.svg");        // viewBox 600 x 300
 const ROTATED = FIX("rotated_exif6.jpg");      // upright 2,520 x 1,400, stored 1,400 x 2,520
-const TWIN = FIX("rotated_exif1_twin.jpg");    // the same art stored upright, no rotation tag
+const TWIN = FIX("rotated_exif6_upright.png"); // the same pixels upright, lossless (tools/make-upload-fixtures.mjs)
 const KEY = "embbot-upload-full-res";
 
 // ---- service bootstrap, same as the other digitize specs here ------------
@@ -206,45 +206,46 @@ test.describe("switch ON: they send an upright render at up to the service's 2,8
     await page.close();
   });
 
-  test("a rotated JPEG goes up upright at its decoded size, and equals its upright twin through the same path", async ({ context }) => {
+  test("a rotated JPEG goes up upright at its decoded size, and equals its upright twin through the same canvas path", async ({ context }) => {
     test.setTimeout(240_000);
     const a = await sendOf(context, ROTATED, { on: true });
-    const b = await sendOf(context, TWIN, { on: true });
     // 2,520 x 1,400 is what the BROWSER decodes (EXIF applied); the stored
     // JPEG is 1,400 x 2,520, which is what cv2.imdecode would have read.
     expect(a.sent).toMatchObject({ png: true, width: 2520, height: 1400 });
-    expect(b.sent).toMatchObject({ png: true, width: 2520, height: 1400 });
     expect(a.stored).toHaveLength(1);
-    expect(a.stored[0]).toMatchObject({ type: "image/png", png: true, width: 2520, height: 1400 });
-    // Compared as pixels, both drawn by the same canvas path. The two JPEGs
-    // were encoded separately (sideways and upright), so their DCT blocks
-    // differ at flat-colour edges by a level or two; a wrong rotation or a
-    // missing flip differs by whole colours.
+    expect(a.stored[0]).toMatchObject({ type: "image/png", name: "rotated_exif6.png", png: true, width: 2520, height: 1400 });
+    // The twin is the same pixels upright as a lossless PNG (it was built by
+    // turning the stored JPEG a quarter clockwise by hand, not by the browser's
+    // EXIF handling), and it goes through the SAME canvas path the panel uses:
+    // rasterize.js renderForService. Never compare against the raw JPEG bytes
+    // decoded by another decoder -- two JPEG decoders round differently.
+    const twin = await a.page.evaluate(async (b64) => {
+      const { renderForService } = await import("/src/lib/rasterize.js");
+      const bmp = await createImageBitmap(new Blob([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], { type: "image/png" }));
+      const r = await renderForService(bmp, 12 * 1024 * 1024, {});
+      let bin = "";
+      for (let i = 0; i < r.bytes.length; i += 0x8000) bin += String.fromCharCode(...r.bytes.subarray(i, i + 0x8000));
+      return { width: r.width, height: r.height, b64: btoa(bin) };
+    }, readFileSync(TWIN).toString("base64"));
+    expect([twin.width, twin.height]).toEqual([2520, 1400]);
     const diff = await a.page.evaluate(async ([x, y]) => {
       const px = async (b64) => {
-        const bin = atob(b64);
-        const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-        const bmp = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
-        const cv = new OffscreenCanvas(bmp.width, bmp.height);
-        const cx = cv.getContext("2d");
+        const bmp = await createImageBitmap(new Blob([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], { type: "image/png" }));
+        const cx = new OffscreenCanvas(bmp.width, bmp.height).getContext("2d");
         cx.drawImage(bmp, 0, 0);
         return cx.getImageData(0, 0, bmp.width, bmp.height).data;
       };
       const [p, q] = [await px(x), await px(y)];
-      let max = 0, sum = 0, over8 = 0;
+      let max = 0, differing = 0;
       for (let i = 0; i < p.length; i++) {
-        if ((i & 3) === 3) continue;
         const d = Math.abs(p[i] - q[i]);
         if (d > max) max = d;
-        if (d > 8) over8++;
-        sum += d;
+        if (d) differing++;
       }
-      return { max, mean: sum / ((p.length / 4) * 3), over8, n: p.length / 4 };
-    }, [a.sent.b64, b.sent.b64]);
-    console.log(`rotated vs twin: max channel diff ${diff.max}, mean ${diff.mean.toFixed(4)}, ${diff.over8} of ${diff.n} px channels over 8`);
-    expect(diff.mean).toBeLessThan(0.5);
-    expect(diff.over8 / diff.n).toBeLessThan(0.01);
+      return { max, differing, n: p.length };
+    }, [a.sent.b64, twin.b64]);
+    console.log(`rotated JPEG vs its upright twin, same canvas path: max channel diff ${diff.max}, ${diff.differing} of ${diff.n} channels differ, bytes equal: ${a.sent.b64 === twin.b64}`);
+    expect(diff).toEqual({ max: 0, differing: 0, n: 2520 * 1400 * 4 });
     await a.page.close();
-    await b.page.close();
   });
 });
