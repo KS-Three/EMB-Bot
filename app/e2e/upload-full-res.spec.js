@@ -136,10 +136,19 @@ async function recordAndRefuseSends(page) {
         const dv = new DataView(buf.buffer);
         let bin = "";
         for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+        // The share of pixels that are dark ink: a render that drew nothing has
+        // the right header and an ink share of 0.
+        const bmp = await createImageBitmap(new Blob([buf], { type: "image/png" }));
+        const cx = new OffscreenCanvas(bmp.width, bmp.height).getContext("2d");
+        cx.drawImage(bmp, 0, 0);
+        const px = cx.getImageData(0, 0, bmp.width, bmp.height).data;
+        let dark = 0;
+        for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 127 && Math.min(px[i], px[i + 1], px[i + 2]) < 128) dark++;
         window.__sends.push({
           name: img.name, type: img.type, size: img.size,
           png: buf[0] === 0x89 && buf[1] === 0x50,
           width: dv.getUint32(16), height: dv.getUint32(20),
+          ink: dark / (bmp.width * bmp.height),
           b64: btoa(bin),
         });
         throw new TypeError("refused by upload-full-res.spec: the POST is what is under test");
@@ -178,6 +187,8 @@ test.describe("switch OFF (today): the three canvas-path kinds send the 1,200-px
     test.setTimeout(180_000);
     const { page, sent, stored } = await sendOf(context, SVG, { on: false });
     expect(sent).toMatchObject({ name: "art.png", type: "image/png", png: true, width: 1200, height: 600 });
+    expect(sent.ink).toBeGreaterThan(0.11);   // measured 0.127: the lettering and frame are drawn
+    expect(sent.ink).toBeLessThan(0.15);
     expect(stored).toEqual([]);
     await page.close();
   });
@@ -198,6 +209,8 @@ test.describe("switch ON: they send an upright render at up to the service's 2,8
     test.setTimeout(180_000);
     const { page, sent, stored, previewPx } = await sendOf(context, SVG, { on: true });
     expect(sent).toMatchObject({ type: "image/png", png: true, width: 2800, height: 1400 });
+    expect(sent.ink).toBeGreaterThan(0.11);   // measured 0.128: the same art, not a blank canvas
+    expect(sent.ink).toBeLessThan(0.15);
     expect(stored).toHaveLength(1);
     expect(stored[0]).toMatchObject({ type: "image/png", name: "small_text_logo.png", png: true, width: 2800, height: 1400 });
     expect(stored[0].size).toBe(sent.size);
