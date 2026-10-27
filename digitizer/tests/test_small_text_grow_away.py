@@ -1,4 +1,5 @@
-"""`cfg.extra["small_text_reset_grow_away"]` (W4-04, 2026-10-26, built OFF):
+"""`cfg.small_text_reset_grow_away` (W4-04, #1113, 2026-10-26; built OFF as
+`cfg.extra["small_text_reset_grow_away"]`, ON since Kent's flip the same day):
 the re-set (`small_text_cap_letter_gap_mm`) widens each letter by the stroke
 of the letters it actually grows, and grows a line AWAY from its nearer
 neighbour.
@@ -32,6 +33,7 @@ from digitizer_core import PipelineConfig, small_text
 from digitizer_core.regions import Region
 from digitizer_core.small_text import enlarge_small_text
 from digitizer_core.textcluster import _stats_of_polygon
+from tests.conftest import FLIP_2026_10_26, PRE_FLIP
 from tests.test_small_text import _glyphs, _scene, _tag
 from tests.test_small_text_reset import KW
 
@@ -98,7 +100,11 @@ def _rule_distance(regions) -> float:
 
 # --- OFF -------------------------------------------------------------------------
 
-def test_off_by_default():
+def test_on_by_default_since_kents_flip():
+    """Kent 2026-10-26, from the OFF | ON | pro renders: "Flip ON
+    (Recommended)". The OFF arm is pinned through PRE_FLIP."""
+    assert getattr(PipelineConfig(), KEY) is True
+    assert PRE_FLIP[KEY] is False and FLIP_2026_10_26[KEY] is False
     assert KEY not in PipelineConfig().extra
 
 
@@ -300,10 +306,10 @@ def test_grow_away_also_tries_todays_grid():
 
 # --- the wiring ------------------------------------------------------------------------
 
-def test_the_key_reaches_small_text_through_the_pipeline(monkeypatch):
-    """`cfg.extra["small_text_reset_grow_away"]` is read by the pipeline's one
-    call to the growth: absent, the call carries no `grow_away` (today's
-    call, word for word); set, `grow_away=True`."""
+def test_the_field_reaches_small_text_through_the_pipeline(monkeypatch):
+    """`cfg.small_text_reset_grow_away` is read by the pipeline's one call to
+    the growth: False, the call carries no `grow_away` (the call before the
+    flip, word for word); the default, `grow_away=True`."""
     from digitizer_core.pipeline import build_generation
     from tests.conftest import own_thread_only
 
@@ -315,8 +321,8 @@ def test_the_key_reaches_small_text_through_the_pipeline(monkeypatch):
     monkeypatch.setattr(small_text, "enlarge_small_text", own_thread_only(
         lambda *a, **k: (calls.append(dict(k)), real(*a, **k))[1], real))
     cfg = dict(target_width_mm=60.0, max_colors=4)
+    build_generation(img, PipelineConfig(**cfg, **{KEY: PRE_FLIP[KEY]}))
     build_generation(img, PipelineConfig(**cfg))
-    build_generation(img, PipelineConfig(**cfg, extra={KEY: True}))
     assert len(calls) == 2, calls
     assert "grow_away" not in calls[0]
     assert calls[1]["grow_away"] is True

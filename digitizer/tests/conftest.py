@@ -686,9 +686,13 @@ PRE_FLIP["border_from_outline_line_art_guard"] = False
 # `small_text_bay_mouth` (#1085, "Flip ON"): the re-set cuts back a terminal
 # that shuts a bay. `sew_enclosed_white` (#1087's option A, "Flip, but prove
 # it first"): the white inside the design sews, its fields-fill and keyline
-# companions still OFF. False is the engine before the flip. The tests ABOUT
-# them are `tests/test_small_text_bays.py` and `tests/test_sew_enclosed_white.py`.
-FLIP_2026_10_26 = {"small_text_bay_mouth": False, "sew_enclosed_white": False}
+# companions still OFF. `small_text_reset_grow_away` (#1113, "Flip ON
+# (Recommended)", the same day): the re-set widens by its traced stroke and
+# grows away from its near neighbour. False is the engine before the flip. The
+# tests ABOUT them are `tests/test_small_text_bays.py`,
+# `tests/test_sew_enclosed_white.py` and `tests/test_small_text_grow_away.py`.
+FLIP_2026_10_26 = {"small_text_bay_mouth": False, "sew_enclosed_white": False,
+                   "small_text_reset_grow_away": False}
 PRE_FLIP.update(FLIP_2026_10_26)
 # `fine_bars_satin` (#1101) and `outline_loop_mitre` (#1059's loops, built
 # 2026-10-25), Kent's flips on the wave-3 flip sheet 2026-10-26: "Fine bars

@@ -32,8 +32,18 @@ ART = TESTDATA / "photo" / "enthusiast_logo.png"
 @lru_cache(maxsize=None)
 def _enthusiast():
     """One digitize, reused; every test here only reads it (or deep-copies
-    the plan before touching it)."""
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    the plan before touching it).
+
+    `small_text_reset_grow_away=False` (ON since Kent's 2026-10-26 flip) is a
+    MEASUREMENT pin, not a lettering one. ON, ENTERPRISES INC. holds its top
+    edge 0.13 mm nearer ENTHUSIAST, so ENTHUSIAST's sewn underside fills
+    0.43 mm of the crop's 1.0 mm pad (0.30 mm OFF), and Linux tesseract
+    (confidence ~36 either way) reads "Sr eee": 0.316. Windows reads 0.929 in
+    both arms, and the letters look the same OFF and ON. The fix is the crop:
+    each cluster cropped without the other clusters' ink
+    (`claude/legibility-crop-neighbours`), which drops this pin."""
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                         small_text_reset_grow_away=False)
     result, plan = digitize(ART, cfg)
     return result, plan
 
