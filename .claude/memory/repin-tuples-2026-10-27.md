@@ -50,7 +50,14 @@ rightly refused, which cost one red test of mine. (2) New fixtures use synthetic
 digests (`0123456789abcdef` * 2): a real pin pasted into `test_ci_repin.py` would make
 every real run see two occurrences. (3) `clean_log` strips GitHub's raw-log timestamp but
 NOT the `job<TAB>step<TAB>` prefix `gh run view --log` adds: the saved logs in
-`Temp/embwt/plan5_logs/` need `sed -E 's/^[^\t]*\t[^\t]*\t//'` first.
+`Temp/embwt/plan5_logs/` need `sed -E 's/^[^\t]*\t[^\t]*\t//'` first. (4) **The end-to-end
+test went red on CI only (#1130, run 40437793077): the laptop session's
+environment has `PYTHONDONTWRITEBYTECODE=1`, CI does not.** The new pin is as long as the old one
+(20 hex, 4 digits), and a fast runner patches the file inside the second the first inner
+run compiled it, so pytest's `.pyc` check (whole-second mtime + size) called the cached copy
+fresh and the re-run tested the OLD pin: `passed 0, failed 1`. The test now sets the
+variable itself and restores the mtime to force the tie. A test that compiles and re-edits
+a file needs that, and `env -u PYTHONDONTWRITEBYTECODE` reproduces CI here.
 
 **What it does NOT do.** Old logs carry only the cut headline for these pins, and the
 gain starts on the first CI run of a flip branch that has merged main with this in it

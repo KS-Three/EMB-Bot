@@ -8,6 +8,7 @@ so `tests/_hexrepr.py` prints them whole, and `tools/ci_repin.py` reads them bac
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import warnings
 from pathlib import Path
@@ -685,6 +686,9 @@ def test_a_real_failing_tuple_pin_goes_from_the_plugin_through_the_tool_and_pass
         pytester, monkeypatch, tmp_path, same_trees):
     """No hand-written log: the inner pytest prints it, the tool reads it, the patch fixes
     the very test that failed."""
+    # No .pyc from the inner runs: this laptop sets the variable, CI does not, and the
+    # re-run below must read the patched source, not the first run's compiled copy.
+    monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
     body = f'''
         GOLDEN = {{("art.png", "left_chest"): ("{P_OLD}", 4726, 14765)}}
 
@@ -702,8 +706,13 @@ def test_a_real_failing_tuple_pin_goes_from_the_plugin_through_the_tool_and_pass
     src = next(pytester.path.glob("test_*.py"))
     argv = ["1", node, "--log", str(log), "--tests-dir", str(pytester.path),
             "--base-tree", str(same_trees[0]), "--head-tree", str(same_trees[1])]
+    stat = src.stat()
     assert ci_repin.main(argv + ["--apply"]) == 0
     assert P_NEW in src.read_text(encoding="utf-8") and P_OLD not in src.read_text(encoding="utf-8")
+    # The new pin is as long as the old one, and a fast runner rewrites it inside the second
+    # the first run compiled it in: the same whole-second mtime and size, so a cached .pyc
+    # would still say "fresh" and the re-run would test the OLD pin. Make that the case here.
+    os.utime(src, ns=(stat.st_atime_ns, stat.st_mtime_ns))
     again = pytester.runpytest_subprocess("-q", "-p", "no:cacheprovider", "-p", "tests._hexrepr")
     again.assert_outcomes(passed=1)
 
