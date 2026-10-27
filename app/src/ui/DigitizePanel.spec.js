@@ -314,12 +314,8 @@ describe("the reading row -- states the reading, offers flat on a tonal one", ()
       const row = container.querySelector(".dgp-read");
       expect(row).toBeTruthy();
       const buttons = [...row.querySelectorAll("button")].map((b) => b.textContent.trim());
-      // "Preview both" (2026-10-27) rides beside the flat offer, DISABLED:
-      // two full runs per upload is Kent's compute call, not yet made.
-      expect(buttons).toEqual(OFFERS_FLAT.has(code) ? ["Sew as flat art", "Preview both"] : []);
-      for (const b of row.querySelectorAll("button")) {
-        expect(b.disabled).toBe(b.textContent.trim() === "Preview both");
-      }
+      // ONE button. No "Preview both" either (Kent, 2026-10-27: "Don't build").
+      expect(buttons).toEqual(OFFERS_FLAT.has(code) ? ["Sew as flat art"] : []);
       // The corrections that did NOT come back, by name.
       expect(row.textContent).not.toMatch(/It's a photo|Use automatic detection|You set this to/);
     });

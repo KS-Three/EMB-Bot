@@ -2060,20 +2060,11 @@
           >
             Sew as flat art
           </button>
-          <!-- Digitizing both ways and showing the two previews side by side
-               is two full runs per upload on a one-worker service (measured
-               on the owl: see the 2026-10-27 PR). Whether that compute is
-               worth spending is Kent's call, sent up; until he makes it this
-               says what the button would do and does nothing. -->
-          <button
-            type="button"
-            class="dgp-read-btn"
-            disabled
-            title="Not yet available: this would digitize the art both ways — as read, and as flat art — so you could compare the two previews. It costs a second full run each time, so it waits on a decision."
-          >
-            Preview both
-          </button>
         {/if}
+        <!-- No "Preview both" (digitize both ways, compare the previews):
+             Kent's call 2026-10-27, "Don't build" -- on the owl the two runs
+             measured 376 s and over the 600 s stop, and a dead control is
+             worse than none. -->
         {#if tonalLane}
           <label class="dgp-checkline dgp-read-opt">
             <input
