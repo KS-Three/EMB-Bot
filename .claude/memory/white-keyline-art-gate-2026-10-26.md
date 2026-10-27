@@ -52,4 +52,27 @@ rim (#1096) included.
   move (#1057 did): prove "unchanged" with the verdict plus spot checks, not
   with old md5s.
 
+**The MFab extras (Kent 2026-10-26, "MFab extras into the gate", then "Hold
+all four", then on the fixed numbers "All four (Recommended)").** `keyline_fold_slivers`, `skip_covered_shapes` and
+`cfg.extra["absorb_fragments"]` (`RECIPE_EXTRA`) joined the recipe. MFab DST
+trims: hat 40 -> 30, LC 52 -> 25 (pro 18 / 19).
+
+**Absorb first bared the counters under the riders** (LC 12 mm2 new bare).
+
+- **The cause:** a fragment inside a `RIDER_HOLES_KEY` hole split the panel,
+  and the union rebuilt every other ring. Stage 7 matches rider holes by
+  WKB, so the panel was looped, not filled.
+- **The fix:** the join keeps the body's own rings, and the rider holes are
+  re-read on the joined polygon.
+- **What absorb costs, fixed:** 3 trims on the hat over fold + skip. It saves
+  2 on the LC.
+
+**How to apply:**
+
+- Before adding a switch to the recipe, measure new bare garment against the
+  recipe without it, not only trims. `hairline_travel`'s bare THREAD read 0.0
+  through all of this.
+- Any pass that rebuilds a polygon after stage 5 must keep the hole rings
+  later passes match by WKB: rider holes, `outline_holes` widths.
+
 Related: [[mfab-recipe-trims-2026-10-26]], [[mfab-underfill-panels-2026-10-25]].

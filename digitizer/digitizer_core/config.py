@@ -738,7 +738,13 @@ class PipelineConfig:
     # through this sandbox's proxy) — every call after that is cached and
     # takes ~1-2s. A slow/blocked download degrades to the no-op fallback
     # exactly like any other subprocess failure, never hangs the job.
-    photo_prep_background_removal_timeout_s: float = 60.0
+    # 120 since 2026-10-26, Kent: "Wait up to 600 s (Recommended)", whose
+    # option gave background removal 120 s instead of 60 "so a busy machine
+    # stops quietly skipping it, which changes the design". Measured that
+    # day on the MFab hat: the cutout took 12.9-15.5 s on a quiet laptop and
+    # 49-53 s on a loaded one, 7 s short of the old limit, and past it the
+    # photo digitizes with its background left in.
+    photo_prep_background_removal_timeout_s: float = 120.0
     # Stage 2 (photo path) — SAM2 region former (digitizer/sam2_isolated/,
     # see its README.md). A SEPARATE opt-in flag, gated on the PHOTO classes
     # only: this flag must be True AND stage 0 must classify the design
@@ -5608,6 +5614,17 @@ class PipelineConfig:
     # `stage6_border.loop_mitre_scope`.
     # Tests: `tests/test_outline_loop_mitre.py`.
     outline_loop_mitre: bool = True
+    # `keyline_loop_chain` (BUILT OFF 2026-10-26, `docs/keyline-loop-chain-2026-10-26.md`):
+    # a keyline / outline band's loops (`stage6_border.keyline_runs`) chained
+    # as the pro chains them: each loop starts, and so ends, where it comes
+    # nearest the next, and the hop into a loop is walked under the loops
+    # still to sew (`monoline.bury_hops`' rule and constants); where no buried
+    # walk exists the needle lifts, as before. The pro's MFab white: a few
+    # long satin chains, 96-100% of every walk under white he sews after it;
+    # ours lifted loop to loop. Layout, judged in the preview. False is the
+    # loops as they were, byte for byte. Set for a plan by
+    # `stage6_border.loop_chain_scope`. Tests: `tests/test_keyline_loop_chain.py`.
+    keyline_loop_chain: bool = False
     # With `silhouette_underfill`, a ring that hosts its own under-fill gets
     # the fill's outer edge sewn as one closed satin loop, after the fill and
     # in its colour (2026-10-25, built OFF; `stage6_border.underfill_rim_runs`).

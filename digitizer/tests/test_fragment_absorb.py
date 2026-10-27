@@ -16,7 +16,7 @@ import sys
 from dataclasses import replace
 
 import pytest
-from shapely.geometry import box
+from shapely.geometry import Polygon, box
 
 from digitizer_core import PipelineConfig
 from digitizer_core import fragment_absorb as fa
@@ -149,6 +149,57 @@ def test_a_hair_walled_in_by_the_join_is_filled_a_real_hole_is_not():
     assert len(band.polygon.interiors) == 2
 
 
+# --- the panel under the riders (MFab, 2026-10-26) ---------------------------
+
+def _rings(poly):
+    return [Polygon(r).exterior.wkb for r in poly.interiors]
+
+
+def test_the_bodys_own_holes_keep_their_rings():
+    """Later passes match a body's holes by WKB (stage 7's rider holes,
+    `outline_holes`' widths): a hole the join leaves alone keeps its ring,
+    vertex for vertex."""
+    band = box(-30, -10, 30, 10).difference(box(-16, -6, -2, 6)).difference(box(2, -6, 16, 6))
+    outside = box(-5.0, 10.15, 5.0, 10.55)       # a sliver on the band's outer edge
+    (got,) = _absorb([_r("Sband", band, 1, 1), _r("Sfrag", outside, 1, 1)], ON)
+    assert got.meta["absorbed_fragments"] == ["Sfrag"]
+    assert sorted(_rings(got.polygon)) == sorted(_rings(band))
+
+
+def test_a_fragment_inside_a_rider_hole_leaves_every_piece_the_panels():
+    """MFab LC: white fragments lie inside the panel the riders sit in (a
+    `RIDER_HOLES_KEY` hole stage 7 closes and fills). Joined to the field, one
+    split the panel, and the pieces were looped instead of filled -- bare
+    garment in the riders' counters. Every hole of the joined field inside a
+    rider hole is still a rider hole, by the ring stage 7 compares."""
+    from digitizer_core.silhouette_underfill import RIDER_HOLES_KEY
+    panel = Polygon(BAND.interiors[0])
+    across = box(-15.85, -0.2, 15.85, 0.2)          # a sliver right across the panel, 0.15 mm off both sides
+    (got,) = _absorb([_r("Sband", BAND, 1, 1, **{RIDER_HOLES_KEY: [panel]}),
+                      _r("Sfrag", across, 1, 1)], ON)
+    assert got.meta["absorbed_fragments"] == ["Sfrag"]
+    assert len(got.polygon.interiors) == 2                      # the panel, split in two
+    assert sorted(h.exterior.wkb for h in got.meta[RIDER_HOLES_KEY]) == sorted(_rings(got.polygon))
+    # stage 7's own test closes both: none of the joined field's holes is left to loop
+    ridden = {h.exterior.wkb for h in got.meta[RIDER_HOLES_KEY]}
+    assert not [r for r in got.polygon.interiors if Polygon(r).exterior.wkb not in ridden]
+
+
+def test_a_hole_that_is_no_riders_stays_out_of_the_panel():
+    from digitizer_core.silhouette_underfill import RIDER_HOLES_KEY
+    band = box(-30, -10, 30, 10).difference(box(-16, -6, -2, 6)).difference(box(2, -6, 16, 6))
+    rider, letter = (Polygon(r) for r in band.interiors)
+    if not rider.intersects(box(-16, -6, -2, 6)):
+        rider, letter = letter, rider
+    edge = box(-15.85, -0.2, -2.15, 0.2)            # inside the rider hole, 0.15 mm off both sides
+    (got,) = _absorb([_r("Sband", band, 1, 1, **{RIDER_HOLES_KEY: [rider]}),
+                      _r("Sfrag", edge, 1, 1)], ON)
+    ridden = {h.exterior.wkb for h in got.meta[RIDER_HOLES_KEY]}
+    assert len(ridden) == 2                                    # the rider hole's two pieces
+    assert Polygon(letter.exterior).exterior.wkb not in ridden   # the letter's hole, as it was, loops
+    assert letter.exterior.wkb in {Polygon(r).exterior.wkb for r in got.polygon.interiors}
+
+
 def test_two_rescued_specks_do_not_grow_a_body():
     """Fremont has clusters of 26 rescued specks a hair apart: a speck wide
     enough to be a body must not swallow its neighbours one by one."""
@@ -203,7 +254,10 @@ def test_off_never_reaches_the_new_code(monkeypatch):
 # Captured on origin/main b19dee77, which has no `fragment_absorb` (the same
 # fixture planned by that tree's `plan_stitches`). First captured on
 # 7995d515 (93082348...); #1057's flips moved the base plan, not this flag.
-OFF_MD5 = "e16ecce05b081f67fb5eb9123d6e68b7"
+# Re-captured 2026-10-26 on main 5cf8da43: #1112 / #1121's flips moved it
+# (e16ecce0...); with `fine_bars_satin`, `small_text_bay_mouth`,
+# `sew_enclosed_white` and `outline_loop_mitre` off it still reads e16ecce0.
+OFF_MD5 = "3717378ff2c67ebdb8de5364d26e9a92"
 
 
 def test_off_is_the_plan_without_the_pass(monkeypatch):

@@ -108,24 +108,35 @@ test.describe("digitize", () => {
     await expect(err).not.toContainText(FORBIDDEN);
   });
 
-  test("a job that never finishes times out with advice, not a spinner forever", async ({ page }) => {
+  test("a job that never finishes says it is still working, then times out with advice, not a spinner forever", async ({ page }) => {
     await page.clock.install();
     await mockService(page, {
       "POST /digitize": (r) => r.fulfill(json(202, { job_id: "j3", state: "queued", cached: false })),
       "GET /jobs/j3": (r) => r.fulfill(json(200, { state: "running" })),
     });
     await loadArtwork(page);
-    // pollJob takes its t0 just before the FIRST poll. The button already reads
-    // "Digitizing" while the image is still being prepared and POSTed, so under
-    // CI load a jump made on that label lands BEFORE t0 and the 5-minute budget
-    // is never spent. Jump only once the first poll has actually been sent.
+    // pollJob times a running job from the first poll that READ "running". The
+    // button already reads "Digitizing" while the image is still being
+    // prepared and POSTed, and the first poll can be sent before its answer is
+    // read, so under CI load a jump made on either lands BEFORE that clock
+    // starts and the budget is never spent. Jump only once the status line
+    // says the job is running: onState sets it after the clock starts.
     const firstPoll = page.waitForRequest((q) => q.url().includes("/jobs/j3"), { timeout: 30_000 });
     await runDigitize(page);
     await expect(page.locator(".dgp-run")).toHaveText(/Digitizing/, { timeout: 30_000 });
     await firstPoll;
+    await expect(page.locator(".dgp-status", { hasText: "Digitizing your art" })).toBeVisible({ timeout: 30_000 });
+    // Kent, 2026-10-26: "Wait up to 600 s (Recommended)". Past the old five
+    // minutes the Studio is still waiting, and its status line says so.
     await page.clock.fastForward(6 * 60 * 1000);
+    await expect(page.locator(".dgp-status", { hasText: "Still digitizing" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(".dgp-error")).toHaveCount(0);
+    // Past the digitizer's own ten minutes (and the poll's grace) it gives up,
+    // and says it stopped WAITING: it cannot stop the digitizer.
+    await page.clock.fastForward(5 * 60 * 1000);
     const err = page.locator(".dgp-error");
-    await expect(err).toContainText("Digitizing took too long", { timeout: 30_000 });
+    await expect(err).toContainText("finish this design in ten minutes", { timeout: 30_000 });
+    await expect(err).toContainText("stopped waiting");
     await expect(err).toContainText("simpler image");
     await expect(page.locator(".dgp-run")).toHaveText("Auto Digitize Image");
   });
