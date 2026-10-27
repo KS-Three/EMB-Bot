@@ -36,6 +36,10 @@ pro out.
 
 ## 2. Where it stands (as of 2026-10-23 evening; check `gh pr list`)
 
+**Superseded for §2, §5 and §6 by
+[`2026-10-27-director-handoff.md`](2026-10-27-director-handoff.md)**: the state,
+Kent's flip queue, the ranked queue and the CPU slot rules at the 10-27 close.
+
 Merged this week: #1024/#1029 small text re-set to ~4 mm; #1025/#1046 Column lane
 small-bold construction; #1030 trim bury; #1031 sew enclosed white; #1033 cross
 underlay; #1040 compact solids satin; #1043 border census; #1045 pull-by-stroke
