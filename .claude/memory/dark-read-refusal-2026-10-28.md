@@ -15,6 +15,10 @@ dark component when (a) its bbox lies within `DARK_INK_EDGE_PX` = guard + ring
 (b) fewer than `DARK_INK_STRAY_SHARE` = 0.5 of its pixels sit `DARK_INK_DEPTH_L`
 (8 L*) under the ring's median ("ground"). OFF is byte-identical.
 
+**Kent's ruling on #1173, relayed by the foreman 2026-10-28, verbatim: "Hold
+OFF, keep as instrument (worker's pick)."** Ships OFF as built; no flip queued;
+#1172's "stray reads" paragraph is corrected by #1173's table.
+
 **What the measurement found (the engine's own raster, Lab).** All 30 of
 #1172's reads are 11-98 L* darker than their ring's median, with 0.75-1.0 of
 their pixels 8 L* under it — clause (b) fires on none. The 10 rows judged "not
