@@ -1327,6 +1327,14 @@ export async function exportViaService(design, format, label, fetchFn = globalTh
 // 202 is the service's accept status; anything non-ok throws with the
 // service's own detail sentence.
 export async function startDigitize(image, config, fetchFn = globalThis.fetch) {
+  const r = await fetchFn(digitizerUrl() + "/digitize", { method: "POST", body: artForm(image, config) });
+  if (!r.ok) throw await httpError(r);
+  return r.json();
+}
+
+// The multipart body both upload routes take: the image (the customer's
+// file with its own type and name, or the preview PNG) plus the config JSON.
+function artForm(image, config) {
   const form = new FormData();
   if (typeof image === "string") {
     form.append("image", new Blob([b64ToBytes(image)], { type: "image/png" }), "art.png");
@@ -1334,7 +1342,28 @@ export async function startDigitize(image, config, fetchFn = globalThis.fetch) {
     form.append("image", new Blob([image.bytes], { type: image.type || "application/octet-stream" }), image.name || "art");
   }
   form.append("config", JSON.stringify(config));
-  const r = await fetchFn(digitizerUrl() + "/digitize", { method: "POST", body: form });
+  return form;
+}
+
+// POST /classify (service 0.6.0+, 2026-10-27): the lane stage 0 would route
+// this upload down under this config, in seconds, WITHOUT digitizing it —
+// { class, confidence, signals, warnings, forced_class_accepted, elapsed_ms }.
+// `warnings` carries the same CLASSIFIED_* / FACE_ROUTED_FLAT / PHOTO_DETECTED
+// codes a finished job's `warnings` would, so DigitizePanel's reading row can
+// say "Read as shaded artwork" before the run and offer "Sew as flat art"
+// while choosing is still free (Kent, 2026-10-27: his owl sewed better flat
+// and nothing told him the lane until the run had cost him a minute).
+// Nothing about the ROUTING moves: the service runs the pipeline's own
+// stage-0 block and the Studio only reports it (Kent's 2026-10-26 ruling).
+//
+// Same image and config as /digitize, on purpose: the answer is only worth
+// showing if it is the answer the run will give, and the service pins that
+// (test_service.py's drift guard). Returns null on a 404 — an older service
+// without the route — so the caller hides the row rather than erroring; any
+// other failure throws, and the caller treats that as "no reading" too.
+export async function classifyArt(image, config, fetchFn = globalThis.fetch) {
+  const r = await fetchFn(digitizerUrl() + "/classify", { method: "POST", body: artForm(image, config) });
+  if (r.status === 404) return null;
   if (!r.ok) throw await httpError(r);
   return r.json();
 }

@@ -389,6 +389,32 @@ test("startDigitize sends the customer's FILE when handed its bytes — its own 
   expect(preview.name).toBe("art.png");
 });
 
+test("classifyArt POSTs the same multipart body to /classify, and reads a 404 as 'no route' rather than an error", async () => {
+  stubStorage({});
+  const { classifyArt, buildDigitizeConfig } = await import("./digitizer.js");
+  const calls = [];
+  const fetchFn = vi.fn(async (url, opts) => {
+    calls.push({ url, opts });
+    return { ok: true, status: 200, json: async () => ({ class: "gradient", confidence: 1, signals: {}, warnings: [{ code: "CLASSIFIED_GRADIENT" }], forced_class_accepted: false, elapsed_ms: 12 }) };
+  });
+  const cfg = buildDigitizeConfig(digitizedElement(), PROJECT);
+  const read = await classifyArt(TINY_PNG_B64, cfg, fetchFn);
+  expect(read.class).toBe("gradient");
+  expect(calls[0].url).toBe("http://127.0.0.1:8721/classify");
+  expect(calls[0].opts.method).toBe("POST");
+  const form = calls[0].opts.body;
+  expect(form.get("image").type).toBe("image/png");
+  expect(JSON.parse(form.get("config"))).toEqual(cfg);
+
+  // An older service has no /classify: that is "nothing to show", not a fault.
+  const gone = await classifyArt(TINY_PNG_B64, cfg, async () => ({ ok: false, status: 404, json: async () => ({ detail: "Not Found" }) }));
+  expect(gone).toBeNull();
+  // Anything else is the service's own sentence, like startDigitize.
+  await expect(classifyArt(TINY_PNG_B64, { forced_class: "photo" }, async () => ({
+    ok: false, status: 400, json: async () => ({ detail: "unknown forced_class 'photo'." }),
+  }))).rejects.toThrow(/unknown forced_class/);
+});
+
 test("startDigitize surfaces the service's own detail sentence on a 400", async () => {
   stubStorage({});
   const { startDigitize } = await import("./digitizer.js");
