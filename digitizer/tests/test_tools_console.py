@@ -81,7 +81,8 @@ NAMES_ONLY = {"border_census",   # WRITES the census table's .md, reads none (20
               "detail_vs_lines",     # same: writes table.md, reads none (2026-10-14)
               "hairline_lines_gradient",  # same: writes table.md, reads none (2026-10-14)
               "hairline_logo_refusal",    # same: writes table.md, reads none (2026-10-15)
-              "column_harness"}           # same: writes table.md, reads none (2026-10-23)
+              "column_harness",           # same: writes table.md, reads none (2026-10-23)
+              "photo_corpus"}             # rewrites one tally line of docs/scoreboards/photo-corpus/README.md, prints paths and counts only (2026-10-27)
 
 
 def cp1252_stream() -> tuple[io.BytesIO, io.TextIOWrapper]:

@@ -19,6 +19,15 @@ digitizer/testdata/photo/acceptance/*
 # above to take effect (gitignore negation order rule).
 !digitizer/testdata/photo/acceptance/README.md
 
+# Commons corpus for the photo side-by-side scorecard (digitizer/tools/photo_corpus.py,
+# 2026-10-27). Downloaded images stay local; only the list and its README are tracked.
+# Same "/*" + negation shape as the acceptance block above, for the same reason.
+digitizer/testdata/photo/corpus/*
+!digitizer/testdata/photo/corpus/corpus.json
+!digitizer/testdata/photo/corpus/README.md
+# Capture output: per-row designs, renders, the sxs HTML. Regenerable; never committed.
+digitizer/corpus_runs/
+
 # Personal font build (node tools/build-embf.mjs --personal) — contains
 # ShareAlike / GPL / NonCommercial / license-pulled fonts. Private use is not
 # distribution, so these are fine on Kent's machine and must never be committed:

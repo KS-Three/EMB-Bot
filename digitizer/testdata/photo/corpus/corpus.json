@@ -1,0 +1,353 @@
+[
+ {
+  "slug": "bw_street",
+  "kind": "photo",
+  "genre": "bw_street",
+  "title": "File:Street Craftsman in Olinda.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Street_Craftsman_in_Olinda.jpg",
+  "author": "Wilfredor",
+  "licence": "cc0"
+ },
+ {
+  "slug": "night_neon",
+  "kind": "photo",
+  "genre": "night_neon",
+  "title": "File:Colorful neon street signs in Kabukichō, Shinjuku, Tokyo.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Colorful_neon_street_signs_in_Kabukich%C5%8D,_Shinjuku,_Tokyo.jpg",
+  "author": "Basile Morin",
+  "licence": "cc by-sa 4.0"
+ },
+ {
+  "slug": "architecture",
+  "kind": "photo",
+  "genre": "architecture",
+  "title": "File:Münster, Westdeutsche Lotterie -- 2018 -- 0417.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:M%C3%BCnster,_Westdeutsche_Lotterie_--_2018_--_0417.jpg",
+  "author": "Dietmar Rabich",
+  "licence": "cc by-sa 4.0"
+ },
+ {
+  "slug": "landscape_lake",
+  "kind": "photo",
+  "genre": "landscape_lake",
+  "title": "File:Zagedan Lakes, Mountain cirque, Caucasus Mountains.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Zagedan_Lakes,_Mountain_cirque,_Caucasus_Mountains.jpg",
+  "author": "Vyacheslav Argenberg",
+  "licence": "cc by 4.0"
+ },
+ {
+  "slug": "food_plate",
+  "kind": "photo",
+  "genre": "food_plate",
+  "title": "File:Hamburger and fries at Deliroom Ukkohauki close up.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Hamburger_and_fries_at_Deliroom_Ukkohauki_close_up.jpg",
+  "author": "JIP",
+  "licence": "cc by-sa 4.0"
+ },
+ {
+  "slug": "vintage_sepia",
+  "kind": "photo",
+  "genre": "vintage_sepia",
+  "title": "File:Hook family portrait, December 1924 (6596215431).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Hook_family_portrait,_December_1924_(6596215431).jpg",
+  "author": "whatsthatpicture from Hanwell, London, UK",
+  "licence": "cc by 2.0"
+ },
+ {
+  "slug": "fireworks",
+  "kind": "photo",
+  "genre": "fireworks",
+  "title": "File:Fireworks on New Year's Eve in a small Swabian village (1), brightened.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Fireworks_on_New_Year%27s_Eve_in_a_small_Swabian_village_(1),_brightened.jpg",
+  "author": "Andreas Weith",
+  "licence": "cc by-sa 4.0"
+ },
+ {
+  "slug": "snow_highkey",
+  "kind": "photo",
+  "genre": "snow_highkey",
+  "title": "File:Snow-covered Saint-Charles Cemetery 6.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Snow-covered_Saint-Charles_Cemetery_6.jpg",
+  "author": "Wilfredor",
+  "licence": "cc0"
+ },
+ {
+  "slug": "flower_macro",
+  "kind": "photo",
+  "genre": "flower_macro",
+  "title": "File:Blueten 002 2021 08 23.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Blueten_002_2021_08_23.jpg",
+  "author": "Friedrich Haag",
+  "licence": "cc by-sa 4.0"
+ },
+ {
+  "slug": "dark_dog",
+  "kind": "photo",
+  "genre": "dark_dog",
+  "title": "File:DSC09611a Search and Rescue Dog, Austrian Red Cross Perchtoldsdorf, 2024-10.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:DSC09611a_Search_and_Rescue_Dog,_Austrian_Red_Cross_Perchtoldsdorf,_2024-10.jpg",
+  "author": "Aciarium",
+  "licence": "cc by 4.0"
+ },
+ {
+  "slug": "underwater_reef",
+  "kind": "photo",
+  "genre": "underwater_reef",
+  "title": "File:Coral reef near Marsa Alam.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Coral_reef_near_Marsa_Alam.jpg",
+  "author": "Thomas Hubauer",
+  "licence": "cc by-sa 2.0"
+ },
+ {
+  "slug": "watercolor",
+  "kind": "photo",
+  "genre": "watercolor",
+  "title": "File:Landscape 1. - abstract colorful watercolor painting on paper - artist Fons Heijnsbroek.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Landscape_1._-_abstract_colorful_watercolor_painting_on_paper_-_artist_Fons_Heijnsbroek.jpg",
+  "author": "Fons Heijnsbroek",
+  "licence": "cc0"
+ },
+ {
+  "slug": "pencil_sketch",
+  "kind": "photo",
+  "genre": "pencil_sketch",
+  "title": "File:Sketch of woman LCCN2017646868.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Sketch_of_woman_LCCN2017646868.jpg",
+  "author": "Metzner, Adolph, artist",
+  "licence": "public domain"
+ },
+ {
+  "slug": "stained_glass",
+  "kind": "photo",
+  "genre": "stained_glass",
+  "title": "File:Holy Spirit stained-glass window (Cathedra Petri).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Holy_Spirit_stained-glass_window_(Cathedra_Petri).jpg",
+  "author": "Wilfredor",
+  "licence": "cc0"
+ },
+ {
+  "slug": "group_people",
+  "kind": "photo",
+  "genre": "group_people",
+  "title": "File:3 barefoot females smiling and sitting on a bench.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:3_barefoot_females_smiling_and_sitting_on_a_bench.jpg",
+  "author": "JLS Media",
+  "licence": "cc by-sa 2.0"
+ },
+ {
+  "slug": "sports_action",
+  "kind": "photo",
+  "genre": "sports_action",
+  "title": "File:CINvPGH 2018-04-21 - Thomas Vancaeyezeele (40054762600) (cropped).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:CINvPGH_2018-04-21_-_Thomas_Vancaeyezeele_(40054762600)_(cropped).jpg",
+  "author": "Hayden Schiff from Cincinnati, USA",
+  "licence": "cc by 2.0"
+ },
+ {
+  "slug": "night_skyline",
+  "kind": "photo",
+  "genre": "night_skyline",
+  "title": "File:Tokyo Tower, Minato City.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Tokyo_Tower,_Minato_City.jpg",
+  "author": "David Kernan",
+  "licence": "cc by 4.0"
+ },
+ {
+  "slug": "oil_painting",
+  "kind": "photo",
+  "genre": "oil_painting",
+  "title": "File:Oil on Canvas Portrait of Dred Scott (cropped).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Oil_on_Canvas_Portrait_of_Dred_Scott_(cropped).jpg",
+  "author": "Schultze, Louis",
+  "licence": "public domain"
+ },
+ {
+  "slug": "pixel_art_sprite",
+  "kind": "logo",
+  "genre": "pixel_art_sprite",
+  "title": "File:Fido character from Don't Buy This.png",
+  "page": "https://commons.wikimedia.org/wiki/File:Fido_character_from_Don%27t_Buy_This.png",
+  "author": "Firebird Software, S. Wilson, J.D. Woodcock",
+  "licence": "public domain"
+ },
+ {
+  "slug": "low_poly",
+  "kind": "logo",
+  "genre": "low_poly",
+  "title": "File:Dolphin triangle mesh.png",
+  "page": "https://commons.wikimedia.org/wiki/File:Dolphin_triangle_mesh.png",
+  "author": "en:User:Chrschn",
+  "licence": "public domain"
+ },
+ {
+  "slug": "arabic_calligraphy",
+  "kind": "logo",
+  "genre": "arabic_calligraphy",
+  "title": "File:Official emblem of the Abu al-Rub clan. Gold Arabic calligraphy (أبو الرب) flanked by laurel branches, used by the family association in Zarqa, Jordan.png",
+  "page": "https://commons.wikimedia.org/wiki/File:Official_emblem_of_the_Abu_al-Rub_clan._Gold_Arabic_calligraphy_(%D8%A3%D8%A8%D9%88_%D8%A7%D9%84%D8%B1%D8%A8)_flanked_by_laurel_branches,_used_by_the_family_association_in_Zarqa,_Jordan.png",
+  "author": "Aja20197",
+  "licence": "cc0"
+ },
+ {
+  "slug": "qr_code",
+  "kind": "logo",
+  "genre": "qr_code",
+  "title": "File:QR code Wikimedia Commons (URL).png",
+  "page": "https://commons.wikimedia.org/wiki/File:QR_code_Wikimedia_Commons_(URL).png",
+  "author": "http://goqr.me/",
+  "licence": "public domain"
+ },
+ {
+  "slug": "barcode",
+  "kind": "logo",
+  "genre": "barcode",
+  "title": "File:Codbar EAN abc.png",
+  "page": "https://commons.wikimedia.org/wiki/File:Codbar_EAN_abc.png",
+  "author": "Papy77 at French Wikipedia",
+  "licence": "public domain"
+ },
+ {
+  "slug": "heraldic_crest",
+  "kind": "logo",
+  "genre": "heraldic_crest",
+  "title": "File:Carniola coat of arms.png",
+  "page": "https://commons.wikimedia.org/wiki/File:Carniola_coat_of_arms.png",
+  "author": "Hugo Gerard Ströhl",
+  "licence": "cc by-sa 3.0"
+ },
+ {
+  "slug": "flat_emoji_icon",
+  "kind": "logo",
+  "genre": "flat_emoji_icon",
+  "title": "File:4rd Bison 512.png",
+  "page": "https://commons.wikimedia.org/wiki/File:4rd_Bison_512.png",
+  "author": "XanSurnamehere",
+  "licence": "cc by 4.0"
+ },
+ {
+  "slug": "silhouette_logo",
+  "kind": "logo",
+  "genre": "silhouette_logo",
+  "title": "File:Logo of LutskZoopark.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Logo_of_LutskZoopark.jpg",
+  "author": "Artekimus",
+  "licence": "cc by-sa 4.0"
+ },
+ {
+  "slug": "distressed_grunge",
+  "kind": "logo",
+  "genre": "distressed_grunge",
+  "title": "File:TM Logo grunge mit typo.png",
+  "page": "https://commons.wikimedia.org/wiki/File:TM_Logo_grunge_mit_typo.png",
+  "author": "J.Friederich",
+  "licence": "cc by-sa 4.0"
+ },
+ {
+  "slug": "halftone_dots",
+  "kind": "logo",
+  "genre": "halftone_dots",
+  "title": "File:Portrait of S. Ringer. Wellcome M0010501 (crop) (halftone filtered).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Portrait_of_S._Ringer._Wellcome_M0010501_(crop)_(halftone_filtered).jpg",
+  "author": "see Commons page",
+  "licence": "cc by 4.0"
+ },
+ {
+  "slug": "neon_outline_sign",
+  "kind": "logo",
+  "genre": "neon_outline_sign",
+  "title": "File:RADIKAL NEON LOGO REGISTERED (1) (2).png",
+  "page": "https://commons.wikimedia.org/wiki/File:RADIKAL_NEON_LOGO_REGISTERED_(1)_(2).png",
+  "author": "Radikal Group Limited",
+  "licence": "cc by 3.0"
+ },
+ {
+  "slug": "duotone_poster",
+  "kind": "logo",
+  "genre": "duotone_poster",
+  "title": "File:Exhibition - WPA Federal Art Project LCCN98513179.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Exhibition_-_WPA_Federal_Art_Project_LCCN98513179.jpg",
+  "author": "Work Projects Administration Poster Collection",
+  "licence": "public domain"
+ },
+ {
+  "slug": "isometric_icon",
+  "kind": "logo",
+  "genre": "isometric_icon",
+  "title": "File:3d-iso-color.png",
+  "page": "https://commons.wikimedia.org/wiki/File:3d-iso-color.png",
+  "author": "Vijay Verma",
+  "licence": "cc0"
+ },
+ {
+  "slug": "comic_halftone",
+  "kind": "logo",
+  "genre": "comic_halftone",
+  "title": "File:Needed LCCN2015648048.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Needed_LCCN2015648048.jpg",
+  "author": "Yanker Poster Collection",
+  "licence": "public domain"
+ },
+ {
+  "slug": "devanagari_logo",
+  "kind": "logo",
+  "genre": "devanagari_logo",
+  "title": "File:BHU Logo with Tagline Hindi Banaras Hindu University.png",
+  "page": "https://commons.wikimedia.org/wiki/File:BHU_Logo_with_Tagline_Hindi_Banaras_Hindu_University.png",
+  "author": "Banaras Hindu University",
+  "licence": "public domain"
+ },
+ {
+  "slug": "kanji_seal",
+  "kind": "logo",
+  "genre": "kanji_seal",
+  "title": "File:Chinese seal (zhuwen).png",
+  "page": "https://commons.wikimedia.org/wiki/File:Chinese_seal_(zhuwen).png",
+  "author": "d/k",
+  "licence": "public domain"
+ },
+ {
+  "slug": "vintage_engraved_badge",
+  "kind": "logo",
+  "genre": "vintage_engraved_badge",
+  "title": "File:Nikolaes Heinsius the Elder, Poemata (Elzevier 1653), Druckermarke.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Nikolaes_Heinsius_the_Elder,_Poemata_(Elzevier_1653),_Druckermarke.jpg",
+  "author": "Scanned by Aristeas (Roman Eisele). Book printed by the Officina Elseviriorum (Elzevier/Elsevier printer family), Leiden.",
+  "licence": "public domain"
+ },
+ {
+  "slug": "gradient_mascot",
+  "kind": "logo",
+  "genre": "gradient_mascot",
+  "title": "File:Linux mascot tux.png",
+  "page": "https://commons.wikimedia.org/wiki/File:Linux_mascot_tux.png",
+  "author": "OpenClipart-Vectors from Pixabay. Based on Tux design by Larry Ewing (lewing@isc.tamu.edu) and The GIMP.",
+  "licence": "cc0"
+ },
+ {
+  "slug": "outline_lineart_logo",
+  "kind": "logo",
+  "genre": "outline_lineart_logo",
+  "title": "File:Ambigram logo Eye for blind child.png",
+  "page": "https://commons.wikimedia.org/wiki/File:Ambigram_logo_Eye_for_blind_child.png",
+  "author": "Basile Morin",
+  "licence": "cc by-sa 4.0"
+ },
+ {
+  "slug": "kanji_brush",
+  "kind": "logo",
+  "genre": "kanji_brush",
+  "title": "File:Aruku no kanji.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Aruku_no_kanji.jpg",
+  "author": "see Commons page",
+  "licence": "public domain"
+ },
+ {
+  "slug": "chalkboard_lettering",
+  "kind": "logo",
+  "genre": "chalkboard_lettering",
+  "title": "File:Cartelera escrita con gis en pizarrón en cafetería de la colonia Obrera, en la Ciudad de México, D.F. 03.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Cartelera_escrita_con_gis_en_pizarr%C3%B3n_en_cafeter%C3%ADa_de_la_colonia_Obrera,_en_la_Ciudad_de_M%C3%A9xico,_D.F._03.jpg",
+  "author": "Correogsk",
+  "licence": "cc by-sa 4.0"
+ }
+]
