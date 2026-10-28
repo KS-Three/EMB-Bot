@@ -53,6 +53,7 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims",
 #: (2026-10-13) the same: WRITES `table.md`, names #876's doc in its
 #: docstring, prints JSON rows and an ASCII table, reads no doc.
 NAMES_ONLY = {"border_census",   # WRITES the census table's .md, reads none (2026-10-23)
+              "bean_census",     # WRITES docs/bean-census-reference-2026-10-27.md, reads none (2026-10-27)
               "lettering_board",   # WRITES docs/scoreboards/lettering-board-<date>.md, reads none (2026-10-25)
               "lane_census",       # NAMES the 6b plan's .md (`PLAN_FILE`, read by its test only), reads no doc at runtime (2026-10-26)
               "flip_sheet_renders",   # WRITES docs/flip-sheet-<date>.md + index.html, reads none (2026-10-23)

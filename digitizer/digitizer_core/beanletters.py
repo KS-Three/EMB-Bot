@@ -134,6 +134,11 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
     line = cfg.bean_letter_max_stroke_mm
     if line is None or p is None:
         return 0
+    if cfg.bean_only_lines:
+        # The reference digitizer's rule (`bean_rule`): a letter is never a
+        # bean (0 of 251 small letters in 17 files; he raises small text to
+        # satin). Nothing is read and nothing is tagged.
+        return 0
     clusters: dict[str, list] = {}
     for r in regions:
         cid = word_key(r, cfg)
