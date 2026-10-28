@@ -1,3 +1,11 @@
+<script module>
+  // Pre-run readings by request key, for the page's life (see "the lane,
+  // BEFORE the run" in the instance script). Module-level on purpose:
+  // ContentStep remounts this panel on every selection, and stage 0 is
+  // 0.1-20 s of service CPU per ask.
+  const preReadCache = new Map();
+</script>
+
 <script>
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
@@ -8,6 +16,7 @@
   import { isCapPieceId } from "../lib/capPieces.js";
   import {
     buildDigitizeConfig,
+    classifyArt,
     digitize,
     LONG_RUN_MS,
     decodedFromDesignCached,
@@ -56,6 +65,7 @@
   import { friendlyError } from "../lib/friendlyError.js";
   import CropBox from "./CropBox.svelte";
   import { proposeCrop } from "../lib/cropProposal.js";
+  import { fitTargetWidthMm } from "../lib/placement.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
   import { isElementStale, pendingEdits, canRedigitize, rotatedWidth, nativeWidthOf, withTargetWidth } from "../lib/staleness.js";
 
@@ -219,11 +229,20 @@
         }
       }
       sourceNote = "";
+      // The Design width starts at the placement's auto-fit of THIS image's
+      // (cropped) aspect — garments.fitScale into the placement box, hoop cap
+      // and area cap included (lib/placement.js; Kent 2026-10-27: the size
+      // comes from where on the garment it sits, not a flat 80) — unless the
+      // customer has typed a width, which is theirs. `sourcePx` is kept so a
+      // later garment or placement change can re-fit the same way.
+      const sourcePx = { w, h };
+      const fitW = element.widthTyped ? null : fitTargetWidthMm(sourcePx, crop, project);
+      const params = fitW != null ? { ...element.params, target_width_mm: fitW } : element.params;
       // New artwork resets everything the old artwork produced — including
       // the layer list and its edits, which are keyed to the OLD art's
       // shape ids and would only produce SHAPE_EDIT_UNKNOWN_ID noise here.
       patch({
-        sourcePng: b64, sourceFile, crop, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
+        sourcePng: b64, sourceFile, sourcePx, crop, params, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
         review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
         appliedConfig: null, mergeGroups: [], splitLines: {},
       });
@@ -458,20 +477,137 @@
   // its RGB under transparency rewritten).
   async function imageToSend(el) {
     if (el.sourceFile && el.sourceFile.key) {
-      let rec = null;
-      try {
-        rec = await getSource(el.sourceFile.key);
-      } catch {
-        rec = null;   // a store that will not read is a missing original, not a failed digitize
-      }
-      if (rec) {
+      const stored = await storedImage(el);
+      if (stored) {
         sourceNote = "";
-        return { bytes: rec.bytes, type: rec.type || el.sourceFile.type || "", name: el.name || rec.name || "art" };
+        return stored;
       }
       sourceNote = "Digitized from the saved preview — the original file is no longer stored in this browser, and the preview sews a little differently. Replace the artwork with the original for the full result.";
     }
     return el.sourcePng;
   }
+
+  // The stored original, or null when it is gone or the store will not read
+  // (a missing original, not a failure). Shared by the run and by the
+  // pre-run reading below, which must send the SAME bytes the run will and
+  // must not write `sourceNote` -- that sentence is about what digitized.
+  async function storedImage(el) {
+    if (!(el.sourceFile && el.sourceFile.key)) return null;
+    let rec = null;
+    try {
+      rec = await getSource(el.sourceFile.key);
+    } catch {
+      rec = null;
+    }
+    if (!rec) return null;
+    return { bytes: rec.bytes, type: rec.type || el.sourceFile.type || "", name: el.name || rec.name || "art" };
+  }
+
+  // ---- the lane, BEFORE the run ---------------------------------------------
+  //
+  // Kent, 2026-10-27: his owl digitized better as flat art than down the lane
+  // the engine picked, and the only way to learn the lane was to wait the
+  // better part of a minute for the run and read the row underneath. So the
+  // panel now asks the service for stage 0's reading (POST /classify, a few
+  // seconds, no digitize) as soon as the artwork lands or is replaced, and
+  // again when the forced class or the crop changes -- the inputs stage 0
+  // reads. The SAME reading row then stands above the run button with "Sew
+  // as flat art" on it, so the choice is made before paying for the run.
+  // Nothing about the routing moves (Kent's 2026-10-26 ruling): the service
+  // runs the pipeline's own stage-0 block and this panel repeats its answer.
+  //
+  // What it sends is what the run sends -- `buildDigitizeConfig` and the
+  // same image bytes -- because a reading that differs from the run's would
+  // be worse than none; test_service.py pins the two agree. Rules:
+  //   * In flight: nothing. No spinner, no "reading…" -- a sentence here
+  //     would read as digitizing having started, and it has not.
+  //   * The service answers 404 (older than the route): no row before the
+  //     run, exactly as before this existed, and no second ask.
+  //   * Any other failure: the same silence. The run button never depends
+  //     on this, so a failed reading costs nothing but the preview of it.
+  //   * Cached by request key for the page's life (module-level, like
+  //     `decodedFromDesignCached`), because ContentStep remounts this panel
+  //     on every selection and stage 0 is 0.1-20 s of CPU per ask.
+  // The crop is in the key with a short debounce: stage 0 classifies the
+  // cropped raster (`stage0_classify._load`), and a crop drag fires many
+  // times a second.
+  const CLASSIFY_DEBOUNCE_MS = 250;
+  const PRE_READ_CACHE_MAX = 16;
+  let classifyTimer = null;
+  let classifyGone = false;   // the service has no /classify (404)
+  let classifyPending = "";   // the key an ask is in flight for
+  let preRead = null;         // { key, warnings } for the current artwork, or null
+  $: classifyKey = health && element.sourcePng
+    ? JSON.stringify([
+        (element.sourceFile && element.sourceFile.key) || element.sourcePng.length,
+        element.params && element.params.forced_class === "flat" ? "flat" : null,
+        element.crop || null,
+      ])
+    : "";
+  $: scheduleClassify(classifyKey);
+
+  function cancelClassifyTimer() {
+    if (classifyTimer) {
+      clearTimeout(classifyTimer);
+      classifyTimer = null;
+    }
+  }
+
+  // Re-run by Svelte on EVERY change to `element` or `health` (any param
+  // patch, a health re-probe), not only on a key change -- so an ask already
+  // scheduled or in flight for this key is left alone, or every patch made
+  // while the service was thinking would queue a second identical ask
+  // (measured 2026-10-27: three asks for one upload-and-toggle).
+  function scheduleClassify(key) {
+    if (!key || classifyGone) {
+      cancelClassifyTimer();
+      classifyPending = "";
+      return;
+    }
+    if (preRead && preRead.key === key) {
+      cancelClassifyTimer();
+      return;
+    }
+    const cached = preReadCache.get(key);
+    if (cached) {
+      cancelClassifyTimer();
+      preRead = { key, warnings: cached };
+      return;
+    }
+    if (classifyPending === key) return;
+    cancelClassifyTimer();
+    classifyPending = key;
+    classifyTimer = setTimeout(() => {
+      classifyTimer = null;
+      runClassify(key, element);
+    }, CLASSIFY_DEBOUNCE_MS);
+  }
+
+  async function runClassify(key, el) {
+    try {
+      const cfg = buildDigitizeConfig(withTargetWidth(el, resizedTargetWidth(el, nativeWidthOf(el))), project);
+      const image = (await storedImage(el)) || el.sourcePng;
+      const read = await classifyArt(image, cfg);
+      if (destroyed) return;
+      if (read === null) {
+        classifyGone = true;
+        return;
+      }
+      const warnings = Array.isArray(read.warnings) ? read.warnings : [];
+      preReadCache.set(key, warnings);
+      if (preReadCache.size > PRE_READ_CACHE_MAX) preReadCache.delete(preReadCache.keys().next().value);
+      // A stale answer (the artwork moved on while this was in flight) is
+      // cached for the key it answers and otherwise dropped.
+      if (key === classifyKey) preRead = { key, warnings };
+    } catch {
+      // No reading. The run does not depend on one.
+    } finally {
+      if (classifyPending === key) classifyPending = "";
+    }
+  }
+  onDestroy(() => {
+    if (classifyTimer) clearTimeout(classifyTimer);
+  });
 
   async function runDigitize(el) {
     // The button is disabled while a run is in flight, and "Apply layer
@@ -720,6 +856,19 @@
   // Only "flat" counts: any other stored value is a pre-09-30 leftover that
   // buildDigitizeConfig does not send, so the row must not claim it either.
   $: forcedFlat = !!(element.params && element.params.forced_class === "flat");
+  // WHICH warnings the reading reads (2026-10-27). The pre-run answer for the
+  // artwork as it stands now outranks the last run's, whose CLASSIFIED_*
+  // line describes the artwork and settings it was digitized with; with an
+  // ask in flight for the current artwork there is no reading at all (not
+  // the previous run's, which may be about another forced class); and with
+  // no pre-run answer -- service older than /classify, or down -- the last
+  // run's warnings carry it, exactly as before. `null` is "nothing to say".
+  $: readLines =
+    preRead && preRead.key === classifyKey ? describeWarnings(preRead.warnings) :
+    classifyPending && classifyPending === classifyKey ? null :
+    element.result ? warningLines :
+    null;
+  $: hasReading = forcedFlat || readLines != null;
   $: artRead =
     // The user's own word outranks whatever the engine read, and has to key
     // on the stored param: once it takes effect the art classifies flat and
@@ -728,11 +877,11 @@
     // A face routed the design flat (Kent's ruling 2026-09-30): the class IS
     // flat and no CLASSIFIED_* warning exists, so this can lead without
     // shadowing anything; it leads so the sentence names the reason.
-    warningLines.some((w) => w.code === "FACE_ROUTED_FLAT") ? "face" :
-    warningLines.some((w) => w.code === "CLASSIFIED_PHOTO_SUBJECT" || w.code === "CLASSIFIED_PHOTO_SCENE") ? "photo" :
-    warningLines.some((w) => w.code === "CLASSIFIED_GRADIENT") ? "gradient" :
-    warningLines.some((w) => w.code === "PHOTO_DETECTED") ? "detected" :
-    warningLines.some((w) => w.code === "CLASSIFICATION_UNCERTAIN") ? "unsure" :
+    (readLines || []).some((w) => w.code === "FACE_ROUTED_FLAT") ? "face" :
+    (readLines || []).some((w) => w.code === "CLASSIFIED_PHOTO_SUBJECT" || w.code === "CLASSIFIED_PHOTO_SCENE") ? "photo" :
+    (readLines || []).some((w) => w.code === "CLASSIFIED_GRADIENT") ? "gradient" :
+    (readLines || []).some((w) => w.code === "PHOTO_DETECTED") ? "detected" :
+    (readLines || []).some((w) => w.code === "CLASSIFICATION_UNCERTAIN") ? "unsure" :
     "flat";
   // Whether the art is photographic or shaded content. `detail_layer` reads
   // its lines off the source raster, which is worth offering there and not
@@ -779,16 +928,19 @@
     const out = {};
     const sentW = sent.params && sent.params.target_width_mm;
     const liveW = live.params && live.params.target_width_mm;
-    if (sentW === liveW) out.params = { ...live.params, target_width_mm: target };
+    // a dragged size that landed is the customer's, like a typed one: a later
+    // placement change does not re-fit it (lib/placement.js refitDigitized)
+    if (sentW === liveW) { out.params = { ...live.params, target_width_mm: target }; out.widthTyped = true; }
     if (live.sizeMm === sent.sizeMm) out.sizeMm = null;
     return out;
   }
 
   // A typed width replaces a dragged one: the scale goes with it, or the drag
-  // would keep overriding the number in the box.
+  // would keep overriding the number in the box. Either way the width is now
+  // the customer's (`widthTyped`), and the placement's auto-fit leaves it.
   function setDesignWidth(v) {
-    if (resized) patch({ params: { ...element.params, target_width_mm: v }, sizeMm: null });
-    else setParam("target_width_mm", v);
+    if (resized) patch({ params: { ...element.params, target_width_mm: v }, sizeMm: null, widthTyped: true });
+    else patch({ params: { ...element.params, target_width_mm: v }, widthTyped: true });
   }
 
   // Same explicit-argument pattern as DesignPanel's blockRgb.
@@ -1879,6 +2031,66 @@
       </div>
     {/if}
 
+    <!-- What the art was read as, in plain words, ABOVE the run button
+         (2026-10-27): the service answers stage 0 in seconds (POST /classify,
+         "the lane, BEFORE the run" in the script), so the reading -- and the
+         one correction on it, "Sew as flat art" -- stands here before the run
+         is paid for, and stays here afterwards reading the run's own verdict.
+         It sits with the params, not down in the warnings list, because the
+         reading decides what the params list even shows (the detail-lines
+         option). Hidden while an ask is in flight and on a service without
+         the route until a run has landed; a design SET to flat keeps its row
+         regardless, because the reading it would hang off is gone once the
+         override takes effect. -->
+    {#if hasReading}
+      <div class="dgp-read" use:tip={"photoReading"} data-testid="art-reading">
+        <p class="dgp-read-text">
+          {#if artRead === "forced"}
+            You set this to flat art, so it's sewing as solid color regions.
+          {:else if artRead === "face"}
+            A face was found, so it's sewing as flat art: solid color regions with an outline.
+          {:else if artRead === "photo"}
+            Read as a photo, so it's sewing with shaded thread.
+          {:else if artRead === "gradient"}
+            Read as shaded artwork, so it's sewing in blended thread shades.
+          {:else if artRead === "detected"}
+            Read as a photograph, sewing as solid color regions.
+          {:else if artRead === "unsure"}
+            Couldn't tell what this artwork is, so it's sewing as flat art.
+          {:else}
+            Read as flat art, sewing as solid color regions.
+          {/if}
+        </p>
+        {#if artRead === "forced"}
+          <button type="button" class="dgp-read-btn" on:click={useAutomatic}>
+            Use automatic detection
+          </button>
+        {:else if offerFlat}
+          <button
+            type="button"
+            class="dgp-read-btn"
+            on:click={() => setParam("forced_class", "flat")}
+          >
+            Sew as flat art
+          </button>
+        {/if}
+        <!-- No "Preview both" (digitize both ways, compare the previews):
+             Kent's call 2026-10-27, "Don't build" -- on the owl the two runs
+             measured 376 s and over the 600 s stop, and a dead control is
+             worse than none. -->
+        {#if tonalLane}
+          <label class="dgp-checkline dgp-read-opt">
+            <input
+              type="checkbox"
+              checked={element.params.detail_layer}
+              on:change={(e) => setParam("detail_layer", e.currentTarget.checked)}
+            />
+            Add fine detail lines
+          </label>
+        {/if}
+      </div>
+    {/if}
+
     <!-- Above the settings, not under them: nothing runs until this is
          pressed, and under seven controls it sat below the fold at 1440x900
          with a freshly uploaded file and no sign of what to do next. -->
@@ -2098,57 +2310,6 @@
       {/if}
     </div>
 
-    <!-- What the art was read as, in plain words. Sits with the params, not
-         down in the warnings list, because the reading decides what the
-         params list even shows (the detail-lines option below). It hangs off
-         the last run, since before it there is nothing to report -- except
-         a design SET to flat, whose row stands with or without a result,
-         because the reading it would hang off is gone once the override
-         takes effect. One correction, on a tonal reading only. -->
-    {#if forcedFlat || element.result}
-      <div class="dgp-read" use:tip={"photoReading"}>
-        <p class="dgp-read-text">
-          {#if artRead === "forced"}
-            You set this to flat art, so it's sewing as solid color regions.
-          {:else if artRead === "face"}
-            A face was found, so it's sewing as flat art: solid color regions with an outline.
-          {:else if artRead === "photo"}
-            Read as a photo, so it's sewing with shaded thread.
-          {:else if artRead === "gradient"}
-            Read as shaded artwork, so it's sewing in blended thread shades.
-          {:else if artRead === "detected"}
-            Read as a photograph, sewing as solid color regions.
-          {:else if artRead === "unsure"}
-            Couldn't tell what this artwork is, so it's sewing as flat art.
-          {:else}
-            Read as flat art, sewing as solid color regions.
-          {/if}
-        </p>
-        {#if artRead === "forced"}
-          <button type="button" class="dgp-read-btn" on:click={useAutomatic}>
-            Use automatic detection
-          </button>
-        {:else if offerFlat}
-          <button
-            type="button"
-            class="dgp-read-btn"
-            on:click={() => setParam("forced_class", "flat")}
-          >
-            Sew as flat art
-          </button>
-        {/if}
-        {#if tonalLane}
-          <label class="dgp-checkline dgp-read-opt">
-            <input
-              type="checkbox"
-              checked={element.params.detail_layer}
-              on:change={(e) => setParam("detail_layer", e.currentTarget.checked)}
-            />
-            Add fine detail lines
-          </label>
-        {/if}
-      </div>
-    {/if}
 
     {#if element.result}
       <!-- "Since last run" sits with the stats, above the tabs: a re-run

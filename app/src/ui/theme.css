@@ -2604,6 +2604,10 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .gpill:hover { border-color: var(--ink); }
 .gpill.sel { background: var(--ink); color: var(--surface); }
 .gpill-more { color: var(--muted); }
+/* The placement row (2026-10-27): a smaller second row under the garment
+   pills, only for garments with more than one placement. */
+.gpills-place { margin-top: var(--space-2); }
+.gpill-place { min-height: 26px; font-size: var(--fs-xs, 0.8rem); }
 
 .gmenu {
   position: absolute;

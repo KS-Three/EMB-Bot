@@ -38,7 +38,7 @@
 // file intentionally duplicates that boilerplate rather than importing it --
 // each e2e spec here is self-contained, matching that file's own convention).
 import { test, expect } from "@playwright/test";
-import { pickGarment, uploadArtwork, openAdvanced } from "./helpers.js";
+import { pickGarment, uploadArtwork, runDigitize, setDesignWidth, openAdvanced } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -186,7 +186,11 @@ test("merge selection: picking shapes of two different colors shows the same-col
 
   await pickGarment(page, "Tote");
 
-  await uploadArtwork(page, ART_PNG);
+  // At the 80 mm this count was pinned at: the Tote's auto-fit (198 mm since
+  // 2026-10-27) promotes the white ground to a third row.
+  await uploadArtwork(page, ART_PNG, { run: false });
+  await setDesignWidth(page, 80);
+  await runDigitize(page);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await openShapeRows(page);
 

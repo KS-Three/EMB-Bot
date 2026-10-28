@@ -12,6 +12,7 @@
   import { selectedIdsOf } from "../lib/project.js";
   import { columnNoteFabric } from "../lib/generate.js";
   import { EMB } from "../lib/emb.js";
+  import { garmentOf } from "../lib/placement.js";
   export let project;
   // Whether the "add-elements" onboarding hint should render right now --
   // App computes this (shouldShow("add-elements") + the A7 priority rule +
@@ -30,7 +31,7 @@
   // both read only by ManualPanel's columns.
   export let manualFits = null;
   $: manualFabric = columnNoteFabric(project && project.garmentId, project && project.fabricProfile);
-  $: manualGarment = project && project.garmentId ? EMB.getGarment(project.garmentId) || null : null;
+  $: manualGarment = garmentOf(project) || null; // as placed (lib/placement.js)
   // The digitizer service's /health payload, or null when it's unreachable.
   // App owns the probe (run on mount, again when the Download sheet opens,
   // and on the explicit "check again" control, which fires "checkservice");

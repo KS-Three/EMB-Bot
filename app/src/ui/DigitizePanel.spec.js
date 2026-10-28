@@ -19,7 +19,7 @@
 // "nothing runs until Auto Digitize Image is pressed" block below pins that),
 // so no network call happens unless a test presses the button.
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { render, fireEvent, waitFor } from "@testing-library/svelte";
+import { render, fireEvent, screen, waitFor } from "@testing-library/svelte";
 import "@testing-library/jest-dom/vitest";
 import Harness from "./DigitizePanel.testHarness.svelte";
 import { DEFAULT_DIGITIZE_PARAMS } from "../lib/project.js";
@@ -39,9 +39,40 @@ advancedOpen.set(true);
 // real loadImage would hang rather than reject — the failure has to be
 // injected to be observable at all.
 let loadImageResult = () => Promise.reject(new Error("stub"));
+// The panel reaches the engine since 2026-10-27 (lib/placement.js: the Design
+// width an upload starts at is the placement's auto-fit), and lib/emb.js
+// throws at import unless the engine global is up. The REAL units/garments
+// modules, loaded inside the hoisted mock so they exist before the harness
+// import; the buildLetteringDesign gate gets the stub every other spec uses.
+vi.mock("../lib/emb.js", async () => {
+  const { createRequire } = await import("node:module");
+  const require = createRequire(import.meta.url);
+  require("../../../src/units.js");
+  require("../../../src/garments.js");
+  globalThis.EMB.buildLetteringDesign =
+    globalThis.EMB.buildLetteringDesign || (() => { throw new Error("not used by this spec"); });
+  return { EMB: globalThis.EMB };
+});
 vi.mock("../lib/rasterize.js", async (importOriginal) => {
   const real = await importOriginal();
   return { ...real, loadImage: (...args) => loadImageResult(...args) };
+});
+
+// Only `classifyArt` (POST /classify, the pre-run reading) is controlled;
+// everything else in lib/digitizer.js is the real module. The default never
+// answers, which is also what every test that passes no `health` gets: the
+// panel asks only when the service is up.
+let classifyArtImpl = () => new Promise(() => {});
+const classifyCalls = [];
+vi.mock("../lib/digitizer.js", async (importOriginal) => {
+  const real = await importOriginal();
+  return {
+    ...real,
+    classifyArt: (...args) => {
+      classifyCalls.push(args);
+      return classifyArtImpl(...args);
+    },
+  };
 });
 
 function shapeRow(id, overrides = {}) {
@@ -297,6 +328,7 @@ describe("the reading row -- states the reading, offers flat on a tonal one", ()
       const row = container.querySelector(".dgp-read");
       expect(row).toBeTruthy();
       const buttons = [...row.querySelectorAll("button")].map((b) => b.textContent.trim());
+      // ONE button. No "Preview both" either (Kent, 2026-10-27: "Don't build").
       expect(buttons).toEqual(OFFERS_FLAT.has(code) ? ["Sew as flat art"] : []);
       // The corrections that did NOT come back, by name.
       expect(row.textContent).not.toMatch(/It's a photo|Use automatic detection|You set this to/);
@@ -381,6 +413,128 @@ describe("the reading row -- states the reading, offers flat on a tonal one", ()
     expect(photo.getByText(/Read as flat art/)).toBeTruthy();
     expect(photo.queryByText(/You set this to/)).toBeNull();
     expect(photo.queryByLabelText("Add fine detail lines")).toBeNull();
+  });
+});
+
+// ---- the lane BEFORE the run (2026-10-27) ----------------------------------
+//
+// Kent: his owl digitized better as flat art than down the lane the engine
+// picked, and nothing said which lane until the run had cost him a minute.
+// The panel now asks POST /classify when the artwork lands (and when the
+// forced class changes) and puts the SAME reading row above the run button,
+// "Sew as flat art" included. The routing itself is untouched (Kent's
+// 2026-10-26 ruling): the panel repeats the service's stage-0 answer.
+describe("the reading row before the first run -- POST /classify", () => {
+  const HEALTH = { status: "ok", limits: { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 40_000_000 } };
+  const GRADIENT = {
+    class: "gradient", confidence: 1, signals: {}, forced_class_accepted: false, elapsed_ms: 2189,
+    warnings: [{ code: "CLASSIFIED_GRADIENT", message: "engine prose" }],
+  };
+  // A fresh upload: no result, no run, so the only reading is the pre-run one.
+  // Each test renders ONE panel (testing-library cleans up between tests),
+  // with its own cache key so the module-level cache never hands one test
+  // another's answer.
+  let n = 0;
+  function freshElement(extra = {}) {
+    n += 1;
+    return { result: null, warnings: [], sourcePng: "AAAA".repeat(n + 1), ...extra };
+  }
+  function renderFresh(extra = {}, health = HEALTH) {
+    const patches = [];
+    const utils = render(Harness, {
+      props: { element: baseElement([], freshElement(extra)), health, onPatch: (d) => patches.push(d) },
+    });
+    return { ...utils, patches };
+  }
+  beforeEach(() => {
+    classifyCalls.length = 0;
+    classifyArtImpl = () => new Promise(() => {});
+  });
+
+  test("a gradient reading shows ABOVE the run button before any run, with Sew as flat art on it", async () => {
+    classifyArtImpl = async () => GRADIENT;
+    const { container, findByText, getByRole } = renderFresh();
+    expect(await findByText(/Read as shaded artwork/)).toBeTruthy();
+    const row = container.querySelector('[data-testid="art-reading"]');
+    const run = getByRole("button", { name: "Auto Digitize Image" });
+    // DOCUMENT_POSITION_FOLLOWING: the run button comes after the row.
+    expect(row.compareDocumentPosition(run) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(getByRole("button", { name: "Sew as flat art" })).toBeTruthy();
+    // Asked with the run's own request: the same config builder, forced_class absent.
+    expect(classifyCalls).toHaveLength(1);
+    const [image, cfg] = classifyCalls[0];
+    expect(typeof image).toBe("string");
+    expect(cfg.detect_photographic).toBe(true);
+    expect("forced_class" in cfg).toBe(false);
+  });
+
+  test("Sew as flat art before the run rewrites params.forced_class, which is what the run then sends", async () => {
+    classifyArtImpl = async () => GRADIENT;
+    const { findByRole, patches } = renderFresh();
+    await fireEvent.click(await findByRole("button", { name: "Sew as flat art" }));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.params.forced_class).toBe("flat");
+    expect(patches[0].patch.params.max_colors).toBe(DEFAULT_DIGITIZE_PARAMS.max_colors);
+    // The row flips to the user's word and offers the way back, still before any run.
+    expect(await screen.findByText(/You set this to flat art/)).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Use automatic detection" })).toBeTruthy();
+  });
+
+  test("while the ask is in flight there is NO row -- nothing that reads as digitizing having started", async () => {
+    classifyArtImpl = () => new Promise(() => {});
+    const { container, queryByText } = renderFresh();
+    await waitFor(() => expect(classifyCalls).toHaveLength(1));
+    expect(container.querySelector('[data-testid="art-reading"]')).toBeNull();
+    expect(queryByText(/Read as/)).toBeNull();
+    expect(queryByText(/Digitizing|Sending your art/)).toBeNull();
+  });
+
+  test("a service without /classify (404 -> null) hides the row and is not asked again", async () => {
+    classifyArtImpl = async () => null;
+    const { container, queryByText } = renderFresh();
+    await waitFor(() => expect(classifyCalls).toHaveLength(1));
+    // Give a would-be second ask time to fire; it must not.
+    await new Promise((r) => setTimeout(r, 350));
+    expect(classifyCalls).toHaveLength(1);
+    expect(container.querySelector('[data-testid="art-reading"]')).toBeNull();
+    expect(queryByText(/Read as/)).toBeNull();
+  });
+
+  test("a failed ask is silent: no row, no error, and the run button is untouched", async () => {
+    classifyArtImpl = async () => { throw new Error("boom"); };
+    const { container, queryByRole, getByRole } = renderFresh();
+    await waitFor(() => expect(classifyCalls).toHaveLength(1));
+    expect(container.querySelector('[data-testid="art-reading"]')).toBeNull();
+    expect(queryByRole("alert")).toBeNull();
+    expect(getByRole("button", { name: "Auto Digitize Image" }).disabled).toBe(false);
+  });
+
+  test("no service, no ask: the row waits for the first run exactly as before", async () => {
+    classifyArtImpl = async () => GRADIENT;
+    const { container } = renderFresh({}, null);
+    await new Promise((r) => setTimeout(r, 350));
+    expect(classifyCalls).toHaveLength(0);
+    expect(container.querySelector('[data-testid="art-reading"]')).toBeNull();
+  });
+
+  test("a patch that leaves the request alone does not queue a second ask while one is in flight", async () => {
+    classifyArtImpl = () => new Promise(() => {});
+    const element = baseElement([], freshElement());
+    const { rerender } = render(Harness, { props: { element, health: HEALTH } });
+    await waitFor(() => expect(classifyCalls).toHaveLength(1));
+    // Any element patch re-runs the reactive block: a new object, same key.
+    await rerender({ element: { ...element, params: { ...element.params, max_colors: 4 } }, health: HEALTH });
+    await rerender({ element: { ...element, params: { ...element.params, max_colors: 5 } }, health: HEALTH });
+    await new Promise((r) => setTimeout(r, 350));
+    expect(classifyCalls).toHaveLength(1);
+  });
+
+  test("a design set to flat keeps its row while the ask is in flight, and the ask carries forced_class", async () => {
+    classifyArtImpl = () => new Promise(() => {});
+    const { getByText } = renderFresh({ params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" } });
+    expect(getByText(/You set this to flat art/)).toBeTruthy();
+    await waitFor(() => expect(classifyCalls).toHaveLength(1));
+    expect(classifyCalls[0][1].forced_class).toBe("flat");
   });
 });
 
@@ -1404,6 +1558,31 @@ describe("a file picked before the element existed", () => {
     expect(patches[0].patch.name).toBe("picked.png");
     await waitFor(() => expect(container.querySelector(".dgp-run")).toBeEnabled());
     expect(runs).toHaveLength(0);
+  });
+
+  // The Design width it starts at is the PLACEMENT's auto-fit of the image's
+  // aspect (lib/placement.js), not the flat 80: a 1400 x 316 banner on a hat
+  // front is width-bound at the pro's 113.5. A typed width is left alone.
+  test("starts the Design width at the placement's fit of the image, unless the customer typed one", async () => {
+    const upload = async (element, project) => {
+      const patches = [];
+      render(Harness, {
+        props: {
+          element, project, health: { ok: true },
+          pendingFile: new File([new Uint8Array([1, 2, 3])], "picked.png", { type: "image/png" }),
+          onPatch: (d) => patches.push(d),
+        },
+      });
+      await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+      return patches[0].patch;
+    };
+    const fresh = await upload(baseElement([], { sourcePng: null, result: null, review: null }), { garmentId: "hat_front" });
+    expect(fresh.params.target_width_mm).toBe(113.5);
+    expect(fresh.sourcePx.w).toBeGreaterThan(0);
+    const rear = await upload(baseElement([], { sourcePng: null, result: null, review: null }), { garmentId: "hat_front", placementId: "hat_rear" });
+    expect(rear.params.target_width_mm).toBe(88.9);
+    const typed = await upload(baseElement([], { sourcePng: null, result: null, review: null, widthTyped: true }), { garmentId: "hat_front" });
+    expect(typed.params.target_width_mm).toBe(baseElement([]).params.target_width_mm);
   });
 });
 

@@ -271,7 +271,17 @@ def _unique_color_mass(rgb: np.ndarray, fg: np.ndarray, seed: int) -> float:
     idx = np.nonzero(fg.reshape(-1))[0]
     px = rgb.reshape(-1, 3)[idx]
     lab = rgb_to_lab(px.astype(np.float64))
-    k = max(1, min(UCM_K, len(np.unique(px, axis=0))))
+    # Distinct colours, counted on ONE packed integer per pixel rather than
+    # `np.unique(px, axis=0)`: the row-wise form sorts a void dtype with a
+    # generic comparator that never releases the GIL -- 17.4 s on a 2,193 px
+    # square (measured 2026-10-27), during which every other request to the
+    # service (/health included) sat frozen; the Studio then read the service
+    # as down and routed the next upload to the browser lane. The packed form
+    # is the same count (a uint8 triple <-> one 24-bit value, both ways) in
+    # ~0.1 s, so k and the classification are unchanged.
+    p32 = px.astype(np.uint32)
+    packed = (p32[:, 0] << 16) | (p32[:, 1] << 8) | p32[:, 2]
+    k = max(1, min(UCM_K, len(np.unique(packed))))
     centers = _kmeans_lab(lab, k, seed)
     assigned = _assign(lab, centers)
 
