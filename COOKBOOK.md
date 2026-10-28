@@ -2391,6 +2391,34 @@ quality claim (ROADMAP gate 4): the verdict column is Kent's. **Nothing
 downloaded or rendered is committed**: the repo is public, so the images,
 the runs and the HTML all live in gitignored folders.
 
+### Reading stage 0's photo gate (2026-10-28)
+
+Stage 0 enters photo territory two ways since 2026-10-28
+(`cfg.stage0_texture_gate`, ON): the grain gate (`unique_color_mass >= 0.28`,
+the only one before) and `texture_frac >= 0.13` on an opaque file — the share
+of its foreground on a 512-px raster that is neither flat nor a hard edge nor
+within 2 px of one. `two_tone_mass >= 0.90` (two inks) vetoes both; a file
+with an alpha cut-out keeps the grain gate alone. Spec:
+`docs/superpowers/specs/2026-10-28-stage0-photo-texture-gate-design.md`.
+From `digitizer/`:
+
+```
+python -m tools.stage0_photo_gate                 # fixtures + the corpus images if fetched
+python -m tools.stage0_photo_gate --ladder        # the same at 250..1600 px export widths
+python -m tools.stage0_photo_gate --json
+PYTHONPATH=. python tools/classify_lens.py --sweep   # the re-derived tree, thresholds swept
+```
+
+The table prints the engine's class under BOTH arms beside the signals, and
+the margins over the opaque rows with the six photographed-graphic corpus
+rows (`photo-of-logo`) and every cut-out left out. Two traps: the corpus has
+nothing under 500 px, so a reading on a small real logo (the `testdata/art/`
+files are 148–273 px tall) is the one to take before moving a threshold —
+the first siting missed them and the full suite caught it; and a photo-lane
+row in a corpus capture is the Studio's only when its json carries no
+`PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE` (the rembg worker times out at 120 s
+under CPU load).
+
 ### Recapturing `corpus_scorecard_baseline.json`
 
 The baseline once sat unrefreshed through ~15 digitizer commits; the next
