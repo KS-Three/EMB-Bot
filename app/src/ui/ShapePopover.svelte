@@ -11,6 +11,7 @@
   export let anchor = { x: 0, y: 0 };   // px inside the positioned parent (.hoop)
   export let bounds = { w: 0, h: 0 };   // that parent's box, for clamping
   export let position = null;           // null | { x, y } — a dragged spot, wins over anchor
+  export let applyToSimilar = false;    // the "Apply to all similar shapes" box; the field owns it
 
   const d = createEventDispatcher();
   let root;
@@ -106,6 +107,24 @@
     on:pointerup={onHeadUp}
     on:pointercancel={onHeadUp}
   ><span class="shapepop-grip" aria-hidden="true">⋮⋮</span>{model.name}</div>
+  {#if model.similar}
+    <!-- Scope first: it decides what every row below does. The count is every
+         shape the edit will touch, this one included; the field outlines them
+         while the box is ticked. -->
+    <label class="shapepop-row shapepop-similar">
+      <input
+        type="checkbox" checked={applyToSimilar}
+        aria-describedby="shapepop-similar-note"
+        on:change={(e) => d("similar", { on: e.currentTarget.checked })}
+      />
+      <span>Apply to all similar shapes ({model.similar.count})</span>
+    </label>
+    {#if applyToSimilar}
+      <p class="shapepop-note shapepop-similar-note" id="shapepop-similar-note">Stitch type, color, border, angle and underlay change on all {model.similar.count}, outlined blue. Delete and Edit points stay on this shape.</p>
+    {:else}
+      <p class="shapepop-note shapepop-sr" id="shapepop-similar-note">Same color and form, any size or turn.</p>
+    {/if}
+  {/if}
   {#each model.rows as row (row.key)}
     {#if row.kind === "thread"}
       <div class="shapepop-row">

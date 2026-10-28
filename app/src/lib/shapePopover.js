@@ -145,7 +145,19 @@ export function runRows(shape, fit) {
 
 // `fit` and `fabric` ({ label, pullCompMm }) are optional context, read only
 // for a column's width row and a line's length note; every other shape ignores them.
-export function popoverModel({ element, shapeId, fit, fabric }) {
+// `similar` (digitized lane only) is similarShapes.similarShapeIds' answer for
+// this shape; the model carries it as { count, ids } when the shape has company,
+// so the popover can offer "Apply to all similar shapes (N)" — else null.
+export function popoverModel({ element, shapeId, fit, fabric, similar }) {
+  const m = baseModel({ element, shapeId, fit, fabric });
+  if (!m) return m;
+  m.similar = m.lane === "digitized" && !isCapPieceId(shapeId) && Array.isArray(similar) && similar.length > 1
+    ? { count: similar.length, ids: similar }
+    : null;
+  return m;
+}
+
+function baseModel({ element, shapeId, fit, fabric }) {
   const lane = laneOf(element);
   if (!lane) return null;
 
@@ -241,7 +253,7 @@ export function popoverModel({ element, shapeId, fit, fabric }) {
 // ---- patches ----------------------------------------------------------------
 // DigitizePanel.setOverride, reproduced: merge fields into the entry, drop a
 // null field (and tier "auto"), drop an emptied entry.
-function overridePatch(element, shapeId, fields) {
+export function overridePatch(element, shapeId, fields) {
   const cur = { ...(element.shapeOverrides || {}) };
   const entry = { ...(cur[shapeId] || {}), ...fields };
   for (const k of Object.keys(entry)) {

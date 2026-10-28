@@ -202,3 +202,27 @@ test("a column model's width note renders, warn-styled and described", () => {
   expect(note).toHaveClass("warn");
   expect(getByRole("spinbutton", { name: "Width" })).toHaveAttribute("aria-describedby", note.id);
 });
+
+test("a shape with company offers 'Apply to all similar shapes (N)', unticked, and emits the tick", async () => {
+  const model = popoverModel({ element: digitizedEl, shapeId: "Sabc", similar: ["Sabc", "S2", "S3"] });
+  const { events, getByRole, queryByText } = renderPop(model);
+  const box = getByRole("checkbox", { name: "Apply to all similar shapes (3)" });
+  expect(box).not.toBeChecked();
+  expect(queryByText(/change on all 3/)).toBeNull();
+  await fireEvent.click(box);
+  expect(events).toEqual([{ kind: "similar", detail: { on: true } }]);
+});
+
+test("ticked, it says what the group edit reaches and what it does not", () => {
+  const model = popoverModel({ element: digitizedEl, shapeId: "Sabc", similar: ["Sabc", "S2"] });
+  const { getByRole, getByText } = renderPop(model, { applyToSimilar: true });
+  expect(getByRole("checkbox", { name: "Apply to all similar shapes (2)" })).toBeChecked();
+  expect(getByText(/change on all 2/)).toBeInTheDocument();
+});
+
+test("a shape on its own has no such box — unticked behaviour is unchanged", () => {
+  const { queryByRole } = renderPop(popoverModel({ element: digitizedEl, shapeId: "Sabc", similar: ["Sabc"] }));
+  expect(queryByRole("checkbox")).toBeNull();
+  const manual = renderPop(popoverModel({ element: manualEl, shapeId: "s1" }));
+  expect(manual.queryByRole("checkbox")).toBeNull();
+});

@@ -27,6 +27,7 @@
   import { boundaryIssues } from "../lib/digitizer.js";
   import { isElementStale } from "../lib/staleness.js";
   import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
+  import { similarShapeIds, similarOverridesPatch } from "../lib/similarShapes.js";
   import { capOutlinesMm, isCapPieceId } from "../lib/capPieces.js";
   import { resolveCutOuts, isColumn, isRun, isOpenShape, shapeProblems } from "../lib/manualShapes.js";
   import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT, convertOpenShape } from "../lib/fieldNodeEdit.js";
@@ -782,8 +783,29 @@
         element: selectedShapeElement(), shapeId: selectedShapeId,
         fit: (peById[project.selectedId] && peById[project.selectedId].design && peById[project.selectedId].design.fit) || null,
         fabric: popFabric,
+        similar: similarFor(selectedShapeElement(), selectedShapeId),
       })
     : null;
+  // "Apply to all similar shapes": the shapes like the selected one (see
+  // lib/similarShapes.js), only on a digitized element — the other lanes have
+  // no such thing as a near-identical sibling to sweep up.
+  function similarFor(el, shapeId) {
+    return el && el.type === "digitized" && !isCapPieceId(shapeId) ? similarShapeIds(el, shapeId) : null;
+  }
+  // The box is per selection: it clears when the shape changes or the popover
+  // closes, so a tick made for the stars cannot reach the next shape picked.
+  let applyToSimilar = false;
+  let similarKey = null;
+  $: syncSimilar(shapePop ? selectedShapeId : null);
+  function syncSimilar(key) {
+    if (key === similarKey) return;
+    similarKey = key;
+    applyToSimilar = false;
+  }
+  $: if (canvas) { applyToSimilar; scheduleViewRepaint(); }
+  // What the group edit keys act on: the popover's per-shape overrides. Delete
+  // and Edit points are actions, not changes, and never go to the group.
+  const GROUP_KEYS = new Set(["stitchType", "color", "border", "angle", "underlay"]);
   // A shape that stopped existing (deleted, or gone in a new result) closes
   // it. Deliberately NOT closeShapePop(): nobody pressed anything here, and
   // the change may have come from the side panel, whose focus must not be
@@ -855,7 +877,13 @@
     const { key, value } = e.detail;
     const shapeId = selectedShapeId;
     const elFit = el.type === "manual" ? manualFit(el) : null;
-    let patch = popoverPatch({ element: el, shapeId, fit: elFit }, key, value);
+    // Ticked: the same edit on every shape like this one, as ONE patch (one
+    // undo step). Worked out against the element as it is now.
+    const group = applyToSimilar && popModel && popModel.similar && el.type === "digitized" && GROUP_KEYS.has(key)
+      ? similarShapeIds(el, shapeId) : [];
+    let patch = group.length > 1
+      ? similarOverridesPatch(el, group, key, value)
+      : popoverPatch({ element: el, shapeId, fit: elFit }, key, value);
     if (!patch && key === "color" && el.type === "digitized") {
       // A getter bound to THIS element's id, not to "whatever is selected":
       // the patch is rebuilt against the element as it stands once the thread
@@ -864,6 +892,14 @@
       const live = () => (project && (project.elements || []).find((x) => x.id === el.id)) || null;
       patch = await recolorPatch({ element: live, shapeId }, value);
       if (!live()) return; // the element went away while the chart loaded
+      if (patch && group.length > 1) {
+        // The chart lookup answered for this shape; the group gets the same
+        // thread, over the shapes like it in the element as it stands now.
+        const one = patch.shapeOverrides[shapeId] || {};
+        const now = live();
+        patch = similarOverridesPatch(now, similarShapeIds(now, shapeId), "recolor",
+          { thread_index: one.thread_index, rgb: one.rgb });
+      }
     }
     if (!patch) {
       if (key === "color") shapeEditError = "Couldn't match that color to the job's thread chart.";
@@ -1438,6 +1474,9 @@
         ? resolveCutOuts(el.shapes).parentOf
         : null;
 
+      const similarSet = applyToSimilar && popModel && popModel.similar && el.id === selectedShapeElId
+        ? new Set(popModel.similar.ids) : null;
+
       ctx.save();
       ctx.lineJoin = "round";
       for (const o of outlines) {
@@ -1457,6 +1496,9 @@
         // list (App routes both here as `hoverShape`). Drawn white so it
         // reads as a spotlight beside the amber selection.
         const hovered = !editing && !!hoverShape && hoverShape.elId === el.id && hoverShape.shapeId === o.id;
+        // Ticked "Apply to all similar shapes": every other shape the edit
+        // will touch, outlined blue so the reach is visible BEFORE the pick.
+        const similar = !editing && !!similarSet && similarSet.has(o.id);
         // The default view is the stitch-out, so only the shape being acted
         // on, or pointed at, is outlined until the user asks for all of them.
         //
@@ -1473,7 +1515,7 @@
         // goes: hiding the outlines by default (2026-09-01) silently hid the
         // "we found these shapes" cue with them, and Kent asked for it back
         // (2026-10-08).
-        const ghost = !showOutlines && !editing && !hovered && !orphan;
+        const ghost = !showOutlines && !editing && !hovered && !orphan && !similar;
         if (ghost && fade <= 0) continue;
         ctx.globalAlpha = ghost ? fade : 1;
         // Mid node-drag the flattened ring is the STALE geometry: drawing it
@@ -1510,10 +1552,14 @@
           ? "rgba(255, 214, 64, 0.95)"     // the selected shape
           : hovered
             ? "rgba(255, 255, 255, 0.95)"  // the shape under the pointer, here or in the list
-            : `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
-        ctx.lineWidth = (editing || hovered ? 1.9 : 1.4) + 1.4 * pulse;
+            : similar
+              ? "rgba(70, 170, 255, 0.98)" // a shape the ticked group edit will touch
+              : `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
+        ctx.lineWidth = (editing || hovered || similar ? 1.9 : 1.4) + 1.4 * pulse;
         ctx.stroke();
         if (o.cutOut) ctx.setLineDash([]);
+        // A group member is a highlight, not something to drag: no node dots.
+        if (similar) continue;
 
         // Node dots say "drag me". On the digitized lane every vertex of the
         // dense ring is one; a hand-drawn shape's nodes are its AUTHORED
@@ -3483,6 +3529,8 @@
         bounds={hoopBounds}
         position={popPosition && popPosition.elementId === shapePop.elementId ? popPosition : null}
         on:move={(e) => (popPosition = { x: e.detail.x, y: e.detail.y, elementId: shapePop.elementId })}
+        applyToSimilar={applyToSimilar}
+        on:similar={(e) => (applyToSimilar = e.detail.on)}
         on:change={onPopChange}
         on:action={onPopAction}
         on:close={closeShapePop}

@@ -994,6 +994,18 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   padding: var(--space-1);
 }
 .shapepop-label { flex: 0 0 5.5rem; color: var(--muted); }
+/* The scope box: a checkbox and its sentence, not a label + control pair. */
+.shapepop-similar { cursor: pointer; }
+.shapepop-similar input[type="checkbox"] { flex: 0 0 auto; margin: 0; }
+/* The ticked note wraps inside the dialog's own width instead of stretching it:
+   zero intrinsic width, then the full width of the box. */
+.shapepop-similar-note { width: 0; min-width: 100%; }
+/* Read by a screen reader as the box's description; the sighted dialog says
+   the same thing in the box's own words. */
+.shapepop-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
 .shapepop-row select,
 .shapepop-row input[type="number"] {
   flex: 1 1 auto;
