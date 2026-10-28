@@ -36,6 +36,7 @@
   import { triggerDownload } from "./lib/download.js";
   import { shouldShow, dismiss, visibleHint } from "./lib/hints.js";
   import { effectiveHoop } from "./lib/hoop.js";
+  import { placementBoxOf, refitDigitized } from "./lib/placement.js";
   import { fetchHealth, spoolCount } from "./lib/digitizer.js";
   import { EMB } from "./lib/emb.js";
   import GarmentStep from "./ui/GarmentStep.svelte";
@@ -648,6 +649,10 @@
 
   function apply(patch) {
     project = update(project, patch);
+    // A garment or placement change moves every un-typed digitized image's
+    // default width to the new placement's auto-fit (lib/placement.js). The
+    // stitches go stale under the usual rule; nothing re-runs on its own.
+    if ("garmentId" in patch || "placementId" in patch) project = refitDigitized(project);
     persist();
   }
 
@@ -678,8 +683,8 @@
   // sane default if the garment can't be resolved (a project always carries
   // a garmentId, so this is a guard, not a path).
   function hoopWidthMm(p) {
-    const garment = p && EMB.getGarment(p.garmentId);
-    return garment ? garment.widthIn * MM_PER_INCH : 300;
+    const box = placementBoxOf(p); // the placement's box (lib/placement.js)
+    return box ? box.w : 300;
   }
 
   // "artwork" is the Content step's ONE upload tile (Kent's call, 2026-08-13:

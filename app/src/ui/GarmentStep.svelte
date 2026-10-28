@@ -3,6 +3,7 @@
   import { createEventDispatcher } from "svelte";
   import GarmentPicker from "./GarmentPicker.svelte";
   import { effectiveHoop } from "../lib/hoop.js";
+  import { garmentOf } from "../lib/placement.js";
   import { fabricInForce } from "../lib/generate.js";
   import CalibratePanel from "./CalibratePanel.svelte";
   export let project;
@@ -58,7 +59,7 @@
   // user has something else picked, and switching garments moves it live.
   const hoops = EMB.HOOPS || [];
   $: hoopSel = effectiveHoop(project);
-  $: suggestedHoop = EMB.suggestHoop(EMB.getGarment(project.garmentId));
+  $: suggestedHoop = EMB.suggestHoop(garmentOf(project));
 
   // The fabric preset in force: the garment's own, or that preset adjusted
   // by the project's calibration profile (generate.js fabricInForce — the
@@ -75,7 +76,7 @@
 </script>
 
 <h3>Garment</h3>
-<GarmentPicker garmentId={project.garmentId} on:update={(e) => d("update", e.detail)} />
+<GarmentPicker garmentId={project.garmentId} placementId={project.placementId || null} on:update={(e) => d("update", e.detail)} />
 
 <h3>Hoop size</h3>
 <div class="hooprow" role="group" aria-label="Hoop size">

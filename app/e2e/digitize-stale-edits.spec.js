@@ -20,7 +20,7 @@
 // Same runner split as wizard-smoke.spec.js: this is a @playwright/test spec
 // (`npm run test:e2e`), not a vitest one -- vite.config.js excludes e2e/**.
 import { test, expect } from "@playwright/test";
-import { pickGarment, uploadArtwork, runDigitize, openAdvanced } from "./helpers.js";
+import { pickGarment, uploadArtwork, runDigitize, setDesignWidth, openAdvanced } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -146,7 +146,12 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   // The tile is health-gated (App probes /health on reaching this step); it
   // appearing IS the live assertion that the app sees the real service.
 
-  await uploadArtwork(page, ART_PNG);
+  // At the 80 mm the flow below was pinned at: the Tote's auto-fit (198 mm
+  // since 2026-10-27) promotes the white ground to a third row, and the
+  // 40 mm re-run below then drops it again, so the count would not hold.
+  await uploadArtwork(page, ART_PNG, { run: false });
+  await setDesignWidth(page, 80);
+  await runDigitize(page);
 
   // Editable layer rows: the black square and the red square -- plus,
   // depending on the service's stage1 build, the white ground. The panel's

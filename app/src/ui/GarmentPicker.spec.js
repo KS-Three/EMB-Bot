@@ -28,7 +28,7 @@ test("clicking a pill dispatches update with its garment id", async () => {
   const onUpdate = vi.fn();
   render(Harness, { garmentId: "left_chest", onUpdate });
   await fireEvent.click(screen.getByRole("button", { name: "Tee" }));
-  expect(onUpdate.mock.calls[0][0].detail).toEqual({ garmentId: "full_back" });
+  expect(onUpdate.mock.calls[0][0].detail).toEqual({ garmentId: "full_back", placementId: null });
 });
 
 test("a garment outside the three appears as a fourth pressed pill", () => {
@@ -51,7 +51,7 @@ test("picking from the menu dispatches update and closes it", async () => {
   render(Harness, { garmentId: "left_chest", onUpdate });
   await fireEvent.click(screen.getByRole("button", { name: "More garments" }));
   await fireEvent.click(screen.getByRole("menuitemradio", { name: "Beanie" }));
-  expect(onUpdate.mock.calls[0][0].detail).toEqual({ garmentId: "beanie" });
+  expect(onUpdate.mock.calls[0][0].detail).toEqual({ garmentId: "beanie", placementId: null });
   expect(screen.queryByRole("menu")).toBeNull();
 });
 
@@ -79,4 +79,40 @@ test("focus moving between menu items keeps the menu open", async () => {
   const to = screen.getByRole("menuitemradio", { name: "Tote" });
   await fireEvent.focusOut(from, { relatedTarget: to });
   expect(screen.getByRole("menu", { name: "All garments" })).toBeInTheDocument();
+});
+
+// ---- Placements (2026-10-27) -----------------------------------------------
+
+test("a hat shows a Placement row with its six placements, Centered pressed by default", () => {
+  render(Harness, { garmentId: "hat_front" });
+  const row = screen.getByRole("group", { name: "Placement" });
+  const names = within(row).getAllByRole("button").map((b) => b.textContent);
+  expect(names).toEqual(["Centered", "Front left", "Front right", "Side left", "Side right", "Rear"]);
+  expect(within(row).getByRole("button", { name: "Centered" })).toHaveAttribute("aria-pressed", "true");
+  expect(within(row).getByRole("button", { name: "Rear" })).toHaveAttribute("aria-pressed", "false");
+});
+
+test("a single-placement garment shows no Placement row", () => {
+  render(Harness, { garmentId: "tote" });
+  expect(screen.queryByRole("group", { name: "Placement" })).toBeNull();
+});
+
+test("picking a placement dispatches placementId alone; the default dispatches null", async () => {
+  const onUpdate = vi.fn();
+  render(Harness, { garmentId: "hat_front", placementId: "hat_rear", onUpdate });
+  const row = screen.getByRole("group", { name: "Placement" });
+  expect(within(row).getByRole("button", { name: "Rear" })).toHaveAttribute("aria-pressed", "true");
+  await fireEvent.click(within(row).getByRole("button", { name: "Side left" }));
+  expect(onUpdate.mock.calls[0][0].detail).toEqual({ placementId: "hat_side_left" });
+  await fireEvent.click(within(row).getByRole("button", { name: "Centered" }));
+  expect(onUpdate.mock.calls[1][0].detail).toEqual({ placementId: null });
+});
+
+test("a placement id from another garment reads as the default, and a garment pick resets it", async () => {
+  const onUpdate = vi.fn();
+  render(Harness, { garmentId: "left_chest", placementId: "hat_rear", onUpdate });
+  const row = screen.getByRole("group", { name: "Placement" });
+  expect(within(row).getByRole("button", { name: "Left chest" })).toHaveAttribute("aria-pressed", "true");
+  await fireEvent.click(screen.getByRole("button", { name: "Hat" }));
+  expect(onUpdate.mock.calls[0][0].detail).toEqual({ garmentId: "hat_front", placementId: null });
 });
