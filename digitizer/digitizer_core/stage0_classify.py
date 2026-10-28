@@ -381,6 +381,77 @@ def _alpha_softness(alpha: np.ndarray | None) -> float:
     return float(((alpha > 8) & (alpha < 247)).mean())
 
 
+# --- texture_frac / two_tone_mass / cut-out (2026-10-28) ------------------------
+#
+# `docs/superpowers/specs/2026-10-28-stage0-photo-texture-gate-design.md`.
+# `unique_color_mass` is a GRAIN detector, and a downsampled photograph has no
+# grain: on the 39-row Commons corpus 15 of 18 photographs read 0.02-0.27
+# against `UCM_PHOTO_MIN` and left as `gradient`. These two signals are
+# scale-normalised fractions, sited on that real corpus (ROADMAP gate 2's
+# condition, met) and measured across a 250-1600 px export ladder.
+
+# The long edge every texture reading is taken at. Smaller files are read as
+# they are: an upscale invents nothing but interpolation.
+TEXTURE_NORM_PX = 512
+TEXTURE_STD_WIN = 5
+# A 5x5 luminance std under LO is flat (a ramp of 255 levels across 500 px is
+# ~0.7); at or over HI it is a hard edge. The band between is what a
+# photograph is mostly made of and a designed graphic mostly is not.
+TEXTURE_STD_LO = 2.0
+TEXTURE_STD_HI = 24.0
+# Opaque photographs min 0.245 (watercolor), opaque designed graphics max 0.097
+# (barcode) on the corpus + the repo's real logos; midpoint, margin to each.
+TEXTURE_PHOTO_MIN = 0.17
+TEXTURE_MARGIN = 0.07
+TEXTURE_MIN_FG_PX = 25
+
+# Two inks: the share of foreground luminance in the two best-filled of
+# sixteen equal bins. arabic 0.978, tires 0.995, barcode 0.974, qr 1.000;
+# photographs top out at 0.763 (watercolor).
+TWO_TONE_BINS = 16
+TWO_TONE_MAX = 0.90
+TWO_TONE_MARGIN = 0.06
+
+
+def _texture_frac(rgb: np.ndarray, fg: np.ndarray) -> float:
+    """Share of the foreground, on the `TEXTURE_NORM_PX` raster, whose 5x5
+    luminance std sits in [TEXTURE_STD_LO, TEXTURE_STD_HI): neither flat nor
+    a hard edge. 0.0 under `TEXTURE_MIN_FG_PX` foreground pixels."""
+    h, w = rgb.shape[:2]
+    scale = TEXTURE_NORM_PX / max(h, w)
+    if scale < 1.0:
+        size = (max(1, round(w * scale)), max(1, round(h * scale)))
+        rgb = cv2.resize(rgb, size, interpolation=cv2.INTER_AREA)
+        fg = cv2.resize(fg.astype(np.uint8), size, interpolation=cv2.INTER_AREA) > 0
+    if int(fg.sum()) < TEXTURE_MIN_FG_PX:
+        return 0.0
+    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    win = (TEXTURE_STD_WIN, TEXTURE_STD_WIN)
+    mean = cv2.blur(gray, win)
+    mean_sq = cv2.blur(gray * gray, win)
+    sd = np.sqrt(np.maximum(mean_sq - mean * mean, 0.0))[fg]
+    return float(((sd >= TEXTURE_STD_LO) & (sd < TEXTURE_STD_HI)).mean())
+
+
+def _two_tone_mass(rgb: np.ndarray, fg: np.ndarray) -> float:
+    """Share of foreground pixels in the two best-filled of `TWO_TONE_BINS`
+    equal luminance bins, at native resolution. 0.0 on an empty foreground."""
+    if not fg.any():
+        return 0.0
+    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)[fg]
+    width = 256 // TWO_TONE_BINS
+    counts = np.bincount((gray // width).astype(np.int64), minlength=TWO_TONE_BINS)
+    top = np.sort(counts)[-2:]
+    return float(top.sum()) / float(gray.size)
+
+
+def _has_cutout(alpha: np.ndarray | None) -> bool:
+    """A transparent region (any alpha <= 127, stage 1's background rule):
+    a design-tool export whose boundary the uploader already decided. A
+    file with no alpha, or an alpha that is opaque everywhere, is not one."""
+    return alpha is not None and bool((alpha <= 127).any())
+
+
 # --- decision ------------------------------------------------------------------
 
 def _gate_confidence(value: float, threshold: float, margin: float) -> float:
