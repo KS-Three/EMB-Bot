@@ -75,6 +75,9 @@ def _region(sid, poly, thread, **meta) -> Region:
 
 def _cfg(**kw) -> PipelineConfig:
     kw.setdefault("fine_bars_satin", PRE_FLIP["fine_bars_satin"])     # the OFF arm unless set
+    # `bean_only_lines` (ON since Kent's 2026-10-27 flip) refuses the dot's and
+    # the lenses' rings; this file prices the bars alone, on the engine the md5 was pinned on
+    kw.setdefault("bean_only_lines", PRE_FLIP["bean_only_lines"])
     return PipelineConfig(underlay=False, garment_rgb=GARMENT, **kw)
 
 

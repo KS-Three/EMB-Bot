@@ -993,6 +993,24 @@ class PipelineConfig:
     # holding OFF beside the teal patch being kept ON, and
     # `test_flag_defaults_on` there pins this default itself.
     keep_thin_strokes: bool = True
+    # Dark thin strokes on a SHADED ground, read by lightness
+    # (`thin_ink.find_dark_thin_ink`; gradient class only, the gate
+    # `keep_thin_strokes` has). `keep_thin_strokes` reads the artwork with the
+    # flat quantiser, so a stroke exists for it only when k-means gives it a
+    # colour of its own; hand lettering drawn on a shaded body does not get
+    # one. Kent's cartoon of 2026-10-27: "HUNNY" on a grey-green pot, ink
+    # 21.5 dE00 from the pot and 0.5-0.75 mm wide, sewed one letter of five
+    # (the merge on superpixel means absorbed the rest). ON, a black-hat on
+    # L* finds every dark feature under `min_detail_mm`, the thin floors and
+    # a one-ground ring test keep the strokes and refuse the outlines, and
+    # the strokes the merge then absorbs are carved out of their ground
+    # after it and come back as their own label block, the thin population's
+    # path (SEEDS and the merge run untouched: taking the pixels out before
+    # them moved the palette). Five letters sew, in one ink; the colour cap
+    # keeps that ink off the ground's thread (`enforce_color_cap`).
+    # The constants and the measurements behind them are in `thin_ink.py`.
+    # OFF until Kent flips it; nothing found is byte-identical to OFF.
+    keep_dark_thin_strokes: bool = False
     # A letter's counter on a COLOURED ground stays a hole
     # (`stage3_segment.resolve_small_regions`). Measured 2026-10-02 on clean
     # 4 mm "BAR & RESTAURANT": on white the counters are background, never
@@ -5764,6 +5782,32 @@ class PipelineConfig:
     # Layout, judged in the preview (Kent, 2026-10-22). False is the plan as it
     # was, byte for byte. Tests: `tests/test_script_strokes.py`.
     script_strokes_drawn_width: bool = False
+    # The reference digitizer's rule for WHAT gets a bean (built OFF
+    # 2026-10-27; `bean_rule.py`, `tools/bean_census.py`,
+    # docs/bean-census-reference-2026-10-27.md). Ours has no bean
+    # classifier: five size-gated fallbacks (run tier, bean letters, edge
+    # cap, satin hairline, detail layer) each bean by SIZE. The census over
+    # 17 paired jobs: he beans only LINES the art draws as a stroke of
+    # another colour too thin to satin (17 runs, 780 mm, 8 of 1,101
+    # regions, two passes at 1.31 mm); a filled body's edge on 4 of 231,
+    # all drawn outline strokes; small lettering on 1 of 251 (raised to
+    # satin); a small solid on 0 of 81 (one satin blob or dropped). Ours
+    # beans 137 regions (111 letters, 24 thin regions, 2 bodies); region
+    # kappa -0.014 OFF, 0.129 ON (ours 137 -> 21; Fremont's 58 bean letters
+    # sew satin, stitches 16,235 -> 15,755). ON, the run tier
+    # (`routes_to_run` and the reactive rescue), `tag_bean_letters` and
+    # the bean-style edge cap consult `bean_rule.allows_bean`: a LINE
+    # (smallest dimension <= `bean_rule.LINE_MAX_MM` 1.2) keeps its bean, a
+    # letter or a solid goes down the ordinary ladder (satin where
+    # `compact_solids_satin` / `small_solids_satin` / the Column lane sew
+    # one, else unsewn), and the bean edge cap sews nothing (satin style
+    # untouched). Layout, judged in the preview (Kent, 2026-10-22). No
+    # width, pull, density, pass count or stitch length moves. **ON since
+    # 2026-10-27, Kent's flip on PR #1161 ("Flip ON (Recommended)")**; False
+    # is the plan before the flip, byte for byte, and `tests/conftest.py`
+    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_bean_rule.py`.
+    bean_only_lines: bool = True
 
     def __post_init__(self) -> None:
         self._fill_true_size()

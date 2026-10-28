@@ -168,8 +168,15 @@ test("a file loads without digitizing; the button runs it, and goes transparent 
   await page.waitForTimeout(2500);   // longer than the old 2 s restitch pause
   expect(await posts()).toBe(0);
   await expect(page.locator(".dgp-stats")).toHaveCount(0);
-  // Nothing is claimed about the art before it has been read.
-  await expect(page.locator(".dgp-read")).toHaveCount(0);
+  // The reading row stands BEFORE the run since 2026-10-27 (POST /classify,
+  // stage 0 only, no digitize): it says what the engine made of the art and
+  // asks nothing on a flat reading. Nothing ran for it -- the post count is
+  // the claim, re-checked after the row is up.
+  const preRead = page.locator(".dgp-read");
+  await expect(preRead).toContainText("Read as flat art", { timeout: 30_000 });
+  await expect(preRead.getByRole("button")).toHaveCount(0);
+  expect(await posts()).toBe(0);
+  await expect(page.locator(".dgp-stats")).toHaveCount(0);
 
   // ---- the button is the run ----------------------------------------------
   await run.click();

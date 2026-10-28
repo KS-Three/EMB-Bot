@@ -60,6 +60,7 @@ def _sew(art, width_mm, **kw):
     # read without it; the dissolve's own price is
     # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
     kw.setdefault("dissolve_phantom_blends", False)
+    kw.setdefault("bean_only_lines", False)   # the crowns were counted before the bean rule (ON 2026-10-27)
     cfg =PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
                          max_colors=6, **kw)
     gen = build_generation(str(art), cfg)

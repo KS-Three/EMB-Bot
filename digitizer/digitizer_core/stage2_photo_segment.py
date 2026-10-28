@@ -107,7 +107,8 @@ from .fast_skimage import deltaE_ciede2000_1, rag_mean_color
 from .palette import region_weight, select_palette
 from .stage1_prep import Prep
 from .stage2_quantize import Quant, _quantize_population
-from .thin_ink import ThinInk, find_thin_ink
+from .thin_ink import (ThinInk, absorbed_dark_ink, find_dark_thin_ink, find_thin_ink,
+                       merge_thin_ink, thin_without)
 from .stage3_segment import RegionMask, resolve_small_regions
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (PHOTO_BLEND_DISSOLVED, PHOTO_PALETTE_SELECTED,
@@ -2316,13 +2317,18 @@ def kept_masks_to_quant(
         thread_indices = thread_indices + enc_spools
 
     # --- thin population, the flat quantiser's own labels, appended last ----
-    # Its pixels left `base_valid` before SEEDS (see `segment`), so no region
-    # above overlaps them; the labels were compacted to the spools they use.
+    # Its pixels left `base_valid` before SEEDS (see `segment`; the lightness
+    # read's, after the merge), so no region above overlaps them; the labels
+    # were compacted to the spools they use. The lightness read's labels lead
+    # the block (`ThinInk.dark`) and are named for the colour cap.
+    dark_ink_labels: frozenset[int] | None = None
     if thin is not None:
         base_k = len(thread_indices)
         thin_valid = thin.labels >= 0
         out[thin_valid] = thin.labels[thin_valid] + base_k
         thread_indices = thread_indices + thin.spools
+        if thin.dark:
+            dark_ink_labels = frozenset(range(base_k, base_k + thin.dark))
 
     warnings: list[dict] = list(floor_warnings) + enc_warnings
     if tonal_splits:
@@ -2448,6 +2454,7 @@ def kept_masks_to_quant(
         palette_spools=(
             [int(m) for m in selection.medoids] if demand_points else None
         ),
+        dark_ink_labels=dark_ink_labels,
     )
 
 
@@ -2538,7 +2545,7 @@ def snap_region_edges(labels: np.ndarray, valid: np.ndarray, lab_img: np.ndarray
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
             split_tonal=False, shade_demand=False, design_ramp=None,
             thin_population=False, snap_edges=False, keep_counters=False,
-            counter_core=None) -> Quant:
+            counter_core=None, dark_population=False) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -2581,7 +2588,28 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # `thin_population` is the caller's gate, the way `split_tonal` is: the
     # pipeline passes `cfg.keep_thin_strokes and class_ == "gradient"`, so
     # the photo classes keep today's path (see `pipeline.run_stages`).
+    # Dark thin strokes on a shaded ground (`cfg.keep_dark_thin_strokes`,
+    # `thin_ink.find_dark_thin_ink`): the same population read by LIGHTNESS
+    # instead of by the flat quantiser's colours. Read here, on the raster
+    # the quantiser read sees, but NOT taken out of the SEEDS foreground: the
+    # merge below runs exactly as it always has, and only the strokes it
+    # ABSORBED are carved out afterwards (step 3.9). Measured both ways on
+    # Kent's cartoon: taking the dark pixels out before SEEDS also took the
+    # nose and the toe lines (their own regions, kept on contrast) out of
+    # the main population, the palette's medoids moved, and the pot split
+    # into two threads -- 34 -> 68 regions, +3,000 stitches, +31 trims, for
+    # five letters. Carving after the merge changes nothing but the letters.
+    # `dark_population` is the caller's gate, gradient class only, like
+    # `thin_population`. None, or the gate off, is byte-identical.
+    # The quantiser read goes first so the lightness read can see its mask:
+    # a dark component ringed by thin-population pixels is a glyph's
+    # counter (summit's S, PR #1162), not a stroke, and `find_dark_thin_ink`
+    # refuses it (`glyphs`). Both reads see the same `base_valid`, so the
+    # order changes nothing else.
     thin: ThinInk | None = find_thin_ink(p, cfg, base_valid) if thin_population else None
+    dark: ThinInk | None = (find_dark_thin_ink(p, cfg, base_valid,
+                                               glyphs=None if thin is None else thin.mask)
+                            if dark_population else None)
     if thin is not None:
         base_valid = base_valid & ~thin.mask
 
@@ -2710,6 +2738,21 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # drawn edge snaps. See `snap_region_edges`.
     if snap_edges and merged_count:
         merged = snap_region_edges(merged, base_valid, lab_img)
+
+    # --- 3.9 Absorbed dark ink leaves the merged regions ---------------------
+    # The lightness read's strokes that the merge folded into their ground
+    # (`thin_ink.absorbed_dark_ink`: a stroke with a merged label of its own
+    # already survived and is left exactly as it is) leave the foreground
+    # here, before regions are cut from it, and join the thin population's
+    # label block ahead of the quantiser read's labels. Where both reads
+    # took the same stroke the lightness read owns it, so a word is one ink:
+    # the quantiser read keeps a letter in pieces when the ink's lightness
+    # tracks the shading under it (the cartoon's U: its arch alone).
+    if dark is not None and merged_count:
+        absorbed = absorbed_dark_ink(dark, merged, base_valid)
+        if absorbed is not None:
+            base_valid = base_valid & ~absorbed.mask
+            thin = merge_thin_ink(absorbed, thin_without(thin, absorbed.mask))
 
     # --- 4. Min-area floor ---------------------------------------------------
     # `merge_hierarchical` only ever merges graph-adjacent nodes, but a

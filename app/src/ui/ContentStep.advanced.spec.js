@@ -125,7 +125,10 @@ test("artwork (auto-digitize): upload, run and colour count visible; the rest of
   await open();
   expect(screen.getByText(/^Design width/)).toBeVisible();
   expect(screen.getByText(/^Fill angle/)).toBeVisible();
-});
+  // The test's own timeout matches the 30 s its findByText already allows the
+  // lazy chunk: under the 5 s default the import alone ran 5.4 s on Kent's
+  // laptop once DigitizePanel pulled in lib/placement.js (2026-10-27).
+}, 30_000);
 
 test("the choice survives selecting another element (the editor is rebuilt)", async () => {
   const r = mount({ ...P.defaultTextElement("t1"), text: "Kent" });

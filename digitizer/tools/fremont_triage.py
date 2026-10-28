@@ -105,6 +105,7 @@ ARMS = {
     # so this arm, the engine as he sewed it, has those OFF too -- and the
     # white-keyline recipe, on every job since 2026-10-27.
     "small_glyph_keep_off": {"small_glyph_keep": False, "small_text_true_size": False,
+                             "bean_only_lines": False,   # his job predates the bean rule (2026-10-27)
                              "detail_spokes": False, "lettering_columns_small_stem": False,
                              "small_dot_rung": False, "small_dot_rung_lettering": False,
                              "dissolve_phantom_blends": False, "clip_keep_pieces": False,

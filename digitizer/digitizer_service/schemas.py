@@ -92,6 +92,27 @@ class Health(BaseModel):
         "`sam2`. Environment checks only; a worker can still fail at run time."))
 
 
+class Classified(BaseModel):
+    """`/classify`: stage 0's lane for the upload, before any run."""
+
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "class": "gradient", "confidence": 1.0,
+        "signals": {"unique_color_mass": 0.12, "gradient_smoothness": 0.004,
+                    "alpha_softness": 0.0, "unique_color_mass_seed": 0},
+        "warnings": [{"code": "CLASSIFIED_GRADIENT", "message": "..."}],
+        "forced_class_accepted": False, "elapsed_ms": 2189.4,
+    }})
+
+    class_: str = Field(alias="class", description="flat | gradient | photo_subject | photo_scene")
+    confidence: float
+    signals: dict[str, Any] = Field(description="Stage 0's measurements; empty under a forced class.")
+    warnings: list[Any] = Field(description=(
+        "The CLASSIFIED_* / CLASSIFICATION_UNCERTAIN codes stage 0 emits, plus "
+        "FACE_ROUTED_FLAT or PHOTO_DETECTED when stage 1.25 fires."))
+    forced_class_accepted: bool
+    elapsed_ms: float
+
+
 class OpenObject(BaseModel):
     """A JSON object whose keys are documented in the route description."""
 

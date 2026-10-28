@@ -96,6 +96,9 @@ def _run(fixture: str, width: float, cap: str = "bean",
         TESTDATA / fixture,
         PipelineConfig(target_width_mm=width, edge_cap=cap, border_by_size=False,
                        edge_cap_over_budget=over_budget,
+                       # ...and the bean cap at all (`bean_only_lines`, ON since
+                       # Kent's 2026-10-27 flip, sews none): this prices the bill
+                       bean_only_lines=PRE_FLIP["bean_only_lines"],
                        # held on the engine the bill was measured on: ON since
                        # 2026-10-24, `border_from_outline` sews Becker's keyline
                        # as one loop per face and the faces as fills, which
@@ -340,6 +343,7 @@ def test_dropping_is_off_by_default_and_the_drop_never_executes(monkeypatch):
         monkeypatch.setattr(S, "_over_budget_action", own_thread_only(spy, real))
         plan = digitize(TESTDATA / WHITEBG,
                         PipelineConfig(target_width_mm=CHEAP, edge_cap="bean", border_by_size=False,
+                                       bean_only_lines=PRE_FLIP["bean_only_lines"],
                                        **({"edge_cap_over_budget": mode}
                                           if mode != "warn" else {})))[1]
         monkeypatch.undo()
@@ -367,6 +371,7 @@ def test_the_warning_moves_no_stitch(monkeypatch):
     _result, forced = digitize(
         TESTDATA / WHITEBG,
         PipelineConfig(target_width_mm=CHEAP, edge_cap="bean", border_by_size=False,
+                       bean_only_lines=PRE_FLIP["bean_only_lines"],
                        sew_enclosed_white=PRE_FLIP["sew_enclosed_white"]))
     monkeypatch.undo()
 

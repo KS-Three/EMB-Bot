@@ -313,11 +313,16 @@ def script_result():
                       PipelineConfig(target_width_mm=60.0, forced_class="flat"))
 
 
+#: the skeleton run is priced against the outline RUN a sub-floor glyph sewed
+#: before `bean_only_lines` (ON since Kent's 2026-10-27 flip: satin ladder instead)
+BASE = dict(target_width_mm=60.0, forced_class="flat", bean_only_lines=False)
+
+
 def test_stage7_sews_a_tagged_small_glyph_as_one_skeleton_run(script_result):
     from shapely import affinity
     glyph = affinity.translate(_T(), 40.0, 0.0)
     res = _with_glyph(script_result, glyph)
-    base = dict(target_width_mm=60.0, forced_class="flat")
+    base = dict(BASE)
     off = _glyph_runs(plan_stitches(res, PipelineConfig(**base)))
     on = _glyph_runs(plan_stitches(res, PipelineConfig(**base, small_lettering_skeleton=True,
                                                        small_lettering_skeleton_floor_mm=0.73)))
@@ -340,7 +345,7 @@ def test_stage7_sews_an_EST_sized_glyph_at_the_default_floor(script_result):
     from shapely import affinity
     glyph = affinity.translate(_E_est(), 40.0, 0.0)
     res = _with_glyph(script_result, glyph)
-    base = dict(target_width_mm=60.0, forced_class="flat")
+    base = dict(BASE)
     off = _glyph_runs(plan_stitches(res, PipelineConfig(**base)))
     one = _glyph_runs(plan_stitches(res, PipelineConfig(**base, small_lettering_skeleton=True,
                                                         small_lettering_skeleton_small_floor_mm=None)))
@@ -356,7 +361,7 @@ def test_stage7_leaves_an_untagged_small_shape_on_the_outline(script_result):
     from shapely import affinity
     glyph = affinity.translate(_T(), 40.0, 0.0)
     res = _with_glyph(script_result, glyph, tagged=False)
-    base = dict(target_width_mm=60.0, forced_class="flat")
+    base = dict(BASE)
     off = _glyph_runs(plan_stitches(res, PipelineConfig(**base)))
     on = _glyph_runs(plan_stitches(res, PipelineConfig(**base, small_lettering_skeleton=True)))
     assert [r.points for r in on] == [r.points for r in off]

@@ -54,6 +54,11 @@ BEFORE: dict[str, object] = {
     "border_by_size": False,
     "enclosed_alpha_hole_parts": False,
     "lettering_columns_corner_fold": False,
+    # The bean rule (`bean_only_lines`, built OFF and flipped ON by Kent the
+    # same day, 2026-10-27, #1165): every site that pins "before the 10-23
+    # flips" was measured on an engine that beaned letters, sub-floor solids
+    # and the silhouette's open edges, so it pins this off too.
+    "bean_only_lines": False,
 }
 HELD_OFF = ("cut_every_jump", "sew_enclosed_white")
 

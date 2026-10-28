@@ -1151,7 +1151,9 @@ def test_digitize_manual_returns_a_design_a_review_and_stats(client):
     assert design["stitchCount"] > 100
     # Two manual shapes plus the design-silhouette cap's own block, which is
     # ON by default since 2026-09-11 and sews in a cone already loaded.
-    assert design["colorCount"] == 3
+    # two shapes, two cones: the bean edge cap's own cone went with `bean_only_lines`
+    # (ON since Kent's 2026-10-27 flip; it was 3 before)
+    assert design["colorCount"] == 2
     assert design["stitches"][-1]["type"] == "end"
     assert {s["type"] for s in design["stitches"]} <= {"stitch", "jump", "trim", "color", "end"}
 
@@ -1598,3 +1600,100 @@ def test_every_stitch_format_health_advertises_decodes_to_the_same_design(client
         else:
             assert changes == expected_changes, \
                 f"{fmt}: {changes} colour changes, expected {expected_changes}"
+
+
+# --- /classify: the lane, before the run ------------------------------------
+#
+# Kent, 2026-10-27: his owl digitized better as flat than down the lane the
+# engine picked, and he had no way to know the lane until the run had already
+# cost him the better part of a minute. `/classify` answers stage 0 (and the
+# stage-1.25 face/EXIF reroute) on the prepped image exactly as `/digitize`
+# would, in a few seconds, so the Studio can show the reading and offer "Sew
+# as flat art" BEFORE the run. It changes nothing about the routing itself
+# (Kent's 2026-10-26 ruling: automatic routing stays as it is).
+
+OWL = Path(__file__).resolve().parents[1] / "testdata" / "photo" / "owl_kent.jpg"
+
+
+def _classify(client, config: dict | None = None, art: Path = ART):
+    with art.open("rb") as f:
+        return client.post(
+            "/classify",
+            files={"image": (art.name, f, "image/png")},
+            data={"config": json.dumps(config or {})},
+        )
+
+
+def _classified_codes(warnings) -> set[str]:
+    return {w["code"] for w in warnings
+            if w["code"].startswith("CLASSIFI") or w["code"] in ("FACE_ROUTED_FLAT", "PHOTO_DETECTED")}
+
+
+def test_classify_answers_the_lane_in_seconds_with_the_contract_fields(client):
+    import time
+    t0 = time.perf_counter()
+    r = _classify(client, {"target_width_mm": 80.0})
+    wall_ms = (time.perf_counter() - t0) * 1000
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert set(body) == {"class", "confidence", "signals", "warnings",
+                        "forced_class_accepted", "elapsed_ms"}
+    assert body["class"] in ("flat", "gradient", "photo_subject", "photo_scene")
+    assert 0.0 <= body["confidence"] <= 1.0
+    assert body["forced_class_accepted"] is False
+    assert isinstance(body["warnings"], list)
+    assert 0 <= body["elapsed_ms"] <= wall_ms
+    # The point of the route: well inside what a run costs. The budget is
+    # loose on purpose — a loaded laptop inflates CPU time ~2.6x
+    # (digitize-speed-2026-10-26) — and still an order of magnitude under
+    # the run it stands in for.
+    assert wall_ms < 10_000, wall_ms
+
+
+@pytest.mark.parametrize("art, config", [
+    (ART, {"target_width_mm": 80.0}),
+    (OWL, {"target_width_mm": 80.0, "detect_photographic": True, "faces_route_flat": True}),
+])
+def test_classify_agrees_with_what_digitize_reports(client, art, config):
+    """The drift guard: the pre-run reading has to be the reading the run
+    then reports, or the Studio's row would promise one lane and sew another.
+    Compared on the warning CODES the Studio keys its sentence on, so the
+    two can only disagree where the customer would see it."""
+    pre = _classify(client, config, art=art)
+    assert pre.status_code == 200, pre.text
+    state = _digitize(client, config, art=art)
+    assert _classified_codes(pre.json()["warnings"]) == _classified_codes(state["warnings"])
+    # And the class the run took, read off the same seam the reading row
+    # reads: a CLASSIFIED_* code names every class but flat.
+    run_class = next((c.removeprefix("CLASSIFIED_").lower()
+                      for c in _classified_codes(state["warnings"])
+                      if c.startswith("CLASSIFIED_")), "flat")
+    assert pre.json()["class"] == run_class
+
+
+def test_classify_honours_a_forced_class_and_says_so(client):
+    r = _classify(client, {"forced_class": "flat"}, art=OWL)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["class"] == "flat"
+    assert body["confidence"] == 1.0
+    assert body["forced_class_accepted"] is True
+    assert body["warnings"] == []
+    # A forced class skips every signal, exactly as the run does.
+    assert body["signals"] == {}
+
+
+def test_classify_rejects_a_bad_forced_class_like_digitize_does(client):
+    r = _classify(client, {"forced_class": "photo"})
+    assert r.status_code == 400
+    assert "forced_class" in r.json()["detail"]
+    assert "photo_subject" in r.json()["detail"]
+
+
+def test_classify_rejects_what_digitize_rejects_at_submit(client):
+    r = client.post("/classify", files={"image": ("x.txt", io.BytesIO(b"not an image"), "text/plain")})
+    assert r.status_code == 400
+    r = client.post("/classify", files={"image": ("x.png", io.BytesIO(b""), "image/png")})
+    assert r.status_code == 400
+    r = _classify(client, {"nonsense": 1})
+    assert r.status_code == 400

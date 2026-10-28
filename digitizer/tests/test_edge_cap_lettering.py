@@ -79,6 +79,7 @@ def _run(**kw):
     # edge cap this file prices. Its own cap behaviour is pinned in
     # `tests/test_lettering_columns.py`.
     kw.setdefault("lettering_columns", False)
+    kw.setdefault("bean_only_lines", False)   # this file prices the bean cap; the rule (ON 2026-10-27) sews none
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest",
                          max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)
@@ -225,6 +226,7 @@ def _region(poly: Polygon, sid: str, thread: int, layer: int,
 
 
 def _plan_for(regions: list[Region], **cfg_kw):
+    cfg_kw.setdefault("bean_only_lines", False)   # as above
     c = PipelineConfig(**cfg_kw)
     planned, _ = resolve_overlaps(regions, FAB, c)
     blocks, warnings = sequence(planned, FAB, c)

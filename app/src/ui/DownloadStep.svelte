@@ -1,6 +1,7 @@
 <script>
   import { onMount, createEventDispatcher } from "svelte";
   import { generateAll } from "../lib/generate.js";
+  import { garmentOf } from "../lib/placement.js";
   import { exportFileName, exportDesignPreferService, exportWorksheetPDF, exportPNG, isServiceOnlyFormat } from "../lib/exporters.js";
   import { chartIdForProject } from "../lib/designChart.js";
   import { isSewable } from "../lib/flow.js";
@@ -600,7 +601,7 @@
         ...c,
         name: threadLabel(nearestInList(list, [c.r, c.g, c.b])),
       }));
-      const garment = EMB.getGarment(project.garmentId);
+      const garment = garmentOf(project); // as placed: the worksheet's box and label are the placement's
       // The worksheet names the chosen hoop (manual pick or suggestion,
       // lib/hoop.js) — the operator mounts a physical hoop, not a garment.
       // ...and the chart those codes came out of. "1375 Dark Charcoal" is

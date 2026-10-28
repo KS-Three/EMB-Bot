@@ -569,6 +569,13 @@ PRE_FLIP["strip_letterbox"] = False
 # for the next test that prices a colour flag on a satin fixture. A test that
 # is ABOUT the rails is `tests/test_rail_comp.py` and names the flag itself.
 PRE_FLIP["satin_rail_comp"] = False
+# `bean_only_lines` joined the flipped set 2026-10-27 (Kent's "Flip ON
+# (Recommended)" on PR #1161), for the reason every entry above gives: ON, a
+# sub-floor letter or solid no longer sews a bean ring (it takes the satin
+# ladder or stays unsewn), bean letters are never tagged and the bean edge
+# cap sews nothing -- so an arm measured before that day was measured with
+# those rings present. `tests/engine_2026_10_27.json` carries it False too.
+PRE_FLIP["bean_only_lines"] = False
 # `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
 # renders of his Instagram icon, drone, Bridge Bar and the repro), for the
 # reason every entry above gives. ON, a gradient-lane region's edge follows
@@ -665,6 +672,11 @@ FLIP_2026_10_23 = {
     "border_by_size": False,
     "enclosed_alpha_hole_parts": False,
     "lettering_columns_corner_fold": False,
+    # The bean rule (`bean_only_lines`, built OFF and flipped ON by Kent the
+    # same day, 2026-10-27, #1165): every site that pins "before the 10-23
+    # flips" was measured on an engine that beaned letters, sub-floor solids
+    # and the silhouette's open edges, so it pins this off too.
+    "bean_only_lines": False,
 }
 PRE_FLIP.update(FLIP_2026_10_23)
 # Spoked detail marks (Kent's flip 2026-10-16, "ON, tightened"): a small

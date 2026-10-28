@@ -21,6 +21,7 @@ import math
 import os
 import subprocess
 import threading
+import time
 from contextlib import asynccontextmanager
 from dataclasses import asdict, fields as dataclass_fields
 from datetime import datetime, timezone
@@ -40,11 +41,14 @@ from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
 from digitizer_core import legibility, machine, stage1_photo_prep, stage2_sam2_segment
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
 from digitizer_core.manual import build_manual_result
+from digitizer_core.photo_signals import resolve as resolve_photo_signals
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
 from digitizer_core.preflight import _owning_region_id, run_preflight
-from digitizer_core.stage0_classify import CLASSES
+from digitizer_core.stage0_classify import CLASSES, classify
+from digitizer_core.stage1_prep import prep
 from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 from digitizer_core.stitchwidth import review_block, validate_override_mm
+from digitizer_core.warnings_codes import FACE_ROUTED_FLAT, PHOTO_DETECTED, warn
 
 from . import formats, schemas
 from .guards import BodyLimit, Deadline, too_large_detail
@@ -124,7 +128,7 @@ DECODE_MAX_SIDE_PX = 2800
 # multipart framing and the config field, so the route's own 413 (which names
 # the artwork's size) is still the one a near-miss sees. Everything else is
 # JSON: a 300k-stitch design is ~12 MB as `/export` JSON, so 32 MB.
-_UPLOAD_ROUTES = ("/digitize", "/calibration/read")
+_UPLOAD_ROUTES = ("/digitize", "/classify", "/calibration/read")
 MAX_JSON_BYTES = 32 * 1024 * 1024
 
 
@@ -1147,6 +1151,109 @@ async def start_digitize(
 
     job, cached = registry.submit(key, work)
     return {"job_id": job.id, "state": job.state, "cached": cached}
+
+
+def _jsonable(value):
+    """Stage 0's signals are numpy scalars; the wire wants Python ones."""
+    if isinstance(value, dict):
+        return {k: _jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
+
+
+# Stage 0 is CPU work at the artwork's own size (k-means on every pixel), run
+# at request time rather than behind the job queue, so two at a time like the
+# decodes above; the rest wait in the threadpool.
+_CLASSIFY_SLOTS = threading.BoundedSemaphore(2)
+
+
+@app.post("/classify", summary="Read the artwork's lane without digitizing it",
+          responses={200: {"model": schemas.Classified,
+                           "description": "Stage 0's reading, as the run would report it."},
+                     400: schemas.error("No image, undecodable image, or invalid `config`."),
+                     413: schemas.error("Upload over the byte or pixel limit."),
+                     **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
+async def classify_art(
+    image: UploadFile = File(...),
+    config: str | None = Form(None),
+    x_embbot_token: str | None = Header(None),
+) -> dict:
+    """The same upload and `config` as `/digitize`; back comes the lane the
+    run WOULD take, in seconds instead of the run's minute — so a customer
+    can see "read as shaded artwork" and choose "Sew as flat art" before
+    paying for the run (Kent, 2026-10-27). Nothing here changes the routing:
+    this is `build_generation`'s stage-0 and stage-1.25 block
+    (`pipeline.py`, "Stage 0" through FACE_ROUTED_FLAT) replayed on the
+    same decoded pixels, the same parsed config and the same upload bytes
+    (for EXIF), and `tests/test_service.py` pins that the codes agree with
+    the run's. Keep the two in step.
+
+    `warnings` carries the CLASSIFIED_* / CLASSIFICATION_UNCERTAIN codes
+    stage 0 emits plus the FACE_ROUTED_FLAT or PHOTO_DETECTED line stage 1.25
+    adds, so a client keys on exactly what it keys on after a run. A
+    `forced_class` skips every signal, as the run does, and answers at
+    confidence 1.0 with `forced_class_accepted` true; stage 1.25 is skipped
+    too, since it cannot move a forced class (the run's guard) and its one
+    remaining effect, the photographic machinery, is not a lane.
+
+    Cost on Kent's laptop, loaded (2026-10-27): 0.1–2.5 s on the small real
+    logos and the owl, up to ~20 s on a 2,200-px square; stage 1 prep for
+    the face pass is 10–100% on top of stage 0. Not cached: the Studio asks
+    once per upload and once per forced-class change.
+    """
+    _require_token(x_embbot_token)
+
+    data = await image.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="No image received.")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=too_large_detail(len(data), MAX_UPLOAD_BYTES).replace("Upload", "Artwork", 1),
+        )
+    cfg_dict = _parse_config(config)
+    pixels = await run_in_threadpool(_decode_bounded, data)
+
+    def work() -> dict:
+        t0 = time.perf_counter()
+        cfg = PipelineConfig(**cfg_dict)
+        classification = classify(pixels, cfg, forced_class=cfg.forced_class)
+        extra: list[dict] = []
+        if cfg.forced_class is None:
+            p = prep(pixels, cfg, design_class=classification.class_)
+            _, signals = resolve_photo_signals(cfg, image=data, rgb=p.rgb)
+            detected = bool(signals and signals.is_photograph)
+            if detected and cfg.faces_route_flat and signals.faces:
+                classification = classify(pixels, cfg, forced_class="flat")
+                extra.append(warn(
+                    FACE_ROUTED_FLAT,
+                    f"{signals.faces} face(s) detected — sewing as flat art "
+                    "(solid colour regions), the route a face reads best on.",
+                    faces=int(signals.faces), detail=signals.why,
+                ))
+            elif detected:
+                extra.append(warn(
+                    PHOTO_DETECTED,
+                    f"Detected as a photograph — {signals.why}.",
+                    signal=signals.signal, detail=signals.why,
+                ))
+        return {
+            "class": classification.class_,
+            "confidence": float(classification.confidence),
+            "signals": _jsonable(classification.signals),
+            "warnings": [*classification.warnings, *extra],
+            "forced_class_accepted": cfg.forced_class is not None,
+            "elapsed_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
+
+    def bounded() -> dict:
+        with _CLASSIFY_SLOTS:
+            return work()
+
+    return await run_in_threadpool(bounded)
 
 
 # The upper bound on how many shapes one manual request may carry. Not a

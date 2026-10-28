@@ -83,6 +83,13 @@ export function defaultDesignElement(id) {
 // because the element factory below needs it and the model layer imports
 // nothing. fill_angle_deg null = per-shape auto (the service's default).
 export const DEFAULT_DIGITIZE_PARAMS = {
+  // The width BEFORE any artwork is loaded. The moment an image lands,
+  // DigitizePanel's ingest replaces it with the placement's auto-fit of the
+  // image's aspect (lib/placement.js fitTargetWidthMm — garments.fitScale into
+  // the placement box, hoop cap and the pro's left-chest area cap included),
+  // and a garment or placement change re-fits it unless the customer typed a
+  // width (`widthTyped`). Kent, 2026-10-27: the size comes from WHERE on the
+  // garment the design sits, not from a flat number for every garment.
   target_width_mm: 80,
   max_colors: 6,
   satin: true,
@@ -219,6 +226,15 @@ export function defaultDigitizedElement(id) {
     // The customer's crop box as fractions of the image, { x0, y0, x1, y1 },
     // or null for the whole image (also what a pre-crop project loads as).
     crop: null,
+    // The uploaded image's pixel size, { w, h }, as the panel decoded it —
+    // the aspect the placement's auto-fit sizes (lib/placement.js). null
+    // before an upload and on a project saved before 2026-10-27, which keeps
+    // whatever width it has and is never re-fitted.
+    sourcePx: null,
+    // True once the customer has typed a Design width (or a dragged resize
+    // landed as one): the width is theirs, and a garment or placement change
+    // leaves it alone instead of re-fitting the default.
+    widthTyped: false,
     params: { ...DEFAULT_DIGITIZE_PARAMS },
     // No `isPhoto` and no `params.forced_class` (Kent, 2026-09-30): the
     // Studio carries no per-design override of stage 0's reading. A project
@@ -332,6 +348,13 @@ export function defaultProject() {
   return {
     version: 2,
     garmentId: "left_chest",
+    // WHERE on the garment (2026-10-27, src/garments.js PLACEMENTS): null is
+    // the garment's default placement, which carries the garment's own id —
+    // so every project saved before this field existed, and every reader of
+    // `garmentId` alone, sees exactly the box it always had. A placement id
+    // outside the garment's own list resolves to the default too
+    // (garments.resolvePlacement). Same additive-migration story as hoopId.
+    placementId: null,
     selectedId: "e1",
     // Multi-select (Ctrl+click): the FULL selection. Invariants, maintained
     // by every selection-touching function here: never empty, and

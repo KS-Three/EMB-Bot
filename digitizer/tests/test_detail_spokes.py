@@ -38,7 +38,7 @@ from digitizer_core.stitches import RUN, StitchBlock, StitchRun
 from digitizer_core.threads import chart_for, rgb_to_lab
 from digitizer_core.warnings_codes import DETAIL_SPOKES_SEWN
 
-from .conftest import (FLAT_GOLDEN_MD5, RECIPE_2026_10_27, LETTERING_2026_10_24_OFF, TESTDATA,
+from .conftest import (FLAT_GOLDEN_MD5, PRE_FLIP, RECIPE_2026_10_27, LETTERING_2026_10_24_OFF, TESTDATA,
                        WAVE3_2026_10_26_OFF)
 
 
@@ -461,7 +461,9 @@ def _host_cpu() -> str:
 # 80 mm), which is not what this pin is about. The pin keeps the OFF md5
 # that every host was proven against, rather than re-capturing it here.
 # ...and the 2026-10-23 flips: the Fremont md5 was pinned without them
-_BEAN_PIN = {"bean_letter_straight_mm": None, **FLIP_2026_10_23}
+# ...and `bean_only_lines` (ON since Kent's 2026-10-27 flip): the tagline's bean
+# letters sew satin with it, which is not what this pin is about either
+_BEAN_PIN = {"bean_letter_straight_mm": None, **FLIP_2026_10_23, "bean_only_lines": PRE_FLIP["bean_only_lines"]}
 
 
 @pytest.fixture(scope="module")

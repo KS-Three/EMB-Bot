@@ -125,6 +125,7 @@ def test_cap_off_goldens_are_byte_identical_either_way(fixture, pitch):
 @pytest.mark.parametrize("fixture", sorted(CAP_OFF_MD5))
 def test_bean_cap_off_is_byte_identical_and_on_moves_only_the_cap(fixture):
     # both arms on the engine the md5s were pinned on: the 2026-10-23 and 2026-10-26 flips off
+    # (`bean_only_lines`, ON since Kent's 2026-10-27 flip, rides in FLIP_2026_10_23 off: it sews no bean cap at all)
     _r, off = digitize(TESTDATA / fixture, PipelineConfig(target_width_mm=80.0, **FLIP_2026_10_23, **FLIP_2026_10_26))
     assert _md5(_coords(off)) == CAP_OFF_MD5[fixture]
     _r, on = digitize(TESTDATA / fixture,
