@@ -75,7 +75,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import nearest_points, unary_union
 from shapely.prepared import prep
 
-from . import machine, stitches
+from . import machine, shape_memo, stitches
 from .stage6_fill import travel_path
 from .stitches import StitchRun
 
@@ -1286,6 +1286,7 @@ def keyline_rest(band, width_mm: float, overlap_mm: float, min_dim_mm: float,
 UNDERFILL_RIM_WIDTH_MM = 1.75
 
 
+@shape_memo.memoized("underfill_rim_runs")
 def underfill_rim_runs(outline, shape_id: str, *, entry: tuple[float, float] | None,
                        trim_at_mm: float, underlay: bool = False
                        ) -> tuple[list[StitchRun], dict]:
