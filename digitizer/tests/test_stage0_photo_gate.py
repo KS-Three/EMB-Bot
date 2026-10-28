@@ -44,6 +44,7 @@ def test_margins_on_a_hand_built_row_list():
         {"slug": "c", "kind": "logo", "cutout": False, "texture_frac": 0.09, "two_tone_mass": 0.97},
         {"slug": "d", "kind": "logo", "cutout": False, "texture_frac": 0.05, "two_tone_mass": 0.70},
         {"slug": "e", "kind": "logo", "cutout": True, "texture_frac": 0.80, "two_tone_mass": 0.30},
+        {"slug": "f", "kind": "photo-of-logo", "cutout": False, "texture_frac": 0.90, "two_tone_mass": 0.40},
     ]
     m = pg.margins(rows)
     assert m["photo_texture_min"] == (0.25, "b")
@@ -51,6 +52,13 @@ def test_margins_on_a_hand_built_row_list():
     assert m["photo_two_tone_max"] == (0.76, "b")
     assert m["texture_gap"] == pytest.approx(0.25 - 0.09)
     assert m["n_photo"] == 2 and m["n_graphic"] == 2
+    assert m["n_photo_of_logo"] == 1      # printed, in neither margin
+
+
+def test_the_photographed_graphics_are_labelled_from_the_corpus_kind():
+    kinds = pg.corpus_kinds([{"slug": "halftone_dots", "kind": "logo"}, {"slug": "low_poly", "kind": "logo"},
+                             {"slug": "bw_street", "kind": "photo"}])
+    assert kinds == {"halftone_dots": "photo-of-logo", "low_poly": "logo", "bw_street": "photo"}
 
 
 def test_ladder_reads_below_the_native_width_only():

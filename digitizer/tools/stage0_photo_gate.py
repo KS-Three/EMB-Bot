@@ -58,6 +58,16 @@ FIXTURES = {
 
 LADDER_WIDTHS = (250, 400, 640, 900, 1200, 1600)
 
+#: Corpus rows whose `kind` is `logo` but whose MEDIUM is a photograph or a
+#: scan (a printed portrait, a café chalkboard, a framed poster, ink on paper,
+#: a photographed comic poster, an engraving scan — spec §3). Stage 0 reads
+#: the medium, so these are printed as `photo-of-logo` and sit in neither
+#: margin: a hand label, kept here so the table says which rows it applies to.
+PHOTOGRAPHED_GRAPHICS = frozenset({
+    "halftone_dots", "chalkboard_lettering", "duotone_poster", "kanji_brush",
+    "comic_halftone", "vintage_engraved_badge",
+})
+
 
 def _slug(path: Path) -> str:
     path = Path(path)
@@ -97,6 +107,7 @@ def margins(rows_: list[dict]) -> dict:
     calibration by ROADMAP gate 2)."""
     photos = [r for r in rows_ if r["kind"] == "photo" and not r["cutout"]]
     graphics = [r for r in rows_ if r["kind"] == "logo" and not r["cutout"]]
+    photographed = [r for r in rows_ if r["kind"] == "photo-of-logo"]
 
     def pick(items, key, fn):
         if not items:
@@ -111,8 +122,14 @@ def margins(rows_: list[dict]) -> dict:
         "photo_two_tone_max": pick(photos, "two_tone_mass", max),
         "graphic_two_tone_min": pick(graphics, "two_tone_mass", min),
         "texture_gap": (pmin[0] - gmax[0]) if pmin[0] is not None and gmax[0] is not None else None,
-        "n_photo": len(photos), "n_graphic": len(graphics),
+        "n_photo": len(photos), "n_graphic": len(graphics), "n_photo_of_logo": len(photographed),
     }
+
+
+def corpus_kinds(corpus_rows: list[dict]) -> dict[str, str]:
+    """slug -> kind, with the photographed graphics relabelled `photo-of-logo`."""
+    return {r["slug"]: ("photo-of-logo" if r["slug"] in PHOTOGRAPHED_GRAPHICS else r["kind"])
+            for r in corpus_rows}
 
 
 def ladder(path: Path, widths=LADDER_WIDTHS) -> dict:
@@ -143,15 +160,17 @@ def corpus_items(corpus_json: Path = CORPUS_JSON) -> tuple[list[Path], dict[str,
     """The corpus rows whose gitignored image is present beside corpus.json."""
     if not corpus_json.exists():
         return [], {}
-    paths, kinds = [], {}
-    for r in json.loads(corpus_json.read_text(encoding="utf-8")):
+    corpus_rows = json.loads(corpus_json.read_text(encoding="utf-8"))
+    kinds = corpus_kinds(corpus_rows)
+    paths = []
+    for r in corpus_rows:
         for ext in (".png", ".jpg"):
             p = corpus_json.parent / f"{r['slug']}{ext}"
             if p.exists():
                 paths.append(p)
-                kinds[r["slug"]] = r["kind"]
                 break
-    return paths, kinds
+    present = {p.stem for p in paths}
+    return paths, {k: v for k, v in kinds.items() if k in present}
 
 
 def print_table(rows_: list[dict], m: dict) -> None:
@@ -168,7 +187,8 @@ def print_table(rows_: list[dict], m: dict) -> None:
         print(f"{r['slug'][:36]:<36} {r['kind']:<9} {'cut' if r['cutout'] else '  .':>3} "
               f"{r['ucm']:7.4f} {r['grad']:8.4f} {r['texture_frac']:6.3f} {r['two_tone_mass']:6.3f} "
               f"{r['route']:<14} {r['class_on']:<14} {r['conf_on']:5.2f} {r['class_off']:<14}")
-    print(f"\n# margins over opaque rows ({m['n_photo']} photo, {m['n_graphic']} graphic):")
+    print(f"\n# margins over opaque rows ({m['n_photo']} photo, {m['n_graphic']} graphic; "
+          f"{m['n_photo_of_logo']} photo-of-logo rows and every cut-out left out):")
     print(f"#   photo texture min   {m['photo_texture_min']}")
     print(f"#   graphic texture max {m['graphic_texture_max']}   gap {m['texture_gap']}")
     print(f"#   photo two-tone max  {m['photo_two_tone_max']}   graphic two-tone min {m['graphic_two_tone_min']}")
