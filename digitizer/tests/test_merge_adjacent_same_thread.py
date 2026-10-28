@@ -208,9 +208,14 @@ def test_the_pipelines_own_output_no_longer_needs_the_merge():
     # Same regions, same block count — an ORDER change, not a new split, and
     # the shipped engine's merge (ON) folds it. Pinned for the same reason as
     # `keep_thin_strokes` above.
+    # `keep_dark_thin_strokes=False` pinned 2026-10-28, when Kent flipped it ON
+    # (#1170): the dark-ink read carves 16 strokes out of the owl's grounds and
+    # they come back as their own blocks, which the merge folds (`..., 248,
+    # 248, ...` with it off). Same reason as `keep_thin_strokes` above.
     _r, off = digitize(img, PipelineConfig(target_width_mm=100.0,
                                            is_photographic=True,
                                            keep_thin_strokes=False,
+                                           keep_dark_thin_strokes=False,
                                            merge_adjacent_same_thread=False,
                                            blend_fallback_underlay=False,
                                            photo_prep=False))
