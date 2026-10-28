@@ -21,6 +21,7 @@ Five commands, run from `digitizer/` as `python -m tools.photo_corpus ...`:
                                one self-contained HTML: source thumbnail, before render, after
                                render, the numbers under both, better / same / worse buttons;
                                "Export verdicts" downloads the JSON `tally` files
+    grades RUN_DIR [--kind K]  one-tree grading page (Great..Terrible per row) -> corpus_runs/grades-<sha7>-<kind>.html
     tally VERDICTS.json        copies the verdicts under docs/scoreboards/photo-corpus/ and
                                appends one tally line per before/after pair
     summary RUN_DIR            the run's numbers without designs or images ->
@@ -715,6 +716,98 @@ count();
     return "\n".join(parts)
 
 
+# ------------------------------------------------------------------ grades (one tree)
+#: Kent's absolute scale, the words he used on the 21 logo rows (2026-10-28).
+GRADE_SCALE = ("Great", "Good", "Okay", "Bad", "Terrible")
+
+
+def build_grades(run: dict, rows: list[dict], photos: Path, manifest: dict, kind: str | None = None) -> str:
+    """One self-contained HTML for grading ONE tree's renders on the absolute
+    Great / Good / Okay / Bad / Terrible scale (the sxs page is better / same /
+    worse across two trees). Per corpus row of `kind` (both kinds when None):
+    source thumbnail, render, the row's instrument numbers, five grade buttons,
+    a 0-10 score box and a note. Grades live in localStorage under
+    `grades:<sha>:<kind>` until "Export grades" downloads
+    {tree_sha, date, kind, scale, rows{slug{grade, score_of_10, note}}, tally},
+    the shape `docs/scoreboards/photo-corpus/grades-<sha7>-<date>.json` holds."""
+    import html as h
+    from datetime import date
+    sha = run.get("tree_sha", "?")
+    kind_key = kind or "all"
+    key = f"grades:{sha}:{kind_key}"
+    rows = [r for r in rows if kind is None or r["kind"] == kind]
+    groups: dict[tuple[str, str], list[dict]] = {}
+    for r in rows:
+        groups.setdefault((r["kind"], r["genre"]), []).append(r)
+    btns = "".join(f'<button data-grade="{g}">{g}</button>' for g in GRADE_SCALE)
+    parts = [f"""<!doctype html><html><head><meta charset="utf-8"><title>Photo corpus grades {sha[:7]} ({kind_key})</title>
+<style>
+body{{font:14px system-ui,sans-serif;background:#1e1e1e;color:#eee;margin:0;padding:16px}}
+h1{{font-size:18px}} h2{{font-size:15px;color:#bbb;margin:28px 0 8px;border-top:1px solid #444;padding-top:8px}}
+.row{{display:grid;grid-template-columns:300px 1fr 320px;gap:14px;align-items:start;padding:12px 0;border-bottom:1px solid #333}}
+.row img{{max-width:100%;max-height:520px;background:#333}} .cap{{font-size:12px;color:#aaa;margin-top:4px}}
+.cap a{{color:#8ab}} table{{border-collapse:collapse;font-size:12px;width:100%}} td{{padding:1px 6px;border-bottom:1px solid #2a2a2a}}
+td.n{{text-align:right;font-variant-numeric:tabular-nums}}
+.grade button{{font:13px system-ui;padding:6px 10px;margin:6px 4px 6px 0;border:1px solid #555;background:#2a2a2a;color:#eee;border-radius:4px;cursor:pointer}}
+.grade button.on{{background:#3a6;border-color:#5c8;color:#fff}} .grade input{{background:#222;color:#eee;border:1px solid #444;padding:4px}}
+.grade input.note{{width:95%}} .grade input.score{{width:60px}}
+.bar{{position:sticky;top:0;background:#1e1e1e;padding:8px 0;border-bottom:1px solid #444;z-index:2}}
+.bar button{{font:13px system-ui;padding:6px 12px;border:1px solid #5c8;background:#3a6;color:#fff;border-radius:4px;cursor:pointer}}
+.gate{{color:#c9a;font-size:12px}} .state{{font-weight:bold;color:#e77}}
+</style></head><body>
+<div class="bar"><b>Photo corpus grades</b> &nbsp; tree <code>{h.escape(sha[:12])}</code> ({h.escape(str(run.get('date')))}) · {h.escape(kind_key)} rows
+&nbsp; <button id="export">Export grades</button> <span id="count"></span><br><span class="gate">{h.escape(GATE4_LINE)} The grade column is Kent's, absolute, on this one tree.</span></div>
+<h1>{len(rows)} rows: source · render · numbers · grade</h1>"""]
+    for (k, genre), grp in groups.items():
+        parts.append(f"<h2>{h.escape(k)} / {h.escape(genre)}</h2>")
+        for r in grp:
+            slug = r["slug"]
+            rr = run["rows"].get(slug)
+            m = manifest.get(slug, {})
+            thumb = _data_uri(photo_path(photos, slug), 420) or ""
+            uri = _data_uri(run["png"].get(slug))
+            if rr is None or uri is None:
+                render = '<div><div class="state">render missing</div><img alt="missing" src=""></div>'
+            else:
+                state = "" if rr.get("state") == "done" else f'<div class="state">{h.escape(str(rr.get("state")))}: {h.escape(str(rr.get("error") or ""))[:160]}</div>'
+                render = f'<div>{state}<img src="{uri}" alt="render"><div class="cap">{h.escape(sha[:7])}</div></div>'
+            trs = "".join(f'<tr><td>{h.escape(label)}</td><td class="n">{h.escape(_fmt((rr or {}).get(key_)))}</td></tr>'
+                          for key_, label, _ in SXS_METRICS)
+            attribution = (f'<a href="{h.escape(m.get("page") or r.get("page") or "#")}">{h.escape(r["title"])}</a> · '
+                           f'{h.escape(m.get("author") or r.get("author") or "")} · {h.escape(m.get("licence") or r.get("licence") or "")}')
+            parts.append(f"""<div class="row" data-slug="{h.escape(slug)}">
+<div><img src="{thumb}" alt="source"><div class="cap"><b>{h.escape(slug)}</b><br>{attribution}</div></div>
+{render}
+<div><table>{trs}</table>
+<div class="grade">{btns}<br>score /10 <input class="score" type="number" min="0" max="10" step="0.5"> &nbsp;
+<input class="note" placeholder="note (optional)"></div></div></div>""")
+    parts.append(f"""<script>
+const KEY = {json.dumps(key)}, SHA = {json.dumps(sha)}, KIND = {json.dumps(kind_key)}, SCALE = {json.dumps(list(GRADE_SCALE))};
+let V = {{}}; try {{ V = JSON.parse(localStorage.getItem(KEY) || "{{}}"); }} catch (e) {{ V = {{}}; }}
+function save() {{ try {{ localStorage.setItem(KEY, JSON.stringify(V)); }} catch (e) {{}} count(); }}
+function count() {{ const n = Object.values(V).filter(v => v.grade).length; document.getElementById("count").textContent = n + " / " + document.querySelectorAll(".row").length + " graded"; }}
+document.querySelectorAll(".row").forEach(row => {{
+  const slug = row.dataset.slug, note = row.querySelector(".note"), score = row.querySelector(".score"), btns = row.querySelectorAll("[data-grade]");
+  const cur = () => V[slug] || {{grade: null, score_of_10: null, note: ""}};
+  const paint = () => btns.forEach(b => b.classList.toggle("on", cur().grade === b.dataset.grade));
+  if (V[slug]) {{ note.value = V[slug].note || ""; score.value = V[slug].score_of_10 == null ? "" : V[slug].score_of_10; }}
+  btns.forEach(b => b.onclick = () => {{ V[slug] = {{...cur(), grade: b.dataset.grade}}; save(); paint(); }});
+  score.oninput = () => {{ V[slug] = {{...cur(), score_of_10: score.value === "" ? null : Number(score.value)}}; save(); }};
+  note.oninput = () => {{ V[slug] = {{...cur(), note: note.value}}; save(); }};
+  paint();
+}});
+document.getElementById("export").onclick = () => {{
+  const tally = {{}}; SCALE.forEach(g => tally[g] = Object.values(V).filter(v => v.grade === g).length);
+  const out = {{tree_sha: SHA, date: {json.dumps(date.today().isoformat())}, kind: KIND, scale: SCALE, rows: V, tally: tally}};
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], {{type: "application/json"}}));
+  a.download = "grades-" + SHA.slice(0, 7) + "-" + KIND + "-" + out.date + ".json"; a.click();
+}};
+count();
+</script></body></html>""")
+    return "\n".join(parts)
+
+
 # ------------------------------------------------------------------ tally
 VERDICTS = ("better", "same", "worse")
 TALLY_HEADER = ("| date | before | after | photo better / same / worse | logo better / same / worse "
@@ -800,6 +893,11 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--photos", type=Path, default=CORPUS_DIR)
     s.add_argument("--out", type=Path, help="default corpus_runs/sxs-<before7>-<after7>.html")
     s.add_argument("--allow-same-sha", action="store_true")
+    g = sub.add_parser("grades", help="build the one-tree grading page (Great..Terrible per row)")
+    g.add_argument("run", type=Path)
+    g.add_argument("--kind", choices=("photo", "logo"), help="default: both kinds")
+    g.add_argument("--photos", type=Path, default=CORPUS_DIR)
+    g.add_argument("--out", type=Path, help="default corpus_runs/grades-<sha7>-<kind>.html")
     m = sub.add_parser("summary", help="a run's numbers without designs or images (the baseline-<sha7>.json record)")
     m.add_argument("run", type=Path)
     m.add_argument("--out", type=Path, help="default docs/scoreboards/photo-corpus/baseline-<sha7>.json")
@@ -847,6 +945,16 @@ def main(argv: list[str] | None = None) -> int:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(page, encoding="utf-8")
         print(f"wrote {out} ({out.stat().st_size // 1024} KB, {len(rows)} rows)")
+        return 0
+    if a.cmd == "grades":
+        run = load_run(a.run)
+        mpath = a.photos / "manifest.json"
+        manifest = json.loads(mpath.read_text(encoding="utf-8")) if mpath.exists() else {}
+        page = build_grades(run, rows, a.photos, manifest, a.kind)
+        out = a.out or RUNS_DIR / f"grades-{run['tree_sha'][:7]}-{a.kind or 'all'}.html"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(page, encoding="utf-8")
+        print(f"wrote {out} ({out.stat().st_size // 1024} KB)")
         return 0
     if a.cmd == "tally":
         verdicts = json.loads(a.verdicts.read_text(encoding="utf-8"))

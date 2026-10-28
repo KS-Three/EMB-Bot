@@ -479,3 +479,21 @@ def test_kents_logo_grades_name_corpus_rows_on_one_tree():
     assert g["tally"] == {k: sum(r["grade"] == k for r in g["rows"].values()) for k in GRADES}
     readme = (pc.SCOREBOARD_DIR / "README.md").read_text(encoding="utf-8")
     assert "grades-5ff48c5-2026-10-28.json" in readme
+
+
+def test_grades_page_grades_one_trees_rows_of_one_kind(tmp_path):
+    """Kent grades a single tree's renders on the absolute Great..Terrible
+    scale (how the 21 logo rows were graded, by hand, 2026-10-28): one row per
+    corpus slug of the asked kind, five grade buttons, a 0-10 score box, and
+    an export whose shape is the committed `grades-<sha7>-<date>.json`."""
+    run = _run(tmp_path, "r", "abc1234def", slugs=("a", "b"))
+    html = pc.build_grades(run, ROWS, _photos(tmp_path), {"a": {"author": "Someone"}}, kind="photo")
+    assert html.count("data-slug=") == 1 and 'data-slug="a"' in html
+    for g in pc.GRADE_SCALE:
+        assert f'data-grade="{g}"' in html
+    assert pc.GRADE_SCALE == ("Great", "Good", "Okay", "Bad", "Terrible")
+    assert "grades:abc1234def:photo" in html and "\"grades-\" + SHA.slice(0, 7)" in html
+    assert "Someone" in html and "instrument readings" in html
+    assert html.count("data:image/png;base64") == 2   # source + render
+    both = pc.build_grades(run, ROWS, tmp_path / "p", {}, kind=None)
+    assert both.count("data-slug=") == 2
