@@ -1,0 +1,2066 @@
+{
+ "date": "2026-10-28",
+ "flag": "dark_ink_refuse_strays",
+ "width_mm": 80.0,
+ "garment": "left_chest",
+ "engine": "a71fd5cd",
+ "before": null,
+ "rows": [
+  {
+   "fixture": "photo/summit_badge.png",
+   "class": "gradient",
+   "md5_off": "22e4a1dda9899149d9acad2463602208",
+   "md5_on": "22e4a1dda9899149d9acad2463602208",
+   "identical": true,
+   "off": {
+    "regions": 42,
+    "stitches": 29799,
+    "trims": 33,
+    "colours": 11,
+    "threads": 9
+   },
+   "on": {
+    "regions": 42,
+    "stitches": 29799,
+    "trims": 33,
+    "colours": 11,
+    "threads": 9,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/drone_render.png",
+   "class": "gradient",
+   "md5_off": "f26cc7a691db0038a46e87e08334ddc0",
+   "md5_on": "f26cc7a691db0038a46e87e08334ddc0",
+   "identical": true,
+   "off": {
+    "regions": 122,
+    "stitches": 18613,
+    "trims": 85,
+    "colours": 11,
+    "threads": 7
+   },
+   "on": {
+    "regions": 122,
+    "stitches": 18613,
+    "trims": 85,
+    "colours": 11,
+    "threads": 7,
+    "dark_ink_regions": 3
+   }
+  },
+  {
+   "fixture": "photo/logo_bridge_bar.jpg",
+   "class": "gradient",
+   "md5_off": "97339d87d7697bbec2d3c1d0cc1facc9",
+   "md5_on": "97339d87d7697bbec2d3c1d0cc1facc9",
+   "identical": true,
+   "off": {
+    "regions": 54,
+    "stitches": 15238,
+    "trims": 38,
+    "colours": 7,
+    "threads": 6
+   },
+   "on": {
+    "regions": 54,
+    "stitches": 15238,
+    "trims": 38,
+    "colours": 7,
+    "threads": 6,
+    "dark_ink_regions": 1
+   }
+  },
+  {
+   "fixture": "photo/logo_gaulke_roofing.png",
+   "class": "gradient",
+   "md5_off": "7b3c4e17ed1f46eb5851d3971786f661",
+   "md5_on": "7b3c4e17ed1f46eb5851d3971786f661",
+   "identical": true,
+   "off": {
+    "regions": 53,
+    "stitches": 5083,
+    "trims": 13,
+    "colours": 2,
+    "threads": 2
+   },
+   "on": {
+    "regions": 53,
+    "stitches": 5083,
+    "trims": 13,
+    "colours": 2,
+    "threads": 2,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/logo_golden_tee.jpg",
+   "class": "gradient",
+   "md5_off": "bb25f81b1ffa24fb7607d576c4227000",
+   "md5_on": "bb25f81b1ffa24fb7607d576c4227000",
+   "identical": true,
+   "off": {
+    "regions": 46,
+    "stitches": 12915,
+    "trims": 28,
+    "colours": 12,
+    "threads": 9
+   },
+   "on": {
+    "regions": 46,
+    "stitches": 12915,
+    "trims": 28,
+    "colours": 12,
+    "threads": 9,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/logo_hotel_fremont.webp",
+   "class": "gradient",
+   "md5_off": "5804f94b9a3d1f60d6c4654b5ae152cd",
+   "md5_on": "5804f94b9a3d1f60d6c4654b5ae152cd",
+   "identical": true,
+   "off": {
+    "regions": 162,
+    "stitches": 13105,
+    "trims": 19,
+    "colours": 4,
+    "threads": 3
+   },
+   "on": {
+    "regions": 162,
+    "stitches": 13105,
+    "trims": 19,
+    "colours": 4,
+    "threads": 3,
+    "dark_ink_regions": 156
+   }
+  },
+  {
+   "fixture": "photo/region_blobs.png",
+   "class": "gradient",
+   "md5_off": "c9ec4d38b944aff2387431762900d638",
+   "md5_on": "c9ec4d38b944aff2387431762900d638",
+   "identical": true,
+   "off": {
+    "regions": 3,
+    "stitches": 19938,
+    "trims": 4,
+    "colours": 11,
+    "threads": 11
+   },
+   "on": {
+    "regions": 3,
+    "stitches": 19938,
+    "trims": 4,
+    "colours": 11,
+    "threads": 11,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/gradient_ramp_linear.png",
+   "class": "gradient",
+   "md5_off": "9c6a489a951f7b16d8a9ef452fed14b2",
+   "md5_on": "9c6a489a951f7b16d8a9ef452fed14b2",
+   "identical": true,
+   "off": {
+    "regions": 1,
+    "stitches": 10924,
+    "trims": 0,
+    "colours": 5,
+    "threads": 5
+   },
+   "on": {
+    "regions": 1,
+    "stitches": 10924,
+    "trims": 0,
+    "colours": 5,
+    "threads": 5,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/gradient_ramp_radial.png",
+   "class": "gradient",
+   "md5_off": "32819d5373828cbec3100e6492f04ef2",
+   "md5_on": "32819d5373828cbec3100e6492f04ef2",
+   "identical": true,
+   "off": {
+    "regions": 1,
+    "stitches": 17761,
+    "trims": 5,
+    "colours": 5,
+    "threads": 5
+   },
+   "on": {
+    "regions": 1,
+    "stitches": 17761,
+    "trims": 5,
+    "colours": 5,
+    "threads": 5,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/logo_drone_thermal_badge.png",
+   "class": "gradient",
+   "md5_off": "f26cc7a691db0038a46e87e08334ddc0",
+   "md5_on": "f26cc7a691db0038a46e87e08334ddc0",
+   "identical": true,
+   "off": {
+    "regions": 122,
+    "stitches": 18613,
+    "trims": 85,
+    "colours": 11,
+    "threads": 7
+   },
+   "on": {
+    "regions": 122,
+    "stitches": 18613,
+    "trims": 85,
+    "colours": 11,
+    "threads": 7,
+    "dark_ink_regions": 3
+   }
+  },
+  {
+   "fixture": "photo/owl_kent.jpg",
+   "class": "gradient",
+   "md5_off": "3aef2a0330596597e316002f20ffe547",
+   "md5_on": "6b6ade37a26dde6d1fb56cd56876a9a7",
+   "identical": false,
+   "off": {
+    "regions": 115,
+    "stitches": 36552,
+    "trims": 139,
+    "colours": 8,
+    "threads": 6
+   },
+   "on": {
+    "regions": 109,
+    "stitches": 36036,
+    "trims": 132,
+    "colours": 9,
+    "threads": 6,
+    "dark_ink_regions": 6
+   }
+  },
+  {
+   "fixture": "photo/repro_gradient_white_icon.png",
+   "class": "gradient",
+   "md5_off": "34be9e7878e5af8ade7dcb54d1a9f24f",
+   "md5_on": "34be9e7878e5af8ade7dcb54d1a9f24f",
+   "identical": true,
+   "off": {
+    "regions": 6,
+    "stitches": 20698,
+    "trims": 6,
+    "colours": 5,
+    "threads": 5
+   },
+   "on": {
+    "regions": 6,
+    "stitches": 20698,
+    "trims": 6,
+    "colours": 5,
+    "threads": 5,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/screenshot_phone_ui_golke.jpg",
+   "class": "gradient",
+   "md5_off": "25dafc852fbf537a6fd438998644ff58",
+   "md5_on": "25dafc852fbf537a6fd438998644ff58",
+   "identical": true,
+   "off": {
+    "regions": 149,
+    "stitches": 7532,
+    "trims": 43,
+    "colours": 7,
+    "threads": 6
+   },
+   "on": {
+    "regions": 149,
+    "stitches": 7532,
+    "trims": 43,
+    "colours": 7,
+    "threads": 6,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "art/logo_golke_roofing.png",
+   "class": "gradient",
+   "md5_off": "823e62767311cd9d0007fdacd8b88d24",
+   "md5_on": "823e62767311cd9d0007fdacd8b88d24",
+   "identical": true,
+   "off": {
+    "regions": 60,
+    "stitches": 5488,
+    "trims": 23,
+    "colours": 2,
+    "threads": 2
+   },
+   "on": {
+    "regions": 60,
+    "stitches": 5488,
+    "trims": 23,
+    "colours": 2,
+    "threads": 2,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "art/logo_hotel_fremont_patch.png",
+   "class": "gradient",
+   "md5_off": "85dd34198af36d8838db00ce595542bc",
+   "md5_on": "6744d0ab069dace8d1093f2542007628",
+   "identical": false,
+   "off": {
+    "regions": 76,
+    "stitches": 18838,
+    "trims": 35,
+    "colours": 4,
+    "threads": 4
+   },
+   "on": {
+    "regions": 74,
+    "stitches": 19082,
+    "trims": 30,
+    "colours": 4,
+    "threads": 4,
+    "dark_ink_regions": 12
+   }
+  },
+  {
+   "fixture": "art/logo_mfab_lc.png",
+   "class": "gradient",
+   "md5_off": "55efe6cd40f5076aeb072cc2ca2cc9bc",
+   "md5_on": "55efe6cd40f5076aeb072cc2ca2cc9bc",
+   "identical": true,
+   "off": {
+    "regions": 59,
+    "stitches": 13704,
+    "trims": 15,
+    "colours": 3,
+    "threads": 2
+   },
+   "on": {
+    "regions": 59,
+    "stitches": 13704,
+    "trims": 15,
+    "colours": 3,
+    "threads": 2,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "art/logo_toat_beanie.png",
+   "class": "gradient",
+   "md5_off": "000f05376b20ccdb2cd0e6e7f800c649",
+   "md5_on": "000f05376b20ccdb2cd0e6e7f800c649",
+   "identical": true,
+   "off": {
+    "regions": 45,
+    "stitches": 15342,
+    "trims": 15,
+    "colours": 2,
+    "threads": 2
+   },
+   "on": {
+    "regions": 45,
+    "stitches": 15342,
+    "trims": 15,
+    "colours": 2,
+    "threads": 2,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "art/logo_toat_machine.png",
+   "class": "gradient",
+   "md5_off": "7af62258877afc775e8cbffbda4c824b",
+   "md5_on": "7af62258877afc775e8cbffbda4c824b",
+   "identical": true,
+   "off": {
+    "regions": 40,
+    "stitches": 15824,
+    "trims": 18,
+    "colours": 2,
+    "threads": 2
+   },
+   "on": {
+    "regions": 40,
+    "stitches": 15824,
+    "trims": 18,
+    "colours": 2,
+    "threads": 2,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/enthusiast_logo.png",
+   "class": "flat",
+   "md5_off": "ab119e08534b488f089d2a4a14be41c4",
+   "md5_on": "ab119e08534b488f089d2a4a14be41c4",
+   "identical": true,
+   "off": {
+    "regions": 31,
+    "stitches": 2309,
+    "trims": 6,
+    "colours": 2,
+    "threads": 2
+   },
+   "on": {
+    "regions": 31,
+    "stitches": 2309,
+    "trims": 6,
+    "colours": 2,
+    "threads": 2,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/photo_scene_stub.png",
+   "class": "photo_scene",
+   "md5_off": "d12dabd0247bd1f05101c6d8cbb3f2bd",
+   "md5_on": "d12dabd0247bd1f05101c6d8cbb3f2bd",
+   "identical": true,
+   "off": {
+    "regions": 54,
+    "stitches": 29480,
+    "trims": 52,
+    "colours": 5,
+    "threads": 5
+   },
+   "on": {
+    "regions": 54,
+    "stitches": 29480,
+    "trims": 52,
+    "colours": 5,
+    "threads": 5,
+    "dark_ink_regions": 0
+   }
+  }
+ ],
+ "missing": [],
+ "hero": "photo/owl_kent.jpg",
+ "heroes": [
+  "photo/owl_kent.jpg",
+  "art/logo_hotel_fremont_patch.png",
+  "photo/summit_badge.png"
+ ],
+ "hero_detail": {
+  "photo/owl_kent.jpg": {
+   "hero_tiles": {
+    "whole_off": "photo__owl_kent__whole_off.jpg",
+    "whole_on": "photo__owl_kent__whole_on.jpg",
+    "art": "photo__owl_kent__art.jpg",
+    "where": "photo__owl_kent__where.jpg",
+    "win_off": "photo__owl_kent__win_off.jpg",
+    "win_on": "photo__owl_kent__win_on.jpg",
+    "changed_off": "photo__owl_kent__changed_off.jpg",
+    "changed_on": "photo__owl_kent__changed_on.jpg",
+    "dark0_off": "photo__owl_kent__dark0_off.jpg",
+    "dark0_on": "photo__owl_kent__dark0_on.jpg",
+    "dark0_art": "photo__owl_kent__dark0_art.jpg",
+    "dark1_off": "photo__owl_kent__dark1_off.jpg",
+    "dark1_on": "photo__owl_kent__dark1_on.jpg",
+    "dark1_art": "photo__owl_kent__dark1_art.jpg",
+    "dark2_off": "photo__owl_kent__dark2_off.jpg",
+    "dark2_on": "photo__owl_kent__dark2_on.jpg",
+    "dark2_art": "photo__owl_kent__dark2_art.jpg",
+    "dark3_off": "photo__owl_kent__dark3_off.jpg",
+    "dark3_on": "photo__owl_kent__dark3_on.jpg",
+    "dark3_art": "photo__owl_kent__dark3_art.jpg",
+    "dark4_off": "photo__owl_kent__dark4_off.jpg",
+    "dark4_on": "photo__owl_kent__dark4_on.jpg",
+    "dark4_art": "photo__owl_kent__dark4_art.jpg",
+    "dark5_off": "photo__owl_kent__dark5_off.jpg",
+    "dark5_on": "photo__owl_kent__dark5_on.jpg",
+    "dark5_art": "photo__owl_kent__dark5_art.jpg",
+    "dark6_off": "photo__owl_kent__dark6_off.jpg",
+    "dark6_on": "photo__owl_kent__dark6_on.jpg",
+    "dark6_art": "photo__owl_kent__dark6_art.jpg",
+    "dark7_off": "photo__owl_kent__dark7_off.jpg",
+    "dark7_on": "photo__owl_kent__dark7_on.jpg",
+    "dark7_art": "photo__owl_kent__dark7_art.jpg",
+    "dark8_off": "photo__owl_kent__dark8_off.jpg",
+    "dark8_on": "photo__owl_kent__dark8_on.jpg",
+    "dark8_art": "photo__owl_kent__dark8_art.jpg",
+    "dark9_off": "photo__owl_kent__dark9_off.jpg",
+    "dark9_on": "photo__owl_kent__dark9_on.jpg",
+    "dark9_art": "photo__owl_kent__dark9_art.jpg",
+    "dark10_off": "photo__owl_kent__dark10_off.jpg",
+    "dark10_on": "photo__owl_kent__dark10_on.jpg",
+    "dark10_art": "photo__owl_kent__dark10_art.jpg",
+    "dark11_off": "photo__owl_kent__dark11_off.jpg",
+    "dark11_on": "photo__owl_kent__dark11_on.jpg",
+    "dark11_art": "photo__owl_kent__dark11_art.jpg",
+    "dark12_off": "photo__owl_kent__dark12_off.jpg",
+    "dark12_on": "photo__owl_kent__dark12_on.jpg",
+    "dark12_art": "photo__owl_kent__dark12_art.jpg",
+    "dark13_off": "photo__owl_kent__dark13_off.jpg",
+    "dark13_on": "photo__owl_kent__dark13_on.jpg",
+    "dark13_art": "photo__owl_kent__dark13_art.jpg",
+    "dark14_off": "photo__owl_kent__dark14_off.jpg",
+    "dark14_on": "photo__owl_kent__dark14_on.jpg",
+    "dark14_art": "photo__owl_kent__dark14_art.jpg",
+    "dark15_off": "photo__owl_kent__dark15_off.jpg",
+    "dark15_on": "photo__owl_kent__dark15_on.jpg",
+    "dark15_art": "photo__owl_kent__dark15_art.jpg"
+   },
+   "moved": {
+    "dark": [
+     {
+      "shape": "Sb0147ca6",
+      "thread": "0763 Dark Rattan",
+      "area_mm2": 5.12,
+      "bounds": [
+       -4.15,
+       14.51,
+       -1.88,
+       18.63
+      ],
+      "from": {
+       "0763 Dark Rattan": 5.12,
+       "0145 Skylight": 0.05
+      }
+     },
+     {
+      "shape": "S5d4a251b",
+      "thread": "0763 Dark Rattan",
+      "area_mm2": 3.23,
+      "bounds": [
+       33.62,
+       2.0,
+       35.13,
+       5.51
+      ],
+      "from": {
+       "0763 Dark Rattan": 3.23,
+       "0145 Skylight": 0.01
+      }
+     },
+     {
+      "shape": "Sb9da84c0",
+      "thread": "0763 Dark Rattan",
+      "area_mm2": 2.21,
+      "bounds": [
+       29.5,
+       17.38,
+       31.12,
+       20.62
+      ],
+      "from": {
+       "0763 Dark Rattan": 2.21,
+       "0145 Skylight": 0.07
+      }
+     },
+     {
+      "shape": "Sf7920260",
+      "thread": "0763 Dark Rattan",
+      "area_mm2": 0.81,
+      "bounds": [
+       -30.0,
+       -7.62,
+       -29.38,
+       -5.38
+      ],
+      "from": {
+       "0763 Dark Rattan": 0.81,
+       "0145 Skylight": 0.01
+      }
+     },
+     {
+      "shape": "S767ea707",
+      "thread": "0454 Olive Drab",
+      "area_mm2": 1.45,
+      "bounds": [
+       -33.62,
+       15.0,
+       -32.75,
+       17.88
+      ],
+      "from": {
+       "1776 Blackberry": 1.45
+      }
+     },
+     {
+      "shape": "S3dbcb91d",
+      "thread": "0454 Olive Drab",
+      "area_mm2": 1.34,
+      "bounds": [
+       7.75,
+       37.88,
+       9.12,
+       39.25
+      ],
+      "from": {
+       "0454 Olive Drab": 1.34,
+       "0145 Skylight": 0.15
+      }
+     }
+    ],
+    "dropped": [],
+    "added": [],
+    "blocks_gone": {
+     "0020 Black": {
+      "off_blocks": 1,
+      "off_stitches": 1899,
+      "on_blocks": 1,
+      "on_stitches": 2094
+     },
+     "0131 Smoke": {
+      "off_blocks": 1,
+      "off_stitches": 3040,
+      "on_blocks": 1,
+      "on_stitches": 3041
+     },
+     "0145 Skylight": {
+      "off_blocks": 1,
+      "off_stitches": 19517,
+      "on_blocks": 1,
+      "on_stitches": 19316
+     },
+     "0454 Olive Drab": {
+      "off_blocks": 1,
+      "off_stitches": 4932,
+      "on_blocks": 2,
+      "on_stitches": 4549
+     },
+     "0763 Dark Rattan": {
+      "off_blocks": 2,
+      "off_stitches": 5483,
+      "on_blocks": 3,
+      "on_stitches": 5529
+     },
+     "1776 Blackberry": {
+      "off_blocks": 2,
+      "off_stitches": 1681,
+      "on_blocks": 1,
+      "on_stitches": 1507
+     }
+    },
+    "shapes_moved": [
+     {
+      "shape": "Sfe8fd1fb",
+      "off": {
+       "0145 Skylight": 14691
+      },
+      "on": {
+       "0145 Skylight": 14594
+      }
+     },
+     {
+      "shape": "Sfa828419",
+      "off": {
+       "0763 Dark Rattan": 2773
+      },
+      "on": {
+       "0763 Dark Rattan": 2794
+      }
+     },
+     {
+      "shape": "Sfa71c988",
+      "off": {
+       "0454 Olive Drab": 3169
+      },
+      "on": {}
+     },
+     {
+      "shape": "S2e95033a",
+      "off": {},
+      "on": {
+       "0454 Olive Drab": 2611
+      }
+     },
+     {
+      "shape": "S1456ef99",
+      "off": {
+       "0131 Smoke": 1056
+      },
+      "on": {
+       "0131 Smoke": 1140
+      }
+     },
+     {
+      "shape": "S5de8cbba",
+      "off": {
+       "0020 Black": 366
+      },
+      "on": {
+       "0020 Black": 454
+      }
+     },
+     {
+      "shape": "Se5b3a77c",
+      "off": {
+       "1776 Blackberry": 269
+      },
+      "on": {
+       "1776 Blackberry": 293
+      }
+     },
+     {
+      "shape": "S70c09c6e",
+      "off": {
+       "0131 Smoke": 240
+      },
+      "on": {
+       "0131 Smoke": 183
+      }
+     },
+     {
+      "shape": "Sc3ee24c0",
+      "off": {
+       "0131 Smoke": 137
+      },
+      "on": {
+       "0131 Smoke": 117
+      }
+     },
+     {
+      "shape": "Se789bf1d",
+      "off": {
+       "0131 Smoke": 143
+      },
+      "on": {
+       "0131 Smoke": 101
+      }
+     },
+     {
+      "shape": "Scf3cfabc",
+      "off": {
+       "0131 Smoke": 121
+      },
+      "on": {
+       "0131 Smoke": 122
+      }
+     },
+     {
+      "shape": "Sfe1f839b",
+      "off": {
+       "0131 Smoke": 119
+      },
+      "on": {
+       "0131 Smoke": 117
+      }
+     },
+     {
+      "shape": "Sc0d2664a",
+      "off": {},
+      "on": {
+       "0020 Black": 176
+      }
+     },
+     {
+      "shape": "S0cc1c46e",
+      "off": {
+       "0763 Dark Rattan": 58
+      },
+      "on": {
+       "0763 Dark Rattan": 61
+      }
+     },
+     {
+      "shape": "Sbf3d2549",
+      "off": {
+       "0131 Smoke": 54
+      },
+      "on": {
+       "0131 Smoke": 65
+      }
+     },
+     {
+      "shape": "S7c60c02c",
+      "off": {
+       "1776 Blackberry": 61
+      },
+      "on": {
+       "0763 Dark Rattan": 52
+      }
+     },
+     {
+      "shape": "S28fa2cec",
+      "off": {
+       "0020 Black": 94
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sa7833839",
+      "off": {
+       "0763 Dark Rattan": 40
+      },
+      "on": {
+       "0763 Dark Rattan": 42
+      }
+     },
+     {
+      "shape": "Se8d5aabe",
+      "off": {},
+      "on": {
+       "0454 Olive Drab": 64
+      }
+     },
+     {
+      "shape": "Scc4460aa",
+      "off": {
+       "1776 Blackberry": 34
+      },
+      "on": {
+       "1776 Blackberry": 30
+      }
+     },
+     {
+      "shape": "Sb8085dd1",
+      "off": {
+       "0454 Olive Drab": 30
+      },
+      "on": {
+       "0454 Olive Drab": 24
+      }
+     },
+     {
+      "shape": "Se0fc2021",
+      "off": {},
+      "on": {
+       "0763 Dark Rattan": 53
+      }
+     },
+     {
+      "shape": "Sf0894f29",
+      "off": {
+       "1776 Blackberry": 50
+      },
+      "on": {}
+     },
+     {
+      "shape": "S1fe69c81",
+      "off": {
+       "0145 Skylight": 44
+      },
+      "on": {}
+     },
+     {
+      "shape": "S9f609fa5",
+      "off": {
+       "0131 Smoke": 23
+      },
+      "on": {
+       "0131 Smoke": 19
+      }
+     },
+     {
+      "shape": "S1bc6fdd4",
+      "off": {
+       "0131 Smoke": 16
+      },
+      "on": {
+       "0131 Smoke": 20
+      }
+     },
+     {
+      "shape": "S767ea707",
+      "off": {
+       "1776 Blackberry": 16
+      },
+      "on": {
+       "0454 Olive Drab": 16
+      }
+     },
+     {
+      "shape": "S2da2631f",
+      "off": {},
+      "on": {
+       "1776 Blackberry": 32
+      }
+     },
+     {
+      "shape": "Sdd71da42",
+      "off": {
+       "1776 Blackberry": 31
+      },
+      "on": {}
+     },
+     {
+      "shape": "S89aaf6f4",
+      "off": {
+       "1776 Blackberry": 30
+      },
+      "on": {}
+     },
+     {
+      "shape": "S487adcc4",
+      "off": {
+       "0131 Smoke": 13
+      },
+      "on": {
+       "0131 Smoke": 17
+      }
+     },
+     {
+      "shape": "Sa0ea9da3",
+      "off": {},
+      "on": {
+       "0454 Olive Drab": 26
+      }
+     },
+     {
+      "shape": "S1879a2d4",
+      "off": {},
+      "on": {
+       "0454 Olive Drab": 24
+      }
+     },
+     {
+      "shape": "S1d9462e4",
+      "off": {
+       "0763 Dark Rattan": 23
+      },
+      "on": {}
+     },
+     {
+      "shape": "S0fa54db2",
+      "off": {
+       "0763 Dark Rattan": 17
+      },
+      "on": {}
+     },
+     {
+      "shape": "S1300abe8",
+      "off": {
+       "0763 Dark Rattan": 17
+      },
+      "on": {}
+     },
+     {
+      "shape": "Scdb46a2f",
+      "off": {},
+      "on": {
+       "0020 Black": 17
+      }
+     },
+     {
+      "shape": "Sf1382100",
+      "off": {
+       "0763 Dark Rattan": 6
+      },
+      "on": {
+       "0763 Dark Rattan": 10
+      }
+     },
+     {
+      "shape": "S33c29c17",
+      "off": {
+       "1776 Blackberry": 16
+      },
+      "on": {}
+     },
+     {
+      "shape": "S14d40d7f",
+      "off": {
+       "0763 Dark Rattan": 16
+      },
+      "on": {}
+     },
+     {
+      "shape": "S69eae3f7",
+      "off": {
+       "1776 Blackberry": 14
+      },
+      "on": {}
+     },
+     {
+      "shape": "Se5490fef",
+      "off": {},
+      "on": {
+       "0454 Olive Drab": 13
+      }
+     },
+     {
+      "shape": "S123d947e",
+      "off": {
+       "0763 Dark Rattan": 12
+      },
+      "on": {}
+     },
+     {
+      "shape": "S31dac5df",
+      "off": {
+       "0763 Dark Rattan": 10
+      },
+      "on": {}
+     },
+     {
+      "shape": "Scc24809a",
+      "off": {
+       "0763 Dark Rattan": 8
+      },
+      "on": {}
+     }
+    ]
+   },
+   "diff_points": 17256,
+   "diff_points_before": null,
+   "window_mm": [
+    22.7,
+    29.7,
+    40.7,
+    40.7
+   ],
+   "changed_box_mm": [
+    -42.3,
+    -42.3,
+    42.2,
+    42.2
+   ]
+  },
+  "art/logo_hotel_fremont_patch.png": {
+   "hero_tiles": {
+    "whole_off": "art__logo_hotel_fremont_patch__whole_off.jpg",
+    "whole_on": "art__logo_hotel_fremont_patch__whole_on.jpg",
+    "art": "art__logo_hotel_fremont_patch__art.jpg",
+    "where": "art__logo_hotel_fremont_patch__where.jpg",
+    "win_off": "art__logo_hotel_fremont_patch__win_off.jpg",
+    "win_on": "art__logo_hotel_fremont_patch__win_on.jpg",
+    "changed_off": "art__logo_hotel_fremont_patch__changed_off.jpg",
+    "changed_on": "art__logo_hotel_fremont_patch__changed_on.jpg",
+    "dark0_off": "art__logo_hotel_fremont_patch__dark0_off.jpg",
+    "dark0_on": "art__logo_hotel_fremont_patch__dark0_on.jpg",
+    "dark0_art": "art__logo_hotel_fremont_patch__dark0_art.jpg",
+    "dark1_off": "art__logo_hotel_fremont_patch__dark1_off.jpg",
+    "dark1_on": "art__logo_hotel_fremont_patch__dark1_on.jpg",
+    "dark1_art": "art__logo_hotel_fremont_patch__dark1_art.jpg",
+    "dark2_off": "art__logo_hotel_fremont_patch__dark2_off.jpg",
+    "dark2_on": "art__logo_hotel_fremont_patch__dark2_on.jpg",
+    "dark2_art": "art__logo_hotel_fremont_patch__dark2_art.jpg",
+    "dark3_off": "art__logo_hotel_fremont_patch__dark3_off.jpg",
+    "dark3_on": "art__logo_hotel_fremont_patch__dark3_on.jpg",
+    "dark3_art": "art__logo_hotel_fremont_patch__dark3_art.jpg",
+    "dark4_off": "art__logo_hotel_fremont_patch__dark4_off.jpg",
+    "dark4_on": "art__logo_hotel_fremont_patch__dark4_on.jpg",
+    "dark4_art": "art__logo_hotel_fremont_patch__dark4_art.jpg",
+    "dark5_off": "art__logo_hotel_fremont_patch__dark5_off.jpg",
+    "dark5_on": "art__logo_hotel_fremont_patch__dark5_on.jpg",
+    "dark5_art": "art__logo_hotel_fremont_patch__dark5_art.jpg",
+    "dark6_off": "art__logo_hotel_fremont_patch__dark6_off.jpg",
+    "dark6_on": "art__logo_hotel_fremont_patch__dark6_on.jpg",
+    "dark6_art": "art__logo_hotel_fremont_patch__dark6_art.jpg",
+    "dark7_off": "art__logo_hotel_fremont_patch__dark7_off.jpg",
+    "dark7_on": "art__logo_hotel_fremont_patch__dark7_on.jpg",
+    "dark7_art": "art__logo_hotel_fremont_patch__dark7_art.jpg",
+    "dark8_off": "art__logo_hotel_fremont_patch__dark8_off.jpg",
+    "dark8_on": "art__logo_hotel_fremont_patch__dark8_on.jpg",
+    "dark8_art": "art__logo_hotel_fremont_patch__dark8_art.jpg",
+    "dark9_off": "art__logo_hotel_fremont_patch__dark9_off.jpg",
+    "dark9_on": "art__logo_hotel_fremont_patch__dark9_on.jpg",
+    "dark9_art": "art__logo_hotel_fremont_patch__dark9_art.jpg",
+    "dark10_off": "art__logo_hotel_fremont_patch__dark10_off.jpg",
+    "dark10_on": "art__logo_hotel_fremont_patch__dark10_on.jpg",
+    "dark10_art": "art__logo_hotel_fremont_patch__dark10_art.jpg",
+    "dark11_off": "art__logo_hotel_fremont_patch__dark11_off.jpg",
+    "dark11_on": "art__logo_hotel_fremont_patch__dark11_on.jpg",
+    "dark11_art": "art__logo_hotel_fremont_patch__dark11_art.jpg",
+    "dark12_off": "art__logo_hotel_fremont_patch__dark12_off.jpg",
+    "dark12_on": "art__logo_hotel_fremont_patch__dark12_on.jpg",
+    "dark12_art": "art__logo_hotel_fremont_patch__dark12_art.jpg",
+    "dark13_off": "art__logo_hotel_fremont_patch__dark13_off.jpg",
+    "dark13_on": "art__logo_hotel_fremont_patch__dark13_on.jpg",
+    "dark13_art": "art__logo_hotel_fremont_patch__dark13_art.jpg"
+   },
+   "moved": {
+    "dark": [
+     {
+      "shape": "S6465cc5b",
+      "thread": "0020 Black",
+      "area_mm2": 53.63,
+      "bounds": [
+       -25.79,
+       -20.01,
+       25.48,
+       -7.29
+      ],
+      "from": {
+       "0020 Black": 53.63,
+       "0015 White": 4.89
+      }
+     },
+     {
+      "shape": "S93ca5dd9",
+      "thread": "0020 Black",
+      "area_mm2": 48.23,
+      "bounds": [
+       -25.8,
+       7.16,
+       25.47,
+       19.86
+      ],
+      "from": {
+       "0020 Black": 48.23,
+       "0015 White": 0.97
+      }
+     },
+     {
+      "shape": "Sabf2fbce",
+      "thread": "0020 Black",
+      "area_mm2": 13.49,
+      "bounds": [
+       24.52,
+       -2.95,
+       30.44,
+       2.89
+      ],
+      "from": {
+       "0020 Black": 13.49,
+       "0015 White": 0.77
+      }
+     },
+     {
+      "shape": "Sa5d0ee14",
+      "thread": "0020 Black",
+      "area_mm2": 11.61,
+      "bounds": [
+       18.13,
+       -3.03,
+       24.04,
+       2.87
+      ],
+      "from": {
+       "0020 Black": 11.61,
+       "0015 White": 0.4
+      }
+     },
+     {
+      "shape": "S3c0b72e4",
+      "thread": "0020 Black",
+      "area_mm2": 10.39,
+      "bounds": [
+       -5.18,
+       -2.99,
+       -0.65,
+       2.77
+      ],
+      "from": {
+       "0020 Black": 10.39,
+       "0015 White": 0.53
+      }
+     },
+     {
+      "shape": "S0ee0acbe",
+      "thread": "0020 Black",
+      "area_mm2": 6.49,
+      "bounds": [
+       -38.88,
+       -8.06,
+       -36.88,
+       7.94
+      ],
+      "from": {
+       "0020 Black": 6.73,
+       "0015 White": 0.35
+      }
+     },
+     {
+      "shape": "S3bfa296b",
+      "thread": "0873 Stone",
+      "area_mm2": 32.01,
+      "bounds": [
+       -24.13,
+       -18.63,
+       0.55,
+       -7.28
+      ],
+      "from": {
+       "0873 Stone": 32.01,
+       "0015 White": 2.09
+      }
+     },
+     {
+      "shape": "Secc5ddea",
+      "thread": "0873 Stone",
+      "area_mm2": 4.26,
+      "bounds": [
+       6.38,
+       8.44,
+       11.88,
+       10.56
+      ],
+      "from": {
+       "0873 Stone": 4.26,
+       "0015 White": 0.25
+      }
+     },
+     {
+      "shape": "S6ff52ef7",
+      "thread": "0873 Stone",
+      "area_mm2": 3.49,
+      "bounds": [
+       -11.62,
+       8.44,
+       -7.75,
+       10.56
+      ],
+      "from": {
+       "0873 Stone": 3.49
+      }
+     },
+     {
+      "shape": "Sea44cf7f",
+      "thread": "0152 Dolphin",
+      "area_mm2": 2.21,
+      "bounds": [
+       22.62,
+       -9.69,
+       24.0,
+       -7.31
+      ],
+      "from": {
+       "0152 Dolphin": 2.21,
+       "0015 White": 0.14
+      }
+     },
+     {
+      "shape": "S9aa6a32e",
+      "thread": "0873 Stone",
+      "area_mm2": 1.27,
+      "bounds": [
+       -1.62,
+       8.44,
+       0.0,
+       10.56
+      ],
+      "from": {
+       "0873 Stone": 1.27
+      }
+     },
+     {
+      "shape": "S5387f71f",
+      "thread": "0873 Stone",
+      "area_mm2": 0.91,
+      "bounds": [
+       -5.12,
+       -12.44,
+       -3.75,
+       -10.81
+      ],
+      "from": {
+       "0873 Stone": 0.91,
+       "0015 White": 0.01
+      }
+     }
+    ],
+    "dropped": [],
+    "added": [],
+    "blocks_gone": {
+     "0015 White": {
+      "off_blocks": 1,
+      "off_stitches": 8232,
+      "on_blocks": 1,
+      "on_stitches": 8233
+     },
+     "0020 Black": {
+      "off_blocks": 1,
+      "off_stitches": 9400,
+      "on_blocks": 1,
+      "on_stitches": 9643
+     }
+    },
+    "shapes_moved": [
+     {
+      "shape": "Sef39bc6a",
+      "off": {
+       "0015 White": 7294
+      },
+      "on": {
+       "0015 White": 7288
+      }
+     },
+     {
+      "shape": "S9960bc83",
+      "off": {
+       "0020 Black": 909
+      },
+      "on": {
+       "0020 Black": 920
+      }
+     },
+     {
+      "shape": "S8d993bfb",
+      "off": {},
+      "on": {
+       "0020 Black": 1128
+      }
+     },
+     {
+      "shape": "S00829496",
+      "off": {
+       "0020 Black": 886
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sd82dbe0b",
+      "off": {
+       "0015 White": 212
+      },
+      "on": {
+       "0015 White": 218
+      }
+     },
+     {
+      "shape": "S3c0b72e4",
+      "off": {
+       "0020 Black": 165
+      },
+      "on": {
+       "0020 Black": 174
+      }
+     },
+     {
+      "shape": "S71c2d5a0",
+      "off": {
+       "0020 Black": 150
+      },
+      "on": {
+       "0020 Black": 156
+      }
+     },
+     {
+      "shape": "S422c214b",
+      "off": {
+       "0020 Black": 153
+      },
+      "on": {
+       "0020 Black": 152
+      }
+     },
+     {
+      "shape": "Sabf2fbce",
+      "off": {
+       "0020 Black": 149
+      },
+      "on": {
+       "0020 Black": 142
+      }
+     },
+     {
+      "shape": "S00d683b7",
+      "off": {
+       "0020 Black": 127
+      },
+      "on": {
+       "0020 Black": 133
+      }
+     },
+     {
+      "shape": "S33b6f794",
+      "off": {
+       "0020 Black": 141
+      },
+      "on": {
+       "0020 Black": 115
+      }
+     },
+     {
+      "shape": "S24b4f35a",
+      "off": {
+       "0020 Black": 112
+      },
+      "on": {
+       "0020 Black": 117
+      }
+     },
+     {
+      "shape": "S99224c60",
+      "off": {
+       "0020 Black": 104
+      },
+      "on": {
+       "0020 Black": 105
+      }
+     },
+     {
+      "shape": "S1d035d4e",
+      "off": {
+       "0020 Black": 104
+      },
+      "on": {
+       "0020 Black": 102
+      }
+     },
+     {
+      "shape": "S2015da09",
+      "off": {
+       "0020 Black": 107
+      },
+      "on": {
+       "0020 Black": 99
+      }
+     },
+     {
+      "shape": "Sa5d0ee14",
+      "off": {
+       "0020 Black": 101
+      },
+      "on": {
+       "0020 Black": 97
+      }
+     },
+     {
+      "shape": "Sc6f61f0b",
+      "off": {
+       "0020 Black": 82
+      },
+      "on": {
+       "0020 Black": 93
+      }
+     },
+     {
+      "shape": "Sc3232e8d",
+      "off": {
+       "0020 Black": 42
+      },
+      "on": {
+       "0020 Black": 49
+      }
+     },
+     {
+      "shape": "S54b55cf1",
+      "off": {
+       "0020 Black": 46
+      },
+      "on": {
+       "0020 Black": 42
+      }
+     },
+     {
+      "shape": "Sad4acfed",
+      "off": {
+       "0020 Black": 46
+      },
+      "on": {
+       "0020 Black": 40
+      }
+     },
+     {
+      "shape": "Sacec5284",
+      "off": {
+       "0020 Black": 14
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sc1ff23bf",
+      "off": {
+       "0020 Black": 10
+      },
+      "on": {}
+     }
+    ]
+   },
+   "diff_points": 8516,
+   "diff_points_before": null,
+   "window_mm": [
+    23.0,
+    5.7,
+    41.0,
+    16.7
+   ],
+   "changed_box_mm": [
+    -41.0,
+    -23.3,
+    42.2,
+    23.2
+   ]
+  },
+  "photo/summit_badge.png": {
+   "hero_tiles": {
+    "whole_off": "photo__summit_badge__whole_off.jpg",
+    "whole_on": "photo__summit_badge__whole_on.jpg",
+    "art": "photo__summit_badge__art.jpg"
+   },
+   "moved": {
+    "dark": [],
+    "dropped": [],
+    "added": [],
+    "blocks_gone": {},
+    "shapes_moved": []
+   },
+   "diff_points": 0,
+   "diff_points_before": null,
+   "window_mm": null,
+   "changed_box_mm": null
+  }
+ },
+ "hero_tiles": {
+  "whole_off": "photo__owl_kent__whole_off.jpg",
+  "whole_on": "photo__owl_kent__whole_on.jpg",
+  "art": "photo__owl_kent__art.jpg",
+  "where": "photo__owl_kent__where.jpg",
+  "win_off": "photo__owl_kent__win_off.jpg",
+  "win_on": "photo__owl_kent__win_on.jpg",
+  "changed_off": "photo__owl_kent__changed_off.jpg",
+  "changed_on": "photo__owl_kent__changed_on.jpg",
+  "dark0_off": "photo__owl_kent__dark0_off.jpg",
+  "dark0_on": "photo__owl_kent__dark0_on.jpg",
+  "dark0_art": "photo__owl_kent__dark0_art.jpg",
+  "dark1_off": "photo__owl_kent__dark1_off.jpg",
+  "dark1_on": "photo__owl_kent__dark1_on.jpg",
+  "dark1_art": "photo__owl_kent__dark1_art.jpg",
+  "dark2_off": "photo__owl_kent__dark2_off.jpg",
+  "dark2_on": "photo__owl_kent__dark2_on.jpg",
+  "dark2_art": "photo__owl_kent__dark2_art.jpg",
+  "dark3_off": "photo__owl_kent__dark3_off.jpg",
+  "dark3_on": "photo__owl_kent__dark3_on.jpg",
+  "dark3_art": "photo__owl_kent__dark3_art.jpg",
+  "dark4_off": "photo__owl_kent__dark4_off.jpg",
+  "dark4_on": "photo__owl_kent__dark4_on.jpg",
+  "dark4_art": "photo__owl_kent__dark4_art.jpg",
+  "dark5_off": "photo__owl_kent__dark5_off.jpg",
+  "dark5_on": "photo__owl_kent__dark5_on.jpg",
+  "dark5_art": "photo__owl_kent__dark5_art.jpg",
+  "dark6_off": "photo__owl_kent__dark6_off.jpg",
+  "dark6_on": "photo__owl_kent__dark6_on.jpg",
+  "dark6_art": "photo__owl_kent__dark6_art.jpg",
+  "dark7_off": "photo__owl_kent__dark7_off.jpg",
+  "dark7_on": "photo__owl_kent__dark7_on.jpg",
+  "dark7_art": "photo__owl_kent__dark7_art.jpg",
+  "dark8_off": "photo__owl_kent__dark8_off.jpg",
+  "dark8_on": "photo__owl_kent__dark8_on.jpg",
+  "dark8_art": "photo__owl_kent__dark8_art.jpg",
+  "dark9_off": "photo__owl_kent__dark9_off.jpg",
+  "dark9_on": "photo__owl_kent__dark9_on.jpg",
+  "dark9_art": "photo__owl_kent__dark9_art.jpg",
+  "dark10_off": "photo__owl_kent__dark10_off.jpg",
+  "dark10_on": "photo__owl_kent__dark10_on.jpg",
+  "dark10_art": "photo__owl_kent__dark10_art.jpg",
+  "dark11_off": "photo__owl_kent__dark11_off.jpg",
+  "dark11_on": "photo__owl_kent__dark11_on.jpg",
+  "dark11_art": "photo__owl_kent__dark11_art.jpg",
+  "dark12_off": "photo__owl_kent__dark12_off.jpg",
+  "dark12_on": "photo__owl_kent__dark12_on.jpg",
+  "dark12_art": "photo__owl_kent__dark12_art.jpg",
+  "dark13_off": "photo__owl_kent__dark13_off.jpg",
+  "dark13_on": "photo__owl_kent__dark13_on.jpg",
+  "dark13_art": "photo__owl_kent__dark13_art.jpg",
+  "dark14_off": "photo__owl_kent__dark14_off.jpg",
+  "dark14_on": "photo__owl_kent__dark14_on.jpg",
+  "dark14_art": "photo__owl_kent__dark14_art.jpg",
+  "dark15_off": "photo__owl_kent__dark15_off.jpg",
+  "dark15_on": "photo__owl_kent__dark15_on.jpg",
+  "dark15_art": "photo__owl_kent__dark15_art.jpg"
+ },
+ "moved": {
+  "dark": [
+   {
+    "shape": "Sb0147ca6",
+    "thread": "0763 Dark Rattan",
+    "area_mm2": 5.12,
+    "bounds": [
+     -4.15,
+     14.51,
+     -1.88,
+     18.63
+    ],
+    "from": {
+     "0763 Dark Rattan": 5.12,
+     "0145 Skylight": 0.05
+    }
+   },
+   {
+    "shape": "S5d4a251b",
+    "thread": "0763 Dark Rattan",
+    "area_mm2": 3.23,
+    "bounds": [
+     33.62,
+     2.0,
+     35.13,
+     5.51
+    ],
+    "from": {
+     "0763 Dark Rattan": 3.23,
+     "0145 Skylight": 0.01
+    }
+   },
+   {
+    "shape": "Sb9da84c0",
+    "thread": "0763 Dark Rattan",
+    "area_mm2": 2.21,
+    "bounds": [
+     29.5,
+     17.38,
+     31.12,
+     20.62
+    ],
+    "from": {
+     "0763 Dark Rattan": 2.21,
+     "0145 Skylight": 0.07
+    }
+   },
+   {
+    "shape": "Sf7920260",
+    "thread": "0763 Dark Rattan",
+    "area_mm2": 0.81,
+    "bounds": [
+     -30.0,
+     -7.62,
+     -29.38,
+     -5.38
+    ],
+    "from": {
+     "0763 Dark Rattan": 0.81,
+     "0145 Skylight": 0.01
+    }
+   },
+   {
+    "shape": "S767ea707",
+    "thread": "0454 Olive Drab",
+    "area_mm2": 1.45,
+    "bounds": [
+     -33.62,
+     15.0,
+     -32.75,
+     17.88
+    ],
+    "from": {
+     "1776 Blackberry": 1.45
+    }
+   },
+   {
+    "shape": "S3dbcb91d",
+    "thread": "0454 Olive Drab",
+    "area_mm2": 1.34,
+    "bounds": [
+     7.75,
+     37.88,
+     9.12,
+     39.25
+    ],
+    "from": {
+     "0454 Olive Drab": 1.34,
+     "0145 Skylight": 0.15
+    }
+   }
+  ],
+  "dropped": [],
+  "added": [],
+  "blocks_gone": {
+   "0020 Black": {
+    "off_blocks": 1,
+    "off_stitches": 1899,
+    "on_blocks": 1,
+    "on_stitches": 2094
+   },
+   "0131 Smoke": {
+    "off_blocks": 1,
+    "off_stitches": 3040,
+    "on_blocks": 1,
+    "on_stitches": 3041
+   },
+   "0145 Skylight": {
+    "off_blocks": 1,
+    "off_stitches": 19517,
+    "on_blocks": 1,
+    "on_stitches": 19316
+   },
+   "0454 Olive Drab": {
+    "off_blocks": 1,
+    "off_stitches": 4932,
+    "on_blocks": 2,
+    "on_stitches": 4549
+   },
+   "0763 Dark Rattan": {
+    "off_blocks": 2,
+    "off_stitches": 5483,
+    "on_blocks": 3,
+    "on_stitches": 5529
+   },
+   "1776 Blackberry": {
+    "off_blocks": 2,
+    "off_stitches": 1681,
+    "on_blocks": 1,
+    "on_stitches": 1507
+   }
+  },
+  "shapes_moved": [
+   {
+    "shape": "Sfe8fd1fb",
+    "off": {
+     "0145 Skylight": 14691
+    },
+    "on": {
+     "0145 Skylight": 14594
+    }
+   },
+   {
+    "shape": "Sfa828419",
+    "off": {
+     "0763 Dark Rattan": 2773
+    },
+    "on": {
+     "0763 Dark Rattan": 2794
+    }
+   },
+   {
+    "shape": "Sfa71c988",
+    "off": {
+     "0454 Olive Drab": 3169
+    },
+    "on": {}
+   },
+   {
+    "shape": "S2e95033a",
+    "off": {},
+    "on": {
+     "0454 Olive Drab": 2611
+    }
+   },
+   {
+    "shape": "S1456ef99",
+    "off": {
+     "0131 Smoke": 1056
+    },
+    "on": {
+     "0131 Smoke": 1140
+    }
+   },
+   {
+    "shape": "S5de8cbba",
+    "off": {
+     "0020 Black": 366
+    },
+    "on": {
+     "0020 Black": 454
+    }
+   },
+   {
+    "shape": "Se5b3a77c",
+    "off": {
+     "1776 Blackberry": 269
+    },
+    "on": {
+     "1776 Blackberry": 293
+    }
+   },
+   {
+    "shape": "S70c09c6e",
+    "off": {
+     "0131 Smoke": 240
+    },
+    "on": {
+     "0131 Smoke": 183
+    }
+   },
+   {
+    "shape": "Sc3ee24c0",
+    "off": {
+     "0131 Smoke": 137
+    },
+    "on": {
+     "0131 Smoke": 117
+    }
+   },
+   {
+    "shape": "Se789bf1d",
+    "off": {
+     "0131 Smoke": 143
+    },
+    "on": {
+     "0131 Smoke": 101
+    }
+   },
+   {
+    "shape": "Scf3cfabc",
+    "off": {
+     "0131 Smoke": 121
+    },
+    "on": {
+     "0131 Smoke": 122
+    }
+   },
+   {
+    "shape": "Sfe1f839b",
+    "off": {
+     "0131 Smoke": 119
+    },
+    "on": {
+     "0131 Smoke": 117
+    }
+   },
+   {
+    "shape": "Sc0d2664a",
+    "off": {},
+    "on": {
+     "0020 Black": 176
+    }
+   },
+   {
+    "shape": "S0cc1c46e",
+    "off": {
+     "0763 Dark Rattan": 58
+    },
+    "on": {
+     "0763 Dark Rattan": 61
+    }
+   },
+   {
+    "shape": "Sbf3d2549",
+    "off": {
+     "0131 Smoke": 54
+    },
+    "on": {
+     "0131 Smoke": 65
+    }
+   },
+   {
+    "shape": "S7c60c02c",
+    "off": {
+     "1776 Blackberry": 61
+    },
+    "on": {
+     "0763 Dark Rattan": 52
+    }
+   },
+   {
+    "shape": "S28fa2cec",
+    "off": {
+     "0020 Black": 94
+    },
+    "on": {}
+   },
+   {
+    "shape": "Sa7833839",
+    "off": {
+     "0763 Dark Rattan": 40
+    },
+    "on": {
+     "0763 Dark Rattan": 42
+    }
+   },
+   {
+    "shape": "Se8d5aabe",
+    "off": {},
+    "on": {
+     "0454 Olive Drab": 64
+    }
+   },
+   {
+    "shape": "Scc4460aa",
+    "off": {
+     "1776 Blackberry": 34
+    },
+    "on": {
+     "1776 Blackberry": 30
+    }
+   },
+   {
+    "shape": "Sb8085dd1",
+    "off": {
+     "0454 Olive Drab": 30
+    },
+    "on": {
+     "0454 Olive Drab": 24
+    }
+   },
+   {
+    "shape": "Se0fc2021",
+    "off": {},
+    "on": {
+     "0763 Dark Rattan": 53
+    }
+   },
+   {
+    "shape": "Sf0894f29",
+    "off": {
+     "1776 Blackberry": 50
+    },
+    "on": {}
+   },
+   {
+    "shape": "S1fe69c81",
+    "off": {
+     "0145 Skylight": 44
+    },
+    "on": {}
+   },
+   {
+    "shape": "S9f609fa5",
+    "off": {
+     "0131 Smoke": 23
+    },
+    "on": {
+     "0131 Smoke": 19
+    }
+   },
+   {
+    "shape": "S1bc6fdd4",
+    "off": {
+     "0131 Smoke": 16
+    },
+    "on": {
+     "0131 Smoke": 20
+    }
+   },
+   {
+    "shape": "S767ea707",
+    "off": {
+     "1776 Blackberry": 16
+    },
+    "on": {
+     "0454 Olive Drab": 16
+    }
+   },
+   {
+    "shape": "S2da2631f",
+    "off": {},
+    "on": {
+     "1776 Blackberry": 32
+    }
+   },
+   {
+    "shape": "Sdd71da42",
+    "off": {
+     "1776 Blackberry": 31
+    },
+    "on": {}
+   },
+   {
+    "shape": "S89aaf6f4",
+    "off": {
+     "1776 Blackberry": 30
+    },
+    "on": {}
+   },
+   {
+    "shape": "S487adcc4",
+    "off": {
+     "0131 Smoke": 13
+    },
+    "on": {
+     "0131 Smoke": 17
+    }
+   },
+   {
+    "shape": "Sa0ea9da3",
+    "off": {},
+    "on": {
+     "0454 Olive Drab": 26
+    }
+   },
+   {
+    "shape": "S1879a2d4",
+    "off": {},
+    "on": {
+     "0454 Olive Drab": 24
+    }
+   },
+   {
+    "shape": "S1d9462e4",
+    "off": {
+     "0763 Dark Rattan": 23
+    },
+    "on": {}
+   },
+   {
+    "shape": "S0fa54db2",
+    "off": {
+     "0763 Dark Rattan": 17
+    },
+    "on": {}
+   },
+   {
+    "shape": "S1300abe8",
+    "off": {
+     "0763 Dark Rattan": 17
+    },
+    "on": {}
+   },
+   {
+    "shape": "Scdb46a2f",
+    "off": {},
+    "on": {
+     "0020 Black": 17
+    }
+   },
+   {
+    "shape": "Sf1382100",
+    "off": {
+     "0763 Dark Rattan": 6
+    },
+    "on": {
+     "0763 Dark Rattan": 10
+    }
+   },
+   {
+    "shape": "S33c29c17",
+    "off": {
+     "1776 Blackberry": 16
+    },
+    "on": {}
+   },
+   {
+    "shape": "S14d40d7f",
+    "off": {
+     "0763 Dark Rattan": 16
+    },
+    "on": {}
+   },
+   {
+    "shape": "S69eae3f7",
+    "off": {
+     "1776 Blackberry": 14
+    },
+    "on": {}
+   },
+   {
+    "shape": "Se5490fef",
+    "off": {},
+    "on": {
+     "0454 Olive Drab": 13
+    }
+   },
+   {
+    "shape": "S123d947e",
+    "off": {
+     "0763 Dark Rattan": 12
+    },
+    "on": {}
+   },
+   {
+    "shape": "S31dac5df",
+    "off": {
+     "0763 Dark Rattan": 10
+    },
+    "on": {}
+   },
+   {
+    "shape": "Scc24809a",
+    "off": {
+     "0763 Dark Rattan": 8
+    },
+    "on": {}
+   }
+  ]
+ },
+ "diff_points": 17256,
+ "diff_points_before": null,
+ "window_mm": [
+  22.7,
+  29.7,
+  40.7,
+  40.7
+ ],
+ "changed_box_mm": [
+  -42.3,
+  -42.3,
+  42.2,
+  42.2
+ ],
+ "moved_fixtures": {}
+}

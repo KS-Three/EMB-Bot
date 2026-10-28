@@ -59,6 +59,7 @@
  "crop": null,
  "curve_turn_deg": 15.0,
  "cut_every_jump": false,
+ "dark_ink_refuse_strays": false,
  "debug_dir": null,
  "deleted_shape_ids": [],
  "denoise": true,

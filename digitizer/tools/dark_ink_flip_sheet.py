@@ -58,10 +58,24 @@ GARMENT = "left_chest"
 DATE = "2026-10-28"
 # Both arms set the flag explicitly (since the 2026-10-28 flip ON): OFF is the
 # engine before the flip, ON the shipped default, on whichever engine runs this.
+# `--flag` swaps in another flag of the same family (`dark_ink_refuse_strays`,
+# the refusal queued on #1172): OFF is then today's default, ON the refusal.
 ARMS = {"off": {FLAG: False}, "on": {FLAG: True}}
 TESTDATA = DIGITIZER / "testdata"
 DEFAULT_CACHE = DIGITIZER / "debug_out" / "dark_ink_flip_sheet"
 DEFAULT_OUT = DIGITIZER.parent / "docs" / "renders" / f"keep-dark-thin-strokes-{DATE}"
+SHEETS = {FLAG: DEFAULT_OUT,
+          "dark_ink_refuse_strays": DIGITIZER.parent / "docs" / "renders" / f"dark-read-refusal-{DATE}"}
+
+
+def use_flag(flag: str) -> None:
+    """Point the module at `flag`: both arms, and the cache the cells go in.
+    Called in every worker too (`_job`): a spawned process imports afresh."""
+    global FLAG, ARMS, DEFAULT_CACHE
+    FLAG = flag
+    ARMS = {"off": {flag: False}, "on": {flag: True}}
+    DEFAULT_CACHE = DIGITIZER / "debug_out" / ("dark_ink_flip_sheet" if flag == "keep_dark_thin_strokes"
+                                               else f"dark_ink_flip_sheet_{flag}")
 HERO = "photo/summit_badge.png"
 WHOLE_PPM = 6.0             # whole-design tiles: 80 mm -> 480 px
 CHANGE_PPM = 20.0           # the changed area, all of it
@@ -138,7 +152,8 @@ def digitize_cell(fixture: str, arm: str, cache: Path) -> dict:
 
 
 def _job(args):
-    fixture, arm, cache = args
+    fixture, arm, cache, flag = args
+    use_flag(flag)
     try:
         s = digitize_cell(fixture, arm, Path(cache))
         return f"{fixture}/{arm}: {s['plan_stitches']} st, {s['plan_trims']} tr, {s['blocks']} col, {s['secs']} s"
@@ -147,7 +162,7 @@ def _job(args):
 
 
 def run_cmd(a) -> int:
-    jobs = [(f, arm, str(a.cache)) for f in (a.fixtures or FIXTURES) for arm in ARMS]
+    jobs = [(f, arm, str(a.cache), FLAG) for f in (a.fixtures or FIXTURES) for arm in ARMS]
     if a.jobs <= 1:
         for j in jobs:
             print(_job(j), flush=True)
@@ -370,14 +385,31 @@ def hero_tiles(fixture: str, off: dict, on: dict, out: Path, before: dict | None
     if not dark and before is not None:
         dark_cell, dark_label = before, "ON before the fixes"
         dark = [r for r in before["regions"] if r["dark_ink"]]
+    # A REFUSAL flag (`--flag dark_ink_refuse_strays`): OFF holds every read and
+    # ON the survivors, so the windows follow OFF's reads and each ON tile says
+    # whether that read survived (by overlap: a survivor's id can move when its
+    # ink group re-snaps without the refused members).
+    off_dark = [r for r in off["regions"] if r["dark_ink"]]
+    refusal = len(off_dark) > len(dark)
+    if refusal:
+        dark = off_dark
+
+    def survived(r) -> bool:
+        x0, y0, x1, y1 = r["bounds"]
+        return any(d["bounds"][0] < x1 and x0 < d["bounds"][2] and d["bounds"][1] < y1 and y0 < d["bounds"][3]
+                   for d in on["regions"] if d["dark_ink"])
+
     info["dark_tiles"] = []
     info["dark_tiles_arm"] = dark_label
+    info["dark_refused"] = [r["shape"] for r in dark if refusal and not survived(r)]
     for i, r in enumerate(dark):
         x0, y0, x1, y1 = r["bounds"]
         pad = 3.0
         box = (x0 - pad, y0 - pad, x1 + pad, y1 + pad)
+        on_label = (f"{dark_label}: dark-ink region {r['shape']}" if not refusal
+                    else f"ON: {'kept' if survived(r) else 'REFUSED'} {r['shape']}")
         names = [put(f"dark{i}_off", fsr._label(fsr.render_crop(off["design"], box), f"OFF at {r['shape']}, 40 px/mm")),
-                 put(f"dark{i}_on", fsr._label(fsr.render_crop(dark_cell["design"], box), f"{dark_label}: dark-ink region {r['shape']}"))]
+                 put(f"dark{i}_on", fsr._label(fsr.render_crop(dark_cell["design"], box), on_label))]
         art_crop = _art_crop(fixture, dark_cell["stats"], box, fsr.PPM)
         if art_crop is not None:
             names.append(put(f"dark{i}_art", fsr._label(art_crop, "artwork, same window")))
@@ -405,7 +437,17 @@ def _art_crop(fixture: str, stats: dict, box_mm, ppm: float):
     cx, cy = (fx0 + fx1) / 2 * W, (fy0 + fy1) / 2 * H
     x0, y0, x1, y1 = box_mm
     px = (int(round(cx + x0 * sx)), int(round(cy + y0 * sy)), int(round(cx + x1 * sx)), int(round(cy + y1 * sy)))
-    crop = raw[max(0, px[1]):max(1, min(H, px[3])), max(0, px[0]):max(1, min(W, px[2]))]
+    # A window past the artwork's edge is PADDED (mid grey), never clipped and
+    # stretched: the 2026-10-28 flip sheet stretched the part inside the frame
+    # to the whole window, so every edge window's art sat shifted inward
+    # against the OFF and ON renders beside it, and 10 edge reads were judged
+    # "not ink" against ground that was not under them (#1172's table).
+    if px[2] <= 0 or px[3] <= 0 or px[0] >= W or px[1] >= H:
+        return None
+    padded = cv2.copyMakeBorder(raw, max(0, -px[1]), max(0, px[3] - H), max(0, -px[0]), max(0, px[2] - W),
+                                cv2.BORDER_CONSTANT, value=(128, 128, 128))
+    ox, oy = max(0, -px[0]), max(0, -px[1])
+    crop = padded[px[1] + oy:px[3] + oy, px[0] + ox:px[2] + ox]
     if crop.size == 0:
         return None
     return cv2.resize(crop, (max(1, int(round((x1 - x0) * ppm))), max(1, int(round((y1 - y0) * ppm)))),
@@ -721,13 +763,15 @@ def parse_args(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
+    r.add_argument("--flag", default=FLAG, choices=sorted(SHEETS))
     r.add_argument("--fixtures", nargs="*")
-    r.add_argument("--cache", default=DEFAULT_CACHE)
+    r.add_argument("--cache", default=None, help="default: debug_out/dark_ink_flip_sheet[_<flag>]")
     r.add_argument("--jobs", type=int, default=3)
     p = sub.add_parser("report")
+    p.add_argument("--flag", default=FLAG, choices=sorted(SHEETS))
     p.add_argument("--fixtures", nargs="*")
-    p.add_argument("--cache", default=DEFAULT_CACHE)
-    p.add_argument("--out", default=DEFAULT_OUT)
+    p.add_argument("--cache", default=None, help="default: debug_out/dark_ink_flip_sheet[_<flag>]")
+    p.add_argument("--out", default=None, help="default: the flag's docs/renders folder")
     p.add_argument("--hero", nargs="+", default=[HERO],
                    help="fixture(s) given the full treatment; one window per dark-ink region")
     p.add_argument("--before", default=None,
@@ -740,6 +784,10 @@ def parse_args(argv=None):
 
 def main(argv=None) -> int:
     a = parse_args(argv)
+    use_flag(a.flag)
+    a.cache = Path(a.cache) if a.cache else DEFAULT_CACHE
+    if a.cmd == "report" and a.out is None:
+        a.out = SHEETS[a.flag]
     return run_cmd(a) if a.cmd == "run" else report_cmd(a)
 
 
