@@ -9129,3 +9129,44 @@ across), None is the pro's size (`PRE_FLIP`). Unsewn, a gate-1 candidate:
 whether a 0.63 mm spoke still reads as a star, not a white dot, is the
 sew-out's question. A ruling of taste over the pro's file, so do not "restore"
 the pro's size on parity grounds.
+
+## Stage 0's photo gate was a grain detector, and a downsampled photograph has no grain (2026-10-28)
+
+The 39-row Commons corpus (`digitizer/testdata/photo/corpus/`, real artwork,
+18 photo genres + 21 logo styles) put 3 of 18 photographs in the photo lane.
+`unique_color_mass` counts pixels whose k=16 quantise differs from their 3x3
+mode — per-pixel GRAIN — and every Commons thumbnail, phone export and re-save
+has averaged its grain away: 15 of 18 photographs read 0.02–0.27 against
+`UCM_PHOTO_MIN` 0.28, fell to the flat/gradient gate, which any texture
+crosses (0.34–3.7 against 0.0015), and sewed as gradient logos at confidence
+1.0. The three that passed carry grain (film, sky noise, paper); the three
+LOGO rows in `photo_scene` passed on designed texture (dithered gold, halftone
+dots, hatching) — the `logo_script_tires` mechanism of 2026-09-11 on more rows.
+
+**Built (ON, `cfg.stage0_texture_gate`; OFF is the old tree byte-for-byte):**
+`texture_frac`, the share of an opaque file's foreground on a 512-px raster
+whose 5x5 luminance std is 2–24 levels (neither flat nor a hard edge), is a
+second route into photo territory at 0.17 — opaque photographs min 0.245
+(watercolor), opaque designed graphics max 0.097 (barcode), stable across a
+250–1600 px export ladder. `two_tone_mass` >= 0.90 (two of sixteen luminance
+bins hold the foreground: tires 0.995, arabic 0.978; photographs top out at
+0.763) is two inks and vetoes both routes. A file with an alpha cut-out keeps
+the grain gate alone, which is what keeps `drone_render` (texture 0.52: it
+contains a photograph) in `gradient`. `tools/stage0_photo_gate.py` prints the
+readings and margins; `tools/classify_lens.py` re-derives the tree.
+
+**Three things that change what someone does.** (1) **Stage 0 reads the
+MEDIUM, not the subject.** Six corpus "logo" rows are photographs or scans of
+graphics (halftone portrait print, café chalkboard, framed poster, brush ink
+on paper, photographed comic poster, engraving scan); a brute-force search
+over twenty candidate statistics and every two-term rule bottoms out at five
+misses, all in that set or photoreal cut-out renders. They route to the photo
+lane by medium and Kent judges them on the side-by-side page — do not re-site
+the gate to exclude them (>= 0.45 loses watercolor, architecture, dark_dog,
+fireworks, skyline). (2) **The one stated limit is a barcode exported under
+640 px** (bars blur to texture, 0.17–0.31). (3) **Faces still sew flat**:
+group_people, sports_action, vintage_sepia and comic_halftone reach
+`photo_scene` at stage 0 and are re-answered FLAT by stage 1.25 (Kent's
+2026-09-30 ruling), which this did not touch. *(measured and built 2026-10-28
+— `docs/superpowers/specs/2026-10-28-stage0-photo-texture-gate-design.md`,
+`tests/test_stage0_texture_gate.py`, `docs/scoreboards/photo-corpus/`)*
