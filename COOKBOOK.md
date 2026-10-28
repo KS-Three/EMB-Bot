@@ -2373,9 +2373,20 @@ under the scoreboard folder is.
 Three things to know. **Capture takes hours** (the census had 7 of 18 rows
 over 600 s; default 1200 s per row, two processes, `--only SLUG` for a
 quick look), so it is a by-hand step before the PR opens, never CI, and
-it resumes past finished rows. **Every number on the page is an
+it resumes past finished rows. **A label is one tree**: every row carries
+the `tree_sha` that made it and a folder holding another tree's rows is
+refused (a reused `--label base` after main moved would otherwise show
+the old renders under the new sha — review finding, 2026-10-28), so name
+the label after the sha (`main-5ff48c5`) or delete the folder. To retry a
+timeout, delete BOTH `<slug>.json` and `<slug>.row.json` (a saved
+`<slug>.json` is re-summarised, not re-run). The request each row is sent
+is built by the tree under test (`tree_request`: its own
+`tools.fremont_triage.studio_request`), so a base run sends the base's
+contract. **Every number on the page is an
 instrument reading** — SSIM, ΔE and preflight score are raw; `fidelity_cc`
-is chance-corrected against a blank-fabric null — and none of them is a
+is chance-corrected against a blank-fabric null (the page defines it;
+None on an empty design; on main it read below 0 on 29 of 38 rows, so
+read it as experimental and judge with the renders) — and none of them is a
 quality claim (ROADMAP gate 4): the verdict column is Kent's. **Nothing
 downloaded or rendered is committed**: the repo is public, so the images,
 the runs and the HTML all live in gitignored folders.

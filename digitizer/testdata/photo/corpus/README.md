@@ -24,3 +24,9 @@ python -m tools.photo_corpus tally verdicts-<a>-<b>.json        # files Kent's c
 
 Runs land in `digitizer/corpus_runs/` (gitignored). Capture takes hours (the
 census had 7 of 18 rows over 600 s), so it is a by-hand step, never CI.
+A label is one tree: each row records the `tree_sha` that made it, and a
+folder holding another tree's rows is refused -- name labels after the sha
+(`main-5ff48c5`) or delete the folder. To retry a timed-out row delete both its
+`<slug>.json` and `<slug>.row.json`; a saved `<slug>.json` is re-summarised,
+never re-run. Authors in `corpus.json` are the manifest's plain-text
+`Artist` strings (no HTML; `test_corpus_authors_are_plain_text`).

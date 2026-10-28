@@ -52,6 +52,11 @@ SCOREBOARD_DIR = DIGITIZER.parent / "docs" / "scoreboards" / "photo-corpus"
 GATE4_LINE = ("All numbers are instrument readings, not quality claims (ROADMAP gate 4). "
               "The verdict column is Kent's.")
 
+#: What the one chance-corrected figure is corrected against.
+CC_NULL_LINE = ("fidelity cc = (SSIM(photo, render) − SSIM(photo, blank fabric)) / (1 − SSIM(photo, blank fabric)): "
+                "0 = the render agrees with the photo exactly as much as bare fabric does, negative = less, "
+                "None when the design is empty.")
+
 #: Commons `LicenseShortName` substrings a public repo may list (lower-cased match).
 OK_LICENCES = ("cc0", "public domain", "pd", "cc by 4.0", "cc by 3.0", "cc by 2.0",
                "cc by-sa 4.0", "cc by-sa 3.0", "cc by-sa 2.0")
@@ -217,6 +222,8 @@ def fetch(rows: list[dict], out: Path, get=_http_json, download=_http_bytes) -> 
             "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(),
         }
         fetched.append(slug)
+        # written per row: a crash on the next row must not lose this one
+        mpath.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"{slug}: {r['title'][:70]} | {licence} | {len(data) // 1024} KB", flush=True)
         if live:
             time.sleep(0.5)
@@ -356,7 +363,7 @@ json.dump({"state": "done", "design": design,
            "warnings": plan.warnings, "preflight": pf,
            "_meta": {"elapsed_s": round(time.time() - t0, 1), "stamps": stamps,
                      "class": gen.classification_class, "class_conf": round(float(cls.confidence), 3),
-                     "config_sent": spec["config"]}},
+                     "config_sent": spec["config"], "tree_sha": spec.get("tree_sha")}},
           open(spec["out"], "w", encoding="utf-8"))
 '''
 
@@ -371,15 +378,48 @@ def request_config() -> dict:
     return req
 
 
-def run_row(tree: Path, photo: Path, out: Path, cfg: dict, timeout: float = TIMEOUT_S) -> dict:
+TREE_REQUEST = r'''
+import json, sys
+sys.path.insert(0, sys.argv[1])
+from tools.fremont_triage import studio_request
+req = studio_request(float(sys.argv[2]))
+req["target_width_mm"] = float(sys.argv[2])
+req["garment_id"] = sys.argv[3]
+print(json.dumps(req))
+'''
+
+
+def tree_request(tree: Path, fallback: dict) -> dict:
+    """The Studio request THE TREE UNDER TEST builds (its own
+    `tools.fremont_triage.studio_request` at WIDTH_MM on GARMENT), so a base
+    run sends the base's contract, not HEAD's: a PR that adds a request field
+    would otherwise error every base row, and one that changes a value would
+    hide the change. `fallback` when the tree cannot build one."""
+    import os
+    import subprocess
+    import sys
+    try:
+        out = subprocess.run([sys.executable, "-c", TREE_REQUEST, str(tree), str(WIDTH_MM), GARMENT],
+                             cwd=str(tree), capture_output=True, text=True, timeout=120,
+                             env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+        if out.returncode == 0:
+            return json.loads(out.stdout.strip().splitlines()[-1])
+    except (OSError, subprocess.SubprocessError, ValueError, IndexError):
+        pass
+    return fallback
+
+
+def run_row(tree: Path, photo: Path, out: Path, cfg: dict, timeout: float = TIMEOUT_S,
+            tree_sha: str | None = None) -> dict:
     """One row in its own process, cwd = `tree`. Writes `out` itself on timeout or
-    error (`state`, `rc`, `stderr_tail`) so every row has a json. -> that json."""
+    error (`state`, `rc`, `stderr_tail`) so every row has a json, stamped with
+    `tree_sha` in `_meta`. -> that json."""
     import os
     import subprocess
     import sys
     from tools.default_path_diff import RUNNER_ENV
 
-    spec = {"photo": str(photo), "out": str(out), "config": cfg, "tree": str(tree)}
+    spec = {"photo": str(photo), "out": str(out), "config": cfg, "tree": str(tree), "tree_sha": tree_sha}
     err_path = Path(out).with_suffix(".stderr.txt")
     t0 = time.time()
     with open(err_path, "w", encoding="utf-8") as ef:
@@ -396,7 +436,8 @@ def run_row(tree: Path, photo: Path, out: Path, cfg: dict, timeout: float = TIME
         tail = err_path.read_text(encoding="utf-8", errors="replace").strip().splitlines()[-3:]
         Path(out).write_text(json.dumps({"state": state, "rc": rc, "stderr_tail": " | ".join(tail)[:400],
                                          "_meta": {"elapsed_s": round(time.time() - t0, 1),
-                                                   "photo": Path(photo).name}}), encoding="utf-8")
+                                                   "photo": Path(photo).name, "tree_sha": tree_sha}}),
+                              encoding="utf-8")
     return json.loads(Path(out).read_text(encoding="utf-8"))
 
 
@@ -417,6 +458,10 @@ def _render_row(photo: Path, output: dict, png: Path, fabric_bgr) -> dict:
         return {}
     render = render_design(output["design"], px_per_mm=PXMM, fabric_bgr=fabric_bgr)
     cv2.imwrite(str(png), render)
+    if not (output.get("stats") or {}).get("stitch_count"):
+        # an empty design renders as the 8x8 frame and would score cc 0.0,
+        # above most real rows (review 2026-10-28): no number, not a flattering one
+        return {"ssim": None, "dE": None, "ssim_null": None, "fidelity_cc": None}
     photo_bgr = load_photo(photo, fabric_bgr)
     if photo_bgr is None:
         return {}
@@ -430,35 +475,57 @@ def capture(rows: list[dict], photos: Path, tree: Path, out: Path, tree_sha: str
     failure), `<slug>.row.json` (summarise + fidelity + the corpus row's kind
     and genre). `out/run.json` = {tree_sha, date, config, timeout_s, procs,
     rows}. A row whose `.row.json` exists is kept (resume); one whose `<slug>.json`
-    exists is re-summarised from it without re-running the worker."""
+    exists is re-summarised from it without re-running the worker. Every row
+    carries `tree_sha`; a folder holding another tree's rows is refused, so a
+    reused `--label` can never present one tree's renders under another's sha.
+    `cfg` defaults to the request THE TREE builds (`tree_request`)."""
     from concurrent.futures import ThreadPoolExecutor
     from datetime import date
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    cfg = cfg or request_config()
+    cfg = cfg or tree_request(tree, request_config())
     fabric = tuple(reversed(cfg.get("garment_rgb") or [235, 232, 223]))
+
+    prior = out / "run.json"
+    folder_sha = json.loads(prior.read_text(encoding="utf-8")).get("tree_sha") if prior.exists() else None
+
+    def refuse(found, what):
+        raise SystemExit(f"{out} holds {what} from tree {str(found)[:8]}, this capture is tree "
+                         f"{tree_sha[:8]}: use another --label, or delete the folder to recapture")
     cap = int(cfg.get("max_colors") or 6)
 
     def one(row: dict) -> tuple[str, dict]:
         slug = row["slug"]
         row_json = out / f"{slug}.row.json"
         if row_json.exists():
-            return slug, json.loads(row_json.read_text(encoding="utf-8"))
+            kept = json.loads(row_json.read_text(encoding="utf-8"))
+            if kept.get("tree_sha") != tree_sha:
+                refuse(kept.get("tree_sha"), f"{slug}.row.json")
+            return slug, kept
         photo = photo_path(photos, slug)
         worker_json = out / f"{slug}.json"
         if worker_json.exists():
             # the worker's output is the slow, raw record; the summary is
-            # derived from it, so an instrument fix re-reads rather than re-runs
+            # derived from it, so an instrument fix re-reads rather than re-runs.
+            # A stamped output must be this tree's; an unstamped one (captured
+            # before the stamp existed) is judged by the folder's run.json —
+            # on 2026-10-28 a moved merge-base re-summarised 5ff48c56's
+            # outputs under 5a3181dc because an unstamped one was trusted.
             output = json.loads(worker_json.read_text(encoding="utf-8"))
+            stamped = (output.get("_meta") or {}).get("tree_sha")
+            if stamped is None:
+                stamped = folder_sha
+            if stamped is not None and stamped != tree_sha:
+                refuse(stamped, f"{slug}.json")
         elif photo is not None:
-            output = run_row(tree, photo, worker_json, cfg, timeout)
+            output = run_row(tree, photo, worker_json, cfg, timeout, tree_sha)
         else:
             output = {"state": "error", "error": f"no image: {slug}.jpg|.png (run fetch)",
                       "_meta": {"elapsed_s": 0.0}}
             (out / f"{slug}.json").write_text(json.dumps(output), encoding="utf-8")
         summary = summarise(output, cap)
         summary.update(_render_row(photo, output, out / f"{slug}.png", fabric))
-        summary.update({"slug": slug, "kind": row["kind"], "genre": row["genre"]})
+        summary.update({"slug": slug, "kind": row["kind"], "genre": row["genre"], "tree_sha": tree_sha})
         row_json.write_text(json.dumps(summary, indent=1), encoding="utf-8")
         print(f"{slug}: {summary['state']} {summary['wall_s']}s stitches={summary['stitches']} "
               f"trims={summary['trims']} colors={summary['colors_used']}/{cap} grade={summary['grade']} "
@@ -588,7 +655,7 @@ td.n{{text-align:right;font-variant-numeric:tabular-nums}} .good{{color:#7c7}} .
 .gate{{color:#c9a;font-size:12px}} .state{{font-weight:bold;color:#e77}}
 </style></head><body>
 <div class="bar"><b>Photo corpus side by side</b> &nbsp; before <code>{h.escape(bsha[:12])}</code> ({h.escape(str(before.get('date')))}) → after <code>{h.escape(asha[:12])}</code> ({h.escape(str(after.get('date')))})
-&nbsp; <button id="export">Export verdicts</button> <span id="count"></span><br><span class="gate">{h.escape(GATE4_LINE)}</span></div>
+&nbsp; <button id="export">Export verdicts</button> <span id="count"></span><br><span class="gate">{h.escape(GATE4_LINE)} {h.escape(CC_NULL_LINE)}</span></div>
 <h1>{len(rows)} rows: source · before · after · numbers (before / after / Δ)</h1>"""]
     for (kind, genre), grp in groups.items():
         parts.append(f"<h2>{h.escape(kind)} / {h.escape(genre)}</h2>")
@@ -707,6 +774,8 @@ def file_verdicts(verdicts: dict, rows: list[dict], out_dir: Path) -> Path:
 # ------------------------------------------------------------------ CLI
 def main(argv: list[str] | None = None) -> int:
     import argparse
+    from tools._console import utf8_console
+    utf8_console()   # Commons titles and authors carry non-cp1252 letters (Kabukichō)
     ap = argparse.ArgumentParser(prog="python -m tools.photo_corpus",
                                  description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)

@@ -60,7 +60,8 @@
    "fidelity_cc": -0.0495,
    "slug": "bw_street",
    "kind": "photo",
-   "genre": "bw_street"
+   "genre": "bw_street",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "night_neon": {
    "state": "done",
@@ -97,7 +98,8 @@
    "fidelity_cc": 0.0074,
    "slug": "night_neon",
    "kind": "photo",
-   "genre": "night_neon"
+   "genre": "night_neon",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "architecture": {
    "state": "done",
@@ -134,7 +136,8 @@
    "fidelity_cc": 0.2031,
    "slug": "architecture",
    "kind": "photo",
-   "genre": "architecture"
+   "genre": "architecture",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "landscape_lake": {
    "state": "done",
@@ -171,7 +174,8 @@
    "fidelity_cc": -0.2594,
    "slug": "landscape_lake",
    "kind": "photo",
-   "genre": "landscape_lake"
+   "genre": "landscape_lake",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "food_plate": {
    "state": "done",
@@ -208,7 +212,8 @@
    "fidelity_cc": -0.2319,
    "slug": "food_plate",
    "kind": "photo",
-   "genre": "food_plate"
+   "genre": "food_plate",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "vintage_sepia": {
    "state": "done",
@@ -245,7 +250,8 @@
    "fidelity_cc": -0.3405,
    "slug": "vintage_sepia",
    "kind": "photo",
-   "genre": "vintage_sepia"
+   "genre": "vintage_sepia",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "fireworks": {
    "state": "done",
@@ -282,7 +288,8 @@
    "fidelity_cc": 0.1112,
    "slug": "fireworks",
    "kind": "photo",
-   "genre": "fireworks"
+   "genre": "fireworks",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "snow_highkey": {
    "state": "done",
@@ -319,7 +326,8 @@
    "fidelity_cc": -0.4714,
    "slug": "snow_highkey",
    "kind": "photo",
-   "genre": "snow_highkey"
+   "genre": "snow_highkey",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "flower_macro": {
    "state": "done",
@@ -356,7 +364,8 @@
    "fidelity_cc": 0.1102,
    "slug": "flower_macro",
    "kind": "photo",
-   "genre": "flower_macro"
+   "genre": "flower_macro",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "dark_dog": {
    "state": "done",
@@ -393,7 +402,8 @@
    "fidelity_cc": -0.982,
    "slug": "dark_dog",
    "kind": "photo",
-   "genre": "dark_dog"
+   "genre": "dark_dog",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "underwater_reef": {
    "state": "done",
@@ -430,7 +440,8 @@
    "fidelity_cc": 0.1412,
    "slug": "underwater_reef",
    "kind": "photo",
-   "genre": "underwater_reef"
+   "genre": "underwater_reef",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "watercolor": {
    "state": "done",
@@ -467,7 +478,8 @@
    "fidelity_cc": -1.7763,
    "slug": "watercolor",
    "kind": "photo",
-   "genre": "watercolor"
+   "genre": "watercolor",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "pencil_sketch": {
    "state": "done",
@@ -504,7 +516,8 @@
    "fidelity_cc": -2.5225,
    "slug": "pencil_sketch",
    "kind": "photo",
-   "genre": "pencil_sketch"
+   "genre": "pencil_sketch",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "stained_glass": {
    "state": "timeout",
@@ -527,7 +540,8 @@
    "score_raw": null,
    "slug": "stained_glass",
    "kind": "photo",
-   "genre": "stained_glass"
+   "genre": "stained_glass",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "group_people": {
    "state": "done",
@@ -564,7 +578,8 @@
    "fidelity_cc": -0.0973,
    "slug": "group_people",
    "kind": "photo",
-   "genre": "group_people"
+   "genre": "group_people",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "sports_action": {
    "state": "done",
@@ -601,7 +616,8 @@
    "fidelity_cc": -0.3013,
    "slug": "sports_action",
    "kind": "photo",
-   "genre": "sports_action"
+   "genre": "sports_action",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "night_skyline": {
    "state": "done",
@@ -638,7 +654,8 @@
    "fidelity_cc": 0.0771,
    "slug": "night_skyline",
    "kind": "photo",
-   "genre": "night_skyline"
+   "genre": "night_skyline",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "oil_painting": {
    "state": "done",
@@ -675,7 +692,8 @@
    "fidelity_cc": -0.0068,
    "slug": "oil_painting",
    "kind": "photo",
-   "genre": "oil_painting"
+   "genre": "oil_painting",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "pixel_art_sprite": {
    "state": "done",
@@ -712,7 +730,8 @@
    "fidelity_cc": -4.8341,
    "slug": "pixel_art_sprite",
    "kind": "logo",
-   "genre": "pixel_art_sprite"
+   "genre": "pixel_art_sprite",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "low_poly": {
    "state": "done",
@@ -749,7 +768,8 @@
    "fidelity_cc": -0.3562,
    "slug": "low_poly",
    "kind": "logo",
-   "genre": "low_poly"
+   "genre": "low_poly",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "arabic_calligraphy": {
    "state": "done",
@@ -786,7 +806,8 @@
    "fidelity_cc": -1.4934,
    "slug": "arabic_calligraphy",
    "kind": "logo",
-   "genre": "arabic_calligraphy"
+   "genre": "arabic_calligraphy",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "qr_code": {
    "state": "done",
@@ -823,7 +844,8 @@
    "fidelity_cc": -0.3003,
    "slug": "qr_code",
    "kind": "logo",
-   "genre": "qr_code"
+   "genre": "qr_code",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "barcode": {
    "state": "done",
@@ -860,7 +882,8 @@
    "fidelity_cc": -0.1523,
    "slug": "barcode",
    "kind": "logo",
-   "genre": "barcode"
+   "genre": "barcode",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "heraldic_crest": {
    "state": "done",
@@ -897,7 +920,8 @@
    "fidelity_cc": -0.569,
    "slug": "heraldic_crest",
    "kind": "logo",
-   "genre": "heraldic_crest"
+   "genre": "heraldic_crest",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "flat_emoji_icon": {
    "state": "done",
@@ -934,7 +958,8 @@
    "fidelity_cc": -0.07,
    "slug": "flat_emoji_icon",
    "kind": "logo",
-   "genre": "flat_emoji_icon"
+   "genre": "flat_emoji_icon",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "silhouette_logo": {
    "state": "done",
@@ -971,7 +996,8 @@
    "fidelity_cc": -1.2271,
    "slug": "silhouette_logo",
    "kind": "logo",
-   "genre": "silhouette_logo"
+   "genre": "silhouette_logo",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "distressed_grunge": {
    "state": "done",
@@ -1008,7 +1034,8 @@
    "fidelity_cc": -0.3302,
    "slug": "distressed_grunge",
    "kind": "logo",
-   "genre": "distressed_grunge"
+   "genre": "distressed_grunge",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "halftone_dots": {
    "state": "done",
@@ -1045,7 +1072,8 @@
    "fidelity_cc": 0.0701,
    "slug": "halftone_dots",
    "kind": "logo",
-   "genre": "halftone_dots"
+   "genre": "halftone_dots",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "neon_outline_sign": {
    "state": "done",
@@ -1082,7 +1110,8 @@
    "fidelity_cc": -0.4493,
    "slug": "neon_outline_sign",
    "kind": "logo",
-   "genre": "neon_outline_sign"
+   "genre": "neon_outline_sign",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "duotone_poster": {
    "state": "done",
@@ -1119,7 +1148,8 @@
    "fidelity_cc": -0.6439,
    "slug": "duotone_poster",
    "kind": "logo",
-   "genre": "duotone_poster"
+   "genre": "duotone_poster",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "isometric_icon": {
    "state": "done",
@@ -1156,7 +1186,8 @@
    "fidelity_cc": -2.5585,
    "slug": "isometric_icon",
    "kind": "logo",
-   "genre": "isometric_icon"
+   "genre": "isometric_icon",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "comic_halftone": {
    "state": "done",
@@ -1193,7 +1224,8 @@
    "fidelity_cc": -1.1279,
    "slug": "comic_halftone",
    "kind": "logo",
-   "genre": "comic_halftone"
+   "genre": "comic_halftone",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "devanagari_logo": {
    "state": "done",
@@ -1230,7 +1262,8 @@
    "fidelity_cc": -0.0278,
    "slug": "devanagari_logo",
    "kind": "logo",
-   "genre": "devanagari_logo"
+   "genre": "devanagari_logo",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "kanji_seal": {
    "state": "done",
@@ -1267,7 +1300,8 @@
    "fidelity_cc": -0.3759,
    "slug": "kanji_seal",
    "kind": "logo",
-   "genre": "kanji_seal"
+   "genre": "kanji_seal",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "vintage_engraved_badge": {
    "state": "done",
@@ -1304,7 +1338,8 @@
    "fidelity_cc": -0.0717,
    "slug": "vintage_engraved_badge",
    "kind": "logo",
-   "genre": "vintage_engraved_badge"
+   "genre": "vintage_engraved_badge",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "gradient_mascot": {
    "state": "done",
@@ -1341,7 +1376,8 @@
    "fidelity_cc": 0.0009,
    "slug": "gradient_mascot",
    "kind": "logo",
-   "genre": "gradient_mascot"
+   "genre": "gradient_mascot",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "outline_lineart_logo": {
    "state": "done",
@@ -1378,7 +1414,8 @@
    "fidelity_cc": -1.1659,
    "slug": "outline_lineart_logo",
    "kind": "logo",
-   "genre": "outline_lineart_logo"
+   "genre": "outline_lineart_logo",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "kanji_brush": {
    "state": "done",
@@ -1415,7 +1452,8 @@
    "fidelity_cc": -0.4841,
    "slug": "kanji_brush",
    "kind": "logo",
-   "genre": "kanji_brush"
+   "genre": "kanji_brush",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   },
   "chalkboard_lettering": {
    "state": "done",
@@ -1452,7 +1490,8 @@
    "fidelity_cc": -0.2209,
    "slug": "chalkboard_lettering",
    "kind": "logo",
-   "genre": "chalkboard_lettering"
+   "genre": "chalkboard_lettering",
+   "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9"
   }
  }
 }

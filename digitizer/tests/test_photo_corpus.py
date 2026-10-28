@@ -201,7 +201,7 @@ STUB_OK = (
     "'state':'done','stats':{'stitch_count':3,'trims':0,'color_changes':0,'size_mm':[80,40],'thread_m_total':0.1},"
     "'warnings':[],'preflight':{'grade':'A','score':100,'metrics':{'raw_score':100}},"
     "'design':{'stitches':[{'x':0,'y':0},{'x':10,'y':0},{'x':10,'y':10}],'colors':[{'r':0,'g':0,'b':0}]},"
-    "'_meta':{'elapsed_s':0.1,'stamps':{},'class':'photo_subject','class_conf':0.8}}))")
+    "'_meta':{'elapsed_s':0.1,'stamps':{},'class':'photo_subject','class_conf':0.8,'tree_sha':s.get('tree_sha')}}))")
 STUB_HANG = "import time; time.sleep(30)"
 
 
@@ -245,6 +245,97 @@ def test_capture_row_without_a_photo_is_an_error_row_with_a_placeholder(tmp_path
     photos.mkdir()
     run = pc.capture([ROW], photos, tmp_path, tmp_path / "run", "abc", 10, 1)
     assert run["rows"]["a"]["state"] == "error" and (tmp_path / "run" / "a.png").exists()
+
+
+def test_capture_refuses_a_label_folder_holding_another_trees_rows(tmp_path, monkeypatch):
+    """Review Critical 1: `--label base` reused after main moved kept the OLD
+    tree's rows under the NEW sha (reproduced: sha_NEW with sha_OLD's
+    stitches). A row carries the tree that made it; another sha is refused."""
+    monkeypatch.setattr(pc, "WORKER", STUB_OK)
+    photos, out = _photos(tmp_path), tmp_path / "run"
+    run = pc.capture([ROW], photos, tmp_path, out, "sha_OLD", 10, 1)
+    assert run["rows"]["a"]["tree_sha"] == "sha_OLD"
+    with pytest.raises(SystemExit, match="sha_OLD"):
+        pc.capture([ROW], photos, tmp_path, out, "sha_NEW", 10, 1)
+
+
+def test_capture_refuses_resummarising_another_trees_worker_output(tmp_path, monkeypatch):
+    monkeypatch.setattr(pc, "WORKER", STUB_OK)
+    photos, out = _photos(tmp_path), tmp_path / "run"
+    pc.capture([ROW], photos, tmp_path, out, "sha_OLD", 10, 1)
+    (out / "a.row.json").unlink()
+    assert json.loads((out / "a.json").read_text())["_meta"]["tree_sha"] == "sha_OLD"
+    with pytest.raises(SystemExit, match="sha_OLD"):
+        pc.capture([ROW], photos, tmp_path, out, "sha_NEW", 10, 1)
+
+
+def test_tree_request_is_built_by_the_tree_under_test(tmp_path):
+    """Review Important 2: under `--base` the base tree ran HEAD's Studio
+    request, so a PR that adds a request field errors every base row and one
+    that changes a value hides the change. The request comes from the tree's
+    own `tools.fremont_triage.studio_request`; a tree without one gets the
+    fallback."""
+    (tmp_path / "tools").mkdir()
+    (tmp_path / "tools" / "__init__.py").write_text("")
+    (tmp_path / "tools" / "fremont_triage.py").write_text(
+        "def studio_request(width_mm):\n    return {'target_width_mm': width_mm, 'marker': 'from-tree'}\n")
+    req = pc.tree_request(tmp_path, {"marker": "fallback"})
+    assert req["marker"] == "from-tree" and req["target_width_mm"] == pc.WIDTH_MM and req["garment_id"] == pc.GARMENT
+    assert pc.tree_request(tmp_path / "nowhere", {"marker": "fallback"}) == {"marker": "fallback"}
+
+
+def test_fetch_writes_the_manifest_after_every_row(tmp_path):
+    """Review Important 3: the manifest was written once at the end, so a crash
+    on row 2 lost row 1's entry and the next run downloaded it again."""
+    api = _fake_api()
+
+    def get(params):
+        if params["titles"] == "File:y.jpg":
+            raise KeyboardInterrupt   # the kind of crash fetch does not catch
+        return api(params)
+    rows = [dict(ROW), dict(ROW, slug="b", title="File:y.jpg")]
+    with pytest.raises(KeyboardInterrupt):
+        pc.fetch(rows, tmp_path, get=get, download=lambda url: b"\xff\xd8data")
+    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert "a" in manifest
+
+
+def test_the_tool_widens_its_stdout_for_commons_titles():
+    """night_neon's title holds U+014D; a cp1252 stdout raised on the fetch
+    print and the run died mid-way. `main()` calls `utf8_console()` first."""
+    import ast
+    tree = ast.parse(Path(pc.__file__).read_text(encoding="utf-8"))
+    assert any(isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "utf8_console"
+               for n in ast.walk(tree))
+
+
+STUB_EMPTY = STUB_OK.replace("'stitch_count':3", "'stitch_count':0").replace(
+    "'stitches':[{'x':0,'y':0},{'x':10,'y':0},{'x':10,'y':10}]", "'stitches':[]")
+
+
+def test_an_empty_design_has_no_fidelity_numbers(tmp_path, monkeypatch):
+    """Review Important 4 / plan Review Focus: an empty design rendered as the
+    8x8 frame and scored cc 0.0 — better than 29 real rows. stitches 0 means
+    SSIM, dE and cc are None, never a number."""
+    monkeypatch.setattr(pc, "WORKER", STUB_EMPTY)
+    run = pc.capture([ROW], _photos(tmp_path), tmp_path, tmp_path / "run", "abc", 10, 1)
+    row = run["rows"]["a"]
+    assert row["stitches"] == 0 and row["fidelity_cc"] is None and row["ssim"] is None and row["dE"] is None
+
+
+def test_sxs_page_defines_the_null_of_fidelity_cc(tmp_path):
+    """Review Important 5 / spec: the one chance-corrected figure defines its null in the page."""
+    page = pc.build_sxs(_run(tmp_path, "b", "abc1234"), _run(tmp_path, "a", "def5678"), [ROW],
+                        tmp_path / "p", {})
+    assert "blank fabric" in page and "None when the design is empty" in page
+
+
+def test_corpus_authors_are_plain_text():
+    """Review Important 6: ten committed rows carried truncated HTML
+    (`<span title="German photographe`) or a cut-off name as the author."""
+    for r in pc.load_corpus():
+        assert "<" not in r["author"] and ">" not in r["author"], (r["slug"], r["author"])
+        assert not r["author"].endswith(("<", "at")), (r["slug"], r["author"])
 
 
 def test_request_config_is_the_studio_request_on_left_chest():
@@ -350,3 +441,19 @@ def test_baseline_summary_keeps_numbers_and_drops_images(tmp_path):
     assert "png" not in out and "dir" not in out
     row = out["rows"]["a"]
     assert row["state"] == "done" and "stitches" in row and "design" not in row
+
+
+def test_an_unstamped_worker_output_is_judged_by_the_folders_run_json(tmp_path, monkeypatch):
+    """Happened 2026-10-28: merging main moved the merge-base, and `--base
+    origin/main` re-summarised 5ff48c56's unstamped outputs under 5a3181dc
+    because an unstamped output was taken on trust. The folder's run.json
+    names the tree; an unstamped output must match it."""
+    monkeypatch.setattr(pc, "WORKER", STUB_OK.replace(",'tree_sha':s.get('tree_sha')", ""))
+    photos, out = _photos(tmp_path), tmp_path / "run"
+    pc.capture([ROW], photos, tmp_path, out, "sha_OLD", 10, 1)
+    assert "tree_sha" not in json.loads((out / "a.json").read_text())["_meta"]
+    (out / "a.row.json").unlink()
+    with pytest.raises(SystemExit, match="sha_OLD"):
+        pc.capture([ROW], photos, tmp_path, out, "sha_NEW", 10, 1)
+    run = pc.capture([ROW], photos, tmp_path, out, "sha_OLD", 10, 1)
+    assert run["rows"]["a"]["tree_sha"] == "sha_OLD"
