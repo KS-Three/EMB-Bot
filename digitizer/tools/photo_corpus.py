@@ -40,6 +40,10 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:   # the annotation below; numpy itself is imported where used
+    import numpy as np
 
 DIGITIZER = Path(__file__).resolve().parent.parent
 TESTDATA = DIGITIZER / "testdata"
