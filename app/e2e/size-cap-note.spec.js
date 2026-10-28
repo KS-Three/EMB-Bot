@@ -1,7 +1,9 @@
 // A typed size the placement cannot take must say so. Height is aspect-locked
 // to width, so on a left-chest name a typed 1-inch height is solved to a width
-// past the 4-inch placement and capped — and until 2026-10-08 the field just
-// went back to "0.29" with no word of why or what would make it bigger.
+// past the placement and capped — and until 2026-10-08 the field just went
+// back to "0.29" with no word of why or what would make it bigger. The bound
+// is the PLACEMENT box since 2026-10-27 (lib/placement.js): the pro's 96 mm
+// left chest, 3.78 in, not the inch table's 4.00.
 import { test, expect } from "@playwright/test";
 import { startStudio, typeText } from "./helpers.js";
 
@@ -16,7 +18,7 @@ test("a typed height past the placement explains the cap", async ({ page }) => {
 
   const note = page.locator(".capnote");
   await expect(note).toBeVisible();
-  await expect(note).toContainText("Capped at 4.00 in wide");
+  await expect(note).toContainText("Capped at 3.78 in wide");
   await expect(note).toContainText("Left Chest");
   await expect(height).not.toHaveValue("1");
 
