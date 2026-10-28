@@ -123,7 +123,7 @@ def _output(stitches=10, colors=2, warnings=(), state="done", size=(80.0, 50.0))
                       "size_mm": list(size), "thread_m_total": 1.0},
             "warnings": list(warnings),
             "preflight": {"grade": "F", "score": 0, "metrics": {"raw_score": -38}},
-            "design": {"stitches": [], "colors": [{"r": 0, "g": 0, "b": 0}] * colors},
+            "design": {"stitches": [], "colors": [{"r": i, "g": 0, "b": 0} for i in range(colors)]},
             "_meta": {"elapsed_s": 12.5, "stamps": {"plan_stitches": 9.0},
                       "class": "photo_scene", "class_conf": 0.9}}
 
@@ -138,6 +138,31 @@ def test_summarise_reads_counts_cap_and_route():
     assert row["score_raw"] == -38 and row["grade"] == "F"
     assert row["st_per_cm2"] == pytest.approx(10 / 40)
     assert row["class"] == "photo_scene" and row["wall_s"] == 12.5
+
+
+def test_summarise_counts_distinct_threads_not_colour_blocks():
+    """`design.colors` is the colour-BLOCK sequence (one entry per colour change,
+    the same thread repeating), not the thread list: architecture on main had
+    14 blocks over 6 threads and must read 6/6, cap kept."""
+    out = _output(colors=6)
+    out["design"]["colors"] = [{"r": c, "g": 0, "b": 0, "name": f"t{c}"} for c in (1, 2, 3, 4, 5, 6, 2, 1, 3, 1, 2, 3, 4, 1)]
+    out["stats"]["color_changes"] = 13
+    row = pc.summarise(out, cap=6)
+    assert row["colors_used"] == 6 and row["cap_kept"] is True and row["color_changes"] == 13
+
+
+def test_capture_resummarises_an_existing_worker_output_instead_of_rerunning(tmp_path, monkeypatch):
+    """A row whose `<slug>.json` exists but whose `.row.json` was deleted is
+    re-summarised from that output (the slow part is the worker; the
+    summary is derived) — so an instrument fix re-reads an hours-long capture
+    in seconds."""
+    monkeypatch.setattr(pc, "WORKER", STUB_OK)
+    photos, out = _photos(tmp_path), tmp_path / "run"
+    pc.capture([ROW], photos, tmp_path, out, "abc", 10, 1)
+    (out / "a.row.json").unlink()
+    monkeypatch.setattr(pc, "WORKER", "raise SystemExit('must not run')")
+    run = pc.capture([ROW], photos, tmp_path, out, "abc", 10, 1)
+    assert run["rows"]["a"]["stitches"] == 3 and (out / "a.row.json").exists()
 
 
 def test_summarise_route_without_faces_follows_the_class():

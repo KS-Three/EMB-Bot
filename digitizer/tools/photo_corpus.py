@@ -263,6 +263,21 @@ def fidelity(photo_bgr, render_bgr, fabric_bgr) -> dict:
             "fidelity_cc": None if cc is None else round(cc, 4)}
 
 
+def distinct_threads(colors: list) -> set:
+    """The distinct thread colours in a design's `colors` list. That list is
+    the colour-BLOCK sequence — one entry per colour change, so a thread the
+    design returns to appears again — not the thread list; architecture on
+    main (2026-10-27) had 14 blocks over 6 threads. Entries are {r,g,b,...}
+    dicts or [r,g,b] lists."""
+    out = set()
+    for c in colors:
+        if isinstance(c, dict):
+            out.add((c.get("r"), c.get("g"), c.get("b")))
+        else:
+            out.add(tuple(c[:3]))
+    return out
+
+
 def summarise(output: dict, cap: int) -> dict:
     """The row's instrument numbers from one worker output (`state, stats,
     warnings, preflight, design, _meta`). A non-done row carries its state,
@@ -292,7 +307,7 @@ def summarise(output: dict, cap: int) -> dict:
     w, h = (stats.get("size_mm") or [0, 0])[:2]
     area_cm2 = (w or 0) * (h or 0) / 100.0
     stitches = stats.get("stitch_count")
-    colors_used = len(design.get("colors") or [])
+    colors_used = len(distinct_threads(design.get("colors") or []))
     row.update({
         "route": route, "stitches": stitches, "trims": stats.get("trims"),
         "color_changes": stats.get("color_changes"), "colors_used": colors_used,
@@ -414,7 +429,8 @@ def capture(rows: list[dict], photos: Path, tree: Path, out: Path, tree_sha: str
     (the worker's output), `<slug>.png` (render, or a placeholder naming the
     failure), `<slug>.row.json` (summarise + fidelity + the corpus row's kind
     and genre). `out/run.json` = {tree_sha, date, config, timeout_s, procs,
-    rows}. A row whose `.row.json` exists is kept (resume)."""
+    rows}. A row whose `.row.json` exists is kept (resume); one whose `<slug>.json`
+    exists is re-summarised from it without re-running the worker."""
     from concurrent.futures import ThreadPoolExecutor
     from datetime import date
     out = Path(out)
@@ -429,8 +445,13 @@ def capture(rows: list[dict], photos: Path, tree: Path, out: Path, tree_sha: str
         if row_json.exists():
             return slug, json.loads(row_json.read_text(encoding="utf-8"))
         photo = photo_path(photos, slug)
-        if photo is not None:
-            output = run_row(tree, photo, out / f"{slug}.json", cfg, timeout)
+        worker_json = out / f"{slug}.json"
+        if worker_json.exists():
+            # the worker's output is the slow, raw record; the summary is
+            # derived from it, so an instrument fix re-reads rather than re-runs
+            output = json.loads(worker_json.read_text(encoding="utf-8"))
+        elif photo is not None:
+            output = run_row(tree, photo, worker_json, cfg, timeout)
         else:
             output = {"state": "error", "error": f"no image: {slug}.jpg|.png (run fetch)",
                       "_meta": {"elapsed_s": 0.0}}

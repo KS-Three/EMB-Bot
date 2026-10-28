@@ -1,6 +1,6 @@
 {
  "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9",
- "date": "2026-10-27",
+ "date": "2026-10-28",
  "config": {
   "target_width_mm": 80.0,
   "max_colors": 6,
@@ -44,9 +44,9 @@
    "stitches": 31566,
    "trims": 105,
    "color_changes": 8,
-   "colors_used": 9,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.6,
     53.9
@@ -81,9 +81,9 @@
    "stitches": 41192,
    "trims": 252,
    "color_changes": 9,
-   "colors_used": 10,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.6,
     53.9
@@ -118,9 +118,9 @@
    "stitches": 19766,
    "trims": 109,
    "color_changes": 13,
-   "colors_used": 14,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.6,
     53.9
@@ -155,9 +155,9 @@
    "stitches": 36053,
    "trims": 165,
    "color_changes": 15,
-   "colors_used": 16,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.8,
     53.7
@@ -192,7 +192,7 @@
    "stitches": 33173,
    "trims": 95,
    "color_changes": 14,
-   "colors_used": 15,
+   "colors_used": 8,
    "cap": 6,
    "cap_kept": false,
    "size_mm": [
@@ -266,9 +266,9 @@
    "stitches": 25362,
    "trims": 99,
    "color_changes": 10,
-   "colors_used": 11,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.6,
     45.6
@@ -303,7 +303,7 @@
    "stitches": 25850,
    "trims": 46,
    "color_changes": 2,
-   "colors_used": 3,
+   "colors_used": 2,
    "cap": 6,
    "cap_kept": true,
    "size_mm": [
@@ -340,7 +340,7 @@
    "stitches": 32873,
    "trims": 63,
    "color_changes": 14,
-   "colors_used": 15,
+   "colors_used": 13,
    "cap": 6,
    "cap_kept": false,
    "size_mm": [
@@ -377,9 +377,9 @@
    "stitches": 50652,
    "trims": 132,
    "color_changes": 11,
-   "colors_used": 12,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.6,
     107.2
@@ -414,9 +414,9 @@
    "stitches": 29005,
    "trims": 187,
    "color_changes": 12,
-   "colors_used": 13,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.6,
     60.6
@@ -451,7 +451,7 @@
    "stitches": 24433,
    "trims": 117,
    "color_changes": 10,
-   "colors_used": 11,
+   "colors_used": 7,
    "cap": 6,
    "cap_kept": false,
    "size_mm": [
@@ -488,7 +488,7 @@
    "stitches": 19338,
    "trims": 7,
    "color_changes": 2,
-   "colors_used": 3,
+   "colors_used": 2,
    "cap": 6,
    "cap_kept": true,
    "size_mm": [
@@ -548,9 +548,9 @@
    "stitches": 41836,
    "trims": 232,
    "color_changes": 9,
-   "colors_used": 10,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.5,
     60.5
@@ -585,9 +585,9 @@
    "stitches": 59784,
    "trims": 130,
    "color_changes": 8,
-   "colors_used": 9,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.5,
     117.9
@@ -622,7 +622,7 @@
    "stitches": 14314,
    "trims": 81,
    "color_changes": 13,
-   "colors_used": 14,
+   "colors_used": 8,
    "cap": 6,
    "cap_kept": false,
    "size_mm": [
@@ -659,9 +659,9 @@
    "stitches": 34005,
    "trims": 55,
    "color_changes": 7,
-   "colors_used": 8,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.8,
     99.7
@@ -696,7 +696,7 @@
    "stitches": 11375,
    "trims": 23,
    "color_changes": 2,
-   "colors_used": 3,
+   "colors_used": 2,
    "cap": 6,
    "cap_kept": true,
    "size_mm": [
@@ -807,7 +807,7 @@
    "stitches": 32851,
    "trims": 86,
    "color_changes": 3,
-   "colors_used": 4,
+   "colors_used": 2,
    "cap": 6,
    "cap_kept": true,
    "size_mm": [
@@ -844,7 +844,7 @@
    "stitches": 1418,
    "trims": 34,
    "color_changes": 2,
-   "colors_used": 3,
+   "colors_used": 2,
    "cap": 6,
    "cap_kept": true,
    "size_mm": [
@@ -881,9 +881,9 @@
    "stitches": 38647,
    "trims": 160,
    "color_changes": 9,
-   "colors_used": 10,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.6,
     101.2
@@ -918,7 +918,7 @@
    "stitches": 18548,
    "trims": 10,
    "color_changes": 5,
-   "colors_used": 6,
+   "colors_used": 4,
    "cap": 6,
    "cap_kept": true,
    "size_mm": [
@@ -1029,9 +1029,9 @@
    "stitches": 37779,
    "trims": 61,
    "color_changes": 6,
-   "colors_used": 7,
+   "colors_used": 5,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.6,
     111.9
@@ -1103,7 +1103,7 @@
    "stitches": 40315,
    "trims": 79,
    "color_changes": 7,
-   "colors_used": 8,
+   "colors_used": 7,
    "cap": 6,
    "cap_kept": false,
    "size_mm": [
@@ -1140,7 +1140,7 @@
    "stitches": 11700,
    "trims": 19,
    "color_changes": 8,
-   "colors_used": 9,
+   "colors_used": 7,
    "cap": 6,
    "cap_kept": false,
    "size_mm": [
@@ -1177,9 +1177,9 @@
    "stitches": 57878,
    "trims": 214,
    "color_changes": 7,
-   "colors_used": 8,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     77.7,
     99.8
@@ -1288,7 +1288,7 @@
    "stitches": 33931,
    "trims": 178,
    "color_changes": 3,
-   "colors_used": 4,
+   "colors_used": 3,
    "cap": 6,
    "cap_kept": true,
    "size_mm": [
@@ -1325,7 +1325,7 @@
    "stitches": 24498,
    "trims": 10,
    "color_changes": 4,
-   "colors_used": 5,
+   "colors_used": 4,
    "cap": 6,
    "cap_kept": true,
    "size_mm": [
@@ -1399,9 +1399,9 @@
    "stitches": 16319,
    "trims": 123,
    "color_changes": 9,
-   "colors_used": 10,
+   "colors_used": 6,
    "cap": 6,
-   "cap_kept": false,
+   "cap_kept": true,
    "size_mm": [
     80.5,
     78.2
