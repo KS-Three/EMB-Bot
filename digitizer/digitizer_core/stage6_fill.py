@@ -35,7 +35,7 @@ import shapely
 from shapely import affinity
 from shapely.geometry import LineString, Point, Polygon, box
 
-from . import fill_section_travel, machine, stitches
+from . import fill_section_travel, machine, shape_memo, stitches
 from .stitches import StitchRun
 
 # Spans on adjacent rows count as connected when they overlap by at least this
@@ -1909,6 +1909,7 @@ def _plan_sections(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
     return best
 
 
+@shape_memo.memoized("stitch_shape")
 def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_mm: float, stitch_mm: float, underlay_style: str,
                  trim_at_mm: float,

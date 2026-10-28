@@ -71,7 +71,7 @@ from shapely.geometry import Point as SPoint
 from shapely.ops import unary_union
 from .fast_skimage import medial_axis  # skimage's, tables cached — byte-identical
 
-from . import machine, stitches
+from . import machine, shape_memo, stitches
 from .shapefield import build_shape_field, hole_px
 from .stitches import StitchRun
 
@@ -6438,6 +6438,7 @@ def _cut_runs_off_counters(runs: list[StitchRun], held: Polygon, clear_mm: float
     return out
 
 
+@shape_memo.memoized("satin_shape")
 def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 trim_at_mm: float,
                 start_near: tuple[float, float] | None = None,

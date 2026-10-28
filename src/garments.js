@@ -76,6 +76,7 @@ const units =
   };
 
   // ---- Placements (2026-10-27) ---------------------------------------------
+  // Review table of every garment x placement box, measured vs seeded: docs/placement-boxes-2026-10-28.md (node tools/placement-table.mjs).
   // WHERE on the garment the design sits, and the biggest box that location
   // takes. Kent, 2026-10-27: the Studio was showing a "suggested" size (which
   // only ever meant the hoop) when it should pick the design's size from the
