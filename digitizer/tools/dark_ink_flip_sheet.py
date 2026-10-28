@@ -512,10 +512,13 @@ def report_cmd(a) -> int:
                 row["md5_on_before"] = bon["stats"]["md5"]
                 row["off_identical_across_engines"] = boff["stats"]["md5"] == off["stats"]["md5"]
         rows.append(row)
-    hero = a.hero if a.hero in cells else None
+    # Heroes get the full treatment (whole tiles, colour blocks, one window per
+    # dark-ink region against the artwork); the first keeps the single-hero keys.
+    heroes = [h for h in (a.hero or []) if h in cells]
     sheet = {"date": a.date, "flag": FLAG, "width_mm": WIDTH_MM, "garment": GARMENT,
              "engine": _engine_sha(), "before": a.before_label if before is not None else None,
-             "rows": rows, "missing": missing, "hero": hero}
+             "rows": rows, "missing": missing, "hero": heroes[0] if heroes else None,
+             "heroes": heroes, "hero_detail": {}}
     three = before is not None
     html = [f"<!doctype html><meta charset='utf-8'><title>{FLAG} OFF | ON</title>",
             "<style>body{font:14px system-ui,sans-serif;margin:16px;max-width:1500px}"
@@ -532,19 +535,19 @@ def report_cmd(a) -> int:
             + "<b>No pro file exists for any fixture here, so there is no pro column</b>: the flip is read "
             "OFF against ON on our own fixtures. Counts are the DST's own records (pystitch): stitches, "
             "TRIM records, colour blocks; regions from the plan.</p>"]
-    if hero:
+    for hero in heroes:
         off, on = cells[hero]
         bon = bcells[hero][1] if hero in bcells else None
         ht = hero_tiles(hero, off, on, out, before=bon)
-        sheet["hero_tiles"] = {k: v.name for k, v in ht["tiles"].items()}
         moved = moved_strokes(off, on)
-        sheet["moved"] = moved
+        detail = {"hero_tiles": {k: v.name for k, v in ht["tiles"].items()}, "moved": moved,
+                  "diff_points": ht["diff_points"], "diff_points_before": ht.get("diff_points_before"),
+                  "window_mm": ht.get("window_mm"), "changed_box_mm": ht.get("changed_box_mm")}
         if bon is not None:
-            sheet["moved_before"] = moved_strokes(off, bon)
-        sheet["diff_points"] = ht["diff_points"]
-        sheet["diff_points_before"] = ht.get("diff_points_before")
-        sheet["window_mm"] = ht.get("window_mm")
-        sheet["changed_box_mm"] = ht.get("changed_box_mm")
+            detail["moved_before"] = moved_strokes(off, bon)
+        sheet["hero_detail"][hero] = detail
+        if hero == heroes[0]:
+            sheet.update(detail)
         r = summary_row(hero, off, on)
         rb = summary_row(hero, bcells[hero][0], bon)["on"] if bon is not None else None
         html.append(f"<h2>{hero}</h2>")
@@ -587,7 +590,7 @@ def report_cmd(a) -> int:
         if bon is not None:
             html.append("<div><b>ON before</b>" + _blocks_html(block_table(bon)) + "</div>")
         html.append(f"<div><b>ON{' after' if three else ''}</b>" + _blocks_html(block_table(on)) + "</div></div>")
-        for title, mv in ((("What moved, OFF -> ON before", sheet["moved_before"]),) if bon is not None else ()) + (
+        for title, mv in ((("What moved, OFF -> ON before", detail["moved_before"]),) if bon is not None else ()) + (
                 (f"What moved, OFF -> ON{' after' if three else ''}", moved),):
             html.append(f"<h3>{title}</h3>")
             if not any((mv["blocks_gone"], mv["shapes_moved"], mv["dropped"], mv["added"], mv["dark"])):
@@ -627,7 +630,7 @@ def report_cmd(a) -> int:
     sheet["moved_fixtures"] = {}
     for f, (off, on) in cells.items():
         bon = bcells[f][1] if f in bcells else None
-        if f == hero:
+        if f in heroes:
             continue
         if off["stats"]["md5"] == on["stats"]["md5"] and (bon is None or bon["stats"]["md5"] == off["stats"]["md5"]):
             continue
@@ -725,7 +728,8 @@ def parse_args(argv=None):
     p.add_argument("--fixtures", nargs="*")
     p.add_argument("--cache", default=DEFAULT_CACHE)
     p.add_argument("--out", default=DEFAULT_OUT)
-    p.add_argument("--hero", default=HERO)
+    p.add_argument("--hero", nargs="+", default=[HERO],
+                   help="fixture(s) given the full treatment; one window per dark-ink region")
     p.add_argument("--before", default=None,
                    help="a second cache from an earlier engine: its ON is shown as 'ON before', its OFF md5 checked")
     p.add_argument("--before-label", default="the engine before the fixes",
