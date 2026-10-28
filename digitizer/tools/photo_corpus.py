@@ -7,9 +7,9 @@ needs to be building tools that help and improve ALL photos." Asked what he
 wants to look at to judge a photo PR: "Sxs comparison w/ an Artifact that I
 can say better or worse." Spec: docs/superpowers/specs/2026-10-27-photo-corpus-sxs-design.md.
 
-Four commands, run from `digitizer/` as `python -m tools.photo_corpus ...`:
+Five commands, run from `digitizer/` as `python -m tools.photo_corpus ...`:
 
-    fetch                      testdata/photo/corpus/corpus.json -> <slug>.jpg + manifest.json
+    fetch                      testdata/photo/corpus/corpus.json -> <slug>.jpg|.png + manifest.json
                                (Commons API by title; the LIVE licence is re-read and a row
                                whose licence left the allowed set is refused, not downloaded)
     capture --label L [--base REF | --tree DIR]
@@ -23,6 +23,8 @@ Four commands, run from `digitizer/` as `python -m tools.photo_corpus ...`:
                                "Export verdicts" downloads the JSON `tally` files
     tally VERDICTS.json        copies the verdicts under docs/scoreboards/photo-corpus/ and
                                appends one tally line per before/after pair
+    summary RUN_DIR            the run's numbers without designs or images ->
+                               docs/scoreboards/photo-corpus/baseline-<sha7>.json
 
 All numbers are instrument readings, not quality claims (ROADMAP gate 4). The
 verdict column is Kent's. Nothing downloaded or rendered is ever committed:
@@ -82,6 +84,35 @@ COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 USER_AGENT = "EMB-Bot-corpus/1.0 (https://github.com/KS-Three/EMB-Bot)"
 THUMB_WIDTH = 1600
 OK_MIMES = ("image/jpeg", "image/png")
+EXT_BY_MIME = {"image/jpeg": ".jpg", "image/png": ".png"}
+
+
+def photo_path(photos: Path, slug: str) -> Path | None:
+    """`<slug>.png` or `<slug>.jpg` under `photos`, whichever exists (logo rows
+    are mostly PNG, photo rows JPEG; the extension follows the Commons mime)."""
+    for ext in (".png", ".jpg"):
+        p = Path(photos) / f"{slug}{ext}"
+        if p.exists():
+            return p
+    return None
+
+
+def load_photo(path: Path, fabric_bgr) -> "np.ndarray | None":
+    """BGR pixels with any alpha composited onto the fabric colour, so a
+    transparent logo is compared against what the garment would show, not
+    against the black cv2.imread() would put behind it."""
+    import cv2
+    import numpy as np
+    img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+    if img is None:
+        return None
+    if img.ndim == 2:
+        return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    if img.shape[2] == 4:
+        a = img[:, :, 3:4].astype(np.float32) / 255.0
+        fabric = np.array(fabric_bgr, np.float32).reshape(1, 1, 3)
+        return (img[:, :, :3].astype(np.float32) * a + fabric * (1 - a)).round().astype(np.uint8)
+    return img[:, :, :3]
 
 
 def _retry(fn, tries: int = 6, sleep=time.sleep):
@@ -137,7 +168,7 @@ def strip_html(s: str) -> str:
 
 
 def fetch(rows: list[dict], out: Path, get=_http_json, download=_http_bytes) -> dict:
-    """Download every row's image as `<slug>.jpg` and write `manifest.json` beside
+    """Download every row's image as `<slug>.jpg|.png` (by mime) and write `manifest.json` beside
     them. The LIVE licence is read from the API and must still be in OK_LICENCES,
     else the row is skipped with the reason (a licence can change after it was
     listed; a public repo cannot carry what Commons no longer grants). Rows
@@ -151,8 +182,8 @@ def fetch(rows: list[dict], out: Path, get=_http_json, download=_http_bytes) -> 
     skipped: dict[str, str] = {}
     live = download is _http_bytes
     for r in rows:
-        slug, dest = r["slug"], out / f"{r['slug']}.jpg"
-        if slug in manifest and dest.exists():
+        slug = r["slug"]
+        if slug in manifest and photo_path(out, slug) is not None:
             skipped[slug] = "cached"
             continue
         try:
@@ -177,9 +208,10 @@ def fetch(rows: list[dict], out: Path, get=_http_json, download=_http_bytes) -> 
         except Exception as e:
             skipped[slug] = f"download: {e!r}"[:200]
             continue
+        dest = out / f"{slug}{EXT_BY_MIME[info['mime']]}"
         dest.write_bytes(data)
         manifest[slug] = {
-            "title": r["title"], "page": info.get("descriptionurl") or r["page"], "file_url": url,
+            "file": dest.name, "title": r["title"], "page": info.get("descriptionurl") or r["page"], "file_url": url,
             "author": strip_html((meta.get("Artist") or {}).get("value") or ""),
             "licence": licence, "orig_size": [info.get("width"), info.get("height")],
             "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(),
@@ -370,7 +402,7 @@ def _render_row(photo: Path, output: dict, png: Path, fabric_bgr) -> dict:
         return {}
     render = render_design(output["design"], px_per_mm=PXMM, fabric_bgr=fabric_bgr)
     cv2.imwrite(str(png), render)
-    photo_bgr = cv2.imread(str(photo))
+    photo_bgr = load_photo(photo, fabric_bgr)
     if photo_bgr is None:
         return {}
     return fidelity(photo_bgr, render, fabric_bgr)
@@ -396,11 +428,11 @@ def capture(rows: list[dict], photos: Path, tree: Path, out: Path, tree_sha: str
         row_json = out / f"{slug}.row.json"
         if row_json.exists():
             return slug, json.loads(row_json.read_text(encoding="utf-8"))
-        photo = Path(photos) / f"{slug}.jpg"
-        if photo.exists():
+        photo = photo_path(photos, slug)
+        if photo is not None:
             output = run_row(tree, photo, out / f"{slug}.json", cfg, timeout)
         else:
-            output = {"state": "error", "error": f"no image: {photo.name} (run fetch)",
+            output = {"state": "error", "error": f"no image: {slug}.jpg|.png (run fetch)",
                       "_meta": {"elapsed_s": 0.0}}
             (out / f"{slug}.json").write_text(json.dumps(output), encoding="utf-8")
         summary = summarise(output, cap)
@@ -448,12 +480,22 @@ def load_run(run_dir: Path) -> dict:
     return run
 
 
+def baseline_summary(run: dict) -> dict:
+    """A loaded run minus its images and paths: tree_sha, date, config,
+    timeout_s, procs and the per-row instrument numbers. This is what
+    `docs/scoreboards/photo-corpus/baseline-<sha7>.json` holds."""
+    keep = ("tree_sha", "date", "config", "timeout_s", "procs")
+    out = {k: run.get(k) for k in keep}
+    out["rows"] = {slug: {k: v for k, v in row.items() if k != "design"} for slug, row in run["rows"].items()}
+    return out
+
+
 def _data_uri(path: Path | None, max_side: int | None = None) -> str | None:
     import base64
     import cv2
     if path is None or not Path(path).exists():
         return None
-    img = cv2.imread(str(path))
+    img = load_photo(path, fabric_bgr=tuple(reversed(request_config().get("garment_rgb") or [235, 232, 223])))
     if img is None:
         return None
     if max_side:
@@ -533,7 +575,7 @@ td.n{{text-align:right;font-variant-numeric:tabular-nums}} .good{{color:#7c7}} .
             slug = r["slug"]
             rb, ra = before["rows"].get(slug), after["rows"].get(slug)
             m = manifest.get(slug, {})
-            thumb = _data_uri(Path(photos) / f"{slug}.jpg", 360) or ""
+            thumb = _data_uri(photo_path(photos, slug), 360) or ""
             cells = []
             for tag, run, rr in (("before", before, rb), ("after", after, ra)):
                 uri = _data_uri(run["png"].get(slug))
@@ -664,6 +706,9 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--photos", type=Path, default=CORPUS_DIR)
     s.add_argument("--out", type=Path, help="default corpus_runs/sxs-<before7>-<after7>.html")
     s.add_argument("--allow-same-sha", action="store_true")
+    m = sub.add_parser("summary", help="a run's numbers without designs or images (the baseline-<sha7>.json record)")
+    m.add_argument("run", type=Path)
+    m.add_argument("--out", type=Path, help="default docs/scoreboards/photo-corpus/baseline-<sha7>.json")
     t = sub.add_parser("tally", help="file an exported verdicts json under docs/scoreboards/photo-corpus")
     t.add_argument("verdicts", type=Path)
     t.add_argument("--out-dir", type=Path, default=SCOREBOARD_DIR)
@@ -688,6 +733,16 @@ def main(argv: list[str] | None = None) -> int:
         for r in run["rows"].values():
             states[r["state"]] = states.get(r["state"], 0) + 1
         print(f"run {a.label} at {run['tree_sha'][:8]}: {states} -> {out}")
+        return 0
+    if a.cmd == "summary":
+        summary = baseline_summary(load_run(a.run))
+        out = a.out or SCOREBOARD_DIR / f"baseline-{summary['tree_sha'][:7]}.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
+        states = {}
+        for r in summary["rows"].values():
+            states[r["state"]] = states.get(r["state"], 0) + 1
+        print(f"wrote {out}: {len(summary['rows'])} rows {states}")
         return 0
     if a.cmd == "sxs":
         before, after = load_run(a.before), load_run(a.after)

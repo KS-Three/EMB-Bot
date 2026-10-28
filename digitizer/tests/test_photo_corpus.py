@@ -287,3 +287,41 @@ def test_tally_is_idempotent_per_sha_pair(tmp_path):
     readme = (tmp_path / "README.md").read_text(encoding="utf-8")
     assert readme.count("aaa1111") == 1 and (tmp_path / "2026-10-27-aaa1111-bbb2222.json").exists()
     assert "instrument readings" in readme and "| 0 / 0 / 1 |" in readme and "halo" not in readme
+
+
+# --- logo rows: PNG by mime, alpha composited onto the fabric ------------------
+
+def test_fetch_names_a_png_row_by_its_mime(tmp_path):
+    r = pc.fetch([ROW], tmp_path, get=_fake_api(mime="image/png"), download=lambda url: b"\x89PNGbytes")
+    assert r["fetched"] == ["a"]
+    assert (tmp_path / "a.png").read_bytes().startswith(b"\x89PNG") and not (tmp_path / "a.jpg").exists()
+    m = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))["a"]
+    assert m["file"] == "a.png"
+
+
+def test_photo_path_finds_png_or_jpg(tmp_path):
+    (tmp_path / "a.png").write_bytes(b"x")
+    (tmp_path / "b.jpg").write_bytes(b"x")
+    assert pc.photo_path(tmp_path, "a") == tmp_path / "a.png"
+    assert pc.photo_path(tmp_path, "b") == tmp_path / "b.jpg"
+    assert pc.photo_path(tmp_path, "c") is None
+
+
+def test_load_photo_composites_alpha_onto_the_fabric(tmp_path):
+    import cv2
+    rgba = np.zeros((4, 4, 4), np.uint8)
+    rgba[:, :, :3] = (0, 0, 255)      # red ink everywhere ...
+    rgba[1:3, 1:3, 3] = 255           # ... but opaque only in the middle
+    cv2.imwrite(str(tmp_path / "a.png"), rgba)
+    bgr = pc.load_photo(tmp_path / "a.png", fabric_bgr=(10, 20, 30))
+    assert bgr.shape == (4, 4, 3)
+    assert tuple(bgr[0, 0]) == (10, 20, 30) and tuple(bgr[1, 1]) == (0, 0, 255)
+
+
+def test_baseline_summary_keeps_numbers_and_drops_images(tmp_path):
+    run = _run(tmp_path, "r", "abc1234", slugs=("a", "b"))
+    out = pc.baseline_summary(run)
+    assert out["tree_sha"] == "abc1234" and set(out["rows"]) == {"a", "b"}
+    assert "png" not in out and "dir" not in out
+    row = out["rows"]["a"]
+    assert row["state"] == "done" and "stitches" in row and "design" not in row
