@@ -1,0 +1,114 @@
+{
+ "what": "Kent's absolute grade per photo-corpus render, exported from the `grades` page (2026-10-28), on ONE tree. Not a before/after verdict set: `tally` files those. Ground truth for the 18 `kind: photo` corpus rows; every value here is Kent's reading, not an instrument's (ROADMAP gate 4). He typed the /10 score into the note box on 17 rows; `score_of_10` is that number, `note` is the box verbatim.",
+ "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9",
+ "request": "left_chest_80 (main baseline run, 2026-10-27, corpus_runs/main-5ff48c5)",
+ "renders": "corpus_runs/main-5ff48c5/<slug>.png (gitignored; never committed, repo is public)",
+ "date": "2026-10-28",
+ "kind": "photo",
+ "scale": [
+  "Great",
+  "Good",
+  "Okay",
+  "Bad",
+  "Terrible"
+ ],
+ "rows": {
+  "architecture": {
+   "grade": "Terrible",
+   "score_of_10": 1.0,
+   "note": "1"
+  },
+  "bw_street": {
+   "grade": "Terrible",
+   "score_of_10": 2.0,
+   "note": "2"
+  },
+  "dark_dog": {
+   "grade": "Good",
+   "score_of_10": 7.5,
+   "note": "7.5"
+  },
+  "fireworks": {
+   "grade": "Terrible",
+   "score_of_10": 1.0,
+   "note": "1"
+  },
+  "flower_macro": {
+   "grade": "Bad",
+   "score_of_10": 3.0,
+   "note": "3"
+  },
+  "food_plate": {
+   "grade": "Terrible",
+   "score_of_10": 1.0,
+   "note": "1"
+  },
+  "group_people": {
+   "grade": "Okay",
+   "score_of_10": 4.0,
+   "note": "4"
+  },
+  "landscape_lake": {
+   "grade": "Bad",
+   "score_of_10": 1.0,
+   "note": "1"
+  },
+  "night_neon": {
+   "grade": "Terrible",
+   "score_of_10": 2.0,
+   "note": "2"
+  },
+  "night_skyline": {
+   "grade": "Bad",
+   "score_of_10": 2.0,
+   "note": "2"
+  },
+  "oil_painting": {
+   "grade": "Okay",
+   "score_of_10": 4.0,
+   "note": "4"
+  },
+  "pencil_sketch": {
+   "grade": "Terrible",
+   "score_of_10": 1.0,
+   "note": "1"
+  },
+  "snow_highkey": {
+   "grade": "Bad",
+   "score_of_10": 1.0,
+   "note": "1"
+  },
+  "sports_action": {
+   "grade": "Good",
+   "score_of_10": 6.5,
+   "note": "6.5"
+  },
+  "stained_glass": {
+   "grade": "Terrible",
+   "score_of_10": null,
+   "note": "cant see image"
+  },
+  "underwater_reef": {
+   "grade": "Bad",
+   "score_of_10": 2.0,
+   "note": "2"
+  },
+  "vintage_sepia": {
+   "grade": "Okay",
+   "score_of_10": 5.0,
+   "note": "5"
+  },
+  "watercolor": {
+   "grade": "Okay",
+   "score_of_10": 4.0,
+   "note": "4"
+  }
+ },
+ "tally": {
+  "Great": 0,
+  "Good": 2,
+  "Okay": 4,
+  "Bad": 5,
+  "Terrible": 7
+ }
+}

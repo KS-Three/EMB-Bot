@@ -464,21 +464,25 @@ def test_an_unstamped_worker_output_is_judged_by_the_folders_run_json(tmp_path, 
 GRADES = ("Great", "Good", "Okay", "Bad", "Terrible")
 
 
-def test_kents_logo_grades_name_corpus_rows_on_one_tree():
-    """Kent graded the 21 logo-census renders (2026-10-28) on one tree, an
-    absolute Great..Terrible scale: not a `tally` verdict set, which is
-    better/same/worse across two trees. The file names its tree, every slug
-    is a `kind: logo` corpus row, every logo row is graded, and the grades
-    stay on the five-word scale."""
-    path = pc.SCOREBOARD_DIR / "grades-5ff48c5-2026-10-28.json"
-    g = json.loads(path.read_text(encoding="utf-8"))
-    assert g["tree_sha"].startswith("5ff48c56") and g["scale"] == list(GRADES)
-    logos = {r["slug"] for r in pc.load_corpus() if r["kind"] == "logo"}
-    assert set(g["rows"]) == logos
-    assert all(row["grade"] in GRADES for row in g["rows"].values())
-    assert g["tally"] == {k: sum(r["grade"] == k for r in g["rows"].values()) for k in GRADES}
+def test_kents_grades_files_name_every_corpus_row_of_their_kind_on_one_tree():
+    """Kent graded the 21 logo-census renders and the 18 photo rows (2026-10-28)
+    on one tree, an absolute Great..Terrible scale: not a `tally` verdict set,
+    which is better/same/worse across two trees. Each grades file names its
+    tree and kind, grades every corpus row of that kind and no other, keeps
+    to the five-word scale, carries a self-consistent tally, and is named in
+    the README. Both kinds exist for tree 5ff48c56."""
+    files = sorted(pc.SCOREBOARD_DIR.glob("grades-*.json"))
+    assert {f.name for f in files} >= {"grades-5ff48c5-logo-2026-10-28.json", "grades-5ff48c5-photo-2026-10-28.json"}
     readme = (pc.SCOREBOARD_DIR / "README.md").read_text(encoding="utf-8")
-    assert "grades-5ff48c5-2026-10-28.json" in readme
+    corpus = pc.load_corpus()
+    for f in files:
+        g = json.loads(f.read_text(encoding="utf-8"))
+        sha7, kind = f.name.split("-")[1:3]
+        assert g["tree_sha"].startswith(sha7) and g["kind"] == kind and g["scale"] == list(GRADES), f.name
+        assert set(g["rows"]) == {r["slug"] for r in corpus if r["kind"] == kind}, f.name
+        assert all(row["grade"] in GRADES for row in g["rows"].values()), f.name
+        assert g["tally"] == {k: sum(r["grade"] == k for r in g["rows"].values()) for k in GRADES}, f.name
+        assert f.name in readme, f.name
 
 
 def test_grades_page_grades_one_trees_rows_of_one_kind(tmp_path):

@@ -4,6 +4,7 @@
  "request": "left_chest_80 (main baseline run, 2026-10-27, under load: docs/logo-style-census-2026-10-27.md)",
  "renders": "scratch_commons_logos/renders/<slug>.png (gitignored; never committed, repo is public)",
  "date": "2026-10-28",
+ "kind": "logo",
  "scale": [
   "Great",
   "Good",
