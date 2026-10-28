@@ -318,6 +318,36 @@ DARK_INK_DEPTH_L = 8.0
 DARK_INK_MIN_CONTRAST_DE00 = 10.0
 DARK_INK_GROUND_DE00 = 13.0
 _DARK_INK_GUARD_PX = 2
+# A STRAY (`cfg.dark_ink_refuse_strays`, built OFF 2026-10-28 on Kent's
+# "queue refusal" on PR #1172): a kept component whose ring reaches the
+# artwork's edge -- guard plus ring, so the one-ground test ran on a part
+# ring -- or whose pixels are not, as a whole, under the ring the way the
+# black-hat asked of each one. Measured on the 30 reads of #1172's sheet
+# (the owl's 16, the Fremont patch's 14, 80 mm left_chest, the engine's own
+# raster): the 10 reads judged "not ink" there are the 10 components within
+# 1 px of the frame; the 16 ink reads sit 6-170 px in (the patch's keylines
+# at 6, the nearest). Every one of the 30 has 0.75-1.0 of its pixels
+# `DARK_INK_DEPTH_L` under its ring's median, so the share clause fires on
+# none of them: it is the tripwire for a bimodal component the median test
+# lets through, at the majority `absorbed_dark_ink` already asks for.
+DARK_INK_EDGE_PX = _DARK_INK_GUARD_PX + _RING_PX
+DARK_INK_STRAY_SHARE = 0.5
+
+
+def stray_clause(bbox: tuple[int, int, int, int], art_bbox: tuple[int, int, int, int],
+                 comp_l: np.ndarray, ground_l: float) -> str | None:
+    """Which stray clause refuses a kept dark component: "edge" when its
+    bbox (x, y, w, h) lies within `DARK_INK_EDGE_PX` of `art_bbox` (x0, y0,
+    x1, y1 exclusive), "ground" when fewer than `DARK_INK_STRAY_SHARE` of
+    `comp_l` (its pixels' L*) sit `DARK_INK_DEPTH_L` under `ground_l`; None
+    when neither fires."""
+    bx, by, bw, bh = bbox
+    ax0, ay0, ax1, ay1 = art_bbox
+    if min(bx - ax0, by - ay0, ax1 - (bx + bw), ay1 - (by + bh)) < DARK_INK_EDGE_PX:
+        return "edge"
+    if float(np.mean(comp_l < ground_l - DARK_INK_DEPTH_L)) < DARK_INK_STRAY_SHARE:
+        return "ground"
+    return None
 
 
 def _dark_ring(lab: np.ndarray, valid: np.ndarray, comp: np.ndarray,
@@ -364,6 +394,10 @@ def find_dark_thin_ink(p: Prep, cfg: PipelineConfig, valid: np.ndarray,
     comment above `DARK_INK_DEPTH_L` has the summit measurement). None keeps
     every component the tests below keep.
 
+    `cfg.dark_ink_refuse_strays` (OFF) adds `stray_clause` after the contrast
+    test: a component at the artwork's edge, or not under its ring as a whole,
+    is refused.
+
     The kept components are grouped into inks (`_group_inks`) and each ink
     wears the chart spool nearest its pixel-weighted mean colour
     (`Chart.snap_palette`, the flat quantiser's snap), one label per spool.
@@ -398,6 +432,8 @@ def find_dark_thin_ink(p: Prep, cfg: PipelineConfig, valid: np.ndarray,
         if ink[0] >= ground[0]:
             continue
         if float(deltaE_ciede2000(ink.reshape(1, 3), ground.reshape(1, 3))[0]) < DARK_INK_MIN_CONTRAST_DE00:
+            continue
+        if cfg.dark_ink_refuse_strays and stray_clause(t.bbox, p.art_bbox, lab[crop][t.comp][:, 0], float(ground[0])):
             continue
         kept.append((t, ink, p.rgb[crop][t.comp].astype(np.float64)))
     if not kept:

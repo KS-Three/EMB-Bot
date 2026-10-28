@@ -1017,6 +1017,27 @@ class PipelineConfig:
     # False. Tests: `tests/test_keep_dark_thin_strokes.py`; the sheet Kent
     # flipped from: `docs/renders/keep-dark-thin-strokes-flip-2026-10-28/`.
     keep_dark_thin_strokes: bool = True
+    # Refuse a dark read (`keep_dark_thin_strokes`) that is a STRAY, not a
+    # stroke: (a) its ring reaches the artwork's edge (`p.art_bbox`, the
+    # bounding box at the sent width, within `thin_ink.DARK_INK_EDGE_PX` =
+    # guard + ring = 4 px), so the one-ground test was passed on half a ring;
+    # or (b) fewer than `thin_ink.DARK_INK_STRAY_SHARE` (a majority, 0.5) of
+    # its own pixels sit `DARK_INK_DEPTH_L` (8 L*) under the ring's median,
+    # the pixel test the black-hat applied, re-asked of the component as a
+    # whole. Queued by Kent on PR #1172 ("Keep ON, queue refusal"): 8 of the
+    # owl's 16 reads and 2 of the Fremont patch's 14 were judged "not ink"
+    # there. Measured 2026-10-28 on the engine's own raster (Lab, the space
+    # the tails read): every one of the 30 is 11-98 L* darker than its ring
+    # with 0.75-1.0 of its pixels 8 L* under it, so (b) fires on none; the
+    # 10 "not ink" rows are the 10 components within 1 px of the frame, and
+    # (a) refuses exactly those plus the two "mixed" reads at the frame
+    # (Skylight on the owl's bottom edge, the breast stripe's edge). The
+    # sheet that judged them stretched its artwork window at the frame
+    # (`tools.dark_ink_flip_sheet._art_crop`, fixed with this flag). OFF is
+    # byte-identical to the read as flipped. Tests:
+    # `tests/test_dark_ink_refuse_strays.py`; sheet:
+    # `docs/renders/dark-read-refusal-2026-10-28/`.
+    dark_ink_refuse_strays: bool = False
     # A letter's counter on a COLOURED ground stays a hole
     # (`stage3_segment.resolve_small_regions`). Measured 2026-10-02 on clean
     # 4 mm "BAR & RESTAURANT": on white the counters are background, never
