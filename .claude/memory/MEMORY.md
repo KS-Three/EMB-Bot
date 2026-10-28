@@ -76,7 +76,6 @@ the OLDEST lines whole to the archive.
 - [MARINE stem rails](marine-stem-rails-2026-10-25.md) — #1052's "stem wobble" FALSE: refit stems straight, rails on them; jitter > 0.15 = corners 318 / strays 49 / straight stems 0; pro's 0.03 = cuts at notches; `rail_jitter_cause.py`
 - [Index split into live + archive](memory-index-archive-split-2026-10-23.md) — pre-09-15 lines in MEMORY-archive.md (not auto-loaded); new entries go at the BOTTOM, one line per PR
 - [Index counts CRs](memory-index-crlf-count-2026-10-26.md) — loader counts the file as stored: CRLF = +1 char/line; notes pinned LF; `git checkout --` won't convert (recipe inside)
-- [Memory outside the repo](memory-outside-the-repo.md) — sessions rooted in `.claude-work` write memory to a folder this repo never sees; seven notes snapshotted here by 10-04
 - [MFab recipe trims](mfab-recipe-trims-2026-10-26.md) — the cuts were keyline slivers behind a dark hairline; `keyline_fold_slivers` (OFF) folds them in: hat 41→27, LC 54→29 on #1057's base; hat on-thread exposed travel 23→43 mm
 - [MFab under-fill panels](mfab-underfill-panels-2026-10-25.md) — Kent's MFab "chaos" = flip of under-fill + white + keyline + `silhouette_underfill_panels` (OFF): pro layering; under-fill alone dropped keyline-held bodies
 - [Monoline script satin](monoline-script-satin-2026-10-24.md) — Tires "ires" sewed FILL on dt_p90_cap alone; `monoline_script_satin` OFF; pro hides ALL in-word travel under later satin: trims 24 -> 8 (pro 10)
@@ -86,6 +85,7 @@ the OLDEST lines whole to the archive.
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only, customer sees nothing
 - [Outline loop pivot](outline-loop-pivot-2026-10-25.md) — corner spikes are SPARSE far ends, not a missing mitre (pro's arc is round); `outline_loop_mitre` ON 10-26
 - [Outlined bean ink](outlined-bean-ink-2026-10-27.md) — MFab LC's AND read its white keyline as ink, sewed white; `bean_ink_outlined_letters` (ON 10-27) drops reads half outside
+- [Photo corpus sxs](photo-corpus-sxs-2026-10-27.md) — #1171: 39 Commons rows, `capture --base` per tree, sxs HTML with Kent's verdicts, `baseline-5ff48c5.json`; stage 0 sent 3 of 18 photos down the photo lane; `design.colors` = BLOCKS
 - [Photo lane must generalise](photo-lane-generalise-2026-10-27.md) — Kent 10-27: photo tools were tuned on 4 portraits + the owl; 18-genre census broke on scenes/crowds/pale art; read across genres, check tonal first
 - [Placement axis sizing](placement-axis-sizing-2026-10-28.md) — size = most that fits WHERE it sits: `PLACEMENTS` table, 3 pro boxes (hat 113.5x64, LC 96x76.5, beanie 94.5x56) kept, rest `seeded` = Kent's; upload fits the box, typed width stays
 - [Pro intake](pro-intake-2026-10-25.md) — `python -m tools.pro_intake`: new job -> registered pair + census; registry gitignored (client names); preview vs art by content AND name; tesseract confirms lettering
