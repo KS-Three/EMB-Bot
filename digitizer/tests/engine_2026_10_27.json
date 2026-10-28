@@ -256,6 +256,7 @@
  "split_shapes": {},
  "split_tonal_regions": null,
  "stage0_seed_sweep": 0,
+ "stage0_texture_gate": false,
  "stitch_width_auto": false,
  "streamline_mode": "mono",
  "strip_letterbox": true,
