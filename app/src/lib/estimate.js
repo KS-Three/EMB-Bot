@@ -96,6 +96,19 @@ export function sizeLabel(design) {
   return `${w.toFixed(0)} × ${h.toFixed(0)} mm (${(w / MM_PER_INCH).toFixed(2)} × ${(h / MM_PER_INCH).toFixed(2)} in)`;
 }
 
+// The live readout the field draws under a resize drag (2026-10-27, Kent:
+// "resize the design on the canvas with live X and Y mm readouts"): the
+// design's W × H as `sizeLabel` prints it, so the badge and the summary bar
+// agree to the digit, then the centre offset the move badge already shows,
+// then the size-match word when the width is snapped to another element's.
+// `b` is { wMm, hMm, xMm, yMm }; `match` is "width" | "height" | null.
+export function resizeBadgeText(b, match) {
+  const sign = (v) => (v >= 0 ? "+" : "") + v.toFixed(1);
+  let text = `${sizeLabel({ widthMM: b.wMm, heightMM: b.hMm })} · x ${sign(b.xMm)} · y ${sign(b.yMm)} mm`;
+  if (match) text += match === "width" ? " · same width" : " · same height";
+  return text;
+}
+
 export function sewSummary(design, quote) {
   const q = quote || {};
   const f = sewFacts(design);

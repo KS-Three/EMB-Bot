@@ -14,16 +14,18 @@
 // the largest hoop's usable field (EMB.autoFitBoxMm), so auto-fit alone never
 // produces an oversize design.
 import { EMB } from "./emb.js";
+import { garmentOf } from "./placement.js";
 
 // The hoop in effect for a project: the manual pick when project.hoopId
 // names a real preset, else the per-garment suggestion. `suggested` tells
 // the UI whether it's showing the suggestion or the user's own choice. An
 // unknown hoopId (corrupt save, renamed preset) falls back to the
-// suggestion rather than to nothing.
+// suggestion rather than to nothing. The suggestion follows the PLACEMENT
+// (2026-10-27): a tee's left chest suggests the 4x4, its full back the 8x8.
 export function effectiveHoop(project) {
   const manual = project && project.hoopId ? EMB.getHoop(project.hoopId) : null;
   if (manual) return { hoop: manual, suggested: false };
-  const garment = project ? EMB.getGarment(project.garmentId) : null;
+  const garment = project ? garmentOf(project) : null;
   return { hoop: EMB.suggestHoop(garment), suggested: true };
 }
 

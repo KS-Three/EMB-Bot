@@ -3,6 +3,7 @@
   import { EMB } from "../lib/emb.js";
   import { alignOffset } from "../lib/interact.js";
   import { autoCapNote } from "../lib/hoop.js";
+  import { garmentOf, placementBoxOf } from "../lib/placement.js";
 
   export let project;
   // Dims of the last generated design ({ widthMM, heightMM }) or null when
@@ -57,9 +58,13 @@
   // site below reads it; it is not the physical hoop, which is a separate
   // ceiling check (lib/hoop.js: "the hoop is a CEILING check, never a clamp").
   // Infinity (no clamp) when the garment can't be resolved.
+  // The PLACEMENT's box since 2026-10-27 (lib/placement.js): the pro's box
+  // where he measured one, the picked placement's otherwise. Until then this
+  // read the garment's round-inch pair, so a hat front let a typed width run
+  // to 127 mm while auto-fit stopped at the pro's 113.5.
   function hoopWidthMm(p) {
-    const garment = p && EMB.getGarment(p.garmentId);
-    return garment ? garment.widthIn * MM_PER_INCH : Infinity;
+    const box = placementBoxOf(p);
+    return box ? box.w : Infinity;
   }
   $: hoopWmm = hoopWidthMm(project);
 
@@ -71,7 +76,7 @@
   // of the hoop outline drawn on the canvas. Naming the garment they picked on
   // step 1 is both true and more useful to them than the word "placement".
   $: placementLabel = (() => {
-    const g = project && EMB.getGarment(project.garmentId);
+    const g = garmentOf(project);
     return (g && g.label) || "";
   })();
   $: alignArea = placementLabel ? `${placementLabel} area` : "placement area";
@@ -165,10 +170,12 @@
   // width, so a long name hits the placement's width long before any height
   // they would ask for. Say what capped it and what would get them bigger.
   // Cleared by the next request that fits, and whenever the garment changes.
-  $: autoCap = autoCapNote(project && EMB.getGarment(project.garmentId));
+  $: autoCap = autoCapNote(garmentOf(project));
   let capNote = "";
-  let capGarment = project && project.garmentId;
-  $: if (project && project.garmentId !== capGarment) { capGarment = project.garmentId; capNote = ""; }
+  // ...and whenever the placement changes: the bound it explained has moved.
+  const capKeyOf = (p) => p ? `${p.garmentId}/${p.placementId || ""}` : "";
+  let capGarment = capKeyOf(project);
+  $: if (project && capKeyOf(project) !== capGarment) { capGarment = capKeyOf(project); capNote = ""; }
   function noteCap(requestedMm) {
     capNote = requestedMm > hoopWmm
       ? `Capped at ${fromMm(hoopWmm, unit)} ${unit} wide — the most the ${alignArea} allows. For bigger letters, use fewer characters or a larger placement under Garment.`

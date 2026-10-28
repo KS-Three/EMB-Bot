@@ -75,7 +75,103 @@ const units =
     beanie: { w: 94.5, h: 56.0 },
   };
 
+  // ---- Placements (2026-10-27) ---------------------------------------------
+  // Review table of every garment x placement box, measured vs seeded: docs/placement-boxes-2026-10-28.md (node tools/placement-table.mjs).
+  // WHERE on the garment the design sits, and the biggest box that location
+  // takes. Kent, 2026-10-27: the Studio was showing a "suggested" size (which
+  // only ever meant the hoop) when it should pick the design's size from the
+  // placement — hat centred / left / right / side / rear, left chest / right
+  // chest / full back / upper back / sleeve — as the maximum that fits there.
+  //
+  // One row per placement, `box` in mm. `pro` rows are the professional's
+  // measured boxes (PRO_PLACEMENT_MM above, unchanged, by reference). Every
+  // row marked `seeded` is a STARTING number, not a measurement: the inch
+  // table above (for the ten garments' own boxes) or an industry placement
+  // chart (cap side 2.5 x 1.5 in, cap back above the closure 3.5 x 1.5 in,
+  // one front panel beside the centre seam 2.25 x 2 in, yoke 10 x 3 in,
+  // beanie cuff 4 x 1.75 in; charts from decorators and print-on-demand
+  // vendors, none of which owns the machine this sews on). Kent corrects them.
+  // The right chest is the pro's left chest mirrored, area cap included.
+  //
+  // Each garment's DEFAULT placement carries the garment's own id, so a
+  // project with no `placementId` (every one saved before today) resolves to
+  // exactly the box it always had, and `fabric_for_garment` service-side
+  // still reads the garment id it knows: the placement never reaches the
+  // request, because the digitizer reads `garment_id` for the fabric preset
+  // only (digitizer_service/app.py), and `target_width_mm` already carries
+  // the size the placement chose.
+  const PLACEMENTS = [
+    // hats (structured cap)
+    { id: "hat_front", label: "Hat front, centered", pill: "Centered", box: PRO_PLACEMENT_MM.hat_front }, // pro: 12 hats, median width error 1.1%
+    { id: "hat_front_left", label: "Hat front left", pill: "Front left", box: { w: 57.2, h: 50.8 } }, // seeded: one front panel beside the seam, 2.25 x 2 in
+    { id: "hat_front_right", label: "Hat front right", pill: "Front right", box: { w: 57.2, h: 50.8 } }, // seeded: mirror of hat_front_left
+    { id: "hat_side_left", label: "Hat side left", pill: "Side left", box: { w: 63.5, h: 38.1 } }, // seeded: cap side above the ear, 2.5 x 1.5 in
+    { id: "hat_side_right", label: "Hat side right", pill: "Side right", box: { w: 63.5, h: 38.1 } }, // seeded: mirror of hat_side_left
+    { id: "hat_rear", label: "Hat rear", pill: "Rear", box: { w: 88.9, h: 38.1 } }, // seeded: above the closure, 3.5 x 1.5 in
+    // shirts, sweatshirts, jackets (left_chest = polo, full_back = tee, jacket_back = jacket)
+    { id: "left_chest", label: "Left chest", pill: "Left chest", box: PRO_PLACEMENT_MM.left_chest }, // pro: 7 left chests, width + height + area cap
+    { id: "right_chest", label: "Right chest", pill: "Right chest", box: PRO_PLACEMENT_MM.left_chest }, // seeded: the pro's left chest mirrored
+    { id: "full_back", label: "Full back", pill: "Full back", box: { w: 304.8, h: 304.8 } }, // seeded: inch table 12 x 12 in (charts: 11-12 in)
+    { id: "upper_back", label: "Upper back", pill: "Upper back", box: { w: 254.0, h: 76.2 } }, // seeded: yoke below the collar, 10 x 3 in
+    { id: "jacket_back", label: "Jacket back", pill: "Full back", box: { w: 304.8, h: 254.0 } }, // seeded: inch table 12 x 10 in
+    { id: "sleeve", label: "Sleeve", pill: "Sleeve", box: { w: 76.2, h: 76.2 } }, // seeded: inch table 3 x 3 in
+    // beanie
+    { id: "beanie", label: "Beanie front", pill: "Front", box: PRO_PLACEMENT_MM.beanie }, // pro: height his, width the box his designs fit
+    { id: "beanie_cuff", label: "Beanie cuff", pill: "Cuff", box: { w: 101.6, h: 44.5 } }, // seeded: the folded cuff, 4 x 1.75 in
+    // single-placement garments: the inch table, as before
+    { id: "tote", label: "Tote", pill: "Tote", box: { w: 203.2, h: 203.2 } }, // seeded: inch table 8 x 8 in
+    { id: "patch", label: "Patch", pill: "Patch", box: { w: 88.9, h: 88.9 } }, // seeded: inch table 3.5 x 3.5 in
+    { id: "towel", label: "Towel", pill: "Towel", box: { w: 152.4, h: 152.4 } }, // seeded: inch table 6 x 6 in
+    { id: "blanket", label: "Blanket", pill: "Blanket", box: { w: 254.0, h: 203.2 } }, // seeded: inch table 10 x 8 in
+  ];
+
+  // The placements each garment offers, DEFAULT FIRST (its id is the
+  // garment's own). A garment not listed offers only itself.
+  const GARMENT_PLACEMENTS = {
+    hat_front: ["hat_front", "hat_front_left", "hat_front_right", "hat_side_left", "hat_side_right", "hat_rear"],
+    left_chest: ["left_chest", "right_chest", "full_back", "upper_back", "sleeve"],
+    full_back: ["full_back", "left_chest", "right_chest", "upper_back", "sleeve"],
+    jacket_back: ["jacket_back", "left_chest", "right_chest", "upper_back", "sleeve"],
+    beanie: ["beanie", "beanie_cuff"],
+  };
+
+  function getPlacement(id) {
+    return PLACEMENTS.find((p) => p.id === id);
+  }
+
+  function placementsFor(garmentId) {
+    const ids = GARMENT_PLACEMENTS[garmentId] || [garmentId];
+    return ids.map(getPlacement).filter(Boolean);
+  }
+
+  // The garment AS PLACED: the object every box reader below takes. For the
+  // default placement (`placementId` null, unknown, or the garment's own id)
+  // this is the garment itself, unchanged. For any other it is the garment
+  // with the placement's box on it — `widthIn`/`heightIn` recomputed from the
+  // box so the readers that still take the inch pair (digitize.js's typed
+  // clamp, preview.js, dstimport.js, the worksheet) see the placement too,
+  // and `label` the placement's, which is what SizePanel's "<label> area"
+  // and the worksheet print.
+  function resolvePlacement(garmentId, placementId) {
+    const garment = getGarment(garmentId);
+    if (!garment) return undefined;
+    const ids = GARMENT_PLACEMENTS[garment.id] || [garment.id];
+    const pid = placementId && ids.includes(placementId) ? placementId : garment.id;
+    if (pid === garment.id) return garment;
+    const row = getPlacement(pid);
+    return {
+      ...garment,
+      placementId: pid,
+      label: row.label,
+      placementBox: row.box,
+      widthIn: row.box.w / 25.4,
+      heightIn: row.box.h / 25.4,
+    };
+  }
+
   function placementBoxMm(garment, opts) {
+    // a resolved non-default placement: its own box, measured or seeded
+    if (garment.placementBox) return { w: garment.placementBox.w, h: garment.placementBox.h };
     const pro = opts && opts.proSized === false ? null : PRO_PLACEMENT_MM[garment.id];
     return pro
       ? { w: pro.w, h: pro.h }
@@ -85,7 +181,9 @@ const units =
   // The area cap on the auto-fit (mm2 of the artwork's bounding box), or Infinity: only
   // the pro's left chest has one, and `{ proSized: false }` never does.
   function autoFitAreaMm2(garment, opts) {
-    const pro = opts && opts.proSized === false ? null : PRO_PLACEMENT_MM[garment.id];
+    const pro = garment.placementBox
+      ? garment.placementBox
+      : opts && opts.proSized === false ? null : PRO_PLACEMENT_MM[garment.id];
     return pro && pro.areaMm2 > 0 ? pro.areaMm2 : Infinity;
   }
 
@@ -175,6 +273,11 @@ const units =
     autoFitAreaMm2,
     placementBoxMm,
     PRO_PLACEMENT_MM,
+    PLACEMENTS,
+    GARMENT_PLACEMENTS,
+    getPlacement,
+    placementsFor,
+    resolvePlacement,
     HOOP_FIT_MARGIN_MM,
     TYPICAL_HOOP_MM,
     HOOPS,

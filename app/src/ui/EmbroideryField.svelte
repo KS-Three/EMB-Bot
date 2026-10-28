@@ -14,6 +14,8 @@
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
+  import { garmentOf, placementBoxOf } from "../lib/placement.js";
+  import { resizeBadgeText } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
   import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
   import {
@@ -268,6 +270,7 @@
   let activeGuides = null; // { vXMm, hYMm } while a move-snap is live (null members = axis not snapped)
   let sizeMatch = null; // "width" | "height" while a resize is size-matched to another element
   let moveBadge = null; // { xMm, yMm } center-offset readout during a move drag
+  let sizeBadge = null; // { wMm, hMm, xMm, yMm } live W × H (+ centre offset) during a resize drag
   let rotateBadgeDeg = null; // live degrees during a rotate drag
   let dragStartBBoxMm = null; // dragged element's absolute mm bbox at pointerdown
   let dragStartTargetMm = 0; // element's sizeMm at pointerdown (see size-match note below)
@@ -309,8 +312,9 @@
     try { localStorage.setItem("embbot-snap", snapEnabled ? "1" : "0"); } catch {}
   }
 
+  // The garment AS PLACED (lib/placement.js): the placement's box and label.
   function garmentFor(p) {
-    return p && EMB.getGarment(p.garmentId);
+    return garmentOf(p);
   }
 
   // Returns the GARMENT PLACEMENT BOX, not the hoop, despite the name — the
@@ -325,11 +329,14 @@
   // drag/resize) all clamp to the PLACEMENT, which is the intended behaviour —
   // a left-chest design should not wander onto the shoulder. What was wrong
   // was only what the app SAID about it; see the two live-region strings below.
+  //
+  // The PLACEMENT's box since 2026-10-27 (lib/placement.js placementBoxOf):
+  // the pro's where he measured one, the picked placement's otherwise. Until
+  // then the clamps read the garment's round-inch pair, so a hat front let a
+  // drag run to 127 mm while auto-fit stopped at the pro's 113.5.
   function hoopSizeMm(p) {
-    const garment = garmentFor(p);
-    return garment
-      ? { wMm: garment.widthIn * MM_PER_INCH, hMm: garment.heightIn * MM_PER_INCH }
-      : { wMm: 0, hMm: 0 };
+    const box = placementBoxOf(p);
+    return box ? { wMm: box.w, hMm: box.h } : { wMm: 0, hMm: 0 };
   }
 
   const EMPTY_DESIGN = { stitches: [] };
@@ -503,6 +510,12 @@
       // Center offset from hoop center in mm (+y up) — the number an
       // embroiderer would transfer to a hooping aid.
       drawBadge(ctx, rect.x + rect.w / 2, rect.y + rect.h + 14, `x ${fmtMm(moveBadge.xMm)} · y ${fmtMm(moveBadge.yMm)} mm`);
+    } else if (sizeBadge) {
+      // Live W × H (mm, inches in brackets, the summary bar's sizeLabel) with
+      // the centre offset, under a resize drag — single element or group.
+      // Kent, 2026-10-27: "resize the design on the canvas with live X and Y
+      // mm readouts". The size-match word rides on the end when it applies.
+      drawBadge(ctx, rect.x + rect.w / 2, rect.y + rect.h + 14, resizeBadgeText(sizeBadge, sizeMatch));
     } else if (sizeMatch) {
       drawBadge(ctx, rect.x + rect.w / 2, rect.y + rect.h + 14, sizeMatch === "width" ? "same width" : "same height");
     } else if (rotateBadgeDeg != null) {
@@ -1792,7 +1805,7 @@
     // and the letters can still grow by typing a width. The box is the one
     // auto-fit aims at: the pro's on a hat, left chest or beanie (proSized,
     // default since 2026-10-26), else the garment's inch box.
-    const g = EMB.getGarment(project.garmentId);
+    const g = garmentFor(project); // as placed
     const boxWmm = g ? (EMB.placementBoxMm ? EMB.placementBoxMm(g).w : g.widthIn * 25.4) : Infinity;
     const reqWmm = el && el.sizeMm == null ? (g ? EMB.autoFitBoxMm(g).w : Infinity) : el && el.sizeMm;
     const atWidthCap = !!el && reqWmm >= boxWmm - 0.05;
@@ -3161,6 +3174,8 @@
         const gcx = (dragGroupBBoxMm.x0 + dragGroupBBoxMm.x1) / 2;
         const gcy = (dragGroupBBoxMm.y0 + dragGroupBBoxMm.y1) / 2;
         const r = groupResizePatches(dragMembers, f, gcx, gcy, MIN_SIZE_MM);
+        // the union box as it will measure, about its (unmoving) centre
+        sizeBadge = { wMm: gW * f, hMm: gH * f, xMm: gcx, yMm: gcy };
         pendingPatch = { multi: r.patches };
       }
       schedulePatchFlush();
@@ -3192,6 +3207,13 @@
           sizeMatch = s.match;
         }
       }
+      // What the design WILL measure: the rendered bbox at drag start, scaled
+      // by how far the target moved (the target is the generation width, the
+      // bbox runs past it by pull comp; the ratio carries that margin along).
+      // The offset does not move in a resize; it is shown so the badge reads
+      // the same two numbers the move badge does.
+      const f = dragStartTargetMm > 0 ? newWidthMm / dragStartTargetMm : 1;
+      sizeBadge = { wMm: dragStartWidthMm * f, hMm: dragStartHeightMm * f, xMm: dragStartOffXMm, yMm: dragStartOffYMm };
       pendingPatch = { id: dragTargetId, patch: { sizeMm: newWidthMm } };
     } else if (dragMode === "move") {
       // Raw (unclamped) offset first so snapping sees the true pointer
@@ -3340,10 +3362,11 @@
     // Erase drag-only overlay chrome (guides/badges). One view repaint —
     // cheaper than a full generate, and the final patch's paint() (if still
     // in flight) draws with this already-cleared state anyway.
-    if (activeGuides || sizeMatch || moveBadge || rotateBadgeDeg != null) {
+    if (activeGuides || sizeMatch || moveBadge || sizeBadge || rotateBadgeDeg != null) {
       activeGuides = null;
       sizeMatch = null;
       moveBadge = null;
+      sizeBadge = null;
       rotateBadgeDeg = null;
       scheduleViewRepaint();
     }
