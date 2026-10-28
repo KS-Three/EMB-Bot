@@ -15,6 +15,15 @@
       "port": 8721,
       "url": "http://127.0.0.1:8721",
       "autoPort": false
+    },
+    {
+      "name": "corpus-sxs",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8731", "--bind", "127.0.0.1"],
+      "cwd": "digitizer/corpus_runs",
+      "port": 8731,
+      "url": "http://127.0.0.1:8731",
+      "autoPort": false
     }
   ]
 }
