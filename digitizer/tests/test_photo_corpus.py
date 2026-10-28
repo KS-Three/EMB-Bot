@@ -168,3 +168,122 @@ def test_fidelity_cc_is_one_for_a_perfect_render_and_zero_for_blank():
     blank = np.full_like(frame, FABRIC)
     g = pc.fidelity(photo, blank, FABRIC)
     assert g["fidelity_cc"] == pytest.approx(0.0, abs=1e-6) and g["ssim_null"] == pytest.approx(g["ssim"])
+
+
+# ------------------------------------------------------------------ Task 4: capture
+STUB_OK = (
+    "import json,sys; s=json.loads(sys.argv[1]); open(s['out'],'w').write(json.dumps({"
+    "'state':'done','stats':{'stitch_count':3,'trims':0,'color_changes':0,'size_mm':[80,40],'thread_m_total':0.1},"
+    "'warnings':[],'preflight':{'grade':'A','score':100,'metrics':{'raw_score':100}},"
+    "'design':{'stitches':[{'x':0,'y':0},{'x':10,'y':0},{'x':10,'y':10}],'colors':[{'r':0,'g':0,'b':0}]},"
+    "'_meta':{'elapsed_s':0.1,'stamps':{},'class':'photo_subject','class_conf':0.8}}))")
+STUB_HANG = "import time; time.sleep(30)"
+
+
+def _photos(tmp_path):
+    import cv2
+    photos = tmp_path / "p"
+    photos.mkdir()
+    cv2.imwrite(str(photos / "a.jpg"), np.zeros((20, 30, 3), np.uint8))
+    return photos
+
+
+def test_run_row_writes_timeout_output(tmp_path, monkeypatch):
+    monkeypatch.setattr(pc, "WORKER", STUB_HANG)
+    out = tmp_path / "a.json"
+    res = pc.run_row(tmp_path, tmp_path / "a.jpg", out, {}, timeout=1.0)
+    assert res["state"] == "timeout"
+    assert json.loads(out.read_text(encoding="utf-8"))["state"] == "timeout"
+
+
+def test_capture_writes_row_png_and_run_json(tmp_path, monkeypatch):
+    monkeypatch.setattr(pc, "WORKER", STUB_OK)
+    out = tmp_path / "run"
+    run = pc.capture([ROW], _photos(tmp_path), tmp_path, out, tree_sha="abc", timeout=10, procs=1)
+    assert (out / "a.png").exists() and (out / "a.row.json").exists() and (out / "run.json").exists()
+    assert run["tree_sha"] == "abc" and run["rows"]["a"]["stitches"] == 3
+    assert "fidelity_cc" in run["rows"]["a"] and run["rows"]["a"]["genre"] == "g"
+
+
+def test_capture_resumes_past_finished_rows(tmp_path, monkeypatch):
+    monkeypatch.setattr(pc, "WORKER", STUB_OK)
+    photos, out = _photos(tmp_path), tmp_path / "run"
+    pc.capture([ROW], photos, tmp_path, out, "abc", 10, 1)
+    monkeypatch.setattr(pc, "WORKER", "raise SystemExit('must not run')")
+    run = pc.capture([ROW], photos, tmp_path, out, "abc", 10, 1)
+    assert run["rows"]["a"]["stitches"] == 3
+
+
+def test_capture_row_without_a_photo_is_an_error_row_with_a_placeholder(tmp_path, monkeypatch):
+    monkeypatch.setattr(pc, "WORKER", STUB_OK)
+    photos = tmp_path / "p"
+    photos.mkdir()
+    run = pc.capture([ROW], photos, tmp_path, tmp_path / "run", "abc", 10, 1)
+    assert run["rows"]["a"]["state"] == "error" and (tmp_path / "run" / "a.png").exists()
+
+
+def test_request_config_is_the_studio_request_on_left_chest():
+    cfg = pc.request_config()
+    assert cfg["target_width_mm"] == 80.0 and cfg["garment_id"] == "left_chest"
+    assert cfg["garment_rgb"] == [235, 232, 223] and cfg["max_colors"] == 6
+
+
+# ------------------------------------------------------------------ Task 5: sxs
+def _run(tmp_path, name, sha, slugs=("a",), state="done"):
+    import cv2
+    d = tmp_path / name
+    d.mkdir()
+    rows = {s: {"slug": s, "kind": "photo", "genre": "g", "state": state,
+                "stitches": 5 if state == "done" else None, "trims": 1, "wall_s": 3.0,
+                "colors_used": 2, "cap": 6, "cap_kept": True, "grade": "F", "score_raw": -10,
+                "fidelity_cc": 0.2, "ssim": 0.3, "dE": 20.0} for s in slugs}
+    (d / "run.json").write_text(json.dumps({"tree_sha": sha, "date": "2026-10-27", "config": {},
+                                            "timeout_s": 1, "procs": 1, "rows": rows}), encoding="utf-8")
+    for s in slugs:
+        cv2.imwrite(str(d / f"{s}.png"), np.zeros((8, 8, 3), np.uint8))
+    return pc.load_run(d)
+
+
+def test_sxs_has_a_row_per_corpus_slug_with_buttons_and_export(tmp_path):
+    html = pc.build_sxs(_run(tmp_path, "b", "aaa1111"), _run(tmp_path, "h", "bbb2222"), [ROW],
+                        _photos(tmp_path), {"a": {"author": "Someone", "licence": "cc0", "page": "https://commons/x"}})
+    assert 'data-slug="a"' in html and html.count('data-verdict=') == 3
+    assert "sxs:aaa1111:bbb2222" in html and "instrument readings" in html
+    assert "Someone" in html and "https://commons/x" in html
+    assert html.count("data:image/png;base64") == 3
+
+
+def test_sxs_row_with_a_missing_or_failed_side_still_renders(tmp_path):
+    before = _run(tmp_path, "b", "aaa1111", state="timeout")
+    after = _run(tmp_path, "h", "bbb2222", slugs=())
+    html = pc.build_sxs(before, after, [ROW], _photos(tmp_path), {})
+    assert 'data-slug="a"' in html and "timeout" in html and "missing" in html
+
+
+def test_sxs_refuses_identical_tree_shas(tmp_path):
+    photos = _photos(tmp_path)
+    with pytest.raises(SystemExit):
+        pc.build_sxs(_run(tmp_path, "b", "same"), _run(tmp_path, "h", "same"), [ROW], photos, {})
+    html = pc.build_sxs(_run(tmp_path, "b2", "same"), _run(tmp_path, "h2", "same"), [ROW],
+                        photos, {}, allow_same_sha=True)
+    assert 'data-slug="a"' in html
+
+
+# ------------------------------------------------------------------ Task 6: tally
+V = {"before": "aaa1111", "after": "bbb2222", "date": "2026-10-27",
+     "rows": {"a": {"verdict": "worse", "note": "halo"}}}
+ROWS = [ROW, {**ROW, "slug": "b", "kind": "logo"}]
+
+
+def test_tally_counts_by_kind_and_lists_worse_slugs():
+    t = pc.tally_counts(V, ROWS)
+    assert t["photo"] == {"better": 0, "same": 0, "worse": 1, "unjudged": 0, "worse_slugs": ["a"]}
+    assert t["logo"]["unjudged"] == 1 and t["logo"]["worse_slugs"] == []
+
+
+def test_tally_is_idempotent_per_sha_pair(tmp_path):
+    pc.file_verdicts(V, ROWS, tmp_path)
+    pc.file_verdicts(V, ROWS, tmp_path)
+    readme = (tmp_path / "README.md").read_text(encoding="utf-8")
+    assert readme.count("aaa1111") == 1 and (tmp_path / "2026-10-27-aaa1111-bbb2222.json").exists()
+    assert "instrument readings" in readme and "| 0 / 0 / 1 |" in readme and "halo" not in readme
