@@ -173,8 +173,11 @@ def test_the_blocks_get_their_gaps_back_and_no_counter_is_sewn(tmp_path, lane):
     art, width_mm = _panel(tmp_path / "panel.png")
 
     def run(flag: bool):
+        # `stage0_texture_gate=False`: the synthetic panel's "as classified"
+        # lane is the gradient lane this file was measured on (2026-10-28,
+        # PRE_FLIP's posture); `keep_counters` is a gradient-lane flag.
         cfg = PipelineConfig(target_width_mm=width_mm, garment_id="left_chest", max_colors=6,
-                             keep_counters=flag, **lane)
+                             keep_counters=flag, stage0_texture_gate=False, **lane)
         result, plan = digitize(art, cfg)
         return result, plan, cfg
 

@@ -86,6 +86,12 @@ def _run(fixture: str, on: bool):
     result, plan = digitize(TESTDATA / fixture,
                             _cfg(layer_palette_from_regions=on,
                                  keep_thin_strokes=False,
+                                 # `region_blobs` is a steep synthetic ramp
+                                 # and reads `photo_scene` on the 2026-10-28
+                                 # texture gate; this file prices the BLEND
+                                 # tier's palette on the gradient lane it was
+                                 # measured on (PRE_FLIP's posture)
+                                 stage0_texture_gate=False,
                                  # the tracing grid likewise at its pre-flip
                                  # source line (ON since 2026-10-01):
                                  # `region_blobs` is 7.15 px/mm and loses the
