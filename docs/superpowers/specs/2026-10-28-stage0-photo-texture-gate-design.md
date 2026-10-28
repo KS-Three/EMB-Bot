@@ -60,24 +60,32 @@ One new signal, one veto, both scale-normalised; today's two gates stay.
 long edge is resized to 512 px (`cv2.INTER_AREA`, the mask resized the same
 way and read as `> 0`; smaller files are read as they are), whose 5x5
 luminance standard deviation is at least 2 and under 24 grey levels: neither
-flat nor a hard edge. Luminance is `cv2.COLOR_RGB2GRAY` as float32; the
-standard deviation is the population one from two `cv2.blur` passes
-(`sqrt(max(blur(g*g) - blur(g)^2, 0))`, default reflect border). Under 25
-foreground pixels it reads 0.0. A designed graphic is flats and edges;
+flat nor a hard edge — **and that sit more than 2 px from any hard-edge
+pixel** (std >= 24, dilated 5x5). Without that exclusion the windows that
+straddle a 1-px anti-aliased stroke edge read in the band, and the repo's
+small real logo art (`testdata/art/`: MFab LC, MFab hat, TOAT beanie, TOAT
+machine, 148–273 px tall) read 0.22–0.25 and routed to the photo lane
+(found by the full suite, 2026-10-28); with it they read 0.03–0.07.
+Luminance is `cv2.COLOR_RGB2GRAY` as float32; the standard deviation is the
+population one from two `cv2.blur` passes (`sqrt(max(blur(g*g) - blur(g)^2,
+0))`, default reflect border). Under 25 foreground pixels it reads 0.0. A designed graphic is flats and edges;
 a photograph is mostly the band between.
 
 | population | min | max |
 |---|---|---|
-| opaque photographs (18 corpus + `owl_kent`) | 0.245 (`watercolor`) | 0.926 (`oil_painting`) |
-| opaque designed graphics (15: corpus + repo logos) | 0.011 | 0.097 (`barcode`) |
-| opaque photographed graphics (6, §3) | 0.289 (`comic_halftone`) | 0.968 (`halftone_dots`) |
+| opaque photographs (18 corpus + `owl_kent`) | 0.192 (`watercolor`) | 0.894 (`oil_painting`) |
+| opaque designed graphics (21: corpus + repo logos incl. `testdata/art/`) | 0.000 | 0.066 (`logo_toat_beanie`) |
+| opaque photographed graphics (6, §3) | 0.203 (`comic_halftone`) | 0.931 (`halftone_dots`) |
 
-Gate `TEXTURE_PHOTO_MIN = 0.17`, margin 0.07 (the midpoint of 0.097 and
-0.245; leave-one-out moves it between 0.16 and 0.21). Width ladder 250–1600
-px (PIL LANCZOS, the scale-invariance test's resampler): every photograph
-stays at or above 0.245 at every width; every designed graphic stays under
-0.10 except `barcode` exported at 640 px or below (0.17–0.31: its bars blur
-into texture). That is the one stated limit.
+Gate `TEXTURE_PHOTO_MIN = 0.13`, margin 0.06 (the midpoint of 0.066 and
+0.192). Width ladder 250–1600 px (PIL LANCZOS, the scale-invariance test's
+resampler): every photograph stays at or above 0.169 (`watercolor` at 250
+px) at every width; every designed graphic stays under 0.07 except `barcode`
+exported at 250 px (0.175: its bars blur into texture; 0.111 at 400 px).
+That is the one stated limit. A steep smooth ramp also sits in the band
+(the synthetic `region_blobs` reads 0.197, unmoved by the exclusion); no
+real opaque logo in the corpus or the repo does (`summit_badge` 0.024,
+`gradient_mascot` 0.005, `low_poly` 0.005).
 
 **Opaque files only.** The texture route is consulted only when the file has
 no alpha cut-out (no alpha channel, or no pixel with alpha <= 127). A file
@@ -125,7 +133,7 @@ firing; for a non-photo verdict, the weakest of the non-firing routes, or the
 veto's when the veto decided. As today, the overall confidence is the minimum
 of that and the inner gate's (`gradient_smoothness` against 8.0 inside photo
 territory, 0.0015 outside); `CONFIDENCE_FLOOR` demotion unchanged. Gate
-margins: texture 0.07, two-tone 0.06.
+margins: texture 0.06, two-tone 0.06.
 
 **Seed sweep**: `CLASSIFICATION_SEED_UNSTABLE` reports a verdict the k-means
 seed could move. When the texture route or the veto decided the verdict, the

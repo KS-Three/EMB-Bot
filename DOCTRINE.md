@@ -9145,10 +9145,14 @@ dots, hatching) — the `logo_script_tires` mechanism of 2026-09-11 on more rows
 
 **Built (ON, `cfg.stage0_texture_gate`; OFF is the old tree byte-for-byte):**
 `texture_frac`, the share of an opaque file's foreground on a 512-px raster
-whose 5x5 luminance std is 2–24 levels (neither flat nor a hard edge), is a
-second route into photo territory at 0.17 — opaque photographs min 0.245
-(watercolor), opaque designed graphics max 0.097 (barcode), stable across a
-250–1600 px export ladder. `two_tone_mass` >= 0.90 (two of sixteen luminance
+whose 5x5 luminance std is 2–24 levels (neither flat nor a hard edge) and
+that sit more than 2 px from a hard-edge pixel, is a second route into photo
+territory at 0.13 — opaque photographs min 0.192 (watercolor), opaque
+designed graphics max 0.066 (TOAT beanie), stable across a 250–1600 px
+export ladder. **The edge exclusion is load-bearing**: without it the
+repo's small real logo art (MFab, TOAT, 148–273 px tall) read 0.22–0.25 on
+their anti-aliased stroke edges and routed to the photo lane; the full
+suite, not the corpus, caught it. `two_tone_mass` >= 0.90 (two of sixteen luminance
 bins hold the foreground: tires 0.995, arabic 0.978; photographs top out at
 0.763) is two inks and vetoes both routes. A file with an alpha cut-out keeps
 the grain gate alone, which is what keeps `drone_render` (texture 0.52: it
@@ -9163,8 +9167,10 @@ over twenty candidate statistics and every two-term rule bottoms out at five
 misses, all in that set or photoreal cut-out renders. They route to the photo
 lane by medium and Kent judges them on the side-by-side page — do not re-site
 the gate to exclude them (>= 0.45 loses watercolor, architecture, dark_dog,
-fireworks, skyline). (2) **The one stated limit is a barcode exported under
-640 px** (bars blur to texture, 0.17–0.31). (3) **Faces still sew flat**:
+fireworks, skyline). (2) **The one stated limit is a barcode exported at
+~250 px** (bars blur to texture, 0.175; 0.111 at 400 px); a steep smooth
+ramp also counts as texture (synthetic `region_blobs` 0.197), and no real
+opaque logo in the corpus or the repo has one. (3) **Faces still sew flat**:
 group_people, sports_action, vintage_sepia and comic_halftone reach
 `photo_scene` at stage 0 and are re-answered FLAT by stage 1.25 (Kent's
 2026-09-30 ruling), which this did not touch. *(measured and built 2026-10-28

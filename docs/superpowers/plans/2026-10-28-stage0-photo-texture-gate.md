@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Constants, verbatim from the spec: `TEXTURE_NORM_PX = 512`, `TEXTURE_STD_LO = 2.0`, `TEXTURE_STD_HI = 24.0`, `TEXTURE_PHOTO_MIN = 0.17`, `TEXTURE_MARGIN = 0.07`, `TWO_TONE_BINS = 16`, `TWO_TONE_MAX = 0.90`, `TWO_TONE_MARGIN = 0.06`; cut-out = alpha present and `(alpha <= 127).any()`.
+- Constants, verbatim from the spec: `TEXTURE_NORM_PX = 512`, `TEXTURE_STD_LO = 2.0`, `TEXTURE_STD_HI = 24.0`, `TEXTURE_EDGE_EXCLUDE_PX = 2`, `TEXTURE_PHOTO_MIN = 0.13`, `TEXTURE_MARGIN = 0.06`, `TWO_TONE_BINS = 16`, `TWO_TONE_MAX = 0.90`, `TWO_TONE_MARGIN = 0.06`; cut-out = alpha present and `(alpha <= 127).any()`.
 - `UCM_PHOTO_MIN`, `GRAD_VAR_*`, `CONFIDENCE_FLOOR` untouched. With `stage0_texture_gate=False` the class and confidence of every input are byte-identical to today.
 - Every md5 or numeric pin of an engine run uses `frozen_cfg(...)` (`tests/test_pins_are_frozen.py`); `tests/engine_2026_10_27.json` gains `"stage0_texture_gate": false`.
 - No synthetic fixture calibrates a threshold (ROADMAP gate 2); tests on hand-built arrays check arithmetic only. No quality claim on any number (gate 4). No corpus image, render or HTML is committed.

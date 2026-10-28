@@ -416,10 +416,20 @@ TEXTURE_STD_WIN = 5
 # photograph is mostly made of and a designed graphic mostly is not.
 TEXTURE_STD_LO = 2.0
 TEXTURE_STD_HI = 24.0
-# Opaque photographs min 0.245 (watercolor), opaque designed graphics max 0.097
-# (barcode) on the corpus + the repo's real logos; midpoint, margin to each.
-TEXTURE_PHOTO_MIN = 0.17
-TEXTURE_MARGIN = 0.07
+# Pixels within this many px of a hard-edge pixel are left out of the band.
+# The 5x5 windows that straddle a 1-px anti-aliased stroke edge read in the
+# band, and on a SMALL file with many strokes they are most of it: the
+# repo's real `testdata/art/` logos (MFab, TOAT; 148-273 px tall) read
+# 0.22-0.25 without this and would have routed to the photo lane; with it
+# 0.03-0.07. Found by the full suite on 2026-10-28, not by the corpus, whose
+# smallest opaque logo is 500 px.
+TEXTURE_EDGE_EXCLUDE_PX = 2
+# Opaque photographs min 0.192 (watercolor), opaque designed graphics max
+# 0.066 (TOAT beanie) over the corpus and every real logo in the repo;
+# midpoint, margin to each. A steep smooth ramp is in the band too (the
+# synthetic `region_blobs` reads 0.197); no real opaque logo here has one.
+TEXTURE_PHOTO_MIN = 0.13
+TEXTURE_MARGIN = 0.06
 TEXTURE_MIN_FG_PX = 25
 
 # Two inks: the share of foreground luminance in the two best-filled of
@@ -432,8 +442,9 @@ TWO_TONE_MARGIN = 0.06
 
 def _texture_frac(rgb: np.ndarray, fg: np.ndarray) -> float:
     """Share of the foreground, on the `TEXTURE_NORM_PX` raster, whose 5x5
-    luminance std sits in [TEXTURE_STD_LO, TEXTURE_STD_HI): neither flat nor
-    a hard edge. 0.0 under `TEXTURE_MIN_FG_PX` foreground pixels."""
+    luminance std sits in [TEXTURE_STD_LO, TEXTURE_STD_HI) — neither flat nor
+    a hard edge — and that sits more than `TEXTURE_EDGE_EXCLUDE_PX` from any
+    hard-edge pixel. 0.0 under `TEXTURE_MIN_FG_PX` foreground pixels."""
     h, w = rgb.shape[:2]
     scale = TEXTURE_NORM_PX / max(h, w)
     if scale < 1.0:
@@ -446,8 +457,11 @@ def _texture_frac(rgb: np.ndarray, fg: np.ndarray) -> float:
     win = (TEXTURE_STD_WIN, TEXTURE_STD_WIN)
     mean = cv2.blur(gray, win)
     mean_sq = cv2.blur(gray * gray, win)
-    sd = np.sqrt(np.maximum(mean_sq - mean * mean, 0.0))[fg]
-    return float(((sd >= TEXTURE_STD_LO) & (sd < TEXTURE_STD_HI)).mean())
+    sd = np.sqrt(np.maximum(mean_sq - mean * mean, 0.0))
+    band = (sd >= TEXTURE_STD_LO) & (sd < TEXTURE_STD_HI)
+    k = 2 * TEXTURE_EDGE_EXCLUDE_PX + 1
+    near_edge = cv2.dilate((sd >= TEXTURE_STD_HI).astype(np.uint8), np.ones((k, k), np.uint8)) > 0
+    return float((band & ~near_edge)[fg].mean())
 
 
 def _two_tone_mass(rgb: np.ndarray, fg: np.ndarray) -> float:

@@ -132,15 +132,41 @@ def test_an_LA_png_hands_its_alpha_to_the_cutout_test(tmp_path):
     assert s0._has_cutout(alpha) is True
 
 
+def test_the_gate_constants():
+    assert (s0.TEXTURE_PHOTO_MIN, s0.TEXTURE_MARGIN, s0.TEXTURE_EDGE_EXCLUDE_PX) == (0.13, 0.06, 2)
+    assert (s0.TWO_TONE_MAX, s0.TWO_TONE_MARGIN) == (0.90, 0.06)
+
+
+def test_texture_frac_leaves_out_the_pixels_beside_a_hard_edge():
+    """A 1-px anti-aliased stroke edge on a small file has 5x5 windows that
+    straddle it and read in the band; they sit within 2 px of the hard-edge
+    pixels and are excluded. Here: thin bars with a one-pixel grey ramp
+    either side read under 0.02 (measured 2026-10-28: the real 370-px
+    MFab / TOAT logos read 0.22-0.25 without the exclusion, 0.03-0.07 with)."""
+    rgb = np.full((300, 400, 3), 255, np.uint8)
+    for x in range(10, 390, 12):
+        rgb[:, x:x + 3] = 0
+        rgb[:, x - 1] = 128
+        rgb[:, x + 3] = 128
+    assert s0._texture_frac(rgb, _ones(300, 400)) < 0.02
+
+
 @pytest.mark.parametrize("rel,lo,hi", [
-    ("photo/owl_kent.jpg", 0.40, 0.55),
+    ("photo/owl_kent.jpg", 0.30, 0.45),
     ("logo_script_tires.png", 0.0, 0.05),
     ("logo_whitebg.png", 0.0, 0.05),
     ("photo/summit_badge.png", 0.0, 0.10),
+    ("art/logo_mfab_lc.png", 0.0, 0.10),
+    ("art/logo_mfab_hat.png", 0.0, 0.10),
+    ("art/logo_toat_beanie.png", 0.0, 0.10),
+    ("art/logo_toat_machine.png", 0.0, 0.10),
 ])
 def test_texture_readings_on_real_fixtures(rel, lo, hi):
-    """Readings (2026-10-28): owl 0.459, tires 0.015, whitebg 0.015, summit
-    0.059 — the real photograph against three designed logos."""
+    """Readings (2026-10-28, 2-px edge exclusion): owl 0.358, tires 0.000,
+    whitebg 0.000, summit 0.024, MFab LC 0.060, MFab hat 0.063, TOAT beanie
+    0.066, TOAT machine 0.064 — the real photograph against the repo's small
+    real logo art (148-273 px tall), which read 0.22-0.25 before the
+    exclusion and would have routed to the photo lane."""
     rgb, alpha = s0._load(str(TESTDATA / rel))
     v = s0._texture_frac(rgb, s0._fg_mask(rgb, alpha))
     assert lo <= v <= hi, (rel, v)
@@ -189,6 +215,13 @@ def _old_tree(ucm: float, grad: float) -> tuple[str, float]:
     ("photo/summit_badge.png", "gradient", "gradient"),
     ("photo/fur_ramp.png", "photo_scene", "photo_scene"),
     ("logo_whitebg.png", "flat", "flat"),
+    ("art/logo_mfab_lc.png", "gradient", "gradient"),
+    ("art/logo_toat_beanie.png", "gradient", "gradient"),
+    ("art/logo_toat_machine.png", "gradient", "gradient"),
+    # MFab hat classes photo_scene on BOTH arms: the grain gate (ucm 0.298) on
+    # its white keyline, the misroute DOCTRINE recorded on 2026-09-20; its
+    # two-tone mass (0.856) is under the veto. Unchanged by this gate.
+    ("art/logo_mfab_hat.png", "photo_scene", "photo_scene"),
 ])
 def test_class_under_both_arms(rel, on, off):
     p = TESTDATA / rel

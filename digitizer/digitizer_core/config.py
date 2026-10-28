@@ -418,8 +418,8 @@ class PipelineConfig:
     # downsampled photograph has no grain: 15 of the 18 Commons corpus
     # photographs read 0.02-0.27 against 0.28 and sewed as gradient logos.
     # ON, an opaque file also enters photo territory when `texture_frac`
-    # (the share of its foreground that is neither flat nor a hard edge, on
-    # a 512-px raster) reaches `TEXTURE_PHOTO_MIN`, and never enters it when
+    # (the share of its foreground that is neither flat nor a hard edge nor
+    # beside one, on a 512-px raster) reaches `TEXTURE_PHOTO_MIN`, and never enters it when
     # `two_tone_mass` says two inks (`TWO_TONE_MAX`). A file with an alpha
     # cut-out takes today's tree either way. OFF is today's decision tree,
     # byte-identical, for every input. Built ON 2026-10-28 so the corpus

@@ -9,8 +9,10 @@ metadata:
 downsampled photograph has none, so 15 of the 18 Commons corpus photographs
 read 0.02-0.27 against 0.28 and sewed as `gradient` logos. Built ON:
 `texture_frac` (share of an opaque file's foreground on a 512-px raster with
-5x5 luminance std 2-24) >= 0.17 is a second route in (photos min 0.245
-watercolor, designed graphics max 0.097 barcode, stable 250-1600 px);
+5x5 luminance std 2-24, more than 2 px from a hard edge) >= 0.13 is a second
+route in (photos min 0.192 watercolor, designed graphics max 0.066 TOAT
+beanie, stable 250-1600 px). The 2-px edge exclusion is load-bearing: the
+small real `testdata/art/` logos read 0.22-0.25 without it;
 `two_tone_mass` >= 0.90 is two inks and vetoes (tires, arabic leave
 `photo_scene`); an alpha cut-out keeps the grain gate alone (drone stays
 `gradient`). `cfg.stage0_texture_gate=False` is the old tree byte-for-byte;
@@ -29,7 +31,8 @@ on hand. ROADMAP gate 2's "real tonal artwork" is the corpus itself.
   the gate to exclude them; Kent judges them on the sxs page.
 - Faces still sew flat downstream (group_people, sports_action,
   vintage_sepia, comic_halftone): stage 1.25's ruling, untouched.
-- Known limit: a barcode exported under 640 px reads texture 0.17-0.31.
+- Known limits: a barcode at ~250 px reads 0.175; a steep smooth ramp counts
+  as texture (synthetic `region_blobs` 0.197) — no real opaque logo here does.
 - A capture with the rembg venv junctioned into a worktree still saw
   `rembg worker timed out after 120s` under CPU load: check
   `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE` in the row json before reading a
