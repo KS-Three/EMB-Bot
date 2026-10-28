@@ -386,9 +386,12 @@ def bridge():
     for w in (corpus_w, 50.0):
         # `dissolve_phantom_blends` held OFF (ON since Kent's 2026-10-20 flip,
         # item 46): the hand labels are shape ids read without it, and on this
-        # JPEG it re-cuts the halo regions they name.
+        # JPEG it re-cuts the halo regions they name. `keep_dark_thin_strokes`
+        # held OFF for the same reason (ON since Kent's 2026-10-28 flip, #1170):
+        # the dark-ink read carves a stroke out of the badge's ground on this
+        # JPEG and the carry then loses a letter (11 of 12).
         cfg = PipelineConfig(target_width_mm=w, garment_id=garment, max_colors=STUDIO_MAX_COLORS,
-                             dissolve_phantom_blends=False)
+                             dissolve_phantom_blends=False, keep_dark_thin_strokes=False)
         out[w] = (build_generation(str(TESTDATA / fname), cfg).regions, chart_for(cfg))
     return corpus_w, out
 

@@ -1,0 +1,5680 @@
+{
+ "date": "2026-10-28",
+ "flag": "keep_dark_thin_strokes",
+ "width_mm": 80.0,
+ "garment": "left_chest",
+ "engine": "6c88a8c0",
+ "before": null,
+ "rows": [
+  {
+   "fixture": "photo/summit_badge.png",
+   "class": "gradient",
+   "md5_off": "22e4a1dda9899149d9acad2463602208",
+   "md5_on": "22e4a1dda9899149d9acad2463602208",
+   "identical": true,
+   "off": {
+    "regions": 42,
+    "stitches": 29799,
+    "trims": 33,
+    "colours": 11,
+    "threads": 9
+   },
+   "on": {
+    "regions": 42,
+    "stitches": 29799,
+    "trims": 33,
+    "colours": 11,
+    "threads": 9,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/drone_render.png",
+   "class": "gradient",
+   "md5_off": "95e54ba11c340721679212092e9ec1f6",
+   "md5_on": "f26cc7a691db0038a46e87e08334ddc0",
+   "identical": false,
+   "off": {
+    "regions": 119,
+    "stitches": 18677,
+    "trims": 83,
+    "colours": 11,
+    "threads": 7
+   },
+   "on": {
+    "regions": 122,
+    "stitches": 18613,
+    "trims": 85,
+    "colours": 11,
+    "threads": 7,
+    "dark_ink_regions": 3
+   }
+  },
+  {
+   "fixture": "photo/logo_bridge_bar.jpg",
+   "class": "gradient",
+   "md5_off": "d80b8b5ca128c25b212347f656ad4e57",
+   "md5_on": "97339d87d7697bbec2d3c1d0cc1facc9",
+   "identical": false,
+   "off": {
+    "regions": 54,
+    "stitches": 15192,
+    "trims": 38,
+    "colours": 7,
+    "threads": 6
+   },
+   "on": {
+    "regions": 54,
+    "stitches": 15238,
+    "trims": 38,
+    "colours": 7,
+    "threads": 6,
+    "dark_ink_regions": 1
+   }
+  },
+  {
+   "fixture": "photo/logo_gaulke_roofing.png",
+   "class": "gradient",
+   "md5_off": "7b3c4e17ed1f46eb5851d3971786f661",
+   "md5_on": "7b3c4e17ed1f46eb5851d3971786f661",
+   "identical": true,
+   "off": {
+    "regions": 53,
+    "stitches": 5083,
+    "trims": 13,
+    "colours": 2,
+    "threads": 2
+   },
+   "on": {
+    "regions": 53,
+    "stitches": 5083,
+    "trims": 13,
+    "colours": 2,
+    "threads": 2,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/logo_golden_tee.jpg",
+   "class": "gradient",
+   "md5_off": "bb25f81b1ffa24fb7607d576c4227000",
+   "md5_on": "bb25f81b1ffa24fb7607d576c4227000",
+   "identical": true,
+   "off": {
+    "regions": 46,
+    "stitches": 12915,
+    "trims": 28,
+    "colours": 12,
+    "threads": 9
+   },
+   "on": {
+    "regions": 46,
+    "stitches": 12915,
+    "trims": 28,
+    "colours": 12,
+    "threads": 9,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/logo_hotel_fremont.webp",
+   "class": "gradient",
+   "md5_off": "f3b9e5ae327eb53b2eca3090d4986f47",
+   "md5_on": "5804f94b9a3d1f60d6c4654b5ae152cd",
+   "identical": false,
+   "off": {
+    "regions": 162,
+    "stitches": 13188,
+    "trims": 23,
+    "colours": 4,
+    "threads": 3
+   },
+   "on": {
+    "regions": 162,
+    "stitches": 13105,
+    "trims": 19,
+    "colours": 4,
+    "threads": 3,
+    "dark_ink_regions": 156
+   }
+  },
+  {
+   "fixture": "photo/region_blobs.png",
+   "class": "gradient",
+   "md5_off": "c9ec4d38b944aff2387431762900d638",
+   "md5_on": "c9ec4d38b944aff2387431762900d638",
+   "identical": true,
+   "off": {
+    "regions": 3,
+    "stitches": 19938,
+    "trims": 4,
+    "colours": 11,
+    "threads": 11
+   },
+   "on": {
+    "regions": 3,
+    "stitches": 19938,
+    "trims": 4,
+    "colours": 11,
+    "threads": 11,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/gradient_ramp_linear.png",
+   "class": "gradient",
+   "md5_off": "9c6a489a951f7b16d8a9ef452fed14b2",
+   "md5_on": "9c6a489a951f7b16d8a9ef452fed14b2",
+   "identical": true,
+   "off": {
+    "regions": 1,
+    "stitches": 10924,
+    "trims": 0,
+    "colours": 5,
+    "threads": 5
+   },
+   "on": {
+    "regions": 1,
+    "stitches": 10924,
+    "trims": 0,
+    "colours": 5,
+    "threads": 5,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/gradient_ramp_radial.png",
+   "class": "gradient",
+   "md5_off": "32819d5373828cbec3100e6492f04ef2",
+   "md5_on": "32819d5373828cbec3100e6492f04ef2",
+   "identical": true,
+   "off": {
+    "regions": 1,
+    "stitches": 17761,
+    "trims": 5,
+    "colours": 5,
+    "threads": 5
+   },
+   "on": {
+    "regions": 1,
+    "stitches": 17761,
+    "trims": 5,
+    "colours": 5,
+    "threads": 5,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/logo_drone_thermal_badge.png",
+   "class": "gradient",
+   "md5_off": "95e54ba11c340721679212092e9ec1f6",
+   "md5_on": "f26cc7a691db0038a46e87e08334ddc0",
+   "identical": false,
+   "off": {
+    "regions": 119,
+    "stitches": 18677,
+    "trims": 83,
+    "colours": 11,
+    "threads": 7
+   },
+   "on": {
+    "regions": 122,
+    "stitches": 18613,
+    "trims": 85,
+    "colours": 11,
+    "threads": 7,
+    "dark_ink_regions": 3
+   }
+  },
+  {
+   "fixture": "photo/owl_kent.jpg",
+   "class": "gradient",
+   "md5_off": "2a73a0069dcde53b753eeaa1a4dd61fd",
+   "md5_on": "3aef2a0330596597e316002f20ffe547",
+   "identical": false,
+   "off": {
+    "regions": 105,
+    "stitches": 35528,
+    "trims": 127,
+    "colours": 7,
+    "threads": 6
+   },
+   "on": {
+    "regions": 115,
+    "stitches": 36552,
+    "trims": 139,
+    "colours": 8,
+    "threads": 6,
+    "dark_ink_regions": 16
+   }
+  },
+  {
+   "fixture": "photo/repro_gradient_white_icon.png",
+   "class": "gradient",
+   "md5_off": "34be9e7878e5af8ade7dcb54d1a9f24f",
+   "md5_on": "34be9e7878e5af8ade7dcb54d1a9f24f",
+   "identical": true,
+   "off": {
+    "regions": 6,
+    "stitches": 20698,
+    "trims": 6,
+    "colours": 5,
+    "threads": 5
+   },
+   "on": {
+    "regions": 6,
+    "stitches": 20698,
+    "trims": 6,
+    "colours": 5,
+    "threads": 5,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/screenshot_phone_ui_golke.jpg",
+   "class": "gradient",
+   "md5_off": "25dafc852fbf537a6fd438998644ff58",
+   "md5_on": "25dafc852fbf537a6fd438998644ff58",
+   "identical": true,
+   "off": {
+    "regions": 149,
+    "stitches": 7532,
+    "trims": 43,
+    "colours": 7,
+    "threads": 6
+   },
+   "on": {
+    "regions": 149,
+    "stitches": 7532,
+    "trims": 43,
+    "colours": 7,
+    "threads": 6,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "art/logo_golke_roofing.png",
+   "class": "gradient",
+   "md5_off": "823e62767311cd9d0007fdacd8b88d24",
+   "md5_on": "823e62767311cd9d0007fdacd8b88d24",
+   "identical": true,
+   "off": {
+    "regions": 60,
+    "stitches": 5488,
+    "trims": 23,
+    "colours": 2,
+    "threads": 2
+   },
+   "on": {
+    "regions": 60,
+    "stitches": 5488,
+    "trims": 23,
+    "colours": 2,
+    "threads": 2,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "art/logo_hotel_fremont_patch.png",
+   "class": "gradient",
+   "md5_off": "f6aefde2bcad749bfd79a4df44576579",
+   "md5_on": "85dd34198af36d8838db00ce595542bc",
+   "identical": false,
+   "off": {
+    "regions": 86,
+    "stitches": 19001,
+    "trims": 33,
+    "colours": 3,
+    "threads": 3
+   },
+   "on": {
+    "regions": 76,
+    "stitches": 18838,
+    "trims": 35,
+    "colours": 4,
+    "threads": 4,
+    "dark_ink_regions": 14
+   }
+  },
+  {
+   "fixture": "art/logo_mfab_lc.png",
+   "class": "gradient",
+   "md5_off": "55efe6cd40f5076aeb072cc2ca2cc9bc",
+   "md5_on": "55efe6cd40f5076aeb072cc2ca2cc9bc",
+   "identical": true,
+   "off": {
+    "regions": 59,
+    "stitches": 13704,
+    "trims": 15,
+    "colours": 3,
+    "threads": 2
+   },
+   "on": {
+    "regions": 59,
+    "stitches": 13704,
+    "trims": 15,
+    "colours": 3,
+    "threads": 2,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "art/logo_toat_beanie.png",
+   "class": "gradient",
+   "md5_off": "000f05376b20ccdb2cd0e6e7f800c649",
+   "md5_on": "000f05376b20ccdb2cd0e6e7f800c649",
+   "identical": true,
+   "off": {
+    "regions": 45,
+    "stitches": 15342,
+    "trims": 15,
+    "colours": 2,
+    "threads": 2
+   },
+   "on": {
+    "regions": 45,
+    "stitches": 15342,
+    "trims": 15,
+    "colours": 2,
+    "threads": 2,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "art/logo_toat_machine.png",
+   "class": "gradient",
+   "md5_off": "7af62258877afc775e8cbffbda4c824b",
+   "md5_on": "7af62258877afc775e8cbffbda4c824b",
+   "identical": true,
+   "off": {
+    "regions": 40,
+    "stitches": 15824,
+    "trims": 18,
+    "colours": 2,
+    "threads": 2
+   },
+   "on": {
+    "regions": 40,
+    "stitches": 15824,
+    "trims": 18,
+    "colours": 2,
+    "threads": 2,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/enthusiast_logo.png",
+   "class": "flat",
+   "md5_off": "ab119e08534b488f089d2a4a14be41c4",
+   "md5_on": "ab119e08534b488f089d2a4a14be41c4",
+   "identical": true,
+   "off": {
+    "regions": 31,
+    "stitches": 2309,
+    "trims": 6,
+    "colours": 2,
+    "threads": 2
+   },
+   "on": {
+    "regions": 31,
+    "stitches": 2309,
+    "trims": 6,
+    "colours": 2,
+    "threads": 2,
+    "dark_ink_regions": 0
+   }
+  },
+  {
+   "fixture": "photo/photo_scene_stub.png",
+   "class": "photo_scene",
+   "md5_off": "d12dabd0247bd1f05101c6d8cbb3f2bd",
+   "md5_on": "d12dabd0247bd1f05101c6d8cbb3f2bd",
+   "identical": true,
+   "off": {
+    "regions": 54,
+    "stitches": 29480,
+    "trims": 52,
+    "colours": 5,
+    "threads": 5
+   },
+   "on": {
+    "regions": 54,
+    "stitches": 29480,
+    "trims": 52,
+    "colours": 5,
+    "threads": 5,
+    "dark_ink_regions": 0
+   }
+  }
+ ],
+ "missing": [],
+ "hero": "photo/owl_kent.jpg",
+ "heroes": [
+  "photo/owl_kent.jpg",
+  "art/logo_hotel_fremont_patch.png"
+ ],
+ "hero_detail": {
+  "photo/owl_kent.jpg": {
+   "hero_tiles": {
+    "whole_off": "photo__owl_kent__whole_off.jpg",
+    "whole_on": "photo__owl_kent__whole_on.jpg",
+    "art": "photo__owl_kent__art.jpg",
+    "where": "photo__owl_kent__where.jpg",
+    "win_off": "photo__owl_kent__win_off.jpg",
+    "win_on": "photo__owl_kent__win_on.jpg",
+    "changed_off": "photo__owl_kent__changed_off.jpg",
+    "changed_on": "photo__owl_kent__changed_on.jpg",
+    "dark0_off": "photo__owl_kent__dark0_off.jpg",
+    "dark0_on": "photo__owl_kent__dark0_on.jpg",
+    "dark0_art": "photo__owl_kent__dark0_art.jpg",
+    "dark1_off": "photo__owl_kent__dark1_off.jpg",
+    "dark1_on": "photo__owl_kent__dark1_on.jpg",
+    "dark1_art": "photo__owl_kent__dark1_art.jpg",
+    "dark2_off": "photo__owl_kent__dark2_off.jpg",
+    "dark2_on": "photo__owl_kent__dark2_on.jpg",
+    "dark2_art": "photo__owl_kent__dark2_art.jpg",
+    "dark3_off": "photo__owl_kent__dark3_off.jpg",
+    "dark3_on": "photo__owl_kent__dark3_on.jpg",
+    "dark3_art": "photo__owl_kent__dark3_art.jpg",
+    "dark4_off": "photo__owl_kent__dark4_off.jpg",
+    "dark4_on": "photo__owl_kent__dark4_on.jpg",
+    "dark4_art": "photo__owl_kent__dark4_art.jpg",
+    "dark5_off": "photo__owl_kent__dark5_off.jpg",
+    "dark5_on": "photo__owl_kent__dark5_on.jpg",
+    "dark5_art": "photo__owl_kent__dark5_art.jpg",
+    "dark6_off": "photo__owl_kent__dark6_off.jpg",
+    "dark6_on": "photo__owl_kent__dark6_on.jpg",
+    "dark6_art": "photo__owl_kent__dark6_art.jpg",
+    "dark7_off": "photo__owl_kent__dark7_off.jpg",
+    "dark7_on": "photo__owl_kent__dark7_on.jpg",
+    "dark7_art": "photo__owl_kent__dark7_art.jpg",
+    "dark8_off": "photo__owl_kent__dark8_off.jpg",
+    "dark8_on": "photo__owl_kent__dark8_on.jpg",
+    "dark8_art": "photo__owl_kent__dark8_art.jpg",
+    "dark9_off": "photo__owl_kent__dark9_off.jpg",
+    "dark9_on": "photo__owl_kent__dark9_on.jpg",
+    "dark9_art": "photo__owl_kent__dark9_art.jpg",
+    "dark10_off": "photo__owl_kent__dark10_off.jpg",
+    "dark10_on": "photo__owl_kent__dark10_on.jpg",
+    "dark10_art": "photo__owl_kent__dark10_art.jpg",
+    "dark11_off": "photo__owl_kent__dark11_off.jpg",
+    "dark11_on": "photo__owl_kent__dark11_on.jpg",
+    "dark11_art": "photo__owl_kent__dark11_art.jpg",
+    "dark12_off": "photo__owl_kent__dark12_off.jpg",
+    "dark12_on": "photo__owl_kent__dark12_on.jpg",
+    "dark12_art": "photo__owl_kent__dark12_art.jpg",
+    "dark13_off": "photo__owl_kent__dark13_off.jpg",
+    "dark13_on": "photo__owl_kent__dark13_on.jpg",
+    "dark13_art": "photo__owl_kent__dark13_art.jpg",
+    "dark14_off": "photo__owl_kent__dark14_off.jpg",
+    "dark14_on": "photo__owl_kent__dark14_on.jpg",
+    "dark14_art": "photo__owl_kent__dark14_art.jpg",
+    "dark15_off": "photo__owl_kent__dark15_off.jpg",
+    "dark15_on": "photo__owl_kent__dark15_on.jpg",
+    "dark15_art": "photo__owl_kent__dark15_art.jpg"
+   },
+   "moved": {
+    "dark": [
+     {
+      "shape": "S1fe69c81",
+      "thread": "0145 Skylight",
+      "area_mm2": 2.82,
+      "bounds": [
+       6.25,
+       -40.0,
+       8.88,
+       -37.75
+      ],
+      "from": {
+       "0145 Skylight": 2.81
+      }
+     },
+     {
+      "shape": "S767ea707",
+      "thread": "1776 Blackberry",
+      "area_mm2": 1.45,
+      "bounds": [
+       -33.62,
+       15.0,
+       -32.75,
+       17.88
+      ],
+      "from": {
+       "0145 Skylight": 1.0,
+       "0131 Smoke": 0.36
+      }
+     },
+     {
+      "shape": "S28fa2cec",
+      "thread": "0020 Black",
+      "area_mm2": 13.68,
+      "bounds": [
+       21.41,
+       32.25,
+       34.62,
+       39.88
+      ],
+      "from": {
+       "0020 Black": 6.02,
+       "0763 Dark Rattan": 2.86,
+       "1776 Blackberry": 2.66,
+       "0131 Smoke": 0.87
+      }
+     },
+     {
+      "shape": "S69eae3f7",
+      "thread": "1776 Blackberry",
+      "area_mm2": 1.98,
+      "bounds": [
+       -13.25,
+       38.5,
+       -10.38,
+       39.88
+      ],
+      "from": {
+       "0131 Smoke": 1.98
+      }
+     },
+     {
+      "shape": "Sb0147ca6",
+      "thread": "0763 Dark Rattan",
+      "area_mm2": 5.12,
+      "bounds": [
+       -4.15,
+       14.51,
+       -1.88,
+       18.63
+      ],
+      "from": {
+       "0131 Smoke": 4.45,
+       "0145 Skylight": 0.13
+      }
+     },
+     {
+      "shape": "S5d4a251b",
+      "thread": "0763 Dark Rattan",
+      "area_mm2": 3.23,
+      "bounds": [
+       33.62,
+       2.0,
+       35.13,
+       5.51
+      ],
+      "from": {
+       "0145 Skylight": 2.46,
+       "0763 Dark Rattan": 0.46
+      }
+     },
+     {
+      "shape": "Sb9da84c0",
+      "thread": "0763 Dark Rattan",
+      "area_mm2": 2.21,
+      "bounds": [
+       29.5,
+       17.38,
+       31.12,
+       20.62
+      ],
+      "from": {
+       "0145 Skylight": 1.23,
+       "0763 Dark Rattan": 0.85
+      }
+     },
+     {
+      "shape": "S14d40d7f",
+      "thread": "0763 Dark Rattan",
+      "area_mm2": 1.95,
+      "bounds": [
+       16.25,
+       -40.0,
+       19.0,
+       -38.88
+      ],
+      "from": {
+       "0763 Dark Rattan": 1.46,
+       "0145 Skylight": 0.3
+      }
+     },
+     {
+      "shape": "S123d947e",
+      "thread": "0763 Dark Rattan",
+      "area_mm2": 1.07,
+      "bounds": [
+       4.38,
+       -40.0,
+       6.25,
+       -38.5
+      ],
+      "from": {
+       "0145 Skylight": 1.07
+      }
+     },
+     {
+      "shape": "Sf7920260",
+      "thread": "0763 Dark Rattan",
+      "area_mm2": 0.81,
+      "bounds": [
+       -30.0,
+       -7.62,
+       -29.38,
+       -5.38
+      ],
+      "from": {
+       "0145 Skylight": 0.81
+      }
+     },
+     {
+      "shape": "S1d9462e4",
+      "thread": "0763 Dark Rattan",
+      "area_mm2": 0.79,
+      "bounds": [
+       9.5,
+       -40.0,
+       11.0,
+       -38.75
+      ],
+      "from": {
+       "0145 Skylight": 0.79
+      }
+     },
+     {
+      "shape": "Sf0894f29",
+      "thread": "1776 Blackberry",
+      "area_mm2": 6.36,
+      "bounds": [
+       -39.65,
+       -40.03,
+       -38.26,
+       -31.22
+      ],
+      "from": {
+       "0454 Olive Drab": 6.36
+      }
+     },
+     {
+      "shape": "Sdd71da42",
+      "thread": "1776 Blackberry",
+      "area_mm2": 4.16,
+      "bounds": [
+       -40.0,
+       -22.5,
+       -37.88,
+       -18.25
+      ],
+      "from": {
+       "0454 Olive Drab": 3.93
+      }
+     },
+     {
+      "shape": "S89aaf6f4",
+      "thread": "1776 Blackberry",
+      "area_mm2": 3.11,
+      "bounds": [
+       -39.96,
+       -30.58,
+       -38.98,
+       -25.79
+      ],
+      "from": {
+       "0454 Olive Drab": 1.93,
+       "0020 Black": 0.55
+      }
+     },
+     {
+      "shape": "S33c29c17",
+      "thread": "1776 Blackberry",
+      "area_mm2": 2.73,
+      "bounds": [
+       -39.85,
+       -26.34,
+       -37.91,
+       -23.53
+      ],
+      "from": {
+       "0454 Olive Drab": 2.46
+      }
+     },
+     {
+      "shape": "S3dbcb91d",
+      "thread": "0454 Olive Drab",
+      "area_mm2": 1.34,
+      "bounds": [
+       7.75,
+       37.88,
+       9.12,
+       39.25
+      ],
+      "from": {
+       "0145 Skylight": 1.34
+      }
+     }
+    ],
+    "dropped": [],
+    "added": [],
+    "blocks_gone": {
+     "0020 Black": {
+      "off_blocks": 1,
+      "off_stitches": 2095,
+      "on_blocks": 1,
+      "on_stitches": 1899
+     },
+     "0145 Skylight": {
+      "off_blocks": 1,
+      "off_stitches": 18886,
+      "on_blocks": 1,
+      "on_stitches": 19517
+     },
+     "0454 Olive Drab": {
+      "off_blocks": 1,
+      "off_stitches": 4521,
+      "on_blocks": 1,
+      "on_stitches": 4932
+     },
+     "0763 Dark Rattan": {
+      "off_blocks": 2,
+      "off_stitches": 5479,
+      "on_blocks": 2,
+      "on_stitches": 5483
+     },
+     "1776 Blackberry": {
+      "off_blocks": 1,
+      "off_stitches": 1507,
+      "on_blocks": 2,
+      "on_stitches": 1681
+     }
+    },
+    "shapes_moved": [
+     {
+      "shape": "Sfe8fd1fb",
+      "off": {
+       "0145 Skylight": 14257
+      },
+      "on": {
+       "0145 Skylight": 14691
+      }
+     },
+     {
+      "shape": "Sfa828419",
+      "off": {
+       "0763 Dark Rattan": 2794
+      },
+      "on": {
+       "0763 Dark Rattan": 2773
+      }
+     },
+     {
+      "shape": "Sfa71c988",
+      "off": {},
+      "on": {
+       "0454 Olive Drab": 3169
+      }
+     },
+     {
+      "shape": "S2e95033a",
+      "off": {
+       "0454 Olive Drab": 2611
+      },
+      "on": {}
+     },
+     {
+      "shape": "S1456ef99",
+      "off": {
+       "0131 Smoke": 1104
+      },
+      "on": {
+       "0131 Smoke": 1056
+      }
+     },
+     {
+      "shape": "S5de8cbba",
+      "off": {
+       "0020 Black": 455
+      },
+      "on": {
+       "0020 Black": 366
+      }
+     },
+     {
+      "shape": "Se5b3a77c",
+      "off": {
+       "1776 Blackberry": 293
+      },
+      "on": {
+       "1776 Blackberry": 269
+      }
+     },
+     {
+      "shape": "S70c09c6e",
+      "off": {
+       "0131 Smoke": 183
+      },
+      "on": {
+       "0131 Smoke": 240
+      }
+     },
+     {
+      "shape": "Sc3ee24c0",
+      "off": {
+       "0131 Smoke": 117
+      },
+      "on": {
+       "0131 Smoke": 137
+      }
+     },
+     {
+      "shape": "Se789bf1d",
+      "off": {
+       "0131 Smoke": 101
+      },
+      "on": {
+       "0131 Smoke": 143
+      }
+     },
+     {
+      "shape": "Scf3cfabc",
+      "off": {
+       "0131 Smoke": 116
+      },
+      "on": {
+       "0131 Smoke": 121
+      }
+     },
+     {
+      "shape": "Sfe1f839b",
+      "off": {
+       "0131 Smoke": 110
+      },
+      "on": {
+       "0131 Smoke": 119
+      }
+     },
+     {
+      "shape": "Sc0d2664a",
+      "off": {
+       "0020 Black": 176
+      },
+      "on": {}
+     },
+     {
+      "shape": "S0cc1c46e",
+      "off": {
+       "0763 Dark Rattan": 61
+      },
+      "on": {
+       "0763 Dark Rattan": 58
+      }
+     },
+     {
+      "shape": "Sbf3d2549",
+      "off": {
+       "0131 Smoke": 65
+      },
+      "on": {
+       "0131 Smoke": 54
+      }
+     },
+     {
+      "shape": "S304edb60",
+      "off": {
+       "0763 Dark Rattan": 58
+      },
+      "on": {
+       "0763 Dark Rattan": 56
+      }
+     },
+     {
+      "shape": "S7c60c02c",
+      "off": {
+       "0763 Dark Rattan": 52
+      },
+      "on": {
+       "1776 Blackberry": 61
+      }
+     },
+     {
+      "shape": "S28fa2cec",
+      "off": {},
+      "on": {
+       "0020 Black": 94
+      }
+     },
+     {
+      "shape": "Sa7833839",
+      "off": {
+       "0763 Dark Rattan": 42
+      },
+      "on": {
+       "0763 Dark Rattan": 40
+      }
+     },
+     {
+      "shape": "Scc4460aa",
+      "off": {
+       "1776 Blackberry": 30
+      },
+      "on": {
+       "1776 Blackberry": 34
+      }
+     },
+     {
+      "shape": "Se8d5aabe",
+      "off": {
+       "0454 Olive Drab": 64
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sfa2cb7a6",
+      "off": {
+       "0131 Smoke": 59
+      },
+      "on": {}
+     },
+     {
+      "shape": "Se0fc2021",
+      "off": {
+       "0763 Dark Rattan": 56
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sb8085dd1",
+      "off": {
+       "0454 Olive Drab": 24
+      },
+      "on": {
+       "0454 Olive Drab": 30
+      }
+     },
+     {
+      "shape": "Sf0894f29",
+      "off": {},
+      "on": {
+       "1776 Blackberry": 50
+      }
+     },
+     {
+      "shape": "S1fe69c81",
+      "off": {},
+      "on": {
+       "0145 Skylight": 44
+      }
+     },
+     {
+      "shape": "S9f609fa5",
+      "off": {
+       "0131 Smoke": 19
+      },
+      "on": {
+       "0131 Smoke": 23
+      }
+     },
+     {
+      "shape": "S1bc6fdd4",
+      "off": {
+       "0131 Smoke": 20
+      },
+      "on": {
+       "0131 Smoke": 16
+      }
+     },
+     {
+      "shape": "S2da2631f",
+      "off": {
+       "1776 Blackberry": 32
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sdd71da42",
+      "off": {},
+      "on": {
+       "1776 Blackberry": 31
+      }
+     },
+     {
+      "shape": "S487adcc4",
+      "off": {
+       "0131 Smoke": 17
+      },
+      "on": {
+       "0131 Smoke": 13
+      }
+     },
+     {
+      "shape": "S89aaf6f4",
+      "off": {},
+      "on": {
+       "1776 Blackberry": 30
+      }
+     },
+     {
+      "shape": "Sb0147ca6",
+      "off": {},
+      "on": {
+       "0763 Dark Rattan": 28
+      }
+     },
+     {
+      "shape": "Sf7920260",
+      "off": {},
+      "on": {
+       "0763 Dark Rattan": 26
+      }
+     },
+     {
+      "shape": "S17ed838f",
+      "off": {
+       "0763 Dark Rattan": 26
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sa0ea9da3",
+      "off": {
+       "0454 Olive Drab": 26
+      },
+      "on": {}
+     },
+     {
+      "shape": "S1879a2d4",
+      "off": {
+       "0454 Olive Drab": 24
+      },
+      "on": {}
+     },
+     {
+      "shape": "S5d4a251b",
+      "off": {},
+      "on": {
+       "0763 Dark Rattan": 24
+      }
+     },
+     {
+      "shape": "Sa5388908",
+      "off": {
+       "0763 Dark Rattan": 10
+      },
+      "on": {
+       "0763 Dark Rattan": 14
+      }
+     },
+     {
+      "shape": "S8e973462",
+      "off": {
+       "0763 Dark Rattan": 23
+      },
+      "on": {}
+     },
+     {
+      "shape": "S1d9462e4",
+      "off": {},
+      "on": {
+       "0763 Dark Rattan": 23
+      }
+     },
+     {
+      "shape": "S8474ae9a",
+      "off": {
+       "0131 Smoke": 23
+      },
+      "on": {}
+     },
+     {
+      "shape": "S0fa54db2",
+      "off": {},
+      "on": {
+       "0763 Dark Rattan": 17
+      }
+     },
+     {
+      "shape": "Sf836c1f9",
+      "off": {},
+      "on": {
+       "0131 Smoke": 17
+      }
+     },
+     {
+      "shape": "S1300abe8",
+      "off": {},
+      "on": {
+       "0763 Dark Rattan": 17
+      }
+     },
+     {
+      "shape": "Scdb46a2f",
+      "off": {
+       "0020 Black": 17
+      },
+      "on": {}
+     },
+     {
+      "shape": "S14d40d7f",
+      "off": {},
+      "on": {
+       "0763 Dark Rattan": 16
+      }
+     },
+     {
+      "shape": "Sb9da84c0",
+      "off": {},
+      "on": {
+       "0763 Dark Rattan": 16
+      }
+     },
+     {
+      "shape": "S33c29c17",
+      "off": {},
+      "on": {
+       "1776 Blackberry": 16
+      }
+     },
+     {
+      "shape": "Sf1382100",
+      "off": {
+       "0763 Dark Rattan": 10
+      },
+      "on": {
+       "0763 Dark Rattan": 6
+      }
+     },
+     {
+      "shape": "Sacb240b3",
+      "off": {},
+      "on": {
+       "0131 Smoke": 16
+      }
+     },
+     {
+      "shape": "S767ea707",
+      "off": {},
+      "on": {
+       "1776 Blackberry": 16
+      }
+     },
+     {
+      "shape": "S69eae3f7",
+      "off": {},
+      "on": {
+       "1776 Blackberry": 14
+      }
+     },
+     {
+      "shape": "Se5490fef",
+      "off": {
+       "0454 Olive Drab": 13
+      },
+      "on": {}
+     },
+     {
+      "shape": "S3dbcb91d",
+      "off": {},
+      "on": {
+       "0454 Olive Drab": 12
+      }
+     },
+     {
+      "shape": "S123d947e",
+      "off": {},
+      "on": {
+       "0763 Dark Rattan": 12
+      }
+     },
+     {
+      "shape": "S31dac5df",
+      "off": {},
+      "on": {
+       "0763 Dark Rattan": 10
+      }
+     },
+     {
+      "shape": "Scc24809a",
+      "off": {},
+      "on": {
+       "0763 Dark Rattan": 8
+      }
+     }
+    ]
+   },
+   "diff_points": 45846,
+   "diff_points_before": null,
+   "window_mm": [
+    15.7,
+    28.7,
+    33.7,
+    39.7
+   ],
+   "changed_box_mm": [
+    -42.3,
+    -42.3,
+    42.2,
+    42.2
+   ]
+  },
+  "art/logo_hotel_fremont_patch.png": {
+   "hero_tiles": {
+    "whole_off": "art__logo_hotel_fremont_patch__whole_off.jpg",
+    "whole_on": "art__logo_hotel_fremont_patch__whole_on.jpg",
+    "art": "art__logo_hotel_fremont_patch__art.jpg",
+    "where": "art__logo_hotel_fremont_patch__where.jpg",
+    "win_off": "art__logo_hotel_fremont_patch__win_off.jpg",
+    "win_on": "art__logo_hotel_fremont_patch__win_on.jpg",
+    "changed_off": "art__logo_hotel_fremont_patch__changed_off.jpg",
+    "changed_on": "art__logo_hotel_fremont_patch__changed_on.jpg",
+    "dark0_off": "art__logo_hotel_fremont_patch__dark0_off.jpg",
+    "dark0_on": "art__logo_hotel_fremont_patch__dark0_on.jpg",
+    "dark0_art": "art__logo_hotel_fremont_patch__dark0_art.jpg",
+    "dark1_off": "art__logo_hotel_fremont_patch__dark1_off.jpg",
+    "dark1_on": "art__logo_hotel_fremont_patch__dark1_on.jpg",
+    "dark1_art": "art__logo_hotel_fremont_patch__dark1_art.jpg",
+    "dark2_off": "art__logo_hotel_fremont_patch__dark2_off.jpg",
+    "dark2_on": "art__logo_hotel_fremont_patch__dark2_on.jpg",
+    "dark2_art": "art__logo_hotel_fremont_patch__dark2_art.jpg",
+    "dark3_off": "art__logo_hotel_fremont_patch__dark3_off.jpg",
+    "dark3_on": "art__logo_hotel_fremont_patch__dark3_on.jpg",
+    "dark3_art": "art__logo_hotel_fremont_patch__dark3_art.jpg",
+    "dark4_off": "art__logo_hotel_fremont_patch__dark4_off.jpg",
+    "dark4_on": "art__logo_hotel_fremont_patch__dark4_on.jpg",
+    "dark4_art": "art__logo_hotel_fremont_patch__dark4_art.jpg",
+    "dark5_off": "art__logo_hotel_fremont_patch__dark5_off.jpg",
+    "dark5_on": "art__logo_hotel_fremont_patch__dark5_on.jpg",
+    "dark5_art": "art__logo_hotel_fremont_patch__dark5_art.jpg",
+    "dark6_off": "art__logo_hotel_fremont_patch__dark6_off.jpg",
+    "dark6_on": "art__logo_hotel_fremont_patch__dark6_on.jpg",
+    "dark6_art": "art__logo_hotel_fremont_patch__dark6_art.jpg",
+    "dark7_off": "art__logo_hotel_fremont_patch__dark7_off.jpg",
+    "dark7_on": "art__logo_hotel_fremont_patch__dark7_on.jpg",
+    "dark7_art": "art__logo_hotel_fremont_patch__dark7_art.jpg",
+    "dark8_off": "art__logo_hotel_fremont_patch__dark8_off.jpg",
+    "dark8_on": "art__logo_hotel_fremont_patch__dark8_on.jpg",
+    "dark8_art": "art__logo_hotel_fremont_patch__dark8_art.jpg",
+    "dark9_off": "art__logo_hotel_fremont_patch__dark9_off.jpg",
+    "dark9_on": "art__logo_hotel_fremont_patch__dark9_on.jpg",
+    "dark9_art": "art__logo_hotel_fremont_patch__dark9_art.jpg",
+    "dark10_off": "art__logo_hotel_fremont_patch__dark10_off.jpg",
+    "dark10_on": "art__logo_hotel_fremont_patch__dark10_on.jpg",
+    "dark10_art": "art__logo_hotel_fremont_patch__dark10_art.jpg",
+    "dark11_off": "art__logo_hotel_fremont_patch__dark11_off.jpg",
+    "dark11_on": "art__logo_hotel_fremont_patch__dark11_on.jpg",
+    "dark11_art": "art__logo_hotel_fremont_patch__dark11_art.jpg",
+    "dark12_off": "art__logo_hotel_fremont_patch__dark12_off.jpg",
+    "dark12_on": "art__logo_hotel_fremont_patch__dark12_on.jpg",
+    "dark12_art": "art__logo_hotel_fremont_patch__dark12_art.jpg",
+    "dark13_off": "art__logo_hotel_fremont_patch__dark13_off.jpg",
+    "dark13_on": "art__logo_hotel_fremont_patch__dark13_on.jpg",
+    "dark13_art": "art__logo_hotel_fremont_patch__dark13_art.jpg"
+   },
+   "moved": {
+    "dark": [
+     {
+      "shape": "S6465cc5b",
+      "thread": "0020 Black",
+      "area_mm2": 53.63,
+      "bounds": [
+       -25.79,
+       -20.01,
+       25.48,
+       -7.29
+      ],
+      "from": {
+       "0020 Black": 51.91,
+       "0015 White": 2.43
+      }
+     },
+     {
+      "shape": "S93ca5dd9",
+      "thread": "0020 Black",
+      "area_mm2": 48.23,
+      "bounds": [
+       -25.8,
+       7.16,
+       25.47,
+       19.86
+      ],
+      "from": {
+       "0020 Black": 47.8,
+       "0015 White": 0.47
+      }
+     },
+     {
+      "shape": "Sabf2fbce",
+      "thread": "0020 Black",
+      "area_mm2": 13.49,
+      "bounds": [
+       24.52,
+       -2.95,
+       30.44,
+       2.89
+      ],
+      "from": {
+       "0020 Black": 10.91,
+       "0015 White": 0.49
+      }
+     },
+     {
+      "shape": "Sa5d0ee14",
+      "thread": "0020 Black",
+      "area_mm2": 11.61,
+      "bounds": [
+       18.13,
+       -3.03,
+       24.04,
+       2.87
+      ],
+      "from": {
+       "0020 Black": 11.34,
+       "0015 White": 0.37
+      }
+     },
+     {
+      "shape": "S3c0b72e4",
+      "thread": "0020 Black",
+      "area_mm2": 10.39,
+      "bounds": [
+       -5.18,
+       -2.99,
+       -0.65,
+       2.77
+      ],
+      "from": {
+       "0020 Black": 9.92,
+       "0015 White": 0.89
+      }
+     },
+     {
+      "shape": "S0ee0acbe",
+      "thread": "0020 Black",
+      "area_mm2": 6.49,
+      "bounds": [
+       -38.88,
+       -8.06,
+       -36.88,
+       7.94
+      ],
+      "from": {
+       "0020 Black": 4.97,
+       "0015 White": 1.34
+      }
+     },
+     {
+      "shape": "Sacec5284",
+      "thread": "0020 Black",
+      "area_mm2": 2.22,
+      "bounds": [
+       -4.5,
+       19.31,
+       -0.38,
+       20.69
+      ],
+      "from": {
+       "0020 Black": 1.92,
+       "0015 White": 0.43
+      }
+     },
+     {
+      "shape": "Sc1ff23bf",
+      "thread": "0020 Black",
+      "area_mm2": 2.19,
+      "bounds": [
+       0.12,
+       19.44,
+       4.12,
+       20.69
+      ],
+      "from": {
+       "0020 Black": 1.94,
+       "0015 White": 0.49
+      }
+     },
+     {
+      "shape": "S3bfa296b",
+      "thread": "0873 Stone",
+      "area_mm2": 32.01,
+      "bounds": [
+       -24.13,
+       -18.63,
+       0.55,
+       -7.28
+      ],
+      "from": {
+       "0152 Dolphin": 13.39,
+       "0015 White": 12.54
+      }
+     },
+     {
+      "shape": "Secc5ddea",
+      "thread": "0873 Stone",
+      "area_mm2": 4.26,
+      "bounds": [
+       6.38,
+       8.44,
+       11.88,
+       10.56
+      ],
+      "from": {
+       "0015 White": 4.26
+      }
+     },
+     {
+      "shape": "S6ff52ef7",
+      "thread": "0873 Stone",
+      "area_mm2": 3.49,
+      "bounds": [
+       -11.62,
+       8.44,
+       -7.75,
+       10.56
+      ],
+      "from": {
+       "0015 White": 3.49
+      }
+     },
+     {
+      "shape": "Sea44cf7f",
+      "thread": "0152 Dolphin",
+      "area_mm2": 2.21,
+      "bounds": [
+       22.62,
+       -9.69,
+       24.0,
+       -7.31
+      ],
+      "from": {
+       "0015 White": 0.95,
+       "0152 Dolphin": 0.8
+      }
+     },
+     {
+      "shape": "S9aa6a32e",
+      "thread": "0873 Stone",
+      "area_mm2": 1.27,
+      "bounds": [
+       -1.62,
+       8.44,
+       0.0,
+       10.56
+      ],
+      "from": {
+       "0015 White": 1.27
+      }
+     },
+     {
+      "shape": "S5387f71f",
+      "thread": "0873 Stone",
+      "area_mm2": 0.91,
+      "bounds": [
+       -5.12,
+       -12.44,
+       -3.75,
+       -10.81
+      ],
+      "from": {
+       "0015 White": 0.91
+      }
+     }
+    ],
+    "dropped": [],
+    "added": [
+     "0873 Stone"
+    ],
+    "blocks_gone": {
+     "0015 White": {
+      "off_blocks": 1,
+      "off_stitches": 8551,
+      "on_blocks": 1,
+      "on_stitches": 8232
+     },
+     "0020 Black": {
+      "off_blocks": 1,
+      "off_stitches": 9380,
+      "on_blocks": 1,
+      "on_stitches": 9400
+     },
+     "0152 Dolphin": {
+      "off_blocks": 1,
+      "off_stitches": 1070,
+      "on_blocks": 1,
+      "on_stitches": 676
+     },
+     "0873 Stone": {
+      "off_blocks": 0,
+      "off_stitches": 0,
+      "on_blocks": 1,
+      "on_stitches": 530
+     }
+    },
+    "shapes_moved": [
+     {
+      "shape": "Sb8bb2070",
+      "off": {
+       "0015 White": 7815
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sef39bc6a",
+      "off": {},
+      "on": {
+       "0015 White": 7294
+      }
+     },
+     {
+      "shape": "S4e1b7cf9",
+      "off": {
+       "0020 Black": 899
+      },
+      "on": {
+       "0020 Black": 947
+      }
+     },
+     {
+      "shape": "S9960bc83",
+      "off": {
+       "0020 Black": 898
+      },
+      "on": {
+       "0020 Black": 909
+      }
+     },
+     {
+      "shape": "S8d993bfb",
+      "off": {
+       "0020 Black": 1128
+      },
+      "on": {}
+     },
+     {
+      "shape": "S00829496",
+      "off": {},
+      "on": {
+       "0020 Black": 886
+      }
+     },
+     {
+      "shape": "S8a549a0f",
+      "off": {
+       "0020 Black": 158
+      },
+      "on": {
+       "0020 Black": 154
+      }
+     },
+     {
+      "shape": "S6465cc5b",
+      "off": {},
+      "on": {
+       "0020 Black": 308
+      }
+     },
+     {
+      "shape": "S422c214b",
+      "off": {
+       "0020 Black": 155
+      },
+      "on": {
+       "0020 Black": 153
+      }
+     },
+     {
+      "shape": "S71a996fc",
+      "off": {
+       "0020 Black": 304
+      },
+      "on": {}
+     },
+     {
+      "shape": "S93ca5dd9",
+      "off": {},
+      "on": {
+       "0020 Black": 304
+      }
+     },
+     {
+      "shape": "S3cb97068",
+      "off": {
+       "0020 Black": 304
+      },
+      "on": {}
+     },
+     {
+      "shape": "S71c2d5a0",
+      "off": {
+       "0020 Black": 153
+      },
+      "on": {
+       "0020 Black": 150
+      }
+     },
+     {
+      "shape": "S00d683b7",
+      "off": {
+       "0020 Black": 133
+      },
+      "on": {
+       "0020 Black": 127
+      }
+     },
+     {
+      "shape": "S33b6f794",
+      "off": {
+       "0020 Black": 108
+      },
+      "on": {
+       "0020 Black": 141
+      }
+     },
+     {
+      "shape": "S2015da09",
+      "off": {
+       "0020 Black": 112
+      },
+      "on": {
+       "0020 Black": 107
+      }
+     },
+     {
+      "shape": "Sd82dbe0b",
+      "off": {},
+      "on": {
+       "0015 White": 212
+      }
+     },
+     {
+      "shape": "S1d035d4e",
+      "off": {
+       "0020 Black": 102
+      },
+      "on": {
+       "0020 Black": 104
+      }
+     },
+     {
+      "shape": "S99224c60",
+      "off": {
+       "0020 Black": 95
+      },
+      "on": {
+       "0020 Black": 104
+      }
+     },
+     {
+      "shape": "S31fdca10",
+      "off": {
+       "0020 Black": 169
+      },
+      "on": {}
+     },
+     {
+      "shape": "S3c0b72e4",
+      "off": {},
+      "on": {
+       "0020 Black": 165
+      }
+     },
+     {
+      "shape": "S3bfa296b",
+      "off": {},
+      "on": {
+       "0873 Stone": 159
+      }
+     },
+     {
+      "shape": "Sabf2fbce",
+      "off": {},
+      "on": {
+       "0020 Black": 149
+      }
+     },
+     {
+      "shape": "S0ee0acbe",
+      "off": {},
+      "on": {
+       "0020 Black": 141
+      }
+     },
+     {
+      "shape": "Sb38d2554",
+      "off": {
+       "0020 Black": 116
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sc19144af",
+      "off": {
+       "0020 Black": 101
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sa5d0ee14",
+      "off": {},
+      "on": {
+       "0020 Black": 101
+      }
+     },
+     {
+      "shape": "S54b55cf1",
+      "off": {
+       "0020 Black": 44
+      },
+      "on": {
+       "0020 Black": 46
+      }
+     },
+     {
+      "shape": "Sad4acfed",
+      "off": {
+       "0020 Black": 42
+      },
+      "on": {
+       "0020 Black": 46
+      }
+     },
+     {
+      "shape": "Sc3232e8d",
+      "off": {
+       "0020 Black": 46
+      },
+      "on": {
+       "0020 Black": 42
+      }
+     },
+     {
+      "shape": "Secc5ddea",
+      "off": {},
+      "on": {
+       "0873 Stone": 85
+      }
+     },
+     {
+      "shape": "S3bfa296b-clip2",
+      "off": {},
+      "on": {
+       "0873 Stone": 84
+      }
+     },
+     {
+      "shape": "S6ff52ef7",
+      "off": {},
+      "on": {
+       "0873 Stone": 80
+      }
+     },
+     {
+      "shape": "S9aa6a32e",
+      "off": {},
+      "on": {
+       "0873 Stone": 44
+      }
+     },
+     {
+      "shape": "S29499d33",
+      "off": {
+       "0152 Dolphin": 38
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sa93cf9a9",
+      "off": {
+       "0152 Dolphin": 36
+      },
+      "on": {}
+     },
+     {
+      "shape": "S5387f71f",
+      "off": {},
+      "on": {
+       "0873 Stone": 35
+      }
+     },
+     {
+      "shape": "Sd57083b8",
+      "off": {
+       "0152 Dolphin": 34
+      },
+      "on": {}
+     },
+     {
+      "shape": "S3165d7ac",
+      "off": {
+       "0152 Dolphin": 17
+      },
+      "on": {
+       "0152 Dolphin": 13
+      }
+     },
+     {
+      "shape": "S259c8409",
+      "off": {
+       "0152 Dolphin": 23
+      },
+      "on": {}
+     },
+     {
+      "shape": "S42bedf65",
+      "off": {
+       "0152 Dolphin": 20
+      },
+      "on": {}
+     },
+     {
+      "shape": "S81a0981e",
+      "off": {
+       "0152 Dolphin": 20
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sc8e8608f",
+      "off": {
+       "0152 Dolphin": 19
+      },
+      "on": {}
+     },
+     {
+      "shape": "S3f4d3a3b",
+      "off": {
+       "0152 Dolphin": 19
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sd3564b17",
+      "off": {
+       "0152 Dolphin": 19
+      },
+      "on": {}
+     },
+     {
+      "shape": "S0812fefc",
+      "off": {
+       "0152 Dolphin": 19
+      },
+      "on": {}
+     },
+     {
+      "shape": "Se56a0075",
+      "off": {
+       "0152 Dolphin": 19
+      },
+      "on": {}
+     },
+     {
+      "shape": "S62c8a807",
+      "off": {
+       "0152 Dolphin": 16
+      },
+      "on": {}
+     },
+     {
+      "shape": "S6f74e7a9",
+      "off": {
+       "0152 Dolphin": 6
+      },
+      "on": {
+       "0152 Dolphin": 10
+      }
+     },
+     {
+      "shape": "Sd4cce03f",
+      "off": {
+       "0152 Dolphin": 16
+      },
+      "on": {}
+     },
+     {
+      "shape": "S164d7c31",
+      "off": {
+       "0152 Dolphin": 16
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sda308742",
+      "off": {
+       "0152 Dolphin": 16
+      },
+      "on": {}
+     },
+     {
+      "shape": "S9b0b39c4",
+      "off": {
+       "0152 Dolphin": 16
+      },
+      "on": {}
+     },
+     {
+      "shape": "S5e03e4b8",
+      "off": {
+       "0152 Dolphin": 16
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sacec5284",
+      "off": {},
+      "on": {
+       "0020 Black": 14
+      }
+     },
+     {
+      "shape": "Sea44cf7f",
+      "off": {},
+      "on": {
+       "0152 Dolphin": 14
+      }
+     },
+     {
+      "shape": "Se61721a8",
+      "off": {
+       "0152 Dolphin": 13
+      },
+      "on": {}
+     },
+     {
+      "shape": "S2258481e",
+      "off": {
+       "0152 Dolphin": 4
+      },
+      "on": {
+       "0152 Dolphin": 8
+      }
+     },
+     {
+      "shape": "Sadf4efd8",
+      "off": {
+       "0152 Dolphin": 12
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sc1ff23bf",
+      "off": {},
+      "on": {
+       "0020 Black": 10
+      }
+     },
+     {
+      "shape": "S589596dc",
+      "off": {
+       "0152 Dolphin": 10
+      },
+      "on": {}
+     },
+     {
+      "shape": "Sa93cf9a9-clip3",
+      "off": {
+       "0152 Dolphin": 6
+      },
+      "on": {}
+     }
+    ]
+   },
+   "diff_points": 16235,
+   "diff_points_before": null,
+   "window_mm": [
+    -40.3,
+    -16.3,
+    -22.3,
+    -5.3
+   ],
+   "changed_box_mm": [
+    -42.3,
+    -23.3,
+    42.2,
+    23.2
+   ]
+  }
+ },
+ "hero_tiles": {
+  "whole_off": "photo__owl_kent__whole_off.jpg",
+  "whole_on": "photo__owl_kent__whole_on.jpg",
+  "art": "photo__owl_kent__art.jpg",
+  "where": "photo__owl_kent__where.jpg",
+  "win_off": "photo__owl_kent__win_off.jpg",
+  "win_on": "photo__owl_kent__win_on.jpg",
+  "changed_off": "photo__owl_kent__changed_off.jpg",
+  "changed_on": "photo__owl_kent__changed_on.jpg",
+  "dark0_off": "photo__owl_kent__dark0_off.jpg",
+  "dark0_on": "photo__owl_kent__dark0_on.jpg",
+  "dark0_art": "photo__owl_kent__dark0_art.jpg",
+  "dark1_off": "photo__owl_kent__dark1_off.jpg",
+  "dark1_on": "photo__owl_kent__dark1_on.jpg",
+  "dark1_art": "photo__owl_kent__dark1_art.jpg",
+  "dark2_off": "photo__owl_kent__dark2_off.jpg",
+  "dark2_on": "photo__owl_kent__dark2_on.jpg",
+  "dark2_art": "photo__owl_kent__dark2_art.jpg",
+  "dark3_off": "photo__owl_kent__dark3_off.jpg",
+  "dark3_on": "photo__owl_kent__dark3_on.jpg",
+  "dark3_art": "photo__owl_kent__dark3_art.jpg",
+  "dark4_off": "photo__owl_kent__dark4_off.jpg",
+  "dark4_on": "photo__owl_kent__dark4_on.jpg",
+  "dark4_art": "photo__owl_kent__dark4_art.jpg",
+  "dark5_off": "photo__owl_kent__dark5_off.jpg",
+  "dark5_on": "photo__owl_kent__dark5_on.jpg",
+  "dark5_art": "photo__owl_kent__dark5_art.jpg",
+  "dark6_off": "photo__owl_kent__dark6_off.jpg",
+  "dark6_on": "photo__owl_kent__dark6_on.jpg",
+  "dark6_art": "photo__owl_kent__dark6_art.jpg",
+  "dark7_off": "photo__owl_kent__dark7_off.jpg",
+  "dark7_on": "photo__owl_kent__dark7_on.jpg",
+  "dark7_art": "photo__owl_kent__dark7_art.jpg",
+  "dark8_off": "photo__owl_kent__dark8_off.jpg",
+  "dark8_on": "photo__owl_kent__dark8_on.jpg",
+  "dark8_art": "photo__owl_kent__dark8_art.jpg",
+  "dark9_off": "photo__owl_kent__dark9_off.jpg",
+  "dark9_on": "photo__owl_kent__dark9_on.jpg",
+  "dark9_art": "photo__owl_kent__dark9_art.jpg",
+  "dark10_off": "photo__owl_kent__dark10_off.jpg",
+  "dark10_on": "photo__owl_kent__dark10_on.jpg",
+  "dark10_art": "photo__owl_kent__dark10_art.jpg",
+  "dark11_off": "photo__owl_kent__dark11_off.jpg",
+  "dark11_on": "photo__owl_kent__dark11_on.jpg",
+  "dark11_art": "photo__owl_kent__dark11_art.jpg",
+  "dark12_off": "photo__owl_kent__dark12_off.jpg",
+  "dark12_on": "photo__owl_kent__dark12_on.jpg",
+  "dark12_art": "photo__owl_kent__dark12_art.jpg",
+  "dark13_off": "photo__owl_kent__dark13_off.jpg",
+  "dark13_on": "photo__owl_kent__dark13_on.jpg",
+  "dark13_art": "photo__owl_kent__dark13_art.jpg",
+  "dark14_off": "photo__owl_kent__dark14_off.jpg",
+  "dark14_on": "photo__owl_kent__dark14_on.jpg",
+  "dark14_art": "photo__owl_kent__dark14_art.jpg",
+  "dark15_off": "photo__owl_kent__dark15_off.jpg",
+  "dark15_on": "photo__owl_kent__dark15_on.jpg",
+  "dark15_art": "photo__owl_kent__dark15_art.jpg"
+ },
+ "moved": {
+  "dark": [
+   {
+    "shape": "S1fe69c81",
+    "thread": "0145 Skylight",
+    "area_mm2": 2.82,
+    "bounds": [
+     6.25,
+     -40.0,
+     8.88,
+     -37.75
+    ],
+    "from": {
+     "0145 Skylight": 2.81
+    }
+   },
+   {
+    "shape": "S767ea707",
+    "thread": "1776 Blackberry",
+    "area_mm2": 1.45,
+    "bounds": [
+     -33.62,
+     15.0,
+     -32.75,
+     17.88
+    ],
+    "from": {
+     "0145 Skylight": 1.0,
+     "0131 Smoke": 0.36
+    }
+   },
+   {
+    "shape": "S28fa2cec",
+    "thread": "0020 Black",
+    "area_mm2": 13.68,
+    "bounds": [
+     21.41,
+     32.25,
+     34.62,
+     39.88
+    ],
+    "from": {
+     "0020 Black": 6.02,
+     "0763 Dark Rattan": 2.86,
+     "1776 Blackberry": 2.66,
+     "0131 Smoke": 0.87
+    }
+   },
+   {
+    "shape": "S69eae3f7",
+    "thread": "1776 Blackberry",
+    "area_mm2": 1.98,
+    "bounds": [
+     -13.25,
+     38.5,
+     -10.38,
+     39.88
+    ],
+    "from": {
+     "0131 Smoke": 1.98
+    }
+   },
+   {
+    "shape": "Sb0147ca6",
+    "thread": "0763 Dark Rattan",
+    "area_mm2": 5.12,
+    "bounds": [
+     -4.15,
+     14.51,
+     -1.88,
+     18.63
+    ],
+    "from": {
+     "0131 Smoke": 4.45,
+     "0145 Skylight": 0.13
+    }
+   },
+   {
+    "shape": "S5d4a251b",
+    "thread": "0763 Dark Rattan",
+    "area_mm2": 3.23,
+    "bounds": [
+     33.62,
+     2.0,
+     35.13,
+     5.51
+    ],
+    "from": {
+     "0145 Skylight": 2.46,
+     "0763 Dark Rattan": 0.46
+    }
+   },
+   {
+    "shape": "Sb9da84c0",
+    "thread": "0763 Dark Rattan",
+    "area_mm2": 2.21,
+    "bounds": [
+     29.5,
+     17.38,
+     31.12,
+     20.62
+    ],
+    "from": {
+     "0145 Skylight": 1.23,
+     "0763 Dark Rattan": 0.85
+    }
+   },
+   {
+    "shape": "S14d40d7f",
+    "thread": "0763 Dark Rattan",
+    "area_mm2": 1.95,
+    "bounds": [
+     16.25,
+     -40.0,
+     19.0,
+     -38.88
+    ],
+    "from": {
+     "0763 Dark Rattan": 1.46,
+     "0145 Skylight": 0.3
+    }
+   },
+   {
+    "shape": "S123d947e",
+    "thread": "0763 Dark Rattan",
+    "area_mm2": 1.07,
+    "bounds": [
+     4.38,
+     -40.0,
+     6.25,
+     -38.5
+    ],
+    "from": {
+     "0145 Skylight": 1.07
+    }
+   },
+   {
+    "shape": "Sf7920260",
+    "thread": "0763 Dark Rattan",
+    "area_mm2": 0.81,
+    "bounds": [
+     -30.0,
+     -7.62,
+     -29.38,
+     -5.38
+    ],
+    "from": {
+     "0145 Skylight": 0.81
+    }
+   },
+   {
+    "shape": "S1d9462e4",
+    "thread": "0763 Dark Rattan",
+    "area_mm2": 0.79,
+    "bounds": [
+     9.5,
+     -40.0,
+     11.0,
+     -38.75
+    ],
+    "from": {
+     "0145 Skylight": 0.79
+    }
+   },
+   {
+    "shape": "Sf0894f29",
+    "thread": "1776 Blackberry",
+    "area_mm2": 6.36,
+    "bounds": [
+     -39.65,
+     -40.03,
+     -38.26,
+     -31.22
+    ],
+    "from": {
+     "0454 Olive Drab": 6.36
+    }
+   },
+   {
+    "shape": "Sdd71da42",
+    "thread": "1776 Blackberry",
+    "area_mm2": 4.16,
+    "bounds": [
+     -40.0,
+     -22.5,
+     -37.88,
+     -18.25
+    ],
+    "from": {
+     "0454 Olive Drab": 3.93
+    }
+   },
+   {
+    "shape": "S89aaf6f4",
+    "thread": "1776 Blackberry",
+    "area_mm2": 3.11,
+    "bounds": [
+     -39.96,
+     -30.58,
+     -38.98,
+     -25.79
+    ],
+    "from": {
+     "0454 Olive Drab": 1.93,
+     "0020 Black": 0.55
+    }
+   },
+   {
+    "shape": "S33c29c17",
+    "thread": "1776 Blackberry",
+    "area_mm2": 2.73,
+    "bounds": [
+     -39.85,
+     -26.34,
+     -37.91,
+     -23.53
+    ],
+    "from": {
+     "0454 Olive Drab": 2.46
+    }
+   },
+   {
+    "shape": "S3dbcb91d",
+    "thread": "0454 Olive Drab",
+    "area_mm2": 1.34,
+    "bounds": [
+     7.75,
+     37.88,
+     9.12,
+     39.25
+    ],
+    "from": {
+     "0145 Skylight": 1.34
+    }
+   }
+  ],
+  "dropped": [],
+  "added": [],
+  "blocks_gone": {
+   "0020 Black": {
+    "off_blocks": 1,
+    "off_stitches": 2095,
+    "on_blocks": 1,
+    "on_stitches": 1899
+   },
+   "0145 Skylight": {
+    "off_blocks": 1,
+    "off_stitches": 18886,
+    "on_blocks": 1,
+    "on_stitches": 19517
+   },
+   "0454 Olive Drab": {
+    "off_blocks": 1,
+    "off_stitches": 4521,
+    "on_blocks": 1,
+    "on_stitches": 4932
+   },
+   "0763 Dark Rattan": {
+    "off_blocks": 2,
+    "off_stitches": 5479,
+    "on_blocks": 2,
+    "on_stitches": 5483
+   },
+   "1776 Blackberry": {
+    "off_blocks": 1,
+    "off_stitches": 1507,
+    "on_blocks": 2,
+    "on_stitches": 1681
+   }
+  },
+  "shapes_moved": [
+   {
+    "shape": "Sfe8fd1fb",
+    "off": {
+     "0145 Skylight": 14257
+    },
+    "on": {
+     "0145 Skylight": 14691
+    }
+   },
+   {
+    "shape": "Sfa828419",
+    "off": {
+     "0763 Dark Rattan": 2794
+    },
+    "on": {
+     "0763 Dark Rattan": 2773
+    }
+   },
+   {
+    "shape": "Sfa71c988",
+    "off": {},
+    "on": {
+     "0454 Olive Drab": 3169
+    }
+   },
+   {
+    "shape": "S2e95033a",
+    "off": {
+     "0454 Olive Drab": 2611
+    },
+    "on": {}
+   },
+   {
+    "shape": "S1456ef99",
+    "off": {
+     "0131 Smoke": 1104
+    },
+    "on": {
+     "0131 Smoke": 1056
+    }
+   },
+   {
+    "shape": "S5de8cbba",
+    "off": {
+     "0020 Black": 455
+    },
+    "on": {
+     "0020 Black": 366
+    }
+   },
+   {
+    "shape": "Se5b3a77c",
+    "off": {
+     "1776 Blackberry": 293
+    },
+    "on": {
+     "1776 Blackberry": 269
+    }
+   },
+   {
+    "shape": "S70c09c6e",
+    "off": {
+     "0131 Smoke": 183
+    },
+    "on": {
+     "0131 Smoke": 240
+    }
+   },
+   {
+    "shape": "Sc3ee24c0",
+    "off": {
+     "0131 Smoke": 117
+    },
+    "on": {
+     "0131 Smoke": 137
+    }
+   },
+   {
+    "shape": "Se789bf1d",
+    "off": {
+     "0131 Smoke": 101
+    },
+    "on": {
+     "0131 Smoke": 143
+    }
+   },
+   {
+    "shape": "Scf3cfabc",
+    "off": {
+     "0131 Smoke": 116
+    },
+    "on": {
+     "0131 Smoke": 121
+    }
+   },
+   {
+    "shape": "Sfe1f839b",
+    "off": {
+     "0131 Smoke": 110
+    },
+    "on": {
+     "0131 Smoke": 119
+    }
+   },
+   {
+    "shape": "Sc0d2664a",
+    "off": {
+     "0020 Black": 176
+    },
+    "on": {}
+   },
+   {
+    "shape": "S0cc1c46e",
+    "off": {
+     "0763 Dark Rattan": 61
+    },
+    "on": {
+     "0763 Dark Rattan": 58
+    }
+   },
+   {
+    "shape": "Sbf3d2549",
+    "off": {
+     "0131 Smoke": 65
+    },
+    "on": {
+     "0131 Smoke": 54
+    }
+   },
+   {
+    "shape": "S304edb60",
+    "off": {
+     "0763 Dark Rattan": 58
+    },
+    "on": {
+     "0763 Dark Rattan": 56
+    }
+   },
+   {
+    "shape": "S7c60c02c",
+    "off": {
+     "0763 Dark Rattan": 52
+    },
+    "on": {
+     "1776 Blackberry": 61
+    }
+   },
+   {
+    "shape": "S28fa2cec",
+    "off": {},
+    "on": {
+     "0020 Black": 94
+    }
+   },
+   {
+    "shape": "Sa7833839",
+    "off": {
+     "0763 Dark Rattan": 42
+    },
+    "on": {
+     "0763 Dark Rattan": 40
+    }
+   },
+   {
+    "shape": "Scc4460aa",
+    "off": {
+     "1776 Blackberry": 30
+    },
+    "on": {
+     "1776 Blackberry": 34
+    }
+   },
+   {
+    "shape": "Se8d5aabe",
+    "off": {
+     "0454 Olive Drab": 64
+    },
+    "on": {}
+   },
+   {
+    "shape": "Sfa2cb7a6",
+    "off": {
+     "0131 Smoke": 59
+    },
+    "on": {}
+   },
+   {
+    "shape": "Se0fc2021",
+    "off": {
+     "0763 Dark Rattan": 56
+    },
+    "on": {}
+   },
+   {
+    "shape": "Sb8085dd1",
+    "off": {
+     "0454 Olive Drab": 24
+    },
+    "on": {
+     "0454 Olive Drab": 30
+    }
+   },
+   {
+    "shape": "Sf0894f29",
+    "off": {},
+    "on": {
+     "1776 Blackberry": 50
+    }
+   },
+   {
+    "shape": "S1fe69c81",
+    "off": {},
+    "on": {
+     "0145 Skylight": 44
+    }
+   },
+   {
+    "shape": "S9f609fa5",
+    "off": {
+     "0131 Smoke": 19
+    },
+    "on": {
+     "0131 Smoke": 23
+    }
+   },
+   {
+    "shape": "S1bc6fdd4",
+    "off": {
+     "0131 Smoke": 20
+    },
+    "on": {
+     "0131 Smoke": 16
+    }
+   },
+   {
+    "shape": "S2da2631f",
+    "off": {
+     "1776 Blackberry": 32
+    },
+    "on": {}
+   },
+   {
+    "shape": "Sdd71da42",
+    "off": {},
+    "on": {
+     "1776 Blackberry": 31
+    }
+   },
+   {
+    "shape": "S487adcc4",
+    "off": {
+     "0131 Smoke": 17
+    },
+    "on": {
+     "0131 Smoke": 13
+    }
+   },
+   {
+    "shape": "S89aaf6f4",
+    "off": {},
+    "on": {
+     "1776 Blackberry": 30
+    }
+   },
+   {
+    "shape": "Sb0147ca6",
+    "off": {},
+    "on": {
+     "0763 Dark Rattan": 28
+    }
+   },
+   {
+    "shape": "Sf7920260",
+    "off": {},
+    "on": {
+     "0763 Dark Rattan": 26
+    }
+   },
+   {
+    "shape": "S17ed838f",
+    "off": {
+     "0763 Dark Rattan": 26
+    },
+    "on": {}
+   },
+   {
+    "shape": "Sa0ea9da3",
+    "off": {
+     "0454 Olive Drab": 26
+    },
+    "on": {}
+   },
+   {
+    "shape": "S1879a2d4",
+    "off": {
+     "0454 Olive Drab": 24
+    },
+    "on": {}
+   },
+   {
+    "shape": "S5d4a251b",
+    "off": {},
+    "on": {
+     "0763 Dark Rattan": 24
+    }
+   },
+   {
+    "shape": "Sa5388908",
+    "off": {
+     "0763 Dark Rattan": 10
+    },
+    "on": {
+     "0763 Dark Rattan": 14
+    }
+   },
+   {
+    "shape": "S8e973462",
+    "off": {
+     "0763 Dark Rattan": 23
+    },
+    "on": {}
+   },
+   {
+    "shape": "S1d9462e4",
+    "off": {},
+    "on": {
+     "0763 Dark Rattan": 23
+    }
+   },
+   {
+    "shape": "S8474ae9a",
+    "off": {
+     "0131 Smoke": 23
+    },
+    "on": {}
+   },
+   {
+    "shape": "S0fa54db2",
+    "off": {},
+    "on": {
+     "0763 Dark Rattan": 17
+    }
+   },
+   {
+    "shape": "Sf836c1f9",
+    "off": {},
+    "on": {
+     "0131 Smoke": 17
+    }
+   },
+   {
+    "shape": "S1300abe8",
+    "off": {},
+    "on": {
+     "0763 Dark Rattan": 17
+    }
+   },
+   {
+    "shape": "Scdb46a2f",
+    "off": {
+     "0020 Black": 17
+    },
+    "on": {}
+   },
+   {
+    "shape": "S14d40d7f",
+    "off": {},
+    "on": {
+     "0763 Dark Rattan": 16
+    }
+   },
+   {
+    "shape": "Sb9da84c0",
+    "off": {},
+    "on": {
+     "0763 Dark Rattan": 16
+    }
+   },
+   {
+    "shape": "S33c29c17",
+    "off": {},
+    "on": {
+     "1776 Blackberry": 16
+    }
+   },
+   {
+    "shape": "Sf1382100",
+    "off": {
+     "0763 Dark Rattan": 10
+    },
+    "on": {
+     "0763 Dark Rattan": 6
+    }
+   },
+   {
+    "shape": "Sacb240b3",
+    "off": {},
+    "on": {
+     "0131 Smoke": 16
+    }
+   },
+   {
+    "shape": "S767ea707",
+    "off": {},
+    "on": {
+     "1776 Blackberry": 16
+    }
+   },
+   {
+    "shape": "S69eae3f7",
+    "off": {},
+    "on": {
+     "1776 Blackberry": 14
+    }
+   },
+   {
+    "shape": "Se5490fef",
+    "off": {
+     "0454 Olive Drab": 13
+    },
+    "on": {}
+   },
+   {
+    "shape": "S3dbcb91d",
+    "off": {},
+    "on": {
+     "0454 Olive Drab": 12
+    }
+   },
+   {
+    "shape": "S123d947e",
+    "off": {},
+    "on": {
+     "0763 Dark Rattan": 12
+    }
+   },
+   {
+    "shape": "S31dac5df",
+    "off": {},
+    "on": {
+     "0763 Dark Rattan": 10
+    }
+   },
+   {
+    "shape": "Scc24809a",
+    "off": {},
+    "on": {
+     "0763 Dark Rattan": 8
+    }
+   }
+  ]
+ },
+ "diff_points": 45846,
+ "diff_points_before": null,
+ "window_mm": [
+  15.7,
+  28.7,
+  33.7,
+  39.7
+ ],
+ "changed_box_mm": [
+  -42.3,
+  -42.3,
+  42.2,
+  42.2
+ ],
+ "moved_fixtures": {
+  "photo/drone_render.png": {
+   "row": {
+    "fixture": "photo/drone_render.png",
+    "class": "gradient",
+    "md5_off": "95e54ba11c340721679212092e9ec1f6",
+    "md5_on": "f26cc7a691db0038a46e87e08334ddc0",
+    "identical": false,
+    "off": {
+     "regions": 119,
+     "stitches": 18677,
+     "trims": 83,
+     "colours": 11,
+     "threads": 7
+    },
+    "on": {
+     "regions": 122,
+     "stitches": 18613,
+     "trims": 85,
+     "colours": 11,
+     "threads": 7,
+     "dark_ink_regions": 3
+    }
+   },
+   "window_mm": [
+    -3.6,
+    -6.7,
+    14.4,
+    4.3
+   ],
+   "diff_points": 2078,
+   "dark": [
+    {
+     "shape": "Sdd144495",
+     "thread": "3574 Darkest Blue",
+     "area_mm2": 1.49,
+     "bounds": [
+      0.26,
+      3.69,
+      1.72,
+      5.25
+     ],
+     "from": {
+      "3971 Silver": 1.49
+     }
+    },
+    {
+     "shape": "S0e7df8da",
+     "thread": "3574 Darkest Blue",
+     "area_mm2": 1.47,
+     "bounds": [
+      0.26,
+      1.92,
+      1.72,
+      3.28
+     ],
+     "from": {
+      "3971 Silver": 1.47
+     }
+    },
+    {
+     "shape": "S0aa2b411",
+     "thread": "3574 Darkest Blue",
+     "area_mm2": 1.35,
+     "bounds": [
+      -1.51,
+      3.8,
+      -0.16,
+      5.15
+     ],
+     "from": {
+      "3971 Silver": 1.35
+     }
+    }
+   ],
+   "blocks_gone": {
+    "1305 Fox Fire": {
+     "off_blocks": 2,
+     "off_stitches": 2629,
+     "on_blocks": 3,
+     "on_stitches": 2573
+    },
+    "1972 Silvery Grey": {
+     "off_blocks": 1,
+     "off_stitches": 2323,
+     "on_blocks": 1,
+     "on_stitches": 2322
+    },
+    "2564 Titanium": {
+     "off_blocks": 2,
+     "off_stitches": 1478,
+     "on_blocks": 2,
+     "on_stitches": 1489
+    },
+    "3971 Silver": {
+     "off_blocks": 2,
+     "off_stitches": 2901,
+     "on_blocks": 1,
+     "on_stitches": 2883
+    }
+   },
+   "shapes_moved": [
+    {
+     "shape": "Sb9218115",
+     "off": {
+      "1305 Fox Fire": 1130
+     },
+     "on": {
+      "1305 Fox Fire": 1071
+     }
+    },
+    {
+     "shape": "Sb5b27ad4",
+     "off": {
+      "3971 Silver": 407
+     },
+     "on": {
+      "3971 Silver": 355
+     }
+    },
+    {
+     "shape": "S6edce285",
+     "off": {
+      "2564 Titanium": 191
+     },
+     "on": {
+      "2564 Titanium": 197
+     }
+    },
+    {
+     "shape": "S29a0d6fe",
+     "off": {
+      "3971 Silver": 194
+     },
+     "on": {
+      "3971 Silver": 192
+     }
+    },
+    {
+     "shape": "Sa34f3d79",
+     "off": {
+      "3971 Silver": 182
+     },
+     "on": {
+      "3971 Silver": 185
+     }
+    },
+    {
+     "shape": "S6dd674f6",
+     "off": {
+      "3971 Silver": 180
+     },
+     "on": {
+      "3971 Silver": 173
+     }
+    }
+   ]
+  },
+  "photo/logo_bridge_bar.jpg": {
+   "row": {
+    "fixture": "photo/logo_bridge_bar.jpg",
+    "class": "gradient",
+    "md5_off": "d80b8b5ca128c25b212347f656ad4e57",
+    "md5_on": "97339d87d7697bbec2d3c1d0cc1facc9",
+    "identical": false,
+    "off": {
+     "regions": 54,
+     "stitches": 15192,
+     "trims": 38,
+     "colours": 7,
+     "threads": 6
+    },
+    "on": {
+     "regions": 54,
+     "stitches": 15238,
+     "trims": 38,
+     "colours": 7,
+     "threads": 6,
+     "dark_ink_regions": 1
+    }
+   },
+   "window_mm": [
+    -2.4,
+    8.7,
+    15.6,
+    19.7
+   ],
+   "diff_points": 366,
+   "dark": [
+    {
+     "shape": "Sb1952c4b",
+     "thread": "5010 Scotty Green",
+     "area_mm2": 10.22,
+     "bounds": [
+      7.65,
+      12.86,
+      12.0,
+      18.22
+     ],
+     "from": {
+      "5010 Scotty Green": 8.43,
+      "0501 Sun": 1.7
+     }
+    }
+   ],
+   "blocks_gone": {
+    "4531 Caribbean": {
+     "off_blocks": 2,
+     "off_stitches": 1108,
+     "on_blocks": 2,
+     "on_stitches": 1118
+    },
+    "5010 Scotty Green": {
+     "off_blocks": 1,
+     "off_stitches": 1302,
+     "on_blocks": 1,
+     "on_stitches": 1338
+    }
+   },
+   "shapes_moved": [
+    {
+     "shape": "S673d856d",
+     "off": {
+      "4531 Caribbean": 64
+     },
+     "on": {
+      "4531 Caribbean": 70
+     }
+    },
+    {
+     "shape": "S8e994e3a",
+     "off": {
+      "5010 Scotty Green": 55
+     },
+     "on": {
+      "5010 Scotty Green": 77
+     }
+    },
+    {
+     "shape": "Sb1952c4b",
+     "off": {},
+     "on": {
+      "5010 Scotty Green": 64
+     }
+    },
+    {
+     "shape": "Se05b0bea",
+     "off": {
+      "5010 Scotty Green": 54
+     },
+     "on": {}
+    }
+   ]
+  },
+  "photo/logo_hotel_fremont.webp": {
+   "row": {
+    "fixture": "photo/logo_hotel_fremont.webp",
+    "class": "gradient",
+    "md5_off": "f3b9e5ae327eb53b2eca3090d4986f47",
+    "md5_on": "5804f94b9a3d1f60d6c4654b5ae152cd",
+    "identical": false,
+    "off": {
+     "regions": 162,
+     "stitches": 13188,
+     "trims": 23,
+     "colours": 4,
+     "threads": 3
+    },
+    "on": {
+     "regions": 162,
+     "stitches": 13105,
+     "trims": 19,
+     "colours": 4,
+     "threads": 3,
+     "dark_ink_regions": 156
+    }
+   },
+   "window_mm": [
+    -4.3,
+    -7.7,
+    13.7,
+    3.3
+   ],
+   "diff_points": 7057,
+   "dark": [
+    {
+     "shape": "S11b90a0d",
+     "thread": "0020 Black",
+     "area_mm2": 66.46,
+     "bounds": [
+      -38.27,
+      5.71,
+      38.24,
+      6.6
+     ],
+     "from": {
+      "0020 Black": 66.38
+     }
+    },
+    {
+     "shape": "S898a2252",
+     "thread": "0020 Black",
+     "area_mm2": 52.62,
+     "bounds": [
+      -26.37,
+      7.5,
+      26.34,
+      20.58
+     ],
+     "from": {
+      "0020 Black": 52.52,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "Sf93498a6",
+     "thread": "0020 Black",
+     "area_mm2": 52.49,
+     "bounds": [
+      -26.37,
+      -20.65,
+      26.34,
+      -7.57
+     ],
+     "from": {
+      "0020 Black": 52.28,
+      "0015 White": 0.23
+     }
+    },
+    {
+     "shape": "S33a22d8e",
+     "thread": "0020 Black",
+     "area_mm2": 27.95,
+     "bounds": [
+      -38.27,
+      -6.66,
+      -6.26,
+      -5.77
+     ],
+     "from": {
+      "0020 Black": 26.62,
+      "0015 White": 1.05
+     }
+    },
+    {
+     "shape": "S337fbf9c",
+     "thread": "0020 Black",
+     "area_mm2": 27.95,
+     "bounds": [
+      6.23,
+      -6.66,
+      38.24,
+      -5.77
+     ],
+     "from": {
+      "0020 Black": 26.62,
+      "0015 White": 1.06
+     }
+    },
+    {
+     "shape": "S9a48e915",
+     "thread": "0020 Black",
+     "area_mm2": 16.43,
+     "bounds": [
+      11.6,
+      -2.99,
+      18.34,
+      2.91
+     ],
+     "from": {
+      "0020 Black": 16.11,
+      "0015 White": 0.39
+     }
+    },
+    {
+     "shape": "Sd4bf6420",
+     "thread": "0020 Black",
+     "area_mm2": 14.49,
+     "bounds": [
+      25.4,
+      -2.99,
+      31.49,
+      2.9
+     ],
+     "from": {
+      "0020 Black": 14.14,
+      "0015 White": 0.33
+     }
+    },
+    {
+     "shape": "Sdbbe51f4",
+     "thread": "0020 Black",
+     "area_mm2": 14.34,
+     "bounds": [
+      -37.21,
+      -2.99,
+      -31.33,
+      2.91
+     ],
+     "from": {
+      "0020 Black": 14.16,
+      "0015 White": 0.28
+     }
+    },
+    {
+     "shape": "S00d683b7",
+     "thread": "0020 Black",
+     "area_mm2": 13.12,
+     "bounds": [
+      0.29,
+      -2.99,
+      5.46,
+      2.91
+     ],
+     "from": {
+      "0020 Black": 12.91,
+      "0015 White": 0.15
+     }
+    },
+    {
+     "shape": "S9b4d2aca",
+     "thread": "0020 Black",
+     "area_mm2": 13.03,
+     "bounds": [
+      6.04,
+      -2.99,
+      10.74,
+      2.91
+     ],
+     "from": {
+      "0020 Black": 12.61,
+      "0015 White": 0.37
+     }
+    },
+    {
+     "shape": "Se394be84",
+     "thread": "0020 Black",
+     "area_mm2": 12.95,
+     "bounds": [
+      -18.61,
+      -2.99,
+      -13.92,
+      2.9
+     ],
+     "from": {
+      "0020 Black": 12.46,
+      "0015 White": 0.24
+     }
+    },
+    {
+     "shape": "Se645801a",
+     "thread": "0020 Black",
+     "area_mm2": 11.97,
+     "bounds": [
+      18.82,
+      -3.09,
+      24.9,
+      3.02
+     ],
+     "from": {
+      "0020 Black": 11.88,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sa9ce03f2",
+     "thread": "0020 Black",
+     "area_mm2": 11.97,
+     "bounds": [
+      -30.83,
+      -3.09,
+      -24.75,
+      3.02
+     ],
+     "from": {
+      "0020 Black": 11.87,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S31fdca10",
+     "thread": "0020 Black",
+     "area_mm2": 10.39,
+     "bounds": [
+      -5.22,
+      -2.99,
+      -0.57,
+      2.91
+     ],
+     "from": {
+      "0020 Black": 10.17,
+      "0015 White": 0.27
+     }
+    },
+    {
+     "shape": "Sd0d7ded7",
+     "thread": "0020 Black",
+     "area_mm2": 9.92,
+     "bounds": [
+      32.0,
+      -2.99,
+      37.18,
+      2.9
+     ],
+     "from": {
+      "0020 Black": 9.67,
+      "0015 White": 0.28
+     }
+    },
+    {
+     "shape": "S1d0c7e50",
+     "thread": "0020 Black",
+     "area_mm2": 9.89,
+     "bounds": [
+      -24.45,
+      -2.99,
+      -19.29,
+      2.9
+     ],
+     "from": {
+      "0020 Black": 9.58,
+      "0015 White": 0.26
+     }
+    },
+    {
+     "shape": "S9df2ea64",
+     "thread": "0020 Black",
+     "area_mm2": 8.55,
+     "bounds": [
+      -13.06,
+      -2.99,
+      -8.48,
+      2.91
+     ],
+     "from": {
+      "0020 Black": 8.26,
+      "0015 White": 0.15
+     }
+    },
+    {
+     "shape": "S54b55cf1",
+     "thread": "0020 Black",
+     "area_mm2": 9.89,
+     "bounds": [
+      -1.48,
+      -8.67,
+      1.88,
+      -4.26
+     ],
+     "from": {
+      "0015 White": 9.89,
+      "0020 Black": 8.05
+     }
+    },
+    {
+     "shape": "S5f599b4e",
+     "thread": "0020 Black",
+     "area_mm2": 7.9,
+     "bounds": [
+      2.47,
+      -8.67,
+      5.27,
+      -4.26
+     ],
+     "from": {
+      "0015 White": 7.9,
+      "0020 Black": 7.5
+     }
+    },
+    {
+     "shape": "Scead5d18",
+     "thread": "0020 Black",
+     "area_mm2": 7.56,
+     "bounds": [
+      -5.08,
+      -8.67,
+      -2.07,
+      -4.26
+     ],
+     "from": {
+      "0015 White": 7.56,
+      "0020 Black": 5.29
+     }
+    },
+    {
+     "shape": "S5ac4eae6",
+     "thread": "0020 Black",
+     "area_mm2": 1.05,
+     "bounds": [
+      -5.02,
+      8.11,
+      -4.74,
+      11.76
+     ],
+     "from": {
+      "0020 Black": 0.92,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S658eac5c",
+     "thread": "0020 Black",
+     "area_mm2": 1.05,
+     "bounds": [
+      4.9,
+      8.11,
+      5.18,
+      11.76
+     ],
+     "from": {
+      "0020 Black": 1.03,
+      "0015 White": 0.07
+     }
+    },
+    {
+     "shape": "Se9a3bf6a",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.36,
+     "bounds": [
+      -11.87,
+      8.88,
+      -10.24,
+      10.99
+     ],
+     "from": {
+      "0862 Wild Rice": 1.36,
+      "0015 White": 0.18
+     }
+    },
+    {
+     "shape": "Sa0fbbfd4",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.32,
+     "bounds": [
+      -0.06,
+      8.88,
+      2.18,
+      10.99
+     ],
+     "from": {
+      "0862 Wild Rice": 1.32,
+      "0015 White": 0.05
+     }
+    },
+    {
+     "shape": "Sf0a6f1de",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.32,
+     "bounds": [
+      -10.11,
+      8.88,
+      -7.87,
+      10.99
+     ],
+     "from": {
+      "0862 Wild Rice": 1.32,
+      "0015 White": 0.05
+     }
+    },
+    {
+     "shape": "Sa6ebf53d",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.33,
+     "bounds": [
+      10.18,
+      8.88,
+      12.42,
+      10.99
+     ],
+     "from": {
+      "0862 Wild Rice": 1.33,
+      "0015 White": 0.05
+     }
+    },
+    {
+     "shape": "Sdf13b84a",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.31,
+     "bounds": [
+      -3.3,
+      8.85,
+      -1.79,
+      11.06
+     ],
+     "from": {
+      "0862 Wild Rice": 1.31,
+      "0015 White": 0.12
+     }
+    },
+    {
+     "shape": "S931202c8",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.11,
+     "bounds": [
+      6.72,
+      8.88,
+      8.35,
+      10.99
+     ],
+     "from": {
+      "0862 Wild Rice": 1.11,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "Sdc6f0782",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.01,
+     "bounds": [
+      11.94,
+      8.88,
+      13.98,
+      10.99
+     ],
+     "from": {
+      "0862 Wild Rice": 1.01,
+      "0015 White": 0.07
+     }
+    },
+    {
+     "shape": "S65a22c84",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.98,
+     "bounds": [
+      -8.16,
+      8.88,
+      -6.37,
+      10.99
+     ],
+     "from": {
+      "0862 Wild Rice": 0.98,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sbd04fa7c",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.05,
+     "bounds": [
+      -1.63,
+      8.88,
+      0.19,
+      10.99
+     ],
+     "from": {
+      "0862 Wild Rice": 1.05,
+      "0015 White": 0.13
+     }
+    },
+    {
+     "shape": "Sc47e9d1a",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.02,
+     "bounds": [
+      1.76,
+      8.88,
+      3.78,
+      10.99
+     ],
+     "from": {
+      "0862 Wild Rice": 1.02,
+      "0015 White": 0.05
+     }
+    },
+    {
+     "shape": "S4e11bda6",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.03,
+     "bounds": [
+      22.43,
+      8.75,
+      24.61,
+      9.58
+     ],
+     "from": {
+      "0862 Wild Rice": 0.96,
+      "0015 White": 0.35
+     }
+    },
+    {
+     "shape": "S41d15531",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.03,
+     "bounds": [
+      -24.45,
+      -9.65,
+      -22.27,
+      -8.82
+     ],
+     "from": {
+      "0862 Wild Rice": 0.96,
+      "0015 White": 0.32
+     }
+    },
+    {
+     "shape": "S1b0527a5",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 4.77,
+     "bounds": [
+      -10.76,
+      -12.57,
+      -9.05,
+      -9.54
+     ],
+     "from": {
+      "0015 White": 4.77,
+      "0862 Wild Rice": 4.77
+     }
+    },
+    {
+     "shape": "Sc0465651",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.01,
+     "bounds": [
+      22.78,
+      7.66,
+      24.8,
+      8.69
+     ],
+     "from": {
+      "0862 Wild Rice": 0.95,
+      "0015 White": 0.25
+     }
+    },
+    {
+     "shape": "S9dd25e26",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 1.01,
+     "bounds": [
+      -24.64,
+      -8.75,
+      -22.62,
+      -7.76
+     ],
+     "from": {
+      "0862 Wild Rice": 0.94,
+      "0015 White": 0.25
+     }
+    },
+    {
+     "shape": "S022f2120",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 3.88,
+     "bounds": [
+      5.47,
+      -12.63,
+      7.13,
+      -9.49
+     ],
+     "from": {
+      "0015 White": 3.88,
+      "0862 Wild Rice": 3.88
+     }
+    },
+    {
+     "shape": "Sf0dddc10",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.91,
+     "bounds": [
+      8.45,
+      8.88,
+      10.05,
+      10.99
+     ],
+     "from": {
+      "0862 Wild Rice": 0.91,
+      "0015 White": 0.08
+     }
+    },
+    {
+     "shape": "Sfe26555a",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 4.52,
+     "bounds": [
+      -8.46,
+      -12.62,
+      -6.83,
+      -9.49
+     ],
+     "from": {
+      "0015 White": 4.52,
+      "0862 Wild Rice": 4.52
+     }
+    },
+    {
+     "shape": "Sb192e650",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 4.31,
+     "bounds": [
+      9.84,
+      -12.58,
+      11.48,
+      -9.49
+     ],
+     "from": {
+      "0015 White": 4.31,
+      "0862 Wild Rice": 4.31
+     }
+    },
+    {
+     "shape": "S22342dba",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.89,
+     "bounds": [
+      0.42,
+      -19.06,
+      1.57,
+      -17.23
+     ],
+     "from": {
+      "0862 Wild Rice": 0.83,
+      "0015 White": 0.12
+     }
+    },
+    {
+     "shape": "S53cbc825",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.89,
+     "bounds": [
+      -1.41,
+      17.17,
+      -0.26,
+      18.99
+     ],
+     "from": {
+      "0862 Wild Rice": 0.82,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S19e408ea",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.87,
+     "bounds": [
+      -0.48,
+      17.55,
+      0.99,
+      19.02
+     ],
+     "from": {
+      "0862 Wild Rice": 0.81,
+      "0015 White": 0.18
+     }
+    },
+    {
+     "shape": "S038a4644",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.87,
+     "bounds": [
+      -0.83,
+      -19.09,
+      0.64,
+      -17.62
+     ],
+     "from": {
+      "0862 Wild Rice": 0.8,
+      "0015 White": 0.33
+     }
+    },
+    {
+     "shape": "Sd8fdfc5c",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      22.46,
+      -10.51,
+      23.3,
+      -8.72
+     ],
+     "from": {
+      "0862 Wild Rice": 0.8,
+      "0015 White": 0.16
+     }
+    },
+    {
+     "shape": "S5aaa542f",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      -23.14,
+      8.62,
+      -22.3,
+      10.45
+     ],
+     "from": {
+      "0862 Wild Rice": 0.8,
+      "0015 White": 0.16
+     }
+    },
+    {
+     "shape": "S166119ce",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      -20.93,
+      -11.18,
+      -18.91,
+      -10.16
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S01251ce1",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      -4.26,
+      -17.68,
+      -2.24,
+      -16.66
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "Se24a0f3a",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      -18.98,
+      10.35,
+      -17.89,
+      12.14
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S9fde0480",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      19.97,
+      9.74,
+      21.98,
+      10.77
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S4d4622b2",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      -11.94,
+      13.07,
+      -10.88,
+      14.86
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S376ae3ab",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      4.0,
+      -17.68,
+      5.09,
+      -15.89
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.12
+     }
+    },
+    {
+     "shape": "S303461ce",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      16.45,
+      11.12,
+      18.46,
+      12.14
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sd9a488d9",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      8.54,
+      14.19,
+      10.56,
+      15.22
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S268aff46",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      11.2,
+      13.17,
+      13.18,
+      14.19
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "Sb99d5841",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      14.69,
+      11.79,
+      16.7,
+      12.82
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S43727200",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      -19.84,
+      10.0,
+      -18.78,
+      11.79
+     ],
+     "from": {
+      "0862 Wild Rice": 0.8,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S97b1fae5",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      -17.22,
+      11.02,
+      -16.13,
+      12.82
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S3ed81ff4",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      -8.64,
+      -15.98,
+      -6.66,
+      -14.96
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S49c34dd9",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      -22.5,
+      8.98,
+      -21.41,
+      10.77
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S339228a3",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      -4.06,
+      16.14,
+      -2.98,
+      17.94
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S591c594e",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      20.86,
+      9.42,
+      22.85,
+      10.45
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S2240c752",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.86,
+     "bounds": [
+      -15.65,
+      -13.23,
+      -13.66,
+      -12.21
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S6423e247",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      18.05,
+      -12.21,
+      19.14,
+      -10.42
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sfcfc30dc",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      7.52,
+      -16.3,
+      8.61,
+      -14.51
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S22890c28",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      12.06,
+      12.82,
+      14.08,
+      13.84
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sa94d90a4",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -13.02,
+      -14.26,
+      -11.04,
+      -13.23
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S5baa3cf0",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -11.07,
+      13.42,
+      -9.98,
+      15.22
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S7bcfc6af",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      15.42,
+      -13.23,
+      16.51,
+      -11.44
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S2be4f2cd",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -5.12,
+      -17.33,
+      -3.14,
+      -16.3
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "Sd5088a04",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      1.38,
+      -18.7,
+      2.46,
+      -16.91
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S6e137317",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      18.21,
+      10.45,
+      20.22,
+      11.47
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S372b40a3",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -5.82,
+      15.47,
+      -4.74,
+      17.26
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sb15b61d3",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -16.35,
+      11.38,
+      -15.26,
+      13.17
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sc3156047",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      3.3,
+      16.24,
+      5.28,
+      17.26
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S0618ff71",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      19.81,
+      -11.54,
+      20.9,
+      -9.74
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S2fa19a70",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -18.11,
+      10.67,
+      -17.02,
+      12.5
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S1eb05300",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -14.78,
+      -13.58,
+      -12.8,
+      -12.56
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Saa2a4461",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      12.96,
+      12.5,
+      14.94,
+      13.52
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S89284286",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -7.78,
+      -16.3,
+      -5.76,
+      -15.28
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S8f353e53",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -15.46,
+      11.7,
+      -14.4,
+      13.52
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S5f661f34",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      4.9,
+      -17.33,
+      5.98,
+      -15.54
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S506b9d3c",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -9.54,
+      -15.63,
+      -7.52,
+      -14.61
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S8cf14e22",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -17.41,
+      -12.56,
+      -15.42,
+      -11.54
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "Se2079fea",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      2.27,
+      -18.35,
+      3.33,
+      -16.56
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S9d9ccba8",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -20.06,
+      -11.54,
+      -18.05,
+      -10.51
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S7dbc248c",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -6.88,
+      -16.66,
+      -4.9,
+      -15.63
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S53c14bf6",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      8.42,
+      -15.95,
+      9.47,
+      -14.16
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "Se086bc8e",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -13.7,
+      12.4,
+      -12.64,
+      14.19
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S99ac3b6a",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -12.83,
+      12.75,
+      -11.74,
+      14.54
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sb71df590",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      11.9,
+      -14.61,
+      12.99,
+      -12.82
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "Sb7f72026",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -2.3,
+      16.85,
+      -1.22,
+      18.64
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S45a2ce75",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -6.02,
+      -17.01,
+      -4.0,
+      -15.98
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S21a88636",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      5.76,
+      -16.98,
+      6.85,
+      -15.18
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S722c0d7f",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      5.06,
+      15.57,
+      7.04,
+      16.59
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S99897465",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      6.66,
+      -16.66,
+      7.71,
+      -14.86
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S3a44f867",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      5.92,
+      15.22,
+      7.94,
+      16.24
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S8a8b7a65",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -16.54,
+      -12.88,
+      -14.53,
+      -11.89
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S0e192f7d",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -6.69,
+      15.12,
+      -5.6,
+      16.91
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S320c4cc2",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -8.45,
+      14.45,
+      -7.36,
+      16.24
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S94f3028e",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -4.93,
+      15.82,
+      -3.84,
+      17.62
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S6d68131e",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      21.57,
+      -10.83,
+      22.66,
+      -9.04
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S6b733863",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      11.04,
+      -14.93,
+      12.13,
+      -13.14
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S7b31940a",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      19.1,
+      10.1,
+      21.09,
+      11.12
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "Se5632e98",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      13.82,
+      12.14,
+      15.81,
+      13.17
+     ],
+     "from": {
+      "0862 Wild Rice": 0.77,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "Scc127e72",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      17.18,
+      -12.56,
+      18.27,
+      -10.77
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S8a615062",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      3.14,
+      -18.0,
+      4.22,
+      -16.21
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S03c238ee",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      1.54,
+      16.94,
+      3.55,
+      17.94
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S7d876f7e",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      20.7,
+      -11.18,
+      21.76,
+      -9.39
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "Sded5054c",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -10.4,
+      -15.28,
+      -8.38,
+      -14.26
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S040cecf6",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      16.32,
+      -12.88,
+      17.38,
+      -11.09
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S4405e55d",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      15.58,
+      11.47,
+      17.6,
+      12.5
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S69d33103",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -14.59,
+      12.05,
+      -13.5,
+      13.84
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sa1cd74ee",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      2.43,
+      16.59,
+      4.42,
+      17.62
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "Sc312b159",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -10.21,
+      13.78,
+      -9.12,
+      15.57
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S0da0111f",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      10.34,
+      13.52,
+      12.32,
+      14.54
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S6725e9af",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -12.16,
+      -14.61,
+      -10.14,
+      -13.58
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S9f917a49",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      7.68,
+      14.54,
+      9.7,
+      15.57
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S5dc5cfc4",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -7.55,
+      14.8,
+      -6.5,
+      16.59
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sa363d32f",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -21.6,
+      9.33,
+      -20.54,
+      11.12
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S0c83f398",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      9.44,
+      13.84,
+      11.42,
+      14.86
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S06c24a1d",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      4.16,
+      15.92,
+      6.18,
+      16.91
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S4eef5ef2",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      10.14,
+      -15.28,
+      11.23,
+      -13.49
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sd98e7899",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -22.69,
+      -10.51,
+      -20.7,
+      -9.49
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "Sc3eb615f",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -9.31,
+      14.1,
+      -8.22,
+      15.89
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S1a993a5d",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -19.17,
+      -11.86,
+      -17.18,
+      -10.86
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S5e1c953c",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -21.82,
+      -10.83,
+      -19.81,
+      -9.81
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sce436077",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -18.3,
+      -12.21,
+      -16.29,
+      -11.18
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S388f10f8",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      12.8,
+      -14.26,
+      13.89,
+      -12.46
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sd43d502e",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      17.34,
+      10.77,
+      19.33,
+      11.79
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sf957df68",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -3.17,
+      16.5,
+      -2.11,
+      18.29
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sd578b131",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      18.94,
+      -11.86,
+      20.0,
+      -10.06
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "Sd35e02bd",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      13.66,
+      -13.9,
+      14.75,
+      -12.11
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S75f4c4ce",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.85,
+     "bounds": [
+      -20.74,
+      9.65,
+      -19.65,
+      11.47
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S5ae80e5d",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.84,
+     "bounds": [
+      -3.39,
+      -18.03,
+      -1.38,
+      -17.01
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S9d451632",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.84,
+     "bounds": [
+      6.82,
+      14.9,
+      8.8,
+      15.89
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "Sa41b8e5b",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.84,
+     "bounds": [
+      14.56,
+      -13.58,
+      15.62,
+      -11.79
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.11
+     }
+    },
+    {
+     "shape": "S840ec722",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.84,
+     "bounds": [
+      9.28,
+      -15.63,
+      10.37,
+      -13.84
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S0aa55eb4",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.84,
+     "bounds": [
+      -13.92,
+      -13.9,
+      -11.9,
+      -12.91
+     ],
+     "from": {
+      "0862 Wild Rice": 0.79,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S8ba2a94d",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.84,
+     "bounds": [
+      -11.26,
+      -14.96,
+      -9.28,
+      -13.94
+     ],
+     "from": {
+      "0862 Wild Rice": 0.78,
+      "0015 White": 0.08
+     }
+    },
+    {
+     "shape": "Sdcd93482",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.82,
+     "bounds": [
+      23.55,
+      -9.65,
+      24.7,
+      -7.6
+     ],
+     "from": {
+      "0862 Wild Rice": 0.74,
+      "0015 White": 0.13
+     }
+    },
+    {
+     "shape": "Se3d08d7c",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.82,
+     "bounds": [
+      0.86,
+      17.26,
+      2.66,
+      18.29
+     ],
+     "from": {
+      "0862 Wild Rice": 0.75,
+      "0015 White": 0.12
+     }
+    },
+    {
+     "shape": "S70e7e44c",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.82,
+     "bounds": [
+      -24.51,
+      7.54,
+      -23.39,
+      9.58
+     ],
+     "from": {
+      "0862 Wild Rice": 0.73,
+      "0015 White": 0.24
+     }
+    },
+    {
+     "shape": "S48dcdbf2",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.81,
+     "bounds": [
+      -2.5,
+      -18.35,
+      -0.7,
+      -17.36
+     ],
+     "from": {
+      "0862 Wild Rice": 0.75,
+      "0015 White": 0.12
+     }
+    },
+    {
+     "shape": "S0a4b0b1b",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.81,
+     "bounds": [
+      -23.62,
+      -10.16,
+      -21.57,
+      -9.23
+     ],
+     "from": {
+      "0862 Wild Rice": 0.75,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sf84099aa",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.81,
+     "bounds": [
+      21.73,
+      9.14,
+      23.78,
+      10.1
+     ],
+     "from": {
+      "0862 Wild Rice": 0.74,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "Sb5161fc1",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 4.0,
+     "bounds": [
+      -6.29,
+      -12.57,
+      -4.48,
+      -9.54
+     ],
+     "from": {
+      "0015 White": 4.0,
+      "0862 Wild Rice": 4.0
+     }
+    },
+    {
+     "shape": "S686b93ed",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 3.5,
+     "bounds": [
+      7.67,
+      -12.63,
+      9.31,
+      -9.54
+     ],
+     "from": {
+      "0015 White": 3.5,
+      "0862 Wild Rice": 3.5
+     }
+    },
+    {
+     "shape": "S48553186",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.72,
+     "bounds": [
+      0.16,
+      17.52,
+      1.79,
+      18.64
+     ],
+     "from": {
+      "0862 Wild Rice": 0.66,
+      "0015 White": 0.1
+     }
+    },
+    {
+     "shape": "S59d587ae",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.72,
+     "bounds": [
+      -23.94,
+      8.21,
+      -23.26,
+      10.06
+     ],
+     "from": {
+      "0862 Wild Rice": 0.67,
+      "0015 White": 0.16
+     }
+    },
+    {
+     "shape": "Sb83d13f7",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.72,
+     "bounds": [
+      -1.63,
+      -18.7,
+      0.0,
+      -17.62
+     ],
+     "from": {
+      "0862 Wild Rice": 0.66,
+      "0015 White": 0.09
+     }
+    },
+    {
+     "shape": "S4bf4ffc4",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.72,
+     "bounds": [
+      23.42,
+      -10.13,
+      24.1,
+      -8.27
+     ],
+     "from": {
+      "0862 Wild Rice": 0.67,
+      "0015 White": 0.16
+     }
+    },
+    {
+     "shape": "S15110a1c",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 3.13,
+     "bounds": [
+      3.5,
+      -12.58,
+      4.91,
+      -9.54
+     ],
+     "from": {
+      "0015 White": 3.13,
+      "0862 Wild Rice": 3.13
+     }
+    },
+    {
+     "shape": "Sda6f07e5",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.55,
+     "bounds": [
+      -24.38,
+      -8.21,
+      -22.88,
+      -7.57
+     ],
+     "from": {
+      "0015 White": 0.55,
+      "0862 Wild Rice": 0.48
+     }
+    },
+    {
+     "shape": "Sc7327357",
+     "thread": "0862 Wild Rice",
+     "area_mm2": 0.55,
+     "bounds": [
+      23.04,
+      7.5,
+      24.54,
+      8.14
+     ],
+     "from": {
+      "0015 White": 0.55,
+      "0862 Wild Rice": 0.51
+     }
+    }
+   ],
+   "blocks_gone": {
+    "0020 Black": {
+     "off_blocks": 1,
+     "off_stitches": 3472,
+     "on_blocks": 1,
+     "on_stitches": 3440
+    },
+    "0862 Wild Rice": {
+     "off_blocks": 1,
+     "off_stitches": 2414,
+     "on_blocks": 1,
+     "on_stitches": 2363
+    }
+   },
+   "shapes_moved": [
+    {
+     "shape": "Sf93498a6",
+     "off": {
+      "0020 Black": 338
+     },
+     "on": {
+      "0020 Black": 314
+     }
+    },
+    {
+     "shape": "S898a2252",
+     "off": {
+      "0020 Black": 314
+     },
+     "on": {
+      "0020 Black": 315
+     }
+    },
+    {
+     "shape": "S9a48e915",
+     "off": {
+      "0020 Black": 165
+     },
+     "on": {
+      "0020 Black": 164
+     }
+    },
+    {
+     "shape": "S33a22d8e",
+     "off": {
+      "0020 Black": 164
+     },
+     "on": {
+      "0020 Black": 160
+     }
+    },
+    {
+     "shape": "Sdbbe51f4",
+     "off": {
+      "0020 Black": 165
+     },
+     "on": {
+      "0020 Black": 155
+     }
+    },
+    {
+     "shape": "S9b4d2aca",
+     "off": {
+      "0020 Black": 134
+     },
+     "on": {
+      "0020 Black": 137
+     }
+    }
+   ]
+  },
+  "photo/logo_drone_thermal_badge.png": {
+   "row": {
+    "fixture": "photo/logo_drone_thermal_badge.png",
+    "class": "gradient",
+    "md5_off": "95e54ba11c340721679212092e9ec1f6",
+    "md5_on": "f26cc7a691db0038a46e87e08334ddc0",
+    "identical": false,
+    "off": {
+     "regions": 119,
+     "stitches": 18677,
+     "trims": 83,
+     "colours": 11,
+     "threads": 7
+    },
+    "on": {
+     "regions": 122,
+     "stitches": 18613,
+     "trims": 85,
+     "colours": 11,
+     "threads": 7,
+     "dark_ink_regions": 3
+    }
+   },
+   "window_mm": [
+    -3.6,
+    -6.7,
+    14.4,
+    4.3
+   ],
+   "diff_points": 2078,
+   "dark": [
+    {
+     "shape": "Sdd144495",
+     "thread": "3574 Darkest Blue",
+     "area_mm2": 1.49,
+     "bounds": [
+      0.26,
+      3.69,
+      1.72,
+      5.25
+     ],
+     "from": {
+      "3971 Silver": 1.49
+     }
+    },
+    {
+     "shape": "S0e7df8da",
+     "thread": "3574 Darkest Blue",
+     "area_mm2": 1.47,
+     "bounds": [
+      0.26,
+      1.92,
+      1.72,
+      3.28
+     ],
+     "from": {
+      "3971 Silver": 1.47
+     }
+    },
+    {
+     "shape": "S0aa2b411",
+     "thread": "3574 Darkest Blue",
+     "area_mm2": 1.35,
+     "bounds": [
+      -1.51,
+      3.8,
+      -0.16,
+      5.15
+     ],
+     "from": {
+      "3971 Silver": 1.35
+     }
+    }
+   ],
+   "blocks_gone": {
+    "1305 Fox Fire": {
+     "off_blocks": 2,
+     "off_stitches": 2629,
+     "on_blocks": 3,
+     "on_stitches": 2573
+    },
+    "1972 Silvery Grey": {
+     "off_blocks": 1,
+     "off_stitches": 2323,
+     "on_blocks": 1,
+     "on_stitches": 2322
+    },
+    "2564 Titanium": {
+     "off_blocks": 2,
+     "off_stitches": 1478,
+     "on_blocks": 2,
+     "on_stitches": 1489
+    },
+    "3971 Silver": {
+     "off_blocks": 2,
+     "off_stitches": 2901,
+     "on_blocks": 1,
+     "on_stitches": 2883
+    }
+   },
+   "shapes_moved": [
+    {
+     "shape": "Sb9218115",
+     "off": {
+      "1305 Fox Fire": 1130
+     },
+     "on": {
+      "1305 Fox Fire": 1071
+     }
+    },
+    {
+     "shape": "Sb5b27ad4",
+     "off": {
+      "3971 Silver": 407
+     },
+     "on": {
+      "3971 Silver": 355
+     }
+    },
+    {
+     "shape": "S6edce285",
+     "off": {
+      "2564 Titanium": 191
+     },
+     "on": {
+      "2564 Titanium": 197
+     }
+    },
+    {
+     "shape": "S29a0d6fe",
+     "off": {
+      "3971 Silver": 194
+     },
+     "on": {
+      "3971 Silver": 192
+     }
+    },
+    {
+     "shape": "Sa34f3d79",
+     "off": {
+      "3971 Silver": 182
+     },
+     "on": {
+      "3971 Silver": 185
+     }
+    },
+    {
+     "shape": "S6dd674f6",
+     "off": {
+      "3971 Silver": 180
+     },
+     "on": {
+      "3971 Silver": 173
+     }
+    }
+   ]
+  }
+ }
+}

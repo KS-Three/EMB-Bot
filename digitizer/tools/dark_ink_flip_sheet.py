@@ -29,7 +29,9 @@ would draw the pro's panel, rather than inventing one.
 `report` writes JPEG tiles (ours: our own fixtures may go under docs/) and ONE
 self-contained `sheet.html` whose images are base64 data URIs, the shape the
 desktop file pane can show (`flip-sheet-inline-2026-10-24`). Nothing here
-changes an engine default; the flip is Kent's.
+changes an engine default; the flip was Kent's (2026-10-28, PR #1170: "Flip ON
+now (worker's pick)"), and since it both arms set the flag explicitly: OFF is
+the engine before the flip, ON the shipped default.
 """
 from __future__ import annotations
 
@@ -54,7 +56,9 @@ FLAG = "keep_dark_thin_strokes"
 WIDTH_MM = 80.0
 GARMENT = "left_chest"
 DATE = "2026-10-28"
-ARMS = {"off": {}, "on": {FLAG: True}}
+# Both arms set the flag explicitly (since the 2026-10-28 flip ON): OFF is the
+# engine before the flip, ON the shipped default, on whichever engine runs this.
+ARMS = {"off": {FLAG: False}, "on": {FLAG: True}}
 TESTDATA = DIGITIZER / "testdata"
 DEFAULT_CACHE = DIGITIZER / "debug_out" / "dark_ink_flip_sheet"
 DEFAULT_OUT = DIGITIZER.parent / "docs" / "renders" / f"keep-dark-thin-strokes-{DATE}"
@@ -330,7 +334,7 @@ def hero_tiles(fixture: str, off: dict, on: dict, out: Path, before: dict | None
         return p
     whole_off = stitchviz.render_design(off["design"], px_per_mm=WHOLE_PPM)
     whole_on = stitchviz.render_design(on["design"], px_per_mm=WHOLE_PPM)
-    put("whole_off", fsr._label(whole_off, "OFF (main)"))
+    put("whole_off", fsr._label(whole_off, "OFF (pre-flip)"))
     if before is not None:
         put("whole_before", fsr._label(stitchviz.render_design(before["design"], px_per_mm=WHOLE_PPM), "ON before the fixes"))
     put("whole_on", fsr._label(whole_on, f"ON ({FLAG})" + (", after the fixes" if before is not None else "")))
@@ -508,10 +512,13 @@ def report_cmd(a) -> int:
                 row["md5_on_before"] = bon["stats"]["md5"]
                 row["off_identical_across_engines"] = boff["stats"]["md5"] == off["stats"]["md5"]
         rows.append(row)
-    hero = a.hero if a.hero in cells else None
+    # Heroes get the full treatment (whole tiles, colour blocks, one window per
+    # dark-ink region against the artwork); the first keeps the single-hero keys.
+    heroes = [h for h in (a.hero or []) if h in cells]
     sheet = {"date": a.date, "flag": FLAG, "width_mm": WIDTH_MM, "garment": GARMENT,
              "engine": _engine_sha(), "before": a.before_label if before is not None else None,
-             "rows": rows, "missing": missing, "hero": hero}
+             "rows": rows, "missing": missing, "hero": heroes[0] if heroes else None,
+             "heroes": heroes, "hero_detail": {}}
     three = before is not None
     html = [f"<!doctype html><meta charset='utf-8'><title>{FLAG} OFF | ON</title>",
             "<style>body{font:14px system-ui,sans-serif;margin:16px;max-width:1500px}"
@@ -521,25 +528,26 @@ def report_cmd(a) -> int:
             ".row>div{flex:1 1 300px}.id{color:#2a7}.mv{color:#b22}code{font-size:12px}</style>",
             f"<h1><code>{FLAG}</code> OFF | {'ON before | ON after' if three else 'ON'} -- {a.date}</h1>",
             f"<p>Studio request at {WIDTH_MM:g} mm, <code>{GARMENT}</code>, shipped defaults; "
-            f"engine <code>{sheet['engine']}</code>. OFF is the default (main). ON sets the one flag. "
+            f"engine <code>{sheet['engine']}</code>. OFF is the engine before the 2026-10-28 flip (the flag "
+            f"False); ON is the shipped default since it. "
             + (f"<b>ON before</b> is {a.before_label}; <b>ON after</b> is this engine. OFF is checked byte for "
                "byte across the two engines in the table at the end. " if three else "")
             + "<b>No pro file exists for any fixture here, so there is no pro column</b>: the flip is read "
             "OFF against ON on our own fixtures. Counts are the DST's own records (pystitch): stitches, "
             "TRIM records, colour blocks; regions from the plan.</p>"]
-    if hero:
+    for hero in heroes:
         off, on = cells[hero]
         bon = bcells[hero][1] if hero in bcells else None
         ht = hero_tiles(hero, off, on, out, before=bon)
-        sheet["hero_tiles"] = {k: v.name for k, v in ht["tiles"].items()}
         moved = moved_strokes(off, on)
-        sheet["moved"] = moved
+        detail = {"hero_tiles": {k: v.name for k, v in ht["tiles"].items()}, "moved": moved,
+                  "diff_points": ht["diff_points"], "diff_points_before": ht.get("diff_points_before"),
+                  "window_mm": ht.get("window_mm"), "changed_box_mm": ht.get("changed_box_mm")}
         if bon is not None:
-            sheet["moved_before"] = moved_strokes(off, bon)
-        sheet["diff_points"] = ht["diff_points"]
-        sheet["diff_points_before"] = ht.get("diff_points_before")
-        sheet["window_mm"] = ht.get("window_mm")
-        sheet["changed_box_mm"] = ht.get("changed_box_mm")
+            detail["moved_before"] = moved_strokes(off, bon)
+        sheet["hero_detail"][hero] = detail
+        if hero == heroes[0]:
+            sheet.update(detail)
         r = summary_row(hero, off, on)
         rb = summary_row(hero, bcells[hero][0], bon)["on"] if bon is not None else None
         html.append(f"<h2>{hero}</h2>")
@@ -582,7 +590,7 @@ def report_cmd(a) -> int:
         if bon is not None:
             html.append("<div><b>ON before</b>" + _blocks_html(block_table(bon)) + "</div>")
         html.append(f"<div><b>ON{' after' if three else ''}</b>" + _blocks_html(block_table(on)) + "</div></div>")
-        for title, mv in ((("What moved, OFF -> ON before", sheet["moved_before"]),) if bon is not None else ()) + (
+        for title, mv in ((("What moved, OFF -> ON before", detail["moved_before"]),) if bon is not None else ()) + (
                 (f"What moved, OFF -> ON{' after' if three else ''}", moved),):
             html.append(f"<h3>{title}</h3>")
             if not any((mv["blocks_gone"], mv["shapes_moved"], mv["dropped"], mv["added"], mv["dark"])):
@@ -622,7 +630,7 @@ def report_cmd(a) -> int:
     sheet["moved_fixtures"] = {}
     for f, (off, on) in cells.items():
         bon = bcells[f][1] if f in bcells else None
-        if f == hero:
+        if f in heroes:
             continue
         if off["stats"]["md5"] == on["stats"]["md5"] and (bon is None or bon["stats"]["md5"] == off["stats"]["md5"]):
             continue
@@ -720,7 +728,8 @@ def parse_args(argv=None):
     p.add_argument("--fixtures", nargs="*")
     p.add_argument("--cache", default=DEFAULT_CACHE)
     p.add_argument("--out", default=DEFAULT_OUT)
-    p.add_argument("--hero", default=HERO)
+    p.add_argument("--hero", nargs="+", default=[HERO],
+                   help="fixture(s) given the full treatment; one window per dark-ink region")
     p.add_argument("--before", default=None,
                    help="a second cache from an earlier engine: its ON is shown as 'ON before', its OFF md5 checked")
     p.add_argument("--before-label", default="the engine before the fixes",

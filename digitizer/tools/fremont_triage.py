@@ -106,6 +106,7 @@ ARMS = {
     # white-keyline recipe, on every job since 2026-10-27.
     "small_glyph_keep_off": {"small_glyph_keep": False, "small_text_true_size": False,
                              "bean_only_lines": False,   # his job predates the bean rule (2026-10-27)
+                             "keep_dark_thin_strokes": False,   # ...and the dark-ink read (ON 2026-10-28)
                              "detail_spokes": False, "lettering_columns_small_stem": False,
                              "small_dot_rung": False, "small_dot_rung_lettering": False,
                              "dissolve_phantom_blends": False, "clip_keep_pieces": False,

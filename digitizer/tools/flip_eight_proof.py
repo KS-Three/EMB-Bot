@@ -59,6 +59,9 @@ BEFORE: dict[str, object] = {
     # flips" was measured on an engine that beaned letters, sub-floor solids
     # and the silhouette's open edges, so it pins this off too.
     "bean_only_lines": False,
+    # The dark-ink read (`keep_dark_thin_strokes`, flipped ON by Kent 2026-10-28,
+    # #1170; gradient class only), for the same reason.
+    "keep_dark_thin_strokes": False,
 }
 HELD_OFF = ("cut_every_jump", "sew_enclosed_white")
 

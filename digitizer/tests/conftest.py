@@ -576,6 +576,14 @@ PRE_FLIP["satin_rail_comp"] = False
 # cap sews nothing -- so an arm measured before that day was measured with
 # those rings present. `tests/engine_2026_10_27.json` carries it False too.
 PRE_FLIP["bean_only_lines"] = False
+# `keep_dark_thin_strokes` joined the flipped set 2026-10-28 (Kent's "Flip ON
+# now (worker's pick)" on PR #1170). Gradient class only: ON, a dark thin
+# stroke the merge absorbed into its shaded ground is carved out after the
+# merge and sews as its own dark-ink region (the owl +10 regions, the Fremont
+# patch a 7th colour stop), so an arm measured before that day on a gradient
+# fixture was measured without those strokes. Flat and photo fixtures are
+# byte-identical either way. `tests/engine_2026_10_27.json` carries it False.
+PRE_FLIP["keep_dark_thin_strokes"] = False
 # `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
 # renders of his Instagram icon, drone, Bridge Bar and the repro), for the
 # reason every entry above gives. ON, a gradient-lane region's edge follows
@@ -677,6 +685,11 @@ FLIP_2026_10_23 = {
     # flips" was measured on an engine that beaned letters, sub-floor solids
     # and the silhouette's open edges, so it pins this off too.
     "bean_only_lines": False,
+    # The dark-ink read (`keep_dark_thin_strokes`, flipped ON by Kent
+    # 2026-10-28, #1170; gradient class only): a site pinning "before the
+    # 10-23 flips" on a gradient fixture (the owl, Bridge Bar, drone, Fremont)
+    # was measured without the carved strokes, so it pins this off too.
+    "keep_dark_thin_strokes": False,
 }
 PRE_FLIP.update(FLIP_2026_10_23)
 # Spoked detail marks (Kent's flip 2026-10-16, "ON, tightened"): a small
