@@ -65,6 +65,7 @@
   import { friendlyError } from "../lib/friendlyError.js";
   import CropBox from "./CropBox.svelte";
   import { proposeCrop } from "../lib/cropProposal.js";
+  import { fitTargetWidthMm } from "../lib/placement.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
   import { isElementStale, pendingEdits, canRedigitize, rotatedWidth, nativeWidthOf, withTargetWidth } from "../lib/staleness.js";
 
@@ -228,11 +229,20 @@
         }
       }
       sourceNote = "";
+      // The Design width starts at the placement's auto-fit of THIS image's
+      // (cropped) aspect — garments.fitScale into the placement box, hoop cap
+      // and area cap included (lib/placement.js; Kent 2026-10-27: the size
+      // comes from where on the garment it sits, not a flat 80) — unless the
+      // customer has typed a width, which is theirs. `sourcePx` is kept so a
+      // later garment or placement change can re-fit the same way.
+      const sourcePx = { w, h };
+      const fitW = element.widthTyped ? null : fitTargetWidthMm(sourcePx, crop, project);
+      const params = fitW != null ? { ...element.params, target_width_mm: fitW } : element.params;
       // New artwork resets everything the old artwork produced — including
       // the layer list and its edits, which are keyed to the OLD art's
       // shape ids and would only produce SHAPE_EDIT_UNKNOWN_ID noise here.
       patch({
-        sourcePng: b64, sourceFile, crop, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
+        sourcePng: b64, sourceFile, sourcePx, crop, params, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
         review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
         appliedConfig: null, mergeGroups: [], splitLines: {},
       });
@@ -918,16 +928,19 @@
     const out = {};
     const sentW = sent.params && sent.params.target_width_mm;
     const liveW = live.params && live.params.target_width_mm;
-    if (sentW === liveW) out.params = { ...live.params, target_width_mm: target };
+    // a dragged size that landed is the customer's, like a typed one: a later
+    // placement change does not re-fit it (lib/placement.js refitDigitized)
+    if (sentW === liveW) { out.params = { ...live.params, target_width_mm: target }; out.widthTyped = true; }
     if (live.sizeMm === sent.sizeMm) out.sizeMm = null;
     return out;
   }
 
   // A typed width replaces a dragged one: the scale goes with it, or the drag
-  // would keep overriding the number in the box.
+  // would keep overriding the number in the box. Either way the width is now
+  // the customer's (`widthTyped`), and the placement's auto-fit leaves it.
   function setDesignWidth(v) {
-    if (resized) patch({ params: { ...element.params, target_width_mm: v }, sizeMm: null });
-    else setParam("target_width_mm", v);
+    if (resized) patch({ params: { ...element.params, target_width_mm: v }, sizeMm: null, widthTyped: true });
+    else patch({ params: { ...element.params, target_width_mm: v }, widthTyped: true });
   }
 
   // Same explicit-argument pattern as DesignPanel's blockRgb.

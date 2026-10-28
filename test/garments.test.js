@@ -188,3 +188,75 @@ test("proSized false: the round-inch left chest has no area cap, and no other ga
   // and the area cap never touches a hat, which the height stops at 64
   assert.deepStrictEqual(g.fitScale(100, 100, g.getGarment("hat_front")), g.fitScale(100, 100, g.getGarment("hat_front"), { proSized: true }));
 });
+
+// ---- Placements (2026-10-27) ------------------------------------------------
+
+test("every garment's default placement is its own id, first, and its box is the garment's box", () => {
+  for (const garment of g.GARMENTS) {
+    const rows = g.placementsFor(garment.id);
+    assert.ok(rows.length >= 1, garment.id);
+    assert.strictEqual(rows[0].id, garment.id);
+    // the table row says what placementBoxMm has always said for the garment,
+    // so the table cannot drift from the box the default placement sews to
+    const box = g.placementBoxMm(garment);
+    assert.ok(Math.abs(rows[0].box.w - box.w) < 1e-9 && Math.abs(rows[0].box.h - box.h) < 1e-9, `${garment.id}: ${rows[0].box.w}x${rows[0].box.h} vs ${box.w}x${box.h}`);
+    // ... and the default resolves to the garment object itself: nothing changes
+    assert.strictEqual(g.resolvePlacement(garment.id, null), garment);
+    assert.strictEqual(g.resolvePlacement(garment.id, garment.id), garment);
+    assert.strictEqual(g.resolvePlacement(garment.id, "no_such_placement"), garment);
+  }
+  assert.strictEqual(g.resolvePlacement("no_such_garment", "hat_rear"), undefined);
+});
+
+test("the three pro-measured boxes are the pro's, by reference", () => {
+  assert.strictEqual(g.getPlacement("hat_front").box, g.PRO_PLACEMENT_MM.hat_front);
+  assert.strictEqual(g.getPlacement("left_chest").box, g.PRO_PLACEMENT_MM.left_chest);
+  assert.strictEqual(g.getPlacement("beanie").box, g.PRO_PLACEMENT_MM.beanie);
+  assert.deepStrictEqual(g.PRO_PLACEMENT_MM.hat_front, { w: 113.5, h: 64.0 });
+  assert.deepStrictEqual(g.PRO_PLACEMENT_MM.left_chest, { w: 96.0, h: 76.5, areaMm2: 5800 });
+  assert.deepStrictEqual(g.PRO_PLACEMENT_MM.beanie, { w: 94.5, h: 56.0 });
+});
+
+test("placement ids are unique and every garment's list names real rows", () => {
+  const ids = g.PLACEMENTS.map((p) => p.id);
+  assert.strictEqual(new Set(ids).size, ids.length);
+  for (const [gid, list] of Object.entries(g.GARMENT_PLACEMENTS)) {
+    assert.ok(g.getGarment(gid), gid);
+    for (const pid of list) assert.ok(g.getPlacement(pid), `${gid}: ${pid}`);
+  }
+  for (const p of g.PLACEMENTS) assert.ok(p.box.w > 0 && p.box.h > 0 && p.label && p.pill, p.id);
+});
+
+test("a hat's rear placement resolves to the hat with the rear box, in mm and in inches", () => {
+  const rear = g.resolvePlacement("hat_front", "hat_rear");
+  assert.strictEqual(rear.id, "hat_front"); // still the garment: fabric preset, art, request
+  assert.strictEqual(rear.placementId, "hat_rear");
+  assert.strictEqual(rear.label, "Hat rear");
+  assert.deepStrictEqual(g.placementBoxMm(rear), { w: 88.9, h: 38.1 });
+  assert.ok(Math.abs(rear.widthIn * 25.4 - 88.9) < 1e-9 && Math.abs(rear.heightIn * 25.4 - 38.1) < 1e-9);
+  // proSized:false is the inch fallback for the DEFAULT placement only; a
+  // non-default placement has one box
+  assert.deepStrictEqual(g.placementBoxMm(rear, { proSized: false }), { w: 88.9, h: 38.1 });
+  assert.strictEqual(g.autoFitAreaMm2(rear), Infinity);
+  // and fitScale fits the artwork's aspect into THAT box: a 2:1 logo is width-bound at 88.9
+  const fit = g.fitScale(200, 100, rear);
+  assert.ok(Math.abs(fit.targetWmm - 76.2) < 1e-9, `height-bound: 38.1 * 2 = ${fit.targetWmm}`);
+  const wide = g.fitScale(400, 100, rear);
+  assert.ok(Math.abs(wide.targetWmm - 88.9) < 1e-9);
+});
+
+test("a tee's left chest is the pro's left chest, area cap included", () => {
+  const lc = g.resolvePlacement("full_back", "left_chest");
+  assert.strictEqual(lc.id, "full_back");
+  assert.deepStrictEqual(g.placementBoxMm(lc), { w: 96.0, h: 76.5 });
+  assert.strictEqual(g.autoFitAreaMm2(lc), 5800);
+  // a square logo: area-bound at sqrt(5800) = 76.16, under both the 96 and the 76.5
+  const fit = g.fitScale(100, 100, lc);
+  assert.ok(Math.abs(fit.targetWmm - Math.sqrt(5800)) < 1e-9, String(fit.targetWmm));
+  // the right chest mirrors it
+  const rc = g.resolvePlacement("left_chest", "right_chest");
+  assert.deepStrictEqual(g.fitScale(100, 100, rc), fit);
+  // suggestHoop follows the placement: a tee's left chest wants the 4x4, its full back the 8x8
+  assert.strictEqual(g.suggestHoop(lc).id, "4x4");
+  assert.strictEqual(g.suggestHoop(g.getGarment("full_back")).id, "8x8");
+});

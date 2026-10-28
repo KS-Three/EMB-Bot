@@ -96,6 +96,20 @@ export async function pinDigitizeConfig(page, extra) {
   });
 }
 
+// Type a Design width (mm) on the loaded-but-unrun artwork, so a spec that
+// counts the shapes a fixture comes back with runs it at the width those
+// counts were pinned at. Since 2026-10-27 the width an upload STARTS at is
+// the placement's auto-fit of the image (lib/placement.js) — two-squares.png
+// on a Tote lands at 198 mm, where the service promotes the white ground to
+// a third row — and a typed width is the customer's and stays. Call between
+// `uploadArtwork(page, file, { run: false })` and `runDigitize`.
+export async function setDesignWidth(page, mm) {
+  await openAdvanced(page);
+  const width = page.getByLabel("Design width");
+  await width.fill(String(mm));
+  await width.blur();
+}
+
 export async function uploadArtwork(page, file, { run = true } = {}) {
   await page.getByTestId("art-file").setInputFiles(file);
   if (!run) return;

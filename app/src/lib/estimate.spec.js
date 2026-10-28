@@ -276,3 +276,12 @@ test("sizeLabel: both units, inches rounded like the worksheet's Dimensions line
   expect(sizeLabel({ widthMM: 100, heightMM: 50 })).toBe("100 × 50 mm (3.94 × 1.97 in)");
   expect(sizeLabel({ widthMM: 101.6, heightMM: 25.4 })).toBe("102 × 25 mm (4.00 × 1.00 in)");
 });
+
+test("resizeBadgeText: the field's live W × H under a resize, with the centre offset and the match word", async () => {
+  const { resizeBadgeText } = await import("./estimate.js");
+  expect(resizeBadgeText({ wMm: 100, hMm: 50, xMm: 0, yMm: -2.25 }, null))
+    .toBe("100 × 50 mm (3.94 × 1.97 in) · x +0.0 · y -2.3 mm");
+  expect(resizeBadgeText({ wMm: 80.04, hMm: 40.02, xMm: 1.26, yMm: 0 }, "width"))
+    .toBe("80 × 40 mm (3.15 × 1.58 in) · x +1.3 · y +0.0 mm · same width");
+  expect(resizeBadgeText({ wMm: 10, hMm: 10, xMm: 0, yMm: 0 }, "height")).toMatch(/· same height$/);
+});
