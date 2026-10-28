@@ -1,0 +1,140 @@
+{
+ "what": "Kent's absolute grade per logo-census render, his words verbatim (2026-10-28), on ONE tree. Not a before/after verdict set: `tally` files those. Ground truth for the 21 `kind: logo` corpus rows; every number here is Kent's reading, not an instrument's (ROADMAP gate 4).",
+ "tree_sha": "5ff48c56fc604348d51c5241aef0d9da29b4b7b9",
+ "request": "left_chest_80 (main baseline run, 2026-10-27, under load: docs/logo-style-census-2026-10-27.md)",
+ "renders": "scratch_commons_logos/renders/<slug>.png (gitignored; never committed, repo is public)",
+ "date": "2026-10-28",
+ "scale": [
+  "Great",
+  "Good",
+  "Okay",
+  "Bad",
+  "Terrible"
+ ],
+ "worker_read_scale": [
+  "recognizable",
+  "partly",
+  "not"
+ ],
+ "rows": {
+  "arabic_calligraphy": {
+   "grade": "Great",
+   "score_of_10": 8.5,
+   "worker_read": "recognizable"
+  },
+  "barcode": {
+   "grade": "Terrible",
+   "score_of_10": null,
+   "worker_read": "not"
+  },
+  "chalkboard_lettering": {
+   "grade": "Terrible",
+   "score_of_10": null,
+   "worker_read": "not"
+  },
+  "comic_halftone": {
+   "grade": "Good",
+   "score_of_10": null,
+   "worker_read": "partly"
+  },
+  "devanagari_logo": {
+   "grade": "Good",
+   "score_of_10": null,
+   "worker_read": "recognizable"
+  },
+  "distressed_grunge": {
+   "grade": "Terrible",
+   "score_of_10": null,
+   "worker_read": "not"
+  },
+  "duotone_poster": {
+   "grade": "Good",
+   "score_of_10": null,
+   "worker_read": "partly"
+  },
+  "flat_emoji_icon": {
+   "grade": "Great",
+   "score_of_10": 8.5,
+   "worker_read": "recognizable"
+  },
+  "gradient_mascot": {
+   "grade": "Great",
+   "score_of_10": 8.5,
+   "worker_read": "recognizable"
+  },
+  "halftone_dots": {
+   "grade": "Terrible",
+   "score_of_10": null,
+   "worker_read": "not"
+  },
+  "heraldic_crest": {
+   "grade": "Good",
+   "score_of_10": null,
+   "worker_read": "partly"
+  },
+  "isometric_icon": {
+   "grade": "Okay",
+   "score_of_10": null,
+   "worker_read": "partly"
+  },
+  "kanji_brush": {
+   "grade": "Bad",
+   "score_of_10": null,
+   "worker_read": "partly"
+  },
+  "kanji_seal": {
+   "grade": "Bad",
+   "score_of_10": null,
+   "worker_read": "recognizable"
+  },
+  "low_poly": {
+   "grade": "Okay",
+   "score_of_10": null,
+   "worker_read": "partly"
+  },
+  "neon_outline_sign": {
+   "grade": "Good",
+   "score_of_10": 7.5,
+   "worker_read": "recognizable"
+  },
+  "outline_lineart_logo": {
+   "grade": "Good",
+   "score_of_10": null,
+   "worker_read": "partly"
+  },
+  "pixel_art_sprite": {
+   "grade": "Good",
+   "score_of_10": 8.5,
+   "worker_read": "recognizable"
+  },
+  "qr_code": {
+   "grade": "Bad",
+   "score_of_10": null,
+   "worker_read": "not"
+  },
+  "silhouette_logo": {
+   "grade": "Good",
+   "score_of_10": 8.0,
+   "worker_read": "recognizable"
+  },
+  "vintage_engraved_badge": {
+   "grade": "Terrible",
+   "score_of_10": null,
+   "worker_read": "not"
+  }
+ },
+ "tally": {
+  "Great": 3,
+  "Good": 8,
+  "Okay": 2,
+  "Bad": 3,
+  "Terrible": 5
+ },
+ "disagreements_with_worker": {
+  "kanji_seal": "Kent Bad, worker recognizable (enclosed-white stamp fill, census item 4)",
+  "outline_lineart_logo": "Kent Good, worker partly",
+  "heraldic_crest": "Kent Good, worker partly",
+  "duotone_poster": "Kent Good, worker partly",
+  "comic_halftone": "Kent Good, worker partly"
+ }
+}
