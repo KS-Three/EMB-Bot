@@ -291,6 +291,29 @@ def find_thin_ink(p: Prep, cfg: PipelineConfig, valid: np.ndarray, *,
 #     side and background or a different panel on the other, 0.01-0.46.
 # The constants are raster-and-colour quantities, not stitch ones: nothing
 # here needs a sew-out (ROADMAP gate 1).
+#
+# A COUNTER is not ink (2026-10-28, PR #1162's sheet on `summit_badge`): the
+# dark ground inside the lower bowl of the S of SUMMIT passed every test
+# above -- it is dark, thin, ringed by one light ground -- because the
+# ground ringing it IS the letter. The quantiser read (`find_thin_ink`) had
+# already taken the S out of the SEEDS foreground as a thin stroke, so the
+# superpixel under the bowl reached across the stroke to the badge's
+# background, the merge gave the bowl the background's label, and
+# `absorbed_dark_ink` carved it out as a 2.6 mm2 "stroke" in the background's
+# own thread (nothing new visible), while the background lost two blend
+# bands with it (see `stage6_blend.blend_fill`). `find_dark_thin_ink` now
+# takes the thin population's mask as `glyphs`: a component whose one ground
+# (the ring pixels within `DARK_INK_GROUND_DE00` of the ring's median) is
+# itself thin-population pixels at `THIN_INK_GROUND_SHARE` or more is ringed
+# by a glyph, not drawn on a ground, and is refused. Measured on summit at
+# 80 mm: the bowl's ring is 251 foreground pixels, 190 of them the S (an
+# 11.5 mm2 thin component) and 61 the background at the bowl's open side;
+# the one-ground pixels are the 190, all of them thin population (share 1.0).
+# The cartoon's letters sit on the pot, which no thin read owns (share 0).
+# The pipeline's own thinness read is the "letter" here -- no OCR, no new
+# width constant; a letter wider than `cfg.min_detail_mm` is not in the
+# thin population and keeps its own merged label, so its counter is never
+# absorbed in the first place.
 DARK_INK_DEPTH_L = 8.0
 DARK_INK_MIN_CONTRAST_DE00 = 10.0
 DARK_INK_GROUND_DE00 = 13.0
@@ -298,11 +321,14 @@ _DARK_INK_GUARD_PX = 2
 
 
 def _dark_ring(lab: np.ndarray, valid: np.ndarray, comp: np.ndarray,
-               y0: int, x0: int) -> tuple[np.ndarray | None, int]:
+               y0: int, x0: int, glyphs: np.ndarray | None = None
+               ) -> tuple[np.ndarray | None, int, np.ndarray | None]:
     """The Lab of the foreground pixels in the `_RING_PX`-wide ring that sits
-    `_DARK_INK_GUARD_PX` outside `comp` (a crop placed at (y0, x0)), and the
-    ring's full pixel count, background included. The guard keeps the
-    stroke's own anti-alias fringe out of the ground sample."""
+    `_DARK_INK_GUARD_PX` outside `comp` (a crop placed at (y0, x0)), the
+    ring's full pixel count, background included, and -- when `glyphs` is
+    given -- a bool per returned pixel saying whether it lies in `glyphs`
+    (None otherwise). The guard keeps the stroke's own anti-alias fringe out
+    of the ground sample."""
     h, w = valid.shape
     ch, cw = comp.shape
     pad = _DARK_INK_GUARD_PX + _RING_PX
@@ -316,19 +342,27 @@ def _dark_ring(lab: np.ndarray, valid: np.ndarray, comp: np.ndarray,
     ring = (cv2.dilate(guarded, kr) > 0) & (guarded == 0)
     n = int(ring.sum())
     if n == 0:
-        return None, 0
+        return None, 0, None
     inside = ring & valid[wy0:wy1, wx0:wx1]
     if not inside.any():
-        return None, n
-    return lab[wy0:wy1, wx0:wx1][inside], n
+        return None, n, None
+    in_glyph = None if glyphs is None else glyphs[wy0:wy1, wx0:wx1][inside]
+    return lab[wy0:wy1, wx0:wx1][inside], n, in_glyph
 
 
-def find_dark_thin_ink(p: Prep, cfg: PipelineConfig, valid: np.ndarray) -> ThinInk | None:
+def find_dark_thin_ink(p: Prep, cfg: PipelineConfig, valid: np.ndarray,
+                       glyphs: np.ndarray | None = None) -> ThinInk | None:
     """Dark thin strokes on whatever ground they are drawn on, inside `valid`
     (the photo lane's foreground with the enclosed population out), or None
     when nothing qualifies -- the caller's path is then byte-identical to the
     flag being off. The caller carves them out AFTER its merge, and only the
     ones the merge absorbed (`absorbed_dark_ink`).
+
+    `glyphs` is the thin population's mask (`find_thin_ink(...).mask`, read on
+    the same `valid`), or None: a component whose one ground is made of those
+    pixels is a glyph's COUNTER, not a stroke, and is refused (the module
+    comment above `DARK_INK_DEPTH_L` has the summit measurement). None keeps
+    every component the tests below keep.
 
     The kept components are grouped into inks (`_group_inks`) and each ink
     wears the chart spool nearest its pixel-weighted mean colour
@@ -350,12 +384,14 @@ def find_dark_thin_ink(p: Prep, cfg: PipelineConfig, valid: np.ndarray) -> ThinI
     kept: list[tuple[ThinComponent, np.ndarray, np.ndarray]] = []   # component, ink Lab, its RGB pixels
     for t in iter_thin_components(labels, 1, p.px_per_mm, cfg, ground_test=False):
         bx, by, bw, bh = t.bbox
-        ring_lab, n_ring = _dark_ring(lab, valid, t.comp, by, bx)
+        ring_lab, n_ring, in_glyph = _dark_ring(lab, valid, t.comp, by, bx, glyphs)
         if ring_lab is None:
             continue
         ground = np.median(ring_lab, axis=0)
         same = deltaE_ciede2000(ring_lab, np.broadcast_to(ground, ring_lab.shape)) <= DARK_INK_GROUND_DE00
         if float(same.sum()) / float(n_ring) < THIN_INK_GROUND_SHARE:
+            continue
+        if in_glyph is not None and same.any() and is_counter(same, in_glyph):
             continue
         crop = (slice(by, by + bh), slice(bx, bx + bw))
         ink = np.median(lab[crop][t.comp], axis=0)
@@ -395,6 +431,15 @@ def find_dark_thin_ink(p: Prep, cfg: PipelineConfig, valid: np.ndarray) -> ThinI
             length_px += t.length_px
     return ThinInk(mask=mask, labels=out, spools=spools, components=len(kept),
                    length_mm=length_px / p.px_per_mm, dark=len(spools))
+
+
+def is_counter(same: np.ndarray, in_glyph: np.ndarray) -> bool:
+    """Is the one ground round a dark component a glyph? `same` marks the
+    ring pixels that make up the ground (within `DARK_INK_GROUND_DE00` of the
+    ring's median), `in_glyph` the ring pixels the thin population owns; the
+    ground is a glyph when the thin population holds `THIN_INK_GROUND_SHARE`
+    of it -- the same majority the one-ground rule itself asks for."""
+    return float(np.count_nonzero(same & in_glyph)) / float(np.count_nonzero(same)) >= THIN_INK_GROUND_SHARE
 
 
 def _group_inks(medians: list[np.ndarray]) -> list[list[int]]:
