@@ -57,7 +57,7 @@ import shapely
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import nearest_points, polylabel, unary_union
 
-from . import machine, stitches
+from . import bean_rule, machine, stitches
 from .config import PipelineConfig
 from .fabrics import Fabric, fill_underlay_for, pro_values_for, pull_by_stroke_for
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
@@ -2858,6 +2858,9 @@ def sequence(
     fine_bar_trying: set[str] = set()
 
     def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
+        if (pr_tier == "auto" and cfg.bean_only_lines
+                and not bean_rule.allows_bean(pr.region.polygon, letter=is_lettering(pr.region, cfg))):
+            return False                # the reference rule: no bean on a letter or a solid
         wt = _word_tier(pr.region, cfg)
         if pr_tier == "auto" and wt == "run":
             return True                 # L3: the word decided, not the shape's area
@@ -4094,7 +4097,12 @@ def sequence(
             # falling through to a fill whose every row degenerates. That used
             # to be a silent SHAPE_NOT_STITCHED; its outline still exists, and
             # sewing it as a run beats leaving a hole in the artwork.
-            if rescue and not runs:
+            if (rescue and not runs
+                    and not (cfg.bean_only_lines and tier == "auto"
+                             and not bean_rule.allows_bean(p.region.polygon, letter=is_lettering(p.region, cfg)))):
+                # (`cfg.bean_only_lines`: a letter or a solid both tiers refused
+                # is left unsewn, as the reference file leaves it; a line still
+                # gets its outline run)
                 r_runs, r_report = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
                                                entry=entry, trim_at_mm=trim_at,
                                                soft_vertices=cfg.run_soft_vertices)
@@ -4460,6 +4468,11 @@ def sequence(
     # cone's stretches inside that cone's last artwork block even with other
     # cones after it, when nothing later comes near them -- `_cap_fold_host`.)
     cap_style = str(cfg.edge_cap or "none").lower()
+    if cfg.bean_only_lines and cap_style == "bean":
+        # The reference rule (`bean_rule`): a filled body's edge is never a
+        # bean (0 of 231 bodies in 17 files; his open fill edges are satin-
+        # bordered by size, or bare). The satin style is untouched.
+        cap_style = "none"
     cap_lightened = 0
     cap_empty_style = ""
     cap_cost: dict | None = None
