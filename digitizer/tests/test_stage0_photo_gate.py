@@ -76,3 +76,22 @@ def test_cli_runs_on_the_fixtures(capsys):
     text = capsys.readouterr().out
     assert "photo/owl_kent.jpg" in text and "TEXTURE_PHOTO_MIN" in text
     assert "photo texture min" in text
+
+
+def test_the_repo_art_logos_sit_in_the_fixture_margin():
+    """The graphic-side margin the spec quotes (0.066, `logo_toat_beanie`) was
+    read on the repo's small real art under `testdata/art/`, which the
+    corpus (nothing under 500 px) cannot show. The instrument has to carry
+    those files, as `logo`, under an `art/` slug, or it cannot re-read the
+    number that sites the gate (review 2026-10-28, Important 1)."""
+    art = sorted(p for p in (TESTDATA / "art").glob("logo_*.png"))
+    assert len(art) == 6
+    for p in art:
+        assert pg._slug(p) == f"art/{p.name}"
+        assert pg.FIXTURES.get(f"art/{p.name}") == "logo"
+    paths = [TESTDATA / rel for rel in pg.FIXTURES if (TESTDATA / rel).exists()]
+    rows = pg.rows(paths, PipelineConfig(target_width_mm=80.0), dict(pg.FIXTURES))
+    m = pg.margins(rows)
+    value, slug = m["graphic_texture_max"]
+    assert slug == "art/logo_toat_beanie.png"
+    assert value == pytest.approx(0.066, abs=0.005)

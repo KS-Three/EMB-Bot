@@ -47,6 +47,11 @@ FIXTURES = {
     "photo/summit_badge.png": "logo", "photo/logo_bridge_bar.jpg": "logo",
     "photo/logo_gaulke_roofing.png": "logo", "photo/logo_golden_tee.jpg": "logo",
     "photo/logo_hotel_fremont.webp": "logo", "photo/screenshot_phone_ui_golke.jpg": "logo",
+    # the repo's small real art (148-273 px tall): the graphic-side margin was
+    # read HERE (TOAT beanie 0.066) -- the corpus has nothing under 500 px
+    "art/logo_mfab_lc.png": "logo", "art/logo_mfab_hat.png": "logo",
+    "art/logo_toat_beanie.png": "logo", "art/logo_toat_machine.png": "logo",
+    "art/logo_golke_roofing.png": "logo", "art/logo_hotel_fremont_patch.png": "logo",
     "photo/repro_gradient_white_icon.png": "synthetic",
     "photo/gradient_ramp_linear.png": "synthetic", "photo/gradient_ramp_radial.png": "synthetic",
     "photo/photo_subject_stub.png": "synthetic", "photo/photo_scene_stub.png": "synthetic",
@@ -75,6 +80,8 @@ def _slug(path: Path) -> str:
         return path.name
     if path.parent == TESTDATA / "photo":
         return f"photo/{path.name}"
+    if path.parent == TESTDATA / "art":
+        return f"art/{path.name}"
     return path.stem
 
 

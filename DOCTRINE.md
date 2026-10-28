@@ -9167,10 +9167,15 @@ over twenty candidate statistics and every two-term rule bottoms out at five
 misses, all in that set or photoreal cut-out renders. They route to the photo
 lane by medium and Kent judges them on the side-by-side page — do not re-site
 the gate to exclude them (>= 0.45 loses watercolor, architecture, dark_dog,
-fireworks, skyline). (2) **The one stated limit is a barcode exported at
-~250 px** (bars blur to texture, 0.175; 0.111 at 400 px); a steep smooth
-ramp also counts as texture (synthetic `region_blobs` 0.197), and no real
-opaque logo in the corpus or the repo has one. (3) **Faces still sew flat**:
+fireworks, skyline). (2) **Three stated limits:** a barcode exported at
+~250 px (bars blur to texture, 0.175; 0.111 at 400 px — a steep smooth
+ramp also counts, synthetic `region_blobs` 0.197, and no real opaque logo in
+the corpus or the repo has one); a photoreal cut-out render FLATTENED to an
+opaque JPG loses the alpha shield (`isometric_icon` on white at q92 reads
+0.137 and routes `photo_scene` at 0.557); and the two-ink veto reads
+luminance concentration, so a photograph with its foreground in two adjacent
+luminance bins would be vetoed to `gradient` — none of the 19 real
+photographs comes near (max 0.763), which is a reading, not a property. (3) **Faces still sew flat**:
 group_people, sports_action, vintage_sepia and comic_halftone reach
 `photo_scene` at stage 0 and are re-answered FLAT by stage 1.25 (Kent's
 2026-09-30 ruling), which this did not touch. *(measured and built 2026-10-28

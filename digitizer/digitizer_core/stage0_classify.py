@@ -42,7 +42,7 @@ each constant below):
   detector, and a downsampled photograph has none: on the 39-row Commons
   corpus 15 of 18 photographs read 0.02-0.27 against 0.28 and sewed as
   gradient logos. `texture_frac` is the second route in (opaque photographs
-  min 0.245, opaque designed graphics max 0.097); `two_tone_mass` >= 0.90 is
+  min 0.192, opaque designed graphics max 0.066); `two_tone_mass` >= 0.90 is
   two inks and vetoes both routes (tires, arabic calligraphy); a cut-out file
   takes the grain gate alone, as before -- see `decide_photo` and the spec
   `docs/superpowers/specs/2026-10-28-stage0-photo-texture-gate-design.md`.

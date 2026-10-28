@@ -136,9 +136,12 @@ def test_one_grey_level_of_invisible_noise_crosses_the_photo_gate():
 
 @pytest.mark.xfail(strict=True, reason=(
     "known defect: logo_script_tires.png is flat two-colour art (Kent's own "
-    "ground-truth label, 2026-08-15 spec §3) and stage 0 routes it to the "
-    "photo lane on the background's invisible grain. Cause and evidence: "
-    "docs/stage0-tires-photo-scene-2026-09-11.md"))
+    "ground-truth label, 2026-08-15 spec §3). The photo-lane half was cured "
+    "2026-10-28 (the two-ink veto, `stage0_texture_gate`; the OFF arm still "
+    "routes it photo on the background's invisible grain, "
+    "docs/stage0-tires-photo-scene-2026-09-11.md). What remains is the "
+    "flat/gradient gate: it reads `gradient`, not `flat` (PR 6a's scale "
+    "defect), so `flat` at every seed is still the property this test waits on"))
 def test_a_flat_script_wordmark_classifies_flat_at_every_seed():
     """The property the fix has to deliver, on real artwork.
 

@@ -138,7 +138,7 @@ def test_off_arm_is_byte_identical_to_the_old_tree_on_every_fixture():
 def test_the_signals_are_reported_under_both_arms(): ...  # keys present, cutout_alpha is bool
 def test_forced_class_reports_no_signals(): ...
 def test_a_photo_verdict_by_texture_carries_the_texture_gate_confidence():
-    r = classify(owl, cfg()); assert r.confidence == pytest.approx(min(1.0, 0.5 + 0.5 * abs(r.signals["texture_frac"] - 0.17) / 0.07))
+    r = classify(owl, cfg()); assert r.confidence == pytest.approx(min(1.0, 0.5 + 0.5 * abs(r.signals["texture_frac"] - 0.13) / 0.06))
 def test_the_veto_decides_tires_confidence():
     # confidence == min(two-tone gate conf, gradient gate conf)
 def test_a_cutout_file_takes_the_whole_old_tree():

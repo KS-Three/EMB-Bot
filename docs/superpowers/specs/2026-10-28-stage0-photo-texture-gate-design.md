@@ -82,10 +82,23 @@ Gate `TEXTURE_PHOTO_MIN = 0.13`, margin 0.06 (the midpoint of 0.066 and
 resampler): every photograph stays at or above 0.169 (`watercolor` at 250
 px) at every width; every designed graphic stays under 0.07 except `barcode`
 exported at 250 px (0.175: its bars blur into texture; 0.111 at 400 px).
-That is the one stated limit. A steep smooth ramp also sits in the band
+That is the first stated limit. A steep smooth ramp also sits in the band
 (the synthetic `region_blobs` reads 0.197, unmoved by the exclusion); no
 real opaque logo in the corpus or the repo does (`summit_badge` 0.024,
 `gradient_mascot` 0.005, `low_poly` 0.005).
+
+Two more limits, measured at the final review (2026-10-28): (2) the cut-out
+shield protects the alpha EXPORT, not the art — `isometric_icon` flattened
+onto white and saved as a q92 JPEG reads texture 0.137 and routes
+`photo_scene` at confidence 0.557 (`heraldic_crest` 0.039 and
+`gradient_mascot` 0.000 flattened stay `gradient`), so a photoreal render
+uploaded as a JPG takes the photo lane; (3) `two_tone_mass` measures
+luminance CONCENTRATION, not ink count — a photograph whose foreground sits
+in two adjacent luminance bins (a pale or foggy or very low-key one) would
+read >= 0.90 and be vetoed to `gradient` even where the grain gate alone
+had said photo. No corpus photograph comes near (max 0.763, `watercolor`);
+that is a reading over 19 real photographs, not a property of photographs.
+Neither limit moves a constant here.
 
 **Opaque files only.** The texture route is consulted only when the file has
 no alpha cut-out (no alpha channel, or no pixel with alpha <= 127). A file
@@ -114,7 +127,7 @@ if cutout or not cfg.stage0_texture_gate:
 else:
     two_tone   = two_tone_mass >= 0.90
     by_grain   = unique_color_mass >= 0.28        # today's gate, unchanged
-    by_texture = texture_frac >= 0.17
+    by_texture = texture_frac >= 0.13
     photo      = (not two_tone) and (by_grain or by_texture)
 ```
 
