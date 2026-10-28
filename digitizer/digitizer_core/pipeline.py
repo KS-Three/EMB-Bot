@@ -27,6 +27,7 @@ from pathlib import Path
 
 import numpy as np
 from shapely.geometry import Polygon
+from shapely.ops import unary_union
 
 from . import (debugviz, fill_section_travel, fur_regions, knockdown, silhouette_underfill, two_tone,
                white_keyline_art)
@@ -1494,6 +1495,15 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             # design's bands in the region's own coordinates.
             source_pixels.design_ramp = gen.design_ramp.shifted(
                 art_cx / p.px_per_mm, art_cy / p.px_per_mm)
+        # The dark-ink strokes stage 2 carved out of their grounds
+        # (`cfg.keep_dark_thin_strokes`, tagged `dark_ink` in `run_stages`),
+        # as one geometry in stage 6's frame, so `blend_fill` can tell a
+        # ground the carve re-shaped from one it never touched
+        # (`SourcePixels.dark_ink`, `stage6_blend.carved_ground`). None when
+        # no region carries the tag -- every run with the flag off.
+        carved = [r.polygon for r in regions if r.meta.get("dark_ink")]
+        if carved:
+            source_pixels.dark_ink = unary_union(carved)
 
     bg_outline_mm = None
     if p.bg_outline_px is not None and len(p.bg_outline_px) >= 3:

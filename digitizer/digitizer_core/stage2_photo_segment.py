@@ -2601,8 +2601,15 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # five letters. Carving after the merge changes nothing but the letters.
     # `dark_population` is the caller's gate, gradient class only, like
     # `thin_population`. None, or the gate off, is byte-identical.
-    dark: ThinInk | None = find_dark_thin_ink(p, cfg, base_valid) if dark_population else None
+    # The quantiser read goes first so the lightness read can see its mask:
+    # a dark component ringed by thin-population pixels is a glyph's
+    # counter (summit's S, PR #1162), not a stroke, and `find_dark_thin_ink`
+    # refuses it (`glyphs`). Both reads see the same `base_valid`, so the
+    # order changes nothing else.
     thin: ThinInk | None = find_thin_ink(p, cfg, base_valid) if thin_population else None
+    dark: ThinInk | None = (find_dark_thin_ink(p, cfg, base_valid,
+                                               glyphs=None if thin is None else thin.mask)
+                            if dark_population else None)
     if thin is not None:
         base_valid = base_valid & ~thin.mask
 

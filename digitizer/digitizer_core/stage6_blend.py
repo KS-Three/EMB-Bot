@@ -66,6 +66,7 @@ import cv2
 import numpy as np
 from shapely import affinity
 from shapely.geometry import Point, Polygon
+from shapely.geometry.base import BaseGeometry
 from skimage.color import deltaE_ciede2000
 
 from . import debugviz, machine
@@ -185,6 +186,15 @@ class SourcePixels:
     # only the angle, and a hand-built SourcePixels can carry one without
     # the other.
     design_ramp: DesignRamp | None = None
+    # The dark-ink strokes stage 2 carved out of their grounds
+    # (`cfg.keep_dark_thin_strokes`, `thin_ink.absorbed_dark_ink`), as one
+    # geometry in this frame -- set by `pipeline.finish_generation` from the
+    # regions tagged `meta["dark_ink"]`, None when there are none (every
+    # run with the flag off). A ground the carve re-shaped reads its shade
+    # count from the tails of its sample rather than two single pixels
+    # (`blend_fill`, `tail_extremes`); every other region reads as it
+    # always has.
+    dark_ink: BaseGeometry | None = None
 
     def to_px(self, x_mm: float, y_mm: float) -> tuple[float, float]:
         return (x_mm * self.px_per_mm + self.origin_px[0],
@@ -811,10 +821,31 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     lab = rgb_to_lab(rgb)
     ts = np.array([model.t(x, y) for x, y in zip(mm_x, mm_y)])
 
-    extremes_delta_e = float(
-        deltaE_ciede2000(lab[np.argmin(ts): np.argmin(ts) + 1],
-                         lab[np.argmax(ts): np.argmax(ts) + 1])[0]
-    ) if len(ts) else 0.0
+    if carved_ground(poly, source_pixels):
+        # Stage 2 carved a dark-ink stroke out of this ground (2026-10-28,
+        # PR #1162's sheet on `summit_badge`): the two-pixel read below is
+        # not stable against that. OFF, summit's background read its t=0
+        # pixel at L* 5.9 -- a near-black pixel inside the counter the carve
+        # later took -- against L* 74 at t=1: 60.4 dE00, five bands, four
+        # greys. ON, with the counter's 2.6 mm2 gone, the seeded sample is
+        # re-drawn over a mask 325 px smaller and the read fell to 28.3 (L*
+        # 44 to 77), four bands, two greys. The tails read the same ground
+        # at 28.4 OFF-equivalent and 29.4 ON (mean L* 43.7 to 75.5 against
+        # 43.4 to 76.6): the carve no longer moves the count. It is the
+        # design path's own read (`design_shade_scheme`: the samples in the
+        # first and last 5% of the ramp), so a ramp's ends mean one thing in
+        # this module. A ground nothing was carved from keeps the two-pixel
+        # read, byte for byte: the per-region default is not this flag's to
+        # move, and the 5% is a share of the RAMP, not of the samples, so a
+        # fit whose far end is a few pixels (summit's t >= 0.95 holds 2 of
+        # 2,500) still reads the colour the last band will sew.
+        lo, hi = tail_extremes(ts, lab)
+        extremes_delta_e = float(deltaE_ciede2000(lo[None, :], hi[None, :])[0]) if len(ts) else 0.0
+    else:
+        extremes_delta_e = float(
+            deltaE_ciede2000(lab[np.argmin(ts): np.argmin(ts) + 1],
+                             lab[np.argmax(ts): np.argmax(ts) + 1])[0]
+        ) if len(ts) else 0.0
     n = _choose_shade_count(extremes_delta_e)
     shade_labs = _shade_lab_colors(ts, lab, n)
 
@@ -887,12 +918,36 @@ def design_shade_scheme(design: DesignRamp, chart) -> tuple[int, list[int]]:
     deserves); the count is `_choose_shade_count` of their CIEDE2000
     distance, the colours `_shade_lab_colors` at the canonical positions."""
     t, lab = design.sample_t, design.sample_lab
-    lo_sel, hi_sel = t <= 0.05, t >= 0.95
-    lo = lab[lo_sel].mean(axis=0) if lo_sel.any() else lab[np.argmin(t)]
-    hi = lab[hi_sel].mean(axis=0) if hi_sel.any() else lab[np.argmax(t)]
+    lo, hi = tail_extremes(t, lab)
     delta = float(deltaE_ciede2000(lo[None, :], hi[None, :])[0])
     n = _choose_shade_count(delta)
     return n, [chart.nearest_index(c) for c in _shade_lab_colors(t, lab, n)]
+
+
+# The share of the ramp (of t, not of the samples) each tail covers.
+TAIL_SHARE = 0.05
+
+
+def tail_extremes(t: np.ndarray, lab: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """A ramp's two end colours as the mean Lab of the samples in its first
+    and last `TAIL_SHARE` of t, each falling back to the single extreme
+    sample when that tail is empty. The design path's read since 2026-09-03,
+    and a carved ground's (`blend_fill`, `carved_ground`) since 2026-10-28."""
+    lo_sel, hi_sel = t <= TAIL_SHARE, t >= 1.0 - TAIL_SHARE
+    lo = lab[lo_sel].mean(axis=0) if lo_sel.any() else lab[np.argmin(t)]
+    hi = lab[hi_sel].mean(axis=0) if hi_sel.any() else lab[np.argmax(t)]
+    return lo, hi
+
+
+def carved_ground(poly: Polygon, sp: SourcePixels) -> bool:
+    """Did stage 2 carve a dark-ink stroke out of this region? True when
+    `sp.dark_ink` (the carved strokes, `SourcePixels.dark_ink`) touches the
+    region's outline within a pixel -- a carved stroke shares its edge with
+    the ground it left, give or take the vectoriser's simplification. False
+    whenever there is no dark ink, i.e. on every run with the flag off."""
+    if sp.dark_ink is None or sp.dark_ink.is_empty:
+        return False
+    return bool(poly.distance(sp.dark_ink) <= 1.0 / sp.px_per_mm)
 
 
 def _emit_bands(region: Region, source_pixels: SourcePixels, cfg,
