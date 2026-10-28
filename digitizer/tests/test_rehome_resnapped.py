@@ -152,7 +152,8 @@ def test_flag_off_reproduces_the_split():
     # holds on the same fixture.
     cfg = PipelineConfig(target_width_mm=80.0, rehome_resnapped=False,
                          merge_adjacent_same_thread=False,
-                         robust_region_colour=False)
+                         robust_region_colour=False,
+                         bean_only_lines=False)      # ...and the bean rule (ON 2026-10-27): the split's revisits predate it
     _result, plan = digitize(REPRO, cfg)
     threads = [b.thread_index for b in plan.blocks]
     assert len(threads) > len(set(threads)), (

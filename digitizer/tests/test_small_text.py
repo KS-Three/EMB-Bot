@@ -523,7 +523,8 @@ def test_the_tagger_passes_the_ground_ring_only_when_set(monkeypatch):
     _tag(regions, {"Sg0", "Sg1", "Sg2", "Sg3"})
     # the scene's 8 and 9 counters are under the switch's 0.5 mm counter guard;
     # this prices the ring's plumbing, so the guard is off
-    off = {"small_text_true_size_min_counter_mm": None}
+    off = {"small_text_true_size_min_counter_mm": None,
+           "bean_only_lines": False}     # the tagger reads at all: the engine before the bean rule (ON 2026-10-27)
     beanletters.tag_bean_letters(regions, p, PipelineConfig(bean_letter_max_stroke_mm=0.5, **off))
     beanletters.tag_bean_letters(regions, p, PipelineConfig(bean_letter_max_stroke_mm=0.5,
                                                             ink_ground_ring_mm=0.8, **off))

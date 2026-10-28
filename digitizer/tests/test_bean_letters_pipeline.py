@@ -27,6 +27,8 @@ def _cfg(**kw) -> PipelineConfig:
     # The pre-flip engine (conftest PRE_FLIP): `small_text_true_size`, ON since
     # 2026-10-14, sets a bean line of its own; this file prices the line alone.
     kw.setdefault("small_text_true_size", False)
+    # ...and the bean rule (ON since Kent's 2026-10-27 flip) tags no letter at all
+    kw.setdefault("bean_only_lines", False)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6, **kw)
 
 

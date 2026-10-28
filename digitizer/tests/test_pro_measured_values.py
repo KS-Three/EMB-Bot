@@ -36,6 +36,7 @@ def _plan(fabric_id, poly, meta=None, **cfg_kw):
     # these shapes price the pro-value flag alone: `border_by_size` (ON since 2026-10-23)
     # would ring a 30 x 20 mm bar and move the bean pitch read
     cfg_kw.setdefault("border_by_size", False)
+    cfg_kw.setdefault("bean_only_lines", False)   # the bean pitch is read off the bean cap; the rule (ON 2026-10-27) sews none
     c = PipelineConfig(**cfg_kw)
     planned, _ = resolve_overlaps([reg], fab, c)
     blocks, _w = sequence(planned, fab, c)

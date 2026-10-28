@@ -41,6 +41,7 @@ ONE = [region(bar(30, 30), "A", 3, 0)]
 
 
 def plan_for(regions, **cfg_kw):
+    cfg_kw.setdefault("bean_only_lines", False)   # the pieces are the bean cap's; the rule (ON 2026-10-27) sews none
     c = PipelineConfig(**cfg_kw)
     planned, _ = resolve_overlaps(regions, FAB, c)
     blocks, warnings = sequence(planned, FAB, c)

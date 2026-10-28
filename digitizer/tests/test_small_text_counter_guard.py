@@ -170,7 +170,8 @@ def test_bean_tagging_tags_no_candidate_below_the_guard(monkeypatch, scale, tags
     calls = []
     monkeypatch.setattr(beanletters, "read_cluster_ink",
                         own_thread_only(_candidate_ink(calls), beanletters.read_cluster_ink))
-    cfg = PipelineConfig(small_text_true_size_min_counter_mm=narrow * scale)
+    # the tagger itself: the engine before `bean_only_lines` (ON 2026-10-27), which tags nothing
+    cfg = PipelineConfig(small_text_true_size_min_counter_mm=narrow * scale, bean_only_lines=False)
     assert (beanletters.tag_bean_letters(regions, p, cfg) > 0) is tags
     if not tags:
         assert not any(beanletters.BEAN_LETTER_KEY in r.meta or "ink_stroke_mm" in r.meta for r in regions)
