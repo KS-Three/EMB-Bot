@@ -1119,3 +1119,9 @@ than hiding them. No content search ("dogs"): that needs tagging. Detail:
 **The built bundle works wherever it is served** — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
 
 **Lettering under the cap floor now names a way out.** Line breaks lead, "fewer characters" second, "Size up" withheld at the width cap. Detail: [area 3](docs/scope/3-studio-app-wizard.md); scope-history 09-07. *(fixed 2026-09-07)*
+
+## Nineteenth pass: overflow moved from MASTER_SCOPE (2026-10-28)
+
+Moved verbatim from `MASTER_SCOPE.md` by the 2026-10-28 refresh after PRs #1158–#1161 to keep the file under its word budget. Each paragraph stood as written after the eighteenth pass; the live text in MASTER_SCOPE carries the verdict and a link here. Each claim keeps its own `(verb date — source)` pointer; none was re-verified in the move.
+
+**Re-digitize no longer strands on a poll blip (2026-10-16, PR #981, Studio-only).** `pollJob` used to throw on the first poll that missed the service, abandoning a job still computing (an 80 mm photo is ~4 min, polled every 500 ms) and leaving the element on the previous result and delta. It now retries a fetch reject, truncated body or 5xx up to `maxTransientFailures` 20 (about 10 s), resets on a clean read, and still surfaces a job error, a 4xx or the overall timeout at once; a finished re-digitize with unchanged settings lands the new stitches and recomputed delta. `app` vitest 1874 passed. **`run-emb-bot` smoke (2026-10-17, PR #982):** the driver refuses the pre-click caption as the new result and clears `localStorage` before lane 2; the two lanes read different captions (1,245 st · 102×12 mm text; 2,414 st · 80×17 mm artwork). *(measured 2026-10-16/17 — PRs #981, #982)*
