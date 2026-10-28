@@ -745,6 +745,17 @@ class PipelineConfig:
     # 49-53 s on a loaded one, 7 s short of the old limit, and past it the
     # photo digitizes with its background left in.
     photo_prep_background_removal_timeout_s: float = 120.0
+    # Refuse a cutout that keeps less than this share of stage 1's artwork
+    # (pipeline._cutout_kept_fraction), and take the plain classical route
+    # as an unavailable cutout does. 0.0 accepts every cutout, the pre-guard
+    # engine. A sanity bound on a degenerate mask, not a stage-0 threshold.
+    # Measured 2026-10-28 with isnet-general-use on local inputs: refused --
+    # halftone print 0.090, chalkboard sign 0.104 (both graded Terrible),
+    # photo_owl_pale 0.013, tight_crop_pale_subject 0.058, grass/sunset/
+    # meadow/subject stub 0.000-0.018; kept -- the census's street scene
+    # 0.31, photo_chrome_specular 0.434, comic panel 0.561, owl_kent 0.798.
+    # CI has no rembg venv, so no golden reaches this branch there.
+    photo_cutout_min_kept: float = 0.20
     # Stage 2 (photo path) — SAM2 region former (digitizer/sam2_isolated/,
     # see its README.md). A SEPARATE opt-in flag, gated on the PHOTO classes
     # only: this flag must be True AND stage 0 must classify the design
