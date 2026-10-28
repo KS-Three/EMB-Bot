@@ -35,8 +35,23 @@ each constant below):
   carried in `signals` for the review record and for whoever tunes this
   next against portrait/pet fixtures in step 3+.
 
+* `texture_frac` / `two_tone_mass` / `cutout_alpha` (2026-10-28) -- the share
+  of the foreground on a 512-px raster that is neither flat nor a hard edge;
+  the share of foreground luminance in two of sixteen bins; whether the alpha
+  channel cuts anything out. `unique_color_mass` turned out to be a GRAIN
+  detector, and a downsampled photograph has none: on the 39-row Commons
+  corpus 15 of 18 photographs read 0.02-0.27 against 0.28 and sewed as
+  gradient logos. `texture_frac` is the second route in (opaque photographs
+  min 0.245, opaque designed graphics max 0.097); `two_tone_mass` >= 0.90 is
+  two inks and vetoes both routes (tires, arabic calligraphy); a cut-out file
+  takes the grain gate alone, as before -- see `decide_photo` and the spec
+  `docs/superpowers/specs/2026-10-28-stage0-photo-texture-gate-design.md`.
+  `cfg.stage0_texture_gate=False` is the pre-2026-10-28 tree for every input.
+
 **Decision**: a plain two-level thresholded tree, not ML.
-`unique_color_mass` gates flat/gradient territory vs. photo territory;
+`unique_color_mass` -- or, on an opaque file with the texture gate on,
+`unique_color_mass` OR `texture_frac`, unless `two_tone_mass` vetoes
+(`decide_photo`) -- gates flat/gradient territory vs. photo territory;
 within photo territory `gradient_smoothness` gates scene vs. subject; within
 non-photo territory `gradient_smoothness` gates flat vs. gradient. Each gate
 reports a confidence (0.5 at the threshold, 1.0 once clear of it by a full
@@ -56,7 +71,9 @@ not per-pixel texture), which is exactly the "founding complaint" case this
 classifier exists to route into the new blend tier instead of flattening it
 to mush. `unique_color_mass` is therefore the primary photo/non-photo gate,
 not `gradient_smoothness` -- swapping that order would misroute this fixture
-to `photo_scene`.
+to `photo_scene`. The 2026-10-28 texture route would too (its `texture_frac`
+reads 0.52: it contains a photograph), which is why a file with an alpha
+cut-out keeps the grain gate alone.
 """
 from __future__ import annotations
 
@@ -462,6 +479,35 @@ def _gate_confidence(value: float, threshold: float, margin: float) -> float:
     return float(min(1.0, 0.5 + 0.5 * abs(value - threshold) / margin))
 
 
+def decide_photo(ucm: float, texture: float, two_tone: float, cutout: bool,
+                 gate_on: bool = True) -> tuple[bool, float, str]:
+    """The photo/non-photo gate -> (is_photo, gate confidence, route).
+
+    `route` names what decided it: `legacy` (a cut-out file, or the texture
+    gate off — the pre-2026-10-28 tree, the grain gate alone), `grain`,
+    `texture`, `grain+texture`, `veto` (two inks overrode a firing route) or
+    `none`. A photo verdict's confidence is the strongest firing route's,
+    capped by the veto's distance from firing; a non-photo verdict's is the
+    weakest non-firing route's, or the veto's when the veto decided.
+    `tools/classify_lens.py` re-derives this and self-checks against it.
+    """
+    by_grain = ucm >= UCM_PHOTO_MIN
+    grain_conf = _gate_confidence(ucm, UCM_PHOTO_MIN, UCM_MARGIN)
+    if cutout or not gate_on:
+        return by_grain, grain_conf, "legacy"
+    by_texture = texture >= TEXTURE_PHOTO_MIN
+    texture_conf = _gate_confidence(texture, TEXTURE_PHOTO_MIN, TEXTURE_MARGIN)
+    two_tone_fires = two_tone >= TWO_TONE_MAX
+    veto_conf = _gate_confidence(two_tone, TWO_TONE_MAX, TWO_TONE_MARGIN)
+    if not (by_grain or by_texture):
+        return False, min(grain_conf, texture_conf), "none"
+    if two_tone_fires:
+        return False, veto_conf, "veto"
+    route = "+".join(name for name, fired in (("grain", by_grain), ("texture", by_texture)) if fired)
+    strongest = max(conf for conf, fired in ((grain_conf, by_grain), (texture_conf, by_texture)) if fired)
+    return True, min(strongest, veto_conf), route
+
+
 def _seed_sweep_signals(rgb: np.ndarray, fg: np.ndarray, cfg: PipelineConfig,
                         ucm: float) -> tuple[dict, list[dict]]:
     """Report what `unique_color_mass` does across OTHER k-means seeds.
@@ -601,6 +647,9 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     ucm = _unique_color_mass(rgb, fg, cfg.seed)
     grad_var = _gradient_smoothness(rgb, fg)
     alpha_soft = _alpha_softness(alpha)
+    texture = _texture_frac(rgb, fg)
+    two_tone = _two_tone_mass(rgb, fg)
+    cutout = _has_cutout(alpha)
     signals = {
         "unique_color_mass": ucm,
         "gradient_smoothness": grad_var,
@@ -609,12 +658,24 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         # because the statistic is randomised and the number alone does not
         # say so -- see `_seed_sweep_signals`.
         "unique_color_mass_seed": cfg.seed,
+        # The 2026-10-28 photo-gate signals, reported under both arms of
+        # `cfg.stage0_texture_gate`; `photo_route` says which one decided.
+        "texture_frac": texture,
+        "two_tone_mass": two_tone,
+        "cutout_alpha": cutout,
     }
     sweep_signals, sweep_warnings = _seed_sweep_signals(rgb, fg, cfg, ucm)
     signals.update(sweep_signals)
 
-    is_photo = ucm >= UCM_PHOTO_MIN
-    photo_gate_conf = _gate_confidence(ucm, UCM_PHOTO_MIN, UCM_MARGIN)
+    is_photo, photo_gate_conf, route = decide_photo(
+        ucm, texture, two_tone, cutout, bool(cfg.stage0_texture_gate))
+    signals["photo_route"] = route
+    # The sweep reports seeds that cross the GRAIN gate. Once the texture
+    # route or the veto decided the verdict, the seed cannot move it, so the
+    # warning would name an instability that is not there. The sweep's
+    # signals stay reported; confidence is never touched by it.
+    if route not in ("grain", "none", "legacy"):
+        sweep_warnings = []
 
     if is_photo:
         is_subject = grad_var >= GRAD_VAR_SUBJECT_MIN

@@ -121,9 +121,17 @@ def test_one_grey_level_of_invisible_noise_crosses_the_photo_gate():
     `preflight.DELTA_E_VISIBLE` is 5.0.
     """
     img = _noisy_ground(_wordmark(), np.random.default_rng(0))
-    r = s0.classify(img[:, :, ::-1], PipelineConfig())
+    r = s0.classify(img[:, :, ::-1], PipelineConfig(stage0_texture_gate=False))
     assert r.signals["unique_color_mass"] >= s0.UCM_PHOTO_MIN
     assert r.class_ in ("photo_scene", "photo_subject")
+    # 2026-10-28: the SIGNAL still crosses (the defect above is in the
+    # statistic and is not repaired), but the shipped tree's two-ink veto
+    # (`two_tone_mass`, `decide_photo`) holds a two-colour wordmark out of
+    # photo territory whatever its grain says.
+    on = s0.classify(img[:, :, ::-1], PipelineConfig())
+    assert on.signals["unique_color_mass"] >= s0.UCM_PHOTO_MIN
+    assert on.signals["photo_route"] == "veto"
+    assert on.class_ not in ("photo_scene", "photo_subject")
 
 
 @pytest.mark.xfail(strict=True, reason=(
