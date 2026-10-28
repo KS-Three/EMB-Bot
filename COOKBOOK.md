@@ -2416,8 +2416,14 @@ nothing under 500 px, so a reading on a small real logo (the `testdata/art/`
 files are 148–273 px tall) is the one to take before moving a threshold —
 the first siting missed them and the full suite caught it; and a photo-lane
 row in a corpus capture is the Studio's only when its json carries no
-`PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE` (the rembg worker times out at 120 s
-under CPU load).
+`PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`. A lane has no `rembg_isolated/venv`,
+and reaching the live one through a directory junction (`mklink /J`) does
+NOT work: the junctioned interpreter starts, imports onnxruntime, then hangs
+on `import rembg` past 540 s (the same venv by its real path: 8 s), so every
+photo-lane row times out at 120 s and runs the classical route with no
+other symptom. Copy the venv into the lane instead (`robocopy ... /E`,
+474 MB, 10,175 files, about a minute); through the copy the seam answers in
+~27 s on an idle box (measured 2026-10-28).
 
 ### Recapturing `corpus_scorecard_baseline.json`
 

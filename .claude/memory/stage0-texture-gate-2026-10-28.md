@@ -33,9 +33,11 @@ on hand. ROADMAP gate 2's "real tonal artwork" is the corpus itself.
   vintage_sepia, comic_halftone): stage 1.25's ruling, untouched.
 - Known limits: a barcode at ~250 px reads 0.175; a steep smooth ramp counts
   as texture (synthetic `region_blobs` 0.197) — no real opaque logo here does.
-- A capture with the rembg venv junctioned into a worktree still saw
-  `rembg worker timed out after 120s` under CPU load: check
-  `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE` in the row json before reading a
-  photo-lane row as the Studio's.
+- A rembg venv reached through a directory junction hangs on `import rembg`
+  (>540 s; 8 s by its real path), so every photo-lane row reads
+  `rembg worker timed out after 120s` and runs the classical route. COPY the
+  venv into the lane (474 MB); check `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`
+  in the row json before reading a photo-lane row as the Studio's
+  ([[lettering-board-v2-2026-10-27]] hit the no-venv form of this).
 
 Related: [[photo-corpus-sxs-2026-10-27]], [[stage0-flake-output-alignment-2026-10-25]].
