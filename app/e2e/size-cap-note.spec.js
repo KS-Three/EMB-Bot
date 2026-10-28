@@ -3,9 +3,16 @@
 // past the placement and capped — and until 2026-10-08 the field just went
 // back to "0.29" with no word of why or what would make it bigger. The bound
 // is the PLACEMENT box since 2026-10-27 (lib/placement.js): the pro's 96 mm
-// left chest, 3.78 in, not the inch table's 4.00.
+// left chest, 3.78 in, not the inch table's 4.00 — read off the engine table
+// here, so a corrected box moves this expectation with it.
 import { test, expect } from "@playwright/test";
+import { createRequire } from "node:module";
 import { startStudio, typeText } from "./helpers.js";
+
+const require = createRequire(import.meta.url);
+require("../../src/units.js");
+const garments = require("../../src/garments.js");
+const capIn = (garments.placementBoxMm(garments.getGarment("left_chest")).w / 25.4).toFixed(2); // "3.78"
 
 test("a typed height past the placement explains the cap", async ({ page }) => {
   await startStudio(page);
@@ -18,7 +25,7 @@ test("a typed height past the placement explains the cap", async ({ page }) => {
 
   const note = page.locator(".capnote");
   await expect(note).toBeVisible();
-  await expect(note).toContainText("Capped at 3.78 in wide");
+  await expect(note).toContainText(`Capped at ${capIn} in wide`);
   await expect(note).toContainText("Left Chest");
   await expect(height).not.toHaveValue("1");
 
