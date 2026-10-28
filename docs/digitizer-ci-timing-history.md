@@ -74,3 +74,33 @@ was **2/6 in five of the six runs** (5/6 in the first), which is the
 stale-durations signal footgun 7 names: the split in
 `digitizer/tests/.shard_durations.json` no longer matches where the test
 minutes are, and refreshing it is the fix, not adding shards.
+
+## `studio-e2e` rows (appended 2026-10-28)
+
+`studio-e2e` is one unsharded job. CLAUDE.md footgun 7 budgeted it at "about
+three (p50 2.7)"; the sharded-era table above already shows it at 9.5 to 16.3
+minutes on 2026-10-27/28. Re-measured **2026-10-28 over the last ten green
+`CI` runs on `main`** (`gh run list --branch main --status success --limit 10`,
+then `gh run view <id> --json jobs`): wall time is the job's own `completedAt`
+minus `startedAt`, minutes to one decimal, oldest first.
+
+| Run started (UTC) | Run id | PR | SHA | studio-e2e | m:ss |
+|---|---|---|---|---|---|
+| 2026-10-28 02:03 | 40618663158 | #1164 | `133bb9a0` | 14.0 | 14:02 |
+| 2026-10-28 02:05 | 40618839004 | #1166 | `09cfbaea` | 15.2 | 15:13 |
+| 2026-10-28 02:12 | 40619595024 | #1168 | `10655360` | 16.6 | 16:36 |
+| 2026-10-28 02:56 | 40623854814 | #1169 | `136a1c8a` | 15.2 | 15:10 |
+| 2026-10-28 03:08 | 40624939488 | #1170 | `bb9388fa` | 14.9 | 14:53 |
+| 2026-10-28 04:00 | 40629835997 | #1165 | `5a3181dc` | 11.4 | 11:25 |
+| 2026-10-28 06:32 | 40644482625 | #1171 | `8cc12f33` | 11.6 | 11:36 |
+| 2026-10-28 14:30 | 40706659658 | #1172 | `a71fd5cd` | 16.5 | 16:32 |
+| 2026-10-28 16:53 | 40730395193 | #1173 | `8724cd58` | 17.7 | 17:39 |
+| 2026-10-28 16:56 | 40730854496 | #1174 | `dbd3c8da` | 18.1 | 18:03 |
+
+p50 **15.2 minutes (15m11s)**, min 11.4, max **18.1**. Not every row is a full
+sample of a quiet runner: several of these started minutes apart, and this
+note does not separate contention from the suite growing, so it makes no
+claim about the cause. The two fastest (11.4, 11.6) and the two slowest
+(17.7, 18.1) are the span to read as normal. Same rule as the `digitizer`
+rows: spend one `curl` on `/actions/runs/<id>/jobs` before calling a long
+`studio-e2e` stuck.
