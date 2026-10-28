@@ -1995,6 +1995,13 @@ separate processes and diffing the stitch streams.
 
 ## Running things
 
+**`python -m tools.ci_repin` and an old `gh`.** The tool fetches a red run's logs
+with `gh api --allow-escape-sequences` (the flag is on `gh api`, not `gh run
+view`). A `gh` without it, such as a cloud container's (PR #1172, 2026-10-28),
+used to make the tool report no mismatches on a red run; it now checks
+`gh api --help` and fetches without the flag. If it still finds nothing, save
+the shard logs and pass `--log FILE`.
+
 Pass counts are gone from this section on purpose — the counts-are-gone
 convention: a total that drifts with normal work is never hard-coded in a
 doc; run the suite for today's number and judge the run by its expected

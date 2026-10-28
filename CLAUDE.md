@@ -212,7 +212,12 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 
 7. **Three green checks is NOT a green PR — the fourth is the slow one.** CI runs
    four jobs on a PR. `engine` and `studio` finish in well under a minute
-   (p50 0.5 and 0.8) and `studio-e2e` in about three (p50 2.7).
+   (p50 0.5 and 0.8). **`studio-e2e` takes about fifteen minutes now, not
+   three: p50 15.2 min (15m11s), range 11m25s to 18m03s, max 18.1** — measured
+   2026-10-28 over the last 10 green runs on `main` (job `startedAt` to
+   `completedAt` from `gh run view <id> --json jobs`; every one in the table in
+   [`docs/digitizer-ci-timing-history.md`](docs/digitizer-ci-timing-history.md)).
+   The old "p50 2.7" sat here until then; budget twenty, read fifteen as normal.
    **SHARDED since PR #669 (2026-10-08): `digitizer` is now an aggregator over
    six `digitizer shard k/6` jobs**, still `-n auto` each, and it goes green or
    red seconds after the slowest shard. The first sharded run (split by file
@@ -229,9 +234,10 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    push-to-`main`-only and `continue-on-error` — it never appears on a PR and
    gates nothing.)
 
-   **Every written budget for this job has gone stale in ONE direction** —
-   the single pre-sharding job drifted from 15 to 76 minutes between
-   2026-08-27 and 10-04, and each revision of this line was true when written
+   **Every written budget for these jobs has gone stale in ONE direction** —
+   the single pre-sharding `digitizer` job drifted from 15 to 76 minutes between
+   2026-08-27 and 10-04, `studio-e2e` from 2.7 to 15.2 by 2026-10-28, and each
+   revision of this line was true when written
    (history: [`docs/digitizer-ci-timing-history.md`](docs/digitizer-ci-timing-history.md)).
    So spend one `curl` on `/actions/runs/<id>/jobs` before calling a long job
    stuck.
@@ -274,7 +280,7 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    PR #272 at `unstable` for ~25 minutes; the `on:` block in
    `.github/workflows/python-package-conda.yml` is the fix — keep it.
 
-   Two related traps, both already bitten:
+   Three related traps, all already bitten:
    - **`pytest` exit codes.** `pytest > log; echo $?` is fine, but whatever runs
      LAST sets the code your harness reports — a wrapper ending in `tail` reports
      tail's `0` over pytest's `1`. Read the recorded code, not the harness's.
@@ -290,6 +296,13 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
      2026-08-27, 1564 on 2026-08-31, and anything ~123 short of the current
      total means `tests/test_service.py` failed to collect (the `httpx2` hole,
      `digitizer/CLAUDE.md`). *(measured 2026-08-31 — full local run, `python3.12` venv)*
+   - **A just-failed job's `gh run view --job <id> --log` can come back EMPTY.**
+     Measured 2026-10-28 on PR #1171 (run 40640429473, job 122657378371): the
+     job had failed, the log was zero bytes, and "no log" reads like "no
+     failure". Ask the API instead: `gh api repos/KS-Three/EMB-Bot/actions/jobs/<id>`
+     lists every step with its `conclusion` (the red one is the failing step),
+     and `gh api repos/KS-Three/EMB-Bot/check-runs/<id>/annotations` carries the
+     failure message (`<id>` is the same job id).
 
 8. **`git log --all -- <path>` will tell you a file NEVER existed when your
    remote refs are stale — and the wrong answer looks thorough.** A cloud

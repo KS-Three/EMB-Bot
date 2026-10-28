@@ -53,6 +53,11 @@ one); one pin would take two values; a container whose length or keys differ;
 a changed non-digest element with no single literal to move it in; two edits
 that would land on the same bytes.
 
+OLD `gh`. The log fetch passes `gh api --allow-escape-sequences`; a `gh` without that
+flag (a cloud container's, 2026-10-28) fails on it, and a red run then reads as no
+mismatches. fetch_logs asks `gh api --help` for the flag and fetches without it when
+absent. If a `gh` still fails, save the shard logs and use `--log FILE`.
+
 "Tree" below is a directory with `digitizer_core/` in it, i.e. `digitizer/`.
 """
 from __future__ import annotations
@@ -195,14 +200,32 @@ def read_nested(entry: list[str]):
     return nested
 
 
+ESCAPE_FLAG = "--allow-escape-sequences"
+
+
+def gh_api_takes_escape_flag(run=subprocess.run) -> bool:
+    """Does this `gh` know `gh api --allow-escape-sequences`? A cloud container's `gh`
+    can be older and lack it (2026-10-28, PR #1172): the call then fails, and a run that
+    is red reads as having no mismatches. The flag is on `gh api`, not `gh run view`."""
+    try:
+        got = run(["gh", "api", "--help"], capture_output=True, text=True,
+                  encoding="utf-8", check=False)
+    except OSError:
+        return False
+    return ESCAPE_FLAG in f"{got.stdout or ''}{got.stderr or ''}"
+
+
 def fetch_logs(run_id, repo: str = REPO, run=subprocess.run) -> list[str]:
-    """The log text of every FAILED job of the run (`gh`, signed in)."""
+    """The log text of every FAILED job of the run (`gh`, signed in). Without the
+    escape flag on this `gh` the logs are fetched without it: piped, `gh api` does not
+    sanitise them, and clean_log strips the colour codes either way."""
     view = run(["gh", "run", "view", str(run_id), "--repo", repo, "--json", "jobs"],
                capture_output=True, text=True, encoding="utf-8", check=True)
     jobs = [j for j in json.loads(view.stdout)["jobs"] if j.get("conclusion") == "failure"]
+    flag = [ESCAPE_FLAG] if gh_api_takes_escape_flag(run) else []
     logs = []
     for job in jobs:
-        got = run(["gh", "api", "--allow-escape-sequences",
+        got = run(["gh", "api", *flag,
                    f"repos/{repo}/actions/jobs/{job['databaseId']}/logs"],
                   capture_output=True, text=True, encoding="utf-8", check=True)
         logs.append(got.stdout)

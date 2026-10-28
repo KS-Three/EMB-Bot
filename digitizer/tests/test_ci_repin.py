@@ -401,9 +401,9 @@ def test_explained_by_reads_flip_only_when_a_default_moved(tmp_path):
     assert label == "flip" and moved == {"flag_a": (False, True)}
 
 
-def test_the_run_logs_come_from_the_failed_jobs_of_the_run():
-    calls = []
-
+def _fake_gh(calls, *, has_escape_flag=True):
+    """A `gh` that lists three jobs (two failed) and serves their logs; with
+    has_escape_flag False it is the older `gh` that rejects --allow-escape-sequences."""
     def fake(cmd, **kw):
         calls.append(cmd)
         out = ""
@@ -412,14 +412,40 @@ def test_the_run_logs_come_from_the_failed_jobs_of_the_run():
                 {"databaseId": 11, "name": "digitizer shard 4/6", "conclusion": "failure"},
                 {"databaseId": 12, "name": "digitizer shard 1/6", "conclusion": "success"},
                 {"databaseId": 13, "name": "engine", "conclusion": "failure"}]})
+        elif cmd[:3] == ["gh", "api", "--help"]:
+            out = "FLAGS\n  --jq string\n" + ("  --allow-escape-sequences   Allow printing\n"
+                                              if has_escape_flag else "")
         elif cmd[:2] == ["gh", "api"]:
+            if "--allow-escape-sequences" in cmd and not has_escape_flag:
+                raise subprocess.CalledProcessError(1, cmd, stderr="unknown flag")
             out = f"log of {cmd[-1]}"
         return subprocess.CompletedProcess(cmd, 0, stdout=out, stderr="")
+    return fake
 
-    logs = ci_repin.fetch_logs("999", "KS-Three/EMB-Bot", run=fake)
+
+def test_the_run_logs_come_from_the_failed_jobs_of_the_run():
+    calls = []
+    logs = ci_repin.fetch_logs("999", "KS-Three/EMB-Bot", run=_fake_gh(calls))
     assert len(logs) == 2 and any("/jobs/11/logs" in log for log in logs)
     assert not any("/jobs/12/logs" in " ".join(c) for c in calls)
     assert any("--allow-escape-sequences" in c for c in calls)
+
+
+def test_a_gh_without_the_escape_flag_is_asked_without_it():
+    # 2026-10-28, PR #1172: a cloud container's `gh` lacked the flag, and ci_repin
+    # reported no mismatches on a red run. The flag is on `gh api`, not `gh run view`.
+    calls = []
+    logs = ci_repin.fetch_logs("999", "KS-Three/EMB-Bot",
+                               run=_fake_gh(calls, has_escape_flag=False))
+    assert len(logs) == 2 and any("/jobs/13/logs" in log for log in logs)
+    fetches = [c for c in calls if c[:2] == ["gh", "api"] and "--help" not in c]
+    assert len(fetches) == 2 and not any("--allow-escape-sequences" in c for c in fetches)
+
+
+def test_no_gh_at_all_reads_as_no_escape_flag():
+    def missing(cmd, **kw):
+        raise FileNotFoundError("gh")
+    assert ci_repin.gh_api_takes_escape_flag(run=missing) is False
 
 
 # ------------------------------- tuple / list / dict pins (tests/_hexrepr.py, nested)
