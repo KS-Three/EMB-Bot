@@ -1968,9 +1968,12 @@ def test_color_stops_past_the_single_needle_wall_warn():
     # stretch in the thread beside it, so this twelve-patch grid gets a cap
     # piece per patch it borders instead of one block. Far over the wall
     # either way; the finding is the same, the count is the new cost.
-    assert hit[0]["extra"]["color_changes"] == 23
+    # 11 since 2026-10-27 (`bean_only_lines`, Kent's flip): the bean cap and
+    # its per-patch pieces are gone, so the eleven artwork stops stand alone
+    # -- still one past the wall, which is what the test is about.
+    assert hit[0]["extra"]["color_changes"] == 11
     assert hit[0]["extra"]["max_stops"] == COLOR_STOPS_MAX
-    assert report["metrics"]["color_changes"] == 23
+    assert report["metrics"]["color_changes"] == 11
     json.dumps(report)
 
 
@@ -1987,9 +1990,10 @@ def test_a_design_at_the_stop_cap_is_not_warned(plan):
     # clean-report test above. +2 since 2026-10-06 (the cap follows the
     # adjacent colour: one block became three). +1 since 2026-10-26: the ring
     # hole's white block (`sew_enclosed_white`, Kent's flip). -1 since
-    # 2026-10-27: the white-keyline recipe on every job (Kent's flip). Nine, under
-    # the 10-stop wall this test is about, and unwarned.
-    assert report["metrics"]["color_changes"] == 9
+    # 2026-10-27: the white-keyline recipe on every job (Kent's flip). -3 the
+    # same day (`bean_only_lines`, Kent's flip): the bean cap's three blocks
+    # go. Six, under the 10-stop wall this test is about, and unwarned.
+    assert report["metrics"]["color_changes"] == 6
 
 
 # --- Scoring -----------------------------------------------------------------

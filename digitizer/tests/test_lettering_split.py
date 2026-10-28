@@ -76,6 +76,7 @@ def _plan(art: Path, **kw):
     # ahead of the split this file prices, and sews it as columns, never as
     # tatami. The lane's own sewing is pinned in `tests/test_lettering_columns.py`.
     kw.setdefault("lettering_columns", False)
+    kw.setdefault("bean_only_lines", False)   # the split's numbers predate the bean rule (ON 2026-10-27)
     cfg =PipelineConfig(target_width_mm=127.4, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(art), cfg)
     result = finish_generation(gen.fork(), cfg)

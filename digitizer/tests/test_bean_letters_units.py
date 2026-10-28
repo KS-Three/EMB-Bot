@@ -13,7 +13,7 @@ from digitizer_core import PipelineConfig, beanletters, machine, stitches
 from digitizer_core.beanletters import BEAN_LETTER_KEY, tag_bean_letters, weight_groups
 from digitizer_core.ink_path import MemberInk
 from digitizer_core.stage6_beanletter import bean_letter
-from tests.conftest import own_thread_only
+from tests.conftest import PRE_FLIP, own_thread_only
 
 SPINE = [(0.0, 0.0), (0.0, 5.0)]
 
@@ -64,6 +64,9 @@ def _cfg(**kw):
     # The tagger alone, as built: the true-size switch (ON since 2026-10-14)
     # would add its cap-height guard (`test_small_text_cap_guard.py`).
     kw.setdefault("small_text_true_size", False)
+    # `bean_only_lines` (ON since Kent's 2026-10-27 flip) tags no letter at
+    # all; this file prices the tagger itself, on the engine it was built on
+    kw.setdefault("bean_only_lines", PRE_FLIP["bean_only_lines"])
     return PipelineConfig(bean_letter_max_stroke_mm=1.0, **kw)
 
 
@@ -180,7 +183,8 @@ def test_a_bold_letter_with_a_thin_ink_read_is_left_out_of_the_decision(monkeypa
             id(arcs[1]): MemberInk(stroke_mm=0.47, spines=[SPINE])}
     _stub_ink(monkeypatch, inks)
     assert tag_bean_letters(bold + arcs, object(), PipelineConfig(bean_letter_max_stroke_mm=0.5,
-                                                                small_text_true_size=False)) == 0
+                                                                small_text_true_size=False,
+                                                                bean_only_lines=PRE_FLIP["bean_only_lines"])) == 0
     assert not any(BEAN_LETTER_KEY in r.meta for r in bold + arcs)
     assert all(r.meta["ink_stroke_mm"] == 0.3 for r in bold)        # the read is still recorded
 
@@ -195,7 +199,8 @@ def test_thin_letters_whose_shape_agrees_still_go(monkeypatch):
     spine = [(0.125, 0.1), (0.125, 2.3)]
     _stub_ink(monkeypatch, {id(r): MemberInk(stroke_mm=0.25, spines=[spine]) for r in thin})
     assert tag_bean_letters(thin, object(), PipelineConfig(bean_letter_max_stroke_mm=0.4,
-                                                        small_text_true_size=False)) == 3
+                                                        small_text_true_size=False,
+                                                        bean_only_lines=PRE_FLIP["bean_only_lines"])) == 3
 
 
 def test_the_gate_holds_under_word_tiers_too(monkeypatch):

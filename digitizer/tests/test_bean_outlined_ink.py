@@ -35,7 +35,7 @@ from digitizer_core.pipeline import build_generation, finish_generation
 from digitizer_core.regions import Region
 from digitizer_core.stage1_prep import prep
 
-from .conftest import FLAT_GOLDEN_MD5, TESTDATA, own_thread_only
+from .conftest import FLAT_GOLDEN_MD5, PRE_FLIP, TESTDATA, own_thread_only
 
 # --- the share of the spine inside the letter -----------------------------------
 
@@ -121,8 +121,10 @@ def _tag(letters, *, on: bool, **page):
     members = [Region(shape_id=f"S{i}", polygon=box(x0 - cx, y0 - cy, x1 - cx, y1 - cy), thread_index=0,
                       thread_number="0020", area_mm2=(x1 - x0) * (y1 - y0), meta={"text_cluster_id": "c"})
                for i, (x0, y0, x1, y1) in enumerate(letters)]
+    # `bean_only_lines` (ON since Kent's 2026-10-27 flip) tags no letter at all;
+    # this file prices the outline gate on the engine it was built on
     cfg = PipelineConfig(target_width_mm=width, bean_letter_max_stroke_mm=0.5, small_text_true_size=False,
-                         bean_ink_outlined_letters=on)
+                         bean_ink_outlined_letters=on, bean_only_lines=PRE_FLIP["bean_only_lines"])
     return tag_bean_letters(members, p, cfg), members
 
 
@@ -165,6 +167,7 @@ def _stub_ink(monkeypatch, inks):
 
 
 def _cfg(**kw):
+    kw.setdefault("bean_only_lines", PRE_FLIP["bean_only_lines"])      # the tagger's own engine (above)
     return PipelineConfig(bean_letter_max_stroke_mm=0.5, small_text_true_size=False, **kw)
 
 
@@ -199,7 +202,7 @@ def _bridge_cfg(on: bool) -> PipelineConfig:
     # `test_bean_letters_pipeline`'s engine: the line alone, at 1.0 mm.
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6,
                           small_text_true_size=False, bean_letter_max_stroke_mm=1.0,
-                          bean_ink_outlined_letters=on)
+                          bean_ink_outlined_letters=on, bean_only_lines=PRE_FLIP["bean_only_lines"])
 
 
 def test_on_bridge_keeps_its_eight_bean_letters():

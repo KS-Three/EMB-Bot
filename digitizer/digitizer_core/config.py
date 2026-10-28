@@ -5802,9 +5802,12 @@ class PipelineConfig:
     # `compact_solids_satin` / `small_solids_satin` / the Column lane sew
     # one, else unsewn), and the bean edge cap sews nothing (satin style
     # untouched). Layout, judged in the preview (Kent, 2026-10-22). No
-    # width, pull, density, pass count or stitch length moves. False is the
-    # plan as it was, byte for byte. Tests: `tests/test_bean_rule.py`.
-    bean_only_lines: bool = False
+    # width, pull, density, pass count or stitch length moves. **ON since
+    # 2026-10-27, Kent's flip on PR #1161 ("Flip ON (Recommended)")**; False
+    # is the plan before the flip, byte for byte, and `tests/conftest.py`
+    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_bean_rule.py`.
+    bean_only_lines: bool = True
 
     def __post_init__(self) -> None:
         self._fill_true_size()

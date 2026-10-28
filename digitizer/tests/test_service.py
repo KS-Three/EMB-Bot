@@ -1151,7 +1151,9 @@ def test_digitize_manual_returns_a_design_a_review_and_stats(client):
     assert design["stitchCount"] > 100
     # Two manual shapes plus the design-silhouette cap's own block, which is
     # ON by default since 2026-09-11 and sews in a cone already loaded.
-    assert design["colorCount"] == 3
+    # two shapes, two cones: the bean edge cap's own cone went with `bean_only_lines`
+    # (ON since Kent's 2026-10-27 flip; it was 3 before)
+    assert design["colorCount"] == 2
     assert design["stitches"][-1]["type"] == "end"
     assert {s["type"] for s in design["stitches"]} <= {"stitch", "jump", "trim", "color", "end"}
 

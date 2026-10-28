@@ -197,8 +197,10 @@ def bridge():
     from tools.hairline_logo_bill import shape_digests
 
     def cfg(**kw):
+        # bean letters at all: the engine before `bean_only_lines` (ON since 2026-10-27)
         return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6,
-                              bean_letter_max_stroke_mm=1.0, bean_letter_stitch_mm=0.45, **kw)
+                              bean_letter_max_stroke_mm=1.0, bean_letter_stitch_mm=0.45,
+                              bean_only_lines=False, **kw)
     gen = build_generation(str(BRIDGE), cfg())
     out = {}
     for name, kw in (("off", {}), ("on", {"small_letter_ties": True})):

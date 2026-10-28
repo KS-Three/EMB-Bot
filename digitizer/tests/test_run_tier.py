@@ -60,8 +60,10 @@ def _subline_image() -> np.ndarray:
 
 @pytest.fixture(scope="module")
 def rescued():
+    # the rescue's bean rings on sub-floor letters: the engine before `bean_only_lines`
+    # (ON since Kent's 2026-10-27 flip; ON, those letters take the satin ladder)
     return digitize(_subline_image(),
-                    PipelineConfig(target_width_mm=80.0, garment_id="left_chest"))
+                    PipelineConfig(target_width_mm=80.0, garment_id="left_chest", bean_only_lines=False))
 
 
 def test_rescue_is_the_default():

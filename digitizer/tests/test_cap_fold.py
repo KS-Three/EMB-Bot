@@ -40,6 +40,7 @@ def region(poly: Polygon, sid: str, thread: int, layer: int) -> Region:
 
 def plan_for(regions, **cfg_kw):
     cfg_kw.setdefault("border_by_size", False)  # synthetic bars: the order, not the by-size ring (2026-10-23 flip)
+    cfg_kw.setdefault("bean_only_lines", False)  # the fold is about the bean cap; the rule (ON 2026-10-27) sews none
     c = PipelineConfig(**cfg_kw)
     planned, _ = resolve_overlaps(regions, FAB, c)
     blocks, warnings = sequence(planned, FAB, c)

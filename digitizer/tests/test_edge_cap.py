@@ -74,6 +74,10 @@ BOTH = [region(LEFT, "L", 3, 0), region(RIGHT, "R", 5, 1)]
 
 
 def plan_for(regions: list[Region], fabric=FAB, **cfg_kw):
+    # `bean_only_lines` (ON since Kent's 2026-10-27 flip) sews no bean cap at
+    # all; this file prices the cap itself, on the engine it was built on
+    from .conftest import PRE_FLIP
+    cfg_kw.setdefault("bean_only_lines", PRE_FLIP["bean_only_lines"])
     c = PipelineConfig(**cfg_kw)
     planned, _ = resolve_overlaps(regions, fabric, c)
     blocks, warnings = sequence(planned, fabric, c)
