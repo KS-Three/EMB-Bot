@@ -76,6 +76,8 @@ from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .config import is_photographic
+from . import shape_memo
+from .columns import is_lettering
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
                               depth_sort_layers, sequence)
 from .stitches import StitchPlan
@@ -343,6 +345,15 @@ class Generation:
             # in stages 5-7 assigns into it.
             subject_mask=self.subject_mask,
         )
+
+
+def _lane_has_letters(planned, cfg: PipelineConfig) -> bool:
+    """True when `sequence` will take its lane-OFF pass: the Column lane is on
+    and some auto-tier shape is lettering (stage 7's own `lane_letters` rule)."""
+    if not (cfg.lettering_columns and cfg.satin):
+        return False
+    return any(str(p.region.meta.get("tier", "auto")).lower() == "auto"
+               and is_lettering(p.region, cfg) for p in planned)
 
 
 def _environment_warning(code: str, what: str, consequence: str,
@@ -1979,38 +1990,43 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     if cfg.lettering_columns_italic_lean:
         from .column_lean import with_italic_lean
         seq_call = with_italic_lean(sequence, [p.region for p in planned], cfg.lettering_words)
-    blocks, seq_warnings = seq_call(planned, fabric, cfg,
-                                    source_pixels=result.source_pixels,
-                                    design_class=result.design_class,
-                                    fill_technique=effective_fill_technique,
-                                    streamline_mode=effective_streamline_mode,
-                                    detail_layer=effective_detail_layer,
-                                    # The stage-2 demand palette's anchors,
-                                    # for the shade bind's allowed set —
-                                    # None on every non-demand run, and
-                                    # `sequence` re-gates on cfg before
-                                    # reading it (a re-plan with the flag
-                                    # off must ignore a stale carrier).
-                                    palette_spools=result.palette_spools,
-                                    hairline=hairline,
-                                    # `cfg.small_lettering_skeleton` reads its
-                                    # width gate off the artwork's pixels, as
-                                    # the hairline tier does; off, None.
-                                    # `cfg.script_strokes` reads a script
-                                    # word's pen path off them too.
-                                    ink_source=(getattr(result, "ink_source", None)
-                                                if cfg.small_lettering_skeleton
-                                                or cfg.script_strokes else None),
-                                    # `cfg.open_cored_counters`: the counters
-                                    # stage 3 kept (unstitched, so not in
-                                    # `planned`), for the satin tiers' hold;
-                                    # None with the flag off.
-                                    counter_holes=([r.polygon for r in result.regions
-                                                    if r.meta.get("cored_counter")]
-                                                   if cfg.open_cored_counters else None) or None,
-                                    # `cfg.border_from_outline`: computed above,
-                                    # before the under-fill.
-                                    art_outlines=art_outlines)
+    # `shape_memo.scope`: with a letter for the Column lane to take, `sequence`
+    # sews the design twice (its lane-OFF pass is read for the sew order); the
+    # pure emitters then answer the second pass from the first, byte for byte.
+    # No such letter, no second pass, and the scope stays off.
+    with shape_memo.scope(enabled=_lane_has_letters(planned, cfg)):
+        blocks, seq_warnings = seq_call(planned, fabric, cfg,
+                                        source_pixels=result.source_pixels,
+                                        design_class=result.design_class,
+                                        fill_technique=effective_fill_technique,
+                                        streamline_mode=effective_streamline_mode,
+                                        detail_layer=effective_detail_layer,
+                                        # The stage-2 demand palette's anchors,
+                                        # for the shade bind's allowed set —
+                                        # None on every non-demand run, and
+                                        # `sequence` re-gates on cfg before
+                                        # reading it (a re-plan with the flag
+                                        # off must ignore a stale carrier).
+                                        palette_spools=result.palette_spools,
+                                        hairline=hairline,
+                                        # `cfg.small_lettering_skeleton` reads its
+                                        # width gate off the artwork's pixels, as
+                                        # the hairline tier does; off, None.
+                                        # `cfg.script_strokes` reads a script
+                                        # word's pen path off them too.
+                                        ink_source=(getattr(result, "ink_source", None)
+                                                    if cfg.small_lettering_skeleton
+                                                    or cfg.script_strokes else None),
+                                        # `cfg.open_cored_counters`: the counters
+                                        # stage 3 kept (unstitched, so not in
+                                        # `planned`), for the satin tiers' hold;
+                                        # None with the flag off.
+                                        counter_holes=([r.polygon for r in result.regions
+                                                        if r.meta.get("cored_counter")]
+                                                       if cfg.open_cored_counters else None) or None,
+                                        # `cfg.border_from_outline`: computed above,
+                                        # before the under-fill.
+                                        art_outlines=art_outlines)
 
     # `cfg.beanie_knockdown` (built OFF): a sparse fill under the whole design,
     # sewn first, on a beanie with a known garment colour — `knockdown.py`.
