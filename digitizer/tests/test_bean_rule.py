@@ -1,5 +1,5 @@
-"""The reference digitizer's bean rule (`cfg.bean_only_lines`, built OFF
-2026-10-27; `digitizer_core/bean_rule.py`).
+"""The reference digitizer's bean rule (`cfg.bean_only_lines`, built OFF and
+flipped ON by Kent the same day, 2026-10-27, PR #1161; `digitizer_core/bean_rule.py`).
 
 Measured over 17 paired jobs (`tools/bean_census.py`): he beans only LINES
 the art draws as a thin stroke of their own colour; never a filled body's
@@ -25,7 +25,7 @@ from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage7_sequence import sequence
 from digitizer_core.threads import chart_for
-from tests.conftest import frozen_cfg
+from tests.conftest import PRE_FLIP, frozen_cfg
 
 GARMENT = (235, 232, 223)
 
@@ -91,8 +91,10 @@ def _bean_kinds(runs):
 
 # --- the decision ---------------------------------------------------------------
 
-def test_default_off():
-    assert PipelineConfig().bean_only_lines is False
+def test_default_on():
+    # Kent's flip on PR #1161, 2026-10-27: "Flip ON (Recommended)"
+    assert PipelineConfig().bean_only_lines is True
+    assert PRE_FLIP["bean_only_lines"] is False
 
 
 def test_a_line_wants_a_bean_and_nothing_else_does():

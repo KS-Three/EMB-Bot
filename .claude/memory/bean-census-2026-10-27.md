@@ -1,6 +1,6 @@
 ---
 name: bean-census-2026-10-27
-description: The reference digitizer beans almost nothing (17 runs, 780 mm, 8 of 1,101 regions in 17 jobs), only drawn thin lines, two passes; ours beans 137 regions (111 small letters). `bean_only_lines` (OFF) is the measured rule; region kappa -0.014 -> 0.129 ON
+description: The reference digitizer beans almost nothing (17 runs, 780 mm, 8 of 1,101 regions in 17 jobs), only drawn thin lines, two passes; ours beans 137 regions (111 small letters). `bean_only_lines` (ON, Kent 2026-10-27) is the measured rule; region kappa -0.014 -> 0.129
 metadata:
   type: project
 ---
@@ -34,7 +34,8 @@ frame; `docs/bean-census-reference-2026-10-27.md`).
 **Why:** a bean classifier by SIZE cannot match a digitizer who beans by what the
 element IS, and he barely beans at all.
 
-**How to apply:** the flip is Kent's. The one thing he beans and we cannot is a
+**How to apply:** **Flipped ON by Kent 2026-10-27** ("Flip ON (Recommended)", PR
+#1161); PRE_FLIP and `engine_2026_10_27.json` pin it False. The one thing he beans and we cannot is a
 drawn detail line INSIDE a body our segmentation has no region for (Drone):
 that is a stage-2 question (`keep_dark_thin_strokes`, #1160), not a bean rule.
 Related: [[small-text-floor-2026-10-24]], [[fine-bars-satin-2026-10-25]],
