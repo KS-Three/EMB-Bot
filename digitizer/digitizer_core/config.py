@@ -5782,6 +5782,29 @@ class PipelineConfig:
     # Layout, judged in the preview (Kent, 2026-10-22). False is the plan as it
     # was, byte for byte. Tests: `tests/test_script_strokes.py`.
     script_strokes_drawn_width: bool = False
+    # The reference digitizer's rule for WHAT gets a bean (built OFF
+    # 2026-10-27; `bean_rule.py`, `tools/bean_census.py`,
+    # docs/bean-census-reference-2026-10-27.md). Ours has no bean
+    # classifier: five size-gated fallbacks (run tier, bean letters, edge
+    # cap, satin hairline, detail layer) each bean by SIZE. The census over
+    # 17 paired jobs: he beans only LINES the art draws as a stroke of
+    # another colour too thin to satin (17 runs, 780 mm, 8 of 1,101
+    # regions, two passes at 1.31 mm); a filled body's edge on 4 of 231,
+    # all drawn outline strokes; small lettering on 1 of 251 (raised to
+    # satin); a small solid on 0 of 81 (one satin blob or dropped). Ours
+    # beans 137 regions (111 letters, 24 thin regions, 2 bodies); region
+    # kappa -0.014 OFF, 0.129 ON (ours 137 -> 21; Fremont's 58 bean letters
+    # sew satin, stitches 16,235 -> 15,755). ON, the run tier
+    # (`routes_to_run` and the reactive rescue), `tag_bean_letters` and
+    # the bean-style edge cap consult `bean_rule.allows_bean`: a LINE
+    # (smallest dimension <= `bean_rule.LINE_MAX_MM` 1.2) keeps its bean, a
+    # letter or a solid goes down the ordinary ladder (satin where
+    # `compact_solids_satin` / `small_solids_satin` / the Column lane sew
+    # one, else unsewn), and the bean edge cap sews nothing (satin style
+    # untouched). Layout, judged in the preview (Kent, 2026-10-22). No
+    # width, pull, density, pass count or stitch length moves. False is the
+    # plan as it was, byte for byte. Tests: `tests/test_bean_rule.py`.
+    bean_only_lines: bool = False
 
     def __post_init__(self) -> None:
         self._fill_true_size()
