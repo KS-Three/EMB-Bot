@@ -29,7 +29,9 @@ would draw the pro's panel, rather than inventing one.
 `report` writes JPEG tiles (ours: our own fixtures may go under docs/) and ONE
 self-contained `sheet.html` whose images are base64 data URIs, the shape the
 desktop file pane can show (`flip-sheet-inline-2026-10-24`). Nothing here
-changes an engine default; the flip is Kent's.
+changes an engine default; the flip was Kent's (2026-10-28, PR #1170: "Flip ON
+now (worker's pick)"), and since it both arms set the flag explicitly: OFF is
+the engine before the flip, ON the shipped default.
 """
 from __future__ import annotations
 
@@ -54,7 +56,9 @@ FLAG = "keep_dark_thin_strokes"
 WIDTH_MM = 80.0
 GARMENT = "left_chest"
 DATE = "2026-10-28"
-ARMS = {"off": {}, "on": {FLAG: True}}
+# Both arms set the flag explicitly (since the 2026-10-28 flip ON): OFF is the
+# engine before the flip, ON the shipped default, on whichever engine runs this.
+ARMS = {"off": {FLAG: False}, "on": {FLAG: True}}
 TESTDATA = DIGITIZER / "testdata"
 DEFAULT_CACHE = DIGITIZER / "debug_out" / "dark_ink_flip_sheet"
 DEFAULT_OUT = DIGITIZER.parent / "docs" / "renders" / f"keep-dark-thin-strokes-{DATE}"
@@ -330,7 +334,7 @@ def hero_tiles(fixture: str, off: dict, on: dict, out: Path, before: dict | None
         return p
     whole_off = stitchviz.render_design(off["design"], px_per_mm=WHOLE_PPM)
     whole_on = stitchviz.render_design(on["design"], px_per_mm=WHOLE_PPM)
-    put("whole_off", fsr._label(whole_off, "OFF (main)"))
+    put("whole_off", fsr._label(whole_off, "OFF (pre-flip)"))
     if before is not None:
         put("whole_before", fsr._label(stitchviz.render_design(before["design"], px_per_mm=WHOLE_PPM), "ON before the fixes"))
     put("whole_on", fsr._label(whole_on, f"ON ({FLAG})" + (", after the fixes" if before is not None else "")))
@@ -521,7 +525,8 @@ def report_cmd(a) -> int:
             ".row>div{flex:1 1 300px}.id{color:#2a7}.mv{color:#b22}code{font-size:12px}</style>",
             f"<h1><code>{FLAG}</code> OFF | {'ON before | ON after' if three else 'ON'} -- {a.date}</h1>",
             f"<p>Studio request at {WIDTH_MM:g} mm, <code>{GARMENT}</code>, shipped defaults; "
-            f"engine <code>{sheet['engine']}</code>. OFF is the default (main). ON sets the one flag. "
+            f"engine <code>{sheet['engine']}</code>. OFF is the engine before the 2026-10-28 flip (the flag "
+            f"False); ON is the shipped default since it. "
             + (f"<b>ON before</b> is {a.before_label}; <b>ON after</b> is this engine. OFF is checked byte for "
                "byte across the two engines in the table at the end. " if three else "")
             + "<b>No pro file exists for any fixture here, so there is no pro column</b>: the flip is read "

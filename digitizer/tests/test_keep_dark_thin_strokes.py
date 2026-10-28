@@ -1,5 +1,7 @@
 """Dark thin strokes on a shaded ground -- `cfg.keep_dark_thin_strokes`,
-`thin_ink.find_dark_thin_ink`, built OFF 2026-10-27.
+`thin_ink.find_dark_thin_ink`, built OFF 2026-10-27 and flipped ON by Kent
+2026-10-28 (PR #1170, "Flip ON now (worker's pick)"); `conftest.PRE_FLIP` and
+`tests/engine_2026_10_27.json` keep the pre-flip False.
 
 The case: hand lettering drawn in a dark pen on a shaded body, where the ink
 sits under `MERGE_DELTAE00_THRESH` of the ground and the strokes are a
@@ -292,7 +294,10 @@ def test_a_carved_ground_reads_its_shade_count_from_the_tails_on_summit():
     from tools.fremont_triage import studio_request
     data = SUMMIT.read_bytes()
     cfg = PipelineConfig(**_parse_config(json.dumps({**studio_request(80.0), "garment_id": "left_chest"})))
-    assert not cfg.keep_dark_thin_strokes
+    # The Studio's request carries no value for the flag: it rides the engine
+    # default, ON since Kent's flip (2026-10-28). The tail read is gated on the
+    # carve, so this is the shipped path end to end.
+    assert cfg.keep_dark_thin_strokes
     gen = build_generation(_decode(data), cfg, exif_source=data)
     result = finish_generation(gen.fork(), cfg)
     p = gen.p

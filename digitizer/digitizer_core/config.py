@@ -1009,8 +1009,14 @@ class PipelineConfig:
     # them moved the palette). Five letters sew, in one ink; the colour cap
     # keeps that ink off the ground's thread (`enforce_color_cap`).
     # The constants and the measurements behind them are in `thin_ink.py`.
-    # OFF until Kent flips it; nothing found is byte-identical to OFF.
-    keep_dark_thin_strokes: bool = False
+    # Nothing found is byte-identical to OFF. **ON since 2026-10-28, Kent's
+    # flip on PR #1170 ("Flip ON now (worker's pick)")**, after that PR's two
+    # fixes (a glyph's counter is refused; a carved ground reads its shades
+    # from the tails). False is the engine before the flip, byte for byte;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_keep_dark_thin_strokes.py`; the sheet Kent
+    # flipped from: `docs/renders/keep-dark-thin-strokes-flip-2026-10-28/`.
+    keep_dark_thin_strokes: bool = True
     # A letter's counter on a COLOURED ground stays a hole
     # (`stage3_segment.resolve_small_regions`). Measured 2026-10-02 on clean
     # 4 mm "BAR & RESTAURANT": on white the counters are background, never

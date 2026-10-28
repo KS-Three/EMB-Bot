@@ -110,7 +110,10 @@ PINS = {
 PRE_TRUE_SIZE = {"small_text_true_size": False,
                  # ...and the bean rule (`bean_only_lines`, ON since 2026-10-27): the cards were cut
                  # on an engine that beaned sub-floor letters and solids
-                 "bean_only_lines": False}
+                 "bean_only_lines": False,
+                 # ...and the dark-ink read (`keep_dark_thin_strokes`, ON since 2026-10-28, gradient
+                 # class only): the owl card (v3.2) was cut without it
+                 "keep_dark_thin_strokes": False}
 ENDS_ON = {"lettering_columns_square_ends": True, "lettering_columns_inside_connectors": True}
 SKEL = {"small_lettering_skeleton": True}
 
