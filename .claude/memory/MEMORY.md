@@ -13,7 +13,7 @@ order. Every note file is indexed in exactly one of this file and
 `MEMORY-archive.md` (not auto-loaded; the test checks). Near the ceiling, move
 the OLDEST lines whole to the archive.
 
-- [Memory archive: through 10-08](MEMORY-archive.md) — NOT auto-loaded: history through 10-08 + standing rulings (fill rows 0.15, DST axis fixed, Ink/Stitch clean-room, Ember teardowns)
+- [Memory archive: through 10-11](MEMORY-archive.md) — NOT auto-loaded: history through 10-11 + standing rulings (fill rows 0.15, DST axis fixed, Ink/Stitch clean-room, Ember teardowns)
 - [Opus team architecture](../../docs/superpowers/plans/2026-10-23-opus-team-architecture.md) — the plan a fresh director runs from: method, state, ranked queue L1-L10 / I1-I6, Kent's open decisions, brief template, traps
 - [Apex cut](apex-cut-2026-10-25.md) — acute tips (M's V, W, MFab N, PROSEAL A): pro cuts along the cross, tip one level-crossed piece; `lettering_columns_apex_cut` OFF; corner_fold refuses them (long_way)
 - [Apex walk](apex-walk-2026-10-27.md) — apex_cut's walk sews each tip from its point: tip-satin travel <= 0.05 mm, crosses kept; per-job travel > OFF on 5 jobs, foreman's call
@@ -67,7 +67,6 @@ the OLDEST lines whole to the archive.
 - [Lane census](lane-census-2026-10-25.md) — Kent 10-26: 6b NOT built, the button stays. 4 of 14 pro jobs reach flat (all Becker), 8 gradient, 2 photo_scene; 6b as written = the button's file; kappas a wash
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
 - [Lane reading before the run](lane-reading-before-run-2026-10-28.md) — `POST /classify` replays stage 0 + 1.25 before `/digitize`; Studio reading row above Auto Digitize (owl 2.5 s, golden_tee 32 s); `np.unique` GIL freeze fixed
-- [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
 - [Layering census](layering-census-2026-10-26.md) — W4-06 FALSE: pro sews every contained piece ON its ground (162/162) = `silhouette_underfill`; 80 of 176 cuts cross their own ground (sews first), 5 a sibling
 - [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out
 - [Letter separation](letter-separation-2026-10-25.md) — W3-07: our 6 touching 5-10 mm pairs are PULL COMP (traced 0.60-0.87 apart, rails 0.29 out), not construction; pro keeps >= 0.10 mm, tips only
@@ -87,6 +86,7 @@ the OLDEST lines whole to the archive.
 - [Outline loop pivot](outline-loop-pivot-2026-10-25.md) — corner spikes are SPARSE far ends, not a missing mitre (pro's arc is round); `outline_loop_mitre` ON 10-26
 - [Outlined bean ink](outlined-bean-ink-2026-10-27.md) — MFab LC's AND read its white keyline as ink, sewed white; `bean_ink_outlined_letters` (ON 10-27) drops reads half outside
 - [Photo corpus sxs](photo-corpus-sxs-2026-10-27.md) — #1171: 39 Commons rows, `capture --base` per tree, sxs HTML with Kent's verdicts, `baseline-5ff48c5.json`; stage 0 sent 3 of 18 photos down the photo lane; `design.colors` = BLOCKS
+- [Cut-out finds no subject](photo-cutout-no-subject-2026-10-28.md) — rembg keeps 0.01-5.4% of a scene (subjects 27-76%); #1179's `photo_cutout_min_kept` 0.20 refuses; prep-skipped beat prep-kept 4/6; kept frame 373-2,100 s (stage 7) vs Studio's 600 s
 - [Photo lane must generalise](photo-lane-generalise-2026-10-27.md) — Kent 10-27: photo tools were tuned on 4 portraits + the owl; 18-genre census broke on scenes/crowds/pale art; read across genres, check tonal first
 - [Placement axis sizing](placement-axis-sizing-2026-10-28.md) — size = most that fits WHERE it sits: `PLACEMENTS` table, 3 pro boxes kept, rest `seeded` = Kent's; upload fits the box, typed width stays
 - [Pro intake](pro-intake-2026-10-25.md) — `python -m tools.pro_intake`: new job -> registered pair + census; registry gitignored (client names); preview vs art by content AND name; tesseract confirms lettering
@@ -122,7 +122,6 @@ the OLDEST lines whole to the archive.
 - [Nest guard](text-cluster-nest-guard-2026-10-27.md) — `text_cluster_nest_guard` OFF: `_drop_nested` ignores a frame candidate over 6x the median glyph height (Bridge hat wheel nested 8/15 letters); rotation-aware door next
 - [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch (gate 1); MFab IN/AND N are the misses; `text_cluster_part_touching` ON 10-27
 - [Typed lettering floats](text-cut-jumps-2026-10-27.md) — `cutEveryJump` OFF: names float 1-3 mm hops on every DST path; ON buries/walks/cuts (95% cut), trims ~2x
-- [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
 
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
 - [Golden Tee TM](tm-mark-golden-tee-2026-10-26.md) — Kent: NO build. Pro re-sets the 0.94 mm TM as a 4.3x2 mm double run; we drop it in stage 2 (thin_ink 3 px floor, its strokes 2 px); a future TM/(R) drops silently

@@ -9181,3 +9181,59 @@ group_people, sports_action, vintage_sepia and comic_halftone reach
 2026-09-30 ruling), which this did not touch. *(measured and built 2026-10-28
 — `docs/superpowers/specs/2026-10-28-stage0-photo-texture-gate-design.md`,
 `tests/test_stage0_texture_gate.py`, `docs/scoreboards/photo-corpus/`)*
+
+## The photo lane's cut-out answers "no subject" on a scene, and the lane sewed the answer (2026-10-28)
+
+The first corpus capture through #1178's routing showed six scenes at 0–3,117
+stitches where the gradient lane had sewn 13,000–40,000. **Not a bad cut-out:
+no cut-out.** rembg (`isnet-general-use`) returns low alpha over the whole
+frame of a scene — alpha ≥ 128 covers 0.01–5.4 % of it (snow_highkey 0.0001,
+landscape_lake 0.0006, pencil_sketch 0.0011, underwater_reef 0.003,
+night_neon 0.005, night_skyline 0.014, stained_glass 0.054) against 0.27–0.76
+on every corpus row with a real subject (fireworks 0.27, bw_street 0.31,
+dark_dog 0.31, group_people 0.38, food_plate 0.57, architecture 0.76). Three
+things then emptied the hoop: the seam thresholds at 128 and calls the rest
+background; `_clean_background_mask` refills only SMALL background islands,
+so a frame-wide one stands; and `pipeline.run_stages` treated only a `None`
+return as failure. The census of 10-27 (item 1) had named the mechanism on
+two rows a day earlier.
+
+**The guard is #1179's `cfg.photo_cutout_min_kept` (0.20, ON, the same
+night):** a cut-out keeping less than that share of stage 1's artwork is
+REFUSED — stage 1's border-flood `bg_mask` stays, `subject_bg_mask` stays
+None so the palette gets no "background" class it did not earn, and the job
+says `PHOTO_CUTOUT_REFUSED` (silent in the Studio), never UNAVAILABLE. This
+session built the same refusal on the frame share in parallel and dropped
+it on rebase; what it adds is the reading. On the six scenes stage 1 floods
+nothing, so frame share and artwork share are one number — 0.000, 0.000,
+0.002, 0.013, 0.020, 0.042 — all refused at 0.20; the smallest real subject
+reads 0.27 of its frame (fireworks; #1179's own smallest kept, bw_street,
+0.31 of its artwork), so the floor's margin above the scenes is 3.7× and
+below the subjects 1.35×. Read the refusal on the sxs page's `cutout
+refused (kept frac)` row, not `cutout removed (frac)`: the removed fraction is
+after-minus-before against the border flood and under-reads a photo whose
+paper already flooded (pencil_sketch 0.842 removed, 0.1 % kept). **A
+refused cut-out skips prep too** (Kent 10-28:
+"measure A vs B, ship better"): with the frame kept, prep-skipped beat
+prep-kept on `fidelity_cc` on four of the six rows (night_neon 0.142 vs
+0.083, night_skyline 0.090 vs 0.033, reef 0.118 vs 0.102, stained glass
+0.088 vs 0.082), lost on landscape_lake (−0.288 vs −0.272), tied on snow
+(−0.471 vs −0.469), and its neon and skyline renders read as scenes where
+prep-kept's read as fragments — the 2026-08-24 ruling's shape again, now
+measured on scenes.
+
+**Two things that change what someone does.** (1) **A kept frame is not
+free: 450–2,100 s per scene, against 85–160 s for the empty hoop.** Stages
+0–4 take 90–320 s; `plan_stitches` the rest, and three arm-B rows timed out
+at 1,200 s inside `stage7_sequence.sequence`'s rank-only second pass (the
+Column lane's `off_blocks = sequence(..., lettering_columns=False)`, via
+`column_lean.run` → `stitch_one`). The Studio stops waiting at 600 s (Kent
+10-26), so on today's engine most refused scenes would time out there. The
+cost is the lane's, not the guard's, and the empty hoop was hiding it; it is
+the next measurement, not a reason to keep sewing nothing. (2) **A real
+subject under 20 % of its artwork refuses with the scenes** and sews with its
+background — the soft failure, the opposite direction of the empty hoop. No
+corpus row has one; the row comes before the floor moves. *(measured
+2026-10-28/29 —
+`docs/superpowers/specs/2026-10-28-photo-cutout-no-subject-guard-design.md`,
+`tests/test_cutout_no_subject.py`, `corpus_runs/` base-75efec5 / armA / armB)*

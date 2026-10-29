@@ -297,7 +297,8 @@ def summarise(output: dict, cap: int) -> dict:
     row = {"state": output.get("state"), "wall_s": meta.get("elapsed_s"),
            "stamps": meta.get("stamps") or {}, "class": meta.get("class"),
            "class_conf": meta.get("class_conf"), "error": output.get("error") or output.get("stderr_tail"),
-           "route": None, "cutout_removed_frac": None, "stitches": None, "trims": None,
+           "route": None, "cutout_removed_frac": None, "cutout_refused_kept_frac": None,
+           "stitches": None, "trims": None,
            "color_changes": None, "colors_used": None, "cap": cap, "cap_kept": None,
            "size_mm": None, "st_per_cm2": None, "grade": None, "score_raw": None}
     if output.get("state") != "done":
@@ -315,6 +316,11 @@ def summarise(output: dict, cap: int) -> dict:
     cut = next((w for w in output.get("warnings") or [] if w.get("code") == "PHOTO_BACKGROUND_REMOVED"), None)
     if cut and cut.get("background_frac_after") is not None and cut.get("background_frac_before") is not None:
         row["cutout_removed_frac"] = round(cut["background_frac_after"] - cut["background_frac_before"], 4)
+    # the cut-out ran, kept under cfg.photo_cutout_min_kept of stage 1's artwork and was
+    # refused (#1179): the share it kept, the reading the refusal was made on
+    kept = next((w for w in output.get("warnings") or [] if w.get("code") == "PHOTO_CUTOUT_REFUSED"), None)
+    if kept and kept.get("kept_frac") is not None:
+        row["cutout_refused_kept_frac"] = kept["kept_frac"]
     w, h = (stats.get("size_mm") or [0, 0])[:2]
     area_cm2 = (w or 0) * (h or 0) / 100.0
     stitches = stats.get("stitch_count")
@@ -472,8 +478,24 @@ def _render_row(photo: Path, output: dict, png: Path, fabric_bgr) -> dict:
     return fidelity(photo_bgr, render, fabric_bgr)
 
 
+def parse_sets(sets: list[str]) -> dict:
+    """`--set FIELD=JSON` pairs -> {field: value}; a value that is not JSON is
+    taken as a string. Raises ValueError on a pair with no `=`."""
+    out: dict = {}
+    for s in sets or []:
+        if "=" not in s:
+            raise ValueError(f"--set needs FIELD=JSON, got {s!r}")
+        key, raw = s.split("=", 1)
+        try:
+            out[key.strip()] = json.loads(raw)
+        except json.JSONDecodeError:
+            out[key.strip()] = raw
+    return out
+
+
 def capture(rows: list[dict], photos: Path, tree: Path, out: Path, tree_sha: str,
-            timeout: float = TIMEOUT_S, procs: int = PROCS, cfg: dict | None = None) -> dict:
+            timeout: float = TIMEOUT_S, procs: int = PROCS, cfg: dict | None = None,
+            overrides: dict | None = None) -> dict:
     """Every row digitized at `tree`, `procs` at a time. Per row: `<slug>.json`
     (the worker's output), `<slug>.png` (render, or a placeholder naming the
     failure), `<slug>.row.json` (summarise + fidelity + the corpus row's kind
@@ -487,7 +509,7 @@ def capture(rows: list[dict], photos: Path, tree: Path, out: Path, tree_sha: str
     from datetime import date
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    cfg = cfg or tree_request(tree, request_config())
+    cfg = {**(cfg or tree_request(tree, request_config())), **(overrides or {})}
     fabric = tuple(reversed(cfg.get("garment_rgb") or [235, 232, 223]))
 
     prior = out / "run.json"
@@ -556,7 +578,8 @@ SXS_METRICS = (
     ("state", "state", None), ("class", "class", None), ("route", "route", None),
     ("stitches", "stitches", True), ("trims", "trims", True), ("color_changes", "colour changes", True),
     ("colors_used", "colours used (cap)", None), ("cap_kept", "cap kept", None),
-    ("cutout_removed_frac", "cutout removed (frac)", None), ("size_mm", "size mm", None),
+    ("cutout_removed_frac", "cutout removed (frac)", None),
+    ("cutout_refused_kept_frac", "cutout refused (kept frac)", None), ("size_mm", "size mm", None),
     ("st_per_cm2", "stitches / cm²", None), ("grade", "preflight grade (raw)", None),
     ("score_raw", "preflight score (raw)", None), ("wall_s", "wall s", True),
     ("ssim", "SSIM (raw)", None), ("dE", "ΔE (raw)", None), ("fidelity_cc", "fidelity cc", None),
@@ -794,12 +817,18 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--only", action="append", default=[], metavar="SLUG")
     c.add_argument("--timeout", type=float, default=TIMEOUT_S)
     c.add_argument("--procs", type=int, default=PROCS)
+    c.add_argument("--set", action="append", default=[], metavar="FIELD=JSON",
+                   help="override one request field on top of the tree's own request, e.g. "
+                        "--set photo_cutout_min_kept=0.0 (the other arm of a flag); "
+                        "recorded in run.json's config")
     s = sub.add_parser("sxs", help="build the side-by-side HTML from two runs")
     s.add_argument("--before", type=Path, required=True)
     s.add_argument("--after", type=Path, required=True)
     s.add_argument("--photos", type=Path, default=CORPUS_DIR)
     s.add_argument("--out", type=Path, help="default corpus_runs/sxs-<before7>-<after7>.html")
     s.add_argument("--allow-same-sha", action="store_true")
+    s.add_argument("--only", action="append", default=[], metavar="SLUG",
+                   help="only these rows (a page over the rows a partial capture holds)")
     m = sub.add_parser("summary", help="a run's numbers without designs or images (the baseline-<sha7>.json record)")
     m.add_argument("run", type=Path)
     m.add_argument("--out", type=Path, help="default docs/scoreboards/photo-corpus/baseline-<sha7>.json")
@@ -816,13 +845,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if a.cmd == "capture":
         out = RUNS_DIR / a.label
+        overrides = parse_sets(a.set)
         if a.base:
             from tools import default_path_diff as dpd
             with dpd.merge_base_tree(a.base) as base_tree:
-                run = capture(rows, a.photos, base_tree, out, dpd.last_merge_base, a.timeout, a.procs)
+                run = capture(rows, a.photos, base_tree, out, dpd.last_merge_base, a.timeout, a.procs,
+                              overrides=overrides)
         else:
             tree = a.tree or DIGITIZER
-            run = capture(rows, a.photos, tree, out, _head_sha(tree), a.timeout, a.procs)
+            run = capture(rows, a.photos, tree, out, _head_sha(tree), a.timeout, a.procs,
+                          overrides=overrides)
         states = {}
         for r in run["rows"].values():
             states[r["state"]] = states.get(r["state"], 0) + 1

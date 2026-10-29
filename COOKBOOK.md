@@ -2362,6 +2362,7 @@ evidence, filed under `docs/scoreboards/photo-corpus/`. From `digitizer/`:
 python -m tools.photo_corpus fetch                                  # once per machine; resumable; re-reads the live licence
 python -m tools.photo_corpus capture --label base --base origin/main  # the merge-base's digitizer_core, via git archive
 python -m tools.photo_corpus capture --label head                     # this tree
+python -m tools.photo_corpus capture --label off --set photo_cutout_min_kept=0.0   # the other arm of a flag, without editing the tree
 python -m tools.photo_corpus sxs --before corpus_runs/base --after corpus_runs/head
 # send Kent corpus_runs/sxs-<a>-<b>.html; he clicks, presses "Export verdicts"
 python -m tools.photo_corpus tally verdicts-<a>-<b>.json             # -> docs/scoreboards/photo-corpus/, commit it
@@ -2431,6 +2432,37 @@ photo-lane row times out at 120 s and runs the classical route with no
 other symptom. Copy the venv into the lane instead (`robocopy ... /E`,
 474 MB, 10,175 files, about a minute); through the copy the seam answers in
 ~27 s on an idle box (measured 2026-10-28).
+
+### The photo lane's cut-out on a scene (2026-10-28)
+
+rembg answers a SCENE with low alpha everywhere: on the 18 corpus
+photographs the six scenes keep 0.01–5.4 % of the frame as subject at the
+seam's 128 threshold (snow_highkey 0.0001 … stained_glass 0.054), every
+row with a real subject 0.27–0.76. `remove_background_seam`'s island
+cleanup refills only SMALL background specks and `pipeline.run_stages`
+accepted any non-None mask, so the frame became background and the lane
+sewed 0–3,117 stitches of a 13,000–40,000-stitch photograph.
+`cfg.photo_cutout_min_kept` (#1179; 0.20 of stage 1's artwork, ON) refuses
+such a cut-out: stage 1's border-flood `bg_mask` stays, no
+subject/background class reaches the palette, prep is skipped with it (the
+measured better arm), and the job carries `PHOTO_CUTOUT_REFUSED` (silent in
+the Studio) instead of `PHOTO_BACKGROUND_REMOVED`. The sxs page shows the
+refused share as `cutout refused (kept frac)`. Measurement record:
+`docs/superpowers/specs/2026-10-28-photo-cutout-no-subject-guard-design.md`.
+
+Two things to know. **A full-frame scene on the photo lane costs 6–35
+minutes**, not the 85–160 s the empty hoop took: stages 0–4 run 90–320 s
+and `plan_stitches` the rest; three of the six rows timed out at 1,200 s
+inside `stage7_sequence.sequence`'s rank-only second pass (the Column lane's
+`off_blocks = sequence(..., lettering_columns=False)`, run whenever
+`is_lettering` tags a region) and finished in 373–797 s when re-run on the
+same tree — slow AND unstable, a pre-existing cost the empty hoop hid, and
+the Studio stops waiting at 600 s. Capture these rows with `--timeout 2400`.
+**Read `cutout_refused_kept_frac` beside `cutout_removed_frac`**: the
+removed fraction is after-minus-before against the border flood, so a photo
+whose paper border already flooded under-reads it (pencil_sketch 0.842
+removed, 0.1 % kept) — the guard reads what rembg kept, which is the refused
+column.
 
 ### Recapturing `corpus_scorecard_baseline.json`
 

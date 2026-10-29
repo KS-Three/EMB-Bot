@@ -1,9 +1,9 @@
-# Memory Index — Archive (through 2026-10-08)
+# Memory Index — Archive (through 2026-10-11)
 
 Same one-line format as `MEMORY.md`: `- [Title](file.md) — hook`. These are the
 index lines for every note dated through 2026-10-04 (filename date, else the date
 the note file was first committed), moved out of the live index on 2026-10-23 (and
-again on 2026-10-26, through 2026-09-21, and on 2026-10-27, through 2026-10-04 and then 2026-10-06, and on 2026-10-28 through 2026-10-08 (the STANDING float-pictures line stays live),
+again on 2026-10-26, through 2026-09-21, and on 2026-10-27, through 2026-10-04 and then 2026-10-06, and on 2026-10-28 through 2026-10-08 (the STANDING float-pictures line stays live), and on 2026-10-29, through 2026-10-11, plus the 80 mm ink link line of 10-15 (one PR's worth of room),
 oldest filename date first) because it sat at its 24,986-character
 ceiling and every PR that added a note conflicted with every other. **This file is NOT auto-loaded** — open it when you
 need history or a standing ruling (fill row spacing 0.15, DST axis fixed,
@@ -124,4 +124,6 @@ live index; new archive lines go at the bottom.
 - [Lettering architecture R&D](lettering-architecture-2026-10-07.md) — five failures by letter size; pros put rails on the OUTLINE; Column lane OFF
 - [fillColumns float pictures](fill-columns-float-pictures-2026-10-08.md) — STANDING: next 10 digitized images shown to Kent carry the off/on float sheet; count 1/10
 - [N fan cure](n-fan-cure-2026-10-08.md) — `satin_tip_corner_gate` OFF: tip = convex corner; ≈ tip caps off; degree gate refuted
+- [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
 - [L1 one tagger](word-tagger-l1-2026-10-08.md) — BUILT OFF `cfg.lettering_words`; kappa 0.907 vs text cluster 0.881 (in-sample); Kent: AFTER better under the Column lane (10-08)
+- [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
