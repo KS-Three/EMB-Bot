@@ -298,6 +298,18 @@ ec84604a) reproduced all three old entries on this machine before the capture
 (`tools/recapture_flat_lane_key.py --pre-change-tree`, `machine OK` each).
 `photo/enthusiast_logo.png` stays un-re-pinned for the standing platform
 reason above; it moves under the flip too and CI deselects it either way.
+
+**Exception TAKEN 2026-10-29, `border_by_size_fabric_edges` ON (Kent 2026-10-28,
+"Flip ON (Recommended)"; `docs/bean-border-logic-2026-10-28.md`):** the
+`logo_whitebg.png` and `logo_alpha.png` entries were re-captured after a
+`border_by_size` ring stopped sewing the seams its shape shares with another
+sewn region: whitebg 5536 → 5480, alpha 6224 → 6167 stitch coords; region ids,
+areas and warnings unmoved (a stage-7-only flag). `ribbon_curve.png` has no
+such seam and is byte-identical. The pre-change tree (`origin/main` at
+03098055, `git archive`) reproduced both old entries on this
+Windows machine before the capture (`tools/recapture_flat_lane_key.py
+--pre-change-tree`). `photo/enthusiast_logo.png` stays un-re-pinned for the
+standing platform reason.
 """
 
 from __future__ import annotations

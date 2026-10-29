@@ -603,6 +603,14 @@ PRE_FLIP["dark_ink_refuse_strays"] = False
 # skeleton, after its ground, which sews through under it. Pinned now for the
 # same reason; `tests/engine_2026_10_27.json` carries it False too.
 PRE_FLIP["dark_ink_bean"] = False
+# `border_by_size_fabric_edges` joined the flipped set 2026-10-28 (Kent's
+# "Flip ON (Recommended)" after the 21-logo corpus check). ON, a
+# `border_by_size` ring skips every seam it shares with another sewn region,
+# so an arm measured before that day was measured with rings on those seams
+# (Instagram's per-band rings, Tux's inner foot rings). The 16 border-census
+# pairs are byte-identical either way. `tests/engine_2026_10_27.json` carries
+# it False.
+PRE_FLIP["border_by_size_fabric_edges"] = False
 # `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
 # renders of his Instagram icon, drone, Bridge Bar and the repro), for the
 # reason every entry above gives. ON, a gradient-lane region's edge follows
