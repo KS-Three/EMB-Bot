@@ -590,6 +590,11 @@ PRE_FLIP["keep_dark_thin_strokes"] = False
 # makes it, moves no pin that spreads this dict; `tests/engine_2026_10_27.json`
 # carries it False too.
 PRE_FLIP["dark_ink_refuse_strays"] = False
+# `dark_ink_bean` (built OFF 2026-10-28, Kent on the Pooh pot: "No holes +
+# bean (Recommended)"; not flipped): a dark read sews as a bean along its
+# skeleton, after its ground, which sews through under it. Pinned now for the
+# same reason; `tests/engine_2026_10_27.json` carries it False too.
+PRE_FLIP["dark_ink_bean"] = False
 # `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
 # renders of his Instagram icon, drone, Bridge Bar and the repro), for the
 # reason every entry above gives. ON, a gradient-lane region's edge follows

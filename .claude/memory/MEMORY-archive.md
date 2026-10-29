@@ -1,9 +1,9 @@
-# Memory Index — Archive (through 2026-10-06)
+# Memory Index — Archive (through 2026-10-08)
 
 Same one-line format as `MEMORY.md`: `- [Title](file.md) — hook`. These are the
 index lines for every note dated through 2026-10-04 (filename date, else the date
 the note file was first committed), moved out of the live index on 2026-10-23 (and
-again on 2026-10-26, through 2026-09-21, and on 2026-10-27, through 2026-10-04 and then 2026-10-06,
+again on 2026-10-26, through 2026-09-21, and on 2026-10-27, through 2026-10-04 and then 2026-10-06, and on 2026-10-28 through 2026-10-08 (the STANDING float-pictures line stays live),
 oldest filename date first) because it sat at its 24,986-character
 ceiling and every PR that added a note conflicted with every other. **This file is NOT auto-loaded** — open it when you
 need history or a standing ruling (fill row spacing 0.15, DST axis fixed,
@@ -121,3 +121,6 @@ live index; new archive lines go at the bottom.
 - [Build what was priced](build-what-was-priced.md) — SNAPSHOT: after Kent picks a priced option, build exactly that
 - [Parallel agent with the embot](parallel-agent-with-embot.md) — SNAPSHOT: audit before a PR is OPEN, not just before arming; never `git stash` in a lane; a stacked PR targets main and says so
 - [Memory outside the repo](memory-outside-the-repo.md) — sessions rooted in `.claude-work` write memory to a folder this repo never sees; seven notes snapshotted here by 10-04
+- [Lettering architecture R&D](lettering-architecture-2026-10-07.md) — five failures by letter size; pros put rails on the OUTLINE; Column lane OFF
+- [N fan cure](n-fan-cure-2026-10-08.md) — `satin_tip_corner_gate` OFF: tip = convex corner; ≈ tip caps off; degree gate refuted
+- [L1 one tagger](word-tagger-l1-2026-10-08.md) — BUILT OFF `cfg.lettering_words`; kappa 0.907 vs text cluster 0.881 (in-sample); Kent: AFTER better under the Column lane (10-08)

@@ -576,3 +576,114 @@ def _restricted(thin: ThinInk, keep: np.ndarray) -> ThinInk:
                    components=n - 1,
                    length_mm=thin.length_mm * float(keep.sum()) / float(thin.mask.sum()),
                    dark=sum(1 for o in used if o < thin.dark))
+
+
+# `cfg.dark_ink_bean`'s gate: the widest thread contrast, ink to ground, at
+# which a dark read is a pen line and sews as a bean. Read thread to thread
+# where the tag is written (before the colour cap), measured 2026-10-28: pen
+# lines 9.0 (HUNNY, 0454 on the pot's 0763; the cap later moves it to 1233,
+# 17.8), 19.0 (the Fremont patch's Stone), 26.7 (Fremont's Wild Rice rope
+# and tagline), 27.7 (the synthetic pen, whose PIXELS sit 21.5 apart: thread
+# snapping widens a pair by several dE00, so the merge's own 26.0 is too
+# tight); designed lettering 100.0 (the Fremont wordmark, Black on White,
+# which sewed as hairline skeletons). A CANDIDATE set in that gap; the owl's
+# 24.5-65.3 and Bridge's 43.9 sit inside it and are judged on the sheet.
+BEAN_MAX_GROUND_DE00 = 50.0
+
+
+def _thread_de00(a: int, b: int) -> float:
+    from .threads import CHART
+    la, lb = (rgb_to_lab(np.array([CHART[i].rgb], float)) for i in (a, b))
+    return float(deltaE_ciede2000(la, lb)[0])
+
+
+def _ground_of(stroke, grounds):
+    """The shape `stroke` is written on: the one whose OUTLINE (holes
+    ignored -- the stroke sits in a hole it cut) covers most of it, at
+    least half; else None."""
+    from shapely.geometry import Polygon
+
+    best, best_a = None, 0.0
+    for g in grounds:
+        shell = Polygon(g.polygon.exterior) if isinstance(g.polygon, Polygon) else g.polygon
+        a = shell.intersection(stroke.polygon).area
+        if a > best_a:
+            best, best_a = g, a
+    return best if best is not None and best_a >= 0.5 * stroke.polygon.area else None
+
+
+def bean_dark_ink(regions) -> int:
+    """`cfg.dark_ink_bean`: the dark read's strokes sew as a bean ON their
+    ground, the way the reference digitizer sews a drawn line
+    (`bean_rule`). Each `meta["dark_ink"]` region the review left on "auto"
+    gets its polygon's skeleton as bean spines (`beanletters.BEAN_LETTER_KEY`,
+    the path stage 7 sews as a bean along the stroke). Its ground keeps the
+    hole: stage 5's `ground_under` sews the ground through under a bean
+    letter, and a ground closed here first would be "a colour already down"
+    that clips the stroke to nothing. The ground is untagged as lettering.
+
+    Only a PEN LINE goes: a stroke on a ground (`_ground_of`) whose thread
+    sits within `BEAN_MAX_GROUND_DE00` of the ground's. Above it the ink is
+    designed lettering that only the superpixel mean absorbed -- the Fremont
+    wordmark, Black on White at 100 dE00, sewed as hairline skeletons ON --
+    and sews as it did. Returns the number of strokes tagged."""
+    from shapely.geometry import Polygon
+
+    from .beanletters import BEAN_LETTER_KEY
+    from .shapefield import build_shape_field
+    from .textcluster import _skeleton_chains_mm
+
+    grounds = [r for r in regions if not r.meta.get("dark_ink") and r.polygon is not None]
+    tagged = 0
+    for r in regions:
+        if (not r.meta.get("dark_ink") or str(r.meta.get("tier", "auto")).lower() != "auto"
+                or not isinstance(r.polygon, Polygon)):
+            continue
+        g = _ground_of(r, grounds)
+        if g is None or _thread_de00(r.thread_index, g.thread_index) > BEAN_MAX_GROUND_DE00:
+            continue
+        field = build_shape_field(r.polygon)
+        spines = _skeleton_chains_mm(field) if field is not None else []
+        if not spines:
+            continue
+        r.meta[BEAN_LETTER_KEY] = spines
+        # The ground the ink is written on, not a letter of it. The
+        # house-angle group (`textcluster`, `setdefault`) took the Pooh pot
+        # into the Column lane, which its letter holes defeated only while
+        # they were holes; sewn through, it was one 37 mm satin.
+        g.meta["lettering_group"] = False
+        tagged += 1
+    return tagged
+
+
+def ink_after_ground(regions):
+    """`cfg.dark_ink_bean`, at plan time: a bean stroke (`bean_dark_ink`)
+    whose ground (`_ground_of`) sews in the same or a later layer moves to
+    a layer of its own right after the ground's -- the shape
+    `silhouette_underfill` gives a rider -- because stage 5 sews a ground
+    through only under a LATER bean letter. Regions as copies, renumbered;
+    nothing to move: the input list itself."""
+    from dataclasses import replace
+
+    from .beanletters import BEAN_LETTER_KEY
+
+    ink = [r for r in regions if r.meta.get("dark_ink") and r.meta.get(BEAN_LETTER_KEY)
+           and r.meta.get("stitched", True)]
+    grounds = [r for r in regions if not r.meta.get("dark_ink") and r.meta.get("stitched", True)
+               and r.polygon is not None]
+    to: dict[str, tuple] = {}
+    for b in ink:
+        g = _ground_of(b, grounds)
+        if g is not None and g.meta["layer"] >= b.meta["layer"]:
+            to[b.shape_id] = ("ink", g.meta["layer"], b.thread_index)
+    if not to:
+        return regions
+    order = sorted({r.meta["layer"] for r in regions})
+    for key in sorted(set(to.values()), key=lambda k: (k[1], k[2]), reverse=True):
+        order.insert(order.index(key[1]) + 1, key)
+    renum = {L: i for i, L in enumerate(order)}
+
+    def layer_of(r):
+        return renum[to.get(r.shape_id, r.meta["layer"])]
+    return [replace(r, meta={**r.meta, "layer": layer_of(r)})
+            for _i, r in sorted(enumerate(regions), key=lambda t: (layer_of(t[1]), t[0]))]

@@ -82,6 +82,7 @@ from .columns import is_lettering
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
                               depth_sort_layers, sequence)
 from .stitches import StitchPlan
+from .thin_ink import bean_dark_ink, ink_after_ground
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (
     BACKGROUND_ENCLOSED,
@@ -917,6 +918,8 @@ def build_generation(
         for r in regions:
             if r.meta.get("layer") in q.dark_ink_labels:
                 r.meta["dark_ink"] = True
+        if cfg.dark_ink_bean:
+            bean_dark_ink(regions)
     resnap_warnings = revalidate_threads(
         regions, p, cfg,
         palette_indices=list(q.thread_indices),
@@ -1894,6 +1897,10 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
         stitched_regions, _underfill, art_outlines = silhouette_underfill.apply_cfg(
             stitched_regions, skipped, cfg, art_outlines, pinned=pinned)
         merged_into.update({m: rep["host"] for rep in _underfill for m in rep.get("merged", ())})
+    # `cfg.dark_ink_bean`: the strokes sew after the ground they are written
+    # on, or stage 5 buries them under it.
+    if cfg.dark_ink_bean:
+        stitched_regions = ink_after_ground(stitched_regions)
 
     # Fur regions on the streamline tier (`cfg.hair_regions_directional`,
     # default OFF; `fur_regions`). Only regions the gate read in
