@@ -1,10 +1,20 @@
-# The photo lane's subject cut-out on a scene with no subject — design (2026-10-28)
+# The photo lane's subject cut-out on a scene with no subject — measurement record (2026-10-28/29)
 
 **Every number here is an instrument reading, not a quality claim** (ROADMAP
 gate 4). Readings were taken on the 18 photographs of the Commons corpus
 (`digitizer/testdata/photo/corpus/corpus.json`, real artwork, fetched as the
 corpus tool fetches them), the same files PR #1178 sited stage 0 on. Nothing
 synthetic calibrated anything (gate 2). Nothing was sewn (gate 1).
+
+**What shipped, and by whom.** This session was started to find out why the
+cut-out emptied six scenes and to build a guard behind a flag. While it was
+measuring, PR #1179 (Kent's own session, 2026-10-28 23:50) landed the guard
+on main: `cfg.photo_cutout_min_kept` (0.20 of stage 1's artwork, ON; 0.0 =
+the old engine), `PHOTO_CUTOUT_REFUSED`, refused → the classical route. The
+parallel flag built here (`photo_cutout_min_subject_frac`, OFF, on the frame
+share) was dropped on rebase; one knob for one thing. What this record adds
+is the measurement: the cause in rembg's own numbers, the arm comparison
+Kent asked for, the per-row readings and the time cost.
 
 ## 1. Intent
 
@@ -47,83 +57,70 @@ that order at 80 mm):
 
 A scene is not a cut-out problem rembg solves badly; it is one it answers
 "no subject" to, with low alpha everywhere (p90 ≤ 43). Three things then let
-that answer empty the hoop:
+that answer empty the hoop before #1179:
 
 1. the seam thresholds at 128 and calls everything below background;
 2. `_clean_background_mask` fills back only SMALL background islands (under
    `min_detail_mm² × px_per_mm²`) — a frame-wide one is kept as is;
-3. `pipeline.run_stages` treats only a `None` return as failure, so the
-   mask is OR-ed into `p.bg_mask`, stage 2 finds no foreground, and the
-   design is empty or a few strays.
+3. `pipeline.run_stages` treated only a `None` return as failure, so the
+   mask was OR-ed into `p.bg_mask`, stage 2 found no foreground, and the
+   design was empty or a few strays.
 
 `cutout_removed_frac` on the sxs page is after-minus-before, so a photo
 whose border already flood-filled as background under-reads it:
-`pencil_sketch` shows 0.842 while rembg kept 0.1 % of it. The guard reads
-the cut-out's own subject share, which is what rembg actually answered.
+`pencil_sketch` shows 0.842 while rembg kept 0.1 % of it. The guard's own
+reading — what rembg kept — is what the page now shows as `cutout refused
+(kept frac)`.
 
-## 3. The guard
+## 3. The guard, read against these numbers
 
-`cfg.photo_cutout_min_subject_frac: float | None = None` (**OFF**; None is
-the tree as it was, byte for byte — `tests/engine_2026_10_27.json` stores
-it as None so every `frozen_cfg` pin stands). When set, and the seam's mask
-keeps less than that share of the frame as subject, the cut-out is REFUSED:
+#1179's floor is 0.20 of stage 1's artwork (`pipeline._cutout_kept_fraction`:
+the share of not-background pixels the cut-out keeps). On the six scenes
+stage 1 floods nothing, so the artwork IS the frame and the two
+denominators agree: the kept shares read in the arm-B capture were 0.000,
+0.000, 0.002, 0.013, 0.020, 0.042 — all refused. The bimodal gap in section
+2 puts the floor 3.7× above the largest "no subject" answer (stained glass
+0.054) and 1.35× below the smallest real subject by frame share (fireworks
+0.270; #1179's own smallest kept, bw_street, read 0.31 of its artwork). The
+session's parallel siting had put the floor at the geometric midpoint, 0.12;
+both floors refuse the same seven rows (the six scenes and pencil_sketch)
+and keep the same eleven. A reading, not a re-siting proposal.
 
-- `p.bg_mask` stays stage 1's border flood; `subject_bg_mask` stays None,
-  so `stage2_photo_segment._region_classes` makes no "background" claim and
-  `palette.region_weight` degrades to plain area, exactly as when rembg is
-  unavailable (that path's honesty argument applies here word for word);
-- the job carries `PHOTO_BACKGROUND_KEPT` (`subject_frac`,
-  `min_subject_frac`, `background_frac_before`, `background_frac_would_be`)
-  INSTEAD of `PHOTO_BACKGROUND_REMOVED`, and never
-  `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE` — a refusal is a reading of the
-  photo, not a machine that cannot run rembg, and the Studio's sentence for
-  the latter ("isn't set up on this machine") would be false. In the Studio
-  the new code is silent (`SILENT_WARNINGS`; Kent's 2026-10-02 ruling);
-- the corpus instrument shows the refused share on the sxs page
-  (`cutout_refused_subject_frac`) beside the removed fraction.
+**Known limit (both floors).** A real subject covering under a fifth of its
+artwork (a bird in sky, a product at the edge) is refused with the scenes
+and sews WITH its background — a soft failure in the opposite direction of
+the empty hoop. No corpus row has one; the corpus gets such a row before
+the floor moves.
 
-**Siting.** On the 18 rows the subject share is bimodal: 0.054 (stained
-glass) is the largest "no subject" answer and 0.270 (fireworks) the smallest
-real subject. The floor is their geometric midpoint, **0.12**, which both
-sides clear by 2.2×. The six scenes and `pencil_sketch` refuse; the eleven
-others are untouched (the ON arm is byte-identical to OFF for them —
-`test_a_cutout_with_a_real_subject_is_kept_exactly_as_before`).
-
-**Known limit.** A real subject covering under 12 % of the frame (a bird in
-sky, a product at the edge) is refused with the scenes and sews WITH its
-background — a soft failure in the opposite direction of today's empty
-hoop. No corpus row has one; the corpus gets such a row before the floor
-moves.
-
-## 4. What the lane does with the refused frame
-
-Two arms were measured on the six rows (section 5). The 2026-08-24 ruling
-(`config.py`, `photo_prep_background_removal`) found prep WITHOUT the
-cut-out the worst arm on four portraits (`baby_deck_laugh` 110 → 175
-regions) and made a failed cut-out skip prep too; those portraits all HAD a
-subject, so the ruling's measurement does not reach a scene.
-
-- **B — refused cut-out skips prep too** (the existing `cutout_failed`
-  route; byte-identical to `photo_prep=False` for that photo).
-- **A — refused cut-out keeps the frame AND runs tone/texture/face prep**
-  on it.
+## 4. What the lane does with the refused frame — A vs B
 
 Kent (2026-10-28, via the director): "Measure A vs B, ship better", B on a
-tie. **B ships**: `fidelity_cc` higher than A on four of the six rows, lower
-on one, tied on one (section 5), and B's night_neon / night_skyline renders
-read as scenes where A's read as fragments. The flag stays OFF until Kent
-flips it from the sxs page.
+tie. A = the refused frame still gets tone/texture/face prep; B = prep
+skipped too (the `cutout_failed` route, byte-identical to
+`photo_prep=False`). The 2026-08-24 ruling (`config.py`,
+`photo_prep_background_removal`) had found prep WITHOUT the cut-out the worst
+arm on four portraits (`baby_deck_laugh` 110 → 175 regions); those portraits
+all HAD a subject, so the ruling's measurement did not reach a scene until
+now.
+
+**B is the measured arm** — `fidelity_cc` higher than A on four of the six
+rows, lower on one, tied on one (section 5), and B's night_neon /
+night_skyline renders read as scenes where A's read as fragments. #1179
+ships B.
 
 ## 5. Readings
 
 Base `corpus_runs/base-75efec5` (the merge-base tree, this worktree before
 any edit; identical to #1178's `head-b6ec26a` numbers). A
-`corpus_runs/armA-5294002` (2 processes, 2,400 s timeout). B
-`corpus_runs/armB-fdcc52b` (snow / reef / skyline at 1 process and 1,200 s;
-lake / neon / stained glass timed out there and were re-captured at 2
-processes and 2,400 s). All at the Studio's 80 mm `left_chest` request.
+`corpus_runs/armA-5294002` (this session's flag, prep kept; 2 processes,
+2,400 s timeout). B `corpus_runs/armB-fdcc52b` (this session's flag, prep
+skipped; snow / reef / skyline at 1 process and 1,200 s; lake / neon /
+stained glass timed out there and were re-captured at 2 processes and
+2,400 s). HEAD `corpus_runs/head-be1c718` is main's guard (#1179, engine
+identical to main ad218cea) at the default request — the PR body carries
+that column. All at the Studio's 80 mm `left_chest` request.
 
-| row | base st / cc | A st / trims / cc / wall s | B st / trims / cc / wall s | B subject share |
+| row | base st / cc | A st / trims / cc / wall s | B st / trims / cc / wall s | kept share |
 |---|---|---|---|---|
 | landscape_lake | 14 / 0.144 | 28,009 / 65 / −0.272 / 595 | 33,881 / 66 / −0.288 / 448 | 0.000 |
 | snow_highkey | 0 / — | 26,933 / 48 / −0.469 / 534 | 25,782 / 44 / −0.471 / 1,117 | 0.000 |
@@ -140,9 +137,10 @@ instrument flattering an empty hoop, which the renders settle.
 
 **Wall time is a reading, not a budget.** B's first pass timed out
 night_neon, landscape_lake and stained_glass at 1,200 s inside
-`stage7_sequence.sequence`'s rank-only second pass (`column_lean.run` →
-`stitch_one`); the re-run of the same rows on the same tree finished in 373,
-448 and 797 s. Stage 7 on a full-frame scene is both slow and unstable
+`stage7_sequence.sequence`'s rank-only second pass (the Column lane's
+`off_blocks = sequence(..., lettering_columns=False)`, via `column_lean.run`
+→ `stitch_one`); the re-run of the same rows on the same tree finished in
+373, 448 and 797 s. Stage 7 on a full-frame scene is both slow and unstable
 (the census saw the same on `outline_lineart_logo`); the Studio stops
 waiting at 600 s (Kent 10-26). That cost is the lane's, hidden until now by
 the empty hoop, and the next measurement.
@@ -153,6 +151,7 @@ the empty hoop, and the next measurement.
   gets the same answer from a saliency net).
 - No routing change: a refused photo stays `photo_scene`; the gradient lane
   it used to take sewed 13,000–40,000 stitches Kent graded Bad/Terrible.
-- `pencil_sketch` refuses (0.1 % subject) and sews as a whole frame; whether
-  a line drawing on paper belongs in the photo lane at all is stage 0's
-  question, not this guard's.
+- `pencil_sketch` refuses (0.1 % kept) and sews as a whole frame; whether a
+  line drawing on paper belongs in the photo lane at all is stage 0's
+  question, not the guard's.
+- The stage-7 cost on a full-frame scene is named, not fixed.

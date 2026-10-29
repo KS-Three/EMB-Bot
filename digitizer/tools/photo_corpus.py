@@ -297,7 +297,7 @@ def summarise(output: dict, cap: int) -> dict:
     row = {"state": output.get("state"), "wall_s": meta.get("elapsed_s"),
            "stamps": meta.get("stamps") or {}, "class": meta.get("class"),
            "class_conf": meta.get("class_conf"), "error": output.get("error") or output.get("stderr_tail"),
-           "route": None, "cutout_removed_frac": None, "cutout_refused_subject_frac": None,
+           "route": None, "cutout_removed_frac": None, "cutout_refused_kept_frac": None,
            "stitches": None, "trims": None,
            "color_changes": None, "colors_used": None, "cap": cap, "cap_kept": None,
            "size_mm": None, "st_per_cm2": None, "grade": None, "score_raw": None}
@@ -316,11 +316,11 @@ def summarise(output: dict, cap: int) -> dict:
     cut = next((w for w in output.get("warnings") or [] if w.get("code") == "PHOTO_BACKGROUND_REMOVED"), None)
     if cut and cut.get("background_frac_after") is not None and cut.get("background_frac_before") is not None:
         row["cutout_removed_frac"] = round(cut["background_frac_after"] - cut["background_frac_before"], 4)
-    # the cut-out ran, found no subject and was refused (cfg.photo_cutout_min_subject_frac):
-    # the share of the frame it kept as subject, the reading the refusal was made on
-    kept = next((w for w in output.get("warnings") or [] if w.get("code") == "PHOTO_BACKGROUND_KEPT"), None)
-    if kept and kept.get("subject_frac") is not None:
-        row["cutout_refused_subject_frac"] = kept["subject_frac"]
+    # the cut-out ran, kept under cfg.photo_cutout_min_kept of stage 1's artwork and was
+    # refused (#1179): the share it kept, the reading the refusal was made on
+    kept = next((w for w in output.get("warnings") or [] if w.get("code") == "PHOTO_CUTOUT_REFUSED"), None)
+    if kept and kept.get("kept_frac") is not None:
+        row["cutout_refused_kept_frac"] = kept["kept_frac"]
     w, h = (stats.get("size_mm") or [0, 0])[:2]
     area_cm2 = (w or 0) * (h or 0) / 100.0
     stitches = stats.get("stitch_count")
@@ -579,7 +579,7 @@ SXS_METRICS = (
     ("stitches", "stitches", True), ("trims", "trims", True), ("color_changes", "colour changes", True),
     ("colors_used", "colours used (cap)", None), ("cap_kept", "cap kept", None),
     ("cutout_removed_frac", "cutout removed (frac)", None),
-    ("cutout_refused_subject_frac", "cutout refused (subject frac)", None), ("size_mm", "size mm", None),
+    ("cutout_refused_kept_frac", "cutout refused (kept frac)", None), ("size_mm", "size mm", None),
     ("st_per_cm2", "stitches / cm²", None), ("grade", "preflight grade (raw)", None),
     ("score_raw", "preflight score (raw)", None), ("wall_s", "wall s", True),
     ("ssim", "SSIM (raw)", None), ("dE", "ΔE (raw)", None), ("fidelity_cc", "fidelity cc", None),
@@ -819,7 +819,7 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--procs", type=int, default=PROCS)
     c.add_argument("--set", action="append", default=[], metavar="FIELD=JSON",
                    help="override one request field on top of the tree's own request, e.g. "
-                        "--set photo_cutout_min_subject_frac=0.12 (an ON arm of a flag built OFF); "
+                        "--set photo_cutout_min_kept=0.0 (the other arm of a flag); "
                         "recorded in run.json's config")
     s = sub.add_parser("sxs", help="build the side-by-side HTML from two runs")
     s.add_argument("--before", type=Path, required=True)

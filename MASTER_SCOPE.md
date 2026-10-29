@@ -684,12 +684,9 @@ preflight check on all five falls (#572, #573), not a stitch
 **Recaptured again 2026-10-05 at `d000e370`** after Kent made both checks
 `info` (#630): 21 rows moved, every one of them those two findings, 12 rose a
 band, no other leaf moved (scope-history 10-05). **Not recaptured since:**
-PR #856 moved drone, gaulke, bridge and chrome on the default path (no grade
-fell); attribute them to it at the next cloud-Linux capture (defect 61), the
-phone-screenshot row to #899 (icon guard ON; "Waiting on Kent" 37), and the
-2026-10-20 flips to theirs: #1005 (bridge, golden_tee, drone, sunset; defects
-27, 61), #1001 (becker and bridge, the two under the resolution floor; item
-41), #999 and #1002 (every Column-lane row with lowercase; items 50, 52).
+the movers to attribute at the next cloud-Linux capture (#856, #899, #1005,
+#1001, #999, #1002; defects 27, 37, 41, 50, 52, 61) are listed in
+[area 1](docs/scope/1-auto-digitizing-quality.md#twentieth-pass-overflow-moved-from-master_scope-2026-10-29).
 *(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](docs/scorecard-baseline-attribution-2026-10-04.md); 2026-10-05 — scope-history)*
 
 **The corpus is half-present, and its real-artwork half keeps contradicting the
@@ -698,7 +695,7 @@ a "flat spot-colour art" claim tuned on synthetics is untested against real
 input. **Stage 0's scale defect is two (2026-09-20):** `flat` → `gradient` on
 downscale is the pixel-absolute windows on every fixture; the `photo_*`
 misroutes on downscaled alpha cutouts were RGB under the alpha, gone since
-stage 0 reads the whole-image extension (Kent). *(scope-history, DOCTRINE)* **Stage 0's photo gate:** `texture_frac` route + two-ink veto, `stage0_texture_gate` ON: 18/18 photographs photo-class, 1.25 re-flattens four *(measured 2026-10-28 — `tools/stage0_photo_gate`)*. **The lane's cut-out on a scene:** rembg keeps 0.01–5.4 % of a scene as subject (real subjects 0.27–0.76) and the lane sewed the rest as background — six corpus scenes at 0–3,117 stitches; `photo_cutout_min_subject_frac` (OFF, sited 0.12) refuses such a cut-out and keeps the frame, prep skipped with it (cc beat prep-kept on 4 of 6 rows); a kept frame costs 450–2,100 s (stage 7) against the Studio's 600 s wait *(measured 2026-10-29 — `tests/test_cutout_no_subject.py`, spec `2026-10-28-photo-cutout-no-subject-guard-design.md`)*. **A second harness, `tools/pro_parity/`, measures distance from the
+stage 0 reads the whole-image extension (Kent). *(scope-history, DOCTRINE)* **Stage 0's photo gate:** `texture_frac` route + two-ink veto, `stage0_texture_gate` ON: 18/18 photographs photo-class, 1.25 re-flattens four *(measured 2026-10-28 — `tools/stage0_photo_gate`)*. **The lane's cut-out on a scene:** rembg keeps 0.01–5.4 % (real subjects 0.27–0.76), so six corpus scenes sewed 0–3,117 stitches; `photo_cutout_min_kept` (0.20, ON, #1179) keeps the frame — the measured arm — at 373–2,100 s against the Studio's 600 s wait; reading in [area 1](docs/scope/1-auto-digitizing-quality.md#twentieth-pass-overflow-moved-from-master_scope-2026-10-29) *(measured 2026-10-29 — `tests/test_cutout_no_subject.py`)*. **A second harness, `tools/pro_parity/`, measures distance from the
 PROFESSIONAL digitization** of the same 23 designs; its scale changed
 2026-08-14, so read the Gotcha in [`DOCTRINE.md`](DOCTRINE.md) before comparing
 to any earlier number. Which fixtures misroute, and which half of the corpus a

@@ -9198,16 +9198,22 @@ so a frame-wide one stands; and `pipeline.run_stages` treated only a `None`
 return as failure. The census of 10-27 (item 1) had named the mechanism on
 two rows a day earlier.
 
-**Built OFF: `cfg.photo_cutout_min_subject_frac`.** Below it the cut-out is
+**The guard is #1179's `cfg.photo_cutout_min_kept` (0.20, ON, the same
+night):** a cut-out keeping less than that share of stage 1's artwork is
 REFUSED — stage 1's border-flood `bg_mask` stays, `subject_bg_mask` stays
 None so the palette gets no "background" class it did not earn, and the job
-says `PHOTO_BACKGROUND_KEPT` (silent in the Studio) rather than
-`PHOTO_BACKGROUND_REMOVED`, never UNAVAILABLE (rembg ran; the photo has no
-single subject). Sited at 0.12, the geometric midpoint of the 0.054 → 0.27
-gap, 2.2× clear both sides; the floor reads the cut-out's own subject share,
-because `cutout_removed_frac` is after-minus-before against the border flood
-and under-reads a photo whose paper already flooded (pencil_sketch 0.842
-removed, 0.1 % kept). **A refused cut-out skips prep too** (Kent 10-28:
+says `PHOTO_CUTOUT_REFUSED` (silent in the Studio), never UNAVAILABLE. This
+session built the same refusal on the frame share in parallel and dropped
+it on rebase; what it adds is the reading. On the six scenes stage 1 floods
+nothing, so frame share and artwork share are one number — 0.000, 0.000,
+0.002, 0.013, 0.020, 0.042 — all refused at 0.20; the smallest real subject
+reads 0.27 of its frame (fireworks; #1179's own smallest kept, bw_street,
+0.31 of its artwork), so the floor's margin above the scenes is 3.7× and
+below the subjects 1.35×. Read the refusal on the sxs page's `cutout
+refused (kept frac)` row, not `cutout removed (frac)`: the removed fraction is
+after-minus-before against the border flood and under-reads a photo whose
+paper already flooded (pencil_sketch 0.842 removed, 0.1 % kept). **A
+refused cut-out skips prep too** (Kent 10-28:
 "measure A vs B, ship better"): with the frame kept, prep-skipped beat
 prep-kept on `fidelity_cc` on four of the six rows (night_neon 0.142 vs
 0.083, night_skyline 0.090 vs 0.033, reef 0.118 vs 0.102, stained glass
@@ -9225,9 +9231,9 @@ Column lane's `off_blocks = sequence(..., lettering_columns=False)`, via
 10-26), so on today's engine most refused scenes would time out there. The
 cost is the lane's, not the guard's, and the empty hoop was hiding it; it is
 the next measurement, not a reason to keep sewing nothing. (2) **A real
-subject under 12 % of the frame refuses with the scenes** and sews with its
+subject under 20 % of its artwork refuses with the scenes** and sews with its
 background — the soft failure, the opposite direction of the empty hoop. No
-corpus row has one; the row comes before the floor moves. *(measured and
-built 2026-10-28/29 —
+corpus row has one; the row comes before the floor moves. *(measured
+2026-10-28/29 —
 `docs/superpowers/specs/2026-10-28-photo-cutout-no-subject-guard-design.md`,
 `tests/test_cutout_no_subject.py`, `corpus_runs/` base-75efec5 / armA / armB)*
