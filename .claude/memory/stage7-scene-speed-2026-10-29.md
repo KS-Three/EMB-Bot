@@ -31,10 +31,10 @@ calls, one full-crop pass per connected component.
 **Built, all exact (Kent: "A + B + C(1)(2)"):** `_large_components`
 counts every label with one `np.bincount` (integer counts, same double
 product, same order); `_row_spans` makes one `shapely.intersection(poly,
-lines)` call per angle (the same GEOS op per row) and `best_fill_angle_deg`
-prices its 17 candidates on a thread pool (`_FILL_ANGLE_THREADS`, GIL
-released in GEOS). After: AFTER_TBD. DST md5 byte-identical on the six
-scenes and 14 repo fixtures (flat + gradient).
+lines)` call per angle (the same GEOS op per row). Kent: "no pool, rows
+only" -- a thread pool over the 17 candidates was exact but read 239-253 s
+against 277-318 serial on one scene, inside the drift. After: AFTER_TBD. DST
+md5 byte-identical on the six scenes and 14 repo fixtures (flat + gradient).
 
 **Measured FALSE and dropped (C1):** `shapely.prepared.prep(slack).covers(
 line)` in `travel_path` / `_reorder_for_cover` is NOT the plain predicate:

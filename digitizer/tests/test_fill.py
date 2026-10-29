@@ -332,18 +332,6 @@ def test_row_spans_match_the_per_row_intersection_exactly():
     assert _row_spans(bowtie, 0.4) == _row_spans_reference(bowtie, 0.4)
 
 
-def test_best_fill_angle_deg_is_the_same_on_one_thread_and_many(monkeypatch):
-    """The 17 candidates are priced on a thread pool (shapely releases the GIL
-    in GEOS); the pick must not depend on how many threads did the pricing."""
-    import digitizer_core.stage6_fill as F
-    shapes = (RECT, RING, _diagonal_staircase(), _DUMBBELL)
-    monkeypatch.setattr(F, "_FILL_ANGLE_THREADS", 1)
-    serial = [best_fill_angle_deg(p, 0.4) for p in shapes]
-    monkeypatch.setattr(F, "_FILL_ANGLE_THREADS", 8)
-    assert [best_fill_angle_deg(p, 0.4) for p in shapes] == serial
-    assert F._FILL_ANGLE_THREADS_DEFAULT >= 1
-
-
 def test_travel_path_asks_the_plain_covers_not_a_prepared_one():
     """Measured 2026-10-29: `shapely.prepared.prep(slack).covers(line)` in
     `travel_path` and `_reorder_for_cover` re-chose one travel route on
