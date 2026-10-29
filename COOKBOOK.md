@@ -2381,7 +2381,13 @@ under the scoreboard folder is.
 Three things to know. **Capture takes hours** (the census had 7 of 18 rows
 over 600 s; default 1200 s per row, two processes, `--only SLUG` for a
 quick look), so it is a by-hand step before the PR opens, never CI, and
-it resumes past finished rows. **A label is one tree**: every row carries
+it resumes past finished rows. **Its `wall s` column is a load reading, not
+an engine one** (2026-10-29): two digitizes at once on Kent's laptop each
+took 4.1x the time one alone did, `process_time` inflated the same, same
+md5, and the six kept-frame scenes that read 349-2,100 s at `--procs 2`
+beside other sessions take 90-250 s end to end on a quiet box. The sxs page
+prints each run's procs beside its sha; to time a row, run it alone
+(`--procs 1 --only SLUG`) with nothing else on the machine. **A label is one tree**: every row carries
 the `tree_sha` that made it and a folder holding another tree's rows is
 refused (a reused `--label base` after main moved would otherwise show
 the old renders under the new sha — review finding, 2026-10-28), so name

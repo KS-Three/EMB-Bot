@@ -26,8 +26,10 @@ from __future__ import annotations
 import functools
 import hashlib
 import math
+import os
 import struct
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 
 import numpy as np
@@ -169,6 +171,7 @@ def _row_spans(poly: Polygon, row_mm: float, row_phase_mm: float = 0.0,
     # turn between them instead of a jump per row. Equal to `i` whenever
     # nothing is filtered, so every other caller is byte-identical.
     idx = 0
+    rows: list[tuple[int, float]] = []
     for i in range(-1, n_rows + 2):
         y = miny + row_phase_mm + row_mm * (i + 0.5)
         if y < miny + 1e-3:
@@ -177,9 +180,19 @@ def _row_spans(poly: Polygon, row_mm: float, row_phase_mm: float = 0.0,
             break
         if keep_row is not None and not keep_row(y):
             continue
-        ri, idx = idx, idx + 1
-        line = LineString([(minx - 1.0, y), (maxx + 1.0, y)])
-        inter = poly.intersection(line)
+        rows.append((idx, y))
+        idx += 1
+    if not rows:
+        return out
+    # One vectorised call for every scanline (2026-10-29). `poly.intersection(
+    # line)` IS `shapely.intersection(poly, line)` -- the same GEOS overlay on
+    # the same two geometries -- so each row's answer is the one the per-row
+    # loop computed, bit for bit; only the Python call per row is gone, and
+    # the GIL is released once for the batch (`best_fill_angle_deg` prices
+    # its candidates on threads). `tests/test_fill.py` holds the per-row loop
+    # as the reference.
+    lines = shapely.linestrings([[(minx - 1.0, y), (maxx + 1.0, y)] for _ri, y in rows])
+    for (ri, y), inter in zip(rows, shapely.intersection(poly, lines)):
         if inter.is_empty:
             continue
         parts = getattr(inter, "geoms", [inter])
@@ -245,6 +258,16 @@ def _columns(rows: list[tuple[int, float, list[tuple[float, float]]]]) -> list[l
 # the meaningful [0, 180) range (row direction is a LINE, not a vector — a
 # 30deg row and a 210deg row are the same rows).
 _FILL_ANGLE_CANDIDATES = 16
+#: Threads that price the candidate angles abreast; 1 is the serial loop.
+#: Tests monkeypatch `_FILL_ANGLE_THREADS`; the default is kept beside it.
+_FILL_ANGLE_THREADS_DEFAULT = max(1, min(8, os.cpu_count() or 1))
+_FILL_ANGLE_THREADS = _FILL_ANGLE_THREADS_DEFAULT
+
+
+def _cols_at_angle(poly: Polygon, angle: float, row_mm: float) -> int:
+    """How many monotone columns rows at `angle` cut `poly` into."""
+    rotated = affinity.rotate(poly, -angle, origin=(0, 0), use_radians=False)
+    return len(_columns(_row_spans(rotated, row_mm)))
 
 
 def best_fill_angle_deg(poly: Polygon, row_mm: float) -> float:
@@ -286,11 +309,20 @@ def best_fill_angle_deg(poly: Polygon, row_mm: float) -> float:
         d = abs(a - b) % 180.0
         return min(d, 180.0 - d)
 
+    # The candidates are priced on a thread pool (2026-10-29): `_cols_at_angle`
+    # is a pure function of (poly, angle, row_mm) and `_row_spans` releases the
+    # GIL inside GEOS for the whole batch of scanlines, so the seventeen run
+    # abreast and the pick below reads the counts in candidate order, exactly
+    # as the serial loop did. 25-30% of a scene photograph's plan time was
+    # this search (six corpus scenes profiled, quiet box).
+    if _FILL_ANGLE_THREADS > 1 and len(candidates) > 1:
+        with ThreadPoolExecutor(max_workers=min(_FILL_ANGLE_THREADS, len(candidates))) as pool:
+            counts = list(pool.map(lambda a: _cols_at_angle(poly, a, row_mm), candidates))
+    else:
+        counts = [_cols_at_angle(poly, a, row_mm) for a in candidates]
     best_angle = pca
     best_key = None
-    for angle in candidates:
-        rotated = affinity.rotate(poly, -angle, origin=(0, 0), use_radians=False)
-        cols = len(_columns(_row_spans(rotated, row_mm)))
+    for angle, cols in zip(candidates, counts):
         if cols == 0:
             continue
         key = (cols, angular_dist(angle, pca), angle)
@@ -923,6 +955,11 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
     if math.dist(a, b) < machine.TINY_STITCH_MM:
         return []
     cover = slack if slack is not None else poly.buffer(0.01)
+    # NOT a prepared geometry (measured 2026-10-29): `shapely.prepared.prep(
+    # cover).covers(...)` here and in `_reorder_for_cover` moved ten stitches
+    # on underwater_reef (34,324 -> 34,334, one travel route re-chosen) --
+    # GEOS's prepared covers is not the plain predicate on every line, so it
+    # cannot stand in for it where the design is pinned byte for byte.
     seg = LineString([a, b])
     fallback: list[tuple[float, float]] | None = None
     if cover.covers(seg):

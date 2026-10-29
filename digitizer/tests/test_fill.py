@@ -280,6 +280,82 @@ def test_best_fill_angle_deg_never_does_worse_than_plain_pca():
         assert chosen_cols <= pca_cols
 
 
+def _row_spans_reference(poly, row_mm, row_phase_mm=0.0, keep_row=None):
+    """`_row_spans` as it was before 2026-10-29: one `poly.intersection(line)`
+    per scanline. The vectorised function must answer identically -- the
+    same GEOS overlay runs per row, only the Python loop is gone."""
+    if not poly.is_valid:
+        poly = poly.buffer(0)
+    if poly.is_empty:
+        return []
+    minx, miny, maxx, maxy = poly.bounds
+    out = []
+    n_rows = max(1, int(math.floor((maxy - miny) / row_mm)))
+    idx = 0
+    for i in range(-1, n_rows + 2):
+        y = miny + row_phase_mm + row_mm * (i + 0.5)
+        if y < miny + 1e-3:
+            continue
+        if y > maxy:
+            break
+        if keep_row is not None and not keep_row(y):
+            continue
+        ri, idx = idx, idx + 1
+        inter = poly.intersection(LineString([(minx - 1.0, y), (maxx + 1.0, y)]))
+        if inter.is_empty:
+            continue
+        spans = []
+        for g in getattr(inter, "geoms", [inter]):
+            if g.geom_type != "LineString" or g.length <= 0:
+                continue
+            xs = [c[0] for c in g.coords]
+            spans.append((min(xs), max(xs)))
+        if spans:
+            spans.sort()
+            out.append((ri, y, spans))
+    return out
+
+
+def test_row_spans_match_the_per_row_intersection_exactly():
+    """A holed, concave shape at several angles and phases, with and without
+    a row filter: every row index, y and span must be the same float the
+    per-row loop produced (bit for bit, no tolerance)."""
+    shape = unary_union([RING, _diagonal_staircase(), Polygon([(-30, -4), (30, -4), (30, 4), (-30, 4)])])
+    assert shape.interiors or shape.geom_type == "MultiPolygon"
+    for angle in (0.0, 11.25, 45.0, 90.0, principal_angle_deg(shape)):
+        rotated = affinity.rotate(shape, -angle, origin=(0, 0), use_radians=False)
+        for phase, keep in ((0.0, None), (0.2, None), (0.0, lambda y: int(y * 10) % 3 != 0)):
+            assert _row_spans(rotated, 0.4, phase, keep) == _row_spans_reference(rotated, 0.4, phase, keep)
+    # the invalid-polygon repair path too (a bow-tie)
+    bowtie = Polygon([(0, 0), (10, 10), (10, 0), (0, 10)])
+    assert not bowtie.is_valid
+    assert _row_spans(bowtie, 0.4) == _row_spans_reference(bowtie, 0.4)
+
+
+def test_best_fill_angle_deg_is_the_same_on_one_thread_and_many(monkeypatch):
+    """The 17 candidates are priced on a thread pool (shapely releases the GIL
+    in GEOS); the pick must not depend on how many threads did the pricing."""
+    import digitizer_core.stage6_fill as F
+    shapes = (RECT, RING, _diagonal_staircase(), _DUMBBELL)
+    monkeypatch.setattr(F, "_FILL_ANGLE_THREADS", 1)
+    serial = [best_fill_angle_deg(p, 0.4) for p in shapes]
+    monkeypatch.setattr(F, "_FILL_ANGLE_THREADS", 8)
+    assert [best_fill_angle_deg(p, 0.4) for p in shapes] == serial
+    assert F._FILL_ANGLE_THREADS_DEFAULT >= 1
+
+
+def test_travel_path_asks_the_plain_covers_not_a_prepared_one():
+    """Measured 2026-10-29: `shapely.prepared.prep(slack).covers(line)` in
+    `travel_path` and `_reorder_for_cover` re-chose one travel route on
+    underwater_reef (34,324 -> 34,334 stitches) -- GEOS's prepared predicate
+    is not the plain one on every line. The design is pinned byte for byte,
+    so the fill module must not prepare its containment tests."""
+    import inspect
+    import digitizer_core.stage6_fill as F
+    code = "\n".join(ln for ln in inspect.getsource(F).splitlines() if not ln.lstrip().startswith("#"))
+    assert "shapely.prepared" not in code and "prep(" not in code and not hasattr(F, "prep")
+
+
 def test_best_fill_angle_deg_matches_pca_exactly_when_pca_is_already_optimal():
     """RECT's PCA angle (0deg, the long axis of a plain rectangle) already
     gives the minimum possible column count (1) — the sweep must return
