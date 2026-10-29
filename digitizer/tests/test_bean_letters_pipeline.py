@@ -29,6 +29,9 @@ def _cfg(**kw) -> PipelineConfig:
     kw.setdefault("small_text_true_size", False)
     # ...and the bean rule (ON since Kent's 2026-10-27 flip) tags no letter at all
     kw.setdefault("bean_only_lines", False)
+    # ...and the dark read's bean (ON since Kent's 2026-10-29 flip) writes the
+    # same spines key on Bridge's one dark read (Scotty Green on Sun)
+    kw.setdefault("dark_ink_bean", False)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6, **kw)
 
 
