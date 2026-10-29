@@ -71,6 +71,11 @@ PHOTO_BACKGROUND_REMOVED = "PHOTO_BACKGROUND_REMOVED"
 # the job proceeds with stage 1's border-flood bg_mask only, unchanged.
 # extra: {"reason": str}
 PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE = "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE"
+# The cutout ran but kept less than cfg.photo_cutout_min_kept of stage 1's
+# artwork, so it was refused and the job took the same plain classical route
+# as an unavailable cutout. Engine-side only (Studio SILENT_WARNINGS).
+# extra: {"kept_frac": float, "min_kept": float}
+PHOTO_CUTOUT_REFUSED = "PHOTO_CUTOUT_REFUSED"
 
 # Stage 2
 COLOR_CAP_APPLIED = "COLOR_CAP_APPLIED"            # more threads than max_colors; smallest layers reassigned

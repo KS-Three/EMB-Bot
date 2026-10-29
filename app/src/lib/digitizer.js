@@ -1788,6 +1788,7 @@ export const SILENT_WARNINGS = new Set([
   // Photo-lane notes about what ran. Info only, nothing for a customer to do;
   // preflight reads PHOTO_FACES_DETECTED server-side, not from this list.
   "PHOTO_PREP_APPLIED", "PHOTO_FACES_DETECTED", "PHOTO_BACKGROUND_REMOVED",
+  "PHOTO_CUTOUT_REFUSED",
   "PHOTO_BLEND_DISSOLVED", "PHOTO_SHADE_DEMAND", "PHOTO_SAM2_SEGMENTED",
   // The hairline tier's bookkeeping (cfg.hairline, built OFF 2026-10-12):
   // strands sewn and short ones dropped. Engine-side only, per Kent's

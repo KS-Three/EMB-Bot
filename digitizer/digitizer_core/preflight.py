@@ -154,6 +154,7 @@ DENSITY_EXTREME = "DENSITY_EXTREME"            # extra: {kind, measured_mm, targ
 DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, over_warn_mm2, over_block_mm2, cell_mm, patches, worst_patch_mm2, worst_patch_at_mm} — the mm2 figures are SUMS and cannot tell one blob from twenty specks; `patches`/`worst_patch_mm2` separate them and `worst_patch_at_mm` is the plan-mm centre of the largest, which is the "where" the message always asked for
 SAME_HOLE_HEAVY = "SAME_HOLE_HEAVY"            # extra: {fraction, repeat_points, penetrations, baseline, max_strikes, points_3plus, worst_at_mm} — `fraction` counts 2+-strike points and cannot tell thousands of doubles from one spot struck twelve times; max_strikes/points_3plus are the DEPTH the check's own corpus argument ("ALL 36 files contain 3+ stacked points") is made on, and worst_at_mm is the "where" its message asks for
 LINK_UNCOVERED = "LINK_UNCOVERED"              # extra: {max_mm, limit_mm, total_mm, at_mm, thread_mm}
+ARTWORK_NOT_SEWN = "ARTWORK_NOT_SEWN"          # extra: {reached_frac, artwork_mm2, floor}
 ARTWORK_UNCOVERED = "ARTWORK_UNCOVERED"        # extra: {count, worst_mm2, total_mm2, wanted_mm2, shapes: [{shape_id, missing_mm2, area_mm2}]}
 CONTOUR_STARVED = "CONTOUR_STARVED"            # extra: {count, rings, shapes}
 PHOTO_RESOLUTION_LOW = "PHOTO_RESOLUTION_LOW"  # extra: {px_per_mm, min_px_per_mm}
@@ -2977,6 +2978,78 @@ def _uncovered_findings(p, result: PipelineResult, plan: StitchPlan
     )], metrics
 
 
+# --- Artwork the design never reaches ----------------------------------------
+
+# A thread within this distance of an artwork pixel counts as reaching it.
+# Generous on purpose: this check is for whole elements that left the design
+# (the census's blank hoop, the halftone print cut to 9%), not for edges --
+# `ARTWORK_UNCOVERED` owns a bare limb on a shape that is sewn. 1 mm covers
+# a bean line on a drawn stroke, an absorbed detail sewn by its neighbour,
+# and an open letter counter.
+_ARTWORK_REACH_MM = 1.0
+# Block under this share of the artwork reached. Measured 2026-10-28 at the
+# Studio's left_chest_80 request with rembg on: all 30 corpus_scorecard
+# fixtures and 7 census logos read 0.985-1.000 (lowest the golke phone
+# screenshot); the census barcode, 58 bars dropped at stage 4's 1.5 mm floor
+# and graded Terrible by Kent, reads 0.673. Not seen by it: a module dropped
+# next to sewn ones (QR) and ink stage 1 removed with the ground (grunge) --
+# both are within reach or outside the artwork it is judged on.
+_ARTWORK_REACHED_FLOOR = 0.90
+
+
+def _artwork_reach_findings(p, result: PipelineResult, plan: StitchPlan
+                            ) -> tuple[list[dict], dict]:
+    """How much of the uploaded artwork has any thread near it.
+
+    Every other check reads what the design sews, so a design that dropped
+    most of the artwork -- or all of it -- grades clean: the 2026-10-27
+    census sent a 0-stitch design out at A 100 and a 211-stitch sketch at
+    B 88. The ground truth here is NOT the pipeline's own idea of the art:
+    `p` is preflight's re-run of stage 1, which a rembg cutout never touched,
+    narrowed only by a cutout the pipeline accepted (`result.subject_mask`),
+    since that background was removed on purpose.
+    """
+    empty = {"artwork_checked": False, "artwork_reached_frac": None,
+             "artwork_mm2": None}
+    art = ~p.bg_mask
+    subject = getattr(result, "subject_mask", None)
+    if subject is not None and subject.shape == art.shape:
+        art = art & subject
+    n_art = int(art.sum())
+    if n_art == 0:
+        return [], empty
+
+    x0, y0, x1, y1 = p.art_bbox
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    reach = np.zeros(art.shape, np.uint8)
+    thick = max(1, int(round(2 * _ARTWORK_REACH_MM * p.px_per_mm)))
+    for _b, run in plan.iter_runs():
+        pts = stitches.strip_ties(run.points)
+        if not pts:
+            continue
+        a = np.asarray(pts, np.float64)
+        px = np.column_stack([a[:, 0] * p.px_per_mm + cx,
+                              a[:, 1] * p.px_per_mm + cy]).round().astype(np.int32)
+        cv2.polylines(reach, [px], False, 1, thickness=thick)
+    frac = float((art & (reach > 0)).sum()) / n_art
+    mm2 = n_art / (p.px_per_mm ** 2)
+    metrics = {"artwork_checked": True, "artwork_reached_frac": round(frac, 3),
+               "artwork_mm2": round(mm2, 1)}
+    if frac >= _ARTWORK_REACHED_FLOOR:
+        return [], metrics
+    return [finding(
+        ARTWORK_NOT_SEWN,
+        "block",
+        f"Only {frac:.0%} of the artwork has any stitching on or near it "
+        f"({mm2 * (1 - frac):.0f} of {mm2:.0f} mm2 is missing). Most of the "
+        f"picture did not make it into the design; compare the preview with "
+        f"the original before sewing.",
+        reached_frac=round(frac, 3),
+        artwork_mm2=round(mm2, 1),
+        floor=_ARTWORK_REACHED_FLOOR,
+    )], metrics
+
+
 # --- Uncovered links (chaining law 60) --------------------------------------
 
 def _transport_and_content(plan: StitchPlan
@@ -3936,9 +4009,14 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
         unc_findings, unc_metrics = _uncovered_findings(p, result, plan)
         findings.extend(unc_findings)
         metrics.update(unc_metrics)
+        reach_findings, reach_metrics = _artwork_reach_findings(p, result, plan)
+        findings.extend(reach_findings)
+        metrics.update(reach_metrics)
     else:
         metrics.update({"uncovered_checked": False, "uncovered_worst_mm2": None,
-                        "uncovered_total_mm2": None, "uncovered_wanted_mm2": None})
+                        "uncovered_total_mm2": None, "uncovered_wanted_mm2": None,
+                        "artwork_checked": False, "artwork_reached_frac": None,
+                        "artwork_mm2": None})
 
     link_findings, link_metrics = _link_findings(plan, cfg)
     findings.extend(link_findings)

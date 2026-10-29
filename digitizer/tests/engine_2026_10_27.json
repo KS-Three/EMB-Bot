@@ -165,6 +165,7 @@
  "photo_prep_background_removal": true,
  "photo_prep_background_removal_model": "isnet-general-use",
  "photo_prep_background_removal_timeout_s": 120.0,
+ "photo_cutout_min_kept": 0.0,
  "photo_prep_clahe_clip": 2.5,
  "photo_prep_clahe_tiles": 8,
  "photo_prep_texture_kill": "bilateral",

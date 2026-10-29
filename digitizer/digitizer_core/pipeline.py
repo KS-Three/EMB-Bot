@@ -91,6 +91,7 @@ from .warnings_codes import (
     PHOTO_AUTO_TIER,
     PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
     PHOTO_BACKGROUND_REMOVED,
+    PHOTO_CUTOUT_REFUSED,
     PHOTO_DETECTED,
     PHOTO_FACE_PRIORS_UNAVAILABLE,
     PHOTO_FACES_DETECTED,
@@ -202,6 +203,12 @@ class PipelineResult:
     # PipelineResult (every test that doesn't set it, every pre-photo
     # caller) gets exactly the pre-existing "no faces" behaviour.
     faces_present: bool = False
+    # The rembg cutout this run ACCEPTED, (H, W) bool, True = subject, or
+    # None. `Generation.subject_mask` handed on whatever the lane, because
+    # `source_pixels` above exists only on tonal lanes and preflight's
+    # ARTWORK_NOT_SEWN must not charge a deliberately removed background as
+    # missing artwork. Read by preflight only; no stitch depends on it.
+    subject_mask: np.ndarray | None = None
     # The full stage-2 `select_palette` medoid set (chart indices), present
     # ONLY when shade demand was fed into the selection
     # (cfg.shade_palette_demand, photo classes — Quant.palette_spools'
@@ -355,6 +362,20 @@ def _lane_has_letters(planned, cfg: PipelineConfig) -> bool:
         return False
     return any(str(p.region.meta.get("tier", "auto")).lower() == "auto"
                and is_lettering(p.region, cfg) for p in planned)
+
+
+def _cutout_kept_fraction(stage1_bg: np.ndarray, cutout_bg: np.ndarray) -> float:
+    """Share of stage 1's artwork (not-background pixels) the cutout keeps.
+
+    Measured against stage 1's artwork, not the whole frame, so a logo that
+    already sits on a flooded ground is not charged for pixels stage 1 had
+    removed before rembg ran. A stage 1 with no artwork left reads 1.0: there
+    is nothing for the cutout to lose."""
+    art = ~stage1_bg
+    n = int(art.sum())
+    if n == 0:
+        return 1.0
+    return float((art & ~cutout_bg).sum()) / n
 
 
 def _environment_warning(code: str, what: str, consequence: str,
@@ -658,6 +679,27 @@ def build_generation(
                     "because prep without the cutout measures worse than no "
                     "prep at all; this photo took the plain classical route.",
                     bg_reason,
+                )
+            )
+        elif (kept := _cutout_kept_fraction(p.bg_mask, bg_removed)) \
+                < cfg.photo_cutout_min_kept:
+            # A cutout that keeps almost none of stage 1's artwork is rembg
+            # failing, not a subject: measured 2026-10-28, the inputs keeping
+            # under 20% were a halftone print (9%) and a chalkboard sign (10%),
+            # both graded Terrible by Kent, plus the pale owl (1%), the tight
+            # pale crop (6%), grass, sunset and meadow (0-2%). The accepted
+            # cutouts kept 31% (a street scene) and up. Treat it exactly like
+            # an unavailable cutout -- the plain classical route, for the
+            # 2026-08-24 reason above -- and say so.
+            cutout_failed = True
+            prep_warnings.append(
+                warn(
+                    PHOTO_CUTOUT_REFUSED,
+                    f"Background removal kept only {kept:.0%} of the artwork, "
+                    "so it was refused and the whole picture was kept; this "
+                    "photo took the plain classical route.",
+                    kept_frac=round(kept, 3),
+                    min_kept=cfg.photo_cutout_min_kept,
                 )
             )
         else:
@@ -1658,6 +1700,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         source_pixels=source_pixels,
         design_class=gen.classification_class,
         faces_present=faces_present,
+        subject_mask=gen.subject_mask,
         detected_photographic=gen.detected_photographic,
         palette_spools=(
             list(gen.quant_palette_spools)

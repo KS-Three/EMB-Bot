@@ -46,6 +46,7 @@ from digitizer_core.stage1_photo_prep import (
 from digitizer_core.warnings_codes import (
     PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
     PHOTO_BACKGROUND_REMOVED,
+    PHOTO_CUTOUT_REFUSED,
     PHOTO_PREP_APPLIED,
 )
 
@@ -179,6 +180,72 @@ def test_pipeline_says_so_when_background_removal_is_unavailable(monkeypatch):
     assert len(hits) == 1
     assert hits[0]["reason"]
     assert result.regions, "the job itself must still complete"
+
+
+def _regions_key(result) -> list[tuple]:
+    return sorted((r.thread_index, round(r.polygon.area, 4), r.polygon.wkb_hex)
+                  for r in result.regions)
+
+
+def _scene_cfg(**kw) -> PipelineConfig:
+    return _cfg(forced_class="photo_scene", photo_prep=True,
+                photo_prep_background_removal=True, **kw)
+
+
+def test_a_cutout_that_keeps_almost_nothing_is_refused(monkeypatch):
+    """Census 2026-10-27: rembg kept 9% of a halftone print and 10% of a
+    chalkboard sign, and the design sewed what was left. A cutout under
+    `photo_cutout_min_kept` is now refused, and the job is the SAME job an
+    unavailable cutout gives -- the plain classical route, whole picture."""
+    image = TESTDATA / "photo" / "region_blobs.png"
+    monkeypatch.setattr(pipeline_module, "remove_background_seam",
+                        lambda rgb, px_per_mm, cfg: (np.ones(rgb.shape[:2], bool), None))
+    refused = run_stages(image, _scene_cfg())
+    hits = [w for w in refused.warnings if w["code"] == PHOTO_CUTOUT_REFUSED]
+    assert len(hits) == 1 and hits[0]["kept_frac"] == 0.0
+    assert not any(w["code"] == PHOTO_BACKGROUND_REMOVED for w in refused.warnings)
+    assert refused.regions, "the whole picture must still be digitized"
+
+    monkeypatch.setattr(pipeline_module, "remove_background_seam",
+                        lambda rgb, px_per_mm, cfg: (None, "unavailable (test)"))
+    unavailable = run_stages(image, _scene_cfg())
+    assert _regions_key(refused) == _regions_key(unavailable)
+
+
+def test_min_kept_zero_accepts_every_cutout_like_the_old_engine(monkeypatch):
+    image = TESTDATA / "photo" / "region_blobs.png"
+    monkeypatch.setattr(pipeline_module, "remove_background_seam",
+                        lambda rgb, px_per_mm, cfg: (np.ones(rgb.shape[:2], bool), None))
+    result = run_stages(image, _scene_cfg(photo_cutout_min_kept=0.0))
+    assert not any(w["code"] == PHOTO_CUTOUT_REFUSED for w in result.warnings)
+    assert any(w["code"] == PHOTO_BACKGROUND_REMOVED for w in result.warnings)
+
+
+def test_a_cutout_keeping_most_of_the_artwork_still_runs(monkeypatch):
+    """The guard reads stage 1's ARTWORK, not the frame: a cutout that takes
+    a border strip keeps well over the floor and is accepted as before."""
+    def strip(rgb, px_per_mm, cfg):
+        m = np.zeros(rgb.shape[:2], bool)
+        m[:, : rgb.shape[1] // 5] = True
+        return m, None
+    monkeypatch.setattr(pipeline_module, "remove_background_seam", strip)
+    result = run_stages(TESTDATA / "photo" / "region_blobs.png", _scene_cfg())
+    assert not any(w["code"] == PHOTO_CUTOUT_REFUSED for w in result.warnings)
+    assert any(w["code"] == PHOTO_BACKGROUND_REMOVED for w in result.warnings)
+
+
+def test_kept_fraction_is_measured_against_stage1_artwork():
+    from digitizer_core.pipeline import _cutout_kept_fraction
+    stage1 = np.zeros((10, 10), bool)
+    stage1[:, :5] = True                      # stage 1 already took half
+    cut = stage1.copy()
+    cut[:, 5:8] = True                        # the cutout takes 3 of 5 columns left
+    assert _cutout_kept_fraction(stage1, cut) == pytest.approx(0.4)
+    assert _cutout_kept_fraction(np.ones((4, 4), bool), np.ones((4, 4), bool)) == 1.0
+
+
+def test_the_cutout_floor_defaults_to_twenty_percent():
+    assert PipelineConfig().photo_cutout_min_kept == 0.20
 
 
 # --- 3. Graceful fallback: runtime subprocess failures ---------------------------
