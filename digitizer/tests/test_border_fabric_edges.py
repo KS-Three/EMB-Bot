@@ -1,12 +1,12 @@
 """`border_by_size` rings fabric edges only (`cfg.border_by_size_fabric_edges`,
-built OFF 2026-10-28; `docs/bean-border-logic-2026-10-28.md`).
+built OFF and flipped ON by Kent 2026-10-28; `docs/bean-border-logic-2026-10-28.md`).
 
 On Kent's Instagram icon `border_by_size` ringed every gradient band of 6 mm
 and up round its whole perimeter, seams with the next band included, and the
 logo's own outline only where a band happened to reach it. ON, a size ring
 skips every stretch it shares with another sewn region, so two butting
 colours meet on a plain seam and the ring follows the bare-fabric edge.
-Off, byte-identical.
+False is the engine before the flip.
 """
 from __future__ import annotations
 
@@ -49,13 +49,14 @@ def _near_seam(pts, reach=1.0):
     return [p for p in pts if abs(p[0]) <= reach and abs(p[1]) < 3.0]
 
 
-def test_default_is_off():
-    assert PipelineConfig().border_by_size_fabric_edges is False
+def test_default_is_on():
+    # Kent 2026-10-28, "Flip ON (Recommended)" after the 21-logo corpus check
+    assert PipelineConfig().border_by_size_fabric_edges is True
 
 
 def test_off_the_seam_carries_a_ring():
-    # today's engine: seam ownership hands the seam to the later square, which rings it
-    assert _near_seam(_border_pts(_plan()))
+    # the engine before the flip: seam ownership hands the seam to the later square, which rings it
+    assert _near_seam(_border_pts(_plan(border_by_size_fabric_edges=False)))
 
 
 def test_on_the_seam_is_bare_and_the_fabric_edges_keep_their_ring():
@@ -84,10 +85,10 @@ def test_on_a_lone_square_is_unchanged():
                               fabric_for_garment("hat_front"), PipelineConfig(underlay=False, **kw))
         return [(r.kind, tuple(map(tuple, r.points))) for b in blocks for r in b.runs]
 
-    assert one(border_by_size_fabric_edges=True) == one()
+    assert one(border_by_size_fabric_edges=True) == one(border_by_size_fabric_edges=False)
 
 
 def test_border_by_size_off_makes_the_flag_inert():
-    a = _plan(border_by_size=False)
+    a = _plan(border_by_size=False, border_by_size_fabric_edges=False)
     b = _plan(border_by_size=False, border_by_size_fabric_edges=True)
     assert [(r.kind, r.points) for r in a] == [(r.kind, r.points) for r in b]

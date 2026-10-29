@@ -22,7 +22,7 @@ the OLDEST lines whole to the archive.
 - [Beanie knockdown ON](beanie-knockdown-2026-10-21.md) — Kent flipped it unsewn: garment-coloured fill under design
 - [Big-letter construction](big-letter-construction-2026-10-24.md) — MARINE's 163-vs-77 is 35 patches + a sheared top slab, no length cap; cuts buy cross direction only — `text_lean` (OFF) gives it, don't copy the count
 - [Border by size](border-by-size-2026-10-23.md) — `border_by_size` OFF: at 6 mm+ the separator is STROKE vs satin ceiling; letters are the population; fills a coin flip
-- [Band rings](border-by-size-colour-seams-2026-10-28.md) — Instagram: `border_by_size` satin rings each band, not bean; fix OFF: ring fabric edges only
+- [Band rings](border-by-size-colour-seams-2026-10-28.md) — Instagram: `border_by_size` satin rings each band, not bean; fix ON 10-28: ring fabric edges only
 - [Border census](border-census-2026-10-23.md) — small rings = edge cap + run tier; pro borders by SIZE (>= 4 mm)
 - [Border from outline](border-from-outline-2026-10-24.md) — pro borders what the ART outlines (kappa 0.76, n 588), not size/stroke; `border_from_outline` OFF: loop per body at his width, bodies fill
 - [Outline line-art guard](border-from-outline-line-art-guard-2026-10-25.md) — Bridge bowl = hairline drawing; guard (Kent ON 10-25): hairline AND leaves strokes. Thin alone kills Machine's frame (pro widens it)
