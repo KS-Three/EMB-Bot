@@ -188,9 +188,13 @@ def test_satin_caps_the_silhouette():
 def test_satin_costs_more_thread_than_bean():
     """The artifact's own measured ordering (bean +12.6%, satin +15.3% on
     the icon): a column is heavier than three traced passes. Pins the two
-    styles as genuinely different tiers, not one emitter behind two names."""
-    bean = cap_stitches(plan_for(BOTH, edge_cap="bean"))
-    satin = cap_stitches(plan_for(BOTH, edge_cap="satin"))
+    styles as genuinely different tiers, not one emitter behind two names.
+    Priced with `border_by_size` off: ON, the squares' own rings already cover
+    almost the whole edge, and the few millimetres left to cap (bean 42,
+    satin 38 once the satin cap stopped sewing its arc-to-arc bridges) price
+    nothing about the tiers."""
+    bean = cap_stitches(plan_for(BOTH, edge_cap="bean", border_by_size=False))
+    satin = cap_stitches(plan_for(BOTH, edge_cap="satin", border_by_size=False))
     assert satin > bean
 
 
@@ -368,6 +372,25 @@ def test_silhouette_cap_reports_the_style_that_ran():
         assert report["style"] == style
         assert report["empty"] is False
         assert report["loops"] >= 1
+
+
+def test_the_satin_cap_lifts_between_arcs_instead_of_sewing_across_the_design():
+    # Kent's Instagram icon, 2026-10-29: once the gate left two far-apart arcs,
+    # `border_runs`' arc-to-arc bridge (a TRAVEL routed through the host) sewed
+    # a needle-down line across the finished fill. The cap sews last, so a
+    # bridge is never hidden: the next arc lifts into place instead.
+    poly = bar(40, 40)
+    from shapely.geometry import box
+    # the left and right sides already carry linear stitching: top and bottom
+    # are the only open stretches, 40 mm apart
+    omit = box(-25, -18, -18, 18).union(box(18, -18, 25, 18))
+    runs, report = silhouette_cap(poly, "S", style="satin", entry=None,
+                                  trim_at_mm=6.0, omit=omit)
+    assert len([r for r in runs if r.kind == "border"]) >= 2
+    assert not [r for r in runs if r.kind == "travel"], "a bridge was sewn across the design"
+    later = [r for r in runs if r.kind == "border"][1:]
+    assert all(r.jump and r.trim for r in later)
+    assert report["jumps"] >= len(later)
 
 
 def test_silhouette_cap_is_inert_on_none_and_on_no_geometry():

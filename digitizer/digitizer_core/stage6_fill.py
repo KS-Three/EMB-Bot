@@ -23,6 +23,8 @@ Everything works in mm, y-down, the same space stage 4 produced.
 """
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import functools
 import hashlib
 import math
@@ -1217,6 +1219,26 @@ def _score(cost: tuple) -> float:
             + exposed_stitches * _EXPOSED_STITCH_WEIGHT)
 
 
+# `cfg.fill_bridge_cut_exposed` (2026-10-29, built OFF): a bridge that shows on
+# finished fill is cut whatever `_score` says. Set for the length of one plan
+# (`cut_exposed_scope`), read by `_cut_is_cheaper`; `shape_memo` and the reorder
+# memo key both carry it.
+_CUT_EXPOSED: contextvars.ContextVar[bool] = contextvars.ContextVar("fill_cut_exposed", default=False)
+
+
+@contextlib.contextmanager
+def cut_exposed_scope(on: bool):
+    """`cfg.fill_bridge_cut_exposed` for the length of one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _CUT_EXPOSED.set(True)
+    try:
+        yield
+    finally:
+        _CUT_EXPOSED.reset(token)
+
+
 def _cut_is_cheaper(a: tuple[float, float], bridge: list[tuple[float, float]],
                     sewn, trim_at_mm: float) -> bool:
     """Does this ONE bridge cost more than the cut it avoids, at `_score`'s rate?
@@ -1248,6 +1270,10 @@ def _cut_is_cheaper(a: tuple[float, float], bridge: list[tuple[float, float]],
     exposed_mm = _exposed_mm([a] + list(bridge), sewn) - _EXPOSED_TOLERANCE_MM
     if exposed_mm <= 0.0:
         return False
+    if _CUT_EXPOSED.get():
+        # Kent 2026-10-29, on the Instagram icon's travel lines: a line of
+        # travel on finished fill is wrong, so no saved trim pays for one
+        return True
     return _score((0, float(len(bridge) - 1),
                    exposed_mm / machine.TRAVEL_STITCH_MM)) > _score((1, 0.0, 0.0))
 
@@ -1341,6 +1367,8 @@ def _reorder_key(tag: bytes, paths, poly, ring, slack, entry, *scalars) -> bytes
         h.update(struct.pack("<dd", float(entry[0]), float(entry[1])))
     for v in scalars:
         h.update(struct.pack("<d", float(v)))
+    # `_cut_is_cheaper` reads it, so a reorder priced with it is another answer
+    h.update(b"\x01" if _CUT_EXPOSED.get() else b"\x00")
     return h.digest()
 
 

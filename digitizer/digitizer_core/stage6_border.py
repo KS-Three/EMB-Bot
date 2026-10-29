@@ -1429,6 +1429,41 @@ def _fill_cracks(geom, width: float) -> tuple[object, int]:
     return MultiPolygon(out), filled
 
 
+def _lift_cap_bridges(runs: list[StitchRun], trim_at_mm: float) -> tuple[list[StitchRun], int]:
+    """The satin cap's arc-to-arc bridges, lifted instead of sewn. -> (runs, lifts).
+
+    `border_runs` bridges from one arc to the next with a TRAVEL run routed
+    through its host (`travel_path`): right for a shape's own border, a few
+    millimetres inside the fill it just sewed. The cap's host is the whole
+    silhouette, it sews after all the artwork, and once the gate leaves only
+    the stretches facing bare fabric its arcs sit far apart -- so the bridge
+    was a needle-down line across finished fill (Kent's Instagram icon at 80
+    mm, 2026-10-29: 45 mm of yellow and white thread across the yellow band).
+    Each bridge is dropped and the arc it led to lifts into place, cut past
+    `trim_at_mm` as every other jump is.
+    """
+    out: list[StitchRun] = []
+    lifted = 0
+    start = None
+    for run in runs:
+        if run.kind == stitches.TRAVEL and run.points:
+            if start is None:
+                start = (run.points[0], run.jump, run.trim)
+            continue
+        if start is not None and run.points:
+            at, jump, trim = start
+            d = math.dist(at, run.points[0])
+            if d >= machine.TINY_STITCH_MM:
+                run.jump = True
+                run.trim = trim or run.trim or d > trim_at_mm
+                lifted += 1
+            else:
+                run.jump, run.trim = jump or run.jump, trim or run.trim
+            start = None
+        out.append(run)
+    return out, lifted
+
+
 def silhouette_cap(silhouette, shape_id: str, *, style: str,
                    entry: tuple[float, float] | None,
                    trim_at_mm: float,
@@ -1531,6 +1566,8 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
                               trim_at_mm=trim_at_mm, style="auto",
                               width_mm=width_mm, omit=omit,
                               role=stitches.ROLE_EDGE_CAP)
+        runs, lifted = _lift_cap_bridges(runs, trim_at_mm)
+        r["jumps"] += lifted
         report["loops"] = r["loops"]
         report["bean_loops"] = r["bean_loops"]
     # `border_runs` splits its count by tier (`arcs` / `bean_arcs`); the cap

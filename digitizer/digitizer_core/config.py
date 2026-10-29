@@ -1071,9 +1071,12 @@ class PipelineConfig:
     # ground through under it; the ground is no lettering. The reference
     # digitizer beans drawn lines (`bean_only_lines`); on the pot, the
     # ground's edge stitches round each letter hole were the starbursts.
-    # Layout, judged in the preview. OFF is the engine as it was, byte for
-    # byte.
-    dark_ink_bean: bool = False
+    # Layout, judged in the preview. **ON since 2026-10-29, Kent's flip
+    # after #1181 ("Flip ON (Recommended)")**. False is the engine before
+    # the flip, byte for byte; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_dark_ink_bean.py`; sheet: `docs/renders/dark-ink-bean-2026-10-28/`.
+    dark_ink_bean: bool = True
     # A letter's counter on a COLOURED ground stays a hole
     # (`stage3_segment.resolve_small_regions`). Measured 2026-10-02 on clean
     # 4 mm "BAR & RESTAURANT": on white the counters are background, never
@@ -4104,6 +4107,18 @@ class PipelineConfig:
     # 2026-09-19, "the exposed travel legs" and its two addenda;
     # `tests/test_fill_bridge_cut.py`.
     fill_bridge_cut: bool = True
+    # A bridge that shows on finished fill is ALWAYS cut (2026-10-29, built
+    # OFF). `fill_bridge_cut` above cuts a bridge only when `_score` prices it
+    # dearer than the cut, at 25 stitches a trim and 2x per exposed stitch, so
+    # a 9 mm line across a band's own finished rows (9.3 exposed ~ 11 < 25)
+    # stays sewn. Kent circled exactly those on the Instagram icon at 80 mm
+    # (2026-10-29): the gold vertical, the yellow line under the ring, the
+    # orange diagonal, the pink line left of the ring. ON, `_cut_is_cheaper`
+    # answers yes for any bridge whose exposure clears the tolerance and whose
+    # gap is over `trim_at_mm` (under it the lift is a jump, as before). The
+    # cost is trims. Layout (ruling 2026-10-22: judged in the preview). Off,
+    # byte-identical (tests/test_fill_bridge_cut_exposed.py).
+    fill_bridge_cut_exposed: bool = False
 
     # The fill column-order scorer prices only what `emit` sews (2026-10-08,
     # built OFF). `_fill_paths` returns one-point "columns" that `emit`

@@ -48,8 +48,11 @@ chest, 20 fixtures): 16 byte-identical; owl stitches 36,552 -> 34,574, trims
 23 -> 25 (Wild Rice rope + tagline bean, wordmark satin as before); Fremont
 patch 18,952 -> 19,014; Bridge 15,238 -> 15,222. Pooh (not committed, Disney)
 23,912 -> 21,883 stitches, trims 47 -> 43. Sheet:
-`docs/renders/dark-ink-bean-2026-10-28/`. Layout, judged in the preview; the
-flip is Kent's.
+`docs/renders/dark-ink-bean-2026-10-28/`. Layout, judged in the preview.
+
+**Flipped ON 2026-10-29** after #1181 merged, Kent verbatim: "Flip ON
+(Recommended)". The pre-flip False stays pinned in `conftest.PRE_FLIP` and
+`tests/engine_2026_10_27.json`.
 
 Related: [[dark-thin-strokes-2026-10-27]], [[dark-read-refusal-2026-10-28]],
 [[bean-census-2026-10-27]], [[layering-census-2026-10-26]].
