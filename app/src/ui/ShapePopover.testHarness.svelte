@@ -7,12 +7,14 @@
   export let anchor = { x: 40, y: 40 };
   export let bounds = { w: 800, h: 600 };
   export let position = null;
+  export let applyToSimilar = false;
   export let onEvent = () => {};
 </script>
 
 <div style="position: relative; width: {bounds.w}px; height: {bounds.h}px">
   <ShapePopover
-    {model} {anchor} {bounds} {position}
+    {model} {anchor} {bounds} {position} {applyToSimilar}
+    on:similar={(e) => onEvent("similar", e.detail)}
     on:move={(e) => onEvent("move", e.detail)}
     on:change={(e) => onEvent("change", e.detail)}
     on:action={(e) => onEvent("action", e.detail)}

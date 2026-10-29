@@ -13,7 +13,7 @@ order. Every note file is indexed in exactly one of this file and
 `MEMORY-archive.md` (not auto-loaded; the test checks). Near the ceiling, move
 the OLDEST lines whole to the archive.
 
-- [Memory archive: through 10-06](MEMORY-archive.md) — NOT auto-loaded: history through 10-06 + standing rulings (fill rows 0.15, DST axis fixed, Ink/Stitch clean-room, Ember teardowns)
+- [Memory archive: through 10-07](MEMORY-archive.md) — NOT auto-loaded: history through 10-07 + standing rulings (fill rows 0.15, DST axis fixed, Ink/Stitch clean-room, Ember teardowns)
 - [Opus team architecture](../../docs/superpowers/plans/2026-10-23-opus-team-architecture.md) — the plan a fresh director runs from: method, state, ranked queue L1-L10 / I1-I6, Kent's open decisions, brief template, traps
 - [Apex cut](apex-cut-2026-10-25.md) — acute tips (M's V, W, MFab N, PROSEAL A): pro cuts along the cross, tip one level-crossed piece; `lettering_columns_apex_cut` OFF; corner_fold refuses them (long_way)
 - [Apex walk](apex-walk-2026-10-27.md) — apex_cut's walk sews each tip from its point: tip-satin travel <= 0.05 mm, crosses kept; per-job travel > OFF on 5 jobs, foreman's call
@@ -22,6 +22,7 @@ the OLDEST lines whole to the archive.
 - [Beanie knockdown ON](beanie-knockdown-2026-10-21.md) — Kent flipped it unsewn: garment-coloured fill under design
 - [Big-letter construction](big-letter-construction-2026-10-24.md) — MARINE's 163-vs-77 is 35 patches + a sheared top slab, no length cap; cuts buy cross direction only — `text_lean` (OFF) gives it, don't copy the count
 - [Border by size](border-by-size-2026-10-23.md) — `border_by_size` OFF: at 6 mm+ the separator is STROKE vs satin ceiling; letters are the population; fills a coin flip
+- [Band rings](border-by-size-colour-seams-2026-10-28.md) — Instagram: `border_by_size` satin rings each band, not bean; fix OFF: ring fabric edges only
 - [Border census](border-census-2026-10-23.md) — small rings = edge cap + run tier; pro borders by SIZE (>= 4 mm)
 - [Border from outline](border-from-outline-2026-10-24.md) — pro borders what the ART outlines (kappa 0.76, n 588), not size/stroke; `border_from_outline` OFF: loop per body at his width, bodies fill
 - [Outline line-art guard](border-from-outline-line-art-guard-2026-10-25.md) — Bridge bowl = hairline drawing; guard (Kent ON 10-25): hairline AND leaves strokes. Thin alone kills Machine's frame (pro widens it)
@@ -37,8 +38,9 @@ the OLDEST lines whole to the archive.
 - [Cross underlay presets](cross-underlay-presets-2026-10-21.md) — `fill_underlay_cross` OFF (hat/LC/beanie); MFab/Becker "BARE" fills were SATIN the tool misread — list run kinds first
 - [Cut after bury](cut-after-bury-2026-10-23.md) — Fremont's 150 extra cuts were letter hops ON the field; the pro walks those: bury, walk on work, cut bare. 187 -> 44 (pro 20)
 - [Cut every jump](cut-every-jump-2026-10-21.md) — `cut_every_jump` OFF: uncut 285 -> 0, but trims 434 -> 674 (pro 246); bury first
+- [Dark read refusal](dark-read-refusal-2026-10-28.md) — `dark_ink_refuse_strays` OFF: edge (4 px) or not-under-ring reads refused; #1172's 10 not-ink rows = the 10 at the frame (its art window stretched)
 - [Dark thin strokes](dark-thin-strokes-2026-10-27.md) — HUNNY's ink tracks the pot's shading, no k-means cluster; black-hat on L*, carve AFTER the merge (pre-SEEDS removal moved the palette)
-- [Dark thin strokes ON](dark-thin-strokes-flip-2026-10-28.md) — flipped ON (Kent, #1170); OFF pinned in PRE_FLIP/FLIP_2026_10_23; owl 16 reads, Fremont patch 14
+- [Dark thin strokes ON](dark-thin-strokes-flip-2026-10-28.md) — flipped ON (Kent, #1170); OFF pinned in PRE_FLIP/FLIP_2026_10_23; owl 16 reads, patch 14
 - [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); Fremont OFF md5 follows OpenCV's Intel IPP path; test env capped OPENCV_IPP=avx2
 - [Digitize speed](digitize-speed-2026-10-26.md) — tesseract reads batched 4 at a time (preflight 2.3-2.8x, byte-identical); a loaded laptop inflates process_time ~2.6x; Studio 300 s poll vs service 600 s
 - [Download stale guard](download-stale-guard-2026-10-25.md) — Kent 10-25 "block until re-digitized": machine-file buttons disabled while stitches trail size/garment/settings; one rule (staleness.js); run button lit; no text
@@ -58,12 +60,12 @@ the OLDEST lines whole to the archive.
 - [Cuts inside one piece](in-piece-cuts-2026-10-25.md) — ours 109 vs pro 25: fill sections 35 (pro 0), satin split 40; `fill_section_travel` OFF routes underlay ring hops (Fremont 51 -> 41); fill-order gains all cost exposure
 - [Inside stagger at pivots](inside-stagger-2026-10-23.md) — pro ALSO alternates; ours piled the full ends in one hole (16-79 vs 2-5) at 35% depth vs his 20%; `lettering_columns_inside_stagger` OFF
 - [Isolated pieces](isolated-pieces-2026-10-25.md) — +33 = MFab white fragments + block accounting (compare ENTRIES); `absorb_fragments` OFF: MFab white-ON 77 -> 60
-- [Italic bars](italic-bars-2026-10-25.md) — pro crosses italic BARS along the slant; `lettering_columns_italic_lean` (ON 10-27) moves straight bars (hat 0.31 -> 0.46, pro 0.54), not bowls; read per cross (`italic_cross.py`), never by piece axis
+- [Italic bars](italic-bars-2026-10-25.md) — pro crosses italic BARS along the slant; `lettering_columns_italic_lean` (ON 10-27) moves straight bars (hat 0.31 -> 0.46, pro 0.54), not bowls; read per cross, never by piece axis
 - [Keyline band](keyline-band-2026-10-23.md) — `enclosed_white_keyline` OFF: satin loop per letter on the ARTWORK polygon; MFab 25,512 → 19,214 (pro 17,568); seam-close the reach
 - [Keyline loop chain](keyline-loop-chain-2026-10-26.md) — MFab gate only (Kent 10-27): loop hops walked under later white; white-loop cuts 11→5 (pro 5/6)
 - [Lane census](lane-census-2026-10-25.md) — Kent 10-26: 6b NOT built, the button stays. 4 of 14 pro jobs reach flat (all Becker), 8 gradient, 2 photo_scene; 6b as written = the button's file; kappas a wash
 - [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
-- [Lane reading before the run](lane-reading-before-run-2026-10-28.md) — `POST /classify` replays stage 0 + 1.25 before `/digitize`; Studio reading row above Auto Digitize (owl 2.5 s loaded, golden_tee 32 s); routing unmoved; `np.unique` GIL freeze fixed
+- [Lane reading before the run](lane-reading-before-run-2026-10-28.md) — `POST /classify` replays stage 0 + 1.25 before `/digitize`; Studio reading row above Auto Digitize (owl 2.5 s, golden_tee 32 s); `np.unique` GIL freeze fixed
 - [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
 - [Layering census](layering-census-2026-10-26.md) — W4-06 FALSE: pro sews every contained piece ON its ground (162/162) = `silhouette_underfill`; 80 of 176 cuts cross their own ground (sews first), 5 a sibling
 - [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out
@@ -85,10 +87,10 @@ the OLDEST lines whole to the archive.
 - [Outlined bean ink](outlined-bean-ink-2026-10-27.md) — MFab LC's AND read its white keyline as ink, sewed white; `bean_ink_outlined_letters` (ON 10-27) drops reads half outside
 - [Photo corpus sxs](photo-corpus-sxs-2026-10-27.md) — #1171: 39 Commons rows, `capture --base` per tree, sxs HTML with Kent's verdicts, `baseline-5ff48c5.json`; stage 0 sent 3 of 18 photos down the photo lane; `design.colors` = BLOCKS
 - [Photo lane must generalise](photo-lane-generalise-2026-10-27.md) — Kent 10-27: photo tools were tuned on 4 portraits + the owl; 18-genre census broke on scenes/crowds/pale art; read across genres, check tonal first
-- [Placement axis sizing](placement-axis-sizing-2026-10-28.md) — size = most that fits WHERE it sits: `PLACEMENTS` table, 3 pro boxes (hat 113.5x64, LC 96x76.5, beanie 94.5x56) kept, rest `seeded` = Kent's; upload fits the box, typed width stays
+- [Placement axis sizing](placement-axis-sizing-2026-10-28.md) — size = most that fits WHERE it sits: `PLACEMENTS` table, 3 pro boxes kept, rest `seeded` = Kent's; upload fits the box, typed width stays
 - [Pro intake](pro-intake-2026-10-25.md) — `python -m tools.pro_intake`: new job -> registered pair + census; registry gitignored (client names); preview vs art by content AND name; tesseract confirms lettering
 - [Pro measured values](pro-measured-values-2026-10-23.md) — `pro_measured_values` OFF: fill 3.49, satin 0.37/0.35, bean 0.95 on hat/LC/beanie; Kent flips after sew-out
-- [Pro renders local only](pro-renders-local-only-2026-10-27.md) — Kent 10-27 "Stop new ones, keep old": pro-file renders go to gitignored `pro_renders/`; `test_no_new_pro_renders` fails on a new `pro` word under docs/ (211 allowlisted)
+- [Pro renders local only](pro-renders-local-only-2026-10-27.md) — Kent 10-27 "Stop new ones, keep old": pro-file renders go to gitignored `pro_renders/`; `test_no_new_pro_renders` fails on a new `pro` word under docs/
 - [Pro rules across all jobs](pro-rules-across-jobs-2026-10-21.md) — small text raised to ~4 mm on every job; beanie knockdown 5/5; white interiors sewn; trims from DST, never PES
 - [ProSeal bubble borders](proseal-bubble-borders-2026-10-22.md) — the "border" is the bean edge cap + run tier on small shapes; the pro fills bubbles bare
 - [Pull comp by stroke](pull-comp-by-stroke-2026-10-22.md) — pro's hat pull FALLS with width: +0.58 at 0.85 mm, +0.42 at 2.6, 0 at 4; `pull_comp_by_stroke` OFF; small text stays small_bold's
@@ -101,7 +103,7 @@ the OLDEST lines whole to the archive.
 - [Re-set room and floor](reset-room-floor-2026-10-25.md) — ProSeal under 0.85: re-set widens RETRACED letters by a stale stroke tag (small_text.py:764); pro grows away from the near neighbour; tag fix alone: beanie no_room
 - [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins
 - [Satin-split cuts](satin-split-cuts-2026-10-27.md) — 26 = 16 band loops (chain via #1143) + 2 Drone (pro lifts more) + 8 in letters; slot guard alone +10 mm exposed; per-letter pick (-3 cuts) costed, NOT built
-- [Script strokes](script-strokes-2026-10-26.md) — `script_strokes` ON (Kent 10-26): one column per pen stroke, path on the art's INK, crosses turn with the pen; `script_strokes_drawn_width` OFF: crowded sides end at drawn width; Bridge overlap 24.9 → 19.3%
+- [Script strokes](script-strokes-2026-10-26.md) — `script_strokes` ON (Kent 10-26): one column per pen stroke, path on the art's INK, crosses turn with the pen; `script_strokes_drawn_width` OFF: crowded sides end at drawn width
 - [Sequence like the pro: order is not the gap](sequence-like-pro-2026-10-25.md) — L10 FALSE, not built: pro sews the cap rule and it costs him; ours passes over a reachable piece 18 of 145 extra cuts; gap is cuts inside a piece
 - [Session ended mid-suite](session-ended-mid-suite-2026-10-20.md) — a ruled flip sat uncommitted in a lane behind a hung pytest; sweep lanes' TRACKED dirt and the newest session's last turn
 - [Sew white areas](sew-white-areas-2026-10-21.md) — R11 built OFF as a Studio option; counter = untagged white in a text-cluster letter; Machine field doubles trims (stage 5)
@@ -116,13 +118,13 @@ the OLDEST lines whole to the archive.
 - [Stage-0 flake](stage0-flake-output-alignment-2026-10-25.md) — W3-13: `cv2.magnitude` (IPP AVX2) answered by its OUTPUT buffer's alignment, not float32 box/mean/threads; `_magnitude` in float64. Hash each op under IPP paths first
 - [Stage-0 texture gate](stage0-texture-gate-2026-10-28.md) — grain gate missed 15/18 downsampled photos; `texture_frac` >= 0.13 route + two-ink veto ON (`stage0_texture_gate`); 6 "logo" rows are photographs by medium; cut-outs keep the old tree
 - [Studio waits 600 s](studio-wait-600-2026-10-26.md) — Kent 10-26: poll waits as long as the service (from first "running" + 30 s); "Still digitizing" past 5 min; timeout says it stopped WAITING; rembg 60 -> 120 s
-- [Nest guard](text-cluster-nest-guard-2026-10-27.md) — `text_cluster_nest_guard` OFF: `_drop_nested` ignores a frame candidate over 6x the median glyph height (Bridge hat wheel nested 8/15 letters); necessary, not sufficient; rotation-aware door next
+- [Nest guard](text-cluster-nest-guard-2026-10-27.md) — `text_cluster_nest_guard` OFF: `_drop_nested` ignores a frame candidate over 6x the median glyph height (Bridge hat wheel nested 8/15 letters); rotation-aware door next
 - [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch (gate 1); MFab IN/AND N are the misses; `text_cluster_part_touching` ON 10-27
 - [Typed lettering floats](text-cut-jumps-2026-10-27.md) — `cutEveryJump` OFF: names float 1-3 mm hops on every DST path; ON buries/walks/cuts (95% cut), trims ~2x
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
 
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
-- [Golden Tee TM](tm-mark-golden-tee-2026-10-26.md) — Kent: NO build. Pro re-sets the 0.94 mm TM as a 4.3x2 mm double run; we drop it in stage 2 (thin_ink 3 px floor, its strokes 2 px); only mark in 19 arts / 27 pro files; a future TM/(R) drops silently
+- [Golden Tee TM](tm-mark-golden-tee-2026-10-26.md) — Kent: NO build. Pro re-sets the 0.94 mm TM as a 4.3x2 mm double run; we drop it in stage 2 (thin_ink 3 px floor, its strokes 2 px); a future TM/(R) drops silently
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
 - [Under-fill knock-outs](underfill-knockouts-2026-10-26.md) — Fremont star: a covered host-colour mark never merges; Becker: letter host stops inside the loops; Gaulke is sew_enclosed_white
 - [Under-fill outer rim](underfill-outer-rim-2026-10-25.md) — a self-hosting ring: pro rims its whole edge in the fill colour; `silhouette_underfill_rim` OFF, on the SEWN edge

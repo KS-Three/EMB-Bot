@@ -1031,6 +1031,27 @@ class PipelineConfig:
     # False. Tests: `tests/test_keep_dark_thin_strokes.py`; the sheet Kent
     # flipped from: `docs/renders/keep-dark-thin-strokes-flip-2026-10-28/`.
     keep_dark_thin_strokes: bool = True
+    # Refuse a dark read (`keep_dark_thin_strokes`) that is a STRAY, not a
+    # stroke: (a) its ring reaches the artwork's edge (`p.art_bbox`, the
+    # bounding box at the sent width, within `thin_ink.DARK_INK_EDGE_PX` =
+    # guard + ring = 4 px), so the one-ground test was passed on half a ring;
+    # or (b) fewer than `thin_ink.DARK_INK_STRAY_SHARE` (a majority, 0.5) of
+    # its own pixels sit `DARK_INK_DEPTH_L` (8 L*) under the ring's median,
+    # the pixel test the black-hat applied, re-asked of the component as a
+    # whole. Queued by Kent on PR #1172 ("Keep ON, queue refusal"): 8 of the
+    # owl's 16 reads and 2 of the Fremont patch's 14 were judged "not ink"
+    # there. Measured 2026-10-28 on the engine's own raster (Lab, the space
+    # the tails read): every one of the 30 is 11-98 L* darker than its ring
+    # with 0.75-1.0 of its pixels 8 L* under it, so (b) fires on none; the
+    # 10 "not ink" rows are the 10 components within 1 px of the frame, and
+    # (a) refuses exactly those plus the two "mixed" reads at the frame
+    # (Skylight on the owl's bottom edge, the breast stripe's edge). The
+    # sheet that judged them stretched its artwork window at the frame
+    # (`tools.dark_ink_flip_sheet._art_crop`, fixed with this flag). OFF is
+    # byte-identical to the read as flipped. Tests:
+    # `tests/test_dark_ink_refuse_strays.py`; sheet:
+    # `docs/renders/dark-read-refusal-2026-10-28/`.
+    dark_ink_refuse_strays: bool = False
     # A letter's counter on a COLOURED ground stays a hole
     # (`stage3_segment.resolve_small_regions`). Measured 2026-10-02 on clean
     # 4 mm "BAR & RESTAURANT": on white the counters are background, never
@@ -2013,6 +2034,23 @@ class PipelineConfig:
     # habit judged in the preview (Kent 2026-10-22), not a cloth constant.
     # ON by default (Kent 2026-10-23, by the pro-count numbers); Off, byte-identical (tests/test_border_by_size.py).
     border_by_size: bool = True
+    # `border_by_size` rings fabric edges only (2026-10-28, built OFF;
+    # `docs/bean-border-logic-2026-10-28.md`). The rule above reads each
+    # region alone, so on a multi-colour object every band of 6 mm and up gets
+    # a satin ring round its WHOLE perimeter, seams with its neighbours
+    # included. Kent's Instagram icon at 80 mm: a ring round each gradient
+    # band and none round the logo; +4,535 stitches (+16.5%) over no rings.
+    # The web sources treat butting fills with overlap and pull comp, not an
+    # outline, and outline no gradient step (Hatch, Wilcom, Ink/Stitch,
+    # Bruce: `docs/bean-outline-practice-research-2026-10-28.md`). ON, a
+    # `border_by_size` ring also skips every stretch of its edge that it
+    # shares with another sewn region, by the same seam band and threshold
+    # seam ownership uses (`_owned_by_later`), so it sews only where the
+    # shape meets bare fabric. Where the ART outlines a body against colour,
+    # `border_from_outline` already holds it and this does not read it.
+    # Layout (ruling 2026-10-22: judged in the preview). Off, byte-identical
+    # (tests/test_border_fabric_edges.py).
+    border_by_size_fabric_edges: bool = False
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run

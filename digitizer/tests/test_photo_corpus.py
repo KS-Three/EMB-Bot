@@ -457,3 +457,25 @@ def test_an_unstamped_worker_output_is_judged_by_the_folders_run_json(tmp_path, 
         pc.capture([ROW], photos, tmp_path, out, "sha_NEW", 10, 1)
     run = pc.capture([ROW], photos, tmp_path, out, "sha_OLD", 10, 1)
     assert run["rows"]["a"]["tree_sha"] == "sha_OLD"
+
+
+# --- Kent's absolute grades on one tree (not a before/after verdict set) --------
+
+GRADES = ("Great", "Good", "Okay", "Bad", "Terrible")
+
+
+def test_kents_logo_grades_name_corpus_rows_on_one_tree():
+    """Kent graded the 21 logo-census renders (2026-10-28) on one tree, an
+    absolute Great..Terrible scale: not a `tally` verdict set, which is
+    better/same/worse across two trees. The file names its tree, every slug
+    is a `kind: logo` corpus row, every logo row is graded, and the grades
+    stay on the five-word scale."""
+    path = pc.SCOREBOARD_DIR / "grades-5ff48c5-2026-10-28.json"
+    g = json.loads(path.read_text(encoding="utf-8"))
+    assert g["tree_sha"].startswith("5ff48c56") and g["scale"] == list(GRADES)
+    logos = {r["slug"] for r in pc.load_corpus() if r["kind"] == "logo"}
+    assert set(g["rows"]) == logos
+    assert all(row["grade"] in GRADES for row in g["rows"].values())
+    assert g["tally"] == {k: sum(r["grade"] == k for r in g["rows"].values()) for k in GRADES}
+    readme = (pc.SCOREBOARD_DIR / "README.md").read_text(encoding="utf-8")
+    assert "grades-5ff48c5-2026-10-28.json" in readme
