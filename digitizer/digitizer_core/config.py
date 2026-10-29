@@ -412,6 +412,20 @@ class PipelineConfig:
     # `digitizer_core.stage0_classify._seed_sweep_signals` carries the
     # derivation and the Tires spread that motivated it.
     stage0_seed_sweep: int = 0
+    # Stage 0's second route into photo territory and its two-ink veto
+    # (`docs/superpowers/specs/2026-10-28-stage0-photo-texture-gate-design.md`).
+    # The grain gate (`UCM_PHOTO_MIN`) is a per-pixel noise detector, and a
+    # downsampled photograph has no grain: 15 of the 18 Commons corpus
+    # photographs read 0.02-0.27 against 0.28 and sewed as gradient logos.
+    # ON, an opaque file also enters photo territory when `texture_frac`
+    # (the share of its foreground that is neither flat nor a hard edge nor
+    # beside one, on a 512-px raster) reaches `TEXTURE_PHOTO_MIN`, and never enters it when
+    # `two_tone_mass` says two inks (`TWO_TONE_MAX`). A file with an alpha
+    # cut-out takes today's tree either way. OFF is today's decision tree,
+    # byte-identical, for every input. Built ON 2026-10-28 so the corpus
+    # side-by-side page shows the change; the OFF arm is pinned in
+    # `tests/engine_2026_10_27.json`.
+    stage0_texture_gate: bool = True
     # Cluster centers within this CIE76 distance are the SAME flat color that
     # k-means split; merged before spool snapping. Also the perpendicular
     # tolerance for the phantom-blend collinearity test.
@@ -745,6 +759,17 @@ class PipelineConfig:
     # 49-53 s on a loaded one, 7 s short of the old limit, and past it the
     # photo digitizes with its background left in.
     photo_prep_background_removal_timeout_s: float = 120.0
+    # Refuse a cutout that keeps less than this share of stage 1's artwork
+    # (pipeline._cutout_kept_fraction), and take the plain classical route
+    # as an unavailable cutout does. 0.0 accepts every cutout, the pre-guard
+    # engine. A sanity bound on a degenerate mask, not a stage-0 threshold.
+    # Measured 2026-10-28 with isnet-general-use on local inputs: refused --
+    # halftone print 0.090, chalkboard sign 0.104 (both graded Terrible),
+    # photo_owl_pale 0.013, tight_crop_pale_subject 0.058, grass/sunset/
+    # meadow/subject stub 0.000-0.018; kept -- the census's street scene
+    # 0.31, photo_chrome_specular 0.434, comic panel 0.561, owl_kent 0.798.
+    # CI has no rembg venv, so no golden reaches this branch there.
+    photo_cutout_min_kept: float = 0.20
     # Stage 2 (photo path) — SAM2 region former (digitizer/sam2_isolated/,
     # see its README.md). A SEPARATE opt-in flag, gated on the PHOTO classes
     # only: this flag must be True AND stage 0 must classify the design
@@ -2031,6 +2056,23 @@ class PipelineConfig:
     # habit judged in the preview (Kent 2026-10-22), not a cloth constant.
     # ON by default (Kent 2026-10-23, by the pro-count numbers); Off, byte-identical (tests/test_border_by_size.py).
     border_by_size: bool = True
+    # `border_by_size` rings fabric edges only (2026-10-28, built OFF;
+    # `docs/bean-border-logic-2026-10-28.md`). The rule above reads each
+    # region alone, so on a multi-colour object every band of 6 mm and up gets
+    # a satin ring round its WHOLE perimeter, seams with its neighbours
+    # included. Kent's Instagram icon at 80 mm: a ring round each gradient
+    # band and none round the logo; +4,535 stitches (+16.5%) over no rings.
+    # The web sources treat butting fills with overlap and pull comp, not an
+    # outline, and outline no gradient step (Hatch, Wilcom, Ink/Stitch,
+    # Bruce: `docs/bean-outline-practice-research-2026-10-28.md`). ON, a
+    # `border_by_size` ring also skips every stretch of its edge that it
+    # shares with another sewn region, by the same seam band and threshold
+    # seam ownership uses (`_owned_by_later`), so it sews only where the
+    # shape meets bare fabric. Where the ART outlines a body against colour,
+    # `border_from_outline` already holds it and this does not read it.
+    # Layout (ruling 2026-10-22: judged in the preview). Off, byte-identical
+    # (tests/test_border_fabric_edges.py).
+    border_by_size_fabric_edges: bool = False
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run

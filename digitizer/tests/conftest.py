@@ -569,6 +569,14 @@ PRE_FLIP["strip_letterbox"] = False
 # for the next test that prices a colour flag on a satin fixture. A test that
 # is ABOUT the rails is `tests/test_rail_comp.py` and names the flag itself.
 PRE_FLIP["satin_rail_comp"] = False
+# `stage0_texture_gate` joined the flipped set 2026-10-28 (built ON, Kent's
+# "ON by default (Recommended)"), for the reason every entry above gives: ON,
+# an opaque photograph or steep-ramp raster that read `gradient` on the grain
+# gate alone reads `photo_scene` (the owl, the synthetic `region_blobs`), and
+# an arm measured on the gradient lane's plan of such a fixture was measured
+# on the pre-flip tree. Tests that are ABOUT the gate
+# (`tests/test_stage0_texture_gate.py`) name the flag themselves.
+PRE_FLIP["stage0_texture_gate"] = False
 # `bean_only_lines` joined the flipped set 2026-10-27 (Kent's "Flip ON
 # (Recommended)" on PR #1161), for the reason every entry above gives: ON, a
 # sub-floor letter or solid no longer sews a bean ring (it takes the satin

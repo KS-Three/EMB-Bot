@@ -71,6 +71,11 @@ class Thresholds:
     grad_subject_min: float
     grad_subject_margin: float
     confidence_floor: float
+    # The 2026-10-28 texture route and two-ink veto (`decide_photo`).
+    texture_photo_min: float
+    texture_margin: float
+    two_tone_max: float
+    two_tone_margin: float
 
     @classmethod
     def nominal(cls) -> "Thresholds":
@@ -82,6 +87,10 @@ class Thresholds:
             grad_subject_min=s0.GRAD_VAR_SUBJECT_MIN,
             grad_subject_margin=s0.GRAD_VAR_SUBJECT_MARGIN,
             confidence_floor=s0.CONFIDENCE_FLOOR,
+            texture_photo_min=s0.TEXTURE_PHOTO_MIN,
+            texture_margin=s0.TEXTURE_MARGIN,
+            two_tone_max=s0.TWO_TONE_MAX,
+            two_tone_margin=s0.TWO_TONE_MARGIN,
         )
 
 
@@ -90,6 +99,8 @@ SWEEP_FIELDS = [
     "grad_gradient_min", "grad_gradient_margin",
     "grad_subject_min", "grad_subject_margin",
     "confidence_floor",
+    "texture_photo_min", "texture_margin",
+    "two_tone_max", "two_tone_margin",
 ]
 
 
@@ -100,6 +111,7 @@ class Decision:
     demoted: bool           # would-be non-flat discarded below the floor
     raw_class: str          # the class before any floor demotion
     gates: tuple            # ((gate_name, signal_value, threshold, margin), ...)
+    route: str = "legacy"   # what decided the photo gate (`decide_photo`'s route)
 
 
 def _gate_conf(value: float, threshold: float, margin: float) -> float:
@@ -110,32 +122,65 @@ def _gate_conf(value: float, threshold: float, margin: float) -> float:
     return float(min(1.0, 0.5 + 0.5 * abs(value - threshold) / margin))
 
 
-def decide(ucm: float, grad: float, th: Thresholds) -> Decision:
+def _photo_gate(ucm: float, texture: float, two_tone: float, cutout: bool,
+                th: Thresholds, gate_on: bool) -> tuple[bool, float, str]:
+    """Local restatement of `stage0_classify.decide_photo`, parameterised by
+    `th` so the sweep can move its thresholds."""
+    by_grain = ucm >= th.ucm_photo_min
+    grain_conf = _gate_conf(ucm, th.ucm_photo_min, th.ucm_margin)
+    if cutout or not gate_on:
+        return by_grain, grain_conf, "legacy"
+    by_texture = texture >= th.texture_photo_min
+    texture_conf = _gate_conf(texture, th.texture_photo_min, th.texture_margin)
+    two_tone_fires = two_tone >= th.two_tone_max
+    veto_conf = _gate_conf(two_tone, th.two_tone_max, th.two_tone_margin)
+    if not (by_grain or by_texture):
+        return False, min(grain_conf, texture_conf), "none"
+    if two_tone_fires:
+        return False, veto_conf, "veto"
+    route = "+".join(n for n, fired in (("grain", by_grain), ("texture", by_texture)) if fired)
+    strongest = max(c for c, fired in ((grain_conf, by_grain), (texture_conf, by_texture)) if fired)
+    return True, min(strongest, veto_conf), route
+
+
+def decide(ucm: float, grad: float, texture: float, two_tone: float, cutout: bool,
+           th: Thresholds, gate_on: bool = True) -> Decision:
     """The stage-0 decision tree, re-derived from the documented constants.
 
     Must agree with `classify()` exactly at `Thresholds.nominal()` — the
     self-check in `measure()` (and `tests/test_classify_lens.py`) enforces
     it. `alpha_softness` does not appear because the engine's tree never
-    consults it (carried in `signals` for the record only).
+    consults it (carried in `signals` for the record only). `gate_on` is
+    `cfg.stage0_texture_gate`; False, or a cut-out file, is the grain gate
+    alone (the pre-2026-10-28 tree).
     """
-    is_photo = ucm >= th.ucm_photo_min
-    photo_conf = _gate_conf(ucm, th.ucm_photo_min, th.ucm_margin)
+    is_photo, photo_conf, route = _photo_gate(ucm, texture, two_tone, cutout, th, gate_on)
+    photo_gates = (("ucm_photo", ucm, th.ucm_photo_min, th.ucm_margin),
+                   ("texture_photo", texture, th.texture_photo_min, th.texture_margin),
+                   ("two_tone", two_tone, th.two_tone_max, th.two_tone_margin))
     if is_photo:
         is_subject = grad >= th.grad_subject_min
         g2 = _gate_conf(grad, th.grad_subject_min, th.grad_subject_margin)
         raw = "photo_subject" if is_subject else "photo_scene"
-        gates = (("ucm_photo", ucm, th.ucm_photo_min, th.ucm_margin),
+        gates = (*photo_gates,
                  ("grad_subject", grad, th.grad_subject_min, th.grad_subject_margin))
     else:
         is_gradient = grad >= th.grad_gradient_min
         g2 = _gate_conf(grad, th.grad_gradient_min, th.grad_gradient_margin)
         raw = "gradient" if is_gradient else "flat"
-        gates = (("ucm_photo", ucm, th.ucm_photo_min, th.ucm_margin),
+        gates = (*photo_gates,
                  ("grad_gradient", grad, th.grad_gradient_min, th.grad_gradient_margin))
     conf = min(photo_conf, g2)
     demoted = raw != "flat" and conf < th.confidence_floor
     return Decision(class_="flat" if demoted else raw, confidence=conf,
-                    demoted=demoted, raw_class=raw, gates=gates)
+                    demoted=demoted, raw_class=raw, gates=gates, route=route)
+
+
+def decide_from_signals(signals: dict, th: Thresholds, gate_on: bool = True) -> Decision:
+    """`decide` on an engine `signals` dict (the shape `classify` reports)."""
+    return decide(signals["unique_color_mass"], signals["gradient_smoothness"],
+                  signals["texture_frac"], signals["two_tone_mass"],
+                  bool(signals["cutout_alpha"]), th, gate_on)
 
 
 # --- Distance-to-flip -------------------------------------------------------
@@ -166,6 +211,18 @@ def _breakpoints_grad(th: Thresholds) -> list[float]:
     return out
 
 
+def _breakpoints_texture(th: Thresholds) -> list[float]:
+    t, m = th.texture_photo_min, th.texture_margin
+    band = _demotion_halfwidth(th, m)
+    return [t - band, t, t + band]
+
+
+def _breakpoints_two_tone(th: Thresholds) -> list[float]:
+    t, m = th.two_tone_max, th.two_tone_margin
+    band = _demotion_halfwidth(th, m)
+    return [t - band, t, t + band]
+
+
 def _demotion_halfwidth(th: Thresholds, margin: float) -> float:
     """|value - t| below which the gate's confidence sits under the floor:
     0.5 + 0.5*d/margin < floor  <=>  d < (floor - 0.5) * 2 * margin."""
@@ -174,24 +231,33 @@ def _demotion_halfwidth(th: Thresholds, margin: float) -> float:
 
 @dataclass(frozen=True)
 class Flip:
-    signal: str        # "unique_color_mass" | "gradient_smoothness"
+    signal: str        # unique_color_mass | gradient_smoothness | texture_frac | two_tone_mass
     at: float          # signal value just past which the final class changes
     delta: float       # at - current value (signed)
     to: str            # the class it becomes
 
 
-def nearest_flip(signal: str, ucm: float, grad: float, th: Thresholds,
-                 lo: float = 0.0, hi: float | None = None) -> Flip | None:
+def nearest_flip(signal: str, ucm: float, grad: float, texture: float, two_tone: float,
+                 cutout: bool, th: Thresholds, lo: float = 0.0,
+                 hi: float | None = None) -> Flip | None:
     """Nearest final-class change along one signal axis. None when no
     reachable value of that signal (within [lo, hi]) changes the verdict."""
-    cur = decide(ucm, grad, th).class_
+    cur = decide(ucm, grad, texture, two_tone, cutout, th).class_
     if signal == "unique_color_mass":
         breaks, value = _breakpoints_ucm(th), ucm
-        evalf = lambda v: decide(v, grad, th).class_       # noqa: E731
+        evalf = lambda v: decide(v, grad, texture, two_tone, cutout, th).class_      # noqa: E731
+        hi = 1.0 if hi is None else hi
+    elif signal == "texture_frac":
+        breaks, value = _breakpoints_texture(th), texture
+        evalf = lambda v: decide(ucm, grad, v, two_tone, cutout, th).class_         # noqa: E731
+        hi = 1.0 if hi is None else hi
+    elif signal == "two_tone_mass":
+        breaks, value = _breakpoints_two_tone(th), two_tone
+        evalf = lambda v: decide(ucm, grad, texture, v, cutout, th).class_          # noqa: E731
         hi = 1.0 if hi is None else hi
     else:
         breaks, value = _breakpoints_grad(th), grad
-        evalf = lambda v: decide(ucm, v, th).class_        # noqa: E731
+        evalf = lambda v: decide(ucm, v, texture, two_tone, cutout, th).class_      # noqa: E731
         hi = float("inf") if hi is None else hi
     eps = max(abs(value), max(abs(b) for b in breaks), 1.0) * _EPS_FRAC
 
@@ -223,6 +289,10 @@ class Row:
     demoted: bool
     warnings: list[str]
     flips: list[Flip]
+    texture: float = 0.0
+    two_tone: float = 0.0
+    cutout: bool = False
+    route: str = "legacy"
 
 
 IMG_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
@@ -242,8 +312,11 @@ def measure(path: Path, th: Thresholds) -> Row:
     ucm = res.signals["unique_color_mass"]
     grad = res.signals["gradient_smoothness"]
     alpha = res.signals["alpha_softness"]
+    texture = res.signals["texture_frac"]
+    two_tone = res.signals["two_tone_mass"]
+    cutout = bool(res.signals["cutout_alpha"])
 
-    d = decide(ucm, grad, th)
+    d = decide(ucm, grad, texture, two_tone, cutout, th)
     if th == Thresholds.nominal() and (
             d.class_ != res.class_ or abs(d.confidence - res.confidence) > 1e-12):
         raise AssertionError(
@@ -258,9 +331,11 @@ def measure(path: Path, th: Thresholds) -> Row:
         name=name, ucm=ucm, grad=grad, alpha=alpha,
         class_=d.class_, confidence=d.confidence, demoted=d.demoted,
         warnings=[w["code"] for w in res.warnings],
-        flips=[f for f in (nearest_flip("unique_color_mass", ucm, grad, th),
-                           nearest_flip("gradient_smoothness", ucm, grad, th))
+        flips=[f for f in (nearest_flip(sig, ucm, grad, texture, two_tone, cutout, th)
+                           for sig in ("unique_color_mass", "gradient_smoothness",
+                                       "texture_frac", "two_tone_mass"))
                if f is not None],
+        texture=texture, two_tone=two_tone, cutout=cutout, route=d.route,
     )
 
 
@@ -283,20 +358,27 @@ def print_table(rows: list[Row], th: Thresholds) -> None:
           f"(margin {th.grad_subject_margin})   photo: grad >= min -> photo_subject")
     print(f"#   CONFIDENCE_FLOOR {th.confidence_floor}   "
           f"non-flat below this -> flat + CLASSIFICATION_UNCERTAIN")
+    print(f"#   TEXTURE_PHOTO_MIN {th.texture_photo_min}  (margin {th.texture_margin})   "
+          f"opaque file: texture >= min -> photo territory too")
+    print(f"#   TWO_TONE_MAX {th.two_tone_max}  (margin {th.two_tone_margin})   "
+          f"two_tone >= max -> never photo territory (two inks)")
     print("# alpha_softness is carried for the record; the tree never consults it.")
+    print("# cut = alpha cut-out; such a file takes the grain gate alone (route legacy).")
     print("# flip columns: nearest value of THAT signal (other held fixed) where")
     print("# the FINAL class changes, demotion band included; d = flip - current.\n")
 
-    hdr = (f"{'fixture':<36} {'ucm':>8} {'grad_var':>10} {'alpha':>6}  "
-           f"{'class':<14} {'conf':>5} {'flr':>3}  "
-           f"{'ucm flips to':<30} {'grad_var flips to':<34} warnings")
+    hdr = (f"{'fixture':<36} {'ucm':>8} {'grad_var':>10} {'alpha':>6} {'tex':>6} {'2tone':>6} {'cut':>3} "
+           f"{'route':<14} {'class':<14} {'conf':>5} {'flr':>3}  "
+           f"{'ucm flips to':<30} {'grad_var flips to':<34} {'tex flips to':<30} warnings")
     print(hdr)
     print("-" * len(hdr))
     for r in rows:
-        print(f"{r.name:<36} {r.ucm:8.4f} {r.grad:10.4f} {r.alpha:6.3f}  "
+        print(f"{r.name:<36} {r.ucm:8.4f} {r.grad:10.4f} {r.alpha:6.3f} {r.texture:6.3f} {r.two_tone:6.3f} "
+              f"{'cut' if r.cutout else '  .':>3} {r.route:<14} "
               f"{r.class_:<14} {r.confidence:5.2f} {'DEM' if r.demoted else '  .':>3}  "
               f"{_fmt_flip(r, 'unique_color_mass'):<30} "
               f"{_fmt_flip(r, 'gradient_smoothness'):<34} "
+              f"{_fmt_flip(r, 'texture_frac'):<30} "
               f"{','.join(r.warnings) or '-'}")
 
 
@@ -316,7 +398,7 @@ def sweep(rows: list[Row], th: Thresholds, lo: float, hi: float,
         for m in mults:
             t2 = replace(th, **{field: base * m})
             for r in rows:
-                c = decide(r.ucm, r.grad, t2).class_
+                c = decide(r.ucm, r.grad, r.texture, r.two_tone, r.cutout, t2).class_
                 if c != r.class_:
                     flips.setdefault(r.name, []).append((m, c))
         print(f"\n{field} (nominal {base:g}):")
