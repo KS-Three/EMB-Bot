@@ -27,8 +27,12 @@ region (`_owned_by_later` over all regions). Instagram 32,023 -> 28,972 st, band
 **All 16 border_census pairs are byte-identical ON**: `border_by_size` rings only 3 paired
 shapes (Gaulke x2, Tires) and none has a seam, so kappa stays 0.730. Shape-level kappa is
 blind to it anyway.
-**How to apply:** the flip is Kent's (preview). Still open: short outer stretches owned by
-bands under 6 mm stay bare, the satin cap has a stray stretch, and ring colour is undecided.
+**FLIPPED ON the same day** (Kent: "Flip ON (Recommended)") after a 21-logo corpus check.
+9 logos change, all with fewer stitches. That includes both logos he graded Great: Tux and
+the flat bull lose their inner same-colour rings inside the art's own outline. Trims rise
++1 to +9 on 5 of them. `PRE_FLIP` pins it False.
+**How to apply:** still open: short outer stretches owned by bands under 6 mm stay bare,
+the satin cap has a stray stretch, and ring colour is undecided.
 Related:
 [[border-by-size-2026-10-23]], [[border-from-outline-2026-10-24]],
 [[bean-census-2026-10-27]], [[instagram-gradient-lane-edges-2026-09-30]].

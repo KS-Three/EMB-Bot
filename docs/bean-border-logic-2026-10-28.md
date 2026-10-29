@@ -75,7 +75,10 @@ Findings:
   defect: one stray white/orange cap stretch runs across the yellow band at the bottom.
   That would need a fix before shipping.
 
-## Built: `border_by_size_fabric_edges` (OFF)
+## Built: `border_by_size_fabric_edges` (OFF; flipped ON by Kent the same day)
+
+**Flipped ON 2026-10-28**, after the corpus check below. Kent picked "Flip ON
+(Recommended)". `tests/conftest.py` `PRE_FLIP` and `engine_2026_10_27.json` pin the OFF arm.
 
 Kent picked "build OFF + measure" on 2026-10-28. **A `border_by_size` ring now skips every
 stretch of its edge that it shares with another sewn region**, earlier or later in the
@@ -106,9 +109,38 @@ lettering lanes hold the rest, and none of those 3 shares a seam long enough to 
 the flag cannot move the pro match. It acts where big fills of different colours butt each
 other with no art outline between them. Instagram is one such design. No paired design is.
 
-**What this does not show.** It says nothing about the population ON changes: gradient and
-tonal logos with no pro file. That population is the logo-census and photo-corpus renders,
-which nobody has read with this flag ON yet. The remaining gaps on Instagram ON:
+**The logo corpus (Kent: "Hold, check more logos").** I ran the 21 logo rows of
+`testdata/photo/corpus/corpus.json`, plus Instagram and `repro_gradient_white_icon`. Each was
+digitized once at 80 mm on left chest with the Studio's request, and stage 7 was planned
+twice, OFF and ON. Results:
+
+- **Unchanged (10): byte-identical.** Arabic calligraphy, barcode, devanagari, distressed
+  grunge, duotone poster, kanji brush, kanji seal, low poly, neon outline sign, vintage
+  engraved badge. The repro icon is also identical.
+- **Timed out (2):** `comic_halftone` and `outline_lineart_logo`, past 25 minutes.
+- **Changed (9):** every one sews fewer stitches. Kent's 10-28 grade is of the OFF render
+  (`grades-5ff48c5`):
+
+| logo | Kent's grade (OFF) | stitches OFF → ON | trims | border points |
+|---|---|---|---|---|
+| gradient_mascot (Tux) | Great | 24,197 → 22,175 | 9 → 9 | 2,034 → 0 |
+| flat_emoji_icon | Great | 18,500 → 17,627 | 8 → 11 | 2,147 → 1,225 |
+| heraldic_crest | Good | 37,070 → 36,729 | 128 → 130 | 1,333 → 926 |
+| pixel_art_sprite | Good | 11,198 → 10,971 | 17 → 16 | 2,711 → 2,484 |
+| silhouette_logo | Good | 22,532 → 21,561 | 23 → 22 | 972 → 0 |
+| isometric_icon | Okay | 11,700 → 11,053 | 20 → 21 | 815 → 160 |
+| qr_code | Bad | 31,831 → 26,901 | 76 → 85 | 7,030 → 3,688 |
+| chalkboard_lettering | Terrible | 3,274 → 2,902 | 15 → 18 | 744 → 371 |
+| halftone_dots | Terrible | 6,698 → 6,059 | 28 → 30 | 1,170 → 529 |
+
+**The catch.** ON changes the two logos Kent graded Great, and Tux loses every ring. Read
+closely (zoom), Tux's OFF rings are a yellow satin ring inside each foot and a white one
+inside the belly. Both sit inside the black outline the art already draws: a second ring in
+the body's own colour, which rule 4 says the pro never sews. ON leaves the feet and belly as
+plain fills inside that black outline. Whether that reads better is Kent's preview call.
+Trims rise on 5 of the 9 (by +1 to +9): the cut-up arcs that stay sew as separate pieces.
+
+The remaining gaps on Instagram ON:
 
 - **Short outer stretches stay bare.** Where a band under 6 mm smallest dimension owns the
   outer edge (left pink, bottom-right coral), nothing rings it. `border_by_size` does not read

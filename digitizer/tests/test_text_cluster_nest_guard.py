@@ -31,7 +31,7 @@ from digitizer_core import PipelineConfig, digitize
 from digitizer_core import textcluster as tc
 from digitizer_core.regions import Region
 
-from .conftest import FLAT_GOLDEN_MD5, TESTDATA, frozen_cfg
+from .conftest import FLAT_GOLDEN_MD5, TESTDATA
 
 
 def _region(sid: str, poly, rescued: bool = False) -> Region:
@@ -198,13 +198,16 @@ def _md5(coords) -> str:
 @pytest.mark.parametrize("fixture", sorted(GOLDEN_MD5))
 @pytest.mark.parametrize("on", [False, True])
 def test_goldens_are_byte_identical_off_and_on(fixture, on):
-    """OFF is the engine as it was, on the frozen 2026-10-27 engine. ON too: the three flat
-    goldens carry no frame candidate over six times their letters."""
+    """OFF is the engine as it was. ON too: the three flat goldens carry no frame
+    candidate over six times their letters. The golden rides the live defaults
+    (`test_pins_are_frozen`'s rule 1 exception), so this does too: a flip that
+    re-captures the golden (`border_by_size_fabric_edges`, 2026-10-28) moves it
+    in one place."""
     golden = json.loads((TESTDATA / "flat_lane_golden.json").read_text(encoding="utf-8"))[fixture]
     assert _md5(golden["stitch_coords"]) == GOLDEN_MD5[fixture]
     _result, plan = digitize(TESTDATA / fixture,
-                             frozen_cfg(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False,
-                                        text_cluster_nest_guard=on))
+                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False,
+                                            text_cluster_nest_guard=on))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     assert _md5(coords) == GOLDEN_MD5[fixture]

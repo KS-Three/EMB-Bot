@@ -2061,7 +2061,12 @@ class PipelineConfig:
     # `border_from_outline` already holds it and this does not read it.
     # Layout (ruling 2026-10-22: judged in the preview). Off, byte-identical
     # (tests/test_border_fabric_edges.py).
-    border_by_size_fabric_edges: bool = False
+    # **ON since 2026-10-28, Kent's flip** ("Flip ON (Recommended)") after the
+    # 21-logo corpus check: 9 logos change, all with fewer stitches (-1% to
+    # -16%); Tux and the flat bull lose their inner same-colour rings inside
+    # the art's own outline; trims +1 to +9 on five. False is the engine as
+    # it was; `tests/conftest.py` PRE_FLIP pins it False.
+    border_by_size_fabric_edges: bool = True
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run
