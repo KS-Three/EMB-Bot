@@ -507,6 +507,11 @@ function isDirectoryOnDisk(abs) {
   try { return fs.statSync(fsPath(abs)).isDirectory(); } catch { return false; }
 }
 
+function isFileOnDisk(abs) {
+  // lstat: a symlink or junction named like a file is not trusted as one.
+  try { return fs.lstatSync(fsPath(abs)).isFile(); } catch { return false; }
+}
+
 // ------------------------------------------------------------ judgement ----
 
 // role: 'remove' | 'move-src' | 'move-dest' | 'clean' | 'lane'
@@ -525,6 +530,11 @@ function classify(abs, role, state, verb, rawTarget, contents) {
     return { deny: false };
   }
   if (loc.depth === 0) return { deny: true, rule: 'worktrees-dir', why: `${verb} ${show}: that is the .claude/worktrees/ directory itself` };
+  if (loc.depth === 1 && !bare && !glob && (role === 'remove' || role === 'move-src') && isFileOnDisk(dir)) {
+    // A plain FILE sitting directly in .claude/worktrees/ (a stray log): a
+    // lane is always a directory, so this cannot be one.
+    return { deny: false };
+  }
   if (loc.depth === 1 && !(contents && !bare)) {
     if (role === 'move-dest') return { deny: true, rule: 'lane-root', why: `${verb} … ${show}: the destination is a lane root` };
     return { deny: true, rule: 'lane-root', why: `${verb} ${show}: that is a lane root (${bare ? 'its whole contents' : 'the lane itself'})` };

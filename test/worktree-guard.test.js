@@ -201,7 +201,8 @@ before(() => {
   fs.mkdirSync(laneB, { recursive: true });
   fs.mkdirSync(path.join(tmp, "elsewhere"), { recursive: true });
   fs.writeFileSync(path.join(laneA, "sub", "file.txt"), "x");
-  link = path.join(tmp, "link-laneA");
+  fs.writeFileSync(path.join(repo, ".claude", "worktrees", "stray.log"), "x");
+  link =path.join(tmp, "link-laneA");
   try { fs.symlinkSync(laneA, link, "dir"); } catch { link = null; }
 });
 after(() => {
@@ -240,6 +241,18 @@ test("policy allow (default): the same deletes pass; the sibling lane still does
   assert.strictEqual(run(payload("Bash", laneA, `rm -rf sub/dir`)).deny, false);
   assert.ok(run(payload("Bash", laneA, `rm -rf ../laneB`)).deny);
   assert.ok(run(payload("Bash", laneA, `rm -rf "${laneB}/x"`)).deny);
+});
+test("a plain file directly in .claude/worktrees/ is not a lane: rm and mv pass", () => {
+  // 2026-10-29: a stray `cut.log` there read as "a lane root", so no session
+  // could clean it up. A lane is always a directory.
+  const stray = path.join(repo, ".claude", "worktrees", "stray.log");
+  assert.strictEqual(run(payload("Bash", repo, `rm "${stray}"`)).deny, false);
+  assert.strictEqual(run(payload("Bash", repo, `mv .claude/worktrees/stray.log "${tmp}/x.log"`)).deny, false);
+  // ...while a lane directory, a missing name and a glob over the folder stay denied
+  assert.ok(run(payload("Bash", repo, `rm -rf .claude/worktrees/laneA`)).deny);
+  assert.ok(run(payload("Bash", repo, `rm .claude/worktrees/not-there.log`)).deny);
+  assert.ok(run(payload("Bash", repo, `rm .claude/worktrees/*.log`)).deny);
+  assert.ok(run(payload("Bash", repo, `mv "${tmp}/x.log" .claude/worktrees/laneA`)).deny);
 });
 test("a cwd that reaches the lane through a symlink is still that lane", (t) => {
   if (!link) return t.skip("this filesystem refused the symlink");
