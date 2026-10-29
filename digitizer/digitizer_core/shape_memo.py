@@ -55,6 +55,7 @@ MAX_BYTES = 256 * 2**20
 #: hit there is what its miss would have built.
 _AMBIENT: tuple[tuple[str, str], ...] = (
     ("fill_section_travel", "_ON"),
+    ("stage6_fill", "_CUT_EXPOSED"),
     ("outline_cut", "_APEX_CUT"),
     ("outline_cut", "_RAIL_AXIS"),
     ("outline_cut", "_SMALL_BOLD"),
