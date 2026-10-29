@@ -2020,6 +2020,23 @@ class PipelineConfig:
     # habit judged in the preview (Kent 2026-10-22), not a cloth constant.
     # ON by default (Kent 2026-10-23, by the pro-count numbers); Off, byte-identical (tests/test_border_by_size.py).
     border_by_size: bool = True
+    # `border_by_size` rings fabric edges only (2026-10-28, built OFF;
+    # `docs/bean-border-logic-2026-10-28.md`). The rule above reads each
+    # region alone, so on a multi-colour object every band of 6 mm and up gets
+    # a satin ring round its WHOLE perimeter, seams with its neighbours
+    # included. Kent's Instagram icon at 80 mm: a ring round each gradient
+    # band and none round the logo; +4,535 stitches (+16.5%) over no rings.
+    # The web sources treat butting fills with overlap and pull comp, not an
+    # outline, and outline no gradient step (Hatch, Wilcom, Ink/Stitch,
+    # Bruce: `docs/bean-outline-practice-research-2026-10-28.md`). ON, a
+    # `border_by_size` ring also skips every stretch of its edge that it
+    # shares with another sewn region, by the same seam band and threshold
+    # seam ownership uses (`_owned_by_later`), so it sews only where the
+    # shape meets bare fabric. Where the ART outlines a body against colour,
+    # `border_from_outline` already holds it and this does not read it.
+    # Layout (ruling 2026-10-22: judged in the preview). Off, byte-identical
+    # (tests/test_border_fabric_edges.py).
+    border_by_size_fabric_edges: bool = False
     # Spoked detail marks (2026-10-15, built OFF; `digitizer_core/detail_spokes.py`).
     # A small detail of another colour that ONE shape encloses (nine tenths
     # of its ring), at or over `machine.RUN_MIN_AREA_MM2` but under the run
