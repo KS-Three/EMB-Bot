@@ -3091,6 +3091,9 @@ def sequence(
                            border_share_min, border_iso_max)[0]
                 or _border_by_size_width(_p.region, cfg) is not None):
             border_later[_p.shape_id] = _p.visible_geom
+    # Every region's edge, for `cfg.border_by_size_fabric_edges`'s seam test
+    sewn_geoms = ({_p.shape_id: _p.visible_geom for _p in planned}
+                  if cfg.border_by_size_fabric_edges else {})
     for _group_key in sorted({nn_group_key(p) for p in planned}):
         group = [p for p in planned if nn_group_key(p) == _group_key]
 
@@ -4144,6 +4147,17 @@ def sequence(
                                               eps_mm=2.0 * cfg.simplify_tol_mm)
                 border_seams.extend((p.shape_id, other_id, length)
                                     for other_id, length in pairs)
+                if cfg.border_by_size_fabric_edges and report.get("border_by_size"):
+                    # `cfg.border_by_size_fabric_edges`: the size ring skips
+                    # every seam with ANY other sewn region, earlier or later,
+                    # by the same band and threshold, so only the stretches
+                    # facing bare fabric keep it
+                    c_omit, _ = _owned_by_later(
+                        p.visible_geom,
+                        {k: g for k, g in sewn_geoms.items() if k != p.shape_id},
+                        2.0 * border_width, eps_mm=2.0 * cfg.simplify_tol_mm)
+                    if c_omit is not None:
+                        omit = c_omit if omit is None else unary_union([omit, c_omit])
                 b_runs, b_report = border_runs(
                     p.visible_geom,
                     p.shape_id,

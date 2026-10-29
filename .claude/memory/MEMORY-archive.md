@@ -121,3 +121,4 @@ live index; new archive lines go at the bottom.
 - [Build what was priced](build-what-was-priced.md) — SNAPSHOT: after Kent picks a priced option, build exactly that
 - [Parallel agent with the embot](parallel-agent-with-embot.md) — SNAPSHOT: audit before a PR is OPEN, not just before arming; never `git stash` in a lane; a stacked PR targets main and says so
 - [Memory outside the repo](memory-outside-the-repo.md) — sessions rooted in `.claude-work` write memory to a folder this repo never sees; seven notes snapshotted here by 10-04
+- [Lettering architecture R&D](lettering-architecture-2026-10-07.md) — five failures by letter size; pros put rails on the OUTLINE; Column lane OFF

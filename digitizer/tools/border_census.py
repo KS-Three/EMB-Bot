@@ -173,8 +173,9 @@ def find_pair(slug: str, pro_rel: str, art_rel: str):
 
 
 # ------------------------------------------------------------- digitizing
-def digitize_one(slug: str, cache: Path) -> dict:
-    """Digitize `slug` at the pro's width and cache ours.dst + ours.json."""
+def digitize_one(slug: str, cache: Path, extra: dict | None = None) -> dict:
+    """Digitize `slug` at the pro's width (the Studio's request, `extra` laid
+    over it) and cache ours.dst + ours.json."""
     from tools import pro_pair as pp
 
     row = next(r for r in PAIRS if r[0] == slug)
@@ -182,7 +183,7 @@ def digitize_one(slug: str, cache: Path) -> dict:
     if pro is None or art is None:
         raise SystemExit(f"{slug}: missing {'pro' if pro is None else 'art'} file")
     width = pp.pro_counts(pro)["width_mm"]
-    d = pp.digitize(art, width, row[3])
+    d = pp.digitize(art, width, row[3], extra or None)
     return write_ours(cache / slug, slug, row[3], width, pro, art, d.result, d.plan, d.secs)
 
 
@@ -769,7 +770,10 @@ def run_cmd(args) -> int:
 
     def go(s):
         print("digitizing", s, flush=True)
-        return subprocess.run([sys.executable, str(Path(__file__)), "one", s, "--cache", str(cache)]).returncode
+        cmd = [sys.executable, str(Path(__file__)), "one", s, "--cache", str(cache)]
+        if args.extra:
+            cmd += ["--extra", args.extra]
+        return subprocess.run(cmd).returncode
 
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as ex:
         codes = list(ex.map(go, todo))
@@ -811,7 +815,47 @@ def table_cmd(args) -> int:
 
 
 def one_cmd(args) -> int:
-    digitize_one(args.slug, Path(args.cache))
+    digitize_one(args.slug, Path(args.cache), json.loads(args.extra) if args.extra else None)
+    return 0
+
+
+def _kappa(pairs) -> tuple[float, float, int]:
+    """(raw agreement, Cohen's kappa, n) of [(pro_rings, ours_rings), ...]."""
+    n = len(pairs)
+    if not n:
+        return float("nan"), float("nan"), 0
+    agree = sum(p == o for p, o in pairs) / n
+    pp_ = sum(p for p, _ in pairs) / n
+    po = sum(o for _, o in pairs) / n
+    pe = pp_ * po + (1 - pp_) * (1 - po)
+    return agree, (agree - pe) / (1 - pe) if pe < 1 else float("nan"), n
+
+
+def kappa_cmd(args) -> int:
+    """Chance-corrected agreement, pro ring vs ours, per arm: every sewn shape
+    of every cached pair (`census.json`, written by `table`), pooled and by
+    smallest-dimension band. Rows the census's `row_class` folds (a ring-shaped
+    region sewn as one satin ring on either side) count as agreeing."""
+    bands = (("< 4 mm", 0.0, 4.0), ("4-6 mm", 4.0, 6.0), (">= 6 mm", 6.0, 1e9))
+    lines = ["| arm | n | ours ring | pro ring | raw | kappa | " + " | ".join(f"kappa {b[0]}" for b in bands) + " |",
+             "|---|---|---|---|---|---|" + "---|" * len(bands)]
+    for arm in args.arms:
+        rows = []
+        for slug, *_ in PAIRS:
+            f = Path(arm) / slug / "census.json"
+            if f.exists():
+                rows += json.loads(f.read_text(encoding="utf-8"))["rows"]
+        rows = [r for r in rows if r["ours"]["cls"] != "UNSEWN"]
+
+        def pair(r):
+            p, o = r["pro"]["cls"] in RING, r["ours"]["cls"] in RING
+            return (p, p) if row_class(r) is None and p != o else (p, o)
+        raw, k, n = _kappa([pair(r) for r in rows])
+        per = [_kappa([pair(r) for r in rows if lo <= r["mindim"] < hi]) for _b, lo, hi in bands]
+        lines.append(f"| {Path(arm).name} | {n} | {sum(r['ours']['cls'] in RING for r in rows)} | "
+                     f"{sum(r['pro']['cls'] in RING for r in rows)} | {raw:.3f} | {k:.3f} | "
+                     + " | ".join(f"{kk:.3f} (n {nn})" for _r, kk, nn in per) + " |")
+    print("\n".join(lines))
     return 0
 
 
@@ -828,9 +872,13 @@ def main(argv=None) -> int:
         p.add_argument("--crop-ids", nargs="*", help="slug:shape_id pairs to crop (replaces --crops' picks)")
         p.add_argument("--crops", action="store_true", help="write the per-class crops (art | ours | pro) into pro_renders/, never docs/")
         p.add_argument("--table-out", default=str(Path(os.environ.get("TEMP", ".")) / "border_census_table.md"))
+        p.add_argument("--extra", help="JSON laid over the Studio request, e.g. a flag for an ON arm")
         if name == "one":
             p.add_argument("slug")
         p.set_defaults(fn=fn)
+    k = sub.add_parser("kappa", help="pro ring vs ours, chance-corrected, per cache (arm)")
+    k.add_argument("arms", nargs="+", help="cache dirs, each holding <slug>/census.json")
+    k.set_defaults(fn=kappa_cmd)
     args = ap.parse_args(argv)
     return args.fn(args)
 
