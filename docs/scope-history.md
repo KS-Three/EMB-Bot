@@ -13,6 +13,20 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-29 (twenty-first pass) — scope refresh after PRs #1162–#1187: five flips ON, two switches built OFF
+
+State at writing: main `7bd7ed0b` (#1187 merged 2026-10-29 20:55 UTC). Snapshots of each PR body, not live status:
+
+- **Flips ON:** `bean_only_lines` (#1165, merged 10-28 04:00; Kent 10-27), `keep_dark_thin_strokes` (#1172, 10-28 14:30; Kent on #1170), `stage0_texture_gate` (#1178, 10-29 02:30, built ON), `photo_cutout_min_kept` 0.20 + `ARTWORK_NOT_SEWN` block (#1179, 10-29 04:50, built ON), `border_by_size_fabric_edges` (#1180, 10-29 07:22; Kent 10-28), `dark_ink_bean` (#1184, 10-29 19:14; Kent after #1181).
+- **Built OFF:** `dark_ink_refuse_strays` (#1173), `fill_bridge_cut_exposed` (#1187: Instagram 80 mm exposed travel 53.0 → 0.4 mm, trims 23 → 31).
+- **No flag:** satin edge-cap lift (#1185: Instagram trims 27 → 25, 45 mm of stray bridge gone), `shape_memo` (#1169: owl_kent forced flat 136.7 → 112.9 s wall, gradient 123.4 → 97.0 s, plan md5 identical), "Apply to all similar shapes" (#1176: full app suite 106 files / 1,988 tests passed).
+- **#1184's local digitizer run, flag ON:** 6,820 passed, 4 failed — the two named Windows goldens, the bean-letters pin it then fixed, and one calibration-service 504 on a loaded box.
+- **#1186 verdict tally:** #1178's page photo 4 / 6 / 8, logo 1 / 15 / 5, 0 unjudged; #1182's six scenes 6 / 0 / 0 better, 33 unjudged.
+- **Docs and CI only:** #1162 (flip sheet), #1163 and #1175 (CI timing: `studio-e2e` p50 15.2 min), #1164 (shard durations), #1166 (placement table), #1167 (memory), #1168 (the nineteenth pass), #1171 (photo corpus tool), #1174 and #1186 (scoreboards), #1177 (border research), #1182 (cut-out reading).
+- **MASTER_SCOPE at this pass:** 27,000 words before → **26,924** after (`awk '{n+=NF}'`, rule 4); defect 61 and items 62, 64, 66 moved verbatim to area 1's twenty-first-pass section; items 67 rewritten, 68 new.
+
+---
+
 **Last updated:** 2026-10-20 (seventeenth pass) — scope refresh after PRs #997–#1009, the night Kent flipped seven digitizer flags and the browser engine's `ties`, `fillStagger` and `dedupeHoles` ON
 
 State at writing (read with the GitHub API): main `92d4c5e` (#1011 merged). Merge order, all 2026-10-20 UTC: #997 03:39, #998 04:40, #1000 04:41, #1002 05:01, #1003 05:08, #1008 05:28, #999 05:35, #1006 05:37, #1009 06:00, #1001 06:13, #1005 06:54. Snapshots of each PR body, not live status:
