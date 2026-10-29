@@ -112,6 +112,7 @@ def test_ambiguous_soft_shadow_fixture_never_crashes():
     PHOTO_DIR / "photo_subject_stub.png",
     PHOTO_DIR / "photo_scene_stub.png",
     PHOTO_DIR / "gradient_ramp_linear.png",
+    PHOTO_DIR / "owl_kent.jpg",      # the texture route's real photograph (2026-10-28)
 ])
 def test_same_input_classified_twice_is_identical(path):
     """No RNG in the signal computation (the throwaway quantize is seeded),

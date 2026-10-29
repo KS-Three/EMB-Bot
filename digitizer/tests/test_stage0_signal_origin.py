@@ -121,16 +121,27 @@ def test_one_grey_level_of_invisible_noise_crosses_the_photo_gate():
     `preflight.DELTA_E_VISIBLE` is 5.0.
     """
     img = _noisy_ground(_wordmark(), np.random.default_rng(0))
-    r = s0.classify(img[:, :, ::-1], PipelineConfig())
+    r = s0.classify(img[:, :, ::-1], PipelineConfig(stage0_texture_gate=False))
     assert r.signals["unique_color_mass"] >= s0.UCM_PHOTO_MIN
     assert r.class_ in ("photo_scene", "photo_subject")
+    # 2026-10-28: the SIGNAL still crosses (the defect above is in the
+    # statistic and is not repaired), but the shipped tree's two-ink veto
+    # (`two_tone_mass`, `decide_photo`) holds a two-colour wordmark out of
+    # photo territory whatever its grain says.
+    on = s0.classify(img[:, :, ::-1], PipelineConfig())
+    assert on.signals["unique_color_mass"] >= s0.UCM_PHOTO_MIN
+    assert on.signals["photo_route"] == "veto"
+    assert on.class_ not in ("photo_scene", "photo_subject")
 
 
 @pytest.mark.xfail(strict=True, reason=(
     "known defect: logo_script_tires.png is flat two-colour art (Kent's own "
-    "ground-truth label, 2026-08-15 spec §3) and stage 0 routes it to the "
-    "photo lane on the background's invisible grain. Cause and evidence: "
-    "docs/stage0-tires-photo-scene-2026-09-11.md"))
+    "ground-truth label, 2026-08-15 spec §3). The photo-lane half was cured "
+    "2026-10-28 (the two-ink veto, `stage0_texture_gate`; the OFF arm still "
+    "routes it photo on the background's invisible grain, "
+    "docs/stage0-tires-photo-scene-2026-09-11.md). What remains is the "
+    "flat/gradient gate: it reads `gradient`, not `flat` (PR 6a's scale "
+    "defect), so `flat` at every seed is still the property this test waits on"))
 def test_a_flat_script_wordmark_classifies_flat_at_every_seed():
     """The property the fix has to deliver, on real artwork.
 

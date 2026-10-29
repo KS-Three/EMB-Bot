@@ -212,13 +212,18 @@ def test_the_pipelines_own_output_no_longer_needs_the_merge():
     # (#1170): the dark-ink read carves 16 strokes out of the owl's grounds and
     # they come back as their own blocks, which the merge folds (`..., 248,
     # 248, ...` with it off). Same reason as `keep_thin_strokes` above.
+    # `stage0_texture_gate=False` pinned 2026-10-28, when it was built ON: the
+    # owl now classes `photo_scene` on the texture route, and the re-snap
+    # claim above was measured on its gradient-lane plan. Same reason as
+    # `keep_thin_strokes` above.
     _r, off = digitize(img, PipelineConfig(target_width_mm=100.0,
                                            is_photographic=True,
                                            keep_thin_strokes=False,
                                            keep_dark_thin_strokes=False,
                                            merge_adjacent_same_thread=False,
                                            blend_fallback_underlay=False,
-                                           photo_prep=False))
+                                           photo_prep=False,
+                                           stage0_texture_gate=False))
     seq = [b.thread_index for b in off.blocks]
     assert all(x != y for x, y in zip(seq, seq[1:])), (
         f"adjacent same-thread blocks are back: {seq}"

@@ -145,7 +145,12 @@ def test_on_refuses_the_owls_edge_strays_and_keeps_the_patchs_letters():
     `keep_dark_thin_strokes` riding its ON default. Counts are the engine's on
     2026-10-28 (sheet `docs/renders/dark-read-refusal-2026-10-28/`); re-pin from
     CI with `tools.ci_repin` when the engine under them moves."""
-    on = run_stages(str(OWL), _studio_cfg(dark_ink_refuse_strays=True))
+    # `stage0_texture_gate=False` pinned 2026-10-28, when that gate was built
+    # ON (#1178): the owl now classes `photo_scene` on the texture route, and
+    # every count below was measured on its GRADIENT-lane plan, where the
+    # dark-ink read runs (PRE_FLIP's posture; the gate's own tests name the
+    # flag themselves).
+    on = run_stages(str(OWL), _studio_cfg(dark_ink_refuse_strays=True, stage0_texture_gate=False))
     assert on.design_class == "gradient"
     owl = _dark(on.regions)
     # ON (flipped, no refusal) carved 16: 10 within 1 px of the frame (the 8
