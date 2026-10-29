@@ -598,10 +598,13 @@ PRE_FLIP["keep_dark_thin_strokes"] = False
 # makes it, moves no pin that spreads this dict; `tests/engine_2026_10_27.json`
 # carries it False too.
 PRE_FLIP["dark_ink_refuse_strays"] = False
-# `dark_ink_bean` (built OFF 2026-10-28, Kent on the Pooh pot: "No holes +
-# bean (Recommended)"; not flipped): a dark read sews as a bean along its
-# skeleton, after its ground, which sews through under it. Pinned now for the
-# same reason; `tests/engine_2026_10_27.json` carries it False too.
+# `dark_ink_bean` joined the flipped set 2026-10-29 (built OFF 2026-10-28,
+# Kent on the Pooh pot: "No holes + bean (Recommended)"; flipped "Flip ON
+# (Recommended)" after #1181). Gradient class only, through the dark reads: a
+# pen line sews as a bean along its skeleton and its ground sews through
+# under it (owl trims 147 -> 113), so an arm measured before that day on a
+# gradient fixture with dark reads was measured with the hole-and-satin
+# construction. `tests/engine_2026_10_27.json` carries it False too.
 PRE_FLIP["dark_ink_bean"] = False
 # `border_by_size_fabric_edges` joined the flipped set 2026-10-28 (Kent's
 # "Flip ON (Recommended)" after the 21-logo corpus check). ON, a

@@ -1071,9 +1071,12 @@ class PipelineConfig:
     # ground through under it; the ground is no lettering. The reference
     # digitizer beans drawn lines (`bean_only_lines`); on the pot, the
     # ground's edge stitches round each letter hole were the starbursts.
-    # Layout, judged in the preview. OFF is the engine as it was, byte for
-    # byte.
-    dark_ink_bean: bool = False
+    # Layout, judged in the preview. **ON since 2026-10-29, Kent's flip
+    # after #1181 ("Flip ON (Recommended)")**. False is the engine before
+    # the flip, byte for byte; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_dark_ink_bean.py`; sheet: `docs/renders/dark-ink-bean-2026-10-28/`.
+    dark_ink_bean: bool = True
     # A letter's counter on a COLOURED ground stays a hole
     # (`stage3_segment.resolve_small_regions`). Measured 2026-10-02 on clean
     # 4 mm "BAR & RESTAURANT": on white the counters are background, never

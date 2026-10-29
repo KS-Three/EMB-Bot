@@ -55,8 +55,9 @@ STROKE = Polygon([(4, 4), (4.6, 4), (4.6, 12), (10, 12), (10, 12.6), (4, 12.6)])
 GROUND = Polygon([(0, 0), (20, 0), (20, 20), (0, 20)], [list(STROKE.exterior.coords)])
 
 
-def test_flag_is_off_by_default():
-    assert PipelineConfig().dark_ink_bean is False
+def test_flag_is_on_by_default_since_the_flip():
+    # Kent 2026-10-29, after #1181: "Flip ON (Recommended)".
+    assert PipelineConfig().dark_ink_bean is True
 
 
 def test_the_gate_sits_between_the_pen_lines_and_the_wordmark():
