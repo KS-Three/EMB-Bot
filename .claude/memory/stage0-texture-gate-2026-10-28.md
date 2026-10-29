@@ -33,6 +33,15 @@ on hand. ROADMAP gate 2's "real tonal artwork" is the corpus itself.
   vintage_sepia, comic_halftone): stage 1.25's ruling, untouched.
 - Known limits: a barcode at ~250 px reads 0.175; a steep smooth ramp counts
   as texture (synthetic `region_blobs` 0.197) — no real opaque logo here does.
+- Captured both trees (base a71fd5c, HEAD b6ec26a): the photo lane sews 20
+  rows on HEAD and its subject cut-out removes 95-100% of a SCENE
+  (landscape_lake 1.000 -> 14 stitches, snow_highkey 1.000 -> 0,
+  underwater_reef 0.998 -> 37, night_neon 0.987, night_skyline 0.980,
+  stained_glass 0.958) — the photo lane's generalisation gap
+  ([[photo-lane-generalise-2026-10-27]]), not routing; cc HEAD higher 6 /
+  lower 9 / equal 20 of 35. `outline_lineart_logo` and `comic_halftone`
+  time out at 1200-1300 s on BOTH trees when re-run idle (base once
+  finished in 342 / 479 s): stage-5 instability older than this branch.
 - A rembg venv reached through a directory junction hangs on `import rembg`
   (>540 s; 8 s by its real path), so every photo-lane row reads
   `rembg worker timed out after 120s` and runs the classical route. COPY the
