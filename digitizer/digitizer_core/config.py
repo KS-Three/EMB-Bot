@@ -4119,6 +4119,17 @@ class PipelineConfig:
     # cost is trims. Layout (ruling 2026-10-22: judged in the preview). Off,
     # byte-identical (tests/test_fill_bridge_cut_exposed.py).
     fill_bridge_cut_exposed: bool = False
+    # A fill's sections sewn as one continuous tatami (2026-10-29, built OFF;
+    # `stage6_fill._order_for_seams`). The top pink line Kent circled on the
+    # Instagram icon is no travel: it is the seam where a section sewn late
+    # ends on the edge row of a section sewn early, the one row in the band
+    # nothing covers. ON, every section of a fill progresses the same way
+    # across its rows and starts only once each section it shares an edge row
+    # with upstream is sewn, so across every seam the rows lie as they do
+    # inside a section. The cost is travel between sections, which the bridge
+    # rules route or cut as for any order. Layout (ruling 2026-10-22: judged
+    # in the preview). Off, byte-identical.
+    fill_seam_order: bool = False
 
     # The fill column-order scorer prices only what `emit` sews (2026-10-08,
     # built OFF). `_fill_paths` returns one-point "columns" that `emit`

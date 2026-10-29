@@ -1214,6 +1214,150 @@ def cut_exposed_scope(on: bool):
         _CUT_EXPOSED.reset(token)
 
 
+# `cfg.fill_seam_order` (2026-10-29, built OFF): a fill's sections sewn as one
+# continuous tatami (`_order_for_seams`). Same scope pattern as `_CUT_EXPOSED`.
+_SEAM_ORDER: contextvars.ContextVar[bool] = contextvars.ContextVar("fill_seam_order", default=False)
+
+
+@contextlib.contextmanager
+def seam_order_scope(on: bool):
+    """`cfg.fill_seam_order` for the length of one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _SEAM_ORDER.set(True)
+    try:
+        yield
+    finally:
+        _SEAM_ORDER.reset(token)
+
+
+def _uv(pt: tuple[float, float], angle_deg: float) -> tuple[float, float]:
+    """`pt` in the fill's row frame: u along the rows, v across them."""
+    th = math.radians(angle_deg)
+    c, s = math.cos(th), math.sin(th)
+    return pt[0] * c + pt[1] * s, -pt[0] * s + pt[1] * c
+
+
+def _section_rows(path: list[tuple[float, float]], angle_deg: float
+                  ) -> list[tuple[float, float, float]]:
+    """The rows one section lays, as (v, u_min, u_max), sorted by v. A row is
+    every penetration within 0.05 mm of one v; a row turn's lone point at a
+    neighbouring v is a row of no length and never makes a seam."""
+    th = math.radians(angle_deg)
+    c, s = math.cos(th), math.sin(th)
+    arr = np.asarray(path, float)
+    u = arr[:, 0] * c + arr[:, 1] * s
+    v = -arr[:, 0] * s + arr[:, 1] * c
+    key = np.round(v / 0.05).astype(np.int64)
+    out = []
+    for k in np.unique(key):
+        m = key == k
+        out.append((float(v[m].mean()), float(u[m].min()), float(u[m].max())))
+    return out
+
+
+def _seam_side(a: list[tuple[float, float, float]], b: list[tuple[float, float, float]],
+               row_mm: float) -> int:
+    """+1 when section `b` lies past `a` across the rows (a row of b one pitch
+    beyond a row of a, side by side over at least two pitches), -1 when before
+    it, 0 when the two share no seam. The longer shared stretch decides a pair
+    that touches both ways (it cannot in a clean decomposition)."""
+    adj = max(0.6, 1.5 * row_mm)
+    after = before = 0.0
+    bv = np.array([r[0] for r in b])
+    for va, ua0, ua1 in a:
+        lo = np.searchsorted(bv, va - adj)
+        hi = np.searchsorted(bv, va + adj, side="right")
+        for k in range(lo, hi):
+            vb, ub0, ub1 = b[k]
+            if abs(vb - va) < 0.5 * row_mm:
+                continue                     # the same row: a turn, not a seam
+            shared = min(ua1, ub1) - max(ua0, ub0)
+            if shared < 2.0 * row_mm:
+                continue
+            if vb > va:
+                after = max(after, shared)
+            else:
+                before = max(before, shared)
+    if after == before == 0.0:
+        return 0
+    return 1 if after >= before else -1
+
+
+def _order_for_seams(paths: list[list[tuple[float, float]]], angle_deg: float,
+                     entry: tuple[float, float] | None, row_mm: float
+                     ) -> list[list[tuple[float, float]]]:
+    """The sections of one fill in the order one continuous tatami would lay them.
+
+    Kent's Instagram icon at 80 mm (2026-10-29): the top pink line he circled is
+    no travel at all. It is the seam where a section sewn LATE ends on the edge
+    row of a section sewn early -- the band split at the dot's top tangent,
+    section 80 laid first from that seam down, section 90 laid last from the top
+    down onto it. Rows overlap their neighbour (0.4 mm thread, far closer
+    rows), each laid over the one before; at that seam the late section's last
+    row lies whole on top of the early one's edge, the one row in the band
+    nothing covers. Turning the late section round does not cure it: it flips
+    the whole section's lay (rendered: the section went dark).
+
+    So one progression across the rows for every section of the shape, and a
+    section starts only once each section whose edge row it shares (upstream,
+    against the progression) is sewn, starting at that seam: across every
+    seam the rows then lie as they do inside a section. Among the sections
+    free to go, nearest start first; the direction is whichever of the two
+    flies the shorter chord from section to section. `travel_path` and the
+    bridge rules route what that leaves, as for any order.
+    """
+    real = [p for p in paths if len(p) >= 2]
+    if len(real) < 2:
+        return paths
+    n = len(real)
+    rows = [_section_rows(p, angle_deg) for p in real]
+    starts_low = []
+    for p in real:
+        (_u0, v0), (_u1, v1) = _uv(p[0], angle_deg), _uv(p[-1], angle_deg)
+        starts_low.append(v0 <= v1)
+    info = [{"starts_low": sl} for sl in starts_low]
+    # below[i]: the sections with a row one pitch past one of i's (larger v),
+    # side by side along it -- wherever the seam sits in i, not only at its
+    # extreme rows (a section's top is often shape edge beside the seam)
+    below: list[set[int]] = [set() for _ in range(n)]
+    for i in range(n):
+        for j in range(i + 1, n):
+            side = _seam_side(rows[i], rows[j], row_mm)
+            if side > 0:
+                below[i].add(j)
+            elif side < 0:
+                below[j].add(i)
+    above: list[set[int]] = [set() for _ in range(n)]
+    for i in range(n):
+        for j in below[i]:
+            above[j].add(i)
+
+    def plan(low_first: bool):
+        upstream = above if low_first else below
+        oriented = [real[k] if info[k]["starts_low"] == low_first else real[k][::-1]
+                    for k in range(n)]
+        done: set[int] = set()
+        order: list[int] = []
+        cur = entry
+        flown = 0.0
+        while len(order) < n:
+            free = [k for k in range(n) if k not in done and upstream[k] <= done]
+            if not free:                    # a tolerance tie; take what is left
+                free = [k for k in range(n) if k not in done]
+            k = min(free, key=lambda k: (math.dist(cur, oriented[k][0]) if cur else 0.0, k))
+            if cur is not None:
+                flown += math.dist(cur, oriented[k][0])
+            order.append(k)
+            done.add(k)
+            cur = oriented[k][-1]
+        return flown, [oriented[k] for k in order]
+
+    up, down = plan(True), plan(False)
+    return (up if up[0] <= down[0] else down)[1]
+
+
 def _cut_is_cheaper(a: tuple[float, float], bridge: list[tuple[float, float]],
                     sewn, trim_at_mm: float) -> bool:
     """Does this ONE bridge cost more than the cut it avoids, at `_score`'s rate?
@@ -2155,6 +2299,10 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     if section_travel and under_cover and not two_pass:
         fill_paths = _plan_sections(fill_paths, poly, ring, slack, entry, trim_at_mm,
                                     row_mm, cut_bridges)
+    if _SEAM_ORDER.get() and not two_pass:
+        # `cfg.fill_seam_order` (built OFF): the sections as one continuous
+        # tatami, so no section ends on another's finished edge row
+        fill_paths = _order_for_seams(fill_paths, angle, entry, row_mm)
     emit(fill_paths, stitches.FILL, stitch_mm)
     # Every hit is within this shape (`cover` is in the key), so nothing
     # after this point can use the unsewn-ground memo; let its geometry go.
