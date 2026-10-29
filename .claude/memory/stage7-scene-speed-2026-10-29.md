@@ -33,8 +33,15 @@ counts every label with one `np.bincount` (integer counts, same double
 product, same order); `_row_spans` makes one `shapely.intersection(poly,
 lines)` call per angle (the same GEOS op per row). Kent: "no pool, rows
 only" -- a thread pool over the 17 candidates was exact but read 239-253 s
-against 277-318 serial on one scene, inside the drift. After: AFTER_TBD. DST
-md5 byte-identical on the six scenes and 14 repo fixtures (flat + gradient).
+against 277-318 serial on one scene, inside the drift. After, like for like
+(base and after replaying one pickle back to back): plan time a WASH (383/324,
+378/406, 384/359, 262/252, 414/521, 412/486 s, load 12-73 %); the win is B:
+stained_glass `segment` 184.6 -> 29.4 s profiled, `split_tonal_regions` gone
+from the top 50. DST md5 byte-identical on the six scenes and the repo
+fixtures (flat + gradient). **Trap:** a `git archive` base tree under the
+scratchpad's long path cannot load onnxruntime's DLLs, so rembg reads
+UNAVAILABLE there and every photo md5 "moves"; put a base tree at a short
+path (`%TEMP%\embot-base-<sha>`) with the venv robocopied in.
 
 **Measured FALSE and dropped (C1):** `shapely.prepared.prep(slack).covers(
 line)` in `travel_path` / `_reorder_for_cover` is NOT the plain predicate:
