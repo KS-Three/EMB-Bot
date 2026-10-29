@@ -171,6 +171,7 @@ def _row_spans(poly: Polygon, row_mm: float, row_phase_mm: float = 0.0,
     # turn between them instead of a jump per row. Equal to `i` whenever
     # nothing is filtered, so every other caller is byte-identical.
     idx = 0
+    rows: list[tuple[int, float]] = []
     for i in range(-1, n_rows + 2):
         y = miny + row_phase_mm + row_mm * (i + 0.5)
         if y < miny + 1e-3:
@@ -179,9 +180,17 @@ def _row_spans(poly: Polygon, row_mm: float, row_phase_mm: float = 0.0,
             break
         if keep_row is not None and not keep_row(y):
             continue
-        ri, idx = idx, idx + 1
-        line = LineString([(minx - 1.0, y), (maxx + 1.0, y)])
-        inter = poly.intersection(line)
+        rows.append((idx, y))
+        idx += 1
+    if not rows:
+        return out
+    # One vectorised call for every scanline (2026-10-29). `poly.intersection(
+    # line)` IS `shapely.intersection(poly, line)` -- the same GEOS overlay on
+    # the same two geometries -- so each row's answer is the one the per-row
+    # loop computed, bit for bit; only the Python call per row is gone.
+    # `tests/test_fill.py` holds the per-row loop as the reference.
+    lines = shapely.linestrings([[(minx - 1.0, y), (maxx + 1.0, y)] for _ri, y in rows])
+    for (ri, y), inter in zip(rows, shapely.intersection(poly, lines)):
         if inter.is_empty:
             continue
         parts = getattr(inter, "geoms", [inter])
@@ -249,6 +258,12 @@ def _columns(rows: list[tuple[int, float, list[tuple[float, float]]]]) -> list[l
 _FILL_ANGLE_CANDIDATES = 16
 
 
+def _cols_at_angle(poly: Polygon, angle: float, row_mm: float) -> int:
+    """How many monotone columns rows at `angle` cut `poly` into."""
+    rotated = affinity.rotate(poly, -angle, origin=(0, 0), use_radians=False)
+    return len(_columns(_row_spans(rotated, row_mm)))
+
+
 def best_fill_angle_deg(poly: Polygon, row_mm: float) -> float:
     """The auto (no explicit override) fill angle: whichever of 16 evenly
     spaced candidate row directions, PLUS `principal_angle_deg`'s own
@@ -288,11 +303,16 @@ def best_fill_angle_deg(poly: Polygon, row_mm: float) -> float:
         d = abs(a - b) % 180.0
         return min(d, 180.0 - d)
 
+    # Serial, on purpose (Kent 2026-10-29, "no pool, rows only"): pricing the
+    # seventeen on a thread pool was exact but read 239-253 s against 277-318
+    # serial on one scene -- inside the laptop's own drift -- and CI's four
+    # pytest workers would each have spawned eight. The search is 25-30% of a
+    # scene photograph's plan time; `_row_spans` makes its one GEOS call per
+    # angle.
     best_angle = pca
     best_key = None
     for angle in candidates:
-        rotated = affinity.rotate(poly, -angle, origin=(0, 0), use_radians=False)
-        cols = len(_columns(_row_spans(rotated, row_mm)))
+        cols = _cols_at_angle(poly, angle, row_mm)
         if cols == 0:
             continue
         key = (cols, angular_dist(angle, pca), angle)
@@ -925,6 +945,11 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
     if math.dist(a, b) < machine.TINY_STITCH_MM:
         return []
     cover = slack if slack is not None else poly.buffer(0.01)
+    # NOT a prepared geometry (measured 2026-10-29): `shapely.prepared.prep(
+    # cover).covers(...)` here and in `_reorder_for_cover` moved ten stitches
+    # on underwater_reef (34,324 -> 34,334, one travel route re-chosen) --
+    # GEOS's prepared covers is not the plain predicate on every line, so it
+    # cannot stand in for it where the design is pinned byte for byte.
     seg = LineString([a, b])
     fallback: list[tuple[float, float]] | None = None
     if cover.covers(seg):
