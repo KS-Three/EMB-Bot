@@ -4107,6 +4107,18 @@ class PipelineConfig:
     # 2026-09-19, "the exposed travel legs" and its two addenda;
     # `tests/test_fill_bridge_cut.py`.
     fill_bridge_cut: bool = True
+    # A bridge that shows on finished fill is ALWAYS cut (2026-10-29, built
+    # OFF). `fill_bridge_cut` above cuts a bridge only when `_score` prices it
+    # dearer than the cut, at 25 stitches a trim and 2x per exposed stitch, so
+    # a 9 mm line across a band's own finished rows (9.3 exposed ~ 11 < 25)
+    # stays sewn. Kent circled exactly those on the Instagram icon at 80 mm
+    # (2026-10-29): the gold vertical, the yellow line under the ring, the
+    # orange diagonal, the pink line left of the ring. ON, `_cut_is_cheaper`
+    # answers yes for any bridge whose exposure clears the tolerance and whose
+    # gap is over `trim_at_mm` (under it the lift is a jump, as before). The
+    # cost is trims. Layout (ruling 2026-10-22: judged in the preview). Off,
+    # byte-identical (tests/test_fill_bridge_cut_exposed.py).
+    fill_bridge_cut_exposed: bool = False
 
     # The fill column-order scorer prices only what `emit` sews (2026-10-08,
     # built OFF). `_fill_paths` returns one-point "columns" that `emit`

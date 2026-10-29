@@ -31,8 +31,17 @@ blind to it anyway.
 9 logos change, all with fewer stitches. That includes both logos he graded Great: Tux and
 the flat bull lose their inner same-colour rings inside the art's own outline. Trims rise
 +1 to +9 on 5 of them. `PRE_FLIP` pins it False.
-**How to apply:** still open: short outer stretches owned by bands under 6 mm stay bare,
-the satin cap has a stray stretch, and ring colour is undecided.
+**How to apply:** ring colour is still undecided. The "bare outer stretches" turned out to
+be covered on a closer render. The satin cap's stray stretch was its arc-to-arc bridge
+sewn across finished fill; it now lifts instead (#1185).
+**Kent's 13 circles on Instagram (10-29):** 9 are fill travel, the rest are sliver satin,
+stage-2 jaggies and specks.
+- `travel_legs`' exact read: 53 mm on the band's own finished rows.
+  `fill_bridge_cut_exposed` (built OFF) cuts every such bridge past trim_at: 53 -> 0.4 mm,
+  trims 23 -> 31. Adding `fill_section_travel` (Kent HELD it 10-27) gives 2.8 mm, trims 27.
+- Still showing: underlay hops BURIED under rows nearly parallel to them (the top pink
+  line). They show in the render and the exposure tools read them as covered. Read the
+  ZOOM, not the number.
 Related:
 [[border-by-size-2026-10-23]], [[border-from-outline-2026-10-24]],
 [[bean-census-2026-10-27]], [[instagram-gradient-lane-edges-2026-09-30]].
