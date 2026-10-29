@@ -59,13 +59,15 @@ DATE = "2026-10-28"
 # Both arms set the flag explicitly (since the 2026-10-28 flip ON): OFF is the
 # engine before the flip, ON the shipped default, on whichever engine runs this.
 # `--flag` swaps in another flag of the same family (`dark_ink_refuse_strays`,
-# the refusal queued on #1172): OFF is then today's default, ON the refusal.
+# the refusal queued on #1172; `dark_ink_bean`, the strokes sewn as a bean on
+# their ground): OFF is then today's default, ON the new flag.
 ARMS = {"off": {FLAG: False}, "on": {FLAG: True}}
 TESTDATA = DIGITIZER / "testdata"
 DEFAULT_CACHE = DIGITIZER / "debug_out" / "dark_ink_flip_sheet"
 DEFAULT_OUT = DIGITIZER.parent / "docs" / "renders" / f"keep-dark-thin-strokes-{DATE}"
 SHEETS = {FLAG: DEFAULT_OUT,
-          "dark_ink_refuse_strays": DIGITIZER.parent / "docs" / "renders" / f"dark-read-refusal-{DATE}"}
+          "dark_ink_refuse_strays": DIGITIZER.parent / "docs" / "renders" / f"dark-read-refusal-{DATE}",
+          "dark_ink_bean": DIGITIZER.parent / "docs" / "renders" / f"dark-ink-bean-{DATE}"}
 
 
 def use_flag(flag: str) -> None:
