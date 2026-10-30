@@ -69,7 +69,7 @@ from digitizer_core.preflight import (
     finding,
     run_preflight,
 )
-from tests.conftest import PLAN_CFG_KW, TESTDATA, cfg
+from tests.conftest import FLIP_2026_10_30, PLAN_CFG_KW, TESTDATA, cfg
 
 ART = TESTDATA / "logo_whitebg.png"
 
@@ -1313,8 +1313,13 @@ def test_a_wide_oversize_satin_stroke_does_not_block_on_underlay_glue(alpha):
     geometry-level pin). `coverage_max` on this exact fixture/config dropped
     13.11 -> 3.24; the `> 10.0` floor this test used to assert is gone on
     purpose, not a regression -- re-asserted below as a ceiling instead so a
-    future junction-cap regression still trips this test."""
-    c = cfg(target_width_mm=80.0, garment_id="left_chest", border_by_size=False, **RECIPE_2026_10_27)
+    future junction-cap regression still trips this test.
+
+    2026-10-30: the ceiling prices the junction, so the fill-order flip rides
+    off. `fill_seam_order` lifts this peak 4.77 -> 5.43 elsewhere, still no
+    finding (`coverage_over_warn_mm2` 0.0 either way)."""
+    c = cfg(target_width_mm=80.0, garment_id="left_chest", border_by_size=False,
+            **RECIPE_2026_10_27, **FLIP_2026_10_30)
     report = run_preflight(alpha, plan_stitches(alpha, c), c,
                            image=str(TESTDATA / "logo_alpha.png"))
 

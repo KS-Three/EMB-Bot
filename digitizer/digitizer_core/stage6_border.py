@@ -76,7 +76,8 @@ from shapely.ops import nearest_points, unary_union
 from shapely.prepared import prep
 
 from . import machine, shape_memo, stitches
-from .stage6_fill import _CUT_EXPOSED, _EXPOSED_TOLERANCE_MM, _exposed_mm, travel_path
+from .stage6_fill import (_CUT_EXPOSED, _EXPOSED_TOLERANCE_MM, _UNSEWN_MEMO, _exposed_mm,
+                          travel_path)
 from .stitches import StitchRun
 
 # Codes the report hands back to stage 7, which turns them into warnings.
@@ -1025,6 +1026,8 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
                     else:
                         report["loops"] += 1
 
+    if _CUT_EXPOSED.get():
+        _UNSEWN_MEMO.clear()    # as `stitch_shape` does: its rim routes filled it
     report["empty"] = not runs
     return runs, report
 
