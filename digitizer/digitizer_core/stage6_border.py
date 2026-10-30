@@ -984,11 +984,18 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
                     # (flat_emoji_icon's horn, 2026-10-30). Route it under the
                     # band this ring's satin is still to sew -- not round a
                     # seam `omit` dropped, which nothing covers -- and lift it
-                    # if no such route shows nothing.
+                    # if no such route shows nothing. A gap under `trim_at_mm`
+                    # is left as it was, as the fill's rule leaves it: a lift
+                    # there would not cut, and a route round the band doubled
+                    # back on kanji_brush (1.4 mm gap, 5.4 mm of travel).
                     finished = None
-                    if not lighten and _CUT_EXPOSED.get():
-                        band = unary_union([LineString(a).buffer(width) for a in arcs[ai:]
-                                            if len(a) > 1]).intersection(host)
+                    if (not lighten and _CUT_EXPOSED.get() and cursor is not None
+                            and math.dist(cursor, pts[0]) > trim_at_mm):
+                        # Flat ends and four fifths of the column: a route at
+                        # the band's own edge, or past an arc's end, is not
+                        # under the satin (qr_code: 2-4 mm legs, 2026-10-30).
+                        band = unary_union([LineString(a).buffer(0.8 * width, cap_style="flat")
+                                            for a in arcs[ai:] if len(a) > 1]).intersection(host)
                         finished = host.difference(band)
                         if finished.is_empty:
                             finished = None
