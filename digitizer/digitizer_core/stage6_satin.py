@@ -2686,6 +2686,8 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  fold_guard: bool = False,
                  rail_comp_mm: float = 0.0,
                  rail_comp_floor_mm: float = 0.0,
+                 rail_held=None,
+                 square_ends: bool = False,
                  siblings: list | None = None) -> tuple[list, list]:
     """Cast the smoothed, unwrapped normals both ways to find the two rails.
 
@@ -3071,8 +3073,12 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         # Taper zones and the terminal stations keep the symmetric width:
         # their machinery (the taper cap, the refinement floor, the guard)
         # is calibrated to it, and a tip's far edge is the cap face.
-        rail_a.append(place(px, py, nx, ny, off_a[i] if body else width[i], body))
-        rail_b.append(place(px, py, -nx, -ny, off_b[i] if body else width[i], body))
+        # `square_ends` (`cfg.satin_cap_skew_inset`): an untapered end lands
+        # on its edge like a body station, or a rail 10 um over a side the
+        # raster leaned steps in by 15% and takes the corner with it.
+        on_edge = body or (square_ends and ((i == 0 and not zs) or (i == n - 1 and not ze)))
+        rail_a.append(place(px, py, nx, ny, off_a[i] if body else width[i], on_edge))
+        rail_b.append(place(px, py, -nx, -ny, off_b[i] if body else width[i], on_edge))
 
     # --- outer-rail density -----------------------------------------------
     #
@@ -3310,7 +3316,8 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
             ref_b.append(rail_b[j - 1])
         i = j
     if rail_comp_mm > 0:
-        ref_a, ref_b = _push_rails(ref_a, ref_b, poly, rail_comp_mm, rail_comp_floor_mm)
+        ref_a, ref_b = _push_rails(ref_a, ref_b, poly, rail_comp_mm, rail_comp_floor_mm,
+                                   held=rail_held)
     return ref_a, ref_b
 
 
@@ -3466,8 +3473,14 @@ def _tip_corner_angle(spine: list, poly, half_sewn: float,
     return here
 
 
+# The narrowest cross `_push_rails` holds at a seam. The pro's own pull falls with
+# the stroke and is gone by 4 mm (MARINE, 4.22 mm drawn, sews 4.00; `pull-comp-by-
+# stroke-2026-10-22`), while a thin column still needs all of it (+0.42 at 2.6 mm).
+_SEAM_HOLD_MIN_CROSS_MM = 3.0
+
+
 def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
-                floor_mm: float) -> tuple[list, list]:
+                floor_mm: float, held=None) -> tuple[list, list]:
     """Move every real cross's two rails outward along the cross by `pull_mm`
     each -- the rail-side form of stage 5's `poly.buffer(pull)`.
 
@@ -3486,6 +3499,14 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
     every one a station the grown polygon had kept. Only a cross with NO
     direction -- both rails on the station, `place`'s last resort -- stays
     as it is: there is nothing to push along.
+
+    `held` (`cfg.satin_seam_hold`, a (prepared, plain) geometry pair; None
+    pushes every rail): the artwork of the colours already down. A rail whose
+    push would land on one stops at that edge, the edge stage 5's clip leaves
+    every grown shape at that seam. The rail-side pull runs AFTER that clip,
+    so without this the last-sewn colour is the only one that keeps its pull:
+    the flag's white stripes sewed 4.53 mm against the red's visible 3.57 mm,
+    from equal 4.05 mm artwork (2026-10-30).
     """
     holes = [Polygon(ring) for ring in poly.interiors]
     holes = [h for h in holes if not h.is_empty]
@@ -3507,6 +3528,13 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
             allowed = min(allowed, max(0.0, (chord.length - floor_mm) / 2.0))
         return allowed
 
+    def held_push(p: tuple, ux: float, uy: float, k: float) -> float:
+        """Up to the colour already down, not into it. A rail can sit short of
+        its artwork edge, and that gap is still ours."""
+        if not held[0].contains(SPoint(p[0] + ux * k, p[1] + uy * k)):
+            return k
+        return min(k, held[1].distance(SPoint(p)))
+
     out_a, out_b = [], []
     for pa, pb in zip(rail_a, rail_b):
         dx, dy = pa[0] - pb[0], pa[1] - pb[1]
@@ -3518,6 +3546,9 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
         ux, uy = dx / d, dy / d
         ka = room(pa, ux, uy)
         kb = room(pb, -ux, -uy)
+        if held is not None and d >= _SEAM_HOLD_MIN_CROSS_MM:
+            ka = held_push(pa, ux, uy, ka)
+            kb = held_push(pb, -ux, -uy, kb)
         out_a.append((pa[0] + ux * ka, pa[1] + uy * ka))
         out_b.append((pb[0] - ux * kb, pb[1] - uy * kb))
     return out_a, out_b
@@ -3597,7 +3628,8 @@ def _pull_short(p: tuple, toward: tuple) -> tuple:
 # --- The column ------------------------------------------------------------
 
 def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: float,
-                   at_start: bool, corner: bool = False) -> list[tuple[float, float]]:
+                   at_start: bool, corner: bool = False,
+                   skew_inset: bool = False) -> list[tuple[float, float]]:
     """Push a free spine end out to the shape's cap edge along its tangent.
 
     The medial axis of a stroke stops half a width short of each cap (the
@@ -3607,6 +3639,13 @@ def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: flo
     the boundary puts the final cross ON the cap edge, which is where a
     professional column ends. Degenerate crosses in a tapering tip are dropped
     later by the minimum-cross rule, so overshooting into a point is safe.
+
+    `skew_inset` (`cfg.satin_cap_skew_inset`): a square cap a raster traced a
+    hair off true loses half its final cross. The cross leaves through the
+    cap face at a grazing angle and stops there: the flag's stripe caps lean
+    0.03 mm over 4 mm, and each end cross stopped at mid-height, so one corner
+    of every stripe sewed 0.4 mm short. The end station steps back just far
+    enough for the whole cross to fit, up to `_CAP_SKEW_MAX_MM`.
     """
     pts = list(reversed(spine)) if at_start else list(spine)
     if len(pts) < 2:
@@ -3675,6 +3714,13 @@ def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: flo
         ins = min(_CAP_INSET_MM, 0.25 * math.dist(cap, tip))
         if ins > 0:
             cap = (cap[0] - ux * ins, cap[1] - uy * ins)
+    if skew_inset:
+        ends = [(cap[0] - uy * s * half_mm * 0.9, cap[1] + ux * s * half_mm * 0.9)
+                for s in (1.0, -1.0)]
+        skew = max(poly.distance(SPoint(q)) for q in ends)
+        if 1e-9 < skew <= _CAP_SKEW_MAX_MM:
+            back = skew + _CAP_INSET_MM
+            cap = (cap[0] - ux * back, cap[1] - uy * back)
     pts.append(cap)
     return list(reversed(pts)) if at_start else pts
 
@@ -3683,6 +3729,9 @@ def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: flo
 # to be under a tenth of a satin spacing, large enough to swallow the normal's
 # own rounding at the terminal cross — see `_extend_to_cap`.
 _CAP_INSET_MM = 0.03
+# The most a cap's lean may cost before it stops being raster rounding and is a
+# slanted end the artwork drew on purpose, which keeps its own final cross.
+_CAP_SKEW_MAX_MM = 0.1
 
 # A free end whose corridor is narrower than this fraction of the stroke's own
 # half-width is not the stroke any more, it is a cap corner.
@@ -4529,6 +4578,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   fold_guard: bool = False,
                   rail_comp_mm: float = 0.0,
                   rail_comp_floor_mm: float = 0.0,
+                  rail_held=None,
+                  cap_skew_inset: bool = False,
                   junction_stack: bool = False,
                   cap_recentre: bool = False,
                   tip_caps: bool = False,
@@ -4594,6 +4645,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              free_end_square=free_end_square,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
+                             rail_held=rail_held, cap_skew_inset=cap_skew_inset,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
                              tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, hairline_tier=hairline_tier, siblings=member_sibs,
                              # only the joined stroke's OUTER ends are free
@@ -4646,6 +4698,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  fold_guard: bool = False,
                  rail_comp_mm: float = 0.0,
                  rail_comp_floor_mm: float = 0.0,
+                 rail_held=None,
+                 cap_skew_inset: bool = False,
                  junction_stack: bool = False,
                  cap_recentre: bool = False,
                  tip_caps: bool = False,
@@ -4712,6 +4766,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              free_end_square=free_end_square,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
+                             rail_held=rail_held, cap_skew_inset=cap_skew_inset,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
                              tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, hairline_tier=hairline_tier, siblings=siblings)
 
@@ -4746,6 +4801,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                   rails_follow_edge=rails_follow_edge, outer_rail_pitch=outer_rail_pitch,
                   max_width_mm=max_width_mm, fold_guard=fold_guard,
                   rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
+                  rail_held=rail_held, cap_skew_inset=cap_skew_inset,
                   junction_stack=junction_stack, cap_recentre=cap_recentre, tip_caps=tip_caps, tip_corner_gate=tip_corner_gate)
         arm = Stroke(spine=raw, free_start=stroke.free_start, free_end=stroke.free_end,
                      closed=False, capped_start=stroke.capped_start, capped_end=stroke.capped_end,
@@ -4904,21 +4960,25 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     # tip node has no fork to walk off -- retracting one would undo the reach
     # this flag exists to add.
     if tip_start:
-        spine = _extend_to_cap(spine, poly, half_mm, at_start=True, corner=False)
+        spine = _extend_to_cap(spine, poly, half_mm, at_start=True, corner=False,
+                               skew_inset=cap_skew_inset)
     if tip_end:
-        spine = _extend_to_cap(spine, poly, half_mm, at_start=False, corner=False)
+        spine = _extend_to_cap(spine, poly, half_mm, at_start=False, corner=False,
+                               skew_inset=cap_skew_inset)
     if stroke.free_start:
         if cap_recentre:
             spine, forked_start = _cut_cap_fork(spine, poly, field, half_mm, at_start=True)
         spine = _retract_cap_corner(spine, field, half_mm, at_start=True)
         spine = _extend_to_cap(spine, poly, half_mm, at_start=True,
-                               corner=stroke.capped_start or forked_start)
+                               corner=stroke.capped_start or forked_start,
+                               skew_inset=cap_skew_inset)
     if stroke.free_end:
         if cap_recentre:
             spine, forked_end = _cut_cap_fork(spine, poly, field, half_mm, at_start=False)
         spine = _retract_cap_corner(spine, field, half_mm, at_start=False)
         spine = _extend_to_cap(spine, poly, half_mm, at_start=False,
-                               corner=stroke.capped_end or forked_end)
+                               corner=stroke.capped_end or forked_end,
+                               skew_inset=cap_skew_inset)
 
     # Push compensation (Law 24). Pull comp is a WIDTH and stage 5 owns it;
     # push is a LENGTH and only this line of the pipeline knows where a column's
@@ -4961,6 +5021,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                                   max_width_mm=max_width_mm, fold_guard=fold_guard,
                                   rail_comp_mm=rail_comp_mm,
                                   rail_comp_floor_mm=rail_comp_floor_mm,
+                                  rail_held=rail_held,
+                                  square_ends=cap_skew_inset,
                                   siblings=siblings)
     crosses = _short_stitch_guard(rail_a, rail_b)
     above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
@@ -6461,6 +6523,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 fold_guard: bool = False,
                 rail_comp_mm: float = 0.0,
                 rail_comp_floor_mm: float = 0.0,
+                rail_held=None,
+                cap_skew_inset: bool = False,
                 polygon_axis: bool | str = False,
                 stroke_order: str = "nearest",
                 corner_twigs: bool = False,
@@ -6661,6 +6725,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                              free_end_square=free_end_square,
                      max_width_mm=max_width_mm, fold_guard=fold_guard,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
+                     rail_held=rail_held, cap_skew_inset=cap_skew_inset,
                      junction_stack=junction_stack, cap_recentre=cap_recentre,
                      tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, hairline_tier=hairline_tier, siblings=siblings)
         mixed = len(parts) > 1
