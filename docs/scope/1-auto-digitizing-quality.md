@@ -5205,7 +5205,7 @@ Moved from `MASTER_SCOPE.md` on 2026-10-29 (the file stood one word under its 27
 
 **Corpus scorecard — not recaptured since 2026-10-05:** PR #856 moved drone, gaulke, bridge and chrome on the default path (no grade fell); attribute them to it at the next cloud-Linux capture (defect 61), the phone-screenshot row to #899 (icon guard ON; "Waiting on Kent" 37), and the 2026-10-20 flips to theirs: #1005 (bridge, golden_tee, drone, sunset; defects 27, 61), #1001 (becker and bridge, the two under the resolution floor; item 41), #999 and #1002 (every Column-lane row with lowercase; items 50, 52). *(2026-08-21; 2026-09-02 — [notes](../scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](../scorecard-baseline-attribution-2026-10-04.md); 2026-10-05 — scope-history)*
 
-**The photo lane's cut-out on a scene (2026-10-28/29).** rembg (`isnet-general-use`) answers a scene with low alpha everywhere: alpha ≥ 128 covers 0.01–5.4 % of the frame on the six corpus scenes (snow_highkey 0.0001 … stained_glass 0.054) against 0.27–0.76 on every row with a real subject (fireworks 0.27 … architecture 0.76). Before #1179 the pipeline accepted any non-None mask, so the whole frame became background and the lane sewed 0–3,117 stitches of a 13,000–40,000-stitch photograph. `photo_cutout_min_kept` (0.20 of stage 1's artwork, ON, #1179) refuses such a cut-out and keeps the frame on the classical route; on the six scenes the kept shares read 0.000–0.042, the floor 3.7× above them and 1.35× below the smallest real subject. Kent's "measure A vs B, ship better": prep-skipped (what #1179 does) beat prep-kept on `fidelity_cc` on four of six rows (night_neon 0.142 vs 0.083, night_skyline 0.090 vs 0.033), lost on landscape_lake by 0.016, tied on snow. A kept frame costs 373–2,100 s per scene (stages 0–4 90–320 s, `plan_stitches` the rest; three rows timed out at 1,200 s inside `stage7_sequence.sequence`'s rank-only second pass and finished in 373–797 s when re-run on the same tree) against the Studio's 600 s wait — the lane's cost, hidden until now by the empty hoop. *(measured 2026-10-28/29 — `docs/superpowers/specs/2026-10-28-photo-cutout-no-subject-guard-design.md`, `tests/test_cutout_no_subject.py`, `digitizer/corpus_runs/` base-75efec5 / armA-5294002 / armB-fdcc52b)*
+**The photo lane's cut-out on a scene (2026-10-28/29).** rembg (`isnet-general-use`) answers a scene with low alpha everywhere: alpha ≥ 128 covers 0.01–5.4 % of the frame on the six corpus scenes (snow_highkey 0.0001 … stained_glass 0.054) against 0.27–0.76 on every row with a real subject (fireworks 0.27 … architecture 0.76). Before #1179 the pipeline accepted any non-None mask, so the whole frame became background and the lane sewed 0–3,117 stitches of a 13,000–40,000-stitch photograph. `photo_cutout_min_kept` (0.20 of stage 1's artwork, ON, #1179) refuses such a cut-out and keeps the frame on the classical route; on the six scenes the kept shares read 0.000–0.042, the floor 3.7× above them and 1.35× below the smallest real subject. Kent's "measure A vs B, ship better": prep-skipped (what #1179 does) beat prep-kept on `fidelity_cc` on four of six rows (night_neon 0.142 vs 0.083, night_skyline 0.090 vs 0.033), lost on landscape_lake by 0.016, tied on snow. A kept frame read 373–2,100 s per scene in that capture (three rows timed out at 1,200 s inside `stage7_sequence.sequence`'s rank-only second pass and finished in 373–797 s re-run on the same tree) — but that was two capture processes beside other sessions: on a quiet box the six scenes plan in 64–104 s each (stages 0–4 26–147 s), the same md5 across runs and processes, and two concurrent digitizes cost 4.1× EACH. The lane-OFF pass is where the time goes (stage 6 fill emission: the angle search, the travel-routing walks), not an instability; stage 2's per-component sums were stained_glass's other half and are gone (2026-10-29, memory `stage7-scene-speed-2026-10-29`). *(measured 2026-10-28/29 — `docs/superpowers/specs/2026-10-28-photo-cutout-no-subject-guard-design.md`, `tests/test_cutout_no_subject.py`, `digitizer/corpus_runs/` base-75efec5 / armA-5294002 / armB-fdcc52b)*
 
 ## Twenty-first pass: overflow moved from MASTER_SCOPE (2026-10-29)
 
@@ -5226,3 +5226,52 @@ Moved verbatim from `MASTER_SCOPE.md` by the 2026-10-29 refresh after PRs #1162�
 ### Waiting on Kent 66 (`script_strokes`) as it stood after PR #1187
 
 66. **`script_strokes` ON (Kent 2026-10-26: "Flip it ON (Recommended)"), with #1135's flow:** a script word (Bridge, Tires' "ires", To a T's "Machine") sews one satin column per pen stroke, its path read on the art's ink, crosses square to the stroke and turning with it; hand-overs over 30 deg at or near the pro's count. Cost: Bridge's crosses read less square (hat 0.84 → 0.65, few crosses read). `monoline_script_satin` never sees a script word with it ON. `PRE_FLIP` names the OFF arm. *(measured 2026-10-26 — #1135, `docs/renders/script-flow-2026-10-26/`; ruled 2026-10-26 — the flip PR)* `script_strokes_drawn_width` is built OFF (Kent 2026-10-27: "Build it OFF (Recommended)"). On a word that lays more thread twice than the pro's most (10.5%), crowded cross sides end at the drawn width. Bridge hat 24.9 → 19.3% laid twice, bare +1.3 mm². Tires is held off. *(measured 2026-10-27 — `docs/renders/script-drawn-width-2026-10-27/`)*
+
+## Twenty-second pass: overflow moved from MASTER_SCOPE (2026-10-29, defect 19)
+
+Moved verbatim from `MASTER_SCOPE.md` when defect 19 was re-measured on main 44ecf1cb (`docs/edge-cap-remeasure-2026-10-29.md`). Every number below is the 2026-09 engine's; the live text has today's.
+
+### Defect 19 (the design-edge cap) as it stood after PR #1188
+
+19. **The design's own outer edge is uncapped — every fill row ends in open
+    air.** The other sew-out edge finding, and one no per-shape border can reach: the silhouette is the union of several shapes' edges, so the
+    design/fabric boundary is nobody's. On Kent's icon, **100% of the 293.2 mm
+    outer silhouette uncovered at 1.0 mm** vs 0.0% on the glyph edge he rated
+    flawless. **FIX BUILT, default OFF, both styles opt-in:** `cfg.edge_cap` —
+    `"bean"` traces it, `"satin"` lays a column just inside, one design-level
+    block after all artwork in a thread already loaded. No new constant (gate 1
+    clean); Studio exposes **Design edge**.
+    Icon: bean +12.6%, satin +15.3%. KNOWN LIMIT: cost scales with silhouette
+    FRAGMENTATION, not size — `drone_render` caps 38 parts / 78 holes for
+    **+56.9%**, a whisker off DOCTRINE's blanket-border negative, and there
+    satin (+34.9%) is cheaper. Bills every run as `EDGE_CAP_APPLIED`.
+**MEASURED 2026-09-11, and GATED** (`tools/pro_silhouette.py`): ours, `edge_cap` off, **5.9–100.0% of the sewn silhouette carries no linear stitch** (Fremont 100.0, whitebg 82.6, gaulke 76.7, enthusiast 5.9); the pro carries a certified border on **at least 19.1–26.1%** of his fill edge, never in the fill's own colour block. Read differently ON PURPOSE — a stitch file has no run kinds, so his is a LOWER bound. Per-fixture tables, and the `unary_union` slowdown fixed 2026-09-12: [area 1](docs/scope/1-auto-digitizing-quality.md).
+    *(built 2026-09-01 — `tests/test_edge_cap.py`, 18 passing)*
+    **Rang hairline CRACKS as edges — FIXED 2026-09-08.** 20 sub-0.1 mm cracks
+    in the silhouette union, owned by no region, cleared the loop gate's
+    PERIMETER floor; `_fill_cracks` fills any interior the column cannot stand
+    in — on an ABSOLUTE ruler while the feature scales, so one hole can get
+    opposite verdicts at two sizes. *(2026-09-08 —
+    `tests/test_edge_cap.py`)*
+    **THE BILL OSCILLATES WITH SIZE, and the flip's `+5.9–26.3%` was a
+    ONE-WIDTH reading** (80 mm): becker bills **+58.7% at 88 mm**, and a 0.3 mm
+    larger design is 34% cheaper — the `omit` gate loses its input when the
+    shape carrying most of the linear cover flips satin/fill on
+    `_PROMOTE_EXPLAINED_MIN`, which is not monotone in design size. **COST
+    CAPPED 2026-09-12** (Kent: cap the cost, leave `classify_ribbon` alone):
+    `EDGE_CAP_BUDGET_PCT` 40.0, `"warn"` by default, so no stitch moves. The
+    `edges` field reports silhouette rings now, having FALLEN as the bill rose.
+    **The cause is NOT fixed**; `classify_ribbon`'s stability is the open
+    project.
+    *(measured 2026-09-12 — `docs/edge-cap-cliff-2026-09-12.md`;
+    `tests/test_edge_cap_budget.py`)*
+
+### Defect 19 as it stood after PR #1191 (closed 2026-10-29)
+
+Moved verbatim when defect 19 was closed on Kent's ruling ("Close it (Recommended)"), with the "none" default in PR #1192.
+
+19. **RE-MEASURED 2026-10-29 — the design's own edge is no longer open, and the default cap sews nothing.** Same rule as 09-11 (`tools/pro_silhouette.py --ours`), cap off, 80 mm: **0.0–4.0% of the sewn silhouette carries no linear stitch** on the six fixtures that read **5.9–100.0%** on 09-11 (Fremont 100.0 → 0.0, whitebg 82.6 → 1.8, gaulke 76.7 → 0.3, enthusiast 5.9 → 4.0; becker 2.9, drone 0.2). The edge work closed it, not the cap: one flag OFF at a time, `silhouette_underfill_rim` holds Fremont's whole edge and 28 points of whitebg's, `border_by_size` the other 49 of whitebg's and gaulke's 5.7; `border_by_size_fabric_edges`, `border_from_outline` and `outline_loop_mitre` move under a point. The pro reads at least 19.1–26.1% bordered, to the digit what 09-11 read (a lower bound on fill edge, not the same measurement).
+    **The size swing is gone:** becker bills satin +0.0% at 60 mm rising to +2.3% at 120 mm, every one of 09-12's +53–59% widths now +0.6–1.5%; the worst bill on any fixture from 60 to 120 mm is +5.6%, against `EDGE_CAP_BUDGET_PCT` 40. No stability lever was built: the brief's condition (the swing persisting) failed. `classify_ribbon` was not re-probed; the cap no longer depends on it.
+    **`edge_cap` defaults to `"bean"`, but `bean_only_lines` (ON 10-27) turns that into no cap**, so the shipped engine sews none. The satin style is live and nearly inert: byte-identical on 3 of 4 paired jobs at the pro's width, and on Becker 16 points that cost a colour change (1 → 2).
+    **Open, Studio-side:** the Design edge select still defaults to "Bean cap", and its readout now says *"Design edge found nothing to sew … too small or too narrow"* on every design. False: the engine declined the style. Previous text: [area 1](docs/scope/1-auto-digitizing-quality.md#defect-19-the-design-edge-cap-as-it-stood-after-pr-1188).
+    *(measured 2026-10-29 — `docs/edge-cap-remeasure-2026-10-29.md`, `tools/edge_cap_remeasure.py`, `docs/renders/edge-cap-2026-10-29/`)*

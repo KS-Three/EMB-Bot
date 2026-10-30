@@ -9253,3 +9253,47 @@ corpus row has one; the row comes before the floor moves. *(measured
 2026-10-28/29 —
 `docs/superpowers/specs/2026-10-28-photo-cutout-no-subject-guard-design.md`,
 `tests/test_cutout_no_subject.py`, `corpus_runs/` base-75efec5 / armA / armB)*
+
+## The kept frame's 450–2,100 s was two processes on a loaded laptop: stage 7 is 64–104 s quiet, and the swing was contention (2026-10-29)
+
+**The entry above said a kept frame costs 450–2,100 s per scene and that
+three rows timed out inside stage 7's rank-only second pass. The time was
+real and the number was load.** Profiled on the six refused scenes with the
+machine otherwise idle (Ryzen 7 4700U, 8 cores, the corpus tool's own env,
+stage 0–4 result pickled, `plan_stitches` replayed): `plan_stitches` 64–104 s
+per scene, stages 0–4 26–147 s (stained_glass the 147, 130 of it stage 2's
+`split_tonal_regions`). Three in-process replays of night_skyline: 85.3 /
+78.3 / 78.9 s, one md5. **Two processes replaying it at once: 326 s EACH,
+4.1×, and `process_time` inflated the same**, md5 identical across processes
+(different hash seeds, so no hash-order or tie dependence); stage 7 is GEOS,
+so not IPP alignment. The capture ran `--procs 2` beside the other arm's
+capture, which reproduces 349–2,100 s and the 373-vs-1,200 s rerun of one
+row. The faulthandler dumps were right about WHERE (stage 6 fill emission
+inside the lane-OFF pass: the angle search 25–30 %, the travel-routing walks
+~40 %, inset-ring buffers ~15 %, `covers` ~8 %) and the lane-ON second pass
+itself adds only 5–15 s (`shape_memo`).
+
+**Three rules.** (1) **A `wall s` from a capture is a load reading**: time a
+row alone (`--procs 1 --only SLUG`, nothing else running) before calling
+anything slow, and say the procs and the load beside any number quoted (the
+sxs page now prints each run's procs). (2) **`process_time` is not CPU on a
+busy laptop** — it inflated 4.1× alongside wall here, 2.6× in
+`digitize-speed-2026-10-26`. (3) **Two concurrent digitizes on this laptop
+cost more than two serial ones** (4.1× each, so 2× the total): the corpus
+tool's `--procs 2` default saves no time on it.
+
+**Measured false, do not retry: a prepared geometry is not the plain
+predicate.** `shapely.prepared.prep(slack).covers(line)` in place of
+`slack.covers(line)` in `travel_path` and `_reorder_for_cover` re-chose one
+travel route on underwater_reef (34,324 → 34,334 stitches; the after tree on
+the before pickle, stages 0–4 identical region for region) and moved
+owl_kent's md5; toggled alone it was the whole difference, while the
+vectorised scanlines and a thread pool left every md5 where it was. GEOS's
+prepared `covers` answers some lines differently from `Geometry::covers`, so
+where the design is pinned byte for byte it cannot stand in, whatever it
+saves (`tests/test_fill.py` pins that `stage6_fill` prepares nothing). The
+pool itself was exact and Kent dropped it ("no pool, rows only"): 239–253 s
+against 277–318 serial on one scene, inside the laptop's drift, and CI's
+four workers would each spawn eight. *(measured 2026-10-29 —
+`.claude/memory/stage7-scene-speed-2026-10-29.md`; the exact speed-ups that
+followed are in that note and its PR)*
