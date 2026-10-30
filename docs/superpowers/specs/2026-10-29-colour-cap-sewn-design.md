@@ -127,3 +127,17 @@ The cost of a fold is where the folded thread is substantial: summit_badge
 lose shading steps; Golden Tee, flower_macro, food_plate and underwater_reef
 fold slivers that were each a colour change. Renders of both arms for
 summit_badge, Golden Tee and night_skyline accompany the flip question.
+
+## 5. The 39-row corpus, OFF (main 6a031424) → ON (this branch, `--set color_cap_sewn=true`)
+
+`python -m tools.photo_corpus capture`, 2 procs, Studio request. **Two rows
+move, 37 are byte-identical** (md5 of the design's stitch stream, colours and
+blocks): `isometric_icon` 7 → 6 cones at identical stitches and trims
+(11,053 / 20), `watercolor` 7 → 6 at 18,725 → 18,729 stitches, 42 → 44 trims,
+`fidelity_cc` −1.659 → −1.667. Every other row loads the same cones it did —
+on today's routing the photographs take the photo lane, whose shade bind
+already holds, and no logo row carries blend bands past the budget. The
+forced-gradient readings in §4 are what the lane would do if routing sent a
+photograph there again. `comic_halftone` needed a 2,400 s timeout on this
+laptop (1,862 s alone); it was captured OFF on this branch's tree, which is
+main's engine byte for byte with the flag off.
