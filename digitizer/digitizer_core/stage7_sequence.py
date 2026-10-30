@@ -2754,8 +2754,15 @@ def sequence(
     # None — flag off, non-photo class, or nothing planned — reaches
     # `streamline_fill` as the documented "no restriction" default, byte-
     # identical to the parameter not existing.
+    # `cfg.color_cap_sewn` (2026-10-29): the same spool list on EVERY class,
+    # for the blend tier's band snap and the detail layer's cone as well as
+    # the layered streamline — the colour cap's second half, so the sewn
+    # design cannot load a cone the stage-4 cap never admitted. The photo
+    # gate on `shade_palette_bind` itself is untouched: with this flag off
+    # the line below is the only producer, exactly as before.
     shade_palette: list[int] | None = None
-    if cfg.shade_palette_bind and is_photographic(cfg, design_class) and planned:
+    if planned and ((cfg.shade_palette_bind and is_photographic(cfg, design_class))
+                    or getattr(cfg, "color_cap_sewn", False)):
         shade_palette = sorted({pr.region.thread_index for pr in planned})
         # The demand palette's anchors (cfg.shade_palette_demand — option
         # (b) of the same plan doc; `palette_spools`' docstring entry above
@@ -4036,7 +4043,9 @@ def sequence(
                                           start_near=entry,
                                           polygon=small_print_cut(p, p.polygon, bar_mm=row_mm),
                                           row_mm=row_mm, stitch_mm=stitch_mm,
-                                          underlay_style=eff_underlay_style)
+                                          underlay_style=eff_underlay_style,
+                                          **({"palette_indices": shade_palette}
+                                             if getattr(cfg, "color_cap_sewn", False) else {}))
             elif contour:
                 runs, report = contour_fill(
                     small_print_cut(p, p.polygon),
@@ -4730,7 +4739,9 @@ def sequence(
     eff_detail_layer = detail_layer if detail_layer is not None else cfg.detail_layer
     if (eff_detail_layer or sketch) and source_pixels is not None:
         d_runs, d_report = detail_runs(source_pixels, cfg, entry=cursor,
-                                       trim_at_mm=trim_at)
+                                       trim_at_mm=trim_at,
+                                       **({"allowed_threads": sorted({b.thread_index for b in blocks})}
+                                          if getattr(cfg, "color_cap_sewn", False) and blocks else {}))
         if d_runs:
             jumps += d_report["jumps"]
             # A new color block: the needle always lifts into it and the

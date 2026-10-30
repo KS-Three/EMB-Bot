@@ -694,12 +694,19 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
                start_near: tuple[float, float] | None = None,
                *, polygon: Polygon | None = None,
                row_mm: float | None = None, stitch_mm: float | None = None,
-               underlay_style: str = "none"
+               underlay_style: str = "none",
+               palette_indices: list[int] | None = None
                ) -> tuple[list[StitchRun], dict]:
     """Ramp region -> (stitches, report). Same `(runs, report)` contract as
     `stage6_fill.stitch_shape` and its other siblings, so stage 7 sequencing
     treats a blend group exactly like any other fill tier — including
     border eligibility, which depends on reading a real report back.
+
+    `palette_indices` (2026-10-29, `cfg.color_cap_sewn`): the spools this
+    plan's regions sew; every shade band snaps to its nearest one of them
+    (`snap_shades`) instead of the whole chart, so the bands cannot load a
+    cone the colour cap never admitted. None is the chart-wide snap, byte
+    for byte — the tier as it shipped.
 
     `polygon` is what to SEW: stage 5's compensated outline — pull
     compensation plus the seam tongue under whichever colour sews after —
@@ -763,7 +770,8 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     # ground) takes the per-region path below, exactly as before.
     design = source_pixels.design_ramp
     if design is not None and region_rides_design_ramp(poly, source_pixels):
-        n, shade_thread_idx = design_shade_scheme(design, chart)
+        n, shade_thread_idx = design_shade_scheme(design, chart,
+                                                  palette_indices=palette_indices)
         # The design's own model, linear or radial (2026-09-04): a radial
         # design's bands are its rings, clipped from the sewn outline by
         # `_band_clip`'s radial branch; its rows are level and cross the
@@ -849,7 +857,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     n = _choose_shade_count(extremes_delta_e)
     shade_labs = _shade_lab_colors(ts, lab, n)
 
-    shade_thread_idx = [chart.nearest_index(c) for c in shade_labs]
+    shade_thread_idx = snap_shades(shade_labs, chart, palette_indices)
 
     # The whole-design angle (set once per design, see
     # `SourcePixels.design_row_angle_deg`) wins whenever it exists: every
@@ -909,19 +917,39 @@ def region_rides_design_ramp(poly: Polygon, source_pixels: SourcePixels) -> bool
     return len(mm_x) >= 12 and design.rides(mm_x, mm_y, rgb_to_lab(rgb))
 
 
-def design_shade_scheme(design: DesignRamp, chart) -> tuple[int, list[int]]:
+def design_shade_scheme(design: DesignRamp, chart, *,
+                        palette_indices: list[int] | None = None) -> tuple[int, list[int]]:
     """The design ramp's shade bands: how many, and the thread each snaps
     to — computed from the ramp's own consensus samples, so every region
     that rides the ramp gets the same answer. The extremes are the mean Lab
     of the samples in the ramp's first and last 5% (the per-region path
     reads its two single extreme pixels, which is noisier than a design
     deserves); the count is `_choose_shade_count` of their CIEDE2000
-    distance, the colours `_shade_lab_colors` at the canonical positions."""
+    distance, the colours `_shade_lab_colors` at the canonical positions,
+    snapped by `snap_shades` (`palette_indices`: the bind)."""
     t, lab = design.sample_t, design.sample_lab
     lo, hi = tail_extremes(t, lab)
     delta = float(deltaE_ciede2000(lo[None, :], hi[None, :])[0])
     n = _choose_shade_count(delta)
-    return n, [chart.nearest_index(c) for c in _shade_lab_colors(t, lab, n)]
+    return n, snap_shades(_shade_lab_colors(t, lab, n), chart, palette_indices)
+
+
+def snap_shades(shade_labs, chart, palette_indices: list[int] | None = None) -> list[int]:
+    """Each shade's thread: the chart's nearest (`Chart.nearest_index`, the
+    tier's snap since it was written), or, with `palette_indices`, the
+    nearest among those spools — `cfg.color_cap_sewn`'s bind for the blend
+    tier, the same masked CIEDE2000 argmin `stage6_streamline._shade_layers`
+    uses for the photo lane's shade bind, so "nearest in the palette" has
+    one definition in this package. None or empty is the unbound snap, byte
+    for byte."""
+    if not palette_indices:
+        return [chart.nearest_index(c) for c in shade_labs]
+    allowed = np.unique(np.asarray(list(palette_indices), dtype=np.int64))
+    out: list[int] = []
+    for c in shade_labs:
+        ref = np.repeat(np.asarray(c, dtype=np.float64).reshape(1, 3), len(allowed), axis=0)
+        out.append(int(allowed[int(np.argmin(deltaE_ciede2000(ref, chart.lab[allowed])))]))
+    return out
 
 
 # The share of the ramp (of t, not of the samples) each tail covers.
