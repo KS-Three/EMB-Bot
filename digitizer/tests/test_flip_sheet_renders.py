@@ -509,14 +509,15 @@ def test_inpiece_cuts_reads_the_dst_on_both_sides(monkeypatch):
     assert fsr.inpiece_cuts(None, None, {"dst": "any.dst"}) == "6 / 13"
 
 
-def test_seam_order_rows_read_the_flip_backwards_and_keep_their_switches_off():
+def test_seam_order_rows_read_the_flip_backwards():
     from digitizer_core import PipelineConfig
     cfg = PipelineConfig()
     assert cfg.fill_seam_order is True                 # shipped: ON is the engine
     assert fsr.FLAGS["seam_order_read"]["base"]["fill_seam_order"] is False
     assert fsr.off_arm("seam_order_read") == "seam_off__off"
     assert fsr.FLAGS["seam_order_read"]["sets"]["fill_seam_order"] is True
+    # ON by default since Kent's 2026-10-30 flip: the rows keep the OFF | ON of that sheet
     for flag in ("knockdown_shorter_walk", "fill_seam_order_priced"):
-        assert getattr(cfg, flag) is False, flag
+        assert getattr(cfg, flag) is True, flag
         assert fsr.FLAGS[flag]["sets"][flag] is True
         assert fsr.off_arm(flag) == "rembg900__off"

@@ -25,19 +25,19 @@ from tests.test_fill_seam_order import PLATE, ROW, _rows_of
 KHAKI = (195, 176, 145)
 
 
-def test_both_switches_are_off_by_default():
-    cfg = PipelineConfig()
-    assert cfg.fill_seam_order_priced is False
-    assert cfg.knockdown_shorter_walk is False
-    assert not _SEAM_PRICED.get()
+def test_both_switches_are_on_by_default():
+    cfg = PipelineConfig()    # Kent 2026-10-30, "Flip ON (Recommended)" on each
+    assert cfg.fill_seam_order_priced is True
+    assert cfg.knockdown_shorter_walk is True
+    assert not _SEAM_PRICED.get()      # set for the length of one plan
 
 
 def test_plan_stitches_reads_the_priced_flag(monkeypatch):
     from digitizer_core import pipeline
     seen = []
     monkeypatch.setattr(pipeline, "_plan_stitches", lambda result, cfg: seen.append(_SEAM_PRICED.get()))
+    pipeline.plan_stitches(None, PipelineConfig(fill_seam_order_priced=False))
     pipeline.plan_stitches(None, PipelineConfig())
-    pipeline.plan_stitches(None, PipelineConfig(fill_seam_order_priced=True))
     assert seen == [False, True]
     assert not _SEAM_PRICED.get()
 
@@ -151,7 +151,7 @@ def _knockdown_with(monkeypatch, cfg, seam_walk, held_walk):
 
 
 def test_off_sews_the_knockdown_once_with_seam_order(monkeypatch):
-    block, asked = _knockdown_with(monkeypatch, _kd_cfg(), 77.9, 38.7)
+    block, asked = _knockdown_with(monkeypatch, _kd_cfg(knockdown_shorter_walk=False), 77.9, 38.7)
     assert asked == [False]
     assert knockdown._walk_mm(block.runs) == pytest.approx(77.9, abs=1.0)
 
@@ -159,7 +159,7 @@ def test_off_sews_the_knockdown_once_with_seam_order(monkeypatch):
 @pytest.mark.parametrize("seam,held,want", [(77.9, 38.7, 38.7), (40.0, 90.0, 40.0)])
 def test_on_keeps_the_shorter_walk_either_way(monkeypatch, seam, held, want):
     """Becker beanie is the first row, ProSeal beanie's direction the second."""
-    block, asked = _knockdown_with(monkeypatch, _kd_cfg(knockdown_shorter_walk=True), seam, held)
+    block, asked = _knockdown_with(monkeypatch, _kd_cfg(), seam, held)
     assert asked == [False, True]
     assert knockdown._walk_mm(block.runs) == pytest.approx(want, abs=1.0)
 

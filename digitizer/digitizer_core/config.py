@@ -4169,13 +4169,20 @@ class PipelineConfig:
     # fewer ridges and flips, then the one `_score` prices cheaper, not the one
     # with the shorter flown chord. Off, byte-identical. Tests:
     # `tests/test_seam_order_costs.py`.
-    fill_seam_order_priced: bool = False
+    # **ON since 2026-10-30, Kent's flip** ("Flip ON (Recommended)", asked with the
+    # drone's bare rise stated): 17 pairs flips 59 -> 2, ridges 1 -> 0, cuts 399 ->
+    # 396. Costs: crest +15 cuts, MFab hat +4, drone bare 2.20 -> 2.54 mm. False is
+    # the engine as it was; `tests/conftest.py` PRE_FLIP pins it False.
+    fill_seam_order_priced: bool = True
     # The beanie knockdown never lifts (`knockdown._stay_down`), so a hop seam
     # order adds is walked: Becker beanie's walk 38.7 -> 77.9 mm, while ProSeal
     # beanie's gets SHORTER. ON (2026-10-30, built OFF), it is sewn with and without
     # seam order and the shorter walk kept. Off, byte-identical. Tests:
     # `tests/test_seam_order_costs.py`.
-    knockdown_shorter_walk: bool = False
+    # **ON since 2026-10-30, Kent's flip** ("Flip ON (Recommended)"): Becker beanie
+    # exposed 105.8 -> 38.6 mm, bare 14.84 -> 3.72; ProSeal beanie byte-identical.
+    # False is the engine as it was; `tests/conftest.py` PRE_FLIP pins it False.
+    knockdown_shorter_walk: bool = True
 
     # The fill column-order scorer prices only what `emit` sews (2026-10-08,
     # built OFF). `_fill_paths` returns one-point "columns" that `emit`
