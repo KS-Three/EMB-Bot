@@ -29,7 +29,7 @@ Under budget but banded: gradient_ramp_linear / radial and
 repro_gradient_white_icon sew 5 cones from 1–2 regions. A per-band bind to
 the region's cone would flatten them to 1 — measured, not built.
 
-**Built, `cfg.color_cap_sewn` OFF** (false in `tests/engine_2026_10_27.json`):
+**Built, `cfg.color_cap_sewn`, ON since 10-30** (false in `tests/engine_2026_10_27.json`):
 a second `enforce_color_cap(protected=, stitched_only=True)` at the end of
 `finish_generation`'s recolours (review recolours + the sew-white thread
 protected and counted); `stage7_sequence.fold_stray_cones` over the blocks
@@ -41,5 +41,6 @@ One `COLOR_CAP_APPLIED` per design. Not touched: knockdown's garment cone.
 **How to apply:** a thread-count claim quotes `colors_used` off the blocks
 (`tools/photo_corpus.py` `distinct_threads`) and names which mechanism added
 each extra. Kent 2026-10-30: the ticked white COUNTS and is protected (option
-A); the flip is still his.
+A), and the flag is ON by default; False is the pre-flip engine (`PRE_FLIP`,
+`engine_2026_10_27.json`).
 Related: [[photo-corpus-sxs-2026-10-27]], [[stage0-texture-gate-2026-10-28]].

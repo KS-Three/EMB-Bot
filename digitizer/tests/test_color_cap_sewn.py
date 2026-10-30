@@ -1,5 +1,5 @@
-"""`cfg.color_cap_sewn` (built OFF 2026-10-29): "Colors (max N)" holds on the
-SEWN design, not only on stage 4's regions.
+"""`cfg.color_cap_sewn` (built OFF 2026-10-29, ON since 2026-10-30 — Kent):
+"Colors (max N)" holds on the SEWN design, not only on stage 4's regions.
 
 The photo-style census (2026-10-27, item 3) found sewn designs loading 13 / 8
 / 8 / 7 cones against the 6 the cap's own warning promised. Two mechanisms,
@@ -72,8 +72,10 @@ def _region(sid: str, thread: int, area: float, **meta) -> Region:
 
 # --- 1. Flag off is byte-identical ------------------------------------------------
 
-def test_flag_defaults_off():
-    assert PipelineConfig().color_cap_sewn is False
+def test_flag_defaults_on_and_the_frozen_engine_carries_it_off():
+    """ON by default since Kent's 2026-10-30 ruling; the frozen engine every md5
+    pin spreads still says False, so no pin moved with the flip."""
+    assert PipelineConfig().color_cap_sewn is True
     assert frozen_cfg().color_cap_sewn is False
 
 

@@ -163,8 +163,8 @@ customer-facing answer is. Every figure is a reading from this run.
    "Sew white areas" recolour after the cap (both leaks on main, isometric_icon
    and watercolor: 6 artwork cones + White) and the blend tier's chart-wide
    band snap on the gradient lane (these four rows, forced gradient:
-   13 / 8 / 8 / 9). `cfg.color_cap_sewn` (built OFF) closes both; the flip is
-   Kent's. Spec: `docs/superpowers/specs/2026-10-29-colour-cap-sewn-design.md`.
+   13 / 8 / 8 / 9). `cfg.color_cap_sewn` closes both, ON since 2026-10-30
+   (Kent: the ticked white counts and is protected). Spec: `docs/superpowers/specs/2026-10-29-colour-cap-sewn-design.md`.
 
 4. **Colour revisits double the stops.** Blocks (stops) against distinct
    cones: architecture 14 / 6, landscape_lake 16 / 6, night_skyline 14 / 8,

@@ -9321,6 +9321,11 @@ the white a customer ticks COUNTS against "Colors (max 6)" and is
 PROTECTED** — a stated colour keeps its slot, the artwork gets the slots
 left, the dropped artwork cone lands on its nearest kept (CIEDE2000). Not
 "competes by area" (the tick's promise could break silently) and not "a
-seventh cone" (the label would be false). *(measured 2026-10-29 —
+seventh cone" (the label would be false). **And ON by default from the same
+day** (his second ruling): on the 39-row corpus two rows move (isometric_icon
+and watercolor, 7 → 6, White kept) and 37 are byte-identical; where the
+overflow is a real band (summit_badge's 18.8 m of graded rings, a forced-
+gradient sky) a shading step goes to its nearest admitted cone, and he took
+that price for a label that is true. *(measured 2026-10-29 —
 `docs/superpowers/specs/2026-10-29-colour-cap-sewn-design.md`,
 `tests/test_color_cap_sewn.py`)*

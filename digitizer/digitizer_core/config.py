@@ -417,10 +417,11 @@ class PipelineConfig:
     # tier's shade snap and the detail layer's cone are bound to the plan's
     # regions' threads on EVERY class (the same masked argmin `_shade_layers`
     # uses; the photo gate on `shade_palette_bind` is untouched). OFF is the
-    # engine as it stood, byte for byte. Built OFF 2026-10-29. Kent ruled
-    # 2026-10-30 that the ticked white COUNTS against "Colors (max 6)" and is
-    # protected (as built); the flip is his, still open.
-    color_cap_sewn: bool = False
+    # engine as it stood, byte for byte. Built OFF 2026-10-29; DEFAULT ON since
+    # 2026-10-30 (Kent's two rulings on PR #1197: the ticked white COUNTS
+    # against "Colors (max 6)" and is protected; ship ON). False is the
+    # pre-flip engine; `tests/engine_2026_10_27.json` and `PRE_FLIP` carry it.
+    color_cap_sewn: bool = True
     seed: int = 0                      # k-means RNG seed — fixed for determinism
     # How many k-means seeds stage 0 should sweep before reporting
     # `unique_color_mass`. 0 or 1 = today's single draw, and the classifier

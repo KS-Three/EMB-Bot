@@ -57,7 +57,7 @@ pick a chart thread of their own: the detail layer (`stage6_detail.
 detail_runs`, Studio sends it OFF) and the beanie knockdown (the GARMENT's
 colour, `knockdown.py`, beanie only — a cone by design, Kent's 10-21 flip).
 
-## 2. The change: `cfg.color_cap_sewn` (built OFF)
+## 2. The change: `cfg.color_cap_sewn` (built OFF 2026-10-29, ON since 2026-10-30)
 
 One flag, two seams, OFF byte-identical on every lane:
 
@@ -99,7 +99,8 @@ Protected (built): artwork gets 5 when white sews. Competing by area: white
 can lose its slot and the ticked areas sew in another thread — the tick's
 promise breaks silently. Not counted (today): 7 cones against a label that
 says 6. **Kent ruled 2026-10-30: A — white counts and is protected**, as
-built. The flip (ON by default) is the open question.
+built. **And the flip: ON by default, the same day** (his second ruling, on
+the §4/§5 readings and the renders).
 
 ## 4. Readings — fixtures and forced-gradient rows, OFF → ON
 

@@ -592,6 +592,13 @@ PRE_FLIP["bean_only_lines"] = False
 # fixture was measured without those strokes. Flat and photo fixtures are
 # byte-identical either way. `tests/engine_2026_10_27.json` carries it False.
 PRE_FLIP["keep_dark_thin_strokes"] = False
+# `color_cap_sewn` joined the flipped set 2026-10-30 (Kent's two rulings on PR
+# #1197). ON, a design whose sewn blocks load more cones than `max_colors`
+# has the overflow folded (the sew-white re-cap, the blend-band fold), so an
+# arm measured before that day on a design over its cap was measured with the
+# extra cones. A design at or under its cap is byte-identical either way.
+# `tests/engine_2026_10_27.json` carries it False.
+PRE_FLIP["color_cap_sewn"] = False
 # `dark_ink_refuse_strays` (built OFF 2026-10-28, Kent's "queue refusal" on
 # PR #1172; not flipped): a kept dark read at the artwork's edge, or not under
 # its ring as a whole, is refused. Pinned here now so the flip, when Kent
