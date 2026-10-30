@@ -210,7 +210,7 @@ all 17 jobs, on main after #1198 turned `fill_bridge_cut_exposed` and
 - **Moves:** Becker hat small, chest small and hat large each GAIN a cut (+1).
   Becker LC -2, MFab hat -1, drone -2. MFab LC's exposed travel 19.8 -> 10.8 mm.
   Becker beanie moves 27 points and Bridge hat 2, with no change in cuts. The
-  other seven jobs are byte-identical.
+  other eight jobs are byte-identical.
 - **Cause:** `stitch_shape` calls `_order_for_seams` after `_plan_sections` and
   re-sequences every section, so the order the planner priced and gated is not
   the order that sews. That is why cuts can rise past a gate of "no more cuts".
