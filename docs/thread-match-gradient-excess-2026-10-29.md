@@ -150,7 +150,16 @@ Region_blobs is a photo-route design the tool scores without knowing its
 route. Fixed with this change (`spool_remedy.graded_view`, pinned in the test
 file). `F_WALL` is now today's seven.
 
-__SPOOL2__
+**Re-run with the fix on today's seven (left_chest): 5 clear every block
+under excess and 2 hold.** `summit_badge` holds `0111` and
+`logo_hotel_fremont` holds both of its blocks. Per fixture, raw blocks →
+excess blocks: drone 3 → 0, screenshot 2 → 0, golden_tee 1 → 0, bridge
+6 → 0, gradient_ramp_radial 1 → 0 (its `1876 Chocolate` falls to a 7.4
+warn), summit 2 → 1, fremont 2 → 2. That is the matrix's ON column, block
+for block. One number differs: the tool puts summit's `0111` excess at
+15.2 where the check says 16.9. The tool's `loaded` is the graded rows'
+spools, while the check also counts every sewing block's spool (since
+2026-09-09), so the check is the one to quote. The verdict is the same.
 
 ## 3. Gaulke: it no longer fails, and the "unexplained seventh" was explained
 
