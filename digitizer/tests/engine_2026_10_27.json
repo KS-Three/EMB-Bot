@@ -53,6 +53,7 @@
  "classify_area_weighted": false,
  "clip_keep_pieces": true,
  "clip_parent_keeps_ink": true,
+ "color_cap_sewn": false,
  "compact_solids_satin": true,
  "contour_spacing_mm": null,
  "contour_tolerance_mm": null,

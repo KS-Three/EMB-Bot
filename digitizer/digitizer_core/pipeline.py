@@ -85,6 +85,7 @@ from .stitches import StitchPlan
 from .thin_ink import bean_dark_ink, ink_after_ground
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (
+    COLOR_CAP_APPLIED,
     BACKGROUND_ENCLOSED,
     DROPPED_SMALL_SHAPES,
     FACE_ROUTED_FLAT,
@@ -1309,6 +1310,33 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             "stitched", default_stitched
         )
 
+    # The colour cap's second pass (`cfg.color_cap_sewn`, 2026-10-29): the
+    # stage-4 pass ranked the REGIONS before the review edits, the sew-white
+    # recolour and the garment rule ran, and each of those can put a cone on
+    # the design it never admitted -- "Sew white areas" did on isometric_icon
+    # and watercolor (7 against the Studio's 6). Here, after every recolour
+    # and with `stitched` resolved, the same cap runs once more over what
+    # will actually sew. The customer's STATED colours are protected and
+    # count against the budget: a review recolour's thread, and the thread
+    # the sew-white tick sews in (its chosen colour, or white for a hole whose
+    # colour nobody knows) while any area sews under it; the artwork competes
+    # for the rest. OFF: nothing here runs, byte for byte.
+    late_cap_warnings: list[dict] = []
+    if cfg.color_cap_sewn and cfg.enforce_color_cap:
+        ids = {r.shape_id for r in regions}
+        protected = {int(ov["thread_index"]) for sid, ov in shape_overrides.items()
+                     if sid in ids and (ov or {}).get("thread_index") is not None}
+        protected |= {int(r.thread_index) for r in regions
+                      if r.meta.get("sew_enclosed_white") and r.meta.get("stitched")
+                      and (cfg.sew_enclosed_rgb is not None
+                           or r.meta.get("enclosed_colour_unknown"))}
+        late_cap_warnings = enforce_color_cap(
+            regions, chart_for(cfg), cfg.max_colors,
+            protected=protected, stitched_only=True)
+    # One sentence per design: the second pass supersedes the first's count.
+    resnap_warnings = ([w for w in gen.resnap_warnings if w.get("code") != COLOR_CAP_APPLIED]
+                       + late_cap_warnings) if late_cap_warnings else list(gen.resnap_warnings)
+
     # Stitch width, applied (`stitchwidth.apply_stitch_widths`): after the
     # edits, because the override rides them; after `stitched`, so a shape
     # that will not sew is not offset; before compaction and stage 5, so the
@@ -1695,7 +1723,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         warnings=merge_warnings(
             [*gen.classification_warnings, *prep_own_warnings, *prep_warnings,
              *gen.quant_warnings, *gen.small_warnings, *vec_warnings,
-             *gen.resnap_warnings, *merge_edit_warnings, *split_edit_warnings,
+             *resnap_warnings, *merge_edit_warnings, *split_edit_warnings,
              *edit_warnings, *layer_warnings, *palette_warnings]
         ),
         segmenter=gen.seg_name,
@@ -2117,10 +2145,17 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     # `stats.thread_mm_by_color` is per block too, so a worksheet can finally
     # pair the two by index without lying.
     chart = chart_for(cfg)
+    # One `COLOR_CAP_APPLIED` sentence per design: when the plan-level fold
+    # (`stage7_sequence.fold_stray_cones`, `cfg.color_cap_sewn`) fired, its
+    # count supersedes the region passes' -- the same coalescing
+    # `finish_generation` does between the stage-4 pass and its own.
+    result_warnings = list(result.warnings)
+    if any(w.get("code") == COLOR_CAP_APPLIED for w in seq_warnings):
+        result_warnings = [w for w in result_warnings if w.get("code") != COLOR_CAP_APPLIED]
     plan = StitchPlan(
         blocks=blocks,
         palette=[_cone(chart, b.thread_index) for b in blocks],
-        warnings=[*result.warnings, *skip_warnings, *overlap_warnings,
+        warnings=[*result_warnings, *skip_warnings, *overlap_warnings,
                   *seq_warnings],
         design_size_mm=result.design_size_mm,
         merged_into=merged_into,

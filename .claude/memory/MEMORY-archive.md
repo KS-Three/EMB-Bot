@@ -1,4 +1,4 @@
-# Memory Index — Archive (through 2026-10-11)
+# Memory Index — Archive (through 2026-10-20)
 
 Same one-line format as `MEMORY.md`: `- [Title](file.md) — hook`. These are the
 index lines for every note dated through 2026-10-04 (filename date, else the date

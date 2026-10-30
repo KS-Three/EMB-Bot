@@ -9297,3 +9297,25 @@ against 277–318 serial on one scene, inside the laptop's drift, and CI's
 four workers would each spawn eight. *(measured 2026-10-29 —
 `.claude/memory/stage7-scene-speed-2026-10-29.md`; the exact speed-ups that
 followed are in that note and its PR)*
+
+**A cap on the regions is not a cap on the design — and the census named the
+wrong function (2026-10-29).** Census item 3 (`docs/photo-style-census-
+2026-10-27.md`) read "Colors (max 6)" broken by stage 6 and blamed
+`_cap_tonal_layers` for never reaching the gradient lane; that function caps
+fill LAYERS (defect 20's density ceiling) and was never a colour cap on any
+lane. Attributing every block thread to its source (`tools/cone_escape.py`)
+found two mechanisms, both AFTER `enforce_color_cap`: the "Sew white areas"
+recolour puts its thread on the fields it sews after the cap ranked them
+(BOTH leaks on main — isometric_icon and watercolor, six artwork cones plus
+White 0015), and the blend tier snaps each shade band to the whole chart
+because the photo lane's `shade_palette_bind` is gated on `is_photographic`
+(flower_macro forced gradient 13 cones, seven strays of 9–57 mm, each a
+colour change; Golden Tee and summit_badge 9 at the Studio's own request).
+Two rules from it: **a thread count is read off the BLOCKS the machine
+sews, never off the regions or the warning**, and **a bind that strips
+shading must spend the budget first** — binding every band to its region's
+cone would have flattened `gradient_ramp_linear` (one region, five cones,
+under a cap of six) to one; `cfg.color_cap_sewn` (built OFF) folds only the
+strays past the budget, longest thread kept. *(measured 2026-10-29 —
+`docs/superpowers/specs/2026-10-29-colour-cap-sewn-design.md`,
+`tests/test_color_cap_sewn.py`)*

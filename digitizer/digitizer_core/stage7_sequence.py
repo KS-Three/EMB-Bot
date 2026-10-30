@@ -53,6 +53,7 @@ import math
 from dataclasses import replace
 
 import numpy as np
+from skimage.color import deltaE_ciede2000
 import shapely
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import nearest_points, polylabel, unary_union
@@ -102,7 +103,7 @@ from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
 from .detail_spokes import spoke_runs
 from .threads import chart_for
-from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
+from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED, COLOR_CAP_APPLIED,
                              CLIP_DROPPED_SLIVER,
                              BORDER_SEAM_SHARED,
                              BORDER_SKIPPED_TOO_NARROW,
@@ -4433,6 +4434,16 @@ def sequence(
     # below, on whatever survives. Appliqué blocks (already in `blocks`, and
     # already tied by their own pass) are deliberately outside this: their
     # per-layer tie rule is §2.14's, not this one's.
+    # `cfg.color_cap_sewn` (2026-10-29): the colour cap's second half, on the
+    # blocks. Before the adjacent merge, so a folded band joins the block of
+    # the cone it lands on.
+    fold_warnings: list[dict] = []
+    if getattr(cfg, "color_cap_sewn", False) and cfg.enforce_color_cap:
+        art_blocks, folded = fold_stray_cones(
+            art_blocks, {pr.region.thread_index for pr in planned},
+            int(cfg.max_colors), chart_for(cfg))
+        if folded:
+            fold_warnings.append(folded)
     if merge_same_thread:
         art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
         # The non-adjacent half, gated on geometry (see `_hoist_same_thread`).
@@ -4811,7 +4822,7 @@ def sequence(
         spoke_report = _place_spoke_marks(spoke_marks, planned, blocks, cfg, trim_at,
                                           design_width_mm=_design_w)
 
-    warnings: list[dict] = list(applique_warnings)
+    warnings: list[dict] = list(applique_warnings) + fold_warnings
     if spoke_report is not None and spoke_report["count"]:
         n, s = spoke_report["count"], spoke_report["spokes"]
         warnings.append(
@@ -5114,4 +5125,87 @@ def sequence(
     # unchanged.
     if cfg.tie_in_off:
         stitches.drop_tie_ins(blocks)
+    # The same fold once more over the finished list: the detail layer picks
+    # a chart cone of its own after the artwork pass above (the edge cap and
+    # the hairline strands sew loaded cones already). A no-op at or under
+    # the budget, which is every design the first pass settled.
+    if getattr(cfg, "color_cap_sewn", False) and cfg.enforce_color_cap:
+        blocks, folded = fold_stray_cones(
+            blocks, {pr.region.thread_index for pr in planned},
+            int(cfg.max_colors), chart_for(cfg))
+        if folded:
+            warnings.append(folded)
     return blocks, warnings
+
+
+def _sewn_mm(block: StitchBlock) -> float:
+    return sum(math.dist(a, b) for run in block.runs
+               for a, b in zip(run.points, run.points[1:]))
+
+
+def fold_stray_cones(blocks: list[StitchBlock], admitted: set[int], cap: int,
+                     chart) -> tuple[list[StitchBlock], dict | None]:
+    """Hold "Colors (max N)" on the BLOCKS (`cfg.color_cap_sewn`, 2026-10-29):
+    -> (blocks, the `COLOR_CAP_APPLIED` warning, or None when nothing moved).
+
+    Stage 4's `enforce_color_cap` ranks the REGIONS, and the plan then
+    loads cones no region wears: the blend tier's shade bands and the
+    layered streamline's shades snap to the whole chart (the photo lane's
+    `shade_palette_bind` never reaches a gradient design), the detail
+    layer picks its own. Forced to the gradient lane, flower_macro sewed 13
+    cones against 6, seven of them bands of one or two shapes carrying
+    9-57 mm of thread, each a full colour change; Golden Tee at the
+    Studio's request sews 9.
+
+    The rule spends the budget before it folds anything. The regions'
+    cones (`admitted`, the review screen's palette, already capped) keep
+    their slots; the cones only blocks introduced fill the slots left, the
+    most THREAD first (sewn mm over the plan -- a stray that carries one
+    sliver goes first, a real band stays while there is room); every
+    remaining stray block is recoloured to its nearest kept cone (CIEDE2000
+    on the chart, the cap's own yardstick), in place: the sew order, the
+    stitches, the cuts and the ties are untouched, only the cone changes.
+    A plan at or under the budget comes back the same list, which is what
+    makes a one-region gradient ramp keep its five shades at a cap of six.
+    """
+    if cap < 1 or not blocks:
+        return blocks, None
+    present: list[int] = []
+    for b in blocks:
+        if b.thread_index not in present:
+            present.append(b.thread_index)
+    if len(present) <= cap:
+        return blocks, None
+    mm: dict[int, float] = {}
+    for b in blocks:
+        mm[b.thread_index] = mm.get(b.thread_index, 0.0) + _sewn_mm(b)
+    kept = sorted(t for t in present if t in admitted)
+    extras = sorted((t for t in present if t not in admitted),
+                    key=lambda t: (-mm.get(t, 0.0), t))
+    free = max(0, cap - len(kept))
+    kept = kept + extras[:free]
+    folded = extras[free:]
+    if not folded or not kept:
+        return blocks, None
+    kept_lab = chart.lab[np.asarray(kept, dtype=np.int64)]
+    target: dict[int, int] = {}
+    for t in folded:
+        d = deltaE_ciede2000(np.repeat(chart.lab[t].reshape(1, 3), len(kept), axis=0), kept_lab)
+        target[t] = kept[int(np.argmin(d))]
+    moved = 0
+    out: list[StitchBlock] = []
+    for b in blocks:
+        dst = target.get(b.thread_index)
+        if dst is None:
+            out.append(b)
+            continue
+        th = chart[dst]
+        out.append(replace(b, thread_index=dst, thread_number=th.number, rgb=tuple(th.rgb)))
+        moved += 1
+    return out, warn(
+        COLOR_CAP_APPLIED,
+        f"Artwork needed more than {cap} thread colors; the smallest "
+        "areas were merged into their closest match.",
+        dropped=len(folded), blocks=moved, before=len(present), after=len(kept),
+        stage="plan", folded_mm=round(sum(mm.get(t, 0.0) for t in folded), 1),
+    )

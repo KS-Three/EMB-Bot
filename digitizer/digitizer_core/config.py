@@ -395,6 +395,31 @@ class PipelineConfig:
     # lose their maroon edge at 6) and `COLOR_CAP_APPLIED` names them. False
     # is the pre-flip engine byte for byte.
     enforce_color_cap: bool = True
+    # The cap above holds on the REGIONS at stage 4 and the SEWN design then
+    # loads more cones (photo-style census 2026-10-27, item 3; the readings in
+    # `docs/superpowers/specs/2026-10-29-colour-cap-sewn-design.md`). Two
+    # mechanisms, both after `enforce_color_cap` has run:
+    #   1. "Sew white areas" (`sew_enclosed_white`, `finish_generation`)
+    #      recolours the fields it sews to `sew_enclosed_rgb`'s thread, a cone
+    #      the cap never ranked: isometric_icon and watercolor on main sew 7
+    #      against the Studio's 6, the seventh White 0015.
+    #   2. The gradient lane's blend tier snaps every shade band to the whole
+    #      chart (`stage6_blend.blend_fill`, `design_shade_scheme`); the photo
+    #      lane's shade bind (`shade_palette_bind`) is gated on
+    #      `is_photographic`, so a gradient design never gets it. Forced to
+    #      the gradient lane, flower_macro sews 13 cones (7 strays of 9-57 mm
+    #      of thread, each a colour change), underwater_reef 9, night_skyline
+    #      8; Golden Tee at the Studio's request 9 against 6.
+    # ON: (a) a second `enforce_color_cap` pass over the FINAL regions, after
+    # the sew-white recolour and the garment rule, ranking by `stitched`, with
+    # the customer's stated colours protected (review recolours, the sew-white
+    # thread while it sews) and counted against the budget; (b) the blend
+    # tier's shade snap and the detail layer's cone are bound to the plan's
+    # regions' threads on EVERY class (the same masked argmin `_shade_layers`
+    # uses; the photo gate on `shade_palette_bind` is untouched). OFF is the
+    # engine as it stood, byte for byte. Built OFF 2026-10-29; the flip, and
+    # whether the ticked white counts against "Colors (max 6)", are Kent's.
+    color_cap_sewn: bool = False
     seed: int = 0                      # k-means RNG seed — fixed for determinism
     # How many k-means seeds stage 0 should sweep before reporting
     # `unique_color_mass`. 0 or 1 = today's single draw, and the classifier
