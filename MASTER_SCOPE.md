@@ -108,38 +108,11 @@ was untouched that day; both went 09-30; flat returned that evening (DOCTRINE). 
     Blocks 19→17, revisits 2→0, needle-up 1295→1237 mm, no golden moved.
 *(2026-09-01 — `test_duplicate_cone_layers.py`, 13)* **A THIRD mechanism, found 2026-09-06 by `COLOR_STOPS_HEAVY`'s `repeated_cones` field, is EMPTY on its band route: 0 of 52 design/garment combos.** The 09-06 "4 of 52" was two band and two resnap cases; the resnap pair closed with `bind_resnap_all_classes` (ON since 09-10, defect 15) and the band pair (`region_blobs`, cone 0182) no longer reproduces; six gradient fixtures at 50 and 120 mm add none. A band fold was built (PR #827), measured INERT (0 of 52 combos change) and REMOVED on Kent's ruling (PR #835); `tools/cone_revisits` still flags a real band case as `band`. **What still repeats is not a band:** `repeated_cones` > 0 on **35 of 52** combos (43 before 2026-10-20) is almost all the `edge_cap` route (the cap sewn in a cone the artwork already loaded). **The cap's ADJACENT repeat is CLOSED (PR #1008, no new flag):** where the first cap block used the last artwork block's cone, `merge_adjacent_same_thread` (ON) stopped at the stage-7 seam and the machine stopped for a re-thread of the spool already on it; `_cap_seam_joins` extends that rule across the seam, keeping every stitch, cut, jump and tie in order, so only the stop goes — duplicate cones 88 → 79, `edge_cap` 74 → 65, gap-1 9 → **0**, no other row moved; the Sequencer shows no separate "design edge" row for a joined cone. The 65 left are all gap ≥ 2, cap stretches whose cone was sewn BEFORE later artwork: removing one is `edge_cap_fold_into_colour` (PR #714, built OFF), Kent's. The artwork repeats left are resnap (drone 0134/3574, bridge 0108) and plain (drone 1102/1305, golden_tee 0532). `tests/test_cone_revisits.py`, `tests/test_cap_adjacent_seam.py`. *(measured 2026-10-11 — PR #827; removed 2026-10-11 — PR #835; measured 2026-10-20 — PR #1008, `tools/cone_revisits`)*
 
-19. **The design's own outer edge is uncapped — every fill row ends in open
-    air.** The other sew-out edge finding, and one no per-shape border can reach: the silhouette is the union of several shapes' edges, so the
-    design/fabric boundary is nobody's. On Kent's icon, **100% of the 293.2 mm
-    outer silhouette uncovered at 1.0 mm** vs 0.0% on the glyph edge he rated
-    flawless. **FIX BUILT, default OFF, both styles opt-in:** `cfg.edge_cap` —
-    `"bean"` traces it, `"satin"` lays a column just inside, one design-level
-    block after all artwork in a thread already loaded. No new constant (gate 1
-    clean); Studio exposes **Design edge**.
-    Icon: bean +12.6%, satin +15.3%. KNOWN LIMIT: cost scales with silhouette
-    FRAGMENTATION, not size — `drone_render` caps 38 parts / 78 holes for
-    **+56.9%**, a whisker off DOCTRINE's blanket-border negative, and there
-    satin (+34.9%) is cheaper. Bills every run as `EDGE_CAP_APPLIED`.
-**MEASURED 2026-09-11, and GATED** (`tools/pro_silhouette.py`): ours, `edge_cap` off, **5.9–100.0% of the sewn silhouette carries no linear stitch** (Fremont 100.0, whitebg 82.6, gaulke 76.7, enthusiast 5.9); the pro carries a certified border on **at least 19.1–26.1%** of his fill edge, never in the fill's own colour block. Read differently ON PURPOSE — a stitch file has no run kinds, so his is a LOWER bound. Per-fixture tables, and the `unary_union` slowdown fixed 2026-09-12: [area 1](docs/scope/1-auto-digitizing-quality.md).
-    *(built 2026-09-01 — `tests/test_edge_cap.py`, 18 passing)*
-    **Rang hairline CRACKS as edges — FIXED 2026-09-08.** 20 sub-0.1 mm cracks
-    in the silhouette union, owned by no region, cleared the loop gate's
-    PERIMETER floor; `_fill_cracks` fills any interior the column cannot stand
-    in — on an ABSOLUTE ruler while the feature scales, so one hole can get
-    opposite verdicts at two sizes. *(2026-09-08 —
-    `tests/test_edge_cap.py`)*
-    **THE BILL OSCILLATES WITH SIZE, and the flip's `+5.9–26.3%` was a
-    ONE-WIDTH reading** (80 mm): becker bills **+58.7% at 88 mm**, and a 0.3 mm
-    larger design is 34% cheaper — the `omit` gate loses its input when the
-    shape carrying most of the linear cover flips satin/fill on
-    `_PROMOTE_EXPLAINED_MIN`, which is not monotone in design size. **COST
-    CAPPED 2026-09-12** (Kent: cap the cost, leave `classify_ribbon` alone):
-    `EDGE_CAP_BUDGET_PCT` 40.0, `"warn"` by default, so no stitch moves. The
-    `edges` field reports silhouette rings now, having FALLEN as the bill rose.
-    **The cause is NOT fixed**; `classify_ribbon`'s stability is the open
-    project.
-    *(measured 2026-09-12 — `docs/edge-cap-cliff-2026-09-12.md`;
-    `tests/test_edge_cap_budget.py`)*
+19. **RE-MEASURED 2026-10-29 — the design's own edge is no longer open, and the default cap sews nothing.** Same rule as 09-11 (`tools/pro_silhouette.py --ours`), cap off, 80 mm: **0.0–4.0% of the sewn silhouette carries no linear stitch** on the six fixtures that read **5.9–100.0%** on 09-11 (Fremont 100.0 → 0.0, whitebg 82.6 → 1.8, gaulke 76.7 → 0.3, enthusiast 5.9 → 4.0; becker 2.9, drone 0.2). The edge work closed it, not the cap: one flag OFF at a time, `silhouette_underfill_rim` holds Fremont's whole edge and 28 points of whitebg's, `border_by_size` the other 49 of whitebg's and gaulke's 5.7; `border_by_size_fabric_edges`, `border_from_outline` and `outline_loop_mitre` move under a point. The pro reads at least 19.1–26.1% bordered, to the digit what 09-11 read (a lower bound on fill edge, not the same measurement).
+    **The size swing is gone:** becker bills satin +0.0% at 60 mm rising to +2.3% at 120 mm, every one of 09-12's +53–59% widths now +0.6–1.5%; the worst bill on any fixture from 60 to 120 mm is +5.6%, against `EDGE_CAP_BUDGET_PCT` 40. No stability lever was built: the brief's condition (the swing persisting) failed. `classify_ribbon` was not re-probed; the cap no longer depends on it.
+    **`edge_cap` defaults to `"bean"`, but `bean_only_lines` (ON 10-27) turns that into no cap**, so the shipped engine sews none. The satin style is live and nearly inert: byte-identical on 3 of 4 paired jobs at the pro's width, and on Becker 16 points that cost a colour change (1 → 2).
+    **Open, Studio-side:** the Design edge select still defaults to "Bean cap", and its readout now says *"Design edge found nothing to sew … too small or too narrow"* on every design. False: the engine declined the style. Previous text: [area 1](docs/scope/1-auto-digitizing-quality.md#defect-19-the-design-edge-cap-as-it-stood-after-pr-1188).
+    *(measured 2026-10-29 — `docs/edge-cap-remeasure-2026-10-29.md`, `tools/edge_cap_remeasure.py`, `docs/renders/edge-cap-2026-10-29/`)*
 
 20. **Photo tonal splitting stacks thread past the pucker ceiling.** The bill
     for the ratified spec-decision-2 flip (`d3f3c547`), found only because the
