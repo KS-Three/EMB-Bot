@@ -5309,14 +5309,17 @@ class PipelineConfig:
     # equal across the scorecard matrix in `tests/test_thread_match_excess_
     # gradient.py`). The flat lane keeps raw distance whatever this says.
     #
-    # DEFAULT OFF, and against a standing ruling: Kent ruled 2026-09-10 that
-    # the gradient lane stays on raw distance, because a logo's palette can
-    # be changed and a photograph's cannot, so "already the closest cone this
-    # design loads" is a cone to buy, not a pass (yardstick-disagreements row
-    # 4). This exists so that call can be re-made on today's numbers rather
-    # than 09-06's; flipping it is his. The measured table is in
-    # `docs/thread-match-gradient-excess-2026-10-29.md`.
-    thread_match_excess_gradient: bool = False
+    # **ON since 2026-10-30, Kent's flip** ("Flip ON (Recommended)", then
+    # "Flip as ruled (Recommended)" with the cost below in front of him), which
+    # supersedes his 2026-09-10 ruling that the gradient lane stays on raw
+    # distance (yardstick-disagreements row 4). F entries carrying a thread
+    # block 14 -> 4, entries at score 0 10 -> 2, thread findings on the lane
+    # 94 -> 8. **What that costs:** a thread already wearing the best loaded
+    # cone now gets NO finding, so an off-colour thread with no closer loaded
+    # cone passes silently; only `metrics.thread_worst_delta_e` keeps the
+    # number. False is the engine as it was; `tests/conftest.py` PRE_FLIP pins
+    # it False. Table: `docs/thread-match-gradient-excess-2026-10-29.md`.
+    thread_match_excess_gradient: bool = True
 
     # Bind stage 4's thread re-snap to the selected palette on EVERY class,
     # not only the photo ones. `revalidate_threads`' argmin runs over the whole

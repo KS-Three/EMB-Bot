@@ -598,11 +598,11 @@ PRE_FLIP["keep_dark_thin_strokes"] = False
 # makes it, moves no pin that spreads this dict; `tests/engine_2026_10_27.json`
 # carries it False too.
 PRE_FLIP["dark_ink_refuse_strays"] = False
-# `thread_match_excess_gradient` (built OFF 2026-10-29, MASTER_SCOPE defect
-# 28 part 1; not flipped, and against Kent's 2026-09-10 raw-yardstick ruling):
+# `thread_match_excess_gradient` joined the flipped set 2026-10-30 (Kent's
+# "Flip ON (Recommended)", superseding his 2026-09-10 raw-yardstick ruling):
 # the gradient lane's THREAD_MATCH_POOR judged on excess over the loaded
-# spools. A grading change, so no plan md5 moves either way; pinned here so a
-# flip moves no grade a test spreading this dict reads.
+# spools. A grading change, so no plan md5 moves either way, but an arm
+# measured before that day reads the raw thread blocks and warns.
 # `tests/engine_2026_10_27.json` carries it False too.
 PRE_FLIP["thread_match_excess_gradient"] = False
 # `dark_ink_bean` joined the flipped set 2026-10-29 (built OFF 2026-10-28,

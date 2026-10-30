@@ -120,6 +120,8 @@ judge at all (`digitizer/tools/thread_match_floor.py`).
 
 **Re-measured 2026-10-29, and the ruling now has an off switch.** `cfg.thread_match_excess_gradient` (DEFAULT OFF) judges the gradient lane on excess exactly as the photo route is judged. It is a grading change, so all 52 matrix plans are md5-identical OFF and ON. On main 44ecf1cb, ON takes F entries carrying a thread block 14 → 4 and the matrix's thread blocks 38 → 8. The survivors are fremont's `0020 Black` at dE 100 with White loaded, summit's `0111` band, and the photo stub. The ruling above stands until Kent re-makes it. Table: `docs/thread-match-gradient-excess-2026-10-29.md`. *(measured 2026-10-29)*
 
+**RULED AGAIN 2026-10-30, and this supersedes the 2026-09-10 ruling above: the gradient lane is judged on EXCESS.** Kent's pick, "Flip ON (Recommended)", re-confirmed as "Flip as ruled (Recommended)" once the cost below was corrected to him: `cfg.thread_match_excess_gradient` defaults True. The cost is on the record: a thread already wearing the best loaded cone gets no finding at all, so an off-colour thread with no closer loaded cone passes silently (gradient thread findings 94 → 8). *(ruled 2026-10-30)*
+
 ## 5. It scored the colour of regions that never sew
 
 Until 2026-09-06 `_region_color_errors` built a row for every region including

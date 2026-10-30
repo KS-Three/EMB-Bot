@@ -91,7 +91,9 @@ baby_deck_laugh 110/12, 6.10/30.13, 0.00/13.18, 95; face_closeup_blur
 mis-assignment and still blocks, which is why this rescores rather than
 exempting photos wholesale.
 
-Non-photo routes keep the raw yardstick byte-for-byte.
+The gradient route is scored the same way since 2026-10-30
+(`cfg.thread_match_excess_gradient`, Kent's flip). The flat route keeps the
+raw yardstick byte-for-byte.
 
 The photo guardrails (photo plan §2 row 15) are the buildable-today subset
 of that plan's preflight row: input resolution vs the photo floor, subject/
@@ -1122,8 +1124,8 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
     # the check would go permanently silent instead of reporting an honestly
     # unreachable colour.
     photo = _is_photo_class(plan, cfg)
-    # `cfg.thread_match_excess_gradient` (2026-10-29, OFF): the gradient lane
-    # judged on excess too. Read off the class the pipeline TRACED, never a
+    # `cfg.thread_match_excess_gradient` (ON since 2026-10-30): the gradient
+    # lane judged on excess too. Read off the class the pipeline TRACED, never a
     # classifier warning, so a forced "gradient" counts and flat never does;
     # a design `_is_photo_class` already claims is unaffected either way.
     excess_scored = photo or bool(
@@ -1192,16 +1194,13 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
             else:
                 r["_excess"] = None
                 r["_alt"] = None
-            # WHAT JUDGES IS UNCHANGED. Excess is REPORTED on every route;
-            # only the photo route is SCORED on it. Whether the gradient lane
-            # should also be judged on excess was a product call (a logo's
-            # palette can be changed, a photograph's cannot) — disagreement 4
-            # in docs/yardstick-disagreements-2026-09-06.md — and Kent RULED
-            # it 2026-09-10: the gradient lane stays on raw distance, because
-            # the customer can buy the closer cone this finding names. So no
-            # severity and no grade moves, by ruling now rather than by
-            # deferral. `excess_scored` is that ruling's off switch, OFF —
-            # with it unset it is `photo`, byte for byte.
+            # Excess is REPORTED on every route; the photo and gradient
+            # routes are SCORED on it. Kent ruled 2026-09-10 that the gradient
+            # lane stay on raw distance (disagreement 4 in
+            # docs/yardstick-disagreements-2026-09-06.md) and reversed that
+            # 2026-10-30 (`cfg.thread_match_excess_gradient`): with no closer
+            # loaded spool such a row is no offender, so it gets no finding at
+            # all. The flat route stays raw.
             r["_score"] = (r["_excess"] if (excess_scored and want_alt)
                            else r["delta_e"])
 

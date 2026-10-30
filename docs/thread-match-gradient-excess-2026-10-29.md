@@ -6,6 +6,10 @@ numbers were from 2026-09-06/07, so this re-measures them on `origin/main`
 lane, **OFF**, diagnoses gaulke, and prices the clamp floor for Kent without
 building it.
 
+**Update 2026-10-30:** Kent flipped the flag ON, which supersedes the 2026-09-10 ruling described next, and kept the clamp (§4, option A). The numbers below are the 10-29 measurement. **What the flip costs:** on the gradient lane thread findings fall 94 → 8, and a thread already wearing the best loaded cone gets no finding at all. `better_spool` names only a spool already loaded, so nothing names a cone to buy. Kent's first pick came with
+a recommendation that said the opposite. That was wrong, it was corrected to him, and
+he re-confirmed: "Flip as ruled (Recommended)".
+
 **The ruling this runs into:** Kent ruled 2026-09-10 that the gradient lane
 stays on raw distance (yardstick-disagreements row 4). His reason was that a
 logo's palette can be changed and a photograph's cannot. So the flag ships

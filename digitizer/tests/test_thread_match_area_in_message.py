@@ -62,7 +62,10 @@ def _report(fixture: str):
     this return copies.
     """
     art = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    # The raw yardstick: these price the finding's wording and its floor on
+    # the blocks that arm carries (excess took them off 2026-10-30).
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                         thread_match_excess_gradient=False)
     result, plan = digitize(art, cfg)
     report = run_preflight(result, plan, cfg, image=art)
     return report, result

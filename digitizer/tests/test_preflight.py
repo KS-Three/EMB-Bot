@@ -374,7 +374,8 @@ def test_each_shade_band_is_scored_against_the_cone_that_band_sews():
     from digitizer_core.stage1_prep import prep
 
     art = PHOTO / "gradient_ramp_linear.png"
-    c = cfg(border_by_size=False, **PLAN_CFG_KW)
+    c = cfg(border_by_size=False, thread_match_excess_gradient=False,
+            **PLAN_CFG_KW)
     result, plan_ = digitize(art, c)
     p = prep(art, c)
 
@@ -431,7 +432,8 @@ def test_a_band_wearing_the_wrong_cone_is_no_longer_hidden_by_its_region():
     from digitizer_core.threads import chart_for
 
     art = PHOTO / "repro_gradient_white_icon.png"
-    c = cfg(border_by_size=False, **PLAN_CFG_KW, **RECIPE_2026_10_27)
+    c = cfg(border_by_size=False, thread_match_excess_gradient=False,
+            **PLAN_CFG_KW, **RECIPE_2026_10_27)
     result, plan_ = digitize(art, c)
     p = prep(art, c)
     chart = chart_for(c)
