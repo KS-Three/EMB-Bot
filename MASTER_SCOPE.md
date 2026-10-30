@@ -121,39 +121,6 @@ was untouched that day; both went 09-30; flat returned that evening (DOCTRINE). 
     Blocks 19→17, revisits 2→0, needle-up 1295→1237 mm, no golden moved.
 *(2026-09-01 — `test_duplicate_cone_layers.py`, 13)* **A THIRD mechanism, found 2026-09-06 by `COLOR_STOPS_HEAVY`'s `repeated_cones` field, is EMPTY on its band route: 0 of 52 design/garment combos.** The 09-06 "4 of 52" was two band and two resnap cases; the resnap pair closed with `bind_resnap_all_classes` (ON since 09-10, defect 15) and the band pair (`region_blobs`, cone 0182) no longer reproduces; six gradient fixtures at 50 and 120 mm add none. A band fold was built (PR #827), measured INERT (0 of 52 combos change) and REMOVED on Kent's ruling (PR #835); `tools/cone_revisits` still flags a real band case as `band`. **What still repeats is not a band:** `repeated_cones` > 0 on **35 of 52** combos (43 before 2026-10-20) is almost all the `edge_cap` route (the cap sewn in a cone the artwork already loaded). **The cap's ADJACENT repeat is CLOSED (PR #1008, no new flag):** where the first cap block used the last artwork block's cone, `merge_adjacent_same_thread` (ON) stopped at the stage-7 seam and the machine stopped for a re-thread of the spool already on it; `_cap_seam_joins` extends that rule across the seam, keeping every stitch, cut, jump and tie in order, so only the stop goes — duplicate cones 88 → 79, `edge_cap` 74 → 65, gap-1 9 → **0**, no other row moved; the Sequencer shows no separate "design edge" row for a joined cone. The 65 left are all gap ≥ 2, cap stretches whose cone was sewn BEFORE later artwork: removing one is `edge_cap_fold_into_colour` (PR #714, built OFF), Kent's. The artwork repeats left are resnap (drone 0134/3574, bridge 0108) and plain (drone 1102/1305, golden_tee 0532). `tests/test_cone_revisits.py`, `tests/test_cap_adjacent_seam.py`. *(measured 2026-10-11 — PR #827; removed 2026-10-11 — PR #835; measured 2026-10-20 — PR #1008, `tools/cone_revisits`)*
 
-19. **The design's own outer edge is uncapped — every fill row ends in open
-    air.** The other sew-out edge finding, and one no per-shape border can reach: the silhouette is the union of several shapes' edges, so the
-    design/fabric boundary is nobody's. On Kent's icon, **100% of the 293.2 mm
-    outer silhouette uncovered at 1.0 mm** vs 0.0% on the glyph edge he rated
-    flawless. **FIX BUILT, default OFF, both styles opt-in:** `cfg.edge_cap` —
-    `"bean"` traces it, `"satin"` lays a column just inside, one design-level
-    block after all artwork in a thread already loaded. No new constant (gate 1
-    clean); Studio exposes **Design edge**.
-    Icon: bean +12.6%, satin +15.3%. KNOWN LIMIT: cost scales with silhouette
-    FRAGMENTATION, not size — `drone_render` caps 38 parts / 78 holes for
-    **+56.9%**, a whisker off DOCTRINE's blanket-border negative, and there
-    satin (+34.9%) is cheaper. Bills every run as `EDGE_CAP_APPLIED`.
-**MEASURED 2026-09-11, and GATED** (`tools/pro_silhouette.py`): ours, `edge_cap` off, **5.9–100.0% of the sewn silhouette carries no linear stitch** (Fremont 100.0, whitebg 82.6, gaulke 76.7, enthusiast 5.9); the pro carries a certified border on **at least 19.1–26.1%** of his fill edge, never in the fill's own colour block. Read differently ON PURPOSE — a stitch file has no run kinds, so his is a LOWER bound. Per-fixture tables, and the `unary_union` slowdown fixed 2026-09-12: [area 1](docs/scope/1-auto-digitizing-quality.md).
-    *(built 2026-09-01 — `tests/test_edge_cap.py`, 18 passing)*
-    **Rang hairline CRACKS as edges — FIXED 2026-09-08.** 20 sub-0.1 mm cracks
-    in the silhouette union, owned by no region, cleared the loop gate's
-    PERIMETER floor; `_fill_cracks` fills any interior the column cannot stand
-    in — on an ABSOLUTE ruler while the feature scales, so one hole can get
-    opposite verdicts at two sizes. *(2026-09-08 —
-    `tests/test_edge_cap.py`)*
-    **THE BILL OSCILLATES WITH SIZE, and the flip's `+5.9–26.3%` was a
-    ONE-WIDTH reading** (80 mm): becker bills **+58.7% at 88 mm**, and a 0.3 mm
-    larger design is 34% cheaper — the `omit` gate loses its input when the
-    shape carrying most of the linear cover flips satin/fill on
-    `_PROMOTE_EXPLAINED_MIN`, which is not monotone in design size. **COST
-    CAPPED 2026-09-12** (Kent: cap the cost, leave `classify_ribbon` alone):
-    `EDGE_CAP_BUDGET_PCT` 40.0, `"warn"` by default, so no stitch moves. The
-    `edges` field reports silhouette rings now, having FALLEN as the bill rose.
-    **The cause is NOT fixed**; `classify_ribbon`'s stability is the open
-    project.
-    *(measured 2026-09-12 — `docs/edge-cap-cliff-2026-09-12.md`;
-    `tests/test_edge_cap_budget.py`)*
-
 20. **Photo tonal splitting stacks thread past the pucker ceiling.** The bill
     for the ratified spec-decision-2 flip (`d3f3c547`), found only because the
     stale baseline remembered the before. `photo_scene_stub` `coverage_max`
@@ -222,6 +189,7 @@ DOCTRINE 2026-09-14.
 14. half the cloth bare inside each shape is the THREAD-PAINT TIER, not a density bug — ANSWERED 2026-08-25 (streamline covers 0.55-0.59 of its footprint vs the filled tier's 0.99; Kent's filled-for-high-contrast ruling, and the face exception, are in Standing rulings).
 16. one spool revisited across other colours, THE RE-SNAP MECHANISM — RESOLVED 2026-08-31 (`rehome_resnapped_regions`; owl 17 → 14 blocks). **The SYMPTOM is not gone — defect 18 is a second mechanism.** scope-history 08-31; DOCTRINE 09-14.
 17. sew order had no craft layering, BORDER SATIN OPENED THE DESIGN — FIXED, DEFAULT ON 2026-09-01 (Kent, PR #302). Repro ring 0.0% → 54.5%, stitches unchanged; found on cloth. Owed golden re-capture: DOCTRINE 09-14. `tests/test_borders_last.py`.
+19. the design's own outer edge was uncapped, every fill row ending in open air — RESOLVED 2026-10-29 upstream of the cap: cap off, 0.0–4.0% of the sewn silhouette is bare (was 5.9–100.0%), held by `silhouette_underfill_rim` and `border_by_size`; the cap's size swing is gone, and `edge_cap` defaults to "none" (Kent 2026-10-29, #1192; plans byte-identical). Evidence: PR #1191, `docs/edge-cap-remeasure-2026-10-29.md`. Full text: area 1, twenty-second pass.
 21. fill travel laid OVER sewn columns — FIXED, DEFAULT ON 2026-09-03 (Kent, `fill_travel_under_cover`, PR #323), with `fill_bridge_cut` ON since 2026-09-19. The residual bridges are the column ORDER's, not routing's (88% have no unsewn corridor; four fixes priced out, DOCTRINE). Full text: area 1, "Defects 21–25 in full".
 22. small curves sewed as polygons — FIXED, DEFAULT ON 2026-09-03 (Kent, `curve_turn_deg` 15, gated to 20 px/mm by `_CURVE_MIN_PX_PER_MM`; the 60 → 61 mm cliff is his to accept). Full text: area 1.
 23. rail dents — FIXED 2026-09-03 (Kent); `satin_rails_follow_edge=True` stays parked, `"envelope"` ON since 2026-09-30. Its cost is overshoot, not bare art (`lost_frac` ships split, 2026-09-20). Full text: area 1.
@@ -712,7 +680,7 @@ a "flat spot-colour art" claim tuned on synthetics is untested against real
 input. **Stage 0's scale defect is two (2026-09-20):** `flat` → `gradient` on
 downscale is the pixel-absolute windows on every fixture; the `photo_*`
 misroutes on downscaled alpha cutouts were RGB under the alpha, gone since
-stage 0 reads the whole-image extension (Kent). *(scope-history, DOCTRINE)* **Stage 0's photo gate:** `texture_frac` route + two-ink veto, `stage0_texture_gate` ON: 18/18 photographs photo-class, 1.25 re-flattens four *(measured 2026-10-28 — `tools/stage0_photo_gate`)*. **The lane's cut-out on a scene:** rembg keeps 0.01–5.4 % (real subjects 0.27–0.76), so six corpus scenes sewed 0–3,117 stitches; `photo_cutout_min_kept` (0.20, ON, #1179) keeps the frame — the measured arm — at 373–2,100 s against the Studio's 600 s wait; reading in [area 1](docs/scope/1-auto-digitizing-quality.md#twentieth-pass-overflow-moved-from-master_scope-2026-10-29) *(measured 2026-10-29 — `tests/test_cutout_no_subject.py`)*. **The photo corpus judges by Kent's eye:** `tools/photo_corpus` (#1171) holds 39 Commons rows (18 photo genres, 21 logo styles; no image committed), captures any two trees and writes a side-by-side page he marks better / same / worse. #1178's page: photos 4 / 6 / 8, logos 1 / 15 / 5; six of its 13 worse were the scenes the cut-out erased, all six better under #1179's guard. These are his verdicts, not an agreement number (gate 4). *(measured 2026-10-29 — PR #1186, `tools.photo_corpus tally`)* **A second harness, `tools/pro_parity/`, measures distance from the
+stage 0 reads the whole-image extension (Kent). *(scope-history, DOCTRINE)* **Stage 0's photo gate:** `texture_frac` route + two-ink veto, `stage0_texture_gate` ON: 18/18 photographs photo-class, 1.25 re-flattens four *(measured 2026-10-28 — `tools/stage0_photo_gate`)*. **The lane's cut-out on a scene:** rembg keeps 0.01–5.4 % (real subjects 0.27–0.76), so six corpus scenes sewed 0–3,117 stitches; `photo_cutout_min_kept` (0.20, ON, #1179) keeps the frame; its 373–2,100 s was a loaded 2-proc capture (quiet: 64–104 s, same md5); reading in [area 1](docs/scope/1-auto-digitizing-quality.md#twentieth-pass-overflow-moved-from-master_scope-2026-10-29) *(2026-10-29 — memory `stage7-scene-speed-2026-10-29`)*. **The photo corpus judges by Kent's eye:** `tools/photo_corpus` (#1171) holds 39 Commons rows (18 photo genres, 21 logo styles; no image committed), captures any two trees and writes a side-by-side page he marks better / same / worse. #1178's page: photos 4 / 6 / 8, logos 1 / 15 / 5; six of its 13 worse were the scenes the cut-out erased, all six better under #1179's guard. These are his verdicts, not an agreement number (gate 4). *(measured 2026-10-29 — PR #1186, `tools.photo_corpus tally`)* **A second harness, `tools/pro_parity/`, measures distance from the
 PROFESSIONAL digitization** of the same 23 designs; its scale changed
 2026-08-14, so read the Gotcha in [`DOCTRINE.md`](DOCTRINE.md) before comparing
 to any earlier number. Which fixtures misroute, and which half of the corpus a

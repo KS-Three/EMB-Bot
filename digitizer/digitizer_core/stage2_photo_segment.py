@@ -1483,6 +1483,25 @@ def _region_lab(pixels_rgb: np.ndarray, cfg: PipelineConfig) -> np.ndarray:
     return region_colour_candidates(px)[ROBUST_REGION_STAT]
 
 
+def _large_components(comp: np.ndarray, num: int, px_area_mm2: float,
+                      min_part_mm2: float) -> list[np.ndarray]:
+    """The connected components of one tone bucket big enough to be a part,
+    as bool masks in label order (label 0 is background).
+
+    One `np.bincount` over the label map counts every component at once;
+    only a component that clears the floor is then materialised with
+    `comp == c`. The loop this replaces materialised and summed EVERY
+    component -- a full-crop pass per label -- and a scene photograph's
+    buckets are mostly specks: stained_glass (150 regions) spent 130 s of
+    its 147 s stages 0-4 in 34,370 of those sums (profiled 2026-10-29,
+    quiet box). Exact: the counts are integers, so `counts[c] * px_area_mm2`
+    is the same double `piece.sum() * px_area_mm2` was, and the parts come
+    back in the same order."""
+    counts = np.bincount(comp.ravel(), minlength=num)
+    return [comp == c for c in range(1, num)
+            if counts[c] * px_area_mm2 >= min_part_mm2]
+
+
 def split_tonal_regions(
     p: Prep, kept: list[RegionMask], split_tonal: bool = False,
     veto_px: np.ndarray | None = None,
@@ -1576,10 +1595,7 @@ def split_tonal_regions(
             # makes the difference between "shading" and "confetti"; the
             # crumbs fall through to `leftover` below and rejoin the body.
             num, comp = cv2.connectedComponents(m.astype(np.uint8))
-            for c in range(1, num):
-                piece = comp == c
-                if piece.sum() * px_area_mm2 >= TONAL_SPLIT_MIN_PART_MM2:
-                    parts.append(piece)
+            parts.extend(_large_components(comp, num, px_area_mm2, TONAL_SPLIT_MIN_PART_MM2))
 
         if len(parts) < 2:
             out.append(r)

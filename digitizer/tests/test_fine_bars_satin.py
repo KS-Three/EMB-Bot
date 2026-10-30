@@ -78,6 +78,7 @@ def _cfg(**kw) -> PipelineConfig:
     # `bean_only_lines` (ON since Kent's 2026-10-27 flip) refuses the dot's and
     # the lenses' rings; this file prices the bars alone, on the engine the md5 was pinned on
     kw.setdefault("bean_only_lines", PRE_FLIP["bean_only_lines"])
+    kw.setdefault("edge_cap", "bean")   # ...with the bean cap that engine sewed (default "none" since 2026-10-29)
     return PipelineConfig(underlay=False, garment_rgb=GARMENT, **kw)
 
 

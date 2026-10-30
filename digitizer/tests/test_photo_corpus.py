@@ -330,6 +330,19 @@ def test_sxs_page_defines_the_null_of_fidelity_cc(tmp_path):
     assert "blank fabric" in page and "None when the design is empty" in page
 
 
+def test_sxs_page_names_the_process_count_its_wall_times_were_taken_at(tmp_path):
+    """`wall s` is not an engine number: two digitizes at once on Kent's
+    laptop each took 4.1x the time one alone did, same md5 (2026-10-29), and
+    the six kept-frame scenes read 349-2,100 s at `--procs 2` beside other
+    sessions against 90-250 s quiet. The page says how many processes each
+    run used, next to the shas, and warns that the column is load-sensitive."""
+    before, after = _run(tmp_path, "b", "abc1234"), _run(tmp_path, "a", "def5678")
+    before["procs"], after["procs"] = 2, 1
+    page = pc.build_sxs(before, after, [ROW], tmp_path / "p", {})
+    assert "2 proc" in page and "1 proc" in page
+    assert "load" in page.lower() and "wall s" in page
+
+
 def test_corpus_authors_are_plain_text():
     """Review Important 6: ten committed rows carried truncated HTML
     (`<span title="German photographe`) or a cut-off name as the author."""

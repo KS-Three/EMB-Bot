@@ -62,6 +62,9 @@ BEFORE: dict[str, object] = {
     # The dark-ink read (`keep_dark_thin_strokes`, flipped ON by Kent 2026-10-28,
     # #1170; gradient class only), for the same reason.
     "keep_dark_thin_strokes": False,
+    # ...and the edge cap's "none" default (Kent 2026-10-29, #1192): that
+    # engine sewed the bean cap by default.
+    "edge_cap": "bean",
 }
 HELD_OFF = ("cut_every_jump", "sew_enclosed_white")
 

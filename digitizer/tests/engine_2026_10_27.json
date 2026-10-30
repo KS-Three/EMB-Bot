@@ -94,6 +94,7 @@
  "fill_angle_deg": null,
  "fill_bridge_cut": true,
  "fill_bridge_cut_exposed": false,
+ "fill_seam_order": false,
  "fill_density_boost": false,
  "fill_inside_satin_border": false,
  "fill_order_sewn_paths": false,

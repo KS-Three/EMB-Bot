@@ -817,6 +817,38 @@ def test_split_tonal_regions_preserves_layer_and_source():
     )
 
 
+def test_tonal_split_large_components_match_the_per_component_count():
+    """`_large_components` is the split's inner loop -- which connected
+    components of one tone bucket are big enough to be a part -- answered
+    from ONE count of the component map instead of a full-crop `comp == c`
+    and `.sum()` per component. On stained_glass (150 regions, specks in
+    every bucket) that loop was 34,370 `.sum()` calls and 130 of the 147 s
+    stages 0-4 took (profiled 2026-10-29). The helper must hand back the same
+    pieces, in the same order, as the per-component loop it replaces."""
+    from digitizer_core.stage2_photo_segment import _large_components
+    rng = np.random.default_rng(7)
+    m = np.zeros((90, 120), np.uint8)
+    m[10:60, 10:50] = 1                              # one big part
+    m[65:88, 40:115] = 1                             # one mid part (1,725 px = 48 mm2 at 6 px/mm)
+    specks = rng.random(m.shape) < 0.03              # hundreds of 1-px specks
+    m[specks] = 1
+    num, comp = cv2.connectedComponents(m)
+    assert num > 50, "the fixture must have many components for the test to mean anything"
+    px_area_mm2 = 1.0 / (6.0 * 6.0)
+    min_mm2 = 40.0
+
+    expected = [comp == c for c in range(1, num)
+                if (comp == c).sum() * px_area_mm2 >= min_mm2]
+    got = _large_components(comp, num, px_area_mm2, min_mm2)
+    assert len(got) == len(expected) == 2
+    for a, b in zip(got, expected):
+        assert a.dtype == b.dtype == np.bool_
+        assert (a == b).all()
+    # a floor nothing clears, and one everything clears
+    assert _large_components(comp, num, px_area_mm2, 1e9) == []
+    assert len(_large_components(comp, num, px_area_mm2, 0.0)) == num - 1
+
+
 def test_the_tonal_split_geometry_is_pinned():
     """A mini golden for `split_tonal_regions`, and an honest note about what
     it does and does not guard.

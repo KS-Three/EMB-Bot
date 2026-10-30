@@ -61,6 +61,11 @@ CC_NULL_LINE = ("fidelity cc = (SSIM(photo, render) − SSIM(photo, blank fabric
                 "0 = the render agrees with the photo exactly as much as bare fabric does, negative = less, "
                 "None when the design is empty.")
 
+#: `wall s` is a load reading, not an engine one: two digitizes at once on
+#: Kent's laptop each took 4.1x the time one alone did, same md5 (2026-10-29).
+WALL_LINE = ("wall s is load-sensitive: it was taken with that many processes at once, beside whatever else "
+             "the machine ran; two concurrent digitizes measured 4.1x one alone. Time a row at --procs 1 on a quiet box.")
+
 #: Commons `LicenseShortName` substrings a public repo may list (lower-cased match).
 OK_LICENCES = ("cc0", "public domain", "pd", "cc by 4.0", "cc by 3.0", "cc by 2.0",
                "cc by-sa 4.0", "cc by-sa 3.0", "cc by-sa 2.0")
@@ -681,8 +686,8 @@ td.n{{text-align:right;font-variant-numeric:tabular-nums}} .good{{color:#7c7}} .
 .bar button{{font:13px system-ui;padding:6px 12px;border:1px solid #5c8;background:#3a6;color:#fff;border-radius:4px;cursor:pointer}}
 .gate{{color:#c9a;font-size:12px}} .state{{font-weight:bold;color:#e77}}
 </style></head><body>
-<div class="bar"><b>Photo corpus side by side</b> &nbsp; before <code>{h.escape(bsha[:12])}</code> ({h.escape(str(before.get('date')))}) → after <code>{h.escape(asha[:12])}</code> ({h.escape(str(after.get('date')))})
-&nbsp; <button id="export">Export verdicts</button> <span id="count"></span><br><span class="gate">{h.escape(GATE4_LINE)} {h.escape(CC_NULL_LINE)}</span></div>
+<div class="bar"><b>Photo corpus side by side</b> &nbsp; before <code>{h.escape(bsha[:12])}</code> ({h.escape(str(before.get('date')))}, {before.get('procs', '?')} proc) → after <code>{h.escape(asha[:12])}</code> ({h.escape(str(after.get('date')))}, {after.get('procs', '?')} proc)
+&nbsp; <button id="export">Export verdicts</button> <span id="count"></span><br><span class="gate">{h.escape(GATE4_LINE)} {h.escape(CC_NULL_LINE)} {h.escape(WALL_LINE)}</span></div>
 <h1>{len(rows)} rows: source · before · after · numbers (before / after / Δ)</h1>"""]
     for (kind, genre), grp in groups.items():
         parts.append(f"<h2>{h.escape(kind)} / {h.escape(genre)}</h2>")

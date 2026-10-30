@@ -387,10 +387,11 @@ export function borderSummaryText(tally, designBorder) {
 
 // ---- the design edge (cfg.edge_cap) ---------------------------------------
 //
-// A SEPARATE control from the per-shape border and ON by default as "bean",
-// which is why it needs its own readout: the two get confused constantly, and
-// the edge pass is the expensive one — measured +18% to +58% of a design's
-// stitches depending on size (docs/edge-cap-cliff-2026-09-12.md).
+// A SEPARATE control from the per-shape border, which is why it needs its own
+// readout: the two get confused constantly. It was ON by default as "bean"
+// from 2026-09-11 and is "none" since 2026-10-29 (Kent), so with no mode the
+// readout says "Design edge off", the engine's own default
+// (docs/edge-cap-remeasure-2026-10-29.md).
 //
 // Evidence, in order of authority:
 //   1. `EDGE_CAP_APPLIED` — the engine's own bill, computed on THIS design
@@ -410,7 +411,7 @@ export function borderSummaryText(tally, designBorder) {
 // inherit the bug the day it becomes reachable.
 export function edgeCapState(opts) {
   const o = opts || {};
-  const mode = typeof o.mode === "string" ? o.mode.toLowerCase() : "bean";
+  const mode = typeof o.mode === "string" ? o.mode.toLowerCase() : "none";
   const warnings = Array.isArray(o.warnings) ? o.warnings : [];
   const find = (code) => warnings.find((w) => w && w.code === code) || null;
   const applied = find("EDGE_CAP_APPLIED");

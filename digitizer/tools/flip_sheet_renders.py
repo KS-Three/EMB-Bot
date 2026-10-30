@@ -443,6 +443,23 @@ FLAGS: dict[str, dict] = {
                 "less than half inside the letter: the A sews black satin (crosses 44 -> 116, "
                 "pro 114). The hat is the control: its reads are the letters' own ink and fail "
                 "the shape gate, so it should not move."},
+    # ---- defect 19 (2026-10-29): the design-edge cap on today's main
+    "edge_cap_satin": {
+        "sets": {"edge_cap": "satin"},
+        "fixtures": ["hotel_fremont_hat", "becker_hat_small", "gaulke_roofing_hat",
+                     "precision_drone"],
+        "metric": "rings", "about": "edge-cap runs", "pr": 1191,
+        "note": "OFF is the shipped engine: edge_cap 'bean', which bean_only_lines (ON since "
+                "2026-10-27) turns into no cap. ON is the satin style, the one cap style still "
+                "live. docs/edge-cap-remeasure-2026-10-29.md has the silhouette and size sweep."},
+    "edge_cap_bean_legacy": {
+        "sets": {"edge_cap": "bean", "bean_only_lines": False},
+        "fixtures": ["hotel_fremont_hat", "becker_hat_small", "gaulke_roofing_hat",
+                     "precision_drone"],
+        "metric": "rings", "about": "edge-cap runs", "pr": 1191,
+        "note": "The bean cap as it sewed 2026-09-11 to 10-27, with bean_only_lines OFF so the "
+                "bean style is not turned off. bean_only_lines OFF also moves bean letters and "
+                "the run tier, so ON differs from OFF in more than the cap: read the rings."},
 }
 
 #: The wave-3 sheet (2026-10-26): the flags its run and report carry. The bay mouth left
