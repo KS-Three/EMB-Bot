@@ -476,6 +476,32 @@ FLAGS: dict[str, dict] = {
                 "planner's orders are priced with the travel under rows still to come free, so a "
                 "fewer-cut order is no longer refused for hidden stitches. It still may not cut "
                 "more or lay more on finished fill. Both arms pin the rembg timeout at 900 s."},
+    # ---- seam order's regression (2026-10-30): Kent, "Render and attribute (Recommended)"
+    "seam_order_read": {
+        "base": {"photo_prep_background_removal_timeout_s": 900, "fill_seam_order": False},
+        "base_name": "seam_off",
+        "sets": {"photo_prep_background_removal_timeout_s": 900, "fill_seam_order": True},
+        "fixtures": ["becker_beanie", "precision_drone", "mfab_lc"],
+        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1198,
+        "note": "The flip read backwards: OFF pins fill_seam_order False, ON is the shipped engine "
+                "(ON since #1198). Becker beanie and the drone are the rows that went the wrong "
+                "way; MFab LC is the gain to keep."},
+    "knockdown_shorter_walk": {
+        "base": {"photo_prep_background_removal_timeout_s": 900}, "base_name": "rembg900",
+        "sets": {"photo_prep_background_removal_timeout_s": 900, "knockdown_shorter_walk": True},
+        "fixtures": ["becker_beanie", "proseal_beanie"],
+        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1204,
+        "note": "The beanie knockdown sewn with and without seam order, the shorter walk kept. "
+                "ProSeal beanie is the control: its walk is shorter WITH seam order, so a blanket "
+                "skip would have cost it 147 mm of exposed travel."},
+    "fill_seam_order_priced": {
+        "base": {"photo_prep_background_removal_timeout_s": 900}, "base_name": "rembg900",
+        "sets": {"photo_prep_background_removal_timeout_s": 900, "fill_seam_order_priced": True},
+        "fixtures": ["precision_drone", "mfab_lc", "mfab_hat", "becker_lc_large", "becker_hat_small",
+                     "proseal_hat"],
+        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1204,
+        "note": "Seam order's two progressions: fewer ridges and flips first, _score settling a "
+                "tie, instead of the shorter flown chord."},
 }
 
 #: The wave-3 sheet (2026-10-26): the flags its run and report carry. The bay mouth left

@@ -1,0 +1,874 @@
+[
+ {
+  "flag": "seam_order_read",
+  "fixture": "becker_beanie",
+  "width_mm": 79.8,
+  "pr": 1198,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900
+  },
+  "note": "The flip read backwards: OFF pins fill_seam_order False, ON is the shipped engine (ON since #1198). Becker beanie and the drone are the rows that went the wrong way; MFab LC is the gain to keep.",
+  "engine": "6e1e8555",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 13652,
+   "trims": 12,
+   "colours": 2,
+   "about": "4 / 12",
+   "exposed_mm": 38.6,
+   "bare_mm": {
+    "0.20": 3.72,
+    "0.25": 0.4,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 39.5,
+   "md5": "6c0324c1db7ee51b697875b7dcc3a7c1"
+  },
+  "on": {
+   "stitches": 13915,
+   "trims": 14,
+   "colours": 2,
+   "about": "6 / 14",
+   "exposed_mm": 105.8,
+   "bare_mm": {
+    "0.20": 14.84,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 3.0,
+   "cpu_s": 39.6,
+   "md5": "ea70df0128183ccfacc6a8d6c2e94b1a"
+  },
+  "pro": {
+   "stitches": 11412,
+   "trims": 48,
+   "colours": 5,
+   "about": "0 / 4"
+  },
+  "bare": {
+   "off": {
+    "0.20": 3.72,
+    "0.25": 0.4,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 14.84,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": [
+    "0.20"
+   ]
+  },
+  "pro_file": "beckers logo hat 2 A a.PES",
+  "diff": 599,
+  "byte_identical": false,
+  "box_mm": [
+   -8.6,
+   -16.6,
+   9.4,
+   -5.6
+  ],
+  "in_window": 90,
+  "images": {
+   "off": "seam_order_read__becker_beanie__off.jpg",
+   "on": "seam_order_read__becker_beanie__on.jpg",
+   "pro": "seam_order_read__becker_beanie__pro.jpg",
+   "where": "seam_order_read__becker_beanie__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "seam_order_read",
+  "fixture": "precision_drone",
+  "width_mm": 62.6,
+  "pr": 1198,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900
+  },
+  "note": "The flip read backwards: OFF pins fill_seam_order False, ON is the shipped engine (ON since #1198). Becker beanie and the drone are the rows that went the wrong way; MFab LC is the gain to keep.",
+  "engine": "6e1e8555",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 14506,
+   "trims": 87,
+   "colours": 9,
+   "about": "14 / 87",
+   "exposed_mm": 20.0,
+   "bare_mm": {
+    "0.20": 2.54,
+    "0.25": 2.12,
+    "0.30": 1.27
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 124.1,
+   "md5": "b07dcfeba8079f2838478f044dfc1b13"
+  },
+  "on": {
+   "stitches": 14778,
+   "trims": 93,
+   "colours": 9,
+   "about": "22 / 93",
+   "exposed_mm": 23.6,
+   "bare_mm": {
+    "0.20": 2.2,
+    "0.25": 1.79,
+    "0.30": 0.95
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 131.5,
+   "md5": "c325a3a111f8de26aab178747ff27410"
+  },
+  "pro": {
+   "stitches": 14552,
+   "trims": 59,
+   "colours": 22,
+   "about": "20 / 58"
+  },
+  "bare": {
+   "off": {
+    "0.20": 2.54,
+    "0.25": 2.12,
+    "0.30": 1.27
+   },
+   "on": {
+    "0.20": 2.2,
+    "0.25": 1.79,
+    "0.30": 0.95
+   },
+   "rises": []
+  },
+  "pro_file": "PRECISION DRON HAT 2.DST",
+  "diff": 2986,
+  "byte_identical": false,
+  "box_mm": [
+   11.3,
+   -27.0,
+   29.3,
+   -16.0
+  ],
+  "in_window": 518,
+  "images": {
+   "off": "seam_order_read__precision_drone__off.jpg",
+   "on": "seam_order_read__precision_drone__on.jpg",
+   "pro": "seam_order_read__precision_drone__pro.jpg",
+   "where": "seam_order_read__precision_drone__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "seam_order_read",
+  "fixture": "mfab_lc",
+  "width_mm": 96.7,
+  "pr": 1198,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900
+  },
+  "note": "The flip read backwards: OFF pins fill_seam_order False, ON is the shipped engine (ON since #1198). Becker beanie and the drone are the rows that went the wrong way; MFab LC is the gain to keep.",
+  "engine": "6e1e8555",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 18702,
+   "trims": 25,
+   "colours": 2,
+   "about": "18 / 25",
+   "exposed_mm": 38.7,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 86.2,
+   "md5": "9c1baabef87b55186f36b098cba4bf09"
+  },
+  "on": {
+   "stitches": 18735,
+   "trims": 21,
+   "colours": 2,
+   "about": "14 / 21",
+   "exposed_mm": 19.8,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 87.4,
+   "md5": "1bc8c95525bff10cbdb8e89d7e286b2b"
+  },
+  "pro": {
+   "stitches": 15786,
+   "trims": 20,
+   "colours": 4,
+   "about": "3 / 19"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "mf4b logo lc.DST",
+  "diff": 1531,
+  "byte_identical": false,
+  "box_mm": [
+   27.5,
+   -2.1,
+   45.5,
+   8.9
+  ],
+  "in_window": 500,
+  "images": {
+   "off": "seam_order_read__mfab_lc__off.jpg",
+   "on": "seam_order_read__mfab_lc__on.jpg",
+   "pro": "seam_order_read__mfab_lc__pro.jpg",
+   "where": "seam_order_read__mfab_lc__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "knockdown_shorter_walk",
+  "fixture": "becker_beanie",
+  "width_mm": 79.8,
+  "pr": 1204,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "knockdown_shorter_walk": true
+  },
+  "note": "The beanie knockdown sewn with and without seam order, the shorter walk kept. ProSeal beanie is the control: its walk is shorter WITH seam order, so a blanket skip would have cost it 147 mm of exposed travel.",
+  "engine": "6e1e8555",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 13915,
+   "trims": 14,
+   "colours": 2,
+   "about": "6 / 14",
+   "exposed_mm": 105.8,
+   "bare_mm": {
+    "0.20": 14.84,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 3.0,
+   "cpu_s": 33.0,
+   "md5": "ea70df0128183ccfacc6a8d6c2e94b1a"
+  },
+  "on": {
+   "stitches": 13864,
+   "trims": 14,
+   "colours": 2,
+   "about": "6 / 14",
+   "exposed_mm": 38.6,
+   "bare_mm": {
+    "0.20": 3.72,
+    "0.25": 0.4,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 34.5,
+   "md5": "4bff92b2499953d2e8610f8ecd5c3c57"
+  },
+  "pro": {
+   "stitches": 11412,
+   "trims": 48,
+   "colours": 5,
+   "about": "0 / 4"
+  },
+  "bare": {
+   "off": {
+    "0.20": 14.84,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 3.72,
+    "0.25": 0.4,
+    "0.30": 0.0
+   },
+   "rises": [
+    "0.25"
+   ]
+  },
+  "pro_file": "beckers logo hat 2 A a.PES",
+  "diff": 93,
+  "byte_identical": false,
+  "box_mm": [
+   -32.6,
+   16.3,
+   -14.6,
+   27.3
+  ],
+  "in_window": 22,
+  "images": {
+   "off": "knockdown_shorter_walk__becker_beanie__off.jpg",
+   "on": "knockdown_shorter_walk__becker_beanie__on.jpg",
+   "pro": "knockdown_shorter_walk__becker_beanie__pro.jpg",
+   "where": "knockdown_shorter_walk__becker_beanie__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "knockdown_shorter_walk",
+  "fixture": "proseal_beanie",
+  "width_mm": 75.0,
+  "pr": 1204,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "knockdown_shorter_walk": true
+  },
+  "note": "The beanie knockdown sewn with and without seam order, the shorter walk kept. ProSeal beanie is the control: its walk is shorter WITH seam order, so a blanket skip would have cost it 147 mm of exposed travel.",
+  "engine": "6e1e8555",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 8107,
+   "trims": 28,
+   "colours": 5,
+   "about": "7 / 28",
+   "exposed_mm": 150.5,
+   "bare_mm": {
+    "0.20": 100.25,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 6.7,
+   "cpu_s": 63.0,
+   "md5": "5df230456f95444cba76f7724c91a8d8"
+  },
+  "on": {
+   "stitches": 8107,
+   "trims": 28,
+   "colours": 5,
+   "about": "7 / 28",
+   "exposed_mm": 150.5,
+   "bare_mm": {
+    "0.20": 100.25,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 6.7,
+   "cpu_s": 65.3,
+   "md5": "5df230456f95444cba76f7724c91a8d8"
+  },
+  "pro": {
+   "stitches": 7117,
+   "trims": 48,
+   "colours": 5,
+   "about": "16 / 47"
+  },
+  "bare": {
+   "off": {
+    "0.20": 100.25,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 100.25,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "PROSEALHAT BEANI.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "fill_seam_order_priced",
+  "fixture": "precision_drone",
+  "width_mm": 62.6,
+  "pr": 1204,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "fill_seam_order_priced": true
+  },
+  "note": "Seam order's two progressions: fewer ridges and flips first, _score settling a tie, instead of the shorter flown chord.",
+  "engine": "6e1e8555",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 14778,
+   "trims": 93,
+   "colours": 9,
+   "about": "22 / 93",
+   "exposed_mm": 23.6,
+   "bare_mm": {
+    "0.20": 2.2,
+    "0.25": 1.79,
+    "0.30": 0.95
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 114.5,
+   "md5": "c325a3a111f8de26aab178747ff27410"
+  },
+  "on": {
+   "stitches": 14769,
+   "trims": 86,
+   "colours": 9,
+   "about": "14 / 86",
+   "exposed_mm": 22.0,
+   "bare_mm": {
+    "0.20": 2.54,
+    "0.25": 2.12,
+    "0.30": 1.27
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 121.9,
+   "md5": "bcc7e8c98227d0ce14274a264fd44952"
+  },
+  "pro": {
+   "stitches": 14552,
+   "trims": 59,
+   "colours": 22,
+   "about": "20 / 58"
+  },
+  "bare": {
+   "off": {
+    "0.20": 2.2,
+    "0.25": 1.79,
+    "0.30": 0.95
+   },
+   "on": {
+    "0.20": 2.54,
+    "0.25": 2.12,
+    "0.30": 1.27
+   },
+   "rises": [
+    "0.20",
+    "0.25",
+    "0.30"
+   ]
+  },
+  "pro_file": "PRECISION DRON HAT 2.DST",
+  "diff": 2171,
+  "byte_identical": false,
+  "box_mm": [
+   11.8,
+   -26.3,
+   29.8,
+   -15.3
+  ],
+  "in_window": 510,
+  "images": {
+   "off": "fill_seam_order_priced__precision_drone__off.jpg",
+   "on": "fill_seam_order_priced__precision_drone__on.jpg",
+   "pro": "fill_seam_order_priced__precision_drone__pro.jpg",
+   "where": "fill_seam_order_priced__precision_drone__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_seam_order_priced",
+  "fixture": "mfab_lc",
+  "width_mm": 96.7,
+  "pr": 1204,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "fill_seam_order_priced": true
+  },
+  "note": "Seam order's two progressions: fewer ridges and flips first, _score settling a tie, instead of the shorter flown chord.",
+  "engine": "6e1e8555",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 18735,
+   "trims": 21,
+   "colours": 2,
+   "about": "14 / 21",
+   "exposed_mm": 19.8,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 79.7,
+   "md5": "1bc8c95525bff10cbdb8e89d7e286b2b"
+  },
+  "on": {
+   "stitches": 18581,
+   "trims": 22,
+   "colours": 2,
+   "about": "15 / 22",
+   "exposed_mm": 10.8,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 89.2,
+   "md5": "6a993a3e221a7355003b1984bc489187"
+  },
+  "pro": {
+   "stitches": 15786,
+   "trims": 20,
+   "colours": 4,
+   "about": "3 / 19"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "mf4b logo lc.DST",
+  "diff": 2328,
+  "byte_identical": false,
+  "box_mm": [
+   2.5,
+   -18.5,
+   20.5,
+   -7.5
+  ],
+  "in_window": 307,
+  "images": {
+   "off": "fill_seam_order_priced__mfab_lc__off.jpg",
+   "on": "fill_seam_order_priced__mfab_lc__on.jpg",
+   "pro": "fill_seam_order_priced__mfab_lc__pro.jpg",
+   "where": "fill_seam_order_priced__mfab_lc__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_seam_order_priced",
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "pr": 1204,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "fill_seam_order_priced": true
+  },
+  "note": "Seam order's two progressions: fewer ridges and flips first, _score settling a tie, instead of the shorter flown chord.",
+  "engine": "6e1e8555",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 21321,
+   "trims": 25,
+   "colours": 2,
+   "about": "18 / 25",
+   "exposed_mm": 6.0,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 91.4,
+   "md5": "da480ee4107b8b4dd54eeaba0289c971"
+  },
+  "on": {
+   "stitches": 21389,
+   "trims": 29,
+   "colours": 2,
+   "about": "21 / 29",
+   "exposed_mm": 7.9,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 89.4,
+   "md5": "55b735df87d826733b6b5a8429d1ad0c"
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19,
+   "colours": 4,
+   "about": "3 / 18"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "mf4b logo hat.DST",
+  "diff": 3952,
+  "byte_identical": false,
+  "box_mm": [
+   32.2,
+   5.8,
+   50.2,
+   16.8
+  ],
+  "in_window": 386,
+  "images": {
+   "off": "fill_seam_order_priced__mfab_hat__off.jpg",
+   "on": "fill_seam_order_priced__mfab_hat__on.jpg",
+   "pro": "fill_seam_order_priced__mfab_hat__pro.jpg",
+   "where": "fill_seam_order_priced__mfab_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_seam_order_priced",
+  "fixture": "becker_lc_large",
+  "width_mm": 95.7,
+  "pr": 1204,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "fill_seam_order_priced": true
+  },
+  "note": "Seam order's two progressions: fewer ridges and flips first, _score settling a tie, instead of the shorter flown chord.",
+  "engine": "6e1e8555",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 14669,
+   "trims": 15,
+   "colours": 1,
+   "about": "6 / 15",
+   "exposed_mm": 31.1,
+   "bare_mm": {
+    "0.20": 0.4,
+    "0.25": 0.2,
+    "0.30": 0.1
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 40.8,
+   "md5": "e9279273d4c4542a5cfc05b01f17707e"
+  },
+  "on": {
+   "stitches": 14922,
+   "trims": 12,
+   "colours": 1,
+   "about": "3 / 12",
+   "exposed_mm": 31.1,
+   "bare_mm": {
+    "0.20": 0.4,
+    "0.25": 0.2,
+    "0.30": 0.1
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 43.4,
+   "md5": "86b3937de850f37c7bf7c695ab810fad"
+  },
+  "pro": {
+   "stitches": 11274,
+   "trims": 12,
+   "colours": 3,
+   "about": "2 / 11"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.4,
+    "0.25": 0.2,
+    "0.30": 0.1
+   },
+   "on": {
+    "0.20": 0.4,
+    "0.25": 0.2,
+    "0.30": 0.1
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logolc.DST",
+  "diff": 689,
+  "byte_identical": false,
+  "box_mm": [
+   -28.1,
+   -29.6,
+   -10.1,
+   -18.6
+  ],
+  "in_window": 154,
+  "images": {
+   "off": "fill_seam_order_priced__becker_lc_large__off.jpg",
+   "on": "fill_seam_order_priced__becker_lc_large__on.jpg",
+   "pro": "fill_seam_order_priced__becker_lc_large__pro.jpg",
+   "where": "fill_seam_order_priced__becker_lc_large__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_seam_order_priced",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1204,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "fill_seam_order_priced": true
+  },
+  "note": "Seam order's two progressions: fewer ridges and flips first, _score settling a tie, instead of the shorter flown chord.",
+  "engine": "6e1e8555",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 10452,
+   "trims": 11,
+   "colours": 1,
+   "about": "4 / 11",
+   "exposed_mm": 21.7,
+   "bare_mm": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 33.5,
+   "md5": "4aaab2f297f6e5f38f99af69fc591afa"
+  },
+  "on": {
+   "stitches": 10546,
+   "trims": 11,
+   "colours": 1,
+   "about": "4 / 11",
+   "exposed_mm": 21.7,
+   "bare_mm": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 33.8,
+   "md5": "2bee93ac5920aa51d1a12b20eb056e5f"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "colours": 4,
+   "about": "2 / 10"
+  },
+  "bare": {
+   "off": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "on": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 718,
+  "byte_identical": false,
+  "box_mm": [
+   -18.5,
+   -21.8,
+   -0.5,
+   -10.8
+  ],
+  "in_window": 180,
+  "images": {
+   "off": "fill_seam_order_priced__becker_hat_small__off.jpg",
+   "on": "fill_seam_order_priced__becker_hat_small__on.jpg",
+   "pro": "fill_seam_order_priced__becker_hat_small__pro.jpg",
+   "where": "fill_seam_order_priced__becker_hat_small__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_seam_order_priced",
+  "fixture": "proseal_hat",
+  "width_mm": 85.9,
+  "pr": 1204,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "fill_seam_order_priced": true
+  },
+  "note": "Seam order's two progressions: fewer ridges and flips first, _score settling a tie, instead of the shorter flown chord.",
+  "engine": "6e1e8555",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 6347,
+   "trims": 36,
+   "colours": 4,
+   "about": "9 / 36",
+   "exposed_mm": 17.8,
+   "bare_mm": {
+    "0.20": 1.56,
+    "0.25": 1.14,
+    "0.30": 0.61
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 63.1,
+   "md5": "7cc0cf036c4ff1564d35f74d1ad98e7c"
+  },
+  "on": {
+   "stitches": 6344,
+   "trims": 38,
+   "colours": 4,
+   "about": "13 / 38",
+   "exposed_mm": 13.7,
+   "bare_mm": {
+    "0.20": 1.56,
+    "0.25": 1.14,
+    "0.30": 0.61
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 62.7,
+   "md5": "016c0ad6ccfedfc23ce8426dbecde0db"
+  },
+  "pro": {
+   "stitches": 5894,
+   "trims": 54,
+   "colours": 4,
+   "about": "12 / 53"
+  },
+  "bare": {
+   "off": {
+    "0.20": 1.56,
+    "0.25": 1.14,
+    "0.30": 0.61
+   },
+   "on": {
+    "0.20": 1.56,
+    "0.25": 1.14,
+    "0.30": 0.61
+   },
+   "rises": []
+  },
+  "pro_file": "PROSEALHAT.DST",
+  "diff": 293,
+  "byte_identical": false,
+  "box_mm": [
+   -27.0,
+   -9.7,
+   -9.0,
+   1.3
+  ],
+  "in_window": 135,
+  "images": {
+   "off": "fill_seam_order_priced__proseal_hat__off.jpg",
+   "on": "fill_seam_order_priced__proseal_hat__on.jpg",
+   "pro": "fill_seam_order_priced__proseal_hat__pro.jpg",
+   "where": "fill_seam_order_priced__proseal_hat__where.jpg"
+  },
+  "status": "rendered"
+ }
+]

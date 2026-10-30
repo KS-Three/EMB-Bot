@@ -1265,6 +1265,39 @@ def seam_order_scope(on: bool):
         _SEAM_ORDER.reset(token)
 
 
+@contextlib.contextmanager
+def seam_order_held(hold: bool):
+    """`fill_seam_order` off for one sewing (`cfg.knockdown_skip_seam_order`).
+    False sets nothing."""
+    if not hold:
+        yield
+        return
+    token = _SEAM_ORDER.set(False)
+    try:
+        yield
+    finally:
+        _SEAM_ORDER.reset(token)
+
+
+# `cfg.fill_seam_order_priced` (2026-10-30, built OFF): which of seam order's two
+# progressions sews is `_score`'s call, not the shorter flown chord's.
+_SEAM_PRICED: contextvars.ContextVar[bool] = contextvars.ContextVar("fill_seam_order_priced",
+                                                                    default=False)
+
+
+@contextlib.contextmanager
+def seam_priced_scope(on: bool):
+    """`cfg.fill_seam_order_priced` for the length of one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _SEAM_PRICED.set(True)
+    try:
+        yield
+    finally:
+        _SEAM_PRICED.reset(token)
+
+
 def _uv(pt: tuple[float, float], angle_deg: float) -> tuple[float, float]:
     """`pt` in the fill's row frame: u along the rows, v across them."""
     th = math.radians(angle_deg)
@@ -1318,9 +1351,25 @@ def _seam_side(a: list[tuple[float, float, float]], b: list[tuple[float, float, 
     return 1 if after >= before else -1
 
 
+def _seam_faults(order: list[list[tuple[float, float]]], angle_deg: float, row_mm: float) -> int:
+    """How many seams of this order lie wrong: two sections either side of a row
+    that progress opposite ways (a shade flip), or one way with the later section
+    ending on the earlier's edge row (a ridge). Sections of a few stitches read as
+    no section, as `tests/test_fill_seam_order.py`'s reader does."""
+    fills = [p for p in order if len(p) > 4]
+    rows = [_section_rows(p, angle_deg) for p in fills]
+    ways = [1 if _uv(p[-1], angle_deg)[1] > _uv(p[0], angle_deg)[1] else -1 for p in fills]
+    faults = 0
+    for a in range(len(fills)):
+        for b in range(a + 1, len(fills)):
+            side = _seam_side(rows[a], rows[b], row_mm)
+            faults += side != 0 and (ways[a] != ways[b] or side != ways[a])
+    return faults
+
+
 def _order_for_seams(paths: list[list[tuple[float, float]]], angle_deg: float,
-                     entry: tuple[float, float] | None, row_mm: float
-                     ) -> list[list[tuple[float, float]]]:
+                     entry: tuple[float, float] | None, row_mm: float,
+                     price=None) -> list[list[tuple[float, float]]]:
     """The sections of one fill in the order one continuous tatami would lay them.
 
     Kent's Instagram icon at 80 mm (2026-10-29): the top pink line he circled is
@@ -1340,6 +1389,11 @@ def _order_for_seams(paths: list[list[tuple[float, float]]], angle_deg: float,
     free to go, nearest start first; the direction is whichever of the two
     flies the shorter chord from section to section. `travel_path` and the
     bridge rules route what that leaves, as for any order.
+
+    `price` (`cfg.fill_seam_order_priced`, built OFF): order -> cost, which
+    settles it between two progressions that lay equally well (`_seam_faults`).
+    A chord cannot see that one walls the needle in and the other does not, but
+    the lay comes first: on Becker beanie the cheaper one had 6 flips, the chord's 0.
     """
     real = [p for p in paths if len(p) >= 2]
     if len(real) < 2:
@@ -1388,6 +1442,11 @@ def _order_for_seams(paths: list[list[tuple[float, float]]], angle_deg: float,
         return flown, [oriented[k] for k in order]
 
     up, down = plan(True), plan(False)
+    if price is not None:
+        fu, fd = _seam_faults(up[1], angle_deg, row_mm), _seam_faults(down[1], angle_deg, row_mm)
+        if fu != fd:
+            return (up if fu < fd else down)[1]
+        return (up if (price(up[1]), up[0]) <= (price(down[1]), down[0]) else down)[1]
     return (up if up[0] <= down[0] else down)[1]
 
 
@@ -2339,7 +2398,12 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     if _SEAM_ORDER.get() and not two_pass:
         # `cfg.fill_seam_order` (built OFF): the sections as one continuous
         # tatami, so no section ends on another's finished edge row
-        fill_paths = _order_for_seams(fill_paths, angle, entry, row_mm)
+        price = None
+        if _SEAM_PRICED.get() and under_cover:
+            def price(order):
+                return _score(_order_cost(order, poly, ring, slack, entry, trim_at_mm, row_mm,
+                                          cut_bridges, hidden_row_mm=row_mm if section_travel else None))
+        fill_paths = _order_for_seams(fill_paths, angle, entry, row_mm, price)
     emit(fill_paths, stitches.FILL, stitch_mm)
     # Every hit is within this shape (`cover` is in the key), so nothing
     # after this point can use the unsewn-ground memo; let its geometry go.

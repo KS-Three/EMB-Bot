@@ -507,3 +507,16 @@ def test_inpiece_cuts_reads_the_dst_on_both_sides(monkeypatch):
     from tools import sequence_pro as sp
     monkeypatch.setattr(sp, "read_file", lambda path: {"total": {"trims": 13.0, "inter_trims": 7.0}})
     assert fsr.inpiece_cuts(None, None, {"dst": "any.dst"}) == "6 / 13"
+
+
+def test_seam_order_rows_read_the_flip_backwards_and_keep_their_switches_off():
+    from digitizer_core import PipelineConfig
+    cfg = PipelineConfig()
+    assert cfg.fill_seam_order is True                 # shipped: ON is the engine
+    assert fsr.FLAGS["seam_order_read"]["base"]["fill_seam_order"] is False
+    assert fsr.off_arm("seam_order_read") == "seam_off__off"
+    assert fsr.FLAGS["seam_order_read"]["sets"]["fill_seam_order"] is True
+    for flag in ("knockdown_shorter_walk", "fill_seam_order_priced"):
+        assert getattr(cfg, flag) is False, flag
+        assert fsr.FLAGS[flag]["sets"][flag] is True
+        assert fsr.off_arm(flag) == "rembg900__off"

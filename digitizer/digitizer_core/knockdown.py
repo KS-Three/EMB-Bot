@@ -39,7 +39,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
 
 from . import machine, stitches
-from .stage6_fill import _densify, _inset_ring, _ring_route, stitch_shape
+from .stage6_fill import _densify, _inset_ring, _ring_route, seam_order_held, stitch_shape
 from .stitches import StitchBlock, StitchRun
 from .threads import chart_for, rgb_to_lab
 
@@ -187,6 +187,26 @@ def _stay_down(runs: list[StitchRun], poly: Polygon) -> list[StitchRun]:
     return out
 
 
+def _sewn(poly: Polygon, here, trim_at_mm: float, hold_seams: bool = False) -> list[StitchRun]:
+    """One piece, every lift inside it walked. `hold_seams`: without `fill_seam_order`."""
+    with seam_order_held(hold_seams):
+        got, _ = stitch_shape(poly, SHAPE_ID, angle_deg=None, row_mm=ROW_MM,
+                              stitch_mm=STITCH_MM, underlay_style="none",
+                              trim_at_mm=trim_at_mm, start_near=here)
+    return _stay_down(got, poly) if got else got
+
+
+def _walk_mm(runs: list[StitchRun]) -> float:
+    """The needle-down travel in `runs`, from the stitch before each walk."""
+    total, prev = 0.0, None
+    for run in runs:
+        if run.kind == stitches.TRAVEL and prev is not None:
+            pts = [prev, *run.points]
+            total += sum(math.dist(p, q) for p, q in zip(pts, pts[1:]))
+        prev = run.points[-1]
+    return total
+
+
 def satin_shape_ids(blocks) -> set[str]:
     """Shapes stage 7 sewed mostly as satin columns (satin/border points over
     fill points)."""
@@ -225,12 +245,16 @@ def knockdown_block(shapes, cfg, trim_at_mm: float,
     runs: list[StitchRun] = []
     for poly in pieces:
         here = runs[-1].points[-1] if runs else None
-        got, _ = stitch_shape(poly, SHAPE_ID, angle_deg=None, row_mm=ROW_MM,
-                              stitch_mm=STITCH_MM, underlay_style="none",
-                              trim_at_mm=trim_at_mm, start_near=here)
+        got = _sewn(poly, here, trim_at_mm)
+        if cfg.knockdown_shorter_walk:
+            # `fill_seam_order` lays this field one way, and every hop that adds
+            # is walked. Which walk is shorter depends on the field: Becker beanie
+            # 77.9 mm ON against 38.7 held, ProSeal beanie the other way round.
+            held = _sewn(poly, here, trim_at_mm, hold_seams=True)
+            if held and (not got or _walk_mm(held) < _walk_mm(got)):
+                got = held
         if not got:
             continue
-        got = _stay_down(got, poly)
         if runs:
             first = got[0]
             first.jump = True
