@@ -5226,3 +5226,42 @@ Moved verbatim from `MASTER_SCOPE.md` by the 2026-10-29 refresh after PRs #1162�
 ### Waiting on Kent 66 (`script_strokes`) as it stood after PR #1187
 
 66. **`script_strokes` ON (Kent 2026-10-26: "Flip it ON (Recommended)"), with #1135's flow:** a script word (Bridge, Tires' "ires", To a T's "Machine") sews one satin column per pen stroke, its path read on the art's ink, crosses square to the stroke and turning with it; hand-overs over 30 deg at or near the pro's count. Cost: Bridge's crosses read less square (hat 0.84 → 0.65, few crosses read). `monoline_script_satin` never sees a script word with it ON. `PRE_FLIP` names the OFF arm. *(measured 2026-10-26 — #1135, `docs/renders/script-flow-2026-10-26/`; ruled 2026-10-26 — the flip PR)* `script_strokes_drawn_width` is built OFF (Kent 2026-10-27: "Build it OFF (Recommended)"). On a word that lays more thread twice than the pro's most (10.5%), crowded cross sides end at the drawn width. Bridge hat 24.9 → 19.3% laid twice, bare +1.3 mm². Tires is held off. *(measured 2026-10-27 — `docs/renders/script-drawn-width-2026-10-27/`)*
+
+## Twenty-second pass: overflow moved from MASTER_SCOPE (2026-10-29, defect 19)
+
+Moved verbatim from `MASTER_SCOPE.md` when defect 19 was re-measured on main 44ecf1cb (`docs/edge-cap-remeasure-2026-10-29.md`). Every number below is the 2026-09 engine's; the live text has today's.
+
+### Defect 19 (the design-edge cap) as it stood after PR #1188
+
+19. **The design's own outer edge is uncapped — every fill row ends in open
+    air.** The other sew-out edge finding, and one no per-shape border can reach: the silhouette is the union of several shapes' edges, so the
+    design/fabric boundary is nobody's. On Kent's icon, **100% of the 293.2 mm
+    outer silhouette uncovered at 1.0 mm** vs 0.0% on the glyph edge he rated
+    flawless. **FIX BUILT, default OFF, both styles opt-in:** `cfg.edge_cap` —
+    `"bean"` traces it, `"satin"` lays a column just inside, one design-level
+    block after all artwork in a thread already loaded. No new constant (gate 1
+    clean); Studio exposes **Design edge**.
+    Icon: bean +12.6%, satin +15.3%. KNOWN LIMIT: cost scales with silhouette
+    FRAGMENTATION, not size — `drone_render` caps 38 parts / 78 holes for
+    **+56.9%**, a whisker off DOCTRINE's blanket-border negative, and there
+    satin (+34.9%) is cheaper. Bills every run as `EDGE_CAP_APPLIED`.
+**MEASURED 2026-09-11, and GATED** (`tools/pro_silhouette.py`): ours, `edge_cap` off, **5.9–100.0% of the sewn silhouette carries no linear stitch** (Fremont 100.0, whitebg 82.6, gaulke 76.7, enthusiast 5.9); the pro carries a certified border on **at least 19.1–26.1%** of his fill edge, never in the fill's own colour block. Read differently ON PURPOSE — a stitch file has no run kinds, so his is a LOWER bound. Per-fixture tables, and the `unary_union` slowdown fixed 2026-09-12: [area 1](docs/scope/1-auto-digitizing-quality.md).
+    *(built 2026-09-01 — `tests/test_edge_cap.py`, 18 passing)*
+    **Rang hairline CRACKS as edges — FIXED 2026-09-08.** 20 sub-0.1 mm cracks
+    in the silhouette union, owned by no region, cleared the loop gate's
+    PERIMETER floor; `_fill_cracks` fills any interior the column cannot stand
+    in — on an ABSOLUTE ruler while the feature scales, so one hole can get
+    opposite verdicts at two sizes. *(2026-09-08 —
+    `tests/test_edge_cap.py`)*
+    **THE BILL OSCILLATES WITH SIZE, and the flip's `+5.9–26.3%` was a
+    ONE-WIDTH reading** (80 mm): becker bills **+58.7% at 88 mm**, and a 0.3 mm
+    larger design is 34% cheaper — the `omit` gate loses its input when the
+    shape carrying most of the linear cover flips satin/fill on
+    `_PROMOTE_EXPLAINED_MIN`, which is not monotone in design size. **COST
+    CAPPED 2026-09-12** (Kent: cap the cost, leave `classify_ribbon` alone):
+    `EDGE_CAP_BUDGET_PCT` 40.0, `"warn"` by default, so no stitch moves. The
+    `edges` field reports silhouette rings now, having FALLEN as the bill rose.
+    **The cause is NOT fixed**; `classify_ribbon`'s stability is the open
+    project.
+    *(measured 2026-09-12 — `docs/edge-cap-cliff-2026-09-12.md`;
+    `tests/test_edge_cap_budget.py`)*

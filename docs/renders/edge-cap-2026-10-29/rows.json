@@ -1,0 +1,586 @@
+[
+ {
+  "flag": "edge_cap_satin",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": null,
+  "about": "edge-cap runs",
+  "sets": {
+   "edge_cap": "satin"
+  },
+  "note": "OFF is the shipped engine: edge_cap 'bean', which bean_only_lines (ON since 2026-10-27) turns into no cap. ON is the satin style, the one cap style still live. docs/edge-cap-remeasure-2026-10-29.md has the silhouette and size sweep.",
+  "engine": "44ecf1cb",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\281850f6-c1e7-4c03-b7d3-443301095d98\\scratchpad\\wt",
+  "off": {
+   "stitches": 15865,
+   "trims": 25,
+   "colours": 3,
+   "about": "0",
+   "exposed_mm": 9.1,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 174.1,
+   "md5": "8d5ecb010958fd19faa3ad0a89fc7801"
+  },
+  "on": {
+   "stitches": 15865,
+   "trims": 25,
+   "colours": 3,
+   "about": "0",
+   "exposed_mm": 9.1,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 181.7,
+   "md5": "8d5ecb010958fd19faa3ad0a89fc7801"
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "colours": 10,
+   "about": "n/a (DST has no roles)"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "edge_cap_satin",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": null,
+  "about": "edge-cap runs",
+  "sets": {
+   "edge_cap": "satin"
+  },
+  "note": "OFF is the shipped engine: edge_cap 'bean', which bean_only_lines (ON since 2026-10-27) turns into no cap. ON is the satin style, the one cap style still live. docs/edge-cap-remeasure-2026-10-29.md has the silhouette and size sweep.",
+  "engine": "44ecf1cb",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\281850f6-c1e7-4c03-b7d3-443301095d98\\scratchpad\\wt",
+  "off": {
+   "stitches": 10270,
+   "trims": 13,
+   "colours": 1,
+   "about": "0",
+   "exposed_mm": 40.8,
+   "bare_mm": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 31.1,
+   "md5": "1da97dfd22e1338c60d570aa520c0ae7"
+  },
+  "on": {
+   "stitches": 10286,
+   "trims": 13,
+   "colours": 2,
+   "about": "1",
+   "exposed_mm": 40.8,
+   "bare_mm": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 41.7,
+   "md5": "0ceea75e5c3dbc8257aace55a8ab4cbd"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "colours": 4,
+   "about": "n/a (DST has no roles)"
+  },
+  "bare": {
+   "off": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "on": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 16,
+  "byte_identical": false,
+  "box_mm": [
+   -28.0,
+   4.5,
+   -10.0,
+   15.5
+  ],
+  "in_window": 16,
+  "images": {
+   "off": "edge_cap_satin__becker_hat_small__off.jpg",
+   "on": "edge_cap_satin__becker_hat_small__on.jpg",
+   "pro": "edge_cap_satin__becker_hat_small__pro.jpg",
+   "where": "edge_cap_satin__becker_hat_small__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "edge_cap_satin",
+  "fixture": "gaulke_roofing_hat",
+  "width_mm": 114.2,
+  "pr": null,
+  "about": "edge-cap runs",
+  "sets": {
+   "edge_cap": "satin"
+  },
+  "note": "OFF is the shipped engine: edge_cap 'bean', which bean_only_lines (ON since 2026-10-27) turns into no cap. ON is the satin style, the one cap style still live. docs/edge-cap-remeasure-2026-10-29.md has the silhouette and size sweep.",
+  "engine": "44ecf1cb",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\281850f6-c1e7-4c03-b7d3-443301095d98\\scratchpad\\wt",
+  "off": {
+   "stitches": 7446,
+   "trims": 30,
+   "colours": 1,
+   "about": "0",
+   "exposed_mm": 16.7,
+   "bare_mm": {
+    "0.20": 5.99,
+    "0.25": 5.26,
+    "0.30": 4.22
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 64.2,
+   "md5": "da23fa4fe091deee6721aed6dbc20224"
+  },
+  "on": {
+   "stitches": 7446,
+   "trims": 30,
+   "colours": 1,
+   "about": "0",
+   "exposed_mm": 16.7,
+   "bare_mm": {
+    "0.20": 5.99,
+    "0.25": 5.26,
+    "0.30": 4.22
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 91.1,
+   "md5": "da23fa4fe091deee6721aed6dbc20224"
+  },
+  "pro": {
+   "stitches": 6138,
+   "trims": 42,
+   "colours": 0,
+   "about": "n/a (DST has no roles)"
+  },
+  "bare": {
+   "off": {
+    "0.20": 5.99,
+    "0.25": 5.26,
+    "0.30": 4.22
+   },
+   "on": {
+    "0.20": 5.99,
+    "0.25": 5.26,
+    "0.30": 4.22
+   },
+   "rises": []
+  },
+  "pro_file": "c golke logo hat.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "edge_cap_satin",
+  "fixture": "precision_drone",
+  "width_mm": 62.6,
+  "pr": null,
+  "about": "edge-cap runs",
+  "sets": {
+   "edge_cap": "satin"
+  },
+  "note": "OFF is the shipped engine: edge_cap 'bean', which bean_only_lines (ON since 2026-10-27) turns into no cap. ON is the satin style, the one cap style still live. docs/edge-cap-remeasure-2026-10-29.md has the silhouette and size sweep.",
+  "engine": "44ecf1cb",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\281850f6-c1e7-4c03-b7d3-443301095d98\\scratchpad\\wt",
+  "off": {
+   "stitches": 14491,
+   "trims": 83,
+   "colours": 9,
+   "about": "0",
+   "exposed_mm": 39.7,
+   "bare_mm": {
+    "0.20": 2.54,
+    "0.25": 2.12,
+    "0.30": 1.27
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 116.4,
+   "md5": "da343493d00445a64ff22acbaabcd050"
+  },
+  "on": {
+   "stitches": 14491,
+   "trims": 83,
+   "colours": 9,
+   "about": "0",
+   "exposed_mm": 39.7,
+   "bare_mm": {
+    "0.20": 2.54,
+    "0.25": 2.12,
+    "0.30": 1.27
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 144.4,
+   "md5": "da343493d00445a64ff22acbaabcd050"
+  },
+  "pro": {
+   "stitches": 14552,
+   "trims": 59,
+   "colours": 22,
+   "about": "n/a (DST has no roles)"
+  },
+  "bare": {
+   "off": {
+    "0.20": 2.54,
+    "0.25": 2.12,
+    "0.30": 1.27
+   },
+   "on": {
+    "0.20": 2.54,
+    "0.25": 2.12,
+    "0.30": 1.27
+   },
+   "rises": []
+  },
+  "pro_file": "PRECISION DRON HAT 2.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "edge_cap_bean_legacy",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": null,
+  "about": "edge-cap runs",
+  "sets": {
+   "edge_cap": "bean",
+   "bean_only_lines": false
+  },
+  "note": "The bean cap as it sewed 2026-09-11 to 10-27, with bean_only_lines OFF so the bean style is not turned off. bean_only_lines OFF also moves bean letters and the run tier, so ON differs from OFF in more than the cap: read the rings.",
+  "engine": "44ecf1cb",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\281850f6-c1e7-4c03-b7d3-443301095d98\\scratchpad\\wt",
+  "off": {
+   "stitches": 15865,
+   "trims": 25,
+   "colours": 3,
+   "about": "0",
+   "exposed_mm": 9.1,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 174.1,
+   "md5": "8d5ecb010958fd19faa3ad0a89fc7801"
+  },
+  "on": {
+   "stitches": 15839,
+   "trims": 25,
+   "colours": 3,
+   "about": "0",
+   "exposed_mm": 9.1,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 190.5,
+   "md5": "e94b0d0126c1b9335e3c66d83a351e52"
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "colours": 10,
+   "about": "n/a (DST has no roles)"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 430,
+  "byte_identical": false,
+  "box_mm": [
+   -7.4,
+   -14.8,
+   10.6,
+   -3.8
+  ],
+  "in_window": 336,
+  "images": {
+   "off": "edge_cap_bean_legacy__hotel_fremont_hat__off.jpg",
+   "on": "edge_cap_bean_legacy__hotel_fremont_hat__on.jpg",
+   "pro": "edge_cap_bean_legacy__hotel_fremont_hat__pro.jpg",
+   "where": "edge_cap_bean_legacy__hotel_fremont_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "edge_cap_bean_legacy",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": null,
+  "about": "edge-cap runs",
+  "sets": {
+   "edge_cap": "bean",
+   "bean_only_lines": false
+  },
+  "note": "The bean cap as it sewed 2026-09-11 to 10-27, with bean_only_lines OFF so the bean style is not turned off. bean_only_lines OFF also moves bean letters and the run tier, so ON differs from OFF in more than the cap: read the rings.",
+  "engine": "44ecf1cb",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\281850f6-c1e7-4c03-b7d3-443301095d98\\scratchpad\\wt",
+  "off": {
+   "stitches": 10270,
+   "trims": 13,
+   "colours": 1,
+   "about": "0",
+   "exposed_mm": 40.8,
+   "bare_mm": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 31.1,
+   "md5": "1da97dfd22e1338c60d570aa520c0ae7"
+  },
+  "on": {
+   "stitches": 10270,
+   "trims": 13,
+   "colours": 1,
+   "about": "0",
+   "exposed_mm": 40.8,
+   "bare_mm": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 33.4,
+   "md5": "1da97dfd22e1338c60d570aa520c0ae7"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "colours": 4,
+   "about": "n/a (DST has no roles)"
+  },
+  "bare": {
+   "off": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "on": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "edge_cap_bean_legacy",
+  "fixture": "gaulke_roofing_hat",
+  "width_mm": 114.2,
+  "pr": null,
+  "about": "edge-cap runs",
+  "sets": {
+   "edge_cap": "bean",
+   "bean_only_lines": false
+  },
+  "note": "The bean cap as it sewed 2026-09-11 to 10-27, with bean_only_lines OFF so the bean style is not turned off. bean_only_lines OFF also moves bean letters and the run tier, so ON differs from OFF in more than the cap: read the rings.",
+  "engine": "44ecf1cb",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\281850f6-c1e7-4c03-b7d3-443301095d98\\scratchpad\\wt",
+  "off": {
+   "stitches": 7446,
+   "trims": 30,
+   "colours": 1,
+   "about": "0",
+   "exposed_mm": 16.7,
+   "bare_mm": {
+    "0.20": 5.99,
+    "0.25": 5.26,
+    "0.30": 4.22
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 64.2,
+   "md5": "da23fa4fe091deee6721aed6dbc20224"
+  },
+  "on": {
+   "stitches": 7474,
+   "trims": 31,
+   "colours": 2,
+   "about": "2",
+   "exposed_mm": 16.7,
+   "bare_mm": {
+    "0.20": 5.99,
+    "0.25": 5.26,
+    "0.30": 4.22
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 78.2,
+   "md5": "f362c30de9e884185ebbd4f79c42d183"
+  },
+  "pro": {
+   "stitches": 6138,
+   "trims": 42,
+   "colours": 0,
+   "about": "n/a (DST has no roles)"
+  },
+  "bare": {
+   "off": {
+    "0.20": 5.99,
+    "0.25": 5.26,
+    "0.30": 4.22
+   },
+   "on": {
+    "0.20": 5.99,
+    "0.25": 5.26,
+    "0.30": 4.22
+   },
+   "rises": []
+  },
+  "pro_file": "c golke logo hat.DST",
+  "diff": 28,
+  "byte_identical": false,
+  "box_mm": [
+   -15.9,
+   -8.3,
+   2.1,
+   2.7
+  ],
+  "in_window": 14,
+  "images": {
+   "off": "edge_cap_bean_legacy__gaulke_roofing_hat__off.jpg",
+   "on": "edge_cap_bean_legacy__gaulke_roofing_hat__on.jpg",
+   "pro": "edge_cap_bean_legacy__gaulke_roofing_hat__pro.jpg",
+   "where": "edge_cap_bean_legacy__gaulke_roofing_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "edge_cap_bean_legacy",
+  "fixture": "precision_drone",
+  "width_mm": 62.6,
+  "pr": null,
+  "about": "edge-cap runs",
+  "sets": {
+   "edge_cap": "bean",
+   "bean_only_lines": false
+  },
+  "note": "The bean cap as it sewed 2026-09-11 to 10-27, with bean_only_lines OFF so the bean style is not turned off. bean_only_lines OFF also moves bean letters and the run tier, so ON differs from OFF in more than the cap: read the rings.",
+  "engine": "44ecf1cb",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\281850f6-c1e7-4c03-b7d3-443301095d98\\scratchpad\\wt",
+  "off": {
+   "stitches": 14491,
+   "trims": 83,
+   "colours": 9,
+   "about": "0",
+   "exposed_mm": 39.7,
+   "bare_mm": {
+    "0.20": 2.54,
+    "0.25": 2.12,
+    "0.30": 1.27
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 116.4,
+   "md5": "da343493d00445a64ff22acbaabcd050"
+  },
+  "on": {
+   "stitches": 14457,
+   "trims": 83,
+   "colours": 10,
+   "about": "1",
+   "exposed_mm": 39.7,
+   "bare_mm": {
+    "0.20": 2.54,
+    "0.25": 2.12,
+    "0.30": 1.27
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 119.8,
+   "md5": "16fe3abc6d2bf02346de302738b893d5"
+  },
+  "pro": {
+   "stitches": 14552,
+   "trims": 59,
+   "colours": 22,
+   "about": "n/a (DST has no roles)"
+  },
+  "bare": {
+   "off": {
+    "0.20": 2.54,
+    "0.25": 2.12,
+    "0.30": 1.27
+   },
+   "on": {
+    "0.20": 2.54,
+    "0.25": 2.12,
+    "0.30": 1.27
+   },
+   "rises": []
+  },
+  "pro_file": "PRECISION DRON HAT 2.DST",
+  "diff": 116,
+  "byte_identical": false,
+  "box_mm": [
+   -18.0,
+   -18.8,
+   0.0,
+   -7.8
+  ],
+  "in_window": 64,
+  "images": {
+   "off": "edge_cap_bean_legacy__precision_drone__off.jpg",
+   "on": "edge_cap_bean_legacy__precision_drone__on.jpg",
+   "pro": "edge_cap_bean_legacy__precision_drone__pro.jpg",
+   "where": "edge_cap_bean_legacy__precision_drone__where.jpg"
+  },
+  "status": "rendered"
+ }
+]
