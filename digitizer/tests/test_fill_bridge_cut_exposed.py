@@ -76,3 +76,36 @@ def test_the_pipeline_scopes_the_flag():
     from digitizer_core import pipeline
     import inspect
     assert "cut_exposed_scope(cfg.fill_bridge_cut_exposed)" in inspect.getsource(pipeline.plan_stitches)
+
+
+# --- a satin rim's lead-in (stage6_border.border_runs) ----------------------
+# flat_emoji_icon at 80 mm (2026-10-30): with `fill_seam_order` the horn's fill
+# ended mid-shape and its rim's lead-in was a 7 mm line across the finished
+# horn. ON, the lead-in rides only the band the rim is still to sew, or lifts.
+
+def _rim(entry):
+    from digitizer_core.stage6_border import border_runs
+    from digitizer_core import stitches
+    runs, report = border_runs(box(0, 0, 30, 30), "S1", entry=entry, trim_at_mm=TRIM_AT)
+    travel = sum(len(r.points) for r in runs if r.kind == stitches.TRAVEL)
+    return runs, report, travel
+
+
+def test_off_a_rim_lead_in_crosses_the_finished_fill():
+    _, report, travel = _rim((15.0, 15.0))
+    assert travel > 0 and report["cut_exposed"] == 0
+
+
+def test_on_a_rim_lead_in_across_the_fill_is_lifted():
+    with cut_exposed_scope(True):
+        runs, report, travel = _rim((15.0, 15.0))
+    assert travel == 0 and report["cut_exposed"] == 1
+    assert runs[0].jump and runs[0].trim
+
+
+def test_on_a_rim_lead_in_from_the_edge_is_unchanged():
+    off = _rim((0.0, 15.0))
+    with cut_exposed_scope(True):
+        on = _rim((0.0, 15.0))
+    assert on[1]["cut_exposed"] == 0
+    assert [r.points for r in on[0]] == [r.points for r in off[0]]
