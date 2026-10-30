@@ -128,6 +128,14 @@ four jobs read both ways, and the arm stayed byte-stable across all 22. Tests:
 `digitizer/tests/test_seam_order_costs.py`. The sheet's cells carry these two
 switches' code on engine label 6e1e8555, the base before they were committed.
 
+## Flipped ON, 2026-10-30
+
+Kent: "Flip ON (Recommended)" on each, the drone's bare rise stated. Both fully
+digitized on the flip tree: 22 of 22 jobs byte-identical to the "ON + both
+switches" arm above. Full digitizer suite: only `enthusiast_logo`'s two platform
+reds, so no golden moved and no pin needed. False is the engine as it was
+(`tests/conftest.py` PRE_FLIP, `FLIP_2026_10_30`).
+
 ## Open
 
 - ProSeal beanie's 150.5 mm exposed and 100.25 mm bare are its knockdown's own
