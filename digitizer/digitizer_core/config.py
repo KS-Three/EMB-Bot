@@ -2898,6 +2898,21 @@ class PipelineConfig:
     # together with `satin_slab_serifs`** (see there); False is the 10-07
     # free end, byte for byte.
     satin_free_end_square: bool = True
+    # `satin_cap_skew_inset` (2026-10-30): a square free end whose cap a raster
+    # traced a hair off true keeps its whole final cross. `_extend_to_cap`
+    # steps the end station back by the lean; False loses half the cross and
+    # one corner of the stripe. `tests/test_satin_flag_stripes.py`.
+    satin_cap_skew_inset: bool = False
+    # `satin_seam_hold` (2026-10-30): under `satin_rail_comp` the pull lands
+    # after stage 5's clip, so a satin sewn later pushed over the colour already
+    # down. On equal 4.05 mm flag stripes white sewed 4.53 and left red 3.57.
+    # True keeps a later satin rail on its artwork edge at such a seam; the
+    # earlier colour's own rail pull runs beneath it, so stage 5's tongue owes
+    # only what the pull falls short of `overlap_mm`. Columns under 3 mm keep
+    # the pull (`_SEAM_HOLD_MIN_CROSS_MM`) and lettering is exempt: it sews over
+    # its ground by design. Over 14 logos: Golden Tee -11.4% stitches, Gaulke
+    # -3.2%, same sewn footprint; the rest within 1.3%.
+    satin_seam_hold: bool = False
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,
     # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick
