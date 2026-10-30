@@ -118,6 +118,8 @@ the 40 blocking findings judged on patches under 5 mm², and they no longer
 judge at all (`digitizer/tools/thread_match_floor.py`).
 *(ruled 2026-09-10 — `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §5)*
 
+**Re-measured 2026-10-29, and the ruling now has an off switch.** `cfg.thread_match_excess_gradient` (DEFAULT OFF) judges the gradient lane on excess exactly as the photo route is judged. It is a grading change, so all 52 matrix plans are md5-identical OFF and ON. On main 44ecf1cb, ON takes F entries carrying a thread block 14 → 4 and the matrix's thread blocks 38 → 8. The survivors are fremont's `0020 Black` at dE 100 with White loaded, summit's `0111` band, and the photo stub. The ruling above stands until Kent re-makes it. Table: `docs/thread-match-gradient-excess-2026-10-29.md`. *(measured 2026-10-29)*
+
 ## 5. It scored the colour of regions that never sew
 
 Until 2026-09-06 `_region_color_errors` built a row for every region including
@@ -167,6 +169,8 @@ improvement to a floored design instead of losing it — `screenshot` reads
 GRADE would re-base the scorecard and is still a product call. Inert until the
 scorecard baseline is recaptured (`_metric_deltas` intersects key sets), which
 is also why it cannot disturb an existing diff.
+
+**Re-measured 2026-10-29:** 10 of 52 entries are floored, unclamped −152 (bridge) to −8 (screenshot). With the gradient lane on excess, 2 are floored (summit, −20). Pricing the clamp: keeping it moves 0 letters, and printing the raw score moves 0. A saturating curve that keeps the F/D edge at two blocks moves 12, every one on a design not at the floor (two warns would read B 76 → C 69). Not built, Kent's call; same doc as row 4. *(measured 2026-10-29)*
 
 ## 7. It preferred a design that dropped its ink — and then the ink came back
 

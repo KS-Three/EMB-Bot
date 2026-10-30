@@ -5266,6 +5266,23 @@ class PipelineConfig:
     # the pre-flip engine byte for byte.
     resnap_mask_matches_grader: bool = True
 
+    # Score `THREAD_MATCH_POOR` on the GRADIENT lane the way the photo route
+    # has been scored since 2026-08-24: on EXCESS over the best spool the
+    # design already loads, not on raw distance (MASTER_SCOPE defect 28, part
+    # 1). A GRADING change only — `preflight._thread_match_findings` is the
+    # one reader, so no stitch moves either way (OFF/ON plan md5s are pinned
+    # equal across the scorecard matrix in `tests/test_thread_match_excess_
+    # gradient.py`). The flat lane keeps raw distance whatever this says.
+    #
+    # DEFAULT OFF, and against a standing ruling: Kent ruled 2026-09-10 that
+    # the gradient lane stays on raw distance, because a logo's palette can
+    # be changed and a photograph's cannot, so "already the closest cone this
+    # design loads" is a cone to buy, not a pass (yardstick-disagreements row
+    # 4). This exists so that call can be re-made on today's numbers rather
+    # than 09-06's; flipping it is his. The measured table is in
+    # `docs/thread-match-gradient-excess-2026-10-29.md`.
+    thread_match_excess_gradient: bool = False
+
     # Bind stage 4's thread re-snap to the selected palette on EVERY class,
     # not only the photo ones. `revalidate_threads`' argmin runs over the whole
     # chart off the photo route, so a re-snapped shape can pull in a spool the
