@@ -5200,8 +5200,7 @@ def fold_stray_cones(blocks: list[StitchBlock], admitted: set[int], cap: int,
             out.append(b)
             continue
         th = chart[dst]
-        out.append(StitchBlock(thread_index=dst, thread_number=th.number, rgb=tuple(th.rgb),
-                               runs=b.runs, **({"step": b.step} if getattr(b, "step", None) is not None else {})))
+        out.append(replace(b, thread_index=dst, thread_number=th.number, rgb=tuple(th.rgb)))
         moved += 1
     return out, warn(
         COLOR_CAP_APPLIED,
