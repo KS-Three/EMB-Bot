@@ -77,7 +77,7 @@ is 95.8% grid noise). **The per-stroke rung was BUILT INERT 2026-09-05 and WIRED
    now BETWEEN shapes.** Defect 4's run: 104 of our 391 cuts inside one piece
    (the pro 73 of 409). By cause: shape to shape 42, fill sections 32 (the pro 0),
    satin splits 27. **`fill_section_cuts_first`
-   — built OFF (this PR), your flip:** the section planner already found
+   — built OFF (PR #1193), your flip:** the section planner already found
    fewer-cut orders and `_score` refused them for travel hidden under rows
    still to come; priced with that travel free, fill sections 32 → 18, cuts
    391 → 377, exposed travel 723 → 651 mm, bare thread unchanged on every job.
