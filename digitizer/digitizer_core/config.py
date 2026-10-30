@@ -4119,6 +4119,17 @@ class PipelineConfig:
     # cost is trims. Layout (ruling 2026-10-22: judged in the preview). Off,
     # byte-identical (tests/test_fill_bridge_cut_exposed.py).
     fill_bridge_cut_exposed: bool = False
+    # A fill's sections sewn as one continuous tatami (2026-10-29, built OFF;
+    # `stage6_fill._order_for_seams`). The top pink line Kent circled on the
+    # Instagram icon is no travel: it is the seam where a section sewn late
+    # ends on the edge row of a section sewn early, the one row in the band
+    # nothing covers. ON, every section of a fill progresses the same way
+    # across its rows and starts only once each section it shares an edge row
+    # with upstream is sewn, so across every seam the rows lie as they do
+    # inside a section. The cost is travel between sections, which the bridge
+    # rules route or cut as for any order. Layout (ruling 2026-10-22: judged
+    # in the preview). Off, byte-identical.
+    fill_seam_order: bool = False
 
     # The fill column-order scorer prices only what `emit` sews (2026-10-08,
     # built OFF). `_fill_paths` returns one-point "columns" that `emit`
@@ -4692,7 +4703,19 @@ class PipelineConfig:
     # The fragmentation inversion recorded above is GONE with the gate:
     # `drone_render` reads bean +6.4% against satin +6.9%, because the gate
     # removes the crumbs before either emitter's loop floor has to.
-    edge_cap: str = "bean"
+    #
+    # DEFAULT "none" SINCE 2026-10-29 — Kent's ruling ("'none' default
+    # (Recommended)") on docs/edge-cap-remeasure-2026-10-29.md. From
+    # 2026-10-27 `bean_only_lines` (ON) turned "bean" into no cap in
+    # `stage7_sequence`, so the shipped engine sewed none while this field
+    # and the Studio said "bean", and the Studio's readout blamed the
+    # design for being too small. The edge itself no longer needs it: cap
+    # off, 0.0-4.0% of the sewn silhouette carries no linear stitch on the
+    # six fixtures that read 5.9-100% on 09-11 (`silhouette_underfill_rim`
+    # and `border_by_size` close it). With `bean_only_lines` ON the plan is
+    # byte for byte what "bean" sewed; a site that turns `bean_only_lines`
+    # OFF to rebuild an older engine passes `edge_cap="bean"` with it.
+    edge_cap: str = "none"
     # Whether the cap sews each stretch of the edge in the thread of the shape
     # it stands against (Kent 2026-10-06: the bean outline on the Instagram
     # icon did not follow the colour beside it) rather than the whole ring in

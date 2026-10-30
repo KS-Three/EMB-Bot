@@ -727,8 +727,15 @@ FLIP_2026_10_23 = {
     # 10-23 flips" on a gradient fixture (the owl, Bridge Bar, drone, Fremont)
     # was measured without the carved strokes, so it pins this off too.
     "keep_dark_thin_strokes": False,
+    # ...and the edge cap's "none" default (Kent 2026-10-29, #1192): that
+    # engine sewed the bean cap by default, which `bean_only_lines` OFF above
+    # lets through again.
+    "edge_cap": "bean",
 }
 PRE_FLIP.update(FLIP_2026_10_23)
+# PRE_FLIP keeps the cap OFF (its own 2026-09-11 entry above): the update just
+# laid FLIP_2026_10_23's "bean" over it.
+PRE_FLIP["edge_cap"] = "none"
 # Spoked detail marks (Kent's flip 2026-10-16, "ON, tightened"): a small
 # enclosed detail of another colour with four or more tips sews as a spoked
 # mark on top of its host (Fremont's Wisconsin star). False is the pre-flip

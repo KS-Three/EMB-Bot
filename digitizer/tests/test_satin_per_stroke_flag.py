@@ -153,9 +153,10 @@ def test_the_cap_is_a_veto_not_a_vote_and_leaves_no_bare_cloth():
     got = {}
     for on in (False, True):
         # On the engine the guard was measured on (`PRE_FLIP`). With
-        # `subpixel_corner_runs` ON (2026-10-20) this flag leaves 8.3 mm2
-        # bare against 6.8 off: a finding for satin_per_stroke's own flip
-        # decision, not something this flip may quietly absorb.
+        # `subpixel_corner_runs` ON (2026-10-20) this flag left 8.3 mm2
+        # bare against 6.8 off. Re-read 2026-10-29 on main: 14.4 / 14.4 on
+        # the defaults, 13.6 / 13.6 on this pin
+        # (`docs/satin-fill-remeasure-2026-10-29.md` §4).
         cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest",
                              satin_per_stroke=on,
                              subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"])
