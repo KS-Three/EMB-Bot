@@ -16,8 +16,7 @@ and the rehome. The photo-style census of 2026-10-27 (item 3) found the sewn
 designs loading 13 / 8 / 8 / 7 cones against the 6 the warning promised.
 
 Attributing every block thread of a leaking design to its source
-(`cone_probe`, this PR's scratch instrument; the committed form is
-`tools/cone_escape.py`) finds **two mechanisms, and the census named only one
+(`tools/cone_escape.py`, this PR's instrument) finds **two mechanisms, and the census named only one
 of them — and misnamed the second's cure:**
 
 1. **The "Sew white areas" recolour runs AFTER the cap.** `apply_enclosed_white`
@@ -38,6 +37,12 @@ of them — and misnamed the second's cure:**
    gradient lane today: `flower_macro` 13 cones (7 strays, every one a band of
    1–2 shapes carrying 8.7–57 mm of thread, each a full colour change);
    `night_skyline` 8 (2 strays of 5.8 m each — real bands, not slivers).
+   On the repo's fixtures at the Studio's request: `logo_golden_tee` 9
+   (strays of 4.7, 10.4 and 17.0 mm), `summit_badge` 9 (strays of 2.3,
+   6.0 and 10.5 m — real bands), `drone_render` 7 (mechanism 1: White on one
+   enclosed field). `gradient_ramp_linear`, `gradient_ramp_radial` and
+   `repro_gradient_white_icon` load 5 cones from one or two regions and are
+   UNDER the budget; they are the designs the bind below must not touch.
    The census blamed `_cap_tonal_layers` / `cfg.tonal_split_layer_cap` for
    this hole. That function caps fill LAYERS (defect 20's density ceiling),
    not colours; it was never a colour cap on any lane.
@@ -54,7 +59,7 @@ colour, `knockdown.py`, beanie only — a cone by design, Kent's 10-21 flip).
 
 ## 2. The change: `cfg.color_cap_sewn` (built OFF)
 
-One flag, three seams, OFF byte-identical on every lane:
+One flag, two seams, OFF byte-identical on every lane:
 
 1. **A second cap pass over the final regions**, at the end of
    `finish_generation`'s recolours (after `apply_enclosed_white` and the
@@ -69,20 +74,23 @@ One flag, three seams, OFF byte-identical on every lane:
    rule included), exactly as at stage 4. Protected threads alone at or over
    the budget keep only themselves: the customer's stated colours ARE the
    budget then. The stage-4 pass is unchanged and still runs first.
-2. **The blend tier's shade snap is bound** to the plan's regions' threads
-   on EVERY class under this flag — `blend_fill` and `design_shade_scheme`
-   take `palette_indices`, the same masked-argmin `_shade_layers` uses, so
-   "nearest in the palette" has one definition. Stage 7 hands the same
-   `shade_palette` it already builds for photo classes to every class when
-   the flag is on (`shade_palette_bind`'s own photo gate is untouched).
-   Bands that bind to one thread sew as one block (`_shade_blocks` buckets
-   by thread already); the band geometry is not re-cut.
-3. **The detail layer's cone is bound** the same way, so a future
-   `detail_layer` flip cannot reopen the hole.
+2. **A fold over the BLOCKS** (`stage7_sequence.fold_stray_cones`), run on
+   the artwork blocks before the adjacent-same-thread merge and once more
+   over the finished list (the detail layer picks its cone after the artwork
+   pass). The cones the plan loads past the regions' — blend bands,
+   layered-streamline shades, the detail layer — are not bound band by band:
+   a bind would strip every shade from a one-region gradient ramp that sews
+   five cones under a cap of six. The fold spends the budget first: the
+   regions' cones keep their slots, the strays fill the slots left, the most
+   thread first, and only the remaining strays are recoloured in place to
+   their nearest kept cone (CIEDE2000). Sew order, stitches, cuts and ties
+   are untouched; a plan at or under the budget comes back the same list.
+   `COLOR_CAP_APPLIED` is emitted once per design (the plan's count
+   supersedes the regions').
 
 NOT in this change: the knockdown's garment cone (a design decision of its
-own), a merge of adjacent same-thread blend bands (streamline does it; here
-the seams stay, measured below), and any Studio copy.
+own), the edge cap and the hairline strands (they sew loaded cones already),
+and any Studio copy.
 
 ## 3. The decision that is Kent's
 

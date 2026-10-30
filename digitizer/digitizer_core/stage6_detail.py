@@ -466,13 +466,10 @@ def lines_from_map(line_map: np.ndarray, sp: SourcePixels, scale: float,
 
 
 def _line_thread(lines: list[list[tuple[float, float]]], sp: SourcePixels,
-                 cfg, allowed: list[int] | None = None) -> tuple[int, tuple[int, int, int]]:
+                 cfg) -> tuple[int, tuple[int, int, int]]:
     """The chart cone nearest the lines' own median source color — a detail
     layer sews in the color the details actually are (usually near-black),
-    never in whatever thread happened to sew last. `allowed` (the plan's
-    own spools, `cfg.color_cap_sewn`): the nearest among those instead, so
-    the layer cannot load a cone the colour cap never admitted; None is
-    the chart-wide snap."""
+    never in whatever thread happened to sew last."""
     h, w = sp.rgb.shape[:2]
     samples = []
     for pts in lines:
@@ -483,14 +480,7 @@ def _line_thread(lines: list[list[tuple[float, float]]], sp: SourcePixels,
             samples.append(sp.rgb[yi, xi])
     med = np.median(np.asarray(samples, np.float64), axis=0)
     chart = chart_for(cfg)
-    lab = rgb_to_lab(med.reshape(1, 3))[0]
-    if allowed:
-        from skimage.color import deltaE_ciede2000
-        pool = np.unique(np.asarray(list(allowed), dtype=np.int64))
-        d = deltaE_ciede2000(np.repeat(lab.reshape(1, 3), len(pool), axis=0), chart.lab[pool])
-        idx = int(pool[int(np.argmin(d))])
-    else:
-        idx = chart.nearest_index(lab)
+    idx = chart.nearest_index(rgb_to_lab(med.reshape(1, 3))[0])
     return idx, tuple(int(v) for v in chart[idx].rgb)
 
 
@@ -531,12 +521,8 @@ def _bean_line(pts: list[tuple[float, float]], passes: int) -> list[tuple[float,
 
 
 def detail_runs(sp: SourcePixels, cfg, entry: tuple[float, float] | None,
-                trim_at_mm: float,
-                allowed_threads: list[int] | None = None) -> tuple[list[StitchRun], dict]:
+                trim_at_mm: float) -> tuple[list[StitchRun], dict]:
     """The detail layer for one design -> (runs, report).
-
-    `allowed_threads`: the plan's own spools; the layer's cone is the
-    nearest among them (`cfg.color_cap_sewn`). None: the chart's nearest.
 
     Report keys: the shared tier vocabulary (`empty`, `jumps`, `too_thin` —
     always False here, a line has no width to be too thin in) plus `lines`
@@ -554,7 +540,7 @@ def detail_runs(sp: SourcePixels, cfg, entry: tuple[float, float] | None,
     if not lines:
         return [], report
 
-    thread_idx, rgb = _line_thread(lines, sp, cfg, allowed_threads)
+    thread_idx, rgb = _line_thread(lines, sp, cfg)
     report["thread_index"] = thread_idx
     report["rgb"] = rgb
 

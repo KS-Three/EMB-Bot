@@ -2145,10 +2145,17 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     # `stats.thread_mm_by_color` is per block too, so a worksheet can finally
     # pair the two by index without lying.
     chart = chart_for(cfg)
+    # One `COLOR_CAP_APPLIED` sentence per design: when the plan-level fold
+    # (`stage7_sequence.fold_stray_cones`, `cfg.color_cap_sewn`) fired, its
+    # count supersedes the region passes' -- the same coalescing
+    # `finish_generation` does between the stage-4 pass and its own.
+    result_warnings = list(result.warnings)
+    if any(w.get("code") == COLOR_CAP_APPLIED for w in seq_warnings):
+        result_warnings = [w for w in result_warnings if w.get("code") != COLOR_CAP_APPLIED]
     plan = StitchPlan(
         blocks=blocks,
         palette=[_cone(chart, b.thread_index) for b in blocks],
-        warnings=[*result.warnings, *skip_warnings, *overlap_warnings,
+        warnings=[*result_warnings, *skip_warnings, *overlap_warnings,
                   *seq_warnings],
         design_size_mm=result.design_size_mm,
         merged_into=merged_into,

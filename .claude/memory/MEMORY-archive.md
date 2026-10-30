@@ -1,4 +1,4 @@
-# Memory Index — Archive (through 2026-10-11)
+# Memory Index — Archive (through 2026-10-20)
 
 Same one-line format as `MEMORY.md`: `- [Title](file.md) — hook`. These are the
 index lines for every note dated through 2026-10-04 (filename date, else the date
@@ -129,3 +129,8 @@ live index; new archive lines go at the bottom.
 - [The 80 mm ink link](the-80mm-ink-link-2026-10-15.md) — red circles were a STALE SERVICE; THE at 80 = rescued round linked across inks; measure at the width the Studio SENDS
 - [Bean holds ON](bean-holds-on-2026-10-15.md) — Kent flipped counter hold 0.25 + bay hold 0.2 as PLAIN defaults (None stays OFF); the three sew-out cards pin None explicitly
 - [True-size guard below 81 mm](small-text-true-size-guard-2026-10-15.md) — 65 mm loss = strays bug + ink-ground bug + per-glyph OCR noise; guard 0.45 x 40/wt, unsewn; ink ring OFF
+- [Card v4 sew-out: pro raises small text](card-v4-sewout-letter-size-2026-10-20.md) — pro lifts small words to ~4 mm and satins them; ours traces art size; measure by colour
+- [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); Fremont OFF md5 follows OpenCV's Intel IPP path; test env capped OPENCV_IPP=avx2
+- [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
+- [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins
+- [Session ended mid-suite](session-ended-mid-suite-2026-10-20.md) — a ruled flip sat uncommitted in a lane behind a hung pytest; sweep lanes' TRACKED dirt and the newest session's last turn

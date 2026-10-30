@@ -28,8 +28,8 @@ the OLDEST lines whole to the archive.
 - [Bridge census](bridge-census-2026-10-27.md) — Bridge hat+LC through 14 pro rules on main 8341d1f7: 2 CONTRADICTS (border_by_size fields, proSized LC), 8 AGREES, 4 N/A; ours' text is a reach gap (folds 2 vs 35), not a rule
 - [Buried walk between pieces](buried-walk-2026-10-26.md) — W4-03 FALSE: bury rule exists at the pro's p90; 0 of our 176 between-shape cuts have ANY route under later thread; his Drone metre = layering + colour revisits
 - [Cap frames sew 64 mm tall](cap-frame-height-2026-10-26.md) — PHYSICAL, Kent 10-26: his cap frames sew >= 64 mm (2.5 in); hat-height gate 1 settled
-- [Card v4 sew-out: pro raises small text](card-v4-sewout-letter-size-2026-10-20.md) — pro lifts small words to ~4 mm and satins them; ours traces art size; measure by colour
 - [CI pin hygiene](ci-pin-hygiene-2026-10-25.md) — hex `==` prints whole; `tools.ci_repin` re-pins from a run id (dry run unless --apply); shard map max/mean 1.28 → 1.00; advisory default-path-diff job
+- [Colour cap on the sewn design](colour-cap-sewn-2026-10-29.md) — census item 3 misnamed the hole: sew-white recolours AFTER the cap + blend bands snap chart-wide; `color_cap_sewn` OFF re-caps final regions, folds strays on blocks
 - [Corner folds in the Column lane](column-corner-folds-2026-10-23.md) — pro FOLDS one column round every L corner (57 read), cuts only T junctions; `lettering_columns_corner_fold` OFF
 - [Column lane memo](column-lane-memo-2026-10-26.md) — lane rebuilt identical columns (779/2,825) and rail pairings (941/1,413); per-letter `_MEMO` on exact keys: stages 5-7 CPU -12% (MFab hat -20%), 7 DSTs byte-identical
 - [Column rail fit: measured false](column-rail-fit-negative-2026-10-25.md) — 7 pairs: rails read 0.000-0.04 on RUN windows; per-letter wobble is real corners, a fit can't move it. Quote `rail_run`, don't plan a rail fit
@@ -41,7 +41,6 @@ the OLDEST lines whole to the archive.
 - [Dark read refusal](dark-read-refusal-2026-10-28.md) — `dark_ink_refuse_strays` OFF: edge (4 px) or not-under-ring reads refused; #1172's 10 not-ink rows = the 10 at the frame (its art window stretched)
 - [Dark thin strokes](dark-thin-strokes-2026-10-27.md) — HUNNY's ink tracks the pot's shading, no k-means cluster; black-hat on L*, carve AFTER the merge (pre-SEEDS removal moved the palette)
 - [Dark thin strokes ON](dark-thin-strokes-flip-2026-10-28.md) — flipped ON (Kent, #1170); OFF pinned in PRE_FLIP/FLIP_2026_10_23; owl 16 reads, patch 14
-- [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); Fremont OFF md5 follows OpenCV's Intel IPP path; test env capped OPENCV_IPP=avx2
 - [Digitize speed](digitize-speed-2026-10-26.md) — tesseract reads batched 4 at a time (preflight 2.3-2.8x, byte-identical); a loaded laptop inflates process_time ~2.6x; Studio 300 s poll vs service 600 s
 - [Download stale guard](download-stale-guard-2026-10-25.md) — Kent 10-25 "block until re-digitized": machine-file buttons disabled while stitches trail size/garment/settings; one rule (staleness.js); run button lit; no text
 - [Edge cap re-measured](edge-cap-remeasure-2026-10-29.md) — defect 19: edge 0-4% bare with NO cap (rim + border_by_size); swing gone; default "none" + defect closed (Kent 10-29, #1192)
@@ -65,7 +64,6 @@ the OLDEST lines whole to the archive.
 - [Keyline band](keyline-band-2026-10-23.md) — `enclosed_white_keyline` OFF: satin loop per letter on the ARTWORK polygon; MFab 25,512 → 19,214 (pro 17,568); seam-close the reach
 - [Keyline loop chain](keyline-loop-chain-2026-10-26.md) — MFab gate only (Kent 10-27): loop hops walked under later white; white-loop cuts 11→5 (pro 5/6)
 - [Lane census](lane-census-2026-10-25.md) — Kent 10-26: 6b NOT built, the button stays. 4 of 14 pro jobs reach flat (all Becker), 8 gradient, 2 photo_scene; 6b as written = the button's file; kappas a wash
-- [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED; read the parent's LAST turns before carrying stranded work; lanes LEFT (Kent)
 - [Lane reading before the run](lane-reading-before-run-2026-10-28.md) — `POST /classify` replays stage 0 + 1.25 before `/digitize`; Studio reading row above Auto Digitize (owl 2.5 s, golden_tee 32 s); `np.unique` GIL freeze fixed
 - [Layering census](layering-census-2026-10-26.md) — W4-06 FALSE: pro sews every contained piece ON its ground (162/162) = `silhouette_underfill`; 80 of 176 cuts cross their own ground (sews first), 5 a sibling
 - [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out
@@ -102,11 +100,9 @@ the OLDEST lines whole to the archive.
 - [Re-set bays: keep the mouth](reset-bay-mouth-2026-10-25.md) — pro's bay letters NOT wider; he keeps a 0.51 mm mouth (n 18); `small_text_bay_mouth` (cfg.extra, OFF) cuts back the terminal that shuts it
 - [Re-set grows away](reset-grow-away-2026-10-26.md) — `small_text_reset_grow_away` ON (Kent 10-26): traced-stroke widening + hold the edge facing a near neighbour; beanie x1.15→1.56
 - [Re-set room and floor](reset-room-floor-2026-10-25.md) — ProSeal under 0.85: re-set widens RETRACED letters by a stale stroke tag (small_text.py:764); pro grows away from the near neighbour; tag fix alone: beanie no_room
-- [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins
 - [Satin-split cuts](satin-split-cuts-2026-10-27.md) — 26 = 16 band loops (chain via #1143) + 2 Drone (pro lifts more) + 8 in letters; slot guard alone +10 mm exposed; per-letter pick (-3 cuts) costed, NOT built
 - [Script strokes](script-strokes-2026-10-26.md) — `script_strokes` ON (Kent 10-26): one column per pen stroke, path on the art's INK, crosses turn with the pen; `script_strokes_drawn_width` OFF: crowded sides end at drawn width
 - [Sequence like the pro: order is not the gap](sequence-like-pro-2026-10-25.md) — L10 FALSE, not built: pro sews the cap rule and it costs him; ours passes over a reachable piece 18 of 145 extra cuts; gap is cuts inside a piece
-- [Session ended mid-suite](session-ended-mid-suite-2026-10-20.md) — a ruled flip sat uncommitted in a lane behind a hung pytest; sweep lanes' TRACKED dirt and the newest session's last turn
 - [Sew white areas](sew-white-areas-2026-10-21.md) — R11 built OFF as a Studio option; counter = untagged white in a text-cluster letter; Machine field doubles trims (stage 5)
 - [Sew-out card v7](sewout-card-v7-2026-10-24.md) — only pull-by-stroke + pro values wait on fabric; BASE = ruled-unmerged flips; pull is a Fremont no-op, on MARINE it turns split satin plain like the pro
 - [Shape memo](shape-memo-2026-10-28.md) — Column lane's rank-only 2nd stage-7 pass was 79 of owl flat's 137 s; `shape_memo` memoizes stitch_shape/satin_shape/rim per job: 137 -> 113 s flat, 123 -> 97 gradient, md5 same

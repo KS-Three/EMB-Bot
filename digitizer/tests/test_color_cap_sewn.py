@@ -18,15 +18,16 @@ What this file pins, load-bearing first:
 
 1. **Flag off is byte-identical.** The config default; `enforce_color_cap`
    with the new keywords at their defaults is the old function; stage 7 hands
-   the blend tier no palette and the detail layer no allowed set; the whole
+   the fold never runs; the whole
    pipeline on a fixture that leaks (`logo_whitebg` at a cap of 2 with the
    Studio's white tick) still leaks exactly as before, on the frozen engine.
 2. **The second pass**: protected threads keep their slot and count against
    the budget; `stitched_only` ranks by the resolved verdict; protected alone
    at the budget keep only themselves.
-3. **The blend bind**: `snap_shades` with a palette lands inside it, on the
-   nearest member; None is the chart-wide snap; stage 7 hands `blend_fill`
-   the planned regions' spools on a GRADIENT class only under this flag.
+3. **The plan-level fold** (`stage7_sequence.fold_stray_cones`): at or under
+   the budget nothing moves (a one-region ramp keeps its five shades); over
+   it, the regions' cones keep their slots, the longest strays fill the free
+   ones and the rest are recoloured in place to their nearest kept cone.
 4. **End to end**: the leaking fixture sews exactly its cap with the flag on,
    White (the customer's stated colour) among the cones kept, and the
    `COLOR_CAP_APPLIED` sentence appears once.
@@ -46,7 +47,9 @@ from digitizer_core.pipeline import digitize
 from digitizer_core.regions import Region
 from digitizer_core.stage4_vectorize import enforce_color_cap
 from digitizer_core.stage5_overlap import resolve_overlaps
-from digitizer_core.stage6_blend import SourcePixels, snap_shades
+from digitizer_core.stage6_blend import SourcePixels
+from digitizer_core.stage7_sequence import fold_stray_cones
+from digitizer_core.stitches import FILL, StitchBlock, StitchRun
 from digitizer_core.threads import chart_for
 from digitizer_core.warnings_codes import COLOR_CAP_APPLIED
 from tests.conftest import TESTDATA, frozen_cfg, own_thread_only
@@ -143,24 +146,64 @@ def test_a_protected_thread_nothing_wears_is_ignored():
     assert {r.thread_index for r in regions} == {10, 20}
 
 
-# --- 3. The blend bind ---------------------------------------------------------------
+# --- 3. The plan-level fold ---------------------------------------------------------
 
-def test_snap_shades_without_a_palette_is_the_chart_wide_snap():
-    labs = [np.array([30.0, 10.0, -20.0]), np.array([80.0, -5.0, 40.0])]
-    assert snap_shades(labs, CHART, None) == [CHART.nearest_index(c) for c in labs]
-    assert snap_shades(labs, CHART, []) == [CHART.nearest_index(c) for c in labs]
+def _block(thread: int, length_mm: float, n_runs: int = 1) -> StitchBlock:
+    runs = [StitchRun(points=[(0.0, float(i)), (length_mm / n_runs, float(i))], kind=FILL)
+            for i in range(n_runs)]
+    return StitchBlock(thread_index=thread, thread_number=CHART[thread].number,
+                       rgb=tuple(CHART[thread].rgb), runs=runs)
 
 
-def test_snap_shades_with_a_palette_lands_inside_it_on_the_nearest_member():
+def test_fold_is_a_no_op_at_or_under_the_budget():
+    blocks = [_block(5, 100.0), _block(280, 10.0), _block(283, 5.0)]
+    out, w = fold_stray_cones(blocks, {5}, 3, CHART)
+    assert out is blocks and w is None
+    out, w = fold_stray_cones(blocks, {5}, 6, CHART)
+    assert out is blocks and w is None
+
+
+def test_fold_spends_the_free_slots_on_the_longest_strays_then_folds_the_rest():
+    """One admitted cone, four strays, a cap of 3: the two strays with the
+    most thread keep their slots, the two slivers land on their nearest kept
+    cone -- in place, same runs, same order."""
+    blocks = [_block(5, 100.0), _block(280, 40.0), _block(283, 2.0),
+              _block(290, 60.0), _block(311, 1.0)]
+    out, w = fold_stray_cones(blocks, {5}, 3, CHART)
+    assert [b.thread_index for b in out][:2] == [5, 280]
+    assert out[3].thread_index == 290
+    kept = {5, 280, 290}
+    assert {b.thread_index for b in out} == kept
+    for before, after in zip(blocks, out):
+        assert after.runs is before.runs
     from skimage.color import deltaE_ciede2000
-    labs = [np.array([30.0, 10.0, -20.0]), np.array([80.0, -5.0, 40.0]), np.array([55.0, 60.0, 30.0])]
-    palette = [0, 7, 42, 123, 251]
-    got = snap_shades(labs, CHART, palette)
-    assert set(got) <= set(palette)
-    for c, t in zip(labs, got):
-        d = deltaE_ciede2000(np.repeat(c.reshape(1, 3), len(palette), axis=0), CHART.lab[palette])
-        assert t == palette[int(np.argmin(d))]
-    assert got != [CHART.nearest_index(c) for c in labs], "fixture must exercise the mask"
+    for i in (2, 4):
+        t = blocks[i].thread_index
+        d = deltaE_ciede2000(np.repeat(CHART.lab[t].reshape(1, 3), 3, axis=0),
+                             CHART.lab[sorted(kept)])
+        assert out[i].thread_index == sorted(kept)[int(np.argmin(d))]
+        assert out[i].thread_number == CHART[out[i].thread_index].number
+    assert w["code"] == COLOR_CAP_APPLIED and w["stage"] == "plan"
+    assert (w["before"], w["after"], w["dropped"], w["blocks"]) == (5, 3, 2, 2)
+
+
+def test_admitted_cones_keep_their_slots_whatever_their_length():
+    blocks = [_block(5, 1.0), _block(7, 1.0), _block(280, 500.0), _block(283, 400.0)]
+    out, _ = fold_stray_cones(blocks, {5, 7}, 3, CHART)
+    assert {b.thread_index for b in out} == {5, 7, 280}
+
+
+def test_sequence_leaves_the_blocks_alone_with_the_flag_off(monkeypatch):
+    seen: list[int] = []
+    real = S7.fold_stray_cones
+
+    def spy(*a, **kw):
+        seen.append(1)
+        return real(*a, **kw)
+
+    monkeypatch.setattr(S7, "fold_stray_cones", own_thread_only(spy, real))
+    _sequence_gradient(PipelineConfig(color_cap_sewn=False, edge_cap="none", max_colors=2))
+    assert seen == []
 
 
 def _ramp_source() -> SourcePixels:
@@ -184,25 +227,22 @@ def _sequence_gradient(cfg: PipelineConfig):
                        design_class="gradient")
 
 
-def test_sequence_hands_the_blend_tier_the_planned_spools_on_gradient_under_the_flag(monkeypatch):
-    seen: list[object] = []
-    real = S7.blend_fill
-
-    def spy(region, source_pixels, cfg, *a, **kw):
-        seen.append(kw.get("palette_indices", "MISSING"))
-        return real(region, source_pixels, cfg, *a, **kw)
-
-    monkeypatch.setattr(S7, "blend_fill", own_thread_only(spy, real))
-    _sequence_gradient(PipelineConfig(color_cap_sewn=True, edge_cap="none"))
-    assert seen == [[5]], seen
-
-
-def test_bound_gradient_plan_sews_only_the_regions_spool_and_the_unbound_one_escapes():
+def test_a_one_region_ramp_keeps_its_shades_while_the_budget_has_room():
     off, _ = _sequence_gradient(PipelineConfig(color_cap_sewn=False, edge_cap="none"))
     on, _ = _sequence_gradient(PipelineConfig(color_cap_sewn=True, edge_cap="none"))
-    assert len({b.thread_index for b in off}) >= 2, "fixture must exercise the chart-wide escape"
-    assert {b.thread_index for b in on} == {5}
-    assert sum(len(b.runs) for b in on) > 0
+    assert len({b.thread_index for b in off}) >= 3, "fixture must exercise the chart-wide bands"
+    assert [(b.thread_index, len(b.runs)) for b in on] == [(b.thread_index, len(b.runs)) for b in off]
+
+
+def test_a_one_region_ramp_over_budget_sews_exactly_the_cap_and_keeps_the_region_cone():
+    off, _ = _sequence_gradient(PipelineConfig(color_cap_sewn=False, edge_cap="none", max_colors=2))
+    on, w = _sequence_gradient(PipelineConfig(color_cap_sewn=True, edge_cap="none", max_colors=2))
+    off_cones = {b.thread_index for b in off}
+    assert len(off_cones) > 2
+    on_cones = {b.thread_index for b in on}
+    assert len(on_cones) == 2 and on_cones <= off_cones
+    assert sum(len(b.runs) for b in on) == sum(len(b.runs) for b in off)
+    assert sum(1 for x in w if x.get("code") == COLOR_CAP_APPLIED) == 1
 
 
 # --- 4. End to end ------------------------------------------------------------------
