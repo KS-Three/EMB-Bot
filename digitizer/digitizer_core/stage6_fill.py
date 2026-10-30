@@ -1219,6 +1219,14 @@ def _score(cost: tuple) -> float:
             + exposed_stitches * _EXPOSED_STITCH_WEIGHT)
 
 
+def _score_hidden_free(cost: tuple) -> float:
+    """`_score` with the travel that lies under rows still to come priced at
+    nothing: only exposed travel stitches pay, at `_score`'s own two rates.
+    `_plan_sections`' price under `cfg.extra["fill_section_cuts_first"]`."""
+    cuts, _travel_stitches, exposed_stitches = cost
+    return _score((cuts, exposed_stitches, exposed_stitches))
+
+
 # `cfg.fill_bridge_cut_exposed` (2026-10-29, built OFF): a bridge that shows on
 # finished fill is cut whatever `_score` says. Set for the length of one plan
 # (`cut_exposed_scope`), read by `_cut_is_cheaper`; `shape_memo` and the reorder
@@ -2092,7 +2100,11 @@ def _plan_sections(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
     # Kept only if cheaper AND it neither cuts more nor lays more thread on
     # finished fill than the incoming order: ROADMAP gate 3, the planner may
     # not buy its cuts with exposure even where `_score`'s rate would.
-    best, best_score = paths, _score(before)
+    # `fill_section_cuts_first` (built OFF): "cheaper" leaves out the travel
+    # under rows still to come, which the fill sews over -- `_score` billed it
+    # per stitch and refused Becker's and MFab's fewer-cut orders on it alone.
+    score = _score_hidden_free if fill_section_travel.cuts_first() else _score
+    best, best_score = paths, score(before)
     for prefer in ("whole", "near"):
         candidate = fill_section_travel.plan(sewable, poly, entry, row_mm, prefer=prefer)
         if candidate is sewable:
@@ -2100,9 +2112,9 @@ def _plan_sections(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
         assert candidate[-1] is sewable[-1], "exit point must be unchanged"
         cost = _order_cost(candidate, poly, ring, slack, entry, trim_at_mm, row_mm,
                            cut_bridges, hidden_row_mm=row_mm)
-        if (_score(cost) < best_score and cost[0] <= before[0]
+        if (score(cost) < best_score and cost[0] <= before[0]
                 and cost[2] <= before[2] + 1e-9):
-            best, best_score = candidate, _score(cost)
+            best, best_score = candidate, score(cost)
     return best
 
 

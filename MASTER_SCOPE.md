@@ -51,8 +51,13 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
    routing, not palette or grading. *(measured 2026-08-11, landed 2026-08-22
    — `docs/tonal-eng-measurements-2026-08-22.md`)*
 
-4. **We trim far more than the professional — 3.1x the trim breaks on a
-   like-for-like corpus.** (Absorbs retired defect 3's live concern; a real
+4. **We CUT at the pro's rate now, but BREAK (needle-up) 2.1x as often.**
+   17 paired jobs, main 44ecf1cb, one reader on both DSTs: cuts 391 vs his
+   409 (median per job 1.18x); needle-up moves 879 vs 425 — we leave 488
+   short moves uncut, he cuts every one. `cut_every_jump` (OFF, its sew-out arm stands) takes them
+   to 25 for +80 cuts. *(measured 2026-10-29 —
+   `docs/trim-defects-4-6-2026-10-29.md`)* The 3.1x was 2026-08, on an older
+   engine. (Absorbs retired defect 3's live concern; a real
    80 mm datum now exists — the 2026-09-01 sew-out icon at 26 trims / 7
    stops, pinned to an actual decoded file rather than to a number nobody
    could reproduce.) Quote the rate or the break count, never a run
@@ -68,15 +73,23 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
    2026-08-17.md` recommends NOT building the region-level fix (the straddle
 is 95.8% grid noise). **The per-stroke rung was BUILT INERT 2026-09-05 and WIRED behind the flag 2026-09-06** — `classify_strokes` has no caller, but the pipeline consults the same reading via `_stroke_rung_takes`, so do NOT read "inert" as current. At the bare ≥ 0.75 area rule it reproduces Becker @ 100 mm 274.0 → 1,708.3 mm² exactly; the cap veto that shipped cuts that to **3 regions, 78.8 mm²**, and @ 80 mm it is byte-identical (Becker already reads 54.5%, above the pro). **Flipping it ON is Kent's** — render at `docs/renders/satin-per-stroke-2026-09-06/`. Full measurement: [area 1](docs/scope/1-auto-digitizing-quality.md). **Re-read on the 2026-10-20 engine (`subpixel_corner_runs` ON, item 41): with the per-stroke rung ON the cap veto leaves 8.3 mm² bare against 6.8 on the pre-flip outline, so its guard test pins `PRE_FLIP` and a flip proposal re-measures on today's.** *(measured 2026-08-14/17, 2026-09-05/06 — `docs/satin-gate-attribution-2026-08-16.md` §9; measured 2026-10-20 — PR #1001, `tests/test_satin_per_stroke_flag.py`)*
 
-6. **Satin fragments into many small islands on real logo art — and the trim
-   bulk is INSIDE one shape, not between them.** 69% of trims are
-   intra-shape. Retire the old framing: the rope border was never one stroke
+6. **Satin fragments into small islands on real logo art; the trim bulk is
+   now BETWEEN shapes.** Defect 4's run: 104 of our 391 cuts inside one piece
+   (the pro 73 of 409). By cause: shape to shape 42, fill sections 32 (the pro 0),
+   satin splits 27. **`fill_section_cuts_first`
+   — built OFF (PR #1193), your flip:** the section planner already found
+   fewer-cut orders and `_score` refused them for travel hidden under rows
+   still to come; priced with that travel free, fill sections 32 → 18, cuts
+   391 → 377, exposed travel 723 → 651 mm, bare thread unchanged on every job.
+   *(measured 2026-10-29 — `docs/trim-defects-4-6-2026-10-29.md`,
+   `tests/test_fill_section_cuts_first.py`)* The 69% intra-shape below was
+   2026-08. Retire the old framing: the rope border was never one stroke
    the engine shattered — the artwork is ~136 separate chevrons. **And it is
    UNREPRESENTATIVE of client logos**, which carry 1–3 fill shapes that
    essentially never cut. **On cloth 2026-09-01:** the first sew-out's tail
    is exactly this — late satin fragments riding over pre-sewn work, jump-
    chains stepping 8–11.5 mm. *(measured 2026-08-21/22 — area 1; cloth
-   2026-09-01 — scope-history)* **Seams, 2026-09-03:** `tools/seam_underlap.py` reads the sewn underlap per colour pair — synthetic logos carry the full pull + 0.25, Hotel Fremont 0.24 mm mean over 1,549 mm of seams (673 mm under 0.25) because a hole held open at the detail floor gets no tongue; card block 6 (0 / 0.25 / 0.5 / 1.0) sets the number on cloth. *(measured 2026-09-03 — scope-history)* **The 69% is now a CORPUS number and `TRIM_HEAVY` finally says it (2026-09-06).** Across 26 fixtures at 80 mm: **866 trims, 456 inside a shape (53%), 410 between (47%)** — and the majority flips per design, in-shape on 11 fixtures and between-shape on 11, from `photo_grass_macro` at 93% in-shape to `logo_alpha` at 100% between. So the finding's one remedy (*"merge or remove the smallest shapes"*) was right about half the time and pointed at the wrong end of the design on the other half. It now emits `in_shape`/`between_shapes`/`shapes` and says which. Becker reproduces the August figure independently — 19 of 28 (68%), the 1-point gap being the file's first cut, which does not exist. `tools/trim_locality.py`, `tests/test_trim_locality.py` (9). *(measured 2026-09-06 — scope-history 09-06)*
+   2026-09-01 — scope-history)* **Seams, 2026-09-03:** `tools/seam_underlap.py` reads the sewn underlap per colour pair — synthetic logos carry the full pull + 0.25, Hotel Fremont 0.24 mm mean over 1,549 mm of seams (673 mm under 0.25) because a hole held open at the detail floor gets no tongue; card block 6 (0 / 0.25 / 0.5 / 1.0) sets the number on cloth. *(measured 2026-09-03 — scope-history)* **`TRIM_HEAVY` says which (2026-09-06):** 26 fixtures at 80 mm read 53% in-shape then, the majority flipping per design, so it emits `in_shape`/`between_shapes`/`shapes` rather than one remedy. `tools/trim_locality.py`. *(measured 2026-09-06 — scope-history 09-06)*
 
 15. **An UNDECLARED photograph gets neither depth sequencing nor the palette
     bind, and its region re-snap escapes the selected palette.** `is_photographic`
