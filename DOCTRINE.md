@@ -96,7 +96,9 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   reach the native read on upscaled sources only, so Fremont at 80 mm is
   untouched. Do not re-propose the floor. Read before proposing any flip that
   was measured on the old outline: `satin_per_stroke` ON now leaves 8.3 mm²
-  bare against 6.8 (its guard pins `PRE_FLIP`), the border tier gets no
+  bare against 6.8 (its guard pins `PRE_FLIP`; re-read 2026-10-29: 13.6 /
+  13.6 on that pin and 14.4 / 14.4 on that day's defaults, so no longer
+  true, `docs/satin-fill-remeasure-2026-10-29.md` §4), the border tier gets no
   per-shape column on Becker at 80 mm, and logo_mfab_lc no longer splits at
   stage 5. *(ruled 2026-10-20 — Kent; flipped 2026-10-20 — PR #1001)*
 
@@ -1346,6 +1348,20 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   wins where the other was measured least; neither result transfers.
   *(measured 2026-10-11 — `tests/test_coverage_edges.py`; PR body of
   `claude/coverage-read`)*
+- **A better per-region satin/fill router has nothing left to buy — do not
+  build one to move stitch-type kappa.** Re-measured 2026-10-29 on main
+  `44ecf1cb`, 22 paired jobs: an oracle giving each of our regions the pro's
+  majority type scores **0.365** mean kappa against today's **0.387** (it
+  wins on 10 of 21). One label per region collapses the type mix a region
+  carries, so the chance floor rises; by raw agreement the oracle would read
+  higher, which is gate 4's trap. The cell kappa's own ceiling is the pro
+  against himself 0.5 mm off: **0.650**. What is left lives inside regions
+  (edge caps, border tiers, split satin) and in grounds where the pro sews
+  pieces on top (33% of straddled minority cells sit in blobs of 10+ cells,
+  all in a dozen ground regions). Those are construction lanes, not a router.
+  Read per-shape tiers by AREA: `tier_census`'s reader scores our own known
+  plan 0.22 by count and 0.80 by area. *(measured 2026-10-29 —
+  `docs/satin-fill-remeasure-2026-10-29.md`)*
 
 ---
 

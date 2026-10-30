@@ -100,6 +100,7 @@ the OLDEST lines whole to the archive.
 - [Re-set bays: keep the mouth](reset-bay-mouth-2026-10-25.md) — pro's bay letters NOT wider; he keeps a 0.51 mm mouth (n 18); `small_text_bay_mouth` (cfg.extra, OFF) cuts back the terminal that shuts it
 - [Re-set grows away](reset-grow-away-2026-10-26.md) — `small_text_reset_grow_away` ON (Kent 10-26): traced-stroke widening + hold the edge facing a near neighbour; beanie x1.15→1.56
 - [Re-set room and floor](reset-room-floor-2026-10-25.md) — ProSeal under 0.85: re-set widens RETRACED letters by a stale stroke tag (small_text.py:764); pro grows away from the near neighbour; tag fix alone: beanie no_room
+- [Satin/fill re-measure](satin-fill-remeasure-2026-10-29.md) — defect 5: kappa 0.387, per-region oracle 0.365 (no router left); pro vs pro 0.5 mm 0.650 = ceiling; shape kappa by AREA; satin_per_stroke a wash
 - [Satin-split cuts](satin-split-cuts-2026-10-27.md) — 26 = 16 band loops (chain via #1143) + 2 Drone (pro lifts more) + 8 in letters; slot guard alone +10 mm exposed; per-letter pick (-3 cuts) costed, NOT built
 - [Script strokes](script-strokes-2026-10-26.md) — `script_strokes` ON (Kent 10-26): one column per pen stroke, path on the art's INK, crosses turn with the pen; `script_strokes_drawn_width` OFF: crowded sides end at drawn width
 - [Sequence like the pro: order is not the gap](sequence-like-pro-2026-10-25.md) — L10 FALSE, not built: pro sews the cap rule and it costs him; ours passes over a reachable piece 18 of 145 extra cuts; gap is cuts inside a piece
@@ -119,8 +120,10 @@ the OLDEST lines whole to the archive.
 - [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch (gate 1); MFab IN/AND N are the misses; `text_cluster_part_touching` ON 10-27
 - [Typed lettering floats](text-cut-jumps-2026-10-27.md) — `cutEveryJump` OFF: names float 1-3 mm hops on every DST path; ON buries/walks/cuts (95% cut), trims ~2x
 
+- [Excess on gradient](thread-match-excess-gradient-2026-10-29.md) — defect 28 OFF: F-with-block 14 -> 4, md5s same; Kent
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
 - [Golden Tee TM](tm-mark-golden-tee-2026-10-26.md) — Kent: NO build. Pro re-sets the 0.94 mm TM as a 4.3x2 mm double run; we drop it in stage 2 (thin_ink 3 px floor, its strokes 2 px); a future TM/(R) drops silently
+- [Trims re-measured 10-29](trim-defects-4-6-2026-10-29.md) — cuts 391 vs pro 409 (3.1x gone), breaks 2.07x (488 uncut floats); fill sections 32 vs 0; `fill_section_cuts_first` OFF: 377 cuts, exposed 723 -> 651
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
 - [Under-fill knock-outs](underfill-knockouts-2026-10-26.md) — Fremont star: a covered host-colour mark never merges; Becker: letter host stops inside the loops; Gaulke is sew_enclosed_white
 - [Under-fill outer rim](underfill-outer-rim-2026-10-25.md) — a self-hosting ring: pro rims its whole edge in the fill colour; `silhouette_underfill_rim` OFF, on the SEWN edge

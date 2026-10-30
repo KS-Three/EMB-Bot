@@ -76,7 +76,7 @@ from shapely.ops import nearest_points, unary_union
 from shapely.prepared import prep
 
 from . import machine, shape_memo, stitches
-from .stage6_fill import travel_path
+from .stage6_fill import _CUT_EXPOSED, _EXPOSED_TOLERANCE_MM, _exposed_mm, travel_path
 from .stitches import StitchRun
 
 # Codes the report hands back to stage 7, which turns them into warnings.
@@ -872,11 +872,12 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
 
     Report keys: `loops`, `bean_loops`, `arcs`, `bean_arcs`, `yielded`
     (rings that lost a stretch or all of themselves to `omit`), `crosses`,
-    `clamped`, `too_narrow`, `jumps`, `empty`, `split_at_pinch`.
+    `clamped`, `too_narrow`, `jumps`, `empty`, `split_at_pinch`, `cut_exposed`
+    (bridges lifted under `fill_bridge_cut_exposed`).
     """
     report = {"loops": 0, "bean_loops": 0, "arcs": 0, "bean_arcs": 0,
               "yielded": 0, "crosses": 0, "clamped": 0, "too_narrow": 0,
-              "jumps": 0, "empty": True, "split_at_pinch": 0}
+              "jumps": 0, "empty": True, "split_at_pinch": 0, "cut_exposed": 0}
     if style == "none" or visible is None:
         return [], report
 
@@ -943,7 +944,7 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
                         ring_pts, omit_prep, host.boundary if lighten else None)
                     if not whole:
                         report["yielded"] += 1
-                for arc in arcs:
+                for ai, arc in enumerate(arcs):
                     if whole:
                         if lighten:
                             pts = _bean_loop(ring_pts, cursor, sample_step,
@@ -977,9 +978,30 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
                     # the shape's own edge and the fill ended inside the same
                     # shape, so this is a few millimetres and almost always
                     # stays needle-down.
+                    # `fill_bridge_cut_exposed`: the shape's fill is finished
+                    # by now, and a satin rim covers only its own band, so a
+                    # bridge across the inside reads as a line on the fill
+                    # (flat_emoji_icon's horn, 2026-10-30). Route it under the
+                    # band this ring's satin is still to sew -- not round a
+                    # seam `omit` dropped, which nothing covers -- and lift it
+                    # if no such route shows nothing.
+                    finished = None
+                    if not lighten and _CUT_EXPOSED.get():
+                        band = unary_union([LineString(a).buffer(width) for a in arcs[ai:]
+                                            if len(a) > 1]).intersection(host)
+                        finished = host.difference(band)
+                        if finished.is_empty:
+                            finished = None
                     jump = trim = False
                     if cursor is not None:
-                        bridge = travel_path(host, None, cursor, pts[0])
+                        if finished is None:
+                            bridge = travel_path(host, None, cursor, pts[0])
+                        else:
+                            bridge = travel_path(host, [host.exterior], cursor, pts[0],
+                                                 None, finished)
+                            if bridge and _exposed_mm(bridge, finished) > _EXPOSED_TOLERANCE_MM:
+                                bridge = None
+                                report["cut_exposed"] += 1
                         if bridge is None:
                             d = math.dist(cursor, pts[0])
                             if d >= machine.TINY_STITCH_MM:
