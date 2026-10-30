@@ -5265,3 +5265,13 @@ Moved verbatim from `MASTER_SCOPE.md` when defect 19 was re-measured on main 44e
     project.
     *(measured 2026-09-12 — `docs/edge-cap-cliff-2026-09-12.md`;
     `tests/test_edge_cap_budget.py`)*
+
+### Defect 19 as it stood after PR #1191 (closed 2026-10-29)
+
+Moved verbatim when defect 19 was closed on Kent's ruling ("Close it (Recommended)"), with the "none" default in PR #1192.
+
+19. **RE-MEASURED 2026-10-29 — the design's own edge is no longer open, and the default cap sews nothing.** Same rule as 09-11 (`tools/pro_silhouette.py --ours`), cap off, 80 mm: **0.0–4.0% of the sewn silhouette carries no linear stitch** on the six fixtures that read **5.9–100.0%** on 09-11 (Fremont 100.0 → 0.0, whitebg 82.6 → 1.8, gaulke 76.7 → 0.3, enthusiast 5.9 → 4.0; becker 2.9, drone 0.2). The edge work closed it, not the cap: one flag OFF at a time, `silhouette_underfill_rim` holds Fremont's whole edge and 28 points of whitebg's, `border_by_size` the other 49 of whitebg's and gaulke's 5.7; `border_by_size_fabric_edges`, `border_from_outline` and `outline_loop_mitre` move under a point. The pro reads at least 19.1–26.1% bordered, to the digit what 09-11 read (a lower bound on fill edge, not the same measurement).
+    **The size swing is gone:** becker bills satin +0.0% at 60 mm rising to +2.3% at 120 mm, every one of 09-12's +53–59% widths now +0.6–1.5%; the worst bill on any fixture from 60 to 120 mm is +5.6%, against `EDGE_CAP_BUDGET_PCT` 40. No stability lever was built: the brief's condition (the swing persisting) failed. `classify_ribbon` was not re-probed; the cap no longer depends on it.
+    **`edge_cap` defaults to `"bean"`, but `bean_only_lines` (ON 10-27) turns that into no cap**, so the shipped engine sews none. The satin style is live and nearly inert: byte-identical on 3 of 4 paired jobs at the pro's width, and on Becker 16 points that cost a colour change (1 → 2).
+    **Open, Studio-side:** the Design edge select still defaults to "Bean cap", and its readout now says *"Design edge found nothing to sew … too small or too narrow"* on every design. False: the engine declined the style. Previous text: [area 1](docs/scope/1-auto-digitizing-quality.md#defect-19-the-design-edge-cap-as-it-stood-after-pr-1188).
+    *(measured 2026-10-29 — `docs/edge-cap-remeasure-2026-10-29.md`, `tools/edge_cap_remeasure.py`, `docs/renders/edge-cap-2026-10-29/`)*
