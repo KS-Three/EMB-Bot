@@ -1416,6 +1416,150 @@ def test_running_jobs_are_never_evicted():
     registry.shutdown()
 
 
+# --- a job past its deadline frees the worker (2026-10-30) ------------------
+#
+# The registry reports a job RUNNING past `timeout_s` as failed, and until
+# 2026-10-30 that was all it did: Python cannot stop a thread, so the work ran
+# on and the NEXT upload queued behind it (photo-style census item 6, rows of
+# 350-800 s on a loaded laptop). Now the worker arms `digitizer_core.deadline`
+# around `work()`, the pipeline checks it at its stage seams and once per
+# shape in stage 7, and the job stops at the first seam past the deadline.
+
+def _staged_work(stages: int, stage_s: float, ran: list):
+    """A stand-in pipeline: `stages` seams `stage_s` apart, each recorded in
+    `ran`, each checking the deadline the way the real stages do."""
+    import time
+
+    from digitizer_core import deadline
+
+    def work() -> dict:
+        for i in range(stages):
+            deadline.check(f"stage {i}")
+            time.sleep(stage_s)
+            ran.append(i)
+        return {"stages": len(ran)}
+    return work
+
+
+def test_a_job_past_its_deadline_stops_at_the_next_stage_seam():
+    from digitizer_service.jobs import TIMED_OUT
+
+    registry = JobRegistry(workers=1, timeout_s=0.25)
+    ran: list = []
+    job, _ = registry.submit("slow", _staged_work(40, 0.1, ran))
+    # The future carries `deadline.Abandoned`, as a failed job carries its
+    # exception: `.exception()` waits without re-raising it here.
+    assert job._future.exception(timeout=10) is not None
+
+    # 0.25 s of budget at 0.1 s a stage: the seam after the third stage is
+    # the first past the deadline. Within one seam, not forty.
+    assert len(ran) <= 4, f"kept computing {len(ran)} stages past the deadline"
+    public = job.public()
+    assert public["state"] == "error"
+    assert public["error"] == TIMED_OUT
+    assert public["detail"].startswith("TimeoutError")
+    assert "stage" in public["detail"]
+    assert registry.stats()["inflight"] == 0
+    registry.shutdown()
+
+
+def test_the_next_submit_starts_without_waiting_on_an_abandoned_job():
+    """The customer's second upload after a timeout: before the fix it waited
+    for the whole dead job (4 s here, up to the rest of a 15-minute row on
+    the census's laptop); now it waits for one seam."""
+    import time
+
+    registry = JobRegistry(workers=1, timeout_s=0.25)
+    slow_ran: list = []
+    registry.submit("slow", _staged_work(40, 0.1, slow_ran))
+    t0 = time.monotonic()
+    fast, _ = registry.submit("fast", lambda: {"ok": True})
+    fast._future.result(timeout=10)
+    waited = time.monotonic() - t0
+
+    assert fast.state == "done"
+    assert waited < 1.5, f"second job waited {waited:.1f}s behind an abandoned one"
+    registry.shutdown()
+
+
+def test_the_status_the_studio_reads_is_the_same_before_and_after_the_worker_stops():
+    """The lazy mark on read came first and the worker's own stop must not
+    rewrite it: `/jobs/{id}` is one verdict in one set of words."""
+    import time
+
+    from digitizer_service.jobs import TIMED_OUT
+
+    registry = JobRegistry(workers=1, timeout_s=0.2)
+    ran: list = []
+    job, _ = registry.submit("slow", _staged_work(40, 0.1, ran))
+    time.sleep(0.25)                         # past the deadline, worker mid-stage
+    before = registry.get(job.id).public()   # the read marks it
+    assert before["state"] == "error" and before["error"] == TIMED_OUT
+    job._future.exception(timeout=10)        # the worker notices and stops
+    after = registry.get(job.id).public()
+    assert after == before
+    registry.shutdown()
+
+
+def test_a_job_that_finishes_in_time_is_byte_identical_under_a_deadline():
+    """The checks read a clock and move no number: the design sewn inside
+    a generous scope is the design sewn with none."""
+    import hashlib
+
+    from digitizer_core import PipelineConfig, deadline
+    from digitizer_core.adapter import plan_to_design
+    from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
+    from digitizer_service.app import _decode
+
+    def md5_of_run() -> str:
+        pixels = _decode(ART.read_bytes())
+        cfg = PipelineConfig(target_width_mm=40.0)
+        gen = build_generation(pixels, cfg)
+        plan = plan_stitches(finish_generation(gen.fork(), cfg), cfg)
+        design = plan_to_design(plan, name="d")
+        return hashlib.md5(json.dumps(design, sort_keys=True).encode()).hexdigest()
+
+    bare = md5_of_run()
+    with deadline.scope(3600.0):
+        armed = md5_of_run()
+    assert armed == bare
+    assert deadline.remaining() is None     # the scope left nothing armed
+
+
+def test_over_http_a_timed_out_digitize_reports_the_same_words_and_the_next_upload_runs(client):
+    """The wiring, end to end on the real pipeline: the worker arms the
+    deadline the registry's own `timeout_s` sets, a real `/digitize` past it
+    comes back `error` in the registry's words, and the upload after it is
+    not queued behind the dead one."""
+    import time
+
+    from digitizer_service.app import registry
+    from digitizer_service.jobs import TIMED_OUT
+
+    saved = registry.timeout_s
+    registry.timeout_s = 0.05               # every seam is past the deadline
+    try:
+        with ART.open("rb") as f:
+            r = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                            data={"config": json.dumps({"target_width_mm": 41.0})})
+        assert r.status_code == 202, r.text
+        dead = wait_for_job(client, r.json()["job_id"])
+        assert dead["state"] == "error"
+        assert dead["error"] == TIMED_OUT
+        assert "design" not in dead
+    finally:
+        registry.timeout_s = saved
+
+    t0 = time.monotonic()
+    live = _digitize(client, {"target_width_mm": 42.0})
+    assert live["stats"]["stitch_count"] > 0
+    # The abandoned job stopped at its first seam (stage 0, well under a
+    # second on this fixture); a worker still computing it would hold this
+    # one for the whole run, which the pins above would not notice.
+    assert registry.stats()["inflight"] == 0
+    assert time.monotonic() - t0 < 60.0
+
+
 def test_max_pixels_guard_is_actually_wired(client):
     """The constant existing is not the same as the check running."""
     assert MAX_PIXELS > 0
