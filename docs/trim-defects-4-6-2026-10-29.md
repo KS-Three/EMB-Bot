@@ -1,5 +1,8 @@
 # Defects 4 and 6 re-measured, and the next cut-reducer (2026-10-29)
 
+**Superseded in part, 2026-10-30:** the prices below are on 44ecf1cb. See
+[the last section](#2026-10-30-on-main-9a8589f3-the-gain-does-not-reach-the-stitches).
+
 Kent asked on 2026-10-29 for MASTER_SCOPE defects 4 ("we trim 3.1x the pro")
 and 6 ("satin fragments; the trim bulk is inside one shape") to be fixed. Both
 figures were from 2026-08/09. This page re-measures them on `main` 44ecf1cb,
@@ -188,3 +191,43 @@ Each cell is DST cuts / exposed travel mm (`travel_cover`) / bare thread mm at
   (`layout-judged-in-preview-2026-10-22`).
 
 Tests: `digitizer/tests/test_fill_section_cuts_first.py`.
+
+## 2026-10-30: on main 9a8589f3 the gain does not reach the stitches
+
+Kent's ruling on the flip was "Flip sheet first (Recommended)". The sheet,
+[`flip-sheet-2026-10-30.md`](flip-sheet-2026-10-30.md), was digitized in full on
+all 17 jobs, on main after #1198 turned `fill_bridge_cut_exposed` and
+`fill_seam_order` ON.
+
+| 17 jobs | OFF | ON | pro |
+|---|---|---|---|
+| cuts (`sequence_pro`) | 399 | 397 | 409 |
+| cuts inside a piece | 111 | 109 | 73 |
+| exposed travel mm | 509 | 506 | |
+| bare thread mm @0.20 | 151.0 | 151.0 | |
+| whole-job CPU s | 1,209 | 1,373 (+14%) | |
+
+- **Moves:** Becker hat small, chest small and hat large each GAIN a cut (+1).
+  Becker LC -2, MFab hat -1, drone -2. MFab LC's exposed travel 19.8 -> 10.8 mm.
+  Becker beanie moves 27 points and Bridge hat 2, with no change in cuts. The
+  other eight jobs are byte-identical.
+- **Cause:** `stitch_shape` calls `_order_for_seams` after `_plan_sections` and
+  re-sequences every section, so the order the planner priced and gated is not
+  the order that sews. That is why cuts can rise past a gate of "no more cuts".
+
+Ten moved jobs, plan replayed on one digitize (`fill_bridge_cut_exposed` ON):
+
+| arm | cuts | inside a piece | exposed mm | bare mm | plan CPU s |
+|---|---|---|---|---|---|
+| seam order ON (main) | 240 | 85 | 283 | 37.6 | 379 |
+| seam order ON + switch | 238 | 83 | 281 | 37.6 | 497 (+31%) |
+| seam order OFF | 247 | 92 | 239 | 26.8 | 324 |
+| seam order OFF + switch | 233 | 78 | 240 | 26.8 | 460 (+42%) |
+
+- The replay's DST md5 equals the sheet's cell on 10 of 10 jobs, both arms.
+  So the 10-29 pickles, cut in a lane without a rembg venv, did not reroute.
+- The +16% stage-7 figure above was 44ecf1cb over 17 jobs.
+- **Found on the way, not this switch:** seam order alone moves Becker beanie
+  (seam OFF -> ON) cuts 12 -> 14, exposed travel 38.6 -> 105.8 mm, bare thread
+  3.7 -> 14.8 mm, and the drone 87 -> 93 cuts. It lowers MFab LC's exposed
+  travel 38.7 -> 19.8 mm.

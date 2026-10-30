@@ -27,6 +27,16 @@ ProSeal beanie), the pro's width, one reader (`tools/sequence_pro`,
   -> 377, fill sections 32 -> 18, exposed 723 -> 651 mm, bare unchanged. With
   `fill_bridge_cut_exposed`: 390 cuts, 609 mm exposed.
 
+**Superseded on 2026-10-30, main 9a8589f3 (#1198: `fill_seam_order` +
+`fill_bridge_cut_exposed` ON):** `_order_for_seams` runs AFTER `_plan_sections`
+and re-sequences every section, so the priced order is not the one that sews.
+17 jobs: cuts 399 -> 397 (pro 409), exposed 509 -> 506 mm, whole-job CPU +14%,
+three Becker jobs +1 cut. Ten moved jobs replayed: seam ON 240 -> 238, seam OFF
+247 -> 233, plan CPU +31%. A gain needs the planner choosing INSIDE seam order's
+constraint. Seam order also took Becker beanie's exposed 38.6 -> 105.8 mm, bare
+3.7 -> 14.8. Sheet: `docs/flip-sheet-2026-10-30.md`. **How to apply:** after any
+flip touching fill order, re-read a held fill flag; a flag's price is base-bound.
+
 **Why:** a session handed "3.1x trims" would build a cut-reducer for a gap that
 no longer exists in cuts; the live gap is uncut floats (breaks) and one
 construction class. **How to apply:** quote breaks (cut + uncut needle-up) as

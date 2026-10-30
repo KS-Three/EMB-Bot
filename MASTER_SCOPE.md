@@ -72,8 +72,11 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
    satin splits 27. **`fill_section_cuts_first`
    — built OFF (PR #1193), your flip:** the section planner already found
    fewer-cut orders and `_score` refused them for travel hidden under rows
-   still to come; priced with that travel free, fill sections 32 → 18, cuts
-   391 → 377, exposed travel 723 → 651 mm, bare thread unchanged on every job.
+   still to come; priced with that travel free, cuts 391 → 377 and exposed
+   travel 723 → 651 mm on 10-29's engine. **`fill_seam_order` (ON since #1198)
+   runs after the planner and overwrites its order: today 399 → 397 cuts, 509 →
+   506 mm, whole-job CPU +14%. Flip sheet built; Kent's call.** *(measured 2026-10-30
+   — `docs/flip-sheet-2026-10-30.md`)*
    *(measured 2026-10-29 — `docs/trim-defects-4-6-2026-10-29.md`,
    `tests/test_fill_section_cuts_first.py`)* The 69% intra-shape below was
    2026-08. Retire the old framing: the rope border was never one stroke
