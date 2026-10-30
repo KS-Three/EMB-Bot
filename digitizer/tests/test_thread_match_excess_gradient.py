@@ -1,15 +1,13 @@
-"""`cfg.thread_match_excess_gradient` (2026-10-29, built OFF): MASTER_SCOPE
-defect 28 part 1, the gradient lane scored on EXCESS over the loaded spools.
-
-The photo route has been judged that way since 2026-08-24; Kent ruled
-2026-09-10 that the gradient lane stays on raw distance (a logo's cone can be
-bought). This is the off switch for that ruling, so it can be re-made on
-today's numbers — `docs/thread-match-gradient-excess-2026-10-29.md` carries
-the 52-entry before/after table. Flipping it is Kent's.
+"""`cfg.thread_match_excess_gradient` (built OFF 2026-10-29, ON since
+2026-10-30, Kent's flip): MASTER_SCOPE defect 28 part 1, the gradient lane
+scored on EXCESS over the loaded spools, as the photo route has been since
+2026-08-24. It supersedes his 2026-09-10 ruling that the lane stays on raw
+distance. `docs/thread-match-gradient-excess-2026-10-29.md` carries the
+52-entry before/after table.
 
 What is pinned:
 
-* OFF is the shipped check: a gradient design keeps the raw yardstick.
+* OFF is the old check: a gradient design keeps the raw yardstick.
 * ON, a gradient design whose every cone is already the best one loaded goes
   quiet, and one with a free swap left on the table still blocks.
 * ON never reaches the flat lane, and the one-cone guard still reports.
@@ -45,14 +43,15 @@ def _tm(report):
     return [f for f in report["findings"] if f["code"] == THREAD_MATCH_POOR]
 
 
-def test_default_is_off():
-    assert PipelineConfig().thread_match_excess_gradient is False
+def test_default_is_on():
+    assert PipelineConfig().thread_match_excess_gradient is True
 
 
 @pytest.mark.usefixtures("source_line_grid")
 def test_off_keeps_the_gradient_lane_on_raw_distance():
     result, img, *_ = _scene("gradient", swapped=False)
-    hits = _tm(run_preflight(result, EMPTY, cfg(), image=img))
+    hits = _tm(run_preflight(
+        result, EMPTY, cfg(thread_match_excess_gradient=False), image=img))
     assert hits, "fixture must be non-trivial: raw fires on it"
     assert all(f["extra"]["yardstick"] == "raw" for f in hits)
 
@@ -82,7 +81,8 @@ def test_on_still_blocks_a_free_swap_and_says_which_yardstick():
 @pytest.mark.parametrize("design_class", ["flat", None])
 def test_on_never_reaches_a_design_that_is_not_gradient(design_class):
     result, img, *_ = _scene(design_class, swapped=False)
-    off = run_preflight(result, EMPTY, cfg(), image=img)
+    off = run_preflight(result, EMPTY, cfg(thread_match_excess_gradient=False),
+                        image=img)
     on = run_preflight(result, EMPTY, cfg(thread_match_excess_gradient=True),
                        image=img)
     assert on == off

@@ -21,6 +21,8 @@ score-0 entries 10 → 2. **Flipping it re-makes Kent's 2026-09-10 ruling**
 is his. The survivors are real: fremont's `0020 Black` at dE 100 with White
 loaded, summit's `0111` band, and the photo stub.
 
+**FLIPPED ON 2026-10-30** (Kent: "Flip ON (Recommended)", superseding the 09-10 ruling; clamp kept, "Keep the clamp (Recommended)"). Gradient thread findings 94 -> 8: a thread on the best loaded cone gets NO finding, and `better_spool` names only LOADED spools, so nothing names a cone to buy. A worker said otherwise when recommending the flip; that was wrong, it was corrected to Kent, and he re-confirmed "Flip as ruled (Recommended)" with no metrics addition. Fremont's two blocks stay open, cause unknown.
+
 **Gaulke's "unexplained seventh" was the bimodal-median failure twice:**
 first stage 4's re-snap mask (09-07), then the grader reading anti-alias grey
 under kept roof lines (fixed 10-08 c2161d9c, reproduced by grading the plain
