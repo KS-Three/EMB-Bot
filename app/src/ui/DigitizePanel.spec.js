@@ -1756,8 +1756,13 @@ describe("border readout — what sewed, not what was asked for", () => {
     expect(badges.slice(1)).toEqual(["bean border", "no border sewn"]);
   });
 
+  // A project that asked for the bean cap (the default 2026-09-11 to 10-29,
+  // opt-in since, and what a project saved in that window still stores).
+  const BEAN_CAP = { params: { ...DEFAULT_DIGITIZE_PARAMS, edge_cap: "bean" } };
+
   test("the design edge reports the engine's own bill", () => {
     const { getByText } = renderPanel(SHAPES, {
+      ...BEAN_CAP,
       result: resultWith(RUNS),
       warnings: [{ code: "EDGE_CAP_APPLIED", stitches: 1204, percent: 21.3, edges: 1 }],
     });
@@ -1766,10 +1771,23 @@ describe("border readout — what sewed, not what was asked for", () => {
 
   test("the design edge says when it found nothing to sew", () => {
     const { getByText } = renderPanel(SHAPES, {
+      ...BEAN_CAP,
       result: resultWith(RUNS),        // runs present, none of them edge_cap
       warnings: [],
     });
     expect(getByText("Design edge found nothing to sew.")).toBeTruthy();
+  });
+
+  test("a fresh design reads the design edge as off, the default since 2026-10-29", () => {
+    // Under "bean" this line used to blame the design ("too small or too
+    // narrow") while `bean_only_lines` was what declined the cap.
+    const { getByText, getByLabelText, queryByText } = renderPanel(SHAPES, {
+      result: resultWith(RUNS),
+      warnings: [],
+    });
+    expect(getByLabelText("Design edge").value).toBe("none");
+    expect(getByText("Design edge off.")).toBeTruthy();
+    expect(queryByText("Design edge found nothing to sew.")).toBeNull();
   });
 
   test("switching the design edge off says so rather than staying silent", async () => {
