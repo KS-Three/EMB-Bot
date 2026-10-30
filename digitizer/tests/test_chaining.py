@@ -546,8 +546,8 @@ def test_chaining_cuts_the_benchmark_fixtures_trim_rate(enthusiast_logo_93mm):
     # fremont 4.55 -> 4.28 and drone 5.26 -> 5.24), because it adds stitches
     # as well as trims. Four of the six are already over this ceiling with the
     # cap OFF. The flip's plan doc carries the table.
-    off = plan_stitches(enthusiast_logo_93mm, cfg(**FLIP_2026_10_23, target_width_mm=93.0, garment_id="left_chest", chain_links=False, edge_cap="none"))
-    on = plan_stitches(enthusiast_logo_93mm, cfg(**FLIP_2026_10_23, target_width_mm=93.0, garment_id="left_chest", chain_links=True, edge_cap="none"))
+    off = plan_stitches(enthusiast_logo_93mm, cfg(**{**FLIP_2026_10_23, "edge_cap": "none"}, target_width_mm=93.0, garment_id="left_chest", chain_links=False))
+    on = plan_stitches(enthusiast_logo_93mm, cfg(**{**FLIP_2026_10_23, "edge_cap": "none"}, target_width_mm=93.0, garment_id="left_chest", chain_links=True))
     assert on.stats.trims < off.stats.trims, "chaining removed no trims at all"
     rate = 1000.0 * (on.stats.trims - 1) / on.stats.stitch_count
     assert rate <= 4.1, f"{rate:.1f} trims/1k is still outside the corpus band"
