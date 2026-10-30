@@ -4143,7 +4143,12 @@ class PipelineConfig:
     # gap is over `trim_at_mm` (under it the lift is a jump, as before). The
     # cost is trims. Layout (ruling 2026-10-22: judged in the preview). Off,
     # byte-identical (tests/test_fill_bridge_cut_exposed.py).
-    fill_bridge_cut_exposed: bool = False
+    # **ON since 2026-10-30, Kent's flip** ("Flip both (Recommended)", with
+    # `fill_seam_order`) after the 17-logo + 16-pair check: exposed travel
+    # down or flat on every logo (Instagram 53 -> 3 mm, emoji 34 -> 0),
+    # trims up on busy art (crest 130 -> 168, Drone 83 -> 93). False is the
+    # engine as it was; `tests/conftest.py` PRE_FLIP pins it False.
+    fill_bridge_cut_exposed: bool = True
     # A fill's sections sewn as one continuous tatami (2026-10-29, built OFF;
     # `stage6_fill._order_for_seams`). The top pink line Kent circled on the
     # Instagram icon is no travel: it is the seam where a section sewn late
@@ -4154,7 +4159,12 @@ class PipelineConfig:
     # inside a section. The cost is travel between sections, which the bridge
     # rules route or cut as for any order. Layout (ruling 2026-10-22: judged
     # in the preview). Off, byte-identical.
-    fill_seam_order: bool = False
+    # **ON since 2026-10-30, Kent's flip** ("Flip both (Recommended)", with
+    # `fill_bridge_cut_exposed`) after the 17-logo + 16-pair check: section
+    # ridges gone on all 17, flips on all but 3 (Instagram's 5 left are its
+    # white under-fill), stitches +0-6%. False is the
+    # engine as it was; `tests/conftest.py` PRE_FLIP pins it False.
+    fill_seam_order: bool = True
 
     # The fill column-order scorer prices only what `emit` sews (2026-10-08,
     # built OFF). `_fill_paths` returns one-point "columns" that `emit`

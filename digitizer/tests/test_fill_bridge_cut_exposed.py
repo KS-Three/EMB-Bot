@@ -28,8 +28,8 @@ def _bridge(a, b):
     return _densify(a, b, machine.TRAVEL_STITCH_MM)
 
 
-def test_default_is_off():
-    assert PipelineConfig().fill_bridge_cut_exposed is False
+def test_default_is_on():
+    assert PipelineConfig().fill_bridge_cut_exposed is True  # Kent 2026-10-30
 
 
 def test_off_a_short_exposed_bridge_is_cheaper_than_the_cut():
