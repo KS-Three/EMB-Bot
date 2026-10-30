@@ -490,7 +490,7 @@ FLAGS: dict[str, dict] = {
         "base": {"photo_prep_background_removal_timeout_s": 900}, "base_name": "rembg900",
         "sets": {"photo_prep_background_removal_timeout_s": 900, "knockdown_shorter_walk": True},
         "fixtures": ["becker_beanie", "proseal_beanie"],
-        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1202,
+        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1204,
         "note": "The beanie knockdown sewn with and without seam order, the shorter walk kept. "
                 "ProSeal beanie is the control: its walk is shorter WITH seam order, so a blanket "
                 "skip would have cost it 147 mm of exposed travel."},
@@ -499,7 +499,7 @@ FLAGS: dict[str, dict] = {
         "sets": {"photo_prep_background_removal_timeout_s": 900, "fill_seam_order_priced": True},
         "fixtures": ["precision_drone", "mfab_lc", "mfab_hat", "becker_lc_large", "becker_hat_small",
                      "proseal_hat"],
-        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1202,
+        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1204,
         "note": "Seam order's two progressions: fewer ridges and flips first, _score settling a "
                 "tie, instead of the shorter flown chord."},
 }

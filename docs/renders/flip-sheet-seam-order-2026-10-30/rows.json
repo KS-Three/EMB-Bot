@@ -242,7 +242,7 @@
   "flag": "knockdown_shorter_walk",
   "fixture": "becker_beanie",
   "width_mm": 79.8,
-  "pr": 1202,
+  "pr": 1204,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,
@@ -324,7 +324,7 @@
   "flag": "knockdown_shorter_walk",
   "fixture": "proseal_beanie",
   "width_mm": 75.0,
-  "pr": 1202,
+  "pr": 1204,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,
@@ -391,7 +391,7 @@
   "flag": "fill_seam_order_priced",
   "fixture": "precision_drone",
   "width_mm": 62.6,
-  "pr": 1202,
+  "pr": 1204,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,
@@ -475,7 +475,7 @@
   "flag": "fill_seam_order_priced",
   "fixture": "mfab_lc",
   "width_mm": 96.7,
-  "pr": 1202,
+  "pr": 1204,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,
@@ -555,7 +555,7 @@
   "flag": "fill_seam_order_priced",
   "fixture": "mfab_hat",
   "width_mm": 104.9,
-  "pr": 1202,
+  "pr": 1204,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,
@@ -635,7 +635,7 @@
   "flag": "fill_seam_order_priced",
   "fixture": "becker_lc_large",
   "width_mm": 95.7,
-  "pr": 1202,
+  "pr": 1204,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,
@@ -715,7 +715,7 @@
   "flag": "fill_seam_order_priced",
   "fixture": "becker_hat_small",
   "width_mm": 76.5,
-  "pr": 1202,
+  "pr": 1204,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,
@@ -795,7 +795,7 @@
   "flag": "fill_seam_order_priced",
   "fixture": "proseal_hat",
   "width_mm": 85.9,
-  "pr": 1202,
+  "pr": 1204,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,
