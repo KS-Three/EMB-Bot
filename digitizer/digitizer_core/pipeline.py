@@ -29,6 +29,7 @@ import numpy as np
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
+from . import deadline
 from . import (debugviz, fill_section_travel, fur_regions, knockdown, silhouette_underfill, two_tone,
                white_keyline_art)
 from .config import PipelineConfig
@@ -530,11 +531,16 @@ def build_generation(
     # "Direction 1") and via source_pixels below, which the blend tier stage 7
     # reads regardless of which stage 2 path ran.
     classification = classify(image, cfg, forced_class=cfg.forced_class)
+    # The service's job deadline (`deadline.py`): read at every seam below,
+    # inert without a scope. Stage 0 just ran; each check names the stage
+    # that finished before it.
+    deadline.check("stage 0")
 
     # The class rides into stage 1 for one decision: whether the working grid
     # applies (`cfg.work_px_per_mm` — line art is traced on it, a photograph
     # keeps the source line).
     p: Prep = prep(image, cfg, design_class=classification.class_)
+    deadline.check("stage 1")
     if dbg:
         debugviz.stage1(dbg, p.rgb, p.bg_mask)
 
@@ -791,6 +797,7 @@ def build_generation(
     # the streamline shade decomposition this demand is a proxy for.
     shade_demand = bool(cfg.shade_palette_demand) \
         and is_photographic(cfg, classification.class_)
+    deadline.check("stage 1.5")
     if cfg.photo_segment_sam2 and is_photographic(cfg, classification.class_):
         q, sam2_reason = sam2_segment_seam(
             p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask,
@@ -898,7 +905,9 @@ def build_generation(
     if dbg:
         debugviz.stage2(dbg, q.labels, q.thread_indices, chart_for(cfg))
 
+    deadline.check("stage 2")
     masks = seg.segment(q, p, cfg)
+    deadline.check("stage 3")
     # `layer_lab` arms `cfg.keep_thin_strokes` (see `resolve_small_regions`):
     # the quantiser's own cluster colours, one per layer, so a contrasting
     # sub-floor stroke is kept rather than absorbed into what it touches. The
@@ -924,6 +933,7 @@ def build_generation(
     # once the surviving geometry is known.
     regions: list[Region]
     regions, dropped_areas = vectorize(masks, q.thread_indices, p, cfg)
+    deadline.check("stage 4")
 
     # Post-vectorization: tag any Region that is substantially the enclosed
     # bg-colored area stage 1 found (see `tag_enclosed_background`'s
@@ -1090,6 +1100,7 @@ def build_generation(
     # generation's actual geometry" reasoning as the two passes above, never
     # feeds back into detection/regularization/geometry itself. See
     # `textcluster.py`'s module docstring, "OCR-suggested text" section.
+    deadline.check("stage 4 text clusters")
     ocr_suggest_text(regions, p)
     if cfg.lettering_words:
         from .words import word_ocr_text
@@ -1233,6 +1244,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     """Review edits + palette settlement: the cheap, edit-dependent tail of
     `run_stages`. Mutates `gen`'s regions and warning lists in place — hand
     it a `Generation.fork()`, never a cached original."""
+    deadline.check("finish_generation")
     cfg = cfg or PipelineConfig()
     # Stage 1.25's verdict, folded into the caller's config. Detection ran in
     # `build_generation`, which rewrote only its own local cfg; this entry
@@ -1865,6 +1877,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
 
 def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     """`plan_stitches`' body."""
+    deadline.check("plan_stitches")
     # Same fold as `finish_generation`'s, one hop further out: stage 7's
     # photo sequencing and the shade bind read `is_photographic`, and this
     # entry point is routinely called with a config built from scratch.
@@ -2014,6 +2027,7 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
                                                  design_class=result.design_class,
                                                  hairline=hairline)
+    deadline.check("stage 5")
     from .fragment_absorb import absorb   # `cfg.extra["absorb_fragments"]` (built OFF 2026-10-25)
     planned = absorb(planned, cfg, hairline)
     merged_into.update({f: p.shape_id for p in planned

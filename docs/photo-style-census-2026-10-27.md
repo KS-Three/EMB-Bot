@@ -201,6 +201,10 @@ customer-facing answer is. Every figure is a reading from this run.
    600 s here would present in the Studio as "stopped waiting" and then
    jam the following job for up to 15 more minutes. Fix is a real cancel
    or a worker that checks the deadline between stages.
+   **Fixed 2026-10-30** (`digitizer_core/deadline.py`, memory
+   `service-timeout-cancel-2026-10-30`): the worker arms a deadline the
+   pipeline checks at every stage seam and per shape in stage 7; the next
+   upload waited 497.9 s behind a dead `night_skyline` before, 10.5 s after.
 
 7. **Faces route FLAT, and a crowd or an action shot flat is 40–60k
    stitches.** `group_people` (three faces): 41,836 stitches, 232 trims,

@@ -69,6 +69,10 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
 )
 #: ContextVars that are caches, not knobs.
 _CACHES: frozenset[tuple[str, str]] = frozenset({("outline_cut", "_MEMO")})
+#: ContextVars no emitter's OUTPUT depends on: `deadline._DEADLINE` is the
+#: service's job budget, read by `deadline.check` to STOP a job, never to
+#: shape a stitch -- a hit under one deadline is the miss under any other.
+_INERT: frozenset[tuple[str, str]] = frozenset({("deadline", "_DEADLINE")})
 
 _UNIMPORTED = "<unimported>"
 
