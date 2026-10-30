@@ -50,13 +50,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--set", action="append", default=[], metavar="FIELD=JSON",
                     help="override a request field; repeatable")
     ap.add_argument("--json", type=Path, help="append one record per image to this file")
+    ap.add_argument("--render", type=Path, metavar="DIR",
+                    help="write DIR/<image>[-TAG].png of the design on the request's garment, and the "
+                         "corpus tool's fidelity numbers against the source into the record")
+    ap.add_argument("--tag", default="", help="suffix for --render / the record (e.g. off, on)")
     a = ap.parse_args(argv)
     sys.path.insert(0, os.getcwd())
     from tools.photo_corpus import parse_sets, request_config
     overrides = parse_sets(a.set)
     records = []
     for img in a.images:
-        rec = probe(img, {**request_config(), **overrides})
+        rec = probe(img, {**request_config(), **overrides}, render_dir=a.render, tag=a.tag)
         records.append(rec)
         print_record(rec)
     if a.json:
@@ -65,9 +69,11 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def probe(img: Path, req: dict) -> dict:
+def probe(img: Path, req: dict, render_dir: Path | None = None, tag: str = "") -> dict:
     """One image through classify -> build -> finish -> plan, every block
-    thread attributed. `req` is the Studio request (dict) the worker parses."""
+    thread attributed. `req` is the Studio request (dict) the worker parses.
+    `render_dir`: also write the render and read the corpus tool's fidelity
+    (`fidelity_cc`, chance-corrected -- gate 4) against the source."""
     from digitizer_core import PipelineConfig
     from digitizer_core import pipeline as pl
     from digitizer_core.adapter import plan_to_design
@@ -124,8 +130,20 @@ def probe(img: Path, req: dict) -> dict:
              "sew_enclosed_white": r.meta.get("sew_enclosed_white"),
              "stitched": r.meta.get("stitched")}
             for r in result.regions if int(r.thread_index) not in post_cap]
+    fid: dict = {}
+    if render_dir is not None:
+        import cv2
+        from digitizer_core.stitchviz import render_design
+        from tools.photo_corpus import PXMM, fidelity, load_photo
+        render_dir.mkdir(parents=True, exist_ok=True)
+        fabric_bgr = tuple(reversed(req.get("garment_rgb") or [235, 232, 223]))
+        render = render_design(design, px_per_mm=PXMM, fabric_bgr=fabric_bgr)
+        out_png = render_dir / f"{img.stem}{'-' + tag if tag else ''}.png"
+        cv2.imwrite(str(out_png), render)
+        fid = {**fidelity(load_photo(img, fabric_bgr), render, fabric_bgr), "render": str(out_png)}
     return {
-        "image": img.name, "class": gen.classification_class, "cap": int(cfg.max_colors),
+        "image": img.name, "tag": tag, **fid,
+        "class": gen.classification_class, "cap": int(cfg.max_colors),
         "post_cap_threads": sorted(post_cap), "region_threads": sorted(region_threads),
         "block_threads": {t: {"number": chart[t].number, "blocks": e["blocks"], "stitches": e["stitches"],
                               "mm": round(e["mm"], 1), "shaded_runs": e["shaded_runs"],
