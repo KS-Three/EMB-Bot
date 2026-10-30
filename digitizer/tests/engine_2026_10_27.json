@@ -276,6 +276,7 @@
  "text_cluster_rescued_ink_link": true,
  "text_cluster_wide_letters": true,
  "thread_brand": null,
+ "thread_match_excess_gradient": false,
  "thread_wt": 40,
  "tie_in_off": true,
  "tonal_split_ceiling": false,

@@ -1122,6 +1122,13 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
     # the check would go permanently silent instead of reporting an honestly
     # unreachable colour.
     photo = _is_photo_class(plan, cfg)
+    # `cfg.thread_match_excess_gradient` (2026-10-29, OFF): the gradient lane
+    # judged on excess too. Read off the class the pipeline TRACED, never a
+    # classifier warning, so a forced "gradient" counts and flat never does;
+    # a design `_is_photo_class` already claims is unaffected either way.
+    excess_scored = photo or bool(
+        cfg.thread_match_excess_gradient
+        and getattr(result, "design_class", None) == "gradient")
     # The spools the machine really loads: every block that puts a needle
     # down, whether or not the grader could score a region for it. Until
     # 2026-09-09 this read the graded rows alone, and a spool whose only
@@ -1193,8 +1200,10 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
             # it 2026-09-10: the gradient lane stays on raw distance, because
             # the customer can buy the closer cone this finding names. So no
             # severity and no grade moves, by ruling now rather than by
-            # deferral.
-            r["_score"] = r["_excess"] if (photo and want_alt) else r["delta_e"]
+            # deferral. `excess_scored` is that ruling's off switch, OFF —
+            # with it unset it is `photo`, byte for byte.
+            r["_score"] = (r["_excess"] if (excess_scored and want_alt)
+                           else r["delta_e"])
 
         offenders = sorted((r for r in t_rows if r["_score"] > DELTA_E_VISIBLE),
                            key=lambda r: -r["_score"])
@@ -1266,7 +1275,8 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
             # that the excess is reported on every route that inference would
             # be WRONG, so the fact is stated outright instead of being
             # encoded in the presence of another field.
-            yardstick=("excess" if photo and len(loaded) > 1 else "raw"),
+            yardstick=("excess" if excess_scored and len(loaded) > 1
+                       else "raw"),
             # Excess over the best ALREADY-LOADED spool — information about
             # the design's cone list, not a statement about scoring. Present
             # on every route as of 2026-09-06; `_score` is what the severity
