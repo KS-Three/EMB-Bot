@@ -73,7 +73,7 @@ def studio_request(width_mm: float = KENT_WIDTH_MM) -> dict:
         "max_colors": 6,
         "satin": True,
         "detail_layer": False,
-        "edge_cap": "bean",
+        "edge_cap": "none",   # "bean" 2026-09-11 to 10-29 (Kent's ruling 10-29)
         # "Sew white areas", ticked by default since Kent's flip 2026-10-26,
         # with the thread its colour picker starts on
         "sew_enclosed_white": True,
@@ -106,6 +106,7 @@ ARMS = {
     # white-keyline recipe, on every job since 2026-10-27.
     "small_glyph_keep_off": {"small_glyph_keep": False, "small_text_true_size": False,
                              "bean_only_lines": False,   # his job predates the bean rule (2026-10-27)
+                             "edge_cap": "bean",   # ...and the "none" default (2026-10-29)
                              "keep_dark_thin_strokes": False,   # ...and the dark-ink read (ON 2026-10-28)
                              "detail_spokes": False, "lettering_columns_small_stem": False,
                              "small_dot_rung": False, "small_dot_rung_lettering": False,

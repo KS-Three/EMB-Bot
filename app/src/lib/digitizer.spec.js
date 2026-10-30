@@ -72,9 +72,10 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     satin: true,
     border: "off",
     detail_layer: false,
-    // "bean" since Kent's flip 2026-09-11 — the service's own default moved
-    // the same day, and this must keep matching it.
-    edge_cap: "bean",
+    // "none" since Kent's ruling 2026-10-29 ("bean" 2026-09-11 to 10-29) —
+    // the service's own default moved the same day, and this must keep
+    // matching it.
+    edge_cap: "none",
     // Always on from the Studio since 2026-09-30 (Kent removed the per-design
     // photo/flat override): the engine's own EXIF-or-face detection is what
     // now answers "is this a photograph".
@@ -231,11 +232,11 @@ test("edge_cap rides buildDigitizeConfig, and back-fills today's default for pro
 
   // Same additive-default contract detail_layer relies on above: the field is
   // always sent, never undefined. A project saved before the design-edge cap
-  // existed stored nothing, so it takes TODAY's default — "bean" since Kent's
-  // flip 2026-09-11 — exactly as a pre-colour-bundle project takes today's
-  // colour defaults when it is re-digitized. A project that stored "none"
-  // explicitly still sends "none": the back-fill only fills an ABSENT field.
-  expect(buildDigitizeConfig(digitizedElement(), PROJECT).edge_cap).toBe("bean");
+  // existed stored nothing, so it takes TODAY's default — "none" since Kent's
+  // ruling 2026-10-29 — exactly as a pre-colour-bundle project takes today's
+  // colour defaults when it is re-digitized. A project that stored a style
+  // explicitly still sends it: the back-fill only fills an ABSENT field.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT).edge_cap).toBe("none");
   const off = digitizedElement({
     params: {
       target_width_mm: 80, max_colors: 6, satin: true,

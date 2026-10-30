@@ -33,6 +33,11 @@ and the cap's size swing. Measured first, on main 44ecf1cb, with
 **Why:** a stale defect re-measured before building — 09-12's oscillation
 needed a design whose art carried no linear cover at some sizes; today's art
 covers its edge at every size.
+**Kent's rulings, 2026-10-29:** "'none' default (Recommended)" -- `edge_cap`
+defaults to "none" in the engine and the Studio, plans byte-identical (DST md5
+on seven runs, #1192) -- and "Close it (Recommended)": defect 19 is Closed.
+A site rebuilding the pre-10-27 engine with `bean_only_lines` OFF passes
+`edge_cap="bean"` with it.
 **How to apply:** don't build an edge-cap stability fix or re-open the cap's
 budget without a new sweep showing bills over a few percent. The readout
 and the default are Kent's calls (sent up). Evidence:

@@ -122,7 +122,13 @@ export const DEFAULT_DIGITIZE_PARAMS = {
   // and why bean rather than satin. A project saved before today keeps
   // whatever it stored, "none" included -- the back-fill only fills an
   // ABSENT field.
-  edge_cap: "bean",
+  // **"none" since 2026-10-29** (Kent: "'none' default (Recommended)"), with
+  // the service default the same day. `bean_only_lines` (ON 2026-10-27) had
+  // already turned "bean" into no cap, so this said "Bean cap" over a design
+  // the engine sewed without one, and the readout below the select blamed the
+  // design for being too small. The plan is byte-identical either way
+  // (docs/edge-cap-remeasure-2026-10-29.md).
+  edge_cap: "none",
   // Off by default, matching the service's own `detail_layer` default — it
   // costs real stitches (+39% on the owl photo below) and buys nothing on
   // flat logo art, which is the common case. Measured 2026-08-12 on a snowy

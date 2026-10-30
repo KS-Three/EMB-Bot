@@ -250,6 +250,12 @@ describe("edgeCapState / edgeCapSummaryText", () => {
       .toMatchObject({ state: "off" });
   });
 
+  test("no mode reads as the default, which is off since 2026-10-29", () => {
+    const s = edgeCapState({ warnings: [], index: indexRuns({ runs: [run("s1", "fill")] }) });
+    expect(s).toMatchObject({ state: "off", mode: "none", label: "Design edge off" });
+    expect(edgeCapSummaryText(s)).toBe("Design edge off.");
+  });
+
   test("the engine's own bill is preferred, so two lines cannot print two numbers", () => {
     const s = edgeCapState({
       mode: "bean", warnings: [capApplied],
