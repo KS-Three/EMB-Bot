@@ -3,7 +3,7 @@
   "flag": "edge_cap_satin",
   "fixture": "hotel_fremont_hat",
   "width_mm": 92.5,
-  "pr": null,
+  "pr": 1191,
   "about": "edge-cap runs",
   "sets": {
    "edge_cap": "satin"
@@ -69,7 +69,7 @@
   "flag": "edge_cap_satin",
   "fixture": "becker_hat_small",
   "width_mm": 76.5,
-  "pr": null,
+  "pr": 1191,
   "about": "edge-cap runs",
   "sets": {
    "edge_cap": "satin"
@@ -148,7 +148,7 @@
   "flag": "edge_cap_satin",
   "fixture": "gaulke_roofing_hat",
   "width_mm": 114.2,
-  "pr": null,
+  "pr": 1191,
   "about": "edge-cap runs",
   "sets": {
    "edge_cap": "satin"
@@ -214,7 +214,7 @@
   "flag": "edge_cap_satin",
   "fixture": "precision_drone",
   "width_mm": 62.6,
-  "pr": null,
+  "pr": 1191,
   "about": "edge-cap runs",
   "sets": {
    "edge_cap": "satin"
@@ -280,7 +280,7 @@
   "flag": "edge_cap_bean_legacy",
   "fixture": "hotel_fremont_hat",
   "width_mm": 92.5,
-  "pr": null,
+  "pr": 1191,
   "about": "edge-cap runs",
   "sets": {
    "edge_cap": "bean",
@@ -360,7 +360,7 @@
   "flag": "edge_cap_bean_legacy",
   "fixture": "becker_hat_small",
   "width_mm": 76.5,
-  "pr": null,
+  "pr": 1191,
   "about": "edge-cap runs",
   "sets": {
    "edge_cap": "bean",
@@ -427,7 +427,7 @@
   "flag": "edge_cap_bean_legacy",
   "fixture": "gaulke_roofing_hat",
   "width_mm": 114.2,
-  "pr": null,
+  "pr": 1191,
   "about": "edge-cap runs",
   "sets": {
    "edge_cap": "bean",
@@ -507,7 +507,7 @@
   "flag": "edge_cap_bean_legacy",
   "fixture": "precision_drone",
   "width_mm": 62.6,
-  "pr": null,
+  "pr": 1191,
   "about": "edge-cap runs",
   "sets": {
    "edge_cap": "bean",
