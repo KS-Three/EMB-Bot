@@ -137,13 +137,13 @@ def test_a_closure_argument_bypasses_the_memo():
 def test_every_contextvar_in_the_package_is_ambient_or_a_cache():
     """A knob an emitter reads through a ContextVar must be in the key, or a
     hit could answer a question asked under a different knob. Adding one
-    means adding it here (or to `_CACHES`, with the reason)."""
+    means adding it here (or to `_CACHES` or `_INERT`, with the reason)."""
     found = set()
     for path in CORE.glob("*.py"):
         for m in re.finditer(r"^(\w+)\s*:\s*contextvars\.ContextVar", path.read_text(encoding="utf-8"), re.M):
             found.add((path.stem, m.group(1)))
     assert found, "the scan found no ContextVar; the pattern is stale"
-    listed = set(shape_memo._AMBIENT) | set(shape_memo._CACHES)
+    listed = set(shape_memo._AMBIENT) | set(shape_memo._CACHES) | set(shape_memo._INERT)
     assert found == listed, {"unlisted": found - listed, "stale": listed - found}
 
 

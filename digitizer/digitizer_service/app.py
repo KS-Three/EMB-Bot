@@ -52,7 +52,8 @@ from digitizer_core.warnings_codes import FACE_ROUTED_FLAT, PHOTO_DETECTED, warn
 
 from . import formats, schemas
 from .guards import BodyLimit, Deadline, too_large_detail
-from .jobs import DONE, Busy, GenerationCache, JobRegistry, content_key, generation_key
+from .jobs import (DONE, JOB_TIMEOUT_S, Busy, GenerationCache, JobRegistry, content_key,
+                   generation_key)
 
 # 0.5.0 -> 0.6.0, 2026-09-15: `design.runs`, the run-span index, is now on
 # every `/digitize` and `/digitize-manual` response.
@@ -172,7 +173,16 @@ log = logging.getLogger("digitizer_service")
 _CONFIG_FIELDS = {f.name for f in dataclass_fields(PipelineConfig)} - {
     "debug_dir", "extra", "tonal_split_veto_mm"}
 
-registry = JobRegistry(workers=1)
+
+
+# The job deadline (`jobs.JOB_TIMEOUT_S`, 600 s), read at call time like the
+# request timeout above, so an operator -- or a jam reproduction -- can
+# shorten it without editing the module.
+def _job_timeout() -> float:
+    return float(os.environ.get("EMBBOT_JOB_TIMEOUT_S") or JOB_TIMEOUT_S)
+
+
+registry = JobRegistry(workers=1, timeout_s=_job_timeout())
 # Stage 0-4 generations, cached across review edits — the reason a boundary
 # edit re-runs only `finish_generation` + `plan_stitches` instead of the
 # whole pipeline (area 5's measured table: stages 0-4 are 53-81% of a job).

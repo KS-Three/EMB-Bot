@@ -58,7 +58,7 @@ import shapely
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import nearest_points, polylabel, unary_union
 
-from . import bean_rule, machine, stitches
+from . import bean_rule, deadline, machine, stitches
 from .config import PipelineConfig
 from .fabrics import Fabric, fill_underlay_for, pro_values_for, pull_by_stroke_for
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
@@ -3100,6 +3100,9 @@ def sequence(
 
         def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None,
                        exit_near: tuple[float, float] | None = None):
+            # The service's job deadline, read before every shape (the
+            # fill emission here is 75-90% of a scene's plan time).
+            deadline.check("stage 7")
             # The review screen's per-shape tier (shape-layers contract v1;
             # "sketch" added in v1.3): "auto" is the ladder below exactly as
             # it always ran; "satin", "fill", "run" and "sketch" force one
