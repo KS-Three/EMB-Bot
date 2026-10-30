@@ -40,5 +40,6 @@ One `COLOR_CAP_APPLIED` per design. Not touched: knockdown's garment cone.
 **Why:** every cone is a spool and a re-thread; "Colors (max 6)" is a price.
 **How to apply:** a thread-count claim quotes `colors_used` off the blocks
 (`tools/photo_corpus.py` `distinct_threads`) and names which mechanism added
-each extra; whether the ticked white counts against the cap is Kent's call.
+each extra. Kent 2026-10-30: the ticked white COUNTS and is protected (option
+A); the flip is still his.
 Related: [[photo-corpus-sxs-2026-10-27]], [[stage0-texture-gate-2026-10-28]].

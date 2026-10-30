@@ -9316,6 +9316,11 @@ sews, never off the regions or the warning**, and **a bind that strips
 shading must spend the budget first** — binding every band to its region's
 cone would have flattened `gradient_ramp_linear` (one region, five cones,
 under a cap of six) to one; `cfg.color_cap_sewn` (built OFF) folds only the
-strays past the budget, longest thread kept. *(measured 2026-10-29 —
+strays past the budget, longest thread kept. **Kent's ruling (2026-10-30):
+the white a customer ticks COUNTS against "Colors (max 6)" and is
+PROTECTED** — a stated colour keeps its slot, the artwork gets the slots
+left, the dropped artwork cone lands on its nearest kept (CIEDE2000). Not
+"competes by area" (the tick's promise could break silently) and not "a
+seventh cone" (the label would be false). *(measured 2026-10-29 —
 `docs/superpowers/specs/2026-10-29-colour-cap-sewn-design.md`,
 `tests/test_color_cap_sewn.py`)*

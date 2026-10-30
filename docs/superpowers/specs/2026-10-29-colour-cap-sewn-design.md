@@ -98,7 +98,8 @@ Whether the white the customer ticks counts against "Colors (max 6)".
 Protected (built): artwork gets 5 when white sews. Competing by area: white
 can lose its slot and the ticked areas sew in another thread — the tick's
 promise breaks silently. Not counted (today): 7 cones against a label that
-says 6. The options and their costs go to him with the readings in §4.
+says 6. **Kent ruled 2026-10-30: A — white counts and is protected**, as
+built. The flip (ON by default) is the open question.
 
 ## 4. Readings — fixtures and forced-gradient rows, OFF → ON
 
