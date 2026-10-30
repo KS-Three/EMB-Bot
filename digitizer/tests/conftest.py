@@ -621,6 +621,14 @@ PRE_FLIP["dark_ink_bean"] = False
 # pairs are byte-identical either way. `tests/engine_2026_10_27.json` carries
 # it False.
 PRE_FLIP["border_by_size_fabric_edges"] = False
+# `fill_bridge_cut_exposed` and `fill_seam_order` joined the flipped set
+# 2026-10-30 (Kent's "Flip both (Recommended)" after the 17-logo + 16-pair
+# check). ON, a fill's sections sew as one continuous tatami and any bridge
+# that shows on finished fill (a satin rim's lead-in included) is cut, so an
+# arm measured before that day has section ridges, shade flips and travel
+# lines on its fills. `tests/engine_2026_10_27.json` carries both False.
+PRE_FLIP["fill_bridge_cut_exposed"] = False
+PRE_FLIP["fill_seam_order"] = False
 # `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
 # renders of his Instagram icon, drone, Bridge Bar and the repro), for the
 # reason every entry above gives. ON, a gradient-lane region's edge follows
@@ -829,6 +837,9 @@ PRE_FLIP["border_from_outline_line_art_guard"] = False
 # tests ABOUT them are `tests/test_small_text_bays.py`,
 # `tests/test_sew_enclosed_white.py`, `tests/test_small_text_grow_away.py`
 # and `tests/test_script_strokes.py`.
+# Kent's 2026-10-30 flip: the fill-section order and the exposed-bridge cut, for
+# a pin taken before that day that spreads a dated dict rather than PRE_FLIP.
+FLIP_2026_10_30 = {"fill_bridge_cut_exposed": False, "fill_seam_order": False}
 FLIP_2026_10_26 = {"small_text_bay_mouth": False, "sew_enclosed_white": False,
                    "small_text_reset_grow_away": False, "script_strokes": False}
 PRE_FLIP.update(FLIP_2026_10_26)

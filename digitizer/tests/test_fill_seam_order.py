@@ -34,8 +34,8 @@ def _rows_of(y0, y1, x0=0.0, x1=10.0):
     return path
 
 
-def test_default_is_off():
-    assert PipelineConfig().fill_seam_order is False
+def test_default_is_on():
+    assert PipelineConfig().fill_seam_order is True  # Kent 2026-10-30
 
 
 def test_a_seam_is_read_on_any_row_not_only_the_extremes():
