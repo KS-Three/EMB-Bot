@@ -1857,9 +1857,10 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # engine as it was.
     from .stage6_fill import cut_exposed_scope    # `cfg.fill_bridge_cut_exposed` (built OFF), the same way
     from .stage6_fill import seam_order_scope     # `cfg.fill_seam_order` (built OFF), the same way
+    from .stage6_fill import seam_priced_scope    # `cfg.fill_seam_order_priced` (built OFF), the same way
     with apex_cut_scope(cfg.lettering_columns_apex_cut), fill_section_travel.enabled(cfg), \
             loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
-            cut_exposed_scope(cfg.fill_bridge_cut_exposed), seam_order_scope(cfg.fill_seam_order):
+            cut_exposed_scope(cfg.fill_bridge_cut_exposed), seam_order_scope(cfg.fill_seam_order),             seam_priced_scope(cfg.fill_seam_order_priced):
         return _plan_stitches(result, cfg)
 
 
