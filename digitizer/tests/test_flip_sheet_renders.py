@@ -485,3 +485,25 @@ def test_the_pros_tiles_live_apart_and_the_local_page_keeps_them(tmp_path):
     assert fsr.image_file("a__b__pro.jpg", tmp_path, pro_dir) == pro_dir / "a__b__pro.jpg"
     assert fsr.image_file("a__b__where.jpg", tmp_path, pro_dir) == tmp_path / "a__b__where.jpg"
     assert fsr.image_file("a__b__pro.jpg", tmp_path) == tmp_path / "a__b__pro.jpg"
+
+
+# ---- defects 4/6 (2026-10-30) ------------------------------------------------------------------
+
+def test_fill_section_cuts_first_row_is_off_on_main_and_covers_every_pair():
+    from digitizer_core import PipelineConfig
+    from tools import border_census as bc
+    spec = fsr.FLAGS["fill_section_cuts_first"]
+    assert spec["metric"] in fsr.METRICS
+    assert spec["sets"]["extra"] == {"fill_section_cuts_first": True}
+    assert not PipelineConfig().extra.get("fill_section_cuts_first")
+    # the OFF arm is the shared rembg pin, and ON carries the same pin
+    assert fsr.off_arm("fill_section_cuts_first") == "rembg900__off"
+    assert (spec["sets"]["photo_prep_background_removal_timeout_s"]
+            == spec["base"]["photo_prep_background_removal_timeout_s"])
+    assert set(spec["fixtures"]) == {r[0] for r in [*bc.PAIRS, *fsr.EXTRA_PAIRS]}
+
+
+def test_inpiece_cuts_reads_the_dst_on_both_sides(monkeypatch):
+    from tools import sequence_pro as sp
+    monkeypatch.setattr(sp, "read_file", lambda path: {"total": {"trims": 13.0, "inter_trims": 7.0}})
+    assert fsr.inpiece_cuts(None, None, {"dst": "any.dst"}) == "6 / 13"

@@ -460,6 +460,22 @@ FLAGS: dict[str, dict] = {
         "note": "The bean cap as it sewed 2026-09-11 to 10-27, with bean_only_lines OFF so the "
                 "bean style is not turned off. bean_only_lines OFF also moves bean letters and "
                 "the run tier, so ON differs from OFF in more than the cap: read the rings."},
+    # ---- defects 4/6 (2026-10-30): Kent, "Flip sheet first (Recommended)"
+    "fill_section_cuts_first": {
+        "base": {"photo_prep_background_removal_timeout_s": 900}, "base_name": "rembg900",
+        "sets": {"photo_prep_background_removal_timeout_s": 900,
+                 "extra": {"fill_section_cuts_first": True}},
+        # every paired job: the row is its own proof of where the flag does nothing
+        "fixtures": ["becker_hat_small", "becker_chest_small", "becker_hat_large", "becker_lc_large",
+                     "becker_beanie", "mfab_hat", "mfab_lc", "precision_drone", "proseal_hat",
+                     "proseal_beanie", "hotel_fremont_hat", "hotel_fremont_patch",
+                     "gaulke_roofing_hat", "gaulke_roofing_lc", "bridge_hat", "bridge_lc",
+                     "tires_hat_3d"],
+        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1193,
+        "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill "
+                "planner's orders are priced with the travel under rows still to come free, so a "
+                "fewer-cut order is no longer refused for hidden stitches. It still may not cut "
+                "more or lay more on finished fill. Both arms pin the rembg timeout at 900 s."},
 }
 
 #: The wave-3 sheet (2026-10-26): the flags its run and report carry. The bay mouth left
@@ -925,6 +941,14 @@ def travel_runs(_stream, _fx, cell) -> str:
     return str(sum(1 for r in runs if r["kind"] == "travel"))
 
 
+def inpiece_cuts(_stream, _fx, cell) -> str:
+    """Cuts inside one sewn piece / cuts in all (`tools.sequence_pro`, one reader
+    on both DSTs: `trims - inter_trims`)."""
+    from tools import sequence_pro as sp
+    tot = sp.read_file(cell["dst"])["total"]
+    return f"{tot['trims'] - tot['inter_trims']:.0f} / {tot['trims']:.0f}"
+
+
 def small_lines(_stream, fx, cell) -> str:
     """Each small line the census lists for this job (`small_text_floor_census.
     ELEMENTS`, not its references): construction and sewn height, read by the
@@ -1163,7 +1187,8 @@ METRICS = {"sub_half_mm": sub_half_mm, "fill_underlay": fill_underlay, "uncut_ju
            "locks": locks, "short_bare": short_bare, "letter_height": letter_height,
            "stagger": stagger, "white_under_1mm": white_under_1mm, "tagged": tagged,
            "sub_1mm": sub_1mm, "satin_loops": satin_loops, "travel_runs": travel_runs,
-           "small_lines": small_lines, "run_shapes": run_shapes, "script_square": script_square}
+           "small_lines": small_lines, "run_shapes": run_shapes, "script_square": script_square,
+           "inpiece_cuts": inpiece_cuts}
 
 
 # ------------------------------------------------------------------- diff

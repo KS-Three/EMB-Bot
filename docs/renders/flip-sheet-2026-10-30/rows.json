@@ -1,0 +1,1292 @@
+[
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 10452,
+   "trims": 11,
+   "colours": 1,
+   "about": "4 / 11",
+   "exposed_mm": 21.7,
+   "bare_mm": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 36.8,
+   "md5": "4aaab2f297f6e5f38f99af69fc591afa"
+  },
+  "on": {
+   "stitches": 10496,
+   "trims": 12,
+   "colours": 1,
+   "about": "5 / 12",
+   "exposed_mm": 24.2,
+   "bare_mm": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 51.1,
+   "md5": "389523a36b3a94a712c73beb16824575"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "colours": 4,
+   "about": "2 / 10"
+  },
+  "bare": {
+   "off": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "on": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 302,
+  "byte_identical": false,
+  "box_mm": [
+   -15.4,
+   -23.7,
+   2.6,
+   -12.7
+  ],
+  "in_window": 90,
+  "images": {
+   "off": "fill_section_cuts_first__becker_hat_small__off.jpg",
+   "on": "fill_section_cuts_first__becker_hat_small__on.jpg",
+   "pro": "fill_section_cuts_first__becker_hat_small__pro.jpg",
+   "where": "fill_section_cuts_first__becker_hat_small__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "becker_chest_small",
+  "width_mm": 76.5,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 10211,
+   "trims": 11,
+   "colours": 1,
+   "about": "4 / 11",
+   "exposed_mm": 21.3,
+   "bare_mm": {
+    "0.20": 4.82,
+    "0.25": 4.1,
+    "0.30": 3.69
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 38.7,
+   "md5": "726b6ee37119dea053105426ea31016e"
+  },
+  "on": {
+   "stitches": 10249,
+   "trims": 12,
+   "colours": 1,
+   "about": "5 / 12",
+   "exposed_mm": 23.9,
+   "bare_mm": {
+    "0.20": 4.82,
+    "0.25": 4.1,
+    "0.30": 3.69
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 49.9,
+   "md5": "1b1f16350abb029727e7653fa8e1cffd"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 12,
+   "colours": 3,
+   "about": "2 / 11"
+  },
+  "bare": {
+   "off": {
+    "0.20": 4.82,
+    "0.25": 4.1,
+    "0.30": 3.69
+   },
+   "on": {
+    "0.20": 4.82,
+    "0.25": 4.1,
+    "0.30": 3.69
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logo LC 2 A.DST",
+  "diff": 308,
+  "byte_identical": false,
+  "box_mm": [
+   -17.4,
+   -23.7,
+   0.6,
+   -12.7
+  ],
+  "in_window": 92,
+  "images": {
+   "off": "fill_section_cuts_first__becker_chest_small__off.jpg",
+   "on": "fill_section_cuts_first__becker_chest_small__on.jpg",
+   "pro": "fill_section_cuts_first__becker_chest_small__pro.jpg",
+   "where": "fill_section_cuts_first__becker_chest_small__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "becker_hat_large",
+  "width_mm": 101.9,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 16262,
+   "trims": 11,
+   "colours": 1,
+   "about": "2 / 11",
+   "exposed_mm": 23.1,
+   "bare_mm": {
+    "0.20": 0.1,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 46.5,
+   "md5": "d9842adeea8f7d83413da71786739c82"
+  },
+  "on": {
+   "stitches": 16176,
+   "trims": 12,
+   "colours": 1,
+   "about": "3 / 12",
+   "exposed_mm": 23.1,
+   "bare_mm": {
+    "0.20": 0.1,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 69.8,
+   "md5": "6fae28f937cf25086dd54f4ce6f8d0e8"
+  },
+  "pro": {
+   "stitches": 12356,
+   "trims": 10,
+   "colours": 4,
+   "about": "1 / 9"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.1,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.1,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logo hat.DST",
+  "diff": 220,
+  "byte_identical": false,
+  "box_mm": [
+   -29.4,
+   -29.8,
+   -11.4,
+   -18.8
+  ],
+  "in_window": 56,
+  "images": {
+   "off": "fill_section_cuts_first__becker_hat_large__off.jpg",
+   "on": "fill_section_cuts_first__becker_hat_large__on.jpg",
+   "pro": "fill_section_cuts_first__becker_hat_large__pro.jpg",
+   "where": "fill_section_cuts_first__becker_hat_large__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "becker_lc_large",
+  "width_mm": 95.7,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 14669,
+   "trims": 15,
+   "colours": 1,
+   "about": "6 / 15",
+   "exposed_mm": 31.1,
+   "bare_mm": {
+    "0.20": 0.4,
+    "0.25": 0.2,
+    "0.30": 0.1
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 42.2,
+   "md5": "e9279273d4c4542a5cfc05b01f17707e"
+  },
+  "on": {
+   "stitches": 14681,
+   "trims": 13,
+   "colours": 1,
+   "about": "4 / 13",
+   "exposed_mm": 31.1,
+   "bare_mm": {
+    "0.20": 0.4,
+    "0.25": 0.2,
+    "0.30": 0.1
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 60.6,
+   "md5": "ad5497bacc54237fba3bec1c551bd1a7"
+  },
+  "pro": {
+   "stitches": 11274,
+   "trims": 12,
+   "colours": 3,
+   "about": "2 / 11"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.4,
+    "0.25": 0.2,
+    "0.30": 0.1
+   },
+   "on": {
+    "0.20": 0.4,
+    "0.25": 0.2,
+    "0.30": 0.1
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logolc.DST",
+  "diff": 66,
+  "byte_identical": false,
+  "box_mm": [
+   -10.1,
+   -16.9,
+   7.9,
+   -5.9
+  ],
+  "in_window": 29,
+  "images": {
+   "off": "fill_section_cuts_first__becker_lc_large__off.jpg",
+   "on": "fill_section_cuts_first__becker_lc_large__on.jpg",
+   "pro": "fill_section_cuts_first__becker_lc_large__pro.jpg",
+   "where": "fill_section_cuts_first__becker_lc_large__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "becker_beanie",
+  "width_mm": 79.8,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 13915,
+   "trims": 14,
+   "colours": 2,
+   "about": "6 / 14",
+   "exposed_mm": 105.8,
+   "bare_mm": {
+    "0.20": 14.84,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 3.0,
+   "cpu_s": 36.8,
+   "md5": "ea70df0128183ccfacc6a8d6c2e94b1a"
+  },
+  "on": {
+   "stitches": 13916,
+   "trims": 14,
+   "colours": 2,
+   "about": "6 / 14",
+   "exposed_mm": 105.8,
+   "bare_mm": {
+    "0.20": 14.84,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 3.0,
+   "cpu_s": 48.8,
+   "md5": "5dfc7ea6fb3c9cf2299e15f067af153e"
+  },
+  "pro": {
+   "stitches": 11412,
+   "trims": 48,
+   "colours": 5,
+   "about": "0 / 4"
+  },
+  "bare": {
+   "off": {
+    "0.20": 14.84,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 14.84,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logo hat 2 A a.PES",
+  "diff": 27,
+  "byte_identical": false,
+  "box_mm": [
+   -4.1,
+   -16.1,
+   13.9,
+   -5.1
+  ],
+  "in_window": 19,
+  "images": {
+   "off": "fill_section_cuts_first__becker_beanie__off.jpg",
+   "on": "fill_section_cuts_first__becker_beanie__on.jpg",
+   "pro": "fill_section_cuts_first__becker_beanie__pro.jpg",
+   "where": "fill_section_cuts_first__becker_beanie__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "mfab_hat",
+  "width_mm": 104.9,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 21321,
+   "trims": 25,
+   "colours": 2,
+   "about": "18 / 25",
+   "exposed_mm": 6.0,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 93.0,
+   "md5": "da480ee4107b8b4dd54eeaba0289c971"
+  },
+  "on": {
+   "stitches": 21403,
+   "trims": 24,
+   "colours": 2,
+   "about": "17 / 24",
+   "exposed_mm": 6.0,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 113.4,
+   "md5": "22317a19d6c6c45dee00811f0d748cd4"
+  },
+  "pro": {
+   "stitches": 17568,
+   "trims": 19,
+   "colours": 4,
+   "about": "3 / 18"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "mf4b logo hat.DST",
+  "diff": 122,
+  "byte_identical": false,
+  "box_mm": [
+   -46.9,
+   3.1,
+   -28.9,
+   14.1
+  ],
+  "in_window": 40,
+  "images": {
+   "off": "fill_section_cuts_first__mfab_hat__off.jpg",
+   "on": "fill_section_cuts_first__mfab_hat__on.jpg",
+   "pro": "fill_section_cuts_first__mfab_hat__pro.jpg",
+   "where": "fill_section_cuts_first__mfab_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "mfab_lc",
+  "width_mm": 96.7,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 18735,
+   "trims": 21,
+   "colours": 2,
+   "about": "14 / 21",
+   "exposed_mm": 19.8,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 87.5,
+   "md5": "1bc8c95525bff10cbdb8e89d7e286b2b"
+  },
+  "on": {
+   "stitches": 18676,
+   "trims": 21,
+   "colours": 2,
+   "about": "14 / 21",
+   "exposed_mm": 10.8,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 113.0,
+   "md5": "31facc933827c96c42525ddb0e02254c"
+  },
+  "pro": {
+   "stitches": 15786,
+   "trims": 20,
+   "colours": 4,
+   "about": "3 / 19"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "mf4b logo lc.DST",
+  "diff": 2441,
+  "byte_identical": false,
+  "box_mm": [
+   2.5,
+   -18.5,
+   20.5,
+   -7.5
+  ],
+  "in_window": 307,
+  "images": {
+   "off": "fill_section_cuts_first__mfab_lc__off.jpg",
+   "on": "fill_section_cuts_first__mfab_lc__on.jpg",
+   "pro": "fill_section_cuts_first__mfab_lc__pro.jpg",
+   "where": "fill_section_cuts_first__mfab_lc__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "precision_drone",
+  "width_mm": 62.6,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 14778,
+   "trims": 93,
+   "colours": 9,
+   "about": "22 / 93",
+   "exposed_mm": 23.6,
+   "bare_mm": {
+    "0.20": 2.2,
+    "0.25": 1.79,
+    "0.30": 0.95
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 130.7,
+   "md5": "c325a3a111f8de26aab178747ff27410"
+  },
+  "on": {
+   "stitches": 14855,
+   "trims": 91,
+   "colours": 9,
+   "about": "20 / 91",
+   "exposed_mm": 24.6,
+   "bare_mm": {
+    "0.20": 2.2,
+    "0.25": 1.79,
+    "0.30": 0.95
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 160.5,
+   "md5": "4a60be3063d2a6c93055e7b98fcbe641"
+  },
+  "pro": {
+   "stitches": 14552,
+   "trims": 59,
+   "colours": 22,
+   "about": "20 / 58"
+  },
+  "bare": {
+   "off": {
+    "0.20": 2.2,
+    "0.25": 1.79,
+    "0.30": 0.95
+   },
+   "on": {
+    "0.20": 2.2,
+    "0.25": 1.79,
+    "0.30": 0.95
+   },
+   "rises": []
+  },
+  "pro_file": "PRECISION DRON HAT 2.DST",
+  "diff": 195,
+  "byte_identical": false,
+  "box_mm": [
+   0.9,
+   -8.1,
+   18.9,
+   2.9
+  ],
+  "in_window": 150,
+  "images": {
+   "off": "fill_section_cuts_first__precision_drone__off.jpg",
+   "on": "fill_section_cuts_first__precision_drone__on.jpg",
+   "pro": "fill_section_cuts_first__precision_drone__pro.jpg",
+   "where": "fill_section_cuts_first__precision_drone__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "proseal_hat",
+  "width_mm": 85.9,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 6347,
+   "trims": 36,
+   "colours": 4,
+   "about": "9 / 36",
+   "exposed_mm": 17.8,
+   "bare_mm": {
+    "0.20": 1.56,
+    "0.25": 1.14,
+    "0.30": 0.61
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 64.4,
+   "md5": "7cc0cf036c4ff1564d35f74d1ad98e7c"
+  },
+  "on": {
+   "stitches": 6347,
+   "trims": 36,
+   "colours": 4,
+   "about": "9 / 36",
+   "exposed_mm": 17.8,
+   "bare_mm": {
+    "0.20": 1.56,
+    "0.25": 1.14,
+    "0.30": 0.61
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 66.6,
+   "md5": "7cc0cf036c4ff1564d35f74d1ad98e7c"
+  },
+  "pro": {
+   "stitches": 5894,
+   "trims": 54,
+   "colours": 4,
+   "about": "12 / 53"
+  },
+  "bare": {
+   "off": {
+    "0.20": 1.56,
+    "0.25": 1.14,
+    "0.30": 0.61
+   },
+   "on": {
+    "0.20": 1.56,
+    "0.25": 1.14,
+    "0.30": 0.61
+   },
+   "rises": []
+  },
+  "pro_file": "PROSEALHAT.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "proseal_beanie",
+  "width_mm": 75.0,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 8107,
+   "trims": 28,
+   "colours": 5,
+   "about": "7 / 28",
+   "exposed_mm": 150.5,
+   "bare_mm": {
+    "0.20": 100.25,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 6.7,
+   "cpu_s": 64.5,
+   "md5": "5df230456f95444cba76f7724c91a8d8"
+  },
+  "on": {
+   "stitches": 8107,
+   "trims": 28,
+   "colours": 5,
+   "about": "7 / 28",
+   "exposed_mm": 150.5,
+   "bare_mm": {
+    "0.20": 100.25,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 6.7,
+   "cpu_s": 66.2,
+   "md5": "5df230456f95444cba76f7724c91a8d8"
+  },
+  "pro": {
+   "stitches": 7117,
+   "trims": 48,
+   "colours": 5,
+   "about": "16 / 47"
+  },
+  "bare": {
+   "off": {
+    "0.20": 100.25,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 100.25,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "PROSEALHAT BEANI.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "hotel_fremont_hat",
+  "width_mm": 92.5,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 15865,
+   "trims": 25,
+   "colours": 3,
+   "about": "4 / 25",
+   "exposed_mm": 9.1,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 185.0,
+   "md5": "8d5ecb010958fd19faa3ad0a89fc7801"
+  },
+  "on": {
+   "stitches": 15865,
+   "trims": 25,
+   "colours": 3,
+   "about": "4 / 25",
+   "exposed_mm": 9.1,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 190.9,
+   "md5": "8d5ecb010958fd19faa3ad0a89fc7801"
+  },
+  "pro": {
+   "stitches": 17067,
+   "trims": 21,
+   "colours": 10,
+   "about": "1 / 20"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "HOTEL FREMONT HAT.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "hotel_fremont_patch",
+  "width_mm": 92.5,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 14856,
+   "trims": 20,
+   "colours": 3,
+   "about": "6 / 20",
+   "exposed_mm": 12.4,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 182.3,
+   "md5": "fe6edaf1bac1128fd0e62356d165266b"
+  },
+  "on": {
+   "stitches": 14856,
+   "trims": 20,
+   "colours": 3,
+   "about": "6 / 20",
+   "exposed_mm": 12.4,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 182.4,
+   "md5": "fe6edaf1bac1128fd0e62356d165266b"
+  },
+  "pro": {
+   "stitches": 15458,
+   "trims": 21,
+   "colours": 8,
+   "about": "1 / 20"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "HOTEL FREMONT .DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "gaulke_roofing_hat",
+  "width_mm": 114.2,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 7446,
+   "trims": 30,
+   "colours": 1,
+   "about": "3 / 30",
+   "exposed_mm": 16.7,
+   "bare_mm": {
+    "0.20": 5.99,
+    "0.25": 5.26,
+    "0.30": 4.22
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 67.7,
+   "md5": "da23fa4fe091deee6721aed6dbc20224"
+  },
+  "on": {
+   "stitches": 7446,
+   "trims": 30,
+   "colours": 1,
+   "about": "3 / 30",
+   "exposed_mm": 16.7,
+   "bare_mm": {
+    "0.20": 5.99,
+    "0.25": 5.26,
+    "0.30": 4.22
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 65.7,
+   "md5": "da23fa4fe091deee6721aed6dbc20224"
+  },
+  "pro": {
+   "stitches": 6138,
+   "trims": 42,
+   "colours": 0,
+   "about": "0 / 41"
+  },
+  "bare": {
+   "off": {
+    "0.20": 5.99,
+    "0.25": 5.26,
+    "0.30": 4.22
+   },
+   "on": {
+    "0.20": 5.99,
+    "0.25": 5.26,
+    "0.30": 4.22
+   },
+   "rises": []
+  },
+  "pro_file": "c golke logo hat.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "gaulke_roofing_lc",
+  "width_mm": 95.2,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 5778,
+   "trims": 23,
+   "colours": 1,
+   "about": "1 / 23",
+   "exposed_mm": 10.6,
+   "bare_mm": {
+    "0.20": 7.22,
+    "0.25": 6.51,
+    "0.30": 5.05
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 40.2,
+   "md5": "427097bfdea5ca5a20f693ea0e10a84c"
+  },
+  "on": {
+   "stitches": 5778,
+   "trims": 23,
+   "colours": 1,
+   "about": "1 / 23",
+   "exposed_mm": 10.6,
+   "bare_mm": {
+    "0.20": 7.22,
+    "0.25": 6.51,
+    "0.30": 5.05
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 40.7,
+   "md5": "427097bfdea5ca5a20f693ea0e10a84c"
+  },
+  "pro": {
+   "stitches": 5151,
+   "trims": 42,
+   "colours": 0,
+   "about": "0 / 41"
+  },
+  "bare": {
+   "off": {
+    "0.20": 7.22,
+    "0.25": 6.51,
+    "0.30": 5.05
+   },
+   "on": {
+    "0.20": 7.22,
+    "0.25": 6.51,
+    "0.30": 5.05
+   },
+   "rises": []
+  },
+  "pro_file": "c golke logo LC.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "bridge_hat",
+  "width_mm": 63.3,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 8474,
+   "trims": 16,
+   "colours": 5,
+   "about": "3 / 16",
+   "exposed_mm": 10.5,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 24.5,
+   "md5": "2b1580b8eb544f0ccba8a9cbc3d96e42"
+  },
+  "on": {
+   "stitches": 8476,
+   "trims": 16,
+   "colours": 5,
+   "about": "3 / 16",
+   "exposed_mm": 10.5,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 24.3,
+   "md5": "85dff905c0e151481559d05f3a314649"
+  },
+  "pro": {
+   "stitches": 6650,
+   "trims": 20,
+   "colours": 4,
+   "about": "3 / 19"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "BRIDGE LOGO HAT.DST",
+  "diff": 2,
+  "byte_identical": false,
+  "box_mm": [
+   -2.9,
+   13.3,
+   15.1,
+   24.3
+  ],
+  "in_window": 2,
+  "images": {
+   "off": "fill_section_cuts_first__bridge_hat__off.jpg",
+   "on": "fill_section_cuts_first__bridge_hat__on.jpg",
+   "pro": "fill_section_cuts_first__bridge_hat__pro.jpg",
+   "where": "fill_section_cuts_first__bridge_hat__where.jpg"
+  },
+  "status": "rendered"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "bridge_lc",
+  "width_mm": 76.6,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 11322,
+   "trims": 17,
+   "colours": 5,
+   "about": "2 / 17",
+   "exposed_mm": 15.5,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 43.0,
+   "md5": "7805cdc0807d4b40d79fa66be032269a"
+  },
+  "on": {
+   "stitches": 11322,
+   "trims": 17,
+   "colours": 5,
+   "about": "2 / 17",
+   "exposed_mm": 15.5,
+   "bare_mm": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 43.2,
+   "md5": "7805cdc0807d4b40d79fa66be032269a"
+  },
+  "pro": {
+   "stitches": 8535,
+   "trims": 20,
+   "colours": 4,
+   "about": "2 / 19"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.0,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "BRIDGE LOGO LC.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "fill_section_cuts_first",
+  "fixture": "tires_hat_3d",
+  "width_mm": 114.3,
+  "pr": 1193,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "extra": {
+    "fill_section_cuts_first": true
+   }
+  },
+  "note": "A cfg.extra key. ON also turns on fill_section_travel (held 2026-10-27): the fill planner's orders are priced with the travel under rows still to come free, so a fewer-cut order is no longer refused for hidden stitches. It still may not cut more or lay more on finished fill. Both arms pin the rembg timeout at 900 s.",
+  "engine": "992770e3",
+  "engine_root": "C:\\Users\\EE-LT-11030\\AppData\\Local\\Temp\\claude\\C--Users-EE-LT-11030-Claude-Personal-EMB-Bot\\c81cac9c-c249-4f5d-8d1b-7fb6fb362632\\scratchpad\\wt",
+  "off": {
+   "stitches": 4544,
+   "trims": 3,
+   "colours": 0,
+   "about": "0 / 3",
+   "exposed_mm": 13.2,
+   "bare_mm": {
+    "0.20": 9.03,
+    "0.25": 5.31,
+    "0.30": 2.3
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 25.0,
+   "md5": "caf8701a8cb4810601dc277ff77d0306"
+  },
+  "on": {
+   "stitches": 4544,
+   "trims": 3,
+   "colours": 0,
+   "about": "0 / 3",
+   "exposed_mm": 13.2,
+   "bare_mm": {
+    "0.20": 9.03,
+    "0.25": 5.31,
+    "0.30": 2.3
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 25.4,
+   "md5": "caf8701a8cb4810601dc277ff77d0306"
+  },
+  "pro": {
+   "stitches": 5555,
+   "trims": 10,
+   "colours": 1,
+   "about": "5 / 9"
+  },
+  "bare": {
+   "off": {
+    "0.20": 9.03,
+    "0.25": 5.31,
+    "0.30": 2.3
+   },
+   "on": {
+    "0.20": 9.03,
+    "0.25": 5.31,
+    "0.30": 2.3
+   },
+   "rises": []
+  },
+  "pro_file": "TIRES HAT 3D.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ }
+]
