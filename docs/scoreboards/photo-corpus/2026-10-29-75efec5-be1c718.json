@@ -1,0 +1,31 @@
+{
+ "before": "75efec5ceaf6b6d6b1c3ca96f7f15a2f1c79a45a",
+ "after": "be1c718ec2f1bc5512d32d4a7bf87a8b9a5df119",
+ "date": "2026-10-29",
+ "rows": {
+  "night_neon": {
+   "verdict": "better",
+   "note": ""
+  },
+  "landscape_lake": {
+   "verdict": "better",
+   "note": ""
+  },
+  "snow_highkey": {
+   "verdict": "better",
+   "note": ""
+  },
+  "underwater_reef": {
+   "verdict": "better",
+   "note": ""
+  },
+  "stained_glass": {
+   "verdict": "better",
+   "note": ""
+  },
+  "night_skyline": {
+   "verdict": "better",
+   "note": ""
+  }
+ }
+}

@@ -96,7 +96,9 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   reach the native read on upscaled sources only, so Fremont at 80 mm is
   untouched. Do not re-propose the floor. Read before proposing any flip that
   was measured on the old outline: `satin_per_stroke` ON now leaves 8.3 mm²
-  bare against 6.8 (its guard pins `PRE_FLIP`), the border tier gets no
+  bare against 6.8 (its guard pins `PRE_FLIP`; re-read 2026-10-29: 13.6 /
+  13.6 on that pin and 14.4 / 14.4 on that day's defaults, so no longer
+  true, `docs/satin-fill-remeasure-2026-10-29.md` §4), the border tier gets no
   per-shape column on Becker at 80 mm, and logo_mfab_lc no longer splits at
   stage 5. *(ruled 2026-10-20 — Kent; flipped 2026-10-20 — PR #1001)*
 
@@ -1346,6 +1348,20 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   wins where the other was measured least; neither result transfers.
   *(measured 2026-10-11 — `tests/test_coverage_edges.py`; PR body of
   `claude/coverage-read`)*
+- **A better per-region satin/fill router has nothing left to buy — do not
+  build one to move stitch-type kappa.** Re-measured 2026-10-29 on main
+  `44ecf1cb`, 22 paired jobs: an oracle giving each of our regions the pro's
+  majority type scores **0.365** mean kappa against today's **0.387** (it
+  wins on 10 of 21). One label per region collapses the type mix a region
+  carries, so the chance floor rises; by raw agreement the oracle would read
+  higher, which is gate 4's trap. The cell kappa's own ceiling is the pro
+  against himself 0.5 mm off: **0.650**. What is left lives inside regions
+  (edge caps, border tiers, split satin) and in grounds where the pro sews
+  pieces on top (33% of straddled minority cells sit in blobs of 10+ cells,
+  all in a dozen ground regions). Those are construction lanes, not a router.
+  Read per-shape tiers by AREA: `tier_census`'s reader scores our own known
+  plan 0.22 by count and 0.80 by area. *(measured 2026-10-29 —
+  `docs/satin-fill-remeasure-2026-10-29.md`)*
 
 ---
 
@@ -9237,3 +9253,69 @@ corpus row has one; the row comes before the floor moves. *(measured
 2026-10-28/29 —
 `docs/superpowers/specs/2026-10-28-photo-cutout-no-subject-guard-design.md`,
 `tests/test_cutout_no_subject.py`, `corpus_runs/` base-75efec5 / armA / armB)*
+
+## The kept frame's 450–2,100 s was two processes on a loaded laptop: stage 7 is 64–104 s quiet, and the swing was contention (2026-10-29)
+
+**The entry above said a kept frame costs 450–2,100 s per scene and that
+three rows timed out inside stage 7's rank-only second pass. The time was
+real and the number was load.** Profiled on the six refused scenes with the
+machine otherwise idle (Ryzen 7 4700U, 8 cores, the corpus tool's own env,
+stage 0–4 result pickled, `plan_stitches` replayed): `plan_stitches` 64–104 s
+per scene, stages 0–4 26–147 s (stained_glass the 147, 130 of it stage 2's
+`split_tonal_regions`). Three in-process replays of night_skyline: 85.3 /
+78.3 / 78.9 s, one md5. **Two processes replaying it at once: 326 s EACH,
+4.1×, and `process_time` inflated the same**, md5 identical across processes
+(different hash seeds, so no hash-order or tie dependence); stage 7 is GEOS,
+so not IPP alignment. The capture ran `--procs 2` beside the other arm's
+capture, which reproduces 349–2,100 s and the 373-vs-1,200 s rerun of one
+row. The faulthandler dumps were right about WHERE (stage 6 fill emission
+inside the lane-OFF pass: the angle search 25–30 %, the travel-routing walks
+~40 %, inset-ring buffers ~15 %, `covers` ~8 %) and the lane-ON second pass
+itself adds only 5–15 s (`shape_memo`).
+
+**Three rules.** (1) **A `wall s` from a capture is a load reading**: time a
+row alone (`--procs 1 --only SLUG`, nothing else running) before calling
+anything slow, and say the procs and the load beside any number quoted (the
+sxs page now prints each run's procs). (2) **`process_time` is not CPU on a
+busy laptop** — it inflated 4.1× alongside wall here, 2.6× in
+`digitize-speed-2026-10-26`. (3) **Two concurrent digitizes on this laptop
+cost more than two serial ones** (4.1× each, so 2× the total): the corpus
+tool's `--procs 2` default saves no time on it.
+
+**Measured false, do not retry: a prepared geometry is not the plain
+predicate.** `shapely.prepared.prep(slack).covers(line)` in place of
+`slack.covers(line)` in `travel_path` and `_reorder_for_cover` re-chose one
+travel route on underwater_reef (34,324 → 34,334 stitches; the after tree on
+the before pickle, stages 0–4 identical region for region) and moved
+owl_kent's md5; toggled alone it was the whole difference, while the
+vectorised scanlines and a thread pool left every md5 where it was. GEOS's
+prepared `covers` answers some lines differently from `Geometry::covers`, so
+where the design is pinned byte for byte it cannot stand in, whatever it
+saves (`tests/test_fill.py` pins that `stage6_fill` prepares nothing). The
+pool itself was exact and Kent dropped it ("no pool, rows only"): 239–253 s
+against 277–318 serial on one scene, inside the laptop's drift, and CI's
+four workers would each spawn eight. *(measured 2026-10-29 —
+`.claude/memory/stage7-scene-speed-2026-10-29.md`; the exact speed-ups that
+followed are in that note and its PR)*
+
+**A cap on the regions is not a cap on the design — and the census named the
+wrong function (2026-10-29).** Census item 3 (`docs/photo-style-census-
+2026-10-27.md`) read "Colors (max 6)" broken by stage 6 and blamed
+`_cap_tonal_layers` for never reaching the gradient lane; that function caps
+fill LAYERS (defect 20's density ceiling) and was never a colour cap on any
+lane. Attributing every block thread to its source (`tools/cone_escape.py`)
+found two mechanisms, both AFTER `enforce_color_cap`: the "Sew white areas"
+recolour puts its thread on the fields it sews after the cap ranked them
+(BOTH leaks on main — isometric_icon and watercolor, six artwork cones plus
+White 0015), and the blend tier snaps each shade band to the whole chart
+because the photo lane's `shade_palette_bind` is gated on `is_photographic`
+(flower_macro forced gradient 13 cones, seven strays of 9–57 mm, each a
+colour change; Golden Tee and summit_badge 9 at the Studio's own request).
+Two rules from it: **a thread count is read off the BLOCKS the machine
+sews, never off the regions or the warning**, and **a bind that strips
+shading must spend the budget first** — binding every band to its region's
+cone would have flattened `gradient_ramp_linear` (one region, five cones,
+under a cap of six) to one; `cfg.color_cap_sewn` (built OFF) folds only the
+strays past the budget, longest thread kept. *(measured 2026-10-29 —
+`docs/superpowers/specs/2026-10-29-colour-cap-sewn-design.md`,
+`tests/test_color_cap_sewn.py`)*

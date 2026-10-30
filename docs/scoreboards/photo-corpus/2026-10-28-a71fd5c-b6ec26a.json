@@ -1,0 +1,163 @@
+{
+ "before": "a71fd5cdbd9f1320e495cb015ae3c8bb6680930e",
+ "after": "b6ec26a32d081984ea7746359f623511ad79c7c2",
+ "date": "2026-10-28",
+ "rows": {
+  "bw_street": {
+   "verdict": "same",
+   "note": ""
+  },
+  "night_neon": {
+   "verdict": "worse",
+   "note": ""
+  },
+  "architecture": {
+   "verdict": "worse",
+   "note": ""
+  },
+  "landscape_lake": {
+   "verdict": "worse",
+   "note": ""
+  },
+  "food_plate": {
+   "verdict": "better",
+   "note": "still bad"
+  },
+  "vintage_sepia": {
+   "verdict": "same",
+   "note": ""
+  },
+  "fireworks": {
+   "verdict": "worse",
+   "note": ""
+  },
+  "snow_highkey": {
+   "verdict": "same",
+   "note": "no image"
+  },
+  "flower_macro": {
+   "verdict": "worse",
+   "note": ""
+  },
+  "dark_dog": {
+   "verdict": "better",
+   "note": "It did a better job cropping behind the dog, better detail on the face, but it cropped it's neck out"
+  },
+  "underwater_reef": {
+   "verdict": "worse",
+   "note": ""
+  },
+  "watercolor": {
+   "verdict": "worse",
+   "note": ""
+  },
+  "pencil_sketch": {
+   "verdict": "same",
+   "note": ""
+  },
+  "stained_glass": {
+   "verdict": "better",
+   "note": "before photo is missing"
+  },
+  "group_people": {
+   "verdict": "same",
+   "note": ""
+  },
+  "sports_action": {
+   "verdict": "same",
+   "note": ""
+  },
+  "night_skyline": {
+   "verdict": "worse",
+   "note": ""
+  },
+  "oil_painting": {
+   "verdict": "better",
+   "note": ""
+  },
+  "pixel_art_sprite": {
+   "verdict": "same",
+   "note": ""
+  },
+  "low_poly": {
+   "verdict": "same",
+   "note": ""
+  },
+  "arabic_calligraphy": {
+   "verdict": "better",
+   "note": ""
+  },
+  "qr_code": {
+   "verdict": "same",
+   "note": ""
+  },
+  "barcode": {
+   "verdict": "same",
+   "note": ""
+  },
+  "heraldic_crest": {
+   "verdict": "same",
+   "note": ""
+  },
+  "flat_emoji_icon": {
+   "verdict": "same",
+   "note": ""
+  },
+  "silhouette_logo": {
+   "verdict": "same",
+   "note": ""
+  },
+  "distressed_grunge": {
+   "verdict": "same",
+   "note": ""
+  },
+  "halftone_dots": {
+   "verdict": "same",
+   "note": ""
+  },
+  "neon_outline_sign": {
+   "verdict": "same",
+   "note": ""
+  },
+  "duotone_poster": {
+   "verdict": "worse",
+   "note": ""
+  },
+  "isometric_icon": {
+   "verdict": "same",
+   "note": ""
+  },
+  "comic_halftone": {
+   "verdict": "worse",
+   "note": "no photo in after"
+  },
+  "devanagari_logo": {
+   "verdict": "same",
+   "note": ""
+  },
+  "kanji_seal": {
+   "verdict": "same",
+   "note": ""
+  },
+  "vintage_engraved_badge": {
+   "verdict": "same",
+   "note": ""
+  },
+  "gradient_mascot": {
+   "verdict": "same",
+   "note": ""
+  },
+  "outline_lineart_logo": {
+   "verdict": "worse",
+   "note": "no after photo"
+  },
+  "kanji_brush": {
+   "verdict": "worse",
+   "note": ""
+  },
+  "chalkboard_lettering": {
+   "verdict": "worse",
+   "note": "bad photo comparison, don't use this one anymore"
+  }
+ }
+}

@@ -598,10 +598,20 @@ PRE_FLIP["keep_dark_thin_strokes"] = False
 # makes it, moves no pin that spreads this dict; `tests/engine_2026_10_27.json`
 # carries it False too.
 PRE_FLIP["dark_ink_refuse_strays"] = False
-# `dark_ink_bean` (built OFF 2026-10-28, Kent on the Pooh pot: "No holes +
-# bean (Recommended)"; not flipped): a dark read sews as a bean along its
-# skeleton, after its ground, which sews through under it. Pinned now for the
-# same reason; `tests/engine_2026_10_27.json` carries it False too.
+# `thread_match_excess_gradient` (built OFF 2026-10-29, MASTER_SCOPE defect
+# 28 part 1; not flipped, and against Kent's 2026-09-10 raw-yardstick ruling):
+# the gradient lane's THREAD_MATCH_POOR judged on excess over the loaded
+# spools. A grading change, so no plan md5 moves either way; pinned here so a
+# flip moves no grade a test spreading this dict reads.
+# `tests/engine_2026_10_27.json` carries it False too.
+PRE_FLIP["thread_match_excess_gradient"] = False
+# `dark_ink_bean` joined the flipped set 2026-10-29 (built OFF 2026-10-28,
+# Kent on the Pooh pot: "No holes + bean (Recommended)"; flipped "Flip ON
+# (Recommended)" after #1181). Gradient class only, through the dark reads: a
+# pen line sews as a bean along its skeleton and its ground sews through
+# under it (owl trims 147 -> 113), so an arm measured before that day on a
+# gradient fixture with dark reads was measured with the hole-and-satin
+# construction. `tests/engine_2026_10_27.json` carries it False too.
 PRE_FLIP["dark_ink_bean"] = False
 # `border_by_size_fabric_edges` joined the flipped set 2026-10-28 (Kent's
 # "Flip ON (Recommended)" after the 21-logo corpus check). ON, a
@@ -611,6 +621,14 @@ PRE_FLIP["dark_ink_bean"] = False
 # pairs are byte-identical either way. `tests/engine_2026_10_27.json` carries
 # it False.
 PRE_FLIP["border_by_size_fabric_edges"] = False
+# `fill_bridge_cut_exposed` and `fill_seam_order` joined the flipped set
+# 2026-10-30 (Kent's "Flip both (Recommended)" after the 17-logo + 16-pair
+# check). ON, a fill's sections sew as one continuous tatami and any bridge
+# that shows on finished fill (a satin rim's lead-in included) is cut, so an
+# arm measured before that day has section ridges, shade flips and travel
+# lines on its fills. `tests/engine_2026_10_27.json` carries both False.
+PRE_FLIP["fill_bridge_cut_exposed"] = False
+PRE_FLIP["fill_seam_order"] = False
 # `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
 # renders of his Instagram icon, drone, Bridge Bar and the repro), for the
 # reason every entry above gives. ON, a gradient-lane region's edge follows
@@ -717,8 +735,15 @@ FLIP_2026_10_23 = {
     # 10-23 flips" on a gradient fixture (the owl, Bridge Bar, drone, Fremont)
     # was measured without the carved strokes, so it pins this off too.
     "keep_dark_thin_strokes": False,
+    # ...and the edge cap's "none" default (Kent 2026-10-29, #1192): that
+    # engine sewed the bean cap by default, which `bean_only_lines` OFF above
+    # lets through again.
+    "edge_cap": "bean",
 }
 PRE_FLIP.update(FLIP_2026_10_23)
+# PRE_FLIP keeps the cap OFF (its own 2026-09-11 entry above): the update just
+# laid FLIP_2026_10_23's "bean" over it.
+PRE_FLIP["edge_cap"] = "none"
 # Spoked detail marks (Kent's flip 2026-10-16, "ON, tightened"): a small
 # enclosed detail of another colour with four or more tips sews as a spoked
 # mark on top of its host (Fremont's Wisconsin star). False is the pre-flip
@@ -812,6 +837,9 @@ PRE_FLIP["border_from_outline_line_art_guard"] = False
 # tests ABOUT them are `tests/test_small_text_bays.py`,
 # `tests/test_sew_enclosed_white.py`, `tests/test_small_text_grow_away.py`
 # and `tests/test_script_strokes.py`.
+# Kent's 2026-10-30 flip: the fill-section order and the exposed-bridge cut, for
+# a pin taken before that day that spreads a dated dict rather than PRE_FLIP.
+FLIP_2026_10_30 = {"fill_bridge_cut_exposed": False, "fill_seam_order": False}
 FLIP_2026_10_26 = {"small_text_bay_mouth": False, "sew_enclosed_white": False,
                    "small_text_reset_grow_away": False, "script_strokes": False}
 PRE_FLIP.update(FLIP_2026_10_26)

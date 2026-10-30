@@ -75,9 +75,11 @@ BOTH = [region(LEFT, "L", 3, 0), region(RIGHT, "R", 5, 1)]
 
 def plan_for(regions: list[Region], fabric=FAB, **cfg_kw):
     # `bean_only_lines` (ON since Kent's 2026-10-27 flip) sews no bean cap at
-    # all; this file prices the cap itself, on the engine it was built on
+    # all; this file prices the cap itself, on the engine it was built on --
+    # which also had "bean" as the default (it is "none" since 2026-10-29)
     from .conftest import PRE_FLIP
     cfg_kw.setdefault("bean_only_lines", PRE_FLIP["bean_only_lines"])
+    cfg_kw.setdefault("edge_cap", "bean")
     c = PipelineConfig(**cfg_kw)
     planned, _ = resolve_overlaps(regions, fabric, c)
     blocks, warnings = sequence(planned, fabric, c)
@@ -125,18 +127,40 @@ def art_blocks(plan):
 
 # --- the default: nothing happens -------------------------------------------
 
-def test_the_default_is_bean():
-    """Kent's flip, 2026-09-11 — "gate it, then flip", after item 14 measured
-    5.9-100.0% of the sewn silhouette carrying no linear stitching at all
-    (median 76.7%) and the gate brought the bill down to +5.9-26.3%.
-
-    Bean rather than satin because it is cheaper in stitches on five of six
-    fixtures and closes the two worst-open designs at least as well; the STYLE
-    is still a sew-out's call (gate 1), and this line is where to change it.
-    `config.py`'s own comment carries the table.
+def test_the_default_is_none():
+    """Kent's ruling 2026-10-29 ("'none' default (Recommended)"), on
+    docs/edge-cap-remeasure-2026-10-29.md. It was "bean" from 2026-09-11
+    ("gate it, then flip"), but `bean_only_lines` (ON 2026-10-27) turned the
+    bean style into no cap, so the field named a cap the engine never sewed.
+    Cap off, the sewn silhouette now reads 0.0-4.0% bare on the six fixtures
+    that read 5.9-100.0% on 09-11. `config.py`'s own comment carries the
+    table, and `test_the_none_default_sews_what_bean_sewed` below pins that
+    no plan moved.
     """
-    assert PipelineConfig().edge_cap == "bean"
-    assert "none" in EDGE_CAP_STYLES, "turning it off must stay reachable"
+    assert PipelineConfig().edge_cap == "none"
+    assert {"bean", "satin"} <= set(EDGE_CAP_STYLES), "the styles must stay reachable"
+
+
+def test_the_none_default_sews_what_bean_sewed():
+    """The 2026-10-29 default moved no stitch: on the shipped engine
+    (`bean_only_lines` ON) the plan is the one "bean" made, run for run and
+    point for point. And the comparison has teeth: with `bean_only_lines`
+    OFF the same "bean" does cap, so it is the bean rule, not an empty
+    silhouette, that made the two equal. Real artwork, md5 over the DST, is
+    in the PR that flipped it (docs/edge-cap-remeasure-2026-10-29.md)."""
+    def build(**kw):
+        c = PipelineConfig(**kw)
+        planned, _ = resolve_overlaps(BOTH, FAB, c)
+        blocks, warnings = sequence(planned, FAB, c)
+        return SimpleNamespace(blocks=blocks, warnings=warnings, cfg=c)
+
+    default, bean = build(), build(edge_cap="bean")
+    assert cap_block(default) is None and cap_block(bean) is None
+    assert ([(b.thread_index, [r.points for r in b.runs]) for b in default.blocks]
+            == [(b.thread_index, [r.points for r in b.runs]) for b in bean.blocks])
+    assert ([w["code"] for w in default.warnings]
+            == [w["code"] for w in bean.warnings])
+    assert cap_block(build(edge_cap="bean", bean_only_lines=False)) is not None
 
 
 def test_turning_it_off_is_byte_identical_to_the_flag_not_existing():
@@ -188,9 +212,13 @@ def test_satin_caps_the_silhouette():
 def test_satin_costs_more_thread_than_bean():
     """The artifact's own measured ordering (bean +12.6%, satin +15.3% on
     the icon): a column is heavier than three traced passes. Pins the two
-    styles as genuinely different tiers, not one emitter behind two names."""
-    bean = cap_stitches(plan_for(BOTH, edge_cap="bean"))
-    satin = cap_stitches(plan_for(BOTH, edge_cap="satin"))
+    styles as genuinely different tiers, not one emitter behind two names.
+    Priced with `border_by_size` off: ON, the squares' own rings already cover
+    almost the whole edge, and the few millimetres left to cap (bean 42,
+    satin 38 once the satin cap stopped sewing its arc-to-arc bridges) price
+    nothing about the tiers."""
+    bean = cap_stitches(plan_for(BOTH, edge_cap="bean", border_by_size=False))
+    satin = cap_stitches(plan_for(BOTH, edge_cap="satin", border_by_size=False))
     assert satin > bean
 
 
@@ -368,6 +396,25 @@ def test_silhouette_cap_reports_the_style_that_ran():
         assert report["style"] == style
         assert report["empty"] is False
         assert report["loops"] >= 1
+
+
+def test_the_satin_cap_lifts_between_arcs_instead_of_sewing_across_the_design():
+    # Kent's Instagram icon, 2026-10-29: once the gate left two far-apart arcs,
+    # `border_runs`' arc-to-arc bridge (a TRAVEL routed through the host) sewed
+    # a needle-down line across the finished fill. The cap sews last, so a
+    # bridge is never hidden: the next arc lifts into place instead.
+    poly = bar(40, 40)
+    from shapely.geometry import box
+    # the left and right sides already carry linear stitching: top and bottom
+    # are the only open stretches, 40 mm apart
+    omit = box(-25, -18, -18, 18).union(box(18, -18, 25, 18))
+    runs, report = silhouette_cap(poly, "S", style="satin", entry=None,
+                                  trim_at_mm=6.0, omit=omit)
+    assert len([r for r in runs if r.kind == "border"]) >= 2
+    assert not [r for r in runs if r.kind == "travel"], "a bridge was sewn across the design"
+    later = [r for r in runs if r.kind == "border"][1:]
+    assert all(r.jump and r.trim for r in later)
+    assert report["jumps"] >= len(later)
 
 
 def test_silhouette_cap_is_inert_on_none_and_on_no_geometry():

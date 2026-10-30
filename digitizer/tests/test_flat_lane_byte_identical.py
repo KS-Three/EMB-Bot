@@ -310,6 +310,17 @@ such seam and is byte-identical. The pre-change tree (`origin/main` at
 Windows machine before the capture (`tools/recapture_flat_lane_key.py
 --pre-change-tree`). `photo/enthusiast_logo.png` stays un-re-pinned for the
 standing platform reason.
+
+**Exception TAKEN 2026-10-30, `fill_seam_order` + `fill_bridge_cut_exposed` ON
+(Kent 2026-10-30, "Flip both (Recommended)"):** the `logo_whitebg.png` and
+`logo_alpha.png` entries were re-captured after a fill's sections started sewing
+as one continuous tatami and every bridge showing on finished fill started being
+cut: whitebg 5480 → 5513, alpha 6167 → 6188 stitch coords; region ids, areas
+and warnings unmoved (stage-6/7 flags). `ribbon_curve.png` is byte-identical.
+The pre-change tree (`origin/main` at 0f996dd8, `git archive`) reproduced both
+old entries on this Windows machine before the capture
+(`tools/recapture_flat_lane_key.py --pre-change-tree`).
+`photo/enthusiast_logo.png` stays un-re-pinned for the standing platform reason.
 """
 
 from __future__ import annotations

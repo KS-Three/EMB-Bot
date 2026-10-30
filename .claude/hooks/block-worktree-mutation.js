@@ -43,6 +43,20 @@
 //           cwd that neither climbs (`..`) nor names a lane: the only way
 //           that reaches a lane is a cwd that is exactly `.claude/worktrees`.
 //
+// LANDED LANES — Kent 2026-10-30 ("update the .md file so you can delete those
+// yourself"): `git worktree remove <lane>` WITHOUT -f/--force is allowed when
+// the lane has nothing to lose, read from git on disk (read-only):
+//   - the command is not running inside that lane;
+//   - `git status --porcelain --ignored` shows no tracked change and no
+//     untracked file, and no gitignored `scratch_*` / `pro_renders` (CLAUDE.md
+//     footgun 5 — gitignored there means kept out of the repo, not disposable);
+//   - its HEAD is on an origin branch (`git branch -r --contains HEAD`), so
+//     no commit is local-only. Stale remote refs fail closed: fetch first.
+// The branch survives `git worktree remove`, and git itself refuses a dirty or
+// locked tree without --force. What the hook cannot see — another session
+// running in that lane — stays the session's check (~/.claude/CLAUDE.md
+// "Session cleanup"). Anything else naming a lane root stays denied.
+//
 // OWN_LANE — Kent's ruling 2026-10-04 (PR #629): what to do with a target that
 // sits INSIDE a lane when the command is running inside that same lane
 // (payload cwd or a `cd` earlier in the command).
@@ -57,6 +71,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const OWN_LANE = process.env.EMB_WORKTREE_GUARD_OWN_LANE || 'allow';
 
@@ -811,6 +826,31 @@ function evalCommand(words, state, findings, dialect, depth) {
   }
 }
 
+// LANDED LANES (header): null when the lane at `abs` has nothing to lose,
+// else the reason it does. Read-only git; any failure answers "keep it".
+const KEEP_IGNORED = /^"?(scratch_[^/"]*|pro_renders)(\/|"|$)/i;
+function laneHoldsWork(abs, state) {
+  if (!abs || /[*?[\]]/.test(abs)) return 'the target is a glob';
+  const cwdLoc = state.cwd ? locate(state.cwd) : null;
+  if (cwdLoc && cwdLoc.depth >= 1 && sameLane(cwdLoc.laneRoot, abs)) return 'this command runs inside that lane';
+  const git = (...args) => {
+    const r = spawnSync('git', ['-C', fsPath(abs), '--no-optional-locks', ...args], { encoding: 'utf8', timeout: 20000, windowsHide: true });
+    return r.status === 0 ? r.stdout : null;
+  };
+  const top = git('rev-parse', '--show-toplevel');
+  if (top === null || !sameLane(normalizePath(top.trim()), abs)) return 'git cannot read it as a worktree';
+  const status = git('status', '--porcelain', '--ignored');
+  if (status === null) return '`git status` failed there';
+  const lines = status.split('\n').filter(Boolean);
+  const dirty = lines.filter((l) => !l.startsWith('!!'));
+  if (dirty.length) return `it has ${dirty.length} uncommitted or untracked path(s) (${dirty[0].slice(3)}${dirty.length > 1 ? ', …' : ''})`;
+  const kept = lines.find((l) => l.startsWith('!!') && KEEP_IGNORED.test(l.slice(3)));
+  if (kept) return `it holds gitignored ${kept.slice(3)}, which is not disposable (CLAUDE.md footgun 5)`;
+  const remote = git('branch', '-r', '--contains', 'HEAD');
+  if (remote === null || !remote.trim()) return 'its HEAD is on no origin branch, so a commit would be local-only (push it, or `git fetch` if the refs are stale)';
+  return null;
+}
+
 function evalGit(args, state, findings, dialect) {
   let base = null;
   let k = 0;
@@ -833,7 +873,17 @@ function evalGit(args, state, findings, dialect) {
     const op = rest[0] ? rest[0].raw : '';
     const ops = rest.slice(1);
     if (op === 'remove') {
-      for (const t of ops) if (!t.raw.startsWith('-')) judgeTarget(t, 'lane', scoped, 'git worktree remove', findings);
+      const force = ops.some((t) => t.raw === '--force' || (/^-[a-z]*f/i.test(t.raw) && !t.raw.startsWith('--')));
+      for (const t of ops) {
+        if (t.raw.startsWith('-')) continue;
+        const at = findings.length;
+        judgeTarget(t, 'lane', scoped, 'git worktree remove', findings);
+        const f = findings[at];
+        if (!f || !f.deny || f.rule !== 'lane-root') continue;
+        const why = force ? 'it is forced (-f/--force), which discards what git would refuse to lose' : laneHoldsWork(f.resolved, scoped);
+        if (why) f.why += ` — removable only when it has nothing to lose, and ${why}`;
+        else Object.assign(f, { deny: false, rule: 'lane-landed', why: null });
+      }
     } else if (op === 'move') {
       const pos = ops.filter((t) => !t.raw.startsWith('-'));
       if (pos[0]) judgeTarget(pos[0], 'lane', scoped, 'git worktree move', findings);
@@ -963,8 +1013,9 @@ function denyReason(denied) {
     'Blocked: this would delete or move something under .claude/worktrees/, which holds ' +
     'live uncommitted work from parallel feature lanes (see CLAUDE.md footgun 2).\n' +
     lines.join('\n') + (denied.length > 4 ? `\n  - … and ${denied.length - 4} more` : '') +
-    '\nRun `git worktree list` to see the lanes. A lane root is never deletable from a tool call — ' +
-    'if removal is really intended, ask Kent to do it directly. (Guard: .claude/hooks/block-worktree-mutation.js)'
+    '\nRun `git worktree list` to see the lanes. A lane root is deletable from a tool call only as ' +
+    '`git worktree remove <lane>` without --force, from outside it, once it is clean, holds no scratch_*/pro_renders ' +
+    'and its HEAD is on an origin branch; otherwise ask Kent. (Guard: .claude/hooks/block-worktree-mutation.js)'
   );
 }
 

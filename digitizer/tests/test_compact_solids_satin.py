@@ -56,7 +56,9 @@ def test_flag_default_is_on_since_2026_10_23():
 def test_off_a_3mm_hexagon_fills_and_the_edge_cap_rings_it():
     """The defect as it ships: tatami rows, then a bean cap round the edge."""
     # the bean cap the defect ends in is the engine before `bean_only_lines` (ON 2026-10-27)
-    runs, _w = _plan(_hexagon(3.4), compact_solids_satin=False, bean_only_lines=False)
+    # and before the "none" default (2026-10-29)
+    runs, _w = _plan(_hexagon(3.4), compact_solids_satin=False, bean_only_lines=False,
+                     edge_cap="bean")
     assert stitches.FILL in _kinds(runs)
     assert stitches.SATIN not in _kinds(runs)
     cap = [r for r in runs if r.shape_id == "__edge_cap__"]

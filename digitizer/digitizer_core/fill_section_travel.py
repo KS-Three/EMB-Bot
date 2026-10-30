@@ -54,6 +54,21 @@ answer on Fremont is a field without sections (`silhouette_underfill`).
 Chaining territory: ROADMAP gate 3 applies, the flag stays OFF. Read only
 inside `plan_stitches` (`enabled`), so a direct `stitch_shape` call outside
 it is the engine as it was.
+
+**`cfg.extra["fill_section_cuts_first"]` (built OFF 2026-10-29, defects 4/6).**
+Re-measured on main 44ecf1cb over the 17 paired jobs, the pro still cuts
+between two sections of one fill 0 times and we cut 32, and the planner above
+FINDS the cheaper orders: Becker small's field 4 -> 3 cuts with its exposed
+travel halved (22.6 -> 11.4 stitches), MFab's field 8 -> 6 at equal exposure.
+`_score` refuses both, because it bills every travel stitch -- including the
+travel under rows still to come, which is what the professional does and
+which the fill sews over. This switch turns `fill_section_travel` on and
+prices the planner's orders with that hidden travel free
+(`stage6_fill._score_hidden_free`): cuts and exposed travel only, the same
+two rates. The gate is unchanged -- a plan is kept only if it cuts no more
+and lays no more thread on finished fill than the incoming order -- and
+every hidden route is still inside `travel_path`'s length budget.
+`docs/trim-defects-4-6-2026-10-29.md` has the table.
 """
 from __future__ import annotations
 
@@ -68,8 +83,11 @@ from shapely.geometry import LineString, Point, box
 from . import machine
 
 KEY = "fill_section_travel"
+#: Implies KEY; the planner's orders are priced with hidden travel free.
+KEY_CUTS_FIRST = "fill_section_cuts_first"
 
 _ON: contextvars.ContextVar[bool] = contextvars.ContextVar(KEY, default=False)
+_CUTS_FIRST: contextvars.ContextVar[bool] = contextvars.ContextVar(KEY_CUTS_FIRST, default=False)
 
 # The raster a route is PROPOSED on. Every leg is re-tested exactly, so a
 # coarser grid can lose a route but never pass a bad one (the same contract
@@ -107,16 +125,25 @@ def reset() -> None:
 
 @contextlib.contextmanager
 def enabled(cfg):
-    """Turn the flag on for the stitching inside the block when `cfg` asks."""
-    token = _ON.set(bool((getattr(cfg, "extra", None) or {}).get(KEY)))
+    """Turn the flag on for the stitching inside the block when `cfg` asks
+    (`KEY_CUTS_FIRST` turns it on too)."""
+    extra = getattr(cfg, "extra", None) or {}
+    cuts_first = bool(extra.get(KEY_CUTS_FIRST))
+    token = _ON.set(bool(extra.get(KEY)) or cuts_first)
+    token_cf = _CUTS_FIRST.set(cuts_first)
     try:
         yield
     finally:
+        _CUTS_FIRST.reset(token_cf)
         _ON.reset(token)
 
 
 def active() -> bool:
     return _ON.get()
+
+
+def cuts_first() -> bool:
+    return _CUTS_FIRST.get()
 
 
 # ----------------------------------------------------------------- raster ----

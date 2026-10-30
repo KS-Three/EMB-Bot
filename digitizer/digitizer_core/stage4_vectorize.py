@@ -15,6 +15,8 @@ is therefore sufficient; nested-shell handling is not needed at this depth.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import cv2
 import math
 import numpy as np
@@ -1108,7 +1110,9 @@ def revalidate_threads(regions: list[Region], p: Prep,
 
 
 def enforce_color_cap(regions: list[Region], chart, max_colors: int, *,
-                      count_enclosed: bool = False) -> list[dict]:
+                      count_enclosed: bool = False,
+                      protected: Iterable[int] = (),
+                      stitched_only: bool = False) -> list[dict]:
     """Make "Colors (max N)" true on every lane, not just the flat one.
 
     `stage2_quantize` already caps hard: past `cfg.max_colors` it keeps the
@@ -1165,6 +1169,18 @@ def enforce_color_cap(regions: list[Region], chart, max_colors: int, *,
     plain nearest, as before. Every other region keeps the plain nearest,
     and a design with no dark-ink regions is byte for byte the cap it
     always was.
+
+    **The second pass** (`cfg.color_cap_sewn`, `finish_generation`, after the
+    sew-white recolour and the garment rule) uses the two keywords below;
+    both default to the stage-4 behaviour above. `stitched_only` ranks by
+    `meta["stitched"]`, the verdict every region carries by then, instead of
+    the enclosed heuristic; a region that will not sew buys no slot and is
+    still remapped. `protected` are the customer's STATED colours — review
+    recolours, the thread "Sew white areas" sews in — kept whatever their
+    area and counted against the budget, so the artwork competes for the
+    slots they leave. Protected threads alone at or over the budget keep
+    only themselves: the stated colours ARE the budget then, and everything
+    else lands on its nearest one of them.
     """
     if max_colors < 1 or not regions:
         return []
@@ -1172,17 +1188,24 @@ def enforce_color_cap(regions: list[Region], chart, max_colors: int, *,
     if len(present) <= max_colors:
         return []
 
+    def _sews(r: Region) -> bool:
+        if stitched_only:
+            return bool(r.meta.get("stitched", True))
+        return not (r.meta.get("enclosed_background", False) and not (
+            count_enclosed and not r.meta.get("enclosed_colour_unknown", False)))
+
     sewn_area: dict[int, float] = {}
     for r in regions:
-        if r.meta.get("enclosed_background", False) and not (
-                count_enclosed and not r.meta.get("enclosed_colour_unknown", False)):
+        if not _sews(r):
             continue
         sewn_area[r.thread_index] = (sewn_area.get(r.thread_index, 0.0)
                                      + float(r.area_mm2 or 0.0))
     # Ties break on the thread index so the answer does not depend on set
     # iteration order -- the same rule `_same_hole_findings` settled on.
-    ranked = sorted(present, key=lambda t: (-sewn_area.get(t, 0.0), t))
-    kept, dropped = ranked[:max_colors], ranked[max_colors:]
+    pinned = sorted(t for t in set(protected) if t in present)
+    ranked = pinned + sorted((t for t in present if t not in pinned),
+                             key=lambda t: (-sewn_area.get(t, 0.0), t))
+    kept, dropped = ranked[:max(max_colors, len(pinned))], ranked[max(max_colors, len(pinned)):]
 
     kept_lab = np.array([chart.lab[t] for t in kept])
     remap: dict[int, int] = {}

@@ -15,7 +15,7 @@
 // cases are what the guard exists to stop. tools/replay-worktree-guard.mjs
 // re-measures both over real transcripts.
 const assert = require("node:assert");
-const { test, before, after } = require("node:test");
+const { test, describe, before, after } = require("node:test");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -258,4 +258,91 @@ test("a cwd that reaches the lane through a symlink is still that lane", (t) => 
   if (!link) return t.skip("this filesystem refused the symlink");
   assert.strictEqual(run(payload("Bash", link, `rm -rf "${laneA}/sub/dir"`)).deny, false);
   assert.ok(run(payload("Bash", link, `rm -rf "${laneB}"`)).deny);
+});
+
+// ---- LANDED LANES (Kent 2026-10-30): a real repo, a bare origin, real lanes --
+// `git worktree remove` without --force passes only for a lane with nothing to
+// lose: clean, no gitignored scratch_*/pro_renders, HEAD on an origin branch.
+describe("git worktree remove of a lane that has nothing to lose", () => {
+  let gtmp;
+  let grepo;
+  const lanes = {};
+  const sh = (cwd, ...args) => {
+    const r = spawnSync("git", args, {
+      cwd, encoding: "utf8",
+      env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" },
+    });
+    assert.strictEqual(r.status, 0, `git ${args.join(" ")}: ${r.stderr}`);
+  };
+  const lane = (name, push) => {
+    const p = path.join(grepo, ".claude", "worktrees", name);
+    sh(grepo, "worktree", "add", p, "-b", "claude/" + name);
+    fs.writeFileSync(path.join(p, name + ".txt"), name);
+    sh(p, "add", "-A");
+    sh(p, "commit", "-qm", name);
+    if (push) sh(p, "push", "-q", "origin", "claude/" + name);
+    lanes[name] = p.replace(/\\/g, "/");
+    return p;
+  };
+  const rm = (cwd, target, flags) => run(payload("Bash", cwd, `git worktree remove ${flags ? flags + " " : ""}"${target}"`));
+  before(() => {
+    gtmp = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "emb-guard-git-")));
+    const origin = path.join(gtmp, "origin.git");
+    grepo = path.join(gtmp, "EMB-Bot");
+    sh(gtmp, "init", "-q", "--bare", "-b", "main", origin);
+    sh(gtmp, "init", "-q", "-b", "main", grepo);
+    fs.writeFileSync(path.join(grepo, ".gitignore"), "scratch_*/\npro_renders/\nnode_modules/\n");
+    sh(grepo, "add", "-A");
+    sh(grepo, "commit", "-qm", "init");
+    sh(grepo, "remote", "add", "origin", origin);
+    sh(grepo, "push", "-q", "origin", "main");
+    lane("landed", true);
+    lane("local-only", false);
+    fs.writeFileSync(path.join(lane("dirty", true), "loose.txt"), "x");
+    fs.mkdirSync(path.join(lane("scratch", true), "scratch_kent"), { recursive: true });
+    fs.writeFileSync(path.join(lanes.scratch, "scratch_kent", "commission.pes"), "x");
+    fs.mkdirSync(path.join(lane("modules", true), "node_modules", "x"), { recursive: true });
+    fs.writeFileSync(path.join(lanes.modules, "node_modules", "x", "i.js"), "x");
+  });
+  after(() => {
+    if (gtmp) fs.rmSync(gtmp, { recursive: true, force: true });
+  });
+
+  test("a clean lane pushed to origin is removable from the primary", () => {
+    assert.strictEqual(rm(grepo, lanes.landed).deny, false);
+  });
+  test("disposable gitignored content (node_modules) does not hold a lane", () => {
+    assert.strictEqual(rm(grepo, lanes.modules).deny, false);
+  });
+  test("the same lane forced is still denied", () => {
+    for (const f of ["--force", "-f", "-ff"]) {
+      const r = rm(grepo, lanes.landed, f);
+      assert.ok(r.deny, f);
+      assert.ok(r.reason.includes("forced"), r.reason);
+    }
+  });
+  test("a commit on no origin branch holds the lane", () => {
+    const r = rm(grepo, lanes["local-only"]);
+    assert.ok(r.deny);
+    assert.ok(r.reason.includes("no origin branch"), r.reason);
+  });
+  test("an untracked file holds the lane", () => {
+    const r = rm(grepo, lanes.dirty);
+    assert.ok(r.deny);
+    assert.ok(r.reason.includes("loose.txt"), r.reason);
+  });
+  test("gitignored scratch_* holds the lane (footgun 5)", () => {
+    const r = rm(grepo, lanes.scratch);
+    assert.ok(r.deny);
+    assert.ok(r.reason.includes("scratch_kent"), r.reason);
+  });
+  test("run from inside that lane is denied", () => {
+    const r = rm(lanes.landed, lanes.landed);
+    assert.ok(r.deny);
+    assert.ok(r.reason.includes("inside that lane"), r.reason);
+  });
+  test("a lane that does not exist on disk is denied, and rm -rf of a landed lane still is", () => {
+    assert.ok(rm(grepo, grepo.replace(/\\/g, "/") + "/.claude/worktrees/nope").deny);
+    assert.ok(run(payload("Bash", grepo, `rm -rf "${lanes.landed}"`)).deny);
+  });
 });

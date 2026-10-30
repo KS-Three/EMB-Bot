@@ -33,20 +33,34 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 from digitizer_core.threads import chart_for
 
-# The seven F-grade fixtures of the 2026-09-06 decomposition, all gradient.
+# The seven fixtures graded F with a THREAD_MATCH_POOR block, all gradient,
+# re-measured 2026-10-29 on 44ecf1cb (`docs/thread-match-gradient-excess-
+# 2026-10-29.md`). The 2026-09-06 seven differed: `logo_gaulke_roofing` is now
+# B 76 with no thread finding and `region_blobs` routes photo, while
+# `gradient_ramp_radial` and `logo_hotel_fremont` joined.
 F_WALL = [
-    "photo/logo_gaulke_roofing.png", "photo/drone_render.png",
-    "photo/screenshot_phone_ui_golke.jpg", "photo/logo_golden_tee.jpg",
-    "photo/logo_bridge_bar.jpg", "photo/region_blobs.png",
-    "photo/summit_badge.png",
+    "photo/drone_render.png", "photo/screenshot_phone_ui_golke.jpg",
+    "photo/logo_golden_tee.jpg", "photo/logo_bridge_bar.jpg",
+    "photo/summit_badge.png", "photo/gradient_ramp_radial.png",
+    "photo/logo_hotel_fremont.webp",
 ]
+
+
+def graded_view(art, cfg, result, plan):
+    """The re-read `run_preflight` hands the thread grader: on the traced
+    class's grid, through `_two_tone_view`. Until 2026-10-29 this tool graded
+    a plain `prep(art, cfg)`, so on gaulke it reported `0015 White` blocking at
+    33.9 dE00 on anti-alias grey that the shipped check stopped judging on
+    2026-10-08. That was a block the scorecard did not carry."""
+    p = pf.prep(art, cfg, design_class=getattr(result, "design_class", None))
+    return pf._two_tone_view(p, plan, cfg)
 
 
 def report(fixture: str, testdata) -> tuple[int, int]:
     art = testdata / fixture
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
     result, plan = digitize(art, cfg)
-    p = pf.prep(art, cfg)
+    p = graded_view(art, cfg, result, plan)
     rows = pf._region_color_errors(p, result, plan, cfg)
     chart = chart_for(cfg)
 
@@ -145,7 +159,7 @@ def yardstick(fixture: str, testdata) -> tuple[int, int]:
     art = testdata / fixture
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
     result, plan = digitize(art, cfg)
-    p = pf.prep(art, cfg)
+    p = graded_view(art, cfg, result, plan)
     rows = pf._region_color_errors(p, result, plan, cfg)
     chart = chart_for(cfg)
 

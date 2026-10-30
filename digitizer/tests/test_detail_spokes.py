@@ -28,7 +28,7 @@ import pytest
 from shapely.geometry import Point, Polygon
 
 from digitizer_core import PipelineConfig, digitize, machine
-from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
+from tests.conftest import FLIP_2026_10_23, FLIP_2026_10_30  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.detail_spokes import MIN_TIPS, TIP_DEPTH, find_tips, spoke_runs
 from digitizer_core.regions import Region
 from digitizer_core.stage3_segment import RegionMask, resolve_small_regions
@@ -472,7 +472,8 @@ def fremont_off():
     return ft.run_arm("main", 80.0, None, preflight=False,
                       overrides={"detail_spokes": False, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
                                  **WAVE3_2026_10_26_OFF,    # fine bars moves Fremont's separators
-                                 **RECIPE_2026_10_27})        # the recipe sews its ground under them
+                                 **RECIPE_2026_10_27,        # the recipe sews its ground under them
+                                 **FLIP_2026_10_30})
 
 
 @pytest.fixture(scope="module")
@@ -481,7 +482,8 @@ def fremont_on():
     return ft.run_arm("main", 80.0, None, preflight=False,
                       overrides={"detail_spokes": True, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
                                  **WAVE3_2026_10_26_OFF,
-                                 **RECIPE_2026_10_27})      # as the OFF arm: this prices the spokes
+                                 **RECIPE_2026_10_27,      # as the OFF arm: this prices the spokes
+                                 **FLIP_2026_10_30})
 
 
 def test_test_environment_caps_ipp_at_avx2():

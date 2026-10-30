@@ -395,6 +395,31 @@ class PipelineConfig:
     # lose their maroon edge at 6) and `COLOR_CAP_APPLIED` names them. False
     # is the pre-flip engine byte for byte.
     enforce_color_cap: bool = True
+    # The cap above holds on the REGIONS at stage 4 and the SEWN design then
+    # loads more cones (photo-style census 2026-10-27, item 3; the readings in
+    # `docs/superpowers/specs/2026-10-29-colour-cap-sewn-design.md`). Two
+    # mechanisms, both after `enforce_color_cap` has run:
+    #   1. "Sew white areas" (`sew_enclosed_white`, `finish_generation`)
+    #      recolours the fields it sews to `sew_enclosed_rgb`'s thread, a cone
+    #      the cap never ranked: isometric_icon and watercolor on main sew 7
+    #      against the Studio's 6, the seventh White 0015.
+    #   2. The gradient lane's blend tier snaps every shade band to the whole
+    #      chart (`stage6_blend.blend_fill`, `design_shade_scheme`); the photo
+    #      lane's shade bind (`shade_palette_bind`) is gated on
+    #      `is_photographic`, so a gradient design never gets it. Forced to
+    #      the gradient lane, flower_macro sews 13 cones (7 strays of 9-57 mm
+    #      of thread, each a colour change), underwater_reef 9, night_skyline
+    #      8; Golden Tee at the Studio's request 9 against 6.
+    # ON: (a) a second `enforce_color_cap` pass over the FINAL regions, after
+    # the sew-white recolour and the garment rule, ranking by `stitched`, with
+    # the customer's stated colours protected (review recolours, the sew-white
+    # thread while it sews) and counted against the budget; (b) the blend
+    # tier's shade snap and the detail layer's cone are bound to the plan's
+    # regions' threads on EVERY class (the same masked argmin `_shade_layers`
+    # uses; the photo gate on `shade_palette_bind` is untouched). OFF is the
+    # engine as it stood, byte for byte. Built OFF 2026-10-29; the flip, and
+    # whether the ticked white counts against "Colors (max 6)", are Kent's.
+    color_cap_sewn: bool = False
     seed: int = 0                      # k-means RNG seed — fixed for determinism
     # How many k-means seeds stage 0 should sweep before reporting
     # `unique_color_mass`. 0 or 1 = today's single draw, and the classifier
@@ -1071,9 +1096,12 @@ class PipelineConfig:
     # ground through under it; the ground is no lettering. The reference
     # digitizer beans drawn lines (`bean_only_lines`); on the pot, the
     # ground's edge stitches round each letter hole were the starbursts.
-    # Layout, judged in the preview. OFF is the engine as it was, byte for
-    # byte.
-    dark_ink_bean: bool = False
+    # Layout, judged in the preview. **ON since 2026-10-29, Kent's flip
+    # after #1181 ("Flip ON (Recommended)")**. False is the engine before
+    # the flip, byte for byte; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_dark_ink_bean.py`; sheet: `docs/renders/dark-ink-bean-2026-10-28/`.
+    dark_ink_bean: bool = True
     # A letter's counter on a COLOURED ground stays a hole
     # (`stage3_segment.resolve_small_regions`). Measured 2026-10-02 on clean
     # 4 mm "BAR & RESTAURANT": on white the counters are background, never
@@ -4104,6 +4132,39 @@ class PipelineConfig:
     # 2026-09-19, "the exposed travel legs" and its two addenda;
     # `tests/test_fill_bridge_cut.py`.
     fill_bridge_cut: bool = True
+    # A bridge that shows on finished fill is ALWAYS cut (2026-10-29, built
+    # OFF). `fill_bridge_cut` above cuts a bridge only when `_score` prices it
+    # dearer than the cut, at 25 stitches a trim and 2x per exposed stitch, so
+    # a 9 mm line across a band's own finished rows (9.3 exposed ~ 11 < 25)
+    # stays sewn. Kent circled exactly those on the Instagram icon at 80 mm
+    # (2026-10-29): the gold vertical, the yellow line under the ring, the
+    # orange diagonal, the pink line left of the ring. ON, `_cut_is_cheaper`
+    # answers yes for any bridge whose exposure clears the tolerance and whose
+    # gap is over `trim_at_mm` (under it the lift is a jump, as before). The
+    # cost is trims. Layout (ruling 2026-10-22: judged in the preview). Off,
+    # byte-identical (tests/test_fill_bridge_cut_exposed.py).
+    # **ON since 2026-10-30, Kent's flip** ("Flip both (Recommended)", with
+    # `fill_seam_order`) after the 17-logo + 16-pair check: exposed travel
+    # down or flat on every logo (Instagram 53 -> 3 mm, emoji 34 -> 0),
+    # trims up on busy art (crest 130 -> 168, Drone 83 -> 93). False is the
+    # engine as it was; `tests/conftest.py` PRE_FLIP pins it False.
+    fill_bridge_cut_exposed: bool = True
+    # A fill's sections sewn as one continuous tatami (2026-10-29, built OFF;
+    # `stage6_fill._order_for_seams`). The top pink line Kent circled on the
+    # Instagram icon is no travel: it is the seam where a section sewn late
+    # ends on the edge row of a section sewn early, the one row in the band
+    # nothing covers. ON, every section of a fill progresses the same way
+    # across its rows and starts only once each section it shares an edge row
+    # with upstream is sewn, so across every seam the rows lie as they do
+    # inside a section. The cost is travel between sections, which the bridge
+    # rules route or cut as for any order. Layout (ruling 2026-10-22: judged
+    # in the preview). Off, byte-identical.
+    # **ON since 2026-10-30, Kent's flip** ("Flip both (Recommended)", with
+    # `fill_bridge_cut_exposed`) after the 17-logo + 16-pair check: section
+    # ridges gone on all 17, flips on all but 3 (Instagram's 5 left are its
+    # white under-fill), stitches +0-6%. False is the
+    # engine as it was; `tests/conftest.py` PRE_FLIP pins it False.
+    fill_seam_order: bool = True
 
     # The fill column-order scorer prices only what `emit` sews (2026-10-08,
     # built OFF). `_fill_paths` returns one-point "columns" that `emit`
@@ -4677,7 +4738,19 @@ class PipelineConfig:
     # The fragmentation inversion recorded above is GONE with the gate:
     # `drone_render` reads bean +6.4% against satin +6.9%, because the gate
     # removes the crumbs before either emitter's loop floor has to.
-    edge_cap: str = "bean"
+    #
+    # DEFAULT "none" SINCE 2026-10-29 — Kent's ruling ("'none' default
+    # (Recommended)") on docs/edge-cap-remeasure-2026-10-29.md. From
+    # 2026-10-27 `bean_only_lines` (ON) turned "bean" into no cap in
+    # `stage7_sequence`, so the shipped engine sewed none while this field
+    # and the Studio said "bean", and the Studio's readout blamed the
+    # design for being too small. The edge itself no longer needs it: cap
+    # off, 0.0-4.0% of the sewn silhouette carries no linear stitch on the
+    # six fixtures that read 5.9-100% on 09-11 (`silhouette_underfill_rim`
+    # and `border_by_size` close it). With `bean_only_lines` ON the plan is
+    # byte for byte what "bean" sewed; a site that turns `bean_only_lines`
+    # OFF to rebuild an older engine passes `edge_cap="bean"` with it.
+    edge_cap: str = "none"
     # Whether the cap sews each stretch of the edge in the thread of the shape
     # it stands against (Kent 2026-10-06: the bean outline on the Instagram
     # icon did not follow the colour beside it) rather than the whole ring in
@@ -5227,6 +5300,23 @@ class PipelineConfig:
     # other half of the pair with `revalidate_small_shapes` above. False is
     # the pre-flip engine byte for byte.
     resnap_mask_matches_grader: bool = True
+
+    # Score `THREAD_MATCH_POOR` on the GRADIENT lane the way the photo route
+    # has been scored since 2026-08-24: on EXCESS over the best spool the
+    # design already loads, not on raw distance (MASTER_SCOPE defect 28, part
+    # 1). A GRADING change only — `preflight._thread_match_findings` is the
+    # one reader, so no stitch moves either way (OFF/ON plan md5s are pinned
+    # equal across the scorecard matrix in `tests/test_thread_match_excess_
+    # gradient.py`). The flat lane keeps raw distance whatever this says.
+    #
+    # DEFAULT OFF, and against a standing ruling: Kent ruled 2026-09-10 that
+    # the gradient lane stays on raw distance, because a logo's palette can
+    # be changed and a photograph's cannot, so "already the closest cone this
+    # design loads" is a cone to buy, not a pass (yardstick-disagreements row
+    # 4). This exists so that call can be re-made on today's numbers rather
+    # than 09-06's; flipping it is his. The measured table is in
+    # `docs/thread-match-gradient-excess-2026-10-29.md`.
+    thread_match_excess_gradient: bool = False
 
     # Bind stage 4's thread re-snap to the selected palette on EVERY class,
     # not only the photo ones. `revalidate_threads`' argmin runs over the whole
