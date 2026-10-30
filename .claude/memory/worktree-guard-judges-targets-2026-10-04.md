@@ -36,6 +36,9 @@ globs — then denies only when a target is:
    stdin) AND the command text names `.claude/worktrees/`;
 6. `git worktree remove`/`move` of a lane; `git worktree add` with a missing
    or bare-unresolvable path from inside a lane ([[worktree-add-empty-var-wipes-cwd]]).
+   **Since 2026-10-30 (Kent) an unforced `git worktree remove` of a LANDED
+   lane passes**: clean, no gitignored `scratch_*`/`pro_renders`, HEAD on an
+   origin branch, run from outside it (`laneHoldsWork` in the hook).
 
 Verbs: rm rmdir rd del erase unlink Remove-Item ri; mv move Move-Item mi
 Rename-Item ren; `find -delete`/`-exec rm`; `xargs rm`; `bash -c`, `cmd /c`,
