@@ -1049,7 +1049,17 @@ def resolve_overlaps(
 
             # Extend under whatever sews later — the underlap that hides the seam.
             if overlap > 0 and later[L] is not None:
-                reach = poly.buffer(pull + overlap).intersection(later[L])
+                # `cfg.satin_seam_hold`: a satin on rails takes its pull in
+                # stage 6, which already runs it under the later colour, so
+                # the tongue owes only what the pull falls short of `overlap`.
+                # Counting the pull twice sewed the flag's third red 0.85 mm
+                # past its artwork, and the union left a hairline slit 55 mm
+                # into the stripe that forked its skeleton.
+                tongue = (max(0.0, overlap - pull)
+                          if on_rails and getattr(cfg, "satin_seam_hold", False)
+                          else pull + overlap)
+                reach = (poly.buffer(tongue).intersection(later[L])
+                         if tongue > 0 else Polygon())
                 if by_angle:
                     deep = deep_reach(r, poly, L)
                     if deep is not None:

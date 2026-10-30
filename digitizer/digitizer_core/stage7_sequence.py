@@ -57,6 +57,7 @@ from skimage.color import deltaE_ciede2000
 import shapely
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import nearest_points, polylabel, unary_union
+from shapely.prepared import prep
 
 from . import bean_rule, deadline, machine, stitches
 from .config import PipelineConfig
@@ -3010,6 +3011,21 @@ def sequence(
     if spoke_marks:
         planned = [p for p in planned if not p.region.meta.get("detail_spokes")]
 
+    # `cfg.satin_seam_hold`: the artwork already down when a satin sews, one
+    # prepared union per layer. Lettering gets none: it sews over its ground.
+    seam_by_layer: dict[int, object] = {}
+
+    def seam_ground(p: PlannedRegion):
+        if p.region.meta.get("text_candidate"):
+            return None
+        if p.layer not in seam_by_layer:
+            down = [o.region.polygon for o in planned if o.layer < p.layer]
+            ground = unary_union(down) if down else None
+            # The test reads 0.1 mm wide: a stripe's end cross sits past the
+            # neighbour's own traced cap by that much of raster lean.
+            seam_by_layer[p.layer] = (prep(ground.buffer(0.1)), ground) if down else None
+        return seam_by_layer[p.layer]
+
     # Chaining's tier-blindness fix (see `_link_cover`'s docstring): the
     # artwork polygon of every shape that will predictably sew as an outline
     # RUN, tagged with its layer's sew index so each block can subtract the
@@ -3654,6 +3670,8 @@ def sequence(
                     if on_rails else end_cutback,
                     rail_comp_mm=rail_comp_mm,
                     rail_comp_floor_mm=cfg.min_detail_mm,
+                    rail_held=seam_ground(p) if cfg.satin_seam_hold else None,
+                    cap_skew_inset=cfg.satin_cap_skew_inset,
                     use_shapefield=use_shapefield,
                     spacing_mm=satin_spacing_for(p),
                     angle_deg=satin_angle_deg,
