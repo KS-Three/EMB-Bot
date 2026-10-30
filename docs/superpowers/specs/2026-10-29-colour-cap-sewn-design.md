@@ -100,8 +100,30 @@ can lose its slot and the ticked areas sew in another thread — the tick's
 promise breaks silently. Not counted (today): 7 cones against a label that
 says 6. The options and their costs go to him with the readings in §4.
 
-## 4. Readings (filled as the captures land)
+## 4. Readings — fixtures and forced-gradient rows, OFF → ON
 
-See the PR body: per-row `colors_used` / cap / stitches / `fidelity_cc` OFF
-and ON for every row the flag touches, DST md5 identity on every row it does
-not, and the per-band dE00 the blend bind costs.
+`tools/cone_escape.py`, Studio request, cap 6; `blocks` = colour stops. The
+fold moves no stitch; the one-to-nine-stitch drift on five rows is the
+adjacent-same-thread merge joining a folded block to its neighbour (ties at
+the seam) and the second region pass regrouping a few shapes. Fidelity per
+corpus row (`fidelity_cc`, OFF and ON) is in the PR body's capture table.
+
+| fixture | class | colours OFF → ON | stops OFF → ON | stitches OFF → ON | what folded |
+|---|---|---|---|---|---|
+| isometric_icon | gradient | 7 → 6 | 9 → 8 | 11,056 → 11,056 | 1 artwork cone (3 shapes), White kept |
+| drone_render | gradient | 7 → 6 | 11 → 11 | 18,678 → 18,678 | 1 artwork cone (6 shapes), White kept |
+| watercolor | photo_scene | 7 → 6 | 7 → 7 | 18,745 → 18,750 | 1 artwork cone (22 small shapes), White kept |
+| logo_golden_tee | gradient | 9 → 6 | 12 → 10 | 12,003 → 11,999 | 3 bands, 28.8 mm in all |
+| summit_badge | gradient | 9 → 6 | 11 → 8 | 27,782 → 27,782 | 3 bands, 18.8 m in all |
+| gradient_ramp_linear | gradient | 5 → 5 | 5 → 5 | identical | nothing (under budget) |
+| repro_gradient_white_icon | gradient | 5 → 5 | 5 → 5 | identical | nothing (under budget) |
+| flower_macro (forced gradient) | gradient | 13 → 6 | 14 → 8 | 30,723 → 30,715 | 7 bands, 251 mm |
+| food_plate (forced gradient) | gradient | 8 → 6 | 14 → 12 | 33,551 → 33,553 | 2 bands, 508 mm |
+| night_skyline (forced gradient) | gradient | 8 → 6 | 11 → 9 | 13,247 → 13,256 | 2 bands, 11.6 m |
+| underwater_reef (forced gradient) | gradient | 9 → 6 | 13 → 10 | 28,454 → 28,452 | 3 bands, 214 mm |
+
+The cost of a fold is where the folded thread is substantial: summit_badge
+(18.8 m of band thread recoloured to kept cones) and night_skyline (11.6 m)
+lose shading steps; Golden Tee, flower_macro, food_plate and underwater_reef
+fold slivers that were each a colour change. Renders of both arms for
+summit_badge, Golden Tee and night_skyline accompany the flip question.
