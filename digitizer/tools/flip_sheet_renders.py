@@ -480,7 +480,7 @@ FLAGS: dict[str, dict] = {
     "seam_order_read": {
         "base": {"photo_prep_background_removal_timeout_s": 900, "fill_seam_order": False},
         "base_name": "seam_off",
-        "sets": {"photo_prep_background_removal_timeout_s": 900},
+        "sets": {"photo_prep_background_removal_timeout_s": 900, "fill_seam_order": True},
         "fixtures": ["becker_beanie", "precision_drone", "mfab_lc"],
         "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1198,
         "note": "The flip read backwards: OFF pins fill_seam_order False, ON is the shipped engine "
