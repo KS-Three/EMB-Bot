@@ -124,7 +124,7 @@ import numpy as np
 from shapely.geometry import Point, Polygon
 from skimage.color import deltaE_ciede2000
 
-from . import machine, stitches
+from . import deadline, machine, stitches
 from .config import PHOTO_CLASSES, PipelineConfig, work_grid_px_per_mm
 from .pipeline import PipelineResult, fabric_for
 from .stage0_classify import classify
@@ -3913,6 +3913,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     Returns {"score", "grade", "findings", "metrics"} — every value a plain
     Python scalar/list/dict, safe to hand straight to a JSON boundary.
     """
+    deadline.check("preflight")
     cfg = cfg or PipelineConfig()
 
     findings: list[dict] = []

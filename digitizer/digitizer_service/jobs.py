@@ -24,6 +24,8 @@ import threading
 import time
 import traceback
 
+from digitizer_core import deadline
+
 from .errors import customer_message, raw as raw_error
 import uuid
 from collections import OrderedDict
@@ -41,10 +43,15 @@ ERROR = "error"
 # process meant to run all day.
 MAX_CACHED = 32
 
-# A job running longer than this is reported as failed. Python cannot stop a
-# thread, so the work itself runs on and its result is thrown away — this is
-# what the customer sees, not a reclaimed CPU. A healthy job is tens of
-# seconds; this is a runaway guard, not a performance budget.
+# A job running longer than this is reported as failed, and (since
+# 2026-10-30) stopped: the worker arms `digitizer_core.deadline` around the
+# work, the pipeline reads it at every stage seam and once per shape in
+# stage 7, and the job ends at the first seam past the deadline, freeing
+# the worker for the next upload. Python cannot stop a thread mid-call, so
+# one long call (stage 2's region former, a rembg/SAM2 subprocess with its
+# own timeout) still runs to its end first. A healthy job is tens of
+# seconds; this is a runaway guard, not a performance budget. An operator
+# shortens it with EMBBOT_JOB_TIMEOUT_S (read in `app.py`).
 JOB_TIMEOUT_S = 600.0
 
 # Jobs submitted but not finished — queued, running, and timed-out work still
@@ -223,7 +230,22 @@ class JobRegistry:
                 job.state = RUNNING
                 job.started = time.monotonic()
             try:
-                result = work()
+                with deadline.scope(self.timeout_s):
+                    result = work()
+            except deadline.Abandoned as exc:
+                # The pipeline noticed the deadline at a seam and stopped.
+                # A poll may already have marked the job (`_expire_locked`),
+                # in which case its words stand: the Studio reads one
+                # verdict. Either way the worker is free from here.
+                log.warning("digitize job %s %s; worker freed", job.id, exc)
+                with self._lock:
+                    self._inflight -= 1
+                    if job.state != ERROR:
+                        job.state = ERROR
+                        job.error = TIMED_OUT
+                        job.detail = (f"TimeoutError: stopped at {exc.stage}, "
+                                      f"{exc.over_s:.0f}s past the {self.timeout_s:.0f}s limit")
+                raise
             except Exception as exc:                      # noqa: BLE001
                 log.exception("digitize job %s failed", job.id)
                 with self._lock:
