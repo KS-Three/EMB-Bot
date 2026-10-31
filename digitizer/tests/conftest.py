@@ -629,6 +629,13 @@ PRE_FLIP["border_by_size_fabric_edges"] = False
 # lines on its fills. `tests/engine_2026_10_27.json` carries both False.
 PRE_FLIP["fill_bridge_cut_exposed"] = False
 PRE_FLIP["fill_seam_order"] = False
+# `fill_seam_order_priced` and `knockdown_shorter_walk` joined the flipped set the
+# same day (Kent's "Flip ON (Recommended)" on each, off the seam-order sheet). ON,
+# a fill's two valid progressions are read by ridges + flips, then `_score`, and a
+# beanie's knockdown keeps its shorter walk. `tests/engine_2026_10_27.json` carries
+# both False.
+PRE_FLIP["fill_seam_order_priced"] = False
+PRE_FLIP["knockdown_shorter_walk"] = False
 # `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
 # renders of his Instagram icon, drone, Bridge Bar and the repro), for the
 # reason every entry above gives. ON, a gradient-lane region's edge follows
@@ -839,7 +846,8 @@ PRE_FLIP["border_from_outline_line_art_guard"] = False
 # and `tests/test_script_strokes.py`.
 # Kent's 2026-10-30 flip: the fill-section order and the exposed-bridge cut, for
 # a pin taken before that day that spreads a dated dict rather than PRE_FLIP.
-FLIP_2026_10_30 = {"fill_bridge_cut_exposed": False, "fill_seam_order": False}
+FLIP_2026_10_30 = {"fill_bridge_cut_exposed": False, "fill_seam_order": False,
+                   "fill_seam_order_priced": False, "knockdown_shorter_walk": False}
 FLIP_2026_10_26 = {"small_text_bay_mouth": False, "sew_enclosed_white": False,
                    "small_text_reset_grow_away": False, "script_strokes": False}
 PRE_FLIP.update(FLIP_2026_10_26)

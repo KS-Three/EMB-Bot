@@ -1,6 +1,6 @@
 ---
 name: seam-order-costs-2026-10-30
-description: fill_seam_order's two costs, read per job -- Becker beanie's rise is one knockdown walk (ProSeal beanie goes the OTHER way, so no blanket skip); the drone's +6 cuts are the chord picking the wrong progression; two OFF switches, the lay read before the price
+description: fill_seam_order's two costs, read per job (both fixes ON since 10-30) -- Becker beanie's rise is one knockdown walk (ProSeal beanie goes the OTHER way, so no blanket skip); the drone's +6 cuts are the chord picking the wrong progression; two OFF switches, the lay read before the price
 metadata:
   type: project
 ---
@@ -20,6 +20,11 @@ attribute" on two rows that went the wrong way. Full record:
   `_score`. Letting `_score` choose outright put flips back (beanie 0 -> 6).
   17 pairs: flips 59 -> 2, ridges 1 -> 0, cuts 399 -> 396, exposed 509 -> 429 mm.
   Costs: crest +15 cuts, MFab hat +4, ProSeal hat +2, drone bare +0.34 mm.
+
+**Kent flipped both ON 2026-10-30** ("Flip ON (Recommended)" on each, the drone's
+bare rise stated). Full digitize on the flip tree: byte-identical to the approved
+arm on 22 of 22 jobs; only `enthusiast_logo`'s two platform reds in the full suite,
+no golden moved. Open: ProSeal beanie's knockdown walks (150 mm, 100 mm bare at 0.20).
 
 **Why:** a corpus total hid the beanie, and "skip the knockdown" looked right on
 the one job read. **How to apply:** read a flip per job, in both directions,

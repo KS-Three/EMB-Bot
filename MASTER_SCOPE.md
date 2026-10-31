@@ -69,14 +69,14 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 6. **Satin fragments into small islands on real logo art; the trim bulk is
    now BETWEEN shapes.** Defect 4's run: 104 of our 391 cuts inside one piece
    (the pro 73 of 409). By cause: shape to shape 42, fill sections 32 (the pro 0),
-   satin splits 27. **`fill_section_cuts_first`
-   — built OFF (PR #1193), your flip:** the section planner already found
-   fewer-cut orders and `_score` refused them for travel hidden under rows
-   still to come; priced with that travel free, cuts 391 → 377 and exposed
-   travel 723 → 651 mm on 10-29's engine. **`fill_seam_order` (ON since #1198)
-   runs after the planner and overwrites its order: today 399 → 397 cuts, 509 →
-   506 mm, whole-job CPU +14%. Held OFF (Kent, 2026-10-30).** *(measured 2026-10-30
-   — `docs/flip-sheet-2026-10-30.md`)*
+   satin splits 27. `fill_section_cuts_first` (OFF, #1193) held by Kent 2026-10-30:
+   `fill_seam_order` runs after its planner and overwrites the order, 399 → 397
+   cuts for +14% CPU. *(measured 2026-10-30 — `docs/flip-sheet-2026-10-30.md`)*
+   **`fill_seam_order_priced` + `knockdown_shorter_walk` ON (Kent, 2026-10-30):**
+   17 pairs flips 59 → 2, ridges 1 → 0, cuts 399 → 396, exposed 509 → 429 mm,
+   Becker beanie 105.8 → 38.6 mm. Costs: crest +15 cuts, MFab hat +4, drone bare
+   2.20 → 2.54 mm. Open: ProSeal beanie's knockdown walks, 150 mm exposed, 100 mm
+   bare (0.20 band). *(flipped 2026-10-30 — `docs/seam-order-attribution-2026-10-30.md`)*
    *(measured 2026-10-29 — `docs/trim-defects-4-6-2026-10-29.md`,
    `tests/test_fill_section_cuts_first.py`)* The 69% intra-shape below was
    2026-08. Retire the old framing: the rope border was never one stroke
