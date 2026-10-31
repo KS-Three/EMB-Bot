@@ -2050,7 +2050,7 @@ const WARNING_TEXT = {
       : `${head} around the outside of the design.`;
   },
   EDGE_CAP_EMPTY: () =>
-    "The design edge was switched on, but there's no edge long enough to sew around — the design is too small or too narrow for it.",
+    "The design edge was switched on, but none of it is left to sew: the outer edge is already stitched, or the stretches are too short to hold an outline.",
   EDGE_CAP_LIGHTENED: (w) =>
     plural(w.count || 0,
       "One stretch of the design edge was too narrow for a satin cap and sews as a light run line instead.",

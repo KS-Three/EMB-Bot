@@ -1777,7 +1777,7 @@ test("describeWarnings puts the design-edge cap's bill in the user's language", 
   // where there is nothing to be scared of.
   expect(out[1].text).toBe("The design edge adds 1,101 stitches (+35%) around the outside of the design.");
   expect(out[1].text).not.toContain("separate edges");
-  expect(out[2].text).toContain("no edge long enough");
+  expect(out[2].text).toContain("already stitched");
   expect(out[3].text).toBe("3 stretches of the design edge were too narrow for a satin cap and sew as light run lines instead.");
   // None of them fall through to the engine's own prose.
   for (const w of out) expect(w.text).not.toBe("engine prose");

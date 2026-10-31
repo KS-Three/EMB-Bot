@@ -1771,11 +1771,21 @@ describe("border readout — what sewed, not what was asked for", () => {
 
   test("the design edge says when it found nothing to sew", () => {
     const { getByText } = renderPanel(SHAPES, {
-      ...BEAN_CAP,
+      params: { ...DEFAULT_DIGITIZE_PARAMS, edge_cap: "satin" },
       result: resultWith(RUNS),        // runs present, none of them edge_cap
-      warnings: [],
+      warnings: [{ code: "EDGE_CAP_EMPTY", style: "satin" }],
     });
     expect(getByText("Design edge found nothing to sew.")).toBeTruthy();
+  });
+
+  test("a project saved with \"bean\" says no edge was sewn, and blames nothing", () => {
+    const { getByText, queryByText } = renderPanel(SHAPES, {
+      ...BEAN_CAP,
+      result: resultWith(RUNS),        // the engine ran no cap: no warning, no edge_cap run
+      warnings: [],
+    });
+    expect(getByText("No design edge sewn.")).toBeTruthy();
+    expect(queryByText("Design edge found nothing to sew.")).toBeNull();
   });
 
   test("a fresh design reads the design edge as off, the default since 2026-10-29", () => {
