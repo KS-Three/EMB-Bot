@@ -400,7 +400,9 @@ export function borderSummaryText(tally, designBorder) {
 //      different numbers for one thing.
 //   2. `design.runs` with role "edge_cap" — what sewed. Confirms (1), and
 //      stands alone when the payload has runs but no warning.
-//   3. `EDGE_CAP_EMPTY` — switched on, no edge long enough to sew.
+//   3. `EDGE_CAP_EMPTY` — the cap ran and had nothing to sew: the design
+//      already stitches that edge, or what is left is too short for an outline.
+//   4. `design.runs` with no edge_cap run and no warning — the cap never ran.
 //
 // The `dropped` flag matters even though the Studio cannot currently reach it:
 // EDGE_CAP_APPLIED fires on every run where a cap was PRICED, including one
@@ -455,10 +457,22 @@ export function edgeCapState(opts) {
       label: `${sewnWord} edge sewn`,
       title: "The design's outer silhouette is capped. This run count is measured off the stitch plan; the engine did not bill it." };
   }
-  if (empty || (edge && !edge.runs)) {
+  if (empty) {
     return { ...base, verified: !!edge, state: "empty",
       label: "Design edge found nothing to sew",
-      title: "The design edge is switched on, but no stretch of the silhouette is long enough to hold an outline — the design is too small or too narrow for it." };
+      title: "The design edge is switched on, but none of the outer edge is left to sew: it is already stitched, or the stretches are too short to hold an outline." };
+  }
+  // No warning and no cap runs: the cap never ran. A real empty cap always
+  // says EDGE_CAP_EMPTY, so this is `bean_only_lines` (ON 2026-10-27) turning
+  // the bean style into no cap, which a project saved while "bean" was the
+  // default still asks for. Nothing about the design caused it, so this says
+  // what is on the cloth and blames nothing.
+  if (edge) {
+    return { ...base, verified: true, state: "not_sewn",
+      label: "No design edge sewn",
+      title: mode === "bean"
+        ? "No outline was sewn around this design. Bean thread is kept for lines the artwork draws; a Satin cap still sews one."
+        : "No outline was sewn around this design." };
   }
   return { ...base, state: "unverified", label: `${modeWord(mode)} edge requested`,
     title: "This design was stitched before the Studio could read back which runs sewed, so this says what was asked for, not what is on the cloth." };

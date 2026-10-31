@@ -29,6 +29,10 @@ and the cap's size swing. Measured first, on main 44ecf1cb, with
 - **Studio lie found:** Design edge defaults to "Bean cap"; with no
   EDGE_CAP_* warning and no edge_cap runs, `borderMenu.edgeCapState` says
   "found nothing to sew … too small or too narrow" on every design.
+  Fixed 10-30: a fresh design reads "Design edge off."; a saved "bean" reads
+  "No design edge sewn." (no warning + no cap run = the cap never ran; a real
+  empty cap always says EDGE_CAP_EMPTY). Its reason now names an edge already
+  stitched: satin on Fremont sews 0 points because it is covered, not too small.
 
 **Why:** a stale defect re-measured before building — 09-12's oscillation
 needed a design whose art carried no linear cover at some sizes; today's art

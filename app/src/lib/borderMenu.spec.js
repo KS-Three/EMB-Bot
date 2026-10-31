@@ -277,12 +277,25 @@ describe("edgeCapState / edgeCapSummaryText", () => {
     expect(s.title).toMatch(/measured off the stitch plan/);
   });
 
-  test("switched on with nothing long enough to sew", () => {
-    expect(edgeCapState({ mode: "bean", warnings: [{ code: "EDGE_CAP_EMPTY" }] }))
-      .toMatchObject({ state: "empty" });
-    // and the run list alone says it too
-    expect(edgeCapState({ mode: "bean", warnings: [], index: indexRuns({ runs: [run("s1", "fill")] }) }))
-      .toMatchObject({ state: "empty", verified: true });
+  test("the cap ran and found nothing left to sew", () => {
+    const s = edgeCapState({ mode: "satin", warnings: [{ code: "EDGE_CAP_EMPTY" }] });
+    expect(s).toMatchObject({ state: "empty" });
+    expect(s.title).toMatch(/already stitched/);
+    // the run list confirms it, and the warning still names the reason
+    expect(edgeCapState({
+      mode: "satin", warnings: [{ code: "EDGE_CAP_EMPTY" }],
+      index: indexRuns({ runs: [run("s1", "fill")] }),
+    })).toMatchObject({ state: "empty", verified: true });
+  });
+
+  test("a saved \"bean\" the engine never ran blames nothing on the design", () => {
+    // No warning and no edge_cap run: `bean_only_lines` declined the style.
+    // This line used to say "the design is too small or too narrow for it".
+    const s = edgeCapState({ mode: "bean", warnings: [], index: indexRuns({ runs: [run("s1", "fill")] }) });
+    expect(s).toMatchObject({ state: "not_sewn", verified: true, label: "No design edge sewn" });
+    expect(s.title).not.toMatch(/too small|too narrow/);
+    expect(s.title).toMatch(/Satin cap/);
+    expect(edgeCapSummaryText(s)).toBe("No design edge sewn.");
   });
 
   test("a cap that was PRICED and then dropped never reads as sewn", () => {
