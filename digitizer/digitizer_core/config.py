@@ -420,6 +420,19 @@ class PipelineConfig:
     # engine as it stood, byte for byte. Built OFF 2026-10-29; the flip, and
     # whether the ticked white counts against "Colors (max 6)", are Kent's.
     color_cap_sewn: bool = False
+    # Lettering's thread (`lettering_thread`, built OFF 2026-11-01): Precision
+    # Drone's PRECISION and AND DRONE read cc +0.05 / 0.00 against the pro's
+    # +0.82 / +1.00, and recolouring our own file closed both, every stitch
+    # untouched. `lettering_stray_word_thread`: a `small_text_stray` on a
+    # cluster's line takes the cluster's thread (AND's A, 18.2 dE00 off its
+    # word). `lettering_contrast_floor`: a text cluster within
+    # `lettering_contrast_floor_de00` of `garment_rgb` moves to a thread that
+    # clears it, on the design if one is near; no garment known, nothing
+    # moves. 15 sits between PRECISION's 7.7 and Fremont's tan, which reads at
+    # 21.4; one line of evidence, not a census. OFF is the engine as it stood.
+    lettering_stray_word_thread: bool = False
+    lettering_contrast_floor: bool = False
+    lettering_contrast_floor_de00: float = 15.0
     seed: int = 0                      # k-means RNG seed — fixed for determinism
     # How many k-means seeds stage 0 should sweep before reporting
     # `unique_color_mass`. 0 or 1 = today's single draw, and the classifier

@@ -80,6 +80,7 @@ from .stage6_hairline_lines import applies as hairline_lines_apply
 from .config import is_photographic
 from . import shape_memo
 from .columns import is_lettering
+from .lettering_thread import apply_lettering_thread
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
                               depth_sort_layers, sequence)
 from .stitches import StitchPlan
@@ -1321,6 +1322,10 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         r.meta["stitched"] = (shape_overrides.get(r.shape_id) or {}).get(
             "stitched", default_stitched
         )
+
+    # Lettering's thread (`lettering_thread`, both OFF: nothing moves), before
+    # the cap below so the cap keeps the last word on the cones.
+    apply_lettering_thread(regions, chart_for(cfg), cfg, shape_overrides)
 
     # The colour cap's second pass (`cfg.color_cap_sewn`, 2026-10-29): the
     # stage-4 pass ranked the REGIONS before the review edits, the sew-white
