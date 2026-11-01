@@ -56,3 +56,5 @@ patch 18,952 -> 19,014; Bridge 15,238 -> 15,222. Pooh (not committed, Disney)
 
 Related: [[dark-thin-strokes-2026-10-27]], [[dark-read-refusal-2026-10-28]],
 [[bean-census-2026-10-27]], [[layering-census-2026-10-26]].
+
+**Reach, measured 2026-10-31:** Fremont's wordmark stays satin, but its small tan letters DO bean (hat <4 cc +0.33 OFF, +1.00 ON). See [[lettering-board-v3-2026-10-31]].
