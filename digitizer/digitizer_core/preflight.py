@@ -157,6 +157,7 @@ DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, 
 SAME_HOLE_HEAVY = "SAME_HOLE_HEAVY"            # extra: {fraction, repeat_points, penetrations, baseline, max_strikes, points_3plus, worst_at_mm} — `fraction` counts 2+-strike points and cannot tell thousands of doubles from one spot struck twelve times; max_strikes/points_3plus are the DEPTH the check's own corpus argument ("ALL 36 files contain 3+ stacked points") is made on, and worst_at_mm is the "where" its message asks for
 LINK_UNCOVERED = "LINK_UNCOVERED"              # extra: {max_mm, limit_mm, total_mm, at_mm, thread_mm}
 ARTWORK_NOT_SEWN = "ARTWORK_NOT_SEWN"          # extra: {reached_frac, artwork_mm2, floor}
+ARTWORK_ELEMENT_DROPPED = "ARTWORK_ELEMENT_DROPPED"  # extra: {count, total_mm2, largest_mm2, frac, floor_mm2, block_frac, causes: {clipped, unsewn_enclosed, folded, unsewable}, shapes: [{shape_id, mm2, cause, thread}], show_shape_ids} — a whole piece of the artwork the design no longer sews as itself, read off the pipeline's OWN warnings and region tags (`_element_drop_findings`); the colour-judged causes need the artwork and say so in `element_drop_colour_checked`
 ARTWORK_UNCOVERED = "ARTWORK_UNCOVERED"        # extra: {count, worst_mm2, total_mm2, wanted_mm2, shapes: [{shape_id, missing_mm2, area_mm2}]}
 CONTOUR_STARVED = "CONTOUR_STARVED"            # extra: {count, rings, shapes}
 PHOTO_RESOLUTION_LOW = "PHOTO_RESOLUTION_LOW"  # extra: {px_per_mm, min_px_per_mm}
@@ -1053,7 +1054,9 @@ def _best_loaded_spool_error(lab_px: np.ndarray, loaded: list[int],
 
 
 def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
-                           cfg: PipelineConfig) -> tuple[list[dict], float | None]:
+                           cfg: PipelineConfig,
+                           rows: list[dict] | None = None
+                           ) -> tuple[list[dict], float | None]:
     """One finding per thread with artwork visibly off that spool's colour,
     judged by the thread's WORST patch — per region on flat work, per shade
     band on a blend, never pooled (the derivation and all three measured
@@ -1082,7 +1085,11 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
     whole corpus, and it sharpens `loaded` below into what its own comment
     already claims — the machine's real cone list.
     """
-    rows = _region_color_errors(p, result, plan, cfg)
+    # `rows` lets `run_preflight` grade the regions once and hand the same
+    # rows to the dropped-element check; a caller without them gets the
+    # grader's own read, as before.
+    if rows is None:
+        rows = _region_color_errors(p, result, plan, cfg)
     chart = chart_for(cfg)
     findings: list[dict] = []
     worst: float | None = None
@@ -3059,6 +3066,267 @@ def _artwork_reach_findings(p, result: PipelineResult, plan: StitchPlan
     )], metrics
 
 
+# --- Elements the design dropped on the way to the needle --------------------
+
+# The 2026-10-27 logo census (`docs/logo-style-census-2026-10-27.md` items
+# 3-4) found whole elements leaving the design while the grade stayed clean:
+# `qr_code` lost 10 modules (864 mm2) at stage 5's colour clip, the WPA
+# poster's one big disc was colour-capped into its tan ground, the mascot's
+# pupils were left unsewn as "enclosed background" under a misread ground.
+# The pipeline KNEW every time -- it wrote `SHAPE_NOT_STITCHED`,
+# `COLOR_CAP_APPLIED`, `SHAPES_LEFT_UNSEWN` -- and preflight read none of them
+# (grep 2026-11-01: zero consumers). `ARTWORK_NOT_SEWN` cannot see these: a
+# module dropped beside sewn ones, a disc sewn in the wrong thread and a hole
+# in a sewn eye are all within 1 mm of thread.
+#
+# This check reads what the pipeline already said, piece by piece, and judges
+# each piece by its AREA, never by count (a count made 2,787 mm2 read as a
+# "detail" once -- `pipeline.NOT_A_DETAIL_FACTOR`'s comment). Four causes,
+# each a different seam of the pipeline:
+#
+#   clipped          stage 5 `SHAPE_NOT_STITCHED` -- a shape vanished when a
+#                    neighbouring colour was fitted over it (ids named).
+#   unsewn_enclosed  `SHAPES_LEFT_UNSEWN` on an enclosed-background region
+#                    whose ARTWORK is clearly not the garment's colour: the
+#                    design shows fabric where the picture had ink. Needs the
+#                    artwork and a garment colour; a region the customer left
+#                    out in review (`by_override`) is their choice, not a drop.
+#   folded           a region the colour cap re-threaded
+#                    (`meta["color_cap_merged_from"]`) that now TOUCHES a
+#                    shape of its new thread and whose artwork sits
+#                    `DELTA_E_CLEARLY_DIFFERENT` or more from that thread: it
+#                    sews, but as part of its neighbour, and the element is
+#                    gone from the garment. Read off the thread grader's own
+#                    rows, so the two can never disagree about a region's
+#                    error.
+#   unsewable        stage 4 `DROPPED_SMALL_SHAPES` whose largest drop is past
+#                    detail scale (`all_small` False) -- the summit_badge
+#                    mechanism, fixed, kept so a regression is loud. Count and
+#                    largest only: that warning carries no ids.
+#
+# Not reached, on purpose and said so: ink stage 1 removed WITH the ground
+# (`distressed_grunge`'s ring) never became a region, so nothing here can
+# name it -- that is a stage-1 refusal with its own plan. Stage 3's
+# `DROPPED_SMALL_SHAPES` (count only, every piece under `min_detail_mm`) and
+# `CLIP_DROPPED_SLIVER` (floor 0.56 mm2) are details, not elements.
+#
+# Floors. A piece counts from `_THREAD_MATCH_MIN_PATCH_MM2` (5 mm2): the
+# patch the thread grader already calls the smallest worth a finding, and
+# on the 21 census rows it sits between the largest honest detail drop
+# (3.44 mm2, duotone, `all_small`) and the smallest real loss (a 52 mm2
+# pupil). Severity follows `ARTWORK_NOT_SEWN`'s own line: a BLOCK once the
+# lost area reaches the same share of the artwork that check blocks at
+# (10%), a WARN under it. Both are one constant each; moving them is a
+# product call.
+_ELEMENT_MIN_MM2 = _THREAD_MATCH_MIN_PATCH_MM2
+_ELEMENT_BLOCK_FRAC = round(1.0 - _ARTWORK_REACHED_FLOOR, 2)
+# A folded region "touches" a same-thread shape within this: one thread
+# width, the gap pull comp closes anyway.
+_FOLD_TOUCH_MM = 0.3
+
+_SHAPE_NOT_STITCHED = "SHAPE_NOT_STITCHED"
+_SHAPES_LEFT_UNSEWN = "SHAPES_LEFT_UNSEWN"
+_DROPPED_SMALL_SHAPES = "DROPPED_SMALL_SHAPES"
+
+
+def _region_artwork_lab(p, region) -> np.ndarray | None:
+    """The artwork pixels under `region`, as Lab rows, or None when too few.
+
+    The same rasterisation `_region_color_errors` uses (rounded polygon,
+    eroded one pixel, background excluded, `_MIN_COLOR_PIXELS` floor,
+    `_COLOR_SAMPLE_PX` cap) -- written out again rather than shared because
+    that grader skips enclosed-background regions by design and this reader
+    exists for exactly those."""
+    x0, y0, x1, y1 = p.art_bbox
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    h, w = p.rgb.shape[:2]
+
+    def to_px(coords) -> np.ndarray:
+        a = np.asarray(coords, np.float64)
+        return np.round(np.column_stack(
+            [a[:, 0] * p.px_per_mm + cx, a[:, 1] * p.px_per_mm + cy]
+        )).astype(np.int32)
+
+    mask = np.zeros((h, w), np.uint8)
+    try:
+        cv2.fillPoly(mask, [to_px(region.polygon.exterior.coords)], 1)
+        for ring in region.polygon.interiors:
+            cv2.fillPoly(mask, [to_px(ring.coords)], 0)
+    except (AttributeError, ValueError):
+        return None
+    eroded = cv2.erode(mask, np.ones((3, 3), np.uint8))
+    sel = (eroded > 0) & (~p.bg_mask)
+    if not sel.any():
+        sel = (mask > 0) & (~p.bg_mask)
+    px = p.rgb[sel].reshape(-1, 3)
+    if len(px) < _MIN_COLOR_PIXELS:
+        return None
+    if len(px) > _COLOR_SAMPLE_PX:
+        px = px[np.linspace(0, len(px) - 1, _COLOR_SAMPLE_PX).astype(np.int64)]
+    return rgb_to_lab(px.astype(np.float64))
+
+
+def _element_drop_findings(p, result: PipelineResult, plan: StitchPlan,
+                           cfg: PipelineConfig,
+                           rows: list[dict] | None = None
+                           ) -> tuple[list[dict], dict]:
+    """Which pieces of the artwork left the design, by area -> (findings, metrics).
+
+    `p` is preflight's stage-1 re-read (None when the caller has no artwork)
+    and `rows` the thread grader's per-region errors on the same artwork
+    (None when it did not run); the two colour-judged causes need them and
+    `element_drop_colour_checked` says whether they were asked. The other two
+    read `plan.warnings` and `result.regions` alone, so a stored plan can
+    still be scored for them.
+    """
+    empty = {"element_drop_checked": False, "element_drop_colour_checked": False,
+             "element_dropped_count": None, "element_dropped_mm2": None,
+             "element_dropped_frac": None}
+    regions = list(getattr(result, "regions", None) or ())
+    if not regions:
+        return [], empty
+    by_id = {r.shape_id: r for r in regions}
+    warnings = list(getattr(plan, "warnings", None) or ())
+    colour = p is not None
+    pieces: list[dict] = []
+    seen: set[str] = set()
+
+    def take(r, cause: str) -> None:
+        if r.shape_id in seen or float(r.area_mm2 or 0.0) < _ELEMENT_MIN_MM2:
+            return
+        seen.add(r.shape_id)
+        pieces.append({"shape_id": r.shape_id, "mm2": round(float(r.area_mm2), 1),
+                       "cause": cause, "thread": r.thread_number})
+
+    # clipped: stage 5 named the shapes it lost.
+    for w in warnings:
+        if w.get("code") != _SHAPE_NOT_STITCHED:
+            continue
+        for sid in w.get("ids") or ():
+            r = by_id.get(sid)
+            if r is not None:
+                take(r, "clipped")
+
+    # unsewn_enclosed: a hole showing the garment where the picture had ink.
+    garment = None
+    if colour and cfg.garment_rgb is not None:
+        g = tuple(int(v) for v in list(cfg.garment_rgb)[:3])
+        if len(g) == 3:
+            garment = rgb_to_lab(np.array([g], dtype=np.float64)).reshape(1, 3)
+    overrides = cfg.shape_overrides or {}
+    if garment is not None:
+        for w in warnings:
+            if w.get("code") != _SHAPES_LEFT_UNSEWN:
+                continue
+            for sid in w.get("ids") or ():
+                r = by_id.get(sid)
+                if (r is None or not r.meta.get("enclosed_background")
+                        or "stitched" in (overrides.get(sid) or {})
+                        or float(r.area_mm2 or 0.0) < _ELEMENT_MIN_MM2):
+                    continue
+                lab = _region_artwork_lab(p, r)
+                if lab is None:
+                    continue
+                de = float(np.median(deltaE_ciede2000(lab, garment)))
+                if de >= DELTA_E_CLEARLY_DIFFERENT:
+                    take(r, "unsewn_enclosed")
+
+    # folded: re-threaded by the cap into a shape it now touches.
+    if rows is not None:
+        error_of = {row["shape_id"]: float(row["delta_e"]) for row in rows}
+        capped = [r for r in regions if r.meta.get("color_cap_merged_from")
+                  and r.meta.get("stitched", True)
+                  and float(r.area_mm2 or 0.0) >= _ELEMENT_MIN_MM2]
+        for r in capped:
+            de = error_of.get(r.shape_id)
+            if de is None or de < DELTA_E_CLEARLY_DIFFERENT:
+                continue
+            try:
+                reach = r.polygon.buffer(_FOLD_TOUCH_MM)
+                touching = any(
+                    o is not r and o.thread_index == r.thread_index
+                    and o.meta.get("stitched", True)
+                    and reach.intersects(o.polygon)
+                    for o in regions)
+            except Exception:       # an invalid polygon is not a verdict
+                continue
+            if touching:
+                take(r, "folded")
+
+    # unsewable: stage 4 dropped whole outlines, count and largest only.
+    unsewable_count, unsewable_mm2 = 0, 0.0
+    for w in warnings:
+        if w.get("code") != _DROPPED_SMALL_SHAPES or "largest_mm2" not in w:
+            continue
+        if w.get("all_small", True):
+            continue
+        largest = float(w.get("largest_mm2") or 0.0)
+        if largest >= _ELEMENT_MIN_MM2:
+            unsewable_count += int(w.get("count") or 1)
+            unsewable_mm2 += largest
+
+    artwork_mm2 = float(sum(float(r.area_mm2 or 0.0) for r in regions))
+    total = float(sum(x["mm2"] for x in pieces)) + unsewable_mm2
+    count = len(pieces) + unsewable_count
+    frac = (total / artwork_mm2) if artwork_mm2 > 0 else 0.0
+    metrics = {"element_drop_checked": True,
+               "element_drop_colour_checked": bool(garment is not None and rows is not None),
+               "element_dropped_count": count,
+               "element_dropped_mm2": round(total, 1),
+               "element_dropped_frac": round(frac, 3)}
+    if count == 0:
+        return [], metrics
+
+    causes = {"clipped": 0, "unsewn_enclosed": 0, "folded": 0,
+              "unsewable": unsewable_count}
+    for x in pieces:
+        causes[x["cause"]] += 1
+    pieces.sort(key=lambda x: -x["mm2"])
+    largest = max([x["mm2"] for x in pieces] + [unsewable_mm2])
+
+    def n_(k: int, one: str, many: str) -> str:
+        return f"{k} {one if k == 1 else many}"
+
+    clauses = []
+    if causes["clipped"]:
+        clauses.append(f"{causes['clipped']} vanished where a neighbouring "
+                       f"colour was fitted over "
+                       f"{'it' if causes['clipped'] == 1 else 'them'}")
+    if causes["unsewn_enclosed"]:
+        k = causes["unsewn_enclosed"]
+        clauses.append(f"{k} {'is' if k == 1 else 'are'} left as "
+                       f"{'a hole' if k == 1 else 'holes'} showing the garment "
+                       f"though the picture is not the garment's colour there "
+                       f"(restore {'it' if k == 1 else 'them'} in review)")
+    if causes["folded"]:
+        k = causes["folded"]
+        clauses.append(f"{k} {'was' if k == 1 else 'were'} merged into a "
+                       f"touching shape of the same thread by the "
+                       f"{cfg.max_colors}-colour limit (raise Colors to keep "
+                       f"{'it' if k == 1 else 'them'})")
+    if causes["unsewable"]:
+        k = causes["unsewable"]
+        clauses.append(f"{k} could not be traced into a sewable outline")
+    severity = "block" if frac >= _ELEMENT_BLOCK_FRAC else "warn"
+    return [finding(
+        ARTWORK_ELEMENT_DROPPED,
+        severity,
+        f"{n_(count, 'element', 'elements')} of the artwork ({total:.0f} mm2, "
+        f"largest {largest:.0f} mm2) {'is' if count == 1 else 'are'} missing "
+        f"from the design: {'; '.join(clauses)}. Compare the preview with the "
+        f"original before sewing.",
+        count=count,
+        total_mm2=round(total, 1),
+        largest_mm2=round(largest, 1),
+        frac=round(frac, 3),
+        floor_mm2=_ELEMENT_MIN_MM2,
+        block_frac=_ELEMENT_BLOCK_FRAC,
+        causes=causes,
+        shapes=pieces,
+        show_shape_ids=[x["shape_id"] for x in pieces[:8]],
+    )], metrics
+
+
 # --- Uncovered links (chaining law 60) --------------------------------------
 
 def _transport_and_content(plan: StitchPlan
@@ -3929,9 +4197,12 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     p = prep(image, cfg, design_class=design_class) if image is not None else None
 
     worst_de: float | None = None
+    colour_rows: list[dict] | None = None
     if p is not None and result is not None:
+        view = _two_tone_view(p, plan, cfg)
+        colour_rows = _region_color_errors(view, result, plan, cfg)
         thread_findings, worst_de = _thread_match_findings(
-            _two_tone_view(p, plan, cfg), result, plan, cfg)
+            view, result, plan, cfg, rows=colour_rows)
         findings.extend(thread_findings)
     metrics["thread_match_checked"] = p is not None and result is not None
     metrics["thread_worst_delta_e"] = None if worst_de is None else round(worst_de, 1)
@@ -4027,6 +4298,14 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
                         "uncovered_total_mm2": None, "uncovered_wanted_mm2": None,
                         "artwork_checked": False, "artwork_reached_frac": None,
                         "artwork_mm2": None})
+
+    # Elements the pipeline itself reported losing. Two of its four causes
+    # read the plan and the regions alone, so it runs without the artwork
+    # and says which half it could judge.
+    drop_findings, drop_metrics = _element_drop_findings(
+        p, result, plan, cfg, rows=colour_rows)
+    findings.extend(drop_findings)
+    metrics.update(drop_metrics)
 
     link_findings, link_metrics = _link_findings(plan, cfg)
     findings.extend(link_findings)
