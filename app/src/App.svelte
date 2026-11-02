@@ -733,7 +733,9 @@
     project = {
       ...project,
       elements: project.elements.map((el) =>
-        el.id === id && el.type === "digitized" && !digitizerHealth ? toBrowserEngineElement(el) : el,
+        el.id === id && el.type === "digitized" && !digitizerHealth
+          ? toBrowserEngineElement(el, project.elements.length > 1 ? Math.round(0.4 * hoopWidthMm(project)) : null)
+          : el,
       ),
     };
     persist();

@@ -498,13 +498,16 @@ export function engineLabel(via) {
 // The customer's "Use browser engine instead" on an uploaded-but-undigitized
 // element: the same artwork, now an `image` element for the JS lane, marked
 // `via: "browser"`. Pure; App swaps it in and re-hydrates the pixels.
-export function toBrowserEngineElement(el) {
-  const p = (el && el.params) || {};
+// `sizeMm` is what addElement would have seeded had this been an `image`
+// element from the start (0.4 x hoop when it is not the first element, null =
+// auto-fit when it is): a digitized element keeps null, and the browser lane
+// then sews the art at a different scale than it always did.
+export function toBrowserEngineElement(el, sizeMm = null) {
   return {
     ...defaultImageElement(el.id),
     name: el.name || "",
     sourcePng: el.sourcePng || null,
-    sizeMm: p.target_width_mm || null,
+    sizeMm,
     offsetXMm: el.offsetXMm || 0,
     offsetYMm: el.offsetYMm || 0,
     via: "browser",

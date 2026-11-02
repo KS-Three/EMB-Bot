@@ -43,8 +43,7 @@ describe("engineLabel", () => {
 describe("toBrowserEngineElement", () => {
   test("keeps the artwork and marks via: browser", () => {
     const el = { ...defaultDigitizedElement("e3"), name: "logo.png", sourcePng: "AAAA" };
-    el.params = { ...el.params, target_width_mm: 70 };
-    const img = toBrowserEngineElement(el);
-    expect(img).toMatchObject({ id: "e3", type: "image", name: "logo.png", sourcePng: "AAAA", sizeMm: 70, via: "browser" });
+    const img = toBrowserEngineElement(el, 38);
+    expect(img).toMatchObject({ id: "e3", type: "image", name: "logo.png", sourcePng: "AAAA", sizeMm: 38, via: "browser" });
   });
 });
