@@ -42,8 +42,10 @@ stage-1 refusal with its own plan doc. Stage 3's count-only
 (`docs/scoreboards/photo-corpus/grades-5ff48c5-2026-10-28.json`), so this
 finding fires on two of his Good/Great rows for losses the census itself named.
 Read that as "he graded the render, not the report", not as a false positive;
-whether it should BLOCK there is his severity call (a block is a Download
-confirm, never a refusal, `DownloadStep.svelte` 2026-09-14).
+whether it should BLOCK there was his severity call (a block is a Download
+confirm, never a refusal, `DownloadStep.svelte` 2026-09-14). **Kent, 2026-11-01:
+"Keep as built"** — warn under 10 % of the artwork, block from 10 %; both
+constants stand.
 
 **Census (`tools/element_drop_census.py`, 80 mm left_chest, this tree, 2026-11-01):**
 fires on 4 of 19 Commons logo rows and 4 of 22 committed fixtures, every one
