@@ -45,8 +45,22 @@ Read that as "he graded the render, not the report", not as a false positive;
 whether it should BLOCK there is his severity call (a block is a Download
 confirm, never a refusal, `DownloadStep.svelte` 2026-09-14).
 
-**Census (tools/element_drop_census.py, 80 mm left_chest, this worktree):**
-PENDING — filled in when the run under the CPU slot finishes.
+**Census (`tools/element_drop_census.py`, 80 mm left_chest, this tree, 2026-11-01):**
+fires on 4 of 19 Commons logo rows and 4 of 22 committed fixtures, every one
+WARN (0.5–9.8 % of the artwork, none reaches the 10 % block): qr_code 10
+clipped modules 864 mm2 (9.8 %, D 46 → F 34); gradient_mascot 2 unsewn pupils
+85 mm2 (1.9 %, C 70 → D 58, Kent GREAT); pixel_art_sprite 4 unsewn black
+pixels 44 mm2 (1.9 %, A → B, Kent GOOD); isometric_icon 1 folded face 9 mm2
+(0.5 %, Kent OKAY); becker 2 unsewn Blackberry holes 12.6 mm2 (0.5 %, A → B);
+drone_render 1 folded Fox Fire 25 mm2 + 4 unsewn Titanium 51 mm2 (1.7 %);
+bridge_bar 4 folded 30 mm2 (1.3 %); golden_tee 2 folded 17 mm2 (1.1 %).
+**Every `unsewn_enclosed` piece carried `enclosed_colour_unknown`** — the
+garment rule could not speak there, which is why they were left unsewn.
+`duotone_poster` routes photo_scene on this tree (texture gate), no cap
+fires, no finding: the fold case it was named for no longer occurs here and
+rests on the synthetic test. `heraldic_crest`'s 18 cap merges do not reach
+the fold's touch-and-10-dE test (conservative). 15 of 19 and 18 of 22 rows
+unchanged; grunge A 100 unchanged (stage-1 half, out of reach).
 
 **How to apply:** when a pipeline stage drops or re-threads a whole shape,
 give it ids and mm2 in its warning (stage 7's count-only `SHAPE_NOT_STITCHED`
