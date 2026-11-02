@@ -1,0 +1,4738 @@
+{
+ "schema": 1,
+ "built": "2026-11-02T05:52:26+00:00",
+ "source": "tools.eye_pairs.pro_pooled_build",
+ "fixture_job": {
+  "becker": "becker_hat_large",
+  "bridge": "bridge_lc",
+  "drone": "precision_drone",
+  "fremont": "hotel_fremont_patch",
+  "golden_tee": "goldentee_hat",
+  "tires": "tires_hat_3d"
+ },
+ "trees": {
+  "flags-0918-0928": "a5d78449",
+  "envelope-0930": "e54b5963",
+  "evening-0930": "0803a7b2",
+  "texture-0930": "7cc76370",
+  "off-flags-1003": "82c9838d",
+  "density-1007": "2a87ba89",
+  "letterform-1007": "95c7eb07",
+  "columns-flip-1008": "f08f49e4",
+  "full-density-1008": "62676060"
+ },
+ "sittings": {
+  "flags-0918-0928": {
+   "date": "2026-09-18..2026-09-28",
+   "labels": "docs/eye-pairs-2026-09-28/kent-notes.json",
+   "tree": "a5d78449",
+   "instruments": "both arms re-digitized on the sitting's tree at the pro's width and garment (tools.eye_pairs.pro_pooled_build), read beside the pro's DST with today's readers",
+   "pairs": [
+    {
+     "id": "flags-0918-0928:area_weighted:drone",
+     "arm": "area_weighted",
+     "fixture": "drone",
+     "label": "both_bad",
+     "judged": "2026-09-18",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 121,
+      "hops": 171,
+      "needle_up_mm": 1889.5,
+      "stitches": 13655,
+      "colour_changes": 10,
+      "sttype_kappa": 0.248366,
+      "direction_kappa": 0.189,
+      "solid_iou": 0.866,
+      "columns": 60,
+      "word_cc": 0.4535,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 121,
+      "hops": 172,
+      "needle_up_mm": 1905.3,
+      "stitches": 13537,
+      "colour_changes": 10,
+      "sttype_kappa": 0.241722,
+      "direction_kappa": 0.183,
+      "solid_iou": 0.866,
+      "columns": 60,
+      "word_cc": 0.4535,
+      "engine": "a5d78449:area_weighted"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:design_angle:becker",
+     "arm": "design_angle",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 40,
+      "hops": 42,
+      "needle_up_mm": 770.7,
+      "stitches": 18591,
+      "colour_changes": 2,
+      "sttype_kappa": -0.034215,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.631,
+      "columns": 19,
+      "word_cc": 0.5,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 38,
+      "hops": 41,
+      "needle_up_mm": 750.1,
+      "stitches": 19298,
+      "colour_changes": 2,
+      "sttype_kappa": -0.024806,
+      "direction_kappa": 0.233,
+      "solid_iou": 0.631,
+      "columns": 21,
+      "word_cc": 0.5,
+      "engine": "a5d78449:design_angle"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:design_angle:bridge",
+     "arm": "design_angle",
+     "fixture": "bridge",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 108,
+      "hops": 153,
+      "needle_up_mm": 1395.8,
+      "stitches": 14273,
+      "colour_changes": 7,
+      "sttype_kappa": 0.338182,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.956,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 105,
+      "hops": 150,
+      "needle_up_mm": 1382.6,
+      "stitches": 14102,
+      "colour_changes": 7,
+      "sttype_kappa": 0.330896,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.958,
+      "engine": "a5d78449:design_angle"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:design_angle:drone",
+     "arm": "design_angle",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 121,
+      "hops": 171,
+      "needle_up_mm": 1889.5,
+      "stitches": 13655,
+      "colour_changes": 10,
+      "sttype_kappa": 0.248366,
+      "direction_kappa": 0.189,
+      "solid_iou": 0.866,
+      "columns": 60,
+      "word_cc": 0.4535,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 119,
+      "hops": 174,
+      "needle_up_mm": 1887.4,
+      "stitches": 13670,
+      "colour_changes": 10,
+      "sttype_kappa": 0.254545,
+      "direction_kappa": 0.195,
+      "solid_iou": 0.866,
+      "columns": 59,
+      "word_cc": 0.4204,
+      "engine": "a5d78449:design_angle"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:design_angle:fremont",
+     "arm": "design_angle",
+     "fixture": "fremont",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 72,
+      "hops": 220,
+      "needle_up_mm": 925.5,
+      "stitches": 19881,
+      "colour_changes": 3,
+      "sttype_kappa": 0.188341,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 49,
+      "word_cc": 0.9028,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 72,
+      "hops": 220,
+      "needle_up_mm": 924.8,
+      "stitches": 19865,
+      "colour_changes": 3,
+      "sttype_kappa": 0.18806,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 49,
+      "word_cc": 0.9028,
+      "engine": "a5d78449:design_angle"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 109,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:design_angle:golden_tee",
+     "arm": "design_angle",
+     "fixture": "golden_tee",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 60,
+      "hops": 78,
+      "needle_up_mm": 783.0,
+      "stitches": 6462,
+      "colour_changes": 8,
+      "sttype_kappa": -0.022222,
+      "direction_kappa": 0.368,
+      "solid_iou": 0.607,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 61,
+      "hops": 79,
+      "needle_up_mm": 749.2,
+      "stitches": 6421,
+      "colour_changes": 8,
+      "sttype_kappa": -0.030612,
+      "direction_kappa": 0.339,
+      "solid_iou": 0.607,
+      "engine": "a5d78449:design_angle"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:design_angle:tires",
+     "arm": "design_angle",
+     "fixture": "tires",
+     "label": "before",
+     "judged": "2026-09-18",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 9,
+      "hops": 10,
+      "needle_up_mm": 285.6,
+      "stitches": 7622,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.156,
+      "solid_iou": 0.87,
+      "columns": 0,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 13,
+      "hops": 14,
+      "needle_up_mm": 453.5,
+      "stitches": 7670,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.047,
+      "solid_iou": 0.879,
+      "columns": 4,
+      "engine": "a5d78449:design_angle"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:becker",
+     "arm": "directional_comp",
+     "fixture": "becker",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 40,
+      "hops": 42,
+      "needle_up_mm": 770.7,
+      "stitches": 18591,
+      "colour_changes": 2,
+      "sttype_kappa": -0.034215,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.631,
+      "columns": 19,
+      "word_cc": 0.5,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 40,
+      "hops": 44,
+      "needle_up_mm": 1085.1,
+      "stitches": 18633,
+      "colour_changes": 2,
+      "sttype_kappa": -0.050445,
+      "direction_kappa": 0.196,
+      "solid_iou": 0.603,
+      "columns": 21,
+      "word_cc": 0.059,
+      "engine": "a5d78449:directional_comp"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:bridge",
+     "arm": "directional_comp",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 108,
+      "hops": 153,
+      "needle_up_mm": 1395.8,
+      "stitches": 14273,
+      "colour_changes": 7,
+      "sttype_kappa": 0.338182,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.956,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 106,
+      "hops": 169,
+      "needle_up_mm": 1386.1,
+      "stitches": 15021,
+      "colour_changes": 7,
+      "sttype_kappa": 0.283531,
+      "direction_kappa": 0.273,
+      "solid_iou": 0.956,
+      "engine": "a5d78449:directional_comp"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:drone",
+     "arm": "directional_comp",
+     "fixture": "drone",
+     "label": "after",
+     "judged": "2026-09-20",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 121,
+      "hops": 171,
+      "needle_up_mm": 1889.5,
+      "stitches": 13655,
+      "colour_changes": 10,
+      "sttype_kappa": 0.248366,
+      "direction_kappa": 0.189,
+      "solid_iou": 0.866,
+      "columns": 60,
+      "word_cc": 0.4535,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 136,
+      "hops": 205,
+      "needle_up_mm": 2072.2,
+      "stitches": 13334,
+      "colour_changes": 10,
+      "sttype_kappa": 0.257525,
+      "direction_kappa": 0.18,
+      "solid_iou": 0.868,
+      "columns": 55,
+      "word_cc": 0.4466,
+      "engine": "a5d78449:directional_comp"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:fremont",
+     "arm": "directional_comp",
+     "fixture": "fremont",
+     "label": "before",
+     "judged": "2026-09-20",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 72,
+      "hops": 220,
+      "needle_up_mm": 925.5,
+      "stitches": 19881,
+      "colour_changes": 3,
+      "sttype_kappa": 0.188341,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 49,
+      "word_cc": 0.9028,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 66,
+      "hops": 220,
+      "needle_up_mm": 937.6,
+      "stitches": 20799,
+      "colour_changes": 3,
+      "sttype_kappa": 0.174298,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.979,
+      "columns": 49,
+      "word_cc": 0.8562,
+      "engine": "a5d78449:directional_comp"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 109,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:golden_tee",
+     "arm": "directional_comp",
+     "fixture": "golden_tee",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 60,
+      "hops": 78,
+      "needle_up_mm": 783.0,
+      "stitches": 6462,
+      "colour_changes": 8,
+      "sttype_kappa": -0.022222,
+      "direction_kappa": 0.368,
+      "solid_iou": 0.607,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 61,
+      "hops": 81,
+      "needle_up_mm": 787.8,
+      "stitches": 6256,
+      "colour_changes": 8,
+      "sttype_kappa": -0.019608,
+      "direction_kappa": 0.374,
+      "solid_iou": 0.606,
+      "engine": "a5d78449:directional_comp"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:tires",
+     "arm": "directional_comp",
+     "fixture": "tires",
+     "label": "before",
+     "judged": "2026-09-20",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 9,
+      "hops": 10,
+      "needle_up_mm": 285.6,
+      "stitches": 7622,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.156,
+      "solid_iou": 0.87,
+      "columns": 0,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 13,
+      "hops": 14,
+      "needle_up_mm": 414.7,
+      "stitches": 7858,
+      "colour_changes": 1,
+      "sttype_kappa": -0.008671,
+      "direction_kappa": 0.286,
+      "solid_iou": 0.898,
+      "columns": 4,
+      "engine": "a5d78449:directional_comp"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:lettering_column:fremont",
+     "arm": "lettering_column",
+     "fixture": "fremont",
+     "label": "before",
+     "judged": "2026-09-20",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 72,
+      "hops": 220,
+      "needle_up_mm": 925.5,
+      "stitches": 19881,
+      "colour_changes": 3,
+      "sttype_kappa": 0.188341,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 49,
+      "word_cc": 0.9028,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 71,
+      "hops": 213,
+      "needle_up_mm": 877.1,
+      "stitches": 19718,
+      "colour_changes": 3,
+      "sttype_kappa": 0.188253,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 58,
+      "word_cc": 0.4309,
+      "engine": "a5d78449:lettering_column"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 109,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:per_stroke:becker",
+     "arm": "per_stroke",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 40,
+      "hops": 42,
+      "needle_up_mm": 770.7,
+      "stitches": 18591,
+      "colour_changes": 2,
+      "sttype_kappa": -0.034215,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.631,
+      "columns": 19,
+      "word_cc": 0.5,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 40,
+      "hops": 43,
+      "needle_up_mm": 849.1,
+      "stitches": 18177,
+      "colour_changes": 2,
+      "sttype_kappa": -0.039002,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.629,
+      "columns": 21,
+      "word_cc": 0.5,
+      "engine": "a5d78449:per_stroke"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:per_stroke:drone",
+     "arm": "per_stroke",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 121,
+      "hops": 171,
+      "needle_up_mm": 1889.5,
+      "stitches": 13655,
+      "colour_changes": 10,
+      "sttype_kappa": 0.248366,
+      "direction_kappa": 0.189,
+      "solid_iou": 0.866,
+      "columns": 60,
+      "word_cc": 0.4535,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 126,
+      "hops": 173,
+      "needle_up_mm": 1877.5,
+      "stitches": 13525,
+      "colour_changes": 8,
+      "sttype_kappa": 0.241722,
+      "direction_kappa": 0.182,
+      "solid_iou": 0.866,
+      "columns": 60,
+      "word_cc": 0.3891,
+      "engine": "a5d78449:per_stroke"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:per_stroke:fremont",
+     "arm": "per_stroke",
+     "fixture": "fremont",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 72,
+      "hops": 220,
+      "needle_up_mm": 925.5,
+      "stitches": 19881,
+      "colour_changes": 3,
+      "sttype_kappa": 0.188341,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 49,
+      "word_cc": 0.9028,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 77,
+      "hops": 225,
+      "needle_up_mm": 961.5,
+      "stitches": 19857,
+      "colour_changes": 3,
+      "sttype_kappa": 0.191111,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 49,
+      "word_cc": 0.9028,
+      "engine": "a5d78449:per_stroke"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 109,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:phantom_dissolve:bridge",
+     "arm": "phantom_dissolve",
+     "fixture": "bridge",
+     "label": "after",
+     "judged": "2026-09-28",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 108,
+      "hops": 153,
+      "needle_up_mm": 1395.8,
+      "stitches": 14273,
+      "colour_changes": 7,
+      "sttype_kappa": 0.338182,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.956,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 70,
+      "hops": 98,
+      "needle_up_mm": 935.6,
+      "stitches": 10524,
+      "colour_changes": 7,
+      "sttype_kappa": 0.337838,
+      "direction_kappa": 0.091,
+      "solid_iou": 0.935,
+      "engine": "a5d78449:phantom_dissolve"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:phantom_dissolve:golden_tee",
+     "arm": "phantom_dissolve",
+     "fixture": "golden_tee",
+     "label": "both_bad",
+     "judged": "2026-09-28",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 60,
+      "hops": 78,
+      "needle_up_mm": 783.0,
+      "stitches": 6462,
+      "colour_changes": 8,
+      "sttype_kappa": -0.022222,
+      "direction_kappa": 0.368,
+      "solid_iou": 0.607,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 60,
+      "hops": 80,
+      "needle_up_mm": 752.6,
+      "stitches": 6441,
+      "colour_changes": 8,
+      "sttype_kappa": -0.023529,
+      "direction_kappa": 0.373,
+      "solid_iou": 0.607,
+      "engine": "a5d78449:phantom_dissolve"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:phantom_dissolve:tires",
+     "arm": "phantom_dissolve",
+     "fixture": "tires",
+     "label": "both_bad",
+     "judged": "2026-09-28",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 9,
+      "hops": 10,
+      "needle_up_mm": 285.6,
+      "stitches": 7622,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.156,
+      "solid_iou": 0.87,
+      "columns": 0,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 8,
+      "hops": 9,
+      "needle_up_mm": 310.0,
+      "stitches": 7689,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.154,
+      "solid_iou": 0.866,
+      "columns": 0,
+      "engine": "a5d78449:phantom_dissolve"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:becker",
+     "arm": "polygon_axis",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 40,
+      "hops": 42,
+      "needle_up_mm": 770.7,
+      "stitches": 18591,
+      "colour_changes": 2,
+      "sttype_kappa": -0.034215,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.631,
+      "columns": 19,
+      "word_cc": 0.5,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 40,
+      "hops": 42,
+      "needle_up_mm": 751.1,
+      "stitches": 18595,
+      "colour_changes": 2,
+      "sttype_kappa": -0.042187,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.631,
+      "columns": 18,
+      "word_cc": 0.5,
+      "engine": "a5d78449:polygon_axis"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:bridge",
+     "arm": "polygon_axis",
+     "fixture": "bridge",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 108,
+      "hops": 153,
+      "needle_up_mm": 1395.8,
+      "stitches": 14273,
+      "colour_changes": 7,
+      "sttype_kappa": 0.338182,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.956,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 103,
+      "hops": 146,
+      "needle_up_mm": 1408.2,
+      "stitches": 12579,
+      "colour_changes": 7,
+      "sttype_kappa": 0.294118,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.954,
+      "engine": "a5d78449:polygon_axis"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:drone",
+     "arm": "polygon_axis",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 121,
+      "hops": 171,
+      "needle_up_mm": 1889.5,
+      "stitches": 13655,
+      "colour_changes": 10,
+      "sttype_kappa": 0.248366,
+      "direction_kappa": 0.189,
+      "solid_iou": 0.866,
+      "columns": 60,
+      "word_cc": 0.4535,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 120,
+      "hops": 169,
+      "needle_up_mm": 1879.1,
+      "stitches": 13839,
+      "colour_changes": 10,
+      "sttype_kappa": 0.212121,
+      "direction_kappa": 0.202,
+      "solid_iou": 0.877,
+      "columns": 59,
+      "word_cc": 0.3684,
+      "engine": "a5d78449:polygon_axis"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:fremont",
+     "arm": "polygon_axis",
+     "fixture": "fremont",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 72,
+      "hops": 220,
+      "needle_up_mm": 925.5,
+      "stitches": 19881,
+      "colour_changes": 3,
+      "sttype_kappa": 0.188341,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 49,
+      "word_cc": 0.9028,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 72,
+      "hops": 219,
+      "needle_up_mm": 927.6,
+      "stitches": 19890,
+      "colour_changes": 3,
+      "sttype_kappa": 0.182493,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 50,
+      "word_cc": 0.9028,
+      "engine": "a5d78449:polygon_axis"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 109,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:golden_tee",
+     "arm": "polygon_axis",
+     "fixture": "golden_tee",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 60,
+      "hops": 78,
+      "needle_up_mm": 783.0,
+      "stitches": 6462,
+      "colour_changes": 8,
+      "sttype_kappa": -0.022222,
+      "direction_kappa": 0.368,
+      "solid_iou": 0.607,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 68,
+      "hops": 81,
+      "needle_up_mm": 902.7,
+      "stitches": 6250,
+      "colour_changes": 8,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.386,
+      "solid_iou": 0.604,
+      "engine": "a5d78449:polygon_axis"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:tires",
+     "arm": "polygon_axis",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 9,
+      "hops": 10,
+      "needle_up_mm": 285.6,
+      "stitches": 7622,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.156,
+      "solid_iou": 0.87,
+      "columns": 0,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 11,
+      "hops": 12,
+      "needle_up_mm": 295.2,
+      "stitches": 8334,
+      "colour_changes": 1,
+      "sttype_kappa": 0.002503,
+      "direction_kappa": 0.144,
+      "solid_iou": 0.869,
+      "columns": 9,
+      "word_cc": 0.505,
+      "engine": "a5d78449:polygon_axis"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8,
+       "word_cc": 0.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:becker",
+     "arm": "rail_comp",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-09-20",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 40,
+      "hops": 42,
+      "needle_up_mm": 770.7,
+      "stitches": 18591,
+      "colour_changes": 2,
+      "sttype_kappa": -0.034215,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.631,
+      "columns": 19,
+      "word_cc": 0.5,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 38,
+      "hops": 40,
+      "needle_up_mm": 769.9,
+      "stitches": 18556,
+      "colour_changes": 2,
+      "sttype_kappa": -0.046875,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.631,
+      "columns": 18,
+      "word_cc": 0.5,
+      "engine": "a5d78449:rail_comp"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:bridge",
+     "arm": "rail_comp",
+     "fixture": "bridge",
+     "label": "after",
+     "judged": "2026-09-20",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 108,
+      "hops": 153,
+      "needle_up_mm": 1395.8,
+      "stitches": 14273,
+      "colour_changes": 7,
+      "sttype_kappa": 0.338182,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.956,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 94,
+      "hops": 136,
+      "needle_up_mm": 1322.4,
+      "stitches": 13544,
+      "colour_changes": 6,
+      "sttype_kappa": 0.312839,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.957,
+      "engine": "a5d78449:rail_comp"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:drone",
+     "arm": "rail_comp",
+     "fixture": "drone",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 121,
+      "hops": 171,
+      "needle_up_mm": 1889.5,
+      "stitches": 13655,
+      "colour_changes": 10,
+      "sttype_kappa": 0.248366,
+      "direction_kappa": 0.189,
+      "solid_iou": 0.866,
+      "columns": 60,
+      "word_cc": 0.4535,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 108,
+      "hops": 150,
+      "needle_up_mm": 1686.7,
+      "stitches": 13365,
+      "colour_changes": 10,
+      "sttype_kappa": 0.299115,
+      "direction_kappa": 0.233,
+      "solid_iou": 0.879,
+      "columns": 45,
+      "word_cc": 0.4272,
+      "engine": "a5d78449:rail_comp"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:fremont",
+     "arm": "rail_comp",
+     "fixture": "fremont",
+     "label": "after",
+     "judged": "2026-09-20",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 72,
+      "hops": 220,
+      "needle_up_mm": 925.5,
+      "stitches": 19881,
+      "colour_changes": 3,
+      "sttype_kappa": 0.188341,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 49,
+      "word_cc": 0.9028,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 70,
+      "hops": 214,
+      "needle_up_mm": 936.1,
+      "stitches": 19973,
+      "colour_changes": 3,
+      "sttype_kappa": 0.220365,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 55,
+      "word_cc": 0.8788,
+      "engine": "a5d78449:rail_comp"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 109,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:golden_tee",
+     "arm": "rail_comp",
+     "fixture": "golden_tee",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 60,
+      "hops": 78,
+      "needle_up_mm": 783.0,
+      "stitches": 6462,
+      "colour_changes": 8,
+      "sttype_kappa": -0.022222,
+      "direction_kappa": 0.368,
+      "solid_iou": 0.607,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 97,
+      "hops": 109,
+      "needle_up_mm": 1084.4,
+      "stitches": 11282,
+      "colour_changes": 8,
+      "sttype_kappa": -0.018182,
+      "direction_kappa": 0.396,
+      "solid_iou": 0.594,
+      "engine": "a5d78449:rail_comp"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:tires",
+     "arm": "rail_comp",
+     "fixture": "tires",
+     "label": "after",
+     "judged": "2026-09-20",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 9,
+      "hops": 10,
+      "needle_up_mm": 285.6,
+      "stitches": 7622,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.156,
+      "solid_iou": 0.87,
+      "columns": 0,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 9,
+      "hops": 10,
+      "needle_up_mm": 284.9,
+      "stitches": 7592,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.14,
+      "solid_iou": 0.871,
+      "columns": 6,
+      "engine": "a5d78449:rail_comp"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:becker",
+     "arm": "rails_follow_edge",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 40,
+      "hops": 42,
+      "needle_up_mm": 770.7,
+      "stitches": 18591,
+      "colour_changes": 2,
+      "sttype_kappa": -0.034215,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.631,
+      "columns": 19,
+      "word_cc": 0.5,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 40,
+      "hops": 42,
+      "needle_up_mm": 770.7,
+      "stitches": 18595,
+      "colour_changes": 2,
+      "sttype_kappa": -0.034215,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.632,
+      "columns": 19,
+      "word_cc": 0.5,
+      "engine": "a5d78449:rails_follow_edge"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:bridge",
+     "arm": "rails_follow_edge",
+     "fixture": "bridge",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 108,
+      "hops": 153,
+      "needle_up_mm": 1395.8,
+      "stitches": 14273,
+      "colour_changes": 7,
+      "sttype_kappa": 0.338182,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.956,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 108,
+      "hops": 153,
+      "needle_up_mm": 1395.2,
+      "stitches": 14484,
+      "colour_changes": 7,
+      "sttype_kappa": 0.345521,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.956,
+      "engine": "a5d78449:rails_follow_edge"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:drone",
+     "arm": "rails_follow_edge",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 121,
+      "hops": 171,
+      "needle_up_mm": 1889.5,
+      "stitches": 13655,
+      "colour_changes": 10,
+      "sttype_kappa": 0.248366,
+      "direction_kappa": 0.189,
+      "solid_iou": 0.866,
+      "columns": 60,
+      "word_cc": 0.4535,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 115,
+      "hops": 165,
+      "needle_up_mm": 1779.9,
+      "stitches": 13745,
+      "colour_changes": 10,
+      "sttype_kappa": 0.256667,
+      "direction_kappa": 0.185,
+      "solid_iou": 0.868,
+      "columns": 59,
+      "word_cc": 0.3448,
+      "engine": "a5d78449:rails_follow_edge"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:fremont",
+     "arm": "rails_follow_edge",
+     "fixture": "fremont",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 72,
+      "hops": 220,
+      "needle_up_mm": 925.5,
+      "stitches": 19881,
+      "colour_changes": 3,
+      "sttype_kappa": 0.188341,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 49,
+      "word_cc": 0.9028,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 71,
+      "hops": 220,
+      "needle_up_mm": 924.0,
+      "stitches": 19878,
+      "colour_changes": 3,
+      "sttype_kappa": 0.196697,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 56,
+      "word_cc": 0.9028,
+      "engine": "a5d78449:rails_follow_edge"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 109,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:golden_tee",
+     "arm": "rails_follow_edge",
+     "fixture": "golden_tee",
+     "label": "same",
+     "judged": "2026-09-18",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 60,
+      "hops": 78,
+      "needle_up_mm": 783.0,
+      "stitches": 6462,
+      "colour_changes": 8,
+      "sttype_kappa": -0.022222,
+      "direction_kappa": 0.368,
+      "solid_iou": 0.607,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 61,
+      "hops": 78,
+      "needle_up_mm": 756.6,
+      "stitches": 6613,
+      "colour_changes": 7,
+      "sttype_kappa": -0.022727,
+      "direction_kappa": 0.377,
+      "solid_iou": 0.61,
+      "engine": "a5d78449:rails_follow_edge"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:tires",
+     "arm": "rails_follow_edge",
+     "fixture": "tires",
+     "label": "after",
+     "judged": "2026-09-18",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 9,
+      "hops": 10,
+      "needle_up_mm": 285.6,
+      "stitches": 7622,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.156,
+      "solid_iou": 0.87,
+      "columns": 0,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 9,
+      "hops": 10,
+      "needle_up_mm": 285.6,
+      "stitches": 7638,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.157,
+      "solid_iou": 0.869,
+      "columns": 0,
+      "engine": "a5d78449:rails_follow_edge"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:becker",
+     "arm": "ref_0827",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-09-23",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 20,
+      "hops": 21,
+      "needle_up_mm": 341.4,
+      "stitches": 5970,
+      "colour_changes": 0,
+      "sttype_kappa": -0.018116,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.614,
+      "columns": 9,
+      "word_cc": 1.0,
+      "engine": "25da2fe:base"
+     },
+     "after": {
+      "cuts": 40,
+      "hops": 42,
+      "needle_up_mm": 770.7,
+      "stitches": 18591,
+      "colour_changes": 2,
+      "sttype_kappa": -0.034215,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.631,
+      "columns": 19,
+      "word_cc": 0.5,
+      "engine": "a5d78449:base"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:bridge",
+     "arm": "ref_0827",
+     "fixture": "bridge",
+     "label": "after",
+     "judged": "2026-09-23",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 105,
+      "hops": 141,
+      "needle_up_mm": 1239.4,
+      "stitches": 10504,
+      "colour_changes": 11,
+      "sttype_kappa": 0.267857,
+      "direction_kappa": 0.037,
+      "solid_iou": 0.955,
+      "engine": "25da2fe:base"
+     },
+     "after": {
+      "cuts": 108,
+      "hops": 153,
+      "needle_up_mm": 1395.8,
+      "stitches": 14273,
+      "colour_changes": 7,
+      "sttype_kappa": 0.338182,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.956,
+      "engine": "a5d78449:base"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:drone",
+     "arm": "ref_0827",
+     "fixture": "drone",
+     "label": "after",
+     "judged": "2026-09-23",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 64,
+      "hops": 100,
+      "needle_up_mm": 1013.5,
+      "stitches": 6684,
+      "colour_changes": 22,
+      "sttype_kappa": 0.227979,
+      "direction_kappa": 0.024,
+      "solid_iou": 0.849,
+      "columns": 32,
+      "word_cc": 0.1942,
+      "engine": "25da2fe:base"
+     },
+     "after": {
+      "cuts": 121,
+      "hops": 171,
+      "needle_up_mm": 1889.5,
+      "stitches": 13655,
+      "colour_changes": 10,
+      "sttype_kappa": 0.248366,
+      "direction_kappa": 0.189,
+      "solid_iou": 0.866,
+      "columns": 60,
+      "word_cc": 0.4535,
+      "engine": "a5d78449:base"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:fremont",
+     "arm": "ref_0827",
+     "fixture": "fremont",
+     "label": "after",
+     "judged": "2026-09-23",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 102,
+      "hops": 205,
+      "needle_up_mm": 1259.6,
+      "stitches": 10359,
+      "colour_changes": 4,
+      "sttype_kappa": 0.447552,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.969,
+      "columns": 58,
+      "word_cc": 0.6316,
+      "engine": "25da2fe:base"
+     },
+     "after": {
+      "cuts": 72,
+      "hops": 220,
+      "needle_up_mm": 925.5,
+      "stitches": 19881,
+      "colour_changes": 3,
+      "sttype_kappa": 0.188341,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 49,
+      "word_cc": 0.9028,
+      "engine": "a5d78449:base"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 102,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:golden_tee",
+     "arm": "ref_0827",
+     "fixture": "golden_tee",
+     "label": "both_bad",
+     "judged": "2026-09-22",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 51,
+      "hops": 73,
+      "needle_up_mm": 686.8,
+      "stitches": 6506,
+      "colour_changes": 13,
+      "sttype_kappa": -0.022222,
+      "direction_kappa": 0.326,
+      "solid_iou": 0.594,
+      "engine": "25da2fe:base"
+     },
+     "after": {
+      "cuts": 60,
+      "hops": 78,
+      "needle_up_mm": 783.0,
+      "stitches": 6462,
+      "colour_changes": 8,
+      "sttype_kappa": -0.022222,
+      "direction_kappa": 0.368,
+      "solid_iou": 0.607,
+      "engine": "a5d78449:base"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:tires",
+     "arm": "ref_0827",
+     "fixture": "tires",
+     "label": "after",
+     "judged": "2026-09-22",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 6,
+      "hops": 6,
+      "needle_up_mm": 119.8,
+      "stitches": 3896,
+      "colour_changes": 0,
+      "sttype_kappa": 0.004392,
+      "direction_kappa": 0.13,
+      "solid_iou": 0.886,
+      "columns": 0,
+      "engine": "25da2fe:base"
+     },
+     "after": {
+      "cuts": 9,
+      "hops": 10,
+      "needle_up_mm": 285.6,
+      "stitches": 7622,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.156,
+      "solid_iou": 0.87,
+      "columns": 0,
+      "engine": "a5d78449:base"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:becker",
+     "arm": "wide_columns",
+     "fixture": "becker",
+     "label": "before",
+     "judged": "2026-09-22",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 40,
+      "hops": 42,
+      "needle_up_mm": 770.7,
+      "stitches": 18591,
+      "colour_changes": 2,
+      "sttype_kappa": -0.034215,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.631,
+      "columns": 19,
+      "word_cc": 0.5,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 52,
+      "hops": 55,
+      "needle_up_mm": 958.1,
+      "stitches": 16852,
+      "colour_changes": 2,
+      "sttype_kappa": -0.001567,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.632,
+      "columns": 28,
+      "word_cc": 1.0,
+      "engine": "a5d78449:wide_columns"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:bridge",
+     "arm": "wide_columns",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-09-22",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 108,
+      "hops": 153,
+      "needle_up_mm": 1395.8,
+      "stitches": 14273,
+      "colour_changes": 7,
+      "sttype_kappa": 0.338182,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.956,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 149,
+      "hops": 189,
+      "needle_up_mm": 1651.6,
+      "stitches": 14339,
+      "colour_changes": 7,
+      "sttype_kappa": 0.013487,
+      "direction_kappa": 0.05,
+      "solid_iou": 0.937,
+      "engine": "a5d78449:wide_columns"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:drone",
+     "arm": "wide_columns",
+     "fixture": "drone",
+     "label": "both_bad",
+     "judged": "2026-09-22",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 121,
+      "hops": 171,
+      "needle_up_mm": 1889.5,
+      "stitches": 13655,
+      "colour_changes": 10,
+      "sttype_kappa": 0.248366,
+      "direction_kappa": 0.189,
+      "solid_iou": 0.866,
+      "columns": 60,
+      "word_cc": 0.4535,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 121,
+      "hops": 171,
+      "needle_up_mm": 1890.3,
+      "stitches": 13647,
+      "colour_changes": 10,
+      "sttype_kappa": 0.248366,
+      "direction_kappa": 0.188,
+      "solid_iou": 0.866,
+      "columns": 56,
+      "word_cc": 0.5478,
+      "engine": "a5d78449:wide_columns"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:golden_tee",
+     "arm": "wide_columns",
+     "fixture": "golden_tee",
+     "label": "both_bad",
+     "judged": "2026-09-22",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 60,
+      "hops": 78,
+      "needle_up_mm": 783.0,
+      "stitches": 6462,
+      "colour_changes": 8,
+      "sttype_kappa": -0.022222,
+      "direction_kappa": 0.368,
+      "solid_iou": 0.607,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 60,
+      "hops": 78,
+      "needle_up_mm": 783.0,
+      "stitches": 6462,
+      "colour_changes": 8,
+      "sttype_kappa": -0.022222,
+      "direction_kappa": 0.368,
+      "solid_iou": 0.607,
+      "engine": "a5d78449:wide_columns"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:tires",
+     "arm": "wide_columns",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-09-20",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 9,
+      "hops": 10,
+      "needle_up_mm": 285.6,
+      "stitches": 7622,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.156,
+      "solid_iou": 0.87,
+      "columns": 0,
+      "engine": "a5d78449:base"
+     },
+     "after": {
+      "cuts": 17,
+      "hops": 19,
+      "needle_up_mm": 372.7,
+      "stitches": 4618,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.656,
+      "solid_iou": 0.884,
+      "columns": 22,
+      "word_cc": 0.773,
+      "engine": "a5d78449:wide_columns"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8,
+       "word_cc": 0.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    }
+   ]
+  },
+  "envelope-0930": {
+   "date": "2026-09-30",
+   "labels": "docs/eye-pairs-2026-09-30/kent-notes.json",
+   "tree": "e54b5963",
+   "instruments": "both arms re-digitized on the sitting's tree at the pro's width and garment (tools.eye_pairs.pro_pooled_build), read beside the pro's DST with today's readers",
+   "pairs": [
+    {
+     "id": "envelope-0930:rail_envelope:becker",
+     "arm": "rail_envelope",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-09-30",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 55,
+      "hops": 56,
+      "needle_up_mm": 716.6,
+      "stitches": 8561,
+      "colour_changes": 1,
+      "sttype_kappa": -0.019108,
+      "direction_kappa": 0.336,
+      "solid_iou": 0.598,
+      "columns": 82,
+      "word_cc": 1.0,
+      "engine": "e54b5963:base"
+     },
+     "after": {
+      "cuts": 53,
+      "hops": 54,
+      "needle_up_mm": 685.2,
+      "stitches": 9111,
+      "colour_changes": 1,
+      "sttype_kappa": -0.090336,
+      "direction_kappa": 0.318,
+      "solid_iou": 0.601,
+      "columns": 84,
+      "word_cc": 1.0,
+      "engine": "e54b5963:rail_envelope"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "envelope-0930:rail_envelope:bridge",
+     "arm": "rail_envelope",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-09-30",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 84,
+      "hops": 139,
+      "needle_up_mm": 1336.1,
+      "stitches": 14579,
+      "colour_changes": 7,
+      "sttype_kappa": 0.294444,
+      "direction_kappa": 0.588,
+      "solid_iou": 0.955,
+      "engine": "e54b5963:base"
+     },
+     "after": {
+      "cuts": 84,
+      "hops": 139,
+      "needle_up_mm": 1336.1,
+      "stitches": 14627,
+      "colour_changes": 7,
+      "sttype_kappa": 0.292052,
+      "direction_kappa": 0.585,
+      "solid_iou": 0.955,
+      "engine": "e54b5963:rail_envelope"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "envelope-0930:rail_envelope:drone",
+     "arm": "rail_envelope",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-09-30",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 98,
+      "hops": 142,
+      "needle_up_mm": 1672.0,
+      "stitches": 12996,
+      "colour_changes": 10,
+      "sttype_kappa": 0.295972,
+      "direction_kappa": 0.251,
+      "solid_iou": 0.88,
+      "columns": 55,
+      "word_cc": 0.3097,
+      "engine": "e54b5963:base"
+     },
+     "after": {
+      "cuts": 98,
+      "hops": 142,
+      "needle_up_mm": 1672.0,
+      "stitches": 12996,
+      "colour_changes": 10,
+      "sttype_kappa": 0.295972,
+      "direction_kappa": 0.251,
+      "solid_iou": 0.88,
+      "columns": 55,
+      "word_cc": 0.3097,
+      "engine": "e54b5963:rail_envelope"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "envelope-0930:rail_envelope:golden_tee",
+     "arm": "rail_envelope",
+     "fixture": "golden_tee",
+     "label": "after",
+     "judged": "2026-09-30",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 31,
+      "hops": 42,
+      "needle_up_mm": 506.7,
+      "stitches": 7106,
+      "colour_changes": 8,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.39,
+      "solid_iou": 0.581,
+      "engine": "e54b5963:base"
+     },
+     "after": {
+      "cuts": 31,
+      "hops": 42,
+      "needle_up_mm": 506.7,
+      "stitches": 7144,
+      "colour_changes": 8,
+      "sttype_kappa": -0.028571,
+      "direction_kappa": 0.404,
+      "solid_iou": 0.591,
+      "engine": "e54b5963:rail_envelope"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "envelope-0930:rail_envelope:tires",
+     "arm": "rail_envelope",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-09-30",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7431,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.144,
+      "solid_iou": 0.87,
+      "columns": 1,
+      "engine": "e54b5963:base"
+     },
+     "after": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7431,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.144,
+      "solid_iou": 0.87,
+      "columns": 1,
+      "engine": "e54b5963:rail_envelope"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    }
+   ]
+  },
+  "evening-0930": {
+   "date": "2026-09-30",
+   "labels": "docs/eye-pairs-2026-09-30/kent-notes.json (third_sitting)",
+   "tree": "0803a7b2",
+   "instruments": "both arms re-digitized on the sitting's tree at the pro's width and garment (tools.eye_pairs.pro_pooled_build), read beside the pro's DST with today's readers",
+   "pairs": [
+    {
+     "id": "evening-0930:ref_0930am:becker",
+     "arm": "ref_0930am",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-09-30",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 57,
+      "hops": 58,
+      "needle_up_mm": 718.4,
+      "stitches": 9976,
+      "colour_changes": 1,
+      "sttype_kappa": -0.07332,
+      "direction_kappa": 0.266,
+      "solid_iou": 0.601,
+      "columns": 87,
+      "word_cc": 1.0,
+      "engine": "1e5f8fe2:base"
+     },
+     "after": {
+      "cuts": 57,
+      "hops": 58,
+      "needle_up_mm": 718.6,
+      "stitches": 9770,
+      "colour_changes": 1,
+      "sttype_kappa": -0.084211,
+      "direction_kappa": 0.313,
+      "solid_iou": 0.6,
+      "columns": 84,
+      "word_cc": 1.0,
+      "engine": "0803a7b2:base"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "evening-0930:ref_0930am:bridge",
+     "arm": "ref_0930am",
+     "fixture": "bridge",
+     "label": "same",
+     "judged": "2026-09-30",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 85,
+      "hops": 139,
+      "needle_up_mm": 1338.0,
+      "stitches": 15439,
+      "colour_changes": 7,
+      "sttype_kappa": 0.325279,
+      "direction_kappa": 0.569,
+      "solid_iou": 0.955,
+      "engine": "1e5f8fe2:base"
+     },
+     "after": {
+      "cuts": 85,
+      "hops": 139,
+      "needle_up_mm": 1339.8,
+      "stitches": 15378,
+      "colour_changes": 7,
+      "sttype_kappa": 0.317254,
+      "direction_kappa": 0.573,
+      "solid_iou": 0.955,
+      "engine": "0803a7b2:base"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "evening-0930:ref_0930am:drone",
+     "arm": "ref_0930am",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-09-30",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 99,
+      "hops": 143,
+      "needle_up_mm": 1685.7,
+      "stitches": 13099,
+      "colour_changes": 10,
+      "sttype_kappa": 0.291228,
+      "direction_kappa": 0.235,
+      "solid_iou": 0.877,
+      "columns": 54,
+      "word_cc": 0.3684,
+      "engine": "1e5f8fe2:base"
+     },
+     "after": {
+      "cuts": 99,
+      "hops": 143,
+      "needle_up_mm": 1685.7,
+      "stitches": 13119,
+      "colour_changes": 10,
+      "sttype_kappa": 0.295972,
+      "direction_kappa": 0.234,
+      "solid_iou": 0.877,
+      "columns": 54,
+      "word_cc": 0.3684,
+      "engine": "0803a7b2:base"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "evening-0930:ref_0930am:golden_tee",
+     "arm": "ref_0930am",
+     "fixture": "golden_tee",
+     "label": "both_bad",
+     "judged": "2026-09-30",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 33,
+      "hops": 43,
+      "needle_up_mm": 533.1,
+      "stitches": 7646,
+      "colour_changes": 8,
+      "sttype_kappa": -0.029412,
+      "direction_kappa": 0.423,
+      "solid_iou": 0.605,
+      "engine": "1e5f8fe2:base"
+     },
+     "after": {
+      "cuts": 33,
+      "hops": 43,
+      "needle_up_mm": 533.1,
+      "stitches": 7696,
+      "colour_changes": 8,
+      "sttype_kappa": -0.029412,
+      "direction_kappa": 0.419,
+      "solid_iou": 0.605,
+      "engine": "0803a7b2:base"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "evening-0930:ref_0930am:tires",
+     "arm": "ref_0930am",
+     "fixture": "tires",
+     "label": "before",
+     "judged": "2026-09-30",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7431,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.144,
+      "solid_iou": 0.87,
+      "columns": 1,
+      "engine": "1e5f8fe2:base"
+     },
+     "after": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7865,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.145,
+      "solid_iou": 0.87,
+      "columns": 1,
+      "engine": "0803a7b2:base"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    },
+    {
+     "id": "evening-0930:phantom_dissolve:bridge",
+     "arm": "phantom_dissolve",
+     "fixture": "bridge",
+     "label": "after",
+     "judged": "2026-09-30",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 85,
+      "hops": 139,
+      "needle_up_mm": 1339.8,
+      "stitches": 15378,
+      "colour_changes": 7,
+      "sttype_kappa": 0.317254,
+      "direction_kappa": 0.573,
+      "solid_iou": 0.955,
+      "engine": "0803a7b2:base"
+     },
+     "after": {
+      "cuts": 45,
+      "hops": 83,
+      "needle_up_mm": 842.6,
+      "stitches": 11336,
+      "colour_changes": 7,
+      "sttype_kappa": 0.243346,
+      "direction_kappa": 0.646,
+      "solid_iou": 0.945,
+      "engine": "0803a7b2:phantom_dissolve"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "evening-0930:phantom_dissolve:golden_tee",
+     "arm": "phantom_dissolve",
+     "fixture": "golden_tee",
+     "label": "before",
+     "judged": "2026-09-30",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 33,
+      "hops": 43,
+      "needle_up_mm": 533.1,
+      "stitches": 7696,
+      "colour_changes": 8,
+      "sttype_kappa": -0.029412,
+      "direction_kappa": 0.419,
+      "solid_iou": 0.605,
+      "engine": "0803a7b2:base"
+     },
+     "after": {
+      "cuts": 33,
+      "hops": 43,
+      "needle_up_mm": 510.0,
+      "stitches": 7684,
+      "colour_changes": 8,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.414,
+      "solid_iou": 0.605,
+      "engine": "0803a7b2:phantom_dissolve"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "evening-0930:phantom_dissolve:tires",
+     "arm": "phantom_dissolve",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-09-30",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7865,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.145,
+      "solid_iou": 0.87,
+      "columns": 1,
+      "engine": "0803a7b2:base"
+     },
+     "after": {
+      "cuts": 10,
+      "hops": 11,
+      "needle_up_mm": 310.3,
+      "stitches": 7923,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.162,
+      "solid_iou": 0.873,
+      "columns": 1,
+      "engine": "0803a7b2:phantom_dissolve"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    }
+   ]
+  },
+  "texture-0930": {
+   "date": "2026-10-01",
+   "labels": "docs/eye-pairs-2026-09-30/kent-notes.json (fourth_sitting)",
+   "tree": "7cc76370",
+   "instruments": "both arms re-digitized on the sitting's tree at the pro's width and garment (tools.eye_pairs.pro_pooled_build), read beside the pro's DST with today's readers",
+   "pairs": [
+    {
+     "id": "texture-0930:split_7mm:becker",
+     "arm": "split_7mm",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-10-01",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 57,
+      "hops": 58,
+      "needle_up_mm": 718.6,
+      "stitches": 9770,
+      "colour_changes": 1,
+      "sttype_kappa": -0.084211,
+      "direction_kappa": 0.313,
+      "solid_iou": 0.6,
+      "columns": 84,
+      "word_cc": 1.0,
+      "engine": "7cc76370:base"
+     },
+     "after": {
+      "cuts": 57,
+      "hops": 58,
+      "needle_up_mm": 718.6,
+      "stitches": 8905,
+      "colour_changes": 1,
+      "sttype_kappa": 0.052036,
+      "direction_kappa": 0.371,
+      "solid_iou": 0.6,
+      "columns": 85,
+      "word_cc": 1.0,
+      "engine": "7cc76370:split_7mm"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "texture-0930:split_7mm:bridge",
+     "arm": "split_7mm",
+     "fixture": "bridge",
+     "label": "same",
+     "judged": "2026-10-01",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 85,
+      "hops": 139,
+      "needle_up_mm": 1339.8,
+      "stitches": 15378,
+      "colour_changes": 7,
+      "sttype_kappa": 0.317254,
+      "direction_kappa": 0.573,
+      "solid_iou": 0.955,
+      "engine": "7cc76370:base"
+     },
+     "after": {
+      "cuts": 85,
+      "hops": 139,
+      "needle_up_mm": 1339.8,
+      "stitches": 15372,
+      "colour_changes": 7,
+      "sttype_kappa": 0.317254,
+      "direction_kappa": 0.573,
+      "solid_iou": 0.955,
+      "engine": "7cc76370:split_7mm"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "texture-0930:split_7mm:drone",
+     "arm": "split_7mm",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-10-01",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 99,
+      "hops": 143,
+      "needle_up_mm": 1685.7,
+      "stitches": 13119,
+      "colour_changes": 10,
+      "sttype_kappa": 0.295972,
+      "direction_kappa": 0.234,
+      "solid_iou": 0.877,
+      "columns": 54,
+      "word_cc": 0.3684,
+      "engine": "7cc76370:base"
+     },
+     "after": {
+      "cuts": 99,
+      "hops": 143,
+      "needle_up_mm": 1685.7,
+      "stitches": 13083,
+      "colour_changes": 10,
+      "sttype_kappa": 0.293497,
+      "direction_kappa": 0.236,
+      "solid_iou": 0.877,
+      "columns": 54,
+      "word_cc": 0.3684,
+      "engine": "7cc76370:split_7mm"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "texture-0930:split_7mm:tires",
+     "arm": "split_7mm",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-10-01",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7865,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.145,
+      "solid_iou": 0.87,
+      "columns": 1,
+      "engine": "7cc76370:base"
+     },
+     "after": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7215,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.139,
+      "solid_iou": 0.87,
+      "columns": 3,
+      "engine": "7cc76370:split_7mm"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    },
+    {
+     "id": "texture-0930:rails_symmetric:becker",
+     "arm": "rails_symmetric",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-10-01",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 57,
+      "hops": 58,
+      "needle_up_mm": 718.6,
+      "stitches": 9770,
+      "colour_changes": 1,
+      "sttype_kappa": -0.084211,
+      "direction_kappa": 0.313,
+      "solid_iou": 0.6,
+      "columns": 84,
+      "word_cc": 1.0,
+      "engine": "7cc76370:base"
+     },
+     "after": {
+      "cuts": 59,
+      "hops": 60,
+      "needle_up_mm": 749.8,
+      "stitches": 9699,
+      "colour_changes": 1,
+      "sttype_kappa": -0.082278,
+      "direction_kappa": 0.312,
+      "solid_iou": 0.599,
+      "columns": 89,
+      "word_cc": 1.0,
+      "engine": "7cc76370:rails_symmetric"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "texture-0930:rails_symmetric:golden_tee",
+     "arm": "rails_symmetric",
+     "fixture": "golden_tee",
+     "label": "before",
+     "judged": "2026-10-01",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 33,
+      "hops": 43,
+      "needle_up_mm": 533.1,
+      "stitches": 7696,
+      "colour_changes": 8,
+      "sttype_kappa": -0.029412,
+      "direction_kappa": 0.419,
+      "solid_iou": 0.605,
+      "engine": "7cc76370:base"
+     },
+     "after": {
+      "cuts": 33,
+      "hops": 43,
+      "needle_up_mm": 533.1,
+      "stitches": 7689,
+      "colour_changes": 8,
+      "sttype_kappa": -0.015625,
+      "direction_kappa": 0.421,
+      "solid_iou": 0.604,
+      "engine": "7cc76370:rails_symmetric"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "texture-0930:rails_symmetric:tires",
+     "arm": "rails_symmetric",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-10-01",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7865,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.145,
+      "solid_iou": 0.87,
+      "columns": 1,
+      "engine": "7cc76370:base"
+     },
+     "after": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7865,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.145,
+      "solid_iou": 0.87,
+      "columns": 1,
+      "engine": "7cc76370:rails_symmetric"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    }
+   ]
+  },
+  "off-flags-1003": {
+   "date": "2026-10-03",
+   "labels": "docs/eye-pairs-2026-10-03/kent-notes.json",
+   "tree": "82c9838d",
+   "instruments": "both arms re-digitized on the sitting's tree at the pro's width and garment (tools.eye_pairs.pro_pooled_build), read beside the pro's DST with today's readers",
+   "pairs": [
+    {
+     "id": "off-flags-1003:cap_recentre:becker",
+     "arm": "cap_recentre",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-10-03",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 59,
+      "hops": 60,
+      "needle_up_mm": 752.7,
+      "stitches": 10875,
+      "colour_changes": 1,
+      "sttype_kappa": -0.112971,
+      "direction_kappa": 0.313,
+      "solid_iou": 0.605,
+      "columns": 94,
+      "word_cc": 0.603,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 59,
+      "hops": 60,
+      "needle_up_mm": 745.5,
+      "stitches": 10838,
+      "colour_changes": 1,
+      "sttype_kappa": -0.11691,
+      "direction_kappa": 0.316,
+      "solid_iou": 0.604,
+      "columns": 90,
+      "word_cc": 0.603,
+      "engine": "82c9838d:cap_recentre"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:cap_recentre:bridge",
+     "arm": "cap_recentre",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-10-03",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 93,
+      "hops": 121,
+      "needle_up_mm": 1298.6,
+      "stitches": 16861,
+      "colour_changes": 6,
+      "sttype_kappa": 0.181651,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 92,
+      "hops": 120,
+      "needle_up_mm": 1289.2,
+      "stitches": 16838,
+      "colour_changes": 6,
+      "sttype_kappa": 0.185321,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "82c9838d:cap_recentre"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:cap_recentre:drone",
+     "arm": "cap_recentre",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-10-03",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 110,
+      "hops": 173,
+      "needle_up_mm": 1840.5,
+      "stitches": 13847,
+      "colour_changes": 9,
+      "sttype_kappa": 0.279359,
+      "direction_kappa": 0.253,
+      "solid_iou": 0.878,
+      "columns": 52,
+      "word_cc": 0.3684,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 110,
+      "hops": 173,
+      "needle_up_mm": 1840.5,
+      "stitches": 13847,
+      "colour_changes": 9,
+      "sttype_kappa": 0.279359,
+      "direction_kappa": 0.253,
+      "solid_iou": 0.878,
+      "columns": 52,
+      "word_cc": 0.3684,
+      "engine": "82c9838d:cap_recentre"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:cap_recentre:fremont",
+     "arm": "cap_recentre",
+     "fixture": "fremont",
+     "label": "same",
+     "judged": "2026-10-03",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 54,
+      "hops": 202,
+      "needle_up_mm": 886.6,
+      "stitches": 20023,
+      "colour_changes": 3,
+      "sttype_kappa": 0.223404,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 59,
+      "word_cc": 0.9028,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 54,
+      "hops": 202,
+      "needle_up_mm": 886.6,
+      "stitches": 20023,
+      "colour_changes": 3,
+      "sttype_kappa": 0.223404,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 59,
+      "word_cc": 0.9028,
+      "engine": "82c9838d:cap_recentre"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 109,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:cap_recentre:golden_tee",
+     "arm": "cap_recentre",
+     "fixture": "golden_tee",
+     "label": "same",
+     "judged": "2026-10-03",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 33,
+      "hops": 47,
+      "needle_up_mm": 638.8,
+      "stitches": 7956,
+      "colour_changes": 8,
+      "sttype_kappa": 0.044776,
+      "direction_kappa": 0.383,
+      "solid_iou": 0.606,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 33,
+      "hops": 47,
+      "needle_up_mm": 638.8,
+      "stitches": 7954,
+      "colour_changes": 8,
+      "sttype_kappa": 0.044776,
+      "direction_kappa": 0.384,
+      "solid_iou": 0.607,
+      "engine": "82c9838d:cap_recentre"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:cap_recentre:tires",
+     "arm": "cap_recentre",
+     "fixture": "tires",
+     "label": "after",
+     "judged": "2026-10-03",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7865,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.145,
+      "solid_iou": 0.87,
+      "columns": 1,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7865,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.145,
+      "solid_iou": 0.87,
+      "columns": 1,
+      "engine": "82c9838d:cap_recentre"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:bean_letters:bridge",
+     "arm": "bean_letters",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-10-03",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 93,
+      "hops": 121,
+      "needle_up_mm": 1298.6,
+      "stitches": 16861,
+      "colour_changes": 6,
+      "sttype_kappa": 0.181651,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 88,
+      "hops": 122,
+      "needle_up_mm": 1266.1,
+      "stitches": 16649,
+      "colour_changes": 7,
+      "sttype_kappa": 0.148551,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "82c9838d:bean_letters"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:bean_letters:drone",
+     "arm": "bean_letters",
+     "fixture": "drone",
+     "label": "before",
+     "judged": "2026-10-03",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 110,
+      "hops": 173,
+      "needle_up_mm": 1840.5,
+      "stitches": 13847,
+      "colour_changes": 9,
+      "sttype_kappa": 0.279359,
+      "direction_kappa": 0.253,
+      "solid_iou": 0.878,
+      "columns": 52,
+      "word_cc": 0.3684,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 129,
+      "hops": 242,
+      "needle_up_mm": 2140.3,
+      "stitches": 14876,
+      "colour_changes": 9,
+      "sttype_kappa": 0.152308,
+      "direction_kappa": 0.159,
+      "solid_iou": 0.828,
+      "columns": 22,
+      "word_cc": 0.4898,
+      "engine": "82c9838d:bean_letters"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:bean_letters:fremont",
+     "arm": "bean_letters",
+     "fixture": "fremont",
+     "label": "before",
+     "judged": "2026-10-03",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 54,
+      "hops": 202,
+      "needle_up_mm": 886.6,
+      "stitches": 20023,
+      "colour_changes": 3,
+      "sttype_kappa": 0.223404,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 59,
+      "word_cc": 0.9028,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 50,
+      "hops": 219,
+      "needle_up_mm": 843.4,
+      "stitches": 19173,
+      "colour_changes": 3,
+      "sttype_kappa": 0.112045,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 2,
+      "word_cc": 0.8196,
+      "engine": "82c9838d:bean_letters"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 109,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:bean_letters:golden_tee",
+     "arm": "bean_letters",
+     "fixture": "golden_tee",
+     "label": "before",
+     "judged": "2026-10-03",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 33,
+      "hops": 47,
+      "needle_up_mm": 638.8,
+      "stitches": 7956,
+      "colour_changes": 8,
+      "sttype_kappa": 0.044776,
+      "direction_kappa": 0.383,
+      "solid_iou": 0.606,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 33,
+      "hops": 54,
+      "needle_up_mm": 680.3,
+      "stitches": 7597,
+      "colour_changes": 8,
+      "sttype_kappa": 0.025157,
+      "direction_kappa": 0.285,
+      "solid_iou": 0.555,
+      "engine": "82c9838d:bean_letters"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:split_off:becker",
+     "arm": "split_off",
+     "fixture": "becker",
+     "label": "both_bad",
+     "judged": "2026-10-03",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 59,
+      "hops": 60,
+      "needle_up_mm": 752.7,
+      "stitches": 10875,
+      "colour_changes": 1,
+      "sttype_kappa": -0.112971,
+      "direction_kappa": 0.313,
+      "solid_iou": 0.605,
+      "columns": 94,
+      "word_cc": 0.603,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 59,
+      "hops": 63,
+      "needle_up_mm": 790.5,
+      "stitches": 8134,
+      "colour_changes": 1,
+      "sttype_kappa": 0.110849,
+      "direction_kappa": 0.406,
+      "solid_iou": 0.605,
+      "columns": 109,
+      "word_cc": 0.603,
+      "engine": "82c9838d:split_off"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:split_off:bridge",
+     "arm": "split_off",
+     "fixture": "bridge",
+     "label": "same",
+     "judged": "2026-10-03",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 93,
+      "hops": 121,
+      "needle_up_mm": 1298.6,
+      "stitches": 16861,
+      "colour_changes": 6,
+      "sttype_kappa": 0.181651,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 93,
+      "hops": 121,
+      "needle_up_mm": 1298.6,
+      "stitches": 16714,
+      "colour_changes": 6,
+      "sttype_kappa": 0.185321,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "82c9838d:split_off"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:split_off:drone",
+     "arm": "split_off",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-10-03",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 110,
+      "hops": 173,
+      "needle_up_mm": 1840.5,
+      "stitches": 13847,
+      "colour_changes": 9,
+      "sttype_kappa": 0.279359,
+      "direction_kappa": 0.253,
+      "solid_iou": 0.878,
+      "columns": 52,
+      "word_cc": 0.3684,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 110,
+      "hops": 173,
+      "needle_up_mm": 1840.5,
+      "stitches": 13847,
+      "colour_changes": 9,
+      "sttype_kappa": 0.279359,
+      "direction_kappa": 0.253,
+      "solid_iou": 0.878,
+      "columns": 52,
+      "word_cc": 0.3684,
+      "engine": "82c9838d:split_off"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:split_off:golden_tee",
+     "arm": "split_off",
+     "fixture": "golden_tee",
+     "label": "same",
+     "judged": "2026-10-03",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 33,
+      "hops": 47,
+      "needle_up_mm": 638.8,
+      "stitches": 7956,
+      "colour_changes": 8,
+      "sttype_kappa": 0.044776,
+      "direction_kappa": 0.383,
+      "solid_iou": 0.606,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 33,
+      "hops": 47,
+      "needle_up_mm": 638.8,
+      "stitches": 7900,
+      "colour_changes": 8,
+      "sttype_kappa": 0.044776,
+      "direction_kappa": 0.383,
+      "solid_iou": 0.606,
+      "engine": "82c9838d:split_off"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    },
+    {
+     "id": "off-flags-1003:split_off:tires",
+     "arm": "split_off",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-10-03",
+     "job": "tires_hat_3d",
+     "before": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7865,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.145,
+      "solid_iou": 0.87,
+      "columns": 1,
+      "engine": "82c9838d:base"
+     },
+     "after": {
+      "cuts": 12,
+      "hops": 13,
+      "needle_up_mm": 371.8,
+      "stitches": 7215,
+      "colour_changes": 1,
+      "sttype_kappa": 0.0,
+      "direction_kappa": 0.139,
+      "solid_iou": 0.87,
+      "columns": 3,
+      "engine": "82c9838d:split_off"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 8
+      },
+      "after": {
+       "columns": 8
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5555,
+      "colour_changes": 1,
+      "needle_up_mm": 273.0,
+      "hops": 10,
+      "file": "TIRES HAT 3D.DST"
+     }
+    }
+   ]
+  },
+  "density-1007": {
+   "date": "2026-10-07",
+   "labels": "docs/eye-pairs-2026-10-07/kent-notes.json (columns_sitting)",
+   "tree": "2a87ba89",
+   "instruments": "both arms re-digitized on the sitting's tree at the pro's width and garment (tools.eye_pairs.pro_pooled_build), read beside the pro's DST with today's readers",
+   "pairs": [
+    {
+     "id": "density-1007:lettering_columns:becker",
+     "arm": "lettering_columns",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-10-07",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 64,
+      "hops": 65,
+      "needle_up_mm": 718.9,
+      "stitches": 11825,
+      "colour_changes": 1,
+      "sttype_kappa": -0.159184,
+      "direction_kappa": 0.272,
+      "solid_iou": 0.604,
+      "columns": 96,
+      "word_cc": 0.603,
+      "engine": "2a87ba89:base"
+     },
+     "after": {
+      "cuts": 30,
+      "hops": 32,
+      "needle_up_mm": 571.0,
+      "stitches": 7925,
+      "colour_changes": 1,
+      "sttype_kappa": -0.103376,
+      "direction_kappa": 0.262,
+      "solid_iou": 0.603,
+      "columns": 78,
+      "word_cc": 0.4495,
+      "engine": "2a87ba89:lettering_columns"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "density-1007:lettering_columns:bridge",
+     "arm": "lettering_columns",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-10-07",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 93,
+      "hops": 120,
+      "needle_up_mm": 1272.4,
+      "stitches": 17469,
+      "colour_changes": 6,
+      "sttype_kappa": 0.218978,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "2a87ba89:base"
+     },
+     "after": {
+      "cuts": 90,
+      "hops": 120,
+      "needle_up_mm": 1269.6,
+      "stitches": 17354,
+      "colour_changes": 6,
+      "sttype_kappa": 0.187956,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "2a87ba89:lettering_columns"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "density-1007:lettering_columns:drone",
+     "arm": "lettering_columns",
+     "fixture": "drone",
+     "label": "after",
+     "judged": "2026-10-07",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 110,
+      "hops": 173,
+      "needle_up_mm": 1840.3,
+      "stitches": 14155,
+      "colour_changes": 9,
+      "sttype_kappa": 0.280639,
+      "direction_kappa": 0.254,
+      "solid_iou": 0.878,
+      "columns": 53,
+      "word_cc": 0.3684,
+      "engine": "2a87ba89:base"
+     },
+     "after": {
+      "cuts": 115,
+      "hops": 178,
+      "needle_up_mm": 1853.7,
+      "stitches": 13282,
+      "colour_changes": 9,
+      "sttype_kappa": 0.239583,
+      "direction_kappa": 0.267,
+      "solid_iou": 0.872,
+      "columns": 59,
+      "word_cc": 0.3684,
+      "engine": "2a87ba89:lettering_columns"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "density-1007:lettering_columns:fremont",
+     "arm": "lettering_columns",
+     "fixture": "fremont",
+     "label": "before",
+     "judged": "2026-10-07",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 54,
+      "hops": 202,
+      "needle_up_mm": 886.6,
+      "stitches": 20177,
+      "colour_changes": 3,
+      "sttype_kappa": 0.242378,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 60,
+      "word_cc": 0.9028,
+      "engine": "2a87ba89:base"
+     },
+     "after": {
+      "cuts": 59,
+      "hops": 199,
+      "needle_up_mm": 942.7,
+      "stitches": 19477,
+      "colour_changes": 3,
+      "sttype_kappa": 0.1261,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 70,
+      "word_cc": 0.9028,
+      "engine": "2a87ba89:lettering_columns"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 109,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    }
+   ]
+  },
+  "letterform-1007": {
+   "date": "2026-10-07",
+   "labels": "docs/eye-pairs-2026-10-07/kent-notes.json (pairs)",
+   "tree": "95c7eb07",
+   "instruments": "both arms re-digitized on the sitting's tree at the pro's width and garment (tools.eye_pairs.pro_pooled_build), read beside the pro's DST with today's readers",
+   "pairs": [
+    {
+     "id": "letterform-1007:letterform_priors:becker",
+     "arm": "letterform_priors",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-10-07",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 59,
+      "hops": 60,
+      "needle_up_mm": 745.5,
+      "stitches": 10838,
+      "colour_changes": 1,
+      "sttype_kappa": -0.11691,
+      "direction_kappa": 0.316,
+      "solid_iou": 0.604,
+      "columns": 90,
+      "word_cc": 0.603,
+      "engine": "95c7eb07:base"
+     },
+     "after": {
+      "cuts": 64,
+      "hops": 65,
+      "needle_up_mm": 718.9,
+      "stitches": 10902,
+      "colour_changes": 1,
+      "sttype_kappa": -0.157143,
+      "direction_kappa": 0.266,
+      "solid_iou": 0.604,
+      "columns": 92,
+      "word_cc": 0.566,
+      "engine": "95c7eb07:letterform_priors"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "letterform-1007:letterform_priors:bridge",
+     "arm": "letterform_priors",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-10-07",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 92,
+      "hops": 120,
+      "needle_up_mm": 1289.2,
+      "stitches": 16838,
+      "colour_changes": 6,
+      "sttype_kappa": 0.185321,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "95c7eb07:base"
+     },
+     "after": {
+      "cuts": 92,
+      "hops": 119,
+      "needle_up_mm": 1268.8,
+      "stitches": 16781,
+      "colour_changes": 6,
+      "sttype_kappa": 0.193015,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "95c7eb07:letterform_priors"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    }
+   ]
+  },
+  "columns-flip-1008": {
+   "date": "2026-10-08",
+   "labels": "docs/eye-pairs-2026-10-11/kent-notes-store-export.json",
+   "tree": "f08f49e4",
+   "instruments": "both arms re-digitized on the sitting's tree at the pro's width and garment (tools.eye_pairs.pro_pooled_build), read beside the pro's DST with today's readers",
+   "pairs": [
+    {
+     "id": "columns-flip-1008:columns_words:becker",
+     "arm": "columns_words",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-10-08",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 65,
+      "hops": 66,
+      "needle_up_mm": 743.2,
+      "stitches": 11838,
+      "colour_changes": 1,
+      "sttype_kappa": -0.111345,
+      "direction_kappa": 0.289,
+      "solid_iou": 0.606,
+      "columns": 96,
+      "word_cc": 0.603,
+      "engine": "f08f49e4:base"
+     },
+     "after": {
+      "cuts": 25,
+      "hops": 26,
+      "needle_up_mm": 480.3,
+      "stitches": 9536,
+      "colour_changes": 1,
+      "sttype_kappa": -0.231557,
+      "direction_kappa": 0.287,
+      "solid_iou": 0.603,
+      "columns": 78,
+      "word_cc": 0.103,
+      "engine": "f08f49e4:columns_words"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "columns-flip-1008:columns_words:bridge",
+     "arm": "columns_words",
+     "fixture": "bridge",
+     "label": "after",
+     "judged": "2026-10-08",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 91,
+      "hops": 122,
+      "needle_up_mm": 1212.3,
+      "stitches": 17909,
+      "colour_changes": 6,
+      "sttype_kappa": 0.189435,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "f08f49e4:base"
+     },
+     "after": {
+      "cuts": 87,
+      "hops": 118,
+      "needle_up_mm": 1230.7,
+      "stitches": 17952,
+      "colour_changes": 6,
+      "sttype_kappa": 0.210238,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "f08f49e4:columns_words"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "columns-flip-1008:columns_words:drone",
+     "arm": "columns_words",
+     "fixture": "drone",
+     "label": "both_bad",
+     "judged": "2026-10-08",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 113,
+      "hops": 174,
+      "needle_up_mm": 1899.5,
+      "stitches": 14848,
+      "colour_changes": 9,
+      "sttype_kappa": 0.256228,
+      "direction_kappa": 0.251,
+      "solid_iou": 0.879,
+      "columns": 55,
+      "word_cc": 0.3684,
+      "engine": "f08f49e4:base"
+     },
+     "after": {
+      "cuts": 117,
+      "hops": 176,
+      "needle_up_mm": 1942.4,
+      "stitches": 14798,
+      "colour_changes": 9,
+      "sttype_kappa": 0.267631,
+      "direction_kappa": 0.258,
+      "solid_iou": 0.878,
+      "columns": 69,
+      "word_cc": 0.3684,
+      "engine": "f08f49e4:columns_words"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "columns-flip-1008:columns_words:fremont",
+     "arm": "columns_words",
+     "fixture": "fremont",
+     "label": "after",
+     "judged": "2026-10-08",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 60,
+      "hops": 214,
+      "needle_up_mm": 976.9,
+      "stitches": 20819,
+      "colour_changes": 3,
+      "sttype_kappa": 0.240061,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 68,
+      "word_cc": 0.8118,
+      "engine": "f08f49e4:base"
+     },
+     "after": {
+      "cuts": 56,
+      "hops": 210,
+      "needle_up_mm": 983.5,
+      "stitches": 20727,
+      "colour_changes": 3,
+      "sttype_kappa": 0.234043,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 75,
+      "word_cc": 0.9028,
+      "engine": "f08f49e4:columns_words"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 109,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    },
+    {
+     "id": "columns-flip-1008:columns_words:golden_tee",
+     "arm": "columns_words",
+     "fixture": "golden_tee",
+     "label": "after",
+     "judged": "2026-10-08",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 31,
+      "hops": 48,
+      "needle_up_mm": 645.5,
+      "stitches": 8414,
+      "colour_changes": 8,
+      "sttype_kappa": 0.059701,
+      "direction_kappa": 0.382,
+      "solid_iou": 0.607,
+      "engine": "f08f49e4:base"
+     },
+     "after": {
+      "cuts": 29,
+      "hops": 46,
+      "needle_up_mm": 619.8,
+      "stitches": 8327,
+      "colour_changes": 8,
+      "sttype_kappa": 0.085106,
+      "direction_kappa": 0.34,
+      "solid_iou": 0.6,
+      "engine": "f08f49e4:columns_words"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    }
+   ]
+  },
+  "full-density-1008": {
+   "date": "2026-10-08",
+   "labels": "docs/eye-pairs-2026-10-11/kent-notes-store-export.json",
+   "tree": "62676060",
+   "instruments": "both arms re-digitized on the sitting's tree at the pro's width and garment (tools.eye_pairs.pro_pooled_build), read beside the pro's DST with today's readers",
+   "pairs": [
+    {
+     "id": "full-density-1008:lettering_columns:becker",
+     "arm": "lettering_columns",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-10-08",
+     "job": "becker_hat_large",
+     "before": {
+      "cuts": 65,
+      "hops": 66,
+      "needle_up_mm": 742.4,
+      "stitches": 11857,
+      "colour_changes": 1,
+      "sttype_kappa": -0.163265,
+      "direction_kappa": 0.27,
+      "solid_iou": 0.604,
+      "columns": 97,
+      "word_cc": 0.603,
+      "engine": "62676060:base"
+     },
+     "after": {
+      "cuts": 28,
+      "hops": 29,
+      "needle_up_mm": 526.9,
+      "stitches": 9550,
+      "colour_changes": 1,
+      "sttype_kappa": -0.215606,
+      "direction_kappa": 0.284,
+      "solid_iou": 0.603,
+      "columns": 79,
+      "word_cc": 0.12,
+      "engine": "62676060:lettering_columns"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 39,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 39,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 12356,
+      "colour_changes": 4,
+      "needle_up_mm": 416.1,
+      "hops": 13,
+      "file": "beckers logo hat.DST"
+     }
+    },
+    {
+     "id": "full-density-1008:lettering_columns:bridge",
+     "arm": "lettering_columns",
+     "fixture": "bridge",
+     "label": "after",
+     "judged": "2026-10-08",
+     "job": "bridge_lc",
+     "before": {
+      "cuts": 93,
+      "hops": 120,
+      "needle_up_mm": 1272.3,
+      "stitches": 17474,
+      "colour_changes": 6,
+      "sttype_kappa": 0.223035,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "62676060:base"
+     },
+     "after": {
+      "cuts": 90,
+      "hops": 119,
+      "needle_up_mm": 1268.7,
+      "stitches": 17478,
+      "colour_changes": 6,
+      "sttype_kappa": 0.210238,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.952,
+      "engine": "62676060:lettering_columns"
+     },
+     "pro": {
+      "cuts": 20,
+      "stitches": 8535,
+      "colour_changes": 4,
+      "needle_up_mm": 214.2,
+      "hops": 23,
+      "file": "BRIDGE LOGO LC.DST"
+     }
+    },
+    {
+     "id": "full-density-1008:lettering_columns:drone",
+     "arm": "lettering_columns",
+     "fixture": "drone",
+     "label": "after",
+     "judged": "2026-10-08",
+     "job": "precision_drone",
+     "before": {
+      "cuts": 110,
+      "hops": 173,
+      "needle_up_mm": 1840.3,
+      "stitches": 14137,
+      "colour_changes": 9,
+      "sttype_kappa": 0.280142,
+      "direction_kappa": 0.256,
+      "solid_iou": 0.879,
+      "columns": 52,
+      "word_cc": 0.3684,
+      "engine": "62676060:base"
+     },
+     "after": {
+      "cuts": 120,
+      "hops": 179,
+      "needle_up_mm": 1870.4,
+      "stitches": 14052,
+      "colour_changes": 9,
+      "sttype_kappa": 0.269504,
+      "direction_kappa": 0.269,
+      "solid_iou": 0.878,
+      "columns": 66,
+      "word_cc": 0.4204,
+      "engine": "62676060:lettering_columns"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 58,
+       "word_cc": 0.9152
+      },
+      "after": {
+       "columns": 58,
+       "word_cc": 0.9152
+      }
+     },
+     "pro": {
+      "cuts": 59,
+      "stitches": 14552,
+      "colour_changes": 22,
+      "needle_up_mm": 900.6,
+      "hops": 80,
+      "file": "PRECISION DRON HAT 2.DST"
+     }
+    },
+    {
+     "id": "full-density-1008:lettering_columns:fremont",
+     "arm": "lettering_columns",
+     "fixture": "fremont",
+     "label": "after",
+     "judged": "2026-10-08",
+     "job": "hotel_fremont_patch",
+     "before": {
+      "cuts": 54,
+      "hops": 202,
+      "needle_up_mm": 886.6,
+      "stitches": 20175,
+      "colour_changes": 3,
+      "sttype_kappa": 0.242378,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 60,
+      "word_cc": 0.9028,
+      "engine": "62676060:base"
+     },
+     "after": {
+      "cuts": 58,
+      "hops": 198,
+      "needle_up_mm": 929.2,
+      "stitches": 20245,
+      "colour_changes": 3,
+      "sttype_kappa": 0.247328,
+      "direction_kappa": 0.0,
+      "solid_iou": 0.987,
+      "columns": 78,
+      "word_cc": 0.9028,
+      "engine": "62676060:lettering_columns"
+     },
+     "pro_side": {
+      "before": {
+       "columns": 109,
+       "word_cc": 1.0
+      },
+      "after": {
+       "columns": 109,
+       "word_cc": 1.0
+      }
+     },
+     "pro": {
+      "cuts": 21,
+      "stitches": 15458,
+      "colour_changes": 8,
+      "needle_up_mm": 533.0,
+      "hops": 28,
+      "file": "HOTEL FREMONT .DST"
+     }
+    },
+    {
+     "id": "full-density-1008:lettering_columns:golden_tee",
+     "arm": "lettering_columns",
+     "fixture": "golden_tee",
+     "label": "after",
+     "judged": "2026-10-08",
+     "job": "goldentee_hat",
+     "before": {
+      "cuts": 33,
+      "hops": 47,
+      "needle_up_mm": 638.8,
+      "stitches": 8412,
+      "colour_changes": 8,
+      "sttype_kappa": 0.059701,
+      "direction_kappa": 0.381,
+      "solid_iou": 0.607,
+      "engine": "62676060:base"
+     },
+     "after": {
+      "cuts": 26,
+      "hops": 40,
+      "needle_up_mm": 442.8,
+      "stitches": 8098,
+      "colour_changes": 7,
+      "sttype_kappa": 0.046154,
+      "direction_kappa": 0.425,
+      "solid_iou": 0.606,
+      "engine": "62676060:lettering_columns"
+     },
+     "pro": {
+      "cuts": 10,
+      "stitches": 5973,
+      "colour_changes": 6,
+      "needle_up_mm": 288.9,
+      "hops": 15,
+      "file": "GOLF HAT.DST"
+     }
+    }
+   ]
+  }
+ }
+}
