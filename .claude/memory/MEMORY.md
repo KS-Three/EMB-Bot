@@ -81,6 +81,7 @@ the OLDEST lines whole to the archive.
 - [Monoline script satin](monoline-script-satin-2026-10-24.md) — Tires "ires" sewed FILL on dt_p90_cap alone; `monoline_script_satin` OFF; pro hides ALL in-word travel under later satin: trims 24 -> 8 (pro 10)
 - [Narrow columns like the pro](narrow-columns-2026-10-23.md) — small_bold: serifs absorbed into the stroke, chord-read junctions, no chamfer mitre; 74→55 columns; `column_harness.py`
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: don't build on past sessions; "what's next" comes from ROADMAP/PRODUCT/MASTER_SCOPE on main
+- [Nightly tripwire](nightly-tripwire-2026-11-02.md) — 18 committed pairs (Becker x5 + the zip's 13) nightly on main vs testdata/tripwire_ledger.json; tolerance = spread of 3 runner passes; wrong-way past it = red; never a PR check
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only, customer sees nothing
 - [Outline loop pivot](outline-loop-pivot-2026-10-25.md) — corner spikes are SPARSE far ends, not a missing mitre (pro's arc is round); `outline_loop_mitre` ON 10-26
 - [Outlined bean ink](outlined-bean-ink-2026-10-27.md) — MFab LC's AND read its white keyline as ink, sewed white; `bean_ink_outlined_letters` (ON 10-27) drops reads half outside
@@ -107,7 +108,6 @@ the OLDEST lines whole to the archive.
 - [Sew-out card v7](sewout-card-v7-2026-10-24.md) — only pull-by-stroke + pro values wait on fabric; BASE = ruled-unmerged flips; pull is a Fremont no-op, on MARINE it turns split satin plain like the pro
 - [Sew-out card v8](sewout-card-v8-2026-11-01.md) — cut_every_jump walks Fremont's 148 floats on the white field, cuts ENTHUSIAST's; JS cuts 15; Drone's lever is the halo (0.3: x1.74); 0.01 mm oracle: 1 walk 0.029 mm off
 - [Shape memo](shape-memo-2026-10-28.md) — Column lane's rank-only 2nd stage-7 pass was 79 of owl flat's 137 s; `shape_memo` memoizes stitch_shape/satin_shape/rim per job: 137 -> 113 s flat, 123 -> 97 gradient, md5 same
-- [Short column underlay](short-column-underlay-2026-10-22.md) — `satin_underlay_short_columns` OFF: pro centre-walks 83-97% of columns at EVERY width; no 3.5 mm pitch; zigzag unsettled
 - [Silhouette under-fill](silhouette-underfill-2026-10-24.md) — "pro fills it" was LAYERING, not tier (kappa 0.170 vs 0.198): ring outline filled under in the majority colour; `silhouette_underfill` OFF
 - [Small-text floor](small-text-floor-2026-10-24.md) — pro re-sets every line under ~3.2 mm to 4-4.6 mm satin, never runs/drops; #1029 missed ProSeal (design-edge halo); `small_text_cap_reach_edges` OFF
 - [Stage-0 flake](stage0-flake-output-alignment-2026-10-25.md) — W3-13: `cv2.magnitude` (IPP AVX2) answered by its OUTPUT buffer's alignment, not float32 box/mean/threads; `_magnitude` in float64. Hash each op under IPP paths first

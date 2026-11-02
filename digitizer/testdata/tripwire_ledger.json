@@ -1,0 +1,1140 @@
+{
+ "schema": 1,
+ "captured": {
+  "date": "2026-11-02",
+  "passes": 3,
+  "run_url": "https://github.com/KS-Three/EMB-Bot/actions/runs/41513783169",
+  "engine": {
+   "head": "0ec42770",
+   "tree": "4cee494a34ea+2c86fc841cb6",
+   "dirty": false,
+   "opencv_ipp": "avx2"
+  }
+ },
+ "env": {
+  "python": "3.12.15",
+  "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.43",
+  "machine": "x86_64",
+  "opencv_ipp": "avx2",
+  "cv2": "5.0.0",
+  "pystitch": "1.0.1",
+  "tesseract": "tesseract 5.5.0",
+  "rembg_venv": false,
+  "engine": {
+   "head": "0ec42770",
+   "tree": "4cee494a34ea+2c86fc841cb6",
+   "dirty": false,
+   "opencv_ipp": "avx2"
+  },
+  "github_run": "41513783169"
+ },
+ "figures": {
+  "stitches": {
+   "worse": "up",
+   "res": 1
+  },
+  "trims": {
+   "worse": "up",
+   "res": 1
+  },
+  "hops": {
+   "worse": "up",
+   "res": 1
+  },
+  "needle_up_mm": {
+   "worse": "up",
+   "res": 0.1
+  },
+  "sttype_kappa": {
+   "worse": "down",
+   "res": 0.01
+  },
+  "direction_kappa": {
+   "worse": "down",
+   "res": 0.01
+  },
+  "word_cc": {
+   "worse": "down",
+   "res": 0.01
+  }
+ },
+ "secs": {
+  "becker_hat_large": [
+   9.2,
+   9.8,
+   13.7
+  ],
+  "becker_lc_large": [
+   7.1,
+   7.6,
+   10.0
+  ],
+  "becker_hat_small": [
+   5.9,
+   6.4,
+   8.2
+  ],
+  "becker_chest_small": [
+   5.8,
+   6.2,
+   8.1
+  ],
+  "becker_beanie": [
+   6.1,
+   6.3,
+   8.4
+  ],
+  "gaulke_roofing_hat": [
+   13.0,
+   13.8,
+   17.8
+  ],
+  "gaulke_roofing_lc": [
+   8.6,
+   8.9,
+   11.4
+  ],
+  "gaulke_roofing_beanie": [
+   9.3,
+   10.0,
+   12.5
+  ],
+  "hotel_fremont_hat": [
+   27.6,
+   28.6,
+   37.1
+  ],
+  "hotel_fremont_patch": [
+   27.2,
+   28.3,
+   37.4
+  ],
+  "mfab_hat": [
+   23.6,
+   25.2,
+   34.2
+  ],
+  "mfab_lc": [
+   12.7,
+   13.3,
+   18.0
+  ],
+  "precision_drone": [
+   20.0,
+   20.3,
+   27.9
+  ],
+  "tires_hat_3d": [
+   3.5,
+   3.7,
+   4.8
+  ],
+  "goldentee_hat": [
+   25.0,
+   25.5,
+   33.7
+  ],
+  "toat_machine_hat": [
+   8.6,
+   8.8,
+   11.8
+  ],
+  "toat_machine_beanie": [
+   7.9,
+   8.0,
+   10.6
+  ],
+  "toat_beanie": [
+   7.6,
+   7.9,
+   10.3
+  ]
+ },
+ "skipped": [],
+ "rows": [
+  {
+   "job": "becker_hat_large",
+   "figure": "stitches",
+   "baseline": 16262,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 12356
+  },
+  {
+   "job": "becker_hat_large",
+   "figure": "trims",
+   "baseline": 11,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 10
+  },
+  {
+   "job": "becker_hat_large",
+   "figure": "hops",
+   "baseline": 14,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 13
+  },
+  {
+   "job": "becker_hat_large",
+   "figure": "needle_up_mm",
+   "baseline": 327.3,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 416.1
+  },
+  {
+   "job": "becker_hat_large",
+   "figure": "sttype_kappa",
+   "baseline": 0.29,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.529
+  },
+  {
+   "job": "becker_hat_large",
+   "figure": "direction_kappa",
+   "baseline": 0.35,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "becker_hat_large",
+   "figure": "word_cc",
+   "baseline": 0.836,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 1.0,
+   "words": 2
+  },
+  {
+   "job": "becker_lc_large",
+   "figure": "stitches",
+   "baseline": 14922,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 11274
+  },
+  {
+   "job": "becker_lc_large",
+   "figure": "trims",
+   "baseline": 12,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 12
+  },
+  {
+   "job": "becker_lc_large",
+   "figure": "hops",
+   "baseline": 15,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 14
+  },
+  {
+   "job": "becker_lc_large",
+   "figure": "needle_up_mm",
+   "baseline": 292.1,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 375.6
+  },
+  {
+   "job": "becker_lc_large",
+   "figure": "sttype_kappa",
+   "baseline": 0.334,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.512
+  },
+  {
+   "job": "becker_lc_large",
+   "figure": "direction_kappa",
+   "baseline": 0.351,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "becker_hat_small",
+   "figure": "stitches",
+   "baseline": 10547,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 8694
+  },
+  {
+   "job": "becker_hat_small",
+   "figure": "trims",
+   "baseline": 11,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 11
+  },
+  {
+   "job": "becker_hat_small",
+   "figure": "hops",
+   "baseline": 16,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 14
+  },
+  {
+   "job": "becker_hat_small",
+   "figure": "needle_up_mm",
+   "baseline": 281.3,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 321.9
+  },
+  {
+   "job": "becker_hat_small",
+   "figure": "sttype_kappa",
+   "baseline": 0.529,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.502
+  },
+  {
+   "job": "becker_hat_small",
+   "figure": "direction_kappa",
+   "baseline": 0.416,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "becker_chest_small",
+   "figure": "stitches",
+   "baseline": 10310,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 8694
+  },
+  {
+   "job": "becker_chest_small",
+   "figure": "trims",
+   "baseline": 11,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 12
+  },
+  {
+   "job": "becker_chest_small",
+   "figure": "hops",
+   "baseline": 16,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 14
+  },
+  {
+   "job": "becker_chest_small",
+   "figure": "needle_up_mm",
+   "baseline": 281.4,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 292.4
+  },
+  {
+   "job": "becker_chest_small",
+   "figure": "sttype_kappa",
+   "baseline": 0.575,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.502
+  },
+  {
+   "job": "becker_chest_small",
+   "figure": "direction_kappa",
+   "baseline": 0.444,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "becker_beanie",
+   "figure": "stitches",
+   "baseline": 13864,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 11411
+  },
+  {
+   "job": "becker_beanie",
+   "figure": "trims",
+   "baseline": 14,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 11
+  },
+  {
+   "job": "becker_beanie",
+   "figure": "hops",
+   "baseline": 19,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 15
+  },
+  {
+   "job": "becker_beanie",
+   "figure": "needle_up_mm",
+   "baseline": 339.4,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 375.5
+  },
+  {
+   "job": "becker_beanie",
+   "figure": "sttype_kappa",
+   "baseline": 0.245,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.557
+  },
+  {
+   "job": "becker_beanie",
+   "figure": "direction_kappa",
+   "baseline": 0.396,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "gaulke_roofing_hat",
+   "figure": "stitches",
+   "baseline": 7446,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 6138
+  },
+  {
+   "job": "gaulke_roofing_hat",
+   "figure": "trims",
+   "baseline": 30,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 42
+  },
+  {
+   "job": "gaulke_roofing_hat",
+   "figure": "hops",
+   "baseline": 45,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 41
+  },
+  {
+   "job": "gaulke_roofing_hat",
+   "figure": "needle_up_mm",
+   "baseline": 371.5,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 501.9
+  },
+  {
+   "job": "gaulke_roofing_hat",
+   "figure": "sttype_kappa",
+   "baseline": 0.139,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.842
+  },
+  {
+   "job": "gaulke_roofing_hat",
+   "figure": "direction_kappa",
+   "baseline": 0.511,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "gaulke_roofing_lc",
+   "figure": "stitches",
+   "baseline": 5778,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 5151
+  },
+  {
+   "job": "gaulke_roofing_lc",
+   "figure": "trims",
+   "baseline": 23,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 42
+  },
+  {
+   "job": "gaulke_roofing_lc",
+   "figure": "hops",
+   "baseline": 47,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 41
+  },
+  {
+   "job": "gaulke_roofing_lc",
+   "figure": "needle_up_mm",
+   "baseline": 316.9,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 372.6
+  },
+  {
+   "job": "gaulke_roofing_lc",
+   "figure": "sttype_kappa",
+   "baseline": 0.286,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.874
+  },
+  {
+   "job": "gaulke_roofing_lc",
+   "figure": "direction_kappa",
+   "baseline": 0.511,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "gaulke_roofing_beanie",
+   "figure": "stitches",
+   "baseline": 7602,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 7051
+  },
+  {
+   "job": "gaulke_roofing_beanie",
+   "figure": "trims",
+   "baseline": 24,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 42
+  },
+  {
+   "job": "gaulke_roofing_beanie",
+   "figure": "hops",
+   "baseline": 48,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 42
+  },
+  {
+   "job": "gaulke_roofing_beanie",
+   "figure": "needle_up_mm",
+   "baseline": 327.6,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 408.6
+  },
+  {
+   "job": "gaulke_roofing_beanie",
+   "figure": "sttype_kappa",
+   "baseline": 0.307,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.51
+  },
+  {
+   "job": "gaulke_roofing_beanie",
+   "figure": "direction_kappa",
+   "baseline": 0.004,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "hotel_fremont_hat",
+   "figure": "stitches",
+   "baseline": 15899,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 17067
+  },
+  {
+   "job": "hotel_fremont_hat",
+   "figure": "trims",
+   "baseline": 25,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 21
+  },
+  {
+   "job": "hotel_fremont_hat",
+   "figure": "hops",
+   "baseline": 175,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 30
+  },
+  {
+   "job": "hotel_fremont_hat",
+   "figure": "needle_up_mm",
+   "baseline": 501.1,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 506.9
+  },
+  {
+   "job": "hotel_fremont_hat",
+   "figure": "sttype_kappa",
+   "baseline": 0.533,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.435
+  },
+  {
+   "job": "hotel_fremont_hat",
+   "figure": "direction_kappa",
+   "baseline": 0.0,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "hotel_fremont_hat",
+   "figure": "word_cc",
+   "baseline": 1.0,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 1.0,
+   "words": 8
+  },
+  {
+   "job": "hotel_fremont_patch",
+   "figure": "stitches",
+   "baseline": 14856,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 15458
+  },
+  {
+   "job": "hotel_fremont_patch",
+   "figure": "trims",
+   "baseline": 20,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 21
+  },
+  {
+   "job": "hotel_fremont_patch",
+   "figure": "hops",
+   "baseline": 175,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 28
+  },
+  {
+   "job": "hotel_fremont_patch",
+   "figure": "needle_up_mm",
+   "baseline": 475.9,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 533.0
+  },
+  {
+   "job": "hotel_fremont_patch",
+   "figure": "sttype_kappa",
+   "baseline": 0.518,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.426
+  },
+  {
+   "job": "hotel_fremont_patch",
+   "figure": "direction_kappa",
+   "baseline": 0.419,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "mfab_hat",
+   "figure": "stitches",
+   "baseline": 20801,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 17568
+  },
+  {
+   "job": "mfab_hat",
+   "figure": "trims",
+   "baseline": 16,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 19
+  },
+  {
+   "job": "mfab_hat",
+   "figure": "hops",
+   "baseline": 30,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 22
+  },
+  {
+   "job": "mfab_hat",
+   "figure": "needle_up_mm",
+   "baseline": 556.2,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 391.8
+  },
+  {
+   "job": "mfab_hat",
+   "figure": "sttype_kappa",
+   "baseline": 0.563,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.485
+  },
+  {
+   "job": "mfab_hat",
+   "figure": "direction_kappa",
+   "baseline": 0.0,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "mfab_hat",
+   "figure": "word_cc",
+   "baseline": 0.177,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 0.15,
+   "words": 4
+  },
+  {
+   "job": "mfab_lc",
+   "figure": "stitches",
+   "baseline": 18092,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 15786
+  },
+  {
+   "job": "mfab_lc",
+   "figure": "trims",
+   "baseline": 19,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 20
+  },
+  {
+   "job": "mfab_lc",
+   "figure": "hops",
+   "baseline": 31,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 23
+  },
+  {
+   "job": "mfab_lc",
+   "figure": "needle_up_mm",
+   "baseline": 345.2,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 367.5
+  },
+  {
+   "job": "mfab_lc",
+   "figure": "sttype_kappa",
+   "baseline": 0.566,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.487
+  },
+  {
+   "job": "mfab_lc",
+   "figure": "direction_kappa",
+   "baseline": 0.0,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "precision_drone",
+   "figure": "stitches",
+   "baseline": 14767,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 14552
+  },
+  {
+   "job": "precision_drone",
+   "figure": "trims",
+   "baseline": 87,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 59
+  },
+  {
+   "job": "precision_drone",
+   "figure": "hops",
+   "baseline": 125,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 80
+  },
+  {
+   "job": "precision_drone",
+   "figure": "needle_up_mm",
+   "baseline": 1461.1,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 900.6
+  },
+  {
+   "job": "precision_drone",
+   "figure": "sttype_kappa",
+   "baseline": 0.376,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.5
+  },
+  {
+   "job": "precision_drone",
+   "figure": "direction_kappa",
+   "baseline": 0.084,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "tires_hat_3d",
+   "figure": "stitches",
+   "baseline": 4544,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 5555
+  },
+  {
+   "job": "tires_hat_3d",
+   "figure": "trims",
+   "baseline": 3,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 10
+  },
+  {
+   "job": "tires_hat_3d",
+   "figure": "hops",
+   "baseline": 3,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 10
+  },
+  {
+   "job": "tires_hat_3d",
+   "figure": "needle_up_mm",
+   "baseline": 52.7,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 273.0
+  },
+  {
+   "job": "tires_hat_3d",
+   "figure": "sttype_kappa",
+   "baseline": 0.0,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.513
+  },
+  {
+   "job": "tires_hat_3d",
+   "figure": "direction_kappa",
+   "baseline": 0.706,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "goldentee_hat",
+   "figure": "stitches",
+   "baseline": 11018,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 5973
+  },
+  {
+   "job": "goldentee_hat",
+   "figure": "trims",
+   "baseline": 25,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 10
+  },
+  {
+   "job": "goldentee_hat",
+   "figure": "hops",
+   "baseline": 42,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 15
+  },
+  {
+   "job": "goldentee_hat",
+   "figure": "needle_up_mm",
+   "baseline": 536.3,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 288.9
+  },
+  {
+   "job": "goldentee_hat",
+   "figure": "sttype_kappa",
+   "baseline": 0.828,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.62
+  },
+  {
+   "job": "goldentee_hat",
+   "figure": "direction_kappa",
+   "baseline": 0.241,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "toat_machine_hat",
+   "figure": "stitches",
+   "baseline": 18869,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 13886
+  },
+  {
+   "job": "toat_machine_hat",
+   "figure": "trims",
+   "baseline": 22,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 31
+  },
+  {
+   "job": "toat_machine_hat",
+   "figure": "hops",
+   "baseline": 37,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 31
+  },
+  {
+   "job": "toat_machine_hat",
+   "figure": "needle_up_mm",
+   "baseline": 328.7,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 528.0
+  },
+  {
+   "job": "toat_machine_hat",
+   "figure": "sttype_kappa",
+   "baseline": 0.317,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.574
+  },
+  {
+   "job": "toat_machine_hat",
+   "figure": "direction_kappa",
+   "baseline": 0.22,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "toat_machine_beanie",
+   "figure": "stitches",
+   "baseline": 18298,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 14817
+  },
+  {
+   "job": "toat_machine_beanie",
+   "figure": "trims",
+   "baseline": 21,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 31
+  },
+  {
+   "job": "toat_machine_beanie",
+   "figure": "hops",
+   "baseline": 35,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 32
+  },
+  {
+   "job": "toat_machine_beanie",
+   "figure": "needle_up_mm",
+   "baseline": 340.0,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 531.1
+  },
+  {
+   "job": "toat_machine_beanie",
+   "figure": "sttype_kappa",
+   "baseline": 0.383,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.578
+  },
+  {
+   "job": "toat_machine_beanie",
+   "figure": "direction_kappa",
+   "baseline": 0.382,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "toat_beanie",
+   "figure": "stitches",
+   "baseline": 18253,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 15111
+  },
+  {
+   "job": "toat_beanie",
+   "figure": "trims",
+   "baseline": 20,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 31
+  },
+  {
+   "job": "toat_beanie",
+   "figure": "hops",
+   "baseline": 34,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 32
+  },
+  {
+   "job": "toat_beanie",
+   "figure": "needle_up_mm",
+   "baseline": 310.7,
+   "worse": "up",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "pro": 533.3
+  },
+  {
+   "job": "toat_beanie",
+   "figure": "sttype_kappa",
+   "baseline": 0.395,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.551
+  },
+  {
+   "job": "toat_beanie",
+   "figure": "direction_kappa",
+   "baseline": 0.388,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  }
+ ]
+}
