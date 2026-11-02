@@ -36,20 +36,6 @@
    "provenance": "pro_baseline.JOBS['mfab_hat']: drawn at the job's own garment (hat_front) and width (104.9 mm). M-FAB hat job. Artwork committed in PR #556, already public (testdata/art/logo_mfab_hat.png); photo-class, routes through the photo-prep venv. Never in a sitting."
   },
   {
-   "name": "mfab_lc",
-   "design": "mfab",
-   "population": "A",
-   "source": {
-    "kind": "job",
-    "slug": "mfab_lc",
-    "sha256_16": "ba2a6389f75a1cda"
-   },
-   "width_mm": 96.7,
-   "garment": "left_chest",
-   "kind": "pro_paired_job",
-   "provenance": "pro_baseline.JOBS['mfab_lc']: drawn at the job's own garment (left_chest) and width (96.7 mm). M-FAB left-chest job, another crop of the same design (testdata/art/logo_mfab_lc.png, PR #556). Drops first if the budget runs over. Never in a sitting."
-  },
-  {
    "name": "proseal_hat",
    "design": "proseal",
    "population": "A",
@@ -64,20 +50,6 @@
    "provenance": "pro_baseline.JOBS['proseal_hat']: drawn at the job's own garment (hat_front) and width (85.9 mm). ProSeal hat job. The artwork is the file pro_baseline.JOBS names under the gitignored scratch_kent/; it is NOT in the repository and is read from there. No client art is added. Never in a sitting."
   },
   {
-   "name": "proseal_beanie",
-   "design": "proseal",
-   "population": "A",
-   "source": {
-    "kind": "job",
-    "slug": "proseal_beanie",
-    "sha256_16": "f7a3112e9ecaf339"
-   },
-   "width_mm": 75.0,
-   "garment": "beanie",
-   "kind": "pro_paired_job",
-   "provenance": "pro_baseline.JOBS['proseal_beanie']: drawn at the job's own garment (beanie) and width (75.0 mm). ProSeal beanie job, the same file as proseal_hat at the beanie's own width. Never in a sitting."
-  },
-  {
    "name": "toat_machine_hat",
    "design": "toat",
    "population": "A",
@@ -90,6 +62,34 @@
    "garment": "hat_front",
    "kind": "pro_paired_job",
    "provenance": "pro_baseline.JOBS['toat_machine_hat']: drawn at the job's own garment (hat_front) and width (89.5 mm). To a T Machine hat job. Artwork committed in PR #556, already public (testdata/art/logo_toat_machine.png). Never in a sitting."
+  },
+  {
+   "name": "mfab_lc",
+   "design": "mfab",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "mfab_lc",
+    "sha256_16": "ba2a6389f75a1cda"
+   },
+   "width_mm": 96.7,
+   "garment": "left_chest",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['mfab_lc']: drawn at the job's own garment (left_chest) and width (96.7 mm). M-FAB left-chest job, another crop of the same design (testdata/art/logo_mfab_lc.png, PR #556). Drops first if the budget runs over. Never in a sitting."
+  },
+  {
+   "name": "proseal_beanie",
+   "design": "proseal",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "proseal_beanie",
+    "sha256_16": "f7a3112e9ecaf339"
+   },
+   "width_mm": 75.0,
+   "garment": "beanie",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['proseal_beanie']: drawn at the job's own garment (beanie) and width (75.0 mm). ProSeal beanie job, the same file as proseal_hat at the beanie's own width. Never in a sitting."
   },
   {
    "name": "toat_machine_beanie",
