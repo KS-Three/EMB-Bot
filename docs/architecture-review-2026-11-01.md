@@ -313,6 +313,15 @@ What it buys: a phase that has been open since July either closes or stops
 pretending the scorecard is the judge. Every later flip sheet then quotes the
 same figure the exit was judged on.
 
+**Built and ruled, 2026-11-02.** PR #1213
+(`docs/yardstick-pro-pair-vs-kents-eye-2026-11-01.md`): only the trim family
+clears chance against his picks, and it scores his pick farther from the pro
+on 10–13 of the decided pairs. Shown those 17 pairs side by side (before |
+after | pro), Kent: *"My eye stands."* The exit is recorded unmet by any
+instrument this corpus supports; no tolerance, no rewrite, phase marker
+untouched. The next sitting is the doc's §4 tally at the pro's size plus a
+reader for construction, which is what he picked over trims.
+
 ### 3. Make preflight see a dropped element (one PR, ungated)
 
 The highest-leverage engineering item, and nothing gates it. Assemble one
@@ -546,7 +555,9 @@ the same here, and check a claim against its pointer before building on it.
 
 1. A date for one card sitting (v7, plus v8 once generated).
 2. Whether to test the pro-pair figures as the Phase 1 yardstick (and rewrite
-   the exit if they fail too).
+   the exit if they fail too). *Answered 2026-11-02: tested (#1213), they fail
+   the exit too; shown the 17 pairs where the trim count disagrees with him,
+   Kent: "My eye stands" — exit recorded unmet, not rewritten (§3.2).*
 3. Severity for the dropped-element finding (block or warn).
 4. Whether to commission held-out pairs, and which classes first.
 5. Decision 5 from 10-23: copy the pro's cut construction on big letters, or not.

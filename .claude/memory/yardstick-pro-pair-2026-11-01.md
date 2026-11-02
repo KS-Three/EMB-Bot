@@ -1,6 +1,6 @@
 ---
 name: yardstick-pro-pair-2026-11-01
-description: Pro-pair figures (cuts, hops, needle-up mm, stitch-type kappa, word cc, columns) against Kent's 100 labelled pairs that have a pro file, every design re-drawn at the pro's size; what cleared chance and why the Phase 1 exit still fails
+description: Pro-pair figures (cuts, hops, needle-up mm, stitch-type kappa, word cc, columns) against Kent's 100 labelled pairs that have a pro file, every design re-drawn at the pro's size; what cleared chance and why the Phase 1 exit still fails; Kent 11-02 on the 17 trim-disagreement pairs "My eye stands" - exit recorded unmet
 metadata:
   type: project
 ---
@@ -41,13 +41,23 @@ doc showed no fidelity instrument clears chance and only trims do; the
 pro-pair figures are what actually decides flips (pro_baseline,
 lettering_board, word_legibility) and had never been tested against him.
 
+**Kent's ruling, 2026-11-02 - reading (b).** Shown the 17 decided pairs on
+which the trim family scores his pick farther from the pro, side by side
+(before | after | pro from the run's `design.json` and the pro's PES, trim
+figures and distances under each tile, his pick framed; local sheet
+`pro_renders/yardstick-sxs-2026-11-02/`), and asked whether the trim count
+read them right: **"My eye stands."** The exit's second clause is recorded
+unmet by any instrument this corpus supports; no tolerance set; phase marker
+untouched. The top four rows he held were the 08-27 engine and the Column
+lane on drone - construction over trims.
+
 **How to apply:** Quote hops or cuts as a distance to the pro only with the
-caveat that they read trims and nothing else; do not present the pro
-reference as a new yardstick on this corpus. The exit's second clause can be
-met by no instrument here - Kent either sets a tolerance (the doc's §6
-proposes one) or declares it unmet; phase marker untouched, his call. The
-next sitting should use the doc's §4 tally (pairs where trims and his eye
-disagree), at the pro's size, on the nine new logos. Method traps paid for:
+caveat that they read trims and nothing else; never as his eye, never as the
+Phase 1 yardstick; do not present the pro reference as a new yardstick on
+this corpus. The next sitting should use the doc's §4 tally (pairs where
+trims and his eye disagree), at the pro's size, on the nine new logos, and
+the instrument to build is a reader for construction (how a letter is built,
+where a cut lands), which is what he picked over trims. Method traps paid for:
 `scorecard.chance_correct` clamps at 0, so compute the unclamped kappa when
 ranking arms; `lettering_board.read_pair` appends the slug to its cache path
 itself; a lane's rembg link must point at the PRIMARY checkout's venv, not
