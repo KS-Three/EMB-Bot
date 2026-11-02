@@ -81,6 +81,20 @@ def test_build_ledger_seeds_each_tolerance_from_the_spread_rounded_up_to_its_res
     assert tw.validate_ledger(ledger) == []
 
 
+def test_a_figure_read_in_only_some_passes_gets_no_row_and_is_named():
+    a, b = _pass(), _second_pass()
+    b["values"][JOB]["sttype_kappa"] = None                 # the scorer errored on one pass
+    led = tw.build_ledger([a, b])
+    assert not [r for r in led["rows"] if r["figure"] == "sttype_kappa"]
+    assert led["skipped"] == [{"job": JOB, "figure": "sttype_kappa", "passes_read": 1}]
+    assert tw.validate_ledger(led) == []
+    # a job with no pinned words has no word_cc in any pass: that is not a skip worth naming
+    for p in (a, b):
+        del p["values"][JOB]["word_cc"]
+    b["values"][JOB]["sttype_kappa"] = 0.425
+    assert tw.build_ledger([a, b])["skipped"] == []
+
+
 def test_every_figure_has_a_direction_and_a_resolution():
     for fig, spec in tw.FIGURES.items():
         assert spec["worse"] in ("up", "down"), fig

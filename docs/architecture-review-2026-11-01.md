@@ -338,6 +338,24 @@ a red the next morning. Per-PR is out: each digitize is 60–600 s and the pro
 files for MFab, ProSeal and Bridge are gitignored or uncommitted (the lettering
 board in CI already waits on a Kent permission for that art).
 
+**Built 2026-11-02** (`digitizer/tools/tripwire.py`, workflow
+`.github/workflows/nightly-tripwire.yml`, ledger
+`digitizer/testdata/tripwire_ledger.json`). The population is the 18 pairs
+whose art is under `testdata/` and whose pro DST is in the repo — the five
+Becker files in `testdata/reference/` and the rest inside the committed
+`Embroidery Files.zip` (Becker, Gaulke, Fremont, MFab, Drone, Tires, Golden
+Tee, To a T); Bridge and ProSeal stay out, nothing gitignored was added. One
+ledger row per job and figure (stitches, cuts, hops, needle-up mm: up is
+worse; stitch-type kappa with its chance floor, direction kappa, word cc: down
+is worse), the baseline measured on cloud Linux and the tolerance seeded from
+the spread of three passes of the same tree on three runners — never a desk
+guess. `check` runs nightly on `main` (schedule, never on a PR, never
+required) and fails the job on a wrong-way change past tolerance, a figure the
+run lost, or a pro-side figure that changed (the reader did). Re-seed after a
+deliberate change by dispatching the workflow in `capture` mode and committing
+its `tripwire-ledger-<run>` artifact. The first step above (recapture the
+fidelity scorecard baseline and attribute its movers) is not done by this.
+
 ### 5. Widen the corpus, held out (Kent's money; one worker to intake)
 
 Every pro rule since 10-20 was derived on the same ten artworks it was

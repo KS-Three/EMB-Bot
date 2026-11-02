@@ -29,8 +29,10 @@ pro-side figure that moved (the READER changed, so nothing else can be read);
 Figures (ours, read from the written DST): stitches, trims (cuts), hops and
 needle-up mm (more is worse), stitch-type kappa and direction kappa over the
 shared solid area and word cc at native size (less is worse). CHANCE-CORRECTED
-ONLY (ROADMAP gate 4): the raw agreement is never written or printed; the
-kappa rides with its chance floor the way `pro_baseline` prints it.
+ONLY (ROADMAP gate 4): no raw agreement enters a pass, the ledger or a table
+(`validate_ledger` refuses the key); the kappa rides with its chance floor the
+way `pro_baseline` prints it. (`word_legibility`'s own progress lines, which
+show raw in brackets, still stream to the run log; they are not a figure.)
 
 The population is `pro_baseline.JOBS` filtered to the pairs whose art is under
 `testdata/` and whose pro DST is in the repo: `testdata/reference/` or the
@@ -251,11 +253,13 @@ def build_ledger(passes: list[dict], run_url: str | None = None) -> dict:
     if not passes:
         raise ValueError("at least one pass")
     jobs = passes[0].get("jobs") or sorted(passes[0]["values"])
-    rows = []
+    rows, skipped = [], []
     for s in jobs:
         for fig, spec in FIGURES.items():
             vals = [p["values"].get(s, {}).get(fig) for p in passes]
             if any(v is None for v in vals):
+                if fig != "word_cc" or any(v is not None for v in vals):
+                    skipped.append({"job": s, "figure": fig, "passes_read": sum(v is not None for v in vals)})
                 continue                            # not read in every pass: no row
             lo, hi = min(vals), max(vals)
             spread = round(hi - lo, 6)
@@ -274,6 +278,7 @@ def build_ledger(passes: list[dict], run_url: str | None = None) -> dict:
             "env": passes[0].get("env"),
             "figures": {f: {"worse": v["worse"], "res": v["res"]} for f, v in FIGURES.items()},
             "secs": {s: [p.get("secs", {}).get(s) for p in passes] for s in jobs},
+            "skipped": skipped,      # (job, figure) read in no pass or not in every pass: no row, say so
             "rows": rows}
 
 
@@ -463,6 +468,8 @@ def main(argv=None) -> int:
         if len(passes) < 2:
             print("WARNING: one pass only -- every tolerance is 0 and unmeasured; capture from 2+ passes", file=sys.stderr)
         print(ledger_table(led))
+        for sk in led["skipped"]:
+            print(f"\nno row: {sk['job']} {sk['figure']} was read in {sk['passes_read']} of {len(passes)} pass(es)")
         print(f"\nwrote {a.ledger} ({len(led['rows'])} rows, {len(passes)} pass(es))")
         return 0
 
