@@ -9315,7 +9315,8 @@ Two rules from it: **a thread count is read off the BLOCKS the machine
 sews, never off the regions or the warning**, and **a bind that strips
 shading must spend the budget first** — binding every band to its region's
 cone would have flattened `gradient_ramp_linear` (one region, five cones,
-under a cap of six) to one; `cfg.color_cap_sewn` (built OFF) folds only the
+under a cap of six) to one; `cfg.color_cap_sewn` (ON 2026-11-01, Kent; the
+ticked white counts against the cap) folds only the
 strays past the budget, longest thread kept. *(measured 2026-10-29 —
 `docs/superpowers/specs/2026-10-29-colour-cap-sewn-design.md`,
 `tests/test_color_cap_sewn.py`)*

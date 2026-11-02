@@ -417,9 +417,13 @@ class PipelineConfig:
     # tier's shade snap and the detail layer's cone are bound to the plan's
     # regions' threads on EVERY class (the same masked argmin `_shade_layers`
     # uses; the photo gate on `shade_palette_bind` is untouched). OFF is the
-    # engine as it stood, byte for byte. Built OFF 2026-10-29; the flip, and
-    # whether the ticked white counts against "Colors (max 6)", are Kent's.
-    color_cap_sewn: bool = False
+    # engine as it stood, byte for byte. Built OFF 2026-10-29.
+    # **ON since 2026-11-01, Kent's flip** ("Flip ON", off the OFF | ON sheet): Golden
+    # Tee 9 -> 6 cones, 0.05% of pixels; summit 9 -> 6, its pale rim and olive halo
+    # fold into dark grey. The ticked white counts against "Colors (max 6)", so
+    # with it the artwork has one colour fewer. False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP pins it False.
+    color_cap_sewn: bool = True
     # Lettering's thread (`lettering_thread`, built OFF 2026-11-01): Precision
     # Drone's PRECISION and AND DRONE read cc +0.05 / 0.00 against the pro's
     # +0.82 / +1.00, and recolouring our own file closed both, every stitch

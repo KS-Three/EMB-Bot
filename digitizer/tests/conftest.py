@@ -636,6 +636,11 @@ PRE_FLIP["fill_seam_order"] = False
 # both False.
 PRE_FLIP["fill_seam_order_priced"] = False
 PRE_FLIP["knockdown_shorter_walk"] = False
+# `color_cap_sewn` joined the flipped set 2026-11-01 (Kent's "Flip ON", off the
+# OFF | ON sheet; built OFF 2026-10-29). ON, the cap holds on the blocks the machine
+# sews, so an arm measured before that day can load more cones than it was
+# capped to. `tests/engine_2026_10_27.json` carries it False.
+PRE_FLIP["color_cap_sewn"] = False
 # `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
 # renders of his Instagram icon, drone, Bridge Bar and the repro), for the
 # reason every entry above gives. ON, a gradient-lane region's edge follows
