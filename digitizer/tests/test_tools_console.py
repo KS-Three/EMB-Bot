@@ -72,6 +72,7 @@ NAMES_ONLY = {"border_census",   # WRITES the census table's .md, reads none (20
               "sewout_card_cross_underlay",   # same: writes the cross-underlay card's README / scoring sheet, reads none (2026-10-21)
               "sewout_card_v6",               # same: writes card v6's README / scoring sheet, reads none (2026-10-21)
               "sewout_card_v7",               # same: writes card v7's README, reads none (2026-10-25)
+              "sewout_card_v8",               # same: writes card v8's README / scoring sheet, reads none (2026-11-01)
               "hairline_photo_trial", "hairline_lines_trial",
               "hairline_coverage",   # WRITES table.md, reads none (2026-10-13)
               "hairline_travel",     # same: writes table.md, reads none (2026-10-13)
