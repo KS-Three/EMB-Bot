@@ -12,6 +12,12 @@
  ],
  "entries": [
   {
+   "prefix": "digitizer/testdata/art/commons_lettering/",
+   "status": "third-party-cleared-by-kent",
+   "source": "Wikimedia Commons, each tagged public domain there; page, author and hash per file in that folder's manifest.json",
+   "basis": "Kent 2026-11-01 \"Commit all 9\", for the blinded sitting (MASTER_SCOPE item 42); real brand marks, test inputs only"
+  },
+  {
    "path": "digitizer/testdata/logo_whitebg.png",
    "status": "synthetic",
    "source": "Generated synthetic logo (make_test_logo.py / classifier-lens table)",
