@@ -56,7 +56,9 @@ TESTDATA = ROOT / "testdata"
 DEFAULT_SPEC = REPO / "docs" / "eye-pairs-2026-10-13" / "wok42" / "spec.json"
 PHOTO_PREP_VENV = Path("digitizer") / "rembg_isolated" / "venv"
 
-KINDS = frozenset({"client_art_already_committed", "synthetic_generator", "synthetic_committed"})
+KINDS = frozenset({"client_art_already_committed", "synthetic_generator", "synthetic_committed",
+                   "pro_paired_job", "commons_lettering"})
+POPULATIONS = frozenset({"A", "B"})
 PICKS = frozenset({"arm", "base", "tie"})
 DIRECTIONS = frozenset({"lower", "higher"})
 # Drawn by a committed generator, never stored: id -> (module, function). The
@@ -133,6 +135,47 @@ def _check_arm(name: str, arm: dict, spec: dict, fields: set, defaults: dict,
             problems.append(f"arm {name!r}: holds {m!r}, which has no threshold")
 
 
+def job_art(slug: str) -> Path | None:
+    """The artwork of a `pro_baseline.JOBS` row, or None when this machine does
+    not hold it (a `kent:` path under gitignored `scratch_kent/`, absent in CI)."""
+    from tools import pro_baseline as pb
+
+    try:
+        p = pb.resolve(pb.JOBS[slug][2])
+    except (SystemExit, OSError, KeyError):
+        return None
+    return p if p.exists() else None
+
+
+def _check_job_logo(name: str, lg: dict, src: dict, judged_md5: dict, problems: list[str]) -> None:
+    """A logo drawn at a `pro_baseline.JOBS` row's own garment and width. The
+    spec carries the row's numbers so a reader sees them; they must equal the
+    table's. The artwork is pinned by hash and checked wherever it can be read,
+    so no client art is copied into the repository."""
+    from tools import pro_baseline as pb
+
+    slug = src.get("slug")
+    if slug not in pb.JOBS:
+        problems.append(f"logo {name!r}: job {slug!r} is not in pro_baseline.JOBS")
+        return
+    garment, width = pb.JOBS[slug][0], float(pb.JOBS[slug][1])
+    if lg.get("garment") != garment or float(lg.get("width_mm", -1)) != width:
+        problems.append(f"logo {name!r}: job {slug!r} is {garment} at {width} mm, the spec says "
+                        f"{lg.get('garment')} at {lg.get('width_mm')} mm")
+    if not src.get("sha256_16"):
+        problems.append(f"logo {name!r}: a job source pins its artwork with sha256_16")
+    art = job_art(slug)
+    if art is None:
+        return                      # not on this machine: the pin stands, the guard cannot read it
+    if src.get("sha256_16") and _sha16(art) != src["sha256_16"]:
+        problems.append(f"logo {name!r}: the artwork of job {slug!r} is not the file the spec pinned")
+    m = _md5(art)
+    if m in judged_md5:
+        problems.append(f"logo {name!r} is byte-equal to the judged {judged_md5[m]!r}")
+    # Two jobs of one artwork (a hat and a beanie of the same file) are two logos
+    # by design, so the byte-duplicate rule of `file` logos does not apply here.
+
+
 def validate_spec(spec: dict, *, testdata: Path = TESTDATA,
                   judged: dict[str, Path] | None = None) -> None:
     """Raises `SpecError` listing EVERY problem. The blinding guard lives
@@ -178,6 +221,8 @@ def validate_spec(spec: dict, *, testdata: Path = TESTDATA,
             problems.append(f"logo {name!r} has no `design` (its independence cluster)")
         if not (isinstance(lg.get("width_mm"), (int, float)) and lg.get("garment")):
             problems.append(f"logo {name!r} needs width_mm and garment")
+        if "population" in lg and lg["population"] not in POPULATIONS:
+            problems.append(f"logo {name!r}: population {lg['population']!r} not in {sorted(POPULATIONS)}")
         src = lg.get("source") or {}
         if src.get("kind") == "file":
             p = Path(testdata).parent / src.get("path", "")
@@ -196,6 +241,8 @@ def validate_spec(spec: dict, *, testdata: Path = TESTDATA,
         elif src.get("kind") == "generator":
             if src.get("id") not in GENERATORS:
                 problems.append(f"logo {name!r}: generator {src.get('id')!r} is not registered")
+        elif src.get("kind") == "job":
+            _check_job_logo(name, lg, src, judged_md5, problems)
         else:
             problems.append(f"logo {name!r}: source kind {src.get('kind')!r}")
     if not spec["logos"]:
@@ -241,6 +288,11 @@ def materialise(spec: dict, dest: Path) -> list[dict]:
         src = lg["source"]
         if src["kind"] == "file":
             path = TESTDATA.parent / src["path"]
+        elif src["kind"] == "job":
+            path = job_art(src["slug"])
+            if path is None:
+                raise SystemExit(f"REFUSED: the artwork of job {src['slug']!r} is not on this machine "
+                                 "(scratch_kent; set EMB_SCRATCH_KENT)")
         else:
             path = inputs / f"{lg['name']}.png"
             if not cv2.imwrite(str(path), draw_generator(src["id"])):
@@ -248,7 +300,8 @@ def materialise(spec: dict, dest: Path) -> list[dict]:
         out.append({"name": lg["name"], "design": lg["design"], "path": str(path),
                     "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                     "width_mm": float(lg["width_mm"]), "garment": lg["garment"],
-                    "kind": lg["kind"], "provenance": lg["provenance"]})
+                    "kind": lg["kind"], "provenance": lg["provenance"],
+                    "population": lg.get("population"), "job": src.get("slug")})
     return out
 
 
@@ -321,7 +374,11 @@ def manipulation_check(spec: dict, designs: dict, arms: dict | None = None) -> d
             per[lg] = {"metrics": cells, "ok": ok}
         active = list(per)
         n_ok = sum(1 for v in per.values() if v["ok"])
-        if len(identical) >= 4:
+        min_live = spec["manipulation"].get("min_live_logos")
+        if min_live is not None and len(active) < min_live:
+            passes, why = False, (f"changes {len(active)} of {len(logos)} logos; at least "
+                                  f"{min_live} are needed")
+        elif min_live is None and len(identical) >= 4:
             passes, why = False, f"identical to base on {len(identical)} of {len(logos)} logos"
         elif len(active) < 2:
             passes, why = False, f"changes {len(active)} logo(s); at least 2 are needed"
@@ -387,7 +444,7 @@ def _render_lane(spec_path: str, lane: str, logos_json: str, arms_json: str) -> 
     spec = load_spec(Path(spec_path))
     return cli.render(Path(lane), cases=_cases(json.loads(logos_json)),
                       arms={k: v["flags"] for k, v in json.loads(arms_json).items()},
-                      base=dict(spec["base_flags"]))
+                      base=dict(spec["base_flags"]), dst_sidecar=True)
 
 
 def render_all(spec: dict, spec_path: Path, out: Path, logos: list[dict], arms: dict,
@@ -397,7 +454,7 @@ def render_all(spec: dict, spec_path: Path, out: Path, logos: list[dict], arms: 
 
     if workers <= 1 or len(logos) < 2:
         cli.render(out, cases=_cases(logos), arms={k: v["flags"] for k, v in arms.items()},
-                   base=dict(spec["base_flags"]))
+                   base=dict(spec["base_flags"]), dst_sidecar=True)
         return
     from concurrent.futures import ProcessPoolExecutor
 
@@ -444,8 +501,9 @@ def manifest(spec: dict, spec_bytes: bytes, logos: list[dict], arms: dict, repla
         "engine": {"git_head": _git_head(), "python": platform.python_version(),
                    "platform": platform.platform(), "photo_prep_venv": photo_prep_venv},
         "base_flags": spec["base_flags"], "seed": spec["seed"],
-        "logos": [{k: lg[k] for k in ("name", "design", "kind", "sha256", "width_mm", "garment",
-                                      "provenance")} for lg in logos],
+        "logos": [{**{k: lg[k] for k in ("name", "design", "kind", "sha256", "width_mm", "garment",
+                                         "provenance")},
+                   **{k: lg[k] for k in ("population", "job") if lg.get(k)}} for lg in logos],
         "arms": {n: {"flags": a["flags"], "stratum": a["stratum"],
                      "expected_pick": a["expected_pick"], "moves": a.get("moves") or {},
                      "holds": a.get("holds") or []} for n, a in arms.items()},
@@ -492,7 +550,7 @@ def prepare(spec_path: Path, out: Path, *, workers: int = 1, manifest_to: Path |
 
     def render_reserve(reserve: dict) -> None:
         cli.render(out, cases=_cases(logos), arms={reserve["name"]: reserve["flags"]},
-                   base=dict(spec["base_flags"]))
+                   base=dict(spec["base_flags"]), dst_sidecar=True)
 
     final, replacements, table = settle_arms(spec, lambda: _load_designs(out), render_reserve)
     n = cli.pair(out, seed=spec["seed"], n_identical=spec["n_identical"],
@@ -542,6 +600,7 @@ def labelled_inputs(spec: dict, man: dict, sealed: dict, picks: dict, designs: d
     from tools.eye_pairs_price import changed_shapes
 
     design_of = {lg["name"]: lg["design"] for lg in man["logos"]}
+    population_of = {lg["name"]: lg.get("population") for lg in man["logos"]}
     tol = spec["manipulation"]["density_matched_tolerance"]
     trims_thr = spec["manipulation"]["thresholds"]["trims_per_1000"]["value"]
     pairs = []
@@ -569,6 +628,7 @@ def labelled_inputs(spec: dict, man: dict, sealed: dict, picks: dict, designs: d
         tb, ta = b.get("trims_per_1000"), a.get("trims_per_1000")
         pairs.append({
             "id": pid, "arm": arm, "fixture": design_of[fx], "logo": fx,
+            "population": population_of[fx],
             "stratum": man["arms"][arm]["stratum"], "label": LABEL[picks[pid]["choice"]],
             "expected_label": want, "before": b, "after": a,
             "designs": {"changed_shapes": len(ch) if ch else 0},
@@ -651,6 +711,87 @@ def controls_report(sealed: dict, picks: dict) -> dict:
             "left_picks": sided.count("L"), "right_picks": sided.count("R")}
 
 
+
+# ------------------------------------------------- distance to the pro ----
+
+#: the three trim-family readings a pro-sized sitting scores as a DISTANCE to the
+#: pro's file (population A), beside the same figures as a plain cost.
+PRO_METRICS = ("cuts", "hops", "needle_up_mm")
+
+
+def read_machine_file(path: Path) -> dict:
+    """cuts, hops and needle-up mm of one DST: the readers the yardstick doc used
+    on both files (`pro_pair.pro_counts`, `pro_baseline.needle_up`)."""
+    from tools import pro_baseline as pb, pro_pair
+
+    c = pro_pair.pro_counts(path)
+    up = pb.needle_up(path)
+    return {"cuts": c["trims"], "hops": up["hops"], "needle_up_mm": up["needle_up_mm"]}
+
+
+def pro_figures_of(slug: str) -> dict:
+    from tools import pro_baseline as pb
+
+    return read_machine_file(pb.resolve(pb.JOBS[slug][3]))
+
+
+def pro_pair_inputs(man: dict, sealed: dict, picks: dict, out: Path, *, read=read_machine_file,
+                    pro_of=pro_figures_of) -> dict:
+    """`pro_pooled`'s input format for the live pairs of population A: both sides'
+    DST read, the pro's file for the pair's job beside them. `fixture` is the
+    artwork (`design`), so a bootstrap over designs counts one artwork once."""
+    jobs = {lg["name"]: lg for lg in man["logos"] if lg.get("population") == "A" and lg.get("job")}
+    pros: dict[str, dict] = {}
+    pairs = []
+    for pid in sorted(sealed):
+        s = sealed[pid]
+        if s["kind"] != "live" or s["fixture"] not in jobs:
+            continue
+        lg = jobs[s["fixture"]]
+        arm = s["right_arm"] if s["left_arm"] == BASE else s["left_arm"]
+        pro = pros.setdefault(lg["job"], pro_of(lg["job"]))
+        sides = {side: read(Path(out) / "designs" / f"{s['fixture']}__{s[key]}.dst")
+                 for side, key in (("before", "left_arm"), ("after", "right_arm"))}
+        pairs.append({"id": pid, "arm": arm, "fixture": lg["design"], "logo": s["fixture"],
+                      "job": lg["job"], "stratum": man["arms"][arm]["stratum"], "label": LABEL[picks[pid]["choice"]],
+                      "before": sides["before"], "after": sides["after"], "pro": dict(pro)})
+    return {"schema": 1, "sittings": {man["sitting"]: {"pairs": pairs}}}
+
+
+def pro_distance(inputs: dict) -> dict:
+    """Cuts, hops and needle-up mm over population A, each as a distance to the
+    pro (lower is closer) and as a plain cost, with kappa, both intervals and n.
+    Read over all live pairs and again per stratum, so the trims-only control
+    arm (where the trim family should win) is separate from the construction
+    arms (where Kent ruled it is not his eye). No raw agreement figure; the
+    readings are `pooled.reading`'s."""
+    from . import pro_pooled
+
+    dist = pro_pooled.transformed_pairs(inputs, "distance")
+    cost = pro_pooled.transformed_pairs(inputs, "signed")
+    DD, CD = pro_pooled.DISTANCE_DIRECTIONS, pro_pooled.COST_DIRECTIONS
+    strata = sorted({p.get("stratum") for p in dist if p.get("stratum")})
+
+    def one(rows, crows, m):
+        return {"distance": {**_read(pooled.agreement(rows, m, directions=DD),
+                                     pooled.agreement(rows, m, cluster=True, directions=DD)),
+                             "kent_pick_farther_from_pro": len(pooled.worse_pairs(rows, m, directions=DD))},
+                "cost": _read(pooled.agreement(crows, m, directions=CD),
+                              pooled.agreement(crows, m, cluster=True, directions=CD))}
+
+    out = {"n_pairs": 0, "n_decided_by_kent": 0, "metrics": {}, "strata": {}}
+    for name, keep in [("all", None)] + [(st, st) for st in strata]:
+        rows = [p for p in pooled.select(dist) if keep is None or p.get("stratum") == keep]
+        crows = [p for p in pooled.select(cost) if keep is None or p.get("stratum") == keep]
+        block = {"n_pairs": len(rows), "n_decided_by_kent": sum(1 for p in rows if p["label"] != "same"),
+                 "metrics": {m: one(rows, crows, m) for m in PRO_METRICS}}
+        if keep is None:
+            out.update(block)
+        else:
+            out["strata"][name] = block
+    return out
+
+
 def _f(v) -> str:
     return "n/a" if v is None else f"{v:+.2f}"
 
@@ -659,7 +800,7 @@ def _ci(v) -> str:
     return "n/a" if v is None or v[0] is None else f"[{v[0]:+.2f}, {v[1]:+.2f}]"
 
 
-def markdown(rep: dict, ctrl: dict, man: dict) -> str:
+def markdown(rep: dict, ctrl: dict, man: dict, pro: dict | None = None) -> str:
     L = [f"# {man['sitting']}: analysis (kappa with 95% bootstrap intervals; n beside every figure)", "",
          f"{rep['n_live_pairs']} live pairs, Kent chose a side on {rep['n_decided_by_kent']}. "
          f"Density held within tolerance on {rep['density_matched']['matched']} pairs, not on "
@@ -690,6 +831,25 @@ def markdown(rep: dict, ctrl: dict, man: dict) -> str:
         L.append(f"| `{m}` | {r['n_pairs']} | {r['n_decided']} | {_f(r['kappa_sides'])} | "
                  f"{_ci(r['ci_sides_pairs'])} | {_ci(r['ci_sides_designs'])} | {r['reading_sides']} | "
                  f"{_f(r['kappa_ties'])} | {r['reading_ties']} |")
+    if pro is not None:
+        L += ["", "## Population A: distance to the pro's file (cuts, hops, needle-up mm)", ""]
+        if "unavailable" in pro:
+            L += [f"Not read: {pro['unavailable']}"]
+        else:
+            L += ["Distance = |ours - pro|, lower is closer; cost = the plain count, lower is better, no pro "
+                  "in it. Read over all live pairs, then per stratum (`trims` is the control arm).", "",
+                  "| pairs | metric | reading | n scored | n decided | kappa sides only | CI pairs | CI designs | "
+                  "reading | kappa ties in | reading | pairs scoring his pick farther from the pro |",
+                  "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+            for label, blk in [("all", pro)] + sorted(pro["strata"].items()):
+                for m, by in blk["metrics"].items():
+                    for kind in ("distance", "cost"):
+                        r = by[kind]
+                        far = r.get("kent_pick_farther_from_pro", "-")
+                        L.append(f"| {label} ({blk['n_pairs']}) | `{m}` | {kind} | {r['n_scored']} | "
+                                 f"{r['n_decided']} | {_f(r['kappa_sides'])} | {_ci(r['ci_sides_pairs'])} | "
+                                 f"{_ci(r['ci_sides_designs'])} | {r['reading_sides']} | {_f(r['kappa_ties'])} | "
+                                 f"{r['reading_ties']} | {far} |")
     p = rep["prereg"]
     L += ["", "## Did the pre-registration predict his eye?", "",
           f"Expected picks against his, over {p['n_scored']} pairs: kappa sides only {_f(p['kappa_sides'])} "
@@ -725,8 +885,15 @@ def analyse(spec_path: Path, out: Path, *, markdown_to: Path | None = None,
     inputs = labelled_inputs(spec, man, sealed, picks, _load_designs(out))
     rep = confirmatory(inputs, spec)
     ctrl = controls_report(sealed, picks)
-    text = markdown(rep, ctrl, man)
-    (out / "analysis.json").write_text(json.dumps({"report": rep, "controls": ctrl}, indent=1),
+    pro = None
+    if any(lg.get("population") == "A" for lg in man["logos"]):
+        try:
+            pro = pro_distance(pro_pair_inputs(man, sealed, picks, out))
+        except (SystemExit, OSError, KeyError) as e:       # the pro's files live on Kent's machine
+            pro = {"unavailable": f"{type(e).__name__}: {e}"}
+    text = markdown(rep, ctrl, man, pro)
+    (out / "analysis.json").write_text(json.dumps({"report": rep, "controls": ctrl,
+                                                   "pro_distance": pro}, indent=1),
                                        encoding="utf-8")
     if markdown_to:
         Path(markdown_to).write_text(text, encoding="utf-8")
@@ -737,7 +904,7 @@ def analyse(spec_path: Path, out: Path, *, markdown_to: Path | None = None,
         Path(append_to).with_name("density-flow-inputs-with-wok42.json").write_text(
             json.dumps(merged, indent=1), encoding="utf-8")
     print(text)
-    return {"report": rep, "controls": ctrl}
+    return {"report": rep, "controls": ctrl, "pro_distance": pro}
 
 
 # ------------------------------------------------------------------ cli ----

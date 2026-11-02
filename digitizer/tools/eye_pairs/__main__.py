@@ -28,6 +28,7 @@ from pathlib import Path
 import cv2
 
 from digitizer_core.config import PHOTO_CLASSES
+from digitizer_core.export import write_dst
 from digitizer_core.stitchviz import render_design, render_penetrations
 
 from tools import dropped_elements, edge_smoothness
@@ -136,7 +137,8 @@ def _default_ref_runner(ref: str, *, repo=None, scratch=None):
 
 
 def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
-           ref_factory=None, base: dict | None = None) -> int:
+           ref_factory=None, base: dict | None = None,
+           dst_sidecar: bool = False) -> int:
     """Digitize and render every (fixture, arm); -> the number now ready.
 
     Resume-safe: a row is reused only when its `source_sha256` matches the
@@ -161,6 +163,11 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
     Kent's pick). Recorded as `base_flags` on every row it touched; a
     cached row on a different base is a cache miss and re-digitizes, so one
     directory never mixes engines. Ref and file arms do not take it.
+
+    `dst_sidecar` also writes each full-engine design's machine file beside it,
+    `designs/<fixture>__<arm>.dst` (a pro-sized sitting reads cuts and needle-up
+    travel off the DST with the same readers it uses on the pro's file); a row
+    whose sidecar is missing is a cache miss.
     """
     out = Path(out)
     for sub in ("designs", "renders"):
@@ -205,7 +212,9 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                         and ("__ref__" not in kw or row.get("env"))
                         and ("__ref__" in kw or "__file__" in kw
                              or row.get("base_flags", {}) == base)
-                        and dpath.exists() and rpath.exists()):
+                        and dpath.exists() and rpath.exists()
+                        and (not dst_sidecar or dpath.with_suffix('.dst').exists()
+                             or '__ref__' in kw or '__file__' in kw)):
                     if not hpath.exists():
                         _write_holes(hpath, json.loads(dpath.read_text(encoding="utf-8")))
                     _say(f"[{name} / {arm}] cached")
@@ -243,6 +252,8 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                     else:
                         cfg = base_cfg(width_mm, garment, **{**base, **kw})
                         gen, result, plan, design = digitize_once(path, cfg)
+                        if dst_sidecar:
+                            write_dst(plan, dpath.with_suffix('.dst'))
                         row = features_full(path, cfg, gen, result, plan, design)
                         row["design_class"] = result.design_class
                         if base:
