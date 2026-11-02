@@ -107,6 +107,7 @@ the OLDEST lines whole to the archive.
 - [Sequence like the pro: order is not the gap](sequence-like-pro-2026-10-25.md) — L10 FALSE, not built: pro sews the cap rule and it costs him; ours passes over a reachable piece 18 of 145 extra cuts; gap is cuts inside a piece
 - [Service timeout cancel](service-timeout-cancel-2026-10-30.md) — a job past JOB_TIMEOUT_S STOPS at the next stage seam (`digitizer_core.deadline`); next upload waited 497.9 s -> 10.5 s; no flag; stage 2 former + rembg/SAM2 still run to their end
 - [Sew-out card v7](sewout-card-v7-2026-10-24.md) — only pull-by-stroke + pro values wait on fabric; BASE = ruled-unmerged flips; pull is a Fremont no-op, on MARINE it turns split satin plain like the pro
+- [Sew-out card v8](sewout-card-v8-2026-11-01.md) — cut_every_jump walks Fremont's 148 floats on the white field, cuts ENTHUSIAST's; JS cuts 15; Drone's lever is the halo (0.3: x1.74); 0.01 mm oracle: 1 walk 0.029 mm off
 - [Shape memo](shape-memo-2026-10-28.md) — Column lane's rank-only 2nd stage-7 pass was 79 of owl flat's 137 s; `shape_memo` memoizes stitch_shape/satin_shape/rim per job: 137 -> 113 s flat, 123 -> 97 gradient, md5 same
 - [Short column underlay](short-column-underlay-2026-10-22.md) — `satin_underlay_short_columns` OFF: pro centre-walks 83-97% of columns at EVERY width; no 3.5 mm pitch; zigzag unsettled
 - [Silhouette under-fill](silhouette-underfill-2026-10-24.md) — "pro fills it" was LAYERING, not tier (kappa 0.170 vs 0.198): ring outline filled under in the majority colour; `silhouette_underfill` OFF
@@ -122,7 +123,6 @@ the OLDEST lines whole to the archive.
 - [Excess on gradient](thread-match-excess-gradient-2026-10-29.md) — defect 28 ON 10-30: F-with-block 14 -> 4, md5s same
 - [Golden Tee TM](tm-mark-golden-tee-2026-10-26.md) — Kent: NO build. Pro re-sets the 0.94 mm TM as a 4.3x2 mm double run; we drop it in stage 2 (thin_ink 3 px floor, its strokes 2 px); a future TM/(R) drops silently
 - [Trims re-measured 10-29](trim-defects-4-6-2026-10-29.md) — cuts 391 vs pro 409 (3.1x gone), breaks 2.07x (488 uncut floats); fill sections 32 vs 0; `fill_section_cuts_first` OFF: 377 cuts, exposed 723 -> 651
-- [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
 - [Under-fill knock-outs](underfill-knockouts-2026-10-26.md) — Fremont star: a covered host-colour mark never merges; Becker: letter host stops inside the loops; Gaulke is sew_enclosed_white
 - [Under-fill outer rim](underfill-outer-rim-2026-10-25.md) — a self-hosting ring: pro rims its whole edge in the fill colour; `silhouette_underfill_rim` OFF, on the SEWN edge
 - [Upload full-res](upload-full-res-2026-10-27.md) — SVG/GIF/EXIF JPEG go up as a 2,800-px render, OFF; 250 mm run: geometry tie, ON drops halo colours; text art times out both arms. Kent 10-27: flip held, no EXIF change
