@@ -3,7 +3,7 @@
 Same one-line format as `MEMORY.md`: `- [Title](file.md) — hook`. These are the
 index lines for every note dated through 2026-10-04 (filename date, else the date
 the note file was first committed), moved out of the live index on 2026-10-23 (and
-again on 2026-10-26, through 2026-09-21, and on 2026-10-27, through 2026-10-04 and then 2026-10-06, and on 2026-10-28 through 2026-10-08 (the STANDING float-pictures line stays live), and on 2026-10-29 through 2026-10-15, and on 2026-10-29, through 2026-10-11, plus the 80 mm ink link line of 10-15 (one PR's worth of room), and for the 10-29 trim re-measure the 10-15 bean-holds and true-size-guard lines plus 2 through 10-20, and for the 10-29 gradient-excess note the last three 10-20 lines,
+again on 2026-10-26, through 2026-09-21, and on 2026-10-27, through 2026-10-04 and then 2026-10-06, and on 2026-10-28 through 2026-10-08 (the STANDING float-pictures line stays live), and on 2026-10-29 through 2026-10-15, and on 2026-10-29, through 2026-10-11, plus the 80 mm ink link line of 10-15 (one PR's worth of room), and for the 10-29 trim re-measure the 10-15 bean-holds and true-size-guard lines plus 2 through 10-20, and for the 10-29 gradient-excess note the last three 10-20 lines, and on 2026-11-01 for the dropped-element note the two remaining 10-21 lines (small bold columns, small text re-set),
 oldest filename date first) because it sat at its 24,986-character
 ceiling and every PR that added a note conflicted with every other. **This file is NOT auto-loaded** — open it when you
 need history or a standing ruling (fill row spacing 0.15, DST axis fixed,
@@ -141,3 +141,5 @@ live index; new archive lines go at the bottom.
 - [Pro rules across all jobs](pro-rules-across-jobs-2026-10-21.md) — small text raised to ~4 mm on every job; beanie knockdown 5/5; white interiors sewn; trims from DST, never PES
 - [Sew white areas](sew-white-areas-2026-10-21.md) — R11 built OFF as a Studio option; counter = untagged white in a text-cluster letter; Machine field doubles trims (stage 5)
 - [Tie-in off](tie-in-off-2026-10-22.md) — `tie_in_off` OFF: ours already ties only at cuts; pro locks no start (1 of 68); saved ~230 stitches
+- [Small bold columns](small-bold-columns-2026-10-21.md) — `lettering_columns_small_bold` OFF: 4 mm letters at 0.85 mm satin; counters closed UPSTREAM by growth
+- [Small text re-set](small-text-reset-2026-10-21.md) — OFF: columns were already the pro's, SPACING was wrong; later stages undid the layout five ways; 5/S bays still close
