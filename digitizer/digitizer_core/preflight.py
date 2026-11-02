@@ -3185,18 +3185,33 @@ def _element_drop_findings(p, result: PipelineResult, plan: StitchPlan,
     regions = list(getattr(result, "regions", None) or ())
     if not regions:
         return [], empty
-    by_id = {r.shape_id: r for r in regions}
+    # Tests hand preflight bare region stubs (a polygon and a thread, no
+    # area, no meta); every read here tolerates one, the way the wobble and
+    # roughness metrics do, so a stub is skipped rather than fatal.
+
+    def _area(r) -> float:
+        try:
+            return float(getattr(r, "area_mm2", None) or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _meta(r) -> dict:
+        m = getattr(r, "meta", None)
+        return m if isinstance(m, dict) else {}
+
+    by_id = {getattr(r, "shape_id", None): r for r in regions}
     warnings = list(getattr(plan, "warnings", None) or ())
     colour = p is not None
     pieces: list[dict] = []
     seen: set[str] = set()
 
     def take(r, cause: str) -> None:
-        if r.shape_id in seen or float(r.area_mm2 or 0.0) < _ELEMENT_MIN_MM2:
+        sid = getattr(r, "shape_id", None)
+        if sid is None or sid in seen or _area(r) < _ELEMENT_MIN_MM2:
             return
-        seen.add(r.shape_id)
-        pieces.append({"shape_id": r.shape_id, "mm2": round(float(r.area_mm2), 1),
-                       "cause": cause, "thread": r.thread_number})
+        seen.add(sid)
+        pieces.append({"shape_id": sid, "mm2": round(_area(r), 1),
+                       "cause": cause, "thread": getattr(r, "thread_number", None)})
 
     # clipped: stage 5 named the shapes it lost.
     for w in warnings:
@@ -3220,9 +3235,10 @@ def _element_drop_findings(p, result: PipelineResult, plan: StitchPlan,
                 continue
             for sid in w.get("ids") or ():
                 r = by_id.get(sid)
-                if (r is None or not r.meta.get("enclosed_background")
+                if (r is None or not _meta(r).get("enclosed_background")
                         or "stitched" in (overrides.get(sid) or {})
-                        or float(r.area_mm2 or 0.0) < _ELEMENT_MIN_MM2):
+                        or _area(r) < _ELEMENT_MIN_MM2
+                        or getattr(r, "polygon", None) is None):
                     continue
                 lab = _region_artwork_lab(p, r)
                 if lab is None:
@@ -3234,18 +3250,21 @@ def _element_drop_findings(p, result: PipelineResult, plan: StitchPlan,
     # folded: re-threaded by the cap into a shape it now touches.
     if rows is not None:
         error_of = {row["shape_id"]: float(row["delta_e"]) for row in rows}
-        capped = [r for r in regions if r.meta.get("color_cap_merged_from")
-                  and r.meta.get("stitched", True)
-                  and float(r.area_mm2 or 0.0) >= _ELEMENT_MIN_MM2]
+        capped = [r for r in regions if _meta(r).get("color_cap_merged_from")
+                  and _meta(r).get("stitched", True)
+                  and _area(r) >= _ELEMENT_MIN_MM2
+                  and getattr(r, "polygon", None) is not None]
         for r in capped:
-            de = error_of.get(r.shape_id)
+            de = error_of.get(getattr(r, "shape_id", None))
             if de is None or de < DELTA_E_CLEARLY_DIFFERENT:
                 continue
             try:
                 reach = r.polygon.buffer(_FOLD_TOUCH_MM)
                 touching = any(
-                    o is not r and o.thread_index == r.thread_index
-                    and o.meta.get("stitched", True)
+                    o is not r
+                    and getattr(o, "thread_index", None) == r.thread_index
+                    and _meta(o).get("stitched", True)
+                    and getattr(o, "polygon", None) is not None
                     and reach.intersects(o.polygon)
                     for o in regions)
             except Exception:       # an invalid polygon is not a verdict
@@ -3265,7 +3284,7 @@ def _element_drop_findings(p, result: PipelineResult, plan: StitchPlan,
             unsewable_count += int(w.get("count") or 1)
             unsewable_mm2 += largest
 
-    artwork_mm2 = float(sum(float(r.area_mm2 or 0.0) for r in regions))
+    artwork_mm2 = float(sum(_area(r) for r in regions))
     total = float(sum(x["mm2"] for x in pieces)) + unsewable_mm2
     count = len(pieces) + unsewable_count
     frac = (total / artwork_mm2) if artwork_mm2 > 0 else 0.0
