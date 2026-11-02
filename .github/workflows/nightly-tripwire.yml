@@ -1,0 +1,176 @@
+# Nightly regression tripwire over the pro pairs whose pro files are committed
+# (digitizer/tools/tripwire.py; docs/architecture-review-2026-11-01.md item 4).
+#
+# Why it is its own workflow, and NEVER a pull_request trigger or a required
+# check for main: every digitize is 60-600 s and the population is the 18
+# committed pairs, so one pass is about an hour of one runner. A per-PR run
+# would add that to every push while measuring a branch no ledger refers to.
+# `schedule` fires only on the default branch, so the nightly `check` measures
+# main against digitizer/testdata/tripwire_ledger.json and FAILS the job on a
+# wrong-way move past tolerance (more cuts, hops or needle-up mm; lower kappa
+# or word cc), on a figure the run lost, or on a pro-side figure that moved
+# (the reader changed). The table lands in the step summary and an artifact,
+# with the DSTs that were measured so the mover can be attributed.
+#
+# `workflow_dispatch` runs the same check on any branch that carries this
+# file, or in `capture` mode measures the SAME tree on three runners and
+# builds a fresh ledger from the spread between them: baseline = lower
+# median, tolerance = the spread rounded up to the figure's resolution. That
+# is the only honest source of a tolerance here (run-to-run noise on the
+# runner class the nightly draws), and it is how the ledger is re-seeded
+# after a PR moves a figure on purpose: dispatch capture, download
+# `tripwire-ledger-<run id>`, commit it. Linux numbers only: the three
+# deselected golden tests and art-fidelity-baseline's comment both say a
+# Windows figure is not comparable to one measured here.
+#
+# The push-to-main report jobs in python-package-conda.yml
+# (art-fidelity-baseline, bench-digitize) are untouched.
+name: Nightly tripwire
+
+on:
+  schedule:
+    - cron: '23 6 * * *'     # 06:23 UTC, after the evening's merges in Kent's time zone
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check the ledger (the nightly), or capture a new ledger from three passes'
+        type: choice
+        options: [check, capture]
+        default: check
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.event_name == 'schedule' || inputs.mode == 'check'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150   # 18 digitizes at 60-600 s each, plus the word reading
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: digitizer/requirements.txt
+      # Same Tesseract as the digitizer job: word cc reads through OCR, and a
+      # silently OCR-less run would measure a different pipeline than the ledger.
+      - name: Install system dependencies (Tesseract OCR)
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - name: Install
+        working-directory: digitizer
+        run: pip install -r requirements.txt
+      # No pipe: `| tee` would hand this step tee's exit code instead of the
+      # tool's (the pytest | tail trap, CLAUDE.md). The tool's exit code IS
+      # the verdict: 1 on a wrong-way move, and that fails this job.
+      - name: Check every committed pair against the ledger
+        working-directory: digitizer
+        run: >
+          python -m tools.tripwire check
+          --ledger testdata/tripwire_ledger.json
+          --runs tripwire-runs --figures tripwire-runs/figures.json
+          --table tripwire-check.md --json tripwire-check.json
+      - name: Publish the table to the run summary
+        if: always()
+        working-directory: digitizer
+        run: |
+          {
+            echo '## Nightly tripwire'
+            echo
+            echo 'Linux, `ubuntu-latest`, against `digitizer/testdata/tripwire_ledger.json`. Kappa is chance-corrected; the chance floor rides in brackets.'
+            echo
+            cat tripwire-check.md || echo '(no table: the run did not finish)'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the table, the pass and the measured DSTs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tripwire-check-${{ github.run_id }}
+          path: |
+            digitizer/tripwire-check.md
+            digitizer/tripwire-check.json
+            digitizer/tripwire-runs/figures.json
+            digitizer/tripwire-runs/*/ours.dst
+          if-no-files-found: warn
+
+  # CAPTURE, dispatch only: three passes of the same tree, one per runner.
+  measure:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'capture'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        pass: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: digitizer/requirements.txt
+      - name: Install system dependencies (Tesseract OCR)
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - name: Install
+        working-directory: digitizer
+        run: pip install -r requirements.txt
+      - name: Runner size (the spread is between runners of this class)
+        continue-on-error: true
+        run: |
+          echo "nproc: $(nproc)"
+          grep -m1 'model name' /proc/cpuinfo || true
+      - name: Measure every committed pair (pass ${{ matrix.pass }})
+        working-directory: digitizer
+        run: python -m tools.tripwire measure --runs tripwire-runs --figures tripwire-pass-${{ matrix.pass }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tripwire-pass-${{ matrix.pass }}-${{ github.run_id }}
+          path: |
+            digitizer/tripwire-pass-${{ matrix.pass }}.json
+            digitizer/tripwire-runs/*/ours.dst
+          if-no-files-found: error
+
+  capture:
+    needs: measure
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'capture'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # Building the ledger from the passes needs only the standard library.
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: tripwire-pass-*-${{ github.run_id }}
+          path: passes
+          merge-multiple: true
+      - name: Build the ledger from the three passes
+        working-directory: digitizer
+        run: >
+          python -m tools.tripwire capture
+          --from ../passes/tripwire-pass-1.json ../passes/tripwire-pass-2.json ../passes/tripwire-pass-3.json
+          --ledger tripwire-ledger.json
+          --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          > tripwire-ledger.md
+      - name: Publish the ledger table to the run summary
+        if: always()
+        working-directory: digitizer
+        run: |
+          {
+            echo '## Tripwire ledger (capture)'
+            echo
+            echo 'Commit `tripwire-ledger.json` from this run'"'"'s artifact as `digitizer/testdata/tripwire_ledger.json`.'
+            echo
+            cat tripwire-ledger.md || echo '(no ledger: a pass did not finish)'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tripwire-ledger-${{ github.run_id }}
+          path: |
+            digitizer/tripwire-ledger.json
+            digitizer/tripwire-ledger.md
+          if-no-files-found: error
