@@ -246,13 +246,16 @@ def plan_from_dump(d: dict) -> StitchPlan:
 
 
 def main(argv=None) -> int:
-    args = sys.argv[1:] if argv is None else argv
-    if len(args) < 2:
-        print(__doc__)
-        return 2
-    off = json.loads(Path(args[0]).read_text(encoding="utf-8"))
-    on = json.loads(Path(args[1]).read_text(encoding="utf-8"))
-    print(json.dumps(judge(plan_from_dump(off), plan_from_dump(on), args[2] if len(args) > 2 else ""), indent=1))
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0],
+                                 epilog="OFF and ON are two card-v8 cut dumps of one job (tools.sewout_card_v8 --cut).")
+    ap.add_argument("off", help="the OFF arm's dump (JSON)")
+    ap.add_argument("on", help="the ON arm's dump (JSON)")
+    ap.add_argument("--label", default="", help="a name for the verdict")
+    args = ap.parse_args(argv)
+    off = json.loads(Path(args.off).read_text(encoding="utf-8"))
+    on = json.loads(Path(args.on).read_text(encoding="utf-8"))
+    print(json.dumps(judge(plan_from_dump(off), plan_from_dump(on), args.label), indent=1))
     return 0
 
 
