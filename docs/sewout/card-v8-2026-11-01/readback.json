@@ -1,0 +1,756 @@
+{
+ "file": "card_v8_40wt.dst",
+ "bytes": 50375,
+ "wt": 40,
+ "blocks": 4,
+ "stitches_file": 15891,
+ "stitches_plan": 15891,
+ "colour_changes_file": 1,
+ "colour_changes_plan": 1,
+ "colours": 2,
+ "extent_mm": [
+  92.0,
+  79.2
+ ],
+ "within_hoop": true,
+ "x_range_mm": [
+  -46.0,
+  46.0
+ ],
+ "y_range_mm": [
+  -39.6,
+  39.6
+ ],
+ "max_needle_stitch_mm": 4.59,
+ "max_record_axis_mm": 12.0,
+ "stops": [
+  {
+   "stop": 1,
+   "thread": "white",
+   "stitches": 4126,
+   "thread_m": 9.83
+  },
+  {
+   "stop": 2,
+   "thread": "dark",
+   "stitches": 11878,
+   "thread_m": 11.82
+  }
+ ],
+ "stitches_by_piece": {
+  "D:a": 1559,
+  "D:c": 1540,
+  "D:d": 1631,
+  "D:e": 1627,
+  "D:strips": 84,
+  "E:a": 835,
+  "E:b": 931,
+  "E:strips": 28,
+  "F:a": 3077,
+  "F:b": 3080,
+  "F:strips": 28,
+  "J:a": 718,
+  "J:b": 838,
+  "J:strips": 28
+ },
+ "under_1mm_by_piece": {
+  "D:a": 316,
+  "D:c": 232,
+  "D:d": 232,
+  "D:e": 138,
+  "E:a": 314,
+  "E:b": 322,
+  "F:a": 1032,
+  "F:b": 1032,
+  "J:a": 622,
+  "J:b": 710
+ },
+ "lock_legs_0p8": 1490,
+ "trims": 130,
+ "blocks_mm": {
+  "D": [
+   -46.0,
+   1.6,
+   33.4,
+   39.6
+  ],
+  "E": [
+   -46.0,
+   -17.2,
+   40.8,
+   -10.1
+  ],
+  "F": [
+   -46.0,
+   -40.2,
+   42.8,
+   -20.2
+  ],
+  "J": [
+   -46.0,
+   -7.1,
+   46.0,
+   -1.4
+  ]
+ },
+ "pieces_mm": {
+  "D:a": [
+   -46.0,
+   4.2,
+   -8.8,
+   19.4
+  ],
+  "D:c": [
+   -5.2,
+   4.2,
+   31.9,
+   19.4
+  ],
+  "D:d": [
+   -46.0,
+   24.4,
+   -8.0,
+   39.6
+  ],
+  "D:e": [
+   -4.4,
+   24.4,
+   33.4,
+   39.4
+  ],
+  "E:a": [
+   -46.0,
+   -14.6,
+   -4.4,
+   -10.1
+  ],
+  "E:b": [
+   -0.8,
+   -14.6,
+   40.8,
+   -10.1
+  ],
+  "F:a": [
+   -46.0,
+   -37.6,
+   -3.4,
+   -20.2
+  ],
+  "F:b": [
+   0.2,
+   -37.6,
+   42.8,
+   -20.2
+  ],
+  "J:a": [
+   -46.0,
+   -4.5,
+   -1.8,
+   -1.4
+  ],
+  "J:b": [
+   1.8,
+   -4.5,
+   46.0,
+   -1.4
+  ]
+ },
+ "engine": "main 3896a7ae (2026-11-01)",
+ "pieces": [
+  {
+   "block": "F",
+   "job": "fremont",
+   "arm": "a",
+   "teeth": 1,
+   "label": "ships",
+   "flags": {},
+   "clear_mm": 0.8,
+   "runs": 175,
+   "hops": {
+    "floats": 58,
+    "cuts": 8,
+    "sewn_hops": 24,
+    "travel_stitches": 11
+   },
+   "satin": {
+    "width_mm": 1.12,
+    "stitch_mm": 1.12,
+    "rail_step_mm": 0.36,
+    "split_pct": 0.0
+   },
+   "width_mm": 42.6,
+   "height_mm": 17.36,
+   "stitches_whole": 15865,
+   "trims_whole": 29,
+   "floats_whole": 148,
+   "reset": [
+    {
+     "cluster": "TC1c0e7ef3",
+     "cap_mm": 2.442,
+     "scale": 1.577,
+     "width_scale": 0.8,
+     "stroke_mm": [
+      0.288,
+      0.261
+     ],
+     "letters": 7,
+     "grow_away": "{'near': 1, 'up': None, 'down': 1.774, 'held': True}"
+    },
+    {
+     "cluster": "TC6c379de4",
+     "cap_mm": 2.442,
+     "scale": 1.577,
+     "width_scale": 0.8,
+     "stroke_mm": [
+      0.303,
+      0.253
+     ],
+     "letters": 4,
+     "grow_away": "{'near': 1, 'up': None, 'down': 1.774, 'held': True}"
+    },
+    {
+     "cluster": "TCfa3f796c",
+     "cap_mm": 3.071,
+     "scale": 1.303,
+     "width_scale": 1.303,
+     "stroke_mm": [
+      0.497,
+      0.459
+     ],
+     "letters": 3,
+     "grow_away": "{'near': 0, 'up': None, 'down': None}"
+    }
+   ],
+   "reset_satin": {
+    "width_mm": 0.89,
+    "stitch_mm": 0.89,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.0
+   }
+  },
+  {
+   "block": "F",
+   "job": "fremont",
+   "arm": "b",
+   "teeth": 2,
+   "label": "cut every jump",
+   "flags": {
+    "cut_every_jump": true
+   },
+   "clear_mm": 0.8,
+   "runs": 178,
+   "hops": {
+    "floats": 0,
+    "cuts": 8,
+    "sewn_hops": 85,
+    "travel_stitches": 14
+   },
+   "satin": {
+    "width_mm": 1.12,
+    "stitch_mm": 1.12,
+    "rail_step_mm": 0.36,
+    "split_pct": 0.0
+   },
+   "width_mm": 42.6,
+   "height_mm": 17.36,
+   "stitches_whole": 15871,
+   "trims_whole": 29,
+   "floats_whole": 0,
+   "reset": [
+    {
+     "cluster": "TC1c0e7ef3",
+     "cap_mm": 2.442,
+     "scale": 1.577,
+     "width_scale": 0.8,
+     "stroke_mm": [
+      0.288,
+      0.261
+     ],
+     "letters": 7,
+     "grow_away": "{'near': 1, 'up': None, 'down': 1.774, 'held': True}"
+    },
+    {
+     "cluster": "TC6c379de4",
+     "cap_mm": 2.442,
+     "scale": 1.577,
+     "width_scale": 0.8,
+     "stroke_mm": [
+      0.303,
+      0.253
+     ],
+     "letters": 4,
+     "grow_away": "{'near': 1, 'up': None, 'down': 1.774, 'held': True}"
+    },
+    {
+     "cluster": "TCfa3f796c",
+     "cap_mm": 3.071,
+     "scale": 1.303,
+     "width_scale": 1.303,
+     "stroke_mm": [
+      0.497,
+      0.459
+     ],
+     "letters": 3,
+     "grow_away": "{'near': 0, 'up': None, 'down': None}"
+    }
+   ],
+   "reset_satin": {
+    "width_mm": 0.89,
+    "stitch_mm": 0.89,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.0
+   }
+  },
+  {
+   "block": "E",
+   "job": "enthusiast",
+   "arm": "a",
+   "teeth": 1,
+   "label": "ships",
+   "flags": {},
+   "clear_mm": 0.8,
+   "runs": 74,
+   "hops": {
+    "floats": 12,
+    "cuts": 2,
+    "sewn_hops": 25,
+    "travel_stitches": 40
+   },
+   "satin": {
+    "width_mm": 0.95,
+    "stitch_mm": 0.95,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.0
+   },
+   "width_mm": 41.61,
+   "height_mm": 4.55,
+   "stitches_whole": 2874,
+   "trims_whole": 11,
+   "floats_whole": 19,
+   "reset": [
+    {
+     "cluster": "TC1b8cd410",
+     "cap_mm": 1.909,
+     "scale": 2.0,
+     "width_scale": 1.1,
+     "stroke_mm": [
+      0.234,
+      0.269
+     ],
+     "letters": 14,
+     "grow_away": "{'near': -1, 'up': 1.302, 'down': None, 'held': True}"
+    }
+   ],
+   "reset_satin": {
+    "width_mm": 0.95,
+    "stitch_mm": 0.95,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.0
+   }
+  },
+  {
+   "block": "E",
+   "job": "enthusiast",
+   "arm": "b",
+   "teeth": 2,
+   "label": "cut every jump",
+   "flags": {
+    "cut_every_jump": true
+   },
+   "clear_mm": 0.8,
+   "runs": 74,
+   "hops": {
+    "floats": 0,
+    "cuts": 14,
+    "sewn_hops": 25,
+    "travel_stitches": 40
+   },
+   "satin": {
+    "width_mm": 0.94,
+    "stitch_mm": 0.94,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.0
+   },
+   "width_mm": 41.61,
+   "height_mm": 4.55,
+   "stitches_whole": 2946,
+   "trims_whole": 29,
+   "floats_whole": 0,
+   "reset": [
+    {
+     "cluster": "TC1b8cd410",
+     "cap_mm": 1.909,
+     "scale": 2.0,
+     "width_scale": 1.1,
+     "stroke_mm": [
+      0.234,
+      0.269
+     ],
+     "letters": 14,
+     "grow_away": "{'near': -1, 'up': 1.302, 'down': None, 'held': True}"
+    }
+   ],
+   "reset_satin": {
+    "width_mm": 0.94,
+    "stitch_mm": 0.94,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.0
+   }
+  },
+  {
+   "block": "J",
+   "job": "lettering",
+   "arm": "a",
+   "teeth": 1,
+   "label": "ships",
+   "flags": {},
+   "clear_mm": null,
+   "runs": 19,
+   "hops": {
+    "floats": 15,
+    "cuts": 3,
+    "sewn_hops": 0,
+    "travel_stitches": 0
+   },
+   "satin": {
+    "width_mm": 0.54,
+    "stitch_mm": 0.54,
+    "rail_step_mm": 0.2,
+    "split_pct": 0.0
+   },
+   "width_mm": 44.2,
+   "height_mm": 3.1,
+   "stitches_whole": 718,
+   "trims_whole": 3,
+   "floats_whole": 15,
+   "cut_every_jump": null
+  },
+  {
+   "block": "J",
+   "job": "lettering",
+   "arm": "b",
+   "teeth": 2,
+   "label": "cut every jump",
+   "flags": {
+    "cut_every_jump": true
+   },
+   "clear_mm": null,
+   "runs": 19,
+   "hops": {
+    "floats": 0,
+    "cuts": 18,
+    "sewn_hops": 0,
+    "travel_stitches": 0
+   },
+   "satin": {
+    "width_mm": 0.54,
+    "stitch_mm": 0.54,
+    "rail_step_mm": 0.0,
+    "split_pct": 0.0
+   },
+   "width_mm": 44.2,
+   "height_mm": 3.1,
+   "stitches_whole": 838,
+   "trims_whole": 18,
+   "floats_whole": 0,
+   "cut_every_jump": {
+    "buried": 0,
+    "walked": 0,
+    "cut": 15,
+    "lone": 0
+   }
+  },
+  {
+   "block": "D",
+   "job": "drone",
+   "arm": "a",
+   "teeth": 1,
+   "label": "ships",
+   "flags": {},
+   "clear_mm": 0.8,
+   "runs": 131,
+   "hops": {
+    "floats": 7,
+    "cuts": 15,
+    "sewn_hops": 48,
+    "travel_stitches": 95
+   },
+   "satin": {
+    "width_mm": 1.15,
+    "stitch_mm": 1.15,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.3
+   },
+   "width_mm": 37.17,
+   "height_mm": 15.16,
+   "stitches_whole": 14767,
+   "trims_whole": 96,
+   "floats_whole": 30,
+   "reset": [
+    {
+     "cluster": "TC8e50b4ef",
+     "cap_mm": 2.198,
+     "scale": 1.401,
+     "width_scale": 1.101,
+     "stroke_mm": [
+      0.537,
+      0.361
+     ],
+     "letters": 8,
+     "grow_away": "{'near': 1, 'up': 2.035, 'down': 1.284, 'held': True}"
+    }
+   ],
+   "reset_satin": {
+    "width_mm": 0.92,
+    "stitch_mm": 0.92,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.0
+   }
+  },
+  {
+   "block": "D",
+   "job": "drone",
+   "arm": "c",
+   "teeth": 3,
+   "label": "bold 2.0",
+   "flags": {
+    "small_text_cap_bold_scale": 2.0
+   },
+   "clear_mm": 0.8,
+   "runs": 125,
+   "hops": {
+    "floats": 9,
+    "cuts": 15,
+    "sewn_hops": 51,
+    "travel_stitches": 80
+   },
+   "satin": {
+    "width_mm": 1.2,
+    "stitch_mm": 1.2,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.3
+   },
+   "width_mm": 37.11,
+   "height_mm": 15.16,
+   "stitches_whole": 14752,
+   "trims_whole": 96,
+   "floats_whole": 32,
+   "reset": [
+    {
+     "cluster": "TC8e50b4ef",
+     "cap_mm": 2.198,
+     "scale": 1.317,
+     "width_scale": 1.059,
+     "stroke_mm": [
+      0.537,
+      0.361
+     ],
+     "letters": 8,
+     "grow_away": "{'near': 1, 'up': 2.035, 'down': 1.284, 'held': True}"
+    }
+   ],
+   "reset_satin": {
+    "width_mm": 1.02,
+    "stitch_mm": 1.02,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.0
+   }
+  },
+  {
+   "block": "D",
+   "job": "drone",
+   "arm": "d",
+   "teeth": 4,
+   "label": "halo 0.3",
+   "flags": {},
+   "clear_mm": 0.3,
+   "runs": 135,
+   "hops": {
+    "floats": 8,
+    "cuts": 14,
+    "sewn_hops": 51,
+    "travel_stitches": 96
+   },
+   "satin": {
+    "width_mm": 1.2,
+    "stitch_mm": 1.2,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.3
+   },
+   "width_mm": 37.98,
+   "height_mm": 15.16,
+   "stitches_whole": 14825,
+   "trims_whole": 94,
+   "floats_whole": 32,
+   "reset": [
+    {
+     "cluster": "TC8e50b4ef",
+     "cap_mm": 2.198,
+     "scale": 1.736,
+     "width_scale": 1.151,
+     "stroke_mm": [
+      0.537,
+      0.361
+     ],
+     "letters": 8,
+     "grow_away": "{'near': 1, 'up': 2.035, 'down': 1.284, 'held': True}"
+    }
+   ],
+   "reset_satin": {
+    "width_mm": 1.04,
+    "stitch_mm": 1.04,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.0
+   }
+  },
+  {
+   "block": "D",
+   "job": "drone",
+   "arm": "e",
+   "teeth": 5,
+   "label": "bold 2.0 + halo 0.3",
+   "flags": {
+    "small_text_cap_bold_scale": 2.0
+   },
+   "clear_mm": 0.3,
+   "runs": 121,
+   "hops": {
+    "floats": 9,
+    "cuts": 15,
+    "sewn_hops": 48,
+    "travel_stitches": 93
+   },
+   "satin": {
+    "width_mm": 1.39,
+    "stitch_mm": 1.38,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.3
+   },
+   "width_mm": 37.78,
+   "height_mm": 14.99,
+   "stitches_whole": 14814,
+   "trims_whole": 99,
+   "floats_whole": 32,
+   "reset": [
+    {
+     "cluster": "TC8e50b4ef",
+     "cap_mm": 2.198,
+     "scale": 1.652,
+     "width_scale": 1.013,
+     "stroke_mm": [
+      0.537,
+      0.361
+     ],
+     "letters": 8,
+     "grow_away": "{'near': 1, 'up': 2.035, 'down': 1.284, 'held': True}"
+    }
+   ],
+   "reset_satin": {
+    "width_mm": 1.35,
+    "stitch_mm": 1.35,
+    "rail_step_mm": 0.4,
+    "split_pct": 0.0
+   }
+  }
+ ],
+ "arm_md5": {
+  "D:a": "248dc05a82e505536359cfd1de1c38c3",
+  "D:c": "095d5c97e8c4cd082d1b743a1efe34d5",
+  "D:d": "8943eac133ec522769b53097b7a24455",
+  "D:e": "d8183b428b263327a9fe0cdfc8087630",
+  "E:a": "e721417060b297f4e2956eed779d9f6c",
+  "E:b": "49ad029fe73ee0b0c9d0a3a728481021",
+  "F:a": "8e093a04eb143b6932bae65975ef890a",
+  "F:b": "b9e0428a6b10226f768da52787c2a087",
+  "J:a": "1d5c6d1dac73d03fde6c83cbadf514e8",
+  "J:b": "b4cca5c6dbb0aacd44cb22d34150df81"
+ },
+ "minutes_at_650spm": 24.4,
+ "oracle": {
+  "fremont": {
+   "label": "fremont",
+   "sample_step_mm": 0.01,
+   "walk_step_mm": 0.1,
+   "off_uncut_moves": 148,
+   "on_uncut_moves": 0,
+   "off_stitches": 15865,
+   "on_stitches": 15871,
+   "on_new_segments": 154,
+   "of_them_locks": 0,
+   "walked_segments": 154,
+   "walked_mm": 170.7,
+   "bare_segments": 0,
+   "bare_walked_segments": 0,
+   "worst_off_thread_mm": 0.0,
+   "bare_detail": [],
+   "sewn": true
+  },
+  "enthusiast": {
+   "label": "enthusiast",
+   "sample_step_mm": 0.01,
+   "walk_step_mm": 0.1,
+   "off_uncut_moves": 19,
+   "on_uncut_moves": 0,
+   "off_stitches": 2874,
+   "on_stitches": 2946,
+   "on_new_segments": 73,
+   "of_them_locks": 72,
+   "walked_segments": 1,
+   "walked_mm": 1.06,
+   "bare_segments": 0,
+   "bare_walked_segments": 0,
+   "worst_off_thread_mm": 0.0,
+   "bare_detail": [],
+   "sewn": true
+  },
+  "drone": {
+   "label": "drone",
+   "sample_step_mm": 0.01,
+   "walk_step_mm": 0.1,
+   "off_uncut_moves": 30,
+   "on_uncut_moves": 0,
+   "off_stitches": 14767,
+   "on_stitches": 14810,
+   "on_new_segments": 64,
+   "of_them_locks": 36,
+   "walked_segments": 28,
+   "walked_mm": 29.77,
+   "bare_segments": 1,
+   "bare_walked_segments": 1,
+   "worst_off_thread_mm": 0.0292,
+   "bare_detail": [
+    {
+     "from_mm": [
+      0.0,
+      -30.8
+     ],
+     "to_mm": [
+      -0.2,
+      -30.3
+     ],
+     "length_mm": 0.54,
+     "lock": false,
+     "bare_samples": 9,
+     "off_thread_mm": 0.0292
+    }
+   ],
+   "sewn": false
+  }
+ },
+ "lettering": {
+  "font": "medium_font",
+  "text": "Fritsch's Stitches",
+  "width_mm": 44,
+  "floats_off": 15,
+  "floats_on": 0,
+  "dst_md5": {
+   "a": "5dde02eaab1e96c787849aa442741328",
+   "b": "4becd4771cde42a89a23eeaad8719c15"
+  },
+  "oracle": {
+   "on_new_segments": 120,
+   "of_them_locks": 114,
+   "bare_segments": 0
+  }
+ }
+}
