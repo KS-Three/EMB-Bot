@@ -37,8 +37,10 @@ before the adjacent merge: regions' cones keep slots, strays fill free slots
 longest thread first, the rest recoloured in place to nearest kept (CIEDE2000).
 One `COLOR_CAP_APPLIED` per design. Not touched: knockdown's garment cone.
 
+**FLIPPED ON 2026-11-01** (Kent: "Flip ON", off the OFF | ON sheet at the Studio's 80 mm left chest; the ticked white counts against the cap, as built). Golden Tee 9 -> 6 cones, 0.05% of pixels; summit 9 -> 6, 10% of pixels, its pale rim and olive halo fold into dark grey, dE 22.47 -> 21.95. PRE_FLIP carries it False.
+
 **Why:** every cone is a spool and a re-thread; "Colors (max 6)" is a price.
 **How to apply:** a thread-count claim quotes `colors_used` off the blocks
 (`tools/photo_corpus.py` `distinct_threads`) and names which mechanism added
-each extra; whether the ticked white counts against the cap is Kent's call.
+each extra.
 Related: [[photo-corpus-sxs-2026-10-27]], [[stage0-texture-gate-2026-10-28]].
