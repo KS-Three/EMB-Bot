@@ -383,6 +383,12 @@ Where a rule exists twice (cap order, cut-every-jump, fabric tables), one flag
 and one measurement. The typed-text lane has no pro datum and never will from
 this corpus; its judge is the sew-out card (v8's `cutEveryJump` arm).
 
+*Cheap half built 2026-11-02 (Studio only): a down service keeps the upload as a
+"digitized" element that says "Digitizer service not reachable; retrying…" with
+Retry and "Use browser engine instead"; the JS lane runs for an image only on
+that choice, and results name their engine. See memory
+`studio-no-silent-fallback-2026-11-02`.*
+
 ### 9. A consolidation discipline for flags
 
 Proposed rules, Kent's to adopt: a flag ON for 30 days with no reopened question

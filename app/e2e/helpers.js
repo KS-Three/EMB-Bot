@@ -110,8 +110,16 @@ export async function setDesignWidth(page, mm) {
   await width.blur();
 }
 
-export async function uploadArtwork(page, file, { run = true } = {}) {
+export async function uploadArtwork(page, file, { run = true, engine = null } = {}) {
   await page.getByTestId("art-file").setInputFiles(file);
+  // With the service down the Studio keeps the art and asks (no silent
+  // fallback, 2026-11-02): `engine: "browser"` takes the customer's
+  // "Use browser engine instead" choice. Tolerant of a healthy service, where
+  // the button never appears and the digitizer lane carries on.
+  if (engine === "browser") {
+    const choose = page.getByRole("button", { name: "Use browser engine instead" });
+    if (await choose.waitFor({ state: "visible", timeout: 10_000 }).then(() => true, () => false)) await choose.click();
+  }
   if (!run) return;
   await runDigitize(page);
 }

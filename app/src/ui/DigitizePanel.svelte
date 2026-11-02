@@ -12,6 +12,7 @@
   import Icon from "./Icon.svelte";
   import Advanced from "./Advanced.svelte";
   import { tip } from "../lib/tip.js";
+  import { engineLabel } from "../lib/project.js";
   import { markDigitizeBusy, rememberRun, forgetRun, wasRunning } from "../lib/digitizeBusy.js";
   import { isCapPieceId } from "../lib/capPieces.js";
   import {
@@ -124,6 +125,18 @@
   onDestroy(() => {
     destroyed = true;
   });
+
+  // "retrying…" is true: while the service is unreachable this panel asks App
+  // to re-probe /health every RETRY_MS (App's token guard drops stale answers).
+  const RETRY_MS = 8000;
+  let retryTimer = null;
+  $: if (!health && !retryTimer) {
+    retryTimer = setInterval(() => d("checkservice"), RETRY_MS);
+  } else if (health && retryTimer) {
+    clearInterval(retryTimer);
+    retryTimer = null;
+  }
+  onDestroy(() => retryTimer && clearInterval(retryTimer));
 
   function patch(p) {
     d("elupdate", { id: element.id, patch: p });
@@ -2021,13 +2034,18 @@
     </div>
 
     {#if !health}
-      <div class="dgp-offline">
+      <div class="dgp-offline" data-testid="digitizer-unreachable">
         <p>
-          The digitizer service isn't running, so digitizing is off.
+          Digitizer service not reachable; retrying…
           {#if element.result}Your stitched result is saved with the design and still sews and exports.{/if}
         </p>
         <p class="dgp-cmd">Start it: <code>python -m digitizer_service</code> in the digitizer folder.</p>
-        <button type="button" class="dgp-check" on:click={() => d("checkservice")}>Check again</button>
+        <button type="button" class="dgp-check" on:click={() => d("checkservice")}>Retry</button>
+        {#if element.sourcePng && !element.result}
+          <button type="button" class="dgp-check dgp-browser" on:click={() => d("usebrowserengine", { id: element.id })}>
+            Use browser engine instead
+          </button>
+        {/if}
       </div>
     {/if}
 
@@ -2145,7 +2163,8 @@
       <p class="dgp-stats">
         {element.result.stitchCount.toLocaleString()} stitches ·
         {element.result.widthMM.toFixed(0)}×{element.result.heightMM.toFixed(0)} mm ·
-        {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"}
+        {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"} ·
+        <span data-testid="engine-label">{engineLabel("service")}</span>
       </p>
     {/if}
 

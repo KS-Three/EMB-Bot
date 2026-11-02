@@ -23,6 +23,9 @@
   // "Upload file" picks the file before the element exists (App.onArtFile).
   export let pendingFile = null;
   export let onFileConsumed = () => {};
+  // The service-unreachable block's two controls (Retry / Use browser engine).
+  export let onCheckService = () => {};
+  export let onUseBrowserEngine = () => {};
 
   function handle(e) {
     element = { ...element, ...e.detail.patch };
@@ -39,6 +42,8 @@
   {pendingFile}
   on:fileconsumed={() => onFileConsumed()}
   on:elupdate={handle}
+  on:checkservice={() => onCheckService()}
+  on:usebrowserengine={(e) => onUseBrowserEngine(e.detail)}
   on:shapehover={(e) => onShapeHover(e.detail)}
   on:shapeselect={(e) => onShapeSelect(e.detail)}
 />

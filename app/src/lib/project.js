@@ -40,9 +40,8 @@ export function defaultTextElement(id) {
 // same pixels it was showing.
 //
 // An `image` element is only ever created when the digitizer service is
-// DOWN (App.onAddElement -> resolveArtworkType), which is a state the
-// Content step explicitly supports and tells the user about — so this was
-// the offline user's work, and only theirs, that a refresh destroyed.
+// DOWN and the customer chose the browser engine (routeArtwork, below) — so
+// this was the offline user's work, and only theirs, that a refresh destroyed.
 export function defaultImageElement(id) {
   return {
     id,
@@ -474,8 +473,45 @@ function nextElementId(elements) {
 // this: service up -> "digitized" (the pipeline classifies and stitches it),
 // down -> "image" (the browser engine's flatten-and-sew lane, no service
 // needed). App.onAddElement and applyTemplate are the two callers today.
-export function resolveArtworkType(digitizerHealth) {
-  return digitizerHealth ? "digitized" : "image";
+//
+// Since 2026-11-02 (architecture review item 8) a DOWN service no longer picks
+// the browser lane on its own: the artwork is kept as a "digitized" element
+// (its panel says the service is unreachable and offers a retry), and the
+// browser engine runs for an image only when the customer chose it
+// (`engineChoice === "browser"`, DigitizePanel's "Use browser engine instead").
+// `via` uses the same words as DownloadStep's `out.via`.
+export function routeArtwork(digitizerHealth, engineChoice = null) {
+  if (digitizerHealth) return { type: "digitized", via: "service", unreachable: false };
+  if (engineChoice === "browser") return { type: "image", via: "browser", unreachable: false };
+  return { type: "digitized", via: null, unreachable: true };
+}
+
+export function resolveArtworkType(digitizerHealth, engineChoice = null) {
+  return routeArtwork(digitizerHealth, engineChoice).type;
+}
+
+// The short result label: which engine produced the stitches.
+export function engineLabel(via) {
+  return via === "service" ? "Digitizer service" : via === "browser" ? "Browser engine" : null;
+}
+
+// The customer's "Use browser engine instead" on an uploaded-but-undigitized
+// element: the same artwork, now an `image` element for the JS lane, marked
+// `via: "browser"`. Pure; App swaps it in and re-hydrates the pixels.
+// `sizeMm` is what addElement would have seeded had this been an `image`
+// element from the start (0.4 x hoop when it is not the first element, null =
+// auto-fit when it is): a digitized element keeps null, and the browser lane
+// then sews the art at a different scale than it always did.
+export function toBrowserEngineElement(el, sizeMm = null) {
+  return {
+    ...defaultImageElement(el.id),
+    name: el.name || "",
+    sourcePng: el.sourcePng || null,
+    sizeMm,
+    offsetXMm: el.offsetXMm || 0,
+    offsetYMm: el.offsetYMm || 0,
+    via: "browser",
+  };
 }
 
 // Adds a new element ("text" or "image") to the project and selects it.
