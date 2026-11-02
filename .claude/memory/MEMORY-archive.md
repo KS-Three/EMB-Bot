@@ -1,9 +1,9 @@
-# Memory Index — Archive (through 2026-10-21, four of 10-22)
+# Memory Index — Archive (through 2026-10-22, three of 10-23)
 
 Same one-line format as `MEMORY.md`: `- [Title](file.md) — hook`. These are the
 index lines for every note dated through 2026-10-04 (filename date, else the date
 the note file was first committed), moved out of the live index on 2026-10-23 (and
-again on 2026-10-26, through 2026-09-21, and on 2026-10-27, through 2026-10-04 and then 2026-10-06, and on 2026-10-28 through 2026-10-08 (the STANDING float-pictures line stays live), and on 2026-10-29 through 2026-10-15, and on 2026-10-29, through 2026-10-11, plus the 80 mm ink link line of 10-15 (one PR's worth of room), and for the 10-29 trim re-measure the 10-15 bean-holds and true-size-guard lines plus 2 through 10-20, and for the 10-29 gradient-excess note the last three 10-20 lines, and for the 11-01 card v8 note the 10-21 small-bold line, and on 2026-11-01 for the dropped-element note the 10-21 small text re-set and trim economy lines, and for the 11-01 pro-pair yardstick the 10-22 ProSeal-bubble and pull-by-stroke lines,
+again on 2026-10-26, through 2026-09-21, and on 2026-10-27, through 2026-10-04 and then 2026-10-06, and on 2026-10-28 through 2026-10-08 (the STANDING float-pictures line stays live), and on 2026-10-29 through 2026-10-15, and on 2026-10-29, through 2026-10-11, plus the 80 mm ink link line of 10-15 (one PR's worth of room), and for the 10-29 trim re-measure the 10-15 bean-holds and true-size-guard lines plus 2 through 10-20, and for the 10-29 gradient-excess note the last three 10-20 lines, and for the 11-01 card v8 note the 10-21 small-bold line, and on 2026-11-01 for the dropped-element note the 10-21 small text re-set and trim economy lines, and for the 11-01 pro-pair yardstick the 10-22 ProSeal-bubble and pull-by-stroke lines, and on 2026-11-02, when five merged PRs had each archived against their own base and main sat 141 over the ceiling, the first three 10-23 lines (border-by-size, border-census, column-corner-folds),
 oldest filename date first) because it sat at its 24,986-character
 ceiling and every PR that added a note conflicted with every other. **This file is NOT auto-loaded** — open it when you
 need history or a standing ruling (fill row spacing 0.15, DST axis fixed,
@@ -148,3 +148,6 @@ live index; new archive lines go at the bottom.
 - [Trim economy](trim-economy-2026-10-21.md) — only under-later cuts are policy (pro 9, ours 43): `trim_bury_under_later` OFF; bare gap is R11 white-as-fabric
 - [Layout is judged in the preview](layout-judged-in-preview-2026-10-22.md) — Kent 10-22: stitch LAYOUT flips from renders, no sew-out
 - [Short column underlay](short-column-underlay-2026-10-22.md) — `satin_underlay_short_columns` OFF: pro centre-walks 83-97% of columns at EVERY width; no 3.5 mm pitch; zigzag unsettled
+- [Border by size](border-by-size-2026-10-23.md) — `border_by_size` OFF: at 6 mm+ the separator is STROKE vs satin ceiling; letters are the population; fills a coin flip
+- [Border census](border-census-2026-10-23.md) — small rings = edge cap + run tier; pro borders by SIZE (>= 4 mm)
+- [Corner folds in the Column lane](column-corner-folds-2026-10-23.md) — pro FOLDS one column round every L corner (57 read), cuts only T junctions; `lettering_columns_corner_fold` OFF

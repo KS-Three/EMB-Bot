@@ -18,6 +18,10 @@ kappa, its bootstrap interval, and the n it rests on.
 
 ## The answer
 
+*Ruled 2026-11-02: shown the 17 pairs where the trim count disagrees with
+him, Kent kept his eye ("My eye stands") - reading (b) in section 6; the
+exit stands unmet, nothing rewritten.*
+
 **Closer to his eye than the fidelity scorecard was, and still not the
 exit.** Of the 144 judged pairs, 100 are on a design that has a
 professional's file; both arms of every one were drawn again on the
@@ -459,6 +463,28 @@ where the trim family and his eye disagree are the ones that would teach an
 instrument what he weighs against trims - and the instrument to build is one
 for flow, density and construction, which is what his notes name. Either way
 no phase marker moves on this document.
+
+**Kent's ruling, 2026-11-02 - reading (b).** The 17 decided pairs on which
+the trim family scores his pick farther from the pro (the union of the
+`cuts`, `hops` and `needle_up_mm` rows in section 4) were put in front of
+him side by side - before | after | pro, both of ours drawn from the run's
+own `design.json` at 8 px/mm, the pro from its PES, each tile carrying its
+three trim figures and their distance to the pro, his pick framed - and he
+was asked whether the trim count read them right or his eye still stood.
+His words: **"My eye stands."** So the trim family is not his eye on a
+construction flip (the top four rows are the 08-27 engine and the Column
+lane on drone); `hops` and `cuts` are quoted as a distance to the pro with
+the caveat above and never as the yardstick; no tolerance is set; and the
+Phase 1 exit's second clause is recorded as unmet by any instrument this
+corpus supports. The phase marker does not move. The next sitting is built
+from the section 4 tally and the list below. The sheet is local only
+(`pro_renders/yardstick-sxs-2026-11-02/`, gitignored - pro renders never go
+under `docs/`); its rows, in the order shown: `ref_0827` on drone, becker
+and bridge, `directional_comp` on drone, `lettering_column` on fremont,
+`lettering_columns` (full-density, then density) on drone, `bean_letters` on
+fremont, `lettering_columns` (full-density) on fremont, `letterform_priors`
+on becker, then seven single-instrument rows with margins of 3-15 hops, 6
+cuts or 7-23 mm.
 
 ## What would move it
 
