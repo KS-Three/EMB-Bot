@@ -69,7 +69,7 @@ def run_one(image: Path, out: Path, req: dict) -> dict:
     row = {
         "slug": image.stem, "image": str(image), "wall_s": wall,
         "class": gen.classification_class,
-        "stitches": sum(len(b.stitches) for b in plan.blocks) if hasattr(plan, "blocks") else None,
+        "stitches": sum(b.stitch_count for b in plan.blocks),
         "regions": len(result.regions),
         "artwork_mm2": round(sum(float(r.area_mm2 or 0.0) for r in result.regions), 1),
         "grade_without": f"{grade_wo} {score_wo}",
