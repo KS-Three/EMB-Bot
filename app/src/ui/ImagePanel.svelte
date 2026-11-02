@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF, MIN_SWATCH_SHARE } from "../lib/flatten.js";
+  import { engineLabel } from "../lib/project.js";
   import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
   import { friendlyError } from "../lib/friendlyError.js";
   import ThreadPicker from "./ThreadPicker.svelte";
@@ -308,6 +309,7 @@
 {#if error}<p class="err">{error}</p>{/if}
 
 <canvas class="flatprev" class:hidden={!flat} bind:this={previewCanvas}></canvas>
+{#if flat}<p class="engine-label" data-testid="engine-label">{engineLabel("browser")}</p>{/if}
 
 <label class="rangerow">
   Colors: {element.nColors}

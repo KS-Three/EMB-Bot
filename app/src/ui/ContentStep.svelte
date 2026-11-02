@@ -266,17 +266,9 @@
   </div>
   <SizePanel part="fine" project={{ ...project, ...el }} {designDims} on:update={(e) => d("elupdate", { id: el.id, patch: e.detail })} />
 {/snippet}
-{#if !digitizerHealth}
-  <!-- The tile no longer disappears when the service is down — Artwork still
-       works, it just falls back to the browser engine's own flatten-and-sew
-       lane (App.onAddElement). So this says what CHANGES rather than what is
-       missing: art still goes in, it is not auto-digitized. -->
-  <p class="digitize-offline">
-    Artwork will be placed but not auto-digitized — that needs the local
-    digitizer service. Start it, then
-    <button type="button" class="digitize-recheck" on:click={() => d("checkservice")}>check again</button>.
-  </p>
-{/if}
+<!-- No "artwork won't be digitized" line here any more: a down service no longer
+     routes art to the browser lane unannounced, and DigitizePanel itself says
+     the service is unreachable (Retry / Use browser engine instead). -->
 
 <!-- Keyed on the selected element's id so switching selection (even between
      two elements of the SAME type, e.g. two image elements) always remounts
@@ -342,6 +334,7 @@
         on:shapeselect={(e) => d("shapeselect", e.detail)}
         on:elupdate={(e) => d("elupdate", e.detail)}
         on:checkservice={() => d("checkservice")}
+        on:usebrowserengine={(e) => d("usebrowserengine", e.detail)}
         on:converttotext={(e) => d("converttotext", e.detail)}
         on:removeelement={(e) => d("removeelement", e.detail)}
       >
@@ -394,23 +387,6 @@
     align-items: center;
     vertical-align: -3px;
     margin-right: 4px;
-  }
-  .digitize-offline {
-    font-size: var(--fs-xs, 12px);
-    color: var(--muted, #667);
-    /* Bottom margin and line-height so the note's last line clears whatever
-       control follows it (the text box's top border) instead of touching it. */
-    line-height: 1.4;
-    margin: 6px 0 var(--space-3, 12px);
-  }
-  .digitize-recheck {
-    border: none;
-    background: none;
-    padding: 0;
-    color: var(--accent, #4f46e5);
-    cursor: pointer;
-    font-size: inherit;
-    text-decoration: underline;
   }
   .groupsel { margin-top: var(--space-4, 12px); }
   .groupsel h3 { margin-bottom: var(--space-2, 6px); }

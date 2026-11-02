@@ -94,16 +94,13 @@ test("applyTemplate does not share element objects with TEMPLATES (regression: f
   expect(p2.elements[0]).not.toBe(p.elements[0]);
 });
 
-test("logo-patch template produces a fresh default image element", async () => {
+test("logo-patch template (health unknown) keeps the artwork as a digitized element, not a silent image", async () => {
   const { TEMPLATES, applyTemplate } = await import("./templates.js");
   const { defaultProject } = await import("./project.js");
   const logoPatch = TEMPLATES.find((t) => t.id === "logo-patch");
   const p = applyTemplate(defaultProject(), logoPatch);
   expect(p.garmentId).toBe("patch");
-  expect(p.elements[0].type).toBe("image");
-  expect(p.elements[0].nColors).toBe(4);
-  expect(p.elements[0].removeBg).toBe(true);
-  expect(p.elements[0].sizeMm).toBeNull();
+  expect(p.elements[0].type).toBe("digitized");
 });
 
 // Engine-backed validation: every template must reference a real garment
@@ -142,7 +139,9 @@ test("every text-element TEMPLATES entry's fontKey exists in EMB.SATIN_FONTS", a
 test("resolveArtworkType routes by digitizer health exactly like onAddElement", async () => {
   const { resolveArtworkType } = await import("./project.js");
   expect(resolveArtworkType({ status: "ok" })).toBe("digitized");
-  expect(resolveArtworkType(null)).toBe("image");
+  // Down with no choice no longer picks the browser lane (2026-11-02).
+  expect(resolveArtworkType(null)).toBe("digitized");
+  expect(resolveArtworkType(null, "browser")).toBe("image");
 });
 
 test("logo-patch becomes a digitized element when the digitizer service is healthy", async () => {
@@ -157,14 +156,12 @@ test("logo-patch becomes a digitized element when the digitizer service is healt
   expect(p.elements[0]).toEqual(defaultDigitizedElement("e1"));
 });
 
-test("logo-patch stays an image element when the digitizer service is down", async () => {
+test("logo-patch is a digitized element (not a silent image) when the digitizer service is down", async () => {
   const { TEMPLATES, applyTemplate } = await import("./templates.js");
   const { defaultProject } = await import("./project.js");
   const logoPatch = TEMPLATES.find((t) => t.id === "logo-patch");
   const p = applyTemplate(defaultProject(), logoPatch, null);
-  expect(p.elements[0].type).toBe("image");
-  expect(p.elements[0].nColors).toBe(4);
-  expect(p.elements[0].removeBg).toBe(true);
+  expect(p.elements[0].type).toBe("digitized");
 });
 
 test("text templates ignore digitizer health entirely", async () => {

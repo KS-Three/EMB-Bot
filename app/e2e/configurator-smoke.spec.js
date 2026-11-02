@@ -176,7 +176,7 @@ test("configurator: image content path -> sheet reflects it -> download", async 
   // it this spec's result would depend on whether a sibling spec's service
   // happened to be running, since Playwright runs the files in parallel.
 
-  await uploadArtwork(page, ART_PNG, { run: false });
+  await uploadArtwork(page, ART_PNG, { run: false, engine: "browser" });
   // Real processed state, not just "the input accepted a file": the panel's
   // flatten pipeline ran and produced a palette preview, and that flowed all
   // the way up into stitchable content (same hasStitches gates the original
@@ -446,7 +446,7 @@ test("the Download button does not claim readiness for a design with nothing in 
 // An `image` element (the browser flatten lane) is created only when the
 // digitizer service is DOWN: App.onAddElement routes "artwork" through
 // resolveArtworkType(digitizerHealth), and the Content step tells the user
-// outright that art will be "placed but not auto-digitized". So this is an
+// that art is "not auto-digitized" (since 2026-11-02 the test takes the "Use browser engine instead" choice). So this is an
 // explicitly supported state — and until 2026-09-07 it was the one where a
 // page refresh destroyed the user's work. Measured on the shipped build:
 // 2739 stitches before, no stitch caption after, and no message either way,
@@ -460,7 +460,7 @@ test("artwork uploaded with the digitizer offline survives a page refresh", asyn
   await startStudio(page);
 
   await pickGarment(page, "Tote");
-  await uploadArtwork(page, ART_PNG, { run: false });
+  await uploadArtwork(page, ART_PNG, { run: false, engine: "browser" });
 
   const caption = page.locator("span.stats");
   await expect(caption).toBeVisible({ timeout: 60_000 });
@@ -517,7 +517,7 @@ test("the review recap names every element, not just the selected one", async ({
 
   await typeText(page, "FRITSCH'S");
 
-  await uploadArtwork(page, ART_PNG, { run: false });
+  await uploadArtwork(page, ART_PNG, { run: false, engine: "browser" });
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
 
   await openDownload(page);
@@ -616,7 +616,7 @@ test("every control in the configurator has an accessible name", async ({ page }
   await openAdvanced(page);
   expect(await unnamedControls(page), "configurator").toEqual([]);
 
-  await uploadArtwork(page, ART_PNG, { run: false });
+  await uploadArtwork(page, ART_PNG, { run: false, engine: "browser" });
   expect(await unnamedControls(page), "configurator, artwork").toEqual([]);
 
   await openDownload(page);
@@ -725,7 +725,7 @@ test("Original view swaps the thread for the uploaded artwork, and any edit swap
   await typeText(page, "ABC");
   await expect(orig).toBeDisabled();
 
-  await uploadArtwork(page, ART_PNG, { run: false });
+  await uploadArtwork(page, ART_PNG, { run: false, engine: "browser" });
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
   await expect(orig).toBeEnabled();
 

@@ -29,7 +29,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("artwork uploaded onto a fresh design fills the placement and leaves no empty text row", async ({ page }) => {
-  await uploadArtwork(page, LOGO, { run: false });
+  await uploadArtwork(page, LOGO, { run: false, engine: "browser" });
   await expect(page.locator(".elrow")).toHaveCount(1);
   await expect(page.locator(".elrow", { hasText: "Text · empty" })).toHaveCount(0);
   // The same placement typed text auto-fits to (~102 mm); 42 mm before the fix.
@@ -38,7 +38,7 @@ test("artwork uploaded onto a fresh design fills the placement and leaves no emp
 
 test("artwork added after typed text still lands as a second element", async ({ page }) => {
   await typeText(page, "Ann");
-  await uploadArtwork(page, LOGO, { run: false });
+  await uploadArtwork(page, LOGO, { run: false, engine: "browser" });
   await expect(page.locator(".elrow")).toHaveCount(2);
   await expect(page.locator(".elrow", { hasText: "Ann" })).toHaveCount(1);
 });

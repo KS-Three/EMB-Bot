@@ -135,7 +135,7 @@ test("artwork swatch labels read at WCAG AA on every swatch colour", async ({ pa
   await page.route("**/health", (r) => r.abort());
   await page.setViewportSize({ width: 1440, height: 900 });
   await startStudio(page);
-  await uploadArtwork(page, "e2e/fixtures/contrast-palette.png", { run: false });
+  await uploadArtwork(page, "e2e/fixtures/contrast-palette.png", { run: false, engine: "browser" });
   await expect(page.locator(".swatch").first()).toBeVisible();
   const res = await sweep(page, ".swatches");
   expect(res.checked, ".swatches: nothing was measured").toBeGreaterThan(0);

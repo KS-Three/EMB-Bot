@@ -1,5 +1,5 @@
 <script>
-  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, withoutBlankStarter, removeElement, resolveArtworkType, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
+  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, withoutBlankStarter, removeElement, resolveArtworkType, toBrowserEngineElement, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
   import { createHistory } from "./lib/history.js";
   import { advancedOpen } from "./lib/advanced.js";
   import { applyTemplate } from "./lib/templates.js";
@@ -718,9 +718,26 @@
     if (!file) return;
     // Art uploaded onto a fresh design replaces its blank text box rather
     // than landing beside it at a second element's 40%-of-hoop size.
+    // Service down: the art is kept as a "digitized" element that says so and
+    // offers Retry / "Use browser engine instead" (routeArtwork) -- no silent lane.
     project = addElement(withoutBlankStarter(project), resolveArtworkType(digitizerHealth), hoopWidthMm(project));
     pendingArtFile = { id: project.selectedId, file };
     persist();
+  }
+
+  // DigitizePanel's "Use browser engine instead": the customer's knowing choice
+  // to run the JS lane on art the unreachable service could not take. The one
+  // way an uploaded image becomes an `image` element (routeArtwork); the pixels
+  // come back through the same rehydrate a reload uses.
+  function onUseBrowserEngine({ id }) {
+    project = {
+      ...project,
+      elements: project.elements.map((el) =>
+        el.id === id && el.type === "digitized" && !digitizerHealth ? toBrowserEngineElement(el) : el,
+      ),
+    };
+    persist();
+    restoreArtwork(project);
   }
 
   function onAddElement(type) {
@@ -1340,6 +1357,7 @@
           on:shapeselect={(e) => onPanelShapeSelect(e.detail)}
           {fieldShapeSelect}
           on:checkservice={checkDigitizer}
+          on:usebrowserengine={(e) => onUseBrowserEngine(e.detail)}
           on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch)}
           on:elupdatemany={(e) => elUpdateMany(e.detail)}
           on:select={(e) => onSelect(e.detail)}
