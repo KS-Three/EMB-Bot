@@ -60,3 +60,11 @@ beside a worktree path, so edit docs with the Edit tool. Related:
 [[yardstick-pro-pair-2026-11-01]] (the trim family is what clears chance),
 [[lettering-board-2026-10-25]], [[flip-proof-pins-2026-10-27]],
 [[stage0-flake-output-alignment-2026-10-25]] (why passes agree bit-for-bit).
+
+**Measured (first Linux capture, run 41513783169, engine 0ec42770):** three
+runner passes agreed EXACTLY on all 111 rows (18 jobs; words for 3), so every
+tolerance is 0 and "spread seen" is 0. That is a measurement, not a default:
+the engine is bit-stable across runners under `OPENCV_IPP=avx2`. Consequence:
+ANY merge that moves a pair's figure the wrong way reddens the nightly, and a
+deliberate change re-seeds by capture. Passes took 7-8 min each (laptop
+dry run budgeted far more); the capture job 38 s.
