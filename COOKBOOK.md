@@ -1015,6 +1015,42 @@ while dragging** for the old soft pull (2x the drag distance) on a dense photo
 outline. The nearest node under the pointer wins the grab. Hand-drawn anchors
 (`fieldNodeEdit.js`) do not use it.
 
+**Reshape mode — "Edit points" in the shape popover (2026-11-03, PR #1225).** Turns on
+for the selected ELEMENT on either lane; the popover's row then reads "Done" and a
+strip on the canvas reads `Editing points · Esc to finish`. It exists for seams: two
+shapes' coincident edges are traced from two masks, stage 5 clips or hides whichever
+one moves alone, so a seam has to move on both shapes in one gesture. State and
+helpers live in `EmbroideryField.svelte` (`reshape`, `reshapeDrag`, `marquee`);
+the pure parts are `moveNodes` / `removeNodes` / `nodesInBox` (`shapeOverlay.js`),
+`applyAnchorsDrag` / `removeAnchors` / `editedShapesPatch` (`fieldNodeEdit.js`).
+
+| Key / gesture (in the mode) | What it does |
+|---|---|
+| click a point | selects it (white dot in an amber ring) |
+| Shift-click a point | toggles it in the selection |
+| bare drag from empty canvas or inside a shape | dashed marquee; on release selects every point of EVERY shape of the element inside it; Shift adds |
+| click empty canvas / inside a shape | clears the points; selects that shape and opens its popover (as outside the mode) |
+| drag a selected point | every selected point takes the same delta; digitized rings through `pullRing` (3 mm neighbourhood around each seed, Alt = soft pull), hand-drawn anchors with the placement-box clamp per anchor and the box + cut-out hold on the whole gesture; a `dx, dy mm` readout rides beside the pointer |
+| drag an unselected point | it becomes the selection first |
+| Arrow keys | nudge the selection 0.1 mm, Shift 1 mm, in field mm, EXACTLY the chosen points (no falloff); each press is its own undo step |
+| Delete / Backspace | removes the selected points per ring; a ring at three refuses ("A shape needs at least 3 points.") and loses nothing; with no selection it does what it did (deletes the shape) |
+| right-click a point | "Delete point" / "Select all points" lead the field menu (Simplify points goes there in the next PR) |
+| Esc | leaves the mode first (ahead of focused anchor, popover, menu); selecting another element also leaves it |
+| double-click an edge (digitized) | adds a point there, as outside the mode |
+
+Outside the mode nothing changed: a selected shape drags ONE node, a bare drag
+inside a shape moves the element, arrows nudge the element. **One gesture is one
+patch and one undo step** however many shapes it touched: digitized = one
+`elupdate` whose `shapeOverrides` carries a `boundary_override` per touched shape;
+hand-drawn = one `elupdate` through the re-fit rule with every edited shape. The
+event carries `discrete: true`, which makes `history.record` skip its 500 ms
+coalescing — without it three quick arrow presses undo as ONE step. `boundaryIssues`
+(digitized) / `shapeProblems` + the cut-out hold (hand-drawn) run on every ring
+first; any refusal drops the whole gesture, names the shape in `shapeEditError`,
+and everything snaps back. `DigitizePanel`'s old SVG boundary editor and its
+Layers-row pencil are gone (the hoop canvas is the one editor); a boundary edit is
+undone with Undo. e2e: `app/e2e/field-reshape-mode.spec.js`.
+
 **The re-fit rule.** The engine fits the bbox of all an element's shapes, so
 any edit that changes that bbox would rescale everything else.
 `refitShapesPatch` (and `editedElementPatch` on top of it) patches
