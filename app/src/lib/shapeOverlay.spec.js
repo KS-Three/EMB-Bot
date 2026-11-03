@@ -14,6 +14,7 @@ import {
   moveNodes,
   removeNodes,
   nodesInBox,
+  ringNodesInBox,
   outlineBBoxMm,
   outlineOf,
   pulseAt,
@@ -827,5 +828,82 @@ describe("simplifyRing", () => {
 
   test("never below three points, even for a huge tolerance", () => {
     expect(simplifyRing(circle(120, 10), 1000).length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("hole rings (v1.9)", () => {
+  const OUTER = [[-20, -20], [20, -20], [20, 20], [-20, 20]];
+  const H0 = [[-5, -5], [5, -5], [5, 5], [-5, 5]];
+  const H1 = [[8, 8], [14, 8], [14, 14], [8, 14]];
+  const BB = { x0: 0, y0: 0, x1: 40, y1: 40 };
+  const holed = { id: "S", outlineFull: OUTER, holesFull: [H0, H1] };
+
+  test("shapeOutlinesInFieldMm carries each hole as its own ring, tagged with the shape id and index", () => {
+    const out = shapeOutlinesInFieldMm([holed], BB);
+    expect(out.map((o) => [o.id, o.ring ?? "exterior", o.key])).toEqual([["S", "exterior", "S"], ["S", 0, "S#h0"], ["S", 1, "S#h1"]]);
+    // the fit is the shell's: hole 0 is centred in the 40 mm box
+    const b = bboxOf(out[1].points);
+    expect(b.minX).toBeCloseTo(15, 6);
+    expect(b.maxX).toBeCloseTo(25, 6);
+  });
+
+  test("a pending holes_override wins for drawing; the bbox fit stays on the original outlines", () => {
+    const pend = new Map([["S", [[[-1, -1], [1, -1], [1, 1], [-1, 1]]]]]);
+    const out = shapeOutlinesInFieldMm([holed], BB, 0, null, pend);
+    expect(out.length).toBe(2);
+    expect(bboxOf(out[1].points).minX).toBeCloseTo(19, 6);
+    expect(shapeOutlinesInFieldMm([holed], BB, 0, null, new Map([["S", []]])).length).toBe(1);
+  });
+
+  test("a shape with no holesFull draws only its shell", () => {
+    expect(shapeOutlinesInFieldMm([shape("S", OUTER)], BB).length).toBe(1);
+  });
+
+  test("hitOverlay reports the ring; between a hole node and a shell node the nearer wins", () => {
+    const px = [
+      { id: "S", points: [[0, 0], [100, 0], [100, 100], [0, 100]] },
+      { id: "S", ring: 0, points: [[4, 4], [60, 4], [60, 60], [4, 60]] },
+    ];
+    expect(hitOverlay(px, 5, 5).ring).toBe(0);          // 1.4 px from the hole node, 7 from the shell's
+    expect(hitOverlay(px, 1, 1).ring).toBe("exterior"); // 1.4 vs 4.2 the other way
+    expect(hitOverlay(px, 30, 4)).toMatchObject({ kind: "edge", ring: 0 });
+  });
+
+  test("a point inside a hole is not inside the shape", () => {
+    const shell = { id: "S", points: [[0, 0], [100, 0], [100, 100], [0, 100]] };
+    const hole = { id: "S", ring: 0, points: [[30, 30], [70, 30], [70, 70], [30, 70]] };
+    expect(hitShapeInterior([shell, hole], 10, 10)).toEqual({ shapeId: "S", kind: "interior" });
+    expect(hitShapeInterior([hole], 50, 50)).toBeNull();
+  });
+
+  test("ringNodesInBox takes the points of both rings, keyed by ring; nodesInBox stays shell-only", () => {
+    const px = [
+      { id: "S", points: [[0, 0], [100, 0], [100, 100], [0, 100]] },
+      { id: "S", ring: 0, points: [[4, 4], [60, 4], [60, 60], [4, 60]] },
+    ];
+    const got = ringNodesInBox(px, -1, -1, 10, 10);
+    expect([...got.get("S").get("exterior")]).toEqual([0]);
+    expect([...got.get("S").get(0)]).toEqual([0]);
+    expect([...nodesInBox(px, -1, -1, 10, 10).get("S")]).toEqual([0]);
+  });
+
+  test("fieldMmToOutlineMm round-trips a hole ring through the shell's fit, rotated too", () => {
+    for (const rot of [0, 30, 90]) {
+      const bb = rot === 0 ? BB : { x0: 3, y0: 4, x1: 43, y1: 44 };
+      const [, h0] = shapeOutlinesInFieldMm([holed], bb, rot);
+      const back = fieldMmToOutlineMm(h0.points, [holed], bb, rot);
+      back.forEach(([x, y], i) => {
+        expect(x).toBeCloseTo(H0[i][0], 6);
+        expect(y).toBeCloseTo(H0[i][1], 6);
+      });
+    }
+  });
+
+  test("a hole ring takes the same drag rules: one node at 10 mm spacing, the three-point floor per ring", () => {
+    const ring = [[0, 0], [10, 0], [10, 10], [0, 10]];
+    const moved = moveNode(ring, 0, 1, 1);
+    expect(moved[0]).toEqual([1, 1]);
+    expect(moved[1]).toEqual([10, 0]);
+    expect(removeNodes(ring, [0, 1, 2])).toBeNull();
   });
 });

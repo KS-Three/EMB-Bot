@@ -422,3 +422,19 @@ describe("Simplify points row", () => {
     expect(popoverModel({ element: withRing, shapeId: "Sabc" }).pointsWas).toBeNull();
   });
 });
+
+describe("Holes: k (v1.9)", () => {
+  const ring = [[0, 0], [40, 0], [40, 40], [0, 40]];
+  const hole = [[10, 10], [20, 10], [20, 20], [10, 20]];
+  const withHoles = (shapeOverrides = {}) => ({
+    ...digitizedEl,
+    review: { ...digitizedEl.review, shapes: [{ ...digitizedEl.review.shapes[0], outlineFull: ring, holesFull: [hole, hole] }, digitizedEl.review.shapes[1]] },
+    shapeOverrides,
+  });
+  test("counts the review's holes, a pending holes_override instead when there is one, 0 when none", () => {
+    expect(popoverModel({ element: withHoles(), shapeId: "Sabc" }).holes).toBe(2);
+    expect(popoverModel({ element: withHoles({ Sabc: { holes_override: [hole] } }), shapeId: "Sabc" }).holes).toBe(1);
+    expect(popoverModel({ element: withHoles({ Sabc: { holes_override: [] } }), shapeId: "Sabc" }).holes).toBe(0);
+    expect(popoverModel({ element: digitizedEl, shapeId: "Sdef" }).holes).toBe(0);
+  });
+});

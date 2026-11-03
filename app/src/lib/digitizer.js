@@ -371,6 +371,12 @@ export function canonicalShapeEdits(element) {
     if (isValidBoundaryShape(e.boundary_override)) {
       entry.boundary_override = e.boundary_override.map(([x, y]) => [x, y]);
     }
+    // `holes_override` (contract v1.9): the shape's interior rings, written
+    // ONLY when a hole was edited. `[]` is a valid value (the shape goes
+    // solid); a single bad ring drops the whole key, as the service would 400.
+    if (Array.isArray(e.holes_override) && e.holes_override.every(isValidBoundaryShape)) {
+      entry.holes_override = e.holes_override.map((r) => r.map(([x, y]) => [x, y]));
+    }
     // `stitch_width_mm` (contract v1.8): the sewn satin column for one shape,
     // in mm. Range mirrors the service's `stitchwidth.validate_override_mm`
     // (the machine's own cross floor and wide-column ceiling) so an out-of-
@@ -827,11 +833,11 @@ export const BOUNDARY_MIN_PERIMETER_MM = 2.2;
 // replacement for server-side validation (defense in depth stays server-
 // side, in `apply_shape_edits`) — this exists so a self-crossing drag or a
 // pinched-shut shape reads as invalid WHILE editing, not only after "Apply
-// layer changes" comes back with an error. Deliberately does not check hole
-// containment: the editor never touches holes (exterior-ring-only edits),
-// so that check — the one thing only the server can do, since it alone
-// knows the shape's existing holes — never applies here.
-export function boundaryIssues(points) {
+// layer changes" comes back with an error. With `holes` (the shape's interior
+// rings, v1.9) it also holds containment: each hole simple, every hole vertex
+// inside the shell, no hole crossing the shell or another hole. The server
+// still has the last word.
+export function boundaryIssues(points, holes = null) {
   const pts = points || [];
   const issues = [];
   if (pts.length < BOUNDARY_MIN_POINTS) {
@@ -841,23 +847,73 @@ export function boundaryIssues(points) {
   if (pts.length > BOUNDARY_MAX_POINTS) {
     issues.push(`Too many points (max ${BOUNDARY_MAX_POINTS}).`);
   }
+  if (ringCrossesItself(pts)) issues.push("This boundary crosses itself.");
+  if (ringArea(pts) < BOUNDARY_MIN_AREA_MM2 || ringPerimeter(pts) < BOUNDARY_MIN_PERIMETER_MM) {
+    issues.push("This shape is too small to sew.");
+  }
+  const rings = Array.isArray(holes) ? holes : [];
+  rings.forEach((h, k) => {
+    const name = `Hole ${k + 1}`;
+    if (!Array.isArray(h) || h.length < BOUNDARY_MIN_POINTS) {
+      issues.push(`${name} needs at least ${BOUNDARY_MIN_POINTS} points.`);
+      return;
+    }
+    if (h.length > BOUNDARY_MAX_POINTS) {
+      issues.push(`${name} has too many points (max ${BOUNDARY_MAX_POINTS}).`);
+    }
+    if (ringCrossesItself(h)) {
+      issues.push(`${name} crosses itself.`);
+      return;
+    }
+    if (ringsCross(h, pts)) {
+      issues.push(`${name} crosses the outline.`);
+    } else if (!h.every((p) => pointInPolygon(p, pts))) {
+      issues.push(`${name} is outside the outline.`);
+    }
+    if (ringArea(h) < BOUNDARY_MIN_AREA_MM2 || ringPerimeter(h) < BOUNDARY_MIN_PERIMETER_MM) {
+      issues.push(`${name} is too small to sew.`);
+    }
+    for (let m = 0; m < k; m++) {
+      if (ringsCross(h, rings[m])) issues.push(`${name} crosses Hole ${m + 1}.`);
+    }
+  });
+  return issues;
+}
+
+function ringCrossesItself(pts) {
   const n = pts.length;
-  outer: for (let i = 0; i < n; i++) {
+  for (let i = 0; i < n; i++) {
     const a1 = pts[i], a2 = pts[(i + 1) % n];
     for (let j = i + 1; j < n; j++) {
       const adjacent = j === i + 1 || (i === 0 && j === n - 1);
       if (adjacent) continue;
-      const b1 = pts[j], b2 = pts[(j + 1) % n];
-      if (segmentsIntersect(a1, a2, b1, b2)) {
-        issues.push("This boundary crosses itself.");
-        break outer;
-      }
+      if (segmentsIntersect(a1, a2, pts[j], pts[(j + 1) % n])) return true;
     }
   }
-  if (ringArea(pts) < BOUNDARY_MIN_AREA_MM2 || ringPerimeter(pts) < BOUNDARY_MIN_PERIMETER_MM) {
-    issues.push("This shape is too small to sew.");
+  return false;
+}
+
+// Do any edges of two closed rings touch or cross?
+function ringsCross(a, b) {
+  for (let i = 0; i < a.length; i++) {
+    const a1 = a[i], a2 = a[(i + 1) % a.length];
+    for (let j = 0; j < b.length; j++) {
+      if (segmentsIntersect(a1, a2, b[j], b[(j + 1) % b.length])) return true;
+    }
   }
-  return issues;
+  return false;
+}
+
+function pointInPolygon(p, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i];
+    const [xj, yj] = poly[j];
+    if ((yi > p[1]) !== (yj > p[1]) && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
 }
 
 // ---- shape identity edits (contract v1.5): merge and split -----------------
@@ -1185,6 +1241,11 @@ export function reviewFromJob(review, blocks = null) {
       enclosedColourUnknown: s.enclosed_colour_unknown === true,
       outline: thinOutline(s.outline_mm),
       outlineFull: thinOutline(dedupeRing(s.outline_mm), BOUNDARY_MAX_POINTS),
+      // Interior rings (contract v1.9 Studio side): `holes_mm` has always been
+      // in the review payload; each ring is deduped and thinned to the same
+      // 500-point cap as the shell, and one under three points is dropped as
+      // the server would. A saved project or an older service sends none.
+      holesFull: holesFromWire(s.holes_mm),
       // Text-cluster detection (server-computed, read-only, no override key —
       // see digitizer_service/app.py's _review_payload comment): whether this
       // shape was tagged as a member of a detected "looks like text" cluster,
@@ -1216,6 +1277,17 @@ export function reviewFromJob(review, blocks = null) {
       stitchWidth: stitchWidthFromWire(s.stitch_width),
     })),
   };
+}
+
+function holesFromWire(holes) {
+  if (!Array.isArray(holes)) return [];
+  const out = [];
+  for (const h of holes) {
+    if (!Array.isArray(h)) continue;
+    const ring = thinOutline(dedupeRing(h), BOUNDARY_MAX_POINTS);
+    if (ring.length >= BOUNDARY_MIN_POINTS) out.push(ring);
+  }
+  return out;
 }
 
 function stitchWidthFromWire(w) {

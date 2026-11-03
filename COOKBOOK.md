@@ -960,6 +960,7 @@ control called "Stitch width" was the DESIGN's width. Now
   inside `shape_overrides`, so `EDIT_KEYS` already strips them from
   `generation_key` and `content_key` folds them in (the stage 0-4 cache
   keeps hitting). Spec: `docs/superpowers/specs/2026-11-03-digitized-node-reshape-design.md` section 6.
+  Studio side (draws, edits and sends it): see "Holes on the canvas" below.
 
 Measured (on-vs-off plan md5): with the box OFF every corpus fixture is
 byte-identical, pinned on the two art fixtures that would move
@@ -1072,6 +1073,29 @@ the node-edit rules (`boundaryIssues` first, a refusal drops the gesture), reads
 each similar shape is thinned on its own ring in ONE patch (one undo step). The
 Reshape-mode right-click menu has the same three choices. Never automatic; Undo is
 the way back.
+
+**Holes on the canvas (2026-11-03, contract v1.9 Studio side, PR #1229).** A digitized
+shape's interior rings (`holes_mm`, always in the review payload) are now read
+(`reviewFromJob` -> `holesFull`, deduped, thinned to 500, under 3 points dropped),
+drawn and edited: each hole is its own amber ring with its own nodes whenever the
+shape is (`shapeOutlinesInFieldMm` tags it `{ id, ring: k, key: "<id>#h<k>" }`;
+`hitOverlay` reports `ring: "exterior" | k`, nearest node wins across rings; a point
+inside a hole is not "inside" the shape). Every rule above applies to a hole ring:
+one-node drag with the 3 mm neighbourhood (Alt = soft), Reshape selection with
+`ring` = the hole index, marquee across shapes and rings, multi-drag, arrows,
+Delete per ring with the three-point floor, Simplify (holes simplify with the shell
+at the same tolerance). Select every point of one hole and Delete, or right-click a
+hole node and pick **Delete hole**, and the hole goes (`holes_override: []`, the
+shape is solid there); the white square the art keeps in a hole then sews, being its
+own shape. **There is no way to ADD a hole yet.**
+`ringEditOverrides` (EmbroideryField) writes `boundary_override` only when the SHELL
+moved and `holes_override` (ALL the shape's current holes) only when a hole was
+edited, now or in an earlier gesture, so an exterior-only edit is byte-identical on
+the wire. `boundaryIssues(points, holes)` names the ring (`Hole 2 crosses the
+outline.`, `... is outside the outline.`, `... crosses Hole 1.`); the popover reads
+`Points: N · Holes: k`. A chamfered hole corner is two vertices ~1.4 mm apart, so a
+3 mm drag moves the grabbed one fully and its partner by a share; arrows move one
+exactly. e2e `field-reshape-mode.spec.js` (e)-(e4).
 
 **The re-fit rule.** The engine fits the bbox of all an element's shapes, so
 any edit that changes that bbox would rescale everything else.

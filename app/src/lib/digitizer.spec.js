@@ -2849,3 +2849,67 @@ test("sew_enclosed_white is sent both ways, its thread and counters only when on
   expect(hexToRgb("#0a0B0c")).toEqual([10, 11, 12]);
   expect(hexToRgb("#fff")).toBeNull();
 });
+
+// ---- holes_override (contract v1.9; the Studio half) -----------------------
+const SHELL = [[0, 0], [40, 0], [40, 40], [0, 40]];
+const HOLE_A = [[10, 10], [20, 10], [20, 20], [10, 20]];
+const HOLE_B = [[26, 26], [34, 26], [34, 34], [26, 34]];
+
+test("reviewFromJob reads holes_mm into holesFull: deduped, a 2-point hole dropped, absence tolerated", async () => {
+  stubStorage({});
+  const { reviewFromJob } = await import("./digitizer.js");
+  const base = { shape_id: "Sa", thread_index: 0, thread_number: "0020", area_mm2: 1, layer: 0, sew_index: 0, sew_block: 0, tier: "fill" };
+  const wire = {
+    palette: [{ brand_id: "isacord", number: "0020", name: "Black", rgb: [0, 0, 0] }],
+    shapes: [
+      { ...base, outline_mm: [...SHELL, SHELL[0]], holes_mm: [[...HOLE_A, HOLE_A[0]], [[1, 1], [2, 2], [1, 1]], HOLE_B] },
+      { ...base, shape_id: "Sb", outline_mm: SHELL },   // older service / saved project: no field
+    ],
+  };
+  const r = reviewFromJob(wire);
+  expect(r.shapes[0].holesFull).toEqual([HOLE_A, HOLE_B]);   // closing dup gone, the 2-point ring dropped
+  expect(r.shapes[1].holesFull).toEqual([]);
+});
+
+test("reviewFromJob thins a dense hole to the 500-point cap", async () => {
+  stubStorage({});
+  const { reviewFromJob } = await import("./digitizer.js");
+  const dense = Array.from({ length: 900 }, (_, i) => [10 + 5 * Math.cos(i / 900 * 6.2832), 20 + 5 * Math.sin(i / 900 * 6.2832)]);
+  const wire = {
+    palette: [{ brand_id: "isacord", number: "0020", name: "Black", rgb: [0, 0, 0] }],
+    shapes: [{ shape_id: "Sa", thread_index: 0, thread_number: "0020", area_mm2: 1, layer: 0, sew_index: 0, sew_block: 0, tier: "fill", outline_mm: SHELL, holes_mm: [dense] }],
+  };
+  expect(reviewFromJob(wire).shapes[0].holesFull[0].length).toBe(500);
+});
+
+test("boundaryIssues with holes: a clean donut passes; outside, crossing the shell and crossing another hole are named by ring", async () => {
+  stubStorage({});
+  const { boundaryIssues } = await import("./digitizer.js");
+  expect(boundaryIssues(SHELL, [HOLE_A, HOLE_B])).toEqual([]);
+  expect(boundaryIssues(SHELL, [])).toEqual([]);
+  expect(boundaryIssues(SHELL, [HOLE_A, [[50, 10], [60, 10], [60, 20], [50, 20]]])).toEqual(["Hole 2 is outside the outline."]);
+  expect(boundaryIssues(SHELL, [HOLE_A, [[30, 30], [50, 30], [50, 38], [30, 38]]])).toEqual(["Hole 2 crosses the outline."]);
+  // a corner of hole 2 pokes into hole 1
+  expect(boundaryIssues(SHELL, [HOLE_A, [[15, 15], [25, 15], [25, 25], [15, 25]]])).toEqual(["Hole 2 crosses Hole 1."]);
+  // the shell edited across a hole
+  expect(boundaryIssues([[0, 0], [12, 0], [12, 40], [0, 40]], [HOLE_A])).toEqual(["Hole 1 crosses the outline."]);
+});
+
+test("canonicalShapeEdits emits holes_override only for a shape that has one ([] included) and drops a malformed one", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: {
+      Sa: { boundary_override: SHELL },                  // exterior-only: byte-identical to before
+      Sb: { boundary_override: SHELL, holes_override: [HOLE_A] },
+      Sc: { holes_override: [] },                        // solid
+      Sd: { holes_override: [[[0, 0], [1, 1]]] },        // 2 points: dropped, the entry empties
+    },
+  });
+  const out = canonicalShapeEdits(el).shape_overrides;
+  expect(out.Sa).toEqual({ boundary_override: SHELL });
+  expect(Object.keys(out.Sa)).not.toContain("holes_override");
+  expect(out.Sb).toEqual({ boundary_override: SHELL, holes_override: [HOLE_A] });
+  expect(out.Sc).toEqual({ holes_override: [] });
+  expect(out.Sd).toBeUndefined();
+});

@@ -122,9 +122,18 @@ function bboxOf(points) {
  * @returns [{ id, points: [[x, y], ...] }], empty when there is nothing
  *          trustworthy to draw
  */
-export function shapeOutlinesInFieldMm(shapes, bboxMm, rotationDeg = 0, pendingById = null) {
+export function shapeOutlinesInFieldMm(shapes, bboxMm, rotationDeg = 0, pendingById = null, pendingHolesById = null) {
   const rows = (shapes || []).filter((s) => outlineOf(s));
   if (!rows.length || !bboxMm) return [];
+
+  // Interior rings (contract v1.9): a pending `holes_override` wins for DRAWING
+  // the way a pending `boundary_override` does; otherwise the review's own
+  // `holesFull`. A ring under a triangle is not a ring.
+  const holesFor = (s) => {
+    const pend = pendingHolesById && pendingHolesById.get ? pendingHolesById.get(s.id) : null;
+    const list = Array.isArray(pend) ? pend : Array.isArray(s.holesFull) ? s.holesFull : [];
+    return list.filter((h) => Array.isArray(h) && h.length >= MIN_RING_POINTS);
+  };
 
   // A hand edit lives in `shapeOverrides.boundary_override` until the next
   // re-digitize folds it into the review. Drawing straight from `outlineFull`
@@ -143,13 +152,12 @@ export function shapeOutlinesInFieldMm(shapes, bboxMm, rotationDeg = 0, pendingB
   // Flipping afterwards would mirror the rotation and put a non-quadrant
   // outline on the wrong diagonal — the failure a bbox check cannot catch,
   // since a mirrored outline has the identical bounding box.
-  const rotated = rows.map((s) => ({
-    id: s.id,
-    points: rotatePointsDeg(
-      ringFor(s).map(([x, y]) => [x, -y]),
-      rotationDeg
-    ),
-  }));
+  const toField = (ring) => rotatePointsDeg(ring.map(([x, y]) => [x, -y]), rotationDeg);
+  const rotated = [];
+  for (const s of rows) {
+    rotated.push({ id: s.id, key: s.id, points: toField(ringFor(s)) });
+    holesFor(s).forEach((h, k) => rotated.push({ id: s.id, ring: k, key: ringKey(s.id, k), points: toField(h) }));
+  }
 
   // Fitted from the ORIGINAL outlines, never from the pending edits — see
   // ringFor above. An edit that moved the fit would drag every other shape
@@ -176,13 +184,33 @@ export function shapeOutlinesInFieldMm(shapes, bboxMm, rotationDeg = 0, pendingB
   const dstCx = (bboxMm.x0 + bboxMm.x1) / 2;
   const dstCy = (bboxMm.y0 + bboxMm.y1) / 2;
 
-  return rotated.map((r) => ({
-    id: r.id,
-    points: r.points.map(([x, y]) => [
-      dstCx + (x - srcCx) * scale,
-      dstCy + (y - srcCy) * scale,
-    ]),
-  }));
+  return rotated.map((r) => {
+    const o = {
+      id: r.id,
+      key: r.key,
+      points: r.points.map(([x, y]) => [
+        dstCx + (x - srcCx) * scale,
+        dstCy + (y - srcCy) * scale,
+      ]),
+    };
+    // A hole ring carries its index: `{ id: shapeId, ring: k }`. The shell has
+    // no `ring` (hitOverlay reports it as "exterior").
+    if (r.ring != null) o.ring = r.ring;
+    return o;
+  });
+}
+
+// The key a ring goes by in maps that hold one working ring per entry: the
+// shell is its shape's id, a hole is `<id>#h<k>`. Shape ids never contain "#".
+export function ringKey(shapeId, ring) {
+  return ring == null || ring === "exterior" ? shapeId : `${shapeId}#h${ring}`;
+}
+
+// The inverse: -> { shapeId, ring: "exterior" | holeIndex }.
+export function splitRingKey(key) {
+  const at = String(key).lastIndexOf("#h");
+  if (at < 0) return { shapeId: key, ring: "exterior" };
+  return { shapeId: key.slice(0, at), ring: Number(key.slice(at + 2)) };
 }
 
 // Outlines the ENGINE emitted for a hand-drawn or preset element
@@ -337,7 +365,7 @@ export function hitOverlay(outlinesPx, px, py) {
       for (let i = 0; i < pts.length; i++) {
         const d = Math.hypot(px - pts[i][0], py - pts[i][1]);
         if (d <= NODE_GRAB_PX && (!bestNode || d < bestNode.d)) {
-          bestNode = { d, hit: { shapeId: o.id, kind: "node", index: i, atPx: [pts[i][0], pts[i][1]] } };
+          bestNode = { d, hit: { shapeId: o.id, ring: o.ring == null ? "exterior" : o.ring, kind: "node", index: i, atPx: [pts[i][0], pts[i][1]] } };
         }
       }
     }
@@ -347,7 +375,7 @@ export function hitOverlay(outlinesPx, px, py) {
       const b = pts[(i + 1) % pts.length];
       const s = distToSegment(px, py, a[0], a[1], b[0], b[1]);
       if (s.dist <= EDGE_GRAB_PX && (!bestEdge || s.dist < bestEdge.dist)) {
-        bestEdge = { shapeId: o.id, kind: "edge", index: i, atPx: [s.x, s.y], dist: s.dist };
+        bestEdge = { shapeId: o.id, ring: o.ring == null ? "exterior" : o.ring, kind: "edge", index: i, atPx: [s.x, s.y], dist: s.dist };
       }
     }
   }
@@ -368,7 +396,9 @@ export function hitShapeInterior(outlinesPx, px, py) {
   let best = null;
   for (const o of outlinesPx) {
     const pts = o.points;
-    if (o.open || !pts || pts.length < 3) continue;
+    // A hole ring is not the shape's inside: a point in it is over whatever
+    // sits in the hole, not over this shape.
+    if (o.open || o.ring != null || !pts || pts.length < 3) continue;
     if (!pointInRing(pts, px, py)) continue;
     const area = Math.abs(ringArea(pts));
     if (!best || area < best.area) best = { shapeId: o.id, area };
@@ -608,12 +638,36 @@ export function nodesInBox(outlinesPx, x0, y0, x1, y1) {
   const loy = Math.min(y0, y1), hiy = Math.max(y0, y1);
   const out = new Map();
   for (const o of outlinesPx) {
-    if (o.open) continue;
+    if (o.open || o.ring != null) continue;   // shells only; ringNodesInBox has holes
     for (let i = 0; i < o.points.length; i++) {
       const [x, y] = o.points[i];
       if (x >= lox && x <= hix && y >= loy && y <= hiy) {
         if (!out.has(o.id)) out.set(o.id, new Set());
         out.get(o.id).add(i);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * The marquee with rings: like `nodesInBox`, but a hole ring's vertices count
+ * too. -> Map<shapeId, Map<"exterior" | holeIndex, Set<index>>>.
+ */
+export function ringNodesInBox(outlinesPx, x0, y0, x1, y1) {
+  const lox = Math.min(x0, x1), hix = Math.max(x0, x1);
+  const loy = Math.min(y0, y1), hiy = Math.max(y0, y1);
+  const out = new Map();
+  for (const o of outlinesPx) {
+    if (o.open) continue;
+    const ring = o.ring == null ? "exterior" : o.ring;
+    for (let i = 0; i < o.points.length; i++) {
+      const [x, y] = o.points[i];
+      if (x >= lox && x <= hix && y >= loy && y <= hiy) {
+        if (!out.has(o.id)) out.set(o.id, new Map());
+        const rings = out.get(o.id);
+        if (!rings.has(ring)) rings.set(ring, new Set());
+        rings.get(ring).add(i);
       }
     }
   }

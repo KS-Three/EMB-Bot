@@ -1550,3 +1550,22 @@ another fails the job naming `holes_override`. Stage 5+ sees ordinary holes: an
 added hole shows the garment, a removed one fills. Service only; the Studio half
 (draw hole rings, emit the key) is the next PR in the node-reshape spec, section 6
 *(confirmed 2026-11-03 — `tests/test_shape_overrides.py`, `tests/test_service.py`)*.
+
+## 2026-11-03 — holes on the canvas (contract v1.9, the Studio half, PR #1229)
+
+PR 4b of the node-reshape spec (section 6). `reviewFromJob` reads `holes_mm` into
+`holesFull` (deduped, 500-point cap, under 3 points dropped; older services and saved
+projects read none). Each hole is drawn as its own ring with the shell's chrome and
+edits under every rule of sections 3-5; all points of one hole selected + Delete, or
+"Delete hole" in the node menu, removes it. `canonicalShapeEdits` passes
+`holes_override` through only for a shape that has one, so an exterior-only edit is
+byte-identical on the wire; `boundaryIssues(points, holes)` holds each hole simple,
+inside the shell and clear of the others, naming the ring. No way to add a hole yet.
+Measured on `trace-holes-and-colors.png` against the real service from this lane: the
+green square's hole is 8 vertices (chamfered corners); a 3 mm drag of a corner moved
+the grabbed vertex -2.93 mm and its 1.4 mm chamfer partner -1.62, the other six
+exactly as sent, `holes_override` 1 ring x 8 vertices, no `boundary_override`, and the
+restitch showed garment in the opened wedge; Shift+Left x3 on one selected vertex
+moved exactly one (-2.98 mm). Deleting the hole left no garment there (the white
+square sews) *(confirmed 2026-11-03 — `app/e2e/field-reshape-mode.spec.js` (e)-(e4),
+`digitizer.spec.js`, `shapeOverlay.spec.js`)*.

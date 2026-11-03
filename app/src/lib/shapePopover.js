@@ -266,7 +266,9 @@ function baseModel({ element, shapeId, fit, fabric }) {
   // automatic, a tolerance pick applies it. Needs a ring to thin.
   if (ring) out.push({ key: "simplify", kind: "simplify", label: "Simplify points", options: SIMPLIFY_TOLS_MM.map((v) => ({ value: v, label: v + " mm" })) });
   out.push({ key: "delete", kind: "action", label: "Delete shape", danger: true });
-  return { lane, shapeId, name: digitizedName(row), points: ring ? ring.length : null, rows: out };
+  // Interior rings (v1.9): a pending holes_override wins over the review's own.
+  const holeRings = Array.isArray(entry.holes_override) ? entry.holes_override : Array.isArray(row.holesFull) ? row.holesFull : [];
+  return { lane, shapeId, name: digitizedName(row), points: ring ? ring.length : null, holes: holeRings.length, rows: out };
 }
 
 // ---- patches ----------------------------------------------------------------
