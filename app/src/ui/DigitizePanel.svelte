@@ -2579,7 +2579,7 @@
               {@const needsColour = restoredEnclosed && row.enclosedColourUnknown === true &&
                 !(overrides[row.id] && typeof overrides[row.id].thread_index === "number")}
               {@const boundaryEdited = !dead && !unstitched &&
-                !!(overrides[row.id] && overrides[row.id].boundary_override)}
+                !!(overrides[row.id] && (overrides[row.id].boundary_override || overrides[row.id].holes_override))}
               {@const mergedInfo = !dead && !unstitched ? mergedFromInfo(row.id) : null}
               {@const splitInfo = !dead && !unstitched ? splitFromInfo(row.id) : null}
               {@const textCand = !dead && !unstitched && !!row.textCandidate}

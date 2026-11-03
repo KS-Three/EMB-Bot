@@ -110,7 +110,7 @@
   {#if model.points != null}
     <!-- A count, not a control: how many vertices the ring has (Reshape mode
          edits them; "Edit points" below enters it). -->
-    <p class="shapepop-points" data-testid="shapepop-points">Points: {model.pointsWas != null ? `${model.pointsWas} -> ${model.points}` : model.points}</p>
+    <p class="shapepop-points" data-testid="shapepop-points">Points: {model.pointsWas != null ? `${model.pointsWas} -> ${model.points}` : model.points}{#if model.holes > 0}<span class="shapepop-holes" data-testid="shapepop-holes"> · Holes: {model.holes}</span>{/if}</p>
   {/if}
   {#if model.similar}
     <!-- Scope first: it decides what every row below does. The count is every

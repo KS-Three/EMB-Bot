@@ -509,3 +509,212 @@ test("(d) Simplify points 0.5 mm drops the point count, shows Points: N -> M, an
   expect(out.length).toBe(n1);
   await restitched(page, before);
 });
+
+// ---- holes (contract v1.9, spec section 7 (e)) -------------------------------
+//
+// trace-holes-and-colors.png digitizes to a green square with ONE square hole
+// (4 corners). The hole is its own ring on the canvas: a node of it drags on its
+// own, the commit carries `holes_override` (and no `boundary_override`: the
+// shell did not move), and the restitch shows the moved inner edge.
+const HOLES_PNG = path.join(__dirname, "fixtures", "trace-holes-and-colors.png");
+
+async function digitizeHoled(page) {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await pickGarment(page, "Tote");
+  await pinDigitizeConfig(page, { border_by_size: false });
+  await uploadArtwork(page, HOLES_PNG);
+  await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+  let before = null;
+  await expect.poll(async () => {
+    const reads = [];
+    for (let i = 0; i < 3; i++) { reads.push(await page.locator(".dgp-stats").innerText()); await page.waitForTimeout(300); }
+    before = reads[0];
+    return reads.every((r) => r === reads[0]);
+  }, { timeout: 30_000 }).toBe(true);
+  return before;
+}
+
+// The green square and its hole, in page CSS px, found the way a person finds
+// them: green fill (the overlay's casing is translucent and cyan/amber), and
+// the non-green stretch through its middle.
+async function greenSquareAndHole(page) {
+  const f = await page.evaluate(() => {
+    const c = document.querySelector(".hoop canvas");
+    const w = c.width, h = c.height;
+    const d = c.getContext("2d").getImageData(0, 0, w, h).data;
+    const green = (x, y) => { const i = (y * w + x) * 4; return d[i + 3] > 200 && d[i + 1] > 90 && d[i] < 70 && d[i + 2] < 70 && d[i + 1] > d[i] + 40; };
+    let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (green(x, y)) {
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    if (x1 < 0) return null;
+    const cx = Math.round((x0 + x1) / 2), cy = Math.round((y0 + y1) / 2);
+    let hx0 = cx, hx1 = cx, hy0 = cy, hy1 = cy;
+    while (hx0 > x0 && !green(hx0 - 1, cy)) hx0--;
+    while (hx1 < x1 && !green(hx1 + 1, cy)) hx1++;
+    while (hy0 > y0 && !green(cx, hy0 - 1)) hy0--;
+    while (hy1 < y1 && !green(cx, hy1 + 1)) hy1++;
+    const i = (cy * w + cx) * 4;
+    return { x0, y0, x1, y1, hx0, hy0, hx1, hy1, cw: w, garment: [d[i], d[i + 1], d[i + 2]] };
+  });
+  expect(f, "a green square is on the canvas").not.toBeNull();
+  const hb = await page.locator(".hoop canvas").boundingBox();
+  const k = hb.width / f.cw;
+  const at = (x, y) => ({ x: hb.x + x * k, y: hb.y + y * k });
+  return { f, k, at, shell: { tl: at(f.x0, f.y0), tr: at(f.x1, f.y0) }, hole: { tl: at(f.hx0, f.hy0), tr: at(f.hx1, f.hy0), bl: at(f.hx0, f.hy1), br: at(f.hx1, f.hy1) } };
+}
+
+// The canvas pixel at a page point.
+function pixelAt(page, pt) {
+  return page.evaluate(({ x, y }) => {
+    const c = document.querySelector(".hoop canvas");
+    const r = c.getBoundingClientRect();
+    const px = Math.round((x - r.left) * (c.width / r.width)), py = Math.round((y - r.top) * (c.height / r.height));
+    const d = c.getContext("2d").getImageData(px, py, 1, 1).data;
+    return [d[0], d[1], d[2]];
+  }, pt);
+}
+
+async function readHoled(page) {
+  return page.evaluate(() => {
+    const id = localStorage.getItem("embstudio:current");
+    const parsed = JSON.parse(localStorage.getItem("embstudio:p:" + id));
+    const proj = parsed.project || parsed;
+    const el = (proj.elements || []).find((e) => e.type === "digitized");
+    return {
+      overrides: el.shapeOverrides || {},
+      shapes: ((el.review && el.review.shapes) || []).map((s) => ({ id: s.id, outline: s.outlineFull || [], holes: s.holesFull || [] })),
+    };
+  });
+}
+
+async function selectGreenShape(page) {
+  const g = await greenSquareAndHole(page);
+  // The ring's body, a few px inside the left edge: selects the shape, opens the popover.
+  await page.mouse.click(g.shell.tl.x + 4 * g.k + 3, (g.shell.tl.y + g.hole.bl.y) / 2);
+  await expect(page.getByRole("dialog", { name: /^Thread #/ })).toBeVisible();
+  await expect(page.getByTestId("shapepop-holes")).toContainText("Holes: 1");
+  await page.keyboard.press("Escape");
+  // The page re-lays out once the popover is gone: measure again, aim at that.
+  await page.waitForTimeout(400);
+  return greenSquareAndHole(page);
+}
+
+test("(e) a hole's node drags on its own: holes_override carries the grabbed vertex moved, the shell is untouched, the restitch opens the garment", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  const before = await digitizeHoled(page);
+  const g0 = await greenSquareAndHole(page);
+  const garment = g0.f.garment;                                 // the pixel in the middle of the hole
+  const g = await selectGreenShape(page);
+  const read0 = await readHoled(page);
+  const holed = read0.shapes.find((s) => s.holes.length === 1);
+  expect(holed, "the service sent one shape with one hole").toBeTruthy();
+  // Pull the hole's top-left corner out into the green by ~3 mm (field mm). The
+  // hole's own width in mm and px gives the scale.
+  const hs = holed.holes[0];
+  const wMm = Math.max(...hs.map((p) => p[0])) - Math.min(...hs.map((p) => p[0]));
+  const pxPerServiceMm = (g.f.hx1 - g.f.hx0) * g.k / wMm;
+  const dragPx = 3 * pxPerServiceMm;                            // 3 mm of service mm, in px
+  const to = { x: g.hole.tl.x - dragPx, y: g.hole.tl.y };
+  await drag(page, g.hole.tl, to);
+
+  const read = await readHoled(page);
+  const entry = read.overrides[holed.id];
+  expect(entry, "the holed shape carries an override").toBeTruthy();
+  expect(entry.holes_override, "holes_override is on the wire").toHaveLength(1);
+  expect(entry.boundary_override, "the shell was not edited").toBeUndefined();
+  const moved = movedVertices(holed.holes[0], entry.holes_override[0], 1e-4);
+  expect(moved, "same point count").not.toBeNull();
+  // The service traces this square's corners as chamfers (two vertices 1.4 mm
+  // apart), and a drag keeps the 3 mm neighbourhood (spec section 3): the vertex
+  // under the pointer takes the whole 3 mm, its chamfer partner a share, and the
+  // other six vertices are exactly as sent. (Exactly ONE vertex moving is the
+  // arrow-nudge test below.)
+  expect(moved.length, "the grabbed vertex and at most its chamfer partner").toBeLessThanOrEqual(2);
+  const lead = moved.reduce((a, b) => (Math.abs(b.dx) > Math.abs(a.dx) ? b : a));
+  expect(lead.dx, "the grabbed vertex took the whole drag, out into the green").toBeCloseTo(-3, 0);
+  expect(Math.abs(lead.dy)).toBeLessThan(1e-6);
+  console.log("holes_override vertices:", entry.holes_override[0].length, "of", holed.holes[0].length, "- moved:", JSON.stringify(moved));
+
+  await restitched(page, before);
+  // The wedge the move opened (between the old corner, the new one and the hole's
+  // lower-left corner) was green; it is garment now.
+  const A = g.hole.tl, B = to, C = g.hole.bl;
+  const wedge = { x: A.x * 0.6 + B.x * 0.3 + C.x * 0.1, y: A.y * 0.6 + B.y * 0.3 + C.y * 0.1 };
+  await expect.poll(async () => {
+    const px = await pixelAt(page, wedge);
+    return Math.max(...px.map((v, i) => Math.abs(v - garment[i])));
+  }, { timeout: 15_000 }).toBeLessThan(40);
+});
+
+test("(e2) an exterior-only drag on the same holed shape commits NO holes_override", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeHoled(page);
+  const g = await selectGreenShape(page);
+  await drag(page, g.shell.tr, { x: g.shell.tr.x + 14, y: g.shell.tr.y - 10 });
+  const read = await readHoled(page);
+  const edited = Object.entries(read.overrides).filter(([, v]) => v.boundary_override);
+  expect(edited, "the shell was edited").toHaveLength(1);
+  expect(edited[0][1].holes_override, "and no hole key rides with it").toBeUndefined();
+});
+
+test("(e3) Edit points: a hole's node selected and nudged Shift+Left x3 -> holes_override differs in exactly 1 vertex, 3 mm of field space", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeHoled(page);
+  const g1 = await selectGreenShape(page);
+  await page.getByRole("dialog").count();                       // popover is closed (Escape in selectGreenShape)
+  // Re-open it from a click on the ring's body, then Edit points.
+  await page.mouse.click(g1.shell.tl.x + 4 * g1.k + 3, (g1.shell.tl.y + g1.hole.bl.y) / 2);
+  await page.getByRole("dialog").getByRole("button", { name: "Edit points" }).click();
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-reshape", "on");
+  const g = await greenSquareAndHole(page);
+  await page.mouse.click(g.hole.tr.x, g.hole.tr.y);
+  await expect.poll(() => selectedCount(page)).toBe(1);
+  await page.locator(".hoop canvas").focus();
+  for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+ArrowLeft");
+  const read = await readHoled(page);
+  const holed = read.shapes.find((s) => s.holes.length === 1);
+  const entry = read.overrides[holed.id];
+  expect(entry.holes_override).toHaveLength(1);
+  expect(entry.boundary_override, "the shell was not edited").toBeUndefined();
+  const moved = movedVertices(holed.holes[0], entry.holes_override[0], 1e-4);
+  expect(moved, "exactly one hole vertex differs").toHaveLength(1);
+  console.log("nudged vertex:", JSON.stringify(moved[0]));
+});
+
+test("(e4) every point of the hole selected, Delete -> holes_override is [] (the shape goes solid) and the hole no longer shows garment", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  const before = await digitizeHoled(page);
+  const garment = (await greenSquareAndHole(page)).f.garment;
+  const g1 = await selectGreenShape(page);
+  await page.mouse.click(g1.shell.tl.x + 4 * g1.k + 3, (g1.shell.tl.y + g1.hole.bl.y) / 2);
+  await page.getByRole("dialog").getByRole("button", { name: "Edit points" }).click();
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-reshape", "on");
+  const g = await greenSquareAndHole(page);
+  const pad = 12;
+  await drag(page, { x: g.hole.tl.x - pad, y: g.hole.tl.y - pad }, { x: g.hole.br.x + pad, y: g.hole.br.y + pad });
+  await expect.poll(() => selectedCount(page)).toBe(8);          // the hole's eight vertices, none of the shell's
+  await page.locator(".hoop canvas").focus();
+  await page.keyboard.press("Delete");
+  await expect.poll(async () => {
+    const r = await readHoled(page);
+    const e = Object.values(r.overrides).find((v) => v.holes_override);
+    return e ? e.holes_override.length : null;
+  }).toBe(0);
+  const read = await readHoled(page);
+  expect(Object.values(read.overrides).some((v) => v.boundary_override), "the shell was not edited").toBe(false);
+  await restitched(page, before);
+  const centre = { x: (g.hole.tl.x + g.hole.br.x) / 2, y: (g.hole.tl.y + g.hole.br.y) / 2 };
+  // The hole no longer shows garment. (What sews there instead is the service's
+  // call: the white square the art holds in the hole stitches once nothing
+  // leaves the hole open - it is its own shape, with its own thread and delete.)
+  await expect.poll(async () => {
+    const px = await pixelAt(page, centre);
+    return Math.max(...px.map((v, i) => Math.abs(v - garment[i])));
+  }, { timeout: 15_000 }).toBeGreaterThan(60);
+});
