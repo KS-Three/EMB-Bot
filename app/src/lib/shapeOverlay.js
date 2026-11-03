@@ -468,9 +468,15 @@ function ringPerimeter(points) {
  * boundary smooth where the moved stretch meets the anchored one, and a linear
  * ramp puts a visible crease (and a stitch-angle discontinuity) at both ends.
  */
-function pullRing(points, seeds, dx, dy, { soft = false } = {}) {
+function pullRing(points, seeds, dx, dy, { soft = false, exact = false } = {}) {
   const n = points.length;
   if (!n) return [];
+  // `exact`: the seeds and nothing else (a keyboard nudge of a chosen point is
+  // the precision tool; a falloff around a 0.1 mm step would only blur it).
+  if (exact) {
+    const hit = new Set(seeds);
+    return points.map(([x, y], i) => (hit.has(i) ? [x + dx, y + dy] : [x, y]));
+  }
   const wanted = soft
     ? Math.max(PULL_RADIUS_MM, Math.hypot(dx, dy) * PULL_RADIUS_PER_MM)
     : PULL_RADIUS_MM;
@@ -505,6 +511,53 @@ function pullRing(points, seeds, dx, dy, { soft = false } = {}) {
  */
 export function moveNode(points, index, dx, dy, opts) {
   return pullRing(points, [index], dx, dy, opts);
+}
+
+/**
+ * Drag SEVERAL vertices of one ring by the same delta (Reshape mode's
+ * selection). Every seed takes the full delta; the 3 mm neighbourhood applies
+ * around each, weights taking the max where two overlap (`pullRing` already
+ * does this for `moveEdge`'s two seeds). `opts.exact` moves the seeds alone.
+ * Indices outside the ring are ignored.
+ */
+export function moveNodes(points, indices, dx, dy, opts) {
+  const seeds = [...indices].filter((i) => Number.isInteger(i) && i >= 0 && i < points.length);
+  return pullRing(points, seeds, dx, dy, opts);
+}
+
+/**
+ * Remove the vertices at `indices` from a ring, keeping the order of the rest
+ * (so the winding survives). null when fewer than three would be left — the
+ * floor `MIN_RING_POINTS` — and nothing is removed then. Never mutates.
+ */
+export function removeNodes(points, indices) {
+  const drop = new Set([...indices].filter((i) => Number.isInteger(i) && i >= 0 && i < points.length));
+  if (!drop.size) return points.map(([x, y]) => [x, y]);
+  if (points.length - drop.size < MIN_RING_POINTS) return null;
+  return points.filter((_, i) => !drop.has(i)).map(([x, y]) => [x, y]);
+}
+
+/**
+ * The marquee: every vertex of every outline inside the box (canvas px,
+ * edges inclusive). -> Map<shapeId, Set<index>>, shapes with no vertex inside
+ * left out. Open outlines (a cap stretch) have no nodes and are skipped, as
+ * `hitOverlay` skips them.
+ */
+export function nodesInBox(outlinesPx, x0, y0, x1, y1) {
+  const lox = Math.min(x0, x1), hix = Math.max(x0, x1);
+  const loy = Math.min(y0, y1), hiy = Math.max(y0, y1);
+  const out = new Map();
+  for (const o of outlinesPx) {
+    if (o.open) continue;
+    for (let i = 0; i < o.points.length; i++) {
+      const [x, y] = o.points[i];
+      if (x >= lox && x <= hix && y >= loy && y <= hiy) {
+        if (!out.has(o.id)) out.set(o.id, new Set());
+        out.get(o.id).add(i);
+      }
+    }
+  }
+  return out;
 }
 
 /**

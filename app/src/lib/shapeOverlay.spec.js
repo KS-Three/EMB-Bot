@@ -11,6 +11,9 @@ import {
   insertNode,
   moveEdge,
   moveNode,
+  moveNodes,
+  removeNodes,
+  nodesInBox,
   outlineBBoxMm,
   outlineOf,
   pulseAt,
@@ -705,5 +708,83 @@ describe("designOutlinesInFieldMm", () => {
   test("a design without the field, or no design, is an empty list", () => {
     expect(designOutlinesInFieldMm({ stitches: [] })).toEqual([]);
     expect(designOutlinesInFieldMm(null)).toEqual([]);
+  });
+});
+
+describe("Reshape mode: several points at once", () => {
+  // A 60 mm ring with a vertex every 20 mm, so the 3 mm neighbourhood reaches
+  // nobody and every seed moves alone.
+  const big = [[0, 0], [20, 0], [40, 0], [60, 0], [60, 20], [60, 40], [60, 60], [40, 60], [20, 60], [0, 60], [0, 40], [0, 20]];
+
+  test("three selected vertices each take the full delta, the rest stay", () => {
+    const out = moveNodes(big, [1, 2, 7], 1.5, -2.5);
+    for (const i of [1, 2, 7]) expect(out[i]).toEqual([big[i][0] + 1.5, big[i][1] - 2.5]);
+    for (let i = 0; i < big.length; i++) if (![1, 2, 7].includes(i)) expect(out[i]).toEqual(big[i]);
+  });
+
+  test("never mutates, and ignores indices outside the ring", () => {
+    const copy = JSON.parse(JSON.stringify(big));
+    const out = moveNodes(big, [0, 99, -1, 1.5], 2, 0);
+    expect(big).toEqual(copy);
+    expect(out[0]).toEqual([2, 0]);
+    expect(out.slice(1)).toEqual(big.slice(1));
+  });
+
+  test("exact moves the seeds and not their neighbours, even on a dense ring", () => {
+    const dense = Array.from({ length: 40 }, (_, i) => [i * 1, 0]).concat([[39, 10], [0, 10]]);
+    const soft = moveNodes(dense, [5], 0.1, 0);
+    expect(soft[6][0]).not.toBe(dense[6][0]);          // default: the 3 mm neighbourhood follows
+    const exact = moveNodes(dense, [5], 0.1, 0, { exact: true });
+    expect(exact[5]).toEqual([5.1, 0]);
+    expect(exact.filter((p, i) => i !== 5)).toEqual(dense.filter((p, i) => i !== 5));
+  });
+
+  test("two seeds with overlapping neighbourhoods take the max weight, not the sum", () => {
+    const dense = Array.from({ length: 30 }, (_, i) => [i * 1, 0]).concat([[29, 10], [0, 10]]);
+    const out = moveNodes(dense, [10, 11], 2, 0);
+    expect(out[10][0]).toBe(12);
+    expect(out[11][0]).toBe(13);
+    for (const i of [9, 12]) expect(out[i][0] - dense[i][0]).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("removeNodes", () => {
+  const hex = [[0, 0], [10, 0], [15, 8], [10, 16], [0, 16], [-5, 8]];
+  const area = (r) => r.reduce((a, p, i) => a + (r[(i + 1) % r.length][0] * p[1] - p[0] * r[(i + 1) % r.length][1]), 0) / 2;
+
+  test("drops the chosen vertices and keeps the order of the rest", () => {
+    expect(removeNodes(hex, [1, 4])).toEqual([[0, 0], [15, 8], [10, 16], [-5, 8]]);
+  });
+  test("keeps the winding", () => {
+    const after = removeNodes(hex, [2]);
+    expect(Math.sign(area(after))).toBe(Math.sign(area(hex)));
+  });
+  test("refuses under three: null, nothing removed", () => {
+    expect(removeNodes([[0, 0], [5, 0], [5, 5]], [0])).toBeNull();
+    expect(removeNodes(hex, [0, 1, 2, 3])).toBeNull();
+    expect(removeNodes(hex, [0, 1, 2])).toHaveLength(3);          // exactly three left is allowed
+  });
+  test("an empty or out-of-range list is a copy", () => {
+    expect(removeNodes(hex, [])).toEqual(hex);
+    expect(removeNodes(hex, [40])).toEqual(hex);
+  });
+});
+
+describe("nodesInBox (the marquee)", () => {
+  const A = { id: "a", points: [[0, 0], [10, 0], [10, 10], [0, 10]] };
+  const B = { id: "b", points: [[10, 0], [20, 0], [20, 10], [10, 10]] };
+  test("takes every vertex inside, across EVERY shape — a seam's two sides", () => {
+    const got = nodesInBox([A, B], 9, -1, 11, 11);
+    expect([...got.get("a")].sort()).toEqual([1, 2]);
+    expect([...got.get("b")].sort()).toEqual([0, 3]);
+  });
+  test("any drag direction, edges inclusive, empty shapes left out", () => {
+    const got = nodesInBox([A, B], 10, 10, 0, 0);
+    expect([...got.get("a")].sort()).toEqual([0, 1, 2, 3]);
+    expect(got.get("b")).toEqual(new Set([0, 3]));
+    expect(nodesInBox([A], 50, 50, 60, 60).size).toBe(0);
+  });
+  test("an open outline has no nodes", () => {
+    expect(nodesInBox([{ id: "cap", open: true, points: [[1, 1], [2, 2]] }], 0, 0, 5, 5).size).toBe(0);
   });
 });

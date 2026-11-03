@@ -21,11 +21,13 @@ export function createHistory(initial, opts) {
   let lastRecordAt = -Infinity;
 
   return {
-    // `now` is injectable for tests; defaults to the wall clock.
-    record(snapshot, now) {
+    // `now` is injectable for tests; defaults to the wall clock. `discrete`
+    // (a keyboard nudge, a committed point edit) never merges into the entry
+    // before it: each press is its own undo step however fast they come.
+    record(snapshot, now, discrete = false) {
       if (snapshot === stack[idx]) return; // identical reference: nothing changed
       const t = now == null ? Date.now() : now;
-      const coalesce = idx > 0 && t - lastRecordAt < coalesceMs;
+      const coalesce = !discrete && idx > 0 && t - lastRecordAt < coalesceMs;
       stack = stack.slice(0, idx + 1); // any redo branch dies on a new edit
       if (coalesce) {
         stack[idx] = snapshot;
