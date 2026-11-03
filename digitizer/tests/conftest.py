@@ -641,6 +641,10 @@ PRE_FLIP["knockdown_shorter_walk"] = False
 # sews, so an arm measured before that day can load more cones than it was
 # capped to. `tests/engine_2026_10_27.json` carries it False.
 PRE_FLIP["color_cap_sewn"] = False
+# `lettering_stray_word_thread` joined the flipped set 2026-11-02 (Kent's "Stray
+# only"; built OFF 2026-11-01). ON, a letter `small_text` dropped from its line
+# takes its word's thread. `tests/engine_2026_10_27.json` carries it False.
+PRE_FLIP["lettering_stray_word_thread"] = False
 # `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
 # renders of his Instagram icon, drone, Bridge Bar and the repro), for the
 # reason every entry above gives. ON, a gradient-lane region's edge follows

@@ -1,6 +1,6 @@
 ---
 name: lettering-thread-2026-11-01
-description: Drone's lettering gap was thread, not construction -- `lettering_stray_word_thread` + `lettering_contrast_floor` built OFF; AND DRONE 0.00 -> +1.00, PRECISION +0.05 -> +0.58 on a light hat, no new cone; letters on sewn ground exempt (MFab)
+description: Drone's lettering gap was thread, not construction -- `lettering_stray_word_thread` + `lettering_contrast_floor` built OFF, stray ON 11-02 (Kent); AND DRONE 0.00 -> +1.00, PRECISION +0.05 -> +0.58 on a light hat, no new cone; letters on sewn ground exempt (MFab)
 metadata:
   type: project
 ---
@@ -20,4 +20,9 @@ A alone was a `small_text_stray`, the only stray on the board (18.2 dE00 off its
 0.44 -> 0.00). `_on_sewn_ground`: covered 1.00 on every MFab cluster, 0.05-0.14 on Drone's. After it MFab and Fremont
 are unchanged. 15 dE00 is one line of evidence (PRECISION 7.7; Fremont tan reads at 21.4). The other 12 pairs were
 not digitized with the flags. The pro's thread colours are mostly unknown (DST), so this is ours, not his rule.
+
+**Flip, Kent 2026-11-02 "Stray only".** `lettering_stray_word_thread` ON; `PRE_FLIP` pins it False. All 16 pairs, both
+garments (natural 235,232,223 and black 20,20,20): only Drone moves (AND DRONE cc 0.00 -> +1.00, reach 0 -> 2.32);
+columns, trims, stitches, widths identical. The floor stays OFF: on black it recoloured dark letters off the art
+(Becker beanie 10+ cc 1.00 -> 0.59, +6 trims in letters); cause not traced.
 Related: [[lettering-board-v3-2026-10-31]].
