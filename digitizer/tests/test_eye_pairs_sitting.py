@@ -694,16 +694,16 @@ def test_a_pinned_job_artwork_that_changed_is_refused():
 def test_two_jobs_of_one_artwork_are_two_logos_not_a_duplicate():
     spec = sitting.load_spec(PRO_SPEC)
     sitting.validate_spec(spec)
-    toat = [lg for lg in spec["logos"] if lg["design"] == "toat"]
-    assert len({lg["name"] for lg in toat}) == len(toat) > 1
+    mfab = [lg for lg in spec["logos"] if lg["design"] == "mfab"]
+    assert len({lg["name"] for lg in mfab}) == len(mfab) > 1
 
 
 def test_a_job_logo_is_drawn_from_the_artwork_the_job_names(tmp_path):
     spec = sitting.load_spec(PRO_SPEC)
-    spec["logos"] = [lg for lg in spec["logos"] if lg["name"] in ("mfab_hat", "toat_machine_beanie")]
+    spec["logos"] = [lg for lg in spec["logos"] if lg["name"] in ("mfab_hat", "toat_machine_hat")]
     rows = sitting.materialise(spec, tmp_path)
-    assert [r["job"] for r in rows] == ["mfab_hat", "toat_machine_beanie"]
-    assert [(r["garment"], r["width_mm"]) for r in rows] == [("hat_front", 104.9), ("beanie", 81.0)]
+    assert [r["job"] for r in rows] == ["mfab_hat", "toat_machine_hat"]
+    assert [(r["garment"], r["width_mm"]) for r in rows] == [("hat_front", 104.9), ("hat_front", 89.5)]
     assert Path(rows[0]["path"]).name == "logo_mfab_hat.png"
 
 
