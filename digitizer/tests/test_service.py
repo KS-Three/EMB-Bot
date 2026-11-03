@@ -958,6 +958,149 @@ def test_boundary_override_with_a_hole_poking_outside_fails_the_job_cleanly_not_
     assert "boundary_override" in state["error"] and "hole" in state["error"].lower()
 
 
+# --- holes override (contract v1.9) -------------------------------------------
+
+def test_parse_config_accepts_and_normalizes_a_holes_override():
+    """A list of rings survives as float pairs; a closed ring canonicalizes the
+    same as the open form (one cache key); `[]` (a solid shape) is a real
+    value and survives, `null` is absence."""
+    from digitizer_service.app import _parse_config
+
+    open_ring = [[2, 2], [4, 2], [4, 4], [2, 4]]
+    closed_ring = open_ring + [[2, 2]]
+    want = {"shape_overrides": {"S1": {"holes_override": [[[2.0, 2.0], [4.0, 2.0],
+                                                           [4.0, 4.0], [2.0, 4.0]]]}}}
+    assert _parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"holes_override": [open_ring]}}})) == want
+    assert _parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"holes_override": [closed_ring]}}})) == want
+    assert _parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"holes_override": []}}})) == \
+        {"shape_overrides": {"S1": {"holes_override": []}}}
+    assert _parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"holes_override": None}}})) == {}
+
+
+@pytest.mark.parametrize("bad", [
+    "nope",                                              # not a list
+    ["ring"],                                            # ring not a list
+    [[[0, 0], [1, 1]]],                                  # 2 points
+    [[[0, 0], [10, 10], [10, 0], [0, 10]]],              # self-intersecting
+    [[["a", 0], [1, 0], [1, 1]]],                        # not numbers
+    [[[0, 0], [1, 0], [1, True]]],                       # bool coord
+    [[[1, 1], [2, 1], [2, 2]], [[0, 0], [1, 1]]],        # second ring bad
+])
+def test_a_bad_hole_ring_is_a_400_naming_holes_override(client, bad):
+    with ART.open("rb") as f:
+        r = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps(
+                            {"shape_overrides": {"S1": {"holes_override": bad}}})})
+    assert r.status_code == 400, r.text
+    assert "holes_override" in r.text
+
+
+def test_holes_override_round_trips_over_http_and_holes_mm_reflects_it(client):
+    """digitize -> a holed shape's `holes_mm` -> re-digitize with the hole
+    shrunk, then with `[]`: the review's `holes_mm` and area follow, the shape
+    keeps its id, and no other shape's outline moves."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    ring = next(s for s in first["review"]["shapes"] if s["holes_mm"])
+    hole = ring["holes_mm"][0]
+    hcx = sum(p[0] for p in hole) / len(hole)
+    hcy = sum(p[1] for p in hole) / len(hole)
+    smaller = [[hcx + (x - hcx) * 0.5, hcy + (y - hcy) * 0.5] for x, y in hole]
+
+    shrunk = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "shape_overrides": {ring["shape_id"]: {"holes_override": [smaller]}},
+    })
+    after = {s["shape_id"]: s for s in shrunk["review"]["shapes"]}
+    assert set(after) == {s["shape_id"] for s in first["review"]["shapes"]}
+    got = after[ring["shape_id"]]
+    assert len(got["holes_mm"]) == 1
+    assert got["area_mm2"] > ring["area_mm2"], "a smaller hole leaves more shape"
+    assert got["outline_mm"] == ring["outline_mm"], "the shell is untouched"
+    for sid, before in {s["shape_id"]: s for s in first["review"]["shapes"]}.items():
+        if sid != ring["shape_id"]:
+            assert after[sid]["outline_mm"] == before["outline_mm"]
+
+    solid = _digitize(client, {
+        "target_width_mm": 80.0, "preflight": False,
+        "shape_overrides": {ring["shape_id"]: {"holes_override": []}},
+    })
+    sgot = next(s for s in solid["review"]["shapes"] if s["shape_id"] == ring["shape_id"])
+    assert sgot["holes_mm"] == []
+    assert sgot["area_mm2"] > got["area_mm2"]
+    assert solid["design"]["stitchCount"] != first["design"]["stitchCount"]
+
+
+def test_a_hole_outside_the_shell_fails_the_job_cleanly_not_a_400(client):
+    """Containment needs the shape's real shell, which a request never carries,
+    so (like boundary_override's mirror case) it surfaces as a failed JOB."""
+    first = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
+    ring = next(s for s in first["review"]["shapes"] if s["holes_mm"])
+    xs = [p[0] for p in ring["outline_mm"]]
+    ys = [p[1] for p in ring["outline_mm"]]
+    x0, y0 = max(xs) + 5.0, max(ys) + 5.0
+    outside = [[x0, y0], [x0 + 3, y0], [x0 + 3, y0 + 3], [x0, y0 + 3]]
+    with ART.open("rb") as f:
+        r = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps({
+                            "target_width_mm": 80.0, "preflight": False,
+                            "shape_overrides": {ring["shape_id"]: {"holes_override": [outside]}},
+                        })})
+    assert r.status_code == 202
+    state = wait_for_job(client, r.json()["job_id"])
+    assert state["state"] == "error"
+    assert "holes_override" in state["error"]
+
+
+def test_a_holes_edit_reuses_the_generation_and_forks_stay_isolated(client):
+    """A hole edit hits the stage 0-4 cache, matches a cold run of the same
+    request, and two different hole edits off ONE generation never leak into
+    each other or into the pristine entry."""
+    from digitizer_service.app import generations
+
+    generations.clear()
+    plain = {"target_width_mm": 53.0, "preflight": False}
+    first = _digitize(client, plain)
+    assert first["generation_cache"] == "miss"
+    ring = next(s for s in first["review"]["shapes"] if s["holes_mm"])
+    hole = ring["holes_mm"][0]
+    hcx = sum(p[0] for p in hole) / len(hole)
+    hcy = sum(p[1] for p in hole) / len(hole)
+
+    def scaled(k):
+        return [[hcx + (x - hcx) * k, hcy + (y - hcy) * k] for x, y in hole]
+
+    def edit(holes):
+        return {**plain, "shape_overrides": {ring["shape_id"]: {"holes_override": holes}}}
+
+    def holes_of(job):
+        return next(s for s in job["review"]["shapes"]
+                    if s["shape_id"] == ring["shape_id"])["holes_mm"]
+
+    small = _digitize(client, edit([scaled(0.5)]))
+    assert small["generation_cache"] == "hit"
+    solid = _digitize(client, edit([]))
+    assert solid["generation_cache"] == "hit"
+    assert len(holes_of(small)) == 1 and holes_of(solid) == []
+    assert holes_of(small) != ring["holes_mm"]
+
+    # The pristine generation is untouched by either fork: a no-edit rerun
+    # (finished-job cache dodged by a hole-neutral edit) still shows the
+    # original hole.
+    again = _digitize(client, {**plain, "shape_overrides": {ring["shape_id"]: {"stitched": True}}})
+    assert again["generation_cache"] == "hit"
+    assert holes_of(again) == ring["holes_mm"]
+
+    generations.clear()
+    cold = _digitize(client, {**edit([scaled(0.5)]), "preflight": True})
+    assert cold["generation_cache"] == "miss"
+    assert cold["design"]["stitches"] == small["design"]["stitches"]
+    assert holes_of(cold) == holes_of(small)
+
+
 def test_an_inverted_crop_fails_the_job_naming_the_callers_own_rectangle(client):
     """Spec 7: crop validation errors are deliberately NOT in `errors._KNOWN`,
     so an unmatched exception passes through unchanged and the caller sees

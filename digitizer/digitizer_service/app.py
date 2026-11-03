@@ -330,7 +330,7 @@ def _require_token(supplied: str | None) -> None:
 # bad value is still a 400 at submit.
 _OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer",
                   "sew_order", "stitched", "underlay_style", "boundary_override",
-                  "stitch_width_mm", "thread_wt"}
+                  "stitch_width_mm", "thread_wt", "holes_override"}
 # Kept in lockstep with digitizer_core.regions._TIER_VALUES — see that
 # copy's own comment for what "wave"/"chevron"/"brick" (alongside
 # "crosshatch") each do, and "fur".
@@ -613,6 +613,44 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
                                f"{machine.RUN_MIN_AREA_MM2} mm²)")
                     else:
                         entry["boundary_override"] = [[float(x), float(y)] for x, y in pts]
+        ho = entry.get("holes_override")
+        if ho is not None:
+            # Contract v1.9: replaces the shape's interior rings (`[]` makes
+            # it solid). Per-ring checks mirror `boundary_override`'s; hole
+            # containment needs the real shell, so it stays in
+            # `regions.apply_shape_edits` at job-run time.
+            if not isinstance(ho, list):
+                bad = "holes_override must be a list of rings"
+            else:
+                rings = []
+                for k, ring in enumerate(ho):
+                    if not isinstance(ring, list):
+                        bad = f"holes_override[{k}] must be a list of [x, y] points"
+                        break
+                    pts = _dedupe_ring(ring)
+                    if not _MIN_BOUNDARY_POINTS <= len(pts) <= _MAX_BOUNDARY_POINTS:
+                        bad = (f"holes_override[{k}] must have {_MIN_BOUNDARY_POINTS}.."
+                               f"{_MAX_BOUNDARY_POINTS} distinct points (got {len(pts)})")
+                        break
+                    if not all(
+                        isinstance(pt, list) and len(pt) == 2
+                        and all(isinstance(c, (int, float)) and not isinstance(c, bool)
+                                for c in pt)
+                        for pt in pts
+                    ):
+                        bad = f"holes_override[{k}] points must be [x, y] pairs of numbers"
+                        break
+                    if not all(math.isfinite(c) for pt in pts for c in pt):
+                        bad = f"holes_override[{k}] points must be finite numbers"
+                        break
+                    hole = Polygon(pts)
+                    if not hole.is_valid or hole.is_empty:
+                        bad = (f"holes_override[{k}] is not a valid simple polygon "
+                               "— check for self-intersections")
+                        break
+                    rings.append([[float(x), float(y)] for x, y in pts])
+                else:
+                    entry["holes_override"] = rings
         if bad:
             raise HTTPException(
                 status_code=400, detail=f"shape_overrides[{sid!r}]: {bad}.",

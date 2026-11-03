@@ -575,6 +575,207 @@ def test_boundary_override_dedupes_a_closed_ring_the_same_as_outline_mm_sends_it
     assert regs[0].meta["boundary_override"] == [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0)]
 
 
+# --- holes override (contract v1.9) ------------------------------------------
+#
+# `boundary_override` leaves the interior rings alone; `holes_override`
+# replaces them (an empty list makes the shape solid). Absent key = today's
+# carry-over. Both keys together rebuild the polygon from the pair.
+
+_DONUT_SHELL = [(0, 0), (20, 0), (20, 20), (0, 20)]
+_DONUT_HOLE = [(8, 8), (12, 8), (12, 12), (8, 12)]
+
+
+def _donut() -> Region:
+    return region(Polygon(_DONUT_SHELL, [_DONUT_HOLE]), "O")
+
+
+def test_holes_override_replaces_the_interior_rings():
+    new_hole = [[3, 3], [7, 3], [7, 7], [3, 7]]
+    regs, _, warns = apply_shape_edits(
+        [_donut()], [0], [], {"O": {"holes_override": [new_hole]}}, chart=[0] * 20,
+    )
+    assert warns == []
+    got = regs[0]
+    assert got.polygon.equals(Polygon(_DONUT_SHELL, [new_hole]))
+    assert got.area_mm2 == pytest.approx(400.0 - 16.0)
+    assert got.meta["holes_override"] == [[(3.0, 3.0), (7.0, 3.0), (7.0, 7.0), (3.0, 7.0)]]
+    assert "boundary_override" not in got.meta
+
+
+def test_holes_override_empty_list_makes_the_shape_solid():
+    regs, _, _ = apply_shape_edits(
+        [_donut()], [0], [], {"O": {"holes_override": []}}, chart=[0] * 20,
+    )
+    assert list(regs[0].polygon.interiors) == []
+    assert regs[0].area_mm2 == pytest.approx(400.0)
+    assert regs[0].meta["holes_override"] == []
+
+
+def test_holes_override_can_add_a_hole_to_a_solid_shape_and_take_several():
+    holes = [[[2, 2], [5, 2], [5, 5], [2, 5]], [[10, 10], [14, 10], [14, 14], [10, 14]]]
+    regs, _, _ = apply_shape_edits(
+        [region(Polygon(_DONUT_SHELL), "S")], [0], [], {"S": {"holes_override": holes}},
+        chart=[0] * 20,
+    )
+    assert len(regs[0].polygon.interiors) == 2
+    assert regs[0].area_mm2 == pytest.approx(400.0 - 9.0 - 16.0)
+
+
+def test_absent_holes_override_carries_the_holes_over_byte_identically():
+    before = _donut().polygon
+    # A boundary edit alone, and an unrelated edit alone: interiors untouched.
+    regs, _, _ = apply_shape_edits(
+        [_donut()], [0], [], {"O": {"boundary_override": [[0, 0], [22, 0], [22, 22], [0, 22]]}},
+        chart=[0] * 20,
+    )
+    assert [list(h.coords) for h in regs[0].polygon.interiors] == \
+        [list(h.coords) for h in before.interiors]
+    assert "holes_override" not in regs[0].meta
+    regs2, _, _ = apply_shape_edits(
+        [_donut()], [0], [], {"O": {"tier": "fill"}}, chart=[0] * 20,
+    )
+    assert regs2[0].polygon.wkb == before.wkb
+    assert "holes_override" not in regs2[0].meta
+
+
+def test_boundary_and_holes_override_together_rebuild_the_polygon():
+    shell = [[0, 0], [30, 0], [30, 30], [0, 30]]
+    hole = [[20, 20], [26, 20], [26, 26], [20, 26]]   # outside the OLD shell
+    regs, _, warns = apply_shape_edits(
+        [_donut()], [0], [], {"O": {"boundary_override": shell, "holes_override": [hole]}},
+        chart=[0] * 20,
+    )
+    assert warns == []
+    assert regs[0].polygon.equals(Polygon(shell, [hole]))
+    assert regs[0].meta["boundary_override"] == [(float(x), float(y)) for x, y in shell]
+    assert regs[0].meta["holes_override"] == [[(float(x), float(y)) for x, y in hole]]
+
+
+def test_holes_override_outside_the_shell_raises_naming_the_key():
+    outside = [[30, 30], [34, 30], [34, 34], [30, 34]]
+    regs = [_donut()]
+    with pytest.raises(ValueError, match=r"holes_override.*not a valid simple polygon"):
+        apply_shape_edits(regs, [0], [], {"O": {"holes_override": [outside]}}, chart=[0] * 20)
+    assert regs[0].polygon.equals(Polygon(_DONUT_SHELL, [_DONUT_HOLE])), "input not mutated"
+
+
+def test_holes_override_two_crossing_holes_raise():
+    a = [[4, 4], [10, 4], [10, 10], [4, 10]]
+    b = [[8, 8], [14, 8], [14, 14], [8, 14]]
+    with pytest.raises(ValueError, match="holes_override"):
+        apply_shape_edits([_donut()], [0], [], {"O": {"holes_override": [a, b]}}, chart=[0] * 20)
+
+
+@pytest.mark.parametrize("bad,match", [
+    ("nope", "must be a list of rings"),
+    ([[[8, 8], [12, 12]]], r"must have 3\.\.500 distinct points \(got 2\)"),     # 2 points
+    ([[[4, 4], [10, 10], [10, 4], [4, 10]]], "not a valid simple polygon"),       # bowtie
+    ([[[8, 8], [12, 8], [12, float("nan")]]], "finite numbers"),
+    ([[[8, 8], [12, 8], [12, True]]], "finite numbers"),
+    ([[[8, 8], [12, 8], ["a", 12]]], "finite numbers"),
+    ("ring", "must be a list of rings"),
+    ([5], r"holes_override must be a list of \[x, y\] points"),
+])
+def test_holes_override_rejects_malformed_rings_in_core(bad, match):
+    with pytest.raises(ValueError, match=match):
+        apply_shape_edits([_donut()], [0], [], {"O": {"holes_override": bad}}, chart=[0] * 20)
+
+
+def test_holes_override_ring_is_deduped_like_outline_mm_sends_it():
+    closed = [[3, 3], [7, 3], [7, 7], [3, 7], [3, 3]]
+    regs, _, _ = apply_shape_edits(
+        [_donut()], [0], [], {"O": {"holes_override": [closed]}}, chart=[0] * 20,
+    )
+    assert regs[0].meta["holes_override"] == [[(3.0, 3.0), (7.0, 3.0), (7.0, 7.0), (3.0, 7.0)]]
+
+
+def test_holes_override_rejects_too_many_points_per_ring():
+    from digitizer_core.regions import _MAX_BOUNDARY_POINTS
+
+    n = _MAX_BOUNDARY_POINTS + 1
+    huge = [[10 + math.cos(i * 2 * math.pi / n) * 3, 10 + math.sin(i * 2 * math.pi / n) * 3]
+            for i in range(n)]
+    with pytest.raises(ValueError, match="holes_override"):
+        apply_shape_edits([_donut()], [0], [], {"O": {"holes_override": [huge]}}, chart=[0] * 20)
+
+
+def test_holes_override_too_small_a_shape_to_sew_still_raises():
+    # Hole eats the shape to a sliver below the sewability floor.
+    sliver_shell = [[0, 0], [10, 0], [10, 10], [0, 10]]
+    hole = [[0.001, 0.001], [9.999, 0.001], [9.999, 9.999], [0.001, 9.999]]
+    with pytest.raises(ValueError, match="holes_override.*too small to sew"):
+        apply_shape_edits(
+            [region(Polygon(sliver_shell), "S")], [0], [], {"S": {"holes_override": [hole]}},
+            chart=[0] * 20,
+        )
+
+
+def _fill_points_inside(plan, shape_id: str, poly: Polygon) -> int:
+    from shapely.geometry import Point
+
+    n = 0
+    for b in plan.blocks:
+        for r in b.runs:
+            if r.shape_id == shape_id and r.kind == "fill":
+                n += sum(1 for x, y in r.points if poly.contains(Point(x, y)))
+    return n
+
+
+def test_a_hole_added_by_override_shows_the_garment_and_removed_by_empty_list_fills():
+    """Stage 5+ sees the new interiors as ordinary holes: no fill stitch inside
+    an added hole, and a hole removed with `[]` is sewn over."""
+    big = Polygon([(0, 0), (30, 0), (30, 30), (0, 30)])
+    hole = [(10, 10), (20, 10), (20, 20), (10, 20)]
+    inner = Polygon(hole).buffer(-0.3)
+
+    solid = region(big, "Q", {"tier": "fill"})
+    plan_solid, _ = plan_for([solid])
+    assert _fill_points_inside(plan_solid, "Q", inner) > 0, "fixture fills the middle"
+
+    added, _, _ = apply_shape_edits(
+        [region(big, "Q", {"tier": "fill"})], [0], [], {"Q": {"holes_override": [hole]}},
+        chart=[0] * 20,
+    )
+    plan_added, _ = plan_for(added)
+    _no_degenerate_stitches(plan_added)
+    assert kinds_by_shape(plan_added)["Q"]
+    assert _fill_points_inside(plan_added, "Q", inner) == 0, "garment shows in the hole"
+
+    holed = region(Polygon(big.exterior.coords, [hole]), "Q", {"tier": "fill"})
+    removed, _, _ = apply_shape_edits([holed], [0], [], {"Q": {"holes_override": []}},
+                                      chart=[0] * 20)
+    plan_removed, _ = plan_for(removed)
+    assert _fill_points_inside(plan_removed, "Q", inner) > 0, "the hole is sewn over"
+
+
+def test_holes_override_rides_the_id_carry_forward():
+    prev = [region(Polygon(_DONUT_SHELL), "OLD",
+                   {"holes_override": [[(3.0, 3.0), (7.0, 3.0), (7.0, 7.0), (3.0, 7.0)]]})]
+    cur = [region(Polygon(_DONUT_SHELL), "NEW")]
+    match_shape_ids(prev, cur)
+    assert cur[0].shape_id == "OLD"
+    assert cur[0].meta.get("holes_override") == [[(3.0, 3.0), (7.0, 3.0), (7.0, 7.0), (3.0, 7.0)]]
+
+
+def test_cache_key_sees_a_holes_override():
+    pytest.importorskip("fastapi", reason="service extra not installed")
+    from digitizer_service.jobs import content_key, generation_key
+
+    img = b"pretend png"
+    plain = {"target_width_mm": 80.0}
+    ring = [[0, 0], [1, 0], [1, 1]]
+    a = {**plain, "shape_overrides": {"S1": {"holes_override": [ring]}}}
+    b = {**plain, "shape_overrides": {"S1": {"holes_override": [[[0, 0], [2, 0], [2, 2]]]}}}
+    solid = {**plain, "shape_overrides": {"S1": {"holes_override": []}}}
+
+    assert content_key(img, plain) != content_key(img, a)
+    assert content_key(img, a) != content_key(img, b)
+    assert content_key(img, a) != content_key(img, solid)
+    assert content_key(img, a) == content_key(img, dict(a))
+    # ...but the stage 0-4 generation is one, edit or no edit.
+    assert generation_key(img, plain) == generation_key(img, a) == generation_key(img, b)
+
+
 # --- carry-forward -----------------------------------------------------------
 
 def test_review_intent_rides_the_id_carry_forward():

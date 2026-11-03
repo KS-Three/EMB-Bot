@@ -1537,3 +1537,16 @@ from origin/main 9e005c49's own `src/` before any engine edit
 its own PR with the bill measured). Closed ↔ open conversion; trace import
 emitting lines; drawing on the field. The walk chords corners (≤ ~0.26 mm at
 0.73 mm on a right angle); `huggingOutline` keeps them, if that ever matters.
+
+## 2026-11-03 — holes override, the service half (contract v1.9)
+
+`boundary_override` (v1.4) is exterior-ring-only: the shape's own interiors are
+re-attached to the edited shell, so a hole could not be edited and an outer edit
+crossing one was refused. `shape_overrides[sid].holes_override` replaces the
+interior rings (`[]` = solid); absent keeps today's carry-over byte for byte; it
+combines with `boundary_override`. Validated per ring at submit (`app.py`, 400)
+and again in `regions.apply_shape_edits`; a hole outside the shell or crossing
+another fails the job naming `holes_override`. Stage 5+ sees ordinary holes: an
+added hole shows the garment, a removed one fills. Service only; the Studio half
+(draw hole rings, emit the key) is the next PR in the node-reshape spec, section 6
+*(confirmed 2026-11-03 — `tests/test_shape_overrides.py`, `tests/test_service.py`)*.
