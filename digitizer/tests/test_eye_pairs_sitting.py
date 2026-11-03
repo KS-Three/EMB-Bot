@@ -630,3 +630,174 @@ def test_pair_still_defaults_to_the_seed_and_counts_every_earlier_sitting_used()
     assert sig.parameters["seed"].default == 20260917
     assert sig.parameters["n_identical"].default == 8 and sig.parameters["n_repeat"].default == 8
     assert sig.parameters["arms"].default is None
+
+
+# ------------------------------------------- the pro-sized lettering kit ----
+
+PRO_SPEC = REPO / "docs" / "eye-pairs-2026-11-02" / "pro-size-lettering" / "spec.json"
+PRO_PREREG = PRO_SPEC.with_name("PRE-REGISTRATION.md")
+
+
+def test_the_pro_sized_spec_validates_and_its_prereg_names_every_arm_and_logo():
+    spec = sitting.load_spec(PRO_SPEC)
+    sitting.validate_spec(spec)
+    text = PRO_PREREG.read_text(encoding="utf-8")
+    missing = [n for n in list(spec["arms"]) + [lg["name"] for lg in spec["logos"]]
+               if f"`{n}`" not in text]
+    assert not missing, f"PRE-REGISTRATION never names: {missing}"
+
+
+def test_every_pro_sized_arm_turns_one_construction_flag_that_is_on_today_off():
+    spec = sitting.load_spec(PRO_SPEC)
+    defaults = sitting._config_defaults()
+    for name, arm in spec["arms"].items():
+        (flag, value), = arm["flags"].items()
+        assert value is False and defaults[flag] is True, name
+    assert sum(1 for a in spec["arms"].values() if a["stratum"] == "trims") == 1
+
+
+def test_no_pro_sized_logo_is_one_kent_judged_and_gaulke_is_refused_as_a_job():
+    spec = sitting.load_spec(PRO_SPEC)
+    assert not any("gaulke" in lg["name"] or "gaulke" in lg["source"].get("slug", "")
+                   for lg in spec["logos"])
+    bad = copy.deepcopy(spec)
+    bad["logos"] = [{**bad["logos"][0], "name": "gaulke_roofing_hat", "design": "gaulke_roofing",
+                     "width_mm": 114.2, "garment": "hat_front",
+                     "source": {"kind": "job", "slug": "gaulke_roofing_hat", "sha256_16": "x"}}]
+    with pytest.raises(sitting.SpecError, match="judged 'gaulke'"):
+        sitting.validate_spec(bad)
+
+
+@pytest.mark.parametrize("mutate,needle", [
+    (lambda lg: lg.update(width_mm=80.0), "is hat_front at"),
+    (lambda lg: lg["source"].update(slug="not_a_job"), "not in pro_baseline.JOBS"),
+    (lambda lg: lg["source"].pop("sha256_16"), "pins its artwork"),
+    (lambda lg: lg.update(population="C"), "population"),
+])
+def test_a_job_logo_is_refused_for(mutate, needle):
+    spec = sitting.load_spec(PRO_SPEC)
+    spec["logos"] = [copy.deepcopy(next(lg for lg in spec["logos"] if lg["name"] == "mfab_hat"))]
+    mutate(spec["logos"][0])
+    with pytest.raises(sitting.SpecError, match=needle):
+        sitting.validate_spec(spec)
+
+
+def test_a_pinned_job_artwork_that_changed_is_refused():
+    spec = sitting.load_spec(PRO_SPEC)
+    lg = copy.deepcopy(next(lg for lg in spec["logos"] if lg["name"] == "mfab_hat"))
+    lg["source"]["sha256_16"] = "0" * 16
+    spec["logos"] = [lg]
+    with pytest.raises(sitting.SpecError, match="not the file the spec pinned"):
+        sitting.validate_spec(spec)
+
+
+def test_two_jobs_of_one_artwork_are_two_logos_not_a_duplicate():
+    spec = sitting.load_spec(PRO_SPEC)
+    sitting.validate_spec(spec)
+    mfab = [lg for lg in spec["logos"] if lg["design"] == "mfab"]
+    assert len({lg["name"] for lg in mfab}) == len(mfab) > 1
+
+
+def test_a_job_logo_is_drawn_from_the_artwork_the_job_names(tmp_path):
+    spec = sitting.load_spec(PRO_SPEC)
+    spec["logos"] = [lg for lg in spec["logos"] if lg["name"] in ("mfab_hat", "toat_machine_hat")]
+    rows = sitting.materialise(spec, tmp_path)
+    assert [r["job"] for r in rows] == ["mfab_hat", "toat_machine_hat"]
+    assert [(r["garment"], r["width_mm"]) for r in rows] == [("hat_front", 104.9), ("hat_front", 89.5)]
+    assert Path(rows[0]["path"]).name == "logo_mfab_hat.png"
+
+
+def test_the_commons_logos_fit_the_cap_frame_at_the_stated_width():
+    import cv2
+
+    spec = sitting.load_spec(PRO_SPEC)
+    b = [lg for lg in spec["logos"] if lg["population"] == "B"]
+    assert len(b) == 9
+    for lg in b:
+        h, w = cv2.imread(str(REPO / "digitizer" / lg["source"]["path"]), cv2.IMREAD_UNCHANGED).shape[:2]
+        assert lg["width_mm"] * h / w <= 64.0, lg["name"]
+
+
+def test_min_live_logos_replaces_the_four_identical_rule():
+    logos = tuple("abcdefgh")
+    spec = _checked_spec(logos=logos)
+    spec["manipulation"]["min_live_logos"] = 3
+    arms = {"x": {"stratum": "construction", "moves": {}, "holds": []}}
+    base = _design(trims=2)
+    designs = {(lg, BASE): base for lg in logos}
+    designs.update({(lg, "x"): _design(trims=2, rows=3) for lg in "ab"})
+    designs.update({(lg, "x"): base for lg in "cdefgh"})     # 6 identical: the old rule fails on this alone
+    t = sitting.manipulation_check(spec, designs, arms)["x"]
+    assert not t["passes"] and "at least 3" in t["why"]
+    designs[("c", "x")] = _design(trims=2, rows=3)
+    assert sitting.manipulation_check(spec, designs, arms)["x"]["passes"]
+
+
+def _pro_kit(picks, farther_arm=False):
+    """Twelve live pairs of one arm on four population-A logos; the arm sews the
+    pro's 10 cuts, the base 30 (the reverse when `farther_arm`)."""
+    spec, man, sealed, pick_rows, designs = _kit(picks)
+    man["logos"] = [{"name": lg, "design": lg, "population": "A", "job": f"job_{lg}"}
+                    for lg in "abcd"]
+    ours = {BASE: {"cuts": 30, "hops": 40, "needle_up_mm": 90.0},
+            "arm": {"cuts": 10, "hops": 12, "needle_up_mm": 30.0}}
+    if farther_arm:
+        ours = {BASE: ours["arm"], "arm": ours[BASE]}
+    pro = {"cuts": 10, "hops": 12, "needle_up_mm": 30.0}
+
+    def read(path):
+        _lg, arm = Path(path).stem.split("__")
+        return dict(ours[arm])
+
+    return man, sealed, pick_rows, read, (lambda slug: dict(pro))
+
+
+def test_the_pro_distance_reading_scores_the_side_closer_to_the_pro(tmp_path):
+    man, sealed, picks, read, pro_of = _pro_kit(_kent_picks_fewer_trims())
+    inputs = sitting.pro_pair_inputs(man, sealed, picks, tmp_path, read=read, pro_of=pro_of)
+    assert len(inputs["sittings"]["t-1"]["pairs"]) == 12
+    rep = sitting.pro_distance(inputs)
+    d = rep["metrics"]["cuts"]["distance"]
+    assert rep["n_pairs"] == 12 and d["n_decided"] == 10 and d["kappa_sides"] > 0.9
+    assert d["kent_pick_farther_from_pro"] == 0
+    assert rep["metrics"]["needle_up_mm"]["cost"]["kappa_sides"] > 0.9
+
+
+def test_when_the_cheaper_side_is_farther_from_the_pro_the_two_readings_part(tmp_path):
+    man, sealed, picks, read, pro_of = _pro_kit(_kent_picks_fewer_trims(), farther_arm=True)
+    inputs = sitting.pro_pair_inputs(man, sealed, picks, tmp_path, read=read, pro_of=pro_of)
+    m = sitting.pro_distance(inputs)["metrics"]["cuts"]
+    # Kent picked the arm side, which now has 30 cuts against the pro's 10: farther, and costlier
+    assert m["distance"]["kappa_sides"] < -0.9 and m["cost"]["kappa_sides"] < -0.9
+    assert m["distance"]["kent_pick_farther_from_pro"] == 10
+
+
+def test_the_pro_distance_covers_population_a_only_and_counts_an_artwork_once(tmp_path):
+    man, sealed, picks, read, pro_of = _pro_kit(_kent_picks_fewer_trims())
+    man["logos"][3]["population"] = "B"
+    man["logos"][0]["design"] = man["logos"][1]["design"] = "shared"
+    inputs = sitting.pro_pair_inputs(man, sealed, picks, tmp_path, read=read, pro_of=pro_of)
+    pairs = inputs["sittings"]["t-1"]["pairs"]
+    assert {p["logo"] for p in pairs} == {"a", "b", "c"}
+    assert {p["fixture"] for p in pairs} == {"shared", "c"}
+
+
+def test_the_pro_distance_section_prints_no_raw_agreement(tmp_path):
+    man, sealed, picks, read, pro_of = _pro_kit(_kent_picks_fewer_trims())
+    rep = sitting.pro_distance(sitting.pro_pair_inputs(man, sealed, picks, tmp_path,
+                                                       read=read, pro_of=pro_of))
+    spec, _m, _s, _p, designs = _kit(_kent_picks_fewer_trims())
+    inputs = sitting.labelled_inputs(spec, man, sealed, picks, designs)
+    text = sitting.markdown(sitting.confirmatory(inputs, spec),
+                            {"identical_called_tie": 0, "identical_pairs": 0,
+                             "repeat_answered_differently": 0, "repeat_pairs": 0,
+                             "left_picks": 6, "right_picks": 6}, man, rep)
+    assert "distance to the pro" in text
+    assert "agreement" not in json.dumps(rep).lower()
+
+
+def test_the_kit_writes_a_machine_file_beside_every_design(kit):
+    _spec, _path, out, _man, _td = kit
+    jsons = {f.stem for f in (out / "designs").glob("*.json")}
+    dsts = {f.stem for f in (out / "designs").glob("*.dst")}
+    assert jsons and jsons <= dsts

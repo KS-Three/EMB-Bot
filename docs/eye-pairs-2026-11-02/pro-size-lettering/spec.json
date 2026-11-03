@@ -1,0 +1,407 @@
+{
+ "schema": 1,
+ "sitting": "pro-lettering-1102",
+ "registered": "2026-11-02",
+ "about": "Blinded sitting of CONSTRUCTION flips on lettering logos, every design drawn at the professional's own width and garment (population A, read beside the pro's DST) or at a stated size (population B, Commons lettering, cost figures only). Pre-registered; nothing here was rendered or measured when it was committed. Supersedes the unsat wok42-1013 kit.",
+ "seed": 20261102,
+ "n_identical": 4,
+ "n_repeat": 4,
+ "base_flags": {},
+ "base_note": "Today's main defaults, no overrides. Every arm turns ONE flag that is ON today to OFF.",
+ "judged_fixtures": [
+  "becker",
+  "bridge",
+  "drone",
+  "enthusiast",
+  "fremont",
+  "gaulke",
+  "golden_tee",
+  "screenshot",
+  "tires",
+  "thermal"
+ ],
+ "logos": [
+  {
+   "name": "mfab_hat",
+   "design": "mfab",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "mfab_hat",
+    "sha256_16": "53b2d2978b8b2019"
+   },
+   "width_mm": 104.9,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['mfab_hat']: drawn at the job's own garment (hat_front) and width (104.9 mm). M-FAB hat job. Artwork committed in PR #556, already public (testdata/art/logo_mfab_hat.png); photo-class, routes through the photo-prep venv. Never in a sitting."
+  },
+  {
+   "name": "proseal_hat",
+   "design": "proseal",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "proseal_hat",
+    "sha256_16": "f7a3112e9ecaf339"
+   },
+   "width_mm": 85.9,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['proseal_hat']: drawn at the job's own garment (hat_front) and width (85.9 mm). ProSeal hat job. The artwork is the file pro_baseline.JOBS names under the gitignored scratch_kent/; it is NOT in the repository and is read from there. No client art is added. Never in a sitting."
+  },
+  {
+   "name": "toat_machine_hat",
+   "design": "toat",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "toat_machine_hat",
+    "sha256_16": "d09766ed6ca95a87"
+   },
+   "width_mm": 89.5,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['toat_machine_hat']: drawn at the job's own garment (hat_front) and width (89.5 mm). To a T Machine hat job. Artwork committed in PR #556, already public (testdata/art/logo_toat_machine.png). Never in a sitting."
+  },
+  {
+   "name": "mfab_lc",
+   "design": "mfab",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "mfab_lc",
+    "sha256_16": "ba2a6389f75a1cda"
+   },
+   "width_mm": 96.7,
+   "garment": "left_chest",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['mfab_lc']: drawn at the job's own garment (left_chest) and width (96.7 mm). M-FAB left-chest job, another crop of the same design (testdata/art/logo_mfab_lc.png, PR #556). Drops first if the budget runs over. Never in a sitting."
+  },
+  {
+   "name": "proseal_beanie",
+   "design": "proseal",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "proseal_beanie",
+    "sha256_16": "f7a3112e9ecaf339"
+   },
+   "width_mm": 75.0,
+   "garment": "beanie",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['proseal_beanie']: drawn at the job's own garment (beanie) and width (75.0 mm). ProSeal beanie job, the same file as proseal_hat at the beanie's own width. Never in a sitting."
+  },
+  {
+   "name": "bukit_asam",
+   "design": "bukit_asam",
+   "population": "B",
+   "source": {
+    "kind": "file",
+    "path": "testdata/art/commons_lettering/bukit_asam_logo_cmyk_01.png",
+    "sha256_16": "51b9ae1edebcfe9e"
+   },
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "kind": "commons_lettering",
+   "provenance": "Wikimedia Commons, Public domain, PT Bukit Asam, Tbk: https://commons.wikimedia.org/wiki/File:(Bukit_Asam)_Logo_CMYK-01.png (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame)."
+  },
+  {
+   "name": "but_seriously",
+   "design": "but_seriously",
+   "population": "B",
+   "source": {
+    "kind": "file",
+    "path": "testdata/art/commons_lettering/but_seriously_logo.png",
+    "sha256_16": "c45b8ba168a83c87"
+   },
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "kind": "commons_lettering",
+   "provenance": "Wikimedia Commons, Public domain, Phil Collins / Reproduction\u00a0: Kilyann Le Hen: https://commons.wikimedia.org/wiki/File:...But_seriously_logo.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame)."
+  },
+  {
+   "name": "hed_p_e",
+   "design": "hed_p_e",
+   "population": "B",
+   "source": {
+    "kind": "file",
+    "path": "testdata/art/commons_lettering/hed_p_e_logo.png",
+    "sha256_16": "2cfa47d67384bc66"
+   },
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "kind": "commons_lettering",
+   "provenance": "Wikimedia Commons, Public domain, Unknown authorUnknown author: https://commons.wikimedia.org/wiki/File:(hed)p.e._-_logo.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame)."
+  },
+  {
+   "name": "jakarta",
+   "design": "jakarta",
+   "population": "B",
+   "source": {
+    "kind": "file",
+    "path": "testdata/art/commons_lettering/jakarta_logo.png",
+    "sha256_16": "23612d7294bb4057"
+   },
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "kind": "commons_lettering",
+   "provenance": "Wikimedia Commons, Public domain, +Jakarta by Medium: https://commons.wikimedia.org/wiki/File:%2BJakarta_Logo.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame)."
+  },
+  {
+   "name": "k_line",
+   "design": "k_line",
+   "population": "B",
+   "source": {
+    "kind": "file",
+    "path": "testdata/art/commons_lettering/k_line_logo.png",
+    "sha256_16": "2d3b02fa3e38d20c"
+   },
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "kind": "commons_lettering",
+   "provenance": "Wikimedia Commons, Public domain, \"K\" Line: https://commons.wikimedia.org/wiki/File:%22K%22-Line-Logo.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame)."
+  },
+  {
+   "name": "ahora",
+   "design": "ahora",
+   "population": "B",
+   "source": {
+    "kind": "file",
+    "path": "testdata/art/commons_lettering/logo_ahora.png",
+    "sha256_16": "ceb530490ae36e88"
+   },
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "kind": "commons_lettering",
+   "provenance": "Wikimedia Commons, Public domain, Ahora!: https://commons.wikimedia.org/wiki/File:(Logo)_Ahora!.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame)."
+  },
+  {
+   "name": "dot_music",
+   "design": "dot_music",
+   "population": "B",
+   "source": {
+    "kind": "file",
+    "path": "testdata/art/commons_lettering/music_logo.png",
+    "sha256_16": "8c6abb15effdb6a5"
+   },
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "kind": "commons_lettering",
+   "provenance": "Wikimedia Commons, Public domain, Openwikicontributor: https://commons.wikimedia.org/wiki/File:.MUSIC_Logo.png (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame)."
+  },
+  {
+   "name": "n_sync",
+   "design": "n_sync",
+   "population": "B",
+   "source": {
+    "kind": "file",
+    "path": "testdata/art/commons_lettering/n_sync_logo.png",
+    "sha256_16": "0fbc6e3b134a2c39"
+   },
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "kind": "commons_lettering",
+   "provenance": "Wikimedia Commons, Public domain, RCA Records: https://commons.wikimedia.org/wiki/File:%27N_Sync_Logo.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame)."
+  },
+  {
+   "name": "and_pizza",
+   "design": "and_pizza",
+   "population": "B",
+   "source": {
+    "kind": "file",
+    "path": "testdata/art/commons_lettering/pizza_logo.png",
+    "sha256_16": "dfd1b32d80d01000"
+   },
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "kind": "commons_lettering",
+   "provenance": "Wikimedia Commons, Public domain, &amp;pizza: https://commons.wikimedia.org/wiki/File:%26pizza_logo.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame)."
+  }
+ ],
+ "reserve_logos": [],
+ "drop_order_if_over_budget": [
+  "toat_beanie",
+  "toat_machine_beanie",
+  "proseal_beanie",
+  "mfab_lc"
+ ],
+ "arms": {
+  "corner_fold_off": {
+   "flags": {
+    "lettering_columns_corner_fold": false
+   },
+   "stratum": "construction",
+   "variable": "construction at an L corner: the pro folds one column round it; OFF butts two columns (flag ON today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "base",
+   "basis": "Memory column-corner-folds-2026-10-23: the pro folds one column round every L corner (57 read), cuts only T junctions. ON since 2026-10-23 on numbers against the pro, not on Kent's eye."
+  },
+  "italic_lean_off": {
+   "flags": {
+    "lettering_columns_italic_lean": false
+   },
+   "stratum": "construction",
+   "variable": "construction on slanted bars: columns cross along the slant; OFF crosses square to the piece axis (ON today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "base",
+   "basis": "Memory italic-bars-2026-10-25; ON 2026-10-27 (hat 0.31 to 0.46 against the pro's 0.54)."
+  },
+  "text_lean_off": {
+   "flags": {
+    "lettering_columns_text_lean": false
+   },
+   "stratum": "construction",
+   "variable": "construction in big letters (10 mm and up): diagonals cross like stems; OFF crosses square (ON today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "base",
+   "basis": "Memory lettering-10mm-up-band-2026-10-23; the pro crosses diagonals like stems. Only letters 10 mm and up can differ."
+  },
+  "inside_stagger_off": {
+   "flags": {
+    "lettering_columns_inside_stagger": false
+   },
+   "stratum": "construction",
+   "variable": "where cuts land at a pivot: inside ends staggered to 20 percent depth; OFF piles the full ends in one hole (ON today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "base",
+   "basis": "Memory inside-stagger-2026-10-23: the pro alternates; ours piled the full ends (16 to 79 against 2 to 5)."
+  },
+  "script_strokes_off": {
+   "flags": {
+    "script_strokes": false
+   },
+   "stratum": "construction",
+   "variable": "construction of script: one column per pen stroke along the ink; OFF sews script as ordinary letters (ON today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "base",
+   "basis": "Memory script-strokes-2026-10-26; ON by Kent 2026-10-26. Only script lettering can differ."
+  },
+  "fold_slivers_off": {
+   "flags": {
+    "keyline_fold_slivers": false
+   },
+   "stratum": "construction",
+   "variable": "construction of an outlined letter: keyline slivers folded into their neighbour; OFF sews each as its own piece (ON today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "base",
+   "basis": "Memory mfab-recipe-trims-2026-10-26: the cuts were keyline slivers behind a dark hairline (hat 41 to 27). Only outlined art can differ."
+  },
+  "lane_off": {
+   "flags": {
+    "lettering_columns": false
+   },
+   "stratum": "construction",
+   "variable": "construction, whole: the Column lane OFF, lettering back on the pre-lane skeleton satin tier (ON today)",
+   "moves": {
+    "trims_per_1000": "up"
+   },
+   "holds": [],
+   "expected_pick": "base",
+   "basis": "Kent took the lane's side on 5 of 6 columns-flip pairs and flipped it ON 2026-10-12. The whole-construction arm: what the seven flags above are the parts of."
+  },
+  "exit_next_off": {
+   "flags": {
+    "satin_exit_toward_next": false
+   },
+   "stratum": "trims",
+   "variable": "TRIMS ONLY (the control): the Euler walk no longer ends toward the next letter; reverts a shipped ON flag",
+   "moves": {
+    "trims_per_1000": "up"
+   },
+   "holds": [
+    "flow_circvar",
+    "long_share"
+   ],
+   "expected_pick": "base",
+   "basis": "wok42's reserve of the same name: trims up, flow and length held. The one arm built so the trim family has pairs it should win; if cuts, hops and needle-up mm do not track his pick HERE they cannot be read anywhere else."
+  }
+ },
+ "reserve_arms": [],
+ "manipulation": {
+  "rule": "An arm passes when it changes the stitch stream on at least `min_live_logos` logos and, on at least half of the logos it changes, every `moves` metric moves the stated way by its threshold and every `holds` metric moves by less than it. A byte-identical logo is not a pair. There are no reserves: a failing arm stays in the sitting flagged passes=false (Amendment 2 of wok42), and the analysis reads the leads on all live pairs and on the passing arms alone.",
+  "min_live_logos": 3,
+  "thresholds": {
+   "trims_per_1000": {
+    "kind": "abs",
+    "value": 0.5
+   },
+   "flow_circvar": {
+    "kind": "abs",
+    "value": 0.02
+   },
+   "long_share": {
+    "kind": "abs",
+    "value": 0.02
+   },
+   "thread_density_whole": {
+    "kind": "rel",
+    "value": 0.05
+   }
+  },
+  "density_matched_tolerance": 0.1
+ },
+ "leads": {
+  "primary": [
+   {
+    "metric": "flow_circvar",
+    "direction": "lower",
+    "why": "#847's one lead independent of trims (+0.16 ties in, one sitting's)"
+   },
+   {
+    "metric": "long_share",
+    "direction": "lower",
+    "why": "#847's reversed hypothesis, direction written down in advance: he picks FEWER long stitches"
+   },
+   {
+    "metric": "thread_density",
+    "direction": "higher",
+    "why": "his notes say denser is better; #847 found no support"
+   },
+   {
+    "metric": "trims_per_1000",
+    "direction": "lower",
+    "why": "the control: the one instrument that cleared chance in #842 and #847; if it does not replicate here nothing else in this sitting is read"
+   }
+  ],
+  "secondary": [
+   {
+    "metric": "longest_jump_mm",
+    "direction": "lower"
+   },
+   {
+    "metric": "jumps_per_1000",
+    "direction": "lower"
+   },
+   {
+    "metric": "turns_per_100mm",
+    "direction": "lower"
+   }
+  ]
+ },
+ "analysis": {
+  "statistics": [
+   "kappa_sides_only_2x2",
+   "kappa_ties_in_3x3_linear"
+  ],
+  "ci": "percentile bootstrap, 10000 resamples, seed 20261011, over pairs AND over designs (the `design` key of each logo)",
+  "reading_rule": "both intervals clear of zero and at least 10 pairs where Kent chose a side; otherwise 'no evidence either way' or 'n too small'",
+  "never_printed": "any raw agreement figure (ROADMAP gate 4)",
+  "population": "live pairs (arm differs from base). Identical and repeat pairs are controls and enter no agreement statistic.",
+  "pro_distance": {
+   "population": "A: the live pairs on the pro_baseline.JOBS logos",
+   "metrics": [
+    "cuts",
+    "hops",
+    "needle_up_mm"
+   ],
+   "reading": "distance = |ours - pro| (pro_pooled.distance), lower is closer, beside the same figures as a plain cost; kappa, both intervals (pairs and designs), n; pairs scoring his pick farther from the pro are counted",
+   "readers": "pro_pair.pro_counts and pro_baseline.needle_up on ours.dst (designs/<logo>__<arm>.dst) and on the pro's DST, the same code on both"
+  }
+ }
+}
