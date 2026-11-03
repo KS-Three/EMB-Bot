@@ -979,10 +979,12 @@ PNG, the sheet, and DST, which stopped being the exception on 2026-09-20.
 Every surviving requirement of the 2026-08-12 annotation ships: outlines with
 nodes drawn over the result automatically, the pulse cue, select-then-edit, node
 drag, line drag, add node, and delete. Requirement 5 (whole-shape drag) was
-withdrawn by Kent. Geometry is unit-tested (53 cases in `shapeOverlay.spec.js`)
-and every interaction was driven in a real browser against a live service.
+withdrawn by Kent. Unit-tested in `shapeOverlay.spec.js` and driven in a real
+browser against a live service.
 **Do not compress the detail file's copy of Kent's request** — it is captured
 verbatim there because the sub-requirements *are* the spec.
+
+**A node drag moves that node plus vertices within a fixed 3 mm of arc; Alt-drag keeps the old soft pull** *(measured 2026-11-03 — PR #1224)*.
 
 **One edit reaches every similar shape (merged 2026-10-28 — PR #1176).** The shape popover's "Apply to all similar shapes (N)" sends Stitch type, Color, Border, Fill angle and Underlay to every match as one `shapeOverrides` patch (one undo step), outlining the matches blue while ticked; Delete and Edit points stay on the one shape. "Similar" (`app/src/lib/similarShapes.js`): same sewn colour, area within 2×, same form (Hu moments, compactness, solidity). Driven live on Kent's flag through the real service. *(confirmed 2026-10-28 — PR #1176, its vitest)*
 

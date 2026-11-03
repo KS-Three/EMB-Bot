@@ -1748,6 +1748,28 @@ flattery. Anything unlisted raises `NotInManifest`.
 
 ## Gotchas — cost someone a session once
 
+- **A pull radius tuned on ONE outline was shipped as a rule for EVERY ring —
+  and "the entire spline follows" was the rule working.** `pullRing`
+  (`shapeOverlay.js`, 2026-08-13) took its radius, 2x the drag distance, from a
+  sweep on `owl_kent.jpg`'s body: 346 nodes 1.3 mm apart, where a one-vertex move
+  is a needle no fill row can occupy. Nothing in that sweep varied the NODE
+  SPACING, which is the quantity the needle depends on, and the drag distance,
+  which the sweep did vary, is the one thing the user is trying to control.
+  Kent's Instagram icon (outer ring nodes ~5 mm apart, 52 mm square) then moved
+  9 of 36 nodes and 53 mm of boundary on an 11 mm drag — 28% of the ring — and
+  he read it as a bug. A one-vertex move at 5 mm spacing is already a fillable
+  triangle. **Before generalising a tuned constant, say which fixture produced
+  it and which axis that fixture never varied.** The rule is now a fixed 3 mm
+  of arc (`PULL_RADIUS_MM`), Alt-drag keeps the old soft pull. **Measured cost
+  on the fixture it was tuned for** (6 mm pull, same vertex, same pipeline,
+  stitches of that shape inside new-minus-old polygon): soft 73 stitches in
+  26.4 mm² (25 vertices moved), new default 42 in 7.7 mm² (5 moved), bare
+  one-vertex 26 in 7.4 mm². The 2026-08-13 counts (1x 11, 2x 31, 3x 27) and
+  these are not the same instrument — the engine has since changed (a bare
+  one-vertex pull now sews 26, then 0) — so compare the three arms, never one
+  against the old table. *(measured 2026-11-03 — PR #1224,
+  `docs/scope/5-review-manual-editing.md`)*
+
 - **Satin density is a needle every `SATIN_SPACING_MM` on EACH rail — count
   needles per rail, never total stitches between tiers.** The engine's flat
   zigzag is A1, B1, A2, B2: both ends of every station, stations the spacing

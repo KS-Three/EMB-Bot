@@ -1009,6 +1009,12 @@ The engine exports `design.shapeOutlines` (field mm) and `design.fit` so the
 field maps authored px ↔ field mm with the engine's own numbers — never a
 second transform.
 
+**Dragging a node on a DIGITIZED shape** (`shapeOverlay.js` `pullRing`, 2026-11-03)
+moves that node and only vertices within a fixed 3 mm of arc of it; **hold Alt
+while dragging** for the old soft pull (2x the drag distance) on a dense photo
+outline. The nearest node under the pointer wins the grab. Hand-drawn anchors
+(`fieldNodeEdit.js`) do not use it.
+
 **The re-fit rule.** The engine fits the bbox of all an element's shapes, so
 any edit that changes that bbox would rescale everything else.
 `refitShapesPatch` (and `editedElementPatch` on top of it) patches
