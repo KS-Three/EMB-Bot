@@ -323,6 +323,56 @@ on node spacing, not on how far the user dragged.
   icon (not committed): one outer-ring node dragged ~10 mm up-right draws a
   single tent on that node, neighbours untouched.
 
+**Reshape mode: edit many points at once, across shapes — 2026-11-03 (PR #1225).**
+Kent: *"I need the UI to be much easier to use, so i can edit specific shapes,
+borders and boundaries very precisely."* PR 2 of the node-reshape spec
+(`docs/superpowers/specs/2026-11-03-digitized-node-reshape-design.md`, section 4;
+rulings 2, 4, 6, 7). "Edit points" in the shape popover (now reading "Done") turns
+the mode on for the element, on BOTH lanes. In it a bare drag is a marquee over the
+points of every shape of the element, so a seam (two shapes' coincident edges,
+which stage 5 clips or hides when only one moves) moves as one gesture; a drag on
+a selected point moves them all; arrows nudge them 0.1 mm (Shift 1 mm); Delete
+removes them per ring (refusing at three); right-click a point offers "Delete
+point" / "Select all points"; Esc leaves. One gesture = one patch = one undo step,
+across every touched shape (`elupdate.discrete` keeps `history.js` from merging
+quick presses). `DigitizePanel`'s SVG boundary editor is retired. Not built here:
+holes (`holes_override`, PR 4) and Simplify (PR 3).
+- **Rendered, real Studio + real service.** `two-squares.png`, Edit points, a
+  marquee over the black square's two right-hand vertices, dragged 8 mm right (26.2 px = 7.9 mm): the committed `shapeOverrides` holds ONE `boundary_override` of 4 points and exactly **2 vertices differ (dx +7.903 mm, dy 0.000 each)**; the other two vertices and the other shapes are untouched *(measured 2026-11-03 — real Studio + service, scratch spec; screenshots in the session scratchpad)*.
+- **Pinned by.** `shapeOverlay.spec.js`, `fieldNodeEdit.spec.js`,
+  `shapePopover.spec.js`, `history.spec.js`; `app/e2e/field-reshape-mode.spec.js`
+  (a), (b) three arrow presses move two vertices 0.3 mm each and undo in three
+  steps, (c) Delete and the three-point refusal, (f) a bare drag outside the mode
+  still moves the element, (g) hand-drawn marquee + drag with the neighbour's
+  stitches unmoved; `digitize-boundary-edit.spec.js` re-pointed at the hoop canvas.
+- **Cost / catch.** The panel's "Reset to auto" for a boundary edit went with the
+  editor: Undo is the way back until the Simplify / holes work gives it a home.
+
+**Simplify points — fewer nodes on a digitized shape, 2026-11-03 (PR #1226).**
+PR 3 of the node-reshape spec (section 5, ruling 5). A digitized ring arrives at up
+to 500 points (`thinOutline`, `BOUNDARY_MAX_POINTS`), a node every 0.4 mm on a
+200 mm ring, which nobody can edit by hand. The shape popover's **Simplify points**
+row offers 0.2 / 0.5 / 1 mm; a pick runs `simplifyRing` (`shapeOverlay.js`, a closed
+Douglas-Peucker: the two farthest vertices fixed, each half simplified, rejoined;
+every original vertex stays within the tolerance of the new ring; never under three
+points) on the shape's CURRENT ring (its pending `boundary_override`, else
+`outlineFull`) and commits through `commitShapeEdit`'s rules (field mm -> service mm,
+`boundaryIssues` first; one refused ring drops the whole gesture and names the shape).
+The `Points: N` row reads `Points: 64 -> 44` until the popover closes. It rides
+"Apply to all similar shapes (N)": ticked, each similar shape is thinned on its OWN
+ring and all `boundary_override`s go in ONE patch (one undo step). The Reshape-mode
+right-click menu carries the same three choices. Never automatic, digitized lane only
+(a hand-drawn shape's anchors are authored), no hole handling yet (PR 4 passes hole
+rings through the same function).
+- **Rendered, real Studio + real service.** `red-disc.png` (a 199 mm disc): popover
+  `Points: 64`, Simplify 0.5 mm -> `Points: 64 -> 44`; the committed `boundary_override`
+  has 44 points against `outlineFull`'s 64 and the design restitched *(measured
+  2026-11-03 — `field-reshape-mode.spec.js` (d), real Studio + service)*.
+- **Pinned by.** `shapeOverlay.spec.js` (120-vertex 20 mm circle at 0.5 mm: fewer
+  points, every original within 0.5 mm, passes `boundaryIssues`; a square unchanged at
+  any tolerance; an under-tolerance ring equal), `shapePopover.spec.js`,
+  `app/e2e/field-reshape-mode.spec.js` (d).
+
 **Kent ruled, 2026-08-12 — requirement 5 (dragging a whole shape) is OUT OF
 SCOPE.** He first asked for it ("moved or dragged around, similar to how
 clipart would work"), then withdrew it the same day once the cost surfaced.

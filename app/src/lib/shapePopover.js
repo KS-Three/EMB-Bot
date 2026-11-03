@@ -12,6 +12,7 @@ import { resolveCutOuts, manualShapeName, withCutOut, isColumn, isRun, runPath }
 import { columnWidthMm, withColumnWidthMm, columnSewnMm } from "./fieldNodeEdit.js";
 import { STITCH_WIDTH_MAX_MM } from "./digitizer.js";
 import { isCapPieceId, capPieceRow } from "./capPieces.js";
+import { outlineOf } from "./shapeOverlay.js";
 
 const LANES = new Set(["digitized", "manual", "shape"]);
 
@@ -71,6 +72,9 @@ export function BORDER_OPTIONS(designBorder) {
     { value: "bean", label: "Bean border" },
   ];
 }
+
+// The Simplify points tolerances, mm (ruling 5).
+export const SIMPLIFY_TOLS_MM = [0.2, 0.5, 1];
 
 const MANUAL_TIERS = [{ value: "fill", label: "Fill" }, { value: "satin", label: "Satin" }];
 
@@ -148,9 +152,19 @@ export function runRows(shape, fit) {
 // `similar` (digitized lane only) is similarShapes.similarShapeIds' answer for
 // this shape; the model carries it as { count, ids } when the shape has company,
 // so the popover can offer "Apply to all similar shapes (N)" — else null.
-export function popoverModel({ element, shapeId, fit, fabric, similar }) {
+//
+// `reshaping` (Reshape mode is on for this element): the "Edit points" action
+// reads "Done" and leaves the mode instead of entering it. A digitized shape's
+// model also carries `points`, its vertex count (the pending boundary edit's
+// when there is one), for the read-only "Points: N" line.
+export function popoverModel({ element, shapeId, fit, fabric, similar, reshaping = false, pointsWas = null }) {
   const m = baseModel({ element, shapeId, fit, fabric });
   if (!m) return m;
+  // After a Simplify, `Points: 500 -> 87`: the count it had before the pick.
+  m.pointsWas = m.points != null && Number.isInteger(pointsWas) && pointsWas !== m.points ? pointsWas : null;
+  if (reshaping) {
+    for (const r of m.rows) if (r.key === "editPoints") r.label = "Done";
+  }
   m.similar = m.lane === "digitized" && !isCapPieceId(shapeId) && Array.isArray(similar) && similar.length > 1
     ? { count: similar.length, ids: similar }
     : null;
@@ -246,8 +260,13 @@ function baseModel({ element, shapeId, fit, fabric }) {
   }
   out.push({ key: "border", kind: "choice", label: "Border", value: entry.border == null ? "default" : entry.border, options: BORDER_OPTIONS(element.params ? element.params.border : null) });
   out.push({ key: "editPoints", kind: "action", label: "Edit points" });
+  const pending = Array.isArray(entry.boundary_override) && entry.boundary_override.length >= 3 ? entry.boundary_override : null;
+  const ring = pending || outlineOf(row);
+  // Fewer points (2026-11-03 spec section 5): digitized lane only, never
+  // automatic, a tolerance pick applies it. Needs a ring to thin.
+  if (ring) out.push({ key: "simplify", kind: "simplify", label: "Simplify points", options: SIMPLIFY_TOLS_MM.map((v) => ({ value: v, label: v + " mm" })) });
   out.push({ key: "delete", kind: "action", label: "Delete shape", danger: true });
-  return { lane, shapeId, name: digitizedName(row), rows: out };
+  return { lane, shapeId, name: digitizedName(row), points: ring ? ring.length : null, rows: out };
 }
 
 // ---- patches ----------------------------------------------------------------

@@ -147,6 +147,23 @@ export function applyAnchorDrag(shape, index, newPx) {
   return { ...shape, points };
 }
 
+// Reshape mode: several anchors of ONE shape move by the same delta ({ dx, dy },
+// authored canvas px) — applyAnchorDrag's rule (a point is replaced, controls
+// stay) applied to each. `clamp` (optional, point -> point) is the placement-box
+// stop applied to each anchor; the whole-gesture holds (the box on the flattened
+// ring, cut-out containment) belong to the caller, who sees every shape at once.
+// Indices outside the shape are ignored. Same shape back when nothing moves.
+export function applyAnchorsDrag(shape, indices, delta, clamp = null) {
+  const which = new Set([...indices].filter((i) => Number.isInteger(i) && i >= 0 && i < (shape.points || []).length));
+  if (!which.size) return shape;
+  const points = shape.points.map((p, i) => {
+    if (!which.has(i)) return p;
+    const at = { x: p.x + delta.dx, y: p.y + delta.dy };
+    return clamp ? clamp(at) : at;
+  });
+  return { ...shape, points };
+}
+
 // Drag a segment's handle to `throughPx`: store the control that puts the
 // curve through it, or delete the key when it is back on the chord
 // (manualShapes.curveControlOrNull — the same 2 px rule the side canvas had).
@@ -190,6 +207,21 @@ export function removeAnchor(shape, index) {
   return { ...shape, points, curves };
 }
 
+// Remove several anchors at once: removeAnchor's rules for each (the two
+// segments that touched a removed anchor become one, later curves shift down),
+// highest index first so the numbering of the rest holds. null when the floor
+// would be crossed at any step — nothing is removed then, never a part.
+export function removeAnchors(shape, indices) {
+  const list = [...new Set(indices)].filter((i) => Number.isInteger(i) && i >= 0 && i < (shape.points || []).length)
+    .sort((a, b) => b - a);
+  let cur = shape;
+  for (const i of list) {
+    cur = removeAnchor(cur, i);
+    if (!cur) return null;
+  }
+  return cur;
+}
+
 // The re-fit rule (spec §4). The engine fits the bbox of ALL shapes, so a
 // node dragged outward would re-centre and rescale everything on the next
 // generate. Hold the scale (sizeMm' = new width * mmPerPx — this also seeds
@@ -203,9 +235,21 @@ export function removeAnchor(shape, index) {
 // own resolution, and the tests pin that the movement is exactly that rounding
 // residual and nothing else (mmPerPx is held to 1e-12).
 export function editedElementPatch(element, fit, shapeId, edited) {
-  const issues = shapeProblems(edited);
-  if (issues.length) return { error: issues[0] };
-  const shapes = (element.shapes || []).map((s) => (s && s.id === shapeId ? edited : s));
+  const patch = editedShapesPatch(element, fit, [edited]);
+  return patch.error ? { error: patch.error } : patch;
+}
+
+// The same rule for a gesture that touched SEVERAL shapes (Reshape mode's
+// marquee): `edited` is the list of shapes as they now stand, matched to the
+// element's by id. One patch, so one undo step; the first shape that fails
+// shapeProblems refuses the lot.
+export function editedShapesPatch(element, fit, edited) {
+  for (const e of edited) {
+    const issues = shapeProblems(e);
+    if (issues.length) return { error: issues[0], shapeId: e.id };
+  }
+  const byId = new Map(edited.map((e) => [e.id, e]));
+  const shapes = (element.shapes || []).map((s) => (s && byId.has(s.id) ? byId.get(s.id) : s));
   if (breaksContainment(element.shapes || [], shapes)) return { error: CUTOUT_HOLD_HINT };
   if (!flatBBox(element.shapes || []) || !flatBBox(shapes)) return { error: "Nothing to fit." };
   return refitShapesPatch(element, fit, shapes);

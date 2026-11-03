@@ -88,3 +88,21 @@ test("reset starts a fresh single-entry history (project switch)", () => {
   expect(h.canRedo()).toBe(false);
   expect(h.undo()).toBeNull();
 });
+
+test("a discrete record never merges into the entry before it, however fast", () => {
+  const h = createHistory(snap(0), { coalesceMs: 500 });
+  h.record(snap(1), 1000);                // first edit
+  h.record(snap(2), 1100, true);          // an arrow press 100 ms later
+  h.record(snap(3), 1200, true);
+  h.record(snap(4), 1300, true);
+  expect(h.undo()).toEqual(snap(3));
+  expect(h.undo()).toEqual(snap(2));
+  expect(h.undo()).toEqual(snap(1));
+  expect(h.undo()).toEqual(snap(0));
+  // and an ordinary drag storm still coalesces
+  const g = createHistory(snap(0), { coalesceMs: 500 });
+  g.record(snap(1), 1000);
+  g.record(snap(2), 1100);
+  g.record(snap(3), 1200);
+  expect(g.undo()).toEqual(snap(0));
+});

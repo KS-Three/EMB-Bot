@@ -17,7 +17,7 @@
   import { garmentOf, placementBoxOf } from "../lib/placement.js";
   import { resizeBadgeText } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
-  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
+  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, removeNodes, nodesInBox, insertNode, fieldMmToOutlineMm, simplifyRing } from "../lib/shapeOverlay.js";
   import {
     appliedBorders,
     borderMenuItems,
@@ -26,11 +26,11 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { boundaryIssues } from "../lib/digitizer.js";
   import { isElementStale } from "../lib/staleness.js";
-  import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
+  import { popoverModel, popoverPatch, recolorPatch, SIMPLIFY_TOLS_MM } from "../lib/shapePopover.js";
   import { similarShapeIds, similarOverridesPatch } from "../lib/similarShapes.js";
   import { capOutlinesMm, isCapPieceId } from "../lib/capPieces.js";
   import { resolveCutOuts, isColumn, isRun, isOpenShape, shapeProblems } from "../lib/manualShapes.js";
-  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT, convertOpenShape } from "../lib/fieldNodeEdit.js";
+  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyAnchorsDrag, applyHandleDrag, insertAnchor, removeAnchor, removeAnchors, editedElementPatch, editedShapesPatch, refitShapesPatch, ANCHOR_GRAB_PX, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT, convertOpenShape } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
   import DigitizeRing from "./DigitizeRing.svelte";
   import { digitizeBusy } from "../lib/digitizeBusy.js";
@@ -681,6 +681,411 @@
   let nodeEdit = null;      // { elId, shapeId, kind: "anchor"|"handle", index, basis: { fit, shape }, live, grab: { dx, dy }, moving }
   let focusedAnchor = null; // { elId, shapeId, index }
 
+  // ---- Reshape mode (2026-11-03 spec, section 4) -----------------------------
+  //
+  // "Edit points" in the shape popover turns it on for the selected ELEMENT, on
+  // either lane. Outside it nothing here applies: a selected shape drags one
+  // node, a bare drag moves the element, arrows nudge the element. Inside it a
+  // bare drag is a MARQUEE over the points of EVERY shape of the element — a
+  // seam is two shapes' coincident edges, and stage 5 clips or hides the edge
+  // of whichever one moved alone, so both have to move in one gesture — a drag
+  // on a selected point moves them all, the arrows nudge them 0.1 mm (Shift
+  // 1 mm), Delete removes them. One gesture is ONE elupdate (`discrete`, so
+  // its own undo step) however many shapes it touched.
+  //
+  // sel: Map<shapeId, Map<ring, Set<index>>>. `ring` is "exterior" (a digitized
+  // shape's outline) or "anchors" (a hand-drawn shape's authored points); the
+  // holes work (spec section 6) adds further ring keys, one per hole.
+  const RING_EXTERIOR = "exterior";
+  const RING_ANCHORS = "anchors";
+  let reshape = null;       // { elId, sel }
+  let reshapeDrag = null;   // { kind: "ring"|"anchors", elId, startPx, startClient, sel, basis, moving, live: Map|null }
+  let marquee = null;       // { startPx, curPx, startClient, add }
+  let dragReadout = null;   // { x, y, text } — the dx, dy mm beside the pointer mid-drag
+
+  function reshapeOn() {
+    return !!reshape && !!project && !multiSel && !simActive && project.selectedId === reshape.elId;
+  }
+  function reshapeSelHas(elId, sid, ring, i) {
+    if (!reshape || reshape.elId !== elId) return false;
+    const rings = reshape.sel.get(sid);
+    const set = rings && rings.get(ring);
+    return !!set && set.has(i);
+  }
+  function reshapeSelCount(rs) {
+    let n = 0;
+    if (rs) for (const rings of rs.sel.values()) for (const set of rings.values()) n += set.size;
+    return n;
+  }
+  function cloneSel(sel) {
+    const out = new Map();
+    for (const [sid, rings] of sel) {
+      const m = new Map();
+      for (const [ring, set] of rings) m.set(ring, new Set(set));
+      out.set(sid, m);
+    }
+    return out;
+  }
+  function selAdd(sel, sid, ring, i) {
+    if (!sel.has(sid)) sel.set(sid, new Map());
+    const rings = sel.get(sid);
+    if (!rings.has(ring)) rings.set(ring, new Set());
+    rings.get(ring).add(i);
+  }
+  function selRemove(sel, sid, ring, i) {
+    const rings = sel.get(sid);
+    const set = rings && rings.get(ring);
+    if (!set) return;
+    set.delete(i);
+    if (!set.size) rings.delete(ring);
+    if (!rings.size) sel.delete(sid);
+  }
+  function setReshapeSel(sel) {
+    reshape = { ...reshape, sel };
+    repaintNodeChrome();
+  }
+  function enterReshape(el) {
+    reshape = { elId: el.id, sel: new Map() };
+    shapeEditError = "";
+    repaintNodeChrome();
+  }
+  function endReshape() {
+    if (!reshape && !reshapeDrag && !marquee) return;
+    reshape = null;
+    reshapeDrag = null;
+    marquee = null;
+    dragReadout = null;
+    if (shapeEditError === CUTOUT_HOLD_HINT) shapeEditError = "";
+    repaintNodeChrome();
+  }
+  // A hand-drawn shape whose anchors the running reshape drag is holding in a
+  // working position — drawn from the drag, not from the (stale) element.
+  function anchorsLive(el, shapeId) {
+    return !!(reshapeDrag && reshapeDrag.kind === "anchors" && reshapeDrag.elId === el.id
+      && reshapeDrag.live && reshapeDrag.live.has(shapeId));
+  }
+
+  // The point under the pointer, on whichever shape of the element has one
+  // there: the NEAREST within the grab radius (hitOverlay's rule on the
+  // digitized lane, the same on the hand-drawn one). -> { shapeId, ring, index }
+  function reshapeNodeAt(edit, p) {
+    const el = edit.el;
+    if (el.type === "manual") {
+      let best = null;
+      for (const s of el.shapes || []) {
+        if (!s || s.id == null) continue;
+        const ap = authoredPxFor(el, s.id);
+        if (!ap) continue;
+        ap.anchors.forEach(([x, y], i) => {
+          const d = Math.hypot(p.x - x, p.y - y);
+          if (d <= ANCHOR_GRAB_PX && (!best || d < best.d)) best = { d, shapeId: s.id, ring: RING_ANCHORS, index: i };
+        });
+      }
+      return best;
+    }
+    const hit = hitOverlay(liveOutlinesPx(edit), p.x, p.y);
+    return hit && hit.kind === "node" ? { shapeId: hit.shapeId, ring: RING_EXTERIOR, index: hit.index } : null;
+  }
+
+  // Every point of every shape of the element inside the box (canvas px).
+  function reshapeNodesInBox(edit, a, b) {
+    const el = edit.el;
+    const out = new Map();
+    if (el.type === "manual") {
+      const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+      const y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+      for (const s of el.shapes || []) {
+        if (!s || s.id == null) continue;
+        const ap = authoredPxFor(el, s.id);
+        if (!ap) continue;
+        ap.anchors.forEach(([x, y], i) => {
+          if (x >= x0 && x <= x1 && y >= y0 && y <= y1) selAdd(out, s.id, RING_ANCHORS, i);
+        });
+      }
+      return out;
+    }
+    const found = nodesInBox(liveOutlinesPx(edit), a.x, a.y, b.x, b.y);
+    for (const [sid, set] of found) out.set(sid, new Map([[RING_EXTERIOR, set]]));
+    return out;
+  }
+
+  // The press, in the mode. true when it was handled here; false hands the
+  // press to the ordinary branch below (a hand-drawn shape's curve handle or
+  // edge keeps its single-drag meaning).
+  function reshapePress(e, p, edit) {
+    const el = edit.el;
+    const node = reshapeNodeAt(edit, p);
+    if (node) {
+      shapeEditError = "";
+      const sel = cloneSel(reshape.sel);
+      const has = reshapeSelHas(el.id, node.shapeId, node.ring, node.index);
+      if (e.shiftKey) {
+        // Shift-click toggles one point; it starts no drag.
+        if (has) selRemove(sel, node.shapeId, node.ring, node.index);
+        else selAdd(sel, node.shapeId, node.ring, node.index);
+        setReshapeSel(sel);
+        return true;
+      }
+      // Dragging a point that is not selected first makes it THE selection.
+      if (!has) {
+        const only = new Map();
+        selAdd(only, node.shapeId, node.ring, node.index);
+        setReshapeSel(only);
+      }
+      startReshapeDrag(e, p, edit);
+      return true;
+    }
+    if (el.type === "manual" && selectedShapeId && selectedShapeElId === el.id) {
+      const ap = authoredPxFor(el, selectedShapeId);
+      const ah = ap ? hitAuthored(ap, p.x, p.y, !isOpenShape(ap.shape)) : null;
+      if (ah && ah.kind !== "anchor") return false;
+    }
+    if (el.type === "digitized" && e.detail >= 2) {
+      // Double-click an edge adds a point there, as outside the mode.
+      const hit = hitOverlay(liveOutlinesPx(edit), p.x, p.y);
+      const ring = hit && hit.kind === "edge" ? edit.mmById.get(hit.shapeId) : null;
+      if (ring) {
+        canvas.setPointerCapture(e.pointerId);
+        const o = renderResult.toCanvas(0, 0);
+        const d = pxToMmDelta(hit.atPx[0] - o.x, hit.atPx[1] - o.y);
+        const grown = insertNode(ring, hit.index, [d.dx, d.dy]);
+        shapeEdit = { elId: el.id, shapeId: hit.shapeId, kind: "node", index: hit.index + 1, startPx: p, ring: grown, basis: editBasis(edit) };
+        liveRing = { shapeId: hit.shapeId, points: grown };
+        commitShapeEdit();
+        shapeEdit = null;
+        liveRing = null;
+        setReshapeSel(new Map());
+        return true;
+      }
+    }
+    // Anywhere else: the marquee.
+    canvas.setPointerCapture(e.pointerId);
+    marquee = { startPx: p, curPx: p, startClient: { x: e.clientX, y: e.clientY }, add: !!e.shiftKey };
+    shapeEditError = "";
+    return true;
+  }
+
+  function startReshapeDrag(e, p, edit) {
+    const el = edit.el;
+    const sel = reshape.sel;
+    let basis;
+    if (el.type === "manual") {
+      const fit = manualFit(el);
+      if (!fit) return;
+      // Frozen at press, like nodeEdit's: the fit, the shapes, and which of
+      // them started inside the placement box (one already past keeps the old
+      // behaviour — nothing is held to a box it was never in).
+      const boxOk = new Map();
+      for (const sid of sel.keys()) {
+        const sh = manualShapeOf(el, sid);
+        if (sh) boxOk.set(sid, ringInsideBox(sh, fit, hoopSizeMm(project)));
+      }
+      basis = { fit, shapes: (el.shapes || []).slice(), boxOk };
+    } else {
+      const rings = new Map();
+      for (const sid of sel.keys()) {
+        const r = edit.mmById.get(sid);
+        if (r) rings.set(sid, r);
+      }
+      basis = { ...editBasis(edit), rings };
+    }
+    canvas.setPointerCapture(e.pointerId);
+    reshapeDrag = { kind: el.type === "manual" ? "anchors" : "ring", elId: el.id, startPx: p,
+                    startClient: { x: e.clientX, y: e.clientY }, sel, basis, moving: false, live: null };
+    canvas.style.cursor = "grabbing";
+    repaintNodeChrome();
+  }
+
+  function reshapeDragMove(e, p) {
+    const d = reshapeDrag;
+    // Under CLICK_PX the press is still a click: nothing moves (trackpad jitter).
+    if (!d.moving) {
+      if (Math.hypot(e.clientX - d.startClient.x, e.clientY - d.startClient.y) < CLICK_PX) return;
+      d.moving = true;
+    }
+    const mm = pxToMmDelta(p.x - d.startPx.x, p.y - d.startPx.y);
+    if (d.kind === "ring") {
+      const live = new Map();
+      for (const [sid, rings] of d.sel) {
+        const seeds = rings.get(RING_EXTERIOR);
+        const base = d.basis.rings.get(sid);
+        if (!seeds || !seeds.size || !base) continue;
+        live.set(sid, moveNodes(base, seeds, mm.dx, mm.dy, { soft: e.altKey }));
+      }
+      d.live = live;
+    } else {
+      const b = d.basis;
+      const q0 = fieldPxToAuthored(b.fit, d.startPx);
+      const q1 = fieldPxToAuthored(b.fit, p);
+      const delta = { dx: q1.x - q0.x, dy: q1.y - q0.y };
+      const clamp = (at) => clampAuthoredToBox(b.fit, at);
+      const cand = new Map();
+      for (const [sid, rings] of d.sel) {
+        const idx = rings.get(RING_ANCHORS);
+        const base = b.shapes.find((s) => s && s.id === sid);
+        if (!idx || !idx.size || !base) continue;
+        cand.set(sid, applyAnchorsDrag(base, idx, delta, clamp));
+      }
+      // Hold last good, for the WHOLE gesture: one shape bulging past the
+      // placement box, or any cut-out leaving the shape it cuts, drops the
+      // frame and every shape stays where it last was.
+      const box = hoopSizeMm(project);
+      let boxHeld = false;
+      for (const [sid, c] of cand) if (b.boxOk.get(sid) && !ringInsideBox(c, b.fit, box)) boxHeld = true;
+      const cutHeld = !boxHeld && breaksContainment(b.shapes, b.shapes.map((s) => (s && cand.has(s.id) ? cand.get(s.id) : s)));
+      if (cutHeld) shapeEditError = CUTOUT_HOLD_HINT;
+      if (boxHeld && shapeEditError === CUTOUT_HOLD_HINT) shapeEditError = "";
+      if (!boxHeld && !cutHeld) {
+        d.live = cand;
+        if (shapeEditError === CUTOUT_HOLD_HINT) shapeEditError = "";
+      }
+    }
+    dragReadout = { x: p.x + 18, y: p.y - 18, text: `${fmtMm(mm.dx)}, ${fmtMm(mm.dy)} mm` };
+    reshapeDrag = d;
+    repaintNodeChrome();
+  }
+
+  // Digitized commit: `live` is Map<shapeId, ring in field mm>. Every touched
+  // ring goes back to the service's space and through boundaryIssues FIRST; one
+  // refusal drops the whole gesture (named by shape) and the shapes snap back.
+  // Otherwise ONE elupdate carries a boundary_override per touched shape.
+  function commitRingEdits(el, basis, live) {
+    if (!basis || !basis.rows || !basis.bboxMm || !live.size) return false;
+    const cur = { ...(el.shapeOverrides || {}) };
+    for (const [sid, pts] of live) {
+      const service = fieldMmToOutlineMm(pts, basis.rows, basis.bboxMm, basis.rotationDeg);
+      if (!service) return false;
+      const issues = boundaryIssues(service);
+      if (issues.length) {
+        const row = basis.rows.find((r) => r && r.id === sid);
+        shapeEditError = (row ? shapeMenuName(row) + ": " : "") + issues[0];
+        return false;
+      }
+      cur[sid] = { ...(cur[sid] || {}), boundary_override: service.map(([x, y]) => [x, y]) };
+    }
+    shapeEditError = "";
+    dispatch("elupdate", { id: el.id, patch: { shapeOverrides: cur }, discrete: true });
+    return true;
+  }
+
+  // Hand-drawn commit: the shapes as they now stand, through the re-fit rule in
+  // ONE patch. A refusal (an invalid shape, a cut-out out of its shape) drops
+  // the whole gesture and names the shape.
+  function commitAnchorEdits(el, fit, shapes) {
+    if (!shapes.length || !fit) return false;
+    const patch = editedShapesPatch(el, fit, shapes);
+    if (patch.error) {
+      shapeEditError = shapes.length > 1 && patch.shapeId != null
+        ? `Shape ${String(patch.shapeId).replace(/^s/, "")}: ${patch.error}` : patch.error;
+      return false;
+    }
+    shapeEditError = "";
+    dispatch("elupdate", { id: el.id, patch, discrete: true });
+    return true;
+  }
+
+  // Arrow keys: the selected points move 0.1 mm (Shift 1 mm) in field mm, each
+  // press its own committed undo step. EXACTLY the chosen points on a digitized
+  // ring — a nudge is the precision tool, and a falloff around 0.1 mm would
+  // only blur it (a drag keeps the 3 mm neighbourhood).
+  function nudgeReshape(dxMm, dyMm) {
+    const edit = editableOutlinesPx();
+    const el = edit && edit.el;
+    if (!el || !reshape || el.id !== reshape.elId) return;
+    shapeEditError = "";
+    if (el.type === "manual") {
+      const fit = manualFit(el);
+      if (!fit) return;
+      const delta = { dx: dxMm / fit.mmPerPx, dy: -dyMm / fit.mmPerPx };
+      const clamp = (at) => clampAuthoredToBox(fit, at);
+      const out = [];
+      for (const [sid, rings] of reshape.sel) {
+        const sh = manualShapeOf(el, sid);
+        const idx = rings.get(RING_ANCHORS);
+        if (!sh || !idx || !idx.size) continue;
+        const moved = applyAnchorsDrag(sh, idx, delta, clamp);
+        if (moved !== sh) out.push(moved);
+      }
+      if (out.length && commitAnchorEdits(el, fit, out)) liveMsg = reshapeMovedPhrase();
+      return;
+    }
+    const live = new Map();
+    for (const [sid, rings] of reshape.sel) {
+      const seeds = rings.get(RING_EXTERIOR);
+      const base = edit.mmById.get(sid);
+      if (!seeds || !seeds.size || !base) continue;
+      live.set(sid, moveNodes(base, seeds, dxMm, dyMm, { exact: true }));
+    }
+    if (live.size && commitRingEdits(el, editBasis(edit), live)) liveMsg = reshapeMovedPhrase();
+  }
+  function reshapeMovedPhrase() {
+    const n = reshapeSelCount(reshape);
+    return `${n} point${n === 1 ? "" : "s"} moved`;
+  }
+
+  // Delete / Backspace on the selection: per ring, never below the floor. A
+  // ring at the floor refuses with the hand-drawn lane's wording and loses
+  // nothing; the others go in ONE patch.
+  function deleteReshapeSelection() {
+    const edit = editableOutlinesPx();
+    const el = edit && edit.el;
+    if (!el || !reshape || el.id !== reshape.elId || !reshapeSelCount(reshape)) return false;
+    let refused = "";
+    const done = [];
+    if (el.type === "manual") {
+      const fit = manualFit(el);
+      if (!fit) return false;
+      const out = [];
+      for (const [sid, rings] of reshape.sel) {
+        const sh = manualShapeOf(el, sid);
+        const idx = rings.get(RING_ANCHORS);
+        if (!sh || !idx || !idx.size) continue;
+        const smaller = removeAnchors(sh, idx);
+        if (!smaller) refused = anchorFloorMessage(sh);
+        else { out.push(smaller); done.push(sid); }
+      }
+      if (out.length && !commitAnchorEdits(el, fit, out)) return true;
+    } else {
+      const live = new Map();
+      for (const [sid, rings] of reshape.sel) {
+        const idx = rings.get(RING_EXTERIOR);
+        const base = edit.mmById.get(sid);
+        if (!idx || !idx.size || !base) continue;
+        const next = removeNodes(base, idx);
+        if (!next) refused = "A shape needs at least 3 points.";
+        else { live.set(sid, next); done.push(sid); }
+      }
+      if (live.size && !commitRingEdits(el, editBasis(edit), live)) return true;
+    }
+    if (done.length) {
+      // The removed indices are gone: those shapes' selections go with them.
+      const sel = cloneSel(reshape.sel);
+      for (const sid of done) sel.delete(sid);
+      setReshapeSel(sel);
+    }
+    if (refused) shapeEditError = refused;
+    return true;
+  }
+
+  function drawReshapeChrome(ctx) {
+    if (!reshapeOn()) return;
+    // The strip: an instrument, drawn like the rotate badge, never a warning.
+    drawBadge(ctx, cssW() / 2, 16, "Editing points · Esc to finish");
+    if (marquee) {
+      const x = Math.min(marquee.startPx.x, marquee.curPx.x), y = Math.min(marquee.startPx.y, marquee.curPx.y);
+      const w = Math.abs(marquee.curPx.x - marquee.startPx.x), h = Math.abs(marquee.curPx.y - marquee.startPx.y);
+      ctx.save();
+      ctx.fillStyle = "rgba(255, 214, 64, 0.08)";
+      ctx.fillRect(x, y, w, h);
+      ctx.setLineDash([4, 3]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(255, 214, 64, 0.95)";
+      ctx.strokeRect(Math.round(x) + 0.5, Math.round(y) + 0.5, w, h);
+      ctx.restore();
+    }
+    if (dragReadout) drawBadge(ctx, dragReadout.x, dragReadout.y, dragReadout.text);
+  }
+
   function manualFit(el) {
     const pe = peById[el.id];
     return pe && pe.design && pe.design.fit ? pe.design.fit : null;
@@ -693,7 +1098,9 @@
   function authoredPxFor(el, shapeId) {
     if (!el || el.type !== "manual") return null;
     const fit = manualFit(el);
-    const shape = nodeEdit && nodeEdit.shapeId === shapeId && nodeEdit.elId === el.id ? nodeEdit.live : manualShapeOf(el, shapeId);
+    const dragged = reshapeDrag && reshapeDrag.kind === "anchors" && reshapeDrag.elId === el.id && reshapeDrag.live
+      ? reshapeDrag.live.get(shapeId) : null;
+    const shape = dragged || (nodeEdit && nodeEdit.shapeId === shapeId && nodeEdit.elId === el.id ? nodeEdit.live : manualShapeOf(el, shapeId));
     if (!fit || !shape || !renderResult || !renderResult.toCanvas) return null;
     const mm = authoredInFieldMm(shape, fit);
     const toPx = ([x, y]) => { const c = renderResult.toCanvas(x, y); return [c.x, c.y]; };
@@ -784,6 +1191,8 @@
         fit: (peById[project.selectedId] && peById[project.selectedId].design && peById[project.selectedId].design.fit) || null,
         fabric: popFabric,
         similar: similarFor(selectedShapeElement(), selectedShapeId),
+        reshaping: !!reshape && reshape.elId === project.selectedId,
+        pointsWas: simplifiedFrom && simplifiedFrom.shapeId === selectedShapeId ? simplifiedFrom.from : null,
       })
     : null;
   // "Apply to all similar shapes": the shapes like the selected one (see
@@ -801,7 +1210,11 @@
     if (key === similarKey) return;
     similarKey = key;
     applyToSimilar = false;
+    simplifiedFrom = null;
   }
+  // `Points: 500 -> 87` after a Simplify: the count before the pick, for the
+  // shape it ran on, until the popover closes or another shape is picked.
+  let simplifiedFrom = null;
   $: if (canvas) { applyToSimilar; scheduleViewRepaint(); }
   // What the group edit keys act on: the popover's per-shape overrides. Delete
   // and Edit points are actions, not changes, and never go to the group.
@@ -937,6 +1350,15 @@
     const el = selectedShapeElement();
     if (!el) return;
     const { key } = e.detail;
+    if (key === "simplify" && el.type === "digitized") {
+      // Ticked: every similar shape on its OWN ring, one patch, one undo step.
+      const group = applyToSimilar && popModel && popModel.similar ? similarShapeIds(el, selectedShapeId) : [];
+      const res = simplifyShapes(el, group.length > 1 ? group : [selectedShapeId], e.detail.tol);
+      if (res && res.changed && res.from.has(selectedShapeId)) {
+        simplifiedFrom = { shapeId: selectedShapeId, from: res.from.get(selectedShapeId) };
+      }
+      return;
+    }
     if (key === "delete") {
       const patch = popoverPatch({ element: el, shapeId: selectedShapeId }, "delete");
       closeShapePop();
@@ -959,10 +1381,12 @@
       return;
     }
     if (key === "editPoints") {
-      // Every lane: selection already arms node editing on the canvas (a
-      // hand-drawn shape's anchors and handles are drawn and grabbable once
-      // it is selected), so the popover just gets out of the way.
+      // Every lane: enters Reshape mode for this element (or leaves it, when
+      // the action reads "Done"). The shape stays selected, so a single node
+      // still drags straight away outside the mode.
       closeShapePop();
+      if (reshape && reshape.elId === el.id) endReshape();
+      else enterReshape(el);
       drawOverlay();
     }
   }
@@ -1033,7 +1457,8 @@
       pe,
       outlines: src.mm.map((o) => ({
         id: o.id,
-        points: (liveRing && liveRing.shapeId === o.id ? liveRing.points : o.points)
+        points: ((reshapeDrag && reshapeDrag.kind === "ring" && reshapeDrag.elId === el.id && reshapeDrag.live && reshapeDrag.live.get(o.id))
+          || (liveRing && liveRing.shapeId === o.id ? liveRing.points : o.points))
           .map(([x, y]) => {
             const c = renderResult.toCanvas(x, y);
             return [c.x, c.y];
@@ -1121,6 +1546,42 @@
     dispatch("elupdate", { id: el.id, patch: { shapeOverrides: cur } });
   }
 
+  // Simplify points (spec 2026-11-03 section 5): each shape in `ids` is thinned
+  // on its OWN current ring (its pending boundary_override, else outlineFull) at
+  // `tolMm`, through commitShapeEdit's rules: field mm -> service mm per ring,
+  // boundaryIssues first, one refused ring drops the whole gesture and names
+  // the shape, ONE elupdate patch for all. A ring already at or under the
+  // tolerance commits nothing. -> { changed, from: Map<id, countBefore> } or
+  // null when it did not run.
+  function simplifyShapes(el, ids, tolMm) {
+    const edit = outlinesPxFor(el);
+    if (!edit || !edit.pe || !edit.pe.bboxMm || !(tolMm > 0)) return null;
+    const cur = { ...(el.shapeOverrides || {}) };
+    const from = new Map();
+    for (const id of ids) {
+      const ring = edit.mmById.get(id);
+      if (!ring) continue;
+      const next = simplifyRing(ring, tolMm);
+      if (next.length >= ring.length) continue;
+      const service = fieldMmToOutlineMm(next, edit.rows, edit.pe.bboxMm, el.rotationDeg || 0);
+      if (!service) continue;
+      const issues = boundaryIssues(service);
+      if (issues.length) {
+        const row = (edit.rows || []).find((x) => x && x.id === id);
+        shapeEditError = `${row ? shapeMenuName(row) : "Shape"}: ${issues[0]}`;
+        return null;
+      }
+      cur[id] = { ...(cur[id] || {}), boundary_override: service.map(([x, y]) => [x, y]) };
+      from.set(id, ring.length);
+    }
+    if (!from.size) return { changed: false, from };
+    shapeEditError = "";
+    dispatch("elupdate", { id: el.id, patch: { shapeOverrides: cur } });
+    // Point indices no longer mean what they did.
+    if (reshapeOn()) setReshapeSel(new Map());
+    return { changed: true, from };
+  }
+
   // Requirement 6: delete the selected shape. Rides `deletedShapeIds`, the
   // same list DigitizePanel's own delete uses — so a shape removed here is
   // struck through and RESTORABLE from the Layers list exactly as before,
@@ -1138,6 +1599,9 @@
   // new element when this block sees it, so that selection survives.
   $: if (project && project.selectedId !== undefined) {
     const sel = selectedElement();
+    // Reshape mode belongs to the element it was entered on: another element
+    // selected, or none, ends it.
+    if (reshape && reshape.elId !== project.selectedId) endReshape();
     if (!sel || !SHAPE_LANES.has(sel.type)) {
       selectedShapeId = null;
       selectedShapeElId = null;
@@ -1267,11 +1731,14 @@
   // so a smaller default would be precision the fabric cannot keep.
   const NUDGE_MM = 1;
   const NUDGE_MM_COARSE = 10;
+  // Reshape mode's point nudge: finer than the element's, in field mm.
+  const RESHAPE_NUDGE_MM = 0.1;
+  const RESHAPE_NUDGE_MM_COARSE = 1;
 
   function nudgeSelected(dxMm, dyMm) {
     // The simulator is a watch-mode (pointer editing is disabled there too),
     // and mid-boundary-edit the arrows belong to the ring being dragged.
-    if (!project || simActive || shapeEdit || nodeEdit) return;
+    if (!project || simActive || shapeEdit || nodeEdit || reshapeDrag || marquee) return;
     const id = project.selectedId;
     if (!id) return;
     const el = (project.elements || []).find((e) => e.id === id);
@@ -1325,6 +1792,18 @@
 
   function onCanvasKey(e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return; // leave browser/OS shortcuts alone
+    // Reshape mode with points selected: the arrows move THOSE points, 0.1 mm
+    // (Shift 1 mm). With none selected they still nudge the element.
+    if (reshapeOn() && reshapeSelCount(reshape) > 0 && !reshapeDrag && !marquee && !shapeEdit && !nodeEdit
+        && (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      const rs = e.shiftKey ? RESHAPE_NUDGE_MM_COARSE : RESHAPE_NUDGE_MM;
+      if (e.key === "ArrowLeft") nudgeReshape(-rs, 0);
+      else if (e.key === "ArrowRight") nudgeReshape(rs, 0);
+      else if (e.key === "ArrowUp") nudgeReshape(0, rs);
+      else nudgeReshape(0, -rs);
+      e.preventDefault();
+      return;
+    }
     const step = e.shiftKey ? NUDGE_MM_COARSE : NUDGE_MM;
     if (e.key === "ArrowLeft") nudgeSelected(-step, 0);
     else if (e.key === "ArrowRight") nudgeSelected(step, 0);
@@ -1339,6 +1818,13 @@
   }
 
   function onWindowKey(e) {
+    // Reshape mode is the first thing Escape leaves, ahead of the focused
+    // anchor, the popover and the tool menu (a drag in flight is dropped).
+    if (e.key === "Escape" && reshape) {
+      endReshape();
+      e.preventDefault();
+      return;
+    }
     // Escape closes the shape popover, then the tool menu, before anything
     // else looks at the key.
     if (e.key === "Escape" && shapePop) {
@@ -1360,6 +1846,17 @@
       return;
     }
     if (e.key !== "Delete" && e.key !== "Backspace") return;
+    // Reshape mode with points selected: Delete removes THOSE points (same
+    // from-the-field rule as below). With none selected it does what it did.
+    if (reshapeOn() && reshapeSelCount(reshape) > 0) {
+      const rt = e.target;
+      if (rt !== canvas && rt !== document.body) return;
+      if (reshapeDrag || marquee || nodeEdit || pressEdge) return;
+      deleteReshapeSelection();
+      repaintNodeChrome();
+      e.preventDefault();
+      return;
+    }
     if (!selectedShapeId || simActive) return;
     // Only a key that came FROM THE FIELD deletes: the canvas itself (a press
     // on it focuses it, and closeShapePop hands focus back to it), or nothing
@@ -1474,6 +1971,9 @@
         ? resolveCutOuts(el.shapes).parentOf
         : null;
 
+      // Reshape mode: every shape of this element is drawn with its points,
+      // selected or not, whatever the Outlines toggle says.
+      const inMode = !!reshape && reshape.elId === el.id && project.selectedId === el.id && !multiSel;
       const similarSet = applyToSimilar && popModel && popModel.similar && el.id === selectedShapeElId
         ? new Set(popModel.similar.ids) : null;
 
@@ -1484,14 +1984,16 @@
         // Mid-drag, the shape being edited renders from the working ring
         // rather than from the last committed review — otherwise the outline
         // would sit still until the pointer came up.
-        const src = liveRing && liveRing.shapeId === o.id ? liveRing.points : o.points;
+        const dragLive = reshapeDrag && reshapeDrag.kind === "ring" && reshapeDrag.elId === el.id && reshapeDrag.live
+          ? reshapeDrag.live.get(o.id) : null;
+        const src = dragLive || (liveRing && liveRing.shapeId === o.id ? liveRing.points : o.points);
         const pts = src.map(([x, y]) => renderResult.toCanvas(x, y));
         if (pts.length < 3) continue;
         // Highlighted when SELECTED, not only while dragging: the highlight
         // is what tells you which shape a Delete or a drag will act on.
         // Tagged by element: shape ids repeat across elements ("shape" on
         // every preset, s1… on every hand-drawn one).
-        const editing = el.id === selectedShapeElId && o.id === selectedShapeId;
+        const editing = (el.id === selectedShapeElId && o.id === selectedShapeId) || inMode;
         // Under the pointer — on the canvas or on its row in the Layers
         // list (App routes both here as `hoverShape`). Drawn white so it
         // reads as a spotlight beside the amber selection.
@@ -1523,7 +2025,7 @@
         // the flattened ring stays underneath the authored one (spec §5) —
         // except under a selected CUT-OUT, whose dashes the second stroke
         // would fill in: drawAuthoredNodes strokes that one alone.
-        if (el.type === "manual" && editing && (o.cutOut || (nodeEdit && nodeEdit.elId === el.id && nodeEdit.shapeId === o.id))) {
+        if (el.type === "manual" && editing && (o.cutOut || anchorsLive(el, o.id) || (nodeEdit && nodeEdit.elId === el.id && nodeEdit.shapeId === o.id))) {
           drawAuthoredNodes(ctx, el, o.id);
           continue;
         }
@@ -1571,7 +2073,19 @@
         }
         if (el.type !== "digitized") continue;
         const r = NODE_R + 1.7 * pulse + (editing ? 0.6 : 0);
-        for (const p of pts) {
+        for (let pi = 0; pi < pts.length; pi++) {
+          const p = pts[pi];
+          // A selected point (Reshape mode) is a white dot inside an amber ring.
+          if (inMode && reshapeSelHas(el.id, o.id, RING_EXTERIOR, pi)) {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, r + 1.4, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 255, 255, 1)";
+            ctx.fill();
+            ctx.strokeStyle = "rgba(255, 214, 64, 1)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            continue;
+          }
           ctx.beginPath();
           ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
           // Same casing logic as the line: a node lands on the edge too, and
@@ -1684,7 +2198,17 @@
     const fa = liveFocusedAnchor();
     for (let i = 0; i < n; i++) {
       const [x, y] = ap.anchors[i];
-      dot(x, y, NODE_R + 0.6, "rgba(255, 214, 64, 0.95)");
+      if (reshapeSelHas(el.id, shapeId, RING_ANCHORS, i)) {
+        // Selected in Reshape mode: white inside an amber ring.
+        dot(x, y, NODE_R + 1.6, "rgba(255, 255, 255, 1)");
+        ctx.beginPath();
+        ctx.arc(x, y, NODE_R + 1.6, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(255, 214, 64, 1)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        dot(x, y, NODE_R + 0.6, "rgba(255, 214, 64, 0.95)");
+      }
       if (fa && fa.elId === el.id && fa.index === i) {
         // The anchor a Delete would remove: ringed, cased like everything else.
         ctx.beginPath();
@@ -1794,6 +2318,7 @@
     if (dpr !== 1) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawStaleWash(ctx);
     drawShapeOutlines(ctx);
+    drawReshapeChrome(ctx);
     drawGuides(ctx);
     const color = selectionColor();
     if (multiSel) {
@@ -2556,6 +3081,11 @@
     // would keep promising "move the element" right up to the moment a click
     // edits a shape instead — the affordance has to agree with the behaviour.
     const hoverEdit = editableOutlinesPx();
+    // Reshape mode: a point is grabbable, anywhere else is a marquee.
+    if (reshapeOn() && hoverEdit && hoverEdit.el.id === reshape.elId) {
+      canvas.style.cursor = reshapeNodeAt(hoverEdit, p) ? "grab" : "crosshair";
+      return;
+    }
     // A selected hand-drawn shape's anchors and handles are grabbable; its
     // edges take a click (insert), which the "pointer" below already says.
     if (hoverEdit && hoverEdit.el.type === "manual" && selectedShapeId && selectedShapeElId === hoverEdit.el.id) {
@@ -2636,6 +3166,35 @@
   // ("first click on a shape selects it and stops there"): the amber
   // highlight shows which shape the items are about to change.
   function shapeUnderPointer(e) {
+    const plain = shapeUnderPointerPlain(e);
+    if (!reshapeOn() || !renderResult) return plain;
+    const edit = editableOutlinesPx();
+    if (!edit || edit.el.id !== reshape.elId) return plain;
+    const node = reshapeNodeAt(edit, canvasPointFromEvent(e));
+    if (!node) return plain;
+    // Right-clicking a point that is not selected selects it (as a click does).
+    if (!reshapeSelHas(edit.el.id, node.shapeId, node.ring, node.index)) {
+      const only = new Map();
+      selAdd(only, node.shapeId, node.ring, node.index);
+      setReshapeSel(only);
+    }
+    const n = reshapeSelCount(reshape);
+    // Point rows lead the menu; "Simplify points" (digitized lane) follows
+    // "Select all points" as one row per tolerance.
+    const rows = [
+      { id: "delpoint", label: n > 1 ? `Delete ${n} points` : "Delete point", value: null, title: "Remove the selected points; a ring keeps at least 3." },
+      { id: "selectall", label: "Select all points", value: null, title: "Select every point of this shape.", shapeId: node.shapeId },
+      ...(edit.el.type === "digitized"
+        ? SIMPLIFY_TOLS_MM.map((tol) => ({ id: `simplify-${tol}`, label: `Simplify points ${tol} mm`, value: null, title: `Fewer points on this shape, within ${tol} mm of the current outline.`, shapeId: node.shapeId, tol }))
+        : []),
+    ];
+    const rest = plain && plain.items ? plain.items.filter((it) => it.id !== "removepoint") : [];
+    if (plain) return { ...plain, items: [...rows, ...rest] };
+    const row = (edit.rows || []).find((x) => x && x.id === node.shapeId);
+    return { elId: edit.el.id, shapeId: node.shapeId, name: row ? shapeMenuName(row) : "Shape", state: null, items: rows };
+  }
+
+  function shapeUnderPointerPlain(e) {
     if (!renderResult || !project) return null;
     const p = canvasPointFromEvent(e);
     // An ANCHOR of the selected hand-drawn shape: the menu's shape section
@@ -2759,9 +3318,39 @@
     dispatch("elupdate", { id: el.id, patch: { shapeOverrides: cur } });
   }
 
+  // "Select all points": every point of one shape (all of its rings).
+  function selectAllPointsOf(shapeId) {
+    const edit = editableOutlinesPx();
+    if (!edit || !reshape || edit.el.id !== reshape.elId) return;
+    const sel = new Map();
+    if (edit.el.type === "manual") {
+      const sh = manualShapeOf(edit.el, shapeId);
+      if (sh) (sh.points || []).forEach((_, i) => selAdd(sel, shapeId, RING_ANCHORS, i));
+    } else {
+      const ring = edit.mmById.get(shapeId);
+      if (ring) ring.forEach((_, i) => selAdd(sel, shapeId, RING_EXTERIOR, i));
+    }
+    setReshapeSel(sel);
+  }
+
   // One entry point for the shape section's items: Remove point (a
   // hand-drawn shape's anchor, the same path Delete takes) or a border item.
   function chooseMenuItem(item) {
+    if (typeof item.id === "string" && item.id.startsWith("simplify-")) {
+      const menu = fieldMenu;
+      fieldMenu = null;
+      const el = menu && menu.shape && project ? (project.elements || []).find((x) => x.id === menu.shape.elId) : null;
+      if (el && el.type === "digitized") simplifyShapes(el, [item.shapeId], item.tol);
+      repaintNodeChrome();
+      return;
+    }
+    if (item.id === "delpoint" || item.id === "selectall") {
+      fieldMenu = null;
+      if (item.id === "delpoint") deleteReshapeSelection();
+      else selectAllPointsOf(item.shapeId);
+      repaintNodeChrome();
+      return;
+    }
     if (item.id !== "removepoint") {
       chooseBorder(item);
       return;
@@ -2896,6 +3485,13 @@
       rotateBadgeDeg = dragStartRotationDeg;
       canvas.style.cursor = "grabbing";
       return;
+    }
+
+    // Reshape mode owns the press next: a point is selected or dragged, anywhere
+    // else is a marquee (the one new meaning of a bare drag, and only here).
+    if (reshapeOn()) {
+      const rEdit = editableOutlinesPx();
+      if (rEdit && rEdit.el.id === reshape.elId && reshapePress(e, p, rEdit)) return;
     }
 
     // Shape outlines beat the element body. Tested after the rotate grip
@@ -3087,6 +3683,16 @@
     if (!canvas) return;
     if (simActive || originalView) { canvas.style.cursor = "default"; return; }
     const p = canvasPointFromEvent(e);
+    if (marquee) {
+      marquee.curPx = p;
+      marquee = marquee;
+      repaintNodeChrome();
+      return;
+    }
+    if (reshapeDrag) {
+      reshapeDragMove(e, p);
+      return;
+    }
     // A shape edit is its own drag mode — it never sets `dragMode`, so the
     // element move/resize/pan branches below stay untouched by it.
     if (shapeEdit) {
@@ -3291,6 +3897,56 @@
   }
 
   function endDrag(e) {
+    // Reshape mode: a point drag commits ONE patch on release (a click that
+    // never travelled, or a cancel, commits nothing); a marquee selects.
+    if (reshapeDrag) {
+      if (canvas && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+      const d = reshapeDrag;
+      reshapeDrag = null;
+      dragReadout = null;
+      if (shapeEditError === CUTOUT_HOLD_HINT) shapeEditError = "";
+      const el = project && (project.elements || []).find((x) => x.id === d.elId);
+      if (el && d.moving && d.live && d.live.size && e.type !== "pointercancel") {
+        if (d.kind === "anchors") commitAnchorEdits(el, d.basis.fit, [...d.live.values()]);
+        else commitRingEdits(el, d.basis, d.live);
+      }
+      if (canvas) canvas.style.cursor = "default";
+      repaintNodeChrome();
+      return;
+    }
+    if (marquee) {
+      if (canvas && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+      const m = marquee;
+      marquee = null;
+      const edit = reshapeOn() ? editableOutlinesPx() : null;
+      if (edit && e.type !== "pointercancel" && typeof e.clientX === "number") {
+        const moved = Math.hypot(e.clientX - m.startClient.x, e.clientY - m.startClient.y);
+        const here = canvasPointFromEvent(e);
+        if (moved >= CLICK_PX) {
+          const found = reshapeNodesInBox(edit, m.startPx, here);
+          const sel = m.add ? cloneSel(reshape.sel) : new Map();
+          for (const [sid, rings] of found) for (const [ring, set] of rings) for (const i of set) selAdd(sel, sid, ring, i);
+          setReshapeSel(sel);
+        } else if (!m.add) {
+          // A click: drops the point selection, and (as outside the mode)
+          // selects the shape under it and opens its popover.
+          if (reshapeSelCount(reshape)) setReshapeSel(new Map());
+          const hit = shapeAtPoint(edit.el, here);
+          if (hit) {
+            selectedShapeId = hit.shapeId;
+            selectedShapeElId = edit.el.id;
+            if (edit.el.type === "manual") dispatch("shapeselect", { elementId: edit.el.id, shapeId: hit.shapeId });
+            openShapePop(e);
+          } else if (selectedShapeId || shapePop) {
+            setSelectedShape(null);
+            focusedAnchor = null;
+            if (shapePop) closeShapePop();
+          }
+        }
+      }
+      repaintNodeChrome();
+      return;
+    }
     // A hand-drawn node drag: commit on release through the re-fit rule. A
     // press that never moved the node (`live` is still the basis object —
     // guaranteed for any press-release under CLICK_PX by onPointerMove's dead
@@ -3458,6 +4114,8 @@
     <canvas
       bind:this={canvas}
       data-paint-seq={paintSeq}
+      data-reshape={reshape && project && project.selectedId === reshape.elId ? "on" : "off"}
+      data-reshape-points={reshapeSelCount(reshape)}
       width="760"
       height="560"
       tabindex="0"
