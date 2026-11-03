@@ -28,19 +28,21 @@ test("brand index matches the data module (ids, order, counts)", () => {
 });
 
 test("every thread has a non-empty trimmed name and an RGB triple of integers 0-255", () => {
+  // ~20k rows: a vitest expect() per field costs seconds, so test in plain
+  // code and assert once on the list of offenders.
+  const bad = [];
   for (const t of rows) {
-    expect(typeof t.name, `${t.brand} ${t.code}`).toBe("string");
-    expect(t.name.length, `${t.brand} ${t.code}`).toBeGreaterThan(0);
-    expect(t.name, `${t.brand} ${t.code}`).toBe(t.name.trim());
-    expect(t.rgb, `${t.brand} ${t.name}`).toHaveLength(3);
-    for (const v of t.rgb) {
-      expect(Number.isInteger(v) && v >= 0 && v <= 255, `${t.brand} ${t.name} ${t.rgb}`).toBe(true);
-    }
+    const ok =
+      typeof t.name === "string" && t.name.length > 0 && t.name === t.name.trim() &&
+      Array.isArray(t.rgb) && t.rgb.length === 3 &&
+      t.rgb.every((v) => Number.isInteger(v) && v >= 0 && v <= 255);
+    if (!ok) bad.push(`${t.brand} ${t.code} ${t.name} ${t.rgb}`);
   }
+  expect(bad).toEqual([]);
 });
 
 test("no name carries runs of spaces", () => {
-  for (const t of rows) expect(t.name, `${t.brand} ${t.code}`).not.toMatch(/\s{2,}/);
+  expect(rows.filter((t) => /\s{2,}/.test(t.name)).map((t) => `${t.brand} ${t.code}`)).toEqual([]);
 });
 
 test("no brand repeats a name+code+colour row", () => {
@@ -68,8 +70,10 @@ test("a code never shows two visibly different colours, bar the known upstream c
 
 test("names that state black or white have a colour to match", () => {
   const lum = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const bad = [];
   for (const t of rows) {
-    if (/^(black|jet black)$/i.test(t.name)) expect(lum(t.rgb), `${t.brand} ${t.code} ${t.rgb}`).toBeLessThan(130);
-    if (/^(white|snow white|bright white)$/i.test(t.name)) expect(lum(t.rgb), `${t.brand} ${t.code} ${t.rgb}`).toBeGreaterThan(170);
+    if (/^(black|jet black)$/i.test(t.name) && !(lum(t.rgb) < 130)) bad.push(`${t.brand} ${t.code} ${t.rgb}`);
+    if (/^(white|snow white|bright white)$/i.test(t.name) && !(lum(t.rgb) > 170)) bad.push(`${t.brand} ${t.code} ${t.rgb}`);
   }
+  expect(bad).toEqual([]);
 });
