@@ -348,6 +348,31 @@ holes (`holes_override`, PR 4) and Simplify (PR 3).
 - **Cost / catch.** The panel's "Reset to auto" for a boundary edit went with the
   editor: Undo is the way back until the Simplify / holes work gives it a home.
 
+**Simplify points — fewer nodes on a digitized shape, 2026-11-03 (PR #NNNN).**
+PR 3 of the node-reshape spec (section 5, ruling 5). A digitized ring arrives at up
+to 500 points (`thinOutline`, `BOUNDARY_MAX_POINTS`), a node every 0.4 mm on a
+200 mm ring, which nobody can edit by hand. The shape popover's **Simplify points**
+row offers 0.2 / 0.5 / 1 mm; a pick runs `simplifyRing` (`shapeOverlay.js`, a closed
+Douglas-Peucker: the two farthest vertices fixed, each half simplified, rejoined;
+every original vertex stays within the tolerance of the new ring; never under three
+points) on the shape's CURRENT ring (its pending `boundary_override`, else
+`outlineFull`) and commits through `commitShapeEdit`'s rules (field mm -> service mm,
+`boundaryIssues` first; one refused ring drops the whole gesture and names the shape).
+The `Points: N` row reads `Points: 64 -> 44` until the popover closes. It rides
+"Apply to all similar shapes (N)": ticked, each similar shape is thinned on its OWN
+ring and all `boundary_override`s go in ONE patch (one undo step). The Reshape-mode
+right-click menu carries the same three choices. Never automatic, digitized lane only
+(a hand-drawn shape's anchors are authored), no hole handling yet (PR 4 passes hole
+rings through the same function).
+- **Rendered, real Studio + real service.** `red-disc.png` (a 199 mm disc): popover
+  `Points: 64`, Simplify 0.5 mm -> `Points: 64 -> 44`; the committed `boundary_override`
+  has 44 points against `outlineFull`'s 64 and the design restitched *(measured
+  2026-11-03 — `field-reshape-mode.spec.js` (d), real Studio + service)*.
+- **Pinned by.** `shapeOverlay.spec.js` (120-vertex 20 mm circle at 0.5 mm: fewer
+  points, every original within 0.5 mm, passes `boundaryIssues`; a square unchanged at
+  any tolerance; an under-tolerance ring equal), `shapePopover.spec.js`,
+  `app/e2e/field-reshape-mode.spec.js` (d).
+
 **Kent ruled, 2026-08-12 — requirement 5 (dragging a whole shape) is OUT OF
 SCOPE.** He first asked for it ("moved or dragged around, similar to how
 clipart would work"), then withdrew it the same day once the cost surfaced.

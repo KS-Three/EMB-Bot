@@ -461,3 +461,51 @@ test("(g) hand-drawn: marquee two anchors of a drawn rectangle, drag -> the capt
   const leftAfter = await settle(page, 0, mid);
   expect(leftBefore.bb[0] - leftAfter.bb[0], "the edited rectangle grew leftward").toBeGreaterThan(10);
 });
+
+test("(d) Simplify points 0.5 mm drops the point count, shows Points: N -> M, and the design restitches", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  // two-squares' squares are 4 points; a disc digitizes to a dense ring.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await pickGarment(page, "Tote");
+  await pinDigitizeConfig(page, { border_by_size: false });
+  await uploadArtwork(page, path.join(__dirname, "fixtures", "red-disc.png"));
+  await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+  let before = null;
+  await expect.poll(async () => {
+    const reads = [];
+    for (let i = 0; i < 3; i++) { reads.push(await page.locator(".dgp-stats").innerText()); await page.waitForTimeout(300); }
+    before = reads[0];
+    return reads.every((r) => r === reads[0]);
+  }, { timeout: 30_000 }).toBe(true);
+
+  const box = await page.locator(".hoop canvas").boundingBox();
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const pointsText = await dialog.getByTestId("shapepop-points").innerText();
+  const n0 = Number(pointsText.replace(/\D+/g, ""));
+  expect(n0, "a disc digitizes to a dense ring").toBeGreaterThan(20);
+  if (process.env.SIMPLIFY_SHOT) await page.screenshot({ path: process.env.SIMPLIFY_SHOT + "-before.png" });
+
+  await dialog.getByTestId("shapepop-simplify-0.5").click();
+  await expect(dialog.getByTestId("shapepop-points")).toHaveText(/^Points: \d+ -> \d+$/);
+  const n1 = Number((await dialog.getByTestId("shapepop-points").innerText()).split("->")[1]);
+  expect(await dialog.getByTestId("shapepop-points").innerText()).toContain(`Points: ${n0} ->`);
+  expect(n1).toBeLessThan(n0);
+  expect(n1).toBeGreaterThanOrEqual(3);
+  if (process.env.SIMPLIFY_SHOT) await page.screenshot({ path: process.env.SIMPLIFY_SHOT + "-after.png" });
+
+  const read = await readDigitized(page);
+  const edited = Object.entries(read.overrides).filter(([, v]) => v.boundary_override);
+  expect(edited, "exactly one shape carries a boundary edit").toHaveLength(1);
+  const [sid, entry] = edited[0];
+  const orig = ringOf(read.shapes.find((s) => s.id === sid).outline);
+  const out = ringOf(entry.boundary_override);
+  console.log(`simplify 0.5 mm: outlineFull ${orig.length} -> boundary_override ${out.length}`);
+  expect(out.length).toBeLessThan(orig.length);
+  expect(out.length).toBeGreaterThanOrEqual(3);
+  expect(out.length).toBe(n1);
+  await restitched(page, before);
+});

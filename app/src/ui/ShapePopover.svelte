@@ -110,7 +110,7 @@
   {#if model.points != null}
     <!-- A count, not a control: how many vertices the ring has (Reshape mode
          edits them; "Edit points" below enters it). -->
-    <p class="shapepop-points" data-testid="shapepop-points">Points: {model.points}</p>
+    <p class="shapepop-points" data-testid="shapepop-points">Points: {model.pointsWas != null ? `${model.pointsWas} -> ${model.points}` : model.points}</p>
   {/if}
   {#if model.similar}
     <!-- Scope first: it decides what every row below does. The count is every
@@ -125,7 +125,7 @@
       <span>Apply to all similar shapes ({model.similar.count})</span>
     </label>
     {#if applyToSimilar}
-      <p class="shapepop-note shapepop-similar-note" id="shapepop-similar-note">Stitch type, color, border, angle and underlay change on all {model.similar.count}, outlined blue. Delete and Edit points stay on this shape.</p>
+      <p class="shapepop-note shapepop-similar-note" id="shapepop-similar-note">Stitch type, color, border, angle, underlay and Simplify points change on all {model.similar.count}, outlined blue. Delete and Edit points stay on this shape.</p>
     {:else}
       <p class="shapepop-note shapepop-sr" id="shapepop-similar-note">Same color and form, any size or turn.</p>
     {/if}
@@ -160,6 +160,14 @@
       <button type="button" class="shapepop-action" class:danger={row.danger} on:click={() => d("action", { key: row.key })}>
         {row.label}
       </button>
+    {:else if row.kind === "simplify"}
+      <!-- Fewer points: a tolerance pick applies it (never automatic). -->
+      <div class="shapepop-row" role="group" aria-label={row.label}>
+        <span class="shapepop-label">{row.label}</span>
+        {#each row.options as o (o.value)}
+          <button type="button" class="shapepop-tol" data-testid={`shapepop-simplify-${o.value}`} on:click={() => d("action", { key: "simplify", tol: o.value })}>{o.label}</button>
+        {/each}
+      </div>
     {:else if row.kind === "toggle"}
       <div class="shapepop-row">
         <span class="shapepop-label">{row.label}</span>

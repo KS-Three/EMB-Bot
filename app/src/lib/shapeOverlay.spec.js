@@ -21,7 +21,9 @@ import {
   PULSE_MS,
   rotatePointsDeg,
   shapeOutlinesInFieldMm,
+  simplifyRing,
 } from "./shapeOverlay.js";
+import { boundaryIssues } from "./digitizer.js";
 
 // A 20x10mm rectangle centred on the design origin, in the service's y-down
 // mm space. Deliberately non-square so a transposed or mirrored result cannot
@@ -786,5 +788,44 @@ describe("nodesInBox (the marquee)", () => {
   });
   test("an open outline has no nodes", () => {
     expect(nodesInBox([{ id: "cap", open: true, points: [[1, 1], [2, 2]] }], 0, 0, 5, 5).size).toBe(0);
+  });
+});
+
+describe("simplifyRing", () => {
+  const circle = (n, r) => Array.from({ length: n }, (_, i) => [r * Math.cos((2 * Math.PI * i) / n), r * Math.sin((2 * Math.PI * i) / n)]);
+  const distToRing = (p, ring) => {
+    let best = Infinity;
+    for (let i = 0; i < ring.length; i++) {
+      const [ax, ay] = ring[i], [bx, by] = ring[(i + 1) % ring.length];
+      const dx = bx - ax, dy = by - ay;
+      const t = Math.max(0, Math.min(1, ((p[0] - ax) * dx + (p[1] - ay) * dy) / (dx * dx + dy * dy || 1)));
+      best = Math.min(best, Math.hypot(p[0] - ax - t * dx, p[1] - ay - t * dy));
+    }
+    return best;
+  };
+
+  test("a 120-vertex 20 mm circle at 0.5 mm drops points and keeps every original within 0.5 mm", () => {
+    const ring = circle(120, 10);
+    const out = simplifyRing(ring, 0.5);
+    expect(out.length).toBeLessThan(ring.length);
+    expect(out.length).toBeGreaterThanOrEqual(3);
+    for (const p of ring) expect(distToRing(p, out)).toBeLessThanOrEqual(0.5 + 1e-9);
+    expect(boundaryIssues(out)).toEqual([]);
+  });
+
+  test("a 4-point square is unchanged at any tolerance", () => {
+    const sq = [[0, 0], [10, 0], [10, 10], [0, 10]];
+    for (const tol of [0.2, 0.5, 1, 3]) expect(simplifyRing(sq, tol)).toEqual(sq);
+  });
+
+  test("a ring already under tolerance comes back equal, and never mutates the input", () => {
+    const ring = circle(8, 10);
+    const copy = ring.map((p) => [...p]);
+    expect(simplifyRing(ring, 0.01)).toEqual(ring);
+    expect(ring).toEqual(copy);
+  });
+
+  test("never below three points, even for a huge tolerance", () => {
+    expect(simplifyRing(circle(120, 10), 1000).length).toBeGreaterThanOrEqual(3);
   });
 });
