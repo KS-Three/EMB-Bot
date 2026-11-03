@@ -1551,7 +1551,7 @@ added hole shows the garment, a removed one fills. Service only; the Studio half
 (draw hole rings, emit the key) is the next PR in the node-reshape spec, section 6
 *(confirmed 2026-11-03 — `tests/test_shape_overrides.py`, `tests/test_service.py`)*.
 
-## 2026-11-03 — holes on the canvas (contract v1.9, the Studio half, PR PRNUM)
+## 2026-11-03 — holes on the canvas (contract v1.9, the Studio half, PR #1229)
 
 PR 4b of the node-reshape spec (section 6). `reviewFromJob` reads `holes_mm` into
 `holesFull` (deduped, 500-point cap, under 3 points dropped; older services and saved

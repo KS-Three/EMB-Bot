@@ -989,7 +989,7 @@ verbatim there because the sub-requirements *are* the spec.
 
 **Simplify points: 0.2 / 0.5 / 1 mm, per shape or all similar, one undo step** *(confirmed 2026-11-03 — PR #1226)*.
 
-**Holes are drawn and edited like the outline; `holes_override` rides only when edited** *(confirmed 2026-11-03 — PR PRNUM)*.
+**Holes are drawn and edited like the outline; `holes_override` rides only when edited** *(confirmed 2026-11-03 — PR #1229)*.
 
 **One edit reaches every similar shape (merged 2026-10-28 — PR #1176).** The popover's "Apply to all similar shapes (N)" sends Stitch type, Color, Border, Fill angle and Underlay to every match in one patch. "Similar" (`similarShapes.js`): same sewn colour, area within 2×, same form. *(confirmed 2026-10-28 — PR #1176)*
 

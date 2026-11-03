@@ -1074,7 +1074,7 @@ each similar shape is thinned on its own ring in ONE patch (one undo step). The
 Reshape-mode right-click menu has the same three choices. Never automatic; Undo is
 the way back.
 
-**Holes on the canvas (2026-11-03, contract v1.9 Studio side, PR PRNUM).** A digitized
+**Holes on the canvas (2026-11-03, contract v1.9 Studio side, PR #1229).** A digitized
 shape's interior rings (`holes_mm`, always in the review payload) are now read
 (`reviewFromJob` -> `holesFull`, deduped, thinned to 500, under 3 points dropped),
 drawn and edited: each hole is its own amber ring with its own nodes whenever the
