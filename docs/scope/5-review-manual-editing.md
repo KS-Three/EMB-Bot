@@ -348,7 +348,7 @@ holes (`holes_override`, PR 4) and Simplify (PR 3).
 - **Cost / catch.** The panel's "Reset to auto" for a boundary edit went with the
   editor: Undo is the way back until the Simplify / holes work gives it a home.
 
-**Simplify points — fewer nodes on a digitized shape, 2026-11-03 (PR #NNNN).**
+**Simplify points — fewer nodes on a digitized shape, 2026-11-03 (PR #1226).**
 PR 3 of the node-reshape spec (section 5, ruling 5). A digitized ring arrives at up
 to 500 points (`thinOutline`, `BOUNDARY_MAX_POINTS`), a node every 0.4 mm on a
 200 mm ring, which nobody can edit by hand. The shape popover's **Simplify points**

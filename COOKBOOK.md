@@ -1051,7 +1051,7 @@ and everything snaps back. `DigitizePanel`'s old SVG boundary editor and its
 Layers-row pencil are gone (the hoop canvas is the one editor); a boundary edit is
 undone with Undo. e2e: `app/e2e/field-reshape-mode.spec.js`.
 
-**Simplify points (2026-11-03, PR #NNNN).** A digitized ring arrives at up to 500
+**Simplify points (2026-11-03, PR #1226).** A digitized ring arrives at up to 500
 points; the shape popover's **Simplify points** row (digitized lane, not a cap
 stretch) offers 0.2 / 0.5 / 1 mm and a pick thins that shape's CURRENT ring with
 `simplifyRing` (`shapeOverlay.js`, closed Douglas-Peucker, every original vertex
