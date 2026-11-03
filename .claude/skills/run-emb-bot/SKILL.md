@@ -21,6 +21,11 @@ localhost and his browser can never reach it — there is no tunnel out. Give
 him the *Launch on Kent's machine* block, and if he wants to see something
 now, drive it here and send screenshots.
 
+**When the session itself is on Kent's Windows box** (the Desktop app, cwd
+under `C:\Users\EE-LT-11030\`), the two kinds converge: your localhost is his.
+Run `tools\start-emb-bot.ps1` yourself — it opens his browser — and read
+failure mode 9 below before trusting a port that already answers.
+
 **You need to run it yourself** to verify a change. That's everything else
 in this file.
 
@@ -258,7 +263,8 @@ Each has actually happened; check in this order.
 4. **Scheme omitted** — Chrome/Edge auto-upgrade bare `localhost:5173` to
    HTTPS; Vite serves plain HTTP.
 5. **A different port.** Vite auto-increments to 5174, 5175… and prints what
-   it bound. `start-emb-bot.ps1` assumes 5173 and will open the wrong URL.
+   it bound. `start-emb-bot.ps1` waits on and opens 5173 unless told
+   `-Port <n>`, so it will open the wrong URL.
 6. **Server never started.** `app/scripts/copy-engine.mjs` hard-throws
    `missing engine file: <name>` if any of the **22** files it copies is
    absent from `src/`; it runs in `predev`, so Vite never boots. The error is
@@ -268,6 +274,33 @@ Each has actually happened; check in this order.
 8. **Python too old.** `requires-python = ">=3.12"`; on 3.11 the install dies
    with `Package 'digitizer-core' requires a different Python`. `py --list`,
    then use the launcher form `py -3.12` (a bare `python` may resolve older).
+9. **Both ports answer — from a lane whose session is gone.** Measured
+   2026-11-03: 5173 and 8721 were up, and the processes holding them were
+   Vite and the digitizer from `.claude/worktrees/dropped-element-finding`
+   (bd8133cd, four commits behind main: a `config.py` without #1219's
+   `lettering_stray_word_thread` flip, and `background_removal`/`sam2` false,
+   since a lane has no rembg venv), started by a session that no longer
+   existed. Failure mode 7 with nobody serving on purpose, and a green
+   `/health` hides it. Two tells — `/health`'s `engine.commit` against
+   `git rev-parse HEAD`, and the command line of whatever owns the port:
+
+   ```powershell
+   (Get-NetTCPConnection -LocalPort 5173,8721 -State Listen).OwningProcess | ForEach-Object { (Get-CimInstance Win32_Process -Filter "ProcessId=$_").CommandLine }
+   ```
+
+   `start-emb-bot.ps1` already handles the digitizer half: when
+   `tools/service-check.mjs` says `replace` (stale AND idle — Kent's ruling
+   2026-10-25) it stops the python on 8721, with its own second lock, and
+   starts a fresh one. It does nothing about a held 5173: main's Vite
+   auto-increments to 5174 and the launcher waits on and opens whatever
+   `-Port` says. So either stop the lane's Vite tree first —
+   `taskkill /pid <npm pid> /T /F`, the `node.exe` two parents above
+   `vite.js` (npm → cmd → vite); kill processes, never touch the lane's
+   files — or run `.\tools\start-emb-bot.ps1 -Port 5174`. The auto-mode
+   classifier denied a session's direct `taskkill` ("Interfere With
+   Workloads") and allowed the launcher, so give Kent the kill command
+   rather than routing around the denial. localStorage is per-origin: a
+   design saved on 5173 does not appear on 5174.
 
 ---
 
