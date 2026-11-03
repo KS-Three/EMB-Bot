@@ -949,6 +949,17 @@ control called "Stitch width" was the DESIGN's width. Now
   `editKind` reads it as "other", so it keeps the drag debounce) unless
   "whole word" is unticked. **"Stitch width" on the params list was renamed
   "Design width"** — both e2e specs that read that label were repointed.
+- **Wire** (contract v1.9, 2026-11-03): `shape_overrides[sid].holes_override`,
+  `[[[x, y], ...], ...]` in the same design-centre y-down mm space as
+  `boundary_override`. Present: REPLACES the shape's interior rings; `[]`
+  makes it solid. Absent: interiors carried over, byte-identical to v1.4.
+  Per ring 3..500 distinct finite points, simple (400 at submit in
+  `app.py`, ValueError in `regions.apply_shape_edits`); containment and
+  crossing holes need the real shell, so they fail the JOB naming
+  `holes_override`. Travels with `boundary_override` or alone. Both live
+  inside `shape_overrides`, so `EDIT_KEYS` already strips them from
+  `generation_key` and `content_key` folds them in (the stage 0-4 cache
+  keeps hitting). Spec: `docs/superpowers/specs/2026-11-03-digitized-node-reshape-design.md` section 6.
 
 Measured (on-vs-off plan md5): with the box OFF every corpus fixture is
 byte-identical, pinned on the two art fixtures that would move

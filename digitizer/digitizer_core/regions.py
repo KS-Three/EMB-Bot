@@ -182,7 +182,8 @@ def match_shape_ids(
         # keyed by the stable content-derived id every request, and
         # `apply_shape_edits` is what actually replaces the geometry.
         for key in ("border", "applique", "tier", "fill_angle_deg",
-                    "sew_order", "underlay_style", "boundary_override"):
+                    "sew_order", "underlay_style", "boundary_override",
+                    "holes_override"):
             if key in previous[pi].meta and key not in current[ci].meta:
                 current[ci].meta[key] = previous[pi].meta[key]
     return remap
@@ -227,7 +228,8 @@ _UNDERLAY_VALUES = {"none", "edge_run", "center_run", "edge_zigzag", "edge_latti
 
 # `boundary_override` (contract v1.4): a hand-edited polygon replacing a
 # shape's exterior ring outright, holes carried over unchanged from the
-# shape's own current geometry. Higher risk than every other key here — a
+# shape's own current geometry unless `holes_override` (v1.9) replaces
+# them too (an empty list makes the shape solid). Higher risk than every other key here — a
 # bad polygon can crash or corrupt stage 5 onward — so it gets the widest
 # defensive check of the family. Mirrored (same bounds) in
 # `digitizer_service.app`'s copy, which 400s the wire before this ever
@@ -254,6 +256,34 @@ def _dedupe_ring(points: list) -> list:
     if len(out) > 1 and out[0] == out[-1]:
         out.pop()
     return out
+
+
+def _parse_ring(raw, sid, key: str) -> list[tuple[float, float]]:
+    """Validate one hand-edited ring (a shell or a hole): a list of finite
+    [x, y] pairs, deduped, within the point bounds. Returns float tuples."""
+    if not isinstance(raw, (list, tuple)):
+        raise ValueError(
+            f"shape_overrides[{sid!r}].{key} must be a list of [x, y] points"
+        )
+    pts = _dedupe_ring(list(raw))
+    if not _MIN_BOUNDARY_POINTS <= len(pts) <= _MAX_BOUNDARY_POINTS:
+        raise ValueError(
+            f"shape_overrides[{sid!r}].{key} must have "
+            f"{_MIN_BOUNDARY_POINTS}..{_MAX_BOUNDARY_POINTS} distinct "
+            f"points (got {len(pts)})"
+        )
+    coords: list[tuple[float, float]] = []
+    for pt in pts:
+        if (not isinstance(pt, (list, tuple)) or len(pt) != 2
+                or any(isinstance(c, bool) or not isinstance(c, (int, float))
+                       for c in pt)
+                or any(not math.isfinite(float(c)) for c in pt)):
+            raise ValueError(
+                f"shape_overrides[{sid!r}].{key} points "
+                "must be [x, y] pairs of finite numbers"
+            )
+        coords.append((float(pt[0]), float(pt[1])))
+    return coords
 
 
 def apply_shape_edits(
@@ -401,49 +431,42 @@ def apply_shape_edits(
             except ValueError as exc:
                 raise ValueError(f"shape_overrides[{sid!r}].{exc}") from exc
 
-        if ov.get("boundary_override") is not None:
-            raw = ov["boundary_override"]
-            if not isinstance(raw, (list, tuple)):
-                raise ValueError(
-                    f"shape_overrides[{sid!r}].boundary_override must be a "
-                    "list of [x, y] points"
-                )
-            pts = _dedupe_ring(list(raw))
-            if not _MIN_BOUNDARY_POINTS <= len(pts) <= _MAX_BOUNDARY_POINTS:
-                raise ValueError(
-                    f"shape_overrides[{sid!r}].boundary_override must have "
-                    f"{_MIN_BOUNDARY_POINTS}..{_MAX_BOUNDARY_POINTS} distinct "
-                    f"points (got {len(pts)})"
-                )
-            coords: list[tuple[float, float]] = []
-            for pt in pts:
-                if (not isinstance(pt, (list, tuple)) or len(pt) != 2
-                        or any(isinstance(c, bool) or not isinstance(c, (int, float))
-                               for c in pt)
-                        or any(not math.isfinite(float(c)) for c in pt)):
+        if (ov.get("boundary_override") is not None
+                or ov.get("holes_override") is not None):
+            # `boundary_override` (v1.4) replaces the shell; `holes_override`
+            # (v1.9) replaces the interior rings. Either alone leaves the
+            # other as the shape's current geometry (absent key = today's
+            # carry-over, byte for byte); both together rebuild the polygon.
+            named = " / ".join(k for k in ("boundary_override", "holes_override")
+                               if ov.get(k) is not None)
+            if ov.get("boundary_override") is not None:
+                shell = _parse_ring(ov["boundary_override"], sid, "boundary_override")
+            else:
+                shell = [tuple(c) for c in r.polygon.exterior.coords]
+            if ov.get("holes_override") is not None:
+                raw_holes = ov["holes_override"]
+                if not isinstance(raw_holes, (list, tuple)):
                     raise ValueError(
-                        f"shape_overrides[{sid!r}].boundary_override points "
-                        "must be [x, y] pairs of finite numbers"
+                        f"shape_overrides[{sid!r}].holes_override must be a "
+                        "list of rings (each a list of [x, y] points)"
                     )
-                coords.append((float(pt[0]), float(pt[1])))
-
-            # Holes ride along unchanged — boundary editing is exterior-ring
-            # only (contract v1.4 scope), never the shape's interior rings.
-            holes = [list(hole.coords) for hole in r.polygon.interiors]
+                holes = [_parse_ring(h, sid, "holes_override") for h in raw_holes]
+            else:
+                holes = [list(hole.coords) for hole in r.polygon.interiors]
             try:
-                new_poly = Polygon(coords, holes)
+                new_poly = Polygon(shell, holes)
             except Exception as exc:  # a malformed ring shapely itself refuses
                 raise ValueError(
-                    f"shape_overrides[{sid!r}].boundary_override does not "
+                    f"shape_overrides[{sid!r}].{named} does not "
                     f"form a polygon: {exc}"
                 ) from exc
 
             if not new_poly.is_valid or new_poly.is_empty:
                 raise ValueError(
-                    f"shape_overrides[{sid!r}].boundary_override is not a "
+                    f"shape_overrides[{sid!r}].{named} is not a "
                     f"valid simple polygon ({explain_validity(new_poly)}) — "
                     "check for self-intersections or a hole poking outside "
-                    "the new outline"
+                    "the outline"
                 )
             # Same sewability floor stage 4 already holds every auto-
             # digitized region to (see stage4_vectorize's run-tier rescue):
@@ -452,7 +475,7 @@ def apply_shape_edits(
             if (new_poly.area < machine.RUN_MIN_AREA_MM2
                     or new_poly.exterior.length < machine.RUN_MIN_LOOP_MM):
                 raise ValueError(
-                    f"shape_overrides[{sid!r}].boundary_override is too "
+                    f"shape_overrides[{sid!r}].{named} is too "
                     f"small to sew ({new_poly.area:.4f} mm², floor "
                     f"{machine.RUN_MIN_AREA_MM2} mm²; perimeter "
                     f"{new_poly.exterior.length:.4f} mm, floor "
@@ -460,7 +483,10 @@ def apply_shape_edits(
                 )
             r.polygon = new_poly
             r.area_mm2 = new_poly.area
-            r.meta["boundary_override"] = coords
+            if ov.get("boundary_override") is not None:
+                r.meta["boundary_override"] = shell
+            if ov.get("holes_override") is not None:
+                r.meta["holes_override"] = holes
 
     if unknown:
         missing = sorted(unknown)

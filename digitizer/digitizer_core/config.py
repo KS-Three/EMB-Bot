@@ -5615,6 +5615,17 @@ class PipelineConfig:
     #                           core layer (a 400 at the service layer,
     #                           before the job ever runs) — never a silent
     #                           repair and never a crash downstream.
+    #   holes_override: list – (contract v1.9) the shape's interior rings,
+    #                           REPLACED: a list of rings, each a list of
+    #                           [x, y] mm points (design-center, y-down, as
+    #                           `holes_mm` ships). `[]` makes the shape solid.
+    #                           Absent = the current holes ride forward
+    #                           unchanged (v1.4). Combines with
+    #                           `boundary_override`: the polygon is built
+    #                           from whichever of the pair is present plus the
+    #                           current geometry for the other. 3..500 points
+    #                           per ring; a hole outside the shell or two
+    #                           crossing holes fail the job naming the key.
     #   stitch_width_mm: float – (contract v1.8, `stitchwidth.py`) the SEWN
     #                           satin column this shape should take, in mm
     #                           (`stitchwidth.OVERRIDE_MIN_MM`..
