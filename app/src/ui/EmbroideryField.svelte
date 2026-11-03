@@ -3092,8 +3092,8 @@
     if (shapeEdit) {
       const d = pxToMmDelta(p.x - shapeEdit.startPx.x, p.y - shapeEdit.startPx.y);
       const next = shapeEdit.kind === "edge"
-        ? moveEdge(shapeEdit.ring, shapeEdit.index, d.dx, d.dy)
-        : moveNode(shapeEdit.ring, shapeEdit.index, d.dx, d.dy);
+        ? moveEdge(shapeEdit.ring, shapeEdit.index, d.dx, d.dy, { soft: e.altKey })
+        : moveNode(shapeEdit.ring, shapeEdit.index, d.dx, d.dy, { soft: e.altKey });
       liveRing = { shapeId: shapeEdit.shapeId, points: next };
       repaintNodeChrome(); // a bare drawOverlay smears every frame of the drag
       return;

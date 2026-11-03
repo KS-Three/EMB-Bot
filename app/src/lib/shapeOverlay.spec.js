@@ -418,23 +418,27 @@ describe("node and edge editing", () => {
 // added — the outline moved and the stitching did not. These tests pin the
 // falloff that fixes it, and the two limits that keep it from becoming
 // something else.
-describe("proportional dragging (dense, auto-traced rings)", () => {
-  // A circle of 120 vertices, radius 20mm: ~1mm of boundary per vertex, the
-  // same order of density as a traced photo region.
-  const DENSE = Array.from({ length: 120 }, (_, i) => {
-    const a = (2 * Math.PI * i) / 120;
-    return [20 * Math.cos(a), 20 * Math.sin(a)];
-  });
-  const movedCount = (before, after) =>
-    after.filter(([x, y], i) => Math.hypot(x - before[i][0], y - before[i][1]) > 1e-9).length;
+//
+// Since 2026-11-03 this soft pull (2x the drag distance) is the ALT drag; the
+// default is a fixed 3mm neighbourhood, pinned in the next block.
+// A circle of 120 vertices, radius 20mm: ~1mm of boundary per vertex, the
+// same order of density as a traced photo region.
+const DENSE = Array.from({ length: 120 }, (_, i) => {
+  const a = (2 * Math.PI * i) / 120;
+  return [20 * Math.cos(a), 20 * Math.sin(a)];
+});
+const movedCount = (before, after) =>
+  after.filter(([x, y], i) => Math.hypot(x - before[i][0], y - before[i][1]) > 1e-9).length;
+const SOFT = { soft: true };
 
+describe("Alt-drag soft pull (dense, auto-traced rings)", () => {
   test("a drag carries the neighbouring boundary with it", () => {
-    const out = moveNode(DENSE, 0, 6, 0);
+    const out = moveNode(DENSE, 0, 6, 0, SOFT);
     expect(movedCount(DENSE, out)).toBeGreaterThan(10);
   });
 
   test("the grabbed vertex takes the FULL delta, neighbours a share of it", () => {
-    const out = moveNode(DENSE, 0, 6, 0);
+    const out = moveNode(DENSE, 0, 6, 0, SOFT);
     expect(out[0][0] - DENSE[0][0]).toBeCloseTo(6, 9);
     const near = out[2][0] - DENSE[2][0];
     const far = out[8][0] - DENSE[8][0];
@@ -443,8 +447,8 @@ describe("proportional dragging (dense, auto-traced rings)", () => {
   });
 
   test("the pulled stretch widens with the drag — pull further, yield further", () => {
-    expect(movedCount(DENSE, moveNode(DENSE, 0, 12, 0)))
-      .toBeGreaterThan(movedCount(DENSE, moveNode(DENSE, 0, 3, 0)));
+    expect(movedCount(DENSE, moveNode(DENSE, 0, 12, 0, SOFT)))
+      .toBeGreaterThan(movedCount(DENSE, moveNode(DENSE, 0, 3, 0, SOFT)));
   });
 
   test("the far side of the ring never moves, so a pull can never become a MOVE", () => {
@@ -452,7 +456,7 @@ describe("proportional dragging (dense, auto-traced rings)", () => {
     // a translated shape gets a new centroid, and the centroid is what makes
     // shape ids stable across a re-digitize. However hard this is pulled, the
     // opposite side of the ring has to stay put.
-    const out = moveNode(DENSE, 0, 500, 500);
+    const out = moveNode(DENSE, 0, 500, 500, SOFT);
     const opposite = out[60];
     expect(Math.hypot(opposite[0] - DENSE[60][0], opposite[1] - DENSE[60][1])).toBe(0);
     expect(movedCount(DENSE, out)).toBeLessThan(DENSE.length);
@@ -461,14 +465,76 @@ describe("proportional dragging (dense, auto-traced rings)", () => {
   test("even a tiny nudge moves a sewable stretch, not a needle", () => {
     // Below the floor the added area is too thin to hold a fill row, which is
     // the failure this whole mechanism exists to prevent.
-    expect(movedCount(DENSE, moveNode(DENSE, 0, 0.2, 0))).toBeGreaterThan(2);
+    expect(movedCount(DENSE, moveNode(DENSE, 0, 0.2, 0, SOFT))).toBeGreaterThan(2);
   });
 
   test("moveEdge pulls from BOTH endpoints and keeps them exactly together", () => {
-    const out = moveEdge(DENSE, 0, 0, 4);
+    const out = moveEdge(DENSE, 0, 0, 4, SOFT);
     expect(out[0][1] - DENSE[0][1]).toBeCloseTo(4, 9);
     expect(out[1][1] - DENSE[1][1]).toBeCloseTo(4, 9);
     expect(movedCount(DENSE, out)).toBeGreaterThan(10);
+  });
+});
+
+// The default rule (2026-11-03): a FIXED 3mm neighbourhood, whatever the drag.
+// Kent's Instagram outer ring has nodes ~5mm apart; the 2x-drag pull moved 9 of
+// 36 of them on an 11mm drag ("the entire spline seems to follow").
+describe("default drag: fixed 3mm neighbourhood", () => {
+  // 36-gon whose chord length is 5mm: radius = 5 / (2 sin(pi/36)).
+  const R5 = 5 / (2 * Math.sin(Math.PI / 36));
+  const SPARSE = Array.from({ length: 36 }, (_, i) => {
+    const a = (2 * Math.PI * i) / 36;
+    return [R5 * Math.cos(a), R5 * Math.sin(a)];
+  });
+
+  test("a 5mm-spaced ring moves exactly ONE vertex at 1, 11 and 50mm", () => {
+    for (const d of [1, 11, 50]) {
+      const out = moveNode(SPARSE, 0, d, 0);
+      expect(movedCount(SPARSE, out)).toBe(1);
+      expect(out[0][0] - SPARSE[0][0]).toBeCloseTo(d, 9);
+    }
+  });
+
+  test("a ~1mm-spaced ring still moves a small stretch, the grabbed vertex in full", () => {
+    const out = moveNode(DENSE, 0, 6, 0);
+    const n = movedCount(DENSE, out);
+    expect(n).toBeGreaterThan(2);
+    expect(n).toBeLessThan(10);
+    expect(out[0][0] - DENSE[0][0]).toBeCloseTo(6, 9);
+  });
+
+  test("the far side never moves, however hard the pull", () => {
+    const out = moveNode(DENSE, 0, 500, 500);
+    expect(Math.hypot(out[60][0] - DENSE[60][0], out[60][1] - DENSE[60][1])).toBe(0);
+    expect(movedCount(DENSE, out)).toBeLessThan(DENSE.length);
+  });
+
+  test("the neighbourhood does not widen with the drag", () => {
+    expect(movedCount(DENSE, moveNode(DENSE, 0, 50, 0)))
+      .toBe(movedCount(DENSE, moveNode(DENSE, 0, 1, 0)));
+  });
+
+  test("moveEdge: both endpoints take the full delta", () => {
+    const out = moveEdge(SPARSE, 0, 0, 7);
+    expect(out[0][1] - SPARSE[0][1]).toBeCloseTo(7, 9);
+    expect(out[1][1] - SPARSE[1][1]).toBeCloseTo(7, 9);
+    expect(movedCount(SPARSE, out)).toBe(2);
+  });
+});
+
+describe("hitOverlay: nearest node wins", () => {
+  const TWO = [{ id: "s1", points: [[100, 100], [106, 100], [106, 160], [100, 160]] }];
+
+  test("pointer 2px from the second node of a close pair grabs the second", () => {
+    expect(hitOverlay(TWO, 108, 100)).toMatchObject({ kind: "node", index: 1 });
+  });
+
+  test("pointer 2px from the first grabs the first", () => {
+    expect(hitOverlay(TWO, 98, 100)).toMatchObject({ kind: "node", index: 0 });
+  });
+
+  test("an exact tie goes to the lower index", () => {
+    expect(hitOverlay(TWO, 103, 100)).toMatchObject({ kind: "node", index: 0 });
   });
 });
 

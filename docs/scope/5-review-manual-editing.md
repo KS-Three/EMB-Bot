@@ -287,6 +287,42 @@ overlay drew a large, obvious spike over unchanged stitching.
   still write the same `boundary_override` key, so nothing downstream can
   tell them apart.
 
+**A node drag now moves THAT node — 2026-11-03 (PR #NNNN).** Kent, dragging one
+node of his Instagram icon (63 x 52 mm, outer purple ring, nodes ~5 mm apart):
+*"When i move one, the entire spline seems to follow."* Not a bug: it was the
+2026-08-13 rule above, tuned on the owl's 1.3 mm-spaced outline and applied to
+every ring. Measured with the real `moveNode` on a 52 mm rounded square at 5 mm
+spacing: an 11 mm drag moved 9 of 36 nodes, 53 mm of boundary, 28% of the ring;
+a 3 mm nudge 3 nodes; a 1 mm nudge 1 node over 11 mm. At 5 mm spacing a
+one-vertex move is already a fillable triangle; the needle only exists when
+nodes sit closer than a fill row can turn in (~1-2 mm), so the pull should key
+on node spacing, not on how far the user dragged.
+- **The rule (Kent's rulings 1-4, 2026-11-03).** `pullRing` radius is now a
+  FIXED `min(3 mm, 25% of perimeter)`, no drag-distance term, same raised-cosine
+  falloff and max-weight merge. **Hold Alt while dragging for the old soft pull**
+  (`{ soft: true }`: `min(max(3, 2 x drag), 25%)`) on a dense photo outline; Alt
+  already means "unconstrained" on this canvas. `moveEdge` follows the same rule
+  with both endpoints as seeds. **`hitOverlay` now grabs the NEAREST node within
+  `NODE_GRAB_PX`, ties to the lower index**, not the first found: on a ring with
+  nodes under 9 px apart the grab used to land on a neighbour of the one under
+  the pointer. The hand-drawn lane (`fieldNodeEdit.js`) never used `pullRing`.
+- **Cost, measured on the owl it was tuned for.** `owl_kent.jpg` at 80 mm wide,
+  largest region (499 vertices after the Studio's 500-point thin, 1.23 mm
+  spacing, 615 mm perimeter), one vertex pulled 6 mm outward, restitched
+  through `digitize()` with that ring as its `boundary_override`; stitches of
+  that shape inside new-minus-old polygon: **soft (Alt, the old rule) 73 stitches
+  in 26.4 mm² (25 vertices moved); new default 42 in 7.7 mm² (5 moved); bare
+  one-vertex move 26 in 7.4 mm² (1 moved).** The default keeps 42 of the soft
+  pull's 73 in under a third of its area; a bare move is no longer the
+  zero-stitch needle of 2026-08-13 (the engine has changed since), so the
+  2026-08-13 counts above (1x 11, 2x 31, 3x 27) are a different instrument and
+  are not comparable to these three. Kent accepted the cost.
+- **Rendered, real Studio + real service.** `two-squares.png`, black square's
+  corner dragged ~10 mm: the committed `boundary_override` is 4 points and
+  exactly **1 differs** from the original ring (delta 7.16, -7.16 mm). Instagram
+  icon (not committed): one outer-ring node dragged ~10 mm up-right draws a
+  single tent on that node, neighbours untouched.
+
 **Kent ruled, 2026-08-12 — requirement 5 (dragging a whole shape) is OUT OF
 SCOPE.** He first asked for it ("moved or dragged around, similar to how
 clipart would work"), then withdrew it the same day once the cost surfaced.

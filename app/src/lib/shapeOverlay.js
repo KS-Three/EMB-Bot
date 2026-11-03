@@ -320,9 +320,15 @@ function distToSegment(px, py, ax, ay, bx, by) {
  * two edges, so a distance comparison would hand a dead-centre node hit to
  * whichever edge happened to round smaller, and dragging a node is both the
  * more common intent and the harder target.
+ *
+ * Among the nodes within `NODE_GRAB_PX` the NEAREST wins (ties: the lower
+ * index, then the earlier outline) — not the first found. On a ring whose nodes
+ * sit under 9 px apart on screen, first-found grabbed a neighbour of the node
+ * under the pointer (2026-11-03).
  */
 export function hitOverlay(outlinesPx, px, py) {
   let bestEdge = null;
+  let bestNode = null;
   for (const o of outlinesPx) {
     const pts = o.points;
     // An OPEN outline is a stretch of thread, not a ring: it has no nodes to
@@ -330,8 +336,8 @@ export function hitOverlay(outlinesPx, px, py) {
     if (!o.open) {
       for (let i = 0; i < pts.length; i++) {
         const d = Math.hypot(px - pts[i][0], py - pts[i][1]);
-        if (d <= NODE_GRAB_PX) {
-          return { shapeId: o.id, kind: "node", index: i, atPx: [pts[i][0], pts[i][1]] };
+        if (d <= NODE_GRAB_PX && (!bestNode || d < bestNode.d)) {
+          bestNode = { d, hit: { shapeId: o.id, kind: "node", index: i, atPx: [pts[i][0], pts[i][1]] } };
         }
       }
     }
@@ -345,6 +351,7 @@ export function hitOverlay(outlinesPx, px, py) {
       }
     }
   }
+  if (bestNode) return bestNode.hit;
   if (!bestEdge) return null;
   const { dist, ...hit } = bestEdge;
   return hit;
@@ -413,16 +420,28 @@ function ringArea(pts) {
 // vertices either side" means nothing across shapes). Same edit through the
 // same `boundary_override` key; only the ring handed to it changes.
 //
-// The radius follows the DRAG ITSELF (`PULL_RADIUS_PER_MM` × distance
-// dragged): pull a node a little and the change stays local, pull it far and
-// the boundary yields over a matching stretch — the rubber-sheet behaviour the
-// name borrows. Swept against the pipeline on the same fixture at a 6 mm pull:
-// 1x radius put 11 stitches in the new area, 2x put 31, 3x put 27 (a wider,
-// shallower bulge starts losing rows again). 2x it is.
+// The first rule made the radius follow the DRAG ITSELF (`PULL_RADIUS_PER_MM`
+// × distance dragged), floored at 3 mm. Swept against the pipeline on the same
+// fixture at a 6 mm pull: 1x radius put 11 stitches in the new area, 2x put
+// 31, 3x put 27 (a wider, shallower bulge starts losing rows again). 2x shipped.
+//
+// 2026-11-03, and why the DEFAULT is no longer that: it was tuned on ONE dense
+// outline and applied to every digitized ring. Kent dragged one node of his
+// Instagram icon's outer ring (63 x 52 mm, nodes ~5 mm apart) and "the entire
+// spline seems to follow". Measured with this module's real `moveNode`: an
+// 11 mm drag moved 9 of 36 nodes — 53 mm of boundary, 28% of the ring; a 3 mm
+// nudge moved 3 nodes, a 1 mm nudge still 1 node over 11 mm. At 5 mm spacing a
+// one-vertex move is already a fillable triangle; the needle only exists when
+// nodes sit closer than a fill row can turn in (~1-2 mm). So the neighbourhood
+// keys on NODE SPACING — a FIXED 3 mm of arc (`PULL_RADIUS_MM`) — and not on
+// how far the user dragged, which is the thing they are trying to control.
+// At 5 mm spacing that moves exactly the grabbed vertex; at the owl's 1.3 mm it
+// still takes a neighbour either side. Holding Alt (`soft: true`) keeps the old
+// 2x-drag pull for dense photo outlines.
 const PULL_RADIUS_PER_MM = 2;
-// Floor, mm: even a 0.5 mm nudge should move a stretch of boundary wide enough
-// to sew rather than a needle nothing can fill.
-const PULL_RADIUS_FLOOR_MM = 3;
+// Fixed radius of the default rule, mm. Also the floor of the soft (Alt) rule:
+// even a 0.5 mm nudge should move a stretch of boundary wide enough to sew.
+const PULL_RADIUS_MM = 3;
 // Ceiling, as a share of the ring's own perimeter. Without it a large pull on
 // a small shape reaches every vertex at once and the shape TRANSLATES — which
 // is requirement 5, and Kent ruled it out of scope on 2026-08-12 (a moved
@@ -449,13 +468,13 @@ function ringPerimeter(points) {
  * boundary smooth where the moved stretch meets the anchored one, and a linear
  * ramp puts a visible crease (and a stitch-angle discontinuity) at both ends.
  */
-function pullRing(points, seeds, dx, dy) {
+function pullRing(points, seeds, dx, dy, { soft = false } = {}) {
   const n = points.length;
   if (!n) return [];
-  const radius = Math.min(
-    Math.max(PULL_RADIUS_FLOOR_MM, Math.hypot(dx, dy) * PULL_RADIUS_PER_MM),
-    ringPerimeter(points) * PULL_RADIUS_MAX_FRACTION
-  );
+  const wanted = soft
+    ? Math.max(PULL_RADIUS_MM, Math.hypot(dx, dy) * PULL_RADIUS_PER_MM)
+    : PULL_RADIUS_MM;
+  const radius = Math.min(wanted, ringPerimeter(points) * PULL_RADIUS_MAX_FRACTION);
   const weight = new Array(n).fill(0);
   for (const s of seeds) weight[s] = 1;
   // Half the ring in each direction at most, so a walk can never reach a
@@ -484,8 +503,8 @@ function pullRing(points, seeds, dx, dy) {
  * Drag one vertex, carrying the boundary near it along. Returns a new ring;
  * never mutates. See the comment above for why this is not a one-vertex move.
  */
-export function moveNode(points, index, dx, dy) {
-  return pullRing(points, [index], dx, dy);
+export function moveNode(points, index, dx, dy, opts) {
+  return pullRing(points, [index], dx, dy, opts);
 }
 
 /**
@@ -496,9 +515,9 @@ export function moveNode(points, index, dx, dy) {
  * line drag reshapes the boundary either side of the line rather than leaving
  * two creases where the moved segment meets its neighbours.
  */
-export function moveEdge(points, index, dx, dy) {
+export function moveEdge(points, index, dx, dy, opts) {
   const j = (index + 1) % points.length;
-  return pullRing(points, [index, j], dx, dy);
+  return pullRing(points, [index, j], dx, dy, opts);
 }
 
 /**
