@@ -434,7 +434,12 @@ class PipelineConfig:
     # clears it, on the design if one is near; no garment known, nothing
     # moves. 15 sits between PRECISION's 7.7 and Fremont's tan, which reads at
     # 21.4; one line of evidence, not a census. OFF is the engine as it stood.
-    lettering_stray_word_thread: bool = False
+    # **The stray rule is ON since 2026-11-02, Kent's flip** ("Stray only"): on the
+    # 16-pair board at a light garment only Drone moves (AND DRONE 0.00 -> +1.00).
+    # The floor stays OFF: on a black garment it recoloured dark letters off the
+    # art (Becker beanie 10+ cc 1.00 -> 0.59, +6 trims in letters). False is the
+    # engine as it was; `tests/conftest.py` PRE_FLIP pins it False.
+    lettering_stray_word_thread: bool = True
     lettering_contrast_floor: bool = False
     lettering_contrast_floor_de00: float = 15.0
     seed: int = 0                      # k-means RNG seed — fixed for determinism

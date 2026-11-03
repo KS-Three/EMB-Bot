@@ -1,5 +1,6 @@
 """`cfg.lettering_stray_word_thread` + `cfg.lettering_contrast_floor` (built OFF
-2026-11-01): Precision Drone's lettering gap was thread, not construction.
+2026-11-01; the stray rule ON 2026-11-02, the floor still OFF): Precision Drone's
+lettering gap was thread, not construction.
 
 Pinned, load-bearing first: OFF moves nothing; no garment colour moves nothing;
 a stated colour is never moved; a stray joins only a near thread on its own
@@ -48,9 +49,9 @@ def test_off_moves_nothing():
     pale, mid = spool(85), spool(58)
     regions = word(pale) + [region("A", 0.0, mid, small_text_stray=True)]
     before = [r.thread_index for r in regions]
-    assert PipelineConfig().lettering_stray_word_thread is False
+    assert PipelineConfig().lettering_stray_word_thread is True  # Kent's flip, 2026-11-02
     assert PipelineConfig().lettering_contrast_floor is False
-    apply_lettering_thread(regions, CHART, cfg(), {})
+    apply_lettering_thread(regions, CHART, cfg(lettering_stray_word_thread=False), {})
     assert [r.thread_index for r in regions] == before
 
 
