@@ -287,7 +287,7 @@ overlay drew a large, obvious spike over unchanged stitching.
   still write the same `boundary_override` key, so nothing downstream can
   tell them apart.
 
-**A node drag now moves THAT node — 2026-11-03 (PR #NNNN).** Kent, dragging one
+**A node drag now moves THAT node — 2026-11-03 (PR #1224).** Kent, dragging one
 node of his Instagram icon (63 x 52 mm, outer purple ring, nodes ~5 mm apart):
 *"When i move one, the entire spline seems to follow."* Not a bug: it was the
 2026-08-13 rule above, tuned on the owl's 1.3 mm-spaced outline and applied to

@@ -1767,7 +1767,7 @@ flattery. Anything unlisted raises `NotInManifest`.
   one-vertex 26 in 7.4 mm². The 2026-08-13 counts (1x 11, 2x 31, 3x 27) and
   these are not the same instrument — the engine has since changed (a bare
   one-vertex pull now sews 26, then 0) — so compare the three arms, never one
-  against the old table. *(measured 2026-11-03 — PR #NNNN,
+  against the old table. *(measured 2026-11-03 — PR #1224,
   `docs/scope/5-review-manual-editing.md`)*
 
 - **Satin density is a needle every `SATIN_SPACING_MM` on EACH rail — count
