@@ -615,9 +615,9 @@
   // both the export and the delete.
   let saveFailed = false;
 
-  function persist(record = true) {
+  function persist(record = true, discrete = false) {
     if (record) {
-      history.record(project);
+      history.record(project, undefined, discrete);
       syncHistoryFlags();
     }
     const ok = saveProject(currentId, project);
@@ -660,9 +660,9 @@
   // reclamp "elupdate" events and by ContentStep's element-scoped TextStep/
   // ImagePanel/SizePanel controls (see ContentStep.svelte), which all funnel
   // their patches through this same { id, patch } shape.
-  function elUpdate(id, patch, record = true) {
+  function elUpdate(id, patch, record = true, discrete = false) {
     project = updateElement(project, id, patch);
-    persist(record);
+    persist(record, discrete);
   }
 
   // Multi-select group edits (EmbroideryField's group move/resize and
@@ -1307,7 +1307,7 @@
       focusShape={selectedShape}
       on:shapehover={(e) => (hoverShape = e.detail)}
       on:shapefocus={(e) => (selectedShape = e.detail)}
-      on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet)}
+      on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet, !!e.detail.discrete)}
       on:elupdatemany={(e) => elUpdateMany(e.detail)}
       on:select={(e) => onSelect(e.detail)}
       on:toggleselect={(e) => onToggleSelect(e.detail)}

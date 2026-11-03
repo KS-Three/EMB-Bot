@@ -1063,6 +1063,12 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   color: var(--muted);
 }
 .shapepop-note.warn { color: var(--warn-text); }
+.shapepop-points {
+  margin: 2px 0 4px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--muted, #667);
+  font-variant-numeric: tabular-nums;
+}
 
 .fieldmeta { min-height: 1.25rem; font-size: var(--fs-md); }
 

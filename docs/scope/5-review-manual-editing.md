@@ -323,6 +323,31 @@ on node spacing, not on how far the user dragged.
   icon (not committed): one outer-ring node dragged ~10 mm up-right draws a
   single tent on that node, neighbours untouched.
 
+**Reshape mode: edit many points at once, across shapes — 2026-11-03 (PR #1225).**
+Kent: *"I need the UI to be much easier to use, so i can edit specific shapes,
+borders and boundaries very precisely."* PR 2 of the node-reshape spec
+(`docs/superpowers/specs/2026-11-03-digitized-node-reshape-design.md`, section 4;
+rulings 2, 4, 6, 7). "Edit points" in the shape popover (now reading "Done") turns
+the mode on for the element, on BOTH lanes. In it a bare drag is a marquee over the
+points of every shape of the element, so a seam (two shapes' coincident edges,
+which stage 5 clips or hides when only one moves) moves as one gesture; a drag on
+a selected point moves them all; arrows nudge them 0.1 mm (Shift 1 mm); Delete
+removes them per ring (refusing at three); right-click a point offers "Delete
+point" / "Select all points"; Esc leaves. One gesture = one patch = one undo step,
+across every touched shape (`elupdate.discrete` keeps `history.js` from merging
+quick presses). `DigitizePanel`'s SVG boundary editor is retired. Not built here:
+holes (`holes_override`, PR 4) and Simplify (PR 3).
+- **Rendered, real Studio + real service.** `two-squares.png`, Edit points, a
+  marquee over the black square's two right-hand vertices, dragged 8 mm right (26.2 px = 7.9 mm): the committed `shapeOverrides` holds ONE `boundary_override` of 4 points and exactly **2 vertices differ (dx +7.903 mm, dy 0.000 each)**; the other two vertices and the other shapes are untouched *(measured 2026-11-03 — real Studio + service, scratch spec; screenshots in the session scratchpad)*.
+- **Pinned by.** `shapeOverlay.spec.js`, `fieldNodeEdit.spec.js`,
+  `shapePopover.spec.js`, `history.spec.js`; `app/e2e/field-reshape-mode.spec.js`
+  (a), (b) three arrow presses move two vertices 0.3 mm each and undo in three
+  steps, (c) Delete and the three-point refusal, (f) a bare drag outside the mode
+  still moves the element, (g) hand-drawn marquee + drag with the neighbour's
+  stitches unmoved; `digitize-boundary-edit.spec.js` re-pointed at the hoop canvas.
+- **Cost / catch.** The panel's "Reset to auto" for a boundary edit went with the
+  editor: Undo is the way back until the Simplify / holes work gives it a home.
+
 **Kent ruled, 2026-08-12 — requirement 5 (dragging a whole shape) is OUT OF
 SCOPE.** He first asked for it ("moved or dragged around, similar to how
 clipart would work"), then withdrew it the same day once the cost surfaced.

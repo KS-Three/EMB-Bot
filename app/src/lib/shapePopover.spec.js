@@ -372,3 +372,29 @@ describe("a line (run)", () => {
     expect(popoverPatch({ ...ctx, shapeId: "s1" }, "stitchLenMm", "1")).toBeNull();
   });
 });
+
+describe("Reshape mode rows", () => {
+  test("a digitized shape carries Points: N — the ring's count, the pending edit's when there is one", () => {
+    const ring = [[0, 0], [10, 0], [10, 10], [0, 10], [5, -1]];
+    const el = { ...digitizedEl, review: { ...digitizedEl.review, shapes: [{ ...digitizedEl.review.shapes[0], outlineFull: ring }, digitizedEl.review.shapes[1]] } };
+    expect(popoverModel({ element: el, shapeId: "Sabc" }).points).toBe(5);
+    const edited = { ...el, shapeOverrides: { Sabc: { boundary_override: ring.concat([[2, 12], [3, 13]]) } } };
+    expect(popoverModel({ element: edited, shapeId: "Sabc" }).points).toBe(7);
+    // no outline on the row: no line at all, not "Points: 0"
+    expect(popoverModel({ element: digitizedEl, shapeId: "Sdef" }).points).toBeNull();
+  });
+
+  test("Edit points reads Done while the mode is on, on every lane; the key is unchanged", () => {
+    for (const [element, shapeId] of [[digitizedEl, "Sabc"], [manualEl, "s1"]]) {
+      const off = popoverModel({ element, shapeId }).rows.find((r) => r.key === "editPoints");
+      const on = popoverModel({ element, shapeId, reshaping: true }).rows.find((r) => r.key === "editPoints");
+      expect(off.label).toBe("Edit points");
+      expect(on.label).toBe("Done");
+      expect(on.key).toBe("editPoints");
+    }
+  });
+
+  test("a hand-drawn shape has no Points line (its anchors are authored)", () => {
+    expect(popoverModel({ element: manualEl, shapeId: "s1" }).points).toBeUndefined();
+  });
+});

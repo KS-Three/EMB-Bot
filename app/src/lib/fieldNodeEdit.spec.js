@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { createRequire } from "node:module";
 import {
   pxToFieldMm, fieldMmToPx, authoredInFieldMm, hitAuthored,
-  applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, clampMmToBox,
+  applyAnchorDrag, applyAnchorsDrag, applyHandleDrag, insertAnchor, removeAnchor, removeAnchors, editedElementPatch, editedShapesPatch, clampMmToBox,
   breaksContainment, ringInsideBox, cutOutOutlinesInFieldMm, CUTOUT_HOLD_HINT, refitShapesPatch,
   columnWidthMm, withColumnWidthMm, columnSewnMm, predictedFit, newColumnWidthPx,
   convertOpenShape,
@@ -708,5 +708,77 @@ describe("lines — the re-fit rule and run <-> column, through the real engine"
     const d2 = gen({ ...asCol, ...back });
     expect(kindsOf(d2, "r1")).toEqual(["run"]);
     expect(d2.fit.mmPerPx).toBeCloseTo(d1.fit.mmPerPx, 12);
+  });
+});
+
+describe("Reshape mode: several anchors at once", () => {
+  test("applyAnchorsDrag moves each chosen anchor by the delta, others stay, never mutates", () => {
+    const before = JSON.stringify(shapeA);
+    const out = applyAnchorsDrag(shapeA, [0, 1], { dx: 10, dy: -5 });
+    expect(JSON.stringify(shapeA)).toBe(before);
+    expect(out.points[0]).toEqual({ x: 110, y: 95 });
+    expect(out.points[1]).toEqual({ x: 210, y: 95 });
+    expect(out.points[2]).toEqual(shapeA.points[2]);
+    expect(out.points[3]).toEqual(shapeA.points[3]);
+    expect(applyAnchorsDrag(shapeA, [], { dx: 1, dy: 1 })).toBe(shapeA);
+    expect(applyAnchorsDrag(shapeA, [9], { dx: 1, dy: 1 })).toBe(shapeA);
+  });
+
+  test("the box clamp is applied to each anchor", () => {
+    const clamp = (p) => ({ x: Math.min(p.x, 205), y: p.y });
+    const out = applyAnchorsDrag(shapeA, [1, 2], { dx: 50, dy: 0 }, clamp);
+    expect(out.points[1].x).toBe(205);
+    expect(out.points[2].x).toBe(205);
+  });
+
+  test("a two-shape drag commits through the re-fit rule as ONE patch, the unedited points still", () => {
+    const e = el([shapeA, shapeB]);
+    const a2 = applyAnchorsDrag(shapeA, [0, 3], { dx: -20, dy: 0 });
+    const b2 = applyAnchorsDrag(shapeB, [0], { dx: 0, dy: 15 });
+    const patch = editedShapesPatch(e, fit, [a2, b2]);
+    expect(patch.error).toBeUndefined();
+    expect(patch.shapes[0]).toBe(a2);
+    expect(patch.shapes[1]).toBe(b2);
+    // the same rule the single-shape edit follows, for the first shape alone
+    const one = editedElementPatch(e, fit, "s1", a2);
+    expect(Object.keys(patch).sort()).toEqual(Object.keys(one).sort());
+    expect(editedShapesPatch(e, fit, [a2]).sizeMm).toBeCloseTo(one.sizeMm, 9);
+  });
+
+  test("one bad shape refuses the lot and names which", () => {
+    const e = el([shapeA, shapeB]);
+    const bad = { ...shapeB, points: shapeB.points.slice(0, 2) };
+    const patch = editedShapesPatch(e, fit, [applyAnchorsDrag(shapeA, [0], { dx: 1, dy: 1 }), bad]);
+    expect(patch.error).toBe("Needs at least 3 points.");
+    expect(patch.shapeId).toBe("s2");
+    expect(editedElementPatch(e, fit, "s2", bad)).toEqual({ error: "Needs at least 3 points." });
+  });
+
+  test("the containment guard holds the whole gesture", () => {
+    const big = { id: "p", points: sq(100, 100, 200), curves: {}, stitchType: "fill", colorRgb: [0, 0, 0], angleDeg: null };
+    const hole = withCutOut({ id: "c", points: sq(150, 150, 40), curves: {}, stitchType: "fill", colorRgb: [0, 0, 0], angleDeg: null }, true);
+    const e = el([big, hole]);
+    // moving the cut-out out of its parent, together with a harmless move of another anchor
+    const out = applyAnchorsDrag(hole, [0, 1, 2, 3], { dx: 400, dy: 0 });
+    const patch = editedShapesPatch(e, fit, [out, applyAnchorsDrag(big, [0], { dx: 1, dy: 0 })]);
+    expect(patch).toEqual({ error: CUTOUT_HOLD_HINT });
+    expect(breaksContainment(e.shapes, [big, out])).toBe(true);
+  });
+
+  test("removeAnchors drops several anchors, curves shifting as removeAnchor does", () => {
+    const pent = { id: "q", points: [...sq(0, 0, 100), { x: 50, y: 150 }], curves: { 3: { x: 10, y: 120 }, 4: { x: 30, y: 140 } } };
+    const one = removeAnchor(removeAnchor(pent, 4), 1);
+    const both = removeAnchors(pent, [1, 4]);
+    expect(both.points).toEqual(one.points);
+    expect(both.curves).toEqual(one.curves);
+    expect(removeAnchors(pent, [4, 1, 1]).points).toEqual(one.points);       // order and repeats do not matter
+  });
+
+  test("multi-anchor delete refuses at the floor and removes nothing", () => {
+    expect(removeAnchors(shapeA, [0, 1])).toBeNull();                          // 4 - 2 = 2 < 3
+    expect(removeAnchors(shapeA, [0])).not.toBeNull();
+    const colm = col("c1", [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }], 20);
+    expect(removeAnchors(colm, [0, 1])).toBeNull();                            // a column keeps 2
+    expect(removeAnchors(colm, [1]).points).toHaveLength(2);
   });
 });

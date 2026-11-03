@@ -107,6 +107,11 @@
     on:pointerup={onHeadUp}
     on:pointercancel={onHeadUp}
   ><span class="shapepop-grip" aria-hidden="true">⋮⋮</span>{model.name}</div>
+  {#if model.points != null}
+    <!-- A count, not a control: how many vertices the ring has (Reshape mode
+         edits them; "Edit points" below enters it). -->
+    <p class="shapepop-points" data-testid="shapepop-points">Points: {model.points}</p>
+  {/if}
   {#if model.similar}
     <!-- Scope first: it decides what every row below does. The count is every
          shape the edit will touch, this one included; the field outlines them

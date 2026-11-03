@@ -12,6 +12,7 @@ import { resolveCutOuts, manualShapeName, withCutOut, isColumn, isRun, runPath }
 import { columnWidthMm, withColumnWidthMm, columnSewnMm } from "./fieldNodeEdit.js";
 import { STITCH_WIDTH_MAX_MM } from "./digitizer.js";
 import { isCapPieceId, capPieceRow } from "./capPieces.js";
+import { outlineOf } from "./shapeOverlay.js";
 
 const LANES = new Set(["digitized", "manual", "shape"]);
 
@@ -148,9 +149,17 @@ export function runRows(shape, fit) {
 // `similar` (digitized lane only) is similarShapes.similarShapeIds' answer for
 // this shape; the model carries it as { count, ids } when the shape has company,
 // so the popover can offer "Apply to all similar shapes (N)" — else null.
-export function popoverModel({ element, shapeId, fit, fabric, similar }) {
+//
+// `reshaping` (Reshape mode is on for this element): the "Edit points" action
+// reads "Done" and leaves the mode instead of entering it. A digitized shape's
+// model also carries `points`, its vertex count (the pending boundary edit's
+// when there is one), for the read-only "Points: N" line.
+export function popoverModel({ element, shapeId, fit, fabric, similar, reshaping = false }) {
   const m = baseModel({ element, shapeId, fit, fabric });
   if (!m) return m;
+  if (reshaping) {
+    for (const r of m.rows) if (r.key === "editPoints") r.label = "Done";
+  }
   m.similar = m.lane === "digitized" && !isCapPieceId(shapeId) && Array.isArray(similar) && similar.length > 1
     ? { count: similar.length, ids: similar }
     : null;
@@ -247,7 +256,9 @@ function baseModel({ element, shapeId, fit, fabric }) {
   out.push({ key: "border", kind: "choice", label: "Border", value: entry.border == null ? "default" : entry.border, options: BORDER_OPTIONS(element.params ? element.params.border : null) });
   out.push({ key: "editPoints", kind: "action", label: "Edit points" });
   out.push({ key: "delete", kind: "action", label: "Delete shape", danger: true });
-  return { lane, shapeId, name: digitizedName(row), rows: out };
+  const pending = Array.isArray(entry.boundary_override) && entry.boundary_override.length >= 3 ? entry.boundary_override : null;
+  const ring = pending || outlineOf(row);
+  return { lane, shapeId, name: digitizedName(row), points: ring ? ring.length : null, rows: out };
 }
 
 // ---- patches ----------------------------------------------------------------
