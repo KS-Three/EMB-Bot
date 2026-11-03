@@ -1,0 +1,1649 @@
+{
+ "corner_fold_off": {
+  "stratum": "construction",
+  "active": [
+   "mfab_hat",
+   "proseal_hat",
+   "toat_machine_hat",
+   "mfab_lc",
+   "proseal_beanie",
+   "bukit_asam",
+   "jakarta",
+   "k_line"
+  ],
+  "identical": [
+   "but_seriously",
+   "hed_p_e",
+   "ahora",
+   "dot_music",
+   "n_sync",
+   "and_pizza"
+  ],
+  "per_logo": {
+   "mfab_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 0.9729046067033127,
+      "arm": 0.973141300116777,
+      "delta": 0.00023669341346432837
+     },
+     "flow_circvar": {
+      "base": 0.2321223161789659,
+      "arm": 0.23059168267033112,
+      "delta": -0.0015306335086347767
+     },
+     "long_share": {
+      "base": 0.00019496977968414895,
+      "arm": 0.00019501730778606602,
+      "delta": 4.75281019170768e-08
+     },
+     "thread_density_whole": {
+      "base": 10.682989480226542,
+      "arm": 10.667195039540525,
+      "delta": -0.001478466370789889
+     }
+    },
+    "ok": true
+   },
+   "proseal_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 6.620428751576293,
+      "arm": 6.877799104286629,
+      "delta": 0.2573703527103355
+     },
+     "flow_circvar": {
+      "base": 0.5299027156314743,
+      "arm": 0.5149612461099315,
+      "delta": -0.014941469521542738
+     },
+     "long_share": {
+      "base": 0.04138150565016712,
+      "arm": 0.03990306946688207,
+      "delta": -0.0014784361832850534
+     },
+     "thread_density_whole": {
+      "base": 6.7814414101747,
+      "arm": 6.677264055890553,
+      "delta": -0.015362125539836097
+     }
+    },
+    "ok": true
+   },
+   "toat_machine_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.2189305209603054,
+      "arm": 1.219253604749788,
+      "delta": 0.0003230837894825367
+     },
+     "flow_circvar": {
+      "base": 0.1785942861996003,
+      "arm": 0.1774891012924873,
+      "delta": -0.0011051849071130049
+     },
+     "long_share": {
+      "base": 0.011576655514842547,
+      "arm": 0.011579730160416446,
+      "delta": 3.074645573898638e-06
+     },
+     "thread_density_whole": {
+      "base": 10.309126696626253,
+      "arm": 10.306763424465027,
+      "delta": -0.00022924077186860977
+     }
+    },
+    "ok": true
+   },
+   "mfab_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.105460977227504,
+      "arm": 1.161954296464339,
+      "delta": 0.05649331923683509
+     },
+     "flow_circvar": {
+      "base": 0.27751616814951807,
+      "arm": 0.2763077631875733,
+      "delta": -0.0012084049619447979
+     },
+     "long_share": {
+      "base": 0.00022145941756173182,
+      "arm": 0.00022170491076377343,
+      "delta": 2.4549320204160724e-07
+     },
+     "thread_density_whole": {
+      "base": 11.351298478747218,
+      "arm": 11.330405915951673,
+      "delta": -0.0018405438668238586
+     }
+    },
+    "ok": true
+   },
+   "proseal_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 5.700035625222657,
+      "arm": 6.607142857142858,
+      "delta": 0.9071072319202003
+     },
+     "flow_circvar": {
+      "base": 0.5225504898158593,
+      "arm": 0.5156499734270513,
+      "delta": -0.0069005163888079535
+     },
+     "long_share": {
+      "base": 0.00036003600360036,
+      "arm": 0.00018053800324968405,
+      "delta": -0.00017949800035067597
+     },
+     "thread_density_whole": {
+      "base": 6.738435446702837,
+      "arm": 6.66533394235195,
+      "delta": -0.010848438770257367
+     }
+    },
+    "ok": true
+   },
+   "bukit_asam": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.216867469879518,
+      "arm": 4.224502112251057,
+      "delta": 0.007634642371538547
+     },
+     "flow_circvar": {
+      "base": 0.3572251907438274,
+      "arm": 0.3571193046073956,
+      "delta": -0.00010588613643180977
+     },
+     "long_share": {
+      "base": 0.001215066828675577,
+      "arm": 0.0012172854534388314,
+      "delta": 2.2186247632543805e-06
+     },
+     "thread_density_whole": {
+      "base": 6.515056552859233,
+      "arm": 6.50642750181564,
+      "delta": -0.0013244783024646916
+     }
+    },
+    "ok": true
+   },
+   "jakarta": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 5.601415094339623,
+      "arm": 5.5734819595189204,
+      "delta": -0.027933134820702143
+     },
+     "flow_circvar": {
+      "base": 0.5918014285037291,
+      "arm": 0.5782705227988842,
+      "delta": -0.013530905704844831
+     },
+     "long_share": {
+      "base": 0.037544696066746125,
+      "arm": 0.03557663800770827,
+      "delta": -0.0019680580590378527
+     },
+     "thread_density_whole": {
+      "base": 6.470225852088235,
+      "arm": 6.441519799864778,
+      "delta": -0.004436638361579233
+     }
+    },
+    "ok": true
+   },
+   "k_line": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.140786749482402,
+      "arm": 4.151961801951422,
+      "delta": 0.011175052469019953
+     },
+     "flow_circvar": {
+      "base": 0.51245651163441,
+      "arm": 0.5125796209076504,
+      "delta": 0.0001231092732404404
+     },
+     "long_share": {
+      "base": 0.017353125653355634,
+      "arm": 0.01740406793877123,
+      "delta": 5.094228541559567e-05
+     },
+     "thread_density_whole": {
+      "base": 7.307498320997018,
+      "arm": 7.28801255343984,
+      "delta": -0.002666544240070334
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": true,
+  "why": "as registered on 8 of 8 logos"
+ },
+ "italic_lean_off": {
+  "stratum": "construction",
+  "active": [
+   "proseal_hat",
+   "proseal_beanie"
+  ],
+  "identical": [
+   "mfab_hat",
+   "toat_machine_hat",
+   "mfab_lc",
+   "bukit_asam",
+   "but_seriously",
+   "hed_p_e",
+   "jakarta",
+   "k_line",
+   "ahora",
+   "dot_music",
+   "n_sync",
+   "and_pizza"
+  ],
+  "per_logo": {
+   "proseal_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 6.620428751576293,
+      "arm": 6.616257088846881,
+      "delta": -0.004171662729412162
+     },
+     "flow_circvar": {
+      "base": 0.5299027156314743,
+      "arm": 0.5296850737675041,
+      "delta": -0.00021764186397021934
+     },
+     "long_share": {
+      "base": 0.04138150565016712,
+      "arm": 0.04135517735008748,
+      "delta": -2.6328300079640765e-05
+     },
+     "thread_density_whole": {
+      "base": 6.7814414101747,
+      "arm": 6.781810632438596,
+      "delta": 5.444598597316922e-05
+     }
+    },
+    "ok": true
+   },
+   "proseal_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 5.700035625222657,
+      "arm": 5.688888888888889,
+      "delta": -0.011146736333768281
+     },
+     "flow_circvar": {
+      "base": 0.5225504898158593,
+      "arm": 0.5219700178779072,
+      "delta": -0.0005804719379520762
+     },
+     "long_share": {
+      "base": 0.00036003600360036,
+      "arm": 0.00017966223499820338,
+      "delta": -0.00018037376860215664
+     },
+     "thread_density_whole": {
+      "base": 6.738435446702837,
+      "arm": 6.739547662575157,
+      "delta": 0.0001650555060023965
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": false,
+  "why": "changes 2 of 14 logos; at least 3 are needed"
+ },
+ "text_lean_off": {
+  "stratum": "construction",
+  "active": [
+   "mfab_hat",
+   "proseal_hat",
+   "toat_machine_hat",
+   "mfab_lc",
+   "proseal_beanie",
+   "bukit_asam",
+   "jakarta",
+   "k_line",
+   "n_sync",
+   "and_pizza"
+  ],
+  "identical": [
+   "but_seriously",
+   "hed_p_e",
+   "ahora",
+   "dot_music"
+  ],
+  "per_logo": {
+   "mfab_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 0.9729046067033127,
+      "arm": 0.9710151963878234,
+      "delta": -0.0018894103154892816
+     },
+     "flow_circvar": {
+      "base": 0.2321223161789659,
+      "arm": 0.23660666779320852,
+      "delta": 0.0044843516142426265
+     },
+     "long_share": {
+      "base": 0.00019496977968414895,
+      "arm": 0.0001945903872348706,
+      "delta": -3.7939244927834704e-07
+     },
+     "thread_density_whole": {
+      "base": 10.682989480226542,
+      "arm": 10.694222540596904,
+      "delta": 0.0010514903521297544
+     }
+    },
+    "ok": true
+   },
+   "proseal_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 6.620428751576293,
+      "arm": 6.563525550867323,
+      "delta": -0.05690320070897048
+     },
+     "flow_circvar": {
+      "base": 0.5299027156314743,
+      "arm": 0.5470524970137025,
+      "delta": 0.017149781382228224
+     },
+     "long_share": {
+      "base": 0.04138150565016712,
+      "arm": 0.041022404544020195,
+      "delta": -0.00035910110614692514
+     },
+     "thread_density_whole": {
+      "base": 6.7814414101747,
+      "arm": 6.841375001748215,
+      "delta": 0.008837883858082547
+     }
+    },
+    "ok": true
+   },
+   "toat_machine_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.2189305209603054,
+      "arm": 1.2186721771843374,
+      "delta": -0.0002583437759680063
+     },
+     "flow_circvar": {
+      "base": 0.1785942861996003,
+      "arm": 0.17877827641742497,
+      "delta": 0.00018399021782466995
+     },
+     "long_share": {
+      "base": 0.011576655514842547,
+      "arm": 0.01157419697371914,
+      "delta": -2.458541123406821e-06
+     },
+     "thread_density_whole": {
+      "base": 10.309126696626253,
+      "arm": 10.312010014269442,
+      "delta": 0.00027968592568878035
+     }
+    },
+    "ok": true
+   },
+   "mfab_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.105460977227504,
+      "arm": 1.1036918492356933,
+      "delta": -0.001769127991810615
+     },
+     "flow_circvar": {
+      "base": 0.27751616814951807,
+      "arm": 0.27932848494229795,
+      "delta": 0.0018123167927798778
+     },
+     "long_share": {
+      "base": 0.00022145941756173182,
+      "arm": 0.0002211166390270868,
+      "delta": -3.427785346450272e-07
+     },
+     "thread_density_whole": {
+      "base": 11.351298478747218,
+      "arm": 11.358723082184127,
+      "delta": 0.00065407525410512
+     }
+    },
+    "ok": true
+   },
+   "proseal_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 5.700035625222657,
+      "arm": 5.61699139898192,
+      "delta": -0.08304422624073737
+     },
+     "flow_circvar": {
+      "base": 0.5225504898158593,
+      "arm": 0.5499632966636764,
+      "delta": 0.027412806847817106
+     },
+     "long_share": {
+      "base": 0.00036003600360036,
+      "arm": 0.000354735721887194,
+      "delta": -5.300281713165999e-06
+     },
+     "thread_density_whole": {
+      "base": 6.738435446702837,
+      "arm": 6.819556793377998,
+      "delta": 0.012038602627684776
+     }
+    },
+    "ok": true
+   },
+   "bukit_asam": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.216867469879518,
+      "arm": 4.191616766467066,
+      "delta": -0.025250703412452502
+     },
+     "flow_circvar": {
+      "base": 0.3572251907438274,
+      "arm": 0.3695424805766936,
+      "delta": 0.012317289832866174
+     },
+     "long_share": {
+      "base": 0.001215066828675577,
+      "arm": 0.0012073649260488982,
+      "delta": -7.701902626678844e-06
+     },
+     "thread_density_whole": {
+      "base": 6.515056552859233,
+      "arm": 6.525016981561899,
+      "delta": 0.0015288322705802732
+     }
+    },
+    "ok": true
+   },
+   "jakarta": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 5.601415094339623,
+      "arm": 5.232558139534884,
+      "delta": -0.36885695480473846
+     },
+     "flow_circvar": {
+      "base": 0.5918014285037291,
+      "arm": 0.6535085484835967,
+      "delta": 0.061707119979867664
+     },
+     "long_share": {
+      "base": 0.037544696066746125,
+      "arm": 0.03260869565217391,
+      "delta": -0.004936000414572213
+     },
+     "thread_density_whole": {
+      "base": 6.470225852088235,
+      "arm": 6.487671463885925,
+      "delta": 0.0026962910100054283
+     }
+    },
+    "ok": true
+   },
+   "k_line": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.140786749482402,
+      "arm": 3.8602194229987807,
+      "delta": -0.28056732648362104
+     },
+     "flow_circvar": {
+      "base": 0.51245651163441,
+      "arm": 0.5349377147618776,
+      "delta": 0.022481203127467597
+     },
+     "long_share": {
+      "base": 0.017353125653355634,
+      "arm": 0.012307692307692308,
+      "delta": -0.005045433345663326
+     },
+     "thread_density_whole": {
+      "base": 7.307498320997018,
+      "arm": 7.365302073442787,
+      "delta": 0.007910197157305952
+     }
+    },
+    "ok": true
+   },
+   "n_sync": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.1093854004881296,
+      "arm": 1.0692899914456802,
+      "delta": -0.04009540904244946
+     },
+     "flow_circvar": {
+      "base": 0.2989585002454599,
+      "arm": 0.42191847678329614,
+      "delta": 0.12295997653783625
+     },
+     "long_share": {
+      "base": 0.00044474093840338,
+      "arm": 0.0012858979854264896,
+      "delta": 0.0008411570470231095
+     },
+     "thread_density_whole": {
+      "base": 7.274135633709893,
+      "arm": 7.5387187806435385,
+      "delta": 0.03637313905826984
+     }
+    },
+    "ok": true
+   },
+   "and_pizza": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.8510900863842041,
+      "arm": 1.8233387358184765,
+      "delta": -0.02775135056572764
+     },
+     "flow_circvar": {
+      "base": 0.5497386158391303,
+      "arm": 0.5037945614340146,
+      "delta": -0.04594405440511573
+     },
+     "long_share": {
+      "base": 0.0020614306328592042,
+      "arm": 0.0020304568527918783,
+      "delta": -3.097378006732595e-05
+     },
+     "thread_density_whole": {
+      "base": 7.450175319116074,
+      "arm": 7.693920992486897,
+      "delta": 0.03271677013363799
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": true,
+  "why": "as registered on 10 of 10 logos"
+ },
+ "inside_stagger_off": {
+  "stratum": "construction",
+  "active": [
+   "mfab_hat",
+   "proseal_hat",
+   "toat_machine_hat",
+   "mfab_lc",
+   "proseal_beanie",
+   "bukit_asam",
+   "jakarta",
+   "k_line",
+   "dot_music",
+   "n_sync",
+   "and_pizza"
+  ],
+  "identical": [
+   "but_seriously",
+   "hed_p_e",
+   "ahora"
+  ],
+  "per_logo": {
+   "mfab_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 0.9729046067033127,
+      "arm": 0.9220615354751044,
+      "delta": -0.0508430712282083
+     },
+     "flow_circvar": {
+      "base": 0.2321223161789659,
+      "arm": 0.2290244136651716,
+      "delta": -0.0030979025137942984
+     },
+     "long_share": {
+      "base": 0.00019496977968414895,
+      "arm": 0.00024314335732347793,
+      "delta": 4.817357763932899e-05
+     },
+     "thread_density_whole": {
+      "base": 10.682989480226542,
+      "arm": 10.679485272330563,
+      "delta": -0.0003280175368949947
+     }
+    },
+    "ok": true
+   },
+   "proseal_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 6.620428751576293,
+      "arm": 6.473002841806125,
+      "delta": -0.14742590977016778
+     },
+     "flow_circvar": {
+      "base": 0.5299027156314743,
+      "arm": 0.5243690945900856,
+      "delta": -0.005533621041388659
+     },
+     "long_share": {
+      "base": 0.04138150565016712,
+      "arm": 0.040172166427546625,
+      "delta": -0.0012093392226204952
+     },
+     "thread_density_whole": {
+      "base": 6.7814414101747,
+      "arm": 6.7560701971068955,
+      "delta": -0.003741271439687997
+     }
+    },
+    "ok": true
+   },
+   "toat_machine_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.2189305209603054,
+      "arm": 1.2719275001324926,
+      "delta": 0.05299697917218715
+     },
+     "flow_circvar": {
+      "base": 0.1785942861996003,
+      "arm": 0.17594833902877302,
+      "delta": -0.0026459471708272786
+     },
+     "long_share": {
+      "base": 0.011576655514842547,
+      "arm": 0.011470447666082524,
+      "delta": -0.00010620784876002286
+     },
+     "thread_density_whole": {
+      "base": 10.309126696626253,
+      "arm": 10.297352675434583,
+      "delta": -0.0011420968563246826
+     }
+    },
+    "ok": true
+   },
+   "mfab_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.105460977227504,
+      "arm": 1.1081560283687943,
+      "delta": 0.0026950511412904277
+     },
+     "flow_circvar": {
+      "base": 0.27751616814951807,
+      "arm": 0.27601308653492457,
+      "delta": -0.0015030816145935044
+     },
+     "long_share": {
+      "base": 0.00022145941756173182,
+      "arm": 0.00022201254370871954,
+      "delta": 5.531261469877188e-07
+     },
+     "thread_density_whole": {
+      "base": 11.351298478747218,
+      "arm": 11.318530191407392,
+      "delta": -0.0028867435211202444
+     }
+    },
+    "ok": true
+   },
+   "proseal_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 5.700035625222657,
+      "arm": 5.704099821746881,
+      "delta": 0.004064196524223185
+     },
+     "flow_circvar": {
+      "base": 0.5225504898158593,
+      "arm": 0.510671895579993,
+      "delta": -0.011878594235866236
+     },
+     "long_share": {
+      "base": 0.00036003600360036,
+      "arm": 0.0001801477211313277,
+      "delta": -0.00017988828246903233
+     },
+     "thread_density_whole": {
+      "base": 6.738435446702837,
+      "arm": 6.685849600486736,
+      "delta": -0.007803865842750176
+     }
+    },
+    "ok": true
+   },
+   "bukit_asam": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.216867469879518,
+      "arm": 3.6122817579771223,
+      "delta": -0.6045857119023959
+     },
+     "flow_circvar": {
+      "base": 0.3572251907438274,
+      "arm": 0.33989036288046043,
+      "delta": -0.017334827863366986
+     },
+     "long_share": {
+      "base": 0.001215066828675577,
+      "arm": 0.0012143290831815423,
+      "delta": -7.377454940347798e-07
+     },
+     "thread_density_whole": {
+      "base": 6.515056552859233,
+      "arm": 6.467798144734619,
+      "delta": -0.00725372185815845
+     }
+    },
+    "ok": true
+   },
+   "jakarta": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 5.601415094339623,
+      "arm": 5.381165919282512,
+      "delta": -0.22024917505711095
+     },
+     "flow_circvar": {
+      "base": 0.5918014285037291,
+      "arm": 0.6205056926366096,
+      "delta": 0.02870426413288052
+     },
+     "long_share": {
+      "base": 0.037544696066746125,
+      "arm": 0.03716012084592145,
+      "delta": -0.0003845752208246761
+     },
+     "thread_density_whole": {
+      "base": 6.470225852088235,
+      "arm": 6.451161727275967,
+      "delta": -0.002946438848979982
+     }
+    },
+    "ok": true
+   },
+   "k_line": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.140786749482402,
+      "arm": 4.3496271748135875,
+      "delta": 0.20884042533118574
+     },
+     "flow_circvar": {
+      "base": 0.51245651163441,
+      "arm": 0.5138447620738202,
+      "delta": 0.0013882504394102657
+     },
+     "long_share": {
+      "base": 0.017353125653355634,
+      "arm": 0.016520284399832705,
+      "delta": -0.0008328412535229292
+     },
+     "thread_density_whole": {
+      "base": 7.307498320997018,
+      "arm": 7.264205659319883,
+      "delta": -0.005924416233219013
+     }
+    },
+    "ok": true
+   },
+   "dot_music": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.9142419601837672,
+      "arm": 1.816860465116279,
+      "delta": -0.09738149506748828
+     },
+     "flow_circvar": {
+      "base": 0.5349852626693576,
+      "arm": 0.5756984831096398,
+      "delta": 0.04071322044028214
+     },
+     "long_share": {
+      "base": 0.01419800460475825,
+      "arm": 0.0,
+      "delta": -0.01419800460475825
+     },
+     "thread_density_whole": {
+      "base": 6.348279746017547,
+      "arm": 6.535930989389453,
+      "delta": 0.029559384727748394
+     }
+    },
+    "ok": true
+   },
+   "n_sync": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.1093854004881296,
+      "arm": 1.1123470522803114,
+      "delta": 0.002961651792181774
+     },
+     "flow_circvar": {
+      "base": 0.2989585002454599,
+      "arm": 0.29869891335801874,
+      "delta": -0.00025958688744115443
+     },
+     "long_share": {
+      "base": 0.00044474093840338,
+      "arm": 0.0004459308807134894,
+      "delta": 1.1899423101094093e-06
+     },
+     "thread_density_whole": {
+      "base": 7.274135633709893,
+      "arm": 7.300697766874963,
+      "delta": 0.0036515861818654715
+     }
+    },
+    "ok": true
+   },
+   "and_pizza": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.8510900863842041,
+      "arm": 1.8311291963377416,
+      "delta": -0.01996089004646251
+     },
+     "flow_circvar": {
+      "base": 0.5497386158391303,
+      "arm": 0.5747153261268042,
+      "delta": 0.024976710287673898
+     },
+     "long_share": {
+      "base": 0.0020614306328592042,
+      "arm": 0.001835236541598695,
+      "delta": -0.00022619409126050922
+     },
+     "thread_density_whole": {
+      "base": 7.450175319116074,
+      "arm": 7.615250809884423,
+      "delta": 0.022157262574048358
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": true,
+  "why": "as registered on 11 of 11 logos"
+ },
+ "script_strokes_off": {
+  "stratum": "construction",
+  "active": [
+   "toat_machine_hat"
+  ],
+  "identical": [
+   "mfab_hat",
+   "proseal_hat",
+   "mfab_lc",
+   "proseal_beanie",
+   "bukit_asam",
+   "but_seriously",
+   "hed_p_e",
+   "jakarta",
+   "k_line",
+   "ahora",
+   "dot_music",
+   "n_sync",
+   "and_pizza"
+  ],
+  "per_logo": {
+   "toat_machine_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.2189305209603054,
+      "arm": 1.326192297883193,
+      "delta": 0.10726177692288763
+     },
+     "flow_circvar": {
+      "base": 0.1785942861996003,
+      "arm": 0.18552451909875037,
+      "delta": 0.006930232899150068
+     },
+     "long_share": {
+      "base": 0.011576655514842547,
+      "arm": 0.00996626801594603,
+      "delta": -0.0016103874988965174
+     },
+     "thread_density_whole": {
+      "base": 10.309126696626253,
+      "arm": 10.575496194533617,
+      "delta": 0.02583822138829043
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": false,
+  "why": "changes 1 of 14 logos; at least 3 are needed"
+ },
+ "fold_slivers_off": {
+  "stratum": "construction",
+  "active": [
+   "toat_machine_hat"
+  ],
+  "identical": [
+   "mfab_hat",
+   "proseal_hat",
+   "mfab_lc",
+   "proseal_beanie",
+   "bukit_asam",
+   "but_seriously",
+   "hed_p_e",
+   "jakarta",
+   "k_line",
+   "ahora",
+   "dot_music",
+   "n_sync",
+   "and_pizza"
+  ],
+  "per_logo": {
+   "toat_machine_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.2189305209603054,
+      "arm": 1.0643689812468322,
+      "delta": -0.1545615397134732
+     },
+     "flow_circvar": {
+      "base": 0.1785942861996003,
+      "arm": 0.15393115897444395,
+      "delta": -0.024663127225156345
+     },
+     "long_share": {
+      "base": 0.011576655514842547,
+      "arm": 0.018232605383443373,
+      "delta": 0.006655949868600826
+     },
+     "thread_density_whole": {
+      "base": 10.309126696626253,
+      "arm": 10.532274272421065,
+      "delta": 0.021645633268610298
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": false,
+  "why": "changes 1 of 14 logos; at least 3 are needed"
+ },
+ "lane_off": {
+  "stratum": "construction",
+  "active": [
+   "mfab_hat",
+   "proseal_hat",
+   "toat_machine_hat",
+   "mfab_lc",
+   "proseal_beanie",
+   "bukit_asam",
+   "jakarta",
+   "k_line",
+   "dot_music",
+   "n_sync",
+   "and_pizza"
+  ],
+  "identical": [
+   "but_seriously",
+   "hed_p_e",
+   "ahora"
+  ],
+  "per_logo": {
+   "mfab_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 0.9729046067033127,
+      "arm": 1.0127314814814814,
+      "delta": 0.03982687477816871,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.2321223161789659,
+      "arm": 0.23495904143525081,
+      "delta": 0.002836725256284922
+     },
+     "long_share": {
+      "base": 0.00019496977968414895,
+      "arm": 0.0003865854837150865,
+      "delta": 0.00019161570403093754
+     },
+     "thread_density_whole": {
+      "base": 10.682989480226542,
+      "arm": 10.829003728773253,
+      "delta": 0.01366792027802455
+     }
+    },
+    "ok": false
+   },
+   "proseal_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 6.620428751576293,
+      "arm": 6.046969483898186,
+      "delta": -0.573459267678107,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.5299027156314743,
+      "arm": 0.4854321409379075,
+      "delta": -0.0444705746935668
+     },
+     "long_share": {
+      "base": 0.04138150565016712,
+      "arm": 0.0361958836053939,
+      "delta": -0.005185622044773221
+     },
+     "thread_density_whole": {
+      "base": 6.7814414101747,
+      "arm": 7.563784318543325,
+      "delta": 0.11536528313800934
+     }
+    },
+    "ok": false
+   },
+   "toat_machine_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.2189305209603054,
+      "arm": 1.0604453870625663,
+      "delta": -0.1584851338977391,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.1785942861996003,
+      "arm": 0.17626447379401958,
+      "delta": -0.0023298124055807223
+     },
+     "long_share": {
+      "base": 0.011576655514842547,
+      "arm": 0.011579730160416446,
+      "delta": 3.074645573898638e-06
+     },
+     "thread_density_whole": {
+      "base": 10.309126696626253,
+      "arm": 10.31258437192489,
+      "delta": 0.0003353994378368684
+     }
+    },
+    "ok": false
+   },
+   "mfab_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.105460977227504,
+      "arm": 1.049781755898116,
+      "delta": -0.05567922132938796,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.27751616814951807,
+      "arm": 0.27723071532736776,
+      "delta": -0.00028545282215031165
+     },
+     "long_share": {
+      "base": 0.00022145941756173182,
+      "arm": 0.0005534340583319497,
+      "delta": 0.0003319746407702179
+     },
+     "thread_density_whole": {
+      "base": 11.351298478747218,
+      "arm": 11.401197972797744,
+      "delta": 0.004395928284676183
+     }
+    },
+    "ok": false
+   },
+   "proseal_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 5.700035625222657,
+      "arm": 5.694400506168934,
+      "delta": -0.005635119053723159,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.5225504898158593,
+      "arm": 0.5142909312872588,
+      "delta": -0.008259558528600497
+     },
+     "long_share": {
+      "base": 0.00036003600360036,
+      "arm": 0.0012775471095496647,
+      "delta": 0.0009175111059493046
+     },
+     "thread_density_whole": {
+      "base": 6.738435446702837,
+      "arm": 7.522972516820775,
+      "delta": 0.11642718496350912
+     }
+    },
+    "ok": false
+   },
+   "bukit_asam": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.216867469879518,
+      "arm": 4.3478260869565215,
+      "delta": 0.1309586170770034,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.3572251907438274,
+      "arm": 0.3935247405545969,
+      "delta": 0.036299549810769494
+     },
+     "long_share": {
+      "base": 0.001215066828675577,
+      "arm": 0.0021893814997263274,
+      "delta": 0.0009743146710507503
+     },
+     "thread_density_whole": {
+      "base": 6.515056552859233,
+      "arm": 7.134641631412143,
+      "delta": 0.09510049122766191
+     }
+    },
+    "ok": false
+   },
+   "jakarta": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 5.601415094339623,
+      "arm": 5.297098111469369,
+      "delta": -0.30431698287025366,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.5918014285037291,
+      "arm": 0.5949998896130051,
+      "delta": 0.0031984611092760185
+     },
+     "long_share": {
+      "base": 0.037544696066746125,
+      "arm": 0.04579265457926546,
+      "delta": 0.008247958512519332
+     },
+     "thread_density_whole": {
+      "base": 6.470225852088235,
+      "arm": 7.943527271801137,
+      "delta": 0.2277047901252784
+     }
+    },
+    "ok": false
+   },
+   "k_line": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.140786749482402,
+      "arm": 3.9575463212808057,
+      "delta": -0.18324042820159603,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.51245651163441,
+      "arm": 0.5578794393188636,
+      "delta": 0.04542292768445366
+     },
+     "long_share": {
+      "base": 0.017353125653355634,
+      "arm": 0.022294725394236,
+      "delta": 0.004941599740880365
+     },
+     "thread_density_whole": {
+      "base": 7.307498320997018,
+      "arm": 8.841223421055505,
+      "delta": 0.20988374306587984
+     }
+    },
+    "ok": false
+   },
+   "dot_music": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.9142419601837672,
+      "arm": 1.8732438339057134,
+      "delta": -0.04099812627805388,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.5349852626693576,
+      "arm": 0.5720727592172052,
+      "delta": 0.0370874965478476
+     },
+     "long_share": {
+      "base": 0.01419800460475825,
+      "arm": 0.09580463368816532,
+      "delta": 0.08160662908340707
+     },
+     "thread_density_whole": {
+      "base": 6.348279746017547,
+      "arm": 8.194822921500792,
+      "delta": 0.29087300014490275
+     }
+    },
+    "ok": false
+   },
+   "n_sync": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.1093854004881296,
+      "arm": 3.6461331798119363,
+      "delta": 2.5367477793238065,
+      "moved_as_registered": true
+     },
+     "flow_circvar": {
+      "base": 0.2989585002454599,
+      "arm": 0.31584070127970154,
+      "delta": 0.01688220103424165
+     },
+     "long_share": {
+      "base": 0.00044474093840338,
+      "arm": 0.04645335389360062,
+      "delta": 0.04600861295519724
+     },
+     "thread_density_whole": {
+      "base": 7.274135633709893,
+      "arm": 8.515577823319243,
+      "delta": 0.17066525180754705
+     }
+    },
+    "ok": true
+   },
+   "and_pizza": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.8510900863842041,
+      "arm": 3.471017007983339,
+      "delta": 1.619926921599135,
+      "moved_as_registered": true
+     },
+     "flow_circvar": {
+      "base": 0.5497386158391303,
+      "arm": 0.5123056493228406,
+      "delta": -0.03743296651628969
+     },
+     "long_share": {
+      "base": 0.0020614306328592042,
+      "arm": 0.04965156794425087,
+      "delta": 0.04759013731139167
+     },
+     "thread_density_whole": {
+      "base": 7.450175319116074,
+      "arm": 9.124321184646684,
+      "delta": 0.22471227774130276
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": false,
+  "why": "moved and held as registered on 2 of 11 logos"
+ },
+ "exit_next_off": {
+  "stratum": "trims",
+  "active": [
+   "mfab_hat",
+   "proseal_hat",
+   "toat_machine_hat",
+   "mfab_lc",
+   "proseal_beanie",
+   "bukit_asam",
+   "but_seriously",
+   "hed_p_e",
+   "jakarta",
+   "k_line",
+   "ahora",
+   "dot_music"
+  ],
+  "identical": [
+   "n_sync",
+   "and_pizza"
+  ],
+  "per_logo": {
+   "mfab_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 0.9729046067033127,
+      "arm": 0.969414958072803,
+      "delta": -0.003489648630509712,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.2321223161789659,
+      "arm": 0.23136928260325829,
+      "delta": -0.0007530335757076068,
+      "held": true
+     },
+     "long_share": {
+      "base": 0.00019496977968414895,
+      "arm": 0.00019425962799281239,
+      "delta": -7.101516913365598e-07,
+      "held": true
+     },
+     "thread_density_whole": {
+      "base": 10.682989480226542,
+      "arm": 10.701773177791532,
+      "delta": 0.0017582810129839648
+     }
+    },
+    "ok": false
+   },
+   "proseal_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 6.620428751576293,
+      "arm": 6.62774183367524,
+      "delta": 0.007313082098947099,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.5299027156314743,
+      "arm": 0.5300829570585557,
+      "delta": 0.00018024142708139568,
+      "held": true
+     },
+     "long_share": {
+      "base": 0.04138150565016712,
+      "arm": 0.041427660930529,
+      "delta": 4.615528036187866e-05,
+      "held": true
+     },
+     "thread_density_whole": {
+      "base": 6.7814414101747,
+      "arm": 6.775936306040064,
+      "delta": -0.0008117896773945044
+     }
+    },
+    "ok": false
+   },
+   "toat_machine_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.2189305209603054,
+      "arm": 1.2656225280809998,
+      "delta": 0.046692007120694434,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.1785942861996003,
+      "arm": 0.17881994265721507,
+      "delta": 0.00022565645761477016,
+      "held": true
+     },
+     "long_share": {
+      "base": 0.011576655514842547,
+      "arm": 0.011516720376142427,
+      "delta": -5.993513870011964e-05,
+      "held": true
+     },
+     "thread_density_whole": {
+      "base": 10.309126696626253,
+      "arm": 10.328680112996967,
+      "delta": 0.001896709289363286
+     }
+    },
+    "ok": false
+   },
+   "mfab_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.105460977227504,
+      "arm": 1.105460977227504,
+      "delta": 0.0,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.27751616814951807,
+      "arm": 0.2775082089868984,
+      "delta": -7.959162619697313e-06,
+      "held": true
+     },
+     "long_share": {
+      "base": 0.00022145941756173182,
+      "arm": 0.00022145941756173182,
+      "delta": 0.0,
+      "held": true
+     },
+     "thread_density_whole": {
+      "base": 11.351298478747218,
+      "arm": 11.350478634017826,
+      "delta": -7.22247530471596e-05
+     }
+    },
+    "ok": false
+   },
+   "proseal_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 5.700035625222657,
+      "arm": 5.991189427312776,
+      "delta": 0.2911538020901183,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.5225504898158593,
+      "arm": 0.5229873283889128,
+      "delta": 0.000436838573053544,
+      "held": true
+     },
+     "long_share": {
+      "base": 0.00036003600360036,
+      "arm": 0.00017809439002671417,
+      "delta": -0.00018194161357364586,
+      "held": true
+     },
+     "thread_density_whole": {
+      "base": 6.738435446702837,
+      "arm": 6.7558488736148625,
+      "delta": 0.0025841943652581394
+     }
+    },
+    "ok": false
+   },
+   "bukit_asam": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.216867469879518,
+      "arm": 4.469606674612634,
+      "delta": 0.25273920473311584,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.3572251907438274,
+      "arm": 0.35447009530120754,
+      "delta": -0.0027550954426198704,
+      "held": true
+     },
+     "long_share": {
+      "base": 0.001215066828675577,
+      "arm": 0.0012022843402464682,
+      "delta": -1.2782488429108818e-05,
+      "held": true
+     },
+     "thread_density_whole": {
+      "base": 6.515056552859233,
+      "arm": 6.530613492510331,
+      "delta": 0.002387844146075906
+     }
+    },
+    "ok": false
+   },
+   "but_seriously": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.372687521022536,
+      "arm": 4.058167061210686,
+      "delta": -0.31452045981184984,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.567845738169695,
+      "arm": 0.5672784600467927,
+      "delta": -0.0005672781229022483,
+      "held": true
+     },
+     "long_share": {
+      "base": 0.0006759040216289286,
+      "arm": 0.0006793478260869565,
+      "delta": 3.443804458027862e-06,
+      "held": true
+     },
+     "thread_density_whole": {
+      "base": 6.946911564832988,
+      "arm": 6.915323191410065,
+      "delta": -0.004547110342217706
+     }
+    },
+    "ok": false
+   },
+   "hed_p_e": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.6817593790426908,
+      "arm": 1.6813243662700466,
+      "delta": -0.00043501277264423877,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.26865628991720897,
+      "arm": 0.26865628991720897,
+      "delta": 0.0,
+      "held": true
+     },
+     "long_share": {
+      "base": 0.00012976901116013495,
+      "arm": 0.0001297521733489036,
+      "delta": -1.68378112313421e-08,
+      "held": true
+     },
+     "thread_density_whole": {
+      "base": 10.10219992450145,
+      "arm": 10.102577816482802,
+      "delta": 3.740689990056263e-05
+     }
+    },
+    "ok": false
+   },
+   "jakarta": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 5.601415094339623,
+      "arm": 5.734983398732267,
+      "delta": 0.13356830439264478,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.5918014285037291,
+      "arm": 0.5849812052618352,
+      "delta": -0.006820223241893908,
+      "held": true
+     },
+     "long_share": {
+      "base": 0.037544696066746125,
+      "arm": 0.038144644491913335,
+      "delta": 0.0005999484251672099,
+      "held": true
+     },
+     "thread_density_whole": {
+      "base": 6.470225852088235,
+      "arm": 6.41767582370172,
+      "delta": -0.008121822883439888
+     }
+    },
+    "ok": false
+   },
+   "k_line": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.140786749482402,
+      "arm": 4.113533525298231,
+      "delta": -0.027253224184170755,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.51245651163441,
+      "arm": 0.5129153582740426,
+      "delta": 0.0004588466396325819,
+      "held": true
+     },
+     "long_share": {
+      "base": 0.017353125653355634,
+      "arm": 0.01723779854620976,
+      "delta": -0.00011532710714587391,
+      "held": true
+     },
+     "thread_density_whole": {
+      "base": 7.307498320997018,
+      "arm": 7.32563301800457,
+      "delta": 0.0024816559937406507
+     }
+    },
+    "ok": false
+   },
+   "ahora": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 0.7538635506973237,
+      "arm": 0.6783237865541152,
+      "delta": -0.07553976414320851,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.3252558631009511,
+      "arm": 0.3252741842488829,
+      "delta": 1.8321147931765758e-05,
+      "held": true
+     },
+     "long_share": {
+      "base": 0.016373651248773862,
+      "arm": 0.0163687108697292,
+      "delta": -4.94037904466213e-06,
+      "held": true
+     },
+     "thread_density_whole": {
+      "base": 12.463175255419637,
+      "arm": 12.466933215745069,
+      "delta": 0.0003015251128557866
+     }
+    },
+    "ok": false
+   },
+   "dot_music": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.9142419601837672,
+      "arm": 1.9105846388995031,
+      "delta": -0.0036573212842641034,
+      "moved_as_registered": false
+     },
+     "flow_circvar": {
+      "base": 0.5349852626693576,
+      "arm": 0.5340623641905761,
+      "delta": -0.0009228984787815753,
+      "held": true
+     },
+     "long_share": {
+      "base": 0.01419800460475825,
+      "arm": 0.014170815779394868,
+      "delta": -2.7188825363382713e-05,
+      "held": true
+     },
+     "thread_density_whole": {
+      "base": 6.348279746017547,
+      "arm": 6.353465248664198,
+      "delta": 0.000816835875877009
+     }
+    },
+    "ok": false
+   }
+  },
+  "passes": false,
+  "why": "moved and held as registered on 0 of 12 logos"
+ }
+}

@@ -87,7 +87,7 @@ the OLDEST lines whole to the archive.
 - [Pro intake](pro-intake-2026-10-25.md) — `python -m tools.pro_intake`: new job -> registered pair + census; registry gitignored (client names); preview vs art by content AND name; tesseract confirms lettering
 - [Pro measured values](pro-measured-values-2026-10-23.md) — `pro_measured_values` OFF: fill 3.49, satin 0.37/0.35, bean 0.95 on hat/LC/beanie; Kent flips after sew-out
 - [Pro renders local only](pro-renders-local-only-2026-10-27.md) — Kent 10-27 "Stop new ones, keep old": pro-file renders go to gitignored `pro_renders/`; `test_no_new_pro_renders` fails on a new `pro` word under docs/
-- [Pro-sized lettering sitting](pro-size-lettering-sitting-2026-11-02.md) — kit pro-lettering-1102: 56 live pairs, 8 one-flag ON->OFF arms, 7 pro jobs + 9 Commons logos; Kent sits it, then analyse
+- [Pro-sized lettering sitting](pro-size-lettering-sitting-2026-11-02.md) — pro-lettering-1102, 56 live pairs, 8 one-flag arms; Kent sat 11-03: trims control did NOT replicate, repeats unstable (3 of 4), no flip
 - [Questions roll up to the director](questions-roll-up-to-director-2026-10-27.md) — Kent 10-27: a worker never asks Kent; SendMessage the decision (options, cost, catch, pick) to its starter
 - [RAG fast path](rag-fast-path-2026-10-27.md) — `fast_skimage.rag_mean_color`: Fremont's graph 41 s -> 0.6 s, same add_edge ORDER replayed; 7 gradient designs md5-identical; next: glyph OCR pool, fill angle search
 - [Re-pin tuples](repin-tuples-2026-10-27.md) — `_hexrepr` writes tuple/list/dict digests whole; `ci_repin` moves them, or the whole source literal when a count moved; starts paying on a branch that merged main
