@@ -17,7 +17,7 @@
   import { garmentOf, placementBoxOf } from "../lib/placement.js";
   import { resizeBadgeText } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
-  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, removeNodes, nodesInBox, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
+  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, removeNodes, nodesInBox, insertNode, fieldMmToOutlineMm, simplifyRing } from "../lib/shapeOverlay.js";
   import {
     appliedBorders,
     borderMenuItems,
@@ -26,7 +26,7 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { boundaryIssues } from "../lib/digitizer.js";
   import { isElementStale } from "../lib/staleness.js";
-  import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
+  import { popoverModel, popoverPatch, recolorPatch, SIMPLIFY_TOLS_MM } from "../lib/shapePopover.js";
   import { similarShapeIds, similarOverridesPatch } from "../lib/similarShapes.js";
   import { capOutlinesMm, isCapPieceId } from "../lib/capPieces.js";
   import { resolveCutOuts, isColumn, isRun, isOpenShape, shapeProblems } from "../lib/manualShapes.js";
@@ -1192,6 +1192,7 @@
         fabric: popFabric,
         similar: similarFor(selectedShapeElement(), selectedShapeId),
         reshaping: !!reshape && reshape.elId === project.selectedId,
+        pointsWas: simplifiedFrom && simplifiedFrom.shapeId === selectedShapeId ? simplifiedFrom.from : null,
       })
     : null;
   // "Apply to all similar shapes": the shapes like the selected one (see
@@ -1209,7 +1210,11 @@
     if (key === similarKey) return;
     similarKey = key;
     applyToSimilar = false;
+    simplifiedFrom = null;
   }
+  // `Points: 500 -> 87` after a Simplify: the count before the pick, for the
+  // shape it ran on, until the popover closes or another shape is picked.
+  let simplifiedFrom = null;
   $: if (canvas) { applyToSimilar; scheduleViewRepaint(); }
   // What the group edit keys act on: the popover's per-shape overrides. Delete
   // and Edit points are actions, not changes, and never go to the group.
@@ -1345,6 +1350,15 @@
     const el = selectedShapeElement();
     if (!el) return;
     const { key } = e.detail;
+    if (key === "simplify" && el.type === "digitized") {
+      // Ticked: every similar shape on its OWN ring, one patch, one undo step.
+      const group = applyToSimilar && popModel && popModel.similar ? similarShapeIds(el, selectedShapeId) : [];
+      const res = simplifyShapes(el, group.length > 1 ? group : [selectedShapeId], e.detail.tol);
+      if (res && res.changed && res.from.has(selectedShapeId)) {
+        simplifiedFrom = { shapeId: selectedShapeId, from: res.from.get(selectedShapeId) };
+      }
+      return;
+    }
     if (key === "delete") {
       const patch = popoverPatch({ element: el, shapeId: selectedShapeId }, "delete");
       closeShapePop();
@@ -1530,6 +1544,42 @@
       boundary_override: service.map(([x, y]) => [x, y]),
     };
     dispatch("elupdate", { id: el.id, patch: { shapeOverrides: cur } });
+  }
+
+  // Simplify points (spec 2026-11-03 section 5): each shape in `ids` is thinned
+  // on its OWN current ring (its pending boundary_override, else outlineFull) at
+  // `tolMm`, through commitShapeEdit's rules: field mm -> service mm per ring,
+  // boundaryIssues first, one refused ring drops the whole gesture and names
+  // the shape, ONE elupdate patch for all. A ring already at or under the
+  // tolerance commits nothing. -> { changed, from: Map<id, countBefore> } or
+  // null when it did not run.
+  function simplifyShapes(el, ids, tolMm) {
+    const edit = outlinesPxFor(el);
+    if (!edit || !edit.pe || !edit.pe.bboxMm || !(tolMm > 0)) return null;
+    const cur = { ...(el.shapeOverrides || {}) };
+    const from = new Map();
+    for (const id of ids) {
+      const ring = edit.mmById.get(id);
+      if (!ring) continue;
+      const next = simplifyRing(ring, tolMm);
+      if (next.length >= ring.length) continue;
+      const service = fieldMmToOutlineMm(next, edit.rows, edit.pe.bboxMm, el.rotationDeg || 0);
+      if (!service) continue;
+      const issues = boundaryIssues(service);
+      if (issues.length) {
+        const row = (edit.rows || []).find((x) => x && x.id === id);
+        shapeEditError = `${row ? shapeMenuName(row) : "Shape"}: ${issues[0]}`;
+        return null;
+      }
+      cur[id] = { ...(cur[id] || {}), boundary_override: service.map(([x, y]) => [x, y]) };
+      from.set(id, ring.length);
+    }
+    if (!from.size) return { changed: false, from };
+    shapeEditError = "";
+    dispatch("elupdate", { id: el.id, patch: { shapeOverrides: cur } });
+    // Point indices no longer mean what they did.
+    if (reshapeOn()) setReshapeSel(new Map());
+    return { changed: true, from };
   }
 
   // Requirement 6: delete the selected shape. Rides `deletedShapeIds`, the
@@ -3129,11 +3179,14 @@
       setReshapeSel(only);
     }
     const n = reshapeSelCount(reshape);
-    // Point rows lead the menu. "Simplify points" (spec section 5, PR 3) goes
-    // right after "Select all points".
+    // Point rows lead the menu; "Simplify points" (digitized lane) follows
+    // "Select all points" as one row per tolerance.
     const rows = [
       { id: "delpoint", label: n > 1 ? `Delete ${n} points` : "Delete point", value: null, title: "Remove the selected points; a ring keeps at least 3." },
       { id: "selectall", label: "Select all points", value: null, title: "Select every point of this shape.", shapeId: node.shapeId },
+      ...(edit.el.type === "digitized"
+        ? SIMPLIFY_TOLS_MM.map((tol) => ({ id: `simplify-${tol}`, label: `Simplify points ${tol} mm`, value: null, title: `Fewer points on this shape, within ${tol} mm of the current outline.`, shapeId: node.shapeId, tol }))
+        : []),
     ];
     const rest = plain && plain.items ? plain.items.filter((it) => it.id !== "removepoint") : [];
     if (plain) return { ...plain, items: [...rows, ...rest] };
@@ -3283,6 +3336,14 @@
   // One entry point for the shape section's items: Remove point (a
   // hand-drawn shape's anchor, the same path Delete takes) or a border item.
   function chooseMenuItem(item) {
+    if (typeof item.id === "string" && item.id.startsWith("simplify-")) {
+      const menu = fieldMenu;
+      fieldMenu = null;
+      const el = menu && menu.shape && project ? (project.elements || []).find((x) => x.id === menu.shape.elId) : null;
+      if (el && el.type === "digitized") simplifyShapes(el, [item.shapeId], item.tol);
+      repaintNodeChrome();
+      return;
+    }
     if (item.id === "delpoint" || item.id === "selectall") {
       fieldMenu = null;
       if (item.id === "delpoint") deleteReshapeSelection();

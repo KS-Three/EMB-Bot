@@ -73,6 +73,9 @@ export function BORDER_OPTIONS(designBorder) {
   ];
 }
 
+// The Simplify points tolerances, mm (ruling 5).
+export const SIMPLIFY_TOLS_MM = [0.2, 0.5, 1];
+
 const MANUAL_TIERS = [{ value: "fill", label: "Fill" }, { value: "satin", label: "Satin" }];
 
 export const SATIN_CUTOUT_NOTE = "Sews as fill — satin cannot go round a cut-out.";
@@ -154,9 +157,11 @@ export function runRows(shape, fit) {
 // reads "Done" and leaves the mode instead of entering it. A digitized shape's
 // model also carries `points`, its vertex count (the pending boundary edit's
 // when there is one), for the read-only "Points: N" line.
-export function popoverModel({ element, shapeId, fit, fabric, similar, reshaping = false }) {
+export function popoverModel({ element, shapeId, fit, fabric, similar, reshaping = false, pointsWas = null }) {
   const m = baseModel({ element, shapeId, fit, fabric });
   if (!m) return m;
+  // After a Simplify, `Points: 500 -> 87`: the count it had before the pick.
+  m.pointsWas = m.points != null && Number.isInteger(pointsWas) && pointsWas !== m.points ? pointsWas : null;
   if (reshaping) {
     for (const r of m.rows) if (r.key === "editPoints") r.label = "Done";
   }
@@ -255,9 +260,12 @@ function baseModel({ element, shapeId, fit, fabric }) {
   }
   out.push({ key: "border", kind: "choice", label: "Border", value: entry.border == null ? "default" : entry.border, options: BORDER_OPTIONS(element.params ? element.params.border : null) });
   out.push({ key: "editPoints", kind: "action", label: "Edit points" });
-  out.push({ key: "delete", kind: "action", label: "Delete shape", danger: true });
   const pending = Array.isArray(entry.boundary_override) && entry.boundary_override.length >= 3 ? entry.boundary_override : null;
   const ring = pending || outlineOf(row);
+  // Fewer points (2026-11-03 spec section 5): digitized lane only, never
+  // automatic, a tolerance pick applies it. Needs a ring to thin.
+  if (ring) out.push({ key: "simplify", kind: "simplify", label: "Simplify points", options: SIMPLIFY_TOLS_MM.map((v) => ({ value: v, label: v + " mm" })) });
+  out.push({ key: "delete", kind: "action", label: "Delete shape", danger: true });
   return { lane, shapeId, name: digitizedName(row), points: ring ? ring.length : null, rows: out };
 }
 

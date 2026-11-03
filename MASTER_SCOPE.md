@@ -987,7 +987,9 @@ verbatim there because the sub-requirements *are* the spec.
 
 **Reshape mode ("Edit points") edits many points across shapes on both lanes, one undo step per gesture; the panel's SVG boundary editor is retired** *(confirmed 2026-11-03 — PR #1225)*.
 
-**One edit reaches every similar shape (merged 2026-10-28 — PR #1176).** The shape popover's "Apply to all similar shapes (N)" sends Stitch type, Color, Border, Fill angle and Underlay to every match as one `shapeOverrides` patch (one undo step), outlining the matches blue while ticked; Delete and Edit points stay on the one shape. "Similar" (`app/src/lib/similarShapes.js`): same sewn colour, area within 2×, same form (Hu moments, compactness, solidity). Driven live on Kent's flag through the real service. *(confirmed 2026-10-28 — PR #1176, its vitest)*
+**Simplify points: 0.2 / 0.5 / 1 mm, per shape or all similar, one undo step** *(confirmed 2026-11-03 — PR #1226)*.
+
+**One edit reaches every similar shape (merged 2026-10-28 — PR #1176).** The shape popover's "Apply to all similar shapes (N)" sends Stitch type, Color, Border, Fill angle and Underlay to every match as one `shapeOverrides` patch (one undo step); Delete and Edit points stay on the one shape. "Similar" (`app/src/lib/similarShapes.js`): same sewn colour, area within 2×, same form. *(confirmed 2026-10-28 — PR #1176)*
 
 **Stitch width is a per-shape control (2026-09-29):** an input per measured column in Edit shapes, Auto reset, "whole word" scope (one undo step); the design-width param is now **Design width**. *(confirmed 2026-09-29 — `digitizer.spec.js`)*
 

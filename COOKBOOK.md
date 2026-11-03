@@ -1034,7 +1034,7 @@ the pure parts are `moveNodes` / `removeNodes` / `nodesInBox` (`shapeOverlay.js`
 | drag an unselected point | it becomes the selection first |
 | Arrow keys | nudge the selection 0.1 mm, Shift 1 mm, in field mm, EXACTLY the chosen points (no falloff); each press is its own undo step |
 | Delete / Backspace | removes the selected points per ring; a ring at three refuses ("A shape needs at least 3 points.") and loses nothing; with no selection it does what it did (deletes the shape) |
-| right-click a point | "Delete point" / "Select all points" lead the field menu (Simplify points goes there in the next PR) |
+| right-click a point | "Delete point" / "Select all points" lead the field menu, then "Simplify points 0.2 / 0.5 / 1 mm" on a digitized shape |
 | Esc | leaves the mode first (ahead of focused anchor, popover, menu); selecting another element also leaves it |
 | double-click an edge (digitized) | adds a point there, as outside the mode |
 
@@ -1050,6 +1050,17 @@ first; any refusal drops the whole gesture, names the shape in `shapeEditError`,
 and everything snaps back. `DigitizePanel`'s old SVG boundary editor and its
 Layers-row pencil are gone (the hoop canvas is the one editor); a boundary edit is
 undone with Undo. e2e: `app/e2e/field-reshape-mode.spec.js`.
+
+**Simplify points (2026-11-03, PR #1226).** A digitized ring arrives at up to 500
+points; the shape popover's **Simplify points** row (digitized lane, not a cap
+stretch) offers 0.2 / 0.5 / 1 mm and a pick thins that shape's CURRENT ring with
+`simplifyRing` (`shapeOverlay.js`, closed Douglas-Peucker, every original vertex
+within the tolerance of the new ring, never under three points). It commits through
+the node-edit rules (`boundaryIssues` first, a refusal drops the gesture), reads
+`Points: 64 -> 44` in the popover, and rides "Apply to all similar shapes (N)": ticked,
+each similar shape is thinned on its own ring in ONE patch (one undo step). The
+Reshape-mode right-click menu has the same three choices. Never automatic; Undo is
+the way back.
 
 **The re-fit rule.** The engine fits the bbox of all an element's shapes, so
 any edit that changes that bbox would rescale everything else.
