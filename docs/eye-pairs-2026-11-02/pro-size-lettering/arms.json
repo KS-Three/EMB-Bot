@@ -1,0 +1,514 @@
+{
+ "P001": {
+  "fixture": "proseal_hat",
+  "left_arm": "base",
+  "right_arm": "lane_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P002": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "base",
+  "right_arm": "base",
+  "kind": "identical",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P003": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "base",
+  "right_arm": "text_lean_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P004": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "base",
+  "right_arm": "script_strokes_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P005": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "fold_slivers_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P006": {
+  "fixture": "bukit_asam",
+  "left_arm": "text_lean_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P007": {
+  "fixture": "jakarta",
+  "left_arm": "base",
+  "right_arm": "exit_next_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P008": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "base",
+  "right_arm": "lane_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P009": {
+  "fixture": "proseal_beanie",
+  "left_arm": "base",
+  "right_arm": "lane_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P010": {
+  "fixture": "jakarta",
+  "left_arm": "base",
+  "right_arm": "corner_fold_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P011": {
+  "fixture": "and_pizza",
+  "left_arm": "base",
+  "right_arm": "lane_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P012": {
+  "fixture": "jakarta",
+  "left_arm": "base",
+  "right_arm": "text_lean_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P013": {
+  "fixture": "jakarta",
+  "left_arm": "base",
+  "right_arm": "lane_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P014": {
+  "fixture": "dot_music",
+  "left_arm": "exit_next_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P015": {
+  "fixture": "but_seriously",
+  "left_arm": "base",
+  "right_arm": "exit_next_off",
+  "kind": "repeat",
+  "repeat_of": "P020",
+  "design_only": false
+ },
+ "P016": {
+  "fixture": "proseal_hat",
+  "left_arm": "base",
+  "right_arm": "exit_next_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P017": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "corner_fold_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P018": {
+  "fixture": "hed_p_e",
+  "left_arm": "exit_next_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P019": {
+  "fixture": "k_line",
+  "left_arm": "base",
+  "right_arm": "base",
+  "kind": "identical",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P020": {
+  "fixture": "but_seriously",
+  "left_arm": "exit_next_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P021": {
+  "fixture": "mfab_hat",
+  "left_arm": "exit_next_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P022": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "base",
+  "right_arm": "inside_stagger_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P023": {
+  "fixture": "jakarta",
+  "left_arm": "inside_stagger_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P024": {
+  "fixture": "mfab_lc",
+  "left_arm": "exit_next_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P025": {
+  "fixture": "bukit_asam",
+  "left_arm": "base",
+  "right_arm": "lane_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P026": {
+  "fixture": "k_line",
+  "left_arm": "inside_stagger_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P027": {
+  "fixture": "proseal_hat",
+  "left_arm": "base",
+  "right_arm": "corner_fold_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P028": {
+  "fixture": "k_line",
+  "left_arm": "base",
+  "right_arm": "corner_fold_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P029": {
+  "fixture": "mfab_hat",
+  "left_arm": "corner_fold_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P030": {
+  "fixture": "k_line",
+  "left_arm": "base",
+  "right_arm": "text_lean_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P031": {
+  "fixture": "proseal_hat",
+  "left_arm": "base",
+  "right_arm": "text_lean_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P032": {
+  "fixture": "mfab_lc",
+  "left_arm": "base",
+  "right_arm": "inside_stagger_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P033": {
+  "fixture": "mfab_hat",
+  "left_arm": "base",
+  "right_arm": "lane_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P034": {
+  "fixture": "proseal_beanie",
+  "left_arm": "inside_stagger_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P035": {
+  "fixture": "k_line",
+  "left_arm": "lane_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P036": {
+  "fixture": "mfab_lc",
+  "left_arm": "corner_fold_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P037": {
+  "fixture": "and_pizza",
+  "left_arm": "inside_stagger_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P038": {
+  "fixture": "ahora",
+  "left_arm": "exit_next_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P039": {
+  "fixture": "proseal_hat",
+  "left_arm": "italic_lean_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P040": {
+  "fixture": "mfab_lc",
+  "left_arm": "base",
+  "right_arm": "text_lean_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P041": {
+  "fixture": "bukit_asam",
+  "left_arm": "corner_fold_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P042": {
+  "fixture": "bukit_asam",
+  "left_arm": "base",
+  "right_arm": "inside_stagger_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P043": {
+  "fixture": "bukit_asam",
+  "left_arm": "base",
+  "right_arm": "exit_next_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P044": {
+  "fixture": "proseal_beanie",
+  "left_arm": "italic_lean_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P045": {
+  "fixture": "k_line",
+  "left_arm": "base",
+  "right_arm": "inside_stagger_off",
+  "kind": "repeat",
+  "repeat_of": "P026",
+  "design_only": false
+ },
+ "P046": {
+  "fixture": "and_pizza",
+  "left_arm": "text_lean_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P047": {
+  "fixture": "mfab_lc",
+  "left_arm": "base",
+  "right_arm": "lane_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P048": {
+  "fixture": "proseal_beanie",
+  "left_arm": "text_lean_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P049": {
+  "fixture": "n_sync",
+  "left_arm": "inside_stagger_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P050": {
+  "fixture": "proseal_beanie",
+  "left_arm": "base",
+  "right_arm": "italic_lean_off",
+  "kind": "repeat",
+  "repeat_of": "P044",
+  "design_only": false
+ },
+ "P051": {
+  "fixture": "but_seriously",
+  "left_arm": "base",
+  "right_arm": "base",
+  "kind": "identical",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P052": {
+  "fixture": "k_line",
+  "left_arm": "exit_next_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P053": {
+  "fixture": "proseal_beanie",
+  "left_arm": "base",
+  "right_arm": "corner_fold_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P054": {
+  "fixture": "mfab_hat",
+  "left_arm": "text_lean_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P055": {
+  "fixture": "n_sync",
+  "left_arm": "base",
+  "right_arm": "text_lean_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P056": {
+  "fixture": "mfab_hat",
+  "left_arm": "base",
+  "right_arm": "inside_stagger_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P057": {
+  "fixture": "n_sync",
+  "left_arm": "lane_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P058": {
+  "fixture": "proseal_hat",
+  "left_arm": "inside_stagger_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P059": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "inside_stagger_off",
+  "right_arm": "base",
+  "kind": "repeat",
+  "repeat_of": "P022",
+  "design_only": false
+ },
+ "P060": {
+  "fixture": "dot_music",
+  "left_arm": "inside_stagger_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P061": {
+  "fixture": "proseal_beanie",
+  "left_arm": "exit_next_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P062": {
+  "fixture": "dot_music",
+  "left_arm": "base",
+  "right_arm": "base",
+  "kind": "identical",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P063": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "base",
+  "right_arm": "exit_next_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P064": {
+  "fixture": "dot_music",
+  "left_arm": "base",
+  "right_arm": "lane_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ }
+}
