@@ -92,34 +92,6 @@
    "provenance": "pro_baseline.JOBS['proseal_beanie']: drawn at the job's own garment (beanie) and width (75.0 mm). ProSeal beanie job, the same file as proseal_hat at the beanie's own width. Never in a sitting."
   },
   {
-   "name": "toat_machine_beanie",
-   "design": "toat",
-   "population": "A",
-   "source": {
-    "kind": "job",
-    "slug": "toat_machine_beanie",
-    "sha256_16": "d09766ed6ca95a87"
-   },
-   "width_mm": 81.0,
-   "garment": "beanie",
-   "kind": "pro_paired_job",
-   "provenance": "pro_baseline.JOBS['toat_machine_beanie']: drawn at the job's own garment (beanie) and width (81.0 mm). To a T Machine beanie job, the same file as toat_machine_hat at the beanie's own width. Never in a sitting."
-  },
-  {
-   "name": "toat_beanie",
-   "design": "toat",
-   "population": "A",
-   "source": {
-    "kind": "job",
-    "slug": "toat_beanie",
-    "sha256_16": "21202443f3e64cf6"
-   },
-   "width_mm": 82.3,
-   "garment": "beanie",
-   "kind": "pro_paired_job",
-   "provenance": "pro_baseline.JOBS['toat_beanie']: drawn at the job's own garment (beanie) and width (82.3 mm). To a T beanie job, another crop of the same design (testdata/art/logo_toat_beanie.png, PR #556). Never in a sitting."
-  },
-  {
    "name": "bukit_asam",
    "design": "bukit_asam",
    "population": "B",

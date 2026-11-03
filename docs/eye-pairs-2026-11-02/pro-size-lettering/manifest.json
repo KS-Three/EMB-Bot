@@ -1,0 +1,333 @@
+{
+ "schema": 1,
+ "sitting": "pro-lettering-1102",
+ "built": "2026-11-03T01:45:32-06:00",
+ "spec_sha256": "bf1db946a0f312d41b2b24fac20871af614fe1a5f7179d4859c94285c4a1f2a4",
+ "engine": {
+  "git_head": "9337b0a2d5124dca71b060e451d13d338b12b75a",
+  "python": "3.14.6",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "photo_prep_venv": true
+ },
+ "base_flags": {},
+ "seed": 20261102,
+ "logos": [
+  {
+   "name": "mfab_hat",
+   "design": "mfab",
+   "kind": "pro_paired_job",
+   "sha256": "53b2d2978b8b2019e0e1240406afb63ad3978f438b72a7da00d6088fa05f7d33",
+   "width_mm": 104.9,
+   "garment": "hat_front",
+   "provenance": "pro_baseline.JOBS['mfab_hat']: drawn at the job's own garment (hat_front) and width (104.9 mm). M-FAB hat job. Artwork committed in PR #556, already public (testdata/art/logo_mfab_hat.png); photo-class, routes through the photo-prep venv. Never in a sitting.",
+   "population": "A",
+   "job": "mfab_hat"
+  },
+  {
+   "name": "proseal_hat",
+   "design": "proseal",
+   "kind": "pro_paired_job",
+   "sha256": "f7a3112e9ecaf339d1c51fa4f587531215c41901533467b8095d71c8895905e2",
+   "width_mm": 85.9,
+   "garment": "hat_front",
+   "provenance": "pro_baseline.JOBS['proseal_hat']: drawn at the job's own garment (hat_front) and width (85.9 mm). ProSeal hat job. The artwork is the file pro_baseline.JOBS names under the gitignored scratch_kent/; it is NOT in the repository and is read from there. No client art is added. Never in a sitting.",
+   "population": "A",
+   "job": "proseal_hat"
+  },
+  {
+   "name": "toat_machine_hat",
+   "design": "toat",
+   "kind": "pro_paired_job",
+   "sha256": "d09766ed6ca95a87ef44f9c15123dc5f2227bcbd16a4d884fb353c5e2a24d8aa",
+   "width_mm": 89.5,
+   "garment": "hat_front",
+   "provenance": "pro_baseline.JOBS['toat_machine_hat']: drawn at the job's own garment (hat_front) and width (89.5 mm). To a T Machine hat job. Artwork committed in PR #556, already public (testdata/art/logo_toat_machine.png). Never in a sitting.",
+   "population": "A",
+   "job": "toat_machine_hat"
+  },
+  {
+   "name": "mfab_lc",
+   "design": "mfab",
+   "kind": "pro_paired_job",
+   "sha256": "ba2a6389f75a1cda2bdc4eaefa18af6f7ca260c93be5756dd6bd83d4525bb53c",
+   "width_mm": 96.7,
+   "garment": "left_chest",
+   "provenance": "pro_baseline.JOBS['mfab_lc']: drawn at the job's own garment (left_chest) and width (96.7 mm). M-FAB left-chest job, another crop of the same design (testdata/art/logo_mfab_lc.png, PR #556). Drops first if the budget runs over. Never in a sitting.",
+   "population": "A",
+   "job": "mfab_lc"
+  },
+  {
+   "name": "proseal_beanie",
+   "design": "proseal",
+   "kind": "pro_paired_job",
+   "sha256": "f7a3112e9ecaf339d1c51fa4f587531215c41901533467b8095d71c8895905e2",
+   "width_mm": 75.0,
+   "garment": "beanie",
+   "provenance": "pro_baseline.JOBS['proseal_beanie']: drawn at the job's own garment (beanie) and width (75.0 mm). ProSeal beanie job, the same file as proseal_hat at the beanie's own width. Never in a sitting.",
+   "population": "A",
+   "job": "proseal_beanie"
+  },
+  {
+   "name": "bukit_asam",
+   "design": "bukit_asam",
+   "kind": "commons_lettering",
+   "sha256": "51b9ae1edebcfe9ec6da865184ae610f30e13588dba13f4f5a70f040fa25cd4e",
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "provenance": "Wikimedia Commons, Public domain, PT Bukit Asam, Tbk: https://commons.wikimedia.org/wiki/File:(Bukit_Asam)_Logo_CMYK-01.png (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame).",
+   "population": "B"
+  },
+  {
+   "name": "but_seriously",
+   "design": "but_seriously",
+   "kind": "commons_lettering",
+   "sha256": "c45b8ba168a83c870b16a98fc9107e162527e04231632a71ca34e3dd716bab34",
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "provenance": "Wikimedia Commons, Public domain, Phil Collins / Reproduction\u00a0: Kilyann Le Hen: https://commons.wikimedia.org/wiki/File:...But_seriously_logo.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame).",
+   "population": "B"
+  },
+  {
+   "name": "hed_p_e",
+   "design": "hed_p_e",
+   "kind": "commons_lettering",
+   "sha256": "2cfa47d67384bc66535a6d4d441acf5243ab7f988190f13b53f00b1d38ce715a",
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "provenance": "Wikimedia Commons, Public domain, Unknown authorUnknown author: https://commons.wikimedia.org/wiki/File:(hed)p.e._-_logo.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame).",
+   "population": "B"
+  },
+  {
+   "name": "jakarta",
+   "design": "jakarta",
+   "kind": "commons_lettering",
+   "sha256": "23612d7294bb40574430340fa64e1372b7ad685c5ca161ffed8eba007d4b3786",
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "provenance": "Wikimedia Commons, Public domain, +Jakarta by Medium: https://commons.wikimedia.org/wiki/File:%2BJakarta_Logo.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame).",
+   "population": "B"
+  },
+  {
+   "name": "k_line",
+   "design": "k_line",
+   "kind": "commons_lettering",
+   "sha256": "2d3b02fa3e38d20cce461431c6a4fac964aea9195251d1d858ca0cdad58879f7",
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "provenance": "Wikimedia Commons, Public domain, \"K\" Line: https://commons.wikimedia.org/wiki/File:%22K%22-Line-Logo.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame).",
+   "population": "B"
+  },
+  {
+   "name": "ahora",
+   "design": "ahora",
+   "kind": "commons_lettering",
+   "sha256": "ceb530490ae36e88271ba24075e56decf19357ab3000fc7e5bb37c7631bdc3de",
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "provenance": "Wikimedia Commons, Public domain, Ahora!: https://commons.wikimedia.org/wiki/File:(Logo)_Ahora!.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame).",
+   "population": "B"
+  },
+  {
+   "name": "dot_music",
+   "design": "dot_music",
+   "kind": "commons_lettering",
+   "sha256": "8c6abb15effdb6a55aad2f98770a56651207bdb06c0034a27f4b3804e1e9ac64",
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "provenance": "Wikimedia Commons, Public domain, Openwikicontributor: https://commons.wikimedia.org/wiki/File:.MUSIC_Logo.png (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame).",
+   "population": "B"
+  },
+  {
+   "name": "n_sync",
+   "design": "n_sync",
+   "kind": "commons_lettering",
+   "sha256": "0fbc6e3b134a2c39e5bb94d25afa6eb1b25bea4051a08c16c344ca1432012f2d",
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "provenance": "Wikimedia Commons, Public domain, RCA Records: https://commons.wikimedia.org/wiki/File:%27N_Sync_Logo.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame).",
+   "population": "B"
+  },
+  {
+   "name": "and_pizza",
+   "design": "and_pizza",
+   "kind": "commons_lettering",
+   "sha256": "dfd1b32d80d01000e2b29ebede2cb5e9b5a28dbc0c5afd6a763f935aef0a22b0",
+   "width_mm": 100.0,
+   "garment": "hat_front",
+   "provenance": "Wikimedia Commons, Public domain, &amp;pizza: https://commons.wikimedia.org/wiki/File:%26pizza_logo.svg (docs/asset-provenance.json). Lettering logo, 1920 px wide; drawn hat_front at 100 mm, which every one of the nine fits (heights 20 to 42 mm against the 64 mm cap frame).",
+   "population": "B"
+  }
+ ],
+ "arms": {
+  "corner_fold_off": {
+   "flags": {
+    "lettering_columns_corner_fold": false
+   },
+   "stratum": "construction",
+   "expected_pick": "base",
+   "moves": {},
+   "holds": []
+  },
+  "italic_lean_off": {
+   "flags": {
+    "lettering_columns_italic_lean": false
+   },
+   "stratum": "construction",
+   "expected_pick": "base",
+   "moves": {},
+   "holds": []
+  },
+  "text_lean_off": {
+   "flags": {
+    "lettering_columns_text_lean": false
+   },
+   "stratum": "construction",
+   "expected_pick": "base",
+   "moves": {},
+   "holds": []
+  },
+  "inside_stagger_off": {
+   "flags": {
+    "lettering_columns_inside_stagger": false
+   },
+   "stratum": "construction",
+   "expected_pick": "base",
+   "moves": {},
+   "holds": []
+  },
+  "script_strokes_off": {
+   "flags": {
+    "script_strokes": false
+   },
+   "stratum": "construction",
+   "expected_pick": "base",
+   "moves": {},
+   "holds": []
+  },
+  "fold_slivers_off": {
+   "flags": {
+    "keyline_fold_slivers": false
+   },
+   "stratum": "construction",
+   "expected_pick": "base",
+   "moves": {},
+   "holds": []
+  },
+  "lane_off": {
+   "flags": {
+    "lettering_columns": false
+   },
+   "stratum": "construction",
+   "expected_pick": "base",
+   "moves": {
+    "trims_per_1000": "up"
+   },
+   "holds": []
+  },
+  "exit_next_off": {
+   "flags": {
+    "satin_exit_toward_next": false
+   },
+   "stratum": "trims",
+   "expected_pick": "base",
+   "moves": {
+    "trims_per_1000": "up"
+   },
+   "holds": [
+    "flow_circvar",
+    "long_share"
+   ]
+  }
+ },
+ "replacements": [
+  {
+   "arm": "italic_lean_off",
+   "reason": "changes 2 of 14 logos; at least 3 are needed",
+   "replaced_by": null
+  },
+  {
+   "arm": "script_strokes_off",
+   "reason": "changes 1 of 14 logos; at least 3 are needed",
+   "replaced_by": null
+  },
+  {
+   "arm": "fold_slivers_off",
+   "reason": "changes 1 of 14 logos; at least 3 are needed",
+   "replaced_by": null
+  },
+  {
+   "arm": "lane_off",
+   "reason": "moved and held as registered on 2 of 11 logos",
+   "replaced_by": null
+  },
+  {
+   "arm": "exit_next_off",
+   "reason": "moved and held as registered on 0 of 12 logos",
+   "replaced_by": null
+  }
+ ],
+ "manipulation": {
+  "corner_fold_off": {
+   "passes": true,
+   "why": "as registered on 8 of 8 logos"
+  },
+  "italic_lean_off": {
+   "passes": false,
+   "why": "changes 2 of 14 logos; at least 3 are needed"
+  },
+  "text_lean_off": {
+   "passes": true,
+   "why": "as registered on 10 of 10 logos"
+  },
+  "inside_stagger_off": {
+   "passes": true,
+   "why": "as registered on 11 of 11 logos"
+  },
+  "script_strokes_off": {
+   "passes": false,
+   "why": "changes 1 of 14 logos; at least 3 are needed"
+  },
+  "fold_slivers_off": {
+   "passes": false,
+   "why": "changes 1 of 14 logos; at least 3 are needed"
+  },
+  "lane_off": {
+   "passes": false,
+   "why": "moved and held as registered on 2 of 11 logos"
+  },
+  "exit_next_off": {
+   "passes": false,
+   "why": "moved and held as registered on 0 of 12 logos"
+  }
+ },
+ "pairs": {
+  "total": 64,
+  "live": 56,
+  "identical": 4,
+  "repeat": 4,
+  "live_base_left": 28,
+  "live_per_logo": {
+   "mfab_hat": 5,
+   "proseal_hat": 6,
+   "toat_machine_hat": 7,
+   "mfab_lc": 5,
+   "proseal_beanie": 6,
+   "bukit_asam": 5,
+   "but_seriously": 1,
+   "hed_p_e": 1,
+   "jakarta": 5,
+   "k_line": 5,
+   "ahora": 1,
+   "dot_music": 3,
+   "n_sync": 3,
+   "and_pizza": 3
+  }
+ },
+ "sealed_sha256": "e094d50b8da8b9b39582863e51bad0238ba22ac6c129a4a26984a9820b254e7c",
+ "designs_sha256": "72298199f0bc0d71b2a5fb98ecc44f02c40f12478588a8e117bdc5f237e9f672",
+ "commands": [
+  "cd digitizer",
+  "python -m tools.eye_pairs --serve --out <OUT>      # Kent's sitting; picks go to <OUT>/picks.jsonl",
+  "python -m tools.eye_pairs.sitting analyse <SPEC> --out <OUT>   # refuses until every pair is picked"
+ ]
+}

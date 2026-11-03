@@ -172,3 +172,22 @@ tie, repeats answered differently, and the left/right split.
   primary checkout; another machine's render could differ at the margins.
 - An arm whose OFF side is simply worse will be picked against, and that proves
   the instrument sees a gross defect, not that a flag is right.
+
+## Amendment 1, 2026-11-03 (before any pick): the budget drop
+
+The first `prepare` left **71 live pairs** (79 with controls), over the 60 cap.
+Per the drop order fixed above, by identity counts alone and no picture or
+figure: `toat_beanie` (7 live) and `toat_machine_beanie` (8 live) are removed
+from `spec.json` (56 live expected); `toat_machine_hat`, one `mfab` pair and one
+`proseal` pair survive. Arms, flags and thresholds are untouched. The
+manipulation check on the first build read: six construction arms passed;
+`lane_off` (moved and held on 2 of 13 logos) and `exit_next_off` (0 of 14) failed.
+After the drop, 56 live pairs (the rebuilt kit): `corner_fold_off`, `text_lean_off`
+and `inside_stagger_off` pass; `italic_lean_off` (2 logos), `script_strokes_off`
+and `fold_slivers_off` (1 logo each) now fall under `min_live_logos` because the
+dropped toat beanies were their other logos, and `lane_off` (2 of 11) and
+`exit_next_off` (0 of 12) still fail. All stay, flagged `passes: false`, per the
+rule above, and are read on all live pairs and on passing arms alone. That `exit_next_off`, the
+trims control, did not move and hold as registered means it may not be a clean
+trims-only probe; the analysis reads it as built. Render wall time was 421 min
+over 20 CPU-slot turns on a loaded laptop.
