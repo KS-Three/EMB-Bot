@@ -77,11 +77,12 @@ def detect(regions, cfg) -> bool:
                and r.polygon.geom_type == "Polygon" and r.polygon.interiors for r in regions):
         return False
     from .art_outline import find_art_outlines
-    from .silhouette_underfill import INSIDE_MIN, RING_MIN_AREA_MM2
+    from .silhouette_underfill import INSIDE_MIN, _ring_floor
+    floor = _ring_floor(regions)
     by_id = {r.shape_id: r for r in regions}
     hosts = [r for r in regions
              if not r.meta.get("enclosed_background") and r.polygon is not None
-             and r.polygon.geom_type == "Polygon" and r.polygon.area >= RING_MIN_AREA_MM2]
+             and r.polygon.geom_type == "Polygon" and r.polygon.area >= floor]
     for oid, bodies in find_art_outlines(regions, cfg).items():
         field = by_id[oid]
         if not field.meta.get("enclosed_background"):
