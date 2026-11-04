@@ -16,7 +16,7 @@ Behaviour only; no Ember code or screenshots are kept in this repo.
 - **Click on the path:** inserts a corner point (a click 4 px off did nothing).
 - **Double-click a point:** toggles smooth / corner.
 - **Shift-click:** replaces the selection, does not add. Right-click: selects, no menu.
-- **Bare drag on empty canvas:** marquee. Hit radius ~6-10 px.
+- **Bare drag on empty canvas:** marquee. Hit radius: grabs at 6 and 10 screen px, misses at 14 and 18 (so 10-14 px), zoom-independent.
 - **Arrows:** 1 unit, Shift = 10; each press one undo step.
 - **Escape:** does nothing. **Enter / tick:** accept, one restitch. **Cross:** reject,
   rolls the whole session back.
