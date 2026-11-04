@@ -505,10 +505,10 @@ FLAGS: dict[str, dict] = {
     "flat_page_fringe_exclude": {
         "sets": {"flat_page_fringe_exclude": True},
         "fixtures": ["becker_hat_small", "becker_hat_large", "becker_lc_large", "becker_chest_small"],
-        "metric": "sub_half_mm", "about": "stitches under 0.5 mm", "pr": 0,
+        "metric": "sub_half_mm", "about": "stitches under 0.5 mm", "pr": 1230,
         "note": "Flat lane only (all four are Becker: the pro jobs that reach flat). The page-edge "
                 "fringe leaves the palette fit; read the colour count and the trims, not only the "
-                "metric. pr 0 = the number is filled in when the PR opens."},
+                "metric. Becker is inert here (ON == OFF)."},
 }
 
 #: The wave-3 sheet (2026-10-26): the flags its run and report carry. The bay mouth left
