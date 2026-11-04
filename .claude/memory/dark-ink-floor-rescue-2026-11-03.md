@@ -59,3 +59,7 @@ rescue of a letter whose neighbours are all lost; not built (Kent's call).
 gitignored `scratch_kent/` and are never committed.
 
 Related: [[dark-ink-bean-2026-10-28]], [[dark-thin-strokes-flip-2026-10-28]].
+
+Flipped ON 2026-11-04 (Kent), PR #1233 (built OFF in #1232). `PRE_FLIP` pins the OFF arm.
+
+**Sheet gap (found on the flip, 2026-11-04).** `dark_ink_flip_sheet` runs only the shipped path (80 mm left_chest), where the texture gate and the glyph mask hide two movers: the owl forced onto the gradient plan (`stage0_texture_gate=False`) reads +2 feather streaks (6 -> 8), and the bare glyph-less reader on Summit reads 1 -> 5 (the dark notches in the Ms). Shipped outputs are identical on both. A test that forces a gate or calls a reader bare moves on a flip; the sheet never exercises it.

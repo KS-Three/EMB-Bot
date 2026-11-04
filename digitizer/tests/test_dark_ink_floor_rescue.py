@@ -88,9 +88,9 @@ def test_an_unclaimed_rescue_is_dropped_and_counted_a_claimed_one_stays():
     assert regions == [letter, plain]
 
 
-def test_defaults_are_off_and_the_read_floor_sits_under_the_detail_floor():
+def test_default_is_on_and_the_read_floor_sits_under_the_detail_floor():
     cfg = PipelineConfig()
-    assert cfg.dark_ink_floor_rescue is False
+    assert cfg.dark_ink_floor_rescue is True  # Kent's flip, 2026-11-04
     assert cfg.dark_ink_read_floor_mm < cfg.min_detail_mm
 
 
