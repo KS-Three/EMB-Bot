@@ -256,10 +256,13 @@ def test_no_ring_reads_without_a_reason():
     # a lettering ring is the lettering lane's
     regs = mfab()
     regs[1] = _reg("Sring", regs[1].polygon, 0, 1, text_candidate=True)
+    # the 174 mm2 keyline is itself over the size-scaled floor (2026-11-04); pin it
+    regs[0] = _reg("Skey", regs[0].polygon, 1, 0, tier="satin")
     assert su.plan(regs) == []
     # a review override on the ring wins
     regs = mfab()
     regs[1] = _reg("Sring", regs[1].polygon, 0, 1, tier="satin")
+    regs[0] = _reg("Skey", regs[0].polygon, 1, 0, tier="satin")
     assert su.plan(regs) == []
 
 

@@ -65,6 +65,16 @@ MERGED_ART_KEY = "underfill_merged_art"
 
 #: a ring smaller than this is a letter with a counter, not a silhouette
 RING_MIN_AREA_MM2 = 200.0
+#: ... but never more than this share of the design's own box: the floor is an
+#: absolute 200 mm2 on a 113.5 mm hat (MFab's band 1,330 mm2), and at DADE's
+#: fixed 36.7 mm the same band is 139 mm2 -- under it, so the recipe never
+#: fired, white sewed first and the black band buried it (a solid blob,
+#: 2026-11-04). The band is 26% of the box at both sizes; 4% of the box is 200
+#: at 5,000 mm2 (a 113.5 x 44 hat), so designs that size and larger are unchanged.
+RING_MIN_BOX_FRAC = 0.04
+#: ... and never under this: a ring under ~10 x 10 mm is a letter with a counter at
+#: any size (the band that failed was 139).
+RING_MIN_FLOOR_MM2 = 100.0
 #: an inner shape lies this much inside the ring's outline ...
 INSIDE_MIN = 0.9
 #: ... and at most this much on the ring itself (the `fill_inside_satin_border` test)
@@ -210,11 +220,23 @@ def _is_letter(r) -> bool:
     return any(m.get(k) for k in _LETTER_KEYS)
 
 
+def _ring_floor(regions) -> float:
+    """`RING_MIN_AREA_MM2`, held to `RING_MIN_BOX_FRAC` of the design's box."""
+    boxes = [r.polygon.bounds for r in regions
+             if r.polygon is not None and not r.polygon.is_empty]
+    if not boxes:
+        return RING_MIN_AREA_MM2
+    w = max(b[2] for b in boxes) - min(b[0] for b in boxes)
+    h = max(b[3] for b in boxes) - min(b[1] for b in boxes)
+    return max(RING_MIN_FLOOR_MM2, min(RING_MIN_AREA_MM2, RING_MIN_BOX_FRAC * w * h))
+
+
 def _ring_candidates(regions):
+    floor = _ring_floor(regions)
     for r in regions:
         p = r.polygon
         if (p is None or p.geom_type != "Polygon" or not p.interiors
-                or p.area < RING_MIN_AREA_MM2
+                or p.area < floor
                 or str(r.meta.get("tier", "auto")).lower() != "auto"
                 or _is_letter(r)):
             continue
