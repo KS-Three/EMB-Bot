@@ -1124,6 +1124,28 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_dark_ink_bean.py`; sheet: `docs/renders/dark-ink-bean-2026-10-28/`.
     dark_ink_bean: bool = True
+    # A dark-ink carve (`keep_dark_thin_strokes`) under stage 3's detail floor
+    # is kept for the lettering path instead of absorbed into its ground
+    # (built OFF 2026-11-03, Kent on the Pooh pot: "a lettering rescue from
+    # the floor"). Measured: at left-chest size (54.6 mm) the H of HUNNY is
+    # three strokes under `min_detail_mm`^2 and disconnected from the U, so
+    # the absorb eats it. ON (gradient class, `keep_dark_thin_strokes` on),
+    # `resolve_small_regions` protects every sub-floor region on a dark-ink
+    # label; stage 4 sews it down to the run tier's floors, tags it
+    # `meta["dark_ink_floor_rescued"]`, and after `detect_text_clusters` one
+    # the tagger did not claim is dropped (counted in the dropped-shape
+    # tally, no new sentence). OFF is byte-identical. Tests:
+    # `tests/test_dark_ink_floor_rescue.py`.
+    dark_ink_floor_rescue: bool = False
+    # Read only with `dark_ink_floor_rescue` on: the width (mm) of a SECOND dark
+    # read (black-hat kernel + thin-stroke test) whose components are ADDED to
+    # the first read's when they touch none of its (the first read, at
+    # `min_detail_mm`, is unchanged). A RASTER READ THRESHOLD (which strokes count as
+    # pen ink), settled by artwork; not a stitch or sewn-width value --
+    # `min_detail_mm`, the sewability floor, never moves. Measured on the Pooh
+    # pot: `min_detail_mm` feeds the read's kernel (2*floor_px+1), so at 1.5
+    # and 54.6 mm the 25 px kernel closes the fifth letter into the ground.
+    dark_ink_read_floor_mm: float = 1.0
     # The figure's page-edge FRINGE neither votes in the palette fit nor
     # survives as slivers (built OFF 2026-11-03, Kent on the Pooh pot: "a hole
     # in the honey jar"). The anti-alias blend between a dark outline and the

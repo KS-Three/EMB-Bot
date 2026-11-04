@@ -796,6 +796,10 @@ def vectorize(
                            if part.covers(Polygon(ring).representative_point())]
                 if mine_sc:
                     meta["small_counters"] = mine_sc
+            if getattr(rm, "floor_rescued", False):
+                # `cfg.dark_ink_floor_rescue`: kept under the floor for the
+                # lettering path; the pipeline drops it if nothing claims it.
+                meta["dark_ink_floor_rescued"] = True
             if getattr(rm, "cored_counter", False):
                 # `cfg.open_cored_counters`: a counter stage 3 kept out of
                 # its letter; stage 7 holds the letter's satin off it.

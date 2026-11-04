@@ -61,3 +61,11 @@ looked for.
 - Bin the output file afterwards (Recycle Bin, Kent's rule), after checking
   nothing holds it open: it sits in the owning session's `tasks` folder, not
   in the repo.
+
+**Second instance, 2026-11-03:** a Sonnet worker's `python - 2>/dev/null` inside a
+compound `;` command (`python - 2>/dev/null; sed -i ...; ... &`) fell into the
+system Python 3.14 REPL (`C:\Python314\python.exe -`, not the venv), was
+orphaned after bash exited, and burned thousands of CPU-seconds on one core
+until the sibling worker found it with `Get-Process`. The trap is not only
+heredocs: any bare `python -` with no stdin reaching it does this, and a `;`
+chain hides it. Run a script FILE, by path, with the venv interpreter.
