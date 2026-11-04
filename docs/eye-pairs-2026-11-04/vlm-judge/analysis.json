@@ -1,0 +1,218 @@
+{
+ "sitting": "pro-lettering-1102",
+ "n_live": 54,
+ "excluded": [
+  "P001",
+  "P002",
+  "P003"
+ ],
+ "kent": {
+  "identical_called_tie": 3,
+  "identical_pairs": 3,
+  "repeat_consistent": 1,
+  "repeat_pairs": 4,
+  "left_picks": 22,
+  "right_picks": 7,
+  "ties_live": 25
+ },
+ "passing_arms": [
+  "corner_fold_off",
+  "inside_stagger_off",
+  "text_lean_off"
+ ],
+ "models": {
+  "claude-fable-5-1-session": {
+   "orders": {
+    "A": {
+     "reads": {
+      "live": {
+       "n_scored": 54,
+       "n_kent_decided": 29,
+       "n_judge_decided": 22,
+       "judge_silent_on_decided": 13,
+       "kappa_3way": 0.3571428571428567,
+       "ci3_pairs": [
+        0.15989265233810432,
+        0.5490619270664568
+       ],
+       "ci3_designs": [
+        0.20174727448582114,
+        0.4510739856801906
+       ],
+       "reading_3way": "above chance",
+       "n_decided": 16,
+       "kappa_sides": 0.45454545454545453,
+       "ci2_pairs": [
+        -0.14285714285714285,
+        1.0
+       ],
+       "ci2_designs": [
+        -0.11999999999999966,
+        0.7441860465116281
+       ],
+       "reading_sides": "no evidence either way",
+       "table_kent_rows_judge_cols": [
+        [
+         11,
+         3,
+         1
+        ],
+        [
+         6,
+         19,
+         0
+        ],
+        [
+         2,
+         10,
+         2
+        ]
+       ]
+      },
+      "passing_arms_only": {
+       "n_scored": 28,
+       "n_kent_decided": 15,
+       "n_judge_decided": 9,
+       "judge_silent_on_decided": 9,
+       "kappa_3way": 0.17647058823529402,
+       "ci3_pairs": [
+        -0.08418338312704468,
+        0.4285714285714285
+       ],
+       "ci3_designs": [
+        -0.15254237288135594,
+        0.34360775560224055
+       ],
+       "reading_3way": "no evidence either way",
+       "n_decided": 6,
+       "kappa_sides": -0.1999999999999996,
+       "ci2_pairs": [
+        -0.5000000000000001,
+        0.0
+       ],
+       "ci2_designs": [
+        -1.0,
+        0.0
+       ],
+       "reading_sides": "n too small (<10)",
+       "table_kent_rows_judge_cols": [
+        [
+         4,
+         2,
+         1
+        ],
+        [
+         3,
+         10,
+         0
+        ],
+        [
+         1,
+         7,
+         0
+        ]
+       ]
+      },
+      "vs_kit_expected_label": {
+       "n_scored": 54,
+       "n_kent_decided": 54,
+       "n_judge_decided": 22,
+       "judge_silent_on_decided": 32,
+       "kappa_3way": 0.1573948439620083,
+       "ci3_pairs": [
+        0.0079994547919369,
+        0.2965931863727456
+       ],
+       "ci3_designs": [
+        -0.004246284501061635,
+        0.27752337647584185
+       ],
+       "reading_3way": "no evidence either way",
+       "n_decided": 22,
+       "kappa_sides": 0.049382716049382554,
+       "ci2_pairs": [
+        -0.2531645569620251,
+        0.48837209302325585
+       ],
+       "ci2_designs": [
+        -0.263157894736842,
+        0.40909090909090895
+       ],
+       "reading_sides": "no evidence either way",
+       "table_kent_rows_judge_cols": [
+        [
+         14,
+         10,
+         2
+        ],
+        [
+         0,
+         0,
+         0
+        ],
+        [
+         5,
+         22,
+         1
+        ]
+       ]
+      }
+     },
+     "controls": {
+      "answered": 61,
+      "refused": 0,
+      "unparsed": 0,
+      "identical_called_tie": 3,
+      "identical_answered": 3,
+      "repeat_consistent": 4,
+      "repeat_answered": 4,
+      "left_picks_own_frame": 16,
+      "right_picks_own_frame": 7,
+      "ties_live": 32,
+      "mean_confidence": 3.48
+     },
+     "opposite_side": [
+      {
+       "pair": "P022",
+       "fixture": "toat_machine_hat",
+       "arm": "inside_stagger_off",
+       "kent": "after",
+       "judge": "before",
+       "confidence": 2,
+       "reason": "RIGHT's achine letters look chunkier with a split in the c and blockier h and n; LEFT's script runs smoother. Small difference."
+      },
+      {
+       "pair": "P030",
+       "fixture": "k_line",
+       "arm": "text_lean_off",
+       "kent": "before",
+       "judge": "after",
+       "confidence": 3,
+       "reason": "RIGHT's LINE has a clean one-piece N diagonal and a tidier E; LEFT's N is chopped into segments."
+      },
+      {
+       "pair": "P061",
+       "fixture": "proseal_beanie",
+       "arm": "exit_next_off",
+       "kent": "after",
+       "judge": "before",
+       "confidence": 2,
+       "reason": "LEFT's hexagon top-right corner shows a notch where the sides meet and its S and E carry extra splits; RIGHT's corner is joined. Small difference."
+      }
+     ]
+    }
+   },
+   "cost": {
+    "calls": 64,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "usd": null
+   },
+   "swap": {
+    "pairs_in_both_orders": 0,
+    "same_verdict_after_swap": 0,
+    "side_flipped_with_swap": 0
+   }
+  }
+ }
+}

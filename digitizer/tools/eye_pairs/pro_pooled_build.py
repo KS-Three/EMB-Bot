@@ -317,8 +317,13 @@ def ensure_tree(trees: Path, sha: str) -> Path:
     return path
 
 
-def render_one(tree: Path, fixture: str, out: Path, kwargs: dict, python: str) -> dict:
+def render_one(tree: Path, fixture: str, out: Path, kwargs: dict, python: str,
+               size: tuple[float, str] | None = None) -> dict:
+    """`size` = (width_mm, garment) overrides the pro job's: the vlm-judge repeat
+    (2026-11-04) draws each pair at the SITTING's request, the picture Kent judged."""
     slug, garment, width = job_of(fixture)
+    if size is not None:
+        width, garment = float(size[0]), str(size[1])
     image = tree / "digitizer" / "testdata" / FIXTURE_ART[fixture]
     if not image.exists():
         raise FileNotFoundError(image)
@@ -338,8 +343,18 @@ def render_one(tree: Path, fixture: str, out: Path, kwargs: dict, python: str) -
     return meta
 
 
+def sitting_size(fixture: str) -> tuple[float, str]:
+    """The width and garment the sitting rendered this fixture at (`thin_strokes.REAL_ART`:
+    becker 100 mm left_chest, fremont 92.5 mm patch, the rest 80 mm left_chest)."""
+    from tools.thin_strokes import REAL_ART
+    _rel, width, garment = REAL_ART[fixture]
+    return float(width), garment
+
+
 def render(runs: Path, trees: Path, *, decided_only: bool, take_min: float, slot: Slot,
-           only: set[str] | None, python: str, keep_trees: bool) -> None:
+           only: set[str] | None, python: str, keep_trees: bool,
+           size_of=None) -> None:
+    """`size_of(fixture) -> (width_mm, garment)` replaces the pro job's size when given."""
     pairs = labelled_pairs()
     if only:
         pairs = [p for p in pairs if p["sitting"] in only]
@@ -363,7 +378,8 @@ def render(runs: Path, trees: Path, *, decided_only: bool, take_min: float, slot
                     continue
                 _say(f"render {sha}/{fixture}/{side} {json.loads(kw)}")
                 try:
-                    meta = render_one(tree, fixture, out, json.loads(kw), python)
+                    meta = render_one(tree, fixture, out, json.loads(kw), python,
+                                      size=size_of(fixture) if size_of else None)
                     _say(f"  done: {meta['stitches']} stitches, {meta['trims']} trims, "
                          f"{meta['secs']} s engine / {meta['wall_s']} s wall")
                 except (RuntimeError, FileNotFoundError, subprocess.TimeoutExpired) as e:
@@ -583,17 +599,25 @@ def main(argv=None) -> int:
     ap.add_argument("--no-words", action="store_true", help="skip the tesseract word reads")
     ap.add_argument("--keep-trees", action="store_true")
     ap.add_argument("--python", default=sys.executable)
+    ap.add_argument("--sitting-size", action="store_true",
+                    help="render at the sitting's own width and garment (REAL_ART), not the pro job's")
     a = ap.parse_args(argv)
     if a.cmd == "plan":
         print(plan_report(a.decided_only))
         return 0
     if a.runs is None:
         ap.error("--runs is required")
+    # The engine driver runs with the detached TREE as its cwd: a relative --runs
+    # sends every design into the temp tree, which is then removed (2026-11-04).
+    a.runs = a.runs.resolve()
+    if a.trees is not None:
+        a.trees = a.trees.resolve()
     if a.cmd == "render":
         trees = a.trees or (Path(os.environ.get("TEMP", ".")) / "embwt" / "trees")
         slot = Slot(None if a.no_slot else default_slot(), "pro_pooled_build render (yardstick pro-pair)")
         render(a.runs, trees, decided_only=a.decided_only, take_min=a.take_min, slot=slot,
-               only=set(a.only) if a.only else None, python=a.python, keep_trees=a.keep_trees)
+               only=set(a.only) if a.only else None, python=a.python, keep_trees=a.keep_trees,
+               size_of=sitting_size if a.sitting_size else None)
     elif a.cmd == "measure":
         slot = Slot(None if a.no_slot else default_slot(), "pro_pooled_build measure (yardstick pro-pair)")
         measure(a.runs, words=not a.no_words, slot=slot, take_min=a.take_min)
