@@ -636,10 +636,14 @@ test("(e) a hole's node drags on its own: holes_override carries the grabbed ver
   console.log("holes_override vertices:", entry.holes_override[0].length, "of", holed.holes[0].length, "- moved:", JSON.stringify(moved));
 
   await restitched(page, before);
-  // The sliver the move opened (between the old corner and the new one, just below
-  // the hole's top edge) was green; it is garment now.
-  const A = g.hole.tl, B = to;
-  const wedge = { x: (A.x + B.x) / 2, y: A.y + 0.1 * dragPx };
+  // The ground the move opened: the midpoint of old corner -> new corner, both
+  // taken from the real ring (the hole's bbox corner is not a vertex on a
+  // chamfered square). It was green; it is garment now.
+  const ring0 = ringOf(holed.holes[0]);
+  const minX = Math.min(...ring0.map((p) => p[0])), minY = Math.min(...ring0.map((p) => p[1]));
+  const toPx = (p) => ({ x: g.hole.tl.x + (p[0] - minX) * pxPerServiceMm, y: g.hole.tl.y + (p[1] - minY) * pxPerServiceMm });
+  const vOld = toPx(ring0[lead.i]);
+  const wedge = { x: vOld.x + (lead.dx * pxPerServiceMm) / 2, y: vOld.y + (lead.dy * pxPerServiceMm) / 2 };
   await expect.poll(async () => {
     const px = await pixelAt(page, wedge);
     return Math.max(...px.map((v, i) => Math.abs(v - garment[i])));
