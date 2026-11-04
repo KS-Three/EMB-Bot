@@ -167,6 +167,75 @@ def page_fringe(p: Prep, cfg: PipelineConfig, base_valid: np.ndarray) -> np.ndar
     return out if out.any() else None
 
 
+def outline_inner_blend(labels, lab_full, valid, centers, exclude, d_px, thin_px, cfg):
+    """The blend between a THIN DARK OUTLINE and the fill beside it
+    (`cfg.flat_page_fringe_exclude`), found per pixel -> (mask, target label)
+    or None.
+
+    The outline is read off the labels: the darkest label (L* of its centre),
+    when at least half of its pixels lie within `thin_px / 2` of a pixel that is
+    not its own (thin: its widest part is under `thin_px`; the caller passes
+    `cfg.flat_outline_max_mm * px_per_mm`), plus any other thin label within
+    10 L* of it. A pixel is fringe when it is within `d_px` of that outline,
+    is not itself an outline label, and (the keyline guard) its Lab colour lies
+    on the chord outline-centre -> adjacent-fill-centre (0.1 < t < 0.9, within
+    2 x `merge_delta_e`) AND nearer that chord than to any OTHER palette
+    centre: a colour of its own (a light keyline; the sheen beside an outline)
+    keeps its vote. Its target is the outline for t < 0.5, the fill otherwise:
+    never the label its own blended colour would pick.
+
+    Why the phantom dissolve does not catch it: it tests a whole CLUSTER (an
+    edge fraction, then betweenness), and a blend population that a real pale
+    region anchors (the pot's sheen) is not mostly edge, so it passes as real.
+    """
+    k = len(centers)
+    n_of = [int((valid & (labels == j)).sum()) for j in range(k)]
+    live = [j for j in range(k) if n_of[j]]
+    if len(live) < 3:
+        return None
+    light = {j: float(centers[j][0]) for j in live}
+    darkest = min(live, key=lambda j: light[j])
+    thin = []
+    for j in live:
+        m = valid & (labels == j)
+        dt = cv2.distanceTransform(m.astype(np.uint8), cv2.DIST_L2, 3)
+        if float((dt[m] <= thin_px / 2.0).mean()) >= 0.5:
+            thin.append(j)
+    if darkest not in thin:
+        return None
+    outline = [j for j in thin if light[j] <= light[darkest] + 10.0]
+    o_mask = valid & np.isin(labels, outline)
+    dist_o = cv2.distanceTransform((~o_mask).astype(np.uint8), cv2.DIST_L2, 5)
+    cand = valid & ~o_mask & ~exclude & (dist_o <= d_px)
+    src = valid & ~o_mask & ~cand & ~exclude
+    if not cand.any() or not src.any():
+        return None
+    h, w = labels.shape
+    cy, cx = np.nonzero(cand)
+    o_lab = labels.reshape(-1)[_nearest_source(o_mask)[cy, cx]]
+    f_lab = labels.reshape(-1)[_nearest_source(src)[cy, cx]]
+    oc, fc = centers[o_lab], centers[f_lab]
+    c = lab_full[cy, cx]
+    ab = fc - oc
+    ll = (ab * ab).sum(1)
+    safe = np.where(ll > 0, ll, 1.0)
+    t = ((c - oc) * ab).sum(1) / safe
+    resid = np.linalg.norm(c - (oc + t[:, None] * ab), axis=1)
+    own = np.full(len(cy), np.inf)
+    for j in live:
+        d = np.linalg.norm(c - centers[j], axis=1)
+        own = np.where((o_lab != j) & (f_lab != j), np.minimum(own, d), own)
+    hit = ((np.sqrt(ll) > 2.0 * cfg.merge_delta_e) & (t > 0.1) & (t < 0.9)
+           & (resid < 2.0 * cfg.merge_delta_e) & (resid < own))
+    if not hit.any():
+        return None
+    mask = np.zeros((h, w), bool)
+    target = np.full((h, w), -1, np.int32)
+    mask[cy[hit], cx[hit]] = True
+    target[cy[hit], cx[hit]] = np.where(t[hit] < 0.5, o_lab[hit], f_lab[hit])
+    return mask, target
+
+
 def _kmeans(pixels: np.ndarray, k: int, seed: int, iters: int = 60,
             drop: np.ndarray | None = None) -> np.ndarray:
     """Deterministic Lloyd's k-means with seeded k-means++ init. -> (k, 3) centers.
@@ -291,6 +360,7 @@ def _quantize_population(
     bg_edge_rgb: np.ndarray | None,
     enlarged_past_line: bool = False,
     fringe: np.ndarray | None = None,
+    inner: tuple[float, float] | None = None,
 ) -> tuple[np.ndarray, list[int], list[dict]]:
     """Fit -> assign -> anti-alias cleanup -> spool-snap, over exactly the
     pixels in `valid`. This is the entire body `quantize()` has always run,
@@ -332,11 +402,33 @@ def _quantize_population(
     lab_flat = np.full(h * w, -1, np.int32)
     lab_flat[idx] = _assign(lab, centers)
     labels = lab_flat.reshape(h, w)
+    target = None
+    if fringe is not None and inner is not None:
+        # The outline's inner blend (`outline_inner_blend`), read off this
+        # first assignment; its pixels join `fringe` IN PLACE (the caller reads
+        # the union for stage 3) and the fit runs again without them. The init
+        # still draws from every pixel, as in the first fit: dropping them
+        # before the draw re-seeds the whole palette, so cluster ids stay put
+        # and the first fit's targets name the same clusters.
+        lab_full = np.zeros((h * w, 3), np.float64)
+        lab_full[idx] = lab
+        found = outline_inner_blend(labels, lab_full.reshape(h, w, 3), valid, centers,
+                                    fringe, inner[0], inner[1], cfg)
+        if found is not None:
+            fringe |= found[0]
+            target = found[1]
+            centers = _kmeans(lab, k, cfg.seed, drop=fringe.reshape(-1)[idx])
+            lab_flat[idx] = _assign(lab, centers)
+            labels = lab_flat.reshape(h, w)
     if fringe is not None:
         # A fringe pixel takes its nearest non-fringe pixel's label, not the
-        # one its own blended colour picks.
+        # one its own blended colour picks; an outline-inner blend takes the
+        # outline or the fill by its place on their chord.
         fy, fx = np.nonzero(fringe)
         labels[fy, fx] = lab_flat[_nearest_source(valid & ~fringe)[fy, fx]]
+        if target is not None:
+            sel = target >= 0
+            labels[sel] = target[sel]
 
     # --- anti-alias: majority filter, then phantom-blend dissolve -----------
     labels = _majority_filter(labels, valid, k, cfg.aa_iterations)
@@ -549,11 +641,22 @@ def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
 
     # `cfg.flat_page_fringe_exclude`: the base population's page-edge blend
     # pixels, left out of the fit (None = the call as it always was).
-    fringe = page_fringe(p, cfg, base_valid) if cfg.flat_page_fringe_exclude else None
+    fringe = None
+    inner = None
+    if cfg.flat_page_fringe_exclude and not p.bg_from_alpha:
+        fringe = page_fringe(p, cfg, base_valid)
+        if fringe is None:
+            fringe = np.zeros((h, w), bool)
+        # The outline-inner blend's reach: the resampling ramp, `upscale`
+        # working px wide (the page band's rule), and the widest an outline
+        # may be to count as thin, `flat_outline_max_mm` in working px.
+        up = (float(p.px_per_mm) / float(p.input_px_per_mm)) if p.input_px_per_mm else 1.0
+        inner = (float(max(int(cfg.flat_page_fringe_px), int(np.ceil(max(up, 1.0))))),
+                 float(cfg.flat_outline_max_mm) * float(p.px_per_mm))
 
     base_labels, base_spools, warnings = _quantize_population(
         flat_rgb, base_valid, h, w, cfg, p.bg_edge_rgb, enlarged_past_line=enlarged,
-        fringe=fringe,
+        fringe=fringe, inner=inner,
     )
 
     if has_enclosed:

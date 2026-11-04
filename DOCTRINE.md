@@ -9342,3 +9342,22 @@ ticked white counts against the cap) folds only the
 strays past the budget, longest thread kept. *(measured 2026-10-29 —
 `docs/superpowers/specs/2026-10-29-colour-cap-sewn-design.md`,
 `tests/test_color_cap_sewn.py`)*
+
+
+**The page fringe shares the pale palette slot — and excluding it is not enough (2026-11-03).**
+Kent's Pooh (flat, 6 colours) sewed the pot's sheen in Stone, a pale cream that
+reads as fabric ("a hole in the honey jar"): the flat lane's pale slot is
+shared between the sheen and the anti-alias blend between the dark outline and
+the white page (66 Stone regions, 59 under 3 mm2; at 7 colours the fringe
+takes White and the sheen folds into the pot). `flat_page_fringe_exclude`
+(OFF) keeps those pixels out of the Lloyd update (the init draws still see
+them: dropping them before the draw re-seeded the whole palette), labels them
+from their nearest non-fringe figure pixel, and keeps a chain of them out of
+stage 3's rescue. Three traps measured building it: the ramp is the upscale
+factor wide (Pooh x2.7, so a fixed 2 px band is under one source pixel); the
+page is what its pixels are (median 255), not `bg_edge_rgb`, which averages the
+ring the ramp already pulled toward the figure (244); and a thin dark outline
+inside the band makes the nearest-interior reference wrong (the chord runs to
+the OUTLINE, not the fill behind it). What it does NOT touch: the outline's
+INNER blend with the fill, which still seeds pale flecks. *(measured
+2026-11-03 — `tests/test_flat_page_fringe.py`, memory `flat-page-fringe-2026-11-03`)*

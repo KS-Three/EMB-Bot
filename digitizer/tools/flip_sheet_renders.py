@@ -502,6 +502,13 @@ FLAGS: dict[str, dict] = {
         "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1204,
         "note": "Seam order's two progressions: fewer ridges and flips first, _score settling a "
                 "tie, instead of the shorter flown chord."},
+    "flat_page_fringe_exclude": {
+        "sets": {"flat_page_fringe_exclude": True},
+        "fixtures": ["becker_hat_small", "becker_hat_large", "becker_lc_large", "becker_chest_small"],
+        "metric": "sub_half_mm", "about": "stitches under 0.5 mm", "pr": 0,
+        "note": "Flat lane only (all four are Becker: the pro jobs that reach flat). The page-edge "
+                "fringe leaves the palette fit; read the colour count and the trims, not only the "
+                "metric. pr 0 = the number is filled in when the PR opens."},
 }
 
 #: The wave-3 sheet (2026-10-26): the flags its run and report carry. The bay mouth left

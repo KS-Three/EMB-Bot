@@ -57,7 +57,8 @@ def test_off_records_no_fringe_and_is_the_unflagged_path():
 
 
 def test_on_finds_a_fringe_of_figure_pixels_beside_the_page():
-    p, q, _ = _run(_art(), True)
+    # `flat_outline_max_mm=0`: no label is thin, so this reads the page band alone
+    p, q, _ = _run(_art(), True, flat_outline_max_mm=0.0)
     f = q.page_fringe
     assert f is not None and f.sum() > 300
     assert not (f & p.bg_mask).any()            # figure pixels only
@@ -120,3 +121,14 @@ def test_off_labels_ignore_the_band_constant():
     a = _run(_art(), False, flat_page_fringe_px=2)[1].labels
     b = _run(_art(), False, flat_page_fringe_px=7)[1].labels
     assert np.array_equal(a, b)
+
+
+def test_the_outline_inner_blend_adds_fringe_and_a_zero_width_outline_removes_it():
+    """B (`outline_inner_blend`): the blend between the thin dark outline and the fill is
+    fringe too; `flat_outline_max_mm=0` means no label is thin, so only the page band remains."""
+    with_b = _run(_art(), True)[1].page_fringe
+    page_only = _run(_art(), True, flat_outline_max_mm=0.0)[1].page_fringe
+    assert with_b.sum() > page_only.sum() + 200
+    # the union never touches the outline's own pixels' page side: still figure pixels only
+    p = _run(_art(), True)[0]
+    assert not (with_b & p.bg_mask).any()

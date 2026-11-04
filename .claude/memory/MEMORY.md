@@ -43,6 +43,7 @@ the OLDEST lines whole to the archive.
 - [Seam order flip](fill-seam-order-flip-2026-10-30.md) — fill_seam_order + fill_bridge_cut_exposed ON together (Kent 10-30): ridges 0, exposed travel down, trims up; seam order alone adds exposure
 - [Fine bars satin](fine-bars-satin-2026-10-25.md) — `fine_bars_satin` ON 10-26: pro satins every free thin ink bar (5/5); STEM_MIN_ASPECT or < 1 cross, not 2.5 (rope); 37/38 cure, region kappa 0.905
 - [Flag stripes](flag-stripes-seam-cap-2026-10-30.md) — equal art sewed 4.53/3.57: rail pull lands after stage 5's clip; `satin_seam_hold` + `satin_cap_skew_inset` OFF; underlay was never missing
+- [Flat page fringe](flat-page-fringe-2026-11-03.md) — `flat_page_fringe_exclude` OFF: page-edge blend leaves the flat fit + chain rescue; Pooh pale flecks 59 -> 25; band = upscale+1; page = median; outline INNER blend untouched
 - [Flip-proof pins](flip-proof-pins-2026-10-27.md) — `FLAT_GOLDEN_MD5` from the json; `frozen_cfg()` spreads a dated snapshot; test_pins_are_frozen guards new md5 pins
 - [Flip sheet: layout flags OFF | ON | pro](flip-sheet-2026-10-23.md) — `tools/flip_sheet_renders.py`; diff is a MULTISET (locks sit on stations); x-ray tiles
 - [Flip sheet, inlined](flip-sheet-inline-2026-10-24.md) — `report --inline` = ONE HTML (data URIs; app viewer breaks relative paths); a flag with a `base` diffs against its own OFF

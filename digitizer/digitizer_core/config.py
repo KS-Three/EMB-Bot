@@ -1148,6 +1148,13 @@ class PipelineConfig:
     # raster (one source pixel becomes `upscale` working pixels; Pooh at 80 mm
     # reads about 1-2 px deep). A constant here, not scaled by `px_per_mm`.
     flat_page_fringe_px: int = 2
+    # Also under `flat_page_fringe_exclude`: the blend between a THIN DARK
+    # OUTLINE and the fill beside it (`stage2_quantize.outline_inner_blend`) is
+    # fringe too. An outline is the darkest label when half of its pixels sit
+    # within half this many mm of a non-outline pixel (a widest part under
+    # 0.8 mm = 6.4 px at 8 px/mm; scales with `px_per_mm`). Its reach is the
+    # upscale factor wide, at least `flat_page_fringe_px` (3 px on Pooh).
+    flat_outline_max_mm: float = 0.8
     # A letter's counter on a COLOURED ground stays a hole
     # (`stage3_segment.resolve_small_regions`). Measured 2026-10-02 on clean
     # 4 mm "BAR & RESTAURANT": on white the counters are background, never

@@ -2025,7 +2025,10 @@ meet):**
   `fill_technique="fur"` (#920, API-only), `hair_regions_directional` (#925, a
   measured negative), `subpixel_corner_runs`, `bg_structural`,
   `clip_keep_pieces` (#853). `coverage_edges` is DEPRECATED (Kent 2026-10-12:
-  no). `test_off_flags_smoke.py`'s `OFF_FLAGS` is the live list.
+  no). `flat_page_fringe_exclude` (2026-11-03, `flat_page_fringe_px`: the
+  band's floor; the page-edge blend leaves the flat palette fit and the
+  stage-3 chain rescue; `memory/flat-page-fringe-2026-11-03.md`).
+  `test_off_flags_smoke.py`'s `OFF_FLAGS` is the live list.
 
 **Determinism rule for `medial_axis`.** Always call
 `skimage.morphology.medial_axis(..., rng=0)`. With the default `rng=None`
