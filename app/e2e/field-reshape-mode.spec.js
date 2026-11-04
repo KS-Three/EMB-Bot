@@ -617,7 +617,7 @@ test("(e) a hole's node drags on its own: holes_override carries the grabbed ver
   const wMm = Math.max(...hs.map((p) => p[0])) - Math.min(...hs.map((p) => p[0]));
   const pxPerServiceMm = (g.f.hx1 - g.f.hx0) * g.k / wMm;
   const dragPx = 3 * pxPerServiceMm;                            // 3 mm of service mm, in px
-  const to = { x: g.hole.tl.x - dragPx, y: g.hole.tl.y };
+  const to = { x: g.hole.tl.x - dragPx, y: g.hole.tl.y - dragPx };   // diagonal: out into the green, up and left
   await drag(page, g.hole.tl, to);
 
   const read = await readHoled(page);
@@ -632,18 +632,22 @@ test("(e) a hole's node drags on its own: holes_override carries the grabbed ver
   expect(moved.length, "exactly the grabbed vertex moved").toBe(1);
   const lead = moved.reduce((a, b) => (Math.abs(b.dx) > Math.abs(a.dx) ? b : a));
   expect(lead.dx, "the grabbed vertex took the whole drag, out into the green").toBeCloseTo(-3, 0);
-  expect(Math.abs(lead.dy)).toBeLessThan(1e-6);
+  expect(lead.dy, "and up by as much").toBeCloseTo(-3, 0);
   console.log("holes_override vertices:", entry.holes_override[0].length, "of", holed.holes[0].length, "- moved:", JSON.stringify(moved));
 
   await restitched(page, before);
-  // The ground the move opened: the midpoint of old corner -> new corner, both
-  // taken from the real ring (the hole's bbox corner is not a vertex on a
-  // chamfered square). It was green; it is garment now.
+  // The ground the move opened: halfway from the midpoint of the grabbed vertex's
+  // two ring neighbours (the chord) out to its new position. It is inside the
+  // triangle (prev, new, next) and beyond the old corner, so it was green and is
+  // garment now. (The bbox corner is not a vertex on a chamfered square.)
   const ring0 = ringOf(holed.holes[0]);
   const minX = Math.min(...ring0.map((p) => p[0])), minY = Math.min(...ring0.map((p) => p[1]));
   const toPx = (p) => ({ x: g.hole.tl.x + (p[0] - minX) * pxPerServiceMm, y: g.hole.tl.y + (p[1] - minY) * pxPerServiceMm });
-  const vOld = toPx(ring0[lead.i]);
-  const wedge = { x: vOld.x + (lead.dx * pxPerServiceMm) / 2, y: vOld.y + (lead.dy * pxPerServiceMm) / 2 };
+  const n0 = ring0.length;
+  const prev = toPx(ring0[(lead.i + n0 - 1) % n0]), next = toPx(ring0[(lead.i + 1) % n0]);
+  const mid = { x: (prev.x + next.x) / 2, y: (prev.y + next.y) / 2 };
+  const vNew = { x: toPx(ring0[lead.i]).x + lead.dx * pxPerServiceMm, y: toPx(ring0[lead.i]).y + lead.dy * pxPerServiceMm };
+  const wedge = { x: (mid.x + vNew.x) / 2, y: (mid.y + vNew.y) / 2 };
   await expect.poll(async () => {
     const px = await pixelAt(page, wedge);
     return Math.max(...px.map((v, i) => Math.abs(v - garment[i])));
