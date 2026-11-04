@@ -9343,4 +9343,32 @@ strays past the budget, longest thread kept. *(measured 2026-10-29 —
 `docs/superpowers/specs/2026-10-29-colour-cap-sewn-design.md`,
 `tests/test_color_cap_sewn.py`)*
 
+
+**The page fringe shares the pale palette slot — and excluding it is not enough (2026-11-03).**
+Kent's Pooh (flat, 6 colours) sewed the pot's sheen in Stone, a pale cream that
+reads as fabric ("a hole in the honey jar"): the flat lane's pale slot is
+shared between the sheen and the anti-alias blend between the dark outline and
+the white page (66 Stone regions, 59 under 3 mm2; at 7 colours the fringe
+takes White and the sheen folds into the pot). `flat_page_fringe_exclude`
+(OFF) keeps those pixels out of the Lloyd update (the init draws still see
+them: dropping them before the draw re-seeded the whole palette), labels them
+from their nearest non-fringe figure pixel, and keeps a chain of them out of
+stage 3's rescue. Three traps measured building it: the ramp is the upscale
+factor wide (Pooh x2.7, so a fixed 2 px band is under one source pixel); the
+page is what its pixels are (median 255), not `bg_edge_rgb`, which averages the
+ring the ramp already pulled toward the figure (244); and a thin dark outline
+inside the band makes the nearest-interior reference wrong (the chord runs to
+the OUTLINE, not the fill behind it). Excluding the page edge ALONE was not enough: the flecks
+are mostly the thin dark outline's INNER blend with the fill. So the flag also
+excludes that (`outline_inner_blend`, `flat_outline_max_mm`): pixels within the
+ramp of a thin dark label that lie on its chord to the fill take the outline or
+the fill by place, off-chord colours (a keyline, the sheen) keep their vote.
+The existing phantom dissolve cannot do it: it tests a whole cluster, and a
+blend population anchored by a real pale region is not mostly edge; lowering
+`aa_phantom_edge_frac` to 0.5 / 0.7 changed nothing on Pooh (measured
+negative). Pooh 80 mm: pale-thread flecks 59 → 25, regions 237 → 197; the
+palette also moves elsewhere (pot body 0763 → 6071, dE00 22), so "nothing else
+moves" is not met. *(measured 2026-11-03 — `tests/test_flat_page_fringe.py`,
+memory `flat-page-fringe-2026-11-03`)*
+
 **The detail floor eats the smallest letter of a dark word, and the cause is the dark read, not stage 3 (2026-11-03).** On Kent's Pooh pot, "HUNNY" lost its fifth letter at left-chest 54.6 mm and kept two at 45.6 mm. The brief blamed stage 3's absorb; spying `resolve_small_regions` showed the letter never reached it: `min_detail_mm` feeds `find_dark_thin_ink`'s black-hat kernel (`2*round(min_detail_mm*ppm)+1`, 25 px here), which closes three short strokes into the ground. **Lowering `min_detail_mm` therefore tests two mechanisms at once** (the kernel and every stitch floor); hold them apart. `dark_ink_floor_rescue` (built OFF, PR #1232) decouples the read with `dark_ink_read_floor_mm` 1.0, unions the second read onto the first, and adds a stage-3 protect and a stage-4 crumb drop that never fire on Pooh and rest on synthetic tests. The 1.0 is a raster read threshold (which strokes count as pen ink), not a stitch width, so gate 1 does not apply to it; `min_detail_mm` never moves. A replace-the-floor first design moved Fremont, drone and Bridge because the width test lowered too; the union read is what keeps ON a superset of OFF's reads. *(measured 2026-11-03 — PR #1232, `.claude/memory/dark-ink-floor-rescue-2026-11-03.md`)*

@@ -930,7 +930,10 @@ def build_generation(
         # only (the only lane that carves); None otherwise.
         protect_layers=(q.dark_ink_labels if (
             cfg.dark_ink_floor_rescue and cfg.keep_dark_thin_strokes
-            and classification.class_ == "gradient") else None))
+            and classification.class_ == "gradient") else None),
+        # `cfg.flat_page_fringe_exclude`: stage 2's page-edge blend pixels
+        # (None with the flag off and on every other lane).
+        page_fringe=getattr(q, "page_fringe", None))
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
 

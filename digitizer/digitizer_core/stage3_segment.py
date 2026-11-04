@@ -339,7 +339,7 @@ def cored_counters(regions: list["RegionMask"], small: list[int], core: np.ndarr
 
 
 def _chained_small_regions(regions, areas, boxes, small, min_area_px,
-                           height, width) -> set[int]:
+                           height, width, fringe=None) -> set[int]:
     """Sub-floor regions that form a connected structure clearing the floor.
 
     Returns the indices to KEEP as-is. Nothing is merged: the fragments of a
@@ -354,6 +354,12 @@ def _chained_small_regions(regions, areas, boxes, small, min_area_px,
     every arc are the OTHER colour, so a same-layer rule would see 84 isolated
     crumbs and chain nothing. Chains that still miss the floor together fall
     through to the per-region policy unchanged.
+
+    `fringe` (`Quant.page_fringe`, `cfg.flat_page_fringe_exclude`; None = the
+    function as it always was): the figure's page-edge blend pixels. A chain
+    more than half of whose pixels are fringe is the anti-alias ring along the
+    figure's edge, not content: it is not rescued and falls through to the
+    ordinary absorb into its interior neighbour.
     """
     if len(small) < 2:
         return set()
@@ -394,6 +400,16 @@ def _chained_small_regions(regions, areas, boxes, small, min_area_px,
             continue
         if sum(areas[m] for m in members) < min_area_px:
             continue  # still detail, even together
+        if fringe is not None:
+            # Per member, windowed to its own box (the loop's cost rule).
+            on_fringe = 0
+            for m in members:
+                bm = boxes[m]
+                if bm is None:
+                    continue
+                on_fringe += int((regions[m].window(*bm) & fringe[bm[0]:bm[2], bm[1]:bm[3]]).sum())
+            if on_fringe * 2 > sum(areas[m] for m in members):
+                continue  # the page-edge ring, not content
         chained.update(members)
     return chained
 
@@ -405,6 +421,7 @@ def resolve_small_regions(
     keep_counters: bool = False,
     counter_core: np.ndarray | None = None,
     protect_layers: frozenset | None = None,
+    page_fringe: np.ndarray | None = None,
 ) -> tuple[list[RegionMask], list[dict]]:
     """Absorb or drop sub-sewable regions. Returns (kept, warnings).
 
@@ -414,6 +431,10 @@ def resolve_small_regions(
     protected -- kept as-is, never absorbed or dropped here, flagged
     `floor_rescued` -- so the lettering path can claim it. Stage 4 still
     applies the run tier's floors to it.
+
+    `page_fringe` (`Quant.page_fringe`, `cfg.flat_page_fringe_exclude`; None
+    = byte-identical): chains made mostly of the figure's page-edge blend
+    pixels are not rescued (`_chained_small_regions`).
 
     `keep_counters` (the caller's lane gate over `cfg.keep_counters`, the way
     `chain_rescue` is; `config.py` carries the measurement) keeps a letter's
@@ -543,7 +564,7 @@ def resolve_small_regions(
     # -- did not cover the photo lane. Re-open it behind a real measurement,
     # not by deleting this argument.
     chained = _chained_small_regions(
-        regions, areas, boxes, small, min_area_px, height, width
+        regions, areas, boxes, small, min_area_px, height, width, page_fringe
     ) if (cfg.small_shape_rescue and chain_rescue) else set()
     if chained:
         small = [i for i in small if i not in chained]

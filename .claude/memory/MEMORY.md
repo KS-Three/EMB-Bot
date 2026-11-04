@@ -44,6 +44,7 @@ the OLDEST lines whole to the archive.
 - [Seam order flip](fill-seam-order-flip-2026-10-30.md) — fill_seam_order + fill_bridge_cut_exposed ON together (Kent 10-30): ridges 0, exposed travel down, trims up; seam order alone adds exposure
 - [Fine bars satin](fine-bars-satin-2026-10-25.md) — `fine_bars_satin` ON 10-26: pro satins every free thin ink bar (5/5); STEM_MIN_ASPECT or < 1 cross, not 2.5 (rope); 37/38 cure, region kappa 0.905
 - [Flag stripes](flag-stripes-seam-cap-2026-10-30.md) — equal art sewed 4.53/3.57: rail pull lands after stage 5's clip; `satin_seam_hold` + `satin_cap_skew_inset` OFF; underlay was never missing
+- [Flat page fringe](flat-page-fringe-2026-11-03.md) — `flat_page_fringe_exclude` OFF: page-edge blend leaves the flat fit + chain rescue; Pooh pale flecks 59 -> 25; band = upscale+1; page = median; + outline INNER blend (B)
 - [Flip-proof pins](flip-proof-pins-2026-10-27.md) — `FLAT_GOLDEN_MD5` from the json; `frozen_cfg()` spreads a dated snapshot; test_pins_are_frozen guards new md5 pins
 - [Flip sheet, inlined](flip-sheet-inline-2026-10-24.md) — `report --inline` = ONE HTML (data URIs; app viewer breaks relative paths); a flag with a `base` diffs against its own OFF
 - [Flip sheet wave 2](flip-sheet-wave2-2026-10-24.md) — four flags OFF|ON|pro; per-flag fixtures, shared base OFF arms, MFab art fallback; Tires monoline invisible at viewing size (trims 9 → 32)
@@ -81,6 +82,7 @@ the OLDEST lines whole to the archive.
 - [Cut-out finds no subject](photo-cutout-no-subject-2026-10-28.md) — rembg keeps 0.01-5.4% of a scene (subjects 27-76%); #1179's `photo_cutout_min_kept` 0.20 refuses; prep-skipped beat prep-kept 4/6; kept frame 373-2,100 s (stage 7) vs Studio's 600 s
 - [Photo lane must generalise](photo-lane-generalise-2026-10-27.md) — Kent 10-27: photo tools were tuned on 4 portraits + the owl; 18-genre census broke on scenes/crowds/pale art; read across genres, check tonal first
 - [Placement axis sizing](placement-axis-sizing-2026-10-28.md) — size = most that fits WHERE it sits: `PLACEMENTS` table, 3 pro boxes kept, rest `seeded` = Kent's; upload fits the box, typed width stays
+- [Pot slot swing](pot-slot-swing-2026-11-03.md) — Pooh pot = one shaded body, chart has no olive; fringe votes + size drag k-means centres (Lloyd decides, not dissolve/cap); Becker mid-tone shares it; nothing built
 - [Pro intake](pro-intake-2026-10-25.md) — `python -m tools.pro_intake`: new job -> registered pair + census; registry gitignored (client names); preview vs art by content AND name; tesseract confirms lettering
 - [Pro renders local only](pro-renders-local-only-2026-10-27.md) — Kent 10-27 "Stop new ones, keep old": pro-file renders go to gitignored `pro_renders/`; `test_no_new_pro_renders` fails on a new `pro` word under docs/
 - [Pro-sized lettering sitting](pro-size-lettering-sitting-2026-11-02.md) — pro-lettering-1102, 56 live pairs, 8 one-flag arms; Kent sat 11-03: trims control did NOT replicate, repeats unstable (3 of 4), no flip
