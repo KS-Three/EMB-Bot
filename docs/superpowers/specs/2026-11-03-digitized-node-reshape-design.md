@@ -348,6 +348,13 @@ Four PRs, each ready-for-review with auto-merge armed, each a Sonnet brief:
 6. **Both lanes in PR 2.** Over digitized-only and over a later parity PR.
 7. **Retire `DigitizePanel`'s SVG boundary editor in PR 2.** Over keeping it.
 
+8. **2026-11-04, Kent: zero falloff + Done/Discard. Supersedes ruling 1.** A
+   bare drag moves exactly the grabbed point(s); Alt keeps the soft pull.
+   The strip gets a tick (Done) and a cross (Discard); Enter and Escape are
+   Done, Discard puts the entry-time shape edits back in one patch. Measured
+   on Ember Design's reshape tool: a drag moved 60.0 px of 60.0 px asked and
+   0.0 px on every other point.
+
 Correction recorded during the grilling: a boundary edit never changes a
 shape's id (constraint 1), so the spec's earlier one-time warning sentence on
 a select-all drag is dropped.

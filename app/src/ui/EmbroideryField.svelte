@@ -756,8 +756,13 @@
     reshape = { ...reshape, sel };
     repaintNodeChrome();
   }
+  // The fields a point edit writes (ring overrides; hand-drawn shapes + re-fit).
+  // Discard restores exactly these, from the element as it was on entry.
+  const RESHAPE_KEYS = ["shapeOverrides", "shapes", "sizeMm", "offsetXMm", "offsetYMm"];
   function enterReshape(el) {
-    reshape = { elId: el.id, sel: new Map() };
+    const start = {};
+    for (const k of RESHAPE_KEYS) start[k] = el[k];
+    reshape = { elId: el.id, sel: new Map(), start };
     shapeEditError = "";
     repaintNodeChrome();
   }
@@ -769,6 +774,30 @@
     dragReadout = null;
     if (shapeEditError === CUTOUT_HOLD_HINT) shapeEditError = "";
     repaintNodeChrome();
+  }
+  // Discard: put the entry-time fields back in ONE patch (one undo step, and the
+  // stitches regenerate once), then leave the mode. Nothing changed: just leave.
+  function discardReshape() {
+    const el = reshape && project ? project.elements.find((x) => x.id === reshape.elId) : null;
+    if (el) {
+      const patch = {};
+      for (const k of RESHAPE_KEYS) if (el[k] !== reshape.start[k]) patch[k] = reshape.start[k];
+      if (Object.keys(patch).length) dispatch("elupdate", { id: el.id, patch, discrete: true });
+    }
+    endReshape();
+  }
+  // Strip buttons: Done (tick) and Discard (cross), right of the label.
+  function reshapeBtnRects() {
+    const cx = cssW() / 2;
+    return { done: { x: cx + 30, y: 7, w: 18, h: 18 }, discard: { x: cx + 52, y: 7, w: 18, h: 18 } };
+  }
+  function reshapeBtnAt(p) {
+    const r = reshapeBtnRects();
+    for (const k of ["done", "discard"]) {
+      const b = r[k];
+      if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) return k;
+    }
+    return null;
   }
   // A hand-drawn shape whose anchors the running reshape drag is holding in a
   // working position — drawn from the drag, not from the (stale) element.
@@ -927,7 +956,8 @@
           const k = ringKey(sid, ring);
           const base = d.basis.rings.get(k);
           if (!seeds || !seeds.size || !base) continue;
-          live.set(k, moveNodes(base, seeds, mm.dx, mm.dy, { soft: e.altKey }));
+          // 2026-11-04: a bare drag moves the grabbed points and nothing else; Alt keeps the soft pull.
+          live.set(k, moveNodes(base, seeds, mm.dx, mm.dy, e.altKey ? { soft: true } : { exact: true }));
         }
       }
       d.live = live;
@@ -1163,7 +1193,22 @@
   function drawReshapeChrome(ctx) {
     if (!reshapeOn()) return;
     // The strip: an instrument, drawn like the rotate badge, never a warning.
-    drawBadge(ctx, cssW() / 2, 16, "Editing points · Esc to finish");
+    const rb = reshapeBtnRects();
+    drawBadge(ctx, cssW() / 2 - 24, 16, "Editing points");
+    for (const [k, glyph] of [["done", "✓"], ["discard", "✕"]]) {
+      const b = rb[k];
+      ctx.save();
+      ctx.fillStyle = "rgba(24, 26, 38, 0.85)";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(b.x, b.y, b.w, b.h, 4); else ctx.rect(b.x, b.y, b.w, b.h);
+      ctx.fill();
+      ctx.fillStyle = k === "done" ? "#7fe08a" : "#ff8a8a";
+      ctx.font = "13px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(glyph, b.x + b.w / 2, b.y + b.h / 2 + 0.5);
+      ctx.restore();
+    }
     if (marquee) {
       const x = Math.min(marquee.startPx.x, marquee.curPx.x), y = Math.min(marquee.startPx.y, marquee.curPx.y);
       const w = Math.abs(marquee.curPx.x - marquee.startPx.x), h = Math.abs(marquee.curPx.y - marquee.startPx.y);
@@ -1931,7 +1976,8 @@
   function onWindowKey(e) {
     // Reshape mode is the first thing Escape leaves, ahead of the focused
     // anchor, the popover and the tool menu (a drag in flight is dropped).
-    if (e.key === "Escape" && reshape) {
+    // Enter is Done too (not while the popover or tool menu holds the keys).
+    if ((e.key === "Escape" || (e.key === "Enter" && !shapePop && !fieldMenu && (e.target === canvas || e.target === document.body))) && reshape) {
       endReshape();
       e.preventDefault();
       return;
@@ -3624,6 +3670,12 @@
     // Reshape mode owns the press next: a point is selected or dragged, anywhere
     // else is a marquee (the one new meaning of a bare drag, and only here).
     if (reshapeOn()) {
+      const btn = reshapeBtnAt(p);
+      if (btn) {
+        if (btn === "done") endReshape(); else discardReshape();
+        drawOverlay();
+        return;
+      }
       const rEdit = editableOutlinesPx();
       if (rEdit && rEdit.el.id === reshape.elId && reshapePress(e, p, rEdit)) return;
     }
@@ -3833,8 +3885,8 @@
     if (shapeEdit) {
       const d = pxToMmDelta(p.x - shapeEdit.startPx.x, p.y - shapeEdit.startPx.y);
       const next = shapeEdit.kind === "edge"
-        ? moveEdge(shapeEdit.ring, shapeEdit.index, d.dx, d.dy, { soft: e.altKey })
-        : moveNode(shapeEdit.ring, shapeEdit.index, d.dx, d.dy, { soft: e.altKey });
+        ? moveEdge(shapeEdit.ring, shapeEdit.index, d.dx, d.dy, e.altKey ? { soft: true } : { exact: true })
+        : moveNode(shapeEdit.ring, shapeEdit.index, d.dx, d.dy, e.altKey ? { soft: true } : { exact: true });
       liveRing = { shapeId: shapeEdit.shapeId, key: ringKey(shapeEdit.shapeId, shapeEdit.ringId), points: next };
       repaintNodeChrome(); // a bare drawOverlay smears every frame of the drag
       return;

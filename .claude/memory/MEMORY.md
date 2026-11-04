@@ -13,7 +13,7 @@ order. Every note file is indexed in exactly one of this file and
 `MEMORY-archive.md` (not auto-loaded; the test checks). Near the ceiling, move
 the OLDEST lines whole to the archive.
 
-- [Memory archive: through 10-15](MEMORY-archive.md) — NOT auto-loaded: history through 10-15 + standing rulings (fill rows 0.15, DST axis fixed, Ink/Stitch clean-room, Ember teardowns)
+- [Memory archive: through 10-24](MEMORY-archive.md) — NOT auto-loaded: history through 10-15 + standing rulings (fill rows 0.15, DST axis fixed, Ink/Stitch clean-room, Ember teardowns)
 - [Opus team architecture](../../docs/superpowers/plans/2026-10-23-opus-team-architecture.md) — the plan a fresh director runs from: method, state, ranked queue L1-L10 / I1-I6, Kent's open decisions, brief template, traps
 - [No Fable agents](agents-cheap-models-2026-11-02.md) — Kent 11-02 "don't release fable agents, we should be saving on usage": every start_session / Agent passes model (Sonnet default, Haiku read-only); a Fable director dispatches, never spawns Fable
 - [Apex cut](apex-cut-2026-10-25.md) — acute tips (M's V, W, MFab N, PROSEAL A): pro cuts along the cross, tip one level-crossed piece; `lettering_columns_apex_cut` OFF; corner_fold refuses them (long_way)
@@ -21,7 +21,6 @@ the OLDEST lines whole to the archive.
 - [Bash heredoc Python trap](bash-heredoc-python-repl-trap-2026-11-02.md) — Windows Bash tool `python - <<'E'` lost stdin: Python 3.14 fell into _pyrepl, one core for 26 h (3.68 GB of prompts); a `||` fallback respawned it when killed. Run a script FILE
 - [Bean census](bean-census-2026-10-27.md) — reference beans almost nothing: 17 runs / 780 mm / 8 of 1,101 regions, drawn thin lines, 2 passes; ours 137 (111 small letters); `bean_only_lines` ON (Kent 10-27), kappa -0.014 -> 0.129
 - [Band rings](border-by-size-colour-seams-2026-10-28.md) — Instagram: `border_by_size` satin rings each band, not bean; fix ON 10-28: ring fabric edges only
-- [Border from outline](border-from-outline-2026-10-24.md) — pro borders what the ART outlines (kappa 0.76, n 588), not size/stroke; `border_from_outline` OFF: loop per body at his width, bodies fill
 - [Outline line-art guard](border-from-outline-line-art-guard-2026-10-25.md) — Bridge bowl = hairline drawing; guard (Kent ON 10-25): hairline AND leaves strokes. Thin alone kills Machine's frame (pro widens it)
 - [Bridge census](bridge-census-2026-10-27.md) — Bridge hat+LC through 14 pro rules on main 8341d1f7: 2 CONTRADICTS (border_by_size fields, proSized LC), 8 AGREES, 4 N/A; ours' text is a reach gap (folds 2 vs 35), not a rule
 - [Buried walk between pieces](buried-walk-2026-10-26.md) — W4-03 FALSE: bury rule exists at the pro's p90; 0 of our 176 between-shape cuts have ANY route under later thread; his Drone metre = layering + colour revisits
@@ -41,12 +40,12 @@ the OLDEST lines whole to the archive.
 - [Download stale guard](download-stale-guard-2026-10-25.md) — Kent 10-25 "block until re-digitized": machine-file buttons disabled while stitches trail size/garment/settings; one rule (staleness.js); run button lit; no text
 - [Dropped-element finding](dropped-element-finding-2026-11-01.md) — `ARTWORK_ELEMENT_DROPPED`: preflight reads clipped / unsewn-enclosed / colour-cap-folded / stage-4 drops by AREA; floor 5 mm2, block at 10%; fires on 2 rows Kent graded Good/Great
 - [Edge cap re-measured](edge-cap-remeasure-2026-10-29.md) — defect 19: edge 0-4% bare with NO cap (rim + border_by_size); swing gone; default "none" + defect closed (Kent 10-29, #1192)
+- [Ember reshape measured](ember-reshape-measured-2026-11-04.md) — Ember's drag moves 1 point, 0.0 px on the rest; accept/reject session; built: exact drag + Done/Discard; open: sparse nodes, insert, smooth toggle
 - [Seam order flip](fill-seam-order-flip-2026-10-30.md) — fill_seam_order + fill_bridge_cut_exposed ON together (Kent 10-30): ridges 0, exposed travel down, trims up; seam order alone adds exposure
 - [Fine bars satin](fine-bars-satin-2026-10-25.md) — `fine_bars_satin` ON 10-26: pro satins every free thin ink bar (5/5); STEM_MIN_ASPECT or < 1 cross, not 2.5 (rope); 37/38 cure, region kappa 0.905
 - [Flag stripes](flag-stripes-seam-cap-2026-10-30.md) — equal art sewed 4.53/3.57: rail pull lands after stage 5's clip; `satin_seam_hold` + `satin_cap_skew_inset` OFF; underlay was never missing
 - [Flat page fringe](flat-page-fringe-2026-11-03.md) — `flat_page_fringe_exclude` OFF: page-edge blend leaves the flat fit + chain rescue; Pooh pale flecks 59 -> 25; band = upscale+1; page = median; + outline INNER blend (B)
 - [Flip-proof pins](flip-proof-pins-2026-10-27.md) — `FLAT_GOLDEN_MD5` from the json; `frozen_cfg()` spreads a dated snapshot; test_pins_are_frozen guards new md5 pins
-- [Flip sheet wave 2](flip-sheet-wave2-2026-10-24.md) — four flags OFF|ON|pro; per-flag fixtures, shared base OFF arms, MFab art fallback; Tires monoline invisible at viewing size (trims 9 → 32)
 - [Flip sheet wave 3](flip-sheet-wave3-2026-10-26.md) — 12 OFF flags since 10-24 by flag + kind; monoline INERT on Tires, fill_section_travel / bay_mouth near-inert; OFF cells keyed per-cell by HEAD sha
 - [Flip sheet wave 5](flip-sheet-wave5-2026-10-27.md) — 4 asked on main ce8cc87d, gate 3 clear; Kent 10-27: bean_ink + part_touching (only together) + italic lean ON, fill_section_travel held; keyline trio inert off MFab
 - [Garment size like the pro](garment-size-like-pro-2026-10-26.md) — pro boxes hat 113.5x64, LC 96x76.5, area 5,800 (Bridge LC, Kent 10-27), beanie 94.5x56; `proSized` default ON (10-26)
@@ -70,7 +69,6 @@ the OLDEST lines whole to the archive.
 - [Index counts CRs](memory-index-crlf-count-2026-10-26.md) — loader counts the file as stored: CRLF = +1 char/line; notes pinned LF; `git checkout --` won't convert (recipe inside)
 - [MFab recipe trims](mfab-recipe-trims-2026-10-26.md) — the cuts were keyline slivers behind a dark hairline; `keyline_fold_slivers` (OFF) folds them in: hat 41→27, LC 54→29 on #1057's base; hat on-thread exposed travel 23→43 mm
 - [MFab under-fill panels](mfab-underfill-panels-2026-10-25.md) — Kent's MFab "chaos" = flip of under-fill + white + keyline + `silhouette_underfill_panels` (OFF): pro layering; under-fill alone dropped keyline-held bodies
-- [Monoline script satin](monoline-script-satin-2026-10-24.md) — Tires "ires" sewed FILL on dt_p90_cap alone; `monoline_script_satin` OFF; pro hides ALL in-word travel under later satin: trims 24 -> 8 (pro 10)
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: don't build on past sessions; "what's next" comes from ROADMAP/PRODUCT/MASTER_SCOPE on main
 - [Nightly tripwire](nightly-tripwire-2026-11-02.md) — 18 committed pairs (Becker x5 + the zip's 13) nightly on main vs testdata/tripwire_ledger.json; tolerance = spread of 3 runner passes; wrong-way past it = red; never a PR check
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only, customer sees nothing
@@ -99,12 +97,9 @@ the OLDEST lines whole to the archive.
 - [Seam order's costs](seam-order-costs-2026-10-30.md) — beanie's rise = one knockdown walk (ProSeal the other way); drone's +6 cuts = the chord; `knockdown_shorter_walk`, `fill_seam_order_priced` ON (Kent 10-30): flips 59 -> 2
 - [Sequence like the pro: order is not the gap](sequence-like-pro-2026-10-25.md) — L10 FALSE, not built: pro sews the cap rule and it costs him; ours passes over a reachable piece 18 of 145 extra cuts; gap is cuts inside a piece
 - [Service timeout cancel](service-timeout-cancel-2026-10-30.md) — a job past JOB_TIMEOUT_S STOPS at the next stage seam (`digitizer_core.deadline`); next upload waited 497.9 s -> 10.5 s; no flag; stage 2 former + rembg/SAM2 still run to their end
-- [Sew-out card v7](sewout-card-v7-2026-10-24.md) — only pull-by-stroke + pro values wait on fabric; BASE = ruled-unmerged flips; pull is a Fremont no-op, on MARINE it turns split satin plain like the pro
 - [Sew-out card v8](sewout-card-v8-2026-11-01.md) — cut_every_jump walks Fremont's 148 floats on the white field, cuts ENTHUSIAST's; JS cuts 15; Drone's lever is the halo (0.3: x1.74); 0.01 mm oracle: 1 walk 0.029 mm off
 - [Shape memo](shape-memo-2026-10-28.md) — Column lane's rank-only 2nd stage-7 pass was 79 of owl flat's 137 s; `shape_memo` memoizes stitch_shape/satin_shape/rim per job: 137 -> 113 s flat, 123 -> 97 gradient, md5 same
-- [Silhouette under-fill](silhouette-underfill-2026-10-24.md) — "pro fills it" was LAYERING, not tier (kappa 0.170 vs 0.198): ring outline filled under in the majority colour; `silhouette_underfill` OFF
 - [Simplify points](simplify-points-2026-11-03.md) — popover row 0.2/0.5/1 mm, closed-ring Douglas-Peucker `simplifyRing`, rides the similar tick in one patch; never automatic; red-disc 64 -> 44 at 0.5 mm
-- [Small-text floor](small-text-floor-2026-10-24.md) — pro re-sets every line under ~3.2 mm to 4-4.6 mm satin, never runs/drops; #1029 missed ProSeal (design-edge halo); `small_text_cap_reach_edges` OFF
 - [Stage-0 flake](stage0-flake-output-alignment-2026-10-25.md) — W3-13: `cv2.magnitude` (IPP AVX2) answered by its OUTPUT buffer's alignment, not float32 box/mean/threads; `_magnitude` in float64. Hash each op under IPP paths first
 - [Stage-0 texture gate](stage0-texture-gate-2026-10-28.md) — grain gate missed 15/18 downsampled photos; `texture_frac` >= 0.13 route + two-ink veto ON (`stage0_texture_gate`); 6 "logo" rows are photographs by medium; cut-outs keep the old tree
 - [Scene speed](stage7-scene-speed-2026-10-29.md) — kept-frame scenes' 349-2,100 s was 2 procs on a loaded laptop: 64-104 s plan quiet, 2 concurrent = 4.1x EACH, md5 same; stage 2 bincount + stage 6 prepared covers / threaded angle search, exact
@@ -128,6 +123,5 @@ the OLDEST lines whole to the archive.
 - [White-keyline art gate](white-keyline-art-gate-2026-10-26.md) — Kent: recipe ON only on MFab-type art (2 of 22 jobs); + fold/skip/absorb (hat 40→30, LC 52→25); absorb bared counters till rider holes kept
 - [White recipe on every job](white-recipe-every-job-2026-10-27.md) — Kent 10-27 "Every job": recipe switches are PLAIN defaults (a gate would override the Studio's unticked white box); D1-D3 + Becker counter growth fixed first
 - [White re-rule packet](white-rerule-packet-2026-10-25.md) — under border_from_outline, white ALONE fills Becker's faces (0°) at ≤1.39x CPU; fields_fill costs up to 5.6x (MFab lc); keyline inert; census 29/31
-- [Word legibility instrument](word-legibility-instrument-2026-10-24.md) — `tools/word_legibility.py`: per word, ours vs pro, chance-corrected cc; n/loc is never 0; its two holes are closed in the reach note
 - [Word legibility reach](word-legibility-reach-2026-10-25.md) — all 17 words located in both files; `reach` moves where cc saturates; crop neighbours hid the pro's small words
 - [Pro-pair yardstick](yardstick-pro-pair-2026-11-01.md) — 100 pairs at the pro's size: only trims clear chance (hops +0.24, cuts +0.23), "never worse" fails all 6; Kent 11-02 on the 17 trim-disagreement pairs: "My eye stands", exit unmet
