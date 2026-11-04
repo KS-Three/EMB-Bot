@@ -425,6 +425,7 @@
 "tests/test_two_tone.py": 172.03,
 "tests/test_underfill_knockouts.py": 0.03,
 "tests/test_underfill_rim.py": 10.4,
+"tests/test_underfill_small_size.py": 900.0,
 "tests/test_underlay_all_pieces.py": 0.09,
 "tests/test_underlay_cover.py": 0.07,
 "tests/test_unsewn_ground_memo.py": 370.26,

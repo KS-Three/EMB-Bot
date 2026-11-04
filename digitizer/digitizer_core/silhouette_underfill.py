@@ -72,9 +72,12 @@ RING_MIN_AREA_MM2 = 200.0
 #: 2026-11-04). The band is 26% of the box at both sizes; 4% of the box is 200
 #: at 5,000 mm2 (a 113.5 x 44 hat), so designs that size and larger are unchanged.
 RING_MIN_BOX_FRAC = 0.04
-#: ... and never under this: a ring under ~10 x 10 mm is a letter with a counter at
-#: any size (the band that failed was 139).
-RING_MIN_FLOOR_MM2 = 100.0
+#: ... and never under this (MFab's band at 30 mm is 93).
+RING_MIN_FLOOR_MM2 = 50.0
+#: a ring under `RING_MIN_AREA_MM2` reads only when it holds at least this many
+#: shapes: a silhouette round lettering holds a dozen, a letter with a counter
+#: holds one (`tests/test_rail_comp.py`'s 14 mm ring holds a single white face).
+SMALL_RING_MIN_INNER = 3
 #: an inner shape lies this much inside the ring's outline ...
 INSIDE_MIN = 0.9
 #: ... and at most this much on the ring itself (the `fill_inside_satin_border` test)
@@ -289,6 +292,8 @@ def plan(regions, unsewn=(), riders=(), outlines=None):
         if bare:
             outline = outline.difference(unary_union(bare))
         if not inner or holes <= 0:
+            continue
+        if ring.polygon.area < RING_MIN_AREA_MM2 and len(inner) < SMALL_RING_MIN_INNER:
             continue
         if sum(r.polygon.area for r in inner) < HOLES_HELD_MIN * holes:
             continue
