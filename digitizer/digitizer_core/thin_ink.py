@@ -58,6 +58,7 @@ for photographs.
 """
 from __future__ import annotations
 
+import dataclasses
 import math
 from dataclasses import dataclass
 
@@ -407,35 +408,56 @@ def find_dark_thin_ink(p: Prep, cfg: PipelineConfig, valid: np.ndarray,
     h, w = p.rgb.shape[:2]
     lab = rgb_to_lab(p.rgb.reshape(-1, 3)).reshape(h, w, 3)
     lightness = np.ascontiguousarray(lab[..., 0], dtype=np.float32)
-    floor_px = cfg.min_detail_mm * p.px_per_mm
-    k = 2 * int(round(floor_px)) + 1
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
-    depth = cv2.morphologyEx(lightness, cv2.MORPH_BLACKHAT, kernel)
-    dark = (depth > DARK_INK_DEPTH_L) & valid
-    if not dark.any():
-        return None
-    labels = np.where(dark, 0, -1).astype(np.int32)
-    kept: list[tuple[ThinComponent, np.ndarray, np.ndarray]] = []   # component, ink Lab, its RGB pixels
-    for t in iter_thin_components(labels, 1, p.px_per_mm, cfg, ground_test=False):
-        bx, by, bw, bh = t.bbox
-        ring_lab, n_ring, in_glyph = _dark_ring(lab, valid, t.comp, by, bx, glyphs)
-        if ring_lab is None:
-            continue
-        ground = np.median(ring_lab, axis=0)
-        same = deltaE_ciede2000(ring_lab, np.broadcast_to(ground, ring_lab.shape)) <= DARK_INK_GROUND_DE00
-        if float(same.sum()) / float(n_ring) < THIN_INK_GROUND_SHARE:
-            continue
-        if in_glyph is not None and same.any() and is_counter(same, in_glyph):
-            continue
-        crop = (slice(by, by + bh), slice(bx, bx + bw))
-        ink = np.median(lab[crop][t.comp], axis=0)
-        if ink[0] >= ground[0]:
-            continue
-        if float(deltaE_ciede2000(ink.reshape(1, 3), ground.reshape(1, 3))[0]) < DARK_INK_MIN_CONTRAST_DE00:
-            continue
-        if cfg.dark_ink_refuse_strays and stray_clause(t.bbox, p.art_bbox, lab[crop][t.comp][:, 0], float(ground[0])):
-            continue
-        kept.append((t, ink, p.rgb[crop][t.comp].astype(np.float64)))
+    def read(cfg):
+        """The kept dark components at `cfg.min_detail_mm`'s kernel and width test."""
+        floor_px = cfg.min_detail_mm * p.px_per_mm
+        k = 2 * int(round(floor_px)) + 1
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+        depth = cv2.morphologyEx(lightness, cv2.MORPH_BLACKHAT, kernel)
+        dark = (depth > DARK_INK_DEPTH_L) & valid
+        if not dark.any():
+            return []
+        labels = np.where(dark, 0, -1).astype(np.int32)
+        kept: list[tuple[ThinComponent, np.ndarray, np.ndarray]] = []   # component, ink Lab, its RGB pixels
+        for t in iter_thin_components(labels, 1, p.px_per_mm, cfg, ground_test=False):
+            bx, by, bw, bh = t.bbox
+            ring_lab, n_ring, in_glyph = _dark_ring(lab, valid, t.comp, by, bx, glyphs)
+            if ring_lab is None:
+                continue
+            ground = np.median(ring_lab, axis=0)
+            same = deltaE_ciede2000(ring_lab, np.broadcast_to(ground, ring_lab.shape)) <= DARK_INK_GROUND_DE00
+            if float(same.sum()) / float(n_ring) < THIN_INK_GROUND_SHARE:
+                continue
+            if in_glyph is not None and same.any() and is_counter(same, in_glyph):
+                continue
+            crop = (slice(by, by + bh), slice(bx, bx + bw))
+            ink = np.median(lab[crop][t.comp], axis=0)
+            if ink[0] >= ground[0]:
+                continue
+            if float(deltaE_ciede2000(ink.reshape(1, 3), ground.reshape(1, 3))[0]) < DARK_INK_MIN_CONTRAST_DE00:
+                continue
+            if cfg.dark_ink_refuse_strays and stray_clause(t.bbox, p.art_bbox, lab[crop][t.comp][:, 0], float(ground[0])):
+                continue
+            kept.append((t, ink, p.rgb[crop][t.comp].astype(np.float64)))
+        return kept
+
+    kept = read(cfg)
+    if cfg.dark_ink_floor_rescue and cfg.min_detail_mm > cfg.dark_ink_read_floor_mm:
+        # `cfg.dark_ink_floor_rescue`: a SECOND read at `dark_ink_read_floor_mm`, added to
+        # the first, never replacing it. At the coarse floor the 25 px kernel closes a
+        # letter of three short strokes into the ground (Pooh's fifth letter at 54.6 mm:
+        # no dark component); at 1.0 it is found whole. The finer read alone loses the
+        # 1.0-1.5 mm strokes the coarse one keeps (flip sheet 2026-11-03: Fremont 156 -> 38
+        # reads), so only its components that touch none of the first read's are added.
+        taken = np.zeros((h, w), bool)
+        for t, _ink, _px in kept:
+            bx, by, bw, bh = t.bbox
+            taken[by:by + bh, bx:bx + bw] |= t.comp
+        for item in read(dataclasses.replace(cfg, min_detail_mm=cfg.dark_ink_read_floor_mm)):
+            t = item[0]
+            bx, by, bw, bh = t.bbox
+            if not (taken[by:by + bh, bx:bx + bw] & t.comp).any():
+                kept.append(item)
     if not kept:
         return None
     # One INK per colour group, snapped once from the group's pixel-weighted
@@ -687,3 +709,17 @@ def ink_after_ground(regions):
         return renum[to.get(r.shape_id, r.meta["layer"])]
     return [replace(r, meta={**r.meta, "layer": layer_of(r)})
             for _i, r in sorted(enumerate(regions), key=lambda t: (layer_of(t[1]), t[0]))]
+
+
+def drop_unclaimed_floor_rescues(regions: list) -> list[float]:
+    """`cfg.dark_ink_floor_rescue`, after `detect_text_clusters`: a stroke
+    stage 3 kept under the floor for the lettering path
+    (`meta["dark_ink_floor_rescued"]`) that no text cluster claimed is a
+    speck, not a letter. Removes it from `regions` in place and returns the
+    dropped areas (mm2), which the caller counts with stage 4's drops."""
+    crumbs = [r for r in regions if r.meta.get("dark_ink_floor_rescued")
+              and not r.meta.get("text_cluster_id")]
+    if crumbs:
+        gone = {id(r) for r in crumbs}
+        regions[:] = [r for r in regions if id(r) not in gone]
+    return [float(r.area_mm2) for r in crumbs]

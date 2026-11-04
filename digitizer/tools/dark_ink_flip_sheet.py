@@ -67,7 +67,8 @@ DEFAULT_CACHE = DIGITIZER / "debug_out" / "dark_ink_flip_sheet"
 DEFAULT_OUT = DIGITIZER.parent / "docs" / "renders" / f"keep-dark-thin-strokes-{DATE}"
 SHEETS = {FLAG: DEFAULT_OUT,
           "dark_ink_refuse_strays": DIGITIZER.parent / "docs" / "renders" / f"dark-read-refusal-{DATE}",
-          "dark_ink_bean": DIGITIZER.parent / "docs" / "renders" / f"dark-ink-bean-{DATE}"}
+          "dark_ink_bean": DIGITIZER.parent / "docs" / "renders" / f"dark-ink-bean-{DATE}",
+          "dark_ink_floor_rescue": DIGITIZER.parent / "docs" / "renders" / "dark-ink-floor-rescue-2026-11-03"}
 
 
 def use_flag(flag: str) -> None:

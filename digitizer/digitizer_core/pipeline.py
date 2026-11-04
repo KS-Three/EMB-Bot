@@ -925,7 +925,12 @@ def build_generation(
         keep_counters=counters_on,
         # `cfg.open_cored_counters`: the guarded core (`cored_counter_core`),
         # logos only, the gate `keep_counters` has; None with the flag off.
-        counter_core=cored_core)
+        counter_core=cored_core,
+        # `cfg.dark_ink_floor_rescue`: the dark carve's labels, gradient class
+        # only (the only lane that carves); None otherwise.
+        protect_layers=(q.dark_ink_labels if (
+            cfg.dark_ink_floor_rescue and cfg.keep_dark_thin_strokes
+            and classification.class_ == "gradient") else None))
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
 
@@ -1021,6 +1026,14 @@ def build_generation(
                          **({"wide_letters": True} if cfg.text_cluster_wide_letters else {}),
                          **({"part_touching": True} if cfg.text_cluster_part_touching else {}),
                          **({"nest_guard": True} if cfg.text_cluster_nest_guard else {}))
+    # `cfg.dark_ink_floor_rescue`: a stroke kept under the floor for the
+    # lettering path that the tagger did not claim is a speck, not a letter:
+    # dropped, counted with stage 4's drops (no new sentence).
+    if cfg.dark_ink_floor_rescue:
+        from .thin_ink import drop_unclaimed_floor_rescues
+        crumb_areas = drop_unclaimed_floor_rescues(regions)
+        if crumb_areas:
+            dropped_areas = list(dropped_areas) + crumb_areas
 
     # Lettering too small to sew, grown the way a digitizer grows it
     # (`cfg.small_text_cap_mm`, default None). Here, on the tagger's clusters

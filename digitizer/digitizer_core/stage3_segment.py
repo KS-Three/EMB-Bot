@@ -79,6 +79,9 @@ class RegionMask:
     # carries it to `Region.meta["detail_spokes"]` in design mm; stage 7 sews
     # it. None for every other region.
     detail_spokes: dict | None = None
+    # Kept under the floor by `protect_layers` (`cfg.dark_ink_floor_rescue`);
+    # stage 4 carries it to `Region.meta["dark_ink_floor_rescued"]`.
+    floor_rescued: bool = False
 
     @classmethod
     def from_full(cls, mask: np.ndarray, layer: int,
@@ -401,8 +404,16 @@ def resolve_small_regions(
     layer_lab: np.ndarray | None = None, lab_img: np.ndarray | None = None,
     keep_counters: bool = False,
     counter_core: np.ndarray | None = None,
+    protect_layers: frozenset | None = None,
 ) -> tuple[list[RegionMask], list[dict]]:
     """Absorb or drop sub-sewable regions. Returns (kept, warnings).
+
+    `protect_layers` (`cfg.dark_ink_floor_rescue`; the dark-ink labels of
+    stage 2's carve, `Quant.dark_ink_labels`; None by default and
+    byte-identical then): a sub-floor region on one of those layers is
+    protected -- kept as-is, never absorbed or dropped here, flagged
+    `floor_rescued` -- so the lettering path can claim it. Stage 4 still
+    applies the run tier's floors to it.
 
     `keep_counters` (the caller's lane gate over `cfg.keep_counters`, the way
     `chain_rescue` is; `config.py` carries the measurement) keeps a letter's
@@ -762,6 +773,10 @@ def resolve_small_regions(
             if clears:
                 rescued.append(i)
                 continue
+            if protect_layers and regions[i].layer in protect_layers:
+                regions[i].floor_rescued = True
+                protected.append(i)
+                continue
             dropped += 1
             dropped_reportable += int(reportable)
             continue
@@ -805,6 +820,12 @@ def resolve_small_regions(
         # it was. The first cut asked it first and unstitched thread the
         # engine lays today — the yellow in the bowl of bridge's script "B",
         # a dark detail on drone's orange (the corpus sheet, 2026-10-02).
+        # `protect_layers` is asked here, of a region about to be absorbed and of
+        # nothing else: whatever the rescues above keep is sewn exactly as it was.
+        if protect_layers and regions[i].layer in protect_layers:
+            regions[i].floor_rescued = True
+            protected.append(i)
+            continue
         if keep_counters and is_counter(i, best, best_share, int(halo.sum())):
             regions[i].source = "counter"
             counters.append(i)
