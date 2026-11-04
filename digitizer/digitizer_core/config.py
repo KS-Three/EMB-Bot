@@ -1136,7 +1136,12 @@ class PipelineConfig:
     # the tagger did not claim is dropped (counted in the dropped-shape
     # tally, no new sentence). OFF is byte-identical. Tests:
     # `tests/test_dark_ink_floor_rescue.py`.
-    dark_ink_floor_rescue: bool = False
+    # **ON since 2026-11-04, Kent's flip** after the OFF | ON sheet (Pooh 54.6 mm
+    # HUNNY letters clustered 4 -> 5; Fremont patch and webp lose a few drawn
+    # rope-twist shapes; every other fixture byte-identical). False is the engine
+    # as it was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
+    # pin it False.
+    dark_ink_floor_rescue: bool = True
     # Read only with `dark_ink_floor_rescue` on: the width (mm) of a SECOND dark
     # read (black-hat kernel + thin-stroke test) whose components are ADDED to
     # the first read's when they touch none of its (the first read, at

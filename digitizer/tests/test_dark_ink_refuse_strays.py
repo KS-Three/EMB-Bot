@@ -156,7 +156,14 @@ def test_on_refuses_the_owls_edge_strays_and_keeps_the_patchs_letters():
     # ON (flipped, no refusal) carved 16: 10 within 1 px of the frame (the 8
     # "not ink" rows and the 2 "mixed" at the frame), 6 inside -- the feather
     # streaks and edges the sheet read as ink (rows 1, 4, 5, 6, 9, 15).
-    assert len(owl) == 6, [(r.shape_id, round(r.area_mm2, 2), r.polygon.bounds) for r in owl]
+    # 2026-11-04: 6 -> 8 with `dark_ink_floor_rescue` ON (Kent's flip). The +2 are
+    # feather-shade streaks (L* 61.7 and 66.9 on rings of 69.5 and 83.6), 1.47 and
+    # 1.45 mm2, 3.5 and 8.4 mm inside the frame, read by the 1.0 mm floor. The refused
+    # edge class stays refused (nearest region 0.75 mm vs the 0.5 mm threshold). The
+    # shipped owl never reaches this plan (`stage0_texture_gate` ON classes it
+    # photo_scene; this test forces the gate off). Re-pinned, not pinned OFF, so the
+    # test keeps measuring the shipped reader.
+    assert len(owl) == 8, [(r.shape_id, round(r.area_mm2, 2), r.polygon.bounds) for r in owl]
     w, h = on.design_size_mm
     for r in owl:
         assert _edge_mm(r, w / 2, h / 2) >= DARK_INK_EDGE_PX / 8.0 - 0.1, (r.shape_id, r.polygon.bounds)
@@ -167,7 +174,10 @@ def test_on_refuses_the_owls_edge_strays_and_keeps_the_patchs_letters():
     # ON carved 14: the two at the bottom vertex (the chevron's lower band
     # cut by the frame, 2.2 mm2 each) are refused; the keylines, FREMONT's
     # letters, the rope and EAT | STAY | PLAY stay.
-    assert len(patch) == 12, [(r.shape_id, round(r.area_mm2, 2), r.polygon.bounds) for r in patch]
+    # 2026-11-04: 12 -> 13 with `dark_ink_floor_rescue` ON: one drawn rope-border twist
+    # mark (S9faed036, 1.62 mm2, x 37.1..38.6 y -7.3..-4.4) read by the 1.0 mm floor,
+    # the class the flip sheet reported on the patch and webp.
+    assert len(patch) == 13, [(r.shape_id, round(r.area_mm2, 2), r.polygon.bounds) for r in patch]
     w, h = on.design_size_mm
     assert all(_edge_mm(r, w / 2, h / 2) >= DARK_INK_EDGE_PX / 8.0 - 0.1 for r in patch)
 

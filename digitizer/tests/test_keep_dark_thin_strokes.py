@@ -250,7 +250,13 @@ def _summit_word_crop(path: Path) -> None:
 def test_the_counter_of_the_s_is_refused_on_the_summit_word(tmp_path):
     art = tmp_path / "summit_word.png"
     _summit_word_crop(art)
-    cfg = PipelineConfig(target_width_mm=600 / SUMMIT_PX_PER_MM, max_colors=6)
+    # `dark_ink_floor_rescue=False` (2026-11-04 flip): this tests #1160's glyph-less
+    # reader, which at the 1.0 mm floor reads 5 components (the S counter plus the four
+    # dark notches inside the two Ms). The pipeline passes glyphs=thin.mask, with which
+    # the reader returns None on both arms; the whole badge end to end is 42 regions and
+    # 0 dark_ink on both arms, no geometry differs.
+    cfg = PipelineConfig(target_width_mm=600 / SUMMIT_PX_PER_MM, max_colors=6,
+                         dark_ink_floor_rescue=False)
     p = prep(str(art), cfg, design_class="gradient")
     assert abs(p.px_per_mm - SUMMIT_PX_PER_MM) < 0.01
     valid = _foreground(p)
@@ -293,7 +299,10 @@ def test_a_carved_ground_reads_its_shade_count_from_the_tails_on_summit():
     from digitizer_service.app import _decode, _parse_config
     from tools.fremont_triage import studio_request
     data = SUMMIT.read_bytes()
-    cfg = PipelineConfig(**_parse_config(json.dumps({**studio_request(80.0), "garment_id": "left_chest"})))
+    # `dark_ink_floor_rescue=False` (2026-11-04 flip): same reason as the crop test above,
+    # the bare reader below is #1160's glyph-less one (5 components with the rescue ON).
+    cfg = PipelineConfig(**_parse_config(json.dumps({**studio_request(80.0), "garment_id": "left_chest"})),
+                         dark_ink_floor_rescue=False)
     # The Studio's request carries no value for the flag: it rides the engine
     # default, ON since Kent's flip (2026-10-28). The tail read is gated on the
     # carve, so this is the shipped path end to end.

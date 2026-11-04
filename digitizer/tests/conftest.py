@@ -645,6 +645,11 @@ PRE_FLIP["color_cap_sewn"] = False
 # only"; built OFF 2026-11-01). ON, a letter `small_text` dropped from its line
 # takes its word's thread. `tests/engine_2026_10_27.json` carries it False.
 PRE_FLIP["lettering_stray_word_thread"] = False
+# `dark_ink_floor_rescue` joined the flipped set 2026-11-04 (Kent; built OFF
+# 2026-11-03). ON, stage 2 reads dark thin ink a second time at 1.0 mm and stage 3
+# protects those reads from the absorb floor. `tests/engine_2026_10_27.json`
+# carries it False.
+PRE_FLIP["dark_ink_floor_rescue"] = False
 # `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
 # renders of his Instagram icon, drone, Bridge Bar and the repro), for the
 # reason every entry above gives. ON, a gradient-lane region's edge follows
