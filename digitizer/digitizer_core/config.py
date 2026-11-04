@@ -1124,6 +1124,37 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_dark_ink_bean.py`; sheet: `docs/renders/dark-ink-bean-2026-10-28/`.
     dark_ink_bean: bool = True
+    # The figure's page-edge FRINGE neither votes in the palette fit nor
+    # survives as slivers (built OFF 2026-11-03, Kent on the Pooh pot: "a hole
+    # in the honey jar"). The anti-alias blend between a dark outline and the
+    # white page is a pale population; on the flat lane it shares a palette
+    # slot with a real pale region (the pot's sheen at 6 colours), and the
+    # fringe rode along as that region's colour: 59 sub-3 mm2 flecks along the
+    # outlines, and the slot's thread chosen for the fringe, not the sheen.
+    # ON, flat lane only (stage 2's `quantize`; never an alpha cut-out, which
+    # has no page fringe): (1) figure pixels within `flat_page_fringe_px` of
+    # the page that are a BLEND of the page colour and the interior beside
+    # them (strictly between, 0.15-0.85, and within `merge_delta_e` of the
+    # chord) are left out of the palette fit; (2) each takes the label of its
+    # nearest non-fringe figure pixel, never one chosen by its own blended
+    # colour; (3) stage 3's chain rescue ignores a chain mostly made of those
+    # pixels. A light KEYLINE (a band that is not a blend: its colour is its
+    # own, off the chord) is real content and keeps its vote. False is the
+    # engine before the flag, byte for byte. Tests:
+    # `tests/test_flat_page_fringe.py`.
+    flat_page_fringe_exclude: bool = False
+    # The band, in working-grid pixels, `flat_page_fringe_exclude` looks in.
+    # 2 = the anti-alias ramp of a source edge once stage 1 has enlarged the
+    # raster (one source pixel becomes `upscale` working pixels; Pooh at 80 mm
+    # reads about 1-2 px deep). A constant here, not scaled by `px_per_mm`.
+    flat_page_fringe_px: int = 2
+    # Also under `flat_page_fringe_exclude`: the blend between a THIN DARK
+    # OUTLINE and the fill beside it (`stage2_quantize.outline_inner_blend`) is
+    # fringe too. An outline is the darkest label when half of its pixels sit
+    # within half this many mm of a non-outline pixel (a widest part under
+    # 0.8 mm = 6.4 px at 8 px/mm; scales with `px_per_mm`). Its reach is the
+    # upscale factor wide, at least `flat_page_fringe_px` (3 px on Pooh).
+    flat_outline_max_mm: float = 0.8
     # A letter's counter on a COLOURED ground stays a hole
     # (`stage3_segment.resolve_small_regions`). Measured 2026-10-02 on clean
     # 4 mm "BAR & RESTAURANT": on white the counters are background, never

@@ -925,7 +925,10 @@ def build_generation(
         keep_counters=counters_on,
         # `cfg.open_cored_counters`: the guarded core (`cored_counter_core`),
         # logos only, the gate `keep_counters` has; None with the flag off.
-        counter_core=cored_core)
+        counter_core=cored_core,
+        # `cfg.flat_page_fringe_exclude`: stage 2's page-edge blend pixels
+        # (None with the flag off and on every other lane).
+        page_fringe=getattr(q, "page_fringe", None))
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
 
