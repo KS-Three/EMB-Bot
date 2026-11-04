@@ -607,6 +607,11 @@ def main(argv=None) -> int:
         return 0
     if a.runs is None:
         ap.error("--runs is required")
+    # The engine driver runs with the detached TREE as its cwd: a relative --runs
+    # sends every design into the temp tree, which is then removed (2026-11-04).
+    a.runs = a.runs.resolve()
+    if a.trees is not None:
+        a.trees = a.trees.resolve()
     if a.cmd == "render":
         trees = a.trees or (Path(os.environ.get("TEMP", ".")) / "embwt" / "trees")
         slot = Slot(None if a.no_slot else default_slot(), "pro_pooled_build render (yardstick pro-pair)")
