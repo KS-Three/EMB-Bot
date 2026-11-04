@@ -1988,7 +1988,7 @@ set.
 **Built OFF since 2026-10-11 and waiting on Kent (the ones a session will
 meet):**
 
-- `dark_ink_floor_rescue` (PR #NNNN, 2026-11-03): a second dark read at `dark_ink_read_floor_mm` (1.0) added to the first, plus a stage-3 protect and a stage-4 crumb drop. Brings back a letter the dark read's `min_detail_mm` kernel closed (Pooh "HUNNY", 54.6 mm). It is a raster read threshold, not a stitch value; reads every dark thin stroke, so a row with no lettering can move. `.claude/memory/dark-ink-floor-rescue-2026-11-03.md`.
+- `dark_ink_floor_rescue` (PR #1232, 2026-11-03): a second dark read at `dark_ink_read_floor_mm` (1.0) added to the first, plus a stage-3 protect and a stage-4 crumb drop. Brings back a letter the dark read's `min_detail_mm` kernel closed (Pooh "HUNNY", 54.6 mm). It is a raster read threshold, not a stitch value; reads every dark thin stroke, so a row with no lettering can move. `.claude/memory/dark-ink-floor-rescue-2026-11-03.md`.
 - `open_cored_counters` (PR #988, 2026-10-19): a small counter round a
   page-coloured core stays a hole of its letter (golden_tee's O at 4–5 mm).
   Opens the O only a little and makes five false positives on the phone
