@@ -627,22 +627,19 @@ test("(e) a hole's node drags on its own: holes_override carries the grabbed ver
   expect(entry.boundary_override, "the shell was not edited").toBeUndefined();
   const moved = movedVertices(holed.holes[0], entry.holes_override[0], 1e-4);
   expect(moved, "same point count").not.toBeNull();
-  // The service traces this square's corners as chamfers (two vertices 1.4 mm
-  // apart), and a drag keeps the 3 mm neighbourhood (spec section 3): the vertex
-  // under the pointer takes the whole 3 mm, its chamfer partner a share, and the
-  // other six vertices are exactly as sent. (Exactly ONE vertex moving is the
-  // arrow-nudge test below.)
-  expect(moved.length, "the grabbed vertex and at most its chamfer partner").toBeLessThanOrEqual(2);
+  // Zero falloff (2026-11-04): a bare drag moves the grabbed vertex and nothing
+  // else, even where the service traced the corner as a 1.4 mm chamfer.
+  expect(moved.length, "exactly the grabbed vertex moved").toBe(1);
   const lead = moved.reduce((a, b) => (Math.abs(b.dx) > Math.abs(a.dx) ? b : a));
   expect(lead.dx, "the grabbed vertex took the whole drag, out into the green").toBeCloseTo(-3, 0);
   expect(Math.abs(lead.dy)).toBeLessThan(1e-6);
   console.log("holes_override vertices:", entry.holes_override[0].length, "of", holed.holes[0].length, "- moved:", JSON.stringify(moved));
 
   await restitched(page, before);
-  // The wedge the move opened (between the old corner, the new one and the hole's
-  // lower-left corner) was green; it is garment now.
-  const A = g.hole.tl, B = to, C = g.hole.bl;
-  const wedge = { x: A.x * 0.6 + B.x * 0.3 + C.x * 0.1, y: A.y * 0.6 + B.y * 0.3 + C.y * 0.1 };
+  // The sliver the move opened (between the old corner and the new one, just below
+  // the hole's top edge) was green; it is garment now.
+  const A = g.hole.tl, B = to;
+  const wedge = { x: (A.x + B.x) / 2, y: A.y + 0.1 * dragPx };
   await expect.poll(async () => {
     const px = await pixelAt(page, wedge);
     return Math.max(...px.map((v, i) => Math.abs(v - garment[i])));
