@@ -162,6 +162,41 @@ def test_markdown_carries_every_scope_and_the_controls():
     assert "% agree" not in md.lower() and "agreement rate" not in md.lower()
 
 
+def test_record_appends_in_run_shape_and_refuses_a_second_verdict(tmp_path):
+    rows = [{"pair": "P001", "choice": "L", "confidence": 4, "reason": "a"},
+            {"pair": "P002", "choice": "tie", "confidence": 9, "reason": "b"}]
+    assert vj.record_rows(tmp_path, rows) == 2
+    got = vj.load_verdicts(tmp_path)[vj.SESSION_MODEL]["A"]
+    assert got["P001"]["choice_frame_a"] == "L" and got["P001"]["confidence_in_range"]
+    assert got["P002"]["choice"] == "tie" and not got["P002"]["confidence_in_range"]
+    assert got["P001"]["prompt_sha256"] == vj.prompt_sha()
+    assert got["P001"]["input_tokens"] == 0 and got["P001"]["stop_reason"] == "end_turn"
+    with pytest.raises(SystemExit, match="already recorded"):
+        vj.record_rows(tmp_path, [{"pair": "P001", "choice": "R", "confidence": 1, "reason": ""}])
+    with pytest.raises(SystemExit, match="not in"):
+        vj.record_rows(tmp_path, [{"pair": "P003", "choice": "left", "confidence": 1, "reason": ""}])
+    assert len(vj.load_verdicts(tmp_path)[vj.SESSION_MODEL]["A"]) == 2
+
+
+def test_exclude_drops_a_pair_from_every_read_and_control_and_one_order_reads_clean():
+    st = _sitting()
+    v = _verdicts(st, _like_kent(st["picks"]))
+    v["m"].pop("B")                                  # the session judge: order A only
+    rep = vj.analyse(st, v, exclude=frozenset({"P001", "P013", "P999"}))
+    assert rep["excluded"] == ["P001", "P013"]
+    assert list(rep["models"]["m"]["orders"]) == ["A"]
+    r = rep["models"]["m"]["orders"]["A"]["reads"]["live"]
+    assert r["n_scored"] == 11 and r["kappa_3way"] == pytest.approx(1.0)
+    assert rep["kent"]["identical_pairs"] == 0
+    assert rep["kent"]["repeat_pairs"] == 0          # P014 repeats P001, which is gone
+    ctrl = rep["models"]["m"]["orders"]["A"]["controls"]
+    assert ctrl["identical_answered"] == 0 and ctrl["repeat_answered"] == 0
+    assert rep["models"]["m"]["swap"]["pairs_in_both_orders"] == 0
+    md = vj.markdown(rep)
+    assert "Excluded from every read" in md and "P001, P013" in md
+    assert "Swap: not run (one order only)." in md and "no API spend" in md
+
+
 # ------------------------------------------------- the committed sitting ----
 
 def test_the_committed_sitting_loads_as_the_write_up_describes():

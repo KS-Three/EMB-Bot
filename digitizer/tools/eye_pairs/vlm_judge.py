@@ -47,6 +47,11 @@ KIT = DIGITIZER / "eye_pairs_out" / "pro-lettering-1102"
 
 #: $ per million tokens (input, output) - the claude-api skill's table, cached 2026-10-06.
 RATES = {"claude-opus-5-5": (4.00, 20.00), "claude-haiku-5-5": (0.10, 0.50)}
+#: Amendment 1 (2026-11-04): the judge is the Claude Code session itself, reading
+#: the three files with its Read tool and recording a verdict with `record`.
+#: No API call, no key, no cost column; one order only (a judge with memory
+#: cannot be swapped or repeated blind).
+SESSION_MODEL = "claude-fable-5-1-session"
 EFFORT = "medium"
 MAX_TOKENS = 1500
 ORDERS = ("A", "B")            # A = as Kent saw it; B = LEFT and RIGHT swapped
@@ -256,6 +261,49 @@ def run(a) -> int:
     return 0
 
 
+# ---------------------------------------------------------------- record ----
+
+def record_rows(out: Path, rows: list[dict], *, model: str = SESSION_MODEL,
+                order: str = "A") -> int:
+    """Append the session judge's verdicts (`[{pair, choice, confidence,
+    reason}, ...]`) to `verdicts-<model>.jsonl` in the same shape `run`
+    writes. A pair already on file is refused, never overwritten: a verdict is
+    given once, before any pick is read."""
+    out.mkdir(parents=True, exist_ok=True)
+    log = out / f"verdicts-{model}.jsonl"
+    done = {p for p, o in _done(log) if o == order}
+    dup = sorted({r["pair"] for r in rows} & done)
+    if dup:
+        raise SystemExit(f"REFUSED: already recorded, not overwritten: {', '.join(dup)}")
+    seen: set[str] = set()
+    sha = prompt_sha()
+    with log.open("a", encoding="utf-8") as fh:
+        for r in rows:
+            if r["pair"] in seen:
+                raise SystemExit(f"REFUSED: {r['pair']} appears twice in this batch")
+            seen.add(r["pair"])
+            if r["choice"] not in CHOICES:
+                raise SystemExit(f"REFUSED: {r['pair']} choice {r['choice']!r} not in {CHOICES}")
+            c = r.get("confidence")
+            row = {"pair": r["pair"], "order": order, "model": model, "effort": None,
+                   "choice": r["choice"], "choice_frame_a": frame_a(r["choice"], order),
+                   "confidence": c, "confidence_in_range": isinstance(c, int) and 1 <= c <= 5,
+                   "reason": r.get("reason"), "stop_reason": "end_turn", "request_id": None,
+                   "served_model": model, "elapsed_s": None, "input_tokens": 0,
+                   "output_tokens": 0, "prompt_sha256": sha,
+                   "ts": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return len(rows)
+
+
+def do_record(a) -> int:
+    rows = json.loads(Path(a.src).read_text(encoding="utf-8"))
+    n = record_rows(Path(a.out), rows, model=a.model, order=a.order)
+    log = Path(a.out) / f"verdicts-{a.model}.jsonl"
+    print(json.dumps({"recorded": n, "on_file": len(_done(log)), "log": str(log)}))
+    return 0
+
+
 # --------------------------------------------------------------- analyse ----
 
 def load_sitting(sitting: Path = SITTING) -> dict:
@@ -324,15 +372,21 @@ def _kappas(rows: list[tuple[str, str, str]], seed: int = 20261104) -> dict:
     return res
 
 
-def analyse(sitting: dict, verdicts: dict[str, dict[str, dict[str, dict]]]) -> dict:
-    sealed, picks = sitting["sealed"], sitting["picks"]
+def analyse(sitting: dict, verdicts: dict[str, dict[str, dict[str, dict]]],
+            exclude: frozenset[str] = frozenset()) -> dict:
+    """`exclude`: pairs the judge was not blind on (Amendment 1 names them).
+    They leave every scored read and every control, on both sides."""
+    sealed = {p: s for p, s in sitting["sealed"].items() if p not in exclude}
+    picks = sitting["picks"]
     design_of, expected = sitting["design_of"], sitting["expected"]
     passing = set(sitting["passing_arms"])
     live = sorted(p for p, s in sealed.items() if s["kind"] == "live")
     ident = sorted(p for p, s in sealed.items() if s["kind"] == "identical")
-    repeats = {p: s["repeat_of"] for p, s in sealed.items() if s["kind"] == "repeat"}
+    repeats = {p: s["repeat_of"] for p, s in sealed.items()
+               if s["kind"] == "repeat" and s["repeat_of"] in sealed}
     kent = {p: to_label(picks[p], sealed[p]) for p in sealed if p in picks and sealed[p]["kind"] != "identical"}
     out: dict = {"sitting": "pro-lettering-1102", "n_live": len(live),
+                 "excluded": sorted(exclude & set(sitting["sealed"])),
                  "kent": {"identical_called_tie": sum(1 for p in ident if picks.get(p) == "tie"),
                           "identical_pairs": len(ident),
                           "repeat_consistent": sum(1 for p, o in repeats.items()
@@ -351,7 +405,9 @@ def analyse(sitting: dict, verdicts: dict[str, dict[str, dict[str, dict]]]) -> d
                      "output_tokens": tout,
                      "usd": None if rate is None else round((tin * rate[0] + tout * rate[1]) / 1e6, 3)}
         for order in ORDERS:
-            rows_o = by_order.get(order, {})
+            rows_o = {p: r for p, r in by_order.get(order, {}).items() if p in sealed}
+            if not rows_o:
+                continue
             judge = {p: to_label(r["choice_frame_a"], sealed[p]) for p, r in rows_o.items()
                      if r.get("choice") is not None and sealed[p]["kind"] != "identical"}
             reads: dict = {}
@@ -426,11 +482,16 @@ def markdown(rep: dict) -> str:
          f"- repeat pairs answered the same: {rep['kent']['repeat_consistent']} of {rep['kent']['repeat_pairs']}",
          f"- sides: {rep['kent']['left_picks']} left, {rep['kent']['right_picks']} right; "
          f"{rep['kent']['ties_live']} of {rep['n_live']} live pairs tied", ""]
+    if rep.get("excluded"):
+        L += [f"Excluded from every read and control (the judge was not blind on them, "
+              f"Amendment 1): {', '.join(rep['excluded'])}.", ""]
     for model, m in rep["models"].items():
         c = m["cost"]
+        spend = (f"about ${c['usd']} at the cached rate" if c["usd"] is not None
+                 else "no API spend (the session judge, Amendment 1)")
         L += [f"## `{model}`", "",
-              f"{c['calls']} calls, {c['input_tokens']:,} input tokens, {c['output_tokens']:,} output tokens, "
-              f"about ${c['usd']} at the cached rate.", "",
+              f"{c['calls']} verdicts, {c['input_tokens']:,} input tokens, {c['output_tokens']:,} output tokens, "
+              f"{spend}.", "",
               "| scope | order | n scored | n Kent decided | kappa ties in | CI pairs | CI designs | reading "
               "| n both decided | kappa sides only | CI pairs | CI designs | reading |",
               "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
@@ -452,9 +513,12 @@ def markdown(rep: dict) -> str:
                      f"{k['left_picks_own_frame']} / {k['right_picks_own_frame']} | {k['ties_live']} | "
                      f"{k['mean_confidence']} |")
         s = m["swap"]
-        L += ["", f"Swap: same verdict in both orders on {s['same_verdict_after_swap']} of "
-              f"{s['pairs_in_both_orders']} pairs; picked the same SCREEN side after the swap "
-              f"(a side habit) on {s['side_flipped_with_swap']}.", ""]
+        if s["pairs_in_both_orders"]:
+            L += ["", f"Swap: same verdict in both orders on {s['same_verdict_after_swap']} of "
+                  f"{s['pairs_in_both_orders']} pairs; picked the same SCREEN side after the swap "
+                  f"(a side habit) on {s['side_flipped_with_swap']}.", ""]
+        else:
+            L += ["", "Swap: not run (one order only).", ""]
         for order, o in m["orders"].items():
             t = o["reads"]["live"].get("table_kent_rows_judge_cols")
             if t:
@@ -478,7 +542,8 @@ def do_analyse(a) -> int:
     verdicts = load_verdicts(out)
     if not verdicts:
         raise SystemExit(f"no verdicts-*.jsonl under {out}")
-    rep = analyse(sitting, verdicts)
+    exclude = frozenset(p.strip() for p in a.exclude.split(",") if p.strip()) if a.exclude else frozenset()
+    rep = analyse(sitting, verdicts, exclude=exclude)
     (out / "analysis.json").write_text(json.dumps(rep, indent=1), encoding="utf-8")
     (out / "analysis.md").write_text(markdown(rep), encoding="utf-8")
     brief = {model: {order: {scope: {"n": r["n_scored"], "kappa_3way": r.get("kappa_3way"),
@@ -504,9 +569,16 @@ def main(argv=None) -> int:
     r.add_argument("--pairs", default=None, help="comma-separated pair ids (pilot)")
     r.add_argument("--limit", type=int, default=0)
     r.set_defaults(fn=run)
+    rc = sub.add_parser("record", help="append the session judge's verdicts from a JSON list")
+    rc.add_argument("src", help="JSON file: [{pair, choice, confidence, reason}, ...]")
+    rc.add_argument("--model", default=SESSION_MODEL)
+    rc.add_argument("--order", default="A", choices=ORDERS)
+    rc.add_argument("--out", default=str(OUT))
+    rc.set_defaults(fn=do_record)
     an = sub.add_parser("analyse", help="score the verdicts against Kent's picks")
     an.add_argument("--out", default=str(OUT))
     an.add_argument("--sitting", default=str(SITTING))
+    an.add_argument("--exclude", default="", help="comma-separated pair ids the judge was not blind on")
     an.set_defaults(fn=do_analyse)
     a = ap.parse_args(argv)
     if a.cmd == "run" and not a.key_file and not os.environ.get("ANTHROPIC_API_KEY"):

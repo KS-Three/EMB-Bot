@@ -143,4 +143,38 @@ Measured usage is written per call and summed in `analysis.md`.
 
 ## Amendments
 
-None. Any amendment is dated here before the run it affects.
+Any amendment is dated here before the run it affects.
+
+**Amendment 1, 2026-11-04, before any pair was opened for judgment.** Kent:
+"Don't create a key, just inject your own opinions into what's needed and feed
+embot the results." The judge is therefore the Claude Code session itself
+(`claude-fable-5-1`, recorded under the model name `claude-fable-5-1-session`),
+reading each pair's three files with its Read tool and recording L / R / tie,
+a confidence and a reason through `vlm_judge record`, eight pairs per batch,
+each batch written to disk before the next pair is opened. What changes:
+
+- **No API call.** `effort`, `max_tokens`, the JSON schema and `fallbacks` do
+  not apply; the prompt above is the instruction the session holds itself to
+  on every pair; the cost section is void. The two API arms
+  (`claude-opus-5-5`, `claude-haiku-5-5`) stay registered, unchanged, for a
+  later run with a key.
+- **One order only (A, as Kent saw it).** A judge with memory cannot be swapped
+  or repeated blind: order B and the repeat control would measure recall, not
+  judgment. Both dropped; the swap row reads "not run".
+- **Exclusions, named now.** While building the kit the session read the first
+  three lines of `picks.jsonl` (`P001` L, `P002` tie, `P003` tie) and the first
+  two entries of `arms.json` (`P001` base left, `lane_off` right; `P002`
+  identical). `P001` and `P003` leave every scored read and every control;
+  `P002` leaves the identical control (`analyse --exclude P001,P002,P003`).
+  The session also knows the fixture list, the arm names, the repeat map
+  (`P015` of `P020`, `P045` of `P026`, `P050` of `P044`, `P059` of `P022`) and
+  the marginals (34 ties, 23 L, 7 R over 64; 16 before / 26 tie / 14 after on
+  the live pairs), none of it per pair. Known marginals are one more reason the
+  primary is the chance-corrected kappa and not a share. Verdicts are given on
+  the pair's three files alone; `arms.json`, `picks.jsonl` and
+  `sitting-inputs.json` are not opened again until all 64 verdicts are on disk.
+- **Primary becomes:** the session, order A, the 54 live pairs left, 3-way
+  kappa with ties. Secondary reads and the remaining controls as registered
+  (the identical control on 3 pairs; the repeat control void).
+- Also seen before judging: `img/P001_L.jpg` and `img/P001_art.png` (declared
+  above; that pair is excluded anyway).
