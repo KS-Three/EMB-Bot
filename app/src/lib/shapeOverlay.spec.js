@@ -742,6 +742,28 @@ describe("Reshape mode: several points at once", () => {
     expect(exact.filter((p, i) => i !== 5)).toEqual(dense.filter((p, i) => i !== 5));
   });
 
+  // 2026-11-04 zero falloff: the Studio's bare drag passes { exact: true }, Alt passes { soft: true }.
+  test("bare drag (exact) of one vertex on a 1.3 mm-spaced ring moves only that vertex", () => {
+    const owl = Array.from({ length: 60 }, (_, i) => [i * 1.3, 0]).concat([[77, 10], [0, 10]]);
+    const out = moveNodes(owl, [20], 4, 2, { exact: true });
+    expect(out[20]).toEqual([owl[20][0] + 4, 2]);
+    expect(out.filter((p, i) => i !== 20)).toEqual(owl.filter((p, i) => i !== 20));
+  });
+
+  test("Alt (soft) still pulls the neighbours of the same vertex", () => {
+    const owl = Array.from({ length: 60 }, (_, i) => [i * 1.3, 0]).concat([[77, 10], [0, 10]]);
+    const out = moveNodes(owl, [20], 4, 2, { soft: true });
+    expect(out[19]).not.toEqual(owl[19]);
+    expect(out[21]).not.toEqual(owl[21]);
+  });
+
+  test("a multi-selection drag (exact) moves each selected point by the full delta", () => {
+    const owl = Array.from({ length: 60 }, (_, i) => [i * 1.3, 0]).concat([[77, 10], [0, 10]]);
+    const out = moveNodes(owl, [10, 11, 30], -1, 3, { exact: true });
+    for (const i of [10, 11, 30]) expect(out[i]).toEqual([owl[i][0] - 1, 3]);
+    expect(out.filter((p, i) => ![10, 11, 30].includes(i))).toEqual(owl.filter((p, i) => ![10, 11, 30].includes(i)));
+  });
+
   test("two seeds with overlapping neighbourhoods take the max weight, not the sum", () => {
     const dense = Array.from({ length: 30 }, (_, i) => [i * 1, 0]).concat([[29, 10], [0, 10]]);
     const out = moveNodes(dense, [10, 11], 2, 0);

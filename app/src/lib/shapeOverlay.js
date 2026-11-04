@@ -468,6 +468,13 @@ function ringArea(pts) {
 // At 5 mm spacing that moves exactly the grabbed vertex; at the owl's 1.3 mm it
 // still takes a neighbour either side. Holding Alt (`soft: true`) keeps the old
 // 2x-drag pull for dense photo outlines.
+//
+// 2026-11-04, and why the fixed 3 mm is retired from the DRAG: Kent chose
+// "zero falloff". Ember Design's reshape drag moved exactly one point (60.0 px
+// asked, 60.0 px moved, 0.0 px on every other point). So the Studio's callers
+// now pass `exact` on a bare drag (same as arrow nudges); Alt passes `soft`
+// (the 2x-drag pull above, floored at PULL_RADIUS_MM, capped). The library
+// default below is unchanged for callers that pass neither option.
 const PULL_RADIUS_PER_MM = 2;
 // Fixed radius of the default rule, mm. Also the floor of the soft (Alt) rule:
 // even a 0.5 mm nudge should move a stretch of boundary wide enough to sew.

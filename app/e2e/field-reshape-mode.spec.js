@@ -718,3 +718,39 @@ test("(e4) every point of the hole selected, Delete -> holes_override is [] (the
     return Math.max(...px.map((v, i) => Math.abs(v - garment[i])));
   }, { timeout: 15_000 }).toBeGreaterThan(60);
 });
+
+// ---- Done / Discard (2026-11-04) -----------------------------------------
+// The strip's tick (Done) and cross (Discard) sit right of the label, centred
+// on the canvas: 30-48 px and 52-70 px right of centre, 7-25 px from the top.
+async function stripButton(page, which) {
+  const hb = await page.locator(".hoop canvas").boundingBox();
+  return { x: hb.x + hb.width / 2 + (which === "done" ? 39 : 61), y: hb.y + 16 };
+}
+
+test("(h) drag a vertex, click Discard: the ring is back to the pre-edit ring and the mode is off", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeSquares(page);
+  await enterReshape(page);
+  const { tr } = await blackSquareCorners(page);
+  await drag(page, tr, { x: tr.x + 22, y: tr.y - 16 });
+  await expect.poll(async () => Object.values((await readDigitized(page)).overrides).some((v) => v.boundary_override)).toBe(true);
+  const b = await stripButton(page, "discard");
+  await page.mouse.click(b.x, b.y);
+  await expect(page.locator(".hoop canvas")).not.toHaveAttribute("data-reshape", "on");
+  await expect.poll(async () => Object.values((await readDigitized(page)).overrides).some((v) => v.boundary_override)).toBe(false);
+});
+
+test("(i) drag a vertex, press Enter: the edit stays and the mode is off", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeSquares(page);
+  await enterReshape(page);
+  const { tr } = await blackSquareCorners(page);
+  await drag(page, tr, { x: tr.x + 22, y: tr.y - 16 });
+  await page.locator(".hoop canvas").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".hoop canvas")).not.toHaveAttribute("data-reshape", "on");
+  const r = await readDigitized(page);
+  expect(Object.values(r.overrides).filter((v) => v.boundary_override)).toHaveLength(1);
+});

@@ -41,4 +41,5 @@ the trap: a precise single-shape editor still looks broken on seams.
 **How to apply:** build from the spec's section 8 order (PR 1 drag rule first,
 Sonnet workers per [[agents-cheap-models-2026-11-02]]). Do not re-tune the
 pull on the owl without re-reading section 3's cost line. A node-editing
-complaint on a seam is ruling 4, not the drag rule.
+complaint on a seam is ruling 4, not the drag rule. Ruling 8 (11-04) supersedes
+ruling 1: bare drag exact, Alt soft; Done/Discard — [[ember-reshape-measured-2026-11-04]].
