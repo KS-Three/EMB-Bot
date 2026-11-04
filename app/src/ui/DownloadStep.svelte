@@ -12,6 +12,7 @@
   import { ensureFonts } from "../lib/fontLoader.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
   import { MACHINES, machineById, loadMachineId, saveMachineId } from "../lib/machines.js";
+  import { loadTrimJumps, saveTrimJumps, clampTrimJumps, TRIM_JUMPS_MIN, TRIM_JUMPS_MAX } from "../lib/trimJumps.js";
   import { friendlyError } from "../lib/friendlyError.js";
   import { blocksDownload } from "../lib/staleness.js";
 
@@ -35,6 +36,15 @@
   function onMachineChange(e) {
     machineId = e.currentTarget.value || null;
     saveMachineId(machineId);
+  }
+  // DST only: jump records per trim (1..10, default 3). Remembered like the
+  // machine pick; clamped on every edit so a half-typed value never reaches
+  // the writers.
+  let jumpsPerTrim = loadTrimJumps();
+  function onTrimJumpsChange(e) {
+    jumpsPerTrim = clampTrimJumps(e.currentTarget.value);
+    e.currentTarget.value = String(jumpsPerTrim);
+    saveTrimJumps(jumpsPerTrim);
   }
   export let project;
   // The design's display name; the exported file is named from it.
@@ -567,6 +577,7 @@
       const out = await exportDesignPreferService(buildDesign(), fmt, {
         label: project.name,
         preferService: isPurelyDigitized(project),
+        ...(fmt === "dst" ? { jumpsPerTrim } : {}),
       });
       const where = await saveOut({ ...out, filename: exportFileName(designName, fmt) });
       // The message still names which encoder ran -- neutral provenance, not
@@ -677,6 +688,20 @@
         <option value={m.id}>{m.label}</option>
       {/each}
     </select>
+  </label>
+  <label class="machinepick-label">
+    <span>Jumps per trim</span>
+    <input
+      type="number"
+      inputmode="numeric"
+      min={TRIM_JUMPS_MIN}
+      max={TRIM_JUMPS_MAX}
+      step="1"
+      value={jumpsPerTrim}
+      on:change={onTrimJumpsChange}
+      aria-label="Jumps per trim"
+      data-testid="jumps-per-trim"
+    />
   </label>
   {#if machine}
     <button

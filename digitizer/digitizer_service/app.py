@@ -1538,7 +1538,7 @@ def export(
     label = str(payload.get("label") or "EMBBOT")
     try:
         pattern = design_to_pattern(design, label=label)
-        data = formats.write(pattern, fmt)
+        data = formats.write(pattern, fmt, trim_jumps=payload.get("trim_jumps"))
     except (AttributeError, KeyError, TypeError, ValueError) as exc:
         # AttributeError: a stitch that is a bare [x, y, flag] list rather
         # than a dict reaches the adapter's `.get` (PR #694's xfail).

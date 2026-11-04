@@ -18,10 +18,10 @@ export function exportFileName(name, ext) {
   return (base || "design") + "." + ext;
 }
 
-export function exportDesign(design, format) {
+export function exportDesign(design, format, opts = {}) {
   switch (format) {
     case "dst":
-      return { bytes: EMB.encodeDST(design), filename: "design.dst", mime: "application/octet-stream" };
+      return { bytes: EMB.encodeDST(design, { jumpsPerTrim: opts.jumpsPerTrim }), filename: "design.dst", mime: "application/octet-stream" };
     case "exp":
       return { bytes: EMB.encodeEXP(design), filename: "design.exp", mime: "application/octet-stream" };
     case "pes":
@@ -116,7 +116,7 @@ export function isServiceOnlyFormat(format) {
 }
 
 export async function exportDesignPreferService(design, format, opts = {}) {
-  const { label = "EMBBOT", exportViaServiceFn = exportViaService, fetchFn, preferService = false } = opts;
+  const { label = "EMBBOT", exportViaServiceFn = exportViaService, fetchFn, preferService = false, jumpsPerTrim } = opts;
   if (SERVICE_ONLY_FORMATS.has(format)) {
     // No browser fallback exists, so a failure here is the end of the road and
     // has to say so in words a customer can act on. The service's own message
@@ -133,13 +133,13 @@ export async function exportDesignPreferService(design, format, opts = {}) {
   }
   if (preferService && SERVICE_EXPORT_FORMATS.has(format)) {
     try {
-      const out = await exportViaServiceFn(design, format, label, fetchFn);
+      const out = await exportViaServiceFn(design, format, label, fetchFn, jumpsPerTrim);
       return { ...out, via: "service" };
     } catch (e) {
       // service down or erroring -- fall through to the browser encoder.
     }
   }
-  return { ...exportDesign(design, format), via: "browser" };
+  return { ...exportDesign(design, format, { jumpsPerTrim }), via: "browser" };
 }
 
 // Builds and saves a PDF worksheet (title, stitch-simulation render, stats,

@@ -3046,6 +3046,26 @@ against analytic floors (`sttype`'s being Cohen's kappa) and guessing scores
 0. See the Gotcha above before comparing any number to a pre-2026-08-14 one.
 *(confirmed 2026-08-14 — PR #151)*
 
+### A vision judge against Kent’s eye — MEASURED 2026-11-04, one sitting, above chance
+
+**A third harness, built 2026-11-04 on Kent’s question whether Claude’s vision model
+would help: `digitizer/tools/eye_pairs/vlm_judge.py`.** It shows a vision judge the
+same three files Kent saw per pair of a sitting (artwork, LEFT, RIGHT), takes a
+blind L / R / tie, and scores it against his picks with `pooled.py`’s kappa,
+bootstrap and reading rule; no raw agreement figure exists in it (gate 4).
+Pre-registered before the first pair was opened; the run was the Claude Code
+session itself (no API key: Amendment 1, one screen order, three pairs excluded
+as seen while building the kit). On `pro-lettering-1102`, the only labelled
+sitting whose renders survive: **kappa +0.36, CI pairs [+0.16, +0.55], designs
+[+0.20, +0.45], ties in, n 54, above chance** — the first fidelity-shaped
+instrument to clear chance against his eye. Sides only +0.45 on n 16, no
+evidence; the agreement is shared ties and shared base picks (the judge backed
+the arm 3 times to his 14; of his 14 arm picks it tied 10). Kent’s own repeat
+agreement on that sitting was 1 of 4. Phase 1’s exit stays NOT MET; the
+pre-registration licenses one step, the same protocol on the 100 re-rendered pro
+pairs, and no flag flip, routing change or quality claim.
+*(measured 2026-11-04 — [`docs/eye-pairs-2026-11-04/vlm-judge/RESULTS.md`](docs/eye-pairs-2026-11-04/vlm-judge/RESULTS.md))*
+
 ### Corpus scorecard — per-fixture state (moved from MASTER_SCOPE 2026-08-22)
 
 **Still open here: `summit_badge.png` (#6.2) alone.** Re-measured at HEAD it is
