@@ -2913,3 +2913,19 @@ test("canonicalShapeEdits emits holes_override only for a shape that has one ([]
   expect(out.Sc).toEqual({ holes_override: [] });
   expect(out.Sd).toBeUndefined();
 });
+
+test("exportViaService sends trim_jumps for DST only, and nothing when unset", async () => {
+  const { exportViaService } = await import("./digitizer.js");
+  const bodies = [];
+  const fetchFn = async (url, opts) => {
+    bodies.push(JSON.parse(opts.body));
+    return { ok: true, status: 200, blob: async () => new Blob(["x"]), headers: { get: () => null } };
+  };
+  const design = { stitches: [], colors: [] };
+  await exportViaService(design, "dst", "a", fetchFn, 5);
+  await exportViaService(design, "dst", "a", fetchFn);
+  await exportViaService(design, "pes", "a", fetchFn, 5);
+  expect(bodies[0]).toEqual({ design, format: "dst", label: "a", trim_jumps: 5 });
+  expect(bodies[1]).toEqual({ design, format: "dst", label: "a" });
+  expect(bodies[2]).toEqual({ design, format: "pes", label: "a" });
+});

@@ -232,8 +232,17 @@
   // A trim's travel, as >=3 jump records: the Tajima convention is that a
   // machine reads three consecutive jumps as a trim command. Zero delta -> 3
   // zero jumps.
-  function splitTrim(dx, dy) {
-    return splitSteps(dx, dy, MAX_DELTA, 3);
+  //
+  // `n` is how many consecutive jumps a given machine reads as a trim: an
+  // integer 1..10, default 3 (the user-set "Jumps per trim"). Anything else
+  // falls back to 3, so a bad value never changes the bytes.
+  const DEFAULT_TRIM_JUMPS = 3;
+  function trimJumps(n) {
+    const v = typeof n === "boolean" ? NaN : Number(n);
+    return Number.isInteger(v) && v >= 1 && v <= 10 ? v : DEFAULT_TRIM_JUMPS;
+  }
+  function splitTrim(dx, dy, n) {
+    return splitSteps(dx, dy, MAX_DELTA, trimJumps(n));
   }
 
   // How many records a needle-up move is written in: the count encodeDST lays
@@ -243,7 +252,10 @@
     return splitSteps(dx, dy, MAX_DELTA, 1).length;
   }
 
-  function encodeDST(design) {
+  // `opts.jumpsPerTrim`: consecutive jump records written for a trim (1..10,
+  // default 3). A long trim travel can need more than that many to fit.
+  function encodeDST(design, opts) {
+    const trimN = trimJumps(opts && opts.jumpsPerTrim);
     const stitches = (design && design.stitches) || [];
     const colors = (design && design.colors) || [];
     // Records go straight into one growing buffer (3 bytes each, after the
@@ -314,7 +326,7 @@
       // Trim: Tajima convention is >=3 consecutive jump records covering the
       // move delta. Always emit at least 3 jumps so the machine reads a trim.
       if (st.type === "trim") {
-        for (const [sx, sy] of splitTrim(targetX - lastX, targetY - lastY)) {
+        for (const [sx, sy] of splitTrim(targetX - lastX, targetY - lastY, trimN)) {
           push(sx, sy, "jump");
         }
         lastX = targetX;

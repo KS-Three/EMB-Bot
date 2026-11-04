@@ -289,17 +289,58 @@ def split_sewn_moves(pattern: pystitch.EmbPattern, bar: int = SEWN_BAR) -> pysti
     return split
 
 
-def write(pattern: pystitch.EmbPattern, fmt: str) -> bytes:
+TRIM_JUMPS_DEFAULT = 3
+
+
+def trim_jumps_of(value) -> int:
+    """The user's "jumps per trim", validated: an integer 1..10, None -> 3.
+    A bool or a float with a fraction is refused, not rounded."""
+    if value is None:
+        return TRIM_JUMPS_DEFAULT
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value != int(value):
+        raise ValueError(f"trim_jumps must be an integer 1 to 10, got {value!r}")
+    n = int(value)
+    if not 1 <= n <= 10:
+        raise ValueError(f"trim_jumps must be an integer 1 to 10, got {n}")
+    return n
+
+
+def _trims_as_one_jump(pattern: pystitch.EmbPattern) -> pystitch.EmbPattern:
+    """A copy with every TRIM turned into one zero-length JUMP.
+
+    pystitch's DST writer writes `trim_at` records per TRIM but never fewer
+    than two (first + last, the loop between them is empty at 1), so one jump
+    per trim is written here instead."""
+    out = pystitch.EmbPattern()
+    out.threadlist = list(pattern.threadlist)
+    out.extras = dict(pattern.extras)
+    out.stitches = [
+        [x, y, pystitch.JUMP | (cmd & ~pystitch.COMMAND_MASK)]
+        if (cmd & pystitch.COMMAND_MASK) == pystitch.TRIM else [x, y, cmd]
+        for x, y, cmd in pattern.stitches
+    ]
+    return out
+
+
+def write(pattern: pystitch.EmbPattern, fmt: str, trim_jumps: int | None = None) -> bytes:
+    """`trim_jumps` (DST only): consecutive jump records per trim, 1..10.
+    None and 3 write the file this function always wrote."""
     fmt = fmt.lower().lstrip(".")
     writer = _WRITERS.get(fmt)
     if writer is None:
         raise KeyError(fmt)
+    n = trim_jumps_of(trim_jumps)
     buf = io.BytesIO()
     # SVG is a proof, not a machine file: it draws the design's own segments.
     pattern = pattern if fmt == "svg" else split_sewn_moves(pattern)
     if fmt in _CONE_CHARTS:
         pattern = snap_to_cones(pattern, fmt)
     settings = _WRITER_SETTINGS.get(fmt)
+    if fmt == "dst" and n != TRIM_JUMPS_DEFAULT:
+        if n == 1:
+            pattern = _trims_as_one_jump(pattern)
+        else:
+            settings = {"trim_at": n}
     args = (pattern, buf) if settings is None else (pattern, buf, dict(settings))
     if fmt in _PEC_FORMATS:
         with _PEC_LOCK:

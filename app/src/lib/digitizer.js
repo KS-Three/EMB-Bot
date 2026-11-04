@@ -1373,11 +1373,13 @@ async function httpError(r) {
 // (the service always sends one); falls back to design.<format> so a
 // service that omits the header (or a test double) never yields an
 // extensionless download.
-export async function exportViaService(design, format, label, fetchFn = globalThis.fetch) {
+export async function exportViaService(design, format, label, fetchFn = globalThis.fetch, trimJumps) {
   const r = await fetchFn(digitizerUrl() + "/export", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ design, format, label }),
+    // trim_jumps rides only when the caller set one and the format is DST, so
+    // every other request body is byte-for-byte what it was.
+    body: JSON.stringify(format === "dst" && trimJumps != null ? { design, format, label, trim_jumps: trimJumps } : { design, format, label }),
     signal: AbortSignal.timeout(10000),
   });
   if (!r.ok) throw await httpError(r);
