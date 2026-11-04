@@ -197,6 +197,113 @@ def test_exclude_drops_a_pair_from_every_read_and_control_and_one_order_reads_cl
     assert "Swap: not run (one order only)." in md and "no API spend" in md
 
 
+# ------------------------------------------------------ the 100-pair kit ----
+
+PREREG100 = REPO / "docs" / "eye-pairs-2026-11-04" / "vlm-judge-100" / "PRE-REGISTRATION.md"
+
+
+def test_the_100_pair_pre_registration_pins_prompt_seed_and_size_rule():
+    text = PREREG100.read_text(encoding="utf-8")
+    assert vj.prompt_sha() in text
+    assert str(vj.PRO100_SEED) in text and "`--sitting-size`" in text
+    assert "flags-0918-0928" in text and "off-flags-1003:cap_recentre:becker" in text
+    assert f"{vj.VIEW_PX_PER_MM:g} px/mm" in text
+
+
+def test_kit_pro100_builds_a_balanced_blind_kit(tmp_path, monkeypatch):
+    import json as _json
+    from PIL import Image
+    from tools.eye_pairs import pro_pooled_build as pb
+    runs, kit, art_root = tmp_path / "runs", tmp_path / "kit", tmp_path / "art"
+    art_root.mkdir()
+    Image.new("RGB", (8, 8), (255, 0, 0)).save(art_root / "a.png")
+    monkeypatch.setattr(pb, "FIXTURE_ART", {"fx": "a.png", "fy": "a.png"})
+    pairs = []
+    for i in range(10):
+        fx, tree = ("fx" if i % 2 else "fy"), f"t{i % 3}"
+        if i % 4 == 0:                                    # a ref-engine arm: before is another tree's base
+            arm, before, after = "ref_x", ("ref", "base", {}), (tree, "base", {})
+        else:
+            arm, before, after = "armA", (tree, "base", {}), (tree, "armA", {"flag": True})
+        pairs.append({"id": f"s:{arm}:{fx}:{i}", "sitting": "flags-0918-0928" if i < 6 else "other",
+                      "arm": arm, "fixture": fx, "kent": "tie", "before_design": before, "after_design": after})
+        for t, s, _kw in (before, after):
+            d = pb.design_dir(runs, t, fx, s)
+            d.mkdir(parents=True, exist_ok=True)
+            (d / "design.json").write_text(_json.dumps({"stitches": [], "colors": []}))
+    pairs.append({"id": "s:armA:fx:missing", "sitting": "other", "arm": "armA", "fixture": "fx", "kent": "tie",
+                  "before_design": ("nope", "base", {}), "after_design": ("nope", "armA", {})})
+    monkeypatch.setattr(pb, "labelled_pairs", lambda: pairs)
+
+    def stub_jpg(d):
+        j = d / "render.jpg"
+        j.write_bytes(str(d).encode())
+        return j
+
+    summary = vj.kit_pro100(runs, kit, seed=1, exclude_ids=frozenset({pairs[0]["id"]}),
+                            n_identical=2, art_root=art_root, design_jpg=stub_jpg)
+    assert (summary["n_live"], summary["n_identical"], summary["n_total"]) == (9, 2, 11)
+    assert summary["missing_designs"] == ["s:armA:fx:missing"] and summary["excluded"] == [pairs[0]["id"]]
+    sealed = _json.loads((kit / "arms.json").read_text(encoding="utf-8"))
+    listed = _json.loads((kit / "pairs.json").read_text(encoding="utf-8"))
+    assert [p["pair"] for p in listed] == [f"P{i:03d}" for i in range(1, 12)]
+    live = [s for s in sealed.values() if s["kind"] == "live"]
+    assert sum(s["left_arm"] == "base" for s in live) == 4            # 9 // 2
+    assert all({s["left_arm"], s["right_arm"]} == {"base", s["arm"]} for s in live)
+    for pid, s in sealed.items():
+        left = (kit / "img" / f"{pid}_L.jpg").read_bytes()
+        right = (kit / "img" / f"{pid}_R.jpg").read_bytes()
+        assert (left == right) == (s["kind"] == "identical"), pid
+        assert (kit / "img" / f"{pid}_art.png").exists()
+    text = "".join((kit / n).read_text(encoding="utf-8") for n in ("arms.json", "pairs.json", "kit.json"))
+    assert "kent" not in text and "label" not in text
+    # the same seed pairs the same way twice
+    kit2 = tmp_path / "kit2"
+    vj.kit_pro100(runs, kit2, seed=1, exclude_ids=frozenset({pairs[0]["id"]}),
+                  n_identical=2, art_root=art_root, design_jpg=stub_jpg)
+    assert (kit2 / "arms.json").read_text(encoding="utf-8") == (kit / "arms.json").read_text(encoding="utf-8")
+
+
+def test_load_pro100_maps_kents_labels_through_the_sealed_key(tmp_path, monkeypatch):
+    import json as _json
+    from tools.eye_pairs import pooled
+    common = {"fixture": "fx", "repeat_of": None, "design_only": False}
+    sealed = {"P001": {**common, "kind": "live", "left_arm": "base", "right_arm": "armA",
+                       "source_id": "a", "sitting": "flags-0918-0928", "arm": "armA"},
+              "P002": {**common, "kind": "live", "left_arm": "armA", "right_arm": "base",
+                       "source_id": "b", "sitting": "other", "arm": "armA"},
+              "P003": {**common, "kind": "live", "left_arm": "base", "right_arm": "ref_x",
+                       "source_id": "c", "sitting": "other", "arm": "ref_x"},
+              "P004": {**common, "kind": "identical", "left_arm": "base", "right_arm": "base",
+                       "source_id": "a", "sitting": "flags-0918-0928", "arm": "armA"}}
+    (tmp_path / "arms.json").write_text(_json.dumps(sealed), encoding="utf-8")
+    inputs = tmp_path / "inputs.json"
+    inputs.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(pooled, "INPUTS", inputs)
+    monkeypatch.setattr(pooled, "pooled_pairs", lambda _inputs: [
+        {"id": "a", "kent": "before"}, {"id": "b", "kent": "before"}, {"id": "c", "kent": "after"}])
+    st = vj.load_pro100(tmp_path)
+    assert st["picks"] == {"P001": "L", "P002": "R", "P003": "R"}
+    assert st["scopes"]["flags_0918_0928_cloud_render"] == ["P001"]
+    assert st["scopes"]["other_sittings"] == ["P002", "P003"]
+    assert st["scopes"]["ref_engine_arms"] == ["P003"] and st["scopes"]["flag_arms"] == ["P001", "P002"]
+    assert st["design_of"] == {"fx": "fx"} and st["passing_arms"] == [] and st["expected"] == {}
+    judge = {"P001": "L", "P002": "R", "P003": "R", "P004": "tie"}
+    v = {"m": {"A": {pid: {"pair": pid, "order": "A", "model": "m", "choice": c, "choice_frame_a": c,
+                           "confidence": 4, "reason": "r", "input_tokens": 0, "output_tokens": 0,
+                           "stop_reason": "end_turn"} for pid, c in judge.items()}}}
+    rep = vj.analyse(st, v)
+    assert rep["sitting"] == "vlm-judge-pro100"
+    reads = rep["models"]["m"]["orders"]["A"]["reads"]
+    assert set(reads) == {"live", "flags_0918_0928_cloud_render", "other_sittings",
+                          "ref_engine_arms", "flag_arms"}
+    assert reads["live"]["n_scored"] == 3 and reads["live"]["kappa_sides"] == pytest.approx(1.0)
+    assert rep["kent"]["identical_pairs"] == 0            # the kit's identical pairs carry no pick of his
+    ctrl = rep["models"]["m"]["orders"]["A"]["controls"]
+    assert (ctrl["identical_called_tie"], ctrl["identical_answered"]) == (1, 1)
+    assert "vs_kit_expected_label" not in reads and "passing_arms_only" not in reads
+
+
 # ------------------------------------------------- the committed sitting ----
 
 def test_the_committed_sitting_loads_as_the_write_up_describes():

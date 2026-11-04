@@ -52,6 +52,15 @@ RATES = {"claude-opus-5-5": (4.00, 20.00), "claude-haiku-5-5": (0.10, 0.50)}
 #: No API call, no key, no cost column; one order only (a judge with memory
 #: cannot be swapped or repeated blind).
 SESSION_MODEL = "claude-fable-5-1-session"
+#: The 100-pair repeat (second pre-registration, 2026-11-04): Kent's labelled pairs
+#: with a pro file, both arms re-drawn on the sitting's tree at the sitting's own
+#: request (`pro_pooled_build render --sitting-size`), paired blind under one seed.
+PRO100_KIT = DIGITIZER / "eye_pairs_out" / "vlm-judge-pro100"
+PRO100_OUT = REPO / "docs" / "eye-pairs-2026-11-04" / "vlm-judge-100"
+PRO100_SEED = 20261104
+PRO100_N_IDENTICAL = 4
+VIEW_PX_PER_MM = 14.0          # the sittings' render scale (artfid_eye_rank.VIEW_PX_PER_MM)
+JPEG_QUALITY = 92              # tools.eye_pairs.__main__._JPEG
 EFFORT = "medium"
 MAX_TOKENS = 1500
 ORDERS = ("A", "B")            # A = as Kent saw it; B = LEFT and RIGHT swapped
@@ -304,6 +313,116 @@ def do_record(a) -> int:
     return 0
 
 
+# --------------------------------------------------------- the 100-pair kit ----
+
+def _design_jpg(design_dir: Path) -> Path:
+    """Render a run's `design.json` once with today's stitchviz at the sittings'
+    scale; cached beside it as `render.jpg`."""
+    import cv2
+    from digitizer_core.stitchviz import render_design
+    jpg = design_dir / "render.jpg"
+    if not jpg.exists():
+        design = json.loads((design_dir / "design.json").read_text(encoding="utf-8"))
+        if not cv2.imwrite(str(jpg), render_design(design, px_per_mm=VIEW_PX_PER_MM),
+                           [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY]):
+            raise OSError(f"could not write {jpg}")
+    return jpg
+
+
+def kit_pro100(runs: Path, kit: Path, *, seed: int = PRO100_SEED,
+               exclude_ids: frozenset[str] = frozenset(), n_identical: int = PRO100_N_IDENTICAL,
+               art_root: Path | None = None, design_jpg=None) -> dict:
+    """Pair every labelled pro pair whose two designs are under `runs` into a
+    blind kit: `img/P###_{art,L,R}`, `pairs.json` (what the judge reads),
+    `arms.json` (the sealed key: which side is the base - NOT to be opened until
+    every verdict is on file) and `kit.json` (counts only). The base sits on the
+    left in half the live pairs; `n_identical` extra pairs show one design on
+    both sides. Returns counts only, never a label or a side."""
+    import random
+    import shutil
+    from tools.artfid_eye_rank import _normalise_art
+    from tools.eye_pairs import pro_pooled_build as pb
+    design_jpg = design_jpg or _design_jpg
+    art_root = art_root or (DIGITIZER / "testdata")
+    pairs = [p for p in pb.labelled_pairs() if "before_design" in p and p["id"] not in exclude_ids]
+    live, missing = [], []
+    for p in pairs:
+        dirs = [pb.design_dir(runs, t, p["fixture"], s)
+                for t, s, _kw in (p["before_design"], p["after_design"])]
+        if all((d / "design.json").exists() for d in dirs):
+            live.append((p, dirs))
+        else:
+            missing.append(p["id"])
+    rng = random.Random(seed)
+    rng.shuffle(live)
+    flags = [True] * (len(live) // 2) + [False] * (len(live) - len(live) // 2)
+    rng.shuffle(flags)
+    ident_src = rng.sample(live, k=min(n_identical, len(live))) if live else []
+    rows = [(p, tuple(dirs), bl, "live") for (p, dirs), bl in zip(live, flags)]
+    rows += [(p, (dirs[0], dirs[0]), True, "identical") for p, dirs in ident_src]
+    rng.shuffle(rows)
+    (kit / "img").mkdir(parents=True, exist_ok=True)
+    pairs_json, sealed = [], {}
+    for i, (p, dirs, base_left, kind) in enumerate(rows, 1):
+        pid = f"P{i:03d}"
+        art = kit / "img" / f"{pid}_art.png"
+        _normalise_art(art_root / pb.FIXTURE_ART[p["fixture"]], art)
+        before_jpg, after_jpg = design_jpg(dirs[0]), design_jpg(dirs[1])
+        left_src, right_src = (before_jpg, after_jpg) if base_left else (after_jpg, before_jpg)
+        shutil.copyfile(left_src, kit / "img" / f"{pid}_L.jpg")
+        shutil.copyfile(right_src, kit / "img" / f"{pid}_R.jpg")
+        pairs_json.append({"pair": pid, "left": f"{pid}_L.jpg", "right": f"{pid}_R.jpg", "art": art.name})
+        arm = p["arm"]
+        sealed[pid] = {"fixture": p["fixture"], "kind": kind, "repeat_of": None, "design_only": False,
+                       "left_arm": "base" if (kind == "identical" or base_left) else arm,
+                       "right_arm": "base" if (kind == "identical" or not base_left) else arm,
+                       "source_id": p["id"], "sitting": p["sitting"], "arm": arm}
+    (kit / "pairs.json").write_text(json.dumps(pairs_json, indent=0), encoding="utf-8")
+    (kit / "arms.json").write_text(json.dumps(sealed, indent=1), encoding="utf-8")
+    summary = {"seed": seed, "built": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+               "runs": str(runs), "n_live": len(live), "n_identical": len(ident_src),
+               "n_total": len(rows), "excluded": sorted(exclude_ids), "missing_designs": sorted(missing),
+               "px_per_mm": VIEW_PX_PER_MM, "jpeg_quality": JPEG_QUALITY}
+    (kit / "kit.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
+    return summary
+
+
+def load_pro100(kit: Path = PRO100_KIT) -> dict:
+    """The 100-pair repeat as `analyse` wants it: the kit's sealed key, Kent's
+    labels (the committed pooled inputs, mapped through the sealed side map to
+    L / R / tie), the design cluster = the fixture, and the registered scopes.
+    Opened only once every verdict is on file."""
+    from tools.eye_pairs import pooled
+    sealed = json.loads((kit / "arms.json").read_text(encoding="utf-8"))
+    inputs = json.loads(pooled.INPUTS.read_text(encoding="utf-8"))
+    kent_by_id = {p["id"]: p["kent"] for p in pooled.pooled_pairs(inputs)}
+    picks: dict[str, str] = {}
+    for pid, s in sealed.items():
+        if s["kind"] != "live":
+            continue
+        k = kent_by_id[s["source_id"]]
+        if k == "tie":
+            picks[pid] = "tie"
+        else:
+            picks[pid] = "L" if (k == "before") == (s["left_arm"] == "base") else "R"
+    live = [p for p, s in sealed.items() if s["kind"] == "live"]
+    scopes = {"flags_0918_0928_cloud_render": [p for p in live if sealed[p]["sitting"] == "flags-0918-0928"],
+              "other_sittings": [p for p in live if sealed[p]["sitting"] != "flags-0918-0928"],
+              "ref_engine_arms": [p for p in live if sealed[p]["arm"].startswith("ref_")],
+              "flag_arms": [p for p in live if not sealed[p]["arm"].startswith("ref_")]}
+    return {"name": "vlm-judge-pro100", "sealed": sealed, "picks": picks,
+            "design_of": {s["fixture"]: s["fixture"] for s in sealed.values()},
+            "passing_arms": [], "expected": {}, "scopes": scopes}
+
+
+def do_kit(a) -> int:
+    exclude = frozenset(x.strip() for x in a.exclude.split(",") if x.strip()) if a.exclude else frozenset()
+    summary = kit_pro100(Path(a.runs), Path(a.kit), seed=a.seed, exclude_ids=exclude,
+                         n_identical=a.n_identical)
+    print(json.dumps(summary, indent=1))
+    return 0
+
+
 # --------------------------------------------------------------- analyse ----
 
 def load_sitting(sitting: Path = SITTING) -> dict:
@@ -385,10 +504,11 @@ def analyse(sitting: dict, verdicts: dict[str, dict[str, dict[str, dict]]],
     repeats = {p: s["repeat_of"] for p, s in sealed.items()
                if s["kind"] == "repeat" and s["repeat_of"] in sealed}
     kent = {p: to_label(picks[p], sealed[p]) for p in sealed if p in picks and sealed[p]["kind"] != "identical"}
-    out: dict = {"sitting": "pro-lettering-1102", "n_live": len(live),
+    kent_ident = [p for p in ident if p in picks]        # a kit's own identical pairs have no pick of his
+    out: dict = {"sitting": sitting.get("name", "pro-lettering-1102"), "n_live": len(live),
                  "excluded": sorted(exclude & set(sitting["sealed"])),
-                 "kent": {"identical_called_tie": sum(1 for p in ident if picks.get(p) == "tie"),
-                          "identical_pairs": len(ident),
+                 "kent": {"identical_called_tie": sum(1 for p in kent_ident if picks.get(p) == "tie"),
+                          "identical_pairs": len(kent_ident),
                           "repeat_consistent": sum(1 for p, o in repeats.items()
                                                    if picks.get(p) == picks.get(o)),
                           "repeat_pairs": len(repeats),
@@ -411,16 +531,20 @@ def analyse(sitting: dict, verdicts: dict[str, dict[str, dict[str, dict]]],
             judge = {p: to_label(r["choice_frame_a"], sealed[p]) for p, r in rows_o.items()
                      if r.get("choice") is not None and sealed[p]["kind"] != "identical"}
             reads: dict = {}
-            scope = {"live": live,
-                     "passing_arms_only": [p for p in live if sealed[p]["right_arm"] in passing
-                                           or sealed[p]["left_arm"] in passing]}
+            scope = {"live": live}
+            if passing:
+                scope["passing_arms_only"] = [p for p in live if sealed[p]["right_arm"] in passing
+                                              or sealed[p]["left_arm"] in passing]
+            for name, ids in (sitting.get("scopes") or {}).items():
+                scope[name] = [p for p in ids if p in sealed]
             for name, ids in scope.items():
                 rows = [(kent[p], judge[p], design_of[sealed[p]["fixture"]])
                         for p in ids if p in judge and p in kent]
                 reads[name] = _kappas(rows)
-            rows = [(expected[p], judge[p], design_of[sealed[p]["fixture"]])
-                    for p in live if p in judge and p in expected]
-            reads["vs_kit_expected_label"] = _kappas(rows)
+            if expected:
+                rows = [(expected[p], judge[p], design_of[sealed[p]["fixture"]])
+                        for p in live if p in judge and p in expected]
+                reads["vs_kit_expected_label"] = _kappas(rows)
             dec_side = [r["choice"] for r in rows_o.values() if r.get("choice") in ("L", "R")]
             ctrl = {"answered": len(rows_o),
                     "refused": sum(1 for r in rows_o.values() if r.get("stop_reason") == "refusal"),
@@ -537,8 +661,12 @@ def markdown(rep: dict) -> str:
 
 
 def do_analyse(a) -> int:
-    out = Path(a.out)
-    sitting = load_sitting(Path(a.sitting))
+    if a.pro100 is not None:
+        sitting = load_pro100(Path(a.pro100))
+        out = Path(a.out) if a.out != str(OUT) else PRO100_OUT
+    else:
+        sitting = load_sitting(Path(a.sitting))
+        out = Path(a.out)
     verdicts = load_verdicts(out)
     if not verdicts:
         raise SystemExit(f"no verdicts-*.jsonl under {out}")
@@ -575,9 +703,18 @@ def main(argv=None) -> int:
     rc.add_argument("--order", default="A", choices=ORDERS)
     rc.add_argument("--out", default=str(OUT))
     rc.set_defaults(fn=do_record)
+    kt = sub.add_parser("kit", help="pair the re-rendered 100 pro pairs into a blind kit")
+    kt.add_argument("--runs", default=str(PRO100_KIT / "runs"), help="pro_pooled_build render --runs DIR")
+    kt.add_argument("--kit", default=str(PRO100_KIT))
+    kt.add_argument("--seed", type=int, default=PRO100_SEED)
+    kt.add_argument("--n-identical", type=int, default=PRO100_N_IDENTICAL)
+    kt.add_argument("--exclude", default="", help="comma-separated SOURCE pair ids left out of the kit")
+    kt.set_defaults(fn=do_kit)
     an = sub.add_parser("analyse", help="score the verdicts against Kent's picks")
     an.add_argument("--out", default=str(OUT))
     an.add_argument("--sitting", default=str(SITTING))
+    an.add_argument("--pro100", nargs="?", const=str(PRO100_KIT), default=None,
+                    help="score the 100-pair kit at this path instead of the 11-02 sitting")
     an.add_argument("--exclude", default="", help="comma-separated pair ids the judge was not blind on")
     an.set_defaults(fn=do_analyse)
     a = ap.parse_args(argv)
