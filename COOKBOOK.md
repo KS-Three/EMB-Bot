@@ -2026,7 +2026,8 @@ meet):**
   measured negative), `subpixel_corner_runs`, `bg_structural`,
   `clip_keep_pieces` (#853). `coverage_edges` is DEPRECATED (Kent 2026-10-12:
   no). `flat_page_fringe_exclude` (2026-11-03, `flat_page_fringe_px`: the
-  band's floor; the page-edge blend leaves the flat palette fit and the
+  band's floor; `flat_outline_max_mm`: thin-outline width; the page-edge
+  blend and the outline's inner blend leave the flat palette fit and the
   stage-3 chain rescue; `memory/flat-page-fringe-2026-11-03.md`).
   `test_off_flags_smoke.py`'s `OFF_FLAGS` is the live list.
 

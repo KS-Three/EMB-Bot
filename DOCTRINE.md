@@ -9358,6 +9358,15 @@ factor wide (Pooh x2.7, so a fixed 2 px band is under one source pixel); the
 page is what its pixels are (median 255), not `bg_edge_rgb`, which averages the
 ring the ramp already pulled toward the figure (244); and a thin dark outline
 inside the band makes the nearest-interior reference wrong (the chord runs to
-the OUTLINE, not the fill behind it). What it does NOT touch: the outline's
-INNER blend with the fill, which still seeds pale flecks. *(measured
-2026-11-03 — `tests/test_flat_page_fringe.py`, memory `flat-page-fringe-2026-11-03`)*
+the OUTLINE, not the fill behind it). Excluding the page edge ALONE was not enough: the flecks
+are mostly the thin dark outline's INNER blend with the fill. So the flag also
+excludes that (`outline_inner_blend`, `flat_outline_max_mm`): pixels within the
+ramp of a thin dark label that lie on its chord to the fill take the outline or
+the fill by place, off-chord colours (a keyline, the sheen) keep their vote.
+The existing phantom dissolve cannot do it: it tests a whole cluster, and a
+blend population anchored by a real pale region is not mostly edge; lowering
+`aa_phantom_edge_frac` to 0.5 / 0.7 changed nothing on Pooh (measured
+negative). Pooh 80 mm: pale-thread flecks 59 → 25, regions 237 → 197; the
+palette also moves elsewhere (pot body 0763 → 6071, dE00 22), so "nothing else
+moves" is not met. *(measured 2026-11-03 — `tests/test_flat_page_fringe.py`,
+memory `flat-page-fringe-2026-11-03`)*

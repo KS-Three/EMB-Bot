@@ -1,6 +1,6 @@
 ---
 name: flat-page-fringe-2026-11-03
-description: flat_page_fringe_exclude (OFF): the page-edge blend leaves the flat palette fit and stage 3's chain rescue. Pooh pale-thread flecks 59 -> 25 at 80 mm; band scales with upscale; page = median, not bg_edge_rgb; the outline's INNER blend is untouched
+description: flat_page_fringe_exclude (OFF): the page-edge blend leaves the flat palette fit and stage 3's chain rescue. Pooh pale-thread flecks 59 -> 25 at 80 mm; band scales with upscale; page = median, not bg_edge_rgb; also the thin outline INNER blend (B)
 metadata:
   type: project
 ---
@@ -18,14 +18,14 @@ k-means++ init still sees them), take their nearest non-fringe pixel's label,
 and a stage-3 chain mostly of them is not rescued.
 
 **Measured (Pooh 80 mm, 6 colours):** pale thread Stone 0873 -> Wild Rice 0862
-(the pot's own tone), sub-3 mm2 flecks on it 59 -> 25, regions 237 -> 222,
-stitches 28,004 -> 25,914. Palette also moves elsewhere (olive on the pot's lit
+(the pot's own tone), sub-3 mm2 flecks on it 59 -> 25, regions 237 -> 197 with B,
+stitches fewer. Palette also moves elsewhere (olive on the pot's lit
 side), so "nothing else changes" is NOT met; 54.6 mm picks other threads.
 
 **Traps:** (1) dropping fringe pixels BEFORE the init re-seeds the whole
 palette (use `drop`); (2) the ramp is `upscale` px wide; (3) `bg_edge_rgb` is
 pulled toward the figure, the page is the median of `bg_mask` pixels; (4) a thin
 dark outline inside the band: take the farthest-in-colour pixel beyond, not
-the nearest interior one; (5) the outline's INNER blend with the fill still
-seeds pale flecks: not built, the next option.
+the nearest interior one; (5) B (`outline_inner_blend`) excludes the outline INNER blend, the main source of flecks;
+dissolve threshold 0.5/0.7 measured NOTHING (cluster test); Pooh 80 mm regions 237 -> 197, pot body 0763 -> 6071 dE00 22; Becker fixtures ON == OFF.
 Related: [[white-counters-open-2026-10-26]], [[flip-sheet-wave3-2026-10-26]].
