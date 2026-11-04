@@ -93,6 +93,26 @@ test("exportDesignPreferService uses the service for dst/exp/pes when it succeed
   expect(out.via).toBe("service");
 });
 
+test("jumpsPerTrim reaches the browser encoder and the service call", async () => {
+  const { exportDesign, exportDesignPreferService } = await import("./exporters.js");
+  const at = design.stitches[2];
+  const trimmed = { ...design, stitches: [...design.stitches.slice(0, 3), { x: at.x, y: at.y, type: "trim" }, ...design.stitches.slice(3)] };
+  const same = (a, b) => Buffer.from(a).equals(Buffer.from(b));
+  const three = exportDesign(trimmed, "dst").bytes;
+  expect(same(three, exportDesign(trimmed, "dst", { jumpsPerTrim: 3 }).bytes)).toBe(true);
+  expect(same(three, exportDesign(trimmed, "dst", { jumpsPerTrim: 6 }).bytes)).toBe(false);
+  const extra = exportDesign(trimmed, "dst", { jumpsPerTrim: 6 }).bytes.length - three.length;
+  expect(extra).toBeGreaterThan(0);
+  expect(extra % 9).toBe(0); // 3 more records (9 bytes) per trim in the design
+
+  let seen;
+  const exportViaServiceFn = async (d, fmt, label, fetchFn, n) => { seen = n; return { bytes: new Blob(["x"]), filename: "s.dst", mime: "x" }; };
+  await exportDesignPreferService(design, "dst", { preferService: true, jumpsPerTrim: 4, exportViaServiceFn });
+  expect(seen).toBe(4);
+  const viaBrowser = await exportDesignPreferService(trimmed, "dst", { jumpsPerTrim: 6 });
+  expect(viaBrowser.bytes.length).toBe(three.length + extra);
+});
+
 test("exportDesignPreferService falls back to the browser encoder when the service throws", async () => {
   const { exportDesignPreferService } = await import("./exporters.js");
   const exportViaServiceFn = async () => { throw new Error("fetch failed"); };

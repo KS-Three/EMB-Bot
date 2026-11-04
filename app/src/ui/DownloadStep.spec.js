@@ -30,6 +30,7 @@ import "@testing-library/jest-dom/vitest";
 // component is imported dynamically afterwards — the same "stub before
 // importing" ordering GarmentStep.spec.js documents.
 const exportCalls = [];
+const exportOpts = [];
 let nextVia = "browser";
 
 // Mutable for the same reason `fitNote` below is: the JEF hoop-header note is
@@ -45,6 +46,7 @@ vi.mock("../lib/exporters.js", () => ({
   exportFileName: (name, ext) => `${name || "design"}.${ext}`,
   exportDesignPreferService: async (design, format, opts) => {
     exportCalls.push({ format, preferService: opts.preferService });
+    exportOpts.push({ format, ...opts });
     return {
       bytes: new Uint8Array([1, 2, 3]),
       filename: `design.${format}`,
@@ -93,6 +95,8 @@ beforeEach(() => {
   // The chosen machine persists in localStorage; a test that picks one would
   // otherwise leave later tests (order-dependent) with no primary DST button.
   localStorage.removeItem("embstudio:machine");
+  localStorage.removeItem("embstudio:trimJumps");
+  exportOpts.length = 0;
 });
 
 function project(elements) {
@@ -823,4 +827,42 @@ test("save-location control appears where folder saving is supported", async () 
     delete window.showDirectoryPicker;
     delete window.indexedDB;
   }
+});
+
+// ---- Jumps per trim: a plain numeric control, DST only, remembered -----------
+
+test("Jumps per trim defaults to 3, carries no explanation, and rides a DST download", async () => {
+  const view = render(DownloadStep, { props: { project: project(LETTERING), runtime: {} } });
+  const input = ui(view).getByLabelText("Jumps per trim");
+  expect(input).toHaveValue(3);
+  expect(input).toHaveAttribute("type", "number");
+  expect(input).toHaveAttribute("min", "1");
+  expect(input).toHaveAttribute("max", "10");
+  await fireEvent.click(fmtButton(view, "DST"));
+  await waitFor(() => expect(exportOpts.length).toBe(1));
+  expect(exportOpts[0].jumpsPerTrim).toBe(3);
+});
+
+test("a changed Jumps per trim is clamped, remembered, and sent for DST only", async () => {
+  const view = render(DownloadStep, { props: { project: project(LETTERING), runtime: {} } });
+  const input = ui(view).getByLabelText("Jumps per trim");
+  await fireEvent.change(input, { target: { value: "5" } });
+  expect(localStorage.getItem("embstudio:trimJumps")).toBe("5");
+  await fireEvent.click(fmtButton(view, "DST"));
+  await waitFor(() => expect(exportOpts.length).toBe(1));
+  expect(exportOpts[0].jumpsPerTrim).toBe(5);
+
+  await fireEvent.change(input, { target: { value: "99" } });
+  expect(input).toHaveValue(10);
+  expect(localStorage.getItem("embstudio:trimJumps")).toBe("10");
+
+  await fireEvent.click(fmtButton(view, "PES"));
+  await waitFor(() => expect(exportOpts.length).toBe(2));
+  expect(exportOpts[1]).not.toHaveProperty("jumpsPerTrim");
+});
+
+test("Jumps per trim is read back from storage on the next visit", () => {
+  localStorage.setItem("embstudio:trimJumps", "7");
+  const view = render(DownloadStep, { props: { project: project(LETTERING), runtime: {} } });
+  expect(ui(view).getByLabelText("Jumps per trim")).toHaveValue(7);
 });
