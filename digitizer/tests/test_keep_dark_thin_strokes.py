@@ -303,9 +303,11 @@ def test_a_carved_ground_reads_its_shade_count_from_the_tails_on_summit():
     # the bare reader below is #1160's glyph-less one (5 components with the rescue ON).
     cfg = PipelineConfig(**_parse_config(json.dumps({**studio_request(80.0), "garment_id": "left_chest"})),
                          dark_ink_floor_rescue=False)
-    # The Studio's request carries no value for the flag: it rides the engine
-    # default, ON since Kent's flip (2026-10-28). The tail read is gated on the
-    # carve, so this is the shipped path end to end.
+    # The Studio's request carries no value for `keep_dark_thin_strokes`: it rides the
+    # engine default, ON since Kent's flip (2026-10-28). The tail read is gated on the
+    # carve, so this is the shipped path except `dark_ink_floor_rescue`, pinned False
+    # above because the bare reader call below is #1160's; the shipped badge is
+    # identical on both arms (42 regions, 0 dark_ink).
     assert cfg.keep_dark_thin_strokes
     gen = build_generation(_decode(data), cfg, exif_source=data)
     result = finish_generation(gen.fork(), cfg)

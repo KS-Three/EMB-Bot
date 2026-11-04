@@ -1138,7 +1138,9 @@ class PipelineConfig:
     # `tests/test_dark_ink_floor_rescue.py`.
     # **ON since 2026-11-04, Kent's flip** after the OFF | ON sheet (Pooh 54.6 mm
     # HUNNY letters clustered 4 -> 5; Fremont patch and webp lose a few drawn
-    # rope-twist shapes; every other fixture byte-identical). False is the engine
+    # rope-twist shapes; every other fixture byte-identical on the sheet's shipped
+    # path; the forced-gate owl plan, 6 -> 8, and the bare Summit reader, 1 -> 5,
+    # move, shipped outputs identical: the tests say how). False is the engine
     # as it was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
     # pin it False.
     dark_ink_floor_rescue: bool = True
