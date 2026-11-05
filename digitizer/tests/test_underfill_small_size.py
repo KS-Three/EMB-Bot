@@ -58,12 +58,12 @@ SWEEP = [
 KNOWN_WRONG_ORDER = {(60.0, None)}
 
 
-def _run(width_mm, forced):
+def _run(width_mm, forced, photo_work_grid=False):
     cfg = PipelineConfig(target_width_mm=width_mm, max_colors=6, satin=True,
                          detail_layer=False, edge_cap="none", sew_enclosed_white=True,
                          sew_enclosed_rgb=(255, 255, 255), faces_route_flat=True,
                          garment_id="hat_front", garment_rgb=(235, 232, 223),
-                         forced_class=forced)
+                         forced_class=forced, photo_work_grid=photo_work_grid)
     pix = cv2.imread(str(TESTDATA / "art" / "logo_mfab_hat.png"), cv2.IMREAD_UNCHANGED)
     res = finish_generation(build_generation(pix, cfg), cfg)
     plan = plan_stitches(res, cfg)
@@ -84,5 +84,16 @@ def test_mfab_hat_size_sweep_order_and_grade(width, forced, floor):
     # the white keyline sews ON the black band, never under it, at every size; the
     # preflight grade does not fall below what it was when this was written
     blocks, grade = _run(width, forced)
+    assert blocks == BLACK_WHITE_BLACK
+    assert _GRADE_RANK[grade] >= _GRADE_RANK[floor], f"grade {grade} under the {floor} floor"
+
+
+#: `cfg.photo_work_grid` (2026-11-05, OFF): the photo lane takes the 8 px/mm working grid
+#: too. This art classes photo_scene at every width; at 60 and 100.8 mm it reaches the lane
+#: at 6.7 and 4.0 px/mm with W and E joined by a one-pixel bridge (one untagged region, no
+#: rider, merged into the black host). ON, the order is the 113.5 mm one at both widths.
+@pytest.mark.parametrize("width,floor", [(60.0, "C"), (100.8, "B")])
+def test_mfab_hat_photo_work_grid_keeps_the_small_line_black(width, floor):
+    blocks, grade = _run(width, None, photo_work_grid=True)
     assert blocks == BLACK_WHITE_BLACK
     assert _GRADE_RANK[grade] >= _GRADE_RANK[floor], f"grade {grade} under the {floor} floor"
