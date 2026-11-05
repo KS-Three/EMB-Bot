@@ -41,7 +41,13 @@ corpus (free, local, scriptable); 2 = Hatch and Wilcom trials on Kent's box
 Wilcom trials after those complete** ("let's do Hatch and Wilcom after this is
 completed"). **Tier 3 then died on the DST gate and Kent ruled "Drop Tier 3
 (Recommended)" the same day**; its one-job notes live in gitignored
-`scratch_bench/stitch_ai/notes.md`.
+`scratch_bench/stitch_ai/notes.md`. **Later 11-04: Kent approved the Hatch 30-export
+list as written** (`docs/hatch-trial-export-plan-2026-11-04.md`: the 18 pairs, 3
+instrument exports for the teardown's spacing / satin-fill threshold / pull-comp gaps,
+Bridge x2 + ProSeal x2, owl + Pooh, 3 reserve; Hatch's own pages say 30 AND 100
+exports, the first export's counter decides) **and ruled "Skip Wilcom"**: the laptop
+fails Wilcom's 60 GB free disk and 4 GB dedicated GPU requirements (39 GB free,
+integrated Radeon 0.5 GB). Install waits for Tier 1 (PR #1239) to land.
 
 **How to apply:** their files are third-party stitch files: gitignored
 `scratch_bench/`, never committed without asking. Upload only public artwork
