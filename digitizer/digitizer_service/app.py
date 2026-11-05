@@ -129,7 +129,7 @@ DECODE_MAX_SIDE_PX = 2800
 # multipart framing and the config field, so the route's own 413 (which names
 # the artwork's size) is still the one a near-miss sees. Everything else is
 # JSON: a 300k-stitch design is ~12 MB as `/export` JSON, so 32 MB.
-_UPLOAD_ROUTES = ("/digitize", "/classify", "/calibration/read")
+_UPLOAD_ROUTES = ("/digitize", "/classify", "/recount", "/calibration/read")
 MAX_JSON_BYTES = 32 * 1024 * 1024
 
 
@@ -1299,6 +1299,85 @@ async def classify_art(
 
     def bounded() -> dict:
         with _CLASSIFY_SLOTS:
+            return work()
+
+    return await run_in_threadpool(bounded)
+
+
+# `/recount` runs stages 0-4, the expensive prefix of a job (5-7 s on the
+# committed logos at their own size), so ONE at a time: a second ask for the
+# same artwork would only repeat the first's work.
+_RECOUNT_SLOTS = threading.BoundedSemaphore(1)
+
+
+@app.post("/recount", summary="Count the shapes and colours at a size, without stitching",
+          responses={200: {"model": schemas.Recounted,
+                           "description": "The number of shapes and colours the run would produce."},
+                     400: schemas.error("No image, undecodable image, or invalid `config`."),
+                     413: schemas.error("Upload over the byte or pixel limit."),
+                     **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
+async def recount_art(
+    image: UploadFile = File(...),
+    config: str | None = Form(None),
+    x_embbot_token: str | None = Header(None),
+) -> dict:
+    """The same upload and `config` as `/digitize` (target width and garment
+    included); back comes how many shapes and colours the design will have AT
+    THAT SIZE, before any stitch is planned (Kent, 2026-11-05: the Stitchist
+    footer's recount, counts only).
+
+    A count is fixed by stages 0-4 (segmentation, the colour cap, the
+    small-shape floor) plus `finish_generation` (review edits, palette
+    settlement) -- nothing from stage 5 on adds or removes a region -- so this
+    runs exactly `/digitize`'s `build_generation` + `finish_generation` and
+    stops. It is NOT folded into `/classify`: stages 0-4 cost 5-7 s where
+    `/classify` costs 0.2-2.5 s, and the lane reading must stay as fast as it
+    is.
+
+    The generation lands in the same cache `/digitize` reads
+    (`generation_key`), so pressing Auto Digitize at the size just counted
+    skips stages 0-4. Nothing here changes any routing or any default: the
+    counts are read off what the run would sew.
+
+    `shape_count`: regions that sew (a shape the pipeline leaves unstitched --
+    an enclosed background hole -- is not counted). `color_count`: distinct
+    threads among them.
+    """
+    _require_token(x_embbot_token)
+
+    data = await image.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="No image received.")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=too_large_detail(len(data), MAX_UPLOAD_BYTES).replace("Upload", "Artwork", 1),
+        )
+    cfg_dict = _parse_config(config)
+    gen_key = generation_key(data, cfg_dict)
+    pixels = await run_in_threadpool(_decode_bounded, data)
+
+    def work() -> dict:
+        t0 = time.perf_counter()
+        cfg = PipelineConfig(**cfg_dict)
+        gen = generations.get(gen_key)
+        gen_hit = gen is not None
+        if gen is None:
+            gen = build_generation(pixels, cfg, exif_source=data)
+            generations.put(gen_key, gen)
+        result = finish_generation(gen.fork(), cfg)
+        sewn = [r for r in result.regions if r.meta.get("stitched", True)]
+        return {
+            "shape_count": len(sewn),
+            "color_count": len({r.thread_number for r in sewn}),
+            "size_mm": [round(float(result.design_size_mm[0]), 2),
+                        round(float(result.design_size_mm[1]), 2)],
+            "generation_cache": "hit" if gen_hit else "miss",
+            "elapsed_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
+
+    def bounded() -> dict:
+        with _RECOUNT_SLOTS:
             return work()
 
     return await run_in_threadpool(bounded)

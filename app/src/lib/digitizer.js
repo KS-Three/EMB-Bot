@@ -1448,6 +1448,22 @@ export async function classifyArt(image, config, fetchFn = globalThis.fetch) {
   return r.json();
 }
 
+// POST /recount (service, 2026-11-05): how many shapes and colours the run
+// would produce at this config's target width and garment -- { shape_count,
+// color_count, size_mm, generation_cache, elapsed_ms } -- without planning a
+// stitch. Counts only (Kent's 2026-11-05 ruling: the Stitchist footer's
+// recount, no advice). Its own route because stages 0-4 cost seconds where
+// /classify costs a fraction of one; the generation it builds stays cached, so
+// a run at the same config skips them. Same image and config as /digitize.
+// `signal` aborts the request when a newer size supersedes it. Returns null on
+// a 404 (an older service), like classifyArt; any other failure throws.
+export async function recountArt(image, config, fetchFn = globalThis.fetch, signal) {
+  const r = await fetchFn(digitizerUrl() + "/recount", { method: "POST", body: artForm(image, config), signal });
+  if (r.status === 404) return null;
+  if (!r.ok) throw await httpError(r);
+  return r.json();
+}
+
 // Poll GET /jobs/{id} until done/error. done -> the full job payload
 // ({ design, review, stats, warnings }); error -> throws the job's error.
 // opts.onState(state, { runningMs }) hears every observed state

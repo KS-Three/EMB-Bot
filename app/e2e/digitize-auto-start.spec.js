@@ -175,6 +175,9 @@ test("a file loads without digitizing; the button runs it, and goes transparent 
   const preRead = page.locator(".dgp-read");
   await expect(preRead).toContainText("Read as flat art", { timeout: 30_000 });
   await expect(preRead.getByRole("button")).toHaveCount(0);
+  // ...and, since 2026-11-05, the count at the size chosen (POST /recount,
+  // stages 0-4 only): counts and the size, nothing else. Still no digitize.
+  await expect(preRead.getByTestId("art-recount")).toHaveText(/^\d+ shapes?, \d+ colors? at [\d.]+ mm$/, { timeout: 60_000 });
   expect(await posts()).toBe(0);
   await expect(page.locator(".dgp-stats")).toHaveCount(0);
 
