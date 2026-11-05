@@ -107,7 +107,7 @@ one digitized shape into two along a drawn path) is a **non-goal**: it needs
 the service to mint new shapes with stable ids, and id stability is what lets
 edits survive a re-digitize. **Add-hole** (draw a polygon inside a digitized
 shape, appended to `holes_override`) is **in scope**, Studio only, after the
-sparse-nodes Studio PR. **Add-hole shipped 2026-11-05 (PR #PRNUM).** Spec:
+sparse-nodes Studio PR. **Add-hole shipped 2026-11-05 (PR #1244).** Spec:
 `docs/superpowers/specs/2026-11-04-sparse-smooth-nodes-design.md`.
 
 ## Open — not yet decided
