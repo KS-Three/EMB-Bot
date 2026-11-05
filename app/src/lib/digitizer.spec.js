@@ -722,6 +722,31 @@ test("canonicalShapeEdits: sorts+dedupes deletions, strips rgb/null/auto, drops 
   expect(canonicalShapeEdits(digitizedElement())).toEqual({});
 });
 
+// I4 (sparse-nodes spec 2026-11-04): Studio-only `nodes` beside
+// `boundary_override` never reach the wire.
+test("canonicalShapeEdits: `nodes` beside boundary_override is Studio-only and never emitted", async () => {
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const ring = [[0, 0], [10, 0], [10, 10], [0, 10]];
+  const withNodes = digitizedElement({
+    shapeOverrides: {
+      Sa: {
+        boundary_override: ring,
+        nodes: { shell: ring.map((_, i) => ({ i, kind: "corner" })), holes: [] },
+      },
+    },
+  });
+  const without = digitizedElement({ shapeOverrides: { Sa: { boundary_override: ring } } });
+  const out = canonicalShapeEdits(withNodes);
+  expect(out).toEqual({ shape_overrides: { Sa: { boundary_override: ring } } });
+  expect(JSON.stringify(out)).not.toContain("nodes");
+  expect(out).toEqual(canonicalShapeEdits(without));
+  // nodes alone is an empty entry -> dropped
+  expect(canonicalShapeEdits(digitizedElement({
+    shapeOverrides: { Sb: { nodes: { shell: [], holes: [] } } },
+  }))).toEqual({});
+});
+
 // "sketch" (contract v1.3, photo plan row 12) joined satin/fill/run as a
 // forceable per-shape tier — digitizer_service/app.py's _TIER_VALUES and
 // digitizer_core/regions.py's own copy both list it. Pinned here the same
