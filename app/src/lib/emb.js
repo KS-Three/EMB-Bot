@@ -14,7 +14,7 @@ export const ENGINE_KEYS = [
   "quantize.js", "flatten.js", "satin.js", "satinplay.js", "crossfill.js", "satinfont.js",
   "fontbin.js",
   "svgpath.js", "svgimport.js",
-  "dst.js", "dstimport.js", "exp.js", "pes.js", "svgexport.js", "stitchModel.js",
+  "dst.js", "dstimport.js", "exp.js", "pes.js", "readback.js", "svgexport.js", "stitchModel.js",
   // "fonts.js" is deliberately NOT here. It is 137 Google-Fonts CDN URLs
   // whose loader needs a global `opentype` that the Studio never loads, so
   // every one of its entry points throws if called — and nothing in app/src
