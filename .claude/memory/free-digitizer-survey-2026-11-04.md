@@ -47,3 +47,13 @@ never read the source into ours (Ink/Stitch clean-room ruling). Compare at
 the pro's size, chance-corrected (gate 4), with a render per row.
 Related: [[dade-app-teardown-2026-11-04]], [[nightly-tripwire-2026-11-02]],
 [[garment-size-like-pro-2026-10-26]], [[yardstick-pro-pair-2026-11-01]].
+
+**Tier 1 result (2026-11-04, `docs/scoreboards/free-digitizers-2026-11-04.md`):**
+18 committed pairs at the pro's width, engine defaults. Medians against the pro:
+ours sttype kappa 0.38, **heatstitch 0.13** (0.67x stitches, needle travel
+1.02x pro), **Nuizu 0.02** (4.7x stitches, a JUMP per fill row = needle-up
+55x pro, 6-colour confetti on grey anti-aliasing). Neither beats ours; heatstitch
+ties/passes on 2 of 18. openstitch NOT run: the permission classifier refuses
+launching a downloaded exe (exe sits in `scratch_bench/_tools/openstitch/`).
+Tool: `digitizer/tools/bench_free_digitizers.py`; competitor files in
+`scratch_bench/<engine>/` (gitignored, in Kent's live checkout).
