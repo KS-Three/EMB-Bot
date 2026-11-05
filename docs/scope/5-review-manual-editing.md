@@ -1569,3 +1569,30 @@ restitch showed garment in the opened wedge; Shift+Left x3 on one selected verte
 moved exactly one (-2.98 mm). Deleting the hole left no garment there (the white
 square sews) *(confirmed 2026-11-03 — `app/e2e/field-reshape-mode.spec.js` (e)-(e4),
 `digitizer.spec.js`, `shapeOverlay.spec.js`)*.
+
+**Sparse smooth nodes in the Studio — 2026-11-05 (PR 2 of the 2026-11-04 spec).**
+A selected digitized shape shows its NODES only (disc = smooth, square =
+corner) in the quick drag and in Reshape; the outline stays the dense polygon.
+Drag / nudge: the grabbed nodes move exactly and the spans at them rebuild at
+0.05 mm chord error, 0.3-1.0 mm spacing (`sparseNodes.js`); click the path
+(Reshape) inserts a corner with no rebuild; double-click a node toggles it;
+Delete removes nodes and rebuilds the merged span (3-node floor refuses); Alt
+keeps the soft pull. One `elupdate` per gesture writes the polygon and
+`nodes` together; Simplify deletes `nodes`; Discard restores them with the
+`shapeOverrides` snapshot; Done with no edit writes nothing.
+- **Seeds on the e2e fixtures (0.5 mm Douglas-Peucker, 35 degree corner):**
+  red-disc (198 mm, 64 vertices) 44 smooth; two-squares 4 corners each; holed
+  fixture 4 corners on the shell and 4 on its 8-vertex hole *(measured
+  2026-11-05 — e2e (s1), (s2), (e))*.
+- **Finding.** A PointerEvent's `detail` is 0, so the old double-click edge
+  insert never ran; presses are counted in `countPress` now *(confirmed
+  2026-11-05 — e2e (s5))*.
+- **Pinned by.** `shapeNodes.spec.js`, `sparseNodes.spec.js`, e2e (s1)-(s5).
+
+## Hand-drawn detail moved from MASTER_SCOPE (2026-11-05)
+
+Moved whole to bring MASTER_SCOPE under its word budget; the verdicts stay there.
+
+**Hand-drawn shapes can have holes (2026-10-01, ruling 11).** Any shape can be marked **Cut out** — in its popover, its assign box, or by drawing it in the side canvas's **Hole** mode; it sews nothing and cuts the smallest shape that contains it, or says it cuts nothing. A node drag that would break that containment holds at the last good position. *(fixed 2026-10-01 — `fieldNodeEdit.spec.js`, `e2e/manual-cutout.spec.js` (d))* Flipping Cut out on the hoop moves nothing else — marking a stray shape Cut out used to make the rest re-fit, 81×39 → 81×91 mm; the side panel's switch still re-fits, as adding or deleting a shape always has. *(fixed 2026-10-01 — `fieldNodeEdit.spec.js` real-engine pair, `e2e/manual-cutout.spec.js` (f))* Needed one engine fix: a three-point hole was silently dropped (4,678 / 4,678 / 4,456 on one square). *(fixed 2026-10-01 — `test/digitize.test.js`, `e2e/manual-cutout.spec.js` mutation-checked; area doc)* **Trace import keeps holes** as cut-outs instead of dropping them with a warning. *(fixed 2026-10-01 — `e2e/manual-trace-import.spec.js`)* **Hand-drawn satin columns (plan 2) are built** — a **Column** mode in the side canvas draws an open spine at a width in mm, sewn between its own rails (`sewAs: { kind: "column" }`, `satinFromRails`); the popover states the sewn width per fabric and warns past 6.5 mm (ruling 5), the drawn width scales with the design and pull comp stays fixed on top (ruling 12); a design with no column is byte-identical. **Plan 3 — open runs — merged 2026-10-12 (PR #840):** a `Line` mode sewing `fill.runAlongPath` (single run or a true 3-pass bean at 0.73 mm, nothing under 2.2 mm), and run ↔ column conversion; read back by pystitch, its worst stitch 0.058 mm off the path *(measured 2026-10-11 — PR #840 body, `test/manualrun-dst.test.js`)*. Taper is not built; auto-splitting a wide column is gate 1. Not sewn. *(confirmed 2026-10-11 — PR #831, `e2e/manual-column.spec.js`, `test/digitize.test.js`; spec `2026-09-30-manual-digitizing-gaps-design.md`)* **A cut-out is clear of thread too, since 2026-10-07:** every fill row floated or stitched across it until `fillColumns` was flipped for this lane (defect 52, Waiting on Kent 22). *(measured 2026-10-03 — `tools/fill-columns-sheet.mjs`; flipped 2026-10-07 — `app/src/lib/generate.js`)*
+
+**A review edit on a photograph is 44% faster, byte-identically (2026-09-17).** `_reorder_for_cover` was the pipeline's largest single bill — **41.67 s of owl_kent's 72.42 s edit tail** — and almost all of it already-done work: **80 of 82 shapes do byte-identical fill work across a border toggle**. Both fill reorders are pure functions of ONE shape's own inputs, so a content-keyed memo is exact (79.34 → **44.61 s**, checked against the same edit computed cold). **That purity IS the safety property — re-check it if either reorder is edited**, or this becomes silent corruption rather than a failure. *(measured 2026-09-17 — `tests/test_fill_reorder_memo.py`, 5 mutation-verified; area doc)*

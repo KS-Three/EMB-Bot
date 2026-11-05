@@ -17,7 +17,9 @@
   import { garmentOf, placementBoxOf } from "../lib/placement.js";
   import { resizeBadgeText } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
-  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, removeNodes, ringNodesInBox, insertNode, fieldMmToOutlineMm, simplifyRing, ringKey, splitRingKey } from "../lib/shapeOverlay.js";
+  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, ringNodesInBox, fieldMmToOutlineMm, simplifyRing, ringKey, splitRingKey } from "../lib/shapeOverlay.js";
+  import { withNodes, nodeMarker, spanOfEdge, pastClickDeadZone, ringEditOverrides as ringEditOverridesLib, discardPatch } from "../lib/shapeNodes.js";
+  import { rebuildSpans, moveNodesExact, insertNodeOnPath, toggleNode, deleteNodes } from "../lib/sparseNodes.js";
   import {
     appliedBorders,
     borderMenuItems,
@@ -759,7 +761,16 @@
   // The fields a point edit writes (ring overrides; hand-drawn shapes + re-fit).
   // Discard restores exactly these, from the element as it was on entry.
   const RESHAPE_KEYS = ["shapeOverrides", "shapes", "sizeMm", "offsetXMm", "offsetYMm"];
+  // Node counts per ring of the Reshape element, as shown. An undo or redo that
+  // adds or removes a node changes it, and the point selection (node-list
+  // indices) would then name the wrong nodes: it is dropped.
+  let reshapeNodeSig = "";
+  function nodeSigOf(el) {
+    const src = el ? outlinesMmFor(el) : null;
+    return src ? src.mm.map((o) => `${o.key || o.id}=${o.nodes ? o.nodes.length : 0}`).join(",") : "";
+  }
   function enterReshape(el) {
+    reshapeNodeSig = el.type === "digitized" ? nodeSigOf(el) : "";
     const start = {};
     for (const k of RESHAPE_KEYS) start[k] = el[k];
     reshape = { elId: el.id, sel: new Map(), start };
@@ -780,8 +791,7 @@
   function discardReshape() {
     const el = reshape && project ? project.elements.find((x) => x.id === reshape.elId) : null;
     if (el) {
-      const patch = {};
-      for (const k of RESHAPE_KEYS) if (el[k] !== reshape.start[k]) patch[k] = reshape.start[k];
+      const patch = discardPatch(el, reshape.start, RESHAPE_KEYS);
       if (Object.keys(patch).length) dispatch("elupdate", { id: el.id, patch, discrete: true });
     }
     endReshape();
@@ -866,6 +876,12 @@
         setReshapeSel(sel);
         return true;
       }
+      // Double-click a node: corner <-> smooth (digitized lane). The press that
+      // inserted this very node a moment ago is not the first half of one.
+      if (isDoublePress() && el.type === "digitized" && !recentInsert(node)) {
+        toggleNodeAt(edit, node);
+        return true;
+      }
       // Dragging a point that is not selected first makes it THE selection.
       if (!has) {
         const only = new Map();
@@ -880,29 +896,58 @@
       const ah = ap ? hitAuthored(ap, p.x, p.y, !isOpenShape(ap.shape)) : null;
       if (ah && ah.kind !== "anchor") return false;
     }
-    if (el.type === "digitized" && e.detail >= 2) {
-      // Double-click an edge adds a point there, as outside the mode.
-      const hit = hitOverlay(liveOutlinesPx(edit), p.x, p.y);
-      const hitKey = hit ? ringKey(hit.shapeId, hit.ring) : null;
-      const ring = hit && hit.kind === "edge" ? edit.mmById.get(hitKey) : null;
-      if (ring) {
-        canvas.setPointerCapture(e.pointerId);
-        const o = renderResult.toCanvas(0, 0);
-        const d = pxToMmDelta(hit.atPx[0] - o.x, hit.atPx[1] - o.y);
-        const grown = insertNode(ring, hit.index, [d.dx, d.dy]);
-        shapeEdit = { elId: el.id, shapeId: hit.shapeId, ringId: hit.ring, kind: "node", index: hit.index + 1, startPx: p, ring: grown, basis: editBasis(edit) };
-        liveRing = { shapeId: hit.shapeId, key: hitKey, points: grown };
-        commitShapeEdit();
-        shapeEdit = null;
-        liveRing = null;
-        setReshapeSel(new Map());
-        return true;
-      }
-    }
-    // Anywhere else: the marquee.
+    // Anywhere else: the marquee. (A press on the path that never travels is a
+    // click on the path, which inserts a node: see `insertNodeFromClick`, run
+    // from the release.)
     canvas.setPointerCapture(e.pointerId);
     marquee = { startPx: p, curPx: p, startClient: { x: e.clientX, y: e.clientY }, add: !!e.shiftKey };
     shapeEditError = "";
+    return true;
+  }
+
+  // ---- sparse nodes: toggle / insert on the path (2026-11-05) -----------------
+
+  // The node just inserted by a click on the path: a second press on it inside
+  // this window is the second half of that same double-click, not a toggle.
+  const INSERT_DBLCLICK_MS = 350;
+  const INSERT_CLICK_PX = 3;
+  let lastInsert = null;   // { key, nodeIndex, t }
+  function recentInsert(node) {
+    return !!lastInsert && lastInsert.key === ringKey(node.shapeId, node.ring)
+      && lastInsert.nodeIndex === node.index && performance.now() - lastInsert.t < INSERT_DBLCLICK_MS;
+  }
+
+  // Double-click a node: corner <-> smooth, its two spans rebuilt, one commit.
+  // `node` is { shapeId, ring, index } with `index` in the node list.
+  function toggleNodeAt(edit, node) {
+    const key = ringKey(node.shapeId, node.ring);
+    const ring = edit.mmById.get(key);
+    const nodes = edit.nodesById.get(key);
+    if (!ring || !nodes) return false;
+    const t = toggleNode(nodes, node.index);
+    const rebuilt = rebuildSpans(ring, t.nodes, t.dirty);
+    shapeEditError = "";
+    return commitNodeRing(edit.el, edit, key, rebuilt.ring, rebuilt.nodes);
+  }
+
+  // Click on the path (pointer-up within INSERT_CLICK_PX of the press, on an
+  // edge, no node under it): a CORNER node where the pointer projects onto the
+  // edge. The polygon gains one collinear vertex; nothing rebuilds (spec I6).
+  // true when it inserted.
+  function insertNodeFromClick(edit, p) {
+    if (edit.el.type !== "digitized") return false;
+    const hit = hitOverlay(liveOutlinesPx(edit), p.x, p.y);
+    if (!hit || hit.kind !== "edge") return false;
+    const key = ringKey(hit.shapeId, hit.ring);
+    const ring = edit.mmById.get(key);
+    const nodes = edit.nodesById.get(key);
+    if (!ring || !nodes) return false;
+    const o = renderResult.toCanvas(0, 0);
+    const d = pxToMmDelta(hit.atPx[0] - o.x, hit.atPx[1] - o.y);
+    const grown = insertNodeOnPath(ring, nodes, [d.dx, d.dy]);
+    shapeEditError = "";
+    if (!commitNodeRing(edit.el, edit, key, grown.ring, grown.nodes)) return false;
+    lastInsert = { key, nodeIndex: grown.nodeIndex, t: performance.now() };
     return true;
   }
 
@@ -936,9 +981,22 @@
     }
     canvas.setPointerCapture(e.pointerId);
     reshapeDrag = { kind: el.type === "manual" ? "anchors" : "ring", elId: el.id, startPx: p,
-                    startClient: { x: e.clientX, y: e.clientY }, sel, basis, moving: false, live: null };
+                    startClient: { x: e.clientX, y: e.clientY }, sel, basis, moving: false, live: null, liveNodes: null };
     canvas.style.cursor = "grabbing";
     repaintNodeChrome();
+  }
+
+  // Move the nodes `idx` (indices into the node list) of one ring by (dx, dy)
+  // field mm. Bare: EXACTLY those vertices, then the spans at each rebuilt
+  // (spec section 5). Alt: the soft pull on the polygon's vertices at those
+  // nodes' indices, no rebuild; the nodes keep their indices. -> { ring, nodes }
+  function moveNodeSet(ring, nodes, idx, dx, dy, soft) {
+    if (soft) {
+      const polyIdx = [...idx].filter((k) => nodes[k]).map((k) => nodes[k].i);
+      return { ring: moveNodes(ring, polyIdx, dx, dy, { soft: true }), nodes };
+    }
+    const m = moveNodesExact(ring, nodes, [...idx], dx, dy);
+    return rebuildSpans(m.ring, m.nodes, m.dirty);
   }
 
   function reshapeDragMove(e, p) {
@@ -951,16 +1009,19 @@
     const mm = pxToMmDelta(p.x - d.startPx.x, p.y - d.startPx.y);
     if (d.kind === "ring") {
       const live = new Map();
+      const liveNodes = new Map();
       for (const [sid, byRing] of d.sel) {
         for (const [ring, seeds] of byRing) {
           const k = ringKey(sid, ring);
           const base = d.basis.rings.get(k);
           if (!seeds || !seeds.size || !base) continue;
-          // 2026-11-04: a bare drag moves the grabbed points and nothing else; Alt keeps the soft pull.
-          live.set(k, moveNodes(base, seeds, mm.dx, mm.dy, e.altKey ? { soft: true } : { exact: true }));
+          const moved = moveNodeSet(base, d.basis.nodesById.get(k), seeds, mm.dx, mm.dy, !!e.altKey);
+          live.set(k, moved.ring);
+          liveNodes.set(k, moved.nodes);
         }
       }
       d.live = live;
+      d.liveNodes = liveNodes;
     } else {
       const b = d.basis;
       const q0 = fieldPxToAuthored(b.fit, d.startPx);
@@ -997,8 +1058,8 @@
   // ring goes back to the service's space and through boundaryIssues FIRST; one
   // refusal drops the whole gesture (named by shape) and the shapes snap back.
   // Otherwise ONE elupdate carries a boundary_override per touched shape.
-  function commitRingEdits(el, basis, live, removed = null) {
-    const res = ringEditOverrides(el, basis, live, removed);
+  function commitRingEdits(el, basis, live, removed = null, liveNodes = null) {
+    const res = ringEditOverrides(el, basis, live, removed, liveNodes);
     if (res.error) {
       const row = res.sid != null && basis.rows ? basis.rows.find((r) => r && r.id === res.sid) : null;
       shapeEditError = (row ? shapeMenuName(row) + ": " : "") + res.error;
@@ -1022,59 +1083,17 @@
   // out as they came (the pending override, else the review's `holesFull`),
   // not through the field round trip. boundaryIssues runs on every touched
   // shape with its holes; one refusal drops the whole gesture.
+  //
+  // `liveNodes` (2026-11-05): Map<ringKey, node list> for the rings the NODE
+  // editor rewrote. When given, every touched shape also gets `nodes`
+  // ({ shell, holes }): the live list for a ring that has one, else the list
+  // the ring was shown with (`basis.nodesById`), which is how seeds are
+  // committed alongside the polygon on the first node edit. When null, the
+  // writer is not the node editor (Simplify) and `nodes` is DELETED from the
+  // entry: its indices would mean nothing against the new polygon (spec 2).
   // -> { cur } | { error, sid }
-  function ringEditOverrides(el, basis, live, removed = null) {
-    if (!basis || !basis.rows || !basis.bboxMm) return { error: "" , sid: null, cur: null };
-    const gone = removed || new Map();
-    if (!live.size && !gone.size) return { cur: null };
-    const cur = { ...(el.shapeOverrides || {}) };
-    const touched = new Map();   // sid -> { shell, holes: Map<k, pts> }
-    const note = (sid) => {
-      if (!touched.has(sid)) touched.set(sid, { shell: null, holes: new Map() });
-      return touched.get(sid);
-    };
-    for (const [key, pts] of live) {
-      const { shapeId, ring } = splitRingKey(key);
-      const t = note(shapeId);
-      if (ring === RING_EXTERIOR) t.shell = pts;
-      else t.holes.set(ring, pts);
-    }
-    for (const sid of gone.keys()) note(sid);
-    const toService = (pts) => fieldMmToOutlineMm(pts, basis.rows, basis.bboxMm, basis.rotationDeg);
-    for (const [sid, t] of touched) {
-      const row = basis.rows.find((r) => r && r.id === sid) || {};
-      const entry = { ...(cur[sid] || {}) };
-      let shellService = null;
-      if (t.shell) {
-        shellService = toService(t.shell);
-        if (!shellService) return { error: "", sid, cur: null };
-      } else if (Array.isArray(entry.boundary_override)) {
-        shellService = entry.boundary_override;
-      } else {
-        shellService = row.outlineFull || null;
-      }
-      const holeEdited = t.holes.size > 0 || (gone.get(sid) && gone.get(sid).size > 0);
-      const sendHoles = holeEdited || Array.isArray(entry.holes_override);
-      let holes = null;
-      if (sendHoles || (shellService && (Array.isArray(row.holesFull) && row.holesFull.length))) {
-        const base = Array.isArray(entry.holes_override) ? entry.holes_override : (row.holesFull || []);
-        const drop = gone.get(sid) || new Set();
-        holes = [];
-        base.forEach((h, k) => {
-          if (drop.has(k)) return;
-          if (t.holes.has(k)) {
-            const s = toService(t.holes.get(k));
-            holes.push(s || h);
-          } else holes.push(h);
-        });
-      }
-      const issues = boundaryIssues(shellService, holes);
-      if (issues.length) return { error: issues[0], sid, cur: null };
-      if (t.shell) entry.boundary_override = shellService.map(([x, y]) => [x, y]);
-      if (sendHoles) entry.holes_override = (holes || []).map((r) => r.map(([x, y]) => [x, y]));
-      cur[sid] = entry;
-    }
-    return { cur };
+  function ringEditOverrides(el, basis, live, removed = null, liveNodes = null) {
+    return ringEditOverridesLib(el, basis, live, removed, liveNodes);
   }
 
   // Hand-drawn commit: the shapes as they now stand, through the re-fit rule in
@@ -1119,15 +1138,18 @@
       return;
     }
     const live = new Map();
+    const liveNodes = new Map();
     for (const [sid, rings] of reshape.sel) {
       for (const [ring, seeds] of rings) {
         const k = ringKey(sid, ring);
         const base = edit.mmById.get(k);
         if (!seeds || !seeds.size || !base) continue;
-        live.set(k, moveNodes(base, seeds, dxMm, dyMm, { exact: true }));
+        const moved = moveNodeSet(base, edit.nodesById.get(k), seeds, dxMm, dyMm, false);
+        live.set(k, moved.ring);
+        liveNodes.set(k, moved.nodes);
       }
     }
-    if (live.size && commitRingEdits(el, editBasis(edit), live)) liveMsg = reshapeMovedPhrase();
+    if (live.size && commitRingEdits(el, editBasis(edit), live, null, liveNodes)) liveMsg = reshapeMovedPhrase();
   }
   function reshapeMovedPhrase() {
     const n = reshapeSelCount(reshape);
@@ -1158,27 +1180,36 @@
       if (out.length && !commitAnchorEdits(el, fit, out)) return true;
     } else {
       const live = new Map();
+      const liveNodes = new Map();
       const removed = new Map();   // sid -> holes deleted outright
       for (const [sid, rings] of reshape.sel) {
         for (const [ring, idx] of rings) {
           const k = ringKey(sid, ring);
           const base = edit.mmById.get(k);
-          if (!idx || !idx.size || !base) continue;
-          // Every point of one hole ring selected: the hole itself goes (the
+          const nodes = edit.nodesById.get(k);
+          if (!idx || !idx.size || !base || !nodes) continue;
+          // Every node of one hole ring selected: the hole itself goes (the
           // shape is solid there). The exterior never does this; at the floor
           // it refuses like any ring.
-          if (ring !== RING_EXTERIOR && idx.size >= base.length) {
+          if (ring !== RING_EXTERIOR && idx.size >= nodes.length) {
             if (!removed.has(sid)) removed.set(sid, new Set());
             removed.get(sid).add(ring);
             done.push(sid);
             continue;
           }
-          const next = removeNodes(base, idx);
-          if (!next) refused = "A shape needs at least 3 points.";
-          else { live.set(k, next); done.push(sid); }
+          // Spec section 4: the removed nodes go, each merged span rebuilds; a
+          // ring at the 3-node floor refuses and loses nothing.
+          const del = deleteNodes(base, nodes, idx);
+          if (!del) refused = "A shape needs at least 3 points.";
+          else {
+            const rebuilt = rebuildSpans(del.ring, del.nodes, del.dirty);
+            live.set(k, rebuilt.ring);
+            liveNodes.set(k, rebuilt.nodes);
+            done.push(sid);
+          }
         }
       }
-      if ((live.size || removed.size) && !commitRingEdits(el, editBasis(edit), live, removed)) return true;
+      if ((live.size || removed.size) && !commitRingEdits(el, editBasis(edit), live, removed, liveNodes)) return true;
     }
     if (done.length) {
       // The removed indices are gone: those shapes' selections go with them.
@@ -1562,7 +1593,9 @@
       if (!rows || !pe.bboxMm) return null;
       return {
         rows,
-        mm: shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el), pendingHoles(el)),
+        // Sparse nodes (2026-11-05): every ring carries its node list, the stored
+        // one when valid, else seeds (never written until a node edit commits).
+        mm: withNodes(shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el), pendingHoles(el)), el.shapeOverrides),
         // The silhouette cap, one open polyline per stretch: selectable like a
         // shape (see lib/capPieces.js), never editable as one.
         caps: capOutlinesMm(el, pe.design),
@@ -1617,10 +1650,13 @@
           cutOut: !!o.cutOut,
         };
         if (o.ring != null) out.ring = o.ring;
+        if (o.nodes) out.nodes = liveNodesOf(el, key, o);
         return out;
       }),
       // Keyed by ring (`ringKey`): a shell is its shape id, a hole `<id>#h<k>`.
       mmById: new Map(src.mm.map((o) => [o.key || o.id, o.points])),
+      // The base node lists, same keys (indices into `mmById`'s rings).
+      nodesById: new Map(src.mm.filter((o) => o.nodes).map((o) => [o.key || o.id, o.nodes])),
       // Each digitized shape's interior rings, in field mm, in index order.
       holesById: holesByShape(src.mm),
       caps: (src.caps || []).map((o) => ({
@@ -1674,7 +1710,25 @@
       rows: edit.rows,
       bboxMm: edit.pe.bboxMm,
       rotationDeg: edit.el.rotationDeg || 0,
+      // The node lists the rings were shown with (frozen with them: a node's
+      // index only means something against the ring it was read from).
+      nodesById: edit.nodesById,
     };
+  }
+
+  // The node list to draw / hit for ring `key`: the running gesture's, when it
+  // has one, else the list the ring was shown with.
+  function liveNodesOf(el, key, o) {
+    if (reshapeDrag && reshapeDrag.kind === "ring" && reshapeDrag.elId === el.id
+        && reshapeDrag.liveNodes && reshapeDrag.liveNodes.has(key)) return reshapeDrag.liveNodes.get(key);
+    if (liveRing && liveRing.key === key && liveRing.nodes) return liveRing.nodes;
+    return o.nodes;
+  }
+
+  // One ring's edit as a patch: the ring and its node list (already rebuilt)
+  // through the same commit path as every other point edit. -> true if committed.
+  function commitNodeRing(el, edit, key, ring, nodes) {
+    return commitRingEdits(el, editBasis(edit), new Map([[key, ring]]), null, new Map([[key, nodes]]));
   }
 
   function commitShapeEdit() {
@@ -1682,11 +1736,17 @@
     const el = project.elements.find((x) => x.id === shapeEdit.elId);
     const basis = shapeEdit.basis;
     if (!el || !basis || !basis.rows || !basis.bboxMm) return;
+    // A drag that ended where it began (zero net delta) is not an edit.
+    const was = shapeEdit.ring;
+    if (was && was.length === liveRing.points.length
+        && liveRing.points.every((q, i) => q[0] === was[i][0] && q[1] === was[i][1])) return;
 
     // Same validation the panel editor runs before it will save: a
     // self-intersecting or pinched ring, or a hole poking out of the shell, is
     // rejected here rather than sent for the service to 400 on.
-    const res = ringEditOverrides(el, basis, new Map([[liveRing.key, liveRing.points]]));
+    const nodes = liveRing.nodes || (basis.nodesById && basis.nodesById.get(liveRing.key)) || null;
+    const res = ringEditOverrides(el, basis, new Map([[liveRing.key, liveRing.points]]), null,
+      nodes ? new Map([[liveRing.key, nodes]]) : null);
     if (res.error) {
       shapeEditError = res.error;
       return;
@@ -1758,6 +1818,13 @@
     // Reshape mode belongs to the element it was entered on: another element
     // selected, or none, ends it.
     if (reshape && reshape.elId !== project.selectedId) endReshape();
+    if (reshape && sel && sel.type === "digitized" && !reshapeDrag) {
+      const sig = nodeSigOf(sel);
+      if (sig !== reshapeNodeSig) {
+        reshapeNodeSig = sig;
+        if (reshape.sel.size) reshape = { ...reshape, sel: new Map() };
+      }
+    }
     if (!sel || !SHAPE_LANES.has(sel.type)) {
       selectedShapeId = null;
       selectedShapeElId = null;
@@ -2096,6 +2163,8 @@
     if (!renderResult || !renderResult.toCanvas || !project) return;
     const now = performance.now();
     let stillPulsing = false;
+    let selNodes = 0;   // nodes drawn on the selected shape's rings (data-reshape-nodes)
+    const selNodePx = [];   // the same nodes' canvas px, in Reshape mode only (data-reshape-node-px, for e2e aiming)
 
     for (const el of project.elements || []) {
       const src = outlinesMmFor(el);
@@ -2230,12 +2299,23 @@
         }
         if (el.type !== "digitized") continue;
         const r = NODE_R + 1.7 * pulse + (editing ? 0.6 : 0);
-        for (let pi = 0; pi < pts.length; pi++) {
-          const p = pts[pi];
-          // A selected point (Reshape mode) is a white dot inside an amber ring.
+        // Sparse nodes (2026-11-05): only the NODES draw, never the dense
+        // polygon's vertices. A smooth node is the disc, a corner a square of
+        // the same size. The path above stays the dense polygon.
+        const nodeList = liveNodesOf(el, o.key || o.id, o);
+        if (el.id === selectedShapeElId && o.id === selectedShapeId && nodeList) {
+          selNodes += nodeList.length;
+          if (inMode) nodeList.forEach((nd, ni) => { const q = pts[nd.i]; if (q) selNodePx.push([ni, o.ring == null ? -1 : o.ring, Math.round(q.x * 10) / 10, Math.round(q.y * 10) / 10, nd.kind === "corner" ? 1 : 0]); });
+        }
+        const squareAt = (cx, cy, h) => ctx.rect(cx - h, cy - h, 2 * h, 2 * h);
+        for (let pi = 0; pi < (nodeList ? nodeList.length : 0); pi++) {
+          const p = pts[nodeList[pi].i];
+          if (!p) continue;
+          const square = nodeMarker(nodeList[pi].kind) === "square";
+          // A selected point (Reshape mode) is a white marker inside an amber ring.
           if (inMode && reshapeSelHas(el.id, o.id, o.ring == null ? RING_EXTERIOR : o.ring, pi)) {
             ctx.beginPath();
-            ctx.arc(p.x, p.y, r + 1.4, 0, Math.PI * 2);
+            if (square) squareAt(p.x, p.y, r + 1.4); else ctx.arc(p.x, p.y, r + 1.4, 0, Math.PI * 2);
             ctx.fillStyle = "rgba(255, 255, 255, 1)";
             ctx.fill();
             ctx.strokeStyle = "rgba(255, 214, 64, 1)";
@@ -2244,7 +2324,7 @@
             continue;
           }
           ctx.beginPath();
-          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          if (square) squareAt(p.x, p.y, r); else ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
           // Same casing logic as the line: a node lands on the edge too, and
           // an unringed dot is invisible against matching stitches.
           ctx.fillStyle = editing
@@ -2260,6 +2340,10 @@
       drawCapOutline(ctx, el, src.caps || [], hidden);
     }
 
+    // setAttribute, not a template binding: see the note on data-stale-ids.
+    if (canvas && canvas.getAttribute("data-reshape-nodes") !== String(selNodes)) canvas.setAttribute("data-reshape-nodes", String(selNodes));
+    const nodePxJson = selNodePx.length ? JSON.stringify(selNodePx) : "";
+    if (canvas && (canvas.getAttribute("data-reshape-node-px") || "") !== nodePxJson) canvas.setAttribute("data-reshape-node-px", nodePxJson);
     if (stillPulsing) schedulePulseFrame();
   }
 
@@ -3487,9 +3571,13 @@
       const sh = manualShapeOf(edit.el, shapeId);
       if (sh) (sh.points || []).forEach((_, i) => selAdd(sel, shapeId, RING_ANCHORS, i));
     } else {
-      const ring = edit.mmById.get(shapeId);
-      if (ring) ring.forEach((_, i) => selAdd(sel, shapeId, RING_EXTERIOR, i));
-      (edit.holesById.get(shapeId) || []).forEach((h, k) => h.forEach((_, i) => selAdd(sel, shapeId, k, i)));
+      // Sparse nodes: "all points" is all NODES of every ring.
+      const shellNodes = edit.nodesById.get(shapeId);
+      if (shellNodes) shellNodes.forEach((_, i) => selAdd(sel, shapeId, RING_EXTERIOR, i));
+      (edit.holesById.get(shapeId) || []).forEach((_, k) => {
+        const hn = edit.nodesById.get(ringKey(shapeId, k));
+        if (hn) hn.forEach((__, i) => selAdd(sel, shapeId, k, i));
+      });
     }
     setReshapeSel(sel);
   }
@@ -3502,7 +3590,7 @@
     const edit = editableOutlinesPx();
     const el = edit && edit.el;
     if (!el || el.type !== "digitized" || ring === RING_EXTERIOR) return;
-    if (commitRingEdits(el, editBasis(edit), new Map(), new Map([[shapeId, new Set([ring])]]))) {
+    if (commitRingEdits(el, editBasis(edit), new Map(), new Map([[shapeId, new Set([ring])]]), new Map())) {
       if (reshapeOn()) setReshapeSel(new Map());
     }
   }
@@ -3560,11 +3648,23 @@
     if (shapePop && !inside(".shapepop") && !inside(".tp-panel")) closeShapePop();
   }
 
+  // A PointerEvent's `detail` is always 0 (measured 2026-11-05: pointerdown:0
+  // mousedown:2 click:2 on a double click), so a double press is counted here: a
+  // press within 450 ms and 6 px of the last one is the next of the series.
+  let lastPress = null;   // { t, x, y, n }
+  function countPress(e) {
+    const prev = lastPress;
+    const n = prev && e.timeStamp - prev.t < 450 && Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 6 ? prev.n + 1 : 1;
+    lastPress = { t: e.timeStamp, x: e.clientX, y: e.clientY, n };
+  }
+  const isDoublePress = () => !!lastPress && lastPress.n >= 2;
+
   function onPointerDown(e) {
     // A right-click opens the tool menu (onContextMenu) and must never also
     // start a drag, a selection or a shape edit — every branch below assumes
     // the primary button.
     if (e.button !== undefined && e.button !== 0) return;
+    countPress(e);
     if (fieldMenu) fieldMenu = null;
 
     // Auto-dismiss the drag-field hint on the first pointerdown on the
@@ -3761,30 +3861,33 @@
         }
         const hitKey = ringKey(hit.shapeId, hit.ring);
         const ring = edit.mmById.get(hitKey);
-        if (ring) {
+        const nodes = edit.nodesById.get(hitKey);
+        if (ring && nodes) {
           canvas.setPointerCapture(e.pointerId);
           shapeEditError = "";
-          if (e.detail >= 2 && hit.kind === "edge") {
-            // Double-click an edge to add a node there — the canvas
-            // equivalent of the panel editor's "click an edge midpoint".
-            // Commits immediately: there is no drag to wait for.
+          if (isDoublePress() && hit.kind === "edge") {
+            // Double-click an edge to add a node there (a CORNER, nothing
+            // else moves — sparse nodes, 2026-11-05). Commits immediately:
+            // there is no drag to wait for.
             const d = pxToMmDelta(hit.atPx[0] - renderResult.toCanvas(0, 0).x,
                                   hit.atPx[1] - renderResult.toCanvas(0, 0).y);
-            const grown = insertNode(ring, hit.index, [d.dx, d.dy]);
-            shapeEdit = { elId: edit.el.id, shapeId: hit.shapeId, ringId: hit.ring, kind: "node",
-                          index: hit.index + 1, startPx: p, ring: grown,
-                          basis: editBasis(edit) };
-            liveRing = { shapeId: hit.shapeId, key: hitKey, points: grown };
-            commitShapeEdit();
-            shapeEdit = null;
-            liveRing = null;
+            const grown = insertNodeOnPath(ring, nodes, [d.dx, d.dy]);
+            commitNodeRing(edit.el, edit, hitKey, grown.ring, grown.nodes);
+            canvas.releasePointerCapture(e.pointerId);
+            drawOverlay();
+            return;
+          }
+          if (isDoublePress() && hit.kind === "node") {
+            // Double-click a node: corner <-> smooth.
+            toggleNodeAt(edit, { shapeId: hit.shapeId, ring: hit.ring, index: hit.index });
+            canvas.releasePointerCapture(e.pointerId);
             drawOverlay();
             return;
           }
           shapeEdit = { elId: edit.el.id, shapeId: hit.shapeId, ringId: hit.ring, kind: hit.kind,
-                        index: hit.index, startPx: p, ring,
+                        index: hit.index, startPx: p, startClient: { x: e.clientX, y: e.clientY }, armed: false, ring, nodes, moved: false,
                         basis: editBasis(edit) };
-          liveRing = { shapeId: hit.shapeId, key: hitKey, points: ring };
+          liveRing = { shapeId: hit.shapeId, key: hitKey, points: ring, nodes };
           canvas.style.cursor = "grabbing";
           drawOverlay();
           return;
@@ -3883,11 +3986,36 @@
     // A shape edit is its own drag mode — it never sets `dragMode`, so the
     // element move/resize/pan branches below stay untouched by it.
     if (shapeEdit) {
+      // Under CLICK_PX of the press it is still a click (a select, the first
+      // half of a double-click): nothing moves, nothing commits. Latched once past.
+      if (!shapeEdit.armed) {
+        if (!pastClickDeadZone(shapeEdit.startClient, { x: e.clientX, y: e.clientY }, CLICK_PX)) return;
+        shapeEdit.armed = true;
+      }
       const d = pxToMmDelta(p.x - shapeEdit.startPx.x, p.y - shapeEdit.startPx.y);
-      const next = shapeEdit.kind === "edge"
-        ? moveEdge(shapeEdit.ring, shapeEdit.index, d.dx, d.dy, e.altKey ? { soft: true } : { exact: true })
-        : moveNode(shapeEdit.ring, shapeEdit.index, d.dx, d.dy, e.altKey ? { soft: true } : { exact: true });
-      liveRing = { shapeId: shapeEdit.shapeId, key: ringKey(shapeEdit.shapeId, shapeEdit.ringId), points: next };
+      // Sparse nodes (2026-11-05): a node drag moves that node exactly and
+      // rebuilds its two spans; an edge drag moves both end nodes of the span
+      // the edge lies in and rebuilds it and its two outer spans. Alt keeps
+      // the soft pull on the polygon vertices (no rebuild).
+      const se = shapeEdit;
+      let idx;
+      if (se.kind === "edge") {
+        const k = spanOfEdge(se.nodes, se.index);
+        idx = [k, (k + 1) % se.nodes.length];
+      } else idx = [se.index];
+      let next, nextNodes;
+      if (e.altKey) {
+        next = se.kind === "edge"
+          ? moveEdge(se.ring, se.index, d.dx, d.dy, { soft: true })
+          : moveNodes(se.ring, [se.nodes[se.index].i], d.dx, d.dy, { soft: true });
+        nextNodes = se.nodes;
+      } else {
+        const m = moveNodeSet(se.ring, se.nodes, idx, d.dx, d.dy, false);
+        next = m.ring;
+        nextNodes = m.nodes;
+      }
+      shapeEdit.moved = true;
+      liveRing = { shapeId: shapeEdit.shapeId, key: ringKey(shapeEdit.shapeId, shapeEdit.ringId), points: next, nodes: nextNodes };
       repaintNodeChrome(); // a bare drawOverlay smears every frame of the drag
       return;
     }
@@ -4095,7 +4223,7 @@
       const el = project && (project.elements || []).find((x) => x.id === d.elId);
       if (el && d.moving && d.live && d.live.size && e.type !== "pointercancel") {
         if (d.kind === "anchors") commitAnchorEdits(el, d.basis.fit, [...d.live.values()]);
-        else commitRingEdits(el, d.basis, d.live);
+        else commitRingEdits(el, d.basis, d.live, null, d.liveNodes);
       }
       if (canvas) canvas.style.cursor = "default";
       repaintNodeChrome();
@@ -4114,6 +4242,10 @@
           const sel = m.add ? cloneSel(reshape.sel) : new Map();
           for (const [sid, rings] of found) for (const [ring, set] of rings) for (const i of set) selAdd(sel, sid, ring, i);
           setReshapeSel(sel);
+        } else if (!m.add && moved < INSERT_CLICK_PX && insertNodeFromClick(edit, m.startPx)) {
+          // A click ON THE PATH inserted a corner node; later nodes re-indexed,
+          // so the point selection goes (the new node is one gesture away).
+          if (reshapeSelCount(reshape)) setReshapeSel(new Map());
         } else if (!m.add) {
           // A click: drops the point selection, and (as outside the mode)
           // selects the shape under it and opens its popover.
@@ -4187,7 +4319,9 @@
       // leaves `shapeEditError` set and simply drops the working ring — the
       // shape snaps back to its last good geometry rather than persisting
       // something the service would refuse.
-      commitShapeEdit();
+      // A press that never moved (a click on a node or edge) commits nothing:
+      // it would write the seeds and a polygon equal to the current one.
+      if (shapeEdit.moved) commitShapeEdit();
       shapeEdit = null;
       liveRing = null;
       pressClient = null;

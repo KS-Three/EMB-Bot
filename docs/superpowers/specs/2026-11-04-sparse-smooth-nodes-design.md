@@ -84,6 +84,32 @@ Expected counts, to be measured in PR 1 and quoted in its body: red-disc's
 64-point disc seeds roughly 8-16 smooth nodes and no corner; a traced square
 seeds 4 corners; the 52 mm Instagram rounded square about 20.
 
+Measured in PR 1 on synthetic rings: a 64-point circle seeds 16 nodes, all
+smooth; squares seed 4 corners; a 500-point circle 16; the 52 mm rounded square
+(39 vertices, about 5 mm spacing) 15 nodes, its four 8 mm corner arcs seeding as
+CORNERS (Douglas-Peucker keeps one vertex per arc; the turn there is 35.8-36.0
+degrees). Kent kept 35 on 2026-11-04: double-click fixes a wrong seed, and
+untouched spans keep their vertices either way.
+
+Re-read on REAL rings in PR 2 (the e2e fixtures, `app/e2e/field-reshape-mode.spec.js`;
+service mm): `red-disc.png` is a 198 mm disc traced as 64 vertices 9.7 mm apart
+and seeds **44 smooth nodes, no corner** (turns 5.3-11.6 degrees), not 8-16: the
+sagitta of a 64-gon on a 99 mm radius is already 0.6 mm, so 0.5 mm Douglas-Peucker
+drops only the 20 vertices that lie within it. The count follows the ring's size
+at a fixed tolerance (a synthetic circle of radius R seeds about pi x sqrt(R) at
+0.5 mm; offline on this very ring 1 mm gives 32, 2 mm 21, 3 mm 16).
+`two-squares.png` seeds **4 corners** per square (4 vertices each);
+`trace-holes-and-colors.png` seeds **4 corners on the shell (4 vertices) and 4
+corners on its hole (8 traced vertices, a square with chamfered corners; the
+other 4 are not nodes, so they go the first time a span they lie in is rebuilt:
+8 -> 6 vertices after one hole node moved, both runs)**.
+The 35 degree threshold separates the real rings cleanly (smooth nodes turn
+5-12 degrees, corners 90); only rounded-corner art that Douglas-Peucker collapses
+to one vertex per arc sits at the knife-edge, and no real ring of that kind is in
+the corpus. Recommendation: keep both constants (0.5 mm, 35 degrees); the count
+on a large, already-sparse ring is the traced ring's own sparseness, not a
+seeding fault. A size-relative tolerance would be a new ruling.
+
 ## 4. Gestures (rulings 5, 6)
 
 **One picture.** A selected digitized shape shows its NODES, in the quick
@@ -135,7 +161,9 @@ adaptive subdivision to vertices with **chord error at most 0.05 mm** and
 **spacing between 0.3 and 1.0 mm** (split while the error is over 0.05 mm or
 the spacing over 1.0 mm, never below 0.3 mm). Fill rows are 0.4 mm apart;
 0.05 mm is invisible. The span's old interior vertices are replaced; its end
-nodes stay.
+nodes stay. The spacing bounds apply to a CURVED span: a span whose curve lies
+within `FLATTEN_ERR_MM` of its chord flattens to no interior vertices however
+long it is (I5 wins over the 1.0 mm cap).
 
 **The 500-point cap.** If a ring would exceed `BOUNDARY_MAX_POINTS` (500)
 after a rebuild, the rebuilt spans alone are re-flattened with both spacing
@@ -223,8 +251,10 @@ Two PRs, each a Sonnet brief, own worktree, ready-for-review with auto-merge
 armed while `mergeable_state` is `blocked`; merging is Kent's.
 
 1. **Lib**: `app/src/lib/sparseNodes.js` — `seedNodes`, `isValidNodes`,
-   `spanCurve`, `flattenSpan`, `rebuildSpans`, `insertNodeOnPath`,
-   `toggleNode`, `deleteNodes`, `capRing`, constants `SEED_TOL_MM = 0.5`,
+   `spanCurve`, `flattenSpan`, `rebuildSpans`, `moveNodesExact`,
+   `insertNodeOnPath`, `toggleNode`, `deleteNodes`, `nodePositions` (no
+   `capRing`: the cap lives inside `rebuildSpans`; tests colocated at
+   `app/src/lib/sparseNodes.spec.js`), constants `SEED_TOL_MM = 0.5`,
    `CORNER_DEG = 35`, `FLATTEN_ERR_MM = 0.05`, `FLATTEN_MIN_MM = 0.3`,
    `FLATTEN_MAX_MM = 1.0` — pure, ring-agnostic (shell and hole alike), no
    Svelte. Its spec file, the `canonicalShapeEdits` test, this document and
