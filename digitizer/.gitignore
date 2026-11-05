@@ -10,3 +10,8 @@ build/
 dist/
 # tools/studio-raster.mjs writes the Studio-capped rasters here (re-creatable from the checkout)
 .cache/
+# tools/tripwire.py drops ours.dst / design.json / score/ here by default
+# (--runs; CI uses tripwire-runs). Run output, re-creatable, holds the pro
+# files re-expressed as CSV. Keep it out of the public repo.
+tripwire_runs/
+tripwire-runs/
