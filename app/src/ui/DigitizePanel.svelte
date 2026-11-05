@@ -4,6 +4,9 @@
   // ContentStep remounts this panel on every selection, and stage 0 is
   // 0.1-20 s of service CPU per ask.
   const preReadCache = new Map();
+  // Same reason, for the shape/colour recount (lib/recount.js): an ask is
+  // seconds of service CPU and the panel remounts on every selection.
+  const recountCache = new Map();
 </script>
 
 <script>
@@ -18,6 +21,7 @@
   import {
     buildDigitizeConfig,
     classifyArt,
+    recountArt,
     digitize,
     LONG_RUN_MS,
     decodedFromDesignCached,
@@ -68,6 +72,7 @@
   import { fitTargetWidthMm } from "../lib/placement.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
   import { isElementStale, pendingEdits, canRedigitize, rotatedWidth, nativeWidthOf, withTargetWidth } from "../lib/staleness.js";
+  import { createRecounter, recountText } from "../lib/recount.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
   // The element stores the source image (processing size, PNG base64), the
@@ -620,6 +625,56 @@
   onDestroy(() => {
     if (classifyTimer) clearTimeout(classifyTimer);
   });
+
+  // ---- the shape/colour recount, at the size now chosen ----------------------
+  //
+  // Kent, 2026-11-05 (the Stitchist footer: "13 objects / 3 colours at 100 mm,
+  // 4 / 2 at 36.7"): the reading row also says how many shapes and colors the
+  // design will have at the size chosen, so a size change shows its cost
+  // before the run. COUNTS ONLY -- no sentence about what to do, no card
+  // (Kent's 2026-10-02 "no warnings reach readouts" ruling; the pipeline keeps
+  // deciding enclosed white, line type and background silently).
+  //
+  // POST /recount is stages 0-4 (seconds), so unlike the lane reading it is
+  // asked only when the panel is idle, debounced, and aborted when a newer
+  // size supersedes it (lib/recount.js carries those rules). It asks with the
+  // run's own config -- including the width a field resize asks for, the same
+  // `withTargetWidth(resizedTargetWidth(...))` the lane reading sends -- so the
+  // count is the one the run then produces. The key is that whole config, so
+  // the number follows the width AND the garment (fabric preset, pull comp).
+  // A count shows only while it answers the key on screen: a size change hides
+  // the old one at once and nothing replaces it until the new answer lands.
+  let recount = null; // { key, shapes, colors }
+  const recounter = createRecounter({
+    cache: recountCache,
+    onResult: (key, counts) => {
+      if (!destroyed) recount = { key, ...counts };
+    },
+  });
+  $: recountCfg = health && element.sourcePng && phase === "idle"
+    ? buildDigitizeConfig(withTargetWidth(element, resizedTargetWidth(element, nativeWidthOf(element))), project)
+    : null;
+  $: recountKey = recountCfg
+    ? JSON.stringify([
+        (element.sourceFile && element.sourceFile.key) || element.sourcePng.length,
+        configKey(recountCfg),
+        element.crop || null,
+      ])
+    : "";
+  $: askRecount(recountKey);
+
+  function askRecount(key) {
+    recounter.ask(key, async (signal) => {
+      const el = element;
+      const cfg = buildDigitizeConfig(withTargetWidth(el, resizedTargetWidth(el, nativeWidthOf(el))), project);
+      const image = (await storedImage(el)) || el.sourcePng;
+      return recountArt(image, cfg, undefined, signal);
+    });
+  }
+  $: recountLine = recount && recount.key === recountKey && recountCfg
+    ? recountText(recount, recountCfg.target_width_mm)
+    : "";
+  onDestroy(() => recounter.stop());
 
   async function runDigitize(el) {
     // The button is disabled while a run is in flight, and "Apply layer
@@ -1937,8 +1992,9 @@
          the route until a run has landed; a design SET to flat keeps its row
          regardless, because the reading it would hang off is gone once the
          override takes effect. -->
-    {#if hasReading}
+    {#if hasReading || recountLine}
       <div class="dgp-read" use:tip={"photoReading"} data-testid="art-reading">
+        {#if hasReading}
         <p class="dgp-read-text">
           {#if artRead === "forced"}
             You set this to flat art, so it's sewing as solid color regions.
@@ -1982,6 +2038,13 @@
             />
             Add fine detail lines
           </label>
+        {/if}
+        {/if}
+        <!-- Counts only (Kent 2026-11-05): how many shapes and colors at the
+             size chosen. No sentence about what to do with them. Absent while
+             the number for this size is being fetched. -->
+        {#if recountLine}
+          <p class="dgp-read-count" data-testid="art-recount">{recountLine}</p>
         {/if}
       </div>
     {/if}
@@ -3258,6 +3321,15 @@
   .dgp-read-opt {
     flex: 1 1 100%;
     color: var(--muted, #667);
+  }
+  /* The recount: its own full-width line under the sentence and its buttons,
+     the same quiet colour (counts, not a message). */
+  .dgp-read-count {
+    flex: 1 0 100%;
+    margin: 0;
+    font-size: var(--fs-xs, 12px);
+    color: var(--muted, #667);
+    font-variant-numeric: tabular-nums;
   }
   .dgp-read-btn {
     flex-shrink: 0;

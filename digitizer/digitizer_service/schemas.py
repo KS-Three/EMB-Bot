@@ -113,6 +113,22 @@ class Classified(BaseModel):
     elapsed_ms: float
 
 
+class Recounted(BaseModel):
+    """`/recount`: how many shapes and colours the run would produce at the
+    requested size. Additive route (2026-11-05); counts only."""
+
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "shape_count": 22, "color_count": 2, "size_mm": [36.7, 24.1],
+        "generation_cache": "miss", "elapsed_ms": 7390.0,
+    }})
+
+    shape_count: int = Field(description="Regions that sew; unstitched ones (enclosed background) are not counted.")
+    color_count: int = Field(description="Distinct threads among the sewn regions.")
+    size_mm: list[float] = Field(description="[width, height] of the design at this config, mm.")
+    generation_cache: str = Field(description="hit | miss: whether stages 0-4 were reused. A miss leaves them cached for /digitize.")
+    elapsed_ms: float
+
+
 class OpenObject(BaseModel):
     """A JSON object whose keys are documented in the route description."""
 
