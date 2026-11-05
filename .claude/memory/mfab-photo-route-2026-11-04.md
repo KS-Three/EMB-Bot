@@ -1,13 +1,15 @@
 ---
 name: mfab-photo-route-2026-11-04
-description: MFab hat classes photo_scene at every width (grain gate 0.298 vs 0.28, veto 0.856 vs 0.90); the 60 and 101 mm blob is the photo lane's superpixel merge, not the keyline recipe; Kent chose option 3 (photo-lane fix) 2026-11-05
+description: MFab hat classes photo_scene at every width (grain gate 0.298 vs 0.28, veto 0.856 vs 0.90); the 60 and 101 mm defect is the photo lane skipping the 8 px/mm working grid (W+E stay joined), NOT its segmenter; fix = photo_work_grid, OFF
 metadata:
   type: project
 ---
 
-# MFab hat at 100.8 mm, default route: "WE"+"L" white blob (diagnosis, 2026-11-04)
+# MFab hat at 100.8 mm, default route: "WE"+"L" white blob (diagnosis 2026-11-04; cause corrected 2026-11-05)
 
-Cause: NOT the white-keyline recipe ([[white-keyline-art-gate-2026-10-26]]). The default route sends this art down the PHOTO lane (`CLASSIFIED_PHOTO_SCENE`), at every width. The photo lane smears the small line at 100.8 mm. Same family as the 36.7 mm head-to-head in [[dade-app-teardown-2026-11-04]] (that one is the other defect, PR #1235).
+**Correction 2026-11-05 (the photo-lane session):** the first diagnosis below read the cause as the photo lane's SEGMENTER merging thin gaps (superpixel merge, bilateral kill). That was wrong. Measured on main 77c81ab2: at 100.8 mm the stage-2 labels keep 92% of the art's white in the small-line band and no black is lost, and the stage-4 regions are clean (37 regions, fewer fragments than 113.5's 93). The real cause: `work_grid_px_per_mm` deliberately keeps the photo classes on the source line (the working grid is for line art), so this art, classed photo_scene, reaches the lane at 4.0 px/mm (6.7 at 60 mm). In the raw art W and E touch by a one-pixel black bridge (one 355 px component, 4- and 8-connected). On the source line the region cut keeps them ONE region, S0d081325, 54 mm2; it has no text tags, so it is no rider (`silhouette_underfill.find_riders`), is merged into the black host (`merged_into`), and the white panel sews a 503-point fill over it. The flat route's Lanczos enlargement to 8 px/mm opens the bridge; at 113.5 mm the resample opens it too (two tagged regions, 30 and 32 mm2). Fix: `cfg.photo_work_grid` (OFF) makes the photo classes take the working grid; ON, 60 and 100.8 mm sew black, white, black. The stage-0 numbers below still hold; the sections that blame the segmenter do not.
+
+Cause (first diagnosis, WRONG on the mechanism): NOT the white-keyline recipe ([[white-keyline-art-gate-2026-10-26]]). The default route sends this art down the PHOTO lane (`CLASSIFIED_PHOTO_SCENE`), at every width. The photo lane smears the small line at 100.8 mm. Same family as the 36.7 mm head-to-head in [[dade-app-teardown-2026-11-04]] (that one is the other defect, PR #1235).
 
 ## Measured (offline, from the 100.8 / 113.5 / 36.7 job JSONs of the briefing session, main 053ed41c)
 - Stage 0 on `logo_mfab_hat.png` + Studio hat_front config: `photo_scene` at 36.7, 80, 100.8, 113.5 (identical; `classify()` never reads target width). Signals: unique_color_mass 0.298 (gate 0.28, route 'grain'), texture_frac 0.063, two_tone_mass 0.856 (veto needs 0.90), confidence 0.611. Gate background: [[stage0-texture-gate-2026-10-28]].
