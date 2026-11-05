@@ -69,3 +69,5 @@ orphaned after bash exited, and burned thousands of CPU-seconds on one core
 until the sibling worker found it with `Get-Process`. The trap is not only
 heredocs: any bare `python -` with no stdin reaching it does this, and a `;`
 chain hides it. Run a script FILE, by path, with the venv interpreter.
+
+**Guard, 2026-11-05:** `.claude/hooks/block-python-stdin-dash.js` (registered in `.claude/settings.json`, tests in `test/python-stdin-dash-guard.test.js`) denies any `python`/`py` command given `-` as its script, in any segment of a compound command. `embot-guards-global.js` reads the guard list from settings.json, so it picks this up with no edit.
