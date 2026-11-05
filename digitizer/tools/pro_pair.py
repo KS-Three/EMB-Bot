@@ -160,9 +160,9 @@ def _stats(d: Digitized, pro: Path) -> dict:
                 stats["lettering"][k] = stats["lettering"].get(k, 0) + 1
     try:
         pf = run_preflight(result, plan, d.cfg)
-        stats["preflight"] = {k: pf.get(k) for k in ("grade", "findings", "metrics")}
+        stats["preflight"] = {k: pf.get(k) for k in ("grade", "score", "findings", "metrics")}
     except Exception as e:  # noqa: BLE001 -- a broken preflight is a finding, not a crash
-        stats["preflight"] = {"grade": None, "findings": [],
+        stats["preflight"] = {"grade": None, "score": None, "findings": [],
                               "error": f"{type(e).__name__}: {e}"[:300]}
     stats["pro"] = pro_counts(pro)
     return stats
