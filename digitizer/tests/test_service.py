@@ -224,6 +224,19 @@ def test_a_finished_job_carries_a_preflight_report(client):
     assert report["metrics"]["thread_match_checked"] is True
 
 
+def test_the_served_score_is_the_grades_score(client):
+    """`score` is on the wire (it has been since build step 9; the Studio's
+    QualityReport prints it) and the grade is derived from it: the served
+    pair cannot disagree, and `raw_score` is the unclamped bill."""
+    from digitizer_core.preflight import _DEDUCT, _grade_for
+    report = _digitize(client, {"target_width_mm": 80.0})["preflight"]
+    assert isinstance(report["score"], int) and 0 <= report["score"] <= 100
+    assert report["grade"] == _grade_for(report["score"])
+    raw = 100 - sum(_DEDUCT.get(f["severity"], 0) for f in report["findings"])
+    assert report["metrics"]["raw_score"] == raw
+    assert report["score"] == max(0, raw)
+
+
 def test_preflight_off_is_none_not_a_passing_report(client):
     """Studio must be able to tell 'clean' apart from 'never checked'."""
     state = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
