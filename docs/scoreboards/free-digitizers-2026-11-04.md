@@ -17,7 +17,7 @@ Gaulke's phone screenshot to its white panel) with the engine's **defaults**, on
 |---|---|---|---|
 | Nuizu 0.3.1 (Apache-2.0/MIT) | own venv, `nuizu dst <art> -s <longest side mm>`; arm 2 (`nuizu-satin-auto`) adds `--satin-outline --auto-angle` | defaults: 8 colours max, fill 45 deg, 3 mm max stitch, no background | 18 / 18, both arms |
 | heatstitch (MIT; the public build of heatstitch.app) | a static copy served from `127.0.0.1`, driven by Playwright with every non-localhost request aborted (no Rust toolchain here to build from source) | "Convert a picture", Width (mm) set per job, Flat style, 6 colours, smooth 3, smallest area 3 mm2, background left out, Stable woven, 40 wt; DST export | 18 / 18 |
-| openstitch v0.4.0 (AGPL-3.0+) | Windows release exe downloaded (146,368,665 bytes); launched by Kent by hand | not run: GUI access was denied | **0 / 18, see "openstitch" below** |
+| openstitch v0.4.0 (AGPL-3.0+) | Windows release exe (146,368,665 bytes) launched by Kent by hand, then driven through its GUI (computer-use) | Auto-Digitizer dialog: Target design width set per job, everything else default; Tajima DST export | 8 / 18 (Becker x5 + Hotel Fremont hat, Precision Drone, Golden Tee hat) | **0 / 18, see "openstitch" below** |
 | Stitch AI (Dynamic Mockups) | dropped (Tier 3) | n/a | **not run**: its DST download is gated behind a sales call; Kent ruled "Drop Tier 3" |
 
 Figures are the nightly tripwire's seven, read from the written DST by one reader
@@ -38,7 +38,19 @@ main, the same run the nightly tripwire digitizes.
 | nuizu | 18 | 4.69 | 12.5 | 16912.5 | 54.57 | 0.38 / 0.02 | 0.37 / 0.0 | 1 of 18 |
 | nuizu-satin-auto | 18 | 4.0 | 29.0 | 17895.0 | 55.22 | 0.38 / 0.01 | 0.37 / 0.0 | 1 of 18 |
 | heatstitch | 18 | 0.67 | 8.0 | 8.5 | 1.02 | 0.38 / 0.13 | 0.37 / 0.11 | 2 of 18 |
+| openstitch | 8 | 0.69 | 81.5 | 78.0 | 5.11 | 0.45 / 0.04 | 0.35 / 0.01 | 0 of 8 |
 | ours (today's main) | 18 | 1.2 | -1.0 | 5.0 | 0.86 | 0.38 | 0.37 | - |
+
+openstitch ran 8 of the 18 jobs (see its section), so its row above is a median over those 8. Every
+engine over the **same 8 jobs** (Becker x5, Hotel Fremont hat, Precision Drone, Golden Tee hat):
+
+| engine | stitches vs pro (median x) | needle-up vs pro (median x) | trims vs pro (median delta) | sttype kappa ours / engine (median) | direction kappa ours / engine (median) | jobs engine sttype kappa >= ours |
+|---|---|---|---|---|---|---|
+| Nuizu | 4.8 | 67.3 | 13.0 | 0.45 / 0.03 | 0.35 / 0.09 | 0 of 8 |
+| heatstitch | 0.83 | 2.75 | 54.5 | 0.45 / 0.21 | 0.35 / 0.07 | 0 of 8 |
+| openstitch | 0.69 | 5.11 | 81.5 | 0.45 / 0.04 | 0.35 / 0.01 | 0 of 8 |
+| ours | 1.21 | 0.93 | 2.0 | 0.45 | 0.35 | - |
+
 
 ## What each engine did (read from the render sheets: art | ours | engine | pro)
 
@@ -72,6 +84,8 @@ the sewn extent, not the art's). Tonal polarity cannot be judged from these rend
 holds no thread colours, so every file here is drawn in the palette the pairframe reader
 assigns, and heatstitch's own colour choices are not visible.
 
+**openstitch.** See its section below: at the 8 jobs it ran, stitch-type kappa 0.04, a decent structure on Becker, lost fills on Golden Tee and Fremont, many more trims than the pro.
+
 **Nuizu against heatstitch.** On these 18 the free engine that makes a satin or fill decision
 sits at stitch-type kappa 0.13 (median) against 0.02 for the one that does not, with needle
 travel of the pro's order against 55x. Neither reaches ours (0.38): heatstitch matches or
@@ -79,16 +93,35 @@ passes it on 2 of 18 jobs, Nuizu on 1 (a tie at the floor).
 
 ## openstitch
 
-The v0.4.0 Windows release exe is in `scratch_bench/_tools/openstitch/` (sha256
-`8dab516c660aa38bdf1866b7a49ab5d253846d7924d44ab1894005f81559bcd5`; its size matches the
-release listing). **No openstitch file was produced and no `openstitch.analysis` score exists.**
-The session's permission policy refused launching the downloaded exe ("code from external");
-Kent then launched it by hand, but the request for computer-use access to its window
-(`OpenStitch-Studio-Windows-x64-v0.4.0.exe`) was denied at the approval prompt, so the GUI
-run (Becker x5 + 3 others, at the pro's size, auto-digitize only) did not happen. The survey's
-ruling stands (benchmark its output, never read its code into ours). The harness takes its files
-as it takes any other engine's (`scratch_bench/openstitch/<slug>.dst`, then
-`measure --engine openstitch`), so the run needs only a granted GUI session or Kent's own exports.
+OpenStitch Studio 0.4.0 (AGPL-3.0+; Windows release exe, sha256
+`8dab516c660aa38bdf1866b7a49ab5d253846d7924d44ab1894005f81559bcd5`, in
+`scratch_bench/_tools/openstitch/`). The session's permission policy refused launching the downloaded
+exe, so **Kent launched it by hand**; a first request for computer-use access to its window was denied,
+a second one was granted, and the window was then driven for **8 of the 18 jobs**: Becker x5 (hat large,
+left chest large, hat small, chest small, beanie) plus Hotel Fremont hat, Precision Drone and Golden Tee
+hat, picked as the jobs where ours and the pro differ most. Per job: "Turn an image into embroidery",
+the ink-cropped art, **Target design width set to the pro's width and nothing else changed** (defaults:
+6 colours, 0.40 mm density, 6.50 mm satin limit, 1.5 mm2 tiny-area filter, background removed, colours
+matched to the thread palette, no satin outline), "Digitize & apply", Export as Tajima DST. The 10 jobs not
+run are Gaulke x3, Hotel Fremont patch, MFab x2, Tires and Toat x3; the
+engine has no batch mode, so it is a GUI hand-drive per job. `openstitch.analysis` (the /100 stitch-out
+score) was not run on ours.
+
+Results, 8 jobs against the pro: 0.69x the pro's stitches (median), a stitch-type kappa of 0.04
+(ours 0.45 over the same jobs; the engine never reaches ours on any of the 8), direction kappa 0.01, 81.5
+more trims than the pro (median; Becker hat large 141 against 10) and 5.1x the pro's needle-up distance.
+Its own production numbers are honest: the stitch count it states (status bar, and "saved and verified ...
+stitches read back" on export) equals what our reader counts in the DST on all 8, and the three trim counts
+recorded matched too. The renders: on Becker it draws satin-style outlines round the lettering, grey tatami
+with directional rows inside BECKER and black fill in MARINE with small counters kept open, and both words
+read; on Golden Tee it keeps the outlines and thin shapes but leaves the body of the G and part of the T as
+bare outline (3,878 stitches against the pro's 5,973, 82 trims against 10, word cc not scored on this
+job), and on Hotel Fremont it sews 1,702 stitches against the pro's 17,067 (word cc 0.76 against ours
+1.00). It hit the requested width on every job (0.96x-1.00x). What it got right: a structure that looks
+like a digitizer's on Becker (outlined satin plus directional fill, open counters) and an export that
+reads back exactly. What it got wrong at a glance: cuts and travel (many more trims and 5x the needle-up distance) and lost fills on the mixed-colour jobs. Tonal polarity is not judged from these renders
+(a DST holds no thread colours). The survey's ruling stands: its output was benchmarked, its code was not
+read.
 
 ## Stitch AI (Dynamic Mockups)
 
@@ -105,8 +138,7 @@ Borrow (as measurements, never code):
   on a job toward 0.13 means a rule of thumb is catching up.
 - **A "needle-up mm against the pro" check per engine.** Nuizu's 55x is what a missing trim
   step costs; ours is 0.86x median and the number to keep near 1.
-- **Reading a tool's stated stitch and trim counts back from its file** (heatstitch prints a production sheet): the manifest comparison in this tool does it for any engine
-  that leaves a `manifest.json`.
+- **Reading a tool's stated stitch and trim counts back from its file.** openstitch re-reads every export ("saved and verified: N stitches read back") and heatstitch prints a production sheet; both matched our reader. The manifest comparison in this tool does it for any engine that leaves a `manifest.json` (the survey's idea 3).
 
 Do not take:
 - **Nuizu's colour quantiser** (k-means over the greys of anti-aliased edges): the confetti on
@@ -120,7 +152,7 @@ Do not take:
 
 One default run per job and engine; no sew-out (ROADMAP gate 1), so nothing here says how
 any file sews. Kappa and direction kappa are measured on the solid area the two files share
-after registration; a 0.00 direction figure on both sides is a tie, not a win. Word cc covers
+after registration; a 0.00 direction figure on both sides is a tie, not a win. openstitch ran 8 of 18 jobs and its medians are over those 8. Word cc covers
 the three jobs with pinned words among the committed pairs (Becker hat, Fremont hat, MFab hat);
 heatstitch's MFab word was not located (n/loc, left out, not scored 0), and Nuizu's MFab cc is
 0.00 against ours 0.22. The engines ran on Kent's laptop in one session; their DSTs and sheets
@@ -216,3 +248,34 @@ Counts: ours / competitor / pro. Kappas and word cc: ours-vs-pro / competitor-vs
 | toat_beanie | 81.4x54.1 (0.99x) | 18,253 / 9,008 / 15,111 | 20 / 25 / 31 | 34 / 28 / 32 | 310.7 / 297.2 / 533.3 | 2 | 0.40 / 0.13 (0.58) | 0.39 / 0.48 | - / - |
 
 Medians over the scored jobs: stitches vs pro (x) 0.67; needle-up mm vs pro (x) 1.02; trims vs pro (delta) 8.0; hops vs pro (delta) 8.5; sttype kappa ours 0.38; sttype kappa competitor 0.13; direction kappa ours 0.37; direction kappa competitor 0.11; jobs competitor sttype kappa >= ours 2 of 18.
+
+
+### openstitch against the pro and ours (2026-11-04)
+
+8 jobs scored, 0 with no competitor file.
+
+Counts: ours / competitor / pro. Kappas and word cc: ours-vs-pro / competitor-vs-pro (stitch-type kappa carries its chance floor; chance-corrected only, ROADMAP gate 4).
+
+| job | competitor size mm (vs pro width) | stitches | trims | hops | needle-up mm | colour chg | sttype kappa | direction kappa | word cc |
+|---|---|---|---|---|---|---|---|---|---|
+| becker_hat_large | 101.6x63.6 (1.00x) | 16,262 / 11,536 / 12,356 | 11 / 141 / 10 | 14 / 140 / 13 | 327.3 / 2,448.2 / 416.1 | 4 | 0.29 / 0.03 (0.43) | 0.35 / 0.00 | 0.84 / 0.50 |
+| becker_lc_large | 95.6x59.6 (1.00x) | 14,922 / 9,102 / 11,274 | 12 / 117 / 12 | 15 / 116 / 14 | 292.1 / 2,039.0 / 375.6 | 3 | 0.33 / 0.05 (0.42) | 0.35 / 0.00 | - / - |
+| becker_hat_small | 76.6x48.2 (1.00x) | 10,546 / 6,283 / 8,694 | 11 / 93 / 11 | 16 / 92 / 14 | 281.3 / 1,758.6 / 321.9 | 5 | 0.53 / 0.03 (0.48) | 0.42 / 0.15 | - / - |
+| becker_chest_small | 76.6x48.2 (1.00x) | 10,309 / 6,283 / 8,694 | 11 / 93 / 12 | 16 / 92 / 14 | 281.4 / 1,758.6 / 292.4 | 5 | 0.58 / 0.03 (0.48) | 0.45 / 0.15 | - / - |
+| becker_beanie | 79.6x50.2 (1.00x) | 13,864 / 6,761 / 11,411 | 14 / 97 / 11 | 19 / 96 / 15 | 339.4 / 1,802.4 / 375.5 | 5 | 0.24 / 0.00 (0.40) | 0.40 / 0.02 | - / - |
+| hotel_fremont_hat | 91.6x49.0 (0.99x) | 15,899 / 1,702 / 17,067 | 25 / 48 / 21 | 175 / 47 / 30 | 501.1 / 661.1 / 506.9 | 4 | 0.53 / 0.17 (0.56) | 0.00 / 0.00 | 1.00 / 0.76 |
+| precision_drone | 62.6x64.0 (1.00x) | 14,769 / 7,173 / 14,552 | 86 / 101 / 59 | 122 / 100 / 80 | 1,442.6 / 1,299.0 / 900.6 | 6 | 0.38 / 0.07 (0.46) | 0.08 / 0.07 | - / - |
+| goldentee_hat | 72.2x58.0 (0.96x) | 11,018 / 3,878 / 5,973 | 25 / 82 / 10 | 42 / 81 / 15 | 536.3 / 1,036.4 / 288.9 | 6 | 0.83 / 0.48 (0.49) | 0.24 / 0.00 | - / - |
+
+Medians over the scored jobs: stitches vs pro (x) 0.69; needle-up mm vs pro (x) 5.11; trims vs pro (delta) 81.5; hops vs pro (delta) 78.0; sttype kappa ours 0.45; sttype kappa competitor 0.04; direction kappa ours 0.35; direction kappa competitor 0.01; jobs competitor sttype kappa >= ours 0 of 8.
+
+The tool's own production sheet against what our reader counts in its DST (stated -> read):
+
+- becker_hat_large: stitches 11536 -> 11536, trims 141 -> 141
+- becker_lc_large: stitches 9102 -> 9102, trims 117 -> 117
+- becker_hat_small: stitches 6283 -> 6283, trims 93 -> 93
+- becker_chest_small: stitches 6283 -> 6283
+- becker_beanie: stitches 6761 -> 6761
+- hotel_fremont_hat: stitches 1702 -> 1702
+- precision_drone: stitches 7173 -> 7173
+- goldentee_hat: stitches 3878 -> 3878
