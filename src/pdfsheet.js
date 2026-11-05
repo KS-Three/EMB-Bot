@@ -351,7 +351,9 @@ const deps =
       cursorY += ROW_H;
     }
 
-    doc.save(options.fileName || "worksheet.pdf");
+    // `save: false` leaves the document unsaved so a caller can take its bytes
+    // (doc.output) -- the Download-all zip puts this sheet in an archive.
+    if (options.save !== false) doc.save(options.fileName || "worksheet.pdf");
     return doc;
   }
 

@@ -419,3 +419,12 @@ VP3 trim count is "at least" (the reader invents trims). A service mismatch is a
 **500** with the failed checks in the body (its own defect, not the caller's
 400); the Studio then offers the browser file only if that passes the same
 read-back. Cost at 20,000 stitches: browser 7-13 ms, service 90-215 ms.
+
+### Download all (2026-11-05)
+
+One zip from the Download step (`app/src/lib/exportZip.js`): DST, PES, EXP, JEF, XXX,
+VP3, SVG, the PDF worksheet, a preview PNG and `-threads.txt`. Each format is the
+same `exportDesignPreferService` call the single button makes, so each has been
+through the read-back above; one failure fails the whole archive and saves nothing.
+PEC and U01 are not in it (not shipped, 2026-09-12). Measured at 23,936 stitches:
+2.2-2.6 s, 1.08 MB (memory `export-zip-2026-11-05`).

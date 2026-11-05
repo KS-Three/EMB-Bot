@@ -81,7 +81,8 @@ const projectOf = (elements, garmentId = "left_chest") => ({ version: 2, name: "
 const ui = (view) => within(view.container);
 const fmt = (view, label) => ui(view).getByRole("button", { name: label });
 // Everything that writes a machine's file; PNG and the PDF worksheet do not.
-const MACHINE_FILES = ["DST", "PES", "EXP", "JEF", "XXX", "VP3", "SVG"];
+// "Download all" is the same lock: the zip holds every one of them.
+const MACHINE_FILES = ["DST", "PES", "EXP", "JEF", "XXX", "VP3", "SVG", "Download all"];
 
 test("a current design downloads in one click", async () => {
   const view = render(DownloadStep, { props: { project: projectOf([digitized()]), runtime: {}, digitizerHealth: OK } });
@@ -96,6 +97,7 @@ test("after a resize every machine file is disabled, and a click writes nothing"
   });
   for (const label of MACHINE_FILES) expect(fmt(view, label), label).toBeDisabled();
   await fireEvent.click(fmt(view, "DST"));
+  await fireEvent.click(fmt(view, "Download all"));
   expect(exportCalls).toEqual([]);
   expect(view.container.querySelector('[role="dialog"]')).toBeNull();
 });
