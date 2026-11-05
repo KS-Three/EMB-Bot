@@ -150,12 +150,16 @@ export function withNodes(outlines, overrides) {
  * writes `nodes` ({ shell, holes }) from the live lists, else from
  * `basis.nodesById` (how seeds are committed with the first node edit). Any
  * other writer passes null and `nodes` is deleted from the entry.
+ * `added` (Add hole): Map<shapeId, ring[] in field mm> of NEW holes, appended
+ * after the surviving ones; each gets `seedNodes` of its ring. Pass an empty
+ * `liveNodes` Map with it so the shape's other lists come from `basis`.
  * -> { cur } | { error, sid, cur: null }
  */
-export function ringEditOverrides(el, basis, live, removed = null, liveNodes = null) {
+export function ringEditOverrides(el, basis, live, removed = null, liveNodes = null, added = null) {
   if (!basis || !basis.rows || !basis.bboxMm) return { error: "" , sid: null, cur: null };
   const gone = removed || new Map();
-  if (!live.size && !gone.size) return { cur: null };
+  const grown = added || new Map();
+  if (!live.size && !gone.size && !grown.size) return { cur: null };
   const cur = { ...(el.shapeOverrides || {}) };
   const touched = new Map();   // sid -> { shell, holes: Map<k, pts> }
   const note = (sid) => {
@@ -169,6 +173,7 @@ export function ringEditOverrides(el, basis, live, removed = null, liveNodes = n
     else t.holes.set(ring, pts);
   }
   for (const sid of gone.keys()) note(sid);
+  for (const sid of grown.keys()) note(sid);
   const toService = (pts) => fieldMmToOutlineMm(pts, basis.rows, basis.bboxMm, basis.rotationDeg);
   for (const [sid, t] of touched) {
     const row = basis.rows.find((r) => r && r.id === sid) || {};
@@ -182,7 +187,8 @@ export function ringEditOverrides(el, basis, live, removed = null, liveNodes = n
     } else {
       shellService = row.outlineFull || null;
     }
-    const holeEdited = t.holes.size > 0 || (gone.get(sid) && gone.get(sid).size > 0);
+    const newRings = grown.get(sid) || [];
+    const holeEdited = t.holes.size > 0 || (gone.get(sid) && gone.get(sid).size > 0) || newRings.length > 0;
     const sendHoles = holeEdited || Array.isArray(entry.holes_override);
     let holes = null;
     const holeNodes = [];   // node lists of the holes that survive, in order
@@ -199,6 +205,13 @@ export function ringEditOverrides(el, basis, live, removed = null, liveNodes = n
           holes.push(s || h);
         } else holes.push(h);
       });
+      // Drawn holes go after the survivors; every drawn vertex is a node.
+      for (const ring of newRings) {
+        const s = toService(ring);
+        if (!s) return { error: "", sid, cur: null };
+        holes.push(s);
+        holeNodes.push(seedNodesCached(ring));
+      }
     }
     const issues = boundaryIssues(shellService, holes);
     if (issues.length) return { error: issues[0], sid, cur: null };

@@ -260,6 +260,8 @@ function baseModel({ element, shapeId, fit, fabric }) {
   }
   out.push({ key: "border", kind: "choice", label: "Border", value: entry.border == null ? "default" : entry.border, options: BORDER_OPTIONS(element.params ? element.params.border : null) });
   out.push({ key: "editPoints", kind: "action", label: "Edit points" });
+  // Draw a polygon inside the shape; on close it becomes a hole (2026-11-05).
+  out.push({ key: "addHole", kind: "action", label: "Add hole" });
   const pending = Array.isArray(entry.boundary_override) && entry.boundary_override.length >= 3 ? entry.boundary_override : null;
   const ring = pending || outlineOf(row);
   // Fewer points (2026-11-03 spec section 5): digitized lane only, never
