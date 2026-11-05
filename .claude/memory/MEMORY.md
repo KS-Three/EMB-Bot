@@ -71,6 +71,7 @@ the OLDEST lines whole to the archive.
 - [MFab photo route](mfab-photo-route-2026-11-04.md) — MFab classes photo_scene at every width (gate 0.298/0.28, veto 0.856/0.90); 60 and 101 mm = photo lane skips the 8 px/mm grid, W+E stay joined (NOT the segmenter, corrected 11-05); `photo_work_grid` OFF
 - [MFab recipe trims](mfab-recipe-trims-2026-10-26.md) — the cuts were keyline slivers behind a dark hairline; `keyline_fold_slivers` (OFF) folds them in: hat 41→27, LC 54→29 on #1057's base; hat on-thread exposed travel 23→43 mm
 - [MFab under-fill panels](mfab-underfill-panels-2026-10-25.md) — Kent's MFab "chaos" = flip of under-fill + white + keyline + `silhouette_underfill_panels` (OFF): pro layering; under-fill alone dropped keyline-held bodies
+- [Move shape](move-shape-2026-11-05.md) — Kent 11-05: translate one digitized shape (shell, holes, nodes); outline live, stitches follow on commit; one discrete elupdate; ignores the similar tick; e2e (m1)-(m7)
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: don't build on past sessions; "what's next" comes from ROADMAP/PRODUCT/MASTER_SCOPE on main
 - [Nightly tripwire](nightly-tripwire-2026-11-02.md) — 18 committed pairs (Becker x5 + the zip's 13) nightly on main vs testdata/tripwire_ledger.json; tolerance = spread of 3 runner passes; wrong-way past it = red; never a PR check
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only, customer sees nothing

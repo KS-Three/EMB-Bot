@@ -18,7 +18,7 @@
   import { resizeBadgeText } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
   import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, ringNodesInBox, fieldMmToOutlineMm, simplifyRing, ringKey, splitRingKey, NODE_GRAB_PX } from "../lib/shapeOverlay.js";
-  import { withNodes, nodeMarker, spanOfEdge, pastClickDeadZone, ringEditOverrides as ringEditOverridesLib, discardPatch } from "../lib/shapeNodes.js";
+  import { withNodes, nodeMarker, spanOfEdge, pastClickDeadZone, ringEditOverrides as ringEditOverridesLib, discardPatch, moveShapeOverrides } from "../lib/shapeNodes.js";
   import { rebuildSpans, moveNodesExact, insertNodeOnPath, toggleNode, deleteNodes } from "../lib/sparseNodes.js";
   import {
     appliedBorders,
@@ -770,6 +770,7 @@
     return src ? src.mm.map((o) => `${o.key || o.id}=${o.nodes ? o.nodes.length : 0}`).join(",") : "";
   }
   function enterReshape(el) {
+    if (shapeMove) commitShapeMove();
     reshapeNodeSig = el.type === "digitized" ? nodeSigOf(el) : "";
     const start = {};
     for (const k of RESHAPE_KEYS) start[k] = el[k];
@@ -813,6 +814,7 @@
   }
   function enterHoleDraft(el, shapeId) {
     if (!el || el.type !== "digitized" || !shapeId || isCapPieceId(shapeId)) return;
+    if (shapeMove) commitShapeMove();
     selectedShapeId = shapeId;
     selectedShapeElId = el.id;
     shapeEditError = "";
@@ -924,6 +926,151 @@
     holeDraft = { ...holeDraft, pointsMm: [...pts, mmOfFieldPx(p)] };
     repaintNodeChrome();
     return true;
+  }
+
+  // ---- Move shape (2026-11-05 spec) ------------------------------------------
+  // "Move shape" (popover row after Edit points, or the right-click menu inside a
+  // digitized shape) translates ONE shape (shell, holes, nodes) as a unit. A
+  // left press anywhere on the canvas drags it (outline live, stitches follow on
+  // commit through the normal restitch); the arrows move it 0.1 mm (Shift 1 mm).
+  // Enter / Done / a selection change commits ONE discrete elupdate; Esc /
+  // Discard restore and dispatch nothing. The "edit all similar shapes" tick is
+  // ignored: only the grabbed shape moves.
+  const MOVE_HINT = "Moving shape · drag or arrow keys · Enter to finish · Esc to cancel";
+  let shapeMove = null;     // { elId, shapeId, eb, shell, holes, dx, dy, drag: null | { startClient, startPx, dx0, dy0, armed } }
+
+  // The arguments are unused: a template expression only re-renders for the
+  // variables it NAMES, so the markup passes the ones this reads.
+  // eslint-disable-next-line no-unused-vars
+  function shapeMoveOn(_sm, _project, _multi, _sim) {
+    return !!shapeMove && !!project && !multiSel && !simActive && project.selectedId === shapeMove.elId;
+  }
+  function enterShapeMove(el, shapeId) {
+    if (!el || el.type !== "digitized" || !shapeId || isCapPieceId(shapeId)) return;
+    const edit = outlinesPxFor(el);
+    const shell = edit && edit.mmById.get(shapeId);
+    if (!shell) return;
+    if (shapeMove) commitShapeMove();
+    if (reshape || reshapeDrag || marquee) endReshape();
+    cancelHoleDraft();
+    selectedShapeId = shapeId;
+    selectedShapeElId = el.id;
+    shapeEditError = "";
+    shapeMove = {
+      elId: el.id, shapeId, eb: editBasis(edit),
+      shell: shell.map(([x, y]) => [x, y]),
+      holes: (edit.holesById.get(shapeId) || []).map((h) => h.map(([x, y]) => [x, y])),
+      dx: 0, dy: 0, drag: null,
+    };
+    if (canvas) canvas.focus({ preventScroll: true });
+    repaintNodeChrome();
+  }
+  function endShapeMove() {
+    if (!shapeMove) return;
+    shapeMove = null;
+    dragReadout = null;
+    if (canvas) canvas.style.cursor = "default";
+    repaintNodeChrome();
+  }
+  // Commit the pending move as ONE patch (nothing at all on a zero net move).
+  function commitShapeMove() {
+    const sm = shapeMove;
+    if (!sm) return;
+    shapeMove = null;
+    dragReadout = null;
+    const el = project && (project.elements || []).find((x) => x.id === sm.elId);
+    if (el && (Math.abs(sm.dx) > 1e-9 || Math.abs(sm.dy) > 1e-9)) {
+      const res = moveShapeOverrides(el, sm.eb, sm.shapeId, sm.shell, sm.holes, sm.dx, sm.dy);
+      if (res && res.error) {
+        const row = sm.eb.rows.find((r) => r && r.id === sm.shapeId);
+        shapeEditError = (row ? shapeMenuName(row) + ": " : "") + res.error;
+      } else if (res && res.cur) {
+        shapeEditError = "";
+        dispatch("elupdate", { id: el.id, patch: { shapeOverrides: res.cur }, discrete: true });
+      }
+    }
+    if (canvas) canvas.style.cursor = "default";
+    repaintNodeChrome();
+  }
+  function moveShapeBy(dxMm, dyMm) {
+    if (!shapeMoveOn() || shapeMove.drag) return;
+    shapeMove = { ...shapeMove, dx: shapeMove.dx + dxMm, dy: shapeMove.dy + dyMm };
+    repaintNodeChrome();
+  }
+  // The strip: label pill with Done / Discard to its right.
+  function shapeMoveStrip(ctx) {
+    ctx.save();
+    ctx.font = "11px system-ui, sans-serif";
+    const w = ctx.measureText(MOVE_HINT).width + 12;
+    ctx.restore();
+    const bx = Math.round(Math.min(Math.max(cssW() / 2 - 30, w / 2 + 4), cssW() - w / 2 - 4 - 52));
+    const x0 = Math.round(bx + w / 2 + 6);
+    return { bx, w, done: { x: x0, y: 7, w: 18, h: 18 }, discard: { x: x0 + 22, y: 7, w: 18, h: 18 } };
+  }
+  function shapeMoveBtnAt(p) {
+    const ctx = canvas && canvas.getContext("2d");
+    if (!ctx) return null;
+    const s = shapeMoveStrip(ctx);
+    for (const k of ["done", "discard"]) {
+      const b = s[k];
+      if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) return k;
+    }
+    return null;
+  }
+  function drawShapeMoveChrome(ctx) {
+    // setAttribute, not a binding (see the note on data-stale-ids). The centres of
+    // Done / Discard in canvas CSS px, so a test can aim at the drawn buttons.
+    if (!shapeMoveOn()) {
+      if (canvas && canvas.hasAttribute("data-shape-move-btns")) canvas.removeAttribute("data-shape-move-btns");
+      return;
+    }
+    const s = shapeMoveStrip(ctx);
+    if (canvas) {
+      const btns = JSON.stringify({ done: [s.done.x + s.done.w / 2, s.done.y + s.done.h / 2], discard: [s.discard.x + s.discard.w / 2, s.discard.y + s.discard.h / 2] });
+      if (canvas.getAttribute("data-shape-move-btns") !== btns) canvas.setAttribute("data-shape-move-btns", btns);
+    }
+    drawBadge(ctx, s.bx, 16, MOVE_HINT);
+    for (const [k, glyph] of [["done", "✓"], ["discard", "✕"]]) {
+      const b = s[k];
+      ctx.save();
+      ctx.fillStyle = "rgba(24, 26, 38, 0.85)";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(b.x, b.y, b.w, b.h, 4); else ctx.rect(b.x, b.y, b.w, b.h);
+      ctx.fill();
+      ctx.fillStyle = k === "done" ? "#7fe08a" : "#ff8a8a";
+      ctx.font = "13px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(glyph, b.x + b.w / 2, b.y + b.h / 2 + 0.5);
+      ctx.restore();
+    }
+    if (dragReadout) drawBadge(ctx, dragReadout.x, dragReadout.y, dragReadout.text);
+  }
+  // The shift a ring of shape `sid` of element `elId` is drawn at (field mm).
+  function moveShiftFor(elId, sid) {
+    return shapeMove && shapeMove.elId === elId && shapeMove.shapeId === sid ? shapeMove : null;
+  }
+  function shapeMovePress(e, p) {
+    const btn = shapeMoveBtnAt(p);
+    if (btn) {
+      if (btn === "done") commitShapeMove(); else endShapeMove();
+      drawOverlay();
+      return;
+    }
+    canvas.setPointerCapture(e.pointerId);
+    shapeMove = { ...shapeMove, drag: { startClient: { x: e.clientX, y: e.clientY }, startPx: p, dx0: shapeMove.dx, dy0: shapeMove.dy, armed: false } };
+    canvas.style.cursor = "grabbing";
+  }
+  function shapeMoveDrag(e, p) {
+    const d = shapeMove.drag;
+    if (!d.armed) {
+      if (!pastClickDeadZone(d.startClient, { x: e.clientX, y: e.clientY }, CLICK_PX)) return;
+      d.armed = true;
+    }
+    const mm = pxToMmDelta(p.x - d.startPx.x, p.y - d.startPx.y);
+    shapeMove = { ...shapeMove, dx: d.dx0 + mm.dx, dy: d.dy0 + mm.dy };
+    dragReadout = { x: p.x + 18, y: p.y - 18, text: `${fmtMm(shapeMove.dx)}, ${fmtMm(shapeMove.dy)} mm` };
+    repaintNodeChrome();
   }
 
   // Strip buttons: Done (tick) and Discard (cross), right of the label.
@@ -1685,6 +1832,12 @@
       drawOverlay();
       return;
     }
+    if (key === "moveShape" && el.type === "digitized") {
+      closeShapePop();
+      enterShapeMove(el, selectedShapeId);
+      drawOverlay();
+      return;
+    }
     if (key === "editPoints") {
       // Every lane: enters Reshape mode for this element (or leaves it, when
       // the action reads "Done"). The shape stays selected, so a single node
@@ -1780,7 +1933,8 @@
           points: ((reshapeDrag && reshapeDrag.kind === "ring" && reshapeDrag.elId === el.id && reshapeDrag.live && reshapeDrag.live.get(key))
             || (liveRing && liveRing.key === key ? liveRing.points : o.points))
             .map(([x, y]) => {
-              const c = renderResult.toCanvas(x, y);
+              const mv = moveShiftFor(el.id, o.id);
+              const c = renderResult.toCanvas(x + (mv ? mv.dx : 0), y + (mv ? mv.dy : 0));
               return [c.x, c.y];
             }),
           cutOut: !!o.cutOut,
@@ -1957,6 +2111,8 @@
     if (holeDraft && (holeDraft.elId !== project.selectedId || multiSel)) cancelHoleDraft();
     // Selecting another shape ends a draft too.
     if (holeDraft && selectedShapeId !== holeDraft.shapeId) cancelHoleDraft();
+    // Move shape: another element, none, or another shape commits the pending move.
+    if (shapeMove && (shapeMove.elId !== project.selectedId || multiSel || selectedShapeId !== shapeMove.shapeId)) commitShapeMove();
     if (reshape && sel && sel.type === "digitized" && !reshapeDrag) {
       const sig = nodeSigOf(sel);
       if (sig !== reshapeNodeSig) {
@@ -2156,6 +2312,17 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return; // leave browser/OS shortcuts alone
     // Drawing a hole: the arrows must not slide the element under the draft.
     if (holeDraftOn() && e.key.startsWith("Arrow")) { e.preventDefault(); return; }
+    // Move shape: the arrows move the SHAPE, 0.1 mm (Shift 1 mm), accumulated
+    // live; nothing commits until Enter / Done.
+    if (shapeMoveOn() && e.key.startsWith("Arrow")) {
+      const ms = e.shiftKey ? RESHAPE_NUDGE_MM_COARSE : RESHAPE_NUDGE_MM;
+      if (e.key === "ArrowLeft") moveShapeBy(-ms, 0);
+      else if (e.key === "ArrowRight") moveShapeBy(ms, 0);
+      else if (e.key === "ArrowUp") moveShapeBy(0, ms);
+      else if (e.key === "ArrowDown") moveShapeBy(0, -ms);
+      e.preventDefault();
+      return;
+    }
     // Reshape mode with points selected: the arrows move THOSE points, 0.1 mm
     // (Shift 1 mm). With none selected they still nudge the element.
     if (reshapeOn() && reshapeSelCount(reshape) > 0 && !reshapeDrag && !marquee && !shapeEdit && !nodeEdit
@@ -2182,6 +2349,16 @@
   }
 
   function onWindowKey(e) {
+    // Move shape comes first: Escape restores and dispatches nothing, Enter
+    // (from the field) commits the move.
+    if (shapeMoveOn()) {
+      if (e.key === "Escape") { endShapeMove(); e.preventDefault(); return; }
+      if (e.key === "Enter" && !shapePop && !fieldMenu && (e.target === canvas || e.target === document.body)) {
+        commitShapeMove();
+        e.preventDefault();
+        return;
+      }
+    }
     // Drawing a hole comes first: Escape cancels the draft (and nothing else —
     // Reshape and the popover are left for the next press), Backspace takes
     // the last vertex back, Enter closes the ring.
@@ -2371,7 +2548,8 @@
         const dragLive = reshapeDrag && reshapeDrag.kind === "ring" && reshapeDrag.elId === el.id && reshapeDrag.live
           ? reshapeDrag.live.get(o.key || o.id) : null;
         const src = dragLive || (liveRing && liveRing.key === (o.key || o.id) ? liveRing.points : o.points);
-        const pts = src.map(([x, y]) => renderResult.toCanvas(x, y));
+        const mv = moveShiftFor(el.id, o.id);
+        const pts = src.map(([x, y]) => renderResult.toCanvas(x + (mv ? mv.dx : 0), y + (mv ? mv.dy : 0)));
         if (pts.length < 3) continue;
         // Highlighted when SELECTED, not only while dragging: the highlight
         // is what tells you which shape a Delete or a drag will act on.
@@ -2719,6 +2897,7 @@
     drawShapeOutlines(ctx);
     drawReshapeChrome(ctx);
     drawHoleDraftChrome(ctx);
+    drawShapeMoveChrome(ctx);
     drawGuides(ctx);
     const color = selectionColor();
     if (multiSel) {
@@ -3551,7 +3730,7 @@
     // artwork, whose pixels the stitch outlines need not line up with.
     if (simActive || originalView) return;
     // A live hole draft owns the canvas: no menu (its "Add hole" would restart it).
-    if (holeDraftOn()) { e.preventDefault(); return; }
+    if (holeDraftOn() || shapeMoveOn()) { e.preventDefault(); return; }
     e.preventDefault();             // our menu, not the browser's
     if (!canvas) return;
     const r = canvas.getBoundingClientRect();
@@ -3693,6 +3872,7 @@
       }),
       items: [
         ...borderMenuItems(entry, design),
+        ...(isCapPieceId(hit.shapeId) ? [] : [{ id: "moveshape", label: "Move shape", value: null, title: "Drag or nudge this whole shape; its stitches follow when you finish." }]),
         ...(isCapPieceId(hit.shapeId) ? [] : [{ id: "addhole", label: "Add hole", value: null, title: "Draw a polygon inside this shape; it becomes a hole." }]),
       ],
     };
@@ -3768,6 +3948,13 @@
       const el = menu && menu.shape && project ? (project.elements || []).find((x) => x.id === menu.shape.elId) : null;
       if (el && el.type === "digitized") simplifyShapes(el, [item.shapeId], item.tol);
       repaintNodeChrome();
+      return;
+    }
+    if (item.id === "moveshape") {
+      const menu = fieldMenu;
+      fieldMenu = null;
+      const el = menu && menu.shape && project ? (project.elements || []).find((x) => x.id === menu.shape.elId) : null;
+      if (el) enterShapeMove(el, menu.shape.shapeId);
       return;
     }
     if (item.id === "addhole") {
@@ -3853,6 +4040,13 @@
     if (simActive || originalView) return;
     if (!canvas || !renderResult) return;
     const p = canvasPointFromEvent(e);
+    // Move shape: any left press drags the shape (no marquee, no element drag,
+    // no node grab; Ctrl/Alt/Shift mean nothing here), or hits Done / Discard.
+    if (shapeMoveOn()) {
+      shapeMovePress(e, p);
+      canvas.focus({ preventScroll: true });
+      return;
+    }
     // Add hole: while a ring is being drawn the press is a vertex (or the
     // cross, or the close); a press on another element ends the draft and
     // falls through to select it.
@@ -4152,6 +4346,10 @@
     if (!canvas) return;
     if (simActive || originalView) { canvas.style.cursor = "default"; return; }
     const p = canvasPointFromEvent(e);
+    if (shapeMove && shapeMove.drag) {
+      shapeMoveDrag(e, p);
+      return;
+    }
     if (marquee) {
       marquee.curPx = p;
       marquee = marquee;
@@ -4391,6 +4589,19 @@
   }
 
   function endDrag(e) {
+    // Move shape: release keeps the moved position (committed by Enter / Done);
+    // a cancelled pointer puts the drag back to where it started.
+    if (shapeMove && shapeMove.drag) {
+      if (canvas && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+      const d = shapeMove.drag;
+      shapeMove = e.type === "pointercancel"
+        ? { ...shapeMove, dx: d.dx0, dy: d.dy0, drag: null }
+        : { ...shapeMove, drag: null };
+      dragReadout = null;
+      if (canvas) canvas.style.cursor = "default";
+      repaintNodeChrome();
+      return;
+    }
     // Reshape mode: a point drag commits ONE patch on release (a click that
     // never travelled, or a cancel, commits nothing); a marquee selects.
     if (reshapeDrag) {
@@ -4617,6 +4828,8 @@
       data-reshape={reshape && project && project.selectedId === reshape.elId ? "on" : "off"}
       data-reshape-points={reshapeSelCount(reshape)}
       data-hole-draft={holeDraftOn() ? holeDraft.pointsMm.length : "off"}
+      data-shape-move={shapeMoveOn(shapeMove, project, multiSel, simActive) ? "on" : "off"}
+      data-shape-move-delta={shapeMoveOn(shapeMove, project, multiSel, simActive) ? `${shapeMove.dx.toFixed(2)},${shapeMove.dy.toFixed(2)}` : ""}
       width="760"
       height="560"
       tabindex="0"

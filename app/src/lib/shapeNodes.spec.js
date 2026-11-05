@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { nodesForShape, nodeMarker, spanOfEdge, withNodes, ringEditOverrides, discardPatch, seedNodesCached, ringFingerprint, pastClickDeadZone } from "./shapeNodes.js";
+import { nodesForShape, nodeMarker, spanOfEdge, withNodes, ringEditOverrides, discardPatch, seedNodesCached, ringFingerprint, pastClickDeadZone, translateRing, moveShapeOverrides } from "./shapeNodes.js";
+import { canonicalShapeEdits } from "./digitizer.js";
 import { seedNodes } from "./sparseNodes.js";
 import { hitOverlay, nodesInBox, ringNodesInBox, simplifyRing } from "./shapeOverlay.js";
 
@@ -283,5 +284,76 @@ describe("click dead zone", () => {
     expect(pastClickDeadZone({ x: 10, y: 10 }, { x: 11, y: 10 }, 4)).toBe(false);
     expect(pastClickDeadZone({ x: 10, y: 10 }, { x: 12, y: 12 }, 4)).toBe(false);
     expect(pastClickDeadZone({ x: 10, y: 10 }, { x: 14, y: 10 }, 4)).toBe(true);
+  });
+});
+
+// ---- Move shape (spec 2026-11-05) ------------------------------------------
+describe("translateRing / moveShapeOverrides", () => {
+  const holeField = [[-5, -5], [5, -5], [5, 5], [-5, 5]];   // field mm (y flipped in service space)
+  const holed = () => {
+    const f = fixture();
+    f.rows[0].holesFull = [holeField.map(([x, y]) => [x, -y])];
+    f.basis.nodesById.set("a#h0", seedNodes(holeField));
+    return f;
+  };
+
+  it("translateRing shifts every vertex and keeps order and count", () => {
+    const r = translateRing([[0, 0], [1, 2], [3, 4]], 10, -1);
+    expect(r).toEqual([[10, -1], [11, 1], [13, 3]]);
+  });
+  it("zero delta commits nothing", () => {
+    const { basis, field } = fixture();
+    expect(moveShapeOverrides({ shapeOverrides: {} }, basis, "a", field, [], 0, 0)).toBeNull();
+  });
+  it("a hole-less shape writes boundary_override only (holes_override stays absent)", () => {
+    const { basis, field, outlineFull } = fixture();
+    const res = moveShapeOverrides({ shapeOverrides: {} }, basis, "a", field, [], 3, 0);
+    expect(res.error).toBeUndefined();
+    expect(res.cur.a.holes_override).toBeUndefined();
+    expect(res.cur.a.boundary_override).toHaveLength(outlineFull.length);
+    expect(res.cur.a.boundary_override[0][0]).toBeCloseTo(outlineFull[0][0] + 3, 6);
+    expect(res.cur.a.boundary_override[0][1]).toBeCloseTo(outlineFull[0][1], 6);
+  });
+  it("a holed shape moves shell and holes together", () => {
+    const { basis, field, rows } = holed();
+    const res = moveShapeOverrides({ shapeOverrides: {} }, basis, "a", field, [holeField], 2, 0);
+    expect(res.error).toBeUndefined();
+    const hole0 = rows[0].holesFull[0];
+    expect(res.cur.a.holes_override).toHaveLength(1);
+    expect(res.cur.a.holes_override[0][0][0]).toBeCloseTo(hole0[0][0] + 2, 6);
+    expect(res.cur.a.boundary_override[0][0]).toBeCloseTo(rows[0].outlineFull[0][0] + 2, 6);
+  });
+  it("nodes ride along unchanged and still match their fingerprints", () => {
+    const { basis, field, rows } = holed();
+    const shellNodes = basis.nodesById.get("a");
+    const el = { shapeOverrides: { a: { nodes: {
+      shell: shellNodes, holes: [basis.nodesById.get("a#h0")],
+      fp: { shell: ringFingerprint(rows[0].outlineFull), holes: [ringFingerprint(rows[0].holesFull[0])] },
+    } } } };
+    const res = moveShapeOverrides(el, basis, "a", field, [holeField], 7.5, -2.25);
+    const e = res.cur.a;
+    expect(e.nodes.shell).toEqual(shellNodes);
+    expect(e.nodes.holes).toEqual([basis.nodesById.get("a#h0")]);
+    // the stored fingerprints (made on the moved service rings) still match the originals
+    expect(e.nodes.fp.shell).toBe(ringFingerprint(rows[0].outlineFull));
+    expect(e.nodes.fp.holes[0]).toBe(ringFingerprint(rows[0].holesFull[0]));
+    // and nodesForShape accepts them against the moved rings as stored
+    const got = nodesForShape(e, e.boundary_override, e.holes_override);
+    expect(got.stored).toBe(true);
+  });
+  it("an existing boundary_override is the basis the caller passes; the move adds to it", () => {
+    const { basis, field } = fixture();
+    const shifted = translateRing(field, 4, 0);          // what the field shows after an earlier edit
+    const res = moveShapeOverrides({ shapeOverrides: { a: { border: "satin" } } }, basis, "a", shifted, [], 1, 0);
+    expect(res.cur.a.border).toBe("satin");
+    expect(res.cur.a.boundary_override[0][0]).toBeCloseTo(-20 + 5, 6);
+  });
+  it("canonicalShapeEdits drops nodes and keeps both rings", () => {
+    const { basis, field } = holed();
+    const res = moveShapeOverrides({ shapeOverrides: {} }, basis, "a", field, [holeField], 2, 1);
+    const out = canonicalShapeEdits({ shapeOverrides: res.cur });
+    expect(out.shape_overrides.a.nodes).toBeUndefined();
+    expect(out.shape_overrides.a.boundary_override).toHaveLength(20);
+    expect(out.shape_overrides.a.holes_override).toHaveLength(1);
   });
 });
