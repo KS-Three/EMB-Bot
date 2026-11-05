@@ -27,7 +27,8 @@ Scope ruling the same evening: **add-hole in** (Studio only, after PR 2),
 spike; Ember's edge is a curve between a FEW nodes, so one drag is one smooth
 edit.
 
-**How to apply:** PR 2 imports the lib, never re-implements it. A flat span
+**How to apply:** PR 1 (the lib) and PR 2 (the Studio wiring, 2026-11-05, see
+[[sparse-nodes-studio-2026-11-05]]) have both shipped; the Studio imports the lib, never re-implements it. A flat span
 (within 0.05 mm of its chord) keeps NO interior vertices however long (the
 spec's I5 needs it). Measured on the lib's fixtures: a rounded square at 5 mm
 spacing seeds four corners (turns 36 deg, just over the 35 threshold), one per

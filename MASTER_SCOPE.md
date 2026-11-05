@@ -985,13 +985,13 @@ delete); requirement 5, whole-shape drag, was withdrawn by Kent. Tested in
 **Do not compress the detail file's copy of Kent's request** — it is captured
 verbatim there because the sub-requirements *are* the spec.
 
-**A node drag moves that node plus vertices within a fixed 3 mm of arc; Alt-drag keeps the old soft pull** *(measured 2026-11-03 — PR #1224)*.
-
 **Reshape mode ("Edit points") edits many points across shapes on both lanes, one undo step per gesture; the old SVG editor is gone** *(confirmed 2026-11-03 — PR #1225)*.
 
 **Simplify points: 0.2 / 0.5 / 1 mm, per shape or all similar, one undo step** *(confirmed 2026-11-03 — PR #1226)*.
 
 **Holes are drawn and edited like the outline; `holes_override` rides only when edited** *(confirmed 2026-11-03 — PR #1229)*.
+
+**Digitized shapes edit as a few smooth/corner nodes (click path inserts, double-click toggles); `nodes` is Studio-only, never on the wire** *(confirmed 2026-11-05 — e2e (s1)-(s5); detail in `docs/scope/5-review-manual-editing.md`)*.
 
 **One edit reaches every similar shape (merged 2026-10-28 — PR #1176).** The popover's "Apply to all similar shapes (N)" sends Stitch type, Color, Border, Fill angle and Underlay to every match in one patch. "Similar" (`similarShapes.js`): same sewn colour, area within 2×, same form. *(confirmed 2026-10-28 — PR #1176)*
 

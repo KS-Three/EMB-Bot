@@ -362,10 +362,15 @@ export function hitOverlay(outlinesPx, px, py) {
     // An OPEN outline is a stretch of thread, not a ring: it has no nodes to
     // grab and no closing edge from its last point back to its first.
     if (!o.open) {
-      for (let i = 0; i < pts.length; i++) {
-        const d = Math.hypot(px - pts[i][0], py - pts[i][1]);
+      // Sparse nodes (2026-11-05): an outline that carries `nodes` ([{ i, kind }])
+      // is grabbed at those vertices only, and a node hit's `index` is the
+      // index in the NODE LIST. Without `nodes` every vertex is a node, as before.
+      const count = o.nodes ? o.nodes.length : pts.length;
+      for (let k = 0; k < count; k++) {
+        const pt = pts[o.nodes ? o.nodes[k].i : k];
+        const d = Math.hypot(px - pt[0], py - pt[1]);
         if (d <= NODE_GRAB_PX && (!bestNode || d < bestNode.d)) {
-          bestNode = { d, hit: { shapeId: o.id, ring: o.ring == null ? "exterior" : o.ring, kind: "node", index: i, atPx: [pts[i][0], pts[i][1]] } };
+          bestNode = { d, hit: { shapeId: o.id, ring: o.ring == null ? "exterior" : o.ring, kind: "node", index: k, atPx: [pt[0], pt[1]] } };
         }
       }
     }
@@ -646,11 +651,12 @@ export function nodesInBox(outlinesPx, x0, y0, x1, y1) {
   const out = new Map();
   for (const o of outlinesPx) {
     if (o.open || o.ring != null) continue;   // shells only; ringNodesInBox has holes
-    for (let i = 0; i < o.points.length; i++) {
-      const [x, y] = o.points[i];
+    const count = o.nodes ? o.nodes.length : o.points.length;
+    for (let k = 0; k < count; k++) {
+      const [x, y] = o.points[o.nodes ? o.nodes[k].i : k];
       if (x >= lox && x <= hix && y >= loy && y <= hiy) {
         if (!out.has(o.id)) out.set(o.id, new Set());
-        out.get(o.id).add(i);
+        out.get(o.id).add(k);
       }
     }
   }
@@ -668,13 +674,14 @@ export function ringNodesInBox(outlinesPx, x0, y0, x1, y1) {
   for (const o of outlinesPx) {
     if (o.open) continue;
     const ring = o.ring == null ? "exterior" : o.ring;
-    for (let i = 0; i < o.points.length; i++) {
-      const [x, y] = o.points[i];
+    const count = o.nodes ? o.nodes.length : o.points.length;
+    for (let k = 0; k < count; k++) {
+      const [x, y] = o.points[o.nodes ? o.nodes[k].i : k];
       if (x >= lox && x <= hix && y >= loy && y <= hiy) {
         if (!out.has(o.id)) out.set(o.id, new Map());
         const rings = out.get(o.id);
         if (!rings.has(ring)) rings.set(ring, new Set());
-        rings.get(ring).add(i);
+        rings.get(ring).add(k);
       }
     }
   }

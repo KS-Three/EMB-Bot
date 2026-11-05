@@ -1569,3 +1569,22 @@ restitch showed garment in the opened wedge; Shift+Left x3 on one selected verte
 moved exactly one (-2.98 mm). Deleting the hole left no garment there (the white
 square sews) *(confirmed 2026-11-03 — `app/e2e/field-reshape-mode.spec.js` (e)-(e4),
 `digitizer.spec.js`, `shapeOverlay.spec.js`)*.
+
+**Sparse smooth nodes in the Studio — 2026-11-05 (PR 2 of the 2026-11-04 spec).**
+A selected digitized shape shows its NODES only (disc = smooth, square =
+corner) in the quick drag and in Reshape; the outline stays the dense polygon.
+Drag / nudge: the grabbed nodes move exactly and the spans at them rebuild at
+0.05 mm chord error, 0.3-1.0 mm spacing (`sparseNodes.js`); click the path
+(Reshape) inserts a corner with no rebuild; double-click a node toggles it;
+Delete removes nodes and rebuilds the merged span (3-node floor refuses); Alt
+keeps the soft pull. One `elupdate` per gesture writes the polygon and
+`nodes` together; Simplify deletes `nodes`; Discard restores them with the
+`shapeOverrides` snapshot; Done with no edit writes nothing.
+- **Seeds on the e2e fixtures (0.5 mm Douglas-Peucker, 35 degree corner):**
+  red-disc (198 mm, 64 vertices) 44 smooth; two-squares 4 corners each; holed
+  fixture 4 corners on the shell and 4 on its 8-vertex hole *(measured
+  2026-11-05 — e2e (s1), (s2), (e))*.
+- **Finding.** A PointerEvent's `detail` is 0, so the old double-click edge
+  insert never ran; presses are counted in `countPress` now *(confirmed
+  2026-11-05 — e2e (s5))*.
+- **Pinned by.** `shapeNodes.spec.js`, `sparseNodes.spec.js`, e2e (s1)-(s5).
