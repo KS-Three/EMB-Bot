@@ -94,6 +94,10 @@ export function friendlyError(err, context, what) {
 
   if (context === "export") {
     const thing = what || "file";
+    // A file that failed its read-back (ExportVerifyError, or the service's
+    // "Export failed: ..." 500): the sentence already names the check and both
+    // values, and the generic fallback below would swallow it.
+    if (/^Export failed:/.test(raw)) return raw.trim();
     if (isNetworkError(err)) {
       return `Couldn’t make the ${thing} because the digitizer service isn’t answering. ` +
         "Start it (python -m digitizer_service, in the digitizer folder), then try again.";

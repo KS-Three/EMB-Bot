@@ -41,6 +41,7 @@ the OLDEST lines whole to the archive.
 - [Dropped-element finding](dropped-element-finding-2026-11-01.md) — `ARTWORK_ELEMENT_DROPPED`: preflight reads clipped / unsewn-enclosed / colour-cap-folded / stage-4 drops by AREA; floor 5 mm2, block at 10%; fires on 2 rows Kent graded Good/Great
 - [Edge cap re-measured](edge-cap-remeasure-2026-10-29.md) — defect 19: edge 0-4% bare with NO cap (rim + border_by_size); swing gone; default "none" + defect closed (Kent 10-29, #1192)
 - [Ember reshape measured](ember-reshape-measured-2026-11-04.md) — Ember's drag moves 1 point, 0.0 px on the rest; accept/reject session; built: exact drag + Done/Discard; open: sparse nodes, insert, smooth toggle
+- [Export read-back](export-readback-2026-11-05.md) — every export re-read, download BLOCKED on mismatch (Kent 11-05): service pystitch 500 + headers, browser DST/EXP/PES; skipped checks per format; 20k stitches +7-13 ms browser
 - [Seam order flip](fill-seam-order-flip-2026-10-30.md) — fill_seam_order + fill_bridge_cut_exposed ON together (Kent 10-30): ridges 0, exposed travel down, trims up; seam order alone adds exposure
 - [Fine bars satin](fine-bars-satin-2026-10-25.md) — `fine_bars_satin` ON 10-26: pro satins every free thin ink bar (5/5); STEM_MIN_ASPECT or < 1 cross, not 2.5 (rope); 37/38 cure, region kappa 0.905
 - [Flag stripes](flag-stripes-seam-cap-2026-10-30.md) — equal art sewed 4.53/3.57: rail pull lands after stage 5's clip; `satin_seam_hold` + `satin_cap_skew_inset` OFF; underlay was never missing

@@ -50,7 +50,7 @@ from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 from digitizer_core.stitchwidth import review_block, validate_override_mm
 from digitizer_core.warnings_codes import FACE_ROUTED_FLAT, PHOTO_DETECTED, warn
 
-from . import formats, schemas
+from . import formats, readback, schemas
 from .guards import BodyLimit, Deadline, too_large_detail
 from .jobs import (DONE, JOB_TIMEOUT_S, Busy, GenerationCache, JobRegistry, content_key,
                    generation_key)
@@ -1508,9 +1508,15 @@ async def calibration_read(
 
 
 @app.post("/export", summary="Write a design as a machine file",
-          responses={200: {"description": "Machine file; size and convention in `X-*` headers.",
+          responses={200: {"description": "Machine file; size and convention in `X-*` headers. "
+                                          "`X-Export-Verified: true` plus `X-Export-Readback` "
+                                          "(JSON counts) say the bytes were re-read and matched; "
+                                          "`false` plus `X-Export-Verify-Reason` says they cannot be.",
                            "content": {"application/octet-stream": {}}},
                      400: schemas.error("Invalid design, unsupported format, or write failure."),
+                     500: schemas.error("The written file did not read back as the design says: "
+                                        "`detail` names the failed check with both values and "
+                                        "`readback.failed` lists every check. No file is returned."),
                      **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
 def export(
     payload: dict = Body(..., examples=[schemas.EXPORT_EXAMPLE]),
@@ -1538,11 +1544,25 @@ def export(
     label = str(payload.get("label") or "EMBBOT")
     try:
         pattern = design_to_pattern(design, label=label)
+        # What the file must say, taken from the pattern BEFORE the write.
+        expected = readback.expect(pattern, fmt, payload.get("trim_jumps"))
         data = formats.write(pattern, fmt, trim_jumps=payload.get("trim_jumps"))
     except (AttributeError, KeyError, TypeError, ValueError) as exc:
         # AttributeError: a stitch that is a bare [x, y, flag] list rather
         # than a dict reaches the adapter's `.get` (PR #694's xfail).
         raise HTTPException(status_code=400, detail=f"could not write {fmt}: {exc}") from exc
+
+    # Re-read the bytes just written with pystitch's reader and refuse to hand
+    # them out if they disagree (Kent, 2026-11-05). A mismatch is OUR bug, not
+    # the caller's input, so it is a 500 with a body naming the failed check.
+    checked = readback.verify(expected, data, fmt, payload.get("trim_jumps"))
+    if not checked["ok"]:
+        log.error("export read-back failed for %s: %s", fmt, checked["failed"])
+        return JSONResponse(
+            status_code=500,
+            content={"detail": readback.failure_detail(checked),
+                     "readback": {"verified": False, "format": fmt, "failed": checked["failed"]}},
+        )
 
     meta = formats.FORMATS[fmt]
     w_mm, h_mm = design_size_mm(design)
@@ -1555,6 +1575,7 @@ def export(
             "X-Design-Width-Mm": f"{w_mm:.2f}",
             "X-Design-Height-Mm": f"{h_mm:.2f}",
             "X-Stitch-Convention": meta["convention"],
+            **readback.success_headers(checked),
         },
     )
 
