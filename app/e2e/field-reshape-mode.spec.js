@@ -825,6 +825,17 @@ async function amberNodes(page) {
 
 // The selected shape's nodes as the canvas reports where it drew them, in page px
 // (Reshape mode only): [{ ni, ring (-1 = shell), x, y, corner }].
+// The node report is the same on two reads 200 ms apart (a late re-render moves the pixels).
+async function stableNodePx(page) {
+  const read = () => page.locator(".hoop canvas").getAttribute("data-reshape-node-px");
+  await expect.poll(async () => {
+    const a = await read();
+    await page.waitForTimeout(200);
+    const b = await read();
+    return !!a && a === b;
+  }, { timeout: 20_000 }).toBe(true);
+}
+
 async function reshapeNodePx(page) {
   const raw = await page.locator(".hoop canvas").getAttribute("data-reshape-node-px");
   const hb = await page.locator(".hoop canvas").boundingBox();
@@ -946,7 +957,7 @@ test("(s1) red-disc: at most 16 nodes; one node dragged 3 mm outward rebuilds on
 test("(s2) two-squares: 4 corners; a dragged corner keeps 4 vertices; click the edge -> 5 nodes (area equal); double-click -> smooth; Delete -> 4; Discard -> original", async ({ page }) => {
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
-  await digitizeSquares(page);
+  const before = await digitizeSquares(page);
   await enterReshape(page);
   expect(await nodeCount(page), "a traced square seeds 4 nodes").toBe(4);
   expect(Object.keys((await readDigitized(page)).overrides)).toHaveLength(0);
@@ -964,8 +975,8 @@ test("(s2) two-squares: 4 corners; a dragged corner keeps 4 vertices; click the 
   const area4 = Math.abs(shoelace(ring4)), peri4 = perimeter(ring4);
 
   // I6: click the middle of the top edge in the mode.
-  await page.waitForTimeout(700);
-  await page.waitForTimeout(1500);                                 // the corner drag restitched: measure the settled field
+  await restitched(page, before);                                  // the corner drag restitched...
+  await stableNodePx(page);                                        // ...and the field stopped re-laying out
   // The element's selection handles sit over some corners, so the nodes are read
   // from the canvas' own report of where it drew them (data-reshape-node-px).
   const nodesPx = await reshapeNodePx(page);
@@ -1047,4 +1058,27 @@ test("(s5) outside the mode: double-click an edge inserts a corner node, double-
   await expect.poll(async () => (await readNodes(page)).entry.nodes.shell.filter((n) => n.kind === "smooth").length).toBe(1);
   got = await readNodes(page);
   expect(got.entry.boundary_override, "its neighbours are collinear corners: the edge stays straight").toHaveLength(5);
+});
+
+test("(s6) quick drag: a press on a node that wobbles 1 px commits nothing; a drag past CLICK_PX still commits", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  const before = await digitizeSquares(page);
+  await clickLeftSquare(page);
+  await page.keyboard.press("Escape");
+  const { tr } = await blackSquareCorners(page);
+  // A press-and-release with 1 px of wobble, as a click on a node to select it.
+  await page.mouse.move(tr.x, tr.y);
+  await page.mouse.down();
+  await page.mouse.move(tr.x + 1, tr.y);
+  await page.mouse.move(tr.x + 1, tr.y + 1);
+  await page.mouse.up();
+  await page.waitForTimeout(1500);
+  const overrides = (await readDigitized(page)).overrides;
+  expect(Object.values(overrides).some((v) => v.boundary_override || v.nodes), "no geometry, no nodes").toBe(false);
+  expect(await page.locator(".dgp-stats").innerText(), "no restitch").toBe(before);
+  // Past the dead zone it is a drag again.
+  await drag(page, tr, { x: tr.x + 9, y: tr.y - 6 });
+  await expect.poll(async () => !!(await readNodes(page))).toBe(true);
+  expect(ringOf((await readNodes(page)).entry.boundary_override)).toHaveLength(4);
 });

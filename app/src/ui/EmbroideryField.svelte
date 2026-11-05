@@ -18,7 +18,7 @@
   import { resizeBadgeText } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
   import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, ringNodesInBox, fieldMmToOutlineMm, simplifyRing, ringKey, splitRingKey } from "../lib/shapeOverlay.js";
-  import { withNodes, nodeMarker, spanOfEdge, ringEditOverrides as ringEditOverridesLib, discardPatch } from "../lib/shapeNodes.js";
+  import { withNodes, nodeMarker, spanOfEdge, pastClickDeadZone, ringEditOverrides as ringEditOverridesLib, discardPatch } from "../lib/shapeNodes.js";
   import { rebuildSpans, moveNodesExact, insertNodeOnPath, toggleNode, deleteNodes } from "../lib/sparseNodes.js";
   import {
     appliedBorders,
@@ -761,7 +761,16 @@
   // The fields a point edit writes (ring overrides; hand-drawn shapes + re-fit).
   // Discard restores exactly these, from the element as it was on entry.
   const RESHAPE_KEYS = ["shapeOverrides", "shapes", "sizeMm", "offsetXMm", "offsetYMm"];
+  // Node counts per ring of the Reshape element, as shown. An undo or redo that
+  // adds or removes a node changes it, and the point selection (node-list
+  // indices) would then name the wrong nodes: it is dropped.
+  let reshapeNodeSig = "";
+  function nodeSigOf(el) {
+    const src = el ? outlinesMmFor(el) : null;
+    return src ? src.mm.map((o) => `${o.key || o.id}=${o.nodes ? o.nodes.length : 0}`).join(",") : "";
+  }
   function enterReshape(el) {
+    reshapeNodeSig = el.type === "digitized" ? nodeSigOf(el) : "";
     const start = {};
     for (const k of RESHAPE_KEYS) start[k] = el[k];
     reshape = { elId: el.id, sel: new Map(), start };
@@ -1727,6 +1736,10 @@
     const el = project.elements.find((x) => x.id === shapeEdit.elId);
     const basis = shapeEdit.basis;
     if (!el || !basis || !basis.rows || !basis.bboxMm) return;
+    // A drag that ended where it began (zero net delta) is not an edit.
+    const was = shapeEdit.ring;
+    if (was && was.length === liveRing.points.length
+        && liveRing.points.every((q, i) => q[0] === was[i][0] && q[1] === was[i][1])) return;
 
     // Same validation the panel editor runs before it will save: a
     // self-intersecting or pinched ring, or a hole poking out of the shell, is
@@ -1805,6 +1818,13 @@
     // Reshape mode belongs to the element it was entered on: another element
     // selected, or none, ends it.
     if (reshape && reshape.elId !== project.selectedId) endReshape();
+    if (reshape && sel && sel.type === "digitized" && !reshapeDrag) {
+      const sig = nodeSigOf(sel);
+      if (sig !== reshapeNodeSig) {
+        reshapeNodeSig = sig;
+        if (reshape.sel.size) reshape = { ...reshape, sel: new Map() };
+      }
+    }
     if (!sel || !SHAPE_LANES.has(sel.type)) {
       selectedShapeId = null;
       selectedShapeElId = null;
@@ -3865,7 +3885,7 @@
             return;
           }
           shapeEdit = { elId: edit.el.id, shapeId: hit.shapeId, ringId: hit.ring, kind: hit.kind,
-                        index: hit.index, startPx: p, ring, nodes, moved: false,
+                        index: hit.index, startPx: p, startClient: { x: e.clientX, y: e.clientY }, armed: false, ring, nodes, moved: false,
                         basis: editBasis(edit) };
           liveRing = { shapeId: hit.shapeId, key: hitKey, points: ring, nodes };
           canvas.style.cursor = "grabbing";
@@ -3966,6 +3986,12 @@
     // A shape edit is its own drag mode — it never sets `dragMode`, so the
     // element move/resize/pan branches below stay untouched by it.
     if (shapeEdit) {
+      // Under CLICK_PX of the press it is still a click (a select, the first
+      // half of a double-click): nothing moves, nothing commits. Latched once past.
+      if (!shapeEdit.armed) {
+        if (!pastClickDeadZone(shapeEdit.startClient, { x: e.clientX, y: e.clientY }, CLICK_PX)) return;
+        shapeEdit.armed = true;
+      }
       const d = pxToMmDelta(p.x - shapeEdit.startPx.x, p.y - shapeEdit.startPx.y);
       // Sparse nodes (2026-11-05): a node drag moves that node exactly and
       // rebuilds its two spans; an edge drag moves both end nodes of the span

@@ -36,6 +36,28 @@ export function seedNodesCached(ring) {
 }
 
 /**
+ * A cheap fingerprint of a ring: vertex count plus the first and last edge as a
+ * share of the perimeter (rounded to 1e-5). Similarity-invariant, so the service
+ * ring a commit sees and the field-mm ring the Studio shows agree. A closing
+ * duplicate vertex is ignored (as `outlineOf` does). Stored in `nodes.fp`, it
+ * lets a later show notice that the ring under the node indices is not the one
+ * they were made against (a re-digitize that kept the shape id).
+ */
+export function ringFingerprint(ring) {
+  let pts = ring || [];
+  const n0 = pts.length;
+  if (n0 >= 2 && Math.abs(pts[0][0] - pts[n0 - 1][0]) < 1e-6 && Math.abs(pts[0][1] - pts[n0 - 1][1]) < 1e-6) pts = pts.slice(0, n0 - 1);
+  const n = pts.length;
+  if (n < 2) return String(n);
+  const edge = (i) => Math.hypot(pts[(i + 1) % n][0] - pts[i][0], pts[(i + 1) % n][1] - pts[i][1]);
+  let per = 0;
+  for (let i = 0; i < n; i++) per += edge(i);
+  if (!(per > 0)) return String(n);
+  const r = (v) => (Math.round((v / per) * 1e5) / 1e5).toFixed(5);
+  return `${n}:${r(edge(0))}:${r(edge(n - 1))}`;
+}
+
+/**
  * The node lists a shape shows: the STORED ones when `entry.nodes` is valid for
  * every ring and the hole count matches, else fresh seeds for every ring (spec
  * section 2: an invalid entry is ignored and re-seeded). Seeds are never
@@ -50,7 +72,8 @@ export function nodesForShape(entry, shell, holes = []) {
   const n = entry && entry.nodes;
   const stored = !!n && isValidNodes(n.shell, shell)
     && Array.isArray(n.holes) && n.holes.length === holes.length
-    && holes.every((h, k) => isValidNodes(n.holes[k], h));
+    && holes.every((h, k) => isValidNodes(n.holes[k], h))
+    && fingerprintsMatch(n.fp, shell, holes);
   if (stored) {
     return {
       stored: true,
@@ -59,6 +82,18 @@ export function nodesForShape(entry, shell, holes = []) {
     };
   }
   return { stored: false, shell: seedNodesCached(shell), holes: holes.map((h) => seedNodesCached(h)) };
+}
+
+/** True once the pointer has travelled `px` or more from the press: a click is not a drag. */
+export function pastClickDeadZone(start, cur, px) {
+  return Math.hypot(cur.x - start.x, cur.y - start.y) >= px;
+}
+
+// No `fp` (a hand-built entry) is trusted on range alone; one that is there must match.
+function fingerprintsMatch(fp, shell, holes) {
+  if (!fp) return true;
+  if (fp.shell !== ringFingerprint(shell)) return false;
+  return Array.isArray(fp.holes) && fp.holes.length === holes.length && holes.every((h, k) => fp.holes[k] === ringFingerprint(h));
 }
 
 /** How a node draws: a corner is a square, a smooth node the existing disc. */
@@ -174,6 +209,7 @@ export function ringEditOverrides(el, basis, live, removed = null, liveNodes = n
       entry.nodes = {
         shell: shellNodes.map((n) => ({ i: n.i, kind: n.kind })),
         holes: holeNodes.map((l) => l.map((n) => ({ i: n.i, kind: n.kind }))),
+        fp: { shell: ringFingerprint(shellService), holes: (holes || []).map((h) => ringFingerprint(h)) },
       };
     } else delete entry.nodes;
     cur[sid] = entry;

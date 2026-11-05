@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nodesForShape, nodeMarker, spanOfEdge, withNodes, ringEditOverrides, discardPatch, seedNodesCached } from "./shapeNodes.js";
+import { nodesForShape, nodeMarker, spanOfEdge, withNodes, ringEditOverrides, discardPatch, seedNodesCached, ringFingerprint, pastClickDeadZone } from "./shapeNodes.js";
 import { seedNodes } from "./sparseNodes.js";
 import { hitOverlay, nodesInBox, ringNodesInBox, simplifyRing } from "./shapeOverlay.js";
 
@@ -193,5 +193,50 @@ describe("Discard restores nodes", () => {
     expect(patch.shapeOverrides.a.nodes).toEqual(nodes);
     // nothing edited -> no patch
     expect(discardPatch(start, start, KEYS)).toEqual({});
+  });
+});
+
+describe("ring fingerprint (stale nodes after a re-digitize)", () => {
+  const nodesOf = (ring) => seedNodes(ring);
+  it("is invariant under scale, rotation and offset, and ignores a closing duplicate", () => {
+    const ring = squareRing();
+    const moved = ring.map(([x, y]) => [3 * (0.6 * x - 0.8 * y) + 7, 3 * (0.8 * x + 0.6 * y) - 2]);
+    expect(ringFingerprint(moved)).toBe(ringFingerprint(ring));
+    expect(ringFingerprint([...ring, ring[0]])).toBe(ringFingerprint(ring));
+  });
+  it("a shell that kept its id but changed shape drops the stored nodes and re-seeds", () => {
+    const ring = squareRing();
+    const stored = { shell: nodesOf(ring), holes: [], fp: { shell: ringFingerprint(ring), holes: [] } };
+    expect(nodesForShape({ nodes: stored }, ring, []).stored).toBe(true);
+    const longer = squareRing(20, 8);                         // indices still in range, ring is not the one they were made on
+    const got = nodesForShape({ nodes: stored }, longer, []);
+    expect(got.stored).toBe(false);
+    expect(got.shell).toEqual(seedNodes(longer));
+  });
+  it("a hole whose length changed under the same hole count re-seeds every ring", () => {
+    const shell = squareRing(), hole = squareRing(5, 4);
+    const stored = { shell: nodesOf(shell), holes: [nodesOf(hole)], fp: { shell: ringFingerprint(shell), holes: [ringFingerprint(hole)] } };
+    expect(nodesForShape({ nodes: stored }, shell, [hole]).stored).toBe(true);
+    const grown = squareRing(5, 8);
+    const got = nodesForShape({ nodes: stored }, shell, [grown]);
+    expect(got.stored).toBe(false);
+    expect(got.holes).toEqual([seedNodes(grown)]);
+  });
+  it("a commit writes the fingerprint of the rings it wrote", () => {
+    const outlineFull = squareRing();
+    const rows = [{ id: "a", outlineFull, holesFull: [] }];
+    const basis = { rows, bboxMm: { x0: -20, y0: -20, x1: 20, y1: 20 }, rotationDeg: 0, nodesById: new Map([["a", seedNodes(outlineFull.map(([x, y]) => [x, -y]))]]) };
+    const field = outlineFull.map(([x, y]) => [x, -y]).map(([x, y], i) => (i === 0 ? [x - 1, y] : [x, y]));
+    const res = ringEditOverrides({ shapeOverrides: {} }, basis, new Map([["a", field]]), null, new Map([["a", basis.nodesById.get("a")]]));
+    expect(res.cur.a.nodes.fp.shell).toBe(ringFingerprint(res.cur.a.boundary_override));
+    expect(res.cur.a.nodes.fp.holes).toEqual([]);
+  });
+});
+
+describe("click dead zone", () => {
+  it("under the threshold is a click, at or past it is a drag", () => {
+    expect(pastClickDeadZone({ x: 10, y: 10 }, { x: 11, y: 10 }, 4)).toBe(false);
+    expect(pastClickDeadZone({ x: 10, y: 10 }, { x: 12, y: 12 }, 4)).toBe(false);
+    expect(pastClickDeadZone({ x: 10, y: 10 }, { x: 14, y: 10 }, 4)).toBe(true);
   });
 });
