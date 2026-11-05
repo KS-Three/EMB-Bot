@@ -914,9 +914,11 @@
       const f = fieldPxOfMm(pts[0]);
       if (Math.hypot(f.x - p.x, f.y - p.y) <= NODE_GRAB_PX) { closeHoleDraft(); return true; }
     }
-    if (pts.length) {
-      const l = fieldPxOfMm(pts[pts.length - 1]);
-      if (Math.hypot(l.x - p.x, l.y - p.y) < 3) return true;   // a double-click's second press
+    // A press on any placed vertex adds nothing (a double-click's second press,
+    // or a stray click back on the first point before the ring can close).
+    for (const q of pts) {
+      const l = fieldPxOfMm(q);
+      if (Math.hypot(l.x - p.x, l.y - p.y) < 3) return true;
     }
     shapeEditError = "";
     holeDraft = { ...holeDraft, pointsMm: [...pts, mmOfFieldPx(p)] };
@@ -1952,7 +1954,7 @@
     // Reshape mode belongs to the element it was entered on: another element
     // selected, or none, ends it.
     if (reshape && reshape.elId !== project.selectedId) endReshape();
-    if (holeDraft && (holeDraft.elId !== project.selectedId || multiSel)) holeDraft = null;
+    if (holeDraft && (holeDraft.elId !== project.selectedId || multiSel)) cancelHoleDraft();
     // Selecting another shape ends a draft too.
     if (holeDraft && selectedShapeId !== holeDraft.shapeId) cancelHoleDraft();
     if (reshape && sel && sel.type === "digitized" && !reshapeDrag) {
@@ -3548,6 +3550,8 @@
     // The simulator owns the canvas while playing; Original view shows the
     // artwork, whose pixels the stitch outlines need not line up with.
     if (simActive || originalView) return;
+    // A live hole draft owns the canvas: no menu (its "Add hole" would restart it).
+    if (holeDraftOn()) { e.preventDefault(); return; }
     e.preventDefault();             // our menu, not the browser's
     if (!canvas) return;
     const r = canvas.getBoundingClientRect();
@@ -3852,7 +3856,8 @@
     // Add hole: while a ring is being drawn the press is a vertex (or the
     // cross, or the close); a press on another element ends the draft and
     // falls through to select it.
-    if (holeDraftOn() && !(e.ctrlKey || e.metaKey) && holeDraftPress(p)) {
+    // Ctrl/Cmd is a plain press here: no quick drag or marquee over a live draft.
+    if (holeDraftOn() && holeDraftPress(p)) {
       canvas.focus({ preventScroll: true });   // Backspace / Enter / Escape go to the canvas
       return;
     }
