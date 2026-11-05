@@ -17,7 +17,7 @@ Gaulke's phone screenshot to its white panel) with the engine's **defaults**, on
 |---|---|---|---|
 | Nuizu 0.3.1 (Apache-2.0/MIT) | own venv, `nuizu dst <art> -s <longest side mm>`; arm 2 (`nuizu-satin-auto`) adds `--satin-outline --auto-angle` | defaults: 8 colours max, fill 45 deg, 3 mm max stitch, no background | 18 / 18, both arms |
 | heatstitch (MIT; the public build of heatstitch.app) | a static copy served from `127.0.0.1`, driven by Playwright with every non-localhost request aborted (no Rust toolchain here to build from source) | "Convert a picture", Width (mm) set per job, Flat style, 6 colours, smooth 3, smallest area 3 mm2, background left out, Stable woven, 40 wt; DST export | 18 / 18 |
-| openstitch v0.4.0 (AGPL-3.0+) | Windows release exe (146,368,665 bytes) launched by Kent by hand, then driven through its GUI (computer-use) | Auto-Digitizer dialog: Target design width set per job, everything else default; Tajima DST export | 8 / 18 (Becker x5 + Hotel Fremont hat, Precision Drone, Golden Tee hat) | **0 / 18, see "openstitch" below** |
+| openstitch v0.4.0 (AGPL-3.0+) | Windows release exe (146,368,665 bytes) launched by Kent by hand, then driven through its GUI (computer-use) | Auto-Digitizer dialog: Target design width set per job, everything else default; Tajima DST export | 8 / 18 (Becker x5 + Hotel Fremont hat, Precision Drone, Golden Tee hat) |
 | Stitch AI (Dynamic Mockups) | dropped (Tier 3) | n/a | **not run**: its DST download is gated behind a sales call; Kent ruled "Drop Tier 3" |
 
 Figures are the nightly tripwire's seven, read from the written DST by one reader
