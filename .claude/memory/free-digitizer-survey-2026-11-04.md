@@ -62,12 +62,12 @@ Related: [[dade-app-teardown-2026-11-04]], [[nightly-tripwire-2026-11-02]],
 18 committed pairs at the pro's width, engine defaults. Medians against the pro:
 ours sttype kappa 0.38, **heatstitch 0.13** (0.67x stitches, needle travel
 1.02x pro), **Nuizu 0.02** (4.7x stitches, a JUMP per fill row = needle-up
-55x pro, 6-colour confetti on grey anti-aliasing). Neither beats ours; heatstitch
-ties/passes on 2 of 18. **openstitch 0.04** over the 8 jobs it ran (Becker x5,
-Fremont hat, Drone, Golden Tee hat; ours 0.45 on the same 8; 0.69x stitches,
-+81.5 trims, needle-up 5.1x pro, 0 of 8): the classifier refused launching the
-downloaded exe, so Kent launched it by hand and the lane drove its GUI
-(computer-use, second access request granted). Exe in
-`scratch_bench/_tools/openstitch/`; the 10 jobs not run are in the scoreboard.
+55x pro, 6-colour confetti on grey anti-aliasing), **openstitch 0.04** over the
+8 jobs it ran (ours 0.45 on the same 8; 0 of 8 reach ours): the classifier
+refused launching the downloaded exe, so Kent launched it by hand and the lane
+drove its GUI (computer-use, second access request granted). Exe in
+`scratch_bench/_tools/openstitch/`. None of the three beats ours; heatstitch
+ties/passes on 2 of 18. openstitch's other figures, its job list and the 10
+jobs not run are the scoreboard's openstitch row and section, not repeated here.
 Tool: `digitizer/tools/bench_free_digitizers.py`; competitor files in
 `scratch_bench/<engine>/` (gitignored, in Kent's live checkout).
