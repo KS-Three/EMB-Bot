@@ -55,6 +55,7 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims",
 NAMES_ONLY = {"border_census",   # WRITES the census table's .md, reads none (2026-10-23)
               "bean_census",     # WRITES docs/bean-census-reference-2026-10-27.md, reads none (2026-10-27)
               "lettering_board",   # WRITES docs/scoreboards/lettering-board-<date>.md, reads none (2026-10-25)
+              "tripwire",   # `floor --write` WRITES docs/scoreboards/heatstitch-floor-<date>.md and links the survey doc by name, reads none (2026-11-05)
               "bench_free_digitizers",   # WRITES report-<engine>-<date>.md under scratch_bench/ and the scoreboard .md, reads none (2026-11-04)
               "lane_census",       # NAMES the 6b plan's .md (`PLAN_FILE`, read by its test only), reads no doc at runtime (2026-10-26)
               "flip_sheet_renders",   # WRITES docs/flip-sheet-<date>.md + index.html, reads none (2026-10-23)

@@ -277,3 +277,118 @@ def test_help_answers_fast_without_importing_the_engine(tmp_path):
     r = subprocess.run([sys.executable, "-c", "import sys, tools.tripwire; print('digitizer_core' in sys.modules)"],
                        cwd=tmp_path, env=env, capture_output=True, text=True, timeout=30)
     assert r.stdout.strip() == "False", r.stderr[-500:]
+
+
+# ------------------------------------------------------------------ the heatstitch floor
+JOB2 = "tires_hat_3d"
+
+
+def _tiny_dst(path, n):
+    """A real DST (n stitches in a line) written by pystitch, standing in for a floor file."""
+    import pystitch
+    pat = pystitch.EmbPattern()
+    for i in range(n):
+        pat.add_stitch_absolute(pystitch.STITCH, i * 10, 0)
+    pat.add_stitch_absolute(pystitch.END, 0, 0)
+    pystitch.write(pat, str(path))
+
+
+@pytest.fixture
+def floor_env(tmp_path, monkeypatch):
+    """Two floor DSTs in a tmp dir and a stand-in for the kappa reader that really OPENS the file
+    (so a missing or unreadable DST fails) and scores it from its stitch count."""
+    import pystitch
+    from tools import pro_baseline as pb
+    fdir = tmp_path / "heatstitch"
+    fdir.mkdir()
+    _tiny_dst(fdir / f"{JOB}.dst", 20)      # kappa 0.20 below
+    _tiny_dst(fdir / f"{JOB2}.dst", 40)     # kappa 0.40 below
+    seen = []
+
+    def fake_kappas(dst, pro, work):
+        seen.append(Path(dst).name)
+        n = sum(1 for _x, _y, c in pystitch.read(str(dst)).stitches if (c & pystitch.COMMAND_MASK) == pystitch.STITCH)
+        return {"sttype_kappa": n / 100, "sttype_chance": 0.5, "direction_kappa": 0.0, "solid_iou": 0.0}
+
+    monkeypatch.setattr(pb, "kappas", fake_kappas)
+    monkeypatch.setattr(pb, "resolve", lambda spec: tmp_path / "pro.dst")
+    monkeypatch.setattr(tw, "materialise", lambda dest, slugs: None)
+    run = _pass()
+    run["values"][JOB2] = {"stitches": 1, "trims": 0, "hops": 0, "needle_up_mm": 0.0, "sttype_kappa": 0.43,
+                           "direction_kappa": 0.1}
+    run["values"][JOB]["sttype_kappa"] = 0.50
+    run["chance"][JOB2] = 0.61
+    fp = tmp_path / "figures.json"
+    fp.write_text(json.dumps(run), encoding="utf-8")
+    return fdir, fp, seen
+
+
+def test_the_floor_prints_a_heatstitch_column_the_margin_and_the_flag(floor_env, capsys):
+    fdir, fp, seen = floor_env
+    code = tw.main(["floor", "--figures", str(fp), "--floor-dir", str(fdir), "--only", JOB, JOB2])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert sorted(seen) == sorted([f"{JOB}.dst", f"{JOB2}.dst"])
+    assert "| job | ours | heatstitch | margin | flag |" in out
+    # JOB: ours 0.50 vs floor 0.20 -> +0.30, not flagged; JOB2: ours 0.43 vs 0.40 -> +0.03, under 0.05 -> FLAG
+    row1 = next(r for r in out.splitlines() if r.startswith(f"| {JOB} "))
+    row2 = next(r for r in out.splitlines() if r.startswith(f"| {JOB2} "))
+    assert "0.20 (0.50)" in row1 and "+0.30" in row1 and "FLAG" not in row1
+    assert "0.40 (0.50)" in row2 and "+0.03" in row2 and row2.rstrip().endswith("| FLAG |")
+    assert "1 flagged" in out and "raw" not in out.lower().replace("margin", "")
+
+
+def test_floor_warn_moves_the_flag_and_a_flag_never_fails_the_run(floor_env, capsys):
+    fdir, fp, _ = floor_env
+    base = ["floor", "--figures", str(fp), "--floor-dir", str(fdir), "--only", JOB, JOB2]
+    assert tw.main([*base, "--floor-warn", "0.02"]) == 0
+    assert "0 flagged" in capsys.readouterr().out
+    assert tw.main([*base, "--floor-warn", "0.9"]) == 0          # both jobs flagged, still exit 0
+    assert "2 flagged" in capsys.readouterr().out
+
+
+def test_no_floor_directory_prints_na_and_reads_nothing(floor_env, tmp_path, capsys):
+    _fdir, fp, seen = floor_env
+    code = tw.main(["floor", "--figures", str(fp), "--floor-dir", str(tmp_path / "absent"), "--only", JOB, JOB2])
+    out = capsys.readouterr().out
+    assert code == 0 and seen == []
+    assert tw.FLOOR_NA == "n/a (no floor files)"
+    assert out.count("n/a (no floor files)") >= 2 and "FLAG" not in out.replace("Flag only", "")
+    assert "0.50" in out                     # ours still prints
+
+
+def test_a_job_with_no_floor_file_is_no_file_never_a_zero(floor_env, capsys):
+    fdir, fp, _ = floor_env
+    (fdir / f"{JOB2}.dst").unlink()
+    tw.main(["floor", "--figures", str(fp), "--floor-dir", str(fdir), "--only", JOB, JOB2])
+    row = next(r for r in capsys.readouterr().out.splitlines() if r.startswith(f"| {JOB2} "))
+    assert "no file" in row and "FLAG" not in row and "+0.00" not in row
+
+
+def test_check_without_floor_is_unchanged_and_with_it_appends_stdout_only(tmp_path, ledger, floor_env, capsys):
+    fdir, _fp, _ = floor_env
+    run = _pass()
+    code, plain = _check(tmp_path, ledger, run, capsys)
+    code2, with_floor = _check(tmp_path, ledger, run, capsys, extra=["--floor", "--floor-dir", str(fdir),
+                                                                     "--table", str(tmp_path / "t.md")])
+    assert code == code2 == 0
+    assert "heatstitch" not in plain and with_floor.startswith(plain.rstrip("\n"))
+    assert "heatstitch" in with_floor
+    assert "heatstitch" not in (tmp_path / "t.md").read_text(encoding="utf-8")
+
+
+def test_the_default_floor_dir_is_the_primary_checkouts_scratch_bench():
+    root = Path("C:/x/EMB-Bot") if os.name == "nt" else Path("/x/EMB-Bot")
+    assert tw.primary_root(root / ".claude" / "worktrees" / "lane-abc123") == root
+    assert tw.primary_root(root / ".claude" / "worktrees" / "lane-abc123" / "digitizer") == root
+    assert tw.primary_root(root) == root
+    assert tw.default_floor_dir() == tw.primary_root() / "scratch_bench" / "heatstitch"
+
+
+def test_write_makes_a_snapshot_that_names_the_main_sha(floor_env, tmp_path):
+    fdir, fp, _ = floor_env
+    out = tmp_path / "snap" / "floor.md"
+    tw.main(["floor", "--figures", str(fp), "--floor-dir", str(fdir), "--only", JOB, JOB2,
+             "--write", str(out), "--date", "2026-11-05"])
+    text = out.read_text(encoding="utf-8")
+    assert "2026-11-05" in text and "abcd1234" in text and f"| {JOB} |" in text
