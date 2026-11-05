@@ -20,8 +20,10 @@ all along. The runnable open-source engines are 2026 projects.
 
 **The field in one line each.** No free desktop tool auto-digitizes a raster
 (Stitch Era's free edition ended July 2013; Chroma, PE-Design 11 and Embird
-trials block export; SewArt's trial caps 3 colours). Web: only Stitch AI
-(dynamicmockups.com/stitch, free "while we learn", DST), Stitchist (1 free,
+trials block export; SewArt's trial caps 3 colours). Web: Stitch AI
+(dynamicmockups.com/stitch) previews free but its DST is gated behind a sales
+call ("Machine files are access-only", measured 11-04, Tier 3 stopped after 1
+job; only the operator-sheet PDF downloads); Stitchist (1 free,
 $50 once), Embrowser (2 traces/week), click-stitch (3 colours, 3 in),
 SewFlow Classic (tatami only) and EmbroidAI (one free download, then ~$1 each)
 give a free stitch file; the rest preview free and charge for the file.
@@ -37,7 +39,9 @@ corpus (free, local, scriptable); 2 = Hatch and Wilcom trials on Kent's box
 (one shot each: plan the 18 tripwire pairs + spares before installing);
 3 = Stitch AI while free. **Kent's pick (11-04): tiers 1 and 3 now; Hatch and
 Wilcom trials after those complete** ("let's do Hatch and Wilcom after this is
-completed").
+completed"). **Tier 3 then died on the DST gate and Kent ruled "Drop Tier 3
+(Recommended)" the same day**; its one-job notes live in gitignored
+`scratch_bench/stitch_ai/notes.md`.
 
 **How to apply:** their files are third-party stitch files: gitignored
 `scratch_bench/`, never committed without asking. Upload only public artwork

@@ -17,8 +17,8 @@ Gaulke's phone screenshot to its white panel) with the engine's **defaults**, on
 |---|---|---|---|
 | Nuizu 0.3.1 (Apache-2.0/MIT) | own venv, `nuizu dst <art> -s <longest side mm>`; arm 2 (`nuizu-satin-auto`) adds `--satin-outline --auto-angle` | defaults: 8 colours max, fill 45 deg, 3 mm max stitch, no background | 18 / 18, both arms |
 | heatstitch (MIT; the public build of heatstitch.app) | a static copy served from `127.0.0.1`, driven by Playwright with every non-localhost request aborted (no Rust toolchain here to build from source) | "Convert a picture", Width (mm) set per job, Flat style, 6 colours, smooth 3, smallest area 3 mm2, background left out, Stable woven, 40 wt; DST export | 18 / 18 |
-| openstitch v0.4.0 (AGPL-3.0+) | Windows release exe downloaded (146,368,665 bytes) | not run | **0 / 18, see "openstitch" below** |
-| Stitch AI (Dynamic Mockups) | a sibling session runs it by hand into `scratch_bench/stitch_ai/` | n/a | see "Stitch AI" below |
+| openstitch v0.4.0 (AGPL-3.0+) | Windows release exe downloaded (146,368,665 bytes); launched by Kent by hand | not run: GUI access was denied | **0 / 18, see "openstitch" below** |
+| Stitch AI (Dynamic Mockups) | dropped (Tier 3) | n/a | **not run**: its DST download is gated behind a sales call; Kent ruled "Drop Tier 3" |
 
 Figures are the nightly tripwire's seven, read from the written DST by one reader
 (pystitch) for ours, the competitor and the pro: stitches, trims, hops, needle-up mm,
@@ -81,20 +81,20 @@ passes it on 2 of 18 jobs, Nuizu on 1 (a tie at the floor).
 
 The v0.4.0 Windows release exe is in `scratch_bench/_tools/openstitch/` (sha256
 `8dab516c660aa38bdf1866b7a49ab5d253846d7924d44ab1894005f81559bcd5`; its size matches the
-release listing). **It was not run.** Launching the downloaded exe was refused by the session's
-permission policy ("code from external"), so no openstitch file and no `openstitch.analysis`
-score exist. The survey's ruling stands (benchmark its output, never read its code into ours).
-The harness takes its files as it takes any other engine's (`scratch_bench/openstitch/<slug>.dst`,
-then `measure --engine openstitch`), so the run is a GUI session away once the exe is launched.
+release listing). **No openstitch file was produced and no `openstitch.analysis` score exists.**
+The session's permission policy refused launching the downloaded exe ("code from external");
+Kent then launched it by hand, but the request for computer-use access to its window
+(`OpenStitch-Studio-Windows-x64-v0.4.0.exe`) was denied at the approval prompt, so the GUI
+run (Becker x5 + 3 others, at the pro's size, auto-digitize only) did not happen. The survey's
+ruling stands (benchmark its output, never read its code into ours). The harness takes its files
+as it takes any other engine's (`scratch_bench/openstitch/<slug>.dst`, then
+`measure --engine openstitch`), so the run needs only a granted GUI session or Kent's own exports.
 
 ## Stitch AI (Dynamic Mockups)
 
-Not measured here. A sibling session is running Stitch AI by hand over the same 18 pairs into
-`scratch_bench/stitch_ai/`; when this was written that folder held only its `notes.md`, no DST.
-The harness is ready for it (the folder is read-only to this tool): once files and a
-`manifest.json` are there, `python -m tools.bench_free_digitizers measure --engine stitch_ai
---bench-dir <scratch_bench> --out-dir <a folder of ours>` scores it like the others and prints the
-tool's stated stitch count and trims beside what our reader counts in its DST.
+Not run. Its DST turned out to be gated behind a sales call (recorded in the survey), and Kent ruled
+"Drop Tier 3". The harness keeps `--bench-dir` / `--out-dir` and the manifest check for the Hatch and
+Wilcom files to come.
 
 ## What to borrow, what not to
 
@@ -105,8 +105,7 @@ Borrow (as measurements, never code):
   on a job toward 0.13 means a rule of thumb is catching up.
 - **A "needle-up mm against the pro" check per engine.** Nuizu's 55x is what a missing trim
   step costs; ours is 0.86x median and the number to keep near 1.
-- **Reading a tool's stated stitch and trim counts back from its file** (heatstitch and Stitch AI
-  both print production sheets): the manifest comparison in this tool does it for any engine
+- **Reading a tool's stated stitch and trim counts back from its file** (heatstitch prints a production sheet): the manifest comparison in this tool does it for any engine
   that leaves a `manifest.json`.
 
 Do not take:

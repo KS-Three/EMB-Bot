@@ -49,7 +49,7 @@ chance-corrected legibility figures have no published peer.
 
 | Tool | Maker | Free tier | Formats | Auto features claimed | Catch |
 |---|---|---|---|---|---|
-| **Stitch AI** — dynamicmockups.com/stitch | Dynamic Mockups, Inc. | Free "while we learn", no card, no end date | DST only (PES/EXP "next") | Region planning, palette, per-region angle / density / puff / fill flow, production sheet with stitch count, trims, colour sequence, size in mm; ~15 s | Desktop browser only; free tier explicitly "a launch decision rather than a permanent promise" |
+| **Stitch AI** — dynamicmockups.com/stitch | Dynamic Mockups, Inc. | Free "while we learn", no card, no end date | DST only (PES/EXP "next") | Region planning, palette, per-region angle / density / puff / fill flow, production sheet with stitch count, trims, colour sequence, size in mm; ~15 s | **DST is NOT downloadable (measured 2026-11-04, Tier 3 run, one job): "Machine files are access-only. To get .DST files you need to book a call with our team."** Only the operator-sheet PDF downloads; the Studio's stitch-path view is gated the same way; the agent's plan differs run to run on identical input. The page's "free" covers preview + sheet only |
 | **Stitchist** — stitchist.app | anonymous | 1 free Auto Digitize; DST + PES at one size | Free: DST, PES. Pro: 8 formats | Satin / fill / running / bean per shape, underlay, density, pull comp, trims, short-stitch removal, tie-ins, colour-block merge, 32 satin fonts | $50 one-time for unlimited (cheapest real unlock found) |
 | **Embrowser** — embrowser.com | solo SF engineer | 2 image auto-traces per week, export free on every plan | PES, DST, JEF, VP3, EXP, U01 | Trace All = tatami per colour; node editor; Auto route (beta) | 2 traces a week makes a corpus run a quarter-long job; Hobby $9.99/mo |
 | **click-stitch** — click-stitch.com | anonymous | 3 conversions/day, no watermark | PES, DST, JEF, SEW, EXP, VP3, XXX | Palette reduce, fill + satin, running-stitch line art, cross-stitch, ~50 fonts | **3 colours and 3 inches** — excludes nearly all of our corpus at the pro's size |
@@ -139,7 +139,9 @@ travel, word-legibility cc, region kappa against the pro's file, preflight),
 beside ours and the pro's. Three tiers by cost and what each can tell us.
 
 **Kent's pick (2026-11-04):** Tier 1 and Tier 3 now; the Hatch and Wilcom
-trials (Tier 2) after those complete.
+trials (Tier 2) after those complete. **Later that day Tier 3 was dropped**
+(Kent: "Drop Tier 3") once the Stitch AI DST gate was measured — see Tier 3
+below.
 
 ### Tier 1 — free, local, scriptable: run the whole corpus (recommended first)
 
@@ -171,6 +173,11 @@ re-check the Hatch manual teardown against Hatch's actual behaviour.
 **Stitch AI (Dynamic Mockups)** is the one worth an afternoon: free now, DST,
 and its production sheet prints trims and stitch count, so its own claims can
 be checked against our instruments. Do the 18 committed tripwire pairs once.
+**Measured 2026-11-04 (Tier 3 run, Becker hat at 101.9 × 63.7 mm, ~3 min a
+run): the DST is gated behind a booked sales call; only the operator sheet
+(stitch count, trims, colour changes, size) downloads. Tier 3 as written is
+dead unless Kent books the call.** The flow otherwise works: Cap-front card,
+Fit width = mm / 25.4 in, art must be PNG/JPG/SVG.
 **Stitchist** at $50 one-time is the cheapest unlimited unlock if a second web
 engine is wanted. Skip click-stitch (3 colours, 3 in), Embrowser (2 a week),
 SewFlow Classic (tatami only), and every pay-per-download site.
