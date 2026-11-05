@@ -1,6 +1,5 @@
 {
   "enabledPlugins": {
-    "superpowers@superpowers-marketplace": true,
     "caveman@caveman": true,
     "mattpocock-skills@claude-plugins-official": true,
     "hookify@claude-plugins-official": true,
@@ -8,12 +7,6 @@
     "claude-md-management@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
-    "superpowers-marketplace": {
-      "source": {
-        "source": "github",
-        "repo": "obra/superpowers-marketplace"
-      }
-    },
     "caveman": {
       "source": {
         "source": "github",
