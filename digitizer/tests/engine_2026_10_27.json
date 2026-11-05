@@ -304,5 +304,6 @@
  "upscale_cap": 4.0,
  "white_keyline_art_recipe": true,
  "wide_columns": false,
- "work_px_per_mm": 8.0
+ "work_px_per_mm": 8.0,
+ "photo_work_grid": false
 }

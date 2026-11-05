@@ -81,7 +81,7 @@ def work_grid_px_per_mm(cfg: "PipelineConfig", class_: str | None = None) -> flo
     photograph has none; its lane was never measured on an enlarged raster.
     `class_` None — a caller that has not classified — is not photographic,
     unless declared."""
-    if is_photographic(cfg, class_):
+    if is_photographic(cfg, class_) and not cfg.photo_work_grid:
         return float(cfg.min_px_per_mm)
     return max(float(cfg.min_px_per_mm), float(cfg.work_px_per_mm or 0.0))
 
@@ -646,6 +646,14 @@ class PipelineConfig:
     # face-local split 4 for 2. The 43 tests whose numbers were read on the
     # old grid hold it through `tests/conftest.py::source_line_grid`.
     work_px_per_mm: float | None = 8.0
+    # `photo_work_grid` (2026-11-05, OFF): the photo classes take the working
+    # grid too (`work_grid_px_per_mm`). MFab's hat logo classes photo_scene at
+    # every width (stage 0 is gate 2's, untouched) and at 100.8 mm it arrives
+    # at 4.0 px/mm with its W and E joined by a one-pixel black bridge; on the
+    # source line the region cut keeps them ONE untagged region, which is no
+    # rider and is merged into the black host, and the white panel sews over it.
+    # The Lanczos enlargement to 8 px/mm opens that bridge, as on the flat route.
+    photo_work_grid: bool = False
     denoise: bool = True
     # Stage 1 stops reading the RGB under an alpha cutout's transparency.
     # The shape of a cutout lives in alpha; the RGB underneath is whatever
