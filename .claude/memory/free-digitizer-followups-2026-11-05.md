@@ -14,10 +14,17 @@ today / built / cost / catch, then one question each).
 
 **Rulings (Kent, 2026-11-05):**
 
-1. **Numeric stitch-out score: METRICS-ONLY.** A /100 derived from preflight's
-   existing codes and `_DEDUCT` weights goes into the preflight JSON and
-   scoreboards. Customer sees nothing (the 10-02 "no warnings reach readouts"
-   ruling stands, [[no-warnings-reaches-readouts]]). No Show, no Fix buttons.
+1. **Numeric stitch-out score: METRICS-ONLY.** Premise corrected the same
+   day by the build session: `run_preflight` has returned `score` =
+   max(0, 100 - sum(_DEDUCT)) (info 0 / warn 12 / block 30; grade A >= 90,
+   B >= 75, C >= 60, D >= 40, else F) since 2026-07-31 (d0b79b1e), the
+   service passes it through, and the Studio already shows `score/100`
+   beside the grade (`app/src/ui/QualityReport.svelte:189`). Kent 11-05,
+   second ruling: **keep that display as is**, add no new one, no Show, no
+   Fix buttons. What gets built: a module comment on the mapping, tests
+   pinning grade/score monotonicity, the blocking-finding cap and the
+   floor, a service field test, and the score beside the grade in the
+   scoreboard tools that print only the grade.
 2. **Suggestions wizard: RECOUNT ONLY.** When the size changes, the reading
    row shows the object and colour count re-traced at that size (Stitchist's
    footer recount). No pre-answered cards; the pipeline keeps deciding
