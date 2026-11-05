@@ -560,7 +560,7 @@ def capture(rows: list[dict], photos: Path, tree: Path, out: Path, tree_sha: str
         row_json.write_text(json.dumps(summary, indent=1), encoding="utf-8")
         print(f"{slug}: {summary['state']} {summary['wall_s']}s stitches={summary['stitches']} "
               f"trims={summary['trims']} colors={summary['colors_used']}/{cap} grade={summary['grade']} "
-              f"cc={summary.get('fidelity_cc')}", flush=True)
+              f"raw_score={summary['score_raw']} cc={summary.get('fidelity_cc')}", flush=True)
         return slug, summary
 
     with ThreadPoolExecutor(max_workers=max(1, procs)) as pool:
