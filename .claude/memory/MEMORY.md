@@ -49,7 +49,7 @@ the OLDEST lines whole to the archive.
 - [Flip sheet wave 2](flip-sheet-wave2-2026-10-24.md) — four flags OFF|ON|pro; per-flag fixtures, shared base OFF arms, MFab art fallback; Tires monoline invisible at viewing size (trims 9 → 32)
 - [Flip sheet wave 3](flip-sheet-wave3-2026-10-26.md) — 12 OFF flags since 10-24 by flag + kind; monoline INERT on Tires, fill_section_travel / bay_mouth near-inert; OFF cells keyed per-cell by HEAD sha
 - [Flip sheet wave 5](flip-sheet-wave5-2026-10-27.md) — 4 asked on main ce8cc87d, gate 3 clear; Kent 10-27: bean_ink + part_touching (only together) + italic lean ON, fill_section_travel held; keyline trio inert off MFab
-- [Free digitizer survey](free-digitizer-survey-2026-11-04.md) — Kent 11-04: 40+ tools, no free desktop raster auto-digitizer; bench tier 1 heatstitch (MIT) + openstitch (AGPL, output only) + Nuizu (CLI); Hatch 30-export list approved, Wilcom skipped (laptop fails reqs)
+- [Free digitizer survey](free-digitizer-survey-2026-11-04.md) — Kent 11-04: 40+ tools, no free desktop raster digitizer; tier 1 ran heatstitch (MIT) + openstitch (AGPL, output only) + Nuizu; Hatch 30-export list OK, Wilcom skipped (laptop fails reqs)
 - [Garment size like the pro](garment-size-like-pro-2026-10-26.md) — pro boxes hat 113.5x64, LC 96x76.5, area 5,800 (Bridge LC, Kent 10-27), beanie 94.5x56; `proSized` default ON (10-26)
 - [Golden Tee gap](goldentee-gap-2026-10-27.md) — Kent: no build. The +95% is the pro simplifying: 39% = silver extrusion + red stroke he never sews; faces 22% (G's border_by_size ring 640); fields_fill ON makes it worse
 - [Holes override](holes-override-2026-11-03.md) — contract v1.9 `holes_override` (service half): replaces interior rings, [] = solid, absent = carry-over; Studio half next
