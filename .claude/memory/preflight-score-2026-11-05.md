@@ -18,9 +18,10 @@ What exists (main 67319af2, before this note):
 - The service returns the whole report as `preflight`; `score` is in it.
 - **The Studio already prints it**: `app/src/ui/QualityReport.svelte:189`
   renders `{e.preflight.score}/100` beside the grade, and
-  `DigitizePanel.svelte:447` reads it. That sits against the 11-05 "no Studio
-  display" ruling; the director took it to Kent. Removing it is a separate PR,
-  not part of this one.
+  `DigitizePanel.svelte:447` reads it. That sat against the 11-05 "no Studio
+  display" ruling, so the director asked Kent. **Kent: "Keep as is."** So the
+  ruling reads: no NEW display; the existing `score/100` and grade stay.
+  Nothing in `app/` changes and there is no removal PR.
 
 What this change added (no behaviour change, `app/` untouched):
 - a module comment in `digitizer_core/preflight.py` ("THE STITCH-OUT SCORE")
