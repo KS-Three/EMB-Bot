@@ -2,6 +2,8 @@
 import "./_help.mjs";
 import { createRequire } from "module";
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { decodePNG, downscale } from "./png.mjs";
 const require = createRequire(import.meta.url);
 const Q = require("../src/quantize.js");
@@ -10,7 +12,7 @@ const D = require("../src/dst.js");
 const DG = require("../src/digitize.js");
 const FB = require("../src/fabrics.js");
 
-const IN = process.argv[2] || "scratch_flat.png";
+const IN = process.argv[2] || path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "app", "test-results", "scratch_flat.png");
 const OUTDST = process.argv[3] || "scratch_new.dst";
 const OUTCOL = process.argv[4] || "scratch_new_colors.json";
 const T0 = Date.now(); const log = (m) => console.error(`[${Date.now() - T0}ms] ${m}`);

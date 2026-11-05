@@ -180,6 +180,51 @@ describe("ringEditOverrides and nodes", () => {
     expect(res.cur.a.holes_override).toEqual([]);
     expect(res.cur.a.nodes.holes).toEqual([]);
   });
+
+  describe("Add hole (added)", () => {
+    const sq = (c, h) => [[c - h, c - h], [c + h, c - h], [c + h, c + h], [c - h, c + h]];
+    it("appends the drawn ring after the survivors, seeds it, writes no boundary_override", () => {
+      const first = sq(-10, 3);
+      const { basis, rows } = fixture();
+      rows[0].holesFull = [first.map(([x, y]) => [x, -y])];
+      basis.nodesById.set("a#h0", seedNodes(first));
+      const drawn = sq(8, 4);
+      const res = ringEditOverrides({ shapeOverrides: {} }, basis, new Map(), null, new Map(), new Map([["a", [drawn]]]));
+      expect(res.error).toBeUndefined();
+      const e = res.cur.a;
+      expect(e.boundary_override).toBeUndefined();
+      expect(e.holes_override).toHaveLength(2);
+      expect(e.holes_override[0]).toEqual(rows[0].holesFull[0]);   // the first one is untouched
+      expect(e.holes_override[1]).toHaveLength(4);
+      expect(e.nodes.holes).toHaveLength(2);
+      expect(e.nodes.holes[1].map((n) => n.kind)).toEqual(["corner", "corner", "corner", "corner"]);
+      expect(e.nodes.shell).toEqual(basis.nodesById.get("a"));
+      expect(e.nodes.fp.holes).toHaveLength(2);
+      expect(e.nodes.fp.holes[1]).toBe(ringFingerprint(e.holes_override[1]));
+    });
+    it("a shape with no holes gets holes_override of just the new ring", () => {
+      const { basis } = fixture();
+      const res = ringEditOverrides({ shapeOverrides: {} }, basis, new Map(), null, new Map(), new Map([["a", [sq(0, 5)]]]));
+      expect(res.cur.a.holes_override).toHaveLength(1);
+      expect(res.cur.a.nodes.holes).toHaveLength(1);
+    });
+    it("a hole outside the shell is refused with the existing wording", () => {
+      const { basis } = fixture();
+      const res = ringEditOverrides({ shapeOverrides: {} }, basis, new Map(), null, new Map(), new Map([["a", [sq(40, 3)]]]));
+      expect(res.cur).toBeNull();
+      expect(res.sid).toBe("a");
+      expect(typeof res.error).toBe("string");
+      expect(res.error.length).toBeGreaterThan(0);
+    });
+    it("a hole crossing the shell edge, or another hole, is refused", () => {
+      const first = sq(-10, 3);
+      const { basis, rows } = fixture();
+      rows[0].holesFull = [first.map(([x, y]) => [x, -y])];
+      basis.nodesById.set("a#h0", seedNodes(first));
+      expect(ringEditOverrides({ shapeOverrides: {} }, basis, new Map(), null, new Map(), new Map([["a", [sq(18, 5)]]])).error).toBeTruthy();
+      expect(ringEditOverrides({ shapeOverrides: {} }, basis, new Map(), null, new Map(), new Map([["a", [sq(-8, 3)]]])).error).toBeTruthy();
+    });
+  });
 });
 
 describe("Discard restores nodes", () => {

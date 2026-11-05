@@ -891,7 +891,7 @@ function outsideTwoSpansIsOriginal(original, edited, nodes, k) {
   return run.every((p, m) => near(p, orig[(at + m) % orig.length]));
 }
 
-test("(s1) red-disc: at most 16 nodes; one node dragged 3 mm outward rebuilds only its two spans, and the design restitches", async ({ page }) => {
+test("(s1) red-disc: seeding thins the traced ring; one node dragged 3 mm outward rebuilds only its two spans, and the design restitches", async ({ page }) => {
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
   const before = await digitizeArt(page, path.join(__dirname, "fixtures", "red-disc.png"));
@@ -1081,4 +1081,192 @@ test("(s6) quick drag: a press on a node that wobbles 1 px commits nothing; a dr
   await drag(page, tr, { x: tr.x + 9, y: tr.y - 6 });
   await expect.poll(async () => !!(await readNodes(page))).toBe(true);
   expect(ringOf((await readNodes(page)).entry.boundary_override)).toHaveLength(4);
+});
+
+// ---- Add hole (2026-11-05, PR 3 of the node-editing work) ------------------
+// "Add hole" (popover row, or the right-click menu inside a shape) opens a draw
+// mode: each click places a vertex, a click on the first vertex closes the ring,
+// and the closed ring is appended to the shape's holes_override through the
+// same commit path as every other ring edit. A hole outside / crossing the
+// shape is refused with boundaryIssues' own wording and the draft stays open.
+
+const draftCount = (page) => page.locator(".hoop canvas").getAttribute("data-hole-draft");
+
+// Left square: select it, Add hole from the popover, wait for the draw mode and
+// for the layout to settle once the popover is gone. -> the square's corners.
+async function startAddHole(page) {
+  await clickLeftSquare(page);
+  await page.getByRole("dialog").getByRole("button", { name: "Add hole" }).click();
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-hole-draft", "0");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.waitForTimeout(400);
+  return blackSquareCorners(page);
+}
+
+// Page points of a square hole of `frac` x the black square's half-size, centred in it.
+function holeSquare(c, frac = 0.3) {
+  const cx = (c.tl.x + c.br.x) / 2, cy = (c.tl.y + c.br.y) / 2, h = ((c.tr.x - c.tl.x) / 2) * frac;
+  return [{ x: cx - h, y: cy - h }, { x: cx + h, y: cy - h }, { x: cx + h, y: cy + h }, { x: cx - h, y: cy + h }];
+}
+
+async function clickAll(page, pts) {
+  for (const q of pts) await page.mouse.click(q.x, q.y);
+}
+
+const holeOverrides = async (page) => {
+  const r = await readDigitized(page);
+  return Object.entries(r.overrides).filter(([, v]) => Array.isArray(v.holes_override));
+};
+
+test("(h1) Add hole: four clicks inside the square, click the first vertex -> one 4-vertex hole, 4 corner nodes, the restitch shows garment there", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  const before = await digitizeSquares(page);
+  const corners = await startAddHole(page);
+  const sq = holeSquare(corners);
+  const centre = { x: (corners.tl.x + corners.br.x) / 2, y: (corners.tl.y + corners.br.y) / 2 };
+  const solid = await pixelAt(page, centre);
+  expect(Math.max(...solid), "the square is solid black before the hole").toBeLessThan(40);
+  await clickAll(page, sq);
+  expect(await draftCount(page)).toBe("4");
+  expect(await holeOverrides(page), "nothing is committed while drawing").toHaveLength(0);
+  await page.mouse.click(sq[0].x, sq[0].y);                         // the first vertex closes it
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-hole-draft", "off");
+  const held = await holeOverrides(page);
+  expect(held, "exactly one shape carries a holes_override").toHaveLength(1);
+  const [, entry] = held[0];
+  expect(entry.holes_override, "one hole").toHaveLength(1);
+  expect(ringOf(entry.holes_override[0]), "4 vertices").toHaveLength(4);
+  expect(entry.boundary_override, "the shell was not edited").toBeUndefined();
+  expect(entry.nodes.holes, "one node list for the new hole").toHaveLength(1);
+  expect(entry.nodes.holes[0].map((n) => n.kind)).toEqual(["corner", "corner", "corner", "corner"]);
+  await restitched(page, before);
+  await expect.poll(async () => Math.max(...(await pixelAt(page, centre))), { timeout: 15_000 }).toBeGreaterThan(80);
+  console.log("h1: centre pixel solid", JSON.stringify(solid), "-> hole", JSON.stringify(await pixelAt(page, centre)));
+});
+
+test("(h2) Undo after Add hole: no holes_override, the garment is gone from the square", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  const before = await digitizeSquares(page);
+  const corners = await startAddHole(page);
+  const sq = holeSquare(corners);
+  const centre = { x: (corners.tl.x + corners.br.x) / 2, y: (corners.tl.y + corners.br.y) / 2 };
+  await clickAll(page, sq);
+  await page.mouse.click(sq[0].x, sq[0].y);
+  expect(await holeOverrides(page)).toHaveLength(1);
+  await restitched(page, before);
+  await expect.poll(async () => Math.max(...(await pixelAt(page, centre))), { timeout: 15_000 }).toBeGreaterThan(80);
+  // The restitch that followed the edit may sit on the undo stack above it:
+  // undo until the hole is gone (it never takes more than a few steps).
+  for (let i = 0; i < 4 && (await holeOverrides(page)).length; i++) {
+    await page.getByRole("button", { name: "Undo", exact: true }).click();
+    await page.waitForTimeout(300);
+  }
+  await expect.poll(async () => (await holeOverrides(page)).length).toBe(0);
+  const back = () => page.locator(".dgp-stats").innerText().then((t) => t === before);
+  const ok = await expect.poll(back, { timeout: 8_000 }).toBe(true).then(() => true, () => false);
+  if (!ok) { await runDigitize(page); await expect.poll(back, { timeout: 120_000 }).toBe(true); }
+  await expect.poll(async () => Math.max(...(await pixelAt(page, centre))), { timeout: 15_000 }).toBeLessThan(40);
+});
+
+test("(h3) a hole drawn out of the shape is refused with the existing wording, nothing is patched; Backspace and redraw inside commits", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeSquares(page);
+  const corners = await startAddHole(page);
+  const [a, b] = holeSquare(corners);
+  const half = (corners.tr.x - corners.tl.x) / 2;
+  const cx = (corners.tl.x + corners.br.x) / 2, cy = (corners.tl.y + corners.br.y) / 2;
+  const out = { x: cx - 0.3 * half, y: corners.bl.y + 0.5 * half };   // well below the square's bottom edge
+  await clickAll(page, [a, b, out]);
+  expect(await draftCount(page)).toBe("3");
+  await page.mouse.click(a.x, a.y);                                  // try to close
+  await expect(page.getByTestId("shape-edit-error")).toContainText(/Hole 1 (crosses the outline|is outside the outline)\./);
+  expect(await holeOverrides(page), "a refusal patches nothing").toHaveLength(0);
+  expect(await draftCount(page), "the draft stays open").toBe("3");
+  await page.locator(".hoop canvas").focus();
+  await page.keyboard.press("Backspace");
+  expect(await draftCount(page)).toBe("2");
+  await page.mouse.click(cx - 0.3 * half, cy + 0.3 * half);
+  expect(await draftCount(page)).toBe("3");
+  await page.mouse.click(a.x, a.y);
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-hole-draft", "off");
+  const held = await holeOverrides(page);
+  expect(held).toHaveLength(1);
+  expect(ringOf(held[0][1].holes_override[0]), "a triangle").toHaveLength(3);
+});
+
+test("(h4) Escape mid-draft: no patch and the mode is gone", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeSquares(page);
+  const corners = await startAddHole(page);
+  const sq = holeSquare(corners);
+  await clickAll(page, sq.slice(0, 3));
+  expect(await draftCount(page)).toBe("3");
+  await page.locator(".hoop canvas").focus();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-hole-draft", "off");
+  expect(Object.keys((await readDigitized(page)).overrides), "no override at all").toHaveLength(0);
+});
+
+test("(h5) holed fixture, right-click menu: a second hole beside the first -> 2 rings, the first unchanged, 2 node lists", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  const before = await digitizeHoled(page);
+  const g = await selectGreenShape(page);
+  const read0 = await readHoled(page);
+  const holed = read0.shapes.find((s) => s.holes.length === 1);
+  expect(holed).toBeTruthy();
+  // Right-click the ring's body: the menu offers Add hole.
+  const bodyX = (g.shell.tl.x + g.hole.tl.x) / 2, bodyY = (g.hole.tl.y + g.hole.bl.y) / 2;
+  await page.mouse.click(bodyX, bodyY, { button: "right" });
+  await page.getByRole("menuitem", { name: "Add hole" }).click();
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-hole-draft", "0");
+  // A square in the green band left of the hole.
+  const bw = g.hole.tl.x - g.shell.tl.x;
+  const h = Math.min(bw * 0.3, (g.hole.bl.y - g.hole.tl.y) * 0.2);
+  const sq = [
+    { x: bodyX - h, y: bodyY - h }, { x: bodyX + h, y: bodyY - h },
+    { x: bodyX + h, y: bodyY + h }, { x: bodyX - h, y: bodyY + h },
+  ];
+  console.log("h5: band width px", bw.toFixed(1), "new hole half-size px", h.toFixed(1));
+  await clickAll(page, sq);
+  await page.mouse.click(sq[0].x, sq[0].y);
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-hole-draft", "off");
+  const entry = (await readHoled(page)).overrides[holed.id];
+  expect(entry.holes_override, "two rings").toHaveLength(2);
+  expect(entry.holes_override[0], "the first hole is unchanged").toEqual(holed.holes[0]);
+  expect(entry.nodes.holes, "two node lists").toHaveLength(2);
+  expect(entry.boundary_override).toBeUndefined();
+  await restitched(page, before);
+});
+
+test("(h6) double-click a vertex of the new hole -> smooth, its two spans carry interior vertices, one undo step", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeSquares(page);
+  const corners = await startAddHole(page);
+  const sq = holeSquare(corners, 0.5);
+  await clickAll(page, sq);
+  await page.mouse.click(sq[0].x, sq[0].y);
+  await expect.poll(async () => (await holeOverrides(page)).length).toBe(1);
+  await page.waitForTimeout(700);                                    // not the second half of the closing click
+  await page.mouse.dblclick(sq[2].x, sq[2].y);
+  await expect.poll(async () => {
+    const [[, e]] = await holeOverrides(page);
+    return e.nodes.holes[0].filter((n) => n.kind === "smooth").length;
+  }).toBe(1);
+  const [[, e]] = await holeOverrides(page);
+  expect(e.holes_override[0].length, "the two spans of the smooth node carry interior vertices").toBeGreaterThan(4);
+  expect(e.nodes.holes[0], "still 4 nodes").toHaveLength(4);
+  await page.locator(".hoop canvas").focus();
+  await page.keyboard.press("Control+z");
+  await expect.poll(async () => {
+    const hs = await holeOverrides(page);
+    return hs.length ? ringOf(hs[0][1].holes_override[0]).length : -1;
+  }).toBe(4);
+  const [[, e2]] = await holeOverrides(page);
+  expect(e2.nodes.holes[0].every((n) => n.kind === "corner"), "one undo step took the smoothing back").toBe(true);
 });
