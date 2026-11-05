@@ -101,6 +101,7 @@ the OLDEST lines whole to the archive.
 - [Sew-out card v8](sewout-card-v8-2026-11-01.md) — cut_every_jump walks Fremont's 148 floats on the white field, cuts ENTHUSIAST's; JS cuts 15; Drone's lever is the halo (0.3: x1.74); 0.01 mm oracle: 1 walk 0.029 mm off
 - [Shape memo](shape-memo-2026-10-28.md) — Column lane's rank-only 2nd stage-7 pass was 79 of owl flat's 137 s; `shape_memo` memoizes stitch_shape/satin_shape/rim per job: 137 -> 113 s flat, 123 -> 97 gradient, md5 same
 - [Simplify points](simplify-points-2026-11-03.md) — popover row 0.2/0.5/1 mm, closed-ring Douglas-Peucker `simplifyRing`, rides the similar tick in one patch; never automatic; red-disc 64 -> 44 at 0.5 mm
+- [Sparse smooth nodes](sparse-nodes-spec-2026-11-04.md) — Kent 11-04: Ember-style few smooth/corner nodes on digitized rings, 9 rulings; PR 1 lib `sparseNodes.js`, PR 2 Studio; add-hole in, Knife out
 - [Stage-0 flake](stage0-flake-output-alignment-2026-10-25.md) — W3-13: `cv2.magnitude` (IPP AVX2) answered by its OUTPUT buffer's alignment, not float32 box/mean/threads; `_magnitude` in float64. Hash each op under IPP paths first
 - [Stage-0 texture gate](stage0-texture-gate-2026-10-28.md) — grain gate missed 15/18 downsampled photos; `texture_frac` >= 0.13 route + two-ink veto ON (`stage0_texture_gate`); 6 "logo" rows are photographs by medium; cut-outs keep the old tree
 - [Scene speed](stage7-scene-speed-2026-10-29.md) — kept-frame scenes' 349-2,100 s was 2 procs on a loaded laptop: 64-104 s plan quiet, 2 concurrent = 4.1x EACH, md5 same; stage 2 bincount + stage 6 prepared covers / threaded angle search, exact
@@ -109,8 +110,8 @@ the OLDEST lines whole to the archive.
 - [Studio waits 600 s](studio-wait-600-2026-10-26.md) — Kent 10-26: poll waits as long as the service (from first "running" + 30 s); "Still digitizing" past 5 min; timeout says it stopped WAITING; rembg 60 -> 120 s
 - [Nest guard](text-cluster-nest-guard-2026-10-27.md) — `text_cluster_nest_guard` OFF: `_drop_nested` ignores a frame candidate over 6x the median glyph height (Bridge hat wheel nested 8/15 letters); rotation-aware door next
 - [Text tagger: touches and overshoots](text-cluster-part-touching-2026-10-25.md) — Fremont OTE is a SEWN touch (gate 1); MFab IN/AND N are the misses; `text_cluster_part_touching` ON 10-27
-- [Typed lettering floats](text-cut-jumps-2026-10-27.md) — `cutEveryJump` OFF: names float 1-3 mm hops on every DST path; ON buries/walks/cuts (95% cut), trims ~2x
 
+- [Typed lettering floats](text-cut-jumps-2026-10-27.md) — `cutEveryJump` OFF: names float 1-3 mm hops on every DST path; ON buries/walks/cuts (95% cut), trims ~2x
 - [Excess on gradient](thread-match-excess-gradient-2026-10-29.md) — defect 28 ON 10-30: F-with-block 14 -> 4, md5s same
 - [Golden Tee TM](tm-mark-golden-tee-2026-10-26.md) — Kent: NO build. Pro re-sets the 0.94 mm TM as a 4.3x2 mm double run; we drop it in stage 2 (thin_ink 3 px floor, its strokes 2 px); a future TM/(R) drops silently
 - [Trims re-measured 10-29](trim-defects-4-6-2026-10-29.md) — cuts 391 vs pro 409 (3.1x gone), breaks 2.07x (488 uncut floats); fill sections 32 vs 0; `fill_section_cuts_first` OFF: 377 cuts, exposed 723 -> 651

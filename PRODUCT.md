@@ -102,6 +102,14 @@ be asked for. In scope as of today; its status belongs in `MASTER_SCOPE.md`
 and `docs/scope/` like any other capability, and turning the default on would
 be a separate ruling.
 
+**Reshape scope, Kent 2026-11-04 (sparse-nodes grilling).** **Knife** (split
+one digitized shape into two along a drawn path) is a **non-goal**: it needs
+the service to mint new shapes with stable ids, and id stability is what lets
+edits survive a re-digitize. **Add-hole** (draw a polygon inside a digitized
+shape, appended to `holes_override`) is **in scope**, Studio only, after the
+sparse-nodes Studio PR. Spec:
+`docs/superpowers/specs/2026-11-04-sparse-smooth-nodes-design.md`.
+
 ## Open — not yet decided
 
 - **Backend / billing.** Leaning toward Stripe payments + an entitlement

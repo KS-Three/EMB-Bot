@@ -322,7 +322,7 @@ const SHAPE_UNDERLAYS = new Set([
 // `digitizer_core.regions.apply_shape_edits` — `boundaryIssues` below mirrors
 // enough of it for live UI feedback, but the server has the final word.
 const BOUNDARY_MIN_POINTS = 3;
-const BOUNDARY_MAX_POINTS = 500;
+export const BOUNDARY_MAX_POINTS = 500;
 // `merge_shape_ids` (contract v1.5) — mirrored, verbatim, from
 // `digitizer_service.app`'s `_MIN_MERGE_SHAPES`.
 const MERGE_MIN_SHAPES = 2;
