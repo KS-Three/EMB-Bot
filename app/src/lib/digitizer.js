@@ -874,7 +874,13 @@ export function boundaryIssues(points, holes = null) {
       issues.push(`${name} is too small to sew.`);
     }
     for (let m = 0; m < k; m++) {
-      if (ringsCross(h, rings[m])) issues.push(`${name} crosses Hole ${m + 1}.`);
+      const o = rings[m];
+      if (!Array.isArray(o) || o.length < BOUNDARY_MIN_POINTS) continue;
+      // Edges clear but one ring wholly inside the other (nested): the service
+      // refuses it as not a simple polygon, so say so now, in the same words.
+      if (ringsCross(h, o) || pointInPolygon(h[0], o) || pointInPolygon(o[0], h)) {
+        issues.push(`${name} crosses Hole ${m + 1}.`);
+      }
     }
   });
   return issues;

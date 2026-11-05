@@ -1099,8 +1099,20 @@ async function startAddHole(page) {
   await page.getByRole("dialog").getByRole("button", { name: "Add hole" }).click();
   await expect(page.locator(".hoop canvas")).toHaveAttribute("data-hole-draft", "0");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page.waitForTimeout(400);
-  return blackSquareCorners(page);
+  return settledCorners(page);
+}
+
+// The page re-lays out once the popover is gone: poll until two reads 150 ms
+// apart agree, then aim at that.
+async function settledCorners(page) {
+  let prev = null, cur = await blackSquareCorners(page);
+  await expect.poll(async () => {
+    prev = cur;
+    await page.waitForTimeout(150);
+    cur = await blackSquareCorners(page);
+    return JSON.stringify(prev) === JSON.stringify(cur);
+  }, { timeout: 10_000 }).toBe(true);
+  return cur;
 }
 
 // Page points of a square hole of `frac` x the black square's half-size, centred in it.
@@ -1160,8 +1172,10 @@ test("(h2) Undo after Add hole: no holes_override, the garment is gone from the 
   // The restitch that followed the edit may sit on the undo stack above it:
   // undo until the hole is gone (it never takes more than a few steps).
   for (let i = 0; i < 4 && (await holeOverrides(page)).length; i++) {
+    const n = (await holeOverrides(page)).length;
     await page.getByRole("button", { name: "Undo", exact: true }).click();
-    await page.waitForTimeout(300);
+    // the click has landed once the read state moves, or the next poll sees it
+    await expect.poll(async () => (await holeOverrides(page)).length !== n || (await page.getByRole("button", { name: "Undo", exact: true }).isDisabled()), { timeout: 3_000 }).toBe(true).catch(() => {});
   }
   await expect.poll(async () => (await holeOverrides(page)).length).toBe(0);
   const back = () => page.locator(".dgp-stats").innerText().then((t) => t === before);
@@ -1209,6 +1223,53 @@ test("(h4) Escape mid-draft: no patch and the mode is gone", async ({ page }) =>
   await page.keyboard.press("Escape");
   await expect(page.locator(".hoop canvas")).toHaveAttribute("data-hole-draft", "off");
   expect(Object.keys((await readDigitized(page)).overrides), "no override at all").toHaveLength(0);
+});
+
+test("(h7) holed fixture: a small square drawn inside the existing hole's void is refused as 'Hole 2 crosses Hole 1.', nothing patched, draft stays open", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeHoled(page);
+  const g = await selectGreenShape(page);
+  const bodyX = (g.shell.tl.x + g.hole.tl.x) / 2, bodyY = (g.hole.tl.y + g.hole.bl.y) / 2;
+  await page.mouse.click(bodyX, bodyY, { button: "right" });
+  await page.getByRole("menuitem", { name: "Add hole" }).click();
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-hole-draft", "0");
+  const cx = (g.hole.tl.x + g.hole.br.x) / 2, cy = (g.hole.tl.y + g.hole.br.y) / 2;
+  const h = ((g.hole.br.x - g.hole.tl.x) / 2) * 0.3;
+  const sq = [{ x: cx - h, y: cy - h }, { x: cx + h, y: cy - h }, { x: cx + h, y: cy + h }, { x: cx - h, y: cy + h }];
+  await clickAll(page, sq);
+  await page.mouse.click(sq[0].x, sq[0].y);
+  await expect(page.getByTestId("shape-edit-error")).toContainText("Hole 2 crosses Hole 1.");
+  expect(Object.keys((await readHoled(page)).overrides), "a refusal patches nothing").toHaveLength(0);
+  expect(await draftCount(page), "the draft stays open").toBe("4");
+});
+
+test("(h8) right-click mid-draft opens no menu and keeps the draft's vertices; a Ctrl-click places a vertex", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeSquares(page);
+  const corners = await startAddHole(page);
+  const sq = holeSquare(corners);
+  await clickAll(page, sq.slice(0, 2));
+  expect(await draftCount(page)).toBe("2");
+  await page.mouse.click(sq[2].x, sq[2].y, { button: "right" });
+  await expect(page.getByRole("menuitem")).toHaveCount(0);
+  expect(await draftCount(page), "the draft keeps its vertices").toBe("2");
+  await page.mouse.click(sq[2].x, sq[2].y, { modifiers: ["Control"] });
+  expect(await draftCount(page), "Ctrl-click is a plain vertex").toBe("3");
+});
+
+test("(h9) a click back on the first vertex at 2 points adds nothing", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeSquares(page);
+  const corners = await startAddHole(page);
+  const [a, b] = holeSquare(corners);
+  await clickAll(page, [a, b]);
+  await page.mouse.click(a.x, a.y);                                  // the first vertex again
+  expect(await draftCount(page), "no duplicate vertex").toBe("2");
+  // The stale-refusal fix (cancelHoleDraft() on a selection change) has no e2e: the
+  // fixture is ONE element, so a press on the other square is a vertex, not a selection.
 });
 
 test("(h5) holed fixture, right-click menu: a second hole beside the first -> 2 rings, the first unchanged, 2 node lists", async ({ page }) => {

@@ -2920,6 +2920,17 @@ test("boundaryIssues with holes: a clean donut passes; outside, crossing the she
   expect(boundaryIssues([[0, 0], [12, 0], [12, 40], [0, 40]], [HOLE_A])).toEqual(["Hole 1 crosses the outline."]);
 });
 
+test("boundaryIssues: a hole wholly inside another, or wholly around one, is 'crosses Hole M' (the service refuses nesting); disjoint holes pass", async () => {
+  stubStorage({});
+  const { boundaryIssues } = await import("./digitizer.js");
+  const INNER = [[13, 13], [17, 13], [17, 17], [13, 17]];
+  const AROUND = [[5, 5], [25, 5], [25, 25], [5, 25]];
+  expect(boundaryIssues(SHELL, [HOLE_A, INNER])).toEqual(["Hole 2 crosses Hole 1."]);
+  expect(boundaryIssues(SHELL, [HOLE_A, AROUND])).toEqual(["Hole 2 crosses Hole 1."]);
+  expect(boundaryIssues(SHELL, [INNER, HOLE_A])).toEqual(["Hole 2 crosses Hole 1."]);
+  expect(boundaryIssues(SHELL, [HOLE_A, HOLE_B])).toEqual([]);
+});
+
 test("canonicalShapeEdits emits holes_override only for a shape that has one ([] included) and drops a malformed one", async () => {
   stubStorage({});
   const { canonicalShapeEdits } = await import("./digitizer.js");
