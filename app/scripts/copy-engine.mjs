@@ -10,7 +10,7 @@ export const ENGINE_FILES = [
   "quantize.js", "flatten.js", "satin.js", "satinplay.js", "crossfill.js", "satinfont.js",
   "fontbin.js",
   "svgpath.js", "svgimport.js",
-  "dst.js", "dstimport.js", "exp.js", "pes.js", "svgexport.js", "stitchModel.js",
+  "dst.js", "dstimport.js", "exp.js", "pes.js", "readback.js", "svgexport.js", "stitchModel.js",
   "digitize.js", "render.js", "pdfsheet.js",
 ];
 mkdirSync(outDir, { recursive: true });

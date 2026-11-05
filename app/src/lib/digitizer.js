@@ -1388,13 +1388,33 @@ export async function exportViaService(design, format, label, fetchFn = globalTh
     body: JSON.stringify(format === "dst" && trimJumps != null ? { design, format, label, trim_jumps: trimJumps } : { design, format, label }),
     signal: AbortSignal.timeout(10000),
   });
-  if (!r.ok) throw await httpError(r);
+  if (!r.ok) {
+    const e = await httpError(r);
+    // The service re-reads every file it writes and answers 500 "Export failed:
+    // <check> ..." when the bytes do not match the design (digitizer_service
+    // readback.py). Flagged so exportDesignPreferService can tell it from "the
+    // service is down" and not hand out the file.
+    if (r.status === 500 && /^Export failed:/.test(e.message)) e.readbackFailed = true;
+    throw e;
+  }
   const bytes = await r.blob();
   const cd = (r.headers && r.headers.get("Content-Disposition")) || "";
   const m = /filename="([^"]+)"/.exec(cd);
   const filename = m ? m[1] : `design.${format}`;
   const mime = (r.headers && r.headers.get("Content-Type")) || "application/octet-stream";
-  return { bytes, filename, mime };
+  // The service's own read-back (X-Export-Verified / X-Export-Readback). Only
+  // present when the browser was allowed to read the headers; absent is
+  // "unknown", never "verified".
+  const verifiedHeader = r.headers && r.headers.get ? r.headers.get("X-Export-Verified") : null;
+  const out = { bytes, filename, mime };
+  if (verifiedHeader === "true") {
+    let counts = {};
+    try { counts = JSON.parse(r.headers.get("X-Export-Readback") || "{}"); } catch (e) { /* counts are optional */ }
+    out.readback = { verified: true, ...counts };
+  } else if (verifiedHeader === "false") {
+    out.readback = { verified: false, reason: r.headers.get("X-Export-Verify-Reason") || "" };
+  }
+  return out;
 }
 
 // POST /digitize (multipart image + config JSON) -> { job_id, state, cached }.
