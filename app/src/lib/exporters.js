@@ -148,7 +148,10 @@ export async function exportDesignPreferService(design, format, opts = {}) {
 // garments.js HOOPS preset) puts the chosen hoop on the sheet next to the
 // placement — worksheets printed before the hoop picker existed simply
 // omitted the line, and a missing hoop still does.
-export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoopNote) {
+//
+// `asBytes` (Download all): build the sheet but do not save it, and return its
+// bytes as a Uint8Array for the zip. Without it the sheet saves, as always.
+export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoopNote, { asBytes = false } = {}) {
   const mod = await import("jspdf");
   window.jspdf = window.jspdf || { jsPDF: mod.jsPDF };
   // Trims and thread metres, computed by the same walk the Review step uses
@@ -166,7 +169,8 @@ export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoop
   const quoteLines = sewSummary(design, quote)
     .filter((r) => r.label === "Thread cost" || r.label === "Machine time")
     .map((r) => r.label + ": " + r.value);
-  EMB.buildWorksheetPDF(design, {
+  const doc = EMB.buildWorksheetPDF(design, {
+    ...(asBytes ? { save: false } : {}),
     quoteLines,
     garmentLabel: garment.label || "",
     // The id as well as the label: the sheet resolves the fabric preset from
@@ -195,6 +199,7 @@ export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoop
     fileName: "embbot-worksheet.pdf",
     garmentBox: { widthMM: garment.widthIn * 25.4, heightMM: garment.heightIn * 25.4 },
   });
+  return asBytes ? new Uint8Array(doc.output("arraybuffer")) : undefined;
 }
 
 // Renders design to a PNG preview image. Long side is 1200px, other side

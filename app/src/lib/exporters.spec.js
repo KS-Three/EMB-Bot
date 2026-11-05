@@ -329,6 +329,33 @@ test("exportWorksheetPDF wires window.jspdf and forwards garment box (mm) to EMB
   }
 });
 
+test("exportWorksheetPDF { asBytes } builds the sheet UNSAVED and returns its bytes (Download all); the default still saves", async () => {
+  const { exportWorksheetPDF } = await import("./exporters.js");
+  const { EMB } = await import("./emb.js");
+  const originalBuild = EMB.buildWorksheetPDF;
+  const output = vi.fn(() => Uint8Array.from([0x25, 0x50, 0x44, 0x46]).buffer);
+  const buildSpy = vi.fn(() => ({ output }));
+  EMB.buildWorksheetPDF = buildSpy;
+  const garment = { id: "left_chest", label: "Left chest", widthIn: 5, heightIn: 2.25 };
+  try {
+    const bytes = await exportWorksheetPDF(design, garment, null, "", "", { asBytes: true });
+    expect(buildSpy.mock.calls[0][1].save).toBe(false);
+    expect(output).toHaveBeenCalledWith("arraybuffer");
+    expect(bytes).toBeInstanceOf(Uint8Array);
+    expect(Array.from(bytes)).toEqual([0x25, 0x50, 0x44, 0x46]);
+
+    // The existing call shape is untouched: no `save` key, so pdfsheet saves.
+    const plain = await exportWorksheetPDF(design, garment);
+    expect("save" in buildSpy.mock.calls[1][1]).toBe(false);
+    expect(plain).toBeUndefined();
+    expect(output).toHaveBeenCalledTimes(1);
+  } finally {
+    if (originalBuild === undefined) delete EMB.buildWorksheetPDF;
+    else EMB.buildWorksheetPDF = originalBuild;
+    delete globalThis.window.jspdf;
+  }
+});
+
 test("exportPNG renders design to PNG with correct canvas aspect ratio", async () => {
   const { exportPNG } = await import("./exporters.js");
   const { renderRealistic } = await import("./preview.js");
