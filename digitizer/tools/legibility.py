@@ -97,7 +97,7 @@ def main(argv=None) -> int:
         except ValueError as e:
             ap.error(str(e))
     if not tesseract_available():
-        print("tesseract binary not on PATH — nothing measured (CI installs tesseract-ocr)")
+        print("no OCR engine (tesserocr wheel + tessdata, or a tesseract binary on PATH) — nothing measured; CI installs tesseract-ocr")
         return 2
     if not a.corpus and not a.fixture:
         ap.error("a fixture or --corpus")

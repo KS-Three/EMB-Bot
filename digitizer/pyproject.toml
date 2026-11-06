@@ -36,6 +36,15 @@ dependencies = [
     # Apache-2.0). Only `pytesseract`'s own `packaging`/`Pillow` deps come
     # along, both already in this list transitively.
     "pytesseract>=0.3.10",
+    # In-process Tesseract (2026-11-06, `digitizer_core/ocr.py`): MIT wheels
+    # for Windows x64 / manylinux / macOS, CPython 3.9-3.15, each BUNDLING
+    # Tesseract 5.5.3 + Leptonica, so no binary install is needed for the
+    # engine -- only `eng.traineddata`, which the apt / brew / Windows
+    # tesseract-ocr packages provide and `ocr.tessdata_dir()` finds. Measured
+    # 251 -> 5 ms per psm-10 read against pytesseract's child process on the
+    # same tessdata (docs/external-repo-sourcing-2026-11-06.md). pytesseract
+    # stays as the fallback when the wheel or the tessdata is absent.
+    "tesserocr>=2.12",
     # Outline fonts digitized on demand (`outline_fonts.py`, 2026-11-06): reads
     # TrueType/OpenType outlines, metrics and GPOS kerning, and instances the
     # variable files to their named weights. MIT, pure Python, zero

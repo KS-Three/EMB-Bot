@@ -38,7 +38,6 @@ from __future__ import annotations
 import difflib
 import os
 import re
-import shutil
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -83,7 +82,8 @@ def similarity(art_text: str, render_text: str) -> float | None:
 
 
 def tesseract_available() -> bool:
-    return shutil.which("tesseract") is not None
+    from . import ocr as _ocr
+    return _ocr.available()
 
 
 def prepare_for_ocr(img: np.ndarray, blur_px: float = 0.0, thin_px: float = 0.0) -> np.ndarray:
@@ -137,13 +137,11 @@ def ocr(img: np.ndarray, psm: int = 6, blur_px: float = 0.0, thin_px: float = 0.
     lower bound on lettering loss, and a missing arm is a thin stroke, which
     `thin_strokes.py` reads directly. Measured 2026-09-08.
     """
-    import pytesseract
-    from PIL import Image
+    from . import ocr as _ocr
 
     prepared = prepare_for_ocr(img, blur_px, thin_px)
     with _one_tesseract_thread():
-        data = pytesseract.image_to_data(Image.fromarray(prepared), config=f"--psm {psm}",
-                                         output_type=pytesseract.Output.DICT)
+        data = _ocr.image_to_data(prepared, psm)
     words = [(w, float(c)) for w, c in zip(data["text"], data["conf"]) if w and w.strip() and float(c) >= 0]
     text = " ".join(w for w, _c in words).strip()
     conf = sum(c for _w, c in words) / len(words) if words else 0.0
