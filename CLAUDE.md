@@ -212,12 +212,16 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 
 7. **Three green checks is NOT a green PR — the fourth is the slow one.** CI runs
    four jobs on a PR. `engine` and `studio` finish in well under a minute
-   (p50 0.5 and 0.8). **`studio-e2e` takes about fifteen minutes now, not
-   three: p50 15.2 min (15m11s), range 11m25s to 18m03s, max 18.1** — measured
-   2026-10-28 over the last 10 green runs on `main` (job `startedAt` to
+   (p50 0.5 and 0.8). **`studio-e2e` takes about twenty-two minutes now, not
+   fifteen: p50 22.1 min, range 17m41s to 28m50s, max 28.8** — measured
+   2026-11-06 over the last 12 green runs on `main` (job `startedAt` to
    `completedAt` from `gh run view <id> --json jobs`; every one in the table in
    [`docs/digitizer-ci-timing-history.md`](docs/digitizer-ci-timing-history.md)).
-   The old "p50 2.7" sat here until then; budget twenty, read fifteen as normal.
+   The old "p50 15.2" sat here from 10-28 until then; budget thirty, read
+   twenty-two as normal. **Its job `timeout-minutes` is 60 since 2026-11-06**
+   (was 40): run 42166746724 hit 40 with all 82 finished specs green, 13 of its
+   minutes spent in apt on a slow runner, so a cancelled `studio-e2e` is a
+   budget question before it is a test question.
    **SHARDED since PR #669 (2026-10-08): `digitizer` is now an aggregator over
    six `digitizer shard k/6` jobs**, still `-n auto` each, and it goes green or
    red seconds after the slowest shard. The first sharded run (split by file
@@ -236,7 +240,7 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 
    **Every written budget for these jobs has gone stale in ONE direction** —
    the single pre-sharding `digitizer` job drifted from 15 to 76 minutes between
-   2026-08-27 and 10-04, `studio-e2e` from 2.7 to 15.2 by 2026-10-28, and each
+   2026-08-27 and 10-04, `studio-e2e` from 2.7 to 15.2 by 2026-10-28 and 22.1 by 11-06, and each
    revision of this line was true when written
    (history: [`docs/digitizer-ci-timing-history.md`](docs/digitizer-ci-timing-history.md)).
    So spend one `curl` on `/actions/runs/<id>/jobs` before calling a long job
