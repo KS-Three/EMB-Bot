@@ -344,9 +344,10 @@ from functools import lru_cache
 
 import cv2
 import numpy as np
-import pytesseract
 from PIL import Image
 from shapely.geometry import LineString, MultiLineString, Polygon
+
+from . import ocr as _ocr   # one Tesseract: tesserocr in-process, pytesseract fallback (2026-11-06)
 
 from . import machine, threads
 from .regions import Region
@@ -1430,8 +1431,7 @@ def _ocr_confidence(poly: Polygon) -> float | None:
     if img is None:
         return None
     try:
-        data = pytesseract.image_to_data(
-            img, config=f"--psm {_OCR_PSM}", output_type=pytesseract.Output.DICT)
+        data = _ocr.image_to_data(img, _OCR_PSM)
     except Exception:
         return None
     confs = [float(c) for c in data["conf"] if float(c) >= 0]
@@ -2401,8 +2401,7 @@ def _ocr_glyph_guess(poly: Polygon) -> tuple[str | None, float | None]:
         return None, None
     try:
         with _one_tesseract_thread():
-            data = pytesseract.image_to_data(
-                img, config=f"--psm {_OCR_PSM}", output_type=pytesseract.Output.DICT)
+            data = _ocr.image_to_data(img, _OCR_PSM)
     except Exception:
         return None, None
     confs = [float(c) for c in data["conf"] if float(c) >= 0]

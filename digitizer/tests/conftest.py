@@ -18,7 +18,6 @@ os.environ.setdefault("OPENCV_IPP", "avx2")
 
 import hashlib
 import json
-import shutil
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -275,9 +274,15 @@ def source_line_grid():
 # ever lost in a refactor, the five OCR tests must fail loud, not go dark
 # behind quiet skips (the same rule the studio-e2e job enforces for its
 # specs). GitHub Actions always sets CI=true.
+def _ocr_available() -> bool:
+    from digitizer_core import ocr as _ocr
+    return _ocr.available()
+
+
 requires_tesseract = pytest.mark.skipif(
-    shutil.which("tesseract") is None and not os.environ.get("CI"),
-    reason="needs the real tesseract binary on PATH (CI installs tesseract-ocr)")
+    not _ocr_available() and not os.environ.get("CI"),
+    reason="needs an OCR engine: the tesserocr wheel + a tessdata dir, or the tesseract binary on PATH "
+           "(CI installs tesseract-ocr, whose tessdata the wheel reads)")
 
 # The fixture logo's true colors and the Isacord threads they resolve to
 # (CIEDE2000). Pinned so a change in the matcher or the chart is visible.

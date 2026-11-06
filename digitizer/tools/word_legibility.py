@@ -254,7 +254,8 @@ def blind_words(rows: list[dict], ceilings: dict) -> dict[str, str]:
 # --- files -------------------------------------------------------------------
 
 def tesseract_available() -> bool:
-    return shutil.which("tesseract") is not None
+    from digitizer_core import ocr as _ocr
+    return _ocr.available()
 
 
 def kent_root() -> Path | None:
@@ -893,22 +894,39 @@ def read_crops(items: list[tuple[np.ndarray, float]], workers: int = BATCH_WORKE
     import tempfile
     from concurrent.futures import ThreadPoolExecutor
     from digitizer_core import legibility as core
+    from digitizer_core import ocr as _ocr
     variants = core.VARIANTS_MM
-    with tempfile.TemporaryDirectory(prefix="wl_ocr_") as tmp:
-        work = Path(tmp)
-        paths = []
-        for i, (img, ppm) in enumerate(items):
-            for j, (blur_mm, thin_mm) in enumerate(variants):
-                p = work / f"c{i:05d}_{j}.png"
-                cv2.imwrite(str(p), core.prepare_for_ocr(img, blur_mm * ppm, thin_mm * ppm))
-                paths.append(p)
-        per = max(BATCH_MIN, -(-len(paths) // max(1, workers)))
-        chunks = [paths[k:k + per] for k in range(0, len(paths), per)]
-        with ThreadPoolExecutor(max_workers=max(1, min(workers, len(chunks)))) as ex:
-            got = list(ex.map(lambda a: _tesseract_list(a[1], work, f"b{a[0]}"), enumerate(chunks)))
-        reads: list[tuple[str, float] | None] = []
-        for chunk, r in zip(chunks, got):
-            reads.extend(r if r is not None else [None] * len(chunk))
+    reads: list[tuple[str, float] | None] = []
+    if _ocr.engine() == "tesserocr":
+        # In-process (2026-11-06): no PNGs, no list files, no process starts.
+        # The threads each hold their own Tesseract (`ocr._api`), and the GIL
+        # is released inside Recognize, so `workers` threads read together.
+        prepared = [core.prepare_for_ocr(img, blur_mm * ppm, thin_mm * ppm)
+                    for img, ppm in items for blur_mm, thin_mm in variants]
+
+        def _one(a):
+            try:
+                return _ocr.words(a, 7)
+            except Exception:
+                return None
+
+        with ThreadPoolExecutor(max_workers=max(1, min(workers, len(prepared)))) as ex:
+            reads = list(ex.map(_one, prepared))
+    else:
+        with tempfile.TemporaryDirectory(prefix="wl_ocr_") as tmp:
+            work = Path(tmp)
+            paths = []
+            for i, (img, ppm) in enumerate(items):
+                for j, (blur_mm, thin_mm) in enumerate(variants):
+                    p = work / f"c{i:05d}_{j}.png"
+                    cv2.imwrite(str(p), core.prepare_for_ocr(img, blur_mm * ppm, thin_mm * ppm))
+                    paths.append(p)
+            per = max(BATCH_MIN, -(-len(paths) // max(1, workers)))
+            chunks = [paths[k:k + per] for k in range(0, len(paths), per)]
+            with ThreadPoolExecutor(max_workers=max(1, min(workers, len(chunks)))) as ex:
+                got = list(ex.map(lambda a: _tesseract_list(a[1], work, f"b{a[0]}"), enumerate(chunks)))
+            for chunk, r in zip(chunks, got):
+                reads.extend(r if r is not None else [None] * len(chunk))
     out = []
     for i, (img, ppm) in enumerate(items):
         rs = reads[i * len(variants):(i + 1) * len(variants)]

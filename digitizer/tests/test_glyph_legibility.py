@@ -211,7 +211,7 @@ def test_the_ceiling_keeps_a_thin_stroke_from_reading_as_a_failure():
 
 
 def test_without_tesseract_ocr_says_so_and_never_passes(monkeypatch):
-    monkeypatch.setattr(gl.shutil, "which", lambda _n: None)
+    monkeypatch.setattr("digitizer_core.ocr.available", lambda: False)   # no engine at all (ocr.py, 2026-11-06)
     rgb, alpha = _artwork([_ring(*O_CENTRE, O_R)], O_STROKE)
     words, _d, _r = gl.read_arrays(rgb, alpha, {"w": O_BOX}, _design(_o_paths([O_R])), use_ocr=True)
     assert words[0].ocr == "OCR UNAVAILABLE"
