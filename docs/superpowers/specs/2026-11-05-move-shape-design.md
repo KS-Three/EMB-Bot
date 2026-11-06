@@ -68,6 +68,14 @@ holes, dx, dy)` returning `ringEditOverrides`' result, or null for a zero delta.
 Tests: `app/src/lib/shapeNodes.spec.js` ("Move shape"), e2e m1–m7 in
 `app/e2e/field-reshape-mode.spec.js`.
 
+## Edge cases
+
+- Delete / Backspace from the field are swallowed while Move is on: nothing is
+  deleted mid-move (a delete would clear the selection and the move would commit
+  onto a gone shape). Escape cancels from anywhere; Enter needs the field.
+- The rings are frozen at entry. If an Undo or a landing restitch replaces the
+  shape's override entry or its review row, the move ends with no commit.
+
 ## Not in scope
 
 Rotate/scale of a shape; moving several shapes at once (use Reshape's marquee);

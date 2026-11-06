@@ -1490,12 +1490,21 @@ test("(m3) ten ArrowRight presses then Done = 1.0 mm; one Shift+ArrowRight = 1 m
   const mv = movedVertices(was, entry.boundary_override, 1e-9);
   expect(mv.length, "every vertex moved").toBe(ringOf(was).length);
   for (const v of mv) expect(Math.abs(Math.hypot(v.dx, v.dy) - 1.0)).toBeLessThan(0.05);
-  // Shift+Arrow is 1 mm; Escape drops it.
-  await page.waitForTimeout(500);
+  // Shift+Arrow is 1 mm: committed this time, read after the stitches have followed.
+  const first = entry.boundary_override;
+  await settledFill(page, "black");
   await startMove(page);
   await page.keyboard.press("Shift+ArrowRight");
   await expect.poll(async () => (await moveDelta(page)).dx).toBeCloseTo(1.0, 1);
-  await page.keyboard.press("Escape");
+  const b2 = await moveButton(page, "done");
+  await page.mouse.click(b2.x, b2.y);
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-shape-move", "off");
+  await settledFill(page, "black");
+  await expect.poll(async () => {
+    const e2 = (await readDigitized(page)).overrides[sid];
+    const m = e2 && e2.boundary_override ? movedVertices(first, e2.boundary_override, 1e-9) : null;
+    return !!m && m.length === ringOf(first).length && m.every((v) => Math.abs(Math.hypot(v.dx, v.dy) - 1.0) < 0.05);
+  }, { timeout: 15_000 }).toBe(true);
 });
 
 test("(m4) holed fixture: shell and hole move together, the hole keeps its place in the shell", async ({ page }) => {
@@ -1578,13 +1587,46 @@ test("(m7) Done, wait for the restitch, Undo (twice): the square is back where i
   await page.keyboard.press("Enter");
   expect(await boundaryEntries(page)).toHaveLength(1);
   await waitMoved(page, "black", black0, 8 * k);
-  for (let i = 0; i < 4 && (await boundaryEntries(page)).length; i++) {
-    const n = (await boundaryEntries(page)).length;
-    await page.getByRole("button", { name: "Undo", exact: true }).click();
-    await expect.poll(async () => (await boundaryEntries(page)).length !== n || (await page.getByRole("button", { name: "Undo", exact: true }).isDisabled()), { timeout: 3_000 }).toBe(true).catch(() => {});
-  }
-  await expect.poll(async () => (await boundaryEntries(page)).length).toBe(0);
+  const undo = page.getByRole("button", { name: "Undo", exact: true });
+  await undo.click();                                                // the restitch's own step
+  await expect.poll(async () => (await boundaryEntries(page)).length, { timeout: 5_000 }).toBe(1);
+  await undo.click();                                                // the move: ONE step
+  await expect.poll(async () => (await boundaryEntries(page)).length, { timeout: 5_000 }).toBe(0);
   const back = async () => { const b = await fillBBox(page, "black"); return !!b && Math.abs(b.x0 - black0.x0) / k < 0.3; };
+  const ok = await expect.poll(back, { timeout: 8_000 }).toBe(true).then(() => true, () => false);
+  if (!ok) { await runDigitize(page); await expect.poll(back, { timeout: 120_000 }).toBe(true); }
+});
+
+test("(m8) Delete / Backspace mid-move delete nothing: Done commits ONE boundary_override, the shape stays, one Undo step takes it back", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeSquares(page);
+  await startMove(page);
+  const black0 = await settledFill(page, "black");
+  const k = await moveRightMm(page, 5);
+  await page.keyboard.press("Delete");
+  await page.keyboard.press("Backspace");
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-shape-move", "on");
+  expect((await moveDelta(page)).dx, "the move is still pending").toBeGreaterThan(4.5);
+  const b = await moveButton(page, "done");
+  await page.mouse.click(b.x, b.y);
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-shape-move", "off");
+  expect(await boundaryEntries(page), "exactly one boundary_override").toHaveLength(1);
+  const deleted = await page.evaluate(() => {
+    const id = localStorage.getItem("embstudio:current");
+    const parsed = JSON.parse(localStorage.getItem("embstudio:p:" + id));
+    const proj = parsed.project || parsed;
+    const el = (proj.elements || []).find((e) => e.type === "digitized");
+    return (el.deletedShapeIds || []).length;
+  });
+  expect(deleted, "no shape was deleted").toBe(0);
+  await waitMoved(page, "black", black0, 5 * k);
+  const undo = page.getByRole("button", { name: "Undo", exact: true });
+  await undo.click();                                                // the restitch's own step
+  await expect.poll(async () => (await boundaryEntries(page)).length, { timeout: 5_000 }).toBe(1);
+  await undo.click();                                                // the move: ONE step
+  await expect.poll(async () => (await boundaryEntries(page)).length, { timeout: 5_000 }).toBe(0);
+  const back = async () => { const bb = await fillBBox(page, "black"); return !!bb && Math.abs(bb.x0 - black0.x0) / k < 0.3; };
   const ok = await expect.poll(back, { timeout: 8_000 }).toBe(true).then(() => true, () => false);
   if (!ok) { await runDigitize(page); await expect.poll(back, { timeout: 120_000 }).toBe(true); }
 });

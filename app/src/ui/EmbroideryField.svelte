@@ -958,12 +958,24 @@
     shapeEditError = "";
     shapeMove = {
       elId: el.id, shapeId, eb: editBasis(edit),
+      ovAtEntry: (el.shapeOverrides || {})[shapeId] || null,
+      rowAtEntry: ((el.review && el.review.shapes) || []).find((r) => r && r.id === shapeId) || null,
       shell: shell.map(([x, y]) => [x, y]),
       holes: (edit.holesById.get(shapeId) || []).map((h) => h.map(([x, y]) => [x, y])),
       dx: 0, dy: 0, drag: null,
     };
     if (canvas) canvas.focus({ preventScroll: true });
     repaintNodeChrome();
+  }
+  // True when the shape's override entry or review row is no longer the object
+  // the move was entered on.
+  function shapeMoveStale(proj) {
+    const sm = shapeMove;
+    const el = sm && proj && (proj.elements || []).find((x) => x.id === sm.elId);
+    if (!el) return false;
+    if (((el.shapeOverrides || {})[sm.shapeId] || null) !== sm.ovAtEntry) return true;
+    const row = ((el.review && el.review.shapes) || []).find((r) => r && r.id === sm.shapeId) || null;
+    return row !== sm.rowAtEntry;
   }
   function endShapeMove() {
     if (!shapeMove) return;
@@ -2113,6 +2125,9 @@
     if (holeDraft && selectedShapeId !== holeDraft.shapeId) cancelHoleDraft();
     // Move shape: another element, none, or another shape commits the pending move.
     if (shapeMove && (shapeMove.elId !== project.selectedId || multiSel || selectedShapeId !== shapeMove.shapeId)) commitShapeMove();
+    // The frozen rings are stale once an Undo or a landing restitch replaced the
+    // shape's override entry or its review row: leave the move, commit nothing.
+    if (shapeMove && shapeMoveStale(project)) endShapeMove();
     if (reshape && sel && sel.type === "digitized" && !reshapeDrag) {
       const sig = nodeSigOf(sel);
       if (sig !== reshapeNodeSig) {
@@ -2352,7 +2367,15 @@
     // Move shape comes first: Escape restores and dispatches nothing, Enter
     // (from the field) commits the move.
     if (shapeMoveOn()) {
+      // Escape cancels from anywhere (it is always safe); Enter needs the field.
       if (e.key === "Escape") { endShapeMove(); e.preventDefault(); return; }
+      // A move session owns Delete / Backspace: nothing is deleted mid-move (a
+      // delete would clear the selection and the move would then commit onto a
+      // shape that is gone).
+      if ((e.key === "Delete" || e.key === "Backspace") && (e.target === canvas || e.target === document.body)) {
+        e.preventDefault();
+        return;
+      }
       if (e.key === "Enter" && !shapePop && !fieldMenu && (e.target === canvas || e.target === document.body)) {
         commitShapeMove();
         e.preventDefault();
