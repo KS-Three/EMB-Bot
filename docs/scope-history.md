@@ -20739,3 +20739,35 @@ CI's two deselected `enthusiast_logo` goldens, so #987's hypothesis that they
 are host SIMD is not supported. CI's two draws after the cap (runs 3218 and
 3227) both put the pin on an AVX2 EPYC 7763 (IPP l9, `75f44f90`); no AMD
 AVX-512 draw yet.
+
+## 2026-11-05 — Corpus scorecard recaptured at `292418a8` on GitHub Actions; the ruler moves from `d000e370`
+
+**Why.** Kent asked for an audit and then "Recapture scorecard": the 10-05
+ruler had sat under 546 pipeline commits, 261 merged PRs, and every flip of
+late October. The WSL box scored `origin/main` e9205673 first (6-worker
+pool, 18.9 min), then the capture ran on cloud Linux through the new
+`Corpus scorecard` workflow (`.github/workflows/scorecard-capture.yml`,
+`workflow_dispatch`, `diff` or `capture`, never a PR check) — a cloud
+session is no longer the recipe for a capture, Remote Control could not
+start one anyway, and CI is the other place COOKBOOK allows.
+
+**The numbers.** 52 rows: 22 unchanged, 19 up a band, 10 down, 1 score only.
+A/B/C/D/F 9/18/7/6/12 → **10/20/8/10/4**, mean **61.8 → 71.9**. Eight of
+twelve Fs gone (drone, bridge bar, golden tee, region_blobs, phone screenshot
+both garments), all on `THREAD_MATCH_POOR` blocks resolved — the 10-30 flip of
+`thread_match_excess_gradient` (#1200, defect 28), whose own 10-29
+measurement predicted 10/20/6/12/4. Becker B → A (`TRIM_HEAVY` gone, #999's
+queue). The falls: Hotel Fremont B → F 28 / F 16 on both garments (two `0020 Black`
+dE-100 blocks, recorded 10-29 and not moved by excess), `LETTERING_TOO_SMALL`
+on `logo_alpha` / `logo_whitebg` / sunset (the Column lane reads synthetic
+text as small lettering; #863 / #955), `DENSITY_STACKED` on chrome hat,
+dof_meadow and sunset (photo lane, 2-24% more stitches; kept frame #1179
+suspected, unrendered). Every mover is attributed by evidence, with the
+2026-10-29 defect-28 table as the mid-interval anchor; four rows carry an
+explicit "drift" with named candidates:
+[`docs/scorecard-baseline-attribution-2026-11-05.md`](scorecard-baseline-attribution-2026-11-05.md).
+
+**Read it as conformance.** The grade is preflight findings. Phase 1 is open
+(`docs/yardstick-pro-pair-vs-kents-eye-2026-11-01.md`: only trim counts clear
+chance against Kent's eye), so a ten-point rise is a check going quiet on
+real colour work, not a sewn design looking better (gate 4).

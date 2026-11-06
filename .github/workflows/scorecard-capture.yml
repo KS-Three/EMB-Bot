@@ -1,0 +1,98 @@
+# Corpus scorecard on cloud Linux, on demand (digitizer/tools/corpus_scorecard.py).
+#
+# COOKBOOK.md ("Recapturing `corpus_scorecard_baseline.json`") rules that a
+# baseline is captured ONLY on cloud Linux or CI: a Windows figure and the WSL
+# box's `photo_grass_macro` rows are the machine's, not the engine's. Until
+# 2026-11-05 "cloud Linux" meant a cloud Claude session running the tool by
+# hand for 40 minutes. This workflow is that step as a button.
+#
+# NEVER a pull_request trigger and never a required check: 52 digitizes at
+# 10-370 s each is 40-45 minutes of one runner, and `diff` exits 1 on any
+# grade that fell a band, which is a REPORT to attribute, not a gate (the
+# tool's own docstring; the corpus-laws-23/26 revert). Dispatch it on a
+# branch, download `scorecard-<mode>-<run id>`, and for a capture commit the
+# JSON with every mover attributed in the commit message.
+#
+# `diff` re-digitizes at HEAD and compares against the COMMITTED baseline on
+# the dispatched ref. `capture` writes a fresh baseline stamped with the
+# commit it was captured at. Both land in the artifact with the full log.
+#
+# GitHub resolves a workflow_dispatch by the file on the DEFAULT branch, so a
+# brand-new copy of this file cannot be dispatched from its own branch; the
+# first capture (run 42148952004, 2026-11-05) rode a temporary push trigger.
+# Once merged, `gh workflow run scorecard-capture.yml --ref <branch>` works.
+name: Corpus scorecard
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'diff HEAD against the committed baseline, or capture a new baseline at HEAD'
+        type: choice
+        options: [diff, capture]
+        default: diff
+
+permissions:
+  contents: read
+
+env:
+  MODE: ${{ inputs.mode }}
+
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90   # serial capture was 40.2 min on 2026-10-04, diff 38.7-39.6; ~2x
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: digitizer/requirements.txt
+      # Same Tesseract as the digitizer job: LETTERING_ILLEGIBLE and the word
+      # reading go through OCR, and an OCR-less run scores a different pipeline.
+      - name: Install system dependencies (Tesseract OCR)
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - name: Install
+        working-directory: digitizer
+        run: pip install -r requirements.txt
+      - name: Runner size
+        continue-on-error: true
+        run: |
+          echo "mode: $MODE"
+          echo "nproc: $(nproc)"
+          grep -m1 'model name' /proc/cpuinfo || true
+          tesseract --version 2>&1 | head -1
+      # No pipe: `| tee` would hand this step tee's exit code instead of the
+      # tool's (the pytest | tail trap, CLAUDE.md). `diff` exits 1 on a fallen
+      # band or a new block; that is the report, so the step records the code
+      # and the job stays green either way. The log is the artifact's payload.
+      - name: Run the scorecard
+        working-directory: digitizer
+        run: |
+          python tools/corpus_scorecard.py "$MODE" > "scorecard-$MODE.log" 2>&1
+          code=$?
+          echo "EXIT=$code" >> "scorecard-$MODE.log"
+          echo "tool exit code: $code"
+      - name: Publish the tail to the run summary
+        if: always()
+        working-directory: digitizer
+        run: |
+          {
+            echo "## Corpus scorecard ($MODE)"
+            echo
+            echo 'Linux, `ubuntu-latest`, at `${{ github.sha }}`. The grade is preflight-finding conformance, not quality (ROADMAP gate 4; phase 1 is open).'
+            echo
+            echo '```'
+            tail -n 80 "scorecard-$MODE.log" || echo '(no log: the run did not finish)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the log and, for a capture, the new baseline
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scorecard-${{ env.MODE }}-${{ github.run_id }}
+          path: |
+            digitizer/scorecard-${{ env.MODE }}.log
+            digitizer/testdata/corpus_scorecard_baseline.json
+          if-no-files-found: error
