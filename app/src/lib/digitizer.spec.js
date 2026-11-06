@@ -2989,3 +2989,86 @@ test("exportViaService sends trim_jumps for DST only, and nothing when unset", a
   expect(bodies[1]).toEqual({ design, format: "dst", label: "a" });
   expect(bodies[2]).toEqual({ design, format: "pes", label: "a" });
 });
+
+// ---- holding the centre across an edit restitch (2026-11-06) ---------------
+
+describe("holdAnchor: an edit restitch keeps the centre the design was placed on", () => {
+  const sq = (x0, x1, y0 = 0, y1 = 100) => [
+    { x: x0, y: y0, type: "stitch" }, { x: x1, y: y0, type: "stitch" },
+    { x: x1, y: y1, type: "stitch" }, { x: x0, y: y1, type: "stitch" },
+  ];
+  // black square at 0..100, red at 300..400: bbox 0..400, centre 200
+  const before = { stitches: [...sq(0, 100), ...sq(300, 400), { x: 400, y: 100, type: "end" }] };
+  // the black square moved 100 units right: bbox 100..400, centre 250
+  const after = { stitches: [...sq(100, 200), ...sq(300, 400), { x: 400, y: 100, type: "end" }] };
+
+  it("designCentre is the bbox midpoint, or the held anchor", async () => {
+    const { designCentre } = await import("./digitizer.js");
+    expect(designCentre(before)).toEqual({ x: 200, y: 50 });
+    expect(designCentre({ ...before, anchor: { x: 7, y: 8 } })).toEqual({ x: 7, y: 8 });
+    expect(designCentre({ stitches: [] })).toBeNull();
+  });
+
+  it("without a hold the un-moved shape slides (the bug); with it the red square keeps its screen place", async () => {
+    const { holdAnchor, decodedFromDesign } = await import("./digitizer.js");
+    const plain = decodedFromDesign(after);
+    const held = decodedFromDesign(holdAnchor(before, after));
+    const ref = decodedFromDesign(before);
+    // red square's first stitch is the 5th record (x = 300 in service units)
+    expect(ref.stitches[4].x).toBe(100);                  // 300 - centre 200
+    expect(plain.stitches[4].x).toBe(50);                 // slid 50 units: 300 - centre 250
+    expect(held.stitches[4].x).toBe(100);                 // unchanged
+    expect(held.stitches[0].x).toBe(-100);                // black moved +100 from its old -200
+    // width/height stay the SEWN extent, so the readout and the hoop check stay honest
+    expect(held.widthMM).toBeCloseTo(30, 6);
+    expect(held.heightMM).toBeCloseTo(10, 6);
+  });
+
+  it("holds across a second edit (the anchor rides in the result) and never shrinks to the bbox", async () => {
+    const { holdAnchor, decodedFromDesign } = await import("./digitizer.js");
+    const first = holdAnchor(before, after);
+    const third = { stitches: [...sq(150, 250), ...sq(300, 400), { x: 400, y: 100, type: "end" }] };
+    const second = holdAnchor(first, third);
+    expect(second.anchor).toEqual({ x: 200, y: 50 });
+    expect(decodedFromDesign(second).stitches[4].x).toBe(100);
+  });
+
+  it("an edit that pushes a corner outside the old bbox also holds the others", async () => {
+    const { holdAnchor, decodedFromDesign } = await import("./digitizer.js");
+    const grown = { stitches: [...sq(0, 100, -50, 100), ...sq(300, 400), { x: 400, y: 100, type: "end" }] };
+    const held = decodedFromDesign(holdAnchor(before, grown));
+    expect(held.stitches[4].y).toBe(decodedFromDesign(before).stitches[4].y);
+    expect(held.heightMM).toBeCloseTo(15, 6);
+  });
+
+  it("a rotated design, a missing prev and an empty next are left alone", async () => {
+    const { holdAnchor } = await import("./digitizer.js");
+    expect(holdAnchor(before, after, 90)).toBe(after);
+    expect(holdAnchor(null, after)).toBe(after);
+    expect(holdAnchor(before, { stitches: [] })).toEqual({ stitches: [] });
+    expect(holdAnchor(before, after, 360).anchor).toEqual({ x: 200, y: 50 });
+  });
+
+  it("a frame (pruned preview) wins over the anchor and grows symmetrically about it", async () => {
+    const { pruneDeletedShapes, decodedFromDesign, holdAnchor } = await import("./digitizer.js");
+    const d = holdAnchor(before, after);
+    const withRuns = { ...d, runs: [{ shape: "A", i0: 0, i1: 3 }, { shape: "B", i0: 4, i1: 7 }] };
+    const pruned = pruneDeletedShapes(withRuns, ["A"], ["A", "B"]);
+    // frame is centred on the anchor (200), reaching the far edge of the unpruned bbox (400)
+    expect(pruned.frame.minX + pruned.frame.maxX).toBe(2 * 200);
+    expect(decodedFromDesign(pruned).stitches[0].x).toBe(100);   // red still at the same place
+  });
+});
+
+describe("runBaseKey: the run's identity apart from its shape edits", () => {
+  it("ignores the four edit fields only", async () => {
+    const { runBaseKey } = await import("./digitizer.js");
+    const el = { sourcePng: "abc", crop: null };
+    const base = { target_width_mm: 80, colors: 4 };
+    const k0 = runBaseKey({ ...base }, el);
+    expect(runBaseKey({ ...base, shape_overrides: { a: { x: 1 } }, deleted_shape_ids: ["b"], merge_shape_ids: [["a", "c"]], split_shapes: { d: 2 } }, el)).toBe(k0);
+    expect(runBaseKey({ ...base, target_width_mm: 90 }, el)).not.toBe(k0);
+    expect(runBaseKey({ ...base }, { ...el, crop: { x: 0, y: 0, w: 1, h: 1 } })).not.toBe(k0);
+    expect(runBaseKey({ ...base }, { sourcePng: "other-art" })).not.toBe(k0);
+  });
+});
