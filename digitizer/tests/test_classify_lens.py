@@ -45,7 +45,7 @@ def test_decide_reproduces_engine_verdict_on_all_four_branches(path, expected):
     """One fixture per reachable class. The engine computes the signals; the
     lens's re-derived tree must land on the same class at the same
     confidence, or every number the lens prints is untrustworthy."""
-    res = classify(path, PipelineConfig(target_width_mm=80.0))
+    res = classify(path, PipelineConfig(target_width_mm=80.0, stage0_scale_relative_grad=False))
     assert res.class_ == expected  # routing itself is test_stage0_classify's job
     d = lens.decide_from_signals(res.signals, NOMINAL)
     assert d.class_ == res.class_
@@ -57,7 +57,7 @@ def test_perturbed_thresholds_actually_change_the_decision():
     perturbed Thresholds — pin that lowering the photo gate under
     drone_render's measured ucm moves it off `gradient`."""
     res = classify(PHOTO_DIR / "drone_render.png",
-                   PipelineConfig(target_width_mm=80.0))
+                   PipelineConfig(target_width_mm=80.0, stage0_scale_relative_grad=False))
     ucm = res.signals["unique_color_mass"]
     grad = res.signals["gradient_smoothness"]
     import dataclasses
@@ -132,7 +132,7 @@ def test_decide_mirrors_the_engine_on_the_texture_and_veto_rows():
     lens must land on both at the engine's confidence."""
     for rel in ("photo/owl_kent.jpg", "logo_script_tires.png", "photo/drone_render.png",
                 "photo/fur_ramp.png"):
-        res = classify(TESTDATA / rel, PipelineConfig(target_width_mm=80.0))
+        res = classify(TESTDATA / rel, PipelineConfig(target_width_mm=80.0, stage0_scale_relative_grad=False))
         d = lens.decide_from_signals(res.signals, NOMINAL)
         assert d.class_ == res.class_, rel
         assert d.route == res.signals["photo_route"], rel
@@ -141,7 +141,7 @@ def test_decide_mirrors_the_engine_on_the_texture_and_veto_rows():
 
 def test_sweeping_texture_photo_min_moves_owl_kent():
     import dataclasses
-    res = classify(PHOTO_DIR / "owl_kent.jpg", PipelineConfig(target_width_mm=80.0))
+    res = classify(PHOTO_DIR / "owl_kent.jpg", PipelineConfig(target_width_mm=80.0, stage0_scale_relative_grad=False))
     assert res.class_ == "photo_scene"
     raised = dataclasses.replace(NOMINAL, texture_photo_min=0.5)
     assert lens.decide_from_signals(res.signals, raised).class_ == "gradient"
@@ -149,13 +149,13 @@ def test_sweeping_texture_photo_min_moves_owl_kent():
 
 
 def test_gate_off_reproduces_the_old_tree():
-    res = classify(PHOTO_DIR / "owl_kent.jpg", PipelineConfig(target_width_mm=80.0))
+    res = classify(PHOTO_DIR / "owl_kent.jpg", PipelineConfig(target_width_mm=80.0, stage0_scale_relative_grad=False))
     sig = res.signals
     off = lens.decide(sig["unique_color_mass"], sig["gradient_smoothness"], sig["texture_frac"],
                       sig["two_tone_mass"], sig["cutout_alpha"], NOMINAL, gate_on=False)
     assert off.class_ == "gradient"
     engine_off = classify(PHOTO_DIR / "owl_kent.jpg",
-                          PipelineConfig(target_width_mm=80.0, stage0_texture_gate=False))
+                          PipelineConfig(target_width_mm=80.0, stage0_scale_relative_grad=False, stage0_texture_gate=False))
     assert off.confidence == pytest.approx(engine_off.confidence, abs=1e-12)
 
 

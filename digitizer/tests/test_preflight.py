@@ -432,8 +432,10 @@ def test_a_band_wearing_the_wrong_cone_is_no_longer_hidden_by_its_region():
     from digitizer_core.threads import chart_for
 
     art = PHOTO / "repro_gradient_white_icon.png"
+    # `stage0_scale_relative_grad=False` (ON 2026-11-06): this icon's bands are
+    # the gradient lane's per-band cones; ON it reads flat (tonal_frac 0.063)
     c = cfg(border_by_size=False, thread_match_excess_gradient=False,
-            **PLAN_CFG_KW, **RECIPE_2026_10_27)
+            stage0_scale_relative_grad=False, **PLAN_CFG_KW, **RECIPE_2026_10_27)
     result, plan_ = digitize(art, c)
     p = prep(art, c)
     chart = chart_for(c)
@@ -801,8 +803,10 @@ def test_bridges_script_sews_its_gaps_closed_at_80mm_and_the_finding_says_where_
     # ... and before Kent's 2026-10-26 wave-3 flips: `fine_bars_satin` sews
     # a bar satin and the small-lettering finding then carries a resolution
     # note (measured: mitre alone moves nothing here)
+    # ... and before `stage0_scale_relative_grad` (ON 2026-11-06): the finding's
+    # numbers were measured on Bridge's gradient-lane plan; ON it reads flat
     c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6, **FLIP_2026_10_23,
-                       **WAVE3_2026_10_26_OFF)
+                       **WAVE3_2026_10_26_OFF, stage0_scale_relative_grad=False)
     result, plan = digitize(path, c)
     report = run_preflight(result, plan, c, image=path)
     flagged = [f for f in report["findings"] if f["code"] == SATIN_GAPS_TIGHT]

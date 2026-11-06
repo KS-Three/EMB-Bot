@@ -582,6 +582,15 @@ PRE_FLIP["satin_rail_comp"] = False
 # on the pre-flip tree. Tests that are ABOUT the gate
 # (`tests/test_stage0_texture_gate.py`) name the flag themselves.
 PRE_FLIP["stage0_texture_gate"] = False
+# `stage0_scale_relative_grad` joined the flipped set 2026-11-06 (Kent's "Flip
+# ON (Recommended)" on `docs/stage0-scale-relative-grad-2026-11-06.md`), for
+# the reason every entry above gives: ON, non-photo art splits flat/gradient
+# on `tonal_frac`, so most real logos that read `gradient` route flat and an
+# arm measured on the gradient lane's plan of one was measured on the pre-flip
+# tree. Tests ABOUT the read (`tests/test_stage0_scale_relative.py`, the ON/OFF
+# arms in `tests/test_classifier_scale_invariance.py`) name the flag themselves.
+# `tests/engine_2026_10_27.json` carries it False too.
+PRE_FLIP["stage0_scale_relative_grad"] = False
 # `bean_only_lines` joined the flipped set 2026-10-27 (Kent's "Flip ON
 # (Recommended)" on PR #1161), for the reason every entry above gives: ON, a
 # sub-floor letter or solid no longer sews a bean ring (it takes the satin
