@@ -162,7 +162,8 @@ def test_a_dark_line_on_a_light_fill_is_a_strand_and_sewn():
 
 @pytest.fixture(scope="module")
 def drawn():
-    base = dict(target_width_mm=80.0)
+    # stage0_scale_relative_grad=False: drawn hair is the gradient lane's by design; ON it reads flat
+    base = dict(target_width_mm=80.0, stage0_scale_relative_grad=False)
     result = run_stages(TESTDATA / "synthetic" / "hair_strands.png", PipelineConfig(**base))
     assert result.design_class == "gradient"
     plans = {name: plan_stitches(result, PipelineConfig(**base, **kw)) for name, kw in {

@@ -463,7 +463,9 @@ def _host_cpu() -> str:
 # ...and the 2026-10-23 flips: the Fremont md5 was pinned without them
 # ...and `bean_only_lines` (ON since Kent's 2026-10-27 flip): the tagline's bean
 # letters sew satin with it, which is not what this pin is about either
-_BEAN_PIN = {"bean_letter_straight_mm": None, **FLIP_2026_10_23, "bean_only_lines": PRE_FLIP["bean_only_lines"]}
+# ...and `stage0_scale_relative_grad` (ON 2026-11-06): the Fremont pins below were read on the gradient-lane plan
+_BEAN_PIN = {"bean_letter_straight_mm": None, **FLIP_2026_10_23, "bean_only_lines": PRE_FLIP["bean_only_lines"],
+             "stage0_scale_relative_grad": PRE_FLIP["stage0_scale_relative_grad"]}
 
 
 @pytest.fixture(scope="module")

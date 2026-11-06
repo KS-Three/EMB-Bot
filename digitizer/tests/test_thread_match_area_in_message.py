@@ -64,8 +64,9 @@ def _report(fixture: str):
     art = TESTDATA / fixture
     # The raw yardstick: these price the finding's wording and its floor on
     # the blocks that arm carries (excess took them off 2026-10-30).
+    # stage0_scale_relative_grad=False: priced on the gradient-lane plan golden_tee took until 2026-11-06
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                         thread_match_excess_gradient=False)
+                         thread_match_excess_gradient=False, stage0_scale_relative_grad=False)
     result, plan = digitize(art, cfg)
     report = run_preflight(result, plan, cfg, image=art)
     return report, result

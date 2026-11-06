@@ -138,6 +138,9 @@ def _run(art: Path, width_mm: float, **kw):
     # The numbers here were read without it; the dissolve's own price is
     # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
     kw.setdefault("dissolve_phantom_blends", False)
+    # ...and without the scale-relative flat/gradient read (ON 2026-11-06): the
+    # word rasters read flat ON, and this file prices the gradient lane's votes.
+    kw.setdefault("stage0_scale_relative_grad", False)
     cfg = PipelineConfig(target_width_mm=width_mm, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(art), cfg)
     return finish_generation(gen.fork(), cfg)

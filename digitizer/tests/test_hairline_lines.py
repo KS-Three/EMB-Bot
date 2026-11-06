@@ -115,7 +115,8 @@ def test_the_line_route_leaves_drawn_hair_to_the_region_tier():
     assert set(LINE_CLASSES) == {"photo_subject", "photo_scene"}
     assert all(applies(cfg, c) for c in LINE_CLASSES)
     assert not applies(PipelineConfig(hairline_from_lines=True), "photo_subject")
-    on_cfg = PipelineConfig(target_width_mm=80.0, hairline=True)
+    # stage0_scale_relative_grad=False: drawn hair is the gradient lane's by design; ON it reads flat
+    on_cfg = PipelineConfig(target_width_mm=80.0, hairline=True, stage0_scale_relative_grad=False)
     result = run_stages(TESTDATA / "synthetic" / "hair_strands.png", on_cfg)
     assert result.design_class == "gradient"
     both = plan_stitches(result, PipelineConfig(target_width_mm=80.0, hairline=True,

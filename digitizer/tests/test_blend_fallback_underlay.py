@@ -140,8 +140,9 @@ def _underlay_stitches(plan, shape_ids) -> int:
 def test_stage7_hands_the_blend_tier_the_fabrics_fill_underlay(monkeypatch):
     from digitizer_core.pipeline import fabric_for
 
+    # stage0_scale_relative_grad=False (here and in the two tests below): the repro must route through the blend tier
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                         blend_fallback_underlay=True)
+                         blend_fallback_underlay=True, stage0_scale_relative_grad=False)
     plan, handed, fallback_ids = _blend_calls(monkeypatch, cfg)
     from digitizer_core.fabrics import fill_underlay_for
     # the preset's own underlay, or the cross pass under `fill_underlay_cross` (ON since 2026-10-23)
@@ -152,7 +153,7 @@ def test_stage7_hands_the_blend_tier_the_fabrics_fill_underlay(monkeypatch):
 
 def test_off_end_to_end_the_gradient_lane_has_no_fill_underlay(monkeypatch):
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                         blend_fallback_underlay=False)
+                         blend_fallback_underlay=False, stage0_scale_relative_grad=False)
     plan, _handed, fallback_ids = _blend_calls(monkeypatch, cfg)
     assert fallback_ids
     assert _underlay_stitches(plan, fallback_ids) == 0
@@ -160,7 +161,7 @@ def test_off_end_to_end_the_gradient_lane_has_no_fill_underlay(monkeypatch):
 
 def test_the_underlay_switch_still_wins_end_to_end(monkeypatch):
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                         blend_fallback_underlay=True, underlay=False)
+                         blend_fallback_underlay=True, underlay=False, stage0_scale_relative_grad=False)
     plan, handed, fallback_ids = _blend_calls(monkeypatch, cfg)
     assert set(handed) == {"none"}
     assert _underlay_stitches(plan, fallback_ids) == 0

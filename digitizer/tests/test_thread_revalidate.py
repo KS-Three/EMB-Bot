@@ -55,6 +55,9 @@ CFG = dict(
     # pixels are handed back to the regions whose colour they carry, so it
     # is gone a third way; the superpixel-edged engine is the state traced.
     snap_region_edges=False,
+    # And since 2026-11-06 (`stage0_scale_relative_grad` ON) the repro reads
+    # flat (tonal_frac 0.063) and never reaches the gradient lane's merge.
+    stage0_scale_relative_grad=False,
 )
 
 
