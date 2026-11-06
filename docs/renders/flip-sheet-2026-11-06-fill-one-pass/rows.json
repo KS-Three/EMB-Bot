@@ -3,7 +3,7 @@
   "flag": "fill_one_pass_sections",
   "fixture": "becker_hat_large",
   "width_mm": 101.9,
-  "pr": 1270,
+  "pr": 1271,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,
@@ -70,7 +70,7 @@
   "flag": "fill_one_pass_sections",
   "fixture": "becker_lc_large",
   "width_mm": 95.7,
-  "pr": 1270,
+  "pr": 1271,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,
@@ -137,7 +137,7 @@
   "flag": "fill_one_pass_sections",
   "fixture": "becker_hat_small",
   "width_mm": 76.5,
-  "pr": 1270,
+  "pr": 1271,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,
@@ -204,7 +204,7 @@
   "flag": "fill_one_pass_sections",
   "fixture": "becker_chest_small",
   "width_mm": 76.5,
-  "pr": 1270,
+  "pr": 1271,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,
@@ -271,7 +271,7 @@
   "flag": "fill_one_pass_sections",
   "fixture": "becker_beanie",
   "width_mm": 79.8,
-  "pr": 1270,
+  "pr": 1271,
   "about": "cuts inside one piece / all cuts",
   "sets": {
    "photo_prep_background_removal_timeout_s": 900,

@@ -8,11 +8,11 @@ Each cell: stitches / trims / the number the flag is about. Crops are 18 x 11 mm
 
 | flag (PR) | fixture | engine | OFF | ON | pro | changed points | crop |
 |---|---|---|---|---|---|---|---|
-| `fill_one_pass_sections` (#1270) | becker_hat_large | engine 5777f91c | 16,262 st / 11 tr / 1 cc / 2 / 11 | 16,262 st / 11 tr / 1 cc / 2 / 11 | 12,356 st / 10 tr / 4 cc / 1 / 9 | **no change** (byte-identical DST) | - |
-| `fill_one_pass_sections` (#1270) | becker_lc_large | engine 5777f91c | 14,830 st / 14 tr / 1 cc / 5 / 14 | 14,830 st / 14 tr / 1 cc / 5 / 14 | 11,274 st / 12 tr / 3 cc / 2 / 11 | **no change** (byte-identical DST) | - |
-| `fill_one_pass_sections` (#1270) | becker_hat_small | engine 5777f91c | 10,541 st / 11 tr / 1 cc / 4 / 11 | 10,541 st / 11 tr / 1 cc / 4 / 11 | 8,694 st / 11 tr / 4 cc / 2 / 10 | **no change** (byte-identical DST) | - |
-| `fill_one_pass_sections` (#1270) | becker_chest_small | engine 5777f91c | 10,309 st / 11 tr / 1 cc / 4 / 11 | 10,309 st / 11 tr / 1 cc / 4 / 11 | 8,694 st / 12 tr / 3 cc / 2 / 11 | **no change** (byte-identical DST) | - |
-| `fill_one_pass_sections` (#1270) | becker_beanie | engine 5777f91c | 13,862 st / 14 tr / 2 cc / 6 / 14 | 13,747 st / 13 tr / 2 cc / 5 / 13 | 11,412 st / 48 tr / 5 cc / 0 / 4 | 377 (107 in crop) | [off](renders/flip-sheet-2026-11-06-fill-one-pass/fill_one_pass_sections__becker_beanie__off.jpg) [on](renders/flip-sheet-2026-11-06-fill-one-pass/fill_one_pass_sections__becker_beanie__on.jpg) pro (local only) [where](renders/flip-sheet-2026-11-06-fill-one-pass/fill_one_pass_sections__becker_beanie__where.jpg) |
+| `fill_one_pass_sections` (#1271) | becker_hat_large | engine 5777f91c | 16,262 st / 11 tr / 1 cc / 2 / 11 | 16,262 st / 11 tr / 1 cc / 2 / 11 | 12,356 st / 10 tr / 4 cc / 1 / 9 | **no change** (byte-identical DST) | - |
+| `fill_one_pass_sections` (#1271) | becker_lc_large | engine 5777f91c | 14,830 st / 14 tr / 1 cc / 5 / 14 | 14,830 st / 14 tr / 1 cc / 5 / 14 | 11,274 st / 12 tr / 3 cc / 2 / 11 | **no change** (byte-identical DST) | - |
+| `fill_one_pass_sections` (#1271) | becker_hat_small | engine 5777f91c | 10,541 st / 11 tr / 1 cc / 4 / 11 | 10,541 st / 11 tr / 1 cc / 4 / 11 | 8,694 st / 11 tr / 4 cc / 2 / 10 | **no change** (byte-identical DST) | - |
+| `fill_one_pass_sections` (#1271) | becker_chest_small | engine 5777f91c | 10,309 st / 11 tr / 1 cc / 4 / 11 | 10,309 st / 11 tr / 1 cc / 4 / 11 | 8,694 st / 12 tr / 3 cc / 2 / 11 | **no change** (byte-identical DST) | - |
+| `fill_one_pass_sections` (#1271) | becker_beanie | engine 5777f91c | 13,862 st / 14 tr / 2 cc / 6 / 14 | 13,747 st / 13 tr / 2 cc / 5 / 13 | 11,412 st / 48 tr / 5 cc / 0 / 4 | 377 (107 in crop) | [off](renders/flip-sheet-2026-11-06-fill-one-pass/fill_one_pass_sections__becker_beanie__off.jpg) [on](renders/flip-sheet-2026-11-06-fill-one-pass/fill_one_pass_sections__becker_beanie__on.jpg) pro (local only) [where](renders/flip-sheet-2026-11-06-fill-one-pass/fill_one_pass_sections__becker_beanie__where.jpg) |
 
 ## What each number is
 

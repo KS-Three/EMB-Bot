@@ -483,7 +483,7 @@ FLAGS: dict[str, dict] = {
         # the committed pairs: the other twelve are n/a in a cloud lane (gitignored client files)
         "fixtures": ["becker_hat_large", "becker_lc_large", "becker_hat_small", "becker_chest_small",
                      "becker_beanie"],
-        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1270,
+        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1271,
         "note": "Seam order's progression re-planned so a free section the needle reaches hidden "
                 "(over unsewn ground, or under rows still to come) goes before the nearest, and the "
                 "fill phase sews those hidden routes. Lay read first; kept only where it removes a "
