@@ -90,6 +90,28 @@ lettering board (`--compare`) before and after, re-pin the OCR goldens, and keep
 `pytesseract` as the fallback when the wheel is absent. Half a day plus the
 re-pin. **Nothing here touches a ROADMAP gate.**
 
+**[M] ADOPTED 2026-11-06, same PR as this doc.** `digitizer_core/ocr.py` holds
+the one `PyTessBaseAPI` per thread; the eight sites call it; `EMB_OCR_ENGINE=
+pytesseract` is the before/after lever. What the switch measured on Kent's box:
+
+- *Full digitizer suite* (1 h 51 m, `-n auto`, box loaded by two other sessions):
+  7,214 passed. Red: the two named goldens (`enthusiast_logo` flat-lane and
+  stage-2; `test_pushcomp` passed), eight `test_tools_help` 30 s timeouts that
+  pass alone (279/279), and three MFab under-fill tests
+  (`test_underfill_small_size` 60/113.5, `test_underfill_untagged_riders` 113.5)
+  that fail the SAME way with `EMB_OCR_ENGINE=pytesseract` — grade C under the
+  B floor, the riders list — with the failing sweep width moving 113.5 ↔ 100.8
+  between engines. Box-level, not the engine; CI arbitrates.
+- *Lettering board, old engine → new, 41 pairs at the pro's size* (two caches,
+  since digitization itself reads OCR in the glyph tagger): columns, stitches,
+  trims inside letters, satin width and rail wobble **identical in every band**.
+  Only the reading figures moved: word-legibility cc ALL <4 +0.96 → +0.88, all
+  of it one precision_drone word (1/1, +1.00 → 0.00); 4–6, 6–10 and 10+ within
+  0.01; reach ALL +0.01 to +0.07 octaves. Meta: `tesseract v5.5.3 (tesserocr
+  2.12.0, in-process)` against `v5.4.0 (pytesseract, subprocess)`.
+- No golden on the box needed a re-pin. CI's first run with the wheel (5.5.3
+  replacing apt's 5.3.4) is the other half of that check.
+
 ## 4. `clipper2-ts` — PROTOTYPE on trigger
 
 [V] Native TypeScript port of Angus Johnson's Clipper2 (countertype/clipper2-ts,
@@ -178,9 +200,9 @@ the free-digitizer board and the rest are not.
 
 ## 8. Kent's decision queue
 
-1. **`tesserocr`** — adopt behind one helper with `pytesseract` fallback, run the
-   lettering board before/after, re-pin OCR goldens? Half a day. Catch: every
-   OCR-derived number moves once (box AND CI jump to 5.5.3).
+1. ~~**`tesserocr`**~~ — **done** (Kent 11-06 "Adopt tesserocr + PR"; §3 has the
+   before/after). Open from it: if CI's first run under the wheel moves an OCR
+   golden, re-pin it in that PR, not a follow-up.
 2. **filum on the free-digitizer board** — add a Tier-1 row when it publishes a
    release (bench the DST only; GPL clean-room)? An hour with
    `bench_free_digitizers.py`.

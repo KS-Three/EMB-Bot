@@ -1,6 +1,6 @@
 ---
 name: external-repo-sourcing-2026-11-06
-description: Kent 11-06 "any repos that would benefit this project?" — tesserocr measured 45-50x per OCR read (ADOPT, catch: Tesseract 5.5.3 moves OCR goldens); clipper2-ts on trigger; five new GPL digitizers since 11-04, bench filum's DST only
+description: Kent 11-06 "any repos that would benefit this project?" — tesserocr measured 45-50x per OCR read, ADOPTED same day (board geometry identical, cc moved on one word); clipper2-ts on trigger; five new GPL digitizers since 11-04, bench filum's DST only
 metadata:
   type: project
 ---
@@ -17,10 +17,16 @@ tessdata: psm 10 **251 → 5 ms per read**, psm 7 185 → 4 ms. pytesseract spaw
 `tesseract.exe` + a PNG per call at 8 sites (textcluster 5, legibility 2,
 calibration/reader 1); the 10-26 "batch 4 at a time" was a workaround for that.
 **Catch:** a THIRD engine version (box 5.4.0, CI apt 5.3.4) — every OCR-derived
-number (lettering cc, legibility conf) moves once, box and CI together. Adopt =
-one helper holding a per-thread `PyTessBaseAPI` (GIL released in Recognize, fits
-`_one_tesseract_thread`), pytesseract fallback, lettering board before/after,
-re-pin OCR goldens.
+number (lettering cc, legibility conf) moves once, box and CI together.
+**Adopted 11-06 (Kent "Adopt tesserocr + PR"):** `digitizer_core/ocr.py`, one
+per-thread `PyTessBaseAPI`, pytesseract fallback, `EMB_OCR_ENGINE` override,
+`ocr.version()` in board meta. Board old → new engine on 41 pairs: columns /
+stitches / trims / satin width / wobble identical in every band; cc ALL <4
++0.96 → +0.88 = ONE precision_drone word, other bands within 0.01. Full suite
+7,214 passed; the 3 MFab under-fill reds fail the same way under pytesseract
+(box-level). No re-pin needed on the box; CI's 5.3.4 → 5.5.3 is the other half.
+Trap met: `$P - <<EOF` (variable form of `python -`) slips the hook and spins a
+REPL — run script files.
 
 **On trigger, not now:** `clipper2-ts` 2.0.1-18 (BSL-1.0, 0 deps, 194/195 ref
 tests) for the browser's home-rolled `offsetRing` (`src/digitize.js:581`,
