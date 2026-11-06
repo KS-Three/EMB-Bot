@@ -121,6 +121,37 @@ def test_letter_spacing_widens_the_block():
     assert loose.width_mm == pytest.approx(tight.width_mm + 4.0, abs=1e-6)
 
 
+def test_letter_spacing_moves_a_glyphs_components_together():
+    """The dot of an i is the same glyph as its stem (review 2026-11-06: a
+    bounds-keyed index gave each component its own slot and the dots drifted)."""
+    def dot_stem_gap(spacing):
+        L = of.layout_text("montserrat", "iii", cap_mm=10, letter_spacing_mm=spacing)
+        parts = sorted((l.polygon for l in L.letters), key=lambda p: p.bounds[0])
+        assert len(parts) == 6
+        # components pair up: each i is a stem and a dot sharing an x range
+        gaps = []
+        for a, b in zip(parts[0::2], parts[1::2]):
+            gaps.append(abs(((a.bounds[0] + a.bounds[2]) - (b.bounds[0] + b.bounds[2])) / 2))
+        return max(gaps)
+    assert dot_stem_gap(3.0) == pytest.approx(dot_stem_gap(0.0), abs=0.05)
+
+
+def test_width_mode_with_spacing_and_several_lines_sizes_by_the_widest_line():
+    L = of.layout_text("montserrat", "Hello\nWorld\nHello", width_mm=40, letter_spacing_mm=3.0)
+    assert L.width_mm == pytest.approx(40.0, abs=1e-6)
+    assert L.cap_mm > 4.0                      # not a speck
+    with pytest.raises(of.OutlineFontError):   # spacing alone exceeds the width
+        of.layout_text("montserrat", "HelloHello", width_mm=20, letter_spacing_mm=3.0)
+
+
+def test_sizes_are_bounded_and_finite():
+    for bad in (float("inf"), float("nan"), 0, -3, of.MAX_SIZE_MM + 1, True):
+        with pytest.raises(of.OutlineFontError):
+            of.layout_text("anton", "A", cap_mm=bad)
+    with pytest.raises(of.OutlineFontError):
+        of.layout_text("anton", "A", cap_mm=10, letter_spacing_mm=float("nan"))
+
+
 def test_two_lines_stack_downward_in_pipeline_space():
     L = of.layout_text("roboto", "AB\nCD", cap_mm=8)
     top = [l for l in L.letters if l.line == 0]

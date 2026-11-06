@@ -108,16 +108,29 @@ describe("request", () => {
     expect(k(el, { ...project, garmentId: "hat_front" })).not.toBe(base);
   });
 
-  test("outlineStale: behind only when a result exists and its key moved", () => {
-    expect(of.outlineStale({ ...el, result: null }, project)).toBe(false);
+  test("outlineStale: typed-but-never-digitized is behind; a result is behind when its key moved", () => {
+    // text with no result sews nothing and would be left out of the file silently
+    expect(of.outlineStale({ ...el, result: null }, project)).toBe(true);
+    // empty text: nothing to sew, nothing to press — never locks Download
+    expect(of.outlineStale({ ...el, text: "  ", result: null }, project)).toBe(false);
     const applied = of.outlineRequestKey(of.outlineRequest(el, project));
     const digitized = { ...el, result: { stitches: [] }, appliedConfig: applied };
     expect(of.outlineStale(digitized, project)).toBe(false);
     expect(of.outlineStale({ ...digitized, text: "Other" }, project)).toBe(true);
+    expect(of.outlineStale({ ...digitized, text: "" }, project)).toBe(false);
     expect(of.outlineStale({ ...digitized, fontKey: "medium_font" }, project)).toBe(false);
     // a legacy result with no stamp reads as current unless a baseline is given
     expect(of.outlineStale({ ...digitized, appliedConfig: null }, project)).toBe(false);
     expect(of.outlineStale({ ...digitized, appliedConfig: null, text: "Other" }, project, { baselineKey: applied })).toBe(true);
+  });
+
+  test("outlineTargetWidthMm: the element's width at 0/180°, the design's own size when rotated", () => {
+    expect(of.outlineTargetWidthMm({ sizeMm: 76, rotationDeg: 0 })).toBe(76);
+    expect(of.outlineTargetWidthMm({ sizeMm: 76, rotationDeg: 180 })).toBe(76);
+    expect(of.outlineTargetWidthMm({ sizeMm: 76, rotationDeg: -180 })).toBe(76);
+    expect(of.outlineTargetWidthMm({ sizeMm: 76, rotationDeg: 90 })).toBeUndefined();
+    expect(of.outlineTargetWidthMm({ sizeMm: 76, rotationDeg: 37 })).toBeUndefined();
+    expect(of.outlineTargetWidthMm({ sizeMm: null, rotationDeg: 0 })).toBeUndefined();
   });
 });
 

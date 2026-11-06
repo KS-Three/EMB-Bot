@@ -55,6 +55,9 @@ REGISTRY = FONTS_DIR / "fonts.json"
 CURVE_SEGMENTS = 8
 MAX_TEXT_CHARS = 200
 MAX_LINES = 6
+# Widest hoop the engine knows is 360 mm; a metre of lettering is a typo,
+# not a job (the Studio clamps its field to 400).
+MAX_SIZE_MM = 1000.0
 # Line pitch when the font's own ascender/descender are missing.
 LINE_PITCH_EM = 1.2
 
@@ -415,9 +418,14 @@ def layout_text(key: str, text: str, *, width_mm: float | None = None,
         raise OutlineFontError(f"text has {len(lines)} lines; the limit is {MAX_LINES}")
     if (width_mm is None) == (cap_mm is None):
         raise OutlineFontError("give exactly one of width_mm / cap_mm")
+    import math
     for v, name in ((width_mm, "width_mm"), (cap_mm, "cap_mm")):
-        if v is not None and not (isinstance(v, (int, float)) and v > 0):
-            raise OutlineFontError(f"{name} must be a positive number")
+        if v is not None and not (isinstance(v, (int, float)) and not isinstance(v, bool)
+                                  and math.isfinite(v) and 0 < v <= MAX_SIZE_MM):
+            raise OutlineFontError(f"{name} must be a number in (0, {MAX_SIZE_MM}] mm")
+    for v, name in ((letter_spacing_mm, "letter_spacing_mm"), (line_spacing, "line_spacing")):
+        if not (isinstance(v, (int, float)) and math.isfinite(v)):
+            raise OutlineFontError(f"{name} must be a finite number")
 
     font = _load(key)
     gs = font.getGlyphSet()
@@ -428,11 +436,15 @@ def layout_text(key: str, text: str, *, width_mm: float | None = None,
     pitch_units = (asc - desc) * line_spacing if asc > desc else upem * LINE_PITCH_EM * line_spacing
 
     unsupported: list[str] = []
-    raw: list[tuple[str, int, Polygon]] = []     # (char, line, polygon in font units, y UP)
-    line_widths: list[float] = []
+    # (char, line, glyph index IN its line, polygon in font units, y UP). The
+    # glyph index travels with every component of a glyph — the dot of an i
+    # is the same glyph as its stem — so letter spacing moves them together
+    # (a bounds-keyed recovery split them, review 2026-11-06).
+    raw: list[tuple[str, int, int, Polygon]] = []
     for li, line in enumerate(lines):
         x = 0.0
         prev = None
+        gi = 0
         y_base = -li * pitch_units
         for ch in line:
             name = cmap.get(ord(ch))
@@ -447,45 +459,56 @@ def layout_text(key: str, text: str, *, width_mm: float | None = None,
                 x += kern.get(prev, name)
             if not ch.isspace():
                 fp = _FlatPen(gs); gs[name].draw(fp.pen)
-                for poly in _rings_to_polygons(fp.rings):
-                    raw.append((ch, li, translate(poly, xoff=x, yoff=y_base)))
+                parts = _rings_to_polygons(fp.rings)
+                for poly in parts:
+                    raw.append((ch, li, gi, translate(poly, xoff=x, yoff=y_base)))
+                if parts:
+                    gi += 1
             x += hmtx[name][0]
             prev = name
-        line_widths.append(x)
     if not raw:
         raise OutlineFontError("no glyph in this font draws any of that text")
-    if align != "left" and len(lines) > 1:
-        widest = max(line_widths)
-        shift = {li: (widest - w) * (0.5 if align == "center" else 1.0)
-                 for li, w in enumerate(line_widths)}
-        raw = [(ch, li, translate(p, xoff=shift[li])) for ch, li, p in raw]
 
     # units -> mm; y flips (font y up, pipeline y down)
-    polys = [_scale(p, xfact=1.0, yfact=-1.0, origin=(0, 0)) for _, _, p in raw]
-    xs0 = min(p.bounds[0] for p in polys); xs1 = max(p.bounds[2] for p in polys)
-    ys0 = min(p.bounds[1] for p in polys); ys1 = max(p.bounds[3] for p in polys)
-    ink_w_units = xs1 - xs0
-    n_gaps = sum(max(len(l) - 1, 0) for l in lines)
+    flipped = [_scale(p, xfact=1.0, yfact=-1.0, origin=(0, 0)) for _, _, _, p in raw]
+    # per line: ink width in font units and the number of spacing gaps
+    line_ink: dict[int, tuple[float, float]] = {}
+    line_gaps: dict[int, int] = {}
+    for (_, li, gi, _), p in zip(raw, flipped):
+        lo, hi = line_ink.get(li, (float("inf"), float("-inf")))
+        line_ink[li] = (min(lo, p.bounds[0]), max(hi, p.bounds[2]))
+        line_gaps[li] = max(line_gaps.get(li, 0), gi)
     if cap_mm is not None:
         s = cap_mm / cap_units
     else:
-        # width = ink width * s + letter spacing between glyphs
-        s = max(width_mm - n_gaps * letter_spacing_mm, 1e-6) / ink_w_units
+        # The block is as wide as its widest line AFTER spacing, so the scale
+        # is the one that puts the binding line at width_mm: the smallest of
+        # the per-line solutions (ink * s + gaps * spacing = width).
+        candidates = []
+        for li, (lo, hi) in line_ink.items():
+            room = width_mm - line_gaps[li] * letter_spacing_mm
+            if room <= 0:
+                raise OutlineFontError(
+                    f"letter spacing of {letter_spacing_mm} mm leaves no room for "
+                    f"{line_gaps[li] + 1} characters inside {width_mm} mm")
+            candidates.append(room / max(hi - lo, 1e-9))
+        s = min(candidates)
     letters: list[Letter] = []
-    # letter spacing: shift each glyph by its index in its line
-    idx_in_line: dict[int, int] = {}
-    seen_glyph: dict[tuple[int, str, float], int] = {}
-    extra: list[float] = []
-    for ch, li, p in raw:
-        gkey = (li, ch, round(p.bounds[0], 3))
-        if gkey not in seen_glyph:
-            seen_glyph[gkey] = idx_in_line.get(li, 0)
-            idx_in_line[li] = seen_glyph[gkey] + 1
-        extra.append(seen_glyph[gkey] * letter_spacing_mm)
-    for (ch, li, _), p, dx in zip(raw, polys, extra):
+    for (ch, li, gi, _), p in zip(raw, flipped):
         q = _scale(p, xfact=s, yfact=s, origin=(0, 0))
-        q = translate(q, xoff=dx)
-        letters.append(Letter(char=ch, line=li, polygon=q))
+        letters.append(Letter(char=ch, line=li, polygon=translate(q, xoff=gi * letter_spacing_mm)))
+    # justify lines against the widest by their ink extents, in mm
+    if align != "left" and len(lines) > 1:
+        ext: dict[int, tuple[float, float]] = {}
+        for l in letters:
+            lo, hi = ext.get(l.line, (float("inf"), float("-inf")))
+            ext[l.line] = (min(lo, l.polygon.bounds[0]), max(hi, l.polygon.bounds[2]))
+        left = min(lo for lo, _ in ext.values())
+        widest = max(hi - lo for lo, hi in ext.values())
+        f = 0.5 if align == "center" else 1.0
+        for l in letters:
+            lo, hi = ext[l.line]
+            l.polygon = translate(l.polygon, xoff=(left - lo) + (widest - (hi - lo)) * f)
     # centre on the block's bbox
     b = [l.polygon.bounds for l in letters]
     x0, y0 = min(v[0] for v in b), min(v[1] for v in b)

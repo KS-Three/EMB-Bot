@@ -191,14 +191,34 @@ export function outlineRequestKey(req) {
   return configKey(req);
 }
 
-// A stored result is behind when the request it would send now is not the
-// one it was digitized with. No result: nothing to be behind (the element is
-// simply not sewable yet — lib/flow.js).
+// "Behind its settings" for an outline text element — what lib/staleness.js
+// asks, and so what locks Download (Kent, 2026-10-25). Two cases:
+//   * a result whose request key is not the one it would send now;
+//   * TEXT TYPED BUT NEVER DIGITIZED. Such an element sews nothing, and
+//     without this it would silently be left out of the file (no warning may
+//     say so, 2026-10-02), so it is behind until the button is pressed.
+// Empty text is behind nothing: there is nothing to sew and nothing to
+// press (the run button is disabled too), so clearing the text of a
+// digitized element never locks Download with no way out.
 export function outlineStale(element, project, { baselineKey = null } = {}) {
-  if (!element || !isOutlineKey(element.fontKey) || !element.result) return false;
+  if (!element || !isOutlineKey(element.fontKey)) return false;
+  if (!String(element.text || "").trim()) return false;
+  if (!element.result) return true;
   const applied = element.appliedConfig || baselineKey;
   if (!applied) return false;
   return outlineRequestKey(outlineRequest(element, project)) !== applied;
+}
+
+// The width generate.js hands buildImportedDesign for an outline text's
+// baked result. The service laid the text out AT the element's width, so at
+// 0° / 180° the element's `sizeMm` is a scale the customer may have dragged
+// since (and the request key reads as behind until the next run). At any
+// other angle `targetWidthMm` would be the ROTATED extent (dstimport.js), so
+// the design is drawn at its own size — no scale, no surprise.
+export function outlineTargetWidthMm(element) {
+  const rot = (((element && element.rotationDeg) || 0) % 360 + 360) % 360;
+  if (rot !== 0 && rot !== 180) return undefined;
+  return (element && element.sizeMm) || undefined;
 }
 
 async function httpDetail(r) {
