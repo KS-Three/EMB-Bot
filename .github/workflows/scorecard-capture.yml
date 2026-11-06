@@ -17,14 +17,13 @@
 # the dispatched ref. `capture` writes a fresh baseline stamped with the
 # commit it was captured at. Both land in the artifact with the full log.
 #
-# TEMPORARY while this file is not yet on main: GitHub resolves a
-# workflow_dispatch by the file on the DEFAULT branch, so the first capture
-# rides a push trigger on its own lane. Remove the `push:` block before merge.
+# GitHub resolves a workflow_dispatch by the file on the DEFAULT branch, so a
+# brand-new copy of this file cannot be dispatched from its own branch; the
+# first capture (run 42148952004, 2026-11-05) rode a temporary push trigger.
+# Once merged, `gh workflow run scorecard-capture.yml --ref <branch>` works.
 name: Corpus scorecard
 
 on:
-  push:
-    branches: [claude/scorecard-capture-1105]
   workflow_dispatch:
     inputs:
       mode:
@@ -37,8 +36,7 @@ permissions:
   contents: read
 
 env:
-  # A push carries no inputs; the lane's first run is the capture.
-  MODE: ${{ inputs.mode || 'capture' }}
+  MODE: ${{ inputs.mode }}
 
 jobs:
   scorecard:
