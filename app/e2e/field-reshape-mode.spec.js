@@ -1447,13 +1447,15 @@ test("(m1) Move shape: drag the black square 10 mm right, Done -> its stitches l
   expect(await boundaryEntries(page), "ONE shape carries a boundary_override").toHaveLength(1);
   const black1 = await waitMoved(page, "black", black0, 10 * k);
   const red1 = await settledFill(page, "red");
-  // The element's bbox grew by the move, so the Studio re-centres it: absolute
-  // positions shift by half. What the move did is the black-to-red offset.
+  // The move grew the element's bbox, and the restitched design keeps the frame
+  // it was centred on, so ABSOLUTE positions hold: black +10 mm, red unmoved.
+  const blackDx = (black1.x0 - black0.x0) / k, redDx = (red1.x0 - red0.x0) / k;
+  console.log(`m1 on-screen shift mm: black dx=${blackDx.toFixed(2)} dy=${((black1.y0 - black0.y0) / k).toFixed(2)}, red dx=${redDx.toFixed(2)} dy=${((red1.y0 - red0.y0) / k).toFixed(2)}`);
   expect(Math.abs((black1.x1 - black1.x0) - (black0.x1 - black0.x0)) / k, "same scale").toBeLessThan(0.6);
-  const gap0 = (black0.x0 - red0.x0) / k, gap1 = (black1.x0 - red1.x0) / k;
-  expect(gap1 - gap0, "black moved +10 mm relative to the red square").toBeGreaterThan(9.7);
-  expect(gap1 - gap0).toBeLessThan(10.3);
-  expect(Math.abs((black1.y0 - black0.y0) - (red1.y0 - red0.y0)) / k, "no vertical drift").toBeLessThan(0.3);
+  expect(Math.abs(blackDx - 10), "black moved +10 mm on screen").toBeLessThan(0.3);
+  expect(Math.abs(redDx), "the red square did not move").toBeLessThan(0.3);
+  expect(Math.abs((black1.y0 - black0.y0) / k), "black: no vertical drift").toBeLessThan(0.3);
+  expect(Math.abs((red1.y0 - red0.y0) / k), "red: no vertical drift").toBeLessThan(0.3);
 });
 
 test("(m2) Esc after a drag: nothing is patched, nothing restitches, the outline is back", async ({ page }) => {
@@ -1629,4 +1631,70 @@ test("(m8) Delete / Backspace mid-move delete nothing: Done commits ONE boundary
   const back = async () => { const bb = await fillBBox(page, "black"); return !!bb && Math.abs(bb.x0 - black0.x0) / k < 0.3; };
   const ok = await expect.poll(back, { timeout: 8_000 }).toBe(true).then(() => true, () => false);
   if (!ok) { await runDigitize(page); await expect.poll(back, { timeout: 120_000 }).toBe(true); }
+});
+
+// A node dragged outside the old bbox grows the element, and the restitch must
+// not slide the OTHER shape: the same frame hold as a Move (2026-11-06).
+test("(m9) Reshape: a corner dragged ~5 mm above the old bbox -> the red square stays put", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  const before = await digitizeSquares(page);
+  await enterReshape(page);
+  const black0 = await settledFill(page, "black");
+  const red0 = await settledFill(page, "red");
+  const { tr } = await blackSquareCorners(page);
+  await page.mouse.click(tr.x, tr.y);
+  await expect.poll(() => selectedCount(page)).toBe(1);
+  const up = 40;                                                       // CSS px, well past the old top edge
+  await drag(page, tr, { x: tr.x, y: tr.y - up });
+  await expect.poll(async () => (await boundaryEntries(page)).length).toBe(1);
+  await restitched(page, before);
+  await expect.poll(async () => { const b = await fillBBox(page, "black"); return !!b && b.y0 < black0.y0 - up * 0.5; }, { timeout: 30_000 }).toBe(true);
+  const red1 = await settledFill(page, "red");
+  // px per mm from the caption's width (integer mm: good to ~1%). The old behaviour moved red by half the growth.
+  const widthMm = Number((/(\d+)×(\d+) mm/.exec(before) || [])[1]);
+  expect(widthMm, "the caption names the design width").toBeGreaterThan(5);
+  const pxPerMm = (red0.x1 - black0.x0) / widthMm;
+  const mm = (a, b) => Math.abs(a - b) / pxPerMm;
+  expect(mm(red1.x0, red0.x0), "red left").toBeLessThan(0.5);
+  // The service lays fill rows on a grid anchored to the art box, which grew: the first
+  // row can sit up to one row off. The placement itself (x above, the bottom edge) is exact.
+  expect(mm(red1.y0, red0.y0), "red top").toBeLessThan(1.0);
+  expect(mm(red1.y1, red0.y1), "red bottom").toBeLessThan(0.5);
+  const black1 = await settledFill(page, "black");
+  expect(mm(black1.x0, black0.x0), "black left edge did not move").toBeLessThan(0.5);
+  expect(mm(black1.y0, black0.y0), "black top grew upward").toBeGreaterThan(up * 0.5 / pxPerMm);
+});
+
+test("(m10) a second Move after the first: the red square still has not moved", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(400_000);
+  await digitizeSquares(page);
+  let red0 = null;
+  let black = null;
+  let k = 0;
+  for (let n = 0; n < 2; n++) {
+    const caption = await page.locator(".dgp-stats").innerText();
+    await startMove(page);
+    // Baselines are read in the move layout, as (m1) does: the page lays out differently before it.
+    if (!red0) red0 = await settledFill(page, "red");
+    const was = await settledFill(page, "black");
+    k = await moveRightMm(page, 6);
+    const b = await moveButton(page, "done");
+    await page.mouse.click(b.x, b.y);
+    await expect(page.locator(".hoop canvas")).toHaveAttribute("data-shape-move", "off");
+    // The new stitches land: on their own, or by the run button once it says the edit is waiting.
+    await expect.poll(async () => {
+      if ((await page.locator(".dgp-stats").innerText()) !== caption) return true;
+      const run = page.locator(".dgp-run");
+      if ((await run.isEnabled()) && /Changed since the last run/.test(await page.locator("body").innerText())) await run.click().catch(() => {});
+      return false;
+    }, { timeout: 120_000, intervals: [3000] }).toBe(true);
+    black = await settledFill(page, "black");
+    expect((black.x0 - was.x0) / k, "this move: black went right by 6 mm").toBeGreaterThan(5.5);
+    expect((black.x0 - was.x0) / k).toBeLessThan(6.5);
+  }
+  const red2 = await settledFill(page, "red");
+  expect(Math.abs(red2.x0 - red0.x0) / k, "red x after two moves").toBeLessThan(0.3);
+  expect(Math.abs(red2.y0 - red0.y0) / k, "red y after two moves").toBeLessThan(0.3);
 });
