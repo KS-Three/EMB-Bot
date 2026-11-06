@@ -440,7 +440,7 @@ def run(out: Path, workers: int, only: list[str] | None,
             dest = out / f"{row['arm']}__{row['fixture'].replace('/', '_')}.json"
             dest.write_text(json.dumps(row, indent=1))
             done += 1
-            tag = row.get("error") or (f"{row['grade']} st={row['stitches']} "
+            tag = row.get("error") or (f"{row['grade']} {row['score']} st={row['stitches']} "
                                        f"tr={row['trims']} cones={row['cones']}")
             print(f"[{done}/{len(todo)}] {row['arm']:<13} {row['fixture']:<38} {tag}",
                   flush=True)

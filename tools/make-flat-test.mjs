@@ -1,6 +1,8 @@
 // Generate a flat spot-color test logo (transparent bg) to validate digitizing.
 import "./_help.mjs";
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { encodePNG } from "./png.mjs";
 const W = 512, H = 512;
 const px = new Uint8ClampedArray(W * H * 4); // all zero => transparent
@@ -26,5 +28,10 @@ tri(200, 170, 256, 300, 256, 190, WHITE);
 tri(312, 170, 256, 300, 256, 190, WHITE);
 // gold horizontal bar near bottom -> thin+wide -> satin
 for (let y = 300; y <= 322; y++) for (let x = 130; x <= 382; x++) set(x, y, GOLD);
-fs.writeFileSync("scratch_flat.png", encodePNG(W, H, px));
-console.log("wrote scratch_flat.png " + W + "x" + H);
+// Lands in app/test-results/ (gitignored). It used to go to the cwd, and
+// `node --test` RUNS this file (its name matches *-test.mjs) from the repo root,
+// so every test run left a scratch_flat.png behind that blocks a lane removal.
+const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "app", "test-results", "scratch_flat.png");
+fs.mkdirSync(path.dirname(OUT), { recursive: true });
+fs.writeFileSync(OUT, encodePNG(W, H, px));
+console.log("wrote " + OUT + " " + W + "x" + H);

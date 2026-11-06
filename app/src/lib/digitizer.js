@@ -874,7 +874,13 @@ export function boundaryIssues(points, holes = null) {
       issues.push(`${name} is too small to sew.`);
     }
     for (let m = 0; m < k; m++) {
-      if (ringsCross(h, rings[m])) issues.push(`${name} crosses Hole ${m + 1}.`);
+      const o = rings[m];
+      if (!Array.isArray(o) || o.length < BOUNDARY_MIN_POINTS) continue;
+      // Edges clear but one ring wholly inside the other (nested): the service
+      // refuses it as not a simple polygon, so say so now, in the same words.
+      if (ringsCross(h, o) || pointInPolygon(h[0], o) || pointInPolygon(o[0], h)) {
+        issues.push(`${name} crosses Hole ${m + 1}.`);
+      }
     }
   });
   return issues;
@@ -1382,13 +1388,33 @@ export async function exportViaService(design, format, label, fetchFn = globalTh
     body: JSON.stringify(format === "dst" && trimJumps != null ? { design, format, label, trim_jumps: trimJumps } : { design, format, label }),
     signal: AbortSignal.timeout(10000),
   });
-  if (!r.ok) throw await httpError(r);
+  if (!r.ok) {
+    const e = await httpError(r);
+    // The service re-reads every file it writes and answers 500 "Export failed:
+    // <check> ..." when the bytes do not match the design (digitizer_service
+    // readback.py). Flagged so exportDesignPreferService can tell it from "the
+    // service is down" and not hand out the file.
+    if (r.status === 500 && /^Export failed:/.test(e.message)) e.readbackFailed = true;
+    throw e;
+  }
   const bytes = await r.blob();
   const cd = (r.headers && r.headers.get("Content-Disposition")) || "";
   const m = /filename="([^"]+)"/.exec(cd);
   const filename = m ? m[1] : `design.${format}`;
   const mime = (r.headers && r.headers.get("Content-Type")) || "application/octet-stream";
-  return { bytes, filename, mime };
+  // The service's own read-back (X-Export-Verified / X-Export-Readback). Only
+  // present when the browser was allowed to read the headers; absent is
+  // "unknown", never "verified".
+  const verifiedHeader = r.headers && r.headers.get ? r.headers.get("X-Export-Verified") : null;
+  const out = { bytes, filename, mime };
+  if (verifiedHeader === "true") {
+    let counts = {};
+    try { counts = JSON.parse(r.headers.get("X-Export-Readback") || "{}"); } catch (e) { /* counts are optional */ }
+    out.readback = { verified: true, ...counts };
+  } else if (verifiedHeader === "false") {
+    out.readback = { verified: false, reason: r.headers.get("X-Export-Verify-Reason") || "" };
+  }
+  return out;
 }
 
 // POST /digitize (multipart image + config JSON) -> { job_id, state, cached }.
@@ -1437,6 +1463,22 @@ function artForm(image, config) {
 // other failure throws, and the caller treats that as "no reading" too.
 export async function classifyArt(image, config, fetchFn = globalThis.fetch) {
   const r = await fetchFn(digitizerUrl() + "/classify", { method: "POST", body: artForm(image, config) });
+  if (r.status === 404) return null;
+  if (!r.ok) throw await httpError(r);
+  return r.json();
+}
+
+// POST /recount (service, 2026-11-05): how many shapes and colours the run
+// would produce at this config's target width and garment -- { shape_count,
+// color_count, size_mm, generation_cache, elapsed_ms } -- without planning a
+// stitch. Counts only (Kent's 2026-11-05 ruling: the Stitchist footer's
+// recount, no advice). Its own route because stages 0-4 cost seconds where
+// /classify costs a fraction of one; the generation it builds stays cached, so
+// a run at the same config skips them. Same image and config as /digitize.
+// `signal` aborts the request when a newer size supersedes it. Returns null on
+// a 404 (an older service), like classifyArt; any other failure throws.
+export async function recountArt(image, config, fetchFn = globalThis.fetch, signal) {
+  const r = await fetchFn(digitizerUrl() + "/recount", { method: "POST", body: artForm(image, config), signal });
   if (r.status === 404) return null;
   if (!r.ok) throw await httpError(r);
   return r.json();

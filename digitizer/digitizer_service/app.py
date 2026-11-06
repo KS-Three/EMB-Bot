@@ -50,7 +50,7 @@ from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 from digitizer_core.stitchwidth import review_block, validate_override_mm
 from digitizer_core.warnings_codes import FACE_ROUTED_FLAT, PHOTO_DETECTED, warn
 
-from . import formats, schemas
+from . import formats, readback, schemas
 from .guards import BodyLimit, Deadline, too_large_detail
 from .jobs import (DONE, JOB_TIMEOUT_S, Busy, GenerationCache, JobRegistry, content_key,
                    generation_key)
@@ -129,7 +129,7 @@ DECODE_MAX_SIDE_PX = 2800
 # multipart framing and the config field, so the route's own 413 (which names
 # the artwork's size) is still the one a near-miss sees. Everything else is
 # JSON: a 300k-stitch design is ~12 MB as `/export` JSON, so 32 MB.
-_UPLOAD_ROUTES = ("/digitize", "/classify", "/calibration/read")
+_UPLOAD_ROUTES = ("/digitize", "/classify", "/recount", "/calibration/read")
 MAX_JSON_BYTES = 32 * 1024 * 1024
 
 
@@ -1304,6 +1304,85 @@ async def classify_art(
     return await run_in_threadpool(bounded)
 
 
+# `/recount` runs stages 0-4, the expensive prefix of a job (5-7 s on the
+# committed logos at their own size), so ONE at a time: a second ask for the
+# same artwork would only repeat the first's work.
+_RECOUNT_SLOTS = threading.BoundedSemaphore(1)
+
+
+@app.post("/recount", summary="Count the shapes and colours at a size, without stitching",
+          responses={200: {"model": schemas.Recounted,
+                           "description": "The number of shapes and colours the run would produce."},
+                     400: schemas.error("No image, undecodable image, or invalid `config`."),
+                     413: schemas.error("Upload over the byte or pixel limit."),
+                     **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
+async def recount_art(
+    image: UploadFile = File(...),
+    config: str | None = Form(None),
+    x_embbot_token: str | None = Header(None),
+) -> dict:
+    """The same upload and `config` as `/digitize` (target width and garment
+    included); back comes how many shapes and colours the design will have AT
+    THAT SIZE, before any stitch is planned (Kent, 2026-11-05: the Stitchist
+    footer's recount, counts only).
+
+    A count is fixed by stages 0-4 (segmentation, the colour cap, the
+    small-shape floor) plus `finish_generation` (review edits, palette
+    settlement) -- nothing from stage 5 on adds or removes a region -- so this
+    runs exactly `/digitize`'s `build_generation` + `finish_generation` and
+    stops. It is NOT folded into `/classify`: stages 0-4 cost 5-7 s where
+    `/classify` costs 0.2-2.5 s, and the lane reading must stay as fast as it
+    is.
+
+    The generation lands in the same cache `/digitize` reads
+    (`generation_key`), so pressing Auto Digitize at the size just counted
+    skips stages 0-4. Nothing here changes any routing or any default: the
+    counts are read off what the run would sew.
+
+    `shape_count`: regions that sew (a shape the pipeline leaves unstitched --
+    an enclosed background hole -- is not counted). `color_count`: distinct
+    threads among them.
+    """
+    _require_token(x_embbot_token)
+
+    data = await image.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="No image received.")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=too_large_detail(len(data), MAX_UPLOAD_BYTES).replace("Upload", "Artwork", 1),
+        )
+    cfg_dict = _parse_config(config)
+    gen_key = generation_key(data, cfg_dict)
+    pixels = await run_in_threadpool(_decode_bounded, data)
+
+    def work() -> dict:
+        t0 = time.perf_counter()
+        cfg = PipelineConfig(**cfg_dict)
+        gen = generations.get(gen_key)
+        gen_hit = gen is not None
+        if gen is None:
+            gen = build_generation(pixels, cfg, exif_source=data)
+            generations.put(gen_key, gen)
+        result = finish_generation(gen.fork(), cfg)
+        sewn = [r for r in result.regions if r.meta.get("stitched", True)]
+        return {
+            "shape_count": len(sewn),
+            "color_count": len({r.thread_number for r in sewn}),
+            "size_mm": [round(float(result.design_size_mm[0]), 2),
+                        round(float(result.design_size_mm[1]), 2)],
+            "generation_cache": "hit" if gen_hit else "miss",
+            "elapsed_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
+
+    def bounded() -> dict:
+        with _RECOUNT_SLOTS:
+            return work()
+
+    return await run_in_threadpool(bounded)
+
+
 # The upper bound on how many shapes one manual request may carry. Not a
 # machine limit (a design this dense would already be a bad idea to sew) —
 # it exists so a pathological body cannot make polygon validation itself the
@@ -1508,9 +1587,15 @@ async def calibration_read(
 
 
 @app.post("/export", summary="Write a design as a machine file",
-          responses={200: {"description": "Machine file; size and convention in `X-*` headers.",
+          responses={200: {"description": "Machine file; size and convention in `X-*` headers. "
+                                          "`X-Export-Verified: true` plus `X-Export-Readback` "
+                                          "(JSON counts) say the bytes were re-read and matched; "
+                                          "`false` plus `X-Export-Verify-Reason` says they cannot be.",
                            "content": {"application/octet-stream": {}}},
                      400: schemas.error("Invalid design, unsupported format, or write failure."),
+                     500: schemas.error("The written file did not read back as the design says: "
+                                        "`detail` names the failed check with both values and "
+                                        "`readback.failed` lists every check. No file is returned."),
                      **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
 def export(
     payload: dict = Body(..., examples=[schemas.EXPORT_EXAMPLE]),
@@ -1538,11 +1623,25 @@ def export(
     label = str(payload.get("label") or "EMBBOT")
     try:
         pattern = design_to_pattern(design, label=label)
+        # What the file must say, taken from the pattern BEFORE the write.
+        expected = readback.expect(pattern, fmt, payload.get("trim_jumps"))
         data = formats.write(pattern, fmt, trim_jumps=payload.get("trim_jumps"))
     except (AttributeError, KeyError, TypeError, ValueError) as exc:
         # AttributeError: a stitch that is a bare [x, y, flag] list rather
         # than a dict reaches the adapter's `.get` (PR #694's xfail).
         raise HTTPException(status_code=400, detail=f"could not write {fmt}: {exc}") from exc
+
+    # Re-read the bytes just written with pystitch's reader and refuse to hand
+    # them out if they disagree (Kent, 2026-11-05). A mismatch is OUR bug, not
+    # the caller's input, so it is a 500 with a body naming the failed check.
+    checked = readback.verify(expected, data, fmt, payload.get("trim_jumps"))
+    if not checked["ok"]:
+        log.error("export read-back failed for %s: %s", fmt, checked["failed"])
+        return JSONResponse(
+            status_code=500,
+            content={"detail": readback.failure_detail(checked),
+                     "readback": {"verified": False, "format": fmt, "failed": checked["failed"]}},
+        )
 
     meta = formats.FORMATS[fmt]
     w_mm, h_mm = design_size_mm(design)
@@ -1555,6 +1654,7 @@ def export(
             "X-Design-Width-Mm": f"{w_mm:.2f}",
             "X-Design-Height-Mm": f"{h_mm:.2f}",
             "X-Stitch-Convention": meta["convention"],
+            **readback.success_headers(checked),
         },
     )
 

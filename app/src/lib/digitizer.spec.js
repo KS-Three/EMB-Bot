@@ -416,6 +416,30 @@ test("classifyArt POSTs the same multipart body to /classify, and reads a 404 as
   }))).rejects.toThrow(/unknown forced_class/);
 });
 
+test("recountArt POSTs the run's multipart body to /recount with the abort signal, and reads a 404 as 'no route'", async () => {
+  stubStorage({});
+  const { recountArt, buildDigitizeConfig } = await import("./digitizer.js");
+  const calls = [];
+  const fetchFn = vi.fn(async (url, opts) => {
+    calls.push({ url, opts });
+    return { ok: true, status: 200, json: async () => ({ shape_count: 22, color_count: 2, size_mm: [36.7, 24], generation_cache: "miss", elapsed_ms: 7000 }) };
+  });
+  const cfg = buildDigitizeConfig(digitizedElement(), PROJECT);
+  const ac = new AbortController();
+  const counts = await recountArt(TINY_PNG_B64, cfg, fetchFn, ac.signal);
+  expect(counts.shape_count).toBe(22);
+  expect(calls[0].url).toBe("http://127.0.0.1:8721/recount");
+  expect(calls[0].opts.method).toBe("POST");
+  expect(calls[0].opts.signal).toBe(ac.signal);
+  expect(JSON.parse(calls[0].opts.body.get("config"))).toEqual(cfg);
+
+  const gone = await recountArt(TINY_PNG_B64, cfg, async () => ({ ok: false, status: 404, json: async () => ({ detail: "Not Found" }) }));
+  expect(gone).toBeNull();
+  await expect(recountArt(TINY_PNG_B64, cfg, async () => ({
+    ok: false, status: 400, json: async () => ({ detail: "bad config." }),
+  }))).rejects.toThrow(/bad config/);
+});
+
 test("startDigitize surfaces the service's own detail sentence on a 400", async () => {
   stubStorage({});
   const { startDigitize } = await import("./digitizer.js");
@@ -2918,6 +2942,17 @@ test("boundaryIssues with holes: a clean donut passes; outside, crossing the she
   expect(boundaryIssues(SHELL, [HOLE_A, [[15, 15], [25, 15], [25, 25], [15, 25]]])).toEqual(["Hole 2 crosses Hole 1."]);
   // the shell edited across a hole
   expect(boundaryIssues([[0, 0], [12, 0], [12, 40], [0, 40]], [HOLE_A])).toEqual(["Hole 1 crosses the outline."]);
+});
+
+test("boundaryIssues: a hole wholly inside another, or wholly around one, is 'crosses Hole M' (the service refuses nesting); disjoint holes pass", async () => {
+  stubStorage({});
+  const { boundaryIssues } = await import("./digitizer.js");
+  const INNER = [[13, 13], [17, 13], [17, 17], [13, 17]];
+  const AROUND = [[5, 5], [25, 5], [25, 25], [5, 25]];
+  expect(boundaryIssues(SHELL, [HOLE_A, INNER])).toEqual(["Hole 2 crosses Hole 1."]);
+  expect(boundaryIssues(SHELL, [HOLE_A, AROUND])).toEqual(["Hole 2 crosses Hole 1."]);
+  expect(boundaryIssues(SHELL, [INNER, HOLE_A])).toEqual(["Hole 2 crosses Hole 1."]);
+  expect(boundaryIssues(SHELL, [HOLE_A, HOLE_B])).toEqual([]);
 });
 
 test("canonicalShapeEdits emits holes_override only for a shape that has one ([] included) and drops a malformed one", async () => {

@@ -764,6 +764,53 @@ _PHOTO_FACES_DETECTED = "PHOTO_FACES_DETECTED"
 # cost one. Grades: A >= 90, B >= 75, C >= 60, D >= 40, F below.
 _DEDUCT = {"info": 0, "warn": 12, "block": 30}
 
+# THE STITCH-OUT SCORE (0-100) AND ITS GRADE — one mapping, written down.
+#
+# The `score` key of the report, the `grade` letter and `metrics.raw_score`
+# all come from the same arithmetic, by construction; none is computed
+# separately. This block documents it (2026-11-05); it did not exist as a
+# new feature then — `score` has shipped since build step 9, the Studio reads
+# it (`app/src/ui/QualityReport.svelte` prints `{score}/100` beside the
+# grade) and `tests/test_raw_score_metric.py` pins `raw_score`. Do not add a
+# second score: the openstitch-style "stitch-out score" idea of 2026-11-05
+# was first scoped from the premise that none existed.
+#
+#   raw_score = 100 - sum(_DEDUCT[f.severity] for f in findings)
+#       info  -> 0   (a prescription or a fact; never costs score)
+#       warn  -> 12  (one warn: 88, a B; two warns: 76, still a B; three: 64)
+#       block -> 30  (a "do not sew as is" finding; one block alone drops an
+#                     otherwise clean design from A (100) to C (70), two
+#                     to D (40), three to F (10))
+#       any other severity string -> 0, so a new severity is free until it is
+#                     added here deliberately
+#   score     = max(0, raw_score)          the FLOOR is 0; `raw_score` keeps
+#                                          the true depth (the clamp
+#                                          saturates 12 of 52 corpus combos)
+#   CEILING   = 100: nothing adds score, so a clean report is exactly 100
+#   grade     = A >= 90, B >= 75, C >= 60, D >= 40, F below (`_grade_for`)
+#
+# What a BLOCKING finding does: it caps the score. Every block costs 30, so
+# a report carrying k blocks scores at most 100 - 30*k: one block can never
+# grade above C (<= 70), two never above D (<= 40), three never above F
+# (<= 10). Warns and blocks add; severity is priced, finding COUNT is not
+# (`test_the_score_prices_severity_not_finding_count`).
+#
+# Because the grade is a step function of the score, the two cannot disagree:
+# every A scores above every B, and so on (`tests/test_preflight_score.py`
+# holds that over the committed scorecard baseline and over every
+# warn/block combination).
+
+
+def _raw_score(findings: list[dict]) -> int:
+    """100 minus the `_DEDUCT` bill of every finding; unclamped (see above)."""
+    return 100 - sum(_DEDUCT.get(f["severity"], 0) for f in findings)
+
+
+def _grade_for(score: int) -> str:
+    """The letter for a CLAMPED score — the only place the bands live."""
+    return ("A" if score >= 90 else "B" if score >= 75 else
+            "C" if score >= 60 else "D" if score >= 40 else "F")
+
 
 def finding(code: str, severity: str, message: str, **extra) -> dict:
     """Same shape as warnings_codes.warn, plus severity — one report row."""
@@ -4368,9 +4415,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     # Last, over the finished list: it tags findings, it does not make any.
     _tag_break_risk(findings, plan, result)
 
-    score = 100
-    for f in findings:
-        score -= _DEDUCT.get(f["severity"], 0)
+    score = _raw_score(findings)
     # The UNCLAMPED score, before `max(0, ...)` throws the magnitude away.
     #
     # The clamp is right for an operator — a negative grade means nothing —
@@ -4391,8 +4436,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     # That is also why adding it cannot disturb any existing diff.
     metrics["raw_score"] = score
     score = max(0, score)
-    grade = ("A" if score >= 90 else "B" if score >= 75 else
-             "C" if score >= 60 else "D" if score >= 40 else "F")
+    grade = _grade_for(score)
 
     return {"score": score, "grade": grade,
             "findings": findings, "metrics": metrics}

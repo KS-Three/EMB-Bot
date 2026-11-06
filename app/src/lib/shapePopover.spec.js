@@ -94,7 +94,7 @@ describe("popoverModel — digitized lane", () => {
   test("a fill shape gets the Layers row's full control set and reads its overrides", () => {
     const m = popoverModel({ element: digitizedEl, shapeId: "Sabc" });
     expect(m.name).toBe("Thread #1301 · 123 mm²");
-    expect(m.rows.map((r) => r.key)).toEqual(["color", "stitchType", "angle", "underlay", "border", "editPoints", "delete"]);
+    expect(m.rows.map((r) => r.key)).toEqual(["color", "stitchType", "angle", "underlay", "border", "editPoints", "moveShape", "addHole", "delete"]);
     expect(m.rows[0].rgb).toEqual([10, 20, 30]);
     expect(m.rows[1].value).toBe("auto");
     // The Layers row's ten tiers, with "Auto" saying what auto resolved to.
@@ -113,7 +113,7 @@ describe("popoverModel — digitized lane", () => {
   test("a satin shape hides the fill-only rows (angle, underlay), as the Layers row does", () => {
     const m = popoverModel({ element: digitizedEl, shapeId: "Sdef" });
     expect(m.name).toBe("Thread #0015 · 4.6 mm²");
-    expect(m.rows.map((r) => r.key)).toEqual(["color", "stitchType", "border", "editPoints", "delete"]);
+    expect(m.rows.map((r) => r.key)).toEqual(["color", "stitchType", "border", "editPoints", "moveShape", "addHole", "delete"]);
   });
   test("a tier override to fill brings the fill rows back", () => {
     const el = { ...digitizedEl, shapeOverrides: { Sdef: { tier: "fill" } } };
@@ -226,7 +226,7 @@ describe("cut-outs in the popover", () => {
     expect(off.shapes[0]).toBe(el.shapes[0]);
   });
   test("digitized and preset lanes are unchanged", () => {
-    expect(popoverModel({ element: digitizedEl, shapeId: "Sabc" }).rows.map((r) => r.key)).toEqual(["color", "stitchType", "angle", "underlay", "border", "editPoints", "delete"]);
+    expect(popoverModel({ element: digitizedEl, shapeId: "Sabc" }).rows.map((r) => r.key)).toEqual(["color", "stitchType", "angle", "underlay", "border", "editPoints", "moveShape", "addHole", "delete"]);
     expect(popoverModel({ element: presetEl, shapeId: "" }).rows.map((r) => r.key)).toEqual(["color"]);
   });
 });

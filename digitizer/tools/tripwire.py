@@ -15,6 +15,14 @@ passes of the same tree on the runner, never a desk guess).
     python -m tools.tripwire check --ledger PATH [--runs DIR] [--figures F.json] [--table OUT.md] [--json OUT.json]
     python -m tools.tripwire table --ledger PATH
     python -m tools.tripwire jobs
+    python -m tools.tripwire floor [--figures F.json] [--floor-dir DIR] [--floor-warn 0.05]
+    python -m tools.tripwire check ... --floor     # the same table after the movers, stdout only
+
+`floor` (laptop only) prints ours' stitch-type kappa beside heatstitch's untuned rule
+(its 18 DSTs, third-party and gitignored, in `<primary checkout>/scratch_bench/heatstitch`)
+and margin = ours - heatstitch; a job under `--floor-warn` is flagged. Flag only: exit 0.
+With no floor directory (cloud, CI) the heatstitch cell reads `n/a (no floor files)`.
+`check` without `--floor` is unchanged, so the nightly's output and exit code are too.
 
 `measure` writes one pass: every figure for every committed job, plus the
 environment it ran in. `capture` turns one or more passes of the SAME tree into
@@ -350,6 +358,107 @@ def compare(led: dict, run: dict, only: list[str] | None = None) -> dict:
             "fail": bool(counts["WORSE"] or counts["missing"] or counts["reader_moved"])}
 
 
+# ------------------------------------------------------------------ the heatstitch floor
+FLOOR_WARN = 0.05          # a job whose margin (ours - heatstitch) is below this is flagged
+FLOOR_NA = "n/a (no floor files)"
+
+
+def primary_root(repo: Path = REPO) -> Path:
+    """The primary checkout's root: from `<root>/.claude/worktrees/<lane>[/...]` walk up to
+    `<root>`; a plain checkout is its own root. Gitignored `scratch_*` lives only there."""
+    for p in (repo, *repo.parents):
+        if p.parent.name == "worktrees" and p.parent.parent.name == ".claude":
+            return p.parent.parent.parent
+    return repo
+
+
+def default_floor_dir() -> Path:
+    """heatstitch's 18 DSTs (third-party files, gitignored, laptop only)."""
+    return primary_root() / "scratch_bench" / "heatstitch"
+
+
+def floor_rows(run: dict, floor_dir: Path, slugs: list[str], work: Path, warn: float = FLOOR_WARN,
+               kappa=None) -> list[dict]:
+    """Per job: ours' stitch-type kappa against the pro (from `run`, a `measure` pass),
+    the floor engine's against the same pro file read by the same code, and
+    margin = ours - floor. A job with no floor file, or no kappa on a side, gets None
+    there (never 0) and no flag. `kappa(dst, pro, work)` defaults to `pro_baseline.kappas`."""
+    from tools import pro_baseline as pb
+    kappa = kappa or pb.kappas
+    rows = []
+    for s in slugs:
+        dst = floor_dir / f"{s}.dst"
+        ours = run["values"].get(s, {}).get("sttype_kappa")
+        row = {"job": s, "ours": ours, "ours_chance": run.get("chance", {}).get(s),
+               "floor": None, "floor_chance": None, "margin": None, "flag": False}
+        if dst.exists():
+            try:
+                k = kappa(dst, pb.resolve(pb.JOBS[s][3]), work / s)
+            except Exception as e:                       # noqa: BLE001 -- a row, not a crash
+                row["error"] = f"{type(e).__name__}: {e}"[:200]
+            else:
+                if k.get("sttype_kappa") is not None:
+                    row["floor"] = round(float(k["sttype_kappa"]), 4)
+                    row["floor_chance"] = None if k.get("sttype_chance") is None else round(float(k["sttype_chance"]), 4)
+        if ours is not None and row["floor"] is not None:
+            row["margin"] = round(ours - row["floor"], 4)
+            row["flag"] = row["margin"] < warn - EPS
+        rows.append(row)
+    return rows
+
+
+def floor_table(rows: list[dict], floor_dir: Path, warn: float = FLOOR_WARN) -> str:
+    """Markdown. No floor directory -> every floor cell is `n/a (no floor files)` and
+    nothing is flagged. FLAG only prints; the caller never turns it into an exit code."""
+    have = floor_dir.is_dir()
+    L = [f"heatstitch floor (untuned rule: run < 1 mm, satin <= 7 mm and even, else fill), "
+         f"stitch-type kappa against the pro's file, chance floor in brackets; margin = ours - heatstitch, "
+         f"flagged below {warn:.2f}. Flag only, never a failure.", ""]
+    if not have:
+        L += [f"`{floor_dir}` not found: {FLOOR_NA}.", ""]
+    L += ["| job | ours | heatstitch | margin | flag |", "|---|---|---|---|---|"]
+    nflag = 0
+    for r in rows:
+        ours = _fmt("sttype_kappa", r["ours"], r.get("ours_chance"))
+        if r["floor"] is not None:
+            fl = _fmt("sttype_kappa", r["floor"], r.get("floor_chance"))
+        else:
+            fl = FLOOR_NA if not have else ("no file" if "error" not in r else "unreadable")
+        mg = "-" if r["margin"] is None else f"{r['margin']:+.2f}"
+        nflag += bool(r["flag"])
+        L.append(f"| {r['job']} | {ours} | {fl} | {mg} | {'FLAG' if r['flag'] else ''} |")
+    scored = [r for r in rows if r["margin"] is not None]
+    if scored:
+        def med(xs):
+            xs = sorted(xs)
+            n = len(xs)
+            return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+        L += ["", f"{len(scored)} of {len(rows)} jobs scored; medians: ours {med([r['ours'] for r in scored]):.2f}, "
+                  f"heatstitch {med([r['floor'] for r in scored]):.2f}, margin {med([r['margin'] for r in scored]):+.2f}; "
+                  f"{nflag} flagged."]
+    return "\n".join(L)
+
+
+def floor_doc(rows: list[dict], floor_dir: Path, warn: float, run: dict, date: str) -> str:
+    """The dated snapshot for docs/scoreboards: the table plus the main SHA it was measured on.
+    Numbers only -- heatstitch's files and any render of them stay on the laptop."""
+    eng = (run.get("env") or {}).get("engine") or {}
+    sha = eng.get("head", "unknown") + (" (dirty engine tree)" if eng.get("dirty") else "")
+    return "\n".join([
+        f"# heatstitch floor beside ours ({date})", "",
+        f"Measured on main `{sha}` (engine tree `{eng.get('tree', 'unknown')}`): ours is `tools.tripwire measure` "
+        "at the pro's size (the nightly's own figures, run on Kent's Windows laptop, not the Linux runner the "
+        "committed ledger was captured on); heatstitch's column is its DST for the same job, read by the same "
+        "code (`pro_baseline.kappas`) against the same pro file. Stitch-type kappa only, chance floor in "
+        "brackets (ROADMAP gate 4; no raw agreement). Numbers only: heatstitch's files are third-party and "
+        "stay in the gitignored `scratch_bench/heatstitch/`; no render of them is committed.", "",
+        "Why: [`free-digitizers-2026-11-04`](free-digitizers-2026-11-04.md) found heatstitch's untuned width rule "
+        "reaches stitch-type kappa 0.13 (median) against ours 0.38. A classifier change that drops a job's "
+        "margin toward zero means a rule of thumb is catching up. Re-run on a laptop that holds the files:", "",
+        "    python -m tools.tripwire floor --figures <a measure pass> [--floor-warn 0.05]", "",
+        floor_table(rows, floor_dir, warn), ""])
+
+
 def _fmt(fig: str, v, chance=None) -> str:
     if v is None:
         return "-"
@@ -433,10 +542,37 @@ def _dump(obj: dict, path: Path) -> None:
     Path(path).write_text(json.dumps(obj, indent=1) + "\n", encoding="utf-8")
 
 
+def _floor_report(run: dict, slugs: list[str], a) -> str:
+    """The floor table for `run`'s jobs; with `--write`, the dated snapshot too. The pro
+    files are made resolvable first (a laptop without `scratch_kent/` extracts them from
+    the zip, as `measure` does). No floor directory: no file is read, every cell is n/a."""
+    import tempfile
+    floor_dir = a.floor_dir or default_floor_dir()
+    if not floor_dir.is_dir():
+        rows = floor_rows(run, floor_dir, slugs, Path("."), a.floor_warn)
+    else:
+        materialise(a.kent_dir or a.runs / "_kent", slugs)
+        with tempfile.TemporaryDirectory(prefix="floor_") as tmp:
+            rows = floor_rows(run, floor_dir, slugs, Path(tmp), a.floor_warn)
+    if getattr(a, "write", None):
+        a.write.parent.mkdir(parents=True, exist_ok=True)
+        a.write.write_text(floor_doc(rows, floor_dir, a.floor_warn, run, a.date), encoding="utf-8")
+    return floor_table(rows, floor_dir, a.floor_warn)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="python -m tools.tripwire", description=__doc__.split("\n\n")[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
-    ap.add_argument("cmd", choices=("measure", "capture", "check", "table", "jobs"))
+    ap.add_argument("cmd", choices=("measure", "capture", "check", "table", "jobs", "floor"))
+    ap.add_argument("--floor-dir", type=Path, default=None,
+                    help="floor, check --floor: heatstitch's <slug>.dst files "
+                         "(default <primary checkout>/scratch_bench/heatstitch; absent -> n/a)")
+    ap.add_argument("--floor-warn", type=float, default=FLOOR_WARN,
+                    help=f"floor: flag a job whose margin (ours - heatstitch) is below this (default {FLOOR_WARN}); flag only")
+    ap.add_argument("--write", type=Path, help="floor: also write the dated snapshot (table + main SHA) here")
+    ap.add_argument("--date", default=time.strftime("%Y-%m-%d"), help="floor --write: the date in the snapshot's title")
+    ap.add_argument("--floor", action="store_true",
+                    help="check: also print the heatstitch floor table (stdout only; not in --table, never changes the exit code)")
     ap.add_argument("--ledger", type=Path, default=LEDGER, help=f"default {LEDGER.relative_to(DIGITIZER)}")
     ap.add_argument("--runs", type=Path, default=Path("tripwire_runs"),
                     help="where ours.dst / design.json / score/ land (measure, check)")
@@ -489,6 +625,15 @@ def main(argv=None) -> int:
         print(f"wrote {out}")
         return 0
 
+    if a.cmd == "floor":
+        if a.figures and a.figures.exists():
+            run = _load(a.figures)
+        else:
+            run = measure(a.runs, slugs, False, a.kent_dir)
+            _dump(run, a.figures or (a.runs / "figures.json"))
+        print(_floor_report(run, slugs, a))
+        return 0              # a flag is information, never a failure
+
     # check
     led = _load(a.ledger)
     bad = validate_ledger(led)
@@ -502,6 +647,8 @@ def main(argv=None) -> int:
     cmp = compare(led, run, a.only)
     text = movers_table(cmp, a.all)
     print(text)
+    if a.floor:
+        print("\n" + _floor_report(run, slugs, a))
     if a.table:
         a.table.parent.mkdir(parents=True, exist_ok=True)
         a.table.write_text(text + "\n", encoding="utf-8")

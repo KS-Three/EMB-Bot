@@ -2580,6 +2580,15 @@ correction). Two rules stop a repeat:
    -- digitizer/digitizer_core` shows landed pipeline commits, any grade
    comparison against the baseline is comparing against a stale ruler —
    say so wherever the comparison is quoted.
+3. **The capture is a button since 2026-11-05.** `.github/workflows/scorecard-capture.yml`
+   (`Corpus scorecard`, `workflow_dispatch` only, never a PR check) runs the
+   tool on `ubuntu-latest` with CI's Python 3.12 and Tesseract:
+   `gh workflow run scorecard-capture.yml --ref <branch> -f mode=diff` for
+   rule 1's diff, `-f mode=capture` for the baseline; download
+   `scorecard-<mode>-<run id>` and commit the JSON with the attribution. The
+   job stays green on a `diff` exit 1 (a fallen band is the report, not a
+   gate) — read `EXIT=` at the end of the log. Budget 45 minutes. A cloud
+   session running the tool by hand is no longer the recipe.
 
 ### The WSL scorecard box on Kent's laptop (2026-10-02)
 

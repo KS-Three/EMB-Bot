@@ -224,6 +224,19 @@ def test_a_finished_job_carries_a_preflight_report(client):
     assert report["metrics"]["thread_match_checked"] is True
 
 
+def test_the_served_score_is_the_grades_score(client):
+    """`score` is on the wire (it has been since build step 9; the Studio's
+    QualityReport prints it) and the grade is derived from it: the served
+    pair cannot disagree, and `raw_score` is the unclamped bill."""
+    from digitizer_core.preflight import _DEDUCT, _grade_for
+    report = _digitize(client, {"target_width_mm": 80.0})["preflight"]
+    assert isinstance(report["score"], int) and 0 <= report["score"] <= 100
+    assert report["grade"] == _grade_for(report["score"])
+    raw = 100 - sum(_DEDUCT.get(f["severity"], 0) for f in report["findings"])
+    assert report["metrics"]["raw_score"] == raw
+    assert report["score"] == max(0, raw)
+
+
 def test_preflight_off_is_none_not_a_passing_report(client):
     """Studio must be able to tell 'clean' apart from 'never checked'."""
     state = _digitize(client, {"target_width_mm": 80.0, "preflight": False})
@@ -1983,4 +1996,66 @@ def test_classify_rejects_what_digitize_rejects_at_submit(client):
     r = client.post("/classify", files={"image": ("x.png", io.BytesIO(b""), "image/png")})
     assert r.status_code == 400
     r = _classify(client, {"nonsense": 1})
+    assert r.status_code == 400
+
+
+# --- /recount: how many shapes and colours, at this size ---------------------
+#
+# Kent, 2026-11-05 (the Stitchist teardown's footer): say how many shapes and
+# colours the design will have at the size chosen, counts only. The route is
+# stages 0-4 + finish_generation of `/digitize` and stops; it is its own route
+# because those stages cost seconds where `/classify` costs a fraction of one.
+
+def _recount(client, config: dict | None = None, art: Path = ART):
+    with art.open("rb") as f:
+        return client.post(
+            "/recount",
+            files={"image": (art.name, f, "image/png")},
+            data={"config": json.dumps(config or {})},
+        )
+
+
+def test_recount_fields_and_the_count_the_run_then_sews(client):
+    """The drift guard: the pre-run count is the count the run reports. Shapes
+    are the review layer's sewn shapes, colours the threads those shapes sew
+    in -- compared on the run's own `review.shapes`, which is what the Studio's
+    Layers list shows."""
+    cfg = {"target_width_mm": 60.0}
+    r = _recount(client, cfg)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert set(body) == {"shape_count", "color_count", "size_mm", "generation_cache", "elapsed_ms"}
+    assert body["generation_cache"] == "miss"
+    assert body["shape_count"] >= 1 and body["color_count"] >= 1
+    assert len(body["size_mm"]) == 2 and body["size_mm"][0] > 0
+
+    state = _digitize(client, cfg)
+    # The recount left stages 0-4 cached for the run it precedes.
+    assert state["generation_cache"] == "hit"
+    shapes = [s for s in state["review"]["shapes"] if s.get("stitched", True)]
+    assert body["shape_count"] == len(shapes)
+
+
+def test_recount_follows_the_size(client):
+    """A bigger design has more shapes: small details clear the size floor
+    (min_detail_mm) at one size and not the other."""
+    small = _recount(client, {"target_width_mm": 25.0}).json()
+    large = _recount(client, {"target_width_mm": 120.0}).json()
+    assert large["shape_count"] >= small["shape_count"]
+    assert large["size_mm"][0] > small["size_mm"][0]
+
+
+def test_recount_second_ask_reuses_the_generation(client):
+    cfg = {"target_width_mm": 45.0}
+    assert _recount(client, cfg).json()["generation_cache"] == "miss"
+    again = _recount(client, cfg).json()
+    assert again["generation_cache"] == "hit"
+
+
+def test_recount_rejects_what_digitize_rejects_at_submit(client):
+    r = client.post("/recount", files={"image": ("x.txt", io.BytesIO(b"not an image"), "text/plain")})
+    assert r.status_code == 400
+    r = client.post("/recount", files={"image": ("x.png", io.BytesIO(b""), "image/png")})
+    assert r.status_code == 400
+    r = _recount(client, {"nonsense": 1})
     assert r.status_code == 400

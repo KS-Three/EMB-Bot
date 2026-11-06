@@ -43,6 +43,13 @@ test("saves under the given fileName, defaulting to worksheet.pdf, and returns t
   assert.deepEqual(r.calls.ctor, { unit: "in", format: "letter" });
 });
 
+test("save: false builds the sheet but leaves it unsaved, for a caller that wants the bytes (Download all)", () => {
+  const r = build({ colors: [color("Red", 255, 0, 0)] }, { save: false });
+  assert.equal(r.calls.saved, null);
+  assert.ok(r.doc);
+  assert.ok(r.lines.includes("1. Red"));
+});
+
 test("stats: dimensions, grouped stitch count, colour count", () => {
   const { lines } = build({
     widthMM: 25.4, heightMM: 50.8, stitchCount: 26676, colors: [color("a", 0, 0, 0)],

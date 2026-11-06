@@ -3,6 +3,7 @@
   import { generateAll } from "../lib/generate.js";
   import { garmentOf } from "../lib/placement.js";
   import { exportFileName, exportDesignPreferService, exportWorksheetPDF, exportPNG, isServiceOnlyFormat } from "../lib/exporters.js";
+  import { buildExportZip, threadListText } from "../lib/exportZip.js";
   import { chartIdForProject } from "../lib/designChart.js";
   import { isSewable } from "../lib/flow.js";
   import { triggerDownload } from "../lib/download.js";
@@ -64,6 +65,7 @@
   const d = createEventDispatcher();
   let msg = "";
   let worksheetBusy = false;
+  let zipBusy = false;
 
   // --- Save location -------------------------------------------------------
   // Where a downloaded file lands. "download" is the browser's Downloads
@@ -534,7 +536,7 @@
     // dialog: both answer "is there a reason not to sew this", the operator
     // should see every such reason at once, and one confirm means one piece
     // of state to keep in step.
-    if (!hoopExceeds && !preflightBlocks.length) return dl(fmt);
+    if (!hoopExceeds && !preflightBlocks.length) return fmt === "all" ? dlAll() : dl(fmt);
     confirmOpener = typeof document !== "undefined" ? document.activeElement : null;
     pendingFmt = fmt;
     return undefined;
@@ -550,7 +552,8 @@
   function confirmDl() {
     const fmt = pendingFmt;
     closeConfirm();
-    if (fmt) dl(fmt);
+    if (fmt === "all") dlAll();
+    else if (fmt) dl(fmt);
   }
 
   function onConfirmKeydown(e) {
@@ -591,37 +594,89 @@
     }
   }
 
+  // Builds the PDF worksheet. `asBytes` returns the sheet for the zip instead
+  // of saving it; `design` lets Download all hand over the design it already
+  // built, so every file in the archive comes from one generate.
+  // The design's colours named from the chosen chart, with that chart's label.
+  // One palette object for both, so a name is never printed under another
+  // chart's heading. Awaited here (not read from `chart`) so a click before
+  // the lazy chunk lands still bakes the RIGHT chart's names, never Studio's.
+  async function namedColors(design) {
+    const palette = await loadPalette(paletteId);
+    const colors = (design.colors || []).map((c) => ({
+      ...c,
+      name: threadLabel(nearestInList(palette.threads, [c.r, c.g, c.b])),
+    }));
+    return { colors, chartLabel: palette.label };
+  }
+
+  async function makeWorksheet({ asBytes = false, design: given = null } = {}) {
+    const design = given ? { ...given } : buildDesign();
+    // pdfsheet.js prints color.name when present -- label each block with
+    // the preferred chart's nearest cone ("1902 Poinsettia" beats "Color
+    // 2" when you're standing in front of the thread rack). buildDesign()
+    // returns a freshly-generated design, so annotating it here can't leak
+    // into any cached/shared state. The palette load is awaited here (not
+    // read from `chart`) so a worksheet clicked before the lazy chunk
+    // lands still bakes the RIGHT chart's names, never Studio's.
+    // One palette object for both the codes and the chart name below them,
+    // so the sheet can never print one chart's numbers under another
+    // chart's heading.
+    const { colors, chartLabel } = await namedColors(design);
+    design.colors = colors;
+    const garment = garmentOf(project); // as placed: the worksheet's box and label are the placement's
+    // The worksheet names the chosen hoop (manual pick or suggestion,
+    // lib/hoop.js) — the operator mounts a physical hoop, not a garment.
+    // ...and the chart those codes came out of. "1375 Dark Charcoal" is
+    // not a thread anyone can buy until the sheet says whose 1375 it is.
+    // `hoopExceeds` is the same string the export confirm shows. The
+    // worksheet is not gated on it -- printing a reference sheet is
+    // harmless -- but it must SAY it, because the sheet is the document
+    // that goes to the machine.
+    const bytes = await exportWorksheetPDF(design, garment, effectiveHoop(project).hoop, chartLabel, hoopExceeds, { asBytes });
+    return bytes;
+  }
+
+  // Download all: every stitch format, the worksheet, a picture and the thread
+  // list in ONE zip (lib/exportZip.js). Same door as the single buttons -- each
+  // format is the exportDesignPreferService call dl() makes, so each file has
+  // been through the same read-back, the DST honours Jumps per trim, and any one
+  // failure fails the lot with that format's reason and saves nothing.
+  async function dlAll() {
+    if (behind) return;
+    zipBusy = true;
+    try {
+      await ensureFonts(fontKeysOf(project));
+      const design = buildDesign();
+      const purelyDigitized = isPurelyDigitized(project);
+      const zip = await buildExportZip({
+        designName,
+        exportFormat: (fmt) => exportDesignPreferService(design, fmt, {
+          label: project.name,
+          preferService: purelyDigitized,
+          ...(fmt === "dst" ? { jumpsPerTrim } : {}),
+        }),
+        worksheet: () => makeWorksheet({ asBytes: true, design }),
+        png: async () => (await exportPNG(design)).blob,
+        threads: async () => {
+          const { colors, chartLabel } = await namedColors(design);
+          return threadListText(colors, chartLabel);
+        },
+      });
+      const where = await saveOut(zip);
+      msg = "Saved ZIP" + where;
+    } catch (e) {
+      msg = friendlyError(e, "export", "ZIP");
+    } finally {
+      zipBusy = false;
+    }
+  }
+
   async function dlWorksheet() {
     worksheetBusy = true;
     try {
       await ensureFonts(fontKeysOf(project));
-      const design = buildDesign();
-      // pdfsheet.js prints color.name when present -- label each block with
-      // the preferred chart's nearest cone ("1902 Poinsettia" beats "Color
-      // 2" when you're standing in front of the thread rack). buildDesign()
-      // returns a freshly-generated design, so annotating it here can't leak
-      // into any cached/shared state. The palette load is awaited here (not
-      // read from `chart`) so a worksheet clicked before the lazy chunk
-      // lands still bakes the RIGHT chart's names, never Studio's.
-      // One palette object for both the codes and the chart name below them,
-      // so the sheet can never print one chart's numbers under another
-      // chart's heading.
-      const palette = await loadPalette(paletteId);
-      const list = palette.threads;
-      design.colors = (design.colors || []).map((c) => ({
-        ...c,
-        name: threadLabel(nearestInList(list, [c.r, c.g, c.b])),
-      }));
-      const garment = garmentOf(project); // as placed: the worksheet's box and label are the placement's
-      // The worksheet names the chosen hoop (manual pick or suggestion,
-      // lib/hoop.js) — the operator mounts a physical hoop, not a garment.
-      // ...and the chart those codes came out of. "1375 Dark Charcoal" is
-      // not a thread anyone can buy until the sheet says whose 1375 it is.
-      // `hoopExceeds` is the same string the export confirm shows. The
-      // worksheet is not gated on it -- printing a reference sheet is
-      // harmless -- but it must SAY it, because the sheet is the document
-      // that goes to the machine.
-      await exportWorksheetPDF(design, garment, effectiveHoop(project).hoop, palette.label, hoopExceeds);
+      await makeWorksheet();
       msg = "Worksheet saved.";
     } catch (e) {
       msg = friendlyError(e, "export", "PDF worksheet");
@@ -776,6 +831,15 @@
   <button disabled={behind} on:click={() => askThenDl("svg")}>SVG</button>
   <button on:click={dlPNG}>PNG</button>
   <button on:click={dlWorksheet} disabled={worksheetBusy}>PDF worksheet</button>
+  <!-- Every format above, the worksheet, a picture and the thread list in one
+       zip. Locked exactly like the machine-file buttons (stale stitches), and
+       like JEF / XXX / VP3 it needs the service, since three of its files have
+       no browser encoder. -->
+  <button
+    data-testid="download-all"
+    disabled={behind || zipBusy || !(jefAvailable && xxxAvailable && vp3Available)}
+    on:click={() => askThenDl("all")}
+  >Download all</button>
 </div>
 
 <!-- PNG and the PDF worksheet are deliberately NOT gated: neither is a file a
@@ -828,7 +892,7 @@
       {/if}
       <div class="hg-btns">
         <button class="primary" on:click={closeConfirm}>Go back</button>
-        <button on:click={confirmDl}>Download {pendingFmt.toUpperCase()} anyway</button>
+        <button on:click={confirmDl}>Download {pendingFmt === "all" ? "all" : pendingFmt.toUpperCase()} anyway</button>
       </div>
     </div>
   </div>

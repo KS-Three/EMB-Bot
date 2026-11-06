@@ -17,8 +17,8 @@
   import { garmentOf, placementBoxOf } from "../lib/placement.js";
   import { resizeBadgeText } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
-  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, ringNodesInBox, fieldMmToOutlineMm, simplifyRing, ringKey, splitRingKey } from "../lib/shapeOverlay.js";
-  import { withNodes, nodeMarker, spanOfEdge, pastClickDeadZone, ringEditOverrides as ringEditOverridesLib, discardPatch } from "../lib/shapeNodes.js";
+  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, ringNodesInBox, fieldMmToOutlineMm, simplifyRing, ringKey, splitRingKey, NODE_GRAB_PX } from "../lib/shapeOverlay.js";
+  import { withNodes, nodeMarker, spanOfEdge, pastClickDeadZone, ringEditOverrides as ringEditOverridesLib, discardPatch, moveShapeOverrides } from "../lib/shapeNodes.js";
   import { rebuildSpans, moveNodesExact, insertNodeOnPath, toggleNode, deleteNodes } from "../lib/sparseNodes.js";
   import {
     appliedBorders,
@@ -770,6 +770,7 @@
     return src ? src.mm.map((o) => `${o.key || o.id}=${o.nodes ? o.nodes.length : 0}`).join(",") : "";
   }
   function enterReshape(el) {
+    if (shapeMove) commitShapeMove();
     reshapeNodeSig = el.type === "digitized" ? nodeSigOf(el) : "";
     const start = {};
     for (const k of RESHAPE_KEYS) start[k] = el[k];
@@ -796,6 +797,294 @@
     }
     endReshape();
   }
+  // ---- Add hole (2026-11-05, PR 3 of the node-editing work) -----------------
+  // "Add hole" (popover row, or the right-click menu inside a digitized shape)
+  // enters a draw mode for ONE shape: each click places a vertex, a click on
+  // the first vertex (or Enter) closes the ring once it has three, and the
+  // closed ring is appended to the shape's holes through the same commit path
+  // as every other ring edit (`ringEditOverrides`' `added`). A refusal from
+  // boundaryIssues keeps the draft open so Backspace can take a vertex back.
+  // Escape, the cross, another element, or another shape ends it with no patch.
+  // The vertices are kept in FIELD mm, so a zoom or pan mid-draw cannot move them.
+  const HOLE_DRAFT_HINT = "Click to place hole points · click the first point to close · Esc to cancel";
+  let holeDraft = null;     // { elId, shapeId, pointsMm: [[x, y], ...] }
+
+  function holeDraftOn() {
+    return !!holeDraft && !!project && !multiSel && !simActive && project.selectedId === holeDraft.elId;
+  }
+  function enterHoleDraft(el, shapeId) {
+    if (!el || el.type !== "digitized" || !shapeId || isCapPieceId(shapeId)) return;
+    if (shapeMove) commitShapeMove();
+    selectedShapeId = shapeId;
+    selectedShapeElId = el.id;
+    shapeEditError = "";
+    holeDraft = { elId: el.id, shapeId, pointsMm: [] };
+    if (canvas) canvas.focus({ preventScroll: true });
+    repaintNodeChrome();
+  }
+  function cancelHoleDraft() {
+    if (!holeDraft) return;
+    holeDraft = null;
+    if (shapeEditError) shapeEditError = "";
+    repaintNodeChrome();
+  }
+  function fieldPxOfMm(pt) {
+    const c = renderResult.toCanvas(pt[0], pt[1]);
+    return { x: c.x, y: c.y };
+  }
+  function mmOfFieldPx(p) {
+    const o = renderResult.toCanvas(0, 0), ex = renderResult.toCanvas(1, 0), ey = renderResult.toCanvas(0, 1);
+    return [(p.x - o.x) / (ex.x - o.x), (p.y - o.y) / (ey.y - o.y)];
+  }
+  // The strip: the instruction line in a pill, the cross to its right.
+  function holeDraftStrip(ctx) {
+    ctx.save();
+    ctx.font = "11px system-ui, sans-serif";
+    const w = ctx.measureText(HOLE_DRAFT_HINT).width + 12;
+    ctx.restore();
+    const bx = Math.round(Math.min(Math.max(cssW() / 2 - 20, w / 2 + 4), cssW() - w / 2 - 4 - 26));
+    return { bx, w, cross: { x: Math.round(bx + w / 2 + 6), y: 7, w: 18, h: 18 } };
+  }
+  function holeDraftCrossHit(p) {
+    const ctx = canvas && canvas.getContext("2d");
+    if (!ctx) return false;
+    const b = holeDraftStrip(ctx).cross;
+    return p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h;
+  }
+  function drawHoleDraftChrome(ctx) {
+    if (!holeDraftOn() || !renderResult) return;
+    const strip = holeDraftStrip(ctx);
+    drawBadge(ctx, strip.bx, 16, HOLE_DRAFT_HINT);
+    const b = strip.cross;
+    ctx.save();
+    ctx.fillStyle = "rgba(24, 26, 38, 0.85)";
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(b.x, b.y, b.w, b.h, 4); else ctx.rect(b.x, b.y, b.w, b.h);
+    ctx.fill();
+    ctx.fillStyle = "#ff8a8a";
+    ctx.font = "13px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("✕", b.x + b.w / 2, b.y + b.h / 2 + 0.5);
+    ctx.restore();
+    const pts = holeDraft.pointsMm.map(fieldPxOfMm);
+    if (!pts.length) return;
+    ctx.save();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(255, 214, 64, 0.95)";
+    ctx.beginPath();
+    pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+    ctx.stroke();
+    if (pts.length >= 3) {
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+      ctx.lineTo(pts[0].x, pts[0].y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    for (const q of pts) {
+      ctx.fillStyle = "rgba(255, 214, 64, 1)";
+      ctx.strokeStyle = "rgba(24, 26, 38, 0.9)";
+      ctx.fillRect(q.x - 3.5, q.y - 3.5, 7, 7);
+      ctx.strokeRect(q.x - 3.5, q.y - 3.5, 7, 7);
+    }
+    ctx.restore();
+  }
+  // Close the ring: needs three vertices. -> true when it committed.
+  function closeHoleDraft() {
+    const d = holeDraft;
+    if (!d || d.pointsMm.length < 3) return false;
+    const edit = editableOutlinesPx();
+    const el = edit && edit.el;
+    if (!el || el.id !== d.elId || el.type !== "digitized") return false;
+    const ring = d.pointsMm.map(([x, y]) => [x, y]);
+    const ok = commitRingEdits(el, editBasis(edit), new Map(), null, new Map(), new Map([[d.shapeId, [ring]]]));
+    if (ok) {
+      holeDraft = null;
+      repaintNodeChrome();
+    } else repaintNodeChrome();
+    return ok;
+  }
+  // A press while drawing. -> true when the draft took it.
+  function holeDraftPress(p) {
+    if (holeDraftCrossHit(p)) { cancelHoleDraft(); return true; }
+    const other = pickElement(perElementRects, p.x, p.y);
+    if (other && other !== holeDraft.elId) { cancelHoleDraft(); return false; }   // the press selects it as usual
+    const pts = holeDraft.pointsMm;
+    if (pts.length >= 3) {
+      const f = fieldPxOfMm(pts[0]);
+      if (Math.hypot(f.x - p.x, f.y - p.y) <= NODE_GRAB_PX) { closeHoleDraft(); return true; }
+    }
+    // A press on any placed vertex adds nothing (a double-click's second press,
+    // or a stray click back on the first point before the ring can close).
+    for (const q of pts) {
+      const l = fieldPxOfMm(q);
+      if (Math.hypot(l.x - p.x, l.y - p.y) < 3) return true;
+    }
+    shapeEditError = "";
+    holeDraft = { ...holeDraft, pointsMm: [...pts, mmOfFieldPx(p)] };
+    repaintNodeChrome();
+    return true;
+  }
+
+  // ---- Move shape (2026-11-05 spec) ------------------------------------------
+  // "Move shape" (popover row after Edit points, or the right-click menu inside a
+  // digitized shape) translates ONE shape (shell, holes, nodes) as a unit. A
+  // left press anywhere on the canvas drags it (outline live, stitches follow on
+  // commit through the normal restitch); the arrows move it 0.1 mm (Shift 1 mm).
+  // Enter / Done / a selection change commits ONE discrete elupdate; Esc /
+  // Discard restore and dispatch nothing. The "edit all similar shapes" tick is
+  // ignored: only the grabbed shape moves.
+  const MOVE_HINT = "Moving shape · drag or arrow keys · Enter to finish · Esc to cancel";
+  let shapeMove = null;     // { elId, shapeId, eb, shell, holes, dx, dy, drag: null | { startClient, startPx, dx0, dy0, armed } }
+
+  // The arguments are unused: a template expression only re-renders for the
+  // variables it NAMES, so the markup passes the ones this reads.
+  // eslint-disable-next-line no-unused-vars
+  function shapeMoveOn(_sm, _project, _multi, _sim) {
+    return !!shapeMove && !!project && !multiSel && !simActive && project.selectedId === shapeMove.elId;
+  }
+  function enterShapeMove(el, shapeId) {
+    if (!el || el.type !== "digitized" || !shapeId || isCapPieceId(shapeId)) return;
+    const edit = outlinesPxFor(el);
+    const shell = edit && edit.mmById.get(shapeId);
+    if (!shell) return;
+    if (shapeMove) commitShapeMove();
+    if (reshape || reshapeDrag || marquee) endReshape();
+    cancelHoleDraft();
+    selectedShapeId = shapeId;
+    selectedShapeElId = el.id;
+    shapeEditError = "";
+    shapeMove = {
+      elId: el.id, shapeId, eb: editBasis(edit),
+      ovAtEntry: (el.shapeOverrides || {})[shapeId] || null,
+      rowAtEntry: ((el.review && el.review.shapes) || []).find((r) => r && r.id === shapeId) || null,
+      shell: shell.map(([x, y]) => [x, y]),
+      holes: (edit.holesById.get(shapeId) || []).map((h) => h.map(([x, y]) => [x, y])),
+      dx: 0, dy: 0, drag: null,
+    };
+    if (canvas) canvas.focus({ preventScroll: true });
+    repaintNodeChrome();
+  }
+  // True when the shape's override entry or review row is no longer the object
+  // the move was entered on.
+  function shapeMoveStale(proj) {
+    const sm = shapeMove;
+    const el = sm && proj && (proj.elements || []).find((x) => x.id === sm.elId);
+    if (!el) return false;
+    if (((el.shapeOverrides || {})[sm.shapeId] || null) !== sm.ovAtEntry) return true;
+    const row = ((el.review && el.review.shapes) || []).find((r) => r && r.id === sm.shapeId) || null;
+    return row !== sm.rowAtEntry;
+  }
+  function endShapeMove() {
+    if (!shapeMove) return;
+    shapeMove = null;
+    dragReadout = null;
+    if (canvas) canvas.style.cursor = "default";
+    repaintNodeChrome();
+  }
+  // Commit the pending move as ONE patch (nothing at all on a zero net move).
+  function commitShapeMove() {
+    const sm = shapeMove;
+    if (!sm) return;
+    shapeMove = null;
+    dragReadout = null;
+    const el = project && (project.elements || []).find((x) => x.id === sm.elId);
+    if (el && (Math.abs(sm.dx) > 1e-9 || Math.abs(sm.dy) > 1e-9)) {
+      const res = moveShapeOverrides(el, sm.eb, sm.shapeId, sm.shell, sm.holes, sm.dx, sm.dy);
+      if (res && res.error) {
+        const row = sm.eb.rows.find((r) => r && r.id === sm.shapeId);
+        shapeEditError = (row ? shapeMenuName(row) + ": " : "") + res.error;
+      } else if (res && res.cur) {
+        shapeEditError = "";
+        dispatch("elupdate", { id: el.id, patch: { shapeOverrides: res.cur }, discrete: true });
+      }
+    }
+    if (canvas) canvas.style.cursor = "default";
+    repaintNodeChrome();
+  }
+  function moveShapeBy(dxMm, dyMm) {
+    if (!shapeMoveOn() || shapeMove.drag) return;
+    shapeMove = { ...shapeMove, dx: shapeMove.dx + dxMm, dy: shapeMove.dy + dyMm };
+    repaintNodeChrome();
+  }
+  // The strip: label pill with Done / Discard to its right.
+  function shapeMoveStrip(ctx) {
+    ctx.save();
+    ctx.font = "11px system-ui, sans-serif";
+    const w = ctx.measureText(MOVE_HINT).width + 12;
+    ctx.restore();
+    const bx = Math.round(Math.min(Math.max(cssW() / 2 - 30, w / 2 + 4), cssW() - w / 2 - 4 - 52));
+    const x0 = Math.round(bx + w / 2 + 6);
+    return { bx, w, done: { x: x0, y: 7, w: 18, h: 18 }, discard: { x: x0 + 22, y: 7, w: 18, h: 18 } };
+  }
+  function shapeMoveBtnAt(p) {
+    const ctx = canvas && canvas.getContext("2d");
+    if (!ctx) return null;
+    const s = shapeMoveStrip(ctx);
+    for (const k of ["done", "discard"]) {
+      const b = s[k];
+      if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) return k;
+    }
+    return null;
+  }
+  function drawShapeMoveChrome(ctx) {
+    // setAttribute, not a binding (see the note on data-stale-ids). The centres of
+    // Done / Discard in canvas CSS px, so a test can aim at the drawn buttons.
+    if (!shapeMoveOn()) {
+      if (canvas && canvas.hasAttribute("data-shape-move-btns")) canvas.removeAttribute("data-shape-move-btns");
+      return;
+    }
+    const s = shapeMoveStrip(ctx);
+    if (canvas) {
+      const btns = JSON.stringify({ done: [s.done.x + s.done.w / 2, s.done.y + s.done.h / 2], discard: [s.discard.x + s.discard.w / 2, s.discard.y + s.discard.h / 2] });
+      if (canvas.getAttribute("data-shape-move-btns") !== btns) canvas.setAttribute("data-shape-move-btns", btns);
+    }
+    drawBadge(ctx, s.bx, 16, MOVE_HINT);
+    for (const [k, glyph] of [["done", "✓"], ["discard", "✕"]]) {
+      const b = s[k];
+      ctx.save();
+      ctx.fillStyle = "rgba(24, 26, 38, 0.85)";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(b.x, b.y, b.w, b.h, 4); else ctx.rect(b.x, b.y, b.w, b.h);
+      ctx.fill();
+      ctx.fillStyle = k === "done" ? "#7fe08a" : "#ff8a8a";
+      ctx.font = "13px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(glyph, b.x + b.w / 2, b.y + b.h / 2 + 0.5);
+      ctx.restore();
+    }
+    if (dragReadout) drawBadge(ctx, dragReadout.x, dragReadout.y, dragReadout.text);
+  }
+  // The shift a ring of shape `sid` of element `elId` is drawn at (field mm).
+  function moveShiftFor(elId, sid) {
+    return shapeMove && shapeMove.elId === elId && shapeMove.shapeId === sid ? shapeMove : null;
+  }
+  function shapeMovePress(e, p) {
+    const btn = shapeMoveBtnAt(p);
+    if (btn) {
+      if (btn === "done") commitShapeMove(); else endShapeMove();
+      drawOverlay();
+      return;
+    }
+    canvas.setPointerCapture(e.pointerId);
+    shapeMove = { ...shapeMove, drag: { startClient: { x: e.clientX, y: e.clientY }, startPx: p, dx0: shapeMove.dx, dy0: shapeMove.dy, armed: false } };
+    canvas.style.cursor = "grabbing";
+  }
+  function shapeMoveDrag(e, p) {
+    const d = shapeMove.drag;
+    if (!d.armed) {
+      if (!pastClickDeadZone(d.startClient, { x: e.clientX, y: e.clientY }, CLICK_PX)) return;
+      d.armed = true;
+    }
+    const mm = pxToMmDelta(p.x - d.startPx.x, p.y - d.startPx.y);
+    shapeMove = { ...shapeMove, dx: d.dx0 + mm.dx, dy: d.dy0 + mm.dy };
+    dragReadout = { x: p.x + 18, y: p.y - 18, text: `${fmtMm(shapeMove.dx)}, ${fmtMm(shapeMove.dy)} mm` };
+    repaintNodeChrome();
+  }
+
   // Strip buttons: Done (tick) and Discard (cross), right of the label.
   function reshapeBtnRects() {
     const cx = cssW() / 2;
@@ -1058,8 +1347,8 @@
   // ring goes back to the service's space and through boundaryIssues FIRST; one
   // refusal drops the whole gesture (named by shape) and the shapes snap back.
   // Otherwise ONE elupdate carries a boundary_override per touched shape.
-  function commitRingEdits(el, basis, live, removed = null, liveNodes = null) {
-    const res = ringEditOverrides(el, basis, live, removed, liveNodes);
+  function commitRingEdits(el, basis, live, removed = null, liveNodes = null, added = null) {
+    const res = ringEditOverrides(el, basis, live, removed, liveNodes, added);
     if (res.error) {
       const row = res.sid != null && basis.rows ? basis.rows.find((r) => r && r.id === res.sid) : null;
       shapeEditError = (row ? shapeMenuName(row) + ": " : "") + res.error;
@@ -1092,8 +1381,8 @@
   // writer is not the node editor (Simplify) and `nodes` is DELETED from the
   // entry: its indices would mean nothing against the new polygon (spec 2).
   // -> { cur } | { error, sid }
-  function ringEditOverrides(el, basis, live, removed = null, liveNodes = null) {
-    return ringEditOverridesLib(el, basis, live, removed, liveNodes);
+  function ringEditOverrides(el, basis, live, removed = null, liveNodes = null, added = null) {
+    return ringEditOverridesLib(el, basis, live, removed, liveNodes, added);
   }
 
   // Hand-drawn commit: the shapes as they now stand, through the re-fit rule in
@@ -1222,7 +1511,7 @@
   }
 
   function drawReshapeChrome(ctx) {
-    if (!reshapeOn()) return;
+    if (!reshapeOn() || holeDraftOn()) return;
     // The strip: an instrument, drawn like the rotate badge, never a warning.
     const rb = reshapeBtnRects();
     drawBadge(ctx, cssW() / 2 - 24, 16, "Editing points");
@@ -1549,6 +1838,18 @@
       dispatch("elupdate", { id: el.id, patch });
       return;
     }
+    if (key === "addHole" && el.type === "digitized") {
+      closeShapePop();
+      enterHoleDraft(el, selectedShapeId);
+      drawOverlay();
+      return;
+    }
+    if (key === "moveShape" && el.type === "digitized") {
+      closeShapePop();
+      enterShapeMove(el, selectedShapeId);
+      drawOverlay();
+      return;
+    }
     if (key === "editPoints") {
       // Every lane: enters Reshape mode for this element (or leaves it, when
       // the action reads "Done"). The shape stays selected, so a single node
@@ -1644,7 +1945,8 @@
           points: ((reshapeDrag && reshapeDrag.kind === "ring" && reshapeDrag.elId === el.id && reshapeDrag.live && reshapeDrag.live.get(key))
             || (liveRing && liveRing.key === key ? liveRing.points : o.points))
             .map(([x, y]) => {
-              const c = renderResult.toCanvas(x, y);
+              const mv = moveShiftFor(el.id, o.id);
+              const c = renderResult.toCanvas(x + (mv ? mv.dx : 0), y + (mv ? mv.dy : 0));
               return [c.x, c.y];
             }),
           cutOut: !!o.cutOut,
@@ -1818,6 +2120,14 @@
     // Reshape mode belongs to the element it was entered on: another element
     // selected, or none, ends it.
     if (reshape && reshape.elId !== project.selectedId) endReshape();
+    if (holeDraft && (holeDraft.elId !== project.selectedId || multiSel)) cancelHoleDraft();
+    // Selecting another shape ends a draft too.
+    if (holeDraft && selectedShapeId !== holeDraft.shapeId) cancelHoleDraft();
+    // Move shape: another element, none, or another shape commits the pending move.
+    if (shapeMove && (shapeMove.elId !== project.selectedId || multiSel || selectedShapeId !== shapeMove.shapeId)) commitShapeMove();
+    // The frozen rings are stale once an Undo or a landing restitch replaced the
+    // shape's override entry or its review row: leave the move, commit nothing.
+    if (shapeMove && shapeMoveStale(project)) endShapeMove();
     if (reshape && sel && sel.type === "digitized" && !reshapeDrag) {
       const sig = nodeSigOf(sel);
       if (sig !== reshapeNodeSig) {
@@ -2015,6 +2325,19 @@
 
   function onCanvasKey(e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return; // leave browser/OS shortcuts alone
+    // Drawing a hole: the arrows must not slide the element under the draft.
+    if (holeDraftOn() && e.key.startsWith("Arrow")) { e.preventDefault(); return; }
+    // Move shape: the arrows move the SHAPE, 0.1 mm (Shift 1 mm), accumulated
+    // live; nothing commits until Enter / Done.
+    if (shapeMoveOn() && e.key.startsWith("Arrow")) {
+      const ms = e.shiftKey ? RESHAPE_NUDGE_MM_COARSE : RESHAPE_NUDGE_MM;
+      if (e.key === "ArrowLeft") moveShapeBy(-ms, 0);
+      else if (e.key === "ArrowRight") moveShapeBy(ms, 0);
+      else if (e.key === "ArrowUp") moveShapeBy(0, ms);
+      else if (e.key === "ArrowDown") moveShapeBy(0, -ms);
+      e.preventDefault();
+      return;
+    }
     // Reshape mode with points selected: the arrows move THOSE points, 0.1 mm
     // (Shift 1 mm). With none selected they still nudge the element.
     if (reshapeOn() && reshapeSelCount(reshape) > 0 && !reshapeDrag && !marquee && !shapeEdit && !nodeEdit
@@ -2041,6 +2364,41 @@
   }
 
   function onWindowKey(e) {
+    // Move shape comes first: Escape restores and dispatches nothing, Enter
+    // (from the field) commits the move.
+    if (shapeMoveOn()) {
+      // Escape cancels from anywhere (it is always safe); Enter needs the field.
+      if (e.key === "Escape") { endShapeMove(); e.preventDefault(); return; }
+      // A move session owns Delete / Backspace: nothing is deleted mid-move (a
+      // delete would clear the selection and the move would then commit onto a
+      // shape that is gone).
+      if ((e.key === "Delete" || e.key === "Backspace") && (e.target === canvas || e.target === document.body)) {
+        e.preventDefault();
+        return;
+      }
+      if (e.key === "Enter" && !shapePop && !fieldMenu && (e.target === canvas || e.target === document.body)) {
+        commitShapeMove();
+        e.preventDefault();
+        return;
+      }
+    }
+    // Drawing a hole comes first: Escape cancels the draft (and nothing else —
+    // Reshape and the popover are left for the next press), Backspace takes
+    // the last vertex back, Enter closes the ring.
+    if (holeDraftOn()) {
+      const fromField = e.target === canvas || e.target === document.body;
+      if (e.key === "Escape") { cancelHoleDraft(); e.preventDefault(); return; }
+      if (fromField && (e.key === "Backspace" || e.key === "Delete")) {
+        if (holeDraft.pointsMm.length) {
+          shapeEditError = "";
+          holeDraft = { ...holeDraft, pointsMm: holeDraft.pointsMm.slice(0, -1) };
+          repaintNodeChrome();
+        }
+        e.preventDefault();
+        return;
+      }
+      if (fromField && e.key === "Enter") { closeHoleDraft(); e.preventDefault(); return; }
+    }
     // Reshape mode is the first thing Escape leaves, ahead of the focused
     // anchor, the popover and the tool menu (a drag in flight is dropped).
     // Enter is Done too (not while the popover or tool menu holds the keys).
@@ -2213,7 +2571,8 @@
         const dragLive = reshapeDrag && reshapeDrag.kind === "ring" && reshapeDrag.elId === el.id && reshapeDrag.live
           ? reshapeDrag.live.get(o.key || o.id) : null;
         const src = dragLive || (liveRing && liveRing.key === (o.key || o.id) ? liveRing.points : o.points);
-        const pts = src.map(([x, y]) => renderResult.toCanvas(x, y));
+        const mv = moveShiftFor(el.id, o.id);
+        const pts = src.map(([x, y]) => renderResult.toCanvas(x + (mv ? mv.dx : 0), y + (mv ? mv.dy : 0)));
         if (pts.length < 3) continue;
         // Highlighted when SELECTED, not only while dragging: the highlight
         // is what tells you which shape a Delete or a drag will act on.
@@ -2560,6 +2919,8 @@
     drawStaleWash(ctx);
     drawShapeOutlines(ctx);
     drawReshapeChrome(ctx);
+    drawHoleDraftChrome(ctx);
+    drawShapeMoveChrome(ctx);
     drawGuides(ctx);
     const color = selectionColor();
     if (multiSel) {
@@ -3391,6 +3752,8 @@
     // The simulator owns the canvas while playing; Original view shows the
     // artwork, whose pixels the stitch outlines need not line up with.
     if (simActive || originalView) return;
+    // A live hole draft owns the canvas: no menu (its "Add hole" would restart it).
+    if (holeDraftOn() || shapeMoveOn()) { e.preventDefault(); return; }
     e.preventDefault();             // our menu, not the browser's
     if (!canvas) return;
     const r = canvas.getBoundingClientRect();
@@ -3530,7 +3893,11 @@
         tier: row.tier,
         pending: borderRequestPending(appliedBorders(el.appliedEdits), hit.shapeId, entry),
       }),
-      items: borderMenuItems(entry, design),
+      items: [
+        ...borderMenuItems(entry, design),
+        ...(isCapPieceId(hit.shapeId) ? [] : [{ id: "moveshape", label: "Move shape", value: null, title: "Drag or nudge this whole shape; its stitches follow when you finish." }]),
+        ...(isCapPieceId(hit.shapeId) ? [] : [{ id: "addhole", label: "Add hole", value: null, title: "Draw a polygon inside this shape; it becomes a hole." }]),
+      ],
     };
   }
 
@@ -3604,6 +3971,20 @@
       const el = menu && menu.shape && project ? (project.elements || []).find((x) => x.id === menu.shape.elId) : null;
       if (el && el.type === "digitized") simplifyShapes(el, [item.shapeId], item.tol);
       repaintNodeChrome();
+      return;
+    }
+    if (item.id === "moveshape") {
+      const menu = fieldMenu;
+      fieldMenu = null;
+      const el = menu && menu.shape && project ? (project.elements || []).find((x) => x.id === menu.shape.elId) : null;
+      if (el) enterShapeMove(el, menu.shape.shapeId);
+      return;
+    }
+    if (item.id === "addhole") {
+      const menu = fieldMenu;
+      fieldMenu = null;
+      const el = menu && menu.shape && project ? (project.elements || []).find((x) => x.id === menu.shape.elId) : null;
+      if (el) enterHoleDraft(el, menu.shape.shapeId);
       return;
     }
     if (item.id === "delhole") {
@@ -3682,6 +4063,21 @@
     if (simActive || originalView) return;
     if (!canvas || !renderResult) return;
     const p = canvasPointFromEvent(e);
+    // Move shape: any left press drags the shape (no marquee, no element drag,
+    // no node grab; Ctrl/Alt/Shift mean nothing here), or hits Done / Discard.
+    if (shapeMoveOn()) {
+      shapeMovePress(e, p);
+      canvas.focus({ preventScroll: true });
+      return;
+    }
+    // Add hole: while a ring is being drawn the press is a vertex (or the
+    // cross, or the close); a press on another element ends the draft and
+    // falls through to select it.
+    // Ctrl/Cmd is a plain press here: no quick drag or marquee over a live draft.
+    if (holeDraftOn() && holeDraftPress(p)) {
+      canvas.focus({ preventScroll: true });   // Backspace / Enter / Escape go to the canvas
+      return;
+    }
     // The anchor focus lasts until the next press: a press ON an anchor sets
     // it again below; any other (an edge insert shifts the indices, a click
     // elsewhere means something else) must not leave Delete aimed at a point.
@@ -3973,6 +4369,10 @@
     if (!canvas) return;
     if (simActive || originalView) { canvas.style.cursor = "default"; return; }
     const p = canvasPointFromEvent(e);
+    if (shapeMove && shapeMove.drag) {
+      shapeMoveDrag(e, p);
+      return;
+    }
     if (marquee) {
       marquee.curPx = p;
       marquee = marquee;
@@ -4212,6 +4612,19 @@
   }
 
   function endDrag(e) {
+    // Move shape: release keeps the moved position (committed by Enter / Done);
+    // a cancelled pointer puts the drag back to where it started.
+    if (shapeMove && shapeMove.drag) {
+      if (canvas && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+      const d = shapeMove.drag;
+      shapeMove = e.type === "pointercancel"
+        ? { ...shapeMove, dx: d.dx0, dy: d.dy0, drag: null }
+        : { ...shapeMove, drag: null };
+      dragReadout = null;
+      if (canvas) canvas.style.cursor = "default";
+      repaintNodeChrome();
+      return;
+    }
     // Reshape mode: a point drag commits ONE patch on release (a click that
     // never travelled, or a cancel, commits nothing); a marquee selects.
     if (reshapeDrag) {
@@ -4437,6 +4850,9 @@
       data-paint-seq={paintSeq}
       data-reshape={reshape && project && project.selectedId === reshape.elId ? "on" : "off"}
       data-reshape-points={reshapeSelCount(reshape)}
+      data-hole-draft={holeDraftOn() ? holeDraft.pointsMm.length : "off"}
+      data-shape-move={shapeMoveOn(shapeMove, project, multiSel, simActive) ? "on" : "off"}
+      data-shape-move-delta={shapeMoveOn(shapeMove, project, multiSel, simActive) ? `${shapeMove.dx.toFixed(2)},${shapeMove.dy.toFixed(2)}` : ""}
       width="760"
       height="560"
       tabindex="0"
