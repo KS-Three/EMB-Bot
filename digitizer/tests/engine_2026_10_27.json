@@ -207,6 +207,7 @@
  "satin_corner_twigs": true,
  "satin_crown_cover": true,
  "satin_exit_toward_next": true,
+ "satin_floor_content_gate": false,
  "satin_free_end_square": true,
  "satin_seam_hold": false,
  "satin_hairline_tier": false,

@@ -67,6 +67,17 @@ def is_photographic(cfg: "PipelineConfig", class_: str | None) -> bool:
     return class_ in PHOTO_CLASSES
 
 
+def satin_floor_applies(cfg: "PipelineConfig", class_: str | None) -> bool:
+    """Does Law 31's satin width floor apply to a design that is NOT in a photo
+    class? `cfg.satin_floor_content_gate` (default OFF) AND the design is
+    photographic by content (`is_photographic`: the Studio's declaration or a
+    `detect_photographic` hit). The photo CLASSES keep the floor regardless
+    (`stage6_satin._floor_or`); this only widens it to a photograph stage 0
+    routed gradient. False with the flag off: byte-identical."""
+    return bool(getattr(cfg, "satin_floor_content_gate", False)
+                and is_photographic(cfg, class_))
+
+
 def work_grid_px_per_mm(cfg: "PipelineConfig", class_: str | None = None) -> float:
     """The pixel density stage 1 brings a lower-resolution source up to —
     `cfg.work_px_per_mm`, never under `cfg.min_px_per_mm` (None: the source
@@ -5228,6 +5239,17 @@ class PipelineConfig:
     # **Flipping it ON is Kent's call.** The render is at
     # docs/renders/satin-per-stroke-2026-09-06/.
     satin_per_stroke: bool = False
+    # Defect 2, the content-gated width floor, DEFAULT OFF (2026-11-06). Law
+    # 31's 1.0 mm floor (`stage6_satin.PHOTO_MIN_SATIN_WIDTH_MM`, never tuned)
+    # reroutes an earned sub-1.0 mm satin to the outline run on the photo
+    # CLASSES only. A photograph stage 0 routes gradient (Kent's 2026-08-25
+    # "photo sews filled") never got it. ON, the floor also applies when
+    # `is_photographic(cfg, class_)` is True -- the Studio's "It's a photo"
+    # declaration, or a `detect_photographic` hit -- and ONLY then: no new
+    # content signal, no stage-0 threshold. A flat/gradient logo nobody
+    # declared keeps its hairline satin (61 of 64 are ground the pro also
+    # satined). Off is byte-identical. **Flipping it ON is Kent's call.**
+    satin_floor_content_gate: bool = False
     # Defect 5, one misroute class: a shape lying INSIDE a satin border's
     # outline routes FILL, DEFAULT OFF. The pro convention is a filled body
     # with a satin edge; we satined the body too. On becker_marine_logo the
