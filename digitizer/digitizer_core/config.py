@@ -1874,6 +1874,12 @@ class PipelineConfig:
     # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     silhouette_underfill: bool = True
+    # Kent 2026-11-05 ("Gate under-fill off for photo classes"): the under-fill
+    # trio (`silhouette_underfill`, `_panels`, `_rim`) is OFF on photo_subject /
+    # photo_scene, because a tonal band sewed on a full ground fill stacked
+    # 9.5-13.8 layers (#1143's every-job flip; `pipeline.gate_underfill_for_photo`).
+    # True restores that arm byte for byte. Logos are unaffected either way.
+    silhouette_underfill_photo: bool = False
     # The small lettering on a white panel, as the pro sews MFab (hat and LC
     # agree, 2026-10-25): block 0 black tatami at 22-25 deg under the whole
     # silhouette with a 1.84-1.92 mm black satin rim; block 1 the white

@@ -130,6 +130,39 @@ def effective_split_tonal(cfg: PipelineConfig, class_: str) -> bool:
     return class_ in PHOTO_CLASSES
 
 
+def gate_underfill_for_photo(cfg: PipelineConfig, class_: str,
+                             keyline_art: bool = False) -> PipelineConfig:
+    """Kent 2026-11-05 ("Gate under-fill off for photo classes"): the under-fill
+    trio (`silhouette_underfill`, `_panels`, `_rim`) stays ON for logos and is
+    OFF on `PHOTO_CLASSES` (photo_subject, photo_scene).
+
+    #1143 made the white-keyline recipe's switches plain defaults for every
+    job. On a photo's tonal split each band is a piece contained in its
+    ground, so each band and its own satin ring sewed on a COMPLETE ground
+    fill: DENSITY_STACKED on eight scorecard rows (measured 2026-11-05,
+    `docs/density-stacked-photo-rows-2026-11-05.md`). The class is the
+    traced class (`result.design_class`), not `is_photographic`'s detection
+    fold. `cfg.silhouette_underfill_photo=True` restores the old arm byte for
+    byte; a non-photo class is returned untouched (same object).
+
+    EXEMPT: art `white_keyline_art.detect` read as white-keyline art
+    (`keyline_art`, `result.white_keyline_art`). MFab's hat is a LOGO that
+    stage 0 classes photo_scene at every width (memory mfab-photo-route
+    2026-11-04); without its under-fill the black band sews over the white
+    keyline (order White, Black instead of Black, White, Black;
+    `tests/test_underfill_small_size.py`). The detector reads geometry, not
+    class, and fires on none of the photo rows measured (2026-11-05).
+    """
+    if keyline_art or class_ not in PHOTO_CLASSES or cfg.silhouette_underfill_photo:
+        return cfg
+    if not (cfg.silhouette_underfill or cfg.silhouette_underfill_panels
+            or cfg.silhouette_underfill_rim):
+        return cfg
+    return replace(cfg, silhouette_underfill=False,
+                   silhouette_underfill_panels=False,
+                   silhouette_underfill_rim=False)
+
+
 def auto_photo_tier(cfg: PipelineConfig, class_: str, faces_present: bool) -> str | None:
     """Spec 2026-08-18 decision 3: the automatic photo tier map. Returns the
     fill_technique to apply, or None to leave the caller's config untouched.
@@ -1904,6 +1937,8 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     # photo sequencing and the shade bind read `is_photographic`, and this
     # entry point is routinely called with a config built from scratch.
     cfg = apply_detection(cfg, result.detected_photographic)
+    cfg = gate_underfill_for_photo(cfg, result.design_class,
+                                   getattr(result, "white_keyline_art", False))
     fabric = fabric_for(cfg)
     dbg = Path(cfg.debug_dir) if cfg.debug_dir else None
 

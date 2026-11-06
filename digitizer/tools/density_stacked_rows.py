@@ -36,9 +36,15 @@ ROWS = [
     ("photo/photo_dof_meadow.png", "hat_front"),
     ("photo/photo_sunset_backlit.png", "left_chest"),
     ("photo/photo_sunset_backlit.png", "hat_front"),
+    # the three that rose anyway (gradient lane, so the photo gate leaves them)
+    ("photo/drone_render.png", "hat_front"),
+    ("photo/logo_bridge_bar.jpg", "hat_front"),
+    ("photo/region_blobs.png", "hat_front"),
 ]
 ARMS = {
     "head": {},
+    # the pre-gate engine (Kent 2026-11-05 gate off): under-fill on photo classes
+    "photo_flag_on": {"silhouette_underfill_photo": True},
     "cutout_off": {"photo_cutout_min_kept": 0.0},
     "cap_off": {"color_cap_sewn": False},
     "floor_off": {"dark_ink_floor_rescue": False},
