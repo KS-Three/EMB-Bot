@@ -63,7 +63,24 @@ from digitizer_core.config import PipelineConfig  # noqa: E402
 
 TESTDATA = ROOT / "testdata"
 CORPUS_DIR = TESTDATA / "photo" / "corpus"
-SCRATCH_KENT = ROOT.parent / "scratch_kent"
+
+
+def _scratch_kent() -> Path:
+    """`scratch_kent/` in this checkout, else in the primary one (a lane under
+    `.claude/worktrees/` has no gitignored folders of its own)."""
+    here = ROOT.parent / "scratch_kent"
+    if here.exists():
+        return here
+    import subprocess
+    try:
+        common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                                cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return here
+    return Path(common).parent / "scratch_kent"
+
+
+SCRATCH_KENT = _scratch_kent()
 
 WIDTHS = (146, 250, 400, 640, 1000, 1200, 2000)
 FILTERS = ("LANCZOS", "BILINEAR", "NEAREST")
@@ -239,17 +256,20 @@ def _spread(vals: list[float]) -> str:
 
 
 def tables(data: list[dict]) -> str:
+    """Both arms are re-derived from the stored signals with the module's
+    CURRENT gates, so a run read before a constant moved still tables right."""
+    data = [{**r, "off": derive(r, False), "on": derive(r, True)} for r in data]
     by = _by_name(data)
     out = ["## 1. Per artwork, every rung (native + downscales x 3 filters + Studio path)\n",
-           "| artwork | label | rungs | gradient_smoothness spread | tonal_frac min-max | OFF classes | ON classes |",
-           "|---|---|---|---|---|---|---|"]
+           "| artwork | label | rungs | gradient_smoothness spread | tonal_frac spread | tonal_frac min-max | OFF classes | ON classes |",
+           "|---|---|---|---|---|---|---|---|"]
     for name, rs in by.items():
         gv = [r["gradient_smoothness"] for r in rs]
         tf = [r["tonal_frac"] for r in rs]
         offs = sorted({r["off"] for r in rs})
         ons = sorted({r["on"] for r in rs})
         out.append(f"| {name} | {rs[0]['label']}/{rs[0]['provenance']} | {len(rs)} | {_spread(gv)} | "
-                   f"{min(tf):.3f}-{max(tf):.3f} | {', '.join(offs)} | {', '.join(ons)} |")
+                   f"{_spread(tf)} | {min(tf):.3f}-{max(tf):.3f} | {', '.join(offs)} | {', '.join(ons)} |")
 
     out += ["\n## 2. One class at every rung (the phase-2 property)\n",
             "| set | artworks | one class OFF | one class ON |", "|---|---|---|---|"]
@@ -267,18 +287,23 @@ def tables(data: list[dict]) -> str:
     real = [r for r in data if r["provenance"] in ("real", "commons") and r["label"] in ("flat", "tonal")]
     flat = [r for r in real if r["label"] == "flat"]
     tonal = [r for r in real if r["label"] == "tonal"]
-    out += ["\n## 3. tonal_frac margin on labelled real artwork (owl_kent enrolled)\n"]
-    if flat and tonal:
-        fmax = max(flat, key=lambda r: r["tonal_frac"])
-        tmin = min(tonal, key=lambda r: r["tonal_frac"])
-        t2 = [r for r in tonal if r["name"] != "drone"]
-        tmin2 = min(t2, key=lambda r: r["tonal_frac"]) if t2 else None
-        out.append(f"- flat max {fmax['tonal_frac']:.3f} ({fmax['name']} {fmax['rung']}); "
-                   f"tonal min {tmin['tonal_frac']:.3f} ({tmin['name']} {tmin['rung']}); gap {tmin['tonal_frac'] - fmax['tonal_frac']:+.3f}")
-        if tmin2:
-            out.append(f"- without drone_render: tonal min {tmin2['tonal_frac']:.3f} ({tmin2['name']} {tmin2['rung']}); "
-                       f"gap {tmin2['tonal_frac'] - fmax['tonal_frac']:+.3f}")
-        out.append(f"- gate TONAL_GRADIENT_MIN {s0.TONAL_GRADIENT_MIN}")
+    out += ["\n## 3. tonal_frac margin on labelled real artwork (owl_kent enrolled)\n",
+            f"Gate `TONAL_GRADIENT_MIN` {s0.TONAL_GRADIENT_MIN}. Every labelled real raster, whichever "
+            "territory the photo gate put it in.\n",
+            "| rungs | tonal set | real tonal artworks | flat max | tonal min | gap |", "|---|---|---|---|---|---|"]
+    rung_sets = (("native + Studio path", lambda r: r["rung"] == "native" or r["rung"].startswith("studio_")),
+                 ("+ downscales >= 400 px", lambda r: "@" not in r["rung"] or int(r["rung"].split("@")[1]) >= 400),
+                 ("every rung", lambda r: True))
+    for title, keep in rung_sets:
+        for tset, tkeep in (("all", lambda r: True), ("without drone_render", lambda r: r["name"] != "drone")):
+            f = [r for r in flat if keep(r)]
+            t = [r for r in tonal if keep(r) and tkeep(r)]
+            if not (f and t):
+                continue
+            fmax = max(f, key=lambda r: r["tonal_frac"])
+            tmin = min(t, key=lambda r: r["tonal_frac"])
+            out.append(f"| {title} | {tset} | {len({r['name'] for r in t})} | {fmax['tonal_frac']:.3f} ({fmax['name']} {fmax['rung']}) | "
+                       f"{tmin['tonal_frac']:.3f} ({tmin['name']} {tmin['rung']}) | {tmin['tonal_frac'] - fmax['tonal_frac']:+.3f} |")
     out += ["\n## 4. Chance-corrected agreement with Kent's labels (tonal = any non-flat class)\n",
             "| rows | n rasters | kappa OFF | kappa ON | flat rasters routed non-flat OFF / ON | tonal rasters routed flat OFF / ON |",
             "|---|---|---|---|---|---|"]

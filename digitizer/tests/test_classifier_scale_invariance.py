@@ -200,16 +200,17 @@ def test_the_scale_relative_read_keeps_the_native_class_when_downscaled(rel, tmp
         assert got == native, f"{rel} at {w}px is {got} with the flag ON, native is {native}"
 
 
-def test_the_scale_relative_read_s_stated_limit_is_the_drone_at_250_px(tmp_path):
-    """The record, executable: the drone render reads `flat` ON at 250 px
-    (`tonal_frac` 0.072 against 0.09 — the badge is ~100 px across and its
-    photo inset is mostly hard edges at that size) and `gradient` at 400 and
-    640. OFF reads `gradient` at all three. Not acceptance evidence either
-    way (the drone left this file's broken sets through the alpha
-    extension); if this starts passing as `gradient`, delete the limit."""
+def test_the_scale_relative_read_s_stated_limit_is_the_drone_downscaled(tmp_path):
+    """The record, executable: the drone render reads `flat` ON at 250 and
+    400 px (`tonal_frac` 0.072 and 0.113 against 0.11 + its confidence
+    floor — at that size its photo inset is mostly hard edges, excluded) and
+    `gradient` at 640, at native and through the Studio's 1200-px cap. OFF
+    reads `gradient` at all three. Not acceptance evidence either way (the
+    drone left this file's broken sets through the alpha extension); if this
+    starts reading `gradient`, delete the limit."""
     rel = "photo/drone_render.png"
     seen = {w: _classify_at(TESTDATA / rel, w, tmp_path, SCALE_RELATIVE) for w in WIDTHS}
-    assert seen == {250: "flat", 400: "gradient", 640: "gradient"}, seen
+    assert seen == {250: "flat", 400: "flat", 640: "gradient"}, seen
     assert {_classify_at(TESTDATA / rel, w, tmp_path) for w in WIDTHS} == {"gradient"}
 
 

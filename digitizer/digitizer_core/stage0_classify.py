@@ -501,12 +501,16 @@ TONAL_RAMP_EDGE_EXCLUDE_PX = 6
 # files have no such boundary (their foreground is the whole frame) and lose
 # only a 4-px border.
 TONAL_FG_EDGE_EXCLUDE_PX = 4
-# Measured 2026-11-06 over a 146-2000 px LANCZOS ladder (downscales and
-# native only): real flat customer logos max 0.073 (TOAT beanie, native),
-# real tonal artwork min 0.111 (stained_glass at 146 px; drone_render 0.113
-# from 400 px up, 0.072 at 250). Midpoint, margin to each.
-TONAL_GRADIENT_MIN = 0.09
-TONAL_GRADIENT_MARGIN = 0.02
+# Sited 2026-11-06 on the rasters the product sends (native, and the Studio's
+# 1200-px cap under INTER_AREA / LINEAR / CUBIC), over 15 real flat customer
+# logos and 21 real tonal artworks (drone_render, owl_kent, Kent's Instagram
+# icon, the 18 Commons photographs): flat max 0.078 (Gaulke, Studio
+# INTER_AREA), tonal min 0.148 (drone_render, Studio INTER_CUBIC). Midpoint,
+# half the gap as the margin. Over the full 146-2000 px downscale ladder in
+# three filters the flat max is 0.083 (Gaulke, BILINEAR 1000 px); the drone
+# reads under the gate at 400 px and below (`tools/stage0_scale_relative.py`).
+TONAL_GRADIENT_MIN = 0.11
+TONAL_GRADIENT_MARGIN = 0.035
 
 
 def _tonal_frac(rgb: np.ndarray, fg: np.ndarray) -> float:
