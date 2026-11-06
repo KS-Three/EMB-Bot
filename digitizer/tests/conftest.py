@@ -636,6 +636,13 @@ PRE_FLIP["fill_seam_order"] = False
 # both False.
 PRE_FLIP["fill_seam_order_priced"] = False
 PRE_FLIP["knockdown_shorter_walk"] = False
+# `fill_one_pass_sections` (built OFF 2026-11-06, defect 6; not flipped): seam
+# order's progression planned for travel under rows still to come, and that
+# travel sewn, so a field's sections go in one pass. Pinned here now, as
+# `dark_ink_refuse_strays` is, so the flip, when Kent makes it, moves no pin
+# that spreads this dict. `docs/fill-one-pass-sections-2026-11-06.md` has the
+# Becker table.
+PRE_FLIP["fill_one_pass_sections"] = False
 # `color_cap_sewn` joined the flipped set 2026-11-01 (Kent's "Flip ON", off the
 # OFF | ON sheet; built OFF 2026-10-29). ON, the cap holds on the blocks the machine
 # sews, so an arm measured before that day can load more cones than it was

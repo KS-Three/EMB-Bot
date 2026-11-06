@@ -103,6 +103,7 @@
  "fill_seam_order": false,
  "fill_seam_order_priced": false,
  "knockdown_shorter_walk": false,
+ "fill_one_pass_sections": false,
  "fill_density_boost": false,
  "fill_inside_satin_border": false,
  "fill_order_sewn_paths": false,
@@ -307,5 +308,6 @@
  "wide_columns": false,
  "work_px_per_mm": 8.0,
  "photo_work_grid": false,
+ "photo_enclosed_rim": false,
  "underfill_untagged_riders": false
 }

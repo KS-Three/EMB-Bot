@@ -654,6 +654,21 @@ class PipelineConfig:
     # rider and is merged into the black host, and the white panel sews over it.
     # The Lanczos enlargement to 8 px/mm opens that bridge, as on the flat route.
     photo_work_grid: bool = False
+    # `photo_enclosed_rim` (2026-11-06, OFF): on the photo lane, the rim of an
+    # ENCLOSED ground (stage 1's `enclosed_mask`: bg-coloured, not
+    # border-connected -- MFab's white keyline) joins that ground's population
+    # when it is its colour. Stage 1 leaves the keyline's edge pixels in the
+    # main population; the merge gathers them into one white label of 275
+    # fragments (3,064 px on MFab), and the min-detail floor absorbs each
+    # sub-floor fragment into the only neighbour it can see, the black. The
+    # floor is in mm, so it is wider in pixels at 60 mm (6.7 px/mm) than at
+    # 100.8 (4.0) and eats more of a 1-2 px keyline the smaller the design.
+    # ON, a main-population component touching the enclosed ground and within
+    # `merge_delta_e` of the ground pixels it touches leaves the main
+    # population before the floor, when it is under the floor (the pieces the
+    # floor would hand to the ink), and is quantised with the ground
+    # (`stage2_photo_segment.enclosed_rim`). No enclosed ground: never read.
+    photo_enclosed_rim: bool = False
     denoise: bool = True
     # Stage 1 stops reading the RGB under an alpha cutout's transparency.
     # The shape of a cutout lives in alpha; the RGB underneath is whatever
@@ -4306,6 +4321,24 @@ class PipelineConfig:
     # exposed 105.8 -> 38.6 mm, bare 14.84 -> 3.72; ProSeal beanie byte-identical.
     # False is the engine as it was; `tests/conftest.py` PRE_FLIP pins it False.
     knockdown_shorter_walk: bool = True
+    # The fill's sections in one pass, the way the professional sews a field
+    # (2026-11-06, built OFF, defect 6: the cut between two sections of ONE
+    # fill, which he never makes). Seam order's progression is re-planned so
+    # that among the sections free to go one the needle reaches hidden -- over
+    # unsewn ground, or under rows still to come -- goes before the nearest,
+    # and the fill phase sews those hidden routes (`stage6_fill._one_pass_sections`,
+    # `fill_section_travel.bridge`, `travel_path`'s own length budget). The
+    # lay (ridges, flips) is read first, exactly as `fill_seam_order_priced`
+    # reads it; the re-plan is kept only if it removes a hop stage 7 could
+    # never bury (past `machine.LINK_MAX_GAP_MM`, the kind that reaches the
+    # DST), cuts no more in all, lays no more thread on finished fill than
+    # seam order's own order, and is cheaper with the hidden travel free. A
+    # shape it does not re-plan sews exactly as without it. Layout (ruling
+    # 2026-10-22: judged in the preview); chaining territory, ROADMAP gate 3,
+    # so the flip is Kent's. Off, byte-identical. Measured on the Becker
+    # five: `docs/fill-one-pass-sections-2026-11-06.md`.
+    # Tests: `tests/test_fill_one_pass_sections.py`.
+    fill_one_pass_sections: bool = False
 
     # The fill column-order scorer prices only what `emit` sews (2026-10-08,
     # built OFF). `_fill_paths` returns one-point "columns" that `emit`

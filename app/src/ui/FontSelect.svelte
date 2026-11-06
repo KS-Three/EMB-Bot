@@ -10,7 +10,8 @@
   // not the whole catalog.
   import { EMB } from "../lib/emb.js";
   import { renderRealistic } from "../lib/preview.js";
-  import { loadManifest, ensureFont } from "../lib/fontLoader.js";
+  import { loadManifest, ensureFont, loadOutlineRows } from "../lib/fontLoader.js";
+  import { isOutlineKey, previewFamily } from "../lib/outlineFonts.js";
   import { createEventDispatcher } from "svelte";
   import FontBrowser from "./FontBrowser.svelte";
 
@@ -21,11 +22,20 @@
   let fonts = [];
   let manifestLoaded = false;
   loadManifest().then((man) => {
-    fonts = man.fonts.map((f) => ({ key: f.key, name: f.name, group: f.group }));
+    fonts = [...man.fonts.map((f) => ({ key: f.key, name: f.name, group: f.group })), ...fonts.filter((f) => f.kind === "outline")];
     manifestLoaded = true;
   }).catch(() => { manifestLoaded = true; });
+  // Outline fonts (lib/outlineFonts.js) name themselves from the service's
+  // list; without it a saved project's outline font shows its key.
+  loadOutlineRows().then((o) => {
+    if (!o || !o.rows || !o.rows.length) return;
+    fonts = [...fonts.filter((f) => f.kind !== "outline"),
+             ...o.rows.map((f) => ({ key: f.key, name: f.name, group: f.group, kind: "outline", weight: f.weight }))];
+  }).catch(() => {});
+  $: selOutline = isOutlineKey(selected) ? (fonts.find((f) => f.key === selected) || { key: selected, weight: 400 }) : null;
 
   $: selName = (fonts.find((f) => f.key === selected) || {}).name
+    || (isOutlineKey(selected) ? selected.slice("outline:".length) : "")
     || (manifestLoaded ? "Choose a font" : "Loading fonts…");
 
   // ---- Selected-font trigger preview ---------------------------------------
@@ -74,12 +84,18 @@
     dispatch("pick", e.detail);
   }
 
-  $: triggerThumb = selThumb || (selected ? "fonts/previews/" + selected + ".png" : "");
+  $: triggerThumb = selOutline ? "" : (selThumb || (selected ? "fonts/previews/" + selected + ".png" : ""));
 </script>
 
 <div class="fontselect">
   <button type="button" class="fs-trigger" title={selName} on:click={openBrowser}>
-    {#if triggerThumb}
+    {#if selOutline}
+      <span
+        class="fs-thumb fs-thumb-css"
+        style="font-family: '{previewFamily(selOutline.key)}', sans-serif; font-weight: {selOutline.weight || 400};"
+        aria-hidden="true"
+      >{(currentText || "").trim().slice(0, 14) || "Sample"}</span>
+    {:else if triggerThumb}
       <img class="fs-thumb" src={triggerThumb} alt={selName} />
     {/if}
     <span class="fs-name">{selName}</span>
