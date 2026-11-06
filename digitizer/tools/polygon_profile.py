@@ -140,3 +140,13 @@ def profile_stats(poly: Polygon, *, floor_px: float = 1.0) -> _DtStats | None:
         explained=(float(poly.area) / swept) if swept > 0 else 0.0,
         elongation=(spine_len_mm / width_mm) if width_mm > 0 else 0.0,
     )
+
+
+if __name__ == "__main__":
+    # A library for `ribbon_stability.py --variant profile`; nothing to run on
+    # its own, so every invocation prints the usage (test_tools_help).
+    import sys as _sys
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    print(__doc__ or "No usage text; see the source.")
+    print("Run it through: python tools/ribbon_stability.py --variant profile [--variant profile:raw]")
+    raise SystemExit(0)
