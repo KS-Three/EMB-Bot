@@ -667,11 +667,17 @@ preflight check on all five falls (#572, #573), not a stitch
 ([notes](docs/scorecard-baseline-attribution-2026-10-04.md), scope-history 10-04).
 **Recaptured again 2026-10-05 at `d000e370`** after Kent made both checks
 `info` (#630): 21 rows moved, every one of them those two findings, 12 rose a
-band, no other leaf moved (scope-history 10-05). **Not recaptured since:**
-the movers to attribute at the next cloud-Linux capture (#856, #899, #1005,
-#1001, #999, #1002; defects 27, 37, 41, 50, 52, 61) are listed in
-[area 1](docs/scope/1-auto-digitizing-quality.md#twentieth-pass-overflow-moved-from-master_scope-2026-10-29).
-*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](docs/scorecard-baseline-attribution-2026-10-04.md); 2026-10-05 — scope-history)*
+band, no other leaf moved (scope-history 10-05). **Recaptured 2026-11-05 at
+`292418a8`** (pipeline tree `fb682ef9`) on GitHub Actions — the new on-demand
+`Corpus scorecard` workflow, `diff` or `capture` as a button — after 546
+pipeline commits: 30 of 52 rows moved, 19 rose a band, 10 fell, A/B/C/D/F
+9/18/7/6/12 → 10/20/8/10/4, mean 61.8 → 71.9. The rise is `THREAD_MATCH_POOR`
+going quiet on the gradient lane (#1200, defect 28); the falls are Fremont's
+two dE-100 blocks (F on both garments, known since 10-29), `LETTERING_TOO_SMALL`
+on the synthetic logos and `DENSITY_STACKED` on five photo rows. Every mover
+attributed, by evidence not bisection
+([notes](docs/scorecard-baseline-attribution-2026-11-05.md)).
+*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](docs/scorecard-baseline-attribution-2026-10-04.md); 2026-10-05 — scope-history; 2026-11-05 — [notes](docs/scorecard-baseline-attribution-2026-11-05.md))*
 
 **The corpus is half-present, and its real-artwork half keeps contradicting the
 synthetics** — six of seven real customer logos route to GRADIENT at stage 0, so
