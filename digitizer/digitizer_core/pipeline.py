@@ -82,7 +82,7 @@ from . import shape_memo
 from .columns import is_lettering
 from .lettering_thread import apply_lettering_thread
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
-                              depth_sort_layers, sequence)
+                              depth_sort_layers, sequence, cut_every_jump_step_mm)
 from .stitches import StitchPlan
 from .thin_ink import bean_dark_ink, ink_after_ground
 from .threads import chart_for, rgb_to_lab
@@ -2202,7 +2202,7 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
             # blocks with no uncut jump; this reaches the knockdown's, with
             # the whole design now sewn after it.
             if cfg.cut_every_jump:
-                _cut_or_bury_jumps(blocks)
+                _cut_or_bury_jumps(blocks, step=cut_every_jump_step_mm(cfg))
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a
