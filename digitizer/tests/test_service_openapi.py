@@ -25,7 +25,9 @@ def test_schema_builds_and_lists_every_route():
     schema = app.openapi()
     listed = {(m, p) for p, ops in schema["paths"].items() for m in ops if m in _HTTP}
     assert listed == _routes()
-    assert len(listed) == 10
+    # 10 + the four outline-font routes (2026-11-06): GET /fonts/outline,
+    # its {key}/file and {key}/license, and POST /lettering.
+    assert len(listed) == 14
 
 
 def test_every_operation_has_summary_and_error_responses():
@@ -35,10 +37,14 @@ def test_every_operation_has_summary_and_error_responses():
             assert op.get("summary", "").strip(), (method, path)
             codes = set(op["responses"])
             assert "200" in codes or "202" in codes, (method, path)
-            if path == "/health":
+            if path == "/health" or (path.startswith("/fonts/outline") and method == "get"):
+                # /health and the outline-font listing / file / licence are
+                # public like any static asset: the file route is fetched by
+                # a CSS @font-face, which cannot send the token header, and
+                # the files are unmodified OFL fonts anyone may download.
                 continue
             assert "401" in codes, (method, path)
-            if path != "/calibration/info":
+            if path not in ("/calibration/info", "/fonts/outline"):
                 assert codes & {"400", "404"}, (method, path)
 
 

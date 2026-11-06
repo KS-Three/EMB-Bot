@@ -369,7 +369,7 @@
         <svelte:fragment slot="advanced">{@render extras()}</svelte:fragment>
       </ShapePanel>
     {:else}
-      <TextStep element={el} on:elupdate={(e) => d("elupdate", e.detail)}>
+      <TextStep element={el} {project} health={digitizerHealth} on:elupdate={(e) => d("elupdate", e.detail)}>
         {@render size()}
         <svelte:fragment slot="advanced">{@render extras()}</svelte:fragment>
       </TextStep>
