@@ -1,4 +1,5 @@
 import { EMB } from "./emb.js";
+import { isOutlineKey, fetchOutlineFonts, registerFontFaces } from "./outlineFonts.js";
 
 // Lazy font delivery (spec §4.1). The manifest is small and loaded once;
 // font binaries are fetched on demand, decoded via EMB.decodeFontBin, and
@@ -118,7 +119,39 @@ export function loadFontStyles() {
   return stylesPromise;
 }
 
+// The outline fonts the digitizer service can sew (lib/outlineFonts.js), as
+// manifest-shaped rows plus their coverage. Cached once it answers; a failure
+// (service down, older service without the route) resolves EMPTY and is not
+// cached, so the rows appear the next time a picker opens with the service
+// up. The `.embf` manifest never depends on this.
+let outlinePromise = null;
+export function loadOutlineRows() {
+  if (!outlinePromise) {
+    outlinePromise = fetchOutlineFonts()
+      .then((o) => {
+        registerFontFaces(o.rows);
+        return o;
+      })
+      .catch(() => {
+        outlinePromise = null;
+        return { rows: [], coverage: {} };
+      });
+  }
+  return outlinePromise;
+}
+
+// Every font a picker lists: the shipped `.embf` library, then the outline
+// fonts (when the service is up). Rejects only when the manifest does.
+export function loadFontRows() {
+  return Promise.all([loadManifest(), loadOutlineRows()])
+    .then(([man, o]) => [...man.fonts, ...o.rows]);
+}
+
 export function ensureFont(key) {
+  // An outline font has no binary here: the service lays it out and sews it
+  // (lib/outlineFonts.js). Resolve null so every "ensure, then build" caller
+  // takes its no-font path instead of a fetch for a .embf that does not exist.
+  if (isOutlineKey(key)) return Promise.resolve(null);
   const cached = (EMB.SATIN_FONTS || {})[key];
   if (cached) return Promise.resolve(cached);
   if (!fontPromises.has(key)) {
@@ -140,5 +173,5 @@ export function ensureFont(key) {
 }
 
 export function ensureFonts(keys) {
-  return Promise.all([...new Set(keys)].map(ensureFont)).then(() => {});
+  return Promise.all([...new Set(keys)].filter((k) => !isOutlineKey(k)).map(ensureFont)).then(() => {});
 }

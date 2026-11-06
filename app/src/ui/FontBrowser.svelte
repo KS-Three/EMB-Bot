@@ -19,8 +19,9 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { EMB } from "../lib/emb.js";
   import { renderRealistic } from "../lib/preview.js";
-  import { loadManifest, ensureFont, loadCoverage, loadFontStyles } from "../lib/fontLoader.js";
+  import { loadManifest, ensureFont, loadCoverage, loadFontStyles, loadOutlineRows } from "../lib/fontLoader.js";
   import { fontsCovering } from "../lib/fontCoverage.js";
+  import { previewFamily, OUTLINE_GROUP } from "../lib/outlineFonts.js";
   import { filterFonts, sizeBand } from "../lib/fontFilter.js";
   import Icon from "./Icon.svelte";
 
@@ -33,12 +34,21 @@
   // follow-up when a measured height becomes available.
   const d = createEventDispatcher();
 
-  const GROUP_CANON = ["Sans", "Serif", "Script", "Display", "Small", "More"];
+  // "Outline" (lib/outlineFonts.js) is the group of fonts the digitizer
+  // service sews on demand; its rows arrive beside the manifest's when the
+  // service is up, and the chip appears with them.
+  const GROUP_CANON = ["Sans", "Serif", "Script", "Display", OUTLINE_GROUP, "Small", "More"];
   let fonts = [];
   let query = "";
   let group = "All";
   let manifestFailed = false;
+  let outlineCoverage = {};
   loadManifest().then((m) => { fonts = m.fonts; }).catch(() => { manifestFailed = true; });
+  loadOutlineRows().then((o) => {
+    if (!o || !o.rows || !o.rows.length) return;
+    outlineCoverage = o.coverage || {};
+    fonts = [...fonts.filter((f) => f.kind !== "outline"), ...o.rows];
+  }).catch(() => {});
 
   $: groups = ["All", ...GROUP_CANON.filter((g) => fonts.some((f) => f.group === g))];
   // Style tags (null until loaded, or when the build has none): search then
@@ -54,7 +64,12 @@
   let coverage = null;
   let fitOnly = false;
   loadCoverage().then((c) => { coverage = c; });
-  $: fitKeys = coverage && (currentText || "").trim() ? new Set(fontsCovering(currentText, coverage)) : null;
+  // The outline fonts' coverage rides beside the .embf index under the same
+  // shape, so one lookup answers for both kinds.
+  $: allCoverage = coverage || Object.keys(outlineCoverage).length
+    ? { fonts: { ...((coverage && coverage.fonts) || {}), ...outlineCoverage } }
+    : null;
+  $: fitKeys = allCoverage && (currentText || "").trim() ? new Set(fontsCovering(currentText, allCoverage)) : null;
   // Only worth a control when it separates the library: if every font fits
   // there is nothing to filter, and if none does the chip would just empty
   // the grid (the message below says that instead).
@@ -240,7 +255,16 @@
               on:click={() => pick(f.key)}
             >
               <span class="fb-tile-img">
-                {#if tileFailed[f.key] && !liveThumbs[f.key]}
+                {#if f.kind === "outline"}
+                  <!-- No satin render exists for a font nobody has digitized
+                       yet: the browser draws the font itself, from the TTF the
+                       service serves (registerFontFaces). -->
+                  <span
+                    class="fb-tile-css"
+                    style="font-family: '{previewFamily(f.key)}', sans-serif; font-weight: {f.weight || 400};"
+                    aria-hidden="true"
+                  >{(currentText || "").trim().slice(0, 12) || "Aa Bb"}</span>
+                {:else if tileFailed[f.key] && !liveThumbs[f.key]}
                   <span class="fb-tile-noimg" aria-hidden="true">Aa</span>
                 {:else}
                   <img
@@ -257,6 +281,8 @@
               {/if}
               {#if bestAt(f)}
                 <span class="fb-tile-band">{bestAt(f)}</span>
+              {:else if f.kind === "outline"}
+                <span class="fb-tile-band">digitized on demand</span>
               {/if}
             </button>
           {/each}
@@ -393,6 +419,18 @@
   }
   .fb-tile-img img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
   .fb-tile-noimg { font-size: var(--fs-sm); color: var(--muted); letter-spacing: var(--tracking-slight, 0.02em); }
+  .fb-tile-css {
+    font-size: 26px;
+    line-height: 1;
+    /* The tile's own text colour: the dark theme's tile box is dark, so a
+       fixed ink colour vanished on it (seen 2026-11-06). */
+    color: inherit;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    padding: 0 6px;
+  }
 
   .fb-tile-name { font-size: var(--fs-sm); font-weight: var(--fw-medium, 500); color: var(--ink); }
   .fb-note { margin: 0; font-size: var(--fs-sm); color: var(--muted); }

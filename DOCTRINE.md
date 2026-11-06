@@ -884,6 +884,28 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   stubs. *(ruled 2026-09-09 — `tests/test_border.py` seam section; memory
   `border-seam-ownership-2026-09-09`)*
 
+- **Outline (TrueType/OpenType) fonts are IN — through the service's Column
+  lane, never through the browser's trace. Kent, 2026-11-06.** "Import some
+  more fonts, that are not pre-digitized, but embot will have the ability to
+  digitize them (slower, but easier than importing an image of the font)";
+  offered the starter OFL set, the full 137-family Google list, or the set
+  plus own-TTF upload, he took the starter set. This narrows, not reverses,
+  the 2026-07-24 ruling: what that rejected was the browser engine's
+  auto-trace of glyph BITMAPS, and that is still not a path. What ships is
+  the glyph's own curves handed to the Column lane as lettering-tagged
+  shapes (`digitizer_core/outline_fonts.py`, `POST /lettering`), the
+  construction a traced word gets with no trace and no tagging to miss —
+  spike same word both ways: 15.5 s against 24.2 s via a PNG at cap 12 mm,
+  and the PNG route tagged 0 of Lobster's 5 shapes as letters. Rules that
+  follow: an outline font goes in `tools/fetch_outline_fonts.py`'s
+  `FAMILIES`, not through `add-font`; OFL only, unmodified, licence text
+  beside the file; nothing runs on its own (the 2026-10-05 ruling holds —
+  the run is the "Digitize lettering" click); Download locks until
+  re-digitized (2026-10-25). Not built, not promised: own-TTF upload, arc,
+  per-letter colour, shaping beyond pair kerning. Nothing sewn (gate 1).
+  *(ruled 2026-11-06 — memory `outline-fonts-on-demand-2026-11-06`,
+  `docs/scope/2-font-library-lettering.md`)*
+
 ---
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.

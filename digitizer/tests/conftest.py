@@ -18,7 +18,6 @@ os.environ.setdefault("OPENCV_IPP", "avx2")
 
 import hashlib
 import json
-import shutil
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -275,9 +274,15 @@ def source_line_grid():
 # ever lost in a refactor, the five OCR tests must fail loud, not go dark
 # behind quiet skips (the same rule the studio-e2e job enforces for its
 # specs). GitHub Actions always sets CI=true.
+def _ocr_available() -> bool:
+    from digitizer_core import ocr as _ocr
+    return _ocr.available()
+
+
 requires_tesseract = pytest.mark.skipif(
-    shutil.which("tesseract") is None and not os.environ.get("CI"),
-    reason="needs the real tesseract binary on PATH (CI installs tesseract-ocr)")
+    not _ocr_available() and not os.environ.get("CI"),
+    reason="needs an OCR engine: the tesserocr wheel + a tessdata dir, or the tesseract binary on PATH "
+           "(CI installs tesseract-ocr, whose tessdata the wheel reads)")
 
 # The fixture logo's true colors and the Isacord threads they resolve to
 # (CIEDE2000). Pinned so a change in the matcher or the chart is visible.
@@ -636,6 +641,13 @@ PRE_FLIP["fill_seam_order"] = False
 # both False.
 PRE_FLIP["fill_seam_order_priced"] = False
 PRE_FLIP["knockdown_shorter_walk"] = False
+# `fill_one_pass_sections` (built OFF 2026-11-06, defect 6; not flipped): seam
+# order's progression planned for travel under rows still to come, and that
+# travel sewn, so a field's sections go in one pass. Pinned here now, as
+# `dark_ink_refuse_strays` is, so the flip, when Kent makes it, moves no pin
+# that spreads this dict. `docs/fill-one-pass-sections-2026-11-06.md` has the
+# Becker table.
+PRE_FLIP["fill_one_pass_sections"] = False
 # `color_cap_sewn` joined the flipped set 2026-11-01 (Kent's "Flip ON", off the
 # OFF | ON sheet; built OFF 2026-10-29). ON, the cap holds on the blocks the machine
 # sews, so an arm measured before that day can load more cones than it was

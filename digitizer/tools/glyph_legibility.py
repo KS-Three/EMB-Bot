@@ -106,7 +106,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import shutil
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -144,7 +143,8 @@ FREMONT_BOXES = {
 
 
 def tesseract_available() -> bool:
-    return shutil.which("tesseract") is not None
+    from digitizer_core import ocr as _ocr
+    return _ocr.available()
 
 
 # --- source ink ------------------------------------------------------------

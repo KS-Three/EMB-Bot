@@ -31,16 +31,19 @@ python -m venv .venv
 .venv/Scripts/python -m pip install -e ".[dev]"     # Windows
 ```
 
-`textcluster.py`'s OCR-confidence quality gate needs the `tesseract-ocr`
-system binary — a separate, non-pip install, the same reason `rembg_isolated/`
-needs a model download step. Unlike `rembg`, this one wheel (`pytesseract`,
-already in `dependencies` above) has no numpy/numba conflict with the shared
-venv (its own deps are just `packaging` and `Pillow`, both already pulled in
-transitively — confirmed via `pip show pytesseract` before it was added), so
-it stays in the shared `digitizer/.venv` unisolated:
+Every OCR read goes through `digitizer_core/ocr.py` (2026-11-06). The engine
+itself comes with the `tesserocr` wheel (Tesseract 5.5.3 bundled, in-process,
+~5 ms a read); what it still needs from the system is the LANGUAGE DATA,
+`eng.traineddata`, which the `tesseract-ocr` package installs and
+`ocr.tessdata_dir()` finds (`TESSDATA_PREFIX`, the binary's own `tessdata/`,
+then the apt / brew places). Without the wheel, the same calls fall back to the
+`tesseract` child process through `pytesseract` (~250 ms a read, the pre-11-06
+path); `EMB_OCR_ENGINE=pytesseract` forces that fallback for a before/after.
+Both wheels sit in the shared `digitizer/.venv` unisolated (no numpy/numba
+conflict, unlike `rembg`):
 
 ```
-sudo apt-get install -y tesseract-ocr    # Debian/Ubuntu, incl. CI
+sudo apt-get install -y tesseract-ocr    # Debian/Ubuntu, incl. CI -- tessdata (and the fallback binary)
 brew install tesseract                   # macOS
 ```
 

@@ -82,6 +82,12 @@ test("defaultTextElement has sane beginner defaults", () => {
     sizeMm: null,
     offsetXMm: 0,
     offsetYMm: 0,
+    // outline fonts only (lib/outlineFonts.js): the service's result and
+    // the key of the request it answered — null for every .embf font
+    result: null,
+    appliedConfig: null,
+    lettering: null,
+    stats: null,
   });
 });
 
@@ -683,10 +689,15 @@ test("migrateProject fills the shape-layers fields on a pre-layers digitized sav
   expect(kept.appliedEdits).toBe('[["Sdef"],{}]');
 });
 
-test("migrateProject passes a text element through untouched", () => {
+test("migrateProject passes a text element through with its fields intact, filling in the ones that postdate the save", () => {
   const text = defaultTextElement("e1");
   const m = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e1", elements: [text] });
-  expect(m.elements[0]).toBe(text); // same object, untouched by the map
+  expect(m.elements[0]).toEqual(text); // nothing moved
+  // A project saved before the outline-font fields existed (2026-11-06) loads
+  // with them null, never undefined — the readers switch on them.
+  const { result, appliedConfig, lettering, stats, ...older } = text;
+  const legacy = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e1", elements: [{ ...older, text: "Kept", fontKey: "outline:lobster" }] });
+  expect(legacy.elements[0]).toMatchObject({ text: "Kept", fontKey: "outline:lobster", result: null, appliedConfig: null, lettering: null, stats: null });
 });
 
 test("migrateProject fills in an image element's new fields without disturbing its old ones", () => {

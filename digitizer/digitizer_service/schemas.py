@@ -135,6 +135,40 @@ class OpenObject(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class OutlineFont(BaseModel):
+    """One row of `GET /fonts/outline`: a TrueType/OpenType font the service
+    digitizes on demand (`POST /lettering`)."""
+
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "key": "montserrat-bold", "name": "Montserrat Bold", "family": "Montserrat",
+        "group": "Sans", "style": "Bold", "weight": 700, "variable": True,
+        "licenseId": "OFL-1.1", "kind": "outline",
+        "source": "https://github.com/google/fonts/tree/86aced91/ofl/montserrat",
+        "coverage": [[32, 126], 160, [161, 255]],
+        "file": "/fonts/outline/montserrat-bold/file",
+        "license": "/fonts/outline/montserrat-bold/license",
+    }})
+
+    key: str
+    name: str
+    family: str
+    group: str = Field(description="Sans | Serif | Script | Display — the font browser's chips.")
+    style: str
+    weight: int
+    variable: bool = Field(description="True when the shipped file is a variable font instanced to `weight`.")
+    licenseId: str
+    kind: str = Field(description="Always \"outline\"; the .embf manifest's rows have no `kind`.")
+    source: str
+    coverage: list[Any] = Field(description="Codepoints drawn: a bare codepoint or an inclusive [lo, hi] run.")
+    file: str
+    license: str
+
+
+class OutlineFonts(BaseModel):
+    version: int
+    fonts: list[OutlineFont]
+
+
 MANUAL_EXAMPLE = {
     "shapes": [{
         "polygon": [[0, 0], [20, 0], [20, 10], [0, 10]],
@@ -142,6 +176,14 @@ MANUAL_EXAMPLE = {
         "thread_rgb": [200, 30, 30],
     }],
     "config": {},
+}
+
+LETTERING_EXAMPLE = {
+    "font": "montserrat-bold",
+    "text": "Fremont",
+    "width_mm": 76,
+    "thread_rgb": [0, 0, 0],
+    "config": {"garment_id": "left_chest"},
 }
 
 EXPORT_EXAMPLE = {

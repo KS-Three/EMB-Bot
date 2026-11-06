@@ -1030,13 +1030,10 @@ def read_pair(slug: str, spec: dict, cache: Path, ocr: bool = True, log=print, d
 
 
 def tesseract_version():
-    from tools import word_legibility as wl
-    if not wl.tesseract_available():
-        return None
-    try:
-        return subprocess.run(["tesseract", "--version"], capture_output=True, text=True).stdout.splitlines()[0]
-    except (OSError, IndexError):
-        return "tesseract"
+    """The engine AND the Tesseract it carries (`ocr.version()`): the cc
+    column reads through it, so a board records which one read."""
+    from digitizer_core import ocr as _ocr
+    return _ocr.version()
 
 
 def build(slugs, cache: Path, sets: dict, ocr: bool = True, date=None, log=print, failed=None, dump=None) -> dict:

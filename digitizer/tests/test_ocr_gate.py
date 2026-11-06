@@ -206,7 +206,7 @@ def test_ocr_confidence_never_reads_the_decoded_text_field():
         conf=[91.0, 88.0],
         text=["classified", "do-not-store-this"],  # must never be touched
     )
-    with patch("digitizer_core.textcluster.pytesseract.image_to_data", return_value=fake_data):
+    with patch("digitizer_core.textcluster._ocr.image_to_data", return_value=fake_data):
         conf = _ocr_confidence(_block_letter_polygon("T"))
 
     assert isinstance(conf, float)
@@ -222,7 +222,7 @@ def test_ocr_confidence_treats_no_detected_text_as_zero_not_none():
     collapsing a real "nothing recognized" reading into `None` would let a
     catastrophically bad redraw slip past the gate instead of triggering
     it."""
-    with patch("digitizer_core.textcluster.pytesseract.image_to_data",
+    with patch("digitizer_core.textcluster._ocr.image_to_data",
                return_value={"conf": ["-1", "-1"], "text": ["", ""]}):
         conf = _ocr_confidence(_block_letter_polygon("I"))
     assert conf == 0.0
