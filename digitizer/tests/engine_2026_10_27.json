@@ -245,6 +245,7 @@
  "silhouette_underfill": false,
  "silhouette_underfill_panels": false,
  "silhouette_underfill_rim": false,
+ "silhouette_underfill_photo": true,
  "simplify_tol_mm": 0.2,
  "skip_covered_shapes": false,
  "small_dot_rung": true,
@@ -306,5 +307,6 @@
  "wide_columns": false,
  "work_px_per_mm": 8.0,
  "photo_work_grid": false,
+ "photo_enclosed_rim": false,
  "underfill_untagged_riders": false
 }

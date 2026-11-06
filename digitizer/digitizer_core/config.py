@@ -654,6 +654,21 @@ class PipelineConfig:
     # rider and is merged into the black host, and the white panel sews over it.
     # The Lanczos enlargement to 8 px/mm opens that bridge, as on the flat route.
     photo_work_grid: bool = False
+    # `photo_enclosed_rim` (2026-11-06, OFF): on the photo lane, the rim of an
+    # ENCLOSED ground (stage 1's `enclosed_mask`: bg-coloured, not
+    # border-connected -- MFab's white keyline) joins that ground's population
+    # when it is its colour. Stage 1 leaves the keyline's edge pixels in the
+    # main population; the merge gathers them into one white label of 275
+    # fragments (3,064 px on MFab), and the min-detail floor absorbs each
+    # sub-floor fragment into the only neighbour it can see, the black. The
+    # floor is in mm, so it is wider in pixels at 60 mm (6.7 px/mm) than at
+    # 100.8 (4.0) and eats more of a 1-2 px keyline the smaller the design.
+    # ON, a main-population component touching the enclosed ground and within
+    # `merge_delta_e` of the ground pixels it touches leaves the main
+    # population before the floor, when it is under the floor (the pieces the
+    # floor would hand to the ink), and is quantised with the ground
+    # (`stage2_photo_segment.enclosed_rim`). No enclosed ground: never read.
+    photo_enclosed_rim: bool = False
     denoise: bool = True
     # Stage 1 stops reading the RGB under an alpha cutout's transparency.
     # The shape of a cutout lives in alpha; the RGB underneath is whatever
@@ -1874,6 +1889,12 @@ class PipelineConfig:
     # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     silhouette_underfill: bool = True
+    # Kent 2026-11-05 ("Gate under-fill off for photo classes"): the under-fill
+    # trio (`silhouette_underfill`, `_panels`, `_rim`) is OFF on photo_subject /
+    # photo_scene, because a tonal band sewed on a full ground fill stacked
+    # 9.5-13.8 layers (#1143's every-job flip; `pipeline.gate_underfill_for_photo`).
+    # True restores that arm byte for byte. Logos are unaffected either way.
+    silhouette_underfill_photo: bool = False
     # The small lettering on a white panel, as the pro sews MFab (hat and LC
     # agree, 2026-10-25): block 0 black tatami at 22-25 deg under the whole
     # silhouette with a 1.84-1.92 mm black satin rim; block 1 the white
