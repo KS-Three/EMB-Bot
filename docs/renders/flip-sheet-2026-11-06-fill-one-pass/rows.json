@@ -1,0 +1,350 @@
+[
+ {
+  "flag": "fill_one_pass_sections",
+  "fixture": "becker_hat_large",
+  "width_mm": 101.9,
+  "pr": 1270,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "fill_one_pass_sections": true
+  },
+  "note": "Seam order's progression re-planned so a free section the needle reaches hidden (over unsewn ground, or under rows still to come) goes before the nearest, and the fill phase sews those hidden routes. Lay read first; kept only where it removes a hop past LINK_MAX_GAP_MM (one stage 7 could never bury), cuts no more and lays no more on finished fill than seam order's own order; a shape not re-planned is byte-identical. Both arms pin the rembg timeout at 900 s.",
+  "engine": "5777f91c",
+  "engine_root": "/home/user/EMB-Bot",
+  "off": {
+   "stitches": 16262,
+   "trims": 11,
+   "colours": 1,
+   "about": "2 / 11",
+   "exposed_mm": 23.1,
+   "bare_mm": {
+    "0.20": 0.1,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 14.6,
+   "md5": "4a5679f0630aa5abacf59ae0a42148f4"
+  },
+  "on": {
+   "stitches": 16262,
+   "trims": 11,
+   "colours": 1,
+   "about": "2 / 11",
+   "exposed_mm": 23.1,
+   "bare_mm": {
+    "0.20": 0.1,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 18.1,
+   "md5": "4a5679f0630aa5abacf59ae0a42148f4"
+  },
+  "pro": {
+   "stitches": 12356,
+   "trims": 10,
+   "colours": 4,
+   "about": "1 / 9"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.1,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 0.1,
+    "0.25": 0.0,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logo hat.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "fill_one_pass_sections",
+  "fixture": "becker_lc_large",
+  "width_mm": 95.7,
+  "pr": 1270,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "fill_one_pass_sections": true
+  },
+  "note": "Seam order's progression re-planned so a free section the needle reaches hidden (over unsewn ground, or under rows still to come) goes before the nearest, and the fill phase sews those hidden routes. Lay read first; kept only where it removes a hop past LINK_MAX_GAP_MM (one stage 7 could never bury), cuts no more and lays no more on finished fill than seam order's own order; a shape not re-planned is byte-identical. Both arms pin the rembg timeout at 900 s.",
+  "engine": "5777f91c",
+  "engine_root": "/home/user/EMB-Bot",
+  "off": {
+   "stitches": 14830,
+   "trims": 14,
+   "colours": 1,
+   "about": "5 / 14",
+   "exposed_mm": 31.1,
+   "bare_mm": {
+    "0.20": 0.4,
+    "0.25": 0.2,
+    "0.30": 0.1
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 15.4,
+   "md5": "347cb1f2ef91b858e8fe5ca19e8e7ee5"
+  },
+  "on": {
+   "stitches": 14830,
+   "trims": 14,
+   "colours": 1,
+   "about": "5 / 14",
+   "exposed_mm": 31.1,
+   "bare_mm": {
+    "0.20": 0.4,
+    "0.25": 0.2,
+    "0.30": 0.1
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 18.3,
+   "md5": "347cb1f2ef91b858e8fe5ca19e8e7ee5"
+  },
+  "pro": {
+   "stitches": 11274,
+   "trims": 12,
+   "colours": 3,
+   "about": "2 / 11"
+  },
+  "bare": {
+   "off": {
+    "0.20": 0.4,
+    "0.25": 0.2,
+    "0.30": 0.1
+   },
+   "on": {
+    "0.20": 0.4,
+    "0.25": 0.2,
+    "0.30": 0.1
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logolc.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "fill_one_pass_sections",
+  "fixture": "becker_hat_small",
+  "width_mm": 76.5,
+  "pr": 1270,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "fill_one_pass_sections": true
+  },
+  "note": "Seam order's progression re-planned so a free section the needle reaches hidden (over unsewn ground, or under rows still to come) goes before the nearest, and the fill phase sews those hidden routes. Lay read first; kept only where it removes a hop past LINK_MAX_GAP_MM (one stage 7 could never bury), cuts no more and lays no more on finished fill than seam order's own order; a shape not re-planned is byte-identical. Both arms pin the rembg timeout at 900 s.",
+  "engine": "5777f91c",
+  "engine_root": "/home/user/EMB-Bot",
+  "off": {
+   "stitches": 10541,
+   "trims": 11,
+   "colours": 1,
+   "about": "4 / 11",
+   "exposed_mm": 21.7,
+   "bare_mm": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 11.5,
+   "md5": "b41b9f7233a9ca41ac1614dc28e9ca67"
+  },
+  "on": {
+   "stitches": 10541,
+   "trims": 11,
+   "colours": 1,
+   "about": "4 / 11",
+   "exposed_mm": 21.7,
+   "bare_mm": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 14.1,
+   "md5": "b41b9f7233a9ca41ac1614dc28e9ca67"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 11,
+   "colours": 4,
+   "about": "2 / 10"
+  },
+  "bare": {
+   "off": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "on": {
+    "0.20": 4.61,
+    "0.25": 3.69,
+    "0.30": 3.28
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logo hat 2 A.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "fill_one_pass_sections",
+  "fixture": "becker_chest_small",
+  "width_mm": 76.5,
+  "pr": 1270,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "fill_one_pass_sections": true
+  },
+  "note": "Seam order's progression re-planned so a free section the needle reaches hidden (over unsewn ground, or under rows still to come) goes before the nearest, and the fill phase sews those hidden routes. Lay read first; kept only where it removes a hop past LINK_MAX_GAP_MM (one stage 7 could never bury), cuts no more and lays no more on finished fill than seam order's own order; a shape not re-planned is byte-identical. Both arms pin the rembg timeout at 900 s.",
+  "engine": "5777f91c",
+  "engine_root": "/home/user/EMB-Bot",
+  "off": {
+   "stitches": 10309,
+   "trims": 11,
+   "colours": 1,
+   "about": "4 / 11",
+   "exposed_mm": 21.3,
+   "bare_mm": {
+    "0.20": 4.82,
+    "0.25": 4.1,
+    "0.30": 3.69
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 11.8,
+   "md5": "bcd4593331a28b206e848021396105af"
+  },
+  "on": {
+   "stitches": 10309,
+   "trims": 11,
+   "colours": 1,
+   "about": "4 / 11",
+   "exposed_mm": 21.3,
+   "bare_mm": {
+    "0.20": 4.82,
+    "0.25": 4.1,
+    "0.30": 3.69
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 13.2,
+   "md5": "bcd4593331a28b206e848021396105af"
+  },
+  "pro": {
+   "stitches": 8694,
+   "trims": 12,
+   "colours": 3,
+   "about": "2 / 11"
+  },
+  "bare": {
+   "off": {
+    "0.20": 4.82,
+    "0.25": 4.1,
+    "0.30": 3.69
+   },
+   "on": {
+    "0.20": 4.82,
+    "0.25": 4.1,
+    "0.30": 3.69
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logo LC 2 A.DST",
+  "diff": 0,
+  "byte_identical": true,
+  "status": "no change"
+ },
+ {
+  "flag": "fill_one_pass_sections",
+  "fixture": "becker_beanie",
+  "width_mm": 79.8,
+  "pr": 1270,
+  "about": "cuts inside one piece / all cuts",
+  "sets": {
+   "photo_prep_background_removal_timeout_s": 900,
+   "fill_one_pass_sections": true
+  },
+  "note": "Seam order's progression re-planned so a free section the needle reaches hidden (over unsewn ground, or under rows still to come) goes before the nearest, and the fill phase sews those hidden routes. Lay read first; kept only where it removes a hop past LINK_MAX_GAP_MM (one stage 7 could never bury), cuts no more and lays no more on finished fill than seam order's own order; a shape not re-planned is byte-identical. Both arms pin the rembg timeout at 900 s.",
+  "engine": "5777f91c",
+  "engine_root": "/home/user/EMB-Bot",
+  "off": {
+   "stitches": 13862,
+   "trims": 14,
+   "colours": 2,
+   "about": "6 / 14",
+   "exposed_mm": 38.6,
+   "bare_mm": {
+    "0.20": 3.72,
+    "0.25": 0.4,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 12.6,
+   "md5": "ba01f1fbe1c4f5dc2555fbba61a45145"
+  },
+  "on": {
+   "stitches": 13747,
+   "trims": 13,
+   "colours": 2,
+   "about": "5 / 13",
+   "exposed_mm": 38.6,
+   "bare_mm": {
+    "0.20": 3.72,
+    "0.25": 0.4,
+    "0.30": 0.0
+   },
+   "offbody_mm": 0.0,
+   "cpu_s": 15.0,
+   "md5": "b2759aa7f9f4d8a6ecd7c632272641f2"
+  },
+  "pro": {
+   "stitches": 11412,
+   "trims": 48,
+   "colours": 5,
+   "about": "0 / 4"
+  },
+  "bare": {
+   "off": {
+    "0.20": 3.72,
+    "0.25": 0.4,
+    "0.30": 0.0
+   },
+   "on": {
+    "0.20": 3.72,
+    "0.25": 0.4,
+    "0.30": 0.0
+   },
+   "rises": []
+  },
+  "pro_file": "beckers logo hat 2 A a.PES",
+  "diff": 377,
+  "byte_identical": false,
+  "box_mm": [
+   -12.0,
+   -16.1,
+   6.0,
+   -5.1
+  ],
+  "in_window": 107,
+  "images": {
+   "off": "fill_one_pass_sections__becker_beanie__off.jpg",
+   "on": "fill_one_pass_sections__becker_beanie__on.jpg",
+   "pro": "fill_one_pass_sections__becker_beanie__pro.jpg",
+   "where": "fill_one_pass_sections__becker_beanie__where.jpg"
+  },
+  "status": "rendered"
+ }
+]

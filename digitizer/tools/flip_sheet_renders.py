@@ -476,6 +476,20 @@ FLAGS: dict[str, dict] = {
                 "planner's orders are priced with the travel under rows still to come free, so a "
                 "fewer-cut order is no longer refused for hidden stitches. It still may not cut "
                 "more or lay more on finished fill. Both arms pin the rembg timeout at 900 s."},
+    # ---- defect 6 (2026-11-06): the fill's sections in one pass, built OFF
+    "fill_one_pass_sections": {
+        "base": {"photo_prep_background_removal_timeout_s": 900}, "base_name": "rembg900",
+        "sets": {"photo_prep_background_removal_timeout_s": 900, "fill_one_pass_sections": True},
+        # the committed pairs: the other twelve are n/a in a cloud lane (gitignored client files)
+        "fixtures": ["becker_hat_large", "becker_lc_large", "becker_hat_small", "becker_chest_small",
+                     "becker_beanie"],
+        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1270,
+        "note": "Seam order's progression re-planned so a free section the needle reaches hidden "
+                "(over unsewn ground, or under rows still to come) goes before the nearest, and the "
+                "fill phase sews those hidden routes. Lay read first; kept only where it removes a "
+                "hop past LINK_MAX_GAP_MM (one stage 7 could never bury), cuts no more and lays no "
+                "more on finished fill than seam order's own order; a shape not re-planned is "
+                "byte-identical. Both arms pin the rembg timeout at 900 s."},
     # ---- seam order's regression (2026-10-30): Kent, "Render and attribute (Recommended)"
     "seam_order_read": {
         "base": {"photo_prep_background_removal_timeout_s": 900, "fill_seam_order": False},
