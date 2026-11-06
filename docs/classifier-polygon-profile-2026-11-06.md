@@ -20,7 +20,7 @@ fixtures at 80 mm, Windows. No threshold was retuned and no default moved.
 | shipped raster classifier | **3** | — | hold |
 | `classify_area_weighted`, the incumbent (`area_flag`) | **3** | **7** (all promotions) | hold |
 | polygon profile, pixel floor (`profile`) | **3** | **21** (17 promotions, 4 demotions) | hold |
-| polygon profile, no floor (`profile:raw`) | 5 | 31 | hold |
+| polygon profile, no floor (`profile:raw`) | 4 | 32 | hold |
 
 The done-test asked for flips 0 or 1 and at most 4 changed verdicts. The
 profile reaches neither, and on changed verdicts it is three times the
@@ -88,12 +88,15 @@ small shapes raw cv reads 0.03–0.13 higher: Fremont's seven 0.8 mm² marks
 went from cv 0.37–0.47 to 0.51–0.56, satin → `dt_irregular`. `profile` drops
 stations under one pixel of `_rasterize`'s own adaptive grid (`max(6, 8 /
 wall)` px/mm, capped at 900 px across). That is the raster's resolution, not
-a new constant. It takes the changed count from 31 to 21, and leaves the
+a new constant. It takes the changed count from 32 to 21 and the flips from 4 to 3, and leaves the
 calibration gap of §4.
 
-Also measured on the cached pairs, not shipped as variants: the unweighted
+Also measured on the same paired polygons offline, not shipped as
+variants (sampled at wall / 16 rather than half a pixel): the unweighted
 polygon medial axis (2 flips, **42** changed: every gentle vertex grows a
 full-length twig), and weighted cv with an unweighted spine length (5, 30).
+The offline scorer reproduced `profile` and `area_flag` exactly (3 / 21,
+3 / 7).
 
 ## 3. It is stable. That is not what fails
 

@@ -25,7 +25,7 @@ not its vertex count.
 scale, `max(6, 8 / wall)` px/mm capped at 900 px across): the thresholds were
 tuned on a skeleton that never sees a radius under one pixel, and without
 the floor every small shape's corner twigs run to r = 0 and its cv reads
-0.03-0.13 higher (`profile:raw`, 31 shipped verdicts changed against 21).
+0.03-0.13 higher (`profile:raw`: 4 flips and 32 shipped verdicts changed, against 3 and 21).
 
 Chosen over `polygon_axis.skeleton_for` / `extract_strokes`: both PRUNE (the
 arc rule at 1.6 radii), and a pruned axis loses the blob detector -- a hard
