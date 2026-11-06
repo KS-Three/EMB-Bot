@@ -473,6 +473,19 @@ class PipelineConfig:
     # side-by-side page shows the change; the OFF arm is pinned in
     # `tests/engine_2026_10_27.json`.
     stage0_texture_gate: bool = True
+    # Stage 0's flat/gradient gate on a scale-relative read (BUILT OFF
+    # 2026-11-06, ROADMAP phase 2; `docs/stage0-scale-relative-grad-2026-11-06.md`).
+    # `gradient_smoothness` swings 7-34x across export resolutions, so one
+    # logo reaches different lanes by pixel count and most real flat logos
+    # read `gradient`. ON, non-photo territory splits flat/gradient on
+    # `tonal_frac` (`TONAL_GRADIENT_MIN`): the share of the foreground, on the
+    # 512-px raster `texture_frac` uses, in the texture band or on a smooth
+    # ramp, clear of hard edges and of the foreground boundary. The photo
+    # gate, the subject/scene split and every existing threshold are
+    # untouched; `tonal_frac` is reported under both arms. OFF: the shipped
+    # gate, byte for byte. A flip moves goldens (most gradient-classified
+    # real logos change lane) and is Kent's.
+    stage0_scale_relative_grad: bool = False
     # Cluster centers within this CIE76 distance are the SAME flat color that
     # k-means split; merged before spool snapping. Also the perpendicular
     # tolerance for the phantom-blend collinearity test.

@@ -309,5 +309,6 @@
  "work_px_per_mm": 8.0,
  "photo_work_grid": false,
  "photo_enclosed_rim": false,
- "underfill_untagged_riders": false
+ "underfill_untagged_riders": false,
+ "stage0_scale_relative_grad": false
 }
