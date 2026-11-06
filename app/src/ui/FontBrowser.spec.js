@@ -21,6 +21,7 @@ vi.mock("../lib/fontLoader.js", () => ({
     ],
   }),
   loadFontStyles: () => Promise.resolve({ good_font: ["script", "bold"], no_preview: ["sans"] }),
+  loadOutlineRows: () => Promise.resolve({ rows: [], coverage: {} }),
   ensureFont: () => Promise.reject(new Error("not used by this spec")),
 }));
 

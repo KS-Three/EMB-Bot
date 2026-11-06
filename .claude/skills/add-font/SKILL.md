@@ -5,12 +5,23 @@ description: Evaluate and import a new satin embroidery font into EMB-Bot's font
 
 # Adding a font to EMB-Bot
 
-## What qualifies
+## Two libraries — pick the right one first
+
+This skill imports a **hand-authored `.embf` font** (the browser engine sews
+it). A plain **TrueType/OpenType font** is NOT rejected any more — since
+2026-11-06 (Kent) it goes in the OTHER library: the digitizer service lays its
+text out and sews it through the Column lane on demand. For one of those,
+append the family to `FAMILIES` in `digitizer/tools/fetch_outline_fonts.py`
+(OFL only, unmodified, google/fonts at the pinned commit), run the tool, and
+commit the files + `fonts.json`; nothing below applies. COOKBOOK.md "Outline
+fonts, digitized on demand" has the design and the measurements.
+
+## What qualifies (for the `.embf` library)
 
 - **Must be Ink/Stitch-style**: real hand-authored `<path inkstitch:satin_column>`
-  rails+rungs satin data, not an auto-traced outline font. This is a settled
-  decision (COOKBOOK.md) — outline-font auto-tracing was already rejected as
-  lower quality than hand-authored satin columns; don't relitigate it.
+  rails+rungs satin data, not an outline font. The 2026-07-24 ruling against
+  outline fonts was about the browser engine's auto-TRACE, which is still not
+  a path; an outline font is served by the service instead (above).
   Canonical source: the upstream Ink/Stitch embroidery-fonts collection
   (github.com/inkstitch/embroidery-fonts) — any font with genuine satin-column
   paths from that ecosystem or an equivalent source qualifies.

@@ -88,7 +88,9 @@ export function contentSummary(element, sewnCount) {
       // containing two quote marks.
       return [
         { label: "Content", value: (el.text || "").trim() ? `Text — "${el.text}"` : "Text — nothing typed yet" },
-        { label: "Font", value: titleCase(el.fontKey) || "None chosen" },
+        // An outline font's key wears the "outline:" prefix (lib/outlineFonts.js);
+        // the customer sees the font's name, not the routing.
+        { label: "Font", value: titleCase(String(el.fontKey || "").replace(/^outline:/, "")) || "None chosen" },
       ];
   }
 }

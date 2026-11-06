@@ -117,8 +117,14 @@ def test_owl_photograph_rides_nothing_on(monkeypatch):
         seen["on"] = su.find_riders(regions, unsewn, outlines, untagged=True)
         raise _Stop
     monkeypatch.setattr(su, "apply_cfg", probe)
+    # `silhouette_underfill_photo=True`: Kent's 2026-11-05 gate
+    # (`pipeline.gate_underfill_for_photo`) skips the under-fill call on a
+    # photo class, so the probe below is never reached on the owl without the
+    # old arm. This test reads the RIDER census on a photograph's regions, so
+    # it opts in; the gate has its own tests (`test_photo_underfill_gate.py`).
     cfg = PipelineConfig(target_width_mm=80.0, max_colors=6, satin=True, garment_id="left_chest",
-                         sew_enclosed_white=True, underfill_untagged_riders=True)
+                         sew_enclosed_white=True, underfill_untagged_riders=True,
+                         silhouette_underfill_photo=True)
     pix = cv2.imread(str(TESTDATA / "photo" / "owl_kent.jpg"), cv2.IMREAD_UNCHANGED)
     with pytest.raises(_Stop):
         plan_stitches(finish_generation(build_generation(pix, cfg), cfg), cfg)

@@ -45,6 +45,11 @@ dependencies = [
     # same tessdata (docs/external-repo-sourcing-2026-11-06.md). pytesseract
     # stays as the fallback when the wheel or the tessdata is absent.
     "tesserocr>=2.12",
+    # Outline fonts digitized on demand (`outline_fonts.py`, 2026-11-06): reads
+    # TrueType/OpenType outlines, metrics and GPOS kerning, and instances the
+    # variable files to their named weights. MIT, pure Python, zero
+    # transitive dependencies (vetted docs/external-repo-sourcing-2026-09-12.md).
+    "fonttools>=4.50",
 ]
 
 [project.optional-dependencies]
@@ -74,7 +79,10 @@ packages = ["digitizer_core", "digitizer_core.calibration", "digitizer_service"]
 [tool.setuptools.package-data]
 # Generated thread charts (tools/gen_charts.py). They ship with the package so
 # a brand preference resolves without reaching outside the install.
-digitizer_core = ["chart_data/*.json"]
+digitizer_core = ["chart_data/*.json",
+                  # The outline-font starter set (tools/fetch_outline_fonts.py):
+                  # unmodified OFL TTFs, their licence texts and the registry.
+                  "outline_fonts/fonts.json", "outline_fonts/*/*.ttf", "outline_fonts/*/OFL.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

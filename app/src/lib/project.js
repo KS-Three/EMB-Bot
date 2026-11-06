@@ -25,6 +25,15 @@ export function defaultTextElement(id) {
     sizeMm: null,
     offsetXMm: 0,
     offsetYMm: 0,
+    // Outline fonts only (fontKey "outline:…", lib/outlineFonts.js): the
+    // service's baked Design and the key of the request it answered, the
+    // same pair a digitized element keeps in `result`/`appliedConfig`, plus
+    // what the service said about the layout. Null for every .embf font,
+    // which the browser engine sews with no result to store.
+    result: null,
+    appliedConfig: null,
+    lettering: null,
+    stats: null,
   };
 }
 
@@ -258,6 +267,9 @@ export function defaultDigitizedElement(id) {
     // before a first run and on a project saved before 2026-10-05, which
     // the panel reads as "current as loaded".
     appliedConfig: null,
+    // digitizer.js runBaseKey of the last landed run: the config WITHOUT the
+    // shape edits. A restitch whose base matches keeps the old centre.
+    appliedBase: null,
     preflight: null,
     stats: null,
     // The numbers the PREVIOUS digitize produced, captured the moment a new
@@ -777,6 +789,14 @@ export function migrateProject(input) {
       if (!el || el.type !== "digitized") return el;
       const d = defaultDigitizedElement(el.id);
       return { ...d, ...el, params: { ...d.params, ...(el.params || {}) } };
+    });
+    // Text elements: additive too, since 2026-11-06 — a project saved before
+    // the outline-font fields existed loads with `result`/`appliedConfig`
+    // null rather than undefined, so the readers that switch on them never
+    // see a third state.
+    merged.elements = merged.elements.map((el) => {
+      if (!el || el.type !== "text") return el;
+      return { ...defaultTextElement(el.id), ...el };
     });
     // Manual elements get the same additive treatment: spread over the
     // factory defaults so a project saved before a manual field existed

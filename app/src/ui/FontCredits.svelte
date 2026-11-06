@@ -11,7 +11,7 @@
   // (App.svelte owns the "Font credits" trigger button, same division of
   // labor FontBrowser uses with FontSelect).
   import { createEventDispatcher, onMount } from "svelte";
-  import { loadManifest } from "../lib/fontLoader.js";
+  import { loadFontRows } from "../lib/fontLoader.js";
   import { creditLines } from "../lib/credits.js";
   import Icon from "./Icon.svelte";
 
@@ -19,8 +19,10 @@
 
   let lines = [];
   let manifestFailed = false;
-  loadManifest()
-    .then((m) => { lines = creditLines(m.fonts); })
+  // The .embf library plus the outline fonts the service serves (when it is
+  // up) — both carry licence obligations, so both are credited here.
+  loadFontRows()
+    .then((rows) => { lines = creditLines(rows); })
     .catch(() => { manifestFailed = true; });
 
   // ---- Dialog mechanics (ProjectsDrawer/FontBrowser pattern) ---------------
