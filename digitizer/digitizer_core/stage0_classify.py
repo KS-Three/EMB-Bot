@@ -498,8 +498,8 @@ TONAL_RAMP_EDGE_EXCLUDE_PX = 6
 # extension paints the ink colour outward), and PIL's premultiplied resample
 # leaves its rim pixels 1-4 levels off the ink: read as a ramp, ENTHUSIAST's
 # letter rims took it from 0.000 at native to 0.44-0.84 downscaled. Opaque
-# files have no such boundary (their foreground is the whole frame) and lose
-# only a 4-px border.
+# files have no such boundary (their foreground is the whole frame, and the
+# frame edge does not count as one), so they lose nothing to it.
 TONAL_FG_EDGE_EXCLUDE_PX = 4
 # Sited 2026-11-06 on the rasters the product sends (native, and the Studio's
 # 1200-px cap under INTER_AREA / LINEAR / CUBIC), over 15 real flat customer
