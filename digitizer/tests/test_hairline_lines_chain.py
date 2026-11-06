@@ -32,7 +32,15 @@ PX_PER_MM = 8.0
 # #882's eight dark strands on a mid-tone ground, framed in white so the
 # segmenter sees the ground as a subject and fills it (unframed, the ground
 # is the background and nothing is laid under the strands to hop over).
-BASE = dict(_BASE, target_width_mm=40.0)
+# `silhouette_underfill_photo=True` keeps the ground under-fill this fixture
+# had when the chain was pinned. Kent's 2026-11-05 gate
+# (`pipeline.gate_underfill_for_photo`) drops the under-fill trio on
+# `forced_class="photo_scene"`, and without it ONE chained hop crosses a
+# 0.11 mm seam between two tonal fills that the under-fill used to bridge
+# (`measure_plan` reads it as bare; the dwithin half-thread check does not).
+# The chain's rule is unchanged; the fixture opts into the old arm so this
+# file keeps measuring the chain, not the under-fill.
+BASE = dict(_BASE, target_width_mm=40.0, silhouette_underfill_photo=True)
 
 
 def _fixture(path):
