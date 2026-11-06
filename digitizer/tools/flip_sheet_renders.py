@@ -497,7 +497,7 @@ FLAGS: dict[str, dict] = {
         "fixtures": ["becker_hat_large", "becker_lc_large", "becker_hat_small", "becker_chest_small",
                      "becker_beanie", "mfab_hat", "mfab_lc", "precision_drone", "proseal_hat",
                      "proseal_beanie"],
-        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": None,
+        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": 1283,
         "note": "Any field whose seam order cuts is re-planned within its seams: a free section "
                 "reached hidden, then one whose tail reaches a section freed next, then one that "
                 "leaves the rest connected, then the nearest; the plain reach-first order priced "
