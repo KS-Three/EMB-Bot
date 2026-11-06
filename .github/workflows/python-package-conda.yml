@@ -425,7 +425,7 @@ jobs:
     # would be the dark-suite failure mode all over again — so this job builds
     # the venv at the exact path the bootstrap probes first.
     runs-on: ubuntu-latest
-    timeout-minutes: 40   # ~3x the slowest success in the 2026-10-08 audit; default is 360
+    timeout-minutes: 60   # 2x the slowest green of the last 12 on main (28.8 min on 2026-11-06, p50 22.1); 40 cancelled run 42166746724 with every finished spec green after 13 min of slow apt. docs/digitizer-ci-timing-history.md
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
