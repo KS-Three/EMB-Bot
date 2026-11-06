@@ -202,7 +202,14 @@ export function buildDigitizeConfig(element, project) {
   // until it lands.
   if (p.forced_class === "flat") cfg.forced_class = "flat";
   //
-  // What replaces the "It's a photo" declaration is the engine's own
+  // 2026-11-06 (defect 15 closed): this request is now a redundant belt, not
+  // the mechanism. Stage 0's texture gate (`stage0_texture_gate`, ON since
+  // 2026-10-28) puts 19 of 19 measured photographs in a photo class and
+  // detection rescued 0 (docs/photo-detection-census-2026-11-06.md). It is
+  // still sent because a face hit is what routes a design flat under
+  // `faces_route_flat` below (Kent, 2026-09-30). No behaviour changed.
+  //
+  // What replaced the "It's a photo" declaration is the engine's own
   // detection (`cfg.detect_photographic`, stage 1.25, built 2026-09-11 and
   // OFF in the engine): EXIF camera Make/Model, then the shipped YuNet face
   // detector. A hit fills `is_photographic` in as True -- depth sequencing,

@@ -160,8 +160,7 @@ moved nothing visible.
 
 ## Not reached
 
-- The 12 gitignored pairs: run `tools.fill_section_cuts` on a machine with the
-  client files before quoting a 17-pair figure.
+- The 12 gitignored pairs: measured the same evening, see the last section.
 - A seam-aware version of `fill_section_travel.plan` (its one-step lookahead
   and articulation rule, under the seam constraint) is the next step for the
   LC's and the hat's long hops; `_order_for_seams`' `reach` hook is where it
@@ -172,3 +171,100 @@ moved nothing visible.
   over it (the beanie's 12 mm one) is a DST cut too.
 
 Tests: `digitizer/tests/test_fill_one_pass_sections.py`.
+
+## 2026-11-06 (evening): all 17 pairs, on Kent's laptop
+
+The 12 gitignored pairs measured where the client files are, plus the Becker
+five again from the customer's art, so all 17 rows come from one machine and
+one reader.
+
+- **Engine:** #1271's head 4aaee9ef (main 15cde8de plus the switch). Stages 0-4
+  once per job, pickled; `plan_stitches` replayed per arm, plan CPU the best of
+  two (`python -m tools.fill_section_cuts --slugs <job> --arm
+  'one_pass={"fill_one_pass_sections": true}' --repeat 2`).
+- **One job at a time** under the shared CPU slot.
+- **rembg:** pointed at the primary checkout's venv, so MFab and Tires took the
+  product's route.
+- **Becker art:** the customer PNG this time, not the committed crop. So
+  Becker LC's figures differ from the table above (12 cuts and 1 fill-section
+  cut here, 14 and 3 there).
+- **OFF md5:** each pickle's plan was also replayed on a clean checkout of
+  origin/main, both 15cde8de and today's 59545716. The OFF arm's DST matched
+  both on all 17 jobs.
+
+Cuts and in-piece cuts are `sequence_pro` on both DSTs. Fill-section cuts are
+`inpiece_cuts` (pro 0 on every job). Exposed mm is `travel_cover`, bare mm is
+`bare_by_band` at 0.20.
+
+| job | pro cuts | cuts OFF -> ON | in a piece, ours / pro | **fill-section OFF -> ON** | exposed mm | bare mm @0.20 | plan CPU s | ON DST |
+|---|---|---|---|---|---|---|---|---|
+| becker_hat_large | 9 | 11 -> 11 | 2 / 1 | 1 -> 1 | 23.1 | 0.10 | 9.8 -> 14.0 | byte-identical |
+| becker_lc_large | 11 | 12 -> 12 | 3 / 2 | 1 -> 1 | 31.1 | 0.40 | 10.0 -> 10.5 | byte-identical |
+| becker_hat_small | 10 | 11 -> 11 | 4 / 2 | 1 -> 1 | 21.7 | 4.61 | 7.1 -> 9.6 | byte-identical |
+| becker_chest_small | 11 | 11 -> 11 | 4 / 2 | 1 -> 1 | 21.3 | 4.82 | 6.7 -> 9.6 | byte-identical |
+| **becker_beanie** | 4 (PES) | **14 -> 13** | 6 / 0 | **3 -> 2** | 38.6 | 3.72 | 8.1 -> 11.0 | moved, -115 st |
+| bridge_hat | 19 | 16 -> 16 | 3 / 3 | 0 -> 0 | 10.5 | 0.00 | 3.9 -> 4.4 | byte-identical |
+| bridge_lc | 19 | 17 -> 17 | 2 / 2 | 0 -> 0 | 15.5 | 0.00 | 9.6 -> 8.9 | byte-identical |
+| gaulke_roofing_hat | 41 | 30 -> 30 | 3 / 0 | 0 -> 0 | 16.7 | 5.99 | 17.6 -> 16.8 | byte-identical |
+| gaulke_roofing_lc | 41 | 23 -> 23 | 1 / 0 | 0 -> 0 | 10.6 | 7.22 | 6.5 -> 6.2 | byte-identical |
+| hotel_fremont_hat | 20 | 25 -> 25 | 4 / 1 | 0 -> 0 | 9.1 | 0.00 | 13.5 -> 13.2 | byte-identical |
+| hotel_fremont_patch | 20 | 20 -> 20 | 6 / 1 | 0 -> 0 | 12.4 | 0.00 | 10.8 -> 11.4 | byte-identical |
+| mfab_hat | 18 | 29 -> 29 | 21 / 3 | 6 -> 6 | 7.9 | 0.00 | 22.6 -> 31.7 | byte-identical |
+| mfab_lc | 19 | 22 -> 22 | 15 / 3 | 2 -> 2 | 10.8 | 0.00 | 21.5 -> 22.6 | byte-identical |
+| precision_drone | 58 | 86 -> 86 | 14 / 20 | 9 -> 9 | 22.0 | 2.54 | 19.5 -> 20.1 | byte-identical |
+| proseal_hat | 53 | 38 -> 38 | 13 / 12 | 5 -> 5 | 13.7 | 1.56 | 11.8 -> 12.5 | byte-identical |
+| proseal_beanie | 47 | 28 -> 28 | 7 / 16 | 3 -> 3 | 150.5 | 100.25 | 13.5 -> 14.9 | byte-identical |
+| tires_hat_3d | 9 | 3 -> 3 | 0 / 5 | 0 -> 0 | 13.2 | 9.03 | 1.6 -> 1.6 | byte-identical |
+| **17 pairs** | **409** | **396 -> 395** | **108 / 73** | **32 -> 31** (pro 0) | **428.7** | **140.24** | **194.1 -> 219.0 (+12.8%)** | 16 identical |
+
+Exposed and bare are equal OFF and ON on every job, to the tenth and the
+hundredth, so each cell shows one figure. Bare at 0.25 and 0.30 is equal too.
+
+### Reading it
+
+- **On the flipped main the class is still 32.** It is the same total as 10-29
+  on 44ecf1cb, but not the same jobs.
+  - Six fields carry 31 of the 32: Drone 9 (`Sb5e7d7ed` 5, `S09963415` 3,
+    `S1f7420c4` 1), MFab hat 6 and LC 2 (`Sb1779555` on both, plus
+    `Sfbae5fe3`), ProSeal hat 5 (`S9e42b538`), ProSeal beanie 3
+    (`Sfa487ac0`), Becker beanie 3.
+  - Bridge, Gaulke, Fremont and Tires have none.
+- **The switch moves one job of 17.** Becker beanie goes 3 -> 2, the same
+  change the five-job table shows. Every other job is byte-identical, so the
+  switch's gate refuses the re-plan on all 30 other fill-section cuts.
+- **Gate 3 is clear:** bare thread is unchanged on every job, so is exposed
+  travel, and total cuts are 396 -> 395.
+- **Its cost:** plan CPU +12.8% over the 17 jobs (194 -> 219 s). It is spent on
+  fields with a long hop whether the re-plan is taken or not: MFab hat +40%,
+  Becker hat large +43%.
+- **What the gate can't reach.** These are the forks this page describes: a
+  greedy, seam-respecting pick with no lookahead finds no order with fewer
+  long hops.
+  - Drone's three fields and ProSeal hat's `S9e42b538` (5 cuts) are the
+    largest.
+  - The next build is the seam-aware planner named under "Not reached": the
+    section planner's lookahead and articulation rule, under the seam
+    constraint, plugged into `reach`.
+
+### ProSeal beanie's knockdown walks (`knockdown._stay_down`)
+
+This reads the 150.5 mm exposed and 100.25 mm bare thread on the OFF plan.
+- **Its 12 walk legs come to 519.3 mm:**
+  - 14.6 mm lies under later thread: the design's needle-down lines at a
+    0.4 mm thread.
+  - 405.4 mm lies on the knockdown's own rows.
+  - 99.4 mm lies on neither, which is the job's 100.25 mm bare at 0.20.
+  - The longest legs are 151, 94, 89 and 82 mm, against chords of 53, 17, 65
+    and 12 mm: `_bridge`'s way round an inset ring.
+- **No leg of 10 mm or more has a route under later thread.**
+  - The search ran `fill_section_travel.hidden_route` over the design's thread
+    footprint (lines grown one row either side), inside the knockdown's reach.
+  - It used both budgets: `travel_path`'s and the walk's own length.
+  - The ends were docked at 1 mm and at 2 mm; they sit 0.2-1.6 mm off the
+    design. No route turned up either way.
+  - The letters are separate pieces on bare knit, so every route crosses a
+    gap that nothing sews over. The straight chords lie 0-81% under later
+    thread, never all of it.
+- **So step 3 builds nothing.** The bare reading is in the 0.20 band only
+  (0.25 reads 0), so these walks run within a quarter millimetre of a
+  knockdown row, which is garment-coloured thread on the garment.
