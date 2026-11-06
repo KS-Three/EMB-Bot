@@ -64,6 +64,10 @@ vi.mock("../lib/rasterize.js", async (importOriginal) => {
 // panel asks only when the service is up.
 let classifyArtImpl = () => new Promise(() => {});
 const classifyCalls = [];
+// `recountArt` (POST /recount, the shape/colour count) is controlled the same
+// way: it never answers unless a test says so, so no other test sees a count.
+let recountArtImpl = () => new Promise(() => {});
+const recountCalls = [];
 vi.mock("../lib/digitizer.js", async (importOriginal) => {
   const real = await importOriginal();
   return {
@@ -71,6 +75,10 @@ vi.mock("../lib/digitizer.js", async (importOriginal) => {
     classifyArt: (...args) => {
       classifyCalls.push(args);
       return classifyArtImpl(...args);
+    },
+    recountArt: (...args) => {
+      recountCalls.push(args);
+      return recountArtImpl(...args);
     },
   };
 });
@@ -535,6 +543,128 @@ describe("the reading row before the first run -- POST /classify", () => {
     expect(getByText(/You set this to flat art/)).toBeTruthy();
     await waitFor(() => expect(classifyCalls).toHaveLength(1));
     expect(classifyCalls[0][1].forced_class).toBe("flat");
+  });
+});
+
+// ---- the recount at the chosen size (2026-11-05) ---------------------------
+//
+// Kent's ruling after the Stitchist teardown: show how many shapes and colors
+// the design will have AT THE SIZE CHOSEN, counts only. The reading row asks
+// POST /recount (debounced), re-asks when the size changes, aborts the stale
+// ask, and shows nothing -- not the old number -- while the new one is out.
+describe("the shape/color recount in the reading row -- POST /recount", () => {
+  const HEALTH = { status: "ok", limits: { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 40_000_000 } };
+  const counts = (shape_count, color_count) => ({ shape_count, color_count, size_mm: [30, 20], generation_cache: "miss", elapsed_ms: 7000 });
+  const LINE = '[data-testid="art-recount"]';
+  let n = 0;
+  function fresh(extra = {}) {
+    n += 1;
+    return baseElement([], { result: null, warnings: [], sourcePng: "BBBB".repeat(n + 40), ...extra });
+  }
+  const atWidth = (el, w) => ({ ...el, params: { ...el.params, target_width_mm: w } });
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  beforeEach(() => {
+    recountCalls.length = 0;
+    recountArtImpl = () => new Promise(() => {});
+    classifyCalls.length = 0;
+    classifyArtImpl = () => new Promise(() => {});
+  });
+
+  test("shows 'N shapes, M colors at W mm' once the answer lands, and nothing but the counts", async () => {
+    recountArtImpl = async () => counts(22, 2);
+    const { container } = render(Harness, { props: { element: atWidth(fresh(), 36.7), health: HEALTH } });
+    await waitFor(() => expect(container.querySelector(LINE)).not.toBeNull(), { timeout: 3000 });
+    expect(container.querySelector(LINE).textContent.trim()).toBe("22 shapes, 2 colors at 36.7 mm");
+    // The request carried the run's config at that width.
+    expect(recountCalls).toHaveLength(1);
+    expect(recountCalls[0][1].target_width_mm).toBe(36.7);
+    // No advice, no card: the only buttons are the row's existing ones.
+    expect(container.querySelector('[data-testid="art-reading"]').querySelectorAll("button")).toHaveLength(0);
+  });
+
+  test("sits beside the class reading when both are there", async () => {
+    classifyArtImpl = async () => ({ class: "flat", confidence: 1, signals: {}, warnings: [], forced_class_accepted: false, elapsed_ms: 100 });
+    recountArtImpl = async () => counts(4, 2);
+    const { container } = render(Harness, { props: { element: atWidth(fresh(), 80), health: HEALTH } });
+    await waitFor(() => expect(container.querySelector(LINE)).not.toBeNull(), { timeout: 3000 });
+    const row = container.querySelector('[data-testid="art-reading"]');
+    expect(row.textContent).toMatch(/Read as flat art/);
+    expect(row.querySelector(LINE)).not.toBeNull();
+  });
+
+  test("while the ask is out there is NO number, and a size change hides the old one at once", async () => {
+    let release;
+    recountArtImpl = (_img, cfg) => cfg.target_width_mm === 36.7
+      ? Promise.resolve(counts(22, 2))
+      : new Promise((resolve) => { release = () => resolve(counts(93, 2)); });
+    const element = atWidth(fresh(), 36.7);
+    const { container, rerender } = render(Harness, { props: { element, health: HEALTH } });
+    await waitFor(() => expect(container.querySelector(LINE)?.textContent).toMatch(/22 shapes/), { timeout: 3000 });
+
+    await rerender({ element: atWidth(element, 113.5), health: HEALTH });
+    // Immediately: the 36.7 mm number is gone, not left standing for 113.5.
+    expect(container.querySelector(LINE)).toBeNull();
+    await waitFor(() => expect(recountCalls).toHaveLength(2), { timeout: 3000 });
+    expect(recountCalls[1][1].target_width_mm).toBe(113.5);
+    expect(container.querySelector(LINE)).toBeNull();
+
+    release();
+    await waitFor(() => expect(container.querySelector(LINE)?.textContent.trim()).toBe("93 shapes, 2 colors at 113.5 mm"), { timeout: 3000 });
+  });
+
+  test("a width typed in several steps asks once, and the superseded request is aborted", async () => {
+    const signals = [];
+    recountArtImpl = (_img, _cfg, _f, signal) => { signals.push(signal); return new Promise(() => {}); };
+    const element = fresh();
+    const { rerender } = render(Harness, { props: { element: atWidth(element, 30), health: HEALTH } });
+    await waitFor(() => expect(recountCalls).toHaveLength(1), { timeout: 3000 });
+    await rerender({ element: atWidth(element, 31), health: HEALTH });
+    expect(signals[0].aborted).toBe(true);
+    await rerender({ element: atWidth(element, 31.5), health: HEALTH });
+    await rerender({ element: atWidth(element, 32), health: HEALTH });
+    await waitFor(() => expect(recountCalls).toHaveLength(2), { timeout: 3000 });
+    await sleep(700);
+    expect(recountCalls).toHaveLength(2);
+    expect(recountCalls[1][1].target_width_mm).toBe(32);
+  });
+
+  test("the garment is in the request, so a garment change re-asks", async () => {
+    recountArtImpl = async () => counts(7, 3);
+    const element = atWidth(fresh(), 60);
+    const { container, rerender } = render(Harness, { props: { element, health: HEALTH, project: { garmentId: "tee" } } });
+    await waitFor(() => expect(container.querySelector(LINE)).not.toBeNull(), { timeout: 3000 });
+    expect(recountCalls[0][1].garment_id).toBe("tee");
+    await rerender({ element, health: HEALTH, project: { garmentId: "cap" } });
+    await waitFor(() => expect(recountCalls).toHaveLength(2), { timeout: 3000 });
+    expect(recountCalls[1][1].garment_id).toBe("cap");
+  });
+
+  test("a service without /recount (null) shows no number and is not asked again", async () => {
+    recountArtImpl = async () => null;
+    const element = fresh();
+    const { container, rerender } = render(Harness, { props: { element: atWidth(element, 50), health: HEALTH } });
+    await waitFor(() => expect(recountCalls).toHaveLength(1), { timeout: 3000 });
+    await rerender({ element: atWidth(element, 60), health: HEALTH });
+    await sleep(800);
+    expect(recountCalls).toHaveLength(1);
+    expect(container.querySelector(LINE)).toBeNull();
+  });
+
+  test("a failed ask is silent", async () => {
+    recountArtImpl = async () => { throw new Error("boom"); };
+    const { container, queryByRole } = render(Harness, { props: { element: atWidth(fresh(), 50), health: HEALTH } });
+    await waitFor(() => expect(recountCalls).toHaveLength(1), { timeout: 3000 });
+    await sleep(100);
+    expect(container.querySelector(LINE)).toBeNull();
+    expect(queryByRole("alert")).toBeNull();
+  });
+
+  test("no service, no ask", async () => {
+    recountArtImpl = async () => counts(1, 1);
+    const { container } = render(Harness, { props: { element: atWidth(fresh(), 50), health: null } });
+    await sleep(800);
+    expect(recountCalls).toHaveLength(0);
+    expect(container.querySelector(LINE)).toBeNull();
   });
 });
 

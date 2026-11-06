@@ -397,3 +397,34 @@ records reads as a cut (the convention `cutFloats` already plans around), and
 pystitch's DST reader absorbs a trim placed directly after a colour change or
 before the first stitch (becker: 11 read against 14, identical from both
 encoders). JEF readers infer cuts from moves over 3 mm.
+
+## Every export is read back, and a mismatch blocks the download (2026-11-05)
+
+Kent's ruling: a file that fails its own read-back is broken, not low quality,
+so the 2026-10-02 "no warnings reach readouts" ruling does not apply and a plain
+"Export failed: <check>" is allowed. Memory: `export-readback-2026-11-05`.
+
+| path | reader | checks |
+|---|---|---|
+| service `/export`, all 8 machine formats | pystitch's own reader for the format | stitch count, stitch positions, trim count + order, colour count + order, longest chained stitch (<= 12.1 mm), sewn bounding box; DST also the header +X -X +Y -Y |
+| browser DST | `readDSTRecords` (dstimport.js) | the same, plus the end record and the header's ST count |
+| browser EXP, PES | readers lifted from `tools/file-cut-census.mjs` | the same minus the header (neither has one that is checked) |
+| SVG, either path | none | labelled `verified: false` with a reason |
+
+Expected values are taken from the in-memory design BEFORE the write and do not
+call the splitters. What pystitch's readers cannot give back is named per result
+in `skipped` rather than dropped: VP3 longest stitch; XXX order, box and
+positions (a run's first stitch after long travel is stored as a move); JEF and
+VP3 trim count is "at least" (the reader invents trims). A service mismatch is a
+**500** with the failed checks in the body (its own defect, not the caller's
+400); the Studio then offers the browser file only if that passes the same
+read-back. Cost at 20,000 stitches: browser 7-13 ms, service 90-215 ms.
+
+### Download all (2026-11-05)
+
+One zip from the Download step (`app/src/lib/exportZip.js`): DST, PES, EXP, JEF, XXX,
+VP3, SVG, the PDF worksheet, a preview PNG and `-threads.txt`. Each format is the
+same `exportDesignPreferService` call the single button makes, so each has been
+through the read-back above; one failure fails the whole archive and saves nothing.
+PEC and U01 are not in it (not shipped, 2026-09-12). Measured at 23,936 stitches:
+2.2-2.6 s, 1.08 MB (memory `export-zip-2026-11-05`).

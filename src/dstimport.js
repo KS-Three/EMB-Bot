@@ -361,10 +361,56 @@
     return built;
   }
 
+  // The RAW record stream of a DST, for the export read-back (src/readback.js).
+  //
+  // `decodeDST` is the wrong reader for that job on four counts: it collapses a
+  // run of jump records into one record, drops a trailing run, centres the
+  // result, and throws on a file with no stitches. A read-back has to see the
+  // records as they were WRITTEN, so this walks them unchanged and leaves every
+  // interpretation (what a run of N jumps means) to the caller, who knows which
+  // jumps-per-trim the writer used. Bit table is `decodeDelta` above, the one
+  // authoritative copy. Positions are absolute, design frame (+y up), NOT
+  // centred: the writer's own coordinates come straight back.
+  //
+  // Returns { header, records, ended, tail }. `header` is the numeric value of
+  // every "XX:value" line in the first 512 bytes (LA stays a string). `ended`
+  // is whether the 00 00 F3 end record was reached; `tail` is the byte count
+  // after the last whole 3-byte record (0 for a well-formed file).
+  function parseDSTHeader(bytes) {
+    let text = "";
+    for (let i = 0; i < 512 && i < bytes.length; i++) text += String.fromCharCode(bytes[i]);
+    const header = {};
+    for (const line of text.split(/[\r\n\x1a]/)) {
+      const t = line.replace(/^\s+/, "");
+      if (t.charAt(2) !== ":") continue;
+      const tag = t.slice(0, 2);
+      if (DST_HEADER_TAGS.indexOf(tag) === -1 || tag in header) continue;
+      const raw = t.slice(3).trim();
+      header[tag] = tag === "LA" || tag === "PD" ? raw : Number(raw);
+    }
+    return header;
+  }
+
+  function readDSTRecords(bytes) {
+    if (!bytes || bytes.length < 512) throw new Error("Not a DST file (too small).");
+    const header = parseDSTHeader(bytes);
+    const records = [];
+    let x = 0, y = 0, ended = false, i = 512;
+    for (; i + 2 < bytes.length; i += 3) {
+      const b0 = bytes[i], b1 = bytes[i + 1], b2 = bytes[i + 2];
+      if (b0 === 0 && b1 === 0 && b2 === 0xf3) { ended = true; i += 3; break; }
+      const d = decodeDelta(b0, b1, b2);
+      x += d[0];
+      y += d[1];
+      records.push({ kind: b2 & 0x40 ? "C" : b2 & 0x80 ? "J" : "S", dx: d[0], dy: d[1], x, y });
+    }
+    return { header, records, ended, tail: bytes.length - i };
+  }
+
   // `decodeDelta` is exported for TOOLS, not for the product: it is the single
   // authoritative read-direction bit table, and anything that walks raw DST
   // records must borrow it rather than keep its own copy. `tools/render-dst.mjs`
   // kept a private copy, missed the 2026-09-08 axis fix, and went on drawing
   // every design transposed — see that file's header for what that cost.
-  return { decodeDST, decodeDSTStandard, decodeDelta, buildImportedDesign, IMPORT_BLOCK_COLORS };
+  return { decodeDST, decodeDSTStandard, decodeDelta, readDSTRecords, buildImportedDesign, IMPORT_BLOCK_COLORS };
 });

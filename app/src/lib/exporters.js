@@ -18,16 +18,66 @@ export function exportFileName(name, ext) {
   return (base || "design") + "." + ext;
 }
 
+// A file that fails its own read-back is broken, not low quality (Kent,
+// 2026-11-05), so it is never handed out: the writer's bytes are re-read
+// (src/readback.js) and a mismatch throws this, naming the check. The message
+// is the customer's sentence; `failed` carries every check with both values.
+export class ExportVerifyError extends Error {
+  constructor(format, result) {
+    const first = result.failed[0];
+    super(
+      "Export failed: " + CHECK_LABEL[first.check] + " (expected " + first.expected + ", read back " + first.read + ")." +
+        (result.failed.length > 1 ? " " + (result.failed.length - 1) + " more check" + (result.failed.length > 2 ? "s" : "") + " failed too." : ""),
+    );
+    this.name = "ExportVerifyError";
+    this.format = format;
+    this.check = first.check;
+    this.failed = result.failed;
+  }
+}
+
+const CHECK_LABEL = {
+  readable: "the file does not read back",
+  stitch_count: "stitch count",
+  trim_count: "trim count",
+  trim_order: "trim order",
+  color_count: "colour block count",
+  color_order: "colour block order",
+  stitch_positions: "stitch positions",
+  longest_stitch: "longest stitch",
+  bounding_box: "design size",
+  header_bbox: "size in the file header",
+  header_stitch_count: "stitch count in the file header",
+};
+
+// Reads the bytes just written back with the engine's own readers and throws
+// ExportVerifyError if they disagree with `design`. A build whose engine lacks
+// readback.js (a spec that loads a subset of the engine) is labelled
+// unverified; index.html always loads it, and engineList.spec pins that.
+function verified(design, out, format, opts) {
+  if (typeof EMB.verifyExport !== "function") {
+    return { ...out, readback: { verified: false, reason: "the read-back is not loaded in this build" } };
+  }
+  const r = EMB.verifyExport(design, out.bytes, format, { jumpsPerTrim: opts.jumpsPerTrim });
+  if (!r.ok) throw new ExportVerifyError(format, r);
+  return {
+    ...out,
+    readback: r.verified
+      ? { verified: true, stitches: r.stitches, trims: r.trims, colors: r.colors, longestMm: r.longestMm }
+      : { verified: false, reason: r.reason },
+  };
+}
+
 export function exportDesign(design, format, opts = {}) {
   switch (format) {
     case "dst":
-      return { bytes: EMB.encodeDST(design, { jumpsPerTrim: opts.jumpsPerTrim }), filename: "design.dst", mime: "application/octet-stream" };
+      return verified(design, { bytes: EMB.encodeDST(design, { jumpsPerTrim: opts.jumpsPerTrim }), filename: "design.dst", mime: "application/octet-stream" }, "dst", opts);
     case "exp":
-      return { bytes: EMB.encodeEXP(design), filename: "design.exp", mime: "application/octet-stream" };
+      return verified(design, { bytes: EMB.encodeEXP(design), filename: "design.exp", mime: "application/octet-stream" }, "exp", opts);
     case "pes":
-      return { bytes: EMB.encodePES(design), filename: "design.pes", mime: "application/octet-stream" };
+      return verified(design, { bytes: EMB.encodePES(design), filename: "design.pes", mime: "application/octet-stream" }, "pes", opts);
     case "svg":
-      return { bytes: EMB.designToSVG(design), filename: "design.svg", mime: "image/svg+xml" };
+      return { bytes: EMB.designToSVG(design), filename: "design.svg", mime: "image/svg+xml", readback: { verified: false, reason: "SVG is a picture of the design, not a stitch file" } };
     default:
       throw new Error("Unknown format: " + format);
   }
@@ -137,6 +187,16 @@ export async function exportDesignPreferService(design, format, opts = {}) {
       return { ...out, via: "service" };
     } catch (e) {
       // service down or erroring -- fall through to the browser encoder.
+      // A service that REFUSED its own file (read-back mismatch) falls through
+      // too: the browser's bytes go through the same read-back before they
+      // leave, so nothing unverified is handed out, and if the browser file
+      // fails as well the customer gets that failure and no file. The refusal
+      // is kept on the result for the console, not shown (no-warnings ruling).
+      if (e && e.readbackFailed) {
+        const out = exportDesign(design, format, { jumpsPerTrim });
+        console.warn("The digitizer service refused its own " + format.toUpperCase() + " file: " + e.message);
+        return { ...out, via: "browser", serviceRefused: e.message };
+      }
     }
   }
   return { ...exportDesign(design, format, { jumpsPerTrim }), via: "browser" };
@@ -148,7 +208,10 @@ export async function exportDesignPreferService(design, format, opts = {}) {
 // garments.js HOOPS preset) puts the chosen hoop on the sheet next to the
 // placement — worksheets printed before the hoop picker existed simply
 // omitted the line, and a missing hoop still does.
-export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoopNote) {
+//
+// `asBytes` (Download all): build the sheet but do not save it, and return its
+// bytes as a Uint8Array for the zip. Without it the sheet saves, as always.
+export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoopNote, { asBytes = false } = {}) {
   const mod = await import("jspdf");
   window.jspdf = window.jspdf || { jsPDF: mod.jsPDF };
   // Trims and thread metres, computed by the same walk the Review step uses
@@ -166,7 +229,8 @@ export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoop
   const quoteLines = sewSummary(design, quote)
     .filter((r) => r.label === "Thread cost" || r.label === "Machine time")
     .map((r) => r.label + ": " + r.value);
-  EMB.buildWorksheetPDF(design, {
+  const doc = EMB.buildWorksheetPDF(design, {
+    ...(asBytes ? { save: false } : {}),
     quoteLines,
     garmentLabel: garment.label || "",
     // The id as well as the label: the sheet resolves the fabric preset from
@@ -195,6 +259,7 @@ export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoop
     fileName: "embbot-worksheet.pdf",
     garmentBox: { widthMM: garment.widthIn * 25.4, heightMM: garment.heightIn * 25.4 },
   });
+  return asBytes ? new Uint8Array(doc.output("arraybuffer")) : undefined;
 }
 
 // Renders design to a PNG preview image. Long side is 1200px, other side
