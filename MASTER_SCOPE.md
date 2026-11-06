@@ -87,26 +87,6 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
    chains stepping 8–11.5 mm. *(measured 2026-08-21/22 — area 1; cloth
    2026-09-01 — scope-history)* **Seams, 2026-09-03:** `tools/seam_underlap.py` reads the sewn underlap per colour pair — synthetic logos carry the full pull + 0.25, Hotel Fremont 0.24 mm mean over 1,549 mm of seams (673 mm under 0.25) because a hole held open at the detail floor gets no tongue; card block 6 (0 / 0.25 / 0.5 / 1.0) sets the number on cloth. *(measured 2026-09-03 — scope-history)* **`TRIM_HEAVY` says which (2026-09-06):** 26 fixtures at 80 mm read 53% in-shape then, the majority flipping per design, so it emits `in_shape`/`between_shapes`/`shapes` rather than one remedy. `tools/trim_locality.py`. *(measured 2026-09-06 — scope-history 09-06)*
 
-15. **An UNDECLARED photograph gets neither depth sequencing nor the palette
-    bind, and its region re-snap escapes the selected palette.** `is_photographic`
-    gates the fix and was DECLARED, not detected, until 2026-09-30 (the Studio
-    now asks for detection on every job and declares nothing) — `owl_kent.jpg` reads LESS
-    photographic than two logos, so a photograph left undeclared routes
-gradient and the re-snap sews more spools than the cone list names. **Counted 2026-09-06** (`tools/resnap_escape.py`): **34 cones added corpus-wide, 25 outside the selected palette, every escape on the GRADIENT lane** — while all nine photo-class fixtures add none. The binding works; the lane real logo art routes to never got it. **FIXED, DEFAULT ON since 2026-09-10** (`cfg.bind_resnap_all_classes`, Kent's colour-bundle ruling; False is the pre-flip engine). It also closes half of defect 18's third mechanism — `screenshot` goes 17 blocks / 16 distinct with `3971` sewn twice, to 11 / 11 with no duplicate. Full trade: [area 1](docs/scope/1-auto-digitizing-quality.md). *(measured 2026-09-06 — scope-history 09-06)*
-    **UI HALF FIXED 2026-09-02 (Kent's call), REMOVED 2026-09-30 (Kent's
-    call — the Studio no longer carries any per-design class override; it
-    sends `detect_photographic=true` and `faces_route_flat=true` instead, see
-    area 3 and DOCTRINE 2026-09-30 "A face sews FLAT"):** the reading
-    row's "It's a photo" correction sent `is_photographic` instead of
-    `forced_class="photo_subject"`. It was answering the wrong question —
-    forcing the FILL TIER rather than declaring content — and measurably
-    hurt: owl_kent @ 80 mm goes 13 stops → **17** forced, vs **11 on 12
-    cones** (from 14) declared, for ~6% more stitches. The flat-art override
-was untouched that day; both went 09-30; flat returned that evening (DOCTRINE). **DETECTION BUILT 2026-09-11, DEFAULT OFF** (`cfg.detect_photographic`, stage 1.25): EXIF camera then the shipped YuNet detector; a hit fills `is_photographic` True — never False, never over a declaration — so it can only ADD photographs. **It changes nothing on this repo's artwork** (all 22 fixtures identical on and off; 0 false positives across 14 logos), which is both why it is safe and why it is unproven here; `owl_kent` is the real photograph BOTH signals miss, so the declaration stays the fallback. The value is on real uploads.
-    also why it is unproven here. *(measured 2026-09-11 — `digitizer/tools/photo_signals.py`; `tests/test_photo_detection.py`, 28)* *(measured 2026-09-02; the earlier
-    26-stop figure for the forced route predates the rehome, borders-last
-    and the cone fold — 17 is current, the ordering it was cited for is not)*
-
 18. **Duplicate quantize-time declarations put one cone in two layers — the
     second spool-revisit mechanism, untouched by defect 16's fix.** Stage 2
     quantizes to COLOURS, so two can snap to one cone: `drone_render` 80 mm
@@ -180,6 +160,7 @@ DOCTRINE 2026-09-14.
 9. the photo route escaped its own palette, both halves — RESOLVED 2026-08-24 (PR #217 + the 08-24 `shade_palette_bind` flip, default ON per Kent's 32-job-sheet ruling).
 10. three photo-route robustness defects the first real photos found — RESOLVED 2026-08-23 (#214 OOM, #218 `select_palette` loop, #216 preflight).
 11. the memory ceiling was per-region full-frame masks — RESOLVED 2026-08-24 (PR #230).
+15. an UNDECLARED photograph got neither depth sequencing nor the palette bind, and its re-snap escaped the selected palette — CLOSED 2026-11-06 (Kent, "Close it") on three mechanisms: `stage0_texture_gate` (ON since 2026-10-28) routes photographs to a photo class by `texture_frac`; `bind_resnap_all_classes` (ON since 2026-09-10) ended the re-snap escape on every class (counted 2026-09-06: 34 cones added corpus-wide, 25 outside the selected palette, every one on the gradient lane); and the Studio sends `detect_photographic` (stage 1.25: EXIF, then YuNet) on every job. **Census, 19 real photographs (owl_kent plus 18 corpus genres), 80 mm, the config the Studio sends:** photo class by stage 0 — 3 detection fired, 16 silent; any other class — 0 fired, 0 silent. Detection rescues 0, escapes 0, false positives 0 of 30 logos. Cohen's kappa against the hand label (photo vs logo, 49 rows, chance-corrected): **1.000 for the photo class, 0.187 for detection alone.** 16 of the 19 reach a photo class only through the gate (gate OFF, they read gradient or flat). Detection is now a redundant belt, kept because a face hit routes the design FLAT under `faces_route_flat` (Kent, 2026-09-30): group_people, sports_action and vintage_sepia end with `is_photographic` False by that ruling, not by escape; a full digitize of group_people at 80 mm shows 12 blocks on 12 cones, no duplicate, no re-snap escape. **Caveats:** in-sample (the gate's threshold came from this same corpus, PR #1178, so 19 of 19 is a regression check, not an out-of-sample rate); no alpha cut-outs; nothing under 500 px; EXIF is on 2 of 39 corpus rows. Cones only, nothing sewn. Census: [`docs/photo-detection-census-2026-11-06.md`](docs/photo-detection-census-2026-11-06.md). The entry as it stood: scope-history 2026-11-06. *(measured 2026-11-06 — PR #1272, `tools/photo_detect_census.py`, `tests/test_photo_detect_census.py`; closed 2026-11-06 — Kent)*
 12. preflight graded every photo job F — RESOLVED 2026-08-24 (PR #229).
 13. the detail layer sewed the background a cutout had just removed — RESOLVED 2026-08-24. **Its lesson stands: no acceptance arm had EVER set that flag**, which is the blind spot the evaluation-harness section exists to close.
 14. half the cloth bare inside each shape is the THREAD-PAINT TIER, not a density bug — ANSWERED 2026-08-25 (streamline covers 0.55-0.59 of its footprint vs the filled tier's 0.99; Kent's filled-for-high-contrast ruling, and the face exception, are in Standing rulings).
@@ -297,7 +278,7 @@ about the facts.
    *(resolved 2026-09-15 — `test/font-dead-glyphs.test.js`; detail: area 2)*
 10. **RESOLVED 2026-08-25 — Studio typography: "tighter and more editorial."** Kent's standing direction; new UI is set to it, not re-litigated. *(area doc)*
 
-11. **RESOLVED 2026-09-02 (Kent's call) — `cfg.is_photographic` is reachable from the UI.** Detection remains open as defect 15. *(confirmed 2026-09-07; correction in DOCTRINE)*
+11. **RESOLVED 2026-09-02 (Kent's call) — `cfg.is_photographic` is reachable from the UI.** Detection closed as defect 15 (2026-11-06). *(confirmed 2026-09-07; correction in DOCTRINE)*
 
 8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits

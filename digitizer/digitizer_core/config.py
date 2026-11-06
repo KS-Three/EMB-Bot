@@ -25,9 +25,25 @@ def is_photographic(cfg: "PipelineConfig", class_: str | None) -> bool:
     when it does it must still get the palette bind, the photo yardstick and
     the rest of the photographic machinery.
 
-    WHY THIS IS DECLARED, NOT DETECTED (2026-08-25). Stage 0's own signals do
-    not separate the two populations — measured across every fixture here, a
-    real photograph reads LESS photographic than several gradient logos:
+    UPDATE 2026-11-06 (defect 15 closed, Kent "Close it"): the paragraph below
+    is the 2026-08-25 history and no longer describes the engine. Since
+    2026-10-28 `stage0_texture_gate` (ON) reads `texture_frac`, which separates
+    the owl (0.358) from every logo, and the Studio's jobs bind the palette
+    through the photo CLASS. The census (`docs/photo-detection-census-2026-11-06.md`,
+    PR #1272): 19 of 19 real photographs land in a photo class, 16 of them
+    only because of the gate, 0 escape, 0 of 30 logos trip either signal.
+    Detection (`detect_photographic`, which the Studio still sends) is now a
+    redundant belt behind the gate: it rescues 0 photographs. It still does
+    one thing the gate does not: a face hit routes the design FLAT under
+    `faces_route_flat` (Kent, 2026-09-30), which keeps this function False on
+    purpose for group_people, sports_action and vintage_sepia. No behaviour
+    changed with this note. The measurement is in-sample (the gate's threshold
+    came from the same corpus).
+
+    WHY THIS WAS DECLARED, NOT DETECTED (2026-08-25). Before the texture gate,
+    stage 0's own signals did not separate the two populations — measured
+    across every fixture here, a real photograph read LESS photographic than
+    several gradient logos:
 
         owl_kent.jpg      (real photo)  unique_color_mass 0.1107  grad 1.2877
         summit_badge.png  (badge logo)                    0.1152       0.4578
