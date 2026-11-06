@@ -9,8 +9,8 @@ against 39,984 / 22,525 / 31,908). **None of the three named suspects is the cau
 `color_cap_sewn` and `dark_ink_floor_rescue` each leave dof_meadow left_chest unchanged (21,437 stitches, same patch).
 The finding is also not `border_by_size`, `border_from_outline`, `border_by_size_fabric_edges` or
 `keep_dark_thin_strokes`: each toggled OFF at HEAD still shows it. It first appears between two first-parent trees,
-**46949f78 (2026-10-26, absent)** and **ad218cea (2026-10-29, present)**, 78 commits apart. The cause is not yet one
-commit. What the patch IS is clear from the renders: a small tonal band (its own fill plus a satin ring) sewn on top
+**46949f78 (2026-10-26, absent)** and **ad218cea (2026-10-29, present)**, 78 commits apart. The bisect below then pins it to
+one merge (5ff48c56, PR #1143). What the patch IS is clear from the renders: a small tonal band (its own fill plus a satin ring) sewn on top
 of the big ground fill beside it, which is defect 20's shape (photo tonal splitting stacking thread).
 
 ## Path: which route this ran on
@@ -81,19 +81,46 @@ an old tree, `tools/density_stacked_rows.py` copied in).
 None is a kept-frame background under a subject (no cutout in any run) or a cap/border over a designed object: every
 patch is two tonal bands from the photo lane's own split on top of each other.
 
-## Would `tonal_split_ceiling` (OFF) catch it?
+## Bisect: first-parent commits 46949f78 (absent) to ad218cea (present), dof_meadow left_chest, classical route
 
-**Not measured.** The arm was queued and cut for time. What the code says: the ceiling plans the design whole and keeps
-the split only if the split puts no more fabric past `COVERAGE_BLOCK_UNITS` (3.5 layers) than the whole design does.
-Every patch here peaks at 9.5 to 13.8, so there is something to compare, but the bands' rings may stack in the whole
-plan too. Whether the whole plan wins is a one-arm run (`--arm tonal_ceiling_on`, already in the tool). Flip nothing.
+Oldest-first halving, one digitize per tree, serial (tree list from `git rev-list --first-parent`).
+
+| Commit | Date | DENSITY_STACKED | Stitches | worst_patch_mm2 |
+|---|---|---|---|---|
+| 46949f78 | 10-26 | absent | 22,103 | - |
+| 8341d1f7 | 10-27 | absent | 22,103 | - |
+| 1d83bc4c | 10-27 | absent | 22,103 | - |
+| 1c69607d | 10-27 | absent | 22,103 | - |
+| 9d097c1d | 10-27 | absent | 22,103 | - |
+| **5ff48c56** (merge of PR #1143, `white-recipe-every-job`) | 10-27 | **present** | 22,534 | 27.0 |
+| 1ce2af22 | 10-27 | present | 22,534 | 27.0 |
+| ad218cea | 10-29 | present | 20,737 | - |
+
+**First bad: 5ff48c56, the merge of #1143.** Its first commit f53d6508 ("Flip the white-keyline recipe onto every
+job", Kent 2026-10-27) made the MFab recipe's switches plain defaults for every job: `silhouette_underfill`,
+`silhouette_underfill_panels`, `silhouette_underfill_rim`, `enclosed_white_keyline`, `keyline_fold_slivers`,
+`skip_covered_shapes`, `keyline_loop_chain`, `absorb_fragments` all went False to True in `config.py`.
+
+**Mechanism.** The under-fill recipe sews a full fill of the ground under every piece contained in it ("the pro sews
+every contained piece on its ground"). On a photo's tonal split each band is a contained piece, so each band, with its
+own satin ring, now lands on a complete ground fill and the three layers stack to 9.5 to 13.8 units.
+
+Confirmed at HEAD with one arm: `silhouette_underfill`, `_panels` and `_rim` all OFF gives **20,873 stitches (10-05 was
+20,868), B 76, DENSITY_STACKED gone**. Which of the three does the work was not split further. The other recipe
+switches were left ON in that arm.
+
+## `tonal_split_ceiling` ON at HEAD (same row)
+
+Clears the finding: **B 88, DENSITY_STACKED absent, 14,059 stitches** against 21,437 (-34%). It does so by keeping
+the whole-design plan (the tonal split is dropped), so it removes the banding the photo was split for, not just the
+stack. The under-fill arm above clears it at 20,873 stitches with the split intact.
 
 ## Verdict for the foreman
 
-An engineering question, not yet a flip. No flag on the named list or in the border family is the lever, so there is no
-default for Kent to rule on from this evidence. The finding is real stacking (peak 9.5 to 13.8 fill layers) from the
-tonal split's own bands, and it arrived with a change landed 2026-10-26 to 2026-10-29. Defect 20's existing cures
-(`tonal_split_ceiling`, `tonal_split_layer_cap`) are OFF and untested on these rows.
+A flag Kent rules on, not a code bug: the recipe switches landed in #1143 as defaults for all art. Cheapest lever is
+`silhouette_underfill` (with `_panels`, `_rim`) gated off for the photo classes (`photo_scene`, `photo_subject`), keeping
+it for flat and gradient logos where it was measured. That gate is a code change under Kent's ruling. Measured here on
+one row (dof_meadow left_chest); the other four rows were not re-run with the arm.
 
 ## Reproduce
 
@@ -104,4 +131,4 @@ cd digitizer
 ```
 
 Arms: head, cutout_off, cap_off, floor_off, dark_thin_off, border_outline_off, border_size_off, border_both_off,
-fabric_edges_off, tonal_ceiling_on. `--ci-path` hides the rembg venv. Each digitize is 3.5 to 5.5 minutes on this laptop.
+fabric_edges_off, underfill_off, tonal_ceiling_on. `--ci-path` hides the rembg venv. Each digitize is 3.5 to 5.5 minutes on this laptop.

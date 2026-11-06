@@ -46,6 +46,7 @@ ARMS = {
     "border_outline_off": {"border_from_outline": False},
     "border_size_off": {"border_by_size": False},
     "fabric_edges_off": {"border_by_size_fabric_edges": False},
+    "underfill_off": {"silhouette_underfill": False, "silhouette_underfill_panels": False, "silhouette_underfill_rim": False},
     "dark_thin_off": {"keep_dark_thin_strokes": False},
     "border_both_off": {"border_from_outline": False, "border_by_size": False},
 }
