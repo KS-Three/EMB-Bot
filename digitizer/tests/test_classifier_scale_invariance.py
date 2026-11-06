@@ -176,6 +176,43 @@ def test_downscaling_does_not_change_an_artwork_class(rel, tmp_path):
         assert got == native, f"{rel} at {w}px is {got}, native is {native}"
 
 
+# --- The ON arm of `cfg.stage0_scale_relative_grad` (built OFF 2026-11-06) ----
+#
+# The same two sweeps with the flat/gradient gate reading `tonal_frac`
+# (`docs/stage0-scale-relative-grad-2026-11-06.md`). These are the strict
+# xfails above XPASSing: the OFF arm stays marked, because OFF is the shipped
+# engine and its defect is unchanged. When Kent flips the flag the OFF markers
+# come off and these become the only sweep.
+SCALE_RELATIVE = PipelineConfig(stage0_scale_relative_grad=True)
+
+
+def test_native_classes_hold_with_the_scale_relative_read():
+    for rel, expected in FIXTURES.items():
+        got = stage0_classify.classify(str(TESTDATA / rel), SCALE_RELATIVE).class_
+        assert got == expected, f"{rel}: native class {got} with the flag ON, expected {expected}"
+
+
+@pytest.mark.parametrize("rel", sorted(DEPARTS_FROM_NATIVE))
+def test_the_scale_relative_read_keeps_the_native_class_when_downscaled(rel, tmp_path):
+    native = stage0_classify.classify(str(TESTDATA / rel), SCALE_RELATIVE).class_
+    for w in WIDTHS:
+        got = _classify_at(TESTDATA / rel, w, tmp_path, SCALE_RELATIVE)
+        assert got == native, f"{rel} at {w}px is {got} with the flag ON, native is {native}"
+
+
+def test_the_scale_relative_read_s_stated_limit_is_the_drone_at_250_px(tmp_path):
+    """The record, executable: the drone render reads `flat` ON at 250 px
+    (`tonal_frac` 0.072 against 0.09 — the badge is ~100 px across and its
+    photo inset is mostly hard edges at that size) and `gradient` at 400 and
+    640. OFF reads `gradient` at all three. Not acceptance evidence either
+    way (the drone left this file's broken sets through the alpha
+    extension); if this starts passing as `gradient`, delete the limit."""
+    rel = "photo/drone_render.png"
+    seen = {w: _classify_at(TESTDATA / rel, w, tmp_path, SCALE_RELATIVE) for w in WIDTHS}
+    assert seen == {250: "flat", 400: "gradient", 640: "gradient"}, seen
+    assert {_classify_at(TESTDATA / rel, w, tmp_path) for w in WIDTHS} == {"gradient"}
+
+
 def test_the_drone_left_the_broken_set_through_the_alpha_extension_not_a_recalibration(tmp_path):
     """The record behind the sets above, executable: on the pre-flip engine
     (`alpha_edge_extend=False`) the drone at 250 px still reads a different
