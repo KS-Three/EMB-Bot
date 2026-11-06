@@ -1633,6 +1633,17 @@ test("(m8) Delete / Backspace mid-move delete nothing: Done commits ONE boundary
   if (!ok) { await runDigitize(page); await expect.poll(back, { timeout: 120_000 }).toBe(true); }
 });
 
+// Wait for a committed edit's stitches to land: on their own, or by the run button once it says
+// the edit is waiting (restitched() kicks too early and loses a second edit).
+async function landed(page, caption) {
+  await expect.poll(async () => {
+    if ((await page.locator(".dgp-stats").innerText()) !== caption) return true;
+    const run = page.locator(".dgp-run");
+    if ((await run.isEnabled()) && /Changed since the last run/.test(await page.locator("body").innerText())) await run.click().catch(() => {});
+    return false;
+  }, { timeout: 120_000, intervals: [3000] }).toBe(true);
+}
+
 // A node dragged outside the old bbox grows the element, and the restitch must
 // not slide the OTHER shape: the same frame hold as a Move (2026-11-06).
 test("(m9) Reshape: a corner dragged ~5 mm above the old bbox -> the red square stays put", async ({ page }) => {
@@ -1648,13 +1659,18 @@ test("(m9) Reshape: a corner dragged ~5 mm above the old bbox -> the red square 
   const up = 40;                                                       // CSS px, well past the old top edge
   await drag(page, tr, { x: tr.x, y: tr.y - up });
   await expect.poll(async () => (await boundaryEntries(page)).length).toBe(1);
-  await restitched(page, before);
-  await expect.poll(async () => { const b = await fillBBox(page, "black"); return !!b && b.y0 < black0.y0 - up * 0.5; }, { timeout: 30_000 }).toBe(true);
-  const red1 = await settledFill(page, "red");
-  // px per mm from the caption's width (integer mm: good to ~1%). The old behaviour moved red by half the growth.
+  // Fail fast on a drag that did not register: the committed shell's top must have risen.
   const widthMm = Number((/(\d+)×(\d+) mm/.exec(before) || [])[1]);
   expect(widthMm, "the caption names the design width").toBeGreaterThan(5);
   const pxPerMm = (red0.x1 - black0.x0) / widthMm;
+  const [[sid, entry]] = await boundaryEntries(page);
+  const orig = (await readDigitized(page)).shapes.find((s) => s.id === sid).outline;
+  const minY = (ring) => Math.min(...ringOf(ring).map((p) => p[1]));
+  const rose = minY(orig) - minY(entry.boundary_override);
+  expect(rose, "the dragged corner raised the shell top by about the drag (mm)").toBeGreaterThan(up * 0.7 / pxPerMm);
+  await landed(page, before);
+  await expect.poll(async () => { const b = await fillBBox(page, "black"); return !!b && b.y0 < black0.y0 - up * 0.5; }, { timeout: 120_000 }).toBe(true);
+  const red1 = await settledFill(page, "red");
   const mm = (a, b) => Math.abs(a - b) / pxPerMm;
   expect(mm(red1.x0, red0.x0), "red left").toBeLessThan(0.5);
   // The service lays fill rows on a grid anchored to the art box, which grew: the first
