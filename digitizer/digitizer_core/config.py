@@ -1900,6 +1900,18 @@ class PipelineConfig:
     # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     silhouette_underfill_panels: bool = True
+    # `underfill_untagged_riders` (2026-11-05, BUILT OFF; Kent's ruling that day
+    # on MFab's photo-route defect, "Keep OFF, fix the superpixel merge"): the
+    # rider rule above reads only TEXT-TAGGED shapes, and the tagger misses
+    # MFab's small line at 60 mm (all of it) and 100.8 mm (W+E joined by a
+    # one-pixel bridge), so those letters merge into the black and the white
+    # sews over them. ON: an untagged, lettering-thin shape of the host's thread
+    # in a hole of the sewn white field rides too
+    # (`silhouette_underfill._untagged_rider`). Stage 2 keeps every one of those
+    # letters as its own region; the loss is here. Read only where riders are
+    # (`silhouette_underfill_panels` + `sew_enclosed_white` +
+    # `border_from_outline`). OFF: never read, byte for byte.
+    underfill_untagged_riders: bool = False
     # `keyline_fold_slivers` (BUILT OFF 2026-10-26, the MFab recipe's trims,
     # `docs/mfab-recipe-trims-2026-10-26.md`; read only with
     # `sew_enclosed_white`): a sewn white field's slivers fold back into it

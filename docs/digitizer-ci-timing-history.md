@@ -104,3 +104,41 @@ claim about the cause. The two fastest (11.4, 11.6) and the two slowest
 (17.7, 18.1) are the span to read as normal. Same rule as the `digitizer`
 rows: spend one `curl` on `/actions/runs/<id>/jobs` before calling a long
 `studio-e2e` stuck.
+
+## `studio-e2e` rows (appended 2026-11-06)
+
+Re-measured 2026-11-06 over the last twelve green `CI` runs on `main`
+(`gh run list --workflow python-package-conda.yml --branch main --event push`,
+then `/actions/runs/<id>/jobs`), the same arithmetic as the 10-28 table,
+oldest first. The Reshape, Add-hole and Move-shape e2e specs landed in between
+(PRs #1237 to #1260); the serial, service-backed step runs 100 specs now.
+
+| Run started (UTC) | Run id | PR | SHA | studio-e2e | m:ss |
+|---|---|---|---|---|---|
+| 2026-11-05 20:40 | 42105594081 | #1248 | `67319af2` | 19.2 | 19:15 |
+| 2026-11-05 21:30 | 42113319819 | #1249 | `6e08d7ca` | 20.5 | 20:29 |
+| 2026-11-05 21:34 | 42113845140 | #1250 | `284590b7` | 25.0 | 25:00 |
+| 2026-11-05 21:45 | 42115485974 | #1251 | `2f7c543a` | 24.0 | 24:00 |
+| 2026-11-05 22:24 | 42121276789 | #1253 | `07f57b96` | 20.9 | 20:53 |
+| 2026-11-05 22:31 | 42122256046 | #1252 | `e9205673` | 17.7 | 17:41 |
+| 2026-11-05 22:56 | 42125668730 | #1254 | `fb682ef9` | 25.2 | 25:15 |
+| 2026-11-06 03:20 | 42155925222 | #1256 | `9660b28b` | 25.2 | 25:10 |
+| 2026-11-06 04:24 | 42162301246 | #1255 | `7e27f9f6` | 20.4 | 20:22 |
+| 2026-11-06 04:32 | 42163085294 | #1257 | `13c0eb85` | 19.6 | 19:39 |
+| 2026-11-06 05:47 | 42170485946 | #1261 | `b331dcef` | 28.8 | 28:50 |
+| 2026-11-06 05:53 | 42171039338 | #1258 | `9225955d` | 23.2 | 23:11 |
+
+p50 **22.1 minutes**, min 17.7, max **28.8**; the 10-28 table read 15.2 / 11.4
+/ 18.1. Same caveat as before: runs minutes apart share runners, so this does
+not separate contention from the suite growing.
+
+**The 40-minute `timeout-minutes` cancelled a green run.** PR #1260's run
+42166746724 (job 127724888465, `a7dca9d2`) was cancelled at 40m0s with every
+finished spec passing: 82 of the 100 serial specs done, none failed, (m9) and
+(m10) among the passes. Its steps: Tesseract apt 3.6 min and "Install
+Playwright system libraries" 9.1 min (the same commit's sibling run, PR #1259
+`b4c2b3d4`, spent under half a minute on each and finished in 22.4), parallel
+specs 3.2 min, serial specs 23.3 min at the cut (19.0 for all 100 on the
+sibling). The job alone was re-run as attempt 2 of that run. The budget moved
+to 60 in this PR: twice the slowest green in the table, about three times its
+median, and the job's own comment now points here.
