@@ -2299,19 +2299,26 @@ failures are EXPECTED:
    that lands the goldens, and `git pull` before pushing anything else: the
    bot's commit is on the branch now.
 
-2. **OCR tests skip when the `tesseract` binary is not on PATH — except on
-   CI, where a missing binary fails loud.** `textcluster.py`'s
-   OCR-confidence gate and OCR-suggested-text passes call the real binary
-   through `pytesseract`; CI apt-installs `tesseract-ocr` (see the
-   workflow), most dev machines don't have it. The five tests that assert
-   a REAL read (not a mocked one) carry the shared `requires_tesseract`
-   marker (`digitizer/tests/conftest.py`, since 2026-08-17), which skips
-   only when the binary is missing AND `CI` is unset — so a workflow
-   refactor that loses the tesseract install fails the job instead of
-   going dark behind quiet skips. Before the marker these five FAILED on
-   a tesseract-less machine and read as unexplained local reds. A local
-   skip means "install tesseract to exercise OCR end-to-end", not that
-   anything is broken.
+2. **OCR tests skip when no OCR engine is present — except on CI, where
+   that fails loud.** Every read goes through `digitizer_core/ocr.py`
+   (2026-11-06): the `tesserocr` wheel runs Tesseract IN PROCESS (it bundles
+   5.5.3; ~5 ms a read against ~250 for the old child process) and needs
+   only `eng.traineddata`, which the apt / brew / Windows `tesseract-ocr`
+   packages provide; without the wheel the same calls fall back to the
+   `tesseract` binary through `pytesseract`. CI apt-installs `tesseract-ocr`
+   (see the workflow) and pip-installs the wheel from `requirements.txt`.
+   The tests that assert a REAL read (not a mocked one) carry the shared
+   `requires_tesseract` marker (`digitizer/tests/conftest.py`, since
+   2026-08-17; it asks `ocr.available()` since 11-06), which skips only
+   when no engine is found AND `CI` is unset — so a workflow refactor that
+   loses the tesseract install fails the job instead of going dark behind
+   quiet skips. Before the marker these FAILED on a tesseract-less machine
+   and read as unexplained local reds. A local skip means "install
+   tesseract-ocr for the tessdata", not that anything is broken. Mocked
+   reads patch `digitizer_core.textcluster._ocr.image_to_data` (the module's
+   handle on `ocr.py`), not `pytesseract`. `EMB_OCR_ENGINE=pytesseract`
+   forces the old path for a before/after; the engine that read is in every
+   board's meta (`tesseract_version()` -> `ocr.version()`).
 
    **But do not read a local skip as "nothing to see here" before you
    push — a green local suite with these five skipped is NOT the same run

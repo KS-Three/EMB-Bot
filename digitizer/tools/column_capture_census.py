@@ -273,11 +273,11 @@ def margins(captures: list[dict], letters: list[dict], keep: list[dict]) -> dict
 def signals_census(cases=None, base=None) -> dict:
     """Run each corpus case with the lane (and `base` flags) ON; return the
     three populations and `margins` over them."""
-    import shutil
     from digitizer_core import PipelineConfig
     from tools.thin_strokes import corpus_cases
 
-    ocr = shutil.which("tesseract") is not None
+    from digitizer_core import ocr as _ocr
+    ocr = _ocr.available()
     truth = json.loads(TRUTH.read_text(encoding="utf-8"))["fixtures"]
     captures, letters, keep = [], [], []
     for name, path, width, garment in corpus_cases():

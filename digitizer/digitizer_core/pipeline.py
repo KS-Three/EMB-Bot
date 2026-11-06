@@ -77,7 +77,7 @@ from .stage5_overlap import PlannedRegion, resolve_overlaps
 from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
 from .stage6_hairline_lines import applies as hairline_lines_apply
-from .config import is_photographic
+from .config import is_photographic, satin_floor_applies
 from . import shape_memo
 from .columns import is_lettering
 from .lettering_thread import apply_lettering_thread
@@ -1872,7 +1872,8 @@ def _fill_inside_satin_border(regions, cfg, design_class):
         tier = str(b.meta.get("tier", "auto")).lower()
         if tier != "satin" and not (tier == "auto" and is_satin_candidate(
                 poly, satin_max, design_class=design_class,
-                per_stroke=cfg.satin_per_stroke)):
+                per_stroke=cfg.satin_per_stroke,
+                floor_applies=satin_floor_applies(cfg, design_class))):
             continue
         demote.update(r.shape_id for r in bodies)
     return [replace(r, meta={**r.meta, "tier": "fill"})

@@ -913,11 +913,8 @@ def cmd_cc(a) -> int:
 
 
 def tesseract_version() -> str | None:
-    try:
-        r = subprocess.run(["tesseract", "--version"], capture_output=True, text=True)
-        return (r.stdout or r.stderr).splitlines()[0].strip()
-    except OSError:
-        return None
+    from digitizer_core import ocr as _ocr
+    return _ocr.version()
 
 
 def _label_lines(img, lines):
