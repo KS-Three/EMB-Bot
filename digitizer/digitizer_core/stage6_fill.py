@@ -2246,10 +2246,11 @@ def _plan_sections(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
 
 
 def _long_cut_pricer(poly: Polygon, ring, slack: Polygon, entry, trim_at_mm: float,
-                     row_mm: float, cut_bridges: bool):
+                     row_mm: float, cut_bridges: bool, hidden: bool = True):
     """order -> (`_order_cost`'s figure with the hidden routes `emit` sews under
-    the seam re-plans, the cuts whose hop is past `machine.LINK_MAX_GAP_MM`),
-    memoized on the order's geometry for one shape."""
+    the seam re-plans -- or, `hidden` False, without them, as the order sews
+    when nothing is re-planned -- and the cuts whose hop is past
+    `machine.LINK_MAX_GAP_MM`), memoized on the order's geometry for one shape."""
     costs: dict = {}
 
     def priced(order) -> tuple[tuple[int, float, float], int]:
@@ -2259,7 +2260,8 @@ def _long_cut_pricer(poly: Polygon, ring, slack: Polygon, entry, trim_at_mm: flo
             return costs[key]
         cost, long_cuts, cur = (0, 0.0, 0.0), 0, entry
         for path, step in zip(order, _order_cost_walk(order, poly, ring, slack, entry, trim_at_mm,
-                                                      row_mm, cut_bridges, hidden_row_mm=row_mm)):
+                                                      row_mm, cut_bridges,
+                                                      hidden_row_mm=row_mm if hidden else None)):
             if step[0] > cost[0] and cur is not None \
                     and math.dist(cur, path[0]) > machine.LINK_MAX_GAP_MM:
                 long_cuts += 1
@@ -2295,19 +2297,36 @@ def _seam_aware_chooser(reach, row_mm: float):
     is reached hidden -- the planner's one-step lookahead, asked of its
     `_LOOKAHEAD` best; not an articulation point of the sections still to
     sew on the seam graph (sewing it would leave parts the needle can only
-    cross over finished fill); nearest."""
+    cross over finished fill); nearest.
+
+    A reach is a pure function of (needle, head, sections sewn), so each is
+    asked once: the lookahead's from a section's tail is the next step's own
+    question when that section goes. The lookahead is asked only of the
+    candidates level with the best on the first rule."""
+    memo: dict = {}
+
+    def hidden(cur, head, sewn_ids, sewn, todo) -> bool:
+        key = (tuple(cur), tuple(head), sewn_ids)
+        if key not in memo:
+            memo[key] = reach(cur, head, sewn, todo)
+        return memo[key]
+
     def choose(cur, free, oriented, done, sewn, upstream, seams):
         remaining = {j for j in range(len(oriented)) if j not in done}
         todo = [oriented[j] for j in sorted(remaining)]
         splits = fill_section_travel._articulation(remaining, seams)
         near = sorted(free, key=lambda k: (math.dist(cur, oriented[k][0]), k))
+        sewn_ids = frozenset(done)
         cands = []
         for k in near[:_ROUTABLE_PROBE_LIMIT]:
-            ok = reach(cur, oriented[k][0], sewn, todo)
+            ok = hidden(cur, oriented[k][0], sewn_ids, sewn, todo)
             cands.append((not ok, k in splits, math.dist(cur, oriented[k][0]), k))
         cands.sort()
+        level = [c for c in cands if c[0] == cands[0][0]]
+        if len(level) == 1:
+            return level[0][-1]
         scored = []
-        for miss, split, dist, k in cands[:fill_section_travel._LOOKAHEAD]:
+        for miss, split, dist, k in level[:fill_section_travel._LOOKAHEAD]:
             after = done | {k}
             nxt_free = [j for j in sorted(remaining - {k}) if upstream[j] <= after]
             if nxt_free:
@@ -2315,7 +2334,7 @@ def _seam_aware_chooser(reach, row_mm: float):
                 sewn2 = _sewn_add(sewn, _footprint(oriented[k], row_mm))
                 todo2 = [oriented[j] for j in sorted(remaining - {k})]
                 nxt_free.sort(key=lambda j: (math.dist(tail, oriented[j][0]), j))
-                nxt = any(reach(tail, oriented[j][0], sewn2, todo2)
+                nxt = any(hidden(tail, oriented[j][0], sewn_ids | {k}, sewn2, todo2)
                           for j in nxt_free[:_ROUTABLE_PROBE_LIMIT])
             else:
                 nxt = True
@@ -2412,23 +2431,34 @@ def _seam_aware_sections(paths: list[list[tuple[float, float]]], poly: Polygon, 
     sewable = _sewn_paths(paths)
     if len(sewable) < 3:
         return paths
-    cost_of = _long_cut_pricer(poly, ring, slack, entry, trim_at_mm, row_mm, cut_bridges)
-    before, before_long = cost_of(sewable)
+    # The baseline is the order as it sews without the switch: no hidden
+    # route. Priced WITH them, seam order's own order on ProSeal hat's field
+    # cuts 2 against the 5 it sews, so that order, its hops hidden, is the
+    # first candidate; the two re-plans follow, the dearer one last.
+    before, before_long = _long_cut_pricer(poly, ring, slack, entry, trim_at_mm, row_mm,
+                                           cut_bridges, hidden=False)(sewable)
     if before[0] == 0:
         return paths                     # no cut to buy
+    cost_of = _long_cut_pricer(poly, ring, slack, entry, trim_at_mm, row_mm, cut_bridges)
     reach = _hidden_reach(poly, ring, slack, row_mm)
 
     def price(order):
         return _score_hidden_free(cost_of(order)[0])
     faults = _seam_faults(sewable, angle_deg, row_mm)
     best, best_score = paths, _score_hidden_free(before)
-    for kw in ({"choose": _seam_aware_chooser(reach, row_mm)}, {"reach": reach}):
-        candidate = _order_for_seams(sewable, angle_deg, entry, row_mm, price, **kw)
+    plans = (lambda: list(sewable),
+             lambda: _order_for_seams(sewable, angle_deg, entry, row_mm, price, reach=reach),
+             lambda: _order_for_seams(sewable, angle_deg, entry, row_mm, price,
+                                      choose=_seam_aware_chooser(reach, row_mm)))
+    for make in plans:
+        candidate = make()
         cost, long_cuts = cost_of(candidate)
         if (cost[0] < before[0] and long_cuts <= before_long and cost[2] <= before[2] + 1e-9
                 and _score_hidden_free(cost) < best_score
                 and _seam_faults(candidate, angle_deg, row_mm) <= faults):
             best, best_score = candidate, _score_hidden_free(cost)
+            if cost[0] == 0:
+                break                    # nothing left to buy
     return best
 
 
