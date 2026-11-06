@@ -240,28 +240,37 @@ def _ends(cover, a, b):
 
 
 def bridge(poly, slack, a, b, kind: str, *, todo=None, row_mm: float | None = None,
-           sewn=None):
+           sewn=None, avoid_sewn: bool = False):
     """`travel_path`'s return shape (a excluded, b included, at travel pitch)
     for a hop it could not route, or None.
 
     FILL: under `todo`, the paths not sewn yet (the one `b` starts included),
     each as the footprint `_footprint` gives it. UNDERLAY: inside the shape
-    inset by `TRAVEL_INSET_MM`. Anything else: None."""
+    inset by `TRAVEL_INSET_MM`. Anything else: None.
+
+    `avoid_sewn` (`cfg.fill_one_pass_sections`, built OFF 2026-11-06): the
+    fill already laid is taken OUT of the ground the route is proposed on,
+    except round the two ends. Without it the raster proposes the shortest
+    route, which along a seam runs on the column just sewn, and the exposure
+    test below then refuses it -- a forked field's hop from one lobe's top to
+    the other lobe's bottom was lost that way on the fixture in
+    `tests/test_fill_one_pass_sections.py`. Off, the ground is as it was."""
     from . import stitches
     if math.dist(a, b) < machine.TINY_STITCH_MM:
         return None
     key = ("bridge", kind, tuple(a), tuple(b),
            tuple((tuple(p[0]), tuple(p[-1]), len(p)) for p in todo) if todo else ())
     if key not in _MEMO:
-        _MEMO[key] = _bridge(poly, slack, a, b, kind, todo, row_mm, sewn)
+        _MEMO[key] = _bridge(poly, slack, a, b, kind, todo, row_mm, sewn, avoid_sewn)
     hit = _MEMO[key]
     return None if hit is None else list(hit)
 
 
-def _bridge(poly, slack, a, b, kind, todo, row_mm, sewn):
+def _bridge(poly, slack, a, b, kind, todo, row_mm, sewn, avoid_sewn=False):
     from . import stage6_fill as s6
     from . import stitches
     budget = _budget(a, b)
+    on_sewn = 2.0 * row_mm if row_mm else 0.0
     if kind == stitches.FILL:
         if not todo or row_mm is None:
             return None
@@ -273,6 +282,15 @@ def _bridge(poly, slack, a, b, kind, todo, row_mm, sewn):
         if not feet:
             return None
         ground = slack.intersection(shapely.union_all(feet)).union(_ends(slack, a, b))
+        if avoid_sewn and sewn is not None and not sewn.is_empty:
+            # The fill already laid is out of bounds except within one travel
+            # stitch of either end (`_ends`' own radius), so the needle steps
+            # off its column instead of running along it; and the route may
+            # lie on it up to that same tolerance, which is what `travel_path`
+            # and `_hide_bridge` already accept as a bridge that does not show.
+            laid = sewn.clipped(*win.bounds) if isinstance(sewn, s6._Sewn) else sewn
+            on_sewn = s6._EXPOSED_TOLERANCE_MM
+            ground = ground.difference(laid.difference(_ends(slack, a, b)))
     elif kind == stitches.UNDERLAY:
         ik = ("inner", poly.wkb)
         if ik not in _MEMO:
@@ -287,8 +305,7 @@ def _bridge(poly, slack, a, b, kind, todo, row_mm, sewn):
     # the column it leaves, inside that column's own footprint, which
     # `_footprint` draws a row wide each side of the row the needle is on.
     route = hidden_route(ground, slack, a, b, budget,
-                         sewn if kind == stitches.FILL else None,
-                         on_sewn_mm=2.0 * row_mm if row_mm else 0.0)
+                         sewn if kind == stitches.FILL else None, on_sewn_mm=on_sewn)
     if route is None:
         return None
     out: list[tuple[float, float]] = []

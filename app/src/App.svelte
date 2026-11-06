@@ -11,6 +11,7 @@
   import { hoopingRows } from "./lib/hooping.js";
   import { generateAll } from "./lib/generate.js";
   import { ensureFonts } from "./lib/fontLoader.js";
+  import { isOutlineKey } from "./lib/outlineFonts.js";
   import { rehydrateImages } from "./lib/imageSource.js";
   import { chartIdForProject, designChartId } from "./lib/designChart.js";
   import { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF, sewnColorCount } from "./lib/flatten.js";
@@ -246,7 +247,7 @@
   let fontsTick = 0;
   function fontsArrived() { fontsTick += 1; }
   $: fontKeyList = (project.elements || [])
-    .filter((el) => el.type === "text" && el.fontKey)
+    .filter((el) => el.type === "text" && el.fontKey && !isOutlineKey(el.fontKey))
     .map((el) => el.fontKey)
     .join("|");
   $: ensureFonts(fontKeyList ? fontKeyList.split("|") : []).then(fontsArrived).catch(() => {});
