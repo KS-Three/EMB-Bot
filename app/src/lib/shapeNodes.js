@@ -230,6 +230,34 @@ export function ringEditOverrides(el, basis, live, removed = null, liveNodes = n
   return { cur };
 }
 
+/** A ring translated by (dx, dy). Pure; vertex order and count unchanged. */
+export function translateRing(ring, dx, dy) {
+  return ring.map(([x, y]) => [x + dx, y + dy]);
+}
+
+/**
+ * Move shape (spec 2026-11-05): one shape's shell, holes and nodes translate by
+ * (dx, dy) field mm as a unit. `shell` / `holes` are the rings as the field
+ * shows them (field mm; they already honour a pending boundary_override /
+ * holes_override, which is what makes them the basis). The commit goes through
+ * `ringEditOverrides`: the shell always, the holes only when the shape has any
+ * (a hole-less shape leaves `holes_override` absent), and `nodes` from
+ * `basis.nodesById` unchanged: the indices index the same vertices and
+ * `ringFingerprint` is similarity-invariant, so it still matches.
+ * -> null on a zero delta, else ringEditOverrides' { cur } | { error, sid }.
+ */
+export function moveShapeOverrides(el, basis, shapeId, shell, holes, dx, dy) {
+  if (!shell || !(Math.abs(dx) > 1e-9 || Math.abs(dy) > 1e-9)) return null;
+  const live = new Map([[shapeId, translateRing(shell, dx, dy)]]);
+  (holes || []).forEach((h, k) => live.set(ringKey(shapeId, k), translateRing(h, dx, dy)));
+  const nodes = new Map();
+  for (const key of live.keys()) {
+    const n = basis.nodesById && basis.nodesById.get(key);
+    if (n) nodes.set(key, n);
+  }
+  return ringEditOverrides(el, basis, live, null, nodes, null);
+}
+
 /**
  * Discard: the fields Reshape snapshotted on entry, put back. Returns only the
  * keys that differ (so nothing changed = no patch). `nodes` ride inside

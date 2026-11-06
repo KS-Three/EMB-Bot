@@ -289,6 +289,12 @@
    "basis": "docs/testdata-inventory.md (PR #705)"
   },
   {
+   "path": "app/e2e/fixtures/two-black-squares.png",
+   "status": "synthetic",
+   "source": "Synthetic e2e upload fixture: two equal black squares on white, drawn with Pillow, so 'edit all similar shapes' offers a look-alike (two-squares' black and red are not similar)",
+   "basis": "app/e2e/field-reshape-mode.spec.js (m5, Move shape, 2026-11-05)"
+  },
+  {
    "path": "app/e2e/fixtures/red-disc.png",
    "status": "synthetic",
    "source": "Synthetic e2e upload fixture: one red disc on transparent, drawn with Pillow for the corner-drag case (two-squares' box corners are shape nodes, so a drag there never resizes)",

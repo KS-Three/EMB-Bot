@@ -901,3 +901,17 @@ PRE_FLIP.update(RECIPE_2026_10_27)
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
     "lettering_columns_text_lean", "lettering_columns_inside_stagger", "text_cluster_wide_letters")}
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
+
+
+@pytest.fixture
+def pinned_jef_date(monkeypatch):
+    """Fix the date pystitch's JefWriter stamps into the header.
+
+    JefWriter.py:27 writes ``datetime.today()`` to the second (14 ASCII bytes at
+    header offset 16) unless ``settings["date"]`` is given. A test that compares
+    two JEF writes straddles a clock second now and then and differs at byte 21
+    only (main flaked at fb682ef9). Production keeps the real date.
+    """
+    from digitizer_service import formats
+    monkeypatch.setitem(formats._WRITER_SETTINGS, "jef",
+                        {**formats._WRITER_SETTINGS["jef"], "date": "20260101000000"})

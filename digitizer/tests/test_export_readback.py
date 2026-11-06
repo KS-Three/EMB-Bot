@@ -248,6 +248,7 @@ def _post(client, fmt, **extra):
     return client.post("/export", json={"design": sample_design(), "format": fmt, "label": "t", **extra})
 
 
+@pytest.mark.usefixtures("pinned_jef_date")  # two writes are compared; see conftest
 @pytest.mark.parametrize("fmt", MACHINE)
 def test_a_good_export_reports_it_was_verified_and_the_bytes_are_unchanged(client, fmt):
     r = _post(client, fmt)
@@ -314,3 +315,19 @@ def test_a_stitch_that_moved_inside_the_design_fails_stitch_positions():
     assert failed_checks(r) == {"stitch_positions"}
     f = r["failed"][0]
     assert f["expected"].startswith("10 stitches") and f["read"] == "5 found in order"  # the matching stops at the first stitch that is not there
+
+
+def test_readback_checks_the_bytes_it_sends_not_a_second_write(client, monkeypatch):
+    """/export verifies the one buffer it returns. The JEF header date differs
+    on every write here; a verifier that wrote twice would fail."""
+    import itertools
+    counter = itertools.count()
+    real = formats._WRITERS["jef"]
+
+    def moving(pattern, buf, settings=None):  # settings is copied per write
+        return real(pattern, buf, {**(settings or {}), "date": f"2026010100{next(counter):04d}"})
+
+    monkeypatch.setitem(formats._WRITERS, "jef", moving)
+    r = _post(client, "jef")
+    assert r.status_code == 200 and r.headers["X-Export-Verified"] == "true"
+    assert r.content != formats.write(design_to_pattern(sample_design(), label="t"), "jef")
