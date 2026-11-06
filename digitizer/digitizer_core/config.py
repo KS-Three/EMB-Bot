@@ -4352,6 +4352,22 @@ class PipelineConfig:
     # five: `docs/fill-one-pass-sections-2026-11-06.md`.
     # Tests: `tests/test_fill_one_pass_sections.py`.
     fill_one_pass_sections: bool = False
+    # Seam order's sections planned with lookahead (2026-11-06, built OFF,
+    # defect 6, Kent's "Hold, build planner (Recommended)"). On the 17 pairs,
+    # 31 fill-section cuts survive `fill_one_pass_sections`, and every one on
+    # Drone and ProSeal hat is a SHORT hop (3-15 mm) with no later thread to
+    # bury it -- under the long-hop rule that switch never looks. This one
+    # re-plans any field whose seam order cuts: among the sections free to go
+    # (seams kept), one reached hidden, then one from whose tail a section
+    # freed next is reached hidden (`fill_section_travel.plan`'s one-step
+    # lookahead), then one whose sewing leaves the rest connected along their
+    # seams (its articulation rule), then the nearest; the plain reach-first
+    # order is priced beside it. Kept only if it lays no worse, cuts fewer,
+    # has no more hops past `machine.LINK_MAX_GAP_MM`, lays no more on
+    # finished fill, and is cheaper with the hidden travel free. No new
+    # constant. Off, byte-identical. `stage6_fill._seam_aware_sections`;
+    # tests: `tests/test_fill_seam_aware_sections.py`.
+    fill_seam_aware_sections: bool = False
 
     # The fill column-order scorer prices only what `emit` sews (2026-10-08,
     # built OFF). `_fill_paths` returns one-point "columns" that `emit`

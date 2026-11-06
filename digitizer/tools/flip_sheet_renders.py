@@ -490,6 +490,20 @@ FLAGS: dict[str, dict] = {
                 "hop past LINK_MAX_GAP_MM (one stage 7 could never bury), cuts no more and lays no "
                 "more on finished fill than seam order's own order; a shape not re-planned is "
                 "byte-identical. Both arms pin the rembg timeout at 900 s."},
+    # ---- defect 6 (2026-11-06): seam order planned with lookahead, built OFF
+    "fill_seam_aware_sections": {
+        "base": {"photo_prep_background_removal_timeout_s": 900}, "base_name": "rembg900",
+        "sets": {"photo_prep_background_removal_timeout_s": 900, "fill_seam_aware_sections": True},
+        "fixtures": ["becker_hat_large", "becker_lc_large", "becker_hat_small", "becker_chest_small",
+                     "becker_beanie", "mfab_hat", "mfab_lc", "precision_drone", "proseal_hat",
+                     "proseal_beanie"],
+        "metric": "inpiece_cuts", "about": "cuts inside one piece / all cuts", "pr": None,
+        "note": "Any field whose seam order cuts is re-planned within its seams: a free section "
+                "reached hidden, then one whose tail reaches a section freed next, then one that "
+                "leaves the rest connected, then the nearest; the plain reach-first order priced "
+                "beside it. Kept only if it lays no worse, cuts fewer, has no more hops past "
+                "LINK_MAX_GAP_MM and lays no more on finished fill. Both arms pin the rembg "
+                "timeout at 900 s."},
     # ---- seam order's regression (2026-10-30): Kent, "Render and attribute (Recommended)"
     "seam_order_read": {
         "base": {"photo_prep_background_removal_timeout_s": 900, "fill_seam_order": False},
