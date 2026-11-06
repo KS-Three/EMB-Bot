@@ -19,9 +19,13 @@ from tools import stage0_scale_relative as tool
 from .conftest import ENGINE_2026_10_27, TESTDATA
 
 
-def test_the_flag_defaults_off_and_the_frozen_snapshot_holds_off():
-    assert PipelineConfig().stage0_scale_relative_grad is False
+def test_the_flag_defaults_on_and_the_frozen_snapshot_holds_off():
+    """Flipped ON 2026-11-06 (Kent, "Flip ON (Recommended)"); the dated snapshot
+    and `PRE_FLIP` keep the engine the older pins were taken on."""
+    from .conftest import PRE_FLIP
+    assert PipelineConfig().stage0_scale_relative_grad is True
     assert ENGINE_2026_10_27["stage0_scale_relative_grad"] is False
+    assert PRE_FLIP["stage0_scale_relative_grad"] is False
 
 
 # --- the statistic ----------------------------------------------------------------
@@ -84,8 +88,8 @@ def test_decide_flat_gradient_on_reads_tonal_frac_only():
 
 @pytest.mark.parametrize("rel", ["logo_whitebg.png", "photo/drone_render.png", "photo/owl_kent.jpg"])
 def test_both_arms_report_the_same_signals_and_off_ignores_tonal_frac(rel):
-    off = s0.classify(str(TESTDATA / rel), PipelineConfig())
-    on = s0.classify(str(TESTDATA / rel), PipelineConfig(stage0_scale_relative_grad=True))
+    off = s0.classify(str(TESTDATA / rel), PipelineConfig(stage0_scale_relative_grad=False))
+    on = s0.classify(str(TESTDATA / rel), PipelineConfig())
     assert off.signals == on.signals
     assert "tonal_frac" in off.signals
     assert tool.derive(off.signals, False) == off.class_
@@ -96,10 +100,11 @@ def test_off_class_does_not_move_when_tonal_frac_would_flip_it(monkeypatch):
     """OFF never reads the new statistic: forcing it to either extreme leaves
     the shipped class and confidence exactly as they were."""
     path = str(TESTDATA / "photo" / "enthusiast_logo.png")
-    base = s0.classify(path, PipelineConfig())
+    off = PipelineConfig(stage0_scale_relative_grad=False)
+    base = s0.classify(path, off)
     for forced in (0.0, 1.0):
         monkeypatch.setattr(s0, "_tonal_frac", lambda rgb, fg, v=forced: v)
-        r = s0.classify(path, PipelineConfig())
+        r = s0.classify(path, off)
         assert (r.class_, r.confidence) == (base.class_, base.confidence)
 
 
