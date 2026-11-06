@@ -5,6 +5,7 @@ import { shapesToRegions } from "./manualShapes.js";
 import { shapePresetPoints, DEFAULT_SHAPE_SIZE_MM } from "./shapePresets.js";
 import { combineDesigns, bboxMmFromStitches } from "./combine.js";
 import { decodedFromDesignCached, digitizedBlockColors, displayResult } from "./digitizer.js";
+import { isOutlineKey, outlineTargetWidthMm } from "./outlineFonts.js";
 
 // Generates a single element's Design, or null if the element isn't ready
 // to sew yet (empty text / no flattened image state). Throws only on real
@@ -266,6 +267,24 @@ export function generateElement(element, garment, runtime) {
   // text
   const text = (element.text || "").trim();
   if (!text) return null;
+  if (isOutlineKey(element.fontKey)) {
+    // An outline font (lib/outlineFonts.js): the SERVICE laid the text out
+    // and sewed it, and the element carries that baked Design exactly as a
+    // `digitized` element does — so it rides the same imported-design path
+    // (scale / hoop-clamp / rotate / offset in one place). No result yet:
+    // nothing to draw until the customer presses "Digitize lettering".
+    if (!element.result) return null;
+    const decoded = decodedFromDesignCached(displayResult(element));
+    if (!decoded) return null;
+    return EMB.buildImportedDesign(decoded, {
+      garment,
+      targetWidthMm: outlineTargetWidthMm(element),
+      rotationDeg: element.rotationDeg || 0,
+      offsetXMm: element.offsetXMm || 0,
+      offsetYMm: element.offsetYMm || 0,
+      blockColors: digitizedBlockColors(element),
+    });
+  }
   const fontData = (EMB.SATIN_FONTS || {})[element.fontKey];
   if (!fontData) throw new Error("Unknown font: " + element.fontKey);
   // Satin spacing: the engine default (EMB.SATIN_SPACING_MM, 0.4) — the same

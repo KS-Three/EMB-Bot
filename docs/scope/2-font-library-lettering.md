@@ -618,6 +618,63 @@ shipped 2026-09-15 through `tools/build-embf.mjs --only <keys>`. The six
 gate-1 glyphs are unchanged. The live record, including the measured bbox
 shift, is the header comment in `test/font-dead-glyphs.test.js`.
 
+## Outline fonts, digitized on demand (2026-11-06)
+
+A second library beside the `.embf` one. Kent, 2026-11-06: "import some more
+fonts, that are not pre-digitized, but embot will have the ability to
+digitize them (slower, but easier than importing an image of the font)" —
+and, offered the starter OFL set, the full 137-family Google list, or starter
+set plus own-TTF upload, he took the starter set.
+
+**What it is.** Plain TrueType/OpenType files the digitizer SERVICE lays out
+from their own outlines and sews through the Column lane
+(`digitizer_core/outline_fonts.py`, `POST /lettering`). Each glyph reaches the
+pipeline as a lettering-tagged auto-tier shape, so a typed word gets the
+construction a word traced out of a customer's logo gets, on exact curves,
+with stages 0-4 skipped. In the Studio it is an ordinary text element whose
+`fontKey` is `outline:<key>`, a "Digitize lettering" button in the text step,
+and the result stored on the element like a digitized image's (`result`,
+`appliedConfig`); `staleness.js` locks Download when text, font, width,
+spacing, justification, colour, garment, fabric or chart move.
+
+**Why the 2026-07-24 ruling does not bar it.** That ruling rejected the
+browser engine's auto-TRACE of glyph bitmaps as worse than hand-authored
+satin; the Column lane (ON since 2026-10-20) did not exist, and the 2026-09-19
+route review already listed "bring-your-own-font-file" as the real option
+once it did. The trace is still not a path.
+
+**Measured 2026-11-06, Kent's laptop, same word and font both ways (outline →
+Column lane against a PNG of the word → full auto-digitize):**
+
+| case | outline route | PNG route |
+|---|---|---|
+| Montserrat Bold "Fremont", cap 12 mm | 15.5 s, 1,292 st, 8 trims | 24.2 s, 1,462 st, 7 trims |
+| Lobster "Fremont", cap 12 mm | 21.8 s, 1,224 st, 6 trims | 7.8 s, 1,196 st, 4 trims — **0 of 5 shapes tagged as letters** |
+| Montserrat Bold "ENTHUSIAST", cap 6 mm | 2.0 s, 975 st, 2 trims | 14.7 s, 952 st, 2 trims |
+
+**The set.** 21 families, 33 Regular/Bold entries, 6.2 MB, fetched
+UNMODIFIED from google/fonts at commit `86aced91` by
+`tools/fetch_outline_fonts.py` (`--check` verifies every sha256), OFL-1.1
+only, `OFL.txt` beside each family: Montserrat, Open Sans, Roboto, Poppins,
+Oswald, Nunito, Fredoka, Playfair Display, Lora, EB Garamond, Libre
+Baskerville, Lobster, Pacifico, Dancing Script, Great Vibes, Kaushan Script,
+Bebas Neue, Anton, Alfa Slab One, Bangers, Graduate. Left out on purpose:
+Permanent Marker (Apache, not in the three allowed licences), Merriweather
+(4.6 MB) and Lato (1.3 MB) on size. Unmodified, so a Reserved Font Name may
+stay the name (licence audit 2026-07-31 item 10).
+
+**Traps met building it.** Variable fonts keep OVERLAPPING contours (Roboto's
+B is two bowls over a stem) and a TrueType contour may touch itself
+(Montserrat's B draws both counters as one figure-of-eight), so even-odd
+nesting is wrong: the fill is NONZERO winding over polygonized faces. GPOS
+class kerning stays as classes — Montserrat's expansion is ~1M pairs. The
+font-file route is public (a CSS `@font-face` cannot send the token).
+
+**Not built:** a customer's own TTF upload, arc, per-letter colour,
+ligatures/shaping beyond cmap plus pair kerning. **Not sewn** (gate 1).
+*(built 2026-11-06 — `tests/test_outline_fonts.py`,
+`tests/test_service_lettering.py`, `app/src/lib/outlineFonts.spec.js`)*
+
 ## Supply
 
 **Upstream is effectively exhausted, and there is no external supply.**

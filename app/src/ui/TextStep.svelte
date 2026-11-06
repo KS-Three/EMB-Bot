@@ -3,9 +3,13 @@
   import ThreadPicker from "./ThreadPicker.svelte";
   import ColorRangesEditor from "./ColorRangesEditor.svelte";
   import Advanced from "./Advanced.svelte";
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onDestroy } from "svelte";
   import { tip } from "../lib/tip.js";
   import { remapColorRanges } from "../lib/colorRanges.js";
+  import { isOutlineKey, outlineRequest, outlineRequestKey, digitizeLettering } from "../lib/outlineFonts.js";
+  import { markDigitizeBusy, rememberRun, forgetRun, wasRunning } from "../lib/digitizeBusy.js";
+  import { LONG_RUN_MS, reviewFromJob } from "../lib/digitizer.js";
+  import { friendlyError } from "../lib/friendlyError.js";
 
   // Element-scoped text editor (Task 5, Slice 5): bound to whichever text
   // element is currently selected in ContentStep's element list, not a
@@ -18,10 +22,93 @@
   // bare patch and making the parent guess whose id to attach. ContentStep
   // just bubbles these straight through to App unchanged.
   export let element;
+  // The project (garment, fabric, chart) and the service's /health payload —
+  // both only read for an OUTLINE font (lib/outlineFonts.js), whose text the
+  // service lays out and sews on the button below. Null for the .embf fonts
+  // the browser engine sews itself.
+  export let project = null;
+  export let health = null;
   const d = createEventDispatcher();
 
   function patch(p) {
     d("elupdate", { id: element.id, patch: p });
+  }
+
+  // ---- Outline font: digitize on the service ------------------------------
+  // Mirrors DigitizePanel.runDigitize: one patch = one undo step, the key of
+  // the SUBMITTED request stamped as `appliedConfig` so an edit made
+  // mid-flight still reads as behind afterwards (lib/staleness.js), the
+  // pinwheel over the field via digitizeBusy, and a remembered run so a
+  // reload or an element switch joins the service's job instead of
+  // orphaning it. Nothing runs on its own (Kent, 2026-10-05): the click is
+  // the run.
+  $: outline = isOutlineKey(element.fontKey);
+  $: outlineReq = outline && project ? outlineRequest(element, project) : null;
+  $: outlineStale = !!(outline && element.result && outlineReq
+    && outlineRequestKey(outlineReq) !== element.appliedConfig);
+  $: outlineText = (element.text || "").trim().length > 0;
+  $: outlineLit = outline && !!health && outlineText && (outlineStale || !element.result);
+  let phase = "idle";
+  let error = "";
+  let runningLong = false;
+  let destroyed = false;
+  $: markDigitizeBusy(element.id, outline && phase !== "idle");
+  onDestroy(() => { destroyed = true; markDigitizeBusy(element.id, false); });
+  $: statusLine =
+    phase === "running" && runningLong
+      ? "Still digitizing — lettering can take a minute or two…" :
+    phase === "running" ? "Digitizing your lettering…" :
+    phase === "queued" ? "Waiting for the digitizer — another job is running…" :
+    phase === "submitting" ? "Sending your text…" : "";
+
+  async function runLettering() {
+    if (!outline || !health || phase !== "idle" || !outlineReq || !outlineText) return;
+    const el = element;
+    const req = outlineReq;
+    error = "";
+    phase = "submitting";
+    runningLong = false;
+    rememberRun(el.id);
+    try {
+      const job = await digitizeLettering(req, {
+        onState: (s, info) => {
+          if (destroyed) return;
+          phase = s === "running" ? "running" : "queued";
+          runningLong = s === "running" && !!info && info.runningMs > LONG_RUN_MS;
+        },
+        isCancelled: () => destroyed,
+      });
+      if (destroyed || !job) return;
+      patch({
+        result: job.design,
+        warnings: job.warnings || [],
+        review: reviewFromJob(job.review, job.stats && job.stats.blocks),
+        preflight: job.preflight || null,
+        stats: job.stats || null,
+        lettering: job.lettering || null,
+        appliedConfig: outlineRequestKey(req),
+        // The service laid the text out AT this width (outlineRequest), so
+        // the design's own width is the element's: a later drag scales it
+        // and reads as behind until the next run, like a digitized image.
+        sizeMm: req.width_mm,
+      });
+    } catch (err) {
+      if (!destroyed) error = friendlyError(err, "digitize");
+    } finally {
+      if (!destroyed) {
+        phase = "idle";
+        runningLong = false;
+        forgetRun(el.id);
+      }
+    }
+  }
+
+  // A reload or an element switch tore the last run down mid-flight: join
+  // the service's job (an identical request is a cache hit there).
+  let resumeChecked = false;
+  $: if (!resumeChecked && outline && health && outlineReq) {
+    resumeChecked = true;
+    if (wasRunning(element.id)) runLettering();
   }
 
   // Line justification is meaningless on a single line (nothing to justify
@@ -84,12 +171,19 @@
   on:keyup={updateSelection}
   placeholder="Type a name or word"
 ></textarea>
-<ColorRangesEditor
-  text={element.text}
-  colorRanges={element.colorRanges || []}
-  {selection}
-  on:change={(e) => patch({ colorRanges: e.detail })}
-/>
+{#if !outline}
+  <!-- Per-letter colour, curve, weight and slant are the browser engine's
+       lettering rules (satinfont.js); an outline font is laid out and sewn
+       by the service, which reads text, size, spacing, justification and
+       ONE thread colour (lib/outlineFonts.js outlineRequest). Controls the
+       run would ignore are not shown for it. -->
+  <ColorRangesEditor
+    text={element.text}
+    colorRanges={element.colorRanges || []}
+    {selection}
+    on:change={(e) => patch({ colorRanges: e.detail })}
+  />
+{/if}
 <ThreadPicker label="Color" rgb={element.colorRgb} on:pick={(e) => patch({ colorRgb: e.detail })} />
 <h3>Font</h3>
 <FontSelect
@@ -97,6 +191,31 @@
   currentText={element.text}
   on:pick={(e) => patch({ fontKey: e.detail })}
 />
+{#if outline}
+  <div class="olrun" data-testid="outline-run">
+    <button
+      type="button"
+      class="dgp-run"
+      class:dgp-run-stale={outlineStale}
+      class:dgp-run-lit={outlineLit}
+      disabled={!health || phase !== "idle" || !outlineText}
+      title={!health
+        ? "The stitch service is offline — an outline font is digitized by the service, so this font needs it running."
+        : "Lay this text out in the font and digitize it into satin lettering on the stitch service (slower than the built-in fonts)."}
+      on:click={runLettering}
+    >{element.result ? "Re-digitize lettering" : "Digitize lettering"}</button>
+    {#if statusLine}
+      <p class="dgp-status" role="status">{statusLine}</p>
+    {:else if !health}
+      <p class="dgp-status">The stitch service is offline. This font is digitized by the service, so it sews once the service is back.</p>
+    {:else if !element.result}
+      <p class="dgp-status">This font is digitized on demand: press the button to stitch your text.</p>
+    {/if}
+    {#if error}
+      <p class="dgp-error" role="alert">{error}</p>
+    {/if}
+  </div>
+{/if}
 <!-- Default slot: the size row (ContentStep). Advanced (spec 2026-09-30 §5)
      holds everything below it, plus whatever ContentStep puts in the
      "advanced" slot (the align row, the add-element row). -->
@@ -114,6 +233,7 @@
   />
   <span class="label">{(element.letterSpacingMm || 0).toFixed(1)} mm</span>
 </label>
+{#if !outline}
 <label class="letterspacing" use:tip={"curve"}>
   <span>Curve<i class="tipmark" aria-hidden="true"></i></span>
   <input
@@ -126,6 +246,7 @@
   />
   <span class="label">{element.arcDeg || 0}°</span>
 </label>
+{/if}
 <label class="letterspacing" use:tip={"rotation"}>
   <span>Rotation<i class="tipmark" aria-hidden="true"></i></span>
   <input
@@ -146,6 +267,7 @@
   {(element.rotationDeg || 0) === 180 ? "Right-side up" : "Flip upside-down"}
 </button>
 
+{#if !outline}
 <div class="weightpresets">
   <span class="weightlabel">Weight</span>
   <div class="weightbtns">
@@ -160,6 +282,7 @@
   </div>
 </div>
 
+{/if}
 <!-- Justification only means something across multiple lines (single-line
      text auto-centers as a whole, and arc'd lines center on their own
      circle). This used to be HIDDEN until the text had a line break, which
@@ -185,6 +308,7 @@
   </div>
 </div>
 
+{#if !outline}
 <label class="letterspacing">
   <span>Slant</span>
   <input
@@ -197,6 +321,7 @@
   />
   <span class="label">{element.slantDeg || 0}°</span>
 </label>
+{/if}
 <slot name="advanced" />
 </Advanced>
 
@@ -219,6 +344,34 @@
     border-radius: 8px;
     padding: 1px 6px;
   }
+  /* The outline font's run control: DigitizePanel's .dgp-run look (the same
+     button a digitized image has), the same transparent "out of date" state
+     and the same halo while Download waits on it. */
+  .olrun { margin-top: 8px; }
+  .dgp-run {
+    padding: 10px 20px;
+    min-height: 40px;
+    border: 2px solid var(--accent, #4f46e5);
+    border-radius: var(--radius-s, 8px);
+    background: var(--accent, #4f46e5);
+    color: var(--accent-ink, #fff);
+    cursor: pointer;
+    font-weight: var(--fw-medium, 500);
+    font-size: var(--fs-sm, 14px);
+  }
+  .dgp-run:hover:not(:disabled) {
+    background: var(--accent-dark, #4338ca);
+    border-color: var(--accent-dark, #4338ca);
+  }
+  .dgp-run:disabled { opacity: 0.6; cursor: default; }
+  .dgp-run.dgp-run-stale { background: transparent; color: var(--accent, #4f46e5); }
+  .dgp-run.dgp-run-stale:hover:not(:disabled) {
+    background: var(--tint, rgba(79, 70, 229, 0.08));
+    border-color: var(--accent, #4f46e5);
+  }
+  .dgp-run.dgp-run-lit { box-shadow: 0 0 0 4px var(--tint-border, #ccd6fb); }
+  .dgp-status { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 6px 0 0; }
+  .dgp-error { font-size: var(--fs-xs, 12px); color: var(--danger, #b3261e); margin: 6px 0 0; }
   .upsidedown {
     margin-top: 8px;
     padding: 6px 12px;

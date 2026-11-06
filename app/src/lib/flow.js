@@ -1,4 +1,5 @@
 import { isSewableShape } from "./manualShapes.js";
+import { isOutlineKey } from "./outlineFonts.js";
 
 // "This element is ready to sew": each type has its own notion of having real
 // content. design/digitized carry their stitches ON the element (dstBase64 /
@@ -17,7 +18,10 @@ import { isSewableShape } from "./manualShapes.js";
 // "Ready to stitch". One rule, three readers.
 export function isSewable(el) {
   if (!el) return false;
-  return el.type === "text" ? (el.text || "").trim().length > 0 :
+  // Text in an outline font sews only once the service has digitized it
+  // (lib/outlineFonts.js): its stitches are the baked `result`, like a
+  // digitized element's, not something the browser can lay out itself.
+  return el.type === "text" ? (isOutlineKey(el.fontKey) ? !!el.result : (el.text || "").trim().length > 0) :
     el.type === "design" ? !!el.dstBase64 :
     el.type === "digitized" ? !!el.result :
     el.type === "manual" ? (el.shapes || []).some((s) => isSewableShape(s)) :
