@@ -29,7 +29,6 @@ the OLDEST lines whole to the archive.
 - [CI pin hygiene](ci-pin-hygiene-2026-10-25.md) — hex `==` prints whole; `tools.ci_repin` re-pins from a run id (dry run unless --apply); shard map max/mean 1.28 → 1.00; advisory default-path-diff job
 - [Colour cap on the sewn design](colour-cap-sewn-2026-10-29.md) — census item 3 misnamed the hole: sew-white recolours AFTER the cap + blend bands snap chart-wide; `color_cap_sewn` ON 11-01 re-caps final regions, folds strays on blocks
 - [Column lane memo](column-lane-memo-2026-10-26.md) — lane rebuilt identical columns (779/2,825) and rail pairings (941/1,413); per-letter `_MEMO` on exact keys: stages 5-7 CPU -12% (MFab hat -20%), 7 DSTs byte-identical
-- [Column rail fit: measured false](column-rail-fit-negative-2026-10-25.md) — 7 pairs: rails read 0.000-0.04 on RUN windows; per-letter wobble is real corners, a fit can't move it. Quote `rail_run`, don't plan a rail fit
 - [DADE teardown](dade-app-teardown-2026-11-04.md) — 10 px/mm fixed, tatami, trims OFF; at its 36.7 mm its file read better than ours (flat = blob); at 113.5 ours reads, DADE can't
 - [Dark ink bean](dark-ink-bean-2026-10-28.md) — `dark_ink_bean` ON 10-29 (Kent, Pooh): dark read within 50 dE00 of its ground beans along its skeleton, ground sews through; Fremont wordmark (100) stays satin
 - [Dark-ink floor rescue](dark-ink-floor-rescue-2026-11-03.md) — `dark_ink_floor_rescue` ON 11-04 (Kent): Pooh's lost letter = dark-read KERNEL (min_detail_mm), not stage 3; 2nd read at 1.0 mm unioned; ON reads every thin stroke
@@ -63,7 +62,6 @@ the OLDEST lines whole to the archive.
 - [Lane census](lane-census-2026-10-25.md) — Kent 10-26: 6b NOT built, the button stays. 4 of 14 pro jobs reach flat (all Becker), 8 gradient, 2 photo_scene; 6b as written = the button's file; kappas a wash
 - [Lane reading before the run](lane-reading-before-run-2026-10-28.md) — `POST /classify` replays stage 0 + 1.25 before `/digitize`; Studio reading row above Auto Digitize (owl 2.5 s, golden_tee 32 s); `np.unique` GIL freeze fixed
 - [Layering census](layering-census-2026-10-26.md) — W4-06 FALSE: pro sews every contained piece ON its ground (162/162) = `silhouette_underfill`; 80 of 176 cuts cross their own ground (sews first), 5 a sibling
-- [Letter separation](letter-separation-2026-10-25.md) — W3-07: our 6 touching 5-10 mm pairs are PULL COMP (traced 0.60-0.87 apart, rails 0.29 out), not construction; pro keeps >= 0.10 mm, tips only
 - [Lettering board](lettering-board-2026-10-25.md) — the ONE board a lettering PR quotes: ours/pro by job and drawn height, five figures, n/a with a reason; `--compare A B` is the delta; baseline docs/scoreboards/
 - [Lettering board v2](lettering-board-v2-2026-10-27.md) — baseline on 98603fb4, cc on 39/42 lines (was 16); the 10-25 MFab/Tires had rerouted: a lane has no rembg venv
 - [Lettering board v3](lettering-board-v3-2026-10-31.md) — baseline on a8758e96: <4 mm cc +0.92 (Fremont's gain = bean, not pro's satin), Becker in-letter trims 62 -> 21; Drone gap = thread contrast
@@ -125,9 +123,7 @@ the OLDEST lines whole to the archive.
 - [Claude as the eye](vlm-judge-2026-11-04.md) — session judged pro-lettering-1102 blind: kappa +0.36 [+0.16, +0.55] above chance (n 54); sides n 16 no evidence; agreement = shared ties + base picks, arm backed 3x vs Kent's 14; next: 100-pair re-render
 - [Wave-3 flips](wave3-flips-2026-10-26.md) — bay mouth + sew_enclosed_white ON (Kent "ship both"); bare thread rose only in ProSeal's knockdown 0.20-0.25 mm band; Studio box ticked, sends false
 - [White counters open](white-counters-open-2026-10-26.md) — holes <= 1.5 holder strokes stay open
-- [White faces fill](white-faces-fill-2026-10-25.md) — sew_enclosed_white made Becker 8.4x slower (white faces sewed as Column letters); `sew_enclosed_white_fields_fill` OFF fills them at 22°; house angle hides in fill_angle_deg
 - [White-keyline art gate](white-keyline-art-gate-2026-10-26.md) — Kent: recipe ON only on MFab-type art (2 of 22 jobs); + fold/skip/absorb (hat 40→30, LC 52→25); absorb bared counters till rider holes kept
 - [White recipe on every job](white-recipe-every-job-2026-10-27.md) — Kent 10-27 "Every job": recipe switches are PLAIN defaults (a gate would override the Studio's unticked white box); D1-D3 + Becker counter growth fixed first
 - [White re-rule packet](white-rerule-packet-2026-10-25.md) — under border_from_outline, white ALONE fills Becker's faces (0°) at ≤1.39x CPU; fields_fill costs up to 5.6x (MFab lc); keyline inert; census 29/31
-- [Word legibility reach](word-legibility-reach-2026-10-25.md) — all 17 words located in both files; `reach` moves where cc saturates; crop neighbours hid the pro's small words
 - [Pro-pair yardstick](yardstick-pro-pair-2026-11-01.md) — 100 pairs at the pro's size: only trims clear chance (hops +0.24, cuts +0.23), "never worse" fails all 6; Kent 11-02 on the 17 trim-disagreement pairs: "My eye stands", exit unmet
