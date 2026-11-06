@@ -239,3 +239,154 @@ knockdown's in `pipeline`). **`trim_bury_under_later`'s own pass keeps
 - Found on the way, not this lane's: over-length fill and underlay segments
   (13.8-37.5 mm) in Becker's fields, which the DST writer turns into
   needle-up flights. One per run kind per job on all five Becker pairs.
+
+
+## 2026-11-06 (evening): the 17-job table, on Kent's laptop
+
+The PR's own run had the five Becker pairs. This section is the same three
+commands (`gen`, `arms`, `report`) over every pair this laptop has, on the
+engine of that PR (`81870332`, = main `5777f91c` + #1270), one job at a time
+under the CPU lock. 18 cells, 17 jobs: `becker_hat_smaller` is the same job as
+`becker_hat_large` to us (byte-identical plan), so it is left out of every pool
+below. Pro sides are the client's DSTs (`tools.border_census.PAIRS`); the
+pro's own file is read by the same reader as ours.
+
+**The pro here is 409 cuts, 0 uncut, 409 breaks under every definition.** The
+10-29 count was 425 needle-up moves with 16 uncut; this reader (`dst_moves`)
+finds no uncut move in any of the 17 pro files, and ours reads 853 against
+that doc's 879. The ratio is the same 2.07-2.09x.
+
+### What 2.07x becomes
+
+| ours / pro, 17 jobs pooled | A cut + uncut (the 10-29 count) | B cut only | C cut + uncut not walked, over pro A |
+|---|---|---|---|
+| OFF (main) | **2.09x** (853 / 409) | **0.97x** (396 / 409) | **1.27x** (521 / 409) |
+| `cut_every_jump` ON | 1.18x (482 / 409) | 1.16x (475 / 409) | 1.18x (482 / 409) |
+| ON + `bury_step_fine` | 1.19x (485 / 409) | 1.17x (478 / 409) | 1.19x (485 / 409) |
+
+- **A, 2.09x, is 457 floats on top of 396 cuts.** B says we cut at 0.97x the
+  pro's rate. C takes out the floats ON walks on sewn thread (332 of 457,
+  73%): what is left is 1.27x, i.e. 125 floats ON buries under later thread
+  or has to cut.
+- **It is two jobs.** Hotel Fremont hat and patch carry 300 of the 457 floats
+  (148 + 152; on the hat, card v8 found them rope-strand and bean-letter hops
+  on the white field).
+  Without them OFF is 508 / 369 = 1.38x under A. ON walks 291 and buries 9
+  of the 300 (hat 143 + 5; patch 148 + 4), and cuts none.
+- **The floats ON does not walk cost cuts.** ON removes 450 of 457 floats at
+  +79 cuts (396 -> 475, 1.16x the pro): Drone +9, Gaulke hat +14 / LC +19,
+  ProSeal beanie +18 / hat +14, Becker small +2 each. The 7 uncut that remain
+  are Becker's long-stitch encodings (stage 6, not a jump pass).
+- **The break-gap question is answered, and it is not a flip answer.** If a
+  needle-down walk is not a break, the 2.07x is 1.27x; if floats count and
+  nothing hides them it is 2.09x; the pro's cut rate is matched either way
+  (B 0.97x). Whether 171 mm of thread walked on top of Fremont's field reads
+  as a float or as his habit is still the sew-out's question (card v8).
+
+### Per job
+
+| job | pro cuts | OFF cuts / uncut | ON cuts / uncut | A pro / off / on | B pro / off / on | C pro / off / on |
+|---|---|---|---|---|---|---|
+| becker_hat_large | 9 | 11 / 2 | 11 / 2 | 9 / 13 / 13 | 9 / 11 / 11 | 9 / 13 / 13 |
+| becker_lc_large | 11 | 12 / 2 | 12 / 2 | 11 / 14 / 14 | 11 / 12 / 12 | 11 / 14 / 14 |
+| becker_hat_small | 10 | 11 / 4 | 13 / 1 | 10 / 15 / 14 | 10 / 11 / 13 | 10 / 14 / 14 |
+| becker_chest_small | 11 | 11 / 4 | 13 / 1 | 11 / 15 / 14 | 11 / 11 / 13 | 11 / 14 / 14 |
+| becker_beanie | 4 | 14 / 3 | 15 / 1 | 4 / 17 / 16 | 4 / 14 / 15 | 4 / 16 / 16 |
+| gaulke_roofing_hat | 41 | 30 / 14 | 44 / 0 | 41 / 44 / 44 | 41 / 30 / 44 | 41 / 44 / 44 |
+| gaulke_roofing_lc | 41 | 23 / 23 | 42 / 0 | 41 / 46 / 42 | 41 / 23 / 42 | 41 / 46 / 42 |
+| hotel_fremont_hat | 20 | 25 / 148 | 25 / 0 | 20 / 173 / 25 | 20 / 25 / 25 | 20 / 30 / 25 |
+| hotel_fremont_patch | 20 | 20 / 152 | 20 / 0 | 20 / 172 / 20 | 20 / 20 / 20 | 20 / 24 / 20 |
+| mfab_hat | 18 | 29 / 10 | 29 / 0 | 18 / 39 / 29 | 18 / 29 / 29 | 18 / 32 / 29 |
+| mfab_lc | 19 | 22 / 12 | 22 / 0 | 19 / 34 / 22 | 19 / 22 / 22 | 19 / 24 / 22 |
+| precision_drone | 58 | 86 / 28 | 95 / 0 | 58 / 114 / 95 | 58 / 86 / 95 | 58 / 105 / 95 |
+| tires_hat_3d | 9 | 3 / 0 | 3 / 0 | 9 / 3 / 3 | 9 / 3 / 3 | 9 / 3 / 3 |
+| bridge_hat | 19 | 16 / 5 | 16 / 0 | 19 / 21 / 16 | 19 / 16 / 16 | 19 / 20 / 16 |
+| bridge_lc | 19 | 17 / 7 | 17 / 0 | 19 / 24 / 17 | 19 / 17 / 17 | 19 / 21 / 17 |
+| proseal_hat | 53 | 38 / 18 | 52 / 0 | 53 / 56 / 52 | 53 / 38 / 52 | 53 / 53 / 52 |
+| proseal_beanie | 47 | 28 / 25 | 46 / 0 | 47 / 53 / 46 | 47 / 28 / 46 | 47 / 48 / 46 |
+| **pooled (17)** | 409 | 396 / 457 | 475 / 7 | 409 / 853 / 482 | 409 / 396 / 475 | 409 / 521 / 482 |
+
+
+Walked share: of OFF's 457 uncut moves (7 of them long-stitch encodings no jump pass can see), `cut_every_jump` walks 332 (73%), buries and cuts the rest. Needle-down walks between pieces in the DSTs (`between_walks`): pro 156, OFF 95, ON 482.
+(The DST walk count is `between_walks`' needle-down steps from piece to piece, counted
+by piece and not by float: Fremont's 197 / 178 under ON against 0 for OFF, where the
+floats are 148 / 152.)
+
+### Gate 3 instruments and CPU, 17 jobs pooled
+
+| arm | cuts | uncut | exposed mm | bare mm @0.20 | pass CPU s |
+|---|---|---|---|---|---|
+| OFF | 396 | 457 | 428.7 | 140.24 | |
+| ON | 475 | 7 | 428.7 | 114.74 | 3.29 |
+| ON + fine | 478 | 7 | 428.7 | 114.74 | 12.05 |
+
+
+(`plan CPU` is `process_time` on a laptop six sessions share: read it as noise
+beside the pass CPU, which is the pass's own `process_time`.)
+
+- **Exposed travel is unchanged on every job** (428.7 mm OFF, ON, ON+fine): the
+  walked hops are single stitches, not travel runs.
+- **Bare thread @0.20 falls 140.2 -> 114.7 mm** with ON, almost all of it the
+  floats' thread on the cloth: ProSeal beanie stays 100 mm (99.9 ON), the one
+  job whose bare thread is not a float (`trim-defects-4-6-2026-10-29`).
+- **Stage 7 CPU of the pass, 17 jobs: 3.3 s -> 12.1 s with the fine step.**
+  Fremont is 10.2 of the 12.1 (hat 1.36 -> 5.36 s, patch 1.2 -> 4.81 s); no
+  other job passes 0.52 s. ProSeal/Drone/MFab: 0.06-0.16 -> 0.12-0.52 s.
+- **OFF is byte-identical to main on all 17 jobs.** The OFF DST of every job,
+  planned off the same Studio request with main's `digitizer_core` (a detached
+  worktree of `5777f91c`) and with this lane, has the same md5 on 17 of 17.
+
+### The 0.01 mm oracle on the walk (`jump_walk_oracle`, each ON arm against OFF)
+
+| job | ON walked segs / off thread / worst mm | ON+fine walked segs / off thread / worst mm |
+|---|---|---|
+| becker_hat_small | 2 / 0 / 0.0 | 2 / 0 / 0.0 |
+| becker_chest_small | 2 / 0 / 0.0 | 2 / 0 / 0.0 |
+| becker_beanie | 2 / 0 / 0.0 | 2 / 0 / 0.0 |
+| gaulke_roofing_lc | 7 / 1 / 0.0039 | 6 / 0 / 0.0 |
+| hotel_fremont_hat | 154 / 0 / 0.0 | 154 / 0 / 0.0 |
+| hotel_fremont_patch | 160 / 0 / 0.0 | 160 / 0 / 0.0 |
+| mfab_hat | 14 / 0 / 0.0 | 14 / 0 / 0.0 |
+| mfab_lc | 15 / 0 / 0.0 | 15 / 0 / 0.0 |
+| precision_drone | 21 / 1 / 0.0292 | 20 / 0 / 0.0 |
+| bridge_hat | 6 / 0 / 0.0 | 6 / 0 / 0.0 |
+| bridge_lc | 9 / 0 / 0.0 | 9 / 0 / 0.0 |
+| proseal_hat | 5 / 2 / 0.0134 | 4 / 1 / 0.0124 |
+| proseal_beanie | 10 / 1 / 0.0094 | 10 / 1 / 0.0094 |
+| **17 jobs** | 407 segs, 5 off thread | 404 segs, 2 off thread |
+
+- **Drone 62.6 mm hat: 1 off-thread sewn hop at 0.0292 mm with ON, 0 with
+  ON + `bury_step_fine`** (21 -> 20 sewn-hop segments; buried 10 -> 9, cut
+  9 -> 10). That is the done-test, met on the job it was set for.
+- **Not closed everywhere.** Over 17 jobs the fine step takes the off-thread
+  count 5 -> 2: Gaulke LC 1 -> 0 (0.0039 mm), ProSeal hat 2 -> 1 (0.0134 ->
+  0.0124 mm), Drone 1 -> 0. Two stay: ProSeal hat (a 1.39 mm segment) and
+  ProSeal beanie (1.22 mm, 0.0094 mm, unchanged by the step). Both are under
+  0.013 mm, smaller than the DST's own 0.1 mm lattice, which rounds a point by
+  up to 0.07 mm; the cause was not isolated here (not tested: whether they come
+  from a bent `_bury_route` leg or from rounding). The fine step is a
+  fidelity improvement, not a guarantee.
+- **ON + fine is not free in cuts:** +3 cuts over ON across the 17 (Drone,
+  Gaulke LC, ProSeal hat each cut one more hop that the 0.1 mm step had
+  buried or walked).
+
+### The flip question for Kent
+
+Nothing here changes `cut_every_jump`'s flip; it still waits on cloth (card
+v8, Kent 10-21). What the 17-job table adds to that question:
+
+- **The cost of ON, measured on today's engine, 17 jobs:** floats 457 -> 7, cuts
+  396 -> 475 (+79, from 0.97x to 1.16x the pro's), bare thread 140 -> 115 mm,
+  exposed travel unchanged, 332 floats walked needle-down on thread already
+  sewn (291 of them Fremont's), pass CPU +0.2 s a job (+8.8 s in all with the
+  fine step, 10 s of it Fremont).
+- **The question is the same two lines as before, now with numbers:** on
+  Fremont-type jobs (small lettering on a white field) ON turns 300 floats
+  into 300 walks (171 mm of thread on the field for the hat, from the PR) and cuts none; on
+  Gaulke-type jobs (letters on bare cloth) it cuts every float, +79 cuts across
+  the jobs that have them. Kent decides from the sew-out whether the walk reads
+  as a float or as the pro's habit, and whether +79 cuts (1.16x) is worth no
+  float at all. `bury_step_fine` rides with that flip.
+- **The break gap that remains is not floats:** B is 0.97x, so the cut rate is
+  the pro's; ON's 1.16x is the price of removing floats the pro never has.
+  Cuts inside one piece (fill sections 32, satin splits) are defect 6's.
