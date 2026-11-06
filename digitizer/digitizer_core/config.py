@@ -654,6 +654,21 @@ class PipelineConfig:
     # rider and is merged into the black host, and the white panel sews over it.
     # The Lanczos enlargement to 8 px/mm opens that bridge, as on the flat route.
     photo_work_grid: bool = False
+    # `photo_enclosed_rim` (2026-11-06, OFF): on the photo lane, the rim of an
+    # ENCLOSED ground (stage 1's `enclosed_mask`: bg-coloured, not
+    # border-connected -- MFab's white keyline) joins that ground's population
+    # when it is its colour. Stage 1 leaves the keyline's edge pixels in the
+    # main population; the merge gathers them into one white label of 275
+    # fragments (3,064 px on MFab), and the min-detail floor absorbs each
+    # sub-floor fragment into the only neighbour it can see, the black. The
+    # floor is in mm, so it is wider in pixels at 60 mm (6.7 px/mm) than at
+    # 100.8 (4.0) and eats more of a 1-2 px keyline the smaller the design.
+    # ON, a main-population component touching the enclosed ground and within
+    # `merge_delta_e` of the ground pixels it touches leaves the main
+    # population before the floor, when it is under the floor (the pieces the
+    # floor would hand to the ink), and is quantised with the ground
+    # (`stage2_photo_segment.enclosed_rim`). No enclosed ground: never read.
+    photo_enclosed_rim: bool = False
     denoise: bool = True
     # Stage 1 stops reading the RGB under an alpha cutout's transparency.
     # The shape of a cutout lives in alpha; the RGB underneath is whatever
