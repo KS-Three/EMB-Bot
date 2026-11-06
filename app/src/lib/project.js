@@ -258,6 +258,9 @@ export function defaultDigitizedElement(id) {
     // before a first run and on a project saved before 2026-10-05, which
     // the panel reads as "current as loaded".
     appliedConfig: null,
+    // digitizer.js runBaseKey of the last landed run: the config WITHOUT the
+    // shape edits. A restitch whose base matches keeps the old centre.
+    appliedBase: null,
     preflight: null,
     stats: null,
     // The numbers the PREVIOUS digitize produced, captured the moment a new

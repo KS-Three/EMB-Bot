@@ -1629,8 +1629,15 @@ export function decodedFromDesign(design) {
   if (fr && [fr.minX, fr.maxX, fr.minY, fr.maxY].every(Number.isFinite)) {
     minX = fr.minX; maxX = fr.maxX; minY = fr.minY; maxY = fr.maxY;
   }
-  const cx = Math.round((minX + maxX) / 2);
-  const cy = Math.round((minY + maxY) / 2);
+  // A restitch after a shape edit keeps the centre the design was placed on
+  // (`anchor`, see holdAnchor), so a shape that grew the bbox does not drag
+  // every other shape across the canvas. Only the centre is held: width and
+  // height stay the sewn extent, so the size readout and the hoop check tell
+  // the truth. A frame (pruned preview) is the more specific statement and wins.
+  const an = design.anchor;
+  const anchored = !(fr && Number.isFinite(fr.minX)) && an && Number.isFinite(an.x) && Number.isFinite(an.y);
+  const cx = Math.round(anchored ? an.x : (minX + maxX) / 2);
+  const cy = Math.round(anchored ? an.y : (minY + maxY) / 2);
   for (const s of stitches) {
     s.x -= cx;
     s.y -= cy;
@@ -1658,6 +1665,58 @@ export function decodedFromDesign(design) {
   const onlyTailEnd = src.length === stitches.length + 1 && src[src.length - 1] && src[src.length - 1].type === "end";
   if (Array.isArray(design.runs) && (src.length === stitches.length || onlyTailEnd)) out.runs = design.runs;
   return out;
+}
+
+// ---- holding the centre across an edit restitch -----------------------------
+//
+// The canvas centres a digitized design on its sewn bbox (decodedFromDesign),
+// so a restitch that grows the bbox -- Move shape, a Reshape node dragged
+// outward -- slid every UN-edited shape by half the growth (measured: a 10 mm
+// move showed the moved square +5 mm and the other -5 mm; the machine file was
+// right, the placement was not). The service keeps one origin across runs of
+// the same art, so the fix is to centre the new result on the centre the old
+// one was centred on: `design.anchor`, in service units (unrounded).
+
+export function stitchBBox(design) {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const s of (design && design.stitches) || []) {
+    if (s.type !== "stitch") continue;
+    if (s.x < minX) minX = s.x;
+    if (s.x > maxX) maxX = s.x;
+    if (s.y < minY) minY = s.y;
+    if (s.y > maxY) maxY = s.y;
+  }
+  return maxX < minX ? null : { minX, maxX, minY, maxY };
+}
+
+// The point a design is centred on: its held anchor, else its bbox midpoint.
+export function designCentre(design) {
+  const an = design && design.anchor;
+  if (an && Number.isFinite(an.x) && Number.isFinite(an.y)) return { x: an.x, y: an.y };
+  const b = stitchBBox(design);
+  return b ? { x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 } : null;
+}
+
+// `next` (a fresh service design of the same art) centred where `prev` was.
+// Unrotated only: a rotated design is re-centred on its ROTATED bbox
+// (buildImportedDesign), so holding the unrotated centre would not hold the
+// screen position -- those keep today's behaviour. Returns `next` unchanged
+// when there is nothing to hold.
+export function holdAnchor(prev, next, rotationDeg = 0) {
+  if (!next || ((rotationDeg % 360) + 360) % 360 !== 0) return next;
+  const c = designCentre(prev);
+  if (!c || !stitchBBox(next)) return next;
+  return { ...next, anchor: c };
+}
+
+// The run's identity apart from its edits: same art, crop and settings, so the
+// service coordinates are comparable. Stored beside `appliedEdits`; a restitch
+// holds the centre only when this matches the last landed run's.
+export function runBaseKey(cfg, element) {
+  const { deleted_shape_ids, shape_overrides, merge_shape_ids, split_shapes, ...rest } = cfg || {};
+  void deleted_shape_ids; void shape_overrides; void merge_shape_ids; void split_shapes;
+  const src = element && element.sourceFile && element.sourceFile.key;
+  return configKey({ rest, crop: (element && element.crop) || null, src: src || (element && element.sourcePng && element.sourcePng.length) || 0 });
 }
 
 // ---- optimistic delete ------------------------------------------------------
@@ -1713,6 +1772,12 @@ export function pruneDeletedShapes(design, deletedIds, knownIds) {
     if (gone.has(ri)) return;
     runs.push({ ...r, i0: shift[r.i0], i1: shift[r.i1 + 1] - 1 });
   });
+  // A held centre stays the centre: the frame grows symmetrically about it.
+  const an = design.anchor;
+  if (an && Number.isFinite(an.x) && Number.isFinite(an.y)) {
+    const hx = Math.max(an.x - minX, maxX - an.x), hy = Math.max(an.y - minY, maxY - an.y);
+    minX = an.x - hx; maxX = an.x + hx; minY = an.y - hy; maxY = an.y + hy;
+  }
   return { ...design, stitches, runs, frame: { minX, maxX, minY, maxY } };
 }
 

@@ -73,6 +73,15 @@ Tests: `app/src/lib/shapeNodes.spec.js` ("Move shape"), e2e m1–m7 in
 - Delete / Backspace from the field are swallowed while Move is on: nothing is
   deleted mid-move (a delete would clear the selection and the move would commit
   onto a gone shape). Escape cancels from anywhere; Enter needs the field.
+- A move changes the sewn bbox, and the Studio centres a design on it, so the
+  restitched result used to slide every un-moved shape (a 10 mm move showed
+  black +5, red -5; the machine file was right). Fixed 2026-11-06: an
+  edit-only restitch (same art, crop and settings, `runBaseKey` unchanged) is
+  centred where the last result was (`design.anchor`, `holdAnchor`), so black
+  lands +10.2 and red 0.0 on screen. Width/height stay the sewn extent. A
+  rotated design keeps the old re-centring; fill rows re-grid with the art box,
+  so a fill's first row can sit up to one row off. The Original-view picture
+  still fits the (changed) stitch box, as before.
 - The rings are frozen at entry. If an Undo or a landing restitch replaces the
   shape's override entry or its review row, the move ends with no commit.
 
