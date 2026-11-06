@@ -129,6 +129,74 @@ RIDER_OF_KEY = "underfill_rider_of"
 #: a word rides when MORE than this share of its letters are not outline bodies
 WORD_NONBODY_MIN = 0.5
 
+# --- Untagged riders (`cfg.underfill_untagged_riders`, 2026-11-05, built OFF) ----
+#
+# The rider rule above needs the text tagger's word tags, and the tagger reads
+# MFab's small line only at some sizes: at 113.5 mm every small letter is
+# tagged (12 riders); at 100.8 mm W and E arrive as ONE region (a one-pixel
+# black bridge in the 418 px source, 53.6 mm2, stroke 1.20 mm) that carries no
+# tag, so it merges into the black under-fill and the white panel covers it;
+# at 60 mm NOTHING in the small line is tagged (0 riders, 16 shapes merged,
+# small-line strokes 0.68-0.75 mm) and white sews over the whole line.
+# Stage 2 is not where they are lost: every small letter is its own black
+# region at all three widths (`docs/photo-superpixel-merge-2026-11-05.md`).
+# ON: an UNTAGGED shape in the host's thread sitting INSIDE_MIN in a hole of
+# a sewn white field rides too when it is lettering-thin -- its stroke
+# (2 x area / perimeter) at most UNTAGGED_RIDER_MAX_STROKE_MM AND at most
+# UNTAGGED_RIDER_REL_STROKE of the thickest same-thread shape inside that
+# ring (so the big letters' own bodies, 2.1-5.7 mm here, never ride, at any
+# width) -- and at least UNTAGGED_RIDER_MIN_AREA_MM2 (the 0.3-1.5 mm2 slivers
+# between loops keep merging) -- and it stands in a ROW of lettering: at least
+# UNTAGGED_RIDER_ROW_MIN other same-thread shapes inside the ring (that size or
+# more) share its line (vertical overlap UNTAGGED_RIDER_ROW_OVERLAP of the
+# shorter, heights within UNTAGGED_RIDER_ROW_HEIGHT of each other). Without the
+# row, M-FAB's hyphen (stroke 1.44 mm at 100.8) rode alone and its closed panel
+# sewed white over the F. OFF: never read.
+#: the pro's small-letter satin cross on MFab (p50 1.55 / 1.46 mm), rounded up
+UNTAGGED_RIDER_MAX_STROKE_MM = 1.6
+#: of the thickest same-thread shape inside the ring
+UNTAGGED_RIDER_REL_STROKE = 0.5
+UNTAGGED_RIDER_MIN_AREA_MM2 = 2.0
+UNTAGGED_RIDER_ROW_MIN = 2
+UNTAGGED_RIDER_ROW_OVERLAP = 0.6
+UNTAGGED_RIDER_ROW_HEIGHT = 1.67
+
+
+def _stroke_mm(poly) -> float:
+    return 2.0 * poly.area / poly.length if poly.length > 0 else 0.0
+
+
+def _untagged_rider(r, host, inner, fields) -> bool:
+    """`cfg.underfill_untagged_riders`: is `r` (inner to a ring whose host is
+    `host`) a lettering-thin shape of the host's thread in a field hole?"""
+    if (r is host or r.thread_index != host.thread_index or _is_letter(r)
+            or r.polygon.area < UNTAGGED_RIDER_MIN_AREA_MM2
+            or str(r.meta.get("tier", "auto")).lower() != "auto"):
+        return False
+    thickest = max([_stroke_mm(s.polygon) for s in inner + [host]
+                    if s.thread_index == host.thread_index and s.polygon is not None
+                    and not s.polygon.is_empty], default=0.0)
+    sw = _stroke_mm(r.polygon)
+    if sw > UNTAGGED_RIDER_MAX_STROKE_MM or sw > UNTAGGED_RIDER_REL_STROKE * thickest:
+        return False
+    if not any(_hole_of(r, f) is not None for f in fields):
+        return False
+    _x0, y0, _x1, y1 = r.polygon.bounds
+    h = y1 - y0
+    peers = 0
+    for s in inner:
+        if (s is r or s is host or s.thread_index != host.thread_index or s.polygon is None
+                or s.polygon.is_empty or s.polygon.area < UNTAGGED_RIDER_MIN_AREA_MM2):
+            continue
+        _a, sy0, _b, sy1 = s.polygon.bounds
+        sh = sy1 - sy0
+        if h <= 0 or sh <= 0 or max(h, sh) > UNTAGGED_RIDER_ROW_HEIGHT * min(h, sh):
+            continue
+        if min(y1, sy1) - max(y0, sy0) >= UNTAGGED_RIDER_ROW_OVERLAP * min(h, sh):
+            peers += 1
+    return peers >= UNTAGGED_RIDER_ROW_MIN
+
+
 #: meta on a white field (`cfg.keyline_fold_slivers`): the sliver ids folded in
 FOLDED_KEY = "keyline_folded"
 
@@ -355,11 +423,13 @@ def _hole_of(r, field):
     return None
 
 
-def find_riders(regions, unsewn=(), outlines=None) -> list[str]:
+def find_riders(regions, unsewn=(), outlines=None, untagged=False) -> list[str]:
     """`cfg.silhouette_underfill_panels`: the shape ids that ride a white
     panel instead of merging into the under-fill (module note above).
     `outlines`: `art_outline.find_art_outlines`' {outline id: [(body id,
-    hole, width)]} -- a body is lettering the keyline loops, not a rider."""
+    hole, width)]} -- a body is lettering the keyline loops, not a rider.
+    `untagged` (`cfg.underfill_untagged_riders`): lettering-thin shapes with no
+    text tag ride too (`_untagged_rider`). False: as before, byte for byte."""
     fields = _fields(regions)
     if not fields:
         return []
@@ -373,6 +443,9 @@ def find_riders(regions, unsewn=(), outlines=None) -> list[str]:
     out = []
     for _ring, host, _outline, _merged, inner in plan(regions, unsewn):
         for r in inner:
+            if untagged and _untagged_rider(r, host, inner, fields):
+                out.append(r.shape_id)
+                continue
             if (r is host or r.thread_index != host.thread_index or not _is_letter(r)
                     or _word(r) not in rides):
                 continue
@@ -426,7 +499,8 @@ def apply_cfg(regions, unsewn, cfg, outlines, pinned=()):
     riders = []
     if (getattr(cfg, "silhouette_underfill_panels", False) and cfg.sew_enclosed_white
             and cfg.border_from_outline):
-        riders = find_riders(regions, unsewn, outlines)
+        riders = find_riders(regions, unsewn, outlines,
+                             untagged=getattr(cfg, "underfill_untagged_riders", False))
     if not riders:
         out, report = apply(regions, unsewn, outlines=outlines, pinned=pinned)
         return out, report, outlines
