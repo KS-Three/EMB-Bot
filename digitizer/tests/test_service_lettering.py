@@ -55,6 +55,10 @@ def test_lettering_job_delivers_the_digitize_contract(client):
 
 def test_identical_lettering_request_is_served_from_cache(client):
     first = client.post("/lettering", json=BODY).json()
+    # `cached` is True only once the prior job is DONE (`Registry.submit`
+    # returns `job.state == DONE`), so wait for the first job before asking
+    # again; back-to-back POSTs flaked by shard order (main e80bb505).
+    wait_for_job(client, first["job_id"])
     second = client.post("/lettering", json=BODY).json()
     assert second["job_id"] == first["job_id"] and second["cached"] is True
 
