@@ -306,5 +306,6 @@
  "wide_columns": false,
  "work_px_per_mm": 8.0,
  "photo_work_grid": false,
+ "photo_enclosed_rim": false,
  "underfill_untagged_riders": false
 }
