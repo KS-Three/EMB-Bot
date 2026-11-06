@@ -25,6 +25,8 @@
     digitize,
     LONG_RUN_MS,
     decodedFromDesignCached,
+    holdAnchor,
+    runBaseKey,
     describeWarnings,
     SILENT_WARNINGS,
     ATTENTION_WARNINGS,
@@ -709,8 +711,14 @@
       // mid-flight still reads as pending afterwards. The review is
       // reconciled so shapes the user deleted keep a struck-through,
       // restorable row (the fresh review no longer contains them).
+      // An edit-only restitch (same art, crop and settings; only the shape
+      // edits differ from the last landed run) is centred where the last
+      // result was, so un-edited shapes stay put when an edit grows the bbox.
+      const baseKey = runBaseKey(cfg, el);
+      const hold = !!el.result && el.appliedBase === baseKey;
       patch({
-        result: job.design,
+        result: hold ? holdAnchor(el.result, job.design, el.rotationDeg || 0) : job.design,
+        appliedBase: baseKey,
         // The new palette is not the old one, and blockColors is keyed by
         // palette INDEX -- so a per-block thread override has to be carried
         // across by the colour it was chosen for, or it lands on whatever

@@ -995,7 +995,7 @@ verbatim there because the sub-requirements *are* the spec.
 
 **Add hole draws a polygon inside a digitized shape into `holes_override`; a hole that crosses the outline, crosses another hole or nests with one is refused with `boundaryIssues`' wording** *(confirmed 2026-11-05 — e2e (h1)-(h9), PR #1244 and its follow-up)*.
 
-**Move shape translates one digitized shape (shell, holes, nodes) as a unit; the outline moves live and the stitches follow the commit through the normal restitch** *(confirmed 2026-11-05 — e2e (m1)-(m7), `docs/superpowers/specs/2026-11-05-move-shape-design.md`)*.
+**Move shape translates one digitized shape (shell, holes, nodes) as a unit; the outline moves live and the stitches follow the commit through the normal restitch** *(confirmed 2026-11-05 — e2e (m1)-(m7), `docs/superpowers/specs/2026-11-05-move-shape-design.md`)*. An edit-only restitch (Move, a Reshape drag past the old bbox) keeps the centre the design was placed on, so un-edited shapes stay put: black +10.2 / red 0.0 mm on screen against +5.1 / −5.1 before; a rotated design still re-centres *(measured 2026-11-06 — e2e (m1), (m9), (m10))*.
 
 **One edit reaches every similar shape (merged 2026-10-28 — PR #1176).** The popover's "Apply to all similar shapes (N)" sends Stitch type, Color, Border, Fill angle and Underlay to every match in one patch. "Similar" (`similarShapes.js`): same sewn colour, area within 2×, same form. *(confirmed 2026-10-28 — PR #1176)*
 
