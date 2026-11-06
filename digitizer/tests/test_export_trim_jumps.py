@@ -75,6 +75,7 @@ def test_default_is_three_and_byte_identical():
     assert _jump_run_lengths(plain) == [3]
 
 
+@pytest.mark.usefixtures("pinned_jef_date")
 def test_other_formats_ignore_it():
     pat = design_to_pattern(_design())
     for fmt in ("pes", "exp", "jef"):
