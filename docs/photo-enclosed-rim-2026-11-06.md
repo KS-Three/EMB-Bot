@@ -128,7 +128,41 @@ row where it moved none is byte-identical OFF vs ON by construction.
 move: group_people, sports_action, vintage_sepia, comic_halftone,
 kanji_seal, neon_outline_sign, pixel_art_sprite, qr_code.)
 
-**Full digitize of the 6 rows that move: not run in this session** (2.5 h budget on a shared laptop, rows took 5-470 s at stage 2 alone). Their stage 0-1 is identical; stage 2 differs by the counts above. Before any flip, `tools.photo_corpus capture --set photo_enclosed_rim=true --only pencil_sketch watercolor distressed_grunge kanji_brush low_poly vintage_engraved_badge` against an OFF capture is the read.
+### The 6 rows that move, digitized in full (added 2026-11-06, after #1269 merged)
+
+`tools.photo_corpus capture --procs 1`, labels `rim-off` and
+`rim-on --set photo_enclosed_rim=true`, same tree (main 15cde8de), the
+Studio's 80 mm left-chest request. Serial; the laptop was shared and loaded,
+so wall times are not a cost reading.
+
+| row | class | stitches OFF / ON | trims | colour blocks | grade (raw) OFF / ON | findings that appear ON | design |
+|---|---|---|---|---|---|---|---|
+| pencil_sketch | photo_scene | 19,277 / 19,277 | 3 / 3 | 2 / 2 | A (100) / A (100) | none | **md5 identical** (the 184 px leave no trace) |
+| watercolor | photo_scene | 22,124 / 21,863 | 57 / 57 | 7 / 7 | C (64) / C (64) | **`ARTWORK_UNCOVERED`** | differs; renders read the same |
+| kanji_brush | photo_scene | 12,803 / 12,851 | 93 / 94 | 4 / 5 | B (76) / B (76) | none | differs; renders read the same |
+| low_poly | gradient | 13,789 / 13,383 | 63 / 67 | 6 / 6 | C (64) / C (64) | none | differs; facets shift, same read |
+| distressed_grunge | gradient | 16,943 / 16,902 | 37 / 38 | 2 / 2 | **A (100) / B (88)** | **`LETTERING_TOO_SMALL`** | differs; letters slightly bolder ON, specks the same |
+| vintage_engraved_badge | photo_scene | timeout (1,200 s) / 34,955 | - / 232 | - / 3 | - / C (64) | n/a: OFF did not finish | no comparison |
+
+No `DENSITY_STACKED` appears or resolves on any row. Nothing resolves.
+
+**Worse ON, by the instruments:** `distressed_grunge` (grade A -> B, a
+`LETTERING_TOO_SMALL` finding appears) and `watercolor` (`ARTWORK_UNCOVERED`
+appears; grade unchanged). The others read the same or are byte-identical.
+`vintage_engraved_badge` is unmeasured (the OFF arm timed out on the loaded
+laptop; ON finished in 815 s).
+
+Side-by-side renders (OFF left, ON right; our output only), for Kent to mark
+better / same / worse: `docs/renders/photo-superpixel-merge-2026-11-06/`
+`watercolor_off_vs_on.png`, `kanji_brush_off_vs_on.png`,
+`low_poly_off_vs_on.png`. Not committed: `distressed_grunge` (its source is
+CC BY-SA 4.0, so a render of it is a derivative that carries the share-alike
+and attribution terms; kept local with the corpus sxs, as the corpus spec
+keeps every sxs page) and `pencil_sketch` (identical design).
+
+![watercolor](renders/photo-superpixel-merge-2026-11-06/watercolor_off_vs_on.png)
+![kanji_brush](renders/photo-superpixel-merge-2026-11-06/kanji_brush_off_vs_on.png)
+![low_poly](renders/photo-superpixel-merge-2026-11-06/low_poly_off_vs_on.png)
 
 ## What the flip would change for a photograph upload
 
@@ -138,7 +172,7 @@ stage-2 output is identical ON. The rule moves pixels only where stage 1 found
 an enclosed patch of the page colour inside the art AND a sub-floor piece of
 that colour sits against it: keyline logos (MFab), and on photographs the odd
 pale patch on a pale page (pencil_sketch, watercolor: under 0.1% of their
-pixels). It also reaches gradient-class logos, which share this segmenter.
+pixels). Digitized in full, pencil_sketch is md5-identical and watercolor gains an `ARTWORK_UNCOVERED` finding (grade unchanged). It also reaches gradient-class logos, which share this segmenter (distressed_grunge: A -> B).
 
 ## Tests
 

@@ -23,7 +23,16 @@ test("the font browser can narrow to fonts that stitch the typed text", async ({
 
   const fit = await tiles.count();
   expect(fit).toBeGreaterThan(0);
-  expect(fit).toBeLessThan(10); // three shipped fonts cover Cyrillic
+  expect(fit).toBeLessThan(all);
+  // Three shipped .embf fonts cover Cyrillic. The outline fonts the service
+  // serves on demand (data-key "outline:…", 2026-11-06) are not counted
+  // against that bound: most Google families cover Cyrillic, so with the
+  // service up they lift the total to ~22, and they only appear when it is.
+  const embfFit = await tiles.evaluateAll(
+    (els) => els.filter((el) => !String(el.dataset.key || "").startsWith("outline:")).length,
+  );
+  expect(embfFit).toBeGreaterThan(0);
+  expect(embfFit).toBeLessThan(10);
   await expect(chip).toContainText(`(${fit})`);
 
   // Unfiltered, the others are flagged rather than left looking usable.

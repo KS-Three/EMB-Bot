@@ -168,6 +168,54 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   preview. Live your-text tiles render only fonts already in
   `EMB.SATIN_FONTS`, memoized per (font, text).
 
+### Outline fonts, digitized on demand (2026-11-06)
+
+A SECOND kind of font beside the `.embf` library: plain TrueType/OpenType
+files the digitizer SERVICE lays out and sews when the customer presses
+"Digitize lettering". Kent reopened outline fonts 2026-11-06 ("not
+pre-digitized, but embot will have the ability to digitize them — slower, but
+easier than importing an image of the font"); the 2026-07-24 "no outline
+fonts" ruling rejected the browser engine's auto-TRACE of glyph bitmaps, and
+the Column lane that sews traced lettering did not exist then. The glyphs'
+own curves go to that lane as lettering-tagged shapes, so a typed word gets
+the construction a traced word gets, on exact outlines, with stages 0-4
+skipped and no OCR/text-cluster tagging to miss. Spike 2026-11-06 on Kent's
+laptop, same word and font both ways: Fremont / Montserrat Bold at cap 12 mm
+15.5 s against 24.2 s via a PNG; ENTHUSIAST at cap 6 mm 2.0 s against 14.7;
+the PNG route tagged 0 of Lobster's 5 shapes as letters, the outline route
+7 of 7 by construction.
+
+- **Service:** `digitizer_core/outline_fonts.py` (registry, fontTools layout
+  with `kern` + GPOS pair kerning, NONZERO-winding fill — variable fonts keep
+  overlapping contours, so even-odd nesting read Roboto's B as two bodies —
+  and `build_text_result` → a lettering-tagged `PipelineResult`);
+  `POST /lettering` (same `/jobs/{id}` contract as `/digitize-manual`, plus a
+  `lettering` echo), `GET /fonts/outline` (rows + coverage in the Studio's
+  shape), `/fonts/outline/{key}/file` and `/license`. `fonttools` is a
+  runtime dependency (MIT, pure Python).
+- **Fonts:** `digitizer_core/outline_fonts/<family>/` — 21 families, 33
+  entries, 6.2 MB, fetched UNMODIFIED from google/fonts at a pinned commit by
+  `tools/fetch_outline_fonts.py` (`--check` verifies the sha256s), OFL-1.1
+  only, `OFL.txt` beside each; a variable file is instanced to Regular/Bold
+  in memory. Shipped unmodified, so a Reserved Font Name may stay the name
+  (audit 2026-07-31 item 10). Adding one: append to `FAMILIES` in the fetch
+  tool, run it, commit the files and `fonts.json`.
+- **Studio:** `app/src/lib/outlineFonts.js`. The key is `outline:<key>` on an
+  ordinary text element; the result lands on the element as
+  `result`/`appliedConfig`/`lettering`/`stats` and renders through
+  `buildImportedDesign` like a digitized image. `staleness.js` compares the
+  request it would send now (text, font, width, spacing, justification,
+  colour, garment, fabric, chart) with `appliedConfig`, so Download locks
+  until the customer re-digitizes (2026-10-25 rule); nothing runs on its own
+  (2026-10-05). `fontLoader.loadOutlineRows()` lists them under the "Outline"
+  chip when the service is up (previews are the TTF itself via `@font-face`,
+  there is no satin render to show); `ensureFont` resolves null for an
+  outline key. Per-letter colour, curve, weight and slant are hidden for an
+  outline font: the service reads none of them. Multi-line text is justified
+  by the element's `align`.
+- **Not built:** a customer's own TTF upload (Ember/Stitchist parity), arc,
+  per-letter colour, ligatures/shaping beyond cmap + pair kerning.
+
 ## Stage B additions (2026-07-28)
 
 - **Font browser** (`FontBrowser.svelte`): dialog (ProjectsDrawer mechanics),
@@ -3125,10 +3173,14 @@ here since it explains *why*, not *what's currently true*.
   `<path inkstitch:satin_column>` rails+rungs for satin fonts, and since
   2026-08-21 also run/bean fonts whose runs carry an AUTHORED stitch
   length and cross-stitch fonts with a measurable grid (this line was
-  satin-only before those lettering paths existed). What stays rejected is
-  the outline-only font, which can only auto-trace — Kent has already ruled
-  that lower quality than hand-authored stitch data. Full recipe + license
-  gate: `.claude/skills/add-font/SKILL.md` / `tools/build-font.mjs` usage.
+  satin-only before those lettering paths existed). An outline-only font
+  does NOT go in this library — it goes in the OTHER one: since 2026-11-06
+  (Kent) the digitizer service lays TrueType/OpenType text out and sews it
+  through the Column lane on demand ("Outline fonts, digitized on demand"
+  above; `tools/fetch_outline_fonts.py`). The 2026-07-24 ruling that an
+  outline font is lower quality was about the browser engine's auto-trace,
+  which is still not a path. Full recipe + license gate for `.embf` fonts:
+  `.claude/skills/add-font/SKILL.md` / `tools/build-font.mjs` usage.
 
 ## Who's asking for what
 
