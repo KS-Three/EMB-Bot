@@ -95,6 +95,7 @@ functions, moved module (confirmed present before writing this module).
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import cv2
@@ -2558,6 +2559,78 @@ def snap_region_edges(labels: np.ndarray, valid: np.ndarray, lab_img: np.ndarray
     return out
 
 
+def enclosed_rim(labels: np.ndarray, valid: np.ndarray, enclosed: np.ndarray,
+                 lab_img: np.ndarray, max_de: float,
+                 max_px: float | None = None) -> np.ndarray | None:
+    """`cfg.photo_enclosed_rim`: the main-population pixels that are the
+    enclosed ground's own rim. -> bool mask, or None when there are none.
+
+    A piece is one 8-connected component of one merged label inside `valid`.
+    It is the rim when it touches `enclosed` (8-neighbour) and its mean Lab is
+    within `max_de` of the mean Lab of the enclosed pixels it touches: the
+    same colour as the ground beside it, cut off only because stage 1's
+    enclosed test missed its pixels. Ink never qualifies (MFab: black L* 1-4
+    against a white ground L* 99); a piece that only touches the ink is not
+    read. `max_px` (the caller passes the floor, `(min_detail_mm * px_per_mm)
+    ** 2`): only a piece the floor would absorb moves; a piece big enough to
+    stand stays where it is (unbounded, `gradient_mascot` moved 388,284 px,
+    whole regions). Measured on MFab at 60 mm: one white label, 275 pieces.
+
+    Background note: the floor (`resolve_small_regions`) reads only this
+    population's regions, so a sub-floor rim piece has no white neighbour to
+    join and lands in the black, a pixel of keyline at a time.
+    """
+    h, w = labels.shape
+    comp = np.zeros((h, w), np.int32)
+    n = 0
+    for lbl in np.unique(labels[valid]):
+        m = ((labels == lbl) & valid).astype(np.uint8)
+        k, cc = cv2.connectedComponents(m, connectivity=8)
+        if k > 1:
+            sel = cc > 0
+            comp[sel] = cc[sel] + n
+            n += k - 1
+    if n == 0:
+        return None
+    # every (piece, enclosed neighbour) contact, 8-neighbourhood; an enclosed
+    # pixel touching a piece from two sides counts twice, as a weight
+    pad_e = np.pad(enclosed, 1)
+    pad_lab = np.pad(lab_img.astype(np.float64), ((1, 1), (1, 1), (0, 0)))
+    sums = np.zeros((n + 1, 3))
+    cnt = np.zeros(n + 1)
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            if dy == 0 and dx == 0:
+                continue
+            nb_e = pad_e[1 + dy:1 + dy + h, 1 + dx:1 + dx + w]
+            hit = (comp > 0) & nb_e
+            if not hit.any():
+                continue
+            ids = comp[hit]
+            nb_lab = pad_lab[1 + dy:1 + dy + h, 1 + dx:1 + dx + w][hit]
+            cnt += np.bincount(ids, minlength=n + 1)
+            for c in range(3):
+                sums[:, c] += np.bincount(ids, weights=nb_lab[:, c], minlength=n + 1)
+    touching = np.nonzero(cnt > 0)[0]
+    if touching.size == 0:
+        return None
+    flat = comp.ravel()
+    sel = flat > 0
+    px = np.bincount(flat[sel], minlength=n + 1).astype(np.float64)
+    own = np.stack([np.bincount(flat[sel], weights=lab_img.reshape(-1, 3)[sel, c],
+                                minlength=n + 1) for c in range(3)], axis=1)
+    own_mean = own[touching] / px[touching, None]
+    ground_mean = sums[touching] / cnt[touching, None]
+    near = np.linalg.norm(own_mean - ground_mean, axis=1) < max_de
+    if max_px is not None:
+        near &= px[touching] < max_px
+    if not near.any():
+        return None
+    take = np.zeros(n + 1, bool)
+    take[touching[near]] = True
+    return take[comp]
+
+
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
             split_tonal=False, shade_demand=False, design_ramp=None,
             thin_population=False, snap_edges=False, keep_counters=False,
@@ -2770,6 +2843,18 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
             base_valid = base_valid & ~absorbed.mask
             thin = merge_thin_ink(absorbed, thin_without(thin, absorbed.mask))
 
+    # --- 3.95 The enclosed ground's rim (`cfg.photo_enclosed_rim`) -----------
+    # Before the floor: a main-population piece that is the enclosed
+    # ground's own colour leaves for the ground's population, so the floor
+    # cannot absorb it into the ink beside it. See `enclosed_rim`.
+    quant_p = p
+    if cfg.photo_enclosed_rim and has_enclosed and merged_count:
+        rim = enclosed_rim(merged, base_valid, enclosed, true_lab, cfg.merge_delta_e,
+                           max_px=(cfg.min_detail_mm * p.px_per_mm) ** 2)
+        if rim is not None:
+            base_valid = base_valid & ~rim
+            quant_p = replace(p, enclosed_mask=enclosed | rim)
+
     # --- 4. Min-area floor ---------------------------------------------------
     # `merge_hierarchical` only ever merges graph-adjacent nodes, but a
     # single merged label can still cover more than one connected component
@@ -2821,7 +2906,7 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
         counter_core=counter_core)
 
     return kept_masks_to_quant(
-        p,
+        quant_p,
         cfg,
         kept,
         blend_warnings + floor_warnings,

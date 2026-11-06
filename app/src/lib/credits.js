@@ -15,16 +15,32 @@ export const MODIFICATION_NOTE =
   "Modified from the original: adapted for machine embroidery (satin stitch paths) " +
   "and compiled to EMB-Bot's .embf binary format (coordinates quantized).";
 
+// An outline font (lib/outlineFonts.js) ships unmodified: the service serves
+// the TTF and its licence text as they came from the foundry, and the only
+// derived work is the stitch plan made from it at the customer's request.
+export const OUTLINE_NOTE =
+  "Unmodified font file, served by the stitch service; digitized to satin stitches on demand.";
+
 export function creditLines(manifestFonts) {
   return (manifestFonts || [])
-    .map((f) => ({
-      name: f.name || f.key,
-      licenseId: f.licenseId || "",
-      attribution: f.attribution || "",
-      source: f.source || "",
-      binHref: "fonts/bin/" + f.key + ".embf",
-      licenseHref: "fonts/" + f.key + ".LICENSE.txt",
-      modificationNote: MODIFICATION_NOTE,
-    }))
+    .map((f) => (f.kind === "outline"
+      ? {
+          name: f.name || f.key,
+          licenseId: f.licenseId || "",
+          attribution: f.attribution || "",
+          source: f.source || "",
+          binHref: f.fileUrl || null,
+          licenseHref: f.licenseUrl || "",
+          modificationNote: OUTLINE_NOTE,
+        }
+      : {
+          name: f.name || f.key,
+          licenseId: f.licenseId || "",
+          attribution: f.attribution || "",
+          source: f.source || "",
+          binHref: "fonts/bin/" + f.key + ".embf",
+          licenseHref: "fonts/" + f.key + ".LICENSE.txt",
+          modificationNote: MODIFICATION_NOTE,
+        }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
