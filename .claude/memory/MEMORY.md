@@ -17,7 +17,6 @@ the OLDEST lines whole to the archive.
 - [Opus team architecture](../../docs/superpowers/plans/2026-10-23-opus-team-architecture.md) — the plan a fresh director runs from: method, state, ranked queue L1-L10 / I1-I6, Kent's open decisions, brief template, traps
 - [Add hole](add-hole-2026-11-05.md) — PR 3: Add hole draws a polygon in a digitized shape, appended to holes_override; refusal reuses boundaryIssues wording, draft stays open; e2e (h1)-(h6)
 - [No Fable agents](agents-cheap-models-2026-11-02.md) — Kent 11-02 "don't release fable agents, we should be saving on usage": every start_session / Agent passes model (Sonnet default, Haiku read-only); a Fable director dispatches, never spawns Fable
-- [Apex cut](apex-cut-2026-10-25.md) — acute tips (M's V, W, MFab N, PROSEAL A): pro cuts along the cross, tip one level-crossed piece; `lettering_columns_apex_cut` OFF; corner_fold refuses them (long_way)
 - [Apex walk](apex-walk-2026-10-27.md) — apex_cut's walk sews each tip from its point: tip-satin travel <= 0.05 mm, crosses kept; per-job travel > OFF on 5 jobs, foreman's call
 - [Bash heredoc Python trap](bash-heredoc-python-repl-trap-2026-11-02.md) — Windows Bash tool `python - <<'E'` lost stdin: Python 3.14 fell into _pyrepl, one core for 26 h (3.68 GB of prompts); a `||` fallback respawned it when killed. Run a script FILE
 - [Bean census](bean-census-2026-10-27.md) — reference beans almost nothing: 17 runs / 780 mm / 8 of 1,101 regions, drawn thin lines, 2 passes; ours 137 (111 small letters); `bean_only_lines` ON (Kent 10-27), kappa -0.014 -> 0.129
@@ -67,6 +66,7 @@ the OLDEST lines whole to the archive.
 - [Lettering board v3](lettering-board-v3-2026-10-31.md) — baseline on a8758e96: <4 mm cc +0.92 (Fremont's gain = bean, not pro's satin), Becker in-letter trims 62 -> 21; Drone gap = thread contrast
 - [Lettering thread](lettering-thread-2026-11-01.md) — Drone's gap was thread: stray ON 11-02 (Kent), contrast floor OFF (Becker black), AND DRONE 0 -> +1.00, PRECISION +0.58; sewn ground exempt
 - [Index counts CRs](memory-index-crlf-count-2026-10-26.md) — loader counts the file as stored: CRLF = +1 char/line; notes pinned LF; `git checkout --` won't convert (recipe inside)
+- [MFab AND re-check](mfab-and-recheck-2026-11-06.md) — 10-25 brief stale: on main 7ee2d98a the hollow A is gone (0 bean tags, A/N/D satin 126/110/120) since bean_ink_outlined_letters + bean_only_lines ON 10-27; no flag built; keyline art = MFab only
 - [MFab photo route](mfab-photo-route-2026-11-04.md) — MFab classes photo_scene at every width (gate 0.298/0.28, veto 0.856/0.90); 60 and 101 mm = photo lane skips the 8 px/mm grid, W+E stay joined (NOT the segmenter, corrected 11-05); `photo_work_grid` OFF
 - [MFab recipe trims](mfab-recipe-trims-2026-10-26.md) — the cuts were keyline slivers behind a dark hairline; `keyline_fold_slivers` (OFF) folds them in: hat 41→27, LC 54→29 on #1057's base; hat on-thread exposed travel 23→43 mm
 - [MFab under-fill panels](mfab-underfill-panels-2026-10-25.md) — Kent's MFab "chaos" = flip of under-fill + white + keyline + `silhouette_underfill_panels` (OFF): pro layering; under-fill alone dropped keyline-held bodies
