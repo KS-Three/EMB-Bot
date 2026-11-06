@@ -119,12 +119,12 @@ seam order does, priced). Renders of each section order with every hop drawn
 
 | job | cuts OFF -> ON | fill-section OFF -> ON | stitches | exposed mm | bare mm @0.20 | plan CPU s | DST |
 |---|---|---|---|---|---|---|---|
-| becker_hat_large | 11 -> 11 | 1 -> 1 | 16,262 | 23.1 -> 23.1 | 0.10 -> 0.10 | CPU_HAT_LARGE | byte-identical |
-| becker_lc_large | 14 -> 14 | 3 -> 3 | 14,830 | 31.1 -> 31.1 | 0.40 -> 0.40 | CPU_LC_LARGE | byte-identical |
-| becker_hat_small | 11 -> 11 | 1 -> 1 | 10,541 | 21.7 -> 21.7 | 4.61 -> 4.61 | CPU_HAT_SMALL | byte-identical |
-| becker_chest_small | 11 -> 11 | 1 -> 1 | 10,309 | 21.3 -> 21.3 | 4.82 -> 4.82 | CPU_CHEST_SMALL | byte-identical |
-| **becker_beanie** | **14 -> 13** | **3 -> 2** | 13,862 -> 13,747 | 38.6 -> 38.6 | 3.72 -> 3.72 | CPU_BEANIE | moved, 377 points |
-| **Becker five** | **61 -> 60** (pro 45) | **9 -> 8** (pro 0) | 65,804 -> 65,689 | 135.8 -> 135.8 | 13.65 -> 13.65 | CPU_TOTAL | |
+| becker_hat_large | 11 -> 11 | 1 -> 1 | 16,262 | 23.1 -> 23.1 | 0.10 -> 0.10 | 8.5 -> 12.0 | byte-identical |
+| becker_lc_large | 14 -> 14 | 3 -> 3 | 14,830 | 31.1 -> 31.1 | 0.40 -> 0.40 | 9.3 -> 13.0 | byte-identical |
+| becker_hat_small | 11 -> 11 | 1 -> 1 | 10,541 | 21.7 -> 21.7 | 4.61 -> 4.61 | 6.8 -> 8.7 | byte-identical |
+| becker_chest_small | 11 -> 11 | 1 -> 1 | 10,309 | 21.3 -> 21.3 | 4.82 -> 4.82 | 6.2 -> 8.5 | byte-identical |
+| **becker_beanie** | **14 -> 13** | **3 -> 2** | 13,862 -> 13,747 | 38.6 -> 38.6 | 3.72 -> 3.72 | 7.7 -> 10.8 | moved, 377 points |
+| **Becker five** | **61 -> 60** (pro 45) | **9 -> 8** (pro 0) | 65,804 -> 65,689 | 135.8 -> 135.8 | 13.65 -> 13.65 | 38.5 -> 53.0 (+38%) | |
 
 - **What moved:** the beanie's field `S51503c0c`. Its 68 mm walled hop is gone:
   the re-plan reaches the far lobe through rows still to come, 115 stitches
@@ -138,7 +138,7 @@ seam order does, priced). Renders of each section order with every hop drawn
   LC's removed only cuts stage 7 was burying, and was refused by the long-hop
   rule). So they sew byte-identically.
 - **Gate 3:** bare thread at 0.20 mm equal on every job; so at 0.25 and 0.30.
-- **CPU:** plan CPU CPU_RISE on the five, all of it the pricing with hidden
+- **CPU:** plan CPU +38% on the five (38.5 -> 53.0 s), all of it the pricing with hidden
   routing on the fields that do have a long hop, whether or not the re-plan is
   taken. Stages 0-4 are untouched.
 - **OFF arm:** DST md5 equal to main's live run on all five
