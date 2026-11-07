@@ -134,6 +134,8 @@ const DIR_BUCKETS = 24;
 //   rim     darkening of the silhouette layer (edge definition)
 //   shadow  drop-shadow offset and opacity (how proud of the cloth it sits)
 //   z       draw order WITHIN one colour block: low sits under high
+//   crown   how far the lit layers pull back from the two needle holes (see
+//           CROWN_INSET below); 0 draws every layer end to end
 //
 // Two rules this table is not allowed to break, and both are tested:
 //
@@ -149,16 +151,19 @@ const DIR_BUCKETS = 24;
 //      colour by. Structure is shown with light and width, which is how a
 //      photograph of real embroidery shows it.
 const NEUTRAL_THREAD_STYLE = Object.freeze({
-  key: "stitch|", w: 1, tone: 1, sheen: 1, bead: 1, rim: 1, shadow: 1, z: 2, raised: false,
+  key: "stitch|", w: 1, tone: 1, sheen: 1, bead: 1, rim: 1, shadow: 1, z: 2, crown: 1, raised: false,
 });
 
 // Satin: long taut parallel crossings, the shiniest thing on a finished patch.
 // Brighter specular and a LONGER bead, because an unbroken column returns light
 // in a continuous band instead of scattering it.
-const SATIN_STYLE = { w: 1, tone: 1, sheen: 1.3, bead: 1.3, rim: 1, shadow: 1.1, z: 4 };
+const SATIN_STYLE = { w: 1, tone: 1, sheen: 1.3, bead: 1.3, rim: 1, shadow: 1.1, z: 4, crown: 1 };
 // Bean/running stitch: a single pass of thread with nothing beside it to hold
-// it up, so it settles into the weave and reads as a thin line.
-const RUN_STYLE = { w: 0.9, tone: 1, sheen: 0.9, bead: 0.7, rim: 1, shadow: 0.9, z: 3 };
+// it up, so it settles into the weave and reads as a thin line — visibly
+// thinner than a satin column's crossings (2026-11-07: at 0.9 a bean outline
+// read as heavy as the column beside it), and duller, since a lone thread
+// sunk into the weave returns less light than a packed column does.
+const RUN_STYLE = { w: 0.7, tone: 0.95, sheen: 0.75, bead: 0.7, rim: 1, shadow: 0.8, z: 3, crown: 0.6 };
 
 // The per-kind table. `stitch` is the kindless strand every pre-`runs` design
 // produces and is the NEUTRAL style by definition — that is what makes the
@@ -179,7 +184,7 @@ const KIND_STYLES = {
   // sheen. Dimmer, and a much SHORTER bead so each row reads as a separate
   // stitch rather than as part of a sheet — that broken-up specular is what
   // makes a fill look matte beside a satin column.
-  fill:     { w: 1,    tone: 1,    sheen: 0.78, bead: 0.45, rim: 1, shadow: 0.9,  z: 3 },
+  fill:     { w: 1,    tone: 1,    sheen: 0.78, bead: 0.45, rim: 1, shadow: 0.9,  z: 3, crown: 1 },
   run:      RUN_STYLE,
   // `bean` is the light outline tier — a triple run over one ring. Same thin
   // single line as a run, which is what it physically is.
@@ -187,14 +192,14 @@ const KIND_STYLES = {
   // Underlay: the layer BENEATH. Thin, dark (it is in the top layer's
   // shadow), almost no sheen (it is covered), and barely any shadow of its
   // own — it is sunk into the cloth, not sitting on it.
-  underlay: { w: 0.66, tone: 0.78, sheen: 0.25, bead: 1,    rim: 1, shadow: 0.35, z: 1 },
+  underlay: { w: 0.66, tone: 0.78, sheen: 0.25, bead: 1,    rim: 1, shadow: 0.35, z: 1, crown: 0.5 },
   // A tie is a 2 mm lock bounce that the run it protects then sews over. It is
   // real thread, so it is drawn — quietly, because on the cloth it is buried.
-  tie:      { w: 0.6,  tone: 0.85, sheen: 0.25, bead: 1,    rim: 1, shadow: 0.35, z: 1 },
+  tie:      { w: 0.6,  tone: 0.85, sheen: 0.25, bead: 1,    rim: 1, shadow: 0.35, z: 1, crown: 0.5 },
   // Needle-down travel: real thread on the cloth, usually covered by what
   // comes after it, never a design element. De-emphasised the same honest way
   // underlay is — thin, dull, flat — so it stops competing with stitching.
-  travel:   { w: 0.5,  tone: 0.88, sheen: 0.2,  bead: 1,    rim: 1, shadow: 0.3,  z: 0 },
+  travel:   { w: 0.5,  tone: 0.88, sheen: 0.2,  bead: 1,    rim: 1, shadow: 0.3,  z: 0, crown: 0.4 },
 };
 
 // A border/edge cap is not a different THREAD, it is the same thread sitting
@@ -204,8 +209,9 @@ const KIND_STYLES = {
 // little more specular, and it draws LAST within its colour block.
 //
 // That shadow is also why `raised` exists: a raised group's shadow is drawn
-// immediately before the group itself, not in the global pre-pass, so it falls
-// ON the fill that was drawn beneath it instead of being painted over by it.
+// immediately before the group itself, not in its block's shadow pass, so it
+// falls ON the same-colour fill drawn beneath it instead of being painted over
+// by it.
 //
 // This is deliberately NOT a highlight colour. Kent judges thread colour off
 // this canvas, so marking structure by recolouring thread would trade one
@@ -247,6 +253,7 @@ export function kindStyle(kind, role) {
     rim: base.rim * (mod ? mod.rim : 1),
     shadow: base.shadow * (mod ? mod.shadow : 1),
     z: base.z + (mod ? mod.z : 0),
+    crown: base.crown != null ? base.crown : 1,
     raised: !!(mod && mod.raised),
   });
   STYLE_CACHE.set(key, st);
@@ -304,11 +311,15 @@ export function threadLayers(rgb, angle, lw, style) {
   // Where the specular sits across the thread: toward the lit edge, never on
   // it (a real cylinder's highlight is inboard of its silhouette).
   const hi = Math.max(-0.36, Math.min(0.36, 0.34 * k)) * lw;
+  // `inset`: how far each layer pulls back from BOTH ends, as a fraction of
+  // the strand's length (see CROWN_INSET). The silhouette (0) always runs
+  // hole to hole.
+  const c = st.crown != null ? st.crown : 1;
   return [
-    { width: lw, offset: 0, color: shade(rgb, 0.66 * st.tone * st.rim), dash: null },
-    { width: lw * 0.78, offset: hi * 0.4, color: shade(rgb, 0.85 * st.tone), dash: null },
-    { width: lw * 0.5, offset: hi * 0.75, color: shade(rgb, st.tone), dash: null },
-    { width: lw * 0.28, offset: hi, color: lighten(rgb, sheen * 0.55), dash: null },
+    { width: lw, offset: 0, color: shade(rgb, 0.66 * st.tone * st.rim), dash: null, inset: 0 },
+    { width: lw * 0.78, offset: hi * 0.4, color: shade(rgb, 0.85 * st.tone), dash: null, inset: CROWN_INSET[1] * c },
+    { width: lw * 0.5, offset: hi * 0.75, color: shade(rgb, st.tone), dash: null, inset: CROWN_INSET[2] * c },
+    { width: lw * 0.28, offset: hi, color: lighten(rgb, sheen * 0.55), dash: null, inset: CROWN_INSET[3] * c },
     // The narrowest specular is DASHED, phase-free: embroidery thread is
     // plied, so its sheen beads along the length instead of running as one
     // unbroken line. Cheap, and it is what stops a satin column from reading
@@ -324,9 +335,35 @@ export function threadLayers(rgb, angle, lw, style) {
     // often the sheen breaks. It is the cheapest honest difference between a
     // satin column (long unbroken beads) and a tatami row (short ones, because
     // every row end is a penetration that interrupts the light).
-    { width: Math.max(0.5, lw * 0.13), offset: hi * 1.12, color: lighten(rgb, sheen), dash: [lw * 1.7 * st.bead, lw * 0.55 * st.bead] },
+    { width: Math.max(0.5, lw * 0.13), offset: hi * 1.12, color: lighten(rgb, sheen), dash: [lw * 1.7 * st.bead, lw * 0.55 * st.bead], inset: CROWN_INSET[4] * c },
   ];
 }
+
+// The CROWN of a stitch, per layer, as the fraction of the strand's length
+// each layer gives up at EACH end.
+//
+// A stitch is not a straight cylinder lying on the cloth: it leaves one needle
+// hole, rises over the stitching around it and dives into the next hole. Its
+// middle stands highest and catches the light; its two ends are pulled down
+// into the cloth and sit in shade. Drawing every layer end to end (what this
+// renderer did until 2026-11-07) painted the specular right up to the needle
+// hole, so:
+//
+//   - a satin column read as a stack of uniformly lit rods, with no lit band
+//     down its middle and no darker edge where the crossings dive in, and
+//   - a tatami fill read as long continuous lines, because consecutive
+//     collinear stitches merged into one unbroken highlight, hiding the
+//     staggered penetrations that ARE tatami's texture.
+//
+// Pulling the lit layers back from both holes fixes both with one rule: the
+// highlight sits on the middle of every stitch (a band down a satin column,
+// following the crossing angle as the column turns) and breaks at every
+// penetration (the brick stagger of a fill). It changes only where each layer
+// starts and stops along its own strand — no extra path, no extra stroke(),
+// and the silhouette (0) still runs hole to hole, so coverage is untouched.
+// A style's `crown` scales the row (thin runs and buried underlay crown less).
+// A look, not a measurement: nothing here is calibrated against cloth.
+const CROWN_INSET = [0, 0.04, 0.1, 0.22, 0.28];
 
 // The index of the layer carrying the thread's undarkened, unlightened colour.
 // Exported so a test can assert every LOD rung includes it without hardcoding
@@ -493,38 +530,26 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
     return;
   }
 
-  // Drop shadow: one path for EVERY strand regardless of colour (it is all
-  // black), offset away from the light so it agrees with the cylinder shading.
+  // Drop shadow: black, offset away from the light so it agrees with the
+  // cylinder shading, one path per colour BLOCK (below), drawn RIGHT BEFORE
+  // the block that casts it.
   //
-  // Split by SHADOW CLASS once kinds are in play, because how proud of the
-  // cloth a thread sits is part of what it is: an underlay is sunk into the
-  // weave and casts almost nothing, a border stands above the fill it encloses
-  // and casts the most. A design of kindless strands has exactly one class, so
-  // this collapses to the single pre-pass it has always been.
+  // Per block, not one pre-pass under the whole design (2026-11-07). A
+  // pre-pass put every shadow beneath every thread, so a later colour never
+  // shaded the earlier one it lies on: lettering sewn over a fill, or a second
+  // colour lapping a first, met it with a hard, shadowless edge, which is what
+  // made overlaps read as flat cut-outs instead of thread lying on thread.
+  // Drawn just before its block, a shadow lands on everything sewn before it
+  // (the contact shadow) and is covered by the block itself.
   //
-  // RAISED classes (border/edge cap) are skipped here on purpose and drawn
-  // inside the block loop instead — a shadow cast onto a fill has to be
-  // painted AFTER that fill, or the fill covers the very cue that says the
-  // border sits on top of it.
-  //
-  // Splitting does mean two classes that overlap darken each other's shadow
-  // slightly, where one path over the same crossing would not. That is the
-  // correct direction (two layers of thread do cast more shadow than one) and
-  // it cannot arise at all in the single-class fallback.
+  // Per block rather than per style group on purpose, and measured: one path
+  // per group (underlay, fill, satin each casting separately) cost the mixed
+  // fixture +53% render time at fit zoom, because each alpha path is
+  // rasterized over its own bounds and a block's groups share theirs. A raised
+  // group (border, edge cap) still casts its own deeper shadow right before
+  // it, as it always has. A single-colour design draws exactly ONE ordinary
+  // shadow path, first, as it always has.
   const proj = strands.map(project);
-  const shadowGroups = new Map();
-  for (let i = 0; i < strands.length; i++) {
-    const p = proj[i];
-    const st = styleForStrand(strands[i]);
-    if (st.raised) continue;
-    let g = shadowGroups.get(st.key);
-    if (!g) { g = { style: st, items: [] }; shadowGroups.set(st.key, g); }
-    g.items.push(p);
-  }
-  const shadowOrder = shadowGroups.size > 1
-    ? Array.from(shadowGroups.values()).sort((a, b) => a.style.z - b.style.z)
-    : Array.from(shadowGroups.values());
-  for (const g of shadowOrder) strokeShadow(ctx, g.items, lw, g.style);
 
   // Group into colour BLOCKS first, then by direction inside each block.
   //
@@ -570,11 +595,11 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
     const p = proj[i];
     const st = styleForStrand(s);
     let grp = curBlock.groups.get(st.key);
-    if (!grp) { grp = { style: st, buckets: new Map(), items: null }; curBlock.groups.set(st.key, grp); }
-    // Raised groups keep a flat list too: their shadow is drawn as one path
-    // right before they are, and that path needs the strands in sew order
-    // rather than scattered across direction buckets.
-    if (st.raised) { if (!grp.items) grp.items = []; grp.items.push(p); }
+    if (!grp) { grp = { style: st, buckets: new Map(), items: [] }; curBlock.groups.set(st.key, grp); }
+    // Every group keeps a flat list too, for the shadow paths (the block's
+    // and a raised group's own), which need every strand once rather than
+    // scattered across direction buckets.
+    grp.items.push(p);
     const ang = Math.atan2(p.Y1 - p.Y0, p.X1 - p.X0);
     // Modulo PI, then quantized: a strand and its reverse share a bucket.
     let b = Math.floor((((ang % Math.PI) + Math.PI) % Math.PI) / (Math.PI / DIR_BUCKETS));
@@ -615,11 +640,26 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
     const groups = blk.groups.size > 1
       ? Array.from(blk.groups.values()).sort((a, b) => a.style.z - b.style.z)
       : Array.from(blk.groups.values());
+    // The block's contact shadow: ONE path for every strand of the block that
+    // is not raised, at the strength of its topmost such group (the stitching
+    // whose edge is what the shadow outlines; an underlay under it is covered
+    // either way), drawn onto everything sewn before this block.
+    let top = null;
+    for (const grp of groups) if (!grp.style.raised) top = grp;
+    if (top) {
+      if (groups.length === 1) strokeShadow(ctx, top.items, lw, top.style);
+      else {
+        const items = [];
+        for (const grp of groups) if (!grp.style.raised) for (const q of grp.items) items.push(q);
+        strokeShadow(ctx, items, lw, top.style);
+      }
+    }
     for (const grp of groups) {
       const st = grp.style;
       const slw = styleWidth(lw, st);
-      // A raised group casts its shadow here, onto whatever is already drawn.
-      if (st.raised && grp.items) strokeShadow(ctx, grp.items, lw, st);
+      // A raised group casts its own, deeper shadow here, onto the block's
+      // stitching drawn beneath it.
+      if (st.raised) strokeShadow(ctx, grp.items, lw, st);
       const profiles = [];
       for (const b of grp.buckets.values()) {
         if (offClip(b)) continue;
@@ -634,10 +674,20 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
           ctx.lineWidth = L.width;
           if (L.dash) ctx.setLineDash(L.dash); else ctx.setLineDash([]);
           const ox = p.nx * L.offset, oy = p.ny * L.offset;
+          const f = L.inset || 0;
           ctx.beginPath();
-          for (const q of p.b.items) {
-            ctx.moveTo(q.X0 + ox, q.Y0 + oy);
-            ctx.lineTo(q.X1 + ox, q.Y1 + oy);
+          if (f > 0) {
+            // The crown (CROWN_INSET): this layer stops short of both holes.
+            for (const q of p.b.items) {
+              const ex = (q.X1 - q.X0) * f, ey = (q.Y1 - q.Y0) * f;
+              ctx.moveTo(q.X0 + ex + ox, q.Y0 + ey + oy);
+              ctx.lineTo(q.X1 - ex + ox, q.Y1 - ey + oy);
+            }
+          } else {
+            for (const q of p.b.items) {
+              ctx.moveTo(q.X0 + ox, q.Y0 + oy);
+              ctx.lineTo(q.X1 + ox, q.Y1 + oy);
+            }
           }
           ctx.stroke();
         }

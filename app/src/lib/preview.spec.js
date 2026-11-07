@@ -1170,6 +1170,151 @@ test("a role does NOT raise a run that is underneath by nature — a border's br
   expect(kindStyle("travel", "border").raised).toBe(false);
 });
 
+// ---- Thread appearance, 2026-11-07 ----------------------------------------
+//
+// Kent: "I want 2 agents working on UI embroidery simulation and appearance."
+// Three things read wrong against sewn thread and are pinned here: the lit
+// layers ran hole to hole (no crown on a satin column, no visible stagger in a
+// tatami fill), a later colour cast no shadow on the colour it lies on, and a
+// bean/run line drew nearly as heavy as a satin crossing. All of it is a LOOK;
+// none of it claims to match cloth.
+
+// A ctx double that keeps every path command with its coordinates, so the
+// crown (where a layer starts and stops along its own strand) is visible.
+function makePathLog() {
+  const calls = [];
+  let _ss, _lw;
+  return {
+    save() {}, restore() {}, setTransform() {}, closePath() {}, arcTo() {}, fillRect() {}, clip() {},
+    setLineDash() {},
+    beginPath: () => calls.push(["beginPath"]),
+    moveTo: (x, y) => calls.push(["moveTo", x, y]),
+    lineTo: (x, y) => calls.push(["lineTo", x, y]),
+    stroke: () => calls.push(["stroke", _ss, _lw]),
+    get strokeStyle() { return _ss; }, set strokeStyle(v) { _ss = v; },
+    get lineWidth() { return _lw; }, set lineWidth(v) { _lw = v; },
+    lineCap: "", lineJoin: "", fillStyle: "",
+    calls,
+  };
+}
+// The x-extent of each stroke() path, in order: [{ color, width, x0, x1 }].
+function pathExtents(calls) {
+  const out = [];
+  let xs = [];
+  for (const c of calls) {
+    if (c[0] === "beginPath") xs = [];
+    else if (c[0] === "moveTo" || c[0] === "lineTo") xs.push(c[1]);
+    else if (c[0] === "stroke") out.push({ color: c[1], width: c[2], x0: Math.min(...xs), x1: Math.max(...xs) });
+  }
+  return out;
+}
+
+test("the crown: the silhouette runs hole to hole, and each lit layer pulls back further from both needle holes", () => {
+  const L = threadLayers([200, 10, 10], 0, 10, kindStyle("satin", ""));
+  expect(L[0].inset).toBe(0); // coverage is the silhouette's, and it is untouched
+  for (let i = 1; i < L.length; i++) expect(L[i].inset).toBeGreaterThan(L[i - 1].inset);
+  // the specular never reaches the middle from both sides (it is a crown,
+  // not nothing): every layer keeps more than a third of its strand
+  expect(L[L.length - 1].inset).toBeLessThan(1 / 3);
+  // ...and drawThreads really draws it that way: one 100 px strand, the
+  // silhouette spans all of it, the true colour less, the specular least.
+  const ctx = makePathLog();
+  drawThreads(ctx, [{ x0: 0, y0: 0, x1: 100, y1: 0, rgb: [200, 10, 10], kind: "satin", role: "", shape: "s" }],
+    (x) => x, (y) => y, 10, { layers: [0, 1, 2, 3, 4] });
+  const paint = pathExtents(ctx.calls).filter((p) => !/^rgba\(0,0,0,/.test(p.color));
+  expect(paint.length).toBe(5);
+  expect(paint[0].x0).toBe(0);
+  expect(paint[0].x1).toBe(100);
+  const span = (p) => p.x1 - p.x0;
+  expect(span(paint[TRUE_COLOUR_LAYER])).toBeLessThan(100);
+  expect(span(paint[TRUE_COLOUR_LAYER])).toBeGreaterThan(70); // the true colour is still most of the thread
+  expect(span(paint[4])).toBeLessThan(span(paint[3]));
+  expect(span(paint[3])).toBeLessThan(span(paint[TRUE_COLOUR_LAYER]));
+  // centred: the crown is symmetric about the strand's middle
+  expect((paint[3].x0 + paint[3].x1) / 2).toBeCloseTo(50, 0); // (the lit-side offset moves it a hair)
+});
+
+test("the crown is what breaks a tatami row at every penetration: two collinear stitches leave a gap in the highlight, never in the silhouette", () => {
+  const ctx = makePathLog();
+  const row = [
+    { x0: 0, y0: 0, x1: 60, y1: 0, rgb: [200, 10, 10], kind: "fill", role: "", shape: "f" },
+    { x0: 60, y0: 0, x1: 120, y1: 0, rgb: [200, 10, 10], kind: "fill", role: "", shape: "f" },
+  ];
+  drawThreads(ctx, row, (x) => x, (y) => y, 8, { layers: [0, 3] });
+  // segments of each path, as [x0, x1] pairs
+  const segs = [];
+  let cur = null;
+  for (const c of ctx.calls) {
+    if (c[0] === "beginPath") { cur = []; segs.push(cur); }
+    else if (c[0] === "moveTo") cur.push([c[1]]);
+    else if (c[0] === "lineTo") cur[cur.length - 1].push(c[1]);
+  }
+  const [shadow, rim, spec] = segs;
+  expect(shadow.length).toBe(2);
+  expect(rim.map((s) => s.slice().sort((a, b) => a - b))).toEqual([[0, 60], [60, 120]]); // touch at the hole
+  const hi = spec.map((s) => s.slice().sort((a, b) => a - b));
+  expect(hi[0][1]).toBeLessThan(60); // the first stitch's highlight stops short of the hole...
+  expect(hi[1][0]).toBeGreaterThan(60); // ...and the next one starts past it
+});
+
+test("thin and buried kinds crown less than the column kinds; the kindless stitch crowns like a column", () => {
+  const c = (k) => kindStyle(k, "").crown;
+  expect(c("satin")).toBe(1);
+  expect(c("fill")).toBe(1);
+  expect(c("stitch")).toBe(1);
+  expect(c("run")).toBeLessThan(1);
+  expect(c("underlay")).toBeLessThan(1);
+  expect(c("travel")).toBeLessThan(c("underlay"));
+  for (const k of ["satin", "fill", "run", "bean", "underlay", "tie", "travel", "border", "stitch", "unknown-kind"]) {
+    expect(c(k)).toBeGreaterThanOrEqual(0);
+    expect(c(k)).toBeLessThanOrEqual(1);
+  }
+});
+
+test("a bean or run line reads visibly thinner than a satin crossing, not a hair thinner", () => {
+  expect(kindStyle("run", "").w).toBeLessThanOrEqual(0.75 * kindStyle("satin", "").w);
+  expect(kindStyle("bean", "").w).toBe(kindStyle("run", "").w);
+  // and still above the buried kinds, so an outline is not mistaken for underlay
+  expect(kindStyle("run", "").w).toBeGreaterThan(kindStyle("underlay", "").w);
+});
+
+test("contact shadow: a later colour casts its shadow ON the colour sewn before it, not under it", () => {
+  const stitches = [
+    { x: 0, y: 0, type: "stitch" }, { x: 40, y: 0, type: "stitch" }, { x: 40, y: 7, type: "stitch" },
+    { x: 40, y: 7, type: "color" },
+    { x: 10, y: 3, type: "stitch" }, { x: 30, y: 3, type: "stitch" }, { x: 30, y: 10, type: "stitch" },
+    { x: 0, y: 0, type: "end" },
+  ];
+  const design = { stitches, colors: [{ r: 200, g: 10, b: 10 }, { r: 250, g: 250, b: 245 }] };
+  const ctx = makeCallLog();
+  renderRealistic({ width: 300, height: 220, getContext: () => ctx }, design, {});
+  const strokes = strokesOf(ctx);
+  const isShadow = (v) => alphaOf(v.color) != null;
+  const iRedPaint = firstIndexOf(strokes, (v) => v.color === "rgb(200,10,10)");
+  const iWhitePaint = firstIndexOf(strokes, (v) => v.color === "rgb(250,250,245)");
+  const shadowIdx = strokes.map((v, i) => (isShadow(v) ? i : -1)).filter((i) => i >= 0);
+  // one shadow per colour block, each right before its block
+  expect(shadowIdx.length).toBe(2);
+  expect(shadowIdx[0]).toBeLessThan(iRedPaint);
+  expect(shadowIdx[1]).toBeGreaterThan(iRedPaint); // lands ON the red
+  expect(shadowIdx[1]).toBeLessThan(iWhitePaint); // and under the white that casts it
+});
+
+test("the block's shadow is ONE path however many kinds the block holds (the measured cost ceiling), plus one per raised group", () => {
+  // One path per style group was tried first and cost the mixed fixture +53%
+  // at fit zoom: each alpha path is rasterized over its own bounds, and a
+  // block's underlay, fill and satin share theirs. This pins the cheaper shape.
+  const design = kindedDesign([["travel"], ["underlay"], ["fill"], ["satin"], ["satin", "border"]], [200, 10, 10]);
+  const ctx = makeCallLog();
+  renderRealistic({ width: 300, height: 220, getContext: () => ctx }, design, {});
+  const shadows = strokesOf(ctx).map((v) => alphaOf(v.color)).filter((a) => a != null);
+  expect(shadows.length).toBe(2);
+  // the ordinary one at the topmost non-raised kind's strength (satin), the
+  // raised one deeper
+  expect(shadows[0]).toBe(Math.round(0.22 * kindStyle("satin", "").shadow * 1000) / 1000);
+  expect(shadows[1]).toBeGreaterThan(shadows[0]);
+});
+
 
 const rec = () => {
   const calls = [];
