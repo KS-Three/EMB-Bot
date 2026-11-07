@@ -1061,7 +1061,8 @@ def build_generation(
                          counters_as_drawn=bool(cfg.text_cluster_counters_as_drawn),
                          **({"wide_letters": True} if cfg.text_cluster_wide_letters else {}),
                          **({"part_touching": True} if cfg.text_cluster_part_touching else {}),
-                         **({"nest_guard": True} if cfg.text_cluster_nest_guard else {}))
+                         **({"nest_guard": True} if cfg.text_cluster_nest_guard else {}),
+                         **({"nest_guard_rotated": True} if cfg.text_cluster_nest_guard_rotated else {}))
     # `cfg.dark_ink_floor_rescue`: a stroke kept under the floor for the
     # lettering path that the tagger did not claim is a speck, not a letter:
     # dropped, counted with stage 4's drops (no new sentence).
