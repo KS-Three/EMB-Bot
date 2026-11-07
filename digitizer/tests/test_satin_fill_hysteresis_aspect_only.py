@@ -97,3 +97,18 @@ def test_the_vote_bands_every_reading_aspect_only(monkeypatch):
     monkeypatch.setattr(s6, "_classify_ribbon_once", spy)
     classify_ribbon(BAR, CAP, vote=True, hysteresis=ASPECT)
     assert seen == [ASPECT] * 5
+
+
+# --------------------------------------------- the census arm can carry it
+def test_the_census_can_set_a_cfg_extra_flag():
+    # `satin_fill_census digitize --set extra.satin_fill_hysteresis_aspect_only=true`
+    # reaches cfg.extra through `pro_pair.config`; the Studio's request cannot carry it
+    from tools import pro_pair
+    plain = pro_pair.config(80.0, "hat_front")
+    assert satin_fill_hysteresis(plain) is False
+    assert pro_pair.config(80.0, "hat_front", {}) == plain
+    on = pro_pair.config(80.0, "hat_front", {"extra.satin_fill_hysteresis_aspect_only": True})
+    assert satin_fill_hysteresis(on) == ASPECT
+    assert on.extra["satin_fill_hysteresis_aspect_only"] is True
+    # every other field is the plain request's
+    assert {**vars(on), "extra": None} == {**vars(plain), "extra": None}

@@ -118,17 +118,40 @@ class Digitized:
     secs: float
 
 
+#: `--set extra.KEY=JSON` (2026-11-07): a `cfg.extra` flag, which the Studio's
+#: request cannot carry (the service's parser refuses `extra`), laid onto the
+#: parsed config instead of the request.
+EXTRA_PREFIX = "extra."
+
+
+def config(width_mm: float, garment_id: str = "hat_front", extra: dict | None = None):
+    """The `PipelineConfig` `digitize` runs: the Studio's request through the
+    service's parser, then any `extra.KEY` entry of `extra` set as
+    `cfg.extra[KEY]`. With no such entry it is the parsed request, unchanged."""
+    from digitizer_service.app import _parse_config
+    from digitizer_core import PipelineConfig
+    sets = dict(extra or {})
+    cfg_extra = {k[len(EXTRA_PREFIX):]: sets.pop(k) for k in list(sets) if k.startswith(EXTRA_PREFIX)}
+    parsed = _parse_config(json.dumps(request(width_mm, garment_id, sets or None)))
+    # through the constructor, NOT `dataclasses.replace`: a second __post_init__
+    # sees the true-size fields already filled and records none of them
+    # (`_true_size_filled`), so a replaced config is not the plain one
+    if cfg_extra:
+        parsed["extra"] = {**(parsed.get("extra") or {}), **cfg_extra}
+    return PipelineConfig(**parsed)
+
+
 def digitize(art, width_mm: float, garment_id: str = "hat_front",
              extra: dict | None = None) -> Digitized:
     """The Studio's request, through the service's parser, then the pipeline
-    the product runs. Identical to the director's proseal_run.py."""
-    from digitizer_service.app import _decode as svc_decode, _parse_config
-    from digitizer_core import PipelineConfig
+    the product runs. Identical to the director's proseal_run.py. An
+    `extra.KEY` entry of `extra` goes to `cfg.extra` (`config`)."""
+    from digitizer_service.app import _decode as svc_decode
     from digitizer_core.adapter import plan_to_design
     from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
     art = Path(art)
     data = art.read_bytes()
-    cfg = PipelineConfig(**_parse_config(json.dumps(request(width_mm, garment_id, extra))))
+    cfg = config(width_mm, garment_id, extra)
     pixels = svc_decode(data)
     t = time.time()
     gen = build_generation(pixels, cfg, exif_source=data)
