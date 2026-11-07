@@ -112,6 +112,58 @@ def frame_a(choice: str, order: str) -> str:
     return "R" if choice == "L" else "L"
 
 
+# ------------------------------------------------------------ pre-screen ----
+
+#: The pre-screen's rule, fixed in `vlm-judge-100/PRESCREEN-PRE-REGISTRATION.md`
+#: and computed in `PRESCREEN-RESULTS.md`. The threshold is 4 and only 4.
+PRESCREEN_THRESHOLD = 4
+PRESCREEN_NOTHING = "nothing_to_choose"
+PRESCREEN_DAMAGED = "plainly_damaged"
+PRESCREEN_LOOK = "kent_has_to_look"
+#: How the sitting page words each class (display only).
+PRESCREEN_LABELS = {PRESCREEN_NOTHING: "nothing to choose",
+                    PRESCREEN_DAMAGED: "plainly damaged",
+                    PRESCREEN_LOOK: "Kent has to look"}
+
+
+def prescreen_class(verdict: dict | None) -> str:
+    """One verdict row -> its pre-screen class. The ONE implementation of the
+    rule: tie (any confidence) is "nothing to choose"; a side pick at
+    confidence >= 4 is "plainly damaged"; everything else, a side pick at 3 or
+    less, a missing or non-integer confidence, no choice at all, is "Kent has
+    to look"."""
+    if not verdict:
+        return PRESCREEN_LOOK
+    choice = verdict.get("choice")
+    if choice == "tie":
+        return PRESCREEN_NOTHING
+    conf = verdict.get("confidence")
+    if (choice in ("L", "R") and isinstance(conf, int) and not isinstance(conf, bool)
+            and conf >= PRESCREEN_THRESHOLD):
+        return PRESCREEN_DAMAGED
+    return PRESCREEN_LOOK
+
+
+def prescreen_rows(path: Path) -> dict[str, dict]:
+    """A verdicts jsonl -> pair -> `{"class", "label", "confidence"}`, and
+    NOTHING else: no choice, no side, no reason, so a page built from it stays
+    blind to which side the judge picked. Order-A rows only (the frame Kent
+    sees; the class does not depend on the order); the last row per pair wins,
+    as in `load_verdicts`."""
+    out: dict[str, dict] = {}
+    for raw in Path(path).read_text(encoding="utf-8").splitlines():
+        if not raw.strip():
+            continue
+        r = json.loads(raw)
+        if r.get("order", "A") != "A":
+            continue
+        cls = prescreen_class(r)
+        conf = r.get("confidence")
+        out[r["pair"]] = {"class": cls, "label": PRESCREEN_LABELS[cls],
+                          "confidence": conf if isinstance(conf, int) and not isinstance(conf, bool) else None}
+    return out
+
+
 def to_label(choice: str, sealed: dict) -> str | None:
     """L / R / tie in order-A frame -> before / tie / after through the sealed
     key (`base` is before, the arm is after). None for an identical pair,

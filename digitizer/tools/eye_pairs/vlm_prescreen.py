@@ -27,8 +27,10 @@ from pathlib import Path
 
 from tools.eye_pairs import vlm_judge as vj
 
-THRESHOLD = 4
-NOTHING, DAMAGED, LOOK = "nothing_to_choose", "plainly_damaged", "kent_has_to_look"
+# One implementation of the rule, in `vlm_judge` (the display-only page row reads
+# the same function). Aliased here so this module's names do not move.
+THRESHOLD = vj.PRESCREEN_THRESHOLD
+NOTHING, DAMAGED, LOOK = vj.PRESCREEN_NOTHING, vj.PRESCREEN_DAMAGED, vj.PRESCREEN_LOOK
 SEED = 20261104
 
 PRESCREEN_OUT = vj.PRO100_OUT
@@ -40,16 +42,8 @@ CONTAMINATION = ("The judge that wrote the 99 verdicts had written this rule bef
 
 
 def classify(row: dict | None) -> str:
-    """One verdict row -> its pre-screen class."""
-    if not row:
-        return LOOK
-    c = row.get("choice")
-    if c == "tie":
-        return NOTHING
-    conf = row.get("confidence")
-    if c in ("L", "R") and isinstance(conf, int) and conf >= THRESHOLD:
-        return DAMAGED
-    return LOOK
+    """One verdict row -> its pre-screen class (`vlm_judge.prescreen_class`)."""
+    return vj.prescreen_class(row)
 
 
 def _binary(rows: list[tuple[int, int, str]], seed: int = SEED) -> dict:
