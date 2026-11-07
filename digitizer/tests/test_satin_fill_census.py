@@ -205,3 +205,44 @@ def test_attribution_summary_shares_and_top3():
     assert sm["cut_regions"]["n"] == 2 and sm["cut_regions"]["for_50pct"] == 1
     assert sm["on_routing_by_pattern"] == {"contained": 0.8, "keyline": 0.2}
     assert sm["blob_cells_ours_right"] == pytest.approx(0.5)
+
+
+# ----------------------------------------------------- edge bands (C3, 2026-11-07)
+def test_band_width_reads_a_strip_by_its_thickness_not_its_length():
+    s1 = np.zeros((6, 30), bool); s1[2, 2:28] = True                # one cell thick: 2 mm
+    s3 = np.zeros((9, 30), bool); s3[3:6, 2:28] = True              # three cells thick: 6 mm
+    w1, w3 = sfc.band_width_mm(s1)["max_mm"], sfc.band_width_mm(s3)["max_mm"]
+    assert w1 == pytest.approx(2.0, abs=0.6)
+    assert w3 == pytest.approx(6.0, abs=0.6)
+    assert sfc.band_width_mm(s3)["strip_mm"] == pytest.approx(6.0, abs=1.0)
+
+
+def test_band_predictor_is_satin_to_the_ceiling_and_fill_over():
+    assert sfc.band_predict(sfc.BAND_SATIN_MAX_MM) == 1
+    assert sfc.band_predict(sfc.BAND_SATIN_MAX_MM + 0.1) == 2
+
+
+def _band_row(job, region, width, pro, cells=10):
+    return {"job": job, "region": region, "width_mm": width, "pro_type": pro, "cells": cells}
+
+
+def test_edge_band_kappa_perfect_predictor_and_one_class_floor():
+    rows = [_band_row("becker_hat_large", f"S{i}", 3.0 if i % 2 else 7.0, 1 if i % 2 else 2) for i in range(12)]
+    k = sfc.edge_band_kappa(rows, B=200)
+    assert k["kappa"] == pytest.approx(1.0) and k["chance"] == pytest.approx(0.5)
+    assert k["clears_zero"] and k["clusters"] == 12
+    # every band the pro's fill, predictor says fill everywhere: no skill to credit, chance 1 is undefined
+    flat = sfc.edge_band_kappa([_band_row("becker_hat_large", f"S{i}", 7.0, 2) for i in range(5)], B=50)
+    assert flat["kappa"] is None and not flat["clears_zero"]       # chance 1: kappa undefined, not "agreement"
+
+
+def test_edge_band_kappa_is_clustered_by_region_so_one_region_cannot_clear_zero():
+    rows = [_band_row("becker_hat_large", "S0", 3.0, 1, 500), _band_row("becker_hat_large", "S0", 7.0, 2, 500)]
+    k = sfc.edge_band_kappa(rows, B=200)
+    assert k["clusters"] == 1 and k["ci"] == [None, None] and not k["clears_zero"]   # one cluster is not an interval
+
+
+def test_border_tier_follows_the_engines_table():
+    assert sfc.border_tier(7.0).startswith("6+")
+    assert sfc.border_tier(5.0).startswith("4+")
+    assert sfc.border_tier(3.0).startswith("under 4")
