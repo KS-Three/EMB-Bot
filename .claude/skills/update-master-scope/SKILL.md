@@ -61,6 +61,18 @@ rules below are mechanical rather than advisory.
    `scope-history.md`, whereas a stale claim sitting in MASTER_SCOPE reads as
    live and gets acted on.
 
+0b. **Run the flag lint first, as a reading list.** From `digitizer/`:
+   `python -m tools.scope_flag_lint --brief` (add `--json` to parse it; no
+   flag gives the full report). It reads the scope docs, ROADMAP and DOCTRINE,
+   and lists every flag they cite that is not a real flag (ORPHANS) and every
+   ON/OFF that disagrees with the code default (DEFAULT MISMATCHES). It is
+   advisory and always exits 0. **Treat it as a reading list, not a defect
+   list:** CURRENT-state mismatches are the ones to fix in the area you are
+   touching; HISTORICAL ones usually narrate a flip correctly and CONDITIONAL
+   ones are A/B arms, so read the line before editing; an ORPHAN is often a
+   proposal, a class or a shorthand, not a stale name. Do not widen the PR to
+   clear the whole list, and never edit `docs/scope-history.md` to satisfy it.
+
 1. Identify which capability area(s) the just-finished work touches. The
    five areas are fixed (don't add/remove/rename one without asking Kent —
    that reopens a structural decision, not a status update):

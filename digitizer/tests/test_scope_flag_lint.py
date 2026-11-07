@@ -243,3 +243,48 @@ def test_scope_docs_includes_roadmap_and_area_docs():
     docs = sfl.scope_docs()
     assert {"MASTER_SCOPE.md", "ROADMAP.md", "DOCTRINE.md"} <= set(docs)
     assert any(d.startswith("docs/scope/") for d in docs)
+
+
+# ------------------------------------------------------------- --brief
+
+def _section_count(text, title_start):
+    for ln in text.splitlines():
+        if ln.startswith(title_start):
+            return int(ln.rsplit(":", 1)[1])
+    raise AssertionError(f"no section {title_start!r}")
+
+
+def test_brief_keeps_only_orphans_and_mismatches():
+    r = sfl.Report(["A.md"], [], {"x": {"where": ["field"], "default": {},
+                                        "cites": []}},
+                   ["cfg.gone — A.md:1"], ["nf — A.md:2"], ["m1"], ["m2"],
+                   ["m3"], ["u1"])
+    full, brief = sfl.render(r), sfl.render_brief(r)
+    assert "CITED FLAGS" not in brief and "UNSETTLED" not in brief
+    assert "cfg.gone" in brief and "m1" in brief and "m3" in brief
+    assert "u1" not in brief
+    assert "Advisory only" in brief
+    for t in ("ORPHANS — ABSENT", "ORPHANS — NOT A FLAG",
+              "DEFAULT MISMATCHES — CURRENT", "DEFAULT MISMATCHES — HIST",
+              "DEFAULT MISMATCHES — COND"):
+        assert _section_count(brief, t) == _section_count(full, t)
+
+
+def test_brief_json_is_trimmed():
+    import json
+    r = sfl.Report([], [], {}, ["a"], [], [], [], [], ["u"])
+    d = json.loads(sfl.to_json(r, brief=True))
+    assert set(d) == set(sfl.BRIEF_KEYS)
+    assert "cited" not in d and "unsettled" not in d
+    assert "cited" in json.loads(sfl.to_json(r))
+
+
+def test_brief_on_real_docs_exits_zero_with_same_orphan_counts(capsys):
+    assert sfl.main(["--brief"]) == 0
+    brief = capsys.readouterr().out
+    assert sfl.main([]) == 0
+    full = capsys.readouterr().out
+    assert sfl.main(["--brief", "--json"]) == 0
+    capsys.readouterr()
+    for t in ("ORPHANS — ABSENT", "ORPHANS — NOT A FLAG"):
+        assert _section_count(brief, t) == _section_count(full, t)
