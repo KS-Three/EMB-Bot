@@ -5687,7 +5687,7 @@ class PipelineConfig:
     # letter and moves it into the room around it, so graded as sewn Fremont's
     # THE read the white ground and `0020 Black` blocked at dE00 100; on the
     # traced polygon the same letters score Black within DELTA_E_VISIBLE.
-    # Unlike `thread_match_skip_enlarged_text` (OFF) the letter is still
+    # Unlike #1312's enlarged-text skip (`cfg.extra`, OFF) the letter is still
     # graded. Shade-banded and operator re-drawn regions are graded as sewn.
     # A GRADING change only: preflight is the one reader, no stitch moves.
     # **ON since 2026-11-07, Kent's flip** ("Traced-letter grading"), promoted

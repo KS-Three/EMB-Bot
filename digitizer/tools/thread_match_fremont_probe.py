@@ -31,6 +31,11 @@ runs preflight twice over the same plan, default and with
 carry a THREAD_MATCH_POOR block in each arm. The plan is not regraded, so its
 md5 is printed once per entry; it cannot depend on a preflight-only key.
 
+Both modes grade on the PRE-FLIP grader: `thread_match_grade_traced_letter`
+(ON since 2026-11-07, Kent's flip) is pinned False, because the block this
+probe traces is the one that flag cures, and the skip is priced against the
+grader it was built beside (`_PRE_TRACED_GRADE`).
+
 Usage (from digitizer/):
     .venv/bin/python -m tools.thread_match_fremont_probe
     .venv/bin/python -m tools.thread_match_fremont_probe photo/logo_hotel_fremont.webp --json out.json
@@ -137,9 +142,14 @@ def _colour(p, sel, chart, thread_index: int, loaded: list[int]) -> dict:
             "de_by_loaded": {k: round(v, 1) for k, v in sorted(de.items())}}
 
 
+#: The grader before Kent's 2026-11-07 flip of the traced-letter grade (see
+#: the docstring): the block this probe traces only exists there.
+_PRE_TRACED_GRADE = {"thread_match_grade_traced_letter": False}
+
+
 def trace(fixture: str, garment: str, width_mm: float = 80.0) -> dict:
     path = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=width_mm, garment_id=garment)
+    cfg = PipelineConfig(target_width_mm=width_mm, garment_id=garment, **_PRE_TRACED_GRADE)
     with EnlargeSpy() as spy:
         result, plan = digitize(path, cfg)
     on = dataclasses.replace(cfg, extra={**(cfg.extra or {}), FLAG: True})
@@ -217,7 +227,7 @@ def matrix() -> dict:
             path = TESTDATA / fixture
             if not path.exists():
                 continue
-            cfg = PipelineConfig(**kw)
+            cfg = PipelineConfig(**{**kw, **_PRE_TRACED_GRADE})
             on = dataclasses.replace(cfg, extra={**(cfg.extra or {}), FLAG: True})
             try:
                 result, plan = digitize(path, cfg)
