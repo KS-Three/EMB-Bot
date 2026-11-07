@@ -1264,18 +1264,23 @@ class PipelineConfig:
     flat_page_fringe_ramp_src_px: float = 3.0
     # The same soft edge INSIDE the figure (built OFF 2026-11-06, independent
     # of the fringe flags; the cure for Bridge is this one plus
-    # `flat_page_fringe_soft_ramp`): on an enlarged raster a two-ink edge (yellow to
-    # black, yellow to blue) is a ramp `flat_page_fringe_ramp_src_px` source
-    # px deep, ~10 working px on Bridge at 113.5 mm, and its middle forms
-    # clusters of its own (olive 6156 yellow-to-black: the waves and anchor,
-    # thin black strokes in the art; Tarnished Gold 0442 yellow-to-blue, 97 regions, 78 under 3 mm2).
-    # The phantom-blend dissolve kept both: it counts only the ONE pixel at a
-    # label change as edge (olive 0.50, gold 0.44 against the 0.9 gate). ON,
-    # flat lane, enlarged raster only: a pixel within half the ramp of a label
-    # change counts as edge, and a dissolved blend joins the nearer end of the
-    # chord it lies on, not whichever kept centre is nearest in Lab (olive is
-    # 43.1 from the blue centre, 46.2 from black: the waves would sew blue).
-    # False: byte for byte as before.
+    # `flat_page_fringe_soft_ramp`). On an enlarged raster a two-ink edge
+    # (yellow to black, yellow to blue) is a ramp `flat_page_fringe_ramp_src_px`
+    # source px deep, ~10 working px on Bridge at 113.5 mm, and its middle
+    # forms clusters of its own: olive 6156 yellow-to-black (the waves and
+    # anchor, thin BLACK strokes in the art) and Tarnished Gold 0442
+    # yellow-to-blue (97 regions, 78 under 3 mm2). The phantom-blend dissolve
+    # kept both: it counts only the ONE pixel at a label change as edge (olive
+    # 0.49, gold 0.43 against the 0.9 gate; 1.00 at the ramp's depth). ON, flat
+    # lane, enlarged raster only: a cluster under the gate at one pixel but
+    # over it within half the ramp is dissolved when it lies on the Lab chord
+    # between two KEPT colours (or one and the page), and joins the nearer end
+    # of that chord, not the nearest kept centre (olive is 43.1 from the blue
+    # centre, 46.2 from black: the waves would sew blue). Never between two
+    # other blends: fremont_patch's tan rope and small text (1-2 source px at
+    # x1.73) read as a grey-tan core between its own two ramp clusters, and
+    # sit 6.3 off the black-white chord, so they stay. The one-pixel path is
+    # untouched. False: byte for byte as before.
     flat_ramp_blend_dissolve: bool = False
     # Also under `flat_page_fringe_exclude`: the blend between a THIN DARK
     # OUTLINE and the fill beside it (`stage2_quantize.outline_inner_blend`) is

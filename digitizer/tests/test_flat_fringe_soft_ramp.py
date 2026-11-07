@@ -161,3 +161,25 @@ def test_the_cure_moves_no_flat_golden(fixture):
     # The three flat-lane goldens are not enlarged at 80 mm (or are alpha
     # cut-outs): the cure ON is the golden, byte for byte.
     assert _golden_md5(fixture, **SOFT, **DISSOLVE) == FLAT_GOLDEN_MD5[fixture]
+
+
+def test_a_thin_real_ink_between_its_own_ramps_is_kept():
+    # fremont_patch (371 px, x1.73 at 80 mm): the tan rope and "EST 1896" are
+    # 1-2 source px, so their core reads grey-tan (Dolphin 0152), edge 0.86 at
+    # one pixel and 1.00 at the ramp's depth -- a candidate. It sits between
+    # its own charcoal/sterling ramp clusters (blends, not kept colours) and
+    # 6.3 off the black-white chord: it stays, and stage 2 is unchanged.
+    from digitizer_service.app import _decode, _parse_config
+    from tools import pro_pair as pp
+    px = _decode((TESTDATA / "art" / "logo_hotel_fremont_patch.png").read_bytes())
+    out = []
+    for extra in ({}, DISSOLVE):
+        cfg = PipelineConfig(**_parse_config(json.dumps(pp.request(80.0, "left_chest", extra))))
+        p = prep(px, cfg, design_class="flat")
+        if cfg.two_tone_snap:
+            two_tone.apply(p)
+        assert p.px_per_mm > p.input_px_per_mm
+        out.append(quantize(p, cfg))
+    assert "0152" in _threads(out[0], cfg)
+    assert np.array_equal(out[0].labels, out[1].labels)
+    assert out[0].thread_indices == out[1].thread_indices

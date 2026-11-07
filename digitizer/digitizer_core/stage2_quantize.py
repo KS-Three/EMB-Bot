@@ -393,11 +393,13 @@ def _quantize_population(
     and the dissolve below then run over every valid pixel as before.
 
     `ramp_px` (`cfg.flat_ramp_blend_dissolve`; 0 = the dissolve as it always
-    was): on an enlarged raster a two-ink edge is a ramp `2 * ramp_px` deep,
-    so a pixel within `ramp_px` of a label change counts as edge in the
-    phantom test, and a phantom joins the NEARER END of the chord it was found
-    on (by its centre's place on it), not whichever kept centre is nearest in
-    Lab: Bridge's olive yellow-to-black ramp sits nearer its blue than black.
+    was): on an enlarged raster a two-ink edge is a ramp `2 * ramp_px` deep.
+    A cluster the one-pixel test keeps but which is edge within `ramp_px` of a
+    label change is a second-round candidate: a blend when it lies on the Lab
+    chord between two colours the first round KEPT (or one and the page), and
+    it then joins the NEARER END of that chord, not whichever kept centre is
+    nearest in Lab (Bridge's olive yellow-to-black ramp sits nearer its blue
+    than black). The first round is unchanged.
 
     -> (labels (h, w) int32, -1 outside `valid`; final spool indices, one
     per output label; warnings).
