@@ -35,7 +35,8 @@ TOOLS = pathlib.Path(__file__).resolve().parents[1] / "tools"
 
 #: Tools that read a Markdown doc at runtime and print strings out of it.
 DOC_READERS = {"scope_budget", "memory_budget", "doc_claims",
-               "flag_ledger"}   # reads .claude/memory notes, prints their names (2026-10-26)
+               "flag_ledger",   # reads .claude/memory notes, prints their names (2026-10-26)
+               "scope_flag_lint"}  # prints doc snippets' flag names, doc:line (2026-11-07)
 
 #: Tools that NAME a `.md` path without ever reading one — `acceptance_ab`
 #: points the reader at `rembg_isolated/README.md` in a message, and
