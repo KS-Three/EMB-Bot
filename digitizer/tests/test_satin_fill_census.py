@@ -111,3 +111,97 @@ def test_oracle_split_verdict_follows_the_decision_rule():
     assert "worth designing" in sfc.split_verdict(0.55)
     assert "closes" in sfc.split_verdict(0.45)
     assert "no verdict" in sfc.split_verdict(0.50)
+
+
+# ----------------------------------------------- gain attribution (C3, 2026-11-07)
+def test_weighted_kappa_without_weights_is_kappa_of_and_weights_duplicate_cells():
+    pt = np.array([1, 1, 2, 2, 2, 0, 1, 2])
+    ot = np.array([1, 2, 2, 2, 1, 0, 1, 2])
+    assert sfc._wkappa(pt, ot) == sfc._kappa_of(pt, ot)
+    assert sfc._wkappa(pt, ot, np.ones(8, int))[0] == pytest.approx(sfc._kappa_of(pt, ot)[0])
+    w = np.array([2, 0, 1, 3, 1, 1, 0, 2])
+    dup_p, dup_o = np.repeat(pt, w), np.repeat(ot, w)
+    k, ch = sfc._wkappa(pt, ot, w)
+    assert k == pytest.approx(sfc._kappa_of(dup_p, dup_o)[0])
+    assert ch == pytest.approx(sfc._kappa_of(dup_p, dup_o)[1])
+
+
+def test_vector_bootstrap_kappa_matches_the_scalar_one_row_by_row():
+    rng = np.random.default_rng(0)
+    pt = rng.integers(0, 3, 200)
+    ot = np.where(rng.random(200) < 0.7, pt, rng.integers(0, 3, 200))
+    w = sfc._boot_weights(np.arange(200) // 10, 25, rng)            # 20 clusters of 10 cells
+    assert w.shape == (25, 200) and (w.sum(1) == 200).all()
+    for row, k in zip(w, sfc._boot_kappa(pt, ot, w)):
+        assert k == pytest.approx(sfc._wkappa(pt, ot, row)[0])
+
+
+def _ground_with_piece():
+    """Region 0: a 36 x 36 ground (rows/cols 2-37) in a 40 x 40 grid of unowned
+    cells. Region 1: one of OUR pieces, a 4 x 4 square at rows/cols 24-27."""
+    owner = np.full((40, 40), -1)
+    owner[2:38, 2:38] = 0
+    owner[24:28, 24:28] = 1
+    return owner
+
+
+def test_blob_pattern_reads_keyline_halo_contained_and_edge():
+    owner = _ground_with_piece()
+    ring = np.zeros((40, 40), bool)
+    ring[2:38, 2:38] = True
+    ring[3:37, 3:37] = False                                        # the ground's outline, 1 cell wide
+    assert sfc.blob_pattern(ring, owner, 0)["pattern"] == "keyline"
+    halo = np.zeros((40, 40), bool)
+    halo[23:29, 23:29] = True
+    halo[24:28, 24:28] = False                                      # a rim round our piece
+    assert sfc.blob_pattern(halo, owner, 0)["pattern"] == "halo"
+    inside = np.zeros((40, 40), bool)
+    inside[8:13, 8:13] = True                                       # 5 x 5, far from both edges
+    assert sfc.blob_pattern(inside, owner, 0)["pattern"] == "contained"
+    lobe = np.zeros((40, 40), bool)
+    lobe[2:12, 28:38] = True                                        # a 10 x 10 corner of the ground
+    assert sfc.blob_pattern(lobe, owner, 0)["pattern"] == "edge"
+
+
+def test_blob_pattern_calls_a_strip_between_outline_and_our_piece_a_band():
+    owner = np.full((12, 20), -1)
+    owner[2:7, 2:18] = 0                                            # a ground 5 cells tall
+    owner[7:10, 2:18] = 1                                           # our piece right under it
+    strip = np.zeros((12, 20), bool)
+    strip[4, 3:15] = True                                           # 2 cells from both edges
+    assert sfc.blob_pattern(strip, owner, 0)["pattern"] == "band"
+
+
+def test_oracle_split_parts_are_exactly_the_cells_it_cut():
+    pt, ot, tboth, owner = _two_regions(3, 4)
+    o = sfc.oracle_split(pt, ot, tboth, owner)
+    assert len(o["parts"]) == o["blobs"] == 1
+    p = o["parts"][0]
+    assert (p["region"], p["type"], p["dom"]) == (0, 1, 2)
+    assert int(p["mask"].sum()) == o["cells_cut"]
+    rb = ot.copy(); rb[p["mask"]] = p["type"]                       # routing + blobs: here routing was right elsewhere
+    assert (rb == pt).all()
+
+
+def test_attribution_summary_shares_and_top3():
+    def job(gain, relabel, blobs):
+        d = lambda v: {"delta": v, "ci": [v, v]}                    # noqa: E731
+        k = {"kappa": 0.4, "chance": 0.5, "ci": [0.3, 0.5]}
+        return {m: k for m in sfc.MAPS} | {"gain": d(gain), "relabel": d(relabel), "cut": d(gain - relabel),
+                                             "blobs_on_routing": d(0.0), "blobs": blobs,
+                                             "regions": [{"k": 0, "id": "S0", "tier": "FILL", "lettering": False,
+                                                          "ground": True, "graded_mm2": 100.0}]}
+    blob = lambda v, pat: {"k": 0, "add_cut": v, "pattern": pat, "colour": "darker",   # noqa: E731
+                           "add_on_routing": v / 2, "ours_right": 0.5, "cells": 10,
+                           "pro_type": 1, "ground_type": 2, "half_width_cells": 0.95}
+    res = {"jobs": {"a": job(0.4, 0.0, [blob(0.3, "contained"), blob(0.1, "keyline")]),
+                    "b": job(0.1, 0.0, [blob(0.1, "contained")]),
+                    "c": job(0.0, 0.0, []), "d": job(-0.1, -0.1, [])}}
+    sm = sfc.attribution_summary(res)
+    assert sm["mean_gain"] == pytest.approx(0.1)
+    assert sm["top3_gain"]["jobs"] == ["a", "b", "c"]
+    assert sm["top3_gain"]["share"] == pytest.approx(0.5 / 0.4)    # the fourth job pulls the mean down
+    assert sm["cut_by_pattern"] == {"contained": 0.8, "keyline": 0.2}
+    assert sm["cut_regions"]["n"] == 2 and sm["cut_regions"]["for_50pct"] == 1
+    assert sm["on_routing_by_pattern"] == {"contained": 0.8, "keyline": 0.2}
+    assert sm["blob_cells_ours_right"] == pytest.approx(0.5)
