@@ -4,7 +4,7 @@ import { expect, test, describe } from "vitest";
 import { render, fireEvent } from "@testing-library/svelte";
 import "@testing-library/jest-dom/vitest";
 import { readFileSync } from "node:fs";
-import { editModeBar, stepHoleCursor, ringCentre, holePointPhrase, MODE_SAYS } from "../src/lib/editModeA11y.js";
+import { editModeBar, stepHoleCursor, ringCentre, holePointPhrase, MODE_SAYS } from "../lib/editModeA11y.js";
 import Harness from "./EditModeBar.testHarness.svelte";
 
 describe("editModeBar model", () => {
