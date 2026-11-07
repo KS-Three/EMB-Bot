@@ -187,10 +187,16 @@ def test_the_blocks_get_their_gaps_back_and_no_counter_is_sewn(tmp_path, lane):
 
     on, plan, cfg = run(True)
     on_holes = sum(len(r.polygon.interiors) for r in _teal(on, cfg))
-    assert on_holes >= 2 and on_holes > off_holes
+    if lane:
+        # Forced flat under the flat soft-edge cure all four gaps survive with
+        # the flag OFF too (was 0 -> 2): Kent 2026-11-07, "Accept the plan (Recommended)" on #1301's bucket (c); docs/stage0-scale-relative-bucket-c-2026-11-06.md, row 10.
+        assert off_holes == 4 and on_holes == 4
+    else:
+        assert on_holes >= 2 and on_holes > off_holes
     counters = [r for r in on.regions if r.meta.get("counter")]
     if lane:
-        assert counters
+        # The cure keeps the gaps as plain holes, so the flag has none to tag (row 10).
+        assert not counters
     assert all(r.meta.get("enclosed_background") and r.meta.get("stitched") is False for r in counters)
     sewn = {run_.shape_id for block in plan.blocks for run_ in block.runs}
     assert not sewn & {r.shape_id for r in counters}

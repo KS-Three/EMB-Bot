@@ -197,7 +197,7 @@ def test_ink_link_is_on_by_default_and_reads_its_key_only_when_on():
 
 
 @functools.lru_cache(maxsize=None)
-def _case_regions(case, rescued_link=True):
+def _case_regions(case, rescued_link=True, pre_flip_route=False):
     """(regions, settings, labelled letter ids or None) for a corpus case at
     its labelled settings, from ONE `run_stages` with the ink link ON (its
     tag pass only writes a key; every other guard here is read in
@@ -207,11 +207,18 @@ def _case_regions(case, rescued_link=True):
     linked on size alone, the population the screenshot census was read on.
     `dissolve_phantom_blends` is held OFF (ON since Kent's 2026-10-20 flip,
     item 46): the hand labels are shape ids read on the engine without it,
-    and on the screenshot the dissolve re-cuts the regions they name."""
+    and on the screenshot the dissolve re-cuts the regions they name.
+    `pre_flip_route`: the stage-0 flip and the flat soft-edge cure held OFF
+    (`PRE_FLIP`), scored against the labels as read on that route
+    (`lines_pre_flip_route` where the ids moved with the flip)."""
     import json
     from tools.thin_strokes import REAL_ART
+    from tests.conftest import PRE_FLIP
     rel, width, garment = REAL_ART[case]
     base = dict(target_width_mm=width, garment_id=garment, max_colors=6)
+    if pre_flip_route:
+        base.update({k: PRE_FLIP[k] for k in ("stage0_scale_relative_grad",
+                                              "flat_page_fringe_soft_ramp", "flat_ramp_blend_dissolve")})
     res = run_stages(TESTDATA / rel, PipelineConfig(**base, lettering_columns_ink_link=True,
                                                     text_cluster_rescued_ink_link=rescued_link,
                                                     dissolve_phantom_blends=False))
@@ -219,19 +226,21 @@ def _case_regions(case, rescued_link=True):
     lab = truth["fixtures"].get(case)
     letters = None
     if lab:
-        letters = frozenset(s for v in lab["lines"].values() for s in v)
+        lines = lab.get("lines_pre_flip_route", lab["lines"]) if pre_flip_route else lab["lines"]
+        letters = frozenset(s for v in lines.values() for s in v)
         if not letters <= {r.shape_id for r in res.regions}:
             letters = None                       # stale labels: not scored
     return tuple(res.regions), base, letters
 
 
-def _guard_census(case, flag="lettering_columns_ink_link", already=(), rescued_link=True):
+def _guard_census(case, flag="lettering_columns_ink_link", already=(), rescued_link=True,
+                  pre_flip_route=False):
     """(regions, labelled letter ids or None, refused ids): the shapes
     `is_lettering` admits with the `already` flags ON (every other lane
     guard pinned OFF, whatever its default) and refuses once `flag` is ON
     too. The ink link's OFF reading is the same regions read with the flag
     off (`test_ink_link_off_never_reaches_the_new_code`)."""
-    regions, base, letters = _case_regions(case, rescued_link)
+    regions, base, letters = _case_regions(case, rescued_link, pre_flip_route)
     pins = {k: False for k in (*GUARDS_ON, ICON)}
     pins.update({k: True for k in already})
     off = PipelineConfig(**base, **{**pins, flag: False})
@@ -261,7 +270,9 @@ def test_ink_link_keeps_golden_tees_swashes():
                and max(r.polygon.bounds[2] - r.polygon.bounds[0],
                        r.polygon.bounds[3] - r.polygon.bounds[1]) >= 20.0]
     assert len(swashes) >= 2
-    assert refused == set()
+    # One refusal (S643e40d2) since the stage-0 flip routes golden_tee flat;
+    # Kent to eyeball the shape later (Kent 2026-11-07, "Accept the plan (Recommended)" on #1301's bucket (c); docs/stage0-scale-relative-bucket-c-2026-11-06.md, row 4).
+    assert refused == {"S643e40d2"}
 
 
 @pytest.mark.parametrize("case", ["becker", "bridge", "fremont", "drone"])
@@ -291,7 +302,10 @@ def test_ink_link_sees_the_screenshot_icons_once_the_text_clusters_are_one_ink()
         assert not by_id[sid].meta.get("text_candidate")
     if SCREENSHOT_CAPTURES <= set(by_id):
         assert SCREENSHOT_CAPTURES <= refused
-    _regions, _letters, refused_pre = _guard_census("screenshot", rescued_link=False)
+    # The pre-flip tagger's arm is read on the pre-flip route it was measured on
+    # (Kent 2026-11-07, "Accept the plan (Recommended)" on #1301's bucket (c); docs/stage0-scale-relative-bucket-c-2026-11-06.md, rows 5-6); the live arm above on the new labels.
+    _regions, _letters, refused_pre = _guard_census("screenshot", rescued_link=False,
+                                                    pre_flip_route=True)
     assert refused_pre == set(), "the pre-flip tagger's clusters hid the icons from the link"
 
 
@@ -398,7 +412,8 @@ def test_icon_guard_refuses_the_screenshot_captures_and_no_letter():
     captures (see `test_ink_link_sees_the_screenshot_icons_...`), so the icon
     guard is what refuses them. On the live tagger the ink link refuses them
     first, and the icon guard's own refusals are judged the same way."""
-    regions, letters, refused = _guard_census("screenshot", ICON, GUARDS_ON, rescued_link=False)
+    regions, letters, refused = _guard_census("screenshot", ICON, GUARDS_ON, rescued_link=False,
+                                              pre_flip_route=True)   # rows 5-6, see above
     assert letters, "screenshot's hand labels went stale: re-read the census"
     assert not (refused & letters)
     by_id = {r.shape_id: r for r in regions}

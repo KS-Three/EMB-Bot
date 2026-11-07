@@ -307,7 +307,12 @@ def fixtures(extra_dirs: list[Path] = ()) -> list[Path]:
 
 
 def measure(path: Path, th: Thresholds) -> Row:
-    cfg = PipelineConfig(target_width_mm=80.0)
+    # The lens re-derives the PIXEL-ABSOLUTE flat/gradient gate
+    # (`gradient_smoothness` vs `GRAD_VAR_GRADIENT_MIN`). `cfg.stage0_scale_relative_grad`
+    # shipped ON 2026-11-06 and decides flat/gradient on `tonal_frac` instead, which
+    # `decide()` does not model yet -- so the self-check runs the engine on the arm
+    # the lens describes. The photo-gate rows are unaffected either way.
+    cfg = PipelineConfig(target_width_mm=80.0, stage0_scale_relative_grad=False)
     res = s0.classify(path, cfg)
     ucm = res.signals["unique_color_mass"]
     grad = res.signals["gradient_smoothness"]

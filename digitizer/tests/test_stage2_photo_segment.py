@@ -382,9 +382,10 @@ def test_enclosed_background_survives_gradient_routing_through_slic_rag():
     so nothing is enclosed and the routing machinery under test never runs.
     See test_enclosed_background.py's repro_cfg comment — same reasoning, and
     `sew_enclosed_white` OFF with it (ON since 2026-10-26 sews what is tagged)."""
+    # stage0_scale_relative_grad=False: the repro is this test's gradient lane (reads flat ON, tonal_frac 0.063)
     cfg = PipelineConfig(target_width_mm=90.0,
                          bg_border_agreement_min=0.0, bg_border_rival_min=0.0,
-                         sew_enclosed_white=False)
+                         sew_enclosed_white=False, stage0_scale_relative_grad=False)
     fixture = str(PHOTO_DIR / "repro_gradient_white_icon.png")
     c = classify(fixture, cfg)
     assert c.class_ == "gradient", "fixture drifted off the class this test needs"
@@ -940,7 +941,8 @@ def test_the_repro_sweep_is_one_region_per_piece_at_studio_defaults():
     the ring — never by the merge. Measured 2026-09-03: 10 regions before,
     8 after, and the two large ramp pieces both decompose into the design's
     shade bands (`test_stage6_blend` covers the bands; this pins stage 2)."""
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    # stage0_scale_relative_grad=False: the repro is this test's gradient lane (reads flat ON, tonal_frac 0.063)
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", stage0_scale_relative_grad=False)
     result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)
     assert result.design_class == "gradient"
     assert result.source_pixels is not None and result.source_pixels.design_ramp is not None

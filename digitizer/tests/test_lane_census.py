@@ -222,15 +222,22 @@ def test_becker_left_chest_is_already_flat_so_every_arm_is_the_same_lane(lanes):
     assert not arms["sixb"]["swapped"]
 
 
-def test_fremont_hat_is_gradient_and_each_arm_reaches_its_own_lane(lanes):
+def test_fremont_hat_reads_flat_on_every_arm_since_the_scale_relative_flip(lanes):
+    """Until 2026-11-06 the hat classed `gradient` (pixel-absolute
+    `gradient_smoothness`), reached `photo_segment` on the auto arm, and 6b swapped
+    its segmenter to the flat quantizer -- the one committed fixture where the
+    census's three arms were three lanes. Kent's flip of
+    `stage0_scale_relative_grad` (docs/stage0-scale-relative-grad-2026-11-06.md)
+    reads it `flat` (tonal_frac < 0.11), so the arms now coincide, as on Becker.
+    Open and NOT addressed by the flip: the hat's -4.3 forced-flat regression
+    (spec 2026-08-15 section 3), which is unexplained and now ships."""
     arms = lanes["hotel_fremont_hat"]
-    assert (arms["auto"]["class"], arms["auto"]["former"]) == ("gradient", "photo_segment")
+    for arm in lc.RUN_ARMS:
+        assert (arms[arm]["class"], arms[arm]["former"]) == ("flat", "quantize"), arm
+        assert not arms[arm]["swapped"], arm
     assert arms["auto"]["facts"]["ramp"] == "none" and not arms["auto"]["facts"]["photographic"]
-    assert (arms["flat"]["class"], arms["flat"]["former"]) == ("flat", "quantize")
-    # 6b as written: the segmenter is the flat quantizer, the class stays gradient
-    assert (arms["sixb"]["class"], arms["sixb"]["former"]) == ("gradient", "quantize")
-    assert arms["sixb"]["swapped"]
-    assert lc.planner_arm(arms["auto"]["facts"]) == "flat"
+    assert not lc.sixb_gate(arms["auto"]["facts"])[0]
+    assert lc.planner_arm(arms["auto"]["facts"]) == "auto"
 
 
 def test_6b_segments_with_the_flat_quantizer_only_where_its_rule_says_so(lanes):

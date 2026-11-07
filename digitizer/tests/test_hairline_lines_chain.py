@@ -119,7 +119,8 @@ def test_the_flag_alone_is_byte_identical_to_the_flat_golden(fixture):
 def test_the_flag_changes_nothing_off_the_line_route():
     """Drawn hair (gradient lane) never reaches the line route: with the
     hairline tier and the line route both on, the chain flag is inert."""
-    base = dict(target_width_mm=80.0, hairline=True)
+    # stage0_scale_relative_grad=False: drawn hair is the gradient lane's by design; ON it reads flat
+    base = dict(target_width_mm=80.0, hairline=True, stage0_scale_relative_grad=False)
     result = run_stages(TESTDATA / "synthetic" / "hair_strands.png", PipelineConfig(**base))
     assert result.design_class == "gradient"
     want = _md5(plan_stitches(result, PipelineConfig(**base)))

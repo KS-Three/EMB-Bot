@@ -153,6 +153,7 @@ def test_flag_off_reproduces_the_split():
     cfg = PipelineConfig(target_width_mm=80.0, rehome_resnapped=False,
                          merge_adjacent_same_thread=False,
                          robust_region_colour=False,
+                         stage0_scale_relative_grad=False,   # ...and the gradient lane (ON 2026-11-06 reads the repro flat)
                          bean_only_lines=False,      # ...and the bean rule (ON 2026-10-27): the split's revisits predate it
                          edge_cap="bean")            # ...and the "none" default (2026-10-29)
     _result, plan = digitize(REPRO, cfg)

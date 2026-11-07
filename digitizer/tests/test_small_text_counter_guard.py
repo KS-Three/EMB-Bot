@@ -258,7 +258,8 @@ def _md5(cap, **kw):
     from tools import small_print
     ref = json.loads((TESTDATA / "small_print_synthetic_ref.json").read_text())
     # the md5s were pinned before the 2026-10-23 flips; the guard is priced without them
-    kw = {**FLIP_2026_10_23, **kw}
+    # ...and before the scale-relative flat/gradient read (ON 2026-11-06)
+    kw = {**FLIP_2026_10_23, "stage0_scale_relative_grad": False, **kw}
     _r, plan = digitize(small_print.load("synthetic"),
                         # MD5 was pinned before the 2026-10-24 lettering flips
                         PipelineConfig(target_width_mm=round(cap / ref["cap"], 2),

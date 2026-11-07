@@ -168,7 +168,8 @@ def test_on_refuses_the_owls_edge_strays_and_keeps_the_patchs_letters():
     for r in owl:
         assert _edge_mm(r, w / 2, h / 2) >= DARK_INK_EDGE_PX / 8.0 - 0.1, (r.shape_id, r.polygon.bounds)
 
-    on = run_stages(str(PATCH), _studio_cfg(dark_ink_refuse_strays=True))
+    # stage0_scale_relative_grad=False: the dark-ink read runs on the gradient lane only; ON the patch reads flat
+    on = run_stages(str(PATCH), _studio_cfg(dark_ink_refuse_strays=True, stage0_scale_relative_grad=False))
     assert on.design_class == "gradient"
     patch = _dark(on.regions)
     # ON carved 14: the two at the bottom vertex (the chevron's lower band

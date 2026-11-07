@@ -513,8 +513,13 @@ class PipelineConfig:
     # side-by-side page shows the change; the OFF arm is pinned in
     # `tests/engine_2026_10_27.json`.
     stage0_texture_gate: bool = True
-    # Stage 0's flat/gradient gate on a scale-relative read (BUILT OFF
+    # Stage 0's flat/gradient gate on a scale-relative read (built OFF
     # 2026-11-06, ROADMAP phase 2; `docs/stage0-scale-relative-grad-2026-11-06.md`).
+    # FLIPPED ON 2026-11-06 by Kent, together with the flat lane's soft-edge
+    # cure (`flat_page_fringe_soft_ramp`, `flat_ramp_blend_dissolve`): "Re-open
+    # flip + both flags (Recommended)", after the Bridge sheet in
+    # `docs/flat-fringe-soft-ramp-2026-11-06.md` (the first flip, PR #1282,
+    # was held on Bridge's flat-lane render).
     # `gradient_smoothness` swings 7-34x across export resolutions, so one
     # logo reaches different lanes by pixel count and most real flat logos
     # read `gradient`. ON, non-photo territory splits flat/gradient on
@@ -523,9 +528,12 @@ class PipelineConfig:
     # ramp, clear of hard edges and of the foreground boundary. The photo
     # gate, the subject/scene split and every existing threshold are
     # untouched; `tonal_frac` is reported under both arms. OFF: the shipped
-    # gate, byte for byte. A flip moves goldens (most gradient-classified
-    # real logos change lane) and is Kent's.
-    stage0_scale_relative_grad: bool = False
+    # gate, byte for byte. The flip moved goldens (most gradient-classified
+    # real logos now route flat); the OFF arm is pinned in
+    # `tests/engine_2026_10_27.json` and `PRE_FLIP`. Open after the flip:
+    # `hotel_fremont_hat` reaches flat and its -4.3 forced-flat regression
+    # (spec 2026-08-15 §3) is unexplained and not addressed by this flag.
+    stage0_scale_relative_grad: bool = True
     # Cluster centers within this CIE76 distance are the SAME flat color that
     # k-means split; merged before spool snapping. Also the perpendicular
     # tolerance for the phantom-blend collinearity test.
@@ -1272,8 +1280,11 @@ class PipelineConfig:
     # rings on every spoke. Band 5/6/7/8/9 px left 16,696/6,049/1,804/449/0
     # blue-labelled pixels within 12 px of the page; this flag gives 11, and 0.
     # False: byte for byte as before.
-    # Docs: `docs/flat-fringe-soft-ramp-2026-11-06.md`.
-    flat_page_fringe_soft_ramp: bool = False
+    # Docs: `docs/flat-fringe-soft-ramp-2026-11-06.md`. FLIPPED ON 2026-11-06
+    # by Kent with `stage0_scale_relative_grad`: "Re-open flip + both flags
+    # (Recommended)". OFF pinned in `PRE_FLIP` and
+    # `tests/engine_2026_10_27.json`.
+    flat_page_fringe_soft_ramp: bool = True
     flat_page_fringe_ramp_src_px: float = 3.0
     # The same soft edge INSIDE the figure (built OFF 2026-11-06, independent
     # of the fringe flags; the cure for Bridge is this one plus
@@ -1293,8 +1304,11 @@ class PipelineConfig:
     # other blends: fremont_patch's tan rope and small text (1-2 source px at
     # x1.73) read as a grey-tan core between its own two ramp clusters, and
     # sit 6.3 off the black-white chord, so they stay. The one-pixel path is
-    # untouched. False: byte for byte as before.
-    flat_ramp_blend_dissolve: bool = False
+    # untouched. False: byte for byte as before. FLIPPED ON 2026-11-06 by Kent
+    # with `stage0_scale_relative_grad`: "Re-open flip + both flags
+    # (Recommended)". OFF pinned in `PRE_FLIP` and
+    # `tests/engine_2026_10_27.json`.
+    flat_ramp_blend_dissolve: bool = True
     # Also under `flat_page_fringe_exclude`: the blend between a THIN DARK
     # OUTLINE and the fill beside it (`stage2_quantize.outline_inner_blend`) is
     # fringe too. An outline is the darkest label when half of its pixels sit

@@ -72,7 +72,11 @@ DRAWN = ("hair_strands", "hair_fine")        # 80 mm, 40 drawn strands each (the
 DRAWN_WIDTH = 80.0
 # The Studio's own settings (#876's `studio` route): the two photographic
 # signals ON, no forced class. Stage 0 picks the lane.
-STUDIO = {"detect_photographic": True, "faces_route_flat": True}
+# `stage0_scale_relative_grad=False` (ON by default since 2026-11-06): this tool
+# measures the hairline route on drawn hair, which is the GRADIENT lane's by
+# design; ON the drawn-hair crops read flat and the route never applies.
+STUDIO = {"detect_photographic": True, "faces_route_flat": True,
+          "stage0_scale_relative_grad": False}
 # Zones as fractions of the SOURCE raster (x0, y0, x1, y1), first match wins.
 # owl_kent's are #882's `hairline_lines_trial.ZONES` verbatim. photo_owl_pale
 # is a smooth synthetic owl with no hair in it: its "bristles" box is the

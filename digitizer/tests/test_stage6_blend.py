@@ -506,8 +506,10 @@ def test_gradient_fragments_share_one_fill_angle_end_to_end():
     # fragmentation-plus-shared-angle scenario needs the diagnosis-time
     # flooded prep state, which the 2026-08-11 existence guards (correctly)
     # no longer produce at defaults on this full-bleed fixture.
+    # stage0_scale_relative_grad=False: the repro is this test's gradient lane (reads flat ON, tonal_frac 0.063)
     cfg = PipelineConfig(target_width_mm=90.0,
-                         bg_border_agreement_min=0.0, bg_border_rival_min=0.0)
+                         bg_border_agreement_min=0.0, bg_border_rival_min=0.0,
+                         stage0_scale_relative_grad=False)
     result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)
     assert len(result.regions) > 1, "the fragmentation this fix works around must still repro"
     assert result.source_pixels is not None
@@ -1027,7 +1029,8 @@ def test_a_region_that_rides_the_design_ramp_is_never_sewn_as_satin():
     from digitizer_core.pipeline import plan_stitches, run_stages
     from digitizer_core.stage6_blend import region_rides_design_ramp
 
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    # stage0_scale_relative_grad=False: the repro is this test's gradient lane (reads flat ON, tonal_frac 0.063)
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", stage0_scale_relative_grad=False)
     result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)
     assert result.source_pixels is not None and result.source_pixels.design_ramp is not None
     plan = plan_stitches(result, cfg)
@@ -1279,7 +1282,8 @@ def test_stage7_hands_the_blend_tier_the_compensated_polygon_and_the_tongue_is_s
         return out
 
     monkeypatch.setattr(fragment_absorb, "absorb", absorb)
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    # stage0_scale_relative_grad=False: the repro is this test's gradient lane (reads flat ON, tonal_frac 0.063)
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", stage0_scale_relative_grad=False)
     result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)
     plan = plan_stitches(result, cfg)
     planned = got[-1]

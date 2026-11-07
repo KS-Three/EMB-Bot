@@ -1762,7 +1762,8 @@ def test_a_gradients_shade_blocks_outnumber_its_layers_on_the_wire(client):
     """The repro sews its ramp pieces as several shade blocks (one thread each,
     `shade_thread_index`), so the machine's cone list is longer than the
     layer list — and a layer's shapes appear in every block that sews them."""
-    state = _digitize(client, {"target_width_mm": 80.0}, art=REPRO)
+    # stage0_scale_relative_grad False: the repro is the gradient lane's ramp-band case (reads flat ON, tonal_frac 0.063)
+    state = _digitize(client, {"target_width_mm": 80.0, "stage0_scale_relative_grad": False}, art=REPRO)
     stats, review = state["stats"], state["review"]
     blocks = stats["blocks"]
     assert len(blocks) > len(review["palette"])
@@ -1780,7 +1781,8 @@ def test_a_gradients_regions_carry_their_sew_facts(client):
     `sew_index`/`sew_block`/`tier` = None and the review screen showed no sew
     position and no tier for a gradient's whole ramp. Measured on the repro
     before the fix: 3 of its 8 regions, exactly the three that sew as bands."""
-    state = _digitize(client, {"target_width_mm": 80.0}, art=REPRO)
+    # stage0_scale_relative_grad False: the repro is the gradient lane's ramp-band case (reads flat ON, tonal_frac 0.063)
+    state = _digitize(client, {"target_width_mm": 80.0, "stage0_scale_relative_grad": False}, art=REPRO)
     shapes = state["review"]["shapes"]
     sewn = [s for s in shapes if s["stitched"]]
     assert len(sewn) >= 6
@@ -1809,7 +1811,8 @@ def test_sew_facts_flags_a_shape_that_sewed_through_the_blend_tier():
 
 
 def test_a_gradients_review_shapes_report_blended(client):
-    state = _digitize(client, {"target_width_mm": 80.0}, art=REPRO)
+    # stage0_scale_relative_grad False: the repro is the gradient lane's ramp-band case (reads flat ON, tonal_frac 0.063)
+    state = _digitize(client, {"target_width_mm": 80.0, "stage0_scale_relative_grad": False}, art=REPRO)
     shapes = state["review"]["shapes"]
     assert all(isinstance(s["blended"], bool) for s in shapes)
     blended = {s["shape_id"] for s in shapes if s["blended"]}
