@@ -1253,6 +1253,48 @@ class PipelineConfig:
     # raster (one source pixel becomes `upscale` working pixels; Pooh at 80 mm
     # reads about 1-2 px deep). A constant here, not scaled by `px_per_mm`.
     flat_page_fringe_px: int = 2
+    # The page fringe of an ENLARGED raster, read as a SOFT source edge (built
+    # OFF 2026-11-06): the band reaches `flat_page_fringe_ramp_src_px` source
+    # pixels times the upscale (+1), not one source pixel. ON alone, it runs
+    # the page-fringe exclusion (`stage2_quantize.page_fringe`: no vote in the
+    # fit, nearest non-fringe label, no stage-3 chain rescue) on an enlarged
+    # raster ONLY, without `flat_page_fringe_exclude`'s outline-inner pass;
+    # with that flag also ON it sizes its band. A source at or above the grid
+    # is untouched: `flat_page_fringe_exclude` acting there garbled the
+    # screenshot fixture's "Done" and closed "SNOW PLOWING" (80 mm, x0.63),
+    # which this flag never reaches. Measured on `logo_bridge_bar.jpg` (400 px JPEG, x3.25 at
+    # 113.5 mm hat) routed flat by `stage0_scale_relative_grad`: the spokes'
+    # page ramp is about 3 SOURCE px (page-to-black gap p50 4.0 px), 9 working
+    # px, and the one-pixel band stops at 5. The neutral greys left at 5-8 px
+    # are nearer the lettering's blue centre than black or page, so they took
+    # its slot, dragged it to Vintage Blue 4752 (63% of its pixels grey, 3-5 px
+    # off the page), and every band pixel then copied that label: pale-blue
+    # rings on every spoke. Band 5/6/7/8/9 px left 16,696/6,049/1,804/449/0
+    # blue-labelled pixels within 12 px of the page; this flag gives 11, and 0.
+    # False: byte for byte as before.
+    # Docs: `docs/flat-fringe-soft-ramp-2026-11-06.md`.
+    flat_page_fringe_soft_ramp: bool = False
+    flat_page_fringe_ramp_src_px: float = 3.0
+    # The same soft edge INSIDE the figure (built OFF 2026-11-06, independent
+    # of the fringe flags; the cure for Bridge is this one plus
+    # `flat_page_fringe_soft_ramp`). On an enlarged raster a two-ink edge
+    # (yellow to black, yellow to blue) is a ramp `flat_page_fringe_ramp_src_px`
+    # source px deep, ~10 working px on Bridge at 113.5 mm, and its middle
+    # forms clusters of its own: olive 6156 yellow-to-black (the waves and
+    # anchor, thin BLACK strokes in the art) and Tarnished Gold 0442
+    # yellow-to-blue (97 regions, 78 under 3 mm2). The phantom-blend dissolve
+    # kept both: it counts only the ONE pixel at a label change as edge (olive
+    # 0.49, gold 0.43 against the 0.9 gate; 1.00 at the ramp's depth). ON, flat
+    # lane, enlarged raster only: a cluster under the gate at one pixel but
+    # over it within half the ramp is dissolved when it lies on the Lab chord
+    # between two KEPT colours (or one and the page), and joins the nearer end
+    # of that chord, not the nearest kept centre (olive is 43.1 from the blue
+    # centre, 46.2 from black: the waves would sew blue). Never between two
+    # other blends: fremont_patch's tan rope and small text (1-2 source px at
+    # x1.73) read as a grey-tan core between its own two ramp clusters, and
+    # sit 6.3 off the black-white chord, so they stay. The one-pixel path is
+    # untouched. False: byte for byte as before.
+    flat_ramp_blend_dissolve: bool = False
     # Also under `flat_page_fringe_exclude`: the blend between a THIN DARK
     # OUTLINE and the fill beside it (`stage2_quantize.outline_inner_blend`) is
     # fringe too. An outline is the darkest label when half of its pixels sit

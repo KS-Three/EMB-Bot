@@ -95,8 +95,11 @@ def page_fringe(p: Prep, cfg: PipelineConfig, base_valid: np.ndarray) -> np.ndar
     # wide once stage 1 has enlarged the raster (Pooh at 80 mm: x2.7; a 100 px
     # synthetic at 40 mm: x4), plus one for the resampling's own spread.
     # `flat_page_fringe_px` is the floor, so a source at the grid is unchanged.
+    # `cfg.flat_page_fringe_soft_ramp`: a JPEG edge is a ramp about three
+    # source pixels deep, not one, so the band reaches that many upscaled.
     if p.input_px_per_mm and p.px_per_mm > p.input_px_per_mm:
-        f_px = max(f_px, int(np.ceil(p.px_per_mm / p.input_px_per_mm)) + 1)
+        ramp = float(cfg.flat_page_fringe_ramp_src_px) if cfg.flat_page_fringe_soft_ramp else 1.0
+        f_px = max(f_px, int(np.ceil(ramp * p.px_per_mm / p.input_px_per_mm)) + 1)
     bg = p.bg_mask
     if f_px < 1 or not bg.any():
         return None
@@ -361,6 +364,7 @@ def _quantize_population(
     enlarged_past_line: bool = False,
     fringe: np.ndarray | None = None,
     inner: tuple[float, float] | None = None,
+    ramp_px: int = 0,
 ) -> tuple[np.ndarray, list[int], list[dict]]:
     """Fit -> assign -> anti-alias cleanup -> spool-snap, over exactly the
     pixels in `valid`. This is the entire body `quantize()` has always run,
@@ -387,6 +391,15 @@ def _quantize_population(
     same k, same seed, same init draws) and then take the label of their
     NEAREST non-fringe pixel, never one chosen by their own blended colour. The majority filter
     and the dissolve below then run over every valid pixel as before.
+
+    `ramp_px` (`cfg.flat_ramp_blend_dissolve`; 0 = the dissolve as it always
+    was): on an enlarged raster a two-ink edge is a ramp `2 * ramp_px` deep.
+    A cluster the one-pixel test keeps but which is edge within `ramp_px` of a
+    label change is a second-round candidate: a blend when it lies on the Lab
+    chord between two colours the first round KEPT (or one and the page), and
+    it then joins the NEARER END of that chord, not whichever kept centre is
+    nearest in Lab (Bridge's olive yellow-to-black ramp sits nearer its blue
+    than black). The first round is unchanged.
 
     -> (labels (h, w) int32, -1 outside `valid`; final spool indices, one
     per output label; warnings).
@@ -434,6 +447,12 @@ def _quantize_population(
     labels = _majority_filter(labels, valid, k, cfg.aa_iterations)
 
     edge = _edge_mask(labels, valid)
+    # `ramp_px`: the edge as deep as the soft ramp, for the second test below.
+    edge_ramp = None
+    if ramp_px > 0:
+        d = 2 * int(ramp_px) + 1
+        edge_ramp = valid & cv2.dilate(edge.astype(np.uint8),
+                                       cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (d, d))).astype(bool)
     # Endpoint candidates for the blend test include the BACKGROUND's edge
     # color: the outermost halo of every shape is a blend of that shape and
     # whatever lies outside it, and background is excluded from clustering,
@@ -457,6 +476,8 @@ def _quantize_population(
 
     keep: list[int] = []
     phantom: list[int] = []
+    # `ramp_px`: clusters that are edge only once the edge is the ramp's depth.
+    ramp_cand: list[int] = []
     for j in range(k):
         m = valid & (labels == j)
         n = int(m.sum())
@@ -464,7 +485,10 @@ def _quantize_population(
             continue
         frac_edge = float((m & edge).sum()) / n
         if frac_edge < cfg.aa_phantom_edge_frac:
-            keep.append(j)
+            if edge_ramp is not None and                     float((m & edge_ramp).sum()) / n >= cfg.aa_phantom_edge_frac:
+                ramp_cand.append(j)
+            else:
+                keep.append(j)
             continue
         # High edge fraction: dissolve ONLY if this color is colorimetrically
         # BETWEEN two other colors (a true anti-alias blend). An edge-fraction
@@ -513,10 +537,49 @@ def _quantize_population(
                     break
         (phantom if blend else keep).append(j)
 
+    # `ramp_px`: a cluster that is edge only at the ramp's depth is a blend
+    # when it lies on the Lab chord between two KEPT colours (or a kept colour
+    # and the page) -- never between two other blends, which a thin real ink
+    # with its own ramps would be (fremont_patch's tan rope at x1.73 sits
+    # between its own charcoal and sterling ramp clusters) -- and joins the
+    # nearer end of that chord.
+    chord_end: dict[int, int] = {}
+    if ramp_cand:
+        base_keep = list(keep)
+        ends = [(o, centers[o]) for o in base_keep]
+        if bg_endpoint is not None:
+            ends.append((None, bg_endpoint))
+        for j in ramp_cand:
+            cj = centers[j]
+            blend = False
+            for a in range(len(ends)):
+                for b in range(a + 1, len(ends)):
+                    (oa, ca), (ob, cb) = ends[a], ends[b]
+                    ab = cb - ca
+                    L = float(np.dot(ab, ab))
+                    if L <= 0:
+                        continue
+                    t = float(np.dot(cj - ca, ab)) / L
+                    if not (0.15 < t < 0.85):
+                        continue
+                    if np.linalg.norm(cj - (ca + t * ab)) < cfg.merge_delta_e:
+                        blend = True
+                        end = oa if t < 0.5 else ob
+                        if end is not None:
+                            chord_end[j] = end
+                        break
+                if blend:
+                    break
+            (phantom if blend else keep).append(j)
+        keep.sort()
+        phantom.sort()
+
     if phantom:
         keep_centers = centers[keep]
         for j in phantom:
             near = keep[int(np.argmin(np.linalg.norm(keep_centers - centers[j], axis=1)))]
+            if j in chord_end:
+                near = chord_end[j]
             labels[labels == j] = near
     active = keep
 
@@ -653,10 +716,23 @@ def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
         up = (float(p.px_per_mm) / float(p.input_px_per_mm)) if p.input_px_per_mm else 1.0
         inner = (float(max(int(cfg.flat_page_fringe_px), int(np.ceil(max(up, 1.0))))),
                  float(cfg.flat_outline_max_mm) * float(p.px_per_mm))
+    elif cfg.flat_page_fringe_soft_ramp and enlarged and not p.bg_from_alpha:
+        # `cfg.flat_page_fringe_soft_ramp` on its own: the page fringe alone,
+        # soft band, on an ENLARGED raster only (no outline-inner pass). A
+        # source at or above the grid is the call as it always was.
+        fringe = page_fringe(p, cfg, base_valid)
+
+    # `cfg.flat_ramp_blend_dissolve`: half the soft edge's depth in working
+    # px (`flat_page_fringe_ramp_src_px` source px, upscaled), on an enlarged
+    # raster only; 0 = the phantom dissolve as it always was.
+    ramp_px = 0
+    if cfg.flat_ramp_blend_dissolve and enlarged:
+        ramp_px = int(np.ceil(float(cfg.flat_page_fringe_ramp_src_px)
+                              * float(p.px_per_mm) / source_px / 2.0))
 
     base_labels, base_spools, warnings = _quantize_population(
         flat_rgb, base_valid, h, w, cfg, p.bg_edge_rgb, enlarged_past_line=enlarged,
-        fringe=fringe, inner=inner,
+        fringe=fringe, inner=inner, ramp_px=ramp_px,
     )
 
     if has_enclosed:
