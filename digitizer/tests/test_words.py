@@ -409,11 +409,16 @@ def test_bridge_50mm_bar_and_restaurant_is_freed_from_the_badge(bridge):
     truth = json.loads((TESTDATA / "lettering_truth.json").read_text())["fixtures"]["bridge"]
     letters = {carry(ref_regions, corpus_w, regions, 50.0).get(s)
                for s in truth["lines"]["BAR & RESTAURANT"]} - {None}
-    assert len(letters) == 12, "the carry lost a letter: re-read the fixture"
+    # 7 under the stage-0 flip + flat soft-edge cure (was 12 on the gradient lane): Kent 2026-11-07, "Accept the plan (Recommended)" on #1301's bucket (c); docs/stage0-scale-relative-bucket-c-2026-11-06.md, row 3.
+    assert len(letters) == 7, "the carry lost a letter: re-read the fixture"
     words = detect_words(regions, chart=chart)
     assert len(words) == 1
     members = set(_ids(words[0]))
-    assert members <= letters and len(members) == 8
+    # Under the flip + cure only 7 of the 12 hand-labelled ids exist at 80 mm
+    # (the labels were read on the gradient lane), so the carry finds 7: the
+    # one word has 7 members, 4 of them carried labels and 3 letters whose
+    # labels went stale (main: 8 of 12). Kent 2026-11-07, "Accept the plan (Recommended)" on #1301's bucket (c); docs/stage0-scale-relative-bucket-c-2026-11-06.md, row 3.
+    assert len(members) == 7 and len(members & letters) == 4
     # the host is still a candidate (it passes the screens) and in no word
     badge = max(regions, key=lambda r: r.polygon.bounds[3] - r.polygon.bounds[1])
     assert badge.shape_id not in members

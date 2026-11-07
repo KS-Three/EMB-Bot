@@ -1,5 +1,26 @@
 # stage0_scale_relative_grad ON: what the nine flat-lane tests say, with renders — 2026-11-06
 
+> **Ruling, Kent 2026-11-07: "Accept the plan (Recommended)"** on PR #1301's
+> bucket (c). Each row's resolution in that PR:
+>
+> - **Rows 1, 3, 7, 10: re-pinned to the flip + cure values.** Row 1 is 9 bean
+>   letters, and its spine gate goes 0.98 -> 0.95 (one letter, Saa1fcd57, keeps
+>   0.96 of its spine inside). Row 3: 7 of the 12 labels still exist at 80 mm,
+>   and the one word has 7 members, 4 of them carried labels. Row 7 is 119.8 /
+>   127.2 mm² in one cone. Row 10: 4 holes in both arms, and no counter to tag.
+> - **Rows 8, 9: held on the pre-flip route (`PRE_FLIP`)**, where their
+>   premise lives. Row 9's `robust_region_colour` is the gradient lane's
+>   statistic, so the whole Bridge section of that file holds the route.
+> - **Rows 5, 6: the screenshot's hand labels re-read** onto the new engine's
+>   shape ids by polygon IoU. All 35 letters carry (IoU >= 0.72, same thread);
+>   one id moved, S0b58b7a7 -> S91804e04. 13 of the 36 ignore ids split on the
+>   flat lane and were dropped. The old lines are kept as
+>   `lines_pre_flip_route` for the pre-flip-tagger arms, which run on that
+>   route.
+> - **Row 4: re-pinned to the refusal set {S643e40d2}. Kent to eyeball later**
+>   (golden_tee's house-only swash the ink link now refuses).
+> - Row 2 was repaired by the cure; nothing to pin.
+
 Evidence for Kent's call on the nine tests PR #1282 left failing. A count is not
 a verdict; the render is. Every image is committed test art
 (`digitizer/testdata/photo/logo_bridge_bar.jpg`, `logo_golden_tee.jpg`,

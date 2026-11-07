@@ -97,7 +97,7 @@ import hashlib
 from pathlib import Path
 
 from digitizer_core.pipeline import digitize
-from tests.conftest import TESTDATA
+from tests.conftest import PRE_FLIP, TESTDATA
 
 BRIDGE = TESTDATA / "photo" / "logo_bridge_bar.jpg"
 # What each statistic hands the palette for the disc, measured by
@@ -107,8 +107,17 @@ BRIDGE = TESTDATA / "photo" / "logo_bridge_bar.jpg"
 DISC_SPOOL = {"median": "0713", "modal_mean": "0501"}
 
 
+# `robust_region_colour` is a `stage2_photo_segment` statistic: the gradient
+# lane's. Since the stage-0 flip + flat soft-edge cure Bridge routes flat, where
+# it never runs, so this section holds the pre-flip route (PRE_FLIP) the
+# premise lives on (Kent 2026-11-07, "Accept the plan (Recommended)" on #1301's bucket (c); docs/stage0-scale-relative-bucket-c-2026-11-06.md, row 9).
+_PRE_FLIP_ROUTE = {k: PRE_FLIP[k] for k in (
+    "stage0_scale_relative_grad", "flat_page_fringe_soft_ramp", "flat_ramp_blend_dissolve")}
+
+
 def _cfg(**kw) -> PipelineConfig:
-    return PipelineConfig(target_width_mm=80.0, max_colors=6, garment_id="left_chest", **kw)
+    return PipelineConfig(target_width_mm=80.0, max_colors=6, garment_id="left_chest",
+                          **{**_PRE_FLIP_ROUTE, **kw})
 
 
 def _digest(plan) -> str:

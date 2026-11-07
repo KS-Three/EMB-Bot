@@ -211,10 +211,13 @@ def test_on_bridge_keeps_its_eight_bean_letters():
     for on in (False, True):
         result = finish_generation(gen.fork(), _bridge_cfg(on))
         tags.append({r.shape_id: r.meta[BEAN_LETTER_KEY] for r in result.regions if BEAN_LETTER_KEY in r.meta})
-    assert len(tags[0]) == 8
+    # 9 under the stage-0 flip + flat soft-edge cure (was 8 on the gradient lane): Kent 2026-11-07, "Accept the plan (Recommended)" on #1301's bucket (c); docs/stage0-scale-relative-bucket-c-2026-11-06.md, row 1.
+    assert len(tags[0]) == 9
     assert tags[1] == tags[0]
     by_id = {r.shape_id: r for r in result.regions}
-    assert all(spines_inside(by_id[sid].polygon, sp) > 0.98 for sid, sp in tags[1].items())
+    # 0.95, was 0.98: under the flip + cure one letter (Saa1fcd57, 18 mm2) keeps
+    # 0.96 of its spine inside, the other eight 0.99-1.00 (Kent 2026-11-07, "Accept the plan (Recommended)" on #1301's bucket (c); docs/stage0-scale-relative-bucket-c-2026-11-06.md, row 1).
+    assert all(spines_inside(by_id[sid].polygon, sp) > 0.95 for sid, sp in tags[1].items())
 
 
 # --- OFF is the engine as it was; ON moves nothing without outlined letters ------

@@ -319,7 +319,12 @@ def test_bridge_halo_lever_takes_most_of_the_flips_halo():
     lever OFF the flip keeps 19.1 mm² from thin grey parents (0111, 0465),
     lever ON 3.06 mm² (0111's residual shards, defect 27's known leftover)."""
     path = ROOT / "testdata" / "photo" / "logo_bridge_bar.jpg"
-    kw = dict(target_width_mm=80.0, garment_id="left_chest")
+    # The flip's halo is the gradient lane's; since the stage-0 flip + flat
+    # soft-edge cure Bridge routes flat (5.8 mm2 either way, the lever idle),
+    # so both arms hold the pre-flip route the premise lives on (Kent 2026-11-07, "Accept the plan (Recommended)" on #1301's bucket (c); docs/stage0-scale-relative-bucket-c-2026-11-06.md, row 8).
+    from tests.conftest import PRE_FLIP
+    kw = dict(target_width_mm=80.0, garment_id="left_chest", **{k: PRE_FLIP[k] for k in (
+        "stage0_scale_relative_grad", "flat_page_fringe_soft_ramp", "flat_ramp_blend_dissolve")})
     off = _thin_kept_art(path, dict(kw, dissolve_phantom_blends=False))
     on = _thin_kept_art(path, dict(kw, dissolve_phantom_blends=True))
     assert off >= 10.0, "the fixture no longer exercises the halo pieces"
