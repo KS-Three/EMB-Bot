@@ -445,10 +445,12 @@ def _quantize_population(
     labels = _majority_filter(labels, valid, k, cfg.aa_iterations)
 
     edge = _edge_mask(labels, valid)
+    # `ramp_px`: the edge as deep as the soft ramp, for the second test below.
+    edge_ramp = None
     if ramp_px > 0:
         d = 2 * int(ramp_px) + 1
-        edge = valid & cv2.dilate(edge.astype(np.uint8),
-                                  cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (d, d))).astype(bool)
+        edge_ramp = valid & cv2.dilate(edge.astype(np.uint8),
+                                       cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (d, d))).astype(bool)
     # Endpoint candidates for the blend test include the BACKGROUND's edge
     # color: the outermost halo of every shape is a blend of that shape and
     # whatever lies outside it, and background is excluded from clustering,
@@ -472,9 +474,8 @@ def _quantize_population(
 
     keep: list[int] = []
     phantom: list[int] = []
-    # `ramp_px`: the chord end each phantom is nearer to (a label, or None for
-    # the background end), read where the blend was found.
-    chord_end: dict[int, int | None] = {}
+    # `ramp_px`: clusters that are edge only once the edge is the ramp's depth.
+    ramp_cand: list[int] = []
     for j in range(k):
         m = valid & (labels == j)
         n = int(m.sum())
@@ -482,7 +483,10 @@ def _quantize_population(
             continue
         frac_edge = float((m & edge).sum()) / n
         if frac_edge < cfg.aa_phantom_edge_frac:
-            keep.append(j)
+            if edge_ramp is not None and                     float((m & edge_ramp).sum()) / n >= cfg.aa_phantom_edge_frac:
+                ramp_cand.append(j)
+            else:
+                keep.append(j)
             continue
         # High edge fraction: dissolve ONLY if this color is colorimetrically
         # BETWEEN two other colors (a true anti-alias blend). An edge-fraction
@@ -504,8 +508,6 @@ def _quantize_population(
                     continue
                 if np.linalg.norm(cj - (ca + t * ab)) < cfg.merge_delta_e:
                     blend = True
-                    end = a if t < 0.5 else b
-                    chord_end[j] = others[end] if end < len(others) else None
                     break
             if blend:
                 break
@@ -528,20 +530,53 @@ def _quantize_population(
                     on_chord = rgb_to_lab((ra + t * ab).reshape(1, 3))[0]
                     if np.linalg.norm(lab_j - on_chord) < cfg.merge_delta_e:
                         blend = True
-                        end = a if t < 0.5 else b
-                        chord_end[j] = others[end] if end < len(others) else None
                         break
                 if blend:
                     break
         (phantom if blend else keep).append(j)
 
+    # `ramp_px`: a cluster that is edge only at the ramp's depth is a blend
+    # when it lies on the Lab chord between two KEPT colours (or a kept colour
+    # and the page) -- never between two other blends, which a thin real ink
+    # with its own ramps would be (fremont_patch's tan rope at x1.73 sits
+    # between its own charcoal and sterling ramp clusters) -- and joins the
+    # nearer end of that chord.
+    chord_end: dict[int, int] = {}
+    if ramp_cand:
+        base_keep = list(keep)
+        ends = [(o, centers[o]) for o in base_keep]
+        if bg_endpoint is not None:
+            ends.append((None, bg_endpoint))
+        for j in ramp_cand:
+            cj = centers[j]
+            blend = False
+            for a in range(len(ends)):
+                for b in range(a + 1, len(ends)):
+                    (oa, ca), (ob, cb) = ends[a], ends[b]
+                    ab = cb - ca
+                    L = float(np.dot(ab, ab))
+                    if L <= 0:
+                        continue
+                    t = float(np.dot(cj - ca, ab)) / L
+                    if not (0.15 < t < 0.85):
+                        continue
+                    if np.linalg.norm(cj - (ca + t * ab)) < cfg.merge_delta_e:
+                        blend = True
+                        end = oa if t < 0.5 else ob
+                        if end is not None:
+                            chord_end[j] = end
+                        break
+                if blend:
+                    break
+            (phantom if blend else keep).append(j)
+        keep.sort()
+        phantom.sort()
+
     if phantom:
         keep_centers = centers[keep]
         for j in phantom:
             near = keep[int(np.argmin(np.linalg.norm(keep_centers - centers[j], axis=1)))]
-            if ramp_px > 0 and chord_end.get(j) in keep:
-                # The nearer chord end, when it is a kept colour (never the
-                # page, never another phantom).
+            if j in chord_end:
                 near = chord_end[j]
             labels[labels == j] = near
     active = keep

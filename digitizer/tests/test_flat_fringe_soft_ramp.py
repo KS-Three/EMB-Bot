@@ -30,7 +30,7 @@ from digitizer_core.stage1_prep import prep
 from digitizer_core.stage2_quantize import quantize
 from digitizer_core.threads import chart_for
 
-from .conftest import TESTDATA
+from .conftest import FLAT_GOLDEN_MD5, TESTDATA
 
 ART = TESTDATA / "photo" / "logo_bridge_bar.jpg"
 FRINGE = {"flat_page_fringe_exclude": True}
@@ -144,3 +144,20 @@ def test_the_cure_reads_only_an_enlarged_raster():
     qa, qb = quantize(pa, a), quantize(pb, b)
     assert np.array_equal(qa.labels, qb.labels) and qa.thread_indices == qb.thread_indices
     assert qb.page_fringe is None
+
+
+def _golden_md5(fixture: str, **kw) -> str:
+    import hashlib
+    from digitizer_core import digitize
+    _result, plan = digitize(TESTDATA / fixture, PipelineConfig(
+        target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False, **kw))
+    coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
+              for _, r in plan.iter_runs() for x, y in r.points]
+    return hashlib.md5(json.dumps(coords).encode()).hexdigest()
+
+
+@pytest.mark.parametrize("fixture", sorted(FLAT_GOLDEN_MD5))
+def test_the_cure_moves_no_flat_golden(fixture):
+    # The three flat-lane goldens are not enlarged at 80 mm (or are alpha
+    # cut-outs): the cure ON is the golden, byte for byte.
+    assert _golden_md5(fixture, **SOFT, **DISSOLVE) == FLAT_GOLDEN_MD5[fixture]
