@@ -35,13 +35,13 @@ const E2E_DIR = join(dirname(fileURLToPath(import.meta.url)), "e2e");
 // digitizer-service specs must keep one file's tests on one machine, since
 // each file's afterAll kills the service it started.
 //
-// SPEC_SECONDS: each file's summed per-test time ("(12.3s)" in the list
-// reporter), the median over three green `main` runs -- jobs 128318781715,
-// 128311870675 and 128310856193 (runs 42344364123, 42342117285 and
-// 42341790594, 2026-11-07; the slowest, fastest and a middle job of the last
-// twelve green). Only the PROPORTIONS matter for balance; a slow runner
-// slows both shards alike. Re-measure when a shard runs >3 minutes longer
-// than its sibling on a few runs in a row.
+// SPEC_SECONDS: seconds per spec file, the median over four green `main` runs
+// that include the reshape split (#1318) -- runs 42406340687, 42407202584,
+// 42407932826 and 42408103660, 2026-11-07 -- read by tools/e2e-spec-times.mjs
+// from the shards' results*.json (serial files: wall span; parallel files: sum
+// of test durations, charged a quarter). Only the PROPORTIONS matter for
+// balance; a slow runner slows both shards alike. Re-measure when a shard
+// runs >3 minutes longer than its sibling on a few runs in a row.
 //
 // Cost model, matching the two CI steps: a digitizer-service file (any file
 // naming SERVICE_URL) runs serially, so it costs its full time; every other
@@ -52,73 +52,71 @@ const E2E_DIR = join(dirname(fileURLToPath(import.meta.url)), "e2e");
 // new spec) is charged NEW_SPEC_SECONDS -- it still runs, on exactly one
 // shard; the table only steers balance, never coverage.
 const SPEC_SECONDS = {
-  "art-first-size.spec.js": 12,
-  "configurator-smoke.spec.js": 107,
-  "core-flows.spec.js": 21,
-  "crop-upload.spec.js": 2,
-  "design-import.spec.js": 21,
-  "design-naming.spec.js": 23,
-  "design-originals.spec.js": 60,
-  "dialog-focus.spec.js": 28,
-  "digitize-auto-start.spec.js": 29,
-  "digitize-background-enclosed.spec.js": 77,
-  "digitize-boundary-edit.spec.js": 30,
-  "digitize-reload-mid-run.spec.js": 6,
-  "digitize-restitch-trigger.spec.js": 40,
+  "art-first-size.spec.js": 14,
+  "configurator-smoke.spec.js": 114,
+  "core-flows.spec.js": 23,
+  "crop-upload.spec.js": 6,
+  "design-import.spec.js": 29,
+  "design-naming.spec.js": 19,
+  "design-originals.spec.js": 62,
+  "dialog-focus.spec.js": 31,
+  "digitize-auto-start.spec.js": 30,
+  "digitize-background-enclosed.spec.js": 84,
+  "digitize-boundary-edit.spec.js": 29,
+  "digitize-reload-mid-run.spec.js": 10,
+  "digitize-restitch-trigger.spec.js": 48,
   "digitize-shape-identity.spec.js": 21,
-  "digitize-stale-edits.spec.js": 11,
+  "digitize-stale-edits.spec.js": 15,
   "download-all.spec.js": 2,
-  "download-machine.spec.js": 10,
-  "download-stale-artwork.spec.js": 96,
+  "download-machine.spec.js": 11,
+  "download-stale-artwork.spec.js": 88,
   "dst-extents.spec.js": 6,
   "export-filename.spec.js": 8,
   "fabric-contrast.spec.js": 3,
-  "field-bar-fit.spec.js": 29,
-  "field-bar-narrow.spec.js": 7,
-  "field-border-menu.spec.js": 14,
-  "field-chrome.spec.js": 24,
-  "field-node-edit.spec.js": 61,
+  "field-bar-fit.spec.js": 30,
+  "field-bar-narrow.spec.js": 8,
+  "field-border-menu.spec.js": 19,
+  "field-chrome.spec.js": 26,
+  "field-node-edit.spec.js": 64,
   "field-outlines.spec.js": 17,
-  "field-panel-sync.spec.js": 17,
-  // field-reshape-mode was 614 s as ONE file; split 2026-11-07 into three by
-  // the share of a local 36-test serial run (176.7 / 215.0 / 290.7 s), scaled
-  // to the old 614 s total. Re-measure from the shards' results*.json.
-  "field-reshape-mode.spec.js": 159,
-  "field-reshape-move.spec.js": 262,
-  "field-reshape-nodes.spec.js": 193,
-  "field-sewn-width.spec.js": 17,
-  "field-shape-popover.spec.js": 20,
-  "font-browser-script-fit.spec.js": 5,
-  "font-load-failure.spec.js": 9,
-  "friendly-errors.spec.js": 46,
+  "field-panel-sync.spec.js": 18,
+  // the reshape spec was split in three 2026-11-07 (#1318); weights measured.
+  "field-reshape-mode.spec.js": 201,
+  "field-reshape-move.spec.js": 218,
+  "field-reshape-nodes.spec.js": 204,
+  "field-sewn-width.spec.js": 16,
+  "field-shape-popover.spec.js": 21,
+  "font-browser-script-fit.spec.js": 8,
+  "font-load-failure.spec.js": 8,
+  "friendly-errors.spec.js": 44,
   "keyboard-a11y.spec.js": 29,
-  "large-upload.spec.js": 10,
-  "manual-column.spec.js": 24,
+  "large-upload.spec.js": 9,
+  "manual-column.spec.js": 26,
   "manual-cutout.spec.js": 63,
-  "manual-double-click.spec.js": 13,
-  "manual-run.spec.js": 12,
-  "manual-trace-backdrop.spec.js": 4,
-  "manual-trace-import.spec.js": 9,
+  "manual-double-click.spec.js": 12,
+  "manual-run.spec.js": 11,
+  "manual-trace-backdrop.spec.js": 3,
+  "manual-trace-import.spec.js": 8,
   "oversize-fix.spec.js": 9,
-  "projects-drawer.spec.js": 12,
-  "quality-report.spec.js": 73,
-  "reduced-motion.spec.js": 12,
+  "projects-drawer.spec.js": 11,
+  "quality-report.spec.js": 92,
+  "reduced-motion.spec.js": 7,
   "save-load-roundtrip.spec.js": 8,
-  "shortcuts-help.spec.js": 10,
-  "size-cap-note.spec.js": 4,
-  "storage-full.spec.js": 11,
-  "text-cluster-convert.spec.js": 14,
-  "text-color-ranges-edit.spec.js": 8,
-  "text-two-lines.spec.js": 7,
-  "theme-contrast.spec.js": 11,
-  "thread-picker.spec.js": 8,
-  "touch-drawing-tools.spec.js": 11,
-  "typographic-punctuation.spec.js": 15,
+  "shortcuts-help.spec.js": 9,
+  "size-cap-note.spec.js": 3,
+  "storage-full.spec.js": 9,
+  "text-cluster-convert.spec.js": 16,
+  "text-color-ranges-edit.spec.js": 7,
+  "text-two-lines.spec.js": 6,
+  "theme-contrast.spec.js": 10,
+  "thread-picker.spec.js": 6,
+  "touch-drawing-tools.spec.js": 8,
+  "typographic-punctuation.spec.js": 13,
   "undo-redo.spec.js": 38,
-  "upload-full-res.spec.js": 6,
-  "worksheet-digitized-lane.spec.js": 15,
-  "worksheet-numbers.spec.js": 16,
-  "worksheet-quote.spec.js": 6,
+  "upload-full-res.spec.js": 7,
+  "worksheet-digitized-lane.spec.js": 17,
+  "worksheet-numbers.spec.js": 13,
+  "worksheet-quote.spec.js": 4,
 };
 const NEW_SPEC_SECONDS = 30;
 const PARALLEL_WORKERS = 4;
