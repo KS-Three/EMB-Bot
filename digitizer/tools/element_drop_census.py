@@ -10,6 +10,10 @@ area, its causes, and the pipeline warnings it was read from. Written for the
 committed fixtures. Numbers only; nothing here is a quality claim, and nothing
 is sewn.
 
+Since 2026-11-07 each row also scores the same plan with
+`cfg.extra["dropped_element_v2"]` ON (one digitize, preflight twice), so the
+table reads the finding OFF and ON side by side.
+
     python -m tools.element_drop_census IMG [IMG ...] [--out DIR] [--width 80]
                                         [--garment left_chest] [--garment-rgb 235,232,223]
     python -m tools.element_drop_census --table DIR     # re-print a finished run
@@ -22,6 +26,7 @@ already has one is re-printed, not re-run.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import sys
 import tempfile
@@ -59,6 +64,8 @@ def run_one(image: Path, out: Path, req: dict) -> dict:
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)
     pf = run_preflight(result, plan, cfg, image=pixels)
+    cfg_v2 = dataclasses.replace(cfg, extra={**(cfg.extra or {}), "dropped_element_v2": True})
+    pf_v2 = run_preflight(result, plan, cfg_v2, image=pixels)
     wall = round(time.time() - t0, 1)
 
     without = [f for f in pf["findings"] if f["code"] != FINDING]
@@ -76,6 +83,9 @@ def run_one(image: Path, out: Path, req: dict) -> dict:
         "grade_with": f"{pf['grade']} {pf['score']}",
         "finding": hit,
         "metrics": {k: v for k, v in pf["metrics"].items() if k.startswith("element_")},
+        "grade_v2": f"{pf_v2['grade']} {pf_v2['score']}",
+        "finding_v2": next((f for f in pf_v2["findings"] if f["code"] == FINDING), None),
+        "metrics_v2": {k: v for k, v in pf_v2["metrics"].items() if k.startswith("element_")},
         "read_from": [{k: v for k, v in w.items() if k != "message" and k != "pieces"}
                       for w in plan.warnings if w.get("code") in READ_FROM],
         "findings": [(f["code"], f["severity"]) for f in pf["findings"]],
@@ -86,21 +96,29 @@ def run_one(image: Path, out: Path, req: dict) -> dict:
     return row
 
 
+def _verdict(f: dict | None) -> str:
+    """'warn 85.5 (unsewn_enclosed 2)' or '-'."""
+    if not f:
+        return "-"
+    causes = ", ".join(f"{k} {v}" for k, v in f["extra"]["causes"].items() if v)
+    return f"{f['severity']} {f['extra']['total_mm2']} ({causes})"
+
+
 def table(rows: list[dict]) -> str:
-    head = ("| image | class | grade without / with | finding | pieces | mm2 | frac | causes | read from | s |\n"
-            "|---|---|---|---|---|---|---|---|---|---|")
+    head = ("| image | class | grade without / OFF / v2 ON | OFF: finding mm2 (causes) | "
+            "v2 ON: finding mm2 (causes) | transparent holes skipped | read from | s |\n"
+            "|---|---|---|---|---|---|---|---|")
     lines = [head]
     for r in rows:
-        f = r.get("finding")
-        causes = ""
-        if f:
-            causes = ", ".join(f"{k} {v}" for k, v in f["extra"]["causes"].items() if v)
         codes = ", ".join(sorted({w["code"] for w in r.get("read_from", [])})) or "-"
+        m2 = r.get("metrics_v2") or {}
+        skipped = (f"{m2['element_drop_transparent_count']} / "
+                   f"{m2['element_drop_transparent_mm2']}"
+                   if "element_drop_transparent_count" in m2 else "-")
         lines.append(
-            f"| {r['slug']} | {r.get('class')} | {r['grade_without']} / {r['grade_with']} | "
-            f"{f['severity'] if f else '-'} | {f['extra']['count'] if f else 0} | "
-            f"{f['extra']['total_mm2'] if f else 0} | {f['extra']['frac'] if f else 0} | "
-            f"{causes or '-'} | {codes} | {r.get('wall_s')} |")
+            f"| {r['slug']} | {r.get('class')} | {r['grade_without']} / {r['grade_with']} / "
+            f"{r.get('grade_v2', '-')} | {_verdict(r.get('finding'))} | "
+            f"{_verdict(r.get('finding_v2'))} | {skipped} | {codes} | {r.get('wall_s')} |")
     return "\n".join(lines)
 
 
