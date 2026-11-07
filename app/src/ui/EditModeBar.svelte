@@ -22,7 +22,24 @@
 {/if}
 
 <style>
-  .modebar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 4px 8px; font-size: var(--fs-sm, 0.8rem); }
+  /* Out of flow, always. An in-flow bar that mounts when a mode starts
+     shrinks .hoop (it shares .fieldwrap's column), the ResizeObserver
+     rescales the canvas mid-gesture, and every Move / hole e2e that compares
+     before/after geometry fails (PR 1313, studio-e2e shard 1). So the bar
+     sits off-screen like .fieldlive -- still in the accessibility tree, so a
+     screen reader and Tab reach it -- and shows as a fixed overlay only while
+     a keyboard user is inside it. Neither state takes layout space. */
+  .modebar {
+    position: fixed; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--fs-sm, 0.8rem);
+  }
+  .modebar:focus-within {
+    width: auto; height: auto; margin: 0; overflow: visible; clip-path: none; white-space: normal;
+    left: 50%; bottom: 16px; transform: translateX(-50%); max-width: min(40rem, calc(100vw - 32px));
+    z-index: 50; padding: 6px 10px; border-radius: 6px;
+    background: var(--surface, #fff); color: var(--ink, #111); border: 1px solid var(--border, #ccc);
+  }
   .modebar-title { font-weight: 600; }
   .modebar-hint { opacity: 0.8; flex: 1 1 18rem; }
   .modebar-btns { display: inline-flex; gap: 6px; }
