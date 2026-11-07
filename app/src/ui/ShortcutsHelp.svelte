@@ -45,6 +45,14 @@
       ],
     },
     {
+      // EmbroideryField.svelte simKey.
+      title: "Stitch simulator",
+      rows: [
+        { keys: [[","], ["."]], what: "One stitch back or forward" },
+        { keys: [["<"], [">"]], what: "Previous or next thread change" },
+      ],
+    },
+    {
       title: "Editing outline points",
       rows: [
         { keys: [["←"], ["→"], ["↑"], ["↓"]], what: "Move the focused point" },
