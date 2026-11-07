@@ -5,15 +5,16 @@
 the FLAT lane, where its blue lettering sewed pale Vintage Blue 4752 with a
 pale-blue ring round every spoke, and its black waves sewed olive. Two
 mechanisms, both the enlarged raster's soft edge (`docs/flat-fringe-soft-
-ramp-2026-11-06.md`); the cure is three flags, all OFF on main:
+ramp-2026-11-06.md`); the cure is two flags, both OFF on main and both read an
+enlarged raster only:
 
-    CURE = flat_page_fringe_exclude + flat_page_fringe_soft_ramp
-           + flat_ramp_blend_dissolve
+    CURE = flat_page_fringe_soft_ramp + flat_ramp_blend_dissolve
 
 Two modes, committed test art only (no pro file is read or drawn):
 
     .venv/Scripts/python -m tools.flat_fringe_soft_ramp sheets OUT_DIR [--skip-gradient]
     .venv/Scripts/python -m tools.flat_fringe_soft_ramp md5 [--json OUT] [--off-only]
+    .venv/Scripts/python -m tools.flat_fringe_soft_ramp pairs OUT_DIR NAME...
 
 `sheets`: Bridge (113.5 mm hat, 96 mm left chest), golden_tee and the
 screenshot (80 mm left chest), each digitized the Studio's way
@@ -26,7 +27,7 @@ sewn mm2).
 `md5`: the 15 real flat logos of `tools.stage0_scale_relative` at 80 mm left
 chest. Per routing (main, flip), the lane stage 0 picks; where it is "flat",
 the md5 of the stitch list with CURE OFF and ON. A non-flat lane never calls
-`stage2_quantize.quantize`, the only reader of the three flags, so OFF == ON
+`stage2_quantize.quantize`, the only reader of the two flags, so OFF == ON
 there by construction and it is not digitized. `--off-only` runs the OFF arm
 alone: the byte-identity check against a checkout without the flags.
 """
@@ -44,8 +45,7 @@ import numpy as np
 DIGITIZER = Path(__file__).resolve().parent.parent
 TESTDATA = DIGITIZER / "testdata"
 
-CURE = {"flat_page_fringe_exclude": True, "flat_page_fringe_soft_ramp": True,
-        "flat_ramp_blend_dissolve": True}
+CURE = {"flat_page_fringe_soft_ramp": True, "flat_ramp_blend_dissolve": True}
 FLIP = {"stage0_scale_relative_grad": True}
 ARMS = (("main", {}), ("flip", FLIP), ("flip+cure", {**FLIP, **CURE}))
 
@@ -165,12 +165,35 @@ def md5(json_out: str | None = None, off_only: bool = False) -> int:
     return 0
 
 
+def pairs(out_dir: str, names: list[str]) -> int:
+    """flip | flip+cure at 80 mm left chest for named `stage0_scale_relative`
+    rows (the md5 movers): one side-by-side JPEG each."""
+    from digitizer_core import stitchviz
+    from tools import pro_pair as pp
+    from tools.stage0_scale_relative import rows
+    paths = {n: p for n, p, _lab, _prov in rows(corpus=False, local=True)}
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    for name in names:
+        imgs = []
+        for arm, extra in ARMS[1:]:
+            d = pp.digitize(paths[name], 80.0, "left_chest", extra)
+            s = stats(d, name, arm)
+            print(json.dumps(s), flush=True)
+            imgs.append(_label(stitchviz.render_design(d.design, px_per_mm=PPM * 1.5),
+                               f"{arm}  {s['lane']}  {s['stitches']} st  {s['trims']} trims"))
+        cv2.imwrite(str(out / f"{name}.jpg"), _row(imgs), [cv2.IMWRITE_JPEG_QUALITY, 85])
+    return 0
+
+
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     sys.path.insert(0, str(DIGITIZER))
     if argv and argv[0] == "sheets":
         return sheets(argv[1] if len(argv) > 1 else "debug_out/flat_fringe_soft_ramp",
                       skip_gradient="--skip-gradient" in argv)
+    if argv and argv[0] == "pairs":
+        return pairs(argv[1], argv[2:])
     if argv and argv[0] == "md5":
         return md5(argv[argv.index("--json") + 1] if "--json" in argv else None,
                    off_only="--off-only" in argv)

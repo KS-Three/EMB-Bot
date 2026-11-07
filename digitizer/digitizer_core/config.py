@@ -1240,10 +1240,16 @@ class PipelineConfig:
     # raster (one source pixel becomes `upscale` working pixels; Pooh at 80 mm
     # reads about 1-2 px deep). A constant here, not scaled by `px_per_mm`.
     flat_page_fringe_px: int = 2
-    # Also under `flat_page_fringe_exclude`: the band on an ENLARGED raster
-    # reaches a SOFT source edge, `flat_page_fringe_ramp_src_px` source pixels
-    # times the upscale (+1), instead of one source pixel (built OFF
-    # 2026-11-06). Measured on `logo_bridge_bar.jpg` (400 px JPEG, x3.25 at
+    # The page fringe of an ENLARGED raster, read as a SOFT source edge (built
+    # OFF 2026-11-06): the band reaches `flat_page_fringe_ramp_src_px` source
+    # pixels times the upscale (+1), not one source pixel. ON alone, it runs
+    # the page-fringe exclusion (`stage2_quantize.page_fringe`: no vote in the
+    # fit, nearest non-fringe label, no stage-3 chain rescue) on an enlarged
+    # raster ONLY, without `flat_page_fringe_exclude`'s outline-inner pass;
+    # with that flag also ON it sizes its band. A source at or above the grid
+    # is untouched: `flat_page_fringe_exclude` acting there garbled the
+    # screenshot fixture's "Done" and closed "SNOW PLOWING" (80 mm, x0.63),
+    # which this flag never reaches. Measured on `logo_bridge_bar.jpg` (400 px JPEG, x3.25 at
     # 113.5 mm hat) routed flat by `stage0_scale_relative_grad`: the spokes'
     # page ramp is about 3 SOURCE px (page-to-black gap p50 4.0 px), 9 working
     # px, and the one-pixel band stops at 5. The neutral greys left at 5-8 px
@@ -1251,13 +1257,14 @@ class PipelineConfig:
     # its slot, dragged it to Vintage Blue 4752 (63% of its pixels grey, 3-5 px
     # off the page), and every band pixel then copied that label: pale-blue
     # rings on every spoke. Band 5/6/7/8/9 px left 16,696/6,049/1,804/449/0
-    # blue-labelled pixels within 12 px of the page; this flag gives 11.
-    # False is the band as it was, byte for byte (ramp = 1 source px).
+    # blue-labelled pixels within 12 px of the page; this flag gives 11, and 0.
+    # False: byte for byte as before.
     # Docs: `docs/flat-fringe-soft-ramp-2026-11-06.md`.
     flat_page_fringe_soft_ramp: bool = False
     flat_page_fringe_ramp_src_px: float = 3.0
     # The same soft edge INSIDE the figure (built OFF 2026-11-06, independent
-    # of the fringe flags): on an enlarged raster a two-ink edge (yellow to
+    # of the fringe flags; the cure for Bridge is this one plus
+    # `flat_page_fringe_soft_ramp`): on an enlarged raster a two-ink edge (yellow to
     # black, yellow to blue) is a ramp `flat_page_fringe_ramp_src_px` source
     # px deep, ~10 working px on Bridge at 113.5 mm, and its middle forms
     # clusters of its own (olive 6156 yellow-to-black: the waves and anchor,
@@ -1267,7 +1274,8 @@ class PipelineConfig:
     # flat lane, enlarged raster only: a pixel within half the ramp of a label
     # change counts as edge, and a dissolved blend joins the nearer end of the
     # chord it lies on, not whichever kept centre is nearest in Lab (olive is
-    # 46.0 from black and 46.5 from the blue). False: byte for byte as before.
+    # 43.1 from the blue centre, 46.2 from black: the waves would sew blue).
+    # False: byte for byte as before.
     flat_ramp_blend_dissolve: bool = False
     # Also under `flat_page_fringe_exclude`: the blend between a THIN DARK
     # OUTLINE and the fill beside it (`stage2_quantize.outline_inner_blend`) is

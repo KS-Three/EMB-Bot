@@ -397,7 +397,7 @@ def _quantize_population(
     so a pixel within `ramp_px` of a label change counts as edge in the
     phantom test, and a phantom joins the NEARER END of the chord it was found
     on (by its centre's place on it), not whichever kept centre is nearest in
-    Lab: an olive yellow-to-black ramp sits as near the blue as the black.
+    Lab: Bridge's olive yellow-to-black ramp sits nearer its blue than black.
 
     -> (labels (h, w) int32, -1 outside `valid`; final spool indices, one
     per output label; warnings).
@@ -679,6 +679,11 @@ def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
         up = (float(p.px_per_mm) / float(p.input_px_per_mm)) if p.input_px_per_mm else 1.0
         inner = (float(max(int(cfg.flat_page_fringe_px), int(np.ceil(max(up, 1.0))))),
                  float(cfg.flat_outline_max_mm) * float(p.px_per_mm))
+    elif cfg.flat_page_fringe_soft_ramp and enlarged and not p.bg_from_alpha:
+        # `cfg.flat_page_fringe_soft_ramp` on its own: the page fringe alone,
+        # soft band, on an ENLARGED raster only (no outline-inner pass). A
+        # source at or above the grid is the call as it always was.
+        fringe = page_fringe(p, cfg, base_valid)
 
     # `cfg.flat_ramp_blend_dissolve`: half the soft edge's depth in working
     # px (`flat_page_fringe_ramp_src_px` source px, upscaled), on an enlarged
