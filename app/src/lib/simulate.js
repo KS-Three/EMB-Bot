@@ -195,3 +195,106 @@ export function blockThreadNames(tl, threads) {
     return t.code ? `${t.code} ${t.name}` : t.name;
   });
 }
+
+// ---- Underlay vs top stitching, on the strand timeline ---------------------
+//
+// Underlay sews FIRST and is then covered by the top stitching of the same
+// shape. On the finished canvas that is already true (preview.js draws every
+// colour block's underlay group under its fill/satin group), but while the
+// simulator plays there is a stretch where the underlay is sewn and its top
+// is not: it then looks like a thin, open version of the real stitching. The
+// simulator marks exactly that stretch — "pending" underlay — and nothing
+// else, so the mark never sits on top of stitching that covers it.
+//
+// The tags are the strands' own (designToStrands copies each run span's
+// `kind` and `shape`): no classification happens here. A design without
+// `runs` has no underlay strand, so this is empty and nothing changes.
+//
+//   runs[i] = { start, end, coverAt, rgb }
+//     strands [start, end) are underlay, consecutive, of one shape and one
+//     thread; coverAt is the first strand AFTER them that is top stitching
+//     (not underlay, travel or a tie) of the same shape — or of any shape
+//     when the underlay names none — in the same thread block, else the
+//     block's end. The run is pending with idx strands drawn when
+//     start < idx <= coverAt (sewn, and its top has not begun).
+//   maxCover[i] = the largest coverAt over runs[0..i], so a frame can stop
+//     scanning backwards as soon as no earlier run can still be pending.
+const NOT_TOP = { underlay: true, travel: true, tie: true };
+
+export function isUnderlayStrand(s) {
+  return !!s && s.kind === "underlay";
+}
+
+export function underlayRuns(strands, tl) {
+  const list = strands || [];
+  const n = list.length;
+  const runs = [];
+  if (!n || !list.some(isUnderlayStrand)) return { runs, maxCover: [] };
+  // Each strand's block end, from the timeline when there is one.
+  const blockEnd = new Int32Array(n).fill(n);
+  if (tl && tl.blocks) for (const b of tl.blocks) for (let i = b.start; i < b.end && i < n; i++) blockEnd[i] = b.end;
+  // One backward pass: the nearest top strand at or after i, by shape and
+  // for any shape, reset at each block boundary (a cover never crosses a
+  // thread change).
+  const coverOf = new Int32Array(n);
+  let byShape = new Map();
+  let anyTop = -1;
+  let curEnd = -1;
+  for (let i = n - 1; i >= 0; i--) {
+    if (blockEnd[i] !== curEnd) { curEnd = blockEnd[i]; byShape = new Map(); anyTop = -1; }
+    const s = list[i];
+    if (!NOT_TOP[s.kind]) {
+      anyTop = i;
+      if (s.shape) byShape.set(s.shape, i);
+      continue;
+    }
+    if (s.kind !== "underlay") continue;
+    const hit = s.shape ? byShape.get(s.shape) : anyTop;
+    coverOf[i] = hit != null && hit >= 0 ? hit : blockEnd[i];
+  }
+  for (let i = 0; i < n; i++) {
+    const s = list[i];
+    if (!isUnderlayStrand(s)) continue;
+    const last = runs[runs.length - 1];
+    if (last && last.end === i && last.coverAt === coverOf[i] && last.shape === (s.shape || "")) { last.end = i + 1; continue; }
+    runs.push({ start: i, end: i + 1, coverAt: coverOf[i], shape: s.shape || "", rgb: s.rgb });
+  }
+  const maxCover = [];
+  let m = -1;
+  for (const r of runs) { if (r.coverAt > m) m = r.coverAt; maxCover.push(m); }
+  return { runs, maxCover };
+}
+
+// The underlay runs pending with `idx` strands drawn (see underlayRuns), each
+// as { start, end: min(end, idx), rgb } — the part already sewn. Walks back
+// from the last run that has started and stops once no earlier run can be
+// pending, so a frame pays for the underlay in flight, not for the design.
+export function pendingUnderlay(ul, idx) {
+  const out = [];
+  if (!ul || !ul.runs.length || idx <= 0) return out;
+  const runs = ul.runs;
+  let j = lastAtOrBefore(runs, idx - 1, "start");
+  for (; j >= 0; j--) {
+    if (ul.maxCover[j] < idx) break;
+    const r = runs[j];
+    if (r.coverAt >= idx) out.push({ start: r.start, end: Math.min(r.end, idx), rgb: r.rgb });
+  }
+  return out;
+}
+
+// What the needle is sewing with `idx` strands drawn, for the bar: "underlay"
+// while it is in an underlay strand, "top" otherwise, null before anything is
+// sewn or once the design is finished.
+export function phaseAt(strands, idx, total) {
+  if (!strands || idx <= 0 || idx >= total) return null;
+  return isUnderlayStrand(strands[idx - 1]) ? "underlay" : "top";
+}
+
+// The block whose band on the scrubber's thread strip was clicked, as the
+// strand index to land on: the block's start, where the machine stops for
+// it (the thread before it finished, this one not begun). Block 0 is the
+// design's start.
+export function blockStart(tl, k) {
+  if (!tl || !tl.blocks[k]) return 0;
+  return Math.max(0, Math.min(tl.total, tl.blocks[k].start));
+}

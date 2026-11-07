@@ -10,8 +10,8 @@
   import { tip } from "../lib/tip.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
   import { sewnPullFor, hasSatinSpans } from "../lib/sewnWidth.js";
-  import { advanceIndex, clampIndex, nextSpeed, simTimeline, colorStopBetween, stepBlock, blockAt, blockThreadNames } from "../lib/simulate.js";
-  import { drawSimOverlay } from "../lib/simOverlay.js";
+  import { advanceIndex, clampIndex, nextSpeed, simTimeline, colorStopBetween, stepBlock, blockAt, blockThreadNames, underlayRuns, phaseAt, blockStart } from "../lib/simulate.js";
+  import { drawSimOverlay, drawIsolate, threadPx } from "../lib/simOverlay.js";
   import SimBar from "./SimBar.svelte";
   import { chartIdForProject } from "../lib/designChart.js";
   import { getCachedPalette, loadPalette, loadPreferredPaletteId, STUDIO_PALETTE } from "../lib/threads.js";
@@ -265,6 +265,11 @@
   // the bar names the thread to load next.
   let simStopAtChanges = true;
   let simStopped = false;
+  // Underlay sewn and not yet covered, drawn lighter (lib/simulate.js
+  // underlayRuns); built once per run from the strands' own kind tags.
+  let simUnderlay = null;
+  // Isolate (the bar's toggle): dim everything but the thread on the needle.
+  let simIsolate = false;
 
   // Drag state (module-local to this component instance, not reactive —
   // none of it needs to trigger a re-render on its own).
@@ -3506,13 +3511,32 @@
       else if (simTl && renderResult && renderResult.toCanvas) {
         const idx = Math.floor(simIndex);
         const blk = simTl.blocks[blockAt(simTl, idx)];
-        drawSimOverlay(canvas.getContext("2d"), {
+        const ctx2 = canvas.getContext("2d");
+        const lw = threadPx(renderResult.scale);
+        if (simIsolate && blk) {
+          drawIsolate(ctx2, {
+            strands: simStrands,
+            idx,
+            from: blk.start,
+            toCanvas: renderResult.toCanvas,
+            lw,
+            flat: !realisticView,
+            sewnPullMm,
+            wash: gridColors().bed,
+            bboxMm: renderResult.designBBoxMm,
+            cw: cssW(),
+            ch: cssH(),
+          });
+        }
+        drawSimOverlay(ctx2, {
           strands: simStrands,
           timeline: simTl,
           idx,
           toCanvas: renderResult.toCanvas,
           showJumps,
           rgb: blk ? blk.rgb : null,
+          underlay: simUnderlay,
+          lw,
         });
       }
       paintSeq++;
@@ -3591,6 +3615,7 @@
     simOrdinals = strandStitchOrdinals(combined);
     if (!simTotal) return;
     simTl = simTimeline(combined);
+    simUnderlay = underlayRuns(simStrands, simTl);
     simStopped = false;
     nameSimThreads(simTl);
     originalView = false;
@@ -3629,6 +3654,7 @@
     simStopped = false;
     simTl = null;
     simStrands = [];
+    simUnderlay = null;
     // Back to the normal full render + selection chrome.
     repaintView();
   }
@@ -3674,6 +3700,26 @@
     const k = blockAt(simTl, idx);
     const name = simNames[k] ? `, ${simNames[k]}` : "";
     return `${head} thread ${k + 1} of ${simTl.blocks.length}${name}`;
+  }
+
+  // A click on a thread's band in the scrubber's strip: to the start of that
+  // thread, where the machine stops for it, named as the thread to load
+  // next (the same landing as `>`); thread 1 is the design's start.
+  function simGoToBlock(k) {
+    if (!simTl) return;
+    const to = blockStart(simTl, k);
+    simSeek(to);
+    if (to > 0 && to < simTotal) {
+      simStopped = true;
+      liveMsg = simThreadPhrase("At a thread change. Next:", to + 1);
+    } else {
+      liveMsg = "Start of the design";
+    }
+  }
+
+  function simToggleIsolate() {
+    simIsolate = !simIsolate;
+    scheduleViewRepaint();
   }
 
   function simCycleSpeed() {
@@ -4668,9 +4714,20 @@
     }
   }
 
+  // The cursor, set through a local alias. In Svelte's legacy mode a member
+  // write on `canvas` itself (`canvas.style.cursor = ...`) invalidates
+  // `canvas`, which re-runs `$: if (canvas) { project; runtime; paint(); }`,
+  // and paint() opens with stopSim(): the first pointer move over the field
+  // closed the simulator (measured 2026-11-07, any mouse move, any zoom).
+  // The two paths that run while it plays write through this instead.
+  function setCanvasCursor(c) {
+    const el = canvas;
+    if (el) el.style.cursor = c;
+  }
+
   function onPointerMove(e) {
     if (!canvas) return;
-    if (simActive || originalView) { canvas.style.cursor = "default"; return; }
+    if (simActive || originalView) { setCanvasCursor("default"); return; }
     const p = canvasPointFromEvent(e);
     if (shapeMove && shapeMove.drag) {
       shapeMoveDrag(e, p);
@@ -5113,7 +5170,7 @@
 
   function onPointerLeave() {
     emitCanvasHover(null);
-    if (!dragMode && canvas) canvas.style.cursor = "default";
+    if (!dragMode) setCanvasCursor("default");
   }
 </script>
 
@@ -5377,7 +5434,12 @@
         names={simNames}
         stopAtChanges={simStopAtChanges}
         stopped={simStopped}
+        isolate={simIsolate}
+        hasUnderlay={!!(simUnderlay && simUnderlay.runs.length)}
+        phase={phaseAt(simStrands, Math.floor(simIndex), simTotal)}
         on:toggle={simTogglePlay}
+        on:block={(e) => simGoToBlock(e.detail.k)}
+        on:isolate={simToggleIsolate}
         on:scrub={simScrub}
         on:thread={(e) => simStepThread(e.detail.dir)}
         on:stops={simToggleStops}

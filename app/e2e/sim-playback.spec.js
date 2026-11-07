@@ -150,3 +150,128 @@ test("the simulator's keys are listed in the shortcuts overlay", async ({ page }
   await expect(dlg.getByText("Previous or next thread change")).toBeVisible();
   await expect(dlg.getByText("One stitch back or forward")).toBeVisible();
 });
+
+// ---- Round 2 (2026-11-07): the strip is clickable, Isolate, underlay ------
+
+// A cheap fingerprint of the field's pixels, to tell "changed" from "the
+// same picture" without a screenshot diff.
+async function canvasSum(page) {
+  return page.locator(".hoop canvas").evaluate((c) => {
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let s = 0, h = 0;
+    for (let i = 0; i < d.length; i += 4) { s += d[i] + d[i + 1] + d[i + 2]; h = (h * 31 + d[i] + 7 * d[i + 1] + 13 * d[i + 2]) >>> 0; }
+    return { s, h };
+  });
+}
+
+test("a click on a thread's band in the strip goes to the start of that thread", async ({ page }) => {
+  const total = await twoColourLettering(page);
+  await openSim(page);
+  await pause(page);
+  const strip = page.getByTestId("sim-strip");
+  const bands = strip.locator("button");
+  await expect(bands).toHaveCount(2);
+  // The band is where `>` lands: on the change, naming thread 2 next.
+  await page.getByRole("button", { name: "Next thread change" }).click();
+  const change = await shown(page);
+  await page.getByRole("button", { name: "Previous thread change" }).click();
+  await expect(count(page)).toHaveText(`0 / ${total} stitches`);
+  await strip.getByRole("button", { name: /^Go to thread 2 of 2/ }).click();
+  expect(await shown(page)).toBe(change);
+  await expect(thread(page)).toContainText("Next: Thread 2 of 2");
+  await expect(page.locator(".fieldlive")).toContainText("thread 2 of 2");
+  // Thread 1's band goes back to the design's start.
+  await strip.getByRole("button", { name: /^Go to thread 1 of 2/ }).click();
+  await expect(count(page)).toHaveText(`0 / ${total} stitches`);
+  await expect(thread(page)).toContainText("Thread 1 of 2");
+  // Out of the Tab order: Tab from Play never lands on a band.
+  for (const b of await bands.all()) await expect(b).toHaveAttribute("tabindex", "-1");
+  // The bands are mouse targets of their own, not painted over the slider:
+  // a click mid-slider still scrubs.
+  const box = await page.locator(".simscrub").boundingBox();
+  await page.mouse.click(box.x + box.width * 0.75, box.y + box.height / 2);
+  const scrubbed = await shown(page);
+  expect(scrubbed).toBeGreaterThan(change);
+  expect(scrubbed).toBeLessThan(Number(total.replace(/,/g, "")));
+});
+
+test("Isolate dims everything but the thread on the needle, and off is the same picture", async ({ page }) => {
+  const total = await twoColourLettering(page);
+  await openSim(page);
+  await pause(page);
+  // Into thread 2 by a few stitches: thread 1 is all sewn behind it.
+  await page.getByRole("button", { name: "Next thread change" }).click();
+  const canvas = page.locator(".hoop canvas");
+  await canvas.focus();
+  for (let i = 0; i < 20; i++) await page.keyboard.press(".");
+  await expect(thread(page)).toContainText("Thread 2 of 2");
+  const at = await count(page).innerText();
+  const iso = page.getByRole("button", { name: "Isolate the thread on the needle" });
+  await expect(iso).toHaveAttribute("aria-pressed", "false");
+  await page.waitForTimeout(150);
+  const plain = await canvasSum(page);
+  await iso.click();
+  await expect(iso).toHaveAttribute("aria-pressed", "true");
+  await page.waitForTimeout(150);
+  const dimmed = await canvasSum(page);
+  expect(dimmed.h).not.toBe(plain.h);
+  // The wash lifts thread 1 toward the bed (a mid grey), so the picture moves.
+  expect(Math.abs(dimmed.s - plain.s)).toBeGreaterThan(0);
+  // Nothing about the playback moved.
+  await expect(count(page)).toHaveText(at);
+  await iso.click();
+  await expect(iso).toHaveAttribute("aria-pressed", "false");
+  await page.waitForTimeout(150);
+  expect((await canvasSum(page)).h).toBe(plain.h);
+  // And it keeps its state through playback to the end.
+  await iso.click();
+  await page.locator('.simbar button[aria-label="Play"]').click();
+  for (let i = 0; i < 3; i++) await page.getByRole("button", { name: "Playback speed" }).click();
+  await expect(count(page)).toHaveText(`${total} / ${total} stitches`, { timeout: 30_000 });
+  await expect(iso).toHaveAttribute("aria-pressed", "true");
+});
+
+test("the bar says when the needle is laying underlay and when it is on the top stitching", async ({ page }) => {
+  await twoColourLettering(page);
+  await openSim(page);
+  await pause(page);
+  const phase = page.getByTestId("sim-phase");
+  await expect(phase).toBeVisible();
+  const canvas = page.locator(".hoop canvas");
+  await canvas.focus();
+  // Lettering lays an underlay under each satin letter before the satin, so
+  // stepping forward from the start passes through both. (What the canvas
+  // draws for pending underlay is pinned in simOverlay.round2.spec.js.)
+  let seen = { underlay: false, top: false };
+  for (let i = 0; i < 400 && !(seen.underlay && seen.top); i++) {
+    await page.keyboard.press(".");
+    const t = (await phase.innerText()).trim();
+    if (t === "Underlay") seen.underlay = true;
+    if (t === "Top") seen.top = true;
+  }
+  expect(seen.underlay).toBe(true);
+  expect(seen.top).toBe(true);
+});
+
+test("the mouse over the field and a wheel zoom leave the simulator open where it was", async ({ page }) => {
+  // Before 2026-11-07 the first pointer move over the canvas closed it: the
+  // cursor write invalidated `canvas`, which re-ran paint(), which stops the
+  // simulator. A customer's mouse is over the field all the time.
+  const total = await twoColourLettering(page);
+  await openSim(page);
+  await pause(page);
+  await page.getByRole("button", { name: "Next thread change" }).click();
+  const at = await count(page).innerText();
+  const h = await page.locator(".hoop").boundingBox();
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2, { steps: 4 });
+  await page.mouse.move(h.x + 20, h.y + 20, { steps: 4 });
+  for (let i = 0; i < 4; i++) await page.mouse.wheel(0, -100);
+  await page.waitForTimeout(300);
+  await expect(page.locator(".simbar")).toBeVisible();
+  await expect(count(page)).toHaveText(at);
+  await expect(thread(page)).toContainText("Next: Thread 2 of 2");
+  // And it still plays to the end from there.
+  await page.locator('.simbar button[aria-label="Play"]').click();
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 3, { steps: 4 });
+  await expect(count(page)).toHaveText(`${total} / ${total} stitches`, { timeout: 30_000 });
+});
