@@ -298,7 +298,8 @@ def ribbon_width_mm(poly: Polygon) -> float:
 def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
                         design_class: str = "flat",
                         per_stroke: bool = False,
-                        area_weighted: bool = False) -> bool:
+                        area_weighted: bool = False,
+                        floor_applies: bool = False) -> bool:
     """Should this shape be satin rather than fill?
 
     Two conditions, both about how the result reads on fabric: the ribbon must
@@ -349,7 +350,8 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
     """
     return classify_ribbon(poly, max_width_mm, design_class=design_class,
                            per_stroke=per_stroke,
-                           area_weighted=area_weighted).satin
+                           area_weighted=area_weighted,
+                           floor_applies=floor_applies).satin
 
 
 # Law 31's satin minimum width, adopted VERBATIM from the printed rule
@@ -398,8 +400,15 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
                     full_metrics: bool = False,
                     per_stroke: bool = False,
                     polygon_axis: bool = False,
-                    area_weighted: bool = False) -> RibbonVerdict:
+                    area_weighted: bool = False,
+                    floor_applies: bool = False) -> RibbonVerdict:
     """`is_satin_candidate`'s implementation. Same verdict, with attribution.
+
+    `floor_applies` (`cfg.satin_floor_content_gate`, default OFF): Law 31's
+    width floor applies although `design_class` is not a photo class, because
+    the design is photographic by CONTENT (`config.is_photographic`: the
+    Studio's declaration or a `detect_photographic` hit) yet stage 0 routed it
+    gradient. False is byte-identical to before the parameter existed.
 
     `full_metrics` runs the distance transform even for a shape an earlier
     gate already rejected, so a probe can ask "would the DT have taken this
@@ -469,9 +478,10 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
                 <= _PROMOTE_EXPLAINED_MAX
                 and stats.elongation >= _PROMOTE_ELONGATION_MIN):
             return _floor_or(RibbonVerdict(True, "promoted_ribbon", metrics),
-                             stats, design_class, metrics)
+                             stats, design_class, metrics, floor_applies)
         if per_stroke and _stroke_rung_takes(poly, max_width_mm, design_class,
-                                            polygon_axis=polygon_axis):
+                                            polygon_axis=polygon_axis,
+                                            floor_applies=floor_applies):
             # `cfg.satin_per_stroke`, default OFF. The pooled radii above are
             # one number for a whole region, so a branchy letterform — wide at
             # its junctions, thin along its arms — fails `2s < m` as a unit
@@ -493,7 +503,7 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
             # negative). `_floor_or` still applies, so Law 31's width floor
             # cannot be sidestepped by splitting either.
             return _floor_or(RibbonVerdict(True, "stroke_ribbon", metrics),
-                             stats, design_class, metrics)
+                             stats, design_class, metrics, floor_applies)
         return RibbonVerdict(False, "dt_irregular", metrics)
     if area_weighted and stats.elongation < _PROMOTE_ELONGATION_MIN:
         # SCOPED 2026-09-16, on the render rather than on the stitch count.
@@ -513,11 +523,11 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
     if stats.p90_mm > max_width_mm:
         return RibbonVerdict(False, "dt_p90_cap", metrics)
     return _floor_or(RibbonVerdict(True, "satin", metrics),
-                     stats, design_class, metrics)
+                     stats, design_class, metrics, floor_applies)
 
 
 def _floor_or(earned: RibbonVerdict, stats: _DtStats, design_class: str,
-              metrics: dict) -> RibbonVerdict:
+              metrics: dict, floor_applies: bool = False) -> RibbonVerdict:
     """Law 31's width floor, applied only to a shape that already EARNED
     satin, only in the photo classes. `stats.p90_mm` is the DOUBLED p90
     medial radius — the ARTWORK column width, before stage 5's pull comp
@@ -527,7 +537,7 @@ def _floor_or(earned: RibbonVerdict, stats: _DtStats, design_class: str,
     verbatim. A `dt_degenerate` deferral never reaches here: no DT numbers,
     no floor — the rule reads off measurements it does not have.
     """
-    if (design_class in _PHOTO_CLASSES
+    if ((design_class in _PHOTO_CLASSES or floor_applies)
             and stats.p90_mm < PHOTO_MIN_SATIN_WIDTH_MM):
         return RibbonVerdict(False, "photo_width_floor", metrics)
     return earned
@@ -877,7 +887,8 @@ def _partition_area_mm2(strokes: list[Stroke], field: _WidthField,
 
 def classify_strokes(poly: Polygon, max_width_mm: float, *,
                      design_class: str = "flat",
-                     polygon_axis: bool = False) -> StrokesVerdict:
+                     polygon_axis: bool = False,
+                     floor_applies: bool = False) -> StrokesVerdict:
     """Per-stroke DT verdicts for one region, beside the region's own.
 
     The two gates are `classify_ribbon`'s, applied to per-stroke numbers:
@@ -898,9 +909,10 @@ def classify_strokes(poly: Polygon, max_width_mm: float, *,
     not a rejection; `region.reason` is where the answer for such a shape is.
     """
     region = classify_ribbon(poly, max_width_mm, design_class=design_class,
-                             full_metrics=True)
+                             full_metrics=True, floor_applies=floor_applies)
     rows, total = _stroke_rows(poly, max_width_mm, design_class,
-                               polygon_axis=polygon_axis)
+                               polygon_axis=polygon_axis,
+                               floor_applies=floor_applies)
     if not rows:
         return StrokesVerdict([], region, 0.0, 0.0, 0.0)
     passing = float(sum(r.area_mm2 for r in rows if r.satin))
@@ -910,7 +922,8 @@ def classify_strokes(poly: Polygon, max_width_mm: float, *,
 
 def _stroke_rows(poly: Polygon, max_width_mm: float,
                  design_class: str, *,
-                 polygon_axis: bool = False) -> tuple[list[StrokeVerdict], float]:
+                 polygon_axis: bool = False,
+                 floor_applies: bool = False) -> tuple[list[StrokeVerdict], float]:
     """-> (one verdict per stroke, total partitioned area mm2).
 
     Split out of `classify_strokes` so `classify_ribbon` can consult the
@@ -933,7 +946,7 @@ def _stroke_rows(poly: Polygon, max_width_mm: float,
             rows.append(StrokeVerdict(i, False, "dt_irregular", area, st))
         elif st.p90_mm > max_width_mm:
             rows.append(StrokeVerdict(i, False, "dt_p90_cap", area, st))
-        elif (design_class in _PHOTO_CLASSES
+        elif ((design_class in _PHOTO_CLASSES or floor_applies)
                 and st.p90_mm < PHOTO_MIN_SATIN_WIDTH_MM):
             # Law 31's width floor, per stroke — `_floor_or`'s rule, applied
             # to a stroke that has otherwise EARNED satin. Splitting a region
@@ -952,7 +965,8 @@ def _stroke_rows(poly: Polygon, max_width_mm: float,
 
 def _stroke_rung_takes(poly: Polygon, max_width_mm: float,
                        design_class: str, *,
-                       polygon_axis: bool = False) -> bool:
+                       polygon_axis: bool = False,
+                       floor_applies: bool = False) -> bool:
     """Would the per-stroke rung take a region the pooled DT refused?
 
     `>= _STROKE_AREA_FRAC_MIN` of the region's stroke-partitioned area passing
@@ -960,7 +974,8 @@ def _stroke_rung_takes(poly: Polygon, max_width_mm: float,
     is no evidence, and the rung may only ever ADD to the shipped verdict.
     """
     rows, total = _stroke_rows(poly, max_width_mm, design_class,
-                               polygon_axis=polygon_axis)
+                               polygon_axis=polygon_axis,
+                               floor_applies=floor_applies)
     if not rows or total <= 0:
         return False
     # The machine cap is a VETO, not a vote. Scoring it per stroke and then

@@ -20771,3 +20771,7 @@ explicit "drift" with named candidates:
 (`docs/yardstick-pro-pair-vs-kents-eye-2026-11-01.md`: only trim counts clear
 chance against Kent's eye), so a ten-point rise is a check going quiet on
 real colour work, not a sewn design looking better (gate 4).
+
+## 2026-11-06 — Defect 15 closed on the texture gate (Kent, "Close it")
+
+Census of 19 real photographs (PR #1272, `docs/photo-detection-census-2026-11-06.md`): photo class 3 detection-fired / 16 silent, other class 0 / 0; rescues 0, escapes 0, false positives 0 of 30 logos; kappa 1.000 (photo class) vs 0.187 (detection alone), chance-corrected, in-sample. Moved to MASTER_SCOPE "Closed"; the live entry as it stood is `git show b31f8a1f:MASTER_SCOPE.md`, item 15. Stage-1.25 docstrings (`config.is_photographic`, `photo_signals.py`, `app/src/lib/digitizer.js`) updated, no behaviour change.

@@ -37,6 +37,16 @@ verdicts while the flips stayed at 3-12 against 5 today):
              regions incl. one of 638.8 mm2 -- so its `changes a shipped
              verdict` count can only ever be fill->satin. This is the variant
              the plan's §7 asks for BEFORE its threshold is adopted.
+    area_flag  the SHIPPED `cfg.classify_area_weighted` path itself
+             (`classify_ribbon(area_weighted=True)`, scope guard included) --
+             the incumbent; `area` above is the 09-16 arithmetic without the
+             guard.
+    profile  the polygon-native width profile (2026-11-06, measured
+             negative #9): the six numbers read off the Voronoi medial axis
+             of the boundary, every ridge weighted by its object-angle
+             significance instead of pruned, stations under one classifier
+             pixel dropped (`tools/polygon_profile.py`). `profile:raw` keeps
+             every station. See `docs/classifier-polygon-profile-2026-11-06.md`.
 
     .venv/bin/python tools/ribbon_stability.py [case ...] [--variant NAME ...]
 
@@ -119,6 +129,12 @@ def _weighted_stats(r: np.ndarray, area: float, scale: float) -> _DtStats | None
 
 
 def variant_stats(poly, variant: str) -> _DtStats | None:
+    if variant in ("profile", "profile:raw"):
+        # POLYGON-NATIVE (2026-11-06, measured negative #9): no raster, no
+        # thinning, nothing pruned -- see `tools/polygon_profile.py`.
+        import polygon_profile
+        return polygon_profile.profile_stats(
+            poly, floor_px=0.0 if variant == "profile:raw" else 1.0)
     field = build_shape_field(poly)
     if field is None or not field.skel.any():
         return None
@@ -185,6 +201,9 @@ def classify_variant(poly, variant: str, design_class: str) -> RibbonVerdict:
         return RibbonVerdict(False, "width_cap", m)
     if perim / 2.0 - w < 3.0 * w:
         return RibbonVerdict(False, "aspect", m)
+    if variant == "area_flag":
+        return classify_ribbon(poly, max_w, design_class=design_class,
+                               area_weighted=True)
     if variant == "strokes":
         # Promotion-only: the shipped call still decides, and the rung may
         # only ADD. Placed after the width and aspect gates on purpose --

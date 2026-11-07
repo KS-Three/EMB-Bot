@@ -440,28 +440,116 @@ TWO_TONE_MAX = 0.90
 TWO_TONE_MARGIN = 0.06
 
 
-def _texture_frac(rgb: np.ndarray, fg: np.ndarray) -> float:
-    """Share of the foreground, on the `TEXTURE_NORM_PX` raster, whose 5x5
-    luminance std sits in [TEXTURE_STD_LO, TEXTURE_STD_HI) — neither flat nor
-    a hard edge — and that sits more than `TEXTURE_EDGE_EXCLUDE_PX` from any
-    hard-edge pixel. 0.0 under `TEXTURE_MIN_FG_PX` foreground pixels."""
+def _norm_raster(rgb: np.ndarray, fg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """The `TEXTURE_NORM_PX` raster both scale-relative signals read: a larger
+    file INTER_AREA-downscaled to that long edge (the mask the same way, read
+    as `> 0`); a smaller one as it is."""
     h, w = rgb.shape[:2]
     scale = TEXTURE_NORM_PX / max(h, w)
     if scale < 1.0:
         size = (max(1, round(w * scale)), max(1, round(h * scale)))
         rgb = cv2.resize(rgb, size, interpolation=cv2.INTER_AREA)
         fg = cv2.resize(fg.astype(np.uint8), size, interpolation=cv2.INTER_AREA) > 0
-    if int(fg.sum()) < TEXTURE_MIN_FG_PX:
-        return 0.0
-    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    return rgb, fg
+
+
+def _local_sd(gray: np.ndarray) -> np.ndarray:
+    """Population std of `gray` over a `TEXTURE_STD_WIN` box."""
     win = (TEXTURE_STD_WIN, TEXTURE_STD_WIN)
     mean = cv2.blur(gray, win)
     mean_sq = cv2.blur(gray * gray, win)
-    sd = np.sqrt(np.maximum(mean_sq - mean * mean, 0.0))
+    return np.sqrt(np.maximum(mean_sq - mean * mean, 0.0))
+
+
+def _texture_frac(rgb: np.ndarray, fg: np.ndarray) -> float:
+    """Share of the foreground, on the `TEXTURE_NORM_PX` raster, whose 5x5
+    luminance std sits in [TEXTURE_STD_LO, TEXTURE_STD_HI) — neither flat nor
+    a hard edge — and that sits more than `TEXTURE_EDGE_EXCLUDE_PX` from any
+    hard-edge pixel. 0.0 under `TEXTURE_MIN_FG_PX` foreground pixels."""
+    rgb, fg = _norm_raster(rgb, fg)
+    if int(fg.sum()) < TEXTURE_MIN_FG_PX:
+        return 0.0
+    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    sd = _local_sd(gray)
     band = (sd >= TEXTURE_STD_LO) & (sd < TEXTURE_STD_HI)
     k = 2 * TEXTURE_EDGE_EXCLUDE_PX + 1
     near_edge = cv2.dilate((sd >= TEXTURE_STD_HI).astype(np.uint8), np.ones((k, k), np.uint8)) > 0
     return float((band & ~near_edge)[fg].mean())
+
+
+# --- tonal_frac (2026-11-06, `cfg.stage0_scale_relative_grad`) -----------------
+#
+# `docs/stage0-scale-relative-grad-2026-11-06.md`. The flat/gradient read on the
+# same 512-px raster as `texture_frac`, as a SHARE of the foreground, so it does
+# not swing with export resolution the way `gradient_smoothness` does (7-34x
+# across a 146-2000 px sweep; the 08-15 spec §5a-5c). A pixel is tonal when it
+# is in the texture band (as `texture_frac`) or on a smooth ramp (its luminance,
+# Gaussian-blurred, slopes at least `TONAL_RAMP_SLOPE_MIN` grey levels per
+# raster px while its 5x5 std stays under the texture band), and it is clear of
+# every hard edge AND of the foreground's own boundary. Flat art is fills and
+# edges: near zero at any size. Not a threshold move: `gradient_smoothness` and
+# its gate are untouched, and OFF never reads this.
+TONAL_RAMP_SIGMA = 2.0
+TONAL_RAMP_SLOPE_MIN = 0.25
+# The texture band takes `texture_frac`'s 2-px exclusion; the ramp term needs
+# more, because a sigma-2 blur smears a hard edge's slope ~6 px either side.
+TONAL_RAMP_EDGE_EXCLUDE_PX = 6
+# An alpha boundary is an edge whose luminance may not change at all (the
+# extension paints the ink colour outward), and PIL's premultiplied resample
+# leaves its rim pixels 1-4 levels off the ink: read as a ramp, ENTHUSIAST's
+# letter rims took it from 0.000 at native to 0.44-0.84 downscaled. Opaque
+# files have no such boundary (their foreground is the whole frame, and the
+# frame edge does not count as one), so they lose nothing to it.
+TONAL_FG_EDGE_EXCLUDE_PX = 4
+# Sited 2026-11-06 on the rasters the product sends (native, and the Studio's
+# 1200-px cap under INTER_AREA / LINEAR / CUBIC), over 15 real flat customer
+# logos and 21 real tonal artworks (drone_render, owl_kent, Kent's Instagram
+# icon, the 18 Commons photographs): flat max 0.078 (Gaulke, Studio
+# INTER_AREA), tonal min 0.148 (drone_render, Studio INTER_CUBIC). Midpoint,
+# half the gap as the margin. Over the full 146-2000 px downscale ladder in
+# three filters the flat max is 0.083 (Gaulke, BILINEAR 1000 px); the drone
+# reads under the gate at 400 px and below (`tools/stage0_scale_relative.py`).
+TONAL_GRADIENT_MIN = 0.11
+TONAL_GRADIENT_MARGIN = 0.035
+
+
+def _tonal_frac(rgb: np.ndarray, fg: np.ndarray) -> float:
+    """Share of the foreground, on the `TEXTURE_NORM_PX` raster, that is in the
+    texture band or on a smooth ramp, clear of hard edges and of the
+    foreground boundary (see the constants above). 0.0 under
+    `TEXTURE_MIN_FG_PX` foreground pixels."""
+    rgb, fg = _norm_raster(rgb, fg)
+    if int(fg.sum()) < TEXTURE_MIN_FG_PX:
+        return 0.0
+    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    sd = _local_sd(gray)
+    blurred = cv2.GaussianBlur(gray, (0, 0), TONAL_RAMP_SIGMA)
+    gx = cv2.Sobel(blurred, cv2.CV_32F, 1, 0, ksize=3) / 8.0
+    gy = cv2.Sobel(blurred, cv2.CV_32F, 0, 1, ksize=3) / 8.0
+    slope = _magnitude(gx, gy)
+    hard = (sd >= TEXTURE_STD_HI).astype(np.uint8)
+
+    def near(src: np.ndarray, px: int) -> np.ndarray:
+        k = 2 * px + 1
+        return cv2.dilate(src, np.ones((k, k), np.uint8),
+                          borderType=cv2.BORDER_CONSTANT, borderValue=0) > 0
+
+    band = (sd >= TEXTURE_STD_LO) & (sd < TEXTURE_STD_HI) & ~near(hard, TEXTURE_EDGE_EXCLUDE_PX)
+    ramp = (slope >= TONAL_RAMP_SLOPE_MIN) & (sd < TEXTURE_STD_LO) & ~near(hard, TONAL_RAMP_EDGE_EXCLUDE_PX)
+    off_rim = ~near((~fg).astype(np.uint8), TONAL_FG_EDGE_EXCLUDE_PX)
+    return float(((band | ramp) & off_rim)[fg].mean())
+
+
+def decide_flat_gradient(grad_var: float, tonal: float,
+                         scale_relative: bool) -> tuple[bool, float]:
+    """The flat/gradient gate inside non-photo territory -> (is_gradient,
+    gate confidence). `scale_relative` False is the shipped gate on
+    `gradient_smoothness`; True reads `tonal_frac` instead."""
+    if scale_relative:
+        return (tonal >= TONAL_GRADIENT_MIN,
+                _gate_confidence(tonal, TONAL_GRADIENT_MIN, TONAL_GRADIENT_MARGIN))
+    return (grad_var >= GRAD_VAR_GRADIENT_MIN,
+            _gate_confidence(grad_var, GRAD_VAR_GRADIENT_MIN, GRAD_VAR_GRADIENT_MARGIN))
 
 
 def _two_tone_mass(rgb: np.ndarray, fg: np.ndarray) -> float:
@@ -662,6 +750,7 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     grad_var = _gradient_smoothness(rgb, fg)
     alpha_soft = _alpha_softness(alpha)
     texture = _texture_frac(rgb, fg)
+    tonal = _tonal_frac(rgb, fg)
     two_tone = _two_tone_mass(rgb, fg)
     cutout = _has_cutout(alpha)
     signals = {
@@ -677,6 +766,10 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         "texture_frac": texture,
         "two_tone_mass": two_tone,
         "cutout_alpha": cutout,
+        # The 2026-11-06 scale-relative flat/gradient read, reported under
+        # both arms of `cfg.stage0_scale_relative_grad` so `/classify` shows
+        # it; only ON does it decide anything.
+        "tonal_frac": tonal,
     }
     sweep_signals, sweep_warnings = _seed_sweep_signals(rgb, fg, cfg, ucm)
     signals.update(sweep_signals)
@@ -697,8 +790,8 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         confidence = min(photo_gate_conf, sub_gate_conf)
         class_ = "photo_subject" if is_subject else "photo_scene"
     else:
-        is_gradient = grad_var >= GRAD_VAR_GRADIENT_MIN
-        grad_gate_conf = _gate_confidence(grad_var, GRAD_VAR_GRADIENT_MIN, GRAD_VAR_GRADIENT_MARGIN)
+        is_gradient, grad_gate_conf = decide_flat_gradient(
+            grad_var, tonal, bool(getattr(cfg, "stage0_scale_relative_grad", False)))
         confidence = min(photo_gate_conf, grad_gate_conf)
         class_ = "gradient" if is_gradient else "flat"
 

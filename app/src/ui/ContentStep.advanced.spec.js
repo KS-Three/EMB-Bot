@@ -105,12 +105,16 @@ test("shape: kind and colour visible; the per-kind parameters are Advanced", asy
 
 test("manual: the shape list is visible; the drawing canvas, tools and trace import are Advanced", async () => {
   mount(P.defaultManualElement("m1"));
-  const undo = await screen.findByRole("button", { name: "Undo point", hidden: true });
+  // ManualPanel is a lazy import too (ContentStep's {#await import(...)}), so
+  // it gets the artwork test's 30 s, not findByRole's 1 s default: on Kent's
+  // laptop the import ran 1.1 s every time on 2026-11-06 and the test missed
+  // it by a tenth.
+  const undo = await screen.findByRole("button", { name: "Undo point", hidden: true }, { timeout: 30_000 });
   expect(undo).not.toBeVisible();
   expect(screen.getByRole("button", { name: "Trace image…", hidden: true })).not.toBeVisible();
   await open();
   expect(undo).toBeVisible();
-});
+}, 30_000);
 
 test("artwork (auto-digitize): upload, run and colour count visible; the rest of the settings Advanced", async () => {
   const el = { ...P.defaultDigitizedElement("d1"), sourcePng: "iVBORw0KGgo=", name: "logo.png" };

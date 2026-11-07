@@ -41,6 +41,7 @@ from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
 from digitizer_core import legibility, machine, stage1_photo_prep, stage2_sam2_segment
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
 from digitizer_core.manual import build_manual_result
+from digitizer_core import outline_fonts
 from digitizer_core.photo_signals import resolve as resolve_photo_signals
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
 from digitizer_core.preflight import _owning_region_id, run_preflight
@@ -1476,6 +1477,169 @@ async def start_digitize_manual(
             # documented image=None contract) — everything else still runs.
             "preflight": run_preflight(result, plan, cfg, image=None)
                          if cfg.preflight else None,
+        }
+
+    job, cached = registry.submit(key, work)
+    return {"job_id": job.id, "state": job.state, "cached": cached}
+
+
+# --- Outline fonts, digitized on demand (2026-11-06) -------------------------
+#
+# The pre-digitized `.embf` library sews in the browser; these are plain
+# TrueType/OpenType fonts whose typed text the SERVICE lays out from the
+# outlines and stitches through the Column lane — the same construction a
+# word traced out of artwork gets, on exact curves instead of a trace. Kent
+# reopened outline fonts 2026-11-06 ("slower, but easier than importing an
+# image of the font"); `digitizer_core.outline_fonts` has the measurements
+# and the licence rule (OFL, unmodified, licence text beside each file).
+
+_LETTERING_FIELDS = {"font", "text", "width_mm", "cap_mm", "letter_spacing_mm",
+                     "line_spacing", "align", "thread_index", "thread_rgb", "config"}
+
+
+@app.get("/fonts/outline", summary="List the outline fonts this service can digitize",
+         response_model=None,
+         responses={200: {"model": schemas.OutlineFonts}, **schemas.TIMEOUT})
+def outline_font_list() -> dict:
+    """Every outline font the service ships, with the codepoints each one
+    draws in the Studio's coverage shape (a bare codepoint or an inclusive
+    `[lo, hi]` run, `app/src/lib/fontCoverage.js`) so "fits your text" can
+    read these rows exactly as it reads the `.embf` manifest's. `file` and
+    `license` are the routes below, relative to the service root."""
+    fonts = []
+    for f in outline_fonts.list_fonts():
+        fonts.append({**f,
+                      "coverage": outline_fonts.coverage(f["key"]),
+                      "file": f"/fonts/outline/{f['key']}/file",
+                      "license": f"/fonts/outline/{f['key']}/license"})
+    return {"version": 1, "fonts": fonts}
+
+
+@app.get("/fonts/outline/{key}/file", summary="The font file itself (for a CSS preview)",
+         responses={200: {"content": {"font/ttf": {}}, "description": "The unmodified TTF."},
+                    404: schemas.error("Unknown outline font."), **schemas.TIMEOUT})
+def outline_font_file(key: str) -> Response:
+    """The TTF as shipped, so the Studio can `@font-face` it and draw the
+    font browser's preview tile with the browser's own text engine. A
+    variable file answers every weight the registry names; the CSS picks."""
+    try:
+        path = outline_fonts.font_path(key)
+    except outline_fonts.OutlineFontError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(content=path.read_bytes(), media_type="font/ttf",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/fonts/outline/{key}/license", summary="The font's licence text",
+         responses={200: {"content": {"text/plain": {}}, "description": "OFL.txt as shipped."},
+                    404: schemas.error("Unknown outline font."), **schemas.TIMEOUT})
+def outline_font_license(key: str) -> Response:
+    try:
+        text = outline_fonts.license_text(key)
+    except outline_fonts.OutlineFontError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(content=text, media_type="text/plain; charset=utf-8")
+
+
+@app.post("/lettering", status_code=202, summary="Digitize typed text in an outline font",
+          responses={202: {"model": schemas.JobSubmitted, "description": "Job accepted (or replayed)."},
+                     400: schemas.error("Unknown font, empty or over-long text, bad size, thread or config."),
+                     **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
+async def start_lettering(
+    payload: dict = Body(..., examples=[schemas.LETTERING_EXAMPLE]),
+    x_embbot_token: str | None = Header(None),
+) -> dict:
+    """Text in, a job id out; poll `/jobs/{id}` exactly as `/digitize`'s
+    caller does — the finished job carries the identical `{design, review,
+    stats, warnings, preflight}` shape, built from the same `PipelineResult`
+    / `StitchPlan` contract as `/digitize-manual`.
+
+    Body:
+        font: str                 a key from GET /fonts/outline
+        text: str                 up to 200 characters, up to 6 lines ("\\n")
+        width_mm: number          target width of the whole text block (the
+                                  Studio's text `sizeMm`) — OR —
+        cap_mm: number            cap height; give exactly one of the two
+        letter_spacing_mm: number optional, default 0, added between glyphs
+        line_spacing: number      optional, default 1.0 × the font's own pitch
+        align: "left"|"center"|"right"   optional, default center: how
+                                  shorter lines sit against the widest
+        thread_index: int         optional; one of thread_index / thread_rgb
+        thread_rgb: [r, g, b]     (nearest CIEDE2000 snap); default black
+        config: {...}             the `/digitize-manual` `PipelineConfig`
+                                  field set (`_MANUAL_CONFIG_FIELDS`);
+                                  `target_width_mm` is accepted but unused —
+                                  `width_mm` is the size here
+
+    Every glyph reaches the pipeline as a lettering-tagged auto-tier region
+    (`columns.is_lettering`), so the Column lane sews it; a character the
+    font has no glyph for is skipped and named in `warnings`. A malformed
+    request is a 400 at submit, never a failed job. Cost: stages 5-7 only —
+    a 7-letter word at cap 12 mm took 15-22 s on Kent's laptop, 2 s at
+    cap 6 mm (`digitizer_core/outline_fonts.py`).
+    """
+    _require_token(x_embbot_token)
+
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="payload must be a JSON object.")
+    unknown = sorted(set(payload) - _LETTERING_FIELDS)
+    if unknown:
+        raise HTTPException(status_code=400, detail=f"Unknown field(s): {', '.join(unknown)}.")
+    font = payload.get("font")
+    text = payload.get("text")
+    if not isinstance(font, str) or not font:
+        raise HTTPException(status_code=400, detail="payload.font must be an outline font key.")
+    if not isinstance(text, str) or not text.strip():
+        raise HTTPException(status_code=400, detail="payload.text must be a non-empty string.")
+    for name in ("width_mm", "cap_mm", "letter_spacing_mm", "line_spacing"):
+        v = payload.get(name)
+        if v is not None and (isinstance(v, bool) or not isinstance(v, (int, float))):
+            raise HTTPException(status_code=400, detail=f"payload.{name} must be a number.")
+    spacing = float(payload.get("letter_spacing_mm") or 0.0)
+    line_spacing = float(payload.get("line_spacing") if payload.get("line_spacing") is not None else 1.0)
+    if not 0.0 < line_spacing <= 4.0:
+        raise HTTPException(status_code=400, detail="payload.line_spacing must be in (0, 4].")
+    if not -5.0 <= spacing <= 50.0:
+        raise HTTPException(status_code=400, detail="payload.letter_spacing_mm must be in [-5, 50].")
+    align = payload.get("align") if payload.get("align") is not None else "center"
+    if align not in outline_fonts.ALIGNS:
+        raise HTTPException(status_code=400, detail="payload.align must be left, center or right.")
+
+    cfg_dict = _parse_manual_config(payload.get("config"))
+    request = {k: payload.get(k) for k in sorted(_LETTERING_FIELDS - {"config"})}
+    key = content_key(json.dumps(request, sort_keys=True, separators=(",", ":"), default=str).encode(),
+                      cfg_dict)
+    cfg = PipelineConfig(**cfg_dict)
+
+    def build():
+        return outline_fonts.build_text_result(
+            font, text, cfg, width_mm=payload.get("width_mm"), cap_mm=payload.get("cap_mm"),
+            letter_spacing_mm=spacing, line_spacing=line_spacing, align=align,
+            thread_index=payload.get("thread_index"), thread_rgb=payload.get("thread_rgb"))
+
+    # Layout is validation: unknown font, no drawable glyph, bad thread —
+    # all fail here as a 400, before a job slot is spent. Off the event loop
+    # because the first use of a variable font instances it (0.3-5 s).
+    try:
+        result, layout = await run_in_threadpool(build)
+    except outline_fonts.OutlineFontError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    def work() -> dict:
+        plan = plan_stitches(result, cfg)
+        design = plan_to_design(plan, name=f"{outline_fonts.registry()[font].name}: {text.strip()[:32]}")
+        return {
+            "design": design,
+            "review": _review_payload(result, plan),
+            "stats": _stats_payload(plan, design, {r.shape_id for r in result.regions}),
+            "warnings": list(result.warnings) + list(plan.warnings),
+            "preflight": run_preflight(result, plan, cfg, image=None) if cfg.preflight else None,
+            "lettering": {"font": font, "text": text,
+                          "width_mm": round(layout.width_mm, 3),
+                          "height_mm": round(layout.height_mm, 3),
+                          "cap_mm": round(layout.cap_mm, 3),
+                          "letters": len(layout.letters),
+                          "unsupported": layout.unsupported},
         }
 
     job, cached = registry.submit(key, work)

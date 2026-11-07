@@ -92,7 +92,7 @@ def test_measurement_failure_stamps_none_for_both_fields_not_a_crash():
     `_ocr_glyph_guess`'s own contract), never an exception that would take
     the whole pipeline down with it."""
     r = _region("T", _block_letter_polygon("T"))
-    with patch("digitizer_core.textcluster.pytesseract.image_to_data",
+    with patch("digitizer_core.textcluster._ocr.image_to_data",
                side_effect=RuntimeError("tesseract not found")):
         ocr_suggest_text([r], _P)
     assert r.meta["ocr_char"] is None
@@ -118,7 +118,7 @@ def test_no_detected_text_reads_as_zero_confidence_not_none():
     `None` (nothing detected) but `confidence` is a real `0.0`, not `None`
     — the two fields' "I don't know" cases are not identical, see
     `_ocr_glyph_guess`'s own docstring."""
-    with patch("digitizer_core.textcluster.pytesseract.image_to_data",
+    with patch("digitizer_core.textcluster._ocr.image_to_data",
                return_value={"conf": ["-1", "-1"], "text": ["", ""]}):
         char, confidence = _ocr_glyph_guess(_block_letter_polygon("T"))
     assert char is None
@@ -131,7 +131,7 @@ def test_ocr_char_is_truncated_to_a_single_character():
     multi-character detection on a single-glyph crop) — the Studio-side
     concatenation (`digitizer.js`'s `textClusterSeed`) assumes one member
     contributes exactly one character to the suggested word."""
-    with patch("digitizer_core.textcluster.pytesseract.image_to_data",
+    with patch("digitizer_core.textcluster._ocr.image_to_data",
                return_value={"conf": ["91"], "text": ["TT"]}):
         char, confidence = _ocr_glyph_guess(_block_letter_polygon("T"))
     assert char == "T"

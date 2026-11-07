@@ -168,6 +168,54 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   preview. Live your-text tiles render only fonts already in
   `EMB.SATIN_FONTS`, memoized per (font, text).
 
+### Outline fonts, digitized on demand (2026-11-06)
+
+A SECOND kind of font beside the `.embf` library: plain TrueType/OpenType
+files the digitizer SERVICE lays out and sews when the customer presses
+"Digitize lettering". Kent reopened outline fonts 2026-11-06 ("not
+pre-digitized, but embot will have the ability to digitize them — slower, but
+easier than importing an image of the font"); the 2026-07-24 "no outline
+fonts" ruling rejected the browser engine's auto-TRACE of glyph bitmaps, and
+the Column lane that sews traced lettering did not exist then. The glyphs'
+own curves go to that lane as lettering-tagged shapes, so a typed word gets
+the construction a traced word gets, on exact outlines, with stages 0-4
+skipped and no OCR/text-cluster tagging to miss. Spike 2026-11-06 on Kent's
+laptop, same word and font both ways: Fremont / Montserrat Bold at cap 12 mm
+15.5 s against 24.2 s via a PNG; ENTHUSIAST at cap 6 mm 2.0 s against 14.7;
+the PNG route tagged 0 of Lobster's 5 shapes as letters, the outline route
+7 of 7 by construction.
+
+- **Service:** `digitizer_core/outline_fonts.py` (registry, fontTools layout
+  with `kern` + GPOS pair kerning, NONZERO-winding fill — variable fonts keep
+  overlapping contours, so even-odd nesting read Roboto's B as two bodies —
+  and `build_text_result` → a lettering-tagged `PipelineResult`);
+  `POST /lettering` (same `/jobs/{id}` contract as `/digitize-manual`, plus a
+  `lettering` echo), `GET /fonts/outline` (rows + coverage in the Studio's
+  shape), `/fonts/outline/{key}/file` and `/license`. `fonttools` is a
+  runtime dependency (MIT, pure Python).
+- **Fonts:** `digitizer_core/outline_fonts/<family>/` — 21 families, 33
+  entries, 6.2 MB, fetched UNMODIFIED from google/fonts at a pinned commit by
+  `tools/fetch_outline_fonts.py` (`--check` verifies the sha256s), OFL-1.1
+  only, `OFL.txt` beside each; a variable file is instanced to Regular/Bold
+  in memory. Shipped unmodified, so a Reserved Font Name may stay the name
+  (audit 2026-07-31 item 10). Adding one: append to `FAMILIES` in the fetch
+  tool, run it, commit the files and `fonts.json`.
+- **Studio:** `app/src/lib/outlineFonts.js`. The key is `outline:<key>` on an
+  ordinary text element; the result lands on the element as
+  `result`/`appliedConfig`/`lettering`/`stats` and renders through
+  `buildImportedDesign` like a digitized image. `staleness.js` compares the
+  request it would send now (text, font, width, spacing, justification,
+  colour, garment, fabric, chart) with `appliedConfig`, so Download locks
+  until the customer re-digitizes (2026-10-25 rule); nothing runs on its own
+  (2026-10-05). `fontLoader.loadOutlineRows()` lists them under the "Outline"
+  chip when the service is up (previews are the TTF itself via `@font-face`,
+  there is no satin render to show); `ensureFont` resolves null for an
+  outline key. Per-letter colour, curve, weight and slant are hidden for an
+  outline font: the service reads none of them. Multi-line text is justified
+  by the element's `align`.
+- **Not built:** a customer's own TTF upload (Ember/Stitchist parity), arc,
+  per-letter colour, ligatures/shaping beyond cmap + pair kerning.
+
 ## Stage B additions (2026-07-28)
 
 - **Font browser** (`FontBrowser.svelte`): dialog (ProjectsDrawer mechanics),
@@ -2251,19 +2299,26 @@ failures are EXPECTED:
    that lands the goldens, and `git pull` before pushing anything else: the
    bot's commit is on the branch now.
 
-2. **OCR tests skip when the `tesseract` binary is not on PATH — except on
-   CI, where a missing binary fails loud.** `textcluster.py`'s
-   OCR-confidence gate and OCR-suggested-text passes call the real binary
-   through `pytesseract`; CI apt-installs `tesseract-ocr` (see the
-   workflow), most dev machines don't have it. The five tests that assert
-   a REAL read (not a mocked one) carry the shared `requires_tesseract`
-   marker (`digitizer/tests/conftest.py`, since 2026-08-17), which skips
-   only when the binary is missing AND `CI` is unset — so a workflow
-   refactor that loses the tesseract install fails the job instead of
-   going dark behind quiet skips. Before the marker these five FAILED on
-   a tesseract-less machine and read as unexplained local reds. A local
-   skip means "install tesseract to exercise OCR end-to-end", not that
-   anything is broken.
+2. **OCR tests skip when no OCR engine is present — except on CI, where
+   that fails loud.** Every read goes through `digitizer_core/ocr.py`
+   (2026-11-06): the `tesserocr` wheel runs Tesseract IN PROCESS (it bundles
+   5.5.3; ~5 ms a read against ~250 for the old child process) and needs
+   only `eng.traineddata`, which the apt / brew / Windows `tesseract-ocr`
+   packages provide; without the wheel the same calls fall back to the
+   `tesseract` binary through `pytesseract`. CI apt-installs `tesseract-ocr`
+   (see the workflow) and pip-installs the wheel from `requirements.txt`.
+   The tests that assert a REAL read (not a mocked one) carry the shared
+   `requires_tesseract` marker (`digitizer/tests/conftest.py`, since
+   2026-08-17; it asks `ocr.available()` since 11-06), which skips only
+   when no engine is found AND `CI` is unset — so a workflow refactor that
+   loses the tesseract install fails the job instead of going dark behind
+   quiet skips. Before the marker these FAILED on a tesseract-less machine
+   and read as unexplained local reds. A local skip means "install
+   tesseract-ocr for the tessdata", not that anything is broken. Mocked
+   reads patch `digitizer_core.textcluster._ocr.image_to_data` (the module's
+   handle on `ocr.py`), not `pytesseract`. `EMB_OCR_ENGINE=pytesseract`
+   forces the old path for a before/after; the engine that read is in every
+   board's meta (`tesseract_version()` -> `ocr.version()`).
 
    **But do not read a local skip as "nothing to see here" before you
    push — a green local suite with these five skipped is NOT the same run
@@ -3125,10 +3180,14 @@ here since it explains *why*, not *what's currently true*.
   `<path inkstitch:satin_column>` rails+rungs for satin fonts, and since
   2026-08-21 also run/bean fonts whose runs carry an AUTHORED stitch
   length and cross-stitch fonts with a measurable grid (this line was
-  satin-only before those lettering paths existed). What stays rejected is
-  the outline-only font, which can only auto-trace — Kent has already ruled
-  that lower quality than hand-authored stitch data. Full recipe + license
-  gate: `.claude/skills/add-font/SKILL.md` / `tools/build-font.mjs` usage.
+  satin-only before those lettering paths existed). An outline-only font
+  does NOT go in this library — it goes in the OTHER one: since 2026-11-06
+  (Kent) the digitizer service lays TrueType/OpenType text out and sews it
+  through the Column lane on demand ("Outline fonts, digitized on demand"
+  above; `tools/fetch_outline_fonts.py`). The 2026-07-24 ruling that an
+  outline font is lower quality was about the browser engine's auto-trace,
+  which is still not a path. Full recipe + license gate for `.embf` fonts:
+  `.claude/skills/add-font/SKILL.md` / `tools/build-font.mjs` usage.
 
 ## Who's asking for what
 

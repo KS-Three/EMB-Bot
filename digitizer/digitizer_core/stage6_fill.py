@@ -1208,7 +1208,8 @@ def _hide_bridge(bridge, poly: Polygon, slack: Polygon, a: tuple[float, float],
                                or _exposed_mm([a] + bridge, sewn) <= _EXPOSED_TOLERANCE_MM):
         return bridge
     hidden = fill_section_travel.bridge(poly, slack, a, b, kind, todo=todo,
-                                        row_mm=row_mm, sewn=sewn)
+                                        row_mm=row_mm, sewn=sewn,
+                                        avoid_sewn=_ONE_PASS.get() or _SEAM_AWARE.get())
     return bridge if hidden is None else hidden
 
 
@@ -1298,6 +1299,45 @@ def seam_priced_scope(on: bool):
         _SEAM_PRICED.reset(token)
 
 
+# `cfg.fill_one_pass_sections` (2026-11-06, built OFF): seam order's progression
+# planned for the travel under rows still to come, and that travel sewn
+# (`_one_pass_sections`). Same scope pattern as `_SEAM_PRICED`.
+_ONE_PASS: contextvars.ContextVar[bool] = contextvars.ContextVar("fill_one_pass_sections",
+                                                                 default=False)
+
+
+@contextlib.contextmanager
+def one_pass_scope(on: bool):
+    """`cfg.fill_one_pass_sections` for the length of one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _ONE_PASS.set(True)
+    try:
+        yield
+    finally:
+        _ONE_PASS.reset(token)
+
+
+# `cfg.fill_seam_aware_sections` (2026-11-06, built OFF): seam order's sections
+# planned with lookahead and the articulation rule (`_seam_aware_sections`).
+_SEAM_AWARE: contextvars.ContextVar[bool] = contextvars.ContextVar("fill_seam_aware_sections",
+                                                                   default=False)
+
+
+@contextlib.contextmanager
+def seam_aware_scope(on: bool):
+    """`cfg.fill_seam_aware_sections` for the length of one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _SEAM_AWARE.set(True)
+    try:
+        yield
+    finally:
+        _SEAM_AWARE.reset(token)
+
+
 def _uv(pt: tuple[float, float], angle_deg: float) -> tuple[float, float]:
     """`pt` in the fill's row frame: u along the rows, v across them."""
     th = math.radians(angle_deg)
@@ -1369,7 +1409,7 @@ def _seam_faults(order: list[list[tuple[float, float]]], angle_deg: float, row_m
 
 def _order_for_seams(paths: list[list[tuple[float, float]]], angle_deg: float,
                      entry: tuple[float, float] | None, row_mm: float,
-                     price=None) -> list[list[tuple[float, float]]]:
+                     price=None, reach=None, choose=None) -> list[list[tuple[float, float]]]:
     """The sections of one fill in the order one continuous tatami would lay them.
 
     Kent's Instagram icon at 80 mm (2026-10-29): the top pink line he circled is
@@ -1394,6 +1434,21 @@ def _order_for_seams(paths: list[list[tuple[float, float]]], angle_deg: float,
     settles it between two progressions that lay equally well (`_seam_faults`).
     A chord cannot see that one walls the needle in and the other does not, but
     the lay comes first: on Becker beanie the cheaper one had 6 flips, the chord's 0.
+
+    `reach` (`cfg.fill_one_pass_sections`, built OFF): (needle, a section's
+    start, the fill laid so far, the paths still to sew) -> whether the needle
+    gets there hidden. Given, the sections free to go are tried nearest first
+    and the first one reached hidden goes; none reached, the nearest, as
+    without it. The progression and the seam rule are untouched: this only
+    picks WHICH free section comes next. Becker's fields fork into lobes
+    below a body, and nearest-first finishes one lobe at the bottom with the
+    other walled off behind finished fill (`docs/fill-one-pass-sections-2026-11-06.md`).
+
+    `choose` (`cfg.fill_seam_aware_sections`, built OFF): (needle, the sections
+    free to go, every section oriented for this progression, the ones sewn,
+    the fill laid so far, upstream, the seam graph) -> which free section goes.
+    Given, it replaces `reach`'s pick; the progression and seam rule are the
+    same, so it too only picks WHICH free section comes next.
     """
     real = [p for p in paths if len(p) >= 2]
     if len(real) < 2:
@@ -1420,6 +1475,7 @@ def _order_for_seams(paths: list[list[tuple[float, float]]], angle_deg: float,
     for i in range(n):
         for j in below[i]:
             above[j].add(i)
+    seams = {i: below[i] | above[i] for i in range(n)} if choose is not None else None
 
     def plan(low_first: bool):
         upstream = above if low_first else below
@@ -1429,15 +1485,27 @@ def _order_for_seams(paths: list[list[tuple[float, float]]], angle_deg: float,
         order: list[int] = []
         cur = entry
         flown = 0.0
+        sewn = None
         while len(order) < n:
             free = [k for k in range(n) if k not in done and upstream[k] <= done]
             if not free:                    # a tolerance tie; take what is left
                 free = [k for k in range(n) if k not in done]
             k = min(free, key=lambda k: (math.dist(cur, oriented[k][0]) if cur else 0.0, k))
+            if choose is not None and cur is not None and len(free) > 1:
+                k = choose(cur, free, oriented, done, sewn, upstream, seams)
+            elif reach is not None and cur is not None and len(free) > 1:
+                todo = [oriented[j] for j in range(n) if j not in done]
+                near = sorted(free, key=lambda k: (math.dist(cur, oriented[k][0]), k))
+                for cand in near[:_ROUTABLE_PROBE_LIMIT]:
+                    if reach(cur, oriented[cand][0], sewn, todo):
+                        k = cand
+                        break
             if cur is not None:
                 flown += math.dist(cur, oriented[k][0])
             order.append(k)
             done.add(k)
+            if reach is not None or choose is not None:
+                sewn = _sewn_add(sewn, _footprint(oriented[k], row_mm))
             cur = oriented[k][-1]
         return flown, [oriented[k] for k in order]
 
@@ -2177,6 +2245,223 @@ def _plan_sections(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
     return best
 
 
+def _long_cut_pricer(poly: Polygon, ring, slack: Polygon, entry, trim_at_mm: float,
+                     row_mm: float, cut_bridges: bool, hidden: bool = True):
+    """order -> (`_order_cost`'s figure with the hidden routes `emit` sews under
+    the seam re-plans -- or, `hidden` False, without them, as the order sews
+    when nothing is re-planned -- and the cuts whose hop is past
+    `machine.LINK_MAX_GAP_MM`), memoized on the order's geometry for one shape."""
+    costs: dict = {}
+
+    def priced(order) -> tuple[tuple[int, float, float], int]:
+        order = _sewn_paths(order)
+        key = tuple((tuple(p[0]), tuple(p[-1]), len(p)) for p in order)
+        if key in costs:
+            return costs[key]
+        cost, long_cuts, cur = (0, 0.0, 0.0), 0, entry
+        for path, step in zip(order, _order_cost_walk(order, poly, ring, slack, entry, trim_at_mm,
+                                                      row_mm, cut_bridges,
+                                                      hidden_row_mm=row_mm if hidden else None)):
+            if step[0] > cost[0] and cur is not None \
+                    and math.dist(cur, path[0]) > machine.LINK_MAX_GAP_MM:
+                long_cuts += 1
+            cost, cur = step, path[-1]
+        costs[key] = (cost, long_cuts)
+        return costs[key]
+    return priced
+
+
+def _hidden_reach(poly: Polygon, ring, slack: Polygon, row_mm: float):
+    """(needle, a section's start, the fill laid so far, the paths still to
+    sew) -> whether the needle gets there hidden: over unsewn ground
+    (`travel_path`, showing no more than `_EXPOSED_TOLERANCE_MM`) or under rows
+    still to come (`fill_section_travel.bridge`, `travel_path`'s own budget)."""
+    cache: dict = {}
+
+    def reach(cur, head, sewn, todo) -> bool:
+        bridge = travel_path(poly, ring, cur, head, slack, sewn, cache)
+        if bridge is not None and (sewn is None
+                                   or _exposed_mm([cur] + bridge, sewn) <= _EXPOSED_TOLERANCE_MM):
+            return True
+        return fill_section_travel.bridge(poly, slack, cur, head, stitches.FILL, todo=todo,
+                                          row_mm=row_mm, sewn=sewn, avoid_sewn=True) is not None
+    return reach
+
+
+def _seam_aware_chooser(reach, row_mm: float):
+    """`_order_for_seams`' `choose` for `cfg.fill_seam_aware_sections`:
+    `fill_section_travel.plan`'s step rule, kept within seam order's seams.
+
+    Among the free sections (nearest `_ROUTABLE_PROBE_LIMIT`), in order:
+    reached hidden; leaving by its tail, a section freed next (or still free)
+    is reached hidden -- the planner's one-step lookahead, asked of its
+    `_LOOKAHEAD` best; not an articulation point of the sections still to
+    sew on the seam graph (sewing it would leave parts the needle can only
+    cross over finished fill); nearest.
+
+    A reach is a pure function of (needle, head, sections sewn), so each is
+    asked once: the lookahead's from a section's tail is the next step's own
+    question when that section goes. The lookahead is asked only of the
+    candidates level with the best on the first rule."""
+    memo: dict = {}
+
+    def hidden(cur, head, sewn_ids, sewn, todo) -> bool:
+        key = (tuple(cur), tuple(head), sewn_ids)
+        if key not in memo:
+            memo[key] = reach(cur, head, sewn, todo)
+        return memo[key]
+
+    def choose(cur, free, oriented, done, sewn, upstream, seams):
+        remaining = {j for j in range(len(oriented)) if j not in done}
+        todo = [oriented[j] for j in sorted(remaining)]
+        splits = fill_section_travel._articulation(remaining, seams)
+        near = sorted(free, key=lambda k: (math.dist(cur, oriented[k][0]), k))
+        sewn_ids = frozenset(done)
+        cands = []
+        for k in near[:_ROUTABLE_PROBE_LIMIT]:
+            ok = hidden(cur, oriented[k][0], sewn_ids, sewn, todo)
+            cands.append((not ok, k in splits, math.dist(cur, oriented[k][0]), k))
+        cands.sort()
+        level = [c for c in cands if c[0] == cands[0][0]]
+        if len(level) == 1:
+            return level[0][-1]
+        scored = []
+        for miss, split, dist, k in level[:fill_section_travel._LOOKAHEAD]:
+            after = done | {k}
+            nxt_free = [j for j in sorted(remaining - {k}) if upstream[j] <= after]
+            if nxt_free:
+                tail = oriented[k][-1]
+                sewn2 = _sewn_add(sewn, _footprint(oriented[k], row_mm))
+                todo2 = [oriented[j] for j in sorted(remaining - {k})]
+                nxt_free.sort(key=lambda j: (math.dist(tail, oriented[j][0]), j))
+                nxt = any(hidden(tail, oriented[j][0], sewn_ids | {k}, sewn2, todo2)
+                          for j in nxt_free[:_ROUTABLE_PROBE_LIMIT])
+            else:
+                nxt = True
+            scored.append((miss, not nxt, split, dist, k))
+        return min(scored)[-1]
+    return choose
+
+
+def _one_pass_sections(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
+                       slack: Polygon, entry: tuple[float, float] | None,
+                       trim_at_mm: float, row_mm: float, cut_bridges: bool,
+                       angle_deg: float) -> list[list[tuple[float, float]]]:
+    """`cfg.fill_one_pass_sections` (built OFF 2026-11-06, defect 6): seam
+    order's progression re-planned with `_order_for_seams`' `reach`, so that
+    among the sections free to go one the needle reaches hidden -- over
+    unsewn ground (`travel_path`) or under rows still to come
+    (`fill_section_travel.bridge`, `travel_path`'s own length budget) -- goes
+    before the nearest. The lay is read first, as `fill_seam_order_priced`
+    reads it, and `_score_hidden_free` settles a tie between the two
+    progressions: the travel the fill sews over afterwards is free, cuts and
+    exposed travel pay at `_score`'s two rates.
+
+    `paths` is the order seam order chose, and the gate is `_plan_sections`'
+    with one rule added, because what this pass counts as a cut is not what
+    reaches the machine file: stage 7 sews a cut hop needle-down where later
+    thread -- the field's own later rows, the letters on top -- buries it
+    (`stage7_sequence._bury_trims_under_later`), never one past
+    `machine.LINK_MAX_GAP_MM`. Seam order's own order on Becker's hat prices
+    at 9 cuts here and the DST carries 1, the long hop. So the re-plan is kept
+    only if it has FEWER of those long hops, cuts no more in all, lays no more
+    thread on finished fill, and is cheaper with the hidden travel free.
+    Measured without the long-hop rule: the hat's re-plan cut 9 -> 7 here and
+    the DST 1 -> 2 (the two it kept were long, the chord's short ones were
+    covered), and three jobs moved stitches for no cut. Both orders are
+    priced on the sewn paths with the hidden routes `emit` sews under the
+    switch. Nothing to buy (the incoming order cuts nowhere) costs one pricing
+    and leaves it alone.
+
+    Why a second pass and not a change to seam order: the professional sews
+    a forked field in one pass by running through the lobe still to come,
+    and the chord-chosen progression cannot see that the nearest free
+    section is the one that walls the needle in. Measured on the Becker
+    pairs the day it was built: `docs/fill-one-pass-sections-2026-11-06.md`.
+    """
+    sewable = _sewn_paths(paths)
+    if len(sewable) < 3:
+        return paths
+    # A long cut needs a long hop. No hop of the incoming order is past the
+    # bury limit: nothing the machine file would carry, and no pricing paid
+    # (the pricing below is the switch's whole CPU bill on a job).
+    heads = [(entry, sewable[0][0])] if entry is not None else []
+    heads += [(a[-1], b[0]) for a, b in zip(sewable, sewable[1:])]
+    if all(math.dist(a, b) <= machine.LINK_MAX_GAP_MM for a, b in heads):
+        return paths
+
+    cost_of = _long_cut_pricer(poly, ring, slack, entry, trim_at_mm, row_mm, cut_bridges)
+    before, before_long = cost_of(sewable)
+    if before_long == 0:
+        return paths                     # no cut the machine file would carry
+    reach = _hidden_reach(poly, ring, slack, row_mm)
+    candidate = _order_for_seams(sewable, angle_deg, entry, row_mm,
+                                 lambda order: _score_hidden_free(cost_of(order)[0]), reach=reach)
+    cost, long_cuts = cost_of(candidate)
+    if (long_cuts < before_long and cost[0] <= before[0] and cost[2] <= before[2] + 1e-9
+            and _score_hidden_free(cost) < _score_hidden_free(before)):
+        return candidate
+    return paths
+
+
+def _seam_aware_sections(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
+                         slack: Polygon, entry: tuple[float, float] | None,
+                         trim_at_mm: float, row_mm: float, cut_bridges: bool,
+                         angle_deg: float) -> list[list[tuple[float, float]]]:
+    """`cfg.fill_seam_aware_sections` (built OFF 2026-11-06, defect 6): seam
+    order's sections re-planned with lookahead, for the short hops.
+
+    Measured on the 17 pairs the same day: 31 fill-section cuts survive
+    `fill_one_pass_sections`, and on Drone and ProSeal hat every one is a hop
+    of 3-15 mm that stage 7 finds no later thread to bury. That switch never
+    re-plans those fields -- its gate wants a hop past `LINK_MAX_GAP_MM` --
+    and its reach-first pick, freed of that rule, still walls Drone's
+    `S09963415` in (4 -> 9 cuts). So here any field whose seam order cuts is
+    re-planned twice: `_seam_aware_chooser` (reach, lookahead, articulation on
+    the seam graph) and the plain reach-first pick, both priced with the
+    hidden travel free. The cheapest is kept only if it lays no worse
+    (`_seam_faults`), cuts FEWER, has no more hops past `LINK_MAX_GAP_MM`
+    (the cuts stage 7 can never sew down: on Becker hat a re-plan cut 9 -> 7
+    here and the machine file 1 -> 2), lays no more thread on finished fill,
+    and is cheaper with the hidden travel free. `paths` comes back untouched
+    otherwise. No new constant: `travel_path`'s budget, `_score`'s two
+    rates, `_EXPOSED_TOLERANCE_MM`, `LINK_MAX_GAP_MM` and the planner's own
+    work caps, all read.
+    """
+    sewable = _sewn_paths(paths)
+    if len(sewable) < 3:
+        return paths
+    # The baseline is the order as it sews without the switch: no hidden
+    # route. Priced WITH them, seam order's own order on ProSeal hat's field
+    # cuts 2 against the 5 it sews, so that order, its hops hidden, is the
+    # first candidate; the two re-plans follow, the dearer one last.
+    before, before_long = _long_cut_pricer(poly, ring, slack, entry, trim_at_mm, row_mm,
+                                           cut_bridges, hidden=False)(sewable)
+    if before[0] == 0:
+        return paths                     # no cut to buy
+    cost_of = _long_cut_pricer(poly, ring, slack, entry, trim_at_mm, row_mm, cut_bridges)
+    reach = _hidden_reach(poly, ring, slack, row_mm)
+
+    def price(order):
+        return _score_hidden_free(cost_of(order)[0])
+    faults = _seam_faults(sewable, angle_deg, row_mm)
+    best, best_score = paths, _score_hidden_free(before)
+    plans = (lambda: list(sewable),
+             lambda: _order_for_seams(sewable, angle_deg, entry, row_mm, price, reach=reach),
+             lambda: _order_for_seams(sewable, angle_deg, entry, row_mm, price,
+                                      choose=_seam_aware_chooser(reach, row_mm)))
+    for make in plans:
+        candidate = make()
+        cost, long_cuts = cost_of(candidate)
+        if (cost[0] < before[0] and long_cuts <= before_long and cost[2] <= before[2] + 1e-9
+                and _score_hidden_free(cost) < best_score
+                and _seam_faults(candidate, angle_deg, row_mm) <= faults):
+            best, best_score = candidate, _score_hidden_free(cost)
+            if cost[0] == 0:
+                break                    # nothing left to buy
+    return best
+
+
 @shape_memo.memoized("stitch_shape")
 def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_mm: float, stitch_mm: float, underlay_style: str,
@@ -2300,7 +2585,19 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     # it. Fill only with `under_cover`, which is what knows the fill already
     # laid. Read here, once; off, nothing below changes.
     section_travel = fill_section_travel.active()
-    if section_travel:
+    # `cfg.fill_one_pass_sections` (built OFF 2026-11-06): seam order's
+    # progression re-planned for the travel under rows still to come
+    # (`_one_pass_sections`), and where that re-plan is taken, the FILL
+    # phase's hops under cover go under those rows where `travel_path` lifts
+    # or shows. A shape the re-plan leaves alone sews exactly as without the
+    # switch. Underlay and `_plan_sections` are not touched: those are
+    # `fill_section_travel`'s. Off, nothing below changes.
+    one_pass = _ONE_PASS.get() and under_cover and not two_pass
+    # `cfg.fill_seam_aware_sections` (built OFF 2026-11-06): the same, for any
+    # field whose seam order cuts, planned with lookahead (`_seam_aware_sections`).
+    seam_aware = _SEAM_AWARE.get() and under_cover and not two_pass
+    re_planned = False
+    if section_travel or one_pass or seam_aware:
         fill_section_travel.reset()
 
     def emit(paths: list[list[tuple[float, float]]], kind: str, max_step: float) -> None:
@@ -2321,7 +2618,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                 bridge = travel_path(poly, ring, runs[-1].points[-1], pts[0], slack,
                                      sewn if (under_cover and kind == stitches.FILL) else None,
                                      route_cache)
-                if section_travel and (kind == stitches.UNDERLAY or under_cover):
+                if ((section_travel and (kind == stitches.UNDERLAY or under_cover))
+                        or (re_planned and kind == stitches.FILL)):
                     bridge = _hide_bridge(
                         bridge, poly, slack, runs[-1].points[-1], pts[0], kind, paths[i:], row_mm,
                         sewn if (under_cover and kind == stitches.FILL) else None)
@@ -2404,11 +2702,21 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                 return _score(_order_cost(order, poly, ring, slack, entry, trim_at_mm, row_mm,
                                           cut_bridges, hidden_row_mm=row_mm if section_travel else None))
         fill_paths = _order_for_seams(fill_paths, angle, entry, row_mm, price)
+        if one_pass:
+            _planned = _one_pass_sections(fill_paths, poly, ring, slack, entry, trim_at_mm,
+                                          row_mm, cut_bridges, angle)
+            re_planned = _planned is not fill_paths
+            fill_paths = _planned
+        if seam_aware:
+            _planned = _seam_aware_sections(fill_paths, poly, ring, slack, entry, trim_at_mm,
+                                            row_mm, cut_bridges, angle)
+            re_planned = re_planned or _planned is not fill_paths
+            fill_paths = _planned
     emit(fill_paths, stitches.FILL, stitch_mm)
     # Every hit is within this shape (`cover` is in the key), so nothing
     # after this point can use the unsewn-ground memo; let its geometry go.
     _UNSEWN_MEMO.clear()
-    if section_travel:
+    if section_travel or one_pass or seam_aware:
         fill_section_travel.reset()
 
     if not runs:

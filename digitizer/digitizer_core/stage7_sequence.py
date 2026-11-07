@@ -133,7 +133,7 @@ _LINK_SEARCH_NODES = 120
 # would cycle — this module imports stage6_satin); a membership change here
 # must land there too, and tests/test_photo_width_floor.py pins the
 # lockstep so drift fails loud instead of quietly un-flooring a new class.
-from .config import PHOTO_CLASSES, is_photographic  # canonical copy lives in config.py
+from .config import PHOTO_CLASSES, is_photographic, satin_floor_applies  # canonical copy lives in config.py
 
 # The garments that sew cap-style (cfg.cap_center_out). MIRRORED verbatim
 # from the browser engine's `capMode` predicate in `src/digitize.js` — the
@@ -425,7 +425,8 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
                                 design_class=design_class,
                                 per_stroke=per_stroke,
                                 polygon_axis=cfg.satin_polygon_axis,
-                                area_weighted=cfg.classify_area_weighted).satin)
+                                area_weighted=cfg.classify_area_weighted,
+                                floor_applies=satin_floor_applies(cfg, design_class)).satin)
 
 
 def borders_last_layers(regions, thread_indices: list[int],
@@ -867,6 +868,27 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int
 # gap in the later thread narrower than this can be missed, and a quarter of
 # a thread width is under anything a needle leaves open.
 _BURY_STEP_MM = 0.1
+# The finer step `cfg.extra["bury_step_fine"]` (built OFF 2026-11-06) gives
+# `_cut_or_bury_jumps`' thread tests -- the hop buried under later thread
+# and the hop walked on sewn thread -- and only that pass: the browser
+# twin's step since its raster oracle found sewn hops whose thread edge
+# dipped up to 0.015 mm off the thread between two satin tips at 0.1 (card
+# v8, 11-01: one Drone hop 0.029 mm past the thread's edge on the Python
+# side; measured 2026-11-06, that hop is one the pass BURIED, so the walk
+# half alone would not have reached it). `trim_bury_under_later` keeps
+# `_BURY_STEP_MM`. A sampling step, still not a physical constant.
+_BURY_STEP_FINE_MM = 0.01
+
+
+def cut_every_jump_step_mm(cfg) -> float:
+    """The step `_cut_or_bury_jumps` samples at under `cfg`:
+    `_BURY_STEP_FINE_MM` with `cfg.extra["bury_step_fine"]`, else
+    `_BURY_STEP_MM`. Both call sites (the art blocks here, the beanie
+    knockdown's in `pipeline`) read it from this one place."""
+    extra = getattr(cfg, "extra", None) or {}
+    return _BURY_STEP_FINE_MM if extra.get("bury_step_fine") else _BURY_STEP_MM
+
+
 # The raster `_bury_route` proposes a bent route on. It only PROPOSES: every
 # leg is re-tested exactly, so a coarser grid can lose a route but never
 # pass a bad one.
@@ -1116,14 +1138,18 @@ def _skip_covered_shapes(blocks: list[StitchBlock], trim_at: float) -> list[str]
     return dropped
 
 
-def _later_thread_burier(blocks: list[StitchBlock]):
+def _later_thread_burier(blocks: list[StitchBlock], step: float = _BURY_STEP_MM):
     """-> (seq, bury): the flat sew order `[(block index, run)]`, and
     `bury(k)`, the interior stitches of a needle-down route from the end of
     `seq[k - 1]` to the start of `seq[k]` that lies wholly under thread sewn
     at or after `k` (see `_bury_trims_under_later` for the cover rule), or
     None when there is none. Shared by `_bury_trims_under_later` and
     `_cut_or_bury_jumps`, so the two passes cannot disagree on what hides a
-    float. The cover is read once, from the runs as they stand now."""
+    float. The cover is read once, from the runs as they stand now.
+    `step`: the sampling step of `bury`'s thread tests, the buried route and
+    the walk alike (`_BURY_STEP_FINE_MM` when `_cut_or_bury_jumps` runs
+    under `cfg.extra["bury_step_fine"]`; `_bury_trims_under_later` always
+    hands in `_BURY_STEP_MM`)."""
     seq = [(bi, r) for bi, b in enumerate(blocks) for r in b.runs]
     if len(seq) < 2:
         return seq, lambda _k: None
@@ -1151,13 +1177,13 @@ def _later_thread_burier(blocks: list[StitchBlock]):
         penetrates anyway, thread sewn BEFORE counts too (the previous run's
         own last stitch): nothing of the travel lands on bare fabric."""
 
-        def __init__(self, k, ends):
-            self.k, self.ends = k, ends
+        def __init__(self, k, ends, step=_BURY_STEP_MM):
+            self.k, self.ends, self.step = k, ends, step
 
         def covers(self, seg) -> bool:
             (x0, y0), (x1, y1) = seg.coords[0], seg.coords[-1]
             d = math.hypot(x1 - x0, y1 - y0)
-            n = max(2, int(math.ceil(d / _BURY_STEP_MM)) + 1)
+            n = max(2, int(math.ceil(d / self.step)) + 1)
             t = np.linspace(0.0, 1.0, n)
             cx, cy = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
             nx, ny = ((y0 - y1) / d, (x1 - x0) / d) if d > 0 else (0.0, 0.0)
@@ -1182,7 +1208,7 @@ def _later_thread_burier(blocks: list[StitchBlock]):
             # its thread on SOME thread -- sewn before or after, any block
             # -- so none of it lands on bare fabric. Straight only: a
             # detour on top of finished work is more thread on show.
-            cover = _UnderThread(0, (a, b))
+            cover = _UnderThread(0, (a, b), step)
             return _link_stitches([a, b]) if cover.covers(LineString([a, b])) else None
         # Any buried route leaves the start's end allowance into later
         # thread, so with no later centreline that close to `a` there is no
@@ -1190,7 +1216,7 @@ def _later_thread_burier(blocks: list[StitchBlock]):
         reach = machine.COVERAGE_THREAD_W_MM + half + _BURY_STEP_MM
         if not (order[tree.query(Point(a), predicate="dwithin", distance=reach)] >= k).any():
             return None
-        cover = _UnderThread(k, (a, b))
+        cover = _UnderThread(k, (a, b), step)
         if cover.covers(LineString([a, b])):
             route = [a, b]
         else:
@@ -1201,7 +1227,8 @@ def _later_thread_burier(blocks: list[StitchBlock]):
 
 
 def _cut_or_bury_jumps(blocks: list[StitchBlock],
-                       small_letters: set[str] | None = None) -> tuple[int, int, int]:
+                       small_letters: set[str] | None = None,
+                       step: float = _BURY_STEP_MM) -> tuple[int, int, int]:
     """Leave no needle-up move uncut. -> (buried, walked, cut).
 
     `cfg.cut_every_jump` (built OFF 2026-10-21). Every jump inside a block
@@ -1238,8 +1265,13 @@ def _cut_or_bury_jumps(blocks: list[StitchBlock],
     spoke marks), so thread counted as later is sewn later, and the ties it
     adds are the only ones the new cuts get. The first run of a block is
     never touched: that lift follows a colour change.
+
+    `step` (2026-11-06): the step this pass's thread tests sample at, the
+    bury and the walk. `_BURY_STEP_MM` unless `cfg.extra["bury_step_fine"]`
+    (built OFF) hands in `_BURY_STEP_FINE_MM`; `trim_bury_under_later`'s
+    own pass is not touched by it.
     """
-    seq, bury = _later_thread_burier(blocks)
+    seq, bury = _later_thread_burier(blocks, step)
     buried = walked = cut = 0
     for k in range(1, len(seq)):
         bi, run = seq[k]
@@ -3546,7 +3578,8 @@ def sequence(
                                       design_class=design_class,
                                       per_stroke=shape_per_stroke,
                                       polygon_axis=cfg.satin_polygon_axis,
-                                      area_weighted=cfg.classify_area_weighted)
+                                      area_weighted=cfg.classify_area_weighted,
+                                      floor_applies=satin_floor_applies(cfg, design_class))
                       if tier == "auto" and cfg.satin else None)
             # Kent's gradient ruling (2026-09-04): a shape that RIDES the
             # design's ramp is part of the sweep and sews the sweep's bands,
@@ -5138,7 +5171,9 @@ def sequence(
     # `cfg.cut_every_jump` (built OFF): last, over every block, so the
     # thread it counts as later is the thread actually sewn later.
     if cfg.cut_every_jump:
-        _cut_or_bury_jumps(blocks, tie_kw.get("small_letters"))
+        # `cfg.extra["bury_step_fine"]` (built OFF 2026-11-06): this pass's
+        # thread tests at `_BURY_STEP_FINE_MM` instead of `_BURY_STEP_MM`.
+        _cut_or_bury_jumps(blocks, tie_kw.get("small_letters"), cut_every_jump_step_mm(cfg))
     # `cfg.tie_in_off` (built OFF): after `cut_every_jump`, so a cut that
     # pass adds loses its tie-in too (`stitches.tie_in` records it in
     # `tie_in_pts`) -- no run start is locked, even after a cut. It only

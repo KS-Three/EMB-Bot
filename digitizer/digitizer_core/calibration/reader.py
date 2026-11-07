@@ -79,7 +79,6 @@ from __future__ import annotations
 
 import copy
 import math
-import shutil
 from dataclasses import asdict, dataclass
 
 import cv2
@@ -599,11 +598,8 @@ def measure_seam_gap(img: np.ndarray, a: Feature, b: Feature,
 
 
 def _ocr(img: np.ndarray, f: Feature, px_per_mm: float, pad_mm: float) -> str | None:
-    if shutil.which("tesseract") is None:
-        return None
-    try:
-        import pytesseract
-    except ImportError:
+    from digitizer_core import ocr as _ocr
+    if not _ocr.available():
         return None
     roi, _ = _roi(img, f.bbox_mm, px_per_mm, pad_mm, 1.0)
     g = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
@@ -611,7 +607,7 @@ def _ocr(img: np.ndarray, f: Feature, px_per_mm: float, pad_mm: float) -> str | 
     g = cv2.resize(g, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
     g = cv2.copyMakeBorder(g, 24, 24, 24, 24, cv2.BORDER_REPLICATE)
     try:
-        return pytesseract.image_to_string(g, config="--psm 7").strip()
+        return _ocr.image_to_string(g, 7).strip()
     except Exception:  # pragma: no cover — tesseract runtime failure
         return None
 

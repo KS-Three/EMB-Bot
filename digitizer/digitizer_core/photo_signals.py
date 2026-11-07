@@ -1,5 +1,17 @@
 """Is this artwork a PHOTOGRAPH? — the two signals the repo already owns.
 
+STATUS 2026-11-06 (MASTER_SCOPE defect 15 closed, Kent "Close it"): the
+history below is true of 2026-09-08 and no longer of the engine. Stage 0's
+`stage0_texture_gate` (ON since 2026-10-28) reads `texture_frac` and puts the
+owl (0.358) and 18 of 18 corpus photographs in a photo class; this module is
+now a redundant belt behind it. Census (`docs/photo-detection-census-2026-11-06.md`,
+PR #1272, 19 photographs, in-sample): photo class by stage 0 on 19 of 19
+(detection fired on 3), detection rescues 0, escapes 0, false positives 0 of
+30 logos; Cohen's kappa against the hand label 1.000 for the photo class vs
+0.187 for detection alone. What this module still does that the gate does not:
+a face hit routes the design FLAT under `faces_route_flat` (Kent, 2026-09-30).
+The Studio still requests detection. No behaviour changed with this note.
+
 Quality review 2026-09-08 item 13. `config.is_photographic` decides whether
 the photographic machinery applies (the palette resnap bind, the shade bind,
 preflight's photo yardstick), and it is DECLARED today because **stage 0's

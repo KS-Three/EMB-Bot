@@ -25,9 +25,25 @@ def is_photographic(cfg: "PipelineConfig", class_: str | None) -> bool:
     when it does it must still get the palette bind, the photo yardstick and
     the rest of the photographic machinery.
 
-    WHY THIS IS DECLARED, NOT DETECTED (2026-08-25). Stage 0's own signals do
-    not separate the two populations — measured across every fixture here, a
-    real photograph reads LESS photographic than several gradient logos:
+    UPDATE 2026-11-06 (defect 15 closed, Kent "Close it"): the paragraph below
+    is the 2026-08-25 history and no longer describes the engine. Since
+    2026-10-28 `stage0_texture_gate` (ON) reads `texture_frac`, which separates
+    the owl (0.358) from every logo, and the Studio's jobs bind the palette
+    through the photo CLASS. The census (`docs/photo-detection-census-2026-11-06.md`,
+    PR #1272): 19 of 19 real photographs land in a photo class, 16 of them
+    only because of the gate, 0 escape, 0 of 30 logos trip either signal.
+    Detection (`detect_photographic`, which the Studio still sends) is now a
+    redundant belt behind the gate: it rescues 0 photographs. It still does
+    one thing the gate does not: a face hit routes the design FLAT under
+    `faces_route_flat` (Kent, 2026-09-30), which keeps this function False on
+    purpose for group_people, sports_action and vintage_sepia. No behaviour
+    changed with this note. The measurement is in-sample (the gate's threshold
+    came from the same corpus).
+
+    WHY THIS WAS DECLARED, NOT DETECTED (2026-08-25). Before the texture gate,
+    stage 0's own signals did not separate the two populations — measured
+    across every fixture here, a real photograph read LESS photographic than
+    several gradient logos:
 
         owl_kent.jpg      (real photo)  unique_color_mass 0.1107  grad 1.2877
         summit_badge.png  (badge logo)                    0.1152       0.4578
@@ -65,6 +81,17 @@ def is_photographic(cfg: "PipelineConfig", class_: str | None) -> bool:
     if cfg.is_photographic is not None:
         return bool(cfg.is_photographic)
     return class_ in PHOTO_CLASSES
+
+
+def satin_floor_applies(cfg: "PipelineConfig", class_: str | None) -> bool:
+    """Does Law 31's satin width floor apply to a design that is NOT in a photo
+    class? `cfg.satin_floor_content_gate` (default OFF) AND the design is
+    photographic by content (`is_photographic`: the Studio's declaration or a
+    `detect_photographic` hit). The photo CLASSES keep the floor regardless
+    (`stage6_satin._floor_or`); this only widens it to a photograph stage 0
+    routed gradient. False with the flag off: byte-identical."""
+    return bool(getattr(cfg, "satin_floor_content_gate", False)
+                and is_photographic(cfg, class_))
 
 
 def work_grid_px_per_mm(cfg: "PipelineConfig", class_: str | None = None) -> float:
@@ -473,6 +500,19 @@ class PipelineConfig:
     # side-by-side page shows the change; the OFF arm is pinned in
     # `tests/engine_2026_10_27.json`.
     stage0_texture_gate: bool = True
+    # Stage 0's flat/gradient gate on a scale-relative read (BUILT OFF
+    # 2026-11-06, ROADMAP phase 2; `docs/stage0-scale-relative-grad-2026-11-06.md`).
+    # `gradient_smoothness` swings 7-34x across export resolutions, so one
+    # logo reaches different lanes by pixel count and most real flat logos
+    # read `gradient`. ON, non-photo territory splits flat/gradient on
+    # `tonal_frac` (`TONAL_GRADIENT_MIN`): the share of the foreground, on the
+    # 512-px raster `texture_frac` uses, in the texture band or on a smooth
+    # ramp, clear of hard edges and of the foreground boundary. The photo
+    # gate, the subject/scene split and every existing threshold are
+    # untouched; `tonal_frac` is reported under both arms. OFF: the shipped
+    # gate, byte for byte. A flip moves goldens (most gradient-classified
+    # real logos change lane) and is Kent's.
+    stage0_scale_relative_grad: bool = False
     # Cluster centers within this CIE76 distance are the SAME flat color that
     # k-means split; merged before spool snapping. Also the perpendicular
     # tolerance for the phantom-blend collinearity test.
@@ -4321,6 +4361,40 @@ class PipelineConfig:
     # exposed 105.8 -> 38.6 mm, bare 14.84 -> 3.72; ProSeal beanie byte-identical.
     # False is the engine as it was; `tests/conftest.py` PRE_FLIP pins it False.
     knockdown_shorter_walk: bool = True
+    # The fill's sections in one pass, the way the professional sews a field
+    # (2026-11-06, built OFF, defect 6: the cut between two sections of ONE
+    # fill, which he never makes). Seam order's progression is re-planned so
+    # that among the sections free to go one the needle reaches hidden -- over
+    # unsewn ground, or under rows still to come -- goes before the nearest,
+    # and the fill phase sews those hidden routes (`stage6_fill._one_pass_sections`,
+    # `fill_section_travel.bridge`, `travel_path`'s own length budget). The
+    # lay (ridges, flips) is read first, exactly as `fill_seam_order_priced`
+    # reads it; the re-plan is kept only if it removes a hop stage 7 could
+    # never bury (past `machine.LINK_MAX_GAP_MM`, the kind that reaches the
+    # DST), cuts no more in all, lays no more thread on finished fill than
+    # seam order's own order, and is cheaper with the hidden travel free. A
+    # shape it does not re-plan sews exactly as without it. Layout (ruling
+    # 2026-10-22: judged in the preview); chaining territory, ROADMAP gate 3,
+    # so the flip is Kent's. Off, byte-identical. Measured on the Becker
+    # five: `docs/fill-one-pass-sections-2026-11-06.md`.
+    # Tests: `tests/test_fill_one_pass_sections.py`.
+    fill_one_pass_sections: bool = False
+    # Seam order's sections planned with lookahead (2026-11-06, built OFF,
+    # defect 6, Kent's "Hold, build planner (Recommended)"). On the 17 pairs,
+    # 31 fill-section cuts survive `fill_one_pass_sections`, and every one on
+    # Drone and ProSeal hat is a SHORT hop (3-15 mm) with no later thread to
+    # bury it -- under the long-hop rule that switch never looks. This one
+    # re-plans any field whose seam order cuts: among the sections free to go
+    # (seams kept), one reached hidden, then one from whose tail a section
+    # freed next is reached hidden (`fill_section_travel.plan`'s one-step
+    # lookahead), then one whose sewing leaves the rest connected along their
+    # seams (its articulation rule), then the nearest; the plain reach-first
+    # order is priced beside it. Kept only if it lays no worse, cuts fewer,
+    # has no more hops past `machine.LINK_MAX_GAP_MM`, lays no more on
+    # finished fill, and is cheaper with the hidden travel free. No new
+    # constant. Off, byte-identical. `stage6_fill._seam_aware_sections`;
+    # tests: `tests/test_fill_seam_aware_sections.py`.
+    fill_seam_aware_sections: bool = False
 
     # The fill column-order scorer prices only what `emit` sews (2026-10-08,
     # built OFF). `_fill_paths` returns one-point "columns" that `emit`
@@ -5181,6 +5255,17 @@ class PipelineConfig:
     # **Flipping it ON is Kent's call.** The render is at
     # docs/renders/satin-per-stroke-2026-09-06/.
     satin_per_stroke: bool = False
+    # Defect 2, the content-gated width floor, DEFAULT OFF (2026-11-06). Law
+    # 31's 1.0 mm floor (`stage6_satin.PHOTO_MIN_SATIN_WIDTH_MM`, never tuned)
+    # reroutes an earned sub-1.0 mm satin to the outline run on the photo
+    # CLASSES only. A photograph stage 0 routes gradient (Kent's 2026-08-25
+    # "photo sews filled") never got it. ON, the floor also applies when
+    # `is_photographic(cfg, class_)` is True -- the Studio's "It's a photo"
+    # declaration, or a `detect_photographic` hit -- and ONLY then: no new
+    # content signal, no stage-0 threshold. A flat/gradient logo nobody
+    # declared keeps its hairline satin (61 of 64 are ground the pro also
+    # satined). Off is byte-identical. **Flipping it ON is Kent's call.**
+    satin_floor_content_gate: bool = False
     # Defect 5, one misroute class: a shape lying INSIDE a satin border's
     # outline routes FILL, DEFAULT OFF. The pro convention is a filled body
     # with a satin edge; we satined the body too. On becker_marine_logo the

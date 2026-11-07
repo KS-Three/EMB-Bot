@@ -2,6 +2,7 @@
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { generateAll, charList, letteringNote, emptyFieldHint, splitIntoTwoLines, columnNoteFabric } from "../lib/generate.js";
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
+  import { isOutlineKey } from "../lib/outlineFonts.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
   import { hasOriginal, loadOriginal, fitRect, placeByContent, flatContentBox, digitizedContentBox } from "../lib/originalImage.js";
@@ -3106,8 +3107,10 @@
   let genToken = 0;
 
   function fontKeysOf(proj) {
+    // Outline fonts (lib/outlineFonts.js) have no binary to ensure: the
+    // service sews them and the element carries the result.
     return (proj.elements || [])
-      .filter((el) => el.type === "text" && el.fontKey)
+      .filter((el) => el.type === "text" && el.fontKey && !isOutlineKey(el.fontKey))
       .map((el) => el.fontKey);
   }
 

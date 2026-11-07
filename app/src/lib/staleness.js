@@ -37,6 +37,7 @@ import {
   resizedTargetWidth,
   decodedFromDesignCached,
 } from "./digitizer.js";
+import { isOutlineKey, outlineStale } from "./outlineFonts.js";
 
 // The width a design is DRAWN at: the result's native width in the frame the
 // element's rotation puts it in — the frame `sizeMm` is measured in.
@@ -77,6 +78,11 @@ export function pendingEdits(el) {
 // switched while no panel was open is invisible to the config comparison, and
 // ships as it always did.
 export function isElementStale(element, project, { baselineKey = null } = {}) {
+  // A text element in an outline font carries a service result too
+  // (lib/outlineFonts.js): behind when the request it would send now —
+  // text, font, width, spacing, colour, garment, fabric, chart — is not the
+  // one it was digitized with.
+  if (isOutlineText(element)) return outlineStale(element, project, { baselineKey });
   if (!element || element.type !== "digitized" || !element.result) return false;
   // Cheapest first: the field asks this for every element on every redraw.
   const target = resizedTargetWidth(element, nativeWidthOf(element));
@@ -94,7 +100,12 @@ export function staleElements(project) {
 // A run needs the stored art and the service — the same two things
 // DigitizePanel's runDigitize and its button need.
 export function canRedigitize(element, health) {
+  if (isOutlineText(element)) return !!health;   // the text IS the source
   return !!(element && element.sourcePng && health);
+}
+
+export function isOutlineText(element) {
+  return !!element && element.type === "text" && isOutlineKey(element.fontKey);
 }
 
 // Download is disabled while this is true. It counts only what the customer

@@ -77,12 +77,12 @@ from .stage5_overlap import PlannedRegion, resolve_overlaps
 from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
 from .stage6_hairline_lines import applies as hairline_lines_apply
-from .config import is_photographic
+from .config import is_photographic, satin_floor_applies
 from . import shape_memo
 from .columns import is_lettering
 from .lettering_thread import apply_lettering_thread
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
-                              depth_sort_layers, sequence)
+                              depth_sort_layers, sequence, cut_every_jump_step_mm)
 from .stitches import StitchPlan
 from .thin_ink import bean_dark_ink, ink_after_ground
 from .threads import chart_for, rgb_to_lab
@@ -1872,7 +1872,8 @@ def _fill_inside_satin_border(regions, cfg, design_class):
         tier = str(b.meta.get("tier", "auto")).lower()
         if tier != "satin" and not (tier == "auto" and is_satin_candidate(
                 poly, satin_max, design_class=design_class,
-                per_stroke=cfg.satin_per_stroke)):
+                per_stroke=cfg.satin_per_stroke,
+                floor_applies=satin_floor_applies(cfg, design_class))):
             continue
         demote.update(r.shape_id for r in bodies)
     return [replace(r, meta={**r.meta, "tier": "fill"})
@@ -1924,9 +1925,13 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .stage6_fill import cut_exposed_scope    # `cfg.fill_bridge_cut_exposed` (built OFF), the same way
     from .stage6_fill import seam_order_scope     # `cfg.fill_seam_order` (built OFF), the same way
     from .stage6_fill import seam_priced_scope    # `cfg.fill_seam_order_priced` (built OFF), the same way
+    from .stage6_fill import one_pass_scope       # `cfg.fill_one_pass_sections` (built OFF), the same way
+    from .stage6_fill import seam_aware_scope     # `cfg.fill_seam_aware_sections` (built OFF), the same way
     with apex_cut_scope(cfg.lettering_columns_apex_cut), fill_section_travel.enabled(cfg), \
             loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
-            cut_exposed_scope(cfg.fill_bridge_cut_exposed), seam_order_scope(cfg.fill_seam_order),             seam_priced_scope(cfg.fill_seam_order_priced):
+            cut_exposed_scope(cfg.fill_bridge_cut_exposed), seam_order_scope(cfg.fill_seam_order), \
+            seam_priced_scope(cfg.fill_seam_order_priced), one_pass_scope(cfg.fill_one_pass_sections), \
+            seam_aware_scope(cfg.fill_seam_aware_sections):
         return _plan_stitches(result, cfg)
 
 
@@ -2202,7 +2207,7 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
             # blocks with no uncut jump; this reaches the knockdown's, with
             # the whole design now sewn after it.
             if cfg.cut_every_jump:
-                _cut_or_bury_jumps(blocks)
+                _cut_or_bury_jumps(blocks, step=cut_every_jump_step_mm(cfg))
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a
