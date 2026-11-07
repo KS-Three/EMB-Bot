@@ -169,3 +169,41 @@ On a healthy mirror the step costs what it did before; the change only
 removes the download from the slow tail, so read a single slow apt step after
 this as a cache miss (an image or Playwright bump) before reading it as the
 mirror.
+
+## `studio-e2e` sharded rows (appended 2026-11-07)
+
+Since this PR `studio-e2e` is an aggregator over two `studio-e2e shard k/2`
+jobs, split by spec file in `app/playwright.config.js` (`E2E_SHARD`), the
+same shape as `digitizer`. Wall time is measured the same way as the
+`digitizer` rows above: the aggregator's `completedAt` minus the earlier
+shard's `startedAt`.
+
+**The baseline moved again before the split.** The last twelve green `main`
+runs before it (42338094254 to 42344364123, all 2026-11-07, all cache hits on
+the apt step) took min **20.4**, p50 **30.1**, max **31.1** minutes; the
+11-06 table above read p50 22.1. Setup was 0.9 to 1.3 minutes on every one of
+them. The rest was the two test steps: service-free 2.5 to 4.1, serial
+digitizer-service 17.0 to 26.3, and `field-reshape-mode.spec.js` alone is
+about half the serial step (614 of 1,238 summed test-seconds, median of three
+of those runs).
+
+**Prediction**, per run of those twelve: each shard pays the full setup plus
+half the test time (the partition puts 708 cost-seconds on each side, a
+service-free file counting a quarter because it shares four workers) plus
+about 0.1 minutes for the `--list` and upload steps. That gives a shard p50 of
+**15.6** (min 10.8, max 16.1), and `studio-e2e` about half a minute more for
+the aggregator.
+
+| Run id | Event | SHA | shard 1 | shard 2 | studio-e2e wall | predicted | tests (shard 1 + shard 2) |
+|---|---|---|---|---|---|---|---|
+| 42398725440 | PR #1303 (`engine` red: the checker lacked `--help`, fixed in the next commit; the e2e jobs are independent of it) | `8c44a9f9` | 13.3 | 10.5 | **13.5** | 15.6 p50; 12.2 at this run's own test speed | 94 + 149 = 243, each once (checker OK) |
+
+"At this run's own test speed" re-scales the prediction to the runner drawn:
+the four test steps summed to 21.9 minutes (1.2 + 11.0 parallel and serial on
+shard 1, 1.9 + 7.8 on shard 2), so half of that plus 1.3 minutes of setup is
+12.2 per shard. Shard 1, which holds `field-reshape-mode.spec.js`, ran 1.1
+over that and shard 2 ran 1.7 under it: the 2.8-minute gap between them is the
+balance error of a file-level split whose largest file is half the serial
+step. That is under the 3-minute re-measure threshold in
+`app/playwright.config.js`; if it holds above 3 over several runs, refresh
+`SPEC_SECONDS`, or split that spec file.
