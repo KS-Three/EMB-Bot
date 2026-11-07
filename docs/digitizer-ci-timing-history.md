@@ -210,3 +210,6 @@ step. That is under the 3-minute re-measure threshold in
 `SPEC_SECONDS`, or split that spec file.
 
 Run 42399967770 (the second run): the four test steps summed to 25.1 minutes, so the own-speed prediction is 25.1 / 2 + 1.3 = 13.9 per shard. The serial step on shard 1 (`field-reshape-mode.spec.js`) ran 12.9 minutes against 8.8 on shard 2, a ratio of 1.47 (1.41 on run 1) where `SPEC_SECONDS` predicted 1.11, and the 3.3-minute shard gap crossed the 3-minute re-measure threshold in `app/playwright.config.js`. It leaned the same way on both runs, so the table under-counts that file; re-derive it from wall time with `node tools/e2e-spec-times.mjs <run-id>...`.
+
+
+Run 42409970223 (PR #1323, `SPEC_SECONDS` re-derived by `tools/e2e-spec-times.mjs` over main runs 42406340687, 42407202584, 42407932826, 42408103660, all after the #1318 split): shard 1 ran 15.6 minutes (20:13:01 to 20:28:35), shard 2 ran 15.9 (to 20:28:54), a gap of 0.3 minutes against 3.3 on the second run before the split and 0.5 to 3.3 across the earlier runs. The table moved most on `field-reshape-mode` 159 to 201, `field-reshape-move` 262 to 218, `quality-report` 73 to 92; the predicted split is 12.28 / 12.29 minutes of test time (old table on the same listing: 11.80 / 11.80).
