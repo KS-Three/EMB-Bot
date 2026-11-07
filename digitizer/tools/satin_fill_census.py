@@ -37,12 +37,19 @@ three readings, so they cannot disagree about what was sewn:
     python -m tools.satin_fill_census flip --runs OFF --vs ON              # a flag's two arms
     python -m tools.satin_fill_census render --runs OFF --vs ON --out docs/renders/NAME
     python -m tools.satin_fill_census oracle-split --runs DIR              # after `measure`; C3's bound
+    python -m tools.satin_fill_census attribute --runs DIR                 # after `measure`; where C3's gain sits
 
 `oracle-split` (2026-11-06, lagging-areas C3) is the per-region oracle one level
 finer: each of OUR regions is cut along the pro's minority-type blobs of >= 10
 connected cells, each part takes the pro's type there, and the cells are re-scored
 with the same `_kappa_of`. It READS the pro's blobs, so it is a maximum, not
 something inference from flat art could reach. It writes `DIR/oracle_split.json`.
+
+`attribute` (2026-11-07) splits that gain per job into the per-region relabel and
+the blob cut, scores the blobs alone on today's routing, attributes the cut to
+regions and to each blob's layering pattern (keyline / halo / band / contained / edge,
+and the pro's thread colour against the ground's), with region-cluster bootstrap
+95% intervals on every kappa. It writes `DIR/attribution.json`.
 
 `digitize` writes `DIR/<slug>/{ours.dst, design.json, ours.json}`; `measure`
 writes `DIR/census.json`; `render` writes OFF | ON crops round every shape whose
@@ -262,6 +269,7 @@ def oracle_split(pt, ot, tboth, owner, floor: int = SPLIT_FLOOR) -> dict:
     import numpy as np
     plain = ot.copy()
     split = ot.copy()
+    parts = []                          # (region, pro type, blob mask): what `attribute` reads
     grounds, blobs, cut_cells, ground_cells = 0, 0, 0, 0
     for k in np.unique(owner[owner >= 0]):
         in_k = owner == k
@@ -286,12 +294,13 @@ def oracle_split(pt, ot, tboth, owner, floor: int = SPLIT_FLOOR) -> dict:
                 if size < floor:
                     continue
                 split[blob] = int(t)
+                parts.append({"region": int(k), "type": int(t), "dom": dom, "mask": blob})
                 blobs += 1; cut_cells += size; n_here += 1
         if n_here:
             grounds += 1
             ground_cells += int(graded.sum())
     return {"split": split, "plain": plain, "grounds_cut": grounds, "blobs": blobs, "cells_cut": cut_cells,
-            "cut_region_cells": ground_cells}
+            "cut_region_cells": ground_cells, "parts": parts}
 
 
 def oracle_split_job(slug: str, runs: Path, floors=SPLIT_FLOORS_SWEPT) -> dict:
@@ -410,6 +419,449 @@ def split_table(res: dict) -> str:
     L += ["", f"DECISION RULE (C3): {sm['verdict']}",
           "This oracle READS THE PRO'S BLOBS. It is optimistic by construction: the number is a maximum, "
           "not what inference from flat art could reach."]
+    return "\n".join(L)
+
+
+# ------------------------------------------------- C3 gain attribution (2026-11-07)
+#: bootstrap replicates and seed. The resampling unit is a REGION (each of our
+#: sewn regions is one cluster; cells no region owns go in TILE x TILE-cell
+#: tiles): neighbouring 2 mm cells are not independent, and a cell bootstrap
+#: would print intervals several times too narrow.
+BOOT = 1000
+BOOT_SEED = 1107
+TILE = 8                                # 16 mm tiles for the unowned cells
+#: a cut blob's layering pattern, read off OUR owner map (geometry only)
+RIM_SHARE = 0.8                         # a rim: this share of the blob within 2 cells of an edge
+DARKER = 25.0                           # Rec. 601 luma step (0-255) for darker / lighter than the ground's thread
+MAPS = ("routing", "plain", "split", "routing_blobs")
+
+
+def _wkappa(pt, ot, w=None) -> tuple[float, float]:
+    """`_kappa_of` with integer cell weights (one bootstrap replicate). With no
+    weights it IS `_kappa_of`."""
+    from tools.pro_parity import scorecard
+    if w is None:
+        return _kappa_of(pt, ot)
+    n = float(w.sum())
+    if n == 0:
+        return 0.0, 0.0
+    raw = float(w[pt == ot].sum()) / n
+    ch = sum((float(w[pt == c].sum()) / n) * (float(w[ot == c].sum()) / n) for c in (0, 1, 2))
+    return scorecard.chance_correct(raw, ch), ch
+
+
+def _boot_weights(clusters, B: int, rng):
+    """B x N integer cell weights: each replicate draws the clusters with replacement."""
+    import numpy as np
+    _u, cid = np.unique(clusters, return_inverse=True)
+    C = int(cid.max()) + 1
+    draws = rng.integers(0, C, size=(B, C))
+    counts = np.stack([np.bincount(r, minlength=C) for r in draws])
+    return counts[:, cid]
+
+
+def _boot_kappa(pt, m, w):
+    """`_wkappa` for every row of `w` at once, with scorecard's clamp. A replicate
+    whose chance floor is degenerate (it drew regions of one type only) is NaN:
+    its kappa is undefined, as a degenerate job's is, and scorecard's raw
+    pass-through would print it as agreement."""
+    import numpy as np
+    from tools.pro_parity import scorecard
+    n = w.sum(1).astype(float)
+    raw = (w * (pt == m)).sum(1) / n
+    ch = sum(((w * (pt == c)).sum(1) / n) * ((w * (m == c)).sum(1) / n) for c in (0, 1, 2))
+    deg = ch >= scorecard.CHANCE_DEGENERATE
+    k = np.maximum(0.0, (raw - ch) / np.where(deg, 1.0, 1.0 - ch))
+    return np.where(deg, np.nan, k)
+
+
+def _ci(a) -> list[float]:
+    import numpy as np
+    a = np.asarray(a, float)
+    if not np.isfinite(a).any():
+        return [None, None]
+    lo, hi = np.nanpercentile(a, [2.5, 97.5])
+    return [round(float(lo), 3), round(float(hi), 3)]
+
+
+def blob_pattern(blob, owner, k: int) -> dict:
+    """Where a cut blob sits in its region k, from our owner map alone. Two
+    edges: k's OUTLINE (next to a cell no region owns, or the grid edge) and OUR
+    PIECES (next to a cell another of our regions owns: a piece sewn on k).
+
+      keyline    a rim: >= RIM_SHARE of it within 2 cells of the outline, and
+                 not of our pieces.
+      halo       a rim round our pieces: the same, with the two edges swapped.
+      band       a rim within 2 cells of BOTH (or only of their union): the strip
+                 of ground between the outline and our pieces.
+      contained  not a rim and not touching the outline: a piece of another type lying
+                 inside the ground, which our segmentation merged into it.
+      edge       the rest: a lobe or part of k that reaches the outline.
+    """
+    import cv2
+    import numpy as np
+    in_k = owner == k
+    pad = np.pad(owner, 1, constant_values=-1)
+    nb = [pad[:-2, 1:-1], pad[2:, 1:-1], pad[1:-1, :-2], pad[1:-1, 2:]]
+    outer = in_k & np.any([b == -1 for b in nb], axis=0)
+    inner = in_k & np.any([(b >= 0) & (b != k) for b in nb], axis=0)
+    ker = np.ones((5, 5), np.uint8)
+    near_o = cv2.dilate(outer.astype(np.uint8), ker).astype(bool)
+    near_i = cv2.dilate(inner.astype(np.uint8), ker).astype(bool)
+    size = int(blob.sum())
+    share_o = float((blob & near_o).sum()) / size
+    share_i = float((blob & near_i).sum()) / size
+    share_u = float((blob & (near_o | near_i)).sum()) / size
+    t_o = bool((blob & outer).any())
+    if share_u >= RIM_SHARE:
+        pat = ("keyline" if share_o >= RIM_SHARE > share_i else
+               "halo" if share_i >= RIM_SHARE > share_o else "band")
+    elif not t_o:
+        pat = "contained"
+    else:
+        pat = "edge"
+    dt = cv2.distanceTransform(np.pad(blob, 1).astype(np.uint8), cv2.DIST_L2, 3)
+    return {"pattern": pat, "share_outline": round(share_o, 3), "share_our_pieces": round(share_i, 3),
+            "share_either": round(share_u, 3),
+            "half_width_cells": round(float(dt.max()), 2)}
+
+
+def _block_map(segs, bb, shape):
+    """Per cell, the pro's colour block carrying the most thread (-1 where none),
+    on `scorecard.cell_stats`'s grid and with its segment filter."""
+    import numpy as np
+    from tools.pro_parity import scorecard
+    x0, y0, _x1, _y1 = bb
+    H, W = shape
+    tally: dict = {}
+    for (ax, ay, bx, by, d, blk, tr) in segs:
+        if tr or d > scorecard.LONG_MM or d < 0.05:
+            continue
+        ci = int(((ay + by) / 2 - y0) / scorecard.CELL)
+        cj = int(((ax + bx) / 2 - x0) / scorecard.CELL)
+        if 0 <= ci < H and 0 <= cj < W:
+            cell = tally.setdefault((ci, cj), {})
+            cell[blk] = cell.get(blk, 0.0) + d
+    out = np.full(shape, -1, int)
+    for (i, j), c in tally.items():
+        out[i, j] = max(c, key=c.get)
+    return out
+
+
+def _pro_thread_rgbs(slug: str, n_blocks: int):
+    """The pro's thread colour per DST block, from his PES when the job has one and
+    its colour count matches the DST's blocks; else None (a DST carries no colour)."""
+    from tools.pro_baseline import JOBS, resolve
+    pes = JOBS[slug][4]
+    if not pes:
+        return None
+    try:
+        import pystitch
+        threads = [(t.get_red(), t.get_green(), t.get_blue()) for t in pystitch.read(str(resolve(pes))).threadlist]
+    except Exception:                                           # noqa: BLE001 -- no colour, not a crash
+        return None
+    return threads if len(threads) == n_blocks else None
+
+
+def _luma(rgb) -> float:
+    return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
+
+
+def _mode(a) -> int:
+    import numpy as np
+    a = a[a >= 0]
+    if not a.size:
+        return -1
+    v, c = np.unique(a, return_counts=True)
+    return int(v[np.argmax(c)])
+
+
+def attribute_job(slug: str, runs: Path, B: int = BOOT, seed: int = BOOT_SEED,
+                  floor: int = SPLIT_FLOOR) -> dict:
+    """Where one job's oracle-split gain sits.
+
+    Four maps on `cell_census`'s grid: `routing` (ours), `plain` (the per-region
+    oracle), `split` (oracle-split at `floor`) and `routing_blobs` (ours, with ONLY
+    the cut blobs given the pro's type: the layering term on today's engine, with
+    no per-region relabel riding along). Each kappa carries its chance floor and a
+    region-cluster bootstrap 95% interval; each difference a PAIRED interval (one
+    set of replicate weights for all four maps).
+
+    Regions: add-one gains from routing (region k alone relabelled as `plain`,
+    then as `split`). Blobs: add-one gains on top of `plain` (the cut term) and on
+    top of `routing` (the layering term today's engine could buy), with the blob's
+    layering pattern and the pro's thread colour against the ground's. A blob our
+    routing already sews as the pro's type adds to the cut term ONLY by undoing
+    the per-region relabel's damage there; `ours_right` says how much of it.
+    """
+    import zlib
+    import numpy as np
+    from tools.tier_census import plan_tier
+    g = _cell_grids(slug, runs)
+    scorecard, pt, ot, tboth, owner, info = (g["scorecard"], g["pt"], g["ot"], g["tboth"],
+                                             g["owner"], g["info"])
+    o = oracle_split(pt, ot, tboth, owner, floor)
+    rb = ot.copy()
+    for p in o["parts"]:
+        rb[p["mask"]] = p["type"]
+    full = {"routing": ot, "plain": o["plain"], "split": o["split"], "routing_blobs": rb}
+    P = pt[tboth]
+    flat = {n: m[tboth] for n, m in full.items()}
+    point = {n: _kappa_of(P, m) for n, m in flat.items()}
+
+    ii, jj = np.nonzero(tboth)
+    own = owner[tboth]
+    clusters = np.where(own >= 0, own, -1 - ((ii // TILE) * 100_000 + jj // TILE))
+    rng = np.random.default_rng([seed, zlib.crc32(slug.encode())])
+    w = _boot_weights(clusters, B, rng)
+    reps = {n: _boot_kappa(P, m, w) for n, m in flat.items()}
+
+    undefined = np.zeros(B, bool)
+    for r in reps.values():
+        undefined |= np.isnan(r)
+    row = {"type_cells": int(tboth.sum()), "boot": B, "clusters": int(len(np.unique(clusters))),
+           "undefined_replicates": int(undefined.sum())}
+    for n in MAPS:
+        row[n] = {"kappa": round(point[n][0], 3), "chance": round(point[n][1], 3), "ci": _ci(reps[n])}
+    for name, a, b in (("gain", "split", "routing"), ("relabel", "plain", "routing"),
+                       ("cut", "split", "plain"), ("blobs_on_routing", "routing_blobs", "routing")):
+        row[name] = {"delta": round(point[a][0] - point[b][0], 3), "ci": _ci(reps[a] - reps[b])}
+
+    # ---- regions: add-one from routing
+    k_route = point["routing"][0]
+    sewn = {k: poly for _a, k, poly in g["polys"]}
+    cut_regions = {p["region"] for p in o["parts"]}
+    regions = []
+    for k in np.unique(own[own >= 0]):
+        k = int(k)
+        in_k = owner == k
+        m = ot.copy(); m[in_k] = o["plain"][in_k]
+        kp = _kappa_of(P, m[tboth])[0]
+        m[in_k] = o["split"][in_k]
+        ks = _kappa_of(P, m[tboth])[0]
+        r = info["regions"][k]
+        poly = sewn[k]
+        ground = any(j != k and q.area < poly.area and poly.contains(q.representative_point())
+                     for j, q in sewn.items())
+        lettering = any(key in (r.get("meta") or {}) for key in
+                        ("text_cluster_id", "lettering_group", "bean_letter", "small_text_stray"))
+        regions.append({"id": r["id"], "k": k, "tier": plan_tier(r.get("kinds") or {}),
+                        "lettering": lettering, "ground": ground, "cut": k in cut_regions,
+                        "graded_mm2": round(float((in_k & tboth).sum()) * scorecard.CELL ** 2, 1),
+                        "add_relabel": round(kp - k_route, 4), "add_split": round(ks - k_route, 4)})
+
+    # ---- blobs: add-one on top of the per-region oracle, with pattern and colour
+    blocks = _block_map(g["pro"], g["bb"], pt.shape)
+    n_blocks = len(scorecard.load_blocks(runs / slug / "score" / slug, "pro"))
+    rgbs = _pro_thread_rgbs(slug, n_blocks)
+    k_plain = point["plain"][0]
+    blob_rows = []
+    in_any_blob = np.zeros(pt.shape, bool)
+    for p in o["parts"]:
+        in_any_blob |= p["mask"]
+    for p in o["parts"]:
+        m = o["plain"].copy(); m[p["mask"]] = p["type"]
+        gain = _kappa_of(P, m[tboth])[0] - k_plain
+        m = ot.copy(); m[p["mask"]] = p["type"]
+        on_routing = _kappa_of(P, m[tboth])[0] - k_route
+        geo = blob_pattern(p["mask"], owner, p["region"])
+        b_blk = _mode(blocks[p["mask"]])
+        g_blk = _mode(blocks[(owner == p["region"]) & tboth & ~in_any_blob])
+        colour = "unknown"
+        if b_blk >= 0 and g_blk >= 0:
+            if b_blk == g_blk:
+                colour = "same block"
+            elif rgbs is None:
+                colour = "other block"
+            else:
+                d = _luma(rgbs[b_blk]) - _luma(rgbs[g_blk])
+                colour = "darker" if d <= -DARKER else "lighter" if d >= DARKER else "other block, same luma"
+        blob_rows.append({"region": info["regions"][p["region"]]["id"], "k": p["region"],
+                          "pro_type": p["type"], "ground_type": p["dom"],
+                          "cells": int(p["mask"].sum()), "add_cut": round(gain, 4),
+                          "add_on_routing": round(on_routing, 4),
+                          # the share of the blob our routing already sews as the pro's type
+                          "ours_right": round(float((ot[p["mask"]] == p["type"]).mean()), 3),
+                          "colour": colour, **geo})
+    row["regions"] = regions
+    row["blobs"] = blob_rows
+    row["_reps"] = {n: reps[n] for n in MAPS}          # for the pooled interval; not written
+    return row
+
+
+def attribute_run(runs: Path, slugs: list[str], B: int = BOOT) -> dict:
+    """`attribute_job` on every measured, non-degenerate job, plus the pooled
+    means with a two-stage bootstrap (jobs, or whole artworks, resampled; each
+    pick takes one of that job's own replicates). Writes `runs/attribution.json`."""
+    import numpy as np
+    from tools.pro_baseline import ARTWORK, JOBS
+    cen = json.loads((runs / "census.json").read_text(encoding="utf-8"))["jobs"]
+    jobs, reps = {}, {}
+    for s in slugs:
+        if s not in JOBS or s not in cen or not (runs / s / "ours.json").exists():
+            continue
+        if cen[s]["cells"].get("pro_self_chance", 0) >= _degenerate():
+            print(s, "degenerate (the pro sews one type): left out", flush=True)
+            continue
+        row = attribute_job(s, runs, B)
+        reps[s] = row.pop("_reps")
+        jobs[s] = row
+        print(s, "gain", row["gain"]["delta"], row["gain"]["ci"], "relabel", row["relabel"]["delta"],
+              "cut", row["cut"]["delta"], "blobs on routing", row["blobs_on_routing"]["delta"], flush=True)
+    out = {"jobs": jobs, "pooled": {}}
+    names = list(jobs)
+    if names:
+        rng = np.random.default_rng(BOOT_SEED)
+        art_of = {s: a for a, ss in ARTWORK.items() for s in ss}
+        arts = sorted({art_of[s] for s in names})
+        for unit in ("job", "artwork"):
+            groups = [[s] for s in names] if unit == "job" else [[s for s in names if art_of[s] == a] for a in arts]
+            pooled = {n: [] for n in MAPS}
+            # each pick takes one of its job's DEFINED replicates (all four maps finite)
+            ok = {s: np.flatnonzero(np.all([np.isfinite(reps[s][n]) for n in MAPS], axis=0)) for s in names}
+            for _b in range(B):
+                pick = [s for gi in rng.integers(0, len(groups), len(groups)) for s in groups[gi]]
+                r = [ok[s][rng.integers(0, len(ok[s]))] for s in pick]
+                for n in MAPS:
+                    pooled[n].append(float(np.mean([reps[s][n][ri] for s, ri in zip(pick, r)])))
+            pooled = {n: np.array(v) for n, v in pooled.items()}
+            out["pooled"][unit] = {
+                **{n: _ci(pooled[n]) for n in MAPS},
+                "gain": _ci(pooled["split"] - pooled["routing"]),
+                "relabel": _ci(pooled["plain"] - pooled["routing"]),
+                "cut": _ci(pooled["split"] - pooled["plain"]),
+                "blobs_on_routing": _ci(pooled["routing_blobs"] - pooled["routing"]),
+                "units": len(groups)}
+    (runs / "attribution.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
+    return out
+
+
+def _region_class(r: dict) -> str:
+    return "lettering" if r["lettering"] else "ground" if r["ground"] else "piece"
+
+
+def attribution_summary(res: dict) -> dict:
+    """Per job the gain and its two terms; the share the top 3 jobs carry; how
+    many regions carry the cut term; the cut term by region class and by blob
+    pattern / colour. All shares are of a mean CHANCE-CORRECTED kappa."""
+    jobs = res["jobs"]
+    n = len(jobs)
+    if not n:
+        return {"n_jobs": 0}
+    mean = lambda key, sub="delta": round(sum(j[key][sub] for j in jobs.values()) / n, 4)   # noqa: E731
+    out = {"n_jobs": n,
+           "mean": {m: round(sum(j[m]["kappa"] for j in jobs.values()) / n, 3) for m in MAPS},
+           "mean_gain": mean("gain"), "mean_relabel": mean("relabel"), "mean_cut": mean("cut"),
+           "mean_blobs_on_routing": mean("blobs_on_routing")}
+    for term in ("gain", "cut", "blobs_on_routing"):
+        ranked = sorted(jobs, key=lambda s: jobs[s][term]["delta"], reverse=True)
+        tot = sum(j[term]["delta"] for j in jobs.values())
+        top = ranked[:3]
+        out[f"top3_{term}"] = {"jobs": top,
+                               "share": round(sum(jobs[s][term]["delta"] for s in top) / tot, 3) if tot else None}
+    # the cut term, region by region (add-one on top of plain, summed over its blobs)
+    reg_gain = []
+    for s, j in jobs.items():
+        per = Counter()
+        for b in j["blobs"]:
+            per[b["k"]] += b["add_cut"]
+        by_k = {r["k"]: r for r in j["regions"]}
+        for k, v in per.items():
+            reg_gain.append((v / n, s, by_k[k]))
+    reg_gain.sort(key=lambda t: t[0], reverse=True)
+    tot_cut = sum(v for v, *_ in reg_gain)
+    acc, need = 0.0, {}
+    for i, (v, *_r) in enumerate(reg_gain, 1):
+        acc += v
+        for share in (0.5, 0.8):
+            if share not in need and tot_cut > 0 and acc >= share * tot_cut:
+                need[share] = i
+    out["cut_regions"] = {"n": len(reg_gain), "sum_add_one": round(tot_cut, 4),
+                          "for_50pct": need.get(0.5), "for_80pct": need.get(0.8),
+                          "top": [{"job": s, "id": r["id"], "class": _region_class(r), "tier": r["tier"],
+                                   "graded_mm2": r["graded_mm2"], "share": round(v / tot_cut, 3) if tot_cut else None}
+                                  for v, s, r in reg_gain[:8]]}
+    cls, pat, col, pat_col, dirn = Counter(), Counter(), Counter(), Counter(), Counter()
+    n_pat = Counter()
+    tname = {0: "run", 1: "satin", 2: "fill"}
+    widths = []
+    for v, s, r in reg_gain:
+        cls[f"{_region_class(r)} {r['tier'].lower()}"] += v
+    for j in jobs.values():
+        for b in j["blobs"]:
+            v = b["add_cut"] / n
+            pat[b["pattern"]] += v; n_pat[b["pattern"]] += 1
+            col[b["colour"]] += v
+            pat_col[f"{b['pattern']} / {b['colour']}"] += v
+            dirn[f"pro {tname[b['pro_type']]} in a pro-{tname[b['ground_type']]} ground"] += v
+            widths.append(b["half_width_cells"])
+    tot_blob = sum(pat.values())
+    share = lambda c: {k: round(x / tot_blob, 3) for k, x in c.most_common()} if tot_blob else {}   # noqa: E731
+    out["cut_by_region_class"] = {k: round(x / tot_cut, 3) for k, x in cls.most_common()} if tot_cut else {}
+    out["cut_by_pattern"] = share(pat)
+    out["blobs_by_pattern"] = dict(n_pat)
+    out["cut_by_colour"] = share(col)
+    out["cut_by_pattern_colour"] = share(pat_col)
+    out["cut_by_direction"] = share(dirn)
+    # the same split for the blobs alone on today's routing
+    pr, cr = Counter(), Counter()
+    for j in jobs.values():
+        for b in j["blobs"]:
+            pr[b["pattern"]] += b["add_on_routing"] / n
+            cr[b["colour"]] += b["add_on_routing"] / n
+    tr = sum(pr.values())
+    out["on_routing_by_pattern"] = {k: round(x / tr, 3) for k, x in pr.most_common()} if tr else {}
+    out["on_routing_by_colour"] = {k: round(x / tr, 3) for k, x in cr.most_common()} if tr else {}
+    out["sum_blob_on_routing"] = round(tr, 4)
+    cells = sum(b["cells"] for j in jobs.values() for b in j["blobs"])
+    out["blob_cells_ours_right"] = round(sum(b["cells"] * b["ours_right"] for j in jobs.values()
+                                             for b in j["blobs"]) / cells, 3) if cells else None
+    out["blob_half_width_cells_max"] = max(widths) if widths else None
+    out["sum_blob_add_one"] = round(tot_blob, 4)
+    out["verdict"] = split_verdict(out["mean"]["split"])
+    return out
+
+
+def attribution_table(res: dict) -> str:
+    sm = attribution_summary(res)
+    if not sm["n_jobs"]:
+        return "no jobs"
+    iv = lambda ci, fmt: "[undefined]" if ci[0] is None else f"[{ci[0]:{fmt}}, {ci[1]:{fmt}}]"   # noqa: E731
+    f = lambda d: f"{d['kappa']:.3f} ({d['chance']:.2f}) {iv(d['ci'], '.2f')}"                     # noqa: E731
+    g = lambda d: f"{d['delta']:+.3f} {iv(d['ci'], '+.2f')}"                                       # noqa: E731
+    L = ["| job (undefined replicates) | routing kappa (chance) [95%] | per-region oracle | oracle-split | routing + blobs only "
+         "| gain split - routing | of which relabel | of which cut | blobs on routing | blobs |",
+         "|---|---|---|---|---|---|---|---|---|---|"]
+    for s, j in sorted(res["jobs"].items(), key=lambda t: t[1]["gain"]["delta"], reverse=True):
+        L.append(f"| {s} ({j['undefined_replicates']}) | {f(j['routing'])} | {f(j['plain'])} | {f(j['split'])} | {f(j['routing_blobs'])} | "
+                 f"{g(j['gain'])} | {g(j['relabel'])} | {g(j['cut'])} | {g(j['blobs_on_routing'])} | "
+                 f"{len(j['blobs'])} |")
+    m = sm["mean"]
+    L += ["", f"mean of {sm['n_jobs']}: routing {m['routing']}, per-region oracle {m['plain']}, "
+          f"oracle-split {m['split']}, routing + blobs only {m['routing_blobs']}",
+          f"mean gain {sm['mean_gain']} = relabel {sm['mean_relabel']} + cut {sm['mean_cut']}; "
+          f"blobs alone on routing {sm['mean_blobs_on_routing']}"]
+    for unit, p in res.get("pooled", {}).items():
+        L.append(f"95% intervals, {p['units']} {unit}s resampled (two-stage): " + ", ".join(
+            f"{k} {p[k]}" for k in (*MAPS, "gain", "relabel", "cut", "blobs_on_routing")))
+    for term in ("gain", "cut", "blobs_on_routing"):
+        t = sm[f"top3_{term}"]
+        L.append(f"top 3 jobs carry {t['share']} of the mean {term}: {', '.join(t['jobs'])}")
+    c = sm["cut_regions"]
+    L.append(f"cut term over {c['n']} regions (add-one sum {c['sum_add_one']} vs cut {sm['mean_cut']}): "
+             f"{c['for_50pct']} carry 50%, {c['for_80pct']} carry 80%")
+    for r in c["top"]:
+        L.append(f"  {r['job']} {r['id']} {r['class']} {r['tier']} {r['graded_mm2']} mm2: {r['share']}")
+    L.append(f"cut by region class {sm['cut_by_region_class']}")
+    L.append(f"cut by blob pattern {sm['cut_by_pattern']} (blobs {sm['blobs_by_pattern']})")
+    L.append(f"cut by pro thread colour vs the ground's {sm['cut_by_colour']}")
+    L.append(f"cut by pattern / colour {sm['cut_by_pattern_colour']}")
+    L.append(f"cut by type direction {sm['cut_by_direction']}; widest blob half-width "
+             f"{sm['blob_half_width_cells_max']} cells")
+    L.append(f"blobs alone on routing (add-one sum {sm['sum_blob_on_routing']}): by pattern "
+             f"{sm['on_routing_by_pattern']}, by colour {sm['on_routing_by_colour']}; "
+             f"our routing already sews {sm['blob_cells_ours_right']} of the blob cells as the pro's type")
+    L.append(f"DECISION RULE (C3): {sm['verdict']}")
     return "\n".join(L)
 
 
@@ -640,7 +1092,8 @@ def main(argv=None) -> int:
     from tools.pro_baseline import JOBS
     from tools.pro_pair import parse_sets
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("cmd", choices=("digitize", "measure", "table", "flip", "render", "oracle-split"))
+    ap.add_argument("cmd", choices=("digitize", "measure", "table", "flip", "render", "oracle-split",
+                                       "attribute"))
     ap.add_argument("--runs", type=Path, required=True)
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--set", action="append", default=[], metavar="KEY=JSON")
@@ -654,6 +1107,8 @@ def main(argv=None) -> int:
         measure(a.runs, slugs)
     elif a.cmd == "oracle-split":
         print(split_table(oracle_split_run(a.runs, slugs)))
+    elif a.cmd == "attribute":
+        print(attribution_table(attribute_run(a.runs, slugs)))
     elif a.cmd == "flip":
         print(flip_table(a.runs, a.vs))
     elif a.cmd == "render":
