@@ -895,7 +895,7 @@ def cut_every_jump_step_mm(cfg) -> float:
 _BURY_PX_PER_MM = 20.0
 
 
-def _bury_route(a, b, gap, k, cover, lines, idx, tree, half):
+def _bury_route(a, b, gap, k, cover, lines, idx, tree, half, coords=None):
     """A bent route from a to b under thread sewn at or after `k`, or None.
 
     PROPOSED on a raster and DECIDED exactly: the later centrelines near the
@@ -905,6 +905,24 @@ def _bury_route(a, b, gap, k, cover, lines, idx, tree, half):
     Every leg of it must then pass `cover.covers` -- the same sampled test
     the straight hop took -- and the whole route chaining's stitch budget,
     or the hop stays cut. The raster can only lose a route, never pass one.
+
+    `coords` (2026-11-07, speed only): `coords(j)` -> `np.asarray(lines[j].
+    coords)`, memoized by the caller across the hops of one pass, so a
+    centreline near many hops is read out of GEOS once. None reads each
+    line here. Same array, same raster.
+
+    The geodesic runs on the raster CROPPED to the bounding box of its
+    finite cells (2026-11-07, speed only). The grid is the link budget
+    square -- up to 1,449 px a side at the 72 mm budget -- while the later
+    thread near a hop fills a sliver of it; `MCP_Geometric`'s set-up is
+    paid per cell of the grid, its search per finite cell. skimage ignores
+    infinite cells ("Array elements with infinite ... costs will simply be
+    ignored"), so every cell outside the crop was already impassable, the
+    8-neighbourhoods of the cells inside are unchanged, the cells keep
+    their row-major order (the heap's tie order) and the traceback is the
+    same path at an offset. Measured identical on the owl, Becker and the
+    gradient ramp (every stage-7 md5), and `tests/test_bury_route_speed.py`
+    holds it against the uncropped search on random later thread.
     """
     import cv2
     from skimage.graph import MCP_Geometric
@@ -912,17 +930,21 @@ def _bury_route(a, b, gap, k, cover, lines, idx, tree, half):
     mx, my = (a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0
     r = budget / 2.0 + half
     near = [idx[j] for j in tree.query(Point(mx, my).buffer(r))]
-    later = [lines[j] for j in near if j >= k]
+    later = [j for j in near if j >= k]
     if not later:
         return None
+    if coords is None:
+        def coords(j):
+            return np.asarray(lines[j].coords)
     ppm = _BURY_PX_PER_MM
     x0, y0 = mx - r, my - r
     n = int(math.ceil(2 * r * ppm)) + 1
     mask = np.zeros((n, n), np.uint8)
     lw = max(1, int(round(2 * half * ppm)))
-    for g in later:
-        pts = np.round((np.asarray(g.coords) - (x0, y0)) * ppm).astype(np.int32)
-        cv2.polylines(mask, [pts], False, 1, lw)
+    # One `polylines` call over every centreline: the same strokes the
+    # per-line loop drew (constant colour, so order cannot show).
+    cv2.polylines(mask, [np.round((coords(j) - (x0, y0)) * ppm).astype(np.int32)
+                         for j in later], False, 1, lw)
     # Half a thread, plus what the simplify below may move a corner, plus a
     # pixel: a simplified leg stays inside what the exact test accepts.
     er = int(math.ceil((half + half / 2.0) * ppm)) + 1
@@ -933,12 +955,19 @@ def _bury_route(a, b, gap, k, cover, lines, idx, tree, half):
         cv2.circle(mask, (xx, yy), int(machine.COVERAGE_THREAD_W_MM * ppm), 1, -1)
     if not (0 <= ia[0] < n and 0 <= ia[1] < n and 0 <= ib[0] < n and 0 <= ib[1] < n):
         return None
-    mcp = MCP_Geometric(np.where(mask > 0, 1.0, np.inf))
-    costs, _ = mcp.find_costs([ia], [ib])
-    if not np.isfinite(costs[ib]) or costs[ib] / ppm > budget:
+    # The crop: both end discs are inside the grid, so the mask has cells.
+    rows = np.flatnonzero(mask.any(axis=1))
+    cols = np.flatnonzero(mask.any(axis=0))
+    r0, c0 = int(rows[0]), int(cols[0])
+    sub = mask[r0:int(rows[-1]) + 1, c0:int(cols[-1]) + 1]
+    ia_s, ib_s = (ia[0] - r0, ia[1] - c0), (ib[0] - r0, ib[1] - c0)
+    mcp = MCP_Geometric(np.where(sub > 0, 1.0, np.inf))
+    costs, _ = mcp.find_costs([ia_s], [ib_s])
+    if not np.isfinite(costs[ib_s]) or costs[ib_s] / ppm > budget:
         return None
-    path = mcp.traceback(ib)
-    line = LineString([(x0 + c / ppm, y0 + rr / ppm) for rr, c in path]).simplify(half / 2.0)
+    path = mcp.traceback(ib_s)
+    line = LineString([(x0 + (c + c0) / ppm, y0 + (rr + r0) / ppm)
+                       for rr, c in path]).simplify(half / 2.0)
     route = [a] + list(line.coords)[1:-1] + [b]
     if sum(math.dist(p, q) for p, q in zip(route, route[1:])) > budget:
         return None
@@ -1168,6 +1197,15 @@ def _later_thread_burier(blocks: list[StitchBlock], step: float = _BURY_STEP_MM)
         return seq, lambda _k: None
     order = np.array(idx)
     tree = shapely.STRtree([lines[k] for k in idx])
+    # Each centreline's vertices, read out of GEOS once for every hop
+    # `_bury_route` rasters it near (speed only; the same array each time).
+    arrays: dict[int, np.ndarray] = {}
+
+    def coords(j: int) -> np.ndarray:
+        arr = arrays.get(j)
+        if arr is None:
+            arr = arrays[j] = np.asarray(lines[j].coords)
+        return arr
 
     class _UnderThread:
         """`_link_route`'s cover. A segment passes when every sample of its
@@ -1220,7 +1258,7 @@ def _later_thread_burier(blocks: list[StitchBlock], step: float = _BURY_STEP_MM)
         if cover.covers(LineString([a, b])):
             route = [a, b]
         else:
-            route = _bury_route(a, b, gap, k, cover, lines, idx, tree, half)
+            route = _bury_route(a, b, gap, k, cover, lines, idx, tree, half, coords)
         return _link_stitches(route) if route is not None else None
 
     return seq, bury
@@ -1480,7 +1518,17 @@ def _hoist_same_thread(blocks: list[StitchBlock], trim_at: float,
     """
     if len(blocks) < 3:
         return blocks
-    geoms = [_block_thread_geom(b) for b in blocks]
+    # Sewn geometry on demand (2026-11-07, speed only): a block's union is
+    # built the first time a revisit asks about it, and never for a block no
+    # revisit crosses -- on most designs that is most of them. Same union
+    # when it is built.
+    geoms: dict[int, object] = {}
+
+    def geom(i: int):
+        if i not in geoms:
+            geoms[i] = _block_thread_geom(blocks[i])
+        return geoms[i]
+
     order = list(range(len(blocks)))
 
     moved = True
@@ -1496,8 +1544,8 @@ def _hoist_same_thread(blocks: list[StitchBlock], trim_at: float,
                     break
             if target is None or target == pos - 1:
                 continue        # no revisit, or already adjacent
-            mover = geoms[j]
-            crossed = [geoms[order[k]] for k in range(target + 1, pos)]
+            mover = geom(j)
+            crossed = [geom(order[k]) for k in range(target + 1, pos)]
             if mover is None or any(g is None
                                     or _within_margin(mover, g, margin_mm)
                                     for g in crossed):
@@ -1714,8 +1762,26 @@ def _border_worthy(geom, total_area: float, share_min: float,
     return _raggedness(geom) < iso_max
 
 
-def _seam_band(a_geom, b_geom, eps_mm: float = _BORDER_SEAM_EPS_MM
-               ) -> tuple[object | None, float]:
+def _edge_band(geom, eps_mm: float, cache: dict | None):
+    """`_seam_band`'s half: a shape's polygonal boundary buffered by
+    `eps_mm`, or None. With `cache` (one dict per `sequence` call, speed
+    only) the buffer is built once per geometry object: `_owned_by_later`
+    asks the same still-to-sew shapes against every shape that borders,
+    and `visible_geom` is the same object each time. The cache keeps the
+    geometry itself beside its band so the `id` key stays its own."""
+    if cache is None:
+        edge = _polygonal_boundary(geom)
+        return None if edge is None else edge.buffer(eps_mm)
+    key = (id(geom), eps_mm)
+    hit = cache.get(key)
+    if hit is None:
+        edge = _polygonal_boundary(geom)
+        hit = cache[key] = (geom, None if edge is None else edge.buffer(eps_mm))
+    return hit[1]
+
+
+def _seam_band(a_geom, b_geom, eps_mm: float = _BORDER_SEAM_EPS_MM,
+               cache: dict | None = None) -> tuple[object | None, float]:
     """-> (the coincident strip between two shapes' own edges, its length).
 
     Two border-enabled shapes that abut share a visible edge (stage 5's
@@ -1728,10 +1794,10 @@ def _seam_band(a_geom, b_geom, eps_mm: float = _BORDER_SEAM_EPS_MM
     curve. `(None, 0.0)` when the edges do not coincide at all. See
     `_BORDER_SEAM_EPS_MM` for what `eps_mm` has to be on real artwork.
     """
-    a_edge, b_edge = _polygonal_boundary(a_geom), _polygonal_boundary(b_geom)
-    if a_edge is None or b_edge is None:
+    a_band, b_band = _edge_band(a_geom, eps_mm, cache), _edge_band(b_geom, eps_mm, cache)
+    if a_band is None or b_band is None:
         return None, 0.0
-    shared = a_edge.buffer(eps_mm).intersection(b_edge.buffer(eps_mm))
+    shared = a_band.intersection(b_band)
     if shared.is_empty:
         return None, 0.0
     return shared, shared.area / (2.0 * eps_mm)
@@ -1772,7 +1838,7 @@ def _bounds_touch(a, b, eps: float) -> bool:
 
 def _owned_by_later(
     visible_geom, later: dict[str, object], threshold_mm: float,
-    eps_mm: float = _BORDER_SEAM_EPS_MM,
+    eps_mm: float = _BORDER_SEAM_EPS_MM, cache: dict | None = None,
 ) -> tuple[object | None, list[tuple[str, float]]]:
     """The stretches of `visible_geom`'s edge that a bordered shape STILL TO
     SEW will cover with its own border. -> (geometry to hand `border_runs`
@@ -1812,7 +1878,7 @@ def _owned_by_later(
     for other_id, other_geom in later.items():
         if not _bounds_touch(visible_geom, other_geom, 2.0 * eps_mm):
             continue
-        band, length = _seam_band(visible_geom, other_geom, eps_mm)
+        band, length = _seam_band(visible_geom, other_geom, eps_mm, cache)
         if band is not None and length > threshold_mm:
             bands.append((other_id, band, length))
     if not bands:
@@ -3143,6 +3209,9 @@ def sequence(
     # Every region's edge, for `cfg.border_by_size_fabric_edges`'s seam test
     sewn_geoms = ({_p.shape_id: _p.visible_geom for _p in planned}
                   if cfg.border_by_size_fabric_edges else {})
+    # `_owned_by_later`'s buffered edges, built once per shape for this call
+    # (`_edge_band`; speed only -- the owl asked 157 seams of 26 shapes)
+    seam_bands: dict = {}
     for _group_key in sorted({nn_group_key(p) for p in planned}):
         group = [p for p in planned if nn_group_key(p) == _group_key]
 
@@ -4199,7 +4268,8 @@ def sequence(
                 border_width = border_width_mm or machine.BORDER_WIDTH_MM
                 omit, pairs = _owned_by_later(p.visible_geom, border_later,
                                               2.0 * border_width,
-                                              eps_mm=2.0 * cfg.simplify_tol_mm)
+                                              eps_mm=2.0 * cfg.simplify_tol_mm,
+                                              cache=seam_bands)
                 border_seams.extend((p.shape_id, other_id, length)
                                     for other_id, length in pairs)
                 if cfg.border_by_size_fabric_edges and report.get("border_by_size"):
@@ -4210,7 +4280,8 @@ def sequence(
                     c_omit, _ = _owned_by_later(
                         p.visible_geom,
                         {k: g for k, g in sewn_geoms.items() if k != p.shape_id},
-                        2.0 * border_width, eps_mm=2.0 * cfg.simplify_tol_mm)
+                        2.0 * border_width, eps_mm=2.0 * cfg.simplify_tol_mm,
+                        cache=seam_bands)
                     if c_omit is not None:
                         omit = c_omit if omit is None else unary_union([omit, c_omit])
                 b_runs, b_report = border_runs(

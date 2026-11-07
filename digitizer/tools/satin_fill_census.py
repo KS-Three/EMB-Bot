@@ -36,6 +36,13 @@ three readings, so they cannot disagree about what was sewn:
     python -m tools.satin_fill_census table --runs DIR [--vs DIR2]
     python -m tools.satin_fill_census flip --runs OFF --vs ON              # a flag's two arms
     python -m tools.satin_fill_census render --runs OFF --vs ON --out docs/renders/NAME
+    python -m tools.satin_fill_census oracle-split --runs DIR              # after `measure`; C3's bound
+
+`oracle-split` (2026-11-06, lagging-areas C3) is the per-region oracle one level
+finer: each of OUR regions is cut along the pro's minority-type blobs of >= 10
+connected cells, each part takes the pro's type there, and the cells are re-scored
+with the same `_kappa_of`. It READS the pro's blobs, so it is a maximum, not
+something inference from flat art could reach. It writes `DIR/oracle_split.json`.
 
 `digitize` writes `DIR/<slug>/{ours.dst, design.json, ours.json}`; `measure`
 writes `DIR/census.json`; `render` writes OFF | ON crops round every shape whose
@@ -115,13 +122,15 @@ def _components(mask) -> list[int]:
     return [int((lab == k).sum()) for k in range(1, n)]
 
 
-def cell_census(slug: str, runs: Path) -> dict:
-    """job kappa, oracle kappa, straddle anatomy and the pro's half-cell self kappa."""
+def _cell_grids(slug: str, runs: Path) -> dict:
+    """The cell grid `cell_census` and `oracle_split_job` share: the pro's and our
+    type maps (`pt`, `ot`), the graded population (`tboth`), and `owner` (the
+    SMALLEST sewn region over each cell, -1 where none), all on one grid."""
     import numpy as np
     import shapely.wkt
     from shapely.affinity import translate
     from tools.pro_parity import scorecard
-    from tools.pro_parity.splitprobe import _cells_of, classify_straddle
+    from tools.pro_parity.splitprobe import _cells_of
 
     work = runs / slug / "score" / slug                 # written by pro_baseline.kappas
     _r, pro, _s, _t = scorecard.load_side(work, "pro", slug)
@@ -141,7 +150,6 @@ def cell_census(slug: str, runs: Path) -> dict:
     tboth = both & (pt >= 0) & (ot >= 0)
 
     info = json.loads((runs / slug / "ours.json").read_text(encoding="utf-8"))
-    oracle = ot.copy()
     # A cell belongs to the SMALLEST sewn region over it. Regions overlap on
     # purpose (an under-fill silhouette, a patch ground, Fremont's 2,137 mm2
     # field under its letters): taken in list order the ground claimed every
@@ -162,6 +170,19 @@ def cell_census(slug: str, runs: Path) -> dict:
     for _a, k, poly in sorted(polys, key=lambda t: t[0], reverse=True):
         for c in _cells_of(translate(poly, dx, dy), bb, pt.shape):
             owner[c] = k                                # smaller ones overwrite
+    return {"scorecard": scorecard, "pro": pro, "bb": bb, "dx": dx, "dy": dy, "pt": pt, "ot": ot,
+            "tboth": tboth, "owner": owner, "info": info, "polys": polys}
+
+
+def cell_census(slug: str, runs: Path) -> dict:
+    """job kappa, oracle kappa, straddle anatomy and the pro's half-cell self kappa."""
+    import numpy as np
+    from tools.pro_parity.splitprobe import classify_straddle
+
+    g = _cell_grids(slug, runs)
+    scorecard, pro, bb, dx, dy = g["scorecard"], g["pro"], g["bb"], g["dx"], g["dy"]
+    pt, ot, tboth, owner, info, polys = g["pt"], g["ot"], g["tboth"], g["owner"], g["info"], g["polys"]
+    oracle = ot.copy()
     shapes = []
     for _a, k, _poly in sorted(polys, key=lambda t: t[1]):
         r = info["regions"][k]
@@ -210,6 +231,186 @@ def cell_census(slug: str, runs: Path) -> dict:
             "cells_in_regions": int(in_shape.sum()),
             "pro_self_kappa": round(sk, 3), "pro_self_chance": round(sc, 3), "pro_self_kappa_half": round(qk, 3),
             "registration_mm": [round(dx, 2), round(dy, 2)], "shapes": shapes}
+
+
+#: the pro's minority-type blob must reach this many connected cells (2 mm cells,
+#: 4-connectivity) before the oracle cuts a region along it: the 10+ band of
+#: `minority_cells_by_component`, where the straddle stops being grid noise.
+SPLIT_FLOOR = 10
+SPLIT_FLOORS_SWEPT = (5, 10, 20)        # the floor's own sensitivity, printed beside the headline
+#: decision rule, docs/lagging-areas-2026-11-06/2-satin-fill.md section C3
+SPLIT_WORTH_DESIGNING = 0.55
+SPLIT_CLOSES_DIRECTION = 0.45
+
+
+def oracle_split(pt, ot, tboth, owner, floor: int = SPLIT_FLOOR) -> dict:
+    """The per-region oracle one level finer: cut each of OUR regions along the
+    pro's minority-type blobs and give every part the pro's type there.
+
+    For region k, `dom` is the pro's majority type over its graded cells (the
+    `cell_census` oracle's label). For each other pro type t, the graded cells
+    of k the pro sews as t form 4-connected blobs; a blob of >= `floor` cells
+    becomes a part of its own, labelled t; every other cell of k keeps `dom`.
+    A region with no such blob is labelled exactly as the per-region oracle
+    labels it. Cells outside any region keep our own type.
+
+    THE PRO'S BLOBS ARE READ, so this is a maximum, not something inference from
+    flat art could reach. Returns the relabelled map, the plain per-region oracle
+    map (for the same call's own cross-check) and what was cut.
+    """
+    import cv2
+    import numpy as np
+    plain = ot.copy()
+    split = ot.copy()
+    grounds, blobs, cut_cells, ground_cells = 0, 0, 0, 0
+    for k in np.unique(owner[owner >= 0]):
+        in_k = owner == k
+        graded = in_k & tboth
+        if not graded.any():
+            continue
+        vals, counts = np.unique(pt[graded], return_counts=True)
+        # a tie goes to the type met first in row-major order: `cell_census`'s
+        # Counter.most_common, so the plain oracle here IS that oracle, tie for tie
+        first = {int(t): int(np.flatnonzero(graded.ravel() & (pt.ravel() == t))[0]) for t in vals}
+        dom = min((int(t) for t, c in zip(vals, counts) if c == counts.max()), key=first.get)
+        plain[in_k & (pt >= 0)] = dom
+        split[in_k & (pt >= 0)] = dom
+        n_here = 0
+        for t in vals:
+            if int(t) == dom:
+                continue
+            n, lab = cv2.connectedComponents((graded & (pt == t)).astype(np.uint8), connectivity=4)
+            for c in range(1, n):
+                blob = lab == c
+                size = int(blob.sum())
+                if size < floor:
+                    continue
+                split[blob] = int(t)
+                blobs += 1; cut_cells += size; n_here += 1
+        if n_here:
+            grounds += 1
+            ground_cells += int(graded.sum())
+    return {"split": split, "plain": plain, "grounds_cut": grounds, "blobs": blobs, "cells_cut": cut_cells,
+            "cut_region_cells": ground_cells}
+
+
+def oracle_split_job(slug: str, runs: Path, floors=SPLIT_FLOORS_SWEPT) -> dict:
+    """`oracle_split` on one job's cell grid, scored beside today's routing, the
+    per-region oracle and the pro against himself (all three from `cell_census`'s
+    own grid and `_kappa_of`, so the columns read against the 10-29 table)."""
+    g = _cell_grids(slug, runs)
+    scorecard, pt, ot, tboth, owner = g["scorecard"], g["pt"], g["ot"], g["tboth"], g["owner"]
+    jk, jc = _kappa_of(pt[tboth], ot[tboth])
+    row = {"job_kappa": round(jk, 3), "job_chance": round(jc, 3), "type_cells": int(tboth.sum())}
+    cell_mm2 = scorecard.CELL ** 2
+    for f in floors:
+        o = oracle_split(pt, ot, tboth, owner, f)
+        sk, sc = _kappa_of(pt[tboth], o["split"][tboth])
+        pk, _pc = _kappa_of(pt[tboth], o["plain"][tboth])
+        row[f"floor_{f}"] = {
+            "split_kappa": round(sk, 3), "split_chance": round(sc, 3), "plain_kappa": round(pk, 3),
+            "grounds_cut": o["grounds_cut"], "blobs": o["blobs"], "cells_cut": o["cells_cut"],
+            "cut_mm2": round(o["cells_cut"] * cell_mm2, 1),
+            # the graded area of the regions that were cut (the whole ground, not just the blobs)
+            "cut_region_mm2": round(o["cut_region_cells"] * cell_mm2, 1)}
+    return row
+
+
+def oracle_split_run(runs: Path, slugs: list[str]) -> dict:
+    """Every digitized job in `slugs`; writes `runs/oracle_split.json`. The per-job
+    ceiling columns come from `census.json` (`measure`), the same numbers the
+    10-29 table printed."""
+    from tools.pro_baseline import JOBS
+    cen = json.loads((runs / "census.json").read_text(encoding="utf-8"))["jobs"]
+    out = {"jobs": {}}
+    for s in slugs:
+        if s not in JOBS or not (runs / s / "ours.json").exists() or s not in cen:
+            print(s, "not measured", flush=True)
+            continue
+        row = oracle_split_job(s, runs)
+        c = cen[s]["cells"]
+        row["oracle_kappa"] = c["oracle_kappa"]
+        row["pro_self_kappa_half"] = c.get("pro_self_kappa_half")
+        row["pro_self_kappa"] = c["pro_self_kappa"]
+        row["degenerate"] = c.get("pro_self_chance", 0) >= _degenerate()
+        out["jobs"][s] = row
+        h = row[f"floor_{SPLIT_FLOOR}"]
+        print(s, "job", row["job_kappa"], "oracle", row["oracle_kappa"], "split", h["split_kappa"],
+              "cut", h["grounds_cut"], "grounds", h["cut_mm2"], "mm2", flush=True)
+    (runs / "oracle_split.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
+    return out
+
+
+def _degenerate() -> float:
+    from tools.pro_parity import scorecard
+    return scorecard.CHANCE_DEGENERATE
+
+
+def split_summary(res: dict, floor: int = SPLIT_FLOOR) -> dict:
+    """Means over the defined jobs, the share of the remaining gap closed, and the verdict."""
+    ks = {s: j for s, j in res["jobs"].items() if not j["degenerate"]}
+    n = len(ks)
+    if not n:
+        return {"n_jobs": 0}
+    mean = lambda f: round(sum(f(j) for j in ks.values()) / n, 3)   # noqa: E731
+    fl = f"floor_{floor}"
+    m_job = mean(lambda j: j["job_kappa"])
+    m_plain = mean(lambda j: j["oracle_kappa"])
+    m_split = mean(lambda j: j[fl]["split_kappa"])
+    m_ceil = mean(lambda j: j["pro_self_kappa_half"])
+    out = {"n_jobs": n, "floor": floor, "mean_job_kappa": m_job, "mean_oracle_kappa": m_plain,
+           "mean_split_kappa": m_split, "mean_ceiling_kappa": m_ceil,
+           # chance-corrected shares of a gap, never a raw agreement
+           "share_of_gap_to_1": round((m_split - m_job) / (1 - m_job), 3) if m_job < 1 else None,
+           "share_of_gap_to_ceiling": round((m_split - m_job) / (m_ceil - m_job), 3) if m_ceil > m_job else None,
+           "split_wins_over_job": sum(j[fl]["split_kappa"] > j["job_kappa"] for j in ks.values()),
+           "grounds_cut": sum(j[fl]["grounds_cut"] for j in ks.values()),
+           "blobs": sum(j[fl]["blobs"] for j in ks.values()),
+           "cut_mm2": round(sum(j[fl]["cut_mm2"] for j in ks.values()), 1),
+           "cut_region_mm2": round(sum(j[fl]["cut_region_mm2"] for j in ks.values()), 1),
+           "verdict": split_verdict(m_split)}
+    return out
+
+
+def split_verdict(k: float) -> str:
+    if k >= SPLIT_WORTH_DESIGNING:
+        return (f"{k:.3f} >= {SPLIT_WORTH_DESIGNING}: a layering-inference stage is worth designing "
+                "(an extension of silhouette_underfill, not a splitter)")
+    if k <= SPLIT_CLOSES_DIRECTION:
+        return (f"{k:.3f} <= {SPLIT_CLOSES_DIRECTION}: the rest of the gap is edge caps and border tiers; "
+                "the layering direction closes")
+    return f"{k:.3f} is between {SPLIT_CLOSES_DIRECTION} and {SPLIT_WORTH_DESIGNING}: no verdict"
+
+
+def split_table(res: dict) -> str:
+    fl = f"floor_{SPLIT_FLOOR}"
+    L = [f"| job | sttype kappa (chance) | per-region oracle | oracle-split ({SPLIT_FLOOR}+ cells) | "
+         "grounds cut / blobs | cut mm2 | pro vs pro 0.5 mm |", "|---|---|---|---|---|---|---|"]
+    for s, j in res["jobs"].items():
+        h = j[fl]
+        if j["degenerate"]:
+            L.append(f"| {s} | {j['job_kappa']:.2f} ({j['job_chance']:.2f}), undefined | - | - | "
+                     f"{h['grounds_cut']} / {h['blobs']} | {h['cut_mm2']} | - |")
+            continue
+        L.append(f"| {s} | {j['job_kappa']:.2f} ({j['job_chance']:.2f}) | {j['oracle_kappa']:.2f} | "
+                 f"{h['split_kappa']:.2f} | {h['grounds_cut']} / {h['blobs']} | {h['cut_mm2']} | "
+                 f"{j['pro_self_kappa_half']:.2f} |")
+    sm = split_summary(res)
+    if not sm["n_jobs"]:
+        return "\n".join(L)
+    L += ["", f"mean of {sm['n_jobs']}: routing {sm['mean_job_kappa']}, per-region oracle {sm['mean_oracle_kappa']}, "
+          f"ORACLE-SPLIT {sm['mean_split_kappa']}, ceiling (pro vs pro 0.5 mm) {sm['mean_ceiling_kappa']}",
+          f"oracle-split beats routing on {sm['split_wins_over_job']} of {sm['n_jobs']} jobs",
+          f"closes {sm['share_of_gap_to_1']} of the gap from routing to kappa 1, "
+          f"{sm['share_of_gap_to_ceiling']} of the gap from routing to the ceiling (kappa-based)",
+          f"cut: {sm['grounds_cut']} grounds, {sm['blobs']} blobs, {sm['cut_mm2']} mm2 of blob "
+          f"({sm['cut_region_mm2']} mm2 of ground regions touched)"]
+    L.append("floor sensitivity (mean oracle-split kappa): " + ", ".join(
+        f"{f} cells {split_summary(res, f)['mean_split_kappa']}" for f in SPLIT_FLOORS_SWEPT))
+    L += ["", f"DECISION RULE (C3): {sm['verdict']}",
+          "This oracle READS THE PRO'S BLOBS. It is optimistic by construction: the number is a maximum, "
+          "not what inference from flat art could reach."]
+    return "\n".join(L)
 
 
 def region_census(slug: str, runs: Path) -> dict:
@@ -439,7 +640,7 @@ def main(argv=None) -> int:
     from tools.pro_baseline import JOBS
     from tools.pro_pair import parse_sets
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("cmd", choices=("digitize", "measure", "table", "flip", "render"))
+    ap.add_argument("cmd", choices=("digitize", "measure", "table", "flip", "render", "oracle-split"))
     ap.add_argument("--runs", type=Path, required=True)
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--set", action="append", default=[], metavar="KEY=JSON")
@@ -451,6 +652,8 @@ def main(argv=None) -> int:
         digitize(a.runs, slugs, parse_sets(a.set))
     elif a.cmd == "measure":
         measure(a.runs, slugs)
+    elif a.cmd == "oracle-split":
+        print(split_table(oracle_split_run(a.runs, slugs)))
     elif a.cmd == "flip":
         print(flip_table(a.runs, a.vs))
     elif a.cmd == "render":
