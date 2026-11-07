@@ -30,7 +30,8 @@ const E2E_DIR = join(dirname(fileURLToPath(import.meta.url)), "e2e");
 // collected test ran exactly once across them (tools/ci-e2e-shard-check.mjs).
 // The split is by spec FILE, not Playwright's own --shard, for two reasons:
 // --shard cuts by test count in file order, and one file here
-// (field-reshape-mode) is ~45% of the serial step's time; and the
+// (field-reshape-mode, 614 s) WAS ~45% of the serial step's time, until it was
+// split into three files on 2026-11-07; and the
 // digitizer-service specs must keep one file's tests on one machine, since
 // each file's afterAll kills the service it started.
 //
@@ -79,7 +80,12 @@ const SPEC_SECONDS = {
   "field-node-edit.spec.js": 61,
   "field-outlines.spec.js": 17,
   "field-panel-sync.spec.js": 17,
-  "field-reshape-mode.spec.js": 614,
+  // field-reshape-mode was 614 s as ONE file; split 2026-11-07 into three by
+  // the share of a local 36-test serial run (176.7 / 215.0 / 290.7 s), scaled
+  // to the old 614 s total. Re-measure from the shards' results*.json.
+  "field-reshape-mode.spec.js": 159,
+  "field-reshape-move.spec.js": 262,
+  "field-reshape-nodes.spec.js": 193,
   "field-sewn-width.spec.js": 17,
   "field-shape-popover.spec.js": 20,
   "font-browser-script-fit.spec.js": 5,
