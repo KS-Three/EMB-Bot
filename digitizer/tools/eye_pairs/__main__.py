@@ -380,8 +380,8 @@ def pair(out=OUT, *, seed: int = SHUFFLE_SEED, n_identical: int = N_IDENTICAL,
     return len(public)
 
 
-def serve(out=OUT, port: int = PORT, open_browser: bool = True) -> int:
-    httpd = make_server(out, port=port)
+def serve(out=OUT, port: int = PORT, open_browser: bool = True, prescreen=None) -> int:
+    httpd = make_server(out, port=port, prescreen=prescreen)
     url = f"http://127.0.0.1:{httpd.server_address[1]}/"
     print(f"Picker at {url}  (Ctrl+C to stop; picks are already on disk)")
     if open_browser:
@@ -609,7 +609,13 @@ def main(argv: list[str] | None = None) -> int:
                                    "lettering_columns=true (a fresh --out per base)")
     ap.add_argument("--port", type=int, default=PORT)
     ap.add_argument("--no-browser", action="store_true")
+    ap.add_argument("--prescreen", type=Path, metavar="VERDICTS_JSONL",
+                    help="with --serve: show the vision judge's pre-screen class and "
+                         "confidence under each pair (display only: no side, no reason; "
+                         "never hides, sorts or pre-fills a pair)")
     args = ap.parse_args(argv)
+    if args.prescreen is not None and not args.serve:
+        ap.error("--prescreen only goes with --serve")
     split = lambda s: [x for x in s.split(",") if x] if s else None  # noqa: E731
     if args.render:
         from tools.thin_strokes import parse_flags
@@ -620,7 +626,8 @@ def main(argv: list[str] | None = None) -> int:
         pair(args.out)
         return 0
     if args.serve:
-        return serve(args.out, port=args.port, open_browser=not args.no_browser)
+        return serve(args.out, port=args.port, open_browser=not args.no_browser,
+                     prescreen=args.prescreen)
     if args.reveal:
         reveal(args.out)
         return 0

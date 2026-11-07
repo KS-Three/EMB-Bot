@@ -158,6 +158,42 @@ load();
 """
 
 
+# The display-only pre-screen row (Kent 2026-11-06). `PAGE` itself is untouched,
+# so a server started without `--prescreen` serves the same bytes as before;
+# the row is spliced into a COPY at import, at anchors the tests pin. The row
+# is a line of text under the pictures: it never hides, sorts or pre-fills a
+# pair, and `pick` / `undo` / the queue do not read it.
+_PRE_ANCHORS = (
+    ("button{font:inherit;padding:6px 14px}\n",
+     "button{font:inherit;padding:6px 14px}\n#pre{text-align:center;padding:8px;color:#9aa}\n"),
+    ("</div>\n<script>\n",
+     '</div>\n<div id="pre"></div>\n<script>\n'),
+    ("  sitting=r.sitting;\n",
+     "  sitting=r.sitting;\n  pre=r.prescreen||{};\n"),
+    ("let pairs=[],queue=[]",
+     "let pre={};\nlet pairs=[],queue=[]"),
+    ("function show(){\n  setZoom(false);\n",
+     "function showPre(p){\n"
+     "  const el=$('pre');\n"
+     "  if(!p){el.textContent='';return;}\n"
+     "  const v=pre[p.pair];\n"
+     "  el.textContent=v?'Vision pre-screen (display only): '+v.label+(v.confidence===null?'':' \\u00b7 judge confidence '+v.confidence):'Vision pre-screen (display only): not judged';\n"
+     "}\n"
+     "function show(){\n  setZoom(false);\n  showPre(queue[0]);\n"),
+)
+
+
+def _page_with_prescreen(page: str = PAGE) -> str:
+    for old, new in _PRE_ANCHORS:
+        if page.count(old) != 1:
+            raise RuntimeError(f"pre-screen anchor not found exactly once: {old!r}")
+        page = page.replace(old, new)
+    return page
+
+
+PAGE_PRESCREEN = _page_with_prescreen()
+
+
 def sitting_on_disk(out: Path) -> str | None:
     """The sealed-map hash `--pair` last recorded, or None if unreadable
     (a `--pair` replacing the file this instant reads as 'changed', which
@@ -193,10 +229,29 @@ def load_sitting(out: Path, pairs: list[dict]) -> str:
     return loaded
 
 
-def make_server(out_dir, port: int = PORT, host: str = "127.0.0.1") -> ThreadingHTTPServer:
+def load_prescreen(path, pair_ids) -> dict[str, dict]:
+    """`--prescreen <verdicts.jsonl>` -> pair -> `{class, label, confidence}`,
+    restricted to pairs this sitting has. Refuses a file that names none of
+    them (a verdict file for another sitting would label the wrong pictures)."""
+    from .vlm_judge import prescreen_rows
+    p = Path(path)
+    if not p.is_file():
+        raise SystemExit(f"REFUSED: --prescreen file not found: {p}")
+    rows = prescreen_rows(p)
+    mine = {k: v for k, v in rows.items() if k in pair_ids}
+    if not mine:
+        raise SystemExit(f"REFUSED: {p} judges none of this sitting's {len(pair_ids)} pairs "
+                         f"- verdicts for another sitting? Nothing shown.")
+    return mine
+
+
+def make_server(out_dir, port: int = PORT, host: str = "127.0.0.1",
+                prescreen=None) -> ThreadingHTTPServer:
     out = Path(out_dir)
     pairs = json.loads((out / "pairs.json").read_text(encoding="utf-8"))
     ids = {p["pair"] for p in pairs}
+    pre_rows = load_prescreen(prescreen, ids) if prescreen is not None else None
+    page = (PAGE_PRESCREEN if pre_rows is not None else PAGE).encode("utf-8")
     allowed = {p[k] for p in pairs for k in ("left", "right", "art")}
     loaded = load_sitting(out, pairs)
     log = out / "picks.jsonl"
@@ -217,7 +272,7 @@ def make_server(out_dir, port: int = PORT, host: str = "127.0.0.1") -> Threading
         def do_GET(self):  # noqa: N802 - http.server's naming
             path = unquote(urlparse(self.path).path)
             if path == "/":
-                self._send(200, PAGE.encode("utf-8"), "text/html; charset=utf-8")
+                self._send(200, page, "text/html; charset=utf-8")
             elif path == "/pairs":
                 # Click order, not id order: `load_picks` keeps first-seen
                 # order and an undo-then-repick moves a pair to the end,
@@ -227,8 +282,11 @@ def make_server(out_dir, port: int = PORT, host: str = "127.0.0.1") -> Threading
                 # `sitting` is re-read per request: the page polls this to
                 # learn that a `--pair` rebuilt the sitting under it. A hash
                 # names nothing, so it is safe to serve.
-                body = json.dumps({"pairs": pairs, "picked": picked,
-                                   "sitting": sitting_on_disk(out)}).encode("utf-8")
+                payload = {"pairs": pairs, "picked": picked,
+                           "sitting": sitting_on_disk(out)}
+                if pre_rows is not None:
+                    payload["prescreen"] = pre_rows
+                body = json.dumps(payload).encode("utf-8")
                 self._send(200, body, "application/json")
             elif path.startswith("/img/") and path[len("/img/"):] in allowed:
                 name = path[len("/img/"):]
