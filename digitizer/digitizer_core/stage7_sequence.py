@@ -133,7 +133,7 @@ _LINK_SEARCH_NODES = 120
 # would cycle — this module imports stage6_satin); a membership change here
 # must land there too, and tests/test_photo_width_floor.py pins the
 # lockstep so drift fails loud instead of quietly un-flooring a new class.
-from .config import PHOTO_CLASSES, is_photographic, satin_fill_vote, satin_floor_applies  # canonical copy lives in config.py
+from .config import PHOTO_CLASSES, is_photographic, satin_fill_hysteresis, satin_fill_vote, satin_floor_applies  # canonical copy lives in config.py
 
 # The garments that sew cap-style (cfg.cap_center_out). MIRRORED verbatim
 # from the browser engine's `capMode` predicate in `src/digitize.js` — the
@@ -427,7 +427,8 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
                                 polygon_axis=cfg.satin_polygon_axis,
                                 area_weighted=cfg.classify_area_weighted,
                                 floor_applies=satin_floor_applies(cfg, design_class),
-                                vote=satin_fill_vote(cfg)).satin)
+                                vote=satin_fill_vote(cfg),
+                                hysteresis=satin_fill_hysteresis(cfg)).satin)
 
 
 def borders_last_layers(regions, thread_indices: list[int],
@@ -3650,7 +3651,8 @@ def sequence(
                                       polygon_axis=cfg.satin_polygon_axis,
                                       area_weighted=cfg.classify_area_weighted,
                                       floor_applies=satin_floor_applies(cfg, design_class),
-                                      vote=satin_fill_vote(cfg))
+                                      vote=satin_fill_vote(cfg),
+                                      hysteresis=satin_fill_hysteresis(cfg))
                       if tier == "auto" and cfg.satin else None)
             # Kent's gradient ruling (2026-09-04): a shape that RIDES the
             # design's ramp is part of the sweep and sews the sweep's bands,

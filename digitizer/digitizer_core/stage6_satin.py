@@ -300,7 +300,8 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
                         per_stroke: bool = False,
                         area_weighted: bool = False,
                         floor_applies: bool = False,
-                        vote: bool = False) -> bool:
+                        vote: bool = False,
+                        hysteresis: bool = False) -> bool:
     """Should this shape be satin rather than fill?
 
     Two conditions, both about how the result reads on fabric: the ribbon must
@@ -353,7 +354,7 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
                            per_stroke=per_stroke,
                            area_weighted=area_weighted,
                            floor_applies=floor_applies,
-                           vote=vote).satin
+                           vote=vote, hysteresis=hysteresis).satin
 
 
 # Law 31's satin minimum width, adopted VERBATIM from the printed rule
@@ -404,7 +405,8 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
                     polygon_axis: bool = False,
                     area_weighted: bool = False,
                     floor_applies: bool = False,
-                    vote: bool = False) -> RibbonVerdict:
+                    vote: bool = False,
+                    hysteresis: bool = False) -> RibbonVerdict:
     """`is_satin_candidate`'s implementation. Same verdict, with attribution.
 
     `vote` (`cfg.extra["satin_fill_vote"]`, default OFF): the verdict is a
