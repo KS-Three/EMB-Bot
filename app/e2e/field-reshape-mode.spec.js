@@ -423,4 +423,44 @@ test("(i) drag a vertex, press Enter: the edit stays and the mode is off", async
   const r = await readDigitized(page);
   expect(Object.values(r.overrides).filter((v) => v.boundary_override)).toHaveLength(1);
 });
-
+
+test("(n) keyboard node cursor: ] and Tab step the points, Space selects, arrows move them, no pointer", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeSquares(page);
+  await enterReshape(page);
+  const canvas = page.locator(".hoop canvas");
+  const live = page.locator(".fieldlive");
+  await canvas.focus();
+  expect(await selectedCount(page), "nothing selected before the cursor starts").toBe(0);
+
+  await page.keyboard.press("]");
+  await expect(live).toHaveText(/^Point 1 of \d+, ring 1, not selected$/);
+  await page.keyboard.press(" ");
+  await expect(live).toHaveText(/^Point 1 of \d+, ring 1, selected$/);
+  await expect.poll(() => selectedCount(page)).toBe(1);
+
+  await page.keyboard.press("Tab");
+  await expect(live).toHaveText(/^Point 2 of \d+, ring 1, not selected$/);
+  await page.keyboard.press(" ");
+  await expect.poll(() => selectedCount(page)).toBe(2);
+  await page.keyboard.press("Space");
+  await expect.poll(() => selectedCount(page)).toBe(1);
+  await page.keyboard.press(" ");
+  await expect.poll(() => selectedCount(page)).toBe(2);
+
+  // The existing arrows-move-selection path works on the keyboard-built selection.
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(async () => {
+    const r = await readDigitized(page);
+    const e = Object.entries(r.overrides).find(([, v]) => v.boundary_override);
+    if (!e) return 0;
+    return movedVertices(r.shapes.find((s) => s.id === e[0]).outline, e[1].boundary_override).length;
+  }).toBe(2);
+
+  // [ steps back, and wraps from the first point to the last.
+  await page.keyboard.press("[");
+  await expect(live).toHaveText(/^Point 1 of \d+, ring 1, selected$/);
+  await page.keyboard.press("[");
+  await expect(live).toHaveText(/^Point \d+ of \d+, ring \d+, /);
+});
