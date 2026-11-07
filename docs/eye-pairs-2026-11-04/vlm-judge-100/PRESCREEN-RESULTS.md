@@ -141,3 +141,29 @@ holding a flag, gating a PR, a tripwire or a sew-out, or dropping a pair from
 a sitting. Nor does it license pooling the screen with Kent's labels, any
 engine-quality claim, or any API spend. A changed threshold or rule is a new
 dated pre-registration, never pooled with this one.
+
+## 2026-11-06 (later): the display-only row is built
+
+Kent ruled 2026-11-06 ("Build display-only row (Recommended)"). The eye-pairs
+page now takes `--serve --prescreen <verdicts.jsonl>` and prints one line under
+each pair: the class from the rule above (`vlm_judge.prescreen_class`, the one
+implementation; this module's `classify` calls it), the judge's confidence, and
+nothing else. No side, no reason, so the page stays blind to which side the
+judge picked. A pair with no verdict reads "not judged". Without the option the
+page is byte-identical to before (pinned by hash in
+`tests/test_eye_pairs_prescreen_row.py`).
+
+**It is display-only. It never hides, sorts, filters, reorders or pre-fills a
+pair, and it never touches how Kent's pick is recorded.** The catch above
+stands on the page itself: a "nothing to choose" line sits beside pairs Kent
+will decide (13 of his 29 side picks on the 54, 18 of 40 on the 99), so it is
+no reason to look less closely.
+
+**It must never be used for:** routing a design, choosing a lane, flipping or
+holding a flag, gating a PR, a tripwire or a sew-out, dropping a pair from a
+sitting, pooling the class with Kent's labels, any claim about engine quality,
+or API spend. Those bans are the ones in `PRESCREEN-PRE-REGISTRATION.md` and
+the section above; building the row did not lift any of them. A row shown to
+Kent while he sits is also a cue: picks made with it on screen are not
+comparable with picks made blind, so a sitting that will be scored against the
+judge is run without `--prescreen`.
