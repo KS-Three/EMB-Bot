@@ -1,6 +1,11 @@
 """Stage 0 must give one answer per artwork, whatever resolution it arrives at.
 
-**These tests are EXPECTED TO FAIL.** They pin a known, measured defect rather
+**Updated 2026-11-06:** Kent flipped `cfg.stage0_scale_relative_grad` ON, so the
+sweeps below hold on the default config. What follows is the record of the
+defect, and the OFF arm (`OFF`, the pixel-absolute gate) still fails strictly on
+the four `DEPARTS_FROM_NATIVE` fixtures -- that is the old behaviour, kept.
+
+**The OFF-arm tests are EXPECTED TO FAIL.** They pin a known, measured defect rather
 than a fix. Design and evidence:
 `docs/superpowers/specs/2026-08-15-stage0-flat-gradient-recalibration-design.md`
 and `docs/classifier-misroutes-real-logos-2026-08-15.md`.
@@ -58,6 +63,9 @@ WIDTHS = (250, 400, 640)
 # not pass. Native class is asserted separately in `test_native_classes_are_the
 # _baseline_these_sweeps_depart_from` so that a change THERE is not silently
 # absorbed into an xfail.
+#: The pixel-absolute flat/gradient gate, the engine before Kent's 2026-11-06 flip.
+OFF = PipelineConfig(stage0_scale_relative_grad=False)
+
 FIXTURES = {
     "logo_alpha.png": "flat",
     "logo_whitebg.png": "flat",
@@ -155,7 +163,17 @@ def test_native_classes_are_the_baseline_these_sweeps_depart_from():
         assert got == expected, f"{rel}: native class {got}, expected {expected}"
 
 
-@pytest.mark.parametrize("rel", _params(FLIPS_ACROSS_SWEEP))
+#: Fixtures the SHIPPED (scale-relative) gate does not hold across the sweep:
+#: the drone at <= 400 px, `tonal_frac` under the gate (docs/stage0-scale-relative-
+#: grad-2026-11-06.md §4 limit 1). Pinned as an executable record by
+#: `test_the_scale_relative_read_s_stated_limit_is_the_drone_downscaled`; the OFF
+#: arm below still sweeps it (the pixel-absolute gate holds it, via the alpha
+#: extension).
+SCALE_RELATIVE_LIMIT = {"photo/drone_render.png"}
+
+
+@pytest.mark.parametrize("rel", [p for p in _params(FLIPS_ACROSS_SWEEP)
+                                 if p.values[0] not in SCALE_RELATIVE_LIMIT])
 def test_one_artwork_classifies_the_same_at_every_resolution(rel, tmp_path):
     seen = {w: _classify_at(TESTDATA / rel, w, tmp_path) for w in WIDTHS}
     assert len(set(seen.values())) == 1, (
@@ -164,26 +182,43 @@ def test_one_artwork_classifies_the_same_at_every_resolution(rel, tmp_path):
     )
 
 
+@pytest.mark.parametrize("rel", _params(FLIPS_ACROSS_SWEEP))
+def test_one_artwork_classifies_the_same_at_every_resolution_off_arm(rel, tmp_path):
+    seen = {w: _classify_at(TESTDATA / rel, w, tmp_path, OFF) for w in WIDTHS}
+    assert len(set(seen.values())) == 1, (
+        f"{rel} classifies differently by resolution: "
+        + ", ".join(f"{w}px={c}" for w, c in seen.items())
+    )
+
+
 @pytest.mark.parametrize("rel", _params(DEPARTS_FROM_NATIVE))
 def test_downscaling_does_not_change_an_artwork_class(rel, tmp_path):
-    """Stricter than invariance across the sweep, and the one that matters to a
-    user: a customer who exports the same logo smaller must get the same lane.
-    A sweep could in principle be self-consistent yet wrong at every size, so
-    this anchors it to the native answer."""
-    native = stage0_classify.classify(str(TESTDATA / rel), PipelineConfig()).class_
+    """THE OFF ARM, kept as the record of the old behaviour (Kent flipped
+    `stage0_scale_relative_grad` ON 2026-11-06; the shipped sweeps are the
+    block below). Stricter than invariance across the sweep, and the one that
+    matters to a user: a customer who exports the same logo smaller must get
+    the same lane. A sweep could in principle be self-consistent yet wrong at
+    every size, so this anchors it to the native answer. On the pixel-absolute
+    gate (`stage0_scale_relative_grad=False`) the four `DEPARTS_FROM_NATIVE`
+    fixtures still fail, strictly."""
+    native = stage0_classify.classify(str(TESTDATA / rel), OFF).class_
     for w in WIDTHS:
-        got = _classify_at(TESTDATA / rel, w, tmp_path)
+        got = _classify_at(TESTDATA / rel, w, tmp_path, OFF)
         assert got == native, f"{rel} at {w}px is {got}, native is {native}"
 
 
-# --- The ON arm of `cfg.stage0_scale_relative_grad` (built OFF 2026-11-06) ----
+# --- The shipped engine: `cfg.stage0_scale_relative_grad` ON (Kent, 2026-11-06) --
 #
 # The same two sweeps with the flat/gradient gate reading `tonal_frac`
-# (`docs/stage0-scale-relative-grad-2026-11-06.md`). These are the strict
-# xfails above XPASSing: the OFF arm stays marked, because OFF is the shipped
-# engine and its defect is unchanged. When Kent flips the flag the OFF markers
-# come off and these become the only sweep.
-SCALE_RELATIVE = PipelineConfig(stage0_scale_relative_grad=True)
+# (`docs/stage0-scale-relative-grad-2026-11-06.md`), on the DEFAULT config.
+# These are the strict xfails above XPASSing, now plain passes; the OFF arm
+# above stays marked as the record of the defect it fixed.
+SCALE_RELATIVE = PipelineConfig()
+
+
+def test_the_scale_relative_read_is_the_default():
+    assert SCALE_RELATIVE.stage0_scale_relative_grad is True
+    assert OFF.stage0_scale_relative_grad is False
 
 
 def test_native_classes_hold_with_the_scale_relative_read():
@@ -211,7 +246,7 @@ def test_the_scale_relative_read_s_stated_limit_is_the_drone_downscaled(tmp_path
     rel = "photo/drone_render.png"
     seen = {w: _classify_at(TESTDATA / rel, w, tmp_path, SCALE_RELATIVE) for w in WIDTHS}
     assert seen == {250: "flat", 400: "flat", 640: "gradient"}, seen
-    assert {_classify_at(TESTDATA / rel, w, tmp_path) for w in WIDTHS} == {"gradient"}
+    assert {_classify_at(TESTDATA / rel, w, tmp_path, OFF) for w in WIDTHS} == {"gradient"}
 
 
 def test_the_drone_left_the_broken_set_through_the_alpha_extension_not_a_recalibration(tmp_path):
@@ -221,11 +256,15 @@ def test_the_drone_left_the_broken_set_through_the_alpha_extension_not_a_recalib
     on the shipped engine it reads the native class. If this stops holding,
     the drone's invariance came from somewhere else and the comment lies."""
     rel = "photo/drone_render.png"
-    native = stage0_classify.classify(str(TESTDATA / rel), PipelineConfig()).class_
+    # On the OFF arm: the record is about the pixel-absolute windows, and ON the
+    # drone reads `flat` at 250 px for a different reason (the scale-relative
+    # limit pinned above).
+    native = stage0_classify.classify(str(TESTDATA / rel), OFF).class_
     assert native == FIXTURES[rel]
-    pre_flip = _classify_at(TESTDATA / rel, 250, tmp_path, PipelineConfig(alpha_edge_extend=False))
+    pre_flip = _classify_at(TESTDATA / rel, 250, tmp_path,
+                            PipelineConfig(alpha_edge_extend=False, stage0_scale_relative_grad=False))
     assert pre_flip != native, f"pre-flip engine reads {pre_flip} at 250px — the drone's dependence is gone without the extension"
-    assert _classify_at(TESTDATA / rel, 250, tmp_path) == native
+    assert _classify_at(TESTDATA / rel, 250, tmp_path, OFF) == native
 
 
 @pytest.mark.usefixtures("source_line_grid")
@@ -237,11 +276,12 @@ def test_enthusiast_s_sweep_flip_was_the_gate_s_boundary_and_stage_0_s_whole_ima
     engine reads the sweep as one class. Its native class stays `flat`
     against `gradient` downscaled: the windows, still in `DEPARTS_FROM_NATIVE`."""
     rel = "photo/enthusiast_logo.png"
-    gated = PipelineConfig(alpha_edge_extend_stage0_whole=False)
+    gated = PipelineConfig(alpha_edge_extend_stage0_whole=False, stage0_scale_relative_grad=False)
     at_250 = _classify_at(TESTDATA / rel, 250, tmp_path, gated)
     at_400 = _classify_at(TESTDATA / rel, 400, tmp_path, gated)
     assert at_250 != at_400, f"gate-only engine reads {at_250} at 250px and {at_400} at 400px — the boundary is gone without the stage-0 read"
-    assert at_400 == _classify_at(TESTDATA / rel, 400, tmp_path, PipelineConfig(alpha_edge_extend=False))
-    shipped = {w: _classify_at(TESTDATA / rel, w, tmp_path) for w in WIDTHS}
+    assert at_400 == _classify_at(TESTDATA / rel, 400, tmp_path,
+                                  PipelineConfig(alpha_edge_extend=False, stage0_scale_relative_grad=False))
+    shipped = {w: _classify_at(TESTDATA / rel, w, tmp_path, OFF) for w in WIDTHS}
     assert len(set(shipped.values())) == 1, shipped
     assert rel in DEPARTS_FROM_NATIVE and rel not in FLIPS_ACROSS_SWEEP

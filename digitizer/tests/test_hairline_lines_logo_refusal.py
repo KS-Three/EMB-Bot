@@ -131,7 +131,8 @@ def test_the_refusal_is_counted_and_the_strands_are_not_sewn():
 
 @pytest.fixture(scope="module")
 def drawn():
-    base = dict(target_width_mm=80.0)
+    # stage0_scale_relative_grad=False: drawn hair is the gradient lane's by design; ON it reads flat
+    base = dict(target_width_mm=80.0, stage0_scale_relative_grad=False)
     result = run_stages(TESTDATA / "synthetic" / "hair_strands.png", PipelineConfig(**base))
     assert result.design_class == "gradient"
     return {name: plan_stitches(result, PipelineConfig(**base, **kw)) for name, kw in {

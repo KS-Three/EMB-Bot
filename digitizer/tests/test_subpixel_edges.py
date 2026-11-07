@@ -314,9 +314,16 @@ def test_the_resolution_gate_lifts_only_with_the_flag_on(tmp_path):
     img, _c, _r = _disc(w=100, h=100, c=50, r=40)            # the disc IS the art: 80 px at 20 mm = 4 px/mm
     art = tmp_path / "disc.png"
     cv2.imwrite(str(art), img)
-    no_turn, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=0.0, subpixel_edges=False))
-    off, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=False))
-    on, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=True))
+    # The flat soft-edge cure (ON since Kent's 2026-11-06 flip) reads this x2
+    # enlarged disc: its page boundary follows stage 1's page mask, so the
+    # subpixel-OFF baseline gains vertices (22 -> 30, area 316.2 -> 315.8 mm2,
+    # true 314.2) while the shipped subpixel-ON polygon is unchanged (33,
+    # 312.6). This test measures `subpixel_edges`' lift over the old baseline,
+    # so it holds the cure OFF.
+    old = dict(flat_page_fringe_soft_ramp=False, flat_ramp_blend_dissolve=False)
+    no_turn, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=0.0, subpixel_edges=False, **old))
+    off, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=False, **old))
+    on, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=True, **old))
     n = lambda res: len(max(res.regions, key=lambda r: r.polygon.area).polygon.exterior.coords) - 1  # noqa: E731
     assert n(off) == n(no_turn), "under 20 px/mm the gate keeps the refinement off, flag off"
     assert n(on) >= 22 and n(on) > n(off) + 4, (n(off), n(on))

@@ -23,6 +23,11 @@ PHOTO_DIR = TESTDATA / "photo"
 
 def cfg(**kw) -> PipelineConfig:
     kw.setdefault("target_width_mm", 80.0)
+    # These tests price the TEXTURE gate against the flat/gradient gate it was
+    # measured with (`gradient_smoothness`); `stage0_scale_relative_grad` was
+    # flipped ON 2026-11-06 and moves tires / MFab LC / TOAT from gradient to
+    # flat, so it is held at its pre-flip value here (PRE_FLIP posture).
+    kw.setdefault("stage0_scale_relative_grad", False)
     return PipelineConfig(**kw)
 
 

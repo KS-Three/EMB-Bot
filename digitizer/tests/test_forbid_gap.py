@@ -202,11 +202,14 @@ def test_a_ring_gap_round_an_inset_shape_closes():
 def test_fixture_reads_no_gap_under_the_candidate(rel, width, garment, gaps_off):
     # on the engine the gap premise was read on: the 2026-10-23 flips off (the
     # small-text set raises Fremont's small words into what was a clear gap)
-    base = PipelineConfig(target_width_mm=width, garment_id=garment, **FLIP_2026_10_23)
+    # stage0_scale_relative_grad=False: the gap premise was read on the gradient-lane plan Fremont took until 2026-11-06
+    base = PipelineConfig(target_width_mm=width, garment_id=garment, **FLIP_2026_10_23,
+                          stage0_scale_relative_grad=False)
     result = run_stages(ROOT / "testdata" / rel, base)
     regions = [r for r in result.regions if r.meta.get("stitched", True)]
     fabric = fabric_for(base)
     on_cfg = PipelineConfig(target_width_mm=width, garment_id=garment, **FLIP_2026_10_23,
+                            stage0_scale_relative_grad=False,
                             forbid_gap_mm=CANDIDATE)
     wkb = []
     for cfg, want_any in ((base, gaps_off), (on_cfg, False)):
