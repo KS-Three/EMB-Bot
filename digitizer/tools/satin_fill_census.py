@@ -38,6 +38,7 @@ three readings, so they cannot disagree about what was sewn:
     python -m tools.satin_fill_census render --runs OFF --vs ON --out docs/renders/NAME
     python -m tools.satin_fill_census oracle-split --runs DIR              # after `measure`; C3's bound
     python -m tools.satin_fill_census attribute --runs DIR                 # after `measure`; where C3's gain sits
+    python -m tools.satin_fill_census edge-bands --runs DIR                # after `measure`; the cut blobs' widths
 
 `oracle-split` (2026-11-06, lagging-areas C3) is the per-region oracle one level
 finer: each of OUR regions is cut along the pro's minority-type blobs of >= 10
@@ -50,6 +51,13 @@ the blob cut, scores the blobs alone on today's routing, attributes the cut to
 regions and to each blob's layering pattern (keyline / halo / band / contained / edge,
 and the pro's thread colour against the ground's), with region-cluster bootstrap
 95% intervals on every kappa. It writes `DIR/attribution.json`.
+
+`edge-bands` (2026-11-07) takes the regions that carry the cut term and records, per
+blob and per region, the band width in mm, whether it is a rim, and the region's
+`border_by_size` tier; then scores a width-band predictor (satin up to the engine's
+5 mm satin ceiling, fill over; fixed before any width was read) against the pro's
+type on the blobs' cells: chance-corrected kappa, its floor, and a region-cluster
+bootstrap 95% interval. It writes `DIR/edge_bands.json`.
 
 `digitize` writes `DIR/<slug>/{ours.dst, design.json, ours.json}`; `measure`
 writes `DIR/census.json`; `render` writes OFF | ON crops round every shape whose
@@ -865,6 +873,217 @@ def attribution_table(res: dict) -> str:
     return "\n".join(L)
 
 
+# ------------------------------------------------- C3 edge-band census (2026-11-07)
+#: PRE-REGISTERED before any band width was read: the predictor is the engine's own
+#: satin ceiling (`machine.SATIN_MAX_WIDTH_MM`, 5.0; the pro's satin letters read
+#: 4.2-5.4 mm, per `config.border_by_size`'s comment). A band at or under it is
+#: predicted SATIN, a wider one FILL. No threshold is fitted to these blobs.
+BAND_SATIN_MAX_MM = 5.0
+BAND_SWEPT_MM = (2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)     # shown beside it, never picked from
+BAND_MIN_CLUSTERS = 5                                   # fewer clusters than this: no interval is printed
+BAND_UPSAMPLE = 4                                      # sub-cell resolution of a blob's width
+RIM_PATTERNS = ("keyline", "halo", "band")
+TYPE_NAME = {0: "run", 1: "satin", 2: "fill"}
+
+
+def band_width_mm(blob, cell: float = 2.0) -> dict:
+    """A cut blob's width in mm from its cell mask. `max_mm` is twice its largest
+    inscribed circle (the measure `border_by_size` reads a shape by), taken at
+    1/BAND_UPSAMPLE-cell resolution; `strip_mm` is 2 x area / perimeter, the mean
+    width of a long strip. A grid of 2 mm cells cannot place either closer than
+    about 1 mm, and a one-cell strip reads 2 mm."""
+    import cv2
+    import numpy as np
+    m = np.pad(np.asarray(blob, bool), 1).astype(np.uint8)
+    up = cv2.resize(m, None, fx=BAND_UPSAMPLE, fy=BAND_UPSAMPLE, interpolation=cv2.INTER_NEAREST)
+    dt = cv2.distanceTransform(up, cv2.DIST_L2, cv2.DIST_MASK_PRECISE)
+    max_cells = (2.0 * float(dt.max()) - 1.0) / BAND_UPSAMPLE
+    pad = np.pad(m, 1)
+    edges = sum(int(((pad == 1) & (np.roll(pad, sh, (0, 1)) == 0)).sum())
+                for sh in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+    strip_cells = 2.0 * float(m.sum()) / edges if edges else 0.0
+    return {"max_mm": round(max_cells * cell, 2), "strip_mm": round(strip_cells * cell, 2)}
+
+
+def border_tier(min_dim_mm: float) -> str:
+    """`border_by_size`'s band for a shape of this smallest dimension, by the engine's own table."""
+    from digitizer_core import machine
+    for floor, width in machine.BORDER_BY_SIZE_WIDTH_MM:
+        if min_dim_mm >= floor:
+            return f"{floor:g}+ ({width} mm ring)"
+    return f"under {machine.BORDER_BY_SIZE_WIDTH_MM[-1][0]:g} (none)"
+
+
+def band_predict(width_mm: float, satin_max: float = BAND_SATIN_MAX_MM) -> int:
+    """The simple width-band predictor: satin (1) up to the ceiling, fill (2) over it."""
+    return 1 if width_mm <= satin_max else 2
+
+
+def edge_band_job(slug: str, runs: Path, floor: int = SPLIT_FLOOR) -> list[dict]:
+    """One row per cut blob of the job (the blobs `attribute` attributes the cut
+    term to), with its width, rim pattern, and its region's size, class and border tier."""
+    from shapely import maximum_inscribed_circle
+    from tools.tier_census import plan_tier
+    g = _cell_grids(slug, runs)
+    scorecard, pt, ot, tboth, owner, info = (g["scorecard"], g["pt"], g["ot"], g["tboth"],
+                                             g["owner"], g["info"])
+    o = oracle_split(pt, ot, tboth, owner, floor)
+    sewn = {k: poly for _a, k, poly in g["polys"]}
+    rows = []
+    for p in o["parts"]:
+        k = p["region"]
+        r = info["regions"][k]
+        poly = sewn[k]
+        ground = any(j != k and q.area < poly.area and poly.contains(q.representative_point())
+                     for j, q in sewn.items())
+        lettering = any(key in (r.get("meta") or {}) for key in
+                        ("text_cluster_id", "lettering_group", "bean_letter", "small_text_stray"))
+        min_dim = 2.0 * maximum_inscribed_circle(poly, tolerance=0.05).length
+        geo = blob_pattern(p["mask"], owner, k)
+        wd = band_width_mm(p["mask"], scorecard.CELL)
+        rows.append({
+            "job": slug, "region": r["id"], "k": k,
+            "class": "lettering" if lettering else "ground" if ground else "piece",
+            "tier": plan_tier(r.get("kinds") or {}),
+            "ours_border": any(key.split(":")[0] == "border" for key in (r.get("kinds") or {})),
+            "region_mm2": round(float(poly.area), 1), "min_dim_mm": round(min_dim, 1),
+            "border_tier": border_tier(min_dim),
+            "cells": int(p["mask"].sum()), "pro_type": int(p["type"]), "ground_type": int(p["dom"]),
+            "pattern": geo["pattern"], "rim": geo["pattern"] in RIM_PATTERNS,
+            "width_mm": wd["max_mm"], "strip_mm": wd["strip_mm"],
+            "ours_right": round(float((ot[p["mask"]] == p["type"]).mean()), 3)})
+    return rows
+
+
+def _band_arrays(rows: list[dict], satin_max: float, cluster: str = "region"):
+    """Unit-level arrays over the blobs (one unit per cell, or per blob when a row
+    carries `units`): the pro's type, the predictor's, a cluster id."""
+    import numpy as np
+    from tools.pro_baseline import ARTWORK
+    art_of = {s: a for a, ss in ARTWORK.items() for s in ss}
+    pt, pr, cl = [], [], []
+    ids: dict = {}
+    for r in rows:
+        key = (r["job"], r["region"]) if cluster == "region" else art_of[r["job"]]
+        c = ids.setdefault(key, len(ids))
+        n = r.get("units", r["cells"])
+        pt += [r["pro_type"]] * n
+        pr += [band_predict(r["width_mm"], satin_max)] * n
+        cl += [c] * n
+    return np.array(pt, int), np.array(pr, int), np.array(cl, int)
+
+
+def edge_band_kappa(rows: list[dict], satin_max: float = BAND_SATIN_MAX_MM, B: int = BOOT,
+                    seed: int = BOOT_SEED, cluster: str = "region") -> dict:
+    """The predictor against the pro's type over the blobs' cells: chance-corrected
+    kappa, its chance floor and a cluster-bootstrap 95% interval (the cluster is
+    the region, or the artwork). `clears_zero`: the interval's low end is over 0.
+    Kappa is clamped at 0, so a low end of exactly 0 does NOT clear it."""
+    import numpy as np
+    pt, pr, cl = _band_arrays(rows, satin_max, cluster)
+    if not pt.size:
+        return {"cells": 0, "kappa": 0.0, "chance": 0.0, "ci": [None, None], "clears_zero": False,
+                "clusters": 0, "undefined_replicates": 0, "agree": 0.0}
+    k, ch = _kappa_of(pt, pr)
+    n_cl = int(len(np.unique(cl)))
+    rep = _boot_kappa(pt, pr, _boot_weights(cl, B, np.random.default_rng([seed, 7])))
+    # a degenerate floor leaves kappa undefined (scorecard would pass raw agreement
+    # through as 1.0), and under BAND_MIN_CLUSTERS clusters a bootstrap is not an interval
+    ci = _ci(rep) if n_cl >= BAND_MIN_CLUSTERS and ch < _degenerate() else [None, None]
+    return {"cells": int(pt.size), "kappa": None if ch >= _degenerate() else round(k, 3),
+            "chance": round(ch, 3), "ci": ci,
+            "clears_zero": bool(ci[0] is not None and ci[0] > 0.0), "clusters": n_cl,
+            "undefined_replicates": int(np.isnan(rep).sum()), "agree": round(float((pt == pr).mean()), 3)}
+
+
+def edge_band_regions(rows: list[dict]) -> list[dict]:
+    """One row per region that carries a cut blob (the 13), cell-weighted."""
+    by: dict = {}
+    for r in rows:
+        by.setdefault((r["job"], r["region"]), []).append(r)
+    out = []
+    for (job, rid), bl in by.items():
+        cells = sum(b["cells"] for b in bl)
+        pt, pr, _c = _band_arrays(bl, BAND_SATIN_MAX_MM)
+        k, ch = _kappa_of(pt, pr)
+        b0 = bl[0]
+        out.append({"job": job, "region": rid, "class": b0["class"], "tier": b0["tier"],
+                    "ours_border": b0["ours_border"], "region_mm2": b0["region_mm2"],
+                    "min_dim_mm": b0["min_dim_mm"], "border_tier": b0["border_tier"],
+                    "blobs": len(bl), "cells": cells,
+                    "width_mm": round(sum(b["width_mm"] * b["cells"] for b in bl) / cells, 1),
+                    "width_range": [min(b["width_mm"] for b in bl), max(b["width_mm"] for b in bl)],
+                    "rims": sum(b["rim"] for b in bl),
+                    "patterns": dict(Counter(b["pattern"] for b in bl)),
+                    "pro_types": dict(Counter(TYPE_NAME[b["pro_type"]] for b in bl)),
+                    "agree_cells": int((pt == pr).sum()),
+                    "kappa": None if ch >= _degenerate() else round(k, 3), "chance": round(ch, 3)})
+    out.sort(key=lambda r: r["cells"], reverse=True)
+    return out
+
+
+def edge_band_widths(rows: list[dict]) -> dict:
+    import numpy as np
+    w = np.array([r["width_mm"] for r in rows], float)
+    c = np.array([r["cells"] for r in rows], float)
+    return {"blobs": len(rows), "rims": sum(r["rim"] for r in rows),
+            "width_mm_min": float(w.min()) if w.size else None,
+            "width_mm_max": float(w.max()) if w.size else None,
+            "width_mm_cell_weighted_mean": round(float((w * c).sum() / c.sum()), 2) if c.sum() else None,
+            "width_hist": {f"{v:g}": int((w == v).sum()) for v in sorted(set(w.tolist()))},
+            "cells_by_pro_type": {TYPE_NAME[t]: int(sum(r["cells"] for r in rows if r["pro_type"] == t))
+                                  for t in (0, 1, 2)}}
+
+
+def edge_band_run(runs: Path, slugs: list[str], B: int = BOOT) -> dict:
+    """Every cut blob on every measured, non-degenerate job; the regions that carry
+    them; the predictor's kappa. Writes `runs/edge_bands.json`."""
+    cen = json.loads((runs / "census.json").read_text(encoding="utf-8"))["jobs"]
+    rows = []
+    for s in slugs:
+        if s not in cen or not (runs / s / "ours.json").exists():
+            continue
+        if cen[s]["cells"].get("pro_self_chance", 0) >= _degenerate():
+            continue
+        rows += edge_band_job(s, runs)
+        print(s, "blobs", sum(r["job"] == s for r in rows), flush=True)
+    out = {"blobs": rows, "regions": edge_band_regions(rows), "widths": edge_band_widths(rows),
+           "predictor": {"satin_max_mm": BAND_SATIN_MAX_MM,
+                         "by_region": edge_band_kappa(rows, B=B),
+                         "by_artwork": edge_band_kappa(rows, B=B, cluster="artwork"),
+                         "per_blob": edge_band_kappa([{**r, "units": 1} for r in rows], B=B),
+                         "swept": {f"{t:g}": edge_band_kappa(rows, t, B=B) for t in BAND_SWEPT_MM}}}
+    (runs / "edge_bands.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
+    return out
+
+
+def edge_band_table(res: dict) -> str:
+    iv = lambda ci: "[undefined]" if ci[0] is None else f"[{ci[0]:.2f}, {ci[1]:.2f}]"    # noqa: E731
+    L = ["| job | region | class | ours | region mm2 | min dim mm | border tier | band width mm (range) "
+         "| blobs (rims) | pattern | pro type | predictor agrees (cells) | kappa (chance) |",
+         "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    for r in res["regions"]:
+        pats = ", ".join(f"{n} {k}" for k, n in r["patterns"].items())
+        pro = ", ".join(f"{n} {k}" for k, n in r["pro_types"].items())
+        kap = "undefined" if r["kappa"] is None else f"{r['kappa']:.2f}"
+        L.append(f"| {r['job']} | {r['region']} | {r['class']} | {r['tier'].lower()}{' + border' if r['ours_border'] else ''} "
+                 f"| {r['region_mm2']:.0f} | {r['min_dim_mm']} | {r['border_tier']} | {r['width_mm']} "
+                 f"({r['width_range'][0]:g}-{r['width_range'][1]:g}) | {r['blobs']} ({r['rims']}) | {pats} | {pro} "
+                 f"| {r['agree_cells']}/{r['cells']} | {kap} ({r['chance']:.2f}) |")
+    p = res["predictor"]
+    L += ["", f"{len(res['regions'])} regions, {res['widths']['blobs']} blobs ({res['widths']['rims']} rims); "
+          f"predictor: satin up to {p['satin_max_mm']} mm, fill over (the engine's satin ceiling, fixed beforehand)"]
+    for name in ("by_region", "by_artwork", "per_blob"):
+        q = p[name]
+        L.append(f"  {name}: kappa {'undefined' if q['kappa'] is None else format(q['kappa'], '.3f')} (chance {q['chance']:.2f}) 95% {iv(q['ci'])}, "
+                 f"{q['clusters']} clusters, {q['cells']} units, raw agreement {q['agree']}, "
+                 f"undefined replicates {q['undefined_replicates']}, clears 0: {q['clears_zero']}")
+    L.append("  threshold sweep (region clusters; not a pick): " + "; ".join(
+        f"{t} mm {'undef' if q['kappa'] is None else format(q['kappa'], '.2f')} ({q['chance']:.2f}) {iv(q['ci'])}" for t, q in p["swept"].items()))
+    L.append(f"  widths: {res['widths']}")
+    return "\n".join(L)
+
+
 def region_census(slug: str, runs: Path) -> dict:
     """tier_census's per-shape reading of both files. `ground`: another sewn region
     sits inside this one, so the pro's pieces sewn ON it read as its tier."""
@@ -1093,7 +1312,7 @@ def main(argv=None) -> int:
     from tools.pro_pair import parse_sets
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("cmd", choices=("digitize", "measure", "table", "flip", "render", "oracle-split",
-                                       "attribute"))
+                                       "attribute", "edge-bands"))
     ap.add_argument("--runs", type=Path, required=True)
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--set", action="append", default=[], metavar="KEY=JSON")
@@ -1109,6 +1328,8 @@ def main(argv=None) -> int:
         print(split_table(oracle_split_run(a.runs, slugs)))
     elif a.cmd == "attribute":
         print(attribution_table(attribute_run(a.runs, slugs)))
+    elif a.cmd == "edge-bands":
+        print(edge_band_table(edge_band_run(a.runs, slugs)))
     elif a.cmd == "flip":
         print(flip_table(a.runs, a.vs))
     elif a.cmd == "render":
