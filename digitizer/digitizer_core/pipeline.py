@@ -84,7 +84,7 @@ from .lettering_thread import apply_lettering_thread
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
                               depth_sort_layers, sequence, cut_every_jump_step_mm)
 from .stitches import StitchPlan
-from .thin_ink import bean_dark_ink, ink_after_ground
+from .thin_ink import bean_dark_ink, carve_flat_dark_ink, ink_after_ground
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (
     COLOR_CAP_APPLIED,
@@ -936,6 +936,14 @@ def build_generation(
             if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)
         )
+    # `cfg.extra["flat_light_text_runs"]` (2026-11-07, built OFF): the
+    # gradient lane's dark-ink carve on the flat quantiser's labels, so light
+    # small text on a ground is tagged `dark_ink` below and sews as a bean
+    # (`thin_ink.carve_flat_dark_ink`). Off: `q` untouched, byte-identical.
+    flat_dark_carve = bool(classification.class_ == "flat" and cfg.keep_dark_thin_strokes
+                           and (cfg.extra or {}).get("flat_light_text_runs"))
+    if flat_dark_carve:
+        q = carve_flat_dark_ink(p, cfg, q)
     if dbg:
         debugviz.stage2(dbg, q.labels, q.thread_indices, chart_for(cfg))
 
@@ -960,10 +968,11 @@ def build_generation(
         # logos only, the gate `keep_counters` has; None with the flag off.
         counter_core=cored_core,
         # `cfg.dark_ink_floor_rescue`: the dark carve's labels, gradient class
-        # only (the only lane that carves); None otherwise.
+        # only (the only lane that carves) -- and the flat lane's carve with
+        # `cfg.extra["flat_light_text_runs"]`; None otherwise.
         protect_layers=(q.dark_ink_labels if (
             cfg.dark_ink_floor_rescue and cfg.keep_dark_thin_strokes
-            and classification.class_ == "gradient") else None),
+            and (classification.class_ == "gradient" or flat_dark_carve)) else None),
         # `cfg.flat_page_fringe_exclude`: stage 2's page-edge blend pixels
         # (None with the flag off and on every other lane).
         page_fringe=getattr(q, "page_fringe", None))
