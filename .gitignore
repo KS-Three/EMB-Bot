@@ -94,3 +94,6 @@ AGENTS.md
 # (Recommended)" -- the ~210 already under docs/ stay; new ones land here, local
 # only, and digitizer/tests/test_no_new_pro_renders.py fails on a new one in docs/.
 pro_renders/
+
+# tools/yardstick_perceptual.py heavy-metric venv (docs/yardstick-perceptual.md "Install")
+.venv-yardstick/
