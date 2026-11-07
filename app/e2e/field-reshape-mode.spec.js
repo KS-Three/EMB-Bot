@@ -309,10 +309,18 @@ test("(e) a hole's node drags on its own: holes_override carries the grabbed ver
   const mid = { x: (prev.x + next.x) / 2, y: (prev.y + next.y) / 2 };
   const vNew = { x: toPx(ring0[lead.i]).x + lead.dx * pxPerServiceMm, y: toPx(ring0[lead.i]).y + lead.dy * pxPerServiceMm };
   const wedge = { x: (mid.x + vNew.x) / 2, y: (mid.y + vNew.y) / 2 };
+  // The wedge is bare garment, but it sits down-right of the green it was cut
+  // from, so the realistic view's drop shadow falls on it. Measured 2026-11-07
+  // on Kent's laptop: 39 levels off the garment on main (passing the old < 40
+  // by one), 41 with the thread-appearance crown, the wedge itself moving ~3 px
+  // run to run with where the drag lands. The question is garment-or-thread:
+  // green thread is 90+ off the garment on its red channel even at its
+  // darkest rim, and the deepest shadow the renderer casts (a raised border,
+  // alpha 0.42) is under 75, so 80 separates the two with room either side.
   await expect.poll(async () => {
     const px = await pixelAt(page, wedge);
     return Math.max(...px.map((v, i) => Math.abs(v - garment[i])));
-  }, { timeout: 15_000 }).toBeLessThan(40);
+  }, { timeout: 15_000 }).toBeLessThan(80);
 });
 
 test("(e2) an exterior-only drag on the same holed shape commits NO holes_override", async ({ page }) => {
