@@ -153,7 +153,7 @@ apt steps, except run 42294672308, which spent **14.27**: Tesseract 3.82 and
 the Playwright font deps 10.45, both downloading at 35 to 40 kB/s while the
 specs on the same runner ran at normal speed. Run 42166746724 (the one that
 hit the old 40-minute budget) did the same for about 13. Job minutes on those
-14 runs: min 20.5, p50 30.1, max 39.4.
+14 runs: min 20.5, p50 27.4, max 39.4.
 
 | Run id | Branch | apt cache | apt step (min) | studio-e2e job (min) | Specs (parallel + serial) |
 |---|---|---|---|---|---|
