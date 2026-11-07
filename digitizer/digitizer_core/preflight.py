@@ -3165,6 +3165,17 @@ def _artwork_reach_findings(p, result: PipelineResult, plan: StitchPlan
 # lost area reaches the same share of the artwork that check blocks at
 # (10%), a WARN under it. Both are one constant each; moving them is a
 # product call.
+#
+# `cfg.extra["dropped_element_v2"]` (built OFF 2026-11-07): an
+# `unsewn_enclosed` piece the artwork itself leaves TRANSPARENT
+# (`enclosed_colour_unknown`, an alpha hole) is not a drop. The garment
+# showing through is exactly what the art asks for there, and the colour
+# v1 judges is whatever the exporter flattened under the transparency
+# (`Prep.bg_from_alpha`'s caveat). Both of Kent's Good/Great rows it fired
+# on are this: `gradient_mascot`'s eye whites and `pixel_art_sprite`'s
+# eye and belly holes, black (0, 0, 0) under alpha 0, each sewn as the
+# same hole the art draws (rendered 2026-11-07). Counted in metrics, never
+# in the finding. A hole found by COLOUR keeps v1's judgment.
 _ELEMENT_MIN_MM2 = _THREAD_MATCH_MIN_PATCH_MM2
 _ELEMENT_BLOCK_FRAC = round(1.0 - _ARTWORK_REACHED_FLOOR, 2)
 # A folded region "touches" a same-thread shape within this: one thread
@@ -3276,6 +3287,8 @@ def _element_drop_findings(p, result: PipelineResult, plan: StitchPlan,
         if len(g) == 3:
             garment = rgb_to_lab(np.array([g], dtype=np.float64)).reshape(1, 3)
     overrides = cfg.shape_overrides or {}
+    v2 = bool((getattr(cfg, "extra", None) or {}).get("dropped_element_v2"))
+    transparent: list[float] = []
     if garment is not None:
         for w in warnings:
             if w.get("code") != _SHAPES_LEFT_UNSEWN:
@@ -3286,6 +3299,9 @@ def _element_drop_findings(p, result: PipelineResult, plan: StitchPlan,
                         or "stitched" in (overrides.get(sid) or {})
                         or _area(r) < _ELEMENT_MIN_MM2
                         or getattr(r, "polygon", None) is None):
+                    continue
+                if v2 and _meta(r).get("enclosed_colour_unknown"):
+                    transparent.append(_area(r))
                     continue
                 lab = _region_artwork_lab(p, r)
                 if lab is None:
@@ -3340,6 +3356,9 @@ def _element_drop_findings(p, result: PipelineResult, plan: StitchPlan,
                "element_dropped_count": count,
                "element_dropped_mm2": round(total, 1),
                "element_dropped_frac": round(frac, 3)}
+    if v2:
+        metrics["element_drop_transparent_count"] = len(transparent)
+        metrics["element_drop_transparent_mm2"] = round(float(sum(transparent)), 1)
     if count == 0:
         return [], metrics
 

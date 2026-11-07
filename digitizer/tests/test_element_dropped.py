@@ -9,6 +9,7 @@ The pipeline wrote a warning every time; preflight read none of them.
 """
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -18,6 +19,7 @@ import pytest
 from shapely.geometry import box
 
 from digitizer_core import preflight as pf
+from digitizer_core import run_stages
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import plan_stitches
 from digitizer_core.preflight import (
@@ -226,8 +228,12 @@ def _unsewn_fixture(tmp_path, garment, by_override=False):
     return p, result, plan, c
 
 
-def test_black_ink_left_as_a_hole_on_a_cream_garment_is_a_dropped_element(tmp_path):
+@pytest.mark.parametrize("v2", [False, True])
+def test_black_ink_left_as_a_hole_on_a_cream_garment_is_a_dropped_element(tmp_path, v2):
+    # A hole found by COLOUR keeps v1's judgment under `dropped_element_v2`.
     p, result, plan, c = _unsewn_fixture(tmp_path, GARMENT)
+    if v2:
+        c = dataclasses.replace(c, extra={"dropped_element_v2": True})
     findings, metrics = _element_drop_findings(p, result, plan, c, rows=[])
     f = _only(findings)
     assert f["extra"]["causes"]["unsewn_enclosed"] == 1
@@ -244,6 +250,51 @@ def test_a_hole_the_garment_fills_in_the_pictures_own_colour_is_not_a_drop(tmp_p
 def test_a_shape_the_customer_left_out_in_review_is_their_call(tmp_path):
     p, result, plan, c = _unsewn_fixture(tmp_path, GARMENT, by_override=True)
     assert _element_drop_findings(p, result, plan, c, rows=[])[0] == []
+
+
+def _alpha_ring(path: Path) -> Path:
+    """A red ring on a transparent page whose hole is transparent too, with
+    the black (0, 0, 0) an exporter flattens under alpha 0 -- the shape of
+    both of Kent's Good/Great rows v1 fired on (`gradient_mascot`'s eye
+    whites, `pixel_art_sprite`'s eye and belly holes, 2026-11-07)."""
+    img = np.zeros((240, 240, 4), np.uint8)
+    cv2.rectangle(img, (60, 60), (179, 179), (20, 20, 160, 255), -1)
+    cv2.rectangle(img, (100, 100), (139, 139), (0, 0, 0, 0), -1)
+    cv2.imwrite(str(path), img)
+    return path
+
+
+def test_a_hole_the_art_leaves_transparent_fires_v1_and_not_v2(tmp_path):
+    """The page showing through a transparent hole is the art, not a lost
+    element: v1 reads the flattened black and blocks, v2 says nothing and
+    counts the hole in metrics. Same digitize, same plan, same score
+    arithmetic: only the finding moves."""
+    art = _alpha_ring(tmp_path / "ring.png")
+    c = cfg(garment_rgb=GARMENT)
+    result = run_stages(art, c)
+    plan = plan_stitches(result, c)
+    hole = [r for r in result.regions if r.meta.get("enclosed_background")]
+    assert len(hole) == 1 and hole[0].meta.get("enclosed_colour_unknown")
+    assert hole[0].meta.get("stitched") is False
+
+    off = run_preflight(result, plan, c, image=art)
+    f = next(f for f in off["findings"] if f["code"] == ARTWORK_ELEMENT_DROPPED)
+    assert f["extra"]["causes"]["unsewn_enclosed"] == 1
+    assert "element_drop_transparent_count" not in off["metrics"]
+
+    on = run_preflight(result, plan,
+                       dataclasses.replace(c, extra={"dropped_element_v2": True}),
+                       image=art)
+    assert ARTWORK_ELEMENT_DROPPED not in _codes(on)
+    m = on["metrics"]
+    assert m["element_dropped_count"] == 0
+    assert m["element_drop_transparent_count"] == 1
+    assert m["element_drop_transparent_mm2"] == round(hole[0].area_mm2, 1)
+    # the finding was the only difference, and the score moves by its deduction
+    rest = lambda r: sorted((g["code"], g["severity"]) for g in r["findings"]  # noqa: E731
+                            if g["code"] != ARTWORK_ELEMENT_DROPPED)
+    assert rest(off) == rest(on)
+    assert on["score"] - off["score"] == pf._DEDUCT[f["severity"]]
 
 
 def test_without_a_garment_colour_the_hole_is_not_judged(tmp_path):
