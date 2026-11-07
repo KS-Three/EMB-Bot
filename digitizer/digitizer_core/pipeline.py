@@ -936,12 +936,13 @@ def build_generation(
             if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)
         )
-    # `cfg.extra["flat_light_text_runs"]` (2026-11-07, built OFF): the
-    # gradient lane's dark-ink carve on the flat quantiser's labels, so light
-    # small text on a ground is tagged `dark_ink` below and sews as a bean
-    # (`thin_ink.carve_flat_dark_ink`). Off: `q` untouched, byte-identical.
+    # `cfg.flat_light_text_runs` (built OFF 2026-11-07, ON since that day,
+    # Kent's flip): the gradient lane's dark-ink carve on the flat
+    # quantiser's labels, so light small text on a ground is tagged
+    # `dark_ink` below and sews as a bean (`thin_ink.carve_flat_dark_ink`).
+    # Off: `q` untouched, byte-identical.
     flat_dark_carve = bool(classification.class_ == "flat" and cfg.keep_dark_thin_strokes
-                           and (cfg.extra or {}).get("flat_light_text_runs"))
+                           and cfg.flat_light_text_runs)
     if flat_dark_carve:
         q = carve_flat_dark_ink(p, cfg, q)
     if dbg:
@@ -969,7 +970,7 @@ def build_generation(
         counter_core=cored_core,
         # `cfg.dark_ink_floor_rescue`: the dark carve's labels, gradient class
         # only (the only lane that carves) -- and the flat lane's carve with
-        # `cfg.extra["flat_light_text_runs"]`; None otherwise.
+        # `cfg.flat_light_text_runs`; None otherwise.
         protect_layers=(q.dark_ink_labels if (
             cfg.dark_ink_floor_rescue and cfg.keep_dark_thin_strokes
             and (classification.class_ == "gradient" or flat_dark_carve)) else None),

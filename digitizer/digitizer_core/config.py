@@ -1258,6 +1258,21 @@ class PipelineConfig:
     # pot: `min_detail_mm` feeds the read's kernel (2*floor_px+1), so at 1.5
     # and 54.6 mm the 25 px kernel closes the fifth letter into the ground.
     dark_ink_read_floor_mm: float = 1.0
+    # The gradient lane's dark-ink carve, run on the FLAT quantiser's labels
+    # (`thin_ink.carve_flat_dark_ink`, PR #1328; built OFF 2026-11-07 as
+    # `cfg.extra["flat_light_text_runs"]`). Stage 0 sends Fremont hat flat
+    # (#1301) and its tan tagline stopped reading (native word cc 0.903 ->
+    # 0.605, `docs/goldentee-flat-regress-2026-11-07.md`): the flat lane never
+    # ran the lightness read, so the tagline went the small-text re-set as
+    # enlarged satin. ON, flat class with `keep_dark_thin_strokes` on, the
+    # same read and carve tag those strokes `dark_ink` and `bean_dark_ink`
+    # sews each as a bean along its skeleton, as on the gradient lane.
+    # **ON since 2026-11-07, Kent's flip** ("Flat light-text runs"), promoted
+    # from `cfg.extra` to a field so the default can be ON. False is the flat
+    # lane as it was, byte for byte; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_flat_light_text_runs.py`.
+    flat_light_text_runs: bool = True
     # The figure's page-edge FRINGE neither votes in the palette fit nor
     # survives as slivers (built OFF 2026-11-03, Kent on the Pooh pot: "a hole
     # in the honey jar"). The anti-alias blend between a dark outline and the
@@ -5665,6 +5680,23 @@ class PipelineConfig:
     # number. False is the engine as it was; `tests/conftest.py` PRE_FLIP pins
     # it False. Table: `docs/thread-match-gradient-excess-2026-10-29.md`.
     thread_match_excess_gradient: bool = True
+    # Grade an enlarged small-text letter's thread on the polygon it was
+    # TRACED from (`meta[small_text.TRACED_POLYGON_KEY]`), not the polygon it
+    # sews (`preflight._traced_letters`, PR #1326; built OFF 2026-11-07 as
+    # `cfg.extra["thread_match_grade_traced_letter"]`). The re-set scales a
+    # letter and moves it into the room around it, so graded as sewn Fremont's
+    # THE read the white ground and `0020 Black` blocked at dE00 100; on the
+    # traced polygon the same letters score Black within DELTA_E_VISIBLE.
+    # Unlike #1312's enlarged-text skip (`cfg.extra`, OFF) the letter is still
+    # graded. Shade-banded and operator re-drawn regions are graded as sewn.
+    # A GRADING change only: preflight is the one reader, no stitch moves.
+    # **ON since 2026-11-07, Kent's flip** ("Traced-letter grading"), promoted
+    # from `cfg.extra` to a field so the default can be ON: Fremont hat 80 mm
+    # D 46 -> B 76, the pro pairs F 4 -> C 64, every other job's grade the
+    # same. False is the grader as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_thread_match_grade_traced_letter.py`.
+    thread_match_grade_traced_letter: bool = True
 
     # Bind stage 4's thread re-snap to the selected palette on EVERY class,
     # not only the photo ones. `revalidate_threads`' argmin runs over the whole
