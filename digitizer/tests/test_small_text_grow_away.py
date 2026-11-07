@@ -72,9 +72,14 @@ def _rule_scene(side: str, gap: float = RULE_GAP_MM, half: float = FAT_HALF_MM):
 
 
 def _md5(regions, rep) -> str:
+    # The traced polygon a moved letter keeps (`TRACED_POLYGON_KEY`, metadata
+    # added 2026-11-07, pinned in `test_thread_match_grade_traced_letter.py`)
+    # is left out, so the pin still reads the layout it was captured on.
+    from digitizer_core.small_text import TRACED_POLYGON_KEY
     h = hashlib.md5()
     for r in regions:
-        h.update(repr((r.shape_id, r.thread_index, r.polygon.wkb.hex(), sorted(r.meta.items()))).encode())
+        meta = sorted((k, v) for k, v in r.meta.items() if k != TRACED_POLYGON_KEY)
+        h.update(repr((r.shape_id, r.thread_index, r.polygon.wkb.hex(), meta)).encode())
     h.update(repr(rep).encode())
     return h.hexdigest()
 
