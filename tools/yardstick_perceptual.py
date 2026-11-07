@@ -421,7 +421,10 @@ def _scored(r: dict, ref: np.ndarray, ours: np.ndarray, metrics: list[Metric], *
 def oracle_check(scored: list[dict], metrics: list[Metric]) -> dict:
     """The two sanity oracles per metric that scored: every `self` row reads
     0 (to 1e-6) and every `blank` row is at least every other row of the
-    set. -> {metric: {self_zero, blank_worst, worst_self, blank_min, pair_max}}."""
+    set; `blank_worst_same_ref` asks the same of each blank against only the
+    rows of its own reference.
+    -> {metric: {self_zero, blank_worst, blank_worst_same_ref, refs_checked,
+    worst_self, blank_min, pair_max}}."""
     res = {}
     for m in metrics:
         if m.unavailable:
@@ -433,8 +436,20 @@ def oracle_check(scored: list[dict], metrics: list[Metric]) -> dict:
         blank_min = min(vals["blank"]) if vals["blank"] else None
         others = vals["pair"] + vals["self"]
         pair_max = max(others) if others else None
+        # Same-reference reading (added after `lpips_vgg` failed the global
+        # one, 2026-11-07): each blank against only the rows scored against
+        # ITS OWN reference. The kappa compares two arms against one pro, so
+        # this is the ordering it relies on; the global reading above stays.
+        by_ref: dict[str, dict[str, list[float]]] = {}
+        for r in scored:
+            if r["kind"] in ("self", "blank", "pair") and r[m.name] != "n/a":
+                slot = by_ref.setdefault(r["ref_path"], {"blank": [], "other": []})
+                slot["blank" if r["kind"] == "blank" else "other"].append(float(r[m.name]))
+        checked = [s for s in by_ref.values() if s["blank"] and s["other"]]
+        same_ref = bool(checked) and all(min(s["blank"]) >= max(s["other"]) for s in checked)
         res[m.name] = {"self_zero": worst_self is not None and worst_self <= 1e-6,
                        "blank_worst": blank_min is not None and pair_max is not None and blank_min >= pair_max,
+                       "blank_worst_same_ref": same_ref, "refs_checked": len(checked),
                        "worst_self": worst_self, "blank_min": blank_min, "pair_max": pair_max}
     return res
 
@@ -541,14 +556,14 @@ def markdown(scored: list[dict], metrics: list[Metric], avail: dict, kappas: dic
         L.append(f"| {m.name} | {'scored' if not avail[m.name] else 'n/a: ' + avail[m.name]} |")
     L += ["", f"scores.csv md5 `{md5}` ({len(scored)} rows)", ""]
     if oracle:
-        L += ["## Oracles", "", "| metric | self reads 0 | blank is worst | worst self | blank min | pair max |",
-              "|---|---|---|---|---|---|"]
+        L += ["## Oracles", "", "| metric | self reads 0 | blank is worst | blank is worst, same reference "
+              "| worst self | blank min | pair max |", "|---|---|---|---|---|---|---|"]
         for name, o in oracle.items():
             if "unavailable" in o:
-                L.append(f"| {name} | n/a | n/a | | | |")
+                L.append(f"| {name} | n/a | n/a | n/a | | | |")
                 continue
             L.append(f"| {name} | {'yes' if o['self_zero'] else 'NO'} | {'yes' if o['blank_worst'] else 'NO'} | "
-                     f"{o['worst_self']:.6f} | {o['blank_min']:.6f} | {o['pair_max']:.6f} |")
+                     f"{'yes' if o['blank_worst_same_ref'] else 'NO'} | {o['worst_self']:.6f} | {o['blank_min']:.6f} | {o['pair_max']:.6f} |")
         L.append("")
     if kappas:
         L += ["## Agreement with Kent's picks (Cohen's kappa, 95% bootstrap intervals; n beside every figure)",

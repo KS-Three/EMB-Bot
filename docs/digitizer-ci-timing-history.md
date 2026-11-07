@@ -197,6 +197,7 @@ the aggregator.
 | Run id | Event | SHA | shard 1 | shard 2 | studio-e2e wall | predicted | tests (shard 1 + shard 2) |
 |---|---|---|---|---|---|---|---|
 | 42398725440 | PR #1303 (`engine` red: the checker lacked `--help`, fixed in the next commit; the e2e jobs are independent of it) | `8c44a9f9` | 13.3 | 10.5 | **13.5** | 15.6 p50; 12.2 at this run's own test speed | 94 + 149 = 243, each once (checker OK) |
+| 42399967770 | PR #1303 (all checks green, merged on this run) | `795e72f7` | 15.2 | 11.9 | **16.2** | 15.6 p50; 13.9 at this run's own test speed | 94 + 149 = 243, each once (checker OK) |
 
 "At this run's own test speed" re-scales the prediction to the runner drawn:
 the four test steps summed to 21.9 minutes (1.2 + 11.0 parallel and serial on
@@ -207,3 +208,5 @@ balance error of a file-level split whose largest file is half the serial
 step. That is under the 3-minute re-measure threshold in
 `app/playwright.config.js`; if it holds above 3 over several runs, refresh
 `SPEC_SECONDS`, or split that spec file.
+
+Run 42399967770 (the second run): the four test steps summed to 25.1 minutes, so the own-speed prediction is 25.1 / 2 + 1.3 = 13.9 per shard. The serial step on shard 1 (`field-reshape-mode.spec.js`) ran 12.9 minutes against 8.8 on shard 2, a ratio of 1.47 (1.41 on run 1) where `SPEC_SECONDS` predicted 1.11, and the 3.3-minute shard gap crossed the 3-minute re-measure threshold in `app/playwright.config.js`. It leaned the same way on both runs, so the table under-counts that file; re-derive it from wall time with `node tools/e2e-spec-times.mjs <run-id>...`.
