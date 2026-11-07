@@ -299,7 +299,8 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
                         design_class: str = "flat",
                         per_stroke: bool = False,
                         area_weighted: bool = False,
-                        floor_applies: bool = False) -> bool:
+                        floor_applies: bool = False,
+                        vote: bool = False) -> bool:
     """Should this shape be satin rather than fill?
 
     Two conditions, both about how the result reads on fabric: the ribbon must
@@ -351,7 +352,8 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
     return classify_ribbon(poly, max_width_mm, design_class=design_class,
                            per_stroke=per_stroke,
                            area_weighted=area_weighted,
-                           floor_applies=floor_applies).satin
+                           floor_applies=floor_applies,
+                           vote=vote).satin
 
 
 # Law 31's satin minimum width, adopted VERBATIM from the printed rule
@@ -401,8 +403,104 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
                     per_stroke: bool = False,
                     polygon_axis: bool = False,
                     area_weighted: bool = False,
-                    floor_applies: bool = False) -> RibbonVerdict:
+                    floor_applies: bool = False,
+                    vote: bool = False) -> RibbonVerdict:
     """`is_satin_candidate`'s implementation. Same verdict, with attribution.
+
+    `vote` (`cfg.extra["satin_fill_vote"]`, default OFF): the verdict is a
+    majority over `_classify_ribbon_once` at five readings of the shape, the
+    polygon as drawn and four small perturbations (`_vote_ribbon`). False
+    returns the one reading, byte-identical to before the parameter existed.
+    """
+    once = _classify_ribbon_once(poly, max_width_mm, design_class=design_class,
+                                 full_metrics=full_metrics, per_stroke=per_stroke,
+                                 polygon_axis=polygon_axis, area_weighted=area_weighted,
+                                 floor_applies=floor_applies)
+    if not vote:
+        return once
+    return _vote_ribbon(once, poly, max_width_mm, design_class=design_class,
+                        per_stroke=per_stroke, polygon_axis=polygon_axis,
+                        area_weighted=area_weighted, floor_applies=floor_applies)
+
+
+# The vote's perturbations, in the classifier's OWN units: one "pixel" is one
+# quantum of the raster `_dt_stats` reads the shape on (1 / _RASTER_PX_PER_MM
+# = 0.167 mm), so a half-pixel buffer moves every boundary by less than the
+# raster can resolve, and +/- 2 % of scale is the size tolerance a Studio
+# resize already imposes. Neither is a physical constant (ROADMAP gate 1):
+# both are about the instrument, not the cloth.
+_VOTE_BUFFER_PX = 0.5
+_VOTE_SCALE = 0.02
+
+
+def _vote_perturbations(poly: Polygon) -> list[Polygon]:
+    """The four neighbours of `poly` the vote reads beside it: eroded and
+    dilated by `_VOTE_BUFFER_PX`, scaled down and up by `_VOTE_SCALE` about
+    the centroid. A perturbation that leaves no polygon (an erosion that
+    empties a hairline) or several (an erosion that cuts a shape in two) is
+    read on its largest piece, or dropped when nothing is left."""
+    from shapely import affinity
+    d = _VOTE_BUFFER_PX / _RASTER_PX_PER_MM
+    out: list[Polygon] = []
+    for cand in (poly.buffer(-d), poly.buffer(d),
+                 affinity.scale(poly, 1.0 - _VOTE_SCALE, 1.0 - _VOTE_SCALE, origin="centroid"),
+                 affinity.scale(poly, 1.0 + _VOTE_SCALE, 1.0 + _VOTE_SCALE, origin="centroid")):
+        if cand.is_empty:
+            continue
+        if cand.geom_type == "MultiPolygon":
+            cand = max(cand.geoms, key=lambda g: g.area)
+        if cand.geom_type == "Polygon" and not cand.is_empty:
+            out.append(cand)
+    return out
+
+
+def _vote_ribbon(once: RibbonVerdict, poly: Polygon, max_width_mm: float, *,
+                 design_class: str, per_stroke: bool, polygon_axis: bool,
+                 area_weighted: bool, floor_applies: bool) -> RibbonVerdict:
+    """Majority of `once` and the verdicts at `_vote_perturbations`; a tie
+    keeps `once`. The reading that decides satin or fill today is one
+    rasterization of one polygon, and near a gate it turns on a pixel of
+    drift (`_dt_stats`' comment: `explained` 0.79 of ONE skeleton pixel from
+    the promote threshold). Reading the shape's neighbours too means a
+    verdict stands only when its neighbourhood agrees with it.
+
+    What this can and cannot move, by construction: every perturbation pair
+    is symmetric (smaller / larger), so a gate that is MONOTONE in size (the
+    width cap, the p90 cap) always leaves `once` the tie-breaker and the vote
+    never overturns it. It overturns only a verdict that disagrees with its
+    neighbours on BOTH sides of at least one axis, which is a raster or
+    skeleton artefact of the polygon as drawn, not the shape's size.
+
+    A verdict the vote keeps is returned as `once` was, reason and all. One it
+    overturns carries reason `vote_satin` / `vote_fill` and `once`'s metrics,
+    plus the count: `vote_for` (readings agreeing with the returned verdict)
+    and `vote_n` (readings taken)."""
+    votes = [once.satin]
+    for cand in _vote_perturbations(poly):
+        votes.append(_classify_ribbon_once(cand, max_width_mm, design_class=design_class,
+                                           per_stroke=per_stroke, polygon_axis=polygon_axis,
+                                           area_weighted=area_weighted,
+                                           floor_applies=floor_applies).satin)
+    n = len(votes)
+    for_satin = sum(votes)
+    satin = once.satin if 2 * for_satin == n else for_satin * 2 > n
+    if satin == once.satin:
+        return once
+    metrics = dict(once.metrics)
+    metrics["vote_for"] = float(for_satin if satin else n - for_satin)
+    metrics["vote_n"] = float(n)
+    return RibbonVerdict(satin, "vote_satin" if satin else "vote_fill", metrics)
+
+
+def _classify_ribbon_once(poly: Polygon, max_width_mm: float, *,
+                          design_class: str = "flat",
+                          full_metrics: bool = False,
+                          per_stroke: bool = False,
+                          polygon_axis: bool = False,
+                          area_weighted: bool = False,
+                          floor_applies: bool = False) -> RibbonVerdict:
+    """ONE reading of the shape as drawn: the shipped path (`classify_ribbon`
+    with `vote=False` returns exactly this).
 
     `floor_applies` (`cfg.satin_floor_content_gate`, default OFF): Law 31's
     width floor applies although `design_class` is not a photo class, because

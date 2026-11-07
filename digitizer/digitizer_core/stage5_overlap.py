@@ -123,7 +123,7 @@ from shapely import STRtree, affinity
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
-from .config import PipelineConfig, satin_floor_applies
+from .config import PipelineConfig, satin_fill_vote, satin_floor_applies
 from .fabrics import Fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
 from .regions import Region
@@ -337,7 +337,8 @@ def _comp_axis(region: Region, cfg: PipelineConfig, satin_max: float,
                                design_class=design_class,
                                per_stroke=cfg.satin_per_stroke,
                                floor_applies=satin_floor_applies(
-                                   cfg, design_class))):
+                                   cfg, design_class),
+                               vote=satin_fill_vote(cfg))):
         return None, True
     angle = region.meta.get("fill_angle_deg")
     if angle is not None:

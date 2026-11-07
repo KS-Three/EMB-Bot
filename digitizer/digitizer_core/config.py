@@ -94,6 +94,19 @@ def satin_floor_applies(cfg: "PipelineConfig", class_: str | None) -> bool:
                 and is_photographic(cfg, class_))
 
 
+def satin_fill_vote(cfg: "PipelineConfig") -> bool:
+    """`cfg.extra["satin_fill_vote"]` (2026-11-07, default OFF): the satin-vs-
+    fill verdict per region is a majority vote over the region at five small
+    perturbations (`stage6_satin._vote_ribbon`, reached through the
+    classifier's `vote=` parameter) instead of the one reading of the polygon
+    as drawn. Read by the four routing calls
+    (stage 5's compensation, the pipeline's border demotion, stage 7's
+    borders-last predicate and its emitter); NOT by `monoline.py`, which reads
+    the verdict's REASON, not its bool. False is byte-identical to before the
+    key existed."""
+    return bool((getattr(cfg, "extra", None) or {}).get("satin_fill_vote"))
+
+
 def work_grid_px_per_mm(cfg: "PipelineConfig", class_: str | None = None) -> float:
     """The pixel density stage 1 brings a lower-resolution source up to —
     `cfg.work_px_per_mm`, never under `cfg.min_px_per_mm` (None: the source
