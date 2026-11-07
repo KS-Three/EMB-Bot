@@ -301,7 +301,7 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
                         area_weighted: bool = False,
                         floor_applies: bool = False,
                         vote: bool = False,
-                        hysteresis: bool = False) -> bool:
+                        hysteresis: "bool | str" = False) -> bool:
     """Should this shape be satin rather than fill?
 
     Two conditions, both about how the result reads on fabric: the ribbon must
@@ -406,7 +406,7 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
                     area_weighted: bool = False,
                     floor_applies: bool = False,
                     vote: bool = False,
-                    hysteresis: bool = False) -> RibbonVerdict:
+                    hysteresis: "bool | str" = False) -> RibbonVerdict:
     """`is_satin_candidate`'s implementation. Same verdict, with attribution.
 
     `vote` (`cfg.extra["satin_fill_vote"]`, default OFF): the verdict is a
@@ -418,7 +418,9 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
     whose reading sits inside its margin band (`_HYST_ASPECT_REL`,
     `_HYST_CV_ABS`) abstains, and the gates clear of their bands decide. See
     `_classify_ribbon_once`. With `vote` too, every reading is banded. False
-    is byte-identical to before the parameter existed.
+    is byte-identical to before the parameter existed. `HYST_ASPECT_ONLY`
+    ("aspect", `cfg.extra["satin_fill_hysteresis_aspect_only"]`, default OFF)
+    applies the aspect band alone; the regularity gate keeps its line.
     """
     once = _classify_ribbon_once(poly, max_width_mm, design_class=design_class,
                                  full_metrics=full_metrics, per_stroke=per_stroke,
@@ -463,6 +465,10 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
 # jitter, not the cloth.
 _HYST_ASPECT_REL = 0.05
 _HYST_CV_ABS = 0.01
+#: the `hysteresis=` value for the aspect band ALONE
+#: (`cfg.extra["satin_fill_hysteresis_aspect_only"]`, 2026-11-07, default OFF):
+#: PR #1311's option 3. True keeps meaning both bands.
+HYST_ASPECT_ONLY = "aspect"
 
 
 # The vote's perturbations, in the classifier's OWN units: one "pixel" is one
@@ -499,7 +505,7 @@ def _vote_perturbations(poly: Polygon) -> list[Polygon]:
 def _vote_ribbon(once: RibbonVerdict, poly: Polygon, max_width_mm: float, *,
                  design_class: str, per_stroke: bool, polygon_axis: bool,
                  area_weighted: bool, floor_applies: bool,
-                 hysteresis: bool = False) -> RibbonVerdict:
+                 hysteresis: "bool | str" = False) -> RibbonVerdict:
     """Majority of `once` and the verdicts at `_vote_perturbations`; a tie
     keeps `once`. The reading that decides satin or fill today is one
     rasterization of one polygon, and near a gate it turns on a pixel of
@@ -543,7 +549,7 @@ def _classify_ribbon_once(poly: Polygon, max_width_mm: float, *,
                           polygon_axis: bool = False,
                           area_weighted: bool = False,
                           floor_applies: bool = False,
-                          hysteresis: bool = False) -> RibbonVerdict:
+                          hysteresis: "bool | str" = False) -> RibbonVerdict:
     """ONE reading of the shape as drawn: the shipped path (`classify_ribbon`
     with `vote=False` returns exactly this).
 
@@ -617,7 +623,8 @@ def _classify_ribbon_once(poly: Polygon, max_width_mm: float, *,
             return RibbonVerdict(False, "aspect", metrics)
         return RibbonVerdict(True, "dt_degenerate", metrics)
     irregular =2.0 * stats.std >= stats.mean
-    if hysteresis and abs(metrics["dt_cv"] - 0.5) <= _HYST_CV_ABS:
+    if (hysteresis and hysteresis != HYST_ASPECT_ONLY
+            and abs(metrics["dt_cv"] - 0.5) <= _HYST_CV_ABS):
         # `hysteresis` (default OFF): within `_HYST_CV_ABS` of cv 0.5 the
         # regularity gate abstains, so the shape takes the branch below, where
         # the promotion test decides both ways. Past the line that is already

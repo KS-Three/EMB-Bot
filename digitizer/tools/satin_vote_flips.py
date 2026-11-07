@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """How often the satin-vs-fill verdict flips under a pixel of erosion, with
 a stability arm (`cfg.extra["satin_fill_vote"]`, or `["satin_fill_hysteresis"]`
-with `--arm hysteresis`) OFF and ON, over a census's regions.
+with `--arm hysteresis`, or `["satin_fill_hysteresis_aspect_only"]` with
+`--arm hysteresis_aspect`) OFF and ON, over a census's regions.
 
 MEASUREMENT ONLY. Reads the OFF arm `tools.satin_fill_census digitize` wrote
 (`RUNS/<slug>/ours.json`: every region's polygon and meta) and asks the
@@ -11,7 +12,9 @@ classifier four questions per sewn region, on the SAME polygon both arms saw:
   off_eroded the same, on the polygon eroded by `--erode-px` classifier pixels
              (`stage6_satin._RASTER_PX_PER_MM`: 1 px = 0.167 mm)
   on / on_eroded   the same two, with the arm on: `vote=True` (`--arm vote`,
-             the default) or `hysteresis=True` (`--arm hysteresis`, 2026-11-07)
+             the default), `hysteresis=True` (`--arm hysteresis`, 2026-11-07) or
+             `hysteresis="aspect"` (`--arm hysteresis_aspect`: the aspect band
+             alone, 2026-11-07)
 
 A region FLIPS under an arm when its two readings differ; it CHANGES when the
 ON reading differs from the OFF one. The width ceiling per region follows
@@ -22,9 +25,9 @@ photo classes only, so the class cannot move a verdict here). This is the
 classifier's flip count, not the sewn plan's: a tier the user forced, or a
 word tier, is not re-asked.
 
-    python -m tools.satin_vote_flips --runs OFF_DIR [--arm vote|hysteresis] [--erode-px 1.0] [--only SLUG ...]
+    python -m tools.satin_vote_flips --runs OFF_DIR [--arm vote|hysteresis|hysteresis_aspect] [--erode-px 1.0] [--only SLUG ...]
 
-With `--arm hysteresis`, `--json` rows also carry the ON reading's `reason` and
+With either hysteresis arm, `--json` rows also carry the ON reading's `reason` and
 which bands abstained (`hyst`), so a changed or flipping region can be read as a
 margin, not a bare bool.
 """
@@ -45,8 +48,9 @@ for p in (str(DIGITIZER), str(DIGITIZER / "tools")):
         sys.path.insert(0, p)
 
 SEWN = ("fill", "satin", "run", "bean", "border")
-#: the classifier keyword each `--arm` turns on
-ARMS = {"vote": "vote", "hysteresis": "hysteresis"}
+#: the classifier keyword and value each `--arm` turns on
+ARMS = {"vote": ("vote", True), "hysteresis": ("hysteresis", True),
+        "hysteresis_aspect": ("hysteresis", "aspect")}
 
 
 class _Region:
@@ -96,12 +100,13 @@ def job_rows(slug: str, runs: Path, erode_px: float, arm: str = "vote") -> list[
         kw = dict(per_stroke=per_stroke, polygon_axis=cfg.satin_polygon_axis,
                   area_weighted=cfg.classify_area_weighted)
         small = _eroded(poly, erode_px)
-        on_kw = {**kw, ARMS[arm]: True}
+        key, value = ARMS[arm]
+        on_kw = {**kw, key: value}
         on = classify_ribbon(poly, cap, **on_kw)
         row = {"id": r["id"], "area": round(poly.area, 1), "lettering": math.isinf(cap),
                "off": classify_ribbon(poly, cap, **kw).satin,
                "on": on.satin}
-        if arm == "hysteresis":
+        if key == "hysteresis":
             row["reason"] = on.reason
             row["hyst"] = [k[5:] for k in ("hyst_aspect", "hyst_cv") if on.metrics.get(k)]
         if small is not None:

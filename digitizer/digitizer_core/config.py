@@ -107,14 +107,25 @@ def satin_fill_vote(cfg: "PipelineConfig") -> bool:
     return bool((getattr(cfg, "extra", None) or {}).get("satin_fill_vote"))
 
 
-def satin_fill_hysteresis(cfg: "PipelineConfig") -> bool:
+def satin_fill_hysteresis(cfg: "PipelineConfig") -> "bool | str":
     """`cfg.extra["satin_fill_hysteresis"]` (2026-11-07, default OFF): a
     satin-vs-fill gate whose reading sits inside a margin band round its line
     abstains, and the gates clear of their own bands decide
-    (`stage6_satin._hysteresis_ribbon`, reached through the classifier's
+    (`stage6_satin._classify_ribbon_once`, reached through the classifier's
     `hysteresis=` parameter). Read by the same four routing calls as
-    `satin_fill_vote`. False is byte-identical to before the key existed."""
-    return bool((getattr(cfg, "extra", None) or {}).get("satin_fill_hysteresis"))
+    `satin_fill_vote`. False is byte-identical to before the key existed.
+
+    `cfg.extra["satin_fill_hysteresis_aspect_only"]` (2026-11-07, default
+    OFF) is the smaller half: the aspect band alone, no cv band. It returns
+    `stage6_satin.HYST_ASPECT_ONLY` ("aspect"), which the classifier reads as
+    that mode. With both keys set the full flag wins (True: both bands), since
+    it is the superset."""
+    extra = getattr(cfg, "extra", None) or {}
+    if extra.get("satin_fill_hysteresis"):
+        return True
+    if extra.get("satin_fill_hysteresis_aspect_only"):
+        return "aspect"
+    return False
 
 
 def work_grid_px_per_mm(cfg: "PipelineConfig", class_: str | None = None) -> float:
