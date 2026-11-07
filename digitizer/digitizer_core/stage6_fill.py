@@ -778,14 +778,29 @@ class _Sewn:
     single-geometry code, at 17 s of reorder against 48.
     """
 
-    __slots__ = ("_parts", "_boxes", "_n")
+    __slots__ = ("_parts", "_boxes", "_n", "_h", "_hn")
 
     def __init__(self) -> None:
         self._parts = np.empty(64, dtype=object)
         self._boxes = np.empty((64, 4))
         self._n = 0
+        self._h = None
+        self._hn = 0
 
     is_empty = False
+
+    def digest(self, part_digest) -> bytes:
+        """The ordered footprints laid so far, as 32 bytes: a running hash
+        over `part_digest(footprint)` of each, in the order they were added
+        (`clipped`'s union is order-sensitive in the last bits, so the order
+        is part of the content). Only the footprints added since the last
+        call are hashed; `travel_path`'s memo is the one reader."""
+        if self._h is None:
+            self._h = hashlib.blake2b(b"sewn", digest_size=32)
+        for i in range(self._hn, self._n):
+            self._h.update(part_digest(self._parts[i]))
+        self._hn = self._n
+        return self._h.copy().digest()
 
     def add(self, footprint) -> "_Sewn":
         if self._n == len(self._boxes):
@@ -903,11 +918,157 @@ def _unsewn_ground(cover: Polygon, sewn):
     return entry[0], slack, rings
 
 
+class _TravelMemo:
+    """`travel_path`'s answers inside ONE `stitch_shape` call.
+
+    Why. A fill shape's bridges are asked for again and again with the same
+    inputs: `_reorder_for_cover` prices the incoming order and a candidate
+    with `_order_cost_walk`, `_long_cut_pricer` and the seam re-plans price
+    more, and `emit` then sews the winning order -- every walk starting from
+    a fresh `_Sewn` and a fresh ring cache and laying the same footprints in
+    the same order, so its k-th bridge is the k-th bridge of the walk before
+    it. `tools/travel_dups.py` counts them.
+
+    Exact. The key is EVERYTHING the body reads (`tests/test_travel_path_memo.py`
+    walks its call graph and fails on any global, ContextVar or module it
+    does not know about):
+
+    - `poly`, `slack` and each guide ring, by the bytes of their WKB (hashed
+      once per object: shapely geometry is immutable, and `ids` keeps every
+      object it has hashed alive, so an id cannot be reused within a scope);
+    - `a` and `b`, by their float bits -- and only when both are tuples of two
+      Python floats, since `_densify` returns `b` itself as the route's last
+      point; anything else bypasses the memo;
+    - `sewn`: None, a `_Sewn` by its ordered footprints (`_Sewn.digest`), or
+      any other geometry by its WKB;
+    - the caller's `cache`: absent, or the stale unsewn rings it holds, ring
+      by ring, which the body tries first. A miss records whether the body
+      replaced them and a hit replays that, so the cache a hit leaves behind
+      is the one the miss would have.
+
+    What the body also reads is fixed for a process: `machine` constants,
+    this module's tuning constants, and three pure caches (`_UNSEWN_MEMO`,
+    `_ring_arc`, `_footprint`), whose hits are what their misses build.
+
+    A hit returns a fresh list (the points are tuples), so a caller may edit
+    its bridge. Bounded by stored points; past the cap a miss is computed and
+    not kept. Opened and emptied by `stitch_shape` (`_with_travel_memo`), so
+    nothing is held between shapes.
+    """
+
+    __slots__ = ("routes", "ids", "points", "stats")
+
+    def __init__(self) -> None:
+        self.routes: dict[bytes, tuple] = {}
+        self.ids: dict[int, tuple[object, bytes]] = {}
+        self.points = 0
+        self.stats = travel_memo_stats
+
+    def geom(self, g) -> bytes:
+        got = self.ids.get(id(g))
+        if got is not None and got[0] is g:
+            return got[1]
+        d = hashlib.blake2b(g.wkb, digest_size=16).digest()
+        self.ids[id(g)] = (g, d)
+        return d
+
+    def key(self, poly, ring, a, b, slack, sewn, cache) -> bytes | None:
+        if not (type(a) is tuple and type(b) is tuple and len(a) == 2 and len(b) == 2
+                and type(a[0]) is float and type(a[1]) is float
+                and type(b[0]) is float and type(b[1]) is float):
+            return None
+        h = hashlib.blake2b(digest_size=32)
+        h.update(struct.pack("<4d", a[0], a[1], b[0], b[1]))
+        h.update(self.geom(poly))
+        h.update(b"s-" if slack is None else b"s+" + self.geom(slack))
+        if ring is None:
+            h.update(b"r-")
+        elif isinstance(ring, LineString):
+            h.update(b"r1" + self.geom(ring))
+        else:
+            h.update(b"r*" + struct.pack("<I", len(ring)))
+            for r in ring:
+                h.update(self.geom(r))
+        if sewn is None:
+            h.update(b"w-")
+        elif isinstance(sewn, _Sewn):
+            h.update(b"w+" + sewn.digest(self.geom))
+        else:
+            h.update(b"wg" + self.geom(sewn))
+        if cache is None:
+            h.update(b"c-")
+        else:
+            stale = cache.get("unsewn_rings")
+            if not stale:
+                h.update(b"c0")
+            else:
+                h.update(b"c+" + struct.pack("<I", len(stale)))
+                for r in stale:
+                    h.update(self.geom(r))
+        return h.digest()
+
+
+#: hit / miss / bypass counts of the travel memo, summed over every scope
+#: (tests and `tools/travel_dups.py` read them)
+travel_memo_stats = {"hit": 0, "miss": 0, "bypass": 0}
+#: stored route points per `stitch_shape` before misses stop being kept
+_TRAVEL_MEMO_MAX_POINTS = 2_000_000
+_TRAVEL_MEMO: _TravelMemo | None = None
+_UNSET = object()
+
+
+def _with_travel_memo(fn):
+    """Run `fn` (`stitch_shape`) with a fresh travel memo, emptied after."""
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        global _TRAVEL_MEMO
+        outer, _TRAVEL_MEMO = _TRAVEL_MEMO, _TravelMemo()
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            _TRAVEL_MEMO = outer
+    return wrapper
+
+
 def travel_path(poly: Polygon, ring, a: tuple[float, float],
                 b: tuple[float, float], slack: Polygon | None = None,
                 sewn=None, cache: dict | None = None,
                 ) -> list[tuple[float, float]] | None:
-    """Stitchable route from a to b that never leaves the shape.
+    """Stitchable route from a to b that never leaves the shape -- see
+    `_travel_path`, which this answers from `_TravelMemo` inside a
+    `stitch_shape` call and simply calls everywhere else."""
+    memo = _TRAVEL_MEMO
+    if memo is None or math.dist(a, b) < machine.TINY_STITCH_MM:
+        return _travel_path(poly, ring, a, b, slack, sewn, cache)
+    key = memo.key(poly, ring, a, b, slack, sewn, cache)
+    if key is None:
+        memo.stats["bypass"] += 1
+        return _travel_path(poly, ring, a, b, slack, sewn, cache)
+    hit = memo.routes.get(key)
+    if hit is not None:
+        memo.stats["hit"] += 1
+        route, rings = hit
+        if rings is not _UNSET:
+            cache["unsewn_rings"] = list(rings)
+        return None if route is None else list(route)
+    memo.stats["miss"] += 1
+    before = cache.get("unsewn_rings") if cache is not None else None
+    out = _travel_path(poly, ring, a, b, slack, sewn, cache)
+    after = cache.get("unsewn_rings") if cache is not None else None
+    n = 0 if out is None else len(out)
+    if memo.points + n <= _TRAVEL_MEMO_MAX_POINTS:
+        memo.routes[key] = (None if out is None else tuple(out),
+                            _UNSET if after is before else tuple(after))
+        memo.points += n
+    return out
+
+
+def _travel_path(poly: Polygon, ring, a: tuple[float, float],
+                 b: tuple[float, float], slack: Polygon | None = None,
+                 sewn=None, cache: dict | None = None,
+                 ) -> list[tuple[float, float]] | None:
+    """`travel_path`'s body, unmemoized: a stitchable route from a to b that
+    never leaves the shape.
 
     With `sewn` — the union of fill footprints already laid in this shape — the
     route also prefers to stay OFF them: straight if straight crosses only
@@ -2463,6 +2624,7 @@ def _seam_aware_sections(paths: list[list[tuple[float, float]]], poly: Polygon, 
 
 
 @shape_memo.memoized("stitch_shape")
+@_with_travel_memo
 def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_mm: float, stitch_mm: float, underlay_style: str,
                  trim_at_mm: float,
