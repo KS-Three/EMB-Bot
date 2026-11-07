@@ -142,3 +142,24 @@ specs 3.2 min, serial specs 23.3 min at the cut (19.0 for all 100 on the
 sibling). The job alone was re-run as attempt 2 of that run. The budget moved
 to 60 in this PR: twice the slowest green in the table, about three times its
 median, and the job's own comment now points here.
+
+## `studio-e2e` apt rows (appended 2026-11-07)
+
+The job's system packages (Tesseract, and the nine font packages
+`playwright install-deps chromium` adds on ubuntu-26.04) now install from
+`.deb` files held in `actions/cache` (PR #1291). Before it, the last 14 green
+`main` runs (42287412040 to 42334498906) spent 0.17 to 0.38 minutes on the two
+apt steps, except run 42294672308, which spent **14.27**: Tesseract 3.82 and
+the Playwright font deps 10.45, both downloading at 35 to 40 kB/s while the
+specs on the same runner ran at normal speed. Run 42166746724 (the one that
+hit the old 40-minute budget) did the same for about 13. Job minutes on those
+14 runs: min 20.5, p50 27.4, max 39.4.
+
+| Run id | Branch | apt cache | apt step (min) | studio-e2e job (min) | Specs (parallel + serial) |
+|---|---|---|---|---|---|
+| 42336840714 | PR #1291 | miss (populated) | 0.22 | 30.5 | 143 + 100, 0 skipped |
+
+On a healthy mirror the step costs what it did before; the change only
+removes the download from the slow tail, so read a single slow apt step after
+this as a cache miss (an image or Playwright bump) before reading it as the
+mirror.

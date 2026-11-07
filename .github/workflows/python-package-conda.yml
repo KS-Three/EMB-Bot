@@ -439,10 +439,6 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: digitizer/requirements.txt
-      # Tesseract so the service's OCR-suggested-text pass behaves as it does
-      # in the digitizer job (text-cluster-convert.spec.js drives that UI).
-      - name: Install system dependencies (Tesseract OCR)
-        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
       # Cache the venv itself (not just pip's wheel cache): the install step
       # below then only verifies. Same path as before, so the bootstrap probe
       # and the editable install resolve identically.
@@ -462,20 +458,64 @@ jobs:
       - name: Install
         working-directory: app
         run: npm ci
+      # Everything this job takes from apt, installed in ONE step from cached
+      # .deb files: Tesseract (so the service's OCR-suggested-text pass behaves
+      # as it does in the digitizer job -- text-cluster-convert.spec.js drives
+      # that UI) and Playwright's Chromium deps. On ubuntu-latest those deps
+      # are nine FONT packages and nothing else -- the image already has every
+      # shared library Chromium needs -- so this step is pure download, and
+      # download is exactly what the slow runners choke on. Measured 2026-11-06
+      # (run 42294672308): `apt-get update` fetched its 4.6 MB index at
+      # 14.7 MB/s, then the 30 MB of .deb files crawled in at 35-40 kB/s --
+      # 3m37s for Tesseract, 10m22s for the fonts -- while the same runner ran
+      # the specs at normal speed. Run 42166746724 did the same and hit the
+      # 40-minute budget with every finished spec green. On a healthy runner
+      # the two old steps cost 15 seconds; here, a cache hit installs the same
+      # packages with `dpkg -i` and never touches the mirror.
+      #
+      # The key pins the runner image build (a .deb set is only valid against
+      # the exact image whose libraries it was resolved on) and the
+      # playwright-core version that chooses the dependency list, so a bump of
+      # either repopulates from the mirror once. No restore-keys: a near-miss
+      # here would be debs for another image. The miss branch copies whatever
+      # apt downloaded, so the saved set is always the one that was installed;
+      # `cp` with no .deb to copy fails the step rather than caching nothing.
+      # `tesseract --version` at the end is the tripwire for either branch.
+      - name: Runner image id (apt cache key)
+        id: image
+        run: echo "id=${ImageOS}-${ImageVersion}" >> "$GITHUB_OUTPUT"
+      - name: Cache apt packages (Tesseract + Playwright Chromium deps)
+        id: apt-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/e2e-apt-debs
+          key: e2e-apt-${{ steps.image.outputs.id }}-pw${{ hashFiles('app/node_modules/playwright-core/package.json') }}-tesseract-ocr
+      - name: Install system packages (Tesseract OCR + Playwright Chromium deps)
+        working-directory: app
+        run: |
+          DEBS="$HOME/.cache/e2e-apt-debs"
+          if [ "${{ steps.apt-cache.outputs.cache-hit }}" = "true" ]; then
+            sudo dpkg -i "$DEBS"/*.deb
+          else
+            sudo apt-get clean
+            sudo apt-get update
+            sudo apt-get install -y tesseract-ocr
+            npx playwright install-deps chromium
+            mkdir -p "$DEBS"
+            sudo cp /var/cache/apt/archives/*.deb "$DEBS"/
+          fi
+          tesseract --version
       - name: Cache Playwright browsers
         id: pw-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: pw-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}
+      # Browser only: its system deps came from the apt step above.
       - name: Install Playwright Chromium
         if: steps.pw-cache.outputs.cache-hit != 'true'
         working-directory: app
-        run: npx playwright install --with-deps chromium
-      - name: Install Playwright system libraries (browser cached)
-        if: steps.pw-cache.outputs.cache-hit == 'true'
-        working-directory: app
-        run: npx playwright install-deps chromium
+        run: npx playwright install chromium
       # The specs that talk to the shared digitizer service on :8721 (every
       # file naming SERVICE_URL) stay serial: each file's afterAll kills that
       # one service, so under parallel workers one file's teardown races
