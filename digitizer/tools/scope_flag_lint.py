@@ -53,6 +53,12 @@ ROADMAP.md, and never fails.
 
     python -m tools.scope_flag_lint            # from digitizer/, ~2 s
     python -m tools.scope_flag_lint --json     # same report as JSON
+    python -m tools.scope_flag_lint --brief    # orphans + default mismatches only
+
+`--brief` drops the CITED FLAGS list and UNSETTLED, keeping the two lists a
+refresh session acts on. It is still advisory and still exits 0; with `--json`
+it trims the JSON to the same keys. The counts in each section are the full
+report's counts, not a sample.
 
 What it cannot know: an `effective_*` helper that turns a default-OFF field
 on for some classes reads as OFF here; a JS option's default is inferred from
@@ -559,8 +565,32 @@ def render(r: Report) -> str:
     return "\n".join(out)
 
 
-def to_json(r: Report) -> str:
-    return json.dumps({
+def render_brief(r: Report) -> str:
+    """Orphans and default mismatches only; same section titles and counts."""
+    keep = ("ORPHANS", "DEFAULT MISMATCHES")
+    blocks = render(r).split("\n\n")
+    head = (f"scope_flag_lint --brief — advisory, read-only; "
+            f"{len(r.docs)} docs read; orphans and default mismatches only "
+            f"(a reading list, not a defect list)")
+    body = [b for b in blocks if b.startswith(keep)]
+    return "\n\n".join([head, *body,
+                        "Advisory only: exit code is 0 whatever the docs say."])
+
+
+BRIEF_KEYS = ("docs", "orphans_absent", "orphans_not_flag",
+              "mismatches_current", "mismatches_historical",
+              "mismatches_conditional")
+
+
+def to_json(r: Report, brief: bool = False) -> str:
+    d = _json_dict(r)
+    if brief:
+        d = {k: d[k] for k in BRIEF_KEYS}
+    return json.dumps(d, indent=2)
+
+
+def _json_dict(r: Report) -> dict:
+    return ({
         "docs": r.docs,
         "cited": r.cited,
         "orphans_absent": r.orphans_absent,
@@ -569,7 +599,7 @@ def to_json(r: Report) -> str:
         "mismatches_historical": r.mismatches_historical,
         "mismatches_conditional": r.mismatches_conditional,
         "unsettled": r.unsettled,
-    }, indent=2)
+    })
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -581,7 +611,11 @@ def main(argv: list[str] | None = None) -> int:
     from tools._console import utf8_console
     utf8_console()
     r = run()
-    print(to_json(r) if "--json" in argv else render(r))
+    brief = "--brief" in argv
+    if "--json" in argv:
+        print(to_json(r, brief))
+    else:
+        print(render_brief(r) if brief else render(r))
     return 0
 
 
