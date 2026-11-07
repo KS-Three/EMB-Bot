@@ -640,19 +640,34 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
     const groups = blk.groups.size > 1
       ? Array.from(blk.groups.values()).sort((a, b) => a.style.z - b.style.z)
       : Array.from(blk.groups.values());
-    // The block's contact shadow: ONE path for every strand of the block that
-    // is not raised, at the strength of its topmost such group (the stitching
-    // whose edge is what the shadow outlines; an underlay under it is covered
-    // either way), drawn onto everything sewn before this block.
-    let top = null;
-    for (const grp of groups) if (!grp.style.raised) top = grp;
-    if (top) {
-      if (groups.length === 1) strokeShadow(ctx, top.items, lw, top.style);
-      else {
-        const items = [];
-        for (const grp of groups) if (!grp.style.raised) for (const q of grp.items) items.push(q);
-        strokeShadow(ctx, items, lw, top.style);
+    // The block's contact shadow: ONE path for the block's stitching that is
+    // neither raised (it casts its own, below) nor buried, at the strength of
+    // its topmost such group (the stitching whose edge the shadow outlines),
+    // drawn onto everything sewn before this block.
+    //
+    // BURIED kinds (z <= 1: travel, underlay, tie) are left out when the block
+    // has anything else: merged into the top group's path they would cast at
+    // fill strength instead of their own faint one, and wherever one is
+    // exposed (a travel run across a hole the customer just opened) that
+    // darkened bare fabric visibly — field-reshape-mode (e) caught it in CI,
+    // 41 levels off the garment at a pixel inside the hole. Under the
+    // stitching that covers them their faint shadow never showed anyway. A
+    // block of buried kinds alone still casts at its own strength.
+    let top = null, topBuried = null;
+    for (const grp of groups) {
+      if (grp.style.raised) continue;
+      if (grp.style.z <= 1) topBuried = grp; else top = grp;
+    }
+    if (groups.length === 1 && (top || topBuried)) {
+      strokeShadow(ctx, (top || topBuried).items, lw, (top || topBuried).style);
+    } else if (top || topBuried) {
+      const cast = top || topBuried;
+      const items = [];
+      for (const grp of groups) {
+        if (grp.style.raised || (top && grp.style.z <= 1)) continue;
+        for (const q of grp.items) items.push(q);
       }
+      strokeShadow(ctx, items, lw, cast.style);
     }
     for (const grp of groups) {
       const st = grp.style;

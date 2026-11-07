@@ -1315,6 +1315,25 @@ test("the block's shadow is ONE path however many kinds the block holds (the mea
   expect(shadows[1]).toBeGreaterThan(shadows[0]);
 });
 
+test("buried kinds stay out of the block's shadow: an exposed travel run does not cast at fill strength", () => {
+  const s = (x0, x1, kind) => ({ x0, y0: 0, x1, y1: 0, rgb: [200, 10, 10], kind, role: "", shape: "a" });
+  const mixedBlock = [s(0, 20, "fill"), s(20, 40, "fill"), s(40, 90, "travel"), s(90, 110, "underlay")];
+  const ctx = makePathLog();
+  drawThreads(ctx, mixedBlock, (x) => x, (y) => y, 8, { layers: [0, 2] });
+  // the shadow path is the first one stroked; count its subpaths
+  let n = 0;
+  for (const c of ctx.calls) {
+    if (c[0] === "moveTo") n++;
+    if (c[0] === "stroke") { expect(c[1]).toMatch(/^rgba\(0,0,0,/); break; }
+  }
+  expect(n).toBe(2); // the two fill strands only
+  // ...while a block of buried kinds alone still casts, at its own strength
+  const ctx2 = makePathLog();
+  drawThreads(ctx2, [s(0, 50, "travel"), s(50, 90, "underlay")], (x) => x, (y) => y, 8, { layers: [0, 2] });
+  const first = ctx2.calls.find((c) => c[0] === "stroke");
+  expect(first[1]).toBe(`rgba(0,0,0,${Math.round(0.22 * kindStyle("underlay", "").shadow * 1000) / 1000})`);
+});
+
 
 const rec = () => {
   const calls = [];
