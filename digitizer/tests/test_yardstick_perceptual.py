@@ -255,3 +255,70 @@ def test_cli_metrics_lists_every_column(yp, capsys):
     out = capsys.readouterr().out
     for name in yp.METRICS:
         assert name in out
+
+
+# ------------------------------------------- blank is worst, same reference
+def _oracle_rows(values):
+    """values: {ref: (self, pair, blank)} -> scored `mse` rows as score_rows
+    writes them (kind self / pair / blank, each carrying its ref_path)."""
+    rows = []
+    for ref, (s, p, b) in values.items():
+        for kind, v in (("self", s), ("pair", p), ("blank", b)):
+            rows.append({"id": f"{ref}~{kind}", "kind": kind, "ref_path": ref, "mse": f"{v:.6f}"})
+    return rows
+
+
+class _FakeMetric:
+    name = "mse"
+    unavailable = None
+
+
+def test_same_ref_blank_worst_can_hold_where_the_global_one_fails(yp):
+    """Design A's pair reads 0.40, above design B's blank at 0.30, so the
+    global reading fails. Each pair is under its OWN blank (0.40 < 0.70,
+    0.10 < 0.30), so the same-reference reading holds."""
+    scored = _oracle_rows({"A": (0.0, 0.40, 0.70), "B": (0.0, 0.10, 0.30)})
+    o = yp.oracle_check(scored, [_FakeMetric()])["mse"]
+    assert o["blank_worst"] is False
+    assert o["blank_worst_same_ref"] is True
+    assert o["refs_checked"] == 2
+    assert o["self_zero"] is True
+
+
+def test_same_ref_blank_worst_fails_when_a_pair_beats_its_own_blank(yp):
+    scored = _oracle_rows({"A": (0.0, 0.80, 0.70), "B": (0.0, 0.10, 0.30)})
+    o = yp.oracle_check(scored, [_FakeMetric()])["mse"]
+    assert o["blank_worst"] is False and o["blank_worst_same_ref"] is False
+
+
+def test_both_readings_hold_on_a_well_behaved_set(yp):
+    scored = _oracle_rows({"A": (0.0, 0.10, 0.70), "B": (0.0, 0.20, 0.30)})
+    o = yp.oracle_check(scored, [_FakeMetric()])["mse"]
+    assert o["blank_worst"] and o["blank_worst_same_ref"]
+
+
+def test_same_ref_reading_is_in_report_md_and_not_in_scores_csv(yp, tmp_path):
+    scored = _oracle_rows({"A": (0.0, 0.40, 0.70), "B": (0.0, 0.10, 0.30)})
+    ms = [_FakeMetric()]
+    md5 = yp.write_table(scored, tmp_path, ms)
+    assert "same_ref" not in (tmp_path / "scores.csv").read_text()
+    oracle = yp.oracle_check(scored, ms)
+    md = yp.markdown(scored, ms, {"mse": None}, None, oracle, md5)
+    assert "blank is worst, same reference" in md
+    assert "| mse | yes | NO | yes |" in md
+
+
+def _write_pairs(tmp_path):
+    pairs = tmp_path / "pairs.csv"
+    pairs.write_text("id,ours_path,ref_path\n" + f"p,{PES},{DST}\n", encoding="utf-8")
+    return pairs
+
+
+def test_cli_report_json_carries_both_blank_readings(yp, tmp_path):
+    out = tmp_path / "o"
+    code = yp.main(["oracle", str(_write_pairs(tmp_path)), "--out", str(out), "--metrics", "mse",
+                    "--max-px", "256", "--quiet"])
+    assert code == 0
+    o = json.loads((out / "report.json").read_text(encoding="utf-8"))["oracles"]["mse"]
+    assert o["blank_worst"] is True and o["blank_worst_same_ref"] is True and o["refs_checked"] == 1
+    assert "same reference" in (out / "report.md").read_text(encoding="utf-8")
