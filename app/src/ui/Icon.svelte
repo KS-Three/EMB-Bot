@@ -95,6 +95,10 @@
     // see the file-level note on why these two break the stroke-only rule.
     play: `<path d="M8 5.5L19 12L8 18.5Z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/>`,
     pause: `<rect x="7" y="5" width="3.5" height="14" rx="1" fill="currentColor" stroke="none"/><rect x="13.5" y="5" width="3.5" height="14" rx="1" fill="currentColor" stroke="none"/>`,
+    // The simulator's previous / next thread change (SimBar.svelte): the play
+    // triangle against a bar, the media-player "skip" every viewer knows.
+    "skip-back": `<line x1="6.5" y1="6" x2="6.5" y2="18"/><path d="M18 6.5L9.5 12L18 17.5Z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/>`,
+    "skip-forward": `<line x1="17.5" y1="6" x2="17.5" y2="18"/><path d="M6 6.5L14.5 12L6 17.5Z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/>`,
 
     // Dropdown/disclosure caret -- ThreadPicker's ▾ and DigitizePanel's
     // sequencer caret. Points down at rest; existing callers already rotate
