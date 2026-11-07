@@ -578,12 +578,102 @@
   // it kept (nearRepeatsDropped). An edge as long as the offset, or a short
   // one that turns back at neither end (a curve, a staircase of right
   // angles), is moved exactly as it always was.
-  function offsetRing(ring, dPx, outward) {
+  //
+  // `opts.bevel` (default off; buildQualityDesign's `offsetBevel`): a corner
+  // whose mitre would pass the clamp is BEVELLED -- cut square at the offset,
+  // two points, one on each side's moved edge -- instead of pushed 3d along
+  // its bisector; and a corner the move closes up (the offset edges overlap)
+  // takes the true crossing of the two moved edges, and any moved edge that
+  // comes out running BACKWARD is consumed, its neighbours meeting directly
+  // (bevelledCorners). Off, nothing reads it and every ring is unchanged.
+  function offsetRing(ring, dPx, outward, opts) {
     const copy = ring ? ring.map((q) => ({ x: q.x, y: q.y })) : [];
     if (copy.length < 3 || !(Math.abs(dPx) > 1e-9)) return copy;
+    if (opts && opts.bevel && dPx > 0) {
+      // No near repeat is dropped first: a bevel moves no corner further
+      // than the offset, which is all the drop was for, and dropping one
+      // when the offset is large ate the arc beside a cusp (the crescent
+      // at 3 mm lost 12 corners and a fifth of the area it adds).
+      const said = distinctCorners(ring);
+      const bevelled = said.length >= 3 ? bevelledCorners(said, dPx, outward) : null;
+      if (bevelled) return bevelled;
+    }
     const pts = nearRepeatsDropped(distinctCorners(ring), Math.abs(dPx));
     if (pts.length < 3) return copy;
     return movedCorners(pts, dPx, outward);
+  }
+  // offsetRing's move of corners `pts` under `opts.bevel`. Each edge is moved
+  // `dPx` along its outward normal (inward to shrink) to a LINE; a corner is
+  // where two neighbouring lines join:
+  //  - lines that part there (the corner opens away from the move): the
+  //    mitre, the lines' crossing, while it is within the 3d clamp; past it
+  //    a bevel, the two moved edges' own ends, so no point is moved further
+  //    than the offset itself. (A hairline turn-back is bevelled too.)
+  //  - lines that close up there: their crossing, unclamped. A moved edge
+  //    whose two ends land in the wrong order is consumed and its two
+  //    neighbours joined directly, worst first, until none runs backward --
+  //    which is how a cusp shrinks without folding through itself.
+  // Returns null if fewer than three edges are left (the ring closes up: the
+  // caller's mitred ring and its collapse checks take over, as before).
+  function bevelledCorners(pts, dPx, outward) {
+    const n = pts.length;
+    let area2 = 0;
+    for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; area2 += a.x * b.y - b.x * a.y; }
+    const sgn = area2 >= 0 ? 1 : -1;
+    const d = (outward ? 1 : -1) * dPx;   // signed move along the outward normal
+    const maxDisp = 3 * dPx;              // the mitre clamp movedCorners uses
+    const E = [];
+    for (let j = 0; j < n; j++) {
+      const p = pts[j], q = pts[(j + 1) % n];
+      const L = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+      const ux = (q.x - p.x) / L, uy = (q.y - p.y) / L, nx = sgn * uy, ny = -sgn * ux;
+      E.push({ ux, uy, nx, ny, a: { x: p.x + d * nx, y: p.y + d * ny }, b: { x: q.x + d * nx, y: q.y + d * ny } });
+    }
+    // the points of the corner where line i runs into line k
+    const join = (i, k) => {
+      const ei = E[i], ek = E[k];
+      const cr = ei.ux * ek.uy - ei.uy * ek.ux, dt = ei.ux * ek.ux + ei.uy * ek.uy;
+      if (k === (i + 1) % n) {
+        // Two lines still neighbours at pts[k] with a mitre within the clamp:
+        // movedCorners' own point, to the bit, so a ring with nothing to
+        // bevel or consume comes back exactly as it does without the option.
+        let bx = ei.nx + ek.nx, by = ei.ny + ek.ny;
+        const bl = Math.hypot(bx, by);
+        if (bl >= 1e-6) {
+          bx /= bl; by /= bl;
+          const m = dPx / Math.max(bx * ei.nx + by * ei.ny, 1e-3);
+          if (m <= maxDisp) { const c = pts[k], dir = outward ? 1 : -1; return [{ x: c.x + dir * (bx * m), y: c.y + dir * (by * m) }]; }
+        }
+      }
+      if (Math.abs(cr) < 1e-9) return dt > 0 ? [ei.b] : [ei.b, ek.a];   // straight on / hairline turn-back
+      if (sgn * d * cr > 0) return [ei.b, ek.a];                         // the lines part: bevel
+      const t = ((ek.a.x - ei.b.x) * ek.uy - (ek.a.y - ei.b.y) * ek.ux) / cr;
+      return [{ x: ei.b.x + t * ei.ux, y: ei.b.y + t * ei.uy }];         // the lines close up: their crossing
+    };
+    const prev = Array.from({ length: n }, (_, k) => (k - 1 + n) % n);
+    const next = Array.from({ length: n }, (_, k) => (k + 1) % n);
+    // how far line k's moved edge runs backward along its own direction (>0 is backward)
+    const backward = (k) => {
+      const s = join(prev[k], k), f = join(k, next[k]), a = s[s.length - 1], b = f[0];
+      return -((b.x - a.x) * E[k].ux + (b.y - a.y) * E[k].uy);
+    };
+    const alive = new Array(n).fill(true);
+    let left = n;
+    const bad = new Map();
+    const check = (k) => { const w = backward(k); if (w > 1e-9) bad.set(k, w); else bad.delete(k); };
+    for (let k = 0; k < n; k++) check(k);
+    while (bad.size) {
+      let worst = -1, ww = -Infinity;
+      for (const [k, w] of bad) if (w > ww) { ww = w; worst = k; }
+      if (left <= 3) return null;
+      const p = prev[worst], q = next[worst];
+      next[p] = q; prev[q] = p; alive[worst] = false; left--;
+      bad.delete(worst);
+      check(p); check(q);
+    }
+    const out = [];
+    for (let k = 0; k < n; k++) if (alive[k]) for (const v of join(prev[k], k)) out.push({ x: v.x, y: v.y });
+    return out;
   }
   // Does the path prev -> cur -> next turn back at `cur`: more than a right angle.
   function turnsBack(prev, cur, next) {
@@ -689,9 +779,9 @@
   // a hole. Without the flag it is `insetRing`, toward the ring's own centre,
   // which for a hole is INTO the hole: covered by the fill's pull compensation
   // at 0.2 mm, and past it at 0.6. A ring that folds when moved is used as
-  // drawn.
-  function edgeRunRing(ring, isHole, insetPx) {
-    const moved = offsetRing(ring, insetPx, isHole);
+  // drawn. `offsetOpts`: offsetRing's (`offsetBevel`), or nothing.
+  function edgeRunRing(ring, isHole, insetPx, offsetOpts) {
+    const moved = offsetRing(ring, insetPx, isHole, offsetOpts);
     const a0 = signedArea(ring), a1 = signedArea(moved);
     if (Math.sign(a0) !== Math.sign(a1) || Math.abs(a1) < 1e-6) return ring.map((q) => ({ x: q.x, y: q.y }));
     return moved;
@@ -765,12 +855,12 @@
       // laid, to the first corner one CAN be reached from.
       const clear = ctx.clear || (() => true);
       const trace = (ring) => ctx.huggingOutline(ring, { stitchLen: edgeStitch, hug: ctx.openTol });
-      const r = [trace(edgeRunRing(outer, false, ctx.edgeInsetPx))];
+      const r = [trace(edgeRunRing(outer, false, ctx.edgeInsetPx, ctx.offsetOpts))];
       // `holes` is every ring inside the outline, and a ring inside a hole is
       // an ISLAND: filled ground again (even-odd), so its filled side is its
       // own inside. (Third audit: a bullseye's island had its run in the moat.)
       const isHole = (hh) => holes.filter((other) => other !== hh && pointInPoly(hh[0], other)).length % 2 === 0;
-      const left = holes.map((hh) => edgeRunRing(hh, isHole(hh), ctx.edgeInsetPx));
+      const left = holes.map((hh) => edgeRunRing(hh, isHole(hh), ctx.edgeInsetPx, ctx.offsetOpts));
       // the EDGE_RUN_TRIES corners of the rings still to sew that are nearest
       // to p, nearest first (kept by insertion: with 2,000 holes, sorting
       // every corner for every ring was most of the design's time)
@@ -1055,7 +1145,7 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, fillTurnSlant, dedupeHoles, cutFloats, satinSmallShapes, crossUnderlay, proMeasuredValues }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, fillTurnSlant, dedupeHoles, cutFloats, satinSmallShapes, crossUnderlay, proMeasuredValues, offsetBevel }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
   // satinfont.js's constant block — and `satinZigzag`, ON by default since 2026-10-13:
@@ -1306,6 +1396,13 @@
     // that begins where the last one ended: 15 on those 8,255 designs.
     // Off, nothing is noted and every stitch is unchanged.
     const dedupeHoles = o.dedupeHoles !== false;
+    // `offsetBevel` (default off; MASTER_SCOPE defect 55's offset half): every
+    // ring moved by offsetRing here -- the pull-compensated fill rings and the
+    // `fillColumns` edge run -- is moved with `bevel`: a corner whose mitre
+    // would pass the clamp is cut square at the offset, and a corner the move
+    // closes up consumes the moved edges that would run backward, so a cusp
+    // does not fold the ring. Off, nothing reads it and every stitch is unchanged.
+    const offsetOpts = o.offsetBevel ? { bevel: true } : undefined;
     // The rings a FILL is sewn to: the shape's own, or under a fabric preset
     // the pull-compensated ones (grow the outer, shrink the holes), so it sews
     // to true size on stretchy cloth. No-fabric fills stay unoffset.
@@ -1324,7 +1421,7 @@
       // (Every ring is moved from its corners said ONCE, the outline and a
       // hole as much as an island: offsetRing sees to that itself.)
       const moved = holes.map((hh, i) => {
-        const off = offsetRing(hh, pullCompPx, islands[i]);
+        const off = offsetRing(hh, pullCompPx, islands[i], offsetOpts);
         const a0 = signedArea(hh), a1 = signedArea(off);
         if (Math.sign(a0) !== Math.sign(a1) || Math.abs(a1) < 1e-6) return hh;
         return off;
@@ -1348,13 +1445,13 @@
         stuck.forEach(putBack);
         for (const i of stuck) upset(i).forEach(putBack);
       }
-      return [offsetRing(poly, pullCompPx, true)].concat(moved);
+      return [offsetRing(poly, pullCompPx, true, offsetOpts)].concat(moved);
     }
     const edgeInsetPx = EDGE_RUN_INSET_MM * pxPerFinalMm;   // with `fillColumns`
     const underlayCtxBase = {
       pxPerFinalMm, maxStitch: maxPx, underlayStitchPx, underlayRowPx,
       runningOutline: fillmod.runningOutline, tatamiFill: fillmod.tatamiFill, plainStart: fillmod.plainStart,
-      huggingOutline: fillmod.huggingOutline, edgeInsetPx,
+      huggingOutline: fillmod.huggingOutline, edgeInsetPx, offsetOpts,
       insetRing, pcaAngleDeg,
     };
 
@@ -1713,7 +1810,7 @@
             // underlayRuns' does: inside the fill, corners kept.)
             try {
               if (cover && (holes.length || !isConvexRing(poly))) {
-                runs.push(fillmod.huggingOutline(edgeRunRing(poly, false, edgeInsetPx), { stitchLen: underlayStitchPx, hug: rowPx })); runKinds.push("underlay");
+                runs.push(fillmod.huggingOutline(edgeRunRing(poly, false, edgeInsetPx, offsetOpts), { stitchLen: underlayStitchPx, hug: rowPx })); runKinds.push("underlay");
               } else {
                 const inset = insetRing(poly, Math.min(2, 0.6 * pxPerFinalMm));
                 runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx })); runKinds.push("underlay");
