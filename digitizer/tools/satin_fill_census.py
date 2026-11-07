@@ -32,6 +32,7 @@ three readings, so they cannot disagree about what was sewn:
                 (`reader_on_ours`), which is its noise on small shapes.
 
     python -m tools.satin_fill_census digitize --runs DIR [--set KEY=JSON ...] [--only SLUG ...]
+                                     # --set extra.KEY=JSON: a cfg.extra flag (pro_pair.config)
     python -m tools.satin_fill_census measure --runs DIR [--only SLUG ...]
     python -m tools.satin_fill_census table --runs DIR [--vs DIR2]
     python -m tools.satin_fill_census flip --runs OFF --vs ON              # a flag's two arms

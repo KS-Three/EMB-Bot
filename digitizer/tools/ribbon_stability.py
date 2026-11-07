@@ -53,6 +53,10 @@ verdicts while the flips stayed at 3-12 against 5 today):
              variant that can move a shape the aspect gate refused on BOTH
              polygons, which this report's DT population leaves out, so those
              changes are counted on a separate `outside` line.
+    hysteresis_aspect  the same with the aspect band ALONE
+             (`classify_ribbon(hysteresis="aspect")`,
+             `cfg.extra["satin_fill_hysteresis_aspect_only"]`, 2026-11-07): PR
+             #1311's option 3, no cv band.
 
     .venv/bin/python tools/ribbon_stability.py [case ...] [--variant NAME ...]
 
@@ -205,6 +209,9 @@ def classify_variant(poly, variant: str, design_class: str) -> RibbonVerdict:
     m: dict = {"ribbon_w": w}
     if variant == "hysteresis":
         return classify_ribbon(poly, max_w, design_class=design_class, hysteresis=True)
+    if variant == "hysteresis_aspect":
+        return classify_ribbon(poly, max_w, design_class=design_class,
+                               hysteresis=s6.HYST_ASPECT_ONLY)
     if w <= 0 or w > max_w:
         return RibbonVerdict(False, "width_cap", m)
     if perim / 2.0 - w < 3.0 * w:
