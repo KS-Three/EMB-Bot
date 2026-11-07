@@ -18,6 +18,7 @@
 // (expected or flaky) exactly once across ALL shards and steps; and no report
 // holds a test the collected list lacks. The digitizer's counterpart is
 // digitizer/tools/ci_shard_check.py. Node stdlib only, no install.
+import "./_help.mjs";
 import { readFileSync, readdirSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 

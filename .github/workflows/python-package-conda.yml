@@ -636,7 +636,10 @@ jobs:
           test "${{ needs.studio-e2e-shard.result }}" = success
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: tools/ci-e2e-shard-check.mjs
+          # _help.mjs is the checker's first import (the tools/ --help guard).
+          sparse-checkout: |
+            tools/ci-e2e-shard-check.mjs
+            tools/_help.mjs
           sparse-checkout-cone-mode: false
       - uses: actions/download-artifact@v4
         with:
