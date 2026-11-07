@@ -1,0 +1,310 @@
+{
+ "rule": {
+  "nothing_to_choose": "choice == tie",
+  "plainly_damaged": "choice in (L, R) and confidence >= 4",
+  "kent_has_to_look": "choice in (L, R) and confidence <= 3, or no choice"
+ },
+ "seed": 20261104,
+ "resamples": 10000,
+ "primary": {
+  "set": "pro-lettering-1102 (vlm-judge, 11-04)",
+  "model": "claude-fable-5-1-session",
+  "excluded": [
+   "P001",
+   "P002",
+   "P003"
+  ],
+  "threshold": 4,
+  "primary_settled": {
+   "n_scored": 39,
+   "n_kent_decided": 19,
+   "n_judge_decided": 7,
+   "judge_silent_on_decided": 13,
+   "kappa_3way": 0.38513513513513553,
+   "ci3_pairs": [
+    0.1521739130434782,
+    0.5894736842105261
+   ],
+   "ci3_designs": [
+    0.2265167309496511,
+    0.5176893954666043
+   ],
+   "reading_3way": "above chance",
+   "n_decided": 6,
+   "kappa_sides": null,
+   "ci2_pairs": [
+    null,
+    null
+   ],
+   "ci2_designs": [
+    null,
+    null
+   ],
+   "reading_sides": "n too small (<10)",
+   "table_kent_rows_judge_cols": [
+    [
+     6,
+     3,
+     0
+    ],
+    [
+     1,
+     19,
+     0
+    ],
+    [
+     0,
+     10,
+     0
+    ]
+   ]
+  },
+  "n_settled": 39,
+  "n_live": 54,
+  "tie_class": {
+   "n": 54,
+   "kappa": 0.3058186738836265,
+   "ci_pairs": [
+    0.051351351351351264,
+    0.546218487394958
+   ],
+   "ci_designs": [
+    0.08892145815139316,
+    0.4545454545454546
+   ],
+   "reading": "above chance",
+   "table_kent_rows_screen_cols": [
+    [
+     16,
+     13
+    ],
+    [
+     6,
+     19
+    ]
+   ]
+  },
+  "damaged_class": {
+   "n": 7,
+   "pairs": [
+    {
+     "pair": "P009",
+     "fixture": "proseal_beanie",
+     "kent": "before",
+     "screen": "before",
+     "confidence": 5,
+     "reason": "RIGHT's PROSEAL letters are chewed and the SPRAY FOAM COATINGS line is shattered; LEFT's letters are solid and the small line reads."
+    },
+    {
+     "pair": "P011",
+     "fixture": "and_pizza",
+     "kent": "before",
+     "screen": "before",
+     "confidence": 4,
+     "reason": "RIGHT shows open seam lines across the p's bowl and both z's; LEFT's letters are solid throughout."
+    },
+    {
+     "pair": "P013",
+     "fixture": "jakarta",
+     "kent": "before",
+     "screen": "before",
+     "confidence": 5,
+     "reason": "RIGHT's tagline a city of collaboration is mush and the main letters have ragged edges and odd fill directions; LEFT's tagline reads and letters are even."
+    },
+    {
+     "pair": "P025",
+     "fixture": "bukit_asam",
+     "kent": "before",
+     "screen": "before",
+     "confidence": 4,
+     "reason": "RIGHT's BukitAsam letters are mottled with seams and its beyond coal is scrambled worse than LEFT's; LEFT's main word is solid."
+    },
+    {
+     "pair": "P035",
+     "fixture": "k_line",
+     "kent": "before",
+     "screen": "before",
+     "confidence": 5,
+     "reason": "LEFT's K LINE letters have a bumpy segmented fill and its KAWASAKI KISEN KAISHA line is illegible mush; RIGHT's letters are even and the small line reads."
+    },
+    {
+     "pair": "P042",
+     "fixture": "bukit_asam",
+     "kent": "tie",
+     "screen": "before",
+     "confidence": 4,
+     "reason": "RIGHT's BukitAsam letters are mottled with seams through B, k, A and m; LEFT's letters are solid. Tagline scrambled on both."
+    },
+    {
+     "pair": "P057",
+     "fixture": "n_sync",
+     "kent": "before",
+     "screen": "before",
+     "confidence": 4,
+     "reason": "LEFT's S, Y, N and C are chopped into segments with hard breaks and a bright wedge in the N; RIGHT's letters are continuous."
+    }
+   ]
+  },
+  "workload": {
+   "n_live": 54,
+   "n_kent_has_to_look": 15,
+   "n_settled": 39,
+   "n_nothing_to_choose": 32,
+   "n_plainly_damaged": 7,
+   "kent_side_picks": 29,
+   "kent_side_picks_in_look": 10,
+   "kent_side_picks_in_nothing_to_choose": 13,
+   "kent_side_picks_in_plainly_damaged": 6
+  },
+  "identical_controls": {
+   "n": 3,
+   "answered": 3,
+   "not_nothing_to_choose": []
+  }
+ },
+ "replication": {
+  "set": "vlm-judge-pro100 (vlm-judge-100, 11-06)",
+  "model": "claude-opus-5-5-session",
+  "contamination": "The judge that wrote the 99 verdicts had written this rule before judging and could, without meaning to, have pushed confidence on side picks up or down.",
+  "threshold": 4,
+  "primary_settled": {
+   "n_scored": 67,
+   "n_kent_decided": 24,
+   "n_judge_decided": 6,
+   "judge_silent_on_decided": 18,
+   "kappa_3way": 0.2895015906680805,
+   "ci3_pairs": [
+    0.07372343579838822,
+    0.49813047283008016
+   ],
+   "ci3_designs": [
+    0.11199999999999984,
+    0.4541577825159915
+   ],
+   "reading_3way": "above chance",
+   "n_decided": 6,
+   "kappa_sides": 0.6666666666666665,
+   "ci2_pairs": [
+    0.0,
+    1.0
+   ],
+   "ci2_designs": [
+    0.0,
+    1.0
+   ],
+   "reading_sides": "n too small (<10)",
+   "table_kent_rows_judge_cols": [
+    [
+     3,
+     4,
+     0
+    ],
+    [
+     0,
+     43,
+     0
+    ],
+    [
+     1,
+     14,
+     2
+    ]
+   ]
+  },
+  "n_settled": 67,
+  "n_live": 99,
+  "tie_class": {
+   "n": 99,
+   "kappa": 0.2810764630499785,
+   "ci_pairs": [
+    0.08693972395643763,
+    0.4662497304291569
+   ],
+   "ci_designs": [
+    0.1368421052631579,
+    0.42136498516320464
+   ],
+   "reading": "above chance",
+   "table_kent_rows_screen_cols": [
+    [
+     22,
+     18
+    ],
+    [
+     16,
+     43
+    ]
+   ]
+  },
+  "damaged_class": {
+   "n": 6,
+   "pairs": [
+    {
+     "pair": "P008",
+     "fixture": "bridge",
+     "kent": "after",
+     "screen": "after",
+     "confidence": 4,
+     "reason": "Left sews the wheel solid black like the art; right wraps every spoke and the ring in pale grey outlines that are not in the artwork and look messy."
+    },
+    {
+     "pair": "P010",
+     "fixture": "becker",
+     "kent": "before",
+     "screen": "before",
+     "confidence": 4,
+     "reason": "Left's MARINE is broken up, with stray outline fragments floating around the letters and smeared counters. Right's MARINE is solid and clean with an open A and R."
+    },
+    {
+     "pair": "P028",
+     "fixture": "fremont",
+     "kent": "after",
+     "screen": "after",
+     "confidence": 5,
+     "reason": "Right drops EST 1895 and EAT STAY PLAY entirely, garbles THE and breaks the rope border into scraps. Left keeps all the text and the rope."
+    },
+    {
+     "pair": "P037",
+     "fixture": "drone",
+     "kent": "after",
+     "screen": "before",
+     "confidence": 4,
+     "reason": "Left sews PRECISION and THERMAL as open zigzag skeletons that will not cover, and AND DRONE breaks into scraps. Right's lettering is solid and readable."
+    },
+    {
+     "pair": "P070",
+     "fixture": "drone",
+     "kent": "before",
+     "screen": "before",
+     "confidence": 4,
+     "reason": "Left sews PRECISION and AND DRONE as hollow thin outlines that barely read; right fills them solid so the lettering reads. Scenes are alike."
+    },
+    {
+     "pair": "P084",
+     "fixture": "fremont",
+     "kent": "before",
+     "screen": "before",
+     "confidence": 4,
+     "reason": "Right's HOTEL FREMONT and THE are sewn with jagged, spiky zigzag edges that look frayed; left's letters are smooth solid serif shapes."
+    }
+   ]
+  },
+  "workload": {
+   "n_live": 99,
+   "n_kent_has_to_look": 32,
+   "n_settled": 67,
+   "n_nothing_to_choose": 61,
+   "n_plainly_damaged": 6,
+   "kent_side_picks": 40,
+   "kent_side_picks_in_look": 16,
+   "kent_side_picks_in_nothing_to_choose": 18,
+   "kent_side_picks_in_plainly_damaged": 6
+  },
+  "identical_controls": {
+   "n": 4,
+   "answered": 4,
+   "not_nothing_to_choose": []
+  }
+ },
+ "both_above_chance": true
+}
