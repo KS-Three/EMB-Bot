@@ -886,7 +886,8 @@ def _shade_runs_by_region(plan: StitchPlan,
             if rid in shaded}
 
 
-# `cfg.extra["thread_match_grade_traced_letter"]` (built OFF 2026-11-07): a
+# `cfg.thread_match_grade_traced_letter` (built OFF 2026-11-07 as a
+# `cfg.extra` key; ON since that day, Kent's flip, a field now): a
 # letter `small_text.enlarge_small_text` scaled and moved is graded for thread
 # colour on the polygon it was TRACED from (`meta[TRACED_POLYGON_KEY]`), not
 # the polygon it sews. The enlargement moves the letter into the room around
@@ -908,9 +909,9 @@ _GRADE_TRACED_KEY = "thread_match_grade_traced_letter"
 def _traced_letters(result, cfg: PipelineConfig,
                     shaded: dict | None = None) -> dict[str, Polygon]:
     """shape_id -> the traced polygon the grader reads instead of the sewn
-    one, under the flag above; empty when it is off (the default), so the
-    default path is the polygon it always was."""
-    if not (getattr(cfg, "extra", None) or {}).get(_GRADE_TRACED_KEY):
+    one, under the flag above (ON by default since 2026-11-07); empty when
+    it is off, so the OFF path is the polygon it always was."""
+    if not getattr(cfg, _GRADE_TRACED_KEY, False):
         return {}
     from .small_text import TRACED_POLYGON_KEY
     out: dict[str, Polygon] = {}
@@ -1159,7 +1160,7 @@ def _best_loaded_spool_error(lab_px: np.ndarray, loaded: list[int],
 # (`tools/thread_match_fremont_probe.py`). The catch: a wrong spool on an
 # enlarged letter goes ungraded too. Counted in
 # `thread_match_enlarged_text_skipped`. Since 2026-11-07 the region keeps its
-# traced polygon in meta, and `thread_match_grade_traced_letter` (OFF, at
+# traced polygon in meta, and `thread_match_grade_traced_letter` (ON, at
 # `_GRADE_TRACED_KEY`) re-aims the grade there instead of skipping it.
 _SKIP_ENLARGED_TEXT_KEY = "thread_match_skip_enlarged_text"
 
@@ -4371,8 +4372,9 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
         # Only under the flag, so a default report's metrics keys are unchanged.
         metrics["thread_match_enlarged_text_skipped"] = (
             len(_enlarged_text_ids(result, cfg)) if result is not None else None)
-    if (getattr(cfg, "extra", None) or {}).get(_GRADE_TRACED_KEY):
-        # Only under the flag, so a default report's metrics keys are unchanged.
+    if getattr(cfg, _GRADE_TRACED_KEY, False):
+        # Only under the flag (ON by default since 2026-11-07), so an OFF
+        # report's metrics keys are the ones it always had.
         # The regions the grader read on their traced polygon; None when the
         # thread grade did not run (no artwork).
         metrics["thread_match_traced_letters_graded"] = (

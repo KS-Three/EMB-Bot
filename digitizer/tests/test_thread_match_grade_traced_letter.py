@@ -1,5 +1,7 @@
-"""`cfg.extra["thread_match_grade_traced_letter"]` (built OFF 2026-11-07):
-grade an enlarged letter's thread on the polygon it was TRACED from.
+"""`cfg.thread_match_grade_traced_letter` (built OFF 2026-11-07 as a
+`cfg.extra` key; ON since that day, Kent's flip "Traced-letter grading", a
+field now): grade an enlarged letter's thread on the polygon it was TRACED
+from.
 
 PR #1312 traced Fremont's false `0020 Black` block ("reassign to 0015
 White") to the grader: `small_text.enlarge_small_text` scales the word THE
@@ -15,7 +17,8 @@ Pinned on `photo/logo_hotel_fremont.webp`, 80 mm left_chest (one digitize):
 
 * every enlarged letter carries its traced polygon, and it is exactly the
   polygon that went into `enlarge_small_text` (the #1312 probe's spy);
-* default: the Black block is there, no new metric key;
+* OFF (PRE_FLIP): the Black block is there, no new metric key;
+* the default is the flag: the shipped report grades as the ON arm;
 * the flag: the Black block goes, every enlarged letter is still graded
   (same rows as default), each now within DELTA_E_VISIBLE of its spool;
 * the flag has one reader (preflight), and a re-drawn or shade-banded region
@@ -37,12 +40,14 @@ from digitizer_core.preflight import (DELTA_E_VISIBLE, THREAD_MATCH_POOR,
 from digitizer_core.small_text import TRACED_POLYGON_KEY
 from digitizer_core.stage1_prep import prep
 
+from .conftest import ENGINE_2026_10_27, PRE_FLIP
+
 FLAG = "thread_match_grade_traced_letter"
 ART = Path(__file__).resolve().parents[1] / "testdata" / "photo" / "logo_hotel_fremont.webp"
 
 
 def _on(cfg: PipelineConfig) -> PipelineConfig:
-    return dataclasses.replace(cfg, extra={**(cfg.extra or {}), FLAG: True})
+    return dataclasses.replace(cfg, thread_match_grade_traced_letter=True)
 
 
 def _blocks(rep) -> list[str]:
@@ -53,21 +58,29 @@ def _blocks(rep) -> list[str]:
 @pytest.fixture(scope="module")
 def fremont():
     from tools.thread_match_fremont_probe import EnlargeSpy
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    # The flag is a GRADING change only (preflight is its one reader), so one
+    # digitize serves both arms; `cfg` is the OFF arm.
+    default = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    cfg = dataclasses.replace(default, thread_match_grade_traced_letter=False)
     with EnlargeSpy() as spy:
         result, plan = digitize(ART, cfg)
     view = _two_tone_view(prep(ART, cfg, design_class=result.design_class), plan, cfg)
     return {"cfg": cfg, "result": result, "plan": plan, "spy": spy, "view": view,
             "off": run_preflight(result, plan, cfg, image=ART),
-            "on": run_preflight(result, plan, _on(cfg), image=ART)}
+            "on": run_preflight(result, plan, _on(cfg), image=ART),
+            "default": run_preflight(result, plan, default, image=ART)}
 
 
-def test_flag_defaults_off_and_has_one_reader():
+def test_flag_defaults_on_and_has_one_reader():
+    """Kent's flip 2026-11-07: a field defaulting True, False in PRE_FLIP and
+    the dated engine snapshot; declared in config.py, read in preflight.py."""
     assert FLAG == _GRADE_TRACED_KEY
+    assert PipelineConfig().thread_match_grade_traced_letter is True
     assert FLAG not in (PipelineConfig().extra or {})
+    assert PRE_FLIP[FLAG] is False and ENGINE_2026_10_27[FLAG] is False
     core = Path(__file__).resolve().parents[1] / "digitizer_core"
     readers = sorted(p.name for p in core.glob("*.py") if FLAG in p.read_text(encoding="utf-8"))
-    assert readers == ["preflight.py"]
+    assert readers == ["config.py", "preflight.py"]
 
 
 def test_traced_letters_empty_off_and_guarded_on():
@@ -84,7 +97,7 @@ def test_traced_letters_empty_off_and_guarded_on():
         r.shape_id, r.meta = sid, meta
         regs.append(r)
     result = type("Res", (), {"regions": regs})()
-    assert _traced_letters(result, PipelineConfig()) == {}
+    assert _traced_letters(result, PipelineConfig(thread_match_grade_traced_letter=False)) == {}
     # re-drawn (S2, S3), shade-banded (S4), empty (S5), never moved (S6): as sewn
     assert _traced_letters(result, _on(PipelineConfig()), {"S4": {7: []}}) == {"S1": t}
 
@@ -102,9 +115,17 @@ def test_every_enlarged_letter_keeps_the_polygon_it_came_in_with(fremont):
             assert not traced.equals(r.polygon)
 
 
-def test_default_blocks_black_and_adds_no_metric(fremont):
+def test_off_blocks_black_and_adds_no_metric(fremont):
     assert "0020:block" in _blocks(fremont["off"])
     assert "thread_match_traced_letters_graded" not in fremont["off"]["metrics"]
+
+
+def test_the_default_grades_as_the_flag(fremont):
+    """The shipped report is the ON arm: no Black block, the same score."""
+    assert _blocks(fremont["default"]) == _blocks(fremont["on"])
+    assert "0020:block" not in _blocks(fremont["default"])
+    assert fremont["default"]["score"] == fremont["on"]["score"]
+    assert fremont["default"]["grade"] == fremont["on"]["grade"]
 
 
 def test_flag_grades_the_traced_letter_and_the_block_goes(fremont):

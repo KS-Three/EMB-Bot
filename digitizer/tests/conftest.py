@@ -683,6 +683,14 @@ PRE_FLIP["lettering_stray_word_thread"] = False
 # protects those reads from the absorb floor. `tests/engine_2026_10_27.json`
 # carries it False.
 PRE_FLIP["dark_ink_floor_rescue"] = False
+# `flat_light_text_runs` and `thread_match_grade_traced_letter` joined the
+# flipped set 2026-11-07 (Kent, "Flat light-text runs" and "Traced-letter
+# grading"; both built OFF that day as `cfg.extra` keys, #1328 and #1326). ON,
+# the flat lane carves light thin ink into dark-ink beans, and the thread
+# grader reads an enlarged letter on its traced polygon.
+# `tests/engine_2026_10_27.json` carries both False.
+PRE_FLIP["flat_light_text_runs"] = False
+PRE_FLIP["thread_match_grade_traced_letter"] = False
 # `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
 # renders of his Instagram icon, drone, Bridge Bar and the repro), for the
 # reason every entry above gives. ON, a gradient-lane region's edge follows
