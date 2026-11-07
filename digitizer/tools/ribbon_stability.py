@@ -47,6 +47,12 @@ verdicts while the flips stayed at 3-12 against 5 today):
              significance instead of pruned, stations under one classifier
              pixel dropped (`tools/polygon_profile.py`). `profile:raw` keeps
              every station. See `docs/classifier-polygon-profile-2026-11-06.md`.
+    hysteresis  the shipped classifier with `classify_ribbon(hysteresis=True)`
+             (`cfg.extra["satin_fill_hysteresis"]`, 2026-11-07): the aspect and
+             regularity gates abstain inside their margin bands. It is the only
+             variant that can move a shape the aspect gate refused on BOTH
+             polygons, which this report's DT population leaves out, so those
+             changes are counted on a separate `outside` line.
 
     .venv/bin/python tools/ribbon_stability.py [case ...] [--variant NAME ...]
 
@@ -197,6 +203,8 @@ def classify_variant(poly, variant: str, design_class: str) -> RibbonVerdict:
     w = ribbon_width_mm(poly)
     perim = poly.exterior.length + sum(r.length for r in poly.interiors)
     m: dict = {"ribbon_w": w}
+    if variant == "hysteresis":
+        return classify_ribbon(poly, max_w, design_class=design_class, hysteresis=True)
     if w <= 0 or w > max_w:
         return RibbonVerdict(False, "width_cap", m)
     if perim / 2.0 - w < 3.0 * w:
@@ -256,6 +264,7 @@ def main(argv: list[str]) -> None:
             names.append(a)
     total_flips = {"current": 0, **{v: 0 for v in variants}}
     total_changed = {v: 0 for v in variants}
+    total_outside = {v: 0 for v in variants}
     for name in names or list(curve_tiers.CASES):
         rel, kw = curve_tiers.CASES[name]
         runs = {}
@@ -281,6 +290,10 @@ def main(argv: list[str]) -> None:
             va = classify_ribbon(pa, machine.SATIN_MAX_WIDTH_MM, design_class=dc)
             vb = classify_ribbon(pb, machine.SATIN_MAX_WIDTH_MM, design_class=dc)
             if va.reason in ("width_cap", "aspect") and vb.reason in ("width_cap", "aspect"):
+                for v in variants:
+                    if classify_variant(pa, v, dc).satin != va.satin:
+                        total_outside[v] += 1
+                        print(f"      {v} changes a verdict OUTSIDE the DT population: {a} {va.reason}")
                 continue
             n_dt += 1
             if va.satin != vb.satin:
@@ -307,7 +320,8 @@ def main(argv: list[str]) -> None:
             total_flips[k] += len(flips[k])
         for v in variants:
             total_changed[v] += len(changed[v])
-    print("TOTAL flips:", total_flips, " shipped verdicts changed:", total_changed)
+    print("TOTAL flips:", total_flips, " shipped verdicts changed:", total_changed,
+          " outside the DT population:", total_outside)
     from tests.test_satin import BAR, C_STROKE, O_RING, T_SHAPE, _serrated_disc
     for nm, poly in (("BAR", BAR), ("O_RING", O_RING), ("C_STROKE", C_STROKE), ("T_SHAPE", T_SHAPE),
                      ("serrated0.3", _serrated_disc(10.0, 0.3)), ("serrated0.6", _serrated_disc(10.0, 0.6)),

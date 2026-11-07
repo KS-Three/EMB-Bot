@@ -300,7 +300,8 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
                         per_stroke: bool = False,
                         area_weighted: bool = False,
                         floor_applies: bool = False,
-                        vote: bool = False) -> bool:
+                        vote: bool = False,
+                        hysteresis: bool = False) -> bool:
     """Should this shape be satin rather than fill?
 
     Two conditions, both about how the result reads on fabric: the ribbon must
@@ -353,7 +354,7 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
                            per_stroke=per_stroke,
                            area_weighted=area_weighted,
                            floor_applies=floor_applies,
-                           vote=vote).satin
+                           vote=vote, hysteresis=hysteresis).satin
 
 
 # Law 31's satin minimum width, adopted VERBATIM from the printed rule
@@ -404,23 +405,64 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
                     polygon_axis: bool = False,
                     area_weighted: bool = False,
                     floor_applies: bool = False,
-                    vote: bool = False) -> RibbonVerdict:
+                    vote: bool = False,
+                    hysteresis: bool = False) -> RibbonVerdict:
     """`is_satin_candidate`'s implementation. Same verdict, with attribution.
 
     `vote` (`cfg.extra["satin_fill_vote"]`, default OFF): the verdict is a
     majority over `_classify_ribbon_once` at five readings of the shape, the
     polygon as drawn and four small perturbations (`_vote_ribbon`). False
     returns the one reading, byte-identical to before the parameter existed.
+
+    `hysteresis` (`cfg.extra["satin_fill_hysteresis"]`, default OFF): a gate
+    whose reading sits inside its margin band (`_HYST_ASPECT_REL`,
+    `_HYST_CV_ABS`) abstains, and the gates clear of their bands decide. See
+    `_classify_ribbon_once`. With `vote` too, every reading is banded. False
+    is byte-identical to before the parameter existed.
     """
     once = _classify_ribbon_once(poly, max_width_mm, design_class=design_class,
                                  full_metrics=full_metrics, per_stroke=per_stroke,
                                  polygon_axis=polygon_axis, area_weighted=area_weighted,
-                                 floor_applies=floor_applies)
+                                 floor_applies=floor_applies, hysteresis=hysteresis)
     if not vote:
         return once
     return _vote_ribbon(once, poly, max_width_mm, design_class=design_class,
                         per_stroke=per_stroke, polygon_axis=polygon_axis,
-                        area_weighted=area_weighted, floor_applies=floor_applies)
+                        area_weighted=area_weighted, floor_applies=floor_applies,
+                        hysteresis=hysteresis)
+
+
+# `satin_fill_hysteresis`'s margin bands (2026-11-07, default OFF). A gate
+# whose reading sits this close to its line ABSTAINS; it does not pick a side.
+# Read off the `metrics` the verdict already carries, so a band costs nothing
+# the shipped path does not already compute.
+#
+#   aspect   the perimeter gate `length_est >= 3 w`, as a RELATIVE band on
+#            `metrics["aspect"]`: a shape at aspect >= 3 (1 - band) is not
+#            refused there, and the distance transform -- the finer, local
+#            reading -- decides it. Above the line it passes anyway.
+#   cv       the regularity gate `2 sigma < mu` (cv 0.5), as an ABSOLUTE band:
+#            in it the shape takes the irregular branch, where the promotion
+#            test (`explained`, `elongation`, p90 under the cap) decides both
+#            ways, exactly as it does for every shape past the line.
+#
+# NOT banded, on purpose: the width cap and the p90 cap (`max_width_mm`,
+# 5.0 mm, a physical limit -- ROADMAP gate 1), Law 31's 1.0 mm photo floor
+# (gate 1 again), and the promotion bounds (0.80 / 1.25 / 10, corpus-tuned;
+# no flip on the instrument reached them). So a flip ON the p90 cap -- becker
+# `Sfbfc76fb`, p90 5.08 -> 5.00 -- stays out of reach by construction.
+#
+# The VALUES are fitted, not derived, and the PR that added them says so: on
+# the 461 DT-judged shapes of `tools/ribbon_stability.py` (main 5762602), the
+# relative aspect jitter under boundary refinement is p95 0.043 and the cv
+# jitter p90 0.025 / p95 0.039; bands at those jitters (0.05 / 0.03-0.04)
+# change 12-19 shipped verdicts. 0.05 / 0.01 is the one setting of a
+# 0.00-0.08 x 0.00-0.04 sweep that met the brief's bar (1 flip, the cap
+# floor; 3 DT-judged verdicts changed, 4 counting the aspect-only shapes).
+# Neither number is a physical constant: both are about the instrument's own
+# jitter, not the cloth.
+_HYST_ASPECT_REL = 0.05
+_HYST_CV_ABS = 0.01
 
 
 # The vote's perturbations, in the classifier's OWN units: one "pixel" is one
@@ -456,7 +498,8 @@ def _vote_perturbations(poly: Polygon) -> list[Polygon]:
 
 def _vote_ribbon(once: RibbonVerdict, poly: Polygon, max_width_mm: float, *,
                  design_class: str, per_stroke: bool, polygon_axis: bool,
-                 area_weighted: bool, floor_applies: bool) -> RibbonVerdict:
+                 area_weighted: bool, floor_applies: bool,
+                 hysteresis: bool = False) -> RibbonVerdict:
     """Majority of `once` and the verdicts at `_vote_perturbations`; a tie
     keeps `once`. The reading that decides satin or fill today is one
     rasterization of one polygon, and near a gate it turns on a pixel of
@@ -480,7 +523,8 @@ def _vote_ribbon(once: RibbonVerdict, poly: Polygon, max_width_mm: float, *,
         votes.append(_classify_ribbon_once(cand, max_width_mm, design_class=design_class,
                                            per_stroke=per_stroke, polygon_axis=polygon_axis,
                                            area_weighted=area_weighted,
-                                           floor_applies=floor_applies).satin)
+                                           floor_applies=floor_applies,
+                                           hysteresis=hysteresis).satin)
     n = len(votes)
     for_satin = sum(votes)
     satin = once.satin if 2 * for_satin == n else for_satin * 2 > n
@@ -498,7 +542,8 @@ def _classify_ribbon_once(poly: Polygon, max_width_mm: float, *,
                           per_stroke: bool = False,
                           polygon_axis: bool = False,
                           area_weighted: bool = False,
-                          floor_applies: bool = False) -> RibbonVerdict:
+                          floor_applies: bool = False,
+                          hysteresis: bool = False) -> RibbonVerdict:
     """ONE reading of the shape as drawn: the shipped path (`classify_ribbon`
     with `vote=False` returns exactly this).
 
@@ -554,7 +599,11 @@ def _classify_ribbon_once(poly: Polygon, max_width_mm: float, *,
     if w <= 0 or w > max_width_mm:
         return _reject("width_cap")
     if length_est < 3.0 * w:
-        return _reject("aspect")
+        # `hysteresis` (default OFF): within `_HYST_ASPECT_REL` of the line the
+        # perimeter gate abstains and the distance transform below decides.
+        if not (hysteresis and metrics["aspect"] >= 3.0 * (1.0 - _HYST_ASPECT_REL)):
+            return _reject("aspect")
+        metrics["hyst_aspect"] = 1.0
 
     stats = _with_dt()
     if stats is None:
@@ -562,8 +611,21 @@ def _classify_ribbon_once(poly: Polygon, max_width_mm: float, *,
         # problem to solve; it defers to the verdict already reached. Named
         # rather than folded into "satin" so the probe does not count a
         # deferral as a shape the check positively approved.
+        if metrics.get("hyst_aspect"):
+            # The aspect band handed this shape to a DT that cannot read it,
+            # so the verdict already reached is the perimeter gate's refusal.
+            return RibbonVerdict(False, "aspect", metrics)
         return RibbonVerdict(True, "dt_degenerate", metrics)
-    if 2.0 * stats.std >= stats.mean:
+    irregular =2.0 * stats.std >= stats.mean
+    if hysteresis and abs(metrics["dt_cv"] - 0.5) <= _HYST_CV_ABS:
+        # `hysteresis` (default OFF): within `_HYST_CV_ABS` of cv 0.5 the
+        # regularity gate abstains, so the shape takes the branch below, where
+        # the promotion test decides both ways. Past the line that is already
+        # the rule; this widens it to shapes the raster's jitter could put on
+        # either side.
+        metrics["hyst_cv"] = 1.0
+        irregular = True
+    if irregular:
         # The regularity term is a PROXY for ribbon-ness, and on real
         # lettering it is a poor one: a taper, a serif or a script stroke's
         # thick-and-thin body spreads the radii without making the shape any

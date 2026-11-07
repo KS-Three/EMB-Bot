@@ -107,6 +107,16 @@ def satin_fill_vote(cfg: "PipelineConfig") -> bool:
     return bool((getattr(cfg, "extra", None) or {}).get("satin_fill_vote"))
 
 
+def satin_fill_hysteresis(cfg: "PipelineConfig") -> bool:
+    """`cfg.extra["satin_fill_hysteresis"]` (2026-11-07, default OFF): a
+    satin-vs-fill gate whose reading sits inside a margin band round its line
+    abstains, and the gates clear of their own bands decide
+    (`stage6_satin._hysteresis_ribbon`, reached through the classifier's
+    `hysteresis=` parameter). Read by the same four routing calls as
+    `satin_fill_vote`. False is byte-identical to before the key existed."""
+    return bool((getattr(cfg, "extra", None) or {}).get("satin_fill_hysteresis"))
+
+
 def work_grid_px_per_mm(cfg: "PipelineConfig", class_: str | None = None) -> float:
     """The pixel density stage 1 brings a lower-resolution source up to —
     `cfg.work_px_per_mm`, never under `cfg.min_px_per_mm` (None: the source
