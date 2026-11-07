@@ -723,3 +723,49 @@ def drop_unclaimed_floor_rescues(regions: list) -> list[float]:
         gone = {id(r) for r in crumbs}
         regions[:] = [r for r in regions if id(r) not in gone]
     return [float(r.area_mm2) for r in crumbs]
+
+
+# The flat lane's dark-ink carve (`cfg.extra["flat_light_text_runs"]`,
+# 2026-11-07, built OFF). Stage 0 now sends Fremont hat flat (#1301), and
+# its tan tagline (EST 1895, EAT STAY PLAY) stopped reading: native word cc
+# 0.903 -> 0.605 (docs/goldentee-flat-regress-2026-11-07.md). On the gradient
+# lane the lightness read above found those strokes, `absorbed_dark_ink`
+# carved them into a label block of their own, `pipeline.run_stages` tagged
+# them `dark_ink` and `bean_dark_ink` sewed each as a bean along its
+# skeleton. The flat lane never ran the read, so the tagline went the
+# small-text re-set and sewed as enlarged satin. This is the same read and
+# the same carve, run on the flat quantiser's label map: the "merge" the
+# survival test asks about is the global k-means cluster, so a stroke that
+# owns at least half its cluster keeps its label exactly as before and one
+# that shares a cluster with other strokes (a word's letters, the rope)
+# leaves it for the dark block. No new constant: every number is the
+# gradient lane's. `glyphs` is None -- the flat lane has no thin population
+# to name a glyph's counter (see `is_counter`).
+def carve_flat_dark_ink(p: Prep, cfg: PipelineConfig, q):
+    """`q` (the flat quantiser's `Quant`) with the absorbed dark-ink strokes
+    moved to a trailing label block, named in `dark_ink_labels`; `q` itself
+    when the read finds nothing or every stroke kept its own cluster."""
+    valid = ~p.bg_mask
+    enclosed = p.enclosed_mask
+    if enclosed is not None and enclosed.any():
+        valid = valid & ~enclosed
+    labelled = valid & (q.labels >= 0)
+    if not labelled.any():
+        return q
+    dark = find_dark_thin_ink(p, cfg, labelled)
+    if dark is None:
+        return q
+    absorbed = absorbed_dark_ink(dark, q.labels, labelled)
+    if absorbed is None:
+        return q
+    base_k = len(q.thread_indices)
+    labels = q.labels.copy()
+    take = absorbed.labels >= 0
+    labels[take] = absorbed.labels[take] + base_k
+    chart = chart_for(cfg)
+    extra_rgb = np.array([chart[s].rgb for s in absorbed.spools], np.float64).reshape(-1, 3)
+    return dataclasses.replace(
+        q, labels=labels,
+        thread_indices=list(q.thread_indices) + list(absorbed.spools),
+        cluster_rgb=np.vstack([np.asarray(q.cluster_rgb, np.float64).reshape(-1, 3), extra_rgb]),
+        dark_ink_labels=frozenset(range(base_k, base_k + absorbed.dark)) if absorbed.dark else None)
