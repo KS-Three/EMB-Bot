@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """How often the satin-vs-fill verdict flips under a pixel of erosion, with
-`cfg.extra["satin_fill_vote"]` OFF and ON, over a census's regions.
+a stability arm (`cfg.extra["satin_fill_vote"]`, or `["satin_fill_hysteresis"]`
+with `--arm hysteresis`) OFF and ON, over a census's regions.
 
 MEASUREMENT ONLY. Reads the OFF arm `tools.satin_fill_census digitize` wrote
 (`RUNS/<slug>/ours.json`: every region's polygon and meta) and asks the
@@ -9,7 +10,8 @@ classifier four questions per sewn region, on the SAME polygon both arms saw:
   off        `classify_ribbon` as shipped, on the polygon as drawn
   off_eroded the same, on the polygon eroded by `--erode-px` classifier pixels
              (`stage6_satin._RASTER_PX_PER_MM`: 1 px = 0.167 mm)
-  on / on_eroded   the same two, with `vote=True`
+  on / on_eroded   the same two, with the arm on: `vote=True` (`--arm vote`,
+             the default) or `hysteresis=True` (`--arm hysteresis`, 2026-11-07)
 
 A region FLIPS under an arm when its two readings differ; it CHANGES when the
 ON reading differs from the OFF one. The width ceiling per region follows
@@ -20,7 +22,11 @@ photo classes only, so the class cannot move a verdict here). This is the
 classifier's flip count, not the sewn plan's: a tier the user forced, or a
 word tier, is not re-asked.
 
-    python -m tools.satin_vote_flips --runs OFF_DIR [--erode-px 1.0] [--only SLUG ...]
+    python -m tools.satin_vote_flips --runs OFF_DIR [--arm vote|hysteresis] [--erode-px 1.0] [--only SLUG ...]
+
+With `--arm hysteresis`, `--json` rows also carry the ON reading's `reason` and
+which bands abstained (`hyst`), so a changed or flipping region can be read as a
+margin, not a bare bool.
 """
 from __future__ import annotations
 
@@ -39,6 +45,8 @@ for p in (str(DIGITIZER), str(DIGITIZER / "tools")):
         sys.path.insert(0, p)
 
 SEWN = ("fill", "satin", "run", "bean", "border")
+#: the classifier keyword each `--arm` turns on
+ARMS = {"vote": "vote", "hysteresis": "hysteresis"}
 
 
 class _Region:
@@ -59,7 +67,7 @@ def _eroded(poly, px: float):
     return e if e.geom_type == "Polygon" else None
 
 
-def job_rows(slug: str, runs: Path, erode_px: float) -> list[dict]:
+def job_rows(slug: str, runs: Path, erode_px: float, arm: str = "vote") -> list[dict]:
     import shapely.wkt
     from digitizer_core import PipelineConfig
     from digitizer_core.machine import satin_ceiling_mm
@@ -88,12 +96,17 @@ def job_rows(slug: str, runs: Path, erode_px: float) -> list[dict]:
         kw = dict(per_stroke=per_stroke, polygon_axis=cfg.satin_polygon_axis,
                   area_weighted=cfg.classify_area_weighted)
         small = _eroded(poly, erode_px)
+        on_kw = {**kw, ARMS[arm]: True}
+        on = classify_ribbon(poly, cap, **on_kw)
         row = {"id": r["id"], "area": round(poly.area, 1), "lettering": math.isinf(cap),
                "off": classify_ribbon(poly, cap, **kw).satin,
-               "on": classify_ribbon(poly, cap, vote=True, **kw).satin}
+               "on": on.satin}
+        if arm == "hysteresis":
+            row["reason"] = on.reason
+            row["hyst"] = [k[5:] for k in ("hyst_aspect", "hyst_cv") if on.metrics.get(k)]
         if small is not None:
             row["off_eroded"] = classify_ribbon(small, cap, **kw).satin
-            row["on_eroded"] = classify_ribbon(small, cap, vote=True, **kw).satin
+            row["on_eroded"] = classify_ribbon(small, cap, **on_kw).satin
         rows.append(row)
     return rows
 
@@ -135,19 +148,22 @@ def main(argv=None) -> int:
     ap.add_argument("--runs", type=Path, required=True, help="the OFF arm's runs dir")
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--erode-px", type=float, default=1.0)
+    ap.add_argument("--arm", choices=tuple(ARMS), default="vote",
+                    help="which stability arm ON means (default: the vote)")
     ap.add_argument("--json", type=Path, help="write per-region rows here")
     a = ap.parse_args(argv)
     per_job = {}
     for s in JOBS:
         if (a.only and s not in a.only) or not (a.runs / s / "ours.json").exists():
             continue
-        per_job[s] = job_rows(s, a.runs, a.erode_px)
+        per_job[s] = job_rows(s, a.runs, a.erode_px, a.arm)
         j = summarise({s: per_job[s]})["total"]
         print(s, "regions", j["regions"], "changed", j["changed"],
               "flips off/on", j["flip_off"], j["flip_on"], flush=True)
     summary = summarise(per_job)
     if a.json:
-        a.json.write_text(json.dumps({"erode_px": a.erode_px, "summary": summary, "rows": per_job}, indent=1),
+        a.json.write_text(json.dumps({"erode_px": a.erode_px, "arm": a.arm, "summary": summary,
+                                      "rows": per_job}, indent=1),
                           encoding="utf-8")
     print()
     print(table(summary, a.erode_px))
