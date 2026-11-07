@@ -62,3 +62,36 @@ assertion values from CI run 42293897109.
 - **Re-pin to the ON value** only where the read is "improvement" or "minor" and Kent agrees (5, 6 after a census re-read; 8, 9 are minor losses).
 - **Pin OFF** (bucket (b) posture) where the premise is a pre-flip engine arm (9's OFF arm, 5/6 labels) and the behaviour is judged elsewhere.
 - **Hold the flip** if Kent reads the Bridge render as a loss: rows 1, 3, 7 are the same Bridge teal/lettering loss counted three ways.
+
+## Re-flip with the flat soft-edge cure (PR #1301, CI run 42344423957)
+
+Kent, 2026-11-06, after `docs/flat-fringe-soft-ramp-2026-11-06.md`: "Re-open
+flip + both flags (Recommended)". `stage0_scale_relative_grad`,
+`flat_page_fringe_soft_ramp` and `flat_ramp_blend_dissolve` are ON together.
+Bridge's flat-lane render is the right-hand panel of
+[bridge_hat](renders/flat-fringe-soft-ramp-2026-11-06/bridge_hat.jpg) /
+[bridge_lc](renders/flat-fringe-soft-ramp-2026-11-06/bridge_lc.jpg) and the
+two `*_lettering.jpg` crops beside them (left main, middle flip alone, right
+flip + cure). golden_tee and the screenshot are byte-identical with and without
+the cure (not enlarged at 80 mm), so their sheets above still stand.
+
+| # | test | OFF (main) | flip alone | **flip + cure** | read |
+|---|---|---|---|---|---|
+| 1 | `test_on_bridge_keeps_its_eight_bean_letters` | 8 | 15 | **9** | near main; the render's lettering reads as main's |
+| 2 | `test_bridges_words_are_tagged_and_sew_as_runs_along_their_ink` | pass | 7 of 15 | **pass** | repaired by the cure |
+| 3 | `test_bridge_50mm_bar_and_restaurant_is_freed_from_the_badge` | 12 | 4 | **7** | better than flip, short of main |
+| 4 | `test_ink_link_keeps_golden_tees_swashes` | 0 | 1 | **1** (`S643e40d2`) | stage-0 effect, cure does not touch it |
+| 5 | `test_ink_link_sees_the_screenshot_icons_...` | labels match | stale | **stale** | stage-0 effect; census re-read |
+| 6 | `test_icon_guard_refuses_the_screenshot_captures_...` | labels match | stale | **stale** | same as 5 |
+| 7 | `test_bridges_teal_words_survive_tracing_on_the_working_grid` | 78.9 / 186.9 mm² | 119.8 / 142.4 | **119.8 / 127.2**, one cone 4531 | art's teal ~96 mm² (the test's docstring); main's 187 counts the waves it sews teal; the 4 px/mm defect no longer reproduces |
+| 8 | `test_bridge_halo_lever_takes_most_of_the_flips_halo` | 25.6 -> 4.1 mm² | 8.9 -> 8.9 | **5.8 -> 5.8** | premise gone (needs >= 10 mm² to exercise) |
+| 9 | `..._sews_the_disc_limelight_and_the_shipped_one_sews_the_artworks_yellow` | 6031 / 0501 | 0713 / 0713 | **0713 / 0713** | disc Lemon (2.1 dE00) not Sun (1.0); not moved by the cure |
+| 10 | `test_keep_counters::test_the_blocks_get_their_gaps_back_and_no_counter_is_sewn[flat]` | holes 0 -> 2 (flag OFF -> ON) | (not failing) | **4 -> 4** | NEW, the cure's: forced flat, the synthetic panel's four teal blocks keep all four counters even with `keep_counters` OFF (yellow gap's ramp no longer absorbed); with it ON, 4 counters kept unsewn where main kept 2. Improvement; premise (OFF has fewer) gone |
+
+Bucket (b) in this PR, beyond #1282's 29: `test_subpixel_edges::
+test_the_resolution_gate_lifts_only_with_the_flag_on` holds the cure OFF. Its
+x2-enlarged synthetic disc's subpixel-OFF baseline moves 22 -> 30 vertices
+(area 316.2 -> 315.8 mm², true 314.2) while the shipped subpixel-ON polygon is
+unchanged (33 vertices, 312.6 mm²); it measures `subpixel_edges`' lift.
+`test_flat_page_fringe.py` holds both cure flags OFF (it is about
+`flat_page_fringe_exclude`).
