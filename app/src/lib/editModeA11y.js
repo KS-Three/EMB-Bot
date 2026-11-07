@@ -41,7 +41,7 @@ export function editModeBar(state) {
     return {
       mode: "reshape",
       label: "Edit points",
-      hint: "Click or marquee points, arrow keys move selected points 0.1 mm (Shift: 1 mm), Delete removes them. Enter or Escape leaves the mode.",
+      hint: "Click or marquee points, or step through them with Tab or [ and ] and toggle one with Space. Arrow keys move selected points 0.1 mm (Shift: 1 mm), Delete removes them. Enter or Escape leaves the mode.",
       buttons: [
         { id: "reshapeDone", label: "Done editing points", disabled: false },
         { id: "reshapeDiscard", label: "Discard point edits", disabled: false },
@@ -86,4 +86,39 @@ export function stepHoleCursor(cursor, key, shift) {
   if (key === "ArrowUp") return [x, y + k];
   if (key === "ArrowDown") return [x, y - k];
   return null;
+}
+
+// ---- Reshape node cursor ----------------------------------------------------
+// A keyboard walk over the points Reshape mode draws, so the pointer is not
+// the only way to pick which ones the arrows move. `list` is every point in
+// ring order, across rings: [{ shapeId, ring, index }, ...].
+
+export function sameNode(a, b) {
+  return !!a && !!b && a.shapeId === b.shapeId && a.ring === b.ring && a.index === b.index;
+}
+
+// One step along the list. dir +1 / -1. wrap=true cycles ([ and ]); wrap=false
+// returns null past either end (Tab, which then hands focus on instead of
+// trapping it). From no cursor: forward starts at the first point, backward at
+// the last. null for an empty list.
+export function stepNodeCursor(list, cur, dir, wrap) {
+  if (!list || !list.length) return null;
+  const at = cur ? list.findIndex((n) => sameNode(n, cur)) : -1;
+  if (at < 0) return dir > 0 ? list[0] : list[list.length - 1];
+  const next = at + (dir > 0 ? 1 : -1);
+  if (next < 0 || next >= list.length) return wrap ? list[(next + list.length) % list.length] : null;
+  return list[next];
+}
+
+// "Point N of M, ring K, selected": N counts within its ring, K is the ring's
+// place among the rings of the list (1-based). null if cur is not in the list.
+export function nodeCursorPhrase(list, cur, selected) {
+  const at = list && cur ? list.findIndex((n) => sameNode(n, cur)) : -1;
+  if (at < 0) return null;
+  const inRing = (a, b) => a.shapeId === b.shapeId && a.ring === b.ring;
+  let ringNo = 1, first = 0;
+  for (let i = 1; i <= at; i++) if (!inRing(list[i], list[i - 1])) { ringNo++; first = i; }
+  let last = at;
+  while (last + 1 < list.length && inRing(list[last + 1], cur)) last++;
+  return `Point ${at - first + 1} of ${last - first + 1}, ring ${ringNo}, ${selected ? "selected" : "not selected"}`;
 }

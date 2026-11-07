@@ -4,7 +4,7 @@ import { expect, test, describe } from "vitest";
 import { render, fireEvent } from "@testing-library/svelte";
 import "@testing-library/jest-dom/vitest";
 import { readFileSync } from "node:fs";
-import { editModeBar, stepHoleCursor, ringCentre, holePointPhrase, MODE_SAYS } from "../lib/editModeA11y.js";
+import { editModeBar, stepHoleCursor, ringCentre, holePointPhrase, MODE_SAYS, stepNodeCursor, nodeCursorPhrase, sameNode } from "../lib/editModeA11y.js";
 import Harness from "./EditModeBar.testHarness.svelte";
 
 describe("editModeBar model", () => {
@@ -101,5 +101,53 @@ describe("EmbroideryField wiring (source pins; the canvas is not mountable in js
   });
   test("arrows and Space drive the hole cursor instead of nudging the design", () => {
     expect(src).toMatch(/holeDraftOn\(\) && \(e\.key\.startsWith\("Arrow"\) \|\| e\.key === " "\)/);
+  });
+});
+
+describe("Reshape node cursor", () => {
+  // Two shapes: a 3-point shell + a 2-point hole ring on "a", then a 2-point shell on "b".
+  const list = [
+    { shapeId: "a", ring: "exterior", index: 0 },
+    { shapeId: "a", ring: "exterior", index: 1 },
+    { shapeId: "a", ring: "exterior", index: 2 },
+    { shapeId: "a", ring: 0, index: 0 },
+    { shapeId: "a", ring: 0, index: 1 },
+    { shapeId: "b", ring: "exterior", index: 0 },
+    { shapeId: "b", ring: "exterior", index: 1 },
+  ];
+  test("forward from nothing starts at the first point, backward at the last", () => {
+    expect(stepNodeCursor(list, null, 1, false)).toEqual(list[0]);
+    expect(stepNodeCursor(list, null, -1, false)).toEqual(list[6]);
+  });
+  test("steps cross rings and shapes in list order", () => {
+    expect(stepNodeCursor(list, list[2], 1, true)).toEqual(list[3]);
+    expect(stepNodeCursor(list, list[4], 1, true)).toEqual(list[5]);
+    expect(stepNodeCursor(list, list[3], -1, true)).toEqual(list[2]);
+  });
+  test("past either end: [ and ] wrap, Tab returns null so focus can leave", () => {
+    expect(stepNodeCursor(list, list[6], 1, true)).toEqual(list[0]);
+    expect(stepNodeCursor(list, list[0], -1, true)).toEqual(list[6]);
+    expect(stepNodeCursor(list, list[6], 1, false)).toBeNull();
+    expect(stepNodeCursor(list, list[0], -1, false)).toBeNull();
+  });
+  test("an empty list or a stale cursor is safe", () => {
+    expect(stepNodeCursor([], null, 1, true)).toBeNull();
+    expect(stepNodeCursor(list, { shapeId: "gone", ring: "exterior", index: 9 }, 1, true)).toEqual(list[0]);
+    expect(nodeCursorPhrase(list, { shapeId: "gone", ring: "exterior", index: 9 }, false)).toBeNull();
+  });
+  test("announces point N of M in its ring, ring K across rings, and selection", () => {
+    expect(nodeCursorPhrase(list, list[0], false)).toBe("Point 1 of 3, ring 1, not selected");
+    expect(nodeCursorPhrase(list, list[2], true)).toBe("Point 3 of 3, ring 1, selected");
+    expect(nodeCursorPhrase(list, list[4], false)).toBe("Point 2 of 2, ring 2, not selected");
+    expect(nodeCursorPhrase(list, list[5], true)).toBe("Point 1 of 2, ring 3, selected");
+  });
+  test("sameNode compares all three fields", () => {
+    expect(sameNode(list[0], { ...list[0] })).toBe(true);
+    expect(sameNode(list[0], list[1])).toBe(false);
+    expect(sameNode(list[0], null)).toBe(false);
+  });
+  test("the mode bar hint names the keys", () => {
+    expect(editModeBar({ reshape: true }).hint).toMatch(/Tab or \[ and \]/);
+    expect(editModeBar({ reshape: true }).hint).toMatch(/Space/);
   });
 });
