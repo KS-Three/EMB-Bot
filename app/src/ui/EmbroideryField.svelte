@@ -19,7 +19,7 @@
   import { resizeBadgeText } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
   import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, ringNodesInBox, fieldMmToOutlineMm, simplifyRing, ringKey, splitRingKey, NODE_GRAB_PX } from "../lib/shapeOverlay.js";
-  import { editModeBar, MODE_SAYS, holePointPhrase, ringCentre, stepHoleCursor } from "../lib/editModeA11y.js";
+  import { editModeBar, MODE_SAYS, holePointPhrase, ringCentre, stepHoleCursor, sameNode, stepNodeCursor, nodeCursorPhrase } from "../lib/editModeA11y.js";
   import EditModeBar from "./EditModeBar.svelte";
   import { withNodes, nodeMarker, spanOfEdge, pastClickDeadZone, ringEditOverrides as ringEditOverridesLib, discardPatch, moveShapeOverrides } from "../lib/shapeNodes.js";
   import { rebuildSpans, moveNodesExact, insertNodeOnPath, toggleNode, deleteNodes } from "../lib/sparseNodes.js";
@@ -720,6 +720,10 @@
   let marquee = null;       // { startPx, curPx, startClient, add }
   let dragReadout = null;   // { x, y, text } — the dx, dy mm beside the pointer mid-drag
 
+  // The keyboard node cursor (Tab or [ / ] step it, Space toggles that point in
+  // the same selection the marquee builds): { shapeId, ring, index } | null.
+  let nodeCursor = null;
+
   function reshapeOn() {
     return !!reshape && !!project && !multiSel && !simActive && project.selectedId === reshape.elId;
   }
@@ -778,6 +782,7 @@
     const start = {};
     for (const k of RESHAPE_KEYS) start[k] = el[k];
     reshape = { elId: el.id, sel: new Map(), start };
+    nodeCursor = null;
     liveMsg = MODE_SAYS.reshapeEnter;
     shapeEditError = "";
     repaintNodeChrome();
@@ -786,6 +791,7 @@
     if (!reshape && !reshapeDrag && !marquee) return;
     if (reshape) liveMsg = MODE_SAYS.reshapeDone;
     reshape = null;
+    nodeCursor = null;
     reshapeDrag = null;
     marquee = null;
     dragReadout = null;
@@ -1196,6 +1202,78 @@
     }
     // Shells AND hole rings: a box over a seam takes both sides, hole edges too.
     return ringNodesInBox(liveOutlinesPx(edit), a.x, a.y, b.x, b.y);
+  }
+
+  // Every point the mode draws, in ring order across rings (the cursor's walk).
+  function reshapeNodeList() {
+    const edit = reshapeOn() && renderResult ? editableOutlinesPx() : null;
+    if (!edit || edit.el.id !== reshape.elId) return [];
+    const out = [];
+    if (edit.el.type === "manual") {
+      for (const s of edit.el.shapes || []) {
+        if (!s || s.id == null) continue;
+        const ap = authoredPxFor(edit.el, s.id);
+        if (ap) ap.anchors.forEach((_, i) => out.push({ shapeId: s.id, ring: RING_ANCHORS, index: i }));
+      }
+      return out;
+    }
+    for (const o of liveOutlinesPx(edit)) {
+      if (o.open) continue;
+      const ring = o.ring == null ? RING_EXTERIOR : o.ring;
+      const count = o.nodes ? o.nodes.length : o.points.length;
+      for (let k = 0; k < count; k++) out.push({ shapeId: o.id, ring, index: k });
+    }
+    return out;
+  }
+  function saidNodeCursor(list) {
+    const sel = nodeCursor && reshapeSelHas(reshape.elId, nodeCursor.shapeId, nodeCursor.ring, nodeCursor.index);
+    liveMsg = nodeCursorPhrase(list, nodeCursor, !!sel) || "";
+    repaintNodeChrome();
+  }
+  // Tab / [ / ] / Space in the mode. true when the key was taken.
+  function reshapeCursorKey(e) {
+    if (!reshapeOn() || reshapeDrag || marquee || shapeEdit || nodeEdit) return false;
+    if (e.target !== canvas && e.target !== document.body) return false;
+    const isTab = e.key === "Tab";
+    if (!isTab && e.key !== "[" && e.key !== "]" && e.key !== " ") return false;
+    const list = reshapeNodeList();
+    if (nodeCursor && !list.some((n) => sameNode(n, nodeCursor))) nodeCursor = null;
+    if (e.key === " ") {
+      if (!nodeCursor) return false;
+      const sel = cloneSel(reshape.sel);
+      const c = nodeCursor;
+      if (reshapeSelHas(reshape.elId, c.shapeId, c.ring, c.index)) selRemove(sel, c.shapeId, c.ring, c.index);
+      else selAdd(sel, c.shapeId, c.ring, c.index);
+      setReshapeSel(sel);
+      saidNodeCursor(list);
+      return true;
+    }
+    if (!list.length) return false;
+    const dir = e.key === "]" || (isTab && !e.shiftKey) ? 1 : -1;
+    // Tab with no cursor yet only starts one going forward; going past either
+    // end lets focus leave the field rather than trapping it.
+    if (isTab && !nodeCursor && dir < 0) return false;
+    const next = stepNodeCursor(list, nodeCursor, dir, !isTab);
+    if (!next) { nodeCursor = null; repaintNodeChrome(); return false; }
+    nodeCursor = next;
+    saidNodeCursor(list);
+    return true;
+  }
+  // The cursor's ring, drawn over the point at (x, y): dark casing under cyan.
+  function drawNodeCursorRing(ctx, x, y, r) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(10, 22, 30, 0.9)";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(60, 220, 255, 1)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+  function isCursorNode(elId, sid, ring, i) {
+    return !!nodeCursor && !!reshape && reshape.elId === elId && nodeCursor.shapeId === sid && nodeCursor.ring === ring && nodeCursor.index === i;
   }
 
   // The press, in the mode. true when it was handled here; false hands the
@@ -2183,6 +2261,7 @@
       if (sig !== reshapeNodeSig) {
         reshapeNodeSig = sig;
         if (reshape.sel.size) reshape = { ...reshape, sel: new Map() };
+        nodeCursor = null;
       }
     }
     if (!sel || !SHAPE_LANES.has(sel.type)) {
@@ -2402,6 +2481,7 @@
 
   function onCanvasKey(e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return; // leave browser/OS shortcuts alone
+    if (reshapeCursorKey(e)) { e.preventDefault(); return; }
     // Drawing a hole: the arrows must not slide the element under the draft.
     // The arrows move a keyboard cursor instead; Space places a vertex there.
     if (holeDraftOn() && (e.key.startsWith("Arrow") || e.key === " ")) {
@@ -2766,6 +2846,7 @@
             ctx.strokeStyle = "rgba(255, 214, 64, 1)";
             ctx.lineWidth = 2;
             ctx.stroke();
+            if (inMode && isCursorNode(el.id, o.id, o.ring == null ? RING_EXTERIOR : o.ring, pi)) drawNodeCursorRing(ctx, p.x, p.y, r + 1.4);
             continue;
           }
           ctx.beginPath();
@@ -2779,6 +2860,7 @@
           ctx.strokeStyle = `rgba(10, 22, 30, ${0.75 + 0.25 * pulse})`;
           ctx.lineWidth = 1;
           ctx.stroke();
+          if (inMode && isCursorNode(el.id, o.id, o.ring == null ? RING_EXTERIOR : o.ring, pi)) drawNodeCursorRing(ctx, p.x, p.y, r);
         }
       }
       ctx.restore();
@@ -2895,6 +2977,7 @@
       } else {
         dot(x, y, NODE_R + 0.6, "rgba(255, 214, 64, 0.95)");
       }
+      if (isCursorNode(el.id, shapeId, RING_ANCHORS, i)) drawNodeCursorRing(ctx, x, y, NODE_R + 1.6);
       if (fa && fa.elId === el.id && fa.index === i) {
         // The anchor a Delete would remove: ringed, cased like everything else.
         ctx.beginPath();
