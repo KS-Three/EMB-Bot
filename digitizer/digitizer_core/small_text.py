@@ -56,6 +56,24 @@ from .regions import Region
 from .stage1_prep import Prep
 from .stage5_overlap import WIDENED_LETTERING_KEY
 
+# A letter (or a piece inside one) that `enlarge_small_text` scales and moves
+# keeps the polygon it came in with here, so a reader that needs the ART the
+# letter was traced from can still find it (2026-11-07). The only reader is
+# preflight's thread grader, under its own flag: the sewn polygon lies mostly
+# on the ground the letter grew over, so graded there a black letter reads
+# white (Fremont's THE, PR #1312). Metadata only, written unconditionally:
+# nothing in stages 5-7 reads it, and plan and DST md5s were unchanged on 18
+# committed jobs against main, 11 of them with moved letters (Fremont, both
+# drones, enthusiast, the golke screenshot; PR body has the table).
+# Kept on the FIRST move only (`setdefault`), so it is always the traced art.
+TRACED_POLYGON_KEY = "small_text_traced_polygon"
+
+
+def _keep_traced(r: Region, traced_in: dict[int, Polygon] | None) -> None:
+    """Record `r`'s polygon as it came into the call, before it is replaced."""
+    if traced_in is not None:
+        r.meta.setdefault(TRACED_POLYGON_KEY, traced_in.get(id(r), r.polygon))
+
 # A line is never more than doubled. The professional's Fremont date is 1.9x
 # the art's; past 2x the result stops being the customer's layout.
 MAX_SCALE = 2.0
@@ -881,6 +899,9 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     design = box(min(xs0), min(ys0), max(xs1), max(ys1))
     # grow away: neighbours are read as the art draws them (`_near_side`)
     art = {id(r): r.polygon for r in regions} if grow_away else None
+    # Each polygon as it came IN, before any line moved it: what a moved
+    # letter keeps in `meta[TRACED_POLYGON_KEY]` (comment there).
+    traced_in = {id(r): r.polygon for r in regions}
     claimed: set[int] = set()
     items: list[dict] = []
     for cid in sorted(clusters):
@@ -1043,7 +1064,8 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                     it["row"]["blocked_by"] = hits[:6]
                 continue
             if reset:
-                _reset_apply(regions, line, bars, inner, found, bay_mouth=bay_mouth)
+                _reset_apply(regions, line, bars, inner, found, bay_mouth=bay_mouth,
+                             traced_in=traced_in)
                 continue
             s, dy, dxs = found
             sx = _sx(s, max_width_scale)
@@ -1052,6 +1074,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 for r in inner.get(k, []):
                     grown = affinity.translate(affinity.scale(r.polygon, sx, s, origin=(c.x, c.y)), dx, dy)
                     if isinstance(grown, Polygon) and grown.is_valid and not grown.is_empty:
+                        _keep_traced(r, traced_in)
                         r.polygon = grown
                         r.area_mm2 = float(grown.area)
                         r.meta["small_text_inner"] = round(s, 3)
@@ -1073,6 +1096,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                             break
                     if not isinstance(final, Polygon) or not final.is_valid or final.is_empty:
                         continue
+                    _keep_traced(r, traced_in)
                     r.polygon = final
                     r.area_mm2 = float(final.area)
                     r.meta["small_text_enlarged"] = round(s, 3)
@@ -1580,7 +1604,8 @@ def _join_line_ends(line: list[dict], regions: list[Region], taken: set[int], ca
 
 
 def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
-                 inner: dict[int, list[Region]], found, bay_mouth: bool = False) -> None:
+                 inner: dict[int, list[Region]], found, bay_mouth: bool = False,
+                 traced_in: dict[int, Polygon] | None = None) -> None:
     """Write a re-set line (`_place_line_reset`'s answer) into its regions:
     each shape scaled about its letter's centre and moved to its place, then
     widened as the growth widens; a word's inner pieces go with the letter
@@ -1597,6 +1622,7 @@ def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
                                   else min(abs(x - u[0]), abs(x - u[1])))
             grown = affinity.translate(affinity.scale(r.polygon, f, s, origin=(cx, cy)), dxu + dx, dy)
             if isinstance(grown, Polygon) and grown.is_valid and not grown.is_empty:
+                _keep_traced(r, traced_in)
                 r.polygon = grown
                 r.area_mm2 = float(grown.area)
                 r.meta["small_text_inner"] = round(s, 3)
@@ -1617,6 +1643,7 @@ def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
             final = _widen_keep_counters(moved, widen)
             if not isinstance(final, Polygon) or not final.is_valid or final.is_empty:
                 continue
+            _keep_traced(r, traced_in)
             r.polygon = final
             r.area_mm2 = float(final.area)
             r.meta["small_text_enlarged"] = round(s, 3)

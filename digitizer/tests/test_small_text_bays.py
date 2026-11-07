@@ -135,12 +135,17 @@ def md5(regions, rep) -> str:
     """Every region (id, thread, geometry, meta) and the report. Geometry to
     10 nm and floats to 6 places: the OFF pin read CI's Linux and Windows
     apart (2026-10-25) at a level no layout reads, the platforms' maths
-    libraries parting in a last bit."""
+    libraries parting in a last bit. The traced polygon a moved letter keeps
+    (`TRACED_POLYGON_KEY`, metadata added 2026-11-07, pinned in
+    `test_thread_match_grade_traced_letter.py`) is left out, so this pin
+    still reads the layout it was captured on."""
     from shapely import wkt
+    from digitizer_core.small_text import TRACED_POLYGON_KEY
     h = hashlib.md5()
     for r in regions:
+        meta = sorted((k, v) for k, v in r.meta.items() if k != TRACED_POLYGON_KEY)
         h.update(repr((r.shape_id, r.thread_index, wkt.dumps(r.polygon, rounding_precision=5),
-                       _rounded(sorted(r.meta.items())))).encode())
+                       _rounded(meta))).encode())
     h.update(repr(_rounded(rep)).encode())
     return h.hexdigest()
 

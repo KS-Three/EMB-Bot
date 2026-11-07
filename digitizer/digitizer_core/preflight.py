@@ -886,6 +886,45 @@ def _shade_runs_by_region(plan: StitchPlan,
             if rid in shaded}
 
 
+# `cfg.extra["thread_match_grade_traced_letter"]` (built OFF 2026-11-07): a
+# letter `small_text.enlarge_small_text` scaled and moved is graded for thread
+# colour on the polygon it was TRACED from (`meta[TRACED_POLYGON_KEY]`), not
+# the polygon it sews. The enlargement moves the letter into the room around
+# it, so on Fremont's THE only 12-29% of each sewn letter still lies on its
+# ink, and graded there `0020 Black` reads the white ground at dE00 100 and
+# blocks with "reassign to 0015 White" (PR #1312's trace). On the traced
+# polygon the same letters score Black at 0.0. Unlike
+# `thread_match_skip_enlarged_text` (the alternative, also OFF) the letter
+# is still graded, so a wrong spool on an enlarged letter still fires. The
+# rows are the ones `run_preflight` hands the dropped-element check too, so
+# the two keep agreeing about a region's error. Not swapped, graded as sewn:
+# a shade-banded region (its rows are cut by its own stitches, which lie on
+# the sewn polygon), and a region the operator re-drew (`boundary_override`
+# / `holes_override`: what they drew is what to grade). Counted in
+# `thread_match_traced_letters_graded`, a metric only the flag adds.
+_GRADE_TRACED_KEY = "thread_match_grade_traced_letter"
+
+
+def _traced_letters(result, cfg: PipelineConfig,
+                    shaded: dict | None = None) -> dict[str, Polygon]:
+    """shape_id -> the traced polygon the grader reads instead of the sewn
+    one, under the flag above; empty when it is off (the default), so the
+    default path is the polygon it always was."""
+    if not (getattr(cfg, "extra", None) or {}).get(_GRADE_TRACED_KEY):
+        return {}
+    from .small_text import TRACED_POLYGON_KEY
+    out: dict[str, Polygon] = {}
+    for r in getattr(result, "regions", None) or ():
+        m = r.meta or {}
+        t = m.get(TRACED_POLYGON_KEY)
+        if (not isinstance(t, Polygon) or t.is_empty
+                or "boundary_override" in m or "holes_override" in m
+                or (shaded and shaded.get(r.shape_id))):
+            continue
+        out[r.shape_id] = t
+    return out
+
+
 def _region_color_errors(p, result: PipelineResult, plan: StitchPlan,
                          cfg: PipelineConfig) -> list[dict]:
     """-> per-SPOOL colour error rows, one per scoreable (region, thread) pair:
@@ -968,6 +1007,8 @@ def _region_color_errors(p, result: PipelineResult, plan: StitchPlan,
     # ride on this PR; recorded so the next reader knows it is a choice.
     stroke_px = max(1, int(round(machine.FILL_ROW_MM * p.px_per_mm)))
 
+    traced = _traced_letters(result, cfg, shaded)
+
     rows: list[dict] = []
     for r in result.regions:
         # An enclosed-background region is unstitched by default and its
@@ -1015,8 +1056,12 @@ def _region_color_errors(p, result: PipelineResult, plan: StitchPlan,
                 [a[:, 0] * p.px_per_mm + cx, a[:, 1] * p.px_per_mm + cy]
             )).astype(np.int32)
 
-        cv2.fillPoly(mask, [to_px(r.polygon.exterior.coords)], 1)
-        for ring in r.polygon.interiors:
+        # The letter as traced, not as sewn, under the flag at
+        # `_GRADE_TRACED_KEY` (`_traced_letters`); every other region, and
+        # every region when the flag is off, is the polygon it always was.
+        poly = traced.get(r.shape_id, r.polygon)
+        cv2.fillPoly(mask, [to_px(poly.exterior.coords)], 1)
+        for ring in poly.interiors:
             cv2.fillPoly(mask, [to_px(ring.coords)], 0)
         eroded = cv2.erode(mask, np.ones((3, 3), np.uint8))
         sel = (eroded > 0) & (~p.bg_mask)
@@ -1111,10 +1156,11 @@ def _best_loaded_spool_error(lab_px: np.ndarray, loaded: list[int],
 # pixels on white, so `0020 Black` BLOCKS at dE00 100 with `0015 White`
 # "already loaded and better"; on the polygons as traced, before the call,
 # the same three letters sit within DELTA_E_VISIBLE of Black
-# (`tools/thread_match_fremont_probe.py`). The region keeps none of its
-# pre-enlargement geometry, so the grader cannot re-aim at the traced letter;
-# skipping is the whole remedy. The catch: a wrong spool on an enlarged
-# letter goes ungraded too. Counted in `thread_match_enlarged_text_skipped`.
+# (`tools/thread_match_fremont_probe.py`). The catch: a wrong spool on an
+# enlarged letter goes ungraded too. Counted in
+# `thread_match_enlarged_text_skipped`. Since 2026-11-07 the region keeps its
+# traced polygon in meta, and `thread_match_grade_traced_letter` (OFF, at
+# `_GRADE_TRACED_KEY`) re-aims the grade there instead of skipping it.
 _SKIP_ENLARGED_TEXT_KEY = "thread_match_skip_enlarged_text"
 
 
@@ -4325,6 +4371,14 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
         # Only under the flag, so a default report's metrics keys are unchanged.
         metrics["thread_match_enlarged_text_skipped"] = (
             len(_enlarged_text_ids(result, cfg)) if result is not None else None)
+    if (getattr(cfg, "extra", None) or {}).get(_GRADE_TRACED_KEY):
+        # Only under the flag, so a default report's metrics keys are unchanged.
+        # The regions the grader read on their traced polygon; None when the
+        # thread grade did not run (no artwork).
+        metrics["thread_match_traced_letters_graded"] = (
+            len(_traced_letters(result, cfg, _shade_runs_by_region(
+                plan, {r.shape_id for r in result.regions})))
+            if p is not None and result is not None else None)
 
     # Legibility on the render — what the thread SAYS against what the art
     # says, per text cluster. Needs the artwork, the regions (the clusters)
