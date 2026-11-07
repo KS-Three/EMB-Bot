@@ -129,4 +129,37 @@ about 310 image reads in one Claude Code session. No API spend.
 
 ## Amendments
 
-None. Any amendment is dated here before the step it affects.
+Any amendment is dated here before the step it affects.
+
+### Amendment 1, 2026-11-06: the judge is a different session and model; the render was resumed
+
+Written before `kit` was run and before any pair was paired or opened.
+
+- **The judge is this Claude Code session, model `claude-opus-5-5` (Opus 5.5),
+  not the `claude-fable-5-1` session named above.** The 11-04 session ended
+  without judging. Everything else under "The judge" holds as written: the
+  Read tool on the three files per pair, the same prompt (sha256 unchanged,
+  pinned by `tests/test_vlm_judge.py`), L / R / tie with a 1-5 confidence and
+  a reason, one screen order, batches of eight appended before the next pair
+  is opened, no API call, no key. The verdicts go to
+  **`verdicts-claude-opus-5-5-session.jsonl`** (`vlm_judge record --model
+  claude-opus-5-5-session`). Because the judge model changed, this run is NOT
+  a same-instrument repeat of the 11-04 read; the two primaries are reported
+  side by side and never pooled.
+- **Seed, kit and reads unchanged:** seed 20261104, 99 live pairs (the one
+  named exclusion) + 4 identical controls, base on the left in half, ids
+  `P001` onward; the primary, secondaries, controls and the outcome rules
+  above apply word for word.
+- **The render was resumed, not restarted.** The 11-04 `render --sitting-size`
+  run stopped after 11 of 143 designs (log ends mid-design at 15:28 on 11-04,
+  no process alive on 11-06; its CPU-slot directory was left behind and was
+  set aside as `cpu.lock.stale-20261104-render-dead`). Those 11 designs were
+  copied unchanged into this lane's `eye_pairs_out/vlm-judge-pro100/runs`
+  (`pro_pooled_build.py` and the driver are byte-identical between that
+  lane's head and this one's base) and the other 132 rendered on 11-06 with
+  the same command. `--decided-only` was not passed (all 143 designs).
+- **What this judge knows, declared**, in addition to the list above: the
+  11-04 memory note's summary of its own read (kappa +0.36 on 54 pairs; that
+  judge leaned to the base on decided pairs), and the render logs' per-design
+  stitch and trim counts by tree, fixture and arm, glanced at for progress
+  only. Neither is per kit pair; no picture was looked at before `kit`.
