@@ -1654,10 +1654,16 @@ test("(m9) Reshape: a corner dragged ~5 mm above the old bbox -> the red square 
   const black0 = await settledFill(page, "black");
   const red0 = await settledFill(page, "red");
   const { tr } = await blackSquareCorners(page);
-  await page.mouse.click(tr.x, tr.y);
-  await expect.poll(() => selectedCount(page)).toBe(1);
+  // No click-to-select first: the app counts two presses on one spot inside 450 ms (and 6 px)
+  // as a double-click, and a double-click on a node toggles corner <-> smooth instead of
+  // dragging it (countPress / isDoublePress, EmbroideryField.svelte). A click followed at once
+  // by this drag's press was that pair whenever the click's own work finished fast: it left a
+  // 232-vertex smoothed ring whose top rose 5.4999 mm, the same figure on every red run
+  // (main 2026-11-06, runs 42270700421 / 42315302056). Pressing an unselected node makes it
+  // THE selection, so the drag alone selects it, with no time window to race.
   const up = 40;                                                       // CSS px, well past the old top edge
   await drag(page, tr, { x: tr.x, y: tr.y - up });
+  await expect.poll(() => selectedCount(page)).toBe(1);
   await expect.poll(async () => (await boundaryEntries(page)).length).toBe(1);
   // Fail fast on a drag that did not register: the committed shell's top must have risen.
   const widthMm = Number((/(\d+)×(\d+) mm/.exec(before) || [])[1]);
@@ -1667,6 +1673,7 @@ test("(m9) Reshape: a corner dragged ~5 mm above the old bbox -> the red square 
   const orig = (await readDigitized(page)).shapes.find((s) => s.id === sid).outline;
   const minY = (ring) => Math.min(...ringOf(ring).map((p) => p[1]));
   const rose = minY(orig) - minY(entry.boundary_override);
+  expect(ringOf(entry.boundary_override), "a corner drag keeps the 4 corners (a smoothed ring means the press was read as a double-click)").toHaveLength(4);
   expect(rose, "the dragged corner raised the shell top by about the drag (mm)").toBeGreaterThan(up * 0.7 / pxPerMm);
   await landed(page, before);
   await expect.poll(async () => { const b = await fillBBox(page, "black"); return !!b && b.y0 < black0.y0 - up * 0.5; }, { timeout: 120_000 }).toBe(true);
