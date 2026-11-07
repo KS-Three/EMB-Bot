@@ -158,6 +158,12 @@ hit the old 40-minute budget) did the same for about 13. Job minutes on those
 | Run id | Branch | apt cache | apt step (min) | studio-e2e job (min) | Specs (parallel + serial) |
 |---|---|---|---|---|---|
 | 42336840714 | PR #1291 | miss (populated) | 0.22 | 30.5 | 143 + 100, 0 skipped |
+| 42340021914 | PR #1291 | hit | 0.10 (6 s `dpkg -i`) + 1 s restore | 25.0 | 143 + 100, 0 skipped |
+
+The hit run fetched nothing from the mirror: no `apt-get update`, no `Get:`
+line, the same 15 packages unpacked from the cache, `tesseract 5.5.0` printed.
+That 6 seconds is what every run now pays, so the 14-minute tail cannot recur
+until the image build or Playwright version changes the key.
 
 On a healthy mirror the step costs what it did before; the change only
 removes the download from the slow tail, so read a single slow apt step after
