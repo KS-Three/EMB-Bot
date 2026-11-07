@@ -192,11 +192,18 @@ def test_wrap_past_the_rings_length():
     """A ring whose closing vertex's summed arc length differs from
     `ring.length` (GEOS sums it its own way): routes that start just behind
     the start vertex wrap through `% total` onto the closing vertex."""
-    rng = random.Random(7)
-    pts = [(math.cos(t) * 13.37, math.sin(t) * 7.11)
-           for t in sorted(rng.uniform(0, 2 * math.pi) for _ in range(200))]
-    ring = LineString(pts + [pts[0]])
-    assert _cum(ring)[-1] != ring.length
+    # Whether the two sums differ is platform arithmetic: on Windows seed 7
+    # already does, on CI's Linux GEOS it sums seed 7 to the same float. Take
+    # the first seed whose sums differ so the wrap edge is exercised where it
+    # can occur; where no seed differs the edge cannot arise on that platform,
+    # and the exactness checks below still run on the seed-7 ring.
+    def _ellipse(seed):
+        rng = random.Random(seed)
+        pts = [(math.cos(t) * 13.37, math.sin(t) * 7.11)
+               for t in sorted(rng.uniform(0, 2 * math.pi) for _ in range(200))]
+        return LineString(pts + [pts[0]])
+    ring = next((r for r in map(_ellipse, range(7, 207)) if _cum(r)[-1] != r.length),
+                _ellipse(7))
     start = ring.coords[0]
     near = [ring.interpolate(d).coords[0] for d in (1e-9, ring.length - 1e-9, 0.25, ring.length - 0.25)]
     for a in [start] + near:
