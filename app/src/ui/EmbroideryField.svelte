@@ -19,6 +19,8 @@
   import { resizeBadgeText } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
   import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, ringNodesInBox, fieldMmToOutlineMm, simplifyRing, ringKey, splitRingKey, NODE_GRAB_PX } from "../lib/shapeOverlay.js";
+  import { editModeBar, MODE_SAYS, holePointPhrase, ringCentre, stepHoleCursor, sameNode, stepNodeCursor, nodeCursorPhrase } from "../lib/editModeA11y.js";
+  import EditModeBar from "./EditModeBar.svelte";
   import { withNodes, nodeMarker, spanOfEdge, pastClickDeadZone, ringEditOverrides as ringEditOverridesLib, discardPatch, moveShapeOverrides } from "../lib/shapeNodes.js";
   import { rebuildSpans, moveNodesExact, insertNodeOnPath, toggleNode, deleteNodes } from "../lib/sparseNodes.js";
   import {
@@ -718,6 +720,10 @@
   let marquee = null;       // { startPx, curPx, startClient, add }
   let dragReadout = null;   // { x, y, text } — the dx, dy mm beside the pointer mid-drag
 
+  // The keyboard node cursor (Tab or [ / ] step it, Space toggles that point in
+  // the same selection the marquee builds): { shapeId, ring, index } | null.
+  let nodeCursor = null;
+
   function reshapeOn() {
     return !!reshape && !!project && !multiSel && !simActive && project.selectedId === reshape.elId;
   }
@@ -776,12 +782,16 @@
     const start = {};
     for (const k of RESHAPE_KEYS) start[k] = el[k];
     reshape = { elId: el.id, sel: new Map(), start };
+    nodeCursor = null;
+    liveMsg = MODE_SAYS.reshapeEnter;
     shapeEditError = "";
     repaintNodeChrome();
   }
   function endReshape() {
     if (!reshape && !reshapeDrag && !marquee) return;
+    if (reshape) liveMsg = MODE_SAYS.reshapeDone;
     reshape = null;
+    nodeCursor = null;
     reshapeDrag = null;
     marquee = null;
     dragReadout = null;
@@ -797,6 +807,7 @@
       if (Object.keys(patch).length) dispatch("elupdate", { id: el.id, patch, discrete: true });
     }
     endReshape();
+    liveMsg = MODE_SAYS.reshapeDiscard;
   }
   // ---- Add hole (2026-11-05, PR 3 of the node-editing work) -----------------
   // "Add hole" (popover row, or the right-click menu inside a digitized shape)
@@ -819,13 +830,15 @@
     selectedShapeId = shapeId;
     selectedShapeElId = el.id;
     shapeEditError = "";
-    holeDraft = { elId: el.id, shapeId, pointsMm: [] };
+    holeDraft = { elId: el.id, shapeId, pointsMm: [], cursorMm: null };
+    liveMsg = MODE_SAYS.holeEnter;
     if (canvas) canvas.focus({ preventScroll: true });
     repaintNodeChrome();
   }
   function cancelHoleDraft() {
     if (!holeDraft) return;
     holeDraft = null;
+    liveMsg = MODE_SAYS.holeCancel;
     if (shapeEditError) shapeEditError = "";
     repaintNodeChrome();
   }
@@ -868,6 +881,17 @@
     ctx.textBaseline = "middle";
     ctx.fillText("✕", b.x + b.w / 2, b.y + b.h / 2 + 0.5);
     ctx.restore();
+    if (holeDraft.cursorMm) {
+      const c = fieldPxOfMm(holeDraft.cursorMm);
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 214, 64, 0.95)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(c.x - 8, c.y); ctx.lineTo(c.x + 8, c.y);
+      ctx.moveTo(c.x, c.y - 8); ctx.lineTo(c.x, c.y + 8);
+      ctx.stroke();
+      ctx.restore();
+    }
     const pts = holeDraft.pointsMm.map(fieldPxOfMm);
     if (!pts.length) return;
     ctx.save();
@@ -903,6 +927,7 @@
     const ok = commitRingEdits(el, editBasis(edit), new Map(), null, new Map(), new Map([[d.shapeId, [ring]]]));
     if (ok) {
       holeDraft = null;
+      liveMsg = MODE_SAYS.holeClosed;
       repaintNodeChrome();
     } else repaintNodeChrome();
     return ok;
@@ -965,6 +990,7 @@
       holes: (edit.holesById.get(shapeId) || []).map((h) => h.map(([x, y]) => [x, y])),
       dx: 0, dy: 0, drag: null,
     };
+    liveMsg = MODE_SAYS.moveEnter;
     if (canvas) canvas.focus({ preventScroll: true });
     repaintNodeChrome();
   }
@@ -981,6 +1007,7 @@
   function endShapeMove() {
     if (!shapeMove) return;
     shapeMove = null;
+    liveMsg = MODE_SAYS.moveCancel;
     dragReadout = null;
     if (canvas) canvas.style.cursor = "default";
     repaintNodeChrome();
@@ -990,6 +1017,7 @@
     const sm = shapeMove;
     if (!sm) return;
     shapeMove = null;
+    liveMsg = MODE_SAYS.moveDone;
     dragReadout = null;
     const el = project && (project.elements || []).find((x) => x.id === sm.elId);
     if (el && (Math.abs(sm.dx) > 1e-9 || Math.abs(sm.dy) > 1e-9)) {
@@ -1086,6 +1114,33 @@
     repaintNodeChrome();
   }
 
+  // The DOM twin of the canvas strips (keyboard + screen reader): the same
+  // actions as real buttons. The arguments feed the reactive statement below.
+  $: modeBar = editModeBar({
+    move: !!shapeMove && !!project && !multiSel && !simActive && project.selectedId === shapeMove.elId,
+    reshape: !!reshape && !!project && !multiSel && !simActive && project.selectedId === reshape.elId,
+    holePoints: !!holeDraft && !!project && !multiSel && !simActive && project.selectedId === holeDraft.elId ? holeDraft.pointsMm.length : null,
+  });
+  function onModeBarAction(e) {
+    const id = e.detail.id;
+    if (id === "moveDone") commitShapeMove();
+    else if (id === "moveCancel") endShapeMove();
+    else if (id === "reshapeDone") endReshape();
+    else if (id === "reshapeDiscard") discardReshape();
+    else if (id === "holeClose") { if (!closeHoleDraft()) liveMsg = MODE_SAYS.holeNeedThree; }
+    else if (id === "holeCancel") cancelHoleDraft();
+    else if (id === "holeUndo") {
+      if (holeDraft && holeDraft.pointsMm.length) {
+        shapeEditError = "";
+        holeDraft = { ...holeDraft, pointsMm: holeDraft.pointsMm.slice(0, -1) };
+        repaintNodeChrome();
+      }
+    }
+    // The bar unmounts with the mode; hand focus back to the field.
+    if (canvas) canvas.focus({ preventScroll: true });
+    drawOverlay();
+  }
+
   // Strip buttons: Done (tick) and Discard (cross), right of the label.
   function reshapeBtnRects() {
     const cx = cssW() / 2;
@@ -1147,6 +1202,78 @@
     }
     // Shells AND hole rings: a box over a seam takes both sides, hole edges too.
     return ringNodesInBox(liveOutlinesPx(edit), a.x, a.y, b.x, b.y);
+  }
+
+  // Every point the mode draws, in ring order across rings (the cursor's walk).
+  function reshapeNodeList() {
+    const edit = reshapeOn() && renderResult ? editableOutlinesPx() : null;
+    if (!edit || edit.el.id !== reshape.elId) return [];
+    const out = [];
+    if (edit.el.type === "manual") {
+      for (const s of edit.el.shapes || []) {
+        if (!s || s.id == null) continue;
+        const ap = authoredPxFor(edit.el, s.id);
+        if (ap) ap.anchors.forEach((_, i) => out.push({ shapeId: s.id, ring: RING_ANCHORS, index: i }));
+      }
+      return out;
+    }
+    for (const o of liveOutlinesPx(edit)) {
+      if (o.open) continue;
+      const ring = o.ring == null ? RING_EXTERIOR : o.ring;
+      const count = o.nodes ? o.nodes.length : o.points.length;
+      for (let k = 0; k < count; k++) out.push({ shapeId: o.id, ring, index: k });
+    }
+    return out;
+  }
+  function saidNodeCursor(list) {
+    const sel = nodeCursor && reshapeSelHas(reshape.elId, nodeCursor.shapeId, nodeCursor.ring, nodeCursor.index);
+    liveMsg = nodeCursorPhrase(list, nodeCursor, !!sel) || "";
+    repaintNodeChrome();
+  }
+  // Tab / [ / ] / Space in the mode. true when the key was taken.
+  function reshapeCursorKey(e) {
+    if (!reshapeOn() || reshapeDrag || marquee || shapeEdit || nodeEdit) return false;
+    if (e.target !== canvas && e.target !== document.body) return false;
+    const isTab = e.key === "Tab";
+    if (!isTab && e.key !== "[" && e.key !== "]" && e.key !== " ") return false;
+    const list = reshapeNodeList();
+    if (nodeCursor && !list.some((n) => sameNode(n, nodeCursor))) nodeCursor = null;
+    if (e.key === " ") {
+      if (!nodeCursor) return false;
+      const sel = cloneSel(reshape.sel);
+      const c = nodeCursor;
+      if (reshapeSelHas(reshape.elId, c.shapeId, c.ring, c.index)) selRemove(sel, c.shapeId, c.ring, c.index);
+      else selAdd(sel, c.shapeId, c.ring, c.index);
+      setReshapeSel(sel);
+      saidNodeCursor(list);
+      return true;
+    }
+    if (!list.length) return false;
+    const dir = e.key === "]" || (isTab && !e.shiftKey) ? 1 : -1;
+    // Tab with no cursor yet only starts one going forward; going past either
+    // end lets focus leave the field rather than trapping it.
+    if (isTab && !nodeCursor && dir < 0) return false;
+    const next = stepNodeCursor(list, nodeCursor, dir, !isTab);
+    if (!next) { nodeCursor = null; repaintNodeChrome(); return false; }
+    nodeCursor = next;
+    saidNodeCursor(list);
+    return true;
+  }
+  // The cursor's ring, drawn over the point at (x, y): dark casing under cyan.
+  function drawNodeCursorRing(ctx, x, y, r) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(10, 22, 30, 0.9)";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(60, 220, 255, 1)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+  function isCursorNode(elId, sid, ring, i) {
+    return !!nodeCursor && !!reshape && reshape.elId === elId && nodeCursor.shapeId === sid && nodeCursor.ring === ring && nodeCursor.index === i;
   }
 
   // The press, in the mode. true when it was handled here; false hands the
@@ -2134,6 +2261,7 @@
       if (sig !== reshapeNodeSig) {
         reshapeNodeSig = sig;
         if (reshape.sel.size) reshape = { ...reshape, sel: new Map() };
+        nodeCursor = null;
       }
     }
     if (!sel || !SHAPE_LANES.has(sel.type)) {
@@ -2324,10 +2452,43 @@
       : "Centered in the placement area";
   }
 
+  // Add hole without a pointer: a cursor (starts at the shape's centre) moves
+  // 1 mm per arrow (Shift 5), Space drops a vertex on it. Same draft, same
+  // close / refusal path as a click.
+  function holeKeyboard(key, shift) {
+    if (!holeDraftOn()) return;
+    let cur = holeDraft.cursorMm;
+    if (!cur) {
+      const edit = renderResult ? outlinesPxFor(selectedElement()) : null;
+      const shell = edit && edit.mmById.get(holeDraft.shapeId);
+      cur = holeDraft.pointsMm.length ? holeDraft.pointsMm[holeDraft.pointsMm.length - 1] : ringCentre(shell);
+    }
+    if (key === " ") {
+      const pts = holeDraft.pointsMm;
+      const last = pts[pts.length - 1];
+      if (last && Math.hypot(last[0] - cur[0], last[1] - cur[1]) < 1e-6) return;
+      shapeEditError = "";
+      holeDraft = { ...holeDraft, cursorMm: cur, pointsMm: [...pts, [cur[0], cur[1]]] };
+      liveMsg = holePointPhrase(holeDraft.pointsMm.length, cur[0], cur[1]);
+    } else {
+      const next = stepHoleCursor(cur, key, shift);
+      if (!next) return;
+      holeDraft = { ...holeDraft, cursorMm: next };
+      liveMsg = `Cursor at ${next[0].toFixed(1)}, ${next[1].toFixed(1)} mm`;
+    }
+    repaintNodeChrome();
+  }
+
   function onCanvasKey(e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return; // leave browser/OS shortcuts alone
+    if (reshapeCursorKey(e)) { e.preventDefault(); return; }
     // Drawing a hole: the arrows must not slide the element under the draft.
-    if (holeDraftOn() && e.key.startsWith("Arrow")) { e.preventDefault(); return; }
+    // The arrows move a keyboard cursor instead; Space places a vertex there.
+    if (holeDraftOn() && (e.key.startsWith("Arrow") || e.key === " ")) {
+      e.preventDefault();
+      holeKeyboard(e.key, e.shiftKey);
+      return;
+    }
     // Move shape: the arrows move the SHAPE, 0.1 mm (Shift 1 mm), accumulated
     // live; nothing commits until Enter / Done.
     if (shapeMoveOn() && e.key.startsWith("Arrow")) {
@@ -2398,7 +2559,11 @@
         e.preventDefault();
         return;
       }
-      if (fromField && e.key === "Enter") { closeHoleDraft(); e.preventDefault(); return; }
+      if (fromField && e.key === "Enter") {
+        if (!closeHoleDraft() && holeDraft && holeDraft.pointsMm.length < 3) liveMsg = MODE_SAYS.holeNeedThree;
+        e.preventDefault();
+        return;
+      }
     }
     // Reshape mode is the first thing Escape leaves, ahead of the focused
     // anchor, the popover and the tool menu (a drag in flight is dropped).
@@ -2681,6 +2846,7 @@
             ctx.strokeStyle = "rgba(255, 214, 64, 1)";
             ctx.lineWidth = 2;
             ctx.stroke();
+            if (inMode && isCursorNode(el.id, o.id, o.ring == null ? RING_EXTERIOR : o.ring, pi)) drawNodeCursorRing(ctx, p.x, p.y, r + 1.4);
             continue;
           }
           ctx.beginPath();
@@ -2694,6 +2860,7 @@
           ctx.strokeStyle = `rgba(10, 22, 30, ${0.75 + 0.25 * pulse})`;
           ctx.lineWidth = 1;
           ctx.stroke();
+          if (inMode && isCursorNode(el.id, o.id, o.ring == null ? RING_EXTERIOR : o.ring, pi)) drawNodeCursorRing(ctx, p.x, p.y, r);
         }
       }
       ctx.restore();
@@ -2810,6 +2977,7 @@
       } else {
         dot(x, y, NODE_R + 0.6, "rgba(255, 214, 64, 0.95)");
       }
+      if (isCursorNode(el.id, shapeId, RING_ANCHORS, i)) drawNodeCursorRing(ctx, x, y, NODE_R + 1.6);
       if (fa && fa.elId === el.id && fa.index === i) {
         // The anchor a Delete would remove: ringed, cased like everything else.
         ctx.beginPath();
@@ -5102,6 +5270,7 @@
        visibility:hidden both drop an element out of the accessibility tree,
        and a live region outside the tree is never announced. -->
   <p class="fieldlive" aria-live="polite">{liveMsg}</p>
+  <EditModeBar bar={modeBar} on:action={onModeBarAction} />
   <div class="fieldmeta">
     {#if error}<span class="err">{error}</span>
     {:else if shapeEditError}<span class="err" data-testid="shape-edit-error">{shapeEditError}</span>
