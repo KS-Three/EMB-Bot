@@ -3733,6 +3733,20 @@ class PipelineConfig:
     # (`_lettering_groups`) and the rescued round keep today's drop. False:
     # byte for byte. Tests: `tests/test_text_cluster_nest_guard.py`.
     text_cluster_nest_guard: bool = False
+    # A rotated glyph is not its axis-aligned box (2026-11-07, built OFF).
+    # The nested-candidate drop above compares axis-aligned bounding boxes,
+    # and a shape set at an angle has a box far larger than itself: a badge
+    # turned 30 deg holds a tagline in the empty corners of its box, a tall
+    # letter on a turned baseline swallows the short letter beside it. ON:
+    # a candidate nests with a tighter footprint cut to its own box -- a
+    # run member's box in the run's baseline frame, any other candidate's
+    # minimum-area rotated rectangle (`textcluster._rotated_footprints`,
+    # `NEST_ROTATED_MIN_DEG` 10: within that of an axis the box stands) --
+    # so it can only KEEP a candidate OFF dropped. Independent of the 6x
+    # door above. Segmentation and tagging, not fabric: layout, judged in
+    # the preview. False: byte for byte. Tests:
+    # `tests/test_text_cluster_nest_guard_rotated.py`.
+    text_cluster_nest_guard_rotated: bool = False
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.

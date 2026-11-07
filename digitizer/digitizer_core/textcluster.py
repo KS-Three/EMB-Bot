@@ -345,7 +345,9 @@ from functools import lru_cache
 import cv2
 import numpy as np
 from PIL import Image
-from shapely.geometry import LineString, MultiLineString, Polygon
+from shapely import get_coordinates
+from shapely.errors import GEOSException
+from shapely.geometry import LineString, MultiLineString, Polygon, box
 
 from . import ocr as _ocr   # one Tesseract: tesserocr in-process, pytesseract fallback (2026-11-06)
 
@@ -611,8 +613,143 @@ def _stroke_stats_mm(region: Region) -> float | None:
 # one: layout, judged in the preview.
 NEST_FOOTPRINT_MAX_X = 6.0
 
+# A rotated glyph is not its axis-aligned box (`cfg.text_cluster_nest_guard_rotated`,
+# 2026-11-07, built OFF). `_drop_nested` nests on axis-aligned bounding boxes, and a
+# shape set at an angle has a box far larger than itself: a 50 x 40 mm badge turned
+# 30 deg sits in a 63 x 60 box whose empty corners hold a tagline beside it, and a
+# tall letter on a turned baseline has a box that swallows the short letter next to
+# it. ON, a candidate nests with a tighter footprint: a member of a RUN (three or
+# more linked candidates, `_cluster` at `LETTER_HEIGHT_RATIO`) with the box of its
+# polygon in the run's own baseline frame (the principal axis of the members'
+# centroids, `words._axis`'s fit, `NEST_RUN_AXIS_MIN`); any other candidate with
+# its minimum-area rotated rectangle (`cv2.minAreaRect`) when its ink runs along
+# that rectangle's edges (`NEST_RECT_EDGE_COVER_MIN`). Each footprint is cut to
+# the candidate's axis-aligned box, so ON can only KEEP a candidate OFF dropped,
+# never drop one OFF kept (`test_text_cluster_nest_guard_rotated.py` pins that).
+# A run or a rectangle turned less than `NEST_ROTATED_MIN_DEG` from either axis
+# keeps the axis-aligned box: a level line's centroids fit a degree or two off
+# level (the cap height of one letter against the x-height of the next), and the
+# box of such a line is the footprint today. Measured on the labelled corpus
+# jobs and Bridge at its hat and LC widths (2026-11-07, PR body): every level
+# line's fit reads within 1.9 deg of an axis, and the one turned run (four
+# 3.5 mm pieces on the drone render) at 49 deg. A census-side number, not
+# a cloth one: layout, judged in the preview. The 6x-median door above is
+# untouched: a frame over it still nests nothing, whatever its footprint.
+NEST_ROTATED_MIN_DEG = 10.0
 
-def _drop_nested(cands: list[_Candidate], nest_guard: bool = False) -> list[_Candidate]:
+# A run has a baseline only when its members' centroids spread along the fitted
+# axis at least this many times what they spread across it (the ratio of the
+# fit's singular values). A line of letters spreads along its baseline and
+# hardly at all across it; a 2 x 2 grid spreads equally, its "axis" is whatever
+# the arithmetic lands on, and a box turned to that angle would be a footprint
+# from nowhere. Below the ratio the run keeps its axis-aligned boxes. On the
+# labelled corpus jobs (2026-11-07) every run that fits a baseline reads a
+# spread of 0.00-0.28 and Gaulke's four window panes 0.77.
+NEST_RUN_AXIS_MIN = 2.0
+
+# A lone candidate's rotated rectangle is its FRAME only when its ink runs
+# along the rectangle's edges: at least this fraction of the rectangle's
+# perimeter lies within `NEST_RECT_EDGE_TOL` of the shorter side of the
+# polygon. A turned badge, banner or diamond covers its rectangle's edges
+# end to end; a plus, a T, a V or a roof touches its rectangle only at the
+# tips, and the tips of a plus are the corners of a square turned 45 deg
+# (Gaulke's window mullions, 5.2 x 6.9 mm, read a rectangle at 35 deg of 0.66
+# the box's area, and with it the four panes between the arms escaped the
+# drop and tagged as a four-letter word). The extreme points of a shape
+# cannot tell the two apart; its edges can.
+NEST_RECT_EDGE_COVER_MIN = 0.5
+NEST_RECT_EDGE_TOL = 0.05
+
+
+def _off_axis_deg(deg: float) -> float:
+    """How far an angle (degrees) is from the nearest axis, 0 or 90: in [0, 45]."""
+    d = abs(deg) % 90.0
+    return min(d, 90.0 - d)
+
+
+def _run_angle_deg(run: list[_Candidate]) -> float | None:
+    """The turn of a run's baseline from the x axis, degrees in [-90, 90): the
+    principal axis of the members' centroids (`words._axis`'s fit). None where
+    the run has no baseline: fewer than two members, all coincident, or a
+    spread across the axis over 1 / `NEST_RUN_AXIS_MIN` of the spread along it
+    (a grid, a block of rows)."""
+    if len(run) < 2:
+        return None
+    c = np.array([[k.cx, k.cy] for k in run], float)
+    c -= c.mean(axis=0)
+    _u, sv, vt = np.linalg.svd(c, full_matrices=False)
+    if sv[0] <= 0.0 or sv[1] * NEST_RUN_AXIS_MIN > sv[0]:
+        return None
+    deg = math.degrees(math.atan2(float(vt[0][1]), float(vt[0][0])))
+    return (deg + 90.0) % 180.0 - 90.0
+
+
+def _turned_box(polygon: Polygon, deg: float) -> Polygon:
+    """`polygon`'s bounding box in a frame turned `deg` degrees: the tight box
+    of a glyph set on a baseline at that angle."""
+    th = math.radians(deg)
+    cos, sin = math.cos(th), math.sin(th)
+    pts = get_coordinates(polygon)
+    u = pts[:, 0] * cos + pts[:, 1] * sin
+    v = -pts[:, 0] * sin + pts[:, 1] * cos
+    corners = [(u.min(), v.min()), (u.max(), v.min()), (u.max(), v.max()), (u.min(), v.max())]
+    return Polygon([(uu * cos - vv * sin, uu * sin + vv * cos) for uu, vv in corners])
+
+
+def _min_area_rect(polygon: Polygon) -> Polygon | None:
+    """`cv2.minAreaRect` of `polygon`'s vertices as a Polygon, or None when
+    the rectangle lies within `NEST_ROTATED_MIN_DEG` of the axes (the
+    axis-aligned box is then the footprint, as today) or the polygon's ink
+    does not run along its edges (`NEST_RECT_EDGE_COVER_MIN`: a plus, not a
+    frame)."""
+    pts = get_coordinates(polygon).astype(np.float32)
+    if len(pts) < 3:
+        return None
+    (cx, cy), (w, h), ang = cv2.minAreaRect(pts)
+    if min(w, h) <= 0.0 or _off_axis_deg(float(ang)) < NEST_ROTATED_MIN_DEG:
+        return None
+    rect = Polygon(cv2.boxPoints(((cx, cy), (w, h), ang)).tolist())
+    try:
+        along = rect.exterior.intersection(polygon.buffer(NEST_RECT_EDGE_TOL * min(w, h))).length
+    except (GEOSException, ValueError):
+        return None
+    if along < NEST_RECT_EDGE_COVER_MIN * rect.exterior.length:
+        return None
+    return rect
+
+
+def _rotated_footprints(cands: list[_Candidate], boxes: list[tuple[float, float, float, float]],
+                        frame: list[bool]) -> list[Polygon | None]:
+    """ON's footprint per candidate: a Polygon tighter than its axis-aligned
+    box, or None where the box stands (a frame, a run or a rectangle within
+    `NEST_ROTATED_MIN_DEG` of the axes, a degenerate polygon). Every Polygon
+    is cut to the candidate's own box, so it can only be smaller."""
+    out: list[Polygon | None] = [None] * len(cands)
+    pool = [i for i, c in enumerate(cands)
+            if not frame[i] and not c.region.meta.get("rescued_small_shape")]
+    in_run: set[int] = set()
+    for run in _cluster([cands[i] for i in pool], LETTER_HEIGHT_RATIO):
+        if len(run) < MIN_CLUSTER_MEMBERS:
+            continue
+        ids = {c.region.shape_id for c in run}
+        members = [i for i in pool if cands[i].region.shape_id in ids]
+        in_run.update(members)
+        deg = _run_angle_deg(run)
+        if deg is None or _off_axis_deg(deg) < NEST_ROTATED_MIN_DEG:
+            continue
+        for i in members:
+            out[i] = _turned_box(cands[i].region.polygon, deg).intersection(box(*boxes[i]))
+    for i, c in enumerate(cands):
+        if frame[i] or i in in_run:
+            continue
+        rect = _min_area_rect(c.region.polygon)
+        if rect is not None:
+            out[i] = rect.intersection(box(*boxes[i]))
+    return out
+
+
+def _drop_nested(cands: list[_Candidate], nest_guard: bool = False,
+                 rotated: bool = False) -> list[_Candidate]:
     """Exclude a candidate whose bbox is fully contained within another,
     larger candidate's bbox. Real letters in a row sit side by side, never
     nested inside a sibling's footprint; a rescued small shape whose bbox
@@ -628,6 +765,13 @@ def _drop_nested(cands: list[_Candidate], nest_guard: bool = False) -> list[_Can
     `NEST_FOOTPRINT_MAX_X` times the median height of the non-rescued
     candidates is no glyph's footprint and nests nothing. False: as above,
     byte for byte (the rescued door always calls it this way).
+
+    `rotated` (`cfg.text_cluster_nest_guard_rotated`): a candidate whose box
+    holds another's must also COVER that candidate's polygon with its
+    rotated footprint (`_rotated_footprints`: the box in its run's baseline
+    frame, or its minimum-area rectangle) before the other is nested. The
+    box test above still runs first, so this can only keep more. False: as
+    above, byte for byte.
     """
     def bounds(c: _Candidate) -> tuple[float, float, float, float]:
         return c.region.polygon.bounds
@@ -644,6 +788,18 @@ def _drop_nested(cands: list[_Candidate], nest_guard: bool = False) -> list[_Can
             mid = len(heights) // 2
             median = heights[mid] if len(heights) % 2 else (heights[mid - 1] + heights[mid]) / 2.0
             frame = [median > 0 and c.height_mm > NEST_FOOTPRINT_MAX_X * median for c in cands]
+    feet: list[Polygon | None] = _rotated_footprints(cands, boxes, frame) if rotated else [None] * len(cands)
+
+    def covers(j: int, i: int) -> bool:
+        """Does `j`'s rotated footprint hold `i`'s polygon? No footprint (the
+        box stands) or a geometry error answers as the box did: True."""
+        if feet[j] is None:
+            return True
+        try:
+            return bool(feet[j].covers(cands[i].region.polygon))
+        except (GEOSException, ValueError):
+            return True
+
     out: list[_Candidate] = []
     for i, c in enumerate(cands):
         bx0, by0, bx1, by1 = boxes[i]
@@ -653,7 +809,7 @@ def _drop_nested(cands: list[_Candidate], nest_guard: bool = False) -> list[_Can
                 continue
             ox0, oy0, ox1, oy1 = other
             if (ox0 <= bx0 and oy0 <= by0 and ox1 >= bx1 and oy1 >= by1
-                    and area(other) > area(boxes[i])):
+                    and area(other) > area(boxes[i]) and covers(j, i)):
                 nested = True
                 break
         if not nested:
@@ -895,7 +1051,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
                          counters_as_drawn: bool = False,
                          wide_letters: bool = False,
                          part_touching: bool = False,
-                         nest_guard: bool = False) -> None:
+                         nest_guard: bool = False,
+                         nest_guard_rotated: bool = False) -> None:
     """Post-vectorization pass: tag every member of a qualifying group of
     glyph-shaped regions as a text candidate (`text_candidate`,
     `text_cluster_id`, `text_cluster_stroke_mm`, `text_cluster_all_rescued`
@@ -958,6 +1115,15 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
        taller than `NEST_FOOTPRINT_MAX_X` times the pool's median glyph
        height (Bridge hat's wheel nested 8 of 15 letters away). The rescued
        round above keeps today's drop. False: byte for byte.
+       `nest_guard_rotated` (`cfg.text_cluster_nest_guard_rotated`,
+       2026-11-07, OFF): the same drop nests with a rotated footprint, a
+       run member's box in its baseline frame or a lone candidate's
+       minimum-area rectangle, cut to its axis-aligned box
+       (`_rotated_footprints`), so a turned badge or a tall letter on a
+       turned baseline no longer swallows what sits in the empty corners
+       of its box. Independent of `nest_guard`: the 6x door is as it is.
+       The rescued round and the house-angle group keep today's drop.
+       False: byte for byte.
 
     `chart` is the thread chart the regions' `thread_index` values name --
     `threads.chart_for(cfg)` from the pipeline; the default chart when not
@@ -1008,7 +1174,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
     pool = [c for c in rescued if c.region.shape_id not in taken]
     letters = _letter_candidates(regions, chart=chart, counters_as_drawn=counters_as_drawn)
     if not (wide_letters or part_touching):
-        for group in _cluster(_drop_nested(pool + letters, nest_guard), LETTER_HEIGHT_RATIO, chart):
+        for group in _cluster(_drop_nested(pool + letters, nest_guard, nest_guard_rotated),
+                              LETTER_HEIGHT_RATIO, chart):
             if len(group) < MIN_CLUSTER_MEMBERS:
                 continue
             tag(group)
@@ -1029,14 +1196,15 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
         trial = [p for r in regions for p in kept.get(r.shape_id, [r])]
         cands = pool + _letter_candidates(trial, chart=chart,
                                           counters_as_drawn=counters_as_drawn)
-        groups = [g for g in _cluster(_drop_nested(cands, nest_guard), LETTER_HEIGHT_RATIO, chart)
+        kept_cands = _drop_nested(cands, nest_guard, nest_guard_rotated)
+        groups = [g for g in _cluster(kept_cands, LETTER_HEIGHT_RATIO, chart)
                   if len(g) >= MIN_CLUSTER_MEMBERS]
         if wide_letters:
             wide = _letter_candidates(trial, chart=chart, counters_as_drawn=counters_as_drawn,
                                       aspect=(ASPECT_RATIO_MAX, WIDE_LETTER_ASPECT_MAX))
             groups = _adopt_wide(groups, wide, chart)
         if part_touching:
-            groups = _adopt_band(groups, _drop_nested(cands, nest_guard), chart)
+            groups = _adopt_band(groups, kept_cands, chart)
         tagged = {c.region.shape_id for g in groups for c in g}
         still = {sid: pieces for sid, pieces in kept.items()
                  if all(p.shape_id in tagged for p in pieces)}

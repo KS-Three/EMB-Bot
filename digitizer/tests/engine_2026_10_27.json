@@ -290,6 +290,7 @@
  "target_width_mm": 80.0,
  "text_cluster_counters_as_drawn": true,
  "text_cluster_nest_guard": false,
+ "text_cluster_nest_guard_rotated": false,
  "text_cluster_part_touching": false,
  "text_cluster_rescued_ink_link": true,
  "text_cluster_wide_letters": true,
