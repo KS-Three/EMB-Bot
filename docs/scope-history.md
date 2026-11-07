@@ -13,6 +13,21 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-11-06 (release refresh) — scope refresh after PRs #1270–#1286: defects 2, 4, 6 and 26, Phase 1 replication, Phase 2 flip held
+
+State at writing: main `b68b5f37` (#1285 merged 2026-11-07 01:51 UTC). Snapshots of each PR body, not live status:
+
+- **Defect 4 (#1270, #1281, measure only):** 17 jobs, ours / pro needle-up 853 / 409 = 2.09x (10-29: 879 / 425 = 2.07x); cuts only 396 / 409 = 0.97x; cuts + floats not walked 521 / 409 = 1.27x. 300 of the 457 uncut moves are the two Hotel Fremont jobs. `cut_every_jump` ON: floats 457 → 7, cuts +79, bare @0.20 140.2 → 114.7 mm. `bury_step_fine` (OFF, #1270): Drone off-thread hop 1 → 0, 17-job count 5 → 2, +3 cuts, pass CPU 3.3 → 12.1 s. Becker five: needle-up 1.41x, 8 of 14 uncut are long-stitch encodings.
+- **Defect 6 (#1271, #1280, #1283; Kent "Stop defect 6 here"):** `fill_one_pass_sections` (OFF) fill-section cuts 32 → 31, plan CPU +12.8%, one job of 17 moves; `fill_seam_aware_sections` (OFF) 32 → 26, cuts 396 → 391, exposed 428.7 → 435.3 mm, MFab LC 22 → 24 cuts, plan CPU ×3.4 (264.5 → 892.3 s). ProSeal beanie knockdown: 519 mm of walk, 14.6 under later thread, 405 on its own rows, 99.4 on neither; no route for any leg of 10 mm or more.
+- **Defect 2 (#1276; Kent "Hold OFF"):** `satin_floor_content_gate` (OFF); `detect_photographic` fired on 0 of 4 photo fixtures; declared, drone and thermal badge 0 → 51 sub-floor verdicts (21 reroutes), summit 0 → 26, owl_kent 14 → 14; five customer logos byte-identical in 10 arms.
+- **Defect 26 (#1274):** negative #9; 461 DT-judged shapes; raster 3 flips, area-weighted 3 / 7 changed, polygon profile 3 / 21 changed (17 up, 4 down), no pixel floor 4 / 32; 74 shipped verdicts within 0.05 of cv 0.5.
+- **Phase 2 (#1278 built OFF, #1282 closed; Kent flip ON, then "Hold the flip"):** `stage0_scale_relative_grad` kappa native 36 rasters +0.152 → +0.942, native + Studio 111 +0.162 → +0.978; real flat logos off the flat lane 13 of 15 → 1 of 15. Bridge on the flat lane: trims 45 → 157 (hat), stitches +23% / +59%, teal ring, anchor and lettering sew olive / pale blue. Nine flat-lane tests left failing on purpose; branch `claude/stage0-scale-relative-flip` @6ad773ed.
+- **Phase 1 (#1285, #1286):** vlm-judge-100, Opus 5.5 session judge, kappa +0.34 [+0.17, +0.49] n 99 (designs [+0.23, +0.44]); sides only +0.65 [+0.34, +0.91] n 22; flag arms +0.27 n 88, ref-engine arms +0.69 n 11. Pre-screen pre-registration computed: +0.39 [+0.15, +0.59] on 54 (39 settled), +0.29 [+0.07, +0.50] on 99 (67 settled); "Kent has to look" 15 of 54, 32 of 99.
+- **Also merged:** #1279 (lettering cache test waits for the first job; main had been red at e80bb505). The flaky studio-e2e m9 reshape test (red on main twice) is a proposed deflake, not recorded as fixed.
+- **MASTER_SCOPE at this pass:** 26,878 words before → 26,748 after (`awk '{n+=NF}'`, rule 4). Defects 2, 4, 6 and 26 and items 56 and 59 moved verbatim to area 1's twenty-third-pass section; "Waiting on Kent" 69–72 added; no number above is live status.
+
+---
+
 **Last updated:** 2026-10-29 (twenty-first pass) — scope refresh after PRs #1162–#1187: five flips ON, two switches built OFF
 
 State at writing: main `7bd7ed0b` (#1187 merged 2026-10-29 20:55 UTC). Snapshots of each PR body, not live status:

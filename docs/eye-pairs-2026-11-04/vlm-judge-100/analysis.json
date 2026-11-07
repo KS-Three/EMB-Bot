@@ -1,0 +1,307 @@
+{
+ "sitting": "vlm-judge-pro100",
+ "n_live": 99,
+ "excluded": [],
+ "kent": {
+  "identical_called_tie": 0,
+  "identical_pairs": 0,
+  "repeat_consistent": 0,
+  "repeat_pairs": 0,
+  "left_picks": 22,
+  "right_picks": 18,
+  "ties_live": 59
+ },
+ "passing_arms": [],
+ "models": {
+  "claude-opus-5-5-session": {
+   "orders": {
+    "A": {
+     "reads": {
+      "live": {
+       "n_scored": 99,
+       "n_kent_decided": 40,
+       "n_judge_decided": 38,
+       "judge_silent_on_decided": 18,
+       "kappa_3way": 0.3364187679540374,
+       "ci3_pairs": [
+        0.17067982416954097,
+        0.48801446856372144
+       ],
+       "ci3_designs": [
+        0.2275682704811439,
+        0.44198473282442735
+       ],
+       "reading_3way": "above chance",
+       "n_decided": 22,
+       "kappa_sides": 0.6451612903225806,
+       "ci2_pairs": [
+        0.33834586466165406,
+        0.9090909090909092
+       ],
+       "ci2_designs": [
+        0.3950617283950617,
+        0.8901734104046244
+       ],
+       "reading_sides": "above chance",
+       "table_kent_rows_judge_cols": [
+        [
+         8,
+         4,
+         0
+        ],
+        [
+         9,
+         43,
+         7
+        ],
+        [
+         4,
+         14,
+         10
+        ]
+       ]
+      },
+      "flags_0918_0928_cloud_render": {
+       "n_scored": 49,
+       "n_kent_decided": 17,
+       "n_judge_decided": 26,
+       "judge_silent_on_decided": 5,
+       "kappa_3way": 0.3819819819819817,
+       "ci3_pairs": [
+        0.15678776290630994,
+        0.5786618480951997
+       ],
+       "ci3_designs": [
+        0.22839506172839477,
+        0.5210643015521061
+       ],
+       "reading_3way": "above chance",
+       "n_decided": 12,
+       "kappa_sides": 0.8235294117647061,
+       "ci2_pairs": [
+        0.4285714285714286,
+        1.0
+       ],
+       "ci2_designs": [
+        0.297872340425532,
+        1.0
+       ],
+       "reading_sides": "above chance",
+       "table_kent_rows_judge_cols": [
+        [
+         4,
+         1,
+         0
+        ],
+        [
+         8,
+         18,
+         6
+        ],
+        [
+         1,
+         4,
+         7
+        ]
+       ]
+      },
+      "other_sittings": {
+       "n_scored": 50,
+       "n_kent_decided": 23,
+       "n_judge_decided": 12,
+       "judge_silent_on_decided": 13,
+       "kappa_3way": 0.3046357615894039,
+       "ci3_pairs": [
+        0.0845070422535212,
+        0.5238095238095234
+       ],
+       "ci3_designs": [
+        0.1972555746140663,
+        0.38610662358642983
+       ],
+       "reading_3way": "above chance",
+       "n_decided": 10,
+       "kappa_sides": 0.4444444444444444,
+       "ci2_pairs": [
+        0.0,
+        1.0
+       ],
+       "ci2_designs": [
+        0.0,
+        0.6956521739130435
+       ],
+       "reading_sides": "no evidence either way",
+       "table_kent_rows_judge_cols": [
+        [
+         4,
+         3,
+         0
+        ],
+        [
+         1,
+         25,
+         1
+        ],
+        [
+         3,
+         10,
+         3
+        ]
+       ]
+      },
+      "ref_engine_arms": {
+       "n_scored": 11,
+       "n_kent_decided": 6,
+       "n_judge_decided": 6,
+       "judge_silent_on_decided": 1,
+       "kappa_3way": 0.6944444444444448,
+       "ci3_pairs": [
+        0.326530612244898,
+        1.0
+       ],
+       "ci3_designs": [
+        0.42105263157894735,
+        1.0
+       ],
+       "reading_3way": "above chance",
+       "n_decided": 5,
+       "kappa_sides": null,
+       "ci2_pairs": [
+        null,
+        null
+       ],
+       "ci2_designs": [
+        null,
+        null
+       ],
+       "reading_sides": "n too small (<10)",
+       "table_kent_rows_judge_cols": [
+        [
+         0,
+         1,
+         0
+        ],
+        [
+         0,
+         4,
+         1
+        ],
+        [
+         0,
+         0,
+         5
+        ]
+       ]
+      },
+      "flag_arms": {
+       "n_scored": 88,
+       "n_kent_decided": 34,
+       "n_judge_decided": 32,
+       "judge_silent_on_decided": 17,
+       "kappa_3way": 0.27272727272727265,
+       "ci3_pairs": [
+        0.10356243779638175,
+        0.4363745454545458
+       ],
+       "ci3_designs": [
+        0.16510318949343342,
+        0.37542353738423284
+       ],
+       "reading_3way": "above chance",
+       "n_decided": 17,
+       "kappa_sides": 0.5405405405405403,
+       "ci2_pairs": [
+        0.20560747663551415,
+        0.8811188811188811
+       ],
+       "ci2_designs": [
+        0.17391304347826064,
+        0.8571428571428572
+       ],
+       "reading_sides": "above chance",
+       "table_kent_rows_judge_cols": [
+        [
+         8,
+         3,
+         0
+        ],
+        [
+         9,
+         39,
+         6
+        ],
+        [
+         4,
+         14,
+         5
+        ]
+       ]
+      }
+     },
+     "controls": {
+      "answered": 103,
+      "refused": 0,
+      "unparsed": 0,
+      "identical_called_tie": 4,
+      "identical_answered": 4,
+      "repeat_consistent": 0,
+      "repeat_answered": 0,
+      "left_picks_own_frame": 17,
+      "right_picks_own_frame": 21,
+      "ties_live": 61,
+      "mean_confidence": 3.5
+     },
+     "opposite_side": [
+      {
+       "pair": "P026",
+       "fixture": "becker",
+       "arm": "lettering_columns",
+       "kent": "after",
+       "judge": "before",
+       "confidence": 2,
+       "reason": "BECKER matches. Right's MARINE is sewn with very open, sparse columns that will show fabric, and its E is malformed; left's MARINE is lumpy but fully covered."
+      },
+      {
+       "pair": "P037",
+       "fixture": "drone",
+       "arm": "lettering_columns",
+       "kent": "after",
+       "judge": "before",
+       "confidence": 4,
+       "reason": "Left sews PRECISION and THERMAL as open zigzag skeletons that will not cover, and AND DRONE breaks into scraps. Right's lettering is solid and readable."
+      },
+      {
+       "pair": "P097",
+       "fixture": "fremont",
+       "arm": "lettering_columns",
+       "kent": "after",
+       "judge": "before",
+       "confidence": 2,
+       "reason": "Right's HOTEL FREMONT and THE are heavier and bloated, losing serif detail; left's lettering is a touch cleaner and closer to the art's weight."
+      },
+      {
+       "pair": "P099",
+       "fixture": "drone",
+       "arm": "directional_comp",
+       "kent": "after",
+       "judge": "before",
+       "confidence": 2,
+       "reason": "Left fills the dark ground on a diagonal with visible jump lines across the scene; right's horizontal fill is calmer and its THERMAL is tidier."
+      }
+     ]
+    }
+   },
+   "cost": {
+    "calls": 103,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "usd": null
+   },
+   "swap": {
+    "pairs_in_both_orders": 0,
+    "same_verdict_after_swap": 0,
+    "side_flipped_with_swap": 0
+   }
+  }
+ }
+}
