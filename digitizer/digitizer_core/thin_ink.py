@@ -725,9 +725,9 @@ def drop_unclaimed_floor_rescues(regions: list) -> list[float]:
     return [float(r.area_mm2) for r in crumbs]
 
 
-# The flat lane's dark-ink carve (`cfg.extra["flat_light_text_runs"]`,
-# 2026-11-07, built OFF). Stage 0 now sends Fremont hat flat (#1301), and
-# its tan tagline (EST 1895, EAT STAY PLAY) stopped reading: native word cc
+# The flat lane's dark-ink carve (`cfg.flat_light_text_runs`, built OFF
+# 2026-11-07, ON since that day, Kent's flip). Stage 0 now sends Fremont
+# hat flat (#1301), and its tan tagline (EST 1895, EAT STAY PLAY) stopped reading: native word cc
 # 0.903 -> 0.605 (docs/goldentee-flat-regress-2026-11-07.md). On the gradient
 # lane the lightness read above found those strokes, `absorbed_dark_ink`
 # carved them into a label block of their own, `pipeline.run_stages` tagged
