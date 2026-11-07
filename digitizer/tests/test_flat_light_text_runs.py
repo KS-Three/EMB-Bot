@@ -1,4 +1,5 @@
-"""`cfg.extra["flat_light_text_runs"]` (2026-11-07, built OFF): the gradient
+"""`cfg.flat_light_text_runs` (built OFF 2026-11-07 as a `cfg.extra` key; ON
+since that day, Kent's flip "Flat light-text runs", a field now): the gradient
 lane's dark-ink carve, run on the flat lane.
 
 `stage0_scale_relative_grad` (ON, #1301) sends Fremont hat flat, and its tan
@@ -11,7 +12,8 @@ skeleton. The flat lane had no such step. ON runs the same read and carve on
 the flat quantiser's labels (`thin_ink.carve_flat_dark_ink`).
 
 Contracts:
-  * the flag is a `cfg.extra` key, absent by default, gated to the flat class;
+  * the flag is a field, ON by default and False in PRE_FLIP, gated to the
+    flat class;
   * OFF: the flat goldens are byte for byte what they were;
   * a stroke that owns at least half its k-means cluster keeps its label (the
     carve's own survival rule); a nothing-found read returns `q` itself;
@@ -36,17 +38,21 @@ from digitizer_core.pipeline import plan_stitches, run_stages
 from digitizer_core.stage2_quantize import Quant
 from digitizer_core.thin_ink import carve_flat_dark_ink
 
-from .conftest import FLAT_GOLDEN_MD5, TESTDATA
+from .conftest import ENGINE_2026_10_27, FLAT_GOLDEN_MD5, PRE_FLIP, TESTDATA
 
 FLAG = "flat_light_text_runs"
 TAN = (196, 168, 120)        # a light tan ink, the tagline's kind of colour
 
 
-def test_the_flag_is_an_extra_and_is_off():
+def test_the_flag_is_a_field_and_is_on():
+    """Kent's flip 2026-11-07: a field defaulting True; the OFF arm is pinned
+    in PRE_FLIP and the dated engine snapshot."""
+    assert PipelineConfig().flat_light_text_runs is True
     assert FLAG not in PipelineConfig().extra
+    assert PRE_FLIP[FLAG] is False and ENGINE_2026_10_27[FLAG] is False
     from digitizer_core import pipeline
     src = inspect.getsource(pipeline)
-    assert f'and (cfg.extra or {{}}).get("{FLAG}"))' in src
+    assert f"and cfg.{FLAG})" in src
     assert 'classification.class_ == "flat" and cfg.keep_dark_thin_strokes' in src
 
 
@@ -62,7 +68,7 @@ def test_goldens_are_byte_identical_off(fixture):
     assert _md5(golden["stitch_coords"]) == FLAT_GOLDEN_MD5[fixture]
     _result, plan = digitize(TESTDATA / fixture,
                              PipelineConfig(target_width_mm=80.0, edge_cap="none",
-                                            sew_enclosed_white=False, extra={FLAG: False}))
+                                            sew_enclosed_white=False, flat_light_text_runs=False))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     assert _md5(coords) == FLAT_GOLDEN_MD5[fixture]
@@ -84,7 +90,7 @@ def _tagline(path: Path) -> None:
 
 def _cfg(on: bool) -> PipelineConfig:
     return PipelineConfig(target_width_mm=90.0, max_colors=6, forced_class="flat",
-                          edge_cap="none", extra={FLAG: True} if on else {})
+                          edge_cap="none", flat_light_text_runs=on)
 
 
 def test_off_the_tagline_is_no_dark_ink(tmp_path):

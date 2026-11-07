@@ -20,6 +20,10 @@ shared):
 * the flag leaves every enlarged letter out of the thread grade. The block goes,
   nothing else is added, and the count lands in metrics;
 * default reports carry no new metric key, and the key has one reader.
+
+"Default" here is the grader before `thread_match_grade_traced_letter` (ON
+since 2026-11-07, Kent's flip, which re-aims the grade and clears this
+block): `tools.thread_match_fremont_probe.trace` pins that flag False.
 """
 from __future__ import annotations
 
