@@ -1,0 +1,20 @@
+# tools/yardstick_perceptual.py's OPTIONAL metric packages. Install into a
+# SEPARATE venv (docs/yardstick-perceptual.md), never into digitizer/.venv:
+# torch alone is hundreds of MB, and the digitizer's requirements.txt is what
+# CI and the service install. The tool runs without any of these -- a missing
+# package is a column of `n/a` with the reason, and the `mse` pixel control
+# always scores.
+#
+#     python3.12 -m venv .venv-yardstick
+#     .venv-yardstick/bin/pip install -r digitizer/requirements.txt -r tools/requirements-yardstick.txt
+#
+# The first line asks pip for the CPU-only torch build (the default PyPI wheel
+# on Linux drags in several GB of CUDA libraries). Where that index is
+# unreachable (the cloud containers: proxy 403, measured 2026-11-07) drop the
+# line and pip falls back to the PyPI wheel, which also works, only larger.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.2
+torchvision>=0.17
+lpips==0.1.4
+dreamsim>=0.2.1
+flip-evaluator>=1.6
