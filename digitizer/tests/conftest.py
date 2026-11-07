@@ -648,6 +648,10 @@ PRE_FLIP["knockdown_shorter_walk"] = False
 # that spreads this dict. `docs/fill-one-pass-sections-2026-11-06.md` has the
 # Becker table.
 PRE_FLIP["fill_one_pass_sections"] = False
+# `fill_seam_aware_sections` (built OFF 2026-11-06, defect 6; not flipped): seam
+# order's sections planned with lookahead for the short hops stage 7 cannot
+# bury. Pinned now for the same reason as the line above.
+PRE_FLIP["fill_seam_aware_sections"] = False
 # `color_cap_sewn` joined the flipped set 2026-11-01 (Kent's "Flip ON", off the
 # OFF | ON sheet; built OFF 2026-10-29). ON, the cap holds on the blocks the machine
 # sews, so an arm measured before that day can load more cones than it was
