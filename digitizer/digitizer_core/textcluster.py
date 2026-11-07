@@ -1052,7 +1052,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
                          wide_letters: bool = False,
                          part_touching: bool = False,
                          nest_guard: bool = False,
-                         nest_guard_rotated: bool = False) -> None:
+                         nest_guard_rotated: bool = False,
+                         nest_door_aspect: bool = False) -> None:
     """Post-vectorization pass: tag every member of a qualifying group of
     glyph-shaped regions as a text candidate (`text_candidate`,
     `text_cluster_id`, `text_cluster_stroke_mm`, `text_cluster_all_rescued`
@@ -1124,6 +1125,12 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
        of its box. Independent of `nest_guard`: the 6x door is as it is.
        The rescued round and the house-angle group keep today's drop.
        False: byte for byte.
+       `nest_door_aspect` (`cfg.extra["text_cluster_nest_door_aspect"]`,
+       2026-11-07, OFF): a region the door refuses as too wide joins a
+       tagged line when its minimum-area rectangle, read in the frame it
+       shares with a line-mate (`_turned_candidate`), passes the door and
+       links (`_adopt_turned`): a letter turned on a ring. It joins a line,
+       never makes one. False: byte for byte.
 
     `chart` is the thread chart the regions' `thread_index` values name --
     `threads.chart_for(cfg)` from the pipeline; the default chart when not
@@ -1174,10 +1181,17 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
     pool = [c for c in rescued if c.region.shape_id not in taken]
     letters = _letter_candidates(regions, chart=chart, counters_as_drawn=counters_as_drawn)
     if not (wide_letters or part_touching):
-        for group in _cluster(_drop_nested(pool + letters, nest_guard, nest_guard_rotated),
-                              LETTER_HEIGHT_RATIO, chart):
-            if len(group) < MIN_CLUSTER_MEMBERS:
-                continue
+        if not nest_door_aspect:
+            for group in _cluster(_drop_nested(pool + letters, nest_guard, nest_guard_rotated),
+                                  LETTER_HEIGHT_RATIO, chart):
+                if len(group) < MIN_CLUSTER_MEMBERS:
+                    continue
+                tag(group)
+            return
+        groups = [g for g in _cluster(_drop_nested(pool + letters, nest_guard, nest_guard_rotated),
+                                      LETTER_HEIGHT_RATIO, chart)
+                  if len(g) >= MIN_CLUSTER_MEMBERS]
+        for group in _adopt_turned(groups, _turned_regions(regions, chart, counters_as_drawn), chart):
             tag(group)
         return
 
@@ -1205,6 +1219,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
             groups = _adopt_wide(groups, wide, chart)
         if part_touching:
             groups = _adopt_band(groups, kept_cands, chart)
+        if nest_door_aspect:
+            groups = _adopt_turned(groups, _turned_regions(trial, chart, counters_as_drawn), chart)
         tagged = {c.region.shape_id for g in groups for c in g}
         still = {sid: pieces for sid, pieces in kept.items()
                  if all(p.shape_id in tagged for p in pieces)}
@@ -1470,6 +1486,162 @@ def _adopt_band(groups: list[list[_Candidate]], cands: list[_Candidate],
         if best is not None:
             out[best[1]].append(c)
     return out
+
+
+# --- Turned letters (`cfg.extra["text_cluster_nest_door_aspect"]`, 2026-11-07,
+# built OFF) -------------------------------------------------------------------
+#
+# A letter set on a ring is turned with the ring, and the letter door reads its
+# aspect off the axis-aligned box: a glyph on the ring's side lies on its back,
+# its height running along x, so its box reads wide and the door refuses it.
+# Bridge's ring at its hat width (63.3 mm, main 5762602): nine letters of the
+# ring tag as one line, and the two on its left side (4.34 x 2.71 and
+# 3.96 x 2.51 mm, axis aspect 1.61 / 1.57) are refused on aspect alone.
+#
+# The minimum-area rectangle alone cannot answer, because it has no "up": the
+# two refused letters' rectangles read long/short 1.76-1.79, and the line's
+# own UPRIGHT tagged letters 1.55-1.72 (a letter is taller than it is wide).
+# A bound on long/short that admits the refused two admits every tall glyph
+# of every job, and one that keeps a tall glyph out keeps them out too. What
+# tells a glyph's up is its line: a letter's neighbour along its line sits
+# along its baseline. So a region the door refuses as too wide is read in the
+# frame its rectangle shares with the line: the rectangle's side that points
+# nearer the line-mate is its width, the other its height, and the door's own
+# aspect, height and stroke bounds apply to that reading (the two read 0.56
+# and 0.57, heights 4.23 and 4.07 mm beside line-mates of 3.6-4.6 mm). The
+# mate must lie nearer ALONG its line's local direction (`_line_direction`)
+# than across it, or the region is under or over the line, not beside it: the
+# first build read MFab's 6.9 x 1.7 mm bar under WELDING (hat, 104.9 mm, no
+# rembg) as an upright glyph off the letter 13 mm above it (63 deg off the
+# line), and a 17.6 x 6.5 mm shape under the large lettering the same way
+# (50 deg). Bridge's two sit 22 and 32 deg off the ring's local direction.
+# The bound is the halfway between along and across, not a fitted number.
+#
+# Like `_adopt_wide`, a turned glyph only JOINS a tagged line (one of
+# `MIN_CLUSTER_MEMBERS` or more) it links to on every `_linked` term, read in
+# that frame; it never makes or bridges one. One joined glyph is a line-mate
+# for the next (the ring's side is a run of them), pass by pass against the
+# members at the pass's start, so the result never depends on input order.
+# No new constant: every bound is the letter door's.
+
+
+def _turned_regions(regions: list[Region], chart=None,
+                    counters_as_drawn: bool = False) -> list[tuple[Region, tuple, _StrokeStats]]:
+    """Every NON-rescued region the letter door refuses as too WIDE that
+    passes its stroke bound: (region, `cv2.minAreaRect`, stroke stats), in
+    shape-id order. Its height bound waits for the frame (`_turned_candidate`).
+    A background or counter region is no glyph (`_neck_splits`' rule)."""
+    specks = ([r for r in regions if r.meta.get("rescued_small_shape")]
+              if counters_as_drawn else [])
+    out = []
+    for r in sorted(regions, key=lambda r: r.shape_id):
+        m = r.meta or {}
+        if m.get("rescued_small_shape") or m.get("enclosed_background") or m.get("counter"):
+            continue
+        x0, y0, x1, y1 = r.polygon.bounds
+        w, h = x1 - x0, y1 - y0
+        if h <= 0 or w <= 0 or w / h <= ASPECT_RATIO_MAX:
+            continue
+        try:
+            pts = get_coordinates(r.polygon.exterior).astype(np.float32)
+        except (AttributeError, GEOSException, ValueError):
+            continue
+        if len(pts) < 3:
+            continue
+        rect = cv2.minAreaRect(pts)
+        if min(rect[1]) <= 0.0:
+            continue
+        stats = (_stats_of_polygon(_as_drawn(r, specks, chart)) if specks
+                 else _skeleton_stroke_stats(r))
+        if stats is None or stats.cv > LETTER_STROKE_CV_MAX:
+            continue
+        out.append((r, rect, stats))
+    return out
+
+
+def _line_direction(m: _Candidate, group: list[_Candidate]) -> tuple[float, float] | None:
+    """The local direction of `m`'s line: the principal axis of the centroids
+    of `m` and its `MIN_CLUSTER_MEMBERS - 1` nearest line-mates (a ring bends,
+    so the whole line's axis is not the axis at its end). None when they are
+    coincident."""
+    near = sorted((c for c in group if c is not m),
+                  key=lambda c: (math.hypot(c.cx - m.cx, c.cy - m.cy), c.region.shape_id))
+    pts = np.array([[c.cx, c.cy] for c in [m] + near[:MIN_CLUSTER_MEMBERS - 1]], float)
+    pts -= pts.mean(axis=0)
+    _u, sv, vt = np.linalg.svd(pts, full_matrices=False)
+    if sv[0] <= 1e-9:
+        return None
+    return float(vt[0][0]), float(vt[0][1])
+
+
+def _turned_candidate(r: Region, rect: tuple, stats: _StrokeStats,
+                      mate: _Candidate, line: tuple[float, float] | None = None) -> _Candidate | None:
+    """`r` read in the frame its rectangle shares with `mate`'s line: the
+    rectangle's side nearer the direction to `mate` is the glyph's width, the
+    other its height. With `line` (`_line_direction` at `mate`), `mate` must
+    lie nearer ALONG that line than across it from `r`: a region beside the
+    line, not one under or over it (a bar under a level line points at its
+    nearest letter across the baseline). None when it lies across, the
+    reading fails the letter door's aspect or height bound, or `mate` sits on
+    `r`'s centre (no direction)."""
+    (rcx, rcy), (rw, rh), ang = rect
+    ux, uy = mate.cx - rcx, mate.cy - rcy
+    if math.hypot(ux, uy) <= 1e-9:
+        return None
+    if line is not None and abs(ux * line[0] + uy * line[1]) < abs(ux * line[1] - uy * line[0]):
+        return None
+    th = math.radians(float(ang))
+    cos, sin = math.cos(th), math.sin(th)
+    on_w = abs(ux * cos + uy * sin) >= abs(-ux * sin + uy * cos)   # u nearer the rw side
+    width_mm, height_mm = (float(rw), float(rh)) if on_w else (float(rh), float(rw))
+    if not (ASPECT_RATIO_MIN <= width_mm / height_mm <= ASPECT_RATIO_MAX):
+        return None
+    if not (LETTER_MIN_HEIGHT_MM <= height_mm <= LETTER_MAX_HEIGHT_MM):
+        return None
+    x0, y0, x1, y1 = r.polygon.bounds
+    return _Candidate(region=r, height_mm=height_mm, width_mm=width_mm,
+                      stroke_mean_mm=stats.mean_mm, stroke_cv=stats.cv,
+                      cx=(x0 + x1) / 2.0, cy=(y0 + y1) / 2.0)
+
+
+def _adopt_turned(groups: list[list[_Candidate]],
+                  turned: list[tuple[Region, tuple, _StrokeStats]],
+                  chart) -> list[list[_Candidate]]:
+    """`groups` (each a line of `MIN_CLUSTER_MEMBERS` or more) with every
+    turned region (`_turned_regions`) that, read in the frame of a member
+    (`_turned_candidate`), links to it (`_linked` at `LETTER_HEIGHT_RATIO`,
+    one ink) added to the group of the nearest such member. Repeated while a
+    pass adds any, each pass against the members at its start, so a joined
+    glyph is a line-mate for the next and the result does not depend on
+    input order. A turned region never links to one not yet joined, so it
+    can join a line but never make or bridge one."""
+    out = [list(g) for g in groups]
+    members = {c.region.shape_id for g in out for c in g}
+    while True:
+        adds: list[tuple[int, _Candidate]] = []
+        lines = {m.region.shape_id: _line_direction(m, g) for g in out for m in g}
+        for r, rect, stats in turned:
+            if r.shape_id in members:
+                continue
+            best: tuple[float, str, int, _Candidate] | None = None
+            for gi, g in enumerate(out):
+                for m in g:
+                    line = lines[m.region.shape_id]
+                    if line is None:
+                        continue
+                    c = _turned_candidate(r, rect, stats, m, line)
+                    if c is None or not _linked(c, m, LETTER_HEIGHT_RATIO, chart):
+                        continue
+                    key = (math.hypot(c.cx - m.cx, c.cy - m.cy), m.region.shape_id)
+                    if best is None or key < best[:2]:
+                        best = (key[0], key[1], gi, c)
+            if best is not None:
+                adds.append((best[2], best[3]))
+        if not adds:
+            return out
+        for gi, c in adds:
+            out[gi].append(c)
+            members.add(c.region.shape_id)
 
 
 # --- Regularization (Step 5): redraw each member at a shared stroke width ---
