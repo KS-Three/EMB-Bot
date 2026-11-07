@@ -10,7 +10,11 @@
   import { tip } from "../lib/tip.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
   import { sewnPullFor, hasSatinSpans } from "../lib/sewnWidth.js";
-  import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
+  import { advanceIndex, clampIndex, nextSpeed, simTimeline, colorStopBetween, stepBlock, blockAt, blockThreadNames } from "../lib/simulate.js";
+  import { drawSimOverlay } from "../lib/simOverlay.js";
+  import SimBar from "./SimBar.svelte";
+  import { chartIdForProject } from "../lib/designChart.js";
+  import { getCachedPalette, loadPalette, loadPreferredPaletteId, STUDIO_PALETTE } from "../lib/threads.js";
   import { EMB } from "../lib/emb.js";
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
@@ -250,6 +254,17 @@
   let simSpeed = 1;
   let simRafId = 0;
   let simLastTs = 0;
+  // The machine's events on the strand timeline (lib/simulate.js
+  // simTimeline): thread blocks, trims, travel. Built once per run, with the
+  // strands the needle marker reads its position from.
+  let simTl = null;
+  let simStrands = [];
+  let simNames = [];
+  // Stop at each thread change, as the machine does (on by default; the
+  // bar's "Stops" toggle). simStopped: paused AT a change by that stop, so
+  // the bar names the thread to load next.
+  let simStopAtChanges = true;
+  let simStopped = false;
 
   // Drag state (module-local to this component instance, not reactive —
   // none of it needs to trigger a re-render on its own).
@@ -2526,6 +2541,9 @@
   }
 
   function onWindowKey(e) {
+    // The simulator's own keys (see simKey) -- only while it runs, and none
+    // of them is a key any edit mode below listens for.
+    if (simKey(e)) { e.preventDefault(); return; }
     // Move shape comes first: Escape restores and dispatches nothing, Enter
     // (from the field) commits the move.
     if (shapeMoveOn()) {
@@ -3458,8 +3476,11 @@
         surround: surroundColor(),
         grid: gridColors(),
         view,
-        showJumps,
-        showTrims,
+        // While simulating, the overlays show only what has HAPPENED, so the
+        // simulator draws them itself (drawSimOverlay, below); these draw
+        // the whole design, which during playback showed the future.
+        showJumps: showJumps && !simActive,
+        showTrims: showTrims && !simActive,
         threadStyle: realisticView ? "realistic" : "flat",
         sewnPullMm,
         // While simulating, every repaint (zoom/pan included) draws only the
@@ -3480,7 +3501,20 @@
       if (originalView) { drawOriginals(); return; }
       // Selection chrome is hidden during playback -- the simulator is a
       // watch-mode, not an edit-mode (pointer editing is disabled below too).
+      // In its place: the needle, the travel in flight, the trims so far.
       if (!simActive) drawOverlay();
+      else if (simTl && renderResult && renderResult.toCanvas) {
+        const idx = Math.floor(simIndex);
+        const blk = simTl.blocks[blockAt(simTl, idx)];
+        drawSimOverlay(canvas.getContext("2d"), {
+          strands: simStrands,
+          timeline: simTl,
+          idx,
+          toCanvas: renderResult.toCanvas,
+          showJumps,
+          rgb: blk ? blk.rgb : null,
+        });
+      }
       paintSeq++;
     } else {
       clearToFabric();
@@ -3503,7 +3537,20 @@
     if (!simActive || !simPlaying) return;
     const dt = simLastTs ? ts - simLastTs : 0;
     simLastTs = ts;
+    const from = simIndex;
     simIndex = advanceIndex(simIndex, dt, simSpeed, simTotal);
+    // A thread change inside this frame's step: land ON it and stop, as the
+    // machine does, with the bar naming the thread to load next. Play
+    // carries on from there (the change is then behind `from`, not ahead).
+    const stop = simStopAtChanges ? colorStopBetween(simTl, Math.floor(from), Math.floor(simIndex)) : null;
+    if (stop != null) {
+      simIndex = stop;
+      simPause();
+      simStopped = true;
+      liveMsg = simThreadPhrase("Thread change. Next:", stop + 1);
+      repaintView();
+      return;
+    }
     repaintView();
     if (simIndex >= simTotal) {
       simPlaying = false; // finished -- leave the completed design showing
@@ -3515,6 +3562,7 @@
   function simPlay() {
     if (!simActive) return;
     if (simIndex >= simTotal) simIndex = 0; // replay from the start
+    simStopped = false;
     simPlaying = true;
     simLastTs = 0;
     if (!simRafId) simRafId = requestAnimationFrame(simFrame);
@@ -3527,7 +3575,11 @@
 
   function startSim() {
     if (!lastGenerateResult || !lastGenerateResult.combined) return;
-    simTotal = designToStrands(lastGenerateResult.combined).length;
+    const combined = lastGenerateResult.combined;
+    // Kept for the needle marker (its position is the end of the last strand
+    // drawn); the count is unchanged from what this line always computed.
+    simStrands = designToStrands(combined);
+    simTotal = simStrands.length;
     // The animation is driven by STRANDS (segments) because strands are what
     // paint; the counter is shown in STITCHES because that is the unit the
     // field caption right underneath it uses. A strand is the segment BETWEEN
@@ -3536,8 +3588,11 @@
     // in the caption, "1280 / 1280" here, on a design with nine runs).
     // Computed once per run rather than per frame; one entry per strand, so
     // the two arrays index together.
-    simOrdinals = strandStitchOrdinals(lastGenerateResult.combined);
+    simOrdinals = strandStitchOrdinals(combined);
     if (!simTotal) return;
+    simTl = simTimeline(combined);
+    simStopped = false;
+    nameSimThreads(simTl);
     originalView = false;
     originalToken++;
     simActive = true;
@@ -3553,28 +3608,105 @@
     }
   }
 
+  // Each block named off the chart the Download step and the PDF worksheet
+  // name it from (the shop's saved chart, else the one the design's cones
+  // came out of): Studio's names at once, the brand's when its chunk lands.
+  function nameSimThreads(tl) {
+    const id = loadPreferredPaletteId(chartIdForProject(project));
+    const hit = getCachedPalette(id);
+    simNames = blockThreadNames(tl, (hit || STUDIO_PALETTE).threads);
+    if (hit) return;
+    loadPalette(id).then((p) => {
+      if (simTl === tl && p) simNames = blockThreadNames(tl, p.threads);
+    }, () => {});
+  }
+
   function stopSim() {
     if (!simActive) return;
     simPause();
     simActive = false;
     simIndex = 0;
+    simStopped = false;
+    simTl = null;
+    simStrands = [];
     // Back to the normal full render + selection chrome.
     repaintView();
   }
 
-  function simScrub(e) {
+  // Every way of moving the needle by hand (scrub, step, thread step) pauses
+  // and clears the thread-change stop, like any operator's hand on the wheel.
+  function simSeek(i) {
     simPause();
-    simIndex = clampIndex(e.currentTarget.value, simTotal);
+    simStopped = false;
+    simIndex = clampIndex(i, simTotal);
     scheduleViewRepaint();
+  }
+
+  function simScrub(e) {
+    simSeek(e.detail.value);
+  }
+
+  // One stitch back or forward (`,` / `.`). In strands, which is one stitch
+  // inside a run; across a run's start the counter skips the stitch that
+  // begins it, since that stitch draws nothing on its own.
+  function simStepStitch(dir) {
+    simSeek(Math.floor(simIndex) + dir);
+  }
+
+  // The previous or next thread change (`<` / `>` and the bar's skip
+  // buttons). Lands ON the change, where the machine stops, and says which
+  // thread comes next.
+  function simStepThread(dir) {
+    if (!simTl) return;
+    const to = stepBlock(simTl, Math.floor(simIndex), dir);
+    simSeek(to);
+    if (to > 0 && to < simTotal) {
+      simStopped = true;
+      liveMsg = simThreadPhrase("At a thread change. Next:", to + 1);
+    } else {
+      liveMsg = to <= 0 ? "Start of the design" : "End of the design";
+    }
+  }
+
+  // "Next: thread 3 of 6, 1902 Poinsettia" for the live region.
+  function simThreadPhrase(head, idx) {
+    if (!simTl) return "";
+    const k = blockAt(simTl, idx);
+    const name = simNames[k] ? `, ${simNames[k]}` : "";
+    return `${head} thread ${k + 1} of ${simTl.blocks.length}${name}`;
   }
 
   function simCycleSpeed() {
     simSpeed = nextSpeed(simSpeed);
   }
 
+  function simToggleStops() {
+    simStopAtChanges = !simStopAtChanges;
+  }
+
   function simTogglePlay() {
     if (simPlaying) simPause();
     else simPlay();
+  }
+
+  // The simulator's keys, from the field or the bar (never while typing):
+  //   ,  .   one stitch back / forward
+  //   <  >   previous / next thread change (Shift + , / .)
+  // None of these is an arrow (the canvas nudge), Tab, [ or ] (Reshape's node
+  // cursor) or Space; Reshape and Move are switched off while the simulator
+  // runs anyway. true when the key was taken.
+  function simKey(e) {
+    if (!simActive || e.ctrlKey || e.metaKey || e.altKey) return false;
+    const t = e.target;
+    const fromField = t === canvas || t === document.body;
+    const fromBar = !!(t && t.closest && t.closest(".simbar"));
+    if (!fromField && !fromBar) return false;
+    if (e.key === ",") simStepStitch(-1);
+    else if (e.key === ".") simStepStitch(1);
+    else if (e.key === "<") simStepThread(-1);
+    else if (e.key === ">") simStepThread(1);
+    else return false;
+    return true;
   }
 
   // ---- the canvas sizes itself to the pane ---------------------------------
@@ -5235,32 +5367,23 @@
       ><Icon name="magnet" /></button>
     </div>
     {#if simActive}
-      <div class="simbar" role="group" aria-label="Stitch simulator controls">
-        <button type="button" class="zoombtn" on:click={simTogglePlay} aria-label={simPlaying ? "Pause" : "Play"}>
-          <Icon name={simPlaying ? "pause" : "play"} />
-        </button>
-        <input
-          type="range"
-          class="simscrub"
-          min="0"
-          max={simTotal}
-          step="1"
-          value={Math.floor(simIndex)}
-          on:input={simScrub}
-          aria-label="Stitch progress"
-        />
-        <!-- Grouped, like every other stitch count in the app. #402 gave this
-             counter its UNIT because it sat beside a caption reading
-             "1,289 stitches" while showing a bare strand index; measured again
-             2026-09-07, the two still did not look alike: caption
-             "1,779 stitches", counter "302 / 1779 stitches". Same number, two
-             renderings, one screen. -->
-        <span class="simcount">{(simIndex >= 1 ? simOrdinals[Math.floor(simIndex) - 1] : 0).toLocaleString()} / {(simOrdinals[simOrdinals.length - 1] || 0).toLocaleString()} stitches</span>
-        <button type="button" class="zoombtn simspeed" on:click={simCycleSpeed} aria-label="Playback speed">
-          {simSpeed}x
-        </button>
-        <button type="button" class="zoombtn" on:click={stopSim} aria-label="Close simulator"><Icon name="close" /></button>
-      </div>
+      <SimBar
+        playing={simPlaying}
+        index={Math.floor(simIndex)}
+        total={simTotal}
+        ordinals={simOrdinals}
+        speed={simSpeed}
+        timeline={simTl}
+        names={simNames}
+        stopAtChanges={simStopAtChanges}
+        stopped={simStopped}
+        on:toggle={simTogglePlay}
+        on:scrub={simScrub}
+        on:thread={(e) => simStepThread(e.detail.dir)}
+        on:stops={simToggleStops}
+        on:speed={simCycleSpeed}
+        on:close={stopSim}
+      />
     {/if}
   </div>
   <!-- Keyboard-nudge feedback, spoken not shown. A sibling of `.hoop`, never
