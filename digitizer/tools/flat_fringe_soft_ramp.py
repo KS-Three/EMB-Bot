@@ -188,6 +188,9 @@ def pairs(out_dir: str, names: list[str]) -> int:
 
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__)
+        return 0
     sys.path.insert(0, str(DIGITIZER))
     if argv and argv[0] == "sheets":
         return sheets(argv[1] if len(argv) > 1 else "debug_out/flat_fringe_soft_ramp",
