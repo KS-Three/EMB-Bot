@@ -1100,6 +1100,33 @@ def _best_loaded_spool_error(lab_px: np.ndarray, loaded: list[int],
     return best_err, best_spool
 
 
+# `cfg.extra["thread_match_skip_enlarged_text"]` (built OFF 2026-11-07): a
+# region `small_text.enlarge_small_text` grew (`meta["small_text_enlarged"]`)
+# is not graded for thread colour. The enlargement scales a letter too small
+# to sew and moves it into the room around it, so the sewn polygon lies
+# mostly on the GROUND, while the thread was chosen on the traced letter.
+# Graded on the pixels under the sewn polygon, a black letter on white reads
+# white. Measured on `logo_hotel_fremont.webp` at 80 mm (both garments): the
+# word THE, x1.524 with reset and grow-away, 69-86% of each letter's sewn
+# pixels on white, so `0020 Black` BLOCKS at dE00 100 with `0015 White`
+# "already loaded and better"; on the polygons as traced, before the call,
+# the same three letters sit within DELTA_E_VISIBLE of Black
+# (`tools/thread_match_fremont_probe.py`). The region keeps none of its
+# pre-enlargement geometry, so the grader cannot re-aim at the traced letter;
+# skipping is the whole remedy. The catch: a wrong spool on an enlarged
+# letter goes ungraded too. Counted in `thread_match_enlarged_text_skipped`.
+_SKIP_ENLARGED_TEXT_KEY = "thread_match_skip_enlarged_text"
+
+
+def _enlarged_text_ids(result, cfg: PipelineConfig) -> set[str]:
+    """Shape ids the thread grader leaves out under the flag above; empty
+    when it is off (the default), so the default path is untouched."""
+    if not (getattr(cfg, "extra", None) or {}).get(_SKIP_ENLARGED_TEXT_KEY):
+        return set()
+    return {r.shape_id for r in getattr(result, "regions", None) or ()
+            if r.meta.get("small_text_enlarged")}
+
+
 def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
                            cfg: PipelineConfig,
                            rows: list[dict] | None = None
@@ -1137,6 +1164,9 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
     # grader's own read, as before.
     if rows is None:
         rows = _region_color_errors(p, result, plan, cfg)
+    skip = _enlarged_text_ids(result, cfg)
+    if skip:
+        rows = [r for r in rows if str(r["shape_id"]).split(" shade ")[0] not in skip]
     chart = chart_for(cfg)
     findings: list[dict] = []
     worst: float | None = None
@@ -4291,6 +4321,10 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
         findings.extend(thread_findings)
     metrics["thread_match_checked"] = p is not None and result is not None
     metrics["thread_worst_delta_e"] = None if worst_de is None else round(worst_de, 1)
+    if (getattr(cfg, "extra", None) or {}).get(_SKIP_ENLARGED_TEXT_KEY):
+        # Only under the flag, so a default report's metrics keys are unchanged.
+        metrics["thread_match_enlarged_text_skipped"] = (
+            len(_enlarged_text_ids(result, cfg)) if result is not None else None)
 
     # Legibility on the render — what the thread SAYS against what the art
     # says, per text cluster. Needs the artwork, the regions (the clusters)
