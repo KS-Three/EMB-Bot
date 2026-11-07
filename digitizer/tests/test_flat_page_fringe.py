@@ -34,6 +34,11 @@ def _art(keyline=None, s=4, n=100):
 
 
 def _run(rgb, on, **kw):
+    # This file is about `flat_page_fringe_exclude`; the soft-edge cure (ON since
+    # Kent's 2026-11-06 flip, `tests/test_flat_fringe_soft_ramp.py`) reads this
+    # x4-enlarged fixture too, so it is held OFF here unless a test names it.
+    kw.setdefault("flat_page_fringe_soft_ramp", False)
+    kw.setdefault("flat_ramp_blend_dissolve", False)
     cfg = PipelineConfig(max_colors=4, forced_class="flat", target_width_mm=40.0,
                          flat_page_fringe_exclude=on, **kw)
     p = prep(np.ascontiguousarray(rgb[..., ::-1]), cfg, design_class="flat")

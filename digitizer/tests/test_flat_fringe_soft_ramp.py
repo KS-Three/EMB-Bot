@@ -36,12 +36,14 @@ ART = TESTDATA / "photo" / "logo_bridge_bar.jpg"
 FRINGE = {"flat_page_fringe_exclude": True}
 SOFT = {"flat_page_fringe_soft_ramp": True}
 DISSOLVE = {"flat_ramp_blend_dissolve": True}
+# Both flags ON by default since Kent's flip (2026-11-06): every arm names them.
+OFF = {"flat_page_fringe_soft_ramp": False, "flat_ramp_blend_dissolve": False}
 
 
 def _cfg(**extra):
     from digitizer_service.app import _parse_config
     from tools import pro_pair as pp
-    return PipelineConfig(**_parse_config(json.dumps(pp.request(113.5, "hat_front", extra))))
+    return PipelineConfig(**_parse_config(json.dumps(pp.request(113.5, "hat_front", dict(OFF, **extra)))))
 
 
 @pytest.fixture(scope="module")
@@ -136,7 +138,7 @@ def test_the_cure_reads_only_an_enlarged_raster():
     cv2.circle(big, (200, 200), 120, (40, 220, 250), -1)
     cv2.putText(big, "AB", (120, 240), cv2.FONT_HERSHEY_SIMPLEX, 3, (200, 120, 30), 6)
     base = dict(max_colors=6, forced_class="flat", target_width_mm=25.0)
-    a = PipelineConfig(**base)
+    a = PipelineConfig(**base, **OFF)
     b = PipelineConfig(**base, **SOFT, **DISSOLVE)
     pa = prep(big, a, design_class="flat")
     pb = prep(big, b, design_class="flat")
@@ -173,7 +175,7 @@ def test_a_thin_real_ink_between_its_own_ramps_is_kept():
     from tools import pro_pair as pp
     px = _decode((TESTDATA / "art" / "logo_hotel_fremont_patch.png").read_bytes())
     out = []
-    for extra in ({}, DISSOLVE):
+    for extra in (OFF, dict(OFF, **DISSOLVE)):
         cfg = PipelineConfig(**_parse_config(json.dumps(pp.request(80.0, "left_chest", extra))))
         p = prep(px, cfg, design_class="flat")
         if cfg.two_tone_snap:
@@ -183,3 +185,10 @@ def test_a_thin_real_ink_between_its_own_ramps_is_kept():
     assert "0152" in _threads(out[0], cfg)
     assert np.array_equal(out[0].labels, out[1].labels)
     assert out[0].thread_indices == out[1].thread_indices
+
+
+def test_the_cure_is_on_with_the_stage0_flip():
+    # Kent 2026-11-06, "Re-open flip + both flags (Recommended)".
+    cfg = PipelineConfig()
+    assert cfg.stage0_scale_relative_grad is True
+    assert cfg.flat_page_fringe_soft_ramp is True and cfg.flat_ramp_blend_dissolve is True

@@ -115,4 +115,7 @@ def main(out_dir: str) -> int:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        print(__doc__)
+        raise SystemExit(0)
     raise SystemExit(main(sys.argv[1] if len(sys.argv) > 1 else "debug_out/stage0_flip_renders"))
