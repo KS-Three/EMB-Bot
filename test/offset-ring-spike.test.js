@@ -33,6 +33,20 @@
 //   - L, star and the crescent at 0.3 mm: every measure passes. The star's
 //     tips also take 3d, but its 36-degree point has a true mitre of 3.24d, so
 //     that is a mitre, not a spike, and no edge-length or crossing shows it.
+//
+// The SECOND half of the file runs every case again with `{ bevel: true }`
+// (buildQualityDesign's `offsetBevel`, default off), where the pins above are
+// lifted: four of the five pass. Measured 2026-11-07:
+//   - crescent OUT 1 mm: longest edge 2.12x -> 1.05x; the cusp reaches 3.00d
+//     past the drawing -> 1.00d (a bevel, cut square at the offset).
+//   - crescent IN 1 mm and 3 mm: 2 self-crossings -> 0 each (the moved edges
+//     that ran backward at the cusp are consumed, 4 and 6 corners).
+//   - the dragged anchor: 23.8 px out -> 7.2 (6 px slip), 27.7 -> 11.0 (10),
+//     37.5 -> 20.8 (20); each within the slip plus the offset.
+//   - STILL PINNED, crescent OUT 3 mm: 3.54x -> 2.19x. What is left over 2x is
+//     the bevel itself: 1.9d across (57 px at 3 mm) against the drawing's
+//     26 px edges. Its reach is 1.00d, so it is no spike, but the edge measure
+//     cannot tell a bevel from one and the bound is not loosened for it.
 const assert = require("node:assert");
 const { test } = require("node:test");
 const DG = require("../src/digitize.js");
@@ -80,8 +94,8 @@ function selfCrossings(p) {
 }
 const SPIKE_RATIO = 2;                      // an output edge twice the longest input edge is a spike
 
-function measure(shape, mm, outward) {
-  const input = SHAPES[shape](), out = DG.offsetRing(input, mm * PX_PER_MM, outward);
+function measure(shape, mm, outward, opts) {
+  const input = SHAPES[shape](), out = DG.offsetRing(input, mm * PX_PER_MM, outward, opts);
   const a0 = DG.signedArea(input), a1 = DG.signedArea(out);
   return {
     out,
@@ -172,4 +186,101 @@ test("the pinned failures still reproduce (lift their skips when this turns red)
   assert.ok(reachPast(dragged) > 6 + TERRY_PX, "the dragged anchor no longer spikes (" + reachPast(dragged).toFixed(1) + " px out): lift its skip");
   assert.ok(Math.abs(reachPast(dragged) - 23.8) < 0.1, "the dragged anchor's reach has moved from 23.8 px: " + reachPast(dragged).toFixed(2));
   assert.strictEqual(still.length, 4);
+});
+
+// =============================================================================
+// The same cases with `{ bevel: true }` (buildQualityDesign's `offsetBevel`).
+// The pins above are lifted here; what still fails is pinned again, with its
+// own measured value, under the same rule: skip, never a looser bound.
+// =============================================================================
+const BEVEL = { bevel: true };
+const KNOWN_BEVEL = {
+  edge: {
+    "crescent out 3mm": "bevel: longest edge 2.19x the input's (57.4 px from 26.2) -- the bevel chord itself, 1.9d across; it reaches 1.00d past the drawing, so no spike",
+  },
+  cross: {},
+};
+// how far the furthest point lies from the ring as drawn, in units of the offset
+const segDist = (p, a, b) => {
+  const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+  const t = l2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2)) : 0;
+  return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
+};
+const reachOf = (input, out, d) => Math.max(...out.map((p) => Math.min(...input.map((a, i) => segDist(p, a, input[(i + 1) % input.length]))))) / d;
+
+for (const shape of Object.keys(SHAPES)) {
+  for (const outward of [true, false]) for (const mm of OFFSETS_MM) {
+    const name = caseName(shape, mm, outward);
+    test(`bevel, ${name}: no output edge over ${SPIKE_RATIO}x the longest input edge`, skipIf(KNOWN_BEVEL.edge[name]), () => {
+      const m = measure(shape, mm, outward, BEVEL);
+      assert.ok(m.edgeRatio <= SPIKE_RATIO, `longest edge ${m.edgeRatio.toFixed(3)}x the input's`);
+    });
+    test(`bevel, ${name}: ${outward ? "grows" : "shrinks"} the area and does not invert`, () => {
+      const m = measure(shape, mm, outward, BEVEL);
+      assert.ok(m.monotone, `area x${m.areaRatio.toFixed(3)}`);
+    });
+    test(`bevel, ${name}: comes back without self-crossings`, skipIf(KNOWN_BEVEL.cross[name]), () => {
+      const m = measure(shape, mm, outward, BEVEL);
+      assert.strictEqual(m.crossings.length, 0, "crossings at edge pairs " + JSON.stringify(m.crossings));
+    });
+  }
+}
+
+// (1.01d, not 1: the crescent's arc corners turn 7.5 degrees and mitre to
+// d / cos 3.75 = 1.002d, a true mitre, which the bevel rightly leaves alone.)
+test("bevel: the crescent's and the star's sharp points reach no further than the offset (3d without it)", () => {
+  for (const shape of ["crescent", "star"]) for (const mm of OFFSETS_MM) {
+    const input = SHAPES[shape](), d = mm * PX_PER_MM;
+    const on = reachOf(input, DG.offsetRing(input, d, true, BEVEL), d);
+    assert.ok(on <= 1.01, `${shape} out ${mm} mm: reaches ${on.toFixed(3)}d`);
+  }
+  // and without the option the crescent's cusp takes the whole clamp, as pinned above
+  const input = crescentRing();
+  assert.ok(Math.abs(reachOf(input, DG.offsetRing(input, 10, true), 10) - 3) < 1e-9);
+});
+
+test("bevel, defect 55 open half: an anchor dragged 0.6 mm past the corner sews no further out than the slip plus the offset", () => {
+  for (const slipPx of [6, 10, 20]) {
+    const moved = DG.offsetRing(boxRing().concat([{ x: -slipPx * 0.2, y: 400 + slipPx * 0.98 }]), TERRY_PX, true, BEVEL);
+    assert.ok(reachPast(moved) <= slipPx + TERRY_PX + 1e-9, `${slipPx} px slip: ${reachPast(moved).toFixed(1)} px out`);
+  }
+});
+
+test("bevel, defect 55 cured half: the 1 px slip, no longer dropped, still reaches no further than the slip plus the offset", () => {
+  const moved = DG.offsetRing(boxRing().concat([{ x: -0.2, y: 400.98 }]), TERRY_PX, true, BEVEL);
+  assert.ok(reachPast(moved) <= 1 + TERRY_PX, `${reachPast(moved).toFixed(2)} px out`);
+  assert.strictEqual(selfCrossings(moved).length, 0);
+});
+
+test("bevel: a ring with no corner past the clamp and nothing to consume comes back bit for bit as without it", () => {
+  for (const mm of OFFSETS_MM) for (const outward of [true, false]) {
+    assert.deepStrictEqual(DG.offsetRing(lRing(), mm * PX_PER_MM, outward, BEVEL), DG.offsetRing(lRing(), mm * PX_PER_MM, outward), `L ${outward ? "out" : "in"} ${mm} mm`);
+  }
+  assert.deepStrictEqual(DG.offsetRing(boxRing(), TERRY_PX, true, BEVEL), DG.offsetRing(boxRing(), TERRY_PX, true));
+});
+
+test("off is off: no options, {} and { bevel: false } are one ring", () => {
+  for (const shape of Object.keys(SHAPES)) for (const mm of OFFSETS_MM) for (const outward of [true, false]) {
+    const base = DG.offsetRing(SHAPES[shape](), mm * PX_PER_MM, outward);
+    assert.deepStrictEqual(DG.offsetRing(SHAPES[shape](), mm * PX_PER_MM, outward, {}), base);
+    assert.deepStrictEqual(DG.offsetRing(SHAPES[shape](), mm * PX_PER_MM, outward, { bevel: false }), base);
+  }
+});
+
+test("buildQualityDesign: offsetBevel absent and false sew one design; true reaches the fill rings", () => {
+  const FABRICS = require("../src/fabrics.js");
+  const make = (extra) => DG.buildQualityDesign([{ rgb: [27, 58, 92], shapes: [{ outer: crescentRing(), holes: [], tierOverride: "fill", angleOverride: 0 }] }],
+    Object.assign({ garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: 40, darkOnTop: false, underlay: true, fabric: FABRICS.getFabric("terry_towel") }, extra));
+  const base = make({});
+  assert.deepStrictEqual(make({ offsetBevel: false }).stitches, base.stitches);
+  const on = make({ offsetBevel: true });
+  assert.ok(on.stitchCount > 0);
+  assert.notDeepStrictEqual(on.stitches, base.stitches, "the option did not reach the pull-compensated rings");
+});
+
+// When this goes red the bevelled offset has changed: re-measure and lift.
+test("bevel: the pinned failure still reproduces (lift its skip when this turns red)", () => {
+  const m = measure("crescent", 3, true, BEVEL);
+  assert.ok(m.edgeRatio > SPIKE_RATIO, `crescent out 3mm: longest edge now ${m.edgeRatio.toFixed(3)}x: lift its skip`);
+  assert.ok(Math.abs(m.edgeRatio - 2.19) < 0.01, `crescent out 3mm: ${m.edgeRatio.toFixed(3)}x, pinned at 2.19`);
 });
