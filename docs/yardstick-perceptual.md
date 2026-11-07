@@ -144,7 +144,7 @@ the kappa with both intervals and n; never a share. Kent's own repeat
 agreement on the 11-02 sitting was 1 of 4, so a metric that tracks him at
 +0.4 is tracking a noisy target, not a ceiling.
 
-## Validation that is done (2026-11-07, cloud, python 3.12, torch 2.15)
+## Validation that is done (2026-11-07, cloud, python 3.12, torch 2.15, torchvision 0.29)
 
 Over the 18 committed tripwire pairs (`from-tripwire` on a fresh
 `pro_baseline.py digitize`, ours vs the pro's DST):
@@ -154,16 +154,40 @@ Over the 18 committed tripwire pairs (`from-tripwire` on a fresh
 | `mse` | yes | yes | digitizer venv and yardstick venv |
 | `flip` | yes | yes | `flip-evaluator` 1.7 |
 | `dreamsim` | yes | yes | `dreamsim` 0.2.1, ensemble; see the proxy note below |
-| `lpips_alex`, `lpips_vgg` | not measured | not measured | the ImageNet backbones could not be downloaded |
+| `lpips_alex` | yes | yes | `lpips` 0.1.4, torchvision AlexNet `IMAGENET1K_V1`; see the LPIPS note below |
+| `lpips_vgg` | yes | **no** (18/18 against its own blank) | `lpips` 0.1.4, torchvision VGG16 `IMAGENET1K_V1`; see below |
+
+**`lpips_vgg` fails "blank is worst" as the oracle defines it** — every blank
+row at least every other row of the set, across designs (measured 2026-11-07,
+the 18 tripwire pairs). Against its OWN reference's blank, every pair reads
+well under (18 of 18: pair 0.147–0.353, its blank 0.278–0.584). Across
+designs it does not: becker_beanie's pair reads 0.353 and goldentee_hat's
+blank only 0.278. Its scale moves with the design (a sparse design's blank
+reads low) more than its pair-to-blank gap does. `lpips_alex` holds on the
+same rows (pair max 0.296, blank min 0.470), as do `mse` and `flip`. The
+kappa compares two arms against ONE pro, which is the same-reference
+reading, so this does not bar `lpips_vgg` from the kappa table. It does mean
+an `lpips_vgg` number is not comparable across designs — never average or
+threshold it over a mixed set.
 
 - **Determinism**: two runs give one `scores.csv` md5 with `mse`, `flip`
   and `dreamsim` (every score to 6 decimals, fixed column order; a
   rounded −0 is written as 0 so the md5 does not hang on the sign of noise).
+  The same with `mse`, `flip`, `lpips_alex`, `lpips_vgg`, two separate
+  processes (2026-11-07): the 18 tripwire pairs with `--oracles` (54 rows)
+  give `bc26fdd588ded1f71ae203a15de59bda` both times; the PES/DST pair below
+  gives `fa60e22058e1f607cfe5dc96950e366a` both times.
 - **A near-identical pair scores near zero**: the pro's own PES and DST of
-  one design read `mse` 0.0011 against a blank of 0.49.
+  one design read `mse` 0.0011 against a blank of 0.49. With LPIPS (same
+  run, 990×633): `lpips_alex` 0.0113 against a blank of 0.811, `lpips_vgg`
+  0.0106 against 0.512 — 1.4% and 2.1% of the blank. A different design of
+  the same logo at another size reads 0.073 and 0.094 against that DST.
 - **The pytest** (`digitizer/tests/test_yardstick_perceptual.py`) runs the
   oracles over whatever is installed: on CI and in the digitizer venv only
-  the control; in the yardstick venv every metric that loads.
+  the control; in the yardstick venv every metric that loads. With both
+  LPIPS backbones in the cache (2026-11-07): 18 passed, `lpips_alex` and
+  `lpips_vgg` live (its two rows share one reference, so the global
+  blank-worst trap above does not reach it).
 
 **Proxy note.** A first DreamSim run fetches from `github.com` (its
 checkpoints), `api.github.com` and `codeload.github.com` (`torch.hub` for the
@@ -173,10 +197,34 @@ allowed only the first. DreamSim was run there by cloning the DINO repo into
 the hub cache with git and rebuilding DINO's published backbone file from
 the teacher weights in DreamSim's own checkpoint, a strict state-dict load
 that would have failed on any mismatch. That workaround lives in the
-session's scratch folder, not in the tool. LPIPS's code path was checked
-with a random backbone and the package's real linear layers: self 0, blank
-highest. That says nothing about LPIPS as a metric. On a laptop with open
+session's scratch folder, not in the tool. That session checked LPIPS's
+code path only, with a random backbone; the real backbones were measured
+afterwards (the LPIPS note below). On a laptop with open
 network none of this applies: the first run downloads everything once.
 
-Not done: the kappa against Kent (his renders and labels are on his
-laptop), and LPIPS with its real weights.
+**LPIPS note (2026-11-07).** The two backbones were still unreachable at
+`download.pytorch.org`, so a later cloud session took torchvision's own
+files from public mirrors on GitHub (allowed): `alexnet-owt-7be5be79.pth`
+from a GitHub release, `vgg16-397923af.pth` from the Git LFS of Microsoft's
+`pytorchfundamentals` docs repo. They were put in torch's hub cache
+(`~/.cache/torch/hub/checkpoints/`, or `$TORCH_HOME/hub/checkpoints/`), where
+torchvision loads them without fetching. Each is the real file, not a
+lookalike:
+
+- the full sha256 starts with the hash prefix torchvision bakes into the
+  file name (`7be5be79…`, `397923af…`), and appears in full in hundreds of
+  independent repository files;
+- the byte size matches torchvision's own `_file_size` metadata to the
+  third decimal (233.087 MB, 527.796 MB);
+- the backbone gives the published numbers: `lpips_alex` through this
+  tool's `LPIPS` class reproduces the original implementation's scores on
+  pyiqa's five calibration pairs (`ResultsCalibra/calibration_summary.csv`,
+  row `lpips`) to 4 decimals — 0.7237, 0.2572, 0.0508, 0.0521 (published
+  0.052), 0.4253. No published reference for `lpips_vgg` was found, so the
+  VGG check is the hash and size only.
+
+The DreamSim workaround above was not repeated in that session, so
+`dreamsim` read `n/a` there (proxy 403). Its row in the table is from the
+earlier session.
+
+Not done: the kappa against Kent (his renders and labels are on his laptop).
