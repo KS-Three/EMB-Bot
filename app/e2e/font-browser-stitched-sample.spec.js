@@ -90,27 +90,51 @@ test("opening the browser fetches only visible rows plus one look-ahead page, an
   expect(fetched.length).toBe(n);
 });
 
-test("a stitched sample costs at most 40 ms to sew and draw (median of 20 fonts)", async ({ page }) => {
+// The clock: each font is timed once per PASS, over PASSES passes spread in
+// time, and a font's cost is the BEST of its passes; the figure is the median
+// of those over the 20 fonts. A wall clock on a shared CI runner reads the
+// runner's other work as well as ours: this file shares four workers on four
+// cores, and one single pass of the 20 fonts read a median of 11.3-47.9 ms on
+// CI (13 attempts on 11 runs, 2026-11-07/08: 11.3, 13.4, 17.1, 17.5, 17.7,
+// 19.6, 21.5, 22.0, 30.5, 32.3, 33.8, 41.3, 47.9; the 41.3 turned main red on
+// run 42453083807 and its retry read 13.4, the 47.9 on PR run 42456795255
+// retried at 11.3). Interference only ever ADDS time, so the best of several
+// passes is the cost with the least of it in: a real slowdown in the code
+// still raises every pass. The 40 ms ceiling is unchanged: 3.5x the two
+// retries (11.3, 13.4) and 1.8x the median single pass (22.0). The
+// single-pass median is still logged beside it.
+const PASSES = 5;
+
+test("a stitched sample costs at most 40 ms to sew and draw (median of 20 fonts, best of 5 passes each)", async ({ page }) => {
   await page.goto("/");
-  const r = await page.evaluate(async () => {
+  const r = await page.evaluate(async (PASSES) => {
     const S = await import("/src/lib/fontSample.js");
     const L = await import("/src/lib/fontLoader.js");
     const man = await L.loadManifest();
     const keys = man.fonts.filter((f) => S.sampleEligible(f)).slice(0, 20).map((f) => f.key);
     const fonts = await Promise.all(keys.map((k) => L.ensureFont(k)));
     S.renderSampleUrl(window.EMB, fonts[0]); // warm the JIT once, untimed
-    const ms = [];
+    const best = fonts.map(() => Infinity);
+    let first = null;
     let empty = 0;
-    for (const f of fonts) {
-      const t0 = performance.now();
-      const url = S.renderSampleUrl(window.EMB, f, { dpr: 2 });
-      ms.push(performance.now() - t0);
-      if (!url) empty++;
+    for (let p = 0; p < PASSES; p++) {
+      const ms = [];
+      fonts.forEach((f, i) => {
+        const t0 = performance.now();
+        const url = S.renderSampleUrl(window.EMB, f, { dpr: 2 });
+        const dt = performance.now() - t0;
+        ms.push(dt);
+        if (dt < best[i]) best[i] = dt;
+        if (!url && p === 0) empty++;
+      });
+      if (p === 0) first = ms;
+      // Let the page breathe between passes, so they sample different moments.
+      await new Promise((res) => setTimeout(res, 50));
     }
-    const sorted = [...ms].sort((a, b) => a - b);
-    return { n: ms.length, median: (sorted[9] + sorted[10]) / 2, max: sorted[sorted.length - 1], empty };
-  });
-  console.log(`stitched sample: n ${r.n}, median ${r.median.toFixed(1)} ms, max ${r.max.toFixed(1)} ms`);
+    const med = (a) => { const s = [...a].sort((x, y) => x - y); return (s[9] + s[10]) / 2; };
+    return { n: best.length, median: med(best), firstPassMedian: med(first), max: Math.max(...best), empty };
+  }, PASSES);
+  console.log(`stitched sample: n ${r.n}, median ${r.median.toFixed(1)} ms (best of ${PASSES} passes), single-pass median ${r.firstPassMedian.toFixed(1)} ms, max ${r.max.toFixed(1)} ms`);
   expect(r.n).toBe(20);
   expect(r.empty).toBe(0);
   expect(r.median).toBeLessThanOrEqual(40);
