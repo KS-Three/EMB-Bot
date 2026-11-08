@@ -56,6 +56,7 @@ const SPEC_SECONDS = {
   "configurator-smoke.spec.js": 114,
   "core-flows.spec.js": 23,
   "crop-upload.spec.js": 6,
+  "design-block-thumbs.spec.js": 40,
   "design-import.spec.js": 29,
   "design-naming.spec.js": 19,
   "design-originals.spec.js": 62,

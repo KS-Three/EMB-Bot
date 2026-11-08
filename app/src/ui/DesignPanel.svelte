@@ -1,5 +1,6 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onDestroy } from "svelte";
+  import { buildBlockThumbs, blockStitchCounts } from "../lib/blockThumbs.js";
   import { EMB } from "../lib/emb.js";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
@@ -84,6 +85,56 @@
     patch({ blockColors: { ...(element.blockColors || {}), [i]: rgb } });
   }
 
+  // ---- Block thumbnails -------------------------------------------------
+  // Per-block stitch counts are cheap and shown at once. The pictures are not
+  // free (a 22k-stitch file is ~100 ms of canvas work), so they are built only
+  // once the block list is actually on screen (IntersectionObserver; a browser
+  // without one counts as visible) and one task after the row text paints.
+  $: counts = decoded ? blockStitchCounts(decoded) : [];
+  let visible = false;
+  let thumbs = [];
+  let buildTimer = null;
+
+  function watchVisible(node) {
+    if (typeof IntersectionObserver !== "function") { visible = true; return {}; }
+    const io = new IntersectionObserver((es) => {
+      for (const e of es) if (e.isIntersecting) { visible = true; io.disconnect(); }
+    });
+    io.observe(node);
+    return { destroy: () => io.disconnect() };
+  }
+
+  // The canvas is built outside Svelte's tree; this puts it in its row.
+  function place(node, canvas) {
+    const set = (c) => { node.textContent = ""; if (c) node.appendChild(c); };
+    set(canvas);
+    return { update: set };
+  }
+
+  function colorsKey(el, n) {
+    const out = [];
+    for (let i = 0; i < n; i++) out.push(blockRgb(el, i).join(","));
+    return out.join("|");
+  }
+
+  $: key = decoded ? colorsKey(element, decoded.colorCount) : "";
+  $: if (visible && decoded) schedule(decoded, key);
+  function schedule(dec, _key) {
+    if (buildTimer != null) clearTimeout(buildTimer);
+    if (!dec.stitches || !dec.stitches.length) return;
+    buildTimer = setTimeout(() => {
+      buildTimer = null;
+      try {
+        const colors = [];
+        for (let i = 0; i < dec.colorCount; i++) colors.push(blockRgb(element, i));
+        thumbs = buildBlockThumbs(dec, { colors, width: 56, height: 28 });
+      } catch (e) {
+        thumbs = []; // a thumbnail is decoration; never take the picker down with it
+      }
+    }, 0);
+  }
+  onDestroy(() => { if (buildTimer != null) clearTimeout(buildTimer); });
+
   // Pre-digitized stitches only scale, they don't re-digitize — density
   // changes with size. sizeMm means POST-rotATION width (the engine rotates
   // before its scale/clamp math), so the scale factor compares it against
@@ -125,11 +176,13 @@
       {decoded.colorCount} color{decoded.colorCount === 1 ? "" : "s"} · {decoded.trimCount} trims
     </p>
 
-    <div class="dp-blocks">
+    <div class="dp-blocks" use:watchVisible>
       <span class="dp-blocks-label">Thread per color block</span>
       {#each Array.from({ length: decoded.colorCount }) as _, i}
         <div class="dp-block">
+          <span class="dp-thumb" aria-hidden="true" use:place={thumbs[i] && thumbs[i].canvas}></span>
           <span class="dp-block-n">Block {i + 1}</span>
+          <span class="dp-block-st">{(counts[i] || 0).toLocaleString()} st</span>
           <ThreadPicker rgb={blockRgb(element, i)} compact on:pick={(e) => pickBlock(i, e.detail)} />
         </div>
       {/each}
