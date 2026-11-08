@@ -613,9 +613,13 @@ def _restricted(thin: ThinInk, keep: np.ndarray) -> ThinInk:
 BEAN_MAX_GROUND_DE00 = 50.0
 
 
-def _thread_de00(a: int, b: int) -> float:
-    from .threads import CHART
-    la, lb = (rgb_to_lab(np.array([CHART[i].rgb], float)) for i in (a, b))
+def _thread_de00(a: int, b: int, chart=None) -> float:
+    """dE00 between threads `a` and `b` of `chart` -- the job's
+    `chart_for(cfg)`, which a region's `thread_index` indexes. None is the
+    default Isacord chart."""
+    if chart is None:
+        from .threads import CHART as chart
+    la, lb = (rgb_to_lab(np.array([chart[i].rgb], float)) for i in (a, b))
     return float(deltaE_ciede2000(la, lb)[0])
 
 
@@ -634,7 +638,7 @@ def _ground_of(stroke, grounds):
     return best if best is not None and best_a >= 0.5 * stroke.polygon.area else None
 
 
-def bean_dark_ink(regions) -> int:
+def bean_dark_ink(regions, chart=None) -> int:
     """`cfg.dark_ink_bean`: the dark read's strokes sew as a bean ON their
     ground, the way the reference digitizer sews a drawn line
     (`bean_rule`). Each `meta["dark_ink"]` region the review left on "auto"
@@ -648,7 +652,12 @@ def bean_dark_ink(regions) -> int:
     sits within `BEAN_MAX_GROUND_DE00` of the ground's. Above it the ink is
     designed lettering that only the superpixel mean absorbed -- the Fremont
     wordmark, Black on White at 100 dE00, sewed as hairline skeletons ON --
-    and sews as it did. Returns the number of strokes tagged."""
+    and sews as it did. Returns the number of strokes tagged.
+
+    `chart` is the job's `chart_for(cfg)`, the chart the regions'
+    `thread_index` values index (None: the default Isacord chart). Read off
+    the default chart, a Sulky Polyester index past Isacord's 398 raised
+    IndexError and a smaller brand's index measured unrelated colours."""
     from shapely.geometry import Polygon
 
     from .beanletters import BEAN_LETTER_KEY
@@ -662,7 +671,7 @@ def bean_dark_ink(regions) -> int:
                 or not isinstance(r.polygon, Polygon)):
             continue
         g = _ground_of(r, grounds)
-        if g is None or _thread_de00(r.thread_index, g.thread_index) > BEAN_MAX_GROUND_DE00:
+        if g is None or _thread_de00(r.thread_index, g.thread_index, chart) > BEAN_MAX_GROUND_DE00:
             continue
         field = build_shape_field(r.polygon)
         spines = _skeleton_chains_mm(field) if field is not None else []
@@ -739,8 +748,23 @@ def drop_unclaimed_floor_rescues(regions: list) -> list[float]:
 # owns at least half its cluster keeps its label exactly as before and one
 # that shares a cluster with other strokes (a word's letters, the rope)
 # leaves it for the dark block. No new constant: every number is the
-# gradient lane's. `glyphs` is None -- the flat lane has no thin population
-# to name a glyph's counter (see `is_counter`).
+# gradient lane's. `glyphs` is None by default -- the flat lane has no
+# separate thin population -- so a thin LIGHT letter's dark counter is carved
+# as ink (`is_counter`'s summit defect). `cfg.flat_dark_ink_counter_guard`
+# (OFF) reads one from the flat quantiser's own labels: `iter_thin_components`
+# with the one-ground rule, the test `find_thin_ink` runs on its quantiser's.
+def _flat_glyphs(p: Prep, cfg: PipelineConfig, q, labelled: np.ndarray) -> np.ndarray | None:
+    """The flat lane's thin population: the components of `q.labels` (inside
+    `labelled`) that `iter_thin_components` keeps with the one-ground rule,
+    as a mask; None when there are none."""
+    labels = np.where(labelled, q.labels, -1).astype(np.int32)
+    mask = np.zeros(labels.shape, bool)
+    for t in iter_thin_components(labels, len(q.thread_indices), p.px_per_mm, cfg):
+        bx, by, bw, bh = t.bbox
+        mask[by:by + bh, bx:bx + bw] |= t.comp
+    return mask if mask.any() else None
+
+
 def carve_flat_dark_ink(p: Prep, cfg: PipelineConfig, q):
     """`q` (the flat quantiser's `Quant`) with the absorbed dark-ink strokes
     moved to a trailing label block, named in `dark_ink_labels`; `q` itself
@@ -752,7 +776,8 @@ def carve_flat_dark_ink(p: Prep, cfg: PipelineConfig, q):
     labelled = valid & (q.labels >= 0)
     if not labelled.any():
         return q
-    dark = find_dark_thin_ink(p, cfg, labelled)
+    glyphs = _flat_glyphs(p, cfg, q, labelled) if cfg.flat_dark_ink_counter_guard else None
+    dark = find_dark_thin_ink(p, cfg, labelled, glyphs)
     if dark is None:
         return q
     absorbed = absorbed_dark_ink(dark, q.labels, labelled)

@@ -145,3 +145,62 @@ def test_on_the_lettered_blob_letters_sew_bean_on_a_whole_ground(tmp_path):
     for r in letters:
         inside = sum(1 for p in ground_pts if r.polygon.buffer(0.3).contains(Point(p)))
         assert inside > 0, r.shape_id
+
+
+# The gate reads the chart the job quantized against (`chart_for(cfg)`), not
+# the default Isacord `CHART`: a region's `thread_index` is an index into the
+# BRAND's chart. Sulky Polyester has 907 threads against Isacord's 398, so a
+# stroke on index >= 398 raised IndexError and failed the whole /digitize;
+# under 398 the dE00 was read off unrelated Isacord colours.
+def _sulky():
+    from digitizer_core.threads import load_chart
+    chart = load_chart("sulky-polyester")
+    idx = {c.number: i for i, c in enumerate(chart)}
+    return chart, idx
+
+
+def _rb(chart, sid, poly, thread_index, layer, **meta) -> Region:
+    return Region(shape_id=sid, polygon=poly, thread_index=thread_index,
+                  thread_number=chart[thread_index].number, area_mm2=float(poly.area),
+                  meta={"layer": layer, **meta})
+
+
+def test_a_brand_index_past_the_default_chart_beans_instead_of_raising():
+    chart, idx = _sulky()
+    ground_i, pen_i = idx["294"], idx["293"]       # Brown, Dark Brown: a pen line
+    assert pen_i >= len(CHART)
+    ground = _rb(chart, "G", GROUND, ground_i, 0, lettering_group=True)
+    stroke = _rb(chart, "K", STROKE, pen_i, 1, dark_ink=True)
+    assert bean_dark_ink([ground, stroke], chart=chart) == 1
+    assert stroke.meta[BEAN_LETTER_KEY]
+
+
+def test_the_gate_reads_the_brand_chart_not_isacord():
+    chart, idx = _sulky()
+    ground_i, ink_i = idx["100"], idx["1200"]      # Snow White, Med. Dk. Navy: lettering
+    from digitizer_core.thin_ink import _thread_de00
+    assert _thread_de00(ground_i, ink_i) <= BEAN_MAX_GROUND_DE00          # Isacord's colours
+    assert _thread_de00(ground_i, ink_i, chart) > BEAN_MAX_GROUND_DE00    # the brand's
+    ground = _rb(chart, "G", GROUND, ground_i, 0, lettering_group=True)
+    stroke = _rb(chart, "K", STROKE, ink_i, 1, dark_ink=True)
+    assert bean_dark_ink([ground, stroke], chart=chart) == 0
+    assert BEAN_LETTER_KEY not in stroke.meta
+
+
+def test_the_pipeline_hands_bean_dark_ink_the_jobs_chart(tmp_path, monkeypatch):
+    import digitizer_core.pipeline as pipeline
+    seen = []
+    real = pipeline.bean_dark_ink
+
+    def spy(regions, chart=None):
+        seen.append(chart)
+        return real(regions, chart=chart)
+
+    monkeypatch.setattr(pipeline, "bean_dark_ink", spy)
+    art = tmp_path / "lettered_blob.png"
+    _lettered_blob(art)
+    cfg = PipelineConfig(target_width_mm=60.0, max_colors=6, forced_class="gradient",
+                         edge_cap="none", keep_dark_thin_strokes=True, dark_ink_bean=True,
+                         thread_brand="sulky-polyester")
+    run_stages(str(art), cfg)
+    assert seen and all(c is not None and c.id == "sulky-polyester" for c in seen)

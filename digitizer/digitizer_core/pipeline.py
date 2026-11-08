@@ -1024,7 +1024,7 @@ def build_generation(
             if r.meta.get("layer") in q.dark_ink_labels:
                 r.meta["dark_ink"] = True
         if cfg.dark_ink_bean:
-            bean_dark_ink(regions)
+            bean_dark_ink(regions, chart=chart_for(cfg))
     resnap_warnings = revalidate_threads(
         regions, p, cfg,
         palette_indices=list(q.thread_indices),
