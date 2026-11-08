@@ -1,5 +1,5 @@
 import { test, expect, vi } from "vitest";
-import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, drawGrid, renderRealistic, threadLayers, threadLodLayers, layerSubsetForCount, drawThreads, kindStyle, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
+import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, drawGrid, renderRealistic, threadLayers, threadLodLayers, layerSubsetForCount, drawThreads, kindStyle, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM, softShadowFactor } from "./preview.js";
 // ONE import line, deliberately. Three had accumulated here -- each bad merge
 // of this file stacked another partial copy on top rather than reconciling the
 // list, so the same seven names were declared three times over. esbuild
@@ -1439,4 +1439,98 @@ test("simulator frames: a changed view, a scrub back past the snapshot, or an or
   renderRealistic(plain, design, SIM_OPTS);
   expect(plain.made.length).toBe(0);
   expect(plain.getContext().fills).toBe(2);
+});
+
+// --- Shadows: always solid, soft once the thread is wide (2026-11-07) ------
+
+// A logging ctx with the extras the soft path uses: per-stroke dash, blits,
+// and the alpha a blit is drawn at.
+function shadowLog() {
+  const strokes = [], blits = [];
+  let _ss, _lw, dash = [];
+  const ctx = {
+    save() {}, restore() {}, setTransform() {}, clearRect() {},
+    beginPath() {}, moveTo() {}, lineTo() {},
+    stroke() { strokes.push({ color: _ss, width: _lw, dash: dash.slice() }); },
+    setLineDash(d) { dash = d.slice(); },
+    drawImage(src, ...a) { blits.push({ src, alpha: ctx.globalAlpha, args: a }); },
+    globalAlpha: 1, lineCap: "", lineJoin: "",
+    get strokeStyle() { return _ss; }, set strokeStyle(v) { _ss = v; },
+    get lineWidth() { return _lw; }, set lineWidth(v) { _lw = v; },
+    strokes, blits,
+  };
+  return ctx;
+}
+const isShadow = (s) => /^rgba\(0,0,0,/.test(s.color || "");
+const strand = (x0, x1, rgb, kind, role) => ({ x0, y0: 10, x1, y1: 10, rgb, kind: kind || "stitch", ...(role ? { role } : {}) });
+
+test("every shadow is drawn SOLID: a later block's contact shadow no longer inherits the beaded specular's dash", () => {
+  const ctx = shadowLog();
+  const red = [200, 20, 20], blue = [20, 20, 200];
+  drawThreads(ctx, [strand(0, 40, red), strand(5, 45, red), strand(10, 50, blue), strand(20, 60, blue, "satin", "border")],
+    (x) => x, (y) => y, 4, { layers: [0, 1, 2, 3, 4] });
+  const shadows = ctx.strokes.filter(isShadow);
+  expect(shadows.length).toBe(3); // block red, block blue, the raised border
+  for (const s of shadows) expect(s.dash).toEqual([]);
+  // ...and the beaded layer is still dashed, so the reset is doing work.
+  expect(ctx.strokes.some((s) => s.dash.length === 2)).toBe(true);
+});
+
+test("softShadowFactor: hard below 6 px of thread, then one step per 3 px, capped", () => {
+  expect(softShadowFactor(1.2)).toBe(1);
+  expect(softShadowFactor(5.9)).toBe(1);
+  expect(softShadowFactor(6)).toBe(2);
+  expect(softShadowFactor(9)).toBe(3);
+  expect(softShadowFactor(400)).toBe(6);
+});
+
+test("soft shadow: wide thread casts through the scratch canvas (no full-res alpha stroke), at the hard shadow's opacity", () => {
+  const scratchCtx = shadowLog();
+  const scratch = { width: 200, height: 100, getContext: () => scratchCtx };
+  const soft = { dpr: 1, cw: 400, ch: 200, scratch: () => scratch };
+  const red = [200, 20, 20];
+  const ctx = shadowLog();
+  drawThreads(ctx, [strand(10, 90, red), strand(20, 120, red)], (x) => x, (y) => y, 9, { layers: [0, 2], softShadow: soft });
+  expect(ctx.strokes.filter(isShadow)).toEqual([]);
+  expect(ctx.blits.length).toBe(1);
+  expect(ctx.blits[0].src).toBe(scratch);
+  expect(ctx.blits[0].alpha).toBe(0.22);
+  // The shadow path went to the scratch canvas, opaque.
+  expect(scratchCtx.strokes.length).toBe(1);
+  expect(scratchCtx.strokes[0].color).toBe("#000");
+  // Thin thread with the same option: the ordinary hard shadow, unchanged.
+  const thin = shadowLog();
+  drawThreads(thin, [strand(10, 90, red)], (x) => x, (y) => y, 3, { layers: [0, 2], softShadow: soft });
+  expect(thin.blits).toEqual([]);
+  expect(thin.strokes.filter(isShadow).map((s) => s.color)).toEqual(["rgba(0,0,0,0.22)"]);
+});
+
+test("soft shadow: strands whose shadow lands wholly off the canvas are left out of its path", () => {
+  const scratchCtx = shadowLog();
+  let moves = 0;
+  scratchCtx.moveTo = () => { moves++; };
+  const scratch = { width: 200, height: 100, getContext: () => scratchCtx };
+  const soft = { dpr: 1, cw: 400, ch: 200, scratch: () => scratch };
+  const red = [200, 20, 20];
+  drawThreads(shadowLog(), [strand(10, 90, red), strand(5000, 5100, red), strand(-900, -800, red)], (x) => x, (y) => y, 9,
+    { layers: [0, 2], softShadow: soft });
+  expect(moves).toBe(1);
+});
+
+test("satin over its OWN colour's fill casts a shadow onto it -- soft zoom only, so fit zoom keeps one shadow per block", () => {
+  const scratch = { width: 200, height: 100, getContext: () => shadowLog() };
+  const soft = { dpr: 1, cw: 400, ch: 200, scratch: () => scratch };
+  const red = [200, 20, 20];
+  const strands = [strand(10, 90, red, "fill"), strand(12, 92, red, "fill"), strand(30, 60, red, "satin"), strand(32, 62, red, "satin")];
+  const wide = shadowLog();
+  drawThreads(wide, strands, (x) => x, (y) => y, 9, { layers: [0, 2], softShadow: soft });
+  expect(wide.blits.length).toBe(2); // the block's, then the satin's onto the fill
+  const fit = shadowLog();
+  drawThreads(fit, strands, (x) => x, (y) => y, 3, { layers: [0, 2], softShadow: soft });
+  expect(fit.blits).toEqual([]);
+  expect(fit.strokes.filter(isShadow).length).toBe(1);
+  // A fill alone casts no extra shadow at any width.
+  const fillOnly = shadowLog();
+  drawThreads(fillOnly, strands.slice(0, 2), (x) => x, (y) => y, 9, { layers: [0, 2], softShadow: soft });
+  expect(fillOnly.blits.length).toBe(1);
 });
