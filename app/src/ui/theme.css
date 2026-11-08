@@ -1171,8 +1171,9 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   /* 420px held play, scrubber, count, speed and close. The thread steps,
      the thread readout and the Stops toggle (SimBar.svelte, 2026-11-07) need
      about 300px more; it still sits inside the zoom bar it covers, which is
-     wider than this at every width that labels its toggles. */
-  width: min(720px, 96%);
+     wider than this at every width that labels its toggles. Isolate and the
+     Underlay/Top readout (2026-11-07, round 2) need about 120px more. */
+  width: min(840px, 96%);
 }
 .simscrub { flex: 1; min-width: 80px; }
 .simcount {
