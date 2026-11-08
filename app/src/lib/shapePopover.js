@@ -272,7 +272,10 @@ function baseModel({ element, shapeId, fit, fabric }) {
   out.push({ key: "delete", kind: "action", label: "Delete shape", danger: true });
   // Interior rings (v1.9): a pending holes_override wins over the review's own.
   const holeRings = Array.isArray(entry.holes_override) ? entry.holes_override : Array.isArray(row.holesFull) ? row.holesFull : [];
-  return { lane, shapeId, name: digitizedName(row), points: ring ? ring.length : null, holes: holeRings.length, rows: out };
+  // The stored fill angle, outside the rows: brick has no angle row but sews
+  // it (stitchSample.sampleSpecFromModel draws it).
+  const fillAngleDeg = entry.fill_angle_deg == null ? null : entry.fill_angle_deg;
+  return { lane, shapeId, name: digitizedName(row), points: ring ? ring.length : null, holes: holeRings.length, fillAngleDeg, rows: out };
 }
 
 // ---- patches ----------------------------------------------------------------
