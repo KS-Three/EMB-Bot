@@ -287,3 +287,45 @@ test("nearestPecIndex ranks the chart by CIEDE2000, as colorMatch.js does", asyn
     }
   }
 });
+
+// ---- the {type:"end"} sentinel is not part of the design's extents ------
+//
+// buildQualityDesign bakes an element's offset into every stitch but appends
+// `{x:0,y:0,type:"end"}` at the ABSOLUTE origin, and combineDesigns returns a
+// single design unchanged, so on any off-origin element the sentinel sits
+// far from the stitches. extents() used to include it: a 20x20 mm design at
+// (40..60, 40..60) mm declared a 60x60 mm PEC width/height and CEmbOne box,
+// and the initial PEC jump was computed from xMin=0. dst.js fixed the same
+// thing in its own header (src/dst.js, "the sentinel was also widening the
+// header's declared bounding box") by breaking before its extents update.
+test("an off-origin design's PEC/PES extents ignore the end sentinel at the origin", () => {
+  const d = { stitches: [
+    { x: 400, y: 400, type: "jump" }, { x: 400, y: 400, type: "stitch" },
+    { x: 600, y: 400, type: "stitch" }, { x: 600, y: 600, type: "stitch" },
+    { x: 400, y: 600, type: "stitch" },
+    { x: 0, y: 0, type: "end" },
+  ], colors: BLACK };
+  const out = encodePES(d);
+  const dv = new DataView(out.buffer, out.byteOffset, out.byteLength);
+
+  // PEC width/height: the two int16 right after the 0x31 0xff 0xf0 marker.
+  const pecStart = dv.getUint32(8, true);
+  let m = -1;
+  for (let i = pecStart; i < out.length - 2; i++) {
+    if (out[i] === 0x31 && out[i + 1] === 0xff && out[i + 2] === 0xf0) { m = i; break; }
+  }
+  assert.ok(m >= 0);
+  assert.strictEqual(dv.getInt16(m + 3, true), 200, "PEC width is the design's 20 mm");
+  assert.strictEqual(dv.getInt16(m + 5, true), 200, "PEC height is the design's 20 mm");
+
+  // CEmbOne bounding rectangle: four int16 after the length-prefixed name.
+  const s = Buffer.from(out).toString("latin1");
+  const c = s.indexOf("CEmbOne") + "CEmbOne".length;
+  assert.deepStrictEqual(
+    [dv.getInt16(c, true), dv.getInt16(c + 2, true), dv.getInt16(c + 4, true), dv.getInt16(c + 6, true)],
+    [0, 0, 200, 200], "CEmbOne extents rectangle is 20 x 20 mm");
+
+  // Initial PEC jump = (-xMin, yMax) of the stitches, not of the origin.
+  const first = decodePecStitchDeltas(out)[0];
+  assert.deepStrictEqual([first.dx, first.dy, first.kind], [-400, 600, "jump"]);
+});
