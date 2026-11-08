@@ -128,7 +128,7 @@ from .fabrics import Fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
 from .regions import Region
 from .stitchwidth import column_sized
-from .stage6_fill import best_fill_angle_deg, principal_angle_deg
+from .stage6_fill import best_fill_angle_deg, principal_angle_deg, pro_offset_fill_angle
 from .stage6_satin import is_satin_candidate
 from .silhouette_underfill import MERGED_ART_KEY, UNDERFILL_KEY
 from . import machine
@@ -341,6 +341,10 @@ def _comp_axis(region: Region, cfg: PipelineConfig, satin_max: float,
                                vote=satin_fill_vote(cfg),
                                hysteresis=satin_fill_hysteresis(cfg))):
         return None, True
+    pro = pro_offset_fill_angle(cfg, region.shape_id)
+    if pro is not None:
+        # `cfg.extra["fill_angle_pro_offset"]` (built OFF): stage 7's order.
+        return pro, False
     angle = region.meta.get("fill_angle_deg")
     if angle is not None:
         return float(angle), False
@@ -488,6 +492,7 @@ def seam_row_angles(regions: list[Region], cfg: PipelineConfig, fabric: Fabric,
         explicit = (r.meta.get("fill_angle_deg") is not None
                     or cfg.fill_angle_deg is not None
                     or r.meta.get("design_angle_deg") is not None
+                    or pro_offset_fill_angle(cfg, r.shape_id) is not None
                     or directional)
         out[r.shape_id] = (a if explicit else
                            best_fill_angle_deg(_grow(r.polygon, pull, None), row_mm))
