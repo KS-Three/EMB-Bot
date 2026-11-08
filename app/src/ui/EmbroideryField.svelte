@@ -20,7 +20,7 @@
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
   import { garmentOf, placementBoxOf } from "../lib/placement.js";
-  import { resizeBadgeText } from "../lib/estimate.js";
+  import { resizeBadgeText, runSpm } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
   import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, ringNodesInBox, fieldMmToOutlineMm, simplifyRing, ringKey, splitRingKey, NODE_GRAB_PX } from "../lib/shapeOverlay.js";
   import { editModeBar, MODE_SAYS, holePointPhrase, ringCentre, stepHoleCursor, sameNode, stepNodeCursor, nodeCursorPhrase } from "../lib/editModeA11y.js";
@@ -71,6 +71,12 @@
   // outline it was.
   export let hoverShape = null;
   export let focusShape = null;
+  // The operator's Quote settings (App's `quote`, quote.js), read only for
+  // the simulator bar's sew-time rate: runSpm() picks the same speed for it as
+  // Download's "Run time" row, so the two agree. Not named in any `$: if
+  // (canvas)` block, so a quote change never repaints the field.
+  export let quote = null;
+  $: simRate = runSpm(quote);
 
   const dispatch = createEventDispatcher();
   const MM_PER_INCH = 25.4;
@@ -3819,8 +3825,15 @@
     const bh = Math.round(h * nextDpr);
     if (canvas.width === bw && canvas.height === bh && dpr === nextDpr) return;
     dpr = nextDpr;
-    canvas.width = bw;  // note: assigning either dimension clears the bitmap,
-    canvas.height = bh; // which is why the repaint below is unconditional.
+    // Through a local alias, like setCanvasCursor: a member write on `canvas`
+    // itself compiles to a `$.mutate` of `canvas`, which invalidates it
+    // and re-runs `$: if (canvas) { project; runtime; paint(); }`, i.e. the
+    // full regenerate and its stopSim() that the comment below exists to
+    // avoid. Until 2026-11-07 it did exactly that on every resize.
+    // EmbroideryField.cursor.spec.js fails on a direct write.
+    const el = canvas;
+    el.width = bw;  // note: assigning either dimension clears the bitmap,
+    el.height = bh; // which is why the repaint below is unconditional.
     // repaintView(), NOT paint(): a resize changes the mm->px transform, not
     // the stitches, and paint() opens with stopSim() because a REGENERATION
     // invalidates the simulator's strand count. Going through paint() here
@@ -5452,8 +5465,9 @@
         isolate={simIsolate}
         hasUnderlay={!!(simUnderlay && simUnderlay.runs.length)}
         phase={phaseAt(simStrands, Math.floor(simIndex), simTotal)}
-        sewTime={sewTimeAt(simClock, Math.floor(simIndex), EMB.sewTimeMin, EMB.PLAN_SPM)}
-        spm={EMB.PLAN_SPM}
+        sewTime={sewTimeAt(simClock, Math.floor(simIndex), EMB.sewTimeMin, simRate.spm)}
+        spm={simRate.spm}
+        spmQuoted={simRate.quoted}
         on:toggle={simTogglePlay}
         on:block={(e) => simGoToBlock(e.detail.k)}
         on:isolate={simToggleIsolate}
