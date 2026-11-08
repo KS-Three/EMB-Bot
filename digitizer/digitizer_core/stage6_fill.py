@@ -258,6 +258,43 @@ def _columns(rows: list[tuple[int, float, list[tuple[float, float]]]]) -> list[l
 _FILL_ANGLE_CANDIDATES = 16
 
 
+#: `cfg.extra[FILL_ANGLE_PRO_OFFSET_KEY]` (2026-11-07, built OFF): every fill
+#: whose angle no review and no global sets sews at `machine.FILL_ANGLE_PRO_DEG`.
+FILL_ANGLE_PRO_OFFSET_KEY = "fill_angle_pro_offset"
+
+
+def pro_offset_fill_angle(cfg, shape_id: str) -> float | None:
+    """The row angle `cfg.extra["fill_angle_pro_offset"]` gives a fill shape, or
+    None when the flag is off or something the customer set outranks it.
+
+    The pro's files hold ONE fill angle per design, about 20 deg off the
+    design's axes (`machine.FILL_ANGLE_PRO_DEG` has the measurement), where
+    every candidate source we have lands on an axis: the column objective
+    (`best_fill_angle_deg`) picks 0 or 90 on a slab, the principal axis of a
+    slab is 0, and the lettering house angle is about 0 on a straight line.
+    Measured offline over the 27 shapes that rule's figure comes from, a fixed
+    angle agreed with the pro's cells better than the per-shape principal axis
+    plus the same offset (Golden Tee's and Drone's near-round fills, whose
+    axis is ill-defined) and tied it elsewhere -- so the rule reads no shape.
+
+    Only the review screen's own `fill_angle_deg` and the global
+    `cfg.fill_angle_deg` outrank it. The lettering house angle, which the
+    text tagger writes into the same meta slot, and the design angle do not:
+    they are the axis sources the pro's files disagree with. Stage 7's
+    `_fill_angle_for` and stage 5's `_comp_axis` both read it, so directional
+    compensation (OFF by default) pulls along the rows that are sewn.
+    """
+    extra = getattr(cfg, "extra", None) or {}
+    if not extra.get(FILL_ANGLE_PRO_OFFSET_KEY):
+        return None
+    if getattr(cfg, "fill_angle_deg", None) is not None:
+        return None
+    ov = (getattr(cfg, "shape_overrides", None) or {}).get(shape_id) or {}
+    if ov.get("fill_angle_deg") is not None:
+        return None
+    return machine.FILL_ANGLE_PRO_DEG
+
+
 def _cols_at_angle(poly: Polygon, angle: float, row_mm: float) -> int:
     """How many monotone columns rows at `angle` cut `poly` into."""
     rotated = affinity.rotate(poly, -angle, origin=(0, 0), use_radians=False)
