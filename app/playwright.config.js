@@ -78,6 +78,8 @@ const SPEC_SECONDS = {
   "field-bar-narrow.spec.js": 8,
   "field-border-menu.spec.js": 19,
   "field-chrome.spec.js": 26,
+  // new 2026-11-07; local sum of test durations (3 tests), not a CI median yet.
+  "field-compare.spec.js": 26,
   "field-node-edit.spec.js": 64,
   "field-outlines.spec.js": 17,
   "field-panel-sync.spec.js": 18,
