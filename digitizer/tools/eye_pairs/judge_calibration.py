@@ -31,8 +31,18 @@ judges nothing:
   `<kit>/reasons.json`, which phase B reads. Opened from disk instead, the page
   keeps reasons in the browser and offers the same JSON as a download.
 
-The held-out list is read by `split --check`, by tests, and by phase B's
-scoring, never by anything that builds or shows a picture.
+    python -m tools.eye_pairs.judge_calibration heldout-kit [--out DIR] [--sealed DIR] [--reuse-runs DIR]
+
+* `heldout-kit` (phase B, after the rubric freeze) draws every HELD-OUT pair
+  plus the kits' identical controls the way `kit` drew its pairs, under blind
+  ids H001.. in one seeded shuffle. The judge's folder gets `packets.json`
+  (blind id + absolute picture paths, nothing else) and `img/`; the key
+  (blind id -> pool id, kind, base side), the designs and any drop reasons go
+  to a SEPARATE sealed folder the judge is never shown.
+
+The held-out list is read by `split --check`, by tests, by phase B's scoring
+and by `heldout-kit`, which writes no label, verdict, arm or side where the
+judge reads. The calibration kit never reads it.
 """
 from __future__ import annotations
 
@@ -370,49 +380,85 @@ def sources_1104(pair: str, src: Path) -> tuple[Path, Path, Path]:
     return img / f"{pair}_L.jpg", img / f"{pair}_R.jpg", img / f"{pair}_art.png"
 
 
-def render_1106(picked: list[dict], sealed: dict, runs: Path, trees: Path, *,
-                python: str, use_slot: bool = True) -> None:
-    """Re-draw the designs of the 11-06 pairs in the kit, and no others, under
-    the 11-06 rule (`pro_pooled_build.render_one`, the sitting's tree and
-    size, the laptop's CPU slot; a design already on disk is kept)."""
+def designs_1106(s: dict) -> list[tuple[str, str, str, str]]:
+    """The designs one 11-06 sealed pair shows, as (tree, fixture, side, kwargs
+    json): both for a live pair, the base alone for an identical control (as
+    `vlm_judge.kit_pro100` drew it on both sides)."""
+    shown = (s["before_design"],) if s["kind"] == "identical" else (s["before_design"], s["after_design"])
+    return [(tree, s["fixture"], side, json.dumps(kw, sort_keys=True)) for tree, side, kw in shown]
+
+
+def draw_designs(keys: list[tuple], runs: Path, trees: Path, *, python: str, use_slot: bool = True,
+                 holder: str = "judge_calibration", tolerate: bool = False) -> dict[tuple, str]:
+    """Draw every design key not already on disk under the 11-06 rule
+    (`pro_pooled_build.render_one`, the sitting's tree and size, the laptop's
+    CPU slot, one design at a time). -> {key: error} for the designs that
+    failed; with `tolerate` False the first failure raises instead."""
     from tools.eye_pairs import pro_pooled_build as pb
-    keys: dict[tuple, None] = {}
-    for x in picked:
-        if x["set"] != SET_1106:
-            continue
-        s = sealed[x["pair"]]
-        for tree, side, kw in (s["before_design"], s["after_design"]):
-            keys[(tree, s["fixture"], side, json.dumps(kw, sort_keys=True))] = None
+    keys = list(dict.fromkeys(keys))
     todo = [k for k in keys if not (pb.design_dir(runs, k[0], k[1], k[2]) / "design.json").exists()]
-    print(f"{len(keys)} designs for the 11-06 pairs in the kit; {len(todo)} to draw", flush=True)
+    print(f"{len(keys)} designs; {len(todo)} to draw", flush=True)
+    failed: dict[tuple, str] = {}
     if not todo:
-        return
-    slot = pb.Slot(pb.default_slot() if use_slot else None, "judge_calibration kit (calibration pairs only)")
+        return failed
+    slot = pb.Slot(pb.default_slot() if use_slot else None, holder)
     slot.acquire()
     try:
         for sha in dict.fromkeys(k[0] for k in todo):
-            tree = pb.ensure_tree(trees, sha)
-            for _t, fixture, side, kw in (k for k in todo if k[0] == sha):
-                slot.rotate_if_due(pb.TAKE_MIN)
-                meta = pb.render_one(tree, fixture, pb.design_dir(runs, sha, fixture, side), json.loads(kw),
-                                     python, size=pb.sitting_size(fixture))
-                print(f"  {sha}/{fixture}/{side}: {meta['stitches']} stitches, {meta['wall_s']} s", flush=True)
-            pb.discard_worktree(pb.REPO, trees / sha)
+            mine = [k for k in todo if k[0] == sha]
+            try:
+                tree = pb.ensure_tree(trees, sha)
+            except Exception as e:  # noqa: BLE001 - a tree that will not check out fails its designs
+                if not tolerate:
+                    raise
+                for k in mine:
+                    failed[k] = f"tree {sha}: {type(e).__name__}: {str(e)[-300:]}"
+                print(f"  tree {sha} FAILED: {e}", flush=True)
+                continue
+            try:
+                for _t, fixture, side, kw in mine:
+                    slot.rotate_if_due(pb.TAKE_MIN)
+                    try:
+                        meta = pb.render_one(tree, fixture, pb.design_dir(runs, sha, fixture, side),
+                                             json.loads(kw), python, size=pb.sitting_size(fixture))
+                    except Exception as e:  # noqa: BLE001
+                        if not tolerate:
+                            raise
+                        failed[(sha, fixture, side, kw)] = f"{type(e).__name__}: {str(e)[-300:]}"
+                        print(f"  {sha}/{fixture}/{side}: FAILED {str(e)[-200:]}", flush=True)
+                        continue
+                    print(f"  {sha}/{fixture}/{side}: {meta['stitches']} stitches, {meta['wall_s']} s", flush=True)
+            finally:
+                pb.discard_worktree(pb.REPO, trees / sha)
     finally:
         slot.release()
+    return failed
+
+
+def render_1106(picked: list[dict], sealed: dict, runs: Path, trees: Path, *,
+                python: str, use_slot: bool = True) -> None:
+    """Re-draw the designs of the 11-06 pairs in the kit, and no others, under
+    the 11-06 rule (`draw_designs`; a design already on disk is kept)."""
+    keys = [k for x in picked if x["set"] == SET_1106 for k in designs_1106(sealed[x["pair"]])]
+    print("the 11-06 pairs in the kit:", end=" ", flush=True)
+    draw_designs(keys, runs, trees, python=python, use_slot=use_slot,
+                 holder="judge_calibration kit (calibration pairs only)")
 
 
 def sources_1106(pair: str, sealed: dict, runs: Path, work: Path) -> tuple[Path, Path, Path]:
     """One 11-06 pair's pictures, as `vlm_judge.kit_pro100` made them: each
-    design through `_design_jpg`, the base on the side the sealed key says."""
+    design through `_design_jpg`, the base on the side the sealed key says (an
+    identical control shows the base on both)."""
     from tools.artfid_eye_rank import _normalise_art
     from tools.eye_pairs import pro_pooled_build as pb
     s = sealed[pair]
     before = vj._design_jpg(pb.design_dir(runs, s["before_design"][0], s["fixture"], s["before_design"][1]))
-    after = vj._design_jpg(pb.design_dir(runs, s["after_design"][0], s["fixture"], s["after_design"][1]))
     art = work / f"{SET_1106}_{pair}_art.png"
     work.mkdir(parents=True, exist_ok=True)
     _normalise_art(DIGITIZER / "testdata" / pb.FIXTURE_ART[s["fixture"]], art)
+    if s["kind"] == "identical":
+        return before, before, art
+    after = vj._design_jpg(pb.design_dir(runs, s["after_design"][0], s["fixture"], s["after_design"][1]))
     return (before, after, art) if s["left_arm"] == "base" else (after, before, art)
 
 
@@ -463,6 +509,150 @@ def do_kit(a) -> int:
     kit = build_kit(out, sources=sources, sets=sets)
     print(json.dumps({"page": str(out / "index.html"), "n": kit["n"], "per_class": kit["per_class"],
                       "per_set": kit["per_set"]}, indent=1))
+    return 0
+
+
+# ------------------------------------------------------- the held-out packets ----
+#
+# Phase B's blind run. Every HELD-OUT pair, plus the identical controls of the
+# two kits (PRE-REGISTRATION.md, "Controls"), drawn exactly as the calibration
+# kit drew its pairs: the same sources (11-04: the surviving files Kent and the
+# old judge saw; 11-06: re-drawn on the sitting's tree at the sitting's size,
+# `stitchviz` at 14 px/mm, JPEG 92), the same one-canvas padding, the same
+# `diff_window` and 3x crops. LEFT / RIGHT stay in each kit's own sealed frame
+# (order A, "as Kent saw it"), which those kits' seeded shuffles randomised.
+#
+# The judge's folder holds `packets.json` (blind id + absolute picture paths,
+# nothing else) and `img/H###_*`. Everything that unseals a pair (the blind id
+# -> pool id, kind, which side is the base, the crop window, the designs, the
+# drop reasons) lives in a SEPARATE sealed folder the judge is never shown.
+
+HELDOUT_SEED = SEED
+HELDOUT_NAME = "judge-heldout-1107"
+SEALED_SUFFIX = "-sealed"
+PACKET_KEYS = ("pair", "left", "right", "art", "left_x3", "right_x3")
+PACKETS_FILE = "packets.json"
+KEY_FILE = "key.json"
+
+
+def heldout_ids(out: Path | None = None) -> list[str]:
+    """The HELD-OUT pool ids: the one place a picture builder reads that file."""
+    return list(json.loads(((out or OUT) / HELD_OUT_FILE).read_text(encoding="utf-8"))["ids"])
+
+
+def control_ids(sealed_sets: dict[str, dict]) -> list[str]:
+    """The identical-pair controls of the two kits, as `<set>:<pair>`, minus
+    Amendment 1's exclusions (11-04: P002)."""
+    out = []
+    for name, sealed in sealed_sets.items():
+        for pid, s in sorted(sealed.items()):
+            if s.get("kind") == "identical" and not (name == SET_1104 and pid in EXCLUDED_1104):
+                out.append(f"{name}:{pid}")
+    return out
+
+
+def blind_layout(held: list[str], controls: list[str], *, seed: int = HELDOUT_SEED) -> list[dict]:
+    """Held-out pairs and controls in one seeded shuffle, numbered H001.. in
+    turn. -> [{blind, pool_id, kind}] (kind = live / identical)."""
+    rows = [(i, "live") for i in sorted(held)] + [(i, "identical") for i in sorted(controls)]
+    assert len({r[0] for r in rows}) == len(rows), "a control is also a held-out pair"
+    random.Random(seed).shuffle(rows)
+    return [{"blind": f"H{n:03d}", "pool_id": pid, "kind": kind} for n, (pid, kind) in enumerate(rows, 1)]
+
+
+def _base_side(s: dict) -> str:
+    if s.get("kind") == "identical":
+        return "both"
+    return "L" if s["left_arm"] == "base" else "R"
+
+
+def build_heldout(out: Path, sealed_dir: Path, *, layout: list[dict], sealed_sets: dict[str, dict],
+                  sources) -> dict:
+    """The blind packets in `out` (`packets.json`, `img/`) and the key in
+    `sealed_dir` (`key.json`, `dropped.json`). `sources(row) -> (left, right,
+    art)` for one layout row; a row whose sources or pictures fail is dropped
+    with its reason in the sealed folder. -> {packets, dropped, key}."""
+    out, sealed_dir = Path(out).resolve(), Path(sealed_dir).resolve()
+    if out == sealed_dir or out in sealed_dir.parents or sealed_dir in out.parents:
+        raise ValueError(f"the sealed folder {sealed_dir} must sit apart from the judge's folder {out}")
+    img = out / "img"
+    packets, key, dropped = [], {}, []
+    for row in layout:
+        hid = row["blind"]
+        name, pair = row["pool_id"].split(":", 1)
+        s = sealed_sets[name][pair]
+        try:
+            left, right, art = sources(row)
+            win = write_pair_images(hid, Path(left), Path(right), Path(art), img)
+        except Exception as e:  # noqa: BLE001 - a pair that cannot be drawn is dropped, with why
+            dropped.append({"blind": hid, "pool_id": row["pool_id"], "kind": row["kind"],
+                            "reason": f"{type(e).__name__}: {str(e)[-400:]}"})
+            continue
+        packets.append({"pair": hid, "left": str(img / f"{hid}_L.jpg"), "right": str(img / f"{hid}_R.jpg"),
+                        "art": str(img / f"{hid}_art.png"), "left_x3": str(img / f"{hid}_Lx3.png"),
+                        "right_x3": str(img / f"{hid}_Rx3.png")})
+        key[hid] = {"pool_id": row["pool_id"], "kind": row["kind"], "base_side": _base_side(s), "window": win}
+    assert all(tuple(p) == PACKET_KEYS for p in packets)
+    out.mkdir(parents=True, exist_ok=True)
+    sealed_dir.mkdir(parents=True, exist_ok=True)
+    (out / PACKETS_FILE).write_text(json.dumps(packets, indent=1), encoding="utf-8")
+    blob = json.dumps(key, sort_keys=True, separators=(",", ":"))
+    (sealed_dir / KEY_FILE).write_text(json.dumps(
+        {"built": datetime.now(timezone.utc).isoformat(timespec="seconds"), "seed": HELDOUT_SEED,
+         "frame": "order A: each kit's own sealed LEFT / RIGHT",
+         "packets_sha256": hashlib.sha256((out / PACKETS_FILE).read_bytes()).hexdigest(),
+         "key_sha256": hashlib.sha256(blob.encode("utf-8")).hexdigest(),
+         "n_live": sum(v["kind"] == "live" for v in key.values()),
+         "n_identical": sum(v["kind"] == "identical" for v in key.values()),
+         "pairs": key}, indent=1), encoding="utf-8")
+    (sealed_dir / "dropped.json").write_text(json.dumps(dropped, indent=1), encoding="utf-8")
+    return {"packets": packets, "dropped": dropped, "key": key}
+
+
+def do_heldout_kit(a) -> int:
+    from tools.eye_pairs import pro_pooled_build as pb
+    base = pb.primary_checkout() / "digitizer" / "eye_pairs_out"
+    out = Path(a.out).resolve() if a.out else base / HELDOUT_NAME
+    sealed_dir = Path(a.sealed).resolve() if a.sealed else out.parent / (out.name + SEALED_SUFFIX)
+    src_1102 = Path(a.src_1102) if a.src_1102 else base / "pro-lettering-1102"
+    runs = Path(a.runs).resolve() if a.runs else sealed_dir / "runs"
+    trees = Path(a.trees).resolve() if a.trees else Path(os.environ.get("TEMP", ".")) / "embwt" / "trees"
+    st = vj.load_sitting()
+    sets = {SET_1104: st["sealed"], SET_1106: vj.pro100_sealed()}
+    layout = blind_layout(heldout_ids(), control_ids(sets))
+    for row in layout:
+        name, pair = row["pool_id"].split(":", 1)
+        if row["kind"] == "live":
+            assert sets[name][pair]["kind"] == "live", row["pool_id"]
+    keys = [k for r in layout if r["pool_id"].startswith(SET_1106 + ":")
+            for k in designs_1106(sets[SET_1106][r["pool_id"].split(":", 1)[1]])]
+    reuse = [Path(d).resolve() for d in (a.reuse_runs or [])]
+    for k in dict.fromkeys(keys):
+        dst = pb.design_dir(runs, k[0], k[1], k[2])
+        for r in reuse:
+            src = pb.design_dir(r, k[0], k[1], k[2])
+            if not (dst / "design.json").exists() and (src / "design.json").exists():
+                import shutil
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+    failed = draw_designs(keys, runs, trees, python=a.python, use_slot=not a.no_slot,
+                          holder="judge_calibration heldout-kit (one design at a time)", tolerate=True)
+
+    def sources(row):
+        name, pair = row["pool_id"].split(":", 1)
+        if name == SET_1104:
+            paths = sources_1104(pair, src_1102)
+            for p in paths:
+                if not p.exists():
+                    raise FileNotFoundError(f"the surviving 11-04 picture {p.name} is missing")
+            return paths
+        bad = [failed[k] for k in designs_1106(sets[SET_1106][pair]) if k in failed]
+        if bad:
+            raise RuntimeError("design render failed: " + bad[0])
+        return sources_1106(pair, sets[SET_1106], runs, sealed_dir / "work")
+
+    res = build_heldout(out, sealed_dir, layout=layout, sealed_sets=sets, sources=sources)
+    print(json.dumps({"packets": str(out / PACKETS_FILE), "key": str(sealed_dir / KEY_FILE),
+                      "n": len(res["packets"]), "dropped": res["dropped"]}, indent=1))
     return 0
 
 
@@ -709,6 +899,18 @@ def main(argv=None) -> int:
     kt.add_argument("--python", default=sys.executable)
     kt.add_argument("--no-slot", action="store_true", help="do not take the laptop's CPU slot")
     kt.set_defaults(fn=do_kit)
+    ho = sub.add_parser("heldout-kit", help="draw the blind HELD-OUT packets (key kept in a sealed folder)")
+    ho.add_argument("--out", default=None,
+                    help=f"the judge's folder (default: primary checkout's eye_pairs_out/{HELDOUT_NAME})")
+    ho.add_argument("--sealed", default=None, help=f"the key's folder (default: <out>{SEALED_SUFFIX}, a sibling)")
+    ho.add_argument("--src-1102", default=None, help="the surviving pro-lettering-1102 kit (default: primary checkout's)")
+    ho.add_argument("--runs", default=None, help="where 11-06 designs are drawn (default <sealed>/runs)")
+    ho.add_argument("--reuse-runs", action="append", default=None,
+                    help="a runs folder whose designs (same tree, fixture, side) are copied instead of re-drawn")
+    ho.add_argument("--trees", default=None, help="detached worktrees, outside the repo (default %%TEMP%%/embwt/trees)")
+    ho.add_argument("--python", default=sys.executable)
+    ho.add_argument("--no-slot", action="store_true", help="do not take the laptop's CPU slot")
+    ho.set_defaults(fn=do_heldout_kit)
     sv = sub.add_parser("serve", help="serve the page; reasons save to <kit>/reasons.json")
     sv.add_argument("--kit", required=True)
     sv.add_argument("--port", type=int, default=8733)

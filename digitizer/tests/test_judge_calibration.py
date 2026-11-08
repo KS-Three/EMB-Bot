@@ -9,6 +9,7 @@ you in the right direction." The protocol is
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from collections import Counter
 
 import pytest
@@ -257,3 +258,80 @@ def test_the_page_loads_and_saves_a_reason(tmp_path):
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+# ------------------------------------------------------- the held-out packets ----
+
+def _heldout_world(tmp_path):
+    """A fake world with labels, arms, a control and a pair whose render fails."""
+    sets, _files, _man, _cal, held, pics = _fake_world(tmp_path)
+    sets["a"]["P009"] = {**sets["a"]["P001"], "kind": "identical", "right_arm": "base"}
+    sets["b"]["P002"] = {**sets["b"]["P002"], "left_arm": "armA", "right_arm": "base"}
+    controls = jc.control_ids(sets)
+    layout = jc.blind_layout(held, controls)
+
+    def sources(row):
+        if row["pool_id"] == "b:P006":
+            raise RuntimeError("engine failed (1): boom")
+        return pics / "L.jpg", pics / "R.jpg", pics / "art.png"
+    return sets, held, controls, layout, sources
+
+
+def test_the_heldout_packets_carry_no_pick_verdict_or_arm(tmp_path):
+    sets, held, controls, layout, sources = _heldout_world(tmp_path)
+    assert controls == ["a:P009"]
+    out, sealed = tmp_path / "judge", tmp_path / "judge-sealed"
+    res = jc.build_heldout(out, sealed, layout=layout, sealed_sets=sets, sources=sources)
+    packets = json.loads((out / jc.PACKETS_FILE).read_text(encoding="utf-8"))
+    assert packets == res["packets"] and len(packets) == len(held) + len(controls) - 1
+    for p in packets:
+        assert tuple(p) == jc.PACKET_KEYS                       # id + picture paths, nothing else
+        assert p["pair"].startswith("H") and p["pair"][1:].isdigit()
+        for k in jc.PACKET_KEYS[1:]:
+            path = Path(p[k])
+            assert path.is_absolute() and path.exists() and path.parent == (out / "img").resolve()
+            assert path.name.startswith(p["pair"] + "_")
+    raw = (out / jc.PACKETS_FILE).read_text(encoding="utf-8")
+    prefix = json.dumps(str((out / "img").resolve()))[1:-1]          # the folder, as JSON escapes it
+    assert raw.count(prefix) == 5 * len(packets)
+    text = raw.replace(prefix, "").lower()                            # what is left: keys, ids, file names
+    for word in ("kent", "pick", "verdict", "choice", "judge\"", "confidence", "reason", "arm", "base",
+                 "before", "after", "tie", "kind", "identical", "live", "pool", "fixture", "fx", "\"a:", "\"b:"):
+        assert word not in text, word
+    # the judge's folder holds the packets and the pictures, and nothing that unseals them
+    assert sorted(x.name for x in out.iterdir()) == ["img", jc.PACKETS_FILE]
+    assert all(x.name.split("_", 1)[1] in ("L.jpg", "R.jpg", "art.png", "Lx3.png", "Rx3.png")
+               for x in (out / "img").iterdir())
+    key = json.loads((sealed / jc.KEY_FILE).read_text(encoding="utf-8"))["pairs"]
+    assert set(key) == {p["pair"] for p in packets}
+    by_pool = {v["pool_id"]: v for v in key.values()}
+    assert by_pool["a:P009"]["kind"] == "identical" and by_pool["a:P009"]["base_side"] == "both"
+    assert by_pool["b:P002"]["base_side"] == "R" and by_pool["a:P004"]["base_side"] == "L"
+    dropped = json.loads((sealed / "dropped.json").read_text(encoding="utf-8"))
+    assert [d["pool_id"] for d in dropped] == ["b:P006"] and "boom" in dropped[0]["reason"]
+    with pytest.raises(ValueError):
+        jc.build_heldout(out, out / "sealed", layout=layout, sealed_sets=sets, sources=sources)
+
+
+def test_the_blind_layout_is_seeded_and_covers_every_heldout_pair_and_control(committed_pool):
+    held = jc.heldout_ids()
+    assert held == jc.split(committed_pool)["held_out"]
+    sets = {jc.SET_1104: vj.load_sitting()["sealed"], jc.SET_1106: vj.pro100_sealed()}
+    controls = jc.control_ids(sets)
+    assert len(controls) == 7 and "vlm-judge:P002" not in controls       # PRE-REGISTRATION "Controls"
+    lay = jc.blind_layout(held, controls)
+    assert lay == jc.blind_layout(list(reversed(held)), controls)
+    assert [r["blind"] for r in lay] == [f"H{i:03d}" for i in range(1, len(held) + 8)]
+    assert sorted(r["pool_id"] for r in lay if r["kind"] == "live") == sorted(held)
+    assert sorted(r["pool_id"] for r in lay if r["kind"] == "identical") == sorted(controls)
+    for r in lay:
+        name, pair = r["pool_id"].split(":", 1)
+        assert sets[name][pair]["kind"] == r["kind"]
+    assert lay != jc.blind_layout(held, controls, seed=jc.HELDOUT_SEED + 1)
+
+
+def test_an_identical_1106_control_shows_its_base_on_both_sides():
+    s = {"kind": "identical", "fixture": "fx", "before_design": ["t1", "base", {"a": 1}],
+         "after_design": ["t1", "armA", {"a": 2}]}
+    assert jc.designs_1106(s) == [("t1", "fx", "base", '{"a": 1}')]
+    assert len(jc.designs_1106({**s, "kind": "live"})) == 2
