@@ -1,0 +1,2288 @@
+{
+ "built": "2026-11-08T06:42:01+00:00",
+ "seed": 20261107,
+ "frame": "order A: each kit's own sealed LEFT / RIGHT",
+ "packets_sha256": "4c091074bcce18fca7713c91b8280bd52adf9d43063c42346b9d96c180344024",
+ "key_sha256": "54a49567335116fba1ede91d94689455df2b11c053839a4de21e7988791a24b0",
+ "n_live": 92,
+ "n_identical": 7,
+ "pairs": {
+  "H001": {
+   "pool_id": "vlm-judge-100:P075",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1355,
+    "h": 757,
+    "s": 189,
+    "L": [
+     593,
+     243
+    ],
+    "R": [
+     593,
+     243
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H002": {
+   "pool_id": "vlm-judge-100:P003",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1180,
+    "h": 995,
+    "s": 240,
+    "L": [
+     499,
+     510
+    ],
+    "R": [
+     499,
+     511
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "differs": true
+   }
+  },
+  "H003": {
+   "pool_id": "vlm-judge:P032",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1409,
+    "h": 569,
+    "s": 142,
+    "L": [
+     948,
+     339
+    ],
+    "R": [
+     948,
+     339
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H004": {
+   "pool_id": "vlm-judge-100:P039",
+   "kind": "identical",
+   "base_side": "both",
+   "window": {
+    "w": 1178,
+    "h": 1213,
+    "s": 240,
+    "L": [
+     0,
+     0
+    ],
+    "R": [
+     0,
+     0
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": false
+   }
+  },
+  "H005": {
+   "pool_id": "vlm-judge-100:P022",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1176,
+    "h": 474,
+    "s": 118,
+    "L": [
+     0,
+     0
+    ],
+    "R": [
+     0,
+     0
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": false
+   }
+  },
+  "H006": {
+   "pool_id": "vlm-judge:P046",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1460,
+    "h": 546,
+    "s": 136,
+    "L": [
+     797,
+     304
+    ],
+    "R": [
+     797,
+     304
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H007": {
+   "pool_id": "vlm-judge:P019",
+   "kind": "identical",
+   "base_side": "both",
+   "window": {
+    "w": 1467,
+    "h": 373,
+    "s": 93,
+    "L": [
+     0,
+     0
+    ],
+    "R": [
+     0,
+     0
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": false
+   }
+  },
+  "H008": {
+   "pool_id": "vlm-judge:P006",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1465,
+    "h": 438,
+    "s": 109,
+    "L": [
+     827,
+     242
+    ],
+    "R": [
+     827,
+     242
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H009": {
+   "pool_id": "vlm-judge-100:P071",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1173,
+    "h": 1167,
+    "s": 240,
+    "L": [
+     583,
+     657
+    ],
+    "R": [
+     583,
+     657
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H010": {
+   "pool_id": "vlm-judge-100:P004",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1163,
+    "h": 1170,
+    "s": 240,
+    "L": [
+     593,
+     289
+    ],
+    "R": [
+     593,
+     289
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H011": {
+   "pool_id": "vlm-judge-100:P015",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1453,
+    "h": 932,
+    "s": 233,
+    "L": [
+     735,
+     665
+    ],
+    "R": [
+     735,
+     665
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H012": {
+   "pool_id": "vlm-judge-100:P041",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1181,
+    "h": 992,
+    "s": 240,
+    "L": [
+     501,
+     460
+    ],
+    "R": [
+     501,
+     460
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H013": {
+   "pool_id": "vlm-judge-100:P025",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1453,
+    "h": 932,
+    "s": 233,
+    "L": [
+     62,
+     375
+    ],
+    "R": [
+     62,
+     375
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H014": {
+   "pool_id": "vlm-judge-100:P018",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1180,
+    "h": 992,
+    "s": 240,
+    "L": [
+     105,
+     495
+    ],
+    "R": [
+     105,
+     495
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H015": {
+   "pool_id": "vlm-judge-100:P089",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1180,
+    "h": 992,
+    "s": 240,
+    "L": [
+     690,
+     465
+    ],
+    "R": [
+     690,
+     465
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H016": {
+   "pool_id": "vlm-judge-100:P008",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1163,
+    "h": 1170,
+    "s": 240,
+    "L": [
+     556,
+     206
+    ],
+    "R": [
+     547,
+     197
+    ],
+    "shift": [
+     -9,
+     -9
+    ],
+    "differs": true
+   }
+  },
+  "H017": {
+   "pool_id": "vlm-judge-100:P094",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1173,
+    "h": 1167,
+    "s": 240,
+    "L": [
+     466,
+     270
+    ],
+    "R": [
+     466,
+     270
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H018": {
+   "pool_id": "vlm-judge-100:P064",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1355,
+    "h": 757,
+    "s": 189,
+    "L": [
+     592,
+     248
+    ],
+    "R": [
+     592,
+     248
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H019": {
+   "pool_id": "vlm-judge:P011",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1460,
+    "h": 551,
+    "s": 137,
+    "L": [
+     703,
+     195
+    ],
+    "R": [
+     703,
+     193
+    ],
+    "shift": [
+     0,
+     -2
+    ],
+    "differs": true
+   }
+  },
+  "H020": {
+   "pool_id": "vlm-judge:P063",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1324,
+    "h": 963,
+    "s": 240,
+    "L": [
+     85,
+     429
+    ],
+    "R": [
+     85,
+     429
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H021": {
+   "pool_id": "vlm-judge-100:P036",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1177,
+    "h": 1212,
+    "s": 240,
+    "L": [
+     609,
+     776
+    ],
+    "R": [
+     609,
+     776
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H022": {
+   "pool_id": "vlm-judge:P035",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1468,
+    "h": 379,
+    "s": 94,
+    "L": [
+     785,
+     260
+    ],
+    "R": [
+     785,
+     263
+    ],
+    "shift": [
+     0,
+     3
+    ],
+    "differs": true
+   }
+  },
+  "H023": {
+   "pool_id": "vlm-judge-100:P082",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1178,
+    "h": 1212,
+    "s": 240,
+    "L": [
+     609,
+     438
+    ],
+    "R": [
+     609,
+     439
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "differs": true
+   }
+  },
+  "H024": {
+   "pool_id": "vlm-judge-100:P103",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1178,
+    "h": 1212,
+    "s": 240,
+    "L": [
+     675,
+     776
+    ],
+    "R": [
+     675,
+     776
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H025": {
+   "pool_id": "vlm-judge-100:P063",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1178,
+    "h": 1171,
+    "s": 240,
+    "L": [
+     459,
+     555
+    ],
+    "R": [
+     457,
+     550
+    ],
+    "shift": [
+     -2,
+     -5
+    ],
+    "differs": true
+   }
+  },
+  "H026": {
+   "pool_id": "vlm-judge:P005",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1324,
+    "h": 963,
+    "s": 240,
+    "L": [
+     936,
+     226
+    ],
+    "R": [
+     936,
+     226
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H027": {
+   "pool_id": "vlm-judge:P026",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1467,
+    "h": 373,
+    "s": 93,
+    "L": [
+     765,
+     257
+    ],
+    "R": [
+     765,
+     258
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "differs": true
+   }
+  },
+  "H028": {
+   "pool_id": "vlm-judge-100:P026",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1454,
+    "h": 933,
+    "s": 233,
+    "L": [
+     1154,
+     660
+    ],
+    "R": [
+     1154,
+     660
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H029": {
+   "pool_id": "vlm-judge-100:P070",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1177,
+    "h": 1212,
+    "s": 240,
+    "L": [
+     552,
+     664
+    ],
+    "R": [
+     552,
+     664
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H030": {
+   "pool_id": "vlm-judge-100:P016",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1355,
+    "h": 757,
+    "s": 189,
+    "L": [
+     1141,
+     282
+    ],
+    "R": [
+     1141,
+     283
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "differs": true
+   }
+  },
+  "H031": {
+   "pool_id": "vlm-judge-100:P059",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1355,
+    "h": 757,
+    "s": 189,
+    "L": [
+     625,
+     120
+    ],
+    "R": [
+     625,
+     120
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H032": {
+   "pool_id": "vlm-judge-100:P029",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1454,
+    "h": 933,
+    "s": 233,
+    "L": [
+     1153,
+     660
+    ],
+    "R": [
+     1153,
+     660
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H033": {
+   "pool_id": "vlm-judge:P062",
+   "kind": "identical",
+   "base_side": "both",
+   "window": {
+    "w": 1464,
+    "h": 278,
+    "s": 69,
+    "L": [
+     0,
+     0
+    ],
+    "R": [
+     0,
+     0
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": false
+   }
+  },
+  "H034": {
+   "pool_id": "vlm-judge-100:P023",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1453,
+    "h": 932,
+    "s": 233,
+    "L": [
+     507,
+     54
+    ],
+    "R": [
+     506,
+     57
+    ],
+    "shift": [
+     -1,
+     3
+    ],
+    "differs": true
+   }
+  },
+  "H035": {
+   "pool_id": "vlm-judge-100:P001",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1453,
+    "h": 932,
+    "s": 233,
+    "L": [
+     695,
+     665
+    ],
+    "R": [
+     695,
+     665
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H036": {
+   "pool_id": "vlm-judge-100:P088",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1453,
+    "h": 932,
+    "s": 233,
+    "L": [
+     35,
+     197
+    ],
+    "R": [
+     35,
+     197
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H037": {
+   "pool_id": "vlm-judge-100:P021",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1178,
+    "h": 1212,
+    "s": 240,
+    "L": [
+     380,
+     455
+    ],
+    "R": [
+     380,
+     456
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "differs": true
+   }
+  },
+  "H038": {
+   "pool_id": "vlm-judge:P017",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1324,
+    "h": 963,
+    "s": 240,
+    "L": [
+     776,
+     528
+    ],
+    "R": [
+     776,
+     528
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H039": {
+   "pool_id": "vlm-judge:P039",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1255,
+    "h": 954,
+    "s": 238,
+    "L": [
+     760,
+     578
+    ],
+    "R": [
+     760,
+     578
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H040": {
+   "pool_id": "vlm-judge-100:P098",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1181,
+    "h": 995,
+    "s": 240,
+    "L": [
+     596,
+     513
+    ],
+    "R": [
+     596,
+     512
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "differs": true
+   }
+  },
+  "H041": {
+   "pool_id": "vlm-judge-100:P020",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1173,
+    "h": 1167,
+    "s": 240,
+    "L": [
+     592,
+     56
+    ],
+    "R": [
+     592,
+     56
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H042": {
+   "pool_id": "vlm-judge:P042",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1465,
+    "h": 438,
+    "s": 109,
+    "L": [
+     875,
+     244
+    ],
+    "R": [
+     875,
+     244
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H043": {
+   "pool_id": "vlm-judge-100:P100",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1180,
+    "h": 992,
+    "s": 240,
+    "L": [
+     633,
+     464
+    ],
+    "R": [
+     633,
+     464
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H044": {
+   "pool_id": "vlm-judge-100:P095",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1355,
+    "h": 757,
+    "s": 189,
+    "L": [
+     596,
+     243
+    ],
+    "R": [
+     596,
+     243
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H045": {
+   "pool_id": "vlm-judge-100:P011",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1177,
+    "h": 474,
+    "s": 118,
+    "L": [
+     331,
+     45
+    ],
+    "R": [
+     330,
+     47
+    ],
+    "shift": [
+     -1,
+     2
+    ],
+    "differs": true
+   }
+  },
+  "H046": {
+   "pool_id": "vlm-judge-100:P097",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1355,
+    "h": 757,
+    "s": 189,
+    "L": [
+     592,
+     248
+    ],
+    "R": [
+     592,
+     248
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H047": {
+   "pool_id": "vlm-judge-100:P086",
+   "kind": "identical",
+   "base_side": "both",
+   "window": {
+    "w": 1454,
+    "h": 932,
+    "s": 233,
+    "L": [
+     0,
+     0
+    ],
+    "R": [
+     0,
+     0
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": false
+   }
+  },
+  "H048": {
+   "pool_id": "vlm-judge-100:P090",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1163,
+    "h": 1170,
+    "s": 240,
+    "L": [
+     593,
+     288
+    ],
+    "R": [
+     593,
+     288
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H049": {
+   "pool_id": "vlm-judge-100:P047",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1456,
+    "h": 933,
+    "s": 233,
+    "L": [
+     479,
+     674
+    ],
+    "R": [
+     479,
+     674
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H050": {
+   "pool_id": "vlm-judge-100:P077",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1178,
+    "h": 1171,
+    "s": 240,
+    "L": [
+     664,
+     486
+    ],
+    "R": [
+     664,
+     486
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H051": {
+   "pool_id": "vlm-judge:P016",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1255,
+    "h": 954,
+    "s": 238,
+    "L": [
+     547,
+     211
+    ],
+    "R": [
+     547,
+     211
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H052": {
+   "pool_id": "vlm-judge-100:P060",
+   "kind": "identical",
+   "base_side": "both",
+   "window": {
+    "w": 1178,
+    "h": 1212,
+    "s": 240,
+    "L": [
+     0,
+     0
+    ],
+    "R": [
+     0,
+     0
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": false
+   }
+  },
+  "H053": {
+   "pool_id": "vlm-judge:P004",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1324,
+    "h": 963,
+    "s": 240,
+    "L": [
+     628,
+     402
+    ],
+    "R": [
+     628,
+     402
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H054": {
+   "pool_id": "vlm-judge:P010",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1461,
+    "h": 651,
+    "s": 162,
+    "L": [
+     310,
+     296
+    ],
+    "R": [
+     310,
+     296
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H055": {
+   "pool_id": "vlm-judge:P051",
+   "kind": "identical",
+   "base_side": "both",
+   "window": {
+    "w": 1465,
+    "h": 593,
+    "s": 148,
+    "L": [
+     0,
+     0
+    ],
+    "R": [
+     0,
+     0
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": false
+   }
+  },
+  "H056": {
+   "pool_id": "vlm-judge-100:P092",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1178,
+    "h": 1212,
+    "s": 240,
+    "L": [
+     681,
+     771
+    ],
+    "R": [
+     681,
+     772
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "differs": true
+   }
+  },
+  "H057": {
+   "pool_id": "vlm-judge:P049",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1461,
+    "h": 336,
+    "s": 84,
+    "L": [
+     455,
+     81
+    ],
+    "R": [
+     455,
+     81
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H058": {
+   "pool_id": "vlm-judge:P018",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1475,
+    "h": 378,
+    "s": 94,
+    "L": [
+     1170,
+     114
+    ],
+    "R": [
+     1170,
+     114
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H059": {
+   "pool_id": "vlm-judge:P007",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1461,
+    "h": 651,
+    "s": 162,
+    "L": [
+     670,
+     454
+    ],
+    "R": [
+     670,
+     454
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H060": {
+   "pool_id": "vlm-judge-100:P053",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1178,
+    "h": 1177,
+    "s": 240,
+    "L": [
+     274,
+     620
+    ],
+    "R": [
+     274,
+     617
+    ],
+    "shift": [
+     0,
+     -3
+    ],
+    "differs": true
+   }
+  },
+  "H061": {
+   "pool_id": "vlm-judge:P031",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1255,
+    "h": 954,
+    "s": 238,
+    "L": [
+     802,
+     672
+    ],
+    "R": [
+     802,
+     672
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H062": {
+   "pool_id": "vlm-judge-100:P062",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1163,
+    "h": 1171,
+    "s": 240,
+    "L": [
+     657,
+     321
+    ],
+    "R": [
+     657,
+     321
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H063": {
+   "pool_id": "vlm-judge:P009",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1128,
+    "h": 855,
+    "s": 213,
+    "L": [
+     695,
+     620
+    ],
+    "R": [
+     695,
+     618
+    ],
+    "shift": [
+     0,
+     -2
+    ],
+    "differs": true
+   }
+  },
+  "H064": {
+   "pool_id": "vlm-judge:P052",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1467,
+    "h": 373,
+    "s": 93,
+    "L": [
+     1058,
+     259
+    ],
+    "R": [
+     1058,
+     259
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H065": {
+   "pool_id": "vlm-judge-100:P012",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1183,
+    "h": 992,
+    "s": 240,
+    "L": [
+     502,
+     462
+    ],
+    "R": [
+     502,
+     462
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H066": {
+   "pool_id": "vlm-judge:P029",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1530,
+    "h": 618,
+    "s": 154,
+    "L": [
+     1146,
+     340
+    ],
+    "R": [
+     1146,
+     341
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "differs": true
+   }
+  },
+  "H067": {
+   "pool_id": "vlm-judge-100:P054",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1355,
+    "h": 757,
+    "s": 189,
+    "L": [
+     594,
+     250
+    ],
+    "R": [
+     594,
+     250
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H068": {
+   "pool_id": "vlm-judge:P014",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1464,
+    "h": 278,
+    "s": 69,
+    "L": [
+     360,
+     0
+    ],
+    "R": [
+     360,
+     0
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H069": {
+   "pool_id": "vlm-judge:P012",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1461,
+    "h": 651,
+    "s": 162,
+    "L": [
+     1278,
+     305
+    ],
+    "R": [
+     1278,
+     305
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H070": {
+   "pool_id": "vlm-judge:P038",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1465,
+    "h": 422,
+    "s": 105,
+    "L": [
+     824,
+     183
+    ],
+    "R": [
+     824,
+     183
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H071": {
+   "pool_id": "vlm-judge-100:P006",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1181,
+    "h": 477,
+    "s": 119,
+    "L": [
+     785,
+     190
+    ],
+    "R": [
+     785,
+     192
+    ],
+    "shift": [
+     0,
+     2
+    ],
+    "differs": true
+   }
+  },
+  "H072": {
+   "pool_id": "vlm-judge-100:P099",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1178,
+    "h": 1212,
+    "s": 240,
+    "L": [
+     404,
+     592
+    ],
+    "R": [
+     404,
+     593
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "differs": true
+   }
+  },
+  "H073": {
+   "pool_id": "vlm-judge-100:P031",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1176,
+    "h": 474,
+    "s": 118,
+    "L": [
+     776,
+     242
+    ],
+    "R": [
+     776,
+     242
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H074": {
+   "pool_id": "vlm-judge:P036",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1409,
+    "h": 569,
+    "s": 142,
+    "L": [
+     1084,
+     306
+    ],
+    "R": [
+     1084,
+     306
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H075": {
+   "pool_id": "vlm-judge-100:P055",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1178,
+    "h": 1213,
+    "s": 240,
+    "L": [
+     408,
+     753
+    ],
+    "R": [
+     408,
+     753
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H076": {
+   "pool_id": "vlm-judge:P020",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1465,
+    "h": 593,
+    "s": 148,
+    "L": [
+     1024,
+     152
+    ],
+    "R": [
+     1024,
+     152
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H077": {
+   "pool_id": "vlm-judge-100:P030",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1181,
+    "h": 995,
+    "s": 240,
+    "L": [
+     489,
+     500
+    ],
+    "R": [
+     489,
+     500
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H078": {
+   "pool_id": "vlm-judge-100:P079",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1180,
+    "h": 995,
+    "s": 240,
+    "L": [
+     338,
+     513
+    ],
+    "R": [
+     337,
+     513
+    ],
+    "shift": [
+     -1,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H079": {
+   "pool_id": "vlm-judge-100:P033",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1180,
+    "h": 995,
+    "s": 240,
+    "L": [
+     517,
+     514
+    ],
+    "R": [
+     517,
+     514
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H080": {
+   "pool_id": "vlm-judge-100:P065",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1454,
+    "h": 933,
+    "s": 233,
+    "L": [
+     44,
+     659
+    ],
+    "R": [
+     44,
+     659
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H081": {
+   "pool_id": "vlm-judge:P056",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1530,
+    "h": 618,
+    "s": 154,
+    "L": [
+     854,
+     326
+    ],
+    "R": [
+     854,
+     326
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H082": {
+   "pool_id": "vlm-judge-100:P096",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1454,
+    "h": 932,
+    "s": 233,
+    "L": [
+     947,
+     657
+    ],
+    "R": [
+     947,
+     657
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H083": {
+   "pool_id": "vlm-judge:P061",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1120,
+    "h": 851,
+    "s": 212,
+    "L": [
+     451,
+     299
+    ],
+    "R": [
+     451,
+     299
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H084": {
+   "pool_id": "vlm-judge-100:P042",
+   "kind": "identical",
+   "base_side": "both",
+   "window": {
+    "w": 1450,
+    "h": 932,
+    "s": 233,
+    "L": [
+     0,
+     0
+    ],
+    "R": [
+     0,
+     0
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": false
+   }
+  },
+  "H085": {
+   "pool_id": "vlm-judge-100:P013",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1178,
+    "h": 1212,
+    "s": 240,
+    "L": [
+     489,
+     64
+    ],
+    "R": [
+     489,
+     64
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H086": {
+   "pool_id": "vlm-judge:P064",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1465,
+    "h": 280,
+    "s": 70,
+    "L": [
+     236,
+     32
+    ],
+    "R": [
+     236,
+     31
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "differs": true
+   }
+  },
+  "H087": {
+   "pool_id": "vlm-judge:P021",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1530,
+    "h": 618,
+    "s": 154,
+    "L": [
+     1266,
+     338
+    ],
+    "R": [
+     1266,
+     339
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "differs": true
+   }
+  },
+  "H088": {
+   "pool_id": "vlm-judge-100:P014",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1176,
+    "h": 474,
+    "s": 118,
+    "L": [
+     98,
+     114
+    ],
+    "R": [
+     98,
+     114
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H089": {
+   "pool_id": "vlm-judge:P057",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1464,
+    "h": 336,
+    "s": 84,
+    "L": [
+     1093,
+     36
+    ],
+    "R": [
+     1094,
+     36
+    ],
+    "shift": [
+     1,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H090": {
+   "pool_id": "vlm-judge-100:P050",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1355,
+    "h": 757,
+    "s": 189,
+    "L": [
+     1078,
+     283
+    ],
+    "R": [
+     1078,
+     283
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H091": {
+   "pool_id": "vlm-judge-100:P058",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1180,
+    "h": 474,
+    "s": 118,
+    "L": [
+     336,
+     116
+    ],
+    "R": [
+     337,
+     116
+    ],
+    "shift": [
+     1,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H092": {
+   "pool_id": "vlm-judge-100:P072",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1178,
+    "h": 1212,
+    "s": 240,
+    "L": [
+     689,
+     916
+    ],
+    "R": [
+     689,
+     916
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H093": {
+   "pool_id": "vlm-judge:P033",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1530,
+    "h": 618,
+    "s": 154,
+    "L": [
+     1160,
+     340
+    ],
+    "R": [
+     1160,
+     341
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "differs": true
+   }
+  },
+  "H094": {
+   "pool_id": "vlm-judge-100:P027",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1178,
+    "h": 1171,
+    "s": 240,
+    "L": [
+     455,
+     264
+    ],
+    "R": [
+     455,
+     268
+    ],
+    "shift": [
+     0,
+     4
+    ],
+    "differs": true
+   }
+  },
+  "H095": {
+   "pool_id": "vlm-judge-100:P007",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1180,
+    "h": 476,
+    "s": 119,
+    "L": [
+     565,
+     170
+    ],
+    "R": [
+     565,
+     168
+    ],
+    "shift": [
+     0,
+     -2
+    ],
+    "differs": true
+   }
+  },
+  "H096": {
+   "pool_id": "vlm-judge-100:P101",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1180,
+    "h": 476,
+    "s": 119,
+    "L": [
+     566,
+     165
+    ],
+    "R": [
+     566,
+     165
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H097": {
+   "pool_id": "vlm-judge-100:P093",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1180,
+    "h": 474,
+    "s": 118,
+    "L": [
+     348,
+     306
+    ],
+    "R": [
+     348,
+     306
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H098": {
+   "pool_id": "vlm-judge:P048",
+   "kind": "live",
+   "base_side": "R",
+   "window": {
+    "w": 1120,
+    "h": 851,
+    "s": 212,
+    "L": [
+     710,
+     615
+    ],
+    "R": [
+     711,
+     615
+    ],
+    "shift": [
+     1,
+     0
+    ],
+    "differs": true
+   }
+  },
+  "H099": {
+   "pool_id": "vlm-judge:P025",
+   "kind": "live",
+   "base_side": "L",
+   "window": {
+    "w": 1465,
+    "h": 443,
+    "s": 110,
+    "L": [
+     914,
+     259
+    ],
+    "R": [
+     914,
+     257
+    ],
+    "shift": [
+     0,
+     -2
+    ],
+    "differs": true
+   }
+  }
+ }
+}
