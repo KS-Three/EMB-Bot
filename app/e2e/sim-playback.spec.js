@@ -8,7 +8,7 @@
 // service): "Fritschs Stitches" with "Stitches" in Scarlet — two thread
 // blocks, an OFL font, nothing third-party.
 import { test, expect } from "@playwright/test";
-import { typeText } from "./helpers.js";
+import { typeText, openDownload, closeDownload } from "./helpers.js";
 
 async function selectInTextarea(page, start, end) {
   const ta = page.getByPlaceholder("Type a name or word");
@@ -274,4 +274,38 @@ test("the mouse over the field and a wheel zoom leave the simulator open where i
   await page.locator('.simbar button[aria-label="Play"]').click();
   await page.mouse.move(h.x + h.width / 2, h.y + h.height / 3, { steps: 4 });
   await expect(count(page)).toHaveText(`${total} / ${total} stitches`, { timeout: 30_000 });
+});
+
+test("the bar estimates the sew time left, on the Run time's own figure and rate", async ({ page }) => {
+  // Kent 2026-11-07, "Show it": the same sewTimeMin at the same 650 spm
+  // planning rate as the Download step's "Run time" row, so the bar's total
+  // IS that row's minutes. Labelled as an estimate, its basis in the tooltip.
+  const total = await twoColourLettering(page);
+  const sheet = await openDownload(page);
+  const row = sheet.locator("dl.summary > div", { has: page.locator("dt", { hasText: /^Run time$/ }) });
+  const run = (await row.locator("dd").innerText()).trim(); // "~3 min at 650 spm"
+  const m = run.match(/^~(\d+) min.* at 650 spm$/);
+  expect(m, `Run time row: ${run}`).not.toBeNull();
+  const minutes = m[1];
+  await closeDownload(page);
+
+  await openSim(page);
+  await pause(page);
+  const back = page.getByRole("button", { name: "Previous thread change" });
+  for (let i = 0; i < 3 && (await back.isEnabled()); i++) await back.click();
+  await expect(count(page)).toHaveText(`0 / ${total} stitches`);
+  const time = page.getByTestId("sim-time");
+  await expect(time).toHaveText(`about ${minutes} min left of ${minutes}`);
+  await expect(time).toHaveAttribute("title", /650 stitches per minute.*planning rate.*Trims and thread changes are included/);
+
+  // Mid-design it counts down and never above the total; at the end it is
+  // the whole run.
+  await page.getByRole("button", { name: "Next thread change" }).click();
+  const mid = (await time.innerText()).match(/^about (\d+) min left of (\d+)$/);
+  expect(mid).not.toBeNull();
+  expect(mid[2]).toBe(minutes);
+  expect(Number(mid[1])).toBeLessThanOrEqual(Number(minutes));
+  await page.getByRole("button", { name: "Next thread change" }).click();
+  await expect(count(page)).toHaveText(`${total} / ${total} stitches`);
+  await expect(time).toHaveText(`about ${minutes} min in all`);
 });

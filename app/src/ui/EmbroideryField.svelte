@@ -10,7 +10,7 @@
   import { tip } from "../lib/tip.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
   import { sewnPullFor, hasSatinSpans } from "../lib/sewnWidth.js";
-  import { advanceIndex, clampIndex, nextSpeed, simTimeline, colorStopBetween, stepBlock, blockAt, blockThreadNames, underlayRuns, phaseAt, blockStart } from "../lib/simulate.js";
+  import { advanceIndex, clampIndex, nextSpeed, simTimeline, colorStopBetween, stepBlock, blockAt, blockThreadNames, underlayRuns, phaseAt, blockStart, sewClock, sewTimeAt } from "../lib/simulate.js";
   import { drawSimOverlay, drawIsolate, threadPx } from "../lib/simOverlay.js";
   import SimBar from "./SimBar.svelte";
   import { chartIdForProject } from "../lib/designChart.js";
@@ -270,6 +270,9 @@
   let simUnderlay = null;
   // Isolate (the bar's toggle): dim everything but the thread on the needle.
   let simIsolate = false;
+  // Where the stitches and stops sit on the strand timeline, for the bar's
+  // sew-time estimate (lib/simulate.js sewClock); built once per run.
+  let simClock = null;
 
   // Drag state (module-local to this component instance, not reactive —
   // none of it needs to trigger a re-render on its own).
@@ -3616,6 +3619,7 @@
     if (!simTotal) return;
     simTl = simTimeline(combined);
     simUnderlay = underlayRuns(simStrands, simTl);
+    simClock = sewClock(combined);
     simStopped = false;
     nameSimThreads(simTl);
     originalView = false;
@@ -3655,6 +3659,7 @@
     simTl = null;
     simStrands = [];
     simUnderlay = null;
+    simClock = null;
     // Back to the normal full render + selection chrome.
     repaintView();
   }
@@ -5437,6 +5442,8 @@
         isolate={simIsolate}
         hasUnderlay={!!(simUnderlay && simUnderlay.runs.length)}
         phase={phaseAt(simStrands, Math.floor(simIndex), simTotal)}
+        sewTime={sewTimeAt(simClock, Math.floor(simIndex), EMB.sewTimeMin, EMB.PLAN_SPM)}
+        spm={EMB.PLAN_SPM}
         on:toggle={simTogglePlay}
         on:block={(e) => simGoToBlock(e.detail.k)}
         on:isolate={simToggleIsolate}
