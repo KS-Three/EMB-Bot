@@ -1354,3 +1354,89 @@ test("drops minor lines when zoomed far out", () => {
   drawGrid(ctx, 200, 200, 0.2, 100, 100, g); // 10 mm = 2 px
   expect(calls.filter((c) => c[0] === "stroke").length).toBe(1);
 });
+
+// --- Simulator frames: the completed-block snapshot (2026-11-07) -----------
+//
+// A fake canvas whose ctx logs every stroke WITH its path, plus the blits,
+// and which can make sibling canvases the way a real <canvas> can (through
+// its ownerDocument) -- that is what turns the snapshot path on.
+function simCanvas(w, h) {
+  const made = [];
+  const mk = () => {
+    const strokes = [];
+    const blits = [];
+    let path = [], _ss, _lw, fills = 0, dash = [];
+    const ctx = {
+      save() {}, restore() {}, setTransform() {}, closePath() {}, clip() {}, arcTo() {}, fillText() {},
+      beginPath() { path = []; },
+      moveTo(x, y) { path.push(["M", x, y]); }, lineTo(x, y) { path.push(["L", x, y]); },
+      stroke() { strokes.push({ color: _ss, width: _lw, dash: dash.slice(), path }); },
+      fillRect() { fills++; },
+      setLineDash(d) { dash = d.slice(); },
+      drawImage(src) { blits.push(src); },
+      get strokeStyle() { return _ss; }, set strokeStyle(v) { _ss = v; },
+      get lineWidth() { return _lw; }, set lineWidth(v) { _lw = v; },
+      get fills() { return fills; },
+      strokes, blits,
+    };
+    const c = { width: w, height: h, getContext: () => ctx, ownerDocument: { createElement: () => { const k = mk(); made.push(k); return k; } } };
+    return c;
+  };
+  const canvas = mk();
+  canvas.made = made;
+  return canvas;
+}
+// Three colour blocks of 30 stitches each, then a fourth still being sewn.
+function blockyDesign() {
+  const stitches = [];
+  const colors = [];
+  for (let b = 0; b < 4; b++) {
+    if (b) stitches.push({ x: 0, y: 0, type: "color" });
+    colors.push({ r: 40 + b * 50, g: 90, b: 200 - b * 40 });
+    for (let i = 0; i < 30; i++) stitches.push({ x: b * 60 + (i % 2) * 40, y: i * 4, type: "stitch" });
+  }
+  stitches.push({ x: 0, y: 0, type: "end" });
+  return { stitches, colors };
+}
+const SIM_OPTS = { hoop: { garment: { widthIn: 4, heightIn: 4 } }, fabricRgb: [235, 232, 223], view: { zoom: 2, panX: 10, panY: -5 } };
+
+test("simulator frames: a later frame restores the completed blocks and strokes exactly what a fresh render strokes for the open block", () => {
+  const design = blockyDesign();
+  const live = simCanvas(400, 300);
+  // Frame 1 lands in block 4: a full paint, and a snapshot of blocks 1-3.
+  renderRealistic(live, design, { ...SIM_OPTS, limitStrands: 95 });
+  expect(live.getContext().fills).toBe(1);
+  expect(live.made.length).toBe(1);
+  expect(live.made[0].getContext().blits).toEqual([live]);
+  // Frame 2, one strand on: the snapshot comes back, nothing before the
+  // open block is stroked again.
+  const ctx = live.getContext();
+  ctx.strokes.length = 0;
+  renderRealistic(live, design, { ...SIM_OPTS, limitStrands: 100 });
+  expect(ctx.fills).toBe(1); // no new fabric fill
+  expect(ctx.blits).toEqual([live.made[0]]);
+  const fresh = simCanvas(400, 300);
+  renderRealistic(fresh, design, { ...SIM_OPTS, limitStrands: 100 });
+  const all = fresh.getContext().strokes;
+  expect(ctx.strokes.length).toBeGreaterThan(0);
+  expect(ctx.strokes.length).toBeLessThan(all.length / 2);
+  expect(ctx.strokes).toEqual(all.slice(all.length - ctx.strokes.length));
+});
+
+test("simulator frames: a changed view, a scrub back past the snapshot, or an ordinary render paints from the fabric", () => {
+  const design = blockyDesign();
+  const live = simCanvas(400, 300);
+  const ctx = live.getContext();
+  renderRealistic(live, design, { ...SIM_OPTS, limitStrands: 95 });
+  renderRealistic(live, design, { ...SIM_OPTS, view: { zoom: 3, panX: 0, panY: 0 }, limitStrands: 96 });
+  expect(ctx.fills).toBe(2);
+  renderRealistic(live, design, { ...SIM_OPTS, view: { zoom: 3, panX: 0, panY: 0 }, limitStrands: 20 });
+  expect(ctx.fills).toBe(3);
+  expect(ctx.blits).toEqual([]);
+  // No limitStrands: the plain path, which never makes a snapshot canvas.
+  const plain = simCanvas(400, 300);
+  renderRealistic(plain, design, SIM_OPTS);
+  renderRealistic(plain, design, SIM_OPTS);
+  expect(plain.made.length).toBe(0);
+  expect(plain.getContext().fills).toBe(2);
+});

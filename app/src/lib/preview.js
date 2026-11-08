@@ -636,6 +636,15 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
     ? o.layers
     : (o.layers != null ? layerSubsetForCount(o.layers) : [0, 1, 2, 3, 4]);
 
+  // The line dash in force, tracked so a caller that splits one render into
+  // two calls (renderRealistic's simulator frames) can carry it across the
+  // split: `leadDash` in, the return value out. The block and raised shadows
+  // below never set a dash of their own, so each one inherits whatever the
+  // last layer stroked before it left behind, and a split that reset it to
+  // solid would change those shadows' pixels.
+  let dash = o.leadDash || null;
+  if (dash) ctx.setLineDash(dash);
+
   for (const blk of blocks) {
     const groups = blk.groups.size > 1
       ? Array.from(blk.groups.values()).sort((a, b) => a.style.z - b.style.z)
@@ -688,6 +697,7 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
           ctx.strokeStyle = L.color;
           ctx.lineWidth = L.width;
           if (L.dash) ctx.setLineDash(L.dash); else ctx.setLineDash([]);
+          dash = L.dash || null;
           const ox = p.nx * L.offset, oy = p.ny * L.offset;
           const f = L.inset || 0;
           ctx.beginPath();
@@ -710,6 +720,7 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
     }
   }
   ctx.setLineDash([]);
+  return dash;
 }
 
 // Design stitches are in DST units, whose Y axis points UP; canvas Y points
@@ -846,6 +857,121 @@ export function drawGrid(ctx, cw, ch, pxPerMm, ox, oy, g) {
   ctx.restore();
 }
 
+// ---- Simulator frames: snapshot the completed colour blocks ---------------
+//
+// Playback calls renderRealistic once per frame with a prefix one step
+// longer than the last (`limitStrands`), and until 2026-11-07 every frame
+// painted the whole prefix from the fabric up. Measured on a 22,533-stitch
+// design at 8x: about half of all playback frames ran past 25 ms, and ~90%
+// of a render is the rasterizer stroking paths (the JS around it is under
+// 10%), so no amount of tidying the JS could fix that.
+//
+// What CAN be skipped is repeating work whose pixels are already known.
+// drawThreads paints colour block by colour block, and a block that the
+// prefix has moved past is complete: nothing later in the prefix changes
+// how it is drawn, only what is drawn over it. So each frame is split at the
+// start of its last (still open) block. The completed blocks are painted
+// once and the canvas copied; every later frame of the same design, view and
+// options restores that copy and paints only the open block.
+//
+// Pixel-exact by construction, and checked by hash against a fresh render
+// (preview.spec.js asserts the call sequence; the lane's e2e harness hashed
+// the canvases). The copy is a 1:1 'copy' blit at the identity transform,
+// and the strokes after it are the ones a fresh render issues. Anything that
+// could change a completed block's pixels — the design, its stitch array,
+// the view, the hoop, the colours, the level of detail — is in the key, and
+// a key change or a scrub back past the snapshot repaints from the fabric.
+//
+// Only hooped renders with `limitStrands` (the Studio field while
+// simulating) take this path; thumbnails, export and every ordinary repaint
+// draw exactly as before. It needs a way to make a canvas; without one (the
+// specs' ctx doubles, a worker) it falls through to the plain path.
+const SIM_SNAPSHOTS = new WeakMap();
+const STRANDS_CACHE = new WeakMap();
+
+function sameRgb(a, b) {
+  return a === b || (!!a && !!b && a[0] === b[0] && a[1] === b[1] && a[2] === b[2]);
+}
+
+// designToStrands for a design the simulator replays every frame. Keyed on
+// the stitch ARRAY as well as the design, plus its length, so a design that
+// is rebuilt (every regenerate makes a new one) is never served stale.
+function cachedStrands(design, colorOverride) {
+  const hit = STRANDS_CACHE.get(design);
+  if (hit && hit.stitches === design.stitches && hit.n === design.stitches.length && sameRgb(hit.co, colorOverride)) return hit.strands;
+  const strands = designToStrands(design, { colorOverride });
+  STRANDS_CACHE.set(design, { stitches: design.stitches, n: design.stitches.length, co: colorOverride || null, strands });
+  return strands;
+}
+
+function makeCanvasLike(canvas) {
+  const doc = canvas && canvas.ownerDocument;
+  if (doc && typeof doc.createElement === "function") {
+    const c = doc.createElement("canvas");
+    c.width = canvas.width; c.height = canvas.height;
+    return c;
+  }
+  if (typeof OffscreenCanvas === "function") return new OffscreenCanvas(canvas.width, canvas.height);
+  return null;
+}
+
+// A 1:1 pixel copy, whatever transform or state `ctx` carries.
+function copyCanvasInto(ctx, src) {
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = "copy";
+  ctx.globalAlpha = 1;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(src, 0, 0);
+  ctx.restore();
+}
+
+// Everything besides the prefix length that decides a completed block's
+// pixels. `view` and `hoop` are small plain objects; `layers` is the LOD rung,
+// which can change as the prefix grows past a strand ceiling.
+function simKey(canvas, o, layers) {
+  return JSON.stringify([canvas.width, canvas.height, o.dpr, o.hoop, o.fabricRgb, o.fabric, o.weave, o.surround,
+    o.grid, o.view, o.pad, o.threadStyle, o.sewnPullMm, o.colorOverride, o.threadWidthMm, layers]);
+}
+
+// null = not a simulator frame this can help (draw plainly). Otherwise
+// { entry, lastStart, restoreFrom }: the snapshot record, where the prefix's
+// open block starts, and how many leading strands the snapshot already holds
+// (0 = none usable).
+function simFrame(canvas, ctx, design, o, strands, layers) {
+  if (typeof ctx.drawImage !== "function" || typeof ctx.setTransform !== "function") return null;
+  if (!design || !Array.isArray(design.stitches)) return null;
+  let entry = SIM_SNAPSHOTS.get(canvas);
+  const key = simKey(canvas, o, layers);
+  if (!entry || entry.key !== key || entry.design !== design || entry.stitches !== design.stitches || entry.n !== design.stitches.length) {
+    if (!entry) {
+      const c = makeCanvasLike(canvas);
+      if (!c) return null;
+      entry = { canvas: c };
+      SIM_SNAPSHOTS.set(canvas, entry);
+    }
+    entry.key = key; entry.design = design; entry.stitches = design.stitches; entry.n = design.stitches.length;
+    entry.start = 0;
+  }
+  let lastStart = strands.length;
+  if (lastStart > 0) {
+    const rgb = strands[lastStart - 1].rgb;
+    lastStart--;
+    while (lastStart > 0 && sameRgb(strands[lastStart - 1].rgb, rgb)) lastStart--;
+  }
+  const restoreFrom = entry.start > 0 && entry.start <= lastStart ? entry.start : 0;
+  return { entry, lastStart, restoreFrom };
+}
+
+function saveSimSnapshot(canvas, entry, start, dash) {
+  if (entry.canvas.width !== canvas.width || entry.canvas.height !== canvas.height) {
+    entry.canvas.width = canvas.width; entry.canvas.height = canvas.height;
+  }
+  copyCanvasInto(entry.canvas.getContext("2d"), canvas);
+  entry.start = start;
+  entry.dash = dash || null;
+}
+
 // opts:
 //   grid          { bed, minor, major, label } CSS colours. With a hoop, paints
 //                  a work bed inside the hoop plus drawGrid() across the canvas
@@ -905,9 +1031,6 @@ export function renderRealistic(canvas, design, opts) {
   // still fills the canvas exactly as before.
   const surrounded = hooped && !!o.surround;
 
-  ctx.fillStyle = surrounded ? o.surround : (o.fabricRgb ? rgbCss(o.fabricRgb) : (o.fabric || "#e9e6df"));
-  ctx.fillRect(0, 0, cw, ch);
-
   let t, TX0, TY0, pxPerMm0;
 
   if (hooped) {
@@ -940,7 +1063,51 @@ export function renderRealistic(canvas, design, opts) {
     : null;
   const outerT = hooped && t.realWmm ? { ...viewedT, hoopWmm: t.realWmm, hoopHmm: t.realHmm } : viewedT;
 
-  if (hooped && o.grid) {
+  // Strand coordinates come straight from design.stitches, i.e. DST units
+  // (0.1mm each). fitTransform's scale already absorbs that (it's computed
+  // from the same raw units), so the design-fit path can feed them to TX/TY
+  // untouched. hoopTransform's scale is px-per-mm though, so in hoop mode we
+  // must convert DST units -> mm (/10) before applying it.
+  const SX = hooped ? (x) => TX(x / 10) : TX;
+  const SY = hooped ? (y) => TY(y / 10) : TY;
+
+  // Strands are worked out before anything is drawn (they are pure), so a
+  // simulator frame can decide whether its snapshot is usable first.
+  let strands = hooped && o.limitStrands != null
+    ? cachedStrands(design, o.colorOverride)
+    : designToStrands(design, { colorOverride: o.colorOverride });
+  // Simulator support: draw only the first `limitStrands` segments (sew
+  // order IS strand order — designToStrands walks design.stitches start to
+  // finish), so scrubbing/playing renders the design exactly as the machine
+  // would sew it. undefined/null = draw everything (every existing caller).
+  if (o.limitStrands != null) strands = strands.slice(0, Math.max(0, o.limitStrands));
+  // Sewn width (2026-10-06): `sewnPullMm` > 0 draws every satin strand with
+  // that much pull compensation taken back off each end — the column at the
+  // width the cloth will show, not the width the file carries. See
+  // strands.js's shrinkSatinStrands; a view only, nothing in the design moves.
+  if (o.sewnPullMm > 0) strands = shrinkSatinStrands(strands, o.sewnPullMm);
+  // Thread width is PHYSICAL (THREAD_WIDTH_MM), with a px floor so a thread
+  // stays visible in the small font/template previews where pxPerMm is tiny.
+  const threadMm = o.threadWidthMm != null ? o.threadWidthMm : THREAD_WIDTH_MM;
+  const lw = Math.max(1.2, threadMm * pxPerMm);
+  const layers = o.threadLayers != null ? o.threadLayers : threadLodLayers(lw, strands.length);
+  const threadOpts = { layers, flat: o.threadStyle === "flat", clip: { x0: 0, y0: 0, x1: cw, y1: ch } };
+
+  // Simulator frames (see SIM_SNAPSHOTS): when this canvas last drew an
+  // earlier prefix of the same design under the same options, the colour
+  // blocks that prefix completed come back from a snapshot instead of being
+  // painted again, background and hoop chrome included.
+  const sim = hooped && o.limitStrands != null ? simFrame(canvas, ctx, design, o, strands, layers) : null;
+  const restored = !!(sim && sim.restoreFrom > 0);
+  if (restored) copyCanvasInto(ctx, sim.entry.canvas);
+  else {
+    ctx.fillStyle = surrounded ? o.surround : (o.fabricRgb ? rgbCss(o.fabricRgb) : (o.fabric || "#e9e6df"));
+    ctx.fillRect(0, 0, cw, ch);
+  }
+
+  if (restored) {
+    // The snapshot already holds the bed, grid, weave and hoop chrome.
+  } else if (hooped && o.grid) {
     // Studio field: a neutral work bed + measuring grid instead of fabric.
     // Fabric colour and weave are not drawn at all; the hoop ring below is the
     // only frame, so it is the size reference.
@@ -972,7 +1139,7 @@ export function renderRealistic(canvas, design, opts) {
   } else if (o.weave && o.fabricRgb) {
     weavePattern(ctx, cw, ch, o.fabricRgb, pxPerMm);
   }
-  if (hooped) {
+  if (hooped && !restored) {
     // t.ox/t.oy run through the SAME TX/TY used for strands below, so the
     // outline is always drawn at the current view's scale/position -- one
     // shared transform, not a second parallel calculation (B4).
@@ -1000,32 +1167,25 @@ export function renderRealistic(canvas, design, opts) {
     }
   }
 
-  // Strand coordinates come straight from design.stitches, i.e. DST units
-  // (0.1mm each). fitTransform's scale already absorbs that (it's computed
-  // from the same raw units), so the design-fit path can feed them to TX/TY
-  // untouched. hoopTransform's scale is px-per-mm though, so in hoop mode we
-  // must convert DST units -> mm (/10) before applying it.
-  const SX = hooped ? (x) => TX(x / 10) : TX;
-  const SY = hooped ? (y) => TY(y / 10) : TY;
-
-  let strands = designToStrands(design, { colorOverride: o.colorOverride });
-  // Simulator support: draw only the first `limitStrands` segments (sew
-  // order IS strand order — designToStrands walks design.stitches start to
-  // finish), so scrubbing/playing renders the design exactly as the machine
-  // would sew it. undefined/null = draw everything (every existing caller).
-  if (o.limitStrands != null) strands = strands.slice(0, Math.max(0, o.limitStrands));
-  // Sewn width (2026-10-06): `sewnPullMm` > 0 draws every satin strand with
-  // that much pull compensation taken back off each end — the column at the
-  // width the cloth will show, not the width the file carries. See
-  // strands.js's shrinkSatinStrands; a view only, nothing in the design moves.
-  if (o.sewnPullMm > 0) strands = shrinkSatinStrands(strands, o.sewnPullMm);
-  // Thread width is PHYSICAL (THREAD_WIDTH_MM), with a px floor so a thread
-  // stays visible in the small font/template previews where pxPerMm is tiny.
-  const threadMm = o.threadWidthMm != null ? o.threadWidthMm : THREAD_WIDTH_MM;
-  const lw = Math.max(1.2, threadMm * pxPerMm);
-  const layers = o.threadLayers != null ? o.threadLayers : threadLodLayers(lw, strands.length);
   // threadStyle: "realistic" (default, every existing caller) | "flat".
-  drawThreads(ctx, strands, SX, SY, lw, { layers, flat: o.threadStyle === "flat", clip: { x0: 0, y0: 0, x1: cw, y1: ch } });
+  if (!sim) {
+    drawThreads(ctx, strands, SX, SY, lw, threadOpts);
+  } else {
+    // A simulator frame, split at the start of its LAST colour block (the one
+    // still being sewn): the completed blocks first, then a snapshot of the
+    // canvas, then the open block. drawThreads paints block by block with
+    // nothing carried across a block boundary but plain context state, so
+    // two calls split there issue the same strokes as one call.
+    // restoreFrom is never past lastStart (simFrame only offers a snapshot
+    // of blocks this prefix has completed).
+    const from = sim.restoreFrom;
+    let dash = from > 0 ? sim.entry.dash : null;
+    if (sim.lastStart > from) {
+      dash = drawThreads(ctx, strands.slice(from, sim.lastStart), SX, SY, lw, { ...threadOpts, leadDash: dash });
+      saveSimSnapshot(canvas, sim.entry, sim.lastStart, dash);
+    }
+    drawThreads(ctx, strands.slice(sim.lastStart), SX, SY, lw, { ...threadOpts, leadDash: dash });
+  }
 
   // Diagnostic overlays (drawn ON TOP of thread so they're never buried):
   // showJumps -> dashed travel lines; showTrims -> an X marker per trim.
