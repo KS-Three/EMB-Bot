@@ -241,7 +241,8 @@ test("stitch sample: absent with no engine; with one, it follows the Stitch type
     const { getByTestId, getByRole } = renderPop(popoverModel({ element: manualEl, shapeId: "s1" }));
     const fig = getByTestId("shapepop-sample");
     expect(fig.dataset.type).toBe("tatami");
-    expect(fig.querySelector("canvas").width).toBe(120 * (window.devicePixelRatio || 1));
+    expect(fig.querySelector("canvas")).toBeNull(); // .hoop holds the field canvas only
+    expect(fig.querySelector("img").dataset.bufferWidth).toBe(String(120 * (window.devicePixelRatio || 1)));
     expect(getByRole("img", { name: /^Fill sample, auto angle/ })).toBeInTheDocument();
     await fireEvent.change(getByRole("combobox", { name: "Stitch type" }), { target: { value: "satin" } });
     expect(fig.dataset.type).toBe("satin");

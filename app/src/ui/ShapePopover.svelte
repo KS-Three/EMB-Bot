@@ -84,12 +84,21 @@
   // just chosen, so the sample answers before the field's patch comes back
   // as a new model; a new model carries them itself, so it clears them.
   let picks = {};
-  let sampleCanvas;
+  // The sample is painted on an OFFSCREEN canvas and shown as an <img>: the
+  // popover sits inside .hoop, and .hoop must hold the field's canvas and no
+  // other (e2e/field-chrome.spec.js; every `.hoop canvas` locator in the e2e
+  // suite assumes exactly one).
+  let sampleBuf = null;
+  let sampleSrc = "";
   $: model, (picks = {});
   $: sampleDens = sampleDensities();
   $: sampleSpec = sampleDens ? sampleSpecFromModel(model, picks) : null;
-  $: if (sampleCanvas && sampleSpec) {
-    drawStitchSample(sampleCanvas, sampleSpec, sampleDens, { dpr: (typeof window !== "undefined" && window.devicePixelRatio) || 1 });
+  $: if (sampleSpec) {
+    if (!sampleBuf && typeof document !== "undefined") sampleBuf = document.createElement("canvas");
+    const n = drawStitchSample(sampleBuf, sampleSpec, sampleDens, { dpr: (typeof window !== "undefined" && window.devicePixelRatio) || 1 });
+    let src = "";
+    try { src = n && sampleBuf.toDataURL ? sampleBuf.toDataURL("image/png") || "" : ""; } catch (e) { src = ""; }
+    sampleSrc = src;
   }
   function change(key, value) {
     picks = { ...picks, [key]: value };
@@ -138,11 +147,11 @@
          caption as its name, so the visible caption is hidden from a screen
          reader rather than read twice. -->
     <figure class="shapepop-sample" data-testid="shapepop-sample" data-type={sampleSpec.type} data-angle={sampleSpec.angleDeg}>
-      <canvas
-        bind:this={sampleCanvas}
-        role="img" aria-label={sampleCaption(sampleSpec)}
+      <img
+        src={sampleSrc} alt={sampleCaption(sampleSpec)}
+        data-buffer-width={sampleBuf ? sampleBuf.width : 0}
         style="width: {SAMPLE_W_MM * SAMPLE_PX_PER_MM}px; height: {SAMPLE_H_MM * SAMPLE_PX_PER_MM}px"
-      ></canvas>
+      />
       <figcaption aria-hidden="true">{sampleCaption(sampleSpec)}</figcaption>
     </figure>
   {/if}
@@ -220,6 +229,6 @@
   /* The sample sits in the popover's own flow: the popover is an overlay on
      the field, so it takes no layout space from .fieldwrap. */
   .shapepop-sample { margin: 0 0 6px; display: flex; align-items: flex-end; gap: 8px; }
-  .shapepop-sample canvas { display: block; border-radius: 3px; flex: 0 0 auto; }
+  .shapepop-sample img { display: block; border-radius: 3px; flex: 0 0 auto; }
   .shapepop-sample figcaption { color: var(--muted); font-size: var(--fs-xs); line-height: 1.3; }
 </style>
