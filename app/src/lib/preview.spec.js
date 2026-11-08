@@ -1,5 +1,5 @@
 import { test, expect, vi } from "vitest";
-import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, drawGrid, renderRealistic, threadLayers, threadLodLayers, layerSubsetForCount, drawThreads, kindStyle, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM, softShadowFactor } from "./preview.js";
+import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, drawGrid, renderRealistic, threadLayers, threadLodLayers, layerSubsetForCount, drawThreads, kindStyle, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM, softShadowFactor, STATIC_CACHE_MAX_PX } from "./preview.js";
 // ONE import line, deliberately. Three had accumulated here -- each bad merge
 // of this file stacked another partial copy on top rather than reconciling the
 // list, so the same seven names were declared three times over. esbuild
@@ -1300,19 +1300,22 @@ test("contact shadow: a later colour casts its shadow ON the colour sewn before 
   expect(shadowIdx[1]).toBeLessThan(iWhitePaint); // and under the white that casts it
 });
 
-test("the block's shadow is ONE path however many kinds the block holds (the measured cost ceiling), plus one per raised group", () => {
+test("the block's shadow is ONE path however many kinds the block holds (the measured cost ceiling), plus one per raised group and one for satin on its own fill", () => {
   // One path per style group was tried first and cost the mixed fixture +53%
   // at fit zoom: each alpha path is rasterized over its own bounds, and a
   // block's underlay, fill and satin share theirs. This pins the cheaper shape.
+  // The satin here lies on its own block's fill, so it casts its one extra
+  // path onto it at every zoom (2026-11-07; about +0 ms measured at fit).
   const design = kindedDesign([["travel"], ["underlay"], ["fill"], ["satin"], ["satin", "border"]], [200, 10, 10]);
   const ctx = makeCallLog();
   renderRealistic({ width: 300, height: 220, getContext: () => ctx }, design, {});
   const shadows = strokesOf(ctx).map((v) => alphaOf(v.color)).filter((a) => a != null);
-  expect(shadows.length).toBe(2);
+  expect(shadows.length).toBe(3);
   // the ordinary one at the topmost non-raised kind's strength (satin), the
-  // raised one deeper
+  // satin's onto its fill at the same strength, the raised one deeper
   expect(shadows[0]).toBe(Math.round(0.22 * kindStyle("satin", "").shadow * 1000) / 1000);
-  expect(shadows[1]).toBeGreaterThan(shadows[0]);
+  expect(shadows[1]).toBe(shadows[0]);
+  expect(shadows[2]).toBeGreaterThan(shadows[0]);
 });
 
 test("buried kinds stay out of the block's shadow: an exposed travel run does not cast at fill strength", () => {
@@ -1433,12 +1436,104 @@ test("simulator frames: a changed view, a scrub back past the snapshot, or an or
   renderRealistic(live, design, { ...SIM_OPTS, view: { zoom: 3, panX: 0, panY: 0 }, limitStrands: 20 });
   expect(ctx.fills).toBe(3);
   expect(ctx.blits).toEqual([]);
-  // No limitStrands: the plain path, which never makes a snapshot canvas.
+  // No limitStrands, and the static-view cache turned off: the plain path,
+  // which never makes a snapshot canvas.
   const plain = simCanvas(400, 300);
-  renderRealistic(plain, design, SIM_OPTS);
-  renderRealistic(plain, design, SIM_OPTS);
+  renderRealistic(plain, design, { ...SIM_OPTS, staticCache: false });
+  renderRealistic(plain, design, { ...SIM_OPTS, staticCache: false });
   expect(plain.made.length).toBe(0);
   expect(plain.getContext().fills).toBe(2);
+});
+
+// --- Static views: the finished render, kept (2026-11-07) ------------------
+
+test("static views: a repaint under the same key blits the kept render and strokes nothing", () => {
+  const design = blockyDesign();
+  const live = simCanvas(400, 300);
+  const ctx = live.getContext();
+  renderRealistic(live, design, SIM_OPTS);
+  // The second render inherits the round cap the first left behind, which
+  // the hoop chrome strokes with, so it is a different picture: drawn.
+  renderRealistic(live, design, SIM_OPTS);
+  expect(ctx.fills).toBe(2);
+  expect(live.made.length).toBe(1);
+  const drawn = ctx.strokes.length;
+  // The third inherits what the second did: served from the copy.
+  const r = renderRealistic(live, design, SIM_OPTS);
+  expect(ctx.fills).toBe(2);
+  expect(ctx.strokes.length).toBe(drawn);
+  expect(ctx.blits).toEqual([live.made[0]]);
+  // ...and it returns the same transform a drawn render does.
+  const fresh = renderRealistic(simCanvas(400, 300), design, SIM_OPTS);
+  expect(r.scale).toBe(fresh.scale);
+  expect(r.designBBoxMm).toEqual(fresh.designBBoxMm);
+  expect(r.toCanvas(3, 4)).toEqual(fresh.toCanvas(3, 4));
+});
+
+test("static views: a cold render strokes exactly what an uncached render strokes", () => {
+  const design = blockyDesign();
+  const a = simCanvas(400, 300), b = simCanvas(400, 300);
+  for (let i = 0; i < 2; i++) {
+    renderRealistic(a, design, SIM_OPTS);
+    renderRealistic(b, design, { ...SIM_OPTS, staticCache: false });
+  }
+  expect(a.getContext().strokes).toEqual(b.getContext().strokes);
+});
+
+test("static views: a pan, a zoom, an option, an in-place edit or a changed inherited cap all draw again", () => {
+  const design = blockyDesign();
+  const live = simCanvas(400, 300);
+  const ctx = live.getContext();
+  const warm = (o) => { renderRealistic(live, design, o); renderRealistic(live, design, o); };
+  warm(SIM_OPTS);
+  let fills = ctx.fills;
+  const misses = [
+    () => renderRealistic(live, design, { ...SIM_OPTS, view: { zoom: 2, panX: 11, panY: -5 } }),
+    () => renderRealistic(live, design, { ...SIM_OPTS, view: { zoom: 3, panX: 11, panY: -5 } }),
+    () => renderRealistic(live, design, { ...SIM_OPTS, view: { zoom: 3, panX: 11, panY: -5 }, threadStyle: "flat" }),
+    () => { design.stitches[5].x += 1; renderRealistic(live, design, { ...SIM_OPTS, view: { zoom: 3, panX: 11, panY: -5 }, threadStyle: "flat" }); },
+    () => { design.colors[1] = { r: 1, g: 2, b: 3 }; renderRealistic(live, design, { ...SIM_OPTS, view: { zoom: 3, panX: 11, panY: -5 }, threadStyle: "flat" }); },
+    () => { ctx.lineCap = "butt"; renderRealistic(live, design, { ...SIM_OPTS, view: { zoom: 3, panX: 11, panY: -5 }, threadStyle: "flat" }); },
+  ];
+  for (const m of misses) { m(); expect(ctx.fills).toBe(++fills); }
+  // A new design object with the same content is a new design.
+  const again = { ...design, stitches: design.stitches.slice() };
+  renderRealistic(live, again, { ...SIM_OPTS, view: { zoom: 3, panX: 11, panY: -5 }, threadStyle: "flat" });
+  expect(ctx.fills).toBe(++fills);
+});
+
+test("static views: one bitmap per canvas, shared with the simulator, and neither serves what the other wrote", () => {
+  const design = blockyDesign();
+  const live = simCanvas(400, 300);
+  const ctx = live.getContext();
+  renderRealistic(live, design, SIM_OPTS);
+  renderRealistic(live, design, SIM_OPTS);
+  // A simulator frame overwrites the shared bitmap...
+  renderRealistic(live, design, { ...SIM_OPTS, limitStrands: 95 });
+  expect(live.made.length).toBe(1);
+  const fills = ctx.fills;
+  // ...so the static view it replaced is drawn again, not blitted.
+  renderRealistic(live, design, SIM_OPTS);
+  expect(ctx.fills).toBe(fills + 1);
+  // ...and the next simulator frame cannot restore blocks from it either.
+  renderRealistic(live, design, { ...SIM_OPTS, limitStrands: 100 });
+  expect(ctx.fills).toBe(fills + 2);
+  expect(live.made.length).toBe(1);
+});
+
+  // (softShadow off: its scratch canvas would count as a made canvas here.)
+test("static views: a translucent first fill, a non-hooped render or a canvas over the cap is never kept", () => {
+  const design = blockyDesign();
+  const see = simCanvas(400, 300);
+  for (let i = 0; i < 3; i++) renderRealistic(see, design, { ...SIM_OPTS, surround: "rgba(0,0,0,0.5)", softShadow: false });
+  expect(see.made.length).toBe(0);
+  const fit = simCanvas(400, 300);
+  for (let i = 0; i < 3; i++) renderRealistic(fit, design, { fabricRgb: [235, 232, 223], softShadow: false });
+  expect(fit.made.length).toBe(0);
+  const huge = simCanvas(4000, 2200);
+  expect(4000 * 2200).toBeGreaterThan(STATIC_CACHE_MAX_PX);
+  for (let i = 0; i < 3; i++) renderRealistic(huge, design, { ...SIM_OPTS, softShadow: false });
+  expect(huge.made.length).toBe(0);
 });
 
 // --- Shadows: always solid, soft once the thread is wide (2026-11-07) ------
@@ -1517,7 +1612,7 @@ test("soft shadow: strands whose shadow lands wholly off the canvas are left out
   expect(moves).toBe(1);
 });
 
-test("satin over its OWN colour's fill casts a shadow onto it -- soft zoom only, so fit zoom keeps one shadow per block", () => {
+test("satin over its OWN colour's fill casts a shadow onto it at every zoom: soft when wide, hard at fit", () => {
   const scratch = { width: 200, height: 100, getContext: () => shadowLog() };
   const soft = { dpr: 1, cw: 400, ch: 200, scratch: () => scratch };
   const red = [200, 20, 20];
@@ -1528,7 +1623,11 @@ test("satin over its OWN colour's fill casts a shadow onto it -- soft zoom only,
   const fit = shadowLog();
   drawThreads(fit, strands, (x) => x, (y) => y, 3, { layers: [0, 2], softShadow: soft });
   expect(fit.blits).toEqual([]);
-  expect(fit.strokes.filter(isShadow).length).toBe(1);
+  expect(fit.strokes.filter(isShadow).length).toBe(2); // the block's, then the satin's
+  // ...and a fit zoom with no soft scratch at all draws the same two.
+  const bare = shadowLog();
+  drawThreads(bare, strands, (x) => x, (y) => y, 3, { layers: [0, 2] });
+  expect(bare.strokes.filter(isShadow).length).toBe(2);
   // A fill alone casts no extra shadow at any width.
   const fillOnly = shadowLog();
   drawThreads(fillOnly, strands.slice(0, 2), (x) => x, (y) => y, 9, { layers: [0, 2], softShadow: soft });
