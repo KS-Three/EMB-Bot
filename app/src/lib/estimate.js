@@ -109,6 +109,20 @@ export function resizeBadgeText(b, match) {
   return text;
 }
 
+// The stitches-per-minute every sew-time figure in the Studio is computed at:
+// the speed the operator typed in Quote settings (`embstudio:quote`, already
+// cleaned by quote.js) when there is one, else the engine's planning rate
+// `PLAN_SPM` (650, src/sewtime.js). Download's "Run time" row and the
+// simulator bar's readout both read it, so the two figures on one screen
+// cannot disagree (#1334's Decision 1, Kent's pick (b), 2026-11-07).
+// `quoted` says which one it is, for the tooltip that names the basis.
+// No constant of its own: the fallback is the engine's.
+export function runSpm(quote) {
+  const s = quote ? quote.spm : null;
+  if (typeof s === "number" && isFinite(s) && s > 0) return { spm: s, quoted: true };
+  return { spm: EMB.PLAN_SPM, quoted: false };
+}
+
 export function sewSummary(design, quote) {
   const q = quote || {};
   const f = sewFacts(design);
@@ -128,7 +142,7 @@ export function sewSummary(design, quote) {
   //
   // Charged per STOP, not per trim (see sewFacts): a colour stop the thread
   // was not already cut for is a stop too.
-  const spm = q.spm != null ? q.spm : EMB.PLAN_SPM;
+  const { spm } = runSpm(q);
   const profile = profileById(q.profileId);
   const runMin = EMB.sewTimeMin ? EMB.sewTimeMin(f.stitches, f.stops, spm) : null;
   if (runMin != null) {

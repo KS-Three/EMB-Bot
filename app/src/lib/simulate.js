@@ -303,8 +303,9 @@ export function blockStart(tl, k) {
 //
 // "About 12 min left of 18" for the bar (Kent, 2026-11-07: "Show it"). The
 // minutes are NOT computed here: they come from the engine's own
-// `sewTimeMin` at its `PLAN_SPM` (src/sewtime.js), the same function and the
-// same rate as the "Run time" row in Download and the worksheet's line, so
+// `sewTimeMin` (src/sewtime.js) at estimate.js `runSpm` (the Quote speed when
+// one is set, else `PLAN_SPM`), the same function and the same rate as the
+// "Run time" row in Download, so
 // the bar's total and theirs cannot disagree. That function already charges
 // every STOP (a trim, or a colour change the thread was not already cut for)
 // at TRIM_COST_STITCHES, so the bar uses it as is and adds nothing.
