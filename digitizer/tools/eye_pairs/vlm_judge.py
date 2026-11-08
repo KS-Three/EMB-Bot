@@ -59,6 +59,8 @@ PRO100_KIT = DIGITIZER / "eye_pairs_out" / "vlm-judge-pro100"
 PRO100_OUT = REPO / "docs" / "eye-pairs-2026-11-04" / "vlm-judge-100"
 PRO100_SEED = 20261104
 PRO100_N_IDENTICAL = 4
+#: The one pair left out of the 11-06 kit (its label was seen; PRE-REGISTRATION.md).
+PRO100_EXCLUDED = frozenset({"off-flags-1003:cap_recentre:becker"})
 VIEW_PX_PER_MM = 14.0          # the sittings' render scale (artfid_eye_rank.VIEW_PX_PER_MM)
 JPEG_QUALITY = 92              # tools.eye_pairs.__main__._JPEG
 EFFORT = "medium"
@@ -381,6 +383,47 @@ def _design_jpg(design_dir: Path) -> Path:
     return jpg
 
 
+def pro100_layout(live: list, *, seed: int = PRO100_SEED,
+                  n_identical: int = PRO100_N_IDENTICAL) -> list[tuple]:
+    """The kit's order, as `(item, base_left, kind)` per kit pair P001.. in
+    turn: `live` shuffled under `seed`, the base on the left in half of them,
+    `n_identical` extra pairs drawn from `live`, the whole list shuffled. ONE
+    implementation, so `judge_calibration` reproduces the 11-06 kit's pair
+    ids from the committed inputs without its (gone) `arms.json`."""
+    import random
+    live = list(live)
+    rng = random.Random(seed)
+    rng.shuffle(live)
+    flags = [True] * (len(live) // 2) + [False] * (len(live) - len(live) // 2)
+    rng.shuffle(flags)
+    ident_src = rng.sample(live, k=min(n_identical, len(live))) if live else []
+    rows = [(item, bl, "live") for item, bl in zip(live, flags)]
+    rows += [(item, True, "identical") for item in ident_src]
+    rng.shuffle(rows)
+    return rows
+
+
+def pro100_sealed(*, seed: int = PRO100_SEED, exclude_ids: frozenset[str] = PRO100_EXCLUDED,
+                  n_identical: int = PRO100_N_IDENTICAL, pairs: list[dict] | None = None) -> dict:
+    """The 11-06 kit's sealed key (`arms.json` as `kit_pro100` wrote it, plus
+    Kent's `kent` label) rebuilt from the committed inputs. Valid because that
+    kit had no missing design (RESULTS.md: 143 of 143, "No design was
+    missing"), so every labelled pair entered the shuffle."""
+    from tools.eye_pairs import pro_pooled_build as pb
+    pairs = pairs if pairs is not None else pb.labelled_pairs()
+    live = [p for p in pairs if "before_design" in p and p["id"] not in exclude_ids]
+    sealed = {}
+    for i, (p, base_left, kind) in enumerate(pro100_layout(live, seed=seed, n_identical=n_identical), 1):
+        arm = p["arm"]
+        sealed[f"P{i:03d}"] = {
+            "fixture": p["fixture"], "kind": kind, "repeat_of": None, "design_only": False,
+            "left_arm": "base" if (kind == "identical" or base_left) else arm,
+            "right_arm": "base" if (kind == "identical" or not base_left) else arm,
+            "source_id": p["id"], "sitting": p["sitting"], "arm": arm, "kent": p["kent"],
+            "before_design": p["before_design"], "after_design": p["after_design"]}
+    return sealed
+
+
 def kit_pro100(runs: Path, kit: Path, *, seed: int = PRO100_SEED,
                exclude_ids: frozenset[str] = frozenset(), n_identical: int = PRO100_N_IDENTICAL,
                art_root: Path | None = None, design_jpg=None) -> dict:
@@ -390,7 +433,6 @@ def kit_pro100(runs: Path, kit: Path, *, seed: int = PRO100_SEED,
     every verdict is on file) and `kit.json` (counts only). The base sits on the
     left in half the live pairs; `n_identical` extra pairs show one design on
     both sides. Returns counts only, never a label or a side."""
-    import random
     import shutil
     from tools.artfid_eye_rank import _normalise_art
     from tools.eye_pairs import pro_pooled_build as pb
@@ -405,14 +447,10 @@ def kit_pro100(runs: Path, kit: Path, *, seed: int = PRO100_SEED,
             live.append((p, dirs))
         else:
             missing.append(p["id"])
-    rng = random.Random(seed)
-    rng.shuffle(live)
-    flags = [True] * (len(live) // 2) + [False] * (len(live) - len(live) // 2)
-    rng.shuffle(flags)
-    ident_src = rng.sample(live, k=min(n_identical, len(live))) if live else []
-    rows = [(p, tuple(dirs), bl, "live") for (p, dirs), bl in zip(live, flags)]
-    rows += [(p, (dirs[0], dirs[0]), True, "identical") for p, dirs in ident_src]
-    rng.shuffle(rows)
+    layout = pro100_layout(live, seed=seed, n_identical=n_identical)
+    rows = [(p, tuple(dirs) if kind == "live" else (dirs[0], dirs[0]), bl, kind)
+            for (p, dirs), bl, kind in layout]
+    ident_src = [r for r in layout if r[2] == "identical"]
     (kit / "img").mkdir(parents=True, exist_ok=True)
     pairs_json, sealed = [], {}
     for i, (p, dirs, base_left, kind) in enumerate(rows, 1):
