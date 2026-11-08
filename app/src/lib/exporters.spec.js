@@ -361,7 +361,7 @@ test("exportPNG renders design to PNG with correct canvas aspect ratio", async (
   const { renderRealistic } = await import("./preview.js");
 
   // Create a design-like object with widthMM 100 and heightMM 50 (aspect 2:1).
-  // Expected canvas: long side 1200, other side 600 → 1200×600.
+  // Expected canvas: 12 px/mm + 40 px pad each side → 1280×680.
   const testDesign = { widthMM: 100, heightMM: 50, stitches: [] };
 
   // Mock document.createElement to return a fake canvas with toBlob method.
@@ -390,8 +390,8 @@ test("exportPNG renders design to PNG with correct canvas aspect ratio", async (
     expect(renderRealistic).toHaveBeenCalledTimes(1);
     const [canvasArg, designArg, optsArg] = renderRealistic.mock.calls[0];
     expect(canvasArg).toBe(mockCanvas);
-    expect(canvasArg.width).toBe(1200);
-    expect(canvasArg.height).toBe(600);
+    expect(canvasArg.width).toBe(1280);
+    expect(canvasArg.height).toBe(680);
     expect(designArg).toBe(testDesign);
     expect(optsArg.pad).toBe(40);
 
@@ -463,12 +463,12 @@ test("exportPNG handles aspect ratio guard (zero height treated as 1mm)", async 
     const out = await exportPNG(testDesign);
 
     // When height is 0, it defaults to 1 (aspect 100:1).
-    // Long side is 1200, so dimensions are 1200×12.
+    // 12 px/mm + 40 px pad: 1280×92.
     expect(renderRealistic).toHaveBeenCalledTimes(1);
     const [canvasArg] = renderRealistic.mock.calls[0];
     expect(canvasArg).toBe(mockCanvas);
-    expect(canvasArg.width).toBe(1200);
-    expect(canvasArg.height).toBe(12);
+    expect(canvasArg.width).toBe(1280);
+    expect(canvasArg.height).toBe(92);
 
     expect(out.filename).toBe("design.png");
   } finally {

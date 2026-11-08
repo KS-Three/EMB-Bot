@@ -262,31 +262,99 @@ export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoop
   return asBytes ? new Uint8Array(doc.output("arraybuffer")) : undefined;
 }
 
-// Renders design to a PNG preview image. Long side is 1200px, other side
-// scaled to preserve the design's aspect ratio (widthMM/heightMM). Uses
-// renderRealistic with design-fit (no hoop).
-export async function exportPNG(design) {
-  const aspectW = design.widthMM || 1;
-  const aspectH = design.heightMM || 1;
-  // Guard against zero: if either is 0 or missing, use 1:1 aspect.
-  const aspect = (aspectH !== 0) ? (aspectW / aspectH) : 1;
+// ---- True-size PNG --------------------------------------------------------
+// The approval PNG used to be "1200 px on the long side", so a print of it came
+// out at whatever size the viewer chose. It is now drawn at a stated scale and
+// says so in a pHYs chunk (pixels per metre), so a print or a layout tool lands
+// at the sewn size. PNG_PX_PER_MM = 12 is 304.8 dpi. The 40 px pad is unchanged
+// and is NOT part of the stated size: printable width = (pixels - 2 pad) / ppm.
+export const PNG_PX_PER_MM = 12;
+export const PNG_PAD_PX = 40;
+const PNG_MAX_SIDE = 6000; // canvas budget; a huge design lowers the scale, pHYs follows
 
-  let w, h;
-  if (aspect >= 1) {
-    w = 1200;
-    h = Math.round(1200 / aspect);
-  } else {
-    h = 1200;
-    w = Math.round(1200 * aspect);
+let _crcTable = null;
+function crc32(bytes) {
+  if (!_crcTable) {
+    _crcTable = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      _crcTable[n] = c >>> 0;
+    }
   }
+  let c = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) c = _crcTable[(c ^ bytes[i]) & 255] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+// Returns a copy of `png` (Uint8Array) with a pHYs chunk (metre unit) placed
+// right after IHDR, replacing any existing one. Not a PNG: returned unchanged.
+export function setPngPhys(png, pxPerMetre) {
+  const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (png.length < 33 || sig.some((b, i) => png[i] !== b)) return png;
+  const dv = new DataView(png.buffer, png.byteOffset, png.byteLength);
+  const ppm = Math.round(pxPerMetre);
+  const chunk = new Uint8Array(21);
+  const cv = new DataView(chunk.buffer);
+  cv.setUint32(0, 9);
+  chunk.set([0x70, 0x48, 0x59, 0x73], 4); // "pHYs"
+  cv.setUint32(8, ppm);
+  cv.setUint32(12, ppm);
+  chunk[16] = 1; // unit: metre
+  cv.setUint32(17, crc32(chunk.subarray(4, 17)));
+  // Walk chunks after IHDR (8 sig + 25 IHDR), dropping any old pHYs.
+  const parts = [png.subarray(0, 33), chunk];
+  let off = 33;
+  while (off + 12 <= png.length) {
+    const len = dv.getUint32(off);
+    const type = String.fromCharCode(png[off + 4], png[off + 5], png[off + 6], png[off + 7]);
+    const end = off + 12 + len;
+    if (type !== "pHYs") parts.push(png.subarray(off, Math.min(end, png.length)));
+    off = end;
+  }
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let o = 0;
+  for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+
+async function blobBytes(blob) {
+  if (typeof blob.arrayBuffer === "function") return new Uint8Array(await blob.arrayBuffer());
+  return new Uint8Array(await new Response(blob).arrayBuffer());
+}
+
+// Design extent in mm: the stitch bounding box (what renderRealistic's fit
+// uses), falling back to the declared size when there are no stitches.
+function designExtentMM(design) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const s of design.stitches || []) {
+    if (s.type === "color" || s.type === "end") continue;
+    if (s.x < minX) minX = s.x; if (s.x > maxX) maxX = s.x;
+    if (s.y < minY) minY = s.y; if (s.y > maxY) maxY = s.y;
+  }
+  if (maxX >= minX && maxY >= minY) {
+    return { w: Math.max(0.1, (maxX - minX) / 10), h: Math.max(0.1, (maxY - minY) / 10) };
+  }
+  return { w: design.widthMM || 1, h: design.heightMM || 1 };
+}
+
+// Renders design to a PNG preview image at PNG_PX_PER_MM (pad excluded) and
+// stamps that scale into the file as pHYs. Uses renderRealistic with
+// design-fit (no hoop); the canvas is sized so the fit's scale is that px/mm.
+export async function exportPNG(design) {
+  const ext = designExtentMM(design);
+  let pxMm = PNG_PX_PER_MM;
+  const pad = PNG_PAD_PX;
+  const longMm = Math.max(ext.w, ext.h);
+  if (longMm * pxMm + 2 * pad > PNG_MAX_SIDE) pxMm = (PNG_MAX_SIDE - 2 * pad) / longMm;
 
   const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
+  canvas.width = Math.max(1, Math.round(ext.w * pxMm) + 2 * pad);
+  canvas.height = Math.max(1, Math.round(ext.h * pxMm) + 2 * pad);
 
-  renderRealistic(canvas, design, { pad: 40 });
+  renderRealistic(canvas, design, { pad });
 
-  const blob = await new Promise((resolve, reject) => {
+  let blob = await new Promise((resolve, reject) => {
     canvas.toBlob((b) => {
       if (b === null) {
         reject(new Error("Failed to generate PNG: canvas.toBlob returned null"));
@@ -296,5 +364,14 @@ export async function exportPNG(design) {
     }, "image/png");
   });
 
-  return { blob, filename: "design.png", mime: "image/png" };
+  // A blob we cannot read back (test doubles) is returned as drawn.
+  if (blob && (typeof blob.arrayBuffer === "function" || typeof Response !== "undefined") && blob.type !== undefined) {
+    try {
+      const bytes = await blobBytes(blob);
+      const stamped = setPngPhys(bytes, pxMm * 1000);
+      if (stamped !== bytes) blob = new Blob([stamped], { type: "image/png" });
+    } catch { /* keep the unstamped PNG */ }
+  }
+
+  return { blob, filename: "design.png", mime: "image/png", pxPerMm: pxMm };
 }
