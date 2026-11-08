@@ -57,9 +57,23 @@
 // `runs` (`emptyWith` in digitize.js). It claims no records, so it can leave
 // none unclaimed, and dropping the index over it would punish every other
 // element for one unsupported character.
+//
+// ---- an element that sews nothing is left out entirely ------------------
+// Every splice below is a trim, and a colour change unless the threads match.
+// An empty element (that same `emptyWith`, or an image with no regions)
+// brings no colour, so splicing for it opened a block with no entry in
+// `colors`: [red, empty, blue] came out as 3 blocks over 2 colours. The PES
+// table then gave the EMPTY block blue and the real blue stitches a padding
+// thread, the DST stopped for a block that sews nothing, and the export
+// read-back passed it, because it counts from the same stream. So an input
+// with no `stitch` record contributes nothing here — no splice, no colours.
 export function combineDesigns(designs) {
-  const list = (designs || []).filter(Boolean);
-  if (list.length === 0) return null;
+  const given = (designs || []).filter(Boolean);
+  if (given.length === 0) return null;
+  const sewing = given.filter((d) => (d.stitches || []).some((s) => s.type === "stitch"));
+  // Nothing sews at all: hand back the first as-is rather than null, which
+  // callers read as "no elements".
+  const list = sewing.length ? sewing : [given[0]];
   // Single design in -> returned structurally unchanged (same stitches) —
   // no "end" stripping, no rebuilt fields. Whatever the builder produced
   // (with or without a trailing "end") passes straight through. Its `runs`,

@@ -4,7 +4,7 @@ tripwire pairs -- the measurement `cfg.extra["fill_angle_pro_offset"]`'s angle
 (`machine.FILL_ANGLE_PRO_DEG`) is read from (2026-11-07,
 `docs/fill-angle-pro-offset-2026-11-07.md`).
 
-    python -m tools.fill_angle_pro_census measure --runs DIR --figures OUT.json [--on] [--only SLUG ...]
+    python -m tools.fill_angle_pro_census measure --runs DIR --figures OUT.json [--on | --slant] [--only SLUG ...]
     python -m tools.fill_angle_pro_census report --runs DIR [--rows] [--json OUT]
 
 `measure` IS `tools.tripwire measure` (same digitize, same DST, same figures,
@@ -40,6 +40,7 @@ for p in (DIGITIZER, DIGITIZER / "tools", DIGITIZER / "tools" / "pro_parity"):
         sys.path.insert(0, str(p))
 
 FLAG = "fill_angle_pro_offset"
+SLANT = "fill_angle_pro_slant"    # `--slant`: the per-shape sign + trims guard
 
 
 # ------------------------------------------------------------------ measure
@@ -103,13 +104,13 @@ def census(plan, result, fills: dict, ours_dst: Path, pro_dst: Path) -> dict:
     return {"iou": round(iou, 3), "shift_mm": [round(rdx, 2), round(rdy, 2)], "shapes": rows}
 
 
-def measure(runs: Path, figures: Path, on: bool, only: list[str] | None) -> int:
+def measure(runs: Path, figures: Path, on: bool, only: list[str] | None, slant: bool = False) -> int:
     from digitizer_core import stage7_sequence as s7
     from digitizer_core.export import write_dst
     from tools import pro_baseline as pb
     from tools import pro_pair
     from tools import tripwire as tw
-    extra = {f"extra.{FLAG}": True} if on else None
+    extra = {f"extra.{SLANT}": True} if slant else ({f"extra.{FLAG}": True} if on else None)
 
     def digitize(runs_dir: Path, slugs: list[str]) -> None:     # pro_baseline.digitize, plus the spy
         for s in slugs:
@@ -139,7 +140,7 @@ def measure(runs: Path, figures: Path, on: bool, only: list[str] | None) -> int:
 
     pb.digitize = digitize
     out = tw.measure(runs, only or tw.committed_jobs(), False, None)
-    out["flag"] = {FLAG: bool(on)}
+    out["flag"] = {FLAG: bool(on), SLANT: bool(slant)}
     figures.write_text(json.dumps(out, indent=1), encoding="utf-8")
     return 0
 
@@ -208,6 +209,7 @@ def main(argv=None) -> int:
     ap.add_argument("--runs", type=Path, required=True)
     ap.add_argument("--figures", type=Path)
     ap.add_argument("--on", action="store_true")
+    ap.add_argument("--slant", action="store_true")
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--rows", action="store_true")
     ap.add_argument("--json", dest="json_out", type=Path)
@@ -215,7 +217,7 @@ def main(argv=None) -> int:
     if a.cmd == "measure":
         if not a.figures:
             ap.error("measure needs --figures")
-        return measure(a.runs, a.figures, a.on, a.only)
+        return measure(a.runs, a.figures, a.on, a.only, a.slant)
     return report(a.runs, a.rows, a.json_out)
 
 

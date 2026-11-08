@@ -1256,7 +1256,12 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   border-top: 0;
   box-sizing: border-box;
 }
+/* Fixed width = pickScaleBar's maxPx (lib/scalebar.js): the bar's width must
+   not depend on the scale (see the markup's note in EmbroideryField). The
+   label gets a floor for the same reason ("5 mm" vs "50 mm"). */
+.scalebar-slot { display: flex; flex: none; width: 120px; }
 .scalebar-label {
+  min-width: 3.6em;
   font-size: var(--fs-xs);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -2486,6 +2491,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .dp-blocks-label { font-size: var(--fs-sm); font-weight: var(--fw-medium); }
 .dp-block { display: flex; align-items: center; gap: var(--space-2); }
 .dp-block-n { font-size: var(--fs-sm); color: var(--muted); min-width: 4.5em; }
+/* Block thumbnail: a fixed box that exists before its canvas does, so the row
+   is exactly as tall when the picture arrives as when it has not. 28px is no
+   taller than the compact thread picker beside it, which sets the row height. */
+.dp-thumb { flex: none; width: 56px; height: 28px; border-radius: var(--radius-s, 6px); overflow: hidden; background: var(--fill); }
+.dp-thumb canvas { display: block; width: 100%; height: 100%; }
+.dp-block-st { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; min-width: 5.5em; }
 .dp-note { font-size: var(--fs-sm); color: var(--muted); margin: 0; }
 .dp-note.warn { color: var(--warn); }
 

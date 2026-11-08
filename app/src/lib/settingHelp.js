@@ -160,6 +160,12 @@ export const HELP = {
     changes: "The view only. Nothing about the design or the file changes.",
     when: "Flip between this and the stitches to check the digitizing against what you asked for.",
   },
+  compareView: {
+    title: "Compare view",
+    what: "Lays the artwork you uploaded over the stitches at the same size, with a handle you drag: artwork to its left, stitches to its right.",
+    changes: "The view only. Nothing about the design or the file changes.",
+    when: "Slide the handle across an edge to see how closely the stitches follow the art. Arrow keys move the handle too.",
+  },
   sewnWidth: {
     title: "Sewn width",
     what: "Draws each satin column at the width it will show on the cloth. The file cuts every column wider on purpose, because the fabric pulls the stitches in as they tighten; this takes that allowance back off.",

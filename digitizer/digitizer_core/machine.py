@@ -669,6 +669,17 @@ WHITE_FIELD_FILL_ANGLE_DEG = 22.0
 # preview, not a cloth constant -- the figure WHITE_FIELD_FILL_ANGLE_DEG
 # already reads on Becker's faces, measured across every pair.
 FILL_ANGLE_PRO_DEG = 20.0
+# The trims guard of `cfg.extra["fill_angle_pro_slant"]` (2026-11-07, built
+# OFF; `docs/fill-angle-pro-slant-2026-11-07.md`). A slanted candidate (+20,
+# then -20) is taken only when its rows cut the shape into at most
+# ratio x columns-at-the-angle-OFF-sews + slack monotone columns
+# (`stage6_fill._cols_at_angle`, at FILL_ROW_MM). Read off #1346's 18-job
+# OFF/ON pass, where every in-fill cut it added sat on a shape whose columns
+# grew x1.5 or more (MFab LC's field 19 -> 70 columns, +5 cuts; Drone's three
+# small fills x1.5-x2.2, +6), while Becker's fields grew x1.0-x1.12 and LOST
+# a cut each. A routing proxy chosen on that one pass, not a cloth constant.
+FILL_ANGLE_SLANT_COLS_RATIO = 1.25
+FILL_ANGLE_SLANT_COLS_SLACK = 2
 
 
 # The art's own outline (`cfg.border_from_outline`, 2026-10-24;
