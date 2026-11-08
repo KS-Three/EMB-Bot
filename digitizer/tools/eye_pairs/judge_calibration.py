@@ -40,6 +40,13 @@ judges nothing:
   (blind id -> pool id, kind, base side), the designs and any drop reasons go
   to a SEPARATE sealed folder the judge is never shown.
 
+    python -m tools.eye_pairs.judge_calibration score [--out DIR]
+
+* `score` (after the one blind run) reads `heldout-verdicts.jsonl` and the
+  key copied beside it (`heldout-key.json`), maps L / R to before / after, and
+  writes the pre-registered primary, secondaries and the old judges' baseline
+  on the same pairs to `heldout-analysis.json`.
+
 The held-out list is read by `split --check`, by tests, by phase B's scoring
 and by `heldout-kit`, which writes no label, verdict, arm or side where the
 judge reads. The calibration kit never reads it.
@@ -656,6 +663,113 @@ def do_heldout_kit(a) -> int:
     return 0
 
 
+# ------------------------------------------------------- phase B: the score ----
+#
+# After the one blind run, the sealed key is copied next to the verdicts
+# (`heldout-key.json`) so the score can be re-run from the repo alone. The
+# verdicts are in the packets' frame, which is each kit's own order-A frame
+# (`key.json` "frame"), so `base_side` maps L / R to before / after and
+# `vlm_judge.to_label` on the kit's sealed row must agree; `score` checks both.
+
+#: Amendment 1's freeze. A verdict row carrying any other value is not scored.
+RUBRIC_SHA256 = "16836a48790c2738ab581dda75de9e4eac83ee4e8eb30ea8cdb875ec1b81b243"
+HELDOUT_VERDICTS_FILE = "heldout-verdicts.jsonl"
+HELDOUT_KEY_COPY = "heldout-key.json"
+HELDOUT_ANALYSIS_FILE = "heldout-analysis.json"
+
+
+def blind_label(choice: str, base_side: str) -> str:
+    """L / R / tie in the packet frame -> before / tie / after."""
+    if choice == "tie":
+        return "tie"
+    if choice not in ("L", "R") or base_side not in ("L", "R"):
+        raise ValueError(f"cannot map {choice!r} with base on {base_side!r}")
+    return "before" if choice == base_side else "after"
+
+
+def score(verdict_rows: list[dict], key: dict, *, held: list[str], pool_rows: list[dict],
+          sealed_sets: dict[str, dict], old_verdicts: dict[str, Path] | None = None) -> dict:
+    """The pre-registered primary and secondaries on HELD-OUT. `verdict_rows`
+    are the blind run's rows (order A; the last row per pair wins), `key` the
+    sealed key's `pairs`, `held` the held-out pool ids, `pool_rows` the pool
+    (Kent's original labels and designs), `sealed_sets` each kit's sealed rows
+    (for the `to_label` cross-check and the baseline)."""
+    by_pool = {r["id"]: r for r in pool_rows}
+    last: dict[str, dict] = {}
+    for r in verdict_rows:
+        if r.get("order", "A") == "A":
+            last[r["pair"]] = r
+    rows, ids, detail, unscored, ctrl = [], [], [], [], []
+    for hid in sorted(key):
+        k = key[hid]
+        v = last.get(hid)
+        if v is None:
+            unscored.append({"blind": hid, "why": "no verdict"})
+            continue
+        if v.get("rubric_sha256") != RUBRIC_SHA256:
+            unscored.append({"blind": hid, "why": "rubric_sha256 differs"})
+            continue
+        if k["kind"] == "identical":
+            ctrl.append({"blind": hid, "pool_id": k["pool_id"], "choice": v["choice"]})
+            continue
+        name, pair = k["pool_id"].split(":", 1)
+        label = blind_label(v["choice"], k["base_side"])
+        assert vj.to_label(v["choice"], sealed_sets[name][pair]) == label, (hid, k["pool_id"])
+        p = by_pool[k["pool_id"]]
+        rows.append((p["kent"], label, p["design"]))
+        ids.append(k["pool_id"])
+        detail.append({"blind": hid, "pool_id": k["pool_id"], "set": name, "design": p["design"],
+                       "kent": p["kent"], "judge": label, "choice": v["choice"],
+                       "confidence": v.get("confidence"), "reason": v.get("reason")})
+    assert sorted(ids) == sorted(held), "the scored pairs are not the held-out list"
+    res = {"rubric_sha256": RUBRIC_SHA256, "n_verdicts": len(last), "unscored": unscored,
+           "primary": primary(rows)}
+    res["by_set"] = {s: primary([r for r, d in zip(rows, detail) if d["set"] == s])
+                     for s in (SET_1104, SET_1106)}
+    res["judge_tie_on_kent_side"] = sum(1 for k, j, _ in rows if k != "tie" and j == "tie")
+    res["judge_side_on_kent_tie"] = sum(1 for k, j, _ in rows if k == "tie" and j != "tie")
+    res["opposite_sides"] = sum(1 for k, j, _ in rows if "tie" not in (k, j) and k != j)
+    live_choices = [d["choice"] for d in detail]
+    confs = [d["confidence"] for d in detail if isinstance(d["confidence"], int)]
+    res["controls"] = {"identical": len(ctrl), "identical_called_tie": sum(c["choice"] == "tie" for c in ctrl),
+                       "rows": ctrl, "left_picks": live_choices.count("L"),
+                       "right_picks": live_choices.count("R"), "ties_live": live_choices.count("tie"),
+                       "mean_confidence": round(sum(confs) / len(confs), 2) if confs else None}
+    # The baseline: the old judges' committed verdicts on the same pairs, same function.
+    old = old_verdicts if old_verdicts is not None else VERDICTS
+    base_rows, base_by_set = [], {}
+    for pid in sorted(held):
+        name, pair = pid.split(":", 1)
+        r = _verdict_rows(old[name], {pair}).get(pair)
+        if r is None or r.get("choice") is None:
+            continue
+        lab = vj.to_label(r["choice_frame_a"], sealed_sets[name][pair])
+        row = (by_pool[pid]["kent"], lab, by_pool[pid]["design"])
+        base_rows.append(row)
+        base_by_set.setdefault(name, []).append(row)
+    res["baseline_old_judges_same_pairs"] = primary(base_rows)
+    res["baseline_by_set"] = {s: primary(r) for s, r in sorted(base_by_set.items())}
+    res["pairs"] = detail
+    return res
+
+
+def do_score(a) -> int:
+    out = Path(a.out)
+    key = json.loads((out / HELDOUT_KEY_COPY).read_text(encoding="utf-8"))["pairs"]
+    verdicts = [json.loads(x) for x in (out / HELDOUT_VERDICTS_FILE).read_text(encoding="utf-8").splitlines()
+                if x.strip()]
+    sets = {SET_1104: vj.load_sitting()["sealed"], SET_1106: vj.pro100_sealed()}
+    res = score(verdicts, key, held=heldout_ids(out), pool_rows=pool(), sealed_sets=sets)
+    (out / HELDOUT_ANALYSIS_FILE).write_text(json.dumps(res, indent=1, ensure_ascii=False) + "\n",
+                                             encoding="utf-8")
+    p = res["primary"]
+    print(json.dumps({"kappa_3way": p["kappa_3way"], "ci3_pairs": p["ci3_pairs"],
+                      "ci3_designs": p["ci3_designs"], "passes": p["passes"],
+                      "table_kent_rows_judge_cols": p["table_kent_rows_judge_cols"],
+                      "baseline": res["baseline_old_judges_same_pairs"]["kappa_3way"]}, indent=1))
+    return 0
+
+
 # ---------------------------------------------------------- the kit: the page ----
 
 PAGE = """<!doctype html>
@@ -911,6 +1025,9 @@ def main(argv=None) -> int:
     ho.add_argument("--python", default=sys.executable)
     ho.add_argument("--no-slot", action="store_true", help="do not take the laptop's CPU slot")
     ho.set_defaults(fn=do_heldout_kit)
+    sc = sub.add_parser("score", help="score the blind HELD-OUT verdicts against Kent's original picks")
+    sc.add_argument("--out", default=str(OUT))
+    sc.set_defaults(fn=do_score)
     sv = sub.add_parser("serve", help="serve the page; reasons save to <kit>/reasons.json")
     sv.add_argument("--kit", required=True)
     sv.add_argument("--port", type=int, default=8733)

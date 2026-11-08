@@ -335,3 +335,39 @@ def test_an_identical_1106_control_shows_its_base_on_both_sides():
          "after_design": ["t1", "armA", {"a": 2}]}
     assert jc.designs_1106(s) == [("t1", "fx", "base", '{"a": 1}')]
     assert len(jc.designs_1106({**s, "kind": "live"})) == 2
+
+
+# ------------------------------------------------------- phase B: the score ----
+
+def test_blind_label_maps_the_packet_frame_through_the_base_side():
+    assert jc.blind_label("L", "L") == "before" and jc.blind_label("R", "L") == "after"
+    assert jc.blind_label("R", "R") == "before" and jc.blind_label("L", "R") == "after"
+    assert jc.blind_label("tie", "both") == "tie"
+    with pytest.raises(ValueError):
+        jc.blind_label("L", "both")
+
+
+def test_the_committed_heldout_score_is_the_one_the_code_makes(committed_pool):
+    """Re-score the committed blind verdicts through the committed key copy:
+    every row carries the frozen rubric hash, every held-out pair is scored
+    once, the controls are all ties, and the committed analysis is reproduced."""
+    out = jc.OUT
+    key = json.loads((out / jc.HELDOUT_KEY_COPY).read_text(encoding="utf-8"))["pairs"]
+    rows = [json.loads(x) for x in (out / jc.HELDOUT_VERDICTS_FILE).read_text(encoding="utf-8").splitlines()
+            if x.strip()]
+    assert all(r["rubric_sha256"] == jc.RUBRIC_SHA256 for r in rows)
+    import hashlib
+    assert hashlib.sha256((out / "RUBRIC.md").read_bytes()).hexdigest() == jc.RUBRIC_SHA256
+    sets = {jc.SET_1104: vj.load_sitting()["sealed"], jc.SET_1106: vj.pro100_sealed()}
+    res = jc.score(rows, key, held=jc.heldout_ids(), pool_rows=committed_pool, sealed_sets=sets)
+    committed = json.loads((out / jc.HELDOUT_ANALYSIS_FILE).read_text(encoding="utf-8"))
+    assert res["primary"]["table_kent_rows_judge_cols"] == committed["primary"]["table_kent_rows_judge_cols"]
+    assert res["primary"]["kappa_3way"] == pytest.approx(committed["primary"]["kappa_3way"])
+    assert res["primary"]["ci3_pairs"] == pytest.approx(committed["primary"]["ci3_pairs"])
+    assert res["primary"]["passes"] is committed["primary"]["passes"]
+    assert res["controls"]["identical_called_tie"] == res["controls"]["identical"] == 7
+    assert res["primary"]["n_scored"] == len(jc.heldout_ids()) and not res["unscored"]
+    # A row under any other rubric is not scored.
+    bad = [{**r, "rubric_sha256": "0" * 64} if r["pair"] == "H001" else r for r in rows]
+    with pytest.raises(AssertionError):
+        jc.score(bad, key, held=jc.heldout_ids(), pool_rows=committed_pool, sealed_sets=sets)
