@@ -131,6 +131,46 @@ test("buildImportedDesign clamps to the hoop on BOTH dims (a tall design can't o
   assert.ok(design._debug.scale < 1);
 });
 
+test("buildImportedDesign keeps a design under 1 mm wide at its native size (the 1 mm floor is for a TYPED width only)", () => {
+  // A single 30 mm vertical running-stitch line: native width 0. Before the
+  // fix the native default (floored to 0.1 mm) was then clamped up to the
+  // 1 mm typed-width floor, giving scale 10 until the height clamp stopped
+  // it: imported 0.34 x 101.6 mm on this 4x4 in hoop instead of 30 mm tall.
+  const line = {
+    stitches: [
+      { x: 0, y: -150, type: "stitch" },
+      { x: 0, y: -50, type: "stitch" },
+      { x: 0, y: 50, type: "stitch" },
+      { x: 0, y: 150, type: "stitch" },
+      { x: 0, y: 150, type: "end" },
+    ],
+    colors: [{ r: 0, g: 0, b: 0 }],
+  };
+  const d = decodeDST(dst.encodeDST(line));
+  const design = buildImportedDesign(d, { garment: GARMENT });
+  assert.strictEqual(design._debug.scale, 1);
+  assert.ok(Math.abs(design.heightMM - 30) < 1e-9, `heightMM ${design.heightMM}`);
+  const ys = design.stitches.filter((s) => s.type === "stitch").map((s) => s.y);
+  assert.strictEqual(Math.max(...ys) - Math.min(...ys), 300);
+
+  // A 0.5 mm-wide design (5 units) also stays native.
+  const narrow = {
+    stitches: [
+      { x: 0, y: -100, type: "stitch" },
+      { x: 5, y: 100, type: "stitch" },
+      { x: 5, y: 100, type: "end" },
+    ],
+    colors: [{ r: 0, g: 0, b: 0 }],
+  };
+  const n = buildImportedDesign(decodeDST(dst.encodeDST(narrow)), { garment: GARMENT });
+  assert.strictEqual(n._debug.scale, 1);
+  assert.ok(Math.abs(n.widthMM - 0.5) < 1e-9, `widthMM ${n.widthMM}`);
+
+  // A TYPED width under 1 mm still floors to 1 mm, as before.
+  const typed = buildImportedDesign(decodeDST(dst.encodeDST(narrow)), { garment: GARMENT, targetWidthMm: 0.2 });
+  assert.ok(Math.abs(typed.widthMM - 1) < 1e-9, `typed widthMM ${typed.widthMM}`);
+});
+
 test("rotationDeg 0 (and absent) is byte-identical to the pre-rotation path", () => {
   const d = decodeDST(dst.encodeDST(fixtureDesign()));
   const plain = buildImportedDesign(d, { garment: GARMENT });
