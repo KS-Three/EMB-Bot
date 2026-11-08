@@ -330,6 +330,37 @@ test("an element that sews nothing does not cost the others their index", async 
   expectPartition(combined);
 });
 
+test("an element that sews nothing adds no trim and no colour stop", async () => {
+  // Before the fix the empty element still got its own trim+color splice and
+  // brought no colour with it: [red, empty, blue] came out as 3 blocks over 2
+  // colours, so the PES table gave the EMPTY block blue and the real blue
+  // stitches a padding thread, and the DST stopped for a block that sews
+  // nothing. Blocks and `colors` must stay one-to-one.
+  const { combineDesigns } = await import("./combine.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const d1 = letteringDesign("AB", garment, { rgb: [200, 20, 20] });
+  const d2 = letteringDesign("CD", garment, { rgb: [20, 20, 200], offsetYMm: -15 });
+  const empty = () => ({ stitches: [{ x: 0, y: 0, type: "end" }], colors: [], stitchCount: 0, colorCount: 0 });
+  const blocks = (d) => 1 + d.stitches.filter((s) => s.type === "color").length;
+
+  const mid = combineDesigns([d1, empty(), d2]);
+  expect(mid.colors).toHaveLength(2);
+  expect(blocks(mid)).toBe(mid.colors.length);
+  expect(mid.stitches.filter((s) => s.type === "trim")).toHaveLength(
+    d1.stitches.filter((s) => s.type === "trim").length + d2.stitches.filter((s) => s.type === "trim").length + 1);
+  expect(mid.stitches).toEqual(combineDesigns([d1, d2]).stitches);
+
+  // Leading empty: the stream must not open with a trim/colour before any stitch.
+  const lead = combineDesigns([empty(), d1, d2]);
+  expect(["trim", "color"]).not.toContain(lead.stitches[0].type);
+  expect(lead.stitches).toEqual(combineDesigns([d1, d2]).stitches);
+  expect(blocks(lead)).toBe(lead.colors.length);
+
+  // Only one element sews: it passes through untouched, as a lone design does.
+  expect(combineDesigns([empty(), d1, empty()])).toBe(d1);
+});
+
 test("a single design keeps its own index untouched", async () => {
   const { combineDesigns } = await import("./combine.js");
   const { EMB } = await import("./emb.js");
