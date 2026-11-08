@@ -691,6 +691,11 @@ PRE_FLIP["dark_ink_floor_rescue"] = False
 # `tests/engine_2026_10_27.json` carries both False.
 PRE_FLIP["flat_light_text_runs"] = False
 PRE_FLIP["thread_match_grade_traced_letter"] = False
+# `dropped_element_v2` joined the flipped set 2026-11-08 (Kent, "Flip ON";
+# built OFF 2026-11-07 as a `cfg.extra` key, #1298). ON, a hole the artwork
+# leaves transparent is no longer an `ARTWORK_ELEMENT_DROPPED`.
+# `tests/engine_2026_10_27.json` carries it False.
+PRE_FLIP["dropped_element_v2"] = False
 # `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
 # renders of his Instagram icon, drone, Bridge Bar and the repro), for the
 # reason every entry above gives. ON, a gradient-lane region's edge follows

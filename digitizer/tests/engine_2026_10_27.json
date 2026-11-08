@@ -80,6 +80,7 @@
  "detect_photographic": false,
  "directional_comp": false,
  "dissolve_phantom_blends": true,
+ "dropped_element_v2": false,
  "edge_cap": "bean",
  "edge_cap_bean_pitch_mm": null,
  "edge_cap_fold_into_colour": false,
