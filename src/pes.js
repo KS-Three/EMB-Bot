@@ -45,6 +45,13 @@
   function extents(stitches) {
     let xMin = 0, xMax = 0, yMin = 0, yMax = 0, have = false;
     for (const st of stitches) {
+      // The end sentinel is not a point of the design: buildQualityDesign
+      // puts it at the absolute origin while the stitches carry the element's
+      // offset, so counting it widened the PEC width/height, the CEmbOne box
+      // and the initial jump to a corner the design does not occupy. Same
+      // break, same reason, as encodeDST's extents (src/dst.js); and like
+      // pecEncodeStitches, nothing after it is part of the design either.
+      if (st.type === "end") break;
       const x = st.x | 0, y = st.y | 0;
       if (!have) { xMin = xMax = x; yMin = yMax = y; have = true; }
       else {

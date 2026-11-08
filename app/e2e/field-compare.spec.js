@@ -27,6 +27,8 @@ import { fileURLToPath } from "node:url";
 import { startStudio, uploadArtwork } from "./helpers.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// This file reads canvas pixels: no animation may repaint under the reads.
+test.use({ reducedMotion: "reduce" });
 const SHOTS = process.env.COMPARE_SHOTS ? path.resolve(__dirname, "../../docs/compare-view-2026-11-07") : null;
 
 // The field alone, without the view button's tooltip over it. Leaves focus
@@ -82,11 +84,23 @@ function redBox(page, selector, red, exact) {
 }
 
 // The worst edge, in canvas px, between the artwork's red and the thread's.
-async function registration(page, red) {
+//
+// null while either side cannot be read yet. Every repaint
+// (a zoom step, a resize) re-encodes the artwork bitmap and hands the <img>
+// a NEW src; until that src decodes the <img> is not `complete` and reads as
+// nothing, so every read polls. And a poll's callback must RETURN, never
+// throw: a throw from it is not retried, it fails the test on the spot
+// (Playwright runs the callback outside the matcher's try). That is how main
+// went red on run 42453083807: the zoom poll sampled the <img> mid-decode on
+// a loaded runner, and a hard not-null assert inside it threw.
+async function settledRegistration(page, red) {
   const stitches = await redBox(page, ".hoop canvas", red, false);
   const art = await redBox(page, ".hoop img.cmp-art", red, true);
-  expect(stitches, "no red thread on the field canvas").not.toBeNull();
-  expect(art, "no artwork red on the compare canvas").not.toBeNull();
+  if (!stitches || !art) return null;
+  return registrationOf(stitches, art);
+}
+
+function registrationOf(stitches, art) {
   const err = {};
   for (const k of ["x0", "y0", "x1", "y1"]) err[k] = Math.abs(art[k] - stitches[k]);
   const centre = {
@@ -130,6 +144,11 @@ for (const fx of FIXTURES) {
     // Still exactly one <canvas> in .hoop; the artwork <img> is the field
     // canvas's bitmap size and lies exactly over it.
     expect(await page.locator(".hoop canvas").count()).toBe(1);
+    // Read once the <img> holds a decoded bitmap (a late repaint may have
+    // handed it a new src since the poll above; see settledRegistration).
+    let atFit = null;
+    await expect.poll(async () => (atFit = await settledRegistration(page, fx.red)) !== null,
+      { message: "no artwork red on the compare <img>, or no red thread on the field canvas" }).toBe(true);
     const sizes = await page.evaluate(() => {
       const c = document.querySelector(".hoop canvas"), im = document.querySelector(".hoop img.cmp-art");
       const rc = c.getBoundingClientRect(), ri = im.getBoundingClientRect();
@@ -137,7 +156,6 @@ for (const fx of FIXTURES) {
     });
     expect(sizes[1]).toEqual(sizes[0]);
 
-    const atFit = await registration(page, fx.red);
     info.annotations.push({ type: "registration-at-fit", description: `${fx.name}: centre ${atFit.centre} px, worst edge ${atFit.max} px ${JSON.stringify(atFit.err)} art ${JSON.stringify(atFit.art)} stitches ${JSON.stringify(atFit.stitches)}` });
     console.log(`[compare] ${fx.name} at fit: centre ${atFit.centre} px, worst edge ${atFit.max} px`, JSON.stringify(atFit));
     expect(atFit.centre, JSON.stringify(atFit)).toBeLessThanOrEqual(1.5);
@@ -157,7 +175,9 @@ for (const fx of FIXTURES) {
     const fitW = atFit.art.x1 - atFit.art.x0;
     let zoomed = null;
     await expect.poll(async () => {
-      zoomed = await registration(page, fx.red);
+      const r = await settledRegistration(page, fx.red);
+      if (!r) return false; // the <img> is mid-decode: poll again
+      zoomed = r;
       return zoomed.art.x1 - zoomed.art.x0 > fitW && zoomed.centre <= 2.5 && zoomed.max <= 10;
     }).toBe(true);
     info.annotations.push({ type: "registration-zoomed", description: `${fx.name}: centre ${zoomed.centre} px, worst edge ${zoomed.max} px at ${await page.locator(".zoompct").innerText()}` });
@@ -270,8 +290,8 @@ test("a window resize repaints the field once, with Compare off and with it on",
     if (on) {
       // …and the artwork side followed the resize: still registered.
       await expect.poll(async () => {
-        const r = await registration(page, 204);
-        return r.centre <= 1.5 && r.max <= 6;
+        const r = await settledRegistration(page, 204);
+        return !!r && r.centre <= 1.5 && r.max <= 6;
       }).toBe(true);
     }
   }
