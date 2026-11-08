@@ -13,6 +13,8 @@
   import { advanceIndex, clampIndex, nextSpeed, simTimeline, colorStopBetween, stepBlock, blockAt, blockThreadNames, underlayRuns, phaseAt, blockStart, sewClock, sewTimeAt } from "../lib/simulate.js";
   import { drawSimOverlay, drawIsolate, threadPx } from "../lib/simOverlay.js";
   import SimBar from "./SimBar.svelte";
+  import StitchInspector from "./StitchInspector.svelte";
+  import { buildStitchIndex, inspectAt, canvasPxToMm } from "../lib/stitchInspect.js";
   import { chartIdForProject } from "../lib/designChart.js";
   import { getCachedPalette, loadPalette, loadPreferredPaletteId, STUDIO_PALETTE } from "../lib/threads.js";
   import { EMB } from "../lib/emb.js";
@@ -199,6 +201,58 @@
   $: canSewnWidth = !!(lastGenerateResult && lastGenerateResult.combined && hasSatinSpans(lastGenerateResult.combined)) && sewnPullFor(project) > 0;
   function toggleJumps() { showJumps = !showJumps; scheduleViewRepaint(); }
   function toggleTrims() { showTrims = !showTrims; scheduleViewRepaint(); }
+
+  // ---- the stitch inspector (2026-11-08) ------------------------------------
+  //
+  // Inspect on: hovering the field names the stitch nearest the pointer
+  // (lib/stitchInspect.js, StitchInspector.svelte). Off by default; the bar
+  // toggles it, Escape turns it off.
+  //
+  // A hover here must never repaint the field (#1334 pins 0 renders per
+  // hover): nothing below writes `canvas`, `view` or anything a paint
+  // statement names, and none of it draws. The tooltip is a DOM element
+  // outside `.hoop`, so `inspectHit` is the only thing a move changes.
+  //
+  // The index is built on the first hover after a generation, from the very
+  // `combined` design the field drew, and kept until the next one; the
+  // thread names are the simulator's (nameSimThreads' chart lookup).
+  let inspectOn = false;
+  let inspectHit = null;   // { info, x, y } (client px), or null
+  let inspectIx = null;
+  let inspectFor = null;   // the combined design inspectIx indexes
+  let inspectNames = [];
+  function toggleInspect() {
+    inspectOn = !inspectOn;
+    inspectHit = null;
+    inspectFor = null; // re-read the chart's names when it comes back on
+  }
+  function inspectHover(e, p) {
+    if (!inspectOn) return;
+    const c = lastGenerateResult && lastGenerateResult.combined;
+    if (!c || !renderResult || !renderResult.toCanvas) { inspectHit = null; return; }
+    if (inspectFor !== c) {
+      inspectIx = buildStitchIndex(c);
+      inspectFor = c;
+      nameInspectThreads(inspectIx);
+    }
+    const mm = canvasPxToMm(renderResult.toCanvas, p.x, p.y);
+    const info = mm ? inspectAt(inspectIx, mm.x, mm.y, inspectNames) : null;
+    inspectHit = info ? { info, x: e.clientX, y: e.clientY } : null;
+  }
+  function nameInspectThreads(ix) {
+    inspectNames = [];
+    if (!ix) return;
+    const id = loadPreferredPaletteId(chartIdForProject(project));
+    const hit = getCachedPalette(id);
+    inspectNames = blockThreadNames(ix.tl, (hit || STUDIO_PALETTE).threads);
+    if (hit) return;
+    loadPalette(id).then((pal) => {
+      if (inspectIx === ix && pal) inspectNames = blockThreadNames(ix.tl, pal.threads);
+    }, () => {});
+  }
+  // A new generation or a new view moves the stitches under a resting
+  // pointer; the next move reads them again.
+  $: { lastGenerateResult; view; inspectHit = null; }
   // Every shape of a digitized element used to be outlined in cyan, with a
   // node on every vertex, permanently — not tied to selection, not tied to an
   // edit mode, and unaffected by the Realistic view toggle. On a two-colour
@@ -2695,6 +2749,17 @@
       e.preventDefault();
       return;
     }
+    // Then the stitch inspector, the least modal thing on the field: from the
+    // field, the page, or the bar its toggle sits in.
+    if (e.key === "Escape" && inspectOn) {
+      const t = e.target;
+      if (t === canvas || t === document.body || (t && t.closest && t.closest(".fieldbars"))) {
+        inspectOn = false;
+        inspectHit = null;
+        e.preventDefault();
+        return;
+      }
+    }
     if (e.key !== "Delete" && e.key !== "Backspace") return;
     // Reshape mode with points selected: Delete removes THOSE points (same
     // from-the-field rule as below). With none selected it does what it did.
@@ -4952,6 +5017,7 @@
     if (!dragMode) {
       emitCanvasHover(p);
       updateHoverCursor(p);
+      inspectHover(e, p);
       return;
     }
     if (dragMode === "pan") {
@@ -5298,6 +5364,7 @@
 
   function onPointerLeave() {
     emitCanvasHover(null);
+    inspectHit = null;
     if (!dragMode) setCanvasCursor("default");
   }
 </script>
@@ -5348,6 +5415,7 @@
       aria-label={fieldLabel}
       on:keydown={onCanvasKey}
       on:pointerdown={onPointerDown}
+      on:pointerdown={() => (inspectHit = null)}
       on:pointermove={onPointerMove}
       on:pointerup={endDrag}
       on:pointercancel={endDrag}
@@ -5561,6 +5629,16 @@
         aria-label="Show columns as sewn"
         use:tip={"sewnWidth"}
       ><Icon name="nodes" /><span class="zoomlabel">Sewn width</span></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={inspectOn}
+        on:click={toggleInspect}
+        disabled={!hasDesign}
+        aria-pressed={inspectOn}
+        aria-label="Inspect stitches"
+        use:tip={"inspect"}
+      ><Icon name="inspect" /><span class="zoomlabel">Inspect</span></button>
       <span class="zoomsep" aria-hidden="true"></span>
       <button
         type="button"
@@ -5608,6 +5686,11 @@
        and a live region outside the tree is never announced. -->
   <p class="fieldlive" aria-live="polite">{liveMsg}</p>
   <EditModeBar bar={modeBar} on:action={onModeBarAction} />
+  <!-- The stitch inspector's tooltip: fixed at the pointer, out of flow, and
+       outside `.hoop` (which holds the canvas and nothing else). -->
+  {#if inspectOn && inspectHit && !simActive && !originalView}
+    <StitchInspector info={inspectHit.info} x={inspectHit.x} y={inspectHit.y} />
+  {/if}
   <div class="fieldmeta">
     {#if error}<span class="err">{error}</span>
     {:else if shapeEditError}<span class="err" data-testid="shape-edit-error">{shapeEditError}</span>

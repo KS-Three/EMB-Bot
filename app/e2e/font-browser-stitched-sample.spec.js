@@ -14,6 +14,18 @@ import { test, expect } from "@playwright/test";
 
 const BIN = /\/fonts\/bin\/([^/?#]+)\.embf/;
 
+// FontBrowser mirrors its sample queue onto .fb-body: data-samples-seen counts
+// the tiles its IntersectionObserver reported in the window, data-samples is
+// "idle" once every sample it asked for has finished. Waiting on these, not on
+// networkidle plus a timer: the queue sews between fetches, and under four
+// workers' CPU load a render gap outlasted networkidle's 500 ms, so the spec
+// snapshotted its fetch count while two window samples were still queued and
+// the reopen fetched them (CI run 42445397701: expected 16, received 18).
+const sampleState = (dialog) => dialog.locator(".fb-body").evaluate((b) => ({
+  seen: Number(b.dataset.samplesSeen || 0),
+  idle: b.dataset.samples === "idle",
+}));
+
 test("opening the browser fetches only visible rows plus one look-ahead page, and rows keep their height", async ({ page }) => {
   await page.goto("/");
   // Let start-up finish first: FontSelect's own trigger preview ensures the
@@ -34,9 +46,9 @@ test("opening the browser fetches only visible rows plus one look-ahead page, an
   const tiles = dialog.locator(".fb-tile");
   await expect(tiles.first()).toBeVisible();
   expect(await tiles.count()).toBeGreaterThan(40);
-  // The observer fires on the next frame; give it a few.
+  // The observer fires on the next frame and asks for the whole window at
+  // once; the gate holds every binary it starts, so nothing is sewn yet.
   await expect.poll(() => fetched.length).toBeGreaterThan(0);
-  await page.waitForTimeout(300);
 
   // Which tiles a browser counts as "visible rows + one page": anything that
   // starts above the body's bottom edge plus one body height.
@@ -57,8 +69,9 @@ test("opening the browser fetches only visible rows plus one look-ahead page, an
 
   // Samples land: stitched images replace static PNGs in the window.
   await expect.poll(() => dialog.locator("img.fb-stitched").count(), { timeout: 30_000 }).toBeGreaterThan(4);
-  await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(500);
+  // ...and every sample the window asked for has finished, so the fetch count
+  // below is the first opening's whole bill.
+  await expect.poll(async () => (await sampleState(dialog)).idle, { timeout: 30_000 }).toBe(true);
   const after = await layout();
 
   const manifest = await page.evaluate(() => fetch("fonts/manifest.json").then((r) => r.json()));
@@ -86,7 +99,12 @@ test("opening the browser fetches only visible rows plus one look-ahead page, an
   await page.locator(".fs-trigger").click();
   await expect(dialog.locator(".fb-tile").first()).toBeVisible();
   await expect.poll(() => dialog.locator("img.fb-stitched").count()).toBeGreaterThanOrEqual(sewn);
-  await page.waitForTimeout(500);
+  // The new observer has reported the window and its queue has drained: any
+  // fetch it was going to make has started, and the route counted it.
+  await expect.poll(async () => {
+    const s = await sampleState(dialog);
+    return s.seen > 0 && s.idle;
+  }).toBe(true);
   expect(fetched.length).toBe(n);
 });
 

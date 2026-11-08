@@ -14,7 +14,8 @@
 // drawer keeps its placeholder; null is cached too so it is not re-derived.
 
 import { renderRealistic } from "./preview.js";
-import { combineDesigns } from "./combine.js";
+import { generateAll } from "./generate.js";
+import { defaultProject } from "./project.js";
 import { loadProject } from "./projects.js";
 
 export const THUMB_PX = 96;
@@ -35,14 +36,20 @@ function hasSewn(d) {
 }
 
 // The project's stitches as one Design, or null when it has none to draw.
+//
+// Built by generateAll -- the canvas's and the exporters' own path -- over
+// the digitized elements only, NOT from `element.result` raw: the raw
+// service result knows nothing of the customer's per-block thread overrides
+// (digitizedBlockColors), rotation, size, offset, a shape deletion still
+// waiting on its restitch (displayResult), or the cap's bottom-up sew order
+// (#1344 post-merge review).
 export function projectDesign(project) {
   const els = (project && project.elements) || [];
-  const parts = [];
-  for (const el of els) {
-    if (el && el.type === "digitized" && hasSewn(el.result)) parts.push(el.result);
-  }
-  if (parts.length === 0) return null;
-  return parts.length === 1 ? parts[0] : combineDesigns(parts);
+  const digitized = els.filter((el) => el && el.type === "digitized" && hasSewn(el.result));
+  if (digitized.length === 0) return null;
+  const garmentId = project.garmentId || defaultProject().garmentId;
+  const { combined } = generateAll({ ...project, garmentId, elements: digitized }, {});
+  return combined && hasSewn(combined) ? combined : null;
 }
 
 // At 96 px a 20k-stitch design has ~200 stitches per pixel, and the renderer

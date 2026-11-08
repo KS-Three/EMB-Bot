@@ -153,6 +153,10 @@ export const SAMPLE_CACHE = new Map();
 // start in request order, at most `concurrency` at a time, and each render
 // waits for `yieldFn` first so a burst of finished fetches cannot freeze a
 // scroll. `onReady(key, url)` fires once per sample that finished.
+// `onChange(idle)` fires whenever the queue's work changes, with whether it
+// is now idle (nothing waiting, nothing in flight): FontBrowser mirrors it
+// into a data attribute, so a caller can wait for "every requested sample
+// has finished" instead of guessing from the network.
 //
 // `load(key)` is FontBrowser's ensureFont: a font fetched for its sample is
 // decoded and cached the same way a picked font is, so picking it afterwards
@@ -162,6 +166,7 @@ export function createSampleQueue(opts) {
   const load = o.load;
   const render = o.render;
   const onReady = o.onReady || (() => {});
+  const onChange = o.onChange || (() => {});
   const cache = o.cache || SAMPLE_CACHE;
   const maxBytes = o.maxBytes != null ? o.maxBytes : SAMPLE_MAX_BYTES;
   const concurrency = Math.max(1, o.concurrency || 2);
@@ -178,9 +183,11 @@ export function createSampleQueue(opts) {
     if (cache.has(key) || inflight.has(key) || failed.has(key) || wanted.has(key)) return;
     wanted.set(key, row);
     pump();
+    onChange(isIdle());
   }
-  function unwant(key) { wanted.delete(key); }
-  function stop() { stopped = true; wanted.clear(); }
+  function unwant(key) { if (wanted.delete(key)) onChange(isIdle()); }
+  function stop() { stopped = true; wanted.clear(); onChange(isIdle()); }
+  function isIdle() { return !inflight.size && !wanted.size; }
 
   function pump() {
     while (!stopped && inflight.size < concurrency && wanted.size) {
@@ -213,6 +220,7 @@ export function createSampleQueue(opts) {
     }
     inflight.delete(key);
     pump();
+    onChange(isIdle());
   }
 
   return {
@@ -220,6 +228,6 @@ export function createSampleQueue(opts) {
     unwant,
     stop,
     get loaded() { return loaded.slice(); },
-    get idle() { return !inflight.size && !wanted.size; },
+    get idle() { return isIdle(); },
   };
 }

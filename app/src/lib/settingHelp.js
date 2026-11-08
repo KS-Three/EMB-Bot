@@ -172,6 +172,12 @@ export const HELP = {
     changes: "The view only. The file keeps its full allowance, which is what the machine needs.",
     when: "Lettering looks heavy against the original? Turn this on before judging the weight. Off shows the file as the machine reads it. Fills and running stitches are drawn as they are either way.",
   },
+  inspect: {
+    title: "Inspect stitches",
+    what: "Point at a stitch to read what it is: its number in sew order, its type, its length and its thread.",
+    changes: "The view only. The numbers are the simulator's, so a stitch reads the same here as on its counter.",
+    when: "Use it to find which shape or thread a stray stitch belongs to. Escape turns it off.",
+  },
   simulator: {
     title: "Stitch simulator",
     what: "Plays the design in the order the machine will sew it.",
