@@ -42,6 +42,8 @@
   import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyAnchorsDrag, applyHandleDrag, insertAnchor, removeAnchor, removeAnchors, editedElementPatch, editedShapesPatch, refitShapesPatch, ANCHOR_GRAB_PX, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT, convertOpenShape } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
   import DigitizeRing from "./DigitizeRing.svelte";
+  import CompareSplit from "./CompareSplit.svelte";
+  import { SPLIT_DEFAULT } from "../lib/compareSplit.js";
   import { digitizeBusy } from "../lib/digitizeBusy.js";
   import Icon from "./Icon.svelte";
   import { prefersReducedMotion } from "../lib/reducedMotion.js";
@@ -234,6 +236,27 @@
   function showOriginal() {
     if (simActive) stopSim();
     originalView = true;
+    compareView = false;
+    scheduleViewRepaint();
+  }
+  // Compare view (2026-11-07): Original view with a split — the artwork LEFT
+  // of a draggable handle, the realistic stitches RIGHT, at the same
+  // registration. It IS Original view underneath (originalView stays true),
+  // so every rule that keeps edits and chrome off the artwork — and every
+  // way out of Original view (another view, the simulator, a regeneration) —
+  // applies to it unchanged; `compareView` alone means nothing. The artwork
+  // side is CompareSplit's own canvas, painted from repaintView.
+  let compareView = false;
+  let compareSplit = SPLIT_DEFAULT;
+  let compareCanvas = null;
+  $: compareOn = originalView && compareView;
+  // The overlay's canvas is bound only after it mounts, which can land after
+  // the repaint showCompare scheduled: paint the artwork side once it exists.
+  $: if (compareOn && compareCanvas) scheduleViewRepaint();
+  function showCompare() {
+    if (simActive) stopSim();
+    originalView = true;
+    compareView = true;
     scheduleViewRepaint();
   }
 
@@ -3044,6 +3067,12 @@
     const my = ++originalToken;
     const rr = renderResult;
     if (!rr || !rr.toCanvas) return;
+    // Compare view draws the same placement onto its own canvas (fabric
+    // already painted there by repaintView), leaving the stitches on the
+    // field canvas; both canvases share one size, so one transform.
+    const comparing = originalView && compareView;
+    const target = comparing ? compareCanvas : canvas;
+    if (!target) return;
     const centre = rr.toCanvas(0, 0);
     const box = hoopSizeMm(project);
     const placement = { x: centre.x - (box.wMm * rr.scale) / 2, y: centre.y - (box.hMm * rr.scale) / 2,
@@ -3060,6 +3089,7 @@
       let im;
       try { im = await loadOriginal(el.sourcePng); } catch (e) { return; }
       if (my !== originalToken || !originalView || !canvas) return;
+      if ((originalView && compareView) !== comparing || !target.isConnected) return;
       const iw = im.naturalWidth, ih = im.naturalHeight;
       let at = null;
       if (el.type === "image") {
@@ -3080,7 +3110,7 @@
         at = (cb && placeByContent(iw, ih, cb, rect)) || fitRect(iw, ih, placement);
       }
       if (!at) return;
-      const ctx = canvas.getContext("2d");
+      const ctx = target.getContext("2d");
       ctx.save();
       if (dpr !== 1) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.beginPath();
@@ -3476,7 +3506,8 @@
   function repaintView() {
     if (!canvas) return;
     if (lastGenerateResult && lastGenerateResult.combined) {
-      renderResult = renderRealistic(canvas, lastGenerateResult.combined, {
+      const comparing = originalView && compareView;
+      const opts = {
         dpr,
         hoop: hoopOpt(project),
         fabricRgb: project.fabricRgb,
@@ -3489,15 +3520,26 @@
         // the whole design, which during playback showed the future.
         showJumps: showJumps && !simActive,
         showTrims: showTrims && !simActive,
-        threadStyle: realisticView ? "realistic" : "flat",
+        // Compare view's stitch side is the realistic render, whichever of
+        // the two thread styles was lit before it.
+        threadStyle: realisticView || comparing ? "realistic" : "flat",
         sewnPullMm,
         // While simulating, every repaint (zoom/pan included) draws only the
         // sewn-so-far prefix -- otherwise a mid-playback wheel event would
         // flash the finished design.
         // Original view draws fabric + hoop only (zero strands); the
-        // artwork goes on top in drawOriginals.
-        limitStrands: originalView ? 0 : simActive ? Math.floor(simIndex) : undefined,
-      });
+        // artwork goes on top in drawOriginals. Compare view keeps every
+        // strand here and puts the fabric + artwork on its own canvas.
+        limitStrands: originalView && !comparing ? 0 : simActive ? Math.floor(simIndex) : undefined,
+      };
+      renderResult = renderRealistic(canvas, lastGenerateResult.combined, opts);
+      if (comparing && compareCanvas) {
+        // Same bitmap size and options as the field canvas, so the same
+        // mm->px transform: the artwork lands where Original view puts it.
+        if (compareCanvas.width !== canvas.width) compareCanvas.width = canvas.width;
+        if (compareCanvas.height !== canvas.height) compareCanvas.height = canvas.height;
+        renderRealistic(compareCanvas, lastGenerateResult.combined, { ...opts, showJumps: false, showTrims: false, limitStrands: 0 });
+      }
       perElementRects = [];
       if (renderResult && renderResult.toCanvas) {
         for (const pe of lastGenerateResult.perElement) {
@@ -5242,6 +5284,12 @@
       on:contextmenu={onContextMenu}
       on:wheel={onWheel}
     ></canvas>
+    {#if compareOn}
+      <!-- Compare view: an overlay over the canvas (no layout space), only
+           while lit. Its canvas is pointer-transparent; only the handle takes
+           pointer and keys. -->
+      <CompareSplit bind:split={compareSplit} bind:canvas={compareCanvas} />
+    {/if}
     {#if fieldMenu}
       <!-- Drawing tools live here now instead of in the Content step's tile
            row (Kent's call, 2026-08-13: keep them, but as a right-click tool
@@ -5378,13 +5426,23 @@
         <button
           type="button"
           class="zoombtn viewseg-btn viewseg-orig"
-          class:viewseg-on={originalView}
+          class:viewseg-on={originalView && !compareOn}
           on:click={showOriginal}
           disabled={!hasDesign || !anyOriginal}
-          aria-pressed={originalView}
+          aria-pressed={originalView && !compareOn}
           aria-label="Original view"
           use:tip={"originalView"}
         >Original</button>
+        <button
+          type="button"
+          class="zoombtn viewseg-btn viewseg-orig"
+          class:viewseg-on={compareOn}
+          on:click={showCompare}
+          disabled={!hasDesign || !anyOriginal}
+          aria-pressed={compareOn}
+          aria-label="Compare view"
+          use:tip={"compareView"}
+        >Compare</button>
       </span>
       <span class="zoomsep" aria-hidden="true"></span>
       <button
