@@ -1306,6 +1306,7 @@
       showDragHint={showDragFieldHint}
       {hoverShape}
       focusShape={selectedShape}
+      {quote}
       on:shapehover={(e) => (hoverShape = e.detail)}
       on:shapefocus={(e) => (selectedShape = e.detail)}
       on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet, !!e.detail.discrete)}
