@@ -220,4 +220,26 @@ describe("createSampleQueue", () => {
     h.q.want(row("a"));
     expect(h.loads).toEqual(["a"]);
   });
+
+  it("reports idle only once every requested sample has finished or failed", async () => {
+    const seen = [];
+    const h = harness({ onChange: (idle) => seen.push(idle) });
+    for (const k of ["a", "b", "c"]) h.q.want(row(k));
+    expect(seen.every((v) => v === false)).toBe(true);
+    h.gates.get("a").res({});
+    await flush(); await flush();
+    // "c" started in a's place: still busy, never a transient idle.
+    expect(seen.at(-1)).toBe(false);
+    h.gates.get("b").rej(new Error("offline"));
+    await flush(); await flush();
+    expect(seen.at(-1)).toBe(false);
+    h.gates.get("c").res({});
+    await settle(h.q);
+    expect(seen.at(-1)).toBe(true);
+    expect(seen.indexOf(true)).toBe(seen.length - 1);
+    // A cached row asks for nothing and stays idle.
+    h.q.want(row("a"));
+    expect(h.loads).toEqual(["a", "b", "c"]);
+    expect(h.q.idle).toBe(true);
+  });
 });
