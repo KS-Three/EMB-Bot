@@ -3,10 +3,10 @@
  "captured": {
   "date": "2026-11-07",
   "passes": 3,
-  "run_url": "https://github.com/KS-Three/EMB-Bot/actions/runs/42403074224",
+  "run_url": "https://github.com/KS-Three/EMB-Bot/actions/runs/42423880904",
   "engine": {
-   "head": "66964cc9",
-   "tree": "0df25210e860+b88771ebb6d0",
+   "head": "fc0d32ac",
+   "tree": "dfe24b001a28+b88771ebb6d0",
    "dirty": false,
    "opencv_ipp": "avx2"
   }
@@ -21,12 +21,12 @@
   "tesseract": "tesseract v5.5.3 (tesserocr 2.12.0, in-process)",
   "rembg_venv": false,
   "engine": {
-   "head": "66964cc9",
-   "tree": "0df25210e860+b88771ebb6d0",
+   "head": "fc0d32ac",
+   "tree": "dfe24b001a28+b88771ebb6d0",
    "dirty": false,
    "opencv_ipp": "avx2"
   },
-  "github_run": "42403074224"
+  "github_run": "42423880904"
  },
  "figures": {
   "stitches": {
@@ -60,94 +60,94 @@
  },
  "secs": {
   "becker_hat_large": [
-   15.2,
-   11.8,
-   15.1
+   13.8,
+   11.7,
+   15.5
   ],
   "becker_lc_large": [
-   12.4,
-   9.0,
-   12.3
+   11.0,
+   9.2,
+   12.6
   ],
   "becker_hat_small": [
-   9.8,
-   7.3,
-   9.7
+   8.8,
+   7.5,
+   10.0
   ],
   "becker_chest_small": [
-   9.6,
-   7.1,
-   9.6
+   8.6,
+   7.3,
+   9.8
   ],
   "becker_beanie": [
-   10.2,
-   7.4,
-   10.1
-  ],
-  "gaulke_roofing_hat": [
-   17.2,
-   12.0,
-   17.0
-  ],
-  "gaulke_roofing_lc": [
-   11.0,
-   7.8,
-   11.0
-  ],
-  "gaulke_roofing_beanie": [
-   12.7,
-   8.9,
-   12.5
-  ],
-  "hotel_fremont_hat": [
-   37.2,
-   26.2,
-   37.0
-  ],
-  "hotel_fremont_patch": [
-   37.1,
-   26.2,
-   36.8
-  ],
-  "mfab_hat": [
-   43.5,
-   30.8,
-   43.2
-  ],
-  "mfab_lc": [
-   30.9,
-   21.7,
-   31.1
-  ],
-  "precision_drone": [
-   34.2,
-   24.4,
-   34.4
-  ],
-  "tires_hat_3d": [
-   5.5,
-   3.7,
-   5.4
-  ],
-  "goldentee_hat": [
-   33.4,
-   24.1,
-   33.4
-  ],
-  "toat_machine_hat": [
-   13.1,
-   9.6,
-   13.1
-  ],
-  "toat_machine_beanie": [
-   10.3,
-   7.4,
+   9.0,
+   7.7,
    10.4
   ],
+  "gaulke_roofing_hat": [
+   14.7,
+   12.4,
+   17.5
+  ],
+  "gaulke_roofing_lc": [
+   9.5,
+   8.2,
+   11.4
+  ],
+  "gaulke_roofing_beanie": [
+   10.8,
+   9.3,
+   13.3
+  ],
+  "hotel_fremont_hat": [
+   32.4,
+   27.2,
+   39.0
+  ],
+  "hotel_fremont_patch": [
+   32.0,
+   27.3,
+   38.9
+  ],
+  "mfab_hat": [
+   37.2,
+   32.0,
+   43.9
+  ],
+  "mfab_lc": [
+   26.1,
+   22.6,
+   31.9
+  ],
+  "precision_drone": [
+   29.6,
+   25.2,
+   34.8
+  ],
+  "tires_hat_3d": [
+   4.6,
+   3.9,
+   5.9
+  ],
+  "goldentee_hat": [
+   31.1,
+   26.3,
+   36.0
+  ],
+  "toat_machine_hat": [
+   11.6,
+   10.1,
+   13.4
+  ],
+  "toat_machine_beanie": [
+   9.0,
+   7.6,
+   10.6
+  ],
   "toat_beanie": [
-   9.9,
-   7.0,
-   9.7
+   8.6,
+   7.2,
+   10.0
   ]
  },
  "skipped": [],
@@ -271,7 +271,7 @@
   {
    "job": "becker_hat_small",
    "figure": "stitches",
-   "baseline": 10541,
+   "baseline": 10547,
    "worse": "up",
    "tolerance": 6,
    "spread": 6,
@@ -307,7 +307,7 @@
   {
    "job": "becker_hat_small",
    "figure": "sttype_kappa",
-   "baseline": 0.533,
+   "baseline": 0.529,
    "worse": "down",
    "tolerance": 0.01,
    "spread": 0.004,
@@ -324,7 +324,7 @@
   {
    "job": "becker_chest_small",
    "figure": "stitches",
-   "baseline": 10307,
+   "baseline": 10310,
    "worse": "up",
    "tolerance": 3,
    "spread": 3,
@@ -360,7 +360,7 @@
   {
    "job": "becker_chest_small",
    "figure": "sttype_kappa",
-   "baseline": 0.578,
+   "baseline": 0.575,
    "worse": "down",
    "tolerance": 0.01,
    "spread": 0.003,
@@ -369,7 +369,7 @@
   {
    "job": "becker_chest_small",
    "figure": "direction_kappa",
-   "baseline": 0.445,
+   "baseline": 0.444,
    "worse": "down",
    "tolerance": 0.01,
    "spread": 0.001
@@ -589,7 +589,7 @@
   {
    "job": "hotel_fremont_hat",
    "figure": "stitches",
-   "baseline": 15791,
+   "baseline": 15898,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -598,7 +598,7 @@
   {
    "job": "hotel_fremont_hat",
    "figure": "trims",
-   "baseline": 22,
+   "baseline": 25,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -607,7 +607,7 @@
   {
    "job": "hotel_fremont_hat",
    "figure": "hops",
-   "baseline": 139,
+   "baseline": 175,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -616,7 +616,7 @@
   {
    "job": "hotel_fremont_hat",
    "figure": "needle_up_mm",
-   "baseline": 495.7,
+   "baseline": 499.4,
    "worse": "up",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -625,11 +625,11 @@
   {
    "job": "hotel_fremont_hat",
    "figure": "sttype_kappa",
-   "baseline": 0.575,
+   "baseline": 0.533,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0,
-   "chance": 0.476
+   "chance": 0.435
   },
   {
    "job": "hotel_fremont_hat",
@@ -642,7 +642,7 @@
   {
    "job": "hotel_fremont_hat",
    "figure": "word_cc",
-   "baseline": 0.605,
+   "baseline": 0.903,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -652,7 +652,7 @@
   {
    "job": "hotel_fremont_patch",
    "figure": "stitches",
-   "baseline": 14852,
+   "baseline": 14858,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -661,7 +661,7 @@
   {
    "job": "hotel_fremont_patch",
    "figure": "trims",
-   "baseline": 24,
+   "baseline": 20,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -670,7 +670,7 @@
   {
    "job": "hotel_fremont_patch",
    "figure": "hops",
-   "baseline": 149,
+   "baseline": 175,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -679,7 +679,7 @@
   {
    "job": "hotel_fremont_patch",
    "figure": "needle_up_mm",
-   "baseline": 467.3,
+   "baseline": 475.9,
    "worse": "up",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -688,16 +688,16 @@
   {
    "job": "hotel_fremont_patch",
    "figure": "sttype_kappa",
-   "baseline": 0.545,
+   "baseline": 0.519,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0,
-   "chance": 0.468
+   "chance": 0.426
   },
   {
    "job": "hotel_fremont_patch",
    "figure": "direction_kappa",
-   "baseline": 0.415,
+   "baseline": 0.418,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0
@@ -768,7 +768,7 @@
   {
    "job": "mfab_lc",
    "figure": "stitches",
-   "baseline": 17848,
+   "baseline": 17853,
    "worse": "up",
    "tolerance": 5,
    "spread": 5,
@@ -980,7 +980,7 @@
   {
    "job": "toat_machine_hat",
    "figure": "stitches",
-   "baseline": 18921,
+   "baseline": 18917,
    "worse": "up",
    "tolerance": 4,
    "spread": 4,
@@ -1007,7 +1007,7 @@
   {
    "job": "toat_machine_hat",
    "figure": "needle_up_mm",
-   "baseline": 264.9,
+   "baseline": 264.8,
    "worse": "up",
    "tolerance": 0.1,
    "spread": 0.1,
