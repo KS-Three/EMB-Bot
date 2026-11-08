@@ -11,7 +11,7 @@ committed fixtures. Numbers only; nothing here is a quality claim, and nothing
 is sewn.
 
 Since 2026-11-07 each row also scores the same plan with
-`cfg.extra["dropped_element_v2"]` ON (one digitize, preflight twice), so the
+`cfg.dropped_element_v2` OFF and ON (one digitize, preflight twice), so the
 table reads the finding OFF and ON side by side.
 
     python -m tools.element_drop_census IMG [IMG ...] [--out DIR] [--width 80]
@@ -63,8 +63,8 @@ def run_one(image: Path, out: Path, req: dict) -> dict:
     gen = build_generation(pixels, cfg, exif_source=data)
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)
-    pf = run_preflight(result, plan, cfg, image=pixels)
-    cfg_v2 = dataclasses.replace(cfg, extra={**(cfg.extra or {}), "dropped_element_v2": True})
+    pf = run_preflight(result, plan, dataclasses.replace(cfg, dropped_element_v2=False), image=pixels)
+    cfg_v2 = dataclasses.replace(cfg, dropped_element_v2=True)
     pf_v2 = run_preflight(result, plan, cfg_v2, image=pixels)
     wall = round(time.time() - t0, 1)
 
