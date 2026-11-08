@@ -9,6 +9,17 @@ import { useDigitizerService, readDigitized, ringOf, movedVertices, blackSquareC
 // SERVICE_URL (the digitizer service at 127.0.0.1:8721): this file needs it, so
 // playwright.config.js runs it in the serial step.
 useDigitizerService();
+// Reduced motion: no outline pulse. A fresh result pulses its outlines for
+// PULSE_MS (2.6 s, lib/shapeOverlay.js) as a fading translucent casing, and
+// over a black square's anti-aliased edge that casing holds the fill bbox one
+// to three px narrow for over a second at a time: long enough for
+// settledFill's two reads 150 ms apart to agree on it. Measured 2026-11-08
+// (PR #1347): after the restitch the right square's left edge read 551, then
+// 550 for 1.6 s, then 549, then 547 once the pulse had faded, and (m5) failed
+// whenever right1 was taken inside that plateau. Once the static field
+// repaints got fast, the plateau was being sampled. These specs measure fill
+// geometry, so they read it with the pulse off.
+test.use({ contextOptions: { reducedMotion: "reduce" } });
 // ---- Move shape (2026-11-05 spec) -----------------------------------------
 // One shape (shell, holes, nodes) translates as a unit; its stitches regenerate
 // at the new place through the normal restitch after the commit. Fill pixels are
