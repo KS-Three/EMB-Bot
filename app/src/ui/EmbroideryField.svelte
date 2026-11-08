@@ -10,7 +10,7 @@
   import { tip } from "../lib/tip.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
   import { sewnPullFor, hasSatinSpans } from "../lib/sewnWidth.js";
-  import { advanceIndex, clampIndex, nextSpeed, simTimeline, colorStopBetween, stepBlock, blockAt, blockThreadNames, underlayRuns, phaseAt, blockStart } from "../lib/simulate.js";
+  import { advanceIndex, clampIndex, nextSpeed, simTimeline, colorStopBetween, stepBlock, blockAt, blockThreadNames, underlayRuns, phaseAt, blockStart, sewClock, sewTimeAt } from "../lib/simulate.js";
   import { drawSimOverlay, drawIsolate, threadPx } from "../lib/simOverlay.js";
   import SimBar from "./SimBar.svelte";
   import { chartIdForProject } from "../lib/designChart.js";
@@ -270,6 +270,9 @@
   let simUnderlay = null;
   // Isolate (the bar's toggle): dim everything but the thread on the needle.
   let simIsolate = false;
+  // Where the stitches and stops sit on the strand timeline, for the bar's
+  // sew-time estimate (lib/simulate.js sewClock); built once per run.
+  let simClock = null;
 
   // Drag state (module-local to this component instance, not reactive —
   // none of it needs to trigger a re-render on its own).
@@ -1029,7 +1032,7 @@
     shapeMove = null;
     liveMsg = MODE_SAYS.moveCancel;
     dragReadout = null;
-    if (canvas) canvas.style.cursor = "default";
+    setCanvasCursor("default");
     repaintNodeChrome();
   }
   // Commit the pending move as ONE patch (nothing at all on a zero net move).
@@ -1050,7 +1053,7 @@
         dispatch("elupdate", { id: el.id, patch: { shapeOverrides: res.cur }, discrete: true });
       }
     }
-    if (canvas) canvas.style.cursor = "default";
+    setCanvasCursor("default");
     repaintNodeChrome();
   }
   function moveShapeBy(dxMm, dyMm) {
@@ -1120,7 +1123,7 @@
     }
     canvas.setPointerCapture(e.pointerId);
     shapeMove = { ...shapeMove, drag: { startClient: { x: e.clientX, y: e.clientY }, startPx: p, dx0: shapeMove.dx, dy0: shapeMove.dy, armed: false } };
-    canvas.style.cursor = "grabbing";
+    setCanvasCursor("grabbing");
   }
   function shapeMoveDrag(e, p) {
     const d = shapeMove.drag;
@@ -1419,7 +1422,7 @@
     canvas.setPointerCapture(e.pointerId);
     reshapeDrag = { kind: el.type === "manual" ? "anchors" : "ring", elId: el.id, startPx: p,
                     startClient: { x: e.clientX, y: e.clientY }, sel, basis, moving: false, live: null, liveNodes: null };
-    canvas.style.cursor = "grabbing";
+    setCanvasCursor("grabbing");
     repaintNodeChrome();
   }
 
@@ -3616,6 +3619,7 @@
     if (!simTotal) return;
     simTl = simTimeline(combined);
     simUnderlay = underlayRuns(simStrands, simTl);
+    simClock = sewClock(combined);
     simStopped = false;
     nameSimThreads(simTl);
     originalView = false;
@@ -3655,6 +3659,7 @@
     simTl = null;
     simStrands = [];
     simUnderlay = null;
+    simClock = null;
     // Back to the normal full render + selection chrome.
     repaintView();
   }
@@ -4016,16 +4021,16 @@
       const g = groupRectPx();
       const handle = g ? hitTest(g, p.x, p.y, HANDLE_R) : "none";
       if (handle !== "none") {
-        canvas.style.cursor = cursorForHandle(handle);
+        setCanvasCursor(cursorForHandle(handle));
         return;
       }
       const hitId = pickElement(perElementRects, p.x, p.y);
-      canvas.style.cursor = hitId ? "move" : view.zoom > 1 ? "grab" : "default";
+      setCanvasCursor(hitId ? "move" : view.zoom > 1 ? "grab" : "default");
       return;
     }
     const selRect = rectFor(project.selectedId);
     if (rotateGripHit(selRect, p)) {
-      canvas.style.cursor = "grab";
+      setCanvasCursor("grab");
       return;
     }
     // Mirrors the pointerdown precedence exactly. Without this the cursor
@@ -4034,7 +4039,7 @@
     const hoverEdit = editableOutlinesPx();
     // Reshape mode: a point is grabbable, anywhere else is a marquee.
     if (reshapeOn() && hoverEdit && hoverEdit.el.id === reshape.elId) {
-      canvas.style.cursor = reshapeNodeAt(hoverEdit, p) ? "grab" : "crosshair";
+      setCanvasCursor(reshapeNodeAt(hoverEdit, p) ? "grab" : "crosshair");
       return;
     }
     // A selected hand-drawn shape's anchors and handles are grabbable; its
@@ -4043,12 +4048,12 @@
       const ap = authoredPxFor(hoverEdit.el, selectedShapeId);
       const ah = ap ? hitAuthored(ap, p.x, p.y, !isOpenShape(ap.shape)) : null;
       if (ah && ah.kind !== "edge") {
-        canvas.style.cursor = "grab";
+        setCanvasCursor("grab");
         return;
       }
     }
     if (hoverEdit && hitOverlay(liveOutlinesPx(hoverEdit), p.x, p.y)) {
-      canvas.style.cursor = "pointer";
+      setCanvasCursor("pointer");
       return;
     }
     let handle = selRect ? hitTest(selRect, p.x, p.y, HANDLE_R) : "none";
@@ -4061,11 +4066,11 @@
         handle = "body";
       } else if (view.zoom > 1) {
         // Empty space, but there's room to pan -- hint it's draggable.
-        canvas.style.cursor = "grab";
+        setCanvasCursor("grab");
         return;
       }
     }
-    canvas.style.cursor = cursorForHandle(handle);
+    setCanvasCursor(cursorForHandle(handle));
   }
 
   function schedulePatchFlush() {
@@ -4381,10 +4386,17 @@
   // A PointerEvent's `detail` is always 0 (measured 2026-11-05: pointerdown:0
   // mousedown:2 click:2 on a double click), so a double press is counted here: a
   // press within 450 ms and 6 px of the last one is the next of the series.
+  //
+  // A series is a PAIR: the press after a double press starts a new one.
+  // Otherwise a drag begun on a node right after double-clicking it (inside
+  // 450 ms, same spot) counted as press 3, read as another double press and
+  // toggled the node straight back (field-reshape-nodes (s2) in CI,
+  // 2026-11-07). That race was hidden while every pointer event re-ran
+  // paint() through a cursor write, which slowed the presses past 450 ms.
   let lastPress = null;   // { t, x, y, n }
   function countPress(e) {
     const prev = lastPress;
-    const n = prev && e.timeStamp - prev.t < 450 && Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 6 ? prev.n + 1 : 1;
+    const n = prev && prev.n < 2 && e.timeStamp - prev.t < 450 && Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 6 ? prev.n + 1 : 1;
     lastPress = { t: e.timeStamp, x: e.clientX, y: e.clientY, n };
   }
   const isDoublePress = () => !!lastPress && lastPress.n >= 2;
@@ -4476,7 +4488,7 @@
           dragMode = "gresize";
           dragHandle = handle;
         }
-        canvas.style.cursor = cursorForHandle(handle);
+        setCanvasCursor(cursorForHandle(handle));
         return;
       }
       const hitId = pickElement(perElementRects, p.x, p.y);
@@ -4490,7 +4502,7 @@
         dragStartPx = p;
         dragStartPanX = view.panX;
         dragStartPanY = view.panY;
-        canvas.style.cursor = "grabbing";
+        setCanvasCursor("grabbing");
       }
       return;
     }
@@ -4508,7 +4520,7 @@
       dragStartRotationDeg = (el && el.rotationDeg) || 0;
       dragRotateCenterPx = { x: selRect.x + selRect.w / 2, y: selRect.y + selRect.h / 2 };
       rotateBadgeDeg = dragStartRotationDeg;
-      canvas.style.cursor = "grabbing";
+      setCanvasCursor("grabbing");
       return;
     }
 
@@ -4565,7 +4577,7 @@
                                 boxOk: ringInsideBox(ap.shape, ap.fit, hoopSizeMm(project)) },
                        live: ap.shape,
                        grab: { dx: nodeAt.x - pressAt.x, dy: nodeAt.y - pressAt.y }, moving: false };
-          canvas.style.cursor = "grabbing";
+          setCanvasCursor("grabbing");
           repaintNodeChrome();
           return;
         }
@@ -4633,7 +4645,7 @@
                         index: hit.index, startPx: p, startClient: { x: e.clientX, y: e.clientY }, armed: false, ring, nodes, moved: false,
                         basis: editBasis(edit) };
           liveRing = { shapeId: hit.shapeId, key: hitKey, points: ring, nodes };
-          canvas.style.cursor = "grabbing";
+          setCanvasCursor("grabbing");
           drawOverlay();
           return;
         }
@@ -4672,7 +4684,7 @@
           dragStartPx = p;
           dragStartPanX = view.panX;
           dragStartPanY = view.panY;
-          canvas.style.cursor = "grabbing";
+          setCanvasCursor("grabbing");
         }
         return; // selection unchanged either way
       }
@@ -4697,7 +4709,7 @@
     dragStartHeightMm = pe.bboxMm.y1 - pe.bboxMm.y0;
     dragStartBBoxMm = pe.bboxMm; // move-snap translates this by the live drag delta
     dragStartTargetMm = el.sizeMm != null ? el.sizeMm : dragStartWidthMm;
-    canvas.style.cursor = cursorForHandle(handle);
+    setCanvasCursor(cursorForHandle(handle));
 
     if (handle === "body") {
       dragMode = "move";
@@ -4719,7 +4731,10 @@
   // `canvas`, which re-runs `$: if (canvas) { project; runtime; paint(); }`,
   // and paint() opens with stopSim(): the first pointer move over the field
   // closed the simulator (measured 2026-11-07, any mouse move, any zoom).
-  // The two paths that run while it plays write through this instead.
+  // EVERY cursor write goes through this (the edit-mode hover and drag ones
+  // too, 2026-11-07): there each hover re-ran paint(), the full regenerate,
+  // and two scheduleViewRepaint()s, to change nothing. A cursor is not a
+  // reason to repaint. EmbroideryField.cursor.spec.js fails on a direct one.
   function setCanvasCursor(c) {
     const el = canvas;
     if (el) el.style.cursor = c;
@@ -4981,7 +4996,7 @@
         ? { ...shapeMove, dx: d.dx0, dy: d.dy0, drag: null }
         : { ...shapeMove, drag: null };
       dragReadout = null;
-      if (canvas) canvas.style.cursor = "default";
+      setCanvasCursor("default");
       repaintNodeChrome();
       return;
     }
@@ -4998,7 +5013,7 @@
         if (d.kind === "anchors") commitAnchorEdits(el, d.basis.fit, [...d.live.values()]);
         else commitRingEdits(el, d.basis, d.live, null, d.liveNodes);
       }
-      if (canvas) canvas.style.cursor = "default";
+      setCanvasCursor("default");
       repaintNodeChrome();
       return;
     }
@@ -5056,7 +5071,7 @@
       pressClient = null;
       pressOutline = false;
       pressEdge = null;
-      if (canvas) canvas.style.cursor = "default";
+      setCanvasCursor("default");
       repaintNodeChrome();
       return;
     }
@@ -5099,7 +5114,7 @@
       liveRing = null;
       pressClient = null;
       pressOutline = false;
-      if (canvas) canvas.style.cursor = "default";
+      setCanvasCursor("default");
       // The last live ring is painted on the canvas; a REJECTED edit starts
       // no regenerate to clear it, so repaint under the chrome here too.
       repaintNodeChrome();
@@ -5437,6 +5452,8 @@
         isolate={simIsolate}
         hasUnderlay={!!(simUnderlay && simUnderlay.runs.length)}
         phase={phaseAt(simStrands, Math.floor(simIndex), simTotal)}
+        sewTime={sewTimeAt(simClock, Math.floor(simIndex), EMB.sewTimeMin, EMB.PLAN_SPM)}
+        spm={EMB.PLAN_SPM}
         on:toggle={simTogglePlay}
         on:block={(e) => simGoToBlock(e.detail.k)}
         on:isolate={simToggleIsolate}

@@ -298,3 +298,81 @@ export function blockStart(tl, k) {
   if (!tl || !tl.blocks[k]) return 0;
   return Math.max(0, Math.min(tl.total, tl.blocks[k].start));
 }
+
+// ---- Sew time, on the strand timeline --------------------------------------
+//
+// "About 12 min left of 18" for the bar (Kent, 2026-11-07: "Show it"). The
+// minutes are NOT computed here: they come from the engine's own
+// `sewTimeMin` at its `PLAN_SPM` (src/sewtime.js), the same function and the
+// same rate as the "Run time" row in Download and the worksheet's line, so
+// the bar's total and theirs cannot disagree. That function already charges
+// every STOP (a trim, or a colour change the thread was not already cut for)
+// at TRIM_COST_STITCHES, so the bar uses it as is and adds nothing.
+//
+// What lives here is only the clock's positions: how many stitches and how
+// many stops are still ahead with `idx` strands drawn. `sewClock` walks the
+// stitches once, with designToStrands's chain rule for the strands and
+// estimate.js `sewFacts`'s rule for the stops (the spec pins both totals to
+// sewFacts), and records
+//   chainStarts[] = { at }  a sewn stitch that opens a chain (no strand of its
+//                   own: the needle goes down there before strand `at`).
+//                   Every other sewn stitch ends exactly one strand, so
+//                   stitches done = strands done + chain starts done.
+//   stopAt[]      = { at }  a stop, before strand `at` is sewn (`stops` is
+//                   their count, `stitches` the sewn-stitch count).
+// An event at `at` is still AHEAD with idx === at drawn: landed on a thread
+// change, the change itself (the stop) has not happened yet.
+export function sewClock(design) {
+  const stitches = (design && design.stitches) || [];
+  const chainStarts = [];
+  const stops = [];
+  let n = 0;
+  let prev = null;
+  let cut = false;
+  for (const st of stitches) {
+    if (st.type === "color") { if (!cut) stops.push({ at: n }); cut = true; prev = null; continue; }
+    if (st.type === "trim") { stops.push({ at: n }); cut = true; prev = null; continue; }
+    if (st.type !== "stitch") { prev = null; continue; }
+    cut = false;
+    if (prev) n++;
+    else chainStarts.push({ at: n });
+    prev = st;
+  }
+  return { total: n, stitches: n + chainStarts.length, stops: stops.length, chainStarts, stopAt: stops };
+}
+
+// How many of `list` (sorted by `at`) are strictly before `idx`.
+function countBefore(list, idx) {
+  let lo = 0, hi = list.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid].at < idx) lo = mid + 1; else hi = mid;
+  }
+  return lo;
+}
+
+// The bar's sew-time figures with `idx` strands drawn: { left, total } in
+// whole minutes, from `sewTimeMin(stitches, stops, spm)` (src/sewtime.js;
+// passed in, so this file stays free of the engine global). null when the
+// function is missing or cannot support a figure, so the bar drops the
+// readout rather than print a wrong one. A finished design has 0 left.
+export function sewTimeAt(clock, idx, sewTimeMin, spm) {
+  if (!clock || typeof sewTimeMin !== "function") return null;
+  const total = sewTimeMin(clock.stitches, clock.stops, spm);
+  if (total == null) return null;
+  if (idx >= clock.total) return { left: 0, total };
+  const i = Math.max(0, idx);
+  const stitchesDone = i + countBefore(clock.chainStarts, i);
+  const stopsDone = countBefore(clock.stopAt, i);
+  const left = sewTimeMin(clock.stitches - stitchesDone, clock.stops - stopsDone, spm);
+  if (left == null) return null;
+  return { left: Math.min(left, total), total };
+}
+
+// "about 12 min left of 18": the words, labelled as an estimate. Finished,
+// it says the whole run, which is what the viewer has just watched.
+export function sewTimeText(t) {
+  if (!t) return "";
+  if (t.left <= 0) return `about ${t.total} min in all`;
+  return `about ${t.left} min left of ${t.total}`;
+}

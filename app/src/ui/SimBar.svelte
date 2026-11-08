@@ -13,7 +13,7 @@
   // bar by them.
   import { createEventDispatcher } from "svelte";
   import Icon from "./Icon.svelte";
-  import { blockAt } from "../lib/simulate.js";
+  import { blockAt, sewTimeText } from "../lib/simulate.js";
 
   export let playing = false;
   export let index = 0;          // strands drawn (integer)
@@ -27,6 +27,8 @@
   export let isolate = false;    // dim everything but the thread on the needle
   export let hasUnderlay = false; // the design tags underlay strands
   export let phase = null;       // "underlay" | "top" | null (simulate.js phaseAt)
+  export let sewTime = null;     // { left, total } minutes (simulate.js sewTimeAt), or null
+  export let spm = null;         // the rate it was computed at (EMB.PLAN_SPM)
 
   const dispatch = createEventDispatcher();
 
@@ -40,6 +42,13 @@
   $: curName = names[cur] || (curBlock && curBlock.color && curBlock.color.name) || "";
   $: stitchNow = index >= 1 ? ordinals[Math.min(index, ordinals.length) - 1] || 0 : 0;
   $: stitchTotal = ordinals[ordinals.length - 1] || 0;
+  // The estimate, and its basis in the tooltip: the same sewTimeMin and the
+  // same planning rate as the "Run time" row in Download, which already
+  // charges every trim and thread change as a stop.
+  $: sewText = sewTimeText(sewTime);
+  $: sewTip = spm
+    ? `Estimated sew time at ${spm.toLocaleString()} stitches per minute, the Studio's planning rate (not measured on your machine). Trims and thread changes are included (a thread change counts as one trim), as in the Run time in Download.`
+    : "";
 
   // The scrubber's thread strip: one band per thread that sews anything, in
   // its colour over its share of the strands, built once per design (not per
@@ -111,6 +120,9 @@
        "1,779 stitches", counter "302 / 1779 stitches". Same number, two
        renderings, one screen. -->
   <span class="simcount">{stitchNow.toLocaleString()} / {stitchTotal.toLocaleString()} stitches</span>
+  {#if sewText}
+    <span class="simtime" data-testid="sim-time" title={sewTip}>{sewText}</span>
+  {/if}
   {#if nBlocks}
     <!-- Thread K of B: B is the PDF worksheet's "Thread Sequence" row count
          (one row per block, colors[k] names block k), and the name is read
@@ -196,6 +208,14 @@
     white-space: nowrap;
   }
   .simphase-ul { color: var(--ink); font-style: italic; }
+  .simtime {
+    flex: none;
+    font-size: var(--fs-xs);
+    color: var(--muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    cursor: help;
+  }
   .simthread {
     display: inline-flex;
     align-items: center;
@@ -225,5 +245,6 @@
   @container fieldbars (max-width: 640px) {
     .simthread-k { display: none; }
     .simphase { display: none; }
+    .simtime { display: none; }
   }
 </style>
