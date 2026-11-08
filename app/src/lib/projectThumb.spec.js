@@ -17,7 +17,7 @@ vi.hoisted(async () => {
     require("../../../src/" + f + ".js");
   }
 });
-import { getThumb, projectDesign, drawThumb, thinForThumb, clearThumbCache, thumbKey, THUMB_PX } from "./projectThumb.js";
+import { getThumb, projectDesign, thinForThumb, clearThumbCache, thumbKey, THUMB_PX } from "./projectThumb.js";
 
 // A context that accepts any call or assignment and answers with itself.
 function nullCtx() {
@@ -76,13 +76,25 @@ test("the thumbnail is cached by saved revision: same revision draws once, a new
 
 test("a 20k-stitch project thumbnail builds in <= 120 ms", () => {
   const project = projectWith(bigDesign(20000));
-  drawThumb(projectDesign(project)); // warm the JIT like a second drawer row would
-  clearThumbCache();
   const load = () => project;
-  const t0 = performance.now();
-  const url = getThumb({ id: "big", updatedAt: 1 }, load);
-  const ms = performance.now() - t0;
-  console.log(`20k-stitch thumbnail build: ${ms.toFixed(1)} ms`);
+  // Warm the whole build path (generate + draw), like a second drawer row would.
+  getThumb({ id: "warm", updatedAt: 1 }, load);
+  // Best of 5 cold builds, not one. The clock is a wall clock on a shared
+  // runner: CI read 51.3 and 51.4 ms on main (runs 42463728820, 42464151359)
+  // and then 131.5 ms on a docs-only PR (run 42500620331), a 2.5x swing with
+  // no code change. Interference only ever ADDS time, so the fastest build is
+  // the one with the least of it in, and a real slowdown in the code still
+  // raises all five (same reasoning as e2e/design-block-thumbs.spec.js).
+  const times = [];
+  let url;
+  for (let i = 0; i < 5; i++) {
+    clearThumbCache();
+    const t0 = performance.now();
+    url = getThumb({ id: "big", updatedAt: 1 }, load);
+    times.push(performance.now() - t0);
+  }
+  const ms = Math.min(...times);
+  console.log(`20k-stitch thumbnail build: best ${ms.toFixed(1)} ms, all ${times.map((t) => t.toFixed(0)).join(",")}`);
   expect(url).toMatch(/^data:image\/png/);
   expect(ms).toBeLessThanOrEqual(120);
   expect(THUMB_PX).toBe(96);
