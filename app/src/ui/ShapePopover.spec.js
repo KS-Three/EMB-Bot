@@ -226,3 +226,31 @@ test("a shape on its own has no such box — unticked behaviour is unchanged", (
   const manual = renderPop(popoverModel({ element: manualEl, shapeId: "s1" }));
   expect(manual.queryByRole("checkbox")).toBeNull();
 });
+
+// The stitch sample (2026-11-07): drawn only once the engine has published
+// its spacings, and redrawn from a pick before the field's patch comes back.
+test("stitch sample: absent with no engine; with one, it follows the Stitch type and angle picks at once", async () => {
+  const bare = renderPop(popoverModel({ element: manualEl, shapeId: "s1" }));
+  expect(bare.queryByTestId("shapepop-sample")).toBeNull();
+  bare.unmount();
+  const had = globalThis.EMB, getCtx = HTMLCanvasElement.prototype.getContext;
+  const noop = () => {};
+  globalThis.EMB = { ...(had || {}), FILL_ROW_MM: 0.15, SATIN_SPACING_MM: 0.4 };
+  HTMLCanvasElement.prototype.getContext = function () { return new Proxy({}, { get: (t, k) => (k in t ? t[k] : noop), set: (t, k, v) => { t[k] = v; return true; } }); };
+  try {
+    const { getByTestId, getByRole } = renderPop(popoverModel({ element: manualEl, shapeId: "s1" }));
+    const fig = getByTestId("shapepop-sample");
+    expect(fig.dataset.type).toBe("tatami");
+    expect(fig.querySelector("canvas")).toBeNull(); // .hoop holds the field canvas only
+    expect(fig.querySelector("img").dataset.bufferWidth).toBe(String(120 * (window.devicePixelRatio || 1)));
+    expect(getByRole("img", { name: /^Fill sample, auto angle/ })).toBeInTheDocument();
+    await fireEvent.change(getByRole("combobox", { name: "Stitch type" }), { target: { value: "satin" } });
+    expect(fig.dataset.type).toBe("satin");
+    await fireEvent.input(getByRole("spinbutton", { name: "Fill angle" }), { target: { value: "60" } });
+    expect(fig.dataset.angle).toBe("60");
+    expect(getByRole("img", { name: "Satin sample, 60°" })).toBeInTheDocument();
+  } finally {
+    HTMLCanvasElement.prototype.getContext = getCtx;
+    if (had === undefined) delete globalThis.EMB; else globalThis.EMB = had;
+  }
+});
