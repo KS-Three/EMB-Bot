@@ -1127,7 +1127,9 @@ function saveSimSnapshot(canvas, entry, start) {
 // to 34 levels at 4x and 8x on the four fixtures. Even at fit zoom, where the
 // shadow is hard, Chromium anti-aliases a stroke by its whole path, and the
 // strands a pan moves on or off the canvas move 2-94 px of the rest by up to
-// 9 levels. Every zoom and pan therefore still draws from the fabric up.
+// 9 levels. Every zoom and pan therefore still draws from the fabric up,
+// except the frames of a live pan drag (`panDraft`), which shift this copy
+// and are always followed by an exact render once the drag rests.
 //
 // Memory: ONE bitmap per field canvas, the same size as the canvas, SHARED
 // with the simulator's snapshot (each records that it wrote it last, and a
@@ -1188,6 +1190,9 @@ function applyEndState(ctx, end) {
 
 // null = this render cannot be cached (or served): its first fill would not
 // cover the canvas opaquely, so what lies under it would show through.
+// Otherwise { key, pkey }: `key` is the whole picture's, `pkey` the same
+// with the pan left out (zoom kept), which is what a pan drag frame needs to
+// match (`panDraft` in renderRealistic).
 function staticKey(canvas, ctx, design, o, dpr) {
   if (o.limitStrands != null || o.staticCache === false) return null;
   if (typeof ctx.drawImage !== "function" || typeof ctx.setTransform !== "function") return null;
@@ -1200,28 +1205,37 @@ function staticKey(canvas, ctx, design, o, dpr) {
     if (m.a !== dpr || m.b !== 0 || m.c !== 0 || m.d !== dpr || m.e !== 0 || m.f !== 0) return null;
     tr = dpr;
   }
-  return JSON.stringify([canvas.width, canvas.height, dpr, tr, o.hoop, o.fabricRgb, o.fabric, o.weave, o.surround,
-    o.grid, o.view, o.pad, o.threadStyle, o.sewnPullMm, o.colorOverride, o.threadWidthMm, o.threadLayers,
+  const shared = JSON.stringify([canvas.width, canvas.height, dpr, tr, o.hoop, o.fabricRgb, o.fabric, o.weave, o.surround,
+    o.grid, o.pad, o.threadStyle, o.sewnPullMm, o.colorOverride, o.threadWidthMm, o.threadLayers,
     o.softShadow, design.colors, design.runs, readState(ctx, INHERITED_STATE)]);
+  const v = o.view || {};
+  return { key: shared + JSON.stringify(o.view), pkey: shared + "|z" + (v.zoom || 1) };
 }
 
-function staticHit(canvas, design, key) {
-  if (!key) return null;
+// The kept render of this canvas, when it is still a picture of `design`
+// and its key field matches (`key` for a hit, `pkey` for a pan frame).
+function staticEntry(canvas, design, skey, field) {
+  if (!skey) return null;
   const e = STATIC_VIEWS.get(canvas);
   const snap = SNAP_BITMAPS.get(canvas);
-  if (!e || !snap || snap.owner !== e || e.key !== key || e.design !== design || e.stitches !== design.stitches || e.n !== design.stitches.length) return null;
+  if (!e || !snap || snap.owner !== e || e[field] !== skey[field] || e.design !== design || e.stitches !== design.stitches || e.n !== design.stitches.length) return null;
   if (e.print !== stitchPrint(design.stitches)) return null;
   return { e, snap };
 }
 
-function saveStatic(canvas, ctx, design, key) {
+function staticHit(canvas, design, skey) {
+  return staticEntry(canvas, design, skey, "key");
+}
+
+function saveStatic(canvas, ctx, design, skey, view) {
   const snap = snapBitmap(canvas);
   if (!snap) return;
   if (snap.canvas.width !== canvas.width || snap.canvas.height !== canvas.height) {
     snap.canvas.width = canvas.width; snap.canvas.height = canvas.height;
   }
   copyCanvasInto(snap.canvas.getContext("2d"), canvas);
-  const e = { key, design, stitches: design.stitches, n: design.stitches.length, print: stitchPrint(design.stitches), end: readState(ctx, END_STATE) };
+  const v = view || {};
+  const e = { key: skey.key, pkey: skey.pkey, panX: v.panX || 0, panY: v.panY || 0, design, stitches: design.stitches, n: design.stitches.length, print: stitchPrint(design.stitches), end: readState(ctx, END_STATE) };
   STATIC_VIEWS.set(canvas, e);
   snap.owner = e;
 }
@@ -1259,6 +1273,12 @@ function saveStatic(canvas, ctx, design, key) {
 //                  px -- wheel-zoom-around-cursor is the caller's job (solve
 //                  for the panX/panY that keep the cursor's mm-point fixed;
 //                  see EmbroideryField's zoomBy()), not this function's.
+//   panDraft       true during a live pan drag: when this canvas keeps a
+//                  finished render of the same design and options at the
+//                  same zoom, shift it by the pan instead of drawing the
+//                  thread (an APPROXIMATE frame, ~1 ms; the returned object
+//                  carries panDraft: true). The caller owes one ordinary
+//                  render when the drag rests. Ignored when nothing is kept.
 export function renderRealistic(canvas, design, opts) {
   const o = opts || {};
   const ctx = canvas.getContext("2d");
@@ -1325,6 +1345,76 @@ export function renderRealistic(canvas, design, opts) {
   const SX = hooped ? (x) => TX(x / 10) : TX;
   const SY = hooped ? (y) => TY(y / 10) : TY;
 
+  // Everything under the thread at this view: the first fill, then the bed
+  // and grid (or fabric and weave), then the hoop chrome. Returns the first
+  // fill's colour as the context read it back. A full render paints it, and
+  // so does a pan drag frame, under the shifted picture.
+  const paintGround = () => {
+    ctx.fillStyle = surrounded ? o.surround : (o.fabricRgb ? rgbCss(o.fabricRgb) : (o.fabric || "#e9e6df"));
+    const fill = String(ctx.fillStyle);
+    ctx.fillRect(0, 0, cw, ch);
+    if (hooped && o.grid) {
+      // Studio field: a neutral work bed + measuring grid instead of fabric.
+      // Fabric colour and weave are not drawn at all; the hoop ring below is the
+      // only frame, so it is the size reference.
+      const r = hoopRectPx(outerT);
+      ctx.save();
+      roundRectPath(ctx, r.x, r.y, r.w, r.h, r.r);
+      ctx.clip();
+      ctx.fillStyle = o.grid.bed;
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.restore();
+      drawGrid(ctx, cw, ch, pxPerMm, outerT.ox, outerT.oy, o.grid);
+    } else if (surrounded) {
+      // Fabric only INSIDE the hoop (the real one when it is known, else the
+      // placement box standing in for it): the canvas outside the ring stays
+      // the surround, so the fabric colour reads against a neutral instead of
+      // against itself edge to edge, and at any zoom the ring's edge is where
+      // fabric meets dark — orientation the old edge-to-edge fill could not
+      // give. The weave is clipped to the same path. The rounded corners
+      // match drawHoopOutline's radius rule exactly so the ring sits on the
+      // fill's edge rather than a pixel inside or outside it.
+      const r = hoopRectPx(outerT);
+      ctx.save();
+      roundRectPath(ctx, r.x, r.y, r.w, r.h, r.r);
+      ctx.clip();
+      ctx.fillStyle = o.fabricRgb ? rgbCss(o.fabricRgb) : (o.fabric || "#e9e6df");
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      if (o.weave && o.fabricRgb) weavePattern(ctx, cw, ch, o.fabricRgb, pxPerMm);
+      ctx.restore();
+    } else if (o.weave && o.fabricRgb) {
+      weavePattern(ctx, cw, ch, o.fabricRgb, pxPerMm);
+    }
+    if (hooped) {
+      // t.ox/t.oy run through the SAME TX/TY used for strands below, so the
+      // outline is always drawn at the current view's scale/position -- one
+      // shared transform, not a second parallel calculation (B4).
+      if (o.grid) {
+        // One frame only, drawn light-on-dark, plus its size as a label.
+        drawHoopOutline(ctx, outerT, [0, 0, 0]);
+        const hp = o.hoop.hoop;
+        const label = hp && hp.label ? `${hp.label} hoop` : `${Math.round(outerT.hoopWmm)} × ${Math.round(outerT.hoopHmm)} mm`;
+        const r = hoopRectPx(outerT);
+        ctx.save();
+        ctx.font = "11px ui-monospace, SFMono-Regular, Consolas, monospace";
+        ctx.fillStyle = o.grid.label;
+        ctx.textBaseline = "bottom";
+        ctx.fillText(label, r.x + 2, r.y - 6);
+        ctx.restore();
+      } else if (t.realWmm) {
+        // The real hoop FIRST, so the placement box reads as sitting inside it
+        // rather than the other way round -- and so a caller that passes no hoop
+        // leaves this module's stroke order, which one spec asserts by index,
+        // exactly as it was.
+        drawHoopOutline(ctx, outerT, o.fabricRgb);
+        drawHoopOutline(ctx, viewedT, o.fabricRgb, { inset: false, dashed: true });
+      } else {
+        drawHoopOutline(ctx, viewedT, o.fabricRgb);
+      }
+    }
+    return fill;
+  };
+
   // A static view this canvas already painted under the same key (see
   // STATIC_VIEWS): blit it back, and go straight to the overlays.
   let skey = hooped ? staticKey(canvas, ctx, design, o, dpr) : null;
@@ -1333,6 +1423,34 @@ export function renderRealistic(canvas, design, opts) {
     copyCanvasInto(ctx, shit.snap.canvas);
     applyEndState(ctx, shit.e.end);
     return finishRender(ctx, design, o, hooped, SX, SY, TX, TY, pxPerMm);
+  }
+
+  // A pan drag frame (`panDraft`, EmbroideryField while a pan drag is live):
+  // when this canvas keeps a finished render of the same design at the same
+  // zoom and only the pan differs, paint the ground at the new view and lay
+  // that picture over it shifted by the pan, instead of drawing every strand
+  // again. NOT the exact picture (see STATIC_VIEWS: no shift is, not even a
+  // whole pixel), so the caller must follow it with an ordinary render once
+  // the drag rests; the exposed strip shows bed and grid without thread
+  // until then. The shift is rounded to whole device px so the frame stays
+  // sharp, and the kept render is not replaced: every frame of one drag
+  // shifts the same picture.
+  if (o.panDraft && skey) {
+    const pd = staticEntry(canvas, design, skey, "pkey");
+    if (pd) {
+      paintGround();
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(pd.snap.canvas, Math.round((panX - pd.e.panX) * dpr), Math.round((panY - pd.e.panY) * dpr));
+      ctx.restore();
+      applyEndState(ctx, pd.e.end);
+      const r = finishRender(ctx, design, o, hooped, SX, SY, TX, TY, pxPerMm);
+      if (r) r.panDraft = true;
+      return r;
+    }
   }
 
   // Strands are worked out before anything is drawn (they are pure), so a
@@ -1374,74 +1492,11 @@ export function renderRealistic(canvas, design, opts) {
     // resets it); whatever the caller drew over the last frame may not have.
     ctx.setLineDash([]);
   } else {
-    ctx.fillStyle = surrounded ? o.surround : (o.fabricRgb ? rgbCss(o.fabricRgb) : (o.fabric || "#e9e6df"));
     // Only a render whose first fill is OPAQUE covers what was there before,
     // so only that render is a picture of its inputs alone and can be kept.
     // A real canvas reads an opaque colour back as #rrggbb.
-    if (skey && !/^#[0-9a-f]{6}$|^rgb\(/i.test(String(ctx.fillStyle))) skey = null;
-    ctx.fillRect(0, 0, cw, ch);
-  }
-
-  if (restored) {
-    // The snapshot already holds the bed, grid, weave and hoop chrome.
-  } else if (hooped && o.grid) {
-    // Studio field: a neutral work bed + measuring grid instead of fabric.
-    // Fabric colour and weave are not drawn at all; the hoop ring below is the
-    // only frame, so it is the size reference.
-    const r = hoopRectPx(outerT);
-    ctx.save();
-    roundRectPath(ctx, r.x, r.y, r.w, r.h, r.r);
-    ctx.clip();
-    ctx.fillStyle = o.grid.bed;
-    ctx.fillRect(r.x, r.y, r.w, r.h);
-    ctx.restore();
-    drawGrid(ctx, cw, ch, pxPerMm, outerT.ox, outerT.oy, o.grid);
-  } else if (surrounded) {
-    // Fabric only INSIDE the hoop (the real one when it is known, else the
-    // placement box standing in for it): the canvas outside the ring stays
-    // the surround, so the fabric colour reads against a neutral instead of
-    // against itself edge to edge, and at any zoom the ring's edge is where
-    // fabric meets dark — orientation the old edge-to-edge fill could not
-    // give. The weave is clipped to the same path. The rounded corners
-    // match drawHoopOutline's radius rule exactly so the ring sits on the
-    // fill's edge rather than a pixel inside or outside it.
-    const r = hoopRectPx(outerT);
-    ctx.save();
-    roundRectPath(ctx, r.x, r.y, r.w, r.h, r.r);
-    ctx.clip();
-    ctx.fillStyle = o.fabricRgb ? rgbCss(o.fabricRgb) : (o.fabric || "#e9e6df");
-    ctx.fillRect(r.x, r.y, r.w, r.h);
-    if (o.weave && o.fabricRgb) weavePattern(ctx, cw, ch, o.fabricRgb, pxPerMm);
-    ctx.restore();
-  } else if (o.weave && o.fabricRgb) {
-    weavePattern(ctx, cw, ch, o.fabricRgb, pxPerMm);
-  }
-  if (hooped && !restored) {
-    // t.ox/t.oy run through the SAME TX/TY used for strands below, so the
-    // outline is always drawn at the current view's scale/position -- one
-    // shared transform, not a second parallel calculation (B4).
-    if (o.grid) {
-      // One frame only, drawn light-on-dark, plus its size as a label.
-      drawHoopOutline(ctx, outerT, [0, 0, 0]);
-      const hp = o.hoop.hoop;
-      const label = hp && hp.label ? `${hp.label} hoop` : `${Math.round(outerT.hoopWmm)} × ${Math.round(outerT.hoopHmm)} mm`;
-      const r = hoopRectPx(outerT);
-      ctx.save();
-      ctx.font = "11px ui-monospace, SFMono-Regular, Consolas, monospace";
-      ctx.fillStyle = o.grid.label;
-      ctx.textBaseline = "bottom";
-      ctx.fillText(label, r.x + 2, r.y - 6);
-      ctx.restore();
-    } else if (t.realWmm) {
-      // The real hoop FIRST, so the placement box reads as sitting inside it
-      // rather than the other way round -- and so a caller that passes no hoop
-      // leaves this module's stroke order, which one spec asserts by index,
-      // exactly as it was.
-      drawHoopOutline(ctx, outerT, o.fabricRgb);
-      drawHoopOutline(ctx, viewedT, o.fabricRgb, { inset: false, dashed: true });
-    } else {
-      drawHoopOutline(ctx, viewedT, o.fabricRgb);
-    }
+    const fill = paintGround();
+    if (skey && !/^#[0-9a-f]{6}$|^rgb\(/i.test(fill)) skey = null;
   }
 
   // threadStyle: "realistic" (default, every existing caller) | "flat".
@@ -1462,7 +1517,7 @@ export function renderRealistic(canvas, design, opts) {
     }
     drawThreads(ctx, strands.slice(sim.lastStart), SX, SY, lw, threadOpts);
   }
-  if (skey) saveStatic(canvas, ctx, design, skey);
+  if (skey) saveStatic(canvas, ctx, design, skey, o.view);
 
   return finishRender(ctx, design, o, hooped, SX, SY, TX, TY, pxPerMm);
 }

@@ -292,6 +292,21 @@
   let dragStartOffYMm = 0;
   let dragStartPanX = 0; // view.panX at the start of a "pan" drag
   let dragStartPanY = 0; // view.panY at the start of a "pan" drag
+  // While a pan drag is moving, view repaints shift the last finished render
+  // (renderRealistic's `panDraft`, ~1 ms) instead of drawing every strand
+  // again (90-230 ms on a large design). Those frames are approximate, so
+  // the drag owes one exact repaint when it rests: on release, or after
+  // PAN_SETTLE_MS with the pointer held still.
+  let panDraft = false;
+  let panSettleTimer = 0;
+  const PAN_SETTLE_MS = 120;
+  function settlePan() {
+    if (panSettleTimer) clearTimeout(panSettleTimer);
+    panSettleTimer = 0;
+    if (!panDraft) return;
+    panDraft = false;
+    scheduleViewRepaint();
+  }
   let rafScheduled = false;
   let pendingPatch = null; // { id, patch }
 
@@ -3534,6 +3549,8 @@
         // Original view draws fabric + hoop only (zero strands); the
         // artwork goes on top in drawOriginals.
         limitStrands: originalView ? 0 : simActive ? Math.floor(simIndex) : undefined,
+        // A live pan drag shifts the last finished frame (see settlePan).
+        panDraft: panDraft && !simActive && !originalView,
       });
       perElementRects = [];
       if (renderResult && renderResult.toCanvas) {
@@ -3941,6 +3958,8 @@
     sizeRaf = 0;
     if (sizeObserver) sizeObserver.disconnect();
     sizeObserver = null;
+    if (panSettleTimer) clearTimeout(panSettleTimer);
+    panSettleTimer = 0;
   });
   // repaint whenever the project (garment/elements/selection) or the
   // runtime image state changes. Drag-move deliberately reuses this same
@@ -4895,6 +4914,9 @@
       const rawPanY = dragStartPanY + (p.y - dragStartPx.y);
       const { panX, panY } = clampPan(rawPanX, rawPanY, view.zoom, cssW(), cssH());
       view = { zoom: view.zoom, panX, panY };
+      panDraft = true;
+      if (panSettleTimer) clearTimeout(panSettleTimer);
+      panSettleTimer = setTimeout(settlePan, PAN_SETTLE_MS);
       scheduleViewRepaint();
       return;
     }
@@ -5204,6 +5226,8 @@
     }
     pressClient = null;
     pressOutline = false;
+    // A pan drag ends on an exact frame (a cancelled one too: the view stays).
+    if (dragMode === "pan") settlePan();
     dragMode = null;
     dragHandle = null;
     dragTargetId = null;
