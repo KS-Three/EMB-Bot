@@ -1256,7 +1256,12 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   border-top: 0;
   box-sizing: border-box;
 }
+/* Fixed width = pickScaleBar's maxPx (lib/scalebar.js): the bar's width must
+   not depend on the scale (see the markup's note in EmbroideryField). The
+   label gets a floor for the same reason ("5 mm" vs "50 mm"). */
+.scalebar-slot { display: flex; flex: none; width: 120px; }
 .scalebar-label {
+  min-width: 3.6em;
   font-size: var(--fs-xs);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
