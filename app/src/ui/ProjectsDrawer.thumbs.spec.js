@@ -4,6 +4,17 @@
 // of the drawer makes no render calls). renderRealistic is mocked and
 // counted; IntersectionObserver is a hand-driven stub, since jsdom has none.
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
+// projectThumb.js (imported below) builds through generate.js, which reads the
+// engine globals at import time (lib/emb.js throws otherwise): load them
+// hoisted, before any import, as projectThumb.spec.js does.
+vi.hoisted(async () => {
+  const { createRequire } = await import("node:module");
+  const require = createRequire(import.meta.url);
+  globalThis.window = globalThis;
+  for (const f of ["units", "garments", "fabrics", "fill", "geometry", "quantize", "flatten", "satin", "satinplay", "satinfont", "fontbin", "dst", "dstimport", "exp", "digitize"]) {
+    require("../../../src/" + f + ".js");
+  }
+});
 import { render, cleanup } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { createRequire } from "node:module";
