@@ -144,7 +144,15 @@
     load: ensureFont,
     render: (font) => renderSampleUrl(EMB, font, { dpr: typeof window !== "undefined" ? window.devicePixelRatio : 1 }),
     onReady: (key, url) => { stitched = { ...stitched, [key]: url }; },
+    onChange: (idle) => { samplesIdle = idle; },
   });
+  // Mirrored onto .fb-body for the e2e spec: `data-samples` is "idle" once
+  // every requested sample has finished (or failed), and `data-samples-seen`
+  // counts the tiles the observer has reported in the window, so a test can
+  // tell "the observer has fired and the queue has drained" apart from "the
+  // observer has not fired yet" without a timer.
+  let samplesIdle = true;
+  let samplesSeen = 0;
   // Which rows are in the window: the body's visible area plus ONE page
   // below it (rootMargin 100% of the body's height). A row that scrolls out
   // before its turn is taken back off the queue. No IntersectionObserver
@@ -159,7 +167,7 @@
       for (const e of entries) {
         const row = rowOf.get(e.target);
         if (!row) continue;
-        if (e.isIntersecting) queue.want(row);
+        if (e.isIntersecting) { samplesSeen += 1; queue.want(row); }
         else queue.unwant(row.key);
       }
     }, { root: bodyEl, rootMargin: "0px 0px 100% 0px" });
@@ -293,7 +301,7 @@
       {/if}
     </div>
 
-    <div class="fb-body" bind:this={bodyEl}>
+    <div class="fb-body" bind:this={bodyEl} data-samples={samplesIdle ? "idle" : "busy"} data-samples-seen={samplesSeen}>
       {#if manifestFailed}
         <p class="fb-empty">Couldn't load the font list — check your connection and reopen.</p>
       {:else if fonts.length === 0}
