@@ -6,6 +6,10 @@
   // auto-digitized shape and a hand-drawn one.
   import { createEventDispatcher, onMount, tick } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
+  import {
+    sampleSpecFromModel, sampleCaption, sampleDensities, drawStitchSample,
+    SAMPLE_W_MM, SAMPLE_H_MM, SAMPLE_PX_PER_MM,
+  } from "../lib/stitchSample.js";
 
   export let model;
   export let anchor = { x: 0, y: 0 };   // px inside the positioned parent (.hoop)
@@ -75,6 +79,23 @@
   // each commit re-sews, and "1." on the way to "1.5" is not a value.
   const ON_COMMIT = new Set(["widthMm", "stitchLenMm"]);
 
+  // The stitch sample (2026-11-07): a 12 x 8 mm patch of what the rows
+  // choose, drawn the moment a control changes. `picks` holds the values
+  // just chosen, so the sample answers before the field's patch comes back
+  // as a new model; a new model carries them itself, so it clears them.
+  let picks = {};
+  let sampleCanvas;
+  $: model, (picks = {});
+  $: sampleDens = sampleDensities();
+  $: sampleSpec = sampleDens ? sampleSpecFromModel(model, picks) : null;
+  $: if (sampleCanvas && sampleSpec) {
+    drawStitchSample(sampleCanvas, sampleSpec, sampleDens, { dpr: (typeof window !== "undefined" && window.devicePixelRatio) || 1 });
+  }
+  function change(key, value) {
+    picks = { ...picks, [key]: value };
+    d("change", { key, value });
+  }
+
   function onKey(e) {
     if (e.key === "Escape") {
       e.preventDefault();
@@ -112,6 +133,19 @@
          edits them; "Edit points" below enters it). -->
     <p class="shapepop-points" data-testid="shapepop-points">Points: {model.pointsWas != null ? `${model.pointsWas} -> ${model.points}` : model.points}{#if model.holes > 0}<span class="shapepop-holes" data-testid="shapepop-holes"> · Holes: {model.holes}</span>{/if}</p>
   {/if}
+  {#if sampleSpec}
+    <!-- A picture of the choice, not of the shape. The canvas carries the
+         caption as its name, so the visible caption is hidden from a screen
+         reader rather than read twice. -->
+    <figure class="shapepop-sample" data-testid="shapepop-sample" data-type={sampleSpec.type} data-angle={sampleSpec.angleDeg}>
+      <canvas
+        bind:this={sampleCanvas}
+        role="img" aria-label={sampleCaption(sampleSpec)}
+        style="width: {SAMPLE_W_MM * SAMPLE_PX_PER_MM}px; height: {SAMPLE_H_MM * SAMPLE_PX_PER_MM}px"
+      ></canvas>
+      <figcaption aria-hidden="true">{sampleCaption(sampleSpec)}</figcaption>
+    </figure>
+  {/if}
   {#if model.similar}
     <!-- Scope first: it decides what every row below does. The count is every
          shape the edit will touch, this one included; the field outlines them
@@ -134,12 +168,12 @@
     {#if row.kind === "thread"}
       <div class="shapepop-row">
         <span class="shapepop-label">Color</span>
-        <ThreadPicker compact rgb={row.rgb} name={model.name} on:pick={(e) => d("change", { key: "color", value: e.detail })} />
+        <ThreadPicker compact rgb={row.rgb} name={model.name} on:pick={(e) => change("color", e.detail)} />
       </div>
     {:else if row.kind === "choice"}
       <label class="shapepop-row">
         <span class="shapepop-label">{row.label}</span>
-        <select value={row.value} aria-label={row.label} aria-describedby={noteId(row)} on:change={(e) => d("change", { key: row.key, value: e.currentTarget.value })}>
+        <select value={row.value} aria-label={row.label} aria-describedby={noteId(row)} on:change={(e) => change(row.key, e.currentTarget.value)}>
           {#each row.options as o (o.value)}
             <option value={o.value}>{o.label}</option>
           {/each}
@@ -151,8 +185,8 @@
         <input
           type="number" step={row.step == null ? 1 : row.step} min={row.min} placeholder="auto" aria-label={row.label} aria-describedby={noteId(row)}
           value={row.value == null ? "" : row.value}
-          on:input={(e) => { if (!ON_COMMIT.has(row.key)) d("change", { key: row.key, value: e.currentTarget.value }); }}
-          on:change={(e) => { if (ON_COMMIT.has(row.key)) d("change", { key: row.key, value: e.currentTarget.value }); }}
+          on:input={(e) => { if (!ON_COMMIT.has(row.key)) change(row.key, e.currentTarget.value); }}
+          on:change={(e) => { if (ON_COMMIT.has(row.key)) change(row.key, e.currentTarget.value); }}
         />
         {#if row.hint}<span class="shapepop-hint">{row.hint}</span>{/if}
       </label>
@@ -181,3 +215,11 @@
     {#if row.note}<p class="shapepop-note" id={noteId(row)} class:warn={row.warn}>{row.note}</p>{/if}
   {/each}
 </div>
+
+<style>
+  /* The sample sits in the popover's own flow: the popover is an overlay on
+     the field, so it takes no layout space from .fieldwrap. */
+  .shapepop-sample { margin: 0 0 6px; display: flex; align-items: flex-end; gap: 8px; }
+  .shapepop-sample canvas { display: block; border-radius: 3px; flex: 0 0 auto; }
+  .shapepop-sample figcaption { color: var(--muted); font-size: var(--fs-xs); line-height: 1.3; }
+</style>
