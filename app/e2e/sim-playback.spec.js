@@ -309,3 +309,73 @@ test("the bar estimates the sew time left, on the Run time's own figure and rate
   await expect(count(page)).toHaveText(`${total} / ${total} stitches`);
   await expect(time).toHaveText(`about ${minutes} min in all`);
 });
+
+test("with a Quote speed set, the bar and the Run time row use it, and the tooltip says so", async ({ page }) => {
+  // #1334's Decision 1, Kent's pick (b): one rate for both figures on the
+  // screen (estimate.js runSpm). The speed is the operator's own Quote
+  // setting, stored where QuoteSettings saves it.
+  await page.addInitScript(() => {
+    localStorage.setItem("embstudio:quote", JSON.stringify({ spm: 1000 }));
+  });
+  const total = await twoColourLettering(page);
+  const sheet = await openDownload(page);
+  const row = sheet.locator("dl.summary > div", { has: page.locator("dt", { hasText: /^Run time$/ }) });
+  const run = (await row.locator("dd").innerText()).trim();
+  const m = run.match(/^~(\d+) min.* at 1,000 spm$/);
+  expect(m, `Run time row: ${run}`).not.toBeNull();
+  const minutes = m[1];
+  await closeDownload(page);
+
+  await openSim(page);
+  await pause(page);
+  const back = page.getByRole("button", { name: "Previous thread change" });
+  for (let i = 0; i < 3 && (await back.isEnabled()); i++) await back.click();
+  await expect(count(page)).toHaveText(`0 / ${total} stitches`);
+  const time = page.getByTestId("sim-time");
+  await expect(time).toHaveText(`about ${minutes} min left of ${minutes}`);
+  await expect(time).toHaveAttribute("title", /^Estimated sew time at 1,000 stitches per minute, your speed from Quote settings\./);
+  await expect(time).not.toHaveAttribute("title", /planning rate/);
+});
+
+test("resizing the window leaves the simulator open where it was, and repaints the field once", async ({ page }) => {
+  // #1334's Decision 2: fitCanvasToPane's canvas.width/height writes
+  // invalidated `canvas`, so every resize re-ran paint() (the regenerate,
+  // which opens with stopSim()). A field render is counted the way
+  // field-hover-repaint.spec.js counts it: renderRealistic opens every one
+  // with fillRect(0, 0, cw, ch) on the `.hoop` canvas.
+  await page.addInitScript(() => {
+    window.__fieldRenders = 0;
+    const fill = CanvasRenderingContext2D.prototype.fillRect;
+    CanvasRenderingContext2D.prototype.fillRect = function (x, y, w, h) {
+      const c = this.canvas;
+      if (x === 0 && y === 0 && c && c.closest && c.closest(".hoop") && w >= c.clientWidth - 1 && h >= c.clientHeight - 1) {
+        window.__fieldRenders++;
+      }
+      return fill.apply(this, arguments);
+    };
+  });
+  const settle = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 600)))));
+  await twoColourLettering(page);
+  await openSim(page);
+  await pause(page);
+  await page.getByRole("button", { name: "Next thread change" }).click();
+  const at = await count(page).innerText();
+  await settle();
+  const sizes = [{ width: 1200, height: 820 }, { width: 1440, height: 900 }, { width: 1320, height: 760 }];
+  const perResize = [];
+  for (const s of sizes) {
+    const before = await page.evaluate(() => window.__fieldRenders);
+    const w0 = await page.locator(".hoop canvas").evaluate((c) => c.width);
+    await page.setViewportSize(s);
+    await settle();
+    const w1 = await page.locator(".hoop canvas").evaluate((c) => c.width);
+    expect(w1, `bitmap resized at ${s.width}x${s.height}`).not.toBe(w0);
+    perResize.push((await page.evaluate(() => window.__fieldRenders)) - before);
+    console.log(`[sim-resize] ${s.width}x${s.height}: ${perResize[perResize.length - 1]} field render(s)`);
+    await expect(page.locator(".simbar")).toBeVisible();
+    await expect(count(page)).toHaveText(at);
+    await expect(thread(page)).toContainText("Next: Thread 2 of 2");
+  }
+  // repaintView() only: one render per resize, no regenerate on top.
+  for (const n of perResize) expect(n).toBe(1);
+});

@@ -3,26 +3,31 @@
   // thumbnail queue fetched every font binary (~30MB) the moment it opened
   // (Slice 8 Task 3's fetch-everything-eagerly helpers, now deleted). This
   // grid renders from the manifest + pre-rendered static PNGs (Slice 10B
-  // Task 3, /fonts/previews/<key>.png) and NEVER fetches a font binary just
-  // to show the grid.
-  // ensureFont is only ever called for (a) the font the user actually picks,
-  // and (b) FontSelect's own trigger preview of the current selection --
-  // both outside this component. Live "your text" tiles below render ONLY
-  // for fonts already decoded into EMB.SATIN_FONTS by some other path (e.g.
-  // already the selected font); every other tile shows its static PNG.
+  // Task 3, /fonts/previews/<key>.png), which need no font binary.
+  // Since 2026-11-07 the grid ALSO sews a stitched sample per tile
+  // (lib/fontSample.js), which does need the binary -- so it is fetched ONLY
+  // for tiles in the visible rows plus one look-ahead page (an
+  // IntersectionObserver on the scrolling body), never for the library, and
+  // never for a binary over SAMPLE_MAX_BYTES. A tile shows, best first: a
+  // live "your text" render, its stitched sample, its static PNG.
+  // Live "your text" tiles render ONLY for fonts decoded into EMB.SATIN_FONTS
+  // by some other path BEFORE the browser opened (e.g. already the selected
+  // font) -- a font the sample queue decodes does not join them, or every
+  // filter change would re-sew dozens of tiles synchronously.
   //
   // Dialog mechanics copied from ProjectsDrawer.svelte: role=dialog
   // aria-modal, tabindex="-1" focus-on-mount, Tab trap via focusableEls(),
   // Escape closes. Focus RESTORE is the opener's job (FontSelect owns the
   // trigger button here, same division of labor ProjectsDrawer uses with
   // App.svelte).
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { EMB } from "../lib/emb.js";
   import { renderRealistic } from "../lib/preview.js";
   import { loadManifest, ensureFont, loadCoverage, loadFontStyles, loadOutlineRows } from "../lib/fontLoader.js";
   import { fontsCovering } from "../lib/fontCoverage.js";
   import { previewFamily, OUTLINE_GROUP } from "../lib/outlineFonts.js";
   import { filterFonts, sizeBand } from "../lib/fontFilter.js";
+  import { createSampleQueue, renderSampleUrl, SAMPLE_CACHE } from "../lib/fontSample.js";
   import Icon from "./Icon.svelte";
 
   export let selected = null;
@@ -81,9 +86,13 @@
   $: selectedName = (fonts.find((f) => f.key === selected) || {}).name || selected || "";
 
   // Live "your text" tile rendering -- ONLY for fonts already decoded. The
-  // grid must never trigger binary fetches (that was Stage A's 30MB
-  // dropdown problem); static preview PNGs carry undecoded fonts.
+  // grid must never fetch the library's binaries (that was Stage A's 30MB
+  // dropdown problem); the stitched-sample queue below fetches the window's.
+  // Fonts the sample queue decoded (in this or an earlier opening) are left
+  // out unless one is the current selection: a live tile renders
+  // synchronously, and dozens of them on open is a visible freeze.
   let liveThumbs = {};
+  const preDecoded = new Set(Object.keys(EMB.SATIN_FONTS || {}).filter((k) => k === selected || !SAMPLE_CACHE.has(k)));
   // Tiles whose PNG failed to load, so the grid shows a neutral placeholder
   // instead of the browser's broken-image glyph. Not hypothetical: a font whose
   // letters do not stitch renders an EMPTY preview, and build-previews skips
@@ -103,7 +112,7 @@
     if (!t) { liveThumbs = {}; return; }
     const next = {};
     for (const f of list) {
-      const font = (EMB.SATIN_FONTS || {})[f.key];
+      const font = preDecoded.has(f.key) ? (EMB.SATIN_FONTS || {})[f.key] : null;
       if (!font) continue;
       const cacheKey = f.key + "\u0000" + t;
       if (!liveCache.has(cacheKey)) {
@@ -126,6 +135,68 @@
     liveThumbs = next;
   }
 
+  // ---- Stitched samples (lib/fontSample.js) --------------------------------
+  // key -> data URL of the font's sewn "Abc 123". Seeded from the session
+  // cache, so a reopened browser shows what it already sewed without a fetch.
+  let stitched = {};
+  for (const [k, url] of SAMPLE_CACHE) if (url) stitched[k] = url;
+  const queue = createSampleQueue({
+    load: ensureFont,
+    render: (font) => renderSampleUrl(EMB, font, { dpr: typeof window !== "undefined" ? window.devicePixelRatio : 1 }),
+    onReady: (key, url) => { stitched = { ...stitched, [key]: url }; },
+  });
+  // Which rows are in the window: the body's visible area plus ONE page
+  // below it (rootMargin 100% of the body's height). A row that scrolls out
+  // before its turn is taken back off the queue. No IntersectionObserver
+  // (jsdom), no samples: every tile keeps its static PNG, as before.
+  let bodyEl;
+  let observer = null;
+  const rowOf = new WeakMap();
+  const pendingObserve = new Set();
+  function startObserver() {
+    if (observer || !bodyEl || typeof IntersectionObserver === "undefined") return;
+    observer = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const row = rowOf.get(e.target);
+        if (!row) continue;
+        if (e.isIntersecting) queue.want(row);
+        else queue.unwant(row.key);
+      }
+    }, { root: bodyEl, rootMargin: "0px 0px 100% 0px" });
+    for (const el of pendingObserve) observer.observe(el);
+    pendingObserve.clear();
+  }
+  function sampleOnView(node, row) {
+    rowOf.set(node, row);
+    if (observer) observer.observe(node);
+    else pendingObserve.add(node);
+    // unobserve() fires no callback, so a tile that leaves the grid (a search
+    // or group filter removed it) must take its own request back, or the
+    // queue fetches it ahead of the tiles now on screen (review of #1348).
+    return {
+      update(r) {
+        const prev = rowOf.get(node);
+        rowOf.set(node, r);
+        if (prev && r && prev.key !== r.key) {
+          queue.unwant(prev.key);
+          // Re-observing delivers a fresh entry, so the new key is wanted
+          // if the tile is in the window.
+          if (observer) { observer.unobserve(node); observer.observe(node); }
+        }
+      },
+      destroy() {
+        const row = rowOf.get(node);
+        if (row) queue.unwant(row.key);
+        pendingObserve.delete(node);
+        if (observer) observer.unobserve(node);
+      },
+    };
+  }
+  onDestroy(() => {
+    if (observer) observer.disconnect();
+    queue.stop();
+  });
+
   function bestAt(f) {
     const band = sizeBand(f.sizeMm);
     if (!band) return "";
@@ -143,6 +214,7 @@
 
   onMount(() => {
     if (panelEl) panelEl.focus();
+    startObserver();
     // Spec: "current selection always visible and restorable" -- jump the
     // grid straight to whichever tile is already selected instead of making
     // the user re-find it by scrolling/searching.
@@ -235,7 +307,7 @@
       {/if}
     </div>
 
-    <div class="fb-body">
+    <div class="fb-body" bind:this={bodyEl}>
       {#if manifestFailed}
         <p class="fb-empty">Couldn't load the font list — check your connection and reopen.</p>
       {:else if fonts.length === 0}
@@ -252,6 +324,7 @@
               class:misfit={misfit(f)}
               aria-pressed={selected === f.key}
               data-key={f.key}
+              use:sampleOnView={f}
               on:click={() => pick(f.key)}
             >
               <span class="fb-tile-img">
@@ -264,11 +337,12 @@
                     style="font-family: '{previewFamily(f.key)}', sans-serif; font-weight: {f.weight || 400};"
                     aria-hidden="true"
                   >{(currentText || "").trim().slice(0, 12) || "Aa Bb"}</span>
-                {:else if tileFailed[f.key] && !liveThumbs[f.key]}
+                {:else if tileFailed[f.key] && !liveThumbs[f.key] && !stitched[f.key]}
                   <span class="fb-tile-noimg" aria-hidden="true">Aa</span>
                 {:else}
                   <img
-                    src={liveThumbs[f.key] || "fonts/previews/" + f.key + ".png"}
+                    src={liveThumbs[f.key] || stitched[f.key] || "fonts/previews/" + f.key + ".png"}
+                    class:fb-stitched={!liveThumbs[f.key] && !!stitched[f.key]}
                     alt=""
                     loading="lazy"
                     on:error={() => (tileFailed = { ...tileFailed, [f.key]: true })}

@@ -95,7 +95,7 @@ from .stage6_hairline_lines import applies as hairline_lines_apply
 from .stage6_hairline_lines import strand_blocks
 from .stage6_hairline_lines import supplement_test as hairline_supplement_test
 from .stage6_hairline_lines import supplements as hairline_lines_supplements
-from .stage6_fill import stitch_shape
+from .stage6_fill import pro_offset_fill_angle, stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
@@ -2490,13 +2490,21 @@ def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
             return machine.WHITE_FIELD_FILL_ANGLE_DEG
     shape_angle = p.region.meta.get("fill_angle_deg")
     if shape_angle is not None:
-        return float(shape_angle)
-    if cfg.fill_angle_deg is not None:
-        return cfg.fill_angle_deg
-    design = p.region.meta.get("design_angle_deg")
-    if design is not None:
-        return float(design)
-    return p.stitch_angle_deg
+        off = float(shape_angle)
+    elif cfg.fill_angle_deg is not None:
+        off = cfg.fill_angle_deg
+    elif p.region.meta.get("design_angle_deg") is not None:
+        off = float(p.region.meta["design_angle_deg"])
+    else:
+        off = p.stitch_angle_deg
+    # `cfg.extra["fill_angle_pro_offset"]` / `["fill_angle_pro_slant"]`
+    # (built OFF): the pro's fill angle, behind only the review's own angle
+    # and the global one. The slant rule prices its candidates against `off`,
+    # the angle this shape sews with both keys off.
+    pro = pro_offset_fill_angle(cfg, p.region.shape_id, poly=p.polygon, base_deg=off)
+    if pro is not None:
+        return pro
+    return off
 
 
 def _sew_rest_pieces(pieces, stitch_one, entry, exit_near, trim_at):

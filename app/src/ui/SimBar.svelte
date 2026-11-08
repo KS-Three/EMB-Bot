@@ -28,7 +28,8 @@
   export let hasUnderlay = false; // the design tags underlay strands
   export let phase = null;       // "underlay" | "top" | null (simulate.js phaseAt)
   export let sewTime = null;     // { left, total } minutes (simulate.js sewTimeAt), or null
-  export let spm = null;         // the rate it was computed at (EMB.PLAN_SPM)
+  export let spm = null;         // the rate it was computed at (estimate.js runSpm)
+  export let spmQuoted = false;  // true: the operator's Quote speed; false: PLAN_SPM
 
   const dispatch = createEventDispatcher();
 
@@ -43,11 +44,12 @@
   $: stitchNow = index >= 1 ? ordinals[Math.min(index, ordinals.length) - 1] || 0 : 0;
   $: stitchTotal = ordinals[ordinals.length - 1] || 0;
   // The estimate, and its basis in the tooltip: the same sewTimeMin and the
-  // same planning rate as the "Run time" row in Download, which already
+  // same rate (estimate.js runSpm: the Quote speed, else the planning rate)
+  // as the "Run time" row in Download, which already
   // charges every trim and thread change as a stop.
   $: sewText = sewTimeText(sewTime);
   $: sewTip = spm
-    ? `Estimated sew time at ${spm.toLocaleString()} stitches per minute, the Studio's planning rate (not measured on your machine). Trims and thread changes are included (a thread change counts as one trim), as in the Run time in Download.`
+    ? `Estimated sew time at ${spm.toLocaleString()} stitches per minute, ${spmQuoted ? "your speed from Quote settings" : "the Studio's planning rate (not measured on your machine)"}. Trims and thread changes are included (a thread change counts as one trim), as in the Run time in Download.`
     : "";
 
   // The scrubber's thread strip: one band per thread that sews anything, in
