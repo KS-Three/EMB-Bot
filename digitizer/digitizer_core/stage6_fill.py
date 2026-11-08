@@ -261,9 +261,15 @@ _FILL_ANGLE_CANDIDATES = 16
 #: `cfg.extra[FILL_ANGLE_PRO_OFFSET_KEY]` (2026-11-07, built OFF): every fill
 #: whose angle no review and no global sets sews at `machine.FILL_ANGLE_PRO_DEG`.
 FILL_ANGLE_PRO_OFFSET_KEY = "fill_angle_pro_offset"
+#: `cfg.extra[FILL_ANGLE_PRO_SLANT_KEY]` (2026-11-07, built OFF): the same
+#: pro angle, but per shape: +20, else -20, whichever first passes the trims
+#: guard (`pro_slant_angle`); a shape neither passes keeps the angle it sews
+#: OFF. Implies the offset rule; it does not need that key set too.
+FILL_ANGLE_PRO_SLANT_KEY = "fill_angle_pro_slant"
 
 
-def pro_offset_fill_angle(cfg, shape_id: str) -> float | None:
+def pro_offset_fill_angle(cfg, shape_id: str, poly=None,
+                          base_deg: float | None = None) -> float | None:
     """The row angle `cfg.extra["fill_angle_pro_offset"]` gives a fill shape, or
     None when the flag is off or something the customer set outranks it.
 
@@ -283,16 +289,63 @@ def pro_offset_fill_angle(cfg, shape_id: str) -> float | None:
     they are the axis sources the pro's files disagree with. Stage 7's
     `_fill_angle_for` and stage 5's `_comp_axis` both read it, so directional
     compensation (OFF by default) pulls along the rows that are sewn.
+
+    Under `cfg.extra["fill_angle_pro_slant"]` the answer is per shape and
+    needs `poly` (the polygon about to be sewn) and `base_deg` (the angle the
+    shape sews with both keys off; None = stage 6's own `best_fill_angle_deg`):
+    see `pro_slant_angle`. No polygon, or no candidate passing its guard,
+    returns None, so the caller's own precedence runs exactly as OFF.
     """
     extra = getattr(cfg, "extra", None) or {}
-    if not extra.get(FILL_ANGLE_PRO_OFFSET_KEY):
+    slant = bool(extra.get(FILL_ANGLE_PRO_SLANT_KEY))
+    if not (slant or extra.get(FILL_ANGLE_PRO_OFFSET_KEY)):
         return None
     if getattr(cfg, "fill_angle_deg", None) is not None:
         return None
     ov = (getattr(cfg, "shape_overrides", None) or {}).get(shape_id) or {}
     if ov.get("fill_angle_deg") is not None:
         return None
-    return machine.FILL_ANGLE_PRO_DEG
+    if not slant:
+        return machine.FILL_ANGLE_PRO_DEG
+    if poly is None or poly.is_empty:
+        return None
+    return pro_slant_angle(poly, base_deg)
+
+
+def pro_slant_angle(poly, base_deg: float | None) -> float | None:
+    """`cfg.extra["fill_angle_pro_slant"]`'s angle for one shape: +20 if its
+    rows pass the trims guard, else -20 (160) if those do, else None.
+
+    The SIGN of the pro's slant is not predictable from anything we read
+    (2026-11-07: art edge slant, our satin crossings' slant, the shape's
+    principal axis side, its boundary's slant and which sign cuts fewer
+    columns all score at or below "always +" leave-one-artwork-out, 12 of
+    17 jobs; `docs/fill-angle-pro-slant-2026-11-07.md`). So + is the prior,
+    and the only thing that moves a shape off it is cost: the guard takes a
+    candidate only when it cuts the shape into at most
+    `FILL_ANGLE_SLANT_COLS_RATIO` x the columns at `base_deg` +
+    `FILL_ANGLE_SLANT_COLS_SLACK`. Columns are what fill cuts grow from:
+    every in-fill cut #1346's fixed angle added sat on a shape whose columns
+    grew x1.5 or more. Memoized on the polygon's bytes (`lru_cache`, so
+    thread-safe): stage 5 and stage 7 ask about the same shape several times.
+    """
+    return _slant_for(poly.wkb, None if base_deg is None else round(float(base_deg) % 180.0, 6))
+
+
+@lru_cache(maxsize=256)
+def _slant_for(wkb: bytes, base_deg: float | None) -> float | None:
+    try:
+        poly = shapely.from_wkb(wkb)
+        row = machine.FILL_ROW_MM
+        base = best_fill_angle_deg(poly, row) if base_deg is None else base_deg
+        cap = (_cols_at_angle(poly, base, row) * machine.FILL_ANGLE_SLANT_COLS_RATIO
+               + machine.FILL_ANGLE_SLANT_COLS_SLACK)
+        for a in (machine.FILL_ANGLE_PRO_DEG, 180.0 - machine.FILL_ANGLE_PRO_DEG):
+            if _cols_at_angle(poly, a, row) <= cap:
+                return a
+    except Exception:                                   # noqa: BLE001 -- odd geometry: sew as OFF
+        return None
+    return None
 
 
 def _cols_at_angle(poly: Polygon, angle: float, row_mm: float) -> int:
