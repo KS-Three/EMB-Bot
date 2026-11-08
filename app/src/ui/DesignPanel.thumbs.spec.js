@@ -76,3 +76,37 @@ test("the thumbnail box is a fixed size no taller than the compact picker", () =
   expect(h).toBeLessThanOrEqual(28);
   expect(/flex:\s*none/.test(box)).toBe(true);
 });
+
+// Fix for #1349's post-merge review: the colour `key` was meant to be the only
+// thing that rebuilds the pictures, but `decoded` was also a dependency and the
+// decoder hands back a NEW object on every element patch. So each Rotation
+// slider tick (patch({ rotationDeg }) -> App's `{ ...el, ...patch }`) rebuilt
+// every thumbnail: ~70 ms of canvas work per tick on a 30k-stitch file, for
+// pictures that ignore rotation. The real decoder returns a fresh object per
+// call, so the stub here does too.
+test("a patch that changes no colour (rotation, size) rebuilds no thumbnail; a colour pick does", async () => {
+  const realDecode = globalThis.EMB.decodeDSTStandard;
+  globalThis.EMB.decodeDSTStandard = () => ({ ...decoded, stitches: decoded.stitches.map((s) => ({ ...s })) });
+  try {
+    const { container, rerender } = render(DesignPanel, { props: { element: el } });
+    await vi.waitFor(() => expect(container.querySelectorAll(".dp-thumb canvas")).toHaveLength(2));
+    const first = [...container.querySelectorAll(".dp-thumb canvas")];
+
+    for (const p of [{ rotationDeg: 15 }, { rotationDeg: 30 }, { sizeMm: 80 }]) {
+      await rerender({ element: { ...el, ...p } });
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    const after = [...container.querySelectorAll(".dp-thumb canvas")];
+    expect(after).toHaveLength(2);
+    expect(after.every((c, i) => c === first[i])).toBe(true); // same canvases: nothing rebuilt
+
+    await rerender({ element: { ...el, sizeMm: 80, blockColors: { 1: [0, 0, 255] } } });
+    await vi.waitFor(() => {
+      const now = [...container.querySelectorAll(".dp-thumb canvas")];
+      expect(now).toHaveLength(2);
+      expect(now[0]).not.toBe(first[0]);
+    });
+  } finally {
+    globalThis.EMB.decodeDSTStandard = realDecode;
+  }
+});

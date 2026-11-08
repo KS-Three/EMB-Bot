@@ -52,10 +52,21 @@
   }
 
   // Decoded view of the CURRENT file, for the stats line and block list.
-  // Cheap (KB-scale walk) and memoized per dstBase64 value by Svelte's
-  // reactive statement only re-running when the dependency changes.
+  // Memoized per dstBase64 string HERE, not by the reactive statement: that
+  // re-runs on every patch to the element (App replaces it with
+  // `{ ...el, ...patch }`, so a rotation tick invalidates `element`), and an
+  // un-memoized decode hands back a new object each time -- which made every
+  // rotation tick rebuild every block thumbnail (#1349 review).
   $: decoded = decodeSafe(element.dstBase64);
+  let lastB64 = null;
+  let lastDecoded = null;
   function decodeSafe(b64) {
+    if (b64 === lastB64) return lastDecoded;
+    lastB64 = b64;
+    lastDecoded = decodeUncached(b64);
+    return lastDecoded;
+  }
+  function decodeUncached(b64) {
     if (!b64) return null;
     try {
       const bin = atob(b64);
@@ -119,7 +130,16 @@
 
   $: key = decoded ? colorsKey(element, decoded.colorCount) : "";
   $: if (visible && decoded) schedule(decoded, key);
-  function schedule(dec, _key) {
+  // Svelte 5's legacy mode treats a reassigned object as changed even when it
+  // is the same object, so this statement still re-runs on every element
+  // patch. The pictures depend only on the file and its colours: skip unless
+  // one of those moved since the last scheduled build.
+  let schedDec = null;
+  let schedKey = null;
+  function schedule(dec, k) {
+    if (dec === schedDec && k === schedKey) return;
+    schedDec = dec;
+    schedKey = k;
     if (buildTimer != null) clearTimeout(buildTimer);
     if (!dec.stitches || !dec.stitches.length) return;
     buildTimer = setTimeout(() => {
