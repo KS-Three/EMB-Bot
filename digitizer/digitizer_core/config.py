@@ -3852,6 +3852,21 @@ class PipelineConfig:
     # the preview. False: byte for byte. Tests:
     # `tests/test_text_cluster_nest_guard_rotated.py`.
     text_cluster_nest_guard_rotated: bool = False
+    # A letter turned on a ring joins its line (`textcluster._adopt_turned`,
+    # PR #1307; built OFF 2026-11-07 as
+    # `cfg.extra["text_cluster_nest_door_aspect"]`). The letter door reads a
+    # glyph's aspect off its axis-aligned box, so a letter lying on the side
+    # of a ring reads wide and is refused; ON reads its minimum-area
+    # rectangle in the frame it shares with a line-mate and admits it to
+    # that line (never makes or bridges one). Bridge hat and LC: 9 -> 11
+    # tagged letters; ProSeal hat and beanie: 0 tags change (measured
+    # 2026-11-08 on main 15b0f5a0, the false-positive check #1307 left
+    # open); every committed golden byte-identical.
+    # **ON since 2026-11-08, Kent's flip** ("Flip ON"), promoted from
+    # `cfg.extra` to a field so the default can be ON. False is the tagger as
+    # it was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
+    # pin it False. Tests: `tests/test_nest_aspect_door.py`.
+    text_cluster_nest_door_aspect: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
