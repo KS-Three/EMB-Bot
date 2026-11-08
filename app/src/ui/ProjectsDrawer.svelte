@@ -5,11 +5,12 @@
   // every action -- App owns all the actual registry calls (see App.svelte's
   // openProject/newDesign/renameFromDrawer/duplicateFromDrawer/
   // deleteFromDrawer).
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import Icon from "./Icon.svelte";
   import TemplateRow from "./TemplateRow.svelte";
   import DesignFilter from "./DesignFilter.svelte";
   import { EMB } from "../lib/emb.js";
+  import { getThumb, thumbKey, THUMB_PX } from "../lib/projectThumb.js";
   import { filterProjects, hasFactCriteria, factsLine } from "../lib/libraryFacts.js";
   export let projects = [];
   export let currentId = null;
@@ -37,6 +38,64 @@
   $: canFilter = projects.length > 1;
   $: filtered = filterProjects(projects, canFilter ? criteria : {}, EMB.hoopFit);
   $: filtering = hasFactCriteria(criteria) || !!(criteria.text && criteria.text.trim());
+
+  // ---- Row thumbnails -----------------------------------------------------
+  // Drawn only for rows that scroll into view (one shared IntersectionObserver
+  // over the rows' thumb boxes), and through projectThumb's revision-keyed
+  // cache, so a second open of the drawer draws nothing new. Without
+  // IntersectionObserver (old browsers, jsdom) the first rows draw at once.
+  // `thumbs` maps revision key -> data URL; a key with no entry yet, or null
+  // (a project with no stitches), shows the placeholder.
+  const NO_IO_ROWS = 12;
+  let thumbs = {};
+  const watched = new Map(); // node -> registry entry
+  let io = null;
+
+  function paint(entry) {
+    const key = thumbKey(entry.id, entry.updatedAt);
+    if (key in thumbs) return;
+    thumbs[key] = getThumb(entry);
+    thumbs = thumbs;
+  }
+
+  function lazyThumb(node, entry) {
+    watched.set(node, entry);
+    if (typeof IntersectionObserver === "function") {
+      if (!io) {
+        io = new IntersectionObserver(
+          (hits) => {
+            for (const h of hits) {
+              if (!h.isIntersecting) continue;
+              const e = watched.get(h.target);
+              if (e) paint(e);
+            }
+          },
+          { rootMargin: "80px" }
+        );
+      }
+      io.observe(node);
+    } else if (watched.size <= NO_IO_ROWS) {
+      paint(entry);
+    }
+    return {
+      update(next) {
+        watched.set(node, next);
+        // A new revision of a row already on screen needs its own draw.
+        if (io) { io.unobserve(node); io.observe(node); }
+        else if (watched.size <= NO_IO_ROWS) paint(next);
+      },
+      destroy() {
+        watched.delete(node);
+        if (io) io.unobserve(node);
+      },
+    };
+  }
+
+  onDestroy(() => {
+    if (io) io.disconnect();
+    io = null;
+    watched.clear();
+  });
 
   // ---- .embproj import (hidden file input) ---------------------------------
   // The drawer only picks the file; App does the reading/parsing (same
@@ -248,6 +307,15 @@
               />
             </div>
           {:else}
+            <div class="drawer-row-main">
+            <div class="drawer-thumb" style="width:{THUMB_PX}px;height:{THUMB_PX}px" use:lazyThumb={row}>
+              {#if thumbs[thumbKey(row.id, row.updatedAt)]}
+                <img src={thumbs[thumbKey(row.id, row.updatedAt)]} alt="" width={THUMB_PX} height={THUMB_PX} />
+              {:else}
+                <span class="drawer-thumb-empty" aria-hidden="true"><Icon name="unknown" size={24} /></span>
+              {/if}
+            </div>
+            <div class="drawer-row-text">
             <div class="drawer-row-info">
               <span class="drawer-row-name" title={row.name}>{row.name}</span>
               <span class="drawer-row-date">{friendlyDate(row.updatedAt)}</span>
@@ -255,6 +323,8 @@
             {#if row.facts}
               <p class="drawer-row-facts">{factsLine(row.facts, hoops, EMB.hoopFit)}</p>
             {/if}
+            </div>
+            </div>
           {/if}
           <div class="drawer-row-actions">
             <button type="button" on:click={() => d("open", row.id)}>Open</button>
