@@ -53,3 +53,15 @@ test("the cursor is still set, through the alias", () => {
   expect(calls.length).toBeGreaterThan(20);
   expect(SRC).toMatch(/function setCanvasCursor\(c\) \{\s*const el = canvas;\s*if \(el\) el\.style\.cursor = c;/);
 });
+
+// Every field render starts on a default context (freshContext). Without it,
+// lineCap/lineJoin "round" left by the previous render's stitches drew the
+// hoop's dashed lines differently, so one design gave two pictures depending
+// on whether a resize had reset the context since (#1341, keyboard-a11y's
+// undo test: 1,191 px apart).
+test("every renderRealistic(canvas, …) in the field is preceded by freshContext(canvas)", () => {
+  const renders = SRC.match(/renderRealistic\(canvas\b/g) || [];
+  const fresh = SRC.match(/freshContext\(canvas\);\s*\n\s*renderResult = renderRealistic\(canvas\b/g) || [];
+  expect(renders.length).toBeGreaterThan(0);
+  expect(fresh.length).toBe(renders.length);
+});

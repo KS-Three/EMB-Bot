@@ -393,8 +393,37 @@
     return { garment, hoop: effectiveHoop(p).hoop || undefined };
   }
 
+  // Every field render starts from a DEFAULT 2D context state. renderRealistic
+  // sets only some of it (the dpr transform, its own strokes' styles), so state
+  // a previous render left behind leaked into the next one: the stitches end
+  // with lineCap/lineJoin "round", and the hoop's dashed safe-area line drawn
+  // next was then drawn with round dash ends. Same design, same size, different
+  // pixels, depending only on whether the canvas had been resized (a width
+  // write resets the context) since the last render. Measured 2026-11-07:
+  // 1,191 px differed, all on the dashed lines, between a render on a fresh
+  // context and the same design re-rendered after an undo
+  // (keyboard-a11y.spec.js "Ctrl+Z / Ctrl+Shift+Z ..."). Before #1341 a resize
+  // ALSO re-ran paint(), whose render then landed on a used context, so the
+  // first frame happened to match later ones. reset() also clears the bitmap,
+  // which renderRealistic fills edge to edge anyway.
+  function freshContext(el) {
+    const ctx = el && el.getContext && el.getContext("2d");
+    if (!ctx) return;
+    if (typeof ctx.reset === "function") { ctx.reset(); return; }
+    if (ctx.setTransform) ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (ctx.setLineDash) ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
+    ctx.lineCap = "butt";
+    ctx.lineJoin = "miter";
+    ctx.lineWidth = 1;
+    ctx.miterLimit = 10;
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+  }
+
   function clearToFabric() {
     if (!canvas) return;
+    freshContext(canvas);
     renderResult = renderRealistic(canvas, EMPTY_DESIGN, {
       dpr,
       hoop: hoopOpt(project),
@@ -3442,6 +3471,7 @@
     // stitches at generation time (see generate.js's generateElement), so
     // the combined design already carries the right colors per-part.
     lastGenerateResult = result; // B2: cached for view-only repaints below
+    freshContext(canvas);
     renderResult = renderRealistic(canvas, c, {
       dpr,
       hoop: hoopOpt(project),
@@ -3482,6 +3512,7 @@
   function repaintView() {
     if (!canvas) return;
     if (lastGenerateResult && lastGenerateResult.combined) {
+      freshContext(canvas);
       renderResult = renderRealistic(canvas, lastGenerateResult.combined, {
         dpr,
         hoop: hoopOpt(project),
