@@ -5,6 +5,7 @@
   import ThreadFromPhoto from "./ThreadFromPhoto.svelte";
   import { get } from "svelte/store";
   import { designChartId } from "../lib/designChart.js";
+  import { swatchStyle } from "../lib/threadSwatch.js";
 
   // Named-thread color picker (Slice 8 Task 4), used everywhere a thread
   // color is chosen (TextStep's element color, ImagePanel's per-swatch
@@ -156,7 +157,7 @@
       (pending ? "loading" : threadLabel(nearest))}
     title={threadLabel(nearest)}
   >
-    <span class="tp-swatch" style="background: rgb({rgb[0]},{rgb[1]},{rgb[2]})"></span>
+    <span class="tp-swatch tp-thread" style={swatchStyle(rgb, compact ? 20 : 24)}></span>
     {#if !compact}<span class="tp-name">{pending ? "…" : threadLabel(nearest)}</span>{/if}
     <span class="tp-chevron" class:open aria-hidden="true">
       <Icon name="chevron" size={compact ? 12 : 14} />
@@ -189,9 +190,9 @@
         {#each shown as t, i (threadLabel(t) + i)}
           <button
             type="button"
-            class="tp-cell"
+            class="tp-cell tp-thread"
             class:sel={t === palette.threads[nearest.index]}
-            style="background: rgb({t.rgb[0]},{t.rgb[1]},{t.rgb[2]})"
+            style={swatchStyle(t.rgb)}
             title={threadLabel(t)}
             aria-label={threadLabel(t)}
             role="option"
