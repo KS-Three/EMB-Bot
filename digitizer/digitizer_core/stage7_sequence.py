@@ -891,6 +891,44 @@ def cut_every_jump_step_mm(cfg) -> float:
     return _BURY_STEP_FINE_MM if extra.get("bury_step_fine") else _BURY_STEP_MM
 
 
+def split_long_inshape(cfg) -> bool:
+    """`cfg.extra["split_long_inshape_stitches"]` (built OFF 2026-11-07)."""
+    extra = getattr(cfg, "extra", None) or {}
+    return bool(extra.get("split_long_inshape_stitches"))
+
+
+def join_piece(prev: list[StitchRun], nxt: list[StitchRun], shape_id: str
+               ) -> list[StitchRun]:
+    """`nxt` (one `stitch_shape` call's runs) as it follows `prev` (the same
+    shape's runs so far), with the needle-down step between them split.
+
+    `stitch_shape` hands back its first run needle-down (`jump` False): the
+    step INTO a shape is the caller's. Where a caller sews one shape as
+    several pieces and concatenates the calls -- `border_from_outline`'s
+    body pieces and `enclosed_white_keyline`'s, both off `keyline_rest` --
+    the step from one piece's last stitch to the next piece's first is a
+    plain needle-down stitch, and nothing ever measured it: on Becker it is
+    13.8-16.7 mm into the next piece's underlay and 34.4-37.5 mm into the
+    next one's fill (`docs/float-census-2026-11-06.md`, shapes S92f2350b,
+    Sd86ce3cb, S118e45fc), longer than a DST record holds, so the writer
+    encodes it as jump records and the machine flies it uncut. Here it goes
+    through `stitches.split_long_moves` at `machine.MAX_STITCH_MM`, as every
+    stage 6 emitter's own paths do, as a TRAVEL run of the inner points
+    (the thread is travel between pieces, not fill or underlay). The line is
+    the one the machine already laid: nothing moves, it is tacked down.
+
+    A step that already fits, a jump the callee asked for, or nothing on
+    either side: `nxt` unchanged."""
+    if not prev or not nxt or nxt[0].jump or not prev[-1].points or not nxt[0].points:
+        return nxt
+    a, b = prev[-1].points[-1], nxt[0].points[0]
+    inner = stitches.split_long_moves([a, b], machine.MAX_STITCH_MM)[1:-1]
+    if not inner:
+        return nxt
+    return [StitchRun(points=inner, kind=stitches.TRAVEL, shape_id=shape_id,
+                      shade_thread_index=nxt[0].shade_thread_index)] + list(nxt)
+
+
 # The raster `_bury_route` proposes a bent route on. It only PROPOSES: every
 # leg is re-tested exactly, so a coarser grid can lose a route but never
 # pass a bad one.
@@ -3189,6 +3227,11 @@ def sequence(
     # as they were.
     outline_rings: dict[str, list] = {}
     outline_bodies: set[str] = set()
+    # `cfg.extra["split_long_inshape_stitches"]` (built OFF 2026-11-07): the
+    # step between two pieces of one shape that `stitch_one` sews as several
+    # `stitch_shape` calls is split at the machine ceiling (`join_piece`).
+    # Off, never read past this line.
+    split_inshape = split_long_inshape(cfg)
     if art_outlines and cfg.border_from_outline:
         _sewn = {_p.shape_id for _p in planned}
         for _oid, _bodies in art_outlines.items():
@@ -3483,6 +3526,8 @@ def sequence(
                             stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
                             trim_at_mm=trim_at,
                             start_near=o_runs[-1].points[-1] if o_runs else entry)
+                        if split_inshape:
+                            f_runs = join_piece(o_runs, f_runs, p.shape_id)
                         o_runs += f_runs
                         o_jumps += f_report["jumps"]
                     seam = 2.0 * cfg.simplify_tol_mm
@@ -3698,6 +3743,8 @@ def sequence(
                         stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
                         trim_at_mm=trim_at,
                         start_near=k_runs[-1].points[-1] if k_runs else entry)
+                    if split_inshape:
+                        f_runs = join_piece(k_runs, f_runs, p.shape_id)
                     k_runs += f_runs
                     k_jumps += f_report["jumps"]
                 # Closed by the seam tolerance (twice the contour

@@ -48,6 +48,8 @@ The floors are analytic, not sampled, so the score stays deterministic:
 
 Usage: scorecard.py [--explain] [--json] <design_dir> [...]   (dirs from prep_all.py)
 Emits score.json per dir and a summary table on stdout.
+       scorecard.py --direction-hist <design_dir> [...]   per-cell angle-difference
+       histogram behind `direction`, one JSON line per dir, no score.json.
 """
 import csv
 import json
@@ -895,6 +897,79 @@ def type_chance(pro_types, our_types):
                      for c in (0, 1, 2)))
 
 
+def direction_cells(pro, our_r, bb, sp, so):
+    """The cells `direction` and `sttype` are scored over, and both sides' maps.
+
+    Returns (pro angle, pro type, our angle, our type, mask). The mask is the
+    shared SOLID area on the CELL grid where both sides laid enough thread to
+    have a direction. Both sides go through the same `cell_stats`, so a satin
+    cell's angle is its CROSS (the thread between two rail penetrations) and a
+    fill cell's is its ROW: each is the direction the thread lies on the
+    fabric, and a satin and a tatami whose threads lie the same way agree
+    (`tests/test_scorecard_direction_axis.py`, 2026-11-07).
+    """
+    pa, pt, _ = cell_stats(pro, bb)
+    oa, ot, _ = cell_stats(our_r, bb)
+    shared = solid_cells(sp & so, bb)
+    h = min(pa.shape[0], shared.shape[0]); w = min(pa.shape[1], shared.shape[1])
+    both = np.zeros(pa.shape, bool)
+    both[:h, :w] = shared[:h, :w]
+    both &= ~np.isnan(pa) & ~np.isnan(oa)
+    return pa, pt, oa, ot, both
+
+
+def folded_angle_diff(a, b):
+    """|a - b| for two `cell_stats` angles (each in (-pi/2, pi/2]), folded to
+    [0, pi/2]: a thread direction is a line, so 0 and 180 deg are one."""
+    diff = np.abs(a - b)
+    return np.minimum(diff, math.pi - diff)          # angles are mod pi
+
+
+def direction_histogram(dirpath, bin_deg=15.0):
+    """Per-cell folded angle difference, ours vs pro, over the cells
+    `score_design` scores `direction` on: the same registration, solid mask and
+    cell grid. A diagnostic only; it writes nothing and scores nothing.
+
+    `mode_deg` is the modal bin as [lo, hi). `near_perpendicular` is True when
+    that whole bin lies within 15 deg of 90 -- the signature of comparing one
+    side's rows against the other's penetrations (an axis-convention bug).
+    `by_type` splits the counts by (pro type, our type), 0=run 1=satin 2=fill.
+    """
+    d = Path(dirpath)
+    _r, pro, _s, _t = load_side(d, "pro", d.name)
+    _r, our, _s, _t = load_side(d, "ours", d.name)
+    dx, dy, _iou_at = register(pro, our, bounds(pro, our))
+    our_r = shifted(our, dx, dy)
+    bb = bounds(pro, our_r)
+    _cov, sp, so, _det = coverage_component(pro, our_r, bb, load_blocks(d, "pro"), load_blocks(d, "ours"))
+    pa, pt, oa, ot, both = direction_cells(pro, our_r, bb, sp, so)
+    edges = np.arange(0.0, 90.0 + bin_deg, bin_deg)
+    out = {"cells": int(both.sum()), "bin_deg": bin_deg,
+           "edges_deg": [float(e) for e in edges]}
+    if not both.any():
+        return dict(out, counts=[0] * (len(edges) - 1), mode_deg=None, median_deg=None,
+                    raw=None, kappa_unclamped=None, near_perpendicular=False, by_type={})
+    deg = np.degrees(folded_angle_diff(pa[both], oa[both]))
+    counts, _ = np.histogram(deg, edges)
+    k = int(counts.argmax())
+    raw_dir = float(np.mean(1 - deg / 90.0))
+    by_type = {}
+    tp, to = pt[both], ot[both]
+    for a in (0, 1, 2):
+        for b in (0, 1, 2):
+            m = (tp == a) & (to == b)
+            if m.any():
+                c, _ = np.histogram(deg[m], edges)
+                by_type[f"{a}{b}"] = [int(v) for v in c]
+    return dict(out, counts=[int(v) for v in counts],
+                mode_deg=[float(edges[k]), float(edges[k + 1])],
+                median_deg=round(float(np.median(deg)), 1),
+                raw=round(raw_dir, 3),
+                kappa_unclamped=round((raw_dir - DIRECTION_CHANCE) / (1 - DIRECTION_CHANCE), 3),
+                near_perpendicular=bool(edges[k] >= 75.0 - 1e-9),
+                by_type=by_type)
+
+
 def score_design(dirpath, explain=False):
     d = Path(dirpath)
     slug = d.name
@@ -921,20 +996,13 @@ def score_design(dirpath, explain=False):
     detail.update({k: v for k, v in cov_detail.items() if k != "per_colour"})
 
     # 3/4. direction + stitch type over the SHARED SOLID area ---------------
-    pa, pt, _ = cell_stats(pro, bb)
-    oa, ot, _ = cell_stats(our_r, bb)
-    shared = solid_cells(sp & so, bb)
-    h = min(pa.shape[0], shared.shape[0]); w = min(pa.shape[1], shared.shape[1])
-    both = np.zeros(pa.shape, bool)
-    both[:h, :w] = shared[:h, :w]
-    both &= ~np.isnan(pa) & ~np.isnan(oa)
+    pa, pt, oa, ot, both = direction_cells(pro, our_r, bb, sp, so)
     # Both are chance-corrected before they are weighted — see the module
     # docstring. `raw` keeps the uncorrected agreement so old scores can still
     # be lined up against new ones.
     chance, raw = {}, {}
     if both.any():
-        diff = np.abs(pa[both] - oa[both])
-        diff = np.minimum(diff, math.pi - diff)          # angles are mod pi
+        diff = folded_angle_diff(pa[both], oa[both])
         raw["direction"] = float(np.mean(1 - diff / (math.pi / 2)))
         chance["direction"] = DIRECTION_CHANCE
         parts["direction"] = chance_correct(raw["direction"], DIRECTION_CHANCE)
@@ -1082,6 +1150,11 @@ if __name__ == "__main__":
     explain = "--explain" in args
     as_json = "--json" in args
     dirs = [a for a in args if not a.startswith("--")]
+    if "--direction-hist" in args:
+        # Diagnostic only: per-cell folded angle difference, no score.json.
+        for dd in dirs:
+            print(Path(dd).name, json.dumps(direction_histogram(dd)), flush=True)
+        sys.exit(0)
     rows = []
     for dd in dirs:
         name = Path(dd).name
