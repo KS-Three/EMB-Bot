@@ -178,9 +178,23 @@
     rowOf.set(node, row);
     if (observer) observer.observe(node);
     else pendingObserve.add(node);
+    // unobserve() fires no callback, so a tile that leaves the grid (a search
+    // or group filter removed it) must take its own request back, or the
+    // queue fetches it ahead of the tiles now on screen (review of #1348).
     return {
-      update(r) { rowOf.set(node, r); },
+      update(r) {
+        const prev = rowOf.get(node);
+        rowOf.set(node, r);
+        if (prev && r && prev.key !== r.key) {
+          queue.unwant(prev.key);
+          // Re-observing delivers a fresh entry, so the new key is wanted
+          // if the tile is in the window.
+          if (observer) { observer.unobserve(node); observer.observe(node); }
+        }
+      },
       destroy() {
+        const row = rowOf.get(node);
+        if (row) queue.unwant(row.key);
         pendingObserve.delete(node);
         if (observer) observer.unobserve(node);
       },
