@@ -1,0 +1,1365 @@
+{
+ "rubric_sha256": "16836a48790c2738ab581dda75de9e4eac83ee4e8eb30ea8cdb875ec1b81b243",
+ "n_verdicts": 99,
+ "unscored": [],
+ "primary": {
+  "n_scored": 92,
+  "n_kent_decided": 43,
+  "n_judge_decided": 74,
+  "judge_silent_on_decided": 4,
+  "kappa_3way": 0.3287344123109578,
+  "ci3_pairs": [
+   0.17942327308777448,
+   0.4705478494822514
+  ],
+  "ci3_designs": [
+   0.21441999956958405,
+   0.43414679483048274
+  ],
+  "reading_3way": "above chance",
+  "n_decided": 39,
+  "kappa_sides": 0.5666666666666668,
+  "ci2_pairs": [
+   0.28,
+   0.815165876777251
+  ],
+  "ci2_designs": [
+   0.3529411764705883,
+   0.7777777777777778
+  ],
+  "reading_sides": "above chance",
+  "table_kent_rows_judge_cols": [
+   [
+    11,
+    1,
+    4
+   ],
+   [
+    20,
+    14,
+    15
+   ],
+   [
+    4,
+    3,
+    20
+   ]
+  ],
+  "passes": false,
+  "bar": {
+   "kappa_at_least": 0.55,
+   "ci_pairs_lower_above": 0.34
+  }
+ },
+ "by_set": {
+  "vlm-judge": {
+   "n_scored": 34,
+   "n_kent_decided": 19,
+   "n_judge_decided": 27,
+   "judge_silent_on_decided": 3,
+   "kappa_3way": 0.35238095238095224,
+   "ci3_pairs": [
+    0.09207601407187042,
+    0.583031369500357
+   ],
+   "ci3_designs": [
+    0.06790447470317251,
+    0.5871313672922253
+   ],
+   "reading_3way": "above chance",
+   "n_decided": 16,
+   "kappa_sides": 0.6363636363636364,
+   "ci2_pairs": [
+    0.2631578947368421,
+    1.0
+   ],
+   "ci2_designs": [
+    0.2857142857142856,
+    1.0
+   ],
+   "reading_sides": "above chance",
+   "table_kent_rows_judge_cols": [
+    [
+     6,
+     0,
+     3
+    ],
+    [
+     7,
+     4,
+     4
+    ],
+    [
+     0,
+     3,
+     7
+    ]
+   ],
+   "passes": false,
+   "bar": {
+    "kappa_at_least": 0.55,
+    "ci_pairs_lower_above": 0.34
+   }
+  },
+  "vlm-judge-100": {
+   "n_scored": 58,
+   "n_kent_decided": 24,
+   "n_judge_decided": 47,
+   "judge_silent_on_decided": 1,
+   "kappa_3way": 0.31418918918918914,
+   "ci3_pairs": [
+    0.13678242381289882,
+    0.4895219788277258
+   ],
+   "ci3_designs": [
+    0.23098591549295808,
+    0.3712208189820128
+   ],
+   "reading_3way": "above chance",
+   "n_decided": 23,
+   "kappa_sides": 0.5147679324894514,
+   "ci2_pairs": [
+    0.11158798283261806,
+    0.8622754491017964
+   ],
+   "ci2_designs": [
+    0.33333333333333326,
+    0.7472527472527473
+   ],
+   "reading_sides": "above chance",
+   "table_kent_rows_judge_cols": [
+    [
+     5,
+     1,
+     1
+    ],
+    [
+     13,
+     10,
+     11
+    ],
+    [
+     4,
+     0,
+     13
+    ]
+   ],
+   "passes": false,
+   "bar": {
+    "kappa_at_least": 0.55,
+    "ci_pairs_lower_above": 0.34
+   }
+  }
+ },
+ "judge_tie_on_kent_side": 4,
+ "judge_side_on_kent_tie": 35,
+ "opposite_sides": 8,
+ "controls": {
+  "identical": 7,
+  "identical_called_tie": 7,
+  "rows": [
+   {
+    "blind": "H004",
+    "pool_id": "vlm-judge-100:P039",
+    "choice": "tie"
+   },
+   {
+    "blind": "H007",
+    "pool_id": "vlm-judge:P019",
+    "choice": "tie"
+   },
+   {
+    "blind": "H033",
+    "pool_id": "vlm-judge:P062",
+    "choice": "tie"
+   },
+   {
+    "blind": "H047",
+    "pool_id": "vlm-judge-100:P086",
+    "choice": "tie"
+   },
+   {
+    "blind": "H052",
+    "pool_id": "vlm-judge-100:P060",
+    "choice": "tie"
+   },
+   {
+    "blind": "H055",
+    "pool_id": "vlm-judge:P051",
+    "choice": "tie"
+   },
+   {
+    "blind": "H084",
+    "pool_id": "vlm-judge-100:P042",
+    "choice": "tie"
+   }
+  ],
+  "left_picks": 41,
+  "right_picks": 33,
+  "ties_live": 18,
+  "mean_confidence": 2.79
+ },
+ "baseline_old_judges_same_pairs": {
+  "n_scored": 92,
+  "n_kent_decided": 43,
+  "n_judge_decided": 37,
+  "judge_silent_on_decided": 20,
+  "kappa_3way": 0.34397283531409184,
+  "ci3_pairs": [
+   0.18325883528131667,
+   0.49840016054566855
+  ],
+  "ci3_designs": [
+   0.20935000756209912,
+   0.4828790321159909
+  ],
+  "reading_3way": "above chance",
+  "n_decided": 23,
+  "kappa_sides": 0.6567164179104478,
+  "ci2_pairs": [
+   0.36986301369863017,
+   0.9125475285171103
+  ],
+  "ci2_designs": [
+   0.42622950819672123,
+   0.8936170212765956
+  ],
+  "reading_sides": "above chance",
+  "table_kent_rows_judge_cols": [
+   [
+    11,
+    5,
+    0
+   ],
+   [
+    9,
+    35,
+    5
+   ],
+   [
+    4,
+    15,
+    8
+   ]
+  ],
+  "passes": false,
+  "bar": {
+   "kappa_at_least": 0.55,
+   "ci_pairs_lower_above": 0.34
+  }
+ },
+ "baseline_by_set": {
+  "vlm-judge": {
+   "n_scored": 34,
+   "n_kent_decided": 19,
+   "n_judge_decided": 12,
+   "judge_silent_on_decided": 9,
+   "kappa_3way": 0.47002398081534796,
+   "ci3_pairs": [
+    0.22727272727272693,
+    0.6851851851851853
+   ],
+   "ci3_designs": [
+    0.21403508771929824,
+    0.6771543456686451
+   ],
+   "reading_3way": "above chance",
+   "n_decided": 10,
+   "kappa_sides": 0.7368421052631576,
+   "ci2_pairs": [
+    0.0,
+    1.0
+   ],
+   "ci2_designs": [
+    0.0,
+    1.0
+   ],
+   "reading_sides": "no evidence either way",
+   "table_kent_rows_judge_cols": [
+    [
+     7,
+     2,
+     0
+    ],
+    [
+     2,
+     13,
+     0
+    ],
+    [
+     1,
+     7,
+     2
+    ]
+   ],
+   "passes": false,
+   "bar": {
+    "kappa_at_least": 0.55,
+    "ci_pairs_lower_above": 0.34
+   }
+  },
+  "vlm-judge-100": {
+   "n_scored": 58,
+   "n_kent_decided": 24,
+   "n_judge_decided": 25,
+   "judge_silent_on_decided": 11,
+   "kappa_3way": 0.2596830985915493,
+   "ci3_pairs": [
+    0.05434782608695636,
+    0.45345522407016936
+   ],
+   "ci3_designs": [
+    0.10482758620689692,
+    0.36386768447837153
+   ],
+   "reading_3way": "above chance",
+   "n_decided": 13,
+   "kappa_sides": 0.5517241379310346,
+   "ci2_pairs": [
+    0.16513761467889915,
+    1.0
+   ],
+   "ci2_designs": [
+    0.29906542056074753,
+    0.8135593220338982
+   ],
+   "reading_sides": "above chance",
+   "table_kent_rows_judge_cols": [
+    [
+     4,
+     3,
+     0
+    ],
+    [
+     7,
+     22,
+     5
+    ],
+    [
+     3,
+     8,
+     6
+    ]
+   ],
+   "passes": false,
+   "bar": {
+    "kappa_at_least": 0.55,
+    "ci_pairs_lower_above": 0.34
+   }
+  }
+ },
+ "pairs": [
+  {
+   "blind": "H001",
+   "pool_id": "vlm-judge-100:P075",
+   "set": "vlm-judge-100",
+   "design": "fremont",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 3,
+   "reason": "Left 'E' in THE keeps its arms; right one sews like an 'L' with the top/middle missing. Rest the same."
+  },
+  {
+   "blind": "H002",
+   "pool_id": "vlm-judge-100:P003",
+   "set": "vlm-judge-100",
+   "design": "golden_tee",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 3,
+   "reason": "Both poor, but right GOLF 'O' is a round closed ring and the 'L' upright is solid and straight; left O is broken and L stroke is thin and patchy."
+  },
+  {
+   "blind": "H003",
+   "pool_id": "vlm-judge:P032",
+   "set": "vlm-judge",
+   "design": "mfab",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 1,
+   "reason": "Damn near the same; left N counter edge runs a touch straighter, right has a small kink."
+  },
+  {
+   "blind": "H005",
+   "pool_id": "vlm-judge-100:P022",
+   "set": "vlm-judge-100",
+   "design": "tires",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 3,
+   "reason": "Identical renders; same blobbed r and closed counters on both."
+  },
+  {
+   "blind": "H006",
+   "pool_id": "vlm-judge:P046",
+   "set": "vlm-judge",
+   "design": "and_pizza",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 4,
+   "reason": "Left 'i' and 'zz' keep straight clean edges; right has stepped, wavy edges and seams on the i and z strokes."
+  },
+  {
+   "blind": "H008",
+   "pool_id": "vlm-judge:P006",
+   "set": "vlm-judge",
+   "design": "bukit_asam",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 3,
+   "reason": "Right 'e' in beyond turns with the stroke and keeps an open counter; left e is a jumbled patch."
+  },
+  {
+   "blind": "H009",
+   "pool_id": "vlm-judge-100:P071",
+   "set": "vlm-judge-100",
+   "design": "bridge",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 2,
+   "reason": "Both poor, but right BAR & RESTAURANT letters sew as solid shapes that read; left is sparse zigzag scribble with crossing stitches."
+  },
+  {
+   "blind": "H010",
+   "pool_id": "vlm-judge-100:P004",
+   "set": "vlm-judge-100",
+   "design": "bridge",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 3,
+   "reason": "Identical renders; both lose the small lettering and blob Bridge the same way."
+  },
+  {
+   "blind": "H011",
+   "pool_id": "vlm-judge-100:P015",
+   "set": "vlm-judge-100",
+   "design": "becker",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 4,
+   "reason": "Right is better, the \"I\" in MARINE is straight and square; the left \"I\" is wavey and leans, rest is the same."
+  },
+  {
+   "blind": "H012",
+   "pool_id": "vlm-judge-100:P041",
+   "set": "vlm-judge-100",
+   "design": "golden_tee",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 4,
+   "reason": "Left is better, the \"O\" in GOLF is satin that turns around the letter like a pen stroke; right breaks it into patches whose direction jumps."
+  },
+  {
+   "blind": "H013",
+   "pool_id": "vlm-judge-100:P025",
+   "set": "vlm-judge-100",
+   "design": "becker",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 4,
+   "reason": "Left is better, BECKER outline is clean; right has cross over stitches and patchy fill all through the BECKER shadow."
+  },
+  {
+   "blind": "H014",
+   "pool_id": "vlm-judge-100:P018",
+   "set": "vlm-judge-100",
+   "design": "golden_tee",
+   "kent": "before",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Damn near the same; left tee head keeps its satin turning with the stroke, right has a block where the direction jumps."
+  },
+  {
+   "blind": "H015",
+   "pool_id": "vlm-judge-100:P089",
+   "set": "vlm-judge-100",
+   "design": "golden_tee",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 2,
+   "reason": "Nothing to choose, lettering and tee look the same in both."
+  },
+  {
+   "blind": "H016",
+   "pool_id": "vlm-judge-100:P008",
+   "set": "vlm-judge-100",
+   "design": "bridge",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Both poor on \"Bridge\"; right adds broken grey outline pieces around the wheel that come apart from the shapes, left holds together better."
+  },
+  {
+   "blind": "H017",
+   "pool_id": "vlm-judge-100:P094",
+   "set": "vlm-judge-100",
+   "design": "bridge",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 3,
+   "reason": "Left is better, BAR & RESTAURANT at least reads as letters; right turns the small lettering into blocky blobs."
+  },
+  {
+   "blind": "H018",
+   "pool_id": "vlm-judge-100:P064",
+   "set": "vlm-judge-100",
+   "design": "fremont",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Left is better, THE and FREMONT keep the slab letter shape; right's letters are heavier and blob together."
+  },
+  {
+   "blind": "H019",
+   "pool_id": "vlm-judge:P011",
+   "set": "vlm-judge",
+   "design": "and_pizza",
+   "kent": "before",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 4,
+   "reason": "Left is better, the \"z\"s keep sharp square corners and straight strokes; right rounds them off and has a stray crossover chunk on the \"p\"."
+  },
+  {
+   "blind": "H020",
+   "pool_id": "vlm-judge:P063",
+   "set": "vlm-judge",
+   "design": "toat",
+   "kent": "before",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 3,
+   "reason": "Left is better, the \"M\" strokes all follow the pen; right fills one stroke flat and puts a blob of stitching at the bottom of the M."
+  },
+  {
+   "blind": "H021",
+   "pool_id": "vlm-judge-100:P036",
+   "set": "vlm-judge-100",
+   "design": "drone",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Left PRECISION strokes stay straight and crisp; right letters go wavy and THERMAL's M/E carry stray crossing bars, though right's S turns a bit better."
+  },
+  {
+   "blind": "H022",
+   "pool_id": "vlm-judge:P035",
+   "set": "vlm-judge",
+   "design": "k_line",
+   "kent": "before",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 4,
+   "reason": "Right's KAWASAKI KISEN KAISHA actually reads as letters; left's small lettering is lumps of straight fill with no letter shape."
+  },
+  {
+   "blind": "H023",
+   "pool_id": "vlm-judge-100:P082",
+   "set": "vlm-judge-100",
+   "design": "drone",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Lettering is the same; left's shoreline is one clean satin bank, while right boxes it in with stray rails crossing the orange fill."
+  },
+  {
+   "blind": "H024",
+   "pool_id": "vlm-judge-100:P103",
+   "set": "vlm-judge-100",
+   "design": "drone",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 3,
+   "reason": "Left PRECISION letters keep cleaner edges and the S turns smoothly; right's P, R and E come out ragged and choppy."
+  },
+  {
+   "blind": "H025",
+   "pool_id": "vlm-judge-100:P063",
+   "set": "vlm-judge-100",
+   "design": "bridge",
+   "kent": "after",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 2,
+   "reason": "Right's Bridge script is rounder and follows the pen better, while left's letters are blocky with flat spots; right does have a small stray bracket at the g."
+  },
+  {
+   "blind": "H026",
+   "pool_id": "vlm-judge:P005",
+   "set": "vlm-judge",
+   "design": "toat",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "The script lettering is essentially identical; left's white ground matches the art, and right's grey fill does not."
+  },
+  {
+   "blind": "H027",
+   "pool_id": "vlm-judge:P026",
+   "set": "vlm-judge",
+   "design": "k_line",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Damn near the same; left's S in KISEN fans round the curve with the pen, while right's cuts a straight diagonal band through the middle."
+  },
+  {
+   "blind": "H028",
+   "pool_id": "vlm-judge-100:P026",
+   "set": "vlm-judge-100",
+   "design": "becker",
+   "kent": "after",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 4,
+   "reason": "Right MARINE stitches each stroke as a column that follows the pen; left fills the letters as lumpy blocks with blobs and a crossover on the A."
+  },
+  {
+   "blind": "H029",
+   "pool_id": "vlm-judge-100:P070",
+   "set": "vlm-judge-100",
+   "design": "drone",
+   "kent": "before",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 4,
+   "reason": "Left sews PRECISION and AND DRONE as hollow run-stitch outlines; right fills them as solid satin letters like the art."
+  },
+  {
+   "blind": "H030",
+   "pool_id": "vlm-judge-100:P016",
+   "set": "vlm-judge-100",
+   "design": "fremont",
+   "kent": "before",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 3,
+   "reason": "Right's THE has its T crossbar and reads as THE; left's THE loses the T and reads IHE. Both carry a stray travel line."
+  },
+  {
+   "blind": "H031",
+   "pool_id": "vlm-judge-100:P059",
+   "set": "vlm-judge-100",
+   "design": "fremont",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Lettering matches on both; the only difference is the Wisconsin shape, smooth on the left and lumpy, blobby edges on the right."
+  },
+  {
+   "blind": "H032",
+   "pool_id": "vlm-judge-100:P029",
+   "set": "vlm-judge-100",
+   "design": "becker",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 4,
+   "reason": "MARINE on the left keeps straight strokes and clean letter shapes; the right goes wavy and lumpy, with a blob in the E and a crossover stitch on the A."
+  },
+  {
+   "blind": "H034",
+   "pool_id": "vlm-judge-100:P023",
+   "set": "vlm-judge-100",
+   "design": "becker",
+   "kent": "after",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 3,
+   "reason": "Left BECKER falls apart: the C and K break into pieces with stray crossovers. Right keeps every letter whole and readable, even with the seams in MARINE."
+  },
+  {
+   "blind": "H035",
+   "pool_id": "vlm-judge-100:P001",
+   "set": "vlm-judge-100",
+   "design": "becker",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 2,
+   "reason": "Damn near the same; only the top of the I differs. The right's sliver stands straight, the left's bends into a crooked hook."
+  },
+  {
+   "blind": "H036",
+   "pool_id": "vlm-judge-100:P088",
+   "set": "vlm-judge-100",
+   "design": "becker",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 3,
+   "reason": "Left keeps the B and R counters at their true flat-sided shape; the right turns them into round satin blobs with a stray hook stitch atop the B."
+  },
+  {
+   "blind": "H037",
+   "pool_id": "vlm-judge-100:P021",
+   "set": "vlm-judge-100",
+   "design": "drone",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 3,
+   "reason": "Lettering decides it: the left's AND DRONE reads; on the right the E of DRONE breaks into an X shape ('DAONX') and THERMAL carries more crossovers."
+  },
+  {
+   "blind": "H038",
+   "pool_id": "vlm-judge:P017",
+   "set": "vlm-judge",
+   "design": "toat",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Nearly identical; in LLC the left's second L sits square with a clean foot, while the right's foot ends in a pointed tail."
+  },
+  {
+   "blind": "H039",
+   "pool_id": "vlm-judge:P039",
+   "set": "vlm-judge",
+   "design": "proseal",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 1,
+   "reason": "Damn near the same; the left's A counter keeps a cleaner triangle, though its E middle arm end is a touch rougher."
+  },
+  {
+   "blind": "H040",
+   "pool_id": "vlm-judge-100:P098",
+   "set": "vlm-judge-100",
+   "design": "golden_tee",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Both GOLFs are messy, but the left's G and O keep their capital shape; the right's G curls into a lowercase g and the O shrinks."
+  },
+  {
+   "blind": "H041",
+   "pool_id": "vlm-judge-100:P020",
+   "set": "vlm-judge-100",
+   "design": "bridge",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 5,
+   "reason": "Same render on both sides, same Bridge lettering and same anchor and wheel. Nothing differs."
+  },
+  {
+   "blind": "H042",
+   "pool_id": "vlm-judge:P042",
+   "set": "vlm-judge",
+   "design": "bukit_asam",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Rest is near identical. The green 'e' in beyond keeps its open eye and crossbar on the left; the right 'e' closes up into a lump."
+  },
+  {
+   "blind": "H043",
+   "pool_id": "vlm-judge-100:P100",
+   "set": "vlm-judge-100",
+   "design": "golden_tee",
+   "kent": "before",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 5,
+   "reason": "GT GOLF lettering, outlines and shadows are the same on both. Nothing to choose."
+  },
+  {
+   "blind": "H044",
+   "pool_id": "vlm-judge-100:P095",
+   "set": "vlm-judge-100",
+   "design": "fremont",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 4,
+   "reason": "Right 'THE' reads whole: the T bar is solid and the H and E keep their shape. On the left the T bar and the E break apart."
+  },
+  {
+   "blind": "H045",
+   "pool_id": "vlm-judge-100:P011",
+   "set": "vlm-judge-100",
+   "design": "tires",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "The left 'r' shoulder stays round like the script. The right 'r' has an abrupt flat cut on top, a flat spot in the curve."
+  },
+  {
+   "blind": "H046",
+   "pool_id": "vlm-judge-100:P097",
+   "set": "vlm-judge-100",
+   "design": "fremont",
+   "kent": "after",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 3,
+   "reason": "Right letters keep the slab-serif shape, with straight uprights and square serifs. The left letters are blobby and wavy-edged."
+  },
+  {
+   "blind": "H048",
+   "pool_id": "vlm-judge-100:P090",
+   "set": "vlm-judge-100",
+   "design": "bridge",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 5,
+   "reason": "Same render. The Bridge lettering and the anchor do not differ."
+  },
+  {
+   "blind": "H049",
+   "pool_id": "vlm-judge-100:P047",
+   "set": "vlm-judge-100",
+   "design": "becker",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 2,
+   "reason": "Letter shapes and stitch directions match. Only the fill texture inside the letters differs, and both have the same choppy direction jumps in MARINE."
+  },
+  {
+   "blind": "H050",
+   "pool_id": "vlm-judge-100:P077",
+   "set": "vlm-judge-100",
+   "design": "bridge",
+   "kent": "after",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 3,
+   "reason": "Right 'Bridge' is smoother and its stitches turn with the strokes. The left B has a grey blob and the letters are blocky. The right does carry stray yellow crossovers in the field."
+  },
+  {
+   "blind": "H051",
+   "pool_id": "vlm-judge:P016",
+   "set": "vlm-judge",
+   "design": "proseal",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Lettering identical; right picks up extra crossover stitching in the bottom hexagons, left is cleaner there."
+  },
+  {
+   "blind": "H053",
+   "pool_id": "vlm-judge:P004",
+   "set": "vlm-judge",
+   "design": "toat",
+   "kent": "after",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 3,
+   "reason": "Right's 'h' stem is one clean stroke and its arch stays round; left's 'h' has a direction jump at the stem and a flat spot on the arch."
+  },
+  {
+   "blind": "H054",
+   "pool_id": "vlm-judge:P010",
+   "set": "vlm-judge",
+   "design": "jakarta",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Nearly the same, but right's 'a' stem has a notch in its edge where left's upright stays straight."
+  },
+  {
+   "blind": "H056",
+   "pool_id": "vlm-judge-100:P092",
+   "set": "vlm-judge-100",
+   "design": "drone",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 4,
+   "reason": "Right's THERMAL reads, with a true 'E' and an 'A' that keeps its counter; left's 'E' blobs into a 'B'/'8' and the 'A' fills in."
+  },
+  {
+   "blind": "H057",
+   "pool_id": "vlm-judge:P049",
+   "set": "vlm-judge",
+   "design": "n_sync",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 3,
+   "reason": "Left's 'S' and 'C' turn with the curve; right's 'S' fans out with stray stitches at the top and its 'C' carries loose crossing bits."
+  },
+  {
+   "blind": "H058",
+   "pool_id": "vlm-judge:P018",
+   "set": "vlm-judge",
+   "design": "hed_p_e",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 2,
+   "reason": "Damn near identical; only a hair of difference around the 'e.' period, nothing that changes the read."
+  },
+  {
+   "blind": "H059",
+   "pool_id": "vlm-judge:P007",
+   "set": "vlm-judge",
+   "design": "jakarta",
+   "kent": "after",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 2,
+   "reason": "The small lettering differs by a pixel at most in the 'r'; both are the same blobby small text."
+  },
+  {
+   "blind": "H060",
+   "pool_id": "vlm-judge-100:P053",
+   "set": "vlm-judge-100",
+   "design": "bridge",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Both poor, but left's 'Bridge' keeps its letter shapes a bit better; right's 'd' and 'g' have more chunky blocks breaking the flow, and its anchor is lumpier."
+  },
+  {
+   "blind": "H061",
+   "pool_id": "vlm-judge:P031",
+   "set": "vlm-judge",
+   "design": "proseal",
+   "kent": "before",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 3,
+   "reason": "Right is better, the right leg of the big \"A\" turns with the stroke; the left one has flat horizontal bands stacked across the leg that break up the flow."
+  },
+  {
+   "blind": "H062",
+   "pool_id": "vlm-judge-100:P062",
+   "set": "vlm-judge-100",
+   "design": "bridge",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 4,
+   "reason": "Damn near identical. Same chopped-up \"Bridge\" lettering and same blobs in both, so there is nothing to choose between them."
+  },
+  {
+   "blind": "H063",
+   "pool_id": "vlm-judge:P009",
+   "set": "vlm-judge",
+   "design": "proseal",
+   "kent": "before",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 5,
+   "reason": "Left by far. Right's PROSEAL is choppy and \"SPRAY FOAM COATINGS\" turns to mush that you can't read, while left's letters keep their shape."
+  },
+  {
+   "blind": "H064",
+   "pool_id": "vlm-judge:P052",
+   "set": "vlm-judge",
+   "design": "k_line",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 1,
+   "reason": "Nearly the same. The small \"S\" in KISEN on the right fans more evenly around its curves; the left one cuts more diagonally across the stroke."
+  },
+  {
+   "blind": "H065",
+   "pool_id": "vlm-judge-100:P012",
+   "set": "vlm-judge-100",
+   "design": "golden_tee",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 4,
+   "reason": "Left is better. The \"O\" in GOLF radiates smoothly around the ring, while the right \"O\" has a patch that jumps direction and cuts straight across the curve."
+  },
+  {
+   "blind": "H066",
+   "pool_id": "vlm-judge:P029",
+   "set": "vlm-judge",
+   "design": "mfab",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 1,
+   "reason": "Damn near the same. Right's keyline corner under the lower letters is a touch cleaner, where left has a wavy step at the bottom edge."
+  },
+  {
+   "blind": "H067",
+   "pool_id": "vlm-judge-100:P054",
+   "set": "vlm-judge-100",
+   "design": "fremont",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Left keeps \"THE\" as bold slab letters like the art. Right thins the \"THE\" to a skinny pen line and has more white crossover stitches around the H and E."
+  },
+  {
+   "blind": "H068",
+   "pool_id": "vlm-judge:P014",
+   "set": "vlm-judge",
+   "design": "dot_music",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 5,
+   "reason": "Identical renders, so nothing differs between them."
+  },
+  {
+   "blind": "H069",
+   "pool_id": "vlm-judge:P012",
+   "set": "vlm-judge",
+   "design": "jakarta",
+   "kent": "before",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 3,
+   "reason": "Right is better. The stem of the last \"a\" is straight and its counter is smooth, while on the left the stem is wavy and the counter's top is lumpy."
+  },
+  {
+   "blind": "H070",
+   "pool_id": "vlm-judge:P038",
+   "set": "vlm-judge",
+   "design": "ahora",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 3,
+   "reason": "Left is better. The \"R\" stem is a clean satin running across the upright, while the right stem has a block of stitches that jumps direction in the middle with a lumpy edge."
+  },
+  {
+   "blind": "H071",
+   "pool_id": "vlm-judge-100:P006",
+   "set": "vlm-judge-100",
+   "design": "tires",
+   "kent": "before",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 1,
+   "reason": "Damn near the same; left T stem and i joint read a touch smoother, right e has a notch on its right side."
+  },
+  {
+   "blind": "H072",
+   "pool_id": "vlm-judge-100:P099",
+   "set": "vlm-judge-100",
+   "design": "drone",
+   "kent": "after",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 2,
+   "reason": "Lettering about even, but left carries more stray crossing stitches in PRECISION/THERMAL and a crossover-ridden background; right crosshair holds together."
+  },
+  {
+   "blind": "H073",
+   "pool_id": "vlm-judge-100:P031",
+   "set": "vlm-judge-100",
+   "design": "tires",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 4,
+   "reason": "Renders identical, nothing between them differs."
+  },
+  {
+   "blind": "H074",
+   "pool_id": "vlm-judge:P036",
+   "set": "vlm-judge",
+   "design": "mfab",
+   "kent": "after",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 3,
+   "reason": "Same letters, same stitching; only a speck differs at the blob under the M, not enough to pick."
+  },
+  {
+   "blind": "H075",
+   "pool_id": "vlm-judge-100:P055",
+   "set": "vlm-judge-100",
+   "design": "drone",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 3,
+   "reason": "Identical lettering and art; no visible difference in any letter."
+  },
+  {
+   "blind": "H076",
+   "pool_id": "vlm-judge:P020",
+   "set": "vlm-judge",
+   "design": "but_seriously",
+   "kent": "after",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 4,
+   "reason": "Identical; both fill the o/s counters with grey the same way."
+  },
+  {
+   "blind": "H077",
+   "pool_id": "vlm-judge-100:P030",
+   "set": "vlm-judge-100",
+   "design": "golden_tee",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 1,
+   "reason": "Damn near the same; right O's gold satin turns more evenly round the curve, left has a blocky break at the top."
+  },
+  {
+   "blind": "H078",
+   "pool_id": "vlm-judge-100:P079",
+   "set": "vlm-judge-100",
+   "design": "golden_tee",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 4,
+   "reason": "Left has orange crossover stitches running through G-O-L-F and a red run cutting the T; right is clean."
+  },
+  {
+   "blind": "H079",
+   "pool_id": "vlm-judge-100:P033",
+   "set": "vlm-judge-100",
+   "design": "golden_tee",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 1,
+   "reason": "Nearly the same; right's L and shadow satin follow the stroke a bit cleaner, left G counter has more stray yellow."
+  },
+  {
+   "blind": "H080",
+   "pool_id": "vlm-judge-100:P065",
+   "set": "vlm-judge-100",
+   "design": "becker",
+   "kent": "after",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 2,
+   "reason": "BECKER identical; in MARINE the right M's diagonal follows the pen stroke while left M is patchy blocks with stray crossing stitches on top."
+  },
+  {
+   "blind": "H081",
+   "pool_id": "vlm-judge:P056",
+   "set": "vlm-judge",
+   "design": "mfab",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 2,
+   "reason": "Damn near the same: M-FAB and AND WELDING LLC look identical full size, and the crop difference is a small black notch in the white edge that doesn't change the lettering."
+  },
+  {
+   "blind": "H082",
+   "pool_id": "vlm-judge-100:P096",
+   "set": "vlm-judge-100",
+   "design": "becker",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 2,
+   "reason": "Nearly the same; in the MARINE letters the right lays smoother, unbroken rows that run with the stroke, while the left looks choppier. Same direction both sides, so small edge."
+  },
+  {
+   "blind": "H083",
+   "pool_id": "vlm-judge:P061",
+   "set": "vlm-judge",
+   "design": "proseal",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 2,
+   "reason": "Lettering identical; right has a weird crossover stitch at the bottom corner of the hexagon, left's corner is clean."
+  },
+  {
+   "blind": "H085",
+   "pool_id": "vlm-judge-100:P013",
+   "set": "vlm-judge-100",
+   "design": "drone",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 2,
+   "reason": "Lettering identical; right sews the drone top as a grey fill shaped like the art, left turns it into a white fan blob. Right does carry one stray light stitch."
+  },
+  {
+   "blind": "H086",
+   "pool_id": "vlm-judge:P064",
+   "set": "vlm-judge",
+   "design": "dot_music",
+   "kent": "before",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 4,
+   "reason": "Left has a stray crossover stitch slashing across the top of the 'm' and a notch in the 'u'; right's letters are clean."
+  },
+  {
+   "blind": "H087",
+   "pool_id": "vlm-judge:P021",
+   "set": "vlm-judge",
+   "design": "mfab",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 2,
+   "reason": "Damn near the same; the LLC/C crop shows no difference in letter shape or stray stitching I can call."
+  },
+  {
+   "blind": "H088",
+   "pool_id": "vlm-judge-100:P014",
+   "set": "vlm-judge-100",
+   "design": "tires",
+   "kent": "after",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 1,
+   "reason": "Black on black hides direction; only the crop of the T's loop end differs, and the right's end is a touch rounder and smoother."
+  },
+  {
+   "blind": "H089",
+   "pool_id": "vlm-judge:P057",
+   "set": "vlm-judge",
+   "design": "n_sync",
+   "kent": "before",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 5,
+   "reason": "Right's S, Y, N, C are clean with smooth curves and steady direction; left's are choppy patches with stray crossing stitches, a broken Y and a lumpy S."
+  },
+  {
+   "blind": "H090",
+   "pool_id": "vlm-judge-100:P050",
+   "set": "vlm-judge-100",
+   "design": "fremont",
+   "kent": "before",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 4,
+   "reason": "Left keeps HOTEL FREMONT at the art's thin slab-serif weight with crisp straight strokes; right blobs the letters bold and lumpy, losing their true shape."
+  },
+  {
+   "blind": "H091",
+   "pool_id": "vlm-judge-100:P058",
+   "set": "vlm-judge-100",
+   "design": "tires",
+   "kent": "before",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 3,
+   "reason": "Left keeps the round pen-tip ends on the T swash and the i; right cuts them into flat, chamfered corners. Both have the same little crossover at the r and s."
+  },
+  {
+   "blind": "H092",
+   "pool_id": "vlm-judge-100:P072",
+   "set": "vlm-judge-100",
+   "design": "drone",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 3,
+   "reason": "Right has stray white crossover stitches sitting on top of the M and L in THERMAL; left's lettering is clean there."
+  },
+  {
+   "blind": "H093",
+   "pool_id": "vlm-judge:P033",
+   "set": "vlm-judge",
+   "design": "mfab",
+   "kent": "tie",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 1,
+   "reason": "Damn near the same. Right's uprights in WELDING come out a touch straighter and cleaner-edged; left's are wavier."
+  },
+  {
+   "blind": "H094",
+   "pool_id": "vlm-judge-100:P027",
+   "set": "vlm-judge-100",
+   "design": "bridge",
+   "kent": "tie",
+   "judge": "tie",
+   "choice": "tie",
+   "confidence": 2,
+   "reason": "Bridge lettering is the same in both and fails the same way. Only the yellow fill angle differs, and both show travel lines."
+  },
+  {
+   "blind": "H095",
+   "pool_id": "vlm-judge-100:P007",
+   "set": "vlm-judge-100",
+   "design": "tires",
+   "kent": "after",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 3,
+   "reason": "Right has stray crossover arcs over the r and the s. Left has none, only a rough start on the i."
+  },
+  {
+   "blind": "H096",
+   "pool_id": "vlm-judge-100:P101",
+   "set": "vlm-judge-100",
+   "design": "tires",
+   "kent": "tie",
+   "judge": "before",
+   "choice": "R",
+   "confidence": 2,
+   "reason": "Both poor. Left's r has an abrupt flat block on its shoulder that breaks the curve. Right keeps the r round, though it carries stray arcs."
+  },
+  {
+   "blind": "H097",
+   "pool_id": "vlm-judge-100:P093",
+   "set": "vlm-judge-100",
+   "design": "tires",
+   "kent": "after",
+   "judge": "after",
+   "choice": "R",
+   "confidence": 3,
+   "reason": "Left has a stray crossover hook on the r and on the s. Right has a clean r and only the s stray."
+  },
+  {
+   "blind": "H098",
+   "pool_id": "vlm-judge:P048",
+   "set": "vlm-judge",
+   "design": "proseal",
+   "kent": "after",
+   "judge": "after",
+   "choice": "L",
+   "confidence": 3,
+   "reason": "Left's A in PROSEAL turns its stitches with the legs. Right drops in a block of upright satin across the crossbar that breaks up the flow."
+  },
+  {
+   "blind": "H099",
+   "pool_id": "vlm-judge:P025",
+   "set": "vlm-judge",
+   "design": "bukit_asam",
+   "kent": "before",
+   "judge": "before",
+   "choice": "L",
+   "confidence": 4,
+   "reason": "Left's beyondcoal letters follow the pen and coal reads. Right's beyond is blobby with crossing patches, and coal is unreadable."
+  }
+ ]
+}
