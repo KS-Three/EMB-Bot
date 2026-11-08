@@ -2488,20 +2488,23 @@ def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
         ov = (cfg.shape_overrides or {}).get(p.region.shape_id) or {}
         if ov.get("fill_angle_deg") is None and cfg.fill_angle_deg is None:
             return machine.WHITE_FIELD_FILL_ANGLE_DEG
-    # `cfg.extra["fill_angle_pro_offset"]` (built OFF): the pro's one fill
-    # angle, behind only the review's own angle and the global one.
-    pro = pro_offset_fill_angle(cfg, p.region.shape_id)
-    if pro is not None:
-        return pro
     shape_angle = p.region.meta.get("fill_angle_deg")
     if shape_angle is not None:
-        return float(shape_angle)
-    if cfg.fill_angle_deg is not None:
-        return cfg.fill_angle_deg
-    design = p.region.meta.get("design_angle_deg")
-    if design is not None:
-        return float(design)
-    return p.stitch_angle_deg
+        off = float(shape_angle)
+    elif cfg.fill_angle_deg is not None:
+        off = cfg.fill_angle_deg
+    elif p.region.meta.get("design_angle_deg") is not None:
+        off = float(p.region.meta["design_angle_deg"])
+    else:
+        off = p.stitch_angle_deg
+    # `cfg.extra["fill_angle_pro_offset"]` / `["fill_angle_pro_slant"]`
+    # (built OFF): the pro's fill angle, behind only the review's own angle
+    # and the global one. The slant rule prices its candidates against `off`,
+    # the angle this shape sews with both keys off.
+    pro = pro_offset_fill_angle(cfg, p.region.shape_id, poly=p.polygon, base_deg=off)
+    if pro is not None:
+        return pro
+    return off
 
 
 def _sew_rest_pieces(pieces, stitch_one, entry, exit_near, trim_at):
