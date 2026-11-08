@@ -251,8 +251,31 @@ describe("from the popover's model", () => {
   test("digitized: Auto reads its effective tier; a stored tier and angle are used", () => {
     expect(sampleSpecFromModel(popoverModel({ element: digitized(null, "satin"), shapeId: "Sabc" })).type).toBe("satin");
     const spec = sampleSpecFromModel(popoverModel({ element: digitized({ tier: "brick", fill_angle_deg: 60 }), shapeId: "Sabc" }));
-    expect(spec).toMatchObject({ type: "brick", rgb: [10, 20, 30] });
+    expect(spec).toMatchObject({ type: "brick", angleDeg: 60, autoAngle: false, rgb: [10, 20, 30] });
+    expect(sampleCaption(spec)).toBe("Brick sample, 60°");
     expect(sampleSpecFromModel(popoverModel({ element: digitized({ fill_angle_deg: 135 }), shapeId: "Sabc" }))).toMatchObject({ type: "tatami", angleDeg: 135 });
+  });
+
+  // Post-merge review of #1342: brick has no angle row, but the service sews
+  // brick as a fill and reads the stored fill_angle_deg; with none stored the
+  // digitizer picks the angle, so the sample must SAY auto, never a definite
+  // 45°. A digitized satin's crosses follow its column: never a definite 90°.
+  test("digitized brick with no stored angle, and digitized satin, are captioned auto", () => {
+    const brick = sampleSpecFromModel(popoverModel({ element: digitized({ tier: "brick" }), shapeId: "Sabc" }));
+    expect(brick).toMatchObject({ type: "brick", angleDeg: AUTO_SAMPLE_ANGLE, autoAngle: true });
+    expect(sampleCaption(brick)).toBe(`Brick sample, auto angle (shown ${AUTO_SAMPLE_ANGLE}°)`);
+    const satin = sampleSpecFromModel(popoverModel({ element: digitized(null, "satin"), shapeId: "Sabc" }));
+    expect(satin).toMatchObject({ type: "satin", autoAngle: true });
+    expect(sampleCaption(satin)).toMatch(/^Satin sample, auto angle \(shown \d+°\)$/);
+    // A satin keeps no fill angle: a stored one (switched from fill) is not its direction.
+    expect(sampleSpecFromModel(popoverModel({ element: digitized({ tier: "satin", fill_angle_deg: 60 }), shapeId: "Sabc" }))).toMatchObject({ autoAngle: true });
+  });
+
+  test("picking Brick on a fill shape at 135° keeps 135° once the new model lands", () => {
+    const fillModel = popoverModel({ element: digitized({ fill_angle_deg: 135 }), shapeId: "Sabc" });
+    expect(sampleSpecFromModel(fillModel, { stitchType: "brick" })).toMatchObject({ type: "brick", angleDeg: 135, autoAngle: false });
+    const brickModel = popoverModel({ element: digitized({ tier: "brick", fill_angle_deg: 135 }), shapeId: "Sabc" });
+    expect(sampleSpecFromModel(brickModel)).toMatchObject({ type: "brick", angleDeg: 135, autoAngle: false });
   });
 
   test("a run shape samples run or bean by its passes", () => {

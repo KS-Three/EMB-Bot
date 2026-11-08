@@ -101,7 +101,12 @@ export function sampleSpecFromModel(model, picks = {}) {
   if (!type) return null;
 
   const angleRow = row("angle");
-  const chosen = angleRow ? parseAngle(pick("angle", angleRow.value)) : null;
+  // No angle row (a digitized brick has none) still sews a stored angle: the
+  // service sews brick as a fill and takes the shape's fill_angle_deg, which
+  // the model carries as `fillAngleDeg`. A satin's crosses follow its column,
+  // so a stored fill angle is never a satin's direction.
+  const stored = !angleRow && (type === "tatami" || type === "brick") ? parseAngle(model.fillAngleDeg) : null;
+  const chosen = angleRow ? parseAngle(pick("angle", angleRow.value)) : stored;
   const auto = chosen == null;
   const angleDeg = !auto ? chosen : (type === "satin" && !angleRow ? SATIN_DEFAULT_ANGLE : AUTO_SAMPLE_ANGLE);
   const lenRow = row("stitchLenMm");
@@ -109,7 +114,10 @@ export function sampleSpecFromModel(model, picks = {}) {
   return {
     type,
     angleDeg,
-    autoAngle: auto && !!angleRow,
+    // Not a definite angle unless one was chosen or stored: the drawn angle
+    // is then a stand-in, and the caption says so (a digitized satin's
+    // column, a brick's auto angle, a fill's "auto").
+    autoAngle: auto,
     rgb: [rgb[0], rgb[1], rgb[2]],
     stitchMm: Number.isFinite(len) && len > 0 ? len : null,
   };
