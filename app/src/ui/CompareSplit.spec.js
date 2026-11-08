@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 //
-// CompareSplit.svelte: the Compare view's overlay. The field paints the
-// artwork onto the canvas this binds out; the component owns only the split
-// (a CSS clip) and its handle. Pointer geometry and the no-layout-space
+// CompareSplit.svelte: the Compare view's overlay. The field renders the
+// artwork side offscreen and hands it in as `src` (an <img>, never a second
+// <canvas> in .hoop); the component owns only the split (a CSS clip) and its
+// handle. Pointer geometry and the no-layout-space
 // overlay rule are pinned in e2e/field-compare.spec.js (jsdom has
 // no layout or stylesheet); here: the handle's accessible contract, its keys,
 // and that keys it does not own pass through to the field.
@@ -14,8 +15,9 @@ import CompareSplit from "./CompareSplit.svelte";
 function handleOf(utils) {
   return utils.getByRole("separator", { name: "Compare split" });
 }
+const SRC = "data:image/png;base64,iVBORw0KGgo=";
 function artOf(utils) {
-  return utils.container.querySelector("canvas.cmp-art");
+  return utils.container.querySelector("img.cmp-art");
 }
 
 describe("the handle's accessible contract", () => {
@@ -30,25 +32,27 @@ describe("the handle's accessible contract", () => {
     expect(h).toHaveAttribute("aria-valuetext", "Artwork 50%, stitches 50%");
   });
 
-  test("the artwork canvas is hidden from assistive tech and clipped to the split", () => {
-    const utils = render(CompareSplit, { props: { split: 0.3 } });
+  test("the artwork image is hidden from assistive tech and clipped to the split", () => {
+    const utils = render(CompareSplit, { props: { split: 0.3, src: SRC } });
     const art = artOf(utils);
+    expect(art).toHaveAttribute("src", SRC);
+    expect(art).toHaveAttribute("alt", "");
     expect(art).toHaveAttribute("aria-hidden", "true");
     expect(art.getAttribute("style")).toContain("inset(0 70% 0 0)");
     expect(handleOf(utils).getAttribute("style")).toContain("left: 30%");
   });
 
-  test("the canvas is bound out for the field to paint", () => {
-    let bound = null;
+  test("no <canvas> of its own, and no image until the field has one", () => {
     const utils = render(CompareSplit, { props: { split: 0.5 } });
-    bound = artOf(utils);
-    expect(bound).toBeInstanceOf(HTMLCanvasElement);
+    expect(utils.container.querySelector("canvas")).toBeNull();
+    expect(artOf(utils)).toBeNull();
+    expect(handleOf(utils)).toBeInTheDocument();
   });
 });
 
 describe("keys", () => {
   test("arrows move the split, Shift moves it further, Home/End go to the ends", async () => {
-    const utils = render(CompareSplit, { props: { split: 0.5 } });
+    const utils = render(CompareSplit, { props: { split: 0.5, src: SRC } });
     const h = handleOf(utils);
     await fireEvent.keyDown(h, { key: "ArrowRight" });
     expect(h).toHaveAttribute("aria-valuenow", "52");

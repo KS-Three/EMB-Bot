@@ -1,9 +1,11 @@
 <script>
-  // Compare view's overlay (2026-11-07): the artwork on its own canvas laid
-  // exactly over the field canvas, clipped to the LEFT of a draggable
-  // vertical split, so the stitches show to the right of it. The field paints
-  // `canvas` (fabric + the registered artwork, from repaintView, through the
-  // same placement Original view uses); this component only owns the split.
+  // Compare view's overlay (2026-11-07): the artwork laid exactly over the
+  // field canvas, clipped to the LEFT of a draggable vertical split, so the
+  // stitches show to the right of it. The field renders the artwork side
+  // (fabric + the registered artwork, from repaintView, through the same
+  // placement Original view uses) on an OFFSCREEN canvas at the field
+  // canvas's bitmap size and hands it in as `src`; shown as an <img> because
+  // .hoop holds exactly one <canvas>. This component only owns the split.
   //
   // Overlay only: absolutely positioned inside `.hoop`, it takes no layout
   // space, and everything but the handle is pointer-transparent, so the
@@ -12,8 +14,8 @@
   import { clampSplit, splitFromClientX, splitKey, clipForSplit, splitPercent, splitValueText } from "../lib/compareSplit.js";
 
   export let split = 0.5;
-  // Bound out: the field draws the artwork side on it.
-  export let canvas = null;
+  // Object URL of the artwork side's bitmap ("" until the first is ready).
+  export let src = "";
 
   let wrap;
   let dragging = false;
@@ -51,7 +53,7 @@
 </script>
 
 <div class="cmp" bind:this={wrap} data-testid="compare-split" data-split={s.toFixed(3)}>
-  <canvas class="cmp-art" bind:this={canvas} style="clip-path: {clipForSplit(s)}" aria-hidden="true"></canvas>
+  {#if src}<img class="cmp-art" {src} alt="" aria-hidden="true" draggable="false" style="clip-path: {clipForSplit(s)}" />{/if}
   <span class="cmp-tag cmp-tag-l" aria-hidden="true">Artwork</span>
   <span class="cmp-tag cmp-tag-r" aria-hidden="true">Stitches</span>
   <!-- A focusable separator is WAI-ARIA's "window splitter": arrows move it,
@@ -95,7 +97,12 @@
     inset: 0;
     width: 100%;
     height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: fill;
+    border: 0;
     pointer-events: none;
+    user-select: none;
   }
   .cmp-tag {
     position: absolute;

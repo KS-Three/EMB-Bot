@@ -51,8 +51,18 @@ const FIXTURES = [
 // over an area — configurator-smoke's Original-view test measured 0 px).
 function redBox(page, selector, red, exact) {
   return page.evaluate(([selector, red, exact]) => {
-    const c = document.querySelector(selector);
+    let c = document.querySelector(selector);
     if (!c) return null;
+    // The artwork side is an <img> of an offscreen bitmap: read it back at
+    // its own (device-px) size, the field canvas's bitmap size.
+    if (c.tagName === "IMG") {
+      if (!c.complete || !c.naturalWidth) return null;
+      const t = document.createElement("canvas");
+      t.width = c.naturalWidth;
+      t.height = c.naturalHeight;
+      t.getContext("2d").drawImage(c, 0, 0);
+      c = t;
+    }
     const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
     let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1, n = 0;
     for (let y = 0; y < c.height; y++) {
@@ -73,8 +83,8 @@ function redBox(page, selector, red, exact) {
 
 // The worst edge, in canvas px, between the artwork's red and the thread's.
 async function registration(page, red) {
-  const stitches = await redBox(page, ".hoop canvas:not(.cmp-art)", red, false);
-  const art = await redBox(page, ".hoop canvas.cmp-art", red, true);
+  const stitches = await redBox(page, ".hoop canvas", red, false);
+  const art = await redBox(page, ".hoop img.cmp-art", red, true);
   expect(stitches, "no red thread on the field canvas").not.toBeNull();
   expect(art, "no artwork red on the compare canvas").not.toBeNull();
   const err = {};
@@ -86,7 +96,7 @@ async function registration(page, red) {
   return { stitches, art, err, max: Math.max(...Object.values(err)), centre: Math.max(centre.dx, centre.dy) };
 }
 
-const paintSeq = (page) => page.locator(".hoop canvas:not(.cmp-art)").getAttribute("data-paint-seq");
+const paintSeq = (page) => page.locator(".hoop canvas").getAttribute("data-paint-seq");
 const box = (page, sel) => page.evaluate((sel) => {
   const r = document.querySelector(sel).getBoundingClientRect();
   return { x: r.x, y: r.y, w: r.width, h: r.height };
@@ -112,17 +122,19 @@ for (const fx of FIXTURES) {
     await expect(page.getByRole("button", { name: "Original view" })).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByTestId("compare-split")).toBeVisible();
     // The artwork lands on the compare canvas asynchronously (image decode).
-    await expect.poll(async () => ((await redBox(page, ".hoop canvas.cmp-art", fx.red, true)) || { n: 0 }).n).toBeGreaterThan(100);
+    await expect.poll(async () => ((await redBox(page, ".hoop img.cmp-art", fx.red, true)) || { n: 0 }).n).toBeGreaterThan(100);
 
     // Overlay only: nothing in the field pane moved or resized.
     expect(await box(page, ".fieldwrap")).toEqual(before.wrap);
     expect(await box(page, ".hoop canvas")).toEqual(before.canvas);
-    // The two canvases are one bitmap size and lie exactly over each other.
-    const sizes = await page.evaluate(() => [...document.querySelectorAll(".hoop canvas")].map((c) => {
-      const r = c.getBoundingClientRect();
-      return [c.width, c.height, r.x, r.y, r.width, r.height];
-    }));
-    expect(sizes).toHaveLength(2);
+    // Still exactly one <canvas> in .hoop; the artwork <img> is the field
+    // canvas's bitmap size and lies exactly over it.
+    expect(await page.locator(".hoop canvas").count()).toBe(1);
+    const sizes = await page.evaluate(() => {
+      const c = document.querySelector(".hoop canvas"), im = document.querySelector(".hoop img.cmp-art");
+      const rc = c.getBoundingClientRect(), ri = im.getBoundingClientRect();
+      return [[c.width, c.height, rc.x, rc.y, rc.width, rc.height], [im.naturalWidth, im.naturalHeight, ri.x, ri.y, ri.width, ri.height]];
+    });
     expect(sizes[1]).toEqual(sizes[0]);
 
     const atFit = await registration(page, fx.red);
@@ -132,15 +144,22 @@ for (const fx of FIXTURES) {
     expect(atFit.max, JSON.stringify(atFit)).toBeLessThanOrEqual(6);
     await shot(page, `${fx.name}-split-50.png`);
 
-    // A zoom is a view change: repaintView repaints both canvases, which must
+    // A zoom is a view change: repaintView repaints both sides, which must
     // still register.
     await page.getByRole("button", { name: "Zoom in" }).click();
     await page.getByRole("button", { name: "Zoom in" }).click();
     await expect(page.locator(".zoompct")).not.toHaveText("100%");
     // Zoomed, a px is a smaller distance and the same sub-px rounding of the
     // two boxes reads a little larger (measured 1.0-1.5 px at 150%).
-    await expect.poll(async () => (await registration(page, fx.red)).centre).toBeLessThanOrEqual(2.5);
-    const zoomed = await registration(page, fx.red);
+    // The artwork <img> follows a beat behind (its bitmap is re-encoded after
+    // the repaint, one per zoom step), so wait until it shows the FINAL zoom:
+    // a stale step reads as a big edge gap (measured 75 px mid-zoom).
+    const fitW = atFit.art.x1 - atFit.art.x0;
+    let zoomed = null;
+    await expect.poll(async () => {
+      zoomed = await registration(page, fx.red);
+      return zoomed.art.x1 - zoomed.art.x0 > fitW && zoomed.centre <= 2.5 && zoomed.max <= 10;
+    }).toBe(true);
     info.annotations.push({ type: "registration-zoomed", description: `${fx.name}: centre ${zoomed.centre} px, worst edge ${zoomed.max} px at ${await page.locator(".zoompct").innerText()}` });
     console.log(`[compare] ${fx.name} zoomed: centre ${zoomed.centre} px, worst edge ${zoomed.max} px`, JSON.stringify(zoomed));
     expect((zoomed.art.x1 - zoomed.art.x0)).toBeGreaterThan(atFit.art.x1 - atFit.art.x0);
@@ -154,7 +173,7 @@ test("Compare split: drag the handle, then move it from the keyboard; nothing re
   const handle = page.getByRole("separator", { name: "Compare split" });
   await expect(handle).toBeVisible();
   await expect(handle).toHaveAttribute("aria-valuenow", "50");
-  await expect.poll(async () => ((await redBox(page, ".hoop canvas.cmp-art", fx.red, true)) || { n: 0 }).n).toBeGreaterThan(100);
+  await expect.poll(async () => ((await redBox(page, ".hoop img.cmp-art", fx.red, true)) || { n: 0 }).n).toBeGreaterThan(100);
   const seq0 = await paintSeq(page);
   const caption = await page.locator("span.stats").innerText();
 
@@ -168,7 +187,7 @@ test("Compare split: drag the handle, then move it from the keyboard; nothing re
   await page.mouse.up();
   await expect(handle).toHaveAttribute("aria-valuenow", "25");
   await expect(handle).toHaveAttribute("aria-valuetext", "Artwork 25%, stitches 75%");
-  const clip = await page.locator(".hoop canvas.cmp-art").evaluate((c) => c.style.clipPath);
+  const clip = await page.locator(".hoop img.cmp-art").evaluate((c) => c.style.clipPath);
   expect(clip).toBe("inset(0px 75% 0px 0px)");
   const hb = await handle.boundingBox();
   expect(Math.abs(hb.x + hb.width / 2 - (hoop.x + hoop.w * 0.25))).toBeLessThanOrEqual(1.5);

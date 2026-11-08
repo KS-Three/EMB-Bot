@@ -20,7 +20,7 @@
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
   import { garmentOf, placementBoxOf } from "../lib/placement.js";
-  import { resizeBadgeText } from "../lib/estimate.js";
+  import { resizeBadgeText, runSpm } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
   import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveNodes, moveEdge, ringNodesInBox, fieldMmToOutlineMm, simplifyRing, ringKey, splitRingKey, NODE_GRAB_PX } from "../lib/shapeOverlay.js";
   import { editModeBar, MODE_SAYS, holePointPhrase, ringCentre, stepHoleCursor, sameNode, stepNodeCursor, nodeCursorPhrase } from "../lib/editModeA11y.js";
@@ -73,6 +73,12 @@
   // outline it was.
   export let hoverShape = null;
   export let focusShape = null;
+  // The operator's Quote settings (App's `quote`, quote.js), read only for
+  // the simulator bar's sew-time rate: runSpm() picks the same speed for it as
+  // Download's "Run time" row, so the two agree. Not named in any `$: if
+  // (canvas)` block, so a quote change never repaints the field.
+  export let quote = null;
+  $: simRate = runSpm(quote);
 
   const dispatch = createEventDispatcher();
   const MM_PER_INCH = 25.4;
@@ -244,15 +250,33 @@
   // registration. It IS Original view underneath (originalView stays true),
   // so every rule that keeps edits and chrome off the artwork — and every
   // way out of Original view (another view, the simulator, a regeneration) —
-  // applies to it unchanged; `compareView` alone means nothing. The artwork
-  // side is CompareSplit's own canvas, painted from repaintView.
+  // applies to it unchanged; `compareView` alone means nothing.
+  //
+  // The artwork side is painted from repaintView onto an OFFSCREEN canvas
+  // (never in the DOM: .hoop holds exactly one <canvas>, which e2e locators
+  // and the field's own code assume) and shown in CompareSplit as an <img>
+  // of that bitmap, once drawOriginals has put the artwork on it.
   let compareView = false;
   let compareSplit = SPLIT_DEFAULT;
   let compareCanvas = null;
+  let compareSrc = "";
   $: compareOn = originalView && compareView;
-  // The overlay's canvas is bound only after it mounts, which can land after
-  // the repaint showCompare scheduled: paint the artwork side once it exists.
-  $: if (compareOn && compareCanvas) scheduleViewRepaint();
+  // Leaving Compare (by any way out of Original view) drops the bitmap.
+  $: if (!compareOn && compareSrc) setCompareSrc("");
+  function setCompareSrc(url) {
+    if (compareSrc && typeof URL !== "undefined" && URL.revokeObjectURL) URL.revokeObjectURL(compareSrc);
+    compareSrc = url;
+  }
+  // The offscreen bitmap -> an object URL for the <img>. Only the latest
+  // drawOriginals pass publishes (`my`), and only while Compare is still lit.
+  function publishCompare(my) {
+    const c = compareCanvas;
+    if (!c || !c.toBlob) return;
+    c.toBlob((blob) => {
+      if (!blob || my !== originalToken || !(originalView && compareView)) return;
+      setCompareSrc(URL.createObjectURL(blob));
+    }, "image/png");
+  }
   function showCompare() {
     if (simActive) stopSim();
     originalView = true;
@@ -410,8 +434,37 @@
     return { garment, hoop: effectiveHoop(p).hoop || undefined };
   }
 
+  // Every field render starts from a DEFAULT 2D context state. renderRealistic
+  // sets only some of it (the dpr transform, its own strokes' styles), so state
+  // a previous render left behind leaked into the next one: the stitches end
+  // with lineCap/lineJoin "round", and the hoop's dashed safe-area line drawn
+  // next was then drawn with round dash ends. Same design, same size, different
+  // pixels, depending only on whether the canvas had been resized (a width
+  // write resets the context) since the last render. Measured 2026-11-07:
+  // 1,191 px differed, all on the dashed lines, between a render on a fresh
+  // context and the same design re-rendered after an undo
+  // (keyboard-a11y.spec.js "Ctrl+Z / Ctrl+Shift+Z ..."). Before #1341 a resize
+  // ALSO re-ran paint(), whose render then landed on a used context, so the
+  // first frame happened to match later ones. reset() also clears the bitmap,
+  // which renderRealistic fills edge to edge anyway.
+  function freshContext(el) {
+    const ctx = el && el.getContext && el.getContext("2d");
+    if (!ctx) return;
+    if (typeof ctx.reset === "function") { ctx.reset(); return; }
+    if (ctx.setTransform) ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (ctx.setLineDash) ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
+    ctx.lineCap = "butt";
+    ctx.lineJoin = "miter";
+    ctx.lineWidth = 1;
+    ctx.miterLimit = 10;
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+  }
+
   function clearToFabric() {
     if (!canvas) return;
+    freshContext(canvas);
     renderResult = renderRealistic(canvas, EMPTY_DESIGN, {
       dpr,
       hoop: hoopOpt(project),
@@ -3067,9 +3120,9 @@
     const my = ++originalToken;
     const rr = renderResult;
     if (!rr || !rr.toCanvas) return;
-    // Compare view draws the same placement onto its own canvas (fabric
-    // already painted there by repaintView), leaving the stitches on the
-    // field canvas; both canvases share one size, so one transform.
+    // Compare view draws the same placement onto its offscreen canvas
+    // (fabric already painted there by repaintView), leaving the stitches on
+    // the field canvas; both bitmaps share one size, so one transform.
     const comparing = originalView && compareView;
     const target = comparing ? compareCanvas : canvas;
     if (!target) return;
@@ -3089,7 +3142,7 @@
       let im;
       try { im = await loadOriginal(el.sourcePng); } catch (e) { return; }
       if (my !== originalToken || !originalView || !canvas) return;
-      if ((originalView && compareView) !== comparing || !target.isConnected) return;
+      if ((originalView && compareView) !== comparing) return;
       const iw = im.naturalWidth, ih = im.naturalHeight;
       let at = null;
       if (el.type === "image") {
@@ -3120,6 +3173,7 @@
       ctx.restore();
     });
     await Promise.all(jobs);
+    if (comparing && my === originalToken) publishCompare(my);
   }
 
   function drawOverlay() {
@@ -3466,6 +3520,7 @@
     // stitches at generation time (see generate.js's generateElement), so
     // the combined design already carries the right colors per-part.
     lastGenerateResult = result; // B2: cached for view-only repaints below
+    freshContext(canvas);
     renderResult = renderRealistic(canvas, c, {
       dpr,
       hoop: hoopOpt(project),
@@ -3532,13 +3587,21 @@
         // strand here and puts the fabric + artwork on its own canvas.
         limitStrands: originalView && !comparing ? 0 : simActive ? Math.floor(simIndex) : undefined,
       };
+      freshContext(canvas);
       renderResult = renderRealistic(canvas, lastGenerateResult.combined, opts);
-      if (comparing && compareCanvas) {
-        // Same bitmap size and options as the field canvas, so the same
-        // mm->px transform: the artwork lands where Original view puts it.
-        if (compareCanvas.width !== canvas.width) compareCanvas.width = canvas.width;
-        if (compareCanvas.height !== canvas.height) compareCanvas.height = canvas.height;
-        renderRealistic(compareCanvas, lastGenerateResult.combined, { ...opts, showJumps: false, showTrims: false, limitStrands: 0 });
+      if (comparing) {
+        // The artwork side renders OFFSCREEN (e2e locators, and the field's
+        // own code, assume .hoop holds exactly one <canvas>), at the same
+        // bitmap size and options as the field canvas, so the same mm->px
+        // transform: the artwork lands where Original view puts it.
+        // drawOriginals then publishes it to CompareSplit's <img>.
+        if (!compareCanvas && typeof document !== "undefined") compareCanvas = document.createElement("canvas");
+        if (compareCanvas) {
+          if (compareCanvas.width !== canvas.width) compareCanvas.width = canvas.width;
+          if (compareCanvas.height !== canvas.height) compareCanvas.height = canvas.height;
+          freshContext(compareCanvas);
+          renderRealistic(compareCanvas, lastGenerateResult.combined, { ...opts, showJumps: false, showTrims: false, limitStrands: 0 });
+        }
       }
       perElementRects = [];
       if (renderResult && renderResult.toCanvas) {
@@ -3861,8 +3924,15 @@
     const bh = Math.round(h * nextDpr);
     if (canvas.width === bw && canvas.height === bh && dpr === nextDpr) return;
     dpr = nextDpr;
-    canvas.width = bw;  // note: assigning either dimension clears the bitmap,
-    canvas.height = bh; // which is why the repaint below is unconditional.
+    // Through a local alias, like setCanvasCursor: a member write on `canvas`
+    // itself compiles to a `$.mutate` of `canvas`, which invalidates it
+    // and re-runs `$: if (canvas) { project; runtime; paint(); }`, i.e. the
+    // full regenerate and its stopSim() that the comment below exists to
+    // avoid. Until 2026-11-07 it did exactly that on every resize.
+    // EmbroideryField.cursor.spec.js fails on a direct write.
+    const el = canvas;
+    el.width = bw;  // note: assigning either dimension clears the bitmap,
+    el.height = bh; // which is why the repaint below is unconditional.
     // repaintView(), NOT paint(): a resize changes the mm->px transform, not
     // the stitches, and paint() opens with stopSim() because a REGENERATION
     // invalidates the simulator's strand count. Going through paint() here
@@ -3926,6 +3996,7 @@
   }
 
   onDestroy(() => {
+    setCompareSrc("");
     // The outline pulse is the one loop here that can be mid-flight with no
     // user input driving it, so it has to be cancelled explicitly — otherwise
     // a rAF fires into a destroyed component and repaints a dead canvas.
@@ -5286,9 +5357,9 @@
     ></canvas>
     {#if compareOn}
       <!-- Compare view: an overlay over the canvas (no layout space), only
-           while lit. Its canvas is pointer-transparent; only the handle takes
-           pointer and keys. -->
-      <CompareSplit bind:split={compareSplit} bind:canvas={compareCanvas} />
+           while lit. Its artwork <img> is pointer-transparent; only the
+           handle takes pointer and keys. No <canvas> in here. -->
+      <CompareSplit bind:split={compareSplit} src={compareSrc} />
     {/if}
     {#if fieldMenu}
       <!-- Drawing tools live here now instead of in the Content step's tile
@@ -5510,8 +5581,9 @@
         isolate={simIsolate}
         hasUnderlay={!!(simUnderlay && simUnderlay.runs.length)}
         phase={phaseAt(simStrands, Math.floor(simIndex), simTotal)}
-        sewTime={sewTimeAt(simClock, Math.floor(simIndex), EMB.sewTimeMin, EMB.PLAN_SPM)}
-        spm={EMB.PLAN_SPM}
+        sewTime={sewTimeAt(simClock, Math.floor(simIndex), EMB.sewTimeMin, simRate.spm)}
+        spm={simRate.spm}
+        spmQuoted={simRate.quoted}
         on:toggle={simTogglePlay}
         on:block={(e) => simGoToBlock(e.detail.k)}
         on:isolate={simToggleIsolate}
