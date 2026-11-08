@@ -432,9 +432,8 @@ export function layerSubsetForCount(n) {
 //
 // `soft` (optional, from renderRealistic) turns on the SOFT shadow once the
 // thread is wide enough on screen for an edge to read as hard (see
-// softShadowFactor). `softOnly` casts nothing at all below that width: the
-// satin-over-its-own-fill shadow below exists only where it can be seen.
-function strokeShadow(ctx, items, lw, st, soft, softOnly) {
+// softShadowFactor).
+function strokeShadow(ctx, items, lw, st, soft) {
   if (!items.length) return;
   const slw = styleWidth(lw, st);
   const off = (slw * 0.18 + 0.5) * st.shadow;
@@ -448,7 +447,6 @@ function strokeShadow(ctx, items, lw, st, soft, softOnly) {
     const scratch = soft.scratch();
     if (scratch) { softShadow(ctx, scratch, soft, items, sx, sy, slw * 1.04, alpha, k); return; }
   }
-  if (softOnly) return;
   ctx.strokeStyle = `rgba(0,0,0,${alpha})`;
   ctx.lineWidth = slw * 1.04;
   ctx.beginPath();
@@ -778,11 +776,17 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
       if (st.raised) { solid(); strokeShadow(ctx, grp.items, lw, st, soft); }
       // Satin over its OWN colour's fill: the block shadow cannot show it
       // (it is drawn before the fill), so the satin casts its own here, at
-      // its ordinary strength, onto the fill beneath. Soft-only: at fit zoom
-      // the hard version of this costs a full alpha pass per block for an
-      // edge a pixel wide (+53% measured, PR #1331), so it is drawn only once
-      // the thread is wide enough for the soft shadow, where it is cheap.
-      else if (soft && hasMid && st.z >= 4) { solid(); strokeShadow(ctx, grp.items, lw, st, soft, true); }
+      // its ordinary strength, onto the fill beneath. At every zoom since
+      // 2026-11-07: until then it was soft-only (drawn only once the thread
+      // was wide enough for the soft shadow), on the reading that the hard
+      // version at fit zoom was the +53% PR #1331 measured. That +53% was a
+      // shadow path per STYLE GROUP in every block. This one is a single
+      // path, for the satin of a block that also holds its own fill, and on
+      // a fixture built to have exactly that (trace-holes-and-colors with
+      // its satin recoloured onto the fill before it, 11,133 st) a fit-zoom
+      // cold render measured 133.7 ms against main's 129.3 (+3.4%, and the
+      // build without it +3.6%: the snapshot copy, not this).
+      else if (hasMid && st.z >= 4) { solid(); strokeShadow(ctx, grp.items, lw, st, soft); }
       const profiles = [];
       for (const b of grp.buckets.values()) {
         if (offClip(b)) continue;
@@ -1041,13 +1045,12 @@ function simFrame(canvas, ctx, design, o, strands, layers) {
   if (!design || !Array.isArray(design.stitches)) return null;
   let entry = SIM_SNAPSHOTS.get(canvas);
   const key = simKey(canvas, o, layers);
-  if (!entry || entry.key !== key || entry.design !== design || entry.stitches !== design.stitches || entry.n !== design.stitches.length) {
-    if (!entry) {
-      const c = makeCanvasLike(canvas);
-      if (!c) return null;
-      entry = { canvas: c };
-      SIM_SNAPSHOTS.set(canvas, entry);
-    }
+  const snap = snapBitmap(canvas);
+  if (!snap) return null;
+  if (!entry) { entry = { canvas: snap.canvas }; SIM_SNAPSHOTS.set(canvas, entry); }
+  // The bitmap is shared with the static-view cache below: whoever wrote it
+  // last owns it, and a snapshot someone else overwrote is no snapshot.
+  if (snap.owner !== entry || entry.key !== key || entry.design !== design || entry.stitches !== design.stitches || entry.n !== design.stitches.length) {
     entry.key = key; entry.design = design; entry.stitches = design.stitches; entry.n = design.stitches.length;
     entry.start = 0;
   }
@@ -1083,6 +1086,144 @@ function saveSimSnapshot(canvas, entry, start) {
   }
   copyCanvasInto(entry.canvas.getContext("2d"), canvas);
   entry.start = start;
+  SNAP_BITMAPS.get(canvas).owner = entry;
+}
+
+// ---- Static views: the finished render, kept (2026-11-07) -----------------
+//
+// The field repaints far more often than its picture changes. A hover over a
+// shape, a selection, a jumps/trims toggle, a panel focus: every one calls
+// renderRealistic again with the same design and the same view, and until
+// now every one re-stroked every strand (~90% of a render is the rasterizer
+// stroking paths; see SIM_SNAPSHOTS above) to paint what was already there.
+//
+// So a hooped, non-simulator render keeps a copy of its finished canvas
+// (thread, bed, grid, hoop chrome; NOT the jumps/trims marks, which are drawn
+// after the copy every time) and the next render with an identical key
+// blits it back instead. Pixel-exact by construction: a 1:1 'copy' blit of
+// what this same code painted under the same inputs. The key is everything
+// the picture depends on:
+//
+//   - the design: its object, its stitch array, a fingerprint of every
+//     stitch (so an in-place edit cannot be served stale), its colours and
+//     its runs;
+//   - every render option, the view (zoom AND pan) and the bitmap size;
+//   - the context state the render INHERITS rather than sets (line cap and
+//     join, dash, text alignment, shadow, filter, transform at dpr 1). Main
+//     strokes the hoop chrome with whatever cap and join the last frame left
+//     behind, so a first render on a fresh canvas and a repaint differ; the
+//     key tells them apart instead of serving one for the other.
+//
+// After a blit the context is left in the state a fresh render leaves it in
+// (end-of-render styles, recorded with the copy), so whatever the caller
+// draws on top lands exactly as it would have.
+//
+// What it does NOT reuse, and why (measured 2026-11-07, PR body): a pan.
+// Shifting the bitmap by the pan and painting only the exposed strip would be
+// the obvious next step, and it is not pixel-identical to a fresh render, not
+// even by a whole device pixel. The soft shadow is rasterized on a grid
+// anchored to the canvas origin at 1/k resolution, so a shift that is not a
+// multiple of k (2-6 when zoomed in) lands it differently: 7-53k px off by up
+// to 34 levels at 4x and 8x on the four fixtures. Even at fit zoom, where the
+// shadow is hard, Chromium anti-aliases a stroke by its whole path, and the
+// strands a pan moves on or off the canvas move 2-94 px of the rest by up to
+// 9 levels. Every zoom and pan therefore still draws from the fabric up.
+//
+// Memory: ONE bitmap per field canvas, the same size as the canvas, SHARED
+// with the simulator's snapshot (each records that it wrote it last, and a
+// snapshot the other overwrote is treated as absent), so this adds nothing
+// to what playback already holds. Canvases over STATIC_CACHE_MAX_PX device
+// px are not cached at all: at that cap the bitmap is <= 33.2 MB.
+export const STATIC_CACHE_MAX_PX = 3840 * 2160;
+const SNAP_BITMAPS = new WeakMap();
+const STATIC_VIEWS = new WeakMap();
+
+// The snapshot bitmap for a canvas, made on first use; null when no canvas
+// can be made (the specs' ctx doubles, a worker).
+function snapBitmap(canvas) {
+  let r = SNAP_BITMAPS.get(canvas);
+  if (r === null) return null;
+  if (!r) {
+    const c = makeCanvasLike(canvas);
+    r = c ? { canvas: c, owner: null } : null;
+    SNAP_BITMAPS.set(canvas, r);
+  }
+  return r;
+}
+
+// A fingerprint of every stitch, so a stitch array edited IN PLACE (same
+// object, same length) still misses. Cheap next to a render: one pass, no
+// allocation (~0.1 ms at 20k stitches).
+function stitchPrint(stitches) {
+  let h = stitches.length | 0;
+  for (let i = 0; i < stitches.length; i++) {
+    const s = stitches[i];
+    const t = s.type ? s.type.charCodeAt(0) * 31 + s.type.length : 0;
+    h = Math.imul(h ^ Math.round(s.x * 16), 0x9e3779b1) ^ Math.imul(Math.round(s.y * 16) + t, 0x85ebca6b);
+    h ^= h >>> 15;
+  }
+  return h;
+}
+
+// Context state a render reads without setting first.
+const INHERITED_STATE = ["lineCap", "lineJoin", "miterLimit", "lineDashOffset", "textAlign", "direction",
+  "shadowBlur", "shadowColor", "shadowOffsetX", "shadowOffsetY", "filter", "letterSpacing", "wordSpacing",
+  "fontKerning", "fontStretch", "fontVariantCaps", "textRendering", "imageSmoothingEnabled", "imageSmoothingQuality"];
+// ...and what a render leaves behind, restored after a blit.
+const END_STATE = INHERITED_STATE.concat(["strokeStyle", "fillStyle", "lineWidth", "font", "textBaseline", "globalAlpha", "globalCompositeOperation"]);
+
+function readState(ctx, props) {
+  const out = props.map((p) => ctx[p]);
+  out.push(typeof ctx.getLineDash === "function" ? ctx.getLineDash() : null);
+  return out;
+}
+
+function applyEndState(ctx, end) {
+  for (let i = 0; i < END_STATE.length; i++) {
+    if (end[i] !== undefined && ctx[END_STATE[i]] !== end[i]) ctx[END_STATE[i]] = end[i];
+  }
+  const d = end[END_STATE.length];
+  if (d && typeof ctx.setLineDash === "function") ctx.setLineDash(d);
+}
+
+// null = this render cannot be cached (or served): its first fill would not
+// cover the canvas opaquely, so what lies under it would show through.
+function staticKey(canvas, ctx, design, o, dpr) {
+  if (o.limitStrands != null || o.staticCache === false) return null;
+  if (typeof ctx.drawImage !== "function" || typeof ctx.setTransform !== "function") return null;
+  if (!design || !Array.isArray(design.stitches) || canvas.width * canvas.height > STATIC_CACHE_MAX_PX) return null;
+  if (ctx.globalAlpha !== undefined && ctx.globalAlpha !== 1) return null;
+  if (ctx.globalCompositeOperation !== undefined && ctx.globalCompositeOperation !== "source-over") return null;
+  let tr = null;
+  if (typeof ctx.getTransform === "function") {
+    const m = ctx.getTransform();
+    if (m.a !== dpr || m.b !== 0 || m.c !== 0 || m.d !== dpr || m.e !== 0 || m.f !== 0) return null;
+    tr = dpr;
+  }
+  return JSON.stringify([canvas.width, canvas.height, dpr, tr, o.hoop, o.fabricRgb, o.fabric, o.weave, o.surround,
+    o.grid, o.view, o.pad, o.threadStyle, o.sewnPullMm, o.colorOverride, o.threadWidthMm, o.threadLayers,
+    o.softShadow, design.colors, design.runs, readState(ctx, INHERITED_STATE)]);
+}
+
+function staticHit(canvas, design, key) {
+  if (!key) return null;
+  const e = STATIC_VIEWS.get(canvas);
+  const snap = SNAP_BITMAPS.get(canvas);
+  if (!e || !snap || snap.owner !== e || e.key !== key || e.design !== design || e.stitches !== design.stitches || e.n !== design.stitches.length) return null;
+  if (e.print !== stitchPrint(design.stitches)) return null;
+  return { e, snap };
+}
+
+function saveStatic(canvas, ctx, design, key) {
+  const snap = snapBitmap(canvas);
+  if (!snap) return;
+  if (snap.canvas.width !== canvas.width || snap.canvas.height !== canvas.height) {
+    snap.canvas.width = canvas.width; snap.canvas.height = canvas.height;
+  }
+  copyCanvasInto(snap.canvas.getContext("2d"), canvas);
+  const e = { key, design, stitches: design.stitches, n: design.stitches.length, print: stitchPrint(design.stitches), end: readState(ctx, END_STATE) };
+  STATIC_VIEWS.set(canvas, e);
+  snap.owner = e;
 }
 
 // opts:
@@ -1184,6 +1325,16 @@ export function renderRealistic(canvas, design, opts) {
   const SX = hooped ? (x) => TX(x / 10) : TX;
   const SY = hooped ? (y) => TY(y / 10) : TY;
 
+  // A static view this canvas already painted under the same key (see
+  // STATIC_VIEWS): blit it back, and go straight to the overlays.
+  let skey = hooped ? staticKey(canvas, ctx, design, o, dpr) : null;
+  const shit = staticHit(canvas, design, skey);
+  if (shit) {
+    copyCanvasInto(ctx, shit.snap.canvas);
+    applyEndState(ctx, shit.e.end);
+    return finishRender(ctx, design, o, hooped, SX, SY, TX, TY, pxPerMm);
+  }
+
   // Strands are worked out before anything is drawn (they are pure), so a
   // simulator frame can decide whether its snapshot is usable first.
   let strands = hooped && o.limitStrands != null
@@ -1224,6 +1375,10 @@ export function renderRealistic(canvas, design, opts) {
     ctx.setLineDash([]);
   } else {
     ctx.fillStyle = surrounded ? o.surround : (o.fabricRgb ? rgbCss(o.fabricRgb) : (o.fabric || "#e9e6df"));
+    // Only a render whose first fill is OPAQUE covers what was there before,
+    // so only that render is a picture of its inputs alone and can be kept.
+    // A real canvas reads an opaque colour back as #rrggbb.
+    if (skey && !/^#[0-9a-f]{6}$|^rgb\(/i.test(String(ctx.fillStyle))) skey = null;
     ctx.fillRect(0, 0, cw, ch);
   }
 
@@ -1307,7 +1462,14 @@ export function renderRealistic(canvas, design, opts) {
     }
     drawThreads(ctx, strands.slice(sim.lastStart), SX, SY, lw, threadOpts);
   }
+  if (skey) saveStatic(canvas, ctx, design, skey);
 
+  return finishRender(ctx, design, o, hooped, SX, SY, TX, TY, pxPerMm);
+}
+
+// Everything renderRealistic does after the thread: the diagnostic overlays
+// and the returned transform. Shared by a full render and a static-view blit.
+function finishRender(ctx, design, o, hooped, SX, SY, TX, TY, pxPerMm) {
   // Diagnostic overlays (drawn ON TOP of thread so they're never buried):
   // showJumps -> dashed travel lines; showTrims -> an X marker per trim.
   if (o.showJumps || o.showTrims) {
