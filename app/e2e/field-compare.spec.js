@@ -234,3 +234,45 @@ test("Compare split: drag the handle, then move it from the keyboard; nothing re
   await expect(page.getByTestId("compare-split")).toHaveCount(0);
   await page.getByRole("button", { name: "Close simulator" }).click();
 });
+
+test("a window resize repaints the field once, with Compare off and with it on", async ({ page }) => {
+  // Counted as sim-playback.spec.js counts it: renderRealistic opens every
+  // render with a full-size fillRect on the `.hoop` canvas. The artwork side
+  // renders offscreen (not in .hoop), so it never adds to the count.
+  await page.addInitScript(() => {
+    window.__fieldRenders = 0;
+    const fill = CanvasRenderingContext2D.prototype.fillRect;
+    CanvasRenderingContext2D.prototype.fillRect = function (x, y, w, h) {
+      const c = this.canvas;
+      if (x === 0 && y === 0 && c && c.closest && c.closest(".hoop") && w >= c.clientWidth - 1 && h >= c.clientHeight - 1) {
+        window.__fieldRenders++;
+      }
+      return fill.apply(this, arguments);
+    };
+  });
+  const settle = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 600)))));
+  const compare = await openCompare(page, FIXTURES[0]);
+  const sizes = [{ width: 1200, height: 820 }, { width: 1320, height: 760 }, { width: 1440, height: 900 }];
+  for (const on of [false, true]) {
+    if (on) {
+      await compare.click();
+      await expect.poll(async () => ((await redBox(page, ".hoop img.cmp-art", 204, true)) || { n: 0 }).n).toBeGreaterThan(100);
+    }
+    await settle();
+    for (const s of sizes) {
+      const before = await page.evaluate(() => window.__fieldRenders);
+      await page.setViewportSize(s);
+      await settle();
+      const n = (await page.evaluate(() => window.__fieldRenders)) - before;
+      console.log(`[compare-resize] compare ${on ? "on" : "off"} ${s.width}x${s.height}: ${n} field render(s)`);
+      expect(n, `compare ${on ? "on" : "off"} at ${s.width}x${s.height}`).toBe(1);
+    }
+    if (on) {
+      // …and the artwork side followed the resize: still registered.
+      await expect.poll(async () => {
+        const r = await registration(page, 204);
+        return r.centre <= 1.5 && r.max <= 6;
+      }).toBe(true);
+    }
+  }
+});

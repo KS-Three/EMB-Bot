@@ -5450,9 +5450,14 @@
         <!-- A ruler, not a control: the bar's width IS the stated length on
              screen (lib/scalebar.js), so the customer reads the design's
              size off it at any zoom. In the zoom bar rather than on the
-             canvas so it never covers sewable field. -->
+             canvas so it never covers sewable field.
+             The rule sits in a FIXED slot as wide as the longest rule
+             pickScaleBar draws (120 px), so a render that changes the scale
+             never changes the bar's width: it used to, and a bar near the
+             wrap point then re-wrapped after the render, resized .hoop and
+             cost a second field render per window resize (2026-11-07). -->
         <span class="scalebar" role="img" aria-label="Scale: {scaleBar.label} on screen" title="{scaleBar.label} at this zoom">
-          <i class="scalebar-rule" style="width: {scaleBar.px.toFixed(1)}px"></i>
+          <span class="scalebar-slot"><i class="scalebar-rule" style="width: {scaleBar.px.toFixed(1)}px"></i></span>
           <span class="scalebar-label">{scaleBar.label}</span>
         </span>
       {/if}
