@@ -4386,10 +4386,17 @@
   // A PointerEvent's `detail` is always 0 (measured 2026-11-05: pointerdown:0
   // mousedown:2 click:2 on a double click), so a double press is counted here: a
   // press within 450 ms and 6 px of the last one is the next of the series.
+  //
+  // A series is a PAIR: the press after a double press starts a new one.
+  // Otherwise a drag begun on a node right after double-clicking it (inside
+  // 450 ms, same spot) counted as press 3, read as another double press and
+  // toggled the node straight back (field-reshape-nodes (s2) in CI,
+  // 2026-11-07). That race was hidden while every pointer event re-ran
+  // paint() through a cursor write, which slowed the presses past 450 ms.
   let lastPress = null;   // { t, x, y, n }
   function countPress(e) {
     const prev = lastPress;
-    const n = prev && e.timeStamp - prev.t < 450 && Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 6 ? prev.n + 1 : 1;
+    const n = prev && prev.n < 2 && e.timeStamp - prev.t < 450 && Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 6 ? prev.n + 1 : 1;
     lastPress = { t: e.timeStamp, x: e.clientX, y: e.clientY, n };
   }
   const isDoublePress = () => !!lastPress && lastPress.n >= 2;
