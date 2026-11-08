@@ -1,0 +1,40 @@
+// Compile-level guard: a cursor change in EmbroideryField must never repaint.
+//
+// In Svelte 5's legacy mode a member write on a component variable
+// (`canvas.style.cursor = "grab"`) compiles to `$.mutate(canvas, ...)`, which
+// invalidates `canvas`. Three `$: if (canvas) { ... }` statements name it, so
+// every such write re-ran `paint()` (the full regenerate, which also closes
+// the simulator) and two `scheduleViewRepaint()`s. #1332 measured it closing
+// the simulator on the first mouse move and fixed the two writes that ran
+// during playback; the 23 in edit mode (hover and drag cursors) repainted on
+// every pointer move until 2026-11-07. They now go through `setCanvasCursor`,
+// which writes through a local alias that the compiler does not track.
+//
+// Asserted on the COMPILED output, like ContentStep.reactivity.spec.js,
+// because the bug is invisible to a logic test: the cursor is right either
+// way, and what breaks is only how much work each move does. The behaviour
+// half (0 repaints per hover, per edit mode) is e2e/field-hover-repaint.spec.js.
+import { test, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { compile } from "svelte/compiler";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const SRC = readFileSync(join(HERE, "EmbroideryField.svelte"), "utf8");
+const JS = compile(SRC, { generate: "client", filename: "EmbroideryField.svelte" }).js.code;
+
+test("no cursor write invalidates `canvas` (each one would re-run paint())", () => {
+  // `$.mutate(\n canvas, // comment\n $.get(canvas).style.cursor = x)` spans
+  // lines when the source line carries a comment, so match across them.
+  const hits = JS.match(/\$\.mutate\(\s*canvas\b[^;]*?\.style\b/g) || [];
+  expect(hits).toEqual([]);
+});
+
+test("the cursor is still set, through the alias", () => {
+  const calls = SRC.match(/\bsetCanvasCursor\(/g) || [];
+  // One definition plus the writes (25 on 2026-11-07). The floor only says
+  // they did not all vanish: a hover with no cursor would pass the test above.
+  expect(calls.length).toBeGreaterThan(20);
+  expect(SRC).toMatch(/function setCanvasCursor\(c\) \{\s*const el = canvas;\s*if \(el\) el\.style\.cursor = c;/);
+});

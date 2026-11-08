@@ -1032,7 +1032,7 @@
     shapeMove = null;
     liveMsg = MODE_SAYS.moveCancel;
     dragReadout = null;
-    if (canvas) canvas.style.cursor = "default";
+    setCanvasCursor("default");
     repaintNodeChrome();
   }
   // Commit the pending move as ONE patch (nothing at all on a zero net move).
@@ -1053,7 +1053,7 @@
         dispatch("elupdate", { id: el.id, patch: { shapeOverrides: res.cur }, discrete: true });
       }
     }
-    if (canvas) canvas.style.cursor = "default";
+    setCanvasCursor("default");
     repaintNodeChrome();
   }
   function moveShapeBy(dxMm, dyMm) {
@@ -1123,7 +1123,7 @@
     }
     canvas.setPointerCapture(e.pointerId);
     shapeMove = { ...shapeMove, drag: { startClient: { x: e.clientX, y: e.clientY }, startPx: p, dx0: shapeMove.dx, dy0: shapeMove.dy, armed: false } };
-    canvas.style.cursor = "grabbing";
+    setCanvasCursor("grabbing");
   }
   function shapeMoveDrag(e, p) {
     const d = shapeMove.drag;
@@ -1422,7 +1422,7 @@
     canvas.setPointerCapture(e.pointerId);
     reshapeDrag = { kind: el.type === "manual" ? "anchors" : "ring", elId: el.id, startPx: p,
                     startClient: { x: e.clientX, y: e.clientY }, sel, basis, moving: false, live: null, liveNodes: null };
-    canvas.style.cursor = "grabbing";
+    setCanvasCursor("grabbing");
     repaintNodeChrome();
   }
 
@@ -4021,16 +4021,16 @@
       const g = groupRectPx();
       const handle = g ? hitTest(g, p.x, p.y, HANDLE_R) : "none";
       if (handle !== "none") {
-        canvas.style.cursor = cursorForHandle(handle);
+        setCanvasCursor(cursorForHandle(handle));
         return;
       }
       const hitId = pickElement(perElementRects, p.x, p.y);
-      canvas.style.cursor = hitId ? "move" : view.zoom > 1 ? "grab" : "default";
+      setCanvasCursor(hitId ? "move" : view.zoom > 1 ? "grab" : "default");
       return;
     }
     const selRect = rectFor(project.selectedId);
     if (rotateGripHit(selRect, p)) {
-      canvas.style.cursor = "grab";
+      setCanvasCursor("grab");
       return;
     }
     // Mirrors the pointerdown precedence exactly. Without this the cursor
@@ -4039,7 +4039,7 @@
     const hoverEdit = editableOutlinesPx();
     // Reshape mode: a point is grabbable, anywhere else is a marquee.
     if (reshapeOn() && hoverEdit && hoverEdit.el.id === reshape.elId) {
-      canvas.style.cursor = reshapeNodeAt(hoverEdit, p) ? "grab" : "crosshair";
+      setCanvasCursor(reshapeNodeAt(hoverEdit, p) ? "grab" : "crosshair");
       return;
     }
     // A selected hand-drawn shape's anchors and handles are grabbable; its
@@ -4048,12 +4048,12 @@
       const ap = authoredPxFor(hoverEdit.el, selectedShapeId);
       const ah = ap ? hitAuthored(ap, p.x, p.y, !isOpenShape(ap.shape)) : null;
       if (ah && ah.kind !== "edge") {
-        canvas.style.cursor = "grab";
+        setCanvasCursor("grab");
         return;
       }
     }
     if (hoverEdit && hitOverlay(liveOutlinesPx(hoverEdit), p.x, p.y)) {
-      canvas.style.cursor = "pointer";
+      setCanvasCursor("pointer");
       return;
     }
     let handle = selRect ? hitTest(selRect, p.x, p.y, HANDLE_R) : "none";
@@ -4066,11 +4066,11 @@
         handle = "body";
       } else if (view.zoom > 1) {
         // Empty space, but there's room to pan -- hint it's draggable.
-        canvas.style.cursor = "grab";
+        setCanvasCursor("grab");
         return;
       }
     }
-    canvas.style.cursor = cursorForHandle(handle);
+    setCanvasCursor(cursorForHandle(handle));
   }
 
   function schedulePatchFlush() {
@@ -4481,7 +4481,7 @@
           dragMode = "gresize";
           dragHandle = handle;
         }
-        canvas.style.cursor = cursorForHandle(handle);
+        setCanvasCursor(cursorForHandle(handle));
         return;
       }
       const hitId = pickElement(perElementRects, p.x, p.y);
@@ -4495,7 +4495,7 @@
         dragStartPx = p;
         dragStartPanX = view.panX;
         dragStartPanY = view.panY;
-        canvas.style.cursor = "grabbing";
+        setCanvasCursor("grabbing");
       }
       return;
     }
@@ -4513,7 +4513,7 @@
       dragStartRotationDeg = (el && el.rotationDeg) || 0;
       dragRotateCenterPx = { x: selRect.x + selRect.w / 2, y: selRect.y + selRect.h / 2 };
       rotateBadgeDeg = dragStartRotationDeg;
-      canvas.style.cursor = "grabbing";
+      setCanvasCursor("grabbing");
       return;
     }
 
@@ -4570,7 +4570,7 @@
                                 boxOk: ringInsideBox(ap.shape, ap.fit, hoopSizeMm(project)) },
                        live: ap.shape,
                        grab: { dx: nodeAt.x - pressAt.x, dy: nodeAt.y - pressAt.y }, moving: false };
-          canvas.style.cursor = "grabbing";
+          setCanvasCursor("grabbing");
           repaintNodeChrome();
           return;
         }
@@ -4638,7 +4638,7 @@
                         index: hit.index, startPx: p, startClient: { x: e.clientX, y: e.clientY }, armed: false, ring, nodes, moved: false,
                         basis: editBasis(edit) };
           liveRing = { shapeId: hit.shapeId, key: hitKey, points: ring, nodes };
-          canvas.style.cursor = "grabbing";
+          setCanvasCursor("grabbing");
           drawOverlay();
           return;
         }
@@ -4677,7 +4677,7 @@
           dragStartPx = p;
           dragStartPanX = view.panX;
           dragStartPanY = view.panY;
-          canvas.style.cursor = "grabbing";
+          setCanvasCursor("grabbing");
         }
         return; // selection unchanged either way
       }
@@ -4702,7 +4702,7 @@
     dragStartHeightMm = pe.bboxMm.y1 - pe.bboxMm.y0;
     dragStartBBoxMm = pe.bboxMm; // move-snap translates this by the live drag delta
     dragStartTargetMm = el.sizeMm != null ? el.sizeMm : dragStartWidthMm;
-    canvas.style.cursor = cursorForHandle(handle);
+    setCanvasCursor(cursorForHandle(handle));
 
     if (handle === "body") {
       dragMode = "move";
@@ -4724,7 +4724,10 @@
   // `canvas`, which re-runs `$: if (canvas) { project; runtime; paint(); }`,
   // and paint() opens with stopSim(): the first pointer move over the field
   // closed the simulator (measured 2026-11-07, any mouse move, any zoom).
-  // The two paths that run while it plays write through this instead.
+  // EVERY cursor write goes through this (the edit-mode hover and drag ones
+  // too, 2026-11-07): there each hover re-ran paint(), the full regenerate,
+  // and two scheduleViewRepaint()s, to change nothing. A cursor is not a
+  // reason to repaint. EmbroideryField.cursor.spec.js fails on a direct one.
   function setCanvasCursor(c) {
     const el = canvas;
     if (el) el.style.cursor = c;
@@ -4986,7 +4989,7 @@
         ? { ...shapeMove, dx: d.dx0, dy: d.dy0, drag: null }
         : { ...shapeMove, drag: null };
       dragReadout = null;
-      if (canvas) canvas.style.cursor = "default";
+      setCanvasCursor("default");
       repaintNodeChrome();
       return;
     }
@@ -5003,7 +5006,7 @@
         if (d.kind === "anchors") commitAnchorEdits(el, d.basis.fit, [...d.live.values()]);
         else commitRingEdits(el, d.basis, d.live, null, d.liveNodes);
       }
-      if (canvas) canvas.style.cursor = "default";
+      setCanvasCursor("default");
       repaintNodeChrome();
       return;
     }
@@ -5061,7 +5064,7 @@
       pressClient = null;
       pressOutline = false;
       pressEdge = null;
-      if (canvas) canvas.style.cursor = "default";
+      setCanvasCursor("default");
       repaintNodeChrome();
       return;
     }
@@ -5104,7 +5107,7 @@
       liveRing = null;
       pressClient = null;
       pressOutline = false;
-      if (canvas) canvas.style.cursor = "default";
+      setCanvasCursor("default");
       // The last live ring is painted on the canvas; a REJECTED edit starts
       // no regenerate to clear it, so repaint under the chrome here too.
       repaintNodeChrome();
