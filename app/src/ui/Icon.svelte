@@ -89,6 +89,10 @@
 
     // "Show trims" / cut -- EmbroideryField's and DigitizePanel's ✂. Two
     // finger loops with blades crossing up to opposite top corners.
+    // "Inspect stitches" (EmbroideryField, 2026-11-08) -- a magnifier over a
+    // short zigzag of stitches: hover a stitch to read what it is.
+    inspect: `<circle cx="10.5" cy="10.5" r="6"/><line x1="15" y1="15" x2="20" y2="20"/><path d="M7.5 12L9.5 9L11.5 12L13.5 9"/>`,
+
     scissors: `<circle cx="7" cy="17" r="2.3"/><circle cx="17" cy="17" r="2.3"/><line x1="8.6" y1="15.4" x2="19" y2="5"/><line x1="15.4" y1="15.4" x2="5" y2="5"/>`,
 
     // Stitch simulator play/pause -- EmbroideryField's ▶ / ⏸. Solid fill,
