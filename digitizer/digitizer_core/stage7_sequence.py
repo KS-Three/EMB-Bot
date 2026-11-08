@@ -95,7 +95,7 @@ from .stage6_hairline_lines import applies as hairline_lines_apply
 from .stage6_hairline_lines import strand_blocks
 from .stage6_hairline_lines import supplement_test as hairline_supplement_test
 from .stage6_hairline_lines import supplements as hairline_lines_supplements
-from .stage6_fill import stitch_shape
+from .stage6_fill import pro_offset_fill_angle, stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
@@ -2488,6 +2488,11 @@ def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
         ov = (cfg.shape_overrides or {}).get(p.region.shape_id) or {}
         if ov.get("fill_angle_deg") is None and cfg.fill_angle_deg is None:
             return machine.WHITE_FIELD_FILL_ANGLE_DEG
+    # `cfg.extra["fill_angle_pro_offset"]` (built OFF): the pro's one fill
+    # angle, behind only the review's own angle and the global one.
+    pro = pro_offset_fill_angle(cfg, p.region.shape_id)
+    if pro is not None:
+        return pro
     shape_angle = p.region.meta.get("fill_angle_deg")
     if shape_angle is not None:
         return float(shape_angle)

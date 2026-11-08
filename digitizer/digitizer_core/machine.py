@@ -656,6 +656,19 @@ KEYLINE_REACH_FRAC = 0.9
 # same faces as a 22 deg tatami at 0.15-0.17 mm pitch on all four Becker
 # files). A layout angle, judged in the preview, not a cloth constant.
 WHITE_FIELD_FILL_ANGLE_DEG = 22.0
+# The row angle every fill takes under `cfg.extra["fill_angle_pro_offset"]`
+# (2026-11-07, built OFF; `docs/fill-angle-pro-offset-2026-11-07.md`). Read
+# off the pro's own files, not chosen: the doubled-angle mean of his FILL
+# cells inside each of our fill shapes, over the 17 committed tripwire pairs
+# that have one (stitch frame, mm, y-down; tires has none). His rows never
+# sit on an axis: |offset from the nearest of 0/90| median 20.7 deg, p25 18.0,
+# p75 23.4 (n 27 shapes); per job on its largest fill median 20.4 (n 17,
+# range 8.4-32.8). The sign is + (rows fall to the right) on 12 of those 17
+# and on every Becker, MFab, Golden Tee and Drone file; - on the three To a T
+# files, Fremont's hat and Gaulke's LC. A layout angle, judged in the
+# preview, not a cloth constant -- the figure WHITE_FIELD_FILL_ANGLE_DEG
+# already reads on Becker's faces, measured across every pair.
+FILL_ANGLE_PRO_DEG = 20.0
 
 
 # The art's own outline (`cfg.border_from_outline`, 2026-10-24;
