@@ -3243,7 +3243,8 @@ def _artwork_reach_findings(p, result: PipelineResult, plan: StitchPlan
 # (10%), a WARN under it. Both are one constant each; moving them is a
 # product call.
 #
-# `cfg.extra["dropped_element_v2"]` (built OFF 2026-11-07): an
+# `cfg.dropped_element_v2` (built OFF 2026-11-07 as a `cfg.extra` key, ON
+# since 2026-11-08, Kent's flip): an
 # `unsewn_enclosed` piece the artwork itself leaves TRANSPARENT
 # (`enclosed_colour_unknown`, an alpha hole) is not a drop. The garment
 # showing through is exactly what the art asks for there, and the colour
@@ -3364,7 +3365,7 @@ def _element_drop_findings(p, result: PipelineResult, plan: StitchPlan,
         if len(g) == 3:
             garment = rgb_to_lab(np.array([g], dtype=np.float64)).reshape(1, 3)
     overrides = cfg.shape_overrides or {}
-    v2 = bool((getattr(cfg, "extra", None) or {}).get("dropped_element_v2"))
+    v2 = bool(getattr(cfg, "dropped_element_v2", False))
     transparent: list[float] = []
     if garment is not None:
         for w in warnings:

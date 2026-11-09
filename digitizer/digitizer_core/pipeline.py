@@ -1073,9 +1073,10 @@ def build_generation(
                          **({"part_touching": True} if cfg.text_cluster_part_touching else {}),
                          **({"nest_guard": True} if cfg.text_cluster_nest_guard else {}),
                          **({"nest_guard_rotated": True} if cfg.text_cluster_nest_guard_rotated else {}),
-                         # a letter turned on a ring joins its line (2026-11-07, OFF)
+                         # a letter turned on a ring joins its line (2026-11-07,
+                         # ON since 2026-11-08, Kent's flip)
                          **({"nest_door_aspect": True}
-                            if (cfg.extra or {}).get("text_cluster_nest_door_aspect") else {}))
+                            if cfg.text_cluster_nest_door_aspect else {}))
     # `cfg.dark_ink_floor_rescue`: a stroke kept under the floor for the
     # lettering path that the tagger did not claim is a speck, not a letter:
     # dropped, counted with stage 4's drops (no new sentence).

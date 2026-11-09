@@ -3852,6 +3852,21 @@ class PipelineConfig:
     # the preview. False: byte for byte. Tests:
     # `tests/test_text_cluster_nest_guard_rotated.py`.
     text_cluster_nest_guard_rotated: bool = False
+    # A letter turned on a ring joins its line (`textcluster._adopt_turned`,
+    # PR #1307; built OFF 2026-11-07 as
+    # `cfg.extra["text_cluster_nest_door_aspect"]`). The letter door reads a
+    # glyph's aspect off its axis-aligned box, so a letter lying on the side
+    # of a ring reads wide and is refused; ON reads its minimum-area
+    # rectangle in the frame it shares with a line-mate and admits it to
+    # that line (never makes or bridges one). Bridge hat and LC: 9 -> 11
+    # tagged letters; ProSeal hat and beanie: 0 tags change (measured
+    # 2026-11-08 on main 15b0f5a0, the false-positive check #1307 left
+    # open); every committed golden byte-identical.
+    # **ON since 2026-11-08, Kent's flip** ("Flip ON"), promoted from
+    # `cfg.extra` to a field so the default can be ON. False is the tagger as
+    # it was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
+    # pin it False. Tests: `tests/test_nest_aspect_door.py`.
+    text_cluster_nest_door_aspect: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
@@ -5697,6 +5712,20 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_thread_match_grade_traced_letter.py`.
     thread_match_grade_traced_letter: bool = True
+    # `ARTWORK_ELEMENT_DROPPED` v2 (`preflight._element_drop_findings`, PR
+    # #1298; built OFF 2026-11-07 as `cfg.extra["dropped_element_v2"]`): an
+    # unsewn enclosed hole the artwork itself leaves TRANSPARENT
+    # (`enclosed_colour_unknown`) is the garment showing where the art asks
+    # for it, not a lost element. It is counted in metrics and never fires.
+    # A hole found by colour keeps v1's judgment.
+    # **ON since 2026-11-08, Kent's flip** ("Flip ON"), promoted from
+    # `cfg.extra` to a field so the default can be ON: gradient_mascot D 58
+    # -> C 70, pixel_art_sprite B 88 -> A 100, Becker B 88 -> A 100 (#1298's
+    # census). A GRADING change only: preflight is the one reader, no stitch
+    # moves. False is the finding as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_element_dropped.py`.
+    dropped_element_v2: bool = True
 
     # Bind stage 4's thread re-snap to the selected palette on EVERY class,
     # not only the photo ones. `revalidate_threads`' argmin runs over the whole

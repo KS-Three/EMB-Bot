@@ -550,6 +550,37 @@ def _classify_ribbon_once(poly: Polygon, max_width_mm: float, *,
                           area_weighted: bool = False,
                           floor_applies: bool = False,
                           hysteresis: "bool | str" = False) -> RibbonVerdict:
+    """`_classify_ribbon_reading`, with the aspect band's refusal kept.
+
+    A shape the aspect band (`hysteresis`, default OFF) handed to the distance
+    transform and the DT then REFUSED leaves with reason "aspect", the
+    perimeter gate's own refusal, whatever the DT called it ("dt_irregular",
+    "dt_p90_cap", "photo_width_floor"). The bool is the same either way; the
+    reason is not cosmetic: stage 7's compact-solid satin rescue
+    (`cfg.compact_solids_satin`, default ON) runs on `reason == "aspect"`
+    only, so a renamed refusal sewed tatami where OFF sews one satin blob,
+    and the `.satin`-only census tools could not see it (#1311 follow-up).
+    The band may only turn a refusal into an ACCEPT; a refusal stands as the
+    gate made it. `metrics["hyst_aspect"]` still marks the shape. With the
+    flag OFF nothing here fires (`hyst_aspect` is never set): byte-identical.
+    """
+    v = _classify_ribbon_reading(poly, max_width_mm, design_class=design_class,
+                                 full_metrics=full_metrics, per_stroke=per_stroke,
+                                 polygon_axis=polygon_axis, area_weighted=area_weighted,
+                                 floor_applies=floor_applies, hysteresis=hysteresis)
+    if not v.satin and v.reason != "aspect" and v.metrics.get("hyst_aspect"):
+        return RibbonVerdict(False, "aspect", v.metrics)
+    return v
+
+
+def _classify_ribbon_reading(poly: Polygon, max_width_mm: float, *,
+                             design_class: str = "flat",
+                             full_metrics: bool = False,
+                             per_stroke: bool = False,
+                             polygon_axis: bool = False,
+                             area_weighted: bool = False,
+                             floor_applies: bool = False,
+                             hysteresis: "bool | str" = False) -> RibbonVerdict:
     """ONE reading of the shape as drawn: the shipped path (`classify_ribbon`
     with `vote=False` returns exactly this).
 

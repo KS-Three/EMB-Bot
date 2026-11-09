@@ -56,6 +56,7 @@ const SPEC_SECONDS = {
   "configurator-smoke.spec.js": 114,
   "core-flows.spec.js": 23,
   "crop-upload.spec.js": 6,
+  "design-block-thumbs.spec.js": 40,
   "design-import.spec.js": 29,
   "design-naming.spec.js": 19,
   "design-originals.spec.js": 62,
@@ -77,6 +78,8 @@ const SPEC_SECONDS = {
   "field-bar-narrow.spec.js": 8,
   "field-border-menu.spec.js": 19,
   "field-chrome.spec.js": 26,
+  // new 2026-11-07; local sum of test durations (3 tests), not a CI median yet.
+  "field-compare.spec.js": 26,
   "field-node-edit.spec.js": 64,
   "field-outlines.spec.js": 17,
   "field-panel-sync.spec.js": 18,

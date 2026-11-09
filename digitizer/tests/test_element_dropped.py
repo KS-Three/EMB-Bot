@@ -232,8 +232,7 @@ def _unsewn_fixture(tmp_path, garment, by_override=False):
 def test_black_ink_left_as_a_hole_on_a_cream_garment_is_a_dropped_element(tmp_path, v2):
     # A hole found by COLOUR keeps v1's judgment under `dropped_element_v2`.
     p, result, plan, c = _unsewn_fixture(tmp_path, GARMENT)
-    if v2:
-        c = dataclasses.replace(c, extra={"dropped_element_v2": True})
+    c = dataclasses.replace(c, dropped_element_v2=v2)
     findings, metrics = _element_drop_findings(p, result, plan, c, rows=[])
     f = _only(findings)
     assert f["extra"]["causes"]["unsewn_enclosed"] == 1
@@ -270,7 +269,7 @@ def test_a_hole_the_art_leaves_transparent_fires_v1_and_not_v2(tmp_path):
     counts the hole in metrics. Same digitize, same plan, same score
     arithmetic: only the finding moves."""
     art = _alpha_ring(tmp_path / "ring.png")
-    c = cfg(garment_rgb=GARMENT)
+    c = cfg(garment_rgb=GARMENT, dropped_element_v2=False)
     result = run_stages(art, c)
     plan = plan_stitches(result, c)
     hole = [r for r in result.regions if r.meta.get("enclosed_background")]
@@ -283,7 +282,7 @@ def test_a_hole_the_art_leaves_transparent_fires_v1_and_not_v2(tmp_path):
     assert "element_drop_transparent_count" not in off["metrics"]
 
     on = run_preflight(result, plan,
-                       dataclasses.replace(c, extra={"dropped_element_v2": True}),
+                       dataclasses.replace(c, dropped_element_v2=True),
                        image=art)
     assert ARTWORK_ELEMENT_DROPPED not in _codes(on)
     m = on["metrics"]

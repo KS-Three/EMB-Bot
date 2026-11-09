@@ -193,3 +193,67 @@ def test_the_vote_bands_every_reading(monkeypatch):
     monkeypatch.setattr(s6, "_classify_ribbon_once", spy)
     classify_ribbon(BAR, CAP, vote=True, hysteresis=True)
     assert len(seen) == 5 and all(seen)
+
+
+# ------------------------------- a banded shape the DT reads AND refuses
+# (#1311 follow-up) The aspect band hands a near-line shape to the DT. When the
+# DT reads it and refuses, the refusal the shape carries out has to stay
+# "aspect": stage 7's compact-solid satin rescue (`compact_solids_satin`,
+# default ON) runs on `reason == "aspect"` only, so a band that changes the
+# reason without changing the bool still moves a sewn tier (one satin blob ->
+# tatami plus the bean edge cap), and `ribbon_stability` / `satin_vote_flips`,
+# which compare `.satin`, would call it unchanged.
+def _star(outer: float = 1.0, inner: float = 0.75) -> Polygon:
+    return Polygon([((outer if i % 2 == 0 else inner) * math.cos(math.pi / 2 + i * math.pi / 5),
+                     (outer if i % 2 == 0 else inner) * math.sin(math.pi / 2 + i * math.pi / 5))
+                    for i in range(10)])
+
+
+@pytest.mark.parametrize("hyst", [True, s6.HYST_ASPECT_ONLY], ids=["both", "aspect-only"])
+def test_a_banded_aspect_shape_the_dt_refuses_keeps_the_aspect_refusal(hyst):
+    star = _star()          # 2.2 mm2, aspect 2.958; the DT reads cv ~0.52
+    off = classify_ribbon(star, CAP)
+    assert (off.satin, off.reason) == (False, "aspect")
+    assert off.metrics["aspect"] == pytest.approx(2.958, abs=0.01)
+    on = classify_ribbon(star, CAP, hysteresis=hyst)
+    assert (on.satin, on.reason) == (False, "aspect")
+    assert on.metrics["hyst_aspect"] == 1.0
+    assert on.metrics["dt_mean"] > 0          # the DT did read it
+
+
+@pytest.mark.parametrize("stats", [_stats(0.6, elongation=5.0), _stats(0.3, p90=CAP + 0.5)],
+                         ids=["dt_irregular", "dt_p90_cap"])
+def test_every_dt_refusal_of_a_banded_shape_reads_as_aspect(monkeypatch, stats):
+    poly = _ellipse_at_aspect(2.95)
+    _with_stats(monkeypatch, stats)
+    on = classify_ribbon(poly, CAP, hysteresis=True)
+    assert (on.satin, on.reason) == (False, "aspect")
+    # the same refusal on a shape the aspect gate PASSED keeps the DT's reason
+    assert classify_ribbon(BAR, CAP, hysteresis=True).reason != "aspect"
+
+
+def test_the_band_leaves_the_compact_solid_satin_rescue_where_off_has_it():
+    """End to end through stage 7: OFF sews the banded star as one satin blob
+    (`compact_solids_satin`, default ON); ON must too. Before the fix ON sewed
+    it tatami ("fill") while `.satin` read False both ways."""
+    from digitizer_core import stitches
+    from digitizer_core.fabrics import fabric_for_garment
+    from digitizer_core.regions import Region
+    from digitizer_core.stage5_overlap import PlannedRegion
+    from digitizer_core.stage7_sequence import sequence
+
+    star = affinity.scale(_star(), 1.5, 1.5)        # ~5 mm2, still aspect 2.958
+
+    def kinds(**cfg_kw):
+        reg = Region(shape_id="Sstar", polygon=star, thread_index=0,
+                     thread_number="4101", area_mm2=star.area, source="test",
+                     meta={"layer": 0})
+        blocks, _w = sequence([PlannedRegion(region=reg, polygon=star, sew_index=0)],
+                              fabric_for_garment("hat_front"),
+                              PipelineConfig(underlay=False, **cfg_kw))
+        return [r.kind for b in blocks for r in b.runs if r.shape_id == "Sstar"]
+
+    off = kinds()
+    assert off == [stitches.SATIN], off
+    for key in ("satin_fill_hysteresis", "satin_fill_hysteresis_aspect_only"):
+        assert kinds(extra={key: True}) == off, key

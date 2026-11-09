@@ -2694,8 +2694,9 @@ The borrowed interpreter works because the tool puts its own tree on
 `sys.path` *(verified 2026-10-02 — a fresh worktree at `5c99b460` imported
 `digitizer_core` from itself, not from the control tree)*. Rebuild the venv
 only when `requirements.txt` moves: `python3.12 -m venv .venv`, then
-`.venv/bin/pip install -r requirements.txt`. `uvloop` installs on Linux,
-so nothing is filtered out the way it is on Windows.
+`.venv/bin/pip install -r requirements.txt`. `uvloop` installs on Linux;
+since 2026-11-08 its pin carries `sys_platform != "win32"`, so the same
+file also installs unfiltered on Windows, where pip skips it.
 
 **Budget 35 minutes for the plain tool.** `diff` is serial and took 34.4
 minutes for the 52 rows. `/root/scorecard_pool.py` on the box scores the

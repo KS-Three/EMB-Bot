@@ -265,16 +265,46 @@ export function resolvePython() {
 // Exported since 2026-09-20 so tools/preview-vs-dst.mjs reads its files
 // through the SAME decoder call this harness does — one place that knows
 // crossval_decode.py's JSON contract, rather than two that can drift.
-export function pyDecode(python, files) {
-  const r = spawnSync(python, [path.join(ROOT, "tools", "crossval_decode.py"), ...files], {
-    encoding: "utf8",
-    timeout: 120000,
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  if (r.status !== 0) {
-    throw new Error("crossval_decode.py failed: " + (r.stderr || r.error || "unknown"));
+//
+// Batched since 2026-11-07: Windows CreateProcess caps a command line at
+// 32,767 characters, and #1306's fuzz test sent 900 temp paths (~58,500
+// chars) in one spawn, so `node --test` died with ENAMETOOLONG on every
+// Windows box with the venv (CI is Linux and never saw it). The output is
+// keyed by basename, so batches merge into the same object one spawn gave.
+export const PY_ARGV_BUDGET = 24000; // chars of file arguments per spawn
+
+export function pyDecodeBatches(files, budget = PY_ARGV_BUDGET) {
+  const batches = [];
+  let cur = [];
+  let chars = 0;
+  for (const f of files) {
+    const cost = f.length + 3; // quotes + separator, as Windows builds the line
+    if (cur.length && chars + cost > budget) {
+      batches.push(cur);
+      cur = [];
+      chars = 0;
+    }
+    cur.push(f);
+    chars += cost;
   }
-  return JSON.parse(r.stdout);
+  if (cur.length) batches.push(cur);
+  return batches;
+}
+
+export function pyDecode(python, files) {
+  const out = {};
+  for (const batch of pyDecodeBatches(files)) {
+    const r = spawnSync(python, [path.join(ROOT, "tools", "crossval_decode.py"), ...batch], {
+      encoding: "utf8",
+      timeout: 120000,
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    if (r.status !== 0) {
+      throw new Error("crossval_decode.py failed: " + (r.stderr || r.error || "unknown"));
+    }
+    Object.assign(out, JSON.parse(r.stdout));
+  }
+  return out;
 }
 
 // ---- harness ----------------------------------------------------------

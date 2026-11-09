@@ -13,6 +13,8 @@
   import { advanceIndex, clampIndex, nextSpeed, simTimeline, colorStopBetween, stepBlock, blockAt, blockThreadNames, underlayRuns, phaseAt, blockStart, sewClock, sewTimeAt } from "../lib/simulate.js";
   import { drawSimOverlay, drawIsolate, threadPx } from "../lib/simOverlay.js";
   import SimBar from "./SimBar.svelte";
+  import StitchInspector from "./StitchInspector.svelte";
+  import { buildStitchIndex, inspectAt, canvasPxToMm } from "../lib/stitchInspect.js";
   import { chartIdForProject } from "../lib/designChart.js";
   import { getCachedPalette, loadPalette, loadPreferredPaletteId, STUDIO_PALETTE } from "../lib/threads.js";
   import { EMB } from "../lib/emb.js";
@@ -42,6 +44,8 @@
   import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyAnchorsDrag, applyHandleDrag, insertAnchor, removeAnchor, removeAnchors, editedElementPatch, editedShapesPatch, refitShapesPatch, ANCHOR_GRAB_PX, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT, convertOpenShape } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
   import DigitizeRing from "./DigitizeRing.svelte";
+  import CompareSplit from "./CompareSplit.svelte";
+  import { SPLIT_DEFAULT } from "../lib/compareSplit.js";
   import { digitizeBusy } from "../lib/digitizeBusy.js";
   import Icon from "./Icon.svelte";
   import { prefersReducedMotion } from "../lib/reducedMotion.js";
@@ -197,6 +201,58 @@
   $: canSewnWidth = !!(lastGenerateResult && lastGenerateResult.combined && hasSatinSpans(lastGenerateResult.combined)) && sewnPullFor(project) > 0;
   function toggleJumps() { showJumps = !showJumps; scheduleViewRepaint(); }
   function toggleTrims() { showTrims = !showTrims; scheduleViewRepaint(); }
+
+  // ---- the stitch inspector (2026-11-08) ------------------------------------
+  //
+  // Inspect on: hovering the field names the stitch nearest the pointer
+  // (lib/stitchInspect.js, StitchInspector.svelte). Off by default; the bar
+  // toggles it, Escape turns it off.
+  //
+  // A hover here must never repaint the field (#1334 pins 0 renders per
+  // hover): nothing below writes `canvas`, `view` or anything a paint
+  // statement names, and none of it draws. The tooltip is a DOM element
+  // outside `.hoop`, so `inspectHit` is the only thing a move changes.
+  //
+  // The index is built on the first hover after a generation, from the very
+  // `combined` design the field drew, and kept until the next one; the
+  // thread names are the simulator's (nameSimThreads' chart lookup).
+  let inspectOn = false;
+  let inspectHit = null;   // { info, x, y } (client px), or null
+  let inspectIx = null;
+  let inspectFor = null;   // the combined design inspectIx indexes
+  let inspectNames = [];
+  function toggleInspect() {
+    inspectOn = !inspectOn;
+    inspectHit = null;
+    inspectFor = null; // re-read the chart's names when it comes back on
+  }
+  function inspectHover(e, p) {
+    if (!inspectOn) return;
+    const c = lastGenerateResult && lastGenerateResult.combined;
+    if (!c || !renderResult || !renderResult.toCanvas) { inspectHit = null; return; }
+    if (inspectFor !== c) {
+      inspectIx = buildStitchIndex(c);
+      inspectFor = c;
+      nameInspectThreads(inspectIx);
+    }
+    const mm = canvasPxToMm(renderResult.toCanvas, p.x, p.y);
+    const info = mm ? inspectAt(inspectIx, mm.x, mm.y, inspectNames) : null;
+    inspectHit = info ? { info, x: e.clientX, y: e.clientY } : null;
+  }
+  function nameInspectThreads(ix) {
+    inspectNames = [];
+    if (!ix) return;
+    const id = loadPreferredPaletteId(chartIdForProject(project));
+    const hit = getCachedPalette(id);
+    inspectNames = blockThreadNames(ix.tl, (hit || STUDIO_PALETTE).threads);
+    if (hit) return;
+    loadPalette(id).then((pal) => {
+      if (inspectIx === ix && pal) inspectNames = blockThreadNames(ix.tl, pal.threads);
+    }, () => {});
+  }
+  // A new generation or a new view moves the stitches under a resting
+  // pointer; the next move reads them again.
+  $: { lastGenerateResult; view; inspectHit = null; }
   // Every shape of a digitized element used to be outlined in cyan, with a
   // node on every vertex, permanently — not tied to selection, not tied to an
   // edit mode, and unaffected by the Realistic view toggle. On a two-colour
@@ -240,6 +296,45 @@
   function showOriginal() {
     if (simActive) stopSim();
     originalView = true;
+    compareView = false;
+    scheduleViewRepaint();
+  }
+  // Compare view (2026-11-07): Original view with a split — the artwork LEFT
+  // of a draggable handle, the realistic stitches RIGHT, at the same
+  // registration. It IS Original view underneath (originalView stays true),
+  // so every rule that keeps edits and chrome off the artwork — and every
+  // way out of Original view (another view, the simulator, a regeneration) —
+  // applies to it unchanged; `compareView` alone means nothing.
+  //
+  // The artwork side is painted from repaintView onto an OFFSCREEN canvas
+  // (never in the DOM: .hoop holds exactly one <canvas>, which e2e locators
+  // and the field's own code assume) and shown in CompareSplit as an <img>
+  // of that bitmap, once drawOriginals has put the artwork on it.
+  let compareView = false;
+  let compareSplit = SPLIT_DEFAULT;
+  let compareCanvas = null;
+  let compareSrc = "";
+  $: compareOn = originalView && compareView;
+  // Leaving Compare (by any way out of Original view) drops the bitmap.
+  $: if (!compareOn && compareSrc) setCompareSrc("");
+  function setCompareSrc(url) {
+    if (compareSrc && typeof URL !== "undefined" && URL.revokeObjectURL) URL.revokeObjectURL(compareSrc);
+    compareSrc = url;
+  }
+  // The offscreen bitmap -> an object URL for the <img>. Only the latest
+  // drawOriginals pass publishes (`my`), and only while Compare is still lit.
+  function publishCompare(my) {
+    const c = compareCanvas;
+    if (!c || !c.toBlob) return;
+    c.toBlob((blob) => {
+      if (!blob || my !== originalToken || !(originalView && compareView)) return;
+      setCompareSrc(URL.createObjectURL(blob));
+    }, "image/png");
+  }
+  function showCompare() {
+    if (simActive) stopSim();
+    originalView = true;
+    compareView = true;
     scheduleViewRepaint();
   }
 
@@ -2669,6 +2764,17 @@
       e.preventDefault();
       return;
     }
+    // Then the stitch inspector, the least modal thing on the field: from the
+    // field, the page, or the bar its toggle sits in.
+    if (e.key === "Escape" && inspectOn) {
+      const t = e.target;
+      if (t === canvas || t === document.body || (t && t.closest && t.closest(".fieldbars"))) {
+        inspectOn = false;
+        inspectHit = null;
+        e.preventDefault();
+        return;
+      }
+    }
     if (e.key !== "Delete" && e.key !== "Backspace") return;
     // Reshape mode with points selected: Delete removes THOSE points (same
     // from-the-field rule as below). With none selected it does what it did.
@@ -3094,6 +3200,12 @@
     const my = ++originalToken;
     const rr = renderResult;
     if (!rr || !rr.toCanvas) return;
+    // Compare view draws the same placement onto its offscreen canvas
+    // (fabric already painted there by repaintView), leaving the stitches on
+    // the field canvas; both bitmaps share one size, so one transform.
+    const comparing = originalView && compareView;
+    const target = comparing ? compareCanvas : canvas;
+    if (!target) return;
     const centre = rr.toCanvas(0, 0);
     const box = hoopSizeMm(project);
     const placement = { x: centre.x - (box.wMm * rr.scale) / 2, y: centre.y - (box.hMm * rr.scale) / 2,
@@ -3110,6 +3222,7 @@
       let im;
       try { im = await loadOriginal(el.sourcePng); } catch (e) { return; }
       if (my !== originalToken || !originalView || !canvas) return;
+      if ((originalView && compareView) !== comparing) return;
       const iw = im.naturalWidth, ih = im.naturalHeight;
       let at = null;
       if (el.type === "image") {
@@ -3130,7 +3243,7 @@
         at = (cb && placeByContent(iw, ih, cb, rect)) || fitRect(iw, ih, placement);
       }
       if (!at) return;
-      const ctx = canvas.getContext("2d");
+      const ctx = target.getContext("2d");
       ctx.save();
       if (dpr !== 1) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.beginPath();
@@ -3140,6 +3253,7 @@
       ctx.restore();
     });
     await Promise.all(jobs);
+    if (comparing && my === originalToken) publishCompare(my);
   }
 
   function drawOverlay() {
@@ -3527,8 +3641,8 @@
   function repaintView() {
     if (!canvas) return;
     if (lastGenerateResult && lastGenerateResult.combined) {
-      freshContext(canvas);
-      renderResult = renderRealistic(canvas, lastGenerateResult.combined, {
+      const comparing = originalView && compareView;
+      const opts = {
         dpr,
         hoop: hoopOpt(project),
         fabricRgb: project.fabricRgb,
@@ -3541,17 +3655,36 @@
         // the whole design, which during playback showed the future.
         showJumps: showJumps && !simActive,
         showTrims: showTrims && !simActive,
-        threadStyle: realisticView ? "realistic" : "flat",
+        // Compare view's stitch side is the realistic render, whichever of
+        // the two thread styles was lit before it.
+        threadStyle: realisticView || comparing ? "realistic" : "flat",
         sewnPullMm,
         // While simulating, every repaint (zoom/pan included) draws only the
         // sewn-so-far prefix -- otherwise a mid-playback wheel event would
         // flash the finished design.
         // Original view draws fabric + hoop only (zero strands); the
-        // artwork goes on top in drawOriginals.
-        limitStrands: originalView ? 0 : simActive ? Math.floor(simIndex) : undefined,
+        // artwork goes on top in drawOriginals. Compare view keeps every
+        // strand here and puts the fabric + artwork on its own canvas.
+        limitStrands: originalView && !comparing ? 0 : simActive ? Math.floor(simIndex) : undefined,
         // A live pan drag shifts the last finished frame (see settlePan).
         panDraft: panDraft && !simActive && !originalView,
-      });
+      };
+      freshContext(canvas);
+      renderResult = renderRealistic(canvas, lastGenerateResult.combined, opts);
+      if (comparing) {
+        // The artwork side renders OFFSCREEN (e2e locators, and the field's
+        // own code, assume .hoop holds exactly one <canvas>), at the same
+        // bitmap size and options as the field canvas, so the same mm->px
+        // transform: the artwork lands where Original view puts it.
+        // drawOriginals then publishes it to CompareSplit's <img>.
+        if (!compareCanvas && typeof document !== "undefined") compareCanvas = document.createElement("canvas");
+        if (compareCanvas) {
+          if (compareCanvas.width !== canvas.width) compareCanvas.width = canvas.width;
+          if (compareCanvas.height !== canvas.height) compareCanvas.height = canvas.height;
+          freshContext(compareCanvas);
+          renderRealistic(compareCanvas, lastGenerateResult.combined, { ...opts, showJumps: false, showTrims: false, limitStrands: 0 });
+        }
+      }
       perElementRects = [];
       if (renderResult && renderResult.toCanvas) {
         for (const pe of lastGenerateResult.perElement) {
@@ -3945,6 +4078,7 @@
   }
 
   onDestroy(() => {
+    setCompareSrc("");
     // The outline pulse is the one loop here that can be mid-flight with no
     // user input driving it, so it has to be cancelled explicitly — otherwise
     // a rAF fires into a destroyed component and repaints a dead canvas.
@@ -4902,6 +5036,7 @@
     if (!dragMode) {
       emitCanvasHover(p);
       updateHoverCursor(p);
+      inspectHover(e, p);
       return;
     }
     if (dragMode === "pan") {
@@ -5253,6 +5388,7 @@
 
   function onPointerLeave() {
     emitCanvasHover(null);
+    inspectHit = null;
     if (!dragMode) setCanvasCursor("default");
   }
 </script>
@@ -5303,6 +5439,7 @@
       aria-label={fieldLabel}
       on:keydown={onCanvasKey}
       on:pointerdown={onPointerDown}
+      on:pointerdown={() => (inspectHit = null)}
       on:pointermove={onPointerMove}
       on:pointerup={endDrag}
       on:pointercancel={endDrag}
@@ -5310,6 +5447,12 @@
       on:contextmenu={onContextMenu}
       on:wheel={onWheel}
     ></canvas>
+    {#if compareOn}
+      <!-- Compare view: an overlay over the canvas (no layout space), only
+           while lit. Its artwork <img> is pointer-transparent; only the
+           handle takes pointer and keys. No <canvas> in here. -->
+      <CompareSplit bind:split={compareSplit} src={compareSrc} />
+    {/if}
     {#if fieldMenu}
       <!-- Drawing tools live here now instead of in the Content step's tile
            row (Kent's call, 2026-08-13: keep them, but as a right-click tool
@@ -5399,9 +5542,14 @@
         <!-- A ruler, not a control: the bar's width IS the stated length on
              screen (lib/scalebar.js), so the customer reads the design's
              size off it at any zoom. In the zoom bar rather than on the
-             canvas so it never covers sewable field. -->
+             canvas so it never covers sewable field.
+             The rule sits in a FIXED slot as wide as the longest rule
+             pickScaleBar draws (120 px), so a render that changes the scale
+             never changes the bar's width: it used to, and a bar near the
+             wrap point then re-wrapped after the render, resized .hoop and
+             cost a second field render per window resize (2026-11-07). -->
         <span class="scalebar" role="img" aria-label="Scale: {scaleBar.label} on screen" title="{scaleBar.label} at this zoom">
-          <i class="scalebar-rule" style="width: {scaleBar.px.toFixed(1)}px"></i>
+          <span class="scalebar-slot"><i class="scalebar-rule" style="width: {scaleBar.px.toFixed(1)}px"></i></span>
           <span class="scalebar-label">{scaleBar.label}</span>
         </span>
       {/if}
@@ -5446,13 +5594,23 @@
         <button
           type="button"
           class="zoombtn viewseg-btn viewseg-orig"
-          class:viewseg-on={originalView}
+          class:viewseg-on={originalView && !compareOn}
           on:click={showOriginal}
           disabled={!hasDesign || !anyOriginal}
-          aria-pressed={originalView}
+          aria-pressed={originalView && !compareOn}
           aria-label="Original view"
           use:tip={"originalView"}
         >Original</button>
+        <button
+          type="button"
+          class="zoombtn viewseg-btn viewseg-orig"
+          class:viewseg-on={compareOn}
+          on:click={showCompare}
+          disabled={!hasDesign || !anyOriginal}
+          aria-pressed={compareOn}
+          aria-label="Compare view"
+          use:tip={"compareView"}
+        >Compare</button>
       </span>
       <span class="zoomsep" aria-hidden="true"></span>
       <button
@@ -5495,6 +5653,16 @@
         aria-label="Show columns as sewn"
         use:tip={"sewnWidth"}
       ><Icon name="nodes" /><span class="zoomlabel">Sewn width</span></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={inspectOn}
+        on:click={toggleInspect}
+        disabled={!hasDesign}
+        aria-pressed={inspectOn}
+        aria-label="Inspect stitches"
+        use:tip={"inspect"}
+      ><Icon name="inspect" /><span class="zoomlabel">Inspect</span></button>
       <span class="zoomsep" aria-hidden="true"></span>
       <button
         type="button"
@@ -5542,6 +5710,11 @@
        and a live region outside the tree is never announced. -->
   <p class="fieldlive" aria-live="polite">{liveMsg}</p>
   <EditModeBar bar={modeBar} on:action={onModeBarAction} />
+  <!-- The stitch inspector's tooltip: fixed at the pointer, out of flow, and
+       outside `.hoop` (which holds the canvas and nothing else). -->
+  {#if inspectOn && inspectHit && !simActive && !originalView}
+    <StitchInspector info={inspectHit.info} x={inspectHit.x} y={inspectHit.y} />
+  {/if}
   <div class="fieldmeta">
     {#if error}<span class="err">{error}</span>
     {:else if shapeEditError}<span class="err" data-testid="shape-edit-error">{shapeEditError}</span>

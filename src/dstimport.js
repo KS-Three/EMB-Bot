@@ -313,10 +313,13 @@
     const nativeHmm = Math.max(0.1, srcHmm);
 
     // Native size unless asked otherwise, then clamp so both dims fit.
-    let targetWmm = (typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0)
-      ? o.targetWidthMm
-      : nativeWmm;
-    targetWmm = Math.min(Math.max(targetWmm, 1), hoopWmm);
+    // The 1 mm floor is for a TYPED width only: applied to the native
+    // default it enlarged any design under 1 mm wide (a vertical running
+    // line is 0 wide, floored to 0.1 above) by up to 10x until the height
+    // clamp stopped it.
+    const typedW = typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0;
+    let targetWmm = typedW ? Math.max(o.targetWidthMm, 1) : nativeWmm;
+    targetWmm = Math.min(targetWmm, hoopWmm);
     let sc = targetWmm / nativeWmm;
     if (nativeHmm * sc > hoopHmm) sc = hoopHmm / nativeHmm; // height clamp
 

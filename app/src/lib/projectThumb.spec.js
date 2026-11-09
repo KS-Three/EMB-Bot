@@ -6,7 +6,18 @@
 // not the browser rasteriser, which the e2e/browser measurement in the PR
 // covers.
 import { beforeEach, expect, test, vi } from "vitest";
-import { getThumb, projectDesign, drawThumb, thinForThumb, clearThumbCache, thumbKey, THUMB_PX } from "./projectThumb.js";
+// projectThumb builds through generate.js, which needs the engine globals
+// before it is imported (lib/emb.js throws otherwise) -- hoisted above the
+// imports; the same engine files generate.spec.js loads.
+vi.hoisted(async () => {
+  const { createRequire } = await import("node:module");
+  const require = createRequire(import.meta.url);
+  globalThis.window = globalThis;
+  for (const f of ["units", "garments", "fabrics", "fill", "geometry", "quantize", "flatten", "satin", "satinplay", "satinfont", "fontbin", "dst", "dstimport", "exp", "digitize"]) {
+    require("../../../src/" + f + ".js");
+  }
+});
+import { getThumb, projectDesign, thinForThumb, clearThumbCache, thumbKey, THUMB_PX } from "./projectThumb.js";
 
 // A context that accepts any call or assignment and answers with itself.
 function nullCtx() {
@@ -65,13 +76,25 @@ test("the thumbnail is cached by saved revision: same revision draws once, a new
 
 test("a 20k-stitch project thumbnail builds in <= 120 ms", () => {
   const project = projectWith(bigDesign(20000));
-  drawThumb(projectDesign(project)); // warm the JIT like a second drawer row would
-  clearThumbCache();
   const load = () => project;
-  const t0 = performance.now();
-  const url = getThumb({ id: "big", updatedAt: 1 }, load);
-  const ms = performance.now() - t0;
-  console.log(`20k-stitch thumbnail build: ${ms.toFixed(1)} ms`);
+  // Warm the whole build path (generate + draw), like a second drawer row would.
+  getThumb({ id: "warm", updatedAt: 1 }, load);
+  // Best of 5 cold builds, not one. The clock is a wall clock on a shared
+  // runner: CI read 51.3 and 51.4 ms on main (runs 42463728820, 42464151359)
+  // and then 131.5 ms on a docs-only PR (run 42500620331), a 2.5x swing with
+  // no code change. Interference only ever ADDS time, so the fastest build is
+  // the one with the least of it in, and a real slowdown in the code still
+  // raises all five (same reasoning as e2e/design-block-thumbs.spec.js).
+  const times = [];
+  let url;
+  for (let i = 0; i < 5; i++) {
+    clearThumbCache();
+    const t0 = performance.now();
+    url = getThumb({ id: "big", updatedAt: 1 }, load);
+    times.push(performance.now() - t0);
+  }
+  const ms = Math.min(...times);
+  console.log(`20k-stitch thumbnail build: best ${ms.toFixed(1)} ms, all ${times.map((t) => t.toFixed(0)).join(",")}`);
   expect(url).toMatch(/^data:image\/png/);
   expect(ms).toBeLessThanOrEqual(120);
   expect(THUMB_PX).toBe(96);
@@ -95,4 +118,56 @@ test("thinning drops sub-pixel stitches but keeps colour/trim records, run ends 
   // small designs pass through untouched
   const small = { stitches: stitches.slice(0, 50), colors: [{}] };
   expect(thinForThumb(small)).toBe(small);
+});
+
+// A service-shaped result: block 0 (shape Sa, a 30 mm bar along x) and
+// block 1 (shape Sb, a second bar 5 mm above), both red. 0.1 mm units, +y up.
+function twoShapeResult() {
+  const stitches = [];
+  const runs = [];
+  const bar = (y, shape) => {
+    const i0 = stitches.length;
+    for (let x = 0; x <= 300; x += 20) stitches.push({ x, y, type: "stitch" });
+    runs.push({ i0, i1: stitches.length - 1, shape, kind: "running" });
+  };
+  bar(0, "Sa");
+  stitches.push({ x: 300, y: 0, type: "trim" }, { x: 300, y: 0, type: "color" });
+  bar(50, "Sb");
+  stitches.push({ x: 300, y: 50, type: "end" });
+  return {
+    stitches, runs,
+    colors: [{ r: 200, g: 30, b: 30, name: "1 Red" }, { r: 200, g: 30, b: 30, name: "1 Red" }],
+    colorCount: 2, widthMM: 30, heightMM: 5,
+  };
+}
+const digitizedProject = (over) => ({
+  garmentId: "left_chest",
+  elements: [{ id: "e1", type: "digitized", result: twoShapeResult(), rotationDeg: 0, offsetXMm: 0, offsetYMm: 0, sizeMm: null, ...over }],
+});
+const sewn = (d) => d.stitches.filter((s) => s.type === "stitch");
+const extent = (d) => {
+  const xs = sewn(d).map((s) => s.x), ys = sewn(d).map((s) => s.y);
+  return { w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+};
+
+test("the thumbnail carries the customer's per-block thread override, as the canvas does", () => {
+  const navy = [20, 30, 90];
+  const d = projectDesign(digitizedProject({ blockColors: { 1: navy } }));
+  const rgb = (c) => [c.r, c.g, c.b];
+  expect(rgb(d.colors[0])).toEqual([200, 30, 30]);
+  expect(rgb(d.colors[1])).toEqual(navy);
+});
+
+test("the thumbnail is rotated by the element's rotation, as the canvas is", () => {
+  const flat = extent(projectDesign(digitizedProject({})));
+  const turned = extent(projectDesign(digitizedProject({ rotationDeg: 90 })));
+  expect(flat.w).toBeGreaterThan(flat.h * 3);
+  expect(turned.h).toBeGreaterThan(turned.w * 3);
+});
+
+test("a shape deletion still waiting on its restitch is not in the thumbnail", () => {
+  const all = sewn(projectDesign(digitizedProject({}))).length;
+  const pending = projectDesign(digitizedProject({ deletedShapeIds: ["Sa"], appliedEdits: null }));
+  expect(sewn(pending).length).toBe(all / 2);
+  expect(extent(pending).h).toBe(0); // only the Sb bar is left
 });
