@@ -161,6 +161,102 @@ def test_two_logos_that_are_the_same_file_are_refused(tmp_path):
         sitting.validate_spec(spec, testdata=td, judged=judged)
 
 
+WAIVER = {"ruling": "Kent 2026-11-08: confirm on a new sitting over all 23 pro jobs",
+          "why": "he has judged every pro artwork, so no blind one is left"}
+
+
+def _job_spec(tmp_path, monkeypatch, *, name="becker", same_as_judged=True):
+    """mini_spec plus a job logo called (and clustered as) `name`, whose artwork is
+    a.png: byte-equal to the judged one when `same_as_judged`."""
+    from tools import pro_baseline as pb
+
+    spec, td, judged = mini_spec(tmp_path, same_as_judged=same_as_judged)
+    monkeypatch.setitem(pb.JOBS, "fake_job", ("left_chest", 40.0, "fake", "fake_pro"))
+    monkeypatch.setattr(sitting, "job_art", lambda slug: td / "a.png")
+    spec["logos"].append({"name": name, "design": name, "kind": "pro_paired_job", "population": "A",
+                          "width_mm": 40.0, "garment": "left_chest", "provenance": "a pro job",
+                          "source": {"kind": "job", "slug": "fake_job",
+                                     "sha256_16": sitting._sha16(td / "a.png")}})
+    return spec, td, judged
+
+
+def test_a_judged_job_logo_is_refused_without_the_waiver(tmp_path, monkeypatch):
+    spec, td, judged = _job_spec(tmp_path, monkeypatch)
+    with pytest.raises(sitting.SpecError) as e:
+        sitting.validate_spec(spec, testdata=td, judged=judged)
+    assert "one Kent has judged" in str(e.value) and "byte-equal to the judged 'becker'" in str(e.value)
+
+
+def test_the_waiver_accepts_a_judged_job_logo_by_name_design_and_bytes(tmp_path, monkeypatch):
+    spec, td, judged = _job_spec(tmp_path, monkeypatch)
+    # logo "a" is a file logo byte-equal to the judged file too: drop it, the waiver is not for it
+    spec["logos"] = [lg for lg in spec["logos"] if lg["source"]["kind"] == "job"]
+    spec["rejudge_pro_jobs"] = dict(WAIVER)
+    sitting.validate_spec(spec, testdata=td, judged=judged)
+
+
+def test_the_waiver_still_checks_the_job_slug_garment_width_and_pin(tmp_path, monkeypatch):
+    spec, td, judged = _job_spec(tmp_path, monkeypatch)
+    spec["logos"] = [lg for lg in spec["logos"] if lg["source"]["kind"] == "job"]
+    spec["rejudge_pro_jobs"] = dict(WAIVER)
+    lg = spec["logos"][0]
+    lg["width_mm"], lg["source"]["sha256_16"] = 41.0, "0" * 16
+    with pytest.raises(sitting.SpecError) as e:
+        sitting.validate_spec(spec, testdata=td, judged=judged)
+    assert "the spec says" in str(e.value) and "not the file the spec pinned" in str(e.value)
+    lg["width_mm"] = 40.0
+    lg["source"]["slug"] = "no_such_job"
+    with pytest.raises(sitting.SpecError, match="not in pro_baseline.JOBS"):
+        sitting.validate_spec(spec, testdata=td, judged=judged)
+
+
+def test_the_waiver_does_not_reach_a_judged_file_logo(tmp_path, monkeypatch):
+    spec, td, judged = _job_spec(tmp_path, monkeypatch)
+    spec["rejudge_pro_jobs"] = dict(WAIVER)
+    with pytest.raises(sitting.SpecError) as e:
+        sitting.validate_spec(spec, testdata=td, judged=judged)
+    # the file logo "a" is byte-equal to the judged file and stays refused; the job logo does not
+    assert "logo 'a' is byte-equal to the judged 'becker'" in str(e.value)
+    assert "logo 'becker'" not in str(e.value)
+    spec["logos"][0]["name"] = "becker"                        # a judged NAME on a file logo
+    spec["logos"][0]["design"] = "becker"
+    spec["logos"][-1].update(name="j", design="j")
+    with pytest.raises(sitting.SpecError, match="one Kent has judged"):
+        sitting.validate_spec(spec, testdata=td, judged=judged)
+
+
+def test_the_waiver_does_not_reach_a_non_pro_kind_even_from_a_job(tmp_path, monkeypatch):
+    spec, td, judged = _job_spec(tmp_path, monkeypatch)
+    spec["logos"] = [lg for lg in spec["logos"] if lg["source"]["kind"] == "job"]
+    spec["logos"][0]["kind"] = "client_art_already_committed"
+    spec["rejudge_pro_jobs"] = dict(WAIVER)
+    with pytest.raises(sitting.SpecError, match="one Kent has judged"):
+        sitting.validate_spec(spec, testdata=td, judged=judged)
+
+
+@pytest.mark.parametrize("bad", [{"ruling": "", "why": "x"}, {"ruling": "x", "why": "  "},
+                                 {"ruling": "x"}, {"why": "x"}, "yes", None, {"ruling": 1, "why": "x"}])
+def test_an_empty_or_malformed_waiver_is_an_error(tmp_path, monkeypatch, bad):
+    spec, td, judged = _job_spec(tmp_path, monkeypatch, name="j", same_as_judged=False)
+    spec["rejudge_pro_jobs"] = bad
+    with pytest.raises(sitting.SpecError, match="rejudge_pro_jobs needs"):
+        sitting.validate_spec(spec, testdata=td, judged=judged)
+
+
+def test_the_manifest_records_the_waiver_and_is_silent_without_it(tmp_path):
+    out = tmp_path
+    (out / "arms.json").write_text(json.dumps({}))
+    (out / "sitting.json").write_text(json.dumps({"sealed_sha256": "ab"}))
+    (out / "features.json").write_text(json.dumps({}))
+    spec, _td, _j = mini_spec(tmp_path / "m")
+    plain = sitting.manifest(spec, b"{}", [], {}, [], {}, out, 0, False)
+    assert "rejudge_pro_jobs" not in plain
+    spec["rejudge_pro_jobs"] = dict(WAIVER)
+    waived = sitting.manifest(spec, b"{}", [], {}, [], {}, out, 0, False)
+    assert waived["rejudge_pro_jobs"] is True and waived["rejudge_ruling"] == WAIVER["ruling"]
+    assert waived["blind_to_prior_judging"] is False
+
+
 def test_every_problem_is_listed_not_just_the_first(tmp_path):
     spec, td, judged = mini_spec(tmp_path)
     spec["logos"][0]["provenance"] = ""
@@ -801,3 +897,76 @@ def test_the_kit_writes_a_machine_file_beside_every_design(kit):
     jsons = {f.stem for f in (out / "designs").glob("*.json")}
     dsts = {f.stem for f in (out / "designs").glob("*.dst")}
     assert jsons and jsons <= dsts
+
+
+# ------------------------------------- the DreamSim confirmation kit (1108) --
+
+DS_SPEC = REPO / "docs" / "eye-pairs-2026-11-08" / "dreamsim-confirm" / "spec.json"
+DS_PREREG = DS_SPEC.with_name("PRE-REGISTRATION.md")
+
+
+def test_the_dreamsim_confirm_spec_validates_and_its_prereg_names_every_arm_and_logo():
+    spec = sitting.load_spec(DS_SPEC)
+    sitting.validate_spec(spec)
+    text = DS_PREREG.read_text(encoding="utf-8")
+    names = (list(spec["arms"]) + [r["name"] for r in spec["reserve_arms"]]
+             + [lg["name"] for lg in spec["logos"]])
+    missing = [n for n in names if f"`{n}`" not in text]
+    assert not missing, f"PRE-REGISTRATION never names: {missing}"
+
+
+def test_the_dreamsim_confirm_logos_are_every_pro_job_all_population_a_job_kind():
+    from tools import pro_baseline as pb
+
+    spec = sitting.load_spec(DS_SPEC)
+    assert {lg["name"] for lg in spec["logos"]} == set(pb.JOBS)
+    assert len(spec["logos"]) == len(pb.JOBS)
+    assert {lg["population"] for lg in spec["logos"]} == {"A"}
+    assert {lg["kind"] for lg in spec["logos"]} == {"pro_paired_job"}
+    assert {lg["source"]["kind"] for lg in spec["logos"]} == {"job"}
+    cluster = {s: a for a, ss in pb.ARTWORK.items() for s in ss}
+    assert all(lg["design"] == cluster[lg["name"]] for lg in spec["logos"])
+    assert spec["seed"] == 20261108 and spec["n_identical"] == 4 and spec["n_repeat"] == 4
+    assert spec["base_flags"] == {}
+
+
+def test_the_dreamsim_confirm_waiver_is_present_and_without_it_the_kit_is_refused():
+    spec = sitting.load_spec(DS_SPEC)
+    waiver = spec["rejudge_pro_jobs"]
+    assert "Kent 2026-11-08" in waiver["ruling"] and waiver["why"].strip()
+    bad = copy.deepcopy(spec)
+    del bad["rejudge_pro_jobs"]
+    with pytest.raises(sitting.SpecError, match="blinding is spent"):
+        sitting.validate_spec(bad)
+
+
+def test_the_dreamsim_confirm_arms_are_six_one_flag_arms_with_two_reserves():
+    spec = sitting.load_spec(DS_SPEC)
+    defaults = sitting._config_defaults()
+    assert len(spec["arms"]) == 6 and len(spec["reserve_arms"]) == 2
+    for name, arm in list(spec["arms"].items()) + [(r["name"], r) for r in spec["reserve_arms"]]:
+        (flag, value), = arm["flags"].items()
+        assert defaults[flag] is not value, name
+        assert arm["moves"] == {} and arm["holds"] == [], name
+    strata = {a["stratum"] for a in spec["arms"].values()}
+    assert all(r["stratum"] in strata for r in spec["reserve_arms"])
+
+
+def test_the_dreamsim_confirm_drop_order_keeps_one_job_per_artwork_cluster():
+    from tools import pro_baseline as pb
+
+    spec = sitting.load_spec(DS_SPEC)
+    drop = spec["drop_order_if_over_budget"]
+    assert len(set(drop)) == len(drop) and set(drop) <= {lg["name"] for lg in spec["logos"]}
+    left = {lg["name"] for lg in spec["logos"]} - set(drop)
+    for art, slugs in pb.ARTWORK.items():
+        assert left & set(slugs), f"dropping everything would leave {art} with no job"
+    assert len(left) * len(spec["arms"]) <= 70
+
+
+def test_the_dreamsim_confirm_prereg_pins_the_instrument_and_the_claim_rule():
+    text = DS_PREREG.read_text(encoding="utf-8")
+    for needle in ("ppm", "12 px/mm", "20261107", "--dreamsim-type ensemble", "--oracles",
+                   "confirmed on pairs, not on designs", "beats `mse`", "ROADMAP gate 4",
+                   "hold-out", "never pooled", "EMB_BRIDGE_PRO", "BEFORE anything is rendered"):
+        assert needle in text, needle

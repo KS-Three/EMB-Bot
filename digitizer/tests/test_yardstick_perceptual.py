@@ -322,3 +322,99 @@ def test_cli_report_json_carries_both_blank_readings(yp, tmp_path):
     o = json.loads((out / "report.json").read_text(encoding="utf-8"))["oracles"]["mse"]
     assert o["blank_worst"] is True and o["blank_worst_same_ref"] is True and o["refs_checked"] == 1
     assert "same reference" in (out / "report.md").read_text(encoding="utf-8")
+
+
+# ------------------------------------------------------------ from-sitting
+def _fake_sitting(tmp_path, *, picks=None):
+    """A finished 6-pair sitting in a throwaway folder: two population-A job
+    logos, one file logo, one identical control; dummy .dst files; no torch."""
+    out = tmp_path / "eye_pairs_out"
+    (out / "designs").mkdir(parents=True)
+    spec = {"sitting": "t", "logos": [
+        {"name": "ja", "design": "dja", "population": "A", "source": {"kind": "job", "slug": "slug_a"}},
+        {"name": "jb", "design": "djb", "population": "A", "source": {"kind": "job", "slug": "slug_b"}},
+        {"name": "fa", "design": "dfa", "population": "B", "source": {"kind": "file", "path": "x"}}]}
+    sealed = {
+        "P001": {"fixture": "ja", "left_arm": "base", "right_arm": "armx", "kind": "live"},
+        "P002": {"fixture": "ja", "left_arm": "armx", "right_arm": "base", "kind": "live"},
+        "P003": {"fixture": "jb", "left_arm": "base", "right_arm": "armx", "kind": "live"},
+        "P004": {"fixture": "fa", "left_arm": "base", "right_arm": "armx", "kind": "live"},
+        "P005": {"fixture": "ja", "left_arm": "base", "right_arm": "base", "kind": "identical"},
+        "P006": {"fixture": "ja", "left_arm": "base", "right_arm": "armx", "kind": "repeat"}}
+    for pid, s in sealed.items():
+        for arm in (s["left_arm"], s["right_arm"]):
+            (out / "designs" / f"{s['fixture']}__{arm}.dst").write_bytes(b"x")
+    (out / "pairs.json").write_text(json.dumps([{"pair": p} for p in sealed]))
+    (out / "arms.json").write_text(json.dumps(sealed))
+    rows = picks if picks is not None else [
+        ("P001", "L", None), ("P002", "R", None), ("P003", "tie", None), ("P004", "L", None),
+        ("P005", "tie", None), ("P006", "R", None)]
+    lines = [json.dumps({"pair": p, "choice": c, "undo_of": u}) for p, c, u in rows]
+    (out / "picks.jsonl").write_text("\n".join(lines) + "\n")
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(spec))
+    pro = tmp_path / "pro_a.dst"
+    pro.write_bytes(b"p")
+    resolver = lambda slug: pro if slug == "slug_a" else (_ for _ in ()).throw(SystemExit("no pro"))   # noqa: E731
+    return spec_path, out, resolver, pro
+
+
+def test_from_sitting_maps_picks_to_sides_and_keeps_live_population_a_only(yp, tmp_path, capsys):
+    spec, out, resolver, pro = _fake_sitting(tmp_path)
+    csv_out = tmp_path / "pairs.csv"
+    assert yp.from_sitting(spec, out, csv_out, pro_of=resolver) == 0
+    rows = yp.read_pairs(csv_out)
+    assert [r["pair_id"] for r in rows] == ["P001", "P001", "P002", "P002"]
+    by = {(r["pair_id"], r["arm"]): r for r in rows}
+    assert by["P001", "before"]["label"] == "before" and by["P002", "before"]["label"] == "after"
+    assert by["P001", "before"]["ours_path"].endswith("ja__base.dst")      # LEFT = before
+    assert by["P001", "after"]["ours_path"].endswith("ja__armx.dst")
+    assert by["P002", "before"]["ours_path"].endswith("ja__armx.dst")      # sides follow the sealed map
+    assert all(r["ref_path"] == str(pro) and r["design"] == "dja" for r in rows)
+    assert len(yp.ab_pairs(rows)) == 2
+    err = capsys.readouterr().err
+    assert "pro file of job slug_b not on this machine" in err and "kind identical" in err
+    assert "kind repeat" in err and "logo fa is not a job logo" in err
+
+
+def test_from_sitting_ties_become_same(yp, tmp_path):
+    spec, out, _r, pro = _fake_sitting(tmp_path)
+    csv_out = tmp_path / "pairs.csv"
+    yp.from_sitting(spec, out, csv_out, pro_of=lambda slug: pro)
+    labels = {r["pair_id"]: r["label"] for r in yp.read_pairs(csv_out)}
+    assert labels == {"P001": "before", "P002": "after", "P003": "same"}
+    assert [p["kent"] for p in yp.ab_pairs(yp.read_pairs(csv_out))] == ["before", "after", "tie"]
+
+
+def test_from_sitting_replays_undo_and_repick(yp, tmp_path):
+    rows = [("P001", "L", None), ("P002", "R", None), ("P003", "tie", None), ("P004", "L", None),
+            ("P005", "tie", None), ("P006", "R", None),
+            ("P001", "L", "P001"), ("P001", "R", None)]       # undo P001, then pick R
+    spec, out, _r, pro = _fake_sitting(tmp_path, picks=rows)
+    csv_out = tmp_path / "pairs.csv"
+    yp.from_sitting(spec, out, csv_out, pro_of=lambda slug: pro)
+    labels = {r["pair_id"]: r["label"] for r in yp.read_pairs(csv_out)}
+    assert labels["P001"] == "after"
+
+
+def test_from_sitting_refuses_incomplete_picks(yp, tmp_path):
+    rows = [("P001", "L", None), ("P002", "R", None), ("P001", "L", "P001")]    # P001 undone
+    spec, out, _r, pro = _fake_sitting(tmp_path, picks=rows)
+    csv_out = tmp_path / "pairs.csv"
+    with pytest.raises(SystemExit, match="have no pick yet"):
+        yp.from_sitting(spec, out, csv_out, pro_of=lambda slug: pro)
+    assert not csv_out.exists()
+
+
+def test_from_sitting_refuses_a_missing_design_file(yp, tmp_path):
+    spec, out, _r, pro = _fake_sitting(tmp_path)
+    (out / "designs" / "ja__armx.dst").unlink()
+    with pytest.raises(SystemExit, match="design missing"):
+        yp.from_sitting(spec, out, tmp_path / "pairs.csv", pro_of=lambda slug: pro)
+
+
+def test_from_sitting_cli_exits_nonzero_on_an_incomplete_sitting(yp, tmp_path):
+    spec, out, _r, _pro = _fake_sitting(tmp_path, picks=[("P001", "L", None)])
+    with pytest.raises(SystemExit) as e:
+        yp.main(["from-sitting", str(spec), "--out-dir", str(out), "--out", str(tmp_path / "p.csv")])
+    assert e.value.code not in (0, None)
