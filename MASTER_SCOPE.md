@@ -489,7 +489,7 @@ about the facts.
 
 67. **RESOLVED — dark ink on a shaded ground: `keep_dark_thin_strokes` ON since 2026-10-28 (Kent, PR #1172) and `dark_ink_bean` ON since 2026-10-29 (Kent after #1181: "Flip ON (Recommended)"; PR #1184).** #1170 refuses a glyph's counter and reads a carved ground's shades from the tails. `dark_ink_bean` sews a dark read within 50 dE00 of its ground as a bean along its skeleton, the ground sewn through under it: Pooh's pot whole with bean letters, owl trims 147 → 113. **Still yours:** `dark_ink_refuse_strays` (PR #1173, built OFF on your "Keep ON, queue refusal") refuses a read within 4 px of the art's frame or not under its ring; it moves only #1172's 10 frame reads. *(measured 2026-10-28 — PRs #1170, #1173; measured 2026-10-29 — PRs #1181, #1184, `docs/renders/dark-ink-bean-2026-10-28/`)*
 
-68. **`fill_bridge_cut_exposed` — built OFF (PR #1187), your flip.** A fill bridge whose exposure clears the tolerance and whose gap is over `trim_at_mm` is cut, rather than priced against a 25-stitch trim. 9 of the 13 problems you circled on Instagram at 80 mm were these legs. Instagram 80 mm, stage 7 replanned: exposed travel 53.0 → 0.4 mm, trims 23 → 31; with `fill_section_travel` too (which you hold) 2.8 mm and 27. The catch is defect 4: trims rise. OFF is the engine as it was. Not sewn. *(measured 2026-10-29 — PR #1187, `tools/travel_legs.py`)*
+68. **`fill_bridge_cut_exposed` — flipped ON 2026-10-30 with `fill_seam_order` (Kent, "Flip both (Recommended)"); `PRE_FLIP` pins the OFF arm.** A fill bridge whose exposure clears the tolerance and whose gap is over `trim_at_mm` is cut, rather than priced against a 25-stitch trim. 9 of the 13 problems you circled on Instagram at 80 mm were these legs. Instagram 80 mm, stage 7 replanned: exposed travel 53.0 → 0.4 mm, trims 23 → 31; with `fill_section_travel` too (which you hold) 2.8 mm and 27. The catch is defect 4: trims rise. Not sewn. *(measured 2026-10-29 — PR #1187, `tools/travel_legs.py`; confirmed 2026-11-08 — `config.py` default True, memory `fill-seam-order-flip-2026-10-30`)*
 
 69. **`stage0_scale_relative_grad` flip — HELD (Kent 2026-11-06, "Hold the flip (Recommended)").** Flat/gradient on `tonal_frac`: 13 of 15 real flat logos off the flat lane → 1 of 15, but Bridge on the flat lane sews its teal olive and trims 45 → 157. Re-judge after the flat-lane palette lane (proposed). Evaluation corpus. *(ruled 2026-11-06 — PR #1282)*
 
@@ -570,7 +570,7 @@ scope-history 09-06, 09-07, 09-14.
 
 **`--help` on every tool is cheap and checked (2026-10-15, PR #965, merged, test health only).** Measured over 205 tools: only `stem_trace.py` took over 5 s (25.85 s, over 120 s on a busy laptop). Four hand-parsed tools (`stem_trace`, `fill_score_agreement`, `satin_islands`, `trim_census`) read `--help` as data and ran their full work, or printed an empty table, and `test_tools_help.py` passed on exit 0 alone. Each now prints its docstring first; the test's subprocess timeout fell 120 → 30 s (6× the slowest honest answer, 4.75 s loaded), and a new test requires stdout to equal the docstring. After: slowest 2.96 s, median 2.14 s; the rest of every tool's time is `import digitizer_core`, about 2 s, left alone. No stitch output moved. *(measured 2026-10-15 — PR #965, `tests/test_tools_help.py`)*
 
-### No CONTROLLED sew-out card has been sewn — one uncontrolled icon has
+### One uncontrolled icon and one partial card (v4) have been sewn — no controlled card has been finished
 
 **Corrected 2026-09-14** — this read "Zero sew-out testing" while line 35
 recorded the stitch-out, the file contradicting itself about the event phase 5
@@ -580,14 +580,11 @@ exits on. Its pointer was **2026-08-21**, eleven days earlier. *(gap audit §3)*
 8 cones, 18,959 stitches, via the Python service. *(scope-history 09-01; memory
 `first-physical-sewout-2026-09-01`)*
 
-**What it does not settle:** random operator threading (never grade colour from
-it), one fabric, one size, no controlled blocks. The CARD (`docs/sewout-card-2026-07-31.md`) is the instrument
-and has not been sewn; nor has the hairline card generated 2026-10-12
-(`docs/sewout/hairline-card-2026-10-12/`, "Waiting on Kent" 45) or card v2
-(`docs/sewout/card-v2-2026-10-13/`, PR #877: small print F, forbid gap G,
-column reach H — "Waiting on Kent" 44, 47), card v3
-(`docs/sewout/card-v3-2026-10-13/`, PR #910: Fremont small lettering F3 / THE / 1895 plus v2's block G, one 40 wt DST — 44, 47, 51, 57),
-or v3.1 (PR #916: one 40 wt DST, 93.8 x 92.8 mm, 91 trims, 19 arms; skeleton arms S and E2, ends checks X and B — 54, 55; built and handed to Kent; its F3 arm 2 drifts +1 stitch, at most 0.1 mm, after #923: accepted 2026-10-14, no re-cut — 47); card v3.2 is to carry the chaining block (Kent, 2026-10-14, "Waiting on Kent" 45). **Three cards are built, committed and UNSEWN, all Kent's to sew:** v3.2, the lettering-arms card (#959: hold and ties, 20 arms) and the bay-hold / edge-cap card (#970, `docs/sewout/card-bayhold-edgecap-2026-10-15/`: block B `bean_letter_bay_hold`, block P `edge_cap_bean_pitch_mm`; item 59(h)). The gate-1 values they test (`bean_letter_counter_hold_mm`, `small_letter_ties`, `bean_letter_bay_hold`, `edge_cap_bean_pitch_mm`, the 0.45 counter guard) are candidates until cloth says otherwise; no session flips them. **Gate 1
+**Card v4 was sewn, partially:** Kent sewed it 2026-10-20/21 on black twill beside the pro's Fremont patch and paused partway. Its outcome: our small lettering sews far smaller than the pro's, which raises small text to a ~4 mm floor and satins it; that led to cards v5 onward and the small-text re-set work. *(sewn 2026-10-21 — memory `card-v4-sewout-letter-size-2026-10-20`, PR #1024)*
+
+**What the icon does not settle:** random operator threading (never grade colour from
+it), one fabric, one size, no controlled blocks. The CARD (`docs/sewout-card-2026-07-31.md`) is the instrument.
+No card since v4 (v5 to v8) has been sewn. **Two cards are handed to Kent to sew, both UNSEWN:** card v7 (`docs/sewout/card-v7-2026-10-25/`: `pull_comp_by_stroke` and `pro_measured_values`) and card v8 (`docs/sewout/card-v8-2026-11-01/`, rebuilt on main 2ce938eb with a printable worksheet, PR #1372: `cut_every_jump` / `bury_step_fine`, "Waiting on Kent" 70, and Drone's bold 2.0 against halo 0.3). The older cards (hairline v1, v2, v3, v3.1, v3.2, lettering-arms, bay-hold / edge-cap) are superseded and not to be sewn. Their questions are not carried by v7 or v8, which re-arm none of them (card v7 README: "not re-armed"): "Waiting on Kent" 44 (`forbid_gap_mm`), 45 (hairline tier), 47 (`small_print_floor`), 54 and 59(h) need a new card, not built. The gate-1 values they test are candidates until cloth says otherwise; no session flips them. **Gate 1
 stands**; scores stay `pending sew-out`.
 
 **Kent's 2026-08-21 ruling is unchanged by the icon:** accepted as-is, not a
@@ -854,8 +851,8 @@ content path, four export formats, and the embroidery field's own chrome.
 **Re-digitize no longer strands on a poll blip (PR #981), and the `run-emb-bot` smoke driver refuses the pre-click caption (PR #982).** `pollJob` retries a transient miss up to `maxTransientFailures` 20 (about 10 s) and still surfaces a job error, a 4xx or the timeout at once. Full text: [area 3](docs/scope/3-studio-app-wizard.md#nineteenth-pass-overflow-moved-from-master_scope-2026-10-28). *(measured 2026-10-16/17 — PRs #981, #982)*
 
 **What holds it at Medium:** fabric-preset accuracy is gated on the controlled
-sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)
-was a single uncontrolled icon. See Cross-cutting issues.
+sew-out CARD, which has not been finished — the physical outs so far are one
+uncontrolled icon (2026-09-01) and a partial card v4 (2026-10-21). See Cross-cutting issues.
 
 **The two engines' fabric and machine tables are wire-tested to agree**
 (`test_fabric_wire.py`, `test_machine_wire.py`) — [area doc](docs/scope/3-studio-app-wizard.md).
@@ -1010,8 +1007,8 @@ applied to its siblings. *(fixed 2026-08-26 — PR #269, mutation-checked;
   Anything whose real confidence depends on physical machine verification —
   fabric presets, real stitch quality, the DST orientation question — gets
   an explicit **pending sew-out** flag instead of a guessed score, because the
-  controlled sew-out card that would settle them has not been sewn (the one
-  physical out, 2026-09-01, was an uncontrolled icon).
+  controlled sew-out card that would settle them has not been finished (the
+  physical outs are an uncontrolled icon, 2026-09-01, and a partial card v4, 2026-10-21).
 - **This document is the source of truth for current status.**
   COOKBOOK.md's former "Known limitations" section pointed here instead of
   maintaining a parallel list, to avoid the two drifting out of sync.
