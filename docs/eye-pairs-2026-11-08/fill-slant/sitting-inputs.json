@@ -1,0 +1,776 @@
+{
+ "schema": 1,
+ "built": "2026-11-09",
+ "labels_from": "fill-slant-1108 picks.jsonl via the sealed map (LEFT=before, RIGHT=after)",
+ "candidates": {
+  "thread_density": [
+   "higher",
+   "thread mm per mm^2 of sewn footprint, changed shapes"
+  ],
+  "thread_density_whole": [
+   "higher",
+   "thread mm per mm^2 of sewn footprint, whole design"
+  ],
+  "density_pro_gap": [
+   "lower",
+   "|whole-design density - the pro file's|, pro logos only"
+  ],
+  "flow_circvar": [
+   "lower",
+   "circular variance of stitch direction within fill/satin shapes"
+  ],
+  "turns_per_100mm": [
+   "lower",
+   ">30 deg direction changes per 100 mm of fill/satin thread"
+  ],
+  "stitch_median_mm": [
+   "higher",
+   "median stitch length, changed shapes"
+  ],
+  "short_share": [
+   "lower",
+   "share of stitches under 1 mm, changed shapes"
+  ],
+  "long_share": [
+   "higher",
+   "share of stitches over 4 mm, changed shapes"
+  ],
+  "jumps_per_1000": [
+   "lower",
+   "needle-up moves per 1000 stitches"
+  ],
+  "longest_jump_mm": [
+   "lower",
+   "longest needle-up move, mm"
+  ],
+  "runs_per_shape": [
+   "lower",
+   "sewn runs per changed shape (pieces a shape is sewn in)"
+  ],
+  "back_share_thread": [
+   "higher",
+   "underlay_cover: back stitching, share of thread (reused)"
+  ],
+  "top_support": [
+   "higher",
+   "underlay_cover: top thread laid on thread (reused)"
+  ],
+  "trims_per_1000": [
+   "lower",
+   "trims per 1000 stitches (recomputed here; the #842 control)"
+  ]
+ },
+ "sittings": {
+  "fill-slant-1108": {
+   "date": "2026-11-09",
+   "labels": "blind picker",
+   "designs": "the sitting's render directory",
+   "pairs": [
+    {
+     "id": "P003",
+     "arm": "fill_slant_on",
+     "fixture": "becker",
+     "logo": "becker_chest_small",
+     "population": "A",
+     "stratum": "fill",
+     "label": "after",
+     "expected_label": "before",
+     "before": {
+      "thread_density": 10.057817,
+      "thread_density_whole": 8.985141,
+      "flow_circvar": 0.303644,
+      "turns_per_100mm": 0.16472,
+      "stitch_median_mm": 2.10238,
+      "short_share": 0.125075,
+      "long_share": 0.011327,
+      "jumps_per_1000": 1.360016,
+      "longest_jump_mm": 56.315184,
+      "trims_per_1000": 1.068584,
+      "runs_per_shape": 17.0,
+      "prereg_pick": 1
+     },
+     "after": {
+      "thread_density": 10.202657,
+      "thread_density_whole": 9.08711,
+      "flow_circvar": 0.307113,
+      "turns_per_100mm": 0.164392,
+      "stitch_median_mm": 2.10238,
+      "short_share": 0.111204,
+      "long_share": 0.000119,
+      "jumps_per_1000": 1.455039,
+      "longest_jump_mm": 57.539725,
+      "trims_per_1000": 1.164031,
+      "runs_per_shape": 17.333333,
+      "prereg_pick": 0
+     },
+     "designs": {
+      "changed_shapes": 3
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P004",
+     "arm": "fill_slant_on",
+     "fixture": "becker",
+     "logo": "becker_beanie",
+     "population": "A",
+     "stratum": "fill",
+     "label": "same",
+     "expected_label": "after",
+     "before": {
+      "thread_density": 10.033195,
+      "thread_density_whole": 9.013157,
+      "flow_circvar": 0.303757,
+      "turns_per_100mm": 0.165898,
+      "stitch_median_mm": 2.118962,
+      "short_share": 0.115411,
+      "long_share": 0.000113,
+      "jumps_per_1000": 1.523434,
+      "longest_jump_mm": 68.151376,
+      "trims_per_1000": 1.344206,
+      "runs_per_shape": 22.0,
+      "prereg_pick": 0
+     },
+     "after": {
+      "thread_density": 10.017526,
+      "thread_density_whole": 9.002177,
+      "flow_circvar": 0.300045,
+      "turns_per_100mm": 0.172617,
+      "stitch_median_mm": 2.118962,
+      "short_share": 0.112421,
+      "long_share": 0.012353,
+      "jumps_per_1000": 1.434592,
+      "longest_jump_mm": 49.623583,
+      "trims_per_1000": 1.255268,
+      "runs_per_shape": 24.0,
+      "prereg_pick": 1
+     },
+     "designs": {
+      "changed_shapes": 2
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P006",
+     "arm": "fill_slant_on",
+     "fixture": "tires",
+     "logo": "tires_hat_3d",
+     "population": "A",
+     "stratum": "fill",
+     "label": "after",
+     "expected_label": "before",
+     "before": {
+      "thread_density": 6.002974,
+      "thread_density_whole": 5.914196,
+      "flow_circvar": 0.576387,
+      "turns_per_100mm": 0.011614,
+      "stitch_median_mm": 2.332381,
+      "short_share": 0.020906,
+      "long_share": 0.000249,
+      "jumps_per_1000": 0.659486,
+      "longest_jump_mm": 27.734635,
+      "trims_per_1000": 0.659486,
+      "runs_per_shape": 5.0,
+      "prereg_pick": 1
+     },
+     "after": {
+      "thread_density": 6.000329,
+      "thread_density_whole": 5.911878,
+      "flow_circvar": 0.573687,
+      "turns_per_100mm": 0.011625,
+      "stitch_median_mm": 2.332381,
+      "short_share": 0.020184,
+      "long_share": 0.000249,
+      "jumps_per_1000": 0.660211,
+      "longest_jump_mm": 20.571825,
+      "trims_per_1000": 0.660211,
+      "runs_per_shape": 5.0,
+      "prereg_pick": 0
+     },
+     "designs": {
+      "changed_shapes": 3
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P007",
+     "arm": "fill_slant_on",
+     "fixture": "bridge",
+     "logo": "bridge_hat",
+     "population": "A",
+     "stratum": "fill",
+     "label": "same",
+     "expected_label": "before",
+     "before": {
+      "thread_density": 9.991537,
+      "thread_density_whole": 11.369281,
+      "flow_circvar": 0.408381,
+      "turns_per_100mm": 0.08624,
+      "stitch_median_mm": 2.455602,
+      "short_share": 0.138251,
+      "long_share": 0.019536,
+      "jumps_per_1000": 2.469136,
+      "longest_jump_mm": 29.689224,
+      "trims_per_1000": 1.410935,
+      "runs_per_shape": 7.75,
+      "prereg_pick": 1
+     },
+     "after": {
+      "thread_density": 10.014852,
+      "thread_density_whole": 11.39261,
+      "flow_circvar": 0.409919,
+      "turns_per_100mm": 0.086219,
+      "stitch_median_mm": 2.433105,
+      "short_share": 0.136828,
+      "long_share": 0.016882,
+      "jumps_per_1000": 2.461899,
+      "longest_jump_mm": 39.345902,
+      "trims_per_1000": 1.4068,
+      "runs_per_shape": 7.75,
+      "prereg_pick": 0
+     },
+     "designs": {
+      "changed_shapes": 4
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P010",
+     "arm": "fill_slant_on",
+     "fixture": "gaulke",
+     "logo": "gaulke_roofing_lc",
+     "population": "A",
+     "stratum": "fill",
+     "label": "same",
+     "expected_label": "before",
+     "before": {
+      "thread_density": 6.21455,
+      "thread_density_whole": 7.44761,
+      "flow_circvar": 0.591303,
+      "turns_per_100mm": 0.192583,
+      "stitch_median_mm": 1.8,
+      "short_share": 0.114604,
+      "long_share": 0.022312,
+      "jumps_per_1000": 7.737276,
+      "longest_jump_mm": 44.355947,
+      "trims_per_1000": 3.954608,
+      "runs_per_shape": 2.352941,
+      "prereg_pick": 1
+     },
+     "after": {
+      "thread_density": 6.183363,
+      "thread_density_whole": 7.432963,
+      "flow_circvar": 0.590978,
+      "turns_per_100mm": 0.193165,
+      "stitch_median_mm": 1.802776,
+      "short_share": 0.104501,
+      "long_share": 0.022763,
+      "jumps_per_1000": 8.134303,
+      "longest_jump_mm": 61.450875,
+      "trims_per_1000": 4.153686,
+      "runs_per_shape": 2.176471,
+      "prereg_pick": 0
+     },
+     "designs": {
+      "changed_shapes": 17
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P011",
+     "arm": "fill_slant_on",
+     "fixture": "fremont",
+     "logo": "hotel_fremont_hat",
+     "population": "A",
+     "stratum": "fill",
+     "label": "same",
+     "expected_label": "after",
+     "before": {
+      "thread_density": 6.847983,
+      "thread_density_whole": 10.76636,
+      "flow_circvar": 0.014775,
+      "turns_per_100mm": 0.513891,
+      "stitch_median_mm": 1.6,
+      "short_share": 0.329412,
+      "long_share": 0.0,
+      "jumps_per_1000": 11.007674,
+      "longest_jump_mm": 42.856505,
+      "trims_per_1000": 1.761228,
+      "runs_per_shape": 3.0,
+      "prereg_pick": 0
+     },
+     "after": {
+      "thread_density": 6.850269,
+      "thread_density_whole": 10.765137,
+      "flow_circvar": 0.011705,
+      "turns_per_100mm": 0.50978,
+      "stitch_median_mm": 1.581139,
+      "short_share": 0.360465,
+      "long_share": 0.005814,
+      "jumps_per_1000": 11.068486,
+      "longest_jump_mm": 42.856505,
+      "trims_per_1000": 1.823785,
+      "runs_per_shape": 4.0,
+      "prereg_pick": 1
+     },
+     "designs": {
+      "changed_shapes": 1
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P012",
+     "arm": "fill_slant_on",
+     "fixture": "gaulke",
+     "logo": "gaulke_roofing_beanie",
+     "population": "A",
+     "stratum": "fill",
+     "label": "same",
+     "expected_label": "after",
+     "before": {
+      "thread_density": 6.396756,
+      "thread_density_whole": 7.513193,
+      "flow_circvar": 0.599403,
+      "turns_per_100mm": 0.132958,
+      "stitch_median_mm": 1.843909,
+      "short_share": 0.102328,
+      "long_share": 0.01516,
+      "jumps_per_1000": 8.125864,
+      "longest_jump_mm": 56.251222,
+      "trims_per_1000": 4.322268,
+      "runs_per_shape": 2.125,
+      "prereg_pick": 0
+     },
+     "after": {
+      "thread_density": 6.381562,
+      "thread_density_whole": 7.506704,
+      "flow_circvar": 0.600233,
+      "turns_per_100mm": 0.166378,
+      "stitch_median_mm": 1.824829,
+      "short_share": 0.102384,
+      "long_share": 0.015168,
+      "jumps_per_1000": 7.955725,
+      "longest_jump_mm": 56.251222,
+      "trims_per_1000": 3.977862,
+      "runs_per_shape": 2.125,
+      "prereg_pick": 1
+     },
+     "designs": {
+      "changed_shapes": 16
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P013",
+     "arm": "fill_slant_on",
+     "fixture": "goldentee",
+     "logo": "goldentee_hat",
+     "population": "A",
+     "stratum": "fill",
+     "label": "same",
+     "expected_label": "before",
+     "before": {
+      "thread_density": 7.629847,
+      "thread_density_whole": 14.101466,
+      "flow_circvar": 0.079377,
+      "turns_per_100mm": 0.335715,
+      "stitch_median_mm": 1.802776,
+      "short_share": 0.258926,
+      "long_share": 0.004825,
+      "jumps_per_1000": 5.116585,
+      "longest_jump_mm": 56.218147,
+      "trims_per_1000": 3.289233,
+      "runs_per_shape": 9.111111,
+      "prereg_pick": 1
+     },
+     "after": {
+      "thread_density": 7.871146,
+      "thread_density_whole": 14.185478,
+      "flow_circvar": 0.074804,
+      "turns_per_100mm": 0.304904,
+      "stitch_median_mm": 1.8,
+      "short_share": 0.222588,
+      "long_share": 0.0,
+      "jumps_per_1000": 4.998897,
+      "longest_jump_mm": 56.218147,
+      "trims_per_1000": 3.308094,
+      "runs_per_shape": 8.0,
+      "prereg_pick": 0
+     },
+     "designs": {
+      "changed_shapes": 9
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P015",
+     "arm": "fill_slant_on",
+     "fixture": "becker",
+     "logo": "becker_lc_large",
+     "population": "A",
+     "stratum": "fill",
+     "label": "after",
+     "expected_label": "before",
+     "before": {
+      "thread_density": 9.807411,
+      "thread_density_whole": 8.951752,
+      "flow_circvar": 0.317294,
+      "turns_per_100mm": 0.121632,
+      "stitch_median_mm": 2.34094,
+      "short_share": 0.113395,
+      "long_share": 0.016694,
+      "jumps_per_1000": 0.802407,
+      "longest_jump_mm": 66.372961,
+      "trims_per_1000": 0.802407,
+      "runs_per_shape": 12.6,
+      "prereg_pick": 1
+     },
+     "after": {
+      "thread_density": 9.882164,
+      "thread_density_whole": 9.008853,
+      "flow_circvar": 0.325354,
+      "turns_per_100mm": 0.112952,
+      "stitch_median_mm": 2.34094,
+      "short_share": 0.102977,
+      "long_share": 0.00308,
+      "jumps_per_1000": 0.871197,
+      "longest_jump_mm": 74.807754,
+      "trims_per_1000": 0.871197,
+      "runs_per_shape": 11.6,
+      "prereg_pick": 0
+     },
+     "designs": {
+      "changed_shapes": 5
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P016",
+     "arm": "fill_slant_on",
+     "fixture": "mfab",
+     "logo": "mfab_hat",
+     "population": "A",
+     "stratum": "fill",
+     "label": "same",
+     "expected_label": "after",
+     "before": {
+      "thread_density": 6.660165,
+      "thread_density_whole": 10.707269,
+      "flow_circvar": 0.71268,
+      "turns_per_100mm": 0.671487,
+      "stitch_median_mm": 1.726268,
+      "short_share": 0.243994,
+      "long_share": 0.000511,
+      "jumps_per_1000": 1.298015,
+      "longest_jump_mm": 73.326803,
+      "trims_per_1000": 0.817268,
+      "runs_per_shape": 18.0,
+      "prereg_pick": 0
+     },
+     "after": {
+      "thread_density": 6.697477,
+      "thread_density_whole": 10.714071,
+      "flow_circvar": 0.438823,
+      "turns_per_100mm": 0.684932,
+      "stitch_median_mm": 1.726268,
+      "short_share": 0.234656,
+      "long_share": 0.000525,
+      "jumps_per_1000": 1.404154,
+      "longest_jump_mm": 73.326803,
+      "trims_per_1000": 0.871544,
+      "runs_per_shape": 30.5,
+      "prereg_pick": 1
+     },
+     "designs": {
+      "changed_shapes": 2
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P017",
+     "arm": "fill_slant_on",
+     "fixture": "toat",
+     "logo": "toat_machine_beanie",
+     "population": "A",
+     "stratum": "fill",
+     "label": "before",
+     "expected_label": "after",
+     "before": {
+      "thread_density": 8.200768,
+      "thread_density_whole": 10.335626,
+      "flow_circvar": 0.105867,
+      "turns_per_100mm": 0.0,
+      "stitch_median_mm": 3.0,
+      "short_share": 0.036235,
+      "long_share": 0.0,
+      "jumps_per_1000": 2.113639,
+      "longest_jump_mm": 32.630048,
+      "trims_per_1000": 1.243317,
+      "runs_per_shape": 2.0,
+      "prereg_pick": 0
+     },
+     "after": {
+      "thread_density": 8.209319,
+      "thread_density_whole": 10.343734,
+      "flow_circvar": 0.100153,
+      "turns_per_100mm": 0.004005,
+      "stitch_median_mm": 2.973214,
+      "short_share": 0.036995,
+      "long_share": 0.039254,
+      "jumps_per_1000": 2.113902,
+      "longest_jump_mm": 43.701831,
+      "trims_per_1000": 1.243472,
+      "runs_per_shape": 2.0,
+      "prereg_pick": 1
+     },
+     "designs": {
+      "changed_shapes": 1
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P018",
+     "arm": "fill_slant_on",
+     "fixture": "becker",
+     "logo": "becker_hat_small",
+     "population": "A",
+     "stratum": "fill",
+     "label": "after",
+     "expected_label": "before",
+     "before": {
+      "thread_density": 10.058855,
+      "thread_density_whole": 8.984206,
+      "flow_circvar": 0.303626,
+      "turns_per_100mm": 0.164711,
+      "stitch_median_mm": 2.10238,
+      "short_share": 0.12497,
+      "long_share": 0.011328,
+      "jumps_per_1000": 1.329535,
+      "longest_jump_mm": 56.315184,
+      "trims_per_1000": 1.044634,
+      "runs_per_shape": 16.333333,
+      "prereg_pick": 1
+     },
+     "after": {
+      "thread_density": 10.203315,
+      "thread_density_whole": 9.085025,
+      "flow_circvar": 0.307092,
+      "turns_per_100mm": 0.164381,
+      "stitch_median_mm": 2.10238,
+      "short_share": 0.111204,
+      "long_share": 0.000119,
+      "jumps_per_1000": 1.42234,
+      "longest_jump_mm": 57.539725,
+      "trims_per_1000": 1.137872,
+      "runs_per_shape": 17.333333,
+      "prereg_pick": 0
+     },
+     "designs": {
+      "changed_shapes": 3
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P020",
+     "arm": "fill_slant_on",
+     "fixture": "becker",
+     "logo": "becker_hat_large",
+     "population": "A",
+     "stratum": "fill",
+     "label": "after",
+     "expected_label": "before",
+     "before": {
+      "thread_density": 9.987035,
+      "thread_density_whole": 8.869735,
+      "flow_circvar": 0.282384,
+      "turns_per_100mm": 0.10017,
+      "stitch_median_mm": 2.433105,
+      "short_share": 0.117815,
+      "long_share": 0.0139,
+      "jumps_per_1000": 0.664773,
+      "longest_jump_mm": 71.010774,
+      "trims_per_1000": 0.664773,
+      "runs_per_shape": 15.25,
+      "prereg_pick": 1
+     },
+     "after": {
+      "thread_density": 9.945254,
+      "thread_density_whole": 8.840285,
+      "flow_circvar": 0.291456,
+      "turns_per_100mm": 0.067992,
+      "stitch_median_mm": 2.441311,
+      "short_share": 0.104253,
+      "long_share": 0.000154,
+      "jumps_per_1000": 0.737917,
+      "longest_jump_mm": 86.979365,
+      "trims_per_1000": 0.737917,
+      "runs_per_shape": 15.0,
+      "prereg_pick": 0
+     },
+     "designs": {
+      "changed_shapes": 4
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P022",
+     "arm": "fill_slant_on",
+     "fixture": "bridge",
+     "logo": "bridge_lc",
+     "population": "A",
+     "stratum": "fill",
+     "label": "before",
+     "expected_label": "after",
+     "before": {
+      "thread_density": 8.400586,
+      "thread_density_whole": 10.751125,
+      "flow_circvar": 0.108715,
+      "turns_per_100mm": 0.008617,
+      "stitch_median_mm": 3.001666,
+      "short_share": 0.057154,
+      "long_share": 0.054126,
+      "jumps_per_1000": 1.824984,
+      "longest_jump_mm": 27.849776,
+      "trims_per_1000": 1.18624,
+      "runs_per_shape": 2.0,
+      "prereg_pick": 0
+     },
+     "after": {
+      "thread_density": 8.402962,
+      "thread_density_whole": 10.75252,
+      "flow_circvar": 0.107414,
+      "turns_per_100mm": 0.008619,
+      "stitch_median_mm": 2.973214,
+      "short_share": 0.058122,
+      "long_share": 0.033131,
+      "jumps_per_1000": 1.825317,
+      "longest_jump_mm": 33.000152,
+      "trims_per_1000": 1.186456,
+      "runs_per_shape": 2.0,
+      "prereg_pick": 1
+     },
+     "designs": {
+      "changed_shapes": 1
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P023",
+     "arm": "fill_slant_on",
+     "fixture": "mfab",
+     "logo": "mfab_lc",
+     "population": "A",
+     "stratum": "fill",
+     "label": "same",
+     "expected_label": "after",
+     "before": {
+      "thread_density": 6.289898,
+      "thread_density_whole": 11.250803,
+      "flow_circvar": 0.036379,
+      "turns_per_100mm": 0.810773,
+      "stitch_median_mm": 1.118034,
+      "short_share": 0.460432,
+      "long_share": 0.0,
+      "jumps_per_1000": 1.400717,
+      "longest_jump_mm": 63.575546,
+      "trims_per_1000": 1.120574,
+      "runs_per_shape": 1.0,
+      "prereg_pick": 0
+     },
+     "after": {
+      "thread_density": 6.383872,
+      "thread_density_whole": 11.251457,
+      "flow_circvar": 0.010723,
+      "turns_per_100mm": 0.874373,
+      "stitch_median_mm": 0.948683,
+      "short_share": 0.517241,
+      "long_share": 0.0,
+      "jumps_per_1000": 1.400246,
+      "longest_jump_mm": 61.492113,
+      "trims_per_1000": 1.120197,
+      "runs_per_shape": 1.0,
+      "prereg_pick": 1
+     },
+     "designs": {
+      "changed_shapes": 1
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    },
+    {
+     "id": "P024",
+     "arm": "fill_slant_on",
+     "fixture": "proseal",
+     "logo": "proseal_beanie",
+     "population": "A",
+     "stratum": "fill",
+     "label": "same",
+     "expected_label": "after",
+     "before": {
+      "thread_density": 7.145159,
+      "thread_density_whole": 6.480551,
+      "flow_circvar": 0.000155,
+      "turns_per_100mm": 0.0,
+      "stitch_median_mm": 0.8,
+      "short_share": 0.516459,
+      "long_share": 0.0,
+      "jumps_per_1000": 12.728279,
+      "longest_jump_mm": 55.360004,
+      "trims_per_1000": 7.009777,
+      "runs_per_shape": 15.0,
+      "prereg_pick": 0
+     },
+     "after": {
+      "thread_density": 7.158113,
+      "thread_density_whole": 6.482158,
+      "flow_circvar": 0.004484,
+      "turns_per_100mm": 0.0,
+      "stitch_median_mm": 0.806226,
+      "short_share": 0.542703,
+      "long_share": 0.0,
+      "jumps_per_1000": 12.991766,
+      "longest_jump_mm": 55.360004,
+      "trims_per_1000": 7.319305,
+      "runs_per_shape": 21.0,
+      "prereg_pick": 1
+     },
+     "designs": {
+      "changed_shapes": 1
+     },
+     "density_matched": true,
+     "arm_isolates": true,
+     "trims_held": true
+    }
+   ]
+  }
+ }
+}
