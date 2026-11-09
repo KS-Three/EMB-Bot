@@ -1,0 +1,1525 @@
+{
+ "apex_cut_on": {
+  "stratum": "construction",
+  "active": [
+   "becker_hat_large",
+   "bridge_hat",
+   "gaulke_roofing_hat",
+   "hotel_fremont_hat",
+   "mfab_hat",
+   "precision_drone",
+   "proseal_hat",
+   "goldentee_hat",
+   "becker_lc_large",
+   "becker_hat_small",
+   "becker_chest_small",
+   "becker_beanie",
+   "bridge_lc",
+   "gaulke_roofing_lc",
+   "gaulke_roofing_beanie",
+   "hotel_fremont_patch",
+   "mfab_lc",
+   "proseal_beanie"
+  ],
+  "identical": [
+   "tires_hat_3d",
+   "toat_machine_hat",
+   "toat_machine_beanie",
+   "toat_beanie"
+  ],
+  "per_logo": {
+   "becker_hat_large": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 0.7379166154224572,
+      "arm": 0.7365126127784939,
+      "delta": -0.0014040026439633424
+     },
+     "flow_circvar": {
+      "base": 0.305831535014289,
+      "arm": 0.30461032279410716,
+      "delta": -0.0012212122201818443
+     },
+     "long_share": {
+      "base": 0.004309548728683125,
+      "arm": 0.0030109376920240873,
+      "delta": -0.0012986110366590376
+     },
+     "thread_density_whole": {
+      "base": 8.840284501576962,
+      "arm": 8.837310268689487,
+      "delta": -0.0003364408562806
+     }
+    },
+    "ok": true
+   },
+   "bridge_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.526359046612657,
+      "arm": 1.7582932833196578,
+      "delta": 0.23193423670700075
+     },
+     "flow_circvar": {
+      "base": 0.4318614407640706,
+      "arm": 0.43207061322088836,
+      "delta": 0.00020917245681773
+     },
+     "long_share": {
+      "base": 0.016244849911712773,
+      "arm": 0.01622002820874471,
+      "delta": -2.482170296806349e-05
+     },
+     "thread_density_whole": {
+      "base": 11.391991700895845,
+      "arm": 11.396465230380544,
+      "delta": 0.0003926907253932525
+     }
+    },
+    "ok": true
+   },
+   "gaulke_roofing_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.451639012545528,
+      "arm": 4.3057050592034445,
+      "delta": -0.1459339533420838
+     },
+     "flow_circvar": {
+      "base": 0.5313216443122482,
+      "arm": 0.5282578548352145,
+      "delta": -0.0030637894770336738
+     },
+     "long_share": {
+      "base": 0.009637572960499524,
+      "arm": 0.010018954779312212,
+      "delta": 0.00038138181881268787
+     },
+     "thread_density_whole": {
+      "base": 7.615080844826678,
+      "arm": 7.60601319295718,
+      "delta": -0.0011907492585135195
+     }
+    },
+    "ok": true
+   },
+   "hotel_fremont_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.761227827399673,
+      "arm": 1.761227827399673,
+      "delta": 0.0
+     },
+     "flow_circvar": {
+      "base": 0.19042212407217507,
+      "arm": 0.18983034213746408,
+      "delta": -0.0005917819347109887
+     },
+     "long_share": {
+      "base": 0.004135123099433806,
+      "arm": 0.004134860050890585,
+      "delta": -2.6304854322100474e-07
+     },
+     "thread_density_whole": {
+      "base": 10.766359594419557,
+      "arm": 10.76091985592,
+      "delta": -0.0005052532800759335
+     }
+    },
+    "ok": true
+   },
+   "mfab_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 0.8172684005576655,
+      "arm": 0.8159738888355572,
+      "delta": -0.0012945117221082603
+     },
+     "flow_circvar": {
+      "base": 0.257444063256711,
+      "arm": 0.25733502743213815,
+      "delta": -0.000109035824572834
+     },
+     "long_share": {
+      "base": 0.00019265966669877662,
+      "arm": 0.00019235393123346957,
+      "delta": -3.057354653070415e-07
+     },
+     "thread_density_whole": {
+      "base": 10.707268950455095,
+      "arm": 10.698652927431802,
+      "delta": -0.0008046891381137148
+     }
+    },
+    "ok": true
+   },
+   "precision_drone": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 6.364682781501794,
+      "arm": 6.376339709673044,
+      "delta": 0.011656928171249525
+     },
+     "flow_circvar": {
+      "base": 0.1800312267829168,
+      "arm": 0.17648321819382345,
+      "delta": -0.003548008589093349
+     },
+     "long_share": {
+      "base": 0.006635654672321795,
+      "arm": 0.006648389307745031,
+      "delta": 1.2734635423236086e-05
+     },
+     "thread_density_whole": {
+      "base": 11.376182909512185,
+      "arm": 11.366676256473879,
+      "delta": -0.0008356628153681613
+     }
+    },
+    "ok": true
+   },
+   "proseal_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 7.2969543147208125,
+      "arm": 7.238394964594807,
+      "delta": -0.05855935012600533
+     },
+     "flow_circvar": {
+      "base": 0.501937352828946,
+      "arm": 0.5024626539484707,
+      "delta": 0.000525301119524646
+     },
+     "long_share": {
+      "base": 0.06316297010607522,
+      "arm": 0.062649450023912,
+      "delta": -0.0005135200821632102
+     },
+     "thread_density_whole": {
+      "base": 6.671767856209085,
+      "arm": 6.689046005793439,
+      "delta": 0.002589740823831872
+     }
+    },
+    "ok": true
+   },
+   "goldentee_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 3.3080938028376092,
+      "arm": 3.306635314865163,
+      "delta": -0.0014584879724464095
+     },
+     "flow_circvar": {
+      "base": 0.4342125509136497,
+      "arm": 0.4332107971377858,
+      "delta": -0.0010017537758638673
+     },
+     "long_share": {
+      "base": 0.010276504509832914,
+      "arm": 0.010271947975169967,
+      "delta": -4.556534662946907e-06
+     },
+     "thread_density_whole": {
+      "base": 14.185477682980803,
+      "arm": 14.187013832975653,
+      "delta": 0.00010829032544269498
+     }
+    },
+    "ok": true
+   },
+   "becker_lc_large": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 0.8711968904972525,
+      "arm": 0.8861018335491787,
+      "delta": 0.014904943051926245
+     },
+     "flow_circvar": {
+      "base": 0.33372194704700137,
+      "arm": 0.2984092236744357,
+      "delta": -0.03531272337256569
+     },
+     "long_share": {
+      "base": 0.0037583892617449664,
+      "arm": 0.003413202266366305,
+      "delta": -0.00034518699537866137
+     },
+     "thread_density_whole": {
+      "base": 9.008853259480798,
+      "arm": 8.860777874798673,
+      "delta": -0.0164366518598016
+     }
+    },
+    "ok": true
+   },
+   "becker_hat_small": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.1378721790252229,
+      "arm": 1.2331625877442611,
+      "delta": 0.09529040871903827
+     },
+     "flow_circvar": {
+      "base": 0.30922121120759366,
+      "arm": 0.3083194368383789,
+      "delta": -0.0009017743692147362
+     },
+     "long_share": {
+      "base": 0.005989731888191671,
+      "arm": 0.005992580614477314,
+      "delta": 2.8487262856424778e-06
+     },
+     "thread_density_whole": {
+      "base": 9.08502455130555,
+      "arm": 9.069882458757498,
+      "delta": -0.0016667090399745707
+     }
+    },
+    "ok": true
+   },
+   "becker_chest_small": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.164031428848579,
+      "arm": 1.2582268679829656,
+      "delta": 0.09419543913438666
+     },
+     "flow_circvar": {
+      "base": 0.30957778261186547,
+      "arm": 0.3085146347857078,
+      "delta": -0.0010631478261576843
+     },
+     "long_share": {
+      "base": 0.021885030639042895,
+      "arm": 0.02581772299330292,
+      "delta": 0.003932692354260026
+     },
+     "thread_density_whole": {
+      "base": 9.087109612813277,
+      "arm": 9.0925573173813,
+      "delta": 0.0005994980582538996
+     }
+    },
+    "ok": true
+   },
+   "becker_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.3442064701138094,
+      "arm": 1.4316392269148175,
+      "delta": 0.08743275680100804
+     },
+     "flow_circvar": {
+      "base": 0.3067809042709903,
+      "arm": 0.3056262307663583,
+      "delta": -0.0011546735046319978
+     },
+     "long_share": {
+      "base": 0.005657327586206897,
+      "arm": 0.005649210903873745,
+      "delta": -8.116682333151638e-06
+     },
+     "thread_density_whole": {
+      "base": 9.013157275397564,
+      "arm": 9.015394390516766,
+      "delta": 0.0002482054901348138
+     }
+    },
+    "ok": true
+   },
+   "bridge_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.187214611872146,
+      "arm": 1.0965914283103353,
+      "delta": -0.09062318356181076
+     },
+     "flow_circvar": {
+      "base": 0.41178572896085436,
+      "arm": 0.411803709111916,
+      "delta": 1.7980151061636196e-05
+     },
+     "long_share": {
+      "base": 0.044834843078049226,
+      "arm": 0.04486357809924922,
+      "delta": 2.8735021199995103e-05
+     },
+     "thread_density_whole": {
+      "base": 10.742330694281053,
+      "arm": 10.741787631904304,
+      "delta": -5.055349646223573e-05
+     }
+    },
+    "ok": true
+   },
+   "gaulke_roofing_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.153686396677051,
+      "arm": 4.140072451267898,
+      "delta": -0.013613945409153061
+     },
+     "flow_circvar": {
+      "base": 0.5151931567601172,
+      "arm": 0.5089271377398736,
+      "delta": -0.006266019020243596
+     },
+     "long_share": {
+      "base": 0.008554469273743016,
+      "arm": 0.008524704244954768,
+      "delta": -2.9765028788248868e-05
+     },
+     "thread_density_whole": {
+      "base": 7.432962892675745,
+      "arm": 7.417083108852573,
+      "delta": -0.002136400255518458
+     }
+    },
+    "ok": true
+   },
+   "gaulke_roofing_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.322268326417704,
+      "arm": 4.325259515570934,
+      "delta": 0.0029911891532306
+     },
+     "flow_circvar": {
+      "base": 0.5251992092235027,
+      "arm": 0.520370204011049,
+      "delta": -0.004829005212453663
+     },
+     "long_share": {
+      "base": 0.005753138075313808,
+      "arm": 0.005757152826238661,
+      "delta": 4.014750924852782e-06
+     },
+     "thread_density_whole": {
+      "base": 7.513192742416028,
+      "arm": 7.492069851792196,
+      "delta": -0.0028114400026745525
+     }
+    },
+    "ok": true
+   },
+   "hotel_fremont_patch": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.547987616099071,
+      "arm": 1.5472586612848975,
+      "delta": -0.0007289548141735658
+     },
+     "flow_circvar": {
+      "base": 0.17161316091787707,
+      "arm": 0.17130236284892017,
+      "delta": -0.00031079806895689677
+     },
+     "long_share": {
+      "base": 0.00013624906328768988,
+      "arm": 0.00013618412093149938,
+      "delta": -6.494235619050864e-08
+     },
+     "thread_density_whole": {
+      "base": 9.519206688166264,
+      "arm": 9.521551421550223,
+      "delta": 0.0002463160493062553
+     }
+    },
+    "ok": true
+   },
+   "mfab_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.120573733751681,
+      "arm": 1.1247328759419637,
+      "delta": 0.004159142190282683
+     },
+     "flow_circvar": {
+      "base": 0.2695515689268835,
+      "arm": 0.26724864249474134,
+      "delta": -0.0023029264321421383
+     },
+     "long_share": {
+      "base": 0.00016837851490149856,
+      "arm": 0.0001690045631232043,
+      "delta": 6.260482217057529e-07
+     },
+     "thread_density_whole": {
+      "base": 11.250803278899703,
+      "arm": 11.240824108331964,
+      "delta": -0.000886974051573226
+     }
+    },
+    "ok": true
+   },
+   "proseal_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 7.009776793949456,
+      "arm": 6.984010292225694,
+      "delta": -0.025766501723762048
+     },
+     "flow_circvar": {
+      "base": 0.5066827964010556,
+      "arm": 0.508250101985573,
+      "delta": 0.0015673055845173423
+     },
+     "long_share": {
+      "base": 0.00018698578908002991,
+      "arm": 0.00018628912071535022,
+      "delta": -6.966683646796902e-07
+     },
+     "thread_density_whole": {
+      "base": 6.480551318988695,
+      "arm": 6.485533993056792,
+      "delta": 0.0007688657681788176
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": true,
+  "why": "as registered on 18 of 18 logos"
+ },
+ "script_drawn_width_on": {
+  "stratum": "construction",
+  "active": [
+   "bridge_hat",
+   "toat_machine_hat",
+   "bridge_lc",
+   "toat_machine_beanie",
+   "toat_beanie"
+  ],
+  "identical": [
+   "becker_hat_large",
+   "gaulke_roofing_hat",
+   "hotel_fremont_hat",
+   "mfab_hat",
+   "precision_drone",
+   "proseal_hat",
+   "tires_hat_3d",
+   "goldentee_hat",
+   "becker_lc_large",
+   "becker_hat_small",
+   "becker_chest_small",
+   "becker_beanie",
+   "gaulke_roofing_lc",
+   "gaulke_roofing_beanie",
+   "hotel_fremont_patch",
+   "mfab_lc",
+   "proseal_beanie"
+  ],
+  "per_logo": {
+   "bridge_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.526359046612657,
+      "arm": 1.5310328583205748,
+      "delta": 0.004673811707917697
+     },
+     "flow_circvar": {
+      "base": 0.4318614407640706,
+      "arm": 0.4243138701417578,
+      "delta": -0.007547570622312816
+     },
+     "long_share": {
+      "base": 0.016244849911712773,
+      "arm": 0.014639905548996458,
+      "delta": -0.0016049443627163158
+     },
+     "thread_density_whole": {
+      "base": 11.391991700895845,
+      "arm": 11.282386659727246,
+      "delta": -0.009621236044262588
+     }
+    },
+    "ok": true
+   },
+   "toat_machine_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.1629751017603214,
+      "arm": 1.1631595643438721,
+      "delta": 0.00018446258355075962
+     },
+     "flow_circvar": {
+      "base": 0.1629047438800096,
+      "arm": 0.1625165161508598,
+      "delta": -0.00038822772914981485
+     },
+     "long_share": {
+      "base": 0.02647183396865735,
+      "arm": 0.026000847278119042,
+      "delta": -0.0004709866905383067
+     },
+     "thread_density_whole": {
+      "base": 10.246678957006926,
+      "arm": 10.222000889569085,
+      "delta": -0.0024083966660208744
+     }
+    },
+    "ok": true
+   },
+   "bridge_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.187214611872146,
+      "arm": 1.1847261459947143,
+      "delta": -0.002488465877431789
+     },
+     "flow_circvar": {
+      "base": 0.41178572896085436,
+      "arm": 0.4107834915588101,
+      "delta": -0.0010022374020442482
+     },
+     "long_share": {
+      "base": 0.044834843078049226,
+      "arm": 0.04154492330168006,
+      "delta": -0.0032899197763691657
+     },
+     "thread_density_whole": {
+      "base": 10.742330694281053,
+      "arm": 10.717597852545572,
+      "delta": -0.002302372030740839
+     }
+    },
+    "ok": true
+   },
+   "toat_machine_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.2433171702101207,
+      "arm": 1.371485568231407,
+      "delta": 0.12816839802128643
+     },
+     "flow_circvar": {
+      "base": 0.19728942819150339,
+      "arm": 0.19519848672775694,
+      "delta": -0.002090941463746443
+     },
+     "long_share": {
+      "base": 0.0044857018254314375,
+      "arm": 0.00424893776555861,
+      "delta": -0.0002367640598728276
+     },
+     "thread_density_whole": {
+      "base": 10.335626414587678,
+      "arm": 10.285062525098835,
+      "delta": -0.004892193995854601
+     }
+    },
+    "ok": true
+   },
+   "toat_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.4147751737712986,
+      "arm": 1.4157331035331773,
+      "delta": 0.0009579297618786953
+     },
+     "flow_circvar": {
+      "base": 0.17381969750007212,
+      "arm": 0.16896325828000017,
+      "delta": -0.004856439220071951
+     },
+     "long_share": {
+      "base": 0.00437731196054254,
+      "arm": 0.004380552813425469,
+      "delta": 3.2408528829290517e-06
+     },
+     "thread_density_whole": {
+      "base": 10.567772318304188,
+      "arm": 10.523959137774398,
+      "delta": -0.004145923966766634
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": true,
+  "why": "as registered on 5 of 5 logos"
+ },
+ "white_fields_fill_on": {
+  "stratum": "fill",
+  "active": [
+   "becker_hat_large",
+   "mfab_hat",
+   "precision_drone",
+   "goldentee_hat",
+   "toat_machine_hat",
+   "becker_lc_large",
+   "becker_hat_small",
+   "becker_chest_small",
+   "becker_beanie",
+   "mfab_lc",
+   "toat_machine_beanie",
+   "toat_beanie"
+  ],
+  "identical": [
+   "bridge_hat",
+   "gaulke_roofing_hat",
+   "hotel_fremont_hat",
+   "proseal_hat",
+   "tires_hat_3d",
+   "bridge_lc",
+   "gaulke_roofing_lc",
+   "gaulke_roofing_beanie",
+   "hotel_fremont_patch",
+   "proseal_beanie"
+  ],
+  "per_logo": {
+   "becker_hat_large": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 0.7379166154224572,
+      "arm": 0.8011832860840626,
+      "delta": 0.0632666706616054
+     },
+     "flow_circvar": {
+      "base": 0.305831535014289,
+      "arm": 0.306789814156117,
+      "delta": 0.0009582791418280001
+     },
+     "long_share": {
+      "base": 0.004309548728683125,
+      "arm": 0.006109979633401222,
+      "delta": 0.0018004309047180969
+     },
+     "thread_density_whole": {
+      "base": 8.840284501576962,
+      "arm": 8.806725336123229,
+      "delta": -0.0037961635112248285
+     }
+    },
+    "ok": true
+   },
+   "mfab_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 0.8172684005576655,
+      "arm": 0.9061426936283862,
+      "delta": 0.0888742930707207
+     },
+     "flow_circvar": {
+      "base": 0.257444063256711,
+      "arm": 0.18662770135011036,
+      "delta": -0.07081636190660062
+     },
+     "long_share": {
+      "base": 0.00019265966669877662,
+      "arm": 0.00019122287025528253,
+      "delta": -1.4367964434940865e-06
+     },
+     "thread_density_whole": {
+      "base": 10.707268950455095,
+      "arm": 10.723058760510472,
+      "delta": 0.001474681370986404
+     }
+    },
+    "ok": true
+   },
+   "precision_drone": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 6.364682781501794,
+      "arm": 6.35650527454693,
+      "delta": -0.008177506954863745
+     },
+     "flow_circvar": {
+      "base": 0.1800312267829168,
+      "arm": 0.17990108974453523,
+      "delta": -0.00013013703838157809
+     },
+     "long_share": {
+      "base": 0.006635654672321795,
+      "arm": 0.0066270410603265694,
+      "delta": -8.613611995225527e-06
+     },
+     "thread_density_whole": {
+      "base": 11.376182909512185,
+      "arm": 11.383077410976043,
+      "delta": 0.0006060469947343338
+     }
+    },
+    "ok": true
+   },
+   "goldentee_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 3.3080938028376092,
+      "arm": 3.3215547703180213,
+      "delta": 0.013460967480412034
+     },
+     "flow_circvar": {
+      "base": 0.4342125509136497,
+      "arm": 0.36983947922935123,
+      "delta": -0.06437307168429846
+     },
+     "long_share": {
+      "base": 0.010276504509832914,
+      "arm": 0.001638410029918792,
+      "delta": -0.008638094479914123
+     },
+     "thread_density_whole": {
+      "base": 14.185477682980803,
+      "arm": 13.71223848943214,
+      "delta": -0.03336082182952762
+     }
+    },
+    "ok": true
+   },
+   "toat_machine_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.1629751017603214,
+      "arm": 1.4433871485085,
+      "delta": 0.28041204674817855
+     },
+     "flow_circvar": {
+      "base": 0.1629047438800096,
+      "arm": 0.17511902000875906,
+      "delta": 0.012214276128749452
+     },
+     "long_share": {
+      "base": 0.02647183396865735,
+      "arm": 0.007552222817354044,
+      "delta": -0.018919611151303306
+     },
+     "thread_density_whole": {
+      "base": 10.246678957006926,
+      "arm": 10.241962923540694,
+      "delta": -0.0004602499488878471
+     }
+    },
+    "ok": true
+   },
+   "becker_lc_large": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 0.8711968904972525,
+      "arm": 0.7993605115907274,
+      "delta": -0.07183637890652506
+     },
+     "flow_circvar": {
+      "base": 0.33372194704700137,
+      "arm": 0.33436347244509057,
+      "delta": 0.0006415253980892044
+     },
+     "long_share": {
+      "base": 0.0037583892617449664,
+      "arm": 0.005270883373365359,
+      "delta": 0.0015124941116203927
+     },
+     "thread_density_whole": {
+      "base": 9.008853259480798,
+      "arm": 8.989010105860393,
+      "delta": -0.002202628131335411
+     }
+    },
+    "ok": true
+   },
+   "becker_hat_small": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.1378721790252229,
+      "arm": 1.0446343779677114,
+      "delta": -0.09323780105751145
+     },
+     "flow_circvar": {
+      "base": 0.30922121120759366,
+      "arm": 0.30983872538368057,
+      "delta": 0.0006175141760869085
+     },
+     "long_share": {
+      "base": 0.005989731888191671,
+      "arm": 0.007521660477958678,
+      "delta": 0.001531928589767007
+     },
+     "thread_density_whole": {
+      "base": 9.08502455130555,
+      "arm": 9.007697189991182,
+      "delta": -0.008511519245509911
+     }
+    },
+    "ok": true
+   },
+   "becker_chest_small": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.164031428848579,
+      "arm": 1.0686874574953853,
+      "delta": -0.09534397135319361
+     },
+     "flow_circvar": {
+      "base": 0.30957778261186547,
+      "arm": 0.31019521216373375,
+      "delta": 0.000617429551868276
+     },
+     "long_share": {
+      "base": 0.021885030639042895,
+      "arm": 0.023475550360413013,
+      "delta": 0.0015905197213701185
+     },
+     "thread_density_whole": {
+      "base": 9.087109612813277,
+      "arm": 9.009329772891421,
+      "delta": -0.008559359712375722
+     }
+    },
+    "ok": true
+   },
+   "becker_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.3442064701138094,
+      "arm": 1.069614047597825,
+      "delta": -0.27459242251598437
+     },
+     "flow_circvar": {
+      "base": 0.3067809042709903,
+      "arm": 0.3075610786279913,
+      "delta": 0.0007801743570010067
+     },
+     "long_share": {
+      "base": 0.005657327586206897,
+      "arm": 0.007324698526127735,
+      "delta": 0.0016673709399208387
+     },
+     "thread_density_whole": {
+      "base": 9.013157275397564,
+      "arm": 8.973370689626522,
+      "delta": -0.004414278432669069
+     }
+    },
+    "ok": true
+   },
+   "mfab_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.120573733751681,
+      "arm": 1.0564946619217082,
+      "delta": -0.06407907182997286
+     },
+     "flow_circvar": {
+      "base": 0.2695515689268835,
+      "arm": 0.22170765276820456,
+      "delta": -0.04784391615867892
+     },
+     "long_share": {
+      "base": 0.00016837851490149856,
+      "arm": 0.00011140819964349375,
+      "delta": -5.6970315258004806e-05
+     },
+     "thread_density_whole": {
+      "base": 11.250803278899703,
+      "arm": 11.24007904084178,
+      "delta": -0.0009531975443954372
+     }
+    },
+    "ok": true
+   },
+   "toat_machine_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.2433171702101207,
+      "arm": 1.2366289494837073,
+      "delta": -0.006688220726413396
+     },
+     "flow_circvar": {
+      "base": 0.19728942819150339,
+      "arm": 0.19192125320276351,
+      "delta": -0.005368174988739871
+     },
+     "long_share": {
+      "base": 0.0044857018254314375,
+      "arm": 0.008429403743646957,
+      "delta": 0.003943701918215519
+     },
+     "thread_density_whole": {
+      "base": 10.335626414587678,
+      "arm": 10.374515848121211,
+      "delta": 0.0037626585920951285
+     }
+    },
+    "ok": true
+   },
+   "toat_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.4147751737712986,
+      "arm": 1.3580246913580245,
+      "delta": -0.05675048241327407
+     },
+     "flow_circvar": {
+      "base": 0.17381969750007212,
+      "arm": 0.21126059792733537,
+      "delta": 0.03744090042726325
+     },
+     "long_share": {
+      "base": 0.00437731196054254,
+      "arm": 0.00798168543497092,
+      "delta": 0.0036043734744283795
+     },
+     "thread_density_whole": {
+      "base": 10.567772318304188,
+      "arm": 10.662381082978602,
+      "delta": 0.008952574092701069
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": true,
+  "why": "as registered on 12 of 12 logos"
+ },
+ "border_by_size_off": {
+  "stratum": "fill",
+  "active": [
+   "gaulke_roofing_hat",
+   "gaulke_roofing_lc",
+   "gaulke_roofing_beanie"
+  ],
+  "identical": [
+   "becker_hat_large",
+   "bridge_hat",
+   "hotel_fremont_hat",
+   "mfab_hat",
+   "precision_drone",
+   "proseal_hat",
+   "tires_hat_3d",
+   "goldentee_hat",
+   "toat_machine_hat",
+   "becker_lc_large",
+   "becker_hat_small",
+   "becker_chest_small",
+   "becker_beanie",
+   "bridge_lc",
+   "hotel_fremont_patch",
+   "mfab_lc",
+   "proseal_beanie",
+   "toat_machine_beanie",
+   "toat_beanie"
+  ],
+  "per_logo": {
+   "gaulke_roofing_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.451639012545528,
+      "arm": 4.734576757532281,
+      "delta": 0.2829377449867527
+     },
+     "flow_circvar": {
+      "base": 0.5313216443122482,
+      "arm": 0.5313216443122482,
+      "delta": 0.0
+     },
+     "long_share": {
+      "base": 0.009637572960499524,
+      "arm": 0.01025418833044483,
+      "delta": 0.0006166153699453062
+     },
+     "thread_density_whole": {
+      "base": 7.615080844826678,
+      "arm": 7.146285069536213,
+      "delta": -0.061561496830193504
+     }
+    },
+    "ok": true
+   },
+   "gaulke_roofing_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.153686396677051,
+      "arm": 4.435409351321383,
+      "delta": 0.28172295464433184
+     },
+     "flow_circvar": {
+      "base": 0.5151931567601172,
+      "arm": 0.5151931567601172,
+      "delta": 0.0
+     },
+     "long_share": {
+      "base": 0.008554469273743016,
+      "arm": 0.009140085804887147,
+      "delta": 0.000585616531144131
+     },
+     "thread_density_whole": {
+      "base": 7.432962892675745,
+      "arm": 6.870374172829664,
+      "delta": -0.07568835307928702
+     }
+    },
+    "ok": true
+   },
+   "gaulke_roofing_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 4.322268326417704,
+      "arm": 4.6116952591772735,
+      "delta": 0.28942693275956977
+     },
+     "flow_circvar": {
+      "base": 0.5251992092235027,
+      "arm": 0.5251992092235027,
+      "delta": 0.0
+     },
+     "long_share": {
+      "base": 0.005753138075313808,
+      "arm": 0.006141820212171971,
+      "delta": 0.00038868213685816326
+     },
+     "thread_density_whole": {
+      "base": 7.513192742416028,
+      "arm": 6.955752717835313,
+      "delta": -0.07419482551454658
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": true,
+  "why": "as registered on 3 of 3 logos"
+ },
+ "fine_bars_satin_off": {
+  "stratum": "line",
+  "active": [
+   "hotel_fremont_hat",
+   "precision_drone",
+   "goldentee_hat",
+   "toat_machine_hat",
+   "bridge_lc",
+   "hotel_fremont_patch",
+   "toat_machine_beanie",
+   "toat_beanie"
+  ],
+  "identical": [
+   "becker_hat_large",
+   "bridge_hat",
+   "gaulke_roofing_hat",
+   "mfab_hat",
+   "proseal_hat",
+   "tires_hat_3d",
+   "becker_lc_large",
+   "becker_hat_small",
+   "becker_chest_small",
+   "becker_beanie",
+   "gaulke_roofing_lc",
+   "gaulke_roofing_beanie",
+   "mfab_lc",
+   "proseal_beanie"
+  ],
+  "per_logo": {
+   "hotel_fremont_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.761227827399673,
+      "arm": 1.758793969849246,
+      "delta": -0.002433857550427021
+     },
+     "flow_circvar": {
+      "base": 0.19042212407217507,
+      "arm": 0.19070433339917447,
+      "delta": 0.00028220932699940526
+     },
+     "long_share": {
+      "base": 0.004135123099433806,
+      "arm": 0.004002287021154946,
+      "delta": -0.00013283607827885985
+     },
+     "thread_density_whole": {
+      "base": 10.766359594419557,
+      "arm": 10.762434357549916,
+      "delta": -0.0003645834820226055
+     }
+    },
+    "ok": true
+   },
+   "precision_drone": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 6.364682781501794,
+      "arm": 6.403774856757669,
+      "delta": 0.03909207525587455
+     },
+     "flow_circvar": {
+      "base": 0.1800312267829168,
+      "arm": 0.18048053043321902,
+      "delta": 0.000449303650302213
+     },
+     "long_share": {
+      "base": 0.006635654672321795,
+      "arm": 0.006537728139471534,
+      "delta": -9.792653285026123e-05
+     },
+     "thread_density_whole": {
+      "base": 11.376182909512185,
+      "arm": 11.408452203448684,
+      "delta": 0.002836566025104741
+     }
+    },
+    "ok": true
+   },
+   "goldentee_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 3.3080938028376092,
+      "arm": 3.4694028198125046,
+      "delta": 0.16130901697489541
+     },
+     "flow_circvar": {
+      "base": 0.4342125509136497,
+      "arm": 0.43840597631622974,
+      "delta": 0.004193425402580053
+     },
+     "long_share": {
+      "base": 0.010276504509832914,
+      "arm": 0.010319994060435073,
+      "delta": 4.348955060215834e-05
+     },
+     "thread_density_whole": {
+      "base": 14.185477682980803,
+      "arm": 14.045274245999288,
+      "delta": -0.009883589408464281
+     }
+    },
+    "ok": true
+   },
+   "toat_machine_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.1629751017603214,
+      "arm": 1.0471204188481675,
+      "delta": -0.11585468291215384
+     },
+     "flow_circvar": {
+      "base": 0.1629047438800096,
+      "arm": 0.16336250313053274,
+      "delta": 0.00045775925052313204
+     },
+     "long_share": {
+      "base": 0.02647183396865735,
+      "arm": 0.02600807508782969,
+      "delta": -0.00046375888082765895
+     },
+     "thread_density_whole": {
+      "base": 10.246678957006926,
+      "arm": 10.244247527560873,
+      "delta": -0.00023728951168034662
+     }
+    },
+    "ok": true
+   },
+   "bridge_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.187214611872146,
+      "arm": 1.1864561467554988,
+      "delta": -0.0007584651166472334
+     },
+     "flow_circvar": {
+      "base": 0.41178572896085436,
+      "arm": 0.41178572896085436,
+      "delta": 0.0
+     },
+     "long_share": {
+      "base": 0.044834843078049226,
+      "arm": 0.04480614484272129,
+      "delta": -2.8698235327938304e-05
+     },
+     "thread_density_whole": {
+      "base": 10.742330694281053,
+      "arm": 10.743221691639283,
+      "delta": 8.294264844259391e-05
+     }
+    },
+    "ok": true
+   },
+   "hotel_fremont_patch": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.547987616099071,
+      "arm": 1.5456989247311828,
+      "delta": -0.0022886913678883403
+     },
+     "flow_circvar": {
+      "base": 0.17161316091787707,
+      "arm": 0.17161316091787707,
+      "delta": 0.0
+     },
+     "long_share": {
+      "base": 0.00013624906328768988,
+      "arm": 0.0,
+      "delta": -0.00013624906328768988
+     },
+     "thread_density_whole": {
+      "base": 9.519206688166264,
+      "arm": 9.521408210101857,
+      "delta": 0.00023127157626797533
+     }
+    },
+    "ok": true
+   },
+   "toat_machine_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.2433171702101207,
+      "arm": 1.2207776353537203,
+      "delta": -0.022539534856400367
+     },
+     "flow_circvar": {
+      "base": 0.19728942819150339,
+      "arm": 0.19742496907330825,
+      "delta": 0.00013554088180486867
+     },
+     "long_share": {
+      "base": 0.0044857018254314375,
+      "arm": 0.004220699779789576,
+      "delta": -0.00026500204564186124
+     },
+     "thread_density_whole": {
+      "base": 10.335626414587678,
+      "arm": 10.347991414808194,
+      "delta": 0.001196347441802277
+     }
+    },
+    "ok": true
+   },
+   "toat_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.4147751737712986,
+      "arm": 1.4539286363360997,
+      "delta": 0.03915346256480112
+     },
+     "flow_circvar": {
+      "base": 0.17381969750007212,
+      "arm": 0.17395609981701443,
+      "delta": 0.00013640231694231342
+     },
+     "long_share": {
+      "base": 0.00437731196054254,
+      "arm": 0.004128718882817244,
+      "delta": -0.0002485930777252959
+     },
+     "thread_density_whole": {
+      "base": 10.567772318304188,
+      "arm": 10.578110370783001,
+      "delta": 0.0009782622266479907
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": true,
+  "why": "as registered on 8 of 8 logos"
+ },
+ "bean_only_lines_off": {
+  "stratum": "line",
+  "active": [
+   "hotel_fremont_hat",
+   "precision_drone",
+   "proseal_hat",
+   "goldentee_hat",
+   "hotel_fremont_patch",
+   "mfab_lc",
+   "proseal_beanie"
+  ],
+  "identical": [
+   "becker_hat_large",
+   "bridge_hat",
+   "gaulke_roofing_hat",
+   "mfab_hat",
+   "tires_hat_3d",
+   "toat_machine_hat",
+   "becker_lc_large",
+   "becker_hat_small",
+   "becker_chest_small",
+   "becker_beanie",
+   "bridge_lc",
+   "gaulke_roofing_lc",
+   "gaulke_roofing_beanie",
+   "toat_machine_beanie",
+   "toat_beanie"
+  ],
+  "per_logo": {
+   "hotel_fremont_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.761227827399673,
+      "arm": 1.7641129032258065,
+      "delta": 0.0028850758261333986
+     },
+     "flow_circvar": {
+      "base": 0.19042212407217507,
+      "arm": 0.19042212407217507,
+      "delta": 0.0
+     },
+     "long_share": {
+      "base": 0.004135123099433806,
+      "arm": 0.00414144632048423,
+      "delta": 6.3232210504244116e-06
+     },
+     "thread_density_whole": {
+      "base": 10.766359594419557,
+      "arm": 10.766307921500015,
+      "delta": -4.799479256500853e-06
+     }
+    },
+    "ok": true
+   },
+   "precision_drone": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 6.364682781501794,
+      "arm": 6.386737328441365,
+      "delta": 0.022054546939570763
+     },
+     "flow_circvar": {
+      "base": 0.1800312267829168,
+      "arm": 0.1801447124371704,
+      "delta": 0.00011348565425359225
+     },
+     "long_share": {
+      "base": 0.006635654672321795,
+      "arm": 0.0066588865243358275,
+      "delta": 2.3231852014032536e-05
+     },
+     "thread_density_whole": {
+      "base": 11.376182909512185,
+      "arm": 11.358781503081588,
+      "delta": -0.0015296349020590208
+     }
+    },
+    "ok": true
+   },
+   "proseal_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 7.2969543147208125,
+      "arm": 7.586533902323376,
+      "delta": 0.28957958760256375
+     },
+     "flow_circvar": {
+      "base": 0.501937352828946,
+      "arm": 0.5035164896436027,
+      "delta": 0.001579136814656712
+     },
+     "long_share": {
+      "base": 0.06316297010607522,
+      "arm": 0.06293034427542034,
+      "delta": -0.0002326258306548784
+     },
+     "thread_density_whole": {
+      "base": 6.671767856209085,
+      "arm": 6.689263368929881,
+      "delta": 0.0026223203651358534
+     }
+    },
+    "ok": true
+   },
+   "goldentee_hat": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 3.3080938028376092,
+      "arm": 3.7251655629139075,
+      "delta": 0.4170717600762983
+     },
+     "flow_circvar": {
+      "base": 0.4342125509136497,
+      "arm": 0.41667944140359,
+      "delta": -0.017533109510059708
+     },
+     "long_share": {
+      "base": 0.010276504509832914,
+      "arm": 0.01000277854959711,
+      "delta": -0.00027372596023580477
+     },
+     "thread_density_whole": {
+      "base": 14.185477682980803,
+      "arm": 14.612845792949543,
+      "delta": 0.030127156766915183
+     }
+    },
+    "ok": true
+   },
+   "hotel_fremont_patch": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.547987616099071,
+      "arm": 1.5507011866235167,
+      "delta": 0.002713570524445652
+     },
+     "flow_circvar": {
+      "base": 0.17161316091787707,
+      "arm": 0.17161316091787707,
+      "delta": 0.0
+     },
+     "long_share": {
+      "base": 0.00013624906328768988,
+      "arm": 0.00013646288209606986,
+      "delta": 2.1381880837997814e-07
+     },
+     "thread_density_whole": {
+      "base": 9.519206688166264,
+      "arm": 9.519290364131436,
+      "delta": 8.790224638773033e-06
+     }
+    },
+    "ok": true
+   },
+   "mfab_lc": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 1.120573733751681,
+      "arm": 1.1201344161299356,
+      "delta": -0.00043931762174542754
+     },
+     "flow_circvar": {
+      "base": 0.2695515689268835,
+      "arm": 0.2695515689268835,
+      "delta": 0.0
+     },
+     "long_share": {
+      "base": 0.00016837851490149856,
+      "arm": 0.00016831238779174148,
+      "delta": -6.612710975708236e-08
+     },
+     "thread_density_whole": {
+      "base": 11.250803278899703,
+      "arm": 11.253124902332248,
+      "delta": 0.0002063517932891977
+     }
+    },
+    "ok": true
+   },
+   "proseal_beanie": {
+    "metrics": {
+     "trims_per_1000": {
+      "base": 7.009776793949456,
+      "arm": 7.0201367079253645,
+      "delta": 0.010359913975908519
+     },
+     "flow_circvar": {
+      "base": 0.5066827964010556,
+      "arm": 0.5086033372845383,
+      "delta": 0.001920540883482702
+     },
+     "long_share": {
+      "base": 0.00018698578908002991,
+      "arm": 0.00018726591760299626,
+      "delta": 2.8012852296634854e-07
+     },
+     "thread_density_whole": {
+      "base": 6.480551318988695,
+      "arm": 6.48649818912787,
+      "delta": 0.0009176487996861882
+     }
+    },
+    "ok": true
+   }
+  },
+  "passes": true,
+  "why": "as registered on 7 of 7 logos"
+ }
+}

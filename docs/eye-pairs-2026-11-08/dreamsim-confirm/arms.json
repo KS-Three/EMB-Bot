@@ -1,0 +1,490 @@
+{
+ "P001": {
+  "fixture": "becker_hat_small",
+  "left_arm": "base",
+  "right_arm": "apex_cut_on",
+  "kind": "repeat",
+  "repeat_of": "P043",
+  "design_only": false
+ },
+ "P002": {
+  "fixture": "precision_drone",
+  "left_arm": "fine_bars_satin_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P003": {
+  "fixture": "proseal_beanie",
+  "left_arm": "base",
+  "right_arm": "apex_cut_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P004": {
+  "fixture": "hotel_fremont_hat",
+  "left_arm": "base",
+  "right_arm": "bean_only_lines_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P005": {
+  "fixture": "becker_lc_large",
+  "left_arm": "base",
+  "right_arm": "white_fields_fill_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P006": {
+  "fixture": "bridge_lc",
+  "left_arm": "base",
+  "right_arm": "fine_bars_satin_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P007": {
+  "fixture": "becker_chest_small",
+  "left_arm": "apex_cut_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P008": {
+  "fixture": "becker_hat_small",
+  "left_arm": "base",
+  "right_arm": "white_fields_fill_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P009": {
+  "fixture": "precision_drone",
+  "left_arm": "base",
+  "right_arm": "white_fields_fill_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P010": {
+  "fixture": "precision_drone",
+  "left_arm": "bean_only_lines_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P011": {
+  "fixture": "bridge_lc",
+  "left_arm": "base",
+  "right_arm": "script_drawn_width_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P012": {
+  "fixture": "gaulke_roofing_lc",
+  "left_arm": "apex_cut_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P013": {
+  "fixture": "goldentee_hat",
+  "left_arm": "base",
+  "right_arm": "fine_bars_satin_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P014": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "base",
+  "right_arm": "fine_bars_satin_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P015": {
+  "fixture": "gaulke_roofing_hat",
+  "left_arm": "base",
+  "right_arm": "apex_cut_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P016": {
+  "fixture": "bridge_hat",
+  "left_arm": "base",
+  "right_arm": "apex_cut_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P017": {
+  "fixture": "gaulke_roofing_hat",
+  "left_arm": "border_by_size_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P018": {
+  "fixture": "toat_machine_beanie",
+  "left_arm": "script_drawn_width_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P019": {
+  "fixture": "becker_chest_small",
+  "left_arm": "white_fields_fill_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P020": {
+  "fixture": "toat_machine_beanie",
+  "left_arm": "white_fields_fill_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P021": {
+  "fixture": "gaulke_roofing_beanie",
+  "left_arm": "border_by_size_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P022": {
+  "fixture": "mfab_lc",
+  "left_arm": "bean_only_lines_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P023": {
+  "fixture": "hotel_fremont_hat",
+  "left_arm": "base",
+  "right_arm": "fine_bars_satin_off",
+  "kind": "repeat",
+  "repeat_of": "P059",
+  "design_only": false
+ },
+ "P024": {
+  "fixture": "proseal_hat",
+  "left_arm": "bean_only_lines_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P025": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "script_drawn_width_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P026": {
+  "fixture": "gaulke_roofing_beanie",
+  "left_arm": "apex_cut_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P027": {
+  "fixture": "becker_lc_large",
+  "left_arm": "base",
+  "right_arm": "apex_cut_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P028": {
+  "fixture": "becker_beanie",
+  "left_arm": "white_fields_fill_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P029": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "base",
+  "right_arm": "base",
+  "kind": "identical",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P030": {
+  "fixture": "hotel_fremont_patch",
+  "left_arm": "base",
+  "right_arm": "fine_bars_satin_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P031": {
+  "fixture": "proseal_hat",
+  "left_arm": "base",
+  "right_arm": "apex_cut_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P032": {
+  "fixture": "goldentee_hat",
+  "left_arm": "base",
+  "right_arm": "bean_only_lines_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P033": {
+  "fixture": "gaulke_roofing_lc",
+  "left_arm": "border_by_size_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P034": {
+  "fixture": "mfab_lc",
+  "left_arm": "base",
+  "right_arm": "apex_cut_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P035": {
+  "fixture": "becker_hat_large",
+  "left_arm": "base",
+  "right_arm": "white_fields_fill_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P036": {
+  "fixture": "mfab_hat",
+  "left_arm": "white_fields_fill_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P037": {
+  "fixture": "goldentee_hat",
+  "left_arm": "white_fields_fill_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P038": {
+  "fixture": "mfab_lc",
+  "left_arm": "base",
+  "right_arm": "white_fields_fill_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P039": {
+  "fixture": "becker_hat_large",
+  "left_arm": "base",
+  "right_arm": "apex_cut_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P040": {
+  "fixture": "toat_beanie",
+  "left_arm": "script_drawn_width_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P041": {
+  "fixture": "hotel_fremont_patch",
+  "left_arm": "base",
+  "right_arm": "bean_only_lines_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P042": {
+  "fixture": "hotel_fremont_patch",
+  "left_arm": "base",
+  "right_arm": "apex_cut_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P043": {
+  "fixture": "becker_hat_small",
+  "left_arm": "apex_cut_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P044": {
+  "fixture": "toat_beanie",
+  "left_arm": "white_fields_fill_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P045": {
+  "fixture": "toat_machine_beanie",
+  "left_arm": "fine_bars_satin_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P046": {
+  "fixture": "goldentee_hat",
+  "left_arm": "bean_only_lines_off",
+  "right_arm": "base",
+  "kind": "repeat",
+  "repeat_of": "P032",
+  "design_only": false
+ },
+ "P047": {
+  "fixture": "toat_beanie",
+  "left_arm": "base",
+  "right_arm": "base",
+  "kind": "identical",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P048": {
+  "fixture": "bridge_hat",
+  "left_arm": "script_drawn_width_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P049": {
+  "fixture": "proseal_beanie",
+  "left_arm": "base",
+  "right_arm": "bean_only_lines_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P050": {
+  "fixture": "mfab_hat",
+  "left_arm": "base",
+  "right_arm": "apex_cut_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P051": {
+  "fixture": "proseal_beanie",
+  "left_arm": "bean_only_lines_off",
+  "right_arm": "base",
+  "kind": "repeat",
+  "repeat_of": "P049",
+  "design_only": false
+ },
+ "P052": {
+  "fixture": "hotel_fremont_hat",
+  "left_arm": "apex_cut_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P053": {
+  "fixture": "tires_hat_3d",
+  "left_arm": "base",
+  "right_arm": "base",
+  "kind": "identical",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P054": {
+  "fixture": "bridge_lc",
+  "left_arm": "apex_cut_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P055": {
+  "fixture": "goldentee_hat",
+  "left_arm": "apex_cut_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P056": {
+  "fixture": "precision_drone",
+  "left_arm": "base",
+  "right_arm": "apex_cut_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P057": {
+  "fixture": "becker_hat_large",
+  "left_arm": "base",
+  "right_arm": "base",
+  "kind": "identical",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P058": {
+  "fixture": "becker_beanie",
+  "left_arm": "base",
+  "right_arm": "apex_cut_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P059": {
+  "fixture": "hotel_fremont_hat",
+  "left_arm": "fine_bars_satin_off",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P060": {
+  "fixture": "toat_beanie",
+  "left_arm": "base",
+  "right_arm": "fine_bars_satin_off",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P061": {
+  "fixture": "toat_machine_hat",
+  "left_arm": "base",
+  "right_arm": "white_fields_fill_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ }
+}

@@ -1,0 +1,78 @@
+# dreamsim-confirm-1108: analysis (kappa with 95% bootstrap intervals; n beside every figure)
+
+47 live pairs, Kent chose a side on 17. Density held within tolerance on 47 pairs, not on 0.
+
+| metric | tier | better | n scored | n Kent decided | kappa sides only | CI pairs | CI designs | reading | kappa ties in | CI pairs | CI designs | reading |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `flow_circvar` | primary | lower | 37 | 14 | +0.21 | [-0.23, +0.59] | [-0.29, +0.75] | no evidence either way | +0.09 | [-0.09, +0.27] | [-0.15, +0.31] | no evidence either way |
+| `long_share` | primary | lower | 47 | 13 | -0.10 | [-0.59, +0.42] | [-0.62, +0.33] | no evidence either way | +0.06 | [-0.15, +0.28] | [-0.09, +0.19] | no evidence either way |
+| `thread_density` | primary | higher | 47 | 17 | +0.28 | [-0.18, +0.74] | [-0.18, +0.55] | no evidence either way | +0.10 | [-0.06, +0.27] | [+0.01, +0.20] | no evidence either way |
+| `trims_per_1000` | primary | lower | 47 | 17 | -0.29 | [-0.63, +0.16] | [-0.42, +0.00] | no evidence either way | -0.06 | [-0.23, +0.10] | [-0.17, +0.06] | no evidence either way |
+| `longest_jump_mm` | secondary | lower | 47 | 7 | -0.52 | [-0.96, +0.00] | [-1.00, +0.00] | n too small (<10) | -0.06 | [-0.21, +0.14] | [-0.24, +0.15] | no evidence either way |
+| `jumps_per_1000` | secondary | lower | 47 | 17 | -0.20 | [-0.55, +0.25] | [-0.40, +0.00] | no evidence either way | -0.02 | [-0.19, +0.15] | [-0.16, +0.12] | no evidence either way |
+| `turns_per_100mm` | secondary | lower | 37 | 12 | +0.00 | [-0.42, +0.38] | [-0.39, +0.45] | no evidence either way | -0.00 | [-0.21, +0.23] | [-0.27, +0.23] | no evidence either way |
+
+**Control `trims_per_1000` replicates: NO.** If no, read nothing else in this table.
+
+## Trims held against trims moved (the separation)
+
+| metric | split | n pairs | n decided | kappa sides only | CI pairs | CI designs | reading | kappa ties in | reading |
+|---|---|---|---|---|---|---|---|---|---|
+| `flow_circvar` | trims_held | 47 | 14 | +0.21 | [-0.23, +0.59] | [-0.29, +0.75] | no evidence either way | +0.09 | no evidence either way |
+| `flow_circvar` | trims_moved | 0 | 0 | n/a | n/a | n/a | n too small (<10) | n/a | n too small (<10) |
+| `long_share` | trims_held | 47 | 13 | -0.10 | [-0.59, +0.42] | [-0.62, +0.33] | no evidence either way | +0.06 | no evidence either way |
+| `long_share` | trims_moved | 0 | 0 | n/a | n/a | n/a | n too small (<10) | n/a | n too small (<10) |
+| `thread_density` | trims_held | 47 | 17 | +0.28 | [-0.18, +0.74] | [-0.18, +0.55] | no evidence either way | +0.10 | no evidence either way |
+| `thread_density` | trims_moved | 0 | 0 | n/a | n/a | n/a | n too small (<10) | n/a | n too small (<10) |
+| `trims_per_1000` | trims_held | 47 | 17 | -0.29 | [-0.63, +0.16] | [-0.42, +0.00] | no evidence either way | -0.06 | no evidence either way |
+| `trims_per_1000` | trims_moved | 0 | 0 | n/a | n/a | n/a | n too small (<10) | n/a | n too small (<10) |
+
+## Arms that passed the manipulation check, alone
+
+| metric | n pairs | n decided | kappa sides only | CI pairs | CI designs | reading | kappa ties in | reading |
+|---|---|---|---|---|---|---|---|---|
+| `flow_circvar` | 47 | 14 | +0.21 | [-0.23, +0.59] | [-0.29, +0.75] | no evidence either way | +0.09 | no evidence either way |
+| `long_share` | 47 | 13 | -0.10 | [-0.59, +0.42] | [-0.62, +0.33] | no evidence either way | +0.06 | no evidence either way |
+| `thread_density` | 47 | 17 | +0.28 | [-0.18, +0.74] | [-0.18, +0.55] | no evidence either way | +0.10 | no evidence either way |
+| `trims_per_1000` | 47 | 17 | -0.29 | [-0.63, +0.16] | [-0.42, +0.00] | no evidence either way | -0.06 | no evidence either way |
+
+## Population A: distance to the pro's file (cuts, hops, needle-up mm)
+
+Distance = |ours - pro|, lower is closer; cost = the plain count, lower is better, no pro in it. Read over all live pairs, then per stratum (`trims` is the control arm).
+
+| pairs | metric | reading | n scored | n decided | kappa sides only | CI pairs | CI designs | reading | kappa ties in | reading | pairs scoring his pick farther from the pro |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| all (47) | `cuts` | distance | 47 | 11 | +0.13 | [-0.38, +0.63] | [-0.20, +0.50] | no evidence either way | +0.14 | no evidence either way | 5 |
+| all (47) | `cuts` | cost | 47 | 11 | -0.31 | [-0.77, +0.27] | [-0.50, +0.00] | no evidence either way | +0.00 | no evidence either way | - |
+| all (47) | `hops` | distance | 47 | 10 | -0.20 | [-0.67, +0.37] | [-0.50, +0.05] | no evidence either way | +0.00 | no evidence either way | 6 |
+| all (47) | `hops` | cost | 47 | 10 | -0.20 | [-0.67, +0.37] | [-0.50, +0.05] | no evidence either way | +0.01 | no evidence either way | - |
+| all (47) | `needle_up_mm` | distance | 47 | 17 | -0.26 | [-0.65, +0.12] | [-0.59, +0.00] | no evidence either way | -0.10 | no evidence either way | 12 |
+| all (47) | `needle_up_mm` | cost | 47 | 17 | +0.11 | [-0.32, +0.53] | [-0.42, +0.44] | no evidence either way | +0.05 | no evidence either way | - |
+| construction (20) | `cuts` | distance | 20 | 3 | -0.50 | [-0.80, +0.00] | [-0.50, +0.00] | n too small (<10) | -0.01 | no evidence either way | 2 |
+| construction (20) | `cuts` | cost | 20 | 3 | +0.00 | [+0.00, +0.00] | [+0.00, +0.00] | n too small (<10) | -0.01 | no evidence either way | - |
+| construction (20) | `hops` | distance | 20 | 3 | +0.00 | [+0.00, +0.00] | [+0.00, +0.00] | n too small (<10) | -0.13 | no evidence either way | 2 |
+| construction (20) | `hops` | cost | 20 | 3 | +0.00 | [+0.00, +0.00] | [+0.00, +0.00] | n too small (<10) | -0.10 | no evidence either way | - |
+| construction (20) | `needle_up_mm` | distance | 20 | 7 | -0.62 | [-0.96, +0.00] | [-0.62, +0.00] | n too small (<10) | -0.23 | no evidence either way | 6 |
+| construction (20) | `needle_up_mm` | cost | 20 | 7 | +0.28 | [+0.00, +0.72] | [+0.00, +0.70] | n too small (<10) | +0.12 | no evidence either way | - |
+| fill (12) | `cuts` | distance | 12 | 6 | +0.67 | [+0.00, +1.00] | [+0.00, +1.00] | n too small (<10) | +0.45 | above chance | 1 |
+| fill (12) | `cuts` | cost | 12 | 6 | -0.33 | [-1.00, +0.40] | [-0.80, +0.40] | n too small (<10) | -0.09 | no evidence either way | - |
+| fill (12) | `hops` | distance | 12 | 6 | +0.00 | [-0.67, +0.67] | [-0.43, +0.55] | n too small (<10) | +0.09 | no evidence either way | 3 |
+| fill (12) | `hops` | cost | 12 | 6 | +0.00 | [-0.67, +0.67] | [-0.43, +0.55] | n too small (<10) | +0.09 | no evidence either way | - |
+| fill (12) | `needle_up_mm` | distance | 12 | 6 | +0.00 | [-0.67, +0.67] | [-0.50, +0.50] | n too small (<10) | +0.00 | no evidence either way | 3 |
+| fill (12) | `needle_up_mm` | cost | 12 | 6 | +0.00 | [-0.67, +0.67] | [-0.43, +0.55] | n too small (<10) | +0.00 | no evidence either way | - |
+| line (15) | `cuts` | distance | 15 | 2 | +0.00 | [+0.00, +0.00] | [+0.00, +0.00] | n too small (<10) | -0.15 | no evidence either way | 2 |
+| line (15) | `cuts` | cost | 15 | 2 | +0.00 | [+0.00, +0.00] | [+0.00, +0.00] | n too small (<10) | +0.05 | no evidence either way | - |
+| line (15) | `hops` | distance | 15 | 1 | +0.00 | n/a | n/a | n too small (<10) | -0.05 | no evidence either way | 1 |
+| line (15) | `hops` | cost | 15 | 1 | +0.00 | n/a | n/a | n too small (<10) | -0.05 | no evidence either way | - |
+| line (15) | `needle_up_mm` | distance | 15 | 4 | +0.00 | [+0.00, +0.00] | [+0.00, +0.00] | n too small (<10) | -0.03 | no evidence either way | 3 |
+| line (15) | `needle_up_mm` | cost | 15 | 4 | -0.33 | [-0.60, +0.00] | [-0.80, +0.00] | n too small (<10) | -0.01 | no evidence either way | - |
+
+## Did the pre-registration predict his eye?
+
+Expected picks against his, over 47 pairs: kappa sides only +0.11 [-0.33, +0.52] (designs [-0.08, +0.55]), no evidence either way; ties in +0.02 [-0.14, +0.19] (designs [-0.09, +0.18]), no evidence either way.
+
+## Controls (counts of his own answers)
+
+- identical pairs called a tie: 4 of 4
+- repeats answered differently: 1 of 4
+- sides picked: 6 left, 13 right (a lopsided count is a side habit)
