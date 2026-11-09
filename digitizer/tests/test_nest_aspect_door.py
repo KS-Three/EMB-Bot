@@ -1,5 +1,5 @@
-"""`cfg.extra["text_cluster_nest_door_aspect"]` (2026-11-07, built OFF): a letter turned
-on a ring joins its line.
+"""`cfg.text_cluster_nest_door_aspect` (2026-11-07, built OFF as a `cfg.extra` key; ON
+since 2026-11-08, Kent's flip): a letter turned on a ring joins its line.
 
 The letter door reads a glyph's aspect off its axis-aligned box, and a letter on the
 side of a ring lies on its back: its height runs along x, its box reads wide, and the
@@ -237,12 +237,13 @@ def test_the_result_does_not_depend_on_input_order():
 
 # --- wiring and OFF ------------------------------------------------------------------
 
-def test_the_flag_is_an_extra_and_is_off():
+def test_the_flag_is_a_field_and_is_on():
     assert FLAG not in PipelineConfig().extra
+    assert getattr(PipelineConfig(), FLAG) is True
     from digitizer_core import pipeline
     src = inspect.getsource(pipeline)
     assert '**({"nest_door_aspect": True}\n' in src
-    assert f'if (cfg.extra or {{}}).get("{FLAG}") else {{}}))' in src
+    assert f'if cfg.{FLAG} else {{}}))' in src
 
 
 def _md5(coords) -> str:
@@ -259,7 +260,7 @@ def test_goldens_are_byte_identical_off_and_on(fixture, on):
     assert _md5(golden["stitch_coords"]) == FLAT_GOLDEN_MD5[fixture]
     _result, plan = digitize(TESTDATA / fixture,
                              PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False,
-                                            extra={FLAG: True} if on else {}))
+                                            **{FLAG: on}))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     assert _md5(coords) == FLAT_GOLDEN_MD5[fixture]

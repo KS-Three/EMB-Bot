@@ -683,6 +683,11 @@ PRE_FLIP["lettering_stray_word_thread"] = False
 # protects those reads from the absorb floor. `tests/engine_2026_10_27.json`
 # carries it False.
 PRE_FLIP["dark_ink_floor_rescue"] = False
+# `text_cluster_nest_door_aspect` joined the flipped set 2026-11-08 (Kent,
+# "Flip ON"; built OFF 2026-11-07 as a `cfg.extra` key, #1307). ON, a letter
+# turned on a ring joins its line. `tests/engine_2026_10_27.json` carries it
+# False.
+PRE_FLIP["text_cluster_nest_door_aspect"] = False
 # `flat_light_text_runs` and `thread_match_grade_traced_letter` joined the
 # flipped set 2026-11-07 (Kent, "Flat light-text runs" and "Traced-letter
 # grading"; both built OFF that day as `cfg.extra` keys, #1328 and #1326). ON,

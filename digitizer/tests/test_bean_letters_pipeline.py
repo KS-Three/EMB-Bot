@@ -32,6 +32,11 @@ def _cfg(**kw) -> PipelineConfig:
     # ...and the dark read's bean (ON since Kent's 2026-10-29 flip) writes the
     # same spines key on Bridge's one dark read (Scotty Green on Sun)
     kw.setdefault("dark_ink_bean", False)
+    # ...and the ring-letter door (ON since Kent's 2026-11-08 flip) joins two
+    # turned letters to Bridge's line (9 -> 11 members); in this pre-flip bean
+    # engine the three 1.07-1.12 mm letters then read as their own bold group
+    # and go untagged. Shipped defaults sew all eleven satin either way.
+    kw.setdefault("text_cluster_nest_door_aspect", False)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6, **kw)
 
 

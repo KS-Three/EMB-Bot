@@ -1125,7 +1125,7 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
        of its box. Independent of `nest_guard`: the 6x door is as it is.
        The rescued round and the house-angle group keep today's drop.
        False: byte for byte.
-       `nest_door_aspect` (`cfg.extra["text_cluster_nest_door_aspect"]`,
+       `nest_door_aspect` (`cfg.text_cluster_nest_door_aspect`, ON since 2026-11-08;
        2026-11-07, OFF): a region the door refuses as too wide joins a
        tagged line when its minimum-area rectangle, read in the frame it
        shares with a line-mate (`_turned_candidate`), passes the door and
@@ -1488,7 +1488,7 @@ def _adopt_band(groups: list[list[_Candidate]], cands: list[_Candidate],
     return out
 
 
-# --- Turned letters (`cfg.extra["text_cluster_nest_door_aspect"]`, 2026-11-07,
+# --- Turned letters (`cfg.text_cluster_nest_door_aspect`, ON since 2026-11-08; 2026-11-07,
 # built OFF) -------------------------------------------------------------------
 #
 # A letter set on a ring is turned with the ring, and the letter door reads its
