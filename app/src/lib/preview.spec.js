@@ -1369,8 +1369,14 @@ function simCanvas(w, h) {
     const strokes = [];
     const blits = [];
     let path = [], _ss, _lw, fills = 0, dash = [];
+    // save/restore keep the compositing state a blit sets, as a real context
+    // does (a pan drag frame's blit must not leak into the next render's key).
+    const saved = [];
+    const KEEP = ["globalAlpha", "globalCompositeOperation", "imageSmoothingEnabled"];
     const ctx = {
-      save() {}, restore() {}, setTransform() {}, closePath() {}, clip() {}, arcTo() {}, fillText() {},
+      save() { saved.push(KEEP.map((k) => ctx[k])); },
+      restore() { const s = saved.pop(); if (s) KEEP.forEach((k, i) => { ctx[k] = s[i]; }); },
+      setTransform() {}, closePath() {}, clip() {}, arcTo() {}, fillText() {},
       beginPath() { path = []; },
       moveTo(x, y) { path.push(["M", x, y]); }, lineTo(x, y) { path.push(["L", x, y]); },
       stroke() { strokes.push({ color: _ss, width: _lw, dash: dash.slice(), path }); },
@@ -1519,6 +1525,62 @@ test("static views: one bitmap per canvas, shared with the simulator, and neithe
   renderRealistic(live, design, { ...SIM_OPTS, limitStrands: 100 });
   expect(ctx.fills).toBe(fills + 2);
   expect(live.made.length).toBe(1);
+});
+
+test("pan drag frames: the kept render shifted by the pan (whole device px) over fresh ground, no thread stroked, and the kept render left as it was", () => {
+  const design = blockyDesign();
+  const live = simCanvas(800, 600);
+  const ctx = live.getContext();
+  const o = { ...SIM_OPTS, dpr: 2 };
+  renderRealistic(live, design, o);
+  renderRealistic(live, design, o);
+  const blits = [];
+  const di = ctx.drawImage;
+  ctx.drawImage = (src, x, y) => { blits.push([src, x, y]); di(src); };
+  const fills = ctx.fills, strokes = ctx.strokes.length;
+  const moved = { ...o, view: { zoom: 2, panX: 13.3, panY: -9.6 } };
+  const r = renderRealistic(live, design, { ...moved, panDraft: true });
+  expect(r.panDraft).toBe(true);
+  expect(ctx.fills).toBe(fills + 1); // the ground's first fill
+  expect(blits).toEqual([[live.made[0], 7, -9]]); // (3.3, -4.6) CSS px at dpr 2, rounded
+  // Only the ground is stroked: exactly what an empty design's render strokes.
+  const ground = simCanvas(800, 600);
+  renderRealistic(ground, { stitches: [], colors: [] }, { ...moved, staticCache: false });
+  expect(ctx.strokes.slice(strokes)).toEqual(ground.getContext().strokes);
+  // Hit-testing gets the NEW view's exact transform.
+  const exact = renderRealistic(simCanvas(800, 600), design, moved);
+  expect(r.scale).toBe(exact.scale);
+  expect(r.toCanvas(3, 4)).toEqual(exact.toCanvas(3, 4));
+  expect(r.designBBoxMm).toEqual(exact.designBBoxMm);
+  // The drag frame replaced nothing: the original view is still a hit.
+  const f2 = ctx.fills, s2 = ctx.strokes.length;
+  renderRealistic(live, design, o);
+  expect(ctx.fills).toBe(f2);
+  expect(ctx.strokes.length).toBe(s2);
+});
+
+test("pan drag frames: a changed zoom, a changed design, an option, or nothing kept is an ordinary render", () => {
+  const design = blockyDesign();
+  const live = simCanvas(400, 300);
+  const ctx = live.getContext();
+  const cold = renderRealistic(simCanvas(400, 300), design, { ...SIM_OPTS, panDraft: true });
+  expect(cold.panDraft).toBeUndefined();
+  renderRealistic(live, design, SIM_OPTS);
+  renderRealistic(live, design, SIM_OPTS);
+  const cases = [
+    () => renderRealistic(live, design, { ...SIM_OPTS, view: { zoom: 3, panX: 10, panY: -5 }, panDraft: true }),
+    () => renderRealistic(live, design, { ...SIM_OPTS, view: { zoom: 2, panX: 4, panY: 0 }, threadStyle: "flat", panDraft: true }),
+    () => renderRealistic(live, { ...design, stitches: design.stitches.slice() }, { ...SIM_OPTS, view: { zoom: 2, panX: 4, panY: 0 }, panDraft: true }),
+    () => renderRealistic(live, design, { ...SIM_OPTS, view: { zoom: 2, panX: 4, panY: 0 }, limitStrands: 50, panDraft: true }),
+  ];
+  const kept = live.made[0];
+  for (const c of cases) {
+    const n = ctx.strokes.length, b = ctx.blits.length;
+    const r = c();
+    expect(r.panDraft).toBeUndefined();
+    expect(ctx.strokes.length).toBeGreaterThan(n); // drawn...
+    expect(ctx.blits.slice(b)).not.toContain(kept); // ...not shifted
+  }
 });
 
   // (softShadow off: its scratch canvas would count as a made canvas here.)
