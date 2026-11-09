@@ -7,6 +7,7 @@ raw share: ROADMAP gate 4).
     python tools/yardstick_perceptual.py score PAIRS [--labels [PATH]] --out DIR
     python tools/yardstick_perceptual.py oracle PAIRS --out DIR
     python tools/yardstick_perceptual.py from-pro-pooled --runs DIR --out PAIRS.csv
+    python tools/yardstick_perceptual.py from-sitting SPEC --out-dir OUT --out PAIRS.csv [--populations A] [--kinds live]
     python tools/yardstick_perceptual.py from-tripwire --runs DIR --out PAIRS.csv
     python tools/yardstick_perceptual.py metrics
 
@@ -676,6 +677,83 @@ def from_tripwire(runs: Path, out: Path) -> int:
     return 0
 
 
+#: Kent's pick in the blind picker's vocabulary -> the pair list's label.
+#: LEFT is `before`, RIGHT is `after`, whatever arm was shown there
+#: (`tools.eye_pairs.sitting.LABEL`, the same map `analyse` uses).
+PICK_LABEL = {"L": "before", "R": "after", "tie": "same"}
+
+
+def _pro_dst(slug: str) -> Path:
+    """The pro's DST of a `pro_baseline.JOBS` row; SystemExit when this machine
+    does not hold it (set EMB_BRIDGE_PRO / EMB_SCRATCH_KENT)."""
+    from tools.pro_baseline import JOBS, resolve
+    return Path(resolve(JOBS[slug][3]))
+
+
+def from_sitting(spec_path: Path, sitting_out: Path, out: Path, populations=("A",), kinds=("live",),
+                 *, pro_of=_pro_dst) -> int:
+    """A finished blind sitting (`tools.eye_pairs.sitting`, `prepare` then Kent's
+    picks) as a labelled pair list. For every pair of the chosen `kinds` on a
+    job logo of the chosen `populations`: before = the design shown LEFT
+    (`sitting_out/designs/<logo>__<left_arm>.dst`), after = the one shown
+    RIGHT, ref = the pro's DST of the logo's job, label = Kent's pick
+    (L -> before, R -> after, tie -> same), design = the logo's cluster.
+    Refuses (SystemExit) while any pair has no pick; undo rows are replayed as
+    `sitting.analyse` replays them. Pairs left out are counted with a reason."""
+    from tools.eye_pairs import sitting as st
+    spec = st.load_spec(Path(spec_path))
+    sealed, picks = st.require_complete(Path(sitting_out))
+    logos = {lg["name"]: lg for lg in spec["logos"]}
+    rows, skipped, pros = [], {}, {}
+    n_pairs = 0
+
+    def skip(why: str) -> None:
+        skipped[why] = skipped.get(why, 0) + 1
+
+    for pid in sorted(sealed):
+        s = sealed[pid]
+        if s["kind"] not in kinds:
+            skip(f"kind {s['kind']} (not in {','.join(kinds)})")
+            continue
+        lg = logos.get(s["fixture"])
+        if lg is None:
+            raise SystemExit(f"{pid}: fixture {s['fixture']!r} is not a logo of {spec_path}")
+        src = lg.get("source") or {}
+        if src.get("kind") != "job" or lg.get("population") not in populations:
+            skip(f"logo {s['fixture']} is not a job logo of population {','.join(populations)}")
+            continue
+        choice = picks[pid]["choice"]
+        if choice not in PICK_LABEL:
+            raise SystemExit(f"{pid}: pick {choice!r} not one of {sorted(PICK_LABEL)}")
+        slug = src["slug"]
+        if slug not in pros:
+            try:
+                pros[slug] = pro_of(slug)
+            except (SystemExit, OSError, KeyError) as e:
+                pros[slug] = e
+        pro = pros[slug]
+        if isinstance(pro, BaseException) or not Path(pro).exists():
+            skip(f"pro file of job {slug} not on this machine")
+            continue
+        arm_rows = []
+        for arm, key in (("before", "left_arm"), ("after", "right_arm")):
+            dst = Path(sitting_out) / "designs" / f"{s['fixture']}__{s[key]}.dst"
+            if not dst.exists():
+                raise SystemExit(f"{pid}: {arm} design missing ({dst}); the sitting is not whole")
+            arm_rows.append({"id": f"{pid}:{arm}", "ours_path": str(dst), "ref_path": str(pro),
+                             "label": PICK_LABEL[choice], "pair_id": pid, "arm": arm,
+                             "design": lg["design"]})
+        rows.extend(arm_rows)
+        n_pairs += 1
+    _write_pairs(rows, out)
+    for why, n in sorted(skipped.items()):
+        print(f"skipped {n} pair(s): {why}", file=sys.stderr)
+    dec = sum(1 for r in rows[::2] if r["label"] != "same")
+    print(f"{n_pairs} labelled pairs ({len(rows)} rows; Kent decided {dec}, "
+          f"{n_pairs - dec} ties) -> {out}; {sum(skipped.values())} skipped")
+    return 0
+
+
 def _write_pairs(rows: list[dict], out: Path) -> None:
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -761,6 +839,12 @@ def main(argv=None) -> int:
     t = sub.add_parser("from-tripwire", help="pair list from the committed tripwire jobs and a digitize dir")
     t.add_argument("--runs", type=Path, required=True, help="pro_baseline.py digitize --runs DIR")
     t.add_argument("--out", type=Path, required=True)
+    g = sub.add_parser("from-sitting", help="pair list from a finished blind sitting (spec + its eye_pairs_out)")
+    g.add_argument("spec", type=Path, help="the sitting's spec.json")
+    g.add_argument("--out-dir", type=Path, required=True, help="the sitting's eye_pairs_out folder")
+    g.add_argument("--out", type=Path, required=True, help="pairs CSV (or .json) to write")
+    g.add_argument("--populations", nargs="+", default=["A"], help="logo populations to keep (default A)")
+    g.add_argument("--kinds", nargs="+", default=["live"], help="pair kinds to keep (default live)")
     sub.add_parser("metrics", help="which metrics this interpreter can score, and why not")
     a = ap.parse_args(argv)
 
@@ -770,6 +854,8 @@ def main(argv=None) -> int:
         return 0
     if a.cmd == "from-pro-pooled":
         return from_pro_pooled(a.runs, a.inputs, a.out)
+    if a.cmd == "from-sitting":
+        return from_sitting(a.spec, a.out_dir, a.out, tuple(a.populations), tuple(a.kinds))
     if a.cmd == "from-tripwire":
         return from_tripwire(a.runs, a.out)
     rep = run(a.pairs, a.out, labels=getattr(a, "labels", None), metrics_only=a.metrics,
