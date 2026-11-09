@@ -1,0 +1,194 @@
+{
+ "P001": {
+  "fixture": "toat_machine_beanie",
+  "left_arm": "fill_slant_on",
+  "right_arm": "base",
+  "kind": "repeat",
+  "repeat_of": "P017",
+  "design_only": false
+ },
+ "P002": {
+  "fixture": "proseal_beanie",
+  "left_arm": "base",
+  "right_arm": "base",
+  "kind": "identical",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P003": {
+  "fixture": "becker_chest_small",
+  "left_arm": "fill_slant_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P004": {
+  "fixture": "becker_beanie",
+  "left_arm": "base",
+  "right_arm": "fill_slant_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P005": {
+  "fixture": "bridge_lc",
+  "left_arm": "fill_slant_on",
+  "right_arm": "base",
+  "kind": "repeat",
+  "repeat_of": "P022",
+  "design_only": false
+ },
+ "P006": {
+  "fixture": "tires_hat_3d",
+  "left_arm": "fill_slant_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P007": {
+  "fixture": "bridge_hat",
+  "left_arm": "fill_slant_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P008": {
+  "fixture": "becker_hat_large",
+  "left_arm": "base",
+  "right_arm": "fill_slant_on",
+  "kind": "repeat",
+  "repeat_of": "P020",
+  "design_only": false
+ },
+ "P009": {
+  "fixture": "tires_hat_3d",
+  "left_arm": "base",
+  "right_arm": "base",
+  "kind": "identical",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P010": {
+  "fixture": "gaulke_roofing_lc",
+  "left_arm": "fill_slant_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P011": {
+  "fixture": "hotel_fremont_hat",
+  "left_arm": "base",
+  "right_arm": "fill_slant_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P012": {
+  "fixture": "gaulke_roofing_beanie",
+  "left_arm": "base",
+  "right_arm": "fill_slant_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P013": {
+  "fixture": "goldentee_hat",
+  "left_arm": "fill_slant_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P014": {
+  "fixture": "gaulke_roofing_hat",
+  "left_arm": "base",
+  "right_arm": "base",
+  "kind": "identical",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P015": {
+  "fixture": "becker_lc_large",
+  "left_arm": "fill_slant_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P016": {
+  "fixture": "mfab_hat",
+  "left_arm": "base",
+  "right_arm": "fill_slant_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P017": {
+  "fixture": "toat_machine_beanie",
+  "left_arm": "base",
+  "right_arm": "fill_slant_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P018": {
+  "fixture": "becker_hat_small",
+  "left_arm": "fill_slant_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P019": {
+  "fixture": "becker_chest_small",
+  "left_arm": "base",
+  "right_arm": "fill_slant_on",
+  "kind": "repeat",
+  "repeat_of": "P003",
+  "design_only": false
+ },
+ "P020": {
+  "fixture": "becker_hat_large",
+  "left_arm": "fill_slant_on",
+  "right_arm": "base",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P021": {
+  "fixture": "proseal_hat",
+  "left_arm": "base",
+  "right_arm": "base",
+  "kind": "identical",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P022": {
+  "fixture": "bridge_lc",
+  "left_arm": "base",
+  "right_arm": "fill_slant_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P023": {
+  "fixture": "mfab_lc",
+  "left_arm": "base",
+  "right_arm": "fill_slant_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ },
+ "P024": {
+  "fixture": "proseal_beanie",
+  "left_arm": "base",
+  "right_arm": "fill_slant_on",
+  "kind": "live",
+  "repeat_of": null,
+  "design_only": false
+ }
+}

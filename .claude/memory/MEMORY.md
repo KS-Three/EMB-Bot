@@ -25,6 +25,7 @@ the OLDEST lines whole to the archive.
 - [Cap frames sew 64 mm tall](cap-frame-height-2026-10-26.md) — PHYSICAL, Kent 10-26: his cap frames sew >= 64 mm (2.5 in); hat-height gate 1 settled
 - [Cloud wave 11-06](cloud-wave-2026-11-06.md) — Kent 11-06 "10 agents in cloud": yardstick scorer, Euler census, C2 vote, stage-7 speed, nest guard, PR 1284, e2e apt, offsetRing test, dropped-element v2, shards; Remote Control turn cannot start sessions
 - [Colour cap on the sewn design](colour-cap-sewn-2026-10-29.md) — census item 3 misnamed the hole: sew-white recolours AFTER the cap + blend bands snap chart-wide; `color_cap_sewn` ON 11-01 re-caps final regions, folds strays on blocks
+- [Compare ends on regenerate](compare-ends-on-regenerate-2026-11-08.md) — Kent 11-08 "Keep as is": Compare view (#1345) is an Original sub-mode, a regeneration ends it; don't build survival
 - [DADE teardown](dade-app-teardown-2026-11-04.md) — 10 px/mm fixed, tatami, trims OFF; at its 36.7 mm its file read better than ours (flat = blob); at 113.5 ours reads, DADE can't
 - [Dark ink bean](dark-ink-bean-2026-10-28.md) — `dark_ink_bean` ON 10-29 (Kent, Pooh): dark read within 50 dE00 of its ground beans along its skeleton, ground sews through; Fremont wordmark (100) stays satin
 - [Dark-ink floor rescue](dark-ink-floor-rescue-2026-11-03.md) — `dark_ink_floor_rescue` ON 11-04 (Kent): Pooh's lost letter = dark-read KERNEL (min_detail_mm), not stage 3; 2nd read at 1.0 mm unioned; ON reads every thin stroke
@@ -38,6 +39,7 @@ the OLDEST lines whole to the archive.
 - [Download all zip](export-zip-2026-11-05.md) — Kent 11-05 zip only: 7 formats + PDF + PNG + threads.txt via the verified path; any one fails = nothing saved; no PEC/U01; 24k stitches 2.2-2.6 s, 1.08 MB
 - [External sourcing 11-06](external-repo-sourcing-2026-11-06.md) — tesserocr 251 -> 5 ms per OCR read, ADOPTED 11-06 (board geometry identical, cc <4 -0.08 = one drone word; 5.5.3 vs CI 5.3.4 open); clipper2-ts on offsetRing trigger; bench filum DST only
 - [Seam order flip](fill-seam-order-flip-2026-10-30.md) — fill_seam_order + fill_bridge_cut_exposed ON together (Kent 10-30): ridges 0, exposed travel down, trims up; seam order alone adds exposure
+- [Fill-slant sitting](fill-slant-sitting-2026-11-09.md) — Kent blind, 16 live pro pairs: slant ON 0, OFF 7, tie 9 = favours OFF (4 designs, Becker 4 of 7); "Keep OFF, record"; pro-direction kappa gain did not read better
 - [Flag stripes](flag-stripes-seam-cap-2026-10-30.md) — equal art sewed 4.53/3.57: rail pull lands after stage 5's clip; `satin_seam_hold` + `satin_cap_skew_inset` OFF; underlay was never missing
 - [Flat soft ramp](flat-fringe-soft-ramp-2026-11-06.md) — Bridge flat-lane blue split = 3-src-px JPEG edge at x3.25: page band 5 -> 11 + ramp dissolve (kept-colour chords); both OFF, enlarged only; 4 inks, hat trims 157 -> 23
 - [Flat page fringe](flat-page-fringe-2026-11-03.md) — `flat_page_fringe_exclude` OFF: page-edge blend leaves the flat fit + chain rescue; Pooh pale flecks 59 -> 25; band = upscale+1; page = median; + outline INNER blend (B)

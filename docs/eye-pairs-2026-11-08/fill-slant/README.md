@@ -1,5 +1,8 @@
 # Eye pairs, 2026-11-08: the fill-slant blind sitting (`fill-slant-1108`)
 
+**Sat 2026-11-09: ON 0, OFF 7, tie 9 on 16 live pairs, so the sitting favours
+OFF. Kent ruled "Keep OFF, record". Full reading: `SITTING.md`.**
+
 Built for Kent; **the sitting and its timing are Kent's.** Nothing here is
 judged or flipped. Read `PRE-REGISTRATION.md` first (committed before any
 render); `spec.json` is what the builder read; `manifest.json` is the public
