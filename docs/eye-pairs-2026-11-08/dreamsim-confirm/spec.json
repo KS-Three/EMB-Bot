@@ -1,0 +1,530 @@
+{
+ "schema": 1,
+ "sitting": "dreamsim-confirm-1108",
+ "registered": "2026-11-08",
+ "about": "Confirmation sitting for the DreamSim yardstick (docs/yardstick-perceptual-prereg-2026-11-08.md): every one of the pro_baseline.JOBS logos drawn at the pro's own garment and width, six one-flag arms chosen for a VISIBLE difference in a monochrome render, so Kent decides a side and the instrument gets decided pairs. Pre-registered; nothing here was rendered or scored when it was committed. NOT blind to prior judging: see rejudge_pro_jobs.",
+ "seed": 20261108,
+ "n_identical": 4,
+ "n_repeat": 4,
+ "base_flags": {},
+ "base_note": "Today's main defaults, no overrides. Every arm turns ONE flag away from its default.",
+ "rejudge_pro_jobs": {
+  "ruling": "Kent 2026-11-08: \"All 23 pro jobs (Recommended)\" for the DreamSim confirmation sitting",
+  "why": "every pro-paired artwork has been judged; the sitting's purpose is to confirm the DreamSim instrument against Kent's eye, which needs pro-paired designs, not blindness to the logo"
+ },
+ "judged_fixtures": [
+  "becker",
+  "bridge",
+  "drone",
+  "enthusiast",
+  "fremont",
+  "gaulke",
+  "golden_tee",
+  "screenshot",
+  "tires",
+  "thermal"
+ ],
+ "logos": [
+  {
+   "name": "becker_hat_large",
+   "design": "becker",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "becker_hat_large",
+    "sha256_16": "b29e4f0f08aaf02f"
+   },
+   "width_mm": 101.9,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['becker_hat_large']: drawn at the job's own garment (hat_front) and width (101.9 mm), read beside the pro's DST. Becker Marine job; artwork testdata/becker_marine_logo.png (already committed, public). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "bridge_hat",
+   "design": "bridge",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "bridge_hat",
+    "sha256_16": "2cf55de839fa49e9"
+   },
+   "width_mm": 63.3,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['bridge_hat']: drawn at the job's own garment (hat_front) and width (63.3 mm), read beside the pro's DST. Bridge Logo job; artwork testdata/photo/logo_bridge_bar.jpg (already committed). Pro files read from EMB_BRIDGE_PRO. Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "gaulke_roofing_hat",
+   "design": "gaulke",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "gaulke_roofing_hat",
+    "sha256_16": "14b64a5a319688c3"
+   },
+   "width_mm": 114.2,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['gaulke_roofing_hat']: drawn at the job's own garment (hat_front) and width (114.2 mm), read beside the pro's DST. Gaulke Roofing job; artwork testdata/photo/logo_gaulke_roofing.png (already committed). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "hotel_fremont_hat",
+   "design": "fremont",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "hotel_fremont_hat",
+    "sha256_16": "0510c1e9ab49a0f5"
+   },
+   "width_mm": 92.6,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['hotel_fremont_hat']: drawn at the job's own garment (hat_front) and width (92.6 mm), read beside the pro's DST. Hotel Fremont job; artwork testdata/photo/logo_hotel_fremont.webp (already committed). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "mfab_hat",
+   "design": "mfab",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "mfab_hat",
+    "sha256_16": "53b2d2978b8b2019"
+   },
+   "width_mm": 104.9,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['mfab_hat']: drawn at the job's own garment (hat_front) and width (104.9 mm), read beside the pro's DST. M-FAB job; artwork testdata/art/ (PR #556, already public). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "precision_drone",
+   "design": "drone",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "precision_drone",
+    "sha256_16": "e2b837e8f95fba75"
+   },
+   "width_mm": 62.6,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['precision_drone']: drawn at the job's own garment (hat_front) and width (62.6 mm), read beside the pro's DST. Precision Drone job; artwork testdata/photo/logo_drone_thermal_badge.png (already committed). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "proseal_hat",
+   "design": "proseal",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "proseal_hat",
+    "sha256_16": "f7a3112e9ecaf339"
+   },
+   "width_mm": 85.9,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['proseal_hat']: drawn at the job's own garment (hat_front) and width (85.9 mm), read beside the pro's DST. ProSeal job; artwork is the file pro_baseline.JOBS names under gitignored scratch_kent/, NOT in the repository and read from there. No client art is added. Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "tires_hat_3d",
+   "design": "tires",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "tires_hat_3d",
+    "sha256_16": "93c33b53cd40d007"
+   },
+   "width_mm": 114.3,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['tires_hat_3d']: drawn at the job's own garment (hat_front) and width (114.3 mm), read beside the pro's DST. Tires job; artwork testdata/logo_script_tires.png (already committed). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "goldentee_hat",
+   "design": "goldentee",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "goldentee_hat",
+    "sha256_16": "c9008532215f482f"
+   },
+   "width_mm": 74.9,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['goldentee_hat']: drawn at the job's own garment (hat_front) and width (74.9 mm), read beside the pro's DST. Golden Tee job; artwork testdata/photo/logo_golden_tee.jpg (already committed). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "toat_machine_hat",
+   "design": "toat",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "toat_machine_hat",
+    "sha256_16": "d09766ed6ca95a87"
+   },
+   "width_mm": 89.5,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['toat_machine_hat']: drawn at the job's own garment (hat_front) and width (89.5 mm), read beside the pro's DST. To a T job; artwork testdata/art/ (PR #556, already public). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "becker_lc_large",
+   "design": "becker",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "becker_lc_large",
+    "sha256_16": "b29e4f0f08aaf02f"
+   },
+   "width_mm": 95.7,
+   "garment": "left_chest",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['becker_lc_large']: drawn at the job's own garment (left_chest) and width (95.7 mm), read beside the pro's DST. Becker Marine job; artwork testdata/becker_marine_logo.png (already committed, public). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "becker_hat_small",
+   "design": "becker",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "becker_hat_small",
+    "sha256_16": "b29e4f0f08aaf02f"
+   },
+   "width_mm": 76.5,
+   "garment": "hat_front",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['becker_hat_small']: drawn at the job's own garment (hat_front) and width (76.5 mm), read beside the pro's DST. Becker Marine job; artwork testdata/becker_marine_logo.png (already committed, public). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "becker_chest_small",
+   "design": "becker",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "becker_chest_small",
+    "sha256_16": "b29e4f0f08aaf02f"
+   },
+   "width_mm": 76.5,
+   "garment": "left_chest",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['becker_chest_small']: drawn at the job's own garment (left_chest) and width (76.5 mm), read beside the pro's DST. Becker Marine job; artwork testdata/becker_marine_logo.png (already committed, public). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "becker_beanie",
+   "design": "becker",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "becker_beanie",
+    "sha256_16": "b29e4f0f08aaf02f"
+   },
+   "width_mm": 79.8,
+   "garment": "beanie",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['becker_beanie']: drawn at the job's own garment (beanie) and width (79.8 mm), read beside the pro's DST. Becker Marine job; artwork testdata/becker_marine_logo.png (already committed, public). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "bridge_lc",
+   "design": "bridge",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "bridge_lc",
+    "sha256_16": "2cf55de839fa49e9"
+   },
+   "width_mm": 76.6,
+   "garment": "left_chest",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['bridge_lc']: drawn at the job's own garment (left_chest) and width (76.6 mm), read beside the pro's DST. Bridge Logo job; artwork testdata/photo/logo_bridge_bar.jpg (already committed). Pro files read from EMB_BRIDGE_PRO. Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "gaulke_roofing_lc",
+   "design": "gaulke",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "gaulke_roofing_lc",
+    "sha256_16": "14b64a5a319688c3"
+   },
+   "width_mm": 95.2,
+   "garment": "left_chest",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['gaulke_roofing_lc']: drawn at the job's own garment (left_chest) and width (95.2 mm), read beside the pro's DST. Gaulke Roofing job; artwork testdata/photo/logo_gaulke_roofing.png (already committed). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "gaulke_roofing_beanie",
+   "design": "gaulke",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "gaulke_roofing_beanie",
+    "sha256_16": "14b64a5a319688c3"
+   },
+   "width_mm": 93.8,
+   "garment": "beanie",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['gaulke_roofing_beanie']: drawn at the job's own garment (beanie) and width (93.8 mm), read beside the pro's DST. Gaulke Roofing job; artwork testdata/photo/logo_gaulke_roofing.png (already committed). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "hotel_fremont_patch",
+   "design": "fremont",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "hotel_fremont_patch",
+    "sha256_16": "0510c1e9ab49a0f5"
+   },
+   "width_mm": 92.5,
+   "garment": "patch",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['hotel_fremont_patch']: drawn at the job's own garment (patch) and width (92.5 mm), read beside the pro's DST. Hotel Fremont job; artwork testdata/photo/logo_hotel_fremont.webp (already committed). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "mfab_lc",
+   "design": "mfab",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "mfab_lc",
+    "sha256_16": "ba2a6389f75a1cda"
+   },
+   "width_mm": 96.7,
+   "garment": "left_chest",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['mfab_lc']: drawn at the job's own garment (left_chest) and width (96.7 mm), read beside the pro's DST. M-FAB job; artwork testdata/art/ (PR #556, already public). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "proseal_beanie",
+   "design": "proseal",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "proseal_beanie",
+    "sha256_16": "f7a3112e9ecaf339"
+   },
+   "width_mm": 75.0,
+   "garment": "beanie",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['proseal_beanie']: drawn at the job's own garment (beanie) and width (75.0 mm), read beside the pro's DST. ProSeal job; artwork is the file pro_baseline.JOBS names under gitignored scratch_kent/, NOT in the repository and read from there. No client art is added. Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "toat_machine_beanie",
+   "design": "toat",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "toat_machine_beanie",
+    "sha256_16": "d09766ed6ca95a87"
+   },
+   "width_mm": 81.0,
+   "garment": "beanie",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['toat_machine_beanie']: drawn at the job's own garment (beanie) and width (81.0 mm), read beside the pro's DST. To a T job; artwork testdata/art/ (PR #556, already public). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  },
+  {
+   "name": "toat_beanie",
+   "design": "toat",
+   "population": "A",
+   "source": {
+    "kind": "job",
+    "slug": "toat_beanie",
+    "sha256_16": "21202443f3e64cf6"
+   },
+   "width_mm": 82.3,
+   "garment": "beanie",
+   "kind": "pro_paired_job",
+   "provenance": "pro_baseline.JOBS['toat_beanie']: drawn at the job's own garment (beanie) and width (82.3 mm), read beside the pro's DST. To a T job; artwork testdata/art/ (PR #556, already public). Judged before (Kent's eye), re-used on purpose: see rejudge_pro_jobs."
+  }
+ ],
+ "reserve_logos": [],
+ "drop_order_if_over_budget": [
+  "toat_beanie",
+  "toat_machine_beanie",
+  "gaulke_roofing_beanie",
+  "gaulke_roofing_lc",
+  "becker_beanie",
+  "becker_chest_small",
+  "becker_lc_large",
+  "becker_hat_small",
+  "proseal_beanie",
+  "mfab_lc",
+  "hotel_fremont_patch",
+  "bridge_lc"
+ ],
+ "drop_order_note": "Documentation, read by a person: prepare does NOT consume this key. Over budget (more than 70 live pairs), remove the logos in this order, one at a time, by editing spec.json as a dated amendment written before any pick exists, then rebuild. Whole logos only; every artwork cluster keeps its lead job until last.",
+ "arms": {
+  "apex_cut_on": {
+   "flags": {
+    "lettering_columns_apex_cut": true
+   },
+   "stratum": "construction",
+   "variable": "construction at an acute tip (M's V, W apexes, a pointed A or N): ON sews the tip as ONE piece of crosses along the line of text; OFF mitres two fanning columns (flag OFF today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "arm",
+   "basis": "Memory apex-cut-2026-10-25 (and apex-walk-2026-10-27): the pro sews every such tip as one piece, crosses within 16 deg of the line of text; built OFF on numbers against the pro, judged in the preview, never flipped."
+  },
+  "script_drawn_width_on": {
+   "flags": {
+    "script_strokes_drawn_width": true
+   },
+   "stratum": "construction",
+   "variable": "script where strokes crowd: a cross side that would run over 1.0 mm into another stroke stops at the art's drawn half-width; OFF reaches the traced polygon (flag OFF today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "arm",
+   "basis": "Memory script-strokes-2026-10-26: Bridge hat lays 24.9 percent of the word's thread twice against the pro's 10.5; ON 19.3. Only crowded script words can differ."
+  },
+  "white_fields_fill_on": {
+   "flags": {
+    "sew_enclosed_white_fields_fill": true
+   },
+   "stratum": "fill",
+   "variable": "a sewn white field: ON sews it as a fill at the pro's 22 deg under the outline; OFF leaves it to the Column lane as lettering (flag OFF today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "arm",
+   "basis": "Memory white-faces-fill-2026-10-25: the pro sews those faces as a 22 deg tatami under the outline; ours sewed them as Column-lane letters (Becker 8.4x slower). Only art with a sewn white field can differ."
+  },
+  "border_by_size_off": {
+   "flags": {
+    "border_by_size": false
+   },
+   "stratum": "fill",
+   "variable": "a plain fill 6 mm and up: ON sews a satin border at the pro's median width round it; OFF leaves the bare fill (flag ON today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "base",
+   "basis": "Memory border-by-size-2026-10-23 and border-by-size-colour-seams-2026-10-28: ON by Kent 2026-10-23 on the pro-count numbers; plain fills at 6 mm and up are a coin flip per design in the pro's files."
+  },
+  "fine_bars_satin_off": {
+   "flags": {
+    "fine_bars_satin": false
+   },
+   "stratum": "line",
+   "variable": "a thin free-standing ink bar: ON sews one satin bar at its drawn width plus pull; OFF sews a hollow bean ring (flag ON today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "base",
+   "basis": "Memory fine-bars-satin-2026-10-25: the pro satins every such bar (5 of 5 artworks), 37 of 38 target regions cure; ON by Kent 2026-10-26 on the wave-3 flip sheet."
+  },
+  "bean_only_lines_off": {
+   "flags": {
+    "bean_only_lines": false
+   },
+   "stratum": "line",
+   "variable": "what gets a bean: ON keeps a bean only for LINES the art draws (smallest dimension 1.2 mm or less), letters and solids take the ordinary ladder; OFF beans by size as before (flag ON today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "base",
+   "basis": "Memory bean-census-2026-10-27: the reference beans 8 of 1,101 regions, ours 137 (111 small letters); ON by Kent 2026-10-27 (#1161), region kappa -0.014 to 0.129."
+  }
+ },
+ "reserve_arms": [
+  {
+   "flags": {
+    "underfill_untagged_riders": true
+   },
+   "stratum": "fill",
+   "variable": "an untagged lettering-thin shape inside a sewn white field: ON rides it over the host thread so the white does not sew over it; OFF as today (flag OFF today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "arm",
+   "basis": "Memory mfab-and-recheck-2026-11-06 and underfill-knockouts-2026-10-26; built OFF 2026-11-05 (Kent: keep OFF, fix the superpixel merge). Reads only where riders are, so MFab-type art.",
+   "name": "untagged_riders_on",
+   "replaces_stratum": "fill"
+  },
+  {
+   "flags": {
+    "dark_ink_bean": false
+   },
+   "stratum": "line",
+   "variable": "a dark-read stroke on a pale ground: ON sews it as a bean along its skeleton after its ground; OFF is the engine before the flip (flag ON today)",
+   "moves": {},
+   "holds": [],
+   "expected_pick": "base",
+   "basis": "Memory dark-ink-bean-2026-10-28: ON 2026-10-29 by Kent (Pooh). Few pro jobs carry a dark read, so likely inert; a reserve only.",
+   "name": "dark_ink_bean_off",
+   "replaces_stratum": "line"
+  }
+ ],
+ "manipulation": {
+  "rule": "An arm passes when it changes the stitch stream on at least `min_live_logos` logos and, on at least half of the logos it changes, every `moves` metric moves the stated way by its threshold and every `holds` metric moves by less. No arm here registers a `moves` or `holds` metric, so the check is only that it changes the stitch stream on enough logos; whatever moves is a measurement. A byte-identical logo is not a pair. A failing arm is replaced ONCE by the first unused reserve of its stratum (`settle_arms`), before any picture is seen; a reserve that fails too stays, flagged passes=false, and the analysis reads the leads on all live pairs and on the passing arms alone.",
+  "min_live_logos": 3,
+  "thresholds": {
+   "trims_per_1000": {
+    "kind": "abs",
+    "value": 0.5
+   },
+   "flow_circvar": {
+    "kind": "abs",
+    "value": 0.02
+   },
+   "long_share": {
+    "kind": "abs",
+    "value": 0.02
+   },
+   "thread_density_whole": {
+    "kind": "rel",
+    "value": 0.05
+   }
+  },
+  "density_matched_tolerance": 0.1
+ },
+ "leads": {
+  "primary": [
+   {
+    "metric": "flow_circvar",
+    "direction": "lower",
+    "why": "#847's one lead independent of trims (+0.16 ties in, one sitting's)"
+   },
+   {
+    "metric": "long_share",
+    "direction": "lower",
+    "why": "#847's reversed hypothesis, direction written down in advance: he picks FEWER long stitches"
+   },
+   {
+    "metric": "thread_density",
+    "direction": "higher",
+    "why": "his notes say denser is better; #847 found no support"
+   },
+   {
+    "metric": "trims_per_1000",
+    "direction": "lower",
+    "why": "the control: the one instrument that cleared chance in #842 and #847; if it does not replicate here nothing else in this sitting is read"
+   }
+  ],
+  "secondary": [
+   {
+    "metric": "longest_jump_mm",
+    "direction": "lower"
+   },
+   {
+    "metric": "jumps_per_1000",
+    "direction": "lower"
+   },
+   {
+    "metric": "turns_per_100mm",
+    "direction": "lower"
+   }
+  ]
+ },
+ "analysis": {
+  "statistics": [
+   "kappa_sides_only_2x2",
+   "kappa_ties_in_3x3_linear"
+  ],
+  "ci": "percentile bootstrap, 10000 resamples, seed 20261108, over pairs AND over designs (the `design` key of each logo)",
+  "reading_rule": "the registered reading is the DreamSim claim rule in PRE-REGISTRATION.md; the analyse step's leads are secondary and cannot carry a claim",
+  "never_printed": "any raw agreement figure (ROADMAP gate 4)",
+  "population": "live pairs (arm differs from base). Identical and repeat pairs are controls and enter no agreement statistic.",
+  "pro_distance": {
+   "population": "A: the live pairs on the pro_baseline.JOBS logos",
+   "metrics": [
+    "cuts",
+    "hops",
+    "needle_up_mm"
+   ],
+   "reading": "distance = |ours - pro| (pro_pooled.distance), lower is closer, beside the same figures as a plain cost; kappa, both intervals (pairs and designs), n; pairs scoring his pick farther from the pro are counted",
+   "readers": "pro_pair.pro_counts and pro_baseline.needle_up on ours.dst (designs/<logo>__<arm>.dst) and on the pro's DST, the same code on both"
+  }
+ }
+}

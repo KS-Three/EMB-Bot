@@ -176,6 +176,23 @@ def _check_job_logo(name: str, lg: dict, src: dict, judged_md5: dict, problems: 
     # by design, so the byte-duplicate rule of `file` logos does not apply here.
 
 
+def rejudge_waiver(spec: dict, problems: list[str]) -> dict | None:
+    """The opt-in `rejudge_pro_jobs` key: {"ruling": Kent's words and date,
+    "why": text}, both non-empty strings. Returns it when valid, None when
+    absent or malformed (a malformed one is a problem and waives nothing).
+    It lifts the blinding guard for `pro_paired_job` logos drawn from a job
+    ONLY: every other logo stays guarded."""
+    if "rejudge_pro_jobs" not in spec:
+        return None
+    w = spec["rejudge_pro_jobs"]
+    if not (isinstance(w, dict) and all(isinstance(w.get(k), str) and w[k].strip()
+                                        for k in ("ruling", "why"))):
+        problems.append("rejudge_pro_jobs needs a non-empty `ruling` (Kent's words and date) "
+                        "and a non-empty `why`")
+        return None
+    return w
+
+
 def validate_spec(spec: dict, *, testdata: Path = TESTDATA,
                   judged: dict[str, Path] | None = None) -> None:
     """Raises `SpecError` listing EVERY problem. The blinding guard lives
@@ -203,6 +220,7 @@ def validate_spec(spec: dict, *, testdata: Path = TESTDATA,
     if judged is None:
         judged = judged_files(testdata)
     judged_md5 = {_md5(p): n for n, p in judged.items() if Path(p).exists()}
+    rejudge = rejudge_waiver(spec, problems)
     seen_names, seen_md5 = set(), {}
     for lg in spec["logos"]:
         name = lg.get("name", "?")
@@ -211,7 +229,12 @@ def validate_spec(spec: dict, *, testdata: Path = TESTDATA,
         if name in seen_names:
             problems.append(f"logo {name!r} is listed twice")
         seen_names.add(name)
-        if name in judged_names or name in judged or lg.get("design") in judged_names:
+        src = lg.get("source") or {}
+        # The waiver reaches ONLY a pro job logo drawn from a pro_baseline job.
+        waived = (rejudge is not None and lg.get("kind") == "pro_paired_job"
+                  and src.get("kind") == "job")
+        if not waived and (name in judged_names or name in judged
+                           or lg.get("design") in judged_names):
             problems.append(f"logo {name!r} is one Kent has judged; blinding is spent on it")
         if not str(lg.get("provenance", "")).strip():
             problems.append(f"logo {name!r} has no provenance")
@@ -223,7 +246,6 @@ def validate_spec(spec: dict, *, testdata: Path = TESTDATA,
             problems.append(f"logo {name!r} needs width_mm and garment")
         if "population" in lg and lg["population"] not in POPULATIONS:
             problems.append(f"logo {name!r}: population {lg['population']!r} not in {sorted(POPULATIONS)}")
-        src = lg.get("source") or {}
         if src.get("kind") == "file":
             p = Path(testdata).parent / src.get("path", "")
             if not p.exists():
@@ -242,7 +264,7 @@ def validate_spec(spec: dict, *, testdata: Path = TESTDATA,
             if src.get("id") not in GENERATORS:
                 problems.append(f"logo {name!r}: generator {src.get('id')!r} is not registered")
         elif src.get("kind") == "job":
-            _check_job_logo(name, lg, src, judged_md5, problems)
+            _check_job_logo(name, lg, src, {} if waived else judged_md5, problems)
         else:
             problems.append(f"logo {name!r}: source kind {src.get('kind')!r}")
     if not spec["logos"]:
@@ -494,9 +516,13 @@ def manifest(spec: dict, spec_bytes: bytes, logos: list[dict], arms: dict, repla
     per_logo = {lg["name"]: sum(1 for s in sealed.values()
                                 if s["kind"] == "live" and s["fixture"] == lg["name"])
                 for lg in logos}
+    waiver = ({"rejudge_pro_jobs": True, "rejudge_ruling": spec["rejudge_pro_jobs"]["ruling"],
+               "rejudge_why": spec["rejudge_pro_jobs"]["why"],
+               "blind_to_prior_judging": False}
+              if spec.get("rejudge_pro_jobs") else {})
     return {
         "schema": 1, "sitting": spec["sitting"], "built": datetime.now().astimezone().isoformat(
-            timespec="seconds"),
+            timespec="seconds"), **waiver,
         "spec_sha256": hashlib.sha256(spec_bytes).hexdigest(),
         "engine": {"git_head": _git_head(), "python": platform.python_version(),
                    "platform": platform.platform(), "photo_prep_venv": photo_prep_venv},
