@@ -202,7 +202,10 @@ def _bridge_cfg(on: bool) -> PipelineConfig:
     # `test_bean_letters_pipeline`'s engine: the line alone, at 1.0 mm.
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6,
                           small_text_true_size=False, bean_letter_max_stroke_mm=1.0,
-                          bean_ink_outlined_letters=on, bean_only_lines=PRE_FLIP["bean_only_lines"])
+                          bean_ink_outlined_letters=on, bean_only_lines=PRE_FLIP["bean_only_lines"],
+                          # the ring-letter door (ON 2026-11-08) grows this line 9 -> 11 and
+                          # regroups its weights; this test reads the pre-door line
+                          text_cluster_nest_door_aspect=PRE_FLIP["text_cluster_nest_door_aspect"])
 
 
 def test_on_bridge_keeps_its_eight_bean_letters():
