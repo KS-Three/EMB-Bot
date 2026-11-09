@@ -45,7 +45,7 @@ Arms, in tooth order; every arm pins every flag an arm touches (`PIN`) and
 the halo explicitly, so a later default flip moves no re-cut (memory
 `bean-holds-on-2026-10-15`):
 
-- (a) 1 tooth   ships: main 3896a7ae's defaults, pinned
+- (a) 1 tooth   ships: ENGINE's defaults (main 2ce938eb since the 11-08 rebuild), pinned
 - (b) 2 teeth   `cut_every_jump` ON (Python) / `cutEveryJump` ON (browser)
 - (c) 3 teeth   bold 2.0 (halo 0.8)
 - (d) 4 teeth   halo 0.3 (bold 1.45)
@@ -106,7 +106,7 @@ REPO = hc.REPO
 WT = v3.WT
 NAME = "card_v8_40wt"
 DATE = "2026-11-01"
-ENGINE = "main 3896a7ae (2026-11-01)"
+ENGINE = "main 2ce938eb (2026-11-08)"
 DEFAULT_OUT = REPO / "docs" / "sewout" / f"card-v8-{DATE}"
 DEFAULT_CUTS = DEFAULT_OUT / "cuts"
 LETTERING_TOOL = REPO / "tools" / "sewout_card_v8_lettering.mjs"
@@ -138,6 +138,15 @@ PIN = {
     "dark_ink_bean": True,
     "trim_bury_under_later": True,
     "tie_in_off": True,
+    # Rebuilt 2026-11-08 on main 2ce938eb: the six flips that landed since the
+    # 11-01 cut (3896a7ae) are pinned at their ON values, so arm (a) is today's
+    # defaults and a later flip moves no re-cut.
+    "lettering_stray_word_thread": True,
+    "dark_ink_floor_rescue": True,
+    "flat_light_text_runs": True,
+    "text_cluster_nest_door_aspect": True,
+    "thread_match_grade_traced_letter": True,
+    "dropped_element_v2": True,
 }
 #: `small_text.CLEAR_MM` on `ENGINE`: the clearance halo the re-set keeps
 #: round a line. Not a flag; set per arm by `cut`, pinned here otherwise.
@@ -692,12 +701,31 @@ patch.** It carries the arms the K3 handoff queued after v7, less the ones a
 merged flip has closed (the table at the end). Every number is a candidate
 until you sew it (ROADMAP gate 1).
 
+**Rebuilt 2026-11-08 on ENGINE** (first cut 2026-11-01 on main 3896a7ae)
+so arm (a) ships today's defaults. Six flags flipped ON in between and the
+11-01 cut did not pin them: `lettering_stray_word_thread`,
+`dark_ink_floor_rescue`, `flat_light_text_runs`,
+`text_cluster_nest_door_aspect`, `thread_match_grade_traced_letter`,
+`dropped_element_v2`; all six are pinned ON below now. What moved, old ->
+new: whole file 15,891 -> 15,893 stitches, 130 -> 130 trims, 2 -> 2 colour
+stops (white, then dark), 92.0 x 79.2 mm unchanged, DST 50,375 -> 50,387
+bytes; F (a) 3,077 -> 3,080 and (b) 3,080 -> 3,083 (one more satin run in
+the lower crest); E and J byte-identical in their cuts; D (a) 1,559 -> 1,556,
+(c) 1,540 -> 1,542, (d) 1,631 -> 1,631, (e) 1,627 -> 1,624. In D the
+stray-word-thread flip folded the one grey-blue stray letter thread (RGB 90 94
+97) into the line's grey (140 137 132): the design has one thread less in
+that window, but this card sews every non-white piece in one dark cone, so
+the file's colour map did not change. The scale of AND DRONE per arm is
+unchanged (table below).
+
 **What to sew:** `card_v8_40wt.dst`, **two cones, 40 wt**, 75/11, a **flat
 4 x 4 in hoop** (the design is SIZE_MM mm), the structured twill you sewed
 card v4 on, with your Fremont backing. **Stop 1 is white** (the Fremont
 field under block F, WHITE_STITCHES stitches, nothing else), **stop 2 is dark**
 (everything else). STITCHES stitches, TRIMS trims, about MINUTES minutes
-(stitch count at 650 spm, not a measurement). Trims on.
+(stitch count at 650 spm, not a measurement). Trims on. Print
+`card_v8_40wt_worksheet.pdf` (or `.png`) beside it: the card's map, the teeth
+legend and a tick box per piece.
 
 ## The arms
 
@@ -884,6 +912,120 @@ def scoring_rows(rb: dict) -> str:
                      f"{'_' if p['block'] == 'D' else 'n/a'} | |" for p in rb["pieces"])
 
 
+#: what to look at per block on the printed worksheet (the README's "Look for", shortened)
+WORKSHEET_LOOK = {
+    "F": "Float threads on the white field (a) vs walk stitches (b): does a dark stitch show? Snip the float instead?",
+    "E": "Floats (a) vs lock knots (b). P and R counters open or filled? 0.25 mm letter gaps open on the cloth?",
+    "J": "Same as E, on a cap-sized typed name: floats (a), knots (b), letters legible, breaks.",
+    "D": "Gap between AND DRONE and THERMAL / the dome (crowded, touching?), column width vs the pro's 1.26, legibility.",
+}
+
+
+def _wrap(d, text: str, font, width: int) -> list[str]:
+    lines, cur = [], ""
+    for word in text.split():
+        trial = f"{cur} {word}".strip()
+        if d.textlength(trial, font=font) <= width:
+            cur = trial
+        else:
+            lines.append(cur)
+            cur = word
+    return lines + ([cur] if cur else [])
+
+
+def worksheet(plan: StitchPlan, card: CardV8, rb: dict, out: Path) -> list[Path]:
+    """One letter-size page Kent reads at the machine (card v7's layout): the
+    card with each piece named beside its teeth and the block letters down the
+    side, a teeth legend, then one row per piece with tick boxes for the
+    readout sheet's questions. PNG and PDF."""
+    import cv2
+    from PIL import Image, ImageDraw, ImageFont
+    W, H, M = 1700, 2200, 70
+    page = Image.new("RGB", (W, H), "white")
+    d = ImageDraw.Draw(page)
+    font = lambda n: ImageFont.load_default(size=n)  # noqa: E731
+    y = M
+    d.text((M, y), "Sew-out card v8: cut every jump, the bold factor and the halo", fill="black", font=font(46))
+    y += 62
+    sew = (f"{NAME}.dst  |  two cones, 40 wt, 75/11: stop 1 white, stop 2 dark  |  4 x 4 in hoop "
+           f"({rb['extent_mm'][0]} x {rb['extent_mm'][1]} mm)  |  twill + your Fremont backing  |  "
+           f"{rb['stitches_file']:,} stitches, {rb['trims']} trims, ~{rb['stitches_file'] / 650:.0f} min at 650 spm  |  "
+           f"trims on  |  {ENGINE}")
+    for line in _wrap(d, sew, font(24), W - 2 * M):
+        d.text((M, y), line, fill="black", font=font(24))
+        y += 32
+    y += 10
+    ppm = 14.0
+    img, px = _rendered(plan, ppm)
+    pic = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    s = min((W - 2 * M - 80) / pic.width, 900 / pic.height)
+    pic = pic.resize((int(pic.width * s), int(pic.height * s)), Image.LANCZOS)
+    left = (W - pic.width) // 2
+    page.paste(pic, (left, y))
+    for key, box in card.arms.items():           # each piece's name, right of its teeth
+        blk, arm = key.split(":")
+        x0, y0, _x1, _y1 = px(box)
+        lx = left + (x0 + (2.4 * TEETH[arm] + 1.0) * ppm) * s
+        d.text((lx, y + (y0 - TOP * ppm) * s), f"{blk} ({arm})", fill=(200, 30, 30), font=font(15))
+    for blk, box in card.boxes.items():          # the block letter in the left margin
+        x0, y0, _x1, y1 = px(box)
+        d.text((M, y + ((y0 + y1) / 2) * s - 20), blk, fill=(200, 30, 30), font=font(44))
+    y += pic.height + 14
+    d.text((M, y), "Teeth above a piece count its arm:  | (a) ships    || (b) cut every jump    ||| (c) bold 2.0    "
+                   "|||| (d) halo 0.3    ||||| (e) bold 2.0 + halo 0.3", fill=(60, 60, 60), font=font(21))
+    y += 40
+    by_piece = rb["stitches_by_piece"]
+    cols = (M, M + 120, M + 330, M + 480)
+    for x, head in zip(cols, ("piece", "arm", "stitches", "ticks and counts (Y / N; counts as numbers)")):
+        d.text((x, y), head, fill=(90, 90, 90), font=font(22))
+    y += 34
+    for p in rb["pieces"]:
+        d.line((M, y - 6, W - M, y - 6), fill=(200, 200, 200), width=1)
+        d.text((cols[0], y), f"{p['block']} ({p['arm']})  {'|' * p['teeth']}", fill="black", font=font(24))
+        d.text((cols[1], y), p["label"], fill="black", font=font(20))
+        d.text((cols[2], y), f"{by_piece.get(p['block'] + ':' + p['arm'], 0):,}", fill="black", font=font(24))
+        cells = ["breaks: ____", "floats to snip: ____", "knots show?  Y / N"]
+        if p["block"] == "F":
+            cells.append("walk stitches show?  Y / N")
+        cells.append("letters legible?  Y / N")
+        if p["block"] in ("E", "D"):
+            cells.append("counters open?  Y / N")
+        if p["block"] == "D":
+            cells.append("neighbour gap OK?  Y / N")
+        x, row_y = cols[3], y
+        for c in cells:
+            need = 26 + int(d.textlength(c, font=font(19))) + 22
+            if x + need > W - M:                 # wrap the cells onto a second line
+                x, row_y = cols[3], row_y + 28
+            d.rectangle((x, row_y + 4, x + 18, row_y + 22), outline="black", width=2)
+            d.text((x + 26, row_y + 2), c, fill="black", font=font(19))
+            x += need
+        y = row_y + 44
+    y += 14
+    for blk in ("F", "E", "J", "D"):
+        for line in _wrap(d, f"{blk}: {WORKSHEET_LOOK[blk]}", font(20), W - 2 * M):
+            d.text((M, y), line, fill=(60, 60, 60), font=font(20))
+            y += 26
+    y += 10
+    for q in ("Better of F: (a) / (b)      Better of E: (a) / (b)      Better of J: (a) / (b)",
+              "Drone: which height and weight reads best?  (a) / (c) / (d) / (e)",
+              "Flip cut_every_jump and cutEveryJump ON?   Y / N",
+              "Move the bold factor to 2.0?   Y / N          Narrow the halo to 0.3?   Y / N"):
+        d.text((M, y), q, fill="black", font=font(28))
+        y += 40
+    y += 6
+    for line in _wrap(d, "Every number is a candidate until this is sewn (ROADMAP gate 1). Sew in the same sitting "
+                         "as card v7, beside the pro's Fremont patch.", font(20), W - 2 * M):
+        d.text((M, y), line, fill=(60, 60, 60), font=font(20))
+        y += 26
+    if y > H - M // 2:
+        raise SystemExit(f"worksheet overflows the page: {y} > {H}")
+    png, pdf = out / f"{NAME}_worksheet.png", out / f"{NAME}_worksheet.pdf"
+    page.save(png)
+    page.save(pdf, resolution=200.0)
+    return [png, pdf]
+
+
 def generate(out: Path, cuts: Path | None = None, *, quiet: bool = False) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     cuts = cuts or out / "cuts"
@@ -912,6 +1054,7 @@ def generate(out: Path, cuts: Path | None = None, *, quiet: bool = False) -> dic
                           ("pieces", "pieces_mm", "stitches_by_piece", "arm_md5", "oracle")}))
     (out / "readback.json").write_text(json.dumps(rb, indent=1) + "\n", encoding="utf-8")
     block_previews(plan, card, out)
+    worksheet(plan, card, rb, out)
     piece = {(p["block"], p["arm"]): p for p in rb["pieces"]}
     fre, ent = load(cuts, "fremont")["arms"], load(cuts, "enthusiast")["arms"]
     white = next((s["stitches"] for s in rb["stops"] if s["thread"] == "white"), 0)

@@ -1,10 +1,10 @@
 {
  "file": "card_v8_40wt.dst",
- "bytes": 50375,
+ "bytes": 50387,
  "wt": 40,
  "blocks": 4,
- "stitches_file": 15891,
- "stitches_plan": 15891,
+ "stitches_file": 15893,
+ "stitches_plan": 15893,
  "colour_changes_file": 1,
  "colour_changes_plan": 1,
  "colours": 2,
@@ -27,45 +27,45 @@
   {
    "stop": 1,
    "thread": "white",
-   "stitches": 4126,
+   "stitches": 4132,
    "thread_m": 9.83
   },
   {
    "stop": 2,
    "thread": "dark",
-   "stitches": 11878,
-   "thread_m": 11.82
+   "stitches": 11874,
+   "thread_m": 11.81
   }
  ],
  "stitches_by_piece": {
-  "D:a": 1559,
-  "D:c": 1540,
+  "D:a": 1556,
+  "D:c": 1542,
   "D:d": 1631,
-  "D:e": 1627,
+  "D:e": 1624,
   "D:strips": 84,
   "E:a": 835,
   "E:b": 931,
   "E:strips": 28,
-  "F:a": 3077,
-  "F:b": 3080,
+  "F:a": 3080,
+  "F:b": 3083,
   "F:strips": 28,
   "J:a": 718,
   "J:b": 838,
   "J:strips": 28
  },
  "under_1mm_by_piece": {
-  "D:a": 316,
-  "D:c": 232,
+  "D:a": 320,
+  "D:c": 235,
   "D:d": 232,
   "D:e": 138,
   "E:a": 314,
   "E:b": 322,
-  "F:a": 1032,
-  "F:b": 1032,
+  "F:a": 1041,
+  "F:b": 1041,
   "J:a": 622,
   "J:b": 710
  },
- "lock_legs_0p8": 1490,
+ "lock_legs_0p8": 1466,
  "trims": 130,
  "blocks_mm": {
   "D": [
@@ -155,7 +155,7 @@
    -1.4
   ]
  },
- "engine": "main 3896a7ae (2026-11-01)",
+ "engine": "main 2ce938eb (2026-11-08)",
  "pieces": [
   {
    "block": "F",
@@ -165,11 +165,11 @@
    "label": "ships",
    "flags": {},
    "clear_mm": 0.8,
-   "runs": 175,
+   "runs": 176,
    "hops": {
     "floats": 58,
     "cuts": 8,
-    "sewn_hops": 24,
+    "sewn_hops": 25,
     "travel_stitches": 11
    },
    "satin": {
@@ -180,7 +180,7 @@
    },
    "width_mm": 42.6,
    "height_mm": 17.36,
-   "stitches_whole": 15865,
+   "stitches_whole": 15866,
    "trims_whole": 29,
    "floats_whole": 148,
    "reset": [
@@ -238,11 +238,11 @@
     "cut_every_jump": true
    },
    "clear_mm": 0.8,
-   "runs": 178,
+   "runs": 179,
    "hops": {
     "floats": 0,
     "cuts": 8,
-    "sewn_hops": 85,
+    "sewn_hops": 86,
     "travel_stitches": 14
    },
    "satin": {
@@ -253,7 +253,7 @@
    },
    "width_mm": 42.6,
    "height_mm": 17.36,
-   "stitches_whole": 15871,
+   "stitches_whole": 15872,
    "trims_whole": 29,
    "floats_whole": 0,
    "reset": [
@@ -468,12 +468,12 @@
    "label": "ships",
    "flags": {},
    "clear_mm": 0.8,
-   "runs": 131,
+   "runs": 130,
    "hops": {
     "floats": 7,
     "cuts": 15,
     "sewn_hops": 48,
-    "travel_stitches": 95
+    "travel_stitches": 92
    },
    "satin": {
     "width_mm": 1.15,
@@ -483,9 +483,9 @@
    },
    "width_mm": 37.17,
    "height_mm": 15.16,
-   "stitches_whole": 14767,
-   "trims_whole": 96,
-   "floats_whole": 30,
+   "stitches_whole": 14769,
+   "trims_whole": 95,
+   "floats_whole": 28,
    "reset": [
     {
      "cluster": "TC8e50b4ef",
@@ -517,12 +517,12 @@
     "small_text_cap_bold_scale": 2.0
    },
    "clear_mm": 0.8,
-   "runs": 125,
+   "runs": 126,
    "hops": {
     "floats": 9,
     "cuts": 15,
     "sewn_hops": 51,
-    "travel_stitches": 80
+    "travel_stitches": 82
    },
    "satin": {
     "width_mm": 1.2,
@@ -532,9 +532,9 @@
    },
    "width_mm": 37.11,
    "height_mm": 15.16,
-   "stitches_whole": 14752,
-   "trims_whole": 96,
-   "floats_whole": 32,
+   "stitches_whole": 14757,
+   "trims_whole": 95,
+   "floats_whole": 30,
    "reset": [
     {
      "cluster": "TC8e50b4ef",
@@ -568,8 +568,8 @@
    "hops": {
     "floats": 8,
     "cuts": 14,
-    "sewn_hops": 51,
-    "travel_stitches": 96
+    "sewn_hops": 49,
+    "travel_stitches": 97
    },
    "satin": {
     "width_mm": 1.2,
@@ -579,9 +579,9 @@
    },
    "width_mm": 37.98,
    "height_mm": 15.16,
-   "stitches_whole": 14825,
+   "stitches_whole": 14837,
    "trims_whole": 94,
-   "floats_whole": 32,
+   "floats_whole": 29,
    "reset": [
     {
      "cluster": "TC8e50b4ef",
@@ -613,12 +613,12 @@
     "small_text_cap_bold_scale": 2.0
    },
    "clear_mm": 0.3,
-   "runs": 121,
+   "runs": 120,
    "hops": {
     "floats": 9,
     "cuts": 15,
     "sewn_hops": 48,
-    "travel_stitches": 93
+    "travel_stitches": 90
    },
    "satin": {
     "width_mm": 1.39,
@@ -628,9 +628,9 @@
    },
    "width_mm": 37.78,
    "height_mm": 14.99,
-   "stitches_whole": 14814,
-   "trims_whole": 99,
-   "floats_whole": 32,
+   "stitches_whole": 14816,
+   "trims_whole": 98,
+   "floats_whole": 30,
    "reset": [
     {
      "cluster": "TC8e50b4ef",
@@ -654,18 +654,18 @@
   }
  ],
  "arm_md5": {
-  "D:a": "248dc05a82e505536359cfd1de1c38c3",
-  "D:c": "095d5c97e8c4cd082d1b743a1efe34d5",
-  "D:d": "8943eac133ec522769b53097b7a24455",
-  "D:e": "d8183b428b263327a9fe0cdfc8087630",
-  "E:a": "e721417060b297f4e2956eed779d9f6c",
-  "E:b": "49ad029fe73ee0b0c9d0a3a728481021",
-  "F:a": "8e093a04eb143b6932bae65975ef890a",
-  "F:b": "b9e0428a6b10226f768da52787c2a087",
-  "J:a": "1d5c6d1dac73d03fde6c83cbadf514e8",
-  "J:b": "b4cca5c6dbb0aacd44cb22d34150df81"
+  "D:a": "3de0eab225bb644b7b4cb1235b157169",
+  "D:c": "d16803e8253c7151cbf31b727bcb0534",
+  "D:d": "3817cef69f3e07da2adfb95ec6079bc8",
+  "D:e": "5d3b919b8ee35fcd2f92ea5216e1db52",
+  "E:a": "c73136416df05992fa2efe7504d68376",
+  "E:b": "eb6b6a3a19bd0c28cb09bdcbc71b6d03",
+  "F:a": "1a757b9b4ce667bb78a3035225404f0a",
+  "F:b": "d3d4c7580fdd809afaf478f11e9bb33a",
+  "J:a": "b8f1342845d15bbcf831c92dca74df6a",
+  "J:b": "83f15c61008f5adec70f0f0b1caca227"
  },
- "minutes_at_650spm": 24.4,
+ "minutes_at_650spm": 24.5,
  "oracle": {
   "fremont": {
    "label": "fremont",
@@ -673,8 +673,8 @@
    "walk_step_mm": 0.1,
    "off_uncut_moves": 148,
    "on_uncut_moves": 0,
-   "off_stitches": 15865,
-   "on_stitches": 15871,
+   "off_stitches": 15866,
+   "on_stitches": 15872,
    "on_new_segments": 154,
    "of_them_locks": 0,
    "walked_segments": 154,
@@ -707,14 +707,14 @@
    "label": "drone",
    "sample_step_mm": 0.01,
    "walk_step_mm": 0.1,
-   "off_uncut_moves": 30,
+   "off_uncut_moves": 28,
    "on_uncut_moves": 0,
-   "off_stitches": 14767,
-   "on_stitches": 14810,
-   "on_new_segments": 64,
+   "off_stitches": 14769,
+   "on_stitches": 14807,
+   "on_new_segments": 57,
    "of_them_locks": 36,
-   "walked_segments": 28,
-   "walked_mm": 29.77,
+   "walked_segments": 21,
+   "walked_mm": 25.46,
    "bare_segments": 1,
    "bare_walked_segments": 1,
    "worst_off_thread_mm": 0.0292,

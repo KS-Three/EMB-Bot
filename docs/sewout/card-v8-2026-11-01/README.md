@@ -5,22 +5,41 @@ patch.** It carries the arms the K3 handoff queued after v7, less the ones a
 merged flip has closed (the table at the end). Every number is a candidate
 until you sew it (ROADMAP gate 1).
 
+**Rebuilt 2026-11-08 on main 2ce938eb (2026-11-08)** (first cut 2026-11-01 on main 3896a7ae)
+so arm (a) ships today's defaults. Six flags flipped ON in between and the
+11-01 cut did not pin them: `lettering_stray_word_thread`,
+`dark_ink_floor_rescue`, `flat_light_text_runs`,
+`text_cluster_nest_door_aspect`, `thread_match_grade_traced_letter`,
+`dropped_element_v2`; all six are pinned ON below now. What moved, old ->
+new: whole file 15,891 -> 15,893 stitches, 130 -> 130 trims, 2 -> 2 colour
+stops (white, then dark), 92.0 x 79.2 mm unchanged, DST 50,375 -> 50,387
+bytes; F (a) 3,077 -> 3,080 and (b) 3,080 -> 3,083 (one more satin run in
+the lower crest); E and J byte-identical in their cuts; D (a) 1,559 -> 1,556,
+(c) 1,540 -> 1,542, (d) 1,631 -> 1,631, (e) 1,627 -> 1,624. In D the
+stray-word-thread flip folded the one grey-blue stray letter thread (RGB 90 94
+97) into the line's grey (140 137 132): the design has one thread less in
+that window, but this card sews every non-white piece in one dark cone, so
+the file's colour map did not change. The scale of AND DRONE per arm is
+unchanged (table below).
+
 **What to sew:** `card_v8_40wt.dst`, **two cones, 40 wt**, 75/11, a **flat
 4 x 4 in hoop** (the design is 92.0 x 79.2 mm), the structured twill you sewed
 card v4 on, with your Fremont backing. **Stop 1 is white** (the Fremont
-field under block F, 4,126 stitches, nothing else), **stop 2 is dark**
-(everything else). 15,891 stitches, 130 trims, about 24 minutes
-(stitch count at 650 spm, not a measurement). Trims on.
+field under block F, 4,132 stitches, nothing else), **stop 2 is dark**
+(everything else). 15,893 stitches, 130 trims, about 24 minutes
+(stitch count at 650 spm, not a measurement). Trims on. Print
+`card_v8_40wt_worksheet.pdf` (or `.png`) beside it: the card's map, the teeth
+legend and a tick box per piece.
 
 ## The arms
 
 Teeth above each piece count its arm. Every arm pins every flag an arm
 touches and the halo explicitly (an unpinned value would follow a later
-default flip): `cut_every_jump` False, `small_text_cap_mm` 4.0, `small_text_cap_max_width_scale` 1.05, `small_text_cap_min_stroke_mm` 0.85, `small_text_cap_letter_gap_mm` 0.25, `small_text_cap_bold_scale` 1.45, `small_text_cap_reach_edges` True, `small_text_bay_mouth` True, `small_text_reset_grow_away` True, `lettering_columns_small_bold` True, `bean_only_lines` True, `dark_ink_bean` True, `trim_bury_under_later` True, `tie_in_off` True; halo (`small_text.CLEAR_MM`) 0.8.
+default flip): `cut_every_jump` False, `small_text_cap_mm` 4.0, `small_text_cap_max_width_scale` 1.05, `small_text_cap_min_stroke_mm` 0.85, `small_text_cap_letter_gap_mm` 0.25, `small_text_cap_bold_scale` 1.45, `small_text_cap_reach_edges` True, `small_text_bay_mouth` True, `small_text_reset_grow_away` True, `lettering_columns_small_bold` True, `bean_only_lines` True, `dark_ink_bean` True, `trim_bury_under_later` True, `tie_in_off` True, `lettering_stray_word_thread` True, `dark_ink_floor_rescue` True, `flat_light_text_runs` True, `text_cluster_nest_door_aspect` True, `thread_match_grade_traced_letter` True, `dropped_element_v2` True; halo (`small_text.CLEAR_MM`) 0.8.
 
 | Teeth | Arm | What differs from (a) |
 |---|---|---|
-| 1 | (a) ships | nothing: main 3896a7ae (2026-11-01)'s defaults, pinned |
+| 1 | (a) ships | nothing: main 2ce938eb (2026-11-08)'s defaults, pinned |
 | 2 | (b) cut every jump | `cut_every_jump` ON (Python, blocks F and E) / `cutEveryJump` ON (browser, block J): no needle-up move left uncut -- buried under later thread, else walked needle-down on the work, else cut and locked both sides |
 | 3 | (c) bold 2.0 | `small_text_cap_bold_scale` 2.0 (1.45): a re-set letter's stroke, 2.0x its traced stroke at its height |
 | 4 | (d) halo 0.3 | `small_text.CLEAR_MM` 0.3 (0.8): the fabric the re-set keeps between the line's artwork and its neighbours |
@@ -66,16 +85,16 @@ every arm of a block; the table below counts them with the design's own.
 
 | Piece | Teeth | Arm | Stitches | Floats / cuts / sewn hops in the piece | Planned satin: cross / stitch (mm) | Whole design: stitches / trims / floats |
 |---|---|---|---|---|---|---|
-| F | 1 | (a) ships | 3,077 | 58 / 8 / 24 | 1.12 / 1.12 | 15,865 / 29 / 148 |
-| F | 2 | (b) cut every jump | 3,080 | 0 / 8 / 85 | 1.12 / 1.12 | 15,871 / 29 / 0 |
+| F | 1 | (a) ships | 3,080 | 58 / 8 / 25 | 1.12 / 1.12 | 15,866 / 29 / 148 |
+| F | 2 | (b) cut every jump | 3,083 | 0 / 8 / 86 | 1.12 / 1.12 | 15,872 / 29 / 0 |
 | E | 1 | (a) ships | 835 | 12 / 2 / 25 | 0.95 / 0.95 | 2,874 / 11 / 19 |
 | E | 2 | (b) cut every jump | 931 | 0 / 14 / 25 | 0.94 / 0.94 | 2,946 / 29 / 0 |
 | J | 1 | (a) ships | 718 | 15 / 3 / 0 | 0.54 / 0.54 | 718 / 3 / 15 |
 | J | 2 | (b) cut every jump | 838 | 0 / 18 / 0 | 0.54 / 0.54 | 838 / 18 / 0 |
-| D | 1 | (a) ships | 1,559 | 7 / 15 / 48 | 1.15 / 1.15 | 14,767 / 96 / 30 |
-| D | 3 | (c) bold 2.0 | 1,540 | 9 / 15 / 51 | 1.2 / 1.2 | 14,752 / 96 / 32 |
-| D | 4 | (d) halo 0.3 | 1,631 | 8 / 14 / 51 | 1.2 / 1.2 | 14,825 / 94 / 32 |
-| D | 5 | (e) bold 2.0 + halo 0.3 | 1,627 | 9 / 15 / 48 | 1.39 / 1.38 | 14,814 / 99 / 32 |
+| D | 1 | (a) ships | 1,556 | 7 / 15 / 48 | 1.15 / 1.15 | 14,769 / 95 / 28 |
+| D | 3 | (c) bold 2.0 | 1,542 | 9 / 15 / 51 | 1.2 / 1.2 | 14,757 / 95 / 30 |
+| D | 4 | (d) halo 0.3 | 1,631 | 8 / 14 / 49 | 1.2 / 1.2 | 14,837 / 94 / 29 |
+| D | 5 | (e) bold 2.0 + halo 0.3 | 1,624 | 9 / 15 / 48 | 1.39 / 1.38 | 14,816 / 98 / 30 |
 
 Drone's AND DRONE per arm, from the re-set's own report (scale over the art,
 stroke tag / traced, the room above and below) and the plan's columns:
@@ -101,10 +120,10 @@ job's whole-design OFF and ON files as the service writes them:
 |---|---|---|---|---|---|
 | fremont | 148 -> 0 | 154 (0) | 154, 170.7 | 0 | 0.0 |
 | enthusiast | 19 -> 0 | 73 (72) | 1, 1.06 | 0 | 0.0 |
-| drone (ON measured for the oracle only, not sewn here) | 30 -> 0 | 64 (36) | 28, 29.77 | 1 | 0.0292 |
+| drone (ON measured for the oracle only, not sewn here) | 28 -> 0 | 57 (36) | 21, 25.46 | 1 | 0.0292 |
 | lettering (browser, its own oracle) | 15 -> 0 | 120 (114) | - | 0 | - |
 
-**Verdict: the Python walk is off the thread by more than the browser's was.** Of 183 walked segments on the three jobs, 1 lies partly on bare cloth at 0.01 mm -- worst 0.0292 mm past the thread's edge, against the 0.015 mm the browser's 0.1 mm step showed before it went to 0.01 (drone: 0.54 mm at (0.0, -30.8), 0.0292 mm past the edge). A tenth of a thread width, not a stitch across cloth, and not in any piece on this card; arm (b) ships marked with it. The cure is the browser's (`_BURY_STEP_MM` 0.1 -> 0.01, a sampling step, not a physical constant), a build of its own.
+**Verdict: the Python walk is off the thread by more than the browser's was.** Of 176 walked segments on the three jobs, 1 lies partly on bare cloth at 0.01 mm -- worst 0.0292 mm past the thread's edge, against the 0.015 mm the browser's 0.1 mm step showed before it went to 0.01 (drone: 0.54 mm at (0.0, -30.8), 0.0292 mm past the edge). A tenth of a thread width, not a stitch across cloth, and not in any piece on this card; arm (b) ships marked with it. The cure is the browser's (`_BURY_STEP_MM` 0.1 -> 0.01, a sampling step, not a physical constant), a build of its own.
 
 ![](card_v8_40wt.png)
 
@@ -123,9 +142,9 @@ job's whole-design OFF and ON files as the service writes them:
 
 | | 40 wt |
 |---|---|
-| file | `card_v8_40wt.dst` (50,375 bytes) |
+| file | `card_v8_40wt.dst` (50,387 bytes) |
 | blocks on the card | 4 |
-| stitches in the file / in the plan | 15,891 / 15,891 |
+| stitches in the file / in the plan | 15,893 / 15,893 |
 | colour changes in the file / planned | 1 / 1 |
 | colours (stops) | 2 |
 | extent (mm), x by y | 92.0 x 79.2 |
@@ -134,22 +153,22 @@ job's whole-design OFF and ON files as the service writes them:
 | longest needle stitch (mm) | 4.59 |
 | longest record, per axis (mm; the format's limit is 12.1) | 12.0 |
 | trims | 130 |
-| 0.8 mm lock-leg stitches | 1490 |
+| 0.8 mm lock-leg stitches | 1466 |
 
 Stitches per piece:
 
 | piece | stitches |
 |---|---|
-| D:a | 1559 |
-| D:c | 1540 |
+| D:a | 1556 |
+| D:c | 1542 |
 | D:d | 1631 |
-| D:e | 1627 |
+| D:e | 1624 |
 | D:strips | 84 |
 | E:a | 835 |
 | E:b | 931 |
 | E:strips | 28 |
-| F:a | 3077 |
-| F:b | 3080 |
+| F:a | 3080 |
+| F:b | 3083 |
 | F:strips | 28 |
 | J:a | 718 |
 | J:b | 838 |
@@ -159,8 +178,8 @@ Stitches per colour stop:
 
 | stop | thread | stitches (thread m) |
 |---|---|---|
-| 1 | white | 4,126 (9.83) |
-| 2 | dark | 11,878 (11.82) |
+| 1 | white | 4,132 (9.83) |
+| 2 | dark | 11,874 (11.81) |
 
 Where each piece sits (mm, x0 y0 x1 y1, centre of the card at 0, 0):
 
