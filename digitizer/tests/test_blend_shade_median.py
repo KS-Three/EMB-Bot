@@ -1,4 +1,4 @@
-"""`cfg.blend_shade_median` (built OFF 2026-11-09): MASTER_SCOPE defect 28, the
+"""`cfg.blend_shade_median` (built OFF 2026-11-09, ON since Kent 2026-11-09): MASTER_SCOPE defect 28, the
 last gradient-lane thread block that is not the photo stub.
 
 `summit_badge`'s background is one region with a per-region radial ramp. Its
@@ -6,7 +6,7 @@ t = 1 bucket holds 9 of 2,500 samples; the mean of those snaps to `0111` (a
 mid grey, L* 48.8) for a band whose artwork is L* 30, a 21.5 dE00 block. The
 median of the same samples is L* 29.5 and snaps to `0134`. What is pinned:
 
-* OFF (the default) is the mean, byte for byte, so nothing moves unflagged.
+* OFF is the mean, byte for byte, so nothing moves unflagged.
 * ON, a bucket with outliers reads its median; a clean bucket reads the same
   either way.
 * The flag has one reader, the per-region path in `stage6_blend.blend_fill`.
@@ -29,8 +29,8 @@ def _ramp_with_speckled_end():
     return ts, lab
 
 
-def test_default_is_off():
-    assert PipelineConfig().blend_shade_median is False
+def test_default_is_on():
+    assert PipelineConfig().blend_shade_median is True
 
 
 def test_off_is_the_mean():

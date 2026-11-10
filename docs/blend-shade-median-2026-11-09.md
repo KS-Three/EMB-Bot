@@ -25,13 +25,13 @@ snaps to `0111` (127 grey); the band's pixels are L* 30 (L* pct10/50/90 =
 29/30/30), 21.5 dE00 off, 16.9 excess over loaded `0134` (4.6 off). The median
 of the same 9 is L* 29.5 and snaps to `0134`.
 
-## Fix, built OFF: `cfg.blend_shade_median`
+## Fix: `cfg.blend_shade_median`, built OFF, ON (Kent 2026-11-09)
 `_shade_lab_colors(..., median=True)` on the per-region path only.
 
 Gradient-class-at-the-time fixtures (11) x 2 garments x {OFF, ON}, plan md5 from
 `iter_runs`:
 
-| | OFF | ON |
+| | OFF | ON (default since Kent 2026-11-09) |
 |---|---|---|
 | entries whose plan md5 moves | | 2 (summit, both garments) |
 | entries identical | | 20 |
