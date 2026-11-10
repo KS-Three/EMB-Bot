@@ -257,6 +257,7 @@
  "silhouette_underfill_photo": true,
  "simplify_tol_mm": 0.2,
  "skip_covered_shapes": false,
+ "sliver_prune": false,
  "small_dot_rung": true,
  "small_dot_rung_lettering": true,
  "small_glyph_keep": true,

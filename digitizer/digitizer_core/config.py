@@ -1292,6 +1292,26 @@ class PipelineConfig:
     # engine before the flag, byte for byte. Tests:
     # `tests/test_flat_page_fringe.py`.
     flat_page_fringe_exclude: bool = False
+    # Slivers no thread can draw (built OFF 2026-11-10, Kent on Pooh at 54 mm,
+    # automatic lane: "it added the white background stitching on the right
+    # edges", "a red stitch going up" the arm). One pass over stage 3's masks
+    # before stage 4 traces them, on the flat and gradient classes and only
+    # where stage 1 ENLARGED the raster x1.25 or more (a source at or near the
+    # work grid is untouched: the 80 mm sheet moved 5 of 20 without that
+    # gate, 0 with; `sliver_prune.MIN_ENLARGEMENT` carries the numbers)
+    # (`sliver_prune.prune`): (1) a mask at most 1.5 SOURCE pixels wide that
+    # hugs the silhouette, lies on the border-flood page and sits on a thread
+    # nearer the page than the figure beside it is the page's halo, and is
+    # dropped; (2) the part of a wide mask that an opening two source pixels
+    # across removes, when it is long, wedged between other masks, off the
+    # page and another colour than the body it hangs off, goes to the mask it
+    # lies in. Both widths are in source pixels (`Prep.input_px_per_mm`), a
+    # raster read, not a stitch value: gate 1 does not apply. Unlike
+    # `flat_page_fringe_exclude` above it runs after the palette is fitted, so
+    # no thread moves by it. Pooh 54 mm: 3 masks dropped (7 white runs), 1
+    # tendril moved (the 7.1 mm red spike). False is the engine before the
+    # flag, byte for byte. Tests: `tests/test_sliver_prune.py`.
+    sliver_prune: bool = False
     # The band, in working-grid pixels, `flat_page_fringe_exclude` looks in.
     # 2 = the anti-alias ramp of a source edge once stage 1 has enlarged the
     # raster (one source pixel becomes `upscale` working pixels; Pooh at 80 mm

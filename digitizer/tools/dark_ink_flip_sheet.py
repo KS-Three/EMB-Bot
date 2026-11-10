@@ -68,7 +68,10 @@ DEFAULT_OUT = DIGITIZER.parent / "docs" / "renders" / f"keep-dark-thin-strokes-{
 SHEETS = {FLAG: DEFAULT_OUT,
           "dark_ink_refuse_strays": DIGITIZER.parent / "docs" / "renders" / f"dark-read-refusal-{DATE}",
           "dark_ink_bean": DIGITIZER.parent / "docs" / "renders" / f"dark-ink-bean-{DATE}",
-          "dark_ink_floor_rescue": DIGITIZER.parent / "docs" / "renders" / "dark-ink-floor-rescue-2026-11-03"}
+          "dark_ink_floor_rescue": DIGITIZER.parent / "docs" / "renders" / "dark-ink-floor-rescue-2026-11-03",
+          # not a dark-ink flag: the sheet is reused for its fixture list (flat
+          # and gradient both, which is where `sliver_prune` acts)
+          "sliver_prune": DIGITIZER.parent / "docs" / "renders" / "sliver-prune-2026-11-10"}
 
 
 def use_flag(flag: str) -> None:

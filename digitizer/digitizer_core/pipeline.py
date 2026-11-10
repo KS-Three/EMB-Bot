@@ -78,7 +78,7 @@ from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .config import is_photographic, satin_fill_hysteresis, satin_fill_vote, satin_floor_applies
-from . import shape_memo
+from . import shape_memo, sliver_prune
 from .columns import is_lettering
 from .lettering_thread import apply_lettering_thread
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
@@ -977,6 +977,14 @@ def build_generation(
         # `cfg.flat_page_fringe_exclude`: stage 2's page-edge blend pixels
         # (None with the flag off and on every other lane).
         page_fringe=getattr(q, "page_fringe", None))
+    # `cfg.sliver_prune` (built OFF 2026-11-10, Kent on Pooh at 54 mm): masks
+    # narrower than the source's own pixels that are not a shape -- the
+    # page's halo along the silhouette is dropped, an off-colour tendril
+    # wedged between other shapes goes to the one it lies in
+    # (`sliver_prune.prune`). Logos only: a photograph's fragments are
+    # tendrils everywhere. Off: `masks` untouched, byte for byte.
+    if cfg.sliver_prune and classification.class_ not in PHOTO_CLASSES:
+        masks, _pruned = sliver_prune.prune(masks, q.thread_indices, p, chart_for(cfg))
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
 
