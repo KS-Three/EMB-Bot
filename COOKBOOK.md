@@ -2410,6 +2410,31 @@ either. `tools/bundle.mjs` (the standalone's rebuild step) was doubly dead
 2026-08-11**. The Studio has no CDN runtime dependencies (jsPDF is
 npm-bundled, Inter via fontsource, fonts ship locally as `.embf`).
 
+### One port: the service serves the built Studio (2026-11-10)
+
+```bash
+cd app && npm run build
+cd ../digitizer && .venv/Scripts/python -m digitizer_service --studio ../app/dist
+# Studio: http://127.0.0.1:8721/
+```
+
+Off unless `--studio` (or `EMBBOT_STUDIO_DIR`) names a directory with an
+`index.html`; without it the service is byte-for-byte what it was. This is
+the shape the installable app ships in (PRODUCT.md launch row 8), not a
+replacement for `npm run dev`: there is no hot reload, and it serves whatever
+`app/dist` held at the last build. `digitizer_service/studio.py` owns the
+three rules (the mount is the LAST route; content types are pinned, not read
+from the Windows registry; every file is `no-cache`), and
+`tests/test_service_studio.py` pins them.
+
+**Use port 8721 when you mean to test what a customer gets.** On any other
+port the Studio still calls its default service URL, `127.0.0.1:8721`, which
+on Kent's machine is usually a DIFFERENT, already-running service: the page
+works and you are testing the wrong engine. Set `localStorage`
+`embstudio:digitizerUrl` to the port you started, or stop the other one.
+Freezing the service into a folder, and the check that it sews the same
+bytes: `docs/packaging-freeze-spike-2026-11-10.md`, `digitizer/packaging/`.
+
 ### What a cloud worker session has, and has not (measured 2026-10-20)
 
 Every fact here was read off this session's own container; CLAUDE.md owns

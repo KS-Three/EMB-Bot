@@ -51,7 +51,7 @@ from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 from digitizer_core.stitchwidth import review_block, validate_override_mm
 from digitizer_core.warnings_codes import FACE_ROUTED_FLAT, PHOTO_DETECTED, warn
 
-from . import formats, readback, schemas
+from . import formats, readback, schemas, studio
 from .guards import BodyLimit, Deadline, too_large_detail
 from .jobs import (DONE, JOB_TIMEOUT_S, Busy, GenerationCache, JobRegistry, content_key,
                    generation_key)
@@ -1827,3 +1827,13 @@ def _safe_stem(label: str) -> str:
     keep = [c if c.isalnum() or c in "-_" else "-" for c in label.strip()]
     stem = "".join(keep).strip("-") or "design"
     return stem[:48]
+
+
+# LAST LINE OF THE MODULE, on purpose: the Studio mount answers for every
+# path, and routes are tried in the order they were added, so anything
+# registered after this would be shadowed by a static 404. Off unless the
+# directory is named (`python -m digitizer_service --studio <app/dist>`); a
+# named directory that is not a built Studio stops the import rather than
+# serving a blank page. See `studio.py`.
+if os.environ.get(studio.STUDIO_DIR_ENV):
+    studio.mount_studio(app, os.environ[studio.STUDIO_DIR_ENV])
