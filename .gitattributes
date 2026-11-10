@@ -25,3 +25,8 @@ digitizer/digitizer_core/outline_fonts/**/OFL.txt text eol=lf
 # The calibrated judge's rubric is frozen by its sha256 (calibrated-judge/AMENDMENT-1.md);
 # a CRLF checkout must not change the bytes a reader hashes.
 docs/eye-pairs-2026-11-04/calibrated-judge/RUBRIC.md text eol=lf
+
+# The starter pack's art and DSTs are pinned by sha256 in its manifest.json
+# (test/starter-pack.test.js); an eol conversion would break the pin.
+app/public/starter/*.svg binary
+app/public/starter/*.dst binary
