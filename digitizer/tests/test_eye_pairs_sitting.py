@@ -269,7 +269,11 @@ def test_every_problem_is_listed_not_just_the_first(tmp_path):
 def test_a_generator_logo_is_drawn_the_same_every_time(tmp_path):
     spec = sitting.load_spec()
     gens = [lg for lg in spec["logos"] if lg["source"]["kind"] == "generator"]
-    assert {g["source"]["id"] for g in gens} == set(sitting.GENERATORS)
+    # The module-scoped `kit` fixture registers its own tiny_a/tiny_b generators
+    # (module "tests.…") until the module's last test on that worker ends, so
+    # under xdist this test can see them; compare against the shipped ones only.
+    shipped = {k for k, (mod, _fn) in sitting.GENERATORS.items() if not mod.startswith("tests.")}
+    assert {g["source"]["id"] for g in gens} == shipped
     first = sitting.materialise({**spec, "logos": gens}, tmp_path / "one")
     again = sitting.materialise({**spec, "logos": gens}, tmp_path / "two")
     assert [l["sha256"] for l in first] == [l["sha256"] for l in again]
