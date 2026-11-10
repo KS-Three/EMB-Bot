@@ -37,6 +37,7 @@
  "bind_resnap_all_classes": true,
  "blend_fallback_underlay": true,
  "blend_feather_mm": null,
+ "blend_shade_median": false,
  "blend_speckle_r2_override": null,
  "blend_speckle_residual": false,
  "border": null,
