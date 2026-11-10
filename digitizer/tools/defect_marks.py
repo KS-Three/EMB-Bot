@@ -390,7 +390,7 @@ Stop any time: every answer saves as you go.</p>
 <script>
 const KIT=JSON.parse(document.getElementById('kit').textContent);
 const SERVED=location.protocol.startsWith('http');
-const KEY='defect-marks:'+KIT.kit_sha256;
+const KEY='defect-marks';   // not the kit sha: the kit grows as capture rows finish, answers are keyed by item id
 const $=id=>document.getElementById(id);
 const SEV={ruins:'Ruins it',noticeable:'Noticeable',nitpick:'Nitpick'};
 const GROUP={pro_logo:'your pro-file logos',photo:'photos',commons_logo:'Commons logo styles (optional)'};
@@ -473,7 +473,7 @@ $('canvas').addEventListener('click',e=>{
 for(const b of document.querySelectorAll('.z'))b.onclick=()=>setZoom(+b.dataset.z);
 $('nothing').onchange=e=>{rec().nothing_wrong=e.target.checked;save();};
 $('reason').oninput=e=>{rec().reason=e.target.value;save();};
-function go(d){const n=i+d;if(n<0||n>=KIT.items.length)return;i=n;try{localStorage.setItem(KEY+':at',String(i));}catch(e){}show();}
+function go(d){const n=i+d;if(n<0||n>=KIT.items.length)return;i=n;try{localStorage.setItem(KEY+':at',KIT.items[i].id);}catch(e){}show();}
 $('prev').onclick=()=>go(-1);$('next').onclick=$('next2').onclick=()=>go(1);
 $('dl').onclick=()=>{const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([JSON.stringify({kit_sha256:KIT.kit_sha256,items:marks},null,1)],{type:'application/json'}));
@@ -481,7 +481,8 @@ $('dl').onclick=()=>{const a=document.createElement('a');
 async function load(){
   try{marks=JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){marks={};}
   if(SERVED){try{const r=await (await fetch('/marks')).json();Object.assign(marks,r.items||{});}catch(e){}}
-  try{i=Math.min(KIT.items.length-1,Math.max(0,+(localStorage.getItem(KEY+':at')||0)));}catch(e){i=0;}
+  try{i=Math.max(0,KIT.items.findIndex(it=>it.id===localStorage.getItem(KEY+':at')));}catch(e){i=0;}
+  for(const id of Object.keys(marks))if(!KIT.items.some(it=>it.id===id))delete marks[id];
   if(Object.keys(marks).length)$('brief').open=false;
   show();window.PAGE_READY=true;
 }
@@ -513,11 +514,23 @@ def make_server(kit_dir, port: int = PORT, host: str = "127.0.0.1"):
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
     from urllib.parse import unquote, urlparse
     kd = Path(kit_dir)
-    kit = json.loads((kd / "kit.json").read_text(encoding="utf-8"))
-    page = page_html(kit).encode("utf-8")
-    by_id = {it["id"]: it for it in kit["items"]}
-    allowed = {n for it in kit["items"] for n in (it["art"], it["render"], it.get("pro")) if n}
     lock = threading.Lock()
+    state: dict = {"mtime": None}
+
+    def current() -> dict:
+        """kit.json as it is NOW: `kit` is re-run as capture rows finish, and a
+        reload of the page must show the new items without a server restart
+        (a restart mid-sitting can drop an answer in flight)."""
+        m = (kd / "kit.json").stat().st_mtime_ns
+        with lock:
+            if state["mtime"] != m:
+                kit = json.loads((kd / "kit.json").read_text(encoding="utf-8"))
+                state.update(mtime=m, kit=kit, page=page_html(kit).encode("utf-8"),
+                             by_id={it["id"]: it for it in kit["items"]},
+                             allowed={n for it in kit["items"] for n in (it["art"], it["render"], it.get("pro")) if n})
+            return state
+
+    current()
 
     def write(data: dict) -> None:
         tmp = kd / "marks.json.tmp"
@@ -542,12 +555,12 @@ def make_server(kit_dir, port: int = PORT, host: str = "127.0.0.1"):
         def do_GET(self):  # noqa: N802
             path = unquote(urlparse(self.path).path)
             if path in ("/", "/index.html"):
-                self._send(200, page, "text/html; charset=utf-8")
+                self._send(200, current()["page"], "text/html; charset=utf-8")
             elif path == "/marks":
                 with lock:
                     body = json.dumps(read_marks(kd)).encode("utf-8")
                 self._send(200, body, "application/json")
-            elif path.startswith("/img/") and path[5:] in allowed:
+            elif path.startswith("/img/") and path[5:] in current()["allowed"]:
                 name = path[5:]
                 self._send(200, (kd / "img" / name).read_bytes(),
                            "image/png" if name.endswith(".png") else "image/jpeg")
@@ -563,7 +576,8 @@ def make_server(kit_dir, port: int = PORT, host: str = "127.0.0.1"):
                 if not 0 <= n <= 65536:
                     raise ValueError
                 body = json.loads(self.rfile.read(n) or b"{}")
-                item = by_id[body["id"]]
+                cur = current()
+                item = cur["by_id"][body["id"]]
                 record = clean_item(body, item)
             except (ValueError, KeyError, TypeError, json.JSONDecodeError):
                 self._send(400, b"bad mark", "text/plain")
@@ -572,7 +586,7 @@ def make_server(kit_dir, port: int = PORT, host: str = "127.0.0.1"):
                 data = read_marks(kd)
                 record["ts"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
                 data["items"][item["id"]] = record
-                data["kit_sha256"] = kit["kit_sha256"]
+                data["kit_sha256"] = cur["kit"]["kit_sha256"]
                 data["updated"] = record["ts"]
                 write(data)
             self._send(200, b'{"ok": true}', "application/json")

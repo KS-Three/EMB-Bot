@@ -124,3 +124,23 @@ def test_server_saves_marks_and_serves_only_listed_images(served):
     for bad in ({"id": "nope", "grade": "Okay"}, {"id": "L_x", "grade": "Fine"}):
         with pytest.raises(urllib.error.HTTPError):
             _post(base + "/mark", bad)
+
+
+def test_server_follows_a_rebuilt_kit_without_a_restart(served):
+    """`kit` is re-run as capture rows finish; a page reload must show the new
+    item and accept its answer, and the earlier answer must still be there."""
+    import os
+    kit_dir, base = served
+    _post(base + "/mark", {"id": "L_x", "grade": "Good", "nothing_wrong": True})
+    with pytest.raises(urllib.error.HTTPError):
+        _post(base + "/mark", {"id": "P_new", "grade": "Bad", "nothing_wrong": True})
+    bigger = _kit([_item("L_x"), _item("P_new")])
+    bigger["kit_sha256"] = "n" * 64
+    path = kit_dir / "kit.json"
+    path.write_text(json.dumps(bigger), encoding="utf-8")
+    st = path.stat()
+    os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns + 5_000_000_000))   # a coarse-mtime filesystem
+    assert "P_new_render.png" in urllib.request.urlopen(base + "/", timeout=10).read().decode("utf-8")
+    _post(base + "/mark", {"id": "P_new", "grade": "Bad", "nothing_wrong": True})
+    saved = json.loads((kit_dir / "marks.json").read_text(encoding="utf-8"))
+    assert set(saved["items"]) == {"L_x", "P_new"} and saved["kit_sha256"] == "n" * 64
