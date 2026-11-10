@@ -5695,6 +5695,12 @@ class PipelineConfig:
     # number. False is the engine as it was; `tests/conftest.py` PRE_FLIP pins
     # it False. Table: `docs/thread-match-gradient-excess-2026-10-29.md`.
     thread_match_excess_gradient: bool = True
+    # Per-region gradient bands read each shade's colour as the MEDIAN of the
+    # ramp samples nearest its canonical position, not their mean
+    # (`stage6_blend._shade_lab_colors`; MASTER_SCOPE defect 28, summit's
+    # `0111`). The design-ramp path is not touched. Built OFF 2026-11-09, ON (Kent 2026-11-09): it
+    # moves stitches on any per-region ramp whose bucket holds an outlier.
+    blend_shade_median: bool = True
     # Grade an enlarged small-text letter's thread on the polygon it was
     # TRACED from (`meta[small_text.TRACED_POLYGON_KEY]`), not the polygon it
     # sews (`preflight._traced_letters`, PR #1326; built OFF 2026-11-07 as

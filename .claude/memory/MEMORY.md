@@ -20,6 +20,7 @@ the OLDEST lines whole to the archive.
 - [Apex walk](apex-walk-2026-10-27.md) — apex_cut's walk sews each tip from its point: tip-satin travel <= 0.05 mm, crosses kept; per-job travel > OFF on 5 jobs, foreman's call
 - [Bash heredoc Python trap](bash-heredoc-python-repl-trap-2026-11-02.md) — Windows Bash tool `python - <<'E'` lost stdin: Python 3.14 fell into _pyrepl, one core for 26 h (3.68 GB of prompts); a `||` fallback respawned it when killed. Run a script FILE
 - [Bean census](bean-census-2026-10-27.md) — reference beans almost nothing: 17 runs / 780 mm / 8 of 1,101 regions, drawn thin lines, 2 passes; ours 137 (111 small letters); `bean_only_lines` ON (Kent 10-27), kappa -0.014 -> 0.129
+- [Blend shade median](blend-shade-median-2026-11-09.md) — defect 28: Fremont fixed 11-07 (stale scope line); summit 0111 = mean of a 9-sample speckled end bucket; `blend_shade_median` ON (Kent 11-09) clears it, 20 entries md5 same
 - [Band rings](border-by-size-colour-seams-2026-10-28.md) — Instagram: `border_by_size` satin rings each band, not bean; fix ON 10-28: ring fabric edges only
 - [Bridge census](bridge-census-2026-10-27.md) — Bridge hat+LC through 14 pro rules on main 8341d1f7: 2 CONTRADICTS (border_by_size fields, proSized LC), 8 AGREES, 4 N/A; ours' text is a reach gap (folds 2 vs 35), not a rule
 - [Cap frames sew 64 mm tall](cap-frame-height-2026-10-26.md) — PHYSICAL, Kent 10-26: his cap frames sew >= 64 mm (2.5 in); hat-height gate 1 settled
