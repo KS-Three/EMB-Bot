@@ -55,19 +55,25 @@ test("pan drag: drag frames do not re-stroke the design; the resting frame is th
   await settle(page);
   const reference = await frameHash(page);
 
-  // One drag of (dx, dy): a burst of moves with no round trip between them
-  // (the 120 ms rest timer must not fire inside it), then one short wait for
-  // the rAF repaints and the count read while the pointer is still held.
+  // One drag of (dx, dy). The app's 120 ms rest timer (PAN_SETTLE_MS) is a
+  // wall-clock timer, so on a slow runner it could fire while the pointer is
+  // still held, or between reading and zeroing the counter. The page's clock
+  // is therefore installed (see the test's start) and PAUSED for the held
+  // part of the drag: timers and rAF fire only when this test runs the clock,
+  // 40 ms at a time, always short of the 120 ms rest. Release then hands
+  // control back to real time for the one exact render.
   async function drag(dx, dy) {
     await page.mouse.move(x0, y0);
     await page.mouse.down();
     await settle(page, 300); // a press may repaint once (selection); not a pan frame
+    await page.clock.pauseAt(new Date(Date.now() + 60_000)); // jumps ahead, then freezes
     await zero(page);
     for (let i = 1; i <= 8; i++) await page.mouse.move(x0 + (dx * i) / 8, y0 + (dy * i) / 8);
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 30)))));
-    const during = await strokes(page);
-    await zero(page);
-    await page.mouse.up();
+    await page.clock.runFor(40); // the rAF repaints; the rest timer (120) stays pending
+    // Read and zero in ONE round trip: nothing can land between them.
+    const during = await page.evaluate(() => { const n = window.__strokes; window.__strokes = 0; return n; });
+    await page.mouse.up(); // settlePan: the exact render is scheduled now
+    await page.clock.resume();
     await settle(page);
     return { during, after: await strokes(page) };
   }
