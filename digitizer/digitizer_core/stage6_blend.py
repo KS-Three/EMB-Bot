@@ -617,10 +617,19 @@ def _choose_shade_count(delta_e: float) -> int:
     return max(SHADE_COUNT_MIN, min(SHADE_COUNT_MAX, n))
 
 
-def _shade_lab_colors(ts: np.ndarray, lab: np.ndarray, n: int) -> list[np.ndarray]:
+def _shade_lab_colors(ts: np.ndarray, lab: np.ndarray, n: int,
+                      median: bool = False) -> list[np.ndarray]:
     """Average Lab color of the samples nearest each of `n` canonical ramp
     positions (0, 1/(n-1), ..., 1) — the barycentric bucketing that turns a
-    continuous ramp into n discrete, chart-snappable shades."""
+    continuous ramp into n discrete, chart-snappable shades.
+
+    `median` (`cfg.blend_shade_median`, MASTER_SCOPE defect 28) takes the
+    per-channel MEDIAN of each bucket instead of its mean. A ramp's end
+    bucket can hold a handful of samples: `summit_badge`'s background (radial
+    fit, 2,500 samples) puts 9 in its t = 1 bucket, 3 bright speckle pixels
+    among them, and their mean L* 48.8 snapped to `0111` (a mid grey) for a
+    band whose artwork is L* 30 (dE 21.5, the design's last thread block).
+    The median of the same 9 is L* 29.5 and snaps to `0134`, already loaded."""
     centers = [i / (n - 1) for i in range(n)] if n > 1 else [0.5]
     nearest = np.argmin(
         np.abs(ts[:, None] - np.array(centers)[None, :]), axis=1
@@ -629,7 +638,10 @@ def _shade_lab_colors(ts: np.ndarray, lab: np.ndarray, n: int) -> list[np.ndarra
     overall_mean = lab.mean(axis=0)
     for i in range(n):
         sel = lab[nearest == i]
-        out.append(sel.mean(axis=0) if len(sel) else overall_mean)
+        if not len(sel):
+            out.append(overall_mean)
+        else:
+            out.append(np.median(sel, axis=0) if median else sel.mean(axis=0))
     return out
 
 
@@ -847,7 +859,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
                              lab[np.argmax(ts): np.argmax(ts) + 1])[0]
         ) if len(ts) else 0.0
     n = _choose_shade_count(extremes_delta_e)
-    shade_labs = _shade_lab_colors(ts, lab, n)
+    shade_labs = _shade_lab_colors(ts, lab, n, median=cfg.blend_shade_median)
 
     shade_thread_idx = [chart.nearest_index(c) for c in shade_labs]
 

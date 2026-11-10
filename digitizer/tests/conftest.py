@@ -627,6 +627,8 @@ PRE_FLIP["dark_ink_refuse_strays"] = False
 # measured before that day reads the raw thread blocks and warns.
 # `tests/engine_2026_10_27.json` carries it False too.
 PRE_FLIP["thread_match_excess_gradient"] = False
+# `blend_shade_median` joined the flipped set 2026-11-09 (Kent). Moves summit only.
+PRE_FLIP["blend_shade_median"] = False
 # `dark_ink_bean` joined the flipped set 2026-10-29 (built OFF 2026-10-28,
 # Kent on the Pooh pot: "No holes + bean (Recommended)"; flipped "Flip ON
 # (Recommended)" after #1181). Gradient class only, through the dark reads: a
