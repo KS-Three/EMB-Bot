@@ -114,3 +114,11 @@ unverified (page blocked, snippet only, or not found).
 - Freelance marketplace prices (Fiverr, Etsy); figures above come from digitizing-shop pages.
 - Kimberbell's licensing article (HTTP 429).
 - Not legal advice; the chosen grant text should be read by a lawyer, as already flagged for the pulled fonts.
+
+## Kent's ruling (2026-11-10)
+
+Asked as three multiple-choice questions, answered in order:
+
+1. **Route:** "CC0 art + our digitizer (Recommended)", i.e. option (d) topped up by (e). No commissioning and no commercial library.
+2. **Art sources:** "Strict CC0 / PD-mark (Recommended)". Only art whose own page shows CC0 or a Public Domain Mark, with the author and link logged per design. Allowed sources: Wikimedia Commons PD/CC0, Openclipart minus anything flagged `pd_issue`, and CC0 icon packs. Excluded: CC-BY (no credits screen), CC-BY-SA, NC, ND, "personal use", unknown terms, and every logo or brand mark (CC0 does not clear trademarks).
+3. **Size:** "12 designs (Recommended)" for launch.
