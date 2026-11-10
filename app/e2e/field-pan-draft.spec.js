@@ -57,9 +57,9 @@ test("pan drag: drag frames do not re-stroke the design; the resting frame is th
 
   // One drag of (dx, dy). The app's 120 ms rest timer (PAN_SETTLE_MS) is a
   // wall-clock timer, so on a slow runner it could fire while the pointer is
-  // still held, or between reading and zeroing the counter. The page's clock
-  // is therefore installed (see the test's start) and PAUSED for the held
-  // part of the drag: timers and rAF fire only when this test runs the clock,
+  // still held, or between reading and zeroing the counter. The page's fake
+  // clock (installed by the first `clock.pauseAt` call) is therefore PAUSED
+  // for the held part of the drag: timers and rAF fire only when this test runs the clock,
   // 40 ms at a time, always short of the 120 ms rest. Release then hands
   // control back to real time for the one exact render.
   async function drag(dx, dy) {
