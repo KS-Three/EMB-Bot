@@ -56,9 +56,15 @@ pruned: the ffmpeg DLL alone is 29 MB the engine has no known use for.
 
 ## What the frozen service is missing
 
-- **`/health` `engine.commit` is `null`.** The stamp shells out to `git` in
-  the engine's directory, and a frozen folder is not a checkout. `defaults_sha`
-  survives (same value as the venv). A build-time version stamp is step 4's.
+- **`/health` `engine.commit` is `null`, and that is the GOOD case.** The
+  stamp shells out to `git` in the engine's directory. In this run git was
+  off the stripped `PATH` and the folder sat outside any checkout, so it got
+  nothing. A frozen folder left INSIDE a checkout, on a machine with git,
+  would report that checkout's current HEAD as the frozen engine's commit:
+  a confident wrong stamp, which is worse than none (reasoned from
+  `app.py`'s `_git`, not run). `defaults_sha` survives, same value as the
+  venv. Step 4 needs a version written at build time, and the git probe
+  switched off when frozen.
 - **`background_removal` and `sam2` read `false`.** Their isolated venvs are
   not bundled. Both are default OFF, and SAM2 is post-v1 by the 2026-08-11
   ruling, so this is the intended v1 shape, not a regression.
@@ -79,40 +85,48 @@ pruned: the ffmpeg DLL alone is 29 MB the engine has no known use for.
 
 ## Recipe
 
-Run from `digitizer/`. PyInstaller goes in a THROWAWAY venv, not the
-project's: a `.pth` file makes the project venv's wheels visible to it, so the
-frozen binaries are the very files the tests ran against and nothing is
-installed beside the pinned set.
+**Work in a scratch directory OUTSIDE the checkout** (`$W` below), which is
+how the spike was run. Only `build/` and `dist/` are gitignored here: run in
+`digitizer/` and the `.spec`, the two result files and a 4.1 MB
+`tessdata/eng.traineddata` sit untracked in the lane, where a `git add
+digitizer/` stages the binary and the lane no longer counts as clean.
+`$D` is the absolute path of `digitizer/`.
+
+PyInstaller goes in a THROWAWAY venv, not the project's: a `.pth` file makes
+the project venv's wheels visible to it, so the frozen binaries are the very
+files the tests ran against and nothing is installed beside the pinned set.
 
 ```bash
-python -m venv /tmp/freeze-venv
-/tmp/freeze-venv/Scripts/python -m pip install pyinstaller
-# one line: the absolute path of digitizer/.venv/Lib/site-packages
-echo "<repo>\digitizer\.venv\Lib\site-packages" > /tmp/freeze-venv/Lib/site-packages/digitizer_wheels.pth
+cd "$W"
+python -m venv venv
+venv/Scripts/python -m pip install pyinstaller
+# one line: the absolute Windows path of digitizer/.venv/Lib/site-packages
+echo "<D>\.venv\Lib\site-packages" > venv/Lib/site-packages/digitizer_wheels.pth
 mkdir tessdata && cp "<Tesseract-OCR>/tessdata/eng.traineddata" tessdata/
 
-/tmp/freeze-venv/Scripts/python -m PyInstaller --noconfirm --onedir --console \
-  --name embbot-digitizer --paths . \
+venv/Scripts/python -m PyInstaller --noconfirm --onedir --console \
+  --name embbot-digitizer --paths "<D>" \
   --collect-submodules digitizer_core --collect-submodules digitizer_service \
-  --add-data "digitizer_core/chart_data;digitizer_core/chart_data" \
-  --add-data "digitizer_core/outline_fonts;digitizer_core/outline_fonts" \
-  --add-data "digitizer_core/model_data;digitizer_core/model_data" \
+  --add-data "<D>\digitizer_core\chart_data;digitizer_core/chart_data" \
+  --add-data "<D>\digitizer_core\outline_fonts;digitizer_core/outline_fonts" \
+  --add-data "<D>\digitizer_core\model_data;digitizer_core/model_data" \
   --add-data "tessdata;tessdata" \
   --exclude-module pytest --exclude-module _pytest --exclude-module xdist --exclude-module pip \
-  packaging/freeze_entry.py
+  "<D>\packaging\freeze_entry.py"
 ```
 
-Then one service at a time (two digitizes at once move the job times):
+Then one service at a time (two digitizes at once move the job times). The
+venv service starts from `$D`; everything it writes stays in `$W`:
 
 ```bash
-.venv/Scripts/python -m digitizer_service --port 8731 &
-.venv/Scripts/python packaging/freeze_check.py run http://127.0.0.1:8731 venv.json \
-  testdata/logo_whitebg.png testdata/becker_marine_logo.png testdata/logo_script_tires.png
+(cd "$D" && .venv/Scripts/python -m digitizer_service --port 8731) &
+"$D/.venv/Scripts/python" "$D/packaging/freeze_check.py" run http://127.0.0.1:8731 venv.json \
+  "$D/testdata/logo_whitebg.png" "$D/testdata/becker_marine_logo.png" "$D/testdata/logo_script_tires.png"
 # stop it, then:
 PATH="/c/Windows/System32:/c/Windows" dist/embbot-digitizer/embbot-digitizer.exe 8732 &
-.venv/Scripts/python packaging/freeze_check.py run http://127.0.0.1:8732 frozen.json \
-  testdata/logo_whitebg.png testdata/becker_marine_logo.png testdata/logo_script_tires.png
-.venv/Scripts/python packaging/freeze_check.py compare venv.json frozen.json   # exit 0 = identical
+"$D/.venv/Scripts/python" "$D/packaging/freeze_check.py" run http://127.0.0.1:8732 frozen.json \
+  "$D/testdata/logo_whitebg.png" "$D/testdata/becker_marine_logo.png" "$D/testdata/logo_script_tires.png"
+"$D/.venv/Scripts/python" "$D/packaging/freeze_check.py" compare venv.json frozen.json   # exit 0 = identical
 ```
 
 The three `--add-data` lines are every directory the engine opens by
@@ -144,7 +158,19 @@ Three things found on the way, each now pinned in
 - **`engine/*.js` keeps its name across releases**, so every response carries
   `Cache-Control: no-cache` or an updated app runs the old engine.
 
-**The port has to stay 8721, always.** Saved projects live in `localStorage`,
+Two more from the review of the first commit, both fixed and pinned: on
+WINDOWS a URL naming a file the filesystem cannot stat (`/a*b`, a
+300-character name) was a 500 with a traceback instead of a 404, and
+`--studio B` was silently ignored when `EMBBOT_STUDIO_DIR=A` was already set.
+
+**With the mount on, three API answers change** (off: none do). Measured by
+that review on the real app: `GET /health/` is a 404 where it was a 307 to
+`/health`; `HEAD /health` is a 404 where it was a 405; `POST /health` is
+still a 405 but without its `Allow` header. The Studio sends none of them.
+
+**A launcher has to hold ONE port, and 8721 is the one to hold.** This is a
+constraint on step 3, not something `--port` enforces today, and not yet a
+ruling of Kent's. Saved projects live in `localStorage`,
 which a browser keys by origin: `127.0.0.1:8722` is a different, empty Studio.
 A launcher that finds 8721 busy must reuse its own running instance or stop
 with a message. "Next free port" would look like the customer's designs had

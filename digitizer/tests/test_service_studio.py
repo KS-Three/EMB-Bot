@@ -188,27 +188,40 @@ def test_the_command_line_really_serves_the_page(dist):
         port = s.getsockname()[1]
     env = dict(os.environ, PYTHONIOENCODING="utf-8")
     env.pop(studio.STUDIO_DIR_ENV, None)
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "digitizer_service", "--port", str(port), "--studio", str(dist)],
-        cwd=DIGITIZER, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    try:
-        base = f"http://127.0.0.1:{port}"
-        deadline = time.monotonic() + 90
-        while True:
+    # The child's output goes to a file, not DEVNULL: if it dies (the port was
+    # taken between the bind above and its own, an import error) the reason is
+    # in the assertion message instead of nowhere.
+    log_path = dist.parent / "service.log"
+    with open(log_path, "w", encoding="utf-8") as log:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "digitizer_service", "--port", str(port), "--studio", str(dist)],
+            cwd=DIGITIZER, env=env, stdout=log, stderr=subprocess.STDOUT)
+
+        def said() -> str:
+            return log_path.read_text(encoding="utf-8", errors="replace")[-2000:]
+
+        try:
+            base = f"http://127.0.0.1:{port}"
+            deadline = time.monotonic() + 90
+            while True:
+                try:
+                    with urllib.request.urlopen(f"{base}/health", timeout=2) as r:
+                        assert r.status == 200
+                    break
+                except (urllib.error.URLError, OSError):
+                    assert proc.poll() is None, f"the service exited before answering /health:\n{said()}"
+                    assert time.monotonic() < deadline, f"no /health in 90 s:\n{said()}"
+                    time.sleep(0.25)
+            with urllib.request.urlopen(f"{base}/", timeout=5) as r:
+                assert r.status == 200
+                assert "<title>studio</title>" in r.read().decode("utf-8")
+        finally:
+            proc.terminate()
             try:
-                with urllib.request.urlopen(f"{base}/health", timeout=2) as r:
-                    assert r.status == 200
-                break
-            except (urllib.error.URLError, OSError):
-                assert proc.poll() is None, "the service exited before answering /health"
-                assert time.monotonic() < deadline, "no /health in 90 s"
-                time.sleep(0.25)
-        with urllib.request.urlopen(f"{base}/", timeout=5) as r:
-            assert r.status == 200
-            assert "<title>studio</title>" in r.read().decode("utf-8")
-    finally:
-        proc.terminate()
-        proc.wait(timeout=30)
+                proc.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=30)
 
 
 def test_mounting_twice_adds_one_route(dist):
@@ -216,3 +229,38 @@ def test_mounting_twice_adds_one_route(dist):
     studio.mount_studio(app, dist)
     studio.mount_studio(app, dist)
     assert [getattr(r, "name", None) for r in app.routes].count(studio.MOUNT_NAME) == 1
+
+
+def test_a_different_directory_replaces_the_first(dist, tmp_path, make_client):
+    """`--studio B` with `EMBBOT_STUDIO_DIR=A` left in the shell: `app.py`
+    mounts A at import, then `__main__` names B. Keeping A printed B's URL and
+    served the old bundle (review of 9435eb40, 2026-11-10)."""
+    other = tmp_path / "other"
+    other.mkdir()
+    (other / "index.html").write_text("<title>other</title>", encoding="utf-8")
+    app = fastapi.FastAPI()
+
+    @app.get("/health")
+    def health() -> dict:
+        return {"status": "ok"}
+
+    studio.mount_studio(app, dist)
+    assert studio.mount_studio(app, other) == other.resolve()
+    names = [getattr(r, "name", None) for r in app.routes]
+    assert names.count(studio.MOUNT_NAME) == 1 and names[-1] == studio.MOUNT_NAME
+    assert studio.mounted_root(app) == other.resolve()
+    c = make_client(app)
+    assert "<title>other</title>" in c.get("/").text
+    assert c.get("/health").json() == {"status": "ok"}
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="WinError 123 is Windows' answer to these names")
+@pytest.mark.parametrize("path", ["/a*b", "/a%3Fb", "/a%7Cb", "/a%22b", "/a%3Cb", "/" + "x" * 300])
+def test_a_name_windows_cannot_stat_is_a_404_not_a_500(served, path):
+    """The product ships on Windows only, and there `os.stat` RAISES for a
+    name holding `* ? " < > |` or a 300-character component, which
+    `StaticFiles` lets through as an unhandled error: a 500, and a traceback
+    with the bundle's absolute path in the log, for a mistyped URL. Linux
+    stats the same names and says "no such file", so CI cannot see this one;
+    it runs wherever a developer's machine is the customer's platform."""
+    assert served.get(path).status_code == 404

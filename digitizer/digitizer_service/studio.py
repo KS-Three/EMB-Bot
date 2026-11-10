@@ -28,6 +28,7 @@ from __future__ import annotations
 import mimetypes
 from pathlib import Path
 
+from starlette.exceptions import HTTPException
 from starlette.staticfiles import StaticFiles
 
 #: Environment seam `app.py` reads at import; `__main__ --studio` sets it.
@@ -58,7 +59,16 @@ class StudioMissing(ValueError):
 
 class StudioFiles(StaticFiles):
     async def get_response(self, path, scope):
-        response = await super().get_response(path, scope)
+        # `StaticFiles` re-raises an `OSError` from `os.stat`, and WINDOWS
+        # raises one (WinError 123) for a name holding `* ? " < > |` or a
+        # component past ~255 characters. Unhandled, `GET /a*b` is a 500 with
+        # a traceback naming the bundle's absolute path in the log; without
+        # the mount the same request is a quiet 404. A path the filesystem
+        # cannot even name is a file that is not there.
+        try:
+            response = await super().get_response(path, scope)
+        except OSError as exc:
+            raise HTTPException(status_code=404) from exc
         response.headers["Cache-Control"] = "no-cache"
         return response
 
@@ -74,8 +84,12 @@ def studio_root(directory: str | Path) -> Path:
     return root
 
 
-def is_mounted(app) -> bool:
-    return any(getattr(r, "name", None) == MOUNT_NAME for r in app.routes)
+def mounted_root(app) -> Path | None:
+    """The directory `app` is serving as its Studio, or None."""
+    for route in app.routes:
+        if getattr(route, "name", None) == MOUNT_NAME:
+            return Path(route.app.directory).resolve()
+    return None
 
 
 def mount_studio(app, directory: str | Path) -> Path:
@@ -83,13 +97,20 @@ def mount_studio(app, directory: str | Path) -> Path:
     every route is registered: the mount matches every path, and routes are
     tried in the order they were added.
 
-    Mounting twice is a no-op, because there are two callers and which one
-    runs first depends on how the process started: `app.py` (the variable was
-    set before the import: a launcher, or uvicorn's `--reload` child) and
-    `__main__` (the app was already built when the flag was parsed)."""
+    There are two callers, and which runs first depends on how the process
+    started: `app.py` (the variable was set before the import: a launcher, or
+    uvicorn's `--reload` child) and `__main__` (the app was already built when
+    the flag was parsed). So the same directory twice is a no-op, and a
+    DIFFERENT directory replaces the first: the later call is the explicit
+    one (`--studio B` with `EMBBOT_STUDIO_DIR=A` left in the shell), and
+    keeping A there would print B's URL and serve the old bundle."""
     root = studio_root(directory)
-    if is_mounted(app):
+    serving = mounted_root(app)
+    if serving == root:
         return root
+    if serving is not None:
+        app.router.routes[:] = [r for r in app.router.routes
+                                if getattr(r, "name", None) != MOUNT_NAME]
     for ext, kind in CONTENT_TYPES.items():
         mimetypes.add_type(kind, ext)
     app.mount("/", StudioFiles(directory=root, html=True), name=MOUNT_NAME)

@@ -48,9 +48,11 @@ row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
 
 - Desktop-only, stated on the site.
 - **Delivered as one local Windows app (Kent, 2026-11-10)** — launch row 8.
-  The hosted web Studio (PR #550) stays reversed (Kent, 2026-09-28). The
-  app's port is fixed at 8721: saved projects are keyed by origin, so a
-  different port is an empty Studio.
+  The hosted web Studio (PR #550) stays reversed (Kent, 2026-09-28).
+  Engineering constraint this brings, not a ruling: the app has to hold ONE
+  port across restarts, because saved projects are keyed by origin and a
+  different port opens an empty Studio. Nothing enforces it until the
+  launcher exists.
 - **SAM2 photo segmentation ships post-v1** (ruled 2026-08-11): v1 launches
   without it; it returns as an opt-in "enhanced photo mode" download
   (~1 GB) after launch, gated on re-measuring `points_per_side=12` on a

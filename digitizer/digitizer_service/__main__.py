@@ -49,7 +49,9 @@ def main() -> None:
         from .app import app
 
         mount_studio(app, root)
-        print(f"Studio: http://{args.host}:{args.port}/")
+        # Brackets for an IPv6 literal: `http://::1:8721/` is not a URL.
+        host = f"[{args.host}]" if ":" in args.host else args.host
+        print(f"Studio: http://{host}:{args.port}/")
 
     uvicorn.run("digitizer_service.app:app", host=args.host, port=args.port, reload=args.reload)
 
