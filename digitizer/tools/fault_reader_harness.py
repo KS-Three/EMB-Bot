@@ -98,6 +98,65 @@ def select_edge_pins(marks: dict, prefix: str = "L_") -> list[dict]:
     return out
 
 
+# Second fault: letters that close up, merge or cannot be read. Rules 1-4 of
+# `docs/defect-marks-2026-11-10/letter-reader-preregistration.md`, in order.
+CLOSE_WORDS = ("spacing", "space between", "merg", "hole", "join", "touch", "intersect",
+               "closed up", "filled in")
+READ_RE = re.compile(r"\bread|can'?t tell|cannot tell|can not tell")
+LETTER_RE = re.compile(r"\"[a-z&]\"|\bletter|\bsymbol")
+LETTER_KINDS = ("letter_shape",)
+
+
+def letter_reason(pin: dict) -> str | None:
+    """-> which rule makes this pin a closed/merged/unreadable-letter pin, or
+    None. Rule 4 (bare pins inheriting) needs the item: `select_letter_pins`."""
+    note = (pin.get("note") or "").lower()
+    kind = pin.get("what") or ""
+    rule1 = _has(note, CLOSE_WORDS)
+    rule2 = bool(READ_RE.search(note)) and (kind in LETTER_KINDS or bool(LETTER_RE.search(note)))
+    if edge_reason(pin) is not None:
+        # rule 3: a pin the edge rule already claimed is shared only when its
+        # own note names a closure as well (Gaulke 3: "white spacing ... jagged")
+        return "closure word, also edge" if rule1 else None
+    if rule1:
+        return "closure word"
+    if rule2:
+        return "read word on a letter"
+    return None
+
+
+def select_pins(marks: dict, reason, prefix: str = "L_") -> list[dict]:
+    """`select_edge_pins` with any reason function (rule 4 included)."""
+    out = []
+    for iid, item in (marks.get("items") or {}).items():
+        if not iid.startswith(prefix):
+            continue
+        pins = item.get("pins") or []
+        reasons = [reason(p) for p in pins]
+        donor = next((i for i, p in enumerate(pins) if SAME_AS.search((p.get("note") or "").lower())), None)
+        for i, p in enumerate(pins):
+            why = reasons[i]
+            if why is None and donor is not None and not p.get("note") and not p.get("what") \
+                    and reasons[donor] is not None:
+                why = f"same as pin {donor + 1}"
+            if why is not None:
+                out.append({"item": iid, "pin": i + 1, "x_mm": p["x_mm"], "y_mm": p["y_mm"],
+                            "what": p.get("what"), "severity": p.get("severity"),
+                            "note": p.get("note") or "", "rule": why})
+    return out
+
+
+def select_letter_pins(marks: dict, prefix: str = "L_") -> list[dict]:
+    """The letter-fault pins of `marks.json` (the letter pre-registration)."""
+    return select_pins(marks, letter_reason, prefix)
+
+
+FAULTS = {
+    "edge": (select_edge_pins, "docs/defect-marks-2026-11-10/edge-reader-preregistration.md"),
+    "letters": (select_letter_pins, "docs/defect-marks-2026-11-10/letter-reader-preregistration.md"),
+}
+
+
 # ------------------------------------------------------------------ scoring ----
 
 def _xy(points) -> np.ndarray:
@@ -230,10 +289,11 @@ def _load_mask(path: Path) -> np.ndarray:
     return np.load(path)["mask"].astype(bool)
 
 
-def score_dir(marks: dict, flags_dir: Path, prefix: str = "L_") -> dict:
+def score_dir(marks: dict, flags_dir: Path, prefix: str = "L_", fault: str = "edge") -> dict:
     """Read `<flags_dir>/<item>.flags.json` (`{"flags": [...], "px_per_mm",
-    "pad_mm"}`) and `<item>.mask.npz` for every item with that prefix."""
-    pins = select_edge_pins(marks, prefix)
+    "pad_mm"}`) and `<item>.mask.npz` for every item with that prefix,
+    against the pins `FAULTS[fault]`'s rule selects."""
+    pins = FAULTS[fault][0](marks, prefix)
     rows = {}
     for iid in marks["items"]:
         if not iid.startswith(prefix):
@@ -248,7 +308,7 @@ def score_dir(marks: dict, flags_dir: Path, prefix: str = "L_") -> dict:
         row["unpinned"] = unpinned_flags(rec["flags"], mine)[:10]
         row["pin_ids"] = [p["pin"] for p in mine]
         rows[iid] = row
-    out = {"radius_mm": RADIUS_MM, "items": rows,
+    out = {"fault": fault, "radius_mm": RADIUS_MM, "items": rows,
            "pooled": {str(r): {null: pool(rows, r, null) for null in ("chance_area", "chance_edge")}
                       for r in (RADIUS_MM, *SENSITIVITY_MM)}}
     return out
@@ -260,23 +320,25 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("pins")
     p.add_argument("--marks", type=Path, required=True)
     p.add_argument("--out", type=Path)
+    p.add_argument("--fault", choices=sorted(FAULTS), default="edge")
     s = sub.add_parser("score")
     s.add_argument("--marks", type=Path, required=True)
     s.add_argument("--flags", type=Path, required=True)
     s.add_argument("--json", type=Path)
+    s.add_argument("--fault", choices=sorted(FAULTS), default="edge")
     a = ap.parse_args(argv)
     marks = json.loads(a.marks.read_text(encoding="utf-8"))
     if a.cmd == "pins":
-        pins = select_edge_pins(marks)
-        text = json.dumps({"rule": "docs/defect-marks-2026-11-10/edge-reader-preregistration.md",
-                           "pins": pins}, indent=1)
+        select, rule = FAULTS[a.fault]
+        pins = select(marks)
+        text = json.dumps({"rule": rule, "pins": pins}, indent=1)
         if a.out:
             a.out.write_text(text + "\n", encoding="utf-8")
         for p in pins:
             print(f"{p['item']:24s} {p['pin']:3d}  {p['rule']:14s} {p['what'] or '-':12s} {p['note'][:60]}")
         print(f"{len(pins)} pins on {len({p['item'] for p in pins})} items")
         return 0
-    res = score_dir(marks, a.flags)
+    res = score_dir(marks, a.flags, fault=a.fault)
     if a.json:
         a.json.write_text(json.dumps(res, indent=1) + "\n", encoding="utf-8")
     r = str(RADIUS_MM)

@@ -1,0 +1,145 @@
+{
+ "rule": "docs/defect-marks-2026-11-10/letter-reader-preregistration.md",
+ "pins": [
+  {
+   "item": "L_bridge_hat",
+   "pin": 2,
+   "x_mm": 16.89,
+   "y_mm": 34.66,
+   "what": "letter_shape",
+   "severity": "noticeable",
+   "note": "The B is missing the two center holes.",
+   "rule": "closure word"
+  },
+  {
+   "item": "L_bridge_hat",
+   "pin": 5,
+   "x_mm": 22.19,
+   "y_mm": 43.15,
+   "what": "letter_shape",
+   "severity": "noticeable",
+   "note": "I can't tell this is an & symbol",
+   "rule": "read word on a letter"
+  },
+  {
+   "item": "L_bridge_hat",
+   "pin": 6,
+   "x_mm": 23.51,
+   "y_mm": 24.88,
+   "what": "letter_shape",
+   "severity": null,
+   "note": "The B and R merge together and you cannot tell what it is.",
+   "rule": "closure word"
+  },
+  {
+   "item": "L_bridge_hat",
+   "pin": 9,
+   "x_mm": 43.73,
+   "y_mm": 24.17,
+   "what": "letter_shape",
+   "severity": "noticeable",
+   "note": "I cannot read the e",
+   "rule": "read word on a letter"
+  },
+  {
+   "item": "L_bridge_hat",
+   "pin": 10,
+   "x_mm": 28.74,
+   "y_mm": 22.56,
+   "what": "letter_shape",
+   "severity": "noticeable",
+   "note": "There is no space between the body of the eye, and the dot ",
+   "rule": "closure word"
+  },
+  {
+   "item": "L_bridge_hat",
+   "pin": 12,
+   "x_mm": 44.75,
+   "y_mm": 35.1,
+   "what": "letter_shape",
+   "severity": "noticeable",
+   "note": "The N and the T are mergerd together",
+   "rule": "closure word"
+  },
+  {
+   "item": "L_gaulke_roofing_hat",
+   "pin": 2,
+   "x_mm": 98.22,
+   "y_mm": 36.14,
+   "what": "letter_shape",
+   "severity": "noticeable",
+   "note": "Note enough spacing between the \"E\"",
+   "rule": "closure word"
+  },
+  {
+   "item": "L_gaulke_roofing_hat",
+   "pin": 3,
+   "x_mm": 53.93,
+   "y_mm": 13.07,
+   "what": "mushed",
+   "severity": "noticeable",
+   "note": "The white spacing is not very apparent, and the edges are very jagged.",
+   "rule": "closure word, also edge"
+  },
+  {
+   "item": "L_gaulke_roofing_hat",
+   "pin": 6,
+   "x_mm": 77.44,
+   "y_mm": 35.19,
+   "what": "letter_shape",
+   "severity": null,
+   "note": "The \"S\" doesn't have spacing between the curves",
+   "rule": "closure word"
+  },
+  {
+   "item": "L_hotel_fremont_hat",
+   "pin": 1,
+   "x_mm": 36.08,
+   "y_mm": 36.54,
+   "what": "letter_shape",
+   "severity": "noticeable",
+   "note": "The A is hard to read",
+   "rule": "read word on a letter"
+  },
+  {
+   "item": "L_hotel_fremont_hat",
+   "pin": 2,
+   "x_mm": 40.99,
+   "y_mm": 12.01,
+   "what": "letter_shape",
+   "severity": "noticeable",
+   "note": "The Pro makes the lettering slighlty larger so it's is easier to read, these letters are to fine print to read.",
+   "rule": "read word on a letter"
+  },
+  {
+   "item": "L_mfab_hat",
+   "pin": 10,
+   "x_mm": 78.24,
+   "y_mm": 26.43,
+   "what": "letter_shape",
+   "severity": "noticeable",
+   "note": "I can't read the \"G\" there is no spacing between the full lettering",
+   "rule": "closure word"
+  },
+  {
+   "item": "L_proseal_hat",
+   "pin": 2,
+   "x_mm": 6.23,
+   "y_mm": 63.08,
+   "what": "letter_shape",
+   "severity": "nitpick",
+   "note": "The \"S\" doesn't have spacing between the curves",
+   "rule": "closure word"
+  },
+  {
+   "item": "L_toat_beanie",
+   "pin": 4,
+   "x_mm": 56.73,
+   "y_mm": 7.42,
+   "what": "other",
+   "severity": "nitpick",
+   "note": "The \"T\" intersects the border",
+   "rule": "closure word"
+  }
+ ]
+}
