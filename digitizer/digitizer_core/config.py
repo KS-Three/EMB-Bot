@@ -5648,6 +5648,22 @@ class PipelineConfig:
     # is the pre-flip engine byte for byte.
     revalidate_small_shapes: bool = True
 
+    # One thread per connected drawn line (built OFF 2026-11-11, Kent on
+    # `C_low_poly` pin 2, then "Keep OFF, build fix B"). The art's outline is
+    # one black line; stage 2 and the thread re-check read each piece of it
+    # from its own anti-aliased pixels, so it sews black, Blackberry and
+    # Silvery Grey. ON, after the re-check (`line_chain.apply`): lines no
+    # wider than `bean_rule.LINE_MAX_MM` that touch (within 0.3 mm) form a
+    # chain; when its pieces carry different threads AND every piece's CORE
+    # colour (the pixels farthest from the ground beside it) lies within
+    # `line_chain.UNIFORM_DE00` of the chain's median, the chain takes the
+    # loaded spool nearest that core colour and its pieces move to that cone's
+    # layer. A chain whose core colours really differ is left alone. The cone
+    # set never grows, so the colour cap works from the same palette. False
+    # is the engine before the flag, byte for byte. Tests:
+    # `tests/test_line_chain.py`; `docs/border-colour-change-2026-11-11.md`.
+    line_chain_one_thread: bool = False
+
     # Score the thread re-validation on the SAME pixels the grader uses.
     # `stage4_vectorize.revalidate_threads` and
     # `preflight._region_color_errors` claim the same estimator and have it —

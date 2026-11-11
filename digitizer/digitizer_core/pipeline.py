@@ -1046,6 +1046,12 @@ def build_generation(
     # layers — and never touches user recolors (see its docstring).
     if cfg.rehome_resnapped:
         rehome_resnapped_regions(regions, list(q.thread_indices))
+    # `cfg.line_chain_one_thread` (built OFF 2026-11-11): one thread per
+    # connected drawn line, after the re-snap and the rehome it would
+    # otherwise be undone by and before the colour cap counts cones.
+    if cfg.line_chain_one_thread:
+        from . import line_chain
+        line_chain.apply(regions, p, cfg, chart_for(cfg), list(q.thread_indices))
 
     # "Colors (max N)" is a promise about what the machine will be threaded
     # with, and until now the SLIC+RAG lane did not keep it — see
