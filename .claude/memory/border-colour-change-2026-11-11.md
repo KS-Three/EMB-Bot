@@ -26,7 +26,9 @@ contain colour changes". Write-up: `docs/border-colour-change-2026-11-11.md`.
   `bean_rule.LINE_MAX_MM` keeps its stage-2 thread when the re-check would
   lighten it). OFF byte-identical to the stored capture; ON moves 5 of 21 rows,
   low_poly +339 stitches, trims 91 to 85, blocks 6 to 8 (not isolated why).
-  Flip, chain-level fix (B) and join overlap (C) are Kent's call.
+  CLOSED 2026-11-11: Kent chose fix B (`line_chain_one_thread`) over this flag, then
+  ruled fix B OFF ("Keep off, very little improvements were made, if any."). Both
+  flags stay OFF; no flip, no join-overlap (C) work.
 
 **Why:** thread colour for a thin line was chosen from its own pixels, which for a
 hairline are halo; the cure is the ink, not the median.
