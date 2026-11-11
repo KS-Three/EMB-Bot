@@ -1993,10 +1993,16 @@ class PipelineConfig:
     # white page's own white) is untouched, so a JPEG or an opaque PNG is a
     # no-op. No new threshold: "transparent" is stage 4's existing tag.
     # `docs/transparent-white-infill-2026-11-11.md`. Routing, not a fabric
-    # number (gate 1 does not apply). False is the
-    # engine before the flag, byte for byte. Tests:
+    # number (gate 1 does not apply). **ON by Kent's ruling 2026-11-11,
+    # eye-check of 7 designs** ("Flip ON (Recommended)", from the source |
+    # OFF | ON pictures of kanji_seal, devanagari_logo, pixel_art_sprite,
+    # heraldic_crest, neon_outline_sign, isometric_icon, precision_drone).
+    # Refines the 2026-10-27 "Every job" white recipe: `sew_enclosed_white`
+    # still sews every job; this only opens what the art leaves transparent.
+    # False is the engine before the flag, byte for byte;
+    # `tests/engine_2026_10_27.json` carries it False. Tests:
     # `tests/test_enclosed_white_skip_transparent.py`.
-    enclosed_white_skip_transparent: bool = False
+    enclosed_white_skip_transparent: bool = True
     # The keyline band (`stage6_border.keyline_runs`, built OFF 2026-10-23):
     # read only with `sew_enclosed_white`. ON, an enclosed field it sews that
     # is a KEYLINE -- a band with holes, at least `machine.KEYLINE_REACH_FRAC`

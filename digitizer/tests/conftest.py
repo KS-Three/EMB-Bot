@@ -949,6 +949,12 @@ RECIPE_2026_10_27 = {k: False for k in (
     "silhouette_underfill_rim", "keyline_fold_slivers", "skip_covered_shapes",
     "keyline_loop_chain", "absorb_fragments")}
 PRE_FLIP.update(RECIPE_2026_10_27)
+# Transparent enclosed areas left open (Kent 2026-11-11, "Flip ON
+# (Recommended)", from the pictures of seven designs): refines the recipe
+# above. False is the engine before the flip; the tests ABOUT it are
+# `tests/test_enclosed_white_skip_transparent.py`.
+WHITE_2026_11_11_OFF = {"enclosed_white_skip_transparent": False}
+PRE_FLIP.update(WHITE_2026_11_11_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

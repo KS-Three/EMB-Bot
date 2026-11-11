@@ -51,7 +51,10 @@ def _reg(sid, ring, holes=(), *, thread=BLACK_T, layer=0, **meta) -> Region:
 
 
 def _cfg(**kw) -> PipelineConfig:
-    return PipelineConfig(sew_enclosed_white=True, **kw)
+    # transparent areas sew, as before the 2026-11-11 flip: this file is about
+    # the option itself (the flag's own tests: test_enclosed_white_skip_transparent)
+    from tests.conftest import WHITE_2026_11_11_OFF
+    return PipelineConfig(sew_enclosed_white=True, **{**WHITE_2026_11_11_OFF, **kw})
 
 
 # --- which enclosed areas sew ---------------------------------------------------
@@ -162,9 +165,9 @@ def _digest(plan) -> str:
 
 def _pcfg(**kw) -> PipelineConfig:
     # the option alone: the recipe it joined on every job 2026-10-27 pinned off (conftest)
-    from tests.conftest import RECIPE_2026_10_27
+    from tests.conftest import RECIPE_2026_10_27, WHITE_2026_11_11_OFF
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", garment_rgb=NATURAL,
-                          **{**RECIPE_2026_10_27, **kw})
+                          **{**RECIPE_2026_10_27, **WHITE_2026_11_11_OFF, **kw})
 
 
 @pytest.fixture(scope="module")

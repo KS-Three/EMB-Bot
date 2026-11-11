@@ -34,8 +34,8 @@ here: it tags drawing fragments as well (`columns.is_lettering`'s icon
 guard), and it tagged Golden Tee's ball-arc outline, whose white crescent
 the pro sews as a band.
 
-Transparent areas (`cfg.enclosed_white_skip_transparent`, built OFF
-2026-11-11): an area the artwork leaves transparent (`enclosed_colour_unknown`)
+Transparent areas (`cfg.enclosed_white_skip_transparent`, ON by Kent's
+ruling 2026-11-11): an area the artwork leaves transparent (`enclosed_colour_unknown`)
 does not sew, unless it is itself lettering -- a hollow letter's body, which
 the pro sews (BECKER). On alpha art every enclosed area is transparent, so
 without that guard the flag would be this option OFF there
