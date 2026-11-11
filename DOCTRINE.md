@@ -1401,6 +1401,22 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   (`tools/fault_reader_harness.py`) is the reusable part; the closed or
   merged letters reader is next. *(measured 2026-11-10 —
   `docs/edge-fault-reader-2026-11-10.md`, tree `950855bf`)*
+- **The letter-topology reader (`tools/letter_fault_reader.py`) does land on
+  the letters Kent calls closed or merged, but on a three-item margin: do not
+  ship it as a metric, finding or gate, and do not re-tune its constants
+  against these pins; replicate on a second sitting first.** Scored against
+  his 14 "letters close up / merge / can't be read" pins on 6 logos, with the
+  pin rule, every constant, the radius (3.0 mm) and the verdict rule
+  committed before the run (`71ef90ef`): hit 0.64 against stitched-area
+  chance 0.24, kappa 0.53, item-bootstrap 95% CI [+0.08, +0.57], strength AUC
+  0.66, which is shown by the rule. Leaving out any one of Bridge, Fremont or
+  MFab drops the lower bound to -0.03, and the 2.0 mm row crosses 0. Its
+  blind spot is built in: an S or E whose bay the thread fills SOLID changes
+  no topology (both S pins missed), so that half of "no spacing" needs a
+  negative-space reader, which is a new reader, not a new threshold. The
+  edge-band null is near 0 for lettering inside a sewn field and is no
+  stronger claim here. *(measured 2026-11-11 —
+  `docs/letter-fault-reader-2026-11-11.md`, tree `950855bf`)*
 
 ---
 
