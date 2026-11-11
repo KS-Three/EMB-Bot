@@ -22,6 +22,7 @@ the OLDEST lines whole to the archive.
 - [Bean census](bean-census-2026-10-27.md) — reference beans almost nothing: 17 runs / 780 mm / 8 of 1,101 regions, drawn thin lines, 2 passes; ours 137 (111 small letters); `bean_only_lines` ON (Kent 10-27), kappa -0.014 -> 0.129
 - [Blend shade median](blend-shade-median-2026-11-09.md) — defect 28: Fremont fixed 11-07 (stale scope line); summit 0111 = mean of a 9-sample speckled end bucket; `blend_shade_median` ON (Kent 11-09) clears it, 20 entries md5 same
 - [Band rings](border-by-size-colour-seams-2026-10-28.md) — Instagram: `border_by_size` satin rings each band, not bean; fix ON 10-28: ring fabric edges only
+- [Border colour change](border-colour-change-2026-11-11.md) — low_poly pin 2: no border, a drawn black line re-snapped to grey; pro borders per patch, ends meet in a column; `resnap_hairline_never_lightens` built OFF
 - [Bridge anchor limbs](bridge-anchor-wave-weld-2026-11-10.md) — "extra arms/legs" = the waves welded to the anchor in the 400 px JPEG (gaps < 1 px), one black component from stage 2; Kent 11-10: keep as manual edit, no build
 - [Bridge census](bridge-census-2026-10-27.md) — Bridge hat+LC through 14 pro rules on main 8341d1f7: 2 CONTRADICTS (border_by_size fields, proSized LC), 8 AGREES, 4 N/A; ours' text is a reach gap (folds 2 vs 35), not a rule
 - [Cap frames sew 64 mm tall](cap-frame-height-2026-10-26.md) — PHYSICAL, Kent 10-26: his cap frames sew >= 64 mm (2.5 in); hat-height gate 1 settled
