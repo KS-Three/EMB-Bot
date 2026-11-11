@@ -14,6 +14,9 @@ designs written to `DIR/<slug>.off.json` / `.on.json`, and the row lists every
 area that stopped sewing: its kind, area, whether it is itself lettering (a
 hollow letter body, Becker's), and the thread it sewed in.
 
+    python -m tools.transparent_white_ab render --out DIR [--photos DIR] corpus|pro
+           (source on a checkerboard | OFF | ON at 12 px/mm, per moving row)
+
 `--full SLUG` plans both arms even when the forks agree, to check that claim.
 Writes `DIR/<kind>.json` (one row per job). Instrument only: no quality claim
 (ROADMAP gate 4).
@@ -85,7 +88,77 @@ def run_one(slug: str, art: Path, cfg_off, cfg_on, out: Path, full: bool) -> dic
     return row
 
 
+PX_PER_MM = 12.0
+PAD_MM = 2.0
+NATURAL_BGR = (223, 232, 235)
+
+
+def _checker_art(art: Path, width_px: int):
+    """The source art on a grey checkerboard, so what it leaves transparent
+    shows as the board, scaled to `width_px` wide."""
+    import cv2
+    import numpy as np
+    src = cv2.imread(str(art), cv2.IMREAD_UNCHANGED)
+    if src.ndim == 2:
+        src = cv2.cvtColor(src, cv2.COLOR_GRAY2BGRA)
+    elif src.shape[2] == 3:
+        src = cv2.cvtColor(src, cv2.COLOR_BGR2BGRA)
+    h = max(1, int(round(src.shape[0] * width_px / src.shape[1])))
+    src = cv2.resize(src, (width_px, h), interpolation=cv2.INTER_AREA)
+    yy, xx = np.mgrid[0:h, 0:width_px]
+    board = np.where(((yy // 12 + xx // 12) % 2)[..., None] == 0, 200, 150).astype(np.float32)
+    board = np.repeat(board, 3, axis=2)
+    a = src[:, :, 3:4].astype(np.float32) / 255.0
+    return (src[:, :, :3] * a + board * (1 - a)).astype(np.uint8)
+
+
+def render(out: Path, kind: str, photos: Path | None) -> list[Path]:
+    """Source on a checkerboard | OFF | ON, 12 px/mm, one PNG per moving row."""
+    import cv2
+    import numpy as np
+    from digitizer_core.stitchviz import render_design
+    rows = json.loads((out / f"{kind}.json").read_text(encoding="utf-8"))
+    written = []
+    for slug, row in rows.items():
+        if row.get("verdict") != "moves":
+            continue
+        imgs = {arm: render_design(json.loads((out / f"{slug}.{arm}.json").read_text(encoding="utf-8"))["design"],
+                                   px_per_mm=PX_PER_MM, fabric_bgr=NATURAL_BGR, pad_mm=PAD_MM)
+                for arm in ("off", "on")}
+        panels = [("OFF", imgs["off"]), ("ON (enclosed_white_skip_transparent)", imgs["on"])]
+        if kind == "corpus":
+            # Commons art only: a pro job's art is a client's, so its panel is left out
+            art = next(p for p in photos.glob(f"{slug}.*") if p.suffix.lower() != ".json")
+            w = imgs["off"].shape[1]
+            src = _checker_art(Path(art), w - int(2 * PAD_MM * PX_PER_MM))
+            src = cv2.copyMakeBorder(src, 24, 24, 24, 24, cv2.BORDER_CONSTANT, value=(255, 255, 255))
+            panels.insert(0, ("source (transparent = checkerboard)", src))
+        H = max(p.shape[0] for _, p in panels) + 40
+        tiles = []
+        for label, p in panels:
+            t = np.full((H, p.shape[1], 3), 255, np.uint8)
+            t[40:40 + p.shape[0], :p.shape[1]] = p
+            cv2.putText(t, label, (8, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (30, 30, 30), 2)
+            tiles.append(t)
+            tiles.append(np.full((H, 16, 3), 255, np.uint8))
+        f = out / f"{slug}_source_off_on.png"
+        cv2.imwrite(str(f), np.hstack(tiles[:-1]))
+        written.append(f)
+        print(f, flush=True)
+    return written
+
+
 def main(argv=None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv and argv[0] == "render":
+        rp = argparse.ArgumentParser(prog="transparent_white_ab render")
+        rp.add_argument("--out", type=Path, required=True)
+        rp.add_argument("--photos", type=Path)
+        rp.add_argument("kind", choices=("corpus", "pro"))
+        ra = rp.parse_args(argv[1:])
+        render(ra.out, ra.kind, ra.photos)
+        return 0
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--corpus-run", type=Path)

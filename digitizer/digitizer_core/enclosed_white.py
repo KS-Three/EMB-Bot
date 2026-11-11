@@ -133,7 +133,10 @@ def plan_enclosed_white(regions, cfg) -> dict[str, str]:
     if getattr(cfg, "enclosed_white_skip_transparent", False):
         # A hole the artwork leaves transparent is neither a field nor a
         # counter that sews: it stays open, and holds no counter open either.
-        enclosed = [r for r in enclosed if not r.meta.get("enclosed_colour_unknown")]
+        # Except a hollow letter's BODY, itself tagged lettering (BECKER's
+        # five interiors, transparent in its PNG): the pro sews those.
+        enclosed = [r for r in enclosed
+                    if not r.meta.get("enclosed_colour_unknown") or _is_letter(r, cfg)]
     if not enclosed:
         return {}
     kind = {}

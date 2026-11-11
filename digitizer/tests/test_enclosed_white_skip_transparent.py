@@ -84,6 +84,16 @@ def test_a_counter_inside_a_transparent_field_stays_open_with_it():
     assert plan_enclosed_white(regs, _cfg(enclosed_white_skip_transparent=True)) == {}
 
 
+def test_a_transparent_hollow_letter_body_still_sews():
+    # BECKER: each white body is transparent in the PNG and tagged lettering,
+    # inside an untagged keyline. The pro sews it; ON keeps it.
+    ring = _reg("Sring", _box(0, 0, 10, 10), [_box(2, 2, 8, 8)])
+    body = _reg("Sbody", _box(2, 2, 8, 8), enclosed_background=True, enclosed_colour_unknown=True,
+                text_candidate=True)
+    assert plan_enclosed_white([ring, body], _cfg(enclosed_white_skip_transparent=True)) \
+        == {"Sbody": "field"}
+
+
 def test_without_sew_enclosed_white_the_flag_reads_nothing():
     # The plan is only called with the option on; the flag never sews more.
     regs = _two_holes()

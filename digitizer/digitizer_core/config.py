@@ -1984,12 +1984,15 @@ class PipelineConfig:
     # when at least `ENCLOSED_TAG_OVERLAP_THRESHOLD`, 0.6, of it lies in one
     # transparent component); on seal script and Devanagari its body/counter
     # split falls between spaces Kent sees as alike. ON, such an area is not
-    # sewn: it shows the garment, as the art's open spaces already do. An
-    # area whose colour is known (the no-alpha path: a white page's own
-    # white) is untouched, so a JPEG or an opaque PNG is a no-op. The catch,
-    # measured: Becker's hollow letter bodies are transparent in its PNG too,
-    # and the pro sews them (`docs/transparent-white-infill-2026-11-11.md`).
-    # Routing, not a fabric number (gate 1 does not apply). False is the
+    # sewn: it shows the garment, as the art's open spaces already do --
+    # unless the area is itself lettering (`enclosed_white._is_letter`), a
+    # hollow letter's BODY: Becker's five interiors are transparent in its
+    # PNG too and the pro sews them; without that guard ON drops all five on
+    # every Becker pair. An area whose colour is known (the no-alpha path: a
+    # white page's own white) is untouched, so a JPEG or an opaque PNG is a
+    # no-op. No new threshold: "transparent" is stage 4's existing tag.
+    # `docs/transparent-white-infill-2026-11-11.md`. Routing, not a fabric
+    # number (gate 1 does not apply). False is the
     # engine before the flag, byte for byte. Tests:
     # `tests/test_enclosed_white_skip_transparent.py`.
     enclosed_white_skip_transparent: bool = False
