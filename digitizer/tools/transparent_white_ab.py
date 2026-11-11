@@ -1,0 +1,232 @@
+"""`cfg.enclosed_white_skip_transparent` OFF vs ON, per job: which enclosed
+areas stop sewing, and what that does to stitches, trims and colour blocks.
+
+    python -m tools.transparent_white_ab --out DIR corpus SLUG [SLUG ...]
+           (--corpus-run RUN --photos DIR: stored configs and art)
+    python -m tools.transparent_white_ab --out DIR pro SLUG [SLUG ...]
+           (`pro_baseline.JOBS`, the Studio request at the pro's size)
+
+Stages 0-4 run once; `finish_generation` runs on two forks, OFF and ON. When
+the two forks sew the same regions in the same threads and layers, the plan
+is the same by construction (the flag is read nowhere else), so stage 5-7 is
+skipped and the row says `identical`. Otherwise both arms are planned, their
+designs written to `DIR/<slug>.off.json` / `.on.json`, and the row lists every
+area that stopped sewing: its kind, area, whether it is itself lettering (a
+hollow letter body, Becker's), and the thread it sewed in.
+
+    python -m tools.transparent_white_ab render --out DIR [--photos DIR] corpus|pro
+           (source on a checkerboard | OFF | ON at 12 px/mm, per moving row)
+
+`--full SLUG` plans both arms even when the forks agree, to check that claim.
+Writes `DIR/<kind>.json` (one row per job). Instrument only: no quality claim
+(ROADMAP gate 4).
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import sys
+import time
+from pathlib import Path
+
+
+def _sha(design: dict) -> str:
+    return hashlib.sha256(json.dumps([[s["x"], s["y"], s["type"]] for s in design["stitches"]])
+                          .encode()).hexdigest()
+
+
+def _sewn(result) -> dict:
+    return {r.shape_id: (bool(r.meta.get("stitched")), r.meta.get("sew_enclosed_white"),
+                         int(r.thread_index), int(r.meta.get("layer", -1)))
+            for r in result.regions}
+
+
+def run_one(slug: str, art: Path, cfg_off, cfg_on, out: Path, full: bool) -> dict:
+    from digitizer_core.adapter import plan_to_design
+    from digitizer_core.enclosed_white import _is_letter
+    from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
+    from digitizer_service.app import _decode
+    data = art.read_bytes()
+    pixels = _decode(data)
+    t0 = time.time()
+    gen = build_generation(pixels, cfg_off, exif_source=data)
+    has_alpha = bool(pixels.ndim == 3 and pixels.shape[2] == 4 and (pixels[:, :, 3] < 255).any())
+    r_off = finish_generation(gen.fork(), cfg_off)
+    r_on = finish_generation(gen.fork(), cfg_on)
+    s_off, s_on = _sewn(r_off), _sewn(r_on)
+    row = {"slug": slug, "art": art.name, "alpha": has_alpha, "bg_from_alpha": bool(gen.p.bg_from_alpha),
+           "enclosed": sum(1 for r in r_off.regions if r.meta.get("enclosed_background")),
+           "sewn_white_off": sum(1 for r in r_off.regions if r.meta.get("sew_enclosed_white")),
+           "sewn_white_on": sum(1 for r in r_on.regions if r.meta.get("sew_enclosed_white"))}
+    by_id = {r.shape_id: r for r in r_off.regions}
+    dropped = []
+    for sid, (st, kind, t, _layer) in s_off.items():
+        if kind and not (s_on.get(sid) or (False, None))[1]:
+            r = by_id[sid]
+            dropped.append({"shape_id": sid, "kind": kind, "area_mm2": round(r.polygon.area, 2),
+                            "is_letter": _is_letter(r, cfg_off), "thread": t,
+                            "colour_unknown": bool(r.meta.get("enclosed_colour_unknown")),
+                            "stitched_off": st, "stitched_on": s_on[sid][0]})
+    row["dropped"] = sorted(dropped, key=lambda d: -d["area_mm2"])
+    # Every area the art leaves transparent, and what each arm does with it:
+    # the census a reader checks against what the art plainly is (a letter
+    # body the tagger missed goes open; a non-letter it tagged stays sewn).
+    trans = []
+    for r in r_off.regions:
+        if not r.meta.get("enclosed_colour_unknown"):
+            continue
+        sid = r.shape_id
+        c = r.polygon.representative_point()
+        off_k, on_k = s_off[sid][1], (s_on.get(sid) or (False, None))[1]
+        trans.append({"shape_id": sid, "area_mm2": round(r.polygon.area, 2),
+                      "is_letter": _is_letter(r, cfg_off), "xy_mm": [round(c.x, 2), round(c.y, 2)],
+                      "off": off_k, "on": on_k,
+                      "status": ("dropped" if off_k and not on_k else "kept_letter" if on_k
+                                 else "open_both")})
+    trans.sort(key=lambda d: -d["area_mm2"])
+    for i, d in enumerate(trans, 1):
+        d["n"] = i
+    row["transparent"] = trans
+    row["dropped_mm2"] = round(sum(d["area_mm2"] for d in dropped), 1)
+    row["forks_agree"] = s_off == s_on
+    if row["forks_agree"] and not full:
+        row["verdict"] = "identical"
+        row["secs"] = round(time.time() - t0, 1)
+        return row
+    for arm, res, cfg in (("off", r_off, cfg_off), ("on", r_on, cfg_on)):
+        plan = plan_stitches(res, cfg)
+        design = plan_to_design(plan, name=slug)
+        (out / f"{slug}.{arm}.json").write_text(json.dumps({"design": design, "_meta": {
+            "config_sent": {"enclosed_white_skip_transparent": arm == "on"}}}), encoding="utf-8")
+        row[arm] = {"stitches": plan.stats.stitch_count, "trims": plan.stats.trims,
+                    "colour_changes": plan.stats.color_changes, "jumps": plan.stats.jumps,
+                    "colours": len(design.get("colors") or []), "sha": _sha(design)[:16]}
+    row["verdict"] = "identical" if row["off"]["sha"] == row["on"]["sha"] else "moves"
+    row["secs"] = round(time.time() - t0, 1)
+    return row
+
+
+PX_PER_MM = 12.0
+PAD_MM = 2.0
+NATURAL_BGR = (223, 232, 235)
+
+
+def _checker_art(art: Path, width_px: int):
+    """The source art on a grey checkerboard, so what it leaves transparent
+    shows as the board, scaled to `width_px` wide."""
+    import cv2
+    import numpy as np
+    src = cv2.imread(str(art), cv2.IMREAD_UNCHANGED)
+    if src.ndim == 2:
+        src = cv2.cvtColor(src, cv2.COLOR_GRAY2BGRA)
+    elif src.shape[2] == 3:
+        src = cv2.cvtColor(src, cv2.COLOR_BGR2BGRA)
+    h = max(1, int(round(src.shape[0] * width_px / src.shape[1])))
+    src = cv2.resize(src, (width_px, h), interpolation=cv2.INTER_AREA)
+    yy, xx = np.mgrid[0:h, 0:width_px]
+    board = np.where(((yy // 12 + xx // 12) % 2)[..., None] == 0, 200, 150).astype(np.float32)
+    board = np.repeat(board, 3, axis=2)
+    a = src[:, :, 3:4].astype(np.float32) / 255.0
+    return (src[:, :, :3] * a + board * (1 - a)).astype(np.uint8)
+
+
+def render(out: Path, kind: str, photos: Path | None) -> list[Path]:
+    """Source on a checkerboard | OFF | ON, 12 px/mm, one PNG per moving row."""
+    import cv2
+    import numpy as np
+    from digitizer_core.stitchviz import render_design
+    rows = json.loads((out / f"{kind}.json").read_text(encoding="utf-8"))
+    written = []
+    for slug, row in rows.items():
+        if row.get("verdict") != "moves":
+            continue
+        designs = {arm: json.loads((out / f"{slug}.{arm}.json").read_text(encoding="utf-8"))["design"]
+                   for arm in ("off", "on")}
+        imgs = {arm: render_design(d, px_per_mm=PX_PER_MM, fabric_bgr=NATURAL_BGR, pad_mm=PAD_MM)
+                for arm, d in designs.items()}
+        # number every transparent area on the ON panel: red = left open by
+        # the flag, blue = kept (a letter body), grey = open on both arms
+        st = [s for s in designs["on"]["stitches"] if s.get("type") in ("stitch", "jump")]
+        x0, y1 = min(s["x"] for s in st) / 10.0, max(s["y"] for s in st) / 10.0
+        for d in row.get("transparent") or []:
+            u = int(round((d["xy_mm"][0] - x0 + PAD_MM) * PX_PER_MM))
+            v = int(round((d["xy_mm"][1] + y1 + PAD_MM) * PX_PER_MM))
+            col = {"dropped": (40, 40, 220), "kept_letter": (200, 90, 20)}.get(d["status"], (120, 120, 120))
+            cv2.circle(imgs["on"], (u, v), 9, col, 2)
+            cv2.putText(imgs["on"], str(d["n"]), (u + 10, v - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.45, col, 1)
+        panels = [("OFF", imgs["off"]), ("ON (enclosed_white_skip_transparent)", imgs["on"])]
+        if kind == "corpus":
+            # Commons art only: a pro job's art is a client's, so its panel is left out
+            art = next(p for p in photos.glob(f"{slug}.*") if p.suffix.lower() != ".json")
+            w = imgs["off"].shape[1]
+            src = _checker_art(Path(art), w - int(2 * PAD_MM * PX_PER_MM))
+            src = cv2.copyMakeBorder(src, 24, 24, 24, 24, cv2.BORDER_CONSTANT, value=(255, 255, 255))
+            panels.insert(0, ("source (transparent = checkerboard)", src))
+        H = max(p.shape[0] for _, p in panels) + 40
+        tiles = []
+        for label, p in panels:
+            t = np.full((H, p.shape[1], 3), 255, np.uint8)
+            t[40:40 + p.shape[0], :p.shape[1]] = p
+            cv2.putText(t, label, (8, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (30, 30, 30), 2)
+            tiles.append(t)
+            tiles.append(np.full((H, 16, 3), 255, np.uint8))
+        f = out / f"{slug}_source_off_on.png"
+        cv2.imwrite(str(f), np.hstack(tiles[:-1]))
+        written.append(f)
+        print(f, flush=True)
+    return written
+
+
+def main(argv=None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv and argv[0] == "render":
+        rp = argparse.ArgumentParser(prog="transparent_white_ab render")
+        rp.add_argument("--out", type=Path, required=True)
+        rp.add_argument("--photos", type=Path)
+        rp.add_argument("kind", choices=("corpus", "pro"))
+        ra = rp.parse_args(argv[1:])
+        render(ra.out, ra.kind, ra.photos)
+        return 0
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--corpus-run", type=Path)
+    ap.add_argument("--photos", type=Path)
+    ap.add_argument("--full", action="append", default=[])
+    ap.add_argument("kind", choices=("corpus", "pro"))
+    ap.add_argument("slugs", nargs="+")
+    a = ap.parse_args(argv)
+    from digitizer_core import PipelineConfig
+    from digitizer_service.app import _parse_config
+    a.out.mkdir(parents=True, exist_ok=True)
+    path = a.out / f"{a.kind}.json"
+    rows = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    for slug in a.slugs:
+        if a.kind == "corpus":
+            stored = json.loads((a.corpus_run / f"{slug}.json").read_text(encoding="utf-8"))
+            sent = stored["_meta"]["config_sent"]
+            art = next(p for p in a.photos.glob(f"{slug}.*") if p.suffix.lower() != ".json")
+            cfg_off = PipelineConfig(**_parse_config(json.dumps(sent)))
+            cfg_on = PipelineConfig(**_parse_config(json.dumps({**sent, "enclosed_white_skip_transparent": True})))
+        else:
+            from tools import pro_baseline as pb
+            from tools import pro_pair
+            garment, width, art_spec, *_ = pb.JOBS[slug]
+            art = pb.resolve(art_spec)
+            cfg_off = pro_pair.config(width, garment)
+            cfg_on = pro_pair.config(width, garment, {"enclosed_white_skip_transparent": True})
+        try:
+            row = run_one(slug, Path(art), cfg_off, cfg_on, a.out, slug in a.full)
+            if a.kind == "corpus" and "off" in row:
+                row["off_equals_stored"] = row["off"]["sha"] == _sha(stored["design"])[:16]
+        except Exception as e:  # noqa: BLE001 - a row, not a crash
+            row = {"slug": slug, "error": f"{type(e).__name__}: {e}"[:300]}
+        rows[slug] = row
+        path.write_text(json.dumps(rows, indent=1), encoding="utf-8")
+        print(slug, json.dumps({k: v for k, v in row.items() if k != "dropped"}), flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

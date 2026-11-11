@@ -34,6 +34,13 @@ here: it tags drawing fragments as well (`columns.is_lettering`'s icon
 guard), and it tagged Golden Tee's ball-arc outline, whose white crescent
 the pro sews as a band.
 
+Transparent areas (`cfg.enclosed_white_skip_transparent`, built OFF
+2026-11-11): an area the artwork leaves transparent (`enclosed_colour_unknown`)
+does not sew, unless it is itself lettering -- a hollow letter's body, which
+the pro sews (BECKER). On alpha art every enclosed area is transparent, so
+without that guard the flag would be this option OFF there
+(`docs/transparent-white-infill-2026-11-11.md`).
+
 Thread. `cfg.sew_enclosed_rgb` given: the chart's nearest thread to it, for
 every area. None: a hole whose colour is known keeps the thread it carries
 (the artwork's own background colour), and an alpha hole, whose colour
@@ -130,6 +137,13 @@ def plan_enclosed_white(regions, cfg) -> dict[str, str]:
     `enclosed_background` region this option SEWS (counters left open are
     absent). Pure: reads geometry and tags, writes nothing."""
     enclosed = [r for r in regions if r.meta.get("enclosed_background")]
+    if getattr(cfg, "enclosed_white_skip_transparent", False):
+        # A hole the artwork leaves transparent is neither a field nor a
+        # counter that sews: it stays open, and holds no counter open either.
+        # Except a hollow letter's BODY, itself tagged lettering (BECKER's
+        # five interiors, transparent in its PNG): the pro sews those.
+        enclosed = [r for r in enclosed
+                    if not r.meta.get("enclosed_colour_unknown") or _is_letter(r, cfg)]
     if not enclosed:
         return {}
     kind = {}

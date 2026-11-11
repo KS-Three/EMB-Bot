@@ -94,6 +94,7 @@
  "enclosed_by_garment": true,
  "enclosed_by_garment_de00": 10.0,
  "enclosed_white_keyline": false,
+ "enclosed_white_skip_transparent": false,
  "enforce_color_cap": true,
  "extra": {},
  "fabric_id": null,
