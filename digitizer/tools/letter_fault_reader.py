@@ -1,6 +1,7 @@
 """Letter-fault reader: WHERE the thread closes a counter or joins two shapes.
 
     python -m tools.letter_fault_reader run --pro-run DIR --out DIR [--tree DIGITIZER] [--only SLUG]
+    python -m tools.letter_fault_reader run --corpus-run DIR --photos DIR --out DIR --only C_<slug>
     python -m tools.fault_reader_harness score --fault letters --marks MARKS.json --flags DIR
 
 The second reader scored by `tools.fault_reader_harness` against Kent's
@@ -62,8 +63,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -297,7 +296,7 @@ from digitizer_service.app import _decode, _parse_config
 from tools import pro_baseline as pb
 assert stitchviz.THREAD_MM == spec["thread_mm"], ("THREAD_MM moved", stitchviz.THREAD_MM)
 stored = json.load(open(spec["job"], encoding="utf-8"))
-art = pb.resolve(pb.JOBS[spec["slug"]][2])
+art = spec.get("art") or pb.resolve(pb.JOBS[spec["slug"]][2])
 data = open(art, "rb").read()
 cfg = PipelineConfig(**_parse_config(json.dumps(stored["_meta"]["config_sent"])))
 pixels = _decode(data)
@@ -385,37 +384,29 @@ json.dump({"same_stitches": same, "stored_sha": h(stored["design"]["stitches"]),
 '''
 
 
-def _tree_sha(tree: Path) -> str | None:
-    r = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(tree), capture_output=True, text=True)
-    return r.stdout.strip() or None
-
-
-def run(pro_run: Path, out: Path, tree: Path, slugs: list[str], timeout: float = 900.0) -> int:
-    from tools.defect_marks import PRO_SLUGS
+def run(items: list[str], out: Path, tree: Path, pro_run: Path | None = None,
+        corpus_run: Path | None = None, photos: Path | None = None, timeout: float = 1800.0) -> int:
+    """Re-run each item's job at `tree` (`tools.fault_reader_jobs`: pro jobs
+    `L_<slug>` and corpus rows `C_<slug>`), refuse unless the stitches match,
+    read the faults, write `<item>.flags.json`."""
+    from tools import fault_reader_jobs as jobs
     out.mkdir(parents=True, exist_ok=True)
-    sha = _tree_sha(tree)
-    env = {**os.environ, "OPENCV_IPP": "avx2", "OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1",
-           "MKL_NUM_THREADS": "1", "OPENCV_FOR_THREADS_NUM": "1", "PYTHONIOENCODING": "utf-8"}
+    sha = jobs.tree_sha(tree)
     bad = 0
-    for slug in slugs or PRO_SLUGS:
-        iid = f"L_{slug}"
-        job = pro_run / f"{slug}.json"
+    for iid in items:
+        _kind, slug = jobs.split_item(iid)
+        job, art = jobs.job_paths(iid, pro_run, corpus_run, photos)
         stored = json.loads(job.read_text(encoding="utf-8"))
         classes = colour_classes(stored["design"]["colors"])
-        raw = out / f"{iid}.raw.json"
         labels = out / f"{iid}.labels.npz"
-        spec = {"tree": str(tree), "slug": slug, "job": str(job), "out": str(raw),
+        spec = {"tree": str(tree), "slug": slug, "job": str(job), "out": str(out / f"{iid}.raw.json"),
+                "art": str(art) if art else None,
                 "mask": str(out / f"{iid}.mask.npz"), "labels": str(labels), "pxmm": PXMM,
                 "pad": PAD_MM, "thread_mm": THREAD_MM, "classes": [list(c) for c in classes]}
-        proc = subprocess.run([sys.executable, "-c", WORKER, json.dumps(spec)], cwd=str(tree), env=env,
-                              capture_output=True, text=True, timeout=timeout)
-        if proc.returncode != 0:
-            print(slug, "ERROR", proc.stderr.strip().splitlines()[-3:], flush=True)
-            bad += 1
-            continue
-        r = json.loads(raw.read_text(encoding="utf-8"))
-        if not r["same_stitches"]:
-            print(slug, "REFUSED: re-run stitches differ from the stored design", flush=True)
+        try:
+            r = jobs.run_worker(WORKER, spec, tree, timeout)
+        except (jobs.WorkerFailed, jobs.Refused) as e:
+            print(iid, type(e).__name__, e, flush=True)
             bad += 1
             continue
         lab = np.load(labels)
@@ -429,8 +420,7 @@ def run(pro_run: Path, out: Path, tree: Path, slugs: list[str], timeout: float =
                "img_w": r["img_w"], "img_h": r["img_h"], "art_px_per_mm": r["art_px_per_mm"],
                "classes": [list(c) for c in classes], "by_kind": kinds, "flags": flags}
         (out / f"{iid}.flags.json").write_text(json.dumps(rec, indent=1) + "\n", encoding="utf-8")
-        raw.unlink()
-        print(slug, "flags", len(flags), kinds, flush=True)
+        print(iid, "flags", len(flags), kinds, flush=True)
     return 1 if bad else 0
 
 
@@ -438,12 +428,16 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
-    r.add_argument("--pro-run", type=Path, required=True, help="defect_marks capture-pro output")
+    r.add_argument("--pro-run", type=Path, help="defect_marks capture-pro output (L_ items)")
+    r.add_argument("--corpus-run", type=Path, help="corpus capture with <slug>.json designs (C_ items)")
+    r.add_argument("--photos", type=Path, help="corpus artwork folder (C_ items)")
     r.add_argument("--out", type=Path, required=True)
     r.add_argument("--tree", type=Path, default=ROOT, help="digitizer/ of the checkout the kit was built on")
-    r.add_argument("--only", action="append", default=[])
+    r.add_argument("--only", action="append", default=[], help="item id (L_<slug> / C_<slug>) or pro slug")
     a = ap.parse_args(argv)
-    return run(a.pro_run, a.out, a.tree.resolve(), a.only)
+    from tools.defect_marks import PRO_SLUGS
+    items = [o if o[:2] in ("L_", "C_") else f"L_{o}" for o in a.only] or [f"L_{s}" for s in PRO_SLUGS]
+    return run(items, a.out, a.tree.resolve(), a.pro_run, a.corpus_run, a.photos)
 
 
 if __name__ == "__main__":

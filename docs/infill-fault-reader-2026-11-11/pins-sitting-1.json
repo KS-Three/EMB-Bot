@@ -1,0 +1,27 @@
+{
+ "rule": "docs/infill-fault-reader-2026-11-11/preregistration.md",
+ "pins": [
+  {
+   "item": "L_bridge_hat",
+   "pin": 1,
+   "x_mm": 2.23,
+   "y_mm": 31.28,
+   "what": "letter_shape",
+   "severity": "noticeable",
+   "note": "All of the wheel handles look different from eachother, this would be better if they all looked the same.",
+   "note_pin": 1,
+   "rule": "contrast between places"
+  },
+  {
+   "item": "L_bridge_hat",
+   "pin": 4,
+   "x_mm": 38.85,
+   "y_mm": 43.04,
+   "what": null,
+   "severity": "noticeable",
+   "note": "This is the only letter that is thinly stitched",
+   "note_pin": 4,
+   "rule": "contrast between places"
+  }
+ ]
+}
