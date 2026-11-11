@@ -152,6 +152,7 @@
  "layer_palette_from_regions": true,
  "legibility_check": true,
  "letterform_priors_k": 0.75,
+ "line_chain_one_thread": false,
  "lettering_columns": true,
  "lettering_columns_apex_cut": false,
  "lettering_columns_corner_fold": true,
