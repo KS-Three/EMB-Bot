@@ -1,0 +1,308 @@
+{
+ "rule": "docs/defect-marks-2026-11-10/letter-reader-preregistration.md",
+ "reader_commit": "79fa7646",
+ "marks_sha256": "1487a735fff04aaaf262f31aab5279f23beb8a7e84e81ff239efe4a65fb1d8ea",
+ "pins": [
+  {
+   "item": "C_silhouette_logo",
+   "pin": 3,
+   "x_mm": 19.02,
+   "y_mm": 57.86,
+   "what": "mushed",
+   "severity": "noticeable",
+   "note": "The lettering is extremely hard to read, all of the extra green stitches (#3 - #32) are the same issue",
+   "rule": "read word on a letter"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 4,
+   "x_mm": 36.73,
+   "y_mm": 58.16,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 5,
+   "x_mm": 45.43,
+   "y_mm": 59.33,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 6,
+   "x_mm": 50.59,
+   "y_mm": 58.26,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 7,
+   "x_mm": 43.71,
+   "y_mm": 58.11,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 8,
+   "x_mm": 39.0,
+   "y_mm": 57.56,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 9,
+   "x_mm": 30.3,
+   "y_mm": 57.61,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 10,
+   "x_mm": 28.12,
+   "y_mm": 61.4,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 11,
+   "x_mm": 22.71,
+   "y_mm": 56.75,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 12,
+   "x_mm": 30.4,
+   "y_mm": 49.01,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 13,
+   "x_mm": 37.33,
+   "y_mm": 48.75,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 14,
+   "x_mm": 39.86,
+   "y_mm": 50.98,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 15,
+   "x_mm": 43.66,
+   "y_mm": 49.66,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 16,
+   "x_mm": 47.71,
+   "y_mm": 50.78,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 17,
+   "x_mm": 51.35,
+   "y_mm": 50.93,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 18,
+   "x_mm": 50.39,
+   "y_mm": 47.84,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 19,
+   "x_mm": 54.28,
+   "y_mm": 51.38,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 20,
+   "x_mm": 56.56,
+   "y_mm": 49.81,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 21,
+   "x_mm": 60.61,
+   "y_mm": 48.65,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 22,
+   "x_mm": 62.43,
+   "y_mm": 50.57,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 23,
+   "x_mm": 58.89,
+   "y_mm": 47.39,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 24,
+   "x_mm": 57.37,
+   "y_mm": 57.96,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 25,
+   "x_mm": 60.51,
+   "y_mm": 54.93,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 26,
+   "x_mm": 61.22,
+   "y_mm": 59.88,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 27,
+   "x_mm": 49.07,
+   "y_mm": 57.76,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 28,
+   "x_mm": 50.34,
+   "y_mm": 61.1,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 29,
+   "x_mm": 31.36,
+   "y_mm": 61.15,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 30,
+   "x_mm": 33.54,
+   "y_mm": 51.33,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 31,
+   "x_mm": 35.92,
+   "y_mm": 51.94,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  },
+  {
+   "item": "C_silhouette_logo",
+   "pin": 32,
+   "x_mm": 48.82,
+   "y_mm": 52.34,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 3"
+  }
+ ],
+ "prefix": "C_"
+}
