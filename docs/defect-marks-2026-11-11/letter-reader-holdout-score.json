@@ -1,0 +1,263 @@
+{
+ "fault": "letters",
+ "radius_mm": 3.0,
+ "items": {
+  "C_silhouette_logo": {
+   "pins": 30,
+   "flags": 65,
+   "by_radius": {
+    "3.0": {
+     "hit": 26,
+     "hit_rate": 0.8666666666666667,
+     "chance_area": 0.12838333333333332,
+     "chance_edge": 0.0
+    },
+    "2.0": {
+     "hit": 21,
+     "hit_rate": 0.7,
+     "chance_area": 0.08158333333333333,
+     "chance_edge": 0.0
+    },
+    "5.0": {
+     "hit": 30,
+     "hit_rate": 1.0,
+     "chance_area": 0.20363333333333333,
+     "chance_edge": 0.0
+    }
+   },
+   "auc_area": 0.8953666666666666,
+   "auc_edge": 0.9333333333333333,
+   "pin_nearest_mm": [
+    0.99,
+    1.56,
+    1.53,
+    2.33,
+    3.49,
+    1.05,
+    1.06,
+    3.32,
+    0.58,
+    1.44,
+    1.6,
+    0.85,
+    1.52,
+    1.37,
+    2.16,
+    2.04,
+    0.84,
+    1.31,
+    0.9,
+    2.25,
+    0.36,
+    0.8,
+    1.45,
+    3.45,
+    1.3,
+    1.97,
+    0.74,
+    3.58,
+    1.86,
+    2.64
+   ],
+   "unpinned": [
+    {
+     "x_mm": 30.67,
+     "y_mm": 39.33,
+     "class": 4,
+     "kind": "bay_closed",
+     "strength": 1.434
+    },
+    {
+     "x_mm": 44.25,
+     "y_mm": 52.75,
+     "class": 3,
+     "kind": "join",
+     "strength": 0.707,
+     "shapes": [
+      22,
+      23
+     ],
+     "bridge_mm": 2.167
+    },
+    {
+     "x_mm": 22.17,
+     "y_mm": 60.08,
+     "class": 3,
+     "kind": "join",
+     "strength": 0.687,
+     "shapes": [
+      27,
+      28
+     ],
+     "bridge_mm": 0.687
+    },
+    {
+     "x_mm": 34.25,
+     "y_mm": 54.92,
+     "class": 2,
+     "kind": "counter_lost",
+     "strength": 0.5,
+     "art_mm": 0.5,
+     "sewn_mm": 0.0
+    },
+    {
+     "x_mm": 21.17,
+     "y_mm": 60.33,
+     "class": 2,
+     "kind": "counter_lost",
+     "strength": 0.471,
+     "art_mm": 0.471,
+     "sewn_mm": 0.0
+    },
+    {
+     "x_mm": 20.58,
+     "y_mm": 61.08,
+     "class": 2,
+     "kind": "counter_lost",
+     "strength": 0.373,
+     "art_mm": 0.373,
+     "sewn_mm": 0.0
+    },
+    {
+     "x_mm": 18.33,
+     "y_mm": 61.17,
+     "class": 2,
+     "kind": "counter_lost",
+     "strength": 0.333,
+     "art_mm": 0.333,
+     "sewn_mm": 0.0
+    },
+    {
+     "x_mm": 32.92,
+     "y_mm": 55.0,
+     "class": 2,
+     "kind": "counter_lost",
+     "strength": 0.333,
+     "art_mm": 0.333,
+     "sewn_mm": 0.0
+    },
+    {
+     "x_mm": 35.75,
+     "y_mm": 61.0,
+     "class": 2,
+     "kind": "counter_lost",
+     "strength": 0.236,
+     "art_mm": 0.236,
+     "sewn_mm": 0.0
+    }
+   ],
+   "pin_ids": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32
+   ]
+  }
+ },
+ "pooled": {
+  "3.0": {
+   "chance_area": {
+    "items": 1,
+    "pins": 30,
+    "hit_rate": 0.8667,
+    "chance": 0.1284,
+    "diff": 0.7383,
+    "kappa": 0.847,
+    "ci95": [
+     0.7383,
+     0.7383
+    ]
+   },
+   "chance_edge": {
+    "items": 1,
+    "pins": 30,
+    "hit_rate": 0.8667,
+    "chance": 0.0,
+    "diff": 0.8667,
+    "kappa": 0.8667,
+    "ci95": [
+     0.8667,
+     0.8667
+    ]
+   }
+  },
+  "2.0": {
+   "chance_area": {
+    "items": 1,
+    "pins": 30,
+    "hit_rate": 0.7,
+    "chance": 0.0816,
+    "diff": 0.6184,
+    "kappa": 0.6734,
+    "ci95": [
+     0.6184,
+     0.6184
+    ]
+   },
+   "chance_edge": {
+    "items": 1,
+    "pins": 30,
+    "hit_rate": 0.7,
+    "chance": 0.0,
+    "diff": 0.7,
+    "kappa": 0.7,
+    "ci95": [
+     0.7,
+     0.7
+    ]
+   }
+  },
+  "5.0": {
+   "chance_area": {
+    "items": 1,
+    "pins": 30,
+    "hit_rate": 1.0,
+    "chance": 0.2036,
+    "diff": 0.7964,
+    "kappa": 1.0,
+    "ci95": [
+     0.7964,
+     0.7964
+    ]
+   },
+   "chance_edge": {
+    "items": 1,
+    "pins": 30,
+    "hit_rate": 1.0,
+    "chance": 0.0,
+    "diff": 1.0,
+    "kappa": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   }
+  }
+ }
+}

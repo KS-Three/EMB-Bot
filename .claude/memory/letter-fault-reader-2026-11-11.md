@@ -33,3 +33,7 @@ Bridge's B+R hit came through the B's lost counter, not a join.
 **How to apply:** not a metric or gate yet; replicate on a second sitting
 with the same constants first. A negative-space reader (glyph_read `space`)
 is what would catch the S/E bays. Write-up: `docs/letter-fault-reader-2026-11-11.md`.
+
+**Hold-out tried 2026-11-11, no verdict:** on a second sitting the frozen rule
+found pins on one logo only (26 of 30 hit vs 0.13 chance, one item). See
+[[defect-marks-sitting-2-2026-11-11]]. Still unreplicated.
