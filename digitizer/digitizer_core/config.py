@@ -1328,7 +1328,8 @@ class PipelineConfig:
     # wider than a line, re-snaps as before. The 1.2 mm is geometry, not
     # cloth: gate 1 does not apply. False is the engine before the flag, byte
     # for byte. Tests: `tests/test_resnap_hairline.py`;
-    # `docs/border-colour-change-2026-11-11.md`.
+    # `docs/border-colour-change-2026-11-11.md`. OFF; Kent chose fix B
+    # (`line_chain_one_thread`) over it on 2026-11-11 and ruled that OFF too.
     resnap_hairline_never_lightens: bool = False
     # The band, in working-grid pixels, `flat_page_fringe_exclude` looks in.
     # 2 = the anti-alias ramp of a source edge once stage 1 has enlarged the
@@ -5662,6 +5663,9 @@ class PipelineConfig:
     # set never grows, so the colour cap works from the same palette. False
     # is the engine before the flag, byte for byte. Tests:
     # `tests/test_line_chain.py`; `docs/border-colour-change-2026-11-11.md`.
+    # OFF by Kent's ruling 2026-11-11, eye-check of 5 rows: "Keep off, very
+    # little improvements were made, if any." Do not propose the flip from the
+    # dE00 numbers (`docs/line-chain-one-thread-2026-11-11.md`).
     line_chain_one_thread: bool = False
 
     # Score the thread re-validation on the SAME pixels the grader uses.

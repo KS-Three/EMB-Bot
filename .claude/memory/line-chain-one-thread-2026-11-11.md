@@ -1,6 +1,6 @@
 ---
 name: line-chain-one-thread-2026-11-11
-description: Fix B for low_poly pin 2: line_chain_one_thread (OFF) gives a connected drawn line one thread when its core colours agree; 4 of 21 rows move, blocks never change, isometric slab untouched
+description: Fix B for low_poly pin 2: line_chain_one_thread, RULED OFF by Kent 2026-11-11 ("very little improvements, if any"); gives a connected drawn line one thread when its core colours agree; 4 of 21 rows move, blocks never change, isometric slab untouched
 metadata:
   type: project
 ---
@@ -28,7 +28,10 @@ rehome, before the colour cap.
 
 **Why:** the colour of a hairline piece read from its own halo is wrong; the line's
 colour is one thing, read from its core, shared along its length.
-**How to apply:** flip is Kent's (gate 3); check `meta["line_chain_thread"]` on a
-region to see what it moved.
+**Ruling 2026-11-11 (Kent, after the eye-check of 5 rows): "Keep off, very little
+improvements were made, if any."** Stays default OFF: no flip PR, no pro-pair run,
+no more build on this line, no retuning thresholds for a bigger effect. Do not
+propose the flip from the dE00 numbers.
+**How to apply:** do not flip it; `meta["line_chain_thread"]` on a region shows what it moved.
 Related: [[border-colour-change-2026-11-11]], [[bean-census-2026-10-27]],
 [[border-by-size-colour-seams-2026-10-28]].

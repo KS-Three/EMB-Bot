@@ -97,3 +97,14 @@ grey pieces takes one thread and the layer; a red/blue line is not forced; a spe
 outside the band is left alone; a pale face sliver near a line neither vetoes it nor
 is recoloured (fails if the ink test is removed); one-thread chains untouched; the
 cone set never grows.
+
+## Ruling: OFF (Kent, 2026-11-11)
+
+After the eye-check of five rows (low_poly, isometric, silhouette, vintage,
+chalkboard), Kent: **"Keep off, very little improvements were made, if any."**
+`line_chain_one_thread` stays default OFF. No flip PR, no pro-pair run, no further
+build on this line, and no retuning of the thresholds to look for a bigger effect.
+Do not propose the flip again from the dE00 numbers above: they say the recoloured
+pieces moved toward the art's ink; Kent judged the pictures and the effect too
+small to ship. `resnap_hairline_never_lightens` (the first flag, PR #1391) is
+likewise OFF; he chose this one over it and then ruled this one OFF.
