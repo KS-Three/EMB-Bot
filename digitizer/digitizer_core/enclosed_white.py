@@ -34,6 +34,13 @@ here: it tags drawing fragments as well (`columns.is_lettering`'s icon
 guard), and it tagged Golden Tee's ball-arc outline, whose white crescent
 the pro sews as a band.
 
+Transparent areas (`cfg.enclosed_white_skip_transparent`, built OFF
+2026-11-11): an area the artwork leaves transparent (`enclosed_colour_unknown`)
+does not sew, unless it is itself lettering -- a hollow letter's body, which
+the pro sews (BECKER). On alpha art every enclosed area is transparent, so
+without that guard the flag would be this option OFF there
+(`docs/transparent-white-infill-2026-11-11.md`).
+
 Thread. `cfg.sew_enclosed_rgb` given: the chart's nearest thread to it, for
 every area. None: a hole whose colour is known keeps the thread it carries
 (the artwork's own background colour), and an alpha hole, whose colour
