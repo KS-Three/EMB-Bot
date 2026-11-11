@@ -306,7 +306,11 @@ def chance_rate(flags, mask: np.ndarray, n_pins: int, px_per_mm: float, pad_mm: 
 
 def pick_rate(flags, cand_points, radius_mm: float = RADIUS_MM) -> float:
     """Hit rate of `flags` against a pin placed on a candidate anchor chosen
-    uniformly at random: exact, the mean over all anchors (no draws)."""
+    uniformly at random: exact, the mean over all anchors (no draws). With
+    no flags nothing can be hit, so it is 0 even with no candidates (an item
+    the reader reads nothing on must not drop out of a pool as NaN)."""
+    if not len(flags):
+        return 0.0
     if not len(cand_points):
         return float("nan")
     return float(hits(cand_points, flags, radius_mm).mean())
@@ -347,7 +351,8 @@ def item_score(pins: list[dict], flags: list[dict], mask: np.ndarray, px_per_mm:
             "chance_area": chance_rate(flags, mask, n, px_per_mm, pad_mm, r, draws, seed),
             "chance_edge": chance_rate(flags, band, n, px_per_mm, pad_mm, r, draws, seed)}
         if cand_mask is not None:
-            b["chance_cand"] = (chance_rate(flags, cand_mask, n, px_per_mm, pad_mm, r, draws, seed)
+            b["chance_cand"] = (0.0 if not flags else      # nothing to hit: every null is 0
+                                chance_rate(flags, cand_mask, n, px_per_mm, pad_mm, r, draws, seed)
                                 if cand_mask.any() else float("nan"))
         if cand_points is not None:
             b["chance_pick"] = pick_rate(flags, cand_points, r)

@@ -11,9 +11,10 @@ in-fill, some empty spaces have it while others don't") was read first, at
 the stitches (`docs/infill-fault-reader-2026-11-11/preregistration.md`): at
 all 28 pins, and at `C_devanagari_logo` pins 1, 5 and 6, the top thread is
 WHITE satin over pixels the source art leaves TRANSPARENT, where stage 1's
-`bg_mask` reads foreground: the background mask never reached a space the ink
-encloses, so the pipeline sewed that space as a white shape, while the art's
-other empty spaces stay bare fabric.
+`bg_mask` reads foreground: `sew_enclosed_white` sews enclosed background it
+takes for a body or field and leaves what it takes for a letter counter open
+(`.claude/memory/enclosed-white-like-pro-2026-10-23.md`), and on seal script
+that split falls on spaces Kent sees as alike.
 
 So the candidate features are the art's EMPTY SPACES, read from the source
 art itself and never from `bg_mask` (whose miss is the fault): pixels whose

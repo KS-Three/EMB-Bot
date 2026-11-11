@@ -109,6 +109,18 @@ def test_pick_rate_is_the_share_of_candidates_near_a_flag():
     cands = [{"x_mm": 0, "y_mm": 0}, {"x_mm": 10, "y_mm": 0}, {"x_mm": 20, "y_mm": 0}, {"x_mm": 30, "y_mm": 0}]
     assert h.pick_rate([{"x_mm": 1, "y_mm": 0}], cands, 3.0) == 0.25
     assert np.isnan(h.pick_rate([{"x_mm": 1, "y_mm": 0}], [], 3.0))
+    # no flags: nothing can be hit, so 0 even with no candidates (found on the
+    # first score: L_bridge_hat and C_flat_emoji_icon pooled as NaN)
+    assert h.pick_rate([], [], 3.0) == 0.0 and h.pick_rate([], cands, 3.0) == 0.0
+
+
+def test_an_item_the_reader_reads_nothing_on_pools_as_zero_not_nan():
+    m = np.ones((240, 240), bool)
+    pins = [dict(_pin(x=5, y=5), note_pin=1)]
+    row = h.item_score(pins, [], m, PX, 2.0, draws=50, cand_mask=np.zeros_like(m), cand_points=[])
+    b = row["by_radius"]["3.0"]
+    assert b["chance_pick"] == 0.0 and b["chance_cand"] == 0.0 and b["hit"] == 0
+    assert h.pool({"a": row}, 3.0, "chance_pick", boots=10)["chance"] == 0.0
 
 
 def test_item_score_candidate_nulls_precision_and_notes():
