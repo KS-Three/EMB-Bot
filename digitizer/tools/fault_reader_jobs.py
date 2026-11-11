@@ -85,3 +85,18 @@ def run_worker(worker: str, spec: dict, tree: Path, timeout: float = 1800.0) -> 
     if not rep.get("same_stitches"):
         raise Refused(f"re-run stitches {rep.get('rerun_sha')} != stored {rep.get('stored_sha')}")
     return rep
+
+
+def main(argv: list[str] | None = None) -> int:
+    """No command of its own: the readers run items through it."""
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], epilog=(
+        "Library for the fault readers; run one of them instead: "
+        "python -m tools.infill_fault_reader run ... / python -m tools.letter_fault_reader run ..."))
+    ap.parse_args(argv)
+    ap.print_help()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
