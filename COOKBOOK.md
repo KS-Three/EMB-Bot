@@ -2078,6 +2078,12 @@ meet):**
   band's floor; `flat_outline_max_mm`: thin-outline width; the page-edge
   blend and the outline's inner blend leave the flat palette fit and the
   stage-3 chain rescue; `memory/flat-page-fringe-2026-11-03.md`).
+  `sliver_prune` (2026-11-10, flat and gradient classes, after the palette
+  is fitted so no thread moves: a page-coloured mask at most 1.5 source
+  pixels wide on the silhouette is dropped, an off-colour tendril wedged
+  between other masks goes to the one it lies in; widths are in SOURCE
+  pixels; `digitizer_core/sliver_prune.py`,
+  `memory/sliver-prune-2026-11-10.md`).
   `test_off_flags_smoke.py`'s `OFF_FLAGS` is the live list.
 
 **Determinism rule for `medial_axis`.** Always call
