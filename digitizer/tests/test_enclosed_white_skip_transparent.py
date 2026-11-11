@@ -165,6 +165,33 @@ def test_rgba_on_leaves_the_transparent_hole_open_and_keeps_the_opaque_white(rgb
     assert _digest(p_on) != _digest(p_off)
 
 
+BECKER = TESTDATA / "becker_marine_logo.png"
+
+
+@pytest.mark.parametrize("width_mm,garment", [(101.9, "hat_front"), (76.5, "left_chest")])
+def test_becker_five_transparent_bodies_still_sew(width_mm, garment):
+    """The guard, on the real art: Becker's five white BECKER bodies are
+    transparent in its PNG, tagged lettering, and the pro sews them. ON sews
+    the same areas as OFF; without the guard ON left all five open (measured
+    on all five pairs, `docs/transparent-white-infill-2026-11-11.md`)."""
+    from digitizer_core.pipeline import build_generation, finish_generation
+    base = dict(target_width_mm=width_mm, garment_id=garment, garment_rgb=NATURAL,
+                sew_enclosed_white=True)
+    off_cfg = PipelineConfig(**base)
+    on_cfg = PipelineConfig(**base, enclosed_white_skip_transparent=True)
+    gen = build_generation(BECKER, off_cfg)
+    off = finish_generation(gen.fork(), off_cfg)
+    on = finish_generation(gen.fork(), on_cfg)
+
+    def sewn(res):
+        return {r.shape_id for r in res.regions if r.meta.get("sew_enclosed_white")}
+
+    bodies = {r.shape_id for r in off.regions
+              if r.meta.get("enclosed_colour_unknown") and r.meta.get("sew_enclosed_white")}
+    assert len(bodies) == 5
+    assert sewn(on) == sewn(off) == bodies
+
+
 def test_opaque_art_is_a_no_op():
     """No alpha channel: no hole is `enclosed_colour_unknown`, so ON is OFF."""
     r_off, p_off = digitize(WHITEBG, _pcfg())

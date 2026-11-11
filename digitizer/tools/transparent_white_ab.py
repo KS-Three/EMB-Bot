@@ -69,6 +69,25 @@ def run_one(slug: str, art: Path, cfg_off, cfg_on, out: Path, full: bool) -> dic
                             "colour_unknown": bool(r.meta.get("enclosed_colour_unknown")),
                             "stitched_off": st, "stitched_on": s_on[sid][0]})
     row["dropped"] = sorted(dropped, key=lambda d: -d["area_mm2"])
+    # Every area the art leaves transparent, and what each arm does with it:
+    # the census a reader checks against what the art plainly is (a letter
+    # body the tagger missed goes open; a non-letter it tagged stays sewn).
+    trans = []
+    for r in r_off.regions:
+        if not r.meta.get("enclosed_colour_unknown"):
+            continue
+        sid = r.shape_id
+        c = r.polygon.representative_point()
+        off_k, on_k = s_off[sid][1], (s_on.get(sid) or (False, None))[1]
+        trans.append({"shape_id": sid, "area_mm2": round(r.polygon.area, 2),
+                      "is_letter": _is_letter(r, cfg_off), "xy_mm": [round(c.x, 2), round(c.y, 2)],
+                      "off": off_k, "on": on_k,
+                      "status": ("dropped" if off_k and not on_k else "kept_letter" if on_k
+                                 else "open_both")})
+    trans.sort(key=lambda d: -d["area_mm2"])
+    for i, d in enumerate(trans, 1):
+        d["n"] = i
+    row["transparent"] = trans
     row["dropped_mm2"] = round(sum(d["area_mm2"] for d in dropped), 1)
     row["forks_agree"] = s_off == s_on
     if row["forks_agree"] and not full:
@@ -122,9 +141,20 @@ def render(out: Path, kind: str, photos: Path | None) -> list[Path]:
     for slug, row in rows.items():
         if row.get("verdict") != "moves":
             continue
-        imgs = {arm: render_design(json.loads((out / f"{slug}.{arm}.json").read_text(encoding="utf-8"))["design"],
-                                   px_per_mm=PX_PER_MM, fabric_bgr=NATURAL_BGR, pad_mm=PAD_MM)
-                for arm in ("off", "on")}
+        designs = {arm: json.loads((out / f"{slug}.{arm}.json").read_text(encoding="utf-8"))["design"]
+                   for arm in ("off", "on")}
+        imgs = {arm: render_design(d, px_per_mm=PX_PER_MM, fabric_bgr=NATURAL_BGR, pad_mm=PAD_MM)
+                for arm, d in designs.items()}
+        # number every transparent area on the ON panel: red = left open by
+        # the flag, blue = kept (a letter body), grey = open on both arms
+        st = [s for s in designs["on"]["stitches"] if s.get("type") in ("stitch", "jump")]
+        x0, y1 = min(s["x"] for s in st) / 10.0, max(s["y"] for s in st) / 10.0
+        for d in row.get("transparent") or []:
+            u = int(round((d["xy_mm"][0] - x0 + PAD_MM) * PX_PER_MM))
+            v = int(round((d["xy_mm"][1] + y1 + PAD_MM) * PX_PER_MM))
+            col = {"dropped": (40, 40, 220), "kept_letter": (200, 90, 20)}.get(d["status"], (120, 120, 120))
+            cv2.circle(imgs["on"], (u, v), 9, col, 2)
+            cv2.putText(imgs["on"], str(d["n"]), (u + 10, v - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.45, col, 1)
         panels = [("OFF", imgs["off"]), ("ON (enclosed_white_skip_transparent)", imgs["on"])]
         if kind == "corpus":
             # Commons art only: a pro job's art is a client's, so its panel is left out
