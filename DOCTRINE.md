@@ -1384,6 +1384,23 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   Read per-shape tiers by AREA: `tier_census`'s reader scores our own known
   plan 0.22 by count and 0.80 by area. *(measured 2026-10-29 —
   `docs/satin-fill-remeasure-2026-10-29.md`)*
+- **`edge_wobble`'s flagged locations do not find the edges Kent calls
+  jagged. Do not use them, or the preflight `edge_wobble_*` numbers, as a
+  stand-in for his eye on smoothness, and do not re-tune `OVER_MM` or the
+  radius against these pins.** Scored against his 20 "should be smooth" pins
+  on 7 logos from the 2026-11-10 defect-marks sitting, with the radius
+  (3.0 mm), pin rule and nulls committed before the run: hit 0.60 against
+  stitched-area chance 0.49, kappa 0.21, item-bootstrap 95% CI on the
+  difference [-0.04, +0.21]; strength AUC 0.51. Not shown better than chance.
+  Why, from the misses: the 3 mm high-pass removes a scallop that runs evenly
+  along a whole stroke (Tires: 3 of 4 pins missed), small lettering is never
+  read (ProSeal's "M" in SPRAY FOAM: nearest flag 10.4 mm), and the strongest
+  flags are satin column ends that he did not pin. A next smoothness reader
+  needs a different INPUT (absolute edge roughness, small text, and outline
+  against the artwork), not a new threshold. The harness
+  (`tools/fault_reader_harness.py`) is the reusable part; the closed or
+  merged letters reader is next. *(measured 2026-11-10 —
+  `docs/edge-fault-reader-2026-11-10.md`, tree `950855bf`)*
 
 ---
 

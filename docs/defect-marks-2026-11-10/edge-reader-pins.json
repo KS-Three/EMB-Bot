@@ -1,0 +1,205 @@
+{
+ "rule": "docs/defect-marks-2026-11-10/edge-reader-preregistration.md",
+ "pins": [
+  {
+   "item": "L_becker_hat_large",
+   "pin": 3,
+   "x_mm": 87.6,
+   "y_mm": 4.04,
+   "what": "jagged",
+   "severity": "noticeable",
+   "note": "The border around this logo should be smooth",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_becker_hat_large",
+   "pin": 7,
+   "x_mm": 28.37,
+   "y_mm": 4.28,
+   "what": "wavy",
+   "severity": "noticeable",
+   "note": "These jagged adges are not clean/smooth.",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_becker_hat_large",
+   "pin": 8,
+   "x_mm": 78.01,
+   "y_mm": 4.42,
+   "what": "lumpy_curve",
+   "severity": "noticeable",
+   "note": "Its jagged and should be smooth",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_becker_hat_large",
+   "pin": 9,
+   "x_mm": 97.43,
+   "y_mm": 21.22,
+   "what": "lumpy_curve",
+   "severity": "noticeable",
+   "note": "Its jagged and should be smooth",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_becker_hat_large",
+   "pin": 11,
+   "x_mm": 71.44,
+   "y_mm": 47.5,
+   "what": "wavy",
+   "severity": "noticeable",
+   "note": "The letters should be flat",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_becker_hat_large",
+   "pin": 12,
+   "x_mm": 81.22,
+   "y_mm": 65.02,
+   "what": "wavy",
+   "severity": "noticeable",
+   "note": "The letters should be flat",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_becker_hat_large",
+   "pin": 13,
+   "x_mm": 56.14,
+   "y_mm": 53.61,
+   "what": "lumpy_curve",
+   "severity": "nitpick",
+   "note": "The R should be smooth and it has a bump here.",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_bridge_hat",
+   "pin": 11,
+   "x_mm": 37.05,
+   "y_mm": 11.5,
+   "what": "jagged",
+   "severity": "noticeable",
+   "note": "The circle should be smooth, not jagged",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_gaulke_roofing_hat",
+   "pin": 3,
+   "x_mm": 53.93,
+   "y_mm": 13.07,
+   "what": "mushed",
+   "severity": "noticeable",
+   "note": "The white spacing is not very apparent, and the edges are very jagged.",
+   "rule": "edge word"
+  },
+  {
+   "item": "L_gaulke_roofing_hat",
+   "pin": 4,
+   "x_mm": 61.38,
+   "y_mm": 0.48,
+   "what": null,
+   "severity": "noticeable",
+   "note": "The circle edges should be smooth",
+   "rule": "edge word"
+  },
+  {
+   "item": "L_hotel_fremont_hat",
+   "pin": 4,
+   "x_mm": 7.02,
+   "y_mm": 24.09,
+   "what": "jagged",
+   "severity": "nitpick",
+   "note": "All of the letters edges are jagged, they should be smooth.",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_mfab_hat",
+   "pin": 1,
+   "x_mm": 21.87,
+   "y_mm": -0.31,
+   "what": null,
+   "severity": "nitpick",
+   "note": "The border is jagged, but it matches the photo quality...",
+   "rule": "edge word"
+  },
+  {
+   "item": "L_mfab_hat",
+   "pin": 2,
+   "x_mm": 40.69,
+   "y_mm": 8.44,
+   "what": "wavy",
+   "severity": "nitpick",
+   "note": "It isn't straight like the photo",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_mfab_hat",
+   "pin": 8,
+   "x_mm": 34.68,
+   "y_mm": 28.43,
+   "what": "wavy",
+   "severity": "nitpick",
+   "note": "This doesn;t look clean here",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_proseal_hat",
+   "pin": 3,
+   "x_mm": 33.36,
+   "y_mm": 31.76,
+   "what": "jagged",
+   "severity": "nitpick",
+   "note": "This doesn't have a crisp edge cut-off",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_proseal_hat",
+   "pin": 4,
+   "x_mm": 41.1,
+   "y_mm": 61.98,
+   "what": "letter_shape",
+   "severity": "noticeable",
+   "note": "The \"M\" is jagged and n",
+   "rule": "edge word"
+  },
+  {
+   "item": "L_tires_hat_3d",
+   "pin": 1,
+   "x_mm": 53.78,
+   "y_mm": 17.41,
+   "what": "jagged",
+   "severity": "nitpick",
+   "note": "Jagged edges don't look clean (marks 1-4 are te same issue)",
+   "rule": "edge kind"
+  },
+  {
+   "item": "L_tires_hat_3d",
+   "pin": 2,
+   "x_mm": 93.24,
+   "y_mm": 36.27,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 1"
+  },
+  {
+   "item": "L_tires_hat_3d",
+   "pin": 3,
+   "x_mm": 71.77,
+   "y_mm": 29.32,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 1"
+  },
+  {
+   "item": "L_tires_hat_3d",
+   "pin": 4,
+   "x_mm": 101.77,
+   "y_mm": 24.16,
+   "what": null,
+   "severity": null,
+   "note": "",
+   "rule": "same as pin 1"
+  }
+ ]
+}
