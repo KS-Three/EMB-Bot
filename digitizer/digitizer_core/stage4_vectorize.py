@@ -25,7 +25,7 @@ from shapely.geometry import Polygon
 from shapely.ops import unary_union
 from shapely.validation import make_valid
 
-from . import machine
+from . import bean_rule, machine
 from .config import PipelineConfig
 from .regions import Region, assign_shape_ids
 from .stage1_prep import Prep
@@ -996,6 +996,7 @@ def revalidate_threads(regions: list[Region], p: Prep,
     # place. That argument is about golden churn, not about the escape being
     # wanted.
     grader_mask = bool(cfg.resnap_mask_matches_grader)
+    hairline_keeps_ink = bool(getattr(cfg, "resnap_hairline_never_lightens", False))
     bind_all = bool(cfg.bind_resnap_all_classes)
     allowed: np.ndarray | None = (
         palette_only if (bind_all or is_photographic(cfg, design_class))
@@ -1086,6 +1087,12 @@ def revalidate_threads(regions: list[Region], p: Prep,
             continue
         after = float(per_spool[best])
         if before - after < THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00:
+            continue
+        # `cfg.resnap_hairline_never_lightens` (built OFF 2026-11-11): a drawn
+        # line's footprint is its own halo, so the median reads lighter than
+        # the ink and the "better" spool is a grey. A line keeps the ink.
+        if (hairline_keeps_ink and chart.lab[best][0] > chart.lab[r.thread_index][0]
+                and bean_rule.min_dim_mm(r.polygon) <= bean_rule.LINE_MAX_MM):
             continue
         r.thread_index = best
         r.thread_number = chart[best].number
