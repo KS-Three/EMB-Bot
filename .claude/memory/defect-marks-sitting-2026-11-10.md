@@ -1,6 +1,6 @@
 ---
 name: defect-marks-sitting-2026-11-10
-description: Kent 11-10 asked why his eye and the yardstick differ; the answer so far is whole-design number vs local faults, and `tools/defect_marks.py` is the sitting that asks him where and what instead of left or right
+description: Kent 11-10 asked why his eye and the yardstick differ; `tools/defect_marks.py` asks him where and what instead of left or right; he sat it 11-10 (15 items, 95 pins): smooth edges and closed/merged letters lead, all 4 photos Terrible
 metadata:
   type: project
 ---
@@ -33,9 +33,30 @@ pro's PES drawn beside it), `serve` (port 8736; launch.json `defect-marks`),
 yardstick's reading; `kit.json` keeps it for `report`. Answers land in
 `eye_pairs_out/defect-marks-1110/marks.json` (gitignored).
 
+**The sitting (Kent, 2026-11-10; record `docs/defect-marks-2026-11-10/`,
+with `marks.json` and `kit.json` committed, no pictures).** 15 items: 11 pro
+logos and only 4 photos (the kit was built before the 39-row capture finished).
+- Grades: Good 4, Okay 3, Terrible 5, none 3; no Great. All 4 photos Terrible,
+  "can't tell what it is" + "not for thread", 2 pins between them.
+- Against preflight on 12 graded items: same grade 3, yardstick kinder 6,
+  harsher 3. Becker hat Okay vs A 100; Bridge hat Okay vs F 0; landscape photo
+  Terrible vs B 76. Spearman +0.41 (n 12), +0.32 logos only (n 8): instrument
+  readings, n too small to lean on.
+- 95 pins: letter_shape 14, missing 10, mushed 7, other 7, jagged 5, wavy 5,
+  stray 4, gap 4; 25 with no kind (22 are his "same as pin 1" shorthand on
+  Golden Tee and Tires).
+- The session's reading of his notes (keyword counts, not his words): edges
+  that should be smooth = 17 pins on 7 items spread over 7 kinds; letters that
+  close up or merge = 15 pins on 6 items.
+- The page server stopped mid-sitting (the app stopped the session's preview);
+  marks survived, see the record's "Gaps".
+
 **How to apply:** the next yardstick is a set of fault readers, one per kind
 Kent pins, each checked against his pin positions (mm, design frame), not a
-new whole-design score. Run from a lane with `EMB_SCRATCH_KENT` and
+new whole-design score. Check a reader against his NOTE, with the kind as a
+hint: he files one fault under several kinds. Start with smooth edges and
+closed/merged letters. The photo half needs a different question: pins have
+nothing to point at on a render he cannot recognise. Run from a lane with `EMB_SCRATCH_KENT` and
 `EMB_BRIDGE_PRO` set and `--tree` on the primary checkout (a lane has no rembg
 venv and no pro files). Related: [[yardstick-pro-pair-2026-11-01]],
 [[yardstick-dreamsim-2026-11-08]], [[photo-corpus-sxs-2026-10-27]].
