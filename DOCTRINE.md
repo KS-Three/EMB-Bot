@@ -1417,6 +1417,22 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   edge-band null is near 0 for lettering inside a sewn field and is no
   stronger claim here. *(measured 2026-11-11 —
   `docs/letter-fault-reader-2026-11-11.md`, tree `950855bf`)*
+- **Score a fault reader against random picks from its OWN candidates, not
+  only random points on thread: a reader that finds the right region beats
+  the area null without choosing anything.** The in-fill reader
+  (`tools/infill_fault_reader.py`: thread sewn in a space the art leaves
+  empty) against Kent's 36 in-fill pins (6 items, 8 notes, pre-registered
+  `ba01dcb7`): per note 0.29 against 0.04 for random thread points, but 0.29
+  against 0.27 for pins dropped on random spaces it could have flagged, CI
+  [-0.31, +0.28]: not shown. On kanji it flags every white-filled space and
+  he pinned most of them, so that item cannot show selection at all. The
+  harness's edge-band null reads exactly 0 inside a sewn field by
+  definition (the band is thread beside fabric), not by a bug. And his
+  "extra in-fill" is `sew_enclosed_white`'s body/counter split, sewing some
+  enclosed transparent spaces white and not others on seal script and
+  Devanagari; the reader cannot tell those from the hollow letter bodies the
+  pro also sews (Becker). *(measured 2026-11-11 —
+  `docs/infill-fault-reader-2026-11-11.md`, tree `950855bf`)*
 
 ---
 
