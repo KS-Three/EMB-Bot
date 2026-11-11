@@ -1,0 +1,1815 @@
+{
+ "radius_mm": 3.0,
+ "items": {
+  "L_becker_hat_large": {
+   "pins": 7,
+   "flags": 139,
+   "by_radius": {
+    "3.0": {
+     "hit": 5,
+     "hit_rate": 0.7142857142857143,
+     "chance_area": 0.46735714285714286,
+     "chance_edge": 0.44392857142857145
+    },
+    "2.0": {
+     "hit": 5,
+     "hit_rate": 0.7142857142857143,
+     "chance_area": 0.2812142857142857,
+     "chance_edge": 0.33321428571428574
+    },
+    "5.0": {
+     "hit": 7,
+     "hit_rate": 1.0,
+     "chance_area": 0.7838571428571428,
+     "chance_edge": 0.6570714285714285
+    }
+   },
+   "auc_area": 0.5637142857142857,
+   "auc_edge": 0.5769285714285715,
+   "pin_nearest_mm": [
+    1.79,
+    0.81,
+    0.42,
+    0.38,
+    3.12,
+    3.53,
+    1.35
+   ],
+   "unpinned": [
+    {
+     "x_mm": 13.52,
+     "y_mm": 41.06,
+     "strength": 1.022,
+     "dev_mm": -1.022,
+     "tier": "fill",
+     "zone": null,
+     "n": 12,
+     "tiers": {
+      "fill": 12
+     }
+    },
+    {
+     "x_mm": 91.97,
+     "y_mm": 59.95,
+     "strength": 0.996,
+     "dev_mm": -0.996,
+     "tier": "satin",
+     "zone": "end",
+     "n": 11,
+     "tiers": {
+      "satin": 11
+     }
+    },
+    {
+     "x_mm": 69.2,
+     "y_mm": 49.67,
+     "strength": 0.953,
+     "dev_mm": -0.953,
+     "tier": "satin",
+     "zone": "end",
+     "n": 7,
+     "tiers": {
+      "satin": 7
+     }
+    },
+    {
+     "x_mm": 91.56,
+     "y_mm": 40.55,
+     "strength": 0.927,
+     "dev_mm": 0.927,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 10,
+     "tiers": {
+      "satin": 9,
+      "fill": 1
+     }
+    },
+    {
+     "x_mm": 47.34,
+     "y_mm": 51.51,
+     "strength": 0.896,
+     "dev_mm": -0.896,
+     "tier": "satin",
+     "zone": "end",
+     "n": 13,
+     "tiers": {
+      "satin": 13
+     }
+    },
+    {
+     "x_mm": 11.4,
+     "y_mm": 41.69,
+     "strength": 0.884,
+     "dev_mm": -0.884,
+     "tier": "fill",
+     "zone": null,
+     "n": 16,
+     "tiers": {
+      "fill": 16
+     }
+    },
+    {
+     "x_mm": 97.58,
+     "y_mm": 24.78,
+     "strength": 0.861,
+     "dev_mm": 0.861,
+     "tier": "satin",
+     "zone": "end",
+     "n": 10,
+     "tiers": {
+      "satin": 8,
+      "fill": 2
+     }
+    },
+    {
+     "x_mm": 1.68,
+     "y_mm": 42.5,
+     "strength": 0.841,
+     "dev_mm": -0.841,
+     "tier": "fill",
+     "zone": null,
+     "n": 40,
+     "tiers": {
+      "fill": 37,
+      "satin": 3
+     }
+    },
+    {
+     "x_mm": 91.83,
+     "y_mm": 51.99,
+     "strength": 0.829,
+     "dev_mm": -0.829,
+     "tier": "satin",
+     "zone": "end",
+     "n": 9,
+     "tiers": {
+      "satin": 9
+     }
+    },
+    {
+     "x_mm": 89.85,
+     "y_mm": 38.89,
+     "strength": 0.806,
+     "dev_mm": -0.806,
+     "tier": "fill",
+     "zone": null,
+     "n": 7,
+     "tiers": {
+      "fill": 5,
+      "satin": 2
+     }
+    }
+   ],
+   "pin_ids": [
+    3,
+    7,
+    8,
+    9,
+    11,
+    12,
+    13
+   ]
+  },
+  "L_bridge_hat": {
+   "pins": 1,
+   "flags": 85,
+   "by_radius": {
+    "3.0": {
+     "hit": 1,
+     "hit_rate": 1.0,
+     "chance_area": 0.736,
+     "chance_edge": 0.651
+    },
+    "2.0": {
+     "hit": 0,
+     "hit_rate": 0.0,
+     "chance_area": 0.487,
+     "chance_edge": 0.3825
+    },
+    "5.0": {
+     "hit": 1,
+     "hit_rate": 1.0,
+     "chance_area": 0.9535,
+     "chance_edge": 0.8565
+    }
+   },
+   "auc_area": 0.641,
+   "auc_edge": 0.69675,
+   "pin_nearest_mm": [
+    2.78
+   ],
+   "unpinned": [
+    {
+     "x_mm": 49.98,
+     "y_mm": 29.89,
+     "strength": 0.834,
+     "dev_mm": -0.834,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 9,
+     "tiers": {
+      "satin": 9
+     }
+    },
+    {
+     "x_mm": 44.19,
+     "y_mm": 46.29,
+     "strength": 0.718,
+     "dev_mm": -0.718,
+     "tier": "satin",
+     "zone": "end",
+     "n": 20,
+     "tiers": {
+      "satin": 5,
+      "fill": 15
+     }
+    },
+    {
+     "x_mm": 13.56,
+     "y_mm": 32.01,
+     "strength": 0.716,
+     "dev_mm": -0.716,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 9,
+     "tiers": {
+      "satin": 9
+     }
+    },
+    {
+     "x_mm": 14.59,
+     "y_mm": 25.73,
+     "strength": 0.614,
+     "dev_mm": 0.614,
+     "tier": "satin",
+     "zone": "end",
+     "n": 1,
+     "tiers": {
+      "satin": 1
+     }
+    },
+    {
+     "x_mm": 28.51,
+     "y_mm": 13.93,
+     "strength": 0.611,
+     "dev_mm": 0.611,
+     "tier": "satin",
+     "zone": "end",
+     "n": 24,
+     "tiers": {
+      "satin": 1,
+      "fill": 23
+     }
+    },
+    {
+     "x_mm": 21.0,
+     "y_mm": 24.04,
+     "strength": 0.555,
+     "dev_mm": -0.555,
+     "tier": "satin",
+     "zone": "end",
+     "n": 8,
+     "tiers": {
+      "satin": 8
+     }
+    },
+    {
+     "x_mm": 38.63,
+     "y_mm": 26.76,
+     "strength": 0.486,
+     "dev_mm": -0.486,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 4,
+     "tiers": {
+      "satin": 4
+     }
+    },
+    {
+     "x_mm": 34.14,
+     "y_mm": 13.93,
+     "strength": 0.465,
+     "dev_mm": 0.465,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 31,
+     "tiers": {
+      "satin": 6,
+      "fill": 25
+     }
+    },
+    {
+     "x_mm": 31.31,
+     "y_mm": 28.16,
+     "strength": 0.455,
+     "dev_mm": -0.455,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 1,
+     "tiers": {
+      "satin": 1
+     }
+    },
+    {
+     "x_mm": 52.33,
+     "y_mm": 32.38,
+     "strength": 0.422,
+     "dev_mm": 0.422,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 12,
+     "tiers": {
+      "satin": 12
+     }
+    }
+   ],
+   "pin_ids": [
+    11
+   ]
+  },
+  "L_gaulke_roofing_hat": {
+   "pins": 2,
+   "flags": 121,
+   "by_radius": {
+    "3.0": {
+     "hit": 2,
+     "hit_rate": 1.0,
+     "chance_area": 0.7355,
+     "chance_edge": 0.69275
+    },
+    "2.0": {
+     "hit": 2,
+     "hit_rate": 1.0,
+     "chance_area": 0.517,
+     "chance_edge": 0.45125
+    },
+    "5.0": {
+     "hit": 2,
+     "hit_rate": 1.0,
+     "chance_area": 0.93925,
+     "chance_edge": 0.93825
+    }
+   },
+   "auc_area": 0.600375,
+   "auc_edge": 0.642,
+   "pin_nearest_mm": [
+    0.91,
+    1.36
+   ],
+   "unpinned": [
+    {
+     "x_mm": 72.44,
+     "y_mm": 29.96,
+     "strength": 1.521,
+     "dev_mm": 1.521,
+     "tier": "satin",
+     "zone": "end",
+     "n": 11,
+     "tiers": {
+      "satin": 11
+     }
+    },
+    {
+     "x_mm": 66.02,
+     "y_mm": 15.1,
+     "strength": 0.756,
+     "dev_mm": -0.756,
+     "tier": "satin",
+     "zone": "end",
+     "n": 4,
+     "tiers": {
+      "satin": 4
+     }
+    },
+    {
+     "x_mm": 47.89,
+     "y_mm": 15.04,
+     "strength": 0.743,
+     "dev_mm": -0.743,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 5,
+     "tiers": {
+      "satin": 5
+     }
+    },
+    {
+     "x_mm": 37.65,
+     "y_mm": 35.01,
+     "strength": 0.604,
+     "dev_mm": -0.604,
+     "tier": "satin",
+     "zone": "end",
+     "n": 4,
+     "tiers": {
+      "satin": 4
+     }
+    },
+    {
+     "x_mm": 71.3,
+     "y_mm": 13.94,
+     "strength": 0.578,
+     "dev_mm": -0.578,
+     "tier": "border",
+     "zone": "end",
+     "n": 4,
+     "tiers": {
+      "border": 4
+     }
+    },
+    {
+     "x_mm": 41.83,
+     "y_mm": 15.86,
+     "strength": 0.57,
+     "dev_mm": -0.57,
+     "tier": "fill",
+     "zone": null,
+     "n": 17,
+     "tiers": {
+      "fill": 17
+     }
+    },
+    {
+     "x_mm": 70.83,
+     "y_mm": 25.94,
+     "strength": 0.568,
+     "dev_mm": -0.568,
+     "tier": "satin",
+     "zone": "end",
+     "n": 8,
+     "tiers": {
+      "satin": 8
+     }
+    },
+    {
+     "x_mm": 34.11,
+     "y_mm": 27.05,
+     "strength": 0.558,
+     "dev_mm": 0.558,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 6,
+     "tiers": {
+      "satin": 6
+     }
+    },
+    {
+     "x_mm": 56.23,
+     "y_mm": 35.47,
+     "strength": 0.543,
+     "dev_mm": -0.543,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 10,
+     "tiers": {
+      "satin": 10
+     }
+    },
+    {
+     "x_mm": 98.14,
+     "y_mm": 33.48,
+     "strength": 0.505,
+     "dev_mm": -0.505,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 11,
+     "tiers": {
+      "satin": 11
+     }
+    }
+   ],
+   "pin_ids": [
+    3,
+    4
+   ]
+  },
+  "L_hotel_fremont_hat": {
+   "pins": 1,
+   "flags": 78,
+   "by_radius": {
+    "3.0": {
+     "hit": 0,
+     "hit_rate": 0.0,
+     "chance_area": 0.434,
+     "chance_edge": 0.403
+    },
+    "2.0": {
+     "hit": 0,
+     "hit_rate": 0.0,
+     "chance_area": 0.233,
+     "chance_edge": 0.3235
+    },
+    "5.0": {
+     "hit": 0,
+     "hit_rate": 0.0,
+     "chance_area": 0.7765,
+     "chance_edge": 0.7185
+    }
+   },
+   "auc_area": 0.283,
+   "auc_edge": 0.292,
+   "pin_nearest_mm": [
+    5.67
+   ],
+   "unpinned": [
+    {
+     "x_mm": 44.09,
+     "y_mm": 10.11,
+     "strength": 0.635,
+     "dev_mm": -0.635,
+     "tier": "fill",
+     "zone": null,
+     "n": 17,
+     "tiers": {
+      "fill": 17
+     }
+    },
+    {
+     "x_mm": 48.65,
+     "y_mm": 9.51,
+     "strength": 0.614,
+     "dev_mm": -0.614,
+     "tier": "fill",
+     "zone": null,
+     "n": 13,
+     "tiers": {
+      "fill": 11,
+      "line": 2
+     }
+    },
+    {
+     "x_mm": 15.52,
+     "y_mm": 34.7,
+     "strength": 0.545,
+     "dev_mm": -0.545,
+     "tier": "fill",
+     "zone": null,
+     "n": 19,
+     "tiers": {
+      "fill": 14,
+      "satin": 5
+     }
+    },
+    {
+     "x_mm": 78.01,
+     "y_mm": 15.83,
+     "strength": 0.529,
+     "dev_mm": -0.529,
+     "tier": "fill",
+     "zone": null,
+     "n": 19,
+     "tiers": {
+      "fill": 14,
+      "satin": 5
+     }
+    },
+    {
+     "x_mm": 0.72,
+     "y_mm": 20.59,
+     "strength": 0.525,
+     "dev_mm": -0.525,
+     "tier": "fill",
+     "zone": null,
+     "n": 24,
+     "tiers": {
+      "fill": 24
+     }
+    },
+    {
+     "x_mm": 78.71,
+     "y_mm": 34.59,
+     "strength": 0.502,
+     "dev_mm": 0.502,
+     "tier": "fill",
+     "zone": null,
+     "n": 23,
+     "tiers": {
+      "fill": 15,
+      "satin": 8
+     }
+    },
+    {
+     "x_mm": 44.67,
+     "y_mm": 8.16,
+     "strength": 0.493,
+     "dev_mm": -0.493,
+     "tier": "fill",
+     "zone": null,
+     "n": 7,
+     "tiers": {
+      "fill": 7
+     }
+    },
+    {
+     "x_mm": 35.39,
+     "y_mm": 37.81,
+     "strength": 0.472,
+     "dev_mm": -0.472,
+     "tier": "line",
+     "zone": null,
+     "n": 8,
+     "tiers": {
+      "line": 8
+     }
+    },
+    {
+     "x_mm": 15.55,
+     "y_mm": 14.45,
+     "strength": 0.466,
+     "dev_mm": -0.466,
+     "tier": "fill",
+     "zone": null,
+     "n": 28,
+     "tiers": {
+      "fill": 25,
+      "satin": 3
+     }
+    },
+    {
+     "x_mm": 92.64,
+     "y_mm": 29.94,
+     "strength": 0.463,
+     "dev_mm": -0.463,
+     "tier": "fill",
+     "zone": null,
+     "n": 25,
+     "tiers": {
+      "fill": 25
+     }
+    }
+   ],
+   "pin_ids": [
+    4
+   ]
+  },
+  "L_mfab_hat": {
+   "pins": 3,
+   "flags": 226,
+   "by_radius": {
+    "3.0": {
+     "hit": 2,
+     "hit_rate": 0.6666666666666666,
+     "chance_area": 0.6876666666666666,
+     "chance_edge": 0.893
+    },
+    "2.0": {
+     "hit": 2,
+     "hit_rate": 0.6666666666666666,
+     "chance_area": 0.5,
+     "chance_edge": 0.86
+    },
+    "5.0": {
+     "hit": 3,
+     "hit_rate": 1.0,
+     "chance_area": 0.9148333333333334,
+     "chance_edge": 0.9521666666666667
+    }
+   },
+   "auc_area": 0.35975,
+   "auc_edge": 0.21133333333333335,
+   "pin_nearest_mm": [
+    1.4,
+    4.3,
+    0.73
+   ],
+   "unpinned": [
+    {
+     "x_mm": 21.54,
+     "y_mm": 26.04,
+     "strength": 1.08,
+     "dev_mm": 1.08,
+     "tier": "satin",
+     "zone": "end",
+     "n": 4,
+     "tiers": {
+      "satin": 3,
+      "fill": 1
+     }
+    },
+    {
+     "x_mm": 58.93,
+     "y_mm": 26.52,
+     "strength": 0.97,
+     "dev_mm": -0.97,
+     "tier": "satin",
+     "zone": "end",
+     "n": 20,
+     "tiers": {
+      "satin": 17,
+      "fill": 3
+     }
+    },
+    {
+     "x_mm": 65.17,
+     "y_mm": 25.51,
+     "strength": 0.928,
+     "dev_mm": 0.928,
+     "tier": "fill",
+     "zone": null,
+     "n": 11,
+     "tiers": {
+      "fill": 11
+     }
+    },
+    {
+     "x_mm": 68.06,
+     "y_mm": 18.09,
+     "strength": 0.839,
+     "dev_mm": -0.839,
+     "tier": "fill",
+     "zone": null,
+     "n": 26,
+     "tiers": {
+      "fill": 26
+     }
+    },
+    {
+     "x_mm": 16.1,
+     "y_mm": 22.73,
+     "strength": 0.824,
+     "dev_mm": -0.824,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 1,
+     "tiers": {
+      "satin": 1
+     }
+    },
+    {
+     "x_mm": 45.2,
+     "y_mm": 21.34,
+     "strength": 0.807,
+     "dev_mm": 0.807,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 9,
+     "tiers": {
+      "satin": 9
+     }
+    },
+    {
+     "x_mm": 82.38,
+     "y_mm": 25.76,
+     "strength": 0.762,
+     "dev_mm": -0.762,
+     "tier": "fill",
+     "zone": null,
+     "n": 9,
+     "tiers": {
+      "fill": 9
+     }
+    },
+    {
+     "x_mm": 6.9,
+     "y_mm": 25.79,
+     "strength": 0.761,
+     "dev_mm": -0.761,
+     "tier": "fill",
+     "zone": null,
+     "n": 3,
+     "tiers": {
+      "fill": 3
+     }
+    },
+    {
+     "x_mm": 34.73,
+     "y_mm": 24.52,
+     "strength": 0.713,
+     "dev_mm": 0.713,
+     "tier": "fill",
+     "zone": null,
+     "n": 19,
+     "tiers": {
+      "fill": 19
+     }
+    },
+    {
+     "x_mm": 27.66,
+     "y_mm": 20.56,
+     "strength": 0.704,
+     "dev_mm": -0.704,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 6,
+     "tiers": {
+      "satin": 6
+     }
+    }
+   ],
+   "pin_ids": [
+    1,
+    2,
+    8
+   ]
+  },
+  "L_precision_drone": {
+   "pins": 0,
+   "flags": 139,
+   "by_radius": {
+    "3.0": {
+     "hit": 0,
+     "hit_rate": NaN,
+     "chance_area": NaN,
+     "chance_edge": NaN
+    },
+    "2.0": {
+     "hit": 0,
+     "hit_rate": NaN,
+     "chance_area": NaN,
+     "chance_edge": NaN
+    },
+    "5.0": {
+     "hit": 0,
+     "hit_rate": NaN,
+     "chance_area": NaN,
+     "chance_edge": NaN
+    }
+   },
+   "pin_nearest_mm": [],
+   "unpinned": [
+    {
+     "x_mm": 54.23,
+     "y_mm": 23.66,
+     "strength": 0.789,
+     "dev_mm": 0.789,
+     "tier": "satin",
+     "zone": "end",
+     "n": 11,
+     "tiers": {
+      "satin": 11
+     }
+    },
+    {
+     "x_mm": 43.43,
+     "y_mm": 5.01,
+     "strength": 0.751,
+     "dev_mm": 0.751,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 14,
+     "tiers": {
+      "satin": 5,
+      "fill": 9
+     }
+    },
+    {
+     "x_mm": 14.5,
+     "y_mm": 11.27,
+     "strength": 0.682,
+     "dev_mm": -0.682,
+     "tier": "satin",
+     "zone": "end",
+     "n": 11,
+     "tiers": {
+      "satin": 9,
+      "fill": 2
+     }
+    },
+    {
+     "x_mm": 49.36,
+     "y_mm": 30.08,
+     "strength": 0.632,
+     "dev_mm": 0.632,
+     "tier": "fill",
+     "zone": null,
+     "n": 9,
+     "tiers": {
+      "fill": 4,
+      "satin": 5
+     }
+    },
+    {
+     "x_mm": 32.2,
+     "y_mm": 10.44,
+     "strength": 0.628,
+     "dev_mm": 0.628,
+     "tier": "fill",
+     "zone": null,
+     "n": 16,
+     "tiers": {
+      "fill": 14,
+      "satin": 2
+     }
+    },
+    {
+     "x_mm": 12.45,
+     "y_mm": 21.82,
+     "strength": 0.613,
+     "dev_mm": -0.613,
+     "tier": "fill",
+     "zone": null,
+     "n": 6,
+     "tiers": {
+      "fill": 6
+     }
+    },
+    {
+     "x_mm": 10.25,
+     "y_mm": 15.07,
+     "strength": 0.608,
+     "dev_mm": -0.608,
+     "tier": "fill",
+     "zone": null,
+     "n": 15,
+     "tiers": {
+      "fill": 11,
+      "satin": 4
+     }
+    },
+    {
+     "x_mm": 29.75,
+     "y_mm": 22.15,
+     "strength": 0.599,
+     "dev_mm": -0.599,
+     "tier": "fill",
+     "zone": null,
+     "n": 22,
+     "tiers": {
+      "fill": 19,
+      "satin": 3
+     }
+    },
+    {
+     "x_mm": 15.72,
+     "y_mm": 22.28,
+     "strength": 0.595,
+     "dev_mm": -0.595,
+     "tier": "fill",
+     "zone": null,
+     "n": 24,
+     "tiers": {
+      "fill": 24
+     }
+    },
+    {
+     "x_mm": 48.84,
+     "y_mm": 47.75,
+     "strength": 0.569,
+     "dev_mm": -0.569,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 14,
+     "tiers": {
+      "satin": 14
+     }
+    }
+   ],
+   "pin_ids": []
+  },
+  "L_proseal_hat": {
+   "pins": 2,
+   "flags": 61,
+   "by_radius": {
+    "3.0": {
+     "hit": 1,
+     "hit_rate": 0.5,
+     "chance_area": 0.502,
+     "chance_edge": 0.33625
+    },
+    "2.0": {
+     "hit": 1,
+     "hit_rate": 0.5,
+     "chance_area": 0.29475,
+     "chance_edge": 0.169
+    },
+    "5.0": {
+     "hit": 1,
+     "hit_rate": 0.5,
+     "chance_area": 0.75125,
+     "chance_edge": 0.602
+    }
+   },
+   "auc_area": 0.42637499999999995,
+   "auc_edge": 0.5058750000000001,
+   "pin_nearest_mm": [
+    1.22,
+    10.36
+   ],
+   "unpinned": [
+    {
+     "x_mm": 26.28,
+     "y_mm": 24.16,
+     "strength": 0.641,
+     "dev_mm": 0.641,
+     "tier": "fill",
+     "zone": null,
+     "n": 11,
+     "tiers": {
+      "fill": 11
+     }
+    },
+    {
+     "x_mm": 17.32,
+     "y_mm": 51.47,
+     "strength": 0.63,
+     "dev_mm": -0.63,
+     "tier": "satin",
+     "zone": "end",
+     "n": 6,
+     "tiers": {
+      "satin": 6
+     }
+    },
+    {
+     "x_mm": 53.15,
+     "y_mm": 53.28,
+     "strength": 0.612,
+     "dev_mm": -0.612,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 22,
+     "tiers": {
+      "satin": 22
+     }
+    },
+    {
+     "x_mm": 34.48,
+     "y_mm": 48.23,
+     "strength": 0.607,
+     "dev_mm": -0.607,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 11,
+     "tiers": {
+      "satin": 11
+     }
+    },
+    {
+     "x_mm": 28.53,
+     "y_mm": 53.1,
+     "strength": 0.586,
+     "dev_mm": -0.586,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 8,
+     "tiers": {
+      "satin": 8
+     }
+    },
+    {
+     "x_mm": 29.06,
+     "y_mm": 30.01,
+     "strength": 0.585,
+     "dev_mm": -0.585,
+     "tier": "fill",
+     "zone": null,
+     "n": 5,
+     "tiers": {
+      "fill": 5
+     }
+    },
+    {
+     "x_mm": 22.23,
+     "y_mm": 40.96,
+     "strength": 0.576,
+     "dev_mm": -0.576,
+     "tier": "fill",
+     "zone": null,
+     "n": 14,
+     "tiers": {
+      "fill": 14
+     }
+    },
+    {
+     "x_mm": 16.65,
+     "y_mm": 25.51,
+     "strength": 0.553,
+     "dev_mm": -0.553,
+     "tier": "fill",
+     "zone": null,
+     "n": 14,
+     "tiers": {
+      "fill": 14
+     }
+    },
+    {
+     "x_mm": 33.82,
+     "y_mm": 52.92,
+     "strength": 0.55,
+     "dev_mm": -0.55,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 7,
+     "tiers": {
+      "satin": 7
+     }
+    },
+    {
+     "x_mm": 54.01,
+     "y_mm": 48.42,
+     "strength": 0.544,
+     "dev_mm": -0.544,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 12,
+     "tiers": {
+      "satin": 12
+     }
+    }
+   ],
+   "pin_ids": [
+    3,
+    4
+   ]
+  },
+  "L_tires_hat_3d": {
+   "pins": 4,
+   "flags": 28,
+   "by_radius": {
+    "3.0": {
+     "hit": 1,
+     "hit_rate": 0.25,
+     "chance_area": 0.211875,
+     "chance_edge": 0.15825
+    },
+    "2.0": {
+     "hit": 1,
+     "hit_rate": 0.25,
+     "chance_area": 0.125875,
+     "chance_edge": 0.115375
+    },
+    "5.0": {
+     "hit": 2,
+     "hit_rate": 0.5,
+     "chance_area": 0.4165,
+     "chance_edge": 0.35825
+    }
+   },
+   "auc_area": 0.5414375,
+   "auc_edge": 0.56775,
+   "pin_nearest_mm": [
+    4.92,
+    5.72,
+    6.29,
+    0.66
+   ],
+   "unpinned": [
+    {
+     "x_mm": 93.69,
+     "y_mm": 28.73,
+     "strength": 1.154,
+     "dev_mm": -1.154,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 1,
+     "tiers": {
+      "satin": 1
+     }
+    },
+    {
+     "x_mm": 37.34,
+     "y_mm": 31.3,
+     "strength": 0.864,
+     "dev_mm": 0.864,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 8,
+     "tiers": {
+      "satin": 8
+     }
+    },
+    {
+     "x_mm": 99.18,
+     "y_mm": 34.87,
+     "strength": 0.8,
+     "dev_mm": -0.8,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 12,
+     "tiers": {
+      "satin": 12
+     }
+    },
+    {
+     "x_mm": 103.12,
+     "y_mm": 33.2,
+     "strength": 0.789,
+     "dev_mm": -0.789,
+     "tier": "satin",
+     "zone": "end",
+     "n": 6,
+     "tiers": {
+      "satin": 6
+     }
+    },
+    {
+     "x_mm": 37.36,
+     "y_mm": 34.46,
+     "strength": 0.772,
+     "dev_mm": -0.772,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 11,
+     "tiers": {
+      "satin": 11
+     }
+    },
+    {
+     "x_mm": 62.33,
+     "y_mm": 19.49,
+     "strength": 0.749,
+     "dev_mm": 0.749,
+     "tier": "satin",
+     "zone": "end",
+     "n": 8,
+     "tiers": {
+      "satin": 8
+     }
+    },
+    {
+     "x_mm": 60.07,
+     "y_mm": 33.42,
+     "strength": 0.735,
+     "dev_mm": -0.735,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 11,
+     "tiers": {
+      "satin": 11
+     }
+    },
+    {
+     "x_mm": 57.82,
+     "y_mm": 21.46,
+     "strength": 0.702,
+     "dev_mm": -0.702,
+     "tier": "satin",
+     "zone": "end",
+     "n": 14,
+     "tiers": {
+      "satin": 14
+     }
+    },
+    {
+     "x_mm": 106.32,
+     "y_mm": 32.9,
+     "strength": 0.691,
+     "dev_mm": -0.691,
+     "tier": "satin",
+     "zone": "end",
+     "n": 10,
+     "tiers": {
+      "satin": 10
+     }
+    },
+    {
+     "x_mm": 83.21,
+     "y_mm": 20.58,
+     "strength": 0.678,
+     "dev_mm": -0.678,
+     "tier": "satin",
+     "zone": "end",
+     "n": 13,
+     "tiers": {
+      "satin": 13
+     }
+    }
+   ],
+   "pin_ids": [
+    1,
+    2,
+    3,
+    4
+   ]
+  },
+  "L_goldentee_hat": {
+   "pins": 0,
+   "flags": 101,
+   "by_radius": {
+    "3.0": {
+     "hit": 0,
+     "hit_rate": NaN,
+     "chance_area": NaN,
+     "chance_edge": NaN
+    },
+    "2.0": {
+     "hit": 0,
+     "hit_rate": NaN,
+     "chance_area": NaN,
+     "chance_edge": NaN
+    },
+    "5.0": {
+     "hit": 0,
+     "hit_rate": NaN,
+     "chance_area": NaN,
+     "chance_edge": NaN
+    }
+   },
+   "pin_nearest_mm": [],
+   "unpinned": [
+    {
+     "x_mm": 42.26,
+     "y_mm": 41.9,
+     "strength": 0.841,
+     "dev_mm": 0.841,
+     "tier": "satin",
+     "zone": "end",
+     "n": 29,
+     "tiers": {
+      "satin": 25,
+      "fill": 4
+     }
+    },
+    {
+     "x_mm": 24.0,
+     "y_mm": 38.18,
+     "strength": 0.793,
+     "dev_mm": -0.793,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 16,
+     "tiers": {
+      "satin": 16
+     }
+    },
+    {
+     "x_mm": 32.59,
+     "y_mm": 43.11,
+     "strength": 0.791,
+     "dev_mm": -0.791,
+     "tier": "satin",
+     "zone": "end",
+     "n": 15,
+     "tiers": {
+      "satin": 15
+     }
+    },
+    {
+     "x_mm": 2.44,
+     "y_mm": 25.76,
+     "strength": 0.606,
+     "dev_mm": -0.606,
+     "tier": "satin",
+     "zone": "end",
+     "n": 4,
+     "tiers": {
+      "satin": 4
+     }
+    },
+    {
+     "x_mm": 30.98,
+     "y_mm": 37.53,
+     "strength": 0.602,
+     "dev_mm": 0.602,
+     "tier": "satin",
+     "zone": "end",
+     "n": 21,
+     "tiers": {
+      "satin": 18,
+      "fill": 3
+     }
+    },
+    {
+     "x_mm": 31.41,
+     "y_mm": 27.44,
+     "strength": 0.56,
+     "dev_mm": 0.56,
+     "tier": "satin",
+     "zone": "end",
+     "n": 12,
+     "tiers": {
+      "satin": 2,
+      "fill": 10
+     }
+    },
+    {
+     "x_mm": 22.23,
+     "y_mm": 39.27,
+     "strength": 0.536,
+     "dev_mm": -0.536,
+     "tier": "satin",
+     "zone": "end",
+     "n": 8,
+     "tiers": {
+      "satin": 8
+     }
+    },
+    {
+     "x_mm": 22.53,
+     "y_mm": 42.43,
+     "strength": 0.519,
+     "dev_mm": -0.519,
+     "tier": "satin",
+     "zone": "end",
+     "n": 7,
+     "tiers": {
+      "satin": 7
+     }
+    },
+    {
+     "x_mm": 28.39,
+     "y_mm": 45.41,
+     "strength": 0.518,
+     "dev_mm": 0.518,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 10,
+     "tiers": {
+      "satin": 10
+     }
+    },
+    {
+     "x_mm": 31.99,
+     "y_mm": 30.66,
+     "strength": 0.516,
+     "dev_mm": 0.516,
+     "tier": "fill",
+     "zone": null,
+     "n": 12,
+     "tiers": {
+      "fill": 12
+     }
+    }
+   ],
+   "pin_ids": []
+  },
+  "L_toat_machine_hat": {
+   "pins": 0,
+   "flags": 127,
+   "by_radius": {
+    "3.0": {
+     "hit": 0,
+     "hit_rate": NaN,
+     "chance_area": NaN,
+     "chance_edge": NaN
+    },
+    "2.0": {
+     "hit": 0,
+     "hit_rate": NaN,
+     "chance_area": NaN,
+     "chance_edge": NaN
+    },
+    "5.0": {
+     "hit": 0,
+     "hit_rate": NaN,
+     "chance_area": NaN,
+     "chance_edge": NaN
+    }
+   },
+   "pin_nearest_mm": [],
+   "unpinned": [
+    {
+     "x_mm": 65.34,
+     "y_mm": 33.77,
+     "strength": 0.812,
+     "dev_mm": -0.812,
+     "tier": "satin",
+     "zone": "end",
+     "n": 2,
+     "tiers": {
+      "satin": 2
+     }
+    },
+    {
+     "x_mm": 73.43,
+     "y_mm": 37.8,
+     "strength": 0.803,
+     "dev_mm": -0.803,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 2,
+     "tiers": {
+      "satin": 2
+     }
+    },
+    {
+     "x_mm": 27.63,
+     "y_mm": 41.87,
+     "strength": 0.716,
+     "dev_mm": -0.716,
+     "tier": "satin",
+     "zone": "end",
+     "n": 1,
+     "tiers": {
+      "satin": 1
+     }
+    },
+    {
+     "x_mm": 3.21,
+     "y_mm": 16.43,
+     "strength": 0.698,
+     "dev_mm": 0.698,
+     "tier": "satin",
+     "zone": "end",
+     "n": 15,
+     "tiers": {
+      "satin": 11,
+      "fill": 4
+     }
+    },
+    {
+     "x_mm": 28.45,
+     "y_mm": 7.76,
+     "strength": 0.677,
+     "dev_mm": 0.677,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 3,
+     "tiers": {
+      "satin": 1,
+      "fill": 2
+     }
+    },
+    {
+     "x_mm": 30.71,
+     "y_mm": 10.86,
+     "strength": 0.664,
+     "dev_mm": -0.664,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 5,
+     "tiers": {
+      "satin": 5
+     }
+    },
+    {
+     "x_mm": 22.42,
+     "y_mm": 9.88,
+     "strength": 0.657,
+     "dev_mm": 0.657,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 4,
+     "tiers": {
+      "satin": 1,
+      "fill": 3
+     }
+    },
+    {
+     "x_mm": 42.1,
+     "y_mm": 2.94,
+     "strength": 0.651,
+     "dev_mm": 0.651,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 4,
+     "tiers": {
+      "satin": 3,
+      "fill": 1
+     }
+    },
+    {
+     "x_mm": 12.37,
+     "y_mm": 13.47,
+     "strength": 0.635,
+     "dev_mm": 0.635,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 6,
+     "tiers": {
+      "satin": 2,
+      "fill": 4
+     }
+    },
+    {
+     "x_mm": 44.75,
+     "y_mm": 2.02,
+     "strength": 0.627,
+     "dev_mm": 0.627,
+     "tier": "satin",
+     "zone": "corner",
+     "n": 19,
+     "tiers": {
+      "satin": 6,
+      "fill": 13
+     }
+    }
+   ],
+   "pin_ids": []
+  },
+  "L_toat_beanie": {
+   "pins": 0,
+   "flags": 127,
+   "by_radius": {
+    "3.0": {
+     "hit": 0,
+     "hit_rate": NaN,
+     "chance_area": NaN,
+     "chance_edge": NaN
+    },
+    "2.0": {
+     "hit": 0,
+     "hit_rate": NaN,
+     "chance_area": NaN,
+     "chance_edge": NaN
+    },
+    "5.0": {
+     "hit": 0,
+     "hit_rate": NaN,
+     "chance_area": NaN,
+     "chance_edge": NaN
+    }
+   },
+   "pin_nearest_mm": [],
+   "unpinned": [
+    {
+     "x_mm": 81.65,
+     "y_mm": 33.74,
+     "strength": 0.716,
+     "dev_mm": 0.716,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 8,
+     "tiers": {
+      "satin": 8
+     }
+    },
+    {
+     "x_mm": 42.53,
+     "y_mm": 33.74,
+     "strength": 0.687,
+     "dev_mm": -0.687,
+     "tier": "satin",
+     "zone": "end",
+     "n": 5,
+     "tiers": {
+      "satin": 5
+     }
+    },
+    {
+     "x_mm": 81.38,
+     "y_mm": 14.8,
+     "strength": 0.683,
+     "dev_mm": -0.683,
+     "tier": "fill",
+     "zone": null,
+     "n": 13,
+     "tiers": {
+      "fill": 8,
+      "satin": 5
+     }
+    },
+    {
+     "x_mm": 23.63,
+     "y_mm": 15.21,
+     "strength": 0.632,
+     "dev_mm": -0.632,
+     "tier": "fill",
+     "zone": null,
+     "n": 15,
+     "tiers": {
+      "fill": 14,
+      "satin": 1
+     }
+    },
+    {
+     "x_mm": 51.19,
+     "y_mm": 5.04,
+     "strength": 0.604,
+     "dev_mm": 0.604,
+     "tier": "satin",
+     "zone": "end",
+     "n": 23,
+     "tiers": {
+      "satin": 1,
+      "fill": 22
+     }
+    },
+    {
+     "x_mm": 29.21,
+     "y_mm": 6.07,
+     "strength": 0.597,
+     "dev_mm": 0.597,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 24,
+     "tiers": {
+      "satin": 1,
+      "fill": 23
+     }
+    },
+    {
+     "x_mm": 8.71,
+     "y_mm": 20.93,
+     "strength": 0.593,
+     "dev_mm": -0.593,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 9,
+     "tiers": {
+      "satin": 9
+     }
+    },
+    {
+     "x_mm": 29.79,
+     "y_mm": 34.33,
+     "strength": 0.576,
+     "dev_mm": -0.576,
+     "tier": "satin",
+     "zone": "end",
+     "n": 10,
+     "tiers": {
+      "satin": 10
+     }
+    },
+    {
+     "x_mm": 23.18,
+     "y_mm": 49.31,
+     "strength": 0.574,
+     "dev_mm": 0.574,
+     "tier": "fill",
+     "zone": null,
+     "n": 19,
+     "tiers": {
+      "fill": 19
+     }
+    },
+    {
+     "x_mm": 66.26,
+     "y_mm": 10.03,
+     "strength": 0.561,
+     "dev_mm": 0.561,
+     "tier": "satin",
+     "zone": "mid",
+     "n": 24,
+     "tiers": {
+      "satin": 1,
+      "fill": 23
+     }
+    }
+   ],
+   "pin_ids": []
+  }
+ },
+ "pooled": {
+  "3.0": {
+   "chance_area": {
+    "items": 7,
+    "pins": 20,
+    "hit_rate": 0.6,
+    "chance": 0.4914,
+    "diff": 0.1086,
+    "kappa": 0.2136,
+    "ci95": [
+     -0.0392,
+     0.2074
+    ]
+   },
+   "chance_edge": {
+    "items": 7,
+    "pins": 20,
+    "hit_rate": 0.6,
+    "chance": 0.4766,
+    "diff": 0.1234,
+    "kappa": 0.2358,
+    "ci95": [
+     -0.0747,
+     0.2492
+    ]
+   }
+  },
+  "2.0": {
+   "chance_area": {
+    "items": 7,
+    "pins": 20,
+    "hit_rate": 0.55,
+    "chance": 0.3158,
+    "diff": 0.2342,
+    "kappa": 0.3423,
+    "ci95": [
+     0.0035,
+     0.3691
+    ]
+   },
+   "chance_edge": {
+    "items": 7,
+    "pins": 20,
+    "hit_rate": 0.55,
+    "chance": 0.366,
+    "diff": 0.184,
+    "kappa": 0.2902,
+    "ci95": [
+     -0.0721,
+     0.3457
+    ]
+   }
+  },
+  "5.0": {
+   "chance_area": {
+    "items": 7,
+    "pins": 20,
+    "hit_rate": 0.8,
+    "chance": 0.7504,
+    "diff": 0.0496,
+    "kappa": 0.1986,
+    "ci95": [
+     -0.1779,
+     0.1573
+    ]
+   },
+   "chance_edge": {
+    "items": 7,
+    "pins": 20,
+    "hit_rate": 0.8,
+    "chance": 0.6772,
+    "diff": 0.1228,
+    "kappa": 0.3804,
+    "ci95": [
+     -0.1195,
+     0.259
+    ]
+   }
+  }
+ }
+}
