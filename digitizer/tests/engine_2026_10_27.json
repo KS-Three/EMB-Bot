@@ -202,6 +202,7 @@
  "pull_comp_by_stroke": false,
  "rehome_resnapped": true,
  "report_absorb_frac": 0.25,
+ "resnap_hairline_never_lightens": false,
  "resnap_mask_matches_grader": true,
  "revalidate_small_shapes": true,
  "robust_region_colour": true,

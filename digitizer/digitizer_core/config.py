@@ -1312,6 +1312,24 @@ class PipelineConfig:
     # tendril moved (the 7.1 mm red spike). False is the engine before the
     # flag, byte for byte. Tests: `tests/test_sliver_prune.py`.
     sliver_prune: bool = False
+    # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
+    # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
+    # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
+    # shape to the median of the pixels its final polygon covers. For a LINE
+    # (smallest dimension at most `bean_rule.LINE_MAX_MM`, 1.2 mm: the
+    # reference digitizer's own definition of a drawn stroke) those pixels are
+    # mostly the anti-alias halo and the ground beside it, so a black outline
+    # laid against a pale face reads grey and is re-snapped to a grey spool:
+    # the dolphin's fin edge sews 18 mm in Silvery Grey where the art's line
+    # is black on every pixel (darkest 0 of 255), and the ribbon changes colour
+    # at an arbitrary point, not at any seam of the art. ON, a line the
+    # re-check would move to a LIGHTER spool (CIELAB L*) keeps the one stage 2
+    # chose from the whole cluster; a line it would darken, and every shape
+    # wider than a line, re-snaps as before. The 1.2 mm is geometry, not
+    # cloth: gate 1 does not apply. False is the engine before the flag, byte
+    # for byte. Tests: `tests/test_resnap_hairline.py`;
+    # `docs/border-colour-change-2026-11-11.md`.
+    resnap_hairline_never_lightens: bool = False
     # The band, in working-grid pixels, `flat_page_fringe_exclude` looks in.
     # 2 = the anti-alias ramp of a source edge once stage 1 has enlarged the
     # raster (one source pixel becomes `upscale` working pixels; Pooh at 80 mm
