@@ -130,6 +130,10 @@ def plan_enclosed_white(regions, cfg) -> dict[str, str]:
     `enclosed_background` region this option SEWS (counters left open are
     absent). Pure: reads geometry and tags, writes nothing."""
     enclosed = [r for r in regions if r.meta.get("enclosed_background")]
+    if getattr(cfg, "enclosed_white_skip_transparent", False):
+        # A hole the artwork leaves transparent is neither a field nor a
+        # counter that sews: it stays open, and holds no counter open either.
+        enclosed = [r for r in enclosed if not r.meta.get("enclosed_colour_unknown")]
     if not enclosed:
         return {}
     kind = {}
