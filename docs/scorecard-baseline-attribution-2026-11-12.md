@@ -16,6 +16,15 @@ routes to the flat lane (#1301, Kent 2026-11-06), plus a photo-lane under-fill
 gate (#1263) that traded `DENSITY_STACKED` for `STITCHES_TOO_SHORT` on two rows.
 The one big rise (Fremont, F → B on both garments) is #1329.
 
+## Kent's ruling (2026-11-12)
+
+The mean fell and F rows went 4 → 8, so the director showed Kent the mover table
+before this baseline landed. Kent, relayed verbatim by the director session:
+**"Land as is (Recommended)."** The baseline is committed as captured; the
+`logo_golden_tee` hat_front B 76 → C 64 step stays named as unattributed
+(candidate #1277, not tested; no bisect arm was run). Landing records the new
+floor as a conformance reading, not a quality claim (gate 4).
+
 ## The state of the ruler
 
 | | |

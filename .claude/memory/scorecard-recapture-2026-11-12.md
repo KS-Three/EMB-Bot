@@ -26,6 +26,10 @@ gate: `DENSITY_STACKED` cleared, `STITCHES_TOO_SHORT` on chrome LC / sunset LC),
 One row part unattributed: golden_tee hat B 76 -> C 64 (`LETTERING_ILLEGIBLE`,
 OCR candidate #1277).
 
+**Kent's ruling 2026-11-12** (relayed by the director): "Land as is
+(Recommended)" after seeing the mover table (mean fell, F rows 4 -> 8). Landed
+as captured; golden_tee hat B 76 -> C 64 stays unattributed, no bisect arm.
+
 **Why:** grade is preflight conformance (gate 4); a fall here is checks firing
 on the flat lane, not a rendered or sewn regression.
 
