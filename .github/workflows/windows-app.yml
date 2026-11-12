@@ -1,0 +1,116 @@
+# The local Windows app: the digitizer service, the built Studio and the OCR
+# data frozen into one folder (PRODUCT.md launch row 8; step 4 of
+# docs/packaging-freeze-spike-2026-11-10.md). This job builds the folder on a
+# real Windows machine, starts the frozen exe, and proves it against the venv
+# service on the same runner before anything is uploaded:
+#
+#   digitizer/packaging/build_freeze.py     builds, stamps, prunes, measures, zips
+#   digitizer/packaging/release_smoke.py    starts both services, compares, judges
+#   digitizer/packaging/build_installer.py  setup.exe; installs, runs, uninstalls it
+#
+# WHEN IT RUNS: a version tag (`v*`) or by hand (Actions tab, "Run workflow",
+# any branch that carries this file). NEVER on a pull request and never on a
+# branch push: it is a Windows runner for a quarter of an hour, it measures
+# nothing a PR changes that the four CI jobs do not already gate, and a job
+# that does not report on PRs must not be made a required check for main
+# (it would block every merge forever). `tests/test_packaging_freeze.py` pins
+# the trigger list, so a temporary branch trigger cannot be merged by accident.
+#
+# WHAT A GREEN RUN MEANS: on `windows-latest`, Python 3.12, the frozen exe
+# (PATH cut to System32, working directory outside the checkout) answered
+# /health with the build's own commit, served the Studio at /, and produced
+# the same design, review payload, warnings and export bytes as the venv
+# service for one job per lane (flat, gradient, photo, /lettering,
+# /digitize-manual) in every format the Studio ships. WHAT IT DOES NOT MEAN:
+# a clean PC. A hosted runner has the VC++ runtime, a current CPU and no
+# third-party antivirus; that check (step 5 of the spike doc) needs a machine
+# nobody has developed on. The exe is unsigned: Windows SmartScreen will warn.
+name: Windows app
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-app:
+    runs-on: windows-latest
+    timeout-minutes: 60   # the first green run took 9 (2026-11-12): freeze 2, both suites 3, installer 2
+    env:
+      PYTHONUTF8: '1'     # PyInstaller's log is echoed line by line; cp1252 cannot print all of it
+      # The tag names the release. A manual run is named dev-<commit> by the build script.
+      EMBBOT_RELEASE: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+    # ONE command per `run`. PowerShell hands the step the LAST command's exit
+    # code only, so a second line would let a failed first one pass (the
+    # `pytest | tail` trap, in another shell). Pinned by the same test file.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install the Studio's dependencies
+        working-directory: app
+        run: npm ci
+      - name: Build the Studio (app/dist)
+        working-directory: app
+        run: npm run build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: digitizer/requirements.txt
+      - name: Install the pinned engine (the wheels the tests run on)
+        working-directory: digitizer
+        run: python -m pip install -r requirements.txt
+      - name: Freeze, stamp, prune, measure, zip
+        working-directory: digitizer
+        run: python packaging/build_freeze.py --work "$env:RUNNER_TEMP\freeze" --summary "$env:GITHUB_STEP_SUMMARY"
+      - name: Start the frozen exe and smoke-test it against the venv service
+        working-directory: digitizer
+        run: python packaging/release_smoke.py --build-report "$env:RUNNER_TEMP\freeze\build_report.json" --work "$env:RUNNER_TEMP\freeze\smoke" --summary "$env:GITHUB_STEP_SUMMARY"
+      # Only after a green smoke: a zip from a failed run must not sit in the
+      # artifact list looking like something to hand a customer.
+      - name: Upload the zipped folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-app
+          path: ${{ runner.temp }}/freeze/*.zip
+          compression-level: 0     # already a zip
+          if-no-files-found: error
+      # The installer comes AFTER the zip is proved and uploaded, so a broken
+      # installer step can never cost the zip. build_installer.py compiles
+      # packaging/installer.iss, then installs, runs and uninstalls the result.
+      - name: Inno Setup (already on the image, or installed here)
+        run: choco install innosetup --no-progress -y
+      - name: Build the installer, install it, run it, uninstall it
+        working-directory: digitizer
+        run: python packaging/build_installer.py --build-report "$env:RUNNER_TEMP\freeze\build_report.json" --summary "$env:GITHUB_STEP_SUMMARY"
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-app-installer
+          path: ${{ runner.temp }}/freeze/*-setup.exe
+          compression-level: 0     # LZMA2 inside; deflate gains nothing
+          if-no-files-found: error
+      - name: Upload the build and smoke records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-app-records
+          path: |
+            ${{ runner.temp }}/freeze/build_report.json
+            ${{ runner.temp }}/freeze/pyinstaller.log
+            ${{ runner.temp }}/freeze/smoke/
+            ${{ runner.temp }}/freeze/install.log
+            ${{ runner.temp }}/freeze/installer.md
+            ${{ runner.temp }}/freeze/installed-service.log
+          if-no-files-found: warn

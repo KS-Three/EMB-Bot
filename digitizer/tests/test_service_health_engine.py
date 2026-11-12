@@ -47,7 +47,7 @@ def _git(*args: str) -> str | None:
 
 def test_health_carries_the_engine_stamp(client):
     eng = _health(client)["engine"]
-    assert set(eng) == {"commit", "dirty", "started_at", "defaults_sha"}
+    assert set(eng) == {"commit", "dirty", "release", "started_at", "defaults_sha"}
     assert SHA.match(eng["defaults_sha"])
     assert re.match(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d$", eng["started_at"])
 
@@ -96,7 +96,62 @@ def test_dirty_is_a_tracked_change_under_the_two_imported_packages(monkeypatch):
 
     monkeypatch.setattr(service, "_git", lambda *a: None)
     assert service._read_engine_checkout() | {"started_at": 0} == {
-        "commit": None, "dirty": None, "started_at": 0}
+        "commit": None, "dirty": None, "release": None, "started_at": 0}
+
+
+# ------------------------------------------------------------------ frozen
+# The one-folder Windows app (packaging/build_freeze.py). The spike found the
+# hole by reasoning, not by running it: a frozen folder left inside a checkout
+# on a machine with git would report that checkout's HEAD as its own commit.
+
+def _freeze(monkeypatch, folder):
+    """Make the service believe it is the frozen exe living in `folder`, with
+    a git that answers confidently and wrongly, as a surrounding checkout would."""
+    asked = []
+
+    def wrong_git(*args):
+        asked.append(args)
+        return "f" * 40
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(service, "_ENGINE_DIR", folder)
+    monkeypatch.setattr(service, "_git", wrong_git)
+    return asked
+
+
+def test_a_frozen_build_reads_its_stamp_and_never_asks_git(tmp_path, monkeypatch):
+    asked = _freeze(monkeypatch, tmp_path)
+    (tmp_path / service.BUILD_STAMP).write_text(
+        '{"commit": "' + "a" * 40 + '", "dirty": false, "release": "v1.2.3", "built_at": "x"}',
+        encoding="utf-8")
+    got = service._read_engine_checkout()
+    assert got | {"started_at": 0} == {
+        "commit": "a" * 40, "dirty": False, "release": "v1.2.3", "started_at": 0}
+    assert asked == [], "a frozen build must not run git at all"
+
+
+@pytest.mark.parametrize("content", [None, "not json", "[1, 2]", '{"commit": 7, "dirty": "no", "release": null}'])
+def test_a_frozen_build_with_no_usable_stamp_says_null_not_the_checkouts_head(tmp_path, monkeypatch, content):
+    """Null is the honest answer. The wrong one is `f...f`, which is what the
+    git probe would say here."""
+    asked = _freeze(monkeypatch, tmp_path)
+    if content is not None:
+        (tmp_path / service.BUILD_STAMP).write_text(content, encoding="utf-8")
+    got = service._read_engine_checkout()
+    assert got | {"started_at": 0} == {
+        "commit": None, "dirty": None, "release": None, "started_at": 0}
+    assert asked == []
+
+
+def test_a_checkout_ignores_a_stamp_file_and_has_no_release(tmp_path, monkeypatch):
+    """Unfrozen, git stays the source: a stale stamp lying in the tree must
+    not outvote the checkout the process really loaded."""
+    monkeypatch.setattr(service, "_ENGINE_DIR", tmp_path)
+    (tmp_path / service.BUILD_STAMP).write_text(
+        '{"commit": "' + "a" * 40 + '", "dirty": false, "release": "v1.2.3"}', encoding="utf-8")
+    monkeypatch.setattr(service, "_git", lambda *a: "f" * 40 if a[0] == "rev-parse" else "")
+    got = service._read_engine_checkout()
+    assert got["commit"] == "f" * 40 and got["dirty"] is False and got["release"] is None
 
 
 def test_defaults_sha_is_stable_between_requests(client):
@@ -188,5 +243,5 @@ def test_the_schema_documents_both_blocks():
     props = schemas.Health.model_json_schema()["properties"]
     assert {"engine", "capabilities"} <= set(props)
     ex = schemas.Health.model_config["json_schema_extra"]["example"]
-    assert set(ex["engine"]) == {"commit", "dirty", "started_at", "defaults_sha"}
+    assert set(ex["engine"]) == {"commit", "dirty", "release", "started_at", "defaults_sha"}
     assert set(ex["capabilities"]) == {"background_removal", "ocr", "face_priors", "sam2"}

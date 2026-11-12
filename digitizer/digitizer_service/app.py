@@ -20,6 +20,7 @@ import logging
 import math
 import os
 import subprocess
+import sys
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -209,7 +210,31 @@ generations = GenerationCache()
 # `defaults_sha` is the opposite -- read per request -- because it is the
 # fingerprint of what a request that names no flag gets, and the point is to
 # see it move when a default is flipped or patched.
+#
+# A FROZEN build (the one-folder Windows app, `packaging/build_freeze.py`) has
+# no checkout to ask, and must not ask one: left inside a checkout on a
+# machine with git, the probe below would report THAT checkout's HEAD as the
+# frozen engine's commit, a confident wrong stamp
+# (docs/packaging-freeze-spike-2026-11-10.md). So when frozen the stamp is the
+# file the build wrote beside the two packages, and git is never run. A
+# missing or unreadable file reads as null, never as a guess.
 _ENGINE_DIR = Path(__file__).resolve().parents[1]
+
+#: Written at build time into the frozen folder; `_ENGINE_DIR` is where it
+#: lands (PyInstaller's `_internal/`, the parent of `digitizer_service/`).
+BUILD_STAMP = "build_stamp.json"
+
+
+def _frozen() -> bool:
+    return bool(getattr(sys, "frozen", False))
+
+
+def _read_build_stamp() -> dict:
+    try:
+        stamp = json.loads((_ENGINE_DIR / BUILD_STAMP).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return stamp if isinstance(stamp, dict) else {}
 
 
 def _git(*args: str) -> str | None:
@@ -229,16 +254,27 @@ def _read_engine_checkout() -> dict:
     """The checkout the engine was loaded from. `dirty` is a change to a
     TRACKED file under the two packages the service imports; an edit to docs
     or a tool does not make the running engine different, and an untracked
-    file is not imported unless something tracked names it."""
-    commit = _git("rev-parse", "HEAD")
-    dirty = None
-    if commit:
-        changed = _git("status", "--porcelain", "--untracked-files=no", "--",
-                       "digitizer_core", "digitizer_service")
-        dirty = None if changed is None else bool(changed)
+    file is not imported unless something tracked names it.
+
+    `release` is the name the build gave a frozen folder (the tag, or
+    `dev-<commit>`); null in a checkout, where the commit already says it."""
+    release = None
+    if _frozen():
+        stamp = _read_build_stamp()
+        commit = stamp.get("commit") if isinstance(stamp.get("commit"), str) else None
+        dirty = stamp.get("dirty") if isinstance(stamp.get("dirty"), bool) else None
+        release = stamp.get("release") if isinstance(stamp.get("release"), str) else None
+    else:
+        commit = _git("rev-parse", "HEAD")
+        dirty = None
+        if commit:
+            changed = _git("status", "--porcelain", "--untracked-files=no", "--",
+                           "digitizer_core", "digitizer_service")
+            dirty = None if changed is None else bool(changed)
     return {
-        "commit": commit,
+        "commit": commit or None,
         "dirty": dirty,
+        "release": release,
         "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
 
