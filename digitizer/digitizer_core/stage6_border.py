@@ -75,7 +75,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import nearest_points, unary_union
 from shapely.prepared import prep
 
-from . import machine, shape_memo, stitches
+from . import deadline, machine, shape_memo, stitches
 from .stage6_fill import (_CUT_EXPOSED, _EXPOSED_TOLERANCE_MM, _UNSEWN_MEMO, _exposed_mm,
                           travel_path)
 from .stitches import StitchRun
@@ -185,6 +185,7 @@ def _relax_corners(pts: list[tuple[float, float]], r_corner: float, k: int
     p = np.asarray(pts, dtype=float)
     p0 = p.copy()
     for _ in range(_RELAX_ITERS):
+        deadline.check("border corners")
         r = _turn_radius(p, k)
         sharp = r < r_corner
         if not sharp.any():
@@ -905,8 +906,10 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
 
     cursor = entry
     for part in parts:
+        deadline.check("border")
         rounded = round_inward(part, machine.BORDER_CORNER_RADIUS_MM, step)
         for host in _parts(rounded):
+            deadline.check("border")
             # Can a centreline live in here at all?
             spine_geom = _keep_polygons(host.buffer(-inset))
             if spine_geom is None:

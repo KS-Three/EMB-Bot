@@ -37,7 +37,7 @@ import shapely
 from shapely import affinity
 from shapely.geometry import LineString, Point, Polygon, box
 
-from . import fill_section_travel, machine, shape_memo, stitches
+from . import deadline, fill_section_travel, machine, shape_memo, stitches
 from .stitches import StitchRun
 
 # Spans on adjacent rows count as connected when they overlap by at least this
@@ -495,6 +495,7 @@ def best_fill_angle_deg(poly: Polygon, row_mm: float) -> float:
     best_angle = pca
     best_key = None
     for angle in candidates:
+        deadline.check("fill angle search")
         cols = _cols_at_angle(poly, angle, row_mm)
         if cols == 0:
             continue
@@ -1426,6 +1427,7 @@ def _order_cost_walk(paths: list[list[tuple[float, float]]], poly: Polygon, ring
     memo = _BRIDGE_MEMO.get() if row_mm is not None else None
     chain = memo.start(poly, ring, slack) if memo is not None else b""
     for i, path in enumerate(paths):
+        deadline.check("fill order pricing")
         if not path:
             continue
         if cur is not None:
@@ -1674,6 +1676,7 @@ def _seam_faults(order: list[list[tuple[float, float]]], angle_deg: float, row_m
     ways = [1 if _uv(p[-1], angle_deg)[1] > _uv(p[0], angle_deg)[1] else -1 for p in fills]
     faults = 0
     for a in range(len(fills)):
+        deadline.check("fill seam order")
         for b in range(a + 1, len(fills)):
             side = _seam_side(rows[a], rows[b], row_mm)
             faults += side != 0 and (ways[a] != ways[b] or side != ways[a])
@@ -1738,6 +1741,7 @@ def _order_for_seams(paths: list[list[tuple[float, float]]], angle_deg: float,
     # extreme rows (a section's top is often shape edge beside the seam)
     below: list[set[int]] = [set() for _ in range(n)]
     for i in range(n):
+        deadline.check("fill seam order")
         for j in range(i + 1, n):
             side = _seam_side(rows[i], rows[j], row_mm)
             if side > 0:
@@ -1760,6 +1764,7 @@ def _order_for_seams(paths: list[list[tuple[float, float]]], angle_deg: float,
         flown = 0.0
         sewn = None
         while len(order) < n:
+            deadline.check("fill seam order")
             free = [k for k in range(n) if k not in done and upstream[k] <= done]
             if not free:                    # a tolerance tie; take what is left
                 free = [k for k in range(n) if k not in done]
@@ -1998,6 +2003,7 @@ def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygo
     flipped: set[int] = set()
     cur = entry
     while remaining:
+        deadline.check("fill reorder")
         cand = sorted(remaining, key=lambda j: (
             min(math.dist(cur, ends[j][0]), math.dist(cur, ends[j][1]))
             if cur is not None else 0.0))[:_ROUTABLE_PROBE_LIMIT]
@@ -2100,6 +2106,7 @@ def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
     sewn = None
     cur = entry
     while remaining:
+        deadline.check("fill reorder for cover")
         cand = sorted(remaining, key=lambda j: (
             min(math.dist(cur, ends[j][0]), math.dist(cur, ends[j][1]))
             if cur is not None else 0.0))[:_ROUTABLE_PROBE_LIMIT]
@@ -2375,6 +2382,7 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
     out: list[list[tuple[float, float]]] = []
     here = start_near
     while pieces:
+        deadline.check("fill underlay")
         if here is None:
             nxt = max(pieces, key=lambda g: g.area)
         else:
@@ -2847,164 +2855,172 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     # pricing walks below and `emit`'s own fill phase ask through it.
     bridges = _BridgeMemo()
     bridges_token = _BRIDGE_MEMO.set(bridges)
-    chain = bridges.start(poly, ring, slack)
-    # `cut_bridges` is for single-pass fills. Crosshatch and the density boost
-    # sew the shape twice, and the footprint above cannot tell pass-one fill
-    # that pass two is about to cover from fill that is finished: every
-    # pass-two bridge would read as exposed and be weighed against a cut it
-    # does not need (measured on a two-hole plate: trims 0 -> 2 crosshatch,
-    # 1 -> 3 boosted, hiding nothing). Same predicate as the dispatch below.
-    two_pass = technique == "crosshatch" or (
-        technique == "tatami" and density_boost and is_solid_fill(poly))
-    cut_bridges = cut_bridges and under_cover and not two_pass
-    # `fill_section_travel` (built OFF): a hop `emit` would lift, or route
-    # over finished fill, goes under rows still to come instead where it can
-    # (inside the shape, for underlay), and the section order is planned for
-    # it. Fill only with `under_cover`, which is what knows the fill already
-    # laid. Read here, once; off, nothing below changes.
-    section_travel = fill_section_travel.active()
-    # `cfg.fill_one_pass_sections` (built OFF 2026-11-06): seam order's
-    # progression re-planned for the travel under rows still to come
-    # (`_one_pass_sections`), and where that re-plan is taken, the FILL
-    # phase's hops under cover go under those rows where `travel_path` lifts
-    # or shows. A shape the re-plan leaves alone sews exactly as without the
-    # switch. Underlay and `_plan_sections` are not touched: those are
-    # `fill_section_travel`'s. Off, nothing below changes.
-    one_pass = _ONE_PASS.get() and under_cover and not two_pass
-    # `cfg.fill_seam_aware_sections` (built OFF 2026-11-06): the same, for any
-    # field whose seam order cuts, planned with lookahead (`_seam_aware_sections`).
-    seam_aware = _SEAM_AWARE.get() and under_cover and not two_pass
-    re_planned = False
-    if section_travel or one_pass or seam_aware:
-        fill_section_travel.reset()
+    # The checkpoints (`deadline.check`) can end this call mid-shape, so what
+    # it sets up is undone in a `finally`, never after the last line: a cancel
+    # must not leave this shape's memo, or the section-travel plan, for the
+    # next job on this thread. The three names are read there.
+    section_travel = one_pass = seam_aware = False
+    try:
+        chain = bridges.start(poly, ring, slack)
+        # `cut_bridges` is for single-pass fills. Crosshatch and the density boost
+        # sew the shape twice, and the footprint above cannot tell pass-one fill
+        # that pass two is about to cover from fill that is finished: every
+        # pass-two bridge would read as exposed and be weighed against a cut it
+        # does not need (measured on a two-hole plate: trims 0 -> 2 crosshatch,
+        # 1 -> 3 boosted, hiding nothing). Same predicate as the dispatch below.
+        two_pass = technique == "crosshatch" or (
+            technique == "tatami" and density_boost and is_solid_fill(poly))
+        cut_bridges = cut_bridges and under_cover and not two_pass
+        # `fill_section_travel` (built OFF): a hop `emit` would lift, or route
+        # over finished fill, goes under rows still to come instead where it can
+        # (inside the shape, for underlay), and the section order is planned for
+        # it. Fill only with `under_cover`, which is what knows the fill already
+        # laid. Read here, once; off, nothing below changes.
+        section_travel = fill_section_travel.active()
+        # `cfg.fill_one_pass_sections` (built OFF 2026-11-06): seam order's
+        # progression re-planned for the travel under rows still to come
+        # (`_one_pass_sections`), and where that re-plan is taken, the FILL
+        # phase's hops under cover go under those rows where `travel_path` lifts
+        # or shows. A shape the re-plan leaves alone sews exactly as without the
+        # switch. Underlay and `_plan_sections` are not touched: those are
+        # `fill_section_travel`'s. Off, nothing below changes.
+        one_pass = _ONE_PASS.get() and under_cover and not two_pass
+        # `cfg.fill_seam_aware_sections` (built OFF 2026-11-06): the same, for any
+        # field whose seam order cuts, planned with lookahead (`_seam_aware_sections`).
+        seam_aware = _SEAM_AWARE.get() and under_cover and not two_pass
+        re_planned = False
+        if section_travel or one_pass or seam_aware:
+            fill_section_travel.reset()
 
-    def emit(paths: list[list[tuple[float, float]]], kind: str, max_step: float) -> None:
-        nonlocal sewn, chain
-        covered = under_cover and kind == stitches.FILL
-        for i, path in enumerate(paths):
-            # No tiny-stitch filter here, deliberately. Row turns are exactly one
-            # row spacing long — 0.4 mm at standard density — and dropping them
-            # deletes the penetration that lands on the shape's edge, which is
-            # what makes the edge crisp. Every step ALONG a row is already kept
-            # above the floor by _row_points. Turns get split instead of dropped:
-            # on a steeply sloped edge the step to the next row can run several
-            # millimetres, and a fill has no business emitting a stitch longer
-            # than its own stitch length.
-            pts = stitches.split_long_moves(path, max_step)
-            if len(pts) < 2:
-                continue
-            if runs:
-                if covered:
-                    bridge, chain = bridges.bridge(chain, poly, ring, runs[-1].points[-1],
-                                                   pts[0], slack, sewn, route_cache)
-                else:
-                    bridge = travel_path(poly, ring, runs[-1].points[-1], pts[0], slack,
-                                         None, route_cache)
-                if ((section_travel and (kind == stitches.UNDERLAY or under_cover))
-                        or (re_planned and kind == stitches.FILL)):
-                    bridge = _hide_bridge(
-                        bridge, poly, slack, runs[-1].points[-1], pts[0], kind, paths[i:], row_mm,
-                        sewn if (under_cover and kind == stitches.FILL) else None)
-                if (cut_bridges and bridge and under_cover and kind == stitches.FILL
-                        and _cut_is_cheaper(runs[-1].points[-1], bridge, sewn, trim_at_mm)):
-                    bridge = None       # dearer than the cut: lift, as if no route existed
-                if bridge is None:
-                    d = math.dist(runs[-1].points[-1], pts[0])
-                    report["jumps"] += 1
-                    runs.append(StitchRun(points=pts, kind=kind, jump=True,
-                                          trim=d > trim_at_mm, shape_id=shape_id))
-                    if under_cover and kind == stitches.FILL and len(pts) > 1:
-                        footprint = _footprint(pts, row_mm)
-                        sewn = _sewn_add(sewn, footprint)
-                        chain = bridges.laid(chain, footprint)
+        def emit(paths: list[list[tuple[float, float]]], kind: str, max_step: float) -> None:
+            nonlocal sewn, chain
+            covered = under_cover and kind == stitches.FILL
+            for i, path in enumerate(paths):
+                deadline.check("fill emit")
+                # No tiny-stitch filter here, deliberately. Row turns are exactly one
+                # row spacing long — 0.4 mm at standard density — and dropping them
+                # deletes the penetration that lands on the shape's edge, which is
+                # what makes the edge crisp. Every step ALONG a row is already kept
+                # above the floor by _row_points. Turns get split instead of dropped:
+                # on a steeply sloped edge the step to the next row can run several
+                # millimetres, and a fill has no business emitting a stitch longer
+                # than its own stitch length.
+                pts = stitches.split_long_moves(path, max_step)
+                if len(pts) < 2:
                     continue
-                # The bridge starts where the last run ended and finishes where
-                # the next one begins, so both ends belong to their own runs.
-                # Repeating them here would emit zero-length stitch records and
-                # inflate every count the operator is shown.
-                middle = bridge[:-1]
-                if middle:
-                    runs.append(StitchRun(points=middle, kind=stitches.TRAVEL,
-                                          shape_id=shape_id))
-            runs.append(StitchRun(points=pts, kind=kind, shape_id=shape_id))
-            if under_cover and kind == stitches.FILL and len(pts) > 1:
-                footprint = _footprint(pts, row_mm)
-                sewn = _sewn_add(sewn, footprint)
-                chain = bridges.laid(chain, footprint)
+                if runs:
+                    if covered:
+                        bridge, chain = bridges.bridge(chain, poly, ring, runs[-1].points[-1],
+                                                       pts[0], slack, sewn, route_cache)
+                    else:
+                        bridge = travel_path(poly, ring, runs[-1].points[-1], pts[0], slack,
+                                             None, route_cache)
+                    if ((section_travel and (kind == stitches.UNDERLAY or under_cover))
+                            or (re_planned and kind == stitches.FILL)):
+                        bridge = _hide_bridge(
+                            bridge, poly, slack, runs[-1].points[-1], pts[0], kind, paths[i:], row_mm,
+                            sewn if (under_cover and kind == stitches.FILL) else None)
+                    if (cut_bridges and bridge and under_cover and kind == stitches.FILL
+                            and _cut_is_cheaper(runs[-1].points[-1], bridge, sewn, trim_at_mm)):
+                        bridge = None       # dearer than the cut: lift, as if no route existed
+                    if bridge is None:
+                        d = math.dist(runs[-1].points[-1], pts[0])
+                        report["jumps"] += 1
+                        runs.append(StitchRun(points=pts, kind=kind, jump=True,
+                                              trim=d > trim_at_mm, shape_id=shape_id))
+                        if under_cover and kind == stitches.FILL and len(pts) > 1:
+                            footprint = _footprint(pts, row_mm)
+                            sewn = _sewn_add(sewn, footprint)
+                            chain = bridges.laid(chain, footprint)
+                        continue
+                    # The bridge starts where the last run ended and finishes where
+                    # the next one begins, so both ends belong to their own runs.
+                    # Repeating them here would emit zero-length stitch records and
+                    # inflate every count the operator is shown.
+                    middle = bridge[:-1]
+                    if middle:
+                        runs.append(StitchRun(points=middle, kind=stitches.TRAVEL,
+                                              shape_id=shape_id))
+                runs.append(StitchRun(points=pts, kind=kind, shape_id=shape_id))
+                if under_cover and kind == stitches.FILL and len(pts) > 1:
+                    footprint = _footprint(pts, row_mm)
+                    sewn = _sewn_add(sewn, footprint)
+                    chain = bridges.laid(chain, footprint)
 
-    # `cross_tatami` is laid at its own, longer stitch; split at the
-    # lattice's 2.5 mm every 4 mm stitch of it came out as two of 2 mm.
-    emit(_underlay_paths(poly, underlay_style, angle, start_near,
-                         all_pieces=underlay_all_pieces),
-         stitches.UNDERLAY,
-         machine.UNDERLAY_CROSS_STITCH_MM if underlay_style == "cross_tatami"
-         else machine.UNDERLAY_STITCH_MM)
-    # The fill picks up where the underlay put the needle down — otherwise it
-    # starts at the shape's top-left corner and the first travel of the fill is
-    # a haul back across everything the underlay just laid.
-    entry = runs[-1].points[-1] if runs else start_near
-    if technique == "crosshatch":
-        fill_paths = _crosshatch_fill_paths(poly, angle, row_mm, stitch_mm,
-                                            machine.FILL_STAGGERS, entry,
-                                            slant_turns=slant_turns)
-    elif technique == "tatami" and density_boost and is_solid_fill(poly):
-        fill_paths = _density_fill_paths(poly, angle, row_mm, stitch_mm,
-                                         machine.FILL_STAGGERS, entry,
-                                         slant_turns=slant_turns)
-    else:
-        fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
-                                 machine.FILL_STAGGERS, entry, technique=technique,
-                                 row_phase_mm=row_phase_mm, keep_row=keep_row,
-                                 seed=seed, fur=fur, slant_turns=slant_turns)
-    if sewn_paths_only:
-        fill_paths = _sewn_paths(fill_paths)
-    # Memoized, not changed: both reorders are pure functions of this shape's
-    # own inputs, so a hit returns exactly what the call would have. This is
-    # the seam a review edit re-crosses for every UNCHANGED shape -- 80 of
-    # owl_kent's 82 across a border toggle -- and `_reorder_for_cover` alone
-    # is 57.7% of that design's edit tail. See the memo's own comment.
-    _k = _reorder_key(b"cuts", fill_paths, poly, ring, slack, entry, trim_at_mm)
-    fill_paths = _memoized(_k, lambda: _reorder_for_fewer_cuts(
-        fill_paths, poly, ring, slack, entry, trim_at_mm))
-    if under_cover:
-        # `cut_bridges` changes what the scorer counts, so it is part of the
-        # key: without it an ON run is handed the order an OFF run chose.
-        _k = _reorder_key(b"cover", fill_paths, poly, ring, slack, entry,
-                          trim_at_mm, row_mm, cut_bridges)
-        _before = fill_paths
-        fill_paths = _memoized(_k, lambda: _reorder_for_cover(
-            _before, poly, ring, slack, entry, trim_at_mm, row_mm, cut_bridges))
-    if section_travel and under_cover and not two_pass:
-        fill_paths = _plan_sections(fill_paths, poly, ring, slack, entry, trim_at_mm,
-                                    row_mm, cut_bridges)
-    if _SEAM_ORDER.get() and not two_pass:
-        # `cfg.fill_seam_order` (built OFF): the sections as one continuous
-        # tatami, so no section ends on another's finished edge row
-        price = None
-        if _SEAM_PRICED.get() and under_cover:
-            def price(order):
-                return _score(_order_cost(order, poly, ring, slack, entry, trim_at_mm, row_mm,
-                                          cut_bridges, hidden_row_mm=row_mm if section_travel else None))
-        fill_paths = _order_for_seams(fill_paths, angle, entry, row_mm, price)
-        if one_pass:
-            _planned = _one_pass_sections(fill_paths, poly, ring, slack, entry, trim_at_mm,
-                                          row_mm, cut_bridges, angle)
-            re_planned = _planned is not fill_paths
-            fill_paths = _planned
-        if seam_aware:
-            _planned = _seam_aware_sections(fill_paths, poly, ring, slack, entry, trim_at_mm,
-                                            row_mm, cut_bridges, angle)
-            re_planned = re_planned or _planned is not fill_paths
-            fill_paths = _planned
-    emit(fill_paths, stitches.FILL, stitch_mm)
-    # Every hit is within this shape (`cover` is in the key), so nothing
-    # after this point can use the unsewn-ground memo; let its geometry go.
-    _UNSEWN_MEMO.clear()
-    _BRIDGE_MEMO.reset(bridges_token)
-    _bridge_memo_stats["hit"] += bridges.hits
-    _bridge_memo_stats["miss"] += bridges.misses
-    if section_travel or one_pass or seam_aware:
-        fill_section_travel.reset()
+        # `cross_tatami` is laid at its own, longer stitch; split at the
+        # lattice's 2.5 mm every 4 mm stitch of it came out as two of 2 mm.
+        emit(_underlay_paths(poly, underlay_style, angle, start_near,
+                             all_pieces=underlay_all_pieces),
+             stitches.UNDERLAY,
+             machine.UNDERLAY_CROSS_STITCH_MM if underlay_style == "cross_tatami"
+             else machine.UNDERLAY_STITCH_MM)
+        # The fill picks up where the underlay put the needle down — otherwise it
+        # starts at the shape's top-left corner and the first travel of the fill is
+        # a haul back across everything the underlay just laid.
+        entry = runs[-1].points[-1] if runs else start_near
+        if technique == "crosshatch":
+            fill_paths = _crosshatch_fill_paths(poly, angle, row_mm, stitch_mm,
+                                                machine.FILL_STAGGERS, entry,
+                                                slant_turns=slant_turns)
+        elif technique == "tatami" and density_boost and is_solid_fill(poly):
+            fill_paths = _density_fill_paths(poly, angle, row_mm, stitch_mm,
+                                             machine.FILL_STAGGERS, entry,
+                                             slant_turns=slant_turns)
+        else:
+            fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
+                                     machine.FILL_STAGGERS, entry, technique=technique,
+                                     row_phase_mm=row_phase_mm, keep_row=keep_row,
+                                     seed=seed, fur=fur, slant_turns=slant_turns)
+        if sewn_paths_only:
+            fill_paths = _sewn_paths(fill_paths)
+        # Memoized, not changed: both reorders are pure functions of this shape's
+        # own inputs, so a hit returns exactly what the call would have. This is
+        # the seam a review edit re-crosses for every UNCHANGED shape -- 80 of
+        # owl_kent's 82 across a border toggle -- and `_reorder_for_cover` alone
+        # is 57.7% of that design's edit tail. See the memo's own comment.
+        _k = _reorder_key(b"cuts", fill_paths, poly, ring, slack, entry, trim_at_mm)
+        fill_paths = _memoized(_k, lambda: _reorder_for_fewer_cuts(
+            fill_paths, poly, ring, slack, entry, trim_at_mm))
+        if under_cover:
+            # `cut_bridges` changes what the scorer counts, so it is part of the
+            # key: without it an ON run is handed the order an OFF run chose.
+            _k = _reorder_key(b"cover", fill_paths, poly, ring, slack, entry,
+                              trim_at_mm, row_mm, cut_bridges)
+            _before = fill_paths
+            fill_paths = _memoized(_k, lambda: _reorder_for_cover(
+                _before, poly, ring, slack, entry, trim_at_mm, row_mm, cut_bridges))
+        if section_travel and under_cover and not two_pass:
+            fill_paths = _plan_sections(fill_paths, poly, ring, slack, entry, trim_at_mm,
+                                        row_mm, cut_bridges)
+        if _SEAM_ORDER.get() and not two_pass:
+            # `cfg.fill_seam_order` (built OFF): the sections as one continuous
+            # tatami, so no section ends on another's finished edge row
+            price = None
+            if _SEAM_PRICED.get() and under_cover:
+                def price(order):
+                    return _score(_order_cost(order, poly, ring, slack, entry, trim_at_mm, row_mm,
+                                              cut_bridges, hidden_row_mm=row_mm if section_travel else None))
+            fill_paths = _order_for_seams(fill_paths, angle, entry, row_mm, price)
+            if one_pass:
+                _planned = _one_pass_sections(fill_paths, poly, ring, slack, entry, trim_at_mm,
+                                              row_mm, cut_bridges, angle)
+                re_planned = _planned is not fill_paths
+                fill_paths = _planned
+            if seam_aware:
+                _planned = _seam_aware_sections(fill_paths, poly, ring, slack, entry, trim_at_mm,
+                                                row_mm, cut_bridges, angle)
+                re_planned = re_planned or _planned is not fill_paths
+                fill_paths = _planned
+            emit(fill_paths, stitches.FILL, stitch_mm)
+    finally:
+        # Every hit is within this shape (`cover` is in the key), so nothing
+        # after this point can use the unsewn-ground memo; let its geometry go.
+        _UNSEWN_MEMO.clear()
+        _BRIDGE_MEMO.reset(bridges_token)
+        _bridge_memo_stats["hit"] += bridges.hits
+        _bridge_memo_stats["miss"] += bridges.misses
+        if section_travel or one_pass or seam_aware:
+            fill_section_travel.reset()
 
     if not runs:
         report["empty"] = True

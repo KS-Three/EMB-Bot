@@ -25,7 +25,7 @@ from shapely.geometry import Polygon
 from shapely.ops import unary_union
 from shapely.validation import make_valid
 
-from . import bean_rule, machine
+from . import bean_rule, deadline, machine
 from .config import PipelineConfig
 from .regions import Region, assign_shape_ids
 from .stage1_prep import Prep
@@ -1099,6 +1099,7 @@ def revalidate_threads(regions: list[Region], p: Prep,
     resnapped: list[str] = []
     worst_before = worst_after = 0.0
     for r in regions:
+        deadline.check("stage 4 thread revalidation")
         # An enclosed-background shape is unstitched by default and its
         # colour is the BACKGROUND's by definition — re-matching it to the
         # bg-coloured pixels it covers is both a no-op and a category error.
