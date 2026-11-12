@@ -1,4 +1,5 @@
-"""`cfg.enclosed_white_skip_transparent` (built OFF 2026-11-11): with "Sew
+"""`cfg.enclosed_white_skip_transparent` (built OFF 2026-11-11, ON by Kent's
+ruling the same day, "Flip ON (Recommended)"): with "Sew
 white areas" on, an enclosed area the artwork leaves TRANSPARENT (stage 4's
 `enclosed_colour_unknown`) is not sewn; an area whose colour is known, and
 every opaque shape, sews as before. Kent's pins: `C_kanji_seal` "#1-#28 extra
@@ -19,7 +20,7 @@ from digitizer_core.enclosed_white import plan_enclosed_white
 from digitizer_core.pipeline import digitize
 from digitizer_core.regions import Region
 from digitizer_core.threads import chart_for, rgb_to_lab
-from tests.conftest import TESTDATA
+from tests.conftest import TESTDATA, WHITE_2026_11_11_OFF
 
 CHART = chart_for(PipelineConfig())
 WHITEBG = TESTDATA / "logo_whitebg.png"     # opaque: white page, one white hole
@@ -44,15 +45,19 @@ def _reg(sid, ring, holes=(), *, thread=BLACK_T, **meta) -> Region:
 
 
 def _cfg(**kw) -> PipelineConfig:
-    return PipelineConfig(sew_enclosed_white=True, **kw)
+    # the OFF arm by default, spelled out: the shipped default is ON
+    return PipelineConfig(sew_enclosed_white=True, **{**WHITE_2026_11_11_OFF, **kw})
 
 
 # --- the plan --------------------------------------------------------------------
 
-def test_default_is_off_and_the_snapshot_holds_it_off():
-    from tests.conftest import ENGINE_2026_10_27
-    assert PipelineConfig().enclosed_white_skip_transparent is False
+def test_default_is_on_and_the_snapshot_holds_it_off():
+    # ON by Kent's ruling 2026-11-11; the dated snapshot keeps the engine
+    # before the flip, so `frozen_cfg()` pins still run OFF
+    from tests.conftest import ENGINE_2026_10_27, PRE_FLIP
+    assert PipelineConfig().enclosed_white_skip_transparent is True
     assert ENGINE_2026_10_27["enclosed_white_skip_transparent"] is False
+    assert PRE_FLIP["enclosed_white_skip_transparent"] is False
 
 
 def _two_holes():
@@ -116,7 +121,8 @@ def _digest(plan) -> str:
 
 def _pcfg(**kw) -> PipelineConfig:
     return PipelineConfig(target_width_mm=60.0, garment_id="left_chest", garment_rgb=NATURAL,
-                          sew_enclosed_white=True, sew_enclosed_rgb=(255, 255, 255), **kw)
+                          sew_enclosed_white=True, sew_enclosed_rgb=(255, 255, 255),
+                          **{**WHITE_2026_11_11_OFF, **kw})
 
 
 def _rgba_fixture() -> np.ndarray:
@@ -177,7 +183,7 @@ def test_becker_five_transparent_bodies_still_sew(width_mm, garment):
     from digitizer_core.pipeline import build_generation, finish_generation
     base = dict(target_width_mm=width_mm, garment_id=garment, garment_rgb=NATURAL,
                 sew_enclosed_white=True)
-    off_cfg = PipelineConfig(**base)
+    off_cfg = PipelineConfig(**base, **WHITE_2026_11_11_OFF)
     on_cfg = PipelineConfig(**base, enclosed_white_skip_transparent=True)
     gen = build_generation(BECKER, off_cfg)
     off = finish_generation(gen.fork(), off_cfg)
@@ -210,3 +216,19 @@ def test_rgba_with_every_pixel_opaque_is_a_no_op():
     _, p_off = digitize(img.copy(), _pcfg())
     _, p_on = digitize(img.copy(), _pcfg(enclosed_white_skip_transparent=True))
     assert _digest(p_on) == _digest(p_off)
+
+
+ALPHA = TESTDATA / "logo_alpha.png"         # alpha cutout: the blue ring's hole is transparent
+
+
+def test_shipped_default_leaves_logo_alpha_ring_hole_open():
+    """The flip on the default path: "Sew white areas" on (the recipe default)
+    and nothing else said. `logo_alpha.png`'s blue ring holds one transparent
+    hole (160.7 mm2 at 80 mm); OFF sewed it white, the shipped default leaves
+    it open (`test_sew_enclosed_white.test_an_alpha_hole_sews_white` pins OFF)."""
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", garment_rgb=NATURAL)
+    assert cfg.sew_enclosed_white and cfg.enclosed_white_skip_transparent
+    r, _ = digitize(ALPHA, cfg)
+    holes = [x for x in r.regions if x.meta.get("enclosed_colour_unknown")]
+    assert holes
+    assert not any(x.meta.get("sew_enclosed_white") or x.meta.get("stitched") for x in holes)

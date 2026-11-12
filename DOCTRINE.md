@@ -1433,6 +1433,13 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   Devanagari; the reader cannot tell those from the hollow letter bodies the
   pro also sews (Becker). *(measured 2026-11-11 —
   `docs/infill-fault-reader-2026-11-11.md`, tree `950855bf`)*
+  **Ruled the same day: a transparent enclosed area stays open unless it is
+  a hollow letter body** (`enclosed_white_skip_transparent`, ON, Kent: "Flip
+  ON (Recommended)"). This refines the 10-27 "Every job" white recipe. A
+  plain "never sew transparent" rule is "Sew white OFF on alpha art", since
+  every enclosed area there is transparent, and it drops Becker's five
+  bodies; the lettering tag is the guard. *(ruled 2026-11-11 —
+  `docs/transparent-white-infill-2026-11-11.md`)*
 
 ---
 

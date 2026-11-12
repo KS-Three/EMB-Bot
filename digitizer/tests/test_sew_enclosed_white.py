@@ -51,7 +51,10 @@ def _reg(sid, ring, holes=(), *, thread=BLACK_T, layer=0, **meta) -> Region:
 
 
 def _cfg(**kw) -> PipelineConfig:
-    return PipelineConfig(sew_enclosed_white=True, **kw)
+    # transparent areas sew, as before the 2026-11-11 flip: this file is about
+    # the option itself (the flag's own tests: test_enclosed_white_skip_transparent)
+    from tests.conftest import WHITE_2026_11_11_OFF
+    return PipelineConfig(sew_enclosed_white=True, **{**WHITE_2026_11_11_OFF, **kw})
 
 
 # --- which enclosed areas sew ---------------------------------------------------
@@ -128,6 +131,24 @@ def test_a_known_hole_keeps_its_colour_and_an_alpha_hole_sews_white():
     assert known.meta["sew_enclosed_white"] == "field"
 
 
+def test_a_known_hole_keeps_its_colour_and_an_alpha_hole_stays_open_by_default():
+    # The same two holes under the shipped default (ON since Kent's ruling
+    # 2026-11-11): the transparent one is not sewn, the known one is, alone.
+    cream = _nearest((240, 230, 200))
+    ring = _reg("Sring", _box(0, 0, 30, 10), [_box(1, 1, 9, 9), _box(11, 1, 19, 9)], layer=0)
+    known = _reg("Sknown", _box(1, 1, 9, 9), thread=cream, layer=1, enclosed_background=True)
+    alpha = _reg("Salpha", _box(11, 1, 19, 9), thread=BLACK_T, layer=0,
+                 enclosed_background=True, enclosed_colour_unknown=True)
+    regs = [ring, known, alpha]
+    cfg = PipelineConfig(sew_enclosed_white=True)
+    assert cfg.enclosed_white_skip_transparent
+    out, n = apply_enclosed_white(regs, [BLACK_T, cream], cfg, CHART)
+    assert n == 1
+    assert known.thread_index == cream and alpha.thread_index == BLACK_T
+    assert out == [cream, BLACK_T, cream]
+    assert "sew_enclosed_white" not in alpha.meta
+
+
 def test_a_chosen_colour_sews_every_area_and_a_review_recolour_still_wins():
     regs = _ring_and_hole()
     red = _nearest((200, 20, 20))
@@ -162,9 +183,9 @@ def _digest(plan) -> str:
 
 def _pcfg(**kw) -> PipelineConfig:
     # the option alone: the recipe it joined on every job 2026-10-27 pinned off (conftest)
-    from tests.conftest import RECIPE_2026_10_27
+    from tests.conftest import RECIPE_2026_10_27, WHITE_2026_11_11_OFF
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", garment_rgb=NATURAL,
-                          **{**RECIPE_2026_10_27, **kw})
+                          **{**RECIPE_2026_10_27, **WHITE_2026_11_11_OFF, **kw})
 
 
 @pytest.fixture(scope="module")
@@ -219,6 +240,19 @@ def test_an_alpha_hole_sews_white():
     holes = [x for x in r.regions if x.meta.get("sew_enclosed_white")]
     assert holes and all(x.meta.get("enclosed_colour_unknown") for x in holes)
     assert all(x.thread_index == WHITE_T and x.meta["stitched"] for x in holes)
+
+
+def test_an_alpha_hole_stays_open_by_default():
+    # The shipped default (ON, Kent 2026-11-11): the same hole the test above
+    # sews white under explicit OFF is left open as garment.
+    from tests.conftest import RECIPE_2026_10_27
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", garment_rgb=NATURAL,
+                         sew_enclosed_white=True, **RECIPE_2026_10_27)
+    assert cfg.enclosed_white_skip_transparent
+    r, _ = digitize(ALPHA, cfg)
+    holes = [x for x in r.regions if x.meta.get("enclosed_colour_unknown")]
+    assert holes
+    assert not any(x.meta.get("sew_enclosed_white") or x.meta.get("stitched") for x in holes)
 
 
 # --- counters by shape (census 2026-10-26, `enclosed_white.COUNTER_MAX_STROKES`)

@@ -34,6 +34,11 @@ the name `FLIP_2026_10_27` for its own three flips.)
 even pre-flip. Kent ruled "Yes, pinned shape leads (Recommended)"; the build is
 left to the director's handoff.
 
+**Refined 2026-11-11** (Kent, "Flip ON (Recommended)"): the white still sews
+on every job, except an enclosed area the art leaves TRANSPARENT that is not a
+hollow letter body, which stays open (`enclosed_white_skip_transparent`).
+[[transparent-white-infill-2026-11-11]]
+
 **Named follow-up:** Becker small's band corner tip ends blunt where the pro runs
 the satin to a point (+1.1 mm² bare on hat small).
 

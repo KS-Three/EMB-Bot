@@ -1,8 +1,9 @@
 # Transparent white in-fill: `enclosed_white_skip_transparent` (2026-11-11)
 
-**Built OFF. Not flipped; flipping it is Kent's call from the pictures.**
-Kent picked the guarded rule ("Guarded rule (Recommended)", relayed by the
-director 2026-11-11).
+**ON by Kent's ruling 2026-11-11, eye-check of 7 designs: "Flip ON
+(Recommended)"** (relayed by the director, after the source | OFF | ON
+pictures below). Built OFF the same day (#1395), when Kent picked the guarded
+rule ("Guarded rule (Recommended)"). See "The flip" at the end for what moved.
 
 ## The finding (verified at this lane, same stitches as `950855b`)
 
@@ -130,17 +131,50 @@ precision_drone. Drone's panel is OFF | ON only, because its art is a
 client's. The rows are in `corpus.json` and `pro.json`; the plain-rule rows
 are in `plain/`.
 
-## What Kent decides
+## What Kent decided
 
-1. **Flip it ON or not**, from the seven pictures. ON opens every transparent
-   enclosed space that is not a letter body, including all 39 on the kanji
-   seal (29,505 -> 10,945 stitches). The catch: it depends on the text
-   tagger. A hollow letter it misses goes open (none found here), and a
-   non-letter it tags stays white (one gap on the crest).
-2. Nothing else is open. `sew_enclosed_white` and its "Every job" recipe
-   (2026-10-27) are untouched. With the flag OFF, the engine is byte for byte
-   what it was.
+From the seven pictures Kent chose "Flip ON (Recommended)" (2026-11-11). He did
+NOT choose "fix the crest gap first", so the tagger and the crest's one tagged
+mantling gap are left as they are. The catch stands: the guard is the text
+tagger. A hollow letter it misses goes open (none found here), and a non-letter
+it tags stays white (one gap on the crest).
 
-Not run: no sew-out; ProSeal (no committed art); no Studio or e2e check (an
-engine flag the Studio does not send); no kappa or pro-side reading (this
-moves our white only).
+This refines the 2026-10-27 "Every job" white recipe; it does not undo it.
+`sew_enclosed_white` still sews every job. Only areas the art leaves
+transparent stay open.
+
+Not run: no sew-out; ProSeal (no committed art); no kappa or pro-side reading
+(this moves only our white).
+
+## The flip (2026-11-11)
+
+Default `True` in `config.py`. `tests/engine_2026_10_27.json` and
+`conftest.PRE_FLIP` (`WHITE_2026_11_11_OFF`) hold it False, so every
+`frozen_cfg()` pin still runs the engine from before the flip. What moves
+when the default goes ON (Windows box, OFF vs ON; OFF reproduces the
+committed figures):
+
+- **Goldens and md5 pins: none.** Full suite with default ON: the only
+  failures were tests ABOUT the OFF behaviour (5 in this flag's file, 2 in
+  `test_sew_enclosed_white.py`, now pinned OFF explicitly) and the two
+  enthusiast_logo platform reds, which are byte-identical OFF and ON.
+- **Tripwire ledger: 1 of 18 jobs.** `precision_drone`: stitches 14,769 ->
+  14,760, trims 86 -> 85, hops 122 -> 121, needle-up 1,442.6 -> 1,419.8 mm,
+  direction kappa 0.084 -> 0.088, **sttype kappa 0.376 -> 0.374**. That last
+  figure is past its tolerance of 0, in the "worse" direction. The cause is
+  the 0.85 mm2 badge speck going open. The ledger needs a CI capture. Becker
+  x5 is identical, and the others have no alpha or no enclosed area.
+- **Corpus scorecard: 2 of 26 fixtures.** `logo_alpha.png`: its blue ring's
+  transparent hole, 160.7 mm2, now stays open (synthetic art, the rule as
+  written). `photo/drone_render.png`: a 1.6 mm2 speck. Both garments each.
+  The baseline needs a CI capture. The other 24 are identical.
+- **Lettering board (11 jobs): not re-run.** Becker x4 plans identical
+  stitches. Gaulke x2 and MFab x2 have no alpha. Fremont x2 has no enclosed
+  area. On Drone the one change is a speck in the badge, outside every
+  lettering line. So no recapture is asked for.
+- **Service default path, one real `/digitize`** (`kanji_seal.png`, the
+  Studio's request shape: 80 mm, `sew_enclosed_white` true, white, flag not
+  sent). 39 transparent enclosed shapes, **0 stitched**, one thread
+  (Poinsettia), 10,945 stitches, 21 trims. The same request with
+  `enclosed_white_skip_transparent: false`: 39 of 39 stitched, Poinsettia +
+  White (10.96 m), 29,505 stitches, 71 trims.
