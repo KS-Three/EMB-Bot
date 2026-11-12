@@ -32,7 +32,9 @@ passes agree). `check` runs the pairs (or reads `--figures`, a pass written
 earlier), prints a markdown table of the movers and exits 1 on any wrong-way
 move past tolerance, on a figure the ledger has that the run lost, or on a
 pro-side figure that moved (the READER changed, so nothing else can be read);
-0 otherwise. A right-way move past tolerance is listed and exits 0.
+0 otherwise. A right-way move past tolerance is listed and exits 0. A failing
+check names its rows on ONE line (`red_line`): under the counts in the table
+and, on an Actions runner, as the job's error annotation.
 
 Figures (ours, read from the written DST): stitches, trims (cuts), hops and
 needle-up mm (more is worse), stitch-type kappa and direction kappa over the
@@ -488,6 +490,36 @@ def _fmt_tol(fig: str, tol) -> str:
     return _fmt(fig, tol)
 
 
+RED_LINE_ROWS = 12          # an Actions annotation is one line; past this the rest are counted
+
+
+def red_line(cmp: dict) -> str | None:
+    """ONE line naming every row that fails the check (WORSE, missing, reader_moved),
+    None when the check passes. It is the reason a red nightly gives without opening
+    the table: the line under the counts and, on an Actions runner, the job's error
+    annotation."""
+    bad = [r for r in cmp["rows"] if r["verdict"] in ("WORSE", "missing", "reader_moved")]
+    if not bad:
+        return None
+    parts = []
+    for r in bad[:RED_LINE_ROWS]:
+        fig = r["figure"]
+        name = f"{r['job']} {FIGURES[fig]['label']}"
+        if r["verdict"] == "missing":
+            parts.append(f"{name} missing (was {_fmt(fig, r['baseline'])})")
+        elif r["verdict"] == "reader_moved":
+            parts.append(f"{name} reader moved (pro {_fmt(fig, r['pro'])} -> {_fmt(fig, r['pro_now'])})")
+        elif fig in ("sttype_kappa", "direction_kappa", "word_cc"):
+            # three places: at tolerance 0 a kappa fails on a move the table's two round away
+            parts.append(f"{name} {r['baseline']:.3f} -> {r['now']:.3f} "
+                         f"({r['delta']:+.3f}, tolerance {_fmt_tol(fig, r['tolerance'])})")
+        else:
+            parts.append(f"{name} {_fmt(fig, r['baseline'])} -> {_fmt(fig, r['now'])} "
+                         f"({_fmt_delta(fig, r['delta'])}, tolerance {_fmt_tol(fig, r['tolerance'])})")
+    more = f"; and {len(bad) - RED_LINE_ROWS} more" if len(bad) > RED_LINE_ROWS else ""
+    return f"RED, {len(bad)} row(s): " + "; ".join(parts) + more
+
+
 def movers_table(cmp: dict, all_rows: bool = False) -> str:
     """Markdown: the movers (anything not `ok`), or every row with `all_rows`."""
     c = cmp["counts"]
@@ -497,7 +529,9 @@ def movers_table(cmp: dict, all_rows: bool = False) -> str:
     rows = [r for r in cmp["rows"] if all_rows or r["verdict"] != "ok"]
     if not rows:
         return head + "\n\nNo movers."
-    L = [head, "", "| job | figure | baseline | now | delta | tolerance | worse is | verdict |",
+    red = red_line(cmp)
+    L = [head, *(["", red] if red else []),
+         "", "| job | figure | baseline | now | delta | tolerance | worse is | verdict |",
          "|---|---|---|---|---|---|---|---|"]
     for r in rows:
         fig = r["figure"]
@@ -647,6 +681,9 @@ def main(argv=None) -> int:
     cmp = compare(led, run, a.only)
     text = movers_table(cmp, a.all)
     print(text)
+    red = red_line(cmp)
+    if red and os.environ.get("GITHUB_ACTIONS") == "true":
+        print(f"::error title=Nightly tripwire::{red}")   # the run page's one-line reason
     if a.floor:
         print("\n" + _floor_report(run, slugs, a))
     if a.table:

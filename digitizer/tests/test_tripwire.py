@@ -212,6 +212,58 @@ def test_check_writes_its_table_and_json_when_asked(tmp_path, ledger, capsys):
     assert cmp["fail"] is True and cmp["counts"]["WORSE"] == 1
 
 
+def test_a_red_check_names_every_failing_row_on_one_line(tmp_path, ledger, capsys, monkeypatch):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    run = _pass()
+    run["values"][JOB]["hops"] = 500                  # WORSE
+    run["values"][JOB]["trims"] = 30                  # better: not a reason for the red
+    del run["values"][JOB]["word_cc"]                 # missing
+    run["pro"][JOB]["stitches"] = 5_001               # the reader moved
+    code, out = _check(tmp_path, ledger, run, capsys, extra=["--table", str(tmp_path / "t.md")])
+    assert code == 1
+    red = [ln for ln in out.splitlines() if ln.startswith("RED, ")]
+    assert len(red) == 1 and red[0].startswith("RED, 3 row(s): ")
+    assert f"{JOB} needle-up hops 120 -> 500 (+380, tolerance 0)" in red[0]
+    assert f"{JOB} word cc, native missing (was 0.85)" in red[0]
+    assert f"{JOB} stitches reader moved (pro 5,000 -> 5,001)" in red[0]
+    assert "trims" not in red[0] and "raw" not in red[0].lower()
+    assert red[0] in (tmp_path / "t.md").read_text(encoding="utf-8")     # the run summary carries it
+    assert "::error" not in out                       # an annotation only on an Actions runner
+
+
+def test_on_an_actions_runner_the_red_line_is_the_error_annotation(tmp_path, ledger, capsys, monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    run = _pass()
+    run["values"][JOB]["hops"] = 500
+    code, out = _check(tmp_path, ledger, run, capsys)
+    notes = [ln for ln in out.splitlines() if ln.startswith("::error ")]
+    assert code == 1 and len(notes) == 1
+    assert notes[0] == "::error title=Nightly tripwire::" + tw.red_line(tw.compare(ledger, run))
+    code, out = _check(tmp_path, ledger, _pass(), capsys)             # green: no line, no annotation
+    assert code == 0 and "RED" not in out and "::error" not in out
+
+
+def test_the_red_line_shows_a_kappa_move_the_tables_two_places_round_away(ledger):
+    led = copy.deepcopy(ledger)
+    _row(led, "direction_kappa")["tolerance"] = 0.0
+    run = _pass()
+    run["values"][JOB]["direction_kappa"] = 0.298     # the Drone row of 2026-11-11: 0.376 -> 0.374 at tolerance 0
+    cmp = tw.compare(led, run)
+    assert "| 0.30 | 0.30 | -0.00 |" in tw.movers_table(cmp)
+    assert f"{JOB} direction kappa 0.300 -> 0.298 (-0.002, tolerance 0.00)" in tw.red_line(cmp)
+
+
+def test_the_red_line_counts_the_rows_past_its_cap():
+    jobs = [f"job{i:02d}" for i in range(tw.RED_LINE_ROWS + 3)]
+    led = tw.build_ledger([_pass(values={j: dict(BASE[JOB]) for j in jobs}, pro={}, chance={j: 0.6 for j in jobs},
+                                 words={j: 2 for j in jobs})])
+    run = _pass(values={j: {**BASE[JOB], "hops": 500} for j in jobs}, pro={}, chance={j: 0.6 for j in jobs},
+                words={j: 2 for j in jobs})
+    red = tw.red_line(tw.compare(led, run))
+    assert red.startswith(f"RED, {len(jobs)} row(s): ") and red.endswith("; and 3 more")
+    assert "\n" not in red and red.count(" needle-up hops ") == tw.RED_LINE_ROWS
+
+
 # ------------------------------------------------------------------ the population
 def test_the_population_is_the_pairs_whose_art_and_pro_file_are_in_the_repo():
     jobs = tw.committed_jobs()
