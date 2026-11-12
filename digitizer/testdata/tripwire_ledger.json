@@ -1,12 +1,12 @@
 {
  "schema": 1,
  "captured": {
-  "date": "2026-11-07",
+  "date": "2026-11-12",
   "passes": 3,
-  "run_url": "https://github.com/KS-Three/EMB-Bot/actions/runs/42423880904",
+  "run_url": "https://github.com/KS-Three/EMB-Bot/actions/runs/43147117899",
   "engine": {
-   "head": "fc0d32ac",
-   "tree": "dfe24b001a28+b88771ebb6d0",
+   "head": "2f3e782e",
+   "tree": "66f9cf42e811+4a5f7197e64b",
    "dirty": false,
    "opencv_ipp": "avx2"
   }
@@ -21,12 +21,12 @@
   "tesseract": "tesseract v5.5.3 (tesserocr 2.12.0, in-process)",
   "rembg_venv": false,
   "engine": {
-   "head": "fc0d32ac",
-   "tree": "dfe24b001a28+b88771ebb6d0",
+   "head": "2f3e782e",
+   "tree": "66f9cf42e811+4a5f7197e64b",
    "dirty": false,
    "opencv_ipp": "avx2"
   },
-  "github_run": "42423880904"
+  "github_run": "43147117899"
  },
  "figures": {
   "stitches": {
@@ -60,94 +60,94 @@
  },
  "secs": {
   "becker_hat_large": [
-   13.8,
-   11.7,
-   15.5
+   8.6,
+   10.2,
+   15.7
   ],
   "becker_lc_large": [
-   11.0,
-   9.2,
-   12.6
+   6.7,
+   8.2,
+   12.4
   ],
   "becker_hat_small": [
-   8.8,
-   7.5,
-   10.0
-  ],
-  "becker_chest_small": [
-   8.6,
-   7.3,
+   5.4,
+   6.5,
    9.8
   ],
+  "becker_chest_small": [
+   5.3,
+   6.4,
+   9.6
+  ],
   "becker_beanie": [
-   9.0,
-   7.7,
-   10.4
+   5.5,
+   6.6,
+   10.2
   ],
   "gaulke_roofing_hat": [
-   14.7,
-   12.4,
-   17.5
+   9.1,
+   10.5,
+   17.2
   ],
   "gaulke_roofing_lc": [
-   9.5,
-   8.2,
-   11.4
+   6.0,
+   7.2,
+   11.1
   ],
   "gaulke_roofing_beanie": [
-   10.8,
-   9.3,
-   13.3
+   7.0,
+   8.1,
+   12.8
   ],
   "hotel_fremont_hat": [
-   32.4,
-   27.2,
-   39.0
+   19.8,
+   23.8,
+   38.0
   ],
   "hotel_fremont_patch": [
-   32.0,
-   27.3,
-   38.9
+   19.6,
+   23.6,
+   38.0
   ],
   "mfab_hat": [
-   37.2,
-   32.0,
-   43.9
+   22.7,
+   26.0,
+   43.1
   ],
   "mfab_lc": [
-   26.1,
-   22.6,
-   31.9
+   16.2,
+   18.8,
+   30.7
   ],
   "precision_drone": [
-   29.6,
-   25.2,
-   34.8
+   18.5,
+   21.8,
+   32.1
   ],
   "tires_hat_3d": [
-   4.6,
-   3.9,
-   5.9
+   3.0,
+   4.1,
+   5.7
   ],
   "goldentee_hat": [
-   31.1,
-   26.3,
-   36.0
+   18.9,
+   25.9,
+   33.9
   ],
   "toat_machine_hat": [
-   11.6,
-   10.1,
-   13.4
+   7.3,
+   9.0,
+   12.9
   ],
   "toat_machine_beanie": [
-   9.0,
-   7.6,
-   10.6
+   5.6,
+   7.1,
+   10.3
   ],
   "toat_beanie": [
-   8.6,
-   7.2,
-   10.0
+   5.4,
+   6.4,
+   9.7
   ]
  },
  "skipped": [],
@@ -821,7 +821,7 @@
   {
    "job": "precision_drone",
    "figure": "stitches",
-   "baseline": 14769,
+   "baseline": 14760,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -830,7 +830,7 @@
   {
    "job": "precision_drone",
    "figure": "trims",
-   "baseline": 86,
+   "baseline": 85,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -839,7 +839,7 @@
   {
    "job": "precision_drone",
    "figure": "hops",
-   "baseline": 122,
+   "baseline": 121,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -848,7 +848,7 @@
   {
    "job": "precision_drone",
    "figure": "needle_up_mm",
-   "baseline": 1442.6,
+   "baseline": 1419.8,
    "worse": "up",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -857,16 +857,16 @@
   {
    "job": "precision_drone",
    "figure": "sttype_kappa",
-   "baseline": 0.376,
+   "baseline": 0.374,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0,
-   "chance": 0.5
+   "chance": 0.499
   },
   {
    "job": "precision_drone",
    "figure": "direction_kappa",
-   "baseline": 0.084,
+   "baseline": 0.088,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0

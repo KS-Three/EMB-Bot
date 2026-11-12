@@ -509,6 +509,10 @@ def red_line(cmp: dict) -> str | None:
             parts.append(f"{name} missing (was {_fmt(fig, r['baseline'])})")
         elif r["verdict"] == "reader_moved":
             parts.append(f"{name} reader moved (pro {_fmt(fig, r['pro'])} -> {_fmt(fig, r['pro_now'])})")
+        elif fig in ("sttype_kappa", "direction_kappa", "word_cc"):
+            # three places: at tolerance 0 a kappa fails on a move the table's two round away
+            parts.append(f"{name} {r['baseline']:.3f} -> {r['now']:.3f} "
+                         f"({r['delta']:+.3f}, tolerance {_fmt_tol(fig, r['tolerance'])})")
         else:
             parts.append(f"{name} {_fmt(fig, r['baseline'])} -> {_fmt(fig, r['now'])} "
                          f"({_fmt_delta(fig, r['delta'])}, tolerance {_fmt_tol(fig, r['tolerance'])})")

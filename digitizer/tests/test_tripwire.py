@@ -243,6 +243,16 @@ def test_on_an_actions_runner_the_red_line_is_the_error_annotation(tmp_path, led
     assert code == 0 and "RED" not in out and "::error" not in out
 
 
+def test_the_red_line_shows_a_kappa_move_the_tables_two_places_round_away(ledger):
+    led = copy.deepcopy(ledger)
+    _row(led, "direction_kappa")["tolerance"] = 0.0
+    run = _pass()
+    run["values"][JOB]["direction_kappa"] = 0.298     # the Drone row of 2026-11-11: 0.376 -> 0.374 at tolerance 0
+    cmp = tw.compare(led, run)
+    assert "| 0.30 | 0.30 | -0.00 |" in tw.movers_table(cmp)
+    assert f"{JOB} direction kappa 0.300 -> 0.298 (-0.002, tolerance 0.00)" in tw.red_line(cmp)
+
+
 def test_the_red_line_counts_the_rows_past_its_cap():
     jobs = [f"job{i:02d}" for i in range(tw.RED_LINE_ROWS + 3)]
     led = tw.build_ledger([_pass(values={j: dict(BASE[JOB]) for j in jobs}, pro={}, chance={j: 0.6 for j in jobs},
