@@ -858,6 +858,12 @@
    "basis": "docs/renders/star-walk-2026-10-03 (dir name dated; inputs are the fixtures above)"
   },
   {
+   "prefix": "docs/renders/starter-weak-spots-2026-11-12/",
+   "status": "derived-render",
+   "source": "Session-generated stitch renders of three starter-pack designs beside their art: the Commons CC0 renders recorded in app/public/starter/manifest.json (digitized_from, sha256 matched)",
+   "basis": "docs/starter-pack-weak-spots-2026-11-12.md"
+  },
+  {
    "prefix": "docs/renders/subpixel-flip-2026-09-09/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, enthusiast",
