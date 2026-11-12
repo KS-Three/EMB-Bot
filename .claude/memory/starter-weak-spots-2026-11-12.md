@@ -1,6 +1,6 @@
 ---
 name: starter-weak-spots-2026-11-12
-description: Starter pack's three weak designs diagnosed 11-12 — baseball rings = radial design ramp bands, turtle = stage-2 RAG merge at 26 dE00, monarch trims = borders_last moving white dots after black; all existing settings, no new flag, pack files unchanged pending Kent
+description: Starter pack weak spots 11-12 — baseball rings = radial ramp bands (flat, SHIPPED), turtle = stage-2 RAG merge (flat+15 not taken), monarch = borders_last after black (86 -> 63; held, main drift lost an orange stripe)
 metadata:
   type: project
 ---
@@ -26,7 +26,13 @@ Full record: `docs/starter-pack-weak-spots-2026-11-12.md`, renders in
 **Why:** a session asked to "fix the starter weak spots" would otherwise
 retune the RAG threshold or the radial gate. DOCTRINE pins both.
 
-**How to apply:** re-digitizing the shipped DSTs is Kent's call, sent to the
-foreman 11-12. When it happens, record the settings in the manifest (it has no
-field yet) and rerun `scripts/derive-starter-threads.mjs`. Related:
+**Ruling (Kent 11-12, "Baseball + monarch"):** the baseball was re-digitized with
+flat and shipped; the manifest row now carries `digitize_config`. The turtle was
+not taken. The monarch was held: on main its first orange stripe is lost
+(-6.8% orange against the shipped file) with the setting either way, which is
+drift since ac3d77fa, untraced.
+
+**How to apply:** re-digitize a pack design with its `digitize_config`, then run
+`app/scripts/derive-starter-threads.mjs` (needs Chromium), and draw the new DST
+from the file before shipping it. That re-read is how the monarch drift showed. Related:
 [[starter-pack-sourcing-2026-11-10]], [[trim-defects-4-6-2026-10-29]].

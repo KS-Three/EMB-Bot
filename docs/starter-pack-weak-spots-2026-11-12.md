@@ -2,9 +2,18 @@
 
 [`starter-pack-2026-11-10.md`](starter-pack-2026-11-10.md) names three weak designs: the baseball's grey rings, the
 turtle's shell, and the monarch's 86 trims. This doc reproduces each one, names the stage that causes it, and measures
-the cheapest remedy. **No new flag was needed, and no pack file is changed here.** Every remedy is an existing
-per-request setting. Whether to re-digitize the shipped DSTs with these settings is Kent's call (sent to the foreman
-2026-11-12, with these renders).
+the cheapest remedy. **No new flag was needed.** Every remedy is an existing per-request setting.
+
+## Ruling (Kent, 2026-11-12)
+
+After seeing the three render sheets below, Kent picked **"Baseball + monarch"**: re-digitize the baseball with
+`forced_class: "flat"` and the monarch with `borders_last: false`; the turtle stays as shipped.
+
+- **Baseball: shipped** in this PR (see "Shipped" below).
+- **Monarch: held.** Re-reading the new monarch DST showed a loss Kent did not see on the sheets: part of one orange
+  wing cell. It comes from main's drift since the pack was made, not from the setting (see "Monarch: drift found while
+  shipping"). The finding went back to the foreman before the shipped file is replaced.
+- **Turtle: not taken.** The flat + 15-colour arm stays a measured option (below).
 
 ## Method
 
@@ -85,7 +94,8 @@ Serenity blue, so preflight goes **F** (THREAD_MATCH_POOR block). Adding `max_co
 because the red tongue folds into Cranberry (a 33 mm² block). Pack preflight grades are not shown to the customer (Kent's
 ruling in `starterPack.js`), but an F is still an F.
 
-**Verdict:** an existing setting fixes the picture at a real cone and stitch cost. Otherwise this is a documented cap: on
+**Verdict:** an existing setting fixes the picture at a real cone and stitch cost. Kent did not take it
+(2026-11-12), so the shipped turtle is unchanged. Otherwise this is a documented cap: on
 the automatic lane, the merge threshold DOCTRINE pins is what merges the turtle.
 
 ## Monarch: 86 trims
@@ -112,14 +122,49 @@ black sews over most of the dots. Doing this properly means sewing the islands f
 around them. That is a stage-5/7 build, not a setting. It is a candidate for its own task, gated like any trim change by
 `trim_classes` and a render, and not started here.
 
+**Candidate, not built: white first with the black knocked out.** If the dot islands sewed before their host, and the
+host kept their holes open with no travel across them, the 46 remaining `on_work` hops would become `under_later` and
+`trim_bury_under_later` would bury them. That work lives in stage 5 (the host must not cover an earlier island) and
+stage 7 (no host travel across the islands). The measured stand-in, a layer override alone, costs what is listed above:
+white trims 50 → 4 but black 14 → 36, black runs 59 → 532, stitches +27%, and dots lost in the render. A build would be
+judged on `trim_classes` plus a render that shows every dot.
+
 ## Per-design verdict
 
-| design | verdict | setting | waiting on Kent |
+| design | verdict | setting | status |
 |---|---|---|---|
-| baseball | existing setting | `forced_class: "flat"` | re-digitize the shipped DST? |
-| turtle | existing setting, at a cost; documented cap on the automatic lane | `forced_class: "flat"`, `max_colors: 15` | 15 cones and an F: worth it, or keep as shipped? |
-| monarch | existing setting (partial) + documented remainder | `borders_last: false` | re-digitize the shipped DST? Build the knock-out pass? |
+| baseball | existing setting | `forced_class: "flat"` | **shipped 2026-11-12** (Kent's ruling) |
+| turtle | existing setting at a cost; documented cap on the automatic lane | `forced_class: "flat"`, `max_colors: 15` | not taken (Kent's ruling); shipped DST unchanged |
+| monarch | existing setting (partial) + documented remainder | `borders_last: false` | ruled to ship; held for main's drift (below) |
 
-Re-digitizing a design means its DST, the manifest's sha and counts, and `scripts/derive-starter-threads.mjs`'s output.
-The manifest has no field for the settings a design was made with; a re-digitize should add one, so the next
-regeneration reproduces it.
+The manifest now records the settings a re-digitized design was made with (`digitize_config`), plus `redigitized`
+and `redigitized_basis`, so the next regeneration reproduces it.
+
+## Shipped: baseball
+
+![baseball shipped](renders/starter-weak-spots-2026-11-12/baseball-shipped.jpg)
+
+The new `app/public/starter/baseball.dst` comes from main `7ad81351` with `{target_width_mm: 75.5, forced_class:
+"flat"}`. It is byte-identical to the trial run on `bdae1860`. Checks on the file:
+
+- **Service read-back** (`readback.verify`, the `/export` check): stitch count 24,378, trims 56, colour count 4 changes,
+  trim and colour order and longest stitch (4.9 mm) all `ok`. Rewriting the design gives the same bytes.
+- **Re-read and rendered**: read back with pystitch and drawn in the Studio's starter thread colours (above, middle =
+  the 11-10 file, right = the new one): 5 blocks, 76.1 × 74.7 mm.
+- **Manifest**: sha, size, stitches 24,378, colours 5 (`dstimport`), trims 56 (`tools/trim_classes`, the count the
+  manifest has always held), preflight B 76.
+- **Thread colours**: `node scripts/derive-starter-threads.mjs` reproduced the committed file byte for byte on the
+  unchanged pack first (control), then rewrote the baseball line only: `[[246,247,251],[124,16,44],[151,20,53],[0,0,0],
+  [141,19,50]]`. The fifth block is two specks of Oyster grey (1.2 mm², 3 runs) inside the seam. The art there is red,
+  so the Studio shows it red. That block is one colour stop the flat lane adds.
+
+## Monarch: drift found while shipping
+
+![monarch shipped vs re-digitized](renders/starter-weak-spots-2026-11-12/monarch-shipped.jpg)
+
+The re-digitized monarch DST (`borders_last: false`, 63 trims) passes read-back. But drawn from the file, the lower
+butterfly's first orange stripe beside the body is cut to a small triangle with black where the shipped file sews it
+whole, as the art does. Current main with `borders_last` **on** shows the same loss, so the setting is not the cause:
+main changed between the pack's `ac3d77fa` and today. Orange area read from the three files at 10 px/mm: shipped
+111.6k px; main with the setting on 104.1k (−6.8%, about 75 mm²); main with it off 104.0k. The setting itself costs
+0.1%. The cause of the drift is not traced.
