@@ -303,6 +303,29 @@ describe("git worktree remove of a lane that has nothing to lose", () => {
     fs.writeFileSync(path.join(lanes.scratch, "scratch_kent", "commission.pes"), "x");
     fs.mkdirSync(path.join(lane("modules", true), "node_modules", "x"), { recursive: true });
     fs.writeFileSync(path.join(lanes.modules, "node_modules", "x", "i.js"), "x");
+    // merged-then-deleted: the branch is gone from origin (delete_branch_on_merge)
+    // and pruned locally, but refs/pull/<n>/head still names the lane's HEAD.
+    const originDir = origin;
+    const headOf = (cwd) => {
+      const r = spawnSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" });
+      assert.strictEqual(r.status, 0, r.stderr);
+      return r.stdout.trim();
+    };
+    const mergedAway = (name, pullN) => {
+      const p = lane(name, true);
+      sh(originDir, "update-ref", `refs/pull/${pullN}/head`, headOf(p));
+      sh(originDir, "update-ref", "-d", "refs/heads/claude/" + name);
+      sh(grepo, "fetch", "-q", "--prune", "origin");
+      return p;
+    };
+    mergedAway("pr-merged", 7);
+    const past = mergedAway("pr-past", 8);
+    fs.writeFileSync(path.join(past, "extra.txt"), "x");
+    sh(past, "add", "-A");
+    sh(past, "commit", "-qm", "past the PR head");
+    mergedAway("pr-unreachable", 9);
+    mergedAway("pr-other", 10);
+    sh(originDir, "update-ref", "refs/pull/10/head", headOf(lanes.landed)); // pull 10 now names another commit
   });
   after(() => {
     if (gtmp) fs.rmSync(gtmp, { recursive: true, force: true });
@@ -335,6 +358,39 @@ describe("git worktree remove of a lane that has nothing to lose", () => {
     const r = rm(grepo, lanes.scratch);
     assert.ok(r.deny);
     assert.ok(r.reason.includes("scratch_kent"), r.reason);
+  });
+  test("branch deleted on merge: HEAD equal to a refs/pull/<n>/head on origin is removable", () => {
+    const br = spawnSync("git", ["branch", "-r", "--contains", "HEAD"], { cwd: lanes["pr-merged"], encoding: "utf8" });
+    assert.strictEqual(br.stdout.trim(), "", "precondition: no origin branch holds HEAD");
+    assert.strictEqual(rm(grepo, lanes["pr-merged"]).deny, false);
+  });
+  test("branch deleted on merge: forced removal is still denied", () => {
+    for (const f of ["--force", "-f", "-ff"]) {
+      const r = rm(grepo, lanes["pr-merged"], f);
+      assert.ok(r.deny, f);
+      assert.ok(r.reason.includes("forced"), r.reason);
+    }
+  });
+  test("branch deleted on merge: a commit past the PR head is local-only and denied", () => {
+    const r = rm(grepo, lanes["pr-past"]);
+    assert.ok(r.deny);
+    assert.ok(r.reason.includes("not the head commit of any pull request"), r.reason);
+  });
+  test("branch deleted on merge: a pull ref that names a different commit does not count", () => {
+    const r = rm(grepo, lanes["pr-other"]);
+    assert.ok(r.deny);
+    assert.ok(r.reason.includes("not the head commit of any pull request"), r.reason);
+  });
+  test("branch deleted on merge: an unreachable origin fails closed", () => {
+    const get = spawnSync("git", ["remote", "get-url", "origin"], { cwd: grepo, encoding: "utf8" }).stdout.trim();
+    sh(grepo, "remote", "set-url", "origin", path.join(gtmp, "no-such-origin.git"));
+    try {
+      const r = rm(grepo, lanes["pr-unreachable"]);
+      assert.ok(r.deny);
+      assert.ok(r.reason.includes("could not be asked"), r.reason);
+    } finally {
+      sh(grepo, "remote", "set-url", "origin", get);
+    }
   });
   test("run from inside that lane is denied", () => {
     const r = rm(lanes.landed, lanes.landed);
