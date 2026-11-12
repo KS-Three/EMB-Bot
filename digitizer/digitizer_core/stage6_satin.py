@@ -71,7 +71,7 @@ from shapely.geometry import Point as SPoint
 from shapely.ops import unary_union
 from .fast_skimage import medial_axis  # skimage's, tables cached — byte-identical
 
-from . import machine, shape_memo, stitches
+from . import deadline, machine, shape_memo, stitches
 from .shapefield import build_shape_field, hole_px
 from .stitches import StitchRun
 
@@ -2843,6 +2843,7 @@ def _sibling_spines(siblings: list | None, field: _WidthField | None,
     """
     out: list[tuple[np.ndarray, float]] = []
     for s in siblings or ():
+        deadline.check("satin siblings")
         a = np.asarray(s, dtype=float)
         if a.ndim != 2 or a.shape[0] < 2 or a.shape[1] != 2:
             continue
@@ -2960,6 +2961,7 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     side_b: list[float] = []
     floors: list[float] = []
     for i, (px, py) in enumerate(spine):
+        deadline.check("satin rails")
         nx, ny = math.cos(angles[i]), math.sin(angles[i])
 
         def hit(dx: float, dy: float):
@@ -3280,6 +3282,7 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         return (px, py)
 
     for i, (px, py) in enumerate(spine):
+        deadline.check("satin rails")
         nx, ny = norms[i]
         body = closed or (0 < i < n - 1 and not (zs and i <= zs)
                           and not (ze and i >= n - 1 - ze))
@@ -3750,6 +3753,7 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
 
     out_a, out_b = [], []
     for pa, pb in zip(rail_a, rail_b):
+        deadline.check("satin rail push")
         dx, dy = pa[0] - pb[0], pa[1] - pb[1]
         d = math.hypot(dx, dy)
         if d < 1e-9:
@@ -6253,6 +6257,8 @@ def _junction_patch_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
                 patch, shape_id, angle_deg=None,
                 row_mm=machine.FILL_ROW_MM, stitch_mm=machine.FILL_STITCH_MM,
                 underlay_style="none", trim_at_mm=math.inf, start_near=cursor)
+        except deadline.Abandoned:
+            raise                       # a cancel / the job timeout is not a bad patch
         except Exception:  # noqa: BLE001 -- an additive pass must never sink a shape
             continue
         for r in got:
@@ -6436,6 +6442,8 @@ def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
                 pts = satin_stroke(patch, column, max(half, machine.SATIN_MIN_CROSS_MM / 2),
                                    None, split_above_mm, 0.0, spacing_mm, None,
                                    max_width_mm=max_width_mm)
+        except deadline.Abandoned:
+            raise
         except Exception:  # noqa: BLE001 -- an additive pass must never sink a shape
             pts = []
         if len(pts) >= 4:
@@ -6466,6 +6474,8 @@ def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
                 patch, shape_id, angle_deg=None,
                 row_mm=machine.FILL_ROW_MM, stitch_mm=machine.FILL_STITCH_MM,
                 underlay_style="none", trim_at_mm=math.inf, start_near=cursor)
+        except deadline.Abandoned:
+            raise
         except Exception:  # noqa: BLE001
             continue
         for r in got_runs:
@@ -6556,6 +6566,7 @@ def _close_seams(poly: Polygon, pull_mm: float, art_poly: Polygon | None = None)
         if out.geom_type != "Polygon" or out.is_empty or not out.is_valid:
             return None
         for ring in out.interiors:
+            deadline.check("satin seam close")
             hole = Polygon(ring)
             if not hole.buffer(-0.5 * width).is_empty and hole.difference(shell).area > 1e-9:
                 return None
@@ -6565,6 +6576,7 @@ def _close_seams(poly: Polygon, pull_mm: float, art_poly: Polygon | None = None)
     if out is None:
         out = poly
         for q in seams:
+            deadline.check("satin seam close")
             got = closes(out, [q])
             if got is not None:
                 out = got
@@ -6926,6 +6938,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         hold_poly = hp if hp.interiors else None
     kept: list[dict] = []
     for si, st in enumerate(strokes):
+        deadline.check("satin strokes")
         parts: list = []
         # The envelope reads the other strokes' spines to tell a far edge
         # from a junction escape (`_in_sibling_ribbon`); nothing else does.

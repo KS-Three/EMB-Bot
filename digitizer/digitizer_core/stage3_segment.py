@@ -26,7 +26,7 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
-from . import machine
+from . import deadline, machine
 from .config import PipelineConfig
 from .detail_spokes import find_tips
 from .stage1_prep import Prep
@@ -374,6 +374,7 @@ def _chained_small_regions(regions, areas, boxes, small, min_area_px,
 
     # Adjacency by halo overlap, bbox-pruned exactly like the loop below.
     for pos, i in enumerate(small):
+        deadline.check("stage 3")
         bi = boxes[i]
         if bi is None:
             continue

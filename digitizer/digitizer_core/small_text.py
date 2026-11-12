@@ -52,6 +52,7 @@ from shapely import affinity
 from shapely.geometry import MultiPolygon, Point, Polygon, box
 from shapely.ops import unary_union
 
+from . import deadline
 from .regions import Region
 from .stage1_prep import Prep
 from .stage5_overlap import WIDENED_LETTERING_KEY
@@ -760,6 +761,7 @@ def _place_line_reset(items: list[dict], bounds: Polygon, s_max: float, cap_mm: 
             # where a quarter millimetre up kept it centred
             best = None
             for cost, dy in moves_y:
+                deadline.check("small text placement")
                 if best is not None and cost >= best[0]:
                     break
                 dxs, placed = [], []
@@ -938,6 +940,8 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 "stroke": 2.0 * float(members[0].meta.get("text_cluster_stroke_mm") or 0.0),
                 "mid": (hull.bounds[1] + hull.bounds[3]) / 2.0,
             })
+        except deadline.Abandoned:
+            raise                       # a cancel / the job timeout is not a bad cluster
         except Exception as exc:  # fail open: never take the pipeline down
             row["skipped"] = f"error:{type(exc).__name__}"
 
@@ -1117,6 +1121,8 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                                             if r.meta.get("small_text_enlarged")])
                 if carved:
                     line[0]["row"]["carved"] = carved
+        except deadline.Abandoned:
+            raise
         except Exception as exc:  # fail open
             for it in line:
                 it["row"]["skipped"] = f"error:{type(exc).__name__}"
@@ -1891,6 +1897,8 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 row["stray_line"] = _release(kept, f"{cid}.line{at}", clusters, order)
             row.update(adopted=len(group) - len(members), retraced=len(traced),
                        strays=len(strays))
+        except deadline.Abandoned:
+            raise
         except Exception as exc:  # fail open
             row["skipped"] = f"error:{type(exc).__name__}"
     return report

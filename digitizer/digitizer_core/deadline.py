@@ -21,11 +21,26 @@ job that finishes in time is byte-identical with or without a scope
 (`tests/test_service.py` pins the design's md5 both ways).
 
 **What it cannot interrupt.** One call that runs past the whole budget on its
-own: stage 2's region former (`photo_segment` / `quantize`; stained_glass
-read 130 s there before PR #1192's bincount fix), the rembg / SAM2
-subprocesses (which carry their own `*_timeout_s`), and stage 7's chaining
-passes after emission. Those end, and the next check fires; the worker is
-freed within one such call, not instantly.
+own: the rembg / SAM2 subprocesses (which carry their own `*_timeout_s`), and
+single numpy / cv2 / GEOS calls with no loop of ours around them (stage 2's
+photo segmenter, stage 3's small-region dilation, stage 1's `prep`, the
+preflight's `prep`; 3-8 s on the 100 mm fixtures timed, see the PR body).
+Those end, and the next check fires; the worker is freed within one such
+call, not instantly.
+
+**Checkpoints inside the shape (2026-11-12, follow-up to #1400).** A seam per
+shape left a cancel waiting out one large shape: 61 s on `owl_kent.jpg` at 200
+mm. `check` now also sits inside the loops that make one shape -- the fill's
+angle search, order pricing, reorders and emit, the satin's rails, seam close
+and rail push, the outline column builder, stage 7's passes after emission,
+the borders, streamlines, small-text placement, stage 5, stage 4's thread
+revalidation, stage 2's k-means and majority filter, and the preflight's
+regions and render. The longest wait for the worker on the fixtures timed
+(`tests/test_cancel_in_fill.py`, PR body) fell from 15-76 s to 1-2 s inside
+stage 7. What `except Exception` handlers sit around those loops re-raise
+`Abandoned` first, and `stitch_shape` undoes its per-shape state in a
+`finally`, so a cancel mid-shape leaves nothing for the next job. Still no
+number moves: a job that is not cancelled is byte-identical.
 
 **A customer's cancel rides the same seams (2026-11-12).** `scope` also takes
 a `cancel` flag (a `threading.Event` the service sets from another thread

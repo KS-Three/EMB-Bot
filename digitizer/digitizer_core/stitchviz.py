@@ -32,6 +32,8 @@ import math
 import cv2
 import numpy as np
 
+from . import deadline
+
 # Design coordinates are 0.1 mm with y up; `adapter.plan_to_design` is the
 # one place that flip happens, and this undoes it.
 UNITS_PER_MM = 10.0
@@ -177,7 +179,9 @@ def render_design(design: dict, px_per_mm: float = DEFAULT_PX_PER_MM,
 
     ci, prev = 0, None
     rgb = colors[0]
-    for s in stitches:
+    for n, s in enumerate(stitches):
+        if not n & 0x3FF:           # every 1,024 stitches: the preflight's renders
+            deadline.check("render")
         kind = s.get("type")
         if kind == "color":
             ci += 1

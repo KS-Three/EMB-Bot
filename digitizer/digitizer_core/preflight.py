@@ -1041,6 +1041,7 @@ def _region_color_errors(p, result: PipelineResult, plan: StitchPlan,
         # 0, every one of them sews (some only 23-30 stitches).
         if r.meta.get("enclosed_background"):
             continue
+        deadline.check("preflight")
         mask = np.zeros((h, w), np.uint8)
 
         def to_px(coords) -> np.ndarray:
@@ -4409,6 +4410,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
         metrics.update({"ground_span_frac": None, "ground_delta_e": None,
                         "ground_area_frac": None})
 
+    deadline.check("preflight")
     if p is not None:
         res_findings, res_metrics = _photo_resolution_findings(p, plan, cfg)
         findings.extend(res_findings)
@@ -4420,6 +4422,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
         metrics["input_px_per_mm"] = None
         metrics["subject_bg_delta_l"] = None
 
+    deadline.check("preflight")
     lettering, satin_shape_count = _lettering_findings(plan)
     findings.extend(lettering)
     metrics["satin_shapes"] = satin_shape_count
@@ -4445,6 +4448,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     # so without the hand-off it is a second 12-point bill for one defect.
     already_small = {sh["shape_id"] for f in lettering
                      for sh in f.get("extra", {}).get("shapes", ())}
+    deadline.check("preflight")
     length_findings, length_metrics = _stitch_length_findings(plan, already_small)
     findings.extend(length_findings)
     metrics.update(length_metrics)
@@ -4457,11 +4461,13 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     findings.extend(density_findings)
     metrics.update(density_metrics)
 
+    deadline.check("preflight")
     coverage_findings, coverage_metrics = _coverage_findings(plan)
     findings.extend(coverage_findings)
     metrics.update(coverage_metrics)
 
     # Needs both the artwork and the regions, same as the thread-match check.
+    deadline.check("preflight")
     if p is not None and result is not None:
         unc_findings, unc_metrics = _uncovered_findings(p, result, plan)
         findings.extend(unc_findings)

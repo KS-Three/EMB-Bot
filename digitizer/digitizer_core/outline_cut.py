@@ -39,6 +39,7 @@ from shapely.geometry import LinearRing, LineString, MultiPoint, Point, Polygon
 from shapely.ops import nearest_points, polygonize, unary_union
 from .fast_skimage import medial_axis  # skimage's, tables cached — byte-identical
 
+from . import deadline
 from .columns import Column
 
 SIMPLIFY_MM = 0.12       # lumps under this (or W/16) are the trace, not the letter
@@ -974,6 +975,7 @@ def _pair_rails(A, B, pitch_mm: float) -> list[tuple[tuple, tuple]]:
     for j in range(1, m):
         C[0, j] = C[0, j - 1] + D[0, j]
     for i in range(1, n):
+        deadline.check("column rail pairing")
         C[i, 0] = C[i - 1, 0] + D[i, 0]
         row, prev = C[i], C[i - 1]
         for j in range(1, m):
@@ -1881,6 +1883,7 @@ def _fresh(col: Column | None) -> Column | None:
 def _build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
                   mitre_ends: bool, rail_axis: bool) -> Column | None:
     """`build_column`'s construction, `rail_axis` already read."""
+    deadline.check("column build")
     if not piece.interiors:
         u = (straight_axis(piece, W, cut_lines, rail_axis=True) if rail_axis
              else straight_axis(piece, W, cut_lines))
@@ -2083,10 +2086,12 @@ def sewn_knots(runs) -> tuple[int, int, int]:
         med = float(np.median(length[real]))
         hit = set()
         for i in np.nonzero(real)[0]:
+            deadline.check("column knot count")
             for j in np.nonzero(real[i + 2:])[0] + i + 2:
                 if legs[i].crosses(legs[j]):
                     hit.update((int(i), int(j)))
         for i in np.nonzero(real)[0]:
+            deadline.check("column knot count")
             m = legs[i].interpolate(0.5, normalized=True)
             if min(o.distance(m) for o in others) >= med:
                 continue
