@@ -29,6 +29,15 @@ def _load(name: str):
     return module
 
 
+def _load_after_siblings(name: str):
+    """For a script that imports its sibling scripts by bare name."""
+    sys.path.insert(0, str(DIGITIZER / "packaging"))
+    try:
+        return _load(name)
+    finally:
+        sys.path.remove(str(DIGITIZER / "packaging"))
+
+
 build_freeze = _load("build_freeze")
 freeze_check = _load("freeze_check")
 
@@ -69,6 +78,8 @@ def test_a_build_with_no_release_name_is_named_after_its_commit():
     assert build_freeze.make_stamp(commit="0123456789abcdef" + "0" * 24)["release"] == "dev-01234567"
     with pytest.raises(SystemExit):
         build_freeze.make_stamp(commit="v1.0.0")           # a tag is not a commit
+    with pytest.raises(SystemExit):
+        build_freeze.make_stamp(commit="a" * 40, release="claude/some-branch")   # it becomes a file name
 
 
 def test_the_build_refuses_a_work_directory_inside_the_checkout():
@@ -168,6 +179,23 @@ def test_measure_and_zip_keep_the_folder_as_the_zips_top_level(tmp_path):
         assert sorted(z.namelist()) == ["embbot-digitizer/_internal/base.zip",
                                         "embbot-digitizer/_internal/cv2/cv2.pyd",
                                         "embbot-digitizer/embbot-digitizer.exe"]
+
+
+def test_the_installer_is_compiled_from_the_build_report_and_keeps_its_identity():
+    build_installer = _load_after_siblings("build_installer")
+    report = {"name": "embbot-digitizer", "folder": "W/dist/embbot-digitizer",
+              "exe": "W/dist/embbot-digitizer/embbot-digitizer.exe", "stamp": {"release": "v1.2.3"}}
+    args, setup = build_installer.iscc_args(report, Path("W"))
+    assert setup == Path("W") / "embbot-digitizer-v1.2.3-setup.exe"
+    assert "/DSourceDir=W/dist/embbot-digitizer" in args and "/DAppVersion=v1.2.3" in args
+    assert "/DExeName=embbot-digitizer.exe" in args and args[-1].endswith("installer.iss")
+    iss = (DIGITIZER / "packaging" / "installer.iss").read_text(encoding="utf-8")
+    # Every define the script demands is one the builder passes.
+    assert set(re.findall(r"#ifndef (\w+)\s+#error", iss)) <= {a[2:].split("=")[0] for a in args if a.startswith("/D")}
+    # The AppId is the installer's identity across upgrades: changing it
+    # installs a second copy beside the first. Pinned so that takes a decision.
+    assert "AppId={{E5D491C7-8B84-4FE9-84CF-3737653A83ED}" in iss
+    assert "PrivilegesRequired=lowest" in iss
 
 
 # --------------------------------------------------------------- instrument

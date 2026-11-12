@@ -126,10 +126,13 @@ def make_stamp(commit: str | None = None, release: str | None = None) -> dict:
         dirty = None if changed is None else bool(changed)
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise BuildError(f"--commit must be a full 40-hex sha, got {commit!r}.")
+    release = release or f"dev-{commit[:8]}"
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,63}", release):
+        raise BuildError(f"--release {release!r} must be a plain name like v1.0.0: it becomes a file name.")
     return {
         "commit": commit,
         "dirty": dirty,
-        "release": release or f"dev-{commit[:8]}",
+        "release": release,
         "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "python": sys.version.split()[0],
         "pyinstaller": PYINSTALLER_VERSION,

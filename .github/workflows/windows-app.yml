@@ -45,7 +45,7 @@ concurrency:
 jobs:
   windows-app:
     runs-on: windows-latest
-    timeout-minutes: 45   # about 15 expected: npm and pip 3, freeze 3, both suites 5, zip 2
+    timeout-minutes: 60   # about 20 expected: npm and pip 3, freeze 3, both suites 5, zip 2, installer 6
     env:
       PYTHONUTF8: '1'     # PyInstaller's log is echoed line by line; cp1252 cannot print all of it
       # The tag names the release. A manual run is named dev-<commit> by the build script.
@@ -89,6 +89,21 @@ jobs:
           path: ${{ runner.temp }}/freeze/*.zip
           compression-level: 0     # already a zip
           if-no-files-found: error
+      # The installer comes AFTER the zip is proved and uploaded, so a broken
+      # installer step can never cost the zip. build_installer.py compiles
+      # packaging/installer.iss, then installs, runs and uninstalls the result.
+      - name: Inno Setup (already on the image, or installed here)
+        run: choco install innosetup --no-progress -y
+      - name: Build the installer, install it, run it, uninstall it
+        working-directory: digitizer
+        run: python packaging/build_installer.py --build-report "$env:RUNNER_TEMP\freeze\build_report.json" --summary "$env:GITHUB_STEP_SUMMARY"
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-app-installer
+          path: ${{ runner.temp }}/freeze/*-setup.exe
+          compression-level: 0     # LZMA2 inside; deflate gains nothing
+          if-no-files-found: error
       - name: Upload the build and smoke records
         if: always()
         uses: actions/upload-artifact@v4
@@ -98,4 +113,7 @@ jobs:
             ${{ runner.temp }}/freeze/build_report.json
             ${{ runner.temp }}/freeze/pyinstaller.log
             ${{ runner.temp }}/freeze/smoke/
+            ${{ runner.temp }}/freeze/install.log
+            ${{ runner.temp }}/freeze/installer.md
+            ${{ runner.temp }}/freeze/installed-service.log
           if-no-files-found: warn
