@@ -52,3 +52,14 @@ test("persistStructural records discretely, and one task's second record continu
   // in one task; persist() must not split them (see its comment).
   expect(SRC).toMatch(/history\.record\(project, undefined, discrete && !recordedThisTask\)/);
 });
+
+// One level down: a hand-drawn element's SHAPES. ManualPanel flags a shape
+// added or removed as `discrete` (ManualPanel.spec.js pins that), and the
+// flag only means anything if App passes it on to history. The field's
+// binding always did; the panel's dropped it until 2026-11-12, which is why
+// a shape deleted right after it was drawn could not be undone.
+test("both elupdate bindings pass the discrete flag through to elUpdate", () => {
+  const bindings = SRC.match(/on:elupdate=\{\(e\) => elUpdate\([^\n]*\)\}/g) || [];
+  expect(bindings, "expected the field's binding and the panel's").toHaveLength(2);
+  for (const b of bindings) expect(b).toMatch(/!!e\.detail\.discrete\)\}$/);
+});
