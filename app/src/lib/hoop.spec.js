@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 // onto globalThis.EMB) plus a stub for the buildLetteringDesign gate, and
 // hoop.js itself is imported dynamically after. Same "stub before
 // importing" ordering TextStep.spec.js documents.
-let effectiveHoop, hoopFitNote, autoCapNote, EMB;
+let effectiveHoop, hoopFitNote, autoCapNote, rotateToFitPatches, EMB;
 beforeAll(async () => {
   const require = createRequire(import.meta.url);
   globalThis.window = globalThis;
@@ -15,7 +15,7 @@ beforeAll(async () => {
   require("../../../src/garments.js");
   globalThis.EMB.buildLetteringDesign =
     globalThis.EMB.buildLetteringDesign || (() => { throw new Error("not used by this spec"); });
-  ({ effectiveHoop, hoopFitNote, autoCapNote } = await import("./hoop.js"));
+  ({ effectiveHoop, hoopFitNote, autoCapNote, rotateToFitPatches } = await import("./hoop.js"));
   ({ EMB } = await import("./emb.js"));
 });
 
@@ -99,4 +99,51 @@ test("autoCapNote speaks only on the four garments whose placement is bigger tha
   expect(capped).toEqual(["blanket", "full_back", "jacket_back", "tote"]);
   expect(autoCapNote(EMB.getGarment("full_back"))).toContain("8×8 in hoop");
   expect(autoCapNote(null)).toBe("");
+});
+
+// ---- Rotate to fit ----------------------------------------------------------
+// A 170x120 mm design fits a 130x180 (5x7) hoop only turned a quarter turn.
+const stitchesBox = (w, h, cx = 0, cy = 0) => [
+  { x: (cx - w / 2) * 10, y: (cy - h / 2) * 10 },
+  { x: (cx + w / 2) * 10, y: (cy + h / 2) * 10 },
+];
+
+test("rotateToFitPatches turns a lone element 90 degrees when the design fits only rotated", () => {
+  const combined = { widthMM: 170, heightMM: 120, stitches: stitchesBox(170, 120) };
+  const els = [{ id: "e1", offsetXMm: 0, offsetYMm: 0, rotationDeg: 0 }];
+  const p = rotateToFitPatches(els, combined, EMB.getHoop("5x7"));
+  expect(p.e1.rotationDeg).toBe(90);
+  expect(p.e1.offsetXMm).toBeCloseTo(0, 9);
+  expect(p.e1.offsetYMm).toBeCloseTo(0, 9);
+});
+
+test("rotateToFitPatches swings a multi-element layout rigidly about the design centre", () => {
+  // two elements 60 mm apart, centred on (10, 5); turning CCW 90 deg about
+  // that centre sends (-20, 5) -> (10 - 0, 5 - 30) and (40, 5) -> (10 - 0, 5 + 30)
+  const combined = { widthMM: 170, heightMM: 120, stitches: stitchesBox(170, 120, 10, 5) };
+  const els = [
+    { id: "a", offsetXMm: -20, offsetYMm: 5, rotationDeg: 350 },
+    { id: "b", offsetXMm: 40, offsetYMm: 5, rotationDeg: 0 },
+  ];
+  const p = rotateToFitPatches(els, combined, EMB.getHoop("5x7"));
+  expect(p.a.offsetXMm).toBeCloseTo(10, 9);
+  expect(p.a.offsetYMm).toBeCloseTo(-25, 9);
+  expect(p.b.offsetXMm).toBeCloseTo(10, 9);
+  expect(p.b.offsetYMm).toBeCloseTo(35, 9);
+  expect(p.a.rotationDeg).toBe(80); // 350 + 90 wraps
+  expect(p.b.rotationDeg).toBe(90);
+});
+
+test("rotateToFitPatches is null when a rotate would not help", () => {
+  const els = [{ id: "e1", offsetXMm: 0, offsetYMm: 0 }];
+  const h57 = EMB.getHoop("5x7");
+  // already fits upright
+  expect(rotateToFitPatches(els, { widthMM: 120, heightMM: 170, stitches: stitchesBox(120, 170) }, h57)).toBeNull();
+  // exceeds either way
+  expect(rotateToFitPatches(els, { widthMM: 190, heightMM: 190, stitches: stitchesBox(190, 190) }, h57)).toBeNull();
+  // square hoop: turning never changes the answer
+  expect(rotateToFitPatches(els, { widthMM: 250, heightMM: 150, stitches: stitchesBox(250, 150) }, EMB.getHoop("8x8"))).toBeNull();
+  // no hoop / no design / no elements
+  expect(rotateToFitPatches(els, null, h57)).toBeNull();
+  expect(rotateToFitPatches([], { widthMM: 170, heightMM: 120, stitches: stitchesBox(170, 120) }, h57)).toBeNull();
 });
