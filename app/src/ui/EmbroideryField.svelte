@@ -20,7 +20,7 @@
   import { EMB } from "../lib/emb.js";
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
-  import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
+  import { effectiveHoop, hoopFitNote, rotateToFitPatches } from "../lib/hoop.js";
   import { garmentOf, placementBoxOf } from "../lib/placement.js";
   import { resizeBadgeText, runSpm } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
@@ -130,6 +130,9 @@
   // it's a CHECK on the generated result, never a clamp (the clamp math
   // stays keyed to the garment placement box).
   let hoopNote = "";
+  // patches for the "Rotate to fit" button: set only when the design fits the
+  // hoop turned 90° and not upright (one click, one undo step); null otherwise.
+  let rotateFix = null;
   // Characters the element's font has no glyph for. The lettering path skips
   // them silently, which was obscure while the library was all-Latin and became
   // a one-click dead end when Hebrew fonts arrived: pick one, type "Emb", and
@@ -3500,6 +3503,7 @@
     warn = false;
     hint = "";
     hoopNote = "";
+    rotateFix = null;
     unsupportedNote = "";
     letterNote = "";
     twoLinesFix = null;
@@ -3588,6 +3592,7 @@
     // — it was the one place printing a bare 1289 where the rest say 1,289.
     stats = `${c.stitchCount.toLocaleString()} stitches · ${c.widthMM.toFixed(0)}×${c.heightMM.toFixed(0)} mm · ${hoop.label} hoop`;
     hoopNote = hoopFitNote(c.widthMM, c.heightMM, hoop) || "";
+    rotateFix = rotateToFitPatches(project.elements, c, hoop);
     // Something DID stitch, but not all of it — e.g. Latin mixed into Hebrew.
     // Rides the stats line next to the other warnings rather than blocking.
     unsupportedNote = (result.unsupported && result.unsupported.length)
@@ -5723,6 +5728,6 @@
     <!-- &nbsp; before each separator, not a plain space: Svelte strips leading
          whitespace inside an element, so " · " rendered as "…hoop· This font".
          Pre-existing on the two older warnings; visible on all three now. -->
-    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{#if twoLinesFix}&nbsp;<button type="button" class="twolines" on:click={() => dispatch("elupdate", { id: twoLinesFix.id, patch: { text: twoLinesFix.text } })}>Put on two lines</button>{/if}{/if}{#if contrastNote}<span class="warn" data-testid="contrast-note">&nbsp;· {contrastNote}</span>{/if}{/if}
+    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{#if rotateFix}&nbsp;<button type="button" class="twolines" data-testid="rotate-to-fit" on:click={() => dispatch("elupdatemany", rotateFix)}>Rotate to fit</button>{/if}{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{#if twoLinesFix}&nbsp;<button type="button" class="twolines" on:click={() => dispatch("elupdate", { id: twoLinesFix.id, patch: { text: twoLinesFix.text } })}>Put on two lines</button>{/if}{/if}{#if contrastNote}<span class="warn" data-testid="contrast-note">&nbsp;· {contrastNote}</span>{/if}{/if}
   </div>
 </div>

@@ -57,6 +57,27 @@ test("hoopFit is orientation-aware: a 170x120 design goes into a 130x180 hoop ro
   assert.strictEqual(g.hoopFit(130, 180, h57), "fits");
 });
 
+test("fitsOnlyRotated: upright fit, rotated-only fit, neither, and a square hoop", () => {
+  const h57 = g.getHoop("5x7"); // 130 x 180
+  // fits upright -> not a rotate case
+  assert.strictEqual(g.fitsOnlyRotated(120, 170, h57), false);
+  // wide design, tall hoop -> only fits turned
+  assert.strictEqual(g.fitsOnlyRotated(170, 120, h57), true);
+  // too big either way
+  assert.strictEqual(g.fitsOnlyRotated(190, 190, h57), false);
+  assert.strictEqual(g.hoopFit(190, 190, h57), "exceeds");
+  // square hoop: a rotate can never help, whichever side is long
+  const h88 = g.getHoop("8x8");
+  assert.strictEqual(g.fitsOnlyRotated(150, 190, h88), false); // fits upright
+  assert.strictEqual(g.fitsOnlyRotated(190, 150, h88), false);
+  assert.strictEqual(g.fitsOnlyRotated(150, 250, h88), false); // exceeds
+  assert.strictEqual(g.hoopFit(250, 150, h88), "exceeds");
+  // exact-fit rotated boundary counts
+  assert.strictEqual(g.fitsOnlyRotated(180, 130, h57), true);
+  // plain {w,h} ceilings (TYPICAL_HOOP_MM) work too
+  assert.strictEqual(g.fitsOnlyRotated(250, 150, { w: 160, h: 250 }), true);
+});
+
 test("suggestHoop picks the smallest preset that admits the placement box", () => {
   // sleeve 3x3in (76.2mm sq) -> 4x4; hat_front 5x2.25in (127x57.15) -> 5x7
   assert.strictEqual(g.suggestHoop(g.getGarment("sleeve")).id, "4x4");

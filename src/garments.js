@@ -230,14 +230,22 @@ const units =
   //   "fits"    — fits the hoop as-is
   //   "rotated" — only fits if the design is rotated 90°
   //   "exceeds" — doesn't fit either way
-  // Auto-rotation (actually rotating the design for the user) is a noted
-  // follow-up; today the check just tells the user rotating would work.
+  // The engine only REPORTS the rotated fit; the Studio's "Rotate to fit"
+  // button (app/src/lib/hoop.js rotateToFitPatches) is what acts on it.
+  // A square hoop can never answer "rotated": if the design does not fit
+  // upright it does not fit turned either.
   function hoopFit(wmm, hmm, hoop) {
     const w = hoop.widthMm != null ? hoop.widthMm : hoop.w;
     const h = hoop.heightMm != null ? hoop.heightMm : hoop.h;
     if (wmm <= w && hmm <= h) return "fits";
     if (hmm <= w && wmm <= h) return "rotated";
     return "exceeds";
+  }
+
+  // True only when the design fits the hoop turned a quarter turn and NOT
+  // upright — the one case a rotate fixes.
+  function fitsOnlyRotated(wmm, hmm, hoop) {
+    return hoopFit(wmm, hmm, hoop) === "rotated";
   }
 
   // The sensible default hoop for a garment: the smallest preset whose field
@@ -283,6 +291,7 @@ const units =
     HOOPS,
     getHoop,
     hoopFit,
+    fitsOnlyRotated,
     suggestHoop,
     exceedsHoop,
   };

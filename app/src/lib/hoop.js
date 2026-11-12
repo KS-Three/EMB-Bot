@@ -40,7 +40,7 @@ export function effectiveHoop(project) {
 // fires most:
 //
 //   rotated       -> turn it; the engine's hoopFit is orientation-aware.
-//                    (Auto-rotating for the user is a noted follow-up.)
+//                    (the field offers a "Rotate to fit" button: rotateToFitPatches)
 //   a bigger hoop -> name it. The customer may own it, and if not they now
 //                    know what to buy.
 //   nothing fits  -> say so. Suggesting "a bigger hoop" when the design is
@@ -83,4 +83,42 @@ export function autoCapNote(garment) {
   return capped
     ? `Auto-fit sizes this to the ${hoop.label} hoop, the largest this app offers — the ${garment.label} area is bigger. Type a width to go larger.`
     : "";
+}
+
+// "Rotate to fit": the one-click answer to hoopFitNote's "rotate the design
+// 90° and it fits". Returns the elupdatemany patches that turn the WHOLE
+// design a quarter turn counter-clockwise (the engine's positive rotationDeg
+// direction; offsets are DST space, +y up, like rotationDeg), or null when a
+// rotate would not fix it (fits already, exceeds either way, or a square hoop).
+//
+// Rigid: every element's own rotationDeg gains 90 AND its offset swings 90°
+// about the centre of the combined stitch bounding box, so the layout turns as
+// a unit and the combined width/height swap exactly. Rotating each element in
+// place would scramble a multi-element layout.
+export function rotateToFitPatches(elements, combined, hoop) {
+  if (!hoop || !combined || !elements || !elements.length) return null;
+  if (!EMB.fitsOnlyRotated || !EMB.fitsOnlyRotated(combined.widthMM, combined.heightMM, hoop)) return null;
+  const upm = EMB.DST_UNITS_PER_MM || (EMB.units && EMB.units.DST_UNITS_PER_MM) || 10;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const s of combined.stitches || []) {
+    if (!isFinite(s.x) || !isFinite(s.y)) continue;
+    if (s.x < x0) x0 = s.x;
+    if (s.x > x1) x1 = s.x;
+    if (s.y < y0) y0 = s.y;
+    if (s.y > y1) y1 = s.y;
+  }
+  if (x0 === Infinity) return null;
+  const cx = (x0 + x1) / 2 / upm;
+  const cy = (y0 + y1) / 2 / upm;
+  const patches = {};
+  for (const el of elements) {
+    const dx = (el.offsetXMm || 0) - cx;
+    const dy = (el.offsetYMm || 0) - cy;
+    patches[el.id] = {
+      offsetXMm: cx - dy + 0,
+      offsetYMm: cy + dx + 0,
+      rotationDeg: ((((el.rotationDeg || 0) + 90) % 360) + 360) % 360,
+    };
+  }
+  return patches;
 }
