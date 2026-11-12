@@ -348,10 +348,103 @@ def _slant_for(wkb: bytes, base_deg: float | None) -> float | None:
     return None
 
 
+#: How close to a tie any decision in `_scan_rows` may sit before it hands the
+#: polygon back to GEOS. Its crossings and `_row_spans`' agree to about 1e-12
+#: mm (both are a rounding or two from the true crossing of the same doubles),
+#: so five orders of margin; not a physical constant.
+_SCAN_TOL_MM = 1e-7
+
+
+def _scan_rows(poly: Polygon, row_mm: float):
+    """`_row_spans(poly, row_mm)` for COUNTING columns, by edge crossings in
+    numpy instead of one GEOS overlay per scanline -- or None where it cannot
+    promise `_columns` the same answer (2026-11-11, speed only).
+
+    The rows are `_row_spans`' own (same arithmetic, same doubles). A span's
+    ends are where the row crosses the rings, paired left to right. Those ends
+    are NOT bit for bit GEOS's, so this never feeds a stitch: only
+    `_cols_at_angle`, which keeps nothing of a span but what `_columns` decides
+    from it -- which rows have a span, and whether two spans in neighbouring
+    rows overlap by more than `_OVERLAP_EPS_MM`. Each of those is a comparison,
+    and None comes back whenever one sits within `_SCAN_TOL_MM` of flipping:
+
+    - a vertex on a row (a tangent, a horizontal edge, two rings touching);
+    - a span, or the gap between two in one row, shorter than the tolerance;
+    - an end of one span within the tolerance of `_OVERLAP_EPS_MM` past an
+      end of a span in the next listed row (the only way two spans' overlap
+      can sit at the threshold, their own lengths being the case above).
+
+    Also None for anything but a valid Polygon, which `_row_spans` repairs.
+    `tests/test_fill_angle_scan.py` holds the count against GEOS's.
+    """
+    if poly.geom_type != "Polygon" or poly.is_empty or not poly.is_valid:
+        return None
+    minx, miny, _maxx, maxy = poly.bounds
+    n_rows = max(1, int(math.floor((maxy - miny) / row_mm)))
+    # `_row_spans`' own lattice, phase 0.0 and no filter: the same operations
+    # on the same doubles, so the same rows and the same indices
+    ys = miny + 0.0 + row_mm * (np.arange(-1, n_rows + 2, dtype=float) + 0.5)
+    ys = ys[(ys >= miny + 1e-3) & (ys <= maxy)]
+    if not len(ys):
+        return []
+    tol = _SCAN_TOL_MM
+    rings = shapely.get_rings(poly)
+    xy = shapely.get_coordinates(rings)
+    vy = xy[:, 1]
+    k = np.clip(np.rint((vy - ys[0]) / row_mm), 0, len(ys) - 1).astype(np.intp)
+    if (np.abs(vy - ys[k]) < tol).any():
+        return None
+    seg = np.ones(len(xy) - 1, bool)
+    seg[np.cumsum(shapely.get_num_coordinates(rings))[:-1] - 1] = False   # ring to ring
+    ax, ay = xy[:-1, 0][seg], xy[:-1, 1][seg]
+    bx, by = xy[1:, 0][seg], xy[1:, 1][seg]
+    lo = np.searchsorted(ys, np.minimum(ay, by))
+    cnt = np.searchsorted(ys, np.maximum(ay, by)) - lo
+    total = int(cnt.sum())
+    if not total:
+        return []
+    e = np.repeat(np.arange(len(cnt)), cnt)
+    r = np.repeat(lo, cnt) + (np.arange(total) - np.repeat(np.cumsum(cnt) - cnt, cnt))
+    x = ax[e] + (ys[r] - ay[e]) * (bx[e] - ax[e]) / (by[e] - ay[e])
+    order = np.lexsort((x, r))
+    r, x = r[order], x[order]
+    if (np.bincount(r, minlength=len(ys)) % 2).any():
+        return None
+    rr, x0, x1 = r[0::2], x[0::2], x[1::2]
+    if (x1 - x0 < 2.0 * _OVERLAP_EPS_MM).any():
+        return None
+    same = rr[1:] == rr[:-1]
+    if (x0[1:][same] - x1[:-1][same] < tol).any():
+        return None
+    # Ends near the overlap threshold of a span in the next listed row: one
+    # sorted key per end, the listed row's rank times a stride wider than the
+    # shape, so one `searchsorted` finds each end's nearest across the seam.
+    first = np.r_[True, ~same]
+    rank = np.cumsum(first) - 1
+    stride = float(x1.max() - x0.min()) + 2.0
+    base = x0.min()
+    eps = _OVERLAP_EPS_MM
+    end_key = rank * stride + (x1 - base) - eps
+    for starts in ((rank - 1) * stride + (x0 - base),      # a span's end, the next row's starts
+                   (rank + 1) * stride + (x0 - base)):     # a span's end, the row before's starts
+        ends = end_key
+        starts = np.sort(starts)
+        at = np.clip(np.searchsorted(starts, ends), 1, len(starts) - 1)
+        if (np.minimum(np.abs(ends - starts[at - 1]), np.abs(ends - starts[at])) < 2.0 * tol).any():
+            return None
+    cut = np.flatnonzero(first).tolist() + [len(rr)]
+    rows_at, ys_l, x0_l, x1_l = rr.tolist(), ys.tolist(), x0.tolist(), x1.tolist()
+    return [(rows_at[s], ys_l[rows_at[s]], list(zip(x0_l[s:t], x1_l[s:t])))
+            for s, t in zip(cut, cut[1:])]
+
+
 def _cols_at_angle(poly: Polygon, angle: float, row_mm: float) -> int:
     """How many monotone columns rows at `angle` cut `poly` into."""
     rotated = affinity.rotate(poly, -angle, origin=(0, 0), use_radians=False)
-    return len(_columns(_row_spans(rotated, row_mm)))
+    rows = _scan_rows(rotated, row_mm)
+    if rows is None:
+        rows = _row_spans(rotated, row_mm)
+    return len(_columns(rows))
 
 
 def best_fill_angle_deg(poly: Polygon, row_mm: float) -> float:
@@ -1183,6 +1276,87 @@ def _footprint(path, row_mm: float):
     return fp
 
 
+# ---------------------------------------------------------------------------
+# The covered-bridge memo (2026-11-11, speed only).
+#
+# One fill shape's order is walked with the covered routing up to four times:
+# `_reorder_for_cover` prices the incoming order and its candidate,
+# `_order_for_seams` prices both progressions, and `emit` then sews the one
+# that won -- asking `travel_path` the questions the pricing walk of that
+# order already asked. Profiled on the low-poly dolphin at 198 mm: 93 s of a
+# 368 s plan in those walks, 29 s of it `emit`'s.
+#
+# `travel_path(poly, ring, a, b, slack, sewn, cache)` is a pure function of
+# its arguments, and inside one shape two of them carry history: `sewn`, the
+# footprints laid so far IN ORDER (`_Sewn.clipped` unions them in that order,
+# and a union is order-sensitive in the last bits), and `cache`, the unsewn
+# rings the last rebuilding call left. So a walk carries a CHAIN: a digest
+# that starts from the shape's own three objects, takes in each footprint's
+# bytes as it is laid, and takes in each call that replaced the cached rings.
+# Two walks at the same chain value hold byte-equal `sewn` and the very same
+# cached rings, so the same (a, b) gets the answer the call would compute --
+# and the rings it would leave behind are put back with it. Nothing is
+# approximated; a walk that differs anywhere earlier is at another chain
+# value and misses.
+#
+# One memo per `stitch_shape` call (a context variable, so two jobs on two
+# threads cannot meet). It keeps the shape's objects alive, so an `id` in the
+# chain's seed cannot be reused while the memo stands. Outside `stitch_shape`
+# there is none and every walk calls `travel_path` as before.
+_BRIDGE_MEMO: contextvars.ContextVar = contextvars.ContextVar("fill_bridge_memo", default=None)
+#: Entries one shape's memo takes before it stops learning (it still answers).
+#: An entry is a bridge's few points; a count cap is bound enough.
+_BRIDGE_MEMO_MAX = 50_000
+#: Totals over every finished `stitch_shape`, for tools and tests to read.
+_bridge_memo_stats = {"hit": 0, "miss": 0}
+
+
+class _BridgeMemo:
+    __slots__ = ("bridges", "prints", "shapes", "hits", "misses")
+
+    def __init__(self) -> None:
+        self.bridges: dict[bytes, tuple] = {}
+        self.prints: dict[int, tuple] = {}
+        self.shapes: dict[bytes, tuple] = {}
+        self.hits = self.misses = 0
+
+    def start(self, poly, ring, slack) -> bytes:
+        """The chain of a walk through this shape with nothing sewn yet."""
+        seed = struct.pack("<QQQ", id(poly), id(ring), id(slack))
+        self.shapes[seed] = (poly, ring, slack)
+        return seed
+
+    def laid(self, chain: bytes, footprint) -> bytes:
+        """The chain once `footprint` joins the fill sewn so far."""
+        known = self.prints.get(id(footprint))
+        if known is None or known[0] is not footprint:
+            known = (footprint, hashlib.blake2b(footprint.wkb, digest_size=16).digest())
+            self.prints[id(footprint)] = known
+        return hashlib.blake2b(b"f" + chain + known[1], digest_size=16).digest()
+
+    def bridge(self, chain: bytes, poly, ring, a, b, slack, sewn, cache: dict):
+        """-> (`travel_path(poly, ring, a, b, slack, sewn, cache)`, the chain
+        after it). `sewn` and `cache` must be the ones `chain` describes."""
+        key = hashlib.blake2b(b"q" + chain + struct.pack("<dddd", a[0], a[1], b[0], b[1]),
+                              digest_size=16).digest()
+        hit = self.bridges.get(key)
+        if hit is not None:
+            self.hits += 1
+            points, rings = hit
+            if rings is None:
+                return (None if points is None else list(points)), chain
+            cache["unsewn_rings"] = rings
+            return (None if points is None else list(points)), key
+        self.misses += 1
+        before = cache.get("unsewn_rings")
+        out = travel_path(poly, ring, a, b, slack, sewn, cache)
+        after = cache.get("unsewn_rings")
+        replaced = after is not before
+        if len(self.bridges) < _BRIDGE_MEMO_MAX:
+            self.bridges[key] = (None if out is None else tuple(out), after if replaced else None)
+        return out, (key if replaced else chain)
+
+
 def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                 slack: Polygon, entry: tuple[float, float] | None,
                 trim_at_mm: float, row_mm: float | None = None,
@@ -1247,12 +1421,19 @@ def _order_cost_walk(paths: list[list[tuple[float, float]]], poly: Polygon, ring
     sewn = None
     cache: dict = {}
     cur = entry
+    # The covered walk asks through the shape's bridge memo (see it above);
+    # the plain one, and any walk outside `stitch_shape`, asks directly.
+    memo = _BRIDGE_MEMO.get() if row_mm is not None else None
+    chain = memo.start(poly, ring, slack) if memo is not None else b""
     for i, path in enumerate(paths):
         if not path:
             continue
         if cur is not None:
-            bridge = travel_path(poly, ring, cur, path[0], slack,
-                                 sewn if row_mm is not None else None, cache)
+            if memo is not None:
+                bridge, chain = memo.bridge(chain, poly, ring, cur, path[0], slack, sewn, cache)
+            else:
+                bridge = travel_path(poly, ring, cur, path[0], slack,
+                                     sewn if row_mm is not None else None, cache)
             if hidden_row_mm is not None:
                 bridge = _hide_bridge(bridge, poly, slack, cur, path[0], stitches.FILL,
                                       paths[i:], hidden_row_mm, sewn)
@@ -1272,6 +1453,8 @@ def _order_cost_walk(paths: list[list[tuple[float, float]]], poly: Polygon, ring
         if row_mm is not None and len(path) > 1:
             footprint = _footprint(path, row_mm)
             sewn = _sewn_add(sewn, footprint)
+            if memo is not None:
+                chain = memo.laid(chain, footprint)
         cur = path[-1]
         yield cuts, float(travel_stitches), exposed_mm / machine.TRAVEL_STITCH_MM
 
@@ -2660,6 +2843,11 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     # the exposure tolerance already allows.
     sewn = None
     route_cache: dict = {}
+    # This shape's covered-bridge memo (speed only; see `_BridgeMemo`): the
+    # pricing walks below and `emit`'s own fill phase ask through it.
+    bridges = _BridgeMemo()
+    bridges_token = _BRIDGE_MEMO.set(bridges)
+    chain = bridges.start(poly, ring, slack)
     # `cut_bridges` is for single-pass fills. Crosshatch and the density boost
     # sew the shape twice, and the footprint above cannot tell pass-one fill
     # that pass two is about to cover from fill that is finished: every
@@ -2691,7 +2879,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
         fill_section_travel.reset()
 
     def emit(paths: list[list[tuple[float, float]]], kind: str, max_step: float) -> None:
-        nonlocal sewn
+        nonlocal sewn, chain
+        covered = under_cover and kind == stitches.FILL
         for i, path in enumerate(paths):
             # No tiny-stitch filter here, deliberately. Row turns are exactly one
             # row spacing long — 0.4 mm at standard density — and dropping them
@@ -2705,9 +2894,12 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
             if len(pts) < 2:
                 continue
             if runs:
-                bridge = travel_path(poly, ring, runs[-1].points[-1], pts[0], slack,
-                                     sewn if (under_cover and kind == stitches.FILL) else None,
-                                     route_cache)
+                if covered:
+                    bridge, chain = bridges.bridge(chain, poly, ring, runs[-1].points[-1],
+                                                   pts[0], slack, sewn, route_cache)
+                else:
+                    bridge = travel_path(poly, ring, runs[-1].points[-1], pts[0], slack,
+                                         None, route_cache)
                 if ((section_travel and (kind == stitches.UNDERLAY or under_cover))
                         or (re_planned and kind == stitches.FILL)):
                     bridge = _hide_bridge(
@@ -2724,6 +2916,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                     if under_cover and kind == stitches.FILL and len(pts) > 1:
                         footprint = _footprint(pts, row_mm)
                         sewn = _sewn_add(sewn, footprint)
+                        chain = bridges.laid(chain, footprint)
                     continue
                 # The bridge starts where the last run ended and finishes where
                 # the next one begins, so both ends belong to their own runs.
@@ -2737,6 +2930,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
             if under_cover and kind == stitches.FILL and len(pts) > 1:
                 footprint = _footprint(pts, row_mm)
                 sewn = _sewn_add(sewn, footprint)
+                chain = bridges.laid(chain, footprint)
 
     # `cross_tatami` is laid at its own, longer stitch; split at the
     # lattice's 2.5 mm every 4 mm stitch of it came out as two of 2 mm.
@@ -2806,6 +3000,9 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     # Every hit is within this shape (`cover` is in the key), so nothing
     # after this point can use the unsewn-ground memo; let its geometry go.
     _UNSEWN_MEMO.clear()
+    _BRIDGE_MEMO.reset(bridges_token)
+    _bridge_memo_stats["hit"] += bridges.hits
+    _bridge_memo_stats["miss"] += bridges.misses
     if section_travel or one_pass or seam_aware:
         fill_section_travel.reset()
 
