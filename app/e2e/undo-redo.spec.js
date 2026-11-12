@@ -253,3 +253,54 @@ test("undo after Auto Digitize removes the digitized result and Redo restores it
   await redo(page).click();
   await expect(stats).toHaveText(/[\d,]+ stitches/, { timeout: 30_000 });
 });
+
+test("hiding two digitized shapes back to back undoes one at a time", async ({ page }) => {
+  // The same coalescing bug as the two "right after" tests above, on a
+  // digitized element's Layers list: two shapes hidden inside history.js's
+  // 500 ms window merged into one step, so one Undo brought BOTH back.
+  // Hiding and restoring a shape are now discrete elupdates (DigitizePanel
+  // patchShapeHidden; the field's Delete key sends the same). No waits
+  // between the two clicks on purpose.
+  test.setTimeout(240_000);
+  let up = false;
+  for (let i = 0; i < 30 && !up; i++) {
+    up = await fetch(SERVICE_URL + "/health").then((r) => r.ok).catch(() => false);
+    if (!up) await new Promise((r) => setTimeout(r, 1000));
+  }
+  test.skip(!up, "digitizer service not reachable on 8721 (npm run dev starts it when digitizer/.venv exists)");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await startStudio(page);
+  await uploadArtwork(page, ART_PNG, { run: false });
+  await runDigitize(page);
+  await expect(page.locator("span.stats")).toHaveText(/[\d,]+ stitches/, { timeout: 120_000 });
+  await openAdvanced(page);
+  await page.getByRole("tab", { name: "Shapes" }).click({ timeout: 120_000 });
+  const rowsBtn = page.getByRole("button", { name: /^Edit shapes/ });
+  await expect(rowsBtn).toBeVisible({ timeout: 120_000 });
+  if ((await rowsBtn.getAttribute("aria-expanded")) !== "true") await rowsBtn.click();
+
+  // The digitized element's hidden shape ids, as the app saved them.
+  const hidden = () => page.evaluate(() => {
+    const id = localStorage.getItem("embstudio:current");
+    const project = id && JSON.parse(localStorage.getItem("embstudio:p:" + id) || "null");
+    const el = project && (project.elements || []).find((e) => e.type === "digitized");
+    return el ? (el.deletedShapeIds || []).length : -1;
+  });
+  const hide = page.locator('button[aria-label^="Hide this shape — "]');
+  expect(await hide.count()).toBeGreaterThanOrEqual(2);
+  expect(await hidden()).toBe(0);
+  // A hidden row swaps its Hide button for Restore, so first() is the next shape.
+  await hide.first().click();
+  await hide.first().click();
+  expect(await hidden()).toBe(2);
+  const undoBtn = page.getByRole("button", { name: "Undo", exact: true });
+  const redoBtn = page.getByRole("button", { name: "Redo", exact: true });
+  await undoBtn.click();                  // the second hide alone
+  await expect.poll(hidden).toBe(1);
+  await undoBtn.click();                  // then the first
+  await expect.poll(hidden).toBe(0);
+  await redoBtn.click();
+  await expect.poll(hidden).toBe(1);
+  await redoBtn.click();
+  await expect.poll(hidden).toBe(2);
+});

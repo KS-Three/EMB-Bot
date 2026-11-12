@@ -2539,7 +2539,7 @@
     if (el.type !== "digitized") return false; // a preset element IS its one shape; its chip removes it
     const cur = el.deletedShapeIds || [];
     if (cur.includes(selectedShapeId)) return false;
-    dispatch("elupdate", { id: el.id, patch: { deletedShapeIds: [...cur, selectedShapeId] } });
+    dispatch("elupdate", { id: el.id, patch: { deletedShapeIds: [...cur, selectedShapeId] }, discrete: true });
     setSelectedShape(null);
     focusedAnchor = null;
     shapeEditError = "";

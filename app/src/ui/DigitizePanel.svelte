@@ -1528,13 +1528,21 @@
     }
   }
 
+  // Hiding a shape and restoring it are `discrete` elupdates: each is its own
+  // undo step, never coalesced into whatever was recorded in the 500 ms
+  // before it (lib/history.js). Same rule, and the same reason, as a
+  // hand-drawn shape added or removed in ManualPanel (patchShapeSet).
+  function patchShapeHidden(deletedShapeIds) {
+    d("elupdate", { id: element.id, patch: { deletedShapeIds }, discrete: true });
+  }
+
   function deleteShape(sid) {
     if (deletedIds.includes(sid)) return;
-    patch({ deletedShapeIds: [...deletedIds, sid] });
+    patchShapeHidden([...deletedIds, sid]);
   }
 
   function restoreShape(sid) {
-    patch({ deletedShapeIds: deletedIds.filter((id) => id !== sid) });
+    patchShapeHidden(deletedIds.filter((id) => id !== sid));
   }
 
   // Restore-equivalent for a `stitched: false` (BACKGROUND_ENCLOSED) row:
