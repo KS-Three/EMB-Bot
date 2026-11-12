@@ -317,15 +317,100 @@ def run(items: list[str], labels_dir: Path, out: Path) -> int:
     return 1 if bad else 0
 
 
+PREDICTED = (("L_gaulke_roofing_hat", 6), ("L_proseal_hat", 2), ("L_gaulke_roofing_hat", 2))
+
+
+def leave_one_out(rows: dict, radius: float, null: str = "chance_pick") -> dict:
+    """Per target item left out: the per-note and per-pin pools without it."""
+    from tools import fault_reader_harness as h
+    out = {}
+    for iid in [k for k, r in rows.items() if r["pins"]]:
+        rest = {k: v for k, v in rows.items() if k != iid}
+        out[iid] = {"notes": h.pool_notes(rest, radius, null), "pins": h.pool(rest, radius, null)}
+    return out
+
+
+def overlap(pins: list[dict], space_flags: dict, letter_flags: dict, radius: float) -> dict:
+    """Per pin and per note: hit by this reader, by the letter reader, both,
+    neither. `*_flags` = item -> flag list."""
+    from tools import fault_reader_harness as h
+    per_pin = []
+    for p in pins:
+        s = bool(h.hits([p], space_flags.get(p["item"], []), radius)[0])
+        lt = bool(h.hits([p], letter_flags.get(p["item"], []), radius)[0])
+        per_pin.append({"item": p["item"], "pin": p["pin"], "note_pin": p["note_pin"], "space": s, "letter": lt})
+    notes: dict = {}
+    for r in per_pin:
+        k = (r["item"], r["note_pin"])
+        n = notes.setdefault(k, {"pins": 0, "space": 0, "letter": 0})
+        n["pins"] += 1
+        n["space"] += r["space"]
+        n["letter"] += r["letter"]
+
+    def table(rs, sk="space", lk="letter"):
+        t = {"both": 0, "space_only": 0, "letter_only": 0, "neither": 0}
+        for r in rs:
+            s, lt = bool(r[sk]), bool(r[lk])
+            t["both" if s and lt else "space_only" if s else "letter_only" if lt else "neither"] += 1
+        return t
+    note_rows = [{"item": k[0], "note_pin": k[1], **v} for k, v in notes.items()]
+    return {"per_pin": per_pin, "pins": table(per_pin), "notes_any_hit": table(note_rows),
+            "per_note": note_rows}
+
+
+def report(sources, letter_dirs: list[Path], radius: float = 3.0) -> dict:
+    """The harness's score plus leave-one-out, the overlap table and the
+    predicted pins (`docs/space-fault-reader-2026-11-12.md`)."""
+    from tools import fault_reader_harness as h
+    res = h.score_many(sources, "space")
+    pins = [p for marks, _d, px in sources for p in h.select_space_pins(marks, px)]
+    space_flags, letter_flags = {}, {}
+    for _m, d, _p in sources:
+        for f in Path(d).glob("*.flags.json"):
+            rec = json.loads(f.read_text(encoding="utf-8"))
+            space_flags[rec.get("item") or f.name[: -len(".flags.json")]] = rec["flags"]
+    for d in letter_dirs:
+        for f in Path(d).glob("*.flags.json"):
+            rec = json.loads(f.read_text(encoding="utf-8"))
+            letter_flags[rec.get("item") or f.name[: -len(".flags.json")]] = rec["flags"]
+    res["leave_one_out"] = {str(r): leave_one_out(res["items"], r) for r in (radius,)}
+    res["overlap"] = overlap(pins, space_flags, letter_flags, radius)
+    near = {(p["item"], p["pin"]): p for p in pins}
+    res["predicted"] = [{"item": i, "pin": k,
+                         "nearest_flag_mm": (lambda d: None if not np.isfinite(d) else round(float(d), 2))(
+                             h.nearest_mm([near[(i, k)]], space_flags.get(i, []))[0])}
+                        for i, k in PREDICTED if (i, k) in near]
+    return res
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
+    rp = sub.add_parser("report", help="--marks/--flags/--prefix repeat together, one per sitting")
+    rp.add_argument("--marks", type=Path, action="append", required=True)
+    rp.add_argument("--flags", type=Path, action="append", required=True)
+    rp.add_argument("--prefix", action="append", required=True)
+    rp.add_argument("--letter-flags", type=Path, action="append", default=[],
+                    help="a dir of the letter reader's <item>.flags.json, for the overlap table")
+    rp.add_argument("--json", type=Path, required=True)
     r = sub.add_parser("run")
     r.add_argument("--labels", type=Path, required=True,
                    help="a letter_fault_reader out dir (<item>.labels.npz, .mask.npz, .flags.json)")
     r.add_argument("--out", type=Path, required=True)
     r.add_argument("--only", action="append", default=[], help="item id; default every item in --labels")
     a = ap.parse_args(argv)
+    if a.cmd == "report":
+        if not len(a.marks) == len(a.flags) == len(a.prefix):
+            ap.error("--marks, --flags and --prefix must repeat together")
+        res = report([(json.loads(m.read_text(encoding="utf-8")), f, px)
+                      for m, f, px in zip(a.marks, a.flags, a.prefix)], a.letter_flags)
+        a.json.write_text(json.dumps(res, indent=1) + "\n", encoding="utf-8")
+        for key in ("pooled", "pooled_notes", "precision"):
+            for rad, by in res[key].items():
+                print(f"{key} r={rad}: {by}")
+        print("overlap", res["overlap"]["pins"], res["overlap"]["notes_any_hit"])
+        print("predicted", res["predicted"])
+        return 0
     items = a.only or sorted(p.name[: -len(".labels.npz")] for p in a.labels.glob("*.labels.npz"))
     return run(items, a.labels, a.out)
 

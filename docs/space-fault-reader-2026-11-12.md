@@ -177,3 +177,109 @@ outline flags gone; Drone's on its visibly merged THERMAL / AND DRONE
 lettering and its scene). No constant was changed. Becker's art raster puts
 its letters and field in one class (a letter-reader raster limit, known), so
 its letters' spaces are not read; it carries no target pin.
+
+# Part 2: result (2026-11-12, after `837c105d`)
+
+Run on the 12 items with letter-reader rasters (tree `950855bf`, every stitch
+sha re-checked), no constant or rule changed after the pre-registration
+commit. Command lines at the end. Full output:
+`space-fault-reader-2026-11-12/score.json`.
+
+## Verdict: shown (not fragile), on a non-hold-out
+
+At 3.0 mm against `chance_pick`, all 7 target items scored:
+
+| weighting | hit | `chance_pick` | diff | kappa | 95% CI (items) |
+|---|---|---|---|---|---|
+| **per note (verdict)**, 15 notes | 0.798 | 0.483 | **+0.315** | 0.61 | **[+0.22, +0.47]** |
+| per pin, 44 pins | 0.909 | 0.616 | +0.293 | 0.76 | [+0.24, +0.44] |
+
+12 of 15 notes beat their item's null. All three conditions hold. Leaving any
+one item out keeps both lower bounds at +0.21 or above (table below), so it is
+not "fragile" by the page's test.
+
+**Read it for what it is.** This is not a hold-out: the reader was designed
+from the letter reader's misses on these same pins, and the pins' rule was
+written in sitting 1's words. The pre-registration stops the numbers being
+tuned to the pins; it does not make these pins fresh. Replication on
+pins the reader has never met (a sitting such as `defect-marks-1112`, once
+its letter-reader hold-out is done, with this reader frozen at `837c105d`)
+is what would make it a measurement.
+
+It is also BROAD. On target items it flags about half the places it could
+(`chance_pick` 0.48 per note), and of its 519 flags on those items 20% lie
+within 3 mm of a target pin, against 12% for the same number of candidates
+picked at random (precision diff +0.08, CI [+0.005, +0.19]). It finds the
+pinned spaces more often than the unpinned ones; most of what it flags Kent
+did not pin. On the five items with no target pin it raises 13 (Becker), 27
+(Golden Tee), 182 (Drone), 5 (Tires) and 66 (TOAT machine) flags.
+
+## Other nulls and radii (not the verdict)
+
+| null, 3.0 mm | per note diff, CI | per pin diff, CI |
+|---|---|---|
+| `chance_cand` | +0.29 [+0.19, +0.45] | +0.27 [+0.21, +0.43] |
+| `chance_area` (the letter reader's) | +0.45 [+0.36, +0.64] | +0.66 [+0.36, +0.76] |
+
+`chance_pick` at 2.0 mm: per note +0.37 [+0.21, +0.59]; at 5.0 mm: +0.10
+[+0.01, +0.25] (at 5 mm the flags cover most candidates: pick 0.70).
+
+## Per item and per note (3.0 mm)
+
+| item | pins | flags | candidates | hit | `chance_pick` | misses (nearest flag, mm) |
+|---|---|---|---|---|---|---|
+| `L_bridge_hat` | 6 | 40 | 269 | 4 | 0.48 | 2 B's holes (6.8), 12 N+T merged (7.4) |
+| `L_gaulke_roofing_hat` | 3 | 79 | 262 | 3 | 0.50 | - |
+| `L_hotel_fremont_hat` | 2 | 37 | 716 | 1 | 0.29 | 2 "the pro makes the lettering larger" (7.8) |
+| `L_mfab_hat` | 1 | 94 | 534 | 1 | 0.55 | - |
+| `L_proseal_hat` | 1 | 92 | 209 | 1 | 0.58 | - |
+| `L_toat_beanie` | 1 | 74 | 603 | 1 | 0.48 | - |
+| `C_silhouette_logo` | 30 | 103 | 381 | 29 | 0.69 | 26 (3.2) |
+
+Predicted pins: Gaulke 6 (S, 1.21 mm), ProSeal 2 (S, 1.38 mm), Gaulke 2 (E,
+0.90 mm): all three hit, the two S's being pins the letter reader missed.
+
+## Leave one item out (per note / per pin vs `chance_pick`, 3.0 mm)
+
+| left out | per note diff, CI | per pin diff, CI |
+|---|---|---|
+| `L_bridge_hat` | +0.40 [+0.28, +0.49] | +0.31 [+0.28, +0.49] |
+| `L_gaulke_roofing_hat` | +0.27 [+0.21, +0.44] | +0.28 [+0.22, +0.40] |
+| `L_hotel_fremont_hat` | +0.33 [+0.22, +0.49] | +0.30 [+0.25, +0.49] |
+| `L_mfab_hat` | +0.31 [+0.21, +0.47] | +0.29 [+0.23, +0.44] |
+| `L_proseal_hat` | +0.31 [+0.21, +0.47] | +0.29 [+0.23, +0.45] |
+| `L_toat_beanie` | +0.30 [+0.21, +0.46] | +0.29 [+0.22, +0.43] |
+| `C_silhouette_logo` | +0.32 [+0.22, +0.49] | +0.32 [+0.22, +0.49] |
+
+## Overlap with the letter reader (3.0 mm, same pins)
+
+| | pins | notes (any pin hit) |
+|---|---|---|
+| both | 33 | 8 |
+| **space only** | **7** | **4** |
+| letter only | 2 | 2 |
+| neither | 2 | 1 |
+
+Space only: Gaulke 3 ("white spacing not very apparent"), Gaulke 6 and
+ProSeal 2 (the S's), TOAT beanie 4 (the T into the border), silhouette 7, 10
+and 30. Letter only: Bridge 12 (N and T merged: the letter reader's join;
+nearest space flag 7.4 mm) and Fremont 2 (a size remark, not a place).
+Neither: Bridge 2 (the B's holes) and silhouette 26. The misses were not
+opened at the render. The two readers are complementary on these pins:
+together they reach 14 of 15 notes.
+
+## How to run
+
+From a lane's `digitizer/`, with the letter reader's out dirs from its own
+run (`docs/letter-fault-reader-2026-11-11.md`):
+
+    E=<primary>/digitizer/eye_pairs_out
+    python -m tools.space_fault_reader run --labels $E/defect-marks-1110/letter_reader --out $E/space_reader
+    python -m tools.space_fault_reader run --labels $E/defect-marks-1111/letter_reader --out $E/space_reader
+    python -m tools.space_fault_reader report \
+        --marks ../docs/defect-marks-2026-11-10/marks.json --flags $E/space_reader --prefix L_ \
+        --marks ../docs/defect-marks-2026-11-11/marks.json --flags $E/space_reader --prefix C_ \
+        --letter-flags $E/defect-marks-1110/letter_reader --letter-flags $E/defect-marks-1111/letter_reader \
+        --json ../docs/space-fault-reader-2026-11-12/score.json
+
+Both `run`s take about 15 s on the laptop; no pipeline runs.

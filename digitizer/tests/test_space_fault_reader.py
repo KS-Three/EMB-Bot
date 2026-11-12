@@ -160,6 +160,17 @@ def test_space_pins_are_the_letter_pins_with_their_note():
     assert {p["note_pin"] for p in pins if p["item"] == "C_silhouette_logo"} == {3}
 
 
+def test_overlap_table_counts_pins_and_notes():
+    pins = [{"item": "A", "pin": 1, "note_pin": 1, "x_mm": 0, "y_mm": 0},
+            {"item": "A", "pin": 2, "note_pin": 1, "x_mm": 10, "y_mm": 0},
+            {"item": "B", "pin": 1, "note_pin": 1, "x_mm": 0, "y_mm": 0}]
+    space = {"A": [{"x_mm": 0, "y_mm": 1}], "B": []}
+    letter = {"A": [{"x_mm": 10, "y_mm": 1}], "B": [{"x_mm": 1, "y_mm": 0}]}
+    o = sfr.overlap(pins, space, letter, 3.0)
+    assert o["pins"] == {"both": 0, "space_only": 1, "letter_only": 2, "neither": 0}
+    assert o["notes_any_hit"] == {"both": 1, "space_only": 0, "letter_only": 1, "neither": 0}
+
+
 def test_harness_scores_a_space_dir(tmp_path):
     art = _c_letter()
     thr = _disc(art.shape, 60, 60, 30)
