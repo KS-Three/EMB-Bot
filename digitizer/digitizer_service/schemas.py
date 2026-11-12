@@ -62,7 +62,7 @@ class Health(BaseModel):
             "limits": {"max_upload_bytes": 12582912, "max_pixels": 40000000},
             "jobs": {"jobs": 0, "states": {}, "inflight": 0}, "generations": {"entries": 0, "max": 8},
             "engine": {"commit": "0123456789abcdef0123456789abcdef01234567", "dirty": False,
-                       "started_at": "2026-10-25T12:00:00+00:00",
+                       "release": None, "started_at": "2026-10-25T12:00:00+00:00",
                        "defaults_sha": "0" * 64},
             "capabilities": {"background_removal": True, "ocr": True,
                              "face_priors": True, "sam2": False},
@@ -84,7 +84,10 @@ class Health(BaseModel):
         "digitizer_core/ or digitizer_service/) and `started_at` are read when "
         "the process starts, so they name the code it LOADED, not what the "
         "working tree holds now; `commit`/`dirty` are null when git is "
-        "unavailable. `defaults_sha` is the sha256 of the engine's default "
+        "unavailable. A frozen build (the Windows app) never asks git: all "
+        "three come from the stamp written when it was built, with `release` "
+        "its name (the tag, or `dev-<commit>`); `release` is null in a "
+        "checkout. `defaults_sha` is the sha256 of the engine's default "
         "config, read per request."))
     capabilities: dict[str, bool] = Field(description=(
         "What this machine can run, from the pipeline's own probes: "
