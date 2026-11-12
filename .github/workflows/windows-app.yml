@@ -4,8 +4,9 @@
 # real Windows machine, starts the frozen exe, and proves it against the venv
 # service on the same runner before anything is uploaded:
 #
-#   digitizer/packaging/build_freeze.py    builds, stamps, prunes, measures, zips
-#   digitizer/packaging/release_smoke.py   starts both services, compares, judges
+#   digitizer/packaging/build_freeze.py     builds, stamps, prunes, measures, zips
+#   digitizer/packaging/release_smoke.py    starts both services, compares, judges
+#   digitizer/packaging/build_installer.py  setup.exe; installs, runs, uninstalls it
 #
 # WHEN IT RUNS: a version tag (`v*`) or by hand (Actions tab, "Run workflow",
 # any branch that carries this file). NEVER on a pull request and never on a
@@ -29,10 +30,6 @@ name: Windows app
 on:
   push:
     tags: ['v*']
-    # TEMPORARY, this branch only: `workflow_dispatch` needs the file on the
-    # default branch, so this is how the job is proved before it merges.
-    # Removed before the PR is ready (the trigger test fails while it is here).
-    branches: ['claude/compassionate-mayer-8pn72e']
   workflow_dispatch:
 
 permissions:
@@ -45,7 +42,7 @@ concurrency:
 jobs:
   windows-app:
     runs-on: windows-latest
-    timeout-minutes: 60   # about 20 expected: npm and pip 3, freeze 3, both suites 5, zip 2, installer 6
+    timeout-minutes: 60   # the first green run took 9 (2026-11-12): freeze 2, both suites 3, installer 2
     env:
       PYTHONUTF8: '1'     # PyInstaller's log is echoed line by line; cp1252 cannot print all of it
       # The tag names the release. A manual run is named dev-<commit> by the build script.
