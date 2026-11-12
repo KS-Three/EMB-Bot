@@ -2524,10 +2524,12 @@
     if (!el) return false;
     if (el.type === "manual") {
       // Same patch ManualPanel.deleteShape sends: the shape leaves
-      // element.shapes, and the panel's own list drops the row.
+      // element.shapes, and the panel's own list drops the row. `discrete`
+      // like the panel's: a delete is its own undo step, never merged into
+      // the edit before it.
       const shapes = el.shapes || [];
       if (!shapes.some((s) => s && s.id === selectedShapeId)) return false;
-      dispatch("elupdate", { id: el.id, patch: { shapes: shapes.filter((s) => s.id !== selectedShapeId) } });
+      dispatch("elupdate", { id: el.id, patch: { shapes: shapes.filter((s) => s.id !== selectedShapeId) }, discrete: true });
       selectedShapeId = null;
       selectedShapeElId = null;
       focusedAnchor = null;

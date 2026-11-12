@@ -77,6 +77,17 @@
     d("elupdate", { id: element.id, patch: p });
   }
 
+  // A shape ADDED to or REMOVED from the element (drawn, traced in, pasted,
+  // duplicated, deleted) is a discrete edit: its own undo step however soon
+  // it follows the edit before it. Sent through plain patch(), a delete made
+  // inside history.js's 500 ms coalescing window of the draw replaced the
+  // draw's snapshot, and Undo went back past both without restoring the
+  // shape -- the element-level bug of 2026-11-12, one level down. Edits to a
+  // shape that stays (drag, width, angle, colour) keep using patch().
+  function patchShapeSet(p) {
+    d("elupdate", { id: element.id, patch: p, discrete: true });
+  }
+
   // The in-progress shape being drawn right now is ephemeral UI state, same
   // pattern ImagePanel's merge-selection uses — it's NOT part of the
   // persisted element, so it resets if this panel remounts (switching
@@ -294,7 +305,7 @@
     if (drawMode === "column") {
       const col = newColumn(nextShapeId(shapes), draft, draftCurves, fit, garment, shapes);
       if (columnIssues(col).length) return;
-      patch({ shapes: [...shapes, col] });
+      patchShapeSet({ shapes: [...shapes, col] });
       draft = [];
       draftCurves = {};
       selectedShapeId = col.id;
@@ -305,7 +316,7 @@
       // engine's bean stands until the author changes it (ruling 6).
       const run = { id: nextShapeId(shapes), kind: "run", points: draft, curves: draftCurves, colorRgb: defaultManualShape("").colorRgb };
       if (runIssues(run).length) return;
-      patch({ shapes: [...shapes, run] });
+      patchShapeSet({ shapes: [...shapes, run] });
       draft = [];
       draftCurves = {};
       selectedShapeId = run.id;
@@ -316,7 +327,7 @@
     // Hole mode: born marked. Same validity gate as any shape (a cut-out IS a
     // shape), and the mode stays on Hole for the next one.
     const shape = drawMode === "hole" ? withCutOut(base, true) : base;
-    patch({ shapes: [...shapes, shape] });
+    patchShapeSet({ shapes: [...shapes, shape] });
     draft = [];
     draftCurves = {};
     selectedShapeId = shape.id;
@@ -332,7 +343,7 @@
   // after.
   function onTraced(e) {
     const newShapes = e.detail.shapes;
-    patch({ shapes: [...shapes, ...newShapes] });
+    patchShapeSet({ shapes: [...shapes, ...newShapes] });
     traceOpen = false;
     // Anchor the batch add with an immediate selection (same mechanism the
     // sidebar list uses) — combined with de-emphasis, this gives a
@@ -476,7 +487,7 @@
   }
 
   function deleteShape(id) {
-    patch({ shapes: shapes.filter((s) => s.id !== id) });
+    patchShapeSet({ shapes: shapes.filter((s) => s.id !== id) });
     if (selectedShapeId === id) selectedShapeId = null;
   }
 
@@ -512,7 +523,7 @@
     const [id] = nextShapeIds(shapes, 1);
     const copy = duplicateShape(src, id);
     if (!copy) return;
-    patch({ shapes: [...shapes, copy] });
+    patchShapeSet({ shapes: [...shapes, copy] });
     // Select the COPY, not the original: the paste is what the user is now
     // working with, and it is the thing they will want to drag or recolour.
     selectedShapeId = id;

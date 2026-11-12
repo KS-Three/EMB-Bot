@@ -1057,6 +1057,7 @@ def _bury_trims_under_later(blocks: list[StitchBlock]) -> int:
         bi, run = seq[k]
         if not run.trim or seq[k - 1][0] != bi or not seq[k - 1][1].points or not run.points:
             continue
+        deadline.check("stage 7 bury trims")
         inner = bury(k)
         if inner is None:
             continue
@@ -1134,6 +1135,7 @@ def _skip_covered_shapes(blocks: list[StitchBlock], trim_at: float) -> list[str]
             homes.setdefault(r.shape_id, set()).add(bi)
     dropped: list[str] = []
     for b in blocks:
+        deadline.check("stage 7 covered shapes")
         runs = b.runs
         own: list[list[tuple[float, float]]] = []
         lines: list = []
@@ -1357,6 +1359,7 @@ def _cut_or_bury_jumps(blocks: list[StitchBlock],
         if (not run.jump or run.trim or seq[k - 1][0] != bi
                 or not prev.points or not run.points):
             continue
+        deadline.check("stage 7 jumps")
         inner = bury(k)
         if inner is not None:
             _sew_hop(blocks[bi].runs, run, inner)
@@ -1622,6 +1625,7 @@ def _hoist_same_thread(blocks: list[StitchBlock], trim_at: float,
     while moved:
         moved = False
         for pos in range(len(order) - 1, 0, -1):
+            deadline.check("stage 7 hoist")
             j = order[pos]
             # The nearest earlier block sewing this same thread, if any.
             target = None

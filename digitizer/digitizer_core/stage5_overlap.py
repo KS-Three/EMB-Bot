@@ -123,6 +123,7 @@ from shapely import STRtree, affinity
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
+from . import deadline
 from .config import PipelineConfig, satin_fill_hysteresis, satin_fill_vote, satin_floor_applies
 from .fabrics import Fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
@@ -1065,6 +1066,7 @@ def resolve_overlaps(
 
     for sew_index, L in enumerate(layers):
         for r in by_layer[L]:
+            deadline.check("stage 5")
             poly = span.get(r.shape_id, r.polygon)
             axis = axis_by_id[r.shape_id]
             on_rails = rail_comp and satin_by_id[r.shape_id] and not widened_lettering(r)

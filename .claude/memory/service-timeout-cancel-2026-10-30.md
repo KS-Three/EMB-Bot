@@ -37,3 +37,11 @@ region former (`photo_segment` / `quantize`), the rembg and SAM2 subprocesses
 (own `*_timeout_s`), stage 7's chaining passes after emission, preflight's body.
 Harness: the session scratchpad's `repro/serve.py` + `jam.py` (port 8721 is the
 live service; 8731 was someone's `http.server`).
+
+**Update 2026-11-12 (cancel-lag follow-up to #1400).** The checkpoint also sits
+inside the loops that make one shape (fill, satin, column builder, stage 7's
+post-emission passes, borders, preflight; see `digitizer_core/deadline.py`), so a
+cancel or the timeout frees the worker in 1-2 s inside stage 7 instead of up to
+76 s (meadow at 100 mm). What stays uninterruptible is a single numpy/cv2/GEOS
+call: stage 2's photo segmenter, stage 3's small-region dilation, stage 1's
+`prep` (3-8 s on the 100 mm fixtures). Byte-identical on every pin tried.

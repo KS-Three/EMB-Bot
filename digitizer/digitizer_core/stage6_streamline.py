@@ -130,7 +130,7 @@ import shapely
 from shapely.geometry import Point
 from skimage.color import deltaE_ciede2000
 
-from . import debugviz, machine, stitches
+from . import debugviz, deadline, machine, stitches
 from .directionfield import (RegionDirection, compute_direction_field,
                              region_direction)
 from .regions import Region
@@ -393,6 +393,7 @@ def _trace_streamlines(poly, tangent_at, darkness, seeds_hint: list[tuple[float,
         px, py = x, y
         d = ref
         for i in range(1, STREAMLINE_MAX_STEPS_PER_DIR + 1):
+            deadline.check("streamlines")
             d0 = _orient(tangent_at(px, py), d)
             if d0 == (0.0, 0.0):
                 break
@@ -417,6 +418,7 @@ def _trace_streamlines(poly, tangent_at, darkness, seeds_hint: list[tuple[float,
 
     def try_line(sx: float, sy: float) -> bool:
         """Seed acceptance (>= d_sep from everything), then the trace."""
+        deadline.check("streamlines")
         if not valid_point(sx, sy):
             return False
         if grid.blocked(sx, sy, _d_sep(darkness(sx, sy), dark_mm)):

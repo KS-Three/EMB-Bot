@@ -103,6 +103,7 @@ import numpy as np
 from skimage.color import deltaE_ciede2000
 from skimage import graph as skgraph
 
+from . import deadline
 from .config import PipelineConfig
 from .fast_skimage import deltaE_ciede2000_1, rag_mean_color
 from .palette import region_weight, select_palette
@@ -2525,6 +2526,7 @@ def snap_region_edges(labels: np.ndarray, valid: np.ndarray, lab_img: np.ndarray
     pad_lab = np.pad(out, 1, constant_values=-1)
     pad_valid = np.pad(valid, 1, constant_values=False)
     for _ in range(max_passes):
+        deadline.check("stage 2")
         pad_lab[1:-1, 1:-1] = out
         edge = np.zeros((h, w), bool)
         for dy, dx in _NEIGHBOURS_8:

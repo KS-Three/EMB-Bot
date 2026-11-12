@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 import cv2
 import numpy as np
 
+from . import deadline
 from .config import PipelineConfig
 from .stage1_prep import Prep
 from .threads import chart_for, rgb_to_lab
@@ -272,6 +273,7 @@ def _kmeans(pixels: np.ndarray, k: int, seed: int, iters: int = 60,
         d2 = np.minimum(d2, ((fit - centers[i]) ** 2).sum(1))
 
     for _ in range(iters):
+        deadline.check("stage 2")
         lab = _assign(fit, centers)
         moved = False
         for j in range(k):
@@ -292,6 +294,7 @@ def _kmeans(pixels: np.ndarray, k: int, seed: int, iters: int = 60,
 def _assign(pixels: np.ndarray, centers: np.ndarray, chunk: int = 100_000) -> np.ndarray:
     out = np.empty(len(pixels), np.int32)
     for s in range(0, len(pixels), chunk):
+        deadline.check("stage 2")
         block = pixels[s : s + chunk]
         d = ((block[:, None, :] - centers[None, :, :]) ** 2).sum(2)
         out[s : s + chunk] = np.argmin(d, axis=1)
@@ -313,12 +316,14 @@ def _majority_filter(labels: np.ndarray, valid: np.ndarray, k: int, passes: int)
     neighborhood. Vectorized per label via box filtering."""
     out = labels.copy()
     for _ in range(passes):
+        deadline.check("stage 2")
         edge = _edge_mask(out, valid)
         if not edge.any():
             break
         interior = valid & ~edge
         counts = np.empty((k,) + labels.shape, np.float32)
         for j in range(k):
+            deadline.check("stage 2")
             m = ((out == j) & interior).astype(np.float32)
             counts[j] = cv2.boxFilter(m, -1, (3, 3), normalize=False)
         best = np.argmax(counts, axis=0).astype(np.int32)
