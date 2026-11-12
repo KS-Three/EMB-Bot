@@ -104,12 +104,12 @@ test("undo after deleting an element brings it back; redo deletes it again", asy
 });
 
 test("deleting an element right after adding it can still be undone", async ({ page }) => {
-  // BUG on main: history.record() coalesces ANY two records inside 500 ms, so
-  // an add and a delete in quick succession merge into one step -- Undo then
-  // skips straight back past the add and the deleted element is not restored
-  // (the drag-storm coalescing was meant for continuous gestures, not for two
-  // discrete structural edits). Whoever fixes it deletes this test.fail().
-  test.fail();
+  // Was a pinned bug until 2026-11-12: history.record() coalesced ANY two
+  // records inside 500 ms, so an add and a delete in quick succession merged
+  // into one step -- Undo then skipped straight back past the add and the
+  // deleted element was not restored. Adding and removing an element are now
+  // discrete records (App.svelte persistStructural), each its own undo step;
+  // the drag-storm coalescing stays for continuous gestures.
   await lettering(page);
   await openAdvanced(page);
   await page.locator(".eladd", { hasText: "Text" }).click();
@@ -117,6 +117,11 @@ test("deleting an element right after adding it can still be undone", async ({ p
   await page.getByRole("button", { name: "Remove element" }).last().click();
   await expect(rows(page)).toHaveCount(1);
   await undo(page).click();
+  await expect(rows(page)).toHaveCount(2);
+  // The add is its own step too: a second Undo takes it back, Redo re-adds it.
+  await undo(page).click();
+  await expect(rows(page)).toHaveCount(1);
+  await redo(page).click();
   await expect(rows(page)).toHaveCount(2);
 });
 
