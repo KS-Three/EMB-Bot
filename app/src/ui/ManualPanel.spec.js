@@ -1409,3 +1409,58 @@ describe("Line mode", () => {
     expect(patches.at(-1).patch.shapes[0]).toEqual({ id: "s1", kind: "run", points: LINE().points, curves: { 0: { x: 250, y: 160 } }, colorRgb: [30, 120, 30] });
   });
 });
+
+// ---- undo granularity: which patches are `discrete` ----------------------
+// A shape added to or removed from the element is a discrete elupdate, so
+// App records it as its own undo step (lib/history.js) instead of letting it
+// coalesce into whatever landed in the 500 ms before it. Without the flag a
+// shape deleted right after it was drawn replaced the draw's snapshot and
+// Undo could not bring it back. Edits to a shape that stays are NOT discrete:
+// a drag or a slider scrub is many patches that must stay one step.
+describe("shape add and remove are discrete undo steps", () => {
+  const SHAPE = () => ({ id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null });
+
+  test("finishing a drawn shape dispatches a discrete patch", async () => {
+    const { canvas, patches } = renderPanel();
+    const [p0, p1, p2] = tri();
+    await clickAt(canvas, p0.x, p0.y);
+    await clickAt(canvas, p1.x, p1.y);
+    await clickAt(canvas, p2.x, p2.y);
+    await fireEvent.keyDown(canvas, { key: "Enter" });
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes).toHaveLength(1);
+    expect(patches[0].discrete).toBe(true);
+  });
+
+  test("deleting a shape dispatches a discrete patch", async () => {
+    const { canvas, getByText, patches } = renderPanel([SHAPE()]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.keyDown(canvas, { key: "Delete" });
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes).toEqual([]);
+    expect(patches[0].discrete).toBe(true);
+  });
+
+  test("duplicating and pasting a shape dispatch discrete patches", async () => {
+    const { canvas, getByText, patches } = renderPanel([SHAPE()]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.keyDown(canvas, { key: "d", ctrlKey: true });
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes).toHaveLength(2);
+    expect(patches[0].discrete).toBe(true);
+    await fireEvent.keyDown(canvas, { key: "c", ctrlKey: true });
+    await fireEvent.keyDown(canvas, { key: "v", ctrlKey: true });
+    expect(patches).toHaveLength(2);
+    expect(patches[1].patch.shapes).toHaveLength(3);
+    expect(patches[1].discrete).toBe(true);
+  });
+
+  test("an edit to a shape that stays is NOT discrete, so a scrub still coalesces", async () => {
+    const { getByText, container, patches } = renderPanel([SHAPE()]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.input(container.querySelector(".mp-angle input"), { target: { value: "30" } });
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].angleDeg).toBe(30);
+    expect(patches[0].discrete).toBeUndefined();
+  });
+});

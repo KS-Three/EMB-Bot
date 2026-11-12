@@ -1422,7 +1422,7 @@
           {fieldShapeSelect}
           on:checkservice={checkDigitizer}
           on:usebrowserengine={(e) => onUseBrowserEngine(e.detail)}
-          on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch)}
+          on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, true, !!e.detail.discrete)}
           on:elupdatemany={(e) => elUpdateMany(e.detail)}
           on:select={(e) => onSelect(e.detail)}
           on:toggleselect={(e) => onToggleSelect(e.detail)}

@@ -8,7 +8,7 @@
 // A test marked `test.fail()` pins a bug on main TODAY: it passes while the
 // bug stands, turns red when someone fixes it, and that PR deletes the line.
 import { test, expect } from "@playwright/test";
-import { startStudio, pickTemplate, uploadArtwork, runDigitize, openAdvanced } from "./helpers.js";
+import { startStudio, pickTemplate, pickGarment, uploadArtwork, runDigitize, openAdvanced } from "./helpers.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -123,6 +123,52 @@ test("deleting an element right after adding it can still be undone", async ({ p
   await expect(rows(page)).toHaveCount(1);
   await redo(page).click();
   await expect(rows(page)).toHaveCount(2);
+});
+
+// The hand-drawn element's shapes, from the project the app keeps in
+// localStorage ([] until there is one).
+function savedShapes(page) {
+  return page.evaluate(() => {
+    const id = localStorage.getItem("embstudio:current");
+    const project = id && JSON.parse(localStorage.getItem("embstudio:p:" + id) || "null");
+    const manual = project && (project.elements || []).find((e) => e.type === "manual");
+    return manual ? manual.shapes || [] : [];
+  });
+}
+
+test("deleting a hand-drawn shape right after drawing it can still be undone", async ({ page }) => {
+  // The element-level bug above, one level down: a shape drawn and deleted
+  // inside history.js's 500 ms window coalesced into one step, so Undo went
+  // back past the draw and the shape never returned. ManualPanel now sends a
+  // shape added or removed as a discrete elupdate. No waits anywhere here on
+  // purpose -- the draw and the delete must land inside the window.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await pickGarment(page, "Tote");
+  await page.locator(".hoop canvas").click({ button: "right" });
+  await page.locator(".fieldmenu button").filter({ hasText: "Draw shapes" }).click();
+  await openAdvanced(page);
+  const canvas = page.locator(".mp-canvas");
+  await expect(canvas).toBeVisible();
+  const box = await canvas.boundingBox();
+  for (const [fx, fy] of [[0.3, 0.3], [0.7, 0.3], [0.5, 0.7]]) {
+    await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
+  }
+  // "Undo" alone also matches the drawing panel's "Undo point" button.
+  const undoBtn = page.getByRole("button", { name: "Undo", exact: true });
+  const redoBtn = page.getByRole("button", { name: "Redo", exact: true });
+  await canvas.focus();
+  await page.keyboard.press("Enter");     // finishes the triangle and selects it
+  await page.keyboard.press("Delete");    // ...and it is gone again, milliseconds later
+  expect(await savedShapes(page)).toHaveLength(0);
+  await undoBtn.click();                  // the delete alone
+  await expect.poll(() => savedShapes(page).then((s) => s.length)).toBe(1);
+  await undoBtn.click();                  // then the draw
+  await expect.poll(() => savedShapes(page).then((s) => s.length)).toBe(0);
+  await redoBtn.click();
+  await expect.poll(() => savedShapes(page).then((s) => s.length)).toBe(1);
+  await redoBtn.click();
+  await expect.poll(() => savedShapes(page).then((s) => s.length)).toBe(0);
 });
 
 test("a new action after an undo clears the redo branch", async ({ page }) => {
