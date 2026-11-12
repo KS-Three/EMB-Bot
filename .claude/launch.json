@@ -24,6 +24,33 @@
       "port": 8731,
       "url": "http://127.0.0.1:8731",
       "autoPort": false
+    },
+    {
+      "name": "fill-slant-picker",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "tools.eye_pairs", "--serve", "--out", "eye_pairs_out/fill-slant-1108", "--port", "8735"],
+      "cwd": "digitizer",
+      "port": 8735,
+      "url": "http://127.0.0.1:8735",
+      "autoPort": false
+    },
+    {
+      "name": "defect-marks",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "tools.defect_marks", "serve", "--kit", "eye_pairs_out/defect-marks-1110", "--port", "8736"],
+      "cwd": "digitizer",
+      "port": 8736,
+      "url": "http://127.0.0.1:8736",
+      "autoPort": false
+    },
+    {
+      "name": "defect-marks-1111",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "tools.defect_marks", "serve", "--kit", "eye_pairs_out/defect-marks-1111", "--port", "8737"],
+      "cwd": "digitizer",
+      "port": 8737,
+      "url": "http://127.0.0.1:8737",
+      "autoPort": false
     }
   ]
 }
