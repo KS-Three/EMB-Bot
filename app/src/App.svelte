@@ -3,6 +3,7 @@
   import { createHistory } from "./lib/history.js";
   import { advancedOpen } from "./lib/advanced.js";
   import { applyTemplate } from "./lib/templates.js";
+  import { addStarterDesign } from "./lib/starterPack.js";
   import { onMount, tick } from "svelte";
   import { isSewable } from "./lib/flow.js";
   import { designSummary } from "./lib/summary.js";
@@ -457,6 +458,33 @@
     creditsOpener = opener || null;
     creditsOpen = true;
   }
+  // ---- Starter designs (PRODUCT.md launch item 3) -------------------------
+  // The picker opens from the panel's start control ("Starter designs", via
+  // onAddElement) and hands back an element patch for the chosen design.
+  // Same focus contract as the dialogs above: the picker takes focus, App
+  // gives it back to whatever opened it.
+  let starterOpen = false;
+  let starterWasOpen = false;
+  let starterOpener = null;
+  $: if (starterOpen) {
+    starterWasOpen = true;
+  } else if (starterWasOpen) {
+    starterWasOpen = false;
+    if (starterOpener?.isConnected) starterOpener.focus();
+    starterOpener = null;
+  }
+  function openStarter() {
+    starterOpener = document.activeElement;
+    starterOpen = true;
+  }
+  // ONE project change and ONE persist, so the insert is one undo step; and
+  // `discrete`, so it never merges into an edit made a moment before it.
+  function onStarterPick(patch) {
+    project = addStarterDesign(project, patch, hoopWidthMm(project));
+    starterOpen = false;
+    persist(true, true);
+  }
+
   // Runtime image state, owned here (not by ImagePanel) so it survives
   // ContentStep/ImagePanel being destroyed and recreated whenever the user
   // navigates steps or toggles Text/Image mode (both are {#if} blocks).
@@ -616,9 +644,21 @@
   // both the export and the delete.
   let saveFailed = false;
 
+  // One synchronous task is one user action. A second record made in the
+  // same task continues the first even when it is flagged discrete: the
+  // cluster "Undo — remove text element" button patches the source element
+  // and THEN removes the text element from one click (DigitizePanel
+  // unconvertCluster), and splitting those would leave Ctrl+Z a half-way
+  // state with the traced letters and the text both sewing.
+  let recordedThisTask = false;
+
   function persist(record = true, discrete = false) {
     if (record) {
-      history.record(project, undefined, discrete);
+      history.record(project, undefined, discrete && !recordedThisTask);
+      if (!recordedThisTask) {
+        recordedThisTask = true;
+        queueMicrotask(() => (recordedThisTask = false));
+      }
       syncHistoryFlags();
     }
     const ok = saveProject(currentId, project);
@@ -629,6 +669,16 @@
     // raise this. `refreshProjects()` above makes `projects` current.
     saveFailed = !ok && projects.some((p) => p.id === currentId);
     applyAutoName();
+  }
+
+  // An element ADDED or REMOVED is a discrete edit: its own undo step however
+  // soon it follows the edit before it (history.js). Without this a delete
+  // made inside the 500 ms drag-coalescing window of an add replaced the add's
+  // snapshot, and Undo went back past both -- the deleted element never came
+  // back. Every handler that adds or removes an element ends here, not in a
+  // bare persist(); App.structuralUndo.spec.js pins that pairing.
+  function persistStructural() {
+    persist(true, true);
   }
 
   // A registry write that reported failure, routed to the same banner
@@ -723,7 +773,7 @@
     // offers Retry / "Use browser engine instead" (routeArtwork) -- no silent lane.
     project = addElement(withoutBlankStarter(project), resolveArtworkType(digitizerHealth), hoopWidthMm(project));
     pendingArtFile = { id: project.selectedId, file };
-    persist();
+    persistStructural();
   }
 
   // DigitizePanel's "Use browser engine instead": the customer's knowing choice
@@ -748,6 +798,10 @@
       if (artInput) artInput.click();
       return;
     }
+    if (type === "starter") {
+      openStarter();
+      return;
+    }
     // "Draw shapes" (the canvas right-click menu) asked for the drawing
     // canvas, which lives behind Advanced (spec 2026-09-30 §5) -- opening the
     // panel onto a closed fold would hide the one thing the customer asked for.
@@ -757,7 +811,7 @@
     // screen now — the configurator panel shows the Design section at all
     // times — so the field's right-click menu can no longer create an
     // element nobody can see (the orphan the old step jump here fixed).
-    persist();
+    persistStructural();
   }
 
   // "Convert cluster to text" (text-cluster-detection feature; the badge/
@@ -798,7 +852,7 @@
       // screen). Still land the new text element; just skip the
       // now-meaningless source-side patch.
       project = withText;
-      persist();
+      persistStructural();
       return;
     }
 
@@ -809,7 +863,7 @@
     const textConversions = { ...(source.textConversions || {}), [clusterId]: newElementId };
 
     project = updateElement(withText, sourceElementId, { shapeOverrides, textConversions });
-    persist();
+    persistStructural();
   }
 
   function onRemoveElement(id) {
@@ -826,7 +880,7 @@
       delete workImages[id];
       runtime = { flats, workImages };
     }
-    persist();
+    persistStructural();
   }
 
   // A template from My designs STARTS A NEW DESIGN (2026-09-30). The picker
@@ -1295,6 +1349,12 @@
 {#if creditsOpen}
   {#await import("./ui/FontCredits.svelte") then { default: FontCredits }}
     <FontCredits on:close={() => (creditsOpen = false)} />
+  {/await}
+{/if}
+
+{#if starterOpen}
+  {#await import("./ui/StarterPicker.svelte") then { default: StarterPicker }}
+    <StarterPicker on:pick={(e) => onStarterPick(e.detail)} on:close={() => (starterOpen = false)} />
   {/await}
 {/if}
 

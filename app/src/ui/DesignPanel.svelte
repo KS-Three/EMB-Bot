@@ -2,6 +2,7 @@
   import { createEventDispatcher, onDestroy } from "svelte";
   import { buildBlockThumbs, blockStitchCounts } from "../lib/blockThumbs.js";
   import { EMB } from "../lib/emb.js";
+  import { designFilePatch } from "../lib/designImport.js";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
   import Advanced from "./Advanced.svelte";
@@ -22,17 +23,6 @@
     d("elupdate", { id: element.id, patch: p });
   }
 
-  function toBase64(bytes) {
-    // btoa needs a binary string; build it in chunks so a large-ish file
-    // can't blow the argument-count limit of String.fromCharCode.apply.
-    let bin = "";
-    const CHUNK = 0x8000;
-    for (let i = 0; i < bytes.length; i += CHUNK) {
-      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
-    }
-    return btoa(bin);
-  }
-
   async function onFile(e) {
     error = "";
     const file = e.currentTarget.files && e.currentTarget.files[0];
@@ -44,8 +34,8 @@
     }
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      EMB.decodeDSTStandard(bytes); // validate BEFORE storing — a bad file never lands on the element
-      patch({ dstBase64: toBase64(bytes), name: file.name, blockColors: {}, sizeMm: null });
+      // Validates BEFORE storing — a bad file never lands on the element.
+      patch(designFilePatch(bytes, file.name));
     } catch (err) {
       error = String((err && err.message) || err);
     }

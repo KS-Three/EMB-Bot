@@ -11,6 +11,17 @@
 // entry instead of pushing, so one continuous gesture undoes as ONE step.
 // undo()/redo() reset the coalescing clock — an edit made right after an
 // undo must never merge itself into the restored snapshot.
+//
+// The window is for CONTINUOUS gestures only. A `discrete` record — a
+// keyboard nudge, a committed point edit, an element added or removed —
+// always pushes, so the state before it stays reachable: a delete made 100 ms
+// after an add must not overwrite the add's snapshot (it did until
+// 2026-11-12, and Undo then skipped past both without restoring the element).
+// The rule runs BACKWARDS only, on purpose: a continuous record landing right
+// after a discrete one still merges into it. Uploading artwork is an add
+// followed by the panel's own asynchronous patches (sourcePng, _hasImage);
+// those must stay inside the add's step, or one Undo would leave an empty
+// artwork element behind instead of removing the upload.
 export function createHistory(initial, opts) {
   const o = opts || {};
   const limit = o.limit || 100;
@@ -22,8 +33,9 @@ export function createHistory(initial, opts) {
 
   return {
     // `now` is injectable for tests; defaults to the wall clock. `discrete`
-    // (a keyboard nudge, a committed point edit) never merges into the entry
-    // before it: each press is its own undo step however fast they come.
+    // (a keyboard nudge, a committed point edit, an element added or removed)
+    // never merges into the entry before it: each is its own undo step
+    // however fast they come.
     record(snapshot, now, discrete = false) {
       if (snapshot === stack[idx]) return; // identical reference: nothing changed
       const t = now == null ? Date.now() : now;

@@ -1,8 +1,12 @@
 # Starter design pack: where the designs can come from (2026-11-10)
 
 Decision doc for `PRODUCT.md` launch item 3, "Curated starter design pack
-(12-24 licensed designs via DST import)", currently not started. Research only:
-no stitch file or artwork was downloaded into this repo. Everything here is
+(12-24 licensed designs via DST import)", not started when this was written.
+**Since then (status note, 2026-11-12): Kent ruled on it 2026-11-10 and the 12
+designs are on main in `app/public/starter/` (PR #1382,
+[`starter-pack-2026-11-10.md`](starter-pack-2026-11-10.md)); the Studio surface
+is not built. `PRODUCT.md` row 3 carries the live status.** Research only:
+no stitch file or artwork was downloaded into this repo by this doc's PR. Everything here is
 world-readable (the repo is public), so no third-party design is named by file.
 
 **Bar to clear.** Item 7 pulled every font whose grant was uncertain, including
