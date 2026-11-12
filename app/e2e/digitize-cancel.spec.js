@@ -7,7 +7,7 @@
 //
 // Same service bootstrap and skip posture as digitize-reload-mid-run.spec.js.
 import { test, expect } from "@playwright/test";
-import { startStudio, pickGarment, uploadArtwork, setDesignWidth, watchConsole } from "./helpers.js";
+import { startStudio, pickGarment, uploadArtwork, setDesignWidth, pinDigitizeConfig, watchConsole } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -20,10 +20,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // of one the two-squares fixture takes, so the job is certainly still running
 // when Cancel is pressed.
 const ART_PNG = path.join(__dirname, "fixtures", "enthusiast_logo.png");
-// A width no other spec digitizes this fixture at: on a developer's reused
-// service an identical request would be answered from the job cache, finished,
-// and there would be nothing left to cancel.
+// The width typed into the panel, and the setting the spec checks is kept.
 const WIDTH_MM = 97;
+// What the service is actually sent: that width plus under a micron that no
+// earlier run has used. On a developer's reused service an identical request
+// is answered from the job cache, finished, with nothing left to cancel --
+// and the second run of this very spec would be that request.
+const sentWidthMm = () => WIDTH_MM + (Date.now() % 1_000_000) / 1e9;
 
 async function healthy() {
   try {
@@ -111,6 +114,7 @@ test("cancel a running digitize, then digitize again", async ({ page }) => {
     } catch (e) { /* ignore */ }
   });
 
+  await pinDigitizeConfig(page, { target_width_mm: sentWidthMm() });
   await startStudio(page);
   await pickGarment(page, "Tote");
   await uploadArtwork(page, ART_PNG, { run: false });
