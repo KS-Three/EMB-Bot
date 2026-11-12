@@ -3247,6 +3247,27 @@ class PipelineConfig:
     # its ground by design. Over 14 logos: Golden Tee -11.4% stitches, Gaulke
     # -3.2%, same sewn footprint; the rest within 1.3%.
     satin_seam_hold: bool = False
+    # `stripe_underfill` (2026-11-12, built OFF, Kent: "Build it, OFF"): a
+    # field of parallel bands alternating between two threads (a flag's
+    # stripes) sews the LIGHTER thread once as a fill of the whole field and
+    # the darker bands as satin on top, rails held at their artwork edge
+    # where the fill lies beneath (`silhouette_underfill.plan_stripes`). Side
+    # by side, the last-sewn colour lay over its neighbours: Flag.webp at 96 mm
+    # hat sewed white 4.67 mm against red's visible 3.14 from 3.96 mm art.
+    # Not on photo classes. Layout, judged in the preview; the pull a satin
+    # needs on a fill is a sew-out question (gate 1). OFF: never read.
+    # Tests: `tests/test_stripe_underfill.py`.
+    stripe_underfill: bool = False
+    # `satin_free_end_chord_aim` (2026-11-12, built OFF, Kent: "THEN fix the
+    # ends"): a satin's free end is extended to its cap along its spine's LAST
+    # segment, and a raster hook there (Flag.webp's stripes: 0.17 mm at 16.5
+    # deg, tip mid-stroke so no fork to cut) slanted every left end and fanned
+    # its last crosses. ON, an end whose last segment strays over
+    # `stage6_satin._FREE_END_AIM_DEG` off its one-stroke-width chord is aimed
+    # by that chord, as a corner end already is. Ends that agree keep their
+    # aim. Layout, judged in the preview. OFF: never read.
+    # Tests: `tests/test_satin_free_end_chord_aim.py`.
+    satin_free_end_chord_aim: bool = False
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,
     # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick

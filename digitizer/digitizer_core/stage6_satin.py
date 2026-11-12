@@ -61,6 +61,8 @@ Everything works in mm, y-down, the space stage 4 produced.
 from __future__ import annotations
 
 import heapq
+import contextlib
+import contextvars
 import math
 from dataclasses import dataclass, field as _dc_field, replace as _dc_replace
 
@@ -3846,7 +3848,8 @@ def _pull_short(p: tuple, toward: tuple) -> tuple:
 
 def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: float,
                    at_start: bool, corner: bool = False,
-                   skew_inset: bool = False) -> list[tuple[float, float]]:
+                   skew_inset: bool = False,
+                   chord_aim: bool = False) -> list[tuple[float, float]]:
     """Push a free spine end out to the shape's cap edge along its tangent.
 
     The medial axis of a stroke stops half a width short of each cap (the
@@ -3863,6 +3866,14 @@ def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: flo
     0.03 mm over 4 mm, and each end cross stopped at mid-height, so one corner
     of every stripe sewed 0.4 mm short. The end station steps back just far
     enough for the whole cross to fit, up to `_CAP_SKEW_MAX_MM`.
+
+    `chord_aim` (`cfg.satin_free_end_chord_aim`): a free end whose LAST
+    SEGMENT strays more than `_FREE_END_AIM_DEG` off the chord over one stroke
+    width is aimed by that chord, as a corner end is. The flag's stripes end
+    in a 0.17 mm raster hook at 16.5 deg (tip mid-stroke, so no fork for
+    `_cut_cap_fork` to cut), and the 1.9 mm extension along it slanted every
+    left end and fanned its last crosses. An end whose last segment agrees
+    with its chord keeps today's aim, byte for byte.
     """
     pts = list(reversed(spine)) if at_start else list(spine)
     if len(pts) < 2:
@@ -3893,6 +3904,20 @@ def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: flo
             prev = pts[j - 1]
             if walked >= back:
                 break
+    elif (chord_aim or _CHORD_AIM.get()) and half_mm > 0:
+        back = 2.0 * half_mm
+        walked = 0.0
+        far = prev
+        for j in range(len(pts) - 1, 0, -1):
+            walked += math.dist(pts[j], pts[j - 1])
+            far = pts[j - 1]
+            if walked >= back:
+                break
+        a_last = math.atan2(tip[1] - prev[1], tip[0] - prev[0])
+        a_chord = math.atan2(tip[1] - far[1], tip[0] - far[0])
+        stray = abs(math.degrees((a_last - a_chord + math.pi) % (2 * math.pi) - math.pi))
+        if walked >= back and stray > _FREE_END_AIM_DEG:
+            prev = far
     d = math.dist(prev, tip)
     if d < 1e-9:
         return spine
@@ -3927,7 +3952,10 @@ def _extend_to_cap(spine: list[tuple[float, float]], poly: Polygon, half_mm: flo
     # different geometry (its corridor is pinching, so stepping back widens the
     # terminal cross and opens a rail gap: measured 0.82 mm on ribbon_curve)
     # and keeps today's exact behaviour.
-    if corner:
+    # `chord_aim` lands a free end a hair inside too: the flag's top stripe
+    # ends on a cap traced dead square, and from a station exactly on it the
+    # final cross kept 2.6 of its 3.9 mm (one corner 0.4 mm bare).
+    if corner or (chord_aim or _CHORD_AIM.get()):
         ins = min(_CAP_INSET_MM, 0.25 * math.dist(cap, tip))
         if ins > 0:
             cap = (cap[0] - ux * ins, cap[1] - uy * ins)
@@ -3949,6 +3977,27 @@ _CAP_INSET_MM = 0.03
 # The most a cap's lean may cost before it stops being raster rounding and is a
 # slanted end the artwork drew on purpose, which keeps its own final cross.
 _CAP_SKEW_MAX_MM = 0.1
+# `chord_aim`: a free end's last segment straying further than this off its
+# one-stroke-width chord is a raster hook, not the stroke's direction. A 5 mm
+# radius curve turns ~11 deg per 1 mm window (`_CAP_FORK_TURN_DEG`'s note), so a
+# real curve's last 0.17 mm segment strays about 1 deg; the flag's hook 16.5.
+_FREE_END_AIM_DEG = 8.0
+# `cfg.satin_free_end_chord_aim` for the length of one plan (`chord_aim_scope`);
+# a direct `_extend_to_cap(..., chord_aim=True)` reads it too.
+_CHORD_AIM: contextvars.ContextVar[bool] = contextvars.ContextVar("chord_aim", default=False)
+
+
+@contextlib.contextmanager
+def chord_aim_scope(on: bool):
+    """`cfg.satin_free_end_chord_aim` for the length of one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _CHORD_AIM.set(True)
+    try:
+        yield
+    finally:
+        _CHORD_AIM.reset(token)
 
 # A free end whose corridor is narrower than this fraction of the stroke's own
 # half-width is not the stroke any more, it is a cap corner.

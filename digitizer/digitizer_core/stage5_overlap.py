@@ -131,7 +131,7 @@ from .regions import Region
 from .stitchwidth import column_sized
 from .stage6_fill import best_fill_angle_deg, principal_angle_deg, pro_offset_fill_angle
 from .stage6_satin import is_satin_candidate
-from .silhouette_underfill import MERGED_ART_KEY, UNDERFILL_KEY
+from .silhouette_underfill import MERGED_ART_KEY, STRIPE_HOST_KEY, UNDERFILL_KEY
 from . import machine
 from .stage6_hairline import _BLOB_FACTOR as _HAIR_BLOB_FACTOR
 from .stage6_hairline import block_thread_wt
@@ -1094,7 +1094,12 @@ def resolve_overlaps(
 
             under = ground_under.get(r.shape_id)
             if under is not None:
-                grown = grown.union(under)
+                # `cfg.stripe_underfill`: a stripe field's fill keeps to the
+                # field (`STRIPE_HOST_KEY`); the bands on it end at their art.
+                if r.meta.get(STRIPE_HOST_KEY):
+                    grown = under
+                else:
+                    grown = grown.union(under)
 
             # Hold open the bare fabric between this shape and any neighbour on
             # the same thread. Nothing else separates them: they share a colour,
