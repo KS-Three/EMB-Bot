@@ -3,6 +3,7 @@
   import { createHistory } from "./lib/history.js";
   import { advancedOpen } from "./lib/advanced.js";
   import { applyTemplate } from "./lib/templates.js";
+  import { addStarterDesign } from "./lib/starterPack.js";
   import { onMount, tick } from "svelte";
   import { isSewable } from "./lib/flow.js";
   import { designSummary } from "./lib/summary.js";
@@ -457,6 +458,33 @@
     creditsOpener = opener || null;
     creditsOpen = true;
   }
+  // ---- Starter designs (PRODUCT.md launch item 3) -------------------------
+  // The picker opens from the panel's start control ("Starter designs", via
+  // onAddElement) and hands back an element patch for the chosen design.
+  // Same focus contract as the dialogs above: the picker takes focus, App
+  // gives it back to whatever opened it.
+  let starterOpen = false;
+  let starterWasOpen = false;
+  let starterOpener = null;
+  $: if (starterOpen) {
+    starterWasOpen = true;
+  } else if (starterWasOpen) {
+    starterWasOpen = false;
+    if (starterOpener?.isConnected) starterOpener.focus();
+    starterOpener = null;
+  }
+  function openStarter() {
+    starterOpener = document.activeElement;
+    starterOpen = true;
+  }
+  // ONE project change and ONE persist, so the insert is one undo step; and
+  // `discrete`, so it never merges into an edit made a moment before it.
+  function onStarterPick(patch) {
+    project = addStarterDesign(project, patch, hoopWidthMm(project));
+    starterOpen = false;
+    persist(true, true);
+  }
+
   // Runtime image state, owned here (not by ImagePanel) so it survives
   // ContentStep/ImagePanel being destroyed and recreated whenever the user
   // navigates steps or toggles Text/Image mode (both are {#if} blocks).
@@ -768,6 +796,10 @@
   function onAddElement(type) {
     if (type === "artwork") {
       if (artInput) artInput.click();
+      return;
+    }
+    if (type === "starter") {
+      openStarter();
       return;
     }
     // "Draw shapes" (the canvas right-click menu) asked for the drawing
@@ -1317,6 +1349,12 @@
 {#if creditsOpen}
   {#await import("./ui/FontCredits.svelte") then { default: FontCredits }}
     <FontCredits on:close={() => (creditsOpen = false)} />
+  {/await}
+{/if}
+
+{#if starterOpen}
+  {#await import("./ui/StarterPicker.svelte") then { default: StarterPicker }}
+    <StarterPicker on:pick={(e) => onStarterPick(e.detail)} on:close={() => (starterOpen = false)} />
   {/await}
 {/if}
 
