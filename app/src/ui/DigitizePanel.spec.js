@@ -675,6 +675,8 @@ describe("hiding, restoring, and BACKGROUND_ENCLOSED restore", () => {
     await fireEvent.click(hideBtn);
     expect(patches).toHaveLength(1);
     expect(patches[0].patch.deletedShapeIds).toEqual(["s1"]);
+    // Its own undo step: App must not coalesce it into the edit before it.
+    expect(patches[0].discrete).toBe(true);
   });
 
   test("Restore removes an already-hidden shape from deletedShapeIds", async () => {
@@ -682,6 +684,14 @@ describe("hiding, restoring, and BACKGROUND_ENCLOSED restore", () => {
     await fireEvent.click(getByRole("button", { name: "Restore" }));
     expect(patches).toHaveLength(1);
     expect(patches[0].patch.deletedShapeIds).toEqual([]);
+    expect(patches[0].discrete).toBe(true);
+  });
+
+  test("an edit to a shape that stays is NOT discrete, so a scrub still coalesces", async () => {
+    const { getByRole, patches } = renderPanel([shapeRow("s1", { stitched: false })]);
+    await fireEvent.click(getByRole("button", { name: "Sew it" }));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].discrete).toBeUndefined();
   });
 
   test("'Sew it' on an unstitched (BACKGROUND_ENCLOSED) row restores stitching via override, not deletedShapeIds", async () => {
