@@ -220,3 +220,4 @@ live index; new archive lines go at the bottom.
 - [Lettering board v2](lettering-board-v2-2026-10-27.md) — baseline on 98603fb4, cc on 39/42 lines (was 16); the 10-25 MFab/Tires had rerouted: a lane has no rembg venv
 - [Index counts CRs](memory-index-crlf-count-2026-10-26.md) — loader counts the file as stored: CRLF = +1 char/line; notes pinned LF; `git checkout --` won't convert (recipe inside)
 - [Bridge census](bridge-census-2026-10-27.md) — Bridge hat+LC through 14 pro rules on main 8341d1f7: 2 CONTRADICTS (border_by_size fields, proSized LC), 8 AGREES, 4 N/A; ours' text is a reach gap (folds 2 vs 35), not a rule
+- [Flip-proof pins](flip-proof-pins-2026-10-27.md) — `FLAT_GOLDEN_MD5` from the json; `frozen_cfg()` spreads a dated snapshot; test_pins_are_frozen guards new md5 pins
