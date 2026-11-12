@@ -142,6 +142,7 @@ test("cancel a running digitize, then digitize again", async ({ page }) => {
   expect(await page.evaluate(() => Object.keys(sessionStorage).filter((k) => k.startsWith("embot.digitizing.")))).toEqual([]);
 
   // The service heard it: the job reads cancelled (a state, not an error)...
+  await expect.poll(() => cancels.length).toBe(1);
   expect(submitted).toHaveLength(1);
   expect(cancels).toEqual([{ status: 200, job_id: submitted[0], state: "cancelled" }]);
   expect(await jobState(submitted[0])).toBe("cancelled");
