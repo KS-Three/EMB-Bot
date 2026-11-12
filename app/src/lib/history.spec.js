@@ -106,3 +106,61 @@ test("a discrete record never merges into the entry before it, however fast", ()
   g.record(snap(3), 1200);
   expect(g.undo()).toEqual(snap(0));
 });
+
+// Structural edits (element added / removed) are recorded `discrete` by
+// App.svelte's persistStructural. These pin what that buys at this level; the
+// wired version is e2e/undo-redo.spec.js "deleting an element right after
+// adding it can still be undone".
+test("an add then a delete inside the coalesce window undo in TWO steps, and redo mirrors them", () => {
+  const h = createHistory(snap(0), { coalesceMs: 500 });
+  const base = snap(1), added = snap(2), deleted = snap(3);
+  h.record(base, 1000);                   // some earlier edit
+  h.record(added, 5000, true);            // add an element
+  h.record(deleted, 5100, true);          // delete it 100 ms later
+  expect(h.undo()).toBe(added);           // the delete alone: the element is back
+  expect(h.undo()).toBe(base);            // then the add
+  expect(h.redo()).toBe(added);
+  expect(h.redo()).toBe(deleted);
+  expect(h.redo()).toBeNull();
+});
+
+test("a discrete record does not merge into a drag that ended a moment before it", () => {
+  const h = createHistory(snap(0), { coalesceMs: 500 });
+  let t = 1000;
+  for (let i = 1; i <= 10; i++) h.record(snap(i), (t += 16)); // a drag
+  const dragged = snap(10);
+  const deleted = snap(11);
+  h.record(deleted, t + 50, true);        // Delete pressed 50 ms after release
+  expect(h.undo()).toEqual(dragged);      // the delete alone
+  expect(h.undo()).toEqual(snap(0));      // the whole drag, still one step
+  expect(h.redo()).toEqual(dragged);
+  expect(h.redo()).toBe(deleted);
+});
+
+test("a drag still coalesces into ONE step beside discrete edits, and redo mirrors it", () => {
+  const h = createHistory(snap(0), { coalesceMs: 500 });
+  const added = snap(1);
+  h.record(added, 1000, true);            // add an element
+  let t = 5000;                           // ...later, drag it: 30 patches
+  for (let i = 2; i <= 30; i++) h.record(snap(i), (t += 16));
+  const dropped = snap(31);
+  h.record(dropped, t + 16);
+  expect(h.undo()).toBe(added);           // one undo for the whole drag
+  expect(h.undo()).toEqual(snap(0));      // one for the add
+  expect(h.redo()).toBe(added);
+  expect(h.redo()).toBe(dropped);         // redo lands on the drag's END state
+  expect(h.redo()).toBeNull();
+});
+
+test("a continuous record right after a discrete one stays inside its step (an upload's follow-up patches)", () => {
+  // Deliberately one-directional -- see the header of history.js. Uploading
+  // artwork is an add followed by the panel's own asynchronous patches; one
+  // Undo must remove the upload, not strand an empty artwork element.
+  const h = createHistory(snap(0), { coalesceMs: 500 });
+  h.record(snap(1), 1000);
+  h.record(snap(2), 5000, true);          // add the artwork element
+  const loaded = snap(3);
+  h.record(loaded, 5040);                 // its sourcePng lands 40 ms later
+  expect(h.undo()).toEqual(snap(1));
+  expect(h.redo()).toBe(loaded);
+});

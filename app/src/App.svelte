@@ -616,9 +616,21 @@
   // both the export and the delete.
   let saveFailed = false;
 
+  // One synchronous task is one user action. A second record made in the
+  // same task continues the first even when it is flagged discrete: the
+  // cluster "Undo — remove text element" button patches the source element
+  // and THEN removes the text element from one click (DigitizePanel
+  // unconvertCluster), and splitting those would leave Ctrl+Z a half-way
+  // state with the traced letters and the text both sewing.
+  let recordedThisTask = false;
+
   function persist(record = true, discrete = false) {
     if (record) {
-      history.record(project, undefined, discrete);
+      history.record(project, undefined, discrete && !recordedThisTask);
+      if (!recordedThisTask) {
+        recordedThisTask = true;
+        queueMicrotask(() => (recordedThisTask = false));
+      }
       syncHistoryFlags();
     }
     const ok = saveProject(currentId, project);
@@ -629,6 +641,16 @@
     // raise this. `refreshProjects()` above makes `projects` current.
     saveFailed = !ok && projects.some((p) => p.id === currentId);
     applyAutoName();
+  }
+
+  // An element ADDED or REMOVED is a discrete edit: its own undo step however
+  // soon it follows the edit before it (history.js). Without this a delete
+  // made inside the 500 ms drag-coalescing window of an add replaced the add's
+  // snapshot, and Undo went back past both -- the deleted element never came
+  // back. Every handler that adds or removes an element ends here, not in a
+  // bare persist(); App.structuralUndo.spec.js pins that pairing.
+  function persistStructural() {
+    persist(true, true);
   }
 
   // A registry write that reported failure, routed to the same banner
@@ -723,7 +745,7 @@
     // offers Retry / "Use browser engine instead" (routeArtwork) -- no silent lane.
     project = addElement(withoutBlankStarter(project), resolveArtworkType(digitizerHealth), hoopWidthMm(project));
     pendingArtFile = { id: project.selectedId, file };
-    persist();
+    persistStructural();
   }
 
   // DigitizePanel's "Use browser engine instead": the customer's knowing choice
@@ -757,7 +779,7 @@
     // screen now — the configurator panel shows the Design section at all
     // times — so the field's right-click menu can no longer create an
     // element nobody can see (the orphan the old step jump here fixed).
-    persist();
+    persistStructural();
   }
 
   // "Convert cluster to text" (text-cluster-detection feature; the badge/
@@ -798,7 +820,7 @@
       // screen). Still land the new text element; just skip the
       // now-meaningless source-side patch.
       project = withText;
-      persist();
+      persistStructural();
       return;
     }
 
@@ -809,7 +831,7 @@
     const textConversions = { ...(source.textConversions || {}), [clusterId]: newElementId };
 
     project = updateElement(withText, sourceElementId, { shapeOverrides, textConversions });
-    persist();
+    persistStructural();
   }
 
   function onRemoveElement(id) {
@@ -826,7 +848,7 @@
       delete workImages[id];
       runtime = { flats, workImages };
     }
-    persist();
+    persistStructural();
   }
 
   // A template from My designs STARTS A NEW DESIGN (2026-09-30). The picker
