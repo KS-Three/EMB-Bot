@@ -75,7 +75,10 @@ _CACHES: frozenset[tuple[str, str]] = frozenset({("outline_cut", "_MEMO")})
 #: ContextVars no emitter's OUTPUT depends on: `deadline._DEADLINE` is the
 #: service's job budget, read by `deadline.check` to STOP a job, never to
 #: shape a stitch -- a hit under one deadline is the miss under any other.
-_INERT: frozenset[tuple[str, str]] = frozenset({("deadline", "_DEADLINE")})
+#: `deadline._CANCEL` is the customer's cancel flag beside it: the same
+#: `check` reads it, to stop the job or not at all.
+_INERT: frozenset[tuple[str, str]] = frozenset({
+    ("deadline", "_DEADLINE"), ("deadline", "_CANCEL")})
 
 _UNIMPORTED = "<unimported>"
 
