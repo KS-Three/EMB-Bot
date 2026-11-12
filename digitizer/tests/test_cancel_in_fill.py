@@ -21,7 +21,8 @@ import time
 import pytest
 from shapely.geometry import LineString, Point, box
 
-from digitizer_core import deadline, fill_section_travel, machine, stage6_fill, stage6_satin
+from digitizer_core import (deadline, fill_section_travel, machine, stage6_fill, stage6_satin,
+                            stitches)
 
 # What the loops in `stage6_fill` / `stage6_satin` call their checkpoints. A
 # loop that loses its check fails `test_each_loop_has_its_checkpoint` by name.
@@ -112,6 +113,17 @@ def _patched(monkeypatch, event=None, trip=None, nth=1) -> _Recorder:
 
 
 # --- the checkpoints are there, and cheap enough to be everywhere --------------
+
+def test_the_plate_is_still_sewn_as_fill_not_only_underlay(reference):
+    """The `try`/`finally` around `stitch_shape`'s body must keep the final
+    `emit` of the fill inside it, at the level the fill is sewn (a mis-indent
+    once dropped it for every design with the seam-order switches off)."""
+    runs, report = reference["result"]
+    kinds = {r.kind for r in runs}
+    assert stitches.FILL in kinds and stitches.UNDERLAY in kinds
+    assert sum(len(r.points) for r in runs if r.kind == stitches.FILL) > 1000
+    assert report["empty"] is False
+
 
 def test_each_loop_has_its_checkpoint(reference):
     missing = set(FILL_SEAMS) - reference["stages"]

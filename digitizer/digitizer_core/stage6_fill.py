@@ -3011,7 +3011,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                                                 row_mm, cut_bridges, angle)
                 re_planned = re_planned or _planned is not fill_paths
                 fill_paths = _planned
-            emit(fill_paths, stitches.FILL, stitch_mm)
+        emit(fill_paths, stitches.FILL, stitch_mm)
     finally:
         # Every hit is within this shape (`cover` is in the key), so nothing
         # after this point can use the unsewn-ground memo; let its geometry go.
