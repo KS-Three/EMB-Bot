@@ -27,7 +27,8 @@ def test_schema_builds_and_lists_every_route():
     assert listed == _routes()
     # 10 + the four outline-font routes (2026-11-06): GET /fonts/outline,
     # its {key}/file and {key}/license, and POST /lettering.
-    assert len(listed) == 14
+    # + POST /jobs/{job_id}/cancel (2026-11-12).
+    assert len(listed) == 15
 
 
 def test_every_operation_has_summary_and_error_responses():
@@ -51,7 +52,7 @@ def test_every_operation_has_summary_and_error_responses():
 def test_error_and_job_models_are_referenced():
     schema = app.openapi()
     names = set(schema["components"]["schemas"])
-    assert {"ErrorBody", "JobSubmitted", "JobStatus", "Health"} <= names
+    assert {"ErrorBody", "JobSubmitted", "JobStatus", "JobCancelled", "Health"} <= names
 
 
 def test_hardening_responses_are_documented():

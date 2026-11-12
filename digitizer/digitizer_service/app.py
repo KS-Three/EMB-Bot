@@ -56,6 +56,12 @@ from .guards import BodyLimit, Deadline, too_large_detail
 from .jobs import (DONE, JOB_TIMEOUT_S, Busy, GenerationCache, JobRegistry, content_key,
                    generation_key)
 
+# 0.6.0 -> 0.7.0, 2026-11-12: `POST /jobs/{id}/cancel`, and with it a fifth
+# job state, `cancelled`, that `GET /jobs/{id}` may now report. Additive for
+# a client that never cancels: it never reads the new state. A client that
+# does cancel needs no version check either -- an older service answers the
+# new route 404/405, the job runs to its end, and nothing else changes.
+#
 # 0.5.0 -> 0.6.0, 2026-09-15: `design.runs`, the run-span index, is now on
 # every `/digitize` and `/digitize-manual` response.
 #
@@ -75,7 +81,7 @@ from .jobs import (DONE, JOB_TIMEOUT_S, Busy, GenerationCache, JobRegistry, cont
 # it did. Feature detection does not need this number either — the presence of
 # `design.runs` is the signal, and it has to be, because a design loaded from
 # a saved project never came through /health at all.
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 
 # An upload this large is a photograph someone dragged in by mistake, and the
 # pipeline would spend minutes on it before saying so.
@@ -1655,6 +1661,23 @@ def job_status(job_id: str, x_embbot_token: str | None = Header(None)) -> dict:
     if job is None:
         raise HTTPException(status_code=404, detail="No such job. It may have been evicted.")
     return job.public()
+
+
+@app.post("/jobs/{job_id}/cancel", summary="Cancel a job", response_model=None,
+          responses={200: {"model": schemas.JobCancelled},
+                     404: schemas.error("Unknown or evicted job."), **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
+def cancel_job(job_id: str, x_embbot_token: str | None = Header(None)) -> dict:
+    """The customer pressed Cancel (service 0.7.0). A queued or running job
+    reads `cancelled` from this answer on; its worker stops at the next
+    stage seam (`digitizer_core.deadline` names what cannot be interrupted)
+    and takes the next upload. Any other job is left exactly as it was and
+    its state returned, so cancelling twice, or a job that finished a moment
+    ago, costs nothing. The reply is the state alone, never the result."""
+    _require_token(x_embbot_token)
+    job = registry.cancel(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="No such job. It may have been evicted.")
+    return {"job_id": job.id, "state": job.state}
 
 
 # --- Closed-loop sew-out calibration (2026-09-30) ----------------------------
