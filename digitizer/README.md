@@ -140,7 +140,8 @@ directory lands on `sys.path` and `digitizer_core` imports without an install.
 |---|---|
 | `GET /health` | Is it running, which brands, which formats, what limits |
 | `POST /digitize` | Artwork + config → a job id (202). Multipart: `image`, `config` |
-| `GET /jobs/{id}` | `queued`/`running`/`done`/`error`; when done, `design` + `review` + `stats` |
+| `GET /jobs/{id}` | `queued`/`running`/`done`/`error`/`cancelled`; when done, `design` + `review` + `stats` |
+| `POST /jobs/{id}/cancel` | Stop a queued or running job at its next stage seam; harmless on a finished one (service 0.7.0) |
 | `POST /export` | Any EMB-Bot design + a format → the machine file |
 
 `/digitize` returns an EMB-Bot **`Design`**, not a stitch file — see the DST

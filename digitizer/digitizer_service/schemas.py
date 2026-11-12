@@ -31,8 +31,21 @@ class JobSubmitted(BaseModel):
     )
 
 
+class JobCancelled(BaseModel):
+    """`POST /jobs/{id}/cancel`: the job's state after the request."""
+
+    job_id: str
+    state: str = Field(description="cancelled when the job was queued or running; "
+                                   "otherwise the state it already had (done | error | cancelled).")
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"job_id": "3f2a9c", "state": "cancelled"}}
+    )
+
+
 class JobStatus(BaseModel):
-    """`state` plus, once `done`, the result keys; once `error`, `error`/`detail`."""
+    """`state` plus, once `done`, the result keys; once `error`, `error`/`detail`.
+    A `cancelled` job carries neither."""
 
     model_config = ConfigDict(
         extra="allow",
@@ -43,7 +56,7 @@ class JobStatus(BaseModel):
     )
 
     job_id: str
-    state: str = Field(description="queued | running | done | error")
+    state: str = Field(description="queued | running | done | error | cancelled")
     design: dict[str, Any] | None = Field(None, description="Done only: stitches, threads, runs.")
     review: dict[str, Any] | None = Field(None, description="Done only: shape-layers review payload.")
     stats: dict[str, Any] | None = Field(None, description="Done only.")

@@ -26,16 +26,26 @@ read 130 s there before PR #1192's bincount fix), the rembg / SAM2
 subprocesses (which carry their own `*_timeout_s`), and stage 7's chaining
 passes after emission. Those end, and the next check fires; the worker is
 freed within one such call, not instantly.
+
+**A customer's cancel rides the same seams (2026-11-12).** `scope` also takes
+a `cancel` flag (a `threading.Event` the service sets from another thread
+when the customer presses Cancel), and `check` raises `Cancelled` -- an
+`Abandoned`, so everything that already unwinds for a deadline unwinds for a
+cancel -- at the first seam after the flag is set. Same seams, same limits:
+a cancel lands within one uninterruptible call, not instantly.
 """
 from __future__ import annotations
 
 import contextvars
+import threading
 import time
 from contextlib import contextmanager
 from typing import Iterator
 
 _DEADLINE: contextvars.ContextVar[float | None] = contextvars.ContextVar(
     "digitizer_deadline", default=None)
+_CANCEL: contextvars.ContextVar[threading.Event | None] = contextvars.ContextVar(
+    "digitizer_cancel", default=None)
 
 
 class Abandoned(Exception):
@@ -48,24 +58,41 @@ class Abandoned(Exception):
         super().__init__(f"abandoned at {stage}, {over_s:.1f}s past the deadline")
 
 
+class Cancelled(Abandoned):
+    """`check` found the scope's cancel flag set: someone asked for this job
+    to stop. Nothing ran late, so `over_s` is 0."""
+
+    def __init__(self, stage: str):
+        Exception.__init__(self, f"cancelled at {stage}")
+        self.stage = stage
+        self.over_s = 0.0
+
+
 @contextmanager
-def scope(seconds: float | None) -> Iterator[None]:
-    """Arm a deadline `seconds` from now for everything run inside. `None`
-    arms nothing (the library default). Scopes nest: the inner one wins for
-    its body and the outer is restored after."""
-    if seconds is None:
-        yield
-        return
-    token = _DEADLINE.set(time.monotonic() + float(seconds))
+def scope(seconds: float | None,
+          cancel: threading.Event | None = None) -> Iterator[None]:
+    """Arm a deadline `seconds` from now for everything run inside, and/or a
+    `cancel` flag another thread may set. `None` arms nothing (the library
+    default). Scopes nest: the inner one wins for its body and the outer is
+    restored after."""
+    tokens = []
+    if seconds is not None:
+        tokens.append((_DEADLINE, _DEADLINE.set(time.monotonic() + float(seconds))))
+    if cancel is not None:
+        tokens.append((_CANCEL, _CANCEL.set(cancel)))
     try:
         yield
     finally:
-        _DEADLINE.reset(token)
+        for var, token in reversed(tokens):
+            var.reset(token)
 
 
 def check(stage: str) -> None:
-    """Raise `Abandoned` if the armed deadline has passed; a no-op otherwise
-    and when no scope is armed."""
+    """Raise `Cancelled` if the armed cancel flag is set, `Abandoned` if the
+    armed deadline has passed; a no-op otherwise and when no scope is armed."""
+    cancel = _CANCEL.get()
+    if cancel is not None and cancel.is_set():
+        raise Cancelled(stage)
     deadline = _DEADLINE.get()
     if deadline is not None:
         now = time.monotonic()

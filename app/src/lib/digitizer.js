@@ -1491,12 +1491,55 @@ export async function recountArt(image, config, fetchFn = globalThis.fetch, sign
   return r.json();
 }
 
+// POST /jobs/{id}/cancel (service 0.7.0+, 2026-11-12): the customer's Cancel.
+// The service marks the job cancelled and its worker stops at the next stage
+// seam, so the next upload does not queue behind work nobody wants. Never
+// throws and resolves false when the service could not be told (unreachable,
+// or a service from before the route, which answers 404/405): a cancel the
+// service never heard still ends the wait on this side, and the job simply
+// runs to its end. Five seconds is the longest the panel waits to find out.
+export async function cancelJob(jobId, fetchFn = globalThis.fetch) {
+  try {
+    const r = await fetchFn(digitizerUrl() + "/jobs/" + jobId + "/cancel", {
+      method: "POST",
+      signal: AbortSignal.timeout(5000),
+    });
+    return r.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+// The wait between polls. A customer's Cancel (`stop`, an AbortSignal) ends
+// it at once instead of at the next tick.
+function pollWait(ms, stop) {
+  return new Promise((res) => {
+    const done = () => {
+      clearTimeout(timer);
+      if (stop) stop.removeEventListener("abort", done);
+      res();
+    };
+    const timer = setTimeout(done, ms);
+    if (stop) stop.addEventListener("abort", done, { once: true });
+  });
+}
+
 // Poll GET /jobs/{id} until done/error. done -> the full job payload
 // ({ design, review, stats, warnings }); error -> throws the job's error.
 // opts.onState(state, { runningMs }) hears every observed state
 // ("queued"/"running") and how long the job has been running, for honest
 // pending UI; opts.isCancelled() stops the loop quietly (a torn-down panel
 // must not keep a timer alive — the job cache means re-asking is free).
+//
+// opts.stop (an AbortSignal) is the customer's Cancel, and is NOT the same
+// thing as isCancelled: a torn-down panel leaves the service's job running so
+// the next panel can join it, while a Cancel tells the service to stop it
+// (cancelJob) and waits for that request to settle before resolving null --
+// so a re-run pressed straight after can never be answered with the job that
+// is being cancelled. A stop that arrives while a poll is in flight wins over
+// whatever that poll read, "done" included: the customer said no to this run.
+// A job the service reports "cancelled" (another tab pressed it) also
+// resolves null. Neither is an error and neither throws.
 //
 // A job already running on the service keeps running even when a single poll
 // can't reach it. A photograph at 80 mm is ~4 minutes, polled every 500 ms,
@@ -1551,7 +1594,12 @@ export async function pollJob(jobId, opts = {}) {
     e.kind = "timeout";
     return e;
   };
+  const stop = opts.stop || null;
   for (;;) {
+    if (stop && stop.aborted) {
+      await cancelJob(jobId, fetchFn);
+      return null;
+    }
     if (opts.isCancelled && opts.isCancelled()) return null;
     let job;
     try {
@@ -1574,9 +1622,11 @@ export async function pollJob(jobId, opts = {}) {
       if (++transient > maxTransient) throw err;
       const timedOut = overBudget();
       if (timedOut) throw timedOut;
-      await new Promise((res) => setTimeout(res, intervalMs));
+      await pollWait(intervalMs, stop);
       continue;
     }
+    if (stop && stop.aborted) continue; // the top of the loop tells the service
+    if (job.state === "cancelled") return null;
     if (job.state === "done") return job;
     if (job.state === "error") throw new Error(job.error || "Digitizing failed.");
     if (job.state === "running" && runningSince == null) runningSince = Date.now();
@@ -1585,13 +1635,17 @@ export async function pollJob(jobId, opts = {}) {
     }
     const timedOut = overBudget();
     if (timedOut) throw timedOut;
-    await new Promise((res) => setTimeout(res, intervalMs));
+    await pollWait(intervalMs, stop);
   }
 }
 
 // Submit + poll in one call. An identical image+config re-run returns the
 // finished job immediately (the service's content-hash cache) — that is what
 // makes the change-a-param-look-again loop usable.
+// A Cancel (opts.stop) pressed while the upload is still on its way is not
+// allowed to abort that request: the service may already hold the job, and
+// without its id nothing could stop it. The submit lands, and pollJob's first
+// act is the cancel.
 export async function digitize(image, config, opts = {}) {
   const sub = await startDigitize(image, config, opts.fetchFn || globalThis.fetch);
   return pollJob(sub.job_id, opts);

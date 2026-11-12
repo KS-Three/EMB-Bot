@@ -165,7 +165,8 @@ JOB_WAIT_MARGIN_S = 30.0
 
 
 def wait_for_job(client, job_id: str, *, interval_s: float = 0.1) -> dict:
-    """Poll `/jobs/{job_id}` until it is `done` or `error`; return that state.
+    """Poll `/jobs/{job_id}` until it is `done`, `error` or `cancelled`; return
+    that state.
 
     Raises AssertionError past `JOB_TIMEOUT_S + JOB_WAIT_MARGIN_S`, naming
     the states seen (and when), and `/health`'s registry counts.
@@ -181,7 +182,7 @@ def wait_for_job(client, job_id: str, *, interval_s: float = 0.1) -> dict:
         if r.status_code != 200 or "state" not in state:
             raise AssertionError(f"job {job_id}: HTTP {r.status_code} {state!r}")
         seen.setdefault(state["state"], round(time.monotonic() - t0, 1))
-        if state["state"] in ("done", "error"):
+        if state["state"] in ("done", "error", "cancelled"):
             return state
         if time.monotonic() > deadline:
             jobs = client.get("/health").json().get("jobs")
