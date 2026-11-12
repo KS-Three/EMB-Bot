@@ -219,6 +219,8 @@
  "satin_floor_content_gate": false,
  "satin_free_end_square": true,
  "satin_seam_hold": false,
+ "satin_free_end_chord_aim": false,
+ "stripe_underfill": false,
  "satin_hairline_tier": false,
  "satin_hop_under_column": false,
  "satin_house_anchor": true,

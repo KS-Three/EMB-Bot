@@ -513,7 +513,206 @@ def apply_cfg(regions, unsewn, cfg, outlines, pinned=()):
     return out, report, outlines
 
 
-def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0, pinned=()):
+# --- Stripe fields (`cfg.stripe_underfill`, 2026-11-12, built OFF) -------------
+#
+# Kent on his Flag.webp (96 mm hat, 2026-11-12): "why not fill in the entire
+# bottom of the flag white (to provide structure), and then do the red stripes
+# in satin?" -- the pro's way with a flag. Sewn side by side, every satin
+# stripe takes its pull on both rails and the colour sewn LAST lies over its
+# neighbours: measured on main ffefc3b1, white 4.67 mm against red's visible
+# 3.14 from 3.96 mm art stripes. A ring is what `plan` reads, and stripes are
+# bands side by side with no hole, so it never fires on them.
+#
+# A STRIPE FIELD is a chain of at least `STRIPE_MIN_COUNT` banded shapes
+# (each fills `STRIPE_MIN_RECT_FILL` of its rotated box, `STRIPE_MIN_ASPECT`
+# long), lying within `STRIPE_ANGLE_TOL_DEG` of one direction, in exactly two
+# threads, each band touching only bands of the OTHER thread along at least
+# `STRIPE_SHARED_MIN` of the shorter one's length, whose union closes into one
+# solid polygon. The LIGHTER thread (CIELAB L*) fills that whole polygon
+# underneath -- a dark thread hides a light one, never the other way round --
+# its largest band the host, its other bands merged in; the darker bands sew
+# on top as they are, tagged `STRIPE_ON_KEY` so stage 7 holds their rails at
+# the artwork edge where the fill already lies (`satin_seam_hold`'s rule, on
+# the fill's outline): the white between two reds is then the art's gap. The
+# outer edge, with no fill beyond it, keeps its pull. Same `apply` path as a
+# ring, so the fill sews through stage 5's ground-under. OFF: never read.
+#: meta on a band sewn on a stripe field's fill: the host's shape id
+STRIPE_ON_KEY = "stripe_underfill_on"
+#: meta on a stripe field's host: its fill keeps to the field's artwork (stage
+#: 5 clips its pull growth to the outline). The bands' ends get no pull either,
+#: so a fill grown past them sewed the white 0.4 mm beyond every red end.
+STRIPE_HOST_KEY = "stripe_underfill_host"
+STRIPE_MIN_COUNT = 4
+STRIPE_MIN_ASPECT = 4.0
+STRIPE_MIN_RECT_FILL = 0.9
+STRIPE_ANGLE_TOL_DEG = 5.0
+#: two bands touch when this close (a traced seam, not a gap)
+STRIPE_TOUCH_MM = 0.2
+STRIPE_SHARED_MIN = 0.5
+
+
+def _band(poly):
+    """-> (long side, angle deg in [0, 180)) of a banded polygon, or None."""
+    import math
+    if poly is None or poly.is_empty or poly.geom_type != "Polygon" or poly.interiors:
+        return None
+    rect = poly.minimum_rotated_rectangle
+    if rect.geom_type != "Polygon" or rect.area <= 0:
+        return None
+    if poly.area < STRIPE_MIN_RECT_FILL * rect.area:
+        return None
+    c = list(rect.exterior.coords)
+    sides = [(math.dist(c[i], c[i + 1]), c[i], c[i + 1]) for i in (0, 1)]
+    (la, a0, a1), (lb, _b0, _b1) = sides
+    if la < lb:
+        la, lb = lb, la
+        a0, a1 = sides[1][1], sides[1][2]
+    if lb <= 0 or la < STRIPE_MIN_ASPECT * lb:
+        return None
+    ang = math.degrees(math.atan2(a1[1] - a0[1], a1[0] - a0[0])) % 180.0
+    return la, ang
+
+
+def _lightness(thread_index: int) -> float:
+    from .threads import CHART, rgb_to_lab
+    return float(rgb_to_lab(CHART.threads[thread_index].rgb)[0][0])
+
+
+def plan_stripes(regions):
+    """-> [(host, host, outline, merged ids, other bands)] for every stripe
+    field (module note above), in `plan`'s tuple shape so `apply` sews it."""
+    bands = {}
+    for r in regions:
+        if (str(r.meta.get("tier", "auto")).lower() != "auto" or _is_letter(r)
+                or r.meta.get(UNDERFILL_KEY) is not None or not r.meta.get("stitched", True)):
+            continue
+        b = _band(r.polygon)
+        if b is not None:
+            bands[r.shape_id] = (r, *b)
+    ids = sorted(bands)
+    nbrs: dict[str, set] = {i: set() for i in ids}
+    for ai, a in enumerate(ids):
+        ra, la, anga = bands[a]
+        for b in ids[ai + 1:]:
+            rb, lb, angb = bands[b]
+            if ra.thread_index == rb.thread_index:
+                continue
+            d = abs(anga - angb) % 180.0
+            if min(d, 180.0 - d) > STRIPE_ANGLE_TOL_DEG:
+                continue
+            if ra.polygon.distance(rb.polygon) > STRIPE_TOUCH_MM:
+                continue
+            shared = ra.polygon.boundary.intersection(rb.polygon.buffer(STRIPE_TOUCH_MM)).length
+            if shared >= STRIPE_SHARED_MIN * min(la, lb):
+                nbrs[a].add(b)
+                nbrs[b].add(a)
+    seen: set[str] = set()
+    out = []
+    for start in ids:
+        if start in seen or not nbrs[start]:
+            continue
+        comp, todo = [], [start]
+        seen.add(start)
+        while todo:
+            s = todo.pop()
+            comp.append(s)
+            for n in sorted(nbrs[s]):
+                if n not in seen:
+                    seen.add(n)
+                    todo.append(n)
+        members = [bands[s][0] for s in sorted(comp)]
+        threads_in = {m.thread_index for m in members}
+        if len(members) < STRIPE_MIN_COUNT or len(threads_in) != 2:
+            continue
+        if min(sum(1 for m in members if m.thread_index == t) for t in threads_in) < 2:
+            continue
+        # every band within the tolerance of the field's own direction
+        angs = sorted(bands[s][2] for s in comp)
+        ref = angs[len(angs) // 2]
+        if any(min(abs(a - ref) % 180.0, 180.0 - abs(a - ref) % 180.0) > STRIPE_ANGLE_TOL_DEG
+               for a in angs):
+            continue
+        t = STRIPE_TOUCH_MM
+        closed = (unary_union([m.polygon for m in members])
+                  .buffer(t, join_style=2).buffer(-t, join_style=2))
+        if closed.geom_type != "Polygon" or closed.interiors:
+            continue
+        under = max(threads_in, key=lambda ti: (_lightness(ti), -ti))
+        same = [m for m in members if m.thread_index == under]
+        host = max(same, key=lambda m: (m.polygon.area, m.shape_id))
+        merged = sorted(m.shape_id for m in same if m is not host)
+        inner = [m for m in members if m is not host]
+        out.append((host, host, closed, merged, inner))
+    return out
+
+
+def _carriers_first(regions, fields, pinned=()):
+    """A layer that CARRIES shapes of a host's thread -- one of its shapes
+    holds `INSIDE_MIN` of a host-thread shape -- sews ahead of the host's
+    layer, whatever `apply` moved: the flag's navy canton carries the white
+    stars, and with the white moved ahead of the red the navy fell after it
+    and sewed round 50 stars sewn first. Moved in their own order, just
+    before the host's layer; never one the review screen pinned."""
+    pinned = set(pinned)
+    order = sorted({r.meta["layer"] for r in regions})
+    moved = False
+    for host, *_rest in fields:
+        layer_of = {r.shape_id: r.meta["layer"] for r in regions}
+        hl = layer_of.get(host.shape_id)
+        if hl is None:
+            continue
+        mine = [r.polygon for r in regions if r.meta["layer"] == hl
+                and r.thread_index == host.thread_index and r.polygon is not None
+                and not r.polygon.is_empty and r.polygon.area > 0]
+        carriers = []
+        for L in order:
+            if order.index(L) <= order.index(hl):
+                continue
+            shapes = [r for r in regions if r.meta["layer"] == L]
+            if any(r.shape_id in pinned or r.meta.get(STRIPE_ON_KEY) for r in shapes):
+                continue
+            # a carried shape sits in a HOLE of its carrier (the stars in the
+            # canton): read the carrier's outline, holes closed
+            if any(r.polygon is not None and r.polygon.geom_type == "Polygon"
+                   and not r.polygon.is_empty
+                   and any(Polygon(r.polygon.exterior).intersection(m).area
+                           >= INSIDE_MIN * m.area for m in mine)
+                   for r in shapes):
+                carriers.append(L)
+        for L in carriers:
+            order.remove(L)
+            order.insert(order.index(hl), L)
+            moved = True
+    if not moved:
+        return regions
+    renum = {L: i for i, L in enumerate(order)}
+    return [replace(r, meta={**r.meta, "layer": renum[r.meta["layer"]]})
+            for r in sorted(regions, key=lambda r: renum[r.meta["layer"]])]
+
+
+def apply_stripes(regions, pinned=()):
+    """`cfg.stripe_underfill` ON: -> (regions as copies, report). Each stripe
+    field's lighter thread fills the field's outline underneath (`apply`'s
+    host path) and the darker bands sew on top, tagged `STRIPE_ON_KEY`.
+    No field: the list itself and []."""
+    fields = plan_stripes(regions)
+    if not fields:
+        return regions, []
+    out, report = apply(regions, pinned=pinned, rings=fields)
+    on = {r.shape_id: host.shape_id for host, _h, _o, _m, inner in fields
+          for r in inner if r.thread_index != host.thread_index}
+    hosts = {host.shape_id for host, *_rest in fields}
+    out = [replace(r, meta={**r.meta, STRIPE_ON_KEY: on[r.shape_id]}) if r.shape_id in on
+           else replace(r, meta={**r.meta, STRIPE_HOST_KEY: True}) if r.shape_id in hosts
+           else r for r in out]
+    out = _carriers_first(out, fields, pinned)
+    for rep in report:
+        rep["stripes"] = True
+    return out, report
+
+
+def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0, pinned=(),
+          rings=None):
     """`cfg.silhouette_underfill` ON: -> (regions as copies, report). The
     hosts carry `UNDERFILL_KEY` and the fill tier, merged shapes are gone,
     and each host's layer sews before its ring's and its inner colours'.
@@ -530,8 +729,11 @@ def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0,
     the user's layer wins. A pinned shape is never merged (it sews on its own,
     on top of the fill, in its layer), and a host's layer never moves ahead
     of a pinned shape's layer -- at most to just after it. None pinned: as
-    before."""
-    rings = plan(regions, unsewn, riders, outlines)
+    before.
+
+    `rings`: a plan already made (`apply_stripes`); None reads the rings."""
+    if rings is None:
+        rings = plan(regions, unsewn, riders, outlines)
     if not rings:
         return regions, []
     panels = _panels(regions, set(riders), outlines, overlap_mm) if riders else {}

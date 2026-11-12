@@ -1958,11 +1958,13 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .stage6_fill import seam_priced_scope    # `cfg.fill_seam_order_priced` (built OFF), the same way
     from .stage6_fill import one_pass_scope       # `cfg.fill_one_pass_sections` (built OFF), the same way
     from .stage6_fill import seam_aware_scope     # `cfg.fill_seam_aware_sections` (built OFF), the same way
+    from .stage6_satin import chord_aim_scope     # `cfg.satin_free_end_chord_aim` (built OFF), the same way
     with apex_cut_scope(cfg.lettering_columns_apex_cut), fill_section_travel.enabled(cfg), \
             loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
             cut_exposed_scope(cfg.fill_bridge_cut_exposed), seam_order_scope(cfg.fill_seam_order), \
             seam_priced_scope(cfg.fill_seam_order_priced), one_pass_scope(cfg.fill_one_pass_sections), \
-            seam_aware_scope(cfg.fill_seam_aware_sections):
+            seam_aware_scope(cfg.fill_seam_aware_sections), \
+            chord_aim_scope(cfg.satin_free_end_chord_aim):
         return _plan_stitches(result, cfg)
 
 
@@ -2077,6 +2079,15 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
         stitched_regions, _underfill, art_outlines = silhouette_underfill.apply_cfg(
             stitched_regions, skipped, cfg, art_outlines, pinned=pinned)
         merged_into.update({m: rep["host"] for rep in _underfill for m in rep.get("merged", ())})
+    # `cfg.stripe_underfill` (built OFF 2026-11-12): a stripe field's lighter
+    # thread fills the whole field underneath and the darker bands sew on top
+    # (`silhouette_underfill.plan_stripes`). Not on photo classes. Off, never called.
+    if cfg.stripe_underfill and result.design_class not in PHOTO_CLASSES:
+        pinned = {sid for sid, ov in (cfg.shape_overrides or {}).items()
+                  if isinstance(ov, dict) and ov.get("layer") is not None}
+        stitched_regions, _stripes = silhouette_underfill.apply_stripes(
+            stitched_regions, pinned=pinned)
+        merged_into.update({m: rep["host"] for rep in _stripes for m in rep.get("merged", ())})
     # `cfg.dark_ink_bean`: the strokes sew after the ground they are written
     # on, or stage 5 buries them under it.
     if cfg.dark_ink_bean:

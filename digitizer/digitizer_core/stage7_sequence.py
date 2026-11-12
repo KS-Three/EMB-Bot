@@ -65,7 +65,7 @@ from .fabrics import Fabric, fill_underlay_for, pro_values_for, pull_by_stroke_f
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
 from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
-from .silhouette_underfill import RIDER_HOLES_KEY
+from .silhouette_underfill import RIDER_HOLES_KEY, STRIPE_HOST_KEY, STRIPE_ON_KEY, UNDERFILL_KEY
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
 from .columns import (is_fine_bar, is_lettering, is_thin_stem, lettering_columns_shape,
@@ -3219,6 +3219,22 @@ def sequence(
             seam_by_layer[p.layer] = (prep(ground.buffer(0.1)), ground) if down else None
         return seam_by_layer[p.layer]
 
+    # `cfg.stripe_underfill`: a band sewn on a stripe field's fill holds its
+    # rails where the fill lies beneath -- the ground already down here is
+    # the artwork AND every under-fill outline sewn before it. Untagged: None.
+    stripe_by_layer: dict[int, object] = {}
+
+    def stripe_ground(p: PlannedRegion):
+        if not p.region.meta.get(STRIPE_ON_KEY):
+            return None
+        if p.layer not in stripe_by_layer:
+            down = [o.region.polygon for o in planned if o.layer < p.layer]
+            down += [o.region.meta[UNDERFILL_KEY] for o in planned
+                     if o.layer < p.layer and o.region.meta.get(UNDERFILL_KEY) is not None]
+            ground = unary_union(down) if down else None
+            stripe_by_layer[p.layer] = (prep(ground.buffer(0.1)), ground) if down else None
+        return stripe_by_layer[p.layer]
+
     # Chaining's tier-blindness fix (see `_link_cover`'s docstring): the
     # artwork polygon of every shape that will predictably sew as an outline
     # RUN, tagged with its layer's sew index so each block can subtract the
@@ -3878,7 +3894,8 @@ def sequence(
                     if on_rails else end_cutback,
                     rail_comp_mm=rail_comp_mm,
                     rail_comp_floor_mm=cfg.min_detail_mm,
-                    rail_held=seam_ground(p) if cfg.satin_seam_hold else None,
+                    rail_held=(stripe_ground(p) if p.region.meta.get(STRIPE_ON_KEY)
+                               else seam_ground(p) if cfg.satin_seam_hold else None),
                     cap_skew_inset=cfg.satin_cap_skew_inset,
                     use_shapefield=use_shapefield,
                     spacing_mm=satin_spacing_for(p),
@@ -4571,7 +4588,9 @@ def sequence(
                     q = nearest_points(p.polygon, group[nxt].polygon)[1]
                     exit_near = (float(q.x), float(q.y))
             runs, report, filled = stitch_one(p, cursor, exit_near)
-            if cfg.silhouette_underfill_rim:   # built OFF: a ring host's rim after its fill
+            # A stripe field's fill gets no rim: its bands cover the long
+            # edges and its ends are cut, as the bands' are (`STRIPE_HOST_KEY`).
+            if cfg.silhouette_underfill_rim and not p.region.meta.get(STRIPE_HOST_KEY):
                 runs, report = underfill_rim_after(p, runs, report, trim_at_mm=trim_at,
                                                    underlay=satin_underlay != "none")
             thin += int(filled and report["too_thin"])
