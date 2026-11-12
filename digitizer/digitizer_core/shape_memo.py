@@ -70,8 +70,11 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("stage6_border", "_LOOP_CHAIN"),
     ("column_lean", "_ITALIC"),
 )
-#: ContextVars that are caches, not knobs.
-_CACHES: frozenset[tuple[str, str]] = frozenset({("outline_cut", "_MEMO")})
+#: ContextVars that are caches, not knobs. `stage6_fill._BRIDGE_MEMO` is one
+#: `stitch_shape` call's covered-bridge memo: set and reset inside the call,
+#: and a hit is the bridge `travel_path` would have returned.
+_CACHES: frozenset[tuple[str, str]] = frozenset({("outline_cut", "_MEMO"),
+                                                 ("stage6_fill", "_BRIDGE_MEMO")})
 #: ContextVars no emitter's OUTPUT depends on: `deadline._DEADLINE` is the
 #: service's job budget, read by `deadline.check` to STOP a job, never to
 #: shape a stitch -- a hit under one deadline is the miss under any other.
