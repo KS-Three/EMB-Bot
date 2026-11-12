@@ -25,7 +25,6 @@ the OLDEST lines whole to the archive.
 - [Band rings](border-by-size-colour-seams-2026-10-28.md) — Instagram: `border_by_size` satin rings each band, not bean; fix ON 10-28: ring fabric edges only
 - [Border colour change](border-colour-change-2026-11-11.md) — low_poly pin 2: a drawn black line re-snapped to grey, not a border; pro borders per patch; both fixes (`resnap_hairline_never_lightens`, fix B) ruled OFF by Kent 11-11
 - [Bridge anchor limbs](bridge-anchor-wave-weld-2026-11-10.md) — "extra arms/legs" = the waves welded to the anchor in the 400 px JPEG (gaps < 1 px), one black component from stage 2; Kent 11-10: keep as manual edit, no build
-- [Bridge census](bridge-census-2026-10-27.md) — Bridge hat+LC through 14 pro rules on main 8341d1f7: 2 CONTRADICTS (border_by_size fields, proSized LC), 8 AGREES, 4 N/A; ours' text is a reach gap (folds 2 vs 35), not a rule
 - [Cloud wave 11-06](cloud-wave-2026-11-06.md) — Kent 11-06 "10 agents in cloud": yardstick scorer, Euler census, C2 vote, stage-7 speed, nest guard, PR 1284, e2e apt, offsetRing test, dropped-element v2, shards; Remote Control turn cannot start sessions
 - [Colour cap on the sewn design](colour-cap-sewn-2026-10-29.md) — census item 3 misnamed the hole: sew-white recolours AFTER the cap + blend bands snap chart-wide; `color_cap_sewn` ON 11-01 re-caps final regions, folds strays on blocks
 - [Compare ends on regenerate](compare-ends-on-regenerate-2026-11-08.md) — Kent 11-08 "Keep as is": Compare view (#1345) is an Original sub-mode, a regeneration ends it; don't build survival
