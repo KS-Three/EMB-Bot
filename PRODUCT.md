@@ -31,13 +31,15 @@ Status verified against the repo on 2026-08-11, and **every row re-verified
 became genuinely reachable (#403 gave JEF a button — the row had been verified
 against the module that can write JEF, not the product that exposes it), and
 row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
-5 and 6 re-checked in place; row 3 is still ❌ with no trace in the repo.
+5 and 6 re-checked in place. **Rows 3 and 8 re-verified 2026-11-12:** row 3 is
+no longer "no trace in the repo" (the 12 designs are on main, the Studio surface
+is not), and row 8 was added 2026-11-10.
 
 | # | Item | Status | Evidence |
 |---|---|---|---|
 | 1 | PES hardened to byte-verified + JEF export, plus XXX (Singer) and VP3 (Husqvarna Viking / Pfaff) | ✅ Done — JEF only became REACHABLE 2026-09-07; XXX/VP3 are Kent's 2026-09-12 scope call | PES/JEF live in `digitizer/digitizer_service/formats.py` (pyembroidery-backed; `digitizer_core/export.py` itself is DST-only); PES/JEF round-trip verified. **This row was verified against the module that can write JEF, not against the product that exposes it** — the Studio's Download step offered DST/PES/EXP only, so from 2026-08-11 to 2026-09-07 a Janome owner could not export anything, while this line said the item was done. The button now exists (`DownloadStep.svelte`, disabled with a reason when the service is down — there is no browser JEF encoder), and the bytes it produces were decoded with `pystitch` rather than inferred: 80.5×16.6 mm, 1 colour change, 2 threads, matching the design the app promised. **Machine formats that ship are DST, PES, EXP, JEF, XXX and VP3** — XXX and VP3 added on Kent's 2026-09-12 call, service-written and buttoned like JEF, both round-tripping `identity` through `digitizer/tools/format_roundtrip.py` (70/70 stitches, 1/1 colour change, 1725×200 units) and both returning the design's own thread RGB, which PES and JEF do not. **PEC and U01 stay out of scope** — U01 is the one that would need work first: its colour change does not survive the round trip. |
 | 2 | Home-machine hoop picker (4×4 / 5×7 / 6×10 / 8×8 presets) | ✅ Done | `src/garments.js` `HOOPS`/`suggestHoop`/`hoopFit` (orientation-aware ceiling check, replaces the generic 200×200mm one); Studio picker on the Garment step with per-garment suggestion + manual override, persisted as `project.hoopId` (`.embproj`-safe); chosen hoop on the review stats line, Review summary, and PDF worksheet. Auto-rotating an only-fits-rotated design is a noted follow-up (the warning names the rotate fix) |
-| 3 | Curated starter design pack (12–24 licensed designs via DST import) | ❌ Not started | no trace in repo |
+| 3 | Curated starter design pack (12 designs — Kent's 2026-11-10 ruling; the row read "12–24 licensed designs via DST import" until then) | 🟡 Partial — the designs are on main, the Studio surface is not built | **Sourcing, Kent 2026-11-10:** 12 designs, each strict CC0 or Public Domain Mark vector art digitized by EMB-Bot's own pipeline; no open stitch files, no commission, no CC-BY, no logos or brand marks; provenance logged per design (`docs/starter-pack-sourcing-2026-11-10.md`, PR #1381). **Done (PR #1382):** `app/public/starter/` holds the 12 SVGs, their 12 DSTs and `manifest.json` (source page, author, licence as the page states it, check date, sha256 of art and DST, size, stitches, colours, preflight grade); `test/starter-pack.test.js` checks the licence allowlist, every sha256, and that every DST decodes with `src/dstimport.js` to the recorded counts. **Not done:** nothing in `app/src` reads `starter/`, so a customer cannot reach a design from the Studio. Not sewn. A 24-design pack or CC-BY art is a new question for Kent. The 12, the three Kent dropped and the known weak spots: `docs/starter-pack-2026-11-10.md`. *(re-verified 2026-11-12 against main `d12e955a`)* |
 | 4 | Basic shapes tool (circle / rect / heart / star) | ✅ Done | `app/src/lib/shapePresets.js` generators + `ShapePanel.svelte`, new `"shape"` element type riding the manual-draw lane (`shapesToRegions → buildQualityDesign`); all four kinds verified digitizing live 2026-08-11 (star-tip coverage pinned in vitest); recipe (`kind`+`params`) persists in `.embproj` |
 | 5 | Thread palette sweep (remaining Ink/Stitch `.gpl` brands) | ✅ Done | 68 brand charts in `tools/palettes/`, matching the policy-filtered count (brands from companies that sell embroidery machines/software are excluded on purpose) |
 | 6 | `.embproj` project file save/load | ✅ Done | `app/src/lib/projectFile.js`; since 2026-09-20 the file also carries the uploaded originals (`sources`), so a design opened on another machine digitizes from the customer's file, not the preview |
@@ -60,7 +62,9 @@ row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
   localStorage dev seam stays for internal use. Server-side segmentation
   rejected — breaks the local-first, no-account promise. Full analysis:
   `docs/sam2-ship-path-brief-2026-08-11.md`.
-- ~70 fonts is enough — launch does not wait on font expansion.
+- The font library is enough as it stands — 85 fonts ship (row 7) — and launch
+  does not wait on font expansion. (This line said "~70 fonts" until
+  2026-11-12; the decision is unchanged, only the count had drifted.)
 - Fast-follow order after launch: ~~`ltr/` importer (mai_en_fleur)~~ **done** (mai_en_fleur ships in the manifest, 85 fonts as of 2026-09-14 — this said 55 until then) → tablet audit → cloud sync (post-revenue).
 - **The border decision lives on the canvas too (Kent's call 2026-09-09):**
   right-click a recognised shape on the field for Add border / Remove border

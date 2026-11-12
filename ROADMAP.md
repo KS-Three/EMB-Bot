@@ -39,7 +39,7 @@ by Kent 2026-08-18 (decision record:
 
 ## Launch track — parallel
 
-Starter design pack (sourcing decision and billing pending).
+Installable local app and starter design pack: launch checklist rows in `PRODUCT.md`. Billing: its "Open" section.
 
 ## Hard gates — refuse, name the blocker, stop
 
