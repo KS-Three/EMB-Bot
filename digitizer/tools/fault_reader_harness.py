@@ -226,10 +226,24 @@ def select_infill_pins(marks: dict, prefix: str = "L_") -> list[dict]:
     return out
 
 
+def select_space_pins(marks: dict, prefix: str = "L_") -> list[dict]:
+    """The negative-space reader's pins: exactly the letter rule's
+    (`select_letter_pins`), each carrying `note_pin` (the pin whose note
+    admitted it: its own, or the donor of "same as pin k"), so the 29 bare
+    pins under one note on `C_silhouette_logo` count as one judgement.
+    `docs/space-fault-reader-2026-11-12.md`."""
+    out = []
+    for p in select_letter_pins(marks, prefix):
+        m = re.fullmatch(r"same as pin (\d+)", p["rule"])
+        out.append({**p, "note_pin": int(m.group(1)) if m else p["pin"]})
+    return out
+
+
 FAULTS = {
     "edge": (select_edge_pins, "docs/defect-marks-2026-11-10/edge-reader-preregistration.md"),
     "letters": (select_letter_pins, "docs/defect-marks-2026-11-10/letter-reader-preregistration.md"),
     "infill": (select_infill_pins, "docs/infill-fault-reader-2026-11-11/preregistration.md"),
+    "space": (select_space_pins, "docs/space-fault-reader-2026-11-12.md"),
 }
 
 
