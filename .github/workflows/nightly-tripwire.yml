@@ -53,34 +53,93 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: digitizer/requirements.txt
-      # Same Tesseract as the digitizer job: word cc reads through OCR, and a
-      # silently OCR-less run would measure a different pipeline than the ledger.
+      # Tesseract from apt: the word cc rows read through OCR, and what the
+      # tesserocr wheel takes from this package is its model, eng.traineddata
+      # (digitizer_core/ocr.py `tessdata_dir`). Without it those rows go missing.
+      #
+      # Installed from CACHED .deb files, the way studio-e2e does it
+      # (python-package-conda.yml), because the mirror is the one part of this
+      # job that fails for reasons no ledger row describes: run 43039609421
+      # (2026-11-11) spent 3m20s on "Temporary failure resolving
+      # 'azure.archive.ubuntu.com'", exited 100 and read nothing. A cache hit
+      # runs `dpkg -i` and never asks the mirror. The key pins the runner image
+      # build, since a .deb set is only valid against the image it was resolved
+      # on; no restore-keys for the same reason. On a miss (a new image, or a
+      # cache evicted after a week unused) apt runs, up to four times, 30/60/90 s
+      # apart, and whatever it downloaded is what gets cached. The last two
+      # lines are the check for either branch. The same three steps are in the
+      # `measure` job below: change both.
+      - name: Runner image id (apt cache key)
+        id: image
+        run: echo "id=${ImageOS}-${ImageVersion}" >> "$GITHUB_OUTPUT"
+      - name: Cache apt packages (Tesseract OCR)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/tripwire-apt-debs
+          key: tripwire-apt-${{ steps.image.outputs.id }}-tesseract-ocr
       - name: Install system dependencies (Tesseract OCR)
-        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+        id: apt
+        run: |
+          DEBS="$HOME/.cache/tripwire-apt-debs"
+          if ls "$DEBS"/*.deb >/dev/null 2>&1 && sudo dpkg -i "$DEBS"/*.deb; then
+            echo "installed from the cached .deb files; the mirror was not asked"
+          else
+            sudo apt-get clean
+            for try in 1 2 3 4; do
+              sudo apt-get update || true     # a half-failed update still exits 0; install is the test
+              if sudo apt-get install -y tesseract-ocr; then break; fi
+              if [ "$try" = 4 ]; then echo "apt could not install tesseract-ocr in 4 tries (mirror or DNS)"; exit 1; fi
+              echo "apt try $try failed; waiting $((try * 30)) s"
+              sleep $((try * 30))
+            done
+            mkdir -p "$DEBS"
+            sudo cp /var/cache/apt/archives/*.deb "$DEBS"/ || echo "no .deb to cache (already on the image)"
+          fi
+          tesseract --version
+          ls /usr/share/tesseract-ocr/*/tessdata/eng.traineddata
       - name: Install
+        id: pip
         working-directory: digitizer
         run: pip install -r requirements.txt
       # No pipe: `| tee` would hand this step tee's exit code instead of the
       # tool's (the pytest | tail trap, CLAUDE.md). The tool's exit code IS
-      # the verdict: 1 on a wrong-way move, and that fails this job.
+      # the verdict: 1 on a wrong-way move, and that fails this job. A red
+      # check names its rows on one line (`red_line`), which the tool also
+      # prints as this job's error annotation: the reason shows on the run page
+      # and in `check-runs/<job id>/annotations` without opening a log.
       - name: Check every committed pair against the ledger
+        id: check
         working-directory: digitizer
         run: >
           python -m tools.tripwire check
           --ledger testdata/tripwire_ledger.json
           --runs tripwire-runs --figures tripwire-runs/figures.json
           --table tripwire-check.md --json tripwire-check.json
+      # Two kinds of red, told apart here: a table means the pairs were read
+      # (its "RED, n row(s): ..." line names the rows that failed); no table
+      # means a step before the reading failed, and the summary says which.
       - name: Publish the table to the run summary
         if: always()
         working-directory: digitizer
+        env:
+          APT: ${{ steps.apt.outcome }}
+          PIP: ${{ steps.pip.outcome }}
+          CHECK: ${{ steps.check.outcome }}
         run: |
           {
             echo '## Nightly tripwire'
             echo
             echo 'Linux, `ubuntu-latest`, against `digitizer/testdata/tripwire_ledger.json`. Kappa is chance-corrected; the chance floor rides in brackets.'
             echo
-            cat tripwire-check.md || echo '(no table: the run did not finish)'
+            if [ -f tripwire-check.md ]; then
+              cat tripwire-check.md
+            else
+              echo "**No reading.** No pair was compared with the ledger, so this red says nothing about the engine. Step outcomes: system packages (apt) \`$APT\`, pip install \`$PIP\`, check \`$CHECK\`. The first one that is not \`success\` is the reason."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
+          if [ ! -f tripwire-check.md ]; then
+            echo "::error title=Nightly tripwire::No reading: the job stopped before a table was written (system packages: $APT, pip install: $PIP, check: $CHECK). This red is not a ledger verdict."
+          fi
       - name: Upload the table, the pass and the measured DSTs
         if: always()
         uses: actions/upload-artifact@v4
@@ -109,8 +168,35 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: digitizer/requirements.txt
+      # The same cached Tesseract install as the `check` job (explained there).
+      - name: Runner image id (apt cache key)
+        id: image
+        run: echo "id=${ImageOS}-${ImageVersion}" >> "$GITHUB_OUTPUT"
+      - name: Cache apt packages (Tesseract OCR)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/tripwire-apt-debs
+          key: tripwire-apt-${{ steps.image.outputs.id }}-tesseract-ocr
       - name: Install system dependencies (Tesseract OCR)
-        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+        id: apt
+        run: |
+          DEBS="$HOME/.cache/tripwire-apt-debs"
+          if ls "$DEBS"/*.deb >/dev/null 2>&1 && sudo dpkg -i "$DEBS"/*.deb; then
+            echo "installed from the cached .deb files; the mirror was not asked"
+          else
+            sudo apt-get clean
+            for try in 1 2 3 4; do
+              sudo apt-get update || true     # a half-failed update still exits 0; install is the test
+              if sudo apt-get install -y tesseract-ocr; then break; fi
+              if [ "$try" = 4 ]; then echo "apt could not install tesseract-ocr in 4 tries (mirror or DNS)"; exit 1; fi
+              echo "apt try $try failed; waiting $((try * 30)) s"
+              sleep $((try * 30))
+            done
+            mkdir -p "$DEBS"
+            sudo cp /var/cache/apt/archives/*.deb "$DEBS"/ || echo "no .deb to cache (already on the image)"
+          fi
+          tesseract --version
+          ls /usr/share/tesseract-ocr/*/tessdata/eng.traineddata
       - name: Install
         working-directory: digitizer
         run: pip install -r requirements.txt
@@ -166,6 +252,19 @@ jobs:
             echo
             cat tripwire-ledger.md || echo '(no ledger: a pass did not finish)'
           } >> "$GITHUB_STEP_SUMMARY"
+      # The artifact below is how the ledger is taken, but an artifact downloads
+      # from a blob-storage host that a cloud session's network policy can
+      # refuse (2026-11-12), while a job log always reads through the API
+      # (`gh api repos/<owner>/<repo>/actions/jobs/<id>/logs`). So the same
+      # bytes are printed between two marker lines, with their sha256: strip
+      # each line's timestamp and one space, and check the hash.
+      - name: Print the ledger to the log (the same bytes as the artifact)
+        working-directory: digitizer
+        run: |
+          echo "tripwire-ledger.json sha256 $(sha256sum < tripwire-ledger.json | cut -d' ' -f1)"
+          echo '-----BEGIN TRIPWIRE LEDGER-----'
+          cat tripwire-ledger.json
+          echo '-----END TRIPWIRE LEDGER-----'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
