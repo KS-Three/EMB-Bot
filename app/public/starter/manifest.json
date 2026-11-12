@@ -6,7 +6,7 @@
   "Public domain",
   "Public Domain Mark"
  ],
- "engine": "digitizer service 0.6.0 at ac3d77fa, POST /digitize {target_width_mm} then POST /export dst",
+ "engine": "digitizer service 0.6.0 at ac3d77fa, POST /digitize {target_width_mm} then POST /export dst; baseball re-digitized 2026-11-12 at main 7ad81351 with each row's digitize_config added to the /digitize config",
  "designs": [
   {
    "id": "jack-o-lantern",
@@ -189,16 +189,21 @@
    "art": "baseball.svg",
    "art_sha256": "28a3d1484ae02ebfc0f5f9a509b0b407f798c8013c5fd4b8cc8d3d3649946b9c",
    "dst": "baseball.dst",
-   "dst_sha256": "d0f9eda052e7f1feb309505fbd472ffac32ca73677354a947fc6a89eec4509c3",
+   "dst_sha256": "a4db7b6a70d6a2fc689eec4e65b1c225a3456ffbc40f60eff2e6e270bb7cb67c",
    "digitized_from": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/92/Baseball.svg/1920px-Baseball.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
    "digitized_from_sha256": "6b7a23a8c4628e0ac90f1f9b1e75410e0214701199e29627fdadda71c3fdcfb1",
-   "width_mm": 75.5,
-   "height_mm": 74.1,
-   "stitches": 20812,
-   "colors": 7,
-   "trims": 49,
+   "width_mm": 76.1,
+   "height_mm": 74.7,
+   "stitches": 24378,
+   "colors": 5,
+   "trims": 56,
    "preflight_grade": "B",
-   "preflight_score": 88
+   "preflight_score": 76,
+   "digitize_config": {
+    "forced_class": "flat"
+   },
+   "redigitized": "2026-11-12",
+   "redigitized_basis": "Kent 2026-11-12, \"Baseball + monarch\" (docs/starter-pack-weak-spots-2026-11-12.md)"
   },
   {
    "id": "christmas-tree",
@@ -216,7 +221,7 @@
    "dst_sha256": "a8e7aff0fe1860cf30cc327bd2910ad1bbdeb7ac12f338e78371509ba8eb24cd",
    "digitized_from": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/Christmas_tree_02.svg/1280px-Christmas_tree_02.svg.png",
    "digitized_from_sha256": "81efe823f8f1e2014f9188f96fcff570c3cf863742b20d8351dd72f731a0bede",
-   "width_mm": 82.0,
+   "width_mm": 82,
    "height_mm": 90.3,
    "stitches": 17775,
    "colors": 8,

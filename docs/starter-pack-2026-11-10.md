@@ -33,7 +33,7 @@ sha256, and that every DST decodes with `src/dstimport.js` to the recorded count
 | [Bur oak leaf](https://commons.wikimedia.org/wiki/File:Bur_Oak_Leaf.svg) | florals and leaves | Jpness | CC0 | 55.1 x 90.6 | 12,357 | 3 | B |
 | [Owl](https://commons.wikimedia.org/wiki/File:Owl_bored.svg) | animals | rones (Openclipart 166822) | CC0 | 80.5 x 61.2 | 14,941 | 5 | B |
 | [American football](https://commons.wikimedia.org/wiki/File:American_football_icon.svg) | sports | gnokii (Openclipart 153043) | CC0 | 90.4 x 60.3 | 18,584 | 9 | B |
-| [Baseball](https://commons.wikimedia.org/wiki/File:Baseball.svg) | sports | vedub4us (Openclipart 25258) | CC0 | 75.5 x 74.1 | 20,812 | 7 | B |
+| [Baseball](https://commons.wikimedia.org/wiki/File:Baseball.svg) | sports | vedub4us (Openclipart 25258) | CC0 | 76.1 x 74.7 | 24,378 | 5 | B |
 | [Christmas tree](https://commons.wikimedia.org/wiki/File:Christmas_tree_02.svg) | holidays | Aaron Spike / Anonymous (Openclipart 12713) | CC0 | 82.0 x 90.3 | 17,775 | 8 | C |
 | [Turtle](https://commons.wikimedia.org/wiki/File:Turtle_clip_art.svg) | animals | badaman (Openclipart 229886) | CC0 | 92.5 x 61.8 | 17,398 | 10 | B |
 | [Monarch butterflies](https://commons.wikimedia.org/wiki/File:Franzi_-_Monarch.svg) | animals | franzi (Openclipart 218815) | CC0 | 90.5 x 85.7 | 16,819 | 3 | B |
@@ -43,10 +43,14 @@ sha256, and that every DST decodes with `src/dstimport.js` to the recorded count
 stripes only, with no team mark. The owl, bumblebee and turtle are the uploaders' own cartoons. The
 lighthouse is generic and names no landmark.
 
-**Known weak spots** (rendered, not sewn):
-- The baseball's white shading sews as grey rings.
-- The turtle loses its shell shading.
-- The monarch's white wing dots cost 86 trims.
+**Known weak spots** (rendered, not sewn). Causes and remedies are in
+[`starter-pack-weak-spots-2026-11-12.md`](starter-pack-weak-spots-2026-11-12.md):
+- The baseball's white shading sewed as grey rings. It was re-digitized on 2026-11-12 with `forced_class: "flat"`
+  (Kent's ruling), so the row above is the new file: one white field, no grey.
+- The turtle loses its shell shading. Its shell, legs and head merge into one colour on the automatic lane. Kent kept
+  the shipped file.
+- The monarch's white wing dots cost 86 trims. `borders_last: false` takes that to 63; the re-digitize is held while
+  main's drift is traced.
 - The lighthouse is only 25 mm wide, so its windows are tiny.
 
 ## Dropped
