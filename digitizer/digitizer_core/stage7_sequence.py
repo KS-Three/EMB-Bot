@@ -1487,7 +1487,54 @@ def _within_margin(a, b, margin_mm: float) -> bool:
     if (bx0 - ax1 > margin_mm or ax0 - bx1 > margin_mm
             or by0 - ay1 > margin_mm or ay0 - by1 > margin_mm):
         return False
+    # int(): the counts come back as numpy int32 and their product overflows
+    # exactly where it matters (206,415 x 192,083 on the dolphin).
+    if (int(shapely.get_num_coordinates(a)) * int(shapely.get_num_coordinates(b))
+            >= _WITHIN_INDEXED_MIN_COORD_PAIRS):
+        return _parts_within_margin(a, b, margin_mm)
     return a.distance(b) <= margin_mm
+
+
+#: Coordinate pairs (a's count times b's) from which `_within_margin` asks
+#: `_parts_within_margin` instead of `distance`. `distance` between two
+#: collections tries every part of one against every part of the other: the
+#: slowest measured on the dolphin below was 108.6 s for 5.2e9 coordinate
+#: pairs, 0.02 s per million. Under this the plain call is quick, and is left
+#: exactly as it was.
+_WITHIN_INDEXED_MIN_COORD_PAIRS = 1_000_000
+#: Parts asked of the tree per query: a pair that IS within the margin is
+#: usually settled by the first batch.
+_WITHIN_INDEXED_BATCH = 512
+
+
+def _parts_within_margin(a, b, margin_mm: float) -> bool:
+    """`a.distance(b) <= margin_mm` for two big collections, by parts and a
+    spatial index (2026-11-11, speed only).
+
+    The distance between two collections is the least distance between a
+    part of one and a part of the other, so "within the margin" is "some part
+    of `a` is within the margin of some part of `b`": the same question, and
+    an STRtree answers it without trying every part against every part. It
+    also stops at the first part that is, where `distance` has to finish the
+    minimum to report it.
+
+    Why: a jacket-back design's thread blocks are unions of tens of thousands
+    of runs. The low-poly dolphin at 300 mm (9 blocks, 12,985 to 273,578 parts)
+    asked three such questions per sequencing pass; `distance` took 108.6 s,
+    4.5 s and 8.7 s on them and this takes 0.04 s, 0.6 s and 0.4 s unbatched,
+    with the same three answers. `tests/test_within_margin_indexed.py` holds
+    it to `distance` on sets built to sit either side of the margin.
+    """
+    parts_a, parts_b = shapely.get_parts(a), shapely.get_parts(b)
+    if len(parts_a) > len(parts_b):
+        parts_a, parts_b = parts_b, parts_a
+    tree = shapely.STRtree(parts_b)
+    for start in range(0, len(parts_a), _WITHIN_INDEXED_BATCH):
+        hits = tree.query(parts_a[start:start + _WITHIN_INDEXED_BATCH],
+                          predicate="dwithin", distance=margin_mm)
+        if hits.shape[1]:
+            return True
+    return False
 
 
 def _block_thread_geom(block: StitchBlock):

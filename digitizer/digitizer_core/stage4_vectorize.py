@@ -854,6 +854,73 @@ def _region_footprint(r: Region, shape: tuple[int, int], cx: float, cy: float,
     return out.astype(bool)
 
 
+def _region_footprint_window(r: Region, shape: tuple[int, int], cx: float, cy: float,
+                             px_per_mm: float, pad: int = 0,
+                             ) -> tuple[int, int, np.ndarray] | None:
+    """`_region_footprint` over the polygon's own pixel box instead of the
+    frame (2026-11-11, speed only). -> (y0, x0, crop): `crop` is rows y0.. and
+    columns x0.. of the mask `_region_footprint` returns, bit for bit, and
+    every pixel that mask sets is inside it. None when the polygon lies wholly
+    off the frame (that mask is all False).
+
+    Why: a loop over regions that fills, sums and indexes a frame-sized mask
+    per region costs (regions x frame pixels), and both grow with the design.
+    The low-poly dolphin at 300 mm is 2,353 regions on a 3.6 MP frame, and
+    `revalidate_threads` and `tag_enclosed_background` spent 82 s and 44 s
+    there; a region's own box is a few thousand pixels.
+
+    `pad` widens the box by that many pixels a side, clipped to the frame, for
+    a caller that reads a neighbourhood: a 3x3 erosion needs the clear pixel
+    outside the polygon's box that the frame-sized mask had there. At a frame
+    edge the window ends where the frame did, so a border rule (`cv2.erode`'s
+    default leaves the border alone) acts on the same pixels.
+
+    A fill is drawn from differences between integer vertices, so moving
+    every vertex by the window's origin moves every filled pixel by exactly
+    that -- for a ring drawn WHOLE. A ring cut off by the canvas it is drawn
+    on does not fill as the whole ring does (met while writing this: holes
+    reaching past a window sized to the exterior alone changed the mask). So
+    the window holds every ring whole, and a polygon reaching outside the
+    frame, which the frame itself clips, is filled on the frame as before
+    and cropped (rare: polygons are traced from the frame's own pixels).
+    `tests/test_region_footprint_window.py` holds both to the frame-sized
+    mask.
+    """
+    h, w = shape
+
+    def to_px(coords) -> np.ndarray:
+        a = np.asarray(coords, dtype=np.float64)
+        px = np.empty_like(a)
+        px[:, 0] = a[:, 0] * px_per_mm + cx
+        px[:, 1] = a[:, 1] * px_per_mm + cy
+        return np.round(px).astype(np.int32)
+
+    ext = to_px(r.polygon.exterior.coords)
+    holes = [to_px(interior.coords) for interior in r.polygon.interiors]
+    # The exterior's box bounds every pixel the mask sets. The box DRAWN in
+    # is every ring's: a hole reaching past the exterior (an invalid polygon;
+    # a valid one's holes round to inside it) would be clipped at the
+    # window's side, and a clipped ring does not fill as the whole one does.
+    bx0, by0 = int(ext[:, 0].min()), int(ext[:, 1].min())
+    bx1, by1 = int(ext[:, 0].max()) + 1, int(ext[:, 1].max()) + 1
+    if bx1 <= 0 or by1 <= 0 or bx0 >= w or by0 >= h:
+        return None
+    for ring in holes:
+        bx0, by0 = min(bx0, int(ring[:, 0].min())), min(by0, int(ring[:, 1].min()))
+        bx1, by1 = max(bx1, int(ring[:, 0].max()) + 1), max(by1, int(ring[:, 1].max()) + 1)
+    wx0, wy0 = max(0, bx0 - pad), max(0, by0 - pad)
+    wx1, wy1 = min(w, bx1 + pad), min(h, by1 + pad)
+    if bx0 < 0 or by0 < 0 or bx1 > w or by1 > h:
+        full = _region_footprint(r, shape, cx, cy, px_per_mm)
+        return wy0, wx0, np.ascontiguousarray(full[wy0:wy1, wx0:wx1])
+    origin = np.array([wx0, wy0], np.int32)
+    out = np.zeros((wy1 - wy0, wx1 - wx0), np.uint8)
+    cv2.fillPoly(out, [ext - origin], 1)
+    for ring in holes:
+        cv2.fillPoly(out, [ring - origin], 0)
+    return wy0, wx0, out.astype(bool)
+
+
 def _sample_lab(lab: np.ndarray) -> np.ndarray:
     """At most `THREAD_REVALIDATE_SAMPLE_PX` of a region's Lab pixels, chosen
     deterministically. Evenly spaced over the pixel index, the same idiom
@@ -1037,8 +1104,18 @@ def revalidate_threads(regions: list[Region], p: Prep,
         # bg-coloured pixels it covers is both a no-op and a category error.
         if r.meta.get("enclosed_background"):
             continue
-        fp = _region_footprint(r, shape, cx, cy, p.px_per_mm)
+        # The footprint over the polygon's own box, not the frame (2026-11-11,
+        # speed only; `_region_footprint_window`). One clear pixel of margin
+        # under `grader_mask`, for the erosion. Everything below reads the
+        # same pixels in the same raster order as the frame-sized mask gave.
+        win = _region_footprint_window(r, shape, cx, cy, p.px_per_mm,
+                                       pad=1 if grader_mask else 0)
+        if win is None:
+            continue        # wholly off the frame: no pixel, under any floor
+        wy0, wx0, fp = win
+        wy1, wx1 = wy0 + fp.shape[0], wx0 + fp.shape[1]
         if grader_mask:
+            not_bg = ~p.bg_mask[wy0:wy1, wx0:wx1]
             # Preflight's two operations, in its order and with its fallback.
             # A bare `fillPoly` hands this function the anti-alias halo AND
             # the background either side of a thin shape, and the median of
@@ -1049,9 +1126,9 @@ def revalidate_threads(regions: list[Region], p: Prep,
             # 65 near-white, and `3971 Silver` reads 11.4 dE00 here and 63.6
             # there — a 52.2 dE00 gap on one polygon.
             eroded = cv2.erode(fp.astype(np.uint8), np.ones((3, 3), np.uint8))
-            sel = (eroded > 0) & (~p.bg_mask)
+            sel = (eroded > 0) & not_bg
             if not sel.any():
-                sel = fp & (~p.bg_mask)   # hairline shape: erosion ate it
+                sel = fp & not_bg   # hairline shape: erosion ate it
             fp = sel
         n = int(fp.sum())
         # `n` is now the pixels that will actually be SCORED, and it feeds TWO
@@ -1074,7 +1151,7 @@ def revalidate_threads(regions: list[Region], p: Prep,
         # is never worth a colour change on the machine; it is worth being
         # sewn in a colour already on it.
         small_only = allowed if n >= THREAD_REVALIDATE_MIN_PX else loaded
-        samples = _sample_lab(flat_lab[fp])
+        samples = _sample_lab(flat_lab[wy0:wy1, wx0:wx1][fp])
         # (S, K) — every sampled pixel against every spool in the chart, then
         # the median down the pixel axis: one honest error per spool.
         per_spool = np.median(
@@ -1396,29 +1473,26 @@ def tag_enclosed_background(regions: list[Region], p: Prep, *,
     n_comp, comp_labels = cv2.connectedComponents(mask.astype(np.uint8), connectivity=8)
     comp_area = np.bincount(comp_labels.ravel(), minlength=n_comp)
 
-    def _mm_ring_to_px(coords) -> np.ndarray:
-        arr = np.asarray(coords, dtype=np.float64)
-        px = np.empty_like(arr)
-        px[:, 0] = arr[:, 0] * px_per_mm + cx
-        px[:, 1] = arr[:, 1] * px_per_mm + cy
-        return np.round(px).astype(np.int32)
-
     for r in regions:
-        footprint = np.zeros((h, w), np.uint8)
-        cv2.fillPoly(footprint, [_mm_ring_to_px(r.polygon.exterior.coords)], 1)
-        for interior in r.polygon.interiors:
-            cv2.fillPoly(footprint, [_mm_ring_to_px(interior.coords)], 0)
-        region_area = int(footprint.sum())
+        # The footprint and the labels under it, over the polygon's own box
+        # (2026-11-11, speed only; `_region_footprint_window`): the same
+        # counts the frame-sized mask gave, since every pixel it set is here.
+        win = _region_footprint_window(r, (h, w), cx, cy, px_per_mm)
+        if win is None:
+            continue
+        wy0, wx0, footprint_bool = win
+        region_area = int(footprint_bool.sum())
         if region_area == 0:
             continue
 
-        footprint_bool = footprint.astype(bool)
-        touched = footprint_bool & (comp_labels > 0)
+        labels = comp_labels[wy0:wy0 + footprint_bool.shape[0],
+                             wx0:wx0 + footprint_bool.shape[1]]
+        touched = footprint_bool & (labels > 0)
         if not touched.any():
             continue
 
-        for lbl in np.unique(comp_labels[touched]):
-            inter = int(np.count_nonzero(touched & (comp_labels == lbl)))
+        for lbl in np.unique(labels[touched]):
+            inter = int(np.count_nonzero(touched & (labels == lbl)))
             region_ratio = inter / region_area
             comp_ratio = inter / int(comp_area[lbl])
             if (region_ratio >= ENCLOSED_TAG_OVERLAP_THRESHOLD

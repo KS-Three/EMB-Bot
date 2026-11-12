@@ -214,3 +214,4 @@ live index; new archive lines go at the bottom.
 - [Wave-3 flips](wave3-flips-2026-10-26.md) — bay mouth + sew_enclosed_white ON (Kent "ship both"); bare thread rose only in ProSeal's knockdown 0.20-0.25 mm band; Studio box ticked, sends false
 - [White counters open](white-counters-open-2026-10-26.md) — holes <= 1.5 holder strokes stay open
 - [White-keyline art gate](white-keyline-art-gate-2026-10-26.md) — Kent: recipe ON only on MFab-type art (2 of 22 jobs); + fold/skip/absorb (hat 40→30, LC 52→25); absorb bared counters till rider holes kept
+- [Lettering board v2](lettering-board-v2-2026-10-27.md) — baseline on 98603fb4, cc on 39/42 lines (was 16); the 10-25 MFab/Tires had rerouted: a lane has no rembg venv

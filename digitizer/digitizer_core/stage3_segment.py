@@ -667,11 +667,17 @@ def resolve_small_regions(
         reach = y1 + _STEM_GAP_DOTS * dot_h
         depth = int(math.ceil(_STEM_MIN_DOTS * dot_h))
         for j, rj in enumerate(regions):
-            if j == i or rj.area == 0:
+            if j == i:
                 continue
             jy0, jx0, jy1, jx1 = rj.bbox
             if (jy0 < y1 or jy0 > reach or jx1 <= x0 or jx0 >= x1
                     or jy1 - jy0 < _STEM_MIN_DOTS * dot_h):
+                continue
+            # After the box test, not before it (2026-11-11, speed only):
+            # `area` sums the region's crop, and asking every region that of
+            # every dot was 44 s of the dolphin's 300 mm run. Both tests only
+            # skip, so the order they run in decides nothing.
+            if rj.area == 0:
                 continue
             band = rj.crop[:depth]
             cols = np.flatnonzero(band.any(axis=0)) + jx0

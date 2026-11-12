@@ -20,6 +20,7 @@ the OLDEST lines whole to the archive.
 - [Apex walk](apex-walk-2026-10-27.md) — apex_cut's walk sews each tip from its point: tip-satin travel <= 0.05 mm, crosses kept; per-job travel > OFF on 5 jobs, foreman's call
 - [Bash heredoc Python trap](bash-heredoc-python-repl-trap-2026-11-02.md) — Windows Bash tool `python - <<'E'` lost stdin: Python 3.14 fell into _pyrepl, one core for 26 h (3.68 GB of prompts); a `||` fallback respawned it when killed. Run a script FILE
 - [Bean census](bean-census-2026-10-27.md) — reference beans almost nothing: 17 runs / 780 mm / 8 of 1,101 regions, drawn thin lines, 2 passes; ours 137 (111 small letters); `bean_only_lines` ON (Kent 10-27), kappa -0.014 -> 0.129
+- [Big-size speed](big-size-speed-2026-11-11.md) — 300 mm: hoist 320 -> 26 s (STRtree over parts), build fns 241 -> 51 s (windowed masks), md5 same; 198 mm still at the 600 s limit: fill pricing + angle search
 - [Blend shade median](blend-shade-median-2026-11-09.md) — defect 28: Fremont fixed 11-07 (stale scope line); summit 0111 = mean of a 9-sample speckled end bucket; `blend_shade_median` ON (Kent 11-09) clears it, 20 entries md5 same
 - [Band rings](border-by-size-colour-seams-2026-10-28.md) — Instagram: `border_by_size` satin rings each band, not bean; fix ON 10-28: ring fabric edges only
 - [Border colour change](border-colour-change-2026-11-11.md) — low_poly pin 2: a drawn black line re-snapped to grey, not a border; pro borders per patch; both fixes (`resnap_hairline_never_lightens`, fix B) ruled OFF by Kent 11-11
@@ -66,7 +67,6 @@ the OLDEST lines whole to the archive.
 - [Lane reading before the run](lane-reading-before-run-2026-10-28.md) — `POST /classify` replays stage 0 + 1.25 before `/digitize`; Studio reading row above Auto Digitize (owl 2.5 s, golden_tee 32 s); `np.unique` GIL freeze fixed
 - [Letter-fault reader](letter-fault-reader-2026-11-11.md) — per-colour topology (counter lost/join/bay) vs Kent's 14 merged-letter pins: 0.64 vs chance 0.24 at 3 mm, CI [+0.08,+0.57] = shown; leave-one-out loses it on 3 of 6, replicate first
 - [Lettering board](lettering-board-2026-10-25.md) — the ONE board a lettering PR quotes: ours/pro by job and drawn height, five figures, n/a with a reason; `--compare A B` is the delta; baseline docs/scoreboards/
-- [Lettering board v2](lettering-board-v2-2026-10-27.md) — baseline on 98603fb4, cc on 39/42 lines (was 16); the 10-25 MFab/Tires had rerouted: a lane has no rembg venv
 - [Lettering board v3](lettering-board-v3-2026-10-31.md) — baseline on a8758e96: <4 mm cc +0.92 (Fremont's gain = bean, not pro's satin), Becker in-letter trims 62 -> 21; Drone gap = thread contrast
 - [Lettering thread](lettering-thread-2026-11-01.md) — Drone's gap was thread: stray ON 11-02 (Kent), contrast floor OFF (Becker black), AND DRONE 0 -> +1.00, PRECISION +0.58; sewn ground exempt
 - [Line chain, one thread](line-chain-one-thread-2026-11-11.md) — fix B `line_chain_one_thread`: Kent 11-11 "Keep off, very little improvements were made, if any"; stays OFF, no flip, no retune; 4 of 21 rows move
