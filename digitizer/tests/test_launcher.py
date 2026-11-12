@@ -529,6 +529,75 @@ def test_the_window_shows_status_and_quits():
         ui.close()
 
 
+# ---- the pipe watcher and the silent start ---------------------------------------
+
+def _watcher_child(body: str) -> subprocess.Popen:
+    """A real child that starts the production pipe watcher, then runs `body`,
+    with the launcher's end of its stdin pipe held open here."""
+    code = ("import sys, time; sys.path.insert(0, sys.argv[1]); "
+            "import embbot_launcher as L; L._exit_when_launcher_goes(); time.sleep(0.3)\n" + body)
+    return subprocess.Popen([sys.executable, "-c", code, str(DIGITIZER)], stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+
+def test_the_pipe_watcher_does_not_stop_numpy_loading():
+    """The 2026-11-12 hang. With a thread parked in a read on the stdin pipe,
+    loading `libscipy_openblas64` (any `import numpy`) never returned on
+    Kent's Windows laptop: the service printed nothing, never bound its port,
+    and the launcher stopped it after 120 s. `import numpy` takes about half a
+    second with no watcher. The child prints once the import is done, and the
+    pipe stays open the whole time, as it does under the launcher."""
+    pytest.importorskip("numpy", reason="numpy not installed")
+    child = _watcher_child("import numpy; print('imported', flush=True); time.sleep(60)")
+    try:
+        got = {}
+        reader = threading.Thread(target=lambda: got.setdefault("line", child.stdout.readline()),
+                                  daemon=True)
+        reader.start()
+        reader.join(60)
+        assert got.get("line", b"").strip() == b"imported", (
+            "importing numpy with the launcher's pipe open did not finish in 60 s")
+    finally:
+        child.kill()
+        child.stdin.close()
+        child.stdout.close()
+
+
+def test_the_pipe_watcher_ends_the_child_when_the_launcher_goes():
+    child = _watcher_child("time.sleep(60)")
+    try:
+        time.sleep(0.5)
+        assert child.poll() is None, "the watcher ended the child while the pipe was still open"
+        child.stdin.close()  # what the OS does when the launcher dies, however it dies
+        assert child.wait(15) == 0
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.stdout.close()
+
+
+def test_a_service_that_is_still_silent_dumps_every_threads_stack(tmp_path):
+    """A service stuck loading a DLL printed nothing, so the log held only the
+    launcher's own two lines. Past `after` seconds with nothing listening it
+    now writes where each thread is."""
+    import io
+
+    out = io.StringIO()
+    _dump = L._dump_stacks_if_slow(free_port(), after=1.0, out=out)
+    _dump.join(10)
+    text = out.getvalue()
+    assert "not listening" in text and "Thread" in text and "most recent call first" in text
+
+
+def test_a_service_that_is_listening_in_time_dumps_nothing():
+    import io
+
+    out = io.StringIO()
+    with silent() as port:
+        L._dump_stacks_if_slow(port, after=1.0, out=out).join(10)
+    assert out.getvalue() == ""
+
+
 # ---- REAL: the service itself ---------------------------------------------------
 
 def test_real_the_launcher_starts_the_service_and_stops_it(go):
