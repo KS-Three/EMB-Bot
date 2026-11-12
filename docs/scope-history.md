@@ -20931,3 +20931,15 @@ real colour work, not a sewn design looking better (gate 4).
 ## 2026-11-06 — Defect 15 closed on the texture gate (Kent, "Close it")
 
 Census of 19 real photographs (PR #1272, `docs/photo-detection-census-2026-11-06.md`): photo class 3 detection-fired / 16 silent, other class 0 / 0; rescues 0, escapes 0, false positives 0 of 30 logos; kappa 1.000 (photo class) vs 0.187 (detection alone), chance-corrected, in-sample. Moved to MASTER_SCOPE "Closed"; the live entry as it stood is `git show b31f8a1f:MASTER_SCOPE.md`, item 15. Stage-1.25 docstrings (`config.is_photographic`, `photo_signals.py`, `app/src/lib/digitizer.js`) updated, no behaviour change.
+
+## 2026-11-12 — Corpus scorecard recaptured at `ffefc3b1` on GitHub Actions; the ruler moves from `292418a8`
+
+Run 43253187536 (`Corpus scorecard`, capture), cross-checked by `diff` run
+43253195083 on the same SHA. 28 of 52 rows moved: 5 up a band, 14 down, 9 inside
+a band; A/B/C/D/F 10/20/8/10/4 → 8/20/6/10/8; mean score 71.9 → 68.7. Every
+mover is attributed by six flag-off CI arms (the all-flags-off arm reproduces
+the 11-05 baseline on 51 of 52 rows): #1301, #1263, #1329, #1378, and #1396 for
+metrics only; one row part (`logo_golden_tee` hat_front, B 76 → C 64) is
+unattributed:
+[`docs/scorecard-baseline-attribution-2026-11-12.md`](scorecard-baseline-attribution-2026-11-12.md).
+Conformance, not quality (gate 4).

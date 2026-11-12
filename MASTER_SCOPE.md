@@ -630,16 +630,20 @@ preflight check on all five falls (#572, #573), not a stitch
 **Recaptured again 2026-10-05 at `d000e370`** after Kent made both checks
 `info` (#630): 21 rows moved, every one of them those two findings, 12 rose a
 band, no other leaf moved (scope-history 10-05). **Recaptured 2026-11-05 at
-`292418a8`** (pipeline tree `fb682ef9`) on GitHub Actions — the new on-demand
-`Corpus scorecard` workflow, `diff` or `capture` as a button — after 546
-pipeline commits: 30 of 52 rows moved, 19 rose a band, 10 fell, A/B/C/D/F
-9/18/7/6/12 → 10/20/8/10/4, mean 61.8 → 71.9. The rise is `THREAD_MATCH_POOR`
-going quiet on the gradient lane (#1200, defect 28); the falls are Fremont's
-two dE-100 blocks (F on both garments, known since 10-29), `LETTERING_TOO_SMALL`
-on the synthetic logos and `DENSITY_STACKED` on five photo rows. Every mover
-attributed, by evidence not bisection
-([notes](docs/scorecard-baseline-attribution-2026-11-05.md)).
-*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](docs/scorecard-baseline-attribution-2026-10-04.md); 2026-10-05 — scope-history; 2026-11-05 — [notes](docs/scorecard-baseline-attribution-2026-11-05.md))*
+`292418a8`** on GitHub Actions (the `Corpus scorecard` workflow, `diff` or
+`capture` as a button): 30 of 52 rows moved, A/B/C/D/F 9/18/7/6/12 →
+10/20/8/10/4, mean 61.8 → 71.9, the rise `THREAD_MATCH_POOR` going quiet on the
+gradient lane (#1200)
+([notes](docs/scorecard-baseline-attribution-2026-11-05.md)). **Recaptured
+2026-11-12 at `ffefc3b1`** (run 43253187536): 28 of 52 moved, 5 up, 14 down, 10/20/8/10/4 →
+8/20/6/10/8, **mean 71.9 → 68.7, the first fall**. Flag-off CI arms attribute
+it: #1301's flat-lane route puts `THREAD_MATCH_POOR` on bg_uncertain, bridge,
+golden_tee, screenshot and white_icon; #1263's photo under-fill gate trades
+`DENSITY_STACKED` for `STITCHES_TOO_SHORT` on two rows; #1329 lifts Fremont F →
+B on both garments; #1378 lifts summit; #1396 moved no grade. One row part
+(golden_tee hat's `LETTERING_ILLEGIBLE`) stays unattributed
+([notes](docs/scorecard-baseline-attribution-2026-11-12.md)).
+*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](docs/scorecard-baseline-attribution-2026-10-04.md); 2026-10-05 — scope-history; 2026-11-05 — [notes](docs/scorecard-baseline-attribution-2026-11-05.md); 2026-11-12 — [notes](docs/scorecard-baseline-attribution-2026-11-12.md))*
 
 **Phase 2 (framing), stage 0's scale defect: the flat/gradient half is ON since 2026-11-06 (Kent, PR #1301; "Waiting on Kent" 69). No phase advance is proposed.** `cfg.stage0_scale_relative_grad` splits flat/gradient on `tonal_frac` (the tonal share of the foreground on a fixed 512-px raster) at ≥ 0.11 instead of the pixel-absolute `gradient_smoothness`. Kappa against Kent's labels (gate 4): native 36 rasters +0.152 → **+0.942**; real flat logos off the flat lane at native **13 of 15 → 1 of 15** (MFab hat, the photo gate). It flipped with the flat lane's soft-edge cure (`flat_page_fringe_soft_ramp`, `flat_ramp_blend_dissolve`, PR #1299), the answer to the Bridge render the first flip was held on. **Lanes now:** of the entries that traced `gradient` before it only drone, summit and the two ramps still do; tires, bridge_bar, gaulke, golden_tee, fremont, screenshot and white_icon trace `flat`. **Open after the flip:** Hotel Fremont hat's unexplained −4.3 when flat (spec 2026-08-15 §3), the photo gate's own scale defect, and drone_render reading flat at ≤ 400 px. The tripwire rows that moved the wrong way are attributed per switch, and Kent re-seeded the ledger (2026-11-07). The held first flip as it stood: scope-history 2026-11-12. *(measured 2026-11-06 — PRs #1278, #1299, `docs/stage0-scale-relative-grad-2026-11-06.md`, `docs/flat-fringe-soft-ramp-2026-11-06.md`; flipped — PR #1301; measured 2026-11-07 — `docs/flip-1301-attribution-2026-11-07.md`, PRs #1316, #1333; measured 2026-11-09 — memory `blend-shade-median-2026-11-09`)*
 
