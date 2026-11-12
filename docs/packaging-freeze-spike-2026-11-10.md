@@ -182,12 +182,75 @@ URL is already its own origin.
 prefix. They do not collide today, and API routes win where they would. A
 file named `outline` in `app/public/fonts/` would be silently unreachable.
 
+## Step 4, landed 2026-11-12: the build, the stamp, the Windows job
+
+`digitizer/packaging/build_freeze.py` is the recipe above as a script, and
+`.github/workflows/windows-app.yml` runs it on `windows-latest` for a version
+tag (`v*`) or by hand. Never on a pull request, so it is not, and must not be
+made, a required check. First green run: 43148668651, commit `82d30dba`,
+Python 3.12.10, PyInstaller 6.22.3, 9 minutes end to end.
+
+| | Step 4 (Windows runner) | Spike |
+|---|---|---|
+| Folder | 440.5 MB, 816 files | 415 MB, 430 files |
+| Zip | 167.0 MB | 166.9 MB |
+| Installer (Inno Setup, LZMA2 solid) | 109.0 MB | not built |
+| Launch to first `/health` | 2.3 s | about 3.5 s |
+| Freeze | 124 s | 91 s |
+
+The folder is bigger because it now holds the Studio (57.7 MB, 53 MB of it
+the font library) and `eng.traineddata` (3.9 MB), neither of which the spike
+bundled; 29.4 MB came out (`opencv_videoio_ffmpeg500_64.dll`: the engine
+opens no video). Nothing else was pruned. ICU's 31.6 MB data DLL is a
+load-time dependency of the bundled Tesseract, and Pillow's format plugins
+stay because `photo_signals` opens every upload with Pillow to read EXIF.
+
+**What that run showed, frozen exe against the venv service on the same
+runner** (`packaging/release_smoke.py`; `PATH` cut to System32, working
+directory outside the checkout): identical design, review payload, warnings
+and export bytes for one job down each lane, in DST, PES, EXP, JEF, XXX and
+VP3. Flat `logo_whitebg.png` 6,711 stitches (the spike's own number, DST
+20,732 B and PES 42,939 B to the byte), gradient 20,774, photo `owl_kent.jpg`
+18,533, `/lettering` 864, `/digitize-manual` 2,388. JEF IS compared now, with
+its 14-byte clock field zeroed, so the sentence under "Result" about
+`freeze_check.py` not comparing it describes the spike, not today. The
+Studio's page and all 32 files it names came back from the frozen exe with
+the right content types. No browser drove that page.
+
+**The stamp.** A frozen `/health` reads `build_stamp.json` (commit, dirty,
+release) and never runs git. The case reasoned about above was RUN: the
+frozen folder was put inside a git checkout at another commit with git on
+`PATH`, and `/health` still reported the build's commit. `engine.release` is
+new: the tag, or `dev-<commit>`; null in a checkout.
+
+**The two hidden-import warnings are harmless, and the build now proves it
+each time**: a hidden import PyInstaller cannot find is looked up in the
+interpreter the tests ran on. Neither `tzdata` nor `scipy.special._cdflib`
+can be imported there (nothing pins the first; scipy 1.18 no longer has the
+second), so the freeze is missing nothing the tested engine had. One that IS
+importable there fails the build.
+
+**The installer** (`packaging/installer.iss`, per user, no admin prompt) was
+installed silently on the runner, the installed exe answered `/health` and
+served the Studio, and the uninstall left nothing. It is unsigned.
+
+**Still not shown.** A clean PC (a hosted runner has the VC++ runtime and no
+third-party antivirus): step 5 stands. The calibration routes and
+`/recount` (`/classify` was called frozen, for its class only, not
+compared). A person downloading the unsigned setup
+(SmartScreen). The `v*` tag trigger itself: the job was proved through a
+temporary branch trigger, removed before merge. And the exe is still
+`freeze_entry.py` (a console window on port 8732, no browser opened), because
+the launcher is step 3; `build_freeze.py --entry` is where it plugs in, and
+`release_smoke.py` starts the exe as `<exe> <port>`, which a launcher with
+another command line will need matched.
+
 ## Next
 
 3. Launcher: fixed port and single-instance rule above, `TESSDATA_PREFIX`,
    open the browser, a way to quit, a log file.
-4. Build script and a tag-triggered Windows CI job; version stamp for
-   `/health`; prune and measure the installer.
+4. Done 2026-11-12, section above: build script, tag-triggered Windows job,
+   version stamp, one prune, zip and installer measured.
 5. A clean-machine run of this same check.
 
 Kent's calls, not yet asked: a code-signing certificate (unsigned means a

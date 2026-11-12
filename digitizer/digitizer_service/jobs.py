@@ -37,6 +37,10 @@ QUEUED = "queued"
 RUNNING = "running"
 DONE = "done"
 ERROR = "error"
+# The customer pressed Cancel (`JobRegistry.cancel`, 2026-11-12). Not a
+# failure: a poller reads this state and nothing else -- no `error`, no
+# `detail` -- because nothing went wrong.
+CANCELLED = "cancelled"
 
 # A finished result is a few hundred KB of stitch records. Keeping the last 32
 # covers any realistic review session; unbounded would be a slow leak in a
@@ -54,8 +58,8 @@ MAX_CACHED = 32
 # shortens it with EMBBOT_JOB_TIMEOUT_S (read in `app.py`).
 JOB_TIMEOUT_S = 600.0
 
-# Jobs submitted but not finished — queued, running, and timed-out work still
-# holding the worker. Each one keeps its decoded raster (up to 2800^2 x 3
+# Jobs submitted but not finished — queued, running, and timed-out or
+# cancelled work still holding the worker. Each one keeps its decoded raster (up to 2800^2 x 3
 # bytes) and its upload alive in a closure, so an unbounded queue is an
 # unbounded heap. Past this the submit is refused with 503 instead.
 MAX_INFLIGHT = 4
@@ -88,6 +92,9 @@ class Job:
     detail: str | None = None
     started: float | None = None
     _future: Future | None = field(default=None, repr=False)
+    # Set by `JobRegistry.cancel`; the worker's `deadline.scope` reads it at
+    # every stage seam.
+    _cancel: threading.Event = field(default_factory=threading.Event, repr=False)
 
     def public(self) -> dict:
         out: dict[str, Any] = {"job_id": self.id, "state": self.state}
@@ -194,7 +201,7 @@ class JobRegistry:
         job = self._jobs.get(self._by_key.get(key, ""))
         if job is not None:
             self._expire_locked(job)
-            if job.state != ERROR:
+            if job.state not in (ERROR, CANCELLED):
                 return job
         return None
 
@@ -207,7 +214,8 @@ class JobRegistry:
 
     def submit(self, key: str, work: Callable[[], dict]) -> tuple[Job, bool]:
         """-> (job, was_cached). A cached hit is any prior job for this key that
-        has not failed; a failed one is discarded so a retry actually retries.
+        has not failed; a failed one is discarded so a retry actually retries,
+        and a cancelled one so pressing the button again actually runs.
         Raises `Busy` when the work would be new and MAX_INFLIGHT is reached."""
         with self._lock:
             job = self._cached_locked(key)
@@ -227,20 +235,28 @@ class JobRegistry:
 
         def run() -> dict:
             with self._lock:
-                job.state = RUNNING
-                job.started = time.monotonic()
+                if job.state == QUEUED:      # not cancelled while it waited
+                    job.state = RUNNING
+                    job.started = time.monotonic()
             try:
-                with deadline.scope(self.timeout_s):
+                with deadline.scope(self.timeout_s, cancel=job._cancel):
+                    # A job cancelled while still queued stops here, before
+                    # any work: the same seam mechanism, one more seam.
+                    deadline.check("the queue")
                     result = work()
             except deadline.Abandoned as exc:
-                # The pipeline noticed the deadline at a seam and stopped.
-                # A poll may already have marked the job (`_expire_locked`),
-                # in which case its words stand: the Studio reads one
-                # verdict. Either way the worker is free from here.
-                log.warning("digitize job %s %s; worker freed", job.id, exc)
+                # The pipeline noticed the deadline -- or a cancel -- at a
+                # seam and stopped. A poll may already have marked the job
+                # (`_expire_locked`), or `cancel` did, in which case those
+                # words stand: the Studio reads one verdict. Either way the
+                # worker is free from here.
+                if isinstance(exc, deadline.Cancelled):
+                    log.info("digitize job %s %s; worker freed", job.id, exc)
+                else:
+                    log.warning("digitize job %s %s; worker freed", job.id, exc)
                 with self._lock:
                     self._inflight -= 1
-                    if job.state != ERROR:
+                    if job.state not in (ERROR, CANCELLED):
                         job.state = ERROR
                         job.error = TIMED_OUT
                         job.detail = (f"TimeoutError: stopped at {exc.stage}, "
@@ -250,7 +266,7 @@ class JobRegistry:
                 log.exception("digitize job %s failed", job.id)
                 with self._lock:
                     self._inflight -= 1
-                    if job.state == ERROR:                # timed out already
+                    if job.state in (ERROR, CANCELLED):   # timed out / cancelled already
                         raise
                     job.state = ERROR
                     # `error` is the line the Studio throws at the user
@@ -265,8 +281,8 @@ class JobRegistry:
                 raise
             with self._lock:
                 self._inflight -= 1
-                if job.state == ERROR:                    # timed out: discard
-                    return result
+                if job.state in (ERROR, CANCELLED):       # timed out, or cancelled
+                    return result                         # past the last seam: discard
                 job.result = result
                 job.state = DONE
             return result
@@ -280,6 +296,34 @@ class JobRegistry:
             if job is not None:
                 self._expire_locked(job)
                 self._jobs.move_to_end(job_id)  # touch: recently-read stays warm
+            return job
+
+    def cancel(self, job_id: str) -> Job | None:
+        """The customer's Cancel: mark a QUEUED or RUNNING job `cancelled` and
+        set the flag its worker reads at the next stage seam (see
+        `digitizer_core.deadline`). -> the job, or None for an id this
+        registry does not hold.
+
+        Harmless on anything else: a finished, failed or already-cancelled
+        job is returned untouched (a finished result stays cached). The
+        verdict is immediate for a poller; the worker itself is freed at the
+        next seam, which is as soon as Python allows -- one uninterruptible
+        call at most. A resubmit of the same request starts a fresh job
+        (`_cached_locked`) queued behind that remainder.
+
+        One job per content key means two callers of one identical request
+        share it, and either one's cancel stops it for both. The service is
+        a single-customer localhost accelerator, so that is the same person.
+        """
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                return None
+            self._expire_locked(job)                      # a timeout's words stand
+            if job.state in (QUEUED, RUNNING):
+                log.info("digitize job %s cancelled while %s", job.id, job.state)
+                job.state = CANCELLED
+                job._cancel.set()
             return job
 
     def _expire_locked(self, job: Job) -> None:

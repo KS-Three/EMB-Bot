@@ -61,6 +61,27 @@ beside a worktree path, so edit docs with the Edit tool. Related:
 [[lettering-board-2026-10-25]], [[flip-proof-pins-2026-10-27]],
 [[stage0-flake-output-alignment-2026-10-25]] (why passes agree bit-for-bit).
 
+**2026-11-12, three things that changed how a red is read:**
+- **A red with no table is not a reading.** Run 43039609421 (11-11) died in
+  apt on a DNS error. Tesseract now installs from cached `.deb` files
+  (studio-e2e's approach, key = runner image build) with four apt tries on a
+  miss; what apt supplies is `eng.traineddata` for the tesserocr wheel. The
+  summary says "No reading" and names the step outcomes.
+- **A red check names its rows on one line** (`red_line`): under the counts in
+  the table and as the job's error annotation
+  (`gh api repos/KS-Three/EMB-Bot/check-runs/<job id>/annotations`). Kappas
+  print to three places there, because at tolerance 0 the table's two round a
+  failing move to "-0.00".
+- **A cloud session cannot download an artifact** (the blob-storage host is
+  refused by the network policy), so the capture job also prints the ledger
+  between `-----BEGIN/END TRIPWIRE LEDGER-----` with its sha256. Take it from
+  `gh api .../actions/jobs/<capture job id>/logs`, strip each line's timestamp
+  and one space, check the hash, commit.
+- Attribution without the artifact: `git archive <sha> digitizer "Embroidery
+  Files.zip"` into a scratch folder and `tripwire measure --only <slug>
+  --no-words` on each side of the suspect merge. A diagnostic, never a capture;
+  it reproduced the runner's Drone figures to the digit for #1219 and #1396.
+
 **Measured (first Linux capture, run 41513783169, engine 0ec42770):** three
 runner passes agreed EXACTLY on all 111 rows (18 jobs; words for 3), so every
 tolerance is 0 and "spread seen" is 0. That is a measurement, not a default:

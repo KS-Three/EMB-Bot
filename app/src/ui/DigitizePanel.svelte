@@ -126,6 +126,15 @@
   // Running past the Studio's old 5-minute limit (lib/digitizer.js
   // LONG_RUN_MS): the status line says it is still working.
   let runningLong = false;
+  // The customer's Cancel for the run in flight (lib/digitizer.js pollJob
+  // `stop`). `stopping` is the moment between the press and the service
+  // having been told; the panel goes idle right after. Not an error, and
+  // nothing about it is shown as one (no-warnings ruling 2026-10-02).
+  let stopper = null; // { stop: AbortController, id: the element running }
+  let stopping = false;
+  let runBtn;
+  let cancelBtn;
+  let refocusRun = false;
   let fileBusy = false;
   let destroyed = false;
   onDestroy(() => {
@@ -686,6 +695,8 @@
     phase = "submitting";
     runningLong = false;
     rememberRun(el.id);
+    const stop = new AbortController();
+    stopper = { stop, id: el.id };
     try {
       // A field resize is a Design width change (resizedTargetWidth): the
       // run digitizes at the dragged width, and the landing patch below
@@ -696,9 +707,11 @@
       // pre-2026-09-20 flow tick for tick, so nothing about restitch timing
       // moved for an element with no stored original.
       const image = el.sourceFile && el.sourceFile.key ? await imageToSend(el) : el.sourcePng;
+      if (stop.signal.aborted) return; // cancelled before anything was sent
       const job = await digitize(image, cfg, {
+        stop: stop.signal,
         onState: (s, info) => {
-          if (destroyed) return;
+          if (destroyed || stop.signal.aborted) return;
           phase = s === "running" ? "running" : "queued";
           runningLong = s === "running" && !!info && info.runningMs > LONG_RUN_MS;
         },
@@ -759,15 +772,39 @@
         ...resizeLanding(el, element, resizeTarget),
       });
     } catch (err) {
-      if (!destroyed) error = friendlyError(err, "digitize");
+      // A cancel is not an error: whatever the abandoned run then tripped
+      // over is not the customer's news.
+      if (!destroyed && !stop.signal.aborted) error = friendlyError(err, "digitize");
     } finally {
       // A torn-down panel leaves the mark for the next one to resume.
       if (!destroyed) {
         phase = "idle";
         runningLong = false;
+        stopper = null;
+        stopping = false;
         forgetRun(el.id);
+        // The Cancel button is gone with the run; a keyboard user who pressed
+        // it is put on the button that starts the next one, not on <body>.
+        if (refocusRun) {
+          refocusRun = false;
+          tick().then(() => runBtn && runBtn.focus());
+        }
       }
     }
+  }
+
+  // Cancel the run in flight. The panel returns to idle with the artwork,
+  // every setting and the previous result exactly as they were: nothing of
+  // the cancelled run is landed, and the service is told to stop computing it.
+  function cancelDigitize() {
+    if (!stopper || stopping) return;
+    stopping = true;
+    refocusRun = !!cancelBtn && document.activeElement === cancelBtn;
+    // Now, not when the run winds down: a panel torn down in between (a click
+    // on another element) would leave the mark, and the next panel would
+    // resume the very run the customer cancelled.
+    forgetRun(stopper.id);
+    stopper.stop.abort();
   }
 
   // A reload or an element switch killed the last panel mid-run: join the
@@ -848,6 +885,7 @@
   // canvas is the previous request.
   $: restitching = pending || stale;
   $: statusLine =
+    stopping ? "Cancelling…" :
     phase === "running" && runningLong
       ? "Still digitizing — a large or detailed design can take up to ten minutes…" :
     phase === "running" ? "Digitizing your art…" :
@@ -2074,11 +2112,31 @@
       data-stale={stale ? "true" : "false"}
       data-blocks-download={lit ? "true" : "false"}
       disabled={pending || !health}
+      bind:this={runBtn}
       on:click={() => runDigitize(element)}
     >
       {pending ? "Digitizing…" : "Auto Digitize Image"}
     </button>
-    {#if statusLine}<p class="dgp-status" role="status">{statusLine}</p>{/if}
+    <!-- The way out of a run that can take ten minutes (2026-11-12): beside
+         the sentence that says so, for as long as the run is in flight.
+         `aria-disabled`, not `disabled`, once pressed: a disabled button
+         drops keyboard focus on the floor for the moment before it goes. -->
+    {#if statusLine}
+      <div class="dgp-pending">
+        <p class="dgp-status" role="status">{statusLine}</p>
+        <button
+          type="button"
+          class="dgp-cancel"
+          data-testid="digitize-cancel"
+          aria-label="Cancel digitizing"
+          aria-disabled={stopping ? "true" : undefined}
+          bind:this={cancelBtn}
+          on:click={cancelDigitize}
+        >
+          Cancel
+        </button>
+      </div>
+    {/if}
     {#if stale && !pending && health}
       <p class="dgp-status" role="status" data-testid="digitize-stale">
         {#if resized}
@@ -3224,6 +3282,21 @@
     box-shadow: 0 0 0 4px var(--tint-border, #ccd6fb);
   }
   .dgp-status { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 6px 0 0; }
+  .dgp-pending { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .dgp-pending .dgp-status { flex: 1 1 auto; margin: 0; }
+  .dgp-cancel {
+    flex: 0 0 auto;
+    padding: 4px 12px;
+    min-height: 28px;
+    border: 1px solid var(--border, #ccc);
+    border-radius: var(--radius-s, 8px);
+    background: var(--surface, #fff);
+    color: inherit;
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+  }
+  .dgp-cancel:hover:not([aria-disabled="true"]) { border-color: var(--accent, #4f46e5); }
+  .dgp-cancel[aria-disabled="true"] { opacity: 0.6; cursor: default; }
   .dgp-error { font-size: var(--fs-xs, 12px); color: var(--danger, #b3261e); margin: 6px 0 0; }
   .dgp-fixes {
     display: flex;
