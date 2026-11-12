@@ -57,9 +57,40 @@ Whole-stage wall time is not an instrument here: base 300 mm
 with base and lane back to back, and check the untouched remainder agrees
 (it did: 90.5 vs 91.5 s). Identity is by md5, which no load moves.
 
-## Not fixed: what still blocks 198 mm
+## Built second (same day, own PR): the two that dominate 198 mm
 
-Sampling profile, 300 mm `plan_stitches`: fill order pricing 24%, fill angle
-search 11%, bury trims 10%, hoist 12% (now ~1%). At 198 mm the first two
-dominate and neither fix above touches them, so the hoop-size job still sits
-at the 600 s limit. Next exact candidates are in those two; nothing is built.
+Both in `stage6_fill.py`, md5-identical at 96 and 198 mm. 198 mm
+`plan_stitches` 539 s -> 431 s, same session, untouched build 98.4 vs 98.8 s.
+
+3. **Fill angle search** (`_cols_at_angle` -> `_scan_rows`). The search needs
+   only a column COUNT per angle, and paid one GEOS overlay per scanline for
+   it, 17 angles a shape. `_scan_rows` gets the rows from edge crossings in
+   numpy and answers None (GEOS decides, as before) whenever a comparison
+   `_columns` will make sits within 1e-7 mm of flipping: a vertex on a row, a
+   span or gap shorter than that, a span end at `_OVERLAP_EPS_MM` past one in
+   the next row. Its ends agree with GEOS's to 1e-9 mm and never reach a
+   stitch. 100.2 s -> 24.4 s over 249 searches.
+4. **Covered-bridge memo** (`_BridgeMemo`). One shape's fill order is walked
+   with the covered routing by both reorders, by seam pricing and then by
+   `emit`. A walk carries a chain digest (the shape's objects, each footprint
+   laid, each call that replaced the cached unsewn rings); the same chain
+   and the same (a, b) is the same `travel_path` answer, and a hit puts the
+   rings back too. `travel_path` 172.4 s -> 145.6 s, 2,740 hits of 12,654.
+
+Why the memo is not bigger: `emit` hits only 60% of its asks. It lays
+`split_long_moves(path)`, the pricing walk lays `path`, and where a turn was
+split the two footprints differ in bytes, so the chain parts there honestly.
+Pricing with emit's footprint would change the order chosen: not exact.
+
+A new `ContextVar` in `digitizer_core` must be listed in `shape_memo`
+(`_AMBIENT`, `_CACHES` or `_INERT`); `test_shape_memo` fails otherwise.
+
+## Still open at 198 mm
+
+After both PRs the hoop-size job plans in about 430 s on this laptop, whole
+run about 560 s on a slow day: under the 600 s limit, without room. What is
+left is spread thin: `travel_path`'s own geometry (inset rings 23 s, window
+unions 17 s), the trim bury's raster router 26 s, the seventeen rotations and
+`_columns` in the angle search 24 s. No single exact cut over 25 s remains;
+the next step change is not an exact one (fewer pricing walks, a coarser
+angle set) and is Kent's call.
