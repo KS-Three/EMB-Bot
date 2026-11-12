@@ -52,6 +52,12 @@
 //     footgun 5 — gitignored there means kept out of the repo, not disposable);
 //   - its HEAD is on an origin branch (`git branch -r --contains HEAD`), so
 //     no commit is local-only. Stale remote refs fail closed: fetch first.
+//     OR (2026-11-11, delete_branch_on_merge is on, so a merged PR's branch is
+//     gone) its HEAD EQUALS the commit of a `refs/pull/<n>/head` on origin
+//     (`git ls-remote --refs origin 'refs/pull/*/head'`, one network call):
+//     GitHub keeps that ref after the branch is deleted. Equality only, so a
+//     commit past the PR head is local-only and denied; an unreachable origin
+//     or no match fails closed.
 // The branch survives `git worktree remove`, and git itself refuses a dirty or
 // locked tree without --force. What the hook cannot see — another session
 // running in that lane — stays the session's check (~/.claude/CLAUDE.md
@@ -834,7 +840,7 @@ function laneHoldsWork(abs, state) {
   const cwdLoc = state.cwd ? locate(state.cwd) : null;
   if (cwdLoc && cwdLoc.depth >= 1 && sameLane(cwdLoc.laneRoot, abs)) return 'this command runs inside that lane';
   const git = (...args) => {
-    const r = spawnSync('git', ['-C', fsPath(abs), '--no-optional-locks', ...args], { encoding: 'utf8', timeout: 20000, windowsHide: true });
+    const r = spawnSync('git', ['-C', fsPath(abs), '--no-optional-locks', ...args], { encoding: 'utf8', timeout: 20000, windowsHide: true, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
     return r.status === 0 ? r.stdout : null;
   };
   const top = git('rev-parse', '--show-toplevel');
@@ -847,7 +853,19 @@ function laneHoldsWork(abs, state) {
   const kept = lines.find((l) => l.startsWith('!!') && KEEP_IGNORED.test(l.slice(3)));
   if (kept) return `it holds gitignored ${kept.slice(3)}, which is not disposable (CLAUDE.md footgun 5)`;
   const remote = git('branch', '-r', '--contains', 'HEAD');
-  if (remote === null || !remote.trim()) return 'its HEAD is on no origin branch, so a commit would be local-only (push it, or `git fetch` if the refs are stale)';
+  if (remote !== null && remote.trim()) return null;
+  // No origin branch holds HEAD. With delete_branch_on_merge on, a merged PR's
+  // head branch is gone from origin, but GitHub keeps `refs/pull/<n>/head` at
+  // the PR's last head commit, so a HEAD that EQUALS one is on origin. Equality
+  // only: a lane one commit past the PR head has a local-only commit and stays
+  // denied. Asks the remote (network); any failure or no match fails closed.
+  const head = git('rev-parse', 'HEAD');
+  const sha = head && head.trim();
+  if (!sha || !/^[0-9a-f]{40,64}$/.test(sha)) return 'its HEAD could not be read';
+  const pulls = git('ls-remote', '--refs', 'origin', 'refs/pull/*/head');
+  if (pulls === null) return 'its HEAD is on no origin branch, and origin could not be asked for pull-request heads (offline? run `git fetch` and retry)';
+  const hit = pulls.split('\n').some((l) => l.split(/\s+/)[0] === sha);
+  if (!hit) return 'its HEAD is on no origin branch and is not the head commit of any pull request on origin, so a commit would be local-only (push it, or `git fetch` if the refs are stale)';
   return null;
 }
 
