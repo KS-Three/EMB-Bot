@@ -245,3 +245,119 @@ def test_the_order_check_says_where_a_misplaced_line_goes():
     # the one `../../docs/` entry sorts by its filename, not its directory
     assert order_problems(ordered + "- [d](../../docs/zulu.md) — x\n") == []
     assert order_problems("- [d](../../docs/alpha.md) — x\n" + ordered)
+
+
+# --- growth guard: an overflow fails in the PR that causes it ----------------
+#
+# `main` does not require branches up to date, so two PRs that each add an index
+# line pass CI alone and cross BUDGET together after merge (main red three times
+# on 2026-11-12). A PR that GROWS the index must therefore leave GROW_HEADROOM
+# of room; a PR that does not grow it is never judged. The hard ceiling test
+# above stays as the last line of defence.
+
+import subprocess  # noqa: E402
+
+from tools.memory_budget import (GROW_HEADROOM, INDEX_REL, base_index,  # noqa: E402
+                                 growth_check, growth_problem)
+
+
+def _pad(n: int) -> str:
+    """An index body of exactly `n` characters (one ASCII line, no newline)."""
+    return "x" * n
+
+
+def test_growth_with_enough_headroom_passes():
+    base = _pad(BUDGET - GROW_HEADROOM - 1000)
+    now = _pad(BUDGET - GROW_HEADROOM)               # grew 1,000, left exactly GROW_HEADROOM
+    assert growth_problem(base, now) is None
+
+
+def test_growth_into_thin_headroom_fails_with_the_instruction():
+    base = _pad(BUDGET - GROW_HEADROOM - 200)
+    now = _pad(BUDGET - GROW_HEADROOM + 100)         # grew 300, left 100 short of the floor
+    msg = growth_problem(base, now)
+    assert msg is not None
+    assert "100 short" in msg and f"{GROW_HEADROOM:,}" in msg
+    assert "python -m tools.memory_budget --sort" in msg
+    assert "MEMORY-archive.md" in msg and "OLDEST" in msg
+
+
+def test_an_unchanged_or_shrunk_index_passes_however_thin_the_room_is():
+    """The PR that never touches the index must not fail because someone else
+    used the headroom, and one that trims a line while still thin is fine."""
+    thin = _pad(BUDGET - 5)
+    assert growth_problem(thin, thin) is None
+    assert growth_problem(thin, _pad(BUDGET - 5 - 260)) is None
+
+
+def _git(repo, *args):
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t",
+                    "-c", "commit.gpgsign=false", *args], check=True, capture_output=True)
+
+
+def _commit_index(repo, body: str, msg: str):
+    p = repo / INDEX_REL
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_bytes(body.encode("utf-8"))
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", msg)
+
+
+@pytest.fixture
+def repo(tmp_path):
+    r = tmp_path / "r"
+    r.mkdir()
+    _git(r, "init", "-q", "-b", "main")
+    _commit_index(r, _pad(BUDGET - 3000), "base")
+    return r
+
+
+def _origin_main_here(repo):
+    _git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+
+
+def test_growth_check_on_a_branch_uses_the_merge_base_with_origin_main(repo):
+    _origin_main_here(repo)
+    _git(repo, "checkout", "-q", "-b", "feat")
+    # main moves on while the branch lives; the branch's own growth is judged
+    now_ok = _pad(BUDGET - 3000 + 400)               # left 2,600 >= 2,500
+    assert growth_check(now_ok, repo)[0] == "ok"
+    status, msg = growth_check(_pad(BUDGET - 3000 + 900), repo)    # left 2,100
+    assert status == "fail" and "400 short" in msg and "merge-base with origin/main" in msg
+    # unchanged while thin: base itself is thin, a branch that did not touch it passes
+    _commit_index(repo, _pad(BUDGET - 100), "main got thin")
+    _origin_main_here(repo)
+    _git(repo, "checkout", "-q", "-b", "other")
+    assert growth_check(_pad(BUDGET - 100), repo)[0] == "ok"
+
+
+def test_growth_check_in_ci_uses_the_first_parent_of_the_pr_merge_commit(repo):
+    """CI checks out `refs/pull/N/merge` at fetch-depth 2: no origin/main ref,
+    but HEAD is a merge commit whose first parent is main's tip."""
+    _git(repo, "checkout", "-q", "-b", "pr")
+    _commit_index(repo, _pad(BUDGET - 3000 + 700), "pr adds 700")
+    _git(repo, "checkout", "-q", "main")
+    _git(repo, "merge", "-q", "--no-ff", "-m", "merge ref", "pr")
+    assert subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "-q", "refs/remotes/origin/main"]
+                          ).returncode != 0
+    now = read_stored(repo / INDEX_REL)
+    status, msg = growth_check(now, repo)
+    assert status == "fail" and "first parent of the PR merge commit" in msg   # left 2,300
+    # a PR that does not touch the index: merge result == main's tip -> not judged
+    assert growth_check(_pad(BUDGET - 3000), repo)[0] == "ok"
+
+
+def test_growth_check_skips_with_a_reason_when_there_is_no_base(repo):
+    """Depth-1 clone / push to main / no origin/main: nothing to compare with."""
+    status, why = growth_check(_pad(BUDGET - 5), repo)
+    assert status == "skip"
+    assert "no base" in why and "fetch-depth: 2" in why
+    assert base_index(repo)[0] is None
+
+
+def test_the_index_grows_only_with_headroom_in_this_checkout(text):
+    """The live check: this checkout's index against where it started from."""
+    status, msg = growth_check(text)
+    if status == "skip":
+        pytest.skip(f"growth guard not run: {msg}")
+    assert status == "ok", msg
