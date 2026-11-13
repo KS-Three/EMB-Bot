@@ -358,3 +358,57 @@ Per item and per note at 3 mm. Leave one item out. Overlap with the letter
 reader on the same pins, using its flags from its own replication run, read
 only. Precision against `precision_pick`. Flag counts on the kit's
 non-target items. The result is appended here as Part 4 in its own PR.
+
+# Part 4: replication result on `defect-marks-1112` (2026-11-13)
+
+## Verdict: no verdict
+
+Only **2 of the 9 items** carry a target pin under the registered rule, and
+Part 3 needs 5. The reader is the one frozen at `837c105d` (the digest test
+passes), and nothing was retuned. The 11-12 pins can neither support nor
+contradict Part 2's "shown". Part 2 stays a result on the pins that shaped
+the idea, with no replication.
+
+- **Marks:** `digitizer/eye_pairs_out/defect-marks-1112/marks.json` in the
+  primary checkout. Its sha256 is `12e74bff709304a6…`, the same as the letter
+  worker's preserved copy. It was read, never written. Kent pinned 60 pins
+  on 8 of the 9 items.
+- **Target pins:** `select_space_pins(marks, "C_")` gives 2 pins, 2 notes, on
+  `C_lt_bukit_asam` and `C_lt_n_sync`. These are the same two items the
+  letter reader's own hold-out scored (also no verdict). The letter worker
+  reads most of the other notes as edge, flatness, stitch-type and alignment
+  faults.
+- **Rasters:** the letter reader's `labels.npz` for those two items, taken
+  from the letter worker's run and read only (tree `ea13a362`, the kit's). Its
+  `flags.json` is identical to the one in its lane. Output went to
+  `eye_pairs_out/space_reader_1112/`. The score is in
+  `space-fault-reader-2026-11-12/score-1112.json`.
+
+## For the record (not a verdict: 2 items, 2 pins)
+
+| item | pin | Kent's note | flags / candidates | nearest flag | hit at 3 mm | `chance_pick` | letter reader |
+|---|---|---|---|---|---|---|---|
+| `C_lt_bukit_asam` | 2 | "No spacing between the rings" | 18 / 54 | 0.51 mm | yes | 0.65 | hit |
+| `C_lt_n_sync` | 1 | thread angles that "shouldn't be adjacent or touching" on an "S" | 6 / 46 | 9.0 mm | no | 0.26 | miss |
+
+Pooled at 3 mm against `chance_pick`, per note and per pin alike: hit 0.50
+vs 0.45, +0.05, CI [-0.26, +0.35]. With one item in each leave-one-out arm,
+the interval has zero width and means nothing. Precision is 0.125 vs 0.056.
+
+The overlap with the letter reader is one pin hit by both and one hit by
+neither. On these pins the two readers did not split the way they did in
+Part 2.
+
+**The S pin is a miss, and the write-up does not lean on it.** The note is
+about two stitch directions meeting on the S, not about the S's bays filling
+solid, so it is not the fault this reader looks for. The rule admits it
+because "touch" is one of its closure words (`CLOSE_WORDS`). One pin is
+below the registered floor either way.
+
+## What this leaves
+
+The kit was chosen for the letter reader and yielded two letter pins. A
+replication of either reader needs a sitting whose art is likely to draw
+closure and spacing notes: small lettering with bowls and bays (S, E, B, a,
+e), sat at a size where they fill. That is a question for the foreman. This
+page proposes nothing more.
