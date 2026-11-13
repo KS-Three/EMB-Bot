@@ -1796,6 +1796,21 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             )
         )
 
+    # Hairline outlines, marked for the review screen (Kent 2026-11-13: "can
+    # you have items like this throb/pulse and glow (ask user to keep or
+    # remove)"): the shapes `keyline_bean.keyline_regions` reads as a thin
+    # drawn outline carry `meta["hairline_outline"]`, sewn or not, so the
+    # Studio can point at them and ask. Read after every recolour above (the
+    # gate is per thread). A mark only: nothing here changes a stitch.
+    if cfg.border_from_outline_hairline_run and cfg.border_from_outline:
+        _outlines = _art_outlines(regions, cfg, source_pixels)
+        if _outlines:
+            _marked = keyline_bean.keyline_regions(regions, set(_outlines), cfg,
+                                                   sewn_only=False)
+            for r in regions:
+                if r.shape_id in _marked:
+                    r.meta["hairline_outline"] = True
+
     # Fur regions (`cfg.hair_regions_directional`, default OFF): read where
     # the pixels are. The raster rides on the result only when the gate
     # found fur, so a design with none is byte-identical with the flag on.

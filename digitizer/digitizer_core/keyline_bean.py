@@ -236,7 +236,7 @@ def keyline_bean_runs(poly, shape_id: str, *, entry: tuple[float, float] | None,
     return runs, report
 
 
-def keyline_regions(regions, outline_ids, cfg, ink=None) -> set[str]:
+def keyline_regions(regions, outline_ids, cfg, ink=None, *, sewn_only: bool = True) -> set[str]:
     """Which regions sew as a keyline bean -> shape ids.
 
     Decided per THREAD, never per ring: one design's keylines are one drawn
@@ -254,7 +254,17 @@ def keyline_regions(regions, outline_ids, cfg, ink=None) -> set[str]:
     keyline round a dot or a counter is too short a loop to be an outline
     (`machine.BORDER_MIN_LOOP_MM`), and sewn as a satin beside its
     neighbours' bean it is a blob on the line. Sewn, "auto"-tier shapes
-    only: a tier the user set is an instruction."""
+    only: a tier the user set is an instruction.
+
+    NEVER A LETTER (Kent 2026-11-13: "sewn thin, but do not include letters
+    for this"): a ring the lettering lane takes (`columns.is_lettering`: an
+    O, an A) is a letter with a counter, not an outline round something,
+    whatever its thread.
+
+    `sewn_only=False` reads a shape the customer left unsewn too: the review
+    screen's mark (`meta["hairline_outline"]`) has to survive "Remove", or
+    there is nothing left to offer "Keep" on."""
+    from .columns import is_lettering
     from .stage6_hairline import _BLOB_FACTOR, block_thread_wt, measure
 
     bw = block_thread_wt(regions, cfg)
@@ -264,7 +274,8 @@ def keyline_regions(regions, outline_ids, cfg, ink=None) -> set[str]:
 
     def ring(r) -> bool:
         poly = r.polygon
-        return (r.meta.get("stitched", True)
+        return ((r.meta.get("stitched", True) or not sewn_only)
+                and not is_lettering(r, cfg)
                 and str(r.meta.get("tier", "auto")).lower() == "auto"
                 and poly is not None and not poly.is_empty
                 and any(part.interiors for part in _parts(poly)))
@@ -305,7 +316,8 @@ def keyline_regions(regions, outline_ids, cfg, ink=None) -> set[str]:
         # Machine: black frame, black lettering, 0.23 of the thread is ring;
         # as a bean the frame went to a wire and its O and A to hollow
         # outlines). Kent's keyline logo: 0.98 to 1.00.
-        sewn = [r for r in regions if r.thread_index == thread and r.meta.get("stitched", True)
+        sewn = [r for r in regions if r.thread_index == thread
+                and (r.meta.get("stitched", True) or (not sewn_only and r.shape_id in taken))
                 and r.polygon is not None and not r.polygon.is_empty]
         ring_area = sum(r.polygon.area for r in sewn if r.shape_id in taken)
         if ring_area < machine.OUTLINE_REACH_FRAC * sum(r.polygon.area for r in sewn):

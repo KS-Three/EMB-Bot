@@ -56,7 +56,7 @@ def _plan(width_mm: float, *, outline_meta: dict | None = None, extra=(), **cfg_
     o = _region("Souter", outline, 1, 1, **(outline_meta or {}))
     regions = [b, o, *extra]
     planned = [PlannedRegion(region=r, polygon=r.polygon, sew_index=r.meta["layer"]) for r in regions]
-    cfg = PipelineConfig(underlay=False, **cfg_kw)
+    cfg = PipelineConfig(underlay=False, **{FLAG: False, **cfg_kw})   # OFF unless the test says
     outlines = _art_outlines(regions, cfg)
     if cfg.border_from_outline:
         assert outlines and "Souter" in outlines, "the fixture must read as an art outline"
@@ -82,8 +82,11 @@ def _steps(pts) -> list[float]:
 
 # --- the flag ---------------------------------------------------------------
 
-def test_built_off():
-    assert getattr(PipelineConfig(), FLAG) is False
+def test_on_by_default_since_kents_flip():
+    """2026-11-13: "sewn thin, but do not include letters for this"."""
+    from tests.conftest import PRE_FLIP
+    assert getattr(PipelineConfig(), FLAG) is True
+    assert PRE_FLIP[FLAG] is False
 
 
 def test_the_numbers_this_leans_on():
@@ -268,6 +271,28 @@ def test_a_frame_in_the_logos_own_ink_is_not_a_keyline():
     assert keyline_bean.keyline_regions(regs, {"Sframe"}, cfg) == {"Sframe"}
 
 
+def test_a_letter_is_never_a_keyline():
+    """Kent: "do not include letters for this". A ring the lettering lane
+    takes (an O with its counter) stays a letter, in the keyline's own
+    thread and thin as it."""
+    cfg = PipelineConfig()
+    o_body = box(20, -0.6, 21.2, 0.6)        # small: the thread stays nearly all keyline
+    regs = [_region("Sbody", FACE, 0, 0), _region("Skey", _ring(0.4), 1, 1),
+            _region("Sdot", o_body, 0, 0), _region("Sring", _ring(0.4, o_body), 1, 1)]
+    assert keyline_bean.keyline_regions(regs, {"Skey"}, cfg) == {"Skey", "Sring"}
+    regs[3] = _region("Sring", _ring(0.4, o_body), 1, 1, text_candidate=True)
+    assert keyline_bean.keyline_regions(regs, {"Skey"}, cfg) == {"Skey"}
+
+
+def test_the_mark_survives_remove():
+    """The review screen's mark reads an unsewn outline too (`sewn_only=False`),
+    or there is nothing left to offer "Keep" on; the sewing read does not."""
+    cfg = PipelineConfig()
+    regs = [_region("Sbody", FACE, 0, 0), _region("Skey", _ring(0.4), 1, 1, stitched=False)]
+    assert keyline_bean.keyline_regions(regs, {"Skey"}, cfg) == set()
+    assert keyline_bean.keyline_regions(regs, {"Skey"}, cfg, sewn_only=False) == {"Skey"}
+
+
 # --- through stage 7 ----------------------------------------------------------
 
 def test_off_a_hairline_keyline_sews_a_satin_loop():
@@ -351,13 +376,16 @@ def _white_runs(plan, result):
 
 def test_end_to_end_the_keyline_is_a_bean_sewn_last_with_the_fill_behind_it():
     art = _logo_png()
-    off_result, off_plan = digitize(art, PipelineConfig(target_width_mm=80.0))
+    off_result, off_plan = digitize(art, PipelineConfig(target_width_mm=80.0, **{FLAG: False}))
     _white, off_runs = _white_runs(off_plan, off_result)
     assert any(r.kind == stitches.SATIN for r in off_runs), "the fixture must show the defect"
+    assert not any(r.meta.get("hairline_outline") for r in off_result.regions)
 
-    result, plan = digitize(art, PipelineConfig(target_width_mm=80.0, **{FLAG: True}))
+    result, plan = digitize(art, PipelineConfig(target_width_mm=80.0))        # ON is the default
     white, runs = _white_runs(plan, result)
     assert white and {r.kind for r in runs} - {stitches.TRAVEL} == {stitches.RUN}
+    # the shapes taken are the shapes marked for the review screen, and no other
+    assert {r.shape_id for r in result.regions if r.meta.get("hairline_outline")} == white
     # sewn last: nothing of another shape after the first keyline stitch
     order = [r.shape_id in white for b in plan.blocks for r in b.runs if r.kind != stitches.TRAVEL]
     assert order.index(True) == len(order) - sum(order)

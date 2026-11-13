@@ -49,6 +49,7 @@
   import { digitizeBusy } from "../lib/digitizeBusy.js";
   import Icon from "./Icon.svelte";
   import { prefersReducedMotion } from "../lib/reducedMotion.js";
+  import { undecidedOutlineIds, throbAt, STILL_GLOW } from "../lib/outlinePrompt.js";
   import ShapePopover from "./ShapePopover.svelte";
 
   // Task 4 (Slice 5): the field now renders every element in the project
@@ -2874,6 +2875,7 @@
     if (!renderResult || !renderResult.toCanvas || !project) return;
     const now = performance.now();
     let stillPulsing = false;
+    let glowing = 0;    // rings drawn with the thin-outline prompt's glow (data-outline-glow)
     let selNodes = 0;   // nodes drawn on the selected shape's rings (data-reshape-nodes)
     const selNodePx = [];   // the same nodes' canvas px, in Reshape mode only (data-reshape-node-px, for e2e aiming)
 
@@ -2913,11 +2915,37 @@
       const inMode = !!reshape && reshape.elId === el.id && project.selectedId === el.id && !multiSel;
       const similarSet = applyToSimilar && popModel && popModel.similar && el.id === selectedShapeElId
         ? new Set(popModel.similar.ids) : null;
+      // The thin-outline prompt (lib/outlinePrompt.js): the hairline outlines
+      // the customer has not said Keep or Remove on glow, whatever the
+      // Outlines toggle says, until they answer in the panel.
+      const asking = el.type === "digitized" ? new Set(undecidedOutlineIds(el)) : null;
+      const throb = reduced ? STILL_GLOW : throbAt(now);
 
       ctx.save();
       ctx.lineJoin = "round";
       for (const o of outlines) {
         if (hidden.has(o.id)) continue;
+        if (asking && asking.has(o.id)) {
+          const g = o.points.map(([x, y]) => renderResult.toCanvas(x, y));
+          if (g.length >= 3) {
+            // A green halo: the one colour on this canvas that is neither a
+            // selection (amber), a hover (white), a group (blue) nor a plain
+            // outline (cyan), and it shows on red fill and on pale fabric.
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(g[0].x, g[0].y);
+            for (let i = 1; i < g.length; i++) ctx.lineTo(g[i].x, g[i].y);
+            ctx.closePath();
+            ctx.shadowColor = `rgba(60, 255, 130, ${0.55 + 0.45 * throb})`;
+            ctx.shadowBlur = 5 + 11 * throb;
+            ctx.strokeStyle = `rgba(60, 255, 130, ${0.45 + 0.5 * throb})`;
+            ctx.lineWidth = 1.6 + 2.2 * throb;
+            ctx.stroke();
+            ctx.restore();
+            glowing += 1;
+            if (!reduced) stillPulsing = true;
+          }
+        }
         // Mid-drag, the shape being edited renders from the working ring
         // rather than from the last committed review — otherwise the outline
         // would sit still until the pointer came up.
@@ -3058,6 +3086,7 @@
     if (canvas && canvas.getAttribute("data-reshape-nodes") !== String(selNodes)) canvas.setAttribute("data-reshape-nodes", String(selNodes));
     const nodePxJson = selNodePx.length ? JSON.stringify(selNodePx) : "";
     if (canvas && (canvas.getAttribute("data-reshape-node-px") || "") !== nodePxJson) canvas.setAttribute("data-reshape-node-px", nodePxJson);
+    if (canvas && canvas.getAttribute("data-outline-glow") !== String(glowing)) canvas.setAttribute("data-outline-glow", String(glowing));
     if (stillPulsing) schedulePulseFrame();
   }
 

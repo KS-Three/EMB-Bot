@@ -2090,7 +2090,15 @@ class PipelineConfig:
     # outlines (the frame is 0.23 of its thread); Commons "Ahora"'s white
     # gear lost its teeth (0.86 mm by area). Neither is taken now. Off,
     # byte-identical. Tests: `tests/test_outline_hairline_run.py`.
-    border_from_outline_hairline_run: bool = False
+    # **ON since 2026-11-13, Kent's flip**, answering "what does the first
+    # digitize show": "sewn thin, but do not include letters for this". So a
+    # ring the lettering lane takes is never one (`keyline_bean`), and the
+    # shapes taken carry `meta["hairline_outline"]` (the service's
+    # `review.shapes[].hairline_outline`), which the Studio throbs and asks
+    # Keep / Remove on (his words: "throb/pulse and glow (ask user to keep
+    # or remove)"). False is the engine as it was; `tests/conftest.py`
+    # PRE_FLIP pins it False.
+    border_from_outline_hairline_run: bool = True
     # A white FIELD that `sew_enclosed_white` sews is never a letter
     # (2026-10-25, built OFF; Kent: "Ship 3, fix white next"). Becker's five
     # white BECKER faces sit inside the word's outline and carry its text
