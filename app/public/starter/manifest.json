@@ -6,7 +6,7 @@
   "Public domain",
   "Public Domain Mark"
  ],
- "engine": "digitizer service 0.6.0 at ac3d77fa, POST /digitize {target_width_mm} then POST /export dst; baseball re-digitized 2026-11-12 at main 7ad81351 with each row's digitize_config added to the /digitize config",
+ "engine": "digitizer service 0.6.0 at ac3d77fa, POST /digitize {target_width_mm} then POST /export dst; baseball and monarch re-digitized 2026-11-12 at main 3cb7a128, each row's digitize_config being its whole /digitize config",
  "designs": [
   {
    "id": "jack-o-lantern",
@@ -189,21 +189,22 @@
    "art": "baseball.svg",
    "art_sha256": "28a3d1484ae02ebfc0f5f9a509b0b407f798c8013c5fd4b8cc8d3d3649946b9c",
    "dst": "baseball.dst",
-   "dst_sha256": "a4db7b6a70d6a2fc689eec4e65b1c225a3456ffbc40f60eff2e6e270bb7cb67c",
+   "dst_sha256": "8e86bec1adfe1d2038579801c231c1ec9680227b88a4c7ba8367d3c3868437f1",
    "digitized_from": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/92/Baseball.svg/1920px-Baseball.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
    "digitized_from_sha256": "6b7a23a8c4628e0ac90f1f9b1e75410e0214701199e29627fdadda71c3fdcfb1",
-   "width_mm": 76.1,
-   "height_mm": 74.7,
-   "stitches": 24378,
+   "width_mm": 75.5,
+   "height_mm": 74.2,
+   "stitches": 23637,
    "colors": 5,
-   "trims": 56,
+   "trims": 54,
    "preflight_grade": "B",
    "preflight_score": 76,
    "digitize_config": {
+    "target_width_mm": 75,
     "forced_class": "flat"
    },
    "redigitized": "2026-11-12",
-   "redigitized_basis": "Kent 2026-11-12, \"Baseball + monarch\" (docs/starter-pack-weak-spots-2026-11-12.md)"
+   "redigitized_basis": "Kent 2026-11-12, \"Baseball + monarch\"; target corrected 75.5 -> 75.0, the pack's own (docs/monarch-orange-drift-2026-11-12.md)"
   },
   {
    "id": "christmas-tree",
@@ -266,16 +267,22 @@
    "art": "monarch-butterflies.svg",
    "art_sha256": "af8a8a26bcb95812bd90538c307dcebb54a77c8d47fdf24b0a2dc750edda118a",
    "dst": "monarch-butterflies.dst",
-   "dst_sha256": "39165240767d3f3cc6d6b79acd5b7c5286a5d87b41b16f9f3a0584afa05b702c",
+   "dst_sha256": "55fd43c3f2e20576d2d59c7df09b15945ae7b9c9301d52159072c6af9c656bd7",
    "digitized_from": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c6/Franzi_-_Monarch.svg/1920px-Franzi_-_Monarch.svg.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
    "digitized_from_sha256": "af6d71b502b831d8b91bee6aed365b2ec2fec55f17924b7db9d8a0333f30efb1",
    "width_mm": 90.5,
    "height_mm": 85.7,
-   "stitches": 16819,
+   "stitches": 16743,
    "colors": 3,
-   "trims": 86,
+   "trims": 67,
    "preflight_grade": "B",
-   "preflight_score": 76
+   "preflight_score": 88,
+   "digitize_config": {
+    "target_width_mm": 90,
+    "borders_last": false
+   },
+   "redigitized": "2026-11-12",
+   "redigitized_basis": "Kent 2026-11-12, \"Ship monarch now\" (docs/monarch-orange-drift-2026-11-12.md)"
   },
   {
    "id": "lighthouse",

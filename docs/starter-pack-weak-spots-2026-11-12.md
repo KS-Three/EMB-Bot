@@ -24,6 +24,10 @@ drift. The re-digitize ran 0.5 mm larger than the pack did. At the pack's own wi
 stripe and takes the trims from 86 to 67. The correction went back to the foreman with options, so the monarch
 question is open again for Kent.
 
+**Third ruling (Kent, 2026-11-12): "Ship monarch now".** The monarch shipped at the pack's 90.0 mm target with
+`borders_last: false` (86 → 67 trims). The same PR re-made the #1417 baseball at the pack's 75.0 mm target, because it
+had been made at 75.5. See [`monarch-orange-drift-2026-11-12.md`](monarch-orange-drift-2026-11-12.md).
+
 ## Method
 
 - **Art.** The 1920 px Commons render each DST was made from (`digitized_from` in the manifest). The sha256 matches
@@ -148,12 +152,12 @@ judged on `trim_classes` plus a render that shows every dot.
 |---|---|---|---|
 | baseball | existing setting | `forced_class: "flat"` | **shipped 2026-11-12** (Kent's ruling) |
 | turtle | existing setting at a cost; documented cap on the automatic lane | `forced_class: "flat"`, `max_colors: 15` | not taken (Kent's ruling); shipped DST unchanged |
-| monarch | existing setting (partial) + documented remainder | `borders_last: false` | ruled to ship, then held (Kent's second ruling, "Baseball only now"); shipped DST unchanged |
+| monarch | existing setting (partial) + documented remainder | `borders_last: false` | ruled to ship, held on a false drift claim, then **shipped 2026-11-12** at 90.0 mm (third ruling): 67 trims |
 
 The manifest now records the settings a re-digitized design was made with (`digitize_config`), plus `redigitized`
 and `redigitized_basis`, so the next regeneration reproduces it.
 
-## Shipped: baseball
+## Shipped: baseball (superseded: re-made at 75.0 mm, see the correction doc)
 
 ![baseball shipped](renders/starter-weak-spots-2026-11-12/baseball-shipped.jpg)
 

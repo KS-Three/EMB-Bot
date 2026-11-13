@@ -1,6 +1,6 @@
 ---
 name: starter-weak-spots-2026-11-12
-description: Starter pack weak spots 11-12 — baseball rings = radial ramp bands (flat, SHIPPED), turtle = stage-2 RAG merge (flat+15 not taken), monarch = borders_last after black (86 -> 67 at the pack's 90.0 mm; the 11-12 "drift" hold was a width mistake)
+description: Starter pack weak spots 11-12 — baseball rings = radial ramp bands (flat, SHIPPED), turtle = stage-2 RAG merge (flat+15 not taken), monarch = borders_last after black (86 -> 67, SHIPPED at 90.0 mm; the "drift" hold was a width mistake, baseball re-made at 75.0)
 metadata:
   type: project
 ---
@@ -26,14 +26,20 @@ Full record: `docs/starter-pack-weak-spots-2026-11-12.md`, renders in
 **Why:** a session asked to "fix the starter weak spots" would otherwise
 retune the RAG threshold or the radial gate. DOCTRINE pins both.
 
-**Rulings (Kent 11-12):** "Baseball + monarch", then "Baseball only now". The
-baseball was re-digitized flat and shipped (#1417); the manifest row carries
-`digitize_config`. The turtle was not taken. The monarch was held for "main's
-drift" (a lost orange stripe). **That was false.** The re-digitize used
-target 90.5 (the manifest's DST `width_mm`), but the pack used 90.0. At 90.0,
-main writes the shipped bytes, and `borders_last: false` keeps the stripe at
-86 -> 67 trims (`docs/monarch-orange-drift-2026-11-12.md`). The baseball and
-turtle "before" runs had the same 0.5 mm slip.
+**Rulings (Kent 11-12):**
+1. "Baseball + monarch".
+2. "Baseball only now", given on a false "main drift" claim (a lost orange
+   stripe).
+3. "Ship monarch now", after the correction.
+
+The re-digitize had used target 90.5 (the manifest's DST `width_mm`), but the
+pack used 90.0. At 90.0, main writes the shipped bytes. The monarch shipped at
+90.0 with `borders_last: false`: 86 -> 67 trims, stripe kept.
+
+The flat baseball from #1417 had the same slip (made at 75.5, not 75.0). It
+was re-made at 75.0 in the same PR (`docs/monarch-orange-drift-2026-11-12.md`).
+`digitize_config` is now each row's whole /digitize config, width included.
+The turtle was not taken.
 
 **How to apply:** a stitched DST comes out about 0.6% wider than its target.
 So find the original target by matching the shipped DST's bytes past the
