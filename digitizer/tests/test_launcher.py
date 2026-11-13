@@ -171,6 +171,76 @@ def test_a_closed_port_is_free():
     assert L.probe(free_port(), 1.0) == L.FREE
 
 
+@pytest.fixture
+def slow_refusals(monkeypatch):
+    """Windows answers a connect to a closed port with a refusal after TWO
+    SECONDS (two SYN retransmissions; 2.03 s median on Kent's laptop,
+    2026-11-13), where Linux takes microseconds. This is that machine, on any
+    machine: a connect whose timeout is shorter than the delay times out, one
+    that waits long enough is refused. Nothing real is connected."""
+    delay = 2.0
+
+    def connect(self, address):
+        timeout = self.gettimeout()
+        if timeout is not None and timeout < delay:
+            time.sleep(timeout)
+            raise TimeoutError("timed out")
+        time.sleep(delay)
+        raise ConnectionRefusedError(10061, "No connection could be made because the target machine actively refused it")
+
+    monkeypatch.setattr(socket.socket, "connect", connect)
+
+
+def test_a_slow_refusal_is_still_a_free_port(slow_refusals):
+    """The 2026-11-13 bug: a 1 s probe timeout against a 2 s refusal read an
+    empty port as "something that will not answer" (FOREIGN), so five tests
+    failed on a Windows laptop and passed on every runner that refuses at
+    once. A timeout on a port the bind can take is a refusal that has not
+    arrived yet."""
+    started = time.monotonic()
+    assert L.probe(free_port(), 0.3) == L.FREE
+    assert time.monotonic() - started < 1.5, "the probe waited out the refusal"
+
+
+def test_a_slow_refusal_does_not_hide_a_port_that_is_held(slow_refusals):
+    """The same timeout on a port the bind CANNOT take is still no answer."""
+    with held_not_listening() as port:
+        assert L.probe(port, 0.3) == L.FOREIGN
+
+
+def test_a_refusal_is_free_however_long_it_took(slow_refusals):
+    """A refused connection is FREE whatever the timeout: here it arrives
+    after 2 s, inside a 5 s allowance."""
+    assert L.probe(free_port(), 5.0) == L.FREE
+
+
+def test_the_probe_asks_for_a_fast_refusal(monkeypatch):
+    asked = []
+    monkeypatch.setattr(L, "fast_refusal", lambda sock: asked.append(sock) or True)
+    assert L.probe(free_port(), 1.0) == L.FREE
+    assert len(asked) == 1
+
+
+def test_fast_refusal_never_raises():
+    with socket.socket() as s:
+        assert isinstance(L.fast_refusal(s), bool)
+    s = socket.socket()
+    s.close()  # a dead handle: the call must say False, not raise
+    assert L.fast_refusal(s) is False
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the two-second refusal is Windows' own")
+def test_real_windows_refuses_a_closed_port_at_once():
+    """The cause itself, measured not simulated: with `fast_refusal` the
+    reset comes back in milliseconds instead of after two SYN retries, and a
+    port that IS listening still answers."""
+    started = time.monotonic()
+    assert L.probe(free_port(), 5.0) == L.FREE
+    assert time.monotonic() - started < 1.0
+    with serving(OURS) as port:
+        assert L.probe(port, 1.0) == L.OURS
+
+
 @pytest.mark.parametrize("routes, state", [
     (OURS, L.OURS),
     (BARE, L.BARE),
