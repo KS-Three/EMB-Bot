@@ -260,6 +260,26 @@ def test_a_good_export_reports_it_was_verified_and_the_bytes_are_unchanged(clien
     assert r.content == formats.write(design_to_pattern(sample_design(), label="t"), fmt)
 
 
+def test_the_headers_name_the_checks_the_reader_could_not_do(client):
+    """XXX and VP3 are re-read with checks pystitch cannot give back; the header
+    names them so the Studio says "some checks skipped" instead of "verified"."""
+    assert json.loads(_post(client, "xxx").headers["X-Export-Readback"])["skipped"] == [
+        "trim_order", "color_order", "bounding_box", "stitch_positions"]
+    assert json.loads(_post(client, "vp3").headers["X-Export-Readback"])["skipped"] == ["longest_stitch"]
+    for fmt in ("dst", "pes", "exp"):
+        assert "skipped" not in json.loads(_post(client, fmt).headers["X-Export-Readback"])
+
+
+def test_a_cross_origin_studio_may_read_the_verify_headers(client):
+    """`fetch` hides every response header CORS does not expose, so without
+    Access-Control-Expose-Headers the Studio (another port) saw `unknown` for
+    every service file and could not say it was re-read."""
+    r = client.post("/export", json={"design": sample_design(), "format": "dst", "label": "t"},
+                    headers={"Origin": "http://localhost:5173"})
+    exposed = {h.strip().lower() for h in r.headers["access-control-expose-headers"].split(",")}
+    assert {"x-export-verified", "x-export-readback", "x-export-verify-reason"} <= exposed
+
+
 def test_svg_export_says_it_is_unverified_and_still_returns_the_file(client):
     r = _post(client, "svg")
     assert r.status_code == 200

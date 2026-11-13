@@ -328,3 +328,47 @@ def test_the_windows_build_is_windows_python_312_and_the_two_scripts():
     for r in runs:
         commands = [ln for ln in r.strip().splitlines() if ln.strip() and not ln.strip().startswith("#")]
         assert len(commands) == 1, r
+
+
+def test_the_shipped_exe_is_the_launcher_and_is_proved_to_keep_one_origin():
+    """Saved designs are localStorage, keyed by origin: the app a customer
+    starts must come back on the one port. Since 2026-11-13 the launcher IS the
+    frozen entry (Kent: "Swap in follow-up PR"), so the job proves the folder it
+    ships with `one_origin_smoke.py`, before anything is uploaded."""
+    assert build_freeze.parser().get_default("entry") == build_freeze.DIGITIZER / "embbot_launcher.py"
+    assert not (DIGITIZER / "packaging" / "freeze_entry.py").exists()
+    steps = _workflow()["jobs"]["windows-app"]["steps"]
+    runs = [s.get("run", "") for s in steps]
+    freezes = [i for i, r in enumerate(runs) if "packaging/build_freeze.py" in r]
+    smoke = next(i for i, r in enumerate(runs) if "packaging/one_origin_smoke.py" in r)
+    uploads = [i for i, s in enumerate(steps) if str(s.get("uses", "")).startswith("actions/upload-artifact@")
+               and s.get("if") != "always()"]
+    assert len(freezes) == 1 and "--entry" not in runs[freezes[0]], "one folder, the one that ships"
+    assert r"freeze\build_report.json" in runs[smoke] and freezes[0] < smoke
+    assert uploads and smoke < min(uploads), "a zip whose app strands saved designs must not be uploaded"
+
+
+def test_the_release_checks_start_the_shipped_exe_as_its_own_service():
+    release_smoke = _load_after_siblings("release_smoke")
+    assert release_smoke.frozen_service(Path("app.exe"), 8732) == ["app.exe", "--serve", "--port", "8732"]
+    for script in ("release_smoke", "build_installer"):
+        text = (DIGITIZER / "packaging" / f"{script}.py").read_text(encoding="utf-8")
+        assert "[str(exe), str(" not in text, f"{script} still starts the exe as `<exe> <port>`"
+
+
+def test_the_origin_smoke_names_every_check_in_its_summary():
+    smoke = _load_after_siblings("one_origin_smoke")
+    assert smoke.L.PORT == 8721
+    rec = {"port": 8721, "origin": "http://127.0.0.1:8721", "token": "t",
+           "first": {"ready_s": 2.0, "service_pids": [1], "app_ports": [8721], "commit": "abc", "port_freed_s": 0.6},
+           "write": {"channel": "msedge", "projectIds": ["p"], "origin": "http://127.0.0.1:8721"},
+           "other_origin": {"origin": "http://127.0.0.1:9", "projectIds": [], "marker": None},
+           "second": {"exit": 0, "seconds": 0.7, "service_pids": [1], "first_alive": True},
+           "restart": {"ready_s": 2.0, "commit": "abc", "service_pids": [2]},
+           "read": {"origin": "http://127.0.0.1:8721", "marker": "t", "projectIds": ["p"]},
+           "busy": {"exit": 3, "seconds": 0.9, "foreign_pid": [9], "holder_after": [9], "new_ports": [],
+                    "message": "EMB-Bot could not start"}}
+    text = smoke.summary_markdown([], rec, 30)
+    assert "**PASS**" in text and "marker found" in text and "launcher exit 3" in text
+    assert "EMB-Bot could not start" in text
+    assert "**FAIL**" in smoke.summary_markdown(["x"], rec, 30)

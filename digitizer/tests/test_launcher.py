@@ -514,6 +514,37 @@ def test_the_service_command_is_this_program_with_serve(dist):
     assert cmd[2:] == ["--serve", "--studio", str(dist), "--port", "8721"]
 
 
+def test_serve_alone_serves_the_bundled_studio_with_the_bundled_ocr(tmp_path, monkeypatch):
+    """`<exe> --serve --port N` is how the release smoke and the installer
+    check start the shipped exe: no --studio, and a scrubbed environment with
+    no TESSDATA_PREFIX. Frozen, both come from the bundle."""
+    (tmp_path / "studio").mkdir()
+    (tmp_path / "studio" / "index.html").write_text("<div id=app></div>", encoding="utf-8")
+    (tmp_path / "tessdata").mkdir()
+    monkeypatch.setattr(L.sys, "_MEIPASS", str(tmp_path), raising=False)
+    env = {"TESSDATA_PREFIX": "/somewhere/else"}
+    L.bundled_tessdata_wins(env)
+    assert env["TESSDATA_PREFIX"] == str(tmp_path / "tessdata")
+    assert L.default_studio() == tmp_path / "studio"
+    seen = {}
+    monkeypatch.setenv("TESSDATA_PREFIX", "/somewhere/else")
+    monkeypatch.delenv(L.PIPE_ENV, raising=False)
+    fake_main = type(sys)("digitizer_service.__main__")
+    fake_main.main = lambda: seen.update(argv=list(sys.argv), tess=L.os.environ["TESSDATA_PREFIX"])
+    monkeypatch.setitem(sys.modules, "digitizer_service.__main__", fake_main)
+    monkeypatch.setattr(sys, "argv", list(sys.argv))
+    L.serve(["--port", "8799"])
+    assert seen["argv"] == ["digitizer_service", "--studio", str(tmp_path / "studio"), "--port", "8799"]
+    assert seen["tess"] == str(tmp_path / "tessdata")
+
+
+def test_serve_outside_a_frozen_build_leaves_tessdata_alone(monkeypatch):
+    monkeypatch.delattr(L.sys, "_MEIPASS", raising=False)
+    env = {"TESSDATA_PREFIX": "/usr/share/tessdata"}
+    L.bundled_tessdata_wins(env)
+    assert env == {"TESSDATA_PREFIX": "/usr/share/tessdata"}
+
+
 def test_the_log_lives_in_a_per_user_directory(tmp_path):
     win = L.user_log_dir({"LOCALAPPDATA": str(tmp_path)}, "win32")
     assert win == tmp_path / "EMB-Bot" / "logs"

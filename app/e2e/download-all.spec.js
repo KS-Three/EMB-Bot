@@ -107,6 +107,8 @@ test("Download all saves one zip whose files are the ones the single buttons han
   const dstPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "DST", exact: true }).click();
   const singleDst = await savedBytes(await dstPromise);
+  // The line says the file was re-read, with the counts it read back.
+  await expect(page.getByText(/^Saved DST \(browser encoder\) - re-read and verified: [\d,]+ stitches, \d+ colour changes?$/)).toBeVisible();
 
   const all = page.getByRole("button", { name: "Download all" });
   await expect(all).toBeEnabled();
@@ -114,7 +116,9 @@ test("Download all saves one zip whose files are the ones the single buttons han
   await all.click();
   const download = await zipPromise;
   expect(download.suggestedFilename()).toBe("your-name.zip");
-  await expect(page.getByText("Saved ZIP")).toBeVisible();
+  // Real service headers (exposed to this origin by the CORS expose list): SVG is
+  // never re-read; XXX and VP3 are re-read with checks pystitch cannot give back.
+  await expect(page.getByText("Saved ZIP - 6 of 7 stitch files re-read and verified (SVG not re-read; XXX, VP3 with some checks skipped)")).toBeVisible();
 
   const files = unzipSync(await savedBytes(download));
   expect(Object.keys(files).sort()).toEqual(

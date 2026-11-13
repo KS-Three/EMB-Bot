@@ -9,7 +9,10 @@ Inno Setup 6 (`choco install innosetup`). It:
      (LZMA2, solid: the spike left this size unmeasured);
   2. INSTALLS it, silently and per user, into a directory under `<work>`;
   3. starts the INSTALLED exe (PATH cut down, as the smoke does) and requires
-     `/health` to carry the build's commit and `/` to be the Studio;
+     `/health` to carry the build's commit and `/` to be the Studio: once as
+     the bare service (`--serve`) on a port of its own, and once the way the
+     Start-menu shortcut starts it, as the launcher, which must come up on
+     http://127.0.0.1:8721/ and let go of the port when it is ended;
   4. UNINSTALLS it and requires the directory to be gone.
 
 An installer nobody has run is a guess; steps 2-4 are the difference. What
@@ -30,10 +33,36 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import freeze_check  # noqa: E402
+import one_origin_smoke  # noqa: E402
 import release_smoke  # noqa: E402
 
 ISS = Path(__file__).resolve().parent / "installer.iss"
 MB = 1024 * 1024
+
+
+def installed_launcher(exe: Path, work: Path, expect_commit: str) -> list[str]:
+    """The installed exe started as the shortcut starts it (no arguments but
+    `--console --no-browser`): it must serve the Studio on the launcher's one
+    port with the build's commit, and free that port once it is ended."""
+    L = one_origin_smoke.L
+    if L.bind_error(L.PORT) is not None:
+        return [f"port {L.PORT} was already held before the installed launcher was started"]
+    env = release_smoke.bare_env()
+    env["LOCALAPPDATA"] = str(work / "installed-localappdata")
+    launch = one_origin_smoke.Launch([str(exe)], work, env, "installed-launcher").start()
+    try:
+        up = one_origin_smoke.wait_until(lambda: L.probe(L.PORT) == L.OURS or launch.proc.poll() is not None, 150)
+        commit = ((one_origin_smoke.health(L.PORT) or {}).get("engine") or {}).get("commit")
+        if up is not True or launch.proc.poll() is not None:
+            return [f"the installed launcher did not serve the Studio on {L.PORT} "
+                    f"(exit {launch.proc.poll()}): {launch.text()[-1500:]}"]
+        if commit != expect_commit:
+            return [f"the installed launcher's /health commit is {commit!r}, the build stamped {expect_commit!r}"]
+    finally:
+        launch.kill()
+    if not one_origin_smoke.wait_until(lambda: L.bind_error(L.PORT) is None, 30):
+        return [f"port {L.PORT} still held 30 s after the installed launcher was ended"]
+    return []
 
 
 def find_iscc() -> Path | None:
@@ -100,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
         import httpx
 
         base = f"http://127.0.0.1:{args.port}"
-        with release_smoke.Service([str(exe), str(args.port)], work, release_smoke.bare_env(),
+        with release_smoke.Service(release_smoke.frozen_service(exe, args.port), work, release_smoke.bare_env(),
                                    work / "installed-service.log"):
             health, waited = freeze_check._wait_health(base, 120)
             page = httpx.get(base + "/", timeout=30)
@@ -109,6 +138,7 @@ def main(argv: list[str] | None = None) -> int:
             failures.append(f"installed /health engine.commit is {got!r}, the build stamped {stamp['commit']!r}")
         if page.status_code != 200 or '<div id="app">' not in page.text:
             failures.append(f"installed GET / is not the Studio (HTTP {page.status_code})")
+        failures += installed_launcher(exe, work, stamp["commit"])
 
     uninstaller = target / "unins000.exe"
     if uninstaller.is_file():
@@ -133,7 +163,9 @@ def main(argv: list[str] | None = None) -> int:
         "",
         f"- Installed silently, per user, to a scratch directory: {installed} files (the folder has {shipped}, "
         "plus the uninstaller's two).",
-        "- The installed exe answered `/health` with the build's commit and served the Studio at `/`."
+        "- The installed exe answered `/health` with the build's commit and served the Studio at `/`, "
+        "as the bare service on its own port and as the launcher the shortcut starts, on "
+        "`http://127.0.0.1:8721/`, which let go of the port when it was ended."
         if not failures else "- The installed exe did NOT pass; see below.",
         "- Uninstalled silently; the directory is gone." if not target.exists() else "- Uninstall left files behind.",
     ]
