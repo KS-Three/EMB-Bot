@@ -1,6 +1,6 @@
 ---
 name: starter-weak-spots-2026-11-12
-description: Starter pack weak spots 11-12 — baseball rings = radial ramp bands (flat, SHIPPED), turtle = stage-2 RAG merge (flat+15 not taken), monarch = borders_last after black (86 -> 63; held, main drift lost an orange stripe)
+description: Starter pack weak spots 11-12 — baseball rings = radial ramp bands (flat, SHIPPED), turtle = stage-2 RAG merge (flat+15 not taken), monarch = borders_last after black (86 -> 67, SHIPPED at 90.0 mm; the "drift" hold was a width mistake, baseball re-made at 75.0)
 metadata:
   type: project
 ---
@@ -26,13 +26,25 @@ Full record: `docs/starter-pack-weak-spots-2026-11-12.md`, renders in
 **Why:** a session asked to "fix the starter weak spots" would otherwise
 retune the RAG threshold or the radial gate. DOCTRINE pins both.
 
-**Ruling (Kent 11-12, "Baseball + monarch"):** the baseball was re-digitized with
-flat and shipped; the manifest row now carries `digitize_config`. The turtle was
-not taken. The monarch was held: on main its first orange stripe is lost
-(-6.8% orange against the shipped file) with the setting either way, which is
-drift since ac3d77fa, untraced.
+**Rulings (Kent 11-12):**
+1. "Baseball + monarch".
+2. "Baseball only now", given on a false "main drift" claim (a lost orange
+   stripe).
+3. "Ship monarch now", after the correction.
 
-**How to apply:** re-digitize a pack design with its `digitize_config`, then run
-`app/scripts/derive-starter-threads.mjs` (needs Chromium), and draw the new DST
-from the file before shipping it. That re-read is how the monarch drift showed. Related:
+The re-digitize had used target 90.5 (the manifest's DST `width_mm`), but the
+pack used 90.0. At 90.0, main writes the shipped bytes. The monarch shipped at
+90.0 with `borders_last: false`: 86 -> 67 trims, stripe kept.
+
+The flat baseball from #1417 had the same slip (made at 75.5, not 75.0). It
+was re-made at 75.0 in the same PR (`docs/monarch-orange-drift-2026-11-12.md`).
+`digitize_config` is now each row's whole /digitize config, width included.
+The turtle was not taken.
+
+**How to apply:** a stitched DST comes out about 0.6% wider than its target.
+So find the original target by matching the shipped DST's bytes past the
+512-byte header before any re-digitize or "drift" claim. Then re-digitize with
+`digitize_config`, run `app/scripts/derive-starter-threads.mjs` (needs
+Chromium), and draw the new DST from the file. The monarch is size-fragile:
+its stripe is lost at 90.5 even on ac3d77fa. Related:
 [[starter-pack-sourcing-2026-11-10]], [[trim-defects-4-6-2026-10-29]].

@@ -193,6 +193,13 @@ jobs:
       pull-requests: read   # the scope step lists the PR's files
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Depth 2, not the default 1: on a PR the checkout is the merge commit
+          # (refs/pull/N/merge) and its first parent is the main tip it would land
+          # on. tests/test_memory_budget.py compares MEMORY.md against that parent
+          # so a PR that grows the index must leave GROW_HEADROOM, and skips with
+          # a reason at depth 1. Two commits, not full history: no real cost.
+          fetch-depth: 2
       # SCOPE (Kent's call 2026-10-08). Every push (main) and every PR that
       # touches digitizer/ or .github/ runs the whole suite, as before. A PR
       # that touches neither cannot change what the pipeline tests exercise
