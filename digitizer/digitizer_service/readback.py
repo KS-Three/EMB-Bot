@@ -415,4 +415,9 @@ def success_headers(result: dict) -> dict[str, str]:
         return {"X-Export-Verified": "false", "X-Export-Verify-Reason": result["reason"]}
     counts = {"stitches": result["stitches"], "trims": result["trims"],
               "colors": result["colors"], "longest_mm": result["longest_mm"]}
+    # The checks this format's reader cannot give back (``_SKIPPED``), by name,
+    # so the Studio can say "re-read, N checks skipped" instead of rounding a
+    # partial read up to a full one. Omitted when there are none.
+    if result.get("skipped"):
+        counts["skipped"] = [s["check"] for s in result["skipped"]]
     return {"X-Export-Verified": "true", "X-Export-Readback": json.dumps(counts, separators=(",", ":"))}
