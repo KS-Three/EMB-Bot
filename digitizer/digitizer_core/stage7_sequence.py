@@ -68,7 +68,8 @@ from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_letteri
 from .silhouette_underfill import RIDER_HOLES_KEY, STRIPE_HOST_KEY, STRIPE_ON_KEY, UNDERFILL_KEY
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
-from .columns import (is_fine_bar, is_lettering, is_thin_stem, lettering_columns_shape,
+from .columns import (HANDBACK_COVER_MIN, is_fine_bar, is_lettering, is_thin_stem,
+                      lettering_columns_shape, satin_cover,
                       small_print_clear,
                       small_print_counter_set, small_print_counters)
 from .words import is_text, word_key
@@ -3708,6 +3709,9 @@ def sequence(
             # was kept in stage 5 because `_sews_satin` says so). "auto"
             # only; a letter the cut cannot construct falls through to the
             # ladder below, the contract every rung has.
+            # `cfg.lettering_columns_cover_handback`: True once the lane gave this
+            # shape back; the ladder below then reads it as untagged.
+            handed_back = False
             if (tier == "auto" and cfg.lettering_columns and cfg.satin
                     and is_lettering(p.region, cfg)):
                 _ax0, _ay0, _ax1, _ay1 = p.region.polygon.bounds
@@ -3782,7 +3786,13 @@ def sequence(
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
                        if cfg.lettering_columns_inside_connectors else {}))
-                if not report["empty"]:
+                # `cfg.lettering_columns_cover_handback` (built OFF): a shape the
+                # lane covers under `HANDBACK_COVER_MIN` falls through to the
+                # ladder and sews as it would untagged. Off, unread.
+                if (not report["empty"] and cfg.lettering_columns_cover_handback
+                        and satin_cover(runs, _letter) < HANDBACK_COVER_MIN):
+                    handed_back = True
+                elif not report["empty"]:
                     report["lettering_columns"] = 1
                     return runs, report, False
             # Satin or fill is decided per shape, not per design: one logo
@@ -3952,7 +3962,7 @@ def sequence(
                     join_square=cfg.satin_join_square,
                     free_end_square=cfg.satin_free_end_square,
                     junction_square=(cfg.satin_junction_square
-                                     and bool(p.region.meta.get("text_candidate"))),
+                                     and bool(p.region.meta.get("text_candidate")) and not handed_back),
                     slab_serifs=cfg.satin_slab_serifs,
                     patch_junctions=cfg.satin_patch_junctions,
                     crown_cover=cfg.satin_crown_cover,
@@ -4013,7 +4023,7 @@ def sequence(
                     and ribbon is not None and not ribbon.satin
                     and ribbon.reason == "aspect" and not rides_ramp
                     and by_size_width is None
-                    and not is_lettering(p.region, cfg)
+                    and not (is_lettering(p.region, cfg) and not handed_back)
                     and is_small_solid(p.region.polygon, profile_for(p).width_mm)):
                 runs, report = small_solid_satin(
                     p.polygon, p.shape_id, spacing_mm=satin_spacing_for(p),
@@ -4396,7 +4406,7 @@ def sequence(
             # sewing it as a run beats leaving a hole in the artwork.
             if (rescue and not runs
                     and not (cfg.bean_only_lines and tier == "auto"
-                             and not bean_rule.allows_bean(p.region.polygon, letter=is_lettering(p.region, cfg)))):
+                             and not bean_rule.allows_bean(p.region.polygon, letter=(is_lettering(p.region, cfg) and not handed_back)))):
                 # (`cfg.bean_only_lines`: a letter or a solid both tiers refused
                 # is left unsewn, as the reference file leaves it; a line still
                 # gets its outline run)
