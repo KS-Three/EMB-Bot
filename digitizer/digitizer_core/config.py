@@ -2037,6 +2037,24 @@ class PipelineConfig:
     # top; pro 8,694 / 40). False is the engine as it was, byte for byte;
     # `tests/conftest.py` PRE_FLIP pins it False.
     border_from_outline: bool = True
+    # A SHAPED band follows its own outer edge (built OFF 2026-11-13, Kent on
+    # Commons "Ahora": "now fix the Ahora gear so it sews as a gear"). The
+    # rule above sews an outline as a loop of ONE width on the body's edge.
+    # The gear is a white ring round a yellow disc with 17 teeth on its outer
+    # edge, and it sewed a ring of spokes at every size: the loop never looks
+    # at the outer edge. ON, a band that (a) fits one satin everywhere (never
+    # thicker than `machine.SATIN_MAX_WIDTH_MM`) and (b) whose thickness
+    # swings by at least `machine.SATIN_MIN_CROSS_MM` (p90 - p10: the outer
+    # edge moves by more than the shortest stitch) keeps the loop, but each
+    # cross is cut where it leaves the ART instead of the art widened: long
+    # on a tooth, short in a root (`art_outline.shaped_width_mm`). No new
+    # constant. Of the corpus's outlines only the gear is shaped: To-a-T's
+    # frame swings 0.14-0.19 mm (one width, the pro widens it), Becker's,
+    # MFab's and the Drone's bands all pass 7 mm somewhere. The gear at 40 mm
+    # swings 0.36, under a stitch, and stays a ring. Pull on a 0.6 mm tooth
+    # is a sew-out question (gate 1). Acts only with `border_from_outline`.
+    # Off, byte-identical. Tests: `tests/test_outline_follow_shape.py`.
+    border_from_outline_follow_shape: bool = False
     # The rule's false positive (2026-10-25, #1078): a hairline DRAWING is
     # not an outline. Bridge Bar's bowl-and-waves (0.8-1.0 mm black lines round
     # yellow cells of the disc they sit on) reads as one, and ON sews each

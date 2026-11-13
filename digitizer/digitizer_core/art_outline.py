@@ -48,6 +48,8 @@ along its outer edge but is a fill floor across over 0.74 of it.
 """
 from __future__ import annotations
 
+import math
+
 from shapely.geometry import LineString, Polygon
 from shapely.ops import unary_union
 
@@ -172,6 +174,170 @@ def find_art_outlines(regions, cfg=None, *,
         for b, hole in found:
             out.setdefault(o.shape_id, []).append((b.shape_id, hole))
     return out
+
+
+#: stations along a hole's ring where the band's thickness is read
+_THICKNESS_STEP_MM = 0.3
+
+
+def band_thickness(band, hole: Polygon) -> list[float]:
+    """The band's thickness square to `hole`'s ring, read every
+    `_THICKNESS_STEP_MM` along it: how far a ray from the ring runs through
+    `band` before leaving it, capped just past `machine.SATIN_MAX_WIDTH_MM`
+    (thicker than that is not one satin, whatever it is)."""
+    from .stage6_border import _exact_cross
+
+    ring = LineString(hole.exterior.coords)
+    total = ring.length
+    n = max(8, int(total / _THICKNESS_STEP_MM))
+    cap = machine.SATIN_MAX_WIDTH_MM + 1.0
+    out: list[float] = []
+    for i in range(n):
+        s = total * i / n
+        p = ring.interpolate(s)
+        a = ring.interpolate((s - 0.15) % total)
+        b = ring.interpolate((s + 0.15) % total)
+        tx, ty = b.x - a.x, b.y - a.y
+        d = (tx * tx + ty * ty) ** 0.5
+        if d < 1e-9:
+            continue
+        nx, ny = -ty / d, tx / d
+        # one side of the ring is the hole (0), the other the band
+        out.append(max(_exact_cross(p.x + nx * 1e-4, p.y + ny * 1e-4, nx, ny, cap, band),
+                       _exact_cross(p.x - nx * 1e-4, p.y - ny * 1e-4, -nx, -ny, cap, band)))
+    return out
+
+
+def shaped_width_mm(band, hole: Polygon) -> float | None:
+    """The loop width for a SHAPED band round `hole`, or None when the band
+    is not one (`cfg.border_from_outline_follow_shape`, built OFF 2026-11-13).
+
+    The rule above sews an outline as a loop of ONE width: right for a band
+    of one width (a keyline, a frame), and for one too thick to be a satin
+    (Becker's drop shadow, sewn as a loop over a fill). It is wrong for a
+    band whose OUTER edge has a shape of its own: Commons "Ahora" draws a
+    white gear round a yellow disc, 17 teeth, and the loop on the disc's edge
+    sewed a ring of spokes at every size (Kent, 2026-11-13: "its still a
+    circle and not a gear like the image").
+
+    A band is shaped when both hold, on `band_thickness`:
+
+      * all of it fits one satin: never thicker than
+        `machine.SATIN_MAX_WIDTH_MM`, so a cross from the hole's ring can
+        reach the outer edge everywhere;
+      * its thickness swings (p90 - p10) by at least
+        `machine.SATIN_MIN_CROSS_MM`: the outer edge moves by more than the
+        shortest stitch there is, so thread can show it.
+
+    Measured 2026-11-13: the gear swings 0.54 mm at 60 mm wide (0.86 to 1.40,
+    max 1.45) and 0.89 at 100 (max 2.40); at 40 mm 0.36, under a stitch, and
+    it stays a ring. To-a-T Machine's frame swings 0.14 to 0.19 (a band of
+    one width, which the pro widens). Becker's, MFab's and the Drone's bands
+    all run past 7 mm somewhere. So of the corpus only the gear is shaped.
+
+    The width returned is the band's thickest reading: the caller cuts each
+    cross where it leaves the ART (not the art widened), so a cross is as
+    long as the band is thick where it stands -- long on a tooth, short in a
+    root."""
+    t = band_thickness(band, hole)
+    if len(t) < 8:
+        return None
+    t = sorted(t)
+    if t[-1] > machine.SATIN_MAX_WIDTH_MM:
+        return None
+    p10 = t[int(0.10 * (len(t) - 1))]
+    p90 = t[int(0.90 * (len(t) - 1))]
+    if p90 - p10 < machine.SATIN_MIN_CROSS_MM:
+        return None
+    return t[-1]
+
+
+#: how finely `shaped_stations` reads the band to find where it steps
+_STEP_READ_MM = 0.025
+
+
+def shaped_stations(band, hole: Polygon, density_mm: float) -> list[tuple[float, float]] | None:
+    """Where a shaped band's loop puts its needle, round `hole`'s ring: the
+    ring cut into stretches where the band is THICK (a tooth) and THIN (a
+    root), and every stretch given the same kind of share -- a whole number
+    of stitches, evenly spaced, none of them on the step between two
+    stretches. -> ring points in ring order, or None when the band has no
+    steps to lock to.
+
+    Spaced evenly round the ring with no regard for the teeth, the gear at
+    100 mm gave some teeth three long stitches and some two, and at 60 mm one
+    or two: a gear with ragged teeth (Kent, 2026-11-13, on bean outlines:
+    "building a swiss watch, and not a playhouse out of logs"; it holds for a
+    satin edge as well). A loop's crosses alternate rails, so the outer edge
+    is drawn by every SECOND station: a stretch gets `2 x round(length /
+    density)` stations, never fewer than two, so each tooth and each root
+    shows at least one stitch of its own length and all teeth of one size
+    show the same number."""
+    ring = LineString(hole.exterior.coords)
+    total = ring.length
+    if total <= 0:
+        return None
+    from .stage6_border import _exact_cross
+
+    cap = machine.SATIN_MAX_WIDTH_MM + 1.0
+    n = max(16, int(total / _STEP_READ_MM))
+    read: list[float] = []
+    for i in range(n):
+        s = total * i / n
+        p = ring.interpolate(s)
+        a = ring.interpolate((s - 0.15) % total)
+        b = ring.interpolate((s + 0.15) % total)
+        tx, ty = b.x - a.x, b.y - a.y
+        d = (tx * tx + ty * ty) ** 0.5
+        if d < 1e-9:
+            read.append(read[-1] if read else 0.0)
+            continue
+        nx, ny = -ty / d, tx / d
+        read.append(max(_exact_cross(p.x + nx * 1e-4, p.y + ny * 1e-4, nx, ny, cap, band),
+                        _exact_cross(p.x - nx * 1e-4, p.y - ny * 1e-4, -nx, -ny, cap, band)))
+    ordered = sorted(read)
+    mid = (ordered[int(0.10 * (n - 1))] + ordered[int(0.90 * (n - 1))]) / 2.0
+    thick = [t >= mid for t in read]
+    if all(thick) or not any(thick):
+        return None
+    # stretches, starting on a step so none straddles the ring's own seam
+    first = next(i for i in range(n) if thick[i] != thick[i - 1])
+    cuts = [i for i in range(first, first + n) if thick[i % n] != thick[(i - 1) % n]]
+    # a stretch shorter than half a stitch is the reading's noise on a step:
+    # it joins the stretch before it
+    min_len = density_mm / 2.0
+    kept = [cuts[0]]
+    for c in cuts[1:]:
+        if (c - kept[-1]) * total / n < min_len:
+            kept.pop() if len(kept) > 1 else None
+            continue
+        kept.append(c)
+    if len(kept) < 2:
+        return None
+    out: list[tuple[float, float]] = []
+    # The stitches are counted on the band's OUTER edge, where a tooth shows
+    # (law 4: the outer rail holds the density). The ring is the inner rail,
+    # so the same stitches stand closer together on it: a stretch of ring
+    # `length` long under a band `t` thick spans `length x (r + t) / r` out
+    # there, `r` the ring's own radius (its length / 2 pi). Counted on the
+    # ring, the gear's teeth fanned into pairs of spokes. Never so many that
+    # two needle holes on the ring come within
+    # `machine.SATIN_SHORT_STITCH_AT_MM` of each other.
+    radius = total / (2.0 * math.pi)
+    for a, b in zip(kept, kept[1:] + [kept[0] + n]):
+        length = (b - a) * total / n
+        thick_here = sorted(read[i % n] for i in range(a, b))[(b - a) // 2]
+        outer = length * (radius + thick_here) / radius
+        most = max(1, int(length / machine.SATIN_SHORT_STITCH_AT_MM))
+        k = 2 * max(1, min(most, int(round(outer / density_mm))))
+        for j in range(k):
+            # reading `a` is the first of its stretch: the step itself lies
+            # half a reading before it (taken at `a`, every stretch sat
+            # 0.04 mm round the ring from its tooth)
+            at = a - 0.5 + (b - a) * (j + 0.5) / k
+            p = ring.interpolate((at * total / n) % total)
+            out.append((p.x, p.y))
+    return out if len(out) >= 8 else None
 
 
 def outline_width_mm(holder, bodies: list[tuple[object, Polygon]]) -> float:

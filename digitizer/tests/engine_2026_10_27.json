@@ -45,6 +45,7 @@
  "border_by_size": true,
  "border_by_size_fabric_edges": false,
  "border_from_outline": true,
+ "border_from_outline_follow_shape": false,
  "border_from_outline_hairline_run": false,
  "border_from_outline_line_art_guard": true,
  "border_significant_area_share": null,

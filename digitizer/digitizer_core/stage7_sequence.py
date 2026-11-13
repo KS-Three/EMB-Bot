@@ -91,9 +91,12 @@ from .stage6_small_letter import REPORT_KEY as SMALL_LETTER_KEY
 from .stage6_small_letter import glyph_polygon, skeleton_letter_runs, text_line_members
 from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_hairline import HairlineSet
+from .art_outline import shaped_stations, shaped_width_mm
 from .keyline_bean import body_limits as keyline_body_limits
 from .keyline_bean import held as keyline_held
 from .keyline_bean import keyline_bean_runs, keyline_regions
+from .keyline_bean import stations as keyline_stations
+from .stage6_border import _bean_loop as bean_loop
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .stage6_hairline_lines import strand_blocks
 from .stage6_hairline_lines import supplement_test as hairline_supplement_test
@@ -3652,6 +3655,20 @@ def sequence(
                     rest_art = Polygon(art.exterior,
                                        [r for r in art.interiors
                                         if Polygon(r).exterior.wkb not in ridden])
+                # `cfg.border_from_outline_follow_shape` (built OFF 2026-11-13):
+                # a band whose OUTER edge has a shape of its own (a gear round
+                # a disc) is not widened to one width. Every loop takes the
+                # band's thickest reading and each cross is cut where it
+                # leaves the ART, so it is as long as the band is thick where
+                # it stands (`art_outline.shaped_width_mm`). All of an
+                # outline's loops or none: a band shared by two bodies has one
+                # outer edge.
+                shaped_band = False
+                if rings and getattr(cfg, "border_from_outline_follow_shape", False):
+                    _shaped = [shaped_width_mm(art, h) for h, _w in rings]
+                    if all(w is not None for w in _shaped):
+                        rings = [(h, w) for (h, _w), w in zip(rings, _shaped)]
+                        shaped_band = True
                 # no hole of the outline survives on the artwork polygon (the
                 # region-level read found one): nothing to loop, fall through
                 if rings:
@@ -3671,19 +3688,45 @@ def sequence(
                         o_jumps += f_report["jumps"]
                     seam = 2.0 * cfg.simplify_tol_mm
                     o_holes = unary_union([Polygon(r) for r in art.interiors])
-                    o_reach = unary_union([art.buffer(max(w for _h, w in rings), join_style=2),
+                    # a shaped band's crosses stop at the art's own edge; any
+                    # other outline is the pro's, widened
+                    o_reach = unary_union([art if shaped_band
+                                           else art.buffer(max(w for _h, w in rings), join_style=2),
                                            p.polygon]).difference(o_holes)
                     if p.covered_by is not None:
                         o_reach = o_reach.union(p.covered_by.difference(o_holes))
+                    # a shaped band's needle is locked to its teeth
+                    loop_holes = ([(h, w, shaped_stations(art, h, machine.BORDER_DENSITY_MM))
+                                   for h, w in rings] if shaped_band else rings)
                     l_runs, l_report = keyline_runs(
                         art, p.shape_id, reach=o_reach,
                         entry=o_runs[-1].points[-1] if o_runs else entry,
                         trim_at_mm=trim_at, underlay=satin_underlay != "none",
-                        holes=rings)
+                        holes=loop_holes)
                     if not l_report["empty"]:
+                        if shaped_band:
+                            # ... and the shaped edge itself is drawn: one
+                            # bean round the band's outer ring, a needle
+                            # point on every corner of it
+                            # (`keyline_bean.stations`). A satin's stitches
+                            # end in round thread; a tooth 1 mm square is
+                            # three of them side by side, and only a line on
+                            # its edge gives it corners.
+                            e_pts = keyline_stations(list(art.exterior.coords))
+                            if len(e_pts) >= 3:
+                                e_lap = bean_loop(e_pts, l_runs[-1].points[-1],
+                                                  machine.BEAN_STITCH_MM, machine.BEAN_PASSES)
+                                hop = math.dist(l_runs[-1].points[-1], e_lap[0])
+                                l_runs.append(StitchRun(
+                                    points=stitches.split_long_moves(e_lap), kind=stitches.RUN,
+                                    jump=hop >= TINY_STITCH_MM, trim=hop > trim_at,
+                                    shape_id=p.shape_id))
+                                if hop >= TINY_STITCH_MM:
+                                    l_report["jumps"] += 1
                         return (o_runs + l_runs,
                                 {"jumps": o_jumps + l_report["jumps"], "empty": False,
-                                 "outline_loops": l_report["loops"]}, False)
+                                 "outline_loops": l_report["loops"],
+                                 **({"shaped_band": 1} if shaped_band else {})}, False)
             # ... and the body it holds is a plain fill under that loop, on
             # stage 5's polygon, grown by the pull here when stage 5 kept it
             # on its artwork for satin rails (`satin_rail_comp`).
