@@ -732,6 +732,12 @@
    "review": true
   },
   {
+   "prefix": "docs/renders/monarch-size-cliff-2026-11-13/",
+   "status": "derived-render",
+   "source": "Session-generated stitch-plan renders of the starter-pack monarch: the Commons CC0 render recorded in app/public/starter/manifest.json (digitized_from, sha256 matched)",
+   "basis": "docs/monarch-size-cliff-2026-11-13.md"
+  },
+  {
    "prefix": "docs/renders/native-ramp-2026-09-18/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
