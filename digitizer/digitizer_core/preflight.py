@@ -3138,6 +3138,54 @@ _ARTWORK_REACH_MM = 1.0
 _ARTWORK_REACHED_FLOOR = 0.90
 
 
+def _held_out_enclosed(p, result: PipelineResult, cx: float, cy: float
+                       ) -> np.ndarray:
+    """Pixels of the enclosed background the design leaves unsewn ON PURPOSE.
+
+    Stage 1's `bg_mask` is only the border flood, so an enclosed
+    background-coloured area (`p.enclosed_mask`) reads as artwork. Whether it
+    sews is decided per region in `finish_generation`: an
+    `enclosed_background` region sews only when `apply_enclosed_white`
+    marked it (a field under `sew_enclosed_white`, a counter under
+    `sew_enclosed_counters` or inside a sewn field), the garment rule took
+    it, or a review `stitched` turned it on. Its final `meta["stitched"]` is
+    that verdict, so this reads it rather than re-deriving it; a region
+    with no `stitched` yet gets `finish_generation`'s own default.
+
+    Measured 2026-11-13 before this: the bold word "OBOD" on white at
+    100 mm read 0.836 reached and BLOCKED (its counters stay open by
+    default); a filled ring on white with "Sew white areas" off read 0.599.
+    Held to `p.enclosed_mask` as well as the polygon, so a tagged region's
+    edge wobble (the tag needs only 60% overlap) cannot carry real ink out.
+    """
+    held = np.zeros(p.bg_mask.shape, np.uint8)
+    enclosed = getattr(p, "enclosed_mask", None)
+    if enclosed is None or enclosed.shape != held.shape or not enclosed.any():
+        return held.astype(bool)
+    one = np.zeros_like(held)
+
+    def to_px(coords) -> np.ndarray:
+        a = np.asarray(coords, np.float64)
+        return np.round(np.column_stack(
+            [a[:, 0] * p.px_per_mm + cx, a[:, 1] * p.px_per_mm + cy]
+        )).astype(np.int32)
+
+    for r in result.regions:
+        m = r.meta or {}
+        if not m.get("enclosed_background"):
+            continue
+        sews = m.get("stitched", bool(m.get("sew_enclosed_white"))
+                     or bool(m.get("enclosed_by_garment")))
+        if sews:
+            continue
+        one[:] = 0
+        cv2.fillPoly(one, [to_px(r.polygon.exterior.coords)], 1)
+        for ring in r.polygon.interiors:
+            cv2.fillPoly(one, [to_px(ring.coords)], 0)
+        held |= one
+    return (held > 0) & enclosed
+
+
 def _artwork_reach_findings(p, result: PipelineResult, plan: StitchPlan
                             ) -> tuple[list[dict], dict]:
     """How much of the uploaded artwork has any thread near it.
@@ -3148,7 +3196,9 @@ def _artwork_reach_findings(p, result: PipelineResult, plan: StitchPlan
     B 88. The ground truth here is NOT the pipeline's own idea of the art:
     `p` is preflight's re-run of stage 1, which a rembg cutout never touched,
     narrowed only by a cutout the pipeline accepted (`result.subject_mask`),
-    since that background was removed on purpose.
+    since that background was removed on purpose, and by the enclosed
+    background the design leaves unsewn on purpose (`_held_out_enclosed`:
+    letter counters, and every enclosed area with "Sew white areas" off).
     """
     empty = {"artwork_checked": False, "artwork_reached_frac": None,
              "artwork_mm2": None}
@@ -3156,12 +3206,13 @@ def _artwork_reach_findings(p, result: PipelineResult, plan: StitchPlan
     subject = getattr(result, "subject_mask", None)
     if subject is not None and subject.shape == art.shape:
         art = art & subject
+    x0, y0, x1, y1 = p.art_bbox
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    art = art & ~_held_out_enclosed(p, result, cx, cy)
     n_art = int(art.sum())
     if n_art == 0:
         return [], empty
 
-    x0, y0, x1, y1 = p.art_bbox
-    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     reach = np.zeros(art.shape, np.uint8)
     thick = max(1, int(round(2 * _ARTWORK_REACH_MM * p.px_per_mm)))
     for _b, run in plan.iter_runs():
