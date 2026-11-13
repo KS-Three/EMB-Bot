@@ -1,0 +1,26 @@
+{
+ "item": "C_lt_n_sync",
+ "reader": "letter_fault_reader",
+ "tree_sha": "ea13a36224711a3dbff18adac46752b860cd0e47",
+ "stored_tree_sha": "ea13a36224711a3dbff18adac46752b860cd0e47",
+ "stitches_sha256": "7f77fad2558ed2c8ef181cb03994ec18cba308c267e71b796f675a6d79c7d963",
+ "px_per_mm": 12.0,
+ "pad_mm": 2.0,
+ "img_w": 1011,
+ "img_h": 238,
+ "art_px_per_mm": 23.675,
+ "classes": [
+  [
+   0,
+   56,
+   147
+  ],
+  [
+   122,
+   172,
+   231
+  ]
+ ],
+ "by_kind": {},
+ "flags": []
+}
