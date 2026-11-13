@@ -239,11 +239,65 @@ def select_space_pins(marks: dict, prefix: str = "L_") -> list[dict]:
     return out
 
 
+# Fifth fault: like features treated differently (Kent's "inconsistent",
+# "the only letter", "should be the same"). Rules 1-4 of
+# `docs/inconsistency-fault-reader-2026-11-12.md`. Unlike the in-fill rule,
+# a thread-colour contrast between siblings counts ("#2-#3 feet are
+# differnt colors, they should be the same") and no pin is ceded to another
+# reader: overlap is reported, not removed.
+SIBLING_RE = re.compile(CONTRAST_RE.pattern + r"|\bcorrect\b.*\bbut\b")   # "the M is correct, but the F is wrong"
+NOT_SIBLING_RE = re.compile(r"\bpros?\b|\bimage\b|\bphoto\b")            # against the pro or the art, not a sibling
+
+
+def inconsistency_reason(pin: dict) -> str | None:
+    """-> which rule admits this pin as an inconsistency-of-like-features pin
+    (rule 1: a sibling contrast; rule 2: not against the pro or the art), or
+    None. Rule 3 (ranges, same-as) needs the item: `select_inconsistency_pins`."""
+    note = (pin.get("note") or "").lower()
+    if not note or NOT_SIBLING_RE.search(note):
+        return None
+    if SIBLING_RE.search(note):
+        return "sibling contrast"
+    return None
+
+
+def select_inconsistency_pins(marks: dict, prefix: str = "L_") -> list[dict]:
+    """The inconsistency pins of `marks.json`, each with `note_pin` (the pin
+    whose note admitted it), so the 27 bare kanji pins under one note count
+    as one judgement. Bare pins join a note by its range ("#1-#28") or by
+    "same as" (as the in-fill rule 5)."""
+    out = []
+    for iid, item in (marks.get("items") or {}).items():
+        if not iid.startswith(prefix):
+            continue
+        pins = item.get("pins") or []
+        why = {i + 1: inconsistency_reason(p) for i, p in enumerate(pins)}
+        donor_of = {k: k for k, w in why.items() if w}
+        for k in sorted(donor_of):
+            for j in note_ranges(pins[k - 1].get("note"), len(pins)):
+                if j not in donor_of and not pins[j - 1].get("note"):
+                    donor_of[j] = k
+        same = next((i + 1 for i, p in enumerate(pins) if SAME_AS.search((p.get("note") or "").lower())),
+                    None)
+        if same is not None and why.get(same):
+            for j, p in enumerate(pins, start=1):
+                if j not in donor_of and not p.get("note") and not p.get("what"):
+                    donor_of[j] = same
+        for j in sorted(donor_of):
+            p, k = pins[j - 1], donor_of[j]
+            out.append({"item": iid, "pin": j, "x_mm": p["x_mm"], "y_mm": p["y_mm"],
+                        "what": p.get("what"), "severity": p.get("severity"),
+                        "note": p.get("note") or "", "note_pin": k,
+                        "rule": why[j] if j == k else f"named by pin {k}"})
+    return out
+
+
 FAULTS = {
     "edge": (select_edge_pins, "docs/defect-marks-2026-11-10/edge-reader-preregistration.md"),
     "letters": (select_letter_pins, "docs/defect-marks-2026-11-10/letter-reader-preregistration.md"),
     "infill": (select_infill_pins, "docs/infill-fault-reader-2026-11-11/preregistration.md"),
     "space": (select_space_pins, "docs/space-fault-reader-2026-11-12.md"),
+    "inconsistency": (select_inconsistency_pins, "docs/inconsistency-fault-reader-2026-11-12.md"),
 }
 
 

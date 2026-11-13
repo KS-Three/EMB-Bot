@@ -1,0 +1,5440 @@
+{
+ "radius_mm": 3.0,
+ "verdict_line": {
+  "items": 7,
+  "notes": 10,
+  "hit_rate": 0.4321,
+  "chance": 0.4722,
+  "diff": -0.0401,
+  "kappa": -0.076,
+  "notes_above_null": 4,
+  "ci95": [
+   -0.4167,
+   0.4239
+  ]
+ },
+ "union": {
+  "fault": "inconsistency",
+  "radius_mm": 3.0,
+  "items": {
+   "L_becker_hat_large": {
+    "pins": 0,
+    "flags": 12,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.08012326656394453,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.05238828967642527,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.14329738058551617,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 649,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 9.83,
+      "y_mm": 23.08,
+      "kind": "cover",
+      "strength": 361.854,
+      "space": 6,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 361.854,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 85.83,
+      "y_mm": 10.5,
+      "kind": "cover",
+      "strength": 361.778,
+      "space": 5,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 361.778,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 38.75,
+      "y_mm": 20.42,
+      "kind": "cover",
+      "strength": 332.292,
+      "space": 2,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 332.292,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 54.25,
+      "y_mm": 13.42,
+      "kind": "cover",
+      "strength": 211.097,
+      "space": 3,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 211.097,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 71.08,
+      "y_mm": 8.42,
+      "kind": "cover",
+      "strength": 193.069,
+      "space": 4,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 193.069,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 12.0,
+      "y_mm": 14.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 11,
+      "group": 7,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 98.0,
+      "area_mm2": 27.19
+     },
+     {
+      "x_mm": 14.0,
+      "y_mm": 14.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 11,
+      "group": 7,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 98.0,
+      "area_mm2": 27.19
+     },
+     {
+      "x_mm": 12.0,
+      "y_mm": 16.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 11,
+      "group": 7,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 98.0,
+      "area_mm2": 27.19
+     },
+     {
+      "x_mm": 14.0,
+      "y_mm": 16.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 11,
+      "group": 7,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 98.0,
+      "area_mm2": 27.19
+     },
+     {
+      "x_mm": 12.0,
+      "y_mm": 18.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 11,
+      "group": 7,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 98.0,
+      "area_mm2": 27.19
+     }
+    ],
+    "pin_ids": []
+   },
+   "L_bridge_hat": {
+    "pins": 2,
+    "flags": 18,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": 0.0,
+      "chance_area": 0.12725,
+      "chance_edge": 0.00125,
+      "chance_cand": 0.627,
+      "chance_pick": 0.5714285714285714,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": 0.02857142857142857
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": 0.0,
+      "chance_area": 0.0805,
+      "chance_edge": 0.0,
+      "chance_cand": 0.593,
+      "chance_pick": 0.5714285714285714,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": 0.02857142857142857
+     },
+     "5.0": {
+      "hit": 1,
+      "hit_rate": 0.5,
+      "chance_area": 0.21525,
+      "chance_edge": 0.0955,
+      "chance_cand": 0.6555,
+      "chance_pick": 0.6285714285714286,
+      "flags_near_pin": 1,
+      "precision": 0.05555555555555555,
+      "precision_pick": 0.2
+     }
+    },
+    "candidates": 35,
+    "notes": {
+     "1": {
+      "pins": 1,
+      "hit": {
+       "3.0": 0,
+       "2.0": 0,
+       "5.0": 0
+      }
+     },
+     "4": {
+      "pins": 1,
+      "hit": {
+       "3.0": 0,
+       "2.0": 0,
+       "5.0": 1
+      }
+     }
+    },
+    "auc_area": 0.43675,
+    "auc_edge": 0.49925,
+    "pin_nearest_mm": [
+     14.04,
+     4.94
+    ],
+    "unpinned": [
+     {
+      "x_mm": 22.0,
+      "y_mm": 42.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 10,
+      "group": 7,
+      "odd": [
+       "colour",
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 11.25,
+      "area_mm2": 10.85
+     },
+     {
+      "x_mm": 22.0,
+      "y_mm": 44.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 10,
+      "group": 7,
+      "odd": [
+       "colour",
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 11.25,
+      "area_mm2": 10.85
+     },
+     {
+      "x_mm": 16.0,
+      "y_mm": 34.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 12,
+      "group": 7,
+      "odd": [
+       "angle"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 79.91,
+      "area_mm2": 11.06
+     },
+     {
+      "x_mm": 18.0,
+      "y_mm": 34.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 12,
+      "group": 7,
+      "odd": [
+       "angle"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 79.91,
+      "area_mm2": 11.06
+     },
+     {
+      "x_mm": 16.0,
+      "y_mm": 36.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 12,
+      "group": 7,
+      "odd": [
+       "angle"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 79.91,
+      "area_mm2": 11.06
+     },
+     {
+      "x_mm": 16.0,
+      "y_mm": 38.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 14,
+      "group": 7,
+      "odd": [
+       "angle"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 79.09,
+      "area_mm2": 8.01
+     },
+     {
+      "x_mm": 18.0,
+      "y_mm": 38.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 14,
+      "group": 7,
+      "odd": [
+       "angle"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 79.09,
+      "area_mm2": 8.01
+     },
+     {
+      "x_mm": 18.0,
+      "y_mm": 40.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 15,
+      "group": 7,
+      "odd": [
+       "angle"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 9.82,
+      "area_mm2": 11.62
+     },
+     {
+      "x_mm": 20.0,
+      "y_mm": 40.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 15,
+      "group": 7,
+      "odd": [
+       "angle"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 9.82,
+      "area_mm2": 11.62
+     },
+     {
+      "x_mm": 18.0,
+      "y_mm": 42.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 15,
+      "group": 7,
+      "odd": [
+       "angle"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 9.82,
+      "area_mm2": 11.62
+     }
+    ],
+    "pin_ids": [
+     1,
+     4
+    ]
+   },
+   "L_hotel_fremont_hat": {
+    "pins": 0,
+    "flags": 18,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.0945273631840796,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.08955223880597014,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.1044776119402985,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 201,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 50.0,
+      "y_mm": 24.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 6,
+      "group": 4,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 0,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 0.0,
+      "area_mm2": 2.11
+     },
+     {
+      "x_mm": 44.0,
+      "y_mm": 8.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 18,
+      "group": 11,
+      "odd": [
+       "kind"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": null,
+      "angle": 0.38,
+      "area_mm2": 36.88
+     },
+     {
+      "x_mm": 46.0,
+      "y_mm": 8.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 18,
+      "group": 11,
+      "odd": [
+       "kind"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": null,
+      "angle": 0.38,
+      "area_mm2": 36.88
+     },
+     {
+      "x_mm": 44.0,
+      "y_mm": 10.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 18,
+      "group": 11,
+      "odd": [
+       "kind"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": null,
+      "angle": 0.38,
+      "area_mm2": 36.88
+     },
+     {
+      "x_mm": 46.0,
+      "y_mm": 10.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 18,
+      "group": 11,
+      "odd": [
+       "kind"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": null,
+      "angle": 0.38,
+      "area_mm2": 36.88
+     },
+     {
+      "x_mm": 48.0,
+      "y_mm": 10.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 18,
+      "group": 11,
+      "odd": [
+       "kind"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": null,
+      "angle": 0.38,
+      "area_mm2": 36.88
+     },
+     {
+      "x_mm": 50.0,
+      "y_mm": 10.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 18,
+      "group": 11,
+      "odd": [
+       "kind"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": null,
+      "angle": 0.38,
+      "area_mm2": 36.88
+     },
+     {
+      "x_mm": 46.0,
+      "y_mm": 12.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 18,
+      "group": 11,
+      "odd": [
+       "kind"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": null,
+      "angle": 0.38,
+      "area_mm2": 36.88
+     },
+     {
+      "x_mm": 46.0,
+      "y_mm": 14.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 18,
+      "group": 11,
+      "odd": [
+       "kind"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": null,
+      "angle": 0.38,
+      "area_mm2": 36.88
+     },
+     {
+      "x_mm": 48.0,
+      "y_mm": 14.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 18,
+      "group": 11,
+      "odd": [
+       "kind"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": null,
+      "angle": 0.38,
+      "area_mm2": 36.88
+     }
+    ],
+    "pin_ids": []
+   },
+   "L_mfab_hat": {
+    "pins": 1,
+    "flags": 0,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": 0.0,
+      "chance_area": 0.0,
+      "chance_edge": 0.0,
+      "chance_cand": 0.0,
+      "chance_pick": 0.0,
+      "flags_near_pin": 0,
+      "precision": NaN,
+      "precision_pick": 0.0
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": 0.0,
+      "chance_area": 0.0,
+      "chance_edge": 0.0,
+      "chance_cand": 0.0,
+      "chance_pick": 0.0,
+      "flags_near_pin": 0,
+      "precision": NaN,
+      "precision_pick": 0.0
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": 0.0,
+      "chance_area": 0.0,
+      "chance_edge": 0.0,
+      "chance_cand": 0.0,
+      "chance_pick": 0.0,
+      "flags_near_pin": 0,
+      "precision": NaN,
+      "precision_pick": 0.0
+     }
+    },
+    "candidates": 139,
+    "notes": {
+     "5": {
+      "pins": 1,
+      "hit": {
+       "3.0": 0,
+       "2.0": 0,
+       "5.0": 0
+      }
+     }
+    },
+    "auc_area": 0.5,
+    "auc_edge": 0.5,
+    "pin_nearest_mm": [
+     null
+    ],
+    "unpinned": [],
+    "pin_ids": [
+     5
+    ]
+   },
+   "L_precision_drone": {
+    "pins": 0,
+    "flags": 182,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.6571428571428571,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.6285714285714286,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.7396825396825397,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 315,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 55.0,
+      "y_mm": 18.0,
+      "family": "shape",
+      "strength": 4.0,
+      "shape": 56,
+      "group": 1,
+      "odd": [
+       "colour",
+       "kind",
+       "angle",
+       "rim"
+      ],
+      "cls": 5,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 101.25,
+      "area_mm2": 2.85
+     },
+     {
+      "x_mm": 25.08,
+      "y_mm": 15.92,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 1,
+      "group": 1,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": null,
+      "area_mm2": 1.53
+     },
+     {
+      "x_mm": 12.75,
+      "y_mm": 24.83,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 8,
+      "group": 1,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 2,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 10.73,
+      "area_mm2": 1.62
+     },
+     {
+      "x_mm": 8.0,
+      "y_mm": 18.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 5,
+      "group": 3,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 166.92,
+      "area_mm2": 5.92
+     },
+     {
+      "x_mm": 37.42,
+      "y_mm": 13.17,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 27,
+      "group": 1,
+      "odd": [
+       "kind",
+       "rim"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 129.06,
+      "area_mm2": 2.24
+     },
+     {
+      "x_mm": 8.0,
+      "y_mm": 16.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 35,
+      "group": 1,
+      "odd": [
+       "kind",
+       "rim"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 107.24,
+      "area_mm2": 2.33
+     },
+     {
+      "x_mm": 12.0,
+      "y_mm": 22.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 37,
+      "group": 3,
+      "odd": [
+       "kind",
+       "angle"
+      ],
+      "cls": 4,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 34.49,
+      "area_mm2": 7.76
+     },
+     {
+      "x_mm": 12.0,
+      "y_mm": 24.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 37,
+      "group": 3,
+      "odd": [
+       "kind",
+       "angle"
+      ],
+      "cls": 4,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 34.49,
+      "area_mm2": 7.76
+     },
+     {
+      "x_mm": 34.0,
+      "y_mm": 34.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 46,
+      "group": 13,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 4,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 179.7,
+      "area_mm2": 28.73
+     },
+     {
+      "x_mm": 36.0,
+      "y_mm": 34.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 46,
+      "group": 13,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 4,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 179.7,
+      "area_mm2": 28.73
+     }
+    ],
+    "pin_ids": []
+   },
+   "L_proseal_hat": {
+    "pins": 0,
+    "flags": 50,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.2962962962962963,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.2757201646090535,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.5020576131687243,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 243,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 55.75,
+      "y_mm": 18.75,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 34,
+      "group": 17,
+      "odd": [
+       "kind",
+       "rim"
+      ],
+      "cls": 2,
+      "kind": "run",
+      "rim": "outlined",
+      "angle": null,
+      "area_mm2": 1.9
+     },
+     {
+      "x_mm": 44.0,
+      "y_mm": 24.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 5,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 62.77,
+      "area_mm2": 8.9
+     },
+     {
+      "x_mm": 46.0,
+      "y_mm": 24.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 5,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 62.77,
+      "area_mm2": 8.9
+     },
+     {
+      "x_mm": 42.0,
+      "y_mm": 26.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 9,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 66.27,
+      "area_mm2": 7.8
+     },
+     {
+      "x_mm": 42.0,
+      "y_mm": 28.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 9,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 66.27,
+      "area_mm2": 7.8
+     },
+     {
+      "x_mm": 0.0,
+      "y_mm": 58.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 10,
+      "group": 4,
+      "odd": [
+       "colour"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 83.96,
+      "area_mm2": 98.69
+     },
+     {
+      "x_mm": 2.0,
+      "y_mm": 58.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 10,
+      "group": 4,
+      "odd": [
+       "colour"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 83.96,
+      "area_mm2": 98.69
+     },
+     {
+      "x_mm": 4.0,
+      "y_mm": 58.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 10,
+      "group": 4,
+      "odd": [
+       "colour"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 83.96,
+      "area_mm2": 98.69
+     },
+     {
+      "x_mm": 6.0,
+      "y_mm": 58.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 10,
+      "group": 4,
+      "odd": [
+       "colour"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 83.96,
+      "area_mm2": 98.69
+     },
+     {
+      "x_mm": 8.0,
+      "y_mm": 58.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 10,
+      "group": 4,
+      "odd": [
+       "colour"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 83.96,
+      "area_mm2": 98.69
+     }
+    ],
+    "pin_ids": []
+   },
+   "L_tires_hat_3d": {
+    "pins": 0,
+    "flags": 0,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": 0.0,
+      "chance_pick": 0.0,
+      "flags_near_pin": 0,
+      "precision": NaN,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": 0.0,
+      "chance_pick": 0.0,
+      "flags_near_pin": 0,
+      "precision": NaN,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": 0.0,
+      "chance_pick": 0.0,
+      "flags_near_pin": 0,
+      "precision": NaN,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 2,
+    "pin_nearest_mm": [],
+    "unpinned": [],
+    "pin_ids": []
+   },
+   "L_goldentee_hat": {
+    "pins": 0,
+    "flags": 95,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.6878980891719745,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.6624203821656051,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.7579617834394905,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 157,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 8.0,
+      "y_mm": 34.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 10,
+      "group": 9,
+      "odd": [
+       "colour",
+       "rim"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 91.17,
+      "area_mm2": 12.6
+     },
+     {
+      "x_mm": 24.0,
+      "y_mm": 38.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 32,
+      "group": 9,
+      "odd": [
+       "colour",
+       "rim"
+      ],
+      "cls": 3,
+      "kind": "satin",
+      "rim": "outlined",
+      "angle": 68.13,
+      "area_mm2": 9.47
+     },
+     {
+      "x_mm": 46.0,
+      "y_mm": 36.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 30,
+      "group": 13,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 3,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 102.63,
+      "area_mm2": 10.22
+     },
+     {
+      "x_mm": 46.0,
+      "y_mm": 38.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 30,
+      "group": 13,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 3,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 102.63,
+      "area_mm2": 10.22
+     },
+     {
+      "x_mm": 46.0,
+      "y_mm": 40.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 30,
+      "group": 13,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 3,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 102.63,
+      "area_mm2": 10.22
+     },
+     {
+      "x_mm": 36.0,
+      "y_mm": 44.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 54,
+      "group": 16,
+      "odd": [
+       "kind",
+       "rim"
+      ],
+      "cls": 5,
+      "kind": "run",
+      "rim": "outlined",
+      "angle": null,
+      "area_mm2": 2.66
+     },
+     {
+      "x_mm": 1.75,
+      "y_mm": 26.67,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 3,
+      "group": 3,
+      "odd": [
+       "colour"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": null,
+      "area_mm2": 3.44
+     },
+     {
+      "x_mm": 54.0,
+      "y_mm": 20.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 20,
+      "group": 3,
+      "odd": [
+       "colour"
+      ],
+      "cls": 2,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 66.8,
+      "area_mm2": 4.74
+     },
+     {
+      "x_mm": 56.0,
+      "y_mm": 20.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 20,
+      "group": 3,
+      "odd": [
+       "colour"
+      ],
+      "cls": 2,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 66.8,
+      "area_mm2": 4.74
+     },
+     {
+      "x_mm": 44.0,
+      "y_mm": 38.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 12,
+      "group": 11,
+      "odd": [
+       "colour"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": null,
+      "area_mm2": 98.38
+     }
+    ],
+    "pin_ids": []
+   },
+   "L_toat_machine_hat": {
+    "pins": 0,
+    "flags": 2,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.017857142857142856,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.017857142857142856,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.017857142857142856,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 112,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 39.0,
+      "y_mm": 14.58,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 1,
+      "group": 1,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 0,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 134.75,
+      "area_mm2": 5.56
+     },
+     {
+      "x_mm": 6.0,
+      "y_mm": 20.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 15,
+      "group": 1,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 81.94,
+      "area_mm2": 4.95
+     }
+    ],
+    "pin_ids": []
+   },
+   "L_toat_beanie": {
+    "pins": 0,
+    "flags": 0,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": 0.0,
+      "chance_pick": 0.0,
+      "flags_near_pin": 0,
+      "precision": NaN,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": 0.0,
+      "chance_pick": 0.0,
+      "flags_near_pin": 0,
+      "precision": NaN,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": 0.0,
+      "chance_pick": 0.0,
+      "flags_near_pin": 0,
+      "precision": NaN,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 37,
+    "pin_nearest_mm": [],
+    "unpinned": [],
+    "pin_ids": []
+   },
+   "C_pixel_art_sprite": {
+    "pins": 1,
+    "flags": 1,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": 0.0,
+      "chance_area": 0.009,
+      "chance_edge": 0.0,
+      "chance_cand": 0.1485,
+      "chance_pick": 0.16666666666666666,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": 0.0
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": 0.0,
+      "chance_area": 0.0045,
+      "chance_edge": 0.0,
+      "chance_cand": 0.102,
+      "chance_pick": 0.16666666666666666,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": 0.0
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": 0.0,
+      "chance_area": 0.0295,
+      "chance_edge": 0.0,
+      "chance_cand": 0.163,
+      "chance_pick": 0.16666666666666666,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": 0.16666666666666666
+     }
+    },
+    "candidates": 6,
+    "notes": {
+     "1": {
+      "pins": 1,
+      "hit": {
+       "3.0": 0,
+       "2.0": 0,
+       "5.0": 0
+      }
+     }
+    },
+    "auc_area": 0.4955,
+    "auc_edge": 0.5,
+    "pin_nearest_mm": [
+     35.69
+    ],
+    "unpinned": [
+     {
+      "x_mm": 55.75,
+      "y_mm": 34.58,
+      "kind": "cover",
+      "strength": 13.507,
+      "space": 7,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 13.507,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     }
+    ],
+    "pin_ids": [
+     1
+    ]
+   },
+   "C_low_poly": {
+    "pins": 0,
+    "flags": 30,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.74,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.66,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.94,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 50,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 4.0,
+      "y_mm": 34.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 13,
+      "group": 13,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": null,
+      "angle": 26.98,
+      "area_mm2": 5.1
+     },
+     {
+      "x_mm": 6.0,
+      "y_mm": 34.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 13,
+      "group": 13,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": null,
+      "angle": 26.98,
+      "area_mm2": 5.1
+     },
+     {
+      "x_mm": 72.0,
+      "y_mm": 36.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 20,
+      "group": 13,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 158.68,
+      "area_mm2": 6.13
+     },
+     {
+      "x_mm": 14.75,
+      "y_mm": 21.08,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "colour"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 57.36,
+      "area_mm2": 4.33
+     },
+     {
+      "x_mm": 30.0,
+      "y_mm": 34.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 26,
+      "group": 2,
+      "odd": [
+       "colour"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 123.01,
+      "area_mm2": 4.54
+     },
+     {
+      "x_mm": 52.67,
+      "y_mm": 4.42,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 27,
+      "group": 2,
+      "odd": [
+       "colour"
+      ],
+      "cls": 5,
+      "kind": "satin",
+      "rim": null,
+      "angle": 54.48,
+      "area_mm2": 3.6
+     },
+     {
+      "x_mm": 52.0,
+      "y_mm": 10.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 29,
+      "group": 2,
+      "odd": [
+       "colour"
+      ],
+      "cls": 5,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": null,
+      "area_mm2": 6.51
+     },
+     {
+      "x_mm": 48.0,
+      "y_mm": 4.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 7,
+      "group": 7,
+      "odd": [
+       "colour"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 155.55,
+      "area_mm2": 2.82
+     },
+     {
+      "x_mm": 34.33,
+      "y_mm": 12.92,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 32,
+      "group": 7,
+      "odd": [
+       "colour"
+      ],
+      "cls": 5,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 173.28,
+      "area_mm2": 2.32
+     },
+     {
+      "x_mm": 42.0,
+      "y_mm": 20.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 17,
+      "group": 16,
+      "odd": [
+       "colour"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": null,
+      "area_mm2": 39.26
+     }
+    ],
+    "pin_ids": []
+   },
+   "C_arabic_calligraphy": {
+    "pins": 0,
+    "flags": 26,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.15953307392996108,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.1517509727626459,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.1867704280155642,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 257,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 62.0,
+      "y_mm": 0.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 1,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 133.0,
+      "area_mm2": 20.45
+     },
+     {
+      "x_mm": 64.0,
+      "y_mm": 2.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 1,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 133.0,
+      "area_mm2": 20.45
+     },
+     {
+      "x_mm": 66.0,
+      "y_mm": 2.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 1,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 133.0,
+      "area_mm2": 20.45
+     },
+     {
+      "x_mm": 66.0,
+      "y_mm": 6.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 1,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 133.0,
+      "area_mm2": 20.45
+     },
+     {
+      "x_mm": 14.0,
+      "y_mm": 2.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 40.57,
+      "area_mm2": 20.23
+     },
+     {
+      "x_mm": 16.0,
+      "y_mm": 2.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 40.57,
+      "area_mm2": 20.23
+     },
+     {
+      "x_mm": 14.0,
+      "y_mm": 6.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 40.57,
+      "area_mm2": 20.23
+     },
+     {
+      "x_mm": 10.0,
+      "y_mm": 6.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 3,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 30.62,
+      "area_mm2": 15.24
+     },
+     {
+      "x_mm": 10.0,
+      "y_mm": 8.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 3,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 30.62,
+      "area_mm2": 15.24
+     },
+     {
+      "x_mm": 12.0,
+      "y_mm": 8.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 3,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 30.62,
+      "area_mm2": 15.24
+     }
+    ],
+    "pin_ids": []
+   },
+   "C_barcode": {
+    "pins": 0,
+    "flags": 19,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.5581395348837209,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.45348837209302323,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.6976744186046512,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 86,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 14.0,
+      "y_mm": 8.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 41,
+      "group": 0,
+      "odd": [
+       "colour"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 81.57,
+      "area_mm2": 12.4
+     },
+     {
+      "x_mm": 14.0,
+      "y_mm": 10.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 41,
+      "group": 0,
+      "odd": [
+       "colour"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 81.57,
+      "area_mm2": 12.4
+     },
+     {
+      "x_mm": 16.0,
+      "y_mm": 10.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 41,
+      "group": 0,
+      "odd": [
+       "colour"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 81.57,
+      "area_mm2": 12.4
+     },
+     {
+      "x_mm": 28.0,
+      "y_mm": 8.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 17,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 97.55,
+      "area_mm2": 1.44
+     },
+     {
+      "x_mm": 33.17,
+      "y_mm": 8.17,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 18,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 97.55,
+      "area_mm2": 1.44
+     },
+     {
+      "x_mm": 2.17,
+      "y_mm": 9.33,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 19,
+      "group": 1,
+      "odd": [
+       "kind"
+      ],
+      "cls": 0,
+      "kind": "run",
+      "rim": null,
+      "angle": null,
+      "area_mm2": 0.76
+     },
+     {
+      "x_mm": 28.0,
+      "y_mm": 10.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 20,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 96.81,
+      "area_mm2": 1.64
+     },
+     {
+      "x_mm": 33.17,
+      "y_mm": 9.92,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 21,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 96.81,
+      "area_mm2": 1.64
+     },
+     {
+      "x_mm": 26.0,
+      "y_mm": 12.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 22,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 94.36,
+      "area_mm2": 1.54
+     },
+     {
+      "x_mm": 28.0,
+      "y_mm": 12.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 23,
+      "group": 1,
+      "odd": [
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 97.55,
+      "area_mm2": 1.54
+     }
+    ],
+    "pin_ids": []
+   },
+   "C_heraldic_crest": {
+    "pins": 0,
+    "flags": 292,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.7336448598130841,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.7149532710280374,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.7710280373831776,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 428,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 13.83,
+      "y_mm": 80.58,
+      "kind": "cover",
+      "strength": 7.646,
+      "space": 48,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 7.646,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.007,
+      "family": "space"
+     },
+     {
+      "x_mm": 33.83,
+      "y_mm": 52.58,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 53,
+      "group": 1,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 4,
+      "kind": "run",
+      "rim": "outlined",
+      "angle": null,
+      "area_mm2": 1.26
+     },
+     {
+      "x_mm": 45.5,
+      "y_mm": 61.5,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 56,
+      "group": 1,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 4,
+      "kind": "run",
+      "rim": "outlined",
+      "angle": null,
+      "area_mm2": 1.38
+     },
+     {
+      "x_mm": 38.0,
+      "y_mm": 62.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 57,
+      "group": 1,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 4,
+      "kind": "run",
+      "rim": "outlined",
+      "angle": null,
+      "area_mm2": 1.99
+     },
+     {
+      "x_mm": 2.0,
+      "y_mm": 74.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 33,
+      "group": 6,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": null,
+      "angle": 101.74,
+      "area_mm2": 29.17
+     },
+     {
+      "x_mm": 4.0,
+      "y_mm": 74.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 33,
+      "group": 6,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": null,
+      "angle": 101.74,
+      "area_mm2": 29.17
+     },
+     {
+      "x_mm": 6.0,
+      "y_mm": 74.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 33,
+      "group": 6,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": null,
+      "angle": 101.74,
+      "area_mm2": 29.17
+     },
+     {
+      "x_mm": 8.0,
+      "y_mm": 74.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 33,
+      "group": 6,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": null,
+      "angle": 101.74,
+      "area_mm2": 29.17
+     },
+     {
+      "x_mm": 2.0,
+      "y_mm": 76.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 33,
+      "group": 6,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": null,
+      "angle": 101.74,
+      "area_mm2": 29.17
+     },
+     {
+      "x_mm": 4.0,
+      "y_mm": 76.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 33,
+      "group": 6,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": null,
+      "angle": 101.74,
+      "area_mm2": 29.17
+     }
+    ],
+    "pin_ids": []
+   },
+   "C_flat_emoji_icon": {
+    "pins": 1,
+    "flags": 80,
+    "by_radius": {
+     "3.0": {
+      "hit": 1,
+      "hit_rate": 1.0,
+      "chance_area": 0.087,
+      "chance_edge": 0.2005,
+      "chance_cand": 0.9235,
+      "chance_pick": 0.9195402298850575,
+      "flags_near_pin": 7,
+      "precision": 0.0875,
+      "precision_pick": 0.08045977011494253
+     },
+     "2.0": {
+      "hit": 1,
+      "hit_rate": 1.0,
+      "chance_area": 0.0725,
+      "chance_edge": 0.1915,
+      "chance_cand": 0.9175,
+      "chance_pick": 0.9195402298850575,
+      "flags_near_pin": 2,
+      "precision": 0.025,
+      "precision_pick": 0.022988505747126436
+     },
+     "5.0": {
+      "hit": 1,
+      "hit_rate": 1.0,
+      "chance_area": 0.1135,
+      "chance_edge": 0.2175,
+      "chance_cand": 0.9235,
+      "chance_pick": 0.9195402298850575,
+      "flags_near_pin": 17,
+      "precision": 0.2125,
+      "precision_pick": 0.19540229885057472
+     }
+    },
+    "candidates": 87,
+    "notes": {
+     "3": {
+      "pins": 1,
+      "hit": {
+       "3.0": 1,
+       "2.0": 1,
+       "5.0": 1
+      }
+     }
+    },
+    "auc_area": 0.9565,
+    "auc_edge": 0.9035,
+    "pin_nearest_mm": [
+     0.99
+    ],
+    "unpinned": [
+     {
+      "x_mm": 80.0,
+      "y_mm": 74.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "border",
+      "rim": "outlined",
+      "angle": 179.37,
+      "area_mm2": 140.89
+     },
+     {
+      "x_mm": 78.0,
+      "y_mm": 76.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "border",
+      "rim": "outlined",
+      "angle": 179.37,
+      "area_mm2": 140.89
+     },
+     {
+      "x_mm": 80.0,
+      "y_mm": 76.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "border",
+      "rim": "outlined",
+      "angle": 179.37,
+      "area_mm2": 140.89
+     },
+     {
+      "x_mm": 76.0,
+      "y_mm": 78.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "border",
+      "rim": "outlined",
+      "angle": 179.37,
+      "area_mm2": 140.89
+     },
+     {
+      "x_mm": 78.0,
+      "y_mm": 78.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "border",
+      "rim": "outlined",
+      "angle": 179.37,
+      "area_mm2": 140.89
+     },
+     {
+      "x_mm": 80.0,
+      "y_mm": 78.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "border",
+      "rim": "outlined",
+      "angle": 179.37,
+      "area_mm2": 140.89
+     },
+     {
+      "x_mm": 78.0,
+      "y_mm": 80.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "border",
+      "rim": "outlined",
+      "angle": 179.37,
+      "area_mm2": 140.89
+     },
+     {
+      "x_mm": 80.0,
+      "y_mm": 80.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "border",
+      "rim": "outlined",
+      "angle": 179.37,
+      "area_mm2": 140.89
+     },
+     {
+      "x_mm": 70.0,
+      "y_mm": 82.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "border",
+      "rim": "outlined",
+      "angle": 179.37,
+      "area_mm2": 140.89
+     },
+     {
+      "x_mm": 78.0,
+      "y_mm": 82.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "border",
+      "rim": "outlined",
+      "angle": 179.37,
+      "area_mm2": 140.89
+     }
+    ],
+    "pin_ids": [
+     3
+    ]
+   },
+   "C_silhouette_logo": {
+    "pins": 0,
+    "flags": 19,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.6764705882352942,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.6764705882352942,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.7647058823529411,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 34,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 48.0,
+      "y_mm": 58.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 7,
+      "group": 5,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 0,
+      "kind": "fill",
+      "rim": "outlined",
+      "angle": 0.0,
+      "area_mm2": 3.28
+     },
+     {
+      "x_mm": 36.0,
+      "y_mm": 52.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 24,
+      "group": 5,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 3,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": null,
+      "area_mm2": 4.18
+     },
+     {
+      "x_mm": 18.0,
+      "y_mm": 56.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 30,
+      "group": 8,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 3,
+      "kind": "run",
+      "rim": "outlined",
+      "angle": null,
+      "area_mm2": 6.01
+     },
+     {
+      "x_mm": 20.0,
+      "y_mm": 56.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 30,
+      "group": 8,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 3,
+      "kind": "run",
+      "rim": "outlined",
+      "angle": null,
+      "area_mm2": 6.01
+     },
+     {
+      "x_mm": 18.0,
+      "y_mm": 60.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 33,
+      "group": 8,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 3,
+      "kind": "run",
+      "rim": "outlined",
+      "angle": null,
+      "area_mm2": 5.48
+     },
+     {
+      "x_mm": 18.0,
+      "y_mm": 62.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 33,
+      "group": 8,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 3,
+      "kind": "run",
+      "rim": "outlined",
+      "angle": null,
+      "area_mm2": 5.48
+     },
+     {
+      "x_mm": 20.0,
+      "y_mm": 62.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 33,
+      "group": 8,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 3,
+      "kind": "run",
+      "rim": "outlined",
+      "angle": null,
+      "area_mm2": 5.48
+     },
+     {
+      "x_mm": 30.0,
+      "y_mm": 40.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 1,
+      "group": 1,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 0,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 0.0,
+      "area_mm2": 4.84
+     },
+     {
+      "x_mm": 56.0,
+      "y_mm": 50.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 22,
+      "group": 1,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 3,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 21.92,
+      "area_mm2": 3.3
+     },
+     {
+      "x_mm": 56.0,
+      "y_mm": 52.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 22,
+      "group": 1,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 3,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 21.92,
+      "area_mm2": 3.3
+     }
+    ],
+    "pin_ids": []
+   },
+   "C_distressed_grunge": {
+    "pins": 0,
+    "flags": 0,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": 0.0,
+      "chance_pick": 0.0,
+      "flags_near_pin": 0,
+      "precision": NaN,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": 0.0,
+      "chance_pick": 0.0,
+      "flags_near_pin": 0,
+      "precision": NaN,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": 0.0,
+      "chance_pick": 0.0,
+      "flags_near_pin": 0,
+      "precision": NaN,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 69,
+    "pin_nearest_mm": [],
+    "unpinned": [],
+    "pin_ids": []
+   },
+   "C_neon_outline_sign": {
+    "pins": 0,
+    "flags": 1,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.2,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.2,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.2,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 5,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 32.92,
+      "y_mm": 20.75,
+      "kind": "cover",
+      "strength": 17.438,
+      "space": 3,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 17.438,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     }
+    ],
+    "pin_ids": []
+   },
+   "C_isometric_icon": {
+    "pins": 0,
+    "flags": 2,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.25,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.25,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.25,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 8,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 45.42,
+      "y_mm": 11.42,
+      "kind": "cover",
+      "strength": 124.812,
+      "space": 2,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 124.812,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 39.75,
+      "y_mm": 25.25,
+      "kind": "cover",
+      "strength": 12.785,
+      "space": 3,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 12.785,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     }
+    ],
+    "pin_ids": []
+   },
+   "C_comic_halftone": {
+    "pins": 0,
+    "flags": 209,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.41420118343195267,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.41222879684418146,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.4319526627218935,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 507,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 41.92,
+      "y_mm": 51.17,
+      "family": "shape",
+      "strength": 4.0,
+      "shape": 79,
+      "group": 3,
+      "odd": [
+       "colour",
+       "kind",
+       "angle",
+       "rim"
+      ],
+      "cls": 2,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 43.39,
+      "area_mm2": 1.12
+     },
+     {
+      "x_mm": 58.0,
+      "y_mm": 6.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 4,
+      "group": 3,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": "outlined",
+      "angle": 0.0,
+      "area_mm2": 9.06
+     },
+     {
+      "x_mm": 60.0,
+      "y_mm": 6.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 4,
+      "group": 3,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": "outlined",
+      "angle": 0.0,
+      "area_mm2": 9.06
+     },
+     {
+      "x_mm": 54.0,
+      "y_mm": 38.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 34,
+      "group": 3,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "run",
+      "rim": "outlined",
+      "angle": 176.03,
+      "area_mm2": 2.33
+     },
+     {
+      "x_mm": 51.67,
+      "y_mm": 40.33,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 38,
+      "group": 3,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "run",
+      "rim": "outlined",
+      "angle": 0.0,
+      "area_mm2": 0.99
+     },
+     {
+      "x_mm": 68.0,
+      "y_mm": 50.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 46,
+      "group": 3,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": "outlined",
+      "angle": 0.0,
+      "area_mm2": 3.78
+     },
+     {
+      "x_mm": 70.0,
+      "y_mm": 50.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 46,
+      "group": 3,
+      "odd": [
+       "colour",
+       "kind",
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "fill",
+      "rim": "outlined",
+      "angle": 0.0,
+      "area_mm2": 3.78
+     },
+     {
+      "x_mm": 29.17,
+      "y_mm": 21.08,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 65,
+      "group": 3,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 179.98,
+      "area_mm2": 4.64
+     },
+     {
+      "x_mm": 0.0,
+      "y_mm": 2.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 93,
+      "group": 3,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 175.09,
+      "area_mm2": 2.65
+     },
+     {
+      "x_mm": 77.33,
+      "y_mm": 97.5,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 127,
+      "group": 3,
+      "odd": [
+       "colour",
+       "kind",
+       "rim"
+      ],
+      "cls": 4,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 166.6,
+      "area_mm2": 2.69
+     }
+    ],
+    "pin_ids": []
+   },
+   "C_devanagari_logo": {
+    "pins": 3,
+    "flags": 6,
+    "by_radius": {
+     "3.0": {
+      "hit": 3,
+      "hit_rate": 1.0,
+      "chance_area": 0.08266666666666667,
+      "chance_edge": 0.05616666666666666,
+      "chance_cand": 0.050833333333333335,
+      "chance_pick": 0.0446927374301676,
+      "flags_near_pin": 4,
+      "precision": 0.6666666666666666,
+      "precision_pick": 0.0223463687150838
+     },
+     "2.0": {
+      "hit": 3,
+      "hit_rate": 1.0,
+      "chance_area": 0.04016666666666667,
+      "chance_edge": 0.017833333333333333,
+      "chance_cand": 0.03266666666666666,
+      "chance_pick": 0.0446927374301676,
+      "flags_near_pin": 4,
+      "precision": 0.6666666666666666,
+      "precision_pick": 0.0223463687150838
+     },
+     "5.0": {
+      "hit": 3,
+      "hit_rate": 1.0,
+      "chance_area": 0.16066666666666668,
+      "chance_edge": 0.13716666666666666,
+      "chance_cand": 0.11233333333333333,
+      "chance_pick": 0.09497206703910614,
+      "flags_near_pin": 5,
+      "precision": 0.8333333333333334,
+      "precision_pick": 0.0782122905027933
+     }
+    },
+    "candidates": 179,
+    "notes": {
+     "1": {
+      "pins": 1,
+      "hit": {
+       "3.0": 1,
+       "2.0": 1,
+       "5.0": 1
+      }
+     },
+     "5": {
+      "pins": 2,
+      "hit": {
+       "3.0": 2,
+       "2.0": 2,
+       "5.0": 2
+      }
+     }
+    },
+    "auc_area": 0.9621666666666666,
+    "auc_edge": 0.9814166666666667,
+    "pin_nearest_mm": [
+     0.49,
+     0.63,
+     0.1
+    ],
+    "unpinned": [
+     {
+      "x_mm": 17.58,
+      "y_mm": 41.58,
+      "kind": "cover",
+      "strength": 2.549,
+      "space": 12,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 2.549,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 9.67,
+      "y_mm": 41.58,
+      "kind": "cover",
+      "strength": 2.5,
+      "space": 11,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 2.5,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     }
+    ],
+    "pin_ids": [
+     1,
+     5,
+     6
+    ]
+   },
+   "C_kanji_seal": {
+    "pins": 28,
+    "flags": 23,
+    "by_radius": {
+     "3.0": {
+      "hit": 9,
+      "hit_rate": 0.32142857142857145,
+      "chance_area": 0.1339107142857143,
+      "chance_edge": 0.030285714285714287,
+      "chance_cand": 0.3985714285714286,
+      "chance_pick": 0.4218009478672986,
+      "flags_near_pin": 9,
+      "precision": 0.391304347826087,
+      "precision_pick": 0.4312796208530806
+     },
+     "2.0": {
+      "hit": 9,
+      "hit_rate": 0.32142857142857145,
+      "chance_area": 0.06296428571428571,
+      "chance_edge": 0.005589285714285714,
+      "chance_cand": 0.2612857142857143,
+      "chance_pick": 0.2843601895734597,
+      "flags_near_pin": 9,
+      "precision": 0.391304347826087,
+      "precision_pick": 0.27488151658767773
+     },
+     "5.0": {
+      "hit": 15,
+      "hit_rate": 0.5357142857142857,
+      "chance_area": 0.262,
+      "chance_edge": 0.11585714285714285,
+      "chance_cand": 0.5821785714285714,
+      "chance_pick": 0.5592417061611374,
+      "flags_near_pin": 11,
+      "precision": 0.4782608695652174,
+      "precision_pick": 0.6445497630331753
+     }
+    },
+    "candidates": 211,
+    "notes": {
+     "1": {
+      "pins": 28,
+      "hit": {
+       "3.0": 9,
+       "2.0": 9,
+       "5.0": 15
+      }
+     }
+    },
+    "auc_area": 0.5945446428571428,
+    "auc_edge": 0.646830357142857,
+    "pin_nearest_mm": [
+     19.16,
+     18.81,
+     15.2,
+     11.12,
+     11.79,
+     0.44,
+     0.78,
+     1.67,
+     0.52,
+     3.9,
+     19.65,
+     3.77,
+     3.47,
+     1.16,
+     5.41,
+     8.49,
+     15.13,
+     10.6,
+     7.82,
+     3.89,
+     4.37,
+     0.64,
+     0.99,
+     1.41,
+     0.95,
+     3.95,
+     7.13,
+     15.75
+    ],
+    "unpinned": [
+     {
+      "x_mm": 52.67,
+      "y_mm": 64.83,
+      "kind": "cover",
+      "strength": 35.014,
+      "space": 29,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 35.014,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 34.42,
+      "y_mm": 19.75,
+      "kind": "cover",
+      "strength": 14.833,
+      "space": 10,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 14.833,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 40.17,
+      "y_mm": 5.08,
+      "kind": "cover",
+      "strength": 13.118,
+      "space": 2,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 13.118,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 39.33,
+      "y_mm": 19.58,
+      "kind": "cover",
+      "strength": 12.34,
+      "space": 9,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 12.34,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 45.92,
+      "y_mm": 19.75,
+      "kind": "cover",
+      "strength": 12.264,
+      "space": 11,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 12.264,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 39.75,
+      "y_mm": 35.08,
+      "kind": "cover",
+      "strength": 11.312,
+      "space": 19,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 11.312,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 45.92,
+      "y_mm": 35.08,
+      "kind": "cover",
+      "strength": 10.618,
+      "space": 20,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 10.618,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 34.25,
+      "y_mm": 35.17,
+      "kind": "cover",
+      "strength": 10.361,
+      "space": 21,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 10.361,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 39.08,
+      "y_mm": 15.58,
+      "kind": "cover",
+      "strength": 9.688,
+      "space": 8,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 9.688,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     },
+     {
+      "x_mm": 9.5,
+      "y_mm": 30.17,
+      "kind": "cover",
+      "strength": 9.611,
+      "space": 15,
+      "treatment": "infill",
+      "group": "bare",
+      "area_mm2": 9.611,
+      "sewn_frac": 1.0,
+      "rim_line_frac": 0.0,
+      "family": "space"
+     }
+    ],
+    "pin_ids": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28
+    ]
+   },
+   "C_gradient_mascot": {
+    "pins": 3,
+    "flags": 223,
+    "by_radius": {
+     "3.0": {
+      "hit": 2,
+      "hit_rate": 0.6666666666666666,
+      "chance_area": 0.2673333333333333,
+      "chance_edge": 0.1275,
+      "chance_cand": 0.9248333333333333,
+      "chance_pick": 0.9911111111111112,
+      "flags_near_pin": 14,
+      "precision": 0.06278026905829596,
+      "precision_pick": 0.06222222222222222
+     },
+     "2.0": {
+      "hit": 2,
+      "hit_rate": 0.6666666666666666,
+      "chance_area": 0.22166666666666668,
+      "chance_edge": 0.0031666666666666666,
+      "chance_cand": 0.9245,
+      "chance_pick": 0.9911111111111112,
+      "flags_near_pin": 7,
+      "precision": 0.03139013452914798,
+      "precision_pick": 0.03111111111111111
+     },
+     "5.0": {
+      "hit": 2,
+      "hit_rate": 0.6666666666666666,
+      "chance_area": 0.3243333333333333,
+      "chance_edge": 0.333,
+      "chance_cand": 0.9248333333333333,
+      "chance_pick": 0.9911111111111112,
+      "flags_near_pin": 38,
+      "precision": 0.17040358744394618,
+      "precision_pick": 0.1688888888888889
+     }
+    },
+    "candidates": 225,
+    "notes": {
+     "1": {
+      "pins": 1,
+      "hit": {
+       "3.0": 0,
+       "2.0": 0,
+       "5.0": 0
+      }
+     },
+     "2": {
+      "pins": 2,
+      "hit": {
+       "3.0": 2,
+       "2.0": 2,
+       "5.0": 2
+      }
+     }
+    },
+    "auc_area": 0.7038333333333334,
+    "auc_edge": 0.7730833333333332,
+    "pin_nearest_mm": [
+     47.73,
+     1.05,
+     0.72
+    ],
+    "unpinned": [
+     {
+      "x_mm": 14.0,
+      "y_mm": 68.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 39.29,
+      "area_mm2": 468.83
+     },
+     {
+      "x_mm": 16.0,
+      "y_mm": 68.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 39.29,
+      "area_mm2": 468.83
+     },
+     {
+      "x_mm": 12.0,
+      "y_mm": 70.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 39.29,
+      "area_mm2": 468.83
+     },
+     {
+      "x_mm": 14.0,
+      "y_mm": 70.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 39.29,
+      "area_mm2": 468.83
+     },
+     {
+      "x_mm": 16.0,
+      "y_mm": 70.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 39.29,
+      "area_mm2": 468.83
+     },
+     {
+      "x_mm": 18.0,
+      "y_mm": 70.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 39.29,
+      "area_mm2": 468.83
+     },
+     {
+      "x_mm": 10.0,
+      "y_mm": 72.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 39.29,
+      "area_mm2": 468.83
+     },
+     {
+      "x_mm": 12.0,
+      "y_mm": 72.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 39.29,
+      "area_mm2": 468.83
+     },
+     {
+      "x_mm": 14.0,
+      "y_mm": 72.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 39.29,
+      "area_mm2": 468.83
+     },
+     {
+      "x_mm": 16.0,
+      "y_mm": 72.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "angle"
+      ],
+      "cls": 2,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 39.29,
+      "area_mm2": 468.83
+     }
+    ],
+    "pin_ids": [
+     1,
+     2,
+     3
+    ]
+   },
+   "C_outline_lineart_logo": {
+    "pins": 0,
+    "flags": 16,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.30434782608695654,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.20948616600790515,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.5573122529644269,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 253,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 12.0,
+      "y_mm": 26.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 2,
+      "group": 2,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 0,
+      "kind": "fill",
+      "rim": "outlined",
+      "angle": 0.0,
+      "area_mm2": 3.01
+     },
+     {
+      "x_mm": 66.92,
+      "y_mm": 25.08,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 3,
+      "group": 2,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 0,
+      "kind": "fill",
+      "rim": "outlined",
+      "angle": 0.0,
+      "area_mm2": 2.94
+     },
+     {
+      "x_mm": 24.0,
+      "y_mm": 28.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 17,
+      "group": 2,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "outlined",
+      "angle": 39.22,
+      "area_mm2": 3.07
+     },
+     {
+      "x_mm": 56.0,
+      "y_mm": 28.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 18,
+      "group": 2,
+      "odd": [
+       "colour",
+       "kind"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "outlined",
+      "angle": 61.13,
+      "area_mm2": 2.78
+     },
+     {
+      "x_mm": 26.0,
+      "y_mm": 32.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 21,
+      "group": 5,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 10.96,
+      "area_mm2": 31.69
+     },
+     {
+      "x_mm": 30.0,
+      "y_mm": 32.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 21,
+      "group": 5,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 10.96,
+      "area_mm2": 31.69
+     },
+     {
+      "x_mm": 26.0,
+      "y_mm": 34.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 21,
+      "group": 5,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 10.96,
+      "area_mm2": 31.69
+     },
+     {
+      "x_mm": 28.0,
+      "y_mm": 34.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 21,
+      "group": 5,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 10.96,
+      "area_mm2": 31.69
+     },
+     {
+      "x_mm": 30.0,
+      "y_mm": 34.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 21,
+      "group": 5,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 10.96,
+      "area_mm2": 31.69
+     },
+     {
+      "x_mm": 24.0,
+      "y_mm": 36.0,
+      "family": "shape",
+      "strength": 1.0,
+      "shape": 21,
+      "group": 5,
+      "odd": [
+       "angle"
+      ],
+      "cls": 1,
+      "kind": "satin",
+      "rim": "plain",
+      "angle": 10.96,
+      "area_mm2": 31.69
+     }
+    ],
+    "pin_ids": []
+   },
+   "C_kanji_brush": {
+    "pins": 0,
+    "flags": 81,
+    "by_radius": {
+     "3.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.8686868686868687,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "2.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.8484848484848485,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     },
+     "5.0": {
+      "hit": 0,
+      "hit_rate": NaN,
+      "chance_area": NaN,
+      "chance_edge": NaN,
+      "chance_cand": NaN,
+      "chance_pick": 0.9090909090909091,
+      "flags_near_pin": 0,
+      "precision": 0.0,
+      "precision_pick": NaN
+     }
+    },
+    "candidates": 99,
+    "pin_nearest_mm": [],
+    "unpinned": [
+     {
+      "x_mm": 38.0,
+      "y_mm": 46.0,
+      "family": "shape",
+      "strength": 3.0,
+      "shape": 2,
+      "group": 1,
+      "odd": [
+       "colour",
+       "angle",
+       "rim"
+      ],
+      "cls": 0,
+      "kind": "fill",
+      "rim": "outlined",
+      "angle": 145.92,
+      "area_mm2": 7.83
+     },
+     {
+      "x_mm": 34.0,
+      "y_mm": 26.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 1,
+      "group": 1,
+      "odd": [
+       "colour",
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 55.43,
+      "area_mm2": 9.63
+     },
+     {
+      "x_mm": 36.0,
+      "y_mm": 26.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 1,
+      "group": 1,
+      "odd": [
+       "colour",
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 55.43,
+      "area_mm2": 9.63
+     },
+     {
+      "x_mm": 38.0,
+      "y_mm": 26.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 1,
+      "group": 1,
+      "odd": [
+       "colour",
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 55.43,
+      "area_mm2": 9.63
+     },
+     {
+      "x_mm": 36.0,
+      "y_mm": 28.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 1,
+      "group": 1,
+      "odd": [
+       "colour",
+       "angle"
+      ],
+      "cls": 0,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 55.43,
+      "area_mm2": 9.63
+     },
+     {
+      "x_mm": 46.0,
+      "y_mm": 8.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 11,
+      "group": 1,
+      "odd": [
+       "colour",
+       "angle"
+      ],
+      "cls": 3,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 170.22,
+      "area_mm2": 7.88
+     },
+     {
+      "x_mm": 48.0,
+      "y_mm": 10.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 11,
+      "group": 1,
+      "odd": [
+       "colour",
+       "angle"
+      ],
+      "cls": 3,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 170.22,
+      "area_mm2": 7.88
+     },
+     {
+      "x_mm": 54.0,
+      "y_mm": 36.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 16,
+      "group": 1,
+      "odd": [
+       "colour",
+       "angle"
+      ],
+      "cls": 3,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 45.62,
+      "area_mm2": 8.08
+     },
+     {
+      "x_mm": 56.0,
+      "y_mm": 38.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 16,
+      "group": 1,
+      "odd": [
+       "colour",
+       "angle"
+      ],
+      "cls": 3,
+      "kind": "fill",
+      "rim": "plain",
+      "angle": 45.62,
+      "area_mm2": 8.08
+     },
+     {
+      "x_mm": 20.0,
+      "y_mm": 32.0,
+      "family": "shape",
+      "strength": 2.0,
+      "shape": 6,
+      "group": 5,
+      "odd": [
+       "kind",
+       "rim"
+      ],
+      "cls": 1,
+      "kind": "border",
+      "rim": "outlined",
+      "angle": 179.5,
+      "area_mm2": 90.91
+     }
+    ],
+    "pin_ids": []
+   }
+  },
+  "pooled": {
+   "3.0": {
+    "chance_area": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.3846,
+     "chance": 0.1321,
+     "diff": 0.2526,
+     "kappa": 0.291,
+     "ci95": [
+      0.1358,
+      0.6361
+     ]
+    },
+    "chance_edge": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.3846,
+     "chance": 0.0411,
+     "diff": 0.3435,
+     "kappa": 0.3583,
+     "ci95": [
+      0.2193,
+      0.6818
+     ]
+    },
+    "chance_cand": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.3846,
+     "chance": 0.4208,
+     "diff": -0.0362,
+     "kappa": -0.0626,
+     "ci95": [
+      -0.3121,
+      0.4205
+     ]
+    },
+    "chance_pick": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.3846,
+     "chance": 0.4397,
+     "diff": -0.055,
+     "kappa": -0.0982,
+     "ci95": [
+      -0.3193,
+      0.4319
+     ]
+    }
+   },
+   "2.0": {
+    "chance_area": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.3846,
+     "chance": 0.0714,
+     "diff": 0.3132,
+     "kappa": 0.3373,
+     "ci95": [
+      0.1756,
+      0.6715
+     ]
+    },
+    "chance_edge": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.3846,
+     "chance": 0.0105,
+     "diff": 0.3741,
+     "kappa": 0.3781,
+     "ci95": [
+      0.239,
+      0.7274
+     ]
+    },
+    "chance_cand": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.3846,
+     "chance": 0.3178,
+     "diff": 0.0668,
+     "kappa": 0.098,
+     "ci95": [
+      -0.2966,
+      0.4336
+     ]
+    },
+    "chance_pick": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.3846,
+     "chance": 0.341,
+     "diff": 0.0436,
+     "kappa": 0.0662,
+     "ci95": [
+      -0.3193,
+      0.4319
+     ]
+    }
+   },
+   "5.0": {
+    "chance_area": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.5641,
+     "chance": 0.2401,
+     "diff": 0.324,
+     "kappa": 0.4264,
+     "ci95": [
+      0.2424,
+      0.6253
+     ]
+    },
+    "chance_edge": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.5641,
+     "chance": 0.1298,
+     "diff": 0.4343,
+     "kappa": 0.4991,
+     "ci95": [
+      0.2785,
+      0.6354
+     ]
+    },
+    "chance_cand": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.5641,
+     "chance": 0.5592,
+     "diff": 0.0049,
+     "kappa": 0.0111,
+     "ci95": [
+      -0.1737,
+      0.4616
+     ]
+    },
+    "chance_pick": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.5641,
+     "chance": 0.5451,
+     "diff": 0.019,
+     "kappa": 0.0417,
+     "ci95": [
+      -0.2,
+      0.4671
+     ]
+    }
+   }
+  },
+  "pooled_notes": {
+   "3.0": {
+    "chance_area": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.4321,
+     "chance": 0.1184,
+     "diff": 0.3137,
+     "kappa": 0.3558,
+     "notes_above_null": 5,
+     "ci95": [
+      0.0135,
+      0.6427
+     ]
+    },
+    "chance_edge": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.4321,
+     "chance": 0.0601,
+     "diff": 0.3721,
+     "kappa": 0.3959,
+     "notes_above_null": 5,
+     "ci95": [
+      0.0935,
+      0.6627
+     ]
+    },
+    "chance_cand": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.4321,
+     "chance": 0.4676,
+     "diff": -0.0354,
+     "kappa": -0.0666,
+     "notes_above_null": 4,
+     "ci95": [
+      -0.4188,
+      0.4282
+     ]
+    },
+    "chance_pick": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.4321,
+     "chance": 0.4722,
+     "diff": -0.0401,
+     "kappa": -0.076,
+     "notes_above_null": 4,
+     "ci95": [
+      -0.4167,
+      0.4239
+     ]
+    }
+   },
+   "2.0": {
+    "chance_area": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.4321,
+     "chance": 0.0825,
+     "diff": 0.3497,
+     "kappa": 0.3811,
+     "notes_above_null": 5,
+     "ci95": [
+      0.0484,
+      0.6793
+     ]
+    },
+    "chance_edge": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.4321,
+     "chance": 0.0239,
+     "diff": 0.4082,
+     "kappa": 0.4182,
+     "notes_above_null": 5,
+     "ci95": [
+      0.1104,
+      0.7052
+     ]
+    },
+    "chance_cand": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.4321,
+     "chance": 0.4381,
+     "diff": -0.006,
+     "kappa": -0.0106,
+     "notes_above_null": 5,
+     "ci95": [
+      -0.3886,
+      0.4528
+     ]
+    },
+    "chance_pick": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.4321,
+     "chance": 0.4585,
+     "diff": -0.0264,
+     "kappa": -0.0487,
+     "notes_above_null": 5,
+     "ci95": [
+      -0.4055,
+      0.4352
+     ]
+    }
+   },
+   "5.0": {
+    "chance_area": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.5536,
+     "chance": 0.1806,
+     "diff": 0.373,
+     "kappa": 0.4552,
+     "notes_above_null": 6,
+     "ci95": [
+      0.1359,
+      0.626
+     ]
+    },
+    "chance_edge": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.5536,
+     "chance": 0.1465,
+     "diff": 0.4071,
+     "kappa": 0.477,
+     "notes_above_null": 6,
+     "ci95": [
+      0.1718,
+      0.6485
+     ]
+    },
+    "chance_cand": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.5536,
+     "chance": 0.5054,
+     "diff": 0.0482,
+     "kappa": 0.0974,
+     "notes_above_null": 5,
+     "ci95": [
+      -0.2679,
+      0.4327
+     ]
+    },
+    "chance_pick": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.5536,
+     "chance": 0.5075,
+     "diff": 0.0461,
+     "kappa": 0.0936,
+     "notes_above_null": 5,
+     "ci95": [
+      -0.2952,
+      0.4488
+     ]
+    }
+   }
+  },
+  "precision": {
+   "3.0": {
+    "items": 6,
+    "flags": 351,
+    "precision": 0.0969,
+    "chance": 0.088,
+    "diff": 0.0089,
+    "ci95": [
+     -0.0123,
+     0.0995
+    ]
+   },
+   "2.0": {
+    "items": 6,
+    "flags": 351,
+    "precision": 0.0627,
+    "chance": 0.0449,
+    "diff": 0.0178,
+    "ci95": [
+     -0.002,
+     0.1633
+    ]
+   },
+   "5.0": {
+    "items": 6,
+    "flags": 351,
+    "precision": 0.2051,
+    "chance": 0.2061,
+    "diff": -0.001,
+    "ci95": [
+     -0.0911,
+     0.0889
+    ]
+   }
+  }
+ },
+ "f1_only": {
+  "pooled": {
+   "3.0": {
+    "chance_area": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.1026,
+     "chance": 0.0346,
+     "diff": 0.068,
+     "kappa": 0.0704,
+     "ci95": [
+      -0.0009,
+      0.3984
+     ]
+    },
+    "chance_edge": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.1026,
+     "chance": 0.0237,
+     "diff": 0.0789,
+     "kappa": 0.0808,
+     "ci95": [
+      -0.0006,
+      0.4462
+     ]
+    },
+    "chance_cand": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.1026,
+     "chance": 0.1418,
+     "diff": -0.0392,
+     "kappa": -0.0457,
+     "ci95": [
+      -0.3237,
+      0.1281
+     ]
+    },
+    "chance_pick": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.1026,
+     "chance": 0.1415,
+     "diff": -0.039,
+     "kappa": -0.0454,
+     "ci95": [
+      -0.3059,
+      0.1288
+     ]
+    }
+   },
+   "2.0": {
+    "chance_area": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.1026,
+     "chance": 0.0255,
+     "diff": 0.077,
+     "kappa": 0.0791,
+     "ci95": [
+      0.0053,
+      0.4178
+     ]
+    },
+    "chance_edge": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.1026,
+     "chance": 0.0095,
+     "diff": 0.0931,
+     "kappa": 0.094,
+     "ci95": [
+      0.0039,
+      0.5064
+     ]
+    },
+    "chance_cand": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.1026,
+     "chance": 0.1395,
+     "diff": -0.0369,
+     "kappa": -0.0429,
+     "ci95": [
+      -0.3162,
+      0.1296
+     ]
+    },
+    "chance_pick": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.1026,
+     "chance": 0.1415,
+     "diff": -0.039,
+     "kappa": -0.0454,
+     "ci95": [
+      -0.3059,
+      0.1288
+     ]
+    }
+   },
+   "5.0": {
+    "chance_area": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.1282,
+     "chance": 0.0546,
+     "diff": 0.0736,
+     "kappa": 0.0779,
+     "ci95": [
+      -0.0008,
+      0.4195
+     ]
+    },
+    "chance_edge": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.1282,
+     "chance": 0.0577,
+     "diff": 0.0706,
+     "kappa": 0.0749,
+     "ci95": [
+      -0.0075,
+      0.4096
+     ]
+    },
+    "chance_cand": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.1282,
+     "chance": 0.1555,
+     "diff": -0.0273,
+     "kappa": -0.0323,
+     "ci95": [
+      -0.1958,
+      0.1535
+     ]
+    },
+    "chance_pick": {
+     "items": 7,
+     "pins": 39,
+     "hit_rate": 0.1282,
+     "chance": 0.152,
+     "diff": -0.0238,
+     "kappa": -0.028,
+     "ci95": [
+      -0.1872,
+      0.1557
+     ]
+    }
+   }
+  },
+  "pooled_notes": {
+   "3.0": {
+    "chance_area": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.25,
+     "chance": 0.091,
+     "diff": 0.159,
+     "kappa": 0.1749,
+     "notes_above_null": 3,
+     "ci95": [
+      -0.0271,
+      0.4005
+     ]
+    },
+    "chance_edge": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.25,
+     "chance": 0.049,
+     "diff": 0.201,
+     "kappa": 0.2114,
+     "notes_above_null": 3,
+     "ci95": [
+      0.0441,
+      0.3886
+     ]
+    },
+    "chance_cand": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.25,
+     "chance": 0.419,
+     "diff": -0.169,
+     "kappa": -0.2909,
+     "notes_above_null": 2,
+     "ci95": [
+      -0.426,
+      0.1196
+     ]
+    },
+    "chance_pick": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.25,
+     "chance": 0.409,
+     "diff": -0.159,
+     "kappa": -0.269,
+     "notes_above_null": 2,
+     "ci95": [
+      -0.3967,
+      0.1174
+     ]
+    }
+   },
+   "2.0": {
+    "chance_area": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.25,
+     "chance": 0.0695,
+     "diff": 0.1805,
+     "kappa": 0.1939,
+     "notes_above_null": 3,
+     "ci95": [
+      0.0001,
+      0.4083
+     ]
+    },
+    "chance_edge": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.25,
+     "chance": 0.0213,
+     "diff": 0.2287,
+     "kappa": 0.2337,
+     "notes_above_null": 3,
+     "ci95": [
+      0.0473,
+      0.4274
+     ]
+    },
+    "chance_cand": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.25,
+     "chance": 0.4115,
+     "diff": -0.1615,
+     "kappa": -0.2743,
+     "notes_above_null": 3,
+     "ci95": [
+      -0.4079,
+      0.1203
+     ]
+    },
+    "chance_pick": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.25,
+     "chance": 0.409,
+     "diff": -0.159,
+     "kappa": -0.269,
+     "notes_above_null": 2,
+     "ci95": [
+      -0.3967,
+      0.1174
+     ]
+    }
+   },
+   "5.0": {
+    "chance_area": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.35,
+     "chance": 0.126,
+     "diff": 0.224,
+     "kappa": 0.2563,
+     "notes_above_null": 4,
+     "ci95": [
+      0.0786,
+      0.4069
+     ]
+    },
+    "chance_edge": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.35,
+     "chance": 0.1153,
+     "diff": 0.2347,
+     "kappa": 0.2653,
+     "notes_above_null": 4,
+     "ci95": [
+      0.084,
+      0.4006
+     ]
+    },
+    "chance_cand": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.35,
+     "chance": 0.4264,
+     "diff": -0.0764,
+     "kappa": -0.1332,
+     "notes_above_null": 3,
+     "ci95": [
+      -0.2955,
+      0.1196
+     ]
+    },
+    "chance_pick": {
+     "items": 7,
+     "notes": 10,
+     "hit_rate": 0.35,
+     "chance": 0.4215,
+     "diff": -0.0715,
+     "kappa": -0.1235,
+     "notes_above_null": 3,
+     "ci95": [
+      -0.292,
+      0.1176
+     ]
+    }
+   }
+  },
+  "precision": {
+   "3.0": {
+    "items": 5,
+    "flags": 325,
+    "precision": 0.0677,
+    "chance": 0.0684,
+    "diff": -0.0008,
+    "ci95": [
+     -0.0607,
+     0.0263
+    ]
+   },
+   "2.0": {
+    "items": 5,
+    "flags": 325,
+    "precision": 0.0308,
+    "chance": 0.0312,
+    "diff": -0.0004,
+    "ci95": [
+     -0.0366,
+     0.026
+    ]
+   },
+   "5.0": {
+    "items": 5,
+    "flags": 325,
+    "precision": 0.1754,
+    "chance": 0.1823,
+    "diff": -0.0069,
+    "ci95": [
+     -0.1904,
+     0.0161
+    ]
+   }
+  }
+ },
+ "f1_only_items": {
+  "L_bridge_hat": {
+   "hit": 0,
+   "pins": 2,
+   "flags": 18,
+   "chance_pick": 0.5714285714285714
+  },
+  "L_mfab_hat": {
+   "hit": 0,
+   "pins": 1,
+   "flags": 0,
+   "chance_pick": 0.0
+  },
+  "C_pixel_art_sprite": {
+   "hit": 0,
+   "pins": 1,
+   "flags": 0,
+   "chance_pick": 0.0
+  },
+  "C_flat_emoji_icon": {
+   "hit": 1,
+   "pins": 1,
+   "flags": 80,
+   "chance_pick": 0.9195402298850575
+  },
+  "C_devanagari_logo": {
+   "hit": 1,
+   "pins": 3,
+   "flags": 1,
+   "chance_pick": 0.005917159763313609
+  },
+  "C_kanji_seal": {
+   "hit": 0,
+   "pins": 28,
+   "flags": 3,
+   "chance_pick": 0.015706806282722512
+  },
+  "C_gradient_mascot": {
+   "hit": 2,
+   "pins": 3,
+   "flags": 223,
+   "chance_pick": 1.0
+  }
+ },
+ "loo": {
+  "L_bridge_hat": {
+   "items": 6,
+   "notes": 8,
+   "hit_rate": 0.5402,
+   "chance": 0.4475,
+   "diff": 0.0927,
+   "kappa": 0.1678,
+   "notes_above_null": 4,
+   "ci95": [
+    -0.3296,
+    0.6161
+   ]
+  },
+  "L_mfab_hat": {
+   "items": 6,
+   "notes": 9,
+   "hit_rate": 0.4802,
+   "chance": 0.5247,
+   "diff": -0.0446,
+   "kappa": -0.0938,
+   "notes_above_null": 4,
+   "ci95": [
+    -0.4517,
+    0.473
+   ]
+  },
+  "C_pixel_art_sprite": {
+   "items": 6,
+   "notes": 9,
+   "hit_rate": 0.4802,
+   "chance": 0.5062,
+   "diff": -0.026,
+   "kappa": -0.0527,
+   "notes_above_null": 4,
+   "ci95": [
+    -0.4431,
+    0.4877
+   ]
+  },
+  "C_flat_emoji_icon": {
+   "items": 6,
+   "notes": 9,
+   "hit_rate": 0.369,
+   "chance": 0.4225,
+   "diff": -0.0535,
+   "kappa": -0.0926,
+   "notes_above_null": 3,
+   "ci95": [
+    -0.4577,
+    0.4589
+   ]
+  },
+  "C_devanagari_logo": {
+   "items": 6,
+   "notes": 8,
+   "hit_rate": 0.2902,
+   "chance": 0.5791,
+   "diff": -0.289,
+   "kappa": -0.6866,
+   "notes_above_null": 2,
+   "ci95": [
+    -0.4658,
+    -0.0311
+   ]
+  },
+  "C_kanji_seal": {
+   "items": 6,
+   "notes": 9,
+   "hit_rate": 0.4444,
+   "chance": 0.4779,
+   "diff": -0.0334,
+   "kappa": -0.064,
+   "notes_above_null": 4,
+   "ci95": [
+    -0.4424,
+    0.487
+   ]
+  },
+  "C_gradient_mascot": {
+   "items": 6,
+   "notes": 8,
+   "hit_rate": 0.4152,
+   "chance": 0.3425,
+   "diff": 0.0726,
+   "kappa": 0.1105,
+   "notes_above_null": 3,
+   "ci95": [
+    -0.3832,
+    0.6072
+   ]
+  }
+ },
+ "overlap": [
+  {
+   "item": "L_bridge_hat",
+   "pin": 1,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": false,
+   "space": false,
+   "infill": false
+  },
+  {
+   "item": "L_bridge_hat",
+   "pin": 4,
+   "note_pin": 4,
+   "inconsistency": false,
+   "letters": true,
+   "space": true,
+   "infill": false
+  },
+  {
+   "item": "L_mfab_hat",
+   "pin": 5,
+   "note_pin": 5,
+   "inconsistency": false,
+   "letters": false,
+   "space": false,
+   "infill": null
+  },
+  {
+   "item": "C_pixel_art_sprite",
+   "pin": 1,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_flat_emoji_icon",
+   "pin": 3,
+   "note_pin": 3,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_devanagari_logo",
+   "pin": 1,
+   "note_pin": 1,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": true
+  },
+  {
+   "item": "C_devanagari_logo",
+   "pin": 5,
+   "note_pin": 5,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": true
+  },
+  {
+   "item": "C_devanagari_logo",
+   "pin": 6,
+   "note_pin": 5,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": true
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 1,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 2,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 3,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 4,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 5,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 6,
+   "note_pin": 1,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": true
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 7,
+   "note_pin": 1,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": true
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 8,
+   "note_pin": 1,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": true
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 9,
+   "note_pin": 1,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": true
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 10,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 11,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 12,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 13,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 14,
+   "note_pin": 1,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": true
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 15,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 16,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 17,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 18,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 19,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 20,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 21,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 22,
+   "note_pin": 1,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": true
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 23,
+   "note_pin": 1,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": true
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 24,
+   "note_pin": 1,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": true
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 25,
+   "note_pin": 1,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": true
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 26,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 27,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_kanji_seal",
+   "pin": 28,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_gradient_mascot",
+   "pin": 1,
+   "note_pin": 1,
+   "inconsistency": false,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_gradient_mascot",
+   "pin": 2,
+   "note_pin": 2,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": false
+  },
+  {
+   "item": "C_gradient_mascot",
+   "pin": 3,
+   "note_pin": 2,
+   "inconsistency": true,
+   "letters": null,
+   "space": null,
+   "infill": false
+  }
+ ]
+}
