@@ -184,3 +184,41 @@ def test_harness_scores_a_space_dir(tmp_path):
     res = h.score_many([(marks, tmp_path, "L_")], "space")
     b = res["items"]["L_x"]["by_radius"]["3.0"]
     assert b["hit"] == 1 and "chance_pick" in b and res["pooled_notes"]["3.0"]["chance_pick"]["notes"] == 1
+
+
+# The replication on `defect-marks-1112` (doc Part 3) scores the reader as at
+# 837c105d. This digest is its detection path's AST; it must not move before
+# that score is in.
+FROZEN_DETECTION_SHA256 = "6f29dace49a22cd099d2ac51d68fdff32ce6780cb3c91e8f470a741dc8037996"
+_DETECTION = ("to_mm", "shapes", "_hull_pts", "hull_depth", "enclosed", "space_ridge", "spread",
+              "read_class", "_points", "read_spaces", "run")
+_CONSTS = ("PXMM", "PAD_MM", "THREAD_MM", "SPACE_MIN_HALF_MM", "SPACE_KEEP_HALF_MM", "MIN_SHAPE_MM2",
+           "SEWN_FRAC", "BRIDGE_MIN_MM", "SPACING_MM", "UNSEWN", "EIGHT")
+
+
+def _detection_digest(src: str) -> str:
+    import ast
+    import hashlib
+    by = {}
+    for node in ast.parse(src).body:
+        if isinstance(node, ast.FunctionDef):
+            by[node.name] = node
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            for t in (node.targets if isinstance(node, ast.Assign) else [node.target]):
+                if isinstance(t, ast.Name):
+                    by[t.id] = node
+    for name in _DETECTION + _CONSTS:
+        assert name in by, name
+    for node in by.values():
+        for n in ast.walk(node):
+            if isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.body and isinstance(n.body[0], ast.Expr) \
+                    and isinstance(n.body[0].value, ast.Constant) and isinstance(n.body[0].value.value, str):
+                n.body = n.body[1:] or [ast.Pass()]
+    parts = [ast.dump(by[n], include_attributes=False) for n in _DETECTION + _CONSTS]
+    return hashlib.sha256("\n".join(parts).encode()).hexdigest()
+
+
+def test_detection_code_is_frozen_for_the_replication():
+    src = Path(sfr.__file__).read_text(encoding="utf-8")
+    assert _detection_digest(src) == FROZEN_DETECTION_SHA256
+    assert FROZEN_DETECTION_SHA256 in (DOCS / "space-fault-reader-2026-11-12.md").read_text(encoding="utf-8")
