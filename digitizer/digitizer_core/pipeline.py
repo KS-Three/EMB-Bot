@@ -84,7 +84,7 @@ from .lettering_thread import apply_lettering_thread
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
                               depth_sort_layers, sequence, cut_every_jump_step_mm)
 from .stitches import StitchPlan
-from .thin_ink import bean_dark_ink, carve_flat_dark_ink, ink_after_ground
+from .thin_ink import bean_dark_ink, carve_flat_dark_ink, ink_after_ground, settle_dark_ink_bean
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (
     COLOR_CAP_APPLIED,
@@ -1355,6 +1355,12 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     regions, quant_indices, edit_warnings = apply_shape_edits(
         regions, list(gen.quant_thread_indices), cfg.deleted_shape_ids,
         cfg.shape_overrides, chart_for(cfg))
+    # `cfg.dark_ink_bean`: a dark-ink stroke the review pinned to a tier
+    # sews as that tier, not as a bean; the rest untag their grounds as
+    # lettering. Here, not in `build_generation`, for `tag_bean_letters`'
+    # reason: the pinned tier only exists after the edits.
+    if cfg.dark_ink_bean:
+        settle_dark_ink_bean(regions)
 
     # Resolution of a region's effective "stitched" state: a
     # `shape_overrides[sid]["stitched"]` entry wins when present (the service
