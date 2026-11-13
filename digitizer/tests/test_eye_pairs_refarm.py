@@ -1,3 +1,4 @@
+import os
 import sys
 import textwrap
 from pathlib import Path
@@ -292,12 +293,28 @@ def test_the_driver_refuses_to_run_todays_engine_by_accident(tmp_path):
                               80.0, "left_chest", 6)
 
 
+def _can_symlink_dir(tmp_path) -> bool:
+    """Whether this OS lets us create a directory symlink (Windows needs
+    Developer Mode or the privilege; WinError 1314 otherwise)."""
+    target = tmp_path / "_symlink_probe_target"
+    target.mkdir()
+    try:
+        os.symlink(target, tmp_path / "_symlink_probe_link", target_is_directory=True)
+    except (OSError, NotImplementedError):
+        return False
+    return True
+
+
 def test_the_ref_worktree_gets_the_photo_prep_venv_when_the_checkout_has_one(tmp_path):
     """2026-09-30: the rembg venv is gitignored and lives in the primary
     checkout only, so a ref worktree ran photo-class fixtures WITHOUT prep
     and the pair compared lanes, not engines (tires: 2,500 stitches against
     2,646 from the same commit with the venv). The link is a symlink, never
     a copy, and its absence is an answer rather than an error."""
+    if not _can_symlink_dir(tmp_path):
+        pytest.skip("OS cannot create a directory symlink here (Windows without "
+                    "Developer Mode / SeCreateSymbolicLinkPrivilege); link_photo_prep "
+                    "returns False there by design")
     repo = tmp_path / "repo"
     venv = repo / "digitizer" / "rembg_isolated" / "venv"
     venv.mkdir(parents=True)

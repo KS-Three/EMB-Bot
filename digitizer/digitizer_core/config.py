@@ -2065,10 +2065,12 @@ class PipelineConfig:
     # 0.8 mm and up (To-a-T's frame, Becker, MFab). Kent's keyline logo
     # draws a 0.36-0.42 mm white keyline at 100 mm wide, and ON by default it
     # sewed 1.50 mm satin loops, 3.7x the art: counters plugged, the notches
-    # between letters gone, its small letters a blob at 60 mm. ON, an outline the
-    # hairline tier's own width gate admits WHOLE (`stage6_hairline.measure`:
-    # median width at or under `machine.HAIRLINE_MAX_WIDTHS` laid threads,
-    # 0.6 mm at 40 wt, `shape_admit`) sews as a BEAN on its own centreline
+    # between letters gone, its small letters a blob at 60 mm. ON, a THREAD
+    # whose art outlines, pooled, are at or under the hairline width (2 x
+    # area / perimeter against `machine.HAIRLINE_MAX_WIDTHS` laid threads,
+    # 0.6 mm at 40 wt) and which draws nearly nothing but keyline (its rings
+    # at least `machine.OUTLINE_REACH_FRAC` of its sewn area) sews every such
+    # ring as a BEAN on its own centreline
     # instead of the loop (`keyline_bean`): the path is the body's vector
     # edge moved out half the keyline's width, a needle point exactly on
     # every corner, even stations between, the loop closed on its first
@@ -2079,8 +2081,15 @@ class PipelineConfig:
     # it. The same art drawn larger (keyline over 0.6 mm) takes the loop as
     # before. Acts only with `border_from_outline`. The 0.6 is the hairline
     # tier's candidate, gate 1: unsewn. No pro file shows what a digitizer
-    # does with a 0.4 mm keyline; one logo. Off, byte-identical. Tests:
-    # `tests/test_outline_hairline_run.py`.
+    # does with a 0.4 mm keyline; one logo
+    # (`testdata/art/commons_lettering/hed_p_e_logo.png`, taken whole from 40
+    # to 140 mm). The gate is per thread because the first build, per ring,
+    # was WRONG on the two other repo logos it touched (2026-11-13, 22 logos
+    # at 60 and 100 mm): To-a-T Machine's black frame, which the pro borders
+    # in satin, went to a wire and the O and A of its lettering to hollow
+    # outlines (the frame is 0.23 of its thread); Commons "Ahora"'s white
+    # gear lost its teeth (0.86 mm by area). Neither is taken now. Off,
+    # byte-identical. Tests: `tests/test_outline_hairline_run.py`.
     border_from_outline_hairline_run: bool = False
     # A white FIELD that `sew_enclosed_white` sews is never a letter
     # (2026-10-25, built OFF; Kent: "Ship 3, fix white next"). Becker's five

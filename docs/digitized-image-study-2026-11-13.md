@@ -58,8 +58,9 @@ line separating what was seen from what was inferred.
 
 "EMB-Bot today" is one agent's reading of `digitizer/digitizer_core/config.py`
 defaults on main `bb5655bf`. Rows 4, 7, 8, 12 and 16 come from a second agent's
-code trace; row 7 was then re-read by the director at
-`stage5_overlap.py:1202-1231`, because the agent's headline and the code disagreed.
+code trace. **Row 7 was corrected the same day**: the first version said "Does
+not", from a reading of `stage5_overlap.py:1202-1231` alone, and a measurement
+of our own stitch files showed that reading wrong. See "Rule 7, measured".
 
 | # | What the professionals do | Why | Seen in about | EMB-Bot today |
 |---|---|---|---|---|
@@ -69,7 +70,7 @@ code trace; row 7 was then re-read by the director at
 | 4 | Ink outlines and line art are sewn LAST, on top of every colour | The line lands on the seams between fills and covers them | 14 | Partial: `borders_last` (on) sews satin-dominated layers after fill-dominated ones, otherwise largest area first. No rule names an outline, and where bean or dark-ink runs land on flat cartoon art was not traced (`stage7_sequence.py:434-502`) |
 | 5 | A hairline (smile, whisker, string, feather line, a thin gap in the art) is a run stitch on top of the fill. Never a satin, never a gap held open | Satin cannot sew that narrow; a gap that thin closes from pull | 20 | Does (`bean_only_lines`, `dark_ink_bean`, `keep_dark_thin_strokes`) |
 | 6 | Touching fills of similar colour get DIFFERENT angles, or an outline between them | Thread reflects by direction, so the angle step is the boundary | 22 | Does not. See "The one real disagreement" |
-| 7 | Small shapes inside a big one (spots, eyes, stripes, text on a panel) are sewn ON TOP of a solid fill | A hole per spot puckers, gaps and misregisters | 20 | Does not. The ground keeps a hole under every later shape: the hole shrinks by the pull growth and gets a 0.25 mm tongue (`overlap_mm`), and a hole that would close is held open at its original size (`held_hole_bare_only` off). `silhouette_underfill` covers rings only |
+| 7 | Small shapes inside a big one (spots, eyes, stripes, text on a panel) are sewn ON TOP of a solid fill | A hole per spot puckers, gaps and misregisters | 20 | Does, on logo and flat art: `silhouette_underfill` (on) closes the ground's holes and stage 5 sews it solid (`stage5_overlap.py:1009-1013`, `1102`). Measured: 120 of 126 narrow pieces fully on solid ground. Does not on photo-class art, where the under-fill is gated off |
 | 8 | Strokes that cross or join are separate overlapping columns; the seam is accepted | One column cannot make a T, Y or X; a butt joint opens | 9 | Partial: skeleton arms run into the junction and overlap there (`satin_junction_stack` on), corners of 45 degrees or more butt, a patch covers what stays bare (`stage6_satin.py:148-183`) |
 | 9 | A column too wide for satin is split (sections, or two lengthwise columns) or becomes outline-plus-fill before it becomes plain fill | Keeps the sheen of the mark; long stitches snag | 8 | Does (`split_satin` above 5.0 mm; `wide_columns` off) |
 | 10 | Shading becomes 2 to 5 flat steps as separate shapes (cartoons, logos, metal) | Thread has no continuous tone | 14 | Partial (`max_colors`, `color_cap_sewn`) |
@@ -117,14 +118,79 @@ read in `docs/pro-digitizer-rules-2026-10-21.md` remain the only measured source
 
 ## Worth measuring next (nothing here is a build request)
 
-1. **Rule 7 is the clearest gap between the pictures and our output.** The
-   professionals sew spots, eyes, stripes and panel text on a solid ground; we
-   knock a hole for each and rely on a 0.25 mm tongue. Before anything is built:
-   on the cartoon and patch fixtures, count the later shapes that sit wholly
-   inside a ground, the stitches a solid ground would add, and the bare fabric
-   the knock-out leaves at those seams today. A stitch file from Kent's
-   professional would say whether he stacks or knocks out, and at what size.
-2. Rule 12: a count of light-on-dark shapes we sew with no separating edge.
-3. Rule 4: where bean and dark-ink runs land in the order on flat cartoon art.
+1. Rule 7 on photo-class art: the owl is one fixture and 8 readable pieces. A
+   character or mascot that routes to `photo_subject` / `photo_scene` is where
+   our knock-out survives, and the repo has no leopard, panda or donkey to read.
+2. Rule 7, wide pieces: the professional knocks out above about 5.2 mm with a
+   1 to 2 mm underlap; we sew solid at 5 to 8 mm. That is thread he does not
+   spend. Not priced here.
+3. Rule 12: a count of light-on-dark shapes we sew with no separating edge.
+4. Rule 4: where bean and dark-ink runs land in the order on flat cartoon art.
    The professionals put the ink line last without exception.
-4. Rule 16: how the house angle reads a text line that sits on an arc.
+5. Rule 16: how the house angle reads a text line that sits on an arc.
+
+## Rule 7, measured (2026-11-13, same day)
+
+Kent asked for rule 7 to be measured. It was, from stitch files, and it
+overturned the first version of this doc's row 7.
+
+**Method.** One reader on both sides, each DST in its own frame: needle-down
+segments of 6 mm or less drawn 0.4 mm wide at 20 px/mm, split into colour
+blocks. A connected piece is a GROUND when its stitches run on in rows (tatami)
+and not back and forth (satin). Every later piece lying inside an earlier
+ground's outline gets an under-cover: the share of its footprint that earlier
+thread covers, read over the whole piece, over its core (shrunk 0.5 mm) and by
+depth from its edge. Checked first on a synthetic square with satin bars on it:
+solid ground reads 1.00, a knock-out with a 0.25 mm tongue reads 0.01 to 0.41
+in the core, a 0.3 mm gap reads 0.00. Widths include the 0.4 mm of thread.
+
+**The professional** (20 non-beanie DSTs with a ground and something on it):
+
+| piece width | pieces | what he does |
+|---|---|---|
+| under 5.2 mm | 292 | all on solid ground: under-cover 0.92 or more, 289 at 0.99 or more |
+| 5.2 mm and over | 12 | 8 knocked out with a deep underlap (ground covers fully to 1 mm in, 0.54 to 0.89 at 1 to 2 mm, 0.00 to 0.22 past 2 mm); 4 solid (Becker 5.4 mm, To a T 5.5 mm, each one design in two files) |
+
+So he stacks small shapes and knocks out big ones, and the switch sits near
+5.2 to 5.5 mm on these files. That is twelve wide pieces from six designs.
+
+**Ours, same jobs, same reader** (seven paired jobs at the pro's width):
+
+| | pieces | result |
+|---|---|---|
+| narrow | 126 | 120 at 0.99 or more; lowest 0.78, two MFab letters |
+| wide | 6 | solid on Drone (6.7 to 8.2 mm), To a T (5.9), Fremont (5.0); knocked out once, MFab's 9.2 mm panel, about 1 mm underlap |
+
+Cost of a solid ground under what we knock out: 1,570 stitches on MFab (7.6% of
+that job, an over-estimate), zero on the other six. Bare fabric in a 0.5 mm
+band either side of each piece: median 0.00 on both sides for every job except
+the pro's Golden Tee (0.05). The reader cannot see a gap under about 0.4 mm.
+
+**Why the code reading was wrong.** The ground does have a hole after stage 4,
+and `stage5_overlap.py:1202-1231` would hold it. But `silhouette_underfill`
+(on) stores the ring's outline with its holes closed, stage 5 unions that into
+the ground (`1009-1013`, `1102`), and the hold-open block never fires. The hole
+survives in three cases: photo classes (`gate_underfill_for_photo`,
+`pipeline.py:133-163`); a ground that is not read as a ring (too small, a
+letter, shapes filling under half its holes, or nested inside another ring's
+contents); and MFab's panel, which `_panels` cuts back out on purpose.
+
+**Cartoon and character art, ours only:**
+
+| fixture | width | class | under-fill | pieces on a ground | on solid ground |
+|---|---|---|---|---|---|
+| Pooh | 54.6 mm | gradient | on | 5 | 4 (the fifth is a 0.5 mm2 speck) |
+| Tux mascot | 80 mm | flat | on | 4 | 4 |
+| Bison icon | 80 mm | flat | on | 1 | 1 |
+| Owl | 127 mm | photo_scene | off | 8 | 6; the two wider ones (3.7 and 5.6 mm) have about 1 mm of underlap and nothing past 2 mm |
+
+The owl is the knock-out the picture study described, and it is the only
+photo-class fixture read. Forty-five of its fill pieces did not pass the ground
+test, so its number is thin.
+
+**Not read:** Gaulke Roofing (one colour block per file, nothing comes later),
+Tires 3D (no ground), Proseal (a ground with nothing on it). Beanies were read
+and kept out of every count; they show the same pattern.
+
+**The lesson.** A claim about what the pipeline sews was made from one block of
+one stage and published. Read the output before describing the output.

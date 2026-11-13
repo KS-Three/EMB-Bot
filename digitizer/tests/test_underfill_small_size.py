@@ -59,7 +59,9 @@ KNOWN_WRONG_ORDER = {(60.0, None)}
 
 
 def _run(width_mm, forced, photo_work_grid=False):
-    cfg = PipelineConfig(target_width_mm=width_mm, max_colors=6, satin=True,
+    # photo_prep=False: the no-cutout lane CI runs (no rembg venv there). With the
+    # venv the 60 mm default row sews in order; tests/test_mfab_cutout_lane.py.
+    cfg = PipelineConfig(photo_prep=False, target_width_mm=width_mm, max_colors=6, satin=True,
                          detail_layer=False, edge_cap="none", sew_enclosed_white=True,
                          sew_enclosed_rgb=(255, 255, 255), faces_route_flat=True,
                          garment_id="hat_front", garment_rgb=(235, 232, 223),

@@ -81,11 +81,14 @@ def test_the_flag_is_off_by_default():
 
 # --- MFab hat, the Studio's route (photo_scene) ------------------------------------
 
+#: photo_prep=False pins the lane these numbers were measured on: CI has no rembg
+#: venv, so its cutout fails and prep is skipped with it. A machine WITH the venv
+#: runs the cutout instead and gets different numbers (tests/test_mfab_cutout_lane.py).
 def _cfg(width_mm, on):
     return frozen_cfg(target_width_mm=width_mm, max_colors=6, satin=True, detail_layer=False,
                       edge_cap="none", sew_enclosed_white=True, sew_enclosed_rgb=(255, 255, 255),
                       faces_route_flat=True, garment_id="hat_front",
-                      garment_rgb=(235, 232, 223), photo_enclosed_rim=on)
+                      garment_rgb=(235, 232, 223), photo_enclosed_rim=on, photo_prep=False)
 
 
 def _mfab(width_mm, on):

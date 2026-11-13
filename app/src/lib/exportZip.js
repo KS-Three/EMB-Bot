@@ -75,13 +75,22 @@ export async function buildExportZip({ designName, exportFormat, worksheet, png,
   const stem = zipStem(designName);
   const files = {};
   const entries = [];
+  // Each stitch format's read-back result, in the zip's order, for the "Saved
+  // ZIP" line (lib/exportCue.js). Absent = that format was not re-read here.
+  const readbacks = [];
   const add = (name, bytes, level) => {
     files[name] = [bytes, { level }];
     entries.push(name);
   };
 
   for (const fmt of ZIP_STITCH_FORMATS) {
-    const out = await step(`${fmt.toUpperCase()} file`, async () => (await exportFormat(fmt)).bytes);
+    let readback;
+    const out = await step(`${fmt.toUpperCase()} file`, async () => {
+      const r = await exportFormat(fmt);
+      readback = r.readback;
+      return r.bytes;
+    });
+    readbacks.push({ format: fmt, readback });
     add(`${stem}.${fmt}`, out, 6);
   }
   // Already deflated inside: storing them again costs time and gains nothing.
@@ -94,5 +103,6 @@ export async function buildExportZip({ designName, exportFormat, worksheet, png,
     filename: `${stem}.zip`,
     mime: "application/zip",
     entries,
+    readbacks,
   };
 }

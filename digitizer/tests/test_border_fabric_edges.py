@@ -92,3 +92,86 @@ def test_border_by_size_off_makes_the_flag_inert():
     a = _plan(border_by_size=False, border_by_size_fabric_edges=False)
     b = _plan(border_by_size=False, border_by_size_fabric_edges=True)
     assert [(r.kind, r.points) for r in a] == [(r.kind, r.points) for r in b]
+
+
+# --- A seam between an explicitly bordered shape and a size-ring-only one ---
+# Seam ownership hands a seam to the later bordered shape. ON, a size ring
+# skips every seam with another sewn region, so it must not count as that
+# later owner: before the fix an earlier `meta["border"]="auto"` square left
+# the shared edge to its size-ring neighbour, which skipped it too, and the
+# seam was sewn by neither.
+
+def _plan_meta(order, metas, **cfg_kw):
+    specs = {"Sleft": (LEFT, "4101"), "Sright": (RIGHT, "4102")}
+    planned = []
+    for i, sid in enumerate(order):
+        poly, thread = specs[sid]
+        meta = {"layer": 0, **metas.get(sid, {})}
+        reg = Region(shape_id=sid, polygon=poly, thread_index=i, thread_number=thread,
+                     area_mm2=poly.area, source="test", meta=meta)
+        planned.append(PlannedRegion(region=reg, polygon=poly, sew_index=i))
+    blocks, _w = sequence(planned, fabric_for_garment("hat_front"),
+                          PipelineConfig(underlay=False, **cfg_kw))
+    return [r for b in blocks for r in b.runs]
+
+
+def _seam_by_shape(runs):
+    near = {"Sleft": 0, "Sright": 0}
+    for r in runs:
+        if r.kind == stitches.BORDER:
+            near[r.shape_id] += len(_near_seam(r.points))
+    return near
+
+
+def _first_fill(runs):
+    return next(r.shape_id for r in runs if r.kind == stitches.FILL)
+
+
+LEFT_AUTO = {"Sleft": {"border": "auto"}}
+
+
+def test_on_bordered_first_sews_the_seam_its_size_ring_neighbour_skips():
+    runs = _plan_meta(("Sleft", "Sright"), LEFT_AUTO, border_by_size_fabric_edges=True)
+    assert _first_fill(runs) == "Sleft"
+    near = _seam_by_shape(runs)
+    # main before the fix: {Sleft: 0, Sright: 0}, the seam sewn by neither
+    assert near["Sleft"] > 0 and near["Sright"] == 0
+
+
+def test_on_bordered_last_keeps_its_full_ring():
+    runs = _plan_meta(("Sright", "Sleft"), LEFT_AUTO, border_by_size_fabric_edges=True)
+    assert _first_fill(runs) == "Sright"
+    near = _seam_by_shape(runs)
+    assert near["Sleft"] > 0 and near["Sright"] == 0
+
+
+def test_off_bordered_first_still_hands_the_seam_to_the_later_size_ring():
+    # the engine before the flip, unchanged: the later size ring owns the seam
+    runs = _plan_meta(("Sleft", "Sright"), LEFT_AUTO, border_by_size_fabric_edges=False)
+    assert _first_fill(runs) == "Sleft"
+    near = _seam_by_shape(runs)
+    assert near["Sleft"] == 0 and near["Sright"] > 0
+
+
+def test_off_bordered_last_keeps_its_full_ring():
+    runs = _plan_meta(("Sright", "Sleft"), LEFT_AUTO, border_by_size_fabric_edges=False)
+    assert _first_fill(runs) == "Sright"
+    near = _seam_by_shape(runs)
+    assert near["Sleft"] > 0 and near["Sright"] == 0
+
+
+def test_two_bordered_neighbours_sew_the_seam_once():
+    both = {"Sleft": {"border": "auto"}, "Sright": {"border": "auto"}}
+    for order in (("Sleft", "Sright"), ("Sright", "Sleft")):
+        for on in (False, True):
+            runs = _plan_meta(order, both, border_by_size_fabric_edges=on)
+            assert _first_fill(runs) == order[0]
+            near = _seam_by_shape(runs)
+            # exactly one side rings the seam: the later shape, which lies on top
+            assert near[order[1]] > 0 and near[order[0]] == 0, (order, on, near)
+
+
+def test_on_two_size_ring_neighbours_both_skip_the_seam():
+    for order in (("Sleft", "Sright"), ("Sright", "Sleft")):
+        near = _seam_by_shape(_plan_meta(order, {}, border_by_size_fabric_edges=True))
+        assert near == {"Sleft": 0, "Sright": 0}, (order, near)
