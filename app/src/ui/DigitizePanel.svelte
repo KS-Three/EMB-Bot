@@ -2153,6 +2153,20 @@
         {:else}
           Changed since the last run — press Auto Digitize Image to restitch.
         {/if}
+        <!-- The same press as the button above (Kent 2026-11-12: "Stronger cue,
+             no auto-run"): the cue sits where the eye already is after Done,
+             and a click still starts exactly one run. Only while the run can
+             actually start, like the halo. -->
+        {#if lit}
+          <button
+            type="button"
+            class="dgp-restitch-now"
+            data-testid="digitize-restitch-now"
+            on:click={() => runDigitize(element)}
+          >
+            Restitch now
+          </button>
+        {/if}
       </p>
     {/if}
 
@@ -3289,6 +3303,27 @@
   .dgp-run.dgp-run-lit {
     box-shadow: 0 0 0 4px var(--tint-border, #ccd6fb);
   }
+  /* The halo breathes while the stitches are behind (2026-11-12). Motion is
+     the cue, so a reduced-motion visitor keeps the still halo above. */
+  @media (prefers-reduced-motion: no-preference) {
+    .dgp-run.dgp-run-lit { animation: dgp-run-pulse 1.6s ease-in-out infinite; }
+  }
+  @keyframes dgp-run-pulse {
+    0%, 100% { box-shadow: 0 0 0 4px var(--tint-border, #ccd6fb); }
+    50% { box-shadow: 0 0 0 8px var(--tint, rgba(79, 70, 229, 0.18)); }
+  }
+  .dgp-restitch-now {
+    margin-left: 8px;
+    padding: 2px 10px;
+    min-height: 26px;
+    border: 1px solid var(--accent, #4f46e5);
+    border-radius: var(--radius-s, 8px);
+    background: transparent;
+    color: var(--accent, #4f46e5);
+    font: inherit;
+    cursor: pointer;
+  }
+  .dgp-restitch-now:hover { background: var(--tint, rgba(79, 70, 229, 0.08)); }
   .dgp-status { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 6px 0 0; }
   .dgp-pending { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
   .dgp-pending .dgp-status { flex: 1 1 auto; margin: 0; }
