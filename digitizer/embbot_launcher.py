@@ -51,6 +51,7 @@ import http.client
 import json
 import os
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -95,8 +96,60 @@ def studio_url(port: int = PORT) -> str:
 
 # ---- who is on the port -----------------------------------------------------
 
+#: Winsock's `SIO_TCP_INITIAL_RTO` (Windows 10 1607 and later).
+_SIO_TCP_INITIAL_RTO = 0x98000011
+
+
+def fast_refusal(sock: socket.socket) -> bool:
+    """Windows: make a refused connect on `sock` fail at once, not after two
+    SYN retransmissions. A closed loopback port answers with a reset, and
+    Windows reads a reset to a SYN as possibly spurious and tries again twice:
+    `connect` to a port nobody listens on took 2.03 s (median of 20, any
+    address, `127.0.0.1` included) and `localhost` took 4.07 s, measured
+    2026-11-13 on Kent's laptop. Asking for no retransmission brings it to
+    15 ms and changes nothing for a port that is listening. Best effort: False
+    where the call does not exist (not Windows, an old Windows), and then a
+    refusal is merely slow, which `probe` copes with."""
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        # TCP_INITIAL_RTO_PARAMETERS { USHORT Rtt; UCHAR MaxSynRetransmissions; }:
+        # TCP_INITIAL_RTO_UNSPECIFIED_RTT, TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS.
+        params = ctypes.create_string_buffer(struct.pack("HBx", 0xFFFF, 0xFE))
+        ws2 = ctypes.WinDLL("ws2_32")
+        ws2.WSAIoctl.argtypes = [ctypes.c_size_t, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD,
+                                 ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD),
+                                 ctypes.c_void_p, ctypes.c_void_p]
+        ws2.WSAIoctl.restype = ctypes.c_int
+        returned = wintypes.DWORD(0)
+        return ws2.WSAIoctl(sock.fileno(), _SIO_TCP_INITIAL_RTO, params, len(params.raw), None, 0,
+                            ctypes.byref(returned), None, None) == 0
+    except Exception:  # noqa: BLE001 -- an optimisation, never a reason to fail a probe
+        return False
+
+
+class _LoopbackConnection(http.client.HTTPConnection):
+    """`HTTPConnection` whose connect asks `fast_refusal` first. The address is
+    already a literal IPv4 one, so there is no name to resolve."""
+
+    def connect(self) -> None:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.settimeout(self.timeout)
+            fast_refusal(sock)
+            sock.connect((self.host, self.port))
+        except BaseException:
+            sock.close()
+            raise
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        self.sock = sock
+
+
 def _get(port: int, path: str, timeout: float) -> tuple[int, str, bytes]:
-    conn = http.client.HTTPConnection(HOST, port, timeout=timeout)
+    conn = _LoopbackConnection(HOST, port, timeout=timeout)
     try:
         conn.request("GET", path)
         r = conn.getresponse()
@@ -109,12 +162,19 @@ def probe(port: int = PORT, timeout: float = PROBE_TIMEOUT_S) -> str:
     """FREE, OURS, BARE or FOREIGN. Asks 127.0.0.1 by number: that is the
     address the service binds, and on Windows `localhost` can resolve to ::1
     first, where nothing is listening (the 2026-08-26 `start-emb-bot.ps1`
-    fix was this same mistake in the other direction)."""
+    fix was this same mistake in the other direction).
+
+    A refused connection means FREE however long it took. A timeout does not
+    say that, but it does not say FOREIGN either when the connect was a
+    refusal that was merely slow (2 s on Windows without `fast_refusal`, over
+    a 1 s timeout): nothing holds the port then, and the bind says so."""
     try:
         status, _, body = _get(port, "/health", timeout)
     except ConnectionRefusedError:
         return FREE
-    except (OSError, http.client.HTTPException):
+    except (OSError, http.client.HTTPException) as exc:
+        if isinstance(exc, TimeoutError) and bind_error(port) is None:
+            return FREE
         return FOREIGN
     try:
         health = json.loads(body) if status == 200 else None
@@ -650,8 +710,9 @@ def launch(studio, ui, *, port: int = PORT, tessdata=None, log_dir=None,
 
     try:
         # WHETHER the port can be had is the bind's answer; `/health` is only
-        # asked WHO has it. A refused connection is slow on Windows (seconds,
-        # where Linux answers at once), and "free" must not hang on a timeout.
+        # asked WHO has it. A refused connection is slow on Windows (2 s, where
+        # Linux answers at once; `fast_refusal` shortens it), and "free" must
+        # not hang on a timeout.
         refused = bind_error(port)
         state = FREE if refused is None else identify(port, probe_timeout)
         log.write(f"port {port} is {state}" + (f" (bind: {refused!r})" if refused else ""))
