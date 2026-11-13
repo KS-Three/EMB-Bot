@@ -15,6 +15,15 @@ After seeing the three render sheets below, Kent picked **"Baseball + monarch"**
   shipping"). The finding went back to the foreman before the shipped file is replaced.
 - **Turtle: not taken.** The flat + 15-colour arm stays a measured option (below).
 
+**Second ruling (Kent, 2026-11-12): "Baseball only now".** On the drift finding, Kent shipped the baseball alone
+(PR #1417) and kept the shipped monarch DST. The reason: a re-digitize on current main would trade 23 trims for a lost
+orange stripe. The drift was to be traced first.
+
+**That claim was wrong** ([`monarch-orange-drift-2026-11-12.md`](monarch-orange-drift-2026-11-12.md)). There is no
+drift. The re-digitize ran 0.5 mm larger than the pack did. At the pack's own width, `borders_last: false` keeps the
+stripe and takes the trims from 86 to 67. The correction went back to the foreman with options, so the monarch
+question is open again for Kent.
+
 ## Method
 
 - **Art.** The 1920 px Commons render each DST was made from (`digitized_from` in the manifest). The sha256 matches
@@ -27,6 +36,10 @@ After seeing the three render sheets below, Kent picked **"Baseball + monarch"**
 - **Drift.** Main has moved since the pack's `ac3d77fa`, so a "before" here is not the shipped DST byte for byte. Baseball
   went from 20,812 to 20,601 stitches and from 49 to 51 trims; the monarch's trims are still 86. Each fault is the same
   one the pack ships.
+  *Corrected 2026-11-12:* this was not drift. Every "before" here took the manifest's DST width as its target, which
+  is about 0.6% above the target the pack used: baseball 75.5 for 75.0, turtle 92.5 for 92.0, monarch 90.5 for 90.0.
+  At the pack's targets, the baseball and monarch reproduce the shipped files. The faults and their causes stand. See
+  [`monarch-orange-drift-2026-11-12.md`](monarch-orange-drift-2026-11-12.md).
 - **Trims.** Trims are the plan's count. Hop classes come from `tools/trim_classes.py` on the DST.
 - **Renders.** `stitchviz.render_png_bytes` at 10 px/mm. Strips are in `docs/renders/starter-weak-spots-2026-11-12/`
   (art | before | arms). Rendered, not sewn: gate 1 applies.
@@ -135,7 +148,7 @@ judged on `trim_classes` plus a render that shows every dot.
 |---|---|---|---|
 | baseball | existing setting | `forced_class: "flat"` | **shipped 2026-11-12** (Kent's ruling) |
 | turtle | existing setting at a cost; documented cap on the automatic lane | `forced_class: "flat"`, `max_colors: 15` | not taken (Kent's ruling); shipped DST unchanged |
-| monarch | existing setting (partial) + documented remainder | `borders_last: false` | ruled to ship; held for main's drift (below) |
+| monarch | existing setting (partial) + documented remainder | `borders_last: false` | ruled to ship, then held (Kent's second ruling, "Baseball only now"); shipped DST unchanged |
 
 The manifest now records the settings a re-digitized design was made with (`digitize_config`), plus `redigitized`
 and `redigitized_basis`, so the next regeneration reproduces it.
@@ -158,7 +171,13 @@ The new `app/public/starter/baseball.dst` comes from main `7ad81351` with `{targ
   [141,19,50]]`. The fifth block is two specks of Oyster grey (1.2 mm², 3 runs) inside the seam. The art there is red,
   so the Studio shows it red. That block is one colour stop the flat lane adds.
 
-## Monarch: drift found while shipping
+## Monarch: lost stripe while shipping (corrected: a width mistake, not drift)
+
+> **Correction, 2026-11-12.** The paragraph below is wrong about the cause. The stripe was lost because the
+> re-digitize ran at a 90.5 mm target: the manifest's DST width. The pack used 90.0. At 90.0, main writes the shipped
+> monarch's exact bytes, and `borders_last: false` keeps the stripe at 67 trims. See
+> [`monarch-orange-drift-2026-11-12.md`](monarch-orange-drift-2026-11-12.md). The paragraph is kept as written, since
+> Kent's second ruling rested on it.
 
 ![monarch shipped vs re-digitized](renders/starter-weak-spots-2026-11-12/monarch-shipped.jpg)
 

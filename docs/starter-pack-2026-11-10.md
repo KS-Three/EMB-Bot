@@ -49,8 +49,8 @@ lighthouse is generic and names no landmark.
   (Kent's ruling), so the row above is the new file: one white field, no grey.
 - The turtle loses its shell shading. Its shell, legs and head merge into one colour on the automatic lane. Kent kept
   the shipped file.
-- The monarch's white wing dots cost 86 trims. `borders_last: false` takes that to 63; the re-digitize is held while
-  main's drift is traced.
+- The monarch's white wing dots cost 86 trims. `borders_last: false` takes that to 67 at the pack's 90.0 mm target; a
+  "drift" that held it was a width mistake ([correction](monarch-orange-drift-2026-11-12.md)), so it waits on Kent.
 - The lighthouse is only 25 mm wide, so its windows are tiny.
 
 ## Dropped
