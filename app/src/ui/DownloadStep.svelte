@@ -4,6 +4,7 @@
   import { garmentOf } from "../lib/placement.js";
   import { exportFileName, exportDesignPreferService, exportWorksheetPDF, exportPNG, isServiceOnlyFormat } from "../lib/exporters.js";
   import { buildExportZip, threadListText } from "../lib/exportZip.js";
+  import { singleCue, zipCue } from "../lib/exportCue.js";
   import { chartIdForProject } from "../lib/designChart.js";
   import { isSewable } from "../lib/flow.js";
   import { triggerDownload } from "../lib/download.js";
@@ -588,7 +589,8 @@
       // DST codec was put right and both warning notes came out. `where` names
       // the destination folder when one is set, "" for a plain download.
       msg = "Saved " + fmt.toUpperCase() + where
-        + (out.via === "service" ? " (digitizer service encoder)" : " (browser encoder)");
+        + (out.via === "service" ? " (digitizer service encoder)" : " (browser encoder)")
+        + singleCue(out.readback);
     } catch (e) {
       msg = friendlyError(e, "export", fmt.toUpperCase() + " file");
     }
@@ -664,7 +666,7 @@
         },
       });
       const where = await saveOut(zip);
-      msg = "Saved ZIP" + where;
+      msg = "Saved ZIP" + where + zipCue(zip.readbacks);
     } catch (e) {
       msg = friendlyError(e, "export", "ZIP");
     } finally {
