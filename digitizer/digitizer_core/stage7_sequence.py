@@ -64,7 +64,7 @@ from .config import PipelineConfig
 from .fabrics import Fabric, fill_underlay_for, pro_values_for, pull_by_stroke_for
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
 from .beanletters import BEAN_LETTER_KEY
-from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
+from .stage5_overlap import PlannedRegion, _largest_polygon, clip_piece_floor_mm2, widened_lettering
 from .silhouette_underfill import RIDER_HOLES_KEY, STRIPE_HOST_KEY, STRIPE_ON_KEY, UNDERFILL_KEY
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
@@ -165,6 +165,25 @@ CAP_GARMENTS = ("hat_front", "beanie")
 #    here; the tests pin it stays true.
 _PHOTO_FILL_UNDERLAY = "edge_lattice"
 _PHOTO_SATIN_UNDERLAY = "center_run"
+
+
+def grown_body(poly: Polygon, pull_mm: float) -> Polygon:
+    """`poly` grown by the pull with a mitre join, as ONE polygon.
+
+    A mitre join can leave a corner's wedge touching the grown shape at a
+    single vertex, and shapely returns that wedge as a separate polygon: the
+    buffer of one valid Polygon comes back a MultiPolygon. Measured
+    2026-11-13 on the starter lighthouse at targets 25.125 and 25.63 mm: a
+    14.48 mm2 body under its outline loop grew to 36.02 mm2 plus four wedges
+    of 0.002-0.15 mm2, and `stitch_shape` -- which takes a Polygon, and whose
+    `principal_angle_deg` reads `.exterior` -- crashed the job. The part kept
+    is the largest, as stage 5's `_largest_polygon` keeps it: an outward
+    buffer's wedges are pull growth only, and the artwork lies wholly inside
+    the largest part. A buffer that is already one polygon comes back as it
+    is, so every job that did not crash is byte-identical.
+    """
+    grown = poly.buffer(pull_mm, join_style=2)
+    return _largest_polygon(grown) or grown
 
 
 def _rel_luminance(rgb: tuple[int, int, int]) -> float:
@@ -3626,7 +3645,7 @@ def sequence(
             if tier == "auto" and p.shape_id in outline_bodies:
                 body = p.polygon
                 if p.satin_tier and fabric.pull_comp_mm > 0:
-                    body = body.buffer(fabric.pull_comp_mm, join_style=2)
+                    body = grown_body(body, fabric.pull_comp_mm)
                 runs, report = stitch_shape(
                     small_print_cut(p, body, bar_mm=row_mm), p.shape_id,
                     angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
