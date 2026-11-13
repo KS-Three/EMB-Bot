@@ -1,7 +1,6 @@
-"""Prove the frozen LAUNCHER keeps one origin across restarts, so saved designs survive.
+"""Prove the shipped exe (the launcher) keeps one origin across restarts, so saved designs survive.
 
-    python packaging/one_origin_smoke.py --launcher <dist>/embbot-launcher/embbot-launcher.exe \
-        --work <work>/origin --app-dir ../app
+    python packaging/one_origin_smoke.py --build-report <work>/build_report.json --work <work>/origin
 
 WHY. The Studio keeps every saved design in the browser's localStorage
 (`embstudio:index` plus one `embstudio:p:<id>` per design,
@@ -341,7 +340,7 @@ def summary_markdown(failures: list[str], rec: dict, total_s: float) -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--build-report", type=Path, default=None,
-                    help="build_report.json of a `build_freeze.py --entry embbot_launcher.py` build: "
+                    help="build_report.json from `build_freeze.py` (whose entry is the launcher): "
                          "names the exe, and /health must carry its stamped commit")
     ap.add_argument("--launcher", nargs="+", default=None,
                     help="instead of --build-report: the command that starts a launcher (a test wrapper); "

@@ -330,19 +330,30 @@ def test_the_windows_build_is_windows_python_312_and_the_two_scripts():
         assert len(commands) == 1, r
 
 
-def test_the_launcher_is_frozen_and_proved_to_keep_one_origin():
-    """Saved designs are localStorage, keyed by origin: the frozen launcher
-    must come back on the one port. The job freezes it as a second folder and
-    runs `one_origin_smoke.py` on it, after the uploads."""
+def test_the_shipped_exe_is_the_launcher_and_is_proved_to_keep_one_origin():
+    """Saved designs are localStorage, keyed by origin: the app a customer
+    starts must come back on the one port. Since 2026-11-13 the launcher IS the
+    frozen entry (Kent: "Swap in follow-up PR"), so the job proves the folder it
+    ships with `one_origin_smoke.py`, before anything is uploaded."""
+    assert build_freeze.parser().get_default("entry") == build_freeze.DIGITIZER / "embbot_launcher.py"
+    assert not (DIGITIZER / "packaging" / "freeze_entry.py").exists()
     steps = _workflow()["jobs"]["windows-app"]["steps"]
     runs = [s.get("run", "") for s in steps]
-    freeze = next(i for i, r in enumerate(runs) if "build_freeze.py" in r and "embbot_launcher.py" in r)
+    freezes = [i for i, r in enumerate(runs) if "packaging/build_freeze.py" in r]
     smoke = next(i for i, r in enumerate(runs) if "packaging/one_origin_smoke.py" in r)
     uploads = [i for i, s in enumerate(steps) if str(s.get("uses", "")).startswith("actions/upload-artifact@")
                and s.get("if") != "always()"]
-    assert "--entry embbot_launcher.py" in runs[freeze] and "--no-zip" in runs[freeze]
-    assert "--build-report" in runs[smoke] and freeze < smoke
-    assert uploads and max(uploads) < freeze, "the origin smoke must never cost the zip or the installer"
+    assert len(freezes) == 1 and "--entry" not in runs[freezes[0]], "one folder, the one that ships"
+    assert r"freeze\build_report.json" in runs[smoke] and freezes[0] < smoke
+    assert uploads and smoke < min(uploads), "a zip whose app strands saved designs must not be uploaded"
+
+
+def test_the_release_checks_start_the_shipped_exe_as_its_own_service():
+    release_smoke = _load_after_siblings("release_smoke")
+    assert release_smoke.frozen_service(Path("app.exe"), 8732) == ["app.exe", "--serve", "--port", "8732"]
+    for script in ("release_smoke", "build_installer"):
+        text = (DIGITIZER / "packaging" / f"{script}.py").read_text(encoding="utf-8")
+        assert "[str(exe), str(" not in text, f"{script} still starts the exe as `<exe> <port>`"
 
 
 def test_the_origin_smoke_names_every_check_in_its_summary():
