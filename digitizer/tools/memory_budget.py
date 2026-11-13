@@ -118,6 +118,100 @@ def char_count(text: str) -> int:
     return len(text.strip(_JS_WHITESPACE).encode("utf-16-le")) // 2
 
 
+#: Headroom a PR that GROWS the index must leave under `BUDGET`, in characters.
+#: Why it exists: `main` does not require branches up to date, so two PRs that
+#: each add a line pass CI alone and cross `BUDGET` together after merge. That
+#: took `main` red three times on 2026-11-12. If every growing PR leaves at
+#: least this much room, the PRs that can land inside one CI window have to
+#: add more than this together to break it.
+#: Measured from `git log --first-parent main -- .claude/memory/MEMORY.md`
+#: (353 commits through 2026-11-12), steady state only (from the
+#: 2026-10-23 archive split; before it the index had no ceiling in force):
+#: one entry is <= 260 chars (LINE_CAP), the largest single commit added 501,
+#: and the busiest days summed the added characters of every growing commit to
+#: 2,227 (2026-11-05) and 1,958 (2026-11-11). The days 10-24..10-27 (2,741 to
+#: 4,235) refilled room an archive pass had just made, not concurrent PRs.
+#: 2,500 is the 2,227 day plus ~12%: ~10 one-line PRs, or 5 of the largest.
+GROW_HEADROOM = 2_500
+
+#: Where the base copy of the index is read from by `growth_check`.
+INDEX_REL = ".claude/memory/MEMORY.md"
+
+
+def _git(repo: pathlib.Path, *args: str) -> tuple[int, bytes]:
+    import subprocess
+    try:
+        p = subprocess.run(["git", "-C", str(repo), *args], capture_output=True,
+                           timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return 127, b""
+    return p.returncode, p.stdout
+
+
+def base_index(repo: pathlib.Path = REPO) -> tuple[str | None, str]:
+    """The index as it stood on the line this change started from.
+
+    Returns (text, where it came from), or (None, why there is no base). Local
+    objects only: no fetch, no network, nothing about GitHub.
+
+    1. `git merge-base origin/main HEAD`: a local branch, after `git fetch`.
+    2. First parent of HEAD when HEAD is a merge commit with both parents
+       present: what CI checks out for a PR (`refs/pull/N/merge`, whose first
+       parent is the `main` tip it would land on). Needs `fetch-depth: 2`.
+    Anything else (a shallow depth-1 clone, a push to `main`, no `origin/main`)
+    has no base and the caller skips with the reason.
+    """
+    rc, out = _git(repo, "merge-base", "origin/main", "HEAD")
+    base, how = (out.decode().strip(), "merge-base with origin/main") if rc == 0 and out.strip() else ("", "")
+    if not base:
+        rc2, _ = _git(repo, "rev-parse", "--verify", "-q", "HEAD^2^{commit}")
+        rc1, out1 = _git(repo, "rev-parse", "--verify", "-q", "HEAD^1^{commit}")
+        if rc2 == 0 and rc1 == 0 and out1.strip():
+            base, how = out1.decode().strip(), "first parent of the PR merge commit"
+    if not base:
+        return None, ("no base to compare against: there is no origin/main ref sharing history "
+                      "with HEAD and HEAD is not a merge commit with both parents present "
+                      "(a shallow depth-1 clone? CI needs `fetch-depth: 2`)")
+    rc, blob = _git(repo, "show", f"{base}:{INDEX_REL}")
+    if rc != 0:
+        return None, f"{INDEX_REL} does not exist at base {base[:8]} ({how})"
+    return blob.decode("utf-8"), f"{how} {base[:8]}"
+
+
+def growth_problem(base_text: str, now_text: str, headroom: int = GROW_HEADROOM) -> str | None:
+    """Why `now_text` may not land after `base_text`; None when it may.
+
+    Only a change that GROWS the index is judged. One that leaves it the same
+    size or smaller passes however thin the room is, so a PR that never
+    touches the index cannot fail because someone else used the headroom.
+    """
+    grew = char_count(now_text) - char_count(base_text)
+    left = BUDGET - char_count(now_text)
+    if grew <= 0 or left >= headroom:
+        return None
+    short = headroom - left
+    return (f"this change adds {grew:,} chars to MEMORY.md and leaves {left:,} under the "
+            f"{BUDGET:,} ceiling; a PR that grows the index must leave at least {headroom:,} "
+            f"(GROW_HEADROOM in tools/memory_budget.py), so you are {short:,} short.\n"
+            f"Why: `main` does not require branches up to date, so two PRs that each fit "
+            f"alone can cross the ceiling together after merge (main went red 3 times on "
+            f"2026-11-12), and the loader then drops the NEWEST entries silently.\n"
+            f"Fix: `git fetch origin && git merge origin/main`, then move the OLDEST lines "
+            f"whole from MEMORY.md to MEMORY-archive.md until you have freed at least "
+            f"{short:,} chars (archive lines keep the same text; a note is indexed in exactly "
+            f"one file), then `cd digitizer && .venv/bin/python -m tools.memory_budget --sort` "
+            f"(`.venv/Scripts/python` on Windows) and re-run this test.")
+
+
+def growth_check(now_text: str, repo: pathlib.Path = REPO) -> tuple[str, str]:
+    """(status, message) with status 'ok', 'fail' or 'skip'."""
+    base, how = base_index(repo)
+    if base is None:
+        return "skip", how
+    msg = growth_problem(base, now_text)
+    return ("fail", f"{msg}\n(compared with the index at {how})") if msg else ("ok", how)
+
+
 def kib(n: int) -> float:
     """The loader reports KiB, so the tool does too, or the numbers won't match."""
     return n / 1024
