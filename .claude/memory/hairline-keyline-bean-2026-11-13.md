@@ -58,13 +58,43 @@ relatively fatter. The 1.5 floor was read off outlines of 0.8 mm and up.
   guard takes none. So nothing in the paired corpus moves, and no pro file
   says what a digitizer does with a 0.4 mm keyline.
 
+**Second pass, same day (Kent: "Show me more comparisons of on vs off, why
+are you recomending to keep off?").** The real file IS in the repo:
+`digitizer/testdata/art/commons_lettering/hed_p_e_logo.png` (transparent
+ground, so no cream counters). OFF | ON sheets on it at 40-140 mm and a scan
+of 22 repo logos at 60 and 100 mm found four faults in the first build, all
+fixed in the follow-up PR:
+- 40 mm: the word's hold was refused (the cut split its polygon at a neck),
+  fill 0.62 mm past the line. `held` now bridges the pieces at the neck only.
+- 40 and 127 mm: a white counter body stayed in its old layer, 4 colour stops
+  for 3 threads. `sew_last` takes a body of the keyline's own thread along.
+- 150 mm: rings either side of the gate, bean and satin mixed in one design.
+  The gate is now per THREAD (outlines pooled, 2A/P).
+- The gate took any thin ring. To-a-T Machine at 50-60 mm: the black frame
+  the pro borders in satin went to a wire, its O and A to hollow outlines.
+  Commons "Ahora" at 50-60 mm: the white gear lost its teeth. Now a thread
+  must be nearly all keyline (rings >= `OUTLINE_REACH_FRAC` of its sewn
+  area: the logo 0.98-1.00, To-a-T 0.23) and its outlines' plain width under
+  the gate (the gear 0.72-0.86 mm). Neither is taken; of the 22 only the
+  logo is.
+Real file, OFF -> ON stitches: 40 mm 2,064 -> 1,544; 60 mm 3,492 -> 2,527;
+100 mm 6,291 -> 5,228; 127 mm 9,099 -> 7,267; 3 colour stops both ways. Over
+about 145 mm the keyline passes 0.6 mm and sews the 1.5 mm loop again.
+
+**Lesson.** I recommended OFF on thin grounds (one logo, a screenshot). The
+ground that mattered only showed when the flag was run on OTHER art: run a
+new flag across every repo logo and LOOK before recommending either way.
+
 **Open.**
 - Gate 1: where the fill meets the line on fabric (the fill is held at the
   bean's centreline, so pull-in may open a hair of cloth) is a sew-out
   question.
 - Finer than 0.18 mm p95 needs a finer trace of the keyline than stage 4's.
-- The screenshot's putty page inside the counters sewed as cream thread; the
-  real file may differ. Not this flag's.
+- The cliff near 145 mm: a 0.62 mm keyline sews 1.5 mm satin (2.4x). Nothing
+  between 0.6 and To-a-T's 0.8 mm has a pro file.
+- A dot's or counter's body that sews satin still passes the line by 0.3 mm
+  (rails carry the pull); only plain-fill bodies are held.
+- The real file's bodies snap to two reds (2011 and 1335). Not this flag's.
 
 **How to apply:** a bean outline is judged at needle-point precision: corners,
 closure, shared holes, what sews after it, what shows past it. Render it

@@ -207,6 +207,67 @@ def test_no_fill_passes_its_keyline():
     assert planned[1].polygon is key.polygon
 
 
+def test_a_body_of_the_keylines_own_thread_goes_with_it():
+    """A white counter inside a white keyline, left in its own layer, loaded
+    the white twice (the logo at 40 and 127 mm: 4 colour stops, 3 threads)."""
+    counter = box(-2, -1, 2, 1)
+    regs = [_region("Sword", FACE.difference(counter.buffer(0.4, join_style=2)), 0, 0),
+            _region("Scounter", counter, 1, 1),
+            _region("Sother", box(20, -6, 24, 6), 2, 2),
+            _region("Skey", _ring(0.4, counter), 1, 3)]
+    out = keyline_bean.sew_last(regs, {"Skey"})
+    assert [r.shape_id for r in out] == ["Sword", "Sother", "Scounter", "Skey"]
+    assert [r.meta["layer"] for r in out] == [0, 1, 2, 3]
+
+
+def test_the_hold_keeps_one_polygon_by_bridging_only_the_neck():
+    """Body and hole are vectorized apart: at a thin neck the two can miss
+    each other and the cut comes back in two. The pieces are joined between
+    themselves and nowhere else: the overshoot all round the body goes."""
+    lobes = [box(0, 0, 4, 4), box(4.3, 0, 8.3, 4)]                 # two letters, 0.3 mm apart
+    body = unary_union([*lobes, box(4, 1.9, 4.3, 2.1)]).buffer(0.3, join_style=2)
+    limit = unary_union(lobes)                                     # the hole's neck missed the body's
+    assert limit.geom_type == "MultiPolygon"
+    assert body.intersection(limit).geom_type == "MultiPolygon"
+    got = keyline_bean.held(body, limit)
+    assert got.geom_type == "Polygon" and got.area < body.area
+    over = got.difference(limit)
+    assert box(3.99, -0.31, 4.31, 4.31).contains(over)             # only the strip between them
+    assert keyline_bean.held(body, None) is body
+
+
+def test_one_threads_keylines_go_together():
+    """Rings either side of the gate are one drawn line: a bean, all of them,
+    when the thread's outlines pooled are a hairline; none when they are not."""
+    cfg = PipelineConfig()
+    a, b = box(-15, -6, 15, 6), box(20, -6, 50, 6)
+
+    def ids(wa, wb):
+        regs = [_region("Sa", a, 0, 0), _region("Sb", b, 0, 0),
+                _region("Ska", _ring(wa, a), 1, 1), _region("Skb", _ring(wb, b), 1, 1)]
+        return keyline_bean.keyline_regions(regs, {"Ska", "Skb"}, cfg)
+
+    assert ids(0.40, 0.40) == {"Ska", "Skb"}
+    assert ids(0.40, 0.70) == {"Ska", "Skb"}        # 0.70 alone is over the gate; pooled 0.55 is under
+    assert ids(0.75, 0.85) == set()
+    assert ids(0.40, 2.00) == set()                 # one thick outline: not a hairline thread
+
+
+def test_a_frame_in_the_logos_own_ink_is_not_a_keyline():
+    """To-a-T Machine: a thin black frame and black lettering. The frame is a
+    drawn part of the logo, which the pro borders in satin; as a bean it went
+    to a wire, and the O of its lettering to a hollow outline."""
+    cfg = PipelineConfig()
+    letter = box(-8, -3, -4, 3)                                    # the same thread's lettering
+    regs = [_region("Sfield", FACE.difference(letter), 0, 0),
+            _region("Sletter", letter, 1, 1),
+            _region("Sframe", _ring(0.4), 1, 1)]
+    assert keyline_bean.keyline_regions(regs, {"Sframe"}, cfg) == set()
+    # the same frame in a thread of its own is a keyline
+    regs[1] = _region("Sletter", letter, 2, 1)
+    assert keyline_bean.keyline_regions(regs, {"Sframe"}, cfg) == {"Sframe"}
+
+
 # --- through stage 7 ----------------------------------------------------------
 
 def test_off_a_hairline_keyline_sews_a_satin_loop():
