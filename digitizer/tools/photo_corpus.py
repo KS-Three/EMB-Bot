@@ -525,17 +525,25 @@ def capture(rows: list[dict], photos: Path, tree: Path, out: Path, tree_sha: str
                          f"{tree_sha[:8]}: use another --label, or delete the folder to recapture")
     cap = int(cfg.get("max_colors") or 6)
 
+    want = dict(overrides or {})
+
     def one(row: dict) -> tuple[str, dict]:
         slug = row["slug"]
         row_json = out / f"{slug}.row.json"
+        stale = False
         if row_json.exists():
             kept = json.loads(row_json.read_text(encoding="utf-8"))
             if kept.get("tree_sha") != tree_sha:
                 refuse(kept.get("tree_sha"), f"{slug}.row.json")
-            return slug, kept
+            # A row written before overrides were recorded had none. Reuse it
+            # only when this capture's --set overrides are the same; else a
+            # side-by-side would compare one setting against itself.
+            if (kept.get("overrides") or {}) == want:
+                return slug, kept
+            stale = True
         photo = photo_path(photos, slug)
         worker_json = out / f"{slug}.json"
-        if worker_json.exists():
+        if worker_json.exists() and not stale:
             # the worker's output is the slow, raw record; the summary is
             # derived from it, so an instrument fix re-reads rather than re-runs.
             # A stamped output must be this tree's; an unstamped one (captured
@@ -556,7 +564,8 @@ def capture(rows: list[dict], photos: Path, tree: Path, out: Path, tree_sha: str
             (out / f"{slug}.json").write_text(json.dumps(output), encoding="utf-8")
         summary = summarise(output, cap)
         summary.update(_render_row(photo, output, out / f"{slug}.png", fabric))
-        summary.update({"slug": slug, "kind": row["kind"], "genre": row["genre"], "tree_sha": tree_sha})
+        summary.update({"slug": slug, "kind": row["kind"], "genre": row["genre"], "tree_sha": tree_sha,
+                        "overrides": want})
         row_json.write_text(json.dumps(summary, indent=1), encoding="utf-8")
         print(f"{slug}: {summary['state']} {summary['wall_s']}s stitches={summary['stitches']} "
               f"trims={summary['trims']} colors={summary['colors_used']}/{cap} grade={summary['grade']} "
