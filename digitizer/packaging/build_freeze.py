@@ -453,8 +453,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="the build's name, e.g. the tag v1.0.0 (default: $EMBBOT_RELEASE, else dev-<commit>)")
     ap.add_argument("--commit", default=None, help="full sha to stamp (default: git HEAD of this checkout)")
     ap.add_argument("--name", default="embbot-digitizer", help="folder and exe name")
-    ap.add_argument("--entry", type=Path, default=DIGITIZER / "packaging" / "freeze_entry.py",
-                    help="the script to freeze (the launcher, once there is one)")
+    ap.add_argument("--entry", type=Path, default=DIGITIZER / "embbot_launcher.py",
+                    help="the script to freeze (default: the launcher, what a customer double-clicks; "
+                         "it starts itself with --serve as the service)")
     ap.add_argument("--no-prune", action="store_true", help="keep every file PyInstaller collected")
     ap.add_argument("--no-zip", action="store_true")
     ap.add_argument("--summary", type=Path, default=None,

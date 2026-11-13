@@ -100,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
         import httpx
 
         base = f"http://127.0.0.1:{args.port}"
-        with release_smoke.Service([str(exe), str(args.port)], work, release_smoke.bare_env(),
+        with release_smoke.Service(release_smoke.frozen_service(exe, args.port), work, release_smoke.bare_env(),
                                    work / "installed-service.log"):
             health, waited = freeze_check._wait_health(base, 120)
             page = httpx.get(base + "/", timeout=30)
