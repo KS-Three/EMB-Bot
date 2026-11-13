@@ -237,3 +237,5 @@ live index; new archive lines go at the bottom.
 - [Typed lettering floats](text-cut-jumps-2026-10-27.md) — `cutEveryJump` OFF: names float 1-3 mm hops on every DST path; ON buries/walks/cuts (95% cut), trims ~2x
 - [Upload full-res](upload-full-res-2026-10-27.md) — SVG/GIF/EXIF JPEG go up as a 2,800-px render, OFF; 250 mm run: geometry tie, ON drops halo colours; text art times out both arms. Kent 10-27: flip held, no EXIF change
 - [White recipe on every job](white-recipe-every-job-2026-10-27.md) — Kent 10-27 "Every job": recipe switches are PLAIN defaults (a gate would override the Studio's unticked white box); D1-D3 + Becker counter growth fixed first
+- [Band rings](border-by-size-colour-seams-2026-10-28.md) — Instagram: `border_by_size` satin rings each band, not bean; fix ON 10-28: ring fabric edges only
+- [Dark thin strokes ON](dark-thin-strokes-flip-2026-10-28.md) — flipped ON (Kent, #1170); OFF pinned in PRE_FLIP/FLIP_2026_10_23; owl 16 reads, patch 14

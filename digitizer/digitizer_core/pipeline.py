@@ -78,7 +78,7 @@ from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .config import is_photographic, satin_fill_hysteresis, satin_fill_vote, satin_floor_applies
-from . import shape_memo, sliver_prune
+from . import keyline_bean, shape_memo, sliver_prune
 from .columns import is_lettering
 from .lettering_thread import apply_lettering_thread
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
@@ -2128,9 +2128,20 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     marks = [r for r in stitched_regions if r.meta.get("detail_spokes")]
     if marks:
         stitched_regions = [r for r in stitched_regions if not r.meta.get("detail_spokes")]
+    # `cfg.border_from_outline_hairline_run` (built OFF 2026-11-13): the
+    # hairline keylines (`keyline_bean`), read once here. They sew LAST, so
+    # stage 5 runs each body under its line and not over it, and after stage
+    # 5 no body's fill passes its line. Off: None, nothing moved.
+    keyline_beans = None
+    if cfg.border_from_outline_hairline_run and art_outlines:
+        keyline_beans = keyline_bean.keyline_regions(
+            stitched_regions, set(art_outlines), cfg, ink=getattr(result, "ink_source", None))
+        stitched_regions = keyline_bean.sew_last(stitched_regions, keyline_beans)
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
                                                  design_class=result.design_class,
                                                  hairline=hairline)
+    if keyline_beans:
+        keyline_bean.hold_bodies(planned, keyline_beans)
     deadline.check("stage 5")
     from .fragment_absorb import absorb   # `cfg.extra["absorb_fragments"]` (built OFF 2026-10-25)
     planned = absorb(planned, cfg, hairline)
@@ -2235,7 +2246,9 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
                                                        if cfg.open_cored_counters else None) or None,
                                         # `cfg.border_from_outline`: computed above,
                                         # before the under-fill.
-                                        art_outlines=art_outlines)
+                                        art_outlines=art_outlines,
+                                        **({"keyline_beans": keyline_beans}
+                                           if keyline_beans is not None else {}))
 
     # `cfg.beanie_knockdown` (built OFF): a sparse fill under the whole design,
     # sewn first, on a beanie with a known garment colour — `knockdown.py`.
