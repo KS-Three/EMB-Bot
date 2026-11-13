@@ -1,0 +1,124 @@
+{
+ "item": "C_lt_bukit_asam",
+ "reader": "letter_fault_reader",
+ "tree_sha": "ea13a36224711a3dbff18adac46752b860cd0e47",
+ "stored_tree_sha": "ea13a36224711a3dbff18adac46752b860cd0e47",
+ "stitches_sha256": "c0e7637bd94a9093a718e31a78158d7476ecd88dbd277ba3e0e97b544a214d89",
+ "px_per_mm": 12.0,
+ "pad_mm": 2.0,
+ "img_w": 1012,
+ "img_h": 303,
+ "art_px_per_mm": 23.7125,
+ "classes": [
+  [
+   0,
+   56,
+   147
+  ],
+  [
+   255,
+   204,
+   0
+  ],
+  [
+   216,
+   44,
+   48
+  ],
+  [
+   153,
+   204,
+   102
+  ],
+  [
+   49,
+   46,
+   47
+  ]
+ ],
+ "by_kind": {
+  "bay_closed": 3,
+  "join": 4,
+  "counter_lost": 1
+ },
+ "flags": [
+  {
+   "x_mm": 76.58,
+   "y_mm": 7.17,
+   "class": 2,
+   "kind": "bay_closed",
+   "strength": 2.967
+  },
+  {
+   "x_mm": 36.17,
+   "y_mm": 11.25,
+   "class": 0,
+   "kind": "bay_closed",
+   "strength": 1.509
+  },
+  {
+   "x_mm": 44.0,
+   "y_mm": 13.58,
+   "class": 0,
+   "kind": "join",
+   "strength": 0.898,
+   "shapes": [
+    4,
+    5
+   ],
+   "bridge_mm": 0.745
+  },
+  {
+   "x_mm": 64.83,
+   "y_mm": 19.33,
+   "class": 4,
+   "kind": "counter_lost",
+   "strength": 0.887,
+   "art_mm": 1.054,
+   "sewn_mm": 0.167
+  },
+  {
+   "x_mm": 36.92,
+   "y_mm": 13.92,
+   "class": 0,
+   "kind": "join",
+   "strength": 0.833,
+   "shapes": [
+    1,
+    8
+   ],
+   "bridge_mm": 0.601
+  },
+  {
+   "x_mm": 51.92,
+   "y_mm": 14.17,
+   "class": 0,
+   "kind": "join",
+   "strength": 0.833,
+   "shapes": [
+    4,
+    9
+   ],
+   "bridge_mm": 0.687
+  },
+  {
+   "x_mm": 78.75,
+   "y_mm": 5.17,
+   "class": 2,
+   "kind": "join",
+   "strength": 0.745,
+   "shapes": [
+    1,
+    3
+   ],
+   "bridge_mm": 1.863
+  },
+  {
+   "x_mm": 53.25,
+   "y_mm": 16.42,
+   "class": 3,
+   "kind": "bay_closed",
+   "strength": 0.707
+  }
+ ]
+}

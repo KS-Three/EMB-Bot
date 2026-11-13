@@ -1,0 +1,201 @@
+{
+ "radius_mm": 3.0,
+ "null": "chance_area",
+ "items": {
+  "C_lt_bukit_asam": {
+   "pins": 1,
+   "flags": 8,
+   "by_radius": {
+    "3.0": {
+     "hit": 1,
+     "hit_rate": 1.0,
+     "chance_area": 0.195,
+     "chance_edge": 0.2195
+    },
+    "2.0": {
+     "hit": 0,
+     "hit_rate": 0.0,
+     "chance_area": 0.109,
+     "chance_edge": 0.12
+    },
+    "5.0": {
+     "hit": 1,
+     "hit_rate": 1.0,
+     "chance_area": 0.351,
+     "chance_edge": 0.4195
+    }
+   },
+   "auc_area": 0.83,
+   "auc_edge": 0.81875,
+   "pin_nearest_mm": [
+    2.42
+   ],
+   "unpinned": [
+    {
+     "x_mm": 76.58,
+     "y_mm": 7.17,
+     "class": 2,
+     "kind": "bay_closed",
+     "strength": 2.967
+    },
+    {
+     "x_mm": 36.17,
+     "y_mm": 11.25,
+     "class": 0,
+     "kind": "bay_closed",
+     "strength": 1.509
+    },
+    {
+     "x_mm": 44.0,
+     "y_mm": 13.58,
+     "class": 0,
+     "kind": "join",
+     "strength": 0.898,
+     "shapes": [
+      4,
+      5
+     ],
+     "bridge_mm": 0.745
+    },
+    {
+     "x_mm": 64.83,
+     "y_mm": 19.33,
+     "class": 4,
+     "kind": "counter_lost",
+     "strength": 0.887,
+     "art_mm": 1.054,
+     "sewn_mm": 0.167
+    },
+    {
+     "x_mm": 36.92,
+     "y_mm": 13.92,
+     "class": 0,
+     "kind": "join",
+     "strength": 0.833,
+     "shapes": [
+      1,
+      8
+     ],
+     "bridge_mm": 0.601
+    },
+    {
+     "x_mm": 51.92,
+     "y_mm": 14.17,
+     "class": 0,
+     "kind": "join",
+     "strength": 0.833,
+     "shapes": [
+      4,
+      9
+     ],
+     "bridge_mm": 0.687
+    },
+    {
+     "x_mm": 53.25,
+     "y_mm": 16.42,
+     "class": 3,
+     "kind": "bay_closed",
+     "strength": 0.707
+    }
+   ],
+   "pin_ids": [
+    2
+   ]
+  },
+  "C_lt_n_sync": {
+   "pins": 1,
+   "flags": 0,
+   "by_radius": {
+    "3.0": {
+     "hit": 0,
+     "hit_rate": 0.0,
+     "chance_area": 0.0,
+     "chance_edge": 0.0
+    },
+    "2.0": {
+     "hit": 0,
+     "hit_rate": 0.0,
+     "chance_area": 0.0,
+     "chance_edge": 0.0
+    },
+    "5.0": {
+     "hit": 0,
+     "hit_rate": 0.0,
+     "chance_area": 0.0,
+     "chance_edge": 0.0
+    }
+   },
+   "auc_area": 0.5,
+   "auc_edge": 0.5,
+   "pin_nearest_mm": [
+    null
+   ],
+   "unpinned": [],
+   "pin_ids": [
+    1
+   ]
+  }
+ },
+ "items_with_pins": 2,
+ "all_pins": {
+  "items": 2,
+  "pins": 2,
+  "hit_rate": 0.5,
+  "chance": 0.0975,
+  "diff": 0.4025,
+  "kappa": 0.446,
+  "ci95": [
+   0.0,
+   0.805
+  ]
+ },
+ "rule4_dropped": {
+  "items": 2,
+  "pins": 2,
+  "hit_rate": 0.5,
+  "chance": 0.0975,
+  "diff": 0.4025,
+  "kappa": 0.446,
+  "ci95": [
+   0.0,
+   0.805
+  ]
+ },
+ "leave_one_out_ci95": {
+  "C_lt_bukit_asam": [
+   0.0,
+   0.0
+  ],
+  "C_lt_n_sync": [
+   0.805,
+   0.805
+  ]
+ },
+ "verdict": "no verdict",
+ "sensitivity": {
+  "2.0": {
+   "items": 2,
+   "pins": 2,
+   "hit_rate": 0.0,
+   "chance": 0.0545,
+   "diff": -0.0545,
+   "kappa": -0.0576,
+   "ci95": [
+    -0.109,
+    0.0
+   ]
+  },
+  "5.0": {
+   "items": 2,
+   "pins": 2,
+   "hit_rate": 0.5,
+   "chance": 0.1755,
+   "diff": 0.3245,
+   "kappa": 0.3936,
+   "ci95": [
+    0.0,
+    0.649
+   ]
+  }
+ }
+}

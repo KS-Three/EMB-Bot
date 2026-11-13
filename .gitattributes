@@ -30,3 +30,8 @@ docs/eye-pairs-2026-11-04/calibrated-judge/RUBRIC.md text eol=lf
 # (test/starter-pack.test.js); an eol conversion would break the pin.
 app/public/starter/*.svg binary
 app/public/starter/*.dst binary
+
+# Kent's 2026-11-13 sitting answers are kept byte-for-byte as the server wrote
+# them (CRLF, sha256 12e74bff..., docs/defect-marks-2026-11-12/SITTING.md and
+# tests/test_letter_reader_replication.py pin it); autocrlf must not touch them.
+docs/defect-marks-2026-11-12/marks.json binary
