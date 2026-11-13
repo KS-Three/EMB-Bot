@@ -11,6 +11,7 @@ import hashlib
 import importlib.util
 import json
 import re
+import sys
 from pathlib import Path
 
 from tools import fault_reader_harness as h
@@ -22,6 +23,12 @@ PREREG = REPL / "letter-reader-replication-preregistration.md"
 ART = ROOT / "digitizer" / "testdata" / "art" / "commons_lettering"
 
 FROZEN_DIGEST = "b5211fb9477b76af731d235562d5761e4b8dd4c2ff78d92b26a8e4268ca92870"   # == 79fa7646
+# `ast.dump` text changed in Python 3.13 (empty fields omitted), so the
+# pre-registered digest above is the 3.13+ dump; CI's 3.12 dumps the same
+# code to this one (both measured on 79fa7646 and on HEAD, 2026-11-12).
+FROZEN_DIGEST_PY312 = "9584118977d770e5c2ac415f7e1602fbe306738c2ef888e0ec1bfd7f0c10dd11"
+# `ast.unparse` of the same nodes reads the same on 3.12 and 3.14.
+FROZEN_UNPARSE = "035bf7dd824adc6171126e54733302afa066f75821c7c3cf7b9703d4dcc7a4a5"
 FUNCS = ("colour_classes", "to_mm", "_holes", "_deepest", "counter_events", "join_events",
          "bay_events", "read_class", "read_faults")
 CONSTS = ("PXMM", "PAD_MM", "THREAD_MM", "MIN_CLEAR_MM", "KEEP_FRAC", "MIN_SHAPE_MM2", "OVERLAP",
@@ -37,14 +44,17 @@ def _load(name: str, path: Path):
 
 def test_reader_detection_code_is_frozen():
     src = (ROOT / "digitizer" / "tools" / "letter_fault_reader.py").read_text(encoding="utf-8")
-    parts = []
-    for node in ast.parse(src).body:
-        if isinstance(node, ast.FunctionDef) and node.name in FUNCS:
-            parts.append(ast.dump(node))
-        if isinstance(node, ast.Assign) and any(getattr(t, "id", None) in CONSTS for t in node.targets):
-            parts.append(ast.dump(node))
-    assert len(parts) == len(FUNCS) + len(CONSTS)
-    assert hashlib.sha256("\n".join(parts).encode()).hexdigest() == FROZEN_DIGEST
+    nodes = [n for n in ast.parse(src).body
+             if (isinstance(n, ast.FunctionDef) and n.name in FUNCS)
+             or (isinstance(n, ast.Assign) and any(getattr(t, "id", None) in CONSTS for t in n.targets))]
+    assert len(nodes) == len(FUNCS) + len(CONSTS)
+
+    def digest(texts):
+        return hashlib.sha256("\n".join(texts).encode()).hexdigest()
+
+    assert digest(ast.unparse(n) for n in nodes) == FROZEN_UNPARSE
+    want = FROZEN_DIGEST_PY312 if sys.version_info < (3, 13) else FROZEN_DIGEST
+    assert digest(ast.dump(n) for n in nodes) == want
     assert FROZEN_DIGEST in PREREG.read_text(encoding="utf-8")
 
 

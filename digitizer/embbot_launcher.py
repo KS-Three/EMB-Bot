@@ -369,6 +369,63 @@ def stop_service(child: subprocess.Popen, wait: float = 10.0) -> None:
             pass
 
 
+#: How often the Windows watcher asks whether the launcher's end is still open.
+PIPE_POLL_S = 0.5
+
+
+def _watch_blocking(fd: int) -> None:
+    """POSIX: park in a read; it returns b"" the moment the launcher is gone."""
+    # `os.read`, not `sys.stdin.buffer.read()`: a daemon thread parked
+    # inside the buffered reader holds its lock, and an interpreter that
+    # then exits (an ImportError in the service) aborts on that lock,
+    # turning exit code 1 into a core dump (-6, seen 2026-11-12).
+    try:
+        while os.read(fd, 4096):
+            pass
+    except OSError:
+        return
+    os._exit(0)
+
+
+def _watch_polling(fd: int, interval: float = PIPE_POLL_S) -> None:
+    """Windows: ask the pipe, never wait on it. A thread parked in a read on
+    the stdin pipe stops the main thread loading `libscipy_openblas64` (so
+    every `import numpy`): the service printed nothing, never bound its port,
+    and the launcher gave up after 120 s (measured 2026-11-12 on Kent's
+    laptop: `import numpy` 0.45 s with no watcher, over 20 s with one; the
+    DLL's own load hangs, nothing of ours is involved). `PeekNamedPipe`
+    returns at once and fails with ERROR_BROKEN_PIPE once the launcher's end
+    has closed, which is the same signal."""
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.PeekNamedPipe.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
+                                  wintypes.LPDWORD, wintypes.LPDWORD, wintypes.LPDWORD]
+    k32.PeekNamedPipe.restype = wintypes.BOOL
+    k32.ReadFile.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
+                             wintypes.LPDWORD, wintypes.LPVOID]
+    k32.ReadFile.restype = wintypes.BOOL
+    broken = 109  # ERROR_BROKEN_PIPE
+    try:
+        handle = msvcrt.get_osfhandle(fd)
+    except OSError:
+        return
+    sink = ctypes.create_string_buffer(4096)
+    while True:
+        available = wintypes.DWORD(0)
+        if not k32.PeekNamedPipe(handle, None, 0, None, ctypes.byref(available), None):
+            if ctypes.get_last_error() == broken:
+                os._exit(0)
+            return  # not a pipe (a file, a console): there is nothing to watch
+        if available.value:
+            got = wintypes.DWORD(0)  # something was written: drain it, it never blocks
+            k32.ReadFile(handle, sink, min(available.value, len(sink)), ctypes.byref(got), None)
+            continue
+        time.sleep(interval)
+
+
 def _exit_when_launcher_goes() -> None:
     """In the child: stdin is a pipe only the launcher holds the other end of.
     It reads as closed when the launcher is gone, by any route."""
@@ -377,19 +434,43 @@ def _exit_when_launcher_goes() -> None:
     except (AttributeError, OSError, ValueError):
         return  # no stdin at all (a windowed exe started by hand)
 
-    def watch() -> None:
-        # `os.read`, not `sys.stdin.buffer.read()`: a daemon thread parked
-        # inside the buffered reader holds its lock, and an interpreter that
-        # then exits (an ImportError in the service) aborts on that lock,
-        # turning exit code 1 into a core dump (-6, seen 2026-11-12).
-        try:
-            while os.read(fd, 4096):
-                pass
-        except OSError:
-            return
-        os._exit(0)
+    target = _watch_polling if sys.platform == "win32" else _watch_blocking
+    threading.Thread(target=target, args=(fd,), name="launcher-pipe", daemon=True).start()
 
-    threading.Thread(target=watch, name="launcher-pipe", daemon=True).start()
+
+#: The child writes every thread's stack to its own output when it is still not
+#: listening this long after it began. Shorter than START_TIMEOUT_S, so the
+#: stack is in the log BEFORE the launcher stops the service and says "not
+#: ready". Without it a service stuck loading a DLL says nothing at all, and
+#: the log held only the launcher's two lines (the 2026-11-12 hang).
+SLOW_START_DUMP_S = START_TIMEOUT_S - 20.0
+
+
+def _dump_stacks_if_slow(port: int, after: float = SLOW_START_DUMP_S, out=None) -> threading.Thread:
+    import faulthandler
+
+    def watch() -> None:
+        deadline = time.monotonic() + after
+        while time.monotonic() < deadline:
+            try:
+                socket.create_connection((HOST, port), 0.5).close()
+                return  # listening: nothing to report
+            except OSError:
+                time.sleep(0.5)
+        stream = out or sys.stderr
+        print(f"service not listening on port {port} after {after:.0f} s; stacks of every thread:",
+              file=stream, flush=True)
+        try:
+            faulthandler.dump_traceback(file=stream, all_threads=True)
+        except (OSError, ValueError, AttributeError):  # a stream with no file descriptor
+            for ident, frame in sys._current_frames().items():
+                print(f"Thread {ident:#x} (most recent call first):", file=stream)
+                print("".join(traceback.format_stack(frame)[::-1]), file=stream)
+        stream.flush()
+
+    thread = threading.Thread(target=watch, name="slow-start-dump", daemon=True)
+    thread.start()
+    return thread
 
 
 def serve(argv: list[str]) -> None:
@@ -407,6 +488,7 @@ def serve(argv: list[str]) -> None:
             setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))
     if os.environ.get(PIPE_ENV):
         _exit_when_launcher_goes()
+        _dump_stacks_if_slow(args.port)
     sys.argv = ["digitizer_service", "--studio", args.studio, "--port", str(args.port)]
     from digitizer_service.__main__ import main as service_main
 

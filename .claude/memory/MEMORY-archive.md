@@ -221,3 +221,5 @@ live index; new archive lines go at the bottom.
 - [Index counts CRs](memory-index-crlf-count-2026-10-26.md) — loader counts the file as stored: CRLF = +1 char/line; notes pinned LF; `git checkout --` won't convert (recipe inside)
 - [Bridge census](bridge-census-2026-10-27.md) — Bridge hat+LC through 14 pro rules on main 8341d1f7: 2 CONTRADICTS (border_by_size fields, proSized LC), 8 AGREES, 4 N/A; ours' text is a reach gap (folds 2 vs 35), not a rule
 - [Flip-proof pins](flip-proof-pins-2026-10-27.md) — `FLAT_GOLDEN_MD5` from the json; `frozen_cfg()` spreads a dated snapshot; test_pins_are_frozen guards new md5 pins
+- [Apex walk](apex-walk-2026-10-27.md) — apex_cut's walk sews each tip from its point: tip-satin travel <= 0.05 mm, crosses kept; per-job travel > OFF on 5 jobs, foreman's call
+- [Bean census](bean-census-2026-10-27.md) — reference beans almost nothing: 17 runs / 780 mm / 8 of 1,101 regions, drawn thin lines, 2 passes; ours 137 (111 small letters); `bean_only_lines` ON (Kent 10-27), kappa -0.014 -> 0.129

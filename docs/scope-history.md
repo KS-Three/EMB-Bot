@@ -13,6 +13,14 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-11-12 (defect 28 closed) — second status pass, main `bdae1860`
+
+Defect 28 moved from the live list to the Closed list on Kent's ruling "Close it (Recommended)" (2026-11-12). Its text as it stood on main `bdae1860`, moved verbatim. Text only: not live status.
+
+28. **`THREAD_MATCH_POOR` — both named causes are FIXED (Fremont 2026-11-07, summit 2026-11-09); what is left is CHART LIMITS, with nothing to build. Judged on excess on the gradient lane since 2026-10-30 (Kent's flip), clamp kept.** `cfg.thread_match_excess_gradient` is **ON, which SUPERSEDES his 2026-09-10 ruling** that the gradient lane stays on raw distance: a design traced `gradient` is judged on excess over the loaded spools, as the photo route has been since 08-24; flat stays raw. No stitch moved. **The cost stands:** a thread already wearing the best loaded cone gets no finding at all (no block, no warn, no cone named), so an off-colour thread with no closer loaded cone passes silently; only `metrics.thread_worst_delta_e` keeps a trace. False is the old engine, pinned in PRE_FLIP. **Fremont: closed.** The grader read the ground an enlarged letter had grown over; `thread_match_grade_traced_letter` (ON, Kent 2026-11-07) scores such a letter on its traced polygon, and both garments read B with no thread finding. **Summit: fixed.** Its `0111` band was the MEAN of a 9-sample end bucket holding 3 speckle pixels (L* 48.8 for artwork at L* 30); `cfg.blend_shade_median` (ON, Kent 2026-11-09: "Flip ON"; the per-region path only, the design-ramp path untouched) takes the median and snaps the loaded `0134`. Block 1 → 0 on both garments, the 20 other entries that traced gradient md5-identical; summit is still F on its `GROUND_SEWN` block. **The leftovers, per garment: bridge_bar 3, screenshot 1 (both trace `flat` since the stage-0 flip, so judged raw) and the photo stub's `0722` 1.** Read with the grader's own estimator against the whole 398-spool chart, the best thread on every row is still 10.6–29.4 dE00 off, so a re-snap clears 0 blocks. Scoring excess over the best CHART thread would clear the flat ones, but it re-makes Kent's "flat stays raw" ruling: priced, not proposed. Whether the entry closes is Kent's. **Clamp: kept (Kent, "Keep the clamp (Recommended)").** The entry as it stood, with the 10-30 flip's counts: scope-history 2026-11-12. *(flipped 2026-10-30 — `tests/test_thread_match_excess_gradient.py`; measured 2026-11-07 — PRs #1312, #1326, #1329; measured 2026-11-09 — PR #1378, `docs/blend-shade-median-2026-11-09.md`; measured 2026-11-10 — PR #1380, `docs/thread-match-leftovers-2026-11-10.md`, `tools/thread_chart_floor.py`)*
+
+---
+
 **Last updated:** 2026-11-12 (status refresh) — MASTER_SCOPE, PRODUCT and ROADMAP brought to main `d12e955a` after PRs #1287–#1397
 
 State at writing: main `d12e955a` (#1397 merged 2026-11-11). Snapshots, not live status:

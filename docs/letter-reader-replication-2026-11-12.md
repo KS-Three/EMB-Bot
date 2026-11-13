@@ -8,7 +8,9 @@ and ready; it is the only thing that can decide the question.
 The pre-registration came first, in its own commit (`ea13a362`):
 [`defect-marks-2026-11-12/letter-reader-replication-preregistration.md`](defect-marks-2026-11-12/letter-reader-replication-preregistration.md).
 It freezes the reader (detection AST digest `b5211fb9…`, equal at `79fa7646`
-and `bdae1860`), the pin rule, the 3 mm radius, the stitched-area chance null,
+and `bdae1860`; that is the Python 3.13+ `ast.dump` text, which CI's 3.12
+dumps as `95841189…`, so the test pins both plus a version-stable
+`ast.unparse` digest `035bf7dd…`), the pin rule, the 3 mm radius, the stitched-area chance null,
 the item list and the pass line. Every figure here is an instrument reading,
 not a quality claim (ROADMAP gate 4).
 

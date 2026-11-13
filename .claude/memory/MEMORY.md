@@ -17,9 +17,7 @@ the OLDEST lines whole to the archive.
 - [Opus team architecture](../../docs/superpowers/plans/2026-10-23-opus-team-architecture.md) — the plan a fresh director runs from: method, state, ranked queue L1-L10 / I1-I6, Kent's open decisions, brief template, traps
 - [Add hole](add-hole-2026-11-05.md) — PR 3: Add hole draws a polygon in a digitized shape, appended to holes_override; refusal reuses boundaryIssues wording, draft stays open; e2e (h1)-(h6)
 - [No Fable agents](agents-cheap-models-2026-11-02.md) — Kent 11-02 "don't release fable agents, we should be saving on usage": every start_session / Agent passes model (Sonnet default, Haiku read-only); a Fable director dispatches, never spawns Fable
-- [Apex walk](apex-walk-2026-10-27.md) — apex_cut's walk sews each tip from its point: tip-satin travel <= 0.05 mm, crosses kept; per-job travel > OFF on 5 jobs, foreman's call
 - [Bash heredoc Python trap](bash-heredoc-python-repl-trap-2026-11-02.md) — Windows Bash tool `python - <<'E'` lost stdin: Python 3.14 fell into _pyrepl, one core for 26 h (3.68 GB of prompts); a `||` fallback respawned it when killed. Run a script FILE
-- [Bean census](bean-census-2026-10-27.md) — reference beans almost nothing: 17 runs / 780 mm / 8 of 1,101 regions, drawn thin lines, 2 passes; ours 137 (111 small letters); `bean_only_lines` ON (Kent 10-27), kappa -0.014 -> 0.129
 - [Big-size speed](big-size-speed-2026-11-11.md) — 300 mm: hoist 320 -> 26 s (STRtree over parts), build fns 241 -> 51 s; 198 mm plan 539 -> 431 s (angle scan in numpy, bridge memo); md5 same; no exact cut over 25 s left
 - [Blend shade median](blend-shade-median-2026-11-09.md) — defect 28: Fremont fixed 11-07 (stale scope line); summit 0111 = mean of a 9-sample speckled end bucket; `blend_shade_median` ON (Kent 11-09) clears it, 20 entries md5 same
 - [Band rings](border-by-size-colour-seams-2026-10-28.md) — Instagram: `border_by_size` satin rings each band, not bean; fix ON 10-28: ring fabric edges only
@@ -65,7 +63,7 @@ the OLDEST lines whole to the archive.
 - [Lane reading before the run](lane-reading-before-run-2026-10-28.md) — `POST /classify` replays stage 0 + 1.25 before `/digitize`; Studio reading row above Auto Digitize (owl 2.5 s, golden_tee 32 s); `np.unique` GIL freeze fixed
 - [Launch not near](launch-not-near-rulings-2026-11-12.md) — Kent 11-12 "not ready for going live": no billing/licence/signing/hosting/legal until he says; show him the build first; "Decide later" on installer name; defect 28 close it
 - [Letter-fault reader](letter-fault-reader-2026-11-11.md) — per-colour topology (counter lost/join/bay) vs Kent's 14 merged-letter pins: 0.64 vs chance 0.24 at 3 mm, CI [+0.08,+0.57] = shown; leave-one-out loses it on 3 of 6, replicate first
-- [Letter-reader replication](letter-reader-replication-2026-11-12.md) — 11-12: pre-registered frozen #1389 reader; held-out pins = 1 item = no verdict; 9-item Commons lettering sitting `defect-marks-1112` built, waits on Kent (~45 min)
+- [Letter-reader replication](letter-reader-replication-2026-11-12.md) — #1389 reader pre-registered; held-out = 1 item, no verdict; 9-logo sitting `defect-marks-1112` waits on Kent
 - [Lettering board v3](lettering-board-v3-2026-10-31.md) — baseline on a8758e96: <4 mm cc +0.92 (Fremont's gain = bean, not pro's satin), Becker in-letter trims 62 -> 21; Drone gap = thread contrast
 - [Lettering thread](lettering-thread-2026-11-01.md) — Drone's gap was thread: stray ON 11-02 (Kent), contrast floor OFF (Becker black), AND DRONE 0 -> +1.00, PRECISION +0.58; sewn ground exempt
 - [Line chain, one thread](line-chain-one-thread-2026-11-11.md) — fix B `line_chain_one_thread`: Kent 11-11 "Keep off, very little improvements were made, if any"; stays OFF, no flip, no retune; 4 of 21 rows move
@@ -103,12 +101,14 @@ the OLDEST lines whole to the archive.
 - [Simplify points](simplify-points-2026-11-03.md) — popover row 0.2/0.5/1 mm, closed-ring Douglas-Peucker `simplifyRing`, rides the similar tick in one patch; never automatic; red-disc 64 -> 44 at 0.5 mm
 - [Size recount](size-recount-2026-11-05.md) — `POST /recount` + the reading row's "N shapes, M colors at W mm" (Kent 11-05, counts only); own route, stages 0-4 cost 5-60 s; leaves the generation cached; MFab 36.7: 22/2, 113.5: 93/2
 - [Sliver prune](sliver-prune-2026-11-10.md) — `sliver_prune` OFF: Pooh 54 mm white edge runs = page-halo masks, red arm spike = shirt tendril on a crease; enlarged x1.25+ only; 80 mm sheet 20/20 same; his on-screen run was gradient, not flat
+- [Space fault reader](space-fault-reader-2026-11-12.md) — bays/gaps filled vs the 44 letter pins: +0.32 over pick, CI [+0.22,+0.47] = shown; not a hold-out, broad; hits both S's
 - [Sparse smooth nodes](sparse-nodes-spec-2026-11-04.md) — Kent 11-04: Ember-style few smooth/corner nodes on digitized rings, 9 rulings; PR 1 lib `sparseNodes.js`, PR 2 Studio; add-hole in, Knife out
 - [Sparse nodes in the Studio](sparse-nodes-studio-2026-11-05.md) — PR 2 shipped: nodes drawn/dragged/inserted/toggled in shapeOverrides; real seeds red-disc 44 smooth, squares 4 corners; PointerEvent.detail is 0 (old dblclick dead)
 - [Stacked PR trap](stacked-pr-auto-merge-trap-2026-11-06.md) — #1259 stacked on #1255's head with auto-merge armed merged INTO that branch after #1255 landed (deleteBranchOnMerge off, no retarget); base follow-ups on main, never arm a stacked PR
 - [Stage-0 texture gate](stage0-texture-gate-2026-10-28.md) — grain gate missed 15/18 downsampled photos; `texture_frac` >= 0.13 route + two-ink veto ON (`stage0_texture_gate`); 6 "logo" rows are photographs by medium; cut-outs keep the old tree
 - [Scene speed](stage7-scene-speed-2026-10-29.md) — kept-frame scenes' 349-2,100 s was 2 procs on a loaded laptop: 64-104 s plan quiet, 2 concurrent = 4.1x EACH, md5 same; stage 2 bincount + stage 6 prepared covers / threaded angle search, exact
 - [Starter pack sourcing](starter-pack-sourcing-2026-11-10.md) — Kent 11-10: 12 designs, strict CC0/PD-mark art digitized by EMB-Bot itself; no open stitch files, commission or CC-BY; no logos; provenance per design
+- [Starter weak spots](starter-weak-spots-2026-11-12.md) — baseball = radial ramp bands, turtle = RAG merge, monarch = borders_last; existing settings only
 - [Stitchist teardown](stitchist-teardown-2026-11-04.md) — server-side engine, $50 Pro; MFab at 36.7: 3,018 st, keyline as tatami, readable; trace re-runs per size
 - [Studio no silent fallback](studio-no-silent-fallback-2026-11-02.md) — image + service down: keep art, Retry / Use browser engine; results name engine
 
