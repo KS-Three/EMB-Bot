@@ -277,3 +277,49 @@ test("(c) multi-selection (no single element's panel): a canvas edit brings the 
   await expectRestitchesOnButton(page, before);
   await shot(page, "c3-restitched");
 });
+
+// ---- (d) the stronger cue (Kent 2026-11-12: "Stronger cue, no auto-run") -------
+//
+// After a canvas edit the stitches are behind and NOTHING runs (the 2026-10-05
+// rule above is unchanged), but the cue is no longer only a line of text: the
+// stitches on the field are hatched, the run button's halo pulses, and the
+// banner carries a "Restitch now" button. One click on it starts exactly one
+// run, and the whole cue clears when the run lands.
+test("(d) stronger cue: hatch + pulsing halo + Restitch now after an edit; one click = one run; the cue clears", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizedDesign(page);
+  const before = await settledStats(page);
+  const canvas = page.locator(".hoop canvas");
+  const run = page.locator(".dgp-run");
+
+  // Nothing is stale yet: no hatch, no halo, no button.
+  await expect(canvas).toHaveAttribute("data-stale-ids", "");
+  await expect(page.getByTestId("digitize-restitch-now")).toHaveCount(0);
+
+  const posts = [];
+  page.on("request", (r) => { if (r.method() === "POST" && /\/digitize$/.test(r.url())) posts.push(r.url()); });
+
+  await addBorderOnLeftSquare(page);
+  await expectNothingRan(page, before);
+  expect(posts, "no run started on its own").toHaveLength(0);
+
+  // The cue: hatched stitches, lit + animated button, the banner's button.
+  await expect.poll(() => canvas.getAttribute("data-stale-ids")).not.toBe("");
+  await expect(run).toHaveClass(/dgp-run-lit/);
+  expect(await run.evaluate((el) => getComputedStyle(el).animationName)).toMatch(/dgp-run-pulse/);
+  const now = page.getByTestId("digitize-restitch-now");
+  await expect(now).toBeVisible();
+  await shot(page, "d1-cue");
+
+  // One click starts exactly one run, then the cue clears.
+  await now.click();
+  await expect.poll(() => page.locator(STATS).innerText(), { timeout: 120_000 }).not.toBe(before);
+  await expect(run).not.toHaveClass(/dgp-run-stale/);
+  await expect(run).not.toHaveClass(/dgp-run-lit/);
+  await expect(now).toHaveCount(0);
+  await expect(page.getByTestId("digitize-stale")).toHaveCount(0);
+  await expect(canvas).toHaveAttribute("data-stale-ids", "");
+  expect(posts, "Restitch now started exactly one run").toHaveLength(1);
+  await shot(page, "d2-cleared");
+});

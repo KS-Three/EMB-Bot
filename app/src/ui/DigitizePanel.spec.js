@@ -1383,6 +1383,38 @@ describe("nothing runs until Auto Digitize Image is pressed", () => {
     expect(getByTestId("digitize-stale")).toHaveTextContent(/press Auto Digitize Image/);
   });
 
+  // Kent 2026-11-12, "Stronger cue, no auto-run": the stale banner carries a
+  // "Restitch now" button that is the SAME press as the run button. Nothing
+  // starts on its own; one click starts exactly one run, and the cue leaves
+  // while that run is in flight.
+  test("Restitch now: absent while current, shown once stale, one click starts exactly one run", async () => {
+    const { run, getByLabelText, getByTestId, queryByTestId } = await panel({}, { hold: true });
+    expect(queryByTestId("digitize-restitch-now")).toBeNull();
+    await fireEvent.click(getByLabelText(/Satin for thin shapes/));
+    await settle();
+    expect(cfgs).toHaveLength(0);
+    expect(run()).toHaveClass("dgp-run-lit");
+    const now = getByTestId("digitize-restitch-now");
+    expect(now).toHaveTextContent("Restitch now");
+    await fireEvent.click(now);
+    await settle();
+    expect(cfgs).toHaveLength(1);
+    // In flight: the banner (and its button) is gone, so a second click is not possible.
+    expect(queryByTestId("digitize-restitch-now")).toBeNull();
+    expect(run()).toHaveTextContent("Digitizing…");
+    releases.forEach((r) => r());
+    await settle();
+    expect(cfgs).toHaveLength(1);
+  });
+
+  test("Restitch now is not offered while the service is down (nothing could start)", async () => {
+    const { getByLabelText, queryByTestId, rerender } = await panel();
+    await fireEvent.click(getByLabelText(/Satin for thin shapes/));
+    expect(queryByTestId("digitize-restitch-now")).not.toBeNull();
+    await rerender({ health: null });
+    expect(queryByTestId("digitize-restitch-now")).toBeNull();
+  });
+
   test("putting the setting back makes it solid again — no run was ever needed", async () => {
     const { run, getByLabelText } = await panel();
     await fireEvent.click(getByLabelText(/Satin for thin shapes/));
@@ -1419,10 +1451,13 @@ describe("nothing runs until Auto Digitize Image is pressed", () => {
     expect(run()).toHaveClass("dgp-run-stale");
   });
 
-  test("the old armed line and its Restitch now button are gone", async () => {
+  // The auto-restitch era's "armed" line ("restitching when you stop editing")
+  // stays gone. Its "Restitch now" button came back on 2026-11-12 with a new
+  // meaning -- the manual press, see the Restitch now tests above -- so only
+  // the armed line is asserted absent here.
+  test("the old armed line is gone", async () => {
     const { getByLabelText, queryByText } = await panel({}, { shapes: [shapeRow("s1")] });
     await fireEvent.change(getByLabelText(/^Stitch type — /), { target: { value: "satin" } });
-    expect(queryByText("Restitch now")).toBeNull();
     expect(queryByText(/restitching when you stop editing/)).toBeNull();
   });
 
