@@ -293,10 +293,13 @@ scored. Written and pushed before this session opened that sitting's
 
 ## What is frozen
 
-- **The reader as at `837c105d`.** sha256 of the AST of its detection path
+- **The reader as at `837c105d`.** sha256 of its detection path
   (`to_mm`, `shapes`, `_hull_pts`, `hull_depth`, `enclosed`, `space_ridge`,
   `spread`, `read_class`, `_points`, `read_spaces`, `run` and the module
-  constants, docstrings excluded): `6f29dace49a22cd099d2ac51d68fdff32ce6780cb3c91e8f470a741dc8037996`.
+  constants, docstrings stripped, through `ast.unparse`): `aee7d26da21c71eaa2687e7e4bf7a1b2e6629a8482765b71ed6366b9a4f6d2b9`.
+  (Corrected 2026-11-13: the first value, `6f29dace…`, hashed `ast.dump`,
+  whose output changed in Python 3.13, so CI's 3.12 read a different number.
+  The new one is the same on 3.12 and 3.14, at `837c105d` and on HEAD.)
   It is the same at `837c105d`, at `129131d2` (the result) and on main
   `8bd56ff7`. `test_detection_code_is_frozen_for_the_replication` pins it.
   The reader is not edited before this score.

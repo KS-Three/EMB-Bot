@@ -187,9 +187,10 @@ def test_harness_scores_a_space_dir(tmp_path):
 
 
 # The replication on `defect-marks-1112` (doc Part 3) scores the reader as at
-# 837c105d. This digest is its detection path's AST; it must not move before
+# 837c105d. This digest is its detection path, docstrings stripped, through
+# ast.unparse (ast.dump is not stable across Python 3.12 -> 3.13+); it must not move before
 # that score is in.
-FROZEN_DETECTION_SHA256 = "6f29dace49a22cd099d2ac51d68fdff32ce6780cb3c91e8f470a741dc8037996"
+FROZEN_DETECTION_SHA256 = "aee7d26da21c71eaa2687e7e4bf7a1b2e6629a8482765b71ed6366b9a4f6d2b9"
 _DETECTION = ("to_mm", "shapes", "_hull_pts", "hull_depth", "enclosed", "space_ridge", "spread",
               "read_class", "_points", "read_spaces", "run")
 _CONSTS = ("PXMM", "PAD_MM", "THREAD_MM", "SPACE_MIN_HALF_MM", "SPACE_KEEP_HALF_MM", "MIN_SHAPE_MM2",
@@ -214,7 +215,7 @@ def _detection_digest(src: str) -> str:
             if isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.body and isinstance(n.body[0], ast.Expr) \
                     and isinstance(n.body[0].value, ast.Constant) and isinstance(n.body[0].value.value, str):
                 n.body = n.body[1:] or [ast.Pass()]
-    parts = [ast.dump(by[n], include_attributes=False) for n in _DETECTION + _CONSTS]
+    parts = [ast.unparse(by[n]) for n in _DETECTION + _CONSTS]
     return hashlib.sha256("\n".join(parts).encode()).hexdigest()
 
 
