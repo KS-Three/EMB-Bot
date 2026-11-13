@@ -7,6 +7,7 @@
 #   digitizer/packaging/build_freeze.py     builds, stamps, prunes, measures, zips
 #   digitizer/packaging/release_smoke.py    starts both services, compares, judges
 #   digitizer/packaging/build_installer.py  setup.exe; installs, runs, uninstalls it
+#   digitizer/packaging/one_origin_smoke.py the frozen LAUNCHER keeps one origin across restarts
 #
 # WHEN IT RUNS: a version tag (`v*`) or by hand (Actions tab, "Run workflow",
 # any branch that carries this file). NEVER on a pull request and never on a
@@ -101,6 +102,20 @@ jobs:
           path: ${{ runner.temp }}/freeze/*-setup.exe
           compression-level: 0     # LZMA2 inside; deflate gains nothing
           if-no-files-found: error
+      # ONE ORIGIN ACROSS RESTARTS. Saved designs live in the browser's
+      # localStorage, keyed by origin, so the launcher must come back on the
+      # same port. The exe uploaded above is still `freeze_entry.py`, so this
+      # freezes a SECOND folder with the launcher as its entry (not zipped, not
+      # uploaded) and proves it: restart keeps port, origin and a design a real
+      # browser saved; a second launch reuses the first; a foreign listener on
+      # the port is refused, not dodged. After the uploads, so it can never
+      # cost the zip or the installer.
+      - name: Freeze the launcher (a second folder, not shipped)
+        working-directory: digitizer
+        run: python packaging/build_freeze.py --work "$env:RUNNER_TEMP\launcher" --entry embbot_launcher.py --name embbot-launcher --no-zip
+      - name: One origin across restarts (frozen launcher, real browser)
+        working-directory: digitizer
+        run: python packaging/one_origin_smoke.py --build-report "$env:RUNNER_TEMP\launcher\build_report.json" --work "$env:RUNNER_TEMP\launcher\origin" --summary "$env:GITHUB_STEP_SUMMARY"
       - name: Upload the build and smoke records
         if: always()
         uses: actions/upload-artifact@v4
@@ -113,4 +128,8 @@ jobs:
             ${{ runner.temp }}/freeze/install.log
             ${{ runner.temp }}/freeze/installer.md
             ${{ runner.temp }}/freeze/installed-service.log
+            ${{ runner.temp }}/launcher/build_report.json
+            ${{ runner.temp }}/launcher/pyinstaller.log
+            ${{ runner.temp }}/launcher/origin/
+            !${{ runner.temp }}/launcher/origin/browser-profile/
           if-no-files-found: warn
