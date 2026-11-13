@@ -180,3 +180,92 @@ Commands (`E` = the primary checkout's `digitizer/eye_pairs_out`):
         --reader letters=$E/defect-marks-1110/letter_reader --reader letters=$E/defect-marks-1111/letter_reader \
         --reader space=$E/space_reader --reader infill=$E/infill_reader \
         --json ../docs/inconsistency-fault-reader-2026-11-12/score.json
+
+## Result (appended after the score; nothing above changed)
+
+**Verdict, by the pre-registered line: not shown.** 10 notes, 39 pins,
+7 items, 3 mm, per note against `chance_pick`: hit 0.432 against 0.472,
+difference **-0.04, item-bootstrap 95% CI [-0.42, +0.42]** (kappa -0.08).
+The interval is as wide as the power section said; this does not exclude a
+moderate effect, and it shows none. Code and constants as committed in
+`a1452f7e`; score `inconsistency-fault-reader-2026-11-12/score.json`. 31
+items run, 5 refused as pre-registered (no stitch-hash record; none pinned).
+
+| weighting | null | hit | chance | diff | 95% CI (items) |
+|---|---|---|---|---|---|
+| per note | pick (verdict) | 0.432 | 0.472 | -0.040 | [-0.417, +0.424] |
+| per note | cand | 0.432 | 0.468 | -0.035 | [-0.419, +0.428] |
+| per note | area | 0.432 | 0.118 | +0.314 | [+0.014, +0.643] |
+| per pin | pick | 0.385 | 0.440 | -0.055 | [-0.319, +0.432] |
+| per pin | area | 0.385 | 0.132 | +0.253 | [+0.136, +0.636] |
+| per note, F1 alone | pick | 0.250 | 0.409 | -0.159 | [-0.397, +0.117] |
+
+2 mm: per note pick -0.026 [-0.41, +0.44]; 5 mm: +0.046 [-0.30, +0.45].
+**Precision:** 34 of 351 flags on pinned items lie within 3 mm of a target
+pin (0.097), against 0.088 for as many candidates at random, CI [-0.01,
++0.10]; F1 alone 0.068 against 0.068. **Leave-one-item-out:** every lower
+bound is below 0; dropping `C_devanagari_logo` gives -0.29 [-0.47, -0.03]:
+the one item with selection (pick 0.045) carries the whole positive, and it
+is the in-fill reader's F2 that hits there. Against random thread (the area
+null) the reader clears chance: like the in-fill reader, it finds the region
+the fault is in, not the sibling Kent pinned.
+
+Per note:
+
+| note | hit | pick | why |
+|---|---|---|---|
+| Bridge 1 "wheel handles look different from eachother" | 0/1 | 0.571 | the handles group (4 small fill shapes) and agree on every treatment; the difference is SHAPE, not a treatment (predicted) |
+| Bridge 4 "the only letter that is thinly stitched" | 0/1 | 0.571 | nearest flag 4.9 mm (satin angle flags on other letters); letters of different shapes never group (predicted); the letter and space readers both hit it |
+| MFab 5 "the M is correct, but the F is wrong" | 0/1 | 0 | no odd shape on MFab; travel over a letter is not a treatment (predicted) |
+| pixel art 1 "some have bean ... while the other doesn't" | 0/1 | 0.167 | 2 sewn shapes, not alike; F2's flag 35.7 mm away |
+| emoji 3 "right leg infill doesn't match left leg" | 1/1 | 0.920 | the RIGHT mechanism: the legs are an alike pair, one topped by a `border` run, the other by `fill`; but they are most of the candidates, so no selection |
+| devanagari 1 "the only lettering in-fill" | 1/1 | 0.045 | F2 (in-fill reader) |
+| devanagari 5 "in-fill only in select spots (#5-#6)" | 2/2 | 0.045 | F2; F1 also flags a small grey satin dot sewn at another angle 0.5 mm from pin 6 |
+| kanji 1 "#1-#28 ... some empty spaces have it" | 9/28 | 0.422 | all 9 through F2; F1 flags 3 shapes |
+| gradient mascot 1 "extra bean stitch ... nostril" | 0/1 | 0.991 | nearest flag 47.7 mm; no nostril forms an alike pair |
+| gradient mascot 2 "#2-#3 feet are differnt colors" | 2/2 | 0.991 | see below; the feet are 2 of the item's 5 shapes and all its candidates |
+
+**Overlap** (pins within 3 mm of a stored flag; letter and space readers ran
+on L_ items and `C_silhouette_logo` only): Bridge 4 is hit by the letter and
+space readers, not this one; every devanagari and kanji hit here is also an
+in-fill hit; emoji 3 and the two feet are hit by this reader only. Four notes
+are missed by every reader: Bridge 1, MFab 5, pixel art 1, mascot 1.
+
+### The feet are one thread, two lights
+
+Both feet are sewn in the same spool (Isacord 1120 Sunset, colour class 2
+at both pins). Their fills run at 39.3 and 134.1 degrees, mirror images;
+both feet are elongated 1.35-1.38, under `ROUND_ELONG`, so the reader
+compared them absolutely and called them odd on ANGLE. `render_design`
+shades every filament by its direction (`stitchviz._draw_filament`, Lambert
+tone `AMBIENT + DIFFUSE * |sin(angle - light axis)|`, light axis 56 degrees
+in the render frame): about 0.29 against 0.98 of the diffuse term. So what
+Kent saw as "different colors" is very likely fill DIRECTION read as tone.
+The hit lands on the right shapes for a reason his note does not name; a
+colour reader (thread class) would have found nothing. How strongly real
+thread on fabric shows that sheen difference is not measured here (gate 1:
+a sew-out question).
+
+### What this does and does not say
+
+- Where the reader groups the siblings Kent compared (legs, feet,
+  devanagari's spaces), it flags them. On two of those items the alike
+  group is nearly the whole candidate set (pick 0.92, 0.99), so the
+  candidate null cannot credit it with choosing.
+- It cannot read shape difference (handles), stroke width between unlike
+  letters (Bridge 4), or travel over one letter (MFab 5); predicted.
+- It flags broadly on busy designs (heraldic crest 292 flags, comic
+  halftone 209, drone 182), mostly on COLOUR: alike shapes in different
+  threads are often the art's intent. Not a gate, not a metric.
+
+### What a sitting would need for a verdict
+
+From the power section: about 20 inconsistency notes over at least 10
+items (half-width about 0.2), on designs with MANY alike features (rows of
+letters, icon sets, repeated stars or dots), so that the alike group is a
+small part of the candidates; each note should name which sibling is wrong.
+The colour notes are worth one extra question at the sitting: ask on the
+flat (unlit) render as well, to separate thread colour from direction tone.
+
+Not run or not verified: no hold-out; no sew-out; the full digitizer suite
+(targeted tests only, in the PR body).
