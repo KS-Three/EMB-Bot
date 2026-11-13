@@ -1,6 +1,6 @@
 ---
 name: digitized-image-study-2026-11-13
-description: Kent 11-13 "find 100 digitized images ... study and learn how the shapes were digitized and why": 108 distinct pictures of professional work read by eye (100 not AI mock-ups), 18 rules in docs/digitized-image-study-2026-11-13.md; gaps vs EMB-Bot are knock-out where pros stack on solid ground, and no contrast halo
+description: Kent 11-13 "find 100 digitized images ... study and learn how the shapes were digitized and why": 108 distinct pictures of professional work read by eye (100 not AI mock-ups), 18 rules in docs/digitized-image-study-2026-11-13.md; rule 7 measured from DSTs: pro stacks under ~5.2 mm and knocks out above, we already stack on logo/flat art (silhouette_underfill), knock-out survives on photo classes; real gap is no contrast halo
 metadata:
   type: project
 ---
@@ -18,10 +18,16 @@ approximate count, and what EMB-Bot does today).
 
 **What it found that changes what we do.**
 
-- **Rule 7, the clearest gap.** Professionals sew spots, eyes, stripes and panel
-  text ON TOP of a solid ground. EMB-Bot knocks a hole under every later shape
-  (shrunk by pull, 0.25 mm `overlap_mm` tongue; a hole that would close is held
-  open, `held_hole_bare_only` off). Read at `stage5_overlap.py:1202-1231`.
+- **Rule 7, MEASURED the same day, and the first version of this note was
+  wrong.** Professionals sew small shapes on top of a solid ground, and so do
+  we on logo and flat art: `silhouette_underfill` closes the ground's holes
+  (`stage5_overlap.py:1009-1013`, `1102`), 120 of 126 narrow pieces on seven
+  paired jobs sit fully on solid ground. Kent's pro stacks everything under
+  about 5.2 mm (292 of 292 pieces) and knocks out 8 of 12 wider pieces with a
+  1 to 2 mm underlap; we sew wide ones solid too. Our knock-out survives only
+  where the under-fill is off: photo classes (the owl), grounds not read as a
+  ring, MFab's panel. The wrong claim came from reading
+  `stage5_overlap.py:1202-1231` alone; read a DST before describing what we sew.
 - **Rule 12.** Professionals add a contrast outline to light-on-dark and
   dark-on-mid-tone shapes. EMB-Bot adds no outline the art lacks.
 - **Fill angle is a genre habit, not one rule.** Cartoon digitizers turn the

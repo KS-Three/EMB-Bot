@@ -2059,6 +2059,29 @@ class PipelineConfig:
     # on the hat). False is the engine as it was, byte for byte;
     # `tests/conftest.py` PRE_FLIP pins it False.
     border_from_outline_line_art_guard: bool = True
+    # A HAIRLINE keyline is not a border (built OFF 2026-11-13, Kent: "Build
+    # guard, OFF"). The rule above widens every outline to at least
+    # `machine.OUTLINE_WIDTH_MM`'s 1.5 mm; that floor was read off outlines
+    # 0.8 mm and up (To-a-T's frame, Becker, MFab). Kent's keyline logo
+    # draws a 0.36-0.42 mm white keyline at 100 mm wide, and ON by default it
+    # sewed 1.50 mm satin loops, 3.7x the art: counters plugged, the notches
+    # between letters gone, its small letters a blob at 60 mm. ON, an outline the
+    # hairline tier's own width gate admits WHOLE (`stage6_hairline.measure`:
+    # median width at or under `machine.HAIRLINE_MAX_WIDTHS` laid threads,
+    # 0.6 mm at 40 wt, `shape_admit`) sews as a BEAN on its own centreline
+    # instead of the loop (`keyline_bean`): the path is the body's vector
+    # edge moved out half the keyline's width, a needle point exactly on
+    # every corner, even stations between, the loop closed on its first
+    # hole, three passes in the same holes (Kent 2026-11-13: "building a
+    # swiss watch, and not a playhouse out of logs"). So does every other
+    # hairline ring of the same thread (the keyline round a dot, too short
+    # a loop to be an outline). Its bodies still sew as plain fills under
+    # it. The same art drawn larger (keyline over 0.6 mm) takes the loop as
+    # before. Acts only with `border_from_outline`. The 0.6 is the hairline
+    # tier's candidate, gate 1: unsewn. No pro file shows what a digitizer
+    # does with a 0.4 mm keyline; one logo. Off, byte-identical. Tests:
+    # `tests/test_outline_hairline_run.py`.
+    border_from_outline_hairline_run: bool = False
     # A white FIELD that `sew_enclosed_white` sews is never a letter
     # (2026-10-25, built OFF; Kent: "Ship 3, fix white next"). Becker's five
     # white BECKER faces sit inside the word's outline and carry its text
