@@ -236,44 +236,81 @@ def keyline_bean_runs(poly, shape_id: str, *, entry: tuple[float, float] | None,
     return runs, report
 
 
-def _thin_ring(poly, max_width_mm: float, ink=None) -> bool:
-    """A ring (a polygon with a hole) the hairline tier's width gate admits
-    WHOLE (`stage6_hairline.measure`'s `shape_admit`)."""
-    from .stage6_hairline import measure
-
-    if poly is None or poly.is_empty or not any(part.interiors for part in _parts(poly)):
-        return False
-    m = measure(poly, max_width_mm, ink=ink)
-    return bool(m is not None and m["admit"] and m["shape_admit"])
-
-
 def keyline_regions(regions, outline_ids, cfg, ink=None) -> set[str]:
     """Which regions sew as a keyline bean -> shape ids.
 
-    An art outline (`outline_ids`) that is a thin ring, and every other thin
-    ring of the same thread: the keyline round a dot or a counter is too
-    short a loop to be an outline (`machine.BORDER_MIN_LOOP_MM`), and sewn as
-    a satin beside its neighbours' bean it is a blob on the line. Sewn,
-    "auto"-tier shapes only: a tier the user set is an instruction. The width
-    is the block's hairline width (`ThreadProfile.hairline_max_width_mm`,
-    0.6 mm at 40 wt)."""
-    from .stage6_hairline import block_thread_wt
+    Decided per THREAD, never per ring: one design's keylines are one drawn
+    line, and at 150 mm Kent's logo had rings either side of the gate (0.56
+    to 0.61 mm), so a per-ring gate sewed four of them as a bean and the
+    rest as 1.5 mm satin. A thread's keylines are a bean when its art
+    outlines (`outline_ids`), pooled, are at or under the block's hairline
+    width (2 x their area / their perimeter against
+    `ThreadProfile.hairline_max_width_mm`, 0.6 mm at 40 wt) AND the thread
+    draws nearly nothing but keyline (the rings taken are at least
+    `machine.OUTLINE_REACH_FRAC` of its sewn area). Then every ring
+    of that thread the hairline tier would look at at all
+    (`stage6_hairline.measure` not None: under twice the width) and that is
+    not a blob (its p95 width under twice the width) goes with them: the
+    keyline round a dot or a counter is too short a loop to be an outline
+    (`machine.BORDER_MIN_LOOP_MM`), and sewn as a satin beside its
+    neighbours' bean it is a blob on the line. Sewn, "auto"-tier shapes
+    only: a tier the user set is an instruction."""
+    from .stage6_hairline import _BLOB_FACTOR, block_thread_wt, measure
 
     bw = block_thread_wt(regions, cfg)
 
-    def thin(r) -> bool:
-        if (not r.meta.get("stitched", True)
-                or str(r.meta.get("tier", "auto")).lower() != "auto"):
-            return False
-        prof = machine.thread_profile(bw.get(r.thread_index, cfg.thread_wt))
-        return _thin_ring(r.polygon, prof.hairline_max_width_mm, ink=ink)
+    def limit(r) -> float:
+        return machine.thread_profile(bw.get(r.thread_index, cfg.thread_wt)).hairline_max_width_mm
 
-    out = {r.shape_id for r in regions if r.shape_id in outline_ids and thin(r)}
-    if not out:
-        return out
-    threads = {r.thread_index for r in regions if r.shape_id in out}
-    out |= {r.shape_id for r in regions
-            if r.shape_id not in out and r.thread_index in threads and thin(r)}
+    def ring(r) -> bool:
+        poly = r.polygon
+        return (r.meta.get("stitched", True)
+                and str(r.meta.get("tier", "auto")).lower() == "auto"
+                and poly is not None and not poly.is_empty
+                and any(part.interiors for part in _parts(poly)))
+
+    measured: dict[str, dict | None] = {}
+
+    def width(r):
+        if r.shape_id not in measured:
+            measured[r.shape_id] = measure(r.polygon, limit(r), ink=ink)
+        return measured[r.shape_id]
+
+    pool: dict[int, list] = {}
+    for r in regions:
+        if r.shape_id in outline_ids:
+            pool.setdefault(r.thread_index, []).append(r)
+    out: set[str] = set()
+    for thread, outlines in pool.items():
+        # every outline of the thread a ring the tier would look at, and
+        # their width pooled (2 x area / perimeter over all of them) at or
+        # under the gate. The plain band width, not the tier's skeleton
+        # median alone: a gear's ring read 0.05 mm on the skeleton and 0.86
+        # by area (Commons "Ahora" at 60 mm), and as a bean it lost its
+        # teeth.
+        if not all(ring(r) and width(r) is not None for r in outlines):
+            continue
+        length = sum(r.polygon.length for r in outlines)
+        if length <= 0 or 2.0 * sum(r.polygon.area for r in outlines) / length > limit(outlines[0]):
+            continue
+        taken = set()
+        for r in regions:
+            if r.thread_index != thread or not ring(r):
+                continue
+            m = width(r)
+            if m is not None and m["width_p95_mm"] <= _BLOB_FACTOR * limit(r):
+                taken.add(r.shape_id)
+        # ... and the thread draws nearly nothing BUT keyline. A frame in the
+        # logo's own ink is a drawn part of it, which the pro borders (To-a-T
+        # Machine: black frame, black lettering, 0.23 of the thread is ring;
+        # as a bean the frame went to a wire and its O and A to hollow
+        # outlines). Kent's keyline logo: 0.98 to 1.00.
+        sewn = [r for r in regions if r.thread_index == thread and r.meta.get("stitched", True)
+                and r.polygon is not None and not r.polygon.is_empty]
+        ring_area = sum(r.polygon.area for r in sewn if r.shape_id in taken)
+        if ring_area < machine.OUTLINE_REACH_FRAC * sum(r.polygon.area for r in sewn):
+            continue
+        out |= taken
     return out
 
 
@@ -282,6 +319,11 @@ def sew_last(regions, ids: set[str]):
     shape, one per thread in the order their layers stood: a line one thread
     wide sewn before the fill it edges is buried by it (Kent's keyline logo: the
     brackets' fill came after their keyline and covered it whole).
+
+    A body of the keyline's OWN thread (a white counter inside a white
+    keyline) goes with it, in the layer just before: left where it was, the
+    thread loaded twice (the logo at 40 and 127 mm: 4 colour stops for 3
+    threads). Adjacent layers of one thread sew as one block, body first.
     Regions as copies, layers renumbered; nothing to move: the input list."""
     if not ids or not any(r.shape_id in ids for r in regions):
         return regions
@@ -292,9 +334,19 @@ def sew_last(regions, ids: set[str]):
     for r in sorted(regions, key=lambda r: r.meta["layer"]):
         if r.shape_id in ids:
             first.setdefault(r.thread_index, len(first))
+    holes = [Polygon(ring) for k in regions if k.shape_id in ids
+             for part in _parts(k.polygon) for ring in part.interiors]
+    own = {r.shape_id for r in regions
+           if r.shape_id not in ids and r.thread_index in first and r.meta.get("stitched", True)
+           and r.polygon is not None and not r.polygon.is_empty
+           and any(h.contains(r.polygon.representative_point()) for h in holes)}
 
     def key(r):
-        return top + 1 + first[r.thread_index] if r.shape_id in ids else r.meta["layer"]
+        if r.shape_id in ids:
+            return top + 2 + 2 * first[r.thread_index]
+        if r.shape_id in own:
+            return top + 1 + 2 * first[r.thread_index]
+        return r.meta["layer"]
 
     order = sorted({key(r) for r in regions})
     renum = {L: i for i, L in enumerate(order)}
@@ -330,13 +382,48 @@ def body_limits(planned, ids: set[str]) -> dict[str, Polygon]:
 
 
 def held(poly, limit):
-    """`poly` cut to `limit`, or `poly` itself when there is no limit or the
-    cut would not leave one polygon (nothing is dropped to make a line
-    clean)."""
+    """`poly` cut to `limit` -> one polygon, or `poly` itself when there is
+    no limit or no single polygon can be had.
+
+    The cut can leave several pieces: the body and its keyline's hole are
+    vectorized apart and disagree by simplification wobble
+    (`art_outline.HOLD_PAD_MM`), so at a thin neck of the body the two can
+    miss each other (at 40 mm the word's necks did, and refusing the cut
+    outright left its fill 0.62 mm past the line all round). Stage 7 sews one
+    polygon, so each pair of pieces is joined by the part of the overshoot
+    that lies within reach of BOTH -- a bridge at the neck, nowhere else --
+    the reach stepped up to the wobble. A piece under
+    `machine.RUN_MIN_AREA_MM2` (less than one penetration of thread) is let
+    go. Still split after that: the body is left as it was, unheld --
+    nothing is dropped to make a line clean."""
     if limit is None or poly is None or poly.is_empty:
         return poly
     cut = poly.intersection(limit)
-    return cut if cut.geom_type == "Polygon" and not cut.is_empty else poly
+    if cut.geom_type == "GeometryCollection":
+        cut = unary_union([g for g in cut.geoms if g.geom_type in ("Polygon", "MultiPolygon")])
+    if cut.is_empty or cut.geom_type not in ("Polygon", "MultiPolygon"):
+        return poly
+    if cut.geom_type == "MultiPolygon":
+        pieces = [g for g in cut.geoms if g.area >= machine.RUN_MIN_AREA_MM2]
+        if not pieces:
+            return poly
+        cut = pieces[0] if len(pieces) == 1 else unary_union(pieces)
+        if len(pieces) > 1:
+            from .art_outline import HOLD_PAD_MM
+            rest = poly.difference(limit)
+            for step in (1, 2, 3):
+                reach = HOLD_PAD_MM * step / 3.0
+                grown = [g.buffer(reach) for g in pieces]
+                bridges = [rest.intersection(a).intersection(b)
+                           for i, a in enumerate(grown) for b in grown[i + 1:] if a.intersects(b)]
+                joined = unary_union([*pieces, *[b for b in bridges if not b.is_empty]])
+                if joined.geom_type == "GeometryCollection":
+                    joined = unary_union([g for g in joined.geoms
+                                          if g.geom_type in ("Polygon", "MultiPolygon")])
+                if joined.geom_type == "Polygon":
+                    cut = joined
+                    break
+    return cut if cut.geom_type == "Polygon" else poly
 
 
 def hold_bodies(planned, ids: set[str]) -> int:
@@ -352,7 +439,7 @@ def hold_bodies(planned, ids: set[str]) -> int:
         if p.shape_id not in limits or p.polygon is None or p.polygon.is_empty:
             continue
         new = held(p.polygon, limits[p.shape_id])
-        if new is not p.polygon and new.area < p.polygon.area:
+        if new is not p.polygon and new.area < p.polygon.area - 1e-9:
             p.polygon = new
             cut += 1
     return cut
