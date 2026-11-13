@@ -91,6 +91,9 @@ from .stage6_small_letter import REPORT_KEY as SMALL_LETTER_KEY
 from .stage6_small_letter import glyph_polygon, skeleton_letter_runs, text_line_members
 from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_hairline import HairlineSet
+from .keyline_bean import body_limits as keyline_body_limits
+from .keyline_bean import held as keyline_held
+from .keyline_bean import keyline_bean_runs, keyline_regions
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .stage6_hairline_lines import strand_blocks
 from .stage6_hairline_lines import supplement_test as hairline_supplement_test
@@ -2692,8 +2695,13 @@ def sequence(
     ink_source=None,
     counter_holes: list | None = None,
     art_outlines: dict | None = None,
+    keyline_beans: set | None = None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings).
+
+    `keyline_beans` (`cfg.border_from_outline_hairline_run`, built OFF
+    2026-11-13): the shapes `keyline_bean.keyline_regions` read as hairline
+    keylines; None reads them here. Ignored with the flag off.
 
     `art_outlines` (`cfg.border_from_outline`, 2026-10-24): the art's own
     outlines, `art_outline.find_art_outlines` over EVERY region (a body the
@@ -2791,7 +2799,7 @@ def sequence(
             fill_technique=fill_technique, streamline_mode=streamline_mode,
             detail_layer=detail_layer, palette_spools=palette_spools,
             hairline=hairline, ink_source=ink_source, counter_holes=counter_holes,
-            art_outlines=art_outlines)
+            art_outlines=art_outlines, keyline_beans=keyline_beans)
         off_rank = {}
         for _b in off_blocks:
             for _r in _b.runs:
@@ -3314,6 +3322,23 @@ def sequence(
                 continue
             outline_rings[_oid] = [(_hole, _w) for _bid, _hole, _w in _bodies]
             outline_bodies.update(_bid for _bid, _hole, _w in _bodies)
+    # `cfg.border_from_outline_hairline_run` (built OFF 2026-11-13): an
+    # outline the hairline tier's width gate admits whole is a drawn line,
+    # not a border. It sews as a bean on its own centreline
+    # (`keyline_bean`), a needle point on every corner, instead of a loop at
+    # `machine.OUTLINE_WIDTH_MM`'s floor (Kent's keyline logo: a 0.4 mm
+    # keyline sewn 1.5 mm); so does every other hairline ring of its thread
+    # (the keyline round a dot). Its bodies stay `outline_bodies`: plain
+    # fills, no ring of their own. Off, empty and never read.
+    # `plan_stitches` reads them once, ahead of stage 5 (it sews them last
+    # and holds their bodies' fill to the line), and hands the set in; a
+    # direct caller that passes none gets them read here.
+    if not getattr(cfg, "border_from_outline_hairline_run", False):
+        keyline_beans = set()
+    elif keyline_beans is None:
+        keyline_beans = (keyline_regions([_p.region for _p in planned], set(outline_rings),
+                                         cfg, ink=ink_source) if outline_rings else set())
+    keyline_limits = keyline_body_limits(planned, keyline_beans) if keyline_beans else {}
     # Seam ownership's "still to sew" set — see `border_later`'s declaration
     # above for the predicate and its blind spots.
     for _p in planned:
@@ -3414,6 +3439,20 @@ def sequence(
             # (`rest_planned`) goes down the ladder below as a shape of its
             # own, FIRST — the hairlines are laid over it, like a strand over
             # any ground.
+            # `cfg.border_from_outline_hairline_run` (built OFF 2026-11-13): a
+            # hairline keyline (`keyline_beans`) sews as a bean on its own
+            # centreline, ahead of every rung that would read the band as a
+            # shape: the run rung traces BOTH its edges (two lines 0.4 mm
+            # apart), the hairline tier walks a raster skeleton, the outline
+            # rung loops it in satin. On the ARTWORK polygon, for the run
+            # rung's reason. Empty (a tail no loop follows) takes the ladder.
+            if tier == "auto" and p.shape_id in keyline_beans:
+                runs, report = keyline_bean_runs(p.region.polygon, p.shape_id,
+                                                 entry=entry, trim_at_mm=trim_at)
+                if not report["empty"]:
+                    report["as_run"] = 1
+                    report["keyline_bean"] = 1
+                    return runs, report, False
             # `cfg.fine_bars_satin`: a fine bar goes down the ladder below
             # ONCE (`fine_bar_trying`), the hairline tier skipped; satin out
             # of it is the bar, anything else becomes today's ring exactly
@@ -3627,6 +3666,10 @@ def sequence(
                 body = p.polygon
                 if p.satin_tier and fabric.pull_comp_mm > 0:
                     body = body.buffer(fabric.pull_comp_mm, join_style=2)
+                    # `cfg.border_from_outline_hairline_run`: the pull grown
+                    # here stops at the keyline's own needle line, as stage
+                    # 5's growth already does (`keyline_bean.hold_bodies`)
+                    body = keyline_held(body, keyline_limits.get(p.shape_id))
                 runs, report = stitch_shape(
                     small_print_cut(p, body, bar_mm=row_mm), p.shape_id,
                     angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
