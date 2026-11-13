@@ -182,3 +182,16 @@ the ink; leaves a piece over the floor); flag defaults OFF; OFF never calls
 `enclosed_rim` and pins the 60 mm OFF design md5 on the frozen engine; MFab at
 60 / 100.8 / 113.5 ON: blocks Black, White, Black, one white field, at least
 12 riders, never fewer than OFF; `owl_kent.jpg` stage 2 unchanged ON.
+
+## Addendum 2026-11-13: every number above is the NO-cutout lane
+
+MFab classes photo_scene, so a box with the rembg venv (a required deploy step)
+runs the background cutout and prep; CI has no venv, so its cutout fails and
+prep is skipped with it. Everything above was measured that second way. On the
+cutout lane (fields / riders): 60 mm OFF 2 / 6, ON 2 / 10; 100.8 OFF 1 / 12,
+ON 1 / 15; 113.5 OFF 1 / 12, ON 1 / 11. The default is better there (60 mm
+already sews black, white, black), but ON does not hold the keyline whole at
+60 mm and drops a rider at 113.5. The MFab tests now pin `photo_prep=False`;
+the cutout lane's claims and these two gaps (strict xfails) are in
+`digitizer/tests/test_mfab_cutout_lane.py`. Any flip of this flag should be
+judged on the cutout lane.
