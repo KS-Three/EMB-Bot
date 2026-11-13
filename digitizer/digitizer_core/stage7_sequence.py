@@ -3347,9 +3347,15 @@ def sequence(
             continue
         if _sews_satin(_p.region, cfg, satin_max, design_class, outline_rings):
             continue
-        if (_border_wanted(_p.region, border_style, border_total_area,
-                           border_share_min, border_iso_max)[0]
-                or _border_by_size_width(_p.region, cfg) is not None):
+        if _border_wanted(_p.region, border_style, border_total_area,
+                          border_share_min, border_iso_max)[0]:
+            border_later[_p.shape_id] = _p.visible_geom
+        elif (_border_by_size_width(_p.region, cfg) is not None
+              and not cfg.border_by_size_fabric_edges):
+            # A size ring owns its seams only with fabric-edges OFF. ON, it
+            # skips every seam with another sewn region, so counting it as a
+            # later owner would leave a seam an earlier explicitly bordered
+            # neighbour handed it sewn by neither shape.
             border_later[_p.shape_id] = _p.visible_geom
     # Every region's edge, for `cfg.border_by_size_fabric_edges`'s seam test
     sewn_geoms = ({_p.shape_id: _p.visible_geom for _p in planned}
