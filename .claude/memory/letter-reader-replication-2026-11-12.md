@@ -1,6 +1,6 @@
 ---
 name: letter-reader-replication-2026-11-12
-description: Letter-fault reader replication 11-12: pre-registered (frozen #1389 reader, digest b5211fb9); held-out pins = 1 item (11-11 silhouette) = no verdict; 9-item Commons lettering sitting `defect-marks-1112` built, waits on Kent (~45 min)
+description: Letter-fault reader replication 11-12/13: pre-registered (frozen #1389 reader, digest b5211fb9); Kent sat the 9-logo kit `defect-marks-1112` 11-13: frozen rule selects letter pins on 2 items (needs 5) = no verdict; not replicated, not refuted
 metadata:
   type: project
 ---
@@ -27,3 +27,15 @@ domain, never pinned; Kent saw them as pairs 11-02), 80 mm left chest, kit
 **How to apply:** after Kent sits it, score from a checkout at the kit's tree
 with `score_replication.py`; do not pool 11-10/11-11 pins into it, do not add
 pins the rule does not select. Write-up: `docs/letter-reader-replication-2026-11-12.md`.
+
+**Result (sat 2026-11-13, scored same day):** no verdict. 60 pins on 8 items
+(1 "Nothing wrong"), but the closure rule selects 1 pin on each of 2 items
+(`bukit_asam` hit 1/1, `n_sync` 0 flags, miss): chance-corrected +0.446,
+CI95 [0.00, 0.81], under the 5-item floor. The pre-registration expected
+about 5 of 9 items to carry letter pins; 2 did. His pins on lettering are
+about flat/straight edges, smooth curves, baseline alignment and stitch-type
+changes, not closure. Record: `docs/defect-marks-2026-11-12/SITTING.md`
+(marks sha256 `12e74bff…`, byte copy of his file).
+
+**Why it matters:** a closure-only reader will keep hitting the item floor on
+logos at 80 mm; another sitting of the same kind is unlikely to decide it.

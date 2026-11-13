@@ -117,3 +117,25 @@ def test_drop_inherited_removes_only_bare_pins():
     kept = sr.drop_inherited(marks)
     assert [p["x_mm"] for p in kept["items"]["C_lt_x"]["pins"]] == [1, 3]
     assert len(h.select_letter_pins(kept, "C_lt_")) == 1
+
+
+MARKS_SHA = "12e74bff709304a6fed27f324a481ac26179e08e5b7ea0db587d09938bdf9c9c"
+
+
+def test_sitting_1113_is_kents_file_and_scores_no_verdict():
+    """The 2026-11-13 sitting: the committed marks are his bytes, the frozen
+    rule selects one pin on each of two items, and the registered scorer
+    re-scores the committed flags to the committed result: no verdict."""
+    raw = (REPL / "marks.json").read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == MARKS_SHA
+    marks = json.loads(raw)
+    assert len(marks["items"]) == 9
+    sel = h.select_letter_pins(marks, "C_lt_")
+    assert sorted(p["item"] for p in sel) == ["C_lt_bukit_asam", "C_lt_n_sync"]
+    sr = _load("score_replication_1113", REPL / "score_replication.py")
+    rows_all = h.score_rows(marks, REPL, "C_lt_", "letters")
+    rows_noted = h.score_rows(sr.drop_inherited(marks), REPL, "C_lt_", "letters")
+    got = sr.verdict(rows_all, rows_noted)
+    want = json.loads((REPL / "letter-reader-replication-score.json").read_text(encoding="utf-8"))
+    assert got["verdict"] == want["verdict"] == "no verdict"
+    assert json.loads(json.dumps(got["all_pins"])) == want["all_pins"]
