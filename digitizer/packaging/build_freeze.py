@@ -441,7 +441,7 @@ def build(args) -> dict:
     return report
 
 
-def main(argv: list[str] | None = None) -> int:
+def parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--work", type=Path, required=True,
                     help="scratch directory OUTSIDE the checkout; everything is written here")
@@ -460,7 +460,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-zip", action="store_true")
     ap.add_argument("--summary", type=Path, default=None,
                     help="append the markdown summary to this file (CI: $GITHUB_STEP_SUMMARY)")
-    build(ap.parse_args(argv))
+    return ap
+
+
+def main(argv: list[str] | None = None) -> int:
+    build(parser().parse_args(argv))
     return 0
 
 
