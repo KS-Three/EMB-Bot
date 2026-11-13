@@ -76,6 +76,12 @@ test("a DST that loses a stitch in the writer fails Download all and saves NOTHI
   await waitFor(() => expect(v.container.textContent).toMatch(/Export failed: stitch count \(expected \d+, read back \d+\)/));
   expect(saved).toEqual([]);
   expect(v.container.textContent).not.toMatch(/Saved ZIP/);
+  // the error text IS the status line: the customer reads why, and nothing says verified
+  const line = v.container.querySelector("p[aria-live]").textContent;
+  expect(line).toMatch(/^Export failed: stitch count \(expected \d+, read back \d+\)/);
+  expect(line).not.toMatch(/verified|re-read and/);
+  // the button is back for another try
+  expect(allButton(v)).toBeEnabled();
 });
 
 test("so does a PES that fails its read-back, behind a DST that passed", async () => {

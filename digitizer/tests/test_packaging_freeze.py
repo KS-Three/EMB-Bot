@@ -328,3 +328,36 @@ def test_the_windows_build_is_windows_python_312_and_the_two_scripts():
     for r in runs:
         commands = [ln for ln in r.strip().splitlines() if ln.strip() and not ln.strip().startswith("#")]
         assert len(commands) == 1, r
+
+
+def test_the_launcher_is_frozen_and_proved_to_keep_one_origin():
+    """Saved designs are localStorage, keyed by origin: the frozen launcher
+    must come back on the one port. The job freezes it as a second folder and
+    runs `one_origin_smoke.py` on it, after the uploads."""
+    steps = _workflow()["jobs"]["windows-app"]["steps"]
+    runs = [s.get("run", "") for s in steps]
+    freeze = next(i for i, r in enumerate(runs) if "build_freeze.py" in r and "embbot_launcher.py" in r)
+    smoke = next(i for i, r in enumerate(runs) if "packaging/one_origin_smoke.py" in r)
+    uploads = [i for i, s in enumerate(steps) if str(s.get("uses", "")).startswith("actions/upload-artifact@")
+               and s.get("if") != "always()"]
+    assert "--entry embbot_launcher.py" in runs[freeze] and "--no-zip" in runs[freeze]
+    assert "--build-report" in runs[smoke] and freeze < smoke
+    assert uploads and max(uploads) < freeze, "the origin smoke must never cost the zip or the installer"
+
+
+def test_the_origin_smoke_names_every_check_in_its_summary():
+    smoke = _load_after_siblings("one_origin_smoke")
+    assert smoke.L.PORT == 8721
+    rec = {"port": 8721, "origin": "http://127.0.0.1:8721", "token": "t",
+           "first": {"ready_s": 2.0, "service_pids": [1], "app_ports": [8721], "commit": "abc", "port_freed_s": 0.6},
+           "write": {"channel": "msedge", "projectIds": ["p"], "origin": "http://127.0.0.1:8721"},
+           "other_origin": {"origin": "http://127.0.0.1:9", "projectIds": [], "marker": None},
+           "second": {"exit": 0, "seconds": 0.7, "service_pids": [1], "first_alive": True},
+           "restart": {"ready_s": 2.0, "commit": "abc", "service_pids": [2]},
+           "read": {"origin": "http://127.0.0.1:8721", "marker": "t", "projectIds": ["p"]},
+           "busy": {"exit": 3, "seconds": 0.9, "foreign_pid": [9], "holder_after": [9], "new_ports": [],
+                    "message": "EMB-Bot could not start"}}
+    text = smoke.summary_markdown([], rec, 30)
+    assert "**PASS**" in text and "marker found" in text and "launcher exit 3" in text
+    assert "EMB-Bot could not start" in text
+    assert "**FAIL**" in smoke.summary_markdown(["x"], rec, 30)

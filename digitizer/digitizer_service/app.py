@@ -354,6 +354,11 @@ app.add_middleware(
     allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    # Without this a cross-origin Studio (dev server on :5173, service on :8721)
+    # cannot read /export's read-back headers: `fetch` hides every response
+    # header outside the CORS-safelisted set, so the Studio saw "unknown" for
+    # every service file and could not tell the customer it was re-read.
+    expose_headers=["X-Export-Verified", "X-Export-Readback", "X-Export-Verify-Reason"],
 )
 
 
