@@ -17,15 +17,6 @@
       "autoPort": false
     },
     {
-      "name": "corpus-sxs",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8731", "--bind", "127.0.0.1"],
-      "cwd": "digitizer/corpus_runs",
-      "port": 8731,
-      "url": "http://127.0.0.1:8731",
-      "autoPort": false
-    },
-    {
       "name": "fill-slant-picker",
       "runtimeExecutable": ".venv/Scripts/python.exe",
       "runtimeArgs": ["-m", "tools.eye_pairs", "--serve", "--out", "eye_pairs_out/fill-slant-1108", "--port", "8735"],

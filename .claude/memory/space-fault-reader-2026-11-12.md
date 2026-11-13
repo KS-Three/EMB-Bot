@@ -1,6 +1,6 @@
 ---
 name: space-fault-reader-2026-11-12
-description: Fourth fault reader (negative space: thread covering the midline of a colour's bays and inter-shape gaps) on the letter pins of both sittings: per note 0.80 vs chance_pick 0.48, CI [+0.22,+0.47] = shown, LOO holds; NOT a hold-out, broad (precision 0.20 vs 0.12)
+description: Fourth fault reader (negative space: thread covering the midline of bays and inter-shape gaps): shown on the 44 letter pins (+0.32 over chance_pick, CI [+0.22,+0.47]), NOT a hold-out; replication on defect-marks-1112 = no verdict (2 of 9 items carry a target pin, floor 5)
 metadata:
   type: project
 ---
@@ -29,3 +29,10 @@ use: score it frozen at `837c105d` on a fresh sitting (e.g. `defect-marks-1112`
 after the letter hold-out). It is broad: flags ~half of its candidates and
 most flags are unpinned (Drone 182 flags, no target pin), so a "where" list,
 not a gate. Pair it with the letter reader; they miss different pins.
+
+**Replication 2026-11-13 (foreman's call, pre-registered `e5d811cd`): no
+verdict.** On `defect-marks-1112` the frozen pin rule gave 2 pins on 2 of 9
+items (floor 5): bukit_asam "no spacing between the rings" hit at 0.51 mm
+(letter reader hit too), n_sync's S pin (thread angles meeting) missed at
+9.0 mm (letter reader missed too). That kit drew edge/flatness/alignment
+notes, not closure; a replication needs art likely to draw bay/spacing notes.

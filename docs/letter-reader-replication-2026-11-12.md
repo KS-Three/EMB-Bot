@@ -1,9 +1,56 @@
-# Letter-fault reader replication: no held-out data yet, sitting prepared (2026-11-12)
+# Letter-fault reader replication: sat, still no verdict (2026-11-12, scored 2026-11-13)
 
-**Verdict: no verdict.** The letter-fault reader (PR #1389) cannot be
-replicated on pins Kent has already made: outside the six logos it was fit on,
-the frozen pin rule finds letter pins on ONE item. A nine-item sitting is built
-and ready; it is the only thing that can decide the question.
+**Verdict, as registered: no verdict.** Kent sat the nine-item kit on
+2026-11-13 (record: [`defect-marks-2026-11-12/SITTING.md`](defect-marks-2026-11-12/SITTING.md)).
+The frozen pin rule selects letter pins on **2 of the 9 items**, one pin
+each. The pass line needs at least 5 items, so it cannot be applied. The
+letter-fault reader (PR #1389) has not been replicated, and it has not been
+refuted either.
+
+## Result of the sitting (2026-11-13)
+
+Scored by `score_replication.py` exactly as registered: frozen reader, 3 mm,
+`chance_area` null, item bootstrap. The reader ran from tree `ea13a362`; its
+worker re-digitized each job and checked that the stitches matched.
+
+| item | selected pin (his note) | reader flags | hit at 3 mm | chance |
+|---|---|---|---|---|
+| `C_lt_bukit_asam` | "No spacing between the rings" | 8 (3 bay closed, 4 join, 1 counter lost) | 1/1 (nearest flag 2.42 mm) | 0.195 |
+| `C_lt_n_sync` | "#1-#2 have perpendicular thread angles which shouldn't be adjacent or touching eachother on an "S"" | 0 | 0/1 | 0.0 |
+
+Pooled over the 2 pins: hit rate 0.50 against a chance rate of 0.098. The
+chance-corrected figure is +0.446, CI95 [0.00, 0.81]. 2b (bare inherited pins
+dropped) is the same, because no bare pins were selected. Leave-one-out:
+dropping bukit_asam gives [0.00, 0.00], dropping n_sync gives [0.81, 0.81].
+With two items the interval says almost nothing, which is why the pass line
+does not look at it.
+
+**This differs from what the pre-registration expected.** It planned for about
+5 of the 9 items to carry letter pins, since 6 of 11 logos did on 11-10. Only
+2 did. Kent left 60 pins across 8 items (one item was "Nothing wrong"), but
+almost none of them are about closure, the faults this reader reads (a counter
+filled, letters joined, a bay closed). They are about:
+
+- **Flat or straight letter edges:** I, Z, E.
+- **Smooth curves:** the 14 bare pins on `and_pizza`, and "all of the letters
+  are jagged" on `dot_music`.
+- **Letters out of line:** on `jakarta` and `bukit_asam`.
+- **Stitch type or angle changing inside one shape.**
+
+Of the two selected pins, the `n_sync` note is about thread angles meeting
+on an "S", and the rule admits it on the word "touching". That is the rule as
+frozen, so it stays in.
+
+The power table below assumed 5 or more items with pins. The sitting reached
+none of its rows, so a lack of verdict is the likely outcome for any
+closure-only reader on these logos at 80 mm. That is not evidence about the
+reader itself.
+
+## Before the sitting (2026-11-12)
+
+The letter-fault reader (PR #1389) cannot be replicated on pins Kent has
+already made: outside the six logos it was fit on, the frozen pin rule finds
+letter pins on ONE item. A nine-item sitting was built for that reason.
 
 The pre-registration came first, in its own commit (`ea13a362`):
 [`defect-marks-2026-11-12/letter-reader-replication-preregistration.md`](defect-marks-2026-11-12/letter-reader-replication-preregistration.md).
@@ -78,7 +125,7 @@ checkout's gitignored `digitizer/eye_pairs_out/defect-marks-1112/`,
 page never receives the yardstick's reading or any reader's flags, and the
 reader has not been run on any of the nine.
 
-## What waits on Kent
+## What waited on Kent (sat 2026-11-13; see the result above)
 
 A 9-item sitting on `defect-marks-1112` (launch.json, port 8738), the same
 page as the last two. At the 11-11 pace (21 items in 1 h 46 min, about

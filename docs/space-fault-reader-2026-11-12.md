@@ -283,3 +283,135 @@ run (`docs/letter-fault-reader-2026-11-11.md`):
         --json ../docs/space-fault-reader-2026-11-12/score.json
 
 Both `run`s take about 15 s on the laptop; no pipeline runs.
+
+# Part 3: replication pre-registration (2026-11-12, before any 11-12 mark is read)
+
+**Foreman's call 2026-11-12, not Kent's words:** score this reader, frozen,
+on the `defect-marks-1112` sitting once the letter reader's hold-out there is
+scored. Written and pushed before this session opened that sitting's
+`marks.json` or its page. It does not say whether Kent has started sitting.
+
+## What is frozen
+
+- **The reader as at `837c105d`.** sha256 of its detection path
+  (`to_mm`, `shapes`, `_hull_pts`, `hull_depth`, `enclosed`, `space_ridge`,
+  `spread`, `read_class`, `_points`, `read_spaces`, `run` and the module
+  constants, docstrings stripped, through `ast.unparse`): `aee7d26da21c71eaa2687e7e4bf7a1b2e6629a8482765b71ed6366b9a4f6d2b9`.
+  (Corrected 2026-11-13: the first value, `6f29dace…`, hashed `ast.dump`,
+  whose output changed in Python 3.13, so CI's 3.12 read a different number.
+  The new one is the same on 3.12 and 3.14, at `837c105d` and on HEAD.)
+  It is the same at `837c105d`, at `129131d2` (the result) and on main
+  `8bd56ff7`. `test_detection_code_is_frozen_for_the_replication` pins it.
+  The reader is not edited before this score.
+- **The harness and the letter reader** (`fault_reader_harness.py`,
+  `letter_fault_reader.py`) are byte-identical between `837c105d` and
+  `8bd56ff7`. So the pin rule, the hit test and the nulls are the ones Part 1
+  used.
+
+## Items, pins, rasters
+
+- **Kit:** `defect-marks-1112` (`kit_sha256` `f824c55c20f7…`), built by the
+  letter-reader worker for ITS hold-out
+  (`docs/letter-reader-replication-2026-11-12.md` on its branch). Nine
+  Commons lettering logos `C_lt_*`, each at 80 mm on left_chest. Nobody has
+  run this reader on any of them.
+- **Target pins:** `select_space_pins(marks, "C_")` on that kit's
+  `marks.json`. This is the letter reader's frozen pin rule plus `note_pin`,
+  exactly as in Part 1. A **target item** is an item with at least one
+  selected pin. No pin is added or dropped by hand, including letter notes the
+  rule misses.
+- **Rasters:** the letter reader's `labels.npz` from the letter worker's run
+  on the kit, read and never written. If an item has none, it is made with
+  the frozen letter reader into this reader's own out dir from the kit's
+  stored job, with no digitize. If that is not possible, the item is refused.
+  Outputs go to `eye_pairs_out/space_reader_1112/` only, never into the
+  letter worker's files.
+
+## Scoring and pass line (as Part 1, item floor raised)
+
+At **3.0 mm**, against **`chance_pick`**. Per note is the verdict figure and
+per pin has to clear too. Intervals are a 95% bootstrap over items, 5,000
+draws, seed 20261110.
+
+1. at least **5 target items** scored (not refused);
+2. the per-note hit rate above `chance_pick`, lower bound above 0;
+3. the per-pin pool's lower bound above 0.
+
+- **Shown**: 1, 2 and 3 hold. "Shown, fragile" if leaving any one item out
+  takes either lower bound to 0 or below.
+- **No verdict**: fewer than 5 target items scored, or `chance_pick`
+  undefined on a scored target item.
+- **Not shown**: otherwise.
+
+Why 5: it is the letter reader's own replication floor, so both readers face
+the same line on the same pins. With nine items, 4 of 7 (Part 1's floor)
+would be a lower bar.
+
+**"No verdict" is a likely outcome, and an honest one.** The kit was chosen
+for the letter reader. The first sitting gave a letter pin under the rule on
+6 of 11 logos, so about 5 of 9 is expected, right at the floor. The
+"S/E bay filled" fault this reader exists for may not be pinned at all. A
+"not shown" at about 5 items is mostly a statement about power (the letter
+worker's simulation puts a real half-size effect at P(shown) about 0.28 to
+0.43).
+
+## Also reported (not the verdict)
+
+Per item and per note at 3 mm. Leave one item out. Overlap with the letter
+reader on the same pins, using its flags from its own replication run, read
+only. Precision against `precision_pick`. Flag counts on the kit's
+non-target items. The result is appended here as Part 4 in its own PR.
+
+# Part 4: replication result on `defect-marks-1112` (2026-11-13)
+
+## Verdict: no verdict
+
+Only **2 of the 9 items** carry a target pin under the registered rule, and
+Part 3 needs 5. The reader is the one frozen at `837c105d` (the digest test
+passes), and nothing was retuned. The 11-12 pins can neither support nor
+contradict Part 2's "shown". Part 2 stays a result on the pins that shaped
+the idea, with no replication.
+
+- **Marks:** `digitizer/eye_pairs_out/defect-marks-1112/marks.json` in the
+  primary checkout. Its sha256 is `12e74bff709304a6…`, the same as the letter
+  worker's preserved copy. It was read, never written. Kent pinned 60 pins
+  on 8 of the 9 items.
+- **Target pins:** `select_space_pins(marks, "C_")` gives 2 pins, 2 notes, on
+  `C_lt_bukit_asam` and `C_lt_n_sync`. These are the same two items the
+  letter reader's own hold-out scored (also no verdict). The letter worker
+  reads most of the other notes as edge, flatness, stitch-type and alignment
+  faults.
+- **Rasters:** the letter reader's `labels.npz` for those two items, taken
+  from the letter worker's run and read only (tree `ea13a362`, the kit's). Its
+  `flags.json` is identical to the one in its lane. Output went to
+  `eye_pairs_out/space_reader_1112/`. The score is in
+  `space-fault-reader-2026-11-12/score-1112.json`.
+
+## For the record (not a verdict: 2 items, 2 pins)
+
+| item | pin | Kent's note | flags / candidates | nearest flag | hit at 3 mm | `chance_pick` | letter reader |
+|---|---|---|---|---|---|---|---|
+| `C_lt_bukit_asam` | 2 | "No spacing between the rings" | 18 / 54 | 0.51 mm | yes | 0.65 | hit |
+| `C_lt_n_sync` | 1 | thread angles that "shouldn't be adjacent or touching" on an "S" | 6 / 46 | 9.0 mm | no | 0.26 | miss |
+
+Pooled at 3 mm against `chance_pick`, per note and per pin alike: hit 0.50
+vs 0.45, +0.05, CI [-0.26, +0.35]. With one item in each leave-one-out arm,
+the interval has zero width and means nothing. Precision is 0.125 vs 0.056.
+
+The overlap with the letter reader is one pin hit by both and one hit by
+neither. On these pins the two readers did not split the way they did in
+Part 2.
+
+**The S pin is a miss, and the write-up does not lean on it.** The note is
+about two stitch directions meeting on the S, not about the S's bays filling
+solid, so it is not the fault this reader looks for. The rule admits it
+because "touch" is one of its closure words (`CLOSE_WORDS`). One pin is
+below the registered floor either way.
+
+## What this leaves
+
+The kit was chosen for the letter reader and yielded two letter pins. A
+replication of either reader needs a sitting whose art is likely to draw
+closure and spacing notes: small lettering with bowls and bays (S, E, B, a,
+e), sat at a size where they fill. That is a question for the foreman. This
+page proposes nothing more.
