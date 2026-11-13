@@ -17,7 +17,11 @@ Contracts:
     nothing, measured on the cartoon) and stops being lettering (the
     house-angle group took the pot into the Column lane: one 37 mm satin);
   * a stroke the review pinned to a tier, and a region that is not dark
-    ink, are left alone;
+    ink, are left alone -- the pin read AFTER the review edits
+    (`settle_dark_ink_bean` in `finish_generation`), since the tag itself
+    runs in `build_generation` and the generation is reused across edits:
+    a pinned stroke keeps no spines, so stage 5 gives it its axis and
+    `ink_after_ground` leaves its layer, and its ground stays lettering;
   * a stroke whose ground sews in the same or a later layer moves to a
     layer of its own right after the ground's; already after: untouched;
   * end to end on the lettered blob: every letter sews bean only, the blob
@@ -31,9 +35,10 @@ from shapely.geometry import Point, Polygon
 
 from digitizer_core import PipelineConfig
 from digitizer_core.beanletters import BEAN_LETTER_KEY
-from digitizer_core.pipeline import plan_stitches, run_stages
+from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches, run_stages
 from digitizer_core.regions import Region
-from digitizer_core.thin_ink import BEAN_MAX_GROUND_DE00, bean_dark_ink, ink_after_ground
+from digitizer_core.thin_ink import (BEAN_MAX_GROUND_DE00, bean_dark_ink, ink_after_ground,
+                                     settle_dark_ink_bean)
 from digitizer_core.threads import CHART
 
 from .test_keep_dark_thin_strokes import _lettered_blob
@@ -78,8 +83,27 @@ def test_a_dark_stroke_gets_spines_and_its_ground_keeps_the_hole_and_is_no_lette
     # the spines run inside the stroke
     assert all(STROKE.buffer(0.2).contains(Point(p)) for s in spines for p in s)
     assert ground.polygon.equals(GROUND) and len(ground.polygon.interiors) == 1
-    assert ground.meta["lettering_group"] is False
     assert BEAN_LETTER_KEY not in other.meta
+    # the ground is untagged once the review edits are in (`finish_generation`)
+    assert ground.meta["lettering_group"] is True
+    assert settle_dark_ink_bean([ground, stroke, other]) == 1
+    assert ground.meta["lettering_group"] is False
+    assert stroke.meta[BEAN_LETTER_KEY] == spines
+
+
+def test_a_stroke_pinned_by_the_review_after_the_tag_drops_the_bean():
+    # The order the pipeline runs in: tagged in `build_generation`, the
+    # review's tier written later by `apply_shape_edits`.
+    ground = _r("G", GROUND, POT, 1, lettering_group=True)
+    stroke = _r("K", STROKE, PEN, 0, dark_ink=True)
+    assert bean_dark_ink([ground, stroke]) == 1
+    stroke.meta["tier"] = "fill"
+    assert settle_dark_ink_bean([ground, stroke]) == 0
+    assert BEAN_LETTER_KEY not in stroke.meta
+    assert ground.meta["lettering_group"] is True
+    # under its ground, and not moved to a layer of its own
+    regions = [stroke, ground]
+    assert ink_after_ground(regions) is regions
 
 
 def test_a_pinned_stroke_is_left_alone():
@@ -145,3 +169,41 @@ def test_on_the_lettered_blob_letters_sew_bean_on_a_whole_ground(tmp_path):
     for r in letters:
         inside = sum(1 for p in ground_pts if r.polygon.buffer(0.3).contains(Point(p)))
         assert inside > 0, r.shape_id
+
+
+def test_a_review_pin_on_the_lettered_blob_drops_the_bean_from_a_cached_generation(tmp_path):
+    # The service's path: one generation, finished per edit from a fork.
+    from digitizer_core.pipeline import fabric_for
+    from digitizer_core.stage5_overlap import seam_row_angles
+
+    art = tmp_path / "lettered_blob.png"
+    _lettered_blob(art)
+    base = dict(target_width_mm=60.0, max_colors=6, forced_class="gradient",
+                edge_cap="none", keep_dark_thin_strokes=True, dark_ink_bean=True)
+    gen = build_generation(str(art), PipelineConfig(**base))
+    ink = [r.shape_id for r in gen.regions if r.meta.get("dark_ink")]
+    ground = max(gen.regions, key=lambda r: r.area_mm2).shape_id
+    assert len(ink) >= 5
+
+    def finish(**ov):
+        cfg = PipelineConfig(**base, shape_overrides=ov)
+        res = finish_generation(gen.fork(), cfg)
+        sewn = [r for r in res.regions if r.meta.get("stitched", True)]
+        axes = seam_row_angles(sewn, cfg, fabric_for(cfg), res.design_class)
+        return {r.shape_id: r for r in res.regions}, axes
+
+    auto, axes = finish()
+    assert all(auto[s].meta.get(BEAN_LETTER_KEY) for s in ink)
+    assert all(axes[s] is None for s in ink)
+    assert auto[ground].meta.get("lettering_group") is False
+    pinned, axes = finish(**{ink[0]: {"tier": "fill"}})
+    assert BEAN_LETTER_KEY not in pinned[ink[0]].meta
+    assert axes[ink[0]] is not None          # a fill again: stage 5 gives it its axis
+    assert all(pinned[s].meta.get(BEAN_LETTER_KEY) for s in ink[1:])
+    # another stroke still beans on the ground: it stays untagged
+    assert pinned[ground].meta.get("lettering_group") is False
+    every, _ = finish(**{s: {"tier": "satin"} for s in ink})
+    assert not any(every[s].meta.get(BEAN_LETTER_KEY) for s in ink)
+    assert every[ground].meta.get("lettering_group") is not False
+    # and back to auto: the cached generation still carries the bean
+    assert all(finish()[0][s].meta.get(BEAN_LETTER_KEY) for s in ink)
