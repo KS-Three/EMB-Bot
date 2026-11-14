@@ -2554,13 +2554,24 @@ def _white_field_fill(region, cfg: PipelineConfig, outlines=None) -> bool:
                                  machine.KEYLINE_REACH_FRAC))
 
 
-def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
+#: `cfg.group_consistent_fill_angle`: no group house angle on a satin shape
+#: narrower than this (twice its largest inscribed circle). Columns under
+#: ~0.6 mm lose crosses under a house angle (stage6_satin, the note after
+#: `_clamp_to_span`: Fremont's 0.40-0.52 mm THE). The documented number, not
+#: a fitted one.
+GROUP_SATIN_MIN_DIM_MM = 0.6
+
+
+def _fill_angle_for(p, cfg: PipelineConfig, group: dict | None = None) -> float | None:
     """The row angle a fill-tier shape sews at -- the precedence stated at
     the plain-tatami call in `stitch_one`, in one place so the five
     call sites (tatami and the four geometric techniques) cannot drift
     apart: the review's own angle, the global, the design angle
     (`cfg.design_angle`), stage 5's compensation axis, else None (stage 6
-    derives its own)."""
+    derives its own). `group` (`cfg.group_consistent_fill_angle`, built OFF
+    2026-11-13): the angle the shape's group of like shapes shares, read
+    only where every rule above left None -- it replaces stage 6's own
+    per-shape pick and nothing else. None or absent: as before."""
     if cfg.sew_enclosed_white_fields_fill and p.region.meta.get("sew_enclosed_white"):
         # The pro's white faces. A face sits in its word's house-angle group,
         # whose angle the text tagger writes into this same `fill_angle_deg`
@@ -2585,6 +2596,8 @@ def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
     pro = pro_offset_fill_angle(cfg, p.region.shape_id, poly=p.polygon, base_deg=off)
     if pro is not None:
         return pro
+    if off is None and group:
+        return group.get(p.region.shape_id)
     return off
 
 
@@ -3107,6 +3120,38 @@ def sequence(
              and not widened_lettering(_pr.region)],
             detail_mm2,
             can_leave_run=lambda r: _sews_satin(r, cfg, satin_max, design_class))
+    # `cfg.group_consistent_fill_angle` (built OFF 2026-11-13): one angle per
+    # group of like shapes (`group_consistency.shared_angles`) -- the mascot's
+    # feet filled at 39 and 134 deg on one spool, the flag's congruent stars
+    # at 8 angles, To a T's rule lines satin at 64-85 deg. Fill rows: only a
+    # shape no rule names an angle for (`_fill_angle_for` left None), each
+    # member at the group's biggest shape's own `best_fill_angle_deg`. Satin
+    # crosses: a non-lettering shape with no house angle takes the group's
+    # as its house (the slot `cfg.design_angle` uses), the biggest member's
+    # perpendicular to its long side; not a column under
+    # `GROUP_SATIN_MIN_DIM_MM`, where a house angle drops crosses (see the
+    # note above `_clamp_to_span`'s callers in stage6_satin). Off: both
+    # empty, every call is today's.
+    group_fill: dict[str, float] = {}
+    group_satin: dict[str, float] = {}
+    if cfg.group_consistent_fill_angle and design_class not in PHOTO_CLASSES:
+        from .bean_rule import min_dim_mm as _gmin_dim
+        from .group_consistency import rect_axis, shared_angles
+        from .stage6_fill import best_fill_angle_deg
+        _auto = [_pr for _pr in planned
+                 if str(_pr.region.meta.get("tier", "auto")).lower() == "auto"
+                 and not is_lettering(_pr.region, cfg) and not is_text(_pr.region, cfg)]
+        _by_id = {_pr.shape_id: _pr for _pr in _auto}
+        group_fill = shared_angles(
+            [_pr.region for _pr in _auto if _fill_angle_for(_pr, cfg) is None],
+            lambda r: best_fill_angle_deg(_by_id[r.shape_id].polygon, row_mm))
+        if cfg.satin_angle_deg is None:
+            group_satin = shared_angles(
+                [_pr.region for _pr in _auto
+                 if _pr.region.meta.get("satin_angle_deg") is None
+                 and _pr.region.meta.get("design_angle_deg") is None
+                 and _gmin_dim(_pr.region.polygon) >= GROUP_SATIN_MIN_DIM_MM],
+                lambda r: (rect_axis(r.polygon)[0] + 90.0) % 180.0)
 
     def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
         if (pr_tier == "auto" and cfg.bean_only_lines
@@ -3705,7 +3750,7 @@ def sequence(
                                               machine.MIN_FILL_WIDTH_MM, looped=rings):
                         f_runs, f_report = stitch_shape(
                             piece, p.shape_id,
-                            angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
+                            angle_deg=_fill_angle_for(p, cfg, group_fill), row_mm=row_mm,
                             stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
                             trim_at_mm=trim_at,
                             start_near=o_runs[-1].points[-1] if o_runs else entry)
@@ -3767,7 +3812,7 @@ def sequence(
                     body = keyline_held(body, keyline_limits.get(p.shape_id))
                 runs, report = stitch_shape(
                     small_print_cut(p, body, bar_mm=row_mm), p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
+                    angle_deg=_fill_angle_for(p, cfg, group_fill), row_mm=row_mm,
                     stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at, under_cover=cfg.fill_travel_under_cover,
                     cut_bridges=cfg.fill_bridge_cut,
@@ -3961,7 +4006,7 @@ def sequence(
                 for piece in rest:
                     f_runs, f_report = stitch_shape(
                         piece, p.shape_id,
-                        angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
+                        angle_deg=_fill_angle_for(p, cfg, group_fill), row_mm=row_mm,
                         stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
                         trim_at_mm=trim_at,
                         start_near=k_runs[-1].points[-1] if k_runs else entry)
@@ -4011,6 +4056,10 @@ def sequence(
                     # Behind the review's and the house's own angle; absent
                     # the key, the per-stroke tangent as before.
                     satin_angle_deg = float(p.region.meta["design_angle_deg"])
+                if satin_angle_deg is None and p.shape_id in group_satin:
+                    # `cfg.group_consistent_fill_angle`: the house its group
+                    # of like shapes shares (behind every angle above)
+                    satin_angle_deg = group_satin[p.shape_id]
                 # Law 50's first rung (machine.SATIN_UNDERLAY_MIN_EXTENT_MM,
                 # 2026-09-03): small lettering sews bare. Judged on the
                 # ARTWORK extent, the same reason the satin/fill call is —
@@ -4256,7 +4305,7 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg),
+                    angle_deg=_fill_angle_for(p, cfg, group_fill),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -4290,7 +4339,7 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg),
+                    angle_deg=_fill_angle_for(p, cfg, group_fill),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -4317,7 +4366,7 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg),
+                    angle_deg=_fill_angle_for(p, cfg, group_fill),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -4342,7 +4391,7 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg),
+                    angle_deg=_fill_angle_for(p, cfg, group_fill),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -4365,7 +4414,7 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg),
+                    angle_deg=_fill_angle_for(p, cfg, group_fill),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -4479,7 +4528,7 @@ def sequence(
                 runs, report = stitch_shape(
                     small_print_cut(p, p.polygon, bar_mm=row_mm),
                     p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg),
+                    angle_deg=_fill_angle_for(p, cfg, group_fill),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,

@@ -277,3 +277,88 @@ def test_a_moved_dark_ink_bean_letter_takes_the_ladder_with_its_word():
         r.meta.update({BEAN_LETTER_KEY: [[(0, 0), (1, 1)]], DARK_INK_GROUND_KEY: "Sground"})
     lt.word_thread(word, CHART, {})
     assert BEAN_LETTER_KEY in word[-1].meta
+
+
+# ---------------------------------------------------------------- one angle per like group (feet, legs, stars)
+
+import math  # noqa: E402
+
+from shapely import affinity  # noqa: E402
+
+from digitizer_core.stage7_sequence import GROUP_SATIN_MIN_DIM_MM, _fill_angle_for  # noqa: E402
+
+
+def _foot(x0, mirror=False, scale=1.0, thread=105, sid="F"):
+    poly = Polygon([(0, 0), (14, 0), (16, 3), (6, 12), (1, 9)])
+    if mirror:
+        poly = affinity.scale(poly, xfact=-1, origin=(0, 0))
+    poly = affinity.translate(affinity.scale(poly, scale, scale, origin=(0, 0)), xoff=x0)
+    return _region(sid, poly, thread)
+
+
+def test_like_shapes_pair_mirrored_feet_and_refuse_unlike():
+    left, right = _foot(0, sid="L"), _foot(60, mirror=True, scale=0.96, sid="R")
+    assert [[r.shape_id for r in g] for g in gc.like_shapes([left, right])] == [["L", "R"]]
+    other_spool = _foot(60, mirror=True, thread=7, sid="X")
+    big = _foot(60, mirror=True, scale=1.3, sid="B")                    # 1.69x the area
+    long_bar = _region("Q", box(60, 0, 100, 2.4), 105)                  # same area, far more elongated
+    assert gc.like_shapes([left, other_spool]) == []
+    assert gc.like_shapes([left, big]) == []
+    assert gc.like_shapes([left, long_bar]) == []
+
+
+def test_shared_angle_is_the_biggest_members_own_for_everyone():
+    left, right = _foot(0, sid="L"), _foot(60, mirror=True, scale=0.96, sid="R")
+    own = {"L": 39.4, "R": 134.3}
+    assert gc.shared_angles([left, right], lambda r: own[r.shape_id]) == {"L": 39.4, "R": 39.4}
+
+
+def test_a_congruent_tag_shares_the_angle_relative_to_each_member():
+    stars = _word([2, 2, 2], height=2.0)
+    for i, (r, a) in enumerate(zip(stars, (0.0, 72.0, 0.0))):
+        r.meta["congruent_group"] = {"id": "G1", "kind": "grid", "n": 3, "index": i,
+                                     "angle_deg": a, "mirror": False, "moved": False}
+    stars[0].polygon = box(-50, -1, -47.9, 1)           # the biggest, by a hair
+    out = gc.shared_angles(stars, lambda r: 36.0)
+    assert out == {"L0": 36.0, "L1": 108.0, "L2": 36.0}
+
+
+def _fill_angles(regs, **cfg_kw):
+    planned = [PlannedRegion(region=r, polygon=r.polygon, sew_index=0) for r in regs]
+    cfg = PipelineConfig(underlay=False, satin=False, **cfg_kw)
+    blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg)
+    acc: dict[str, list] = {}
+    for blk in blocks:
+        for run in blk.runs:
+            if run.kind != stitches.FILL:
+                continue
+            for (x0, y0), (x1, y1) in zip(run.points, run.points[1:]):
+                L = math.hypot(x1 - x0, y1 - y0)
+                if L > 1.5:
+                    a = 2 * math.atan2(y1 - y0, x1 - x0)
+                    v = acc.setdefault(run.shape_id, [0.0, 0.0])
+                    v[0] += L * math.cos(a)
+                    v[1] += L * math.sin(a)
+    return {k: round(math.degrees(math.atan2(v[1], v[0])) / 2 % 180, 1) for k, v in acc.items()}
+
+
+def test_mirrored_feet_fill_at_two_angles_off_and_one_on():
+    feet = [_foot(0, sid="L"), _foot(60, mirror=True, scale=0.96, sid="R")]
+    off = _fill_angles(feet)
+    assert abs(off["L"] - off["R"]) > 10, off
+    on = _fill_angles(feet, group_consistent_fill_angle=True)
+    d = abs(on["L"] - on["R"]) % 180
+    assert min(d, 180 - d) < 3, on
+    assert _fill_angles(feet, group_consistent_fill_angle=False) == off
+
+
+def test_every_named_angle_outranks_the_group():
+    r = _foot(0, sid="L")
+    p = PlannedRegion(region=r, polygon=r.polygon, sew_index=0)
+    assert _fill_angle_for(p, PipelineConfig(), {"L": 12.0}) == 12.0
+    assert _fill_angle_for(p, PipelineConfig(fill_angle_deg=45.0), {"L": 12.0}) == 45.0
+    r.meta["fill_angle_deg"] = 30.0
+    assert _fill_angle_for(p, PipelineConfig(), {"L": 12.0}) == 30.0
+    assert _fill_angle_for(p, PipelineConfig()) == 30.0
+    assert GROUP_SATIN_MIN_DIM_MM == 0.6
+    assert PipelineConfig().group_consistent_fill_angle is False

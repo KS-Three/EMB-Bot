@@ -26,7 +26,7 @@ per-shape JSON and dumps: `digitizer/eye_pairs_out/group-consistency-1113/`
 | gradient_mascot (80 mm) | "feet are differnt colors" | feet filled at 39.4 and 134.3 deg (mirror images), same spool 1120 | **Fill angle per shape**; the lit render reads direction as tone (as the 11-12 reader found). |
 | devanagari_logo (80 mm) | "the only lettering in-fill" | nothing on main | Fixed by `enclosed_white_skip_transparent` (Kent's 11-11 flip): every white area open, every letter satin. |
 | kanji_seal (80 mm) | 28 pins, "some empty spaces have it while others don't" | nothing on main | Same flip: 39 spaces open, 11,139 st. |
-| pixel_art_sprite (80 mm) | "some have bean stitching around the openings" | border loops some openings | Not a group threshold: all 15 vector holes clear the 8.8 mm loop floor and are looped; the bare ones are sub-floor specks carved elsewhere. |
+| pixel_art_sprite (80 mm) | "some have bean stitching around the openings" | border loops some openings | Not a group threshold: the 15 plain holes clear the 8.8 mm loop floor and are looped; 5 more openings are separate `enclosed_background` regions (the `regular-structure` census), left bare. A tag split, **not fixed here**. |
 | lt_k_line | "The tip of the E has ... 3 different stitch angles" | inside one satin letter | Column decomposition of one letter, not a group. |
 | MFab F, Bridge handles | | | Not re-traced here (travel and stage-4 shape per the 11-12 reader). |
 
@@ -50,7 +50,7 @@ decided disagree. A member inside the band follows, unless its shape cannot
 take that construction. `MARGIN` is a grouping candidate fitted on this census
 (gate 1 does not apply: no machine settles it).
 
-Three flags, all OFF, byte-identical OFF (the third, thread, is below):
+Four flags, all OFF, byte-identical OFF, each separable:
 
 * `cfg.group_consistent_tier`: the run tier's area floor per line. A letter
   moved onto the run tier sews the run its line-mates sew (skips
@@ -63,7 +63,18 @@ Three flags, all OFF, byte-identical OFF (the third, thread, is below):
   text-cluster letter on a thread held by under a quarter of its word takes
   the thread over half the word sews, within `STRAY_MAX_DE00` (25), and drops
   a dark-ink bean none of its word-mates carries. A pinned recolour never
-  moves.
+  moves. A word in two colours by design (two groups of comparable size)
+  stays two.
+* `cfg.group_consistent_fill_angle` (`group_consistency.shared_angles`):
+  ONE angle per group of like shapes -- the biggest member's own, for every
+  member, not mirrored for a mirrored pair (Kent read the mascot's feet,
+  one spool at 39 and 134 deg, as "differnt colors"). Group: the
+  `regular_structure` worker's `meta["congruent_group"]` when present (angle
+  relative to each member's `angle_deg`), else one spool, areas within 1.5x,
+  elongations within 1.25x. Fill rows only where no rule names an angle;
+  satin crosses as the house angle of a non-lettering shape with none (the
+  slot `cfg.design_angle` uses), never on a column under 0.6 mm. Lettering
+  and the photo classes are out.
 
 ## Proof
 
@@ -98,8 +109,8 @@ its own mis-snapped green against the yellow is what made it a skeleton bean.
 * The (hed)p.e. e and periods: a thread split with no text cluster to group
   by; the fix is at stage 2 (an anti-aliased stroke snapping to a second
   spool 2.4 dE00 off), not here.
-* Fill angle per like shape (emoji legs, mascot feet): proposed to the
-  Director as the next flag.
+* Pixel sprite's openings: 5 are `enclosed_background` regions, 15 are
+  plain holes; the bean goes round only the holes.
 * AHORA's fused letters: the satin tier sews AH and RA as one shape each. A
   per-letter split belongs to the text tagger's neck split (another worker's
   file).

@@ -3772,6 +3772,22 @@ class PipelineConfig:
     # customer's own recolour is never moved; the cap still has the last
     # word. Not the (hed)p.e. e: no cluster fires there.
     group_consistent_thread: bool = False
+    # ONE ANGLE per group of like shapes (`group_consistency.shared_angles`,
+    # read in stage 7). Kent: "feet are differnt colors" (gradient_mascot: one
+    # spool, fills at 39 and 134 deg, two directions read as two shades) and
+    # "right leg infill doesn't match left leg" (flat_emoji_icon: 11 and 180
+    # deg); the flag's 50 congruent stars fill at 8 angles and To a T's 4 rule
+    # lines satin at 64-85 deg (`regular-structure` census). Group: the
+    # `regular_structure` tag `meta["congruent_group"]` when present (angle
+    # relative to each member's own `angle_deg`), else one spool, areas within
+    # 1.5x, elongations within 1.25x. Every member takes the biggest's own
+    # angle -- one angle, not mirrored, for a mirrored pair too. Fill rows
+    # only where no rule names an angle (review, global, design angle, stage
+    # 5's axis, the pro-offset keys all outrank it); satin crosses as the
+    # house angle of a non-lettering shape that has none, never on a column
+    # under 0.6 mm. Lettering is out (it has its house angle). Not on the
+    # photo classes. Off, byte-identical.
+    group_consistent_fill_angle: bool = False
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the

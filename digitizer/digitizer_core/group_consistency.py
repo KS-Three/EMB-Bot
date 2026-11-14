@@ -182,3 +182,114 @@ def outline_body_decider(min_body_mm: float):
         return [(c[0], c[1]) for c in cands if side[c[0].shape_id]]
 
     return decide
+
+
+# --- One angle per group of like shapes (`cfg.group_consistent_fill_angle`) ---
+#
+# Kent: "feet are differnt colors, they should be the same" (gradient_mascot,
+# one spool, fills at 39 and 134 deg) and "right leg infill doesn't match left
+# leg" (flat_emoji_icon, one spool, 11 and 180 deg): two row directions on one
+# thread read as two shades. The flag's 50 congruent stars fill at 8 angles
+# (36-160 deg) and To a T machine's 4 congruent rule lines satin at 64-85 deg
+# (`regular-structure` census, 2026-11-13). Each shape picks its own angle
+# (`stage6_fill.best_fill_angle_deg`, the satin tier's per-stroke tangent), so
+# like shapes differ. ONE angle per group: the biggest member's own, and every
+# member takes it -- not mirrored for a mirrored pair, by Kent's note.
+#
+# GROUP: the `regular_structure` tag `meta["congruent_group"]` when present
+# (its `id`; the angle is then taken RELATIVE to each member's own
+# `angle_deg`, so a rotated copy sews the same way round itself), else
+# `like_shapes`: one thread, areas within `LIKE_AREA_RATIO`, elongations within
+# `LIKE_ELONG_RATIO` (the inconsistency reader's own likeness, 2026-11-12).
+
+#: areas within this factor are like (mascot feet 448 / 412 mm^2, emoji legs
+#: 147 / 117 mm^2)
+LIKE_AREA_RATIO = 1.5
+#: elongations (long / short side of the minimum rectangle) within this factor
+#: are like -- `tools/inconsistency_fault_reader.ELONG_RATIO`
+LIKE_ELONG_RATIO = 1.25
+
+
+def rect_axis(poly) -> tuple[float, float]:
+    """(long-axis angle in degrees mod 180, elongation >= 1) of the shape's
+    minimum rotated rectangle; (0, 1) for a degenerate one."""
+    import math
+    rect = poly.minimum_rotated_rectangle
+    coords = list(getattr(getattr(rect, "exterior", None), "coords", []))
+    if len(coords) < 4:
+        return 0.0, 1.0
+    (x0, y0), (x1, y1), (x2, y2) = coords[0], coords[1], coords[2]
+    a = math.hypot(x1 - x0, y1 - y0)
+    b = math.hypot(x2 - x1, y2 - y1)
+    if a >= b:
+        ang, long_, short = math.degrees(math.atan2(y1 - y0, x1 - x0)), a, b
+    else:
+        ang, long_, short = math.degrees(math.atan2(y2 - y1, x2 - x1)), b, a
+    return ang % 180.0, (long_ / short) if short > 1e-9 else float("inf")
+
+
+def like_shapes(regions: Iterable, *, min_members: int = 2) -> list[list]:
+    """Groups of like shapes: connected components, within each thread, of
+    "areas within `LIKE_AREA_RATIO` and elongations within
+    `LIKE_ELONG_RATIO`", in input order, those of at least `min_members`."""
+    regs = [r for r in regions if r.polygon is not None and not r.polygon.is_empty
+            and r.polygon.area > 0]
+    elong = [rect_axis(r.polygon)[1] for r in regs]
+    parent = list(range(len(regs)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def ratio(a, b):
+        lo, hi = min(a, b), max(a, b)
+        return hi / lo if lo > 0 else float("inf")
+
+    for i in range(len(regs)):
+        for j in range(i + 1, len(regs)):
+            if (regs[i].thread_index == regs[j].thread_index
+                    and ratio(regs[i].polygon.area, regs[j].polygon.area) <= LIKE_AREA_RATIO
+                    and ratio(elong[i], elong[j]) <= LIKE_ELONG_RATIO):
+                ri, rj = find(i), find(j)
+                if ri != rj:
+                    parent[max(ri, rj)] = min(ri, rj)
+    by: dict[int, list] = {}
+    for i, r in enumerate(regs):
+        by.setdefault(find(i), []).append(r)
+    return [g for _k, g in sorted(by.items()) if len(g) >= min_members]
+
+
+def _congruent(r) -> dict | None:
+    tag = (r.meta or {}).get("congruent_group")
+    return tag if isinstance(tag, dict) and tag.get("id") is not None else None
+
+
+def shared_angles(regions: Iterable, own_angle: Callable[[object], float | None]) -> dict[str, float]:
+    """-> {shape_id: angle deg mod 180} for every member of a group of like
+    shapes: the biggest member's `own_angle`, relative to each member's
+    `congruent_group["angle_deg"]` for a tagged group, absolute otherwise. A
+    group whose biggest member has no angle of its own is left alone."""
+    regs = list(regions)
+    tagged: dict = {}
+    loose = []
+    for r in regs:
+        tag = _congruent(r)
+        if tag is None:
+            loose.append(r)
+        else:
+            tagged.setdefault(tag["id"], []).append(r)
+    groups = [(g, True) for _k, g in sorted(tagged.items(), key=lambda kv: str(kv[0])) if len(g) >= 2]
+    groups += [(g, False) for g in like_shapes(loose)]
+    out: dict[str, float] = {}
+    for g, relative in groups:
+        ref = max(g, key=lambda r: (r.polygon.area, r.shape_id))
+        base = own_angle(ref)
+        if base is None:
+            continue
+        a_ref = float(_congruent(ref).get("angle_deg") or 0.0) if relative else 0.0
+        for r in g:
+            d = float(_congruent(r).get("angle_deg") or 0.0) - a_ref if relative else 0.0
+            out[r.shape_id] = (float(base) + d) % 180.0
+    return out
