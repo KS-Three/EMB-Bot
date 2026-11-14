@@ -598,6 +598,11 @@ def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
     inner: list[tuple[float, float]] = []
     widths: list[float] = []
     for i in range(n):
+        if exact:
+            # The service's cancel/deadline, per sample of an exact loop: a
+            # keyline's `_exact_cross` walk was 2-5 s with no seam on Becker
+            # at 96 mm (2026-11-13). Moves no number.
+            deadline.check("keyline")
         px, py = ring_pts[i]
         if normals is None:
             tx, ty = tans[i]
@@ -1119,6 +1124,7 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
     cursor = entry
     chain = _LOOP_CHAIN.get()
     while rings:
+        deadline.check("keyline")
         if cursor is None:
             i = 0
         else:
@@ -1243,6 +1249,7 @@ def _bury_walks(runs: list[StitchRun]) -> int:
     shrink = disk(max(1, int(round(machine.COVERAGE_THREAD_W_MM / 2.0 * BURY_PX_PER_MM))))
     took = 0
     for i0 in cuts:
+        deadline.check("keyline")
         i = i0 + took
         a, b = runs[i - 1].points[-1], runs[i].points[0]
         direct = math.dist(a, b)

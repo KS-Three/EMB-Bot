@@ -31,3 +31,14 @@ widths (DOCTRINE 2026-09-16).
 **How to apply:** options sent to Kent. My pick is a Column-lane `satin_cover` hand-back, built OFF. When a shape
 "loses area at one size", sweep the target and check `text_candidate` before blaming segmentation. Related:
 [[starter-weak-spots-2026-11-12]], [[the-80mm-ink-link-2026-10-15]].
+
+**Follow-ups (2026-11-13).**
+- **Lighthouse crash:** fixed in #1438. The outline body's mitred pull buffer shattered into wedges, and
+  `stage7_sequence.grown_body` now keeps the largest part.
+- **Hand-back:** shipped OFF as `lettering_columns_cover_handback` (#1445). Census:
+  `docs/column-cover-handback-census-2026-11-13.md`.
+  - It helps shapes of 14 mm² or more: the wing cell 0.66 -> 1.00, Gaulke's '&' bowl.
+  - It HURTS shapes of 8 mm² or less, where the ladder's satin spills about one shape-area outside them ('b', 'y',
+    the drone bar).
+  - It does not reach the owl.
+  - `satin_cover` cannot see spill: measure both.

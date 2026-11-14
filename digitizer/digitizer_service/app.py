@@ -1015,6 +1015,14 @@ def _review_payload(result, plan=None) -> dict:
                 # garment would sew this; you turned it off". False for an
                 # ordinary hole, an alpha hole, and everything untagged.
                 "enclosed_by_garment": bool(r.meta.get("enclosed_by_garment", False)),
+                # Contract v1.10 (2026-11-13; server-computed, read-only,
+                # same category): this shape is a HAIRLINE OUTLINE, a thin
+                # line the art draws round its shapes
+                # (`keyline_bean.keyline_regions`), sewn as a bean. Stays True
+                # under an override that turns the shape off, so the Studio
+                # can throb it and ask "Keep / Remove" and still offer it
+                # back afterwards. Always present; never a letter.
+                "hairline_outline": bool(r.meta.get("hairline_outline", False)),
                 # Text-cluster detection (server-computed, read-only — no
                 # `_OVERRIDE_KEYS` entry, same category as `layer` and
                 # `enclosed_background`): whether this shape was tagged as a

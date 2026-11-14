@@ -1409,6 +1409,7 @@
       <svelte:fragment slot="design">
         <ContentStep
           {project}
+          projectId={currentId}
           workImage={runtime.workImages[project.selectedId]}
           flat={runtime.flats[project.selectedId]}
           {sewnColors}
