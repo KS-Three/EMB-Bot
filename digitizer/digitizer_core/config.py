@@ -3750,6 +3750,23 @@ class PipelineConfig:
     # three in-letter hops with no on-letter route. Tests:
     # `tests/test_column_ends.py`.
     lettering_columns_inside_connectors: bool = True
+    # Under `lettering_columns`, no needle-down hop between two of a
+    # letter's runs lies on satin the letter has already finished (2026-11-14,
+    # built OFF; `columns._connectors_under`). The walk ends each leg's zigzag
+    # on its last cross's b rail, and the connector to the next leg ran back
+    # across the stroke just sewn, on top of it: Kent's "random cross over
+    # stitch" pins #14/#15 on Becker hat large (5.8 and 5.9 mm of running
+    # stitch on the E's finished arms). Read off the stitch lists, ours left
+    # running stitch on finished satin on every Becker (5.5-8.7 mm) and MFab
+    # (4.2-12.3 mm) job; 17 of the pro's 22 files leave none, two at most
+    # 0.97 mm, and the other three are outline detail (Drone) or a run along
+    # a stroke's edge (ProSeal) where read, not a hop across a finished
+    # stroke (`docs/connectors-on-top-2026-11-14.md`). ON: each leg ends on
+    # the rail whose hop lies less on finished satin, and a hop still
+    # leaving more than `columns._ON_TOP_MAX_MM` on top walks the centrelines
+    # under satin still to come, else is cut (a trim). False is the walk as
+    # it was, byte for byte. Tests: `tests/test_column_connectors_buried.py`.
+    lettering_columns_connectors_buried: bool = False
     # Under `lettering_columns`, let a thin STEM under the area floor reach
     # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
     # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2
