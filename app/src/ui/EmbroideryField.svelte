@@ -4714,7 +4714,8 @@
           // Field names deliberately match groupResizePatches' member
           // contract (offsetXMm/offsetYMm) — a short alias here once
           // silently zeroed every offset in the resize fan-out.
-          members.push({ id, offsetXMm: el2.offsetXMm || 0, offsetYMm: el2.offsetYMm || 0, widthMm: w, targetMm: el2.sizeMm != null ? el2.sizeMm : w });
+          // heightMm: groupResizeInBox measures in reclampAll's model too.
+          members.push({ id, offsetXMm: el2.offsetXMm || 0, offsetYMm: el2.offsetYMm || 0, widthMm: w, heightMm: pe2.bboxMm.y1 - pe2.bboxMm.y0, targetMm: el2.sizeMm != null ? el2.sizeMm : w });
           memberBoxes.push(pe2.bboxMm);
         }
         if (!members.length) return;

@@ -326,18 +326,56 @@ export function groupResizePatches(members, factor, groupCxMm, groupCyMm, minWmm
 export function groupResizeInBox(members, factor, groupBBox, hoopWmm, hoopHmm, minWmm) {
   const gW = groupBBox.x1 - groupBBox.x0;
   const gH = groupBBox.y1 - groupBBox.y0;
-  let f = factor;
-  const fMax = Math.min(hoopWmm && gW > 0 ? hoopWmm / gW : Infinity, hoopHmm && gH > 0 ? hoopHmm / gH : Infinity);
-  if (f > fMax) f = fMax;
   const gcx = (groupBBox.x0 + groupBBox.x1) / 2;
   const gcy = (groupBBox.y0 + groupBBox.y1) / 2;
+  // The cap and the shift are also measured in reclampAll's OWN model (review
+  // follow-up, 2026-11-13): reclamp keeps each member inside as a box CENTRED
+  // ON ITS OFFSET, offset +/- its size / 2, and turned lettering's stitch box
+  // is not centred on its offset ("HELLO" at 45 degrees sits ~0.75 mm off
+  // it). Measured from the true union alone, the shift left one member past
+  // reclamp's line and reclamp then moved it on its own. With every member's
+  // height known, `centred` is the union of those boxes at press; it scales
+  // about the group centre exactly as the members do, so capping the factor
+  // to it and shifting it inside make the two agree: reclamp moves nothing.
+  // A turned member's stitches may then sit up to that offset past the box
+  // edge, which is what reclamp already allows a single turned element.
+  // `slack`: the regenerated sizes are a hair off k x size (pull comp does not
+  // scale, the stitch box rounds to 0.1 mm), measured 0.03 mm past reclamp's
+  // 0.01 mm tolerance at the box edge, so this model keeps 0.1 mm clear.
+  const slack = 0.1;
+  const centred =(members || []).length && members.every((m) => m.heightMm > 0)
+    ? unionBBox(members.map((m) => ({
+      x0: (m.offsetXMm || 0) - m.widthMm / 2, x1: (m.offsetXMm || 0) + m.widthMm / 2,
+      y0: (m.offsetYMm || 0) - m.heightMm / 2, y1: (m.offsetYMm || 0) + m.heightMm / 2,
+    })))
+    : null;
+  const capOf = (b, inset = 0) => {
+    const w = b.x1 - b.x0, h = b.y1 - b.y0;
+    return Math.min(hoopWmm && w > 0 ? (hoopWmm - 2 * inset) / w : Infinity, hoopHmm && h > 0 ? (hoopHmm - 2 * inset) / h : Infinity);
+  };
+  let f = factor;
+  const fMax = Math.min(capOf(groupBBox), centred ? capOf(centred, slack) : Infinity);
+  if (f > fMax) f = fMax;
   const r = groupResizePatches(members, f, gcx, gcy, minWmm);
   const k = r.factor;
-  const scaled = {
-    x0: gcx + (groupBBox.x0 - gcx) * k, x1: gcx + (groupBBox.x1 - gcx) * k,
-    y0: gcy + (groupBBox.y0 - gcy) * k, y1: gcy + (groupBBox.y1 - gcy) * k,
-  };
-  const s = hoopWmm && hoopHmm ? clampGroupDelta(0, 0, scaled, hoopWmm, hoopHmm) : { dxMm: 0, dyMm: 0 };
+  const about = (b) => ({
+    x0: gcx + (b.x0 - gcx) * k, x1: gcx + (b.x1 - gcx) * k,
+    y0: gcy + (b.y0 - gcy) * k, y1: gcy + (b.y1 - gcy) * k,
+  });
+  const scaled = about(groupBBox);
+  const clampBox = centred ? about(centred) : scaled;
+  // The shift that brings `clampBox` inside. At the cap the box fits exactly,
+  // and a float hair can put the low bound over the high one, where
+  // clampGroupDelta (a MOVE: no shift for a group bigger than the box) would
+  // answer 0; here the box is never bigger, so that hair means "centre it".
+  const inset = centred ? slack : 0;
+  const shift1 = (lo, hi) => (lo > hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, 0))) + 0;
+  const s = hoopWmm && hoopHmm
+    ? {
+      dxMm: shift1(-(hoopWmm / 2 - inset) - clampBox.x0, hoopWmm / 2 - inset - clampBox.x1),
+      dyMm: shift1(-(hoopHmm / 2 - inset) - clampBox.y0, hoopHmm / 2 - inset - clampBox.y1),
+    }
+    : { dxMm: 0, dyMm: 0 };
   for (const id in r.patches) {
     r.patches[id].offsetXMm += s.dxMm;
     r.patches[id].offsetYMm += s.dyMm;

@@ -53,3 +53,32 @@ test("an off-centre group dragged past the cap stays inside the box, and the rec
     }
   }
 });
+
+// Review follow-up (2026-11-13): reclampAll clamps each member as a box
+// CENTRED ON ITS OFFSET, but turned lettering's stitch box is not centred on
+// its offset ("HELLO" at 45 degrees sits about 0.75 mm off it). A shift built
+// from the true union then left one member 0.9 mm past reclamp's line, and
+// reclamp moved it alone. The shift is now built in reclamp's own model.
+test("a turned lettering member: after the group resize the reclamp moves no member", () => {
+  const g = EMB.getGarment("left_chest");
+  const box = placementBoxOf({ garmentId: "left_chest" });
+  const els = [
+    T("a", "HELLO", { sizeMm: 40, rotationDeg: 45, offsetXMm: 20, offsetYMm: 20 }),
+    T("b", "WORLD", { sizeMm: 30, offsetXMm: -25, offsetYMm: -30 }),
+  ];
+  const bb = (el) => bboxMmFromStitches(generateElement(el, g, {}).stitches);
+  const start = els.map(bb);
+  const members = els.map((el, i) => ({
+    id: el.id, offsetXMm: el.offsetXMm, offsetYMm: el.offsetYMm,
+    widthMm: start[i].x1 - start[i].x0, heightMm: start[i].y1 - start[i].y0, targetMm: el.sizeMm,
+  }));
+  const G = unionBBox(start);
+  const r = groupResizeInBox(members, 1.3, G, box.w, box.h, 5);
+  const resized = els.map((el) => ({ ...el, ...r.patches[el.id] }));
+  resized.forEach((el) => {
+    const b = bb(el);
+    const c = clampOffsets(el.offsetXMm, el.offsetYMm, b.x1 - b.x0, b.y1 - b.y0, box.w, box.h);
+    expect(Math.abs(c.offsetXMm - el.offsetXMm), `${el.id} x reclamped`).toBeLessThanOrEqual(0.01);
+    expect(Math.abs(c.offsetYMm - el.offsetYMm), `${el.id} y reclamped`).toBeLessThanOrEqual(0.01);
+  });
+});
