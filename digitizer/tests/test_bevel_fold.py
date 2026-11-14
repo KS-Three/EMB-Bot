@@ -96,7 +96,9 @@ def test_a_line_across_a_shape_stays_but_a_ring_arc_folds():
     cross = box(-12, -0.25, 12, 0.25)                       # a 0.5 mm line through the centre
     black = disc.difference(arc).difference(cross)
     regions = [_r(black, BLACK, "RING"), _r(arc, SILVER, "ARC"), _r(cross, SILVER, "X")]
-    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    # Drone's art floods no page colour: the garment (the Studio's cream) stands in
+    no_page = SimpleNamespace(input_px_per_mm=12.0, px_per_mm=12.0, bg_rgb=None, bg_from_alpha=False)
+    rep = bf.apply_bevel_fold(regions, no_page, PipelineConfig(garment_rgb=(235, 232, 223)), CHART)
     assert {b["shape_id"] for b in rep["bands"]} == {"ARC"}
     assert {r.shape_id for r in regions} == {"RING", "X"}
 
@@ -121,6 +123,36 @@ def test_distinct_colours_and_wide_shapes_are_left_alone():
     rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
     assert rep == {**rep, "shadows": [], "tones": [], "bands": []}
     assert [(r.shape_id, r.thread_index, r.polygon.wkb) for r in regions] == before
+
+
+def test_the_page_showing_through_is_never_folded():
+    """To a T: white slivers between black brush strokes are the page."""
+    stroke = box(0, 0, 10, 4).difference(box(3, 1.8, 7, 2.0))
+    gap = box(3, 1.8, 7, 2.0)
+    regions = [_r(stroke, BLACK, "S"), _r(gap, WHITE, "GAP", rescued_small_shape=True)]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert rep["bands"] == [] and len(regions) == 2
+
+
+def test_a_detail_kept_inside_a_shape_is_never_folded():
+    """Hotel Fremont: no page colour of its own; the white insides of its small
+    tan letters are rescued details lying inside the letter -- counters."""
+    letter = box(0, 0, 3, 4)
+    inner = box(1.2, 1.0, 1.5, 3.0)
+    regions = [_r(letter.difference(inner), GOLD, "L"), _r(inner, WHITE, "IN", rescued_small_shape=True)]
+    no_page = SimpleNamespace(input_px_per_mm=12.0, px_per_mm=12.0, bg_rgb=None, bg_from_alpha=False)
+    rep = bf.apply_bevel_fold(regions, no_page, PipelineConfig(garment_rgb=(235, 232, 223)), CHART)
+    assert rep["bands"] == [] and len(regions) == 2
+
+
+def test_an_anti_alias_fringe_is_not_a_shadow():
+    """ProSeal: a light sliver narrower than two source pixels on the page
+    is the JPEG's fringe, not a drop shadow."""
+    lo, hi = _letter()
+    fringe = box(0, -0.06, 10, 0)                    # 0.06 mm < 2 px at 20 px/mm
+    regions = [_r(lo.union(hi), BLACK, "L"), _r(fringe, GREY, "F")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert rep["shadows"] == []
 
 
 def test_counters_and_dark_ink_are_never_folded():

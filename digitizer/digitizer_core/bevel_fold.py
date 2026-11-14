@@ -91,6 +91,9 @@ TONE_SEAM_FRAC = 0.2
 # HUG_FRAC, and is within PAGE_DE00 of the page's colour (Golden Tee's grey
 # shadow sits 14.3 from its white page).
 SHADOW_MAX_MM = 2.4
+# Narrower than two SOURCE pixels, a light sliver on the page is the JPEG's
+# anti-alias fringe, not a shadow (ProSeal's 0.13 mm one; a different defect).
+SHADOW_MIN_SRC_PX = 2.0
 SHADOW_PAGE_FRAC = 0.4
 PAGE_DE00 = 20.0
 # Passes of the band fold (a band stacked on a band folds on the next one).
@@ -170,8 +173,18 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
     touch = max(0.02, TOUCH_SRC_PX / ipm)
     eps = touch / 2.0
     report = {"touch_mm": round(touch, 4), "shadows": [], "tones": [], "bands": [], "unions": 0}
-    page = getattr(p, "bg_rgb", None)
-    page_lab = None if (page is None or getattr(p, "bg_from_alpha", False)) else _lab(page)
+    # The page: the art's own background colour where stage 1 flooded one;
+    # where it did not (a cut-out, no border colour), the garment the art
+    # sews on. Only the art's OWN page says "this band is the page showing
+    # through" (To a T's white gaps, 0.4 dE00 from its page): a garment is a
+    # stand-in, and on a cream hat Drone's silver ring arcs (7.7) sit as close
+    # to it as Hotel Fremont's white letter insides (6.4).
+    own_page = getattr(p, "bg_rgb", None)
+    if getattr(p, "bg_from_alpha", False):
+        own_page = None
+    page = own_page if own_page is not None else getattr(cfg, "garment_rgb", None)
+    report["page_rgb"] = list(page) if page is not None else None
+    page_lab = None if page is None else _lab(page)
 
     def lab(r):
         return chart.lab[r.thread_index]
@@ -179,13 +192,18 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
     def near_page(r) -> bool:
         return page_lab is not None and _de00(lab(r), page_lab) <= PAGE_DE00
 
+    def is_page(r) -> bool:
+        """The band is the art's own page showing through."""
+        return own_page is not None and near_page(r)
+
     # ---- 1. shadows -------------------------------------------------------
     if page_lab is not None:
         graph = _Graph(regions, touch)
         drop = []
         for i, r in enumerate(regions):
             g = r.polygon
-            if _protected(r) or not _poly(r) or _width(g) > SHADOW_MAX_MM or not near_page(r):
+            if (_protected(r) or not _poly(r) or _width(g) > SHADOW_MAX_MM
+                    or _width(g) < SHADOW_MIN_SRC_PX / ipm or not near_page(r)):
                 continue
             per = g.length
             if graph.page_contact(i) < SHADOW_PAGE_FRAC * per:
@@ -269,7 +287,7 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
             # A band of the page's own colour is the page showing through (a
             # gap between brush strokes, a counter): To a T's 67 white slivers
             # inside its black lettering would close up.
-            if _protected(r) or not _poly(r) or _width(g) > BAND_MAX_MM or near_page(r):
+            if _protected(r) or not _poly(r) or _width(g) > BAND_MAX_MM or is_page(r):
                 continue
             per = g.length
             cands = []
@@ -304,6 +322,8 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
                 continue                  # wraps its parent: a keyline, a full inner ring
             if inside and g.distance(P.exterior) > BAND_MAX_MM:
                 continue                  # drawn across the inside: a line, not a bevel
+            if inside and r.meta.get("rescued_small_shape"):
+                continue                  # a detail stage 3 kept inside a shape: a counter
             folds[i] = j
         if not folds:
             break
