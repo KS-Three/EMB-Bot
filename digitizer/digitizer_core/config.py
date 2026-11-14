@@ -1431,7 +1431,9 @@ class PipelineConfig:
     # chord (ProSeal's band is 6.3 off the Lab one), and each band pixel
     # takes the label of the nearest pixel outside the band, the page
     # included, so a rim splits between the two things it lies between
-    # (joined all to the ink, ProSeal's hexagon cells closed their gaps).
+    # (joined all to the ink, ProSeal's hexagon cells closed their gaps),
+    # and only to a piece over stage 4's hole floor and thicker than a
+    # hairline (silhouette's pale disc-edge row grew into white strips).
     # (Folding the whole cluster into one end, tried first, painted the same
     # pale colour's specks elsewhere with it: ProSeal's subline grew a teal
     # N.) Once a band dissolves, the one-pixel round's blends join the same

@@ -7,7 +7,8 @@ ENLARGED raster only. A JPEG at or above the working grid has the same rim
 from compression and anti-aliasing: silhouette_logo's white letters sewed in
 mint satin outlines, ProSeal's teal bar under a Spearmint band. ON, the round
 runs there too: `BLEND_BAND_PX` deep, the Lab or the RGB chord, each band
-pixel to the label of its nearest non-band pixel. A thin colour that is not
+pixel to the label of its nearest non-band pixel (the page included; a speck
+or hairline never a target). A thin colour that is not
 between its neighbours (a keyline) stays. Stage 2 only (`prep` + `quantize`).
 """
 import cv2

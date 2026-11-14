@@ -410,6 +410,7 @@ def _quantize_population(
     inner: tuple[float, float] | None = None,
     ramp_px: int = 0,
     band_mode: bool = False,
+    band_min_px: int = 0,
 ) -> tuple[np.ndarray, list[int], list[dict]]:
     """Fit -> assign -> anti-alias cleanup -> spool-snap, over exactly the
     pixels in `valid`. This is the entire body `quantize()` has always run,
@@ -453,7 +454,8 @@ def _quantize_population(
     compression and anti-aliasing leave one. A candidate is a blend on the
     Lab chord OR the RGB one (the round-one `enlarged_past_line` reading),
     and each of its pixels joins the label of the NEAREST pixel outside the
-    band, the page included (-1: a rim splits between what it touches).
+    band, the page included (-1: a rim splits between what it touches),
+    never a piece under `band_min_px` or thinner than a hairline.
     Once that round dissolves a band, round one's blends join the nearest
     pixel outside it too, ink only, instead of the nearest kept centre in
     Lab, which the dissolved band no longer is. False: the round as it
@@ -665,6 +667,31 @@ def _quantize_population(
         # so did the same pale JPEG ringing on its black lettering.
         band = valid & np.isin(labels, band_ids)
         src = valid & ~band
+        if band_min_px > 0 and src.any():
+            # ... from a piece at least stage 4's hole floor (`band_min_px`)
+            # and thicker than a hairline (it survives a one-pixel erosion)
+            # only; a lesser piece the band touches goes with it. A speck or
+            # a hairline must not grow by swallowing the rim beside it:
+            # silhouette_logo's disc edge is a green-to-page ramp whose
+            # outer one or two pixels carry the pale letter colour and the
+            # next the mint. OFF stage 3 cut that into specks and dropped
+            # them; with the mint joined to the pale row, the row became
+            # long strips three pixels deep and sewed white on the border.
+            near_band = cv2.dilate(band.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+            k3 = np.ones((3, 3), np.uint8)
+            big = np.zeros_like(src)
+            for lab_id in np.unique(labels[src]):
+                m = (src & (labels == lab_id)).astype(np.uint8)
+                _n, cc, stats, _c = cv2.connectedComponentsWithStats(m, 8)
+                ok_ids = np.intersect1d(
+                    np.flatnonzero(stats[1:, cv2.CC_STAT_AREA] >= band_min_px) + 1,
+                    np.unique(cc[cv2.erode(m, k3) > 0]))
+                big |= np.isin(cc, ok_ids)
+                small_ids = np.setdiff1d(np.unique(cc[(cc > 0) & near_band]), ok_ids)
+                if len(small_ids):
+                    band |= np.isin(cc, small_ids)
+            if big.any():
+                src = big & ~band
         if src.any():
             flat_l = labels.reshape(-1).copy()
             near_idx = _nearest_source(src)
@@ -841,7 +868,10 @@ def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
     base_labels, base_spools, warnings = _quantize_population(
         flat_rgb, base_valid, h, w, cfg, p.bg_edge_rgb, enlarged_past_line=enlarged,
         fringe=fringe, inner=inner, ramp_px=ramp_px,
-        **({"band_mode": True} if band_mode else {}),
+        # stage 4's hole floor (`min_detail_mm`^2 / 4), in working px
+        **({"band_mode": True,
+            "band_min_px": int(np.ceil((float(cfg.min_detail_mm) * float(p.px_per_mm)) ** 2 / 4.0))}
+           if band_mode else {}),
     )
 
     if has_enclosed:
