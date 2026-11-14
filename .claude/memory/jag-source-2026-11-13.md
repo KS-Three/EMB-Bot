@@ -28,18 +28,19 @@ majority:
 - (c) pull comp and (e) the renderer: 0 as primary.
 
 **Built:** `outline_redraw_k` (default None). It reuses letterform priors'
-line/arc geometry on every shape, capped at max(0.75 source px, 1 grid px).
-Upscaled sources redraw lines and arcs; sources at their own resolution keep
-straight runs and corners vertex-for-vertex and rewrite only bowls as arcs.
-That second regime exists because redrawing lines on crisp k_line moved its
-satin construction.
+line/arc geometry on every shape, capped at max(0.75 source px, 1 grid px),
+on UPSCALED sources only. A clean upload is byte-identical (md5 on k_line,
+n_sync, ahora, and_pizza). `outline_redraw_native` (OFF, not recommended)
+adds arcs-only on clean uploads (the (b) cure).
 
-**Readings (n=1 per design, instrument only).** `curve_fidelity` roughness
-falls on every pinned design. Becker's straight border runs sew as one even
-band ON. At stitch level the satin's own construction still sets most of
-what Kent sees: and_pizza's counters stay faceted with a perfect-circle
-polygon, and a moved Column-lane seam opened two slits in the "p", while
-bare fabric inside the art FELL overall.
+**Readings (n=1 per design, instrument only).**
+- Upscaled: roughness Becker 8.30 -> 5.25, Bridge 6.78 -> 6.11, MFab
+  7.11 -> 6.81. Becker's staircase border sews as one even band. Cost: Becker
+  +24 mm of travel on bare fabric (stage 7 re-sequenced).
+- Native opt-in: the polygons' facets are gone, but the stitches are mixed.
+  The and_pizza "p" sewed a straight cut across a perfect arc and opened a
+  seam, and n_sync's roughness rose 6.77 -> 7.92. On clean art the Column
+  lane's satin, not the polygon, sets the edge.
 
 **How to apply:** the polygon is not the light switch for most pins. The
 next lever is the satin emitter: square or parallel ends where a satin meets

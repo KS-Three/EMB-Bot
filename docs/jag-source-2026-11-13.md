@@ -14,6 +14,20 @@ any stitch is planned — and together hold 28 of 49. That is built:
 Neither pull compensation (c) nor the 12 px/mm renderer (e) is the primary
 cause at any pin.
 
+**What it bought, measured.**
+- On a low-resolution upload (a) it works in the thread. Becker's
+  staircase border sews as one even band where the art is straight, and
+  `curve_fidelity` roughness falls 8.30 -> 5.25 degrees.
+- On a clean upload (b) the polygon's facets go, but the Column lane's satin
+  answers the truer polygon unpredictably: smoother bowls in some places, a
+  straight cut across a perfect arc and an opened seam in others.
+
+So the default flag touches only an upscaled upload, and a source at its own
+resolution comes through byte-identical. The (b) regime is kept behind
+`outline_redraw_native` (OFF, not recommended). Most of what Kent sees on
+clean art is set by the satin emitter, (d), and that is the next lever,
+starting with satin ends that make a flat edge (14 pins).
+
 Instrument readings, not quality claims (ROADMAP gate 4): every number below
 is one run on one laptop, n = 1 per design.
 
@@ -147,13 +161,14 @@ stage 4's `upscaled`):
 
 - **upscaled** (Becker x4, Bridge x1.8, MFab x1.04): the trace is a staircase
   of source pixels, so every run is redrawn, lines and arcs.
-- **at its own resolution** (lettering, Gaulke, Tires): the trace already
-  carries straight edges and corners to the grid pixel, so only the runs one
-  circle explains are rewritten. Straight runs and corners keep stage 4's
-  vertices exactly, and a shape with no bowl comes back as the same object
-  (`no-arc`). This regime exists because the first build redrew lines on
-  crisp art too, and the k_line control showed its satin construction moving
-  (below).
+- **at its own resolution** (lettering, Gaulke, Tires): untouched, unless
+  `outline_redraw_native` is also set. With it, only the runs one circle
+  explains are rewritten. Straight runs and corners keep stage 4's vertices
+  exactly, and a shape with no bowl comes back as the same object
+  (`no-arc`). The arcs-only rule exists because the first build redrew lines
+  on crisp art too, and the k_line control showed its satin construction
+  moving. The opt-in exists because even arcs-only did not reliably improve
+  the stitches (below).
 
 **How this differs from what was measured before.**
 
@@ -183,7 +198,94 @@ arc rules are letterform priors'. No sew-out has seen it.
 
 ## Proof
 
-RESULTS_PLACEHOLDER
+Every pair is OFF on main 7ad9c124 and ON on 7ad9c124 plus this change, so
+nothing else moved between the two. Pictures: `jag-source-1113/sheets/` (art |
+OFF | ON | pro at the pinned spots), `offon/` (every spot, full renders).
+Readings come from `python -m tools.jag_strips metrics`. `edge_wobble` is
+the satin tier's high-passed rail deviation, measured against each arm's own
+polygons; `curve_fidelity` roughness is the mean turn change along visible
+traces, in degrees; both are lower = smoother. "Bare" is mm2 of the OFF art
+(eroded 0.4 mm) that no thread covers. "Travel bare" is mm of needle-down
+travel outside every sewn region.
+
+**The shipped regime: `outline_redraw_k = 0.75`, upscaled sources only.**
+
+| design (source px/mm) | roughness deg | satin wobble std mm | fill wobble std mm | bare mm2 | travel bare mm | stitches |
+|---|---|---|---|---|---|---|
+| Becker 102 mm (1.42) | 8.30 -> **5.25** | 0.144 -> 0.145 | 0.324 -> 0.291 | 3.35 -> 2.05 | 212 -> **236** | 16289 -> 16072 |
+| Bridge 63 mm (4.41) | 6.78 -> 6.11 | 0.092 -> 0.093 | 0.259 -> 0.259 | 0.00 -> 0.01 | 0.1 -> 0.0 | 8569 -> 8501 |
+| MFab 105 mm (3.85) | 7.11 -> 6.81 | 0.088 -> 0.087 | 0.251 -> 0.221 | 0 -> 0 | 252 -> 156 | 20849 -> 20834 |
+
+By eye at the pins (`sheets/A_*`):
+- Becker #6: OFF sews the staircase step by step. ON sews one even straight
+  band, the pro's shape.
+- Becker #7: a smoother top edge; the dip the art really has stays.
+- Becker #2: the top edge is now a straight run, but the column still bends
+  where the polygon's inner ring kept a stair.
+- Becker #8 (an S-bend): still angular. Its runs went back to the trace
+  because no single line or circle held them within the cap.
+- Becker #5: the A's counter comes out a little more pointed, still not the
+  pro's triangle.
+- MFab #1: the stripe is straighter over its upper half, but its WIDTH still
+  wobbles, which is the rail.
+- MFab #0 and #7: about the same.
+- Bridge #10: a little smoother.
+- Becker's whole letter B: cleaner outer shape, straighter top.
+- Cost: a long needle-down travel now runs outside the border on Becker's
+  left side (+24 mm of travel on bare fabric). That is stage 7's sequencing
+  moving with the geometry. Kent should see it before any flip.
+
+**A source at its own resolution is byte-identical with the default flag.**
+md5 of the design's stitches, OFF on main vs ON (`outline_redraw_k=0.75`,
+native off) on the branch:
+
+| design (source px/mm) | OFF, main 7ad9c124 | OFF, branch | ON (`outline_redraw_k=0.75`), branch |
+|---|---|---|---|
+| k_line (22.3) | `3252d7f6…` | `3252d7f6…` | `3252d7f6…` |
+| n_sync (23.7) | `d44c7dea…` | | `d44c7dea…` |
+| ahora (24.0) | `521b07e8…` | | `521b07e8…` |
+| and_pizza (21.9) | `b476975f…` | | `b476975f…` |
+
+OFF itself is byte-identical by construction: the only change on the OFF
+path is an `if` on a None field, and the module is imported inside it
+(`test_off_path_never_imports_the_module`). k_line's OFF row is that check
+run end to end.
+
+**The opt-in regime, `outline_redraw_native` (built, NOT recommended).** It
+arc-fits a clean upload's bowls (the (b) cure). The polygons came out as
+designed: and_pizza's bowls have 5-6 facet vertices per 6 mm window OFF and
+0 ON, and its circles are true circles. The stitches did not reliably
+follow:
+
+| design (source px/mm) | roughness deg | satin wobble std mm | bare mm2 | stitches |
+|---|---|---|---|---|
+| and_pizza (21.9) | 7.53 -> **8.79** | 0.193 -> 0.156 | 2.61 -> **0.27** | 2454 -> 2401 |
+| dot_music (23.9) | 9.94 -> 8.17 | 0.167 -> 0.147 | 0.25 -> 0.20 | 1529 -> 1448 |
+| Gaulke (9.82) | 7.51 -> 7.11 | 0.102 -> 0.103 (border 0.054 -> 0.116) | 0 -> 0 | 7494 -> 7504 |
+| Tires (9.27) | 18.96 -> 17.83 | 0.131 -> 0.127 | 0.48 -> 0.57 | 4552 -> 4556 |
+| k_line (22.3) | 9.23 -> 8.97 | 0.094 -> 0.090 | 1.85 -> 1.85 | 3372 -> 3439 |
+| n_sync (23.7) | 6.77 -> **7.92** | 0.180 -> 0.169 | 0 -> 0.08 | 2479 -> 2501 |
+| ahora (24.0) | 2.16 -> 2.14 | 0.070 -> 0.063 | 0 -> 0 | 9262 -> 9336 |
+
+By eye (`sheets/B_native_optin_*`):
+- and_pizza's "&" crossing is far cleaner (most of the bare-fabric drop).
+- Bowls #5, #10 and #14 sew a smoother arc of satin ends.
+- The "p" is WORSE. At #13 the satin's direction breaks. At the bowl's top
+  left the satin cuts a straight run of short crosses across a polygon that
+  is a perfect arc (strip `lt_and_pizza_xpcut`, stage 4/5 vs stitches). A
+  seam opens at the bowl's top right.
+- Gaulke #3 and dot_music #2: slightly smoother.
+- The first build redrew lines too on such sources, and on k_line it moved
+  the L's and E's satin construction (roughness 9.23 -> 9.80, wobble
+  0.094 -> 0.105). That is why the native regime is arcs-only, and why it
+  is off by default.
+
+**Reading.** On a low-resolution upload the source staircase is what the
+satin was sewing, and redrawing it straight shows up in the thread. On a
+clean upload the facet the eye reads is real at the polygon, but the Column
+lane rebuilds the satin from a medial axis and ray widths
+(`docs/rail-wobble-cause-2026-09-21.md`), so a truer polygon does not
+reliably reach the thread. That is (d) again.
 
 ## Not fixed, and where it goes next
 
@@ -193,12 +295,16 @@ RESULTS_PLACEHOLDER
   are rail wobble on rings (4) and fans at cusps (3). Each is an emitter fix
   in `stage6_satin.py` / the Column lane. None of them is a polygon problem,
   and the redraw does not touch them.
-- **A satin seam can open where the redraw moves it.** On and_pizza ON two
-  wedge slits open in the "p" (at the stem-bowl join, and at the bowl's top
-  right), where OFF had none. Stage 4/5 polygons are clean at both spots:
-  this is the Column lane's seam placement moving with the geometry, the
-  same wedge defect OFF shows elsewhere (its counter, its "&"). Bare fabric
-  inside the art is LOWER ON (table above). It is the open (d) seam defect,
-  not new geometry.
+- **A satin seam can open where the redraw moves it** (native opt-in only).
+  On and_pizza wedge slits open in the "p" where OFF had none. Stage 4/5
+  polygons are clean at both spots: this is the Column lane's seam
+  placement moving with the geometry, the same wedge defect OFF shows
+  elsewhere (its counter, its "&"). Bare fabric inside the art is still
+  LOWER ON (2.61 -> 0.27 mm2). It is the open (d) seam defect, not new
+  geometry.
+- **Stage 7 re-sequences when geometry moves.** Becker ON lays 24 mm more
+  needle-down travel on bare fabric, including a long run outside the left
+  border. MFab ON lays 96 mm less. Neither is the redraw's geometry; both
+  should be looked at before a flip.
 - low_poly's tips are stage 3's, and the redraw cannot bring back a tip the
   mask lost.

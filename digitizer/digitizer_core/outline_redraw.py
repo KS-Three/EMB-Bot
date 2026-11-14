@@ -23,7 +23,11 @@ stitch is planned:
    whose corners (12-20 degrees each) the satin follows and the eye reads as
    facets.
 
-The pro redraws both by hand as clean curves and straight runs. So does this.
+The pro redraws both by hand as clean curves and straight runs. So does this,
+for (1) by default. For (2) only with `cfg.outline_redraw_native`: measured
+2026-11-13, the bowls' polygons came out as true arcs but the Column lane's
+satin answered them unpredictably, so a clean upload is left byte-identical
+unless that is set.
 
 ## How it differs from what was measured before
 
