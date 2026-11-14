@@ -64,7 +64,9 @@ BLACK_WHITE_BLACK = ["0020 Black", "0015 White", "0020 Black"]
 
 
 def _mfab(width_mm, untagged):
-    cfg = PipelineConfig(target_width_mm=width_mm, max_colors=6, satin=True,
+    # photo_prep=False: the no-cutout lane CI runs (no rembg venv there);
+    # the cutout lane is tests/test_mfab_cutout_lane.py.
+    cfg = PipelineConfig(photo_prep=False, target_width_mm=width_mm, max_colors=6, satin=True,
                          detail_layer=False, edge_cap="none", sew_enclosed_white=True,
                          sew_enclosed_rgb=(255, 255, 255), faces_route_flat=True,
                          garment_id="hat_front", garment_rgb=(235, 232, 223),

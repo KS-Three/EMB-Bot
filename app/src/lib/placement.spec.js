@@ -95,3 +95,44 @@ test("refitDigitized moves un-typed digitized widths to the new placement and le
   expect(placement.refitDigitized(out)).toBe(out);
   expect(placement.refitDigitized(null)).toBeNull();
 });
+
+test("a corner drag not yet re-run is the customer's width: a garment switch leaves it, so canvas, Design width and the next run agree", async () => {
+  // The bug (review 2026-11-13): `widthTyped` is set only when a drag LANDS
+  // after a re-run, so a drag still pending was re-fitted like an untouched
+  // default. Left chest, drag 96 -> 74.4 mm, switch to full back: `sizeMm`
+  // kept the canvas at 74.4, while resizedTargetWidth multiplied the NEW fit
+  // by the old drag ratio, so Design width and the next run said 153.5 mm.
+  // Kent 2026-11-13: a pending drag counts as a typed width, even where the
+  // dragged size is too big or too small for the new garment.
+  const { resizedTargetWidth } = await import("./digitizer.js");
+  const { nativeWidthOf } = await import("./staleness.js");
+  const px = { w: 1400, h: 316 };
+  const chest = { garmentId: "left_chest", placementId: null };
+  const fit = placement.fitTargetWidthMm(px, null, chest);
+  expect(fit).toBe(96);
+  // The result as digitized at that fit (0.1 mm units).
+  const result = {
+    stitches: [{ x: 0, y: 0, type: "stitch" }, { x: fit * 10, y: 217, type: "stitch" }],
+    colors: [], stitchCount: 2, colorCount: 1, name: "t", widthMM: fit, heightMM: 21.7,
+  };
+  const el = (id, extra) => ({
+    id, type: "digitized", sourcePx: px, crop: null, rotationDeg: 0,
+    params: { target_width_mm: fit }, result, sizeMm: null, ...extra,
+  });
+  const dragged = el("dragged", { sizeMm: 74.4 });
+  expect(resizedTargetWidth(dragged, nativeWidthOf(dragged))).toBe(74.4);
+
+  const out = placement.refitDigitized({ garmentId: "full_back", placementId: null, elements: [dragged, el("plain")] });
+  const by = Object.fromEntries(out.elements.map((e) => [e.id, e]));
+  // Left alone: the same object, so the canvas is still 74.4 ...
+  expect(by.dragged).toBe(dragged);
+  // ... and the width Design width shows and the next run asks for is 74.4 too.
+  expect(resizedTargetWidth(by.dragged, nativeWidthOf(by.dragged))).toBe(74.4);
+  // An undragged sibling still moves to the new placement's fit.
+  const backFit = placement.fitTargetWidthMm(px, null, { garmentId: "full_back" });
+  expect(backFit).not.toBe(fit);
+  expect(by.plain.params.target_width_mm).toBe(backFit);
+  // A drag inside the 2% jitter tolerance is not a pending resize: re-fitted.
+  const jitter = placement.refitDigitized({ garmentId: "full_back", elements: [el("j", { sizeMm: 96.5 })] });
+  expect(jitter.elements[0].params.target_width_mm).toBe(backFit);
+});

@@ -1591,6 +1591,30 @@ keeps the soft pull. One `elupdate` per gesture writes the polygon and
 
 **Add hole — 2026-11-05 (PR 3 of the 2026-11-04 spec, PR #1244).** "Add hole" in a digitized shape's popover, or in the right-click menu inside it, opens a draw mode: click to place vertices, click the first vertex (or Enter) to close at three or more, Backspace takes the last back, Escape or the cross cancels with no patch. Close appends the ring to `holes_override` after the surviving holes (shell untouched) with `seedNodes` of it in `nodes.holes`, as one `elupdate` and one undo step; a hole outside or crossing the shape or another hole is refused with `boundaryIssues`' wording and the draft stays open. The new hole then edits like any other (drag, double-click a node smooth, Delete hole). Studio only; Knife stays a non-goal. *(built 2026-11-05 — e2e (h1)-(h6) in `field-reshape-mode.spec.js`, `shapeNodes.spec.js`; DOCTRINE 2026-11-05)*
 
+## 2026-11-13 — the thin-outline prompt (contract v1.10)
+
+Kent: "When it gets digitized can you have items like this throb/pulse and
+glow (ask user to keep or remove)", then "sewn thin, but do not include
+letters for this".
+
+- **Wire.** `review.shapes[].hairline_outline` (bool, server-computed,
+  read-only, no `_OVERRIDE_KEYS` entry): the shape is a thin line the art
+  draws round its shapes (`keyline_bean.keyline_regions`), sewn as a bean.
+  Always present; never a letter; stays true on a shape the customer turned
+  off *(confirmed 2026-11-13 — `test_service.py::test_review_payload_carries_hairline_outline`)*.
+- **Studio.** `lib/outlinePrompt.js`. The marked shapes that are sewn and
+  unanswered glow green on the canvas (a slow throb; still under reduced
+  motion; `data-outline-glow` counts the rings) and the panel asks, under the
+  stats line and outside Advanced: **Keep** stores `keptOutlineIds` (no shape
+  edit, never stale); **Remove** adds them to `deletedShapeIds` in one
+  discrete patch (stitches go at once, restorable, the design waits on Auto
+  Digitize); after Remove the panel offers **Put back**.
+- **Measured** on `commons_lettering/hed_p_e_logo.png`, Left Chest, 95 mm:
+  11 shapes marked, 23 rings glow, 4,856 stitches; Remove 3,098; Put back
+  4,856 *(measured 2026-11-13 — `e2e/outline-prompt.spec.js`)*.
+- **Limit.** Shape ids change with the design's size, so a Keep or Remove
+  does not carry across a resize: the prompt asks again.
+
 ## Hand-drawn detail moved from MASTER_SCOPE (2026-11-05)
 
 Moved whole to bring MASTER_SCOPE under its word budget; the verdicts stay there.

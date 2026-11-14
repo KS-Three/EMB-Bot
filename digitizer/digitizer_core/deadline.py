@@ -25,6 +25,10 @@ stale within a PR. The rule: a loop that can run past about half a second
 starts with `deadline.check("<what it is>")`, and `tests/test_cancel_signal.py`
 fails by name when one of the long loops loses its check.
 
+Seams and loops added after the first inner-loop pass are pinned in
+`tests/test_cancel_seams_1113.py` (stage 4's text-cluster neck cut and
+letterform-prior fit, the keyline's loops) and `tests/test_cancel_in_fill.py`.
+
 **`Abandoned` is a `BaseException`** (2026-11-13), like `KeyboardInterrupt`: it
 is a stop signal, not an error. The pipeline is full of fail-open handlers
 (`except Exception: return None` around a geometry call that may fail), and one

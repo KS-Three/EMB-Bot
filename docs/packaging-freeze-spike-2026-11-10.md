@@ -245,10 +245,24 @@ the launcher is step 3; `build_freeze.py --entry` is where it plugs in, and
 `release_smoke.py` starts the exe as `<exe> <port>`, which a launcher with
 another command line will need matched.
 
+## Step 3 shipped, 2026-11-13: the launcher is the frozen entry
+
+`build_freeze.py --entry` now defaults to `digitizer/embbot_launcher.py`
+(#1405), and `freeze_entry.py` is gone. Kent ruled on 2026-11-13: "Swap in
+follow-up PR". The one exe is three things: double-clicked, it is the launcher
+(port 8721 only, it reuses a copy already running, and it refuses a foreign
+holder with exit 3 and a message); started with `--serve`, it is the service
+the launcher starts, and `release_smoke.py` and `build_installer.py` start it
+the same way on ports of their own, as `<exe> --serve --port N`, with the
+bundled Studio and the bundled tessdata as defaults. `packaging/one_origin_smoke.py`
+proves the shipped folder: a design a real browser saved survives a restart
+on 8721, a second launch reuses the first, and a foreign listener is refused.
+The installer check also starts the installed exe the way its shortcut does,
+and requires it on 8721.
+
 ## Next
 
-3. Launcher: fixed port and single-instance rule above, `TESSDATA_PREFIX`,
-   open the browser, a way to quit, a log file.
+3. Done 2026-11-13, section above.
 4. Done 2026-11-12, section above: build script, tag-triggered Windows job,
    version stamp, one prune, zip and installer measured.
 5. A clean-machine run of this same check.

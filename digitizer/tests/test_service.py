@@ -627,6 +627,36 @@ def test_review_payload_carries_enclosed_colour_unknown():
         "a colour-KNOWN shape must read False, never truthy"
 
 
+def test_review_payload_carries_hairline_outline(whitebg):
+    """Contract v1.10: `_review_payload` echoes `hairline_outline` off
+    `Region.meta` (read-only, no `_OVERRIDE_KEYS` entry). Always present, True
+    only on the shapes `keyline_bean` reads as a thin drawn outline, and still
+    True when the customer turns the shape off, so the Studio's Keep / Remove
+    prompt has something to offer back."""
+    from digitizer_core.pipeline import run_stages
+    from digitizer_service.app import _OVERRIDE_KEYS, _review_payload
+
+    from .conftest import cfg
+    from .test_outline_hairline_run import _logo_png
+
+    assert "hairline_outline" not in _OVERRIDE_KEYS
+    shapes = _review_payload(whitebg)["shapes"]
+    assert shapes and all(s["hairline_outline"] is False for s in shapes), \
+        "always present; an ordinary logo has none"
+
+    art = _logo_png()
+    result = run_stages(art, cfg(target_width_mm=80.0, border_from_outline_hairline_run=True))
+    marked = [s["shape_id"] for s in _review_payload(result)["shapes"] if s["hairline_outline"]]
+    assert marked, "the slab's white keyline must be marked"
+    assert marked == [r.shape_id for r in result.regions if r.meta.get("hairline_outline")]
+
+    removed = run_stages(art, cfg(target_width_mm=80.0, border_from_outline_hairline_run=True,
+                                  shape_overrides={sid: {"stitched": False} for sid in marked}))
+    by_id = {s["shape_id"]: s for s in _review_payload(removed)["shapes"]}
+    assert all(by_id[sid]["stitched"] is False and by_id[sid]["hairline_outline"] is True
+               for sid in marked)
+
+
 def test_review_payload_reports_false_when_the_hole_colour_is_known(whitebg):
     """The no-alpha counterpart: `logo_whitebg.png`'s enclosed hole is
     genuinely White (colour path, not alpha), so the wire field is False for

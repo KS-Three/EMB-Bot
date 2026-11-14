@@ -93,8 +93,29 @@ export function isElementStale(element, project, { baselineKey = null } = {}) {
   return configKey(buildDigitizeConfig(element, project)) !== applied;
 }
 
+// ART UPLOADED BUT NEVER DIGITIZED (Kent 2026-11-13). Such an element sews
+// nothing (flow.js isSewable), so beside a typed text the design read as
+// ready and Download handed over a file with the logo silently left out --
+// the image twin of outlineStale's "text typed but never digitized". No art
+// is behind nothing: an empty image element has nothing to press or sew.
+//
+// Kept OUT of isElementStale on purpose. That question is "are these
+// STITCHES behind their settings", and two of its readers would say the
+// wrong thing to art with no stitches: the panel would turn its run button
+// transparent ("out of date") and say "Changed since the last run" before
+// any run, and the field would hatch stitches that do not exist. So it joins
+// only what Download waits for, below. The catch, accepted: Download stays
+// locked until the art is digitized or removed.
+export function isUndigitizedArt(element) {
+  return !!element && element.type === "digitized" && !!element.sourcePng && !element.result;
+}
+
+// Every element Download waits for: stitches behind their settings, and art
+// not digitized at all.
 export function staleElements(project) {
-  return ((project && project.elements) || []).filter((el) => isElementStale(el, project));
+  return ((project && project.elements) || []).filter(
+    (el) => isElementStale(el, project) || isUndigitizedArt(el),
+  );
 }
 
 // A run needs the stored art and the service — the same two things

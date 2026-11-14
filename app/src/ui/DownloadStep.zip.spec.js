@@ -16,6 +16,16 @@ const saved = [];
 const calls = [];
 let failFormat = null;
 let hoopNote = "";
+// What each format's read-back reports, as the real exporters report it: SVG is
+// never re-read; XXX and VP3 are re-read with checks the service reader cannot do.
+let readbackFor = (fmt) => {
+  if (fmt === "svg") return { verified: false, reason: "SVG is a picture of the design, not a stitch file" };
+  const rb = { verified: true, stitches: 20, trims: 1, colors: 2 };
+  if (fmt === "xxx") return { ...rb, skipped: ["trim_order", "color_order", "bounding_box", "stitch_positions"] };
+  if (fmt === "vp3") return { ...rb, skipped: ["longest_stitch"] };
+  return rb;
+};
+const defaultReadbackFor = readbackFor;
 
 const bytesFor = (fmt) => Uint8Array.from({ length: 200 }, (_, i) => (i * 13 + fmt.charCodeAt(0)) & 255);
 const PDF = Uint8Array.from([0x25, 0x50, 0x44, 0x46, 7]);
@@ -34,7 +44,7 @@ vi.mock("../lib/exporters.js", () => ({
   exportDesignPreferService: async (design, format, opts) => {
     calls.push({ format, opts });
     if (format === failFormat) throw new Error("Export failed: stitch count (expected 20, read back 19).");
-    return { bytes: bytesFor(format), filename: "design." + format, mime: "application/octet-stream", via: "service" };
+    return { bytes: bytesFor(format), filename: "design." + format, mime: "application/octet-stream", via: "service", readback: readbackFor(format) };
   },
   exportWorksheetPDF: async (design, garment, hoop, chartLabel, note, o = {}) => (o.asBytes ? PDF : undefined),
   exportPNG: async () => ({ blob: new Blob([PNG], { type: "image/png" }), filename: "design.png", mime: "image/png" }),
@@ -70,6 +80,7 @@ beforeEach(() => {
   calls.length = 0;
   failFormat = null;
   hoopNote = "";
+  readbackFor = defaultReadbackFor;
   localStorage.clear();
 });
 
@@ -99,6 +110,31 @@ test("one click saves ONE zip holding every format, the worksheet, the picture a
     "Thread chart: Madeira Polyneon\r\n1. 1902 Poinsettia (#C81E28)\r\n2. 1000 Black (#000000)\r\n",
   );
   expect(v.container.textContent).toMatch(/Saved ZIP/);
+});
+
+test("the success line says how many files were re-read, and names the ones that were not or only partly", async () => {
+  const v = view();
+  await fireEvent.click(allButton(v));
+  await waitFor(() => expect(saved).toHaveLength(1));
+  expect(v.container.querySelector("p[aria-live]").textContent).toBe(
+    "Saved ZIP - 6 of 7 stitch files re-read and verified (SVG not re-read; XXX, VP3 with some checks skipped)",
+  );
+});
+
+test("when every stitch file was fully re-read the line says so plainly", async () => {
+  readbackFor = () => ({ verified: true, stitches: 20, trims: 1, colors: 2 });
+  const v = view();
+  await fireEvent.click(allButton(v));
+  await waitFor(() => expect(saved).toHaveLength(1));
+  expect(v.container.querySelector("p[aria-live]").textContent).toBe("Saved ZIP - 7 stitch files re-read and verified");
+});
+
+test("a service whose verify headers could not be read is 'not re-read', never 'verified'", async () => {
+  readbackFor = (fmt) => (fmt === "jef" ? undefined : defaultReadbackFor(fmt));
+  const v = view();
+  await fireEvent.click(allButton(v));
+  await waitFor(() => expect(saved).toHaveLength(1));
+  expect(v.container.querySelector("p[aria-live]").textContent).toMatch(/5 of 7 stitch files re-read and verified \(JEF, SVG not re-read;/);
 });
 
 test("each format goes through the same export call the single buttons make", async () => {

@@ -7,6 +7,7 @@
 #   digitizer/packaging/build_freeze.py     builds, stamps, prunes, measures, zips
 #   digitizer/packaging/release_smoke.py    starts both services, compares, judges
 #   digitizer/packaging/build_installer.py  setup.exe; installs, runs, uninstalls it
+#   digitizer/packaging/one_origin_smoke.py the shipped exe (the launcher) keeps one origin across restarts
 #
 # WHEN IT RUNS: a version tag (`v*`) or by hand (Actions tab, "Run workflow",
 # any branch that carries this file). NEVER on a pull request and never on a
@@ -77,8 +78,17 @@ jobs:
       - name: Start the frozen exe and smoke-test it against the venv service
         working-directory: digitizer
         run: python packaging/release_smoke.py --build-report "$env:RUNNER_TEMP\freeze\build_report.json" --work "$env:RUNNER_TEMP\freeze\smoke" --summary "$env:GITHUB_STEP_SUMMARY"
-      # Only after a green smoke: a zip from a failed run must not sit in the
-      # artifact list looking like something to hand a customer.
+      # ONE ORIGIN ACROSS RESTARTS, on the exe that ships (the launcher is the
+      # frozen entry since 2026-11-13). Saved designs live in the browser's
+      # localStorage, keyed by origin, so the app must come back on 8721:
+      # restart keeps port, origin and a design a real browser saved; a second
+      # launch reuses the first; a foreign listener on the port is refused,
+      # not dodged.
+      - name: One origin across restarts (the shipped exe, real browser)
+        working-directory: digitizer
+        run: python packaging/one_origin_smoke.py --build-report "$env:RUNNER_TEMP\freeze\build_report.json" --work "$env:RUNNER_TEMP\freeze\origin" --summary "$env:GITHUB_STEP_SUMMARY"
+      # Only after both smokes are green: a zip from a failed run must not sit
+      # in the artifact list looking like something to hand a customer.
       - name: Upload the zipped folder
         uses: actions/upload-artifact@v4
         with:
@@ -113,4 +123,8 @@ jobs:
             ${{ runner.temp }}/freeze/install.log
             ${{ runner.temp }}/freeze/installer.md
             ${{ runner.temp }}/freeze/installed-service.log
+            ${{ runner.temp }}/freeze/installed-launcher.out.txt
+            ${{ runner.temp }}/freeze/installed-localappdata/
+            ${{ runner.temp }}/freeze/origin/
+            !${{ runner.temp }}/freeze/origin/browser-profile/
           if-no-files-found: warn

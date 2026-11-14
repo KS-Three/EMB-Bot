@@ -16,7 +16,9 @@ source · before · after · numbers · better/same/worse + note, localStorage,
 export), `tally` (files verdicts, one line per sha pair), `summary` (the
 `baseline-<sha7>.json` record). 39 rows: 18 photo genres + 21 logo styles.
 Images are gitignored; the repo is public. The Desktop browser pane refuses
-`file://`: serve `digitizer/corpus_runs/` with the `corpus-sxs` launch.json entry.
+`file://`: from `digitizer/corpus_runs`, run `python -m http.server 8731 --bind 127.0.0.1`
+and open `http://127.0.0.1:8731/` (the `corpus-sxs` launch.json entry was removed
+2026-11-13 at Kent's request).
 
 **Why:** Kent 10-27 — the photo lane was tuned on the photos on hand; "this
 digitizer needs to be building tools that help and improve ALL photos", and

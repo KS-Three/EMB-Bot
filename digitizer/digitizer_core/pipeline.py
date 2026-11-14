@@ -78,13 +78,13 @@ from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .config import is_photographic, satin_fill_hysteresis, satin_fill_vote, satin_floor_applies
-from . import shape_memo, sliver_prune
+from . import keyline_bean, shape_memo, sliver_prune
 from .columns import is_lettering
 from .lettering_thread import apply_lettering_thread
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
                               depth_sort_layers, sequence, cut_every_jump_step_mm)
 from .stitches import StitchPlan
-from .thin_ink import bean_dark_ink, carve_flat_dark_ink, ink_after_ground
+from .thin_ink import bean_dark_ink, carve_flat_dark_ink, ink_after_ground, settle_dark_ink_bean
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (
     COLOR_CAP_APPLIED,
@@ -99,6 +99,7 @@ from .warnings_codes import (
     PHOTO_DETECTED,
     PHOTO_FACE_PRIORS_UNAVAILABLE,
     PHOTO_FACES_DETECTED,
+    PHOTO_PREP_APPLIED,
     PHOTO_SAM2_SEGMENTATION_UNAVAILABLE,
     SHAPES_LEFT_UNSEWN,
     warn,
@@ -283,6 +284,15 @@ class PipelineResult:
     # folds the recipe into its caller's config the way it folds the photo
     # verdict. False on a hand-built result and whenever the flag was off.
     white_keyline_art: bool = False
+    # The raster stage 1.5's photo prep handed to segmentation and stage 4's
+    # thread revalidation (`p.rgb` after `photo_prep`): a REFERENCE to the
+    # array the Generation already holds, no copy, and None whenever prep did
+    # not run (no PHOTO_PREP_APPLIED). Read by preflight only (2026-11-13):
+    # its thread grader re-read the RAW artwork and blocked 9 of the 14 jobs
+    # whose cutout ran, on spools the pipeline had matched to the prepped
+    # pixels (`preflight._prepped_view` carries the measurement). No stitch
+    # depends on it.
+    photo_prep_rgb: np.ndarray | None = None
 
     @property
     def shape_ids(self) -> list[str]:
@@ -1355,6 +1365,12 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     regions, quant_indices, edit_warnings = apply_shape_edits(
         regions, list(gen.quant_thread_indices), cfg.deleted_shape_ids,
         cfg.shape_overrides, chart_for(cfg))
+    # `cfg.dark_ink_bean`: a dark-ink stroke the review pinned to a tier
+    # sews as that tier, not as a bean; the rest untag their grounds as
+    # lettering. Here, not in `build_generation`, for `tag_bean_letters`'
+    # reason: the pinned tier only exists after the edits.
+    if cfg.dark_ink_bean:
+        settle_dark_ink_bean(regions)
 
     # Resolution of a region's effective "stitched" state: a
     # `shape_overrides[sid]["stitched"]` entry wins when present (the service
@@ -1790,6 +1806,25 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             )
         )
 
+    # Hairline outlines, marked for the review screen (Kent 2026-11-13: "can
+    # you have items like this throb/pulse and glow (ask user to keep or
+    # remove)"): the shapes `keyline_bean.keyline_regions` reads as a thin
+    # drawn outline carry `meta["hairline_outline"]`, sewn or not, so the
+    # Studio can point at them and ask. Read after every recolour above (the
+    # gate is per thread). A mark only: nothing here changes a stitch.
+    if cfg.border_from_outline_hairline_run and cfg.border_from_outline:
+        _outlines = _art_outlines(regions, cfg, source_pixels)
+        if _outlines:
+            # nothing thinner than the art can draw: 1.5 SOURCE pixels, the
+            # line `sliver_prune` already holds a page sliver to
+            _ip = float(getattr(p, "input_px_per_mm", 0.0) or 0.0)
+            _marked = keyline_bean.keyline_regions(
+                regions, set(_outlines), cfg, sewn_only=False,
+                min_width_mm=(sliver_prune.SLIVER_WIDTH_SRC_PX / _ip) if _ip > 0 else 0.0)
+            for r in regions:
+                if r.shape_id in _marked:
+                    r.meta["hairline_outline"] = True
+
     # Fur regions (`cfg.hair_regions_directional`, default OFF): read where
     # the pixels are. The raster rides on the result only when the gate
     # found fur, so a design with none is byte-identical with the flag on.
@@ -1836,6 +1871,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         hair_fur_ids=hair_fur_ids,
         hair_fur_read=read,
         white_keyline_art=keyline_art,
+        photo_prep_rgb=(p.rgb if any(w.get("code") == PHOTO_PREP_APPLIED
+                                     for w in prep_warnings) else None),
     )
 
 
@@ -2128,9 +2165,21 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     marks = [r for r in stitched_regions if r.meta.get("detail_spokes")]
     if marks:
         stitched_regions = [r for r in stitched_regions if not r.meta.get("detail_spokes")]
+    # `cfg.border_from_outline_hairline_run` (built OFF 2026-11-13): the
+    # hairline keylines (`keyline_bean`), read once here. They sew LAST, so
+    # stage 5 runs each body under its line and not over it, and after stage
+    # 5 no body's fill passes its line. Off: None, nothing moved.
+    keyline_beans = None
+    if cfg.border_from_outline_hairline_run and art_outlines:
+        # the shapes `finish_generation` marked (it knows the source's pixel
+        # size, which the read needs), less what the customer turned off
+        keyline_beans = {r.shape_id for r in stitched_regions if r.meta.get("hairline_outline")}
+        stitched_regions = keyline_bean.sew_last(stitched_regions, keyline_beans)
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
                                                  design_class=result.design_class,
                                                  hairline=hairline)
+    if keyline_beans:
+        keyline_bean.hold_bodies(planned, keyline_beans)
     deadline.check("stage 5")
     from .fragment_absorb import absorb   # `cfg.extra["absorb_fragments"]` (built OFF 2026-10-25)
     planned = absorb(planned, cfg, hairline)
@@ -2235,7 +2284,9 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
                                                        if cfg.open_cored_counters else None) or None,
                                         # `cfg.border_from_outline`: computed above,
                                         # before the under-fill.
-                                        art_outlines=art_outlines)
+                                        art_outlines=art_outlines,
+                                        **({"keyline_beans": keyline_beans}
+                                           if keyline_beans is not None else {}))
 
     # `cfg.beanie_knockdown` (built OFF): a sparse fill under the whole design,
     # sewn first, on a beanie with a known garment colour — `knockdown.py`.

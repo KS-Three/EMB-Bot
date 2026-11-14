@@ -28,11 +28,17 @@
   // the browser engine sews itself.
   export let project = null;
   export let health = null;
+  // App's `currentId` (via ContentStep): element ids repeat across designs,
+  // so the run below is fixed to the design it started in, and its resume
+  // mark is keyed by design too -- DigitizePanel's 2026-11-13 fix, same
+  // shape. null in tests that mount this alone.
+  export let projectId = null;
   const d = createEventDispatcher();
 
-  function patch(p) {
-    d("elupdate", { id: element.id, patch: p });
+  function patch(p, id = element.id, proj = projectId) {
+    d("elupdate", proj == null ? { id, patch: p } : { id, patch: p, projectId: proj });
   }
+  const runMark = (id) => (projectId == null ? id : projectId + "/" + id);
 
   // ---- Outline font: digitize on the service ------------------------------
   // Mirrors DigitizePanel.runDigitize: one patch = one undo step, the key of
@@ -68,7 +74,9 @@
     error = "";
     phase = "submitting";
     runningLong = false;
-    rememberRun(el.id);
+    const runProject = projectId;
+    const mark = runMark(el.id);
+    rememberRun(mark);
     try {
       const job = await digitizeLettering(req, {
         onState: (s, info) => {
@@ -79,6 +87,9 @@
         isCancelled: () => destroyed,
       });
       if (destroyed || !job) return;
+      // Behind ContentStep's per-design `{#key}`: only the design and
+      // element the run was started for.
+      if (projectId !== runProject || element.id !== el.id) return;
       patch({
         result: job.design,
         warnings: job.warnings || [],
@@ -91,14 +102,14 @@
         // the design's own width is the element's: a later drag scales it
         // and reads as behind until the next run, like a digitized image.
         sizeMm: req.width_mm,
-      });
+      }, el.id, runProject);
     } catch (err) {
       if (!destroyed) error = friendlyError(err, "digitize");
     } finally {
       if (!destroyed) {
         phase = "idle";
         runningLong = false;
-        forgetRun(el.id);
+        forgetRun(mark);
       }
     }
   }
@@ -108,7 +119,7 @@
   let resumeChecked = false;
   $: if (!resumeChecked && outline && health && outlineReq) {
     resumeChecked = true;
-    if (wasRunning(element.id)) runLettering();
+    if (wasRunning(runMark(element.id))) runLettering();
   }
 
   // Line justification is meaningless on a single line (nothing to justify

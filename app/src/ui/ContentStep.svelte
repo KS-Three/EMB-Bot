@@ -14,6 +14,12 @@
   import { EMB } from "../lib/emb.js";
   import { garmentOf } from "../lib/placement.js";
   export let project;
+  // App's `currentId`: which saved design `project` is. Element ids repeat
+  // across designs (every artwork-only design's logo is `e1`), so the panel
+  // below is keyed by design AND element -- keyed by `el.id` alone, opening
+  // design B from My designs kept design A's panel alive, and A's run in
+  // flight landed on B's `e1` (2026-11-13 review).
+  export let projectId = null;
   // Whether the "add-elements" onboarding hint should render right now --
   // App computes this (shouldShow("add-elements") + the A7 priority rule +
   // the elements.length < 2 eligibility condition) and also owns the
@@ -58,6 +64,15 @@
   export let pendingFile = null;
   $: pendingFor = (id) => (pendingFile && pendingFile.id === id ? pendingFile.file : null);
   const d = createEventDispatcher();
+  // A digitize landing carries the design it was started in (DigitizePanel /
+  // TextStep `projectId`). One for a design that is no longer open is
+  // dropped here rather than written into the open one by element id --
+  // defence in depth behind the `{#key}` below, whose torn-down panel still
+  // has its async continuation alive (2026-11-13 review).
+  function relayRun(detail) {
+    if (detail && detail.projectId != null && detail.projectId !== projectId) return;
+    d("elupdate", detail);
+  }
 
   // ---- Task 5 (Slice 5): the real element manager --------------------------
   // Replaces the Task 4 compile-compat adapter (mode tiles + a flattened
@@ -314,7 +329,7 @@
     {/if}
   </div>
 {:else}
-  {#key el.id}
+  {#key projectId + "/" + el.id}
     {#if el.type === "design"}
       <DesignPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)}>
         {@render size()}
@@ -325,6 +340,7 @@
       <DigitizePanel
         element={el}
         {project}
+        {projectId}
         health={digitizerHealth}
         {hoverShapeId}
         {selectedShapeId}
@@ -332,7 +348,7 @@
         on:fileconsumed={() => d("fileconsumed")}
         on:shapehover={(e) => d("shapehover", e.detail)}
         on:shapeselect={(e) => d("shapeselect", e.detail)}
-        on:elupdate={(e) => d("elupdate", e.detail)}
+        on:elupdate={(e) => relayRun(e.detail)}
         on:checkservice={() => d("checkservice")}
         on:usebrowserengine={(e) => d("usebrowserengine", e.detail)}
         on:converttotext={(e) => d("converttotext", e.detail)}
@@ -369,7 +385,7 @@
         <svelte:fragment slot="advanced">{@render extras()}</svelte:fragment>
       </ShapePanel>
     {:else}
-      <TextStep element={el} {project} health={digitizerHealth} on:elupdate={(e) => d("elupdate", e.detail)}>
+      <TextStep element={el} {project} {projectId} health={digitizerHealth} on:elupdate={(e) => relayRun(e.detail)}>
         {@render size()}
         <svelte:fragment slot="advanced">{@render extras()}</svelte:fragment>
       </TextStep>

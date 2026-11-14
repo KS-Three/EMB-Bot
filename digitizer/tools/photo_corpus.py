@@ -349,11 +349,26 @@ GARMENT = "left_chest"
 #: One digitize, the service's own call sequence, in its own process. argv[1] is a
 #: json spec {photo, out, config, tree}; `tree` goes first on sys.path so the
 #: merge-base's digitizer_core is the one imported under `--base`. faulthandler
-#: dumps every thread's stack to stderr every 120 s, so a killed row still says
+#: dumps every thread's stack to stderr every 120 s (from a thread, see below), so a killed row still says
 #: which stage it was in (the census's trick).
 WORKER = r'''
-import faulthandler, json, sys, time
-faulthandler.dump_traceback_later(120, repeat=True, file=sys.stderr)
+import faulthandler, json, sys, threading, time
+# 2026-11-13: NOT faulthandler's dump_traceback_later with repeat=True. That dump runs on
+# a C watchdog thread that walks the main thread's frames WITHOUT the GIL while the main
+# thread keeps running; on Windows CPython 3.12 it sometimes reads freed frames and the
+# worker dies 0xC0000005 mid-dump (about 1 dump in 6; 6 of 77 rows lost, all at 120 s).
+# A dump from a Python thread holds the GIL, so the frames are stable. Do not "simplify"
+# this back. The header mimics the old one's, for anything reading stderr.
+_DUMP_EVERY_S = 120
+_sampler_stop = threading.Event()
+def _sampler():
+    while not _sampler_stop.wait(_DUMP_EVERY_S):
+        sys.stderr.write("Timeout (%d s)!\n" % _DUMP_EVERY_S); sys.stderr.flush()
+        faulthandler.dump_traceback(file=sys.stderr, all_threads=True)
+_sampler_thread = threading.Thread(target=_sampler, daemon=True, name="stack-sampler")
+_sampler_thread.start()
+def _stop_sampler():  # joined before exit: a dump racing interpreter shutdown dies 0xC0000409
+    _sampler_stop.set(); _sampler_thread.join()
 spec = json.loads(sys.argv[1])
 sys.path.insert(0, spec["tree"])
 from digitizer_core import PipelineConfig
@@ -380,6 +395,7 @@ json.dump({"state": "done", "design": design,
                      "class": gen.classification_class, "class_conf": round(float(cls.confidence), 3),
                      "config_sent": spec["config"], "tree_sha": spec.get("tree_sha")}},
           open(spec["out"], "w", encoding="utf-8"))
+_stop_sampler()
 '''
 
 
@@ -525,17 +541,25 @@ def capture(rows: list[dict], photos: Path, tree: Path, out: Path, tree_sha: str
                          f"{tree_sha[:8]}: use another --label, or delete the folder to recapture")
     cap = int(cfg.get("max_colors") or 6)
 
+    want = dict(overrides or {})
+
     def one(row: dict) -> tuple[str, dict]:
         slug = row["slug"]
         row_json = out / f"{slug}.row.json"
+        stale = False
         if row_json.exists():
             kept = json.loads(row_json.read_text(encoding="utf-8"))
             if kept.get("tree_sha") != tree_sha:
                 refuse(kept.get("tree_sha"), f"{slug}.row.json")
-            return slug, kept
+            # A row written before overrides were recorded had none. Reuse it
+            # only when this capture's --set overrides are the same; else a
+            # side-by-side would compare one setting against itself.
+            if (kept.get("overrides") or {}) == want:
+                return slug, kept
+            stale = True
         photo = photo_path(photos, slug)
         worker_json = out / f"{slug}.json"
-        if worker_json.exists():
+        if worker_json.exists() and not stale:
             # the worker's output is the slow, raw record; the summary is
             # derived from it, so an instrument fix re-reads rather than re-runs.
             # A stamped output must be this tree's; an unstamped one (captured
@@ -556,7 +580,8 @@ def capture(rows: list[dict], photos: Path, tree: Path, out: Path, tree_sha: str
             (out / f"{slug}.json").write_text(json.dumps(output), encoding="utf-8")
         summary = summarise(output, cap)
         summary.update(_render_row(photo, output, out / f"{slug}.png", fabric))
-        summary.update({"slug": slug, "kind": row["kind"], "genre": row["genre"], "tree_sha": tree_sha})
+        summary.update({"slug": slug, "kind": row["kind"], "genre": row["genre"], "tree_sha": tree_sha,
+                        "overrides": want})
         row_json.write_text(json.dumps(summary, indent=1), encoding="utf-8")
         print(f"{slug}: {summary['state']} {summary['wall_s']}s stitches={summary['stitches']} "
               f"trims={summary['trims']} colors={summary['colors_used']}/{cap} grade={summary['grade']} "

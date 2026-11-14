@@ -95,7 +95,9 @@ lettering or manual shapes downloads through the browser encoders.
   .test.js` grew to 10 tests, reading a close pass of `src/svgexport.js`
   rather than guessing at edge cases -- real extents recomputed from stitch
   coordinates (not trusted from the design's own possibly-stale
-  `widthMM`/`heightMM` fields), the DST-up-to-SVG-down Y flip, one
+  `widthMM`/`heightMM` fields; colour and end records excluded since
+  2026-11-13, when an off-centre element's end sentinel at (0,0) was found
+  stretching a 20 x 10 mm box to 50 x 30), the DST-up-to-SVG-down Y flip, one
   `<polyline>` per color run, both jumps and trims correctly breaking a path
   without drawing a travel line across the gap, a missing color falling
   back to black rather than throwing, and a null/undefined/empty design

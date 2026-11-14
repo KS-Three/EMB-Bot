@@ -2419,7 +2419,7 @@
     // satinfont.layoutText. Null only on the empty paths above.
     const _debug = { nSatin, nFill: 0, nTrims, nTies };
     if (cutEvery) _debug.cutEveryJump = { buried: cutEvery.buried, walked: cutEvery.walked, cut: cutEvery.cut, lone: cutEvery.lone };
-    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, runs: spans, unsupported: lay.unsupported || [], lettering: lay.lettering || null, _debug };
+    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, runs: spans, unsupported: lay.unsupported || [], lettering: lay.lettering || null, fitMm: { w: designWmm, h: designHmm }, _debug };
   }
 
   // `tieRun` is exported for its own sake: its overshoot rule only fires when

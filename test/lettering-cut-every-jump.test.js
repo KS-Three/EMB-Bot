@@ -55,7 +55,10 @@ const count = (d, type) => d.stitches.filter((s) => s.type === type).length;
 // Font i: text i % 3, garment i % 2, size (i >> 1) % 2 -- every twelve fonts
 // meet all twelve combinations.
 const pick = (i) => [TEXTS[i % 3], [CAP, FLAT][i % 2], [50, 90][(i >> 1) % 2]];
-const OFF_PIN = "a92b19ff6c681d240b889ab823d6b79d";
+// Re-pinned 2026-11-13 when the DST header's CO became the colour-change
+// count (was a92b19ff6c681d240b889ab823d6b79d): all 83 files differ from the
+// old pin in header byte 26 only, CO:001 -> CO:000; every body byte is equal.
+const OFF_PIN = "4d4664a07ff2530365db2dba9c8f92fd";
 
 test("OFF is origin/main's DST, byte for byte, on every shipped font (md5 of all of them)", () => {
   assert.ok(KEYS.length >= 80, `the library has ${KEYS.length} fonts`);

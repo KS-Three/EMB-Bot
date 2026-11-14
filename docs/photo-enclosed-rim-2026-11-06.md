@@ -182,3 +182,62 @@ the ink; leaves a piece over the floor); flag defaults OFF; OFF never calls
 `enclosed_rim` and pins the 60 mm OFF design md5 on the frozen engine; MFab at
 60 / 100.8 / 113.5 ON: blocks Black, White, Black, one white field, at least
 12 riders, never fewer than OFF; `owl_kent.jpg` stage 2 unchanged ON.
+
+## Addendum 2026-11-13: every number above is the NO-cutout lane
+
+MFab classes photo_scene, so a box with the rembg venv (a required deploy step)
+runs the background cutout and prep; CI has no venv, so its cutout fails and
+prep is skipped with it. Everything above was measured that second way. On the
+cutout lane (fields / riders): 60 mm OFF 2 / 6, ON 2 / 10; 100.8 OFF 1 / 12,
+ON 1 / 15; 113.5 OFF 1 / 12, ON 1 / 11. The default is better there (60 mm
+already sews black, white, black), but ON does not hold the keyline whole at
+60 mm and drops a rider at 113.5. The MFab tests now pin `photo_prep=False`;
+the cutout lane's claims and these two gaps (strict xfails) are in
+`digitizer/tests/test_mfab_cutout_lane.py`. Any flip of this flag should be
+judged on the cutout lane.
+
+### 60 mm on the cutout lane: the rim read a piece by its mean (fixed 2026-11-13)
+
+Dumped `enclosed_rim`'s inputs on both lanes at 60 mm: the enclosed mask is
+identical (13,162 px, 8 components), the white label nearly so (269 pieces,
+3,057 px against 275, 3,064), and the rim takes 2,726 px against 2,798. One
+piece makes the difference: an 89 px rim piece between A and N of AND that
+holds 7 ink pixels, from a superpixel straddling the keyline's edge. Its MEAN
+L\* is 92.3 against the ground's 100.0 (prep flattens the ground to pure
+white), dE 7.7, over the 6.0 bound, so it stayed and the floor gave it to the
+black. A and N joined (aspect 1.76, the pinch `textcluster`'s wide-letters
+note records under rembg), AND lost its text tag, D was no longer a letter
+holding its counter, and the counter read as a second white FIELD. The keyline
+itself was whole (the main field 336 mm2 against 338). The no-cutout lane's
+twin piece holds 4 ink pixels of 67, dE 5.9: it passed by a hair.
+
+Fix: the piece's own colour is its MEDIAN Lab (`enclosed_rim`). Flag OFF the
+function is never called, so OFF is byte-identical (the pinned md5 holds).
+
+### 113.5 mm on the cutout lane: not the rim (left a strict xfail)
+
+ON loses G of WELDING as a rider. G (11.2 mm, with its tail) is linked to its
+line by the 2026-10-27 engine's letter door (`LETTER_HEIGHT_RATIO` 0.8) only
+through the 9.1 mm letter beside it, 0.81 of its height. That letter is 9.1 mm
+only because the OFF floor fattens it by a pixel of absorbed rim; ON the keyline
+stays white, it reads 8.8 mm (0.786), and G goes untagged. With
+`text_cluster_part_touching` ON (the live default since 2026-10-27; the frozen
+test engine has it OFF) `_adopt_band` takes G: OFF 2 fields / 8 riders,
+ON 1 / 14 at 113.5 mm.
+
+### MFab hat, both lanes, after the fix (2026-11-13; fields / riders)
+
+Frozen 2026-10-27 engine (`frozen_cfg`), the tests' config; OFF unchanged.
+
+| width | arm | no cutout | cutout |
+|---|---|---|---|
+| 60 | OFF | 3 / 0 | 2 / 6 |
+| 60 | ON | 1 / 13 (was 1 / 12) | **1 / 15** (was 2 / 10) |
+| 100.8 | OFF | 1 / 10 | 1 / 12 |
+| 100.8 | ON | 1 / 13 | 1 / 15 |
+| 113.5 | OFF | 1 / 12 | 1 / 12 |
+| 113.5 | ON | 1 / 12 | 1 / 11 (G: the letter door, above) |
+
+Colour blocks are Black, White, Black in every ON cell. The no-cutout 100.8 ON
+design changed (md5) with the same counts; 113.5 ON on both lanes and
+cutout 100.8 ON are md5-identical to before.

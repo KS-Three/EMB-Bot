@@ -638,12 +638,16 @@ def _ground_of(stroke, grounds):
 def bean_dark_ink(regions) -> int:
     """`cfg.dark_ink_bean`: the dark read's strokes sew as a bean ON their
     ground, the way the reference digitizer sews a drawn line
-    (`bean_rule`). Each `meta["dark_ink"]` region the review left on "auto"
-    gets its polygon's skeleton as bean spines (`beanletters.BEAN_LETTER_KEY`,
-    the path stage 7 sews as a bean along the stroke). Its ground keeps the
-    hole: stage 5's `ground_under` sews the ground through under a bean
-    letter, and a ground closed here first would be "a colour already down"
-    that clips the stroke to nothing. The ground is untagged as lettering.
+    (`bean_rule`). Each `meta["dark_ink"]` region gets its polygon's
+    skeleton as bean spines (`beanletters.BEAN_LETTER_KEY`, the path stage 7
+    sews as a bean along the stroke) and its ground's id
+    (`DARK_INK_GROUND_KEY`). Its ground keeps the hole: stage 5's
+    `ground_under` sews the ground through under a bean letter, and a
+    ground closed here first would be "a colour already down" that clips
+    the stroke to nothing. The review's tier and the ground's untagging as
+    lettering are `settle_dark_ink_bean`'s, in `finish_generation`: this
+    runs in `build_generation`, before any review edit is applied, and the
+    generation is reused across edits.
 
     Only a PEN LINE goes: a stroke on a ground (`_ground_of`) whose thread
     sits within `BEAN_MAX_GROUND_DE00` of the ground's. Above it the ink is
@@ -670,13 +674,43 @@ def bean_dark_ink(regions) -> int:
         if not spines:
             continue
         r.meta[BEAN_LETTER_KEY] = spines
-        # The ground the ink is written on, not a letter of it. The
-        # house-angle group (`textcluster`, `setdefault`) took the Pooh pot
-        # into the Column lane, which its letter holes defeated only while
-        # they were holes; sewn through, it was one 37 mm satin.
-        g.meta["lettering_group"] = False
+        r.meta[DARK_INK_GROUND_KEY] = g.shape_id
         tagged += 1
     return tagged
+
+
+# The shape id of the ground a bean stroke is written on (`bean_dark_ink`),
+# for `settle_dark_ink_bean`. Internal: the service does not emit it.
+DARK_INK_GROUND_KEY = "dark_ink_ground"
+
+
+def settle_dark_ink_bean(regions) -> int:
+    """`cfg.dark_ink_bean`, after the review edits (`finish_generation`,
+    beside `tag_bean_letters` for the same reason): a stroke the review
+    pinned to a tier drops its bean spines, so stage 5 gives it its axis and
+    its pieces and `ink_after_ground` leaves its layer alone; every other
+    bean stroke's ground is untagged as lettering. Returns the strokes kept
+    bean."""
+    from .beanletters import BEAN_LETTER_KEY
+
+    by_id = {r.shape_id: r for r in regions}
+    kept = 0
+    for r in regions:
+        gid = r.meta.get(DARK_INK_GROUND_KEY)
+        if gid is None or not r.meta.get(BEAN_LETTER_KEY):
+            continue
+        if str(r.meta.get("tier", "auto")).lower() != "auto":
+            del r.meta[BEAN_LETTER_KEY]
+            continue
+        g = by_id.get(gid)
+        if g is not None:
+            # The ground the ink is written on, not a letter of it. The
+            # house-angle group (`textcluster`, `setdefault`) took the Pooh
+            # pot into the Column lane, which its letter holes defeated only
+            # while they were holes; sewn through, it was one 37 mm satin.
+            g.meta["lettering_group"] = False
+        kept += 1
+    return kept
 
 
 def ink_after_ground(regions):
