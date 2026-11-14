@@ -178,9 +178,13 @@ EXPLAINERS: dict[str, tuple[str, tuple[str, ...]]] = {
     # NOT `text_cluster_regularize_shape_changed`: that is regularize's
     # REFUSAL (textcluster.py, written with `skipped`), the plain shape kept
     "letterform_prior": ("letterform_prior", ("SHAPE", "WIDTH", "CLOSED")),   # value "refit..." only, `_tags`
-    "sew_enclosed_white": ("enclosed_white", ("EXTRA", "CLOSED", "SHAPE")),
-    "enclosed_background": ("enclosed_white", ("EXTRA", "CLOSED", "SHAPE")),
-    "enclosed_by_garment": ("enclosed_white", ("EXTRA", "CLOSED", "SHAPE", "MISSING")),
+    # the customer's "sew white areas" (ON by default since 2026-10-26): every
+    # kind its field can read as, so its departures are named, not errors
+    "sew_enclosed_white": ("enclosed_white", ("EXTRA", "CLOSED", "SHAPE", "MERGED", "MOVED", "WIDTH")),
+    # an enclosed-background region SEWN reads `enclosed_white` (sew_enclosed_white)
+    # or `enclosed_by_garment`; one left unsewn reads `left_unsewn` (its
+    # `stitched=False`, `_explain`): two different steps, two labels
+    "enclosed_by_garment": ("enclosed_by_garment", ("EXTRA", "CLOSED", "SHAPE", "MISSING")),
     "border": ("border", ("EXTRA", "WIDTH", "SHAPE", "MERGED", "CLOSED")),
     "hairline_outline": ("bean_hairline", ("WIDTH", "SHAPE", "CLOSED", "MERGED")),
     "bean_letter_spines": ("bean_letter", ("WIDTH", "SHAPE", "CLOSED", "MERGED")),
@@ -313,6 +317,23 @@ def thread_raster(plan, grid: Grid, class_of_block: list[int], thread_mm: float 
 
 
 # ------------------------------------------------------------------- art ----
+
+def page_mask(p) -> np.ndarray:
+    """Where the art shows the PAGE: stage 1's background, plus the pixels it
+    found matching the background test but enclosed by ink (`Prep.
+    enclosed_mask`: a counter, a donut hole, an alpha hole). Stage 1 keeps the
+    enclosed ones out of `bg_mask` on purpose (stage 4 tags them), but they
+    are page, not ink, and an ALPHA hole has no colour at all: the RGB under
+    the transparency is whatever the exporter flattened there. Read as ink,
+    kanji_seal's empty spaces (red under the alpha) and lt_jakarta's "a"
+    counters (black under it) were reported as ink left unsewn (2026-11-14,
+    found by eye on the source composited over white)."""
+    bg = np.asarray(p.bg_mask, bool)
+    enc = getattr(p, "enclosed_mask", None)
+    if enc is not None and np.shape(enc) == bg.shape:
+        bg = bg | np.asarray(enc, bool)
+    return bg
+
 
 def art_raster(rgb: np.ndarray, bg_mask: np.ndarray, art_bbox, px_per_mm: float, grid: Grid,
                classes: list[tuple[int, int, int]], garment_rgb) -> np.ndarray:
@@ -577,7 +598,7 @@ class _Attrib:
         for o in order:
             sid = keys[int(uniq[o])]
             out.append({"shape_id": sid, "share": round(float(cnt[o]) / tot, 3),
-                        "tags": _tags(self.regions[sid]), "dropped": sid in self.dropped,
+                        "tags": _tags(self.regions[sid]), "dropped": self.dropped.get(sid),
                         "merged_into": self.merged_into.get(sid)})
         return out
 
@@ -614,8 +635,11 @@ def _explain(kind: str, produced: list[dict], meant: list[dict], extra: list[str
                 label, kinds = ROLE_EXPLAINERS[role]
                 if kind in kinds and label not in why:
                     why.append(label)
-        if row.get("dropped") and kind in ("MISSING", "SHAPE") and "dropped_by_pipeline" not in why:
-            why.append("dropped_by_pipeline")
+        # the stage-5 clip / sliver drop (`SHAPE_NOT_STITCHED`, `CLIP_DROPPED_SLIVER`);
+        # `SHAPES_LEFT_UNSEWN` is the `stitched=False` decision, read below
+        if (row.get("dropped") in ("SHAPE_NOT_STITCHED", "CLIP_DROPPED_SLIVER")
+                and kind in ("MISSING", "SHAPE") and "clipped_stage5" not in why):
+            why.append("clipped_stage5")
         if row.get("tags", {}).get("stitched") is False and kind in ("MISSING", "SHAPE") \
                 and "left_unsewn" not in why:
             why.append("left_unsewn")
@@ -1038,16 +1062,29 @@ def read(p, result, plan, cfg, pull_mm: float | None = None, px: float = PX_PER_
         invisible = {i for i, q in enumerate(_lab(classes)) if float(np.linalg.norm(q - g)) < GARMENT_DE}
     grid = make_grid(plan, art_mm_box(p.art_bbox, p.px_per_mm), px)
     top, runs = thread_raster(plan, grid, of_block)
-    art = art_raster(p.rgb, p.bg_mask, p.art_bbox, p.px_per_mm, grid, classes, garment)
+    art = art_raster(p.rgb, page_mask(p), p.art_bbox, p.px_per_mm, grid, classes, garment)
     regions = list(getattr(result, "regions", None) or ())
     reg_raster, by_id = region_raster(regions, grid)
-    dropped = set()
+    dropped: dict[str, str] = {}
     for w in list(getattr(plan, "warnings", None) or ()) + list(getattr(result, "warnings", None) or ()):
         if isinstance(w, dict) and w.get("code") in DROP_CODES:
             for k in ("ids", "shape_ids"):
                 for sid in w.get(k) or ():
-                    dropped.add(str(sid))
+                    dropped.setdefault(str(sid), w["code"])
     att = _Attrib(top, runs, reg_raster, by_id, dropped, grid, getattr(plan, "merged_into", None))
+    page_classes = set()
+    page_rgb = getattr(p, "bg_edge_rgb", None)
+    if page_rgb is not None and not getattr(p, "bg_from_alpha", False):
+        pl = _lab([tuple(int(v) for v in np.asarray(page_rgb).ravel()[:3])])[0]
+        page_classes = {i for i, q in enumerate(_lab(classes)) if float(np.linalg.norm(q - pl)) < CLASS_MERGE_DE}
+    # A thread the colour of the PAGE (non-alpha art: stage 1's `bg_edge_rgb`)
+    # IS the page: a white field sewn white inside a keyline on white art,
+    # white letter counters left open or sewn white, both match the art. Its
+    # art reads as page and its thread is not judged, like a garment-coloured
+    # thread (TOAT, gaulke, 2026-11-14). Alpha art has no page colour.
+    if page_classes:
+        art[np.isin(art, sorted(page_classes))] = BG
+        invisible = set(invisible) | page_classes
     findings = read_arrays(art, top, runs, classes, grid, tol, pull_mm, att, invisible)
     sev_rank = {"error": 0, "misfire": 1, "explained": 2}
     findings.sort(key=lambda f: (sev_rank[f["severity"]], -f["area_mm2"]))
@@ -1059,6 +1096,7 @@ def read(p, result, plan, cfg, pull_mm: float | None = None, px: float = PX_PER_
         "px_per_mm": px, "tol_mm": round(tol, 3), "pull_mm": round(pull_mm, 3), "thread_mm": THREAD_MM,
         "grid_origin_mm": [round(grid.x0, 3), round(grid.y0, 3)], "grid_px": [grid.w, grid.h],
         "classes": [list(c) for c in classes], "invisible_classes": sorted(invisible),
+        "page_classes": sorted(page_classes),
         "counts": counts,
         "unexplained": sum(1 for f in findings if f["severity"] == "error"),
         "misfires": sum(1 for f in findings if f["severity"] == "misfire"),
@@ -1067,7 +1105,8 @@ def read(p, result, plan, cfg, pull_mm: float | None = None, px: float = PX_PER_
         "findings": findings[:MAX_FINDINGS],
     }
     if want_rasters:
-        out["_rasters"] = {"art": art, "top": top, "runs": runs, "grid": grid}
+        out["_rasters"] = {"art": art, "top": top, "runs": runs, "grid": grid,
+                           "regions": reg_raster, "region_ids": list(by_id.keys())}
     return out
 
 

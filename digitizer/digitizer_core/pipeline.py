@@ -293,6 +293,11 @@ class PipelineResult:
     # pixels (`preflight._prepped_view` carries the measurement). No stitch
     # depends on it.
     photo_prep_rgb: np.ndarray | None = None
+    # The traced raster for the proof-read guards (`proofread_guard`): the
+    # stage-1 picture stage 2 read, its background mask, art box and grid,
+    # as references. Set by `finish_generation` only when a guard flag is
+    # on; None otherwise (and on a hand-built result), so the guards stay off.
+    proof_art: object | None = None
 
     @property
     def shape_ids(self) -> list[str]:
@@ -1884,7 +1889,15 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         white_keyline_art=keyline_art,
         photo_prep_rgb=(p.rgb if any(w.get("code") == PHOTO_PREP_APPLIED
                                      for w in prep_warnings) else None),
+        proof_art=(_proof_art(p) if getattr(cfg, "proofread_guard_clipped", False) else None),
     )
+
+
+def _proof_art(p):
+    """The traced raster, as the proof-read reads one (`proofread.read`'s `p`):
+    stage 1's own Prep, by reference (its page mask, enclosed holes and page
+    colour all count, `proofread.page_mask`)."""
+    return p
 
 
 def run_stages(
@@ -2013,7 +2026,21 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             seam_priced_scope(cfg.fill_seam_order_priced), one_pass_scope(cfg.fill_one_pass_sections), \
             seam_aware_scope(cfg.fill_seam_aware_sections), \
             chord_aim_scope(cfg.satin_free_end_chord_aim):
-        return _plan_stitches(result, cfg)
+        plan = _plan_stitches(result, cfg)
+        # `cfg.proofread_guard_clipped` (built OFF): the proof-read reads
+        # this plan against the traced raster and, where stage 5's clip cut
+        # a shape's own ink away, re-plans inside these same scopes with that
+        # artwork sewn over the earlier colour (`proofread_guard`), kept only
+        # when the read improves. OFF: not imported.
+        if getattr(cfg, "proofread_guard_clipped", False) and getattr(result, "proof_art", None) is not None:
+            from .proofread_guard import guard_clipped
+            from .stage5_overlap import keep_art_scope
+
+            def replan(ids):
+                with keep_art_scope(ids):
+                    return _plan_stitches(result, cfg)
+            plan = guard_clipped(result, cfg, plan, replan)
+        return plan
 
 
 def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
