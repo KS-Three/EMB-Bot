@@ -25,10 +25,18 @@
     const stitches = (design && design.stitches) || [];
     const colors = (design && design.colors) || [];
 
-    // Compute extents in DST units from stitch coordinates.
+    // Compute extents in DST units from stitch coordinates. Color and end
+    // records are not needle positions on the design: buildQualityDesign
+    // puts `end` at the absolute origin while the stitches carry the
+    // element's hoop offset, so counting it framed an off-centre 20 x 10 mm
+    // element as 50 x 30 mm (2026-11-13). Same skip as digitize.js
+    // designExtentMm (the design's own widthMM/heightMM) and the PNG
+    // export's fit in app/src/lib/exporters.js, so all three pictures
+    // agree; jumps and trims stay in, as they do there.
     let xMin = 0, xMax = 0, yMin = 0, yMax = 0;
     let have = false;
     for (const st of stitches) {
+      if (st.type === "color" || st.type === "end") continue;
       const x = st.x | 0;
       const y = st.y | 0;
       if (!have) { xMin = xMax = x; yMin = yMax = y; have = true; }
