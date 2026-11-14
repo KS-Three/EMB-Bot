@@ -1849,6 +1849,37 @@ class PipelineConfig:
     # low-resolution regime the flag declines. Quality case unaffected; the
     # clock is now on the record. *(docs/flag-runtime-bills-2026-09-12.md)*
     curve_turn_deg: float | None = 15.0
+    # Curve facets (2026-11-14, `curve_densify.py`, built None = OFF): the
+    # longest chord a clean CURVE keeps, in mm, where the Column lane builds
+    # a letter's rails. 18 of Kent's 49 smooth pins sit on a clean bowl sewn
+    # as chords (`docs/jag-source-2026-11-13.md`, (b)); traced stage by stage
+    # (`docs/curve-facets-2026-11-14.md`) 15 of them are lettering, and the
+    # chords their satin follows are made by the lane itself:
+    # `outline_cut._letter_columns` re-simplifies each letter at max(0.12 mm,
+    # W/16) before cutting it, so a 4 mm bowl reaches the rails as 2-2.6 mm
+    # chords turning 20-30 degrees whatever stage 4 handed it. The pro sews a
+    # curve one end per stitch (0.36-0.41 mm apart on Bridge and Gaulke),
+    # every end on the arc. A number splits each edge of a piece's clean
+    # curve (both ends turning the same way, neither a corner) into pieces no
+    # longer than it, on a tangent-continuous cubic through the piece's OWN
+    # vertices, each new vertex within half the simplify tolerance (at most
+    # 0.08 mm) of the letter's outline as it came in, else the edge keeps its
+    # chord. The cuts are made first, on the simplified letter as today, so
+    # the construction's pieces do not change: only where the rails run.
+    # Straight runs, corners and cut lines keep their vertices. Not a physical
+    # constant: a polygon resolution, not a fabric quantity.
+    # `tests/test_curve_facets.py`.
+    curve_chord_mm: float | None = None
+    # With `curve_chord_mm`, ALSO stage 4's polygons, every shape (built
+    # OFF): the same split after `curve_turn_deg`'s refinement, every new
+    # vertex within one grid pixel of the trace. The 3 non-lettering pins
+    # (Gaulke's fill edge at 9.8 px/mm, where the refinement's resolution
+    # gate leaves 1-3 mm chords). Not on an upscaled source
+    # (`outline_redraw_k` owns those). Separate because it also moves the
+    # Column lane's own simplify and so its cuts: measured on and_pizza the
+    # "&" sewed cleaner and the "p" opened a seam, the same unpredictable
+    # answer `outline_redraw_native` got.
+    curve_chord_stage4: bool = False
     # The run tier's outline with its curve vertices cut before it is
     # sampled (`stage6_border._soften_ring`; MASTER_SCOPE defect 46, Law 37's
     # direction-change score). Built OFF 2026-10-08: it moves only
