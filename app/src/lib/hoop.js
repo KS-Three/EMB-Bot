@@ -15,6 +15,7 @@
 // produces an oversize design.
 import { EMB } from "./emb.js";
 import { garmentOf } from "./placement.js";
+import { isOutlineKey } from "./outlineFonts.js";
 
 // The hoop in effect for a project: the manual pick when project.hoopId
 // names a real preset, else the per-garment suggestion. `suggested` tells
@@ -95,8 +96,59 @@ export function autoCapNote(garment) {
 // about the centre of the combined stitch bounding box, so the layout turns as
 // a unit and the combined width/height swap exactly. Rotating each element in
 // place would scramble a multi-element layout.
-export function rotateToFitPatches(elements, combined, hoop) {
+//
+// SIZE (2026-11-13, the first build of this button rescaled every design it
+// turned: lettering 150 x 15 mm came back 31 x 305 mm). An element's `sizeMm`
+// is its width AFTER rotation (buildImportedDesign's targetWidthMm,
+// buildLetteringDesign's fit). Turning a quarter without touching it asks the
+// engine for "the same width, now on the other axis": the design is scaled
+// until its width is the old one and then clamped by the hoop's height. So
+// each element's sizeMm becomes its own old height, the width it will have
+// once turned. `perElement` is generateAll's { id, bboxMm } list; without an
+// element's box nothing can say what its turned width is, and its sizeMm is
+// left alone.
+//
+// Kinds the engine does not turn (image, manual, shape ignore rotationDeg)
+// make the answer null: a button that moves their offsets and leaves their
+// stitches facing the same way would only fake a fix. A turned element that
+// would not fit the placement `box` upright-swapped is null for the same
+// reason: the engine clamps to that box and would rescale it.
+// Outline lettering keeps its sizeMm: at 90 and 270 the service result is
+// drawn at its own size (outlineTargetWidthMm), so the turn rescales nothing.
+const UNTURNABLE = new Set(["image", "manual", "shape"]);
+const BOX_SLACK_MM = 0.2;
+
+function turnedWidthMm(el, perElement) {
+  if (el.type === "text" && isOutlineKey(el.fontKey)) return null;
+  const pe = (perElement || []).find((p) => p.id === el.id);
+  if (!pe || !pe.bboxMm) return null;
+  // Satin lettering is fitted by its PROBE extent, and what it sews is that
+  // plus a fixed pull-comp / weight margin per side, so the sewn height is a
+  // hair over the extent the fit used and feeding it back as the width would
+  // grow the turned lettering (150 mm came back 153). The engine reports the
+  // fit extent as fitMm; turning swaps it exactly.
+  const fit = pe.design && pe.design.fitMm;
+  if (el.type === "text" && fit && fit.h > 0 && isFinite(fit.h)) return fit.h;
+  // Imported and digitized designs report their exact float height (native
+  // height x scale); the stitch bbox is rounded to 0.1 mm per point, and that
+  // error multiplied by the aspect ratio showed up as a 0.14 mm drift in the
+  // other axis.
+  const exact = pe.design && pe.design.heightMM;
+  if (el.type !== "text" && exact > 0 && isFinite(exact)) return exact;
+  const h = pe.bboxMm.y1 - pe.bboxMm.y0;
+  return isFinite(h) && h > 0 ? h : null;
+}
+
+export function rotateToFitPatches(elements, combined, hoop, perElement = null, box = null) {
   if (!hoop || !combined || !elements || !elements.length) return null;
+  if (elements.some((el) => UNTURNABLE.has(el.type))) return null;
+  if (box && perElement) {
+    for (const pe of perElement) {
+      if (!pe.bboxMm) continue;
+      const w = pe.bboxMm.x1 - pe.bboxMm.x0, h = pe.bboxMm.y1 - pe.bboxMm.y0;
+      if (h > box.w + BOX_SLACK_MM || w > box.h + BOX_SLACK_MM) return null;
+    }
+  }
   if (!EMB.fitsOnlyRotated || !EMB.fitsOnlyRotated(combined.widthMM, combined.heightMM, hoop)) return null;
   const upm = EMB.DST_UNITS_PER_MM || (EMB.units && EMB.units.DST_UNITS_PER_MM) || 10;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -119,6 +171,8 @@ export function rotateToFitPatches(elements, combined, hoop) {
       offsetYMm: cy + dx + 0,
       rotationDeg: ((((el.rotationDeg || 0) + 90) % 360) + 360) % 360,
     };
+    const turned = turnedWidthMm(el, perElement);
+    if (turned != null) patches[el.id].sizeMm = turned;
   }
   return patches;
 }
