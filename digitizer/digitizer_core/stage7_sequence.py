@@ -930,7 +930,8 @@ def split_long_inshape(cfg) -> bool:
 
 def lift_piece(prev: list[StitchRun], nxt: list[StitchRun], shape_id: str, art,
                trim_at: float) -> list[StitchRun]:
-    """`cfg.inshape_piece_lift` (built OFF 2026-11-14): `nxt` (one
+    """`cfg.inshape_piece_lift` (built OFF 2026-11-14, ON since by Kent's
+    ruling): `nxt` (one
     `stitch_shape` call's runs, first run needle-down) as it follows `prev`
     (the same shape's runs so far). The step between them stays needle-down
     only where it lies on the shape -- `art` (the region's own polygon, holes
@@ -3435,7 +3436,7 @@ def sequence(
     # `stitch_shape` calls is split at the machine ceiling (`join_piece`).
     # Off, never read past this line.
     split_inshape = split_long_inshape(cfg)
-    # `cfg.inshape_piece_lift` (built OFF 2026-11-14): that step lifted when
+    # `cfg.inshape_piece_lift` (ON since 2026-11-14): that step lifted when
     # it leaves the shape, sewn as split travel when it stays on it
     # (`lift_piece`). Off, never read past this line.
     piece_lift = bool(cfg.inshape_piece_lift)

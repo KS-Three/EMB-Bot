@@ -982,6 +982,13 @@ PRE_FLIP.update(RECIPE_2026_10_27)
 # `tests/test_enclosed_white_skip_transparent.py`.
 WHITE_2026_11_11_OFF = {"enclosed_white_skip_transparent": False}
 PRE_FLIP.update(WHITE_2026_11_11_OFF)
+# Kent's flips 2026-11-14, from the OFF | ON sheets beside the art (the
+# night of 11-13's fixes). False / None is the engine before each flip, as
+# `tests/engine_2026_10_27.json` already stores it; each group is its own
+# dict so a test ABOUT something else can spread just the one that moved it.
+# `inshape_piece_lift` ("Flip ON"): `tests/test_inshape_piece_lift.py`.
+PIECE_LIFT_2026_11_14_OFF = {"inshape_piece_lift": False}
+PRE_FLIP.update(PIECE_LIFT_2026_11_14_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

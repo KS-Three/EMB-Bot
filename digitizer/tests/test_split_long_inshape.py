@@ -31,6 +31,7 @@ from digitizer_core import machine, stage7_sequence, stitches
 from digitizer_core.stage7_sequence import join_piece, split_long_inshape
 from digitizer_core.stitches import StitchRun
 
+from .conftest import PIECE_LIFT_2026_11_14_OFF
 from .test_border_from_outline import FACE, FAT, KEY, THICK, _md5, _plan
 
 FLAG = "split_long_inshape_stitches"
@@ -151,10 +152,13 @@ def _check_split(off, on, sid):
     return long_off
 
 
+# `inshape_piece_lift` (ON since 2026-11-14, Kent) lifts these very steps --
+# they leave the shape -- so the tack-down is watched with it OFF, as written
+# (`conftest.PIECE_LIFT_2026_11_14_OFF`).
 @pytest.mark.parametrize("ring", [THICK, FAT], ids=["thick", "fat"])
 def test_border_from_outline_pieces_are_joined_under_the_ceiling(two_pieces, ring):
-    off = _plan(ring, FACE, border_from_outline=True)
-    on = _on(ring, FACE)
+    off = _plan(ring, FACE, border_from_outline=True, **PIECE_LIFT_2026_11_14_OFF)
+    on = _on(ring, FACE, **PIECE_LIFT_2026_11_14_OFF)
     long_off = _check_split(off, on, "Souter")
     assert [round(d) for d, _i in long_off] == [24]
 
@@ -167,8 +171,8 @@ def test_enclosed_white_keyline_pieces_are_joined_under_the_ceiling():
     two = Polygon(OUTER.union(Polygon([(17, -1.5), (20, -1.5), (20, 1.5), (17, 1.5)]))
                   .union(Polygon([(-20, -1.5), (-17, -1.5), (-17, 1.5), (-20, 1.5)])).exterior,
                   [LEFT.exterior, RIGHT.exterior])
-    off = kplan(two, enclosed_white_keyline=True)
-    on = kplan(two, enclosed_white_keyline=True, extra={FLAG: True})
+    off = kplan(two, enclosed_white_keyline=True, **PIECE_LIFT_2026_11_14_OFF)
+    on = kplan(two, enclosed_white_keyline=True, extra={FLAG: True}, **PIECE_LIFT_2026_11_14_OFF)
     _check_split(off, on, "Sband")
 
 

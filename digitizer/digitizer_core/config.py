@@ -2177,7 +2177,7 @@ class PipelineConfig:
     # `border_from_outline`. Off, byte-identical.
     # Tests: `tests/test_outline_follow_shape.py`.
     border_from_outline_follow_shape: bool = False
-    # `inshape_piece_lift` (2026-11-14, built OFF): where stage 7 sews ONE
+    # `inshape_piece_lift` (2026-11-14, built OFF, ON since): where stage 7 sews ONE
     # shape as several `stitch_shape` pieces and concatenates them
     # (`border_from_outline`'s body pieces, `enclosed_white_keyline`'s, both
     # off `keyline_rest`), the step from one piece's last stitch to the next
@@ -2192,8 +2192,12 @@ class PipelineConfig:
     # which stage 7's own chain then buries under later thread where it can.
     # `cfg.extra["split_long_inshape_stitches"]` (2026-11-07) tacks the same
     # line down where it lies; this one stops laying it. Off, never read.
-    # Tests: `tests/test_inshape_piece_lift.py`.
-    inshape_piece_lift: bool = False
+    # **ON since 2026-11-14, Kent's flip** ("Flip ON", from the OFF | ON
+    # sheets beside the art): +1 to 2 trims per design on Becker and MFab,
+    # the only designs with such a stitch. False is stage 7 as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_inshape_piece_lift.py`.
+    inshape_piece_lift: bool = True
     # The rule's false positive (2026-10-25, #1078): a hairline DRAWING is
     # not an outline. Bridge Bar's bowl-and-waves (0.8-1.0 mm black lines round
     # yellow cells of the disc they sit on) reads as one, and ON sews each
