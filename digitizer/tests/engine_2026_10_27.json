@@ -155,6 +155,8 @@
  "layer_palette_from_regions": true,
  "legibility_check": true,
  "letterform_priors_k": 0.75,
+ "outline_redraw_k": null,
+ "outline_redraw_native": false,
  "line_chain_one_thread": false,
  "lettering_columns": true,
  "lettering_columns_apex_cut": false,

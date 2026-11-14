@@ -929,3 +929,58 @@ describe("hole rings (v1.9)", () => {
     expect(removeNodes(ring, [0, 1, 2])).toBeNull();
   });
 });
+
+// ---- the fit follows the shapes the stitches still hold (2026-11-13) --------
+// Review repro: shapes A (x -25..-15) and B (x 15..25); B deleted and the
+// design re-digitized, so the stitches (and the box the fit lands on) hold A
+// alone, re-centred. Fitting every row's outline drew A at one fifth size off
+// its stitches, and a 1 mm drag was sent as a 5 mm move.
+describe("overlay fit after a shape is deleted or switched off", () => {
+  const sq = (x0, y0, s) => [[x0, y0], [x0 + s, y0], [x0 + s, y0 + s], [x0, y0 + s]];
+  const A = { id: "s0", outlineFull: sq(-25, -5, 10) };
+  const B = { id: "s1", outlineFull: sq(15, -5, 10) };
+  const onlyA = { x0: -5, y0: -5, x1: 5, y1: 5 };
+  const box = (p) => ({ x0: Math.min(...p.map((q) => q[0])), x1: Math.max(...p.map((q) => q[0])), y0: Math.min(...p.map((q) => q[1])), y1: Math.max(...p.map((q) => q[1])) });
+
+  test("a deleted shape leaves the fit: the remaining outline sits on its stitches", () => {
+    const out = shapeOutlinesInFieldMm([A, B], onlyA, 0, null, null, ["s1"]);
+    const a = box(out.find((o) => o.id === "s0").points);
+    expect(a.x0).toBeCloseTo(-5, 9);
+    expect(a.x1).toBeCloseTo(5, 9);
+    expect(a.y0).toBeCloseTo(-5, 9);
+    expect(a.y1).toBeCloseTo(5, 9);
+    // the deleted row is still returned (the field hides it), only the fit changed
+    expect(out.map((o) => o.id)).toEqual(["s0", "s1"]);
+  });
+
+  test("a shape the run did not sew (stitched: false on the row) leaves the fit the same way", () => {
+    const out = shapeOutlinesInFieldMm([A, { ...B, stitched: false }], onlyA, 0);
+    const a = box(out.find((o) => o.id === "s0").points);
+    expect(a.x0).toBeCloseTo(-5, 9);
+    expect(a.x1).toBeCloseTo(5, 9);
+  });
+
+  test("forward and inverse stay exact inverses with shapes left out, at any rotation", () => {
+    const C = { id: "s2", outlineFull: [[-20, 3], [-12, 1], [-14, 9]] };
+    for (const rot of [0, 30, 90, 215]) {
+      const fieldBox = { x0: -7, y0: -4, x1: 9, y1: 6 };
+      const out = shapeOutlinesInFieldMm([A, B, C], fieldBox, rot, null, null, ["s1"]);
+      for (const s of [A, C]) {
+        const back = fieldMmToOutlineMm(out.find((o) => o.id === s.id).points, [A, B, C], fieldBox, rot, ["s1"]);
+        back.forEach(([x, y], i) => {
+          expect(x, `rot ${rot} ${s.id}`).toBeCloseTo(s.outlineFull[i][0], 9);
+          expect(y, `rot ${rot} ${s.id}`).toBeCloseTo(s.outlineFull[i][1], 9);
+        });
+      }
+    }
+  });
+
+  test("with nothing left out the output is identical to the fit over every row", () => {
+    const stitchBox = { x0: -25, y0: -5, x1: 25, y1: 5 };
+    const ref = shapeOutlinesInFieldMm([A, B], stitchBox, 30);
+    expect(shapeOutlinesInFieldMm([A, B], stitchBox, 30, null, null, [])).toEqual(ref);
+    expect(shapeOutlinesInFieldMm([A, B], stitchBox, 30, null, null, ["not-a-row"])).toEqual(ref);
+    // every row left out falls back to all of them rather than drawing nothing
+    expect(shapeOutlinesInFieldMm([A, B], stitchBox, 30, null, null, ["s0", "s1"])).toEqual(ref);
+  });
+});

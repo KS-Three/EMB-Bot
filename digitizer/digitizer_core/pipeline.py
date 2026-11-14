@@ -78,7 +78,7 @@ from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .config import is_photographic, satin_fill_hysteresis, satin_fill_vote, satin_floor_applies
-from . import keyline_bean, shape_memo, sliver_prune
+from . import keyline_bean, shape_memo, shaped_band, sliver_prune
 from .columns import is_lettering
 from .lettering_thread import apply_lettering_thread
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
@@ -1183,6 +1183,17 @@ def build_generation(
                                 grid_px_mm=1.0 / p.px_per_mm, k=cfg.letterform_priors_k,
                                 words=cfg.lettering_words)
 
+    # Outline redraw (2026-11-13, `cfg.outline_redraw_k`, DEFAULT None): every
+    # shape's rings refit to lines and arcs within max(k source pixels, one
+    # grid pixel) of the trace -- the same place and the same reason as the
+    # letterform pass above, for the shapes that are not letters. Imported
+    # inside the branch: off, nothing runs (`tests/test_outline_redraw.py`).
+    if cfg.outline_redraw_k and p.input_px_per_mm > 0.0 and p.px_per_mm > 0.0:
+        from .outline_redraw import apply_outline_redraw
+        apply_outline_redraw(regions, src_px_mm=1.0 / p.input_px_per_mm,
+                             grid_px_mm=1.0 / p.px_per_mm, k=cfg.outline_redraw_k,
+                             native=cfg.outline_redraw_native)
+
     # OCR-suggested text (Studio "Convert to text" entry point): a read-only,
     # additive per-member OCR read of each tagged member's FINAL polygon —
     # runs after regularization for the same "computed fact reflects this
@@ -1821,6 +1832,17 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             _marked = keyline_bean.keyline_regions(
                 regions, set(_outlines), cfg, sewn_only=False,
                 min_width_mm=(sliver_prune.SLIVER_WIDTH_SRC_PX / _ip) if _ip > 0 else 0.0)
+            # `cfg.border_from_outline_follow_shape`: a band with teeth is not
+            # a hairline. The gate's width is 2 x area / perimeter, and teeth
+            # are perimeter: Commons "Ahora"'s gear at 40 mm is 0.57 to 0.93 mm
+            # thick and read 0.6, so it sewed as a thin ring inside its own
+            # outline with the ground showing where the teeth were. A band
+            # `shaped_band` can lay out from its outer edge is sewn that way.
+            if cfg.border_from_outline_follow_shape and _marked:
+                _by_id = {r.shape_id: r for r in regions}
+                _marked = {sid for sid in _marked
+                           if not shaped_band.sews_shaped(
+                               _by_id[sid].polygon, [h for _b, h, _w in _outlines.get(sid, [])])}
             for r in regions:
                 if r.shape_id in _marked:
                     r.meta["hairline_outline"] = True

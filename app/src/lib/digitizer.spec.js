@@ -3102,3 +3102,30 @@ describe("runBaseKey: the run's identity apart from its shape edits", () => {
     expect(runBaseKey({ ...base }, { sourcePng: "other-art" })).not.toBe(k0);
   });
 });
+
+// The deleted shapes the canvas overlay leaves out of its fit (2026-11-13):
+// what the CURRENT stitches no longer hold, not every id in deletedShapeIds.
+describe("deletedFromStitches", () => {
+  const st = (x, y) => ({ x, y, type: "stitch" });
+  const result = {
+    colors: [{ r: 1, g: 2, b: 3 }],
+    stitches: [st(-250, -50), st(-150, 50), st(150, -50), st(250, 50), { x: 0, y: 0, type: "end" }],
+    runs: [{ shape: "s0", i0: 0, i1: 1 }, { shape: "s1", i0: 2, i1: 3 }],
+  };
+  const review = { shapes: [{ id: "s0" }, { id: "s1" }] };
+  it("is empty with nothing deleted", async () => {
+    const { deletedFromStitches } = await import("./digitizer.js");
+    expect(deletedFromStitches({ result, review, deletedShapeIds: [] })).toEqual([]);
+  });
+  it("names an applied delete (the run dropped it) and a pending one the display pruned", async () => {
+    const { deletedFromStitches, editsKey } = await import("./digitizer.js");
+    const applied = editsKey({ deleted_shape_ids: ["s1"] });
+    expect(deletedFromStitches({ result, review, deletedShapeIds: ["s1"], appliedEdits: applied })).toEqual(["s1"]);
+    expect(deletedFromStitches({ result, review, deletedShapeIds: ["s1"], appliedEdits: null })).toEqual(["s1"]);
+  });
+  it("keeps a pending delete in the fit when the result has no runs to prune it by", async () => {
+    const { deletedFromStitches } = await import("./digitizer.js");
+    const bare = { colors: result.colors, stitches: result.stitches };
+    expect(deletedFromStitches({ result: bare, review, deletedShapeIds: ["s1"], appliedEdits: null })).toEqual([]);
+  });
+});

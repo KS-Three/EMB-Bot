@@ -93,6 +93,7 @@ from .stage6_small_letter import glyph_polygon, skeleton_letter_runs, text_line_
 from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_hairline import HairlineSet
 from .art_outline import shaped_stations, shaped_width_mm
+from .shaped_band import shaped_band_runs
 from .keyline_bean import body_limits as keyline_body_limits
 from .keyline_bean import held as keyline_held
 from .keyline_bean import keyline_bean_runs, keyline_regions
@@ -3788,8 +3789,24 @@ def sequence(
                                            p.polygon]).difference(o_holes)
                     if p.covered_by is not None:
                         o_reach = o_reach.union(p.covered_by.difference(o_holes))
+                    # A shaped band round ONE body is laid out from its outer
+                    # edge: a needle hole on every corner of it, the density
+                    # held out there, no line on top (`shaped_band`, which
+                    # says what the ring-cast loop below got wrong). A band it
+                    # cannot lay out, or one shared by several bodies, keeps
+                    # that loop.
+                    if shaped_band and len(rings) == 1:
+                        s_runs, s_report = shaped_band_runs(
+                            art, rings[0][0], p.shape_id,
+                            entry=o_runs[-1].points[-1] if o_runs else entry,
+                            trim_at_mm=trim_at, underlay=satin_underlay != "none")
+                        if not s_report["empty"]:
+                            return (o_runs + s_runs,
+                                    {"jumps": o_jumps + s_report["jumps"], "empty": False,
+                                     "outline_loops": 1, "shaped_band": 1, "shaped_edge": 1},
+                                    False)
                     # a shaped band's needle is locked to its teeth
-                    loop_holes = ([(h, w, shaped_stations(art, h, machine.BORDER_DENSITY_MM))
+                    loop_holes =([(h, w, shaped_stations(art, h, machine.BORDER_DENSITY_MM))
                                    for h, w in rings] if shaped_band else rings)
                     l_runs, l_report = keyline_runs(
                         art, p.shape_id, reach=o_reach,

@@ -1571,6 +1571,35 @@ class PipelineConfig:
     # None keeps the OFF path, byte-identical to the pre-flag engine
     # (`tests/test_letterform_priors.py` pins it with an explicit None).
     letterform_priors_k: float | None = 0.75
+    # Outline redraw (2026-11-13, `outline_redraw.py`, DEFAULT None = OFF):
+    # the pen-tool redraw for EVERY shape, not only lettering. Each ring of
+    # each region is refit to straight lines and circular arcs (letterform
+    # priors' geometry, no word snaps), corners kept as the exact meet of
+    # their two lines, arcs written back finely; nothing moves further than
+    # max(k x the SOURCE pixel, one working-grid pixel) from the stage-4
+    # trace, and a ring whose validity or hole count would change is left as
+    # it was. Kent's most-pinned fault, traced spot by spot
+    # (`docs/jag-source-2026-11-13.md`): on a low-resolution upload the
+    # source pixel's staircase survives stage 4 and the satin sews every step
+    # (Becker's border at 1.42 px/mm); on a clean upload stage 4's own chords
+    # leave 12-20 degree facets on every bowl and circle (lettering at
+    # 22 px/mm). Runs after `letterform_priors_k` and leaves a letter it refit
+    # alone. Not the DOCTRINE "smoothing polygons" negative: nothing blurs,
+    # corners sharpen, the cap is a raster quantity of the source, not a
+    # radius in mm. No physical constant; no sew-out has seen it.
+    # It touches only an upload stage 1 UPSCALED (Becker, Bridge, MFab): a
+    # source at its own resolution comes through byte-identical unless
+    # `outline_redraw_native` below is also set. `tests/test_outline_redraw.py`.
+    outline_redraw_k: float | None = None
+    # With `outline_redraw_k`, ALSO a source at its own resolution, in the
+    # arcs-only regime: straight runs and corners keep stage 4's vertices
+    # exactly and only runs one circle explains (bowls, circles) are
+    # rewritten -- the cure for stage 4's chord facets, 18 of Kent's 49
+    # smooth pins. Default OFF because, measured on and_pizza 2026-11-13, the
+    # polygon's bowls came out true arcs but the Column lane's satin answered
+    # unpredictably: smoother on some bowls, a straight cut across the "p"'s
+    # arc and an opened seam on others (`docs/jag-source-2026-11-13.md`).
+    outline_redraw_native: bool = False
     # Even out stitch widths automatically (`stitchwidth.apply_stitch_widths`,
     # 2026-09-29): a letter more than 15% off its word's weight is offset to
     # the word's median, and `lettering_min_column_mm` (when set) reaches
@@ -2055,16 +2084,31 @@ class PipelineConfig:
     # edge, and it sewed a ring of spokes at every size: the loop never looks
     # at the outer edge. ON, a band that (a) fits one satin everywhere (never
     # thicker than `machine.SATIN_MAX_WIDTH_MM`) and (b) whose thickness
-    # swings by at least `machine.SATIN_MIN_CROSS_MM` (p90 - p10: the outer
-    # edge moves by more than the shortest stitch) keeps the loop, but each
-    # cross is cut where it leaves the ART instead of the art widened: long
-    # on a tooth, short in a root (`art_outline.shaped_width_mm`). No new
-    # constant. Of the corpus's outlines only the gear is shaped: To-a-T's
-    # frame swings 0.14-0.19 mm (one width, the pro widens it), Becker's,
-    # MFab's and the Drone's bands all pass 7 mm somewhere. The gear at 40 mm
-    # swings 0.36, under a stitch, and stays a ring. Pull on a 0.6 mm tooth
-    # is a sew-out question (gate 1). Acts only with `border_from_outline`.
-    # Off, byte-identical. Tests: `tests/test_outline_follow_shape.py`.
+    # swings by at least `machine.SATIN_SHORT_STITCH_AT_MM` (p90 - p10: a
+    # step two needle holes can show) is sewn to the ART's outer edge, not
+    # the art widened (`art_outline.shaped_width_mm`). Under
+    # `machine.SATIN_MIN_CROSS_MM` the swing must be STEPPED, most of it at
+    # the sides of teeth (`shaped_band.stepped_share`): a keyline whose
+    # width only wanders ("(hed) p.e." at 180 mm) keeps the widened loop.
+    # **Laid out from the OUTER edge since the second build** (same day,
+    # Kent: "it's an improvement but not across the board"; `shaped_band`): a
+    # band round one body gets a needle hole on every corner of its outer
+    # edge, the density held out there (measured square to the stitch), each
+    # side wall sewn once, the ring's holes short-stitched where they bunch,
+    # and no line on top. The first build cast its crosses from the body's
+    # ring: teeth got two or three stitch ends wherever they fell, corners
+    # stayed open, a square corner of the body was left to four stitches, and
+    # the bean laid on top to draw the corners made 0.6 mm teeth into lumps.
+    # A band shared by several bodies keeps that ring-cast loop. A band with
+    # teeth is also kept out of `border_from_outline_hairline_run`, whose
+    # width is 2 x area / perimeter and reads teeth as thinness (the gear at
+    # 40 mm sewed as a thin ring inside its own outline).
+    # No new constant. Of the corpus's outlines only the gear is shaped:
+    # To-a-T's frame swings 0.14-0.19 mm (one width, the pro widens it),
+    # Becker's, MFab's and the Drone's bands all pass 7 mm somewhere. Pull on
+    # a 0.6 mm tooth is a sew-out question (gate 1). Acts only with
+    # `border_from_outline`. Off, byte-identical.
+    # Tests: `tests/test_outline_follow_shape.py`.
     border_from_outline_follow_shape: bool = False
     # The rule's false positive (2026-10-25, #1078): a hairline DRAWING is
     # not an outline. Bridge Bar's bowl-and-waves (0.8-1.0 mm black lines round
