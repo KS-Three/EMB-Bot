@@ -78,7 +78,7 @@ the OLDEST lines whole to the archive.
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only, customer sees nothing
 - [Node reshape spec](node-reshape-spec-2026-11-03.md) — "entire spline follows" = pullRing's 2x-drag radius (not a bug); 7 rulings 11-03: 3 mm fixed, Reshape mode both lanes, holes_override, marquee crosses shapes for seams
 - [Outline fonts on demand](outline-fonts-on-demand-2026-11-06.md) — Kent 11-06: TTF/OTF fonts sewn by the service via the Column lane (POST /lettering), 21 OFL families, `outline:<key>`; 07-24 ruling = browser trace
-- [Pen stroke](pen-stroke-2026-11-13.md) — drag draws a Column/Line; Join tick built OFF (Kent 11-13): touching Columns sew as one path, own touch rule not the glyph's; same-colour shapes still stop each
+- [Pen stroke](pen-stroke-2026-11-13.md) — drag draws a Column/Line; Join tick built OFF (Kent 11-13): touching Columns sew as one path, own touch rule not the glyph's; same-colour shapes still stop
 - [Pot slot swing](pot-slot-swing-2026-11-03.md) — Pooh pot = one shaded body, chart has no olive; fringe votes + size drag k-means centres (Lloyd decides, not dissolve/cap); Becker mid-tone shares it; nothing built
 - [Preflight score](preflight-score-2026-11-05.md) — 0-100 `score` ALREADY existed (grade derives from it; Studio QualityReport.svelte:189 shows it); 11-05 added only the mapping comment, pins, tool columns. Don't build a 2nd
 - [Pro-sized lettering sitting](pro-size-lettering-sitting-2026-11-02.md) — pro-lettering-1102, 56 live pairs, 8 one-flag arms; Kent sat 11-03: trims control did NOT replicate, repeats unstable (3 of 4), no flip
