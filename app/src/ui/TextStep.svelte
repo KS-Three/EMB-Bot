@@ -296,10 +296,13 @@
 {/if}
 <label class="letterspacing" use:tip={"rotation"}>
   <span>Rotation<i class="tipmark" aria-hidden="true"></i></span>
+  <!-- max 359, not 360: a turn is stored in [0, 360) (hoop.js rotationPatch),
+       so 360 was saved as 0 and the thumb jumped back to the left end
+       (review follow-up, 2026-11-13). -->
   <input
     type="range"
     min="0"
-    max="360"
+    max="359"
     step="1"
     value={element.rotationDeg || 0}
     on:input={(e) => turnTo(parseInt(e.target.value, 10))}

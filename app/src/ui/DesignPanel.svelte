@@ -235,10 +235,11 @@
 
     <label class="letterspacing">
       <span>Rotation</span>
+      <!-- max 359: a turn is stored in [0, 360), see TextStep's slider. -->
       <input
         type="range"
         min="0"
-        max="360"
+        max="359"
         step="1"
         value={rotation}
         on:input={(e) => turnTo(parseInt(e.target.value, 10))}
