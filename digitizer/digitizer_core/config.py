@@ -1416,6 +1416,30 @@ class PipelineConfig:
     # (Recommended)". OFF pinned in `PRE_FLIP` and
     # `tests/engine_2026_10_27.json`.
     flat_ramp_blend_dissolve: bool = True
+    # The same round on a raster the grid SHRANK or kept (built OFF
+    # 2026-11-14, `stage2_quantize.BLEND_BAND_PX`). A JPEG's
+    # blend rim between two inks is made by compression and anti-aliasing,
+    # not resampling, and on a source at or above the grid it sews as a
+    # thread of its own: silhouette_logo's white letters in mint satin
+    # outlines (Kent: "all of the extra green stitches ... are the same
+    # issue", 30 pins), its bear in a dark-green ring, ProSeal's teal bar
+    # topped by a 0.33 mm Spearmint band ("The satin border is changing
+    # colors too much"). Each is a blend by colour (mint 5.4 dE off the
+    # green-white chord, the ring 3.8) that the one-pixel edge gate keeps
+    # (0.64, 0.36, 0.65 against 0.9), and this round never ran: it was
+    # enlarged rasters only. ON: a 2-working-px band, the Lab OR the RGB
+    # chord (ProSeal's band is 6.3 off the Lab one), and each band pixel
+    # takes the label of the nearest pixel outside the band, so a rim splits
+    # between the two things it lies between and the page is never one.
+    # (Folding the whole cluster into one end, tried first, painted the same
+    # pale colour's specks elsewhere with it: ProSeal's subline grew a teal
+    # N.) A thin colour that is NOT between its
+    # neighbours (a keyline) is untouched: the colour test is unchanged. An
+    # enlarged raster is unchanged. Different from the bevel/shadow fold in
+    # `enforce_color_cap` (`regular-structure` lane): that folds a ONE-sided
+    # band by size after the cap; this folds a TWO-sided blend at stage 2,
+    # before any thread exists. Off, byte-identical.
+    flat_blend_band_any_scale: bool = False
     # Also under `flat_page_fringe_exclude`: the blend between a THIN DARK
     # OUTLINE and the fill beside it (`stage2_quantize.outline_inner_blend`) is
     # fringe too. An outline is the darkest label when half of its pixels sit
