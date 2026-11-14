@@ -292,6 +292,6 @@ rows are byte-identical to OFF, stained_glass included.
 | watercolor | both | worse: white specks (cutout); a block added and grade B to C (no cutout) |
 
 **Ruling (Kent, 2026-11-14): "Keep off, fix the collapse".** The flag stays
-OFF; the 35 to 40 mm collapse and the white faces at 45 to 50 mm are to be
+OFF; the collapse at 35 to 37 and 40 mm and the white faces at 45 to 50 mm are to be
 fixed behind the flag and the same widths and images re-measured before the
 question comes back.

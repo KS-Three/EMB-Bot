@@ -5471,6 +5471,7 @@ negatives. *(measured 2026-11-13 — PR #1472, `tests/test_stage6_speed_exact.py
 **`photo_enclosed_rim` stays OFF after a live-engine measurement (Kent
 2026-11-14: "Keep off, fix the collapse").** ON reads MFab's small line at 30
 and at 60 to 113.5 mm on both lanes, but sews the badge as one black patch at
-35 to 40 mm and sews the M-FAB faces white at 45 and 50 mm; of 77 other images
-it changes 5, three for the worse. A fix behind the flag is in progress.
+35 to 37 and at 40 mm (38 is fine) and sews the M-FAB faces white at 45 and
+50 mm; in the 77-image set it changes 4 images besides MFab, three for the
+worse. A fix behind the flag is in progress.
 *(measured 2026-11-13 — [`docs/photo-enclosed-rim-2026-11-06.md`](../photo-enclosed-rim-2026-11-06.md), addendum 2026-11-14)*

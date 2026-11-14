@@ -47,7 +47,7 @@ request (80 mm, left_chest, 6 colours), both lanes, commit 2489ac48:
   Lab; cutout-lane MFab 60 mm 2 fields / 10 riders → 1 / 15. 113.5 mm still
   loses one rider to text clustering (strict xfail). On the LIVE engine
   (11-13, both lanes) ON reads the small line at 30 and 60 to 113.5 mm but
-  sews one black patch at 35 to 40 mm (order flips to White, Black) and white
+  sews one black patch at 35 to 37 and 40 mm (38 is fine; order flips to White, Black) and white
   M-FAB faces at 45 and 50 mm; 3 of 77 other images get worse. Kent 11-14:
   "Keep off, fix the collapse". Tables: the rim doc's 11-14 addendum.
 
