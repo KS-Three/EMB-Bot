@@ -2419,7 +2419,12 @@
     // satinfont.layoutText. Null only on the empty paths above.
     const _debug = { nSatin, nFill: 0, nTrims, nTies };
     if (cutEvery) _debug.cutEveryJump = { buried: cutEvery.buried, walked: cutEvery.walked, cut: cutEvery.cut, lone: cutEvery.lone };
-    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, runs: spans, unsupported: lay.unsupported || [], lettering: lay.lettering || null, fitMm: { w: designWmm, h: designHmm }, _debug };
+    // fitMm.w0/h0 (2026-11-13): the same fit extent UNTURNED, at this scale.
+    // The Studio's rotation controls keep lettering's size when they turn it
+    // (app/src/lib/hoop.js rotationPatch), which needs the width the fit
+    // rectangle will have at the new angle; w/h alone cannot give it at 45
+    // degrees, where both read the same for any aspect.
+    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, runs: spans, unsupported: lay.unsupported || [], lettering: lay.lettering || null, fitMm: { w: designWmm, h: designHmm, w0: bboxWmm * sc, h0: bboxHmm * sc }, _debug };
   }
 
   // `tieRun` is exported for its own sake: its overshoot rule only fires when

@@ -20,7 +20,7 @@
   import { EMB } from "../lib/emb.js";
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
-  import { effectiveHoop, hoopFitNote, rotateToFitPatches } from "../lib/hoop.js";
+  import { effectiveHoop, hoopFitNote, rotateToFitPatches, rotationPatch } from "../lib/hoop.js";
   import { garmentOf, placementBoxOf } from "../lib/placement.js";
   import { resizeBadgeText, runSpm } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
@@ -425,6 +425,11 @@
   let dragStartTargetMm = 0; // element's sizeMm at pointerdown (see size-match note below)
   let dragStartRotationDeg = 0;
   let dragRotateCenterPx = null; // element center (canvas px), fixed at rotate-grab
+  // The element and its design AT PRESS: every move's size is derived from
+  // these (hoop.js rotationPatch), never from the last move's patch, so a
+  // long drag cannot drift (2026-11-13).
+  let dragRotateEl = null;
+  let dragRotateDesign = null;
 
   // Multi-select (Ctrl+click) group-drag state. dragMembers snapshots each
   // selected member's offsets/size at pointerdown; dragGroupBBoxMm is the
@@ -4751,6 +4756,8 @@
       dragTargetId = project.selectedId;
       dragStartPx = p;
       dragStartRotationDeg = (el && el.rotationDeg) || 0;
+      dragRotateEl = el;
+      dragRotateDesign = (peById[project.selectedId] && peById[project.selectedId].design) || null;
       dragRotateCenterPx = { x: selRect.x + selRect.w / 2, y: selRect.y + selRect.h / 2 };
       rotateBadgeDeg = dragStartRotationDeg;
       setCanvasCursor("grabbing");
@@ -5096,7 +5103,8 @@
       // suspend-snap role on move/resize.
       const deg = dragRotate(dragStartRotationDeg, dragRotateCenterPx, dragStartPx, p, { free: e.altKey });
       rotateBadgeDeg = deg;
-      pendingPatch = { id: dragTargetId, patch: { rotationDeg: deg } };
+      // Keeps the design's size: sizeMm is the width after rotation (hoop.js).
+      pendingPatch = { id: dragTargetId, patch: rotationPatch(dragRotateEl, deg, dragRotateDesign) };
       schedulePatchFlush();
       return;
     }
@@ -5407,6 +5415,8 @@
     dragStartPanY = 0;
     dragStartBBoxMm = null;
     dragRotateCenterPx = null;
+    dragRotateEl = null;
+    dragRotateDesign = null;
     dragMembers = null;
     dragGroupBBoxMm = null;
     // Erase drag-only overlay chrome (guides/badges). One view repaint —

@@ -41,13 +41,30 @@ import { isOutlineKey, outlineStale } from "./outlineFonts.js";
 
 // The width a design is DRAWN at: the result's native width in the frame the
 // element's rotation puts it in — the frame `sizeMm` is measured in.
+//
+// Off the quarter turns this is the width of the TURNED STITCHES, the way
+// buildImportedDesign measures it (2026-11-13). It used to be the turned
+// bounding RECTANGLE, |w cos| + |h sin|, which is the engine's rule for
+// lettering, not for a stitch file: a round logo at 45 degrees read 41% wider
+// than it sews, so a pure rotation read as a resize and marked the design
+// behind. The rotation controls now keep sizeMm in this same frame
+// (hoop.js rotationPatch), so turning a digitized design leaves it current.
 export function rotatedWidth(dec, deg) {
   if (!dec) return 0.1;
   const rot = ((deg % 360) + 360) % 360;
   if (rot === 0 || rot === 180) return dec.widthMM;
   if (rot === 90 || rot === 270) return dec.heightMM;
   const rad = (rot * Math.PI) / 180;
-  return Math.abs(dec.widthMM * Math.cos(rad)) + Math.abs(dec.heightMM * Math.sin(rad));
+  if (!dec.stitches) return Math.abs(dec.widthMM * Math.cos(rad)) + Math.abs(dec.heightMM * Math.sin(rad));
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  let x0 = Infinity, x1 = -Infinity;
+  for (const s of dec.stitches) {
+    if (s.type !== "stitch") continue;
+    const x = s.x * cos - s.y * sin;
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+  }
+  return x0 === Infinity ? 0.1 : Math.max(0.1, (x1 - x0) / 10);
 }
 
 // The same width for any element, not only the one on screen.
