@@ -164,3 +164,63 @@ test("a continuous record right after a discrete one stays inside its step (an u
   expect(h.undo()).toEqual(snap(1));
   expect(h.redo()).toBe(loaded);
 });
+
+// ---- one pointer gesture is one undo step (2026-11-13) ----------------------
+// A field drag flushes one record per pointer move, each carrying its
+// pointerdown's token. The review repro: a drag held still 0.7 s mid-gesture
+// undid in two steps, and two drags 400 ms apart in one.
+const G = () => Symbol("drag");
+
+test("a drag that rests longer than coalesceMs mid-gesture is still ONE undo step", () => {
+  const h = createHistory({ x: 0 });
+  const g = G();
+  let t = 10_000, x = 0;
+  for (let i = 0; i < 20; i++) { h.record({ x: ++x }, t, false, g); t += 16; }
+  t += 700; // the pointer rests, button still down
+  for (let i = 0; i < 20; i++) { h.record({ x: ++x }, t, false, g); t += 16; }
+  expect(h.undo()).toEqual({ x: 0 });
+  expect(h.canUndo()).toBe(false);
+});
+
+test("two drags under coalesceMs apart are TWO undo steps", () => {
+  const p0 = { a: 0, b: 0 };
+  const h = createHistory(p0);
+  let t = 10_000;
+  const g1 = G(), g2 = G();
+  for (let i = 1; i <= 10; i++) { h.record({ a: i, b: 0 }, t, false, g1); t += 16; }
+  t += 400;
+  for (let i = 1; i <= 10; i++) { h.record({ a: 10, b: i }, t, false, g2); t += 16; }
+  expect(h.undo()).toEqual({ a: 10, b: 0 });
+  expect(h.undo()).toBe(p0);
+});
+
+test("a drag right after typing starts its own step, and typing right after a drag does not join it", () => {
+  const h = createHistory({ s: "", x: 0 });
+  h.record({ s: "a", x: 0 }, 1000);
+  h.record({ s: "ab", x: 0 }, 1100); // typing coalesces as before
+  const g = G();
+  h.record({ s: "ab", x: 1 }, 1200, false, g); // 100 ms later: still a new step
+  h.record({ s: "ab", x: 2 }, 1216, false, g);
+  h.record({ s: "abc", x: 2 }, 1300); // 84 ms after the drag: its own step
+  expect(h.undo()).toEqual({ s: "ab", x: 2 });
+  expect(h.undo()).toEqual({ s: "ab", x: 0 });
+  expect(h.undo()).toEqual({ s: "", x: 0 });
+});
+
+test("an undo in the middle of a drag: the rest of the drag does not merge into the restored snapshot", () => {
+  const h = createHistory({ x: 0 });
+  h.record({ x: 5 }, 1000);
+  const g = G();
+  h.record({ x: 6 }, 3000, false, g);
+  const restored = h.undo();
+  h.record({ x: 7 }, 3016, false, g);
+  expect(h.undo()).toBe(restored);
+});
+
+test("a discrete record inside a drag's token still pushes (the discrete rule is unchanged)", () => {
+  const h = createHistory({ x: 0 });
+  const g = G();
+  h.record({ x: 1 }, 1000, false, g);
+  h.record({ x: 2 }, 1016, true, g);
+  expect(h.undo()).toEqual({ x: 1 });
+});

@@ -4306,7 +4306,15 @@
     setCanvasCursor(cursorForHandle(handle));
   }
 
+  // ONE pointer gesture is ONE undo step, whatever its timing (Kent's
+  // approval 2026-11-13). Every patch a drag flushes carries its press's
+  // token (`gesture`, history.js): the first record of a drag pushes even
+  // right after another edit, and the rest merge into it however long the
+  // pointer rests. Stamped when the patch is queued, not in the frame, which
+  // can run after endDrag has let the drag go.
+  let dragGesture = null;
   function schedulePatchFlush() {
+    if (pendingPatch) pendingPatch.gesture = dragGesture;
     if (rafScheduled) return;
     rafScheduled = true;
     requestAnimationFrame(() => {
@@ -4316,7 +4324,7 @@
         pendingPatch = null;
         // Group drags carry one patch PER member ({ multi: { id: patch } });
         // single-element drags keep the original { id, patch } shape.
-        if (p.multi) dispatch("elupdatemany", p.multi);
+        if (p.multi) dispatch("elupdatemanygesture", { patches: p.multi, gesture: p.gesture });
         else dispatch("elupdate", p);
       }
     });
@@ -4641,6 +4649,8 @@
     if (e.button !== undefined && e.button !== 0) return;
     countPress(e);
     if (fieldMenu) fieldMenu = null;
+    // A fresh token per press: every patch this drag flushes carries it.
+    dragGesture = Symbol("drag");
 
     // Auto-dismiss the drag-field hint on the first pointerdown on the
     // canvas WHILE it's actually showing -- gating on showDragHint (rather

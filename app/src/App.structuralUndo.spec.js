@@ -50,7 +50,8 @@ test("persistStructural records discretely, and one task's second record continu
   expect(SRC).toMatch(/function persistStructural\(\) \{\s*persist\(true, true\);\s*\}/);
   // The cluster "Undo — remove text element" click is a patch then a remove
   // in one task; persist() must not split them (see its comment).
-  expect(SRC).toMatch(/history\.record\(project, undefined, discrete && !recordedThisTask\)/);
+  // (`gesture` rides after it since 2026-11-13: a field drag's token.)
+  expect(SRC).toMatch(/history\.record\(project, undefined, discrete && !recordedThisTask, gesture\)/);
 });
 
 // One level down: a hand-drawn element's SHAPES. ManualPanel flags a shape
@@ -61,5 +62,16 @@ test("persistStructural records discretely, and one task's second record continu
 test("both elupdate bindings pass the discrete flag through to elUpdate", () => {
   const bindings = SRC.match(/on:elupdate=\{\(e\) => elUpdate\([^\n]*\)\}/g) || [];
   expect(bindings, "expected the field's binding and the panel's").toHaveLength(2);
-  for (const b of bindings) expect(b).toMatch(/!!e\.detail\.discrete\)\}$/);
+  // The field's also passes its drag's gesture token (2026-11-13).
+  for (const b of bindings) expect(b).toMatch(/!!e\.detail\.discrete(, e\.detail\.gesture)?\)\}$/);
+});
+
+// One pointer gesture is one undo step (2026-11-13): the field stamps every
+// drag flush with its press's token, and App must hand it to history on both
+// the single-element and the group path, or the 500 ms clock decides again.
+test("the field's drag flushes pass their gesture token through to history", () => {
+  expect(SRC).toMatch(/on:elupdate=\{\(e\) => elUpdate\(e\.detail\.id, e\.detail\.patch, !e\.detail\.quiet, !!e\.detail\.discrete, e\.detail\.gesture\)\}/);
+  expect(SRC).toMatch(/on:elupdatemanygesture=\{\(e\) => elUpdateMany\(e\.detail\.patches, true, false, e\.detail\.gesture\)\}/);
+  expect(SRC).toMatch(/function elUpdate\(id, patch, record = true, discrete = false, gesture = null\) \{[^}]*persist\(record, discrete, gesture\);/);
+  expect(SRC).toMatch(/function elUpdateMany\(patchById, record = true, discrete = false, gesture = null\) \{[^}]*persist\(record, discrete, gesture\);/);
 });
