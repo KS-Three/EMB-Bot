@@ -128,6 +128,7 @@
  "flat_page_fringe_soft_ramp": false,
  "flat_page_fringe_ramp_src_px": 3.0,
  "flat_ramp_blend_dissolve": false,
+ "flat_blend_band_any_scale": false,
  "forbid_gap_mm": null,
  "forced_class": null,
  "fur_style": "short",
@@ -161,6 +162,7 @@
  "line_chain_one_thread": false,
  "lettering_columns": true,
  "lettering_columns_apex_cut": false,
+ "lettering_columns_connectors_buried": false,
  "lettering_columns_corner_fold": true,
  "lettering_columns_cover_handback": false,
  "lettering_columns_fold_cuts": true,
@@ -212,6 +214,7 @@
  "preflight": true,
  "preflight_glyph_metric": false,
  "pro_measured_values": false,
+ "proofread": false,
  "pull_comp_by_stroke": false,
  "rehome_resnapped": true,
  "report_absorb_frac": 0.25,
@@ -339,5 +342,6 @@
  "photo_enclosed_rim": false,
  "underfill_untagged_riders": false,
  "stage0_scale_relative_grad": false,
- "regular_structure": false
+ "regular_structure": false,
+ "bevel_ring_fold": false
 }

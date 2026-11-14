@@ -69,11 +69,22 @@ function backgroundRgb({ data, width, height }) {
   //
   // Transparent border pixels are skipped (stage 1 treats alpha as
   // background, and getImageData reports them as 0,0,0 -- or, for an
-  // alpha-shaped logo, as the ink's own RGB). Returns null when every border
-  // pixel is transparent: ink is then just alpha >= 128.
+  // alpha-shaped logo, as the ink's own RGB). Returns null when the border is
+  // MOSTLY transparent: the background is then "nothing", and ink is just
+  // alpha >= 128.
+  //
+  // Mostly, not "every": art that touches the frame leaves a few opaque border
+  // pixels, and those are the ART. The starter owl.svg (1200 x 909, transparent
+  // frame, body along the bottom edge) had 28% of its border opaque, all body
+  // brown, so the median "background" was the body's own colour and the body
+  // read as background; the proposal boxed only the eyes and beak
+  // (2026-11-14). The border's majority decides, transparent counting as a
+  // colour of its own.
   const rs = [], gs = [], bs = [];
+  let seen = 0;
   const add = (x, y) => {
     const i = (y * width + x) * 4;
+    seen++;
     if (data[i + 3] < 128) return;
     rs.push(data[i]); gs.push(data[i + 1]); bs.push(data[i + 2]);
   };
@@ -87,7 +98,7 @@ function backgroundRgb({ data, width, height }) {
     add(0, y);
     if (width > 1) add(width - 1, y);
   }
-  return rs.length ? [median(rs), median(gs), median(bs)] : null;
+  return rs.length * 2 > seen ? [median(rs), median(gs), median(bs)] : null;
 }
 
 export function proposeCrop(imageData, widthMm) {

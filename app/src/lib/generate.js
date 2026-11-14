@@ -23,6 +23,12 @@ import { isOutlineKey, outlineTargetWidthMm } from "./outlineFonts.js";
 // that never changes. Keyed by the base64 string itself: a re-import is a
 // new string = new entry, and the tiny cap just stops a long session from
 // pinning every file ever uploaded.
+// The scale range AUTO-fit may give a pre-digitized stitch file: the Design
+// panel's "safe 75-150%" band (Kent 2026-11-14, "Stop at 75%, say so"). Past an
+// edge the file stops there and overflows the placement box rather than
+// scaling its stitches further. A typed width is not bound by it.
+export const STITCH_FILE_AUTO_RANGE = [0.75, 1.5];
+
 const dstCache = new Map();
 const DST_CACHE_MAX = 8;
 
@@ -99,6 +105,8 @@ export function generateElement(element, garment, runtime) {
     return EMB.buildImportedDesign(decoded, {
       garment,
       targetWidthMm: element.sizeMm || undefined,
+      // a stitch file only scales: auto-fit stops at the safe range's edge
+      autoScaleRange: STITCH_FILE_AUTO_RANGE,
       rotationDeg: element.rotationDeg || 0,
       offsetXMm: element.offsetXMm || 0,
       offsetYMm: element.offsetYMm || 0,

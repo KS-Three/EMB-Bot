@@ -139,6 +139,11 @@
   // `stop`). `stopping` is the moment between the press and the service
   // having been told; the panel goes idle right after. Not an error, and
   // nothing about it is shown as one (no-warnings ruling 2026-10-02).
+  // The one-line answer to a press that had nothing to restitch: the width was
+  // moved by under RESIZE_TOLERANCE and nothing else was pending (below, in
+  // runDigitize). Holds the element and the canvas width it was said for, so it
+  // goes the moment anything else moves.
+  let noRestitch = null; // { id, sizeMm }
   let stopper = null; // { stop: AbortController, id: the run's resume mark (runMark: design + element) }
   let stopping = false;
   let runBtn;
@@ -743,6 +748,7 @@
     // changes" with it, so a second call can only be a stray one.
     if (!el.sourcePng || !health || phase !== "idle") return;
     error = "";
+    noRestitch = null;
     phase = "submitting";
     runningLong = false;
     // The design, element and artwork this run is FOR, fixed at submit: the
@@ -759,6 +765,14 @@
       // makes that the design's own width instead of a scale on top of it.
       const resizeTarget = resizedTargetWidth(el, nativeWidthOf(el));
       const cfg = buildDigitizeConfig(withTargetWidth(el, resizeTarget), project);
+      // A press that re-sends the very request the stitches came from, the
+      // only difference being a canvas width inside the 2% tolerance: the
+      // stitches come back the same, and the customer is told why (Kent
+      // 2026-11-13 walkthrough, item 4: 3 s and silence read as a hang).
+      const nativeW = nativeWidthOf(el);
+      const f = el.result && el.sizeMm > 0 && nativeW > 0 ? el.sizeMm / nativeW : 1;
+      const underTolerance = resizeTarget == null && Math.abs(f - 1) > 0.0005
+        && !pendingEdits(el) && !!el.appliedConfig && configKey(cfg) === el.appliedConfig;
       // The preview path is synchronous here on purpose: it is the
       // pre-2026-09-20 flow tick for tick, so nothing about restitch timing
       // moved for an element with no stored original.
@@ -833,6 +847,7 @@
         appliedConfig: configKey(cfg),
         ...resizeLanding(el, element, resizeTarget),
       }, el.id, runProject);
+      if (underTolerance) noRestitch = { id: el.id, sizeMm: el.sizeMm };
     } catch (err) {
       // A cancel is not an error: whatever the abandoned run then tripped
       // over is not the customer's news.
@@ -2230,6 +2245,11 @@
         </button>
       </div>
     {/if}
+    {#if noRestitch && noRestitch.id === element.id && noRestitch.sizeMm === element.sizeMm && !stale && !pending}
+      <p class="dgp-status" role="status" data-testid="digitize-no-restitch">
+        No restitch needed: size changed by under 2%.
+      </p>
+    {/if}
     {#if stale && !pending && health}
       <p class="dgp-status" role="status" data-testid="digitize-stale">
         {#if resized}
@@ -2275,7 +2295,7 @@
     {#if element.result}
       <p class="dgp-stats">
         {element.result.stitchCount.toLocaleString()} stitches ·
-        {element.result.widthMM.toFixed(0)}×{element.result.heightMM.toFixed(0)} mm ·
+        {(element.result.widthMM * scaleFactor).toFixed(0)}×{(element.result.heightMM * scaleFactor).toFixed(0)} mm ·
         {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"} ·
         <span data-testid="engine-label">{engineLabel("service")}</span>
       </p>

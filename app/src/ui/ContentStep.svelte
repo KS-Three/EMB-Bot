@@ -12,7 +12,7 @@
   import { selectedIdsOf } from "../lib/project.js";
   import { columnNoteFabric } from "../lib/generate.js";
   import { EMB } from "../lib/emb.js";
-  import { garmentOf } from "../lib/placement.js";
+  import { garmentOf, preRunWidthMm, preRunSizePatch } from "../lib/placement.js";
   export let project;
   // App's `currentId`: which saved design `project` is. Element ids repeat
   // across designs (every artwork-only design's logo is `e1`), so the panel
@@ -271,7 +271,7 @@
      file) duplicates, Design file aside -- and the size row's fine controls
      go behind each editor's Advanced fold, as the "advanced" slot. -->
 {#snippet size()}
-  <SizePanel part="size" project={{ ...project, ...el }} {designDims} on:update={(e) => d("elupdate", { id: el.id, patch: e.detail })} />
+  <SizePanel part="size" project={{ ...project, ...el }} {designDims} shownWidthMm={preRunWidthMm(el)} on:update={(e) => d("elupdate", { id: el.id, patch: preRunSizePatch(el, e.detail, project) })} />
 {/snippet}
 {#snippet extras()}
   <div class="eladd-row">
@@ -279,7 +279,7 @@
     <button type="button" class="eladd" on:click={() => d("addelement", "artwork")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Artwork</button>
     <button type="button" class="eladd" on:click={() => d("addelement", "design")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Design file</button>
   </div>
-  <SizePanel part="fine" project={{ ...project, ...el }} {designDims} on:update={(e) => d("elupdate", { id: el.id, patch: e.detail })} />
+  <SizePanel part="fine" project={{ ...project, ...el }} {designDims} shownWidthMm={preRunWidthMm(el)} on:update={(e) => d("elupdate", { id: el.id, patch: preRunSizePatch(el, e.detail, project) })} />
 {/snippet}
 <!-- No "artwork won't be digitized" line here any more: a down service no longer
      routes art to the browser lane unannounced, and DigitizePanel itself says
@@ -331,7 +331,7 @@
 {:else}
   {#key projectId + "/" + el.id}
     {#if el.type === "design"}
-      <DesignPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)}>
+      <DesignPanel element={el} {designDims} on:elupdate={(e) => d("elupdate", e.detail)}>
         {@render size()}
         <svelte:fragment slot="advanced">{@render extras()}</svelte:fragment>
       </DesignPanel>

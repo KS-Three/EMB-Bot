@@ -13,6 +13,19 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-11-14 (second robust-PC round) — review fixes #1463–#1475 and the rim flag on the live engine, main `03c85c7e`
+
+Snapshots, not live status:
+
+- **Merged 2026-11-14 from the 2026-11-13 reviews:** browser satin #1463 and #1471; undo #1464; lettering #1465, #1466, #1467; canvas #1468 and its follow-ups #1475; `connected` background removal built OFF #1470; stage 6 seam pruning #1472; Reshape #1474.
+- **#1471 census:** 4 of 305 Studio-built designs moved (photo_chrome_specular at 2, 4 and 6 colours, summit_badge at 6), longest stitch 15.1 → 4.0, 50.8 → 6.8, 27.9 → 10.6 and 13.5 → 4.15 mm. Across 1,214 auto-routed satins the widest stitches were 11.7 mm and below, then 13.5 mm and above.
+- **#1470 census:** default path 0 of 305 moved; `connected: true` moved 79.
+- **#1472:** `_seam_side` calls on stained_glass 1,228,617 → 9,322; `plan_stitches` 324.7 → 312.2 s; 68 of 68 designs byte-identical; full digitizer suite 8,420 passed with the two known local `enthusiast_logo` reds.
+- **Rim flag, live engine (tree `fd8a0359`):** ON changed 4 of 77 designs on the cutout lane and 5 on the no-cutout lane; MFab collapsed to a black patch at 35, 36, 36.7, 37 and 40 mm. Kent: "Keep off, fix the collapse". Tables: `docs/photo-enclosed-rim-2026-11-06.md`, addendum 2026-11-14.
+- **Local e2e on the Windows desktop:** the same five Reshape specs ((e), (e4), (h1), (h2), (h5)) timed out on main and on the branches; CI passed them.
+
+---
+
 **Last updated:** 2026-11-12 (defect 28 closed) — second status pass, main `bdae1860`
 
 Defect 28 moved from the live list to the Closed list on Kent's ruling "Close it (Recommended)" (2026-11-12). Its text as it stood on main `bdae1860`, moved verbatim. Text only: not live status.
