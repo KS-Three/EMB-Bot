@@ -195,6 +195,7 @@
  "photo_prep_clahe_clip": 2.5,
  "photo_prep_clahe_tiles": 8,
  "photo_prep_texture_kill": "bilateral",
+ "photo_prep_tone": true,
  "photo_segment_sam2": false,
  "photo_segment_sam2_checkpoint": "tiny",
  "photo_segment_sam2_max_side_px": 1024,
