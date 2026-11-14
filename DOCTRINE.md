@@ -1924,6 +1924,26 @@ flattery. Anything unlisted raises `NotInManifest`.
 
 ## Gotchas — cost someone a session once
 
+- **On Windows, never run Python or a test suite through a directory
+  junction: every file open through one leaks kernel memory until the next
+  restart.** Measured 2026-11-14 on Windows 11 Pro 10.0.26200: 20,000 opens of
+  one file through a junction left 60,000 live `NtFC` allocations (ntfs.sys,
+  the file-open code), 8.6 MB of nonpaged pool, never freed; `Exists` and a
+  directory listing through it leak too; the same calls on the plain path leak
+  nothing. Two days of sweeps and suites in worktrees that reached
+  `digitizer/rembg_isolated/venv` through a junction left 25.8 GB of a 32 GB
+  desktop in that one tag (129 million allocations). Jobs that take 2 to 8
+  minutes then timed out at 30, two crashed (0xC0000005, 0xC0000409), and a
+  measurement ran for hours producing nothing. **A worktree reaches the
+  primary checkout's venv by PATH, not by link:** run the primary's
+  interpreter, and for the cutout set
+  `stage1_photo_prep.REMBG_VENV_PYTHON` the way
+  `tools/lettering_board.py rembg_from_primary()` does. **When jobs on a
+  Windows box slow down for no reason, read `\Memory\Pool Nonpaged Bytes`
+  before anything else.** The memory junction the root `CLAUDE.md` describes
+  is the same mechanism at low volume. *(measured 2026-11-14 — session probe;
+  pool tags read with `NtQuerySystemInformation` class 22)*
+
 - **A pull radius tuned on ONE outline was shipped as a rule for EVERY ring —
   and "the entire spline follows" was the rule working.** `pullRing`
   (`shapeOverlay.js`, 2026-08-13) took its radius, 2x the drag distance, from a
