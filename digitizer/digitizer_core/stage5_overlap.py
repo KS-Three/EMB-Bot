@@ -815,6 +815,101 @@ def _hairline_ground(regions: list[Region], hairline: dict,
     return {sid: unary_union(v) for sid, v in pieces.items()}
 
 
+# GROWTH WHERE THE THREAD PULLS, AND GAPS KEPT (2026-11-13, both built OFF in
+# `cfg.extra`). The width ledger (`tools/width_ledger.py`, the Director's
+# fat-ink brief; sheets under `eye_pairs_out/fat-ink-1113/`) read where our
+# ink outgrows the art, stage by stage, on seven designs. Two of its causes
+# are stage 5's GEOMETRY, not its magnitude (the pull a fabric needs is
+# `Fabric.pull_comp_mm`, gate 1, untouched here):
+# - `pull_comp_along_stitch_only`: a fill's pull is grown with one isotropic
+#   `buffer(pull)`, outward in every direction with round joins. The thread
+#   pulls the cloth in ALONG its stitches; growth across a fill's rows is not
+#   physics, and the round join turns every square corner and tip of the art
+#   into an arc (Jakarta's mark: square corners sewn round, +0.58 mm across a
+#   1.40 mm triangle). ON, a FILL grows only along its own stitch axis
+#   (`_comp_axis`, the axis `cfg.directional_comp` gives fills), which keeps
+#   convex corners square: a Minkowski sum with a segment, not a disc. Satin
+#   on its rails and widened lettering are as before; the satin end cutback of
+#   `directional_comp` (a sew-out-gated push constant) is not part of this.
+# - `growth_keeps_gaps`: growth runs into the bare fabric the art keeps
+#   between shapes and inside counters (MFab's keyline gap went 1.55 ->
+#   0.92 mm at stage 5 alone), and same-colour shapes in different layers
+#   have no corridor at all. ON, a shape's growth (pull and round joins; the
+#   underlap tongue under a later colour is not bare fabric and is kept) stays
+#   out of: the bare fabric between it and any other shape the art keeps at
+#   least `GAP_SEWABLE_MM` apart (any colour) or apart at all (same thread:
+#   never welded), up to `GAP_PROTECT_MM`; and its own counters of that
+#   width, held at their art size. Narrower gaps between colours are as
+#   before (a seam); wider ones are not at risk.
+# Whether a kept gap or counter opens back up, or sews tighter than drawn, on
+# the cloth is the sew-out's to settle: these place growth, they do not size it.
+#: a gap or counter narrower than this (mm) is not kept open: two thread
+#: edges, each half a 40 wt laid thread (0.4 mm), meet across it anyway
+GAP_SEWABLE_MM = 0.5
+#: the widest gap or counter the art keeps that growth is kept out of (mm):
+#: the ledger's at-risk band; past it the pull's 2 x 0.3-0.4 mm leaves the gap
+#: readable
+GAP_PROTECT_MM = 2.0
+
+
+def _inscribed_width(poly: Polygon) -> float:
+    """Twice the radius of the largest circle inside `poly` (mm)."""
+    from shapely.ops import polylabel
+    try:
+        c = polylabel(poly, tolerance=0.02)
+    except Exception:  # noqa: BLE001 -- a degenerate ring is not a counter
+        return 0.0
+    return 2.0 * float(poly.exterior.distance(c))
+
+
+def _kept_gaps(r: Region, poly, grown, others, all_art, later, reach: float):
+    """`growth_keeps_gaps`: `grown` less the bare fabric `r` must leave as the
+    art drew it (comment at `GAP_SEWABLE_MM`). `others`: the shapes near `r`;
+    `later`: what sews after `r` (a counter it fills is a seam, not bare)."""
+    keep = []
+    for o in others:
+        d = poly.distance(o.polygon)
+        if d <= 1e-6 or d > GAP_PROTECT_MM:
+            continue
+        if d < GAP_SEWABLE_MM and o.thread_index != r.thread_index:
+            continue
+        span = d + reach + 1e-6      # the gap and the growth at its mouth
+        lens = poly.buffer(span).intersection(o.polygon.buffer(span))
+        if not lens.is_empty:
+            keep.append(lens)
+    for ring in getattr(poly, "interiors", ()):
+        hole = Polygon(ring)
+        w = _inscribed_width(hole)
+        if GAP_SEWABLE_MM <= w <= GAP_PROTECT_MM:
+            keep.append(hole if later is None else hole.difference(later))
+    if not keep:
+        return grown
+    bare = unary_union(keep).difference(all_art)
+    return grown if bare.is_empty else grown.difference(bare).union(poly)
+
+
+def _angle_is_free(r: Region, cfg: PipelineConfig) -> bool:
+    """A fill told no angle of its own (the review's key, the global, the
+    design angle, a pro offset): stage 6 picks one on what stage 5 hands it."""
+    explicit = _explicit_fill_angle(r, cfg)
+    return explicit is None and pro_offset_fill_angle(cfg, r.shape_id, poly=r.polygon,
+                                                      base_deg=explicit) is None
+
+
+def _sewn_fill_axis(shape, row_mm: float, axis: float) -> float:
+    """`pull_comp_along_stitch_only`, a fill with no angle of its own: the
+    axis it is grown along must be the axis it SEWS along, and growing it must
+    not move that. Off, stage 6 picks `best_fill_angle_deg` on the shape stage
+    5 hands it -- grown every way by the pull, clipped by the colours already
+    down -- so that pick, made on that shape, is the axis, and stage 7 is
+    handed it (`stitch_angle_deg`). Grown along its art's principal axis,
+    Bridge's round field turned its rows 12 degrees."""
+    try:
+        return float(best_fill_angle_deg(shape, row_mm))
+    except Exception:  # noqa: BLE001 -- a shape the scan cannot read keeps its axis
+        return axis
+
+
 def resolve_overlaps(
     regions: list[Region], fabric: Fabric, cfg: PipelineConfig,
     design_class: str = "flat",
@@ -843,6 +938,11 @@ def resolve_overlaps(
     # Law 22. Off: one axis of None per shape, so every `_grow` below is the
     # `poly.buffer(pull)` this stage has always done, byte for byte.
     directional = bool(cfg.directional_comp) and pull > 0
+    # `cfg.extra["pull_comp_along_stitch_only"]` / `["growth_keeps_gaps"]`
+    # (comment at `GAP_SEWABLE_MM`, both built OFF). Absent: as before.
+    extra = getattr(cfg, "extra", None) or {}
+    along = bool(extra.get("pull_comp_along_stitch_only")) and pull > 0
+    keep_gaps = bool(extra.get("growth_keeps_gaps"))
     # `cfg.satin_rail_comp` (2026-09-09): a satin-tier shape keeps its
     # artwork polygon here and takes the pull on its rails in stage 6. The
     # tier is read with the same call directional comp uses, for the same
@@ -852,10 +952,15 @@ def resolve_overlaps(
     satin_max = satin_ceiling_mm(cfg)
     axis_by_id: dict[str, float | None] = {}
     satin_by_id: dict[str, bool] = {}
+    free_axis: set[str] = set()             # `along`: fills whose axis is stage 6's pick
+    free_row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     for r in regions:
         axis, is_satin = (_comp_axis(r, cfg, satin_max, design_class)
-                          if directional or rail_comp else (None, False))
-        axis_by_id[r.shape_id] = axis if directional else None
+                          if directional or rail_comp or along else (None, False))
+        if along and not directional and not is_satin and axis is not None and _angle_is_free(r, cfg):
+            free_axis.add(r.shape_id)       # picked in the loop below, on the old-grown shape
+        axis_by_id[r.shape_id] = (axis if directional
+                                  else axis if along and not is_satin else None)
         satin_by_id[r.shape_id] = is_satin
 
     layers = sorted({r.meta["layer"] for r in regions})
@@ -961,8 +1066,10 @@ def resolve_overlaps(
     # shape instead. Only built when the flag is on.
     reach_by_id: dict[str, object] = (
         {r.shape_id: _grow(r.polygon, pull, axis_by_id[r.shape_id]) for r in regions}
-        if directional else {}
+        if directional or along else {}
     )
+    # `growth_keeps_gaps`: every shape's neighbours, any layer, any colour
+    gap_tree = STRtree([r.polygon for r in regions]) if keep_gaps else None
 
     # Prefix/suffix unions: what is already on the fabric when this layer sews,
     # and what will cover it afterwards. Built once instead of per region.
@@ -1069,6 +1176,12 @@ def resolve_overlaps(
             deadline.check("stage 5")
             poly = span.get(r.shape_id, r.polygon)
             axis = axis_by_id[r.shape_id]
+            if r.shape_id in free_axis:
+                old = poly.buffer(pull)
+                if earlier[L] is not None and not widened_lettering(r):
+                    old = _largest_polygon(old.difference(earlier[L])) or old
+                axis = _sewn_fill_axis(old, free_row_mm, axis)
+                axis_by_id[r.shape_id] = axis
             on_rails = rail_comp and satin_by_id[r.shape_id] and not widened_lettering(r)
             grown = poly if on_rails else _grow(poly, pull, axis)
 
@@ -1128,7 +1241,7 @@ def resolve_overlaps(
                 if others:
                     others_reach = (
                         unary_union([reach_by_id[o.shape_id] for o in others])
-                        if directional
+                        if directional or along
                         else unary_union([o.polygon for o in others]).buffer(pull)
                     )
                     corridor = _grow(poly, pull, axis).intersection(
@@ -1139,6 +1252,11 @@ def resolve_overlaps(
                     for other in others:
                         if poly.distance(other.polygon) < fuse_reach:
                             fusing_pairs.add(tuple(sorted((r.shape_id, other.shape_id))))
+
+            if keep_gaps and grown is not None and not grown.is_empty:
+                near = [regions[int(i)] for i in gap_tree.query(poly.buffer(GAP_PROTECT_MM))
+                        if regions[int(i)] is not r]
+                grown = _kept_gaps(r, poly, grown, near, all_art, later[L], pull + overlap)
 
             # Never grow back over a color that is already down — except
             # widened lettering. A glyph on a ground was vectorized as a hole
