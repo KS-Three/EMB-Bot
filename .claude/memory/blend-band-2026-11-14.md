@@ -1,6 +1,6 @@
 ---
 name: blend-band-2026-11-14
-description: flat_blend_band_any_scale (OFF): a JPEG blend rim between two inks sewed as its own thread on NOT-enlarged rasters because flat_ramp_blend_dissolve's 2nd round ran only on enlarged ones; ON 2 px band, Lab or RGB chord, band pixels to nearest non-band pixel
+description: flat_blend_band_any_scale, ON since 11-14 (Kent "Flip ON") - a JPEG blend rim between two inks sewed as its own thread on NOT-enlarged rasters because flat_ramp_blend_dissolve's 2nd round ran only on enlarged ones; ON 2 px band, Lab or RGB chord, band pixels to nearest non-band pixel
 metadata:
   type: project
 ---
@@ -20,7 +20,9 @@ own stage-2 loop instrumented (`stage2_quantize._quantize_population`):
   `line_chain_one_thread` ruled OFF), (hed)p.e.'s e (a later re-snap,
   `resnap_hairline_never_lightens` ruled OFF: never re-propose).
 
-**Built OFF:** `flat_blend_band_any_scale` runs the round on non-enlarged flat
+**Built OFF, ON since Kent 2026-11-14** ("Flip ON", accepting the silhouette logo's
+green field fill turning 90 degrees; PRE_FLIP pins it False):
+`flat_blend_band_any_scale` runs the round on non-enlarged flat
 rasters, `BLEND_BAND_PX` 2, Lab OR RGB chord. **Join per pixel, not per
 cluster:** each band pixel takes its nearest non-band pixel's label, the
 PAGE included (all-ink fattened ProSeal's hex cells into their white gaps,

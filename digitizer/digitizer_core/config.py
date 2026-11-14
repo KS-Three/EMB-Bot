@@ -1474,8 +1474,14 @@ class PipelineConfig:
     # enlarged raster is unchanged. Different from the bevel/shadow fold in
     # `enforce_color_cap` (`regular-structure` lane): that folds a ONE-sided
     # band by size after the cap; this folds a TWO-sided blend at stage 2,
-    # before any thread exists. Off, byte-identical.
-    flat_blend_band_any_scale: bool = False
+    # before any thread exists. Off, byte-identical. **ON since 2026-11-14,
+    # Kent's flip** ("Flip ON", from the OFF | ON sheets beside the art):
+    # silhouette logo 6 -> 4 threads, its 12 stray-thread pins clear, at the
+    # cost Kent accepted of its green field's fill turning 90 degrees (a new
+    # region shape); ProSeal's bar one teal satin. False is stage 2 as it
+    # was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin
+    # it False. Tests: `tests/test_flat_blend_band.py`.
+    flat_blend_band_any_scale: bool = True
     # Also under `flat_page_fringe_exclude`: the blend between a THIN DARK
     # OUTLINE and the fill beside it (`stage2_quantize.outline_inner_blend`) is
     # fringe too. An outline is the darkest label when half of its pixels sit
@@ -1652,7 +1658,7 @@ class PipelineConfig:
     # None keeps the OFF path, byte-identical to the pre-flag engine
     # (`tests/test_letterform_priors.py` pins it with an explicit None).
     letterform_priors_k: float | None = 0.75
-    # Outline redraw (2026-11-13, `outline_redraw.py`, DEFAULT None = OFF):
+    # Outline redraw (2026-11-13, `outline_redraw.py`, built None = OFF):
     # the pen-tool redraw for EVERY shape, not only lettering. Each ring of
     # each region is refit to straight lines and circular arcs (letterform
     # priors' geometry, no word snaps), corners kept as the exact meet of
@@ -1670,8 +1676,15 @@ class PipelineConfig:
     # radius in mm. No physical constant; no sew-out has seen it.
     # It touches only an upload stage 1 UPSCALED (Becker, Bridge, MFab): a
     # source at its own resolution comes through byte-identical unless
-    # `outline_redraw_native` below is also set. `tests/test_outline_redraw.py`.
-    outline_redraw_k: float | None = None
+    # `outline_redraw_native` below is also set. **0.75 since 2026-11-14,
+    # Kent's flip** ("Set 0.75", from the OFF | ON sheets beside the art):
+    # roughness falls on all 12 upscaled pro jobs (Becker 2.8-3.1 deg at every
+    # size), at the cost Kent accepted of Becker's bare fabric in the art
+    # +0.07 to 0.35 mm^2 at 4 of its 5 sizes (`docs/satin-flat-ends-
+    # 2026-11-14.md`). None is the engine as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # None. `tests/test_outline_redraw.py`.
+    outline_redraw_k: float | None = 0.75
     # With `outline_redraw_k`, ALSO a source at its own resolution, in the
     # arcs-only regime: straight runs and corners keep stage 4's vertices
     # exactly and only runs one circle explains (bowls, circles) are
@@ -2191,7 +2204,7 @@ class PipelineConfig:
     # `border_from_outline`. Off, byte-identical.
     # Tests: `tests/test_outline_follow_shape.py`.
     border_from_outline_follow_shape: bool = False
-    # `inshape_piece_lift` (2026-11-14, built OFF): where stage 7 sews ONE
+    # `inshape_piece_lift` (2026-11-14, built OFF, ON since): where stage 7 sews ONE
     # shape as several `stitch_shape` pieces and concatenates them
     # (`border_from_outline`'s body pieces, `enclosed_white_keyline`'s, both
     # off `keyline_rest`), the step from one piece's last stitch to the next
@@ -2206,8 +2219,12 @@ class PipelineConfig:
     # which stage 7's own chain then buries under later thread where it can.
     # `cfg.extra["split_long_inshape_stitches"]` (2026-11-07) tacks the same
     # line down where it lies; this one stops laying it. Off, never read.
-    # Tests: `tests/test_inshape_piece_lift.py`.
-    inshape_piece_lift: bool = False
+    # **ON since 2026-11-14, Kent's flip** ("Flip ON", from the OFF | ON
+    # sheets beside the art): +1 to 2 trims per design on Becker and MFab,
+    # the only designs with such a stitch. False is stage 7 as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_inshape_piece_lift.py`.
+    inshape_piece_lift: bool = True
     # The rule's false positive (2026-10-25, #1078): a hairline DRAWING is
     # not an outline. Bridge Bar's bowl-and-waves (0.8-1.0 mm black lines round
     # yellow cells of the disc they sit on) reads as one, and ON sews each
@@ -3919,7 +3936,7 @@ class PipelineConfig:
     # byte-identical.
     # Tests: `tests/test_word_tiers.py`.
     lettering_word_tiers: bool = False
-    # LIKE SHAPES DECIDED ONCE PER GROUP (built OFF 2026-11-13,
+    # LIKE SHAPES DECIDED ONCE PER GROUP (built OFF 2026-11-13, ON since 11-14,
     # `group_consistency.py`). Kent's pins name like things sewn unlike ("This
     # stitch is different than the AH RA"); two of them, traced on main, are
     # one shape's own measure straddling a threshold its line-mates sit on the
@@ -3931,6 +3948,13 @@ class PipelineConfig:
     # the word tagger, the text cluster or any other tier. Census:
     # `docs/group-consistency-2026-11-13.md`. Layout (ruling 2026-10-22:
     # judged in the preview). Off, nothing calls either, byte-identical.
+    # **`group_consistent_tier` and `_fill_angle` ON since 2026-11-14, Kent's
+    # flip** ("Flip all four ON", from the OFF | ON sheets of AHORA, K-Line,
+    # Bridge, the mascot's feet and the emoji's legs; a small corpus). He held
+    # `_outline_body` and `_thread` OFF the same day, each for a guard first
+    # (the reason at each field). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin the
+    # two flipped False.
     # Tests: `tests/test_group_consistency.py`.
     #
     # The run tier's area floor (`cfg.min_detail_mm`^2) per line: K-Line's
@@ -3938,7 +3962,7 @@ class PipelineConfig:
     # at 2.54-3.07 satin; ON all 24 bean outlines. A letter moved ONTO the run
     # tier sews the run its line-mates sew (not `small_solids_satin`'s one
     # column across it); one moved OFF it only onto satin `_sews_satin` grants.
-    group_consistent_tier: bool = False
+    group_consistent_tier: bool = True
     # The art-outline body test (`art_outline.find_art_outlines`) per line of
     # like candidates within one outline: AHORA's sewn pink field took AH
     # (1.059) and RA (1.023, against `machine.OUTLINE_BODY_RATIO` 1.0) as
@@ -3951,6 +3975,11 @@ class PipelineConfig:
     # dot fill under the loop like AH and RA. A two-piece glyph (the ! and
     # its dot) joins a line its pieces span together. A candidate made a body
     # must be `machine.MIN_FILL_WIDTH_MM` across on average.
+    # HELD OFF (Kent 2026-11-14, "G4 alone looks the best"): beside
+    # `outline_redraw_k` 0.75 the re-fit tips MFab hat's small line (113.5 mm,
+    # Studio hat config) into outline bodies -- thick white borders over the
+    # black letters -- where each flag alone reads clean. Wants a guard so the
+    # re-fit cannot tip the vote.
     group_consistent_outline_body: bool = False
     # A word's THREAD decided once (`lettering_thread.word_thread`): a
     # text-cluster letter on a thread under a quarter of its word takes the
@@ -3964,6 +3993,11 @@ class PipelineConfig:
     # and takes the ladder with them (ON: Caribbean satin like the rest). A
     # customer's own recolour is never moved; the cap still has the last
     # word. Not the (hed)p.e. e: no cluster fires there.
+    # HELD OFF (Kent 2026-11-14, "Hold it, guard first"): on the drone render
+    # (80 mm left_chest) it moved a Pumpkin 1102 shape onto its word's Fox
+    # Fire 1305, whose thread match went warn -> block (scorecard D -> F).
+    # Wants a guard: never move a shape onto a thread that matches its art
+    # worse.
     group_consistent_thread: bool = False
     # ONE ANGLE per group of like shapes (`group_consistency.shared_angles`,
     # read in stage 7). Kent: "feet are differnt colors" (gradient_mascot: one
@@ -3983,7 +4017,7 @@ class PipelineConfig:
     # To a T's mirrored pair from 9 to 15 deg apart. Lettering is out (it has
     # its house angle); the flag's stars are in the lettering house group, so
     # out too. Not on the photo classes. Off, byte-identical.
-    group_consistent_fill_angle: bool = False
+    group_consistent_fill_angle: bool = True
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the
@@ -4138,6 +4172,25 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP pins it False. Tests:
     # `tests/test_small_text_grow_away.py`.
     small_text_reset_grow_away: bool = True
+    # The re-set keeps a lowercase line on ONE baseline (`small_text.
+    # _merge_baseline_classes`, 2026-11-13, #1476; built OFF as
+    # `cfg.extra["small_text_reset_one_baseline"]`). The tagger keeps one line
+    # at one size, so a lowercase line is two clusters (x-height letters and
+    # ascender/descender letters), and the re-set grew each as its own line,
+    # the other its obstacle: Jakarta's tagline sewed as two rows of letters
+    # out of order, Bukit Asam's e-o-n slid 2.53 mm up (Kent: "letters jumped
+    # in elevation, not inline", graded Bad). ON, classes sharing a band merge
+    # into one cluster at the taller class's cap, word spaces read on the
+    # x-height, and a class beside a line already tall enough is left as
+    # drawn. All-caps lines are one height class: Fremont, ProSeal and MFab
+    # small text replayed 0 shapes different. Acts only while the re-set
+    # (`small_text_cap_mm`) is set. Layout (ruling 2026-10-22: judged in the
+    # preview). **ON since 2026-11-14, Kent's flip** ("Flip both ON", with
+    # `text_cluster_solid_guard`), promoted from `cfg.extra` to a field so the
+    # default can be ON. False is the re-set as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_small_text_one_baseline.py`.
+    small_text_reset_one_baseline: bool = True
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
@@ -4290,6 +4343,20 @@ class PipelineConfig:
     # it was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
     # pin it False. Tests: `tests/test_nest_aspect_door.py`.
     text_cluster_nest_door_aspect: bool = True
+    # A row of solid blobs is no word (`textcluster` solid guard, 2026-11-13,
+    # #1476; built OFF as `cfg.extra["text_cluster_solid_guard"]`). The
+    # tagger made a "word" of Jakarta's mark (five squares and a corner
+    # triangle), and the small-text re-set grew three squares x1.52 and
+    # closed their 2.71 mm gaps to 0.59, the satin needle paths touching. ON,
+    # a cluster three quarters of whose members are solid (stroke >= 0.45 of
+    # the longer side) is not tagged: the squares fill, gaps 2.2 / 2.1 mm.
+    # A line of letters beside them tags the same either way.
+    # **ON since 2026-11-14, Kent's flip** ("Flip both ON", with
+    # `small_text_reset_one_baseline`), promoted from `cfg.extra` to a field
+    # so the default can be ON. False is the tagger as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_text_cluster_solid_guard.py`.
+    text_cluster_solid_guard: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.

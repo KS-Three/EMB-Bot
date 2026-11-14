@@ -109,6 +109,9 @@ def _run(fixture: str, width: float, cap: str = "bean",
                        # sew, which moves the silhouette the cap rings
                        sew_enclosed_white=PRE_FLIP["sew_enclosed_white"],
                        subpixel_edges_upscaled=False,
+                       # ...and `outline_redraw_k` (0.75 since 2026-11-14, Kent)
+                       # re-fits the upscaled outline the cap rings
+                       outline_redraw_k=PRE_FLIP["outline_redraw_k"],
                        satin_lettering_split=False,
                        # ...and the Column lane (`lettering_columns`, ON since
                        # Kent's 2026-10-12 flip): it sews becker's MARINE
@@ -344,6 +347,7 @@ def test_dropping_is_off_by_default_and_the_drop_never_executes(monkeypatch):
         plan = digitize(TESTDATA / WHITEBG,
                         PipelineConfig(target_width_mm=CHEAP, edge_cap="bean", border_by_size=False,
                                        bean_only_lines=PRE_FLIP["bean_only_lines"],
+                                       outline_redraw_k=PRE_FLIP["outline_redraw_k"],
                                        **({"edge_cap_over_budget": mode}
                                           if mode != "warn" else {})))[1]
         monkeypatch.undo()
@@ -372,7 +376,8 @@ def test_the_warning_moves_no_stitch(monkeypatch):
         TESTDATA / WHITEBG,
         PipelineConfig(target_width_mm=CHEAP, edge_cap="bean", border_by_size=False,
                        bean_only_lines=PRE_FLIP["bean_only_lines"],
-                       sew_enclosed_white=PRE_FLIP["sew_enclosed_white"]))
+                       sew_enclosed_white=PRE_FLIP["sew_enclosed_white"],
+                       outline_redraw_k=PRE_FLIP["outline_redraw_k"]))
     monkeypatch.undo()
 
     assert _over(forced) is not None, "the forced ceiling did not fire"

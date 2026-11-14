@@ -714,8 +714,8 @@ def _grow_away(near: dict, resets: list[dict], room: Polygon, shifts: list[float
     return box(rx0, ry0, rx1, ry1), [(abs(m), hold + sign * m) for m in ms]
 
 
-# ONE BASELINE (`cfg.extra["small_text_reset_one_baseline"]`, 2026-11-13,
-# built OFF). Kent graded +Jakarta and Bukit Asam Bad on 2026-11-12: "the
+# ONE BASELINE (`cfg.small_text_reset_one_baseline`, 2026-11-13, built OFF
+# as an extra; ON since 2026-11-14, Kent's flip). Kent graded +Jakarta and Bukit Asam Bad on 2026-11-12: "the
 # letters jumped in elevation and are not inline with the rest of the text".
 # The tagger keeps one line at one size (`textcluster.LETTER_HEIGHT_RATIO`
 # 0.8), so a LOWERCASE line comes out as two clusters: its x-height letters
@@ -782,7 +782,7 @@ def _line_key(it: dict) -> dict:
 
 def _merge_baseline_classes(items: list[dict], tall: list[dict],
                             claimed: set[int] | None = None) -> list[dict]:
-    """`cfg.extra["small_text_reset_one_baseline"]`: the height classes of one
+    """`cfg.small_text_reset_one_baseline`: the height classes of one
     line (`_one_line`) re-set as ONE cluster, so every letter is scaled about
     one origin and laid left to right in one pass (`_reset_word`): the
     baseline they share stays one baseline, and the letters keep the art's
@@ -1013,8 +1013,8 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
 
-    `one_baseline` (`cfg.extra["small_text_reset_one_baseline"]`, built OFF
-    2026-11-13; comment at `BASELINE_CLASS_RATIO`): the height classes of a
+    `one_baseline` (`cfg.small_text_reset_one_baseline`, built OFF
+    2026-11-13, ON since 2026-11-14; comment at `BASELINE_CLASS_RATIO`): the height classes of a
     lowercase line -- the tagger's x-height cluster and its ascender cluster
     -- are re-set as ONE cluster on one baseline (`_merge_baseline_classes`),
     a class beside a cluster already tall enough is left as drawn, and the

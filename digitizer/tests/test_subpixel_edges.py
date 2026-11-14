@@ -28,7 +28,7 @@ from digitizer_core import stage4_vectorize as s4
 from digitizer_core.subpixel import ACCEPT_WINDOW_PX, drop_isolated_rejects, subpixel_contour
 from digitizer_core.threads import rgb_to_lab
 
-from .conftest import TESTDATA, held_on_source_line
+from .conftest import PRE_FLIP, TESTDATA, held_on_source_line
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "tools"))
@@ -320,7 +320,10 @@ def test_the_resolution_gate_lifts_only_with_the_flag_on(tmp_path):
     # true 314.2) while the shipped subpixel-ON polygon is unchanged (33,
     # 312.6). This test measures `subpixel_edges`' lift over the old baseline,
     # so it holds the cure OFF.
-    old = dict(flat_page_fringe_soft_ramp=False, flat_ramp_blend_dissolve=False)
+    # ...and `outline_redraw_k` (0.75 since 2026-11-14, Kent) re-fits every upscaled outline (x2 here),
+    # the baseline included.
+    old = dict(flat_page_fringe_soft_ramp=False, flat_ramp_blend_dissolve=False,
+               outline_redraw_k=PRE_FLIP["outline_redraw_k"])
     no_turn, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=0.0, subpixel_edges=False, **old))
     off, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=False, **old))
     on, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=True, **old))
@@ -423,6 +426,10 @@ def _low_res_discs(tmp_path: Path) -> tuple[Path, Path, float]:
 
 
 def _disc_region(art: Path, **cfg_kw):
+    # `outline_redraw_k` (0.75 since 2026-11-14, Kent) re-fits every upscaled outline: its
+    # OFF arm here is no staircase (rms 0.016 mm), so the flag's lift is read
+    # against the engine it was measured on (`PRE_FLIP`).
+    cfg_kw.setdefault("outline_redraw_k", PRE_FLIP["outline_redraw_k"])
     cfg = PipelineConfig(target_width_mm=50.0, **cfg_kw)
     gen = build_generation(str(art), cfg)
     result = finish_generation(gen.fork(), cfg)

@@ -1,6 +1,6 @@
 ---
 name: reset-one-baseline-2026-11-13
-description: "2026-11-13 — Kent's 'letters jumped out of line' (+Jakarta, Bukit Asam, graded Bad) = the small-text re-set grew a LOWERCASE line's two height classes as two lines; `small_text_reset_one_baseline` + `text_cluster_solid_guard` built OFF; ring/satin faults named, not fixed"
+description: "2026-11-13 — Kent's 'letters jumped out of line' (+Jakarta, Bukit Asam, graded Bad) = the small-text re-set grew a LOWERCASE line's two height classes as two lines; `small_text_reset_one_baseline` + `text_cluster_solid_guard` built OFF, ON since 11-14 (Kent \"Flip both ON\"); ring/satin faults named, not fixed"
 metadata:
   type: project
 ---
@@ -38,6 +38,10 @@ paths touched (0.000 mm). **Fix** `cfg.extra["text_cluster_solid_guard"]`:
 a cluster 3/4 of whose members are solid (stroke >= 0.45 of the longer side)
 is not tagged. Per-member was wrong: a small o with a dropped counter reads
 0.65; all-members was wrong: the triangle reads 0.33. ON: fill, gaps 2.2/2.1.
+
+**Ruled Kent 2026-11-14: both ON** ("Flip both ON"), promoted from `cfg.extra` to
+PipelineConfig fields; PRE_FLIP and `engine_2026_10_27.json` pin them False.
+Small corpus: a lowercase line or a mark the tagger reads as a word.
 
 **No regression:** Fremont hat/patch, ProSeal hat/beanie, MFab hat/lc
 replayed both ways from one stages-0-4 pass: 0 shapes differ (all-caps

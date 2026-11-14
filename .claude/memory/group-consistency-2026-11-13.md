@@ -1,6 +1,6 @@
 ---
 name: group-consistency-2026-11-13
-description: Kent's "like things sewn unlike" pins traced on main — 2 of 11 tier straddles (AHORA outline body, K-Line run floor), 2 thread, 2 fill angle, 2 fixed; 4 OFF flags; outline body decided by ink; render tone follows row order
+description: Kent's "like things sewn unlike" pins traced on main — 2 of 11 tier straddles (AHORA outline body, K-Line run floor), 2 thread, 2 fill angle, 2 fixed; 4 flags built OFF; tier + fill angle ON since 11-14, outline body + thread held OFF for guards (Kent); outline body decided by ink; render tone follows row order
 metadata:
   type: project
 ---
@@ -19,7 +19,15 @@ by stage-7 rung trace (`docs/group-consistency-2026-11-13.md`):
 - **Fill angle per shape (2):** emoji legs 11/180 deg, mascot feet 39/134.
 - **Already fixed (2):** devanagari, kanji by `enclosed_white_skip_transparent`.
 
-**Built OFF:** `group_consistent_tier` (run floor per line; a moved letter
+**Built OFF.** Kent 2026-11-14 "Flip all four ON", then on the flip PR's sheets:
+`_tier` and `_fill_angle` ON (PRE_FLIP pins them False). **Held OFF, guard
+first:** `_outline_body` ("G4 alone looks the best": beside `outline_redraw_k`
+0.75 the re-fit tips MFab hat's small line, 113.5 mm Studio hat config, into
+outline bodies, white borders over black letters; each alone clean) and
+`_thread` ("Hold it, guard first": the drone render's Pumpkin shape moved to
+Fox Fire, thread match warn -> block, scorecard D -> F). Guards queued:
+thread never to a worse-matching spool; redraw cannot tip the body vote.
+Flags: `group_consistent_tier` (run floor per line; a moved letter
 skips `small_solids_satin`, which sewed W/K as one column), `group_consistent_
 outline_body` (outline body test per line), `group_consistent_thread` (lone
 cluster letter < 1/4 of word, <= 25 dE00, takes the word's thread, drops a

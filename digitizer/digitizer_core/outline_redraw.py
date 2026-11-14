@@ -3,9 +3,10 @@ circular arcs, moving nothing further than a fraction of the SOURCE pixel --
 the pen-tool redraw a digitizer does by hand, for every shape, not only
 lettering.
 
-Built 2026-11-13 behind `PipelineConfig.outline_redraw_k` (default None, OFF:
+Built 2026-11-13 behind `PipelineConfig.outline_redraw_k` (built None, OFF:
 the module is imported inside the flag's branch, so off nothing here runs and
-the output is byte-identical). Diagnosis and proof:
+the output is byte-identical); 0.75 since 2026-11-14 by Kent's flip ("Set
+0.75"). A source stage 1 did not upscale still comes through untouched. Diagnosis and proof:
 `docs/jag-source-2026-11-13.md`.
 
 ## Why

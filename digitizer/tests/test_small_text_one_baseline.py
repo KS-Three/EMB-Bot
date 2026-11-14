@@ -1,4 +1,5 @@
-"""`cfg.extra["small_text_reset_one_baseline"]` (2026-11-13, built OFF): the
+"""`cfg.small_text_reset_one_baseline` (built OFF 2026-11-13 as an extra, ON
+since 2026-11-14 by Kent's flip, "Flip both ON"): the
 height classes of a lowercase line are re-set as ONE line, on one baseline.
 
 Kent graded +Jakarta and Bukit Asam Bad on 2026-11-12 ("the letters jumped in
