@@ -4000,6 +4000,10 @@ def sequence(
                     # `cfg.lettering_columns_corner_fold` (default OFF, 2026-10-23):
                     # one column round an L corner; off, today's call
                     **({"corner_fold": True} if cfg.lettering_columns_corner_fold else {}),
+                    # `cfg.lettering_columns_corner_fold_apex_side` (built OFF 2026-11-14):
+                    # a pointed slot's tip folds too; off, today's call
+                    **({"corner_fold_apex_side": True}
+                       if cfg.lettering_columns_corner_fold_apex_side else {}),
                     # `cfg.lettering_columns_inside_stagger` (default OFF, 2026-10-23):
                     # the pro's inside at a pivot; off, today's call
                     **({"inside_stagger": True} if cfg.lettering_columns_inside_stagger else {}),

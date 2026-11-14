@@ -67,6 +67,7 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("outline_cut", "_SMALL_BOLD"),
     ("outline_cut", "_SMALL_BOLD_SIMPLIFY"),
     ("outline_cut", "_CORNER_FOLD"),
+    ("outline_cut", "_FOLD_APEX_SIDE"),
     ("stage6_border", "_LOOP_MITRE"),
     ("stage6_border", "_LOOP_CHAIN"),
     ("column_lean", "_ITALIC"),

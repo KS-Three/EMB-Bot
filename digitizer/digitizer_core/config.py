@@ -3725,6 +3725,30 @@ class PipelineConfig:
     # so ON-eligible from renders. False is the pre-flag cut, byte for byte.
     # Tests: `tests/test_column_corner_fold.py`.
     lettering_columns_corner_fold: bool = True
+    # Under `lettering_columns_corner_fold`, a corner's fold counts only the
+    # column pieces on the APEX side of the corner (2026-11-14, built OFF;
+    # `outline_cut._FOLD_APEX_SIDE`). Kent on #1490's Becker pin #14 sheet:
+    # "notice how the pro makes a nice corner with the thread andc continues
+    # the stitch to the right" -- the pro's E bottom-left is one column whose
+    # crosses fan about the inside corner and carry on into the arm; ours
+    # butted the stem against the arm. The fold existed and was refused:
+    # Becker's traced E (1.42 px/mm art) has slots that narrow to a point,
+    # so the stem, the arm and the arm across the slot all touch each slot's
+    # tip, and the fold takes a corner only where two columns meet. The arm
+    # across the slot lies on the far side of the tip from the apex the fold
+    # sweeps. Read on the pro's files (`docs/corner-turn-2026-11-14.md`):
+    # MFab's E is one column fanned round both its corners; Becker's E fans
+    # its bottom-left and caps its top arm over the stem; his acute corners
+    # (N, A) and T junctions are capped or butted, as the fold leaves them.
+    # ON: a corner counts only the pieces on its apex side, so the arm
+    # across the slot no longer refuses the fold. A slot's tip on the outer
+    # outline is a corner up to `outline_cut.FOLD_APEX_SIDE_TURN_MAX_DEG`
+    # (130; hat large's tips turn 120-121); a counter's corner keeps 110,
+    # since ProSeal's A counter top (125) fanned the apex the pro caps. Each
+    # apex in reach is tried, nearest first, until `_fold_pair` takes one.
+    # Layout, judged in the preview; False is the cut as it is, byte for
+    # byte. Tests: `tests/test_column_corner_fold_apex_side.py`.
+    lettering_columns_corner_fold_apex_side: bool = False
     # Under `lettering_columns`, the INSIDE of every pivot -- an L fold's
     # corner (`lettering_columns_corner_fold`), an S's curl, a bowl -- is
     # sewn the way the professional's files sew it (2026-10-23, built OFF;
