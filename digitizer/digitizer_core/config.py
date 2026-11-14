@@ -4102,6 +4102,25 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP pins it False. Tests:
     # `tests/test_small_text_grow_away.py`.
     small_text_reset_grow_away: bool = True
+    # The re-set keeps a lowercase line on ONE baseline (`small_text.
+    # _merge_baseline_classes`, 2026-11-13, #1476; built OFF as
+    # `cfg.extra["small_text_reset_one_baseline"]`). The tagger keeps one line
+    # at one size, so a lowercase line is two clusters (x-height letters and
+    # ascender/descender letters), and the re-set grew each as its own line,
+    # the other its obstacle: Jakarta's tagline sewed as two rows of letters
+    # out of order, Bukit Asam's e-o-n slid 2.53 mm up (Kent: "letters jumped
+    # in elevation, not inline", graded Bad). ON, classes sharing a band merge
+    # into one cluster at the taller class's cap, word spaces read on the
+    # x-height, and a class beside a line already tall enough is left as
+    # drawn. All-caps lines are one height class: Fremont, ProSeal and MFab
+    # small text replayed 0 shapes different. Acts only while the re-set
+    # (`small_text_cap_mm`) is set. Layout (ruling 2026-10-22: judged in the
+    # preview). **ON since 2026-11-14, Kent's flip** ("Flip both ON", with
+    # `text_cluster_solid_guard`), promoted from `cfg.extra` to a field so the
+    # default can be ON. False is the re-set as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_small_text_one_baseline.py`.
+    small_text_reset_one_baseline: bool = True
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
@@ -4254,6 +4273,20 @@ class PipelineConfig:
     # it was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
     # pin it False. Tests: `tests/test_nest_aspect_door.py`.
     text_cluster_nest_door_aspect: bool = True
+    # A row of solid blobs is no word (`textcluster` solid guard, 2026-11-13,
+    # #1476; built OFF as `cfg.extra["text_cluster_solid_guard"]`). The
+    # tagger made a "word" of Jakarta's mark (five squares and a corner
+    # triangle), and the small-text re-set grew three squares x1.52 and
+    # closed their 2.71 mm gaps to 0.59, the satin needle paths touching. ON,
+    # a cluster three quarters of whose members are solid (stroke >= 0.45 of
+    # the longer side) is not tagged: the squares fill, gaps 2.2 / 2.1 mm.
+    # A line of letters beside them tags the same either way.
+    # **ON since 2026-11-14, Kent's flip** ("Flip both ON", with
+    # `small_text_reset_one_baseline`), promoted from `cfg.extra` to a field
+    # so the default can be ON. False is the tagger as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_text_cluster_solid_guard.py`.
+    text_cluster_solid_guard: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.

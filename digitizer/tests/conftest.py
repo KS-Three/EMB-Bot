@@ -989,6 +989,12 @@ PRE_FLIP.update(WHITE_2026_11_11_OFF)
 # `inshape_piece_lift` ("Flip ON"): `tests/test_inshape_piece_lift.py`.
 PIECE_LIFT_2026_11_14_OFF = {"inshape_piece_lift": False}
 PRE_FLIP.update(PIECE_LIFT_2026_11_14_OFF)
+# `small_text_reset_one_baseline` + `text_cluster_solid_guard` ("Flip both
+# ON"), fields since (`cfg.extra` was their only door, unset = off):
+# `tests/test_small_text_one_baseline.py`, `tests/test_text_cluster_solid_guard.py`.
+BASELINE_2026_11_14_OFF = {"small_text_reset_one_baseline": False,
+                           "text_cluster_solid_guard": False}
+PRE_FLIP.update(BASELINE_2026_11_14_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

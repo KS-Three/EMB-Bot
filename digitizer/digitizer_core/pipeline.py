@@ -1126,10 +1126,10 @@ def build_generation(
                          **({"part_touching": True} if cfg.text_cluster_part_touching else {}),
                          **({"nest_guard": True} if cfg.text_cluster_nest_guard else {}),
                          **({"nest_guard_rotated": True} if cfg.text_cluster_nest_guard_rotated else {}),
-                         # a row of solid blobs is no word (2026-11-13, built
-                         # OFF): absent, the call as it was
+                         # a row of solid blobs is no word (2026-11-13, ON
+                         # since 2026-11-14, Kent's flip): False, the call as it was
                          **({"solid_guard": True}
-                            if cfg.extra.get("text_cluster_solid_guard") else {}),
+                            if cfg.text_cluster_solid_guard else {}),
                          # a letter turned on a ring joins its line (2026-11-07,
                          # ON since 2026-11-08, Kent's flip)
                          **({"nest_door_aspect": True}
@@ -1175,9 +1175,10 @@ def build_generation(
                            # False, the call as it was word for word
                            **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}),
                            # the height classes of a lowercase line re-set on one
-                           # baseline (2026-11-13, built OFF): absent, the call as it was
+                           # baseline (2026-11-13, ON since 2026-11-14, Kent's flip):
+                           # False, the call as it was
                            **({"one_baseline": True}
-                              if cfg.extra.get("small_text_reset_one_baseline") else {}),
+                              if cfg.small_text_reset_one_baseline else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))
