@@ -83,7 +83,10 @@ jobs:
       # localStorage, keyed by origin, so the app must come back on 8721:
       # restart keeps port, origin and a design a real browser saved; a second
       # launch reuses the first; a foreign listener on the port is refused,
-      # not dodged.
+      # not dodged. Also asserted on the same exe: it is a GUI-subsystem exe (a
+      # double-click opens no console window), and its log
+      # (emb-bot.log) has a "started" line after launch, a "reused the running
+      # instance" line after the second launch, and a "stopped" line.
       - name: One origin across restarts (the shipped exe, real browser)
         working-directory: digitizer
         run: python packaging/one_origin_smoke.py --build-report "$env:RUNNER_TEMP\freeze\build_report.json" --work "$env:RUNNER_TEMP\freeze\origin" --summary "$env:GITHUB_STEP_SUMMARY"
