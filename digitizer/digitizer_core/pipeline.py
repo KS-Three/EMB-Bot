@@ -62,7 +62,7 @@ from .stage3_segment import (
     merge_duplicate_cone_layers,
     resolve_small_regions,
 )
-from .stage4_vectorize import (enforce_color_cap, garment_sews_enclosed,
+from .stage4_vectorize import (art_thread_errors, enforce_color_cap, garment_sews_enclosed,
                                rehome_resnapped_regions, revalidate_threads,
                                tag_enclosed_background, vectorize)
 from .designangle import set_design_angle
@@ -1494,7 +1494,10 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
 
     # Lettering's thread (`lettering_thread`, both OFF: nothing moves), before
     # the cap below so the cap keeps the last word on the cones.
-    apply_lettering_thread(regions, chart_for(cfg), cfg, shape_overrides)
+    # The word-thread rule's guard reads each candidate's own artwork (2026-11-14).
+    apply_lettering_thread(regions, chart_for(cfg), cfg, shape_overrides,
+                           art_errors=(art_thread_errors(p, chart_for(cfg))
+                                       if cfg.group_consistent_thread and p is not None else None))
 
     # The colour cap's second pass (`cfg.color_cap_sewn`, 2026-10-29): the
     # stage-4 pass ranked the REGIONS before the review edits, the sew-white
