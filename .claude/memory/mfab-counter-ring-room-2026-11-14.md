@@ -31,6 +31,11 @@ fix it, built OFF.
   prediction and border block). Per-shape intent still beats it.
 - **Result on MFab 104.9:** only the counter changes. The loop is gone and
   the fill stays; md5 equals the hand-set `border: off` trial.
+- **Elsewhere ON = OFF md5:** MFab hat at 113.5, MFab LC, Becker hat large
+  and Bridge hat (flat lane: "significant" never runs there), and the kit
+  photos bw_street, architecture and landscape_lake.
+- **night_neon moves on one shape:** a 19.9 mm2 grey shape. The same loop
+  sat in the middle of its fill, and ON leaves the plain fill.
 
 **Tried and rejected:** the satin tier on the counter (`tier: satin`)
 sews a chunky block bulging past the triangle, worse than the fill. We
