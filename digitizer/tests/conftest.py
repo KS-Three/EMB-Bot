@@ -1002,6 +1002,9 @@ PRE_FLIP.update(GROUP_2026_11_14_OFF)
 # `outline_redraw_k` ("Set 0.75"; None before): `tests/test_outline_redraw.py`.
 REDRAW_2026_11_14_OFF = {"outline_redraw_k": None}
 PRE_FLIP.update(REDRAW_2026_11_14_OFF)
+# `flat_blend_band_any_scale` ("Flip ON"): `tests/test_flat_blend_band.py`.
+BLEND_BAND_2026_11_14_OFF = {"flat_blend_band_any_scale": False}
+PRE_FLIP.update(BLEND_BAND_2026_11_14_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

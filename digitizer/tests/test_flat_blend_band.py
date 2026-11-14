@@ -1,5 +1,6 @@
 """A blend rim between two inks is never a thread of its own
-(`cfg.flat_blend_band_any_scale`, built OFF 2026-11-14).
+(`cfg.flat_blend_band_any_scale`, built OFF 2026-11-14, ON since that day by
+Kent's flip, "Flip ON"; `_quant` below is the OFF arm unless a test sets it).
 
 `flat_ramp_blend_dissolve` (ON) already folds a cluster that is edge only at
 a ramp's depth and lies on the chord between two kept colours -- on an
@@ -51,6 +52,7 @@ def _letters_on_green(rim=True):
 
 
 def _quant(img, **kw):
+    kw.setdefault("flat_blend_band_any_scale", False)     # OFF arm unless set (pre-flip engine)
     cfg = PipelineConfig(max_colors=6, forced_class="flat", target_width_mm=60.0, **kw)
     p = prep(img, cfg, design_class="flat")
     return p, q.quantize(p, cfg), cfg
@@ -154,7 +156,8 @@ def test_an_enlarged_raster_is_untouched_on():
     cv2.circle(big, (60, 60), 50, GREEN, -1)
     cv2.rectangle(big, (40, 30), (50, 90), WHITE, -1)
     big = big[:, :, ::-1].copy()
-    cfg_a = PipelineConfig(max_colors=6, forced_class="flat", target_width_mm=60.0)
+    cfg_a = PipelineConfig(max_colors=6, forced_class="flat", target_width_mm=60.0,
+                           flat_blend_band_any_scale=False)
     cfg_b = PipelineConfig(max_colors=6, forced_class="flat", target_width_mm=60.0,
                            flat_blend_band_any_scale=True)
     pa, pb = prep(big, cfg_a, design_class="flat"), prep(big, cfg_b, design_class="flat")
@@ -172,6 +175,7 @@ def test_rgb_chord_reads_a_blend_the_lab_chord_misses():
     assert q._rgb_chord_t(7, None, 3, {7: np.array([255.0, 0.0, 0.0]), 3: teal}, page, 6.0) is None
 
 
-def test_off_by_default():
-    assert PipelineConfig().flat_blend_band_any_scale is False
+def test_on_by_default():
+    # Kent's flip 2026-11-14 ("Flip ON"); PRE_FLIP keeps the OFF arm
+    assert PipelineConfig().flat_blend_band_any_scale is True
     assert q.BLEND_BAND_PX == 2

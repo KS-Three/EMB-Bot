@@ -1460,8 +1460,14 @@ class PipelineConfig:
     # enlarged raster is unchanged. Different from the bevel/shadow fold in
     # `enforce_color_cap` (`regular-structure` lane): that folds a ONE-sided
     # band by size after the cap; this folds a TWO-sided blend at stage 2,
-    # before any thread exists. Off, byte-identical.
-    flat_blend_band_any_scale: bool = False
+    # before any thread exists. Off, byte-identical. **ON since 2026-11-14,
+    # Kent's flip** ("Flip ON", from the OFF | ON sheets beside the art):
+    # silhouette logo 6 -> 4 threads, its 12 stray-thread pins clear, at the
+    # cost Kent accepted of its green field's fill turning 90 degrees (a new
+    # region shape); ProSeal's bar one teal satin. False is stage 2 as it
+    # was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin
+    # it False. Tests: `tests/test_flat_blend_band.py`.
+    flat_blend_band_any_scale: bool = True
     # Also under `flat_page_fringe_exclude`: the blend between a THIN DARK
     # OUTLINE and the fill beside it (`stage2_quantize.outline_inner_blend`) is
     # fringe too. An outline is the darkest label when half of its pixels sit
