@@ -73,7 +73,7 @@
   import { proposeCrop } from "../lib/cropProposal.js";
   import { fitTargetWidthMm } from "../lib/placement.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
-  import { isElementStale, pendingEdits, canRedigitize, rotatedWidth, nativeWidthOf, withTargetWidth } from "../lib/staleness.js";
+  import { isElementStale, isUndigitizedArt, pendingEdits, canRedigitize, rotatedWidth, nativeWidthOf, withTargetWidth } from "../lib/staleness.js";
   import { createRecounter, recountText } from "../lib/recount.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
@@ -897,7 +897,11 @@
   // Stale AND runnable is exactly when Download is locked (Kent 2026-10-25,
   // "block until re-digitized"): this button is the one way out, so it is
   // lit — no words, the no-warnings ruling of 2026-10-02.
-  $: lit = stale && canRedigitize(element, health);
+  // Art uploaded but never digitized locks Download too (lib/staleness.js
+  // isUndigitizedArt, Kent 2026-11-13), so it lights the button the same way:
+  // not `stale` (there are no stitches to be behind, the button stays solid),
+  // only lit, like TextStep's outlineLit for text never digitized.
+  $: lit = (stale || isUndigitizedArt(element)) && canRedigitize(element, health);
 
   // The crop box's drag floor, sized to the raster it shows. The service
   // refuses a crop under `digitizer_core/crop.py` MIN_CROP_PX (16) on either
