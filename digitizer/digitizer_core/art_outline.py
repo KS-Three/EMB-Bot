@@ -111,15 +111,25 @@ def _line_art(holder, bodies) -> bool:
 
 
 def find_art_outlines(regions, cfg=None, *,
-                      line_art_guard: bool | None = None) -> dict[str, list[tuple[str, Polygon]]]:
+                      line_art_guard: bool | None = None,
+                      group_decide=None) -> dict[str, list[tuple[str, Polygon]]]:
     """-> {outline shape_id: [(body shape_id, hole polygon), ...]} for every
     region whose hole holds a body under the rule above, bodies in input
     order. A body has at most one outline (the first holder that reads).
     `line_art_guard` (None: `cfg.border_from_outline_line_art_guard`) drops
-    an outline that reads as line art, and frees its bodies."""
+    an outline that reads as line art, and frees its bodies.
+
+    `group_decide` (None: `group_consistency.outline_body_decider` under
+    `cfg.group_consistent_outline_body`, else the per-body test) takes the holder and
+    its candidates, (body, hole, band, stroke) in hole then input order, and
+    returns the (body, hole) pairs it keeps. The per-body test keeps those
+    with stroke >= `machine.OUTLINE_BODY_RATIO` x band, exactly as before."""
     regions = list(regions)
     if line_art_guard is None:
         line_art_guard = bool(getattr(cfg, "border_from_outline_line_art_guard", False))
+    if group_decide is None and getattr(cfg, "group_consistent_outline_body", False):
+        from .group_consistency import outline_body_decider
+        group_decide = outline_body_decider(machine.MIN_FILL_WIDTH_MM)
     out: dict[str, list[tuple[str, Polygon]]] = {}
     taken: set[str] = set()
     for o in regions:
@@ -146,7 +156,13 @@ def find_art_outlines(regions, cfg=None, *,
             if bx0 < ox0 or by0 < oy0 or bx1 > ox1 or by1 > oy1:
                 continue
             inside.append(b)
-        found = []
+        # Every candidate first, measured once: a body's band and stroke do
+        # not depend on which of the holder's holes holds it, so a body the
+        # test refuses in one hole is refused in any, and the first hole
+        # that holds it is the one it is recorded in -- as the one-pass loop
+        # this replaced did.
+        cands = []
+        cand_ids: set[str] = set()
         for hole in holes:
             ring = hole.exterior.buffer(HOLD_PAD_MM)
             pad = hole.buffer(HOLD_PAD_MM)
@@ -161,13 +177,17 @@ def find_art_outlines(regions, cfg=None, *,
             if sum(ext.area for _b, ext in held) < FILL_FRAC * hole.area:
                 continue
             for b, _ext in held:
-                if b.shape_id in taken or _counter(b, o, cfg):
+                if b.shape_id in taken or b.shape_id in cand_ids or _counter(b, o, cfg):
                     continue
                 band, stroke = outline_measures(o, b, hole)
-                if stroke < machine.OUTLINE_BODY_RATIO * band:
-                    continue
-                found.append((b, hole))
-                taken.add(b.shape_id)
+                cands.append((b, hole, band, stroke))
+                cand_ids.add(b.shape_id)
+        if group_decide is None:
+            found = [(b, hole) for b, hole, band, stroke in cands
+                     if stroke >= machine.OUTLINE_BODY_RATIO * band]
+        else:
+            found = list(group_decide(o, cands))
+        taken.update(b.shape_id for b, _hole in found)
         if found and line_art_guard and _line_art(o, found):
             taken.difference_update(b.shape_id for b, _hole in found)
             continue
