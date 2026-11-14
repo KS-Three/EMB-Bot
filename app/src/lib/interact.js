@@ -72,6 +72,54 @@ export function dragResize(startWidthMm, startHeightMm, handle, dxMm, dyMm, minW
   return newW;
 }
 
+// The request a resize starts from, single element or group member: the
+// element's sizeMm, or for an auto-fit (null) one the request auto-fit made:
+// lettering's fit width (`design.fitMm.w`), else the sewn width (a stitch
+// file's own). Seeding an auto-fit LETTERING member with its sewn width wrote
+// that width as the request on a bare touch of the group corner: upright
+// 96.2 grew to 97.2 over five touches, and at 45 degrees 72.8 shrank to 58.0
+// (review follow-up, 2026-11-13).
+export function resizeStartTargetMm(el, design, sewnWmm) {
+  if (el && el.sizeMm != null) return el.sizeMm;
+  const fitW = el && el.type === "text" && design && design.fitMm && design.fitMm.w;
+  return fitW > 0 ? fitW : sewnWmm;
+}
+
+// The corner handle sits on the SEWN box, so dragResize measures the pointer
+// in sewn mm; what the field writes is `sizeMm`, the REQUESTED width. The
+// two differ by pull compensation (+0.2 mm upright) and, on turned
+// lettering, by the gap between the engine's rotated-rect fit and the
+// letters (-2.5 mm on 120 mm at 45 degrees), and the field used to write the
+// sewn number as the request: one touch with 1 px of jitter took that
+// lettering from 120 to 117.5, and five to 108.1 (review repro,
+// 2026-11-13). The request moves with the sewn width, so a zero-distance
+// resize is the identity and a drag changes the sewn width by what the
+// handle moved. The snap path converts its matched sewn width through the
+// same line, so the two paths agree. Without a sewn width or a request there
+// is nothing to map through, and the sewn width is the answer.
+//
+// Two lines, each exact where the other is not (measured 2026-11-13, HELLO
+// WORLD, review follow-up): `additive` (request + sewn change) for satin
+// lettering on a quarter turn, where the sewn box is the fit plus a FIXED
+// pull-comp margin (120 -> snap 60, 61, 80, 30 and 60 -> 120 all land
+// exactly, the ratio missed by 0.1-0.2 mm); in proportion everywhere else,
+// where the gap scales with the size (45 and 135 degrees: snap 100 and 140
+// exact by ratio, 0.3-0.6 mm off additively) or there is no margin at all (a
+// stitch file scales exactly). resizeIsAdditive says which.
+export function resizeTargetMm(startTargetMm, startSewnWmm, newSewnWmm, additive = false) {
+  if (!(startSewnWmm > 0) || !(startTargetMm > 0)) return newSewnWmm;
+  if (additive) return startTargetMm + (newSewnWmm - startSewnWmm);
+  return (startTargetMm * newSewnWmm) / startSewnWmm;
+}
+
+// Satin lettering (not an outline font, whose result is a stitch file) on a
+// multiple of 90 degrees. `outline` is isOutlineKey(el.fontKey), passed in so
+// this module stays free of the service client.
+export function resizeIsAdditive(el, outline = false) {
+  if (!el || el.type !== "text" || outline) return false;
+  return ((((el.rotationDeg || 0) % 90) + 90) % 90) === 0;
+}
+
 // Clamps an absolute design offset (from hoop center, mm, +y UP) so the
 // design's mm bbox stays fully inside the hoop. If the design is larger
 // than the hoop on an axis, the clamp range collapses to 0 (centered) on
@@ -286,12 +334,88 @@ export function groupResizePatches(members, factor, groupCxMm, groupCyMm, minWmm
   const patches = {};
   for (const m of members || []) {
     patches[m.id] = {
-      sizeMm: m.targetMm * f,
+      // through the single resize's own mapping (resizeTargetMm), 2026-11-13
+      sizeMm: resizeTargetMm(m.targetMm, m.widthMm, m.widthMm * f),
       offsetXMm: groupCxMm + ((m.offsetXMm || 0) - groupCxMm) * f,
       offsetYMm: groupCyMm + ((m.offsetYMm || 0) - groupCyMm) * f,
     };
   }
   return { patches, factor: f };
+}
+
+// The field's group resize, kept inside the placement box (Kent's approval
+// 2026-11-13). Capping the factor to hoop/group only bounded the group's
+// SIZE: an off-centre group scaled about its own centre crossed the box
+// edge, and the field's per-element reclamp then pushed each member in on
+// its own, breaking the layout (two letters went from an 8.4 mm gap to a
+// 9.6 mm overlap). So after the size cap and groupResizePatches, every
+// member shifts by ONE shared amount, the least that brings the scaled union
+// box back inside. That is what a single element's resize does at the box
+// edge: it grows about its centre and reclampAll shifts it in, so a group
+// still grows to the full box rather than stopping early at the edge.
+// `groupBBox` is the union at press. Returns groupResizePatches' answer plus
+// the shift and the scaled, shifted union `bboxMm`.
+export function groupResizeInBox(members, factor, groupBBox, hoopWmm, hoopHmm, minWmm) {
+  const gW = groupBBox.x1 - groupBBox.x0;
+  const gH = groupBBox.y1 - groupBBox.y0;
+  const gcx = (groupBBox.x0 + groupBBox.x1) / 2;
+  const gcy = (groupBBox.y0 + groupBBox.y1) / 2;
+  // The cap and the shift are also measured in reclampAll's OWN model (review
+  // follow-up, 2026-11-13): reclamp keeps each member inside as a box CENTRED
+  // ON ITS OFFSET, offset +/- its size / 2, and turned lettering's stitch box
+  // is not centred on its offset ("HELLO" at 45 degrees sits ~0.75 mm off
+  // it). Measured from the true union alone, the shift left one member past
+  // reclamp's line and reclamp then moved it on its own. With every member's
+  // height known, `centred` is the union of those boxes at press; it scales
+  // about the group centre exactly as the members do, so capping the factor
+  // to it and shifting it inside make the two agree: reclamp moves nothing.
+  // A turned member's stitches may then sit up to that offset past the box
+  // edge, which is what reclamp already allows a single turned element.
+  // `slack`: the regenerated sizes are a hair off k x size (pull comp does not
+  // scale, the stitch box rounds to 0.1 mm), measured 0.03 mm past reclamp's
+  // 0.01 mm tolerance at the box edge, so this model keeps 0.1 mm clear.
+  const slack = 0.1;
+  const centred =(members || []).length && members.every((m) => m.heightMm > 0)
+    ? unionBBox(members.map((m) => ({
+      x0: (m.offsetXMm || 0) - m.widthMm / 2, x1: (m.offsetXMm || 0) + m.widthMm / 2,
+      y0: (m.offsetYMm || 0) - m.heightMm / 2, y1: (m.offsetYMm || 0) + m.heightMm / 2,
+    })))
+    : null;
+  const capOf = (b, inset = 0) => {
+    const w = b.x1 - b.x0, h = b.y1 - b.y0;
+    return Math.min(hoopWmm && w > 0 ? (hoopWmm - 2 * inset) / w : Infinity, hoopHmm && h > 0 ? (hoopHmm - 2 * inset) / h : Infinity);
+  };
+  let f = factor;
+  const fMax = Math.min(capOf(groupBBox), centred ? capOf(centred, slack) : Infinity);
+  if (f > fMax) f = fMax;
+  const r = groupResizePatches(members, f, gcx, gcy, minWmm);
+  const k = r.factor;
+  const about = (b) => ({
+    x0: gcx + (b.x0 - gcx) * k, x1: gcx + (b.x1 - gcx) * k,
+    y0: gcy + (b.y0 - gcy) * k, y1: gcy + (b.y1 - gcy) * k,
+  });
+  const scaled = about(groupBBox);
+  const clampBox = centred ? about(centred) : scaled;
+  // The shift that brings `clampBox` inside. At the cap the box fits exactly,
+  // and a float hair can put the low bound over the high one, where
+  // clampGroupDelta (a MOVE: no shift for a group bigger than the box) would
+  // answer 0; here the box is never bigger, so that hair means "centre it".
+  const inset = centred ? slack : 0;
+  const shift1 = (lo, hi) => (lo > hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, 0))) + 0;
+  const s = hoopWmm && hoopHmm
+    ? {
+      dxMm: shift1(-(hoopWmm / 2 - inset) - clampBox.x0, hoopWmm / 2 - inset - clampBox.x1),
+      dyMm: shift1(-(hoopHmm / 2 - inset) - clampBox.y0, hoopHmm / 2 - inset - clampBox.y1),
+    }
+    : { dxMm: 0, dyMm: 0 };
+  for (const id in r.patches) {
+    r.patches[id].offsetXMm += s.dxMm;
+    r.patches[id].offsetYMm += s.dyMm;
+  }
+  return {
+    patches: r.patches, factor: k, dxMm: s.dxMm, dyMm: s.dyMm,
+    bboxMm: { x0: scaled.x0 + s.dxMm, x1: scaled.x1 + s.dxMm, y0: scaled.y0 + s.dyMm, y1: scaled.y1 + s.dyMm },
+  };
 }
 
 // ---- rotate handle ----------------------------------------------------------

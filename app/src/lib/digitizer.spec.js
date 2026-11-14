@@ -2358,6 +2358,36 @@ test("remapBlockColors: two blocks collapsing onto one colour keep the EARLIER c
   expect(remapBlockColors(oldPalette, { 1: B, 0: A }, newPalette)).toEqual({ 0: A });
 });
 
+test("remapBlockColors: a spool pick survives a re-run on EVERY block that still sews that thread", async () => {
+  // The bug (review 2026-11-13): the remap matched each colour to its FIRST
+  // new index only. A logo sewing red, white, red; navy picked for the red
+  // spool (DigitizePanel.pickSpool writes {0, 2}); any re-run, even one that
+  // returns the identical palette, left {0: navy} -- block 2 rendered and
+  // EXPORTED red while the spool row still showed navy. "A pick recolours
+  // every block of that spool" (docs/scope/3-studio-app-wizard.md).
+  const { remapBlockColors, digitizedBlockColors } = await import("./digitizer.js");
+  const red = { r: 200, g: 20, b: 20, name: "1147 Red" };
+  const white = { r: 255, g: 255, b: 255, name: "1001 White" };
+  const NAVY = [20, 30, 90];
+  const colors = [red, white, red];
+  const after = remapBlockColors(colors, { 0: NAVY, 2: NAVY }, colors);
+  expect(after).toEqual({ 0: NAVY, 2: NAVY });
+  expect(digitizedBlockColors({ result: { colors }, blockColors: after })).toEqual({ 0: NAVY, 1: [255, 255, 255], 2: NAVY });
+
+  // The spool moves and gains a block: every red block of the new palette is navy.
+  expect(remapBlockColors(colors, { 0: NAVY, 2: NAVY }, [white, red, white, red, red])).toEqual({ 1: NAVY, 3: NAVY, 4: NAVY });
+  // ... or loses one.
+  expect(remapBlockColors(colors, { 0: NAVY, 2: NAVY }, [red, white])).toEqual({ 0: NAVY });
+
+  // Two blocks of one thread carrying DIFFERENT picks (a design saved when the
+  // list was per block, before 2026-09-30): an identical re-run is a no-op,
+  // block for block, and a block the new palette adds takes the earliest pick.
+  const A = [1, 1, 1], B = [2, 2, 2];
+  expect(remapBlockColors(colors, { 0: A, 2: B }, colors)).toEqual({ 0: A, 2: B });
+  expect(remapBlockColors(colors, { 2: B }, colors)).toEqual({ 2: B });
+  expect(remapBlockColors(colors, { 0: A, 2: B }, [red, red, red])).toEqual({ 0: A, 1: B, 2: A });
+});
+
 test("reviewFromJob's rgb fallback indexes the machine block list by sew_block, never the per-layer palette", async () => {
   stubStorage({});
   const { reviewFromJob } = await import("./digitizer.js");
@@ -3070,5 +3100,32 @@ describe("runBaseKey: the run's identity apart from its shape edits", () => {
     expect(runBaseKey({ ...base, target_width_mm: 90 }, el)).not.toBe(k0);
     expect(runBaseKey({ ...base }, { ...el, crop: { x: 0, y: 0, w: 1, h: 1 } })).not.toBe(k0);
     expect(runBaseKey({ ...base }, { sourcePng: "other-art" })).not.toBe(k0);
+  });
+});
+
+// The deleted shapes the canvas overlay leaves out of its fit (2026-11-13):
+// what the CURRENT stitches no longer hold, not every id in deletedShapeIds.
+describe("deletedFromStitches", () => {
+  const st = (x, y) => ({ x, y, type: "stitch" });
+  const result = {
+    colors: [{ r: 1, g: 2, b: 3 }],
+    stitches: [st(-250, -50), st(-150, 50), st(150, -50), st(250, 50), { x: 0, y: 0, type: "end" }],
+    runs: [{ shape: "s0", i0: 0, i1: 1 }, { shape: "s1", i0: 2, i1: 3 }],
+  };
+  const review = { shapes: [{ id: "s0" }, { id: "s1" }] };
+  it("is empty with nothing deleted", async () => {
+    const { deletedFromStitches } = await import("./digitizer.js");
+    expect(deletedFromStitches({ result, review, deletedShapeIds: [] })).toEqual([]);
+  });
+  it("names an applied delete (the run dropped it) and a pending one the display pruned", async () => {
+    const { deletedFromStitches, editsKey } = await import("./digitizer.js");
+    const applied = editsKey({ deleted_shape_ids: ["s1"] });
+    expect(deletedFromStitches({ result, review, deletedShapeIds: ["s1"], appliedEdits: applied })).toEqual(["s1"]);
+    expect(deletedFromStitches({ result, review, deletedShapeIds: ["s1"], appliedEdits: null })).toEqual(["s1"]);
+  });
+  it("keeps a pending delete in the fit when the result has no runs to prune it by", async () => {
+    const { deletedFromStitches } = await import("./digitizer.js");
+    const bare = { colors: result.colors, stitches: result.stitches };
+    expect(deletedFromStitches({ result: bare, review, deletedShapeIds: ["s1"], appliedEdits: null })).toEqual([]);
   });
 });

@@ -92,9 +92,13 @@ from .stage6_small_letter import REPORT_KEY as SMALL_LETTER_KEY
 from .stage6_small_letter import glyph_polygon, skeleton_letter_runs, text_line_members
 from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_hairline import HairlineSet
+from .art_outline import shaped_stations, shaped_width_mm
+from .shaped_band import shaped_band_runs
 from .keyline_bean import body_limits as keyline_body_limits
 from .keyline_bean import held as keyline_held
 from .keyline_bean import keyline_bean_runs, keyline_regions
+from .keyline_bean import stations as keyline_stations
+from .stage6_border import _bean_loop as bean_loop
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .stage6_hairline_lines import strand_blocks
 from .stage6_hairline_lines import supplement_test as hairline_supplement_test
@@ -639,6 +643,7 @@ def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion],
     """
     laid: list[object] = []
     for i, r in enumerate(runs):
+        deadline.check("stage 7 link cover")
         if r.kind == stitches.TRAVEL:
             continue
         if len(r.points) >= 2:
@@ -665,6 +670,7 @@ def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion],
     parts: list[object] = list(laid)
     seen: list[object] = []
     for p in regions:
+        deadline.check("stage 7 link cover")
         c = p.covered_by
         if c is not None and not c.is_empty and not any(c is s for s in seen):
             seen.append(c)
@@ -740,6 +746,7 @@ def _link_route(a: tuple[float, float], b: tuple[float, float], cover,
     best[0] = 0.0
     heap: list[tuple[float, int]] = [(0.0, 0)]
     while heap:
+        deadline.check("stage 7 link route")
         d, u = heapq.heappop(heap)
         if done[u]:
             continue
@@ -847,6 +854,7 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int
     out = [runs[0]]
     in_shape = 0
     for run in runs[1:]:
+        deadline.check("stage 7 chain")
         if not run.jump:
             out.append(run)
             continue
@@ -918,6 +926,44 @@ def split_long_inshape(cfg) -> bool:
     """`cfg.extra["split_long_inshape_stitches"]` (built OFF 2026-11-07)."""
     extra = getattr(cfg, "extra", None) or {}
     return bool(extra.get("split_long_inshape_stitches"))
+
+
+def lift_piece(prev: list[StitchRun], nxt: list[StitchRun], shape_id: str, art,
+               trim_at: float) -> list[StitchRun]:
+    """`cfg.inshape_piece_lift` (built OFF 2026-11-14): `nxt` (one
+    `stitch_shape` call's runs, first run needle-down) as it follows `prev`
+    (the same shape's runs so far). The step between them stays needle-down
+    only where it lies on the shape -- `art` (the region's own polygon, holes
+    and all) grown by the stage-5 seam tolerance -- and is then sewn as
+    travel at `machine.MAX_STITCH_MM` at most, as `join_piece` sews it. A step
+    that leaves the shape (across a hole: Becker's border body hopping over
+    the white letters, 15.0 and 37.5 mm) becomes a lift: `jump`, cut past
+    `trim_at`, the rule `_shade_blocks` applies to a run rejoining its
+    bucket. `_chain` runs later over the finished group and buries the lift
+    under later thread where a covered route exists; where none does it is
+    cut, as the pro cuts every such move on Becker (`docs/float-census-
+    2026-11-06.md`). The first run is replaced, never mutated: a memoized
+    `stitch_shape` result may be read again (`shape_memo`)."""
+    if not prev or not nxt or nxt[0].jump or not prev[-1].points or not nxt[0].points:
+        return nxt
+    a, b = prev[-1].points[-1], nxt[0].points[0]
+    d = math.dist(a, b)
+    if d < TINY_STITCH_MM:
+        return nxt
+    if art is not None and not art.is_empty and art.buffer(_PIECE_SEAM_MM).covers(LineString([a, b])):
+        inner = stitches.split_long_moves([a, b], machine.MAX_STITCH_MM)[1:-1]
+        if not inner:
+            return nxt
+        return [StitchRun(points=inner, kind=stitches.TRAVEL, shape_id=shape_id,
+                          shade_thread_index=nxt[0].shade_thread_index)] + list(nxt)
+    return [replace(nxt[0], jump=True, trim=d > trim_at)] + list(nxt[1:])
+
+
+# `lift_piece`: a step within this of the shape's own polygon is on it --
+# the hairline seam between two vectorized pieces of one region, as stage 5
+# reads a seam (`2 x simplify_tol_mm` at the default 0.2 mm). Not a fabric
+# quantity: a raster tolerance of the outline.
+_PIECE_SEAM_MM = 0.4
 
 
 def join_piece(prev: list[StitchRun], nxt: list[StitchRun], shape_id: str
@@ -2547,13 +2593,24 @@ def _white_field_fill(region, cfg: PipelineConfig, outlines=None) -> bool:
                                  machine.KEYLINE_REACH_FRAC))
 
 
-def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
+#: `cfg.group_consistent_fill_angle`: no group house angle on a satin shape
+#: narrower than this (twice its largest inscribed circle). Columns under
+#: ~0.6 mm lose crosses under a house angle (stage6_satin, the note after
+#: `_clamp_to_span`: Fremont's 0.40-0.52 mm THE). The documented number, not
+#: a fitted one.
+GROUP_SATIN_MIN_DIM_MM = 0.6
+
+
+def _fill_angle_for(p, cfg: PipelineConfig, group: dict | None = None) -> float | None:
     """The row angle a fill-tier shape sews at -- the precedence stated at
     the plain-tatami call in `stitch_one`, in one place so the five
     call sites (tatami and the four geometric techniques) cannot drift
     apart: the review's own angle, the global, the design angle
     (`cfg.design_angle`), stage 5's compensation axis, else None (stage 6
-    derives its own)."""
+    derives its own). `group` (`cfg.group_consistent_fill_angle`, built OFF
+    2026-11-13): the angle the shape's group of like shapes shares, read
+    only where every rule above left None -- it replaces stage 6's own
+    per-shape pick and nothing else. None or absent: as before."""
     if cfg.sew_enclosed_white_fields_fill and p.region.meta.get("sew_enclosed_white"):
         # The pro's white faces. A face sits in its word's house-angle group,
         # whose angle the text tagger writes into this same `fill_angle_deg`
@@ -2578,6 +2635,8 @@ def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
     pro = pro_offset_fill_angle(cfg, p.region.shape_id, poly=p.polygon, base_deg=off)
     if pro is not None:
         return pro
+    if off is None and group:
+        return group.get(p.region.shape_id)
     return off
 
 
@@ -3086,6 +3145,43 @@ def sequence(
     # `cfg.lettering_columns_cover_handback`: shapes being sewn down the ladder
     # as the Column lane's trial alternative (`stitch_one`)
     handback_trying: set[str] = set()
+    # `cfg.group_consistent_tier` (built OFF 2026-11-13): the area floor below
+    # decided once per line of like shapes (`group_consistency.
+    # run_floor_overrides`) -- K-Line's 2.5 mm subline sewed 17 letters as
+    # bean outlines and 6 satin, one thread, one line. A member is moved off
+    # the run tier only onto satin the ladder will give it (`_sews_satin`).
+    # Off, the dict is empty and the floor is each shape's own, as before.
+    # Not on the photo classes: a band of same-thread specks there is not a
+    # line of letters.
+    group_small: dict[str, bool] = {}
+    if cfg.group_consistent_tier and rescue and design_class not in PHOTO_CLASSES:
+        from .group_consistency import run_floor_overrides
+        group_small = run_floor_overrides(
+            [_pr.region for _pr in planned
+             if str(_pr.region.meta.get("tier", "auto")).lower() == "auto"
+             and not widened_lettering(_pr.region)],
+            detail_mm2,
+            can_leave_run=lambda r: _sews_satin(r, cfg, satin_max, design_class))
+    # `cfg.group_consistent_fill_angle` (built OFF 2026-11-13): one angle per
+    # group of like shapes (`group_consistency.shared_angles`) -- the mascot's
+    # feet filled at 39 and 134 deg on one spool, the flag's congruent stars
+    # at 8 angles, To a T's rule lines satin at 64-85 deg. Fill rows: only a
+    # shape no rule names an angle for (`_fill_angle_for` left None), each
+    # member at the group's biggest shape's own `best_fill_angle_deg`. Satin
+    # crosses: ONLY a `congruent_group`-tagged, unmirrored group (the
+    # `regular_structure` tag; none on main 2026-11-13, so inert until it
+    # lands): a non-lettering member with no house angle takes the group's as
+    # its house (the slot `cfg.design_angle` uses), the biggest member's
+    # perpendicular to its long side, relative to each member's own angle;
+    # not a column under `GROUP_SATIN_MIN_DIM_MM`, where a house angle drops
+    # crosses (stage6_satin's note after `_clamp_to_span`). The likeness
+    # fallback reaches satin NOT: measured on To a T machine, it pushed a
+    # mirrored satin pair from 9 to 15 deg apart and moved a 286 mm^2 shape
+    # 5.5 deg. Off: both empty, every call is today's. Computed below, once
+    # the outline bodies are known: a member's own angle is read on the
+    # polygon its rung fills (an outline body's is grown by the pull).
+    group_fill: dict[str, float] = {}
+    group_satin: dict[str, float] = {}
 
     def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
         if (pr_tier == "auto" and cfg.bean_only_lines
@@ -3104,7 +3200,8 @@ def sequence(
         if pr_tier == "auto" and pr.shape_id in fine_bars:
             return False                # a fine ink bar: the satin tier (`is_fine_bar`)
         return pr_tier == "run" or (pr_tier == "auto" and rescue
-                                    and pr.region.polygon.area < detail_mm2
+                                    and group_small.get(pr.shape_id,
+                                                        pr.region.polygon.area < detail_mm2)
                                     and not widened_lettering(pr.region))
     # DT-first migration M1 (docs/dt-first-architecture-2026-08-01.md §2):
     # off by default, so `bool(cfg.extra.get(...))` reads False on both an
@@ -3338,6 +3435,10 @@ def sequence(
     # `stitch_shape` calls is split at the machine ceiling (`join_piece`).
     # Off, never read past this line.
     split_inshape = split_long_inshape(cfg)
+    # `cfg.inshape_piece_lift` (built OFF 2026-11-14): that step lifted when
+    # it leaves the shape, sewn as split travel when it stays on it
+    # (`lift_piece`). Off, never read past this line.
+    piece_lift = bool(cfg.inshape_piece_lift)
     if art_outlines and cfg.border_from_outline:
         _sewn = {_p.shape_id for _p in planned}
         for _oid, _bodies in art_outlines.items():
@@ -3362,6 +3463,39 @@ def sequence(
         keyline_beans = (keyline_regions([_p.region for _p in planned], set(outline_rings),
                                          cfg, ink=ink_source) if outline_rings else set())
     keyline_limits = keyline_body_limits(planned, keyline_beans) if keyline_beans else {}
+    # `cfg.group_consistent_fill_angle`: the shared angles (see the
+    # declaration of `group_fill` above).
+    if cfg.group_consistent_fill_angle and design_class not in PHOTO_CLASSES:
+        from .bean_rule import min_dim_mm as _gmin_dim
+        from .group_consistency import rect_axis, shared_angles
+        from .stage6_fill import best_fill_angle_deg
+
+        def _fill_poly(_pr):
+            # the polygon `stitch_one` fills: an outline body's grown body
+            # (its rung, below), every other fill's own
+            if _pr.shape_id not in outline_bodies:
+                return _pr.polygon
+            body = _pr.polygon
+            if _pr.satin_tier and fabric.pull_comp_mm > 0:
+                body = keyline_held(grown_body(body, fabric.pull_comp_mm),
+                                    keyline_limits.get(_pr.shape_id))
+            return body
+
+        _auto = [_pr for _pr in planned
+                 if str(_pr.region.meta.get("tier", "auto")).lower() == "auto"
+                 and not is_lettering(_pr.region, cfg) and not is_text(_pr.region, cfg)]
+        _by_id = {_pr.shape_id: _pr for _pr in _auto}
+        group_fill = shared_angles(
+            [_pr.region for _pr in _auto if _fill_angle_for(_pr, cfg) is None],
+            lambda r: best_fill_angle_deg(_fill_poly(_by_id[r.shape_id]), row_mm))
+        if cfg.satin_angle_deg is None:
+            group_satin = shared_angles(
+                [_pr.region for _pr in _auto
+                 if _pr.region.meta.get("satin_angle_deg") is None
+                 and _pr.region.meta.get("design_angle_deg") is None
+                 and _gmin_dim(_pr.region.polygon) >= GROUP_SATIN_MIN_DIM_MM],
+                lambda r: (rect_axis(r.polygon)[0] + 90.0) % 180.0,
+                fallback=False, mirrored=False)
     # Seam ownership's "still to sew" set — see `border_later`'s declaration
     # above for the predicate and its blind spots.
     for _p in planned:
@@ -3591,8 +3725,12 @@ def sequence(
             # -- no hole, not lettering, its inside left bare by a ring --
             # sews one satin column across its own width instead. A column
             # that comes out degenerate keeps the ring below. Off, unread.
+            # A shape `cfg.group_consistent_tier` moved ONTO the run tier sews
+            # the run its line-mates sew: read as a small solid it came out
+            # one satin column across a whole letter (K-Line's W and K).
             if (cfg.small_solids_satin and cfg.satin and tier == "auto"
                     and routes_to_run(p, tier)
+                    and not group_small.get(p.shape_id, False)
                     and not is_lettering(p.region, cfg)
                     and is_small_solid(p.region.polygon, profile_for(p).width_mm)):
                 runs, report = small_solid_satin(
@@ -3656,6 +3794,20 @@ def sequence(
                     rest_art = Polygon(art.exterior,
                                        [r for r in art.interiors
                                         if Polygon(r).exterior.wkb not in ridden])
+                # `cfg.border_from_outline_follow_shape` (built OFF 2026-11-13):
+                # a band whose OUTER edge has a shape of its own (a gear round
+                # a disc) is not widened to one width. Every loop takes the
+                # band's thickest reading and each cross is cut where it
+                # leaves the ART, so it is as long as the band is thick where
+                # it stands (`art_outline.shaped_width_mm`). All of an
+                # outline's loops or none: a band shared by two bodies has one
+                # outer edge.
+                shaped_band = False
+                if rings and getattr(cfg, "border_from_outline_follow_shape", False):
+                    _shaped = [shaped_width_mm(art, h) for h, _w in rings]
+                    if all(w is not None for w in _shaped):
+                        rings = [(h, w) for (h, _w), w in zip(rings, _shaped)]
+                        shaped_band = True
                 # no hole of the outline survives on the artwork polygon (the
                 # region-level read found one): nothing to loop, fall through
                 if rings:
@@ -3665,29 +3817,73 @@ def sequence(
                                               machine.MIN_FILL_WIDTH_MM, looped=rings):
                         f_runs, f_report = stitch_shape(
                             piece, p.shape_id,
-                            angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
+                            angle_deg=_fill_angle_for(p, cfg, group_fill), row_mm=row_mm,
                             stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
                             trim_at_mm=trim_at,
                             start_near=o_runs[-1].points[-1] if o_runs else entry)
                         if split_inshape:
                             f_runs = join_piece(o_runs, f_runs, p.shape_id)
+                        elif piece_lift:
+                            f_runs = lift_piece(o_runs, f_runs, p.shape_id, art, trim_at)
                         o_runs += f_runs
                         o_jumps += f_report["jumps"]
                     seam = 2.0 * cfg.simplify_tol_mm
                     o_holes = unary_union([Polygon(r) for r in art.interiors])
-                    o_reach = unary_union([art.buffer(max(w for _h, w in rings), join_style=2),
+                    # a shaped band's crosses stop at the art's own edge; any
+                    # other outline is the pro's, widened
+                    o_reach = unary_union([art if shaped_band
+                                           else art.buffer(max(w for _h, w in rings), join_style=2),
                                            p.polygon]).difference(o_holes)
                     if p.covered_by is not None:
                         o_reach = o_reach.union(p.covered_by.difference(o_holes))
+                    # A shaped band round ONE body is laid out from its outer
+                    # edge: a needle hole on every corner of it, the density
+                    # held out there, no line on top (`shaped_band`, which
+                    # says what the ring-cast loop below got wrong). A band it
+                    # cannot lay out, or one shared by several bodies, keeps
+                    # that loop.
+                    if shaped_band and len(rings) == 1:
+                        s_runs, s_report = shaped_band_runs(
+                            art, rings[0][0], p.shape_id,
+                            entry=o_runs[-1].points[-1] if o_runs else entry,
+                            trim_at_mm=trim_at, underlay=satin_underlay != "none")
+                        if not s_report["empty"]:
+                            return (o_runs + s_runs,
+                                    {"jumps": o_jumps + s_report["jumps"], "empty": False,
+                                     "outline_loops": 1, "shaped_band": 1, "shaped_edge": 1},
+                                    False)
+                    # a shaped band's needle is locked to its teeth
+                    loop_holes =([(h, w, shaped_stations(art, h, machine.BORDER_DENSITY_MM))
+                                   for h, w in rings] if shaped_band else rings)
                     l_runs, l_report = keyline_runs(
                         art, p.shape_id, reach=o_reach,
                         entry=o_runs[-1].points[-1] if o_runs else entry,
                         trim_at_mm=trim_at, underlay=satin_underlay != "none",
-                        holes=rings)
+                        holes=loop_holes)
                     if not l_report["empty"]:
+                        if shaped_band:
+                            # ... and the shaped edge itself is drawn: one
+                            # bean round the band's outer ring, a needle
+                            # point on every corner of it
+                            # (`keyline_bean.stations`). A satin's stitches
+                            # end in round thread; a tooth 1 mm square is
+                            # three of them side by side, and only a line on
+                            # its edge gives it corners.
+                            e_pts = keyline_stations(list(art.exterior.coords))
+                            if len(e_pts) >= 3:
+                                e_lap = bean_loop(e_pts, l_runs[-1].points[-1],
+                                                  machine.BEAN_STITCH_MM, machine.BEAN_PASSES)
+                                hop = math.dist(l_runs[-1].points[-1], e_lap[0])
+                                l_runs.append(StitchRun(
+                                    points=stitches.split_long_moves(e_lap), kind=stitches.RUN,
+                                    jump=hop >= TINY_STITCH_MM, trim=hop > trim_at,
+                                    shape_id=p.shape_id))
+                                if hop >= TINY_STITCH_MM:
+                                    l_report["jumps"] += 1
                         return (o_runs + l_runs,
                                 {"jumps": o_jumps + l_report["jumps"], "empty": False,
-                                 "outline_loops": l_report["loops"]}, False)
+                                 "outline_loops": l_report["loops"],
+                                 **({"shaped_band": 1} if shaped_band else {})}, False)
             # ... and the body it holds is a plain fill under that loop, on
             # stage 5's polygon, grown by the pull here when stage 5 kept it
             # on its artwork for satin rails (`satin_rail_comp`).
@@ -3701,7 +3897,7 @@ def sequence(
                     body = keyline_held(body, keyline_limits.get(p.shape_id))
                 runs, report = stitch_shape(
                     small_print_cut(p, body, bar_mm=row_mm), p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
+                    angle_deg=_fill_angle_for(p, cfg, group_fill), row_mm=row_mm,
                     stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at, under_cover=cfg.fill_travel_under_cover,
                     cut_bridges=cfg.fill_bridge_cut,
@@ -3909,12 +4105,14 @@ def sequence(
                 for piece in rest:
                     f_runs, f_report = stitch_shape(
                         piece, p.shape_id,
-                        angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
+                        angle_deg=_fill_angle_for(p, cfg, group_fill), row_mm=row_mm,
                         stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
                         trim_at_mm=trim_at,
                         start_near=k_runs[-1].points[-1] if k_runs else entry)
                     if split_inshape:
                         f_runs = join_piece(k_runs, f_runs, p.shape_id)
+                    elif piece_lift:
+                        f_runs = lift_piece(k_runs, f_runs, p.shape_id, art, trim_at)
                     k_runs += f_runs
                     k_jumps += f_report["jumps"]
                 # Closed by the seam tolerance (twice the contour
@@ -3959,6 +4157,10 @@ def sequence(
                     # Behind the review's and the house's own angle; absent
                     # the key, the per-stroke tangent as before.
                     satin_angle_deg = float(p.region.meta["design_angle_deg"])
+                if satin_angle_deg is None and p.shape_id in group_satin:
+                    # `cfg.group_consistent_fill_angle`: the house its group
+                    # of like shapes shares (behind every angle above)
+                    satin_angle_deg = group_satin[p.shape_id]
                 # Law 50's first rung (machine.SATIN_UNDERLAY_MIN_EXTENT_MM,
                 # 2026-09-03): small lettering sews bare. Judged on the
                 # ARTWORK extent, the same reason the satin/fill call is —
@@ -4204,7 +4406,7 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg),
+                    angle_deg=_fill_angle_for(p, cfg, group_fill),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -4238,7 +4440,7 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg),
+                    angle_deg=_fill_angle_for(p, cfg, group_fill),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -4265,7 +4467,7 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg),
+                    angle_deg=_fill_angle_for(p, cfg, group_fill),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -4290,7 +4492,7 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg),
+                    angle_deg=_fill_angle_for(p, cfg, group_fill),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -4313,7 +4515,7 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg),
+                    angle_deg=_fill_angle_for(p, cfg, group_fill),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -4427,7 +4629,7 @@ def sequence(
                 runs, report = stitch_shape(
                     small_print_cut(p, p.polygon, bar_mm=row_mm),
                     p.shape_id,
-                    angle_deg=_fill_angle_for(p, cfg),
+                    angle_deg=_fill_angle_for(p, cfg, group_fill),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,

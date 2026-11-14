@@ -598,6 +598,11 @@ def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
     inner: list[tuple[float, float]] = []
     widths: list[float] = []
     for i in range(n):
+        if exact:
+            # The service's cancel/deadline, per sample of an exact loop: a
+            # keyline's `_exact_cross` walk was 2-5 s with no seam on Becker
+            # at 96 mm (2026-11-13). Moves no number.
+            deadline.check("keyline")
         px, py = ring_pts[i]
         if normals is None:
             tx, ty = tans[i]
@@ -887,6 +892,21 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
     density = machine.BORDER_DENSITY_MM if density_mm is None else float(density_mm)
     if width <= 0 or density <= 0:
         return [], report
+    try:
+        return _border_runs(visible, shape_id, entry=entry, trim_at_mm=trim_at_mm,
+                            style=style, width=width, density=density, omit=omit,
+                            role=role, report=report)
+    finally:
+        # In a `finally` so a cancel at one of the checkpoints below cannot
+        # leave this shape's unsewn-area memo for the next job's first shape.
+        if _CUT_EXPOSED.get():
+            _UNSEWN_MEMO.clear()    # as `stitch_shape` does: its rim routes filled it
+
+
+def _border_runs(visible, shape_id: str, *, entry, trim_at_mm: float, style: str,
+                 width: float, density: float, omit, role: str,
+                 report: dict) -> tuple[list[StitchRun], dict]:
+    """`border_runs`' body, once its arguments are checked."""
     half = width / 2.0
     inset = _centre_inset(half)
     # A zigzag holds `density` between consecutive penetrations on the SAME
@@ -1029,8 +1049,6 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
                     else:
                         report["loops"] += 1
 
-    if _CUT_EXPOSED.get():
-        _UNSEWN_MEMO.clear()    # as `stitch_shape` does: its rim routes filled it
     report["empty"] = not runs
     return runs, report
 
@@ -1109,20 +1127,29 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
         clamp = (reach if reach is not None else band).buffer(_SLACK_MM)
     else:
         holes = [(h, width) for h in _looped_holes(band)]
-    rings = [(list(h.exterior.coords), float(w)) for h, w in holes]
+    # A hole may bring its own stations as a third item, (hole, width, ring
+    # points): `cfg.border_from_outline_follow_shape`'s loop on a shaped band,
+    # whose needle is locked to the band's teeth (`art_outline.shaped_stations`).
+    # Two items is every other caller: stations evenly round the ring.
+    rings = [(list(item[0].exterior.coords), float(item[1]),
+              list(item[2]) if len(item) > 2 and item[2] else None) for item in holes]
     runs: list[StitchRun] = []
     cursor = entry
     chain = _LOOP_CHAIN.get()
     while rings:
+        deadline.check("keyline")
         if cursor is None:
             i = 0
         else:
             i = min(range(len(rings)), key=lambda j: (
                 round(LineString(rings[j][0]).distance(Point(cursor)), 6), j))
-        coords, width = rings.pop(i)
+        coords, width, own_pts = rings.pop(i)
         half = width / 2.0
-        n = max(8, int(round(LineString(coords).length / step)))
-        ring_pts, total = _ring_arc_samples(coords, n)
+        if own_pts:
+            ring_pts, total, n = own_pts, LineString(coords).length, len(own_pts)
+        else:
+            n = max(8, int(round(LineString(coords).length / step)))
+            ring_pts, total = _ring_arc_samples(coords, n)
         if not ring_pts:
             continue
         k_tan = max(1, int(round(half / step)))
@@ -1235,6 +1262,7 @@ def _bury_walks(runs: list[StitchRun]) -> int:
     shrink = disk(max(1, int(round(machine.COVERAGE_THREAD_W_MM / 2.0 * BURY_PX_PER_MM))))
     took = 0
     for i0 in cuts:
+        deadline.check("keyline")
         i = i0 + took
         a, b = runs[i - 1].points[-1], runs[i].points[0]
         direct = math.dist(a, b)

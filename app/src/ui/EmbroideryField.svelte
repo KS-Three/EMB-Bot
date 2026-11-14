@@ -18,9 +18,9 @@
   import { chartIdForProject } from "../lib/designChart.js";
   import { getCachedPalette, loadPalette, loadPreferredPaletteId, STUDIO_PALETTE } from "../lib/threads.js";
   import { EMB } from "../lib/emb.js";
-  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
+  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizeInBox, resizeTargetMm, resizeStartTargetMm, resizeIsAdditive } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
-  import { effectiveHoop, hoopFitNote, rotateToFitPatches } from "../lib/hoop.js";
+  import { effectiveHoop, hoopFitNote, rotateToFitPatches, rotationPatch } from "../lib/hoop.js";
   import { garmentOf, placementBoxOf } from "../lib/placement.js";
   import { resizeBadgeText, runSpm } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
@@ -35,7 +35,7 @@
     borderRequestPending,
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
-  import { boundaryIssues } from "../lib/digitizer.js";
+  import { boundaryIssues, deletedFromStitches } from "../lib/digitizer.js";
   import { isElementStale } from "../lib/staleness.js";
   import { popoverModel, popoverPatch, recolorPatch, SIMPLIFY_TOLS_MM } from "../lib/shapePopover.js";
   import { similarShapeIds, similarOverridesPatch } from "../lib/similarShapes.js";
@@ -49,6 +49,7 @@
   import { digitizeBusy } from "../lib/digitizeBusy.js";
   import Icon from "./Icon.svelte";
   import { prefersReducedMotion } from "../lib/reducedMotion.js";
+  import { undecidedOutlineIds, throbAt, STILL_GLOW } from "../lib/outlinePrompt.js";
   import ShapePopover from "./ShapePopover.svelte";
 
   // Task 4 (Slice 5): the field now renders every element in the project
@@ -80,6 +81,10 @@
   // Download's "Run time" row, so the two agree. Not named in any `$: if
   // (canvas)` block, so a quote change never repaints the field.
   export let quote = null;
+  // App's `currentId`: which design `project` is. Element ids repeat across
+  // designs, so a mode entered on one must end when this changes (see
+  // leaveDesign, 2026-11-13). null in a mount that never switches design.
+  export let projectId = null;
   $: simRate = runSpm(quote);
 
   const dispatch = createEventDispatcher();
@@ -422,8 +427,17 @@
   let rotateBadgeDeg = null; // live degrees during a rotate drag
   let dragStartBBoxMm = null; // dragged element's absolute mm bbox at pointerdown
   let dragStartTargetMm = 0; // element's sizeMm at pointerdown (see size-match note below)
+  let dragResizeAdditive = false; // interact.js resizeIsAdditive, at pointerdown
+  // A corner press is a click until the pointer travels CLICK_PX (latched):
+  // under it a resize patches nothing, so a touch cannot resize (2026-11-13).
+  let resizeArmed = false;
   let dragStartRotationDeg = 0;
   let dragRotateCenterPx = null; // element center (canvas px), fixed at rotate-grab
+  // The element and its design AT PRESS: every move's size is derived from
+  // these (hoop.js rotationPatch), never from the last move's patch, so a
+  // long drag cannot drift (2026-11-13).
+  let dragRotateEl = null;
+  let dragRotateDesign = null;
 
   // Multi-select (Ctrl+click) group-drag state. dragMembers snapshots each
   // selected member's offsets/size at pointerdown; dragGroupBBoxMm is the
@@ -772,8 +786,9 @@
     const rows = el && el.review && el.review.shapes;
     if (!Array.isArray(rows) || !rows.length) return null;
     // A shape the user hid or deleted in review is not something the app
-    // "found" any more — but it still counts toward the shared transform (see
-    // shapeOverlay.outlineBBoxMm), so filter for DRAWING only.
+    // "found" any more, so drawing filters it out (hiddenShapeIds). All rows
+    // are returned: the fit itself chooses the ones the stitches still hold
+    // (shapeOverlay sewnRows, from deletedFromStitches), 2026-11-13.
     return rows;
   }
 
@@ -2195,7 +2210,8 @@
         rows,
         // Sparse nodes (2026-11-05): every ring carries its node list, the stored
         // one when valid, else seeds (never written until a node edit commits).
-        mm: withNodes(shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el), pendingHoles(el)), el.shapeOverrides),
+        // Fitted on the shapes the stitches still hold (deletedFromStitches).
+        mm: withNodes(shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el), pendingHoles(el), deletedFromStitches(el)), el.shapeOverrides),
         // The silhouette cap, one open polyline per stretch: selectable like a
         // shape (see lib/capPieces.js), never editable as one.
         caps: capOutlinesMm(el, pe.design),
@@ -2311,6 +2327,8 @@
       rows: edit.rows,
       bboxMm: edit.pe.bboxMm,
       rotationDeg: edit.el.rotationDeg || 0,
+      // The same left-out shapes the forward fit used (outlinesMmFor).
+      unsewnIds: deletedFromStitches(edit.el),
       // The node lists the rings were shown with (frozen with them: a node's
       // index only means something against the ring it was read from).
       nodesById: edit.nodesById,
@@ -2414,6 +2432,38 @@
   // "clear on any selection change" because shapeUnderPointer dispatches
   // `select` and sets the shape in the same tick: the tag already names the
   // new element when this block sees it, so that selection survives.
+  //
+  // ANOTHER DESIGN opened (Kent's approval 2026-11-13). Element ids repeat
+  // across designs (almost every one has an "e1") and the field is not
+  // remounted per design, so the id checks below let Reshape, a hole draft
+  // and Move shape carry over, and Discard then wrote design A's entry
+  // snapshot into design B's same-id element. A change of `projectId` ends
+  // every mode WITHOUT committing (a Move shape is dropped, not committed:
+  // committing would write A's move into B), drops a queued drag patch and
+  // any drag, and drops the shape selection and its popover. It sits ABOVE
+  // the selection block so that block never sees a mode from the old design.
+  // Not a {#key} remount in App: that would also reset zoom and pan and
+  // replay the whole field's setup for what is a few fields' worth of state.
+  let lastProjectId = projectId;
+  $: if (projectId !== lastProjectId) {
+    lastProjectId = projectId;
+    leaveDesign();
+  }
+  function leaveDesign() {
+    endReshape();
+    cancelHoleDraft();
+    endShapeMove();
+    pendingPatch = null;
+    dragMode = null;
+    shapeEdit = null;
+    nodeEdit = null;
+    liveRing = null;
+    pressEdge = null;
+    if (shapePop) closeShapePop();
+    selectedShapeId = null;
+    selectedShapeElId = null;
+    focusedAnchor = null;
+  }
   $: if (project && project.selectedId !== undefined) {
     const sel = selectedElement();
     // Reshape mode belongs to the element it was entered on: another element
@@ -2874,6 +2924,7 @@
     if (!renderResult || !renderResult.toCanvas || !project) return;
     const now = performance.now();
     let stillPulsing = false;
+    let glowing = 0;    // rings drawn with the thin-outline prompt's glow (data-outline-glow)
     let selNodes = 0;   // nodes drawn on the selected shape's rings (data-reshape-nodes)
     const selNodePx = [];   // the same nodes' canvas px, in Reshape mode only (data-reshape-node-px, for e2e aiming)
 
@@ -2913,11 +2964,37 @@
       const inMode = !!reshape && reshape.elId === el.id && project.selectedId === el.id && !multiSel;
       const similarSet = applyToSimilar && popModel && popModel.similar && el.id === selectedShapeElId
         ? new Set(popModel.similar.ids) : null;
+      // The thin-outline prompt (lib/outlinePrompt.js): the hairline outlines
+      // the customer has not said Keep or Remove on glow, whatever the
+      // Outlines toggle says, until they answer in the panel.
+      const asking = el.type === "digitized" ? new Set(undecidedOutlineIds(el)) : null;
+      const throb = reduced ? STILL_GLOW : throbAt(now);
 
       ctx.save();
       ctx.lineJoin = "round";
       for (const o of outlines) {
         if (hidden.has(o.id)) continue;
+        if (asking && asking.has(o.id)) {
+          const g = o.points.map(([x, y]) => renderResult.toCanvas(x, y));
+          if (g.length >= 3) {
+            // A green halo: the one colour on this canvas that is neither a
+            // selection (amber), a hover (white), a group (blue) nor a plain
+            // outline (cyan), and it shows on red fill and on pale fabric.
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(g[0].x, g[0].y);
+            for (let i = 1; i < g.length; i++) ctx.lineTo(g[i].x, g[i].y);
+            ctx.closePath();
+            ctx.shadowColor = `rgba(60, 255, 130, ${0.55 + 0.45 * throb})`;
+            ctx.shadowBlur = 5 + 11 * throb;
+            ctx.strokeStyle = `rgba(60, 255, 130, ${0.45 + 0.5 * throb})`;
+            ctx.lineWidth = 1.6 + 2.2 * throb;
+            ctx.stroke();
+            ctx.restore();
+            glowing += 1;
+            if (!reduced) stillPulsing = true;
+          }
+        }
         // Mid-drag, the shape being edited renders from the working ring
         // rather than from the last committed review — otherwise the outline
         // would sit still until the pointer came up.
@@ -3058,6 +3135,7 @@
     if (canvas && canvas.getAttribute("data-reshape-nodes") !== String(selNodes)) canvas.setAttribute("data-reshape-nodes", String(selNodes));
     const nodePxJson = selNodePx.length ? JSON.stringify(selNodePx) : "";
     if (canvas && (canvas.getAttribute("data-reshape-node-px") || "") !== nodePxJson) canvas.setAttribute("data-reshape-node-px", nodePxJson);
+    if (canvas && canvas.getAttribute("data-outline-glow") !== String(glowing)) canvas.setAttribute("data-outline-glow", String(glowing));
     if (stillPulsing) schedulePulseFrame();
   }
 
@@ -4277,7 +4355,15 @@
     setCanvasCursor(cursorForHandle(handle));
   }
 
+  // ONE pointer gesture is ONE undo step, whatever its timing (Kent's
+  // approval 2026-11-13). Every patch a drag flushes carries its press's
+  // token (`gesture`, history.js): the first record of a drag pushes even
+  // right after another edit, and the rest merge into it however long the
+  // pointer rests. Stamped when the patch is queued, not in the frame, which
+  // can run after endDrag has let the drag go.
+  let dragGesture = null;
   function schedulePatchFlush() {
+    if (pendingPatch) pendingPatch.gesture = dragGesture;
     if (rafScheduled) return;
     rafScheduled = true;
     requestAnimationFrame(() => {
@@ -4287,7 +4373,7 @@
         pendingPatch = null;
         // Group drags carry one patch PER member ({ multi: { id: patch } });
         // single-element drags keep the original { id, patch } shape.
-        if (p.multi) dispatch("elupdatemany", p.multi);
+        if (p.multi) dispatch("elupdatemanygesture", { patches: p.multi, gesture: p.gesture });
         else dispatch("elupdate", p);
       }
     });
@@ -4612,6 +4698,8 @@
     if (e.button !== undefined && e.button !== 0) return;
     countPress(e);
     if (fieldMenu) fieldMenu = null;
+    // A fresh token per press: every patch this drag flushes carries it.
+    dragGesture = Symbol("drag");
 
     // Auto-dismiss the drag-field hint on the first pointerdown on the
     // canvas WHILE it's actually showing -- gating on showDragHint (rather
@@ -4677,7 +4765,8 @@
           // Field names deliberately match groupResizePatches' member
           // contract (offsetXMm/offsetYMm) — a short alias here once
           // silently zeroed every offset in the resize fan-out.
-          members.push({ id, offsetXMm: el2.offsetXMm || 0, offsetYMm: el2.offsetYMm || 0, widthMm: w, targetMm: el2.sizeMm != null ? el2.sizeMm : w });
+          // heightMm: groupResizeInBox measures in reclampAll's model too.
+          members.push({ id, offsetXMm: el2.offsetXMm || 0, offsetYMm: el2.offsetYMm || 0, widthMm: w, heightMm: pe2.bboxMm.y1 - pe2.bboxMm.y0, targetMm: resizeStartTargetMm(el2, pe2.design, w) });
           memberBoxes.push(pe2.bboxMm);
         }
         if (!members.length) return;
@@ -4685,6 +4774,9 @@
         dragMembers = members;
         dragGroupBBoxMm = unionBBox(memberBoxes);
         dragStartPx = p;
+        // the group corner's click dead zone, as the single corner's
+        pressClient = { x: e.clientX, y: e.clientY, px: p };
+        resizeArmed = false;
         dragTargetId = null;
         if (handle === "body") {
           dragMode = "gmove";
@@ -4722,6 +4814,8 @@
       dragTargetId = project.selectedId;
       dragStartPx = p;
       dragStartRotationDeg = (el && el.rotationDeg) || 0;
+      dragRotateEl = el;
+      dragRotateDesign = (peById[project.selectedId] && peById[project.selectedId].design) || null;
       dragRotateCenterPx = { x: selRect.x + selRect.w / 2, y: selRect.y + selRect.h / 2 };
       rotateBadgeDeg = dragStartRotationDeg;
       setCanvasCursor("grabbing");
@@ -4912,7 +5006,11 @@
     dragStartWidthMm = pe.bboxMm.x1 - pe.bboxMm.x0;
     dragStartHeightMm = pe.bboxMm.y1 - pe.bboxMm.y0;
     dragStartBBoxMm = pe.bboxMm; // move-snap translates this by the live drag delta
-    dragStartTargetMm = el.sizeMm != null ? el.sizeMm : dragStartWidthMm;
+    // An auto-fit (null) sizeMm resizes from the request that auto-fit made:
+    // lettering's fit width, else the sewn width (a stitch file's own).
+    dragStartTargetMm = resizeStartTargetMm(el, pe.design, dragStartWidthMm);
+    dragResizeAdditive = resizeIsAdditive(el, el.type === "text" && isOutlineKey(el.fontKey));
+    resizeArmed = false;
     setCanvasCursor(cursorForHandle(handle));
 
     if (handle === "body") {
@@ -4920,13 +5018,10 @@
     } else {
       dragMode = "resize";
       dragHandle = handle;
-      // If sizeMm is still "auto-fit" (null), seed it from the design's
-      // CURRENT on-screen width so the drag continues from what's visible
-      // instead of jumping to whatever the auto-fit width happens to be
-      // recomputed as on the next paint.
-      if (el.sizeMm == null) {
-        dispatch("elupdate", { id: targetId, patch: { sizeMm: dragStartWidthMm } });
-      }
+      // An auto-fit (null) sizeMm used to be seeded with the sewn width right
+      // here, so a bare touch on a corner wrote a size. The first real move
+      // writes it now, from the request above, so the drag still continues
+      // from what is visible (2026-11-13).
     }
   }
 
@@ -5067,7 +5162,8 @@
       // suspend-snap role on move/resize.
       const deg = dragRotate(dragStartRotationDeg, dragRotateCenterPx, dragStartPx, p, { free: e.altKey });
       rotateBadgeDeg = deg;
-      pendingPatch = { id: dragTargetId, patch: { rotationDeg: deg } };
+      // Keeps the design's size: sizeMm is the width after rotation (hoop.js).
+      pendingPatch = { id: dragTargetId, patch: rotationPatch(dragRotateEl, deg, dragRotateDesign) };
       schedulePatchFlush();
       return;
     }
@@ -5112,20 +5208,22 @@
       } else {
         // Group resize: one factor from the union box's aspect-locked
         // corner drag, fanned out to every member (targets AND offsets
-        // scale about the group center). Factor capped so the scaled
-        // union still fits the hoop; groupResizePatches raises it if any
-        // member would fall below the stitchable minimum.
+        // scale about the group center), then shifted together so the
+        // scaled union stays inside the box (interact.js groupResizeInBox,
+        // 2026-11-13); groupResizePatches raises the factor if any member
+        // would fall below the stitchable minimum.
+        // Under CLICK_PX of the press it is still a click: nothing is written
+        // (the single corner's latch, review follow-up 2026-11-13).
+        if (!resizeArmed) {
+          if (!pressClient || !pastClickDeadZone(pressClient, { x: e.clientX, y: e.clientY }, CLICK_PX)) return;
+          resizeArmed = true;
+        }
         const gW = dragGroupBBoxMm.x1 - dragGroupBBoxMm.x0;
         const gH = dragGroupBBoxMm.y1 - dragGroupBBoxMm.y0;
         const newW = dragResize(gW, gH, dragHandle, gdxMm, gdyMm, MIN_SIZE_MM, hoop.wMm || gW);
-        let f = gW > 0 ? newW / gW : 1;
-        const fMax = Math.min(hoop.wMm ? hoop.wMm / gW : Infinity, hoop.hMm ? hoop.hMm / gH : Infinity);
-        if (f > fMax) f = fMax;
-        const gcx = (dragGroupBBoxMm.x0 + dragGroupBBoxMm.x1) / 2;
-        const gcy = (dragGroupBBoxMm.y0 + dragGroupBBoxMm.y1) / 2;
-        const r = groupResizePatches(dragMembers, f, gcx, gcy, MIN_SIZE_MM);
-        // the union box as it will measure, about its (unmoving) centre
-        sizeBadge = { wMm: gW * f, hMm: gH * f, xMm: gcx, yMm: gcy };
+        const r = groupResizeInBox(dragMembers, gW > 0 ? newW / gW : 1, dragGroupBBoxMm, hoop.wMm, hoop.hMm, MIN_SIZE_MM);
+        // the union box as it will measure
+        sizeBadge = { wMm: gW * r.factor, hMm: gH * r.factor, xMm: (r.bboxMm.x0 + r.bboxMm.x1) / 2, yMm: (r.bboxMm.y0 + r.bboxMm.y1) / 2 };
         pendingPatch = { multi: r.patches };
       }
       schedulePatchFlush();
@@ -5138,6 +5236,13 @@
     const snapping = snapEnabled && !e.altKey;
 
     if (dragMode === "resize") {
+      // Under CLICK_PX of the press it is still a click: nothing is written.
+      if (!resizeArmed) {
+        if (!pressClient || !pastClickDeadZone(pressClient, { x: e.clientX, y: e.clientY }, CLICK_PX)) return;
+        resizeArmed = true;
+      }
+      // Measured in SEWN mm (the handle is on the sewn box), written as the
+      // request through resizeTargetMm (interact.js) on both paths below.
       let newWidthMm = dragResize(dragStartWidthMm, dragStartHeightMm, dragHandle, dxMm, dyMm, MIN_SIZE_MM, hoopWmm || dragStartWidthMm);
       sizeMatch = null;
       if (snapping) {
@@ -5147,24 +5252,20 @@
         // A snapped width must still respect dragResize's own clamp range.
         const maxW = hoopWmm || dragStartWidthMm;
         if (s.match && s.widthMm >= MIN_SIZE_MM && s.widthMm <= maxW) {
-          // s.widthMm is the OTHER element's rendered bbox width, but sizeMm
-          // is a generation TARGET, and generation grows output past the
-          // target by a fixed pull-comp/outline margin. Subtract the dragged
-          // element's own measured growth (rendered minus target at drag
-          // start) so the REGENERATED bbox — the thing the user sees — is
-          // what matches, not the pre-growth target.
-          newWidthMm = s.widthMm - (dragStartWidthMm - dragStartTargetMm);
+          // s.widthMm is the OTHER element's rendered bbox width: a sewn
+          // width, like newWidthMm, so it converts to a request below the
+          // same way and the REGENERATED bbox is what matches.
+          newWidthMm = s.widthMm;
           sizeMatch = s.match;
         }
       }
       // What the design WILL measure: the rendered bbox at drag start, scaled
-      // by how far the target moved (the target is the generation width, the
-      // bbox runs past it by pull comp; the ratio carries that margin along).
-      // The offset does not move in a resize; it is shown so the badge reads
-      // the same two numbers the move badge does.
-      const f = dragStartTargetMm > 0 ? newWidthMm / dragStartTargetMm : 1;
+      // by how far the sewn width moved. The offset does not move in a
+      // resize; it is shown so the badge reads the same two numbers the move
+      // badge does.
+      const f = dragStartWidthMm > 0 ? newWidthMm / dragStartWidthMm : 1;
       sizeBadge = { wMm: dragStartWidthMm * f, hMm: dragStartHeightMm * f, xMm: dragStartOffXMm, yMm: dragStartOffYMm };
-      pendingPatch = { id: dragTargetId, patch: { sizeMm: newWidthMm } };
+      pendingPatch = { id: dragTargetId, patch: { sizeMm: resizeTargetMm(dragStartTargetMm, dragStartWidthMm, newWidthMm, dragResizeAdditive) } };
     } else if (dragMode === "move") {
       // Raw (unclamped) offset first so snapping sees the true pointer
       // position; hoop containment is applied AFTER the snap — the clamp
@@ -5378,6 +5479,8 @@
     dragStartPanY = 0;
     dragStartBBoxMm = null;
     dragRotateCenterPx = null;
+    dragRotateEl = null;
+    dragRotateDesign = null;
     dragMembers = null;
     dragGroupBBoxMm = null;
     // Erase drag-only overlay chrome (guides/badges). One view repaint —

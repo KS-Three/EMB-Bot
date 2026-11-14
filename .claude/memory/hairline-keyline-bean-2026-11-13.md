@@ -81,6 +81,25 @@ Real file, OFF -> ON stitches: 40 mm 2,064 -> 1,544; 60 mm 3,492 -> 2,527;
 100 mm 6,291 -> 5,228; 127 mm 9,099 -> 7,267; 3 colour stops both ways. Over
 about 145 mm the keyline passes 0.6 mm and sews the 1.5 mm loop again.
 
+**Third pass: the prompt and the flip (same day).** Asked what to do with
+the outline, Kent: "When it gets digitized can you have items like this
+throb/pulse and glow (ask user to keep or remove)". Asked what the first
+digitize shows: "sewn thin, but do not include letters for this". So:
+- The flag is ON by default (PRE_FLIP pins False). A ring the lettering lane
+  takes (`columns.is_lettering`) is never a keyline.
+- The engine marks the shapes (`meta["hairline_outline"]`, wire
+  `review.shapes[].hairline_outline`, contract v1.10), sewn or not.
+- Studio (`app/src/lib/outlinePrompt.js`): marked, sewn, unanswered shapes
+  glow green on the canvas and the panel asks Keep / Remove under the stats
+  line. Keep = `keptOutlineIds` (never stale). Remove = `deletedShapeIds`
+  (stitches go at once, restorable). Then "Put back".
+- Real app, the logo at 95 mm: 11 shapes, 4,856 stitches, Remove 3,098.
+- Traps hit: the prompt first sat beside the attention warnings, which live
+  inside Advanced (shut by default), so the real app never showed it;
+  `preview_start` serves the MAIN checkout, not the lane (use the driver's
+  `--serve` from the lane); port 8721 was another session's service (ran
+  mine on 8741 with localStorage `embstudio:digitizerUrl`).
+
 **Lesson.** I recommended OFF on thin grounds (one logo, a screenshot). The
 ground that mattered only showed when the flag was run on OTHER art: run a
 new flag across every repo logo and LOOK before recommending either way.

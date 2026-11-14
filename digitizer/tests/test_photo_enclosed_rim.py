@@ -61,6 +61,16 @@ def test_rim_takes_the_ground_coloured_sliver_only():
     assert not (rim & (labels == 1)).any()  # the black ring never
 
 
+def test_rim_reads_a_piece_by_its_median_so_a_few_ink_pixels_do_not_hold_it():
+    # a superpixel straddling the keyline's edge leaves ink pixels in the white
+    # label: 3 black of 23 put the piece's MEAN L* near 87 (dE ~13 from the
+    # ground), its median is the ground's own white (MFab, cutout lane, 60 mm)
+    labels, valid, enclosed, lab = _keyline()
+    labels[9, 12:15] = 2                   # black pixels joined to the sliver
+    rim = s2.enclosed_rim(labels, valid, enclosed, lab, 6.0)
+    assert rim is not None and rim[10, 10:30].all()
+
+
 def test_rim_leaves_a_piece_big_enough_to_stand():
     # the 20 px sliver is over a 10 px floor: the floor would keep it, so it stays
     labels, valid, enclosed, lab = _keyline()

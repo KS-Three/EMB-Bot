@@ -114,6 +114,8 @@ test("the static index and the lazy data module agree brand-for-brand", () => {
   }
 });
 
+const CODELESS_UPSTREAM = new Set(["simthread-glow-in-the-dark-15-colors"]);
+
 test("every brand entry is { name, code, rgb } with a valid 0-255 triple and a real catalog code", () => {
   // Plain-JS validation with aggregate assertions: ~20k entries x 8
   // expect() calls each blows straight through vitest's 5s test timeout,
@@ -140,7 +142,9 @@ test("every brand entry is { name, code, rgb } with a valid 0-255 triple and a r
     }
     // Codes must be present on essentially the whole chart (a few oddball
     // rows without one are tolerable, a systematically code-less parse is not).
-    if (withCode / brand.threads.length <= 0.95) codePoor.push(brand.id);
+    // The Glow chart's number column is "n/a" on every row upstream; it only
+    // passed here while its L,a,b column was mis-read as the code (2026-11-13).
+    if (withCode / brand.threads.length <= 0.95 && !CODELESS_UPSTREAM.has(brand.id)) codePoor.push(brand.id);
   }
   expect(undersized).toEqual([]);
   expect(badEntries.slice(0, 5)).toEqual([]);

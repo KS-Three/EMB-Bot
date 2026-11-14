@@ -51,6 +51,8 @@ from dataclasses import dataclass, field
 import numpy as np
 from shapely.geometry import LinearRing, LineString, Point, Polygon
 
+from . import deadline
+
 # --- knobs (every one is listed in the write-up with what it was set on) ----
 K_DEFAULT = 0.75          # cap = K * source pixel (the brief's starting point)
 SNAP_DEG = 12.0           # a line this close to the stem/line direction is one
@@ -1207,6 +1209,10 @@ def plan_letterform_priors(regions, src_px_mm: float, grid_px_mm: float,
                            line_degs=line_degs, width_hint_mm=width_hint)
         note = dict(slant_source=slant_source, slant_chords=slant_chords, arched=arched, leans=leans)
         for li, r in enumerate(letters):
+            # The service's cancel/deadline (`deadline.py`), once per letter:
+            # a fit is ~0.4 s on Becker at 96 mm, and a word's worth had no
+            # seam (2026-11-13). Moves no number.
+            deadline.check("letterform priors")
             lp = letter_prior(prior, line_degs[li]) if line_degs is not None else prior
             res = fit_letter(r.polygon, lp)
             out.append(LetterOutcome(wi, r.shape_id, r.meta.get("ocr_char"), r.polygon, res, lp,

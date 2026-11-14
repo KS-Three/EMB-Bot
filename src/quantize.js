@@ -251,6 +251,22 @@
       cornerB = rgba[2];
     }
 
+    // `connected` (built OFF 2026-11-13, Kent: "Ship it switched off"; absent
+    // or false is the per-pixel test below, byte for byte what it was). The
+    // per-pixel test keys out an enclosed white detail with the page round it:
+    // a red badge's 17 x 17 white square (289 px) sews as bare garment.
+    // `connected: true` makes a pixel background only if it reaches the
+    // image's border through pixels passing the SAME test (near-white through
+    // near-white, corner colour through corner colour; transparent passes
+    // both), 4-connected so the flood cannot leak through a diagonal stroke.
+    // Why OFF: measured on the Studio's lanes, 79 of 305 designs move, and a
+    // closed outline sews its whole interior: logo_toat_beanie's hexagon fills
+    // solid, loses its thin rules and doubles its stitches (8,946 -> 19,460);
+    // Hotel Fremont's O counters sew while the band round them is keyed out.
+    // A default would need a garment-aware rule (the Python lane's), not this.
+    const connected = options.connected === true;
+    // bit 1: passes the near-white test; bit 2: passes the corner test
+    const passes = new Uint8Array(count);
     for (let i = 0; i < count; i++) {
       const off = i * 4;
       const r = rgba[off], g = rgba[off + 1], b = rgba[off + 2];
@@ -266,7 +282,28 @@
       }
 
       if (isNearWhite || isNearCorner) {
-        out[off + 3] = 0;
+        if (!connected) out[off + 3] = 0;
+      }
+      passes[i] = rgba[off + 3] === 0 ? 3 : (isNearWhite ? 1 : 0) | (isNearCorner ? 2 : 0);
+    }
+    if (!connected) return out;
+
+    // One flood per test, from the border pixels that pass it.
+    const stack = new Int32Array(count);
+    const seen = new Uint8Array(count);
+    for (const bit of [1, 2]) {
+      let top = 0;
+      seen.fill(0);
+      const seed = (i) => { if ((passes[i] & bit) && !seen[i]) { seen[i] = 1; stack[top++] = i; } };
+      for (let x = 0; x < w; x++) { seed(x); seed((h - 1) * w + x); }
+      for (let y = 0; y < h; y++) { seed(y * w); seed(y * w + w - 1); }
+      while (top > 0) {
+        const i = stack[--top], x = i % w;
+        out[i * 4 + 3] = 0;
+        if (x > 0) seed(i - 1);
+        if (x < w - 1) seed(i + 1);
+        if (i >= w) seed(i - w);
+        if (i + w < count) seed(i + w);
       }
     }
 

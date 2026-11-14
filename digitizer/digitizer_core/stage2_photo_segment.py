@@ -1081,6 +1081,7 @@ def _boundary_contrast_initial_adjust(rag) -> None:
 
 
 def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
+    deadline.check("stage 2")      # the merge runs 1-2 s inside skimage's own loop
     da = g.nodes[dst]["mean color"]
     na = g.nodes[n]["mean color"]
     # The scalar twin of skimage's dE00 — the same float bit for bit, ~4x
@@ -2568,8 +2569,8 @@ def enclosed_rim(labels: np.ndarray, valid: np.ndarray, enclosed: np.ndarray,
     enclosed ground's own rim. -> bool mask, or None when there are none.
 
     A piece is one 8-connected component of one merged label inside `valid`.
-    It is the rim when it touches `enclosed` (8-neighbour) and its mean Lab is
-    within `max_de` of the mean Lab of the enclosed pixels it touches: the
+    It is the rim when it touches `enclosed` (8-neighbour) and its median Lab
+    is within `max_de` of the mean Lab of the enclosed pixels it touches: the
     same colour as the ground beside it, cut off only because stage 1's
     enclosed test missed its pixels. Ink never qualifies (MFab: black L* 1-4
     against a white ground L* 99); a piece that only touches the ink is not
@@ -2586,6 +2587,7 @@ def enclosed_rim(labels: np.ndarray, valid: np.ndarray, enclosed: np.ndarray,
     comp = np.zeros((h, w), np.int32)
     n = 0
     for lbl in np.unique(labels[valid]):
+        deadline.check("stage 2")
         m = ((labels == lbl) & valid).astype(np.uint8)
         k, cc = cv2.connectedComponents(m, connectivity=8)
         if k > 1:
@@ -2619,11 +2621,23 @@ def enclosed_rim(labels: np.ndarray, valid: np.ndarray, enclosed: np.ndarray,
     flat = comp.ravel()
     sel = flat > 0
     px = np.bincount(flat[sel], minlength=n + 1).astype(np.float64)
-    own = np.stack([np.bincount(flat[sel], weights=lab_img.reshape(-1, 3)[sel, c],
-                                minlength=n + 1) for c in range(3)], axis=1)
-    own_mean = own[touching] / px[touching, None]
     ground_mean = sums[touching] / cnt[touching, None]
-    near = np.linalg.norm(own_mean - ground_mean, axis=1) < max_de
+    # the piece's MEDIAN Lab, not its mean: a superpixel that straddles the
+    # keyline's edge leaves a few ink pixels in the white label, and their
+    # L* ~2 drags a mean far past `max_de` (MFab, cutout lane, 60 mm: an 89 px
+    # rim piece between A and N holds 7 black pixels, mean L* 92.3, dE 7.7
+    # against the ground's 100; median L* 100). The floor then gave it to the
+    # black, A and N joined, AND lost its text tag and D's counter read as a
+    # second field. The no-cutout lane's twin piece (4 black of 67, dE 5.9)
+    # passed by a hair.
+    ids = flat[sel]
+    order = np.argsort(ids, kind="stable")
+    ids_s = ids[order]
+    lab_s = lab_img.reshape(-1, 3)[sel][order]
+    lo = np.searchsorted(ids_s, touching)
+    hi = np.searchsorted(ids_s, touching, side="right")
+    own_med = np.array([np.median(lab_s[a:b], axis=0) for a, b in zip(lo, hi)])
+    near = np.linalg.norm(own_med - ground_mean, axis=1) < max_de
     if max_px is not None:
         near &= px[touching] < max_px
     if not near.any():
@@ -2869,6 +2883,7 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # machinery, applied one step earlier.
     regions: list[RegionMask] = []
     for lbl in sorted(set(np.unique(merged[base_valid]).tolist())):
+        deadline.check("stage 2")
         # `& base_valid`: a merged label id is not on its own proof of
         # foreground (see the note above) — intersecting with the real
         # per-population mask is what actually keeps background AND

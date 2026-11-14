@@ -601,6 +601,13 @@
    "review": true
   },
   {
+   "prefix": "docs/renders/handback-census-2026-11-13/",
+   "status": "derived-render",
+   "source": "Session-generated stitch-plan renders of single shapes: the starter monarch (Commons CC0, app/public/starter/manifest.json), testdata/art/commons_lettering (public domain), and the board pairs' committed art; filenames reference real/client art: precision_drone, gaulke",
+   "basis": "docs/column-cover-handback-census-2026-11-13.md",
+   "review": true
+  },
+  {
    "prefix": "docs/renders/join-square-2026-10-06/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont",

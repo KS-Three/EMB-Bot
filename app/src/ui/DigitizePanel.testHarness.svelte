@@ -12,6 +12,8 @@
   // the raw patch to `onPatch` for tests that want to assert on it directly.
   export let element;
   export let project = {};
+  // App's `currentId`, which ContentStep passes the panel (2026-11-13).
+  export let projectId = null;
   export let health = null;
   export let onPatch = () => {};
   // The list <-> canvas shape sync (2026-09-30): the two ids App hands the
@@ -36,6 +38,7 @@
 <DigitizePanel
   {element}
   {project}
+  {projectId}
   {health}
   {hoverShapeId}
   {selectedShapeId}

@@ -78,7 +78,7 @@ from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .config import is_photographic, satin_fill_hysteresis, satin_fill_vote, satin_floor_applies
-from . import keyline_bean, shape_memo, sliver_prune
+from . import keyline_bean, shape_memo, shaped_band, sliver_prune
 from .columns import is_lettering
 from .lettering_thread import apply_lettering_thread
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
@@ -99,6 +99,7 @@ from .warnings_codes import (
     PHOTO_DETECTED,
     PHOTO_FACE_PRIORS_UNAVAILABLE,
     PHOTO_FACES_DETECTED,
+    PHOTO_PREP_APPLIED,
     PHOTO_SAM2_SEGMENTATION_UNAVAILABLE,
     SHAPES_LEFT_UNSEWN,
     warn,
@@ -283,6 +284,15 @@ class PipelineResult:
     # folds the recipe into its caller's config the way it folds the photo
     # verdict. False on a hand-built result and whenever the flag was off.
     white_keyline_art: bool = False
+    # The raster stage 1.5's photo prep handed to segmentation and stage 4's
+    # thread revalidation (`p.rgb` after `photo_prep`): a REFERENCE to the
+    # array the Generation already holds, no copy, and None whenever prep did
+    # not run (no PHOTO_PREP_APPLIED). Read by preflight only (2026-11-13):
+    # its thread grader re-read the RAW artwork and blocked 9 of the 14 jobs
+    # whose cutout ran, on spools the pipeline had matched to the prepped
+    # pixels (`preflight._prepped_view` carries the measurement). No stitch
+    # depends on it.
+    photo_prep_rgb: np.ndarray | None = None
 
     @property
     def shape_ids(self) -> list[str]:
@@ -1087,6 +1097,10 @@ def build_generation(
                          **({"part_touching": True} if cfg.text_cluster_part_touching else {}),
                          **({"nest_guard": True} if cfg.text_cluster_nest_guard else {}),
                          **({"nest_guard_rotated": True} if cfg.text_cluster_nest_guard_rotated else {}),
+                         # a row of solid blobs is no word (2026-11-13, built
+                         # OFF): absent, the call as it was
+                         **({"solid_guard": True}
+                            if cfg.extra.get("text_cluster_solid_guard") else {}),
                          # a letter turned on a ring joins its line (2026-11-07,
                          # ON since 2026-11-08, Kent's flip)
                          **({"nest_door_aspect": True}
@@ -1127,6 +1141,10 @@ def build_generation(
                            # each bay's mouth kept open (W3-02, ON since 2026-10-26):
                            # False, the call as it was word for word
                            **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}),
+                           # the height classes of a lowercase line re-set on one
+                           # baseline (2026-11-13, built OFF): absent, the call as it was
+                           **({"one_baseline": True}
+                              if cfg.extra.get("small_text_reset_one_baseline") else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))
@@ -1173,6 +1191,17 @@ def build_generation(
                                 grid_px_mm=1.0 / p.px_per_mm, k=cfg.letterform_priors_k,
                                 words=cfg.lettering_words)
 
+    # Outline redraw (2026-11-13, `cfg.outline_redraw_k`, DEFAULT None): every
+    # shape's rings refit to lines and arcs within max(k source pixels, one
+    # grid pixel) of the trace -- the same place and the same reason as the
+    # letterform pass above, for the shapes that are not letters. Imported
+    # inside the branch: off, nothing runs (`tests/test_outline_redraw.py`).
+    if cfg.outline_redraw_k and p.input_px_per_mm > 0.0 and p.px_per_mm > 0.0:
+        from .outline_redraw import apply_outline_redraw
+        apply_outline_redraw(regions, src_px_mm=1.0 / p.input_px_per_mm,
+                             grid_px_mm=1.0 / p.px_per_mm, k=cfg.outline_redraw_k,
+                             native=cfg.outline_redraw_native)
+
     # OCR-suggested text (Studio "Convert to text" entry point): a read-only,
     # additive per-member OCR read of each tagged member's FINAL polygon —
     # runs after regularization for the same "computed fact reflects this
@@ -1208,6 +1237,18 @@ def build_generation(
     if cfg.lettering_columns_ink_link and not cfg.lettering_words:
         from .columns import tag_ink_strays
         tag_ink_strays(regions, chart_for(cfg))
+
+    # Regular structure (`cfg.regular_structure`, built OFF 2026-11-13): what
+    # the art repeats becomes one shape repeated -- congruent shapes on a
+    # fitted arrangement take their mean shape, a region that repeats itself
+    # round its centre takes the mean of its rotations. After every text
+    # tagger (lettering is never a member) and before the stitch-width read,
+    # so widths, angles and tiers see the shape that will sew. Logos only: a
+    # photograph's fragments repeat nothing and would cost minutes of
+    # alignment. Off, the module never loads.
+    if cfg.regular_structure and classification.class_ not in PHOTO_CLASSES:
+        from .regular_structure import apply_regular_structure
+        apply_regular_structure(regions, p, cfg)
 
     # Stitch width (2026-09-29, `stitchwidth.py`): what column each shape
     # measures, and the one width a detected word's letters will share.
@@ -1796,6 +1837,36 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             )
         )
 
+    # Hairline outlines, marked for the review screen (Kent 2026-11-13: "can
+    # you have items like this throb/pulse and glow (ask user to keep or
+    # remove)"): the shapes `keyline_bean.keyline_regions` reads as a thin
+    # drawn outline carry `meta["hairline_outline"]`, sewn or not, so the
+    # Studio can point at them and ask. Read after every recolour above (the
+    # gate is per thread). A mark only: nothing here changes a stitch.
+    if cfg.border_from_outline_hairline_run and cfg.border_from_outline:
+        _outlines = _art_outlines(regions, cfg, source_pixels)
+        if _outlines:
+            # nothing thinner than the art can draw: 1.5 SOURCE pixels, the
+            # line `sliver_prune` already holds a page sliver to
+            _ip = float(getattr(p, "input_px_per_mm", 0.0) or 0.0)
+            _marked = keyline_bean.keyline_regions(
+                regions, set(_outlines), cfg, sewn_only=False,
+                min_width_mm=(sliver_prune.SLIVER_WIDTH_SRC_PX / _ip) if _ip > 0 else 0.0)
+            # `cfg.border_from_outline_follow_shape`: a band with teeth is not
+            # a hairline. The gate's width is 2 x area / perimeter, and teeth
+            # are perimeter: Commons "Ahora"'s gear at 40 mm is 0.57 to 0.93 mm
+            # thick and read 0.6, so it sewed as a thin ring inside its own
+            # outline with the ground showing where the teeth were. A band
+            # `shaped_band` can lay out from its outer edge is sewn that way.
+            if cfg.border_from_outline_follow_shape and _marked:
+                _by_id = {r.shape_id: r for r in regions}
+                _marked = {sid for sid in _marked
+                           if not shaped_band.sews_shaped(
+                               _by_id[sid].polygon, [h for _b, h, _w in _outlines.get(sid, [])])}
+            for r in regions:
+                if r.shape_id in _marked:
+                    r.meta["hairline_outline"] = True
+
     # Fur regions (`cfg.hair_regions_directional`, default OFF): read where
     # the pixels are. The raster rides on the result only when the gate
     # found fur, so a design with none is byte-identical with the flag on.
@@ -1842,6 +1913,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         hair_fur_ids=hair_fur_ids,
         hair_fur_read=read,
         white_keyline_art=keyline_art,
+        photo_prep_rgb=(p.rgb if any(w.get("code") == PHOTO_PREP_APPLIED
+                                     for w in prep_warnings) else None),
     )
 
 
@@ -2140,8 +2213,9 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     # 5 no body's fill passes its line. Off: None, nothing moved.
     keyline_beans = None
     if cfg.border_from_outline_hairline_run and art_outlines:
-        keyline_beans = keyline_bean.keyline_regions(
-            stitched_regions, set(art_outlines), cfg, ink=getattr(result, "ink_source", None))
+        # the shapes `finish_generation` marked (it knows the source's pixel
+        # size, which the read needs), less what the customer turned off
+        keyline_beans = {r.shape_id for r in stitched_regions if r.meta.get("hairline_outline")}
         stitched_regions = keyline_bean.sew_last(stitched_regions, keyline_beans)
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
                                                  design_class=result.design_class,

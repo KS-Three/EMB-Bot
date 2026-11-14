@@ -41,13 +41,30 @@ import { isOutlineKey, outlineStale } from "./outlineFonts.js";
 
 // The width a design is DRAWN at: the result's native width in the frame the
 // element's rotation puts it in — the frame `sizeMm` is measured in.
+//
+// Off the quarter turns this is the width of the TURNED STITCHES, the way
+// buildImportedDesign measures it (2026-11-13). It used to be the turned
+// bounding RECTANGLE, |w cos| + |h sin|, which is the engine's rule for
+// lettering, not for a stitch file: a round logo at 45 degrees read 41% wider
+// than it sews, so a pure rotation read as a resize and marked the design
+// behind. The rotation controls now keep sizeMm in this same frame
+// (hoop.js rotationPatch), so turning a digitized design leaves it current.
 export function rotatedWidth(dec, deg) {
   if (!dec) return 0.1;
   const rot = ((deg % 360) + 360) % 360;
   if (rot === 0 || rot === 180) return dec.widthMM;
   if (rot === 90 || rot === 270) return dec.heightMM;
   const rad = (rot * Math.PI) / 180;
-  return Math.abs(dec.widthMM * Math.cos(rad)) + Math.abs(dec.heightMM * Math.sin(rad));
+  if (!dec.stitches) return Math.abs(dec.widthMM * Math.cos(rad)) + Math.abs(dec.heightMM * Math.sin(rad));
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  let x0 = Infinity, x1 = -Infinity;
+  for (const s of dec.stitches) {
+    if (s.type !== "stitch") continue;
+    const x = s.x * cos - s.y * sin;
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+  }
+  return x0 === Infinity ? 0.1 : Math.max(0.1, (x1 - x0) / 10);
 }
 
 // The same width for any element, not only the one on screen.
@@ -93,8 +110,29 @@ export function isElementStale(element, project, { baselineKey = null } = {}) {
   return configKey(buildDigitizeConfig(element, project)) !== applied;
 }
 
+// ART UPLOADED BUT NEVER DIGITIZED (Kent 2026-11-13). Such an element sews
+// nothing (flow.js isSewable), so beside a typed text the design read as
+// ready and Download handed over a file with the logo silently left out --
+// the image twin of outlineStale's "text typed but never digitized". No art
+// is behind nothing: an empty image element has nothing to press or sew.
+//
+// Kept OUT of isElementStale on purpose. That question is "are these
+// STITCHES behind their settings", and two of its readers would say the
+// wrong thing to art with no stitches: the panel would turn its run button
+// transparent ("out of date") and say "Changed since the last run" before
+// any run, and the field would hatch stitches that do not exist. So it joins
+// only what Download waits for, below. The catch, accepted: Download stays
+// locked until the art is digitized or removed.
+export function isUndigitizedArt(element) {
+  return !!element && element.type === "digitized" && !!element.sourcePng && !element.result;
+}
+
+// Every element Download waits for: stitches behind their settings, and art
+// not digitized at all.
 export function staleElements(project) {
-  return ((project && project.elements) || []).filter((el) => isElementStale(el, project));
+  return ((project && project.elements) || []).filter(
+    (el) => isElementStale(el, project) || isUndigitizedArt(el),
+  );
 }
 
 // A run needs the stored art and the service — the same two things

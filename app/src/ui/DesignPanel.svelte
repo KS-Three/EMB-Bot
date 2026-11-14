@@ -6,6 +6,8 @@
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
   import Advanced from "./Advanced.svelte";
+  import { rotationPatch } from "../lib/hoop.js";
+  import { rotatedWidth } from "../lib/staleness.js";
 
   // Editor panel for an imported pre-digitized design element (.dst file).
   // The file's raw bytes live on the element as base64 (see project.js's
@@ -18,10 +20,18 @@
   const MAX_BYTES = 1024 * 1024; // 1MB — DSTs are KB-scale; localStorage isn't infinite
 
   let error = "";
+  // ContentStep remounts this panel when the open design changes, but that
+  // does not stop a file still being read: its patch, addressed by element
+  // id, would land on design B's element with the same id (2026-11-13
+  // review). A torn-down panel's read is dropped.
+  let destroyed = false;
+  onDestroy(() => (destroyed = true));
 
   function patch(p) {
     d("elupdate", { id: element.id, patch: p });
   }
+  // Rotation keeps the design's size (hoop.js rotationPatch, 2026-11-13).
+  const turnTo = (deg) => patch(rotationPatch(element, deg));
 
   async function onFile(e) {
     error = "";
@@ -34,6 +44,7 @@
     }
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
+      if (destroyed) return;
       // Validates BEFORE storing — a bad file never lands on the element.
       patch(designFilePatch(bytes, file.name));
     } catch (err) {
@@ -158,17 +169,12 @@
   // problems" escalation.
   $: resized = Math.abs(scaleFactor - 1) > 0.02;
   $: scaleWarnHard = scaleFactor < 0.75 || scaleFactor > 1.5;
-
-  function rotatedWidth(dec, deg) {
-    if (!dec) return 0.1;
-    const rot = ((deg % 360) + 360) % 360;
-    if (rot === 0 || rot === 180) return dec.widthMM;
-    if (rot === 90 || rot === 270) return dec.heightMM;
-    const rad = (rot * Math.PI) / 180;
-    // Bbox width of a rotated axis-aligned box — close enough for a warning
-    // threshold (the engine computes the true rotated stitch bbox itself).
-    return Math.abs(dec.widthMM * Math.cos(rad)) + Math.abs(dec.heightMM * Math.sin(rad));
-  }
+  // `rotatedWidth` is staleness.js's, the engine's own measure of the turned
+  // stitches (review follow-up, 2026-11-13). This panel kept a turned-
+  // RECTANGLE copy, which read a round design turned 45 degrees as 41% wider
+  // than it sews: "Resized to 71%" on a design at 100%. With the true width
+  // the factor is the scale the engine applies, so the 2% note and the
+  // 75-150% band still mean what they say: how far the stitches were scaled.
 </script>
 
 <div class="designpanel">
@@ -229,20 +235,21 @@
 
     <label class="letterspacing">
       <span>Rotation</span>
+      <!-- max 359: a turn is stored in [0, 360), see TextStep's slider. -->
       <input
         type="range"
         min="0"
-        max="360"
+        max="359"
         step="1"
         value={rotation}
-        on:input={(e) => patch({ rotationDeg: parseInt(e.target.value, 10) })}
+        on:input={(e) => turnTo(parseInt(e.target.value, 10))}
       />
       <span class="label">{rotation}°</span>
     </label>
     <button
       type="button"
       class="upsidedown"
-      on:click={() => patch({ rotationDeg: rotation === 180 ? 0 : 180 })}
+      on:click={() => turnTo(rotation === 180 ? 0 : 180)}
     >
       {rotation === 180 ? "Right-side up" : "Flip upside-down"}
     </button>

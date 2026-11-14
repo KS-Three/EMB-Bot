@@ -257,12 +257,14 @@
   function encodeDST(design, opts) {
     const trimN = trimJumps(opts && opts.jumpsPerTrim);
     const stitches = (design && design.stitches) || [];
-    const colors = (design && design.colors) || [];
     // Records go straight into one growing buffer (3 bytes each, after the
     // 512-byte header) instead of a Uint8Array(3) per record.
     let buf = new Uint8Array(512 + 3 * (stitches.length + 16));
     let off = 512;
+    // Colour-change records actually written: the header's CO (see below).
+    let colorChanges = 0;
     const push = (dx, dy, flag) => {
+      if (flag === "color") colorChanges++;
       if (off + 3 > buf.length) {
         const bigger = new Uint8Array(buf.length * 2);
         bigger.set(buf);
@@ -422,7 +424,15 @@
     const header = buildHeader({
       label: (design && design.label) || "EMBBOT",
       stitchCount: (off - 512) / 3, // body records written, END included
-      colorCount: colors.length,
+      // CO is the number of colour CHANGES in the body, not of colours: what
+      // pystitch.DstWriter writes and what every third-party DST in the repo
+      // carries (scratch_corpus, becker_*: CO equals its 0xC3 count), so a
+      // one-colour design is CO 0. colors.length put one more on every file
+      // (2026-11-13). Counted from the records written rather than
+      // colors.length - 1, which is wrong whenever the palette and the
+      // stream disagree (lettering ships no colors[]; a colour record after
+      // the end sentinel is never written).
+      colorCount: colorChanges,
       xMin, xMax, yMin, yMax,
     });
     buf.set(header, 0);

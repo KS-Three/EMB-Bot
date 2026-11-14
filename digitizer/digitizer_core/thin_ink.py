@@ -67,7 +67,7 @@ import numpy as np
 from skimage.color import deltaE_ciede2000
 from skimage.morphology import skeletonize
 
-from . import machine
+from . import deadline, machine
 from .config import PipelineConfig
 from .stage1_prep import Prep
 from .stage2_quantize import _quantize_population
@@ -175,6 +175,7 @@ def iter_thin_components(labels: np.ndarray, n_labels: int, px_per_mm: float,
     floor_px = cfg.min_detail_mm * px_per_mm
     min_len_px = (machine.RUN_MIN_LOOP_MM / 2.0) * px_per_mm
     for j in range(n_labels):
+        deadline.check("thin ink")
         label_mask = labels == j
         if not label_mask.any():
             continue

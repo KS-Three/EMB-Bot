@@ -283,3 +283,5 @@ exif_source=data)` → `finish_generation(gen.fork(), cfg)` → `plan_stitches`
 verbatim. Scripts and every input's licence line are in the session
 scratchpad's `scripts/` and `photos/manifest.json`; nothing was added to
 the repo but this file.
+
+> Correction 2026-11-13: `dump_traceback_later` is NOT a safe sampler on Windows (its watchdog thread reads frames without the GIL; about 1 dump in 6 killed the worker, 0xC0000005). `tools/photo_corpus.py` now samples from a Python thread (branch `fix/photo-corpus-watchdog-access-violation`).

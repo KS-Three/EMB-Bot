@@ -16,6 +16,8 @@
 import { EMB } from "./emb.js";
 import { garmentOf } from "./placement.js";
 import { isOutlineKey } from "./outlineFonts.js";
+import { importedSourceOf } from "./generate.js";
+import { rotatedWidth } from "./staleness.js";
 
 // The hoop in effect for a project: the manual pick when project.hoopId
 // names a real preset, else the per-garment suggestion. `suggested` tells
@@ -137,6 +139,57 @@ function turnedWidthMm(el, perElement) {
   if (el.type !== "text" && exact > 0 && isFinite(exact)) return exact;
   const h = pe.bboxMm.y1 - pe.bboxMm.y0;
   return isFinite(h) && h > 0 ? h : null;
+}
+
+// The rotation controls (the field's rotate grip, and the Rotation sliders and
+// "Flip upside-down" buttons in TextStep, DesignPanel and DigitizePanel) turn
+// an element and KEEP ITS SIZE (Kent's approval 2026-11-13). The same defect
+// turnedWidthMm fixes for the button: sizeMm is the width AFTER rotation, so
+// patching rotationDeg alone made the engine rescale the turned design to the
+// old width ("HELLO WORLD" at 90 mm sewed 90.2 x 7.4 upright, 88.2 x 88.3 at
+// 45 degrees, 8.4 x 101.8 at 90, stopped only by the hoop height).
+//
+// The patch scales sizeMm by how much wider the design is at the new angle
+// than at its current one, measured in the frame the engine fits in:
+//   - satin lettering: the fit RECTANGLE, w0|cos| + h0|sin| of the upright
+//     fit extent (buildLetteringDesign's fitMm.w0/h0); only its aspect
+//     matters, so any `design` generated from this lettering will do;
+//   - a stitch file (design, digitized): the turned stitches' own width
+//     (staleness.js rotatedWidth, buildImportedDesign's measure), from the
+//     element's decoded source, so no `design` is needed.
+// Scaling the REQUESTED width keeps the engine's scale, so the sewn design is
+// the old one turned. When the turned design does not fit the placement box
+// the engine's hoop clamp still shrinks it, and turning back restores it:
+// the request was turned, not the clamp. A ratio, not a measured width, so a
+// digitized design's sizeMm stays in proportion to its native width and a
+// pure rotation neither marks it behind nor changes its Design width.
+//
+// Left alone, as rotateToFitPatches leaves them: a null sizeMm (auto-fit
+// refits at any angle), kinds the engine does not turn, and outline lettering
+// (drawn at its own size off 0/180, outlineTargetWidthMm). A drag must pass
+// the element and design captured at PRESS, so the size is not accumulated
+// move by move. The catch, accepted: a design rotated before 2026-11-13 keeps
+// the size it has now.
+function turnedSourceWidthMm(el, deg, design) {
+  if (el.type === "text") {
+    const fit = design && design.fitMm;
+    if (!fit || !(fit.w0 > 0) || !(fit.h0 > 0)) return null;
+    const r = (deg * Math.PI) / 180;
+    return fit.w0 * Math.abs(Math.cos(r)) + fit.h0 * Math.abs(Math.sin(r));
+  }
+  const dec = importedSourceOf(el);
+  return dec ? rotatedWidth(dec, deg) : null;
+}
+
+export function rotationPatch(el, toDeg, design = null) {
+  const rotationDeg = (((toDeg || 0) % 360) + 360) % 360;
+  const patch = { rotationDeg };
+  if (!el || !(el.sizeMm > 0) || UNTURNABLE.has(el.type)) return patch;
+  if (el.type === "text" && isOutlineKey(el.fontKey)) return patch;
+  const from = turnedSourceWidthMm(el, el.rotationDeg || 0, design);
+  const to = turnedSourceWidthMm(el, rotationDeg, design);
+  if (from > 0 && to > 0 && isFinite(from) && isFinite(to)) patch.sizeMm = (el.sizeMm * to) / from;
+  return patch;
 }
 
 export function rotateToFitPatches(elements, combined, hoop, perElement = null, box = null) {

@@ -450,7 +450,10 @@ def _reset_word(it: dict, s: float, f: float, gap_mm: float, min_stroke_mm: floa
     for u in units:
         xs = [v for i in u for v in (shapes[i].bounds[0], shapes[i].bounds[2])]
         spans.append((min(xs), max(xs)))
-    words = it.setdefault("words", _words(spans, it["cap"]))
+    # a line of two height classes (`one_baseline`) reads its word spaces
+    # against its x-height: a space is a share of the em, and against the
+    # ascenders "beyond coal"'s 0.79 mm space (0.46 of 1.73) read as a gap
+    words = it.setdefault("words", _words(spans, min(it.get("caps", [it["cap"]]))))
     c = it["hull"].centroid
     target = _stroke_target(it, s, min_stroke_mm, bold_scale)
     widen = max(0.0, (target - min(s, f) * it["stroke"]) / 2.0) if it["stroke"] > 0 else 0.0
@@ -704,6 +707,155 @@ def _grow_away(near: dict, resets: list[dict], room: Polygon, shifts: list[float
     return box(rx0, ry0, rx1, ry1), [(abs(m), hold + sign * m) for m in ms]
 
 
+# ONE BASELINE (`cfg.extra["small_text_reset_one_baseline"]`, 2026-11-13,
+# built OFF). Kent graded +Jakarta and Bukit Asam Bad on 2026-11-12: "the
+# letters jumped in elevation and are not inline with the rest of the text".
+# The tagger keeps one line at one size (`textcluster.LETTER_HEIGHT_RATIO`
+# 0.8), so a LOWERCASE line comes out as two clusters: its x-height letters
+# (a c i o r n, 2.54 mm on Jakarta's tagline at 80 mm) and its ascender and
+# descender letters (t y f l b, 3.33 mm). The lines below are grouped on the
+# same 0.8, so the re-set grew the two as two LINES, each the other's
+# obstacle: the x-height half held its top against its own i-dots and grew
+# down (baseline +1.10 mm), the tall half found no room among the short
+# letters and slid the whole MAX_SHIFT_CAPS up (-3.6 mm), took the short
+# half's counters with it as its own inner pieces, and moved the grown r
+# 5.4 mm aside as a "bar". The invariant: a re-set moves a LINE, and every
+# letter of it stays on that line's baseline, in the art's order.
+# Two clusters of one thread are the two height classes of one line when the
+# smaller is at least this share of the larger (a lowercase x-height over its
+# ascender is 0.6-0.8; the 0.8 line test refuses them)...
+BASELINE_CLASS_RATIO = 0.5
+# ...their letters' median tops and bottoms share a band at least this share
+# of the smaller cap tall (x-height letters and ascenders share the x-height
+# band, x-height letters and descenders too; two rows of text share none)...
+BASELINE_BAND_MIN = 0.6
+# ...and they interleave, or stand at most this many (larger) caps apart.
+BASELINE_GAP_CAPS = 1.5
+# In a line of two height classes a thin shape is a BAR of the line (the
+# "|" `bars` leaves where it is) only when it stands at least this many caps
+# of the TALLER class tall: an l, a t or an unclustered i is thin and as tall
+# as the ascenders, and Jakarta's first t, read as a bar, hung below the line.
+# Fremont's bar is 1.4x its letters.
+BASELINE_BAR_CAPS = 1.1
+
+
+def _band(shapes) -> tuple[float, float]:
+    """A cluster's letters' median top and median bottom (mm, y down)."""
+    return (float(np.median([g.bounds[1] for g in shapes])),
+            float(np.median([g.bounds[3] for g in shapes])))
+
+
+def _one_line(a: dict, b: dict) -> bool:
+    """`a` and `b` (`{"thread", "cap", "band", "x"}`) are two height classes
+    of one line of lettering (comment at `BASELINE_CLASS_RATIO`)."""
+    if a["thread"] != b["thread"]:
+        return False
+    lo, hi = min(a["cap"], b["cap"]), max(a["cap"], b["cap"])
+    if lo <= 0 or lo < BASELINE_CLASS_RATIO * hi:
+        return False
+    if min(a["band"][1], b["band"][1]) - max(a["band"][0], b["band"][0]) < BASELINE_BAND_MIN * lo:
+        return False
+    return max(a["x"][0], b["x"][0]) - min(a["x"][1], b["x"][1]) <= BASELINE_GAP_CAPS * hi
+
+
+def _same_line_today(a: dict, b: dict) -> bool:
+    """The line test `enlarge_small_text` groups clusters with: one ink, one
+    size, one middle. Two clusters it already puts on one line are left to
+    it, so a line of one height class is re-set exactly as before."""
+    return (a["thread"] == b["thread"]
+            and min(a["cap"], b["cap"]) >= 0.8 * max(a["cap"], b["cap"])
+            and abs(a["mid"] - b["mid"]) <= 0.5 * min(a["cap"], b["cap"]))
+
+
+def _line_key(it: dict) -> dict:
+    x0, _y0, x1, _y1 = it["hull"].bounds
+    return {"thread": it["group"][0].thread_index, "cap": it["cap"], "band": _band(it["shapes"]),
+            "x": (x0, x1), "mid": it["mid"]}
+
+
+def _merge_baseline_classes(items: list[dict], tall: list[dict],
+                            claimed: set[int] | None = None) -> list[dict]:
+    """`cfg.extra["small_text_reset_one_baseline"]`: the height classes of one
+    line (`_one_line`) re-set as ONE cluster, so every letter is scaled about
+    one origin and laid left to right in one pass (`_reset_word`): the
+    baseline they share stays one baseline, and the letters keep the art's
+    order. The merged cluster's cap is its tallest class's -- a lowercase
+    line's ascender stands at its cap height -- and `caps` keeps every
+    class's, for `_join_line_ends`. A class that shares its line with a
+    cluster already tall enough (`tall`, `{"thread", "cap", "band", "x",
+    "mid"}`) is not re-set at all: growing half a line is the fault.
+    A member of a merged cluster that `_core` set aside for ONE class's
+    height (`it["all"]`; Jakarta's first t, 1.26 x the x-height) comes back
+    when it fits the line: 0.8 of the smaller cap to 1.25 of the larger,
+    standing in the line's band, not `claimed` by another line.
+    -> the items, merged; each merged-away row says `merged_into`, a dropped
+    one `skipped: "tall_enough_line"`."""
+    claimed = set() if claimed is None else claimed
+    keys = [_line_key(it) for it in items]
+    parent = list(range(len(items)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(len(items)):
+        for j in range(i + 1, len(items)):
+            if _one_line(keys[i], keys[j]) and not _same_line_today(keys[i], keys[j]):
+                parent[find(i)] = find(j)
+    groups: dict[int, list[int]] = {}
+    for i in range(len(items)):
+        groups.setdefault(find(i), []).append(i)
+    out: list[dict] = []
+    for idx in sorted(groups.values(), key=lambda g: min(g)):
+        idx = sorted(idx, key=lambda i: items[i]["hull"].bounds[0])
+        if any(_one_line(keys[i], t) and not _same_line_today(keys[i], t) for i in idx for t in tall):
+            for i in idx:
+                items[i]["row"]["skipped"] = "tall_enough_line"
+            continue
+        if len(idx) == 1:
+            out.append(items[idx[0]])
+            continue
+        m = items[idx[0]]
+        for i in idx[1:]:
+            it = items[i]
+            m["group"] = m["group"] + it["group"]
+            m["shapes"] = m["shapes"] + it["shapes"]
+            m["members"] += it["members"]
+            m["traced"] += it["traced"]
+            m["stroke"] = max(m["stroke"], it["stroke"])
+            it["row"]["merged_into"] = m["row"]["cluster"]
+        m["caps"] = sorted(items[i]["cap"] for i in idx)
+        m["cap"] = m["caps"][-1]
+        lo, hi = m["caps"][0], m["caps"][-1]
+        x0 = min(g.bounds[0] for g in m["shapes"])
+        x1 = max(g.bounds[2] for g in m["shapes"])
+        y0 = min(g.bounds[1] for g in m["shapes"])
+        y1 = max(g.bounds[3] for g in m["shapes"])
+        back = 0
+        for r in (r for i in idx for r in items[i].get("all", ())):
+            if id(r) in claimed or not isinstance(r.polygon, Polygon) or r.polygon.is_empty:
+                continue
+            b = r.polygon.bounds
+            h = b[3] - b[1]
+            if (0.8 * lo <= h <= 1.25 * hi and min(b[3], y1) - max(b[1], y0) >= 0.8 * h
+                    and x0 - hi <= b[0] and b[2] <= x1 + hi):
+                m["group"] = m["group"] + [r]
+                m["shapes"] = m["shapes"] + [r.polygon]
+                claimed.add(id(r))
+                back += 1
+        if back:
+            m["row"]["one_baseline_back"] = back
+        m["hull"] = unary_union(m["shapes"]).convex_hull
+        m["mid"] = (m["hull"].bounds[1] + m["hull"].bounds[3]) / 2.0
+        m.pop("units", None)
+        m.pop("words", None)
+        m["row"]["one_baseline"] = [items[i]["row"]["cluster"] for i in idx]
+        out.append(m)
+    return out
+
+
 def _place_line_reset(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float,
                       gap_mm: float, min_stroke_mm: float, bold_scale: float | None,
                       bars: list[Polygon] | None = None, edge_room: bool = False,
@@ -849,9 +1001,18 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        bold_scale: float | None = None,
                        reach_edges: bool = False,
                        bay_mouth: bool = False,
-                       grow_away: bool = False) -> list[dict]:
+                       grow_away: bool = False,
+                       one_baseline: bool = False) -> list[dict]:
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
+
+    `one_baseline` (`cfg.extra["small_text_reset_one_baseline"]`, built OFF
+    2026-11-13; comment at `BASELINE_CLASS_RATIO`): the height classes of a
+    lowercase line -- the tagger's x-height cluster and its ascender cluster
+    -- are re-set as ONE cluster on one baseline (`_merge_baseline_classes`),
+    a class beside a cluster already tall enough is left as drawn, and the
+    line's ends and gaps take a letter of any of its classes' heights
+    (`_join_line_ends`' `lo_cap`). False: byte for byte.
 
     `letter_gap_mm` (`cfg.small_text_cap_letter_gap_mm`): RE-SET each word
     instead (comment at `SEWN_EDGE_MM`, `_place_line_reset`): letters this
@@ -906,6 +1067,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     traced_in = {id(r): r.polygon for r in regions}
     claimed: set[int] = set()
     items: list[dict] = []
+    tall: list[dict] = []       # one_baseline: the lines already tall enough
     for cid in sorted(clusters):
         row = {"cluster": cid, "members": len(clusters[cid])}
         report.append(row)
@@ -918,6 +1080,12 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
             row["cap_mm"] = round(cap, 3)
             if cap <= 0 or cap >= 0.9 * cap_mm:
                 row["skipped"] = "tall_enough"
+                if one_baseline and cap > 0:
+                    ms = [r.polygon for r in members]
+                    xb = unary_union(ms).bounds
+                    band = _band(ms)
+                    tall.append({"thread": members[0].thread_index, "cap": cap, "band": band,
+                                 "x": (xb[0], xb[2]), "mid": (xb[1] + xb[3]) / 2.0})
                 continue
             group = [r for r in _adopt(members, regions, cap) if id(r) not in claimed]
             if len(group) < len(members):
@@ -939,11 +1107,13 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 "members": len(members), "traced": len(traced),
                 "stroke": 2.0 * float(members[0].meta.get("text_cluster_stroke_mm") or 0.0),
                 "mid": (hull.bounds[1] + hull.bounds[3]) / 2.0,
+                **({"all": clusters[cid]} if one_baseline else {}),
             })
-        except deadline.Abandoned:
-            raise                       # a cancel / the job timeout is not a bad cluster
         except Exception as exc:  # fail open: never take the pipeline down
             row["skipped"] = f"error:{type(exc).__name__}"
+
+    if one_baseline and items:
+        items = _merge_baseline_classes(items, tall, claimed)
 
     # Clusters of one ink and one size on one baseline are ONE line.
     lines: list[list[dict]] = []
@@ -967,7 +1137,10 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
             ids = {id(r) for it in line for r in it["group"]}
             cap = float(np.median([it["cap"] for it in line]))
             if reset:
-                joined = _join_line_ends(line, regions, ids | claimed, cap, inside=reach_edges)
+                two = {}            # one_baseline, a line of two height classes
+                if any("caps" in it for it in line):
+                    two = {"lo_cap": min(min(it.get("caps", [it["cap"]])) for it in line), "tall_bars": True}
+                joined = _join_line_ends(line, regions, ids | claimed, cap, inside=reach_edges, **two)
                 if joined:
                     ids |= {id(r) for r in joined}
                     claimed.update(id(r) for r in joined)
@@ -988,16 +1161,21 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 lx1 = max(it["hull"].bounds[2] for it in line)
                 ly0 = min(it["hull"].bounds[1] for it in line)
                 ly1 = max(it["hull"].bounds[3] for it in line)
+                # one_baseline, two height classes: a bar stands over the
+                # taller class (`BASELINE_BAR_CAPS`), and a piece inside the
+                # line's box is its own (an i's dot over the hull's chord)
+                bar_h = BASELINE_BAR_CAPS * cap if any("caps" in it for it in line) else 0.8 * cap
+                zones = [box(*it["hull"].bounds) if "caps" in it else it["hull"] for it in line]
                 for r in regions:
                     if id(r) in ids:
                         continue
                     b = r.polygon.bounds
-                    if (b[2] - b[0] <= 0.5 * cap and b[3] - b[1] >= 0.8 * cap and lx0 <= b[0] and b[2] <= lx1
+                    if (b[2] - b[0] <= 0.5 * cap and b[3] - b[1] >= bar_h and lx0 <= b[0] and b[2] <= lx1
                             and b[1] <= ly0 + 0.25 * (ly1 - ly0) and b[3] >= ly1 - 0.25 * (ly1 - ly0)):
                         bars.append(r)
                         continue
-                    for k, it in enumerate(line):
-                        if r.polygon.area < 0.5 * cap * cap and r.polygon.within(it["hull"].buffer(0.05)):
+                    for k, zone in enumerate(zones):
+                        if r.polygon.area < 0.5 * cap * cap and r.polygon.within(zone.buffer(0.05)):
                             inner.setdefault(k, []).append(r)
                             break
             fids = {id(r) for r in bars} | {id(r) for rs in inner.values() for r in rs}
@@ -1121,8 +1299,6 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                                             if r.meta.get("small_text_enlarged")])
                 if carved:
                     line[0]["row"]["carved"] = carved
-        except deadline.Abandoned:
-            raise
         except Exception as exc:  # fail open
             for it in line:
                 it["row"]["skipped"] = f"error:{type(exc).__name__}"
@@ -1547,7 +1723,8 @@ def _merge_overlapping(line: list[dict]) -> list[dict]:
 
 
 def _join_line_ends(line: list[dict], regions: list[Region], taken: set[int], cap: float,
-                    inside: bool = False) -> list[Region]:
+                    inside: bool = False, lo_cap: float | None = None,
+                    tall_bars: bool = False) -> list[Region]:
     """Re-set only: a letter-sized shape standing on the line's own band
     just past either end -- 0.8-1.25 cap tall, at most 2 caps wide and
     within 1.5 cap of the end -- joins the end cluster and grows and moves
@@ -1557,7 +1734,13 @@ def _join_line_ends(line: list[dict], regions: list[Region], taken: set[int], ca
     `inside` (`cfg.small_text_cap_reach_edges`): the same shape standing
     INSIDE the line's span joins the cluster nearest it -- ProSeal's A of
     SPRAY traces in a thread of its own and was its own line's obstacle.
+    `lo_cap` (`one_baseline`, a line of two height classes): a letter as
+    short as 0.8 of the SMALLER class's cap is letter-sized too -- an x-height
+    letter beside its ascenders. None: 0.8 cap, byte for byte. `tall_bars`
+    (the same line): a thin shape inside the span is left as a bar only when
+    it stands `BASELINE_BAR_CAPS` tall -- an l or a t joins. False: as before.
     -> the shapes joined."""
+    lo_h = 0.8 * (cap if lo_cap is None else lo_cap)
     lx0 = min(it["hull"].bounds[0] for it in line)
     lx1 = max(it["hull"].bounds[2] for it in line)
     ly0 = min(it["hull"].bounds[1] for it in line)
@@ -1570,7 +1753,7 @@ def _join_line_ends(line: list[dict], regions: list[Region], taken: set[int], ca
                 continue
             x0, y0, x1, y1 = r.polygon.bounds
             h = y1 - y0
-            if not (0.8 * cap <= h <= 1.25 * cap and x1 - x0 <= 2.0 * cap
+            if not (lo_h <= h <= 1.25 * cap and x1 - x0 <= 2.0 * cap
                     and min(y1, ly1) - max(y0, ly0) >= 0.8 * h):
                 continue
             gap = lx0 - x1 if side == "left" else x0 - lx1
@@ -1593,10 +1776,10 @@ def _join_line_ends(line: list[dict], regions: list[Region], taken: set[int], ca
                 continue
             x0, y0, x1, y1 = r.polygon.bounds
             h = y1 - y0
-            if not (0.8 * cap <= h <= 1.25 * cap and x1 - x0 <= 2.0 * cap
+            if not (lo_h <= h <= 1.25 * cap and x1 - x0 <= 2.0 * cap
                     and min(y1, ly1) - max(y0, ly0) >= 0.8 * h and lx0 <= x0 and x1 <= lx1):
                 continue
-            if x1 - x0 <= 0.5 * cap:
+            if x1 - x0 <= 0.5 * cap and (not tall_bars or h >= BASELINE_BAR_CAPS * cap):
                 continue    # a bar across the line: `bars`' to keep where it is
             it = min(line, key=lambda q: q["hull"].distance(r.polygon))
             it["group"].append(r)
@@ -1897,8 +2080,6 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 row["stray_line"] = _release(kept, f"{cid}.line{at}", clusters, order)
             row.update(adopted=len(group) - len(members), retraced=len(traced),
                        strays=len(strays))
-        except deadline.Abandoned:
-            raise
         except Exception as exc:  # fail open
             row["skipped"] = f"error:{type(exc).__name__}"
     return report

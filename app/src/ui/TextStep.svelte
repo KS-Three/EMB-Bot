@@ -10,6 +10,11 @@
   import { markDigitizeBusy, rememberRun, forgetRun, wasRunning } from "../lib/digitizeBusy.js";
   import { LONG_RUN_MS, reviewFromJob } from "../lib/digitizer.js";
   import { friendlyError } from "../lib/friendlyError.js";
+  import { rotationPatch } from "../lib/hoop.js";
+  import { generateElement } from "../lib/generate.js";
+  import { garmentOf } from "../lib/placement.js";
+  import { ensureFont } from "../lib/fontLoader.js";
+  import { EMB } from "../lib/emb.js";
 
   // Element-scoped text editor (Task 5, Slice 5): bound to whichever text
   // element is currently selected in ContentStep's element list, not a
@@ -28,10 +33,47 @@
   // the browser engine sews itself.
   export let project = null;
   export let health = null;
+  // App's `currentId` (via ContentStep): element ids repeat across designs,
+  // so the run below is fixed to the design it started in, and its resume
+  // mark is keyed by design too -- DigitizePanel's 2026-11-13 fix, same
+  // shape. null in tests that mount this alone.
+  export let projectId = null;
   const d = createEventDispatcher();
 
-  function patch(p) {
-    d("elupdate", { id: element.id, patch: p });
+  function patch(p, id = element.id, proj = projectId) {
+    d("elupdate", proj == null ? { id, patch: p } : { id, patch: p, projectId: proj });
+  }
+  const runMark = (id) => (projectId == null ? id : projectId + "/" + id);
+
+  // Rotation keeps the lettering's size (hoop.js rotationPatch, 2026-11-13):
+  // it needs the lettering's fit aspect, which only a generated design
+  // reports. Without a project (tests that mount this alone) the patch turns
+  // it only; outline fonts are not turned in size at all (rotationPatch).
+  function turnPatchNow(el, deg) {
+    let design = null;
+    try {
+      if (project && el.sizeMm > 0 && !outline) design = generateElement(el, garmentOf(project), {});
+    } catch (e) { design = null; }
+    return rotationPatch(el, deg, design);
+  }
+  // A font not loaded yet (review follow-up, 2026-11-13): turning without the
+  // aspect refit the lettering to the old sizeMm at the new angle, the
+  // original bug, and nothing put it right once the font arrived. So the
+  // turn WAITS for fontLoader's own ensureFont (the promise and cache the
+  // field loads through) and is patched once, from the element as it then
+  // stands; a failed load turns it only, as before. Usually milliseconds: the
+  // field cannot draw the lettering without that font either.
+  function turnTo(deg) {
+    const key = element.fontKey;
+    if (project && element.sizeMm > 0 && !outline && key && !(EMB.SATIN_FONTS || {})[key]) {
+      const id = element.id, proj = projectId;
+      ensureFont(key).catch(() => null).then(() => {
+        if (destroyed || element.id !== id || element.fontKey !== key) return;
+        patch(turnPatchNow(element, deg), id, proj);
+      });
+      return;
+    }
+    patch(turnPatchNow(element, deg));
   }
 
   // ---- Outline font: digitize on the service ------------------------------
@@ -68,7 +110,9 @@
     error = "";
     phase = "submitting";
     runningLong = false;
-    rememberRun(el.id);
+    const runProject = projectId;
+    const mark = runMark(el.id);
+    rememberRun(mark);
     try {
       const job = await digitizeLettering(req, {
         onState: (s, info) => {
@@ -79,6 +123,9 @@
         isCancelled: () => destroyed,
       });
       if (destroyed || !job) return;
+      // Behind ContentStep's per-design `{#key}`: only the design and
+      // element the run was started for.
+      if (projectId !== runProject || element.id !== el.id) return;
       patch({
         result: job.design,
         warnings: job.warnings || [],
@@ -91,14 +138,14 @@
         // the design's own width is the element's: a later drag scales it
         // and reads as behind until the next run, like a digitized image.
         sizeMm: req.width_mm,
-      });
+      }, el.id, runProject);
     } catch (err) {
       if (!destroyed) error = friendlyError(err, "digitize");
     } finally {
       if (!destroyed) {
         phase = "idle";
         runningLong = false;
-        forgetRun(el.id);
+        forgetRun(mark);
       }
     }
   }
@@ -108,7 +155,7 @@
   let resumeChecked = false;
   $: if (!resumeChecked && outline && health && outlineReq) {
     resumeChecked = true;
-    if (wasRunning(element.id)) runLettering();
+    if (wasRunning(runMark(element.id))) runLettering();
   }
 
   // Line justification is meaningless on a single line (nothing to justify
@@ -249,20 +296,23 @@
 {/if}
 <label class="letterspacing" use:tip={"rotation"}>
   <span>Rotation<i class="tipmark" aria-hidden="true"></i></span>
+  <!-- max 359, not 360: a turn is stored in [0, 360) (hoop.js rotationPatch),
+       so 360 was saved as 0 and the thumb jumped back to the left end
+       (review follow-up, 2026-11-13). -->
   <input
     type="range"
     min="0"
-    max="360"
+    max="359"
     step="1"
     value={element.rotationDeg || 0}
-    on:input={(e) => patch({ rotationDeg: parseInt(e.target.value, 10) })}
+    on:input={(e) => turnTo(parseInt(e.target.value, 10))}
   />
   <span class="label">{element.rotationDeg || 0}°</span>
 </label>
 <button
   type="button"
   class="upsidedown"
-  on:click={() => patch({ rotationDeg: (element.rotationDeg || 0) === 180 ? 0 : 180 })}
+  on:click={() => turnTo((element.rotationDeg || 0) === 180 ? 0 : 180)}
 >
   {(element.rotationDeg || 0) === 180 ? "Right-side up" : "Flip upside-down"}
 </button>

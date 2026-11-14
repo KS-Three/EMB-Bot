@@ -5363,3 +5363,88 @@ Moved verbatim from `MASTER_SCOPE.md` when defects 2, 4, 6 and 26 were rewritten
 ### Item 59 (small-lettering follow-ons) as it stood before the 2026-11-06 refresh
 
 59. **Small-lettering follow-ons (2026-10-14/15): (a) and (f) ON since PR #977, five built OFF and outside the switch, one instrument, one trace. Fremont is UNREPRESENTATIVE: it reproduces defects, it sizes nothing; every value is a gate-1 candidate and nothing is sewn.** Full numbers: [area 1](docs/scope/1-auto-digitizing-quality.md#eighth-pass-the-small-lettering-follow-ons-pr-945-956); the paragraph as it stood after PR #968: [area 1](docs/scope/1-auto-digitizing-quality.md#item-59-small-lettering-follow-ons-the-paragraph-as-it-stood-after-pr-968). **(a) `bean_letter_counter_hold_mm` (PR #952; ON at 0.25 as a PLAIN default since PR #977, Kent 2026-10-15; None stays OFF, the three sew-out card tools pin None; unsewn):** a 0.25 hold opens both of the 8's counters and the tagline's 1 of 4 → 4 of 4; a held letter sews up to about 0.1 mm wider outside. **(b) `bean_letter_passes` (PR #950, OFF):** passes per spine, `None` = 3, byte-identical. **(c) `small_letter_ties` (PR #956, merged, OFF):** lock thread piled on the ink of bean and skeleton runs −65% at 81 mm, −64% at 92.5 mm, trims unchanged, 6 of 9 logos byte-identical; still owed on cloth are the same 3 mm cap letter, bounce lock vs ties, and tails pulled by hand after a wash. **(d) Trace (PR #953, measure only):** 0 needle points off the ink in all six readings, so the 1's OCR miss is the instrument's window, not the engine; single-glyph OCR is unstable, so judge structurally (bays at the 50% rule, no thread hole, needle points on ink). **(e) `cfg.preflight_glyph_metric` (PR #945, merged, OFF):** per-glyph legibility and `counters_shut` as preflight metrics, no finding or grade change (Kent 2026-10-02); 2.6 to 2.8 s per job, over the 2 s target, hence OFF. **Card v3's `small_glyph_keep` OFF pin is stale** (ON since #908): its N block is still a valid A/B, its F3 and T 'today' arms are not. **(f) `cfg.bean_letter_bay_hold` (PR #967; ON at 0.2 as a PLAIN default since PR #977, Kent 2026-10-15 chose the flip over sewing first; unsewn, block B of the card below settles it):** each bean station within the hold of a BAY (a 0.45 mm closing of the letter's ink with its counters filled, minus the ink, at least 0.05 mm²) moves to the least crowded point of its own spine's ink; a station between a bay and a counter is never pushed into the counter, and satin runs are md5-identical OFF vs ON in all 17 designs. With the switch ON plus a 0.2 mm hold: the 5's upper bay at 81 mm Hat goes 0.36 → 0.53 bare (open by #905's 50% rule, a thin margin), THE's E at 92.5 mm goes 1 false counter → 0 and THE 0.667 → 1.000, the 92.5 mm tagline S (never a closed loop: 0 thread holes in every arm) reads S instead of 8, and 1895 legibility and OCR do not move. **Cost:** a held letter sews up to about 0.1 mm wider outside (EST at 92.5 mm 0.984 → 0.964 at 0.2, 0.930 at 0.25); 7 of 17 designs move, only in bean letters, `ARTWORK_UNCOVERED` rises nowhere. 0.2 is the corpus arm and 0.25 the alternative, both candidates. DOCTRINE 2026-09-30 (no same-shape notch guard) is about the satin rail push, which this does not touch. **(g) `cfg.edge_cap_bean_pitch_mm` (PR #969, MERGED 2026-10-15, OFF, not in the switch):** None sews the BEAN edge cap at 0.73 mm byte for byte (md5-pinned on three flat goldens and two default-config plans); a number re-spaces the silhouette cap's stations only, while the run tier (7,679 short or stacked stitches at every pitch), bean letters, the border's bean fallback and the satin cap keep 0.73. It is the census's option A ("Speed is the operator's", area 4). On the 11 census designs at 80 mm, short-or-stacked penetrations 55,906 → 52,204 / 51,034 / 50,913 (**−6.6 / −8.7 / −8.9%**) at 1.0 / 1.2 / 1.5 mm; penetrations −1.4 / −2.0 / −2.6%; stacking barely moves (−0.4% at most: the three passes return to the same holes); thread flat, trims move by at most 1. **1.2 mm is the measured knee** (the cap's own short or stacked 5,487 → 621; 1.5 buys 0.2 points more). **The cost is edge cover:** share of the outer silhouette with no linear stitching within the host margin (median / max over the 11) 0.40 / 3.33% OFF → 0.37 / 4.59 at 1.0, 0.47 / 4.73 at 1.2, 0.70 / 5.49 at 1.5; worst chord excursion 0.19 → 0.28 / 0.30 / 0.40 mm; Hotel Fremont 0.75 → 2.34% and the Golke screenshot 3.33 → 5.49% at 1.5, and the ~4 mm ® disc turns into a visible decagon there. `ARTWORK_UNCOVERED` barely moves (Becker 12.4 → 13.8 mm²). 1.0, 1.2 and 1.5 are gate-1 candidates; the pitch is picked from cloth only (block P of the card below). **(h) Sew-out card, bay hold and edge-cap pitch (PR #970, MERGED 2026-10-15; UNSEWN, with Kent):** full text moved verbatim: [area 1](docs/scope/1-auto-digitizing-quality.md#waiting-on-kent-59h-the-bay-hold-and-edge-cap-pitch-card-as-it-stood-after-pr-1135). **Card (#959, merged, with Kent, NOT sewn):** a separate 4×4 card, 20 arms, 40 wt, Hat, the switch ON in every arm; block A is hold OFF vs 0.25, B1/B2 are ties OFF vs ON at 81 and 92.5 mm; C (passes) stays on `card-passes-2026-10-14`. **PR #977 price (both holds explicit, measured 2026-10-15):** Fremont Hat 80 mm 14,812 / 43 → 14,824 / 43; 81 mm 15,330 → 15,340 / 41; 92.5 mm 18,675 → 18,706 / 54; the corpus moves only where bean letters sew, no trim gained or lost. **(i) `cfg.bean_letter_straight_mm` (built 2026-10-20 for Kent's "1 is wiggly", "Eat Stay play are wiggly"; ON at 0.7 the same day, Kent's pick over 0.9 on the renders; None is `PRE_FLIP`, the card tools pin None):** a straight stretch of a bean spine takes the coarsest even pitch up to the knob whose chords stay within `STRAIGHT_SAG_MM` 0.08 of the spine; curves keep 0.45. At 0.9 on Fremont 81 mm Hat the T, Y and 1 stems sew as long stitches instead of beads, needle max 0.045 mm off the ink, 15,359 → 15,221 stitches, trims 42 either way. At 0.7: 15,281 stitches. Smoothing the spine first moved nothing (DOCTRINE 2026-10-20). Unsewn; the stitch length is gate 1. `tests/test_bean_straight.py`. *(measured 2026-10-14/15 — PRs #945, #950, #952, #953, #956, #959, #967, #969, #977, `tests/test_bean_bay_hold.py`, `tests/test_bean_counter_hold.py`, `tests/test_small_letter_ties.py`, `tests/test_bean_glyph_trace.py`, `tests/test_edge_cap_bean_pitch.py`, `docs/renders/edge-cap-bean-pitch/`; confirmed 2026-10-15 — PR #970, `tests/test_sewout_card_bayhold_edgecap.py`, its committed read-back)*
+
+### A shaped outline follows its outer edge (2026-11-13, `border_from_outline_follow_shape`, built OFF)
+
+Kent on Commons "Ahora": "now fix the Ahora gear so it sews as a gear". The
+outline rule sews one loop of one width on the body's edge, so the 17-tooth
+white gear round the yellow disc sewed a ring at every size. ON, a band that
+fits one satin everywhere (never over `SATIN_MAX_WIDTH_MM`) and whose thickness
+swings (p90 - p10) by at least `SATIN_SHORT_STITCH_AT_MM` is sewn to the art's
+own outer edge. No new constant.
+
+**Second build, same day (Kent: "it's an improvement but not across the
+board").** The first build (#1455) cast its crosses from the body's ring and
+laid a bean on the outer edge. Rendered on the gear at eight sizes and five
+drawn shapes, the faults were one fault, the needle placed from the wrong
+edge: two or three stitch ends a tooth wherever they fell, open corners, no
+pivot round a square corner of the body, lumps from the bean under 80 mm, and
+40 and 50 mm not taken. `digitizer_core/shaped_band.py` lays a band round one
+body out from its OUTER ring instead: a needle hole on every corner and on
+both ends of every side wall (read off the edge, so a traced tooth's rounded
+corners still get theirs), the spacing between them measured square to the
+stitch, each wall sewn once, the ring's holes short-stitched by the least
+pull that clears them, and no line on top. A band shared by several bodies
+keeps the first build's loop.
+
+- **Drawn shapes, bare band / thread past the art (0.4 mm thread), OFF to
+  ON:** 12-tooth gear 5.6% / 10.1 mm2 to 0.3% / 0.00; the same at x0.6 4.6% /
+  3.7 to 0.2% / 0.00; 24-tooth gear 4.4% / 5.2 to 0.0% / 0.00; 10-lobe scallop
+  5.1% / 9.1 to 0.6% / 0.00; notched frame 10.0% / 5.8 to 0.1% / 0.00.
+- **The gear, by eye, 40 to 160 mm wide (4.8 to 19.2 mm across):** 17 teeth at
+  every size, each on the traced outline. White satin points OFF to ON: 40 mm
+  a 50-point bean to 80; 50 mm 67 to 100; 60 mm 78 to 131; 80 mm 101 to 154;
+  100 mm 125 to 195; 127 mm 156 to 226; 160 mm 192 (plus a 132-point fill) to
+  283. Design at 100 mm 13,095 to 13,185 points.
+- **40 mm was a thin ring.** The hairline gate's width is 2 x area /
+  perimeter and teeth are perimeter: the band (0.57 to 0.93 mm thick) read
+  0.6 and sewed as a bean inside its own outline, the ground showing where
+  the teeth were. A band the layout takes is kept out of the hairline mark.
+- **Under 0.5 mm of swing the swing must be stepped**
+  (`shaped_band.stepped_share`: the share of the thickness change that
+  happens where the edge runs within 30 degrees of its crosses, at least
+  half). "(hed) p.e." at 180 mm has a white keyline 0.57 to 0.92 mm thick,
+  share 0.09: a line of uneven width, left to the pro's widened loop. The
+  gear at 40 mm is 0.76, at 50 mm 0.78.
+- **Scan, flag ON, every repo logo with an outline loop** (To-a-T Machine 40 /
+  60 / 100, Becker 60 / 100, MFab hat 36.7 / 100, MFab LC 100, hed 60 / 100 /
+  180, K-Line 100, To-a-T beanie 100, Bridge 100): none taken but the gear.
+- **Open:** pull on a 0.6 mm tooth is a sew-out question (gate 1); the 1.4 mm
+  closing overlap is a dense patch on a 5 to 7 mm gear, as on every loop; a
+  band with a few notches (under 10% of its ring) is not shaped; a star round
+  a disc is not read as an outline at all; the flip is Kent's.
+
+*(measured 2026-11-13 — memory `shaped-outline-gear-2026-11-13`,
+`tests/test_outline_follow_shape.py`)*
+
+## Twenty-fourth pass: overflow moved from MASTER_SCOPE (2026-11-13)
+
+Moved verbatim from `MASTER_SCOPE.md` to make room for the 2026-11-13 photo-lane entries (two lanes, the cutout-lane thread grade, the tone pass). The live entries carry the current readings.
+
+### The scorecard's earlier recaptures, as they stood before the 2026-11-13 refresh
+
+**Recaptured 2026-10-04 at `6e0cb943`** on cloud Linux after 50
+pipeline commits: 48 of 52 rows moved, five fell a band, every mover attributed
+by bisection over the 51 trees; the step that crosses a band line is a new
+preflight check on all five falls (#572, #573), not a stitch
+([notes](../scorecard-baseline-attribution-2026-10-04.md), scope-history 10-04).
+**Recaptured again 2026-10-05 at `d000e370`** after Kent made both checks
+`info` (#630): 21 rows moved, every one of them those two findings, 12 rose a
+band, no other leaf moved (scope-history 10-05). **Recaptured 2026-11-05 at
+`292418a8`** on GitHub Actions (the `Corpus scorecard` workflow, `diff` or
+`capture` as a button): 30 of 52 rows moved, A/B/C/D/F 9/18/7/6/12 →
+10/20/8/10/4, mean 61.8 → 71.9, the rise `THREAD_MATCH_POOR` going quiet on the
+gradient lane (#1200)
+([notes](../scorecard-baseline-attribution-2026-11-05.md)).
+
+### Closed defect 15's census, as it stood before the 2026-11-13 refresh
+
+Census, 19 real photographs at 80 mm on the config the Studio sends: all 19 reach a photo class at stage 0, detection rescues 0, escapes 0, false positives 0 of 30 logos; Cohen's kappa against the hand label (chance-corrected) **1.000 for the photo class, 0.187 for detection alone.** **Caveats:** in-sample (the gate's threshold came from this same corpus, PR #1178, so 19 of 19 is a regression check, not an out-of-sample rate); no alpha cut-outs; nothing under 500 px. Cones only, nothing sewn. *(measured 2026-11-06 — PR #1272, [`docs/photo-detection-census-2026-11-06.md`](../photo-detection-census-2026-11-06.md))*
+
+### SAM2 on logo art, as it stood in the Studio-lane paragraph before the 2026-11-13 refresh
+
+**REFUTED as a region former for LOGO art**: 0–8 masks at the shipped
+`points_per_side=12` against the shipped former's 17–164, either finding
+essentially nothing or segmenting the BACKGROUND as the object, at
+`predicted_iou` 0.88–0.99 throughout. *(measured 2026-09-22 —
+[`docs/sam2-on-logo-art-2026-09-22.md`](../sam2-on-logo-art-2026-09-22.md))*

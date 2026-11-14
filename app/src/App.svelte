@@ -652,9 +652,11 @@
   // state with the traced letters and the text both sewing.
   let recordedThisTask = false;
 
-  function persist(record = true, discrete = false) {
+  // `gesture`: a field drag's pointerdown token (history.js), so one drag is
+  // one undo step whatever its timing.
+  function persist(record = true, discrete = false, gesture = null) {
     if (record) {
-      history.record(project, undefined, discrete && !recordedThisTask);
+      history.record(project, undefined, discrete && !recordedThisTask, gesture);
       if (!recordedThisTask) {
         recordedThisTask = true;
         queueMicrotask(() => (recordedThisTask = false));
@@ -711,17 +713,17 @@
   // reclamp "elupdate" events and by ContentStep's element-scoped TextStep/
   // ImagePanel/SizePanel controls (see ContentStep.svelte), which all funnel
   // their patches through this same { id, patch } shape.
-  function elUpdate(id, patch, record = true, discrete = false) {
+  function elUpdate(id, patch, record = true, discrete = false, gesture = null) {
     project = updateElement(project, id, patch);
-    persist(record, discrete);
+    persist(record, discrete, gesture);
   }
 
   // Multi-select group edits (EmbroideryField's group move/resize and
   // ContentStep's bulk-edit panel): one patch per member, applied in a
   // single immutable pass so undo records ONE step for the whole gesture.
-  function elUpdateMany(patchById, record = true, discrete = false) {
+  function elUpdateMany(patchById, record = true, discrete = false, gesture = null) {
     project = updateElements(project, patchById);
-    persist(record, discrete);
+    persist(record, discrete, gesture);
   }
 
   function onToggleSelect(id) {
@@ -1362,6 +1364,7 @@
   <section class="field">
     <EmbroideryField
       {project}
+      projectId={currentId}
       {runtime}
       showDragHint={showDragFieldHint}
       {hoverShape}
@@ -1369,9 +1372,10 @@
       {quote}
       on:shapehover={(e) => (hoverShape = e.detail)}
       on:shapefocus={(e) => (selectedShape = e.detail)}
-      on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet, !!e.detail.discrete)}
+      on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet, !!e.detail.discrete, e.detail.gesture)}
       on:elupdatemany={(e) => elUpdateMany(e.detail)}
       on:elupdatemanydiscrete={(e) => elUpdateMany(e.detail, true, true)}
+      on:elupdatemanygesture={(e) => elUpdateMany(e.detail.patches, true, false, e.detail.gesture)}
       on:select={(e) => onSelect(e.detail)}
       on:toggleselect={(e) => onToggleSelect(e.detail)}
       on:dims={(e) => onDims(e.detail)}
@@ -1409,6 +1413,7 @@
       <svelte:fragment slot="design">
         <ContentStep
           {project}
+          projectId={currentId}
           workImage={runtime.workImages[project.selectedId]}
           flat={runtime.flats[project.selectedId]}
           {sewnColors}

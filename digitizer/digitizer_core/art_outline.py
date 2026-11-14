@@ -48,6 +48,8 @@ along its outer edge but is a fill floor across over 0.74 of it.
 """
 from __future__ import annotations
 
+import math
+
 from shapely.geometry import LineString, Polygon
 from shapely.ops import unary_union
 
@@ -109,15 +111,25 @@ def _line_art(holder, bodies) -> bool:
 
 
 def find_art_outlines(regions, cfg=None, *,
-                      line_art_guard: bool | None = None) -> dict[str, list[tuple[str, Polygon]]]:
+                      line_art_guard: bool | None = None,
+                      group_decide=None) -> dict[str, list[tuple[str, Polygon]]]:
     """-> {outline shape_id: [(body shape_id, hole polygon), ...]} for every
     region whose hole holds a body under the rule above, bodies in input
     order. A body has at most one outline (the first holder that reads).
     `line_art_guard` (None: `cfg.border_from_outline_line_art_guard`) drops
-    an outline that reads as line art, and frees its bodies."""
+    an outline that reads as line art, and frees its bodies.
+
+    `group_decide` (None: `group_consistency.outline_body_decider` under
+    `cfg.group_consistent_outline_body`, else the per-body test) takes the holder and
+    its candidates, (body, hole, band, stroke) in hole then input order, and
+    returns the (body, hole) pairs it keeps. The per-body test keeps those
+    with stroke >= `machine.OUTLINE_BODY_RATIO` x band, exactly as before."""
     regions = list(regions)
     if line_art_guard is None:
         line_art_guard = bool(getattr(cfg, "border_from_outline_line_art_guard", False))
+    if group_decide is None and getattr(cfg, "group_consistent_outline_body", False):
+        from .group_consistency import outline_body_decider
+        group_decide = outline_body_decider(machine.MIN_FILL_WIDTH_MM)
     out: dict[str, list[tuple[str, Polygon]]] = {}
     taken: set[str] = set()
     for o in regions:
@@ -144,7 +156,13 @@ def find_art_outlines(regions, cfg=None, *,
             if bx0 < ox0 or by0 < oy0 or bx1 > ox1 or by1 > oy1:
                 continue
             inside.append(b)
-        found = []
+        # Every candidate first, measured once: a body's band and stroke do
+        # not depend on which of the holder's holes holds it, so a body the
+        # test refuses in one hole is refused in any, and the first hole
+        # that holds it is the one it is recorded in -- as the one-pass loop
+        # this replaced did.
+        cands = []
+        cand_ids: set[str] = set()
         for hole in holes:
             ring = hole.exterior.buffer(HOLD_PAD_MM)
             pad = hole.buffer(HOLD_PAD_MM)
@@ -159,19 +177,211 @@ def find_art_outlines(regions, cfg=None, *,
             if sum(ext.area for _b, ext in held) < FILL_FRAC * hole.area:
                 continue
             for b, _ext in held:
-                if b.shape_id in taken or _counter(b, o, cfg):
+                if b.shape_id in taken or b.shape_id in cand_ids or _counter(b, o, cfg):
                     continue
                 band, stroke = outline_measures(o, b, hole)
-                if stroke < machine.OUTLINE_BODY_RATIO * band:
-                    continue
-                found.append((b, hole))
-                taken.add(b.shape_id)
+                cands.append((b, hole, band, stroke))
+                cand_ids.add(b.shape_id)
+        if group_decide is None:
+            found = [(b, hole) for b, hole, band, stroke in cands
+                     if stroke >= machine.OUTLINE_BODY_RATIO * band]
+        else:
+            found = list(group_decide(o, cands))
+        taken.update(b.shape_id for b, _hole in found)
         if found and line_art_guard and _line_art(o, found):
             taken.difference_update(b.shape_id for b, _hole in found)
             continue
         for b, hole in found:
             out.setdefault(o.shape_id, []).append((b.shape_id, hole))
     return out
+
+
+#: stations along a hole's ring where the band's thickness is read
+_THICKNESS_STEP_MM = 0.3
+#: How far a band's thickness must swing (p90 - p10) to be shaped: two needle
+#: holes nearer than `machine.SATIN_SHORT_STITCH_AT_MM` are one hole, so a
+#: step under it cannot be sewn as a step. It was `SATIN_MIN_CROSS_MM` (0.5)
+#: while the loop was cast from the ring and a tooth's stitch ends fell where
+#: they fell; laid out from the outer edge (`shaped_band`) every corner has
+#: its own hole, and a 12-tooth gear with 0.45 mm teeth sews as one (rendered
+#: 2026-11-13) where the widened loop sewed a ring of spokes 0.5 mm past it.
+SHAPED_MIN_SWING_MM = machine.SATIN_SHORT_STITCH_AT_MM
+
+
+def band_thickness(band, hole: Polygon) -> list[float]:
+    """The band's thickness square to `hole`'s ring, read every
+    `_THICKNESS_STEP_MM` along it: how far a ray from the ring runs through
+    `band` before leaving it, capped just past `machine.SATIN_MAX_WIDTH_MM`
+    (thicker than that is not one satin, whatever it is)."""
+    from .stage6_border import _exact_cross
+
+    ring = LineString(hole.exterior.coords)
+    total = ring.length
+    n = max(8, int(total / _THICKNESS_STEP_MM))
+    cap = machine.SATIN_MAX_WIDTH_MM + 1.0
+    out: list[float] = []
+    for i in range(n):
+        s = total * i / n
+        p = ring.interpolate(s)
+        a = ring.interpolate((s - 0.15) % total)
+        b = ring.interpolate((s + 0.15) % total)
+        tx, ty = b.x - a.x, b.y - a.y
+        d = (tx * tx + ty * ty) ** 0.5
+        if d < 1e-9:
+            continue
+        nx, ny = -ty / d, tx / d
+        # one side of the ring is the hole (0), the other the band
+        out.append(max(_exact_cross(p.x + nx * 1e-4, p.y + ny * 1e-4, nx, ny, cap, band),
+                       _exact_cross(p.x - nx * 1e-4, p.y - ny * 1e-4, -nx, -ny, cap, band)))
+    return out
+
+
+def shaped_width_mm(band, hole: Polygon) -> float | None:
+    """The loop width for a SHAPED band round `hole`, or None when the band
+    is not one (`cfg.border_from_outline_follow_shape`, built OFF 2026-11-13).
+
+    The rule above sews an outline as a loop of ONE width: right for a band
+    of one width (a keyline, a frame), and for one too thick to be a satin
+    (Becker's drop shadow, sewn as a loop over a fill). It is wrong for a
+    band whose OUTER edge has a shape of its own: Commons "Ahora" draws a
+    white gear round a yellow disc, 17 teeth, and the loop on the disc's edge
+    sewed a ring of spokes at every size (Kent, 2026-11-13: "its still a
+    circle and not a gear like the image").
+
+    A band is shaped when both hold, on `band_thickness`:
+
+      * all of it fits one satin: never thicker than
+        `machine.SATIN_MAX_WIDTH_MM`, so a cross from the hole's ring can
+        reach the outer edge everywhere;
+      * its thickness swings (p90 - p10) by at least `SHAPED_MIN_SWING_MM`:
+        the outer edge steps by more than two needle holes need to be two.
+        Under `machine.SATIN_MIN_CROSS_MM` the swing must also be STEPPED
+        (below): a line of uneven width is not a shape.
+
+    Measured 2026-11-13: the gear swings 0.54 mm at 60 mm wide (0.86 to 1.40,
+    max 1.45) and 0.89 at 100 (max 2.40); at 40 mm 0.36 (0.57 to 0.93).
+    To-a-T Machine's frame swings 0.14 to 0.19 (a band of
+    one width, which the pro widens). Becker's, MFab's and the Drone's bands
+    all run past 7 mm somewhere. MFab's hat at 100 mm has two small loops
+    that read shaped among its outline's eight; the caller asks for ALL of
+    an outline's loops or none, so it is untouched. Plans compared with the
+    flag on and off at 100 mm: MFab, Becker, To-a-T and `hed_p_e_logo`
+    byte-identical, the gear alone changed.
+
+    The width returned is the band's thickest reading: the caller cuts each
+    cross where it leaves the ART (not the art widened), so a cross is as
+    long as the band is thick where it stands -- long on a tooth, short in a
+    root."""
+    t = band_thickness(band, hole)
+    if len(t) < 8:
+        return None
+    t = sorted(t)
+    if t[-1] > machine.SATIN_MAX_WIDTH_MM:
+        return None
+    p10 = t[int(0.10 * (len(t) - 1))]
+    p90 = t[int(0.90 * (len(t) - 1))]
+    if p90 - p10 < SHAPED_MIN_SWING_MM:
+        return None
+    if p90 - p10 < machine.SATIN_MIN_CROSS_MM:
+        # Under the shortest stitch a swing alone does not say "teeth": a
+        # keyline whose width wanders swings as far. It is a shape only when
+        # most of the change happens where the outer edge runs steep, at the
+        # sides of teeth (`shaped_band.stepped_share`). Measured 2026-11-13:
+        # Commons "(hed) p.e." at 180 mm, a white keyline 0.57 to 0.92 mm
+        # thick, 0.09 (the pro's widened loop, as before); the gear at 40 mm
+        # (0.57 to 0.93) 0.76, at 50 mm 0.78.
+        from .shaped_band import stepped_share
+        if stepped_share(band, hole) < 0.5:
+            return None
+    return t[-1]
+
+
+#: how finely `shaped_stations` reads the band to find where it steps
+_STEP_READ_MM = 0.025
+
+
+def shaped_stations(band, hole: Polygon, density_mm: float) -> list[tuple[float, float]] | None:
+    """Where a shaped band's loop puts its needle, round `hole`'s ring: the
+    ring cut into stretches where the band is THICK (a tooth) and THIN (a
+    root), and every stretch given the same kind of share -- a whole number
+    of stitches, evenly spaced, none of them on the step between two
+    stretches. -> ring points in ring order, or None when the band has no
+    steps to lock to.
+
+    Spaced evenly round the ring with no regard for the teeth, the gear at
+    100 mm gave some teeth three long stitches and some two, and at 60 mm one
+    or two: a gear with ragged teeth (Kent, 2026-11-13, on bean outlines:
+    "building a swiss watch, and not a playhouse out of logs"; it holds for a
+    satin edge as well). A loop's crosses alternate rails, so the outer edge
+    is drawn by every SECOND station: a stretch gets `2 x round(length /
+    density)` stations, never fewer than two, so each tooth and each root
+    shows at least one stitch of its own length and all teeth of one size
+    show the same number."""
+    ring = LineString(hole.exterior.coords)
+    total = ring.length
+    if total <= 0:
+        return None
+    from .stage6_border import _exact_cross
+
+    cap = machine.SATIN_MAX_WIDTH_MM + 1.0
+    n = max(16, int(total / _STEP_READ_MM))
+    read: list[float] = []
+    for i in range(n):
+        s = total * i / n
+        p = ring.interpolate(s)
+        a = ring.interpolate((s - 0.15) % total)
+        b = ring.interpolate((s + 0.15) % total)
+        tx, ty = b.x - a.x, b.y - a.y
+        d = (tx * tx + ty * ty) ** 0.5
+        if d < 1e-9:
+            read.append(read[-1] if read else 0.0)
+            continue
+        nx, ny = -ty / d, tx / d
+        read.append(max(_exact_cross(p.x + nx * 1e-4, p.y + ny * 1e-4, nx, ny, cap, band),
+                        _exact_cross(p.x - nx * 1e-4, p.y - ny * 1e-4, -nx, -ny, cap, band)))
+    ordered = sorted(read)
+    mid = (ordered[int(0.10 * (n - 1))] + ordered[int(0.90 * (n - 1))]) / 2.0
+    thick = [t >= mid for t in read]
+    if all(thick) or not any(thick):
+        return None
+    # stretches, starting on a step so none straddles the ring's own seam
+    first = next(i for i in range(n) if thick[i] != thick[i - 1])
+    cuts = [i for i in range(first, first + n) if thick[i % n] != thick[(i - 1) % n]]
+    # a stretch shorter than half a stitch is the reading's noise on a step:
+    # it joins the stretch before it
+    min_len = density_mm / 2.0
+    kept = [cuts[0]]
+    for c in cuts[1:]:
+        if (c - kept[-1]) * total / n < min_len:
+            kept.pop() if len(kept) > 1 else None
+            continue
+        kept.append(c)
+    if len(kept) < 2:
+        return None
+    out: list[tuple[float, float]] = []
+    # The stitches are counted on the band's OUTER edge, where a tooth shows
+    # (law 4: the outer rail holds the density). The ring is the inner rail,
+    # so the same stitches stand closer together on it: a stretch of ring
+    # `length` long under a band `t` thick spans `length x (r + t) / r` out
+    # there, `r` the ring's own radius (its length / 2 pi). Counted on the
+    # ring, the gear's teeth fanned into pairs of spokes. Never so many that
+    # two needle holes on the ring come within
+    # `machine.SATIN_SHORT_STITCH_AT_MM` of each other.
+    radius = total / (2.0 * math.pi)
+    for a, b in zip(kept, kept[1:] + [kept[0] + n]):
+        length = (b - a) * total / n
+        thick_here = sorted(read[i % n] for i in range(a, b))[(b - a) // 2]
+        outer = length * (radius + thick_here) / radius
+        most = max(1, int(length / machine.SATIN_SHORT_STITCH_AT_MM))
+        k = 2 * max(1, min(most, int(round(outer / density_mm))))
+        for j in range(k):
+            # reading `a` is the first of its stretch: the step itself lies
+            # half a reading before it (taken at `a`, every stretch sat
+            # 0.04 mm round the ring from its tooth)
+            at = a - 0.5 + (b - a) * (j + 0.5) / k
+            p = ring.interpolate((at * total / n) % total)
+            out.append((p.x, p.y))
+    return out if len(out) >= 8 else None
 
 
 def outline_width_mm(holder, bodies: list[tuple[object, Polygon]]) -> float:

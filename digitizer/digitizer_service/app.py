@@ -1015,6 +1015,14 @@ def _review_payload(result, plan=None) -> dict:
                 # garment would sew this; you turned it off". False for an
                 # ordinary hole, an alpha hole, and everything untagged.
                 "enclosed_by_garment": bool(r.meta.get("enclosed_by_garment", False)),
+                # Contract v1.10 (2026-11-13; server-computed, read-only,
+                # same category): this shape is a HAIRLINE OUTLINE, a thin
+                # line the art draws round its shapes
+                # (`keyline_bean.keyline_regions`), sewn as a bean. Stays True
+                # under an override that turns the shape off, so the Studio
+                # can throb it and ask "Keep / Remove" and still offer it
+                # back afterwards. Always present; never a letter.
+                "hairline_outline": bool(r.meta.get("hairline_outline", False)),
                 # Text-cluster detection (server-computed, read-only — no
                 # `_OVERRIDE_KEYS` entry, same category as `layer` and
                 # `enclosed_background`): whether this shape was tagged as a
@@ -1710,7 +1718,7 @@ def job_status(job_id: str, x_embbot_token: str | None = Header(None)) -> dict:
 def cancel_job(job_id: str, x_embbot_token: str | None = Header(None)) -> dict:
     """The customer pressed Cancel (service 0.7.0). A queued or running job
     reads `cancelled` from this answer on; its worker stops at the next
-    stage seam (`digitizer_core.deadline` names what cannot be interrupted)
+    `deadline.check` (`digitizer_core.deadline` names what cannot be interrupted)
     and takes the next upload. Any other job is left exactly as it was and
     its state returned, so cancelling twice, or a job that finished a moment
     ago, costs nothing. The reply is the state alone, never the result."""
