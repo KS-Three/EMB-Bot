@@ -101,8 +101,82 @@ No apex-cut code is touched.
 
 ## The 28 lettering designs (OFF | ON, full digitize, one at a time)
 
-PENDING.
+#1490's corpus: the same 28 designs, digitized OFF and ON on this branch's
+tree, rows only. OFF is byte-identical to the edge-walk corpus's OFF on all
+28 (md5), so the flag off changes nothing.
+
+ON moves the five Becker jobs and nothing else: their E is one column round
+both corners. The other 23 designs are byte-identical, including:
+- MFab;
+- ProSeal;
+- every lettering logo;
+- the Gaulke, Bridge and Fremont jobs.
+
+| design | letters' travel on finished thread, mm | trims | stitches |
+|---|---|---|---|
+| becker_hat_large | 15.8 -> 4.1 | 12 -> 11 | 16289 -> 16464 |
+| becker_lc_large | 26.0 -> 15.0 | 13 -> 12 | 14951 -> 15106 |
+| becker_hat_small | 21.4 -> 12.6 | 12 -> 11 | 10576 -> 10699 |
+| becker_chest_small | 21.3 -> 12.6 | 12 -> 11 | 10339 -> 10483 |
+| becker_beanie | 24.5 -> 15.8 | 16 -> 15 | 13902 -> 14034 |
+| **total (28)** | **268.1 -> 219.2** | **589 -> 584** | 268308 -> 269037 |
+
+**What the numbers mean:**
+- The travel drops because the E needs no hop: one column runs through
+  both corners.
+- The E's own trim goes.
+- The fans add about 130-175 stitches an E.
+- Exposed travel is unchanged at 0.
 
 ## Sheets (OFF | ON | pro)
 
-PENDING.
+Gitignored, in the primary checkout:
+`digitizer/eye_pairs_out/jag-source-1113/corner-turn/sheets/`.
+
+There are the six Becker joins of the edge-walk sheets, the whole E, and
+Kent's 14 end/corner pins from #1481. The pro is aligned by phase
+correlation; the lettering logos have no pro file.
+
+By eye:
+- **#14 (Kent's corner):** the stem's thread turns the corner and carries
+  on into the bottom arm, the crosses fanning about the inside corner. The
+  pro's panel shows the same fan. OFF's diagonal is gone too.
+- **#15:** the diagonal is gone. The top-left now fans into the stem, where
+  the pro's Becker file caps; his MFab E fans there.
+- **The whole E:** a C-shaped column with the middle arm butted. It reads as
+  one stroke round the corners. The fans are large because Becker's arms
+  are as wide as its stem.
+- **The other joins:** the N's top and foot, the A's crossbar and pins #10,
+  #11 are unchanged.
+- **The 12 other end/corner pins:** k_line, and_pizza, Jakarta, ProSeal,
+  Gaulke and Fremont are unchanged. Their designs do not move; those pins
+  are end faces and acute joints, not L corners.
+
+## With edge-walk and apex cut
+
+Kent ruled `lettering_columns_connectors_edge_walk` and
+`lettering_columns_apex_cut` (with its guard) ON on 2026-11-14. Their flip PR
+belongs to another worker.
+
+With this flag OFF, neither one's output changes anywhere: the cut and the
+walk are byte for byte.
+
+With this flag ON, read on the lane inputs of Becker 80 mm, Becker hat large
+and ProSeal hat:
+- **Only Becker's E changes.** It changes under each of edge-walk, apex
+  cut, and both.
+- **ProSeal's 28 letters are byte-identical** under every combination.
+- **The E with the corner turn** sews no trim and nothing on finished
+  satin, whatever else is on. Edge-walk then has nothing left to reorder.
+
+So the flip PR's Becker E sheets (#14, #15, the E's middle-arm join) would
+read differently if this flag is also ON. Its N, A and ProSeal sheets would
+not.
+
+## Not done
+
+- **The top-left of Becker's E.** Kent's pin is the bottom corner, but the
+  turn takes both. The pro caps Becker's top-left and fans MFab's, and no
+  rule here tells the two apart.
+- **Acute corners** (N, A, M) keep their caps. That is the pro's way.
+- **Script words** (`script_strokes`) do not use the fold.
