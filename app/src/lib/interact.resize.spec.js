@@ -5,7 +5,9 @@
 // 1 px touch on 120 mm lettering at 45 degrees wrote 117.5 and five touches
 // 108.1. `fieldResize` is EmbroideryField onPointerMove "resize" (dragResize,
 // the optional size-match snap, then resizeTargetMm); the press-release dead
-// zone in front of it is the field's own and is covered by e2e.
+// zone in front of it is the field's own, driven in a browser by
+// e2e/core-flows.spec.js ("a press on a corner handle that does not travel
+// writes nothing", single element and group; added 2026-11-13).
 import { test, expect, beforeAll } from "vitest";
 import { createRequire } from "node:module";
 import { preloadAllFontsSync } from "./testFonts.js";
