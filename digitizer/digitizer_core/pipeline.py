@@ -1100,7 +1100,11 @@ def build_generation(
                          # a letter turned on a ring joins its line (2026-11-07,
                          # ON since 2026-11-08, Kent's flip)
                          **({"nest_door_aspect": True}
-                            if cfg.text_cluster_nest_door_aspect else {}))
+                            if cfg.text_cluster_nest_door_aspect else {}),
+                         # a row of solid blobs is no word (2026-11-13, built
+                         # OFF): absent, the call as it was
+                         **({"solid_guard": True}
+                            if cfg.extra.get("text_cluster_solid_guard") else {}))
     # `cfg.dark_ink_floor_rescue`: a stroke kept under the floor for the
     # lettering path that the tagger did not claim is a speck, not a letter:
     # dropped, counted with stage 4's drops (no new sentence).
@@ -1139,7 +1143,11 @@ def build_generation(
                            **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
-                           **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))
+                           **({"grow_away": True} if cfg.small_text_reset_grow_away else {}),
+                           # the height classes of a lowercase line re-set on one
+                           # baseline (2026-11-13, built OFF): absent, the call as it was
+                           **({"one_baseline": True}
+                              if cfg.extra.get("small_text_reset_one_baseline") else {}))
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
