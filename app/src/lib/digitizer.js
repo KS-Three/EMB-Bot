@@ -1942,27 +1942,45 @@ export function decodedFromDesignCached(design) {
 // answer -- there is nothing left to recolour. Two old blocks collapsing onto
 // one new colour keep the EARLIER block's choice, matching sew order.
 //
+// EVERY block that still sews the thread keeps it (2026-11-13). A thread can
+// sew more than once -- the design edge re-loads a cone, so red, white, red is
+// two spools and three blocks -- and DigitizePanel's pickSpool writes the pick
+// to every block of the spool. This used to carry it to the colour's FIRST new
+// block only, so any re-run, even one handing back the identical palette, put
+// block 2 back to red in the render and the export while the spool row still
+// showed navy. Matched block for block in sew order, so an unchanged palette
+// is the identity even for a design saved when the list was per block (before
+// 2026-09-30) with two blocks of one thread on different picks -- the only
+// way such a pair arises, since the spool list cannot make one. A block the
+// new palette adds beyond the old count takes the earliest pick, the
+// collapse rule above.
+//
 // Storage format is unchanged (still index-keyed), so saved .embproj files
 // need no migration.
 export function remapBlockColors(oldColors, overrides, newColors) {
   const ov = overrides || {};
-  const keys = Object.keys(ov);
-  if (!keys.length) return {};
+  if (!Object.keys(ov).length) return {};
   const oldC = oldColors || [];
   const newC = newColors || [];
   const key = (c) => (c ? `${c.r || 0},${c.g || 0},${c.b || 0}` : null);
-  const newIndexByColour = new Map();
-  for (let j = 0; j < newC.length; j++) {
-    const k = key(newC[j]);
-    if (k != null && !newIndexByColour.has(k)) newIndexByColour.set(k, j);
+  // Each old thread's picks, block by block in sew order (null = not picked).
+  const picksByColour = new Map();
+  for (let i = 0; i < oldC.length; i++) {
+    const k = key(oldC[i]);
+    if (k == null) continue;
+    if (!picksByColour.has(k)) picksByColour.set(k, []);
+    picksByColour.get(k).push(ov[i] || null);
   }
   const out = {};
-  for (const raw of keys.map(Number).filter((n) => Number.isInteger(n)).sort((a, b) => a - b)) {
-    const k = key(oldC[raw]);
-    if (k == null) continue;
-    const j = newIndexByColour.get(k);
-    if (j == null || out[j] != null) continue; // dropped from the palette, or an earlier block already claimed it
-    out[j] = ov[raw];
+  const seen = new Map();
+  for (let j = 0; j < newC.length; j++) {
+    const k = key(newC[j]);
+    const picks = k == null ? null : picksByColour.get(k);
+    if (!picks) continue; // a thread the old palette did not have: nothing was picked for it
+    const n = seen.get(k) || 0;
+    seen.set(k, n + 1);
+    const pick = n < picks.length ? picks[n] : picks.find(Boolean);
+    if (pick) out[j] = pick;
   }
   return out;
 }
