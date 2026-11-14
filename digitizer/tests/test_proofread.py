@@ -112,6 +112,20 @@ def test_square_sewn_3mm_off_is_moved():
     assert not [f for f in rep["findings"] if f["kind"] in ("MISSING", "EXTRA")]
 
 
+def test_letter_moved_inside_a_joined_word_is_moved():
+    """The re-set case: the middle letter is sewn 2 mm up and its thread
+    touches both neighbours', so no 1:1 partner exists; the local shift
+    search still names it moved, and its neighbours are not."""
+    a, b, c = box(-7, -1.5, -4, 1.5), box(-1.5, -1.5, 1.5, 1.5), box(4, -1.5, 7, 1.5)
+    word = unary_union([a.buffer(0.3, join_style=2), box(-1.5, -3.5, 1.5, -0.5).buffer(0.3, join_style=2),
+                        c.buffer(0.3, join_style=2), box(-4.2, -1.0, 4.2, -0.4)])
+    rep = _read([(a, RED), (b, RED), (c, RED)], [(word, RED, "W")])
+    moved = [f for f in rep["findings"] if f["kind"] == "MOVED"]
+    assert len(moved) == 1, rep["findings"]
+    assert moved[0]["offset_mm"][1] == pytest.approx(-2.0, abs=0.25)
+    assert abs(moved[0]["at_mm"][0]) < 1.0
+
+
 def _gear(r_in=6.0, r_out=8.0, teeth=8):
     disc = Point(0, 0).buffer(r_in, 64)
     tooth = box(-1.0, 0, 1.0, r_out)
