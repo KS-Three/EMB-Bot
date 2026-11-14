@@ -40,10 +40,10 @@ fixed on main; three have other causes.
 GROUP: like shapes on one line, one thread, heights within
 `lettering_thread.STRAY_HEIGHT_RATIO`, sharing `STRAY_MIN_OVERLAP` of the
 shorter height, within `STRAY_MAX_GAP_H` heights of a member (the stray rule's
-own line test), at least `textcluster.MIN_CLUSTER_MEMBERS` (3). No new
-grouping constant.
+own line test), at least `textcluster.MIN_CLUSTER_MEMBERS` (3); a two-piece
+glyph whose pieces span the line's band within 10% joins it.
 
-VERDICT: a member more than `MARGIN` (1.5x) off the threshold, either way, is
+VERDICT (run floor): a member more than `MARGIN` (1.5x) off the threshold, either way, is
 evidence; the group takes the decided members' side when they agree, the
 median's side when none is decided, and keeps every shape's own call when the
 decided disagree. A member inside the band follows, unless its shape cannot
@@ -57,8 +57,18 @@ Four flags, all OFF, byte-identical OFF, each separable:
   `small_solids_satin`, which otherwise sewed K-Line's W and K as one satin
   column each); one moved off it only onto satin `_sews_satin` grants.
 * `cfg.group_consistent_outline_body`: the art-outline body test per line of
-  like candidates within one outline. A candidate made a body must be
-  `machine.MIN_FILL_WIDTH_MM` across on average.
+  like candidates within one outline, decided by INK, not by the margin
+  rule: the side with more area, or within 1.5x the side with the wider
+  strokes (a wide stroke forced into satin is the lumpy case); every member
+  follows. **First version went the wrong way** (the margin rule took the
+  decided O and ! as evidence and made AH and RA satin: split satin, an A in
+  pieces at three angles, a blocky H bar). AH and RA are four letters in two
+  fused shapes holding 435 of 556 mm^2 of ink; Kent's pins sit on the O and
+  the !. A two-piece glyph (the ! bar, 0.73 of the line, and its dot) joins a
+  line its pieces span together (`STACK_BAND_TOL`); pieces a line already
+  holds never move, so MFab's small lower words do not join its big letters.
+  A candidate made a body must be `machine.MIN_FILL_WIDTH_MM` across on
+  average (the O 2.05 mm, the ! bar 2.22, its dot 1.47: all take it).
 * `cfg.group_consistent_thread` (`lettering_thread.word_thread`): a
   text-cluster letter on a thread held by under a quarter of its word takes
   the thread over half the word sews, within `STRAY_MAX_DE00` (25), and drops
@@ -83,31 +93,46 @@ Four flags, all OFF, byte-identical OFF, each separable:
   group (`fill_angle_deg`, `satin_angle_deg` already written) and sew via
   the fill emitter's small-shape path, where an angle does not set the
   stitch direction; To a T's rule lines are 0.4-0.6 mm, under the guard.
-  Lettering and the photo classes are out.
+  Each member's own angle is read on the polygon its rung fills (an outline
+  body's is pull-grown), and a group whose members already agree within 5
+  deg is left as it sews. Lettering and the photo classes are out.
+
+**The render shows row ORDER as tone.** With one shared angle the mascot's
+feet still render as two shades, and so do AHORA's AH and RA at one 90 deg
+row axis: same spool, same block, same axis. The rows advance opposite ways
+(AH 29 of 30 steps one way, RA 83 of 86 the other; feet 8/8 against 15/16),
+and `stitchviz` draws each row over the shaded half of the one before, so the
+visible half -- the tone -- follows which way the rows advance. Its own
+comment keeps sew direction out of tone (`|x|` in the Lambert term); row
+overlap brings it back. Whether cloth shows it too is a sew-out question;
+Kent's "feet are differnt colors" was read off this render.
 
 ## Proof
 
-OFF byte-identical: lt_ahora 80 mm, design md5 `3108dbd3ea975ff8542d27493b2e499f`
-(9,262 stitches) on main and on this branch with both flags off.
+OFF byte-identical: lt_ahora 80 mm, stitches md5 `93e6ef52` (9,262 records)
+on main 7ad9c124 and on this branch, before and after merging main.
 
-ON below is every flag this note builds. Sheets (art | OFF | ON):
-`digitizer/eye_pairs_out/group-consistency-1113/sheets/`.
+Paired OFF | ON on one tree (this branch merged with main 2026-11-14), ON =
+all four flags, Studio request, one digitize at a time. Sheets (art | OFF |
+ON): `digitizer/eye_pairs_out/group-consistency-1113/sheets/`.
 
-| design (mm, garment) | OFF st | ON st | what changed, by eye |
+| design (mm) | OFF | ON | what changed |
 |---|---|---|---|
-| lt_ahora (80, left chest) | 9,262 | 8,732 | AH and RA leave the pink loop and sew satin like O and !: one construction for the word. **Price:** AH and RA are fused in the art, and as one satin shape each they sew rougher than OFF's fills (the A's apex a lump, a zigzag at the A-H foot). |
-| lt_k_line (80) | 3,372 | 3,442 | The six satin letters of the grey subline (W, three K's, H, D) sew bean outlines like the other 18; W, K, H and D read cleaner than OFF's satin tangles. |
-| Bridge hat (63.3, hat) | 8,569 | 8,594 | RESTAURANT's U: thin Swiss Ivy skeleton bean -> Caribbean satin like its ten siblings. |
-| lt_hed_p_e (80) | 3,849 | same md5 | nothing: its e is a stage-2 thread split with no text cluster |
-| devanagari_logo (80) | 4,960 | same md5 | nothing |
-| kanji_seal (80) | 10,996 | same md5 | nothing |
-| Hotel Fremont hat (92.6, hat) | 16,106 | same md5 | nothing |
-| ProSeal hat (85.9, hat) | 6,434 | same md5 | nothing |
-| Becker hat large (101.9, hat) | 16,289 | same md5 | nothing |
+| lt_ahora (80) | 9,262 | 8,839 | O (satin -> fill), ! bar (satin -> fill) and its dot (satin -> fill) join AH and RA under the pink loop: one construction for the word. RA's fill turns 67.5 -> 90 deg to match AH (the fill-angle flag). |
+| lt_k_line (80) | 3,372 | 3,442 | The grey subline's W, three K's, H and D: satin -> bean outline like the other 18; they read cleaner than OFF's satin tangles. |
+| Bridge hat (63.3) | 8,569 | 8,586 | RESTAURANT's U: thin Swiss Ivy skeleton bean -> Caribbean satin like its ten siblings. |
+| gradient_mascot (80) | 22,616 | 22,687 | right foot 134.3 -> 39.4 deg, the left foot's angle. |
+| flat_emoji_icon (80) | 17,088 | 17,083 | right leg 180 -> 11.3 deg, the left leg's angle. |
+| lt_hed_p_e (80) | 3,849 | same md5 | nothing (its e is a stage-2 thread split; the parentheses already agree) |
+| flag (96) | 16,606 | same md5 | nothing (stars out of reach, above) |
+| To a T machine hat (89.5) | 18,970 | same md5 | nothing (rule lines under the satin guard) |
+| ProSeal hat (85.9) | 6,434 | same md5 | nothing |
+| Becker hat large (101.9) | 16,289 | same md5 | nothing |
+| Hotel Fremont hat (92.6) | 16,106 | same md5 | nothing |
 
-Fremont, ProSeal and Becker were digitized ON with the two tier flags; the
-thread flag moves no region on any of them (`word_thread` over their final
-regions: 0, 0, 0), so with it they are the same.
+devanagari_logo and kanji_seal (80) were byte-identical ON with the tier
+flags on 7ad9c124; the thread and fill rules move nothing there (no
+mixed-thread cluster, no like-shape group of fills).
 
 The thread rule also drops the moved letter's dark-ink bean when none of its
 word-mates carries one: Bridge's U came from the dark-ink lightness read, and
@@ -120,6 +145,7 @@ its own mis-snapped green against the yellow is what made it a skeleton bean.
   spool 2.4 dE00 off), not here.
 * Pixel sprite's openings: 5 are `enclosed_background` regions, 15 are
   plain holes; the bean goes round only the holes.
-* AHORA's fused letters: the satin tier sews AH and RA as one shape each. A
-  per-letter split belongs to the text tagger's neck split (another worker's
-  file).
+* Matching row ORDER inside a group (the render tone above): the emitter
+  picks each fill's start from the needle's entry; holding a group to one
+  advance direction is a travel trade-off, and it may be the renderer's to
+  fix. The Director's call.
