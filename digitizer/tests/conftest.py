@@ -626,6 +626,13 @@ PRE_FLIP["bean_only_lines"] = False
 # `tests/engine_2026_10_27.json` carries it False too;
 # `tests/test_outline_hairline_run.py` names the flag itself.
 PRE_FLIP["border_from_outline_hairline_run"] = False
+# `photo_prep_tone` flipped the OTHER way 2026-11-13 (Kent: "Switch it off by
+# default"): a new field defaulting False, where the engine before it always
+# ran the tone pass. So its pre-flip value is True, here and in
+# `tests/engine_2026_10_27.json`. Tests ABOUT the switch
+# (`tests/test_photo_prep.py`) name it themselves;
+# `docs/photo-prep-tone-off-2026-11-13.md` has the evidence.
+PRE_FLIP["photo_prep_tone"] = True
 # `keep_dark_thin_strokes` joined the flipped set 2026-10-28 (Kent's "Flip ON
 # now (worker's pick)" on PR #1170). Gradient class only: ON, a dark thin
 # stroke the merge absorbed into its shaded ground is carved out after the

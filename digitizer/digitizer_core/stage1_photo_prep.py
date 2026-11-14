@@ -17,6 +17,12 @@ What it does, in order:
    tiles 8x8 — the plan's own numbers, exposed as
    `cfg.photo_prep_clahe_clip` / `cfg.photo_prep_clahe_tiles`). Rescues
    shadow detail before region forming; costs milliseconds.
+   **OFF by default since 2026-11-13** (`cfg.photo_prep_tone`, Kent:
+   "Switch it off by default"). After the rembg cutout the foreground can
+   be a narrow tone range (just ink, just dark fur), and the stretch maps
+   that range onto the full 0-255, so near-black subjects were matched to
+   mid-grey threads. With it off, step 2 runs on the un-toned raster.
+   Evidence: docs/photo-prep-tone-off-2026-11-13.md.
 
 2. **Texture kill** (§2 row 4): erase weave/pores/JPEG grain BELOW the
    sewable detail floor while keeping real structure, so segmentation sees
@@ -37,7 +43,7 @@ What it does, in order:
      and says so in the PHOTO_PREP_APPLIED warning's `fallback` key — never
      an error, because which wheel is installed is an environment fact, not
      a caller mistake.
-   * `"none"` — tone prep only.
+   * `"none"` — tone prep only (no pass at all with the tone pass off).
 
 **Contrib-swap probe record (2026-08-04, this sandbox, kept here so nobody
 re-derives it):** `opencv-contrib-python-headless==5.0.0.93` (the exact
@@ -144,9 +150,13 @@ TEXTURE_KILL_TECHNIQUES = ("bilateral", "meanshift", "rolling_guidance", "none")
 @dataclass
 class PhotoPrepResult:
     rgb: np.ndarray                 # (H, W, 3) uint8 RGB, prepped
-    rgb_tone: np.ndarray            # after tone prep, before texture kill (debug)
+    # after tone prep, before texture kill (debug). With `cfg.photo_prep_tone`
+    # off this is a copy of the INPUT raster: the un-toned image the texture
+    # kill ran on (so debugviz's stage1_photo_tone.png is then un-toned).
+    rgb_tone: np.ndarray
     technique: str                  # texture-kill technique actually used
     fallback: bool                  # rolling_guidance requested but unavailable
+    tone: bool                      # did the tone pass run (cfg.photo_prep_tone)
     tone_ms: float
     texture_ms: float
     warnings: list[dict] = field(default_factory=list)
@@ -230,14 +240,16 @@ def _texture_kill(rgb: np.ndarray, kill_px: int, technique: str) -> tuple[np.nda
 
 def photo_prep(rgb: np.ndarray, bg_mask: np.ndarray, px_per_mm: float,
                cfg: PipelineConfig) -> PhotoPrepResult:
-    """Tone prep + texture kill. Pure function of its inputs (deterministic:
-    no RNG anywhere in this module), returns a NEW rgb array — the caller
-    (pipeline.run_stages) decides what to overwrite."""
+    """Tone prep (only when `cfg.photo_prep_tone`) + texture kill. Pure
+    function of its inputs (deterministic: no RNG anywhere in this module),
+    returns a NEW rgb array — the caller (pipeline.run_stages) decides what
+    to overwrite."""
     fg = ~bg_mask
+    tone = bool(cfg.photo_prep_tone)
 
     t0 = time.perf_counter()
-    rgb_tone = _tone_prep(rgb, fg, cfg)
-    tone_ms = (time.perf_counter() - t0) * 1000.0
+    rgb_tone = _tone_prep(rgb, fg, cfg) if tone else rgb.copy()
+    tone_ms = (time.perf_counter() - t0) * 1000.0 if tone else 0.0
 
     kill_px = _kill_scale_px(px_per_mm, cfg)
     t1 = time.perf_counter()
@@ -246,11 +258,19 @@ def photo_prep(rgb: np.ndarray, bg_mask: np.ndarray, px_per_mm: float,
     )
     texture_ms = (time.perf_counter() - t1) * 1000.0
 
-    msg = (
-        f"Photo prep applied: tone (CLAHE clip {cfg.photo_prep_clahe_clip:g}, "
-        f"{cfg.photo_prep_clahe_tiles}x{cfg.photo_prep_clahe_tiles} tiles) + "
-        f"texture kill '{used}' at {kill_px} px."
-    )
+    if tone:
+        msg = (
+            f"Photo prep applied: tone (CLAHE clip {cfg.photo_prep_clahe_clip:g}, "
+            f"{cfg.photo_prep_clahe_tiles}x{cfg.photo_prep_clahe_tiles} tiles) + "
+            f"texture kill '{used}' at {kill_px} px."
+        )
+    elif used == "none":
+        msg = "Photo prep applied: no pass ran (tone pass off, texture kill 'none')."
+    else:
+        msg = (
+            f"Photo prep applied: texture kill '{used}' at {kill_px} px "
+            "(tone pass off)."
+        )
     if fallback:
         msg += (
             " ('rolling_guidance' was requested but cv2.ximgproc is not "
@@ -260,6 +280,7 @@ def photo_prep(rgb: np.ndarray, bg_mask: np.ndarray, px_per_mm: float,
         warn(
             PHOTO_PREP_APPLIED,
             msg,
+            tone=tone,
             technique=used,
             fallback=fallback,
             kill_px=kill_px,
@@ -272,6 +293,7 @@ def photo_prep(rgb: np.ndarray, bg_mask: np.ndarray, px_per_mm: float,
         rgb_tone=rgb_tone,
         technique=used,
         fallback=fallback,
+        tone=tone,
         tone_ms=tone_ms,
         texture_ms=texture_ms,
         warnings=warnings,

@@ -827,7 +827,8 @@ class PipelineConfig:
     alpha_edge_extend_stage0_whole: bool = True
 
     # Stage 1.5 — photo prep (photo plan §2 rows 3-4; build step 3, first
-    # slice — stage1_photo_prep.py). CLAHE tone rescue + texture kill on the
+    # slice — stage1_photo_prep.py). CLAHE tone rescue (behind
+    # `photo_prep_tone`, OFF since 2026-11-13) + texture kill on the
     # prepped raster BEFORE the photo region former sees it. DOUBLE-gated:
     # this flag must be True AND stage 0 must classify the design
     # photo_subject/photo_scene (forced_class counts). Default False, and
@@ -854,9 +855,19 @@ class PipelineConfig:
     # opencv-contrib-headless swap in requirements.txt; falls back to
     # bilateral with a warning when cv2.ximgproc is absent, e.g. a pre-swap
     # env — see stage1_photo_prep's module docstring) | "none" (tone prep
-    # only).
+    # only; with `photo_prep_tone` off below, "none" runs no pass at all).
     photo_prep_texture_kill: str = "bilateral"
-    # CLAHE knobs — plan row 3's own numbers ("clip 2-3, tiles 8x8").
+    # The tone pass (`stage1_photo_prep._tone_prep`: foreground-measured
+    # percentile stretch of L, then CLAHE on L). OFF since 2026-11-13 (Kent:
+    # "Switch it off by default"); the texture kill above still runs, on the
+    # un-toned raster. After the cutout the foreground can be a narrow tone
+    # range (a brush character's ink, a black dog's fur) and the stretch maps
+    # it to 0-255: on the 14 cutout corpus images area-weighted region dE00 to
+    # the photo was 10.54 on vs 5.16 off, with lightness order reversed on 4
+    # images on vs 0 off. No sew-out. docs/photo-prep-tone-off-2026-11-13.md.
+    photo_prep_tone: bool = False
+    # CLAHE knobs — plan row 3's own numbers ("clip 2-3, tiles 8x8"). Read
+    # only by the tone pass, so they do nothing while `photo_prep_tone` is off.
     photo_prep_clahe_clip: float = 2.5
     photo_prep_clahe_tiles: int = 8
 
