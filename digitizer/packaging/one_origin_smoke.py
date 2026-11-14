@@ -30,6 +30,12 @@ WHAT IT RUNS, in order, each against the real exe with `--console --no-browser`
      with EXIT_PORT_BUSY (3) and a message naming the port, the foreign PID
      must still hold it, and no other port may have been opened by the app.
 
+Also, on the exe itself and its log (`emb-bot.log` under LOCALAPPDATA, pointed
+into `--work`): the exe is a GUI-subsystem one (a double-click opens no console
+window), the first launch left a "started" line (`new instance`), the second
+left a "started" line that says it reused the running instance and printed one
+line saying so, and every launch ended in a "stopped" line.
+
 Exit 0 only when every check holds. The markdown it prints is what the PR
 quotes.
 """
@@ -57,6 +63,40 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import release_smoke  # noqa: E402
 
 MARKER_JS = Path(__file__).resolve().parent / "origin_marker.mjs"
+
+
+# ---- the exe ----------------------------------------------------------------
+
+#: IMAGE_SUBSYSTEM_WINDOWS_GUI / _CUI in the PE optional header.
+SUBSYSTEM_GUI, SUBSYSTEM_CONSOLE = 2, 3
+
+
+def pe_subsystem(path: Path) -> int | None:
+    """The Windows subsystem a PE file asks for: 2 (GUI: no console window on a
+    double-click), 3 (console: Windows opens one), None for anything that is
+    not a PE file. Read from the header; the same offset in PE32 and PE32+."""
+    try:
+        with Path(path).open("rb") as fh:
+            head = fh.read(64)
+            if head[:2] != b"MZ" or len(head) < 64:
+                return None
+            fh.seek(int.from_bytes(head[60:64], "little"))
+            if fh.read(4) != b"PE\0\0":
+                return None
+            fh.seek(20, 1)  # the rest of the COFF header
+            optional = fh.read(70)
+            return int.from_bytes(optional[68:70], "little") if len(optional) == 70 else None
+    except OSError:
+        return None
+
+
+def log_lines(work: Path) -> list[str]:
+    """The launcher's log, as the launcher wrote it under LOCALAPPDATA=`work`/localappdata."""
+    path = work / "localappdata" / L.APP_NAME / "logs" / L.LOG_NAME
+    try:
+        return path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
 
 
 # ---- the port ---------------------------------------------------------------
@@ -191,6 +231,12 @@ def smoke(args) -> tuple[list[str], dict]:
         failures.append(f"port {port} is held before the smoke started: {listeners().get(port)}")
         return failures, rec
     started: list[Launch] = []
+    exe = Path(args.launcher[0])
+    if args.expect_gui:
+        rec["subsystem"] = pe_subsystem(exe)
+        check(rec["subsystem"] == SUBSYSTEM_GUI,
+              f"{exe.name} is PE subsystem {rec['subsystem']}, expected {SUBSYSTEM_GUI} (GUI): "
+              "a double-click would open a console window")
 
     def up(name: str) -> Launch:
         launch = Launch(args.launcher, work, env, name).start()
@@ -245,6 +291,12 @@ def smoke(args) -> tuple[list[str], dict]:
         check(rec["other_origin"]["marker"] is None and not rec["other_origin"]["projectIds"],
               f"other origin: the same profile one port over saw the designs: {rec['other_origin']}")
 
+        # the log: a "started" line for the new instance, with the version and the port
+        mine = [ln for ln in log_lines(work) if " launcher: started:" in ln]
+        rec["first_log"] = mine[-1] if mine else None
+        check(bool(mine) and "new instance" in mine[-1] and f"port {port}" in mine[-1] and "ready in" in mine[-1],
+              f"first: the log has no 'started' line for a new instance on port {port}: {mine}")
+
         # 3. a second launch while the first runs
         code, secs, text = Launch(args.launcher, work, env, "second").run(60)
         rec["second"] = {"exit": code, "seconds": round(secs, 1), "service_pids": sorted(listeners().get(port, ())),
@@ -254,6 +306,14 @@ def smoke(args) -> tuple[list[str], dict]:
               f"second launch: the port is now held by {rec['second']['service_pids']}, the first service was "
               f"{rec['first']['service_pids']} (first launcher alive: {rec['second']['first_alive']})")
         check(health(port) is not None, "second launch: /health stopped answering")
+        rec["second"]["said"] = text.strip()
+        check("already running" in text, f"second launch (--console) did not say it reused the running "
+                                         f"instance:\n{text[-1000:]}")
+        lines = log_lines(work)
+        rec["second"]["log"] = next((ln for ln in reversed(lines) if "reused the running instance" in ln), None)
+        check(rec["second"]["log"] is not None, "second launch: the log has no 'reused the running instance' line")
+        check(any(" launcher: stopped:" in ln for ln in lines),
+              "second launch: the log has no 'stopped' line")
 
         # 4. stop
         down("first", first)
@@ -319,6 +379,9 @@ def summary_markdown(failures: list[str], rec: dict, total_s: float) -> str:
         f"{len(o.get('projectIds') or [])} design(s) and marker `{o.get('marker')}`: one port over is an empty Studio.",
         f"- Second launch while running: exit {s.get('exit')} in {s.get('seconds')} s; port still held by "
         f"{s.get('service_pids')} (the first service), first launcher alive: {s.get('first_alive')}.",
+        f"- Exe subsystem {rec.get('subsystem')} (2 = GUI: a double-click opens no console window). "
+        f"Log, first launch: `{rec.get('first_log')}`.",
+        f"- The second launch printed `{s.get('said')}` and logged `{s.get('log')}`.",
         f"- Launcher ended (TerminateProcess): port free again after {f.get('port_freed_s')} s, no orphan.",
         f"- Restart: same port, `/health` ok after {r.get('ready_s')} s, commit `{str(r.get('commit'))[:12]}`, "
         f"service PID {r.get('service_pids')}.",
@@ -354,7 +417,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--summary", type=Path, default=None, help="append the markdown here ($GITHUB_STEP_SUMMARY)")
     args = ap.parse_args(argv)
     args.expect_commit = None
+    args.expect_gui = False
     if args.build_report:
+        args.expect_gui = True
         report = json.loads(args.build_report.read_text(encoding="utf-8"))
         args.launcher = [report["exe"]]
         args.expect_commit = report["stamp"]["commit"]

@@ -229,7 +229,10 @@ def make_pyinstaller_venv(venv: Path) -> Path:
 
 
 def pyinstaller_args(name: str, entry: Path, stage_dir: Path, studio: Path, work: Path) -> list[str]:
-    args = ["--noconfirm", "--onedir", "--console", "--name", name,
+    # `--windowed`: the GUI subsystem, so a double-click opens no console window.
+    # `--console` on the launcher re-attaches the terminal that started it
+    # (`embbot_launcher.attach_console`); a redirected stdout is kept as it is.
+    args = ["--noconfirm", "--onedir", "--windowed", "--name", name,
             "--paths", str(DIGITIZER),
             "--distpath", str(work / "dist"), "--workpath", str(work / "build"),
             "--specpath", str(work)]
