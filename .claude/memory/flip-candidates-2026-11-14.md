@@ -1,6 +1,6 @@
 ---
 name: flip-candidates-2026-11-14
-description: Two flip candidates measured 11-14 for Kent - `inshape_piece_lift` (plain bug, Becker/MFab 13.7-60.6 mm needle-down stitches across white letters, Kent's "random cross over stitch") and `lettering_columns_apex_cut` (corpus OFF|ON verdicts)
+description: Two flip candidates measured 11-14 for Kent - `inshape_piece_lift` (ON since 11-14, Kent "Flip ON"; plain bug, Becker/MFab 13.7-60.6 mm needle-down stitches across white letters, Kent's "random cross over stitch") and `lettering_columns_apex_cut` (corpus OFF|ON verdicts)
 metadata:
   type: project
 ---
@@ -8,7 +8,7 @@ metadata:
 Director's follow-ups on 2026-11-14 after the jag-source trace
 ([[jag-source-2026-11-13]]).
 
-**`inshape_piece_lift` (PR #1483, built OFF).** Kent's "Random Cross over
+**`inshape_piece_lift` (PR #1483, built OFF; ON since Kent 2026-11-14, "Flip ON").** Kent's "Random Cross over
 stitch shouldn't be here", on Becker hat large:
 - Pins #0 and #1 are single needle-down stitches of 15.0 and 37.5 mm across
   the white letters.
@@ -21,6 +21,10 @@ stitch shouldn't be here", on Becker hat large:
   same visible line down.
 - Pins #14/#15 are a different cause: the Column lane's connector sewn on
   top of its own satin. Not fixed.
+- Ruled: ON, accepting the +1-2 trims per design on Becker and MFab.
+  CI tripwire alone (11-14): trims +1-2 on Becker x5, MFab x2; Becker hat
+  large word cc 1.00 -> 0.84 alone, 1.00 with the redraw beside it.
+  PRE_FLIP and `engine_2026_10_27.json` pin it False.
 
 **`lettering_columns_apex_cut` corpus**
 (`docs/apex-cut-corpus-2026-11-14.md`):

@@ -27,7 +27,7 @@ from digitizer_core.machine import satin_ceiling_mm
 from digitizer_core.stage6_satin import satin_shape, strip_splits
 from digitizer_core.stitches import strip_ties
 
-from .conftest import RECIPE_2026_10_27, TESTDATA
+from .conftest import PRE_FLIP, RECIPE_2026_10_27, TESTDATA
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "tools"))
@@ -154,6 +154,8 @@ def _becker_coverage(monkeypatch, guard: bool) -> tuple[float, float]:
                          # ... and an EIGHTH, 2026-10-27: the white-keyline recipe on every
                          # job sews Becker's band as a ground under the letters (more layers
                          # on the bend, 8.32 guarded). Held OFF, same rule.
+                         # ... and a NINTH, 2026-11-14: `outline_redraw_k` (0.75 since 2026-11-14, Kent) re-fits every upscaled outline.
+                         outline_redraw_k=PRE_FLIP["outline_redraw_k"],
                          **RECIPE_2026_10_27)
     result, plan = digitize(art, cfg)
     m = run_preflight(result, plan, cfg, image=art)["metrics"]
