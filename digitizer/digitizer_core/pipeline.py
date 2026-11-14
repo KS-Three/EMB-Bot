@@ -1183,6 +1183,17 @@ def build_generation(
                                 grid_px_mm=1.0 / p.px_per_mm, k=cfg.letterform_priors_k,
                                 words=cfg.lettering_words)
 
+    # Outline redraw (2026-11-13, `cfg.outline_redraw_k`, DEFAULT None): every
+    # shape's rings refit to lines and arcs within max(k source pixels, one
+    # grid pixel) of the trace -- the same place and the same reason as the
+    # letterform pass above, for the shapes that are not letters. Imported
+    # inside the branch: off, nothing runs (`tests/test_outline_redraw.py`).
+    if cfg.outline_redraw_k and p.input_px_per_mm > 0.0 and p.px_per_mm > 0.0:
+        from .outline_redraw import apply_outline_redraw
+        apply_outline_redraw(regions, src_px_mm=1.0 / p.input_px_per_mm,
+                             grid_px_mm=1.0 / p.px_per_mm, k=cfg.outline_redraw_k,
+                             native=cfg.outline_redraw_native)
+
     # OCR-suggested text (Studio "Convert to text" entry point): a read-only,
     # additive per-member OCR read of each tagged member's FINAL polygon —
     # runs after regularization for the same "computed fact reflects this

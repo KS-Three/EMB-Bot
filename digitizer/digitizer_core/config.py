@@ -1571,6 +1571,35 @@ class PipelineConfig:
     # None keeps the OFF path, byte-identical to the pre-flag engine
     # (`tests/test_letterform_priors.py` pins it with an explicit None).
     letterform_priors_k: float | None = 0.75
+    # Outline redraw (2026-11-13, `outline_redraw.py`, DEFAULT None = OFF):
+    # the pen-tool redraw for EVERY shape, not only lettering. Each ring of
+    # each region is refit to straight lines and circular arcs (letterform
+    # priors' geometry, no word snaps), corners kept as the exact meet of
+    # their two lines, arcs written back finely; nothing moves further than
+    # max(k x the SOURCE pixel, one working-grid pixel) from the stage-4
+    # trace, and a ring whose validity or hole count would change is left as
+    # it was. Kent's most-pinned fault, traced spot by spot
+    # (`docs/jag-source-2026-11-13.md`): on a low-resolution upload the
+    # source pixel's staircase survives stage 4 and the satin sews every step
+    # (Becker's border at 1.42 px/mm); on a clean upload stage 4's own chords
+    # leave 12-20 degree facets on every bowl and circle (lettering at
+    # 22 px/mm). Runs after `letterform_priors_k` and leaves a letter it refit
+    # alone. Not the DOCTRINE "smoothing polygons" negative: nothing blurs,
+    # corners sharpen, the cap is a raster quantity of the source, not a
+    # radius in mm. No physical constant; no sew-out has seen it.
+    # It touches only an upload stage 1 UPSCALED (Becker, Bridge, MFab): a
+    # source at its own resolution comes through byte-identical unless
+    # `outline_redraw_native` below is also set. `tests/test_outline_redraw.py`.
+    outline_redraw_k: float | None = None
+    # With `outline_redraw_k`, ALSO a source at its own resolution, in the
+    # arcs-only regime: straight runs and corners keep stage 4's vertices
+    # exactly and only runs one circle explains (bowls, circles) are
+    # rewritten -- the cure for stage 4's chord facets, 18 of Kent's 49
+    # smooth pins. Default OFF because, measured on and_pizza 2026-11-13, the
+    # polygon's bowls came out true arcs but the Column lane's satin answered
+    # unpredictably: smoother on some bowls, a straight cut across the "p"'s
+    # arc and an opened seam on others (`docs/jag-source-2026-11-13.md`).
+    outline_redraw_native: bool = False
     # Even out stitch widths automatically (`stitchwidth.apply_stitch_widths`,
     # 2026-09-29): a letter more than 15% off its word's weight is offset to
     # the word's median, and `lettering_min_column_mm` (when set) reaches
