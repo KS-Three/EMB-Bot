@@ -48,13 +48,21 @@ async function pickColour(page, nth = 0, notName = null) {
 
 const widthInput = (page) => page.getByLabel("Width", { exact: true }).first();
 
+// The mm box shows the width the design SEWS, to a tenth (2026-11-14; it was
+// whole millimetres, which hid a 60.2 behind "60"). Lettering sews a little
+// over what is typed (pull compensation), so "the box shows what I typed" is
+// within half a millimetre, not string equality.
+async function expectWidthNear(w, mm) {
+  await expect.poll(async () => Math.abs(parseFloat(await w.inputValue()) - mm)).toBeLessThan(0.5);
+}
+
 async function setWidth(page, mm) {
   const unit = page.getByLabel("Size unit").first();
   if ((await unit.inputValue()) !== "mm") await unit.selectOption("mm");
   const w = widthInput(page);
   await w.fill(String(mm));
   await w.press("Tab");
-  await expect(w).toHaveValue(String(mm));
+  await expectWidthNear(w, mm);
 }
 
 test("undo after a colour change restores the colour; Redo re-applies it", async ({ page }) => {
@@ -76,10 +84,10 @@ test("undo after a resize restores the previous width", async ({ page }) => {
   await expect(w).toBeVisible();
   await setWidth(page, 60);
   await undo(page).click();
-  await expect(w).not.toHaveValue("60");
+  await expect.poll(async () => Math.abs(parseFloat(await w.inputValue()) - 60)).toBeGreaterThanOrEqual(0.5);
   const original = await w.inputValue();
   await redo(page).click();
-  await expect(w).toHaveValue("60");
+  await expectWidthNear(w, 60);
   await undo(page).click();
   await expect(w).toHaveValue(original);
 });
@@ -227,7 +235,7 @@ test("a new action after an undo clears the redo branch", async ({ page }) => {
   await expect(redo(page)).toBeDisabled();
   await page.locator("body").click({ position: { x: 5, y: 5 } });
   await page.keyboard.press("Control+y");
-  await expect(widthInput(page)).toHaveValue("70");
+  await expectWidthNear(widthInput(page), 70);
 });
 
 test("history keeps 100 snapshots: undoing past that stops after 99 steps", async ({ page }) => {
