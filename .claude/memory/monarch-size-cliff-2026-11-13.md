@@ -42,3 +42,16 @@ widths (DOCTRINE 2026-09-16).
     the drone bar).
   - It does not reach the owl.
   - `satin_cover` cannot see spill: measure both.
+
+**Ruling 2026-11-14: hand-back stays OFF.** Kent's words: "Keep OFF, record".
+- The flag was first narrowed with the NET spill gate (#1484, built OFF), and the fresh census described in
+  `docs/column-cover-handback-narrowed-2026-11-13.md` followed.
+- NET failed its board line on the 13 shapes it was chosen on: drone reach 2.06 -> 1.64, from the THERMAL 'E'.
+- The fresh run (158 jobs) gave 1 hand-back, a re-sighting, so the rule went untested.
+- **Don't flip it, don't re-narrow it, and don't build a 10 mm² floor.**
+- The real fix is the one nobody has built: the Column lane drops a branch (the V cell, the '&' bowl), so sew that
+  branch in the lane.
+- Still open, recorded and not tasked:
+  - the monarch cell at 90.50 / 91.75 mm;
+  - the Gaulke '&' bowl;
+  - the owl's −4.5% black.
