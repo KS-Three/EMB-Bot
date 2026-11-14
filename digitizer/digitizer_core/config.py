@@ -1344,6 +1344,22 @@ class PipelineConfig:
     # tags. False is the engine before the flag, byte for byte (md5 against
     # main on three designs). Tests: `tests/test_regular_structure.py`.
     regular_structure: bool = False
+    # Shading the pro flattens sews as the shape it shades (built OFF
+    # 2026-11-13, Kent on Golden Tee, 20 pins: "The bean stitching makes
+    # 'golf' look to bust"; Drone pin 3, "border changes colour too much")
+    # (`bevel_fold.apply_bevel_fold`). Just after the colour cap: a light band on
+    # the page hugging one side of the art (a drop shadow) goes to the page;
+    # two shapes within 15 dE00 sharing a long seam (a ramp the palette split)
+    # become one thread and one shape; a band no wider than two laid threads
+    # (0.8 mm, what we sew as runs and beans) running along a body folds into
+    # it. A band wrapping its parent (a keyline, 60% of its outline), a line
+    # across a shape's inside, and any edge of a page-coloured shape are kept.
+    # Widths are mm at the sewn size, colours CIEDE2000; no fabric constant:
+    # gate 1 does not apply. A DESIGN CHANGE (pro-digitizer-rules 10-21 s4):
+    # the default is Kent's. Golden Tee hat: 6 -> 4 threads; Drone's ring one
+    # colour. False is the engine before the flag, byte for byte. Tests:
+    # `tests/test_bevel_fold.py`.
+    bevel_ring_fold: bool = False
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
