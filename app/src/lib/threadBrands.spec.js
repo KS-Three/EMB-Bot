@@ -41,6 +41,20 @@ test("every thread has a non-empty trimmed name and an RGB triple of integers 0-
   expect(bad).toEqual([]);
 });
 
+// The picker, Download step and simulate label print `code + " " + name`.
+// Two Simthread charts carry a measured L,a,b column after the number, and
+// the builder shipped that triple as the code for all 78 rows (2026-11-13).
+test("no code is an L,a,b triple or contains a comma", () => {
+  expect(rows.filter((t) => /,/.test(t.code)).map((t) => `${t.brand} ${t.code} ${t.name}`)).toEqual([]);
+});
+
+test("Simthread 63 Brother reads Black 900; the Glow chart's n/a is no code", () => {
+  const brand = (id) => THREAD_BRANDS.find((b) => b.id === id).threads;
+  expect(brand("simthread-polyester-63-brother-colors")[0]).toEqual({ name: "Black", code: "900", rgb: [52, 54, 54] });
+  expect(brand("simthread-glow-in-the-dark-15-colors")[0]).toEqual({ name: "N. Yellow", code: "", rgb: [229, 228, 29] });
+  expect(brand("simthread-glow-in-the-dark-15-colors").filter((t) => /n\/a/i.test(t.name + t.code))).toEqual([]);
+});
+
 test("no name carries runs of spaces", () => {
   expect(rows.filter((t) => /\s{2,}/.test(t.name)).map((t) => `${t.brand} ${t.code}`)).toEqual([]);
 });
