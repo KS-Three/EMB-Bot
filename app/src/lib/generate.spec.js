@@ -529,6 +529,30 @@ test("generateElement: two manually-drawn shapes each become their own color/reg
   expect(d.colorCount).toBe(2);
 });
 
+// "Join touching strokes" (pen + auto-branch spec 2026-11-13 §3; built OFF).
+test("generateElement: joinStrokes sews two touching same-colour Columns as one colour block with no trim; off or absent is unchanged", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { defaultManualElement } = await import("./project.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const col = (id, points) => ({ id, kind: "column", points, curves: {}, widthPx: 24, colorRgb: [20, 20, 20] });
+  const shapes = [col("s1", [{ x: 100, y: 100 }, { x: 400, y: 100 }]), col("s2", [{ x: 250, y: 100 }, { x: 250, y: 300 }])];
+  const base = { ...defaultManualElement("e1"), shapes };
+  expect("joinStrokes" in base).toBe(false);
+  const trims = (d) => d.stitches.filter((s) => s.type === "trim").length;
+  const plain = generateElement(base, garment, {});
+  const off = generateElement({ ...base, joinStrokes: false }, garment, {});
+  const on = generateElement({ ...base, joinStrokes: true }, garment, {});
+  expect(JSON.stringify(off.stitches)).toBe(JSON.stringify(plain.stitches));
+  expect(plain.colorCount).toBe(2);
+  expect(on.colorCount).toBe(1);
+  expect(trims(on)).toBeLessThan(trims(plain));
+  expect(on.stitches.filter((s) => s.type === "color")).toHaveLength(0);
+  // both strokes are still their own shape on the hoop
+  expect(on.shapeOutlines.filter((o) => !o.dropped).map((o) => o.id)).toEqual(["s1", "s2"]);
+  for (const id of ["s1", "s2"]) expect(on.runs.some((r) => r.shape === id && r.kind === "satin")).toBe(true);
+});
+
 test("generateElement: manual shapes sew in DRAW order, not brightest-first", async () => {
   // The bug this exists for (found by a sibling-pattern sweep, 2026-08-26, and
   // reproduced against the real engine): digitize.js sequences light-to-dark

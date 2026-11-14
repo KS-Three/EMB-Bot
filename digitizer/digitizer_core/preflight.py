@@ -159,7 +159,7 @@ from .threads import chart_for, rgb_to_lab
 
 THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, yardstick, excess_delta_e, better_spool, worst_shape_id, worst_shape_area_mm2, worst_shape_area_frac, worst_patch_mm2, region_count, regions_scored, sub_floor_count, regions: [{shape_id, delta_e, footprint_mm2, sub_floor, excess_delta_e}], artwork_rgb, thread_rgb} — worst_patch_mm2 is the graded footprint that JUDGED (a shade band's own strip), region_count the offenders at or above `_THREAD_MATCH_MIN_PATCH_MM2`, sub_floor_count the offenders under it (listed, flagged, never judging) — excess_delta_e/better_spool are the gap to the best ALREADY-LOADED spool and that spool, populated on EVERY route since 2026-09-06 (both None when nothing loaded is meaningfully closer). `yardstick` ("excess"/"raw") says which one produced the SEVERITY, so a populated excess is never mistaken for a rescored finding
 LETTERING_ILLEGIBLE = "LETTERING_ILLEGIBLE"    # extra: {clusters, readable, judged, lost, worst_cluster, worst_similarity, worst_art_text, worst_render_text, legibility, rows: [{cluster, height_mm, art_text, art_conf, render_text, render_conf, similarity, sewn, enclosed}]} — `judged` is the sewn clusters the art side could read, `lost` how many of those read back under LEGIBILITY_WARN; `rows` carries every cluster, unsewn and unreadable ones included, flagged — when the artwork cannot carry the lettering (`_resolution_note`, 2026-09-30) three more ride: input_px_per_mm, source_px_per_letter (the smallest flagged lettering's height in SOURCE pixels), traced_at_mm (the design width at which the prep's grid would give it LETTERING_MIN_SOURCE_PX; only when the source is under cfg.min_px_per_mm, where the prep upsamples)
-LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, satin_total, shapes: [{shape_id, column_mm, extent_mm}]} — satin_total is the DENOMINATOR the message needs ("38 of 46"), which reads very differently from a bare 38 — when the artwork cannot carry the lettering (`_resolution_note`, 2026-09-30) three more ride: input_px_per_mm, source_px_per_letter (the smallest flagged lettering's height in SOURCE pixels), traced_at_mm (the design width at which the prep's grid would give it LETTERING_MIN_SOURCE_PX; only when the source is under cfg.min_px_per_mm, where the prep upsamples)
+LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, satin_total, lettering, shapes: [{shape_id, column_mm, extent_mm}]} — satin_total is the DENOMINATOR the message needs ("38 of 46"), which reads very differently from a bare 38 — `lettering` is True/False when the regions say whether the job has text (`_job_has_lettering`), None for a bare plan; False words the advice as "details", never lettering (2026-11-14, the toadstool photo) — when the artwork cannot carry the lettering (`_resolution_note`, 2026-09-30) three more ride: input_px_per_mm, source_px_per_letter (the smallest flagged lettering's height in SOURCE pixels), traced_at_mm (the design width at which the prep's grid would give it LETTERING_MIN_SOURCE_PX; only when the source is under cfg.min_px_per_mm, where the prep upsamples)
 SATIN_GAPS_TIGHT = "SATIN_GAPS_TIGHT"          # extra: {count, judged, close_mm, pull_mm, thread_mm, fabric, design_width_mm, worst_shape_id, worst_tight_frac, shapes: [{shape_id, width_mm, height_mm, channel_mm, tight_mm, tight_frac, gap_p10_mm, gap_p50_mm, clear_width_mm}]} — a satin shape whose own gaps (between two of its strokes, or a counter) are narrower than the close, 2 x the fabric's pull comp + the thread: they sew shut before any rule runs. `judged` is how many stroke-built satin shapes were measured, `channel_mm` the length of gap read, `tight_mm` the part under the close, `clear_width_mm` the design width at which the shape's tightest tenth (gap_p10_mm) would clear it — arithmetic on THIS polygon, None when it already clears
 STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
 STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total, uncovered_shapes, shapes: [{shape_id, short, steps, median_mm, also_too_small}]} — `shapes` is every satin shape carrying a short step, worst first; `also_too_small` is whether LETTERING_TOO_SMALL already named it, and `uncovered_shapes` counts the ones it did NOT (a sewable column with a narrow waist passes lettering's median test and still breaks thread)
@@ -1177,6 +1177,26 @@ def _best_loaded_spool_error(lab_px: np.ndarray, loaded: list[int],
 # `_GRADE_TRACED_KEY`) re-aims the grade there instead of skipping it.
 _SKIP_ENLARGED_TEXT_KEY = "thread_match_skip_enlarged_text"
 
+# `cfg.extra["small_text_reset_report"]` (built OFF 2026-11-14): the small-
+# text re-set's own record (`small_text.enlarge_small_text`'s rows) as the
+# metric `small_text_reset`, so a trace can name why a line was not raised
+# (`skipped`: not_one_line / tall_enough / member_claimed / no_room, with
+# `blocked_by`) instead of guessing it (the pro-redraws census 2026-11-13
+# left Fremont's EST 1895 and Bridge's arc UNCONFIRMED for want of it).
+# Metrics only: no finding, no score, nothing a customer sees.
+_SMALL_TEXT_REPORT_KEY = "small_text_reset_report"
+
+
+def _plain(v):
+    """`v` as plain JSON values: tuples to lists, numpy scalars to Python."""
+    if isinstance(v, dict):
+        return {str(k): _plain(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [_plain(x) for x in v]
+    if isinstance(v, np.generic):
+        return v.item()
+    return v
+
 
 def _enlarged_text_ids(result, cfg: PipelineConfig) -> set[str]:
     """Shape ids the thread grader leaves out under the flag above; empty
@@ -1887,8 +1907,34 @@ def _color_stop_findings(plan: StitchPlan) -> tuple[list[dict], int]:
 
 # --- Lettering size ---------------------------------------------------------
 
-def _lettering_findings(plan: StitchPlan) -> tuple[list[dict], int]:
+# The region tags that say a job HAS lettering: stage 4's text tagger
+# (`text_candidate` + `text_cluster_id`, which OCR legibility reads too), typed
+# text through the outline-font lane (`outline_fonts.py` sets `text_candidate`),
+# and the words pass (`word_id`). `lettering_group` counts only when truthy:
+# thin_ink writes an explicit False.
+_LETTERING_TAGS = ("text_candidate", "text_cluster_id", "word_id", "lettering_group")
+
+
+def _job_has_lettering(result: PipelineResult | None) -> bool | None:
+    """True when any region carries a lettering tag, False when regions exist
+    and none does, None for a bare plan (no regions: nothing to tell by)."""
+    if result is None or not getattr(result, "regions", None):
+        return None
+    return any((r.meta or {}).get(k) for r in result.regions for k in _LETTERING_TAGS)
+
+
+def _lettering_findings(plan: StitchPlan,
+                        has_lettering: bool | None = None) -> tuple[list[dict], int]:
     """Satin shapes below sewable lettering size, aggregated to one finding.
+
+    The check keys on SATIN shapes, not on text, so a photo's small spots and
+    slivers fire it too: build walkthrough 2026-11-13, section 4, the
+    toadstool photo with no text and 0 text clusters was told "Remove or
+    simplify the smallest lettering". The shapes are still too small to sew
+    cleanly, so the finding, code, severity and grade cost stay; when
+    `has_lettering` is False (regions exist, none tagged as text) the advice
+    says "details" instead, and `extra.lettering` records which. None (a bare
+    plan) keeps the lettering wording it always had.
 
     Column width is the median consecutive-step distance inside the shape's
     SATIN runs — every consecutive pair of an emitted zigzag crosses the
@@ -1960,10 +2006,11 @@ def _lettering_findings(plan: StitchPlan) -> tuple[list[dict], int]:
         f"columns under {MIN_COLUMN_MM:g} mm or details under "
         f"{MIN_LETTER_EXTENT_MM:g} mm. Enlarging helps but does not fully "
         f"clear it: the smallest shapes regenerate at any size. Remove or "
-        f"simplify the smallest lettering.",
+        f"simplify the smallest {'details' if has_lettering is False else 'lettering'}.",
         count=n,
         satin_total=total,
         shapes=small,
+        lettering=has_lettering,
     )], len(widths)
 
 
@@ -2198,8 +2245,11 @@ def _resolution_note(findings: list[dict], p, plan: StitchPlan,
             continue
         extra["input_px_per_mm"] = round(px, 2)
         extra["source_px_per_letter"] = round(per_letter, 1)
+        # A job with no lettering (`extra.lettering` False) gets "these
+        # shapes": the walkthrough's toadstool photo was told about lettering.
+        what = "these shapes" if extra.get("lettering") is False else "this lettering"
         note = (f" The artwork carries {px:.1f} pixels per millimetre at this width, "
-                f"about {per_letter:.0f} across the smallest of this lettering, so it is "
+                f"about {per_letter:.0f} across the smallest of {what}, so it is "
                 f"lost in tracing before any stitch: a larger source image carries it")
         if px < grid and design_w > 0:
             traced_at = design_w * LETTERING_MIN_SOURCE_PX / (letter_mm * grid)
@@ -4509,6 +4559,11 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
         # Only under the flag, so a default report's metrics keys are unchanged.
         metrics["thread_match_enlarged_text_skipped"] = (
             len(_enlarged_text_ids(result, cfg)) if result is not None else None)
+    if (getattr(cfg, "extra", None) or {}).get(_SMALL_TEXT_REPORT_KEY):
+        # Only under the flag, so a default report's metrics keys are
+        # unchanged; None when the re-set did not run (or no result).
+        rows = getattr(result, "small_text_reset", None) if result is not None else None
+        metrics["small_text_reset"] = _plain(rows) if rows is not None else None
     if getattr(cfg, _GRADE_TRACED_KEY, False):
         # Only under the flag (ON by default since 2026-11-07), so an OFF
         # report's metrics keys are the ones it always had.
@@ -4558,7 +4613,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
         metrics["subject_bg_delta_l"] = None
 
     deadline.check("preflight")
-    lettering, satin_shape_count = _lettering_findings(plan)
+    lettering, satin_shape_count = _lettering_findings(plan, _job_has_lettering(result))
     findings.extend(lettering)
     metrics["satin_shapes"] = satin_shape_count
     # A satin shape's own gaps against the fabric's pull and the thread.
@@ -4615,6 +4670,19 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
                         "uncovered_total_mm2": None, "uncovered_wanted_mm2": None,
                         "artwork_checked": False, "artwork_reached_frac": None,
                         "artwork_mm2": None})
+
+    # How much of the artwork's strong-edge detail the sewn result still draws
+    # (`subject_detail.py`, 2026-11-14, the toadstool photo that lost its stem
+    # and graded B 76). A METRIC only: no finding, no grade (Kent 2026-10-02).
+    # Separates Kent's "detail lost" rows from his Good ones, but every Good
+    # row was flat art and photo-ness alone nearly does the same
+    # (`docs/subject-loss-2026-11-14.md`). None without the artwork.
+    deadline.check("preflight")
+    if p is not None:
+        from . import subject_detail as _subject_detail
+        metrics.update(_subject_detail.metrics(p, plan, cfg))
+    else:
+        metrics["subject_edge_recall"] = None
 
     # Elements the pipeline itself reported losing. Two of its four causes
     # read the plan and the regions alone, so it runs without the artwork
