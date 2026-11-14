@@ -1063,6 +1063,15 @@ def build_generation(
         from . import line_chain
         line_chain.apply(regions, p, cfg, chart_for(cfg), list(q.thread_indices))
 
+    # `cfg.bevel_ring_fold` (built OFF 2026-11-13, Kent's Golden Tee "too
+    # busy"): shading the pro flattens -- a drop shadow on the page, a ramp
+    # the palette split in two, thin bevel / keyline / ring bands along a
+    # body -- folds into what it shades, BEFORE the cap counts cones so the
+    # count sees the flattened art. Logos only. Off, the module never loads.
+    if cfg.bevel_ring_fold and classification.class_ not in PHOTO_CLASSES:
+        from .bevel_fold import apply_bevel_fold
+        apply_bevel_fold(regions, p, cfg, chart_for(cfg), layer_threads=list(q.thread_indices))
+
     # "Colors (max N)" is a promise about what the machine will be threaded
     # with, and until now the SLIC+RAG lane did not keep it — see
     # `enforce_color_cap`. Runs after every automatic step that can ADD a cone
