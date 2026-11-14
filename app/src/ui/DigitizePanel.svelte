@@ -138,7 +138,7 @@
   // `stop`). `stopping` is the moment between the press and the service
   // having been told; the panel goes idle right after. Not an error, and
   // nothing about it is shown as one (no-warnings ruling 2026-10-02).
-  let stopper = null; // { stop: AbortController, id: the element running }
+  let stopper = null; // { stop: AbortController, id: the run's resume mark (runMark: design + element) }
   let stopping = false;
   let runBtn;
   let cancelBtn;
@@ -298,6 +298,12 @@
       // A run still in flight is digitizing the OLD art: stop it through the
       // customer's own Cancel, so the service stops computing it and nothing
       // of it lands (the landing also checks the art; 2026-11-13 review).
+      // Not from a torn-down panel: an upload still being read when another
+      // design (or element) was opened would cancel THIS element's run at
+      // the service and erase its resume mark, and its patch would then be
+      // dropped by ContentStep -- old art, no result, no resume. Every await
+      // above ends before this line, so one check covers them all.
+      if (destroyed) return;
       if (stopper) cancelDigitize();
       // New artwork resets everything the old artwork produced — including
       // the layer list and its edits, which are keyed to the OLD art's
