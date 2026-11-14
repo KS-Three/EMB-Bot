@@ -593,6 +593,10 @@ def strip(run_dir: Path, frame: Frame, fp: dict, strokes, gaps, rows, half_mm: f
 
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        print("\nusage: python -m tools.width_ledger RUN_DIR [RUN_DIR ...]")
+        return 0
     for d in argv:
         rows = ledger(Path(d))
         fpr = rows["footprints"]
