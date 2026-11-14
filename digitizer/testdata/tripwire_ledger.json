@@ -2,11 +2,11 @@
  "schema": 1,
  "captured": {
   "date": "2026-11-14",
-  "passes": 3,
-  "run_url": "https://github.com/KS-Three/EMB-Bot/actions/runs/43618563785",
+  "passes": 5,
+  "run_url": "https://github.com/KS-Three/EMB-Bot/actions/runs/43642695286",
   "engine": {
-   "head": "0b2f1b5f",
-   "tree": "36e4553fa655+0685eea18bf9",
+   "head": "4b88d31a",
+   "tree": "bb88ee64b6ba+993e16ed0924",
    "dirty": false,
    "opencv_ipp": "avx2"
   }
@@ -21,12 +21,12 @@
   "tesseract": "tesseract v5.5.3 (tesserocr 2.12.0, in-process)",
   "rembg_venv": false,
   "engine": {
-   "head": "0b2f1b5f",
-   "tree": "36e4553fa655+0685eea18bf9",
+   "head": "4b88d31a",
+   "tree": "bb88ee64b6ba+993e16ed0924",
    "dirty": false,
    "opencv_ipp": "avx2"
   },
-  "github_run": "43618563785"
+  "github_run": "43642695286"
  },
  "figures": {
   "stitches": {
@@ -60,94 +60,130 @@
  },
  "secs": {
   "becker_hat_large": [
-   11.7,
-   9.6,
-   13.6
+   13.2,
+   11.1,
+   8.7,
+   16.7,
+   9.5
   ],
   "becker_lc_large": [
-   9.0,
-   6.5,
-   10.4
+   9.5,
+   8.2,
+   6.9,
+   13.0,
+   7.0
   ],
   "becker_hat_small": [
-   7.3,
+   7.5,
+   6.4,
    5.4,
-   8.5
+   10.3,
+   5.7
   ],
   "becker_chest_small": [
-   7.2,
-   5.2,
-   8.3
+   6.9,
+   6.0,
+   4.9,
+   9.6,
+   5.2
   ],
   "becker_beanie": [
    7.5,
-   5.4,
-   8.8
+   6.5,
+   5.3,
+   10.5,
+   5.6
   ],
   "gaulke_roofing_hat": [
-   12.6,
-   9.1,
-   13.8
+   12.1,
+   10.2,
+   8.6,
+   17.1,
+   9.1
   ],
   "gaulke_roofing_lc": [
-   8.2,
-   6.1,
-   9.7
+   7.9,
+   6.9,
+   5.7,
+   11.1,
+   6.2
   ],
   "gaulke_roofing_beanie": [
-   9.2,
-   6.6,
-   10.6
+   8.9,
+   7.7,
+   6.3,
+   12.4,
+   6.7
   ],
   "hotel_fremont_hat": [
-   26.9,
-   19.3,
-   31.0
+   27.0,
+   23.8,
+   19.1,
+   39.0,
+   20.4
   ],
   "hotel_fremont_patch": [
-   26.6,
-   18.8,
-   31.0
+   26.8,
+   23.8,
+   19.3,
+   39.0,
+   20.7
   ],
   "mfab_hat": [
-   30.1,
-   20.8,
-   33.2
+   21.3,
+   18.2,
+   15.3,
+   29.9,
+   16.1
   ],
   "mfab_lc": [
-   21.1,
-   14.6,
-   24.0
+   24.0,
+   20.6,
+   17.1,
+   34.4,
+   19.0
   ],
   "precision_drone": [
-   23.4,
-   16.9,
-   27.1
+   22.4,
+   20.1,
+   16.4,
+   30.5,
+   19.5
   ],
   "tires_hat_3d": [
-   3.9,
-   3.0,
-   5.2
+   3.7,
+   3.7,
+   2.8,
+   5.6,
+   3.1
   ],
   "goldentee_hat": [
-   25.0,
-   18.2,
-   30.0
+   24.7,
+   23.1,
+   18.1,
+   34.6,
+   21.0
   ],
   "toat_machine_hat": [
-   9.6,
-   6.8,
-   10.9
+   15.7,
+   13.4,
+   11.1,
+   22.0,
+   12.6
   ],
   "toat_machine_beanie": [
-   7.5,
-   5.5,
-   8.6
+   13.6,
+   11.5,
+   9.8,
+   19.2,
+   10.7
   ],
   "toat_beanie": [
-   6.9,
-   5.0,
-   8.1
+   13.1,
+   10.9,
+   9.3,
+   18.6,
+   10.2
   ]
  },
  "skipped": [],
@@ -155,7 +191,7 @@
   {
    "job": "becker_hat_large",
    "figure": "stitches",
-   "baseline": 16262,
+   "baseline": 16049,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -164,7 +200,7 @@
   {
    "job": "becker_hat_large",
    "figure": "trims",
-   "baseline": 11,
+   "baseline": 18,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -173,7 +209,7 @@
   {
    "job": "becker_hat_large",
    "figure": "hops",
-   "baseline": 14,
+   "baseline": 19,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -182,7 +218,7 @@
   {
    "job": "becker_hat_large",
    "figure": "needle_up_mm",
-   "baseline": 327.3,
+   "baseline": 487.5,
    "worse": "up",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -191,16 +227,16 @@
   {
    "job": "becker_hat_large",
    "figure": "sttype_kappa",
-   "baseline": 0.29,
+   "baseline": 0.337,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0,
-   "chance": 0.529
+   "chance": 0.528
   },
   {
    "job": "becker_hat_large",
    "figure": "direction_kappa",
-   "baseline": 0.35,
+   "baseline": 0.365,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0
@@ -218,7 +254,7 @@
   {
    "job": "becker_lc_large",
    "figure": "stitches",
-   "baseline": 14922,
+   "baseline": 14542,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -227,7 +263,7 @@
   {
    "job": "becker_lc_large",
    "figure": "trims",
-   "baseline": 12,
+   "baseline": 16,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -236,7 +272,7 @@
   {
    "job": "becker_lc_large",
    "figure": "hops",
-   "baseline": 15,
+   "baseline": 17,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -245,7 +281,7 @@
   {
    "job": "becker_lc_large",
    "figure": "needle_up_mm",
-   "baseline": 292.1,
+   "baseline": 319.2,
    "worse": "up",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -254,16 +290,16 @@
   {
    "job": "becker_lc_large",
    "figure": "sttype_kappa",
-   "baseline": 0.334,
+   "baseline": 0.306,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0,
-   "chance": 0.512
+   "chance": 0.516
   },
   {
    "job": "becker_lc_large",
    "figure": "direction_kappa",
-   "baseline": 0.351,
+   "baseline": 0.357,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0
@@ -271,10 +307,10 @@
   {
    "job": "becker_hat_small",
    "figure": "stitches",
-   "baseline": 10547,
+   "baseline": 10260,
    "worse": "up",
-   "tolerance": 6,
-   "spread": 6,
+   "tolerance": 2,
+   "spread": 2,
    "pro": 8694
   },
   {
@@ -289,7 +325,7 @@
   {
    "job": "becker_hat_small",
    "figure": "hops",
-   "baseline": 16,
+   "baseline": 15,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -298,7 +334,7 @@
   {
    "job": "becker_hat_small",
    "figure": "needle_up_mm",
-   "baseline": 281.3,
+   "baseline": 322.8,
    "worse": "up",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -307,33 +343,33 @@
   {
    "job": "becker_hat_small",
    "figure": "sttype_kappa",
-   "baseline": 0.529,
+   "baseline": 0.557,
    "worse": "down",
-   "tolerance": 0.01,
-   "spread": 0.004,
-   "chance": 0.502
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.499
   },
   {
    "job": "becker_hat_small",
    "figure": "direction_kappa",
-   "baseline": 0.416,
+   "baseline": 0.404,
    "worse": "down",
-   "tolerance": 0.0,
-   "spread": 0.0
+   "tolerance": 0.01,
+   "spread": 0.002
   },
   {
    "job": "becker_chest_small",
    "figure": "stitches",
-   "baseline": 10310,
+   "baseline": 10082,
    "worse": "up",
-   "tolerance": 3,
-   "spread": 3,
+   "tolerance": 2,
+   "spread": 2,
    "pro": 8694
   },
   {
    "job": "becker_chest_small",
    "figure": "trims",
-   "baseline": 11,
+   "baseline": 10,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -342,7 +378,7 @@
   {
    "job": "becker_chest_small",
    "figure": "hops",
-   "baseline": 16,
+   "baseline": 14,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -351,7 +387,7 @@
   {
    "job": "becker_chest_small",
    "figure": "needle_up_mm",
-   "baseline": 281.4,
+   "baseline": 319.8,
    "worse": "up",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -360,33 +396,33 @@
   {
    "job": "becker_chest_small",
    "figure": "sttype_kappa",
-   "baseline": 0.575,
+   "baseline": 0.581,
    "worse": "down",
-   "tolerance": 0.01,
-   "spread": 0.003,
-   "chance": 0.502
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.5
   },
   {
    "job": "becker_chest_small",
    "figure": "direction_kappa",
-   "baseline": 0.444,
+   "baseline": 0.439,
    "worse": "down",
-   "tolerance": 0.01,
-   "spread": 0.001
+   "tolerance": 0.0,
+   "spread": 0.0
   },
   {
    "job": "becker_beanie",
    "figure": "stitches",
-   "baseline": 13864,
+   "baseline": 13609,
    "worse": "up",
-   "tolerance": 0,
-   "spread": 0,
+   "tolerance": 2,
+   "spread": 2,
    "pro": 11411
   },
   {
    "job": "becker_beanie",
    "figure": "trims",
-   "baseline": 14,
+   "baseline": 13,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -395,7 +431,7 @@
   {
    "job": "becker_beanie",
    "figure": "hops",
-   "baseline": 19,
+   "baseline": 17,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -404,7 +440,7 @@
   {
    "job": "becker_beanie",
    "figure": "needle_up_mm",
-   "baseline": 339.4,
+   "baseline": 381.8,
    "worse": "up",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -413,16 +449,16 @@
   {
    "job": "becker_beanie",
    "figure": "sttype_kappa",
-   "baseline": 0.245,
+   "baseline": 0.284,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0,
-   "chance": 0.557
+   "chance": 0.553
   },
   {
    "job": "becker_beanie",
    "figure": "direction_kappa",
-   "baseline": 0.396,
+   "baseline": 0.554,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0
@@ -705,7 +741,7 @@
   {
    "job": "mfab_hat",
    "figure": "stitches",
-   "baseline": 20801,
+   "baseline": 20888,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -714,7 +750,7 @@
   {
    "job": "mfab_hat",
    "figure": "trims",
-   "baseline": 16,
+   "baseline": 24,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -723,7 +759,7 @@
   {
    "job": "mfab_hat",
    "figure": "hops",
-   "baseline": 30,
+   "baseline": 36,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -732,7 +768,7 @@
   {
    "job": "mfab_hat",
    "figure": "needle_up_mm",
-   "baseline": 556.2,
+   "baseline": 735.1,
    "worse": "up",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -741,7 +777,7 @@
   {
    "job": "mfab_hat",
    "figure": "sttype_kappa",
-   "baseline": 0.563,
+   "baseline": 0.579,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -758,12 +794,12 @@
   {
    "job": "mfab_hat",
    "figure": "word_cc",
-   "baseline": 0.124,
+   "baseline": 0.007,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0,
-   "pro": 0.495,
-   "words": 4
+   "pro": 0.493,
+   "words": 2
   },
   {
    "job": "mfab_lc",
@@ -777,7 +813,7 @@
   {
    "job": "mfab_lc",
    "figure": "trims",
-   "baseline": 19,
+   "baseline": 21,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -786,7 +822,7 @@
   {
    "job": "mfab_lc",
    "figure": "hops",
-   "baseline": 26,
+   "baseline": 28,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -795,7 +831,7 @@
   {
    "job": "mfab_lc",
    "figure": "needle_up_mm",
-   "baseline": 389.3,
+   "baseline": 441.9,
    "worse": "up",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -804,7 +840,7 @@
   {
    "job": "mfab_lc",
    "figure": "sttype_kappa",
-   "baseline": 0.585,
+   "baseline": 0.598,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0,
@@ -980,7 +1016,7 @@
   {
    "job": "toat_machine_hat",
    "figure": "stitches",
-   "baseline": 18917,
+   "baseline": 18811,
    "worse": "up",
    "tolerance": 4,
    "spread": 4,
@@ -989,7 +1025,7 @@
   {
    "job": "toat_machine_hat",
    "figure": "trims",
-   "baseline": 21,
+   "baseline": 22,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -998,7 +1034,7 @@
   {
    "job": "toat_machine_hat",
    "figure": "hops",
-   "baseline": 28,
+   "baseline": 32,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -1007,25 +1043,25 @@
   {
    "job": "toat_machine_hat",
    "figure": "needle_up_mm",
-   "baseline": 264.8,
+   "baseline": 260.8,
    "worse": "up",
-   "tolerance": 0.1,
-   "spread": 0.1,
+   "tolerance": 0.0,
+   "spread": 0.0,
    "pro": 528.0
   },
   {
    "job": "toat_machine_hat",
    "figure": "sttype_kappa",
-   "baseline": 0.422,
+   "baseline": 0.414,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0,
-   "chance": 0.581
+   "chance": 0.569
   },
   {
    "job": "toat_machine_hat",
    "figure": "direction_kappa",
-   "baseline": 0.697,
+   "baseline": 0.711,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0
@@ -1033,7 +1069,7 @@
   {
    "job": "toat_machine_beanie",
    "figure": "stitches",
-   "baseline": 18339,
+   "baseline": 18145,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -1042,7 +1078,7 @@
   {
    "job": "toat_machine_beanie",
    "figure": "trims",
-   "baseline": 19,
+   "baseline": 20,
    "worse": "up",
    "tolerance": 0,
    "spread": 0,
@@ -1050,59 +1086,6 @@
   },
   {
    "job": "toat_machine_beanie",
-   "figure": "hops",
-   "baseline": 35,
-   "worse": "up",
-   "tolerance": 0,
-   "spread": 0,
-   "pro": 32
-  },
-  {
-   "job": "toat_machine_beanie",
-   "figure": "needle_up_mm",
-   "baseline": 314.6,
-   "worse": "up",
-   "tolerance": 0.0,
-   "spread": 0.0,
-   "pro": 531.1
-  },
-  {
-   "job": "toat_machine_beanie",
-   "figure": "sttype_kappa",
-   "baseline": 0.39,
-   "worse": "down",
-   "tolerance": 0.0,
-   "spread": 0.0,
-   "chance": 0.572
-  },
-  {
-   "job": "toat_machine_beanie",
-   "figure": "direction_kappa",
-   "baseline": 0.392,
-   "worse": "down",
-   "tolerance": 0.0,
-   "spread": 0.0
-  },
-  {
-   "job": "toat_beanie",
-   "figure": "stitches",
-   "baseline": 18410,
-   "worse": "up",
-   "tolerance": 0,
-   "spread": 0,
-   "pro": 15111
-  },
-  {
-   "job": "toat_beanie",
-   "figure": "trims",
-   "baseline": 22,
-   "worse": "up",
-   "tolerance": 0,
-   "spread": 0,
-   "pro": 31
-  },
-  {
-   "job": "toat_beanie",
    "figure": "hops",
    "baseline": 34,
    "worse": "up",
@@ -1111,102 +1094,83 @@
    "pro": 32
   },
   {
-   "job": "toat_beanie",
+   "job": "toat_machine_beanie",
    "figure": "needle_up_mm",
-   "baseline": 240.0,
+   "baseline": 339.2,
    "worse": "up",
    "tolerance": 0.0,
    "spread": 0.0,
+   "pro": 531.1
+  },
+  {
+   "job": "toat_machine_beanie",
+   "figure": "sttype_kappa",
+   "baseline": 0.372,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0,
+   "chance": 0.578
+  },
+  {
+   "job": "toat_machine_beanie",
+   "figure": "direction_kappa",
+   "baseline": 0.39,
+   "worse": "down",
+   "tolerance": 0.0,
+   "spread": 0.0
+  },
+  {
+   "job": "toat_beanie",
+   "figure": "stitches",
+   "baseline": 18081,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 15111
+  },
+  {
+   "job": "toat_beanie",
+   "figure": "trims",
+   "baseline": 20,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 31
+  },
+  {
+   "job": "toat_beanie",
+   "figure": "hops",
+   "baseline": 32,
+   "worse": "up",
+   "tolerance": 0,
+   "spread": 0,
+   "pro": 32
+  },
+  {
+   "job": "toat_beanie",
+   "figure": "needle_up_mm",
+   "baseline": 296.8,
+   "worse": "up",
+   "tolerance": 0.1,
+   "spread": 0.1,
    "pro": 533.3
   },
   {
    "job": "toat_beanie",
    "figure": "sttype_kappa",
-   "baseline": 0.388,
+   "baseline": 0.392,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0,
-   "chance": 0.55
+   "chance": 0.541
   },
   {
    "job": "toat_beanie",
    "figure": "direction_kappa",
-   "baseline": 0.0,
+   "baseline": 0.239,
    "worse": "down",
    "tolerance": 0.0,
    "spread": 0.0
   }
- ],
- "hand_edits": {
-  "what": "tolerance and spread of these 8 rows restored from the 2026-11-12 capture; baselines and every other row are the 2026-11-14 capture's",
-  "why": "the 2026-11-14 capture's 3 passes agreed (spread 0) on rows that vary by a few stitches between runners; check run 43623404176 read toat_machine_hat 18,921 against 18,917 at tolerance 0",
-  "tolerance_from_run": "https://github.com/KS-Three/EMB-Bot/actions/runs/43147117899",
-  "baseline_from_run": "https://github.com/KS-Three/EMB-Bot/actions/runs/43618563785",
-  "rows": [
-   {
-    "job": "becker_hat_small",
-    "figure": "stitches",
-    "baseline": 10547,
-    "tolerance_run_43618563785": 0,
-    "tolerance": 6,
-    "spread": 6
-   },
-   {
-    "job": "becker_hat_small",
-    "figure": "sttype_kappa",
-    "baseline": 0.529,
-    "tolerance_run_43618563785": 0.0,
-    "tolerance": 0.01,
-    "spread": 0.004
-   },
-   {
-    "job": "becker_chest_small",
-    "figure": "stitches",
-    "baseline": 10310,
-    "tolerance_run_43618563785": 0,
-    "tolerance": 3,
-    "spread": 3
-   },
-   {
-    "job": "becker_chest_small",
-    "figure": "sttype_kappa",
-    "baseline": 0.575,
-    "tolerance_run_43618563785": 0.0,
-    "tolerance": 0.01,
-    "spread": 0.003
-   },
-   {
-    "job": "becker_chest_small",
-    "figure": "direction_kappa",
-    "baseline": 0.444,
-    "tolerance_run_43618563785": 0.0,
-    "tolerance": 0.01,
-    "spread": 0.001
-   },
-   {
-    "job": "mfab_lc",
-    "figure": "stitches",
-    "baseline": 17853,
-    "tolerance_run_43618563785": 0,
-    "tolerance": 5,
-    "spread": 5
-   },
-   {
-    "job": "toat_machine_hat",
-    "figure": "stitches",
-    "baseline": 18917,
-    "tolerance_run_43618563785": 0,
-    "tolerance": 4,
-    "spread": 4
-   },
-   {
-    "job": "toat_machine_hat",
-    "figure": "needle_up_mm",
-    "baseline": 264.8,
-    "tolerance_run_43618563785": 0.0,
-    "tolerance": 0.1,
-    "spread": 0.1
-   }
-  ]
- }
+ ]
 }
