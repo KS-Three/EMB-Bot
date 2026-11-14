@@ -5,12 +5,14 @@
 // 1 px touch on 120 mm lettering at 45 degrees wrote 117.5 and five touches
 // 108.1. `fieldResize` is EmbroideryField onPointerMove "resize" (dragResize,
 // the optional size-match snap, then resizeTargetMm); the press-release dead
-// zone in front of it is the field's own and is covered by e2e.
+// zone in front of it is the field's own, driven in a browser by
+// e2e/core-flows.spec.js ("a press on a corner handle that does not travel
+// writes nothing", single element and group; added 2026-11-13).
 import { test, expect, beforeAll } from "vitest";
 import { createRequire } from "node:module";
 import { preloadAllFontsSync } from "./testFonts.js";
 
-let EMB, generateElement, bboxMmFromStitches, dragResize, resizeTargetMm;
+let EMB, generateElement, bboxMmFromStitches, dragResize, resizeTargetMm, resizeIsAdditive;
 beforeAll(async () => {
   const require = createRequire(import.meta.url);
   globalThis.window = globalThis;
@@ -19,7 +21,7 @@ beforeAll(async () => {
   ({ EMB } = await import("./emb.js"));
   ({ generateElement } = await import("./generate.js"));
   ({ bboxMmFromStitches } = await import("./combine.js"));
-  ({ dragResize, resizeTargetMm } = await import("./interact.js"));
+  ({ dragResize, resizeTargetMm, resizeIsAdditive } = await import("./interact.js"));
 });
 
 const textEl = (o = {}) => ({
@@ -39,8 +41,23 @@ function fieldResize(el, dMm, snapSewnW = null) {
   const T = el.sizeMm;
   let w = dragResize(S, H, "se", dMm, (dMm * H) / S, 5, garment().widthIn * 25.4);
   if (snapSewnW != null) w = snapSewnW;
-  return resizeTargetMm(T, S, w);
+  return resizeTargetMm(T, S, w, resizeIsAdditive(el, false));
 }
+
+// The size-match snap lands the sewn width EXACTLY (to the stitch box's
+// 0.1 mm), upright, on every quarter turn and off them (review follow-up,
+// 2026-11-13; the reviewer's table plus 90/270 and 135).
+test("a snap to another element's width lands on it, upright, turned a quarter, and at 45/135", () => {
+  const cases = [[0, 120, [60, 61, 80, 120, 30]], [0, 60, [120, 30]], [180, 120, [60, 30]],
+    [90, 10, [5, 8, 12, 15]], [270, 10, [8, 15]], [45, 120, [100, 140]], [135, 120, [100, 140]]];
+  for (const [rot, T, snaps] of cases) {
+    const el = textEl({ rotationDeg: rot, sizeMm: T });
+    for (const s of snaps) {
+      const got = sewnBox({ ...el, sizeMm: fieldResize(el, 0, s) }).w;
+      expect(Math.abs(got - s), `rot ${rot}, ${T} -> snap ${s}: ${got}`).toBeLessThan(0.05);
+    }
+  }
+});
 
 test("a zero-distance resize is the identity, upright and turned", () => {
   for (const rot of [0, 30, 45]) {
@@ -78,4 +95,36 @@ test("the size-match snap and a plain drag to the same sewn width write the same
     expect(snapped, `rot ${rot}`).toBeCloseTo(plain, 6);
     expect(Math.abs(target - (S - 30)), `rot ${rot}: lands on the matched width`).toBeLessThan(0.25);
   }
+});
+
+// The group corner (review follow-up, 2026-11-13): an auto-fit lettering
+// member was seeded with its SEWN width as its request, so even a factor-1
+// touch rewrote its size (upright 96.2 -> 97.2 over five touches, 45 degrees
+// 72.8 -> 58.0). The field seeds every member through resizeStartTargetMm.
+test("five factor-1 touches of the group corner leave auto-fit lettering at its size", async () => {
+  const { groupResizePatches, resizeStartTargetMm } = await import("./interact.js");
+  for (const rot of [0, 45]) {
+    let els = [textEl({ id: "a", sizeMm: null, rotationDeg: rot }), textEl({ id: "b", text: "HI", sizeMm: 40, offsetYMm: -40 })];
+    const sewn0 = sewnBox(els[0]).w;
+    for (let i = 0; i < 5; i++) {
+      const members = els.map((el) => {
+        const d = generateElement(el, garment(), {});
+        const b = bboxMmFromStitches(d.stitches);
+        const w = b.x1 - b.x0;
+        return { id: el.id, offsetXMm: el.offsetXMm, offsetYMm: el.offsetYMm, widthMm: w, targetMm: resizeStartTargetMm(el, d, w) };
+      });
+      const r = groupResizePatches(members, 1, 0, 0, 5);
+      els = els.map((el) => ({ ...el, ...r.patches[el.id] }));
+    }
+    expect(Math.abs(sewnBox(els[0]).w - sewn0), `rot ${rot}: ${sewnBox(els[0]).w} vs ${sewn0}`).toBeLessThan(0.15);
+    expect(els[1].sizeMm).toBeCloseTo(40, 9);
+  }
+});
+
+test("resizeStartTargetMm: sizeMm when set, lettering's fit width when auto-fit, else the sewn width", async () => {
+  const { resizeStartTargetMm } = await import("./interact.js");
+  expect(resizeStartTargetMm({ type: "text", sizeMm: 50 }, { fitMm: { w: 70 } }, 71)).toBe(50);
+  expect(resizeStartTargetMm({ type: "text", sizeMm: null }, { fitMm: { w: 70 } }, 71)).toBe(70);
+  expect(resizeStartTargetMm({ type: "design", sizeMm: null }, { widthMM: 80 }, 80)).toBe(80);
+  expect(resizeStartTargetMm({ type: "text", sizeMm: null }, null, 71)).toBe(71);
 });
