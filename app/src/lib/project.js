@@ -260,6 +260,10 @@ export function defaultDigitizedElement(id) {
     review: null,
     shapeOverrides: {},
     deletedShapeIds: [],
+    // Hairline-outline shapes the customer answered "Keep" on
+    // (lib/outlinePrompt.js). Not a shape edit: it changes no stitch, so it
+    // is not in canonicalShapeEdits and never makes the design stale.
+    keptOutlineIds: [],
     appliedEdits: null,
     // digitizer.js configKey of the WHOLE config the current result was
     // digitized with — params, crop, garment and edits together. The run

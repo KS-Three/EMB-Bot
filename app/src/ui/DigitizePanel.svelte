@@ -74,6 +74,7 @@
   import { fitTargetWidthMm } from "../lib/placement.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
   import { isElementStale, pendingEdits, canRedigitize, rotatedWidth, nativeWidthOf, withTargetWidth } from "../lib/staleness.js";
+  import { undecidedOutlineIds, removedOutlineIds, keepPatch, removePatch, putBackPatch } from "../lib/outlinePrompt.js";
   import { createRecounter, recountText } from "../lib/recount.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
@@ -2017,6 +2018,25 @@
     return n === 1 ? one : many.replace("{n}", String(n));
   }
 
+  // The thin-outline prompt (lib/outlinePrompt.js; Kent 2026-11-13): the
+  // hairline outlines the digitizer marked glow on the design until the
+  // customer answers here. Each answer is ONE discrete element patch, so it is
+  // one undo step, like hiding a shape.
+  $: askingOutlineIds = undecidedOutlineIds(element);
+  $: removedOutlines = removedOutlineIds(element);
+
+  function keepOutlines() {
+    d("elupdate", { id: element.id, patch: keepPatch(element), discrete: true });
+  }
+
+  function removeOutlines() {
+    d("elupdate", { id: element.id, patch: removePatch(element), discrete: true });
+  }
+
+  function putBackOutlines() {
+    d("elupdate", { id: element.id, patch: putBackPatch(element), discrete: true });
+  }
+
   function restoreAllUnstitched() {
     const shapeOverrides = { ...(element.shapeOverrides || {}) };
     for (const row of unstitchedRows) {
@@ -2245,6 +2265,25 @@
         {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"} ·
         <span data-testid="engine-label">{engineLabel("service")}</span>
       </p>
+    {/if}
+    <!-- The thin-outline prompt: a question about the customer's own design
+         (keep the art's thin outline, or leave it off). Under the stats line
+         and OUTSIDE Advanced, which is shut by default: first tried beside
+         the attention warnings, where the real app never showed it. The
+         shapes it is about glow on the design while it waits. -->
+    {#if element.result && askingOutlineIds.length}
+      <div class="dgp-outline-ask" role="group" aria-label="Thin outline" data-testid="outline-ask">
+        <p class="dgp-outline-ask-text">
+          Your art has a thin outline ({pluralize(askingOutlineIds.length, "1 shape", "{n} shapes")}, glowing on the design). It is sewn as a fine line. Keep it?
+        </p>
+        <button type="button" class="dgp-outline-ask-btn dgp-outline-ask-keep" on:click={keepOutlines}>Keep</button>
+        <button type="button" class="dgp-outline-ask-btn" on:click={removeOutlines}>Remove</button>
+      </div>
+    {:else if element.result && removedOutlines.length}
+      <div class="dgp-outline-ask dgp-outline-ask-done" role="group" aria-label="Thin outline" data-testid="outline-removed">
+        <p class="dgp-outline-ask-text">Thin outline removed.</p>
+        <button type="button" class="dgp-outline-ask-btn" on:click={putBackOutlines}>Put back</button>
+      </div>
     {/if}
 
     <!-- Default slot: the size row (ContentStep). -->
@@ -3467,6 +3506,48 @@
     cursor: pointer;
     font-size: var(--fs-xs, 12px);
     white-space: nowrap;
+  }
+  /* The thin-outline prompt asks; it does not warn. So it takes the quiet
+     surface, with a green edge that matches the glow on the design. */
+  .dgp-outline-ask {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 0;
+    padding: 8px 10px;
+    border: 1px solid rgb(30, 160, 90);
+    border-left-width: 4px;
+    border-radius: var(--radius-s, 6px);
+    /* Its own light card with its own ink, like the enclosed banner: the
+       theme's surface and text variables put dark buttons on this light
+       ground with dark words on them (seen in the real app, 2026-11-13). */
+    background: #f1f8f3;
+  }
+  .dgp-outline-ask-done {
+    border-color: #9db5a6;
+    border-left-width: 1px;
+  }
+  .dgp-outline-ask-text {
+    flex: 1;
+    margin: 0;
+    font-size: var(--fs-xs, 12px);
+    color: #173524;
+  }
+  .dgp-outline-ask-btn {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    border: 1px solid #173524;
+    border-radius: var(--radius-s, 6px);
+    background: #fff;
+    color: #173524;
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+    white-space: nowrap;
+  }
+  .dgp-outline-ask-keep {
+    border-color: rgb(30, 160, 90);
+    background: rgb(30, 160, 90);
+    color: #fff;
   }
   /* The reading row STATES what the engine read: nothing is wrong and
      nothing needs chasing, and it stays for the life of the design. So it
