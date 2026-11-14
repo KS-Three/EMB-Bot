@@ -2720,3 +2720,40 @@ def satin_cover(runs: list[StitchRun], poly: Polygon, half_mm: float = 0.2) -> f
     if not segs or poly.area <= 0:
         return 0.0
     return unary_union([q.buffer(half_mm) for q in segs]).intersection(poly).area / poly.area
+
+
+def thread_cover_spill(runs: list[StitchRun], poly: Polygon,
+                       half_mm: float = 0.2) -> tuple[float, float]:
+    """-> (cover, spill): the share of `poly` the laid top thread (satin and
+    fill stitches, each widened by `half_mm` a side) covers, and the thread
+    OUTSIDE `poly` as a share of `poly`'s area. `satin_cover` reads only the
+    first; a shape sewn wider than itself shows only in the second."""
+    segs = [LineString([a, b]) for r in runs if r.kind in (stitches.SATIN, stitches.FILL)
+            for a, b in zip(r.points, r.points[1:]) if math.dist(a, b) > 1e-9]
+    if not segs or poly.area <= 0:
+        return 0.0, 0.0
+    laid = unary_union([q.buffer(half_mm) for q in segs])
+    return laid.intersection(poly).area / poly.area, laid.difference(poly).area / poly.area
+
+
+# `cfg.lettering_columns_cover_handback`: when the ladder's runs replace the
+# lane's (2026-11-13, Kent: "Narrow it, re-census"). "net": the ladder puts
+# more new thread INSIDE the shape than it adds outside it (cover gain >=
+# spill gain); "strict": it covers more and spills no more. Neither has a
+# fitted constant. The first census (docs/column-cover-handback-census-
+# 2026-11-13.md) handed back every shape under the cover floor, and on small
+# letters the ladder's satin spilled about one shape-area outside them.
+HANDBACK_RULE = "net"
+
+
+def handback_wins(lane_runs: list[StitchRun], ladder_runs: list[StitchRun], poly: Polygon,
+                  rule: str | None = None) -> bool:
+    """Does the ladder sew `poly` better than the Column lane did?"""
+    rule = rule or HANDBACK_RULE
+    c0, s0 = thread_cover_spill(lane_runs, poly)
+    c1, s1 = thread_cover_spill(ladder_runs, poly)
+    if c1 <= c0:
+        return False
+    if rule == "strict":
+        return s1 <= s0
+    return c1 - c0 >= s1 - s0
