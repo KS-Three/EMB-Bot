@@ -86,12 +86,15 @@ def held_not_listening():
 
 class FakeUI:
     def __init__(self, run=None):
-        self.statuses, self.messages, self.ran = [], [], []
+        self.statuses, self.messages, self.ran, self.notes = [], [], [], []
         self.keep_going = True
         self._run = run
 
     def status(self, text):
         self.statuses.append(text)
+
+    def note(self, text):
+        self.notes.append(text)
 
     def pump(self):
         return self.keep_going
@@ -320,6 +323,54 @@ def test_our_own_running_instance_is_reused(go):
         assert go(port, ui) == L.EXIT_OK
     assert go.opened == [L.studio_url(port)]
     assert ui.messages == [] and ui.statuses == [] and ui.ran == []
+
+
+def test_a_second_launch_says_in_one_line_that_it_reused_the_running_instance(go, capsys):
+    """`--console` prints one line saying nothing new started; the window says
+    nothing (its Open-in-browser is the whole experience)."""
+    ui = FakeUI()
+    with serving(OURS) as port:
+        assert go(port, ui) == L.EXIT_OK
+    (line,) = ui.notes
+    assert "already running" in line and L.studio_url(port) in line and "\n" not in line
+    assert ui.messages == [] and ui.statuses == []
+    L.ConsoleUI().note(line)
+    assert capsys.readouterr().out == line + "\n"
+
+
+def test_the_window_stays_quiet_on_a_second_launch():
+    assert L.WindowUI.note(object(), "already running") is None  # no widget is touched
+
+
+def test_the_busy_port_message_reaches_a_windowed_user_as_a_message_box(monkeypatch):
+    """Two routes, both pinned. The window (the build has tkinter) shows the
+    error in a message box; a build with no tkinter and no stdout (windowed,
+    nothing to print to) hands the same text to Windows' own message box."""
+    shown = []
+    ui = object.__new__(L.WindowUI)
+    ui.root = type("Root", (), {"withdraw": lambda self: None})()
+    ui._messagebox = type("Box", (), {
+        "showerror": staticmethod(lambda title, text: shown.append(("error", title, text))),
+        "showinfo": staticmethod(lambda title, text: shown.append(("info", title, text)))})()
+    text = L.port_busy_message(8721, L.FOREIGN, "C:/log")
+    ui.message(text, error=True)
+    assert shown == [("error", "EMB-Bot", text)] and "port 8721" in text
+
+    boxes = []
+    monkeypatch.setattr(L, "_windows_message_box", lambda t, error: boxes.append((t, error)))
+    monkeypatch.setattr(L.sys, "platform", "win32")
+    monkeypatch.setattr(L.sys, "stderr", None)
+    L.ConsoleUI().message(text, error=True)
+    assert boxes == [(text, True)]
+
+
+def test_a_foreign_process_on_the_port_exits_3_with_the_message_for_both_uis(go):
+    ui = FakeUI()
+    with serving(NOT_A_DIGITIZER) as port:
+        assert go(port, ui) == L.EXIT_PORT_BUSY
+    (text,) = ui.errors
+    assert f"port {port}" in text and "will not move to a different port" in text
+    assert ui.notes == [], "a refusal is a message, not the reuse note"
 
 
 @pytest.mark.parametrize("routes, says", [
@@ -594,6 +645,120 @@ def test_one_long_session_cannot_fill_the_disk(tmp_path, monkeypatch):
     sizes = sorted(p.stat().st_size for p in tmp_path.iterdir())
     assert len(sizes) == 2 and max(sizes) < 2200, sizes
     assert "the last line" in (tmp_path / L.LOG_NAME).read_text(encoding="utf-8")
+
+
+def _launcher_lines(path: Path) -> list[str]:
+    return [ln.split(" launcher: ", 1)[1] for ln in path.read_text(encoding="utf-8").splitlines()
+            if " launcher: " in ln]
+
+
+def test_a_new_instance_logs_started_with_version_port_and_time_to_ready_then_stopped(go):
+    port = free_port()
+    spawn, stack = _held_by_stand_in(port)
+    try:
+        assert go(port, FakeUI(), spawn=spawn, version="v9.9") == L.EXIT_OK
+    finally:
+        stack["server"].__exit__(None, None, None)
+    lines = _launcher_lines(go.log)
+    (started,) = [ln for ln in lines if ln.startswith("started:")]
+    assert re.fullmatch(rf"started: EMB-Bot v9\.9, port {port}, ready in \d+\.\d s, new instance, "
+                        r"service pid \d+", started), started
+    stopped = lines[-1]
+    assert re.fullmatch(r"stopped: EMB-Bot v9\.9, exit code 0, up \d+\.\d s", stopped), stopped
+    assert lines.index(started) < lines.index("quit") < len(lines) - 1
+
+
+def test_a_second_launch_logs_that_it_reused_the_running_instance(go):
+    with serving(OURS) as port:
+        assert go(port, FakeUI(), version="v9.9") == L.EXIT_OK
+    lines = _launcher_lines(go.log)
+    (started,) = [ln for ln in lines if ln.startswith("started:")]
+    assert f"port {port}" in started and "reused the running instance" in started
+    assert "new instance" not in started and "service started" not in " ".join(lines)
+    assert lines[-1].startswith("stopped: EMB-Bot v9.9, exit code 0")
+
+
+def test_a_launch_that_failed_logs_stopped_with_its_exit_code_and_no_started(go):
+    with serving(NOT_A_DIGITIZER) as port:
+        assert go(port, FakeUI()) == L.EXIT_PORT_BUSY
+    lines = _launcher_lines(go.log)
+    assert not any(ln.startswith("started:") for ln in lines)
+    assert lines[-1].startswith(f"stopped: EMB-Bot ") and f"exit code {L.EXIT_PORT_BUSY}" in lines[-1]
+
+
+def test_the_log_is_appended_to_across_launches_and_the_service_output_stays_in_it(go):
+    """Kept from #1419: what the service prints still lands in the file,
+    between this launch's started and stopped lines, after the previous one's."""
+    port = free_port()
+    spawn, stack = _held_by_stand_in(port)
+    try:
+        go(port, FakeUI(), spawn=spawn)
+    finally:
+        stack["server"].__exit__(None, None, None)
+    with serving(OURS) as other:
+        go(other, FakeUI())
+    text = go.log.read_text(encoding="utf-8")
+    assert text.count("launcher: started:") == 2 and text.count("launcher: stopped:") == 2
+    assert text.index("launcher: stopped:") < text.rindex("launcher: started:")
+
+
+def test_the_log_stays_under_its_cap_across_many_launches(go, monkeypatch):
+    """Launch after launch, the file is moved aside past the cap and kept
+    once: never more than two files, each within about one cap."""
+    monkeypatch.setattr(L, "LOG_MAX_BYTES", 600)
+    with serving(OURS) as port:
+        for _ in range(40):
+            go(port, FakeUI())
+    files = sorted(go.log.parent.iterdir())
+    assert [f.name for f in files] == ["emb-bot.log", "emb-bot.previous.log"]
+    assert all(f.stat().st_size < 600 + 400 for f in files), [f.stat().st_size for f in files]
+    assert _launcher_lines(go.log)[-1].startswith("stopped:"), "the newest launch is in the live file"
+
+
+def test_the_version_is_the_stamp_the_build_wrote(tmp_path):
+    assert L.app_version(tmp_path) == "checkout"                      # no stamp
+    (tmp_path / "build_stamp.json").write_text(
+        json.dumps({"commit": "a" * 40, "release": "v1.2"}), encoding="utf-8")
+    assert L.app_version(tmp_path) == "v1.2"
+    (tmp_path / "build_stamp.json").write_text(json.dumps({"commit": "b" * 40}), encoding="utf-8")
+    assert L.app_version(tmp_path) == "b" * 40
+    (tmp_path / "build_stamp.json").write_text("not json", encoding="utf-8")
+    assert L.app_version(tmp_path) == "checkout"
+    assert L.app_version() == "checkout"                              # not frozen
+
+
+def test_a_gui_build_attaches_the_terminal_for_console(monkeypatch):
+    """The frozen exe has no console subsystem, so `--console` asks for the
+    terminal that started it, and leaves a redirected stdout alone."""
+    monkeypatch.setattr(L.sys, "platform", "linux")
+    assert L.attach_console() is False                                # not Windows: nothing to do
+    monkeypatch.setattr(L.sys, "platform", "win32")
+    monkeypatch.setattr(L.sys, "stdout", object())
+    monkeypatch.setattr(L.sys, "stderr", object())
+    assert L.attach_console() is False                                # redirected: kept as it is
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="AttachConsole is Windows")
+def test_real_attach_console_without_a_terminal_opens_one_and_prints_to_it(tmp_path):
+    """A GUI-subsystem process (pythonw) asked for a console gets stdout back."""
+    pythonw = Path(sys.executable).with_name("pythonw.exe")
+    if not pythonw.is_file():
+        pytest.skip("no pythonw.exe beside this interpreter")
+    out = tmp_path / "out.txt"
+    script = tmp_path / "probe.py"
+    script.write_text(
+        "import sys\n"
+        f"sys.path.insert(0, {str(DIGITIZER)!r})\n"
+        "import embbot_launcher as L\n"
+        "sys.stdout = sys.stderr = None  # what a GUI exe has when no shell redirected it\n"
+        "ok = L.attach_console()\n"
+        "print('reached the terminal', flush=True)\n"
+        f"open({str(out)!r}, 'w').write(f'{{ok}} {{sys.stdout is not None}} {{sys.stderr is not None}}')\n",
+        encoding="utf-8")
+    # DETACHED_PROCESS: no parent console, so this takes the AllocConsole route.
+    subprocess.run([str(pythonw), str(script)], timeout=60, stdin=subprocess.DEVNULL,
+                   creationflags=0x00000008)
+    assert out.read_text(encoding="utf-8") == "True True True"
 
 
 def test_no_window_means_the_console(monkeypatch):
