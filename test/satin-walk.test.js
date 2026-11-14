@@ -92,12 +92,20 @@ const lib = (name) => import(pathToFileURL(path.join(__dirname, "..", "app", "sr
 // (Kent); a pin below taken before that, on another subject, builds with them OFF.
 // + the three JS twins Kent flipped ON 2026-10-23 (fill turn slant, cross underlay, short-column underlay)
 const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false, fillTurnSlant: false, crossUnderlay: false, underlayShortColumns: false };
+// SET to satin (stitchType "satin") since 2026-11-13: the auto route now
+// sends a satin with a stitch over the 12.1 mm machine limit to fill
+// (digitize.js, "A CROSS NO MACHINE SEWS AS ONE STITCH"), and two of these
+// stars have one on main: the 28 mm one a 21.0 mm stitch, the pre-flip 18 mm
+// one 16.2 mm. They are the walk's subject, not the classifier's. A star the
+// auto route sends to satin sews the same bytes set to satin (the counts
+// pinned below did not move).
+const STAR_TIER = "satin";
 async function studioStar(points, innerRatio, sizeMm, garmentId = "left_chest", extra) {
   const { shapePresetPoints } = await lib("shapePresets.js");
   const { shapesToRegions } = await lib("manualShapes.js");
   const ring = shapePresetPoints("star", { points, innerRatio }, sizeMm);
   const { regions, pxPerMm } = shapesToRegions([
-    { id: "shape", points: ring, curves: {}, stitchType: "auto", colorRgb: [20, 20, 20], angleDeg: null },
+    { id: "shape", points: ring, curves: {}, stitchType: STAR_TIER, colorRgb: [20, 20, 20], angleDeg: null },
   ]);
   return digitize.buildQualityDesign(regions, {
     garment: garments.getGarment(garmentId), fabric: fabrics.getFabric(fabrics.fabricForGarment(garmentId)), pxPerMm,

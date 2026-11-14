@@ -385,6 +385,43 @@ test("layoutText: align left/center/right position a short second line correctly
   closeTo(minX(D, 4), lCenter, 1e-6, "align absent = center");
 });
 
+// Trailing spaces (2026-11-13, Kent approved with the catch "none for
+// single-line text"): justification measures each line to its last glyph, so
+// a trailing space no longer shoves a centred or right-aligned line sideways.
+// Before: "HELLO \nHELLO" centred put line 1 2.12 mm left of line 2 and
+// "HELLO  \nHELLO" right-aligned 8.50 mm (amitaclo, em 20).
+test("layoutText: a trailing space does not move a centred or right-aligned line; a leading one still does", () => {
+  const opts = (align) => ({ emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: false, align });
+  const inkMid = (lay, lo, hi) => {
+    let a = Infinity, b = -Infinity;
+    for (const r of lay.runs) if (r.charIdx >= lo && r.charIdx < hi) for (const p of r.pts) { a = Math.min(a, p.x); b = Math.max(b, p.x); }
+    return (a + b) / 2;
+  };
+  for (const [text, align] of [["HAH \nHAH", "center"], ["HAH  \nHAH", "right"], ["HAH \nHAH  ", "left"], ["HAH\t\nHAH", "center"]]) {
+    const lay = SF.layoutText(font, text, opts(align));
+    const nl = text.indexOf("\n");
+    closeTo(inkMid(lay, 0, nl), inkMid(lay, nl + 1, text.length), 1e-6, `${JSON.stringify(text)} ${align}: lines line up`);
+    // And each line sits exactly where it does without the spaces.
+    const bare = SF.layoutText(font, text.replace(/[ \t]+(?=\n|$)/g, ""), opts(align));
+    assert.deepStrictEqual(lay.bbox, bare.bbox, `${JSON.stringify(text)} ${align}: same as typed without trailing spaces`);
+  }
+  // A leading space is indentation, as typed: under centre it widens its line
+  // by one space, so the line's ink sits half a space right of the other.
+  const sp = (font.advSpace || font.advDefault) * (18 / font.unitsPerEm) * 8;
+  const ind = SF.layoutText(font, " HAH\nHAH", opts("center"));
+  closeTo(inkMid(ind, 1, 4) - inkMid(ind, 5, 8), sp / 2, 1e-6, "leading space under centre");
+});
+
+test("layoutText: trailing-space fix leaves single-line text and lines without trailing spaces byte-identical", () => {
+  const o = { emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: false };
+  // Single line: one line has nothing to justify against.
+  for (const align of ["left", "center", "right"]) {
+    const a = SF.layoutText(font, "HAH  ", { ...o, align }), b = SF.layoutText(font, " HAH ", { ...o, align });
+    assert.deepStrictEqual(a.bbox, SF.layoutText(font, "HAH", { ...o, align }).bbox, align + ": trailing spaces, one line, origin unmoved");
+    assert.ok(b.bbox.x0 > a.bbox.x0, align + ": a leading space on one line still indents, as before");
+  }
+});
+
 // ---- Lettering parity round: two-line circular badge layout (circleLayout) ----
 // Contract (documented in src/satinfont.js): the FIRST line arcs along the
 // TOP of a circle, the LAST line arcs along the BOTTOM (upright, reading
@@ -1122,4 +1159,76 @@ test("underlayShortColumns (built OFF 2026-10-22, ON by default since 2026-10-23
   // `underlay: false` still wins, as it always has
   const none = SF.layoutText(font, "FRITSCH", { ...UL_OPTS, emMm: emForCap(4), underlay: false, underlayShortColumns: true });
   assert.strictEqual(kinds(none).underlay, undefined);
+});
+
+// ---- Cross-stitch glyph ink (2026-11-13, Kent approved with the catch "arc
+// output for those 10 fonts changes; straight text is unaffected"). The 10
+// cross-stitch fonts sew only `fill: "cross"` regions; glyphPoints could not
+// see them, so every glyph measured as zero-width ink at its pen x with bottom
+// 0. Arc text piled its letters on each other and cap height fell back to the
+// em proxy (14.60 mm at em 20 in every one of them).
+const crypto = require("node:crypto");
+const FB = require("../src/fontbin.js");
+const binFont = (k) => FB.decodeFontBin(fs.readFileSync(__dirname + "/../src/fonts/bin/" + k + ".embf"));
+const CROSS_FONTS = ["egyptian", "egyptian_small", "eloquent", "eloquent_small", "heavenly", "heavenly_small",
+  "jacquard_12", "jaquarda_bastarda_9", "jersey_15", "noble"];
+const CROSS_OPTS = { emMm: 20, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2 };
+
+test("cross-stitch fonts: cap height is the sewn H, not the em proxy", () => {
+  for (const k of CROSS_FONTS) {
+    const f = binFont(k);
+    assert.ok(f.crossGrid, k + " is a cross-stitch font");
+    const lay = SF.layoutText(f, "H", CROSS_OPTS);
+    const sewnMm = (lay.bbox.y1 - lay.bbox.y0) / CROSS_OPTS.pxPerMm;
+    assert.strictEqual(lay.cap.proxy, false, k + ": cap measured, not proxied");
+    assert.strictEqual(lay.cap.ref, "H", k);
+    // The rings are the outline; the crosses sit on the lattice inside it, so
+    // the two agree to a fraction of a cell (measured 0.03-0.11 mm here).
+    closeTo(lay.lettering.capMm, sewnMm, 0.15, k + " capMm vs sewn H");
+  }
+});
+
+test("cross-stitch fonts: arc text lays its letters along the curve, in order and centred", () => {
+  for (const k of ["jersey_15", "noble", "egyptian"]) {
+    const f = binFont(k);
+    for (const arcDeg of [60, 120, 180]) {
+      const lay = SF.layoutText(f, "HOOH", { ...CROSS_OPTS, arcDeg });
+      const per = [];
+      for (const r of lay.runs) for (const p of r.pts) {
+        const b = per[r.charIdx] || (per[r.charIdx] = { x0: Infinity, x1: -Infinity });
+        b.x0 = Math.min(b.x0, p.x); b.x1 = Math.max(b.x1, p.x);
+      }
+      const cx = per.map((b) => (b.x0 + b.x1) / 2);
+      for (let i = 1; i < 4; i++) {
+        // Before the fix the letters overlapped, and at 180 the order broke.
+        assert.ok(cx[i] - cx[i - 1] > 0.5 * (per[i - 1].x1 - per[i - 1].x0), `${k} arc ${arcDeg}: letter ${i} sits past letter ${i - 1}`);
+      }
+      // A symmetric word on a symmetric arc is centred on x = 0 (was ~35 px off).
+      closeTo(lay.bbox.x0 + lay.bbox.x1, 0, 8, `${k} arc ${arcDeg} centred`);
+    }
+  }
+});
+
+test("cross-stitch fonts: circle text puts the bottom line under the top one, both centred", () => {
+  for (const k of ["jersey_15", "heavenly"]) {
+    const lay = SF.layoutText(binFont(k), "EMBROIDERY\nSTUDIO", { ...CROSS_OPTS, circleLayout: true });
+    const line = (lo, hi) => {
+      let x0 = Infinity, x1 = -Infinity, y = 0, n = 0;
+      for (const r of lay.runs) if (r.charIdx >= lo && r.charIdx < hi) for (const p of r.pts) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y += p.y; n++; }
+      return { x0, x1, y: y / n };
+    };
+    const top = line(0, 10), bot = line(11, 17);
+    assert.ok(bot.y - top.y > 10 * CROSS_OPTS.pxPerMm, `${k}: bottom arc sits well below the top (${((bot.y - top.y) / 8).toFixed(1)} mm)`);
+    closeTo(top.x0 + top.x1, 0, 16, k + " top centred");
+    closeTo(bot.x0 + bot.x1, 0, 16, k + " bottom centred");
+  }
+});
+
+test("cross-stitch fonts: straight text is byte-identical to before the ink fix", () => {
+  // md5(JSON.stringify([runs, bbox])) captured on origin/main 82b7bf98.
+  const PINS = { jersey_15: "15dbeaee8c79b33068664565a2d51c5c", noble: "b58dbc74ffe3c40363711d6f2a7eae2f", egyptian: "39467cf938185192adfd2a13544c1ca3" };
+  for (const [k, want] of Object.entries(PINS)) {
+    const lay = SF.layoutText(binFont(k), "HOOH", CROSS_OPTS);
+    assert.strictEqual(crypto.createHash("md5").update(JSON.stringify([lay.runs, lay.bbox])).digest("hex"), want, k);
+  }
 });

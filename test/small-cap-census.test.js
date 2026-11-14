@@ -113,11 +113,16 @@ test("pins: full test string on two fonts, 3 and 6 mm", () => {
     { stitches: 1532, sewn: 1511, sub1: 1444, sub05: 188, sub03: 89, repeat: 47, overRec: 0, hairlineSpans: 51, satinSpans: 48, strokeSpans: 30, thinSpans: 30, narrowestMm: 0.5, minCrossMm: 0.41 });
 });
 
-// jersey_15 is the extreme: at a 4 mm cap 11,180 of its 11,789 sewn segments are
-// under the short-stitch floor (94.8%), against 0.0% at its own 12 mm control.
-test("pins: jersey_15 at 4 mm is nearly all short stitches", () => {
+// jersey_15 at a 4 mm cap: 5,288 of its 11,789 sewn segments are under the
+// short-stitch floor (44.9%), against 0.0% at its own 12 mm control.
+// Re-pinned 2026-11-13 (cross-stitch glyph ink): sub03 was 11,180 (94.8%),
+// but that cell was not at 4 mm. Cap height for a cross-stitch font read the
+// em proxy (14.60 mm at em 20) instead of its sewn H (11.11 mm), so the
+// calibration put "4 mm" at a real 3.04 mm cap. Same engine, true size; the
+// stitch and sewn counts did not move.
+test("pins: jersey_15 at 4 mm is nearly half short stitches", () => {
   const c = cell("jersey_15", T.TEXTS[0], 4);
-  assert.deepStrictEqual(pick(c, ["stitches", "sewn", "sub03", "satinSpans"]), { stitches: 11920, sewn: 11789, sub03: 11180, satinSpans: 0 });
+  assert.deepStrictEqual(pick(c, ["stitches", "sewn", "sub03", "satinSpans"]), { stitches: 11920, sewn: 11789, sub03: 5288, satinSpans: 0 });
   assert.strictEqual(c.capMiss, false);
 });
 

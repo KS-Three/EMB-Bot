@@ -65,7 +65,7 @@ import numpy as np
 from shapely.geometry import Polygon
 from skimage.feature import structure_tensor
 
-from . import debugviz
+from . import deadline, debugviz
 
 # --- Tunables ----------------------------------------------------------------
 
@@ -146,6 +146,7 @@ def _etf_pass(tx: np.ndarray, ty: np.ndarray, mag: np.ndarray,
     acc_x = np.zeros_like(tx)
     acc_y = np.zeros_like(ty)
     for dy in range(-radius, radius + 1):
+        deadline.check("direction field")
         for dx in range(-radius, radius + 1):
             if dy * dy + dx * dx > radius * radius:
                 continue  # w_s: hard disc

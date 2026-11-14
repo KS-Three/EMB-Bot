@@ -1666,6 +1666,36 @@ def _seam_side(a: list[tuple[float, float, float]], b: list[tuple[float, float, 
     return 1 if after >= before else -1
 
 
+def _seam_box(rows: list[tuple[float, float, float]]) -> tuple[float, float, float, float] | None:
+    """(v min, v max, u min, u max) over one section's `_section_rows`, None
+    for a section with no rows: what `_seam_apart` needs to clear a pair."""
+    if not rows:
+        return None
+    return (min(r[0] for r in rows), max(r[0] for r in rows),
+            min(r[1] for r in rows), max(r[2] for r in rows))
+
+
+def _seam_apart(ba, bb, row_mm: float) -> bool:
+    """True only when `_seam_side` of the two sections is certainly 0, read off
+    their `_seam_box`es: no row of b within `adj` of a row of a across the
+    rows, or no pair of rows able to share two row pitches along them.
+
+    Speed only (2026-11-13). `_order_for_seams` and `_seam_faults` ask
+    `_seam_side` about EVERY pair of a shape's sections, nearly all of them
+    far apart: on stained_glass at 80 mm that was 1,228,617 calls a job, and
+    replaying that job's 239 seam calls took 11.7 s; with this in front, 9,322
+    calls and 0.53 s, every answer the same. Exact, not a tolerance: rounding
+    is monotone, so `va + adj` for any row is at most `fl(v max + adj)`, and
+    each row pair's `min(ua1, ub1) - max(ua0, ub0)` at most the boxes' -- a
+    pair this clears is one that `_seam_side`'s own tests skip row by row."""
+    if ba is None or bb is None:
+        return True                          # no rows: `_seam_side` loops over nothing
+    adj = max(0.6, 1.5 * row_mm)
+    if bb[0] > ba[1] + adj or bb[1] < ba[0] - adj:
+        return True
+    return min(ba[3], bb[3]) - max(ba[2], bb[2]) < 2.0 * row_mm
+
+
 def _seam_faults(order: list[list[tuple[float, float]]], angle_deg: float, row_mm: float) -> int:
     """How many seams of this order lie wrong: two sections either side of a row
     that progress opposite ways (a shade flip), or one way with the later section
@@ -1674,10 +1704,13 @@ def _seam_faults(order: list[list[tuple[float, float]]], angle_deg: float, row_m
     fills = [p for p in order if len(p) > 4]
     rows = [_section_rows(p, angle_deg) for p in fills]
     ways = [1 if _uv(p[-1], angle_deg)[1] > _uv(p[0], angle_deg)[1] else -1 for p in fills]
+    boxes = [_seam_box(r) for r in rows]
     faults = 0
     for a in range(len(fills)):
         deadline.check("fill seam order")
         for b in range(a + 1, len(fills)):
+            if _seam_apart(boxes[a], boxes[b], row_mm):
+                continue                     # side 0, so no fault (speed only)
             side = _seam_side(rows[a], rows[b], row_mm)
             faults += side != 0 and (ways[a] != ways[b] or side != ways[a])
     return faults
@@ -1740,9 +1773,12 @@ def _order_for_seams(paths: list[list[tuple[float, float]]], angle_deg: float,
     # side by side along it -- wherever the seam sits in i, not only at its
     # extreme rows (a section's top is often shape edge beside the seam)
     below: list[set[int]] = [set() for _ in range(n)]
+    boxes = [_seam_box(r) for r in rows]
     for i in range(n):
         deadline.check("fill seam order")
         for j in range(i + 1, n):
+            if _seam_apart(boxes[i], boxes[j], row_mm):
+                continue                     # side 0, so no seam (speed only)
             side = _seam_side(rows[i], rows[j], row_mm)
             if side > 0:
                 below[i].add(j)
