@@ -56,6 +56,7 @@ the OLDEST lines whole to the archive.
 - [Holes in the Studio](holes-studio-2026-11-03.md) — holes drawn/edited like the outline, Delete hole, `holes_override` only when a hole was edited; a 3 mm drag shares with a chamfer partner, arrows move one; no add-hole yet
 - [Inconsistency reader](inconsistency-fault-reader-2026-11-12.md) — unlike siblings: -0.04 vs pick, CI [-0.42,+0.42] = not shown; "colour" feet = fill direction lit
 - [In-fill fault reader](infill-fault-reader-2026-11-11.md) — thread in art-empty spaces (sew_enclosed_white) vs Kent's 36 in-fill pins: per note 0.29 vs candidate-pick null 0.27, CI [-0.31,+0.28] = not shown; finds the region, not which spaces
+- [Jag source](jag-source-2026-11-13.md) — 49 smooth pins by stage: chord facets 18, source px 10, satin construction 21 (ends 14); `outline_redraw_k` OFF; next lever = satin ends
 - [Kent's judging rubric](kent-judging-rubric-2026-11-07.md) — his 22 reasons: lettering follows pen strokes, smooth curves, straight uprights, no blobs; first picks noisy; phase B judge FAILED (#1363)
 - [Lagging areas top 3](lagging-areas-2026-11-06.md) — Kent 11-06: yardstick / satin-fill 0.387 / trims; 3 Sonnet notes in docs/lagging-areas-2026-11-06: no external repo fixes any, instruments + oracles first; polygon_axis.py already exists
 - [Launch not near](launch-not-near-rulings-2026-11-12.md) — Kent 11-12 "not ready for going live": no billing/licence/signing/hosting/legal until he says; show him the build first; "Decide later" on installer name; defect 28 close it

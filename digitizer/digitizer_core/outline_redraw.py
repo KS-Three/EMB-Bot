@@ -404,7 +404,7 @@ def redraws_lines(src_px_mm: float, grid_px_mm: float, k: float = K_DEFAULT) -> 
 
 
 def apply_outline_redraw(regions, src_px_mm: float, grid_px_mm: float,
-                         k: float = K_DEFAULT) -> dict[str, int]:
+                         k: float = K_DEFAULT, native: bool = False) -> dict[str, int]:
     """Refit every region's polygon in place (same `shape_id`, `meta` plus
     `outline_redraw` naming the outcome). A letter `letterform_priors` already
     refit is left as it is. Returns outcome counts.
@@ -413,11 +413,18 @@ def apply_outline_redraw(regions, src_px_mm: float, grid_px_mm: float,
     pixels over the grid pixel) the trace is a staircase of source pixels and
     every run is redrawn, lines and arcs; on a source at its own resolution
     the trace already carries straight edges and corners to the grid pixel,
-    and only its bowls -- chords of a curve -- are rewritten as arcs."""
+    and only its bowls -- chords of a curve -- are rewritten as arcs.
+
+    The second regime runs only with `native` (`cfg.outline_redraw_native`,
+    default False): measured 2026-11-13 it rounds the polygon's bowls but the
+    Column lane's satin answers the new polygon unpredictably (and_pizza's "p"
+    sewed a straight cut across a perfect arc and opened a seam), so the
+    stitched edge did not reliably improve. Without it a source at its own
+    resolution passes through untouched: nothing runs, nothing is stamped."""
     tol = redraw_cap_mm(src_px_mm, grid_px_mm, k)
     arcs_only = not redraws_lines(src_px_mm, grid_px_mm, k)
     counts: dict[str, int] = {}
-    if not tol > 0.0:
+    if not tol > 0.0 or (arcs_only and not native):
         return counts
     for r in regions:
         deadline.check("outline redraw")

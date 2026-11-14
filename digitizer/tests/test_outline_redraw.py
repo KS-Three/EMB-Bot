@@ -179,11 +179,42 @@ def test_off_path_never_imports_the_module():
             sys.modules["digitizer_core.outline_redraw"] = saved
 
 
-def test_on_stamps_every_region_and_keeps_its_ids():
+def _lowres_png(tmp_path) -> str:
+    """A ring and a bar drawn 90 px wide: at 60 mm that is 1.5 px/mm, so
+    stage 1 upscales it and the redraw's line-and-arc regime applies."""
+    from PIL import Image, ImageDraw
+    im = Image.new("RGB", (90, 50), "white")
+    dr = ImageDraw.Draw(im)
+    dr.ellipse([4, 4, 44, 44], fill="black")
+    dr.ellipse([16, 16, 32, 32], fill="white")
+    dr.polygon([(52, 10), (86, 16), (84, 40), (54, 36)], fill="black")
+    out = tmp_path / "lowres.png"
+    im.save(out)
+    return str(out)
+
+
+def test_on_redraws_an_upscaled_source_and_keeps_its_ids(tmp_path):
     from digitizer_core.pipeline import run_stages
-    png = str(HERE.parent / "testdata" / "ribbon_curve.png")
+    png = _lowres_png(tmp_path)
     off = run_stages(png, _cfg())
     on = run_stages(png, _cfg(outline_redraw_k=0.75))
     assert {r.shape_id for r in on.regions} == {r.shape_id for r in off.regions}
     assert all("outline_redraw" in r.meta for r in on.regions)
     assert any(r.meta["outline_redraw"] == "redrawn" for r in on.regions)
+
+
+def test_a_source_at_its_own_resolution_is_untouched_unless_native_is_set(tmp_path):
+    """The same drawing at 20 px/mm: stage 1 keeps it, and without
+    `outline_redraw_native` the flag changes no polygon and stamps nothing."""
+    from PIL import Image
+    from digitizer_core.pipeline import run_stages
+    src = Image.open(_lowres_png(tmp_path)).resize((1200, 667), Image.LANCZOS)
+    png = tmp_path / "hires.png"
+    src.save(png)
+    png = str(png)
+    off = run_stages(png, _cfg())
+    on = run_stages(png, _cfg(outline_redraw_k=0.75))
+    assert [r.polygon.wkb for r in on.regions] == [r.polygon.wkb for r in off.regions]
+    assert not any("outline_redraw" in r.meta for r in on.regions)
+    nat = run_stages(png, _cfg(outline_redraw_k=0.75, outline_redraw_native=True))
+    assert all("outline_redraw" in r.meta for r in nat.regions)

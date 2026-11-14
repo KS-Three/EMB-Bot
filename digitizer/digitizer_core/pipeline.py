@@ -1191,7 +1191,8 @@ def build_generation(
     if cfg.outline_redraw_k and p.input_px_per_mm > 0.0 and p.px_per_mm > 0.0:
         from .outline_redraw import apply_outline_redraw
         apply_outline_redraw(regions, src_px_mm=1.0 / p.input_px_per_mm,
-                             grid_px_mm=1.0 / p.px_per_mm, k=cfg.outline_redraw_k)
+                             grid_px_mm=1.0 / p.px_per_mm, k=cfg.outline_redraw_k,
+                             native=cfg.outline_redraw_native)
 
     # OCR-suggested text (Studio "Convert to text" entry point): a read-only,
     # additive per-member OCR read of each tagged member's FINAL polygon —
