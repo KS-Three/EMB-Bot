@@ -990,6 +990,40 @@ Renders: `docs/renders/field-resize-2026-10-08/`.
 *(fixed 2026-10-08 — `DigitizePanel.spec.js` "a resize on the field" (4 of 5
 fail on the old panel), `digitizer.spec.js` "resizedTargetWidth")*
 
+### Rotating, group resizing and a corner touch on the canvas (2026-11-13)
+
+**Rotating keeps the design's size.** `sizeMm` is the width AFTER rotation, so
+the rotate grip and the three Rotation sliders, which patched `rotationDeg`
+alone, made the engine refit the turned design to the old width: "HELLO WORLD"
+at 90 mm sewed 88.2 × 88.3 at 45° and 8.4 × 101.8 at 90°. All of them now go
+through `hoop.js` `rotationPatch`, which scales `sizeMm` by how much wider the
+design is at the new angle (lettering: the fit rectangle from `fitMm.w0/h0`;
+a stitch file: its turned stitches, `staleness.js` `rotatedWidth`), so a
+digitized design does not read as behind after a pure turn. The text panel
+waits for a font still loading before it turns. A design rotated before this
+keeps the size it has (Kent's accepted catch). *(fixed 2026-11-13 — PR #1468,
+`rotateKeepsSize.spec.js`, `TextStep.rotation.spec.js`, e2e `core-flows`
+"the rotate grip turns lettering at its own size")*
+
+**A group resize stays inside the placement box.** The factor cap bounded the
+group's size, not its position, and `reclampAll` then pushed members in one
+at a time (two letters 8.4 mm apart ended up overlapping by 9.6 mm). `interact.js`
+`groupResizeInBox` now shifts every member by one shared amount, as a single
+element is shifted in at the edge, measured in `reclampAll`'s own
+offset-centred model so turned lettering is not moved on its own afterwards.
+*(fixed 2026-11-13 — PR #1468, `interact.group.spec.js`; reclamp model
+measured 2026-11-13 — review follow-up)*
+
+**A corner touch resizes nothing.** The resize wrote the SEWN width as the
+requested `sizeMm` and had no click dead zone: five touches took 120 mm
+lettering at 45° to 108.1. A corner press, single or group, now writes
+nothing until the pointer travels the field's 4 px `CLICK_PX`, and the
+request moves with the sewn width (`resizeTargetMm`: additively on lettering
+at a quarter turn, in proportion otherwise, so a size-match snap lands
+exactly either way). *(fixed 2026-11-13 — PR #1468, `interact.resize.spec.js`,
+e2e `core-flows` "a press on a corner handle that does not travel writes
+nothing", single and group)*
+
 ## Defects 37, 39 and 43 in full — moved from MASTER_SCOPE (2026-10-12)
 
 Lifted verbatim out of MASTER_SCOPE's live list on 2026-10-12: all three were fixed or measured in September and were still sitting under "Live defects". MASTER_SCOPE keeps a closed one-line pointer for each under the same number.
