@@ -580,6 +580,7 @@ def vectorize(
         dropped.append(float(rm.area) / (p.px_per_mm ** 2))
 
     for rm in region_masks:
+        deadline.check("stage 4")
         # Trace the CROP, not a frame-sized mask (2026-08-24). The one-pixel
         # background pad reproduces the full-frame neighbourhood exactly: a
         # crop is bbox-tight, so every border row and column carries set

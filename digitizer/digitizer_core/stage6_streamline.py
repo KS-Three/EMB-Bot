@@ -722,6 +722,7 @@ def _trace_layer(poly, tangent_at, darkness_map, ring, slack, shape_id: str,
     remaining = list(range(len(paths)))
     cur: tuple[float, float] | None = None
     while remaining:
+        deadline.check("streamlines")
         if cur is None:
             pick, flip = remaining[0], 0
         else:

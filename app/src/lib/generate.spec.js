@@ -42,6 +42,37 @@ test("generateElement: a colorRange covering the first character produces a seco
   expect(d.colors[0]).toMatchObject({ r: 200, g: 30, b: 30 });
 });
 
+// 2026-11-13: ranges are textarea indices into the UNTRIMMED text, and the
+// engine sews the trimmed text, so "\nSMITH" with the S coloured red sewed
+// the M red. Whatever surrounds the text, the colour lands on the letter it
+// was drawn over, and the stitches are those of the bare text (nothing moves).
+test("generateElement: a colour range lands on its letter whatever whitespace surrounds the text", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const RED = [200, 30, 30];
+  const sew = (text, startIdx, endIdx) =>
+    generateElement(textElement({ text, colorRanges: [{ startIdx, endIdx, colorRgb: RED }] }), garment, {});
+  const want = sew("SMITH", 0, 1); // the S, red
+  expect(want.colors[0]).toMatchObject({ r: 200, g: 30, b: 30 });
+  for (const [text, s] of [["\nSMITH", 1], [" SMITH", 1], ["\t \n  SMITH\n", 5], ["SMITH\n", 0], ["  SMITH  ", 2]]) {
+    const d = sew(text, s, s + 1);
+    expect(d.colors, JSON.stringify(text)).toEqual(want.colors);
+    expect(d.stitches, JSON.stringify(text)).toEqual(want.stitches);
+  }
+  // A range that starts in the trimmed lead is clipped to the text; one wholly
+  // inside it colours nothing.
+  expect(sew("\n\nSMITH", 0, 3).stitches).toEqual(want.stitches);
+  expect(sew("\n\nSMITH", 0, 2).colors.length).toBe(1);
+});
+
+test("rangesForTrimmed: shifts by the lead, clips a straddler, drops a range inside the lead, keeps identity at 0", async () => {
+  const { rangesForTrimmed } = await import("./generate.js");
+  const r = [{ startIdx: 0, endIdx: 2, colorRgb: [1, 2, 3] }, { startIdx: 3, endIdx: 5, colorRgb: [4, 5, 6] }, { startIdx: 1, endIdx: 4, colorRgb: [7, 8, 9] }];
+  expect(rangesForTrimmed(r, 0)).toBe(r);
+  expect(rangesForTrimmed(r, 2)).toEqual([{ startIdx: 1, endIdx: 3, colorRgb: [4, 5, 6] }, { startIdx: 0, endIdx: 2, colorRgb: [7, 8, 9] }]);
+});
+
 test("empty text returns null, not a throw", async () => {
   const { generateElement } = await import("./generate.js");
   const { EMB } = await import("./emb.js");
@@ -715,8 +746,15 @@ test("generateElement: a preset shape leaves no float a DST machine reads as a c
     // arms round one centre zone and leaves neither shape a float the writer
     // lays as three records, so the half that proves the reading can see one
     // builds the pre-flip satin, `satinSmallShapes: false`, on and off the flag.
+    // Since 2026-11-13 the shape lane sends this pre-flip star to FILL: its
+    // satin lays a stitch over the 12.1 mm machine limit (src/digitize.js,
+    // "A CROSS NO MACHINE SEWS AS ONE STITCH"). So that half sets it to satin,
+    // as a user can, to keep the satin it sewed.
+    const preRegions = kind === "star" ? shapesToRegions([
+      { id: "shape", points: shapePresetPoints(kind, params, sizeMm), curves: {}, stitchType: "satin", colorRgb: el.colorRgb, angleDeg: null },
+    ]).regions : regions;
     const pre = { ...call, satinSmallShapes: false };
-    const preOff = EMB.buildQualityDesign(regions, pre), preOn = EMB.buildQualityDesign(regions, { ...pre, cutFloats: true });
+    const preOff = EMB.buildQualityDesign(preRegions, pre), preOn = EMB.buildQualityDesign(preRegions, { ...pre, cutFloats: true });
     expect(unasked(preOff)).toBeGreaterThan(0);
     expect(unasked(preOn)).toBe(0);
     expect(trims(preOn)).toBeGreaterThan(trims(preOff));

@@ -72,6 +72,7 @@
   import CropBox from "./CropBox.svelte";
   import { proposeCrop } from "../lib/cropProposal.js";
   import { fitTargetWidthMm } from "../lib/placement.js";
+  import { rotationPatch } from "../lib/hoop.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
   import { isElementStale, isUndigitizedArt, pendingEdits, canRedigitize, rotatedWidth, nativeWidthOf, withTargetWidth } from "../lib/staleness.js";
   import { undecidedOutlineIds, removedOutlineIds, keepPatch, removePatch, putBackPatch } from "../lib/outlinePrompt.js";
@@ -166,6 +167,9 @@
   function patch(p, id = element.id, proj = projectId) {
     d("elupdate", proj == null ? { id, patch: p } : { id, patch: p, projectId: proj });
   }
+  // Rotation keeps the design's size, and so its Design width and whether it
+  // reads behind (hoop.js rotationPatch, 2026-11-13).
+  const turnTo = (deg) => patch(rotationPatch(element, deg));
 
   // The sessionStorage resume mark (lib/digitizeBusy.js rememberRun), keyed
   // by design AND element: keyed by the bare element id, a run torn down in
@@ -3229,7 +3233,7 @@
           max="360"
           step="1"
           value={rotation}
-          on:input={(e) => patch({ rotationDeg: parseInt(e.currentTarget.value, 10) })}
+          on:input={(e) => turnTo(parseInt(e.currentTarget.value, 10))}
         />
         <span class="label">{rotation}°</span>
       </label>

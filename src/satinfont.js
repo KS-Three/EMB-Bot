@@ -204,11 +204,24 @@
   // height and ink centering for every satin font (caught by satinfont.test.js
   // — emilio_20_bold's cap/em moved 16.47 -> 16.542, and circle-layout
   // baselines drifted with it). Geometry that will never be sewn is not ink.
-  function glyphPoints(g) {
+  //
+  // Cross-stitch regions ARE sewn (crossFill, under font.crossGrid — the same
+  // condition sewsSomething uses), and until 2026-11-13 they were left out:
+  // the 10 cross-stitch fonts have no columns and no lengthed runs, so every
+  // glyph read as zero-width ink at its pen x with bottom 0. Arc text then
+  // piled its letters on each other ("HOOH" at em 20: 38.8 mm straight,
+  // 14.2 mm on a 120° arc) and cap height fell to the em proxy (14.60 mm for
+  // all ten, against a sewn H of 7.84-20.11 mm). Kent approved the fix
+  // 2026-11-13 with the catch "arc output for those 10 fonts changes;
+  // straight text is unaffected". `font` is optional only so a caller without
+  // one keeps the old answer; every caller in this file passes it.
+  function glyphPoints(g, font) {
     const out = [];
     for (const col of (g.cols || [])) { out.push(col.railA, col.railB); }
+    const cross = !!(font && font.crossGrid);
     for (const r of (g.runs || [])) {
-      if (!r || !r.pts || !(r.lenMm > 0)) continue;
+      if (!r || !r.pts) continue;
+      if (!(r.lenMm > 0) && !(cross && r.fill === "cross")) continue;
       if (r.pts.length) out.push(r.pts);
     }
     return out;
@@ -226,10 +239,10 @@
   }
 
   const glyphBottomCache = new WeakMap();
-  function glyphBottomUnits(g) {
+  function glyphBottomUnits(g, font) {
     if (glyphBottomCache.has(g)) return glyphBottomCache.get(g);
     let maxy = -Infinity;
-    for (const ring of glyphPoints(g)) {
+    for (const ring of glyphPoints(g, font)) {
       for (const p of ring) { if (p[1] > maxy) maxy = p[1]; }
     }
     const c = maxy > -Infinity ? maxy : 0;
@@ -250,11 +263,11 @@
   // baselines miss each other by the full spacing amount (Kent's SCHAEFER
   // -180° report: 4.6mm end-to-end tilt at 5.5mm spacing).
   const glyphInkXCache = new WeakMap();
-  function glyphInkXUnits(g) {
+  function glyphInkXUnits(g, font) {
     let hit = glyphInkXCache.get(g);
     if (hit) return hit;
     let min = Infinity, max = -Infinity;
-    for (const ring of glyphPoints(g)) {
+    for (const ring of glyphPoints(g, font)) {
       for (const p of ring) { if (p[0] < min) min = p[0]; if (p[0] > max) max = p[0]; }
     }
     hit = min <= max ? { min, max } : { min: 0, max: 0 };
@@ -282,8 +295,11 @@
   // If a font has NO upper-case reference glyph at all, we fall back to a
   // PROXY — emMm * 0.73, the measured median cap/em of the corpus — and say so
   // here rather than pretending em is cap. `capIsProxy` is returned alongside
-  // so callers can tell the two apart. This path is unreachable for every font
-  // we currently ship.
+  // so callers can tell the two apart. Of the 85 shipped fonts exactly two
+  // reach it, hebrew_font_large and hebrew_font_medium, which have no Latin
+  // capitals to measure (measured 2026-11-13). This comment used to call the
+  // path unreachable while the 10 cross-stitch fonts all reached it too,
+  // because glyphPoints could not see cross regions (fixed above).
   // Typographic punctuation folded to its plain-ASCII twin, used ONLY when the
   // font has no glyph for the fancy form.
   //
@@ -338,7 +354,7 @@
       // Was `!g.cols.length` — that skipped every glyph of a runs-only font, so
       // cap height came back null and the font had no measured size reference.
       if (!g) continue;
-      const rings = glyphPoints(g);
+      const rings = glyphPoints(g, font);
       if (!rings.length) continue;
       let mn = Infinity, mx = -Infinity;
       for (const ring of rings) {
@@ -1024,11 +1040,24 @@
       const order = chars.map((_, i) => i);
       if (rtl) order.reverse();
       let penX = 0, prev = null;
+      // Pen x where the first non-blank character starts and where the last
+      // one ends, in pen (visual) order. Justification measures between them
+      // at the TRAILING end, so a trailing space no longer pushes a centred or
+      // right-aligned line off ("HELLO \nHELLO" centred sat 2.12 mm left;
+      // fixed 2026-11-13, Kent approved, catch "none for single-line text").
+      // A LEADING space still counts, as typed: it is plausibly indentation,
+      // and it already behaves that way under left align.
+      let headX = null, tailX = 0, inInk = false;
       const glyphs = [];
       for (const i of order) {
         const ch = chars[i];
         const charIdx = lineStart + i;
-        if (ch === " " || ch === "\t") { penX += (font.advSpace || font.advDefault); prev = null; continue; }
+        if (ch === " " || ch === "\t") {
+          if (inInk) { tailX = penX; inInk = false; }
+          penX += (font.advSpace || font.advDefault); prev = null; continue;
+        }
+        if (headX === null) headX = penX;
+        inInk = true;
         const g = glyphFor(font, ch);
         // A character the font has no glyph for advances the pen and stitches
         // NOTHING, silently. That was survivable while the library was all
@@ -1074,9 +1103,18 @@
       }
       globalIdx = lineStart + chars.length;
       if (lineNum < rawLines.length - 1) globalIdx++; // the "\n" separator itself
-      return { glyphs, adv: penX };
+      if (inInk) tailX = penX;
+      // `justAdv` is the width justification works with; `justOff` is how far
+      // into the pen line it starts. Logical TRAILING spaces sit at the pen
+      // END of a left-to-right line and at the pen START of a right-to-left
+      // one (it is walked reversed), so RTL drops the head, LTR the tail.
+      // A line with no trailing space gets justAdv === adv and justOff === 0,
+      // so it is placed exactly as before.
+      const justAdv = headX === null ? 0 : rtl ? penX - headX : tailX;
+      const justOff = headX === null || !rtl ? 0 : headX;
+      return { glyphs, adv: penX, justAdv, justOff };
     });
-    const maxAdvUnits = lineList.reduce((m, ln) => Math.max(m, ln.adv), 0);
+    const maxAdvUnits = lineList.reduce((m, ln) => Math.max(m, ln.justAdv), 0);
 
     const runs = [];
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -1091,7 +1129,7 @@
       if (!line.glyphs.length) return null;
       let minU = Infinity, maxU = -Infinity;
       for (const gl of line.glyphs) {
-        const ext = glyphInkXUnits(gl.g);
+        const ext = glyphInkXUnits(gl.g, font);
         if (gl.ox + ext.min < minU) minU = gl.ox + ext.min;
         if (gl.ox + ext.max > maxU) maxU = gl.ox + ext.max;
       }
@@ -1125,8 +1163,12 @@
     lineList.forEach((line, lineIdx) => {
       const lineYunits = lineIdx * leadingUnits;                  // font units, y-down: later lines sit below
       // Straight multi-line: place this line against the widest per `align`.
-      const slack = maxAdvUnits - line.adv;
-      const lineOriginXunits = arcDeg ? 0 : align === "left" ? 0 : align === "right" ? slack : slack / 2;
+      // Against each line's advance at its last glyph (justAdv above), not
+      // its full advance. One line has nothing to justify against and is
+      // never moved, so single-line output stays byte-identical.
+      const slack = maxAdvUnits - line.justAdv;
+      const justOff = lineList.length > 1 ? line.justOff : 0;
+      const lineOriginXunits = arcDeg ? 0 : (align === "left" ? 0 : align === "right" ? slack : slack / 2) - justOff;
       // Arc geometry references the line's INK span, not its advance span:
       // advance carries invisible width (side bearings + one trailing
       // letter-spacing gap), and centering/radius built from it tilt the arch
@@ -1154,7 +1196,7 @@
       // vertical center) keeps that arc at the radius the curve was actually
       // designed for, instead of collapsed inward by half a letter-height.
       const baselinePx = (arcDeg || circleParams) && line.glyphs.length
-        ? medianOf(line.glyphs.map((gl) => glyphBottomUnits(gl.g))) * u2px
+        ? medianOf(line.glyphs.map((gl) => glyphBottomUnits(gl.g, font))) * u2px
         : 0;
       // Circle-badge middle band: baseline of middle line k (0-based within
       // the band) sits at cy + (k - (count-1)/2) * leading — the band is
@@ -1245,7 +1287,7 @@
           // valley's midpoint onto the shared circle's bottom.
           const sgnC = circleRole === "top" ? 1 : -1;
           const Rc = circleParams.R;
-          const ext = glyphInkXUnits(g);
+          const ext = glyphInkXUnits(g, font);
           const inkCenterPx = (ox + (ext.min + ext.max) / 2) * u2px;
           const sPx = inkCenterPx - inkMidPx;
           const theta = Rc > 0 ? sPx / Rc : 0;
@@ -1278,7 +1320,7 @@
           // the glyph's own bearing asymmetry as a visible tilt (an H whose
           // ink sits right-of-center in its advance box would lean ~8° at the
           // apex if positioned by ink but pivoted by pen).
-          const ext = glyphInkXUnits(g);
+          const ext = glyphInkXUnits(g, font);
           const inkCenterPx = (ox + (ext.min + ext.max) / 2) * u2px;
           const sPx = inkCenterPx - inkMidPx;
           const theta = R > 0 ? sPx / R : 0;

@@ -18,9 +18,9 @@
   import { chartIdForProject } from "../lib/designChart.js";
   import { getCachedPalette, loadPalette, loadPreferredPaletteId, STUDIO_PALETTE } from "../lib/threads.js";
   import { EMB } from "../lib/emb.js";
-  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
+  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizeInBox, resizeTargetMm } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
-  import { effectiveHoop, hoopFitNote, rotateToFitPatches } from "../lib/hoop.js";
+  import { effectiveHoop, hoopFitNote, rotateToFitPatches, rotationPatch } from "../lib/hoop.js";
   import { garmentOf, placementBoxOf } from "../lib/placement.js";
   import { resizeBadgeText, runSpm } from "../lib/estimate.js";
   import { fabricContrastNote } from "../lib/colorMatch.js";
@@ -423,8 +423,16 @@
   let rotateBadgeDeg = null; // live degrees during a rotate drag
   let dragStartBBoxMm = null; // dragged element's absolute mm bbox at pointerdown
   let dragStartTargetMm = 0; // element's sizeMm at pointerdown (see size-match note below)
+  // A corner press is a click until the pointer travels CLICK_PX (latched):
+  // under it a resize patches nothing, so a touch cannot resize (2026-11-13).
+  let resizeArmed = false;
   let dragStartRotationDeg = 0;
   let dragRotateCenterPx = null; // element center (canvas px), fixed at rotate-grab
+  // The element and its design AT PRESS: every move's size is derived from
+  // these (hoop.js rotationPatch), never from the last move's patch, so a
+  // long drag cannot drift (2026-11-13).
+  let dragRotateEl = null;
+  let dragRotateDesign = null;
 
   // Multi-select (Ctrl+click) group-drag state. dragMembers snapshots each
   // selected member's offsets/size at pointerdown; dragGroupBBoxMm is the
@@ -4306,7 +4314,15 @@
     setCanvasCursor(cursorForHandle(handle));
   }
 
+  // ONE pointer gesture is ONE undo step, whatever its timing (Kent's
+  // approval 2026-11-13). Every patch a drag flushes carries its press's
+  // token (`gesture`, history.js): the first record of a drag pushes even
+  // right after another edit, and the rest merge into it however long the
+  // pointer rests. Stamped when the patch is queued, not in the frame, which
+  // can run after endDrag has let the drag go.
+  let dragGesture = null;
   function schedulePatchFlush() {
+    if (pendingPatch) pendingPatch.gesture = dragGesture;
     if (rafScheduled) return;
     rafScheduled = true;
     requestAnimationFrame(() => {
@@ -4316,7 +4332,7 @@
         pendingPatch = null;
         // Group drags carry one patch PER member ({ multi: { id: patch } });
         // single-element drags keep the original { id, patch } shape.
-        if (p.multi) dispatch("elupdatemany", p.multi);
+        if (p.multi) dispatch("elupdatemanygesture", { patches: p.multi, gesture: p.gesture });
         else dispatch("elupdate", p);
       }
     });
@@ -4641,6 +4657,8 @@
     if (e.button !== undefined && e.button !== 0) return;
     countPress(e);
     if (fieldMenu) fieldMenu = null;
+    // A fresh token per press: every patch this drag flushes carries it.
+    dragGesture = Symbol("drag");
 
     // Auto-dismiss the drag-field hint on the first pointerdown on the
     // canvas WHILE it's actually showing -- gating on showDragHint (rather
@@ -4751,6 +4769,8 @@
       dragTargetId = project.selectedId;
       dragStartPx = p;
       dragStartRotationDeg = (el && el.rotationDeg) || 0;
+      dragRotateEl = el;
+      dragRotateDesign = (peById[project.selectedId] && peById[project.selectedId].design) || null;
       dragRotateCenterPx = { x: selRect.x + selRect.w / 2, y: selRect.y + selRect.h / 2 };
       rotateBadgeDeg = dragStartRotationDeg;
       setCanvasCursor("grabbing");
@@ -4941,7 +4961,11 @@
     dragStartWidthMm = pe.bboxMm.x1 - pe.bboxMm.x0;
     dragStartHeightMm = pe.bboxMm.y1 - pe.bboxMm.y0;
     dragStartBBoxMm = pe.bboxMm; // move-snap translates this by the live drag delta
-    dragStartTargetMm = el.sizeMm != null ? el.sizeMm : dragStartWidthMm;
+    // An auto-fit (null) sizeMm resizes from the request that auto-fit made:
+    // lettering's fit width, else the sewn width (a stitch file's own).
+    const fitW = el.type === "text" && pe.design && pe.design.fitMm && pe.design.fitMm.w;
+    dragStartTargetMm = el.sizeMm != null ? el.sizeMm : (fitW > 0 ? fitW : dragStartWidthMm);
+    resizeArmed = false;
     setCanvasCursor(cursorForHandle(handle));
 
     if (handle === "body") {
@@ -4949,13 +4973,10 @@
     } else {
       dragMode = "resize";
       dragHandle = handle;
-      // If sizeMm is still "auto-fit" (null), seed it from the design's
-      // CURRENT on-screen width so the drag continues from what's visible
-      // instead of jumping to whatever the auto-fit width happens to be
-      // recomputed as on the next paint.
-      if (el.sizeMm == null) {
-        dispatch("elupdate", { id: targetId, patch: { sizeMm: dragStartWidthMm } });
-      }
+      // An auto-fit (null) sizeMm used to be seeded with the sewn width right
+      // here, so a bare touch on a corner wrote a size. The first real move
+      // writes it now, from the request above, so the drag still continues
+      // from what is visible (2026-11-13).
     }
   }
 
@@ -5096,7 +5117,8 @@
       // suspend-snap role on move/resize.
       const deg = dragRotate(dragStartRotationDeg, dragRotateCenterPx, dragStartPx, p, { free: e.altKey });
       rotateBadgeDeg = deg;
-      pendingPatch = { id: dragTargetId, patch: { rotationDeg: deg } };
+      // Keeps the design's size: sizeMm is the width after rotation (hoop.js).
+      pendingPatch = { id: dragTargetId, patch: rotationPatch(dragRotateEl, deg, dragRotateDesign) };
       schedulePatchFlush();
       return;
     }
@@ -5141,20 +5163,16 @@
       } else {
         // Group resize: one factor from the union box's aspect-locked
         // corner drag, fanned out to every member (targets AND offsets
-        // scale about the group center). Factor capped so the scaled
-        // union still fits the hoop; groupResizePatches raises it if any
-        // member would fall below the stitchable minimum.
+        // scale about the group center), then shifted together so the
+        // scaled union stays inside the box (interact.js groupResizeInBox,
+        // 2026-11-13); groupResizePatches raises the factor if any member
+        // would fall below the stitchable minimum.
         const gW = dragGroupBBoxMm.x1 - dragGroupBBoxMm.x0;
         const gH = dragGroupBBoxMm.y1 - dragGroupBBoxMm.y0;
         const newW = dragResize(gW, gH, dragHandle, gdxMm, gdyMm, MIN_SIZE_MM, hoop.wMm || gW);
-        let f = gW > 0 ? newW / gW : 1;
-        const fMax = Math.min(hoop.wMm ? hoop.wMm / gW : Infinity, hoop.hMm ? hoop.hMm / gH : Infinity);
-        if (f > fMax) f = fMax;
-        const gcx = (dragGroupBBoxMm.x0 + dragGroupBBoxMm.x1) / 2;
-        const gcy = (dragGroupBBoxMm.y0 + dragGroupBBoxMm.y1) / 2;
-        const r = groupResizePatches(dragMembers, f, gcx, gcy, MIN_SIZE_MM);
-        // the union box as it will measure, about its (unmoving) centre
-        sizeBadge = { wMm: gW * f, hMm: gH * f, xMm: gcx, yMm: gcy };
+        const r = groupResizeInBox(dragMembers, gW > 0 ? newW / gW : 1, dragGroupBBoxMm, hoop.wMm, hoop.hMm, MIN_SIZE_MM);
+        // the union box as it will measure
+        sizeBadge = { wMm: gW * r.factor, hMm: gH * r.factor, xMm: (r.bboxMm.x0 + r.bboxMm.x1) / 2, yMm: (r.bboxMm.y0 + r.bboxMm.y1) / 2 };
         pendingPatch = { multi: r.patches };
       }
       schedulePatchFlush();
@@ -5167,6 +5185,13 @@
     const snapping = snapEnabled && !e.altKey;
 
     if (dragMode === "resize") {
+      // Under CLICK_PX of the press it is still a click: nothing is written.
+      if (!resizeArmed) {
+        if (!pressClient || !pastClickDeadZone(pressClient, { x: e.clientX, y: e.clientY }, CLICK_PX)) return;
+        resizeArmed = true;
+      }
+      // Measured in SEWN mm (the handle is on the sewn box), written as the
+      // request through resizeTargetMm (interact.js) on both paths below.
       let newWidthMm = dragResize(dragStartWidthMm, dragStartHeightMm, dragHandle, dxMm, dyMm, MIN_SIZE_MM, hoopWmm || dragStartWidthMm);
       sizeMatch = null;
       if (snapping) {
@@ -5176,24 +5201,20 @@
         // A snapped width must still respect dragResize's own clamp range.
         const maxW = hoopWmm || dragStartWidthMm;
         if (s.match && s.widthMm >= MIN_SIZE_MM && s.widthMm <= maxW) {
-          // s.widthMm is the OTHER element's rendered bbox width, but sizeMm
-          // is a generation TARGET, and generation grows output past the
-          // target by a fixed pull-comp/outline margin. Subtract the dragged
-          // element's own measured growth (rendered minus target at drag
-          // start) so the REGENERATED bbox — the thing the user sees — is
-          // what matches, not the pre-growth target.
-          newWidthMm = s.widthMm - (dragStartWidthMm - dragStartTargetMm);
+          // s.widthMm is the OTHER element's rendered bbox width: a sewn
+          // width, like newWidthMm, so it converts to a request below the
+          // same way and the REGENERATED bbox is what matches.
+          newWidthMm = s.widthMm;
           sizeMatch = s.match;
         }
       }
       // What the design WILL measure: the rendered bbox at drag start, scaled
-      // by how far the target moved (the target is the generation width, the
-      // bbox runs past it by pull comp; the ratio carries that margin along).
-      // The offset does not move in a resize; it is shown so the badge reads
-      // the same two numbers the move badge does.
-      const f = dragStartTargetMm > 0 ? newWidthMm / dragStartTargetMm : 1;
+      // by how far the sewn width moved. The offset does not move in a
+      // resize; it is shown so the badge reads the same two numbers the move
+      // badge does.
+      const f = dragStartWidthMm > 0 ? newWidthMm / dragStartWidthMm : 1;
       sizeBadge = { wMm: dragStartWidthMm * f, hMm: dragStartHeightMm * f, xMm: dragStartOffXMm, yMm: dragStartOffYMm };
-      pendingPatch = { id: dragTargetId, patch: { sizeMm: newWidthMm } };
+      pendingPatch = { id: dragTargetId, patch: { sizeMm: resizeTargetMm(dragStartTargetMm, dragStartWidthMm, newWidthMm) } };
     } else if (dragMode === "move") {
       // Raw (unclamped) offset first so snapping sees the true pointer
       // position; hoop containment is applied AFTER the snap — the clamp
@@ -5407,6 +5428,8 @@
     dragStartPanY = 0;
     dragStartBBoxMm = null;
     dragRotateCenterPx = null;
+    dragRotateEl = null;
+    dragRotateDesign = null;
     dragMembers = null;
     dragGroupBBoxMm = null;
     // Erase drag-only overlay chrome (guides/badges). One view repaint —

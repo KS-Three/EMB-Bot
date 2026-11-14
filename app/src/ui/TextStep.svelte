@@ -10,6 +10,9 @@
   import { markDigitizeBusy, rememberRun, forgetRun, wasRunning } from "../lib/digitizeBusy.js";
   import { LONG_RUN_MS, reviewFromJob } from "../lib/digitizer.js";
   import { friendlyError } from "../lib/friendlyError.js";
+  import { rotationPatch } from "../lib/hoop.js";
+  import { generateElement } from "../lib/generate.js";
+  import { garmentOf } from "../lib/placement.js";
 
   // Element-scoped text editor (Task 5, Slice 5): bound to whichever text
   // element is currently selected in ContentStep's element list, not a
@@ -39,6 +42,18 @@
     d("elupdate", proj == null ? { id, patch: p } : { id, patch: p, projectId: proj });
   }
   const runMark = (id) => (projectId == null ? id : projectId + "/" + id);
+
+  // Rotation keeps the lettering's size (hoop.js rotationPatch, 2026-11-13):
+  // it needs the lettering's fit aspect, which only a generated design
+  // reports. Without a project (tests that mount this alone) or a font yet,
+  // the patch turns it only.
+  function turnTo(deg) {
+    let design = null;
+    try {
+      if (project && element.sizeMm > 0 && !outline) design = generateElement(element, garmentOf(project), {});
+    } catch (e) { design = null; }
+    patch(rotationPatch(element, deg, design));
+  }
 
   // ---- Outline font: digitize on the service ------------------------------
   // Mirrors DigitizePanel.runDigitize: one patch = one undo step, the key of
@@ -266,14 +281,14 @@
     max="360"
     step="1"
     value={element.rotationDeg || 0}
-    on:input={(e) => patch({ rotationDeg: parseInt(e.target.value, 10) })}
+    on:input={(e) => turnTo(parseInt(e.target.value, 10))}
   />
   <span class="label">{element.rotationDeg || 0}°</span>
 </label>
 <button
   type="button"
   class="upsidedown"
-  on:click={() => patch({ rotationDeg: (element.rotationDeg || 0) === 180 ? 0 : 180 })}
+  on:click={() => turnTo((element.rotationDeg || 0) === 180 ? 0 : 180)}
 >
   {(element.rotationDeg || 0) === 180 ? "Right-side up" : "Flip upside-down"}
 </button>

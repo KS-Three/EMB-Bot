@@ -72,6 +72,23 @@ export function dragResize(startWidthMm, startHeightMm, handle, dxMm, dyMm, minW
   return newW;
 }
 
+// The corner handle sits on the SEWN box, so dragResize measures the pointer
+// in sewn mm; what the field writes is `sizeMm`, the REQUESTED width. The
+// two differ by pull compensation (+0.2 mm upright) and, on turned
+// lettering, by the gap between the engine's rotated-rect fit and the
+// letters (-2.5 mm on 120 mm at 45 degrees), and the field used to write the
+// sewn number as the request: one touch with 1 px of jitter took that
+// lettering from 120 to 117.5, and five to 108.1 (review repro,
+// 2026-11-13). The request now moves in proportion to the sewn width, so a
+// zero-distance resize is the identity and a drag changes the sewn width by
+// what the handle moved. The snap path converts its matched sewn width
+// through the same line, so the two paths agree. Without a sewn width or a
+// request there is nothing to map through, and the sewn width is the answer.
+export function resizeTargetMm(startTargetMm, startSewnWmm, newSewnWmm) {
+  if (!(startSewnWmm > 0) || !(startTargetMm > 0)) return newSewnWmm;
+  return (startTargetMm * newSewnWmm) / startSewnWmm;
+}
+
 // Clamps an absolute design offset (from hoop center, mm, +y UP) so the
 // design's mm bbox stays fully inside the hoop. If the design is larger
 // than the hoop on an axis, the clamp range collapses to 0 (centered) on
@@ -292,6 +309,43 @@ export function groupResizePatches(members, factor, groupCxMm, groupCyMm, minWmm
     };
   }
   return { patches, factor: f };
+}
+
+// The field's group resize, kept inside the placement box (Kent's approval
+// 2026-11-13). Capping the factor to hoop/group only bounded the group's
+// SIZE: an off-centre group scaled about its own centre crossed the box
+// edge, and the field's per-element reclamp then pushed each member in on
+// its own, breaking the layout (two letters went from an 8.4 mm gap to a
+// 9.6 mm overlap). So after the size cap and groupResizePatches, every
+// member shifts by ONE shared amount, the least that brings the scaled union
+// box back inside. That is what a single element's resize does at the box
+// edge: it grows about its centre and reclampAll shifts it in, so a group
+// still grows to the full box rather than stopping early at the edge.
+// `groupBBox` is the union at press. Returns groupResizePatches' answer plus
+// the shift and the scaled, shifted union `bboxMm`.
+export function groupResizeInBox(members, factor, groupBBox, hoopWmm, hoopHmm, minWmm) {
+  const gW = groupBBox.x1 - groupBBox.x0;
+  const gH = groupBBox.y1 - groupBBox.y0;
+  let f = factor;
+  const fMax = Math.min(hoopWmm && gW > 0 ? hoopWmm / gW : Infinity, hoopHmm && gH > 0 ? hoopHmm / gH : Infinity);
+  if (f > fMax) f = fMax;
+  const gcx = (groupBBox.x0 + groupBBox.x1) / 2;
+  const gcy = (groupBBox.y0 + groupBBox.y1) / 2;
+  const r = groupResizePatches(members, f, gcx, gcy, minWmm);
+  const k = r.factor;
+  const scaled = {
+    x0: gcx + (groupBBox.x0 - gcx) * k, x1: gcx + (groupBBox.x1 - gcx) * k,
+    y0: gcy + (groupBBox.y0 - gcy) * k, y1: gcy + (groupBBox.y1 - gcy) * k,
+  };
+  const s = hoopWmm && hoopHmm ? clampGroupDelta(0, 0, scaled, hoopWmm, hoopHmm) : { dxMm: 0, dyMm: 0 };
+  for (const id in r.patches) {
+    r.patches[id].offsetXMm += s.dxMm;
+    r.patches[id].offsetYMm += s.dyMm;
+  }
+  return {
+    patches: r.patches, factor: k, dxMm: s.dxMm, dyMm: s.dyMm,
+    bboxMm: { x0: scaled.x0 + s.dxMm, x1: scaled.x1 + s.dxMm, y0: scaled.y0 + s.dyMm, y1: scaled.y1 + s.dyMm },
+  };
 }
 
 // ---- rotate handle ----------------------------------------------------------
