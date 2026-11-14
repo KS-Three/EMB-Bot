@@ -128,6 +128,7 @@
  "flat_page_fringe_soft_ramp": false,
  "flat_page_fringe_ramp_src_px": 3.0,
  "flat_ramp_blend_dissolve": false,
+ "flat_blend_band_any_scale": false,
  "forbid_gap_mm": null,
  "forced_class": null,
  "fur_style": "short",

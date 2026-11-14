@@ -21,6 +21,7 @@ the OLDEST lines whole to the archive.
 - [Bash heredoc Python trap](bash-heredoc-python-repl-trap-2026-11-02.md) — Windows Bash tool `python - <<'E'` lost stdin: Python 3.14 fell into _pyrepl, one core for 26 h (3.68 GB of prompts); a `||` fallback respawned it when killed. Run a script FILE
 - [Bevel and ring fold](bevel-ring-fold-2026-11-13.md) — `bevel_ring_fold` OFF: Golden Tee GOLF one gold (shadow -> page, ramp -> one thread, <= 0.8 mm bands -> body), Drone ring arcs -> black; keylines kept; design change, Kent picks the default
 - [Big-size speed](big-size-speed-2026-11-11.md) — 300 mm: hoist 320 -> 26 s (STRtree over parts), build fns 241 -> 51 s; 198 mm plan 539 -> 431 s (angle scan in numpy, bridge memo); md5 same; no exact cut over 25 s left
+- [Blend band thread](blend-band-2026-11-14.md) — flat_blend_band_any_scale OFF: JPEG blend rim sewed as a thread on rasters not enlarged (ramp round was enlarged-only); ON 2 px, Lab or RGB chord, band pixels to nearest non-band pixel
 - [Blend shade median](blend-shade-median-2026-11-09.md) — defect 28: Fremont fixed 11-07 (stale scope line); summit 0111 = mean of a 9-sample speckled end bucket; `blend_shade_median` ON (Kent 11-09) clears it, 20 entries md5 same
 - [Border colour change](border-colour-change-2026-11-11.md) — low_poly pin 2: a drawn black line re-snapped to grey, not a border; pro borders per patch; both fixes (`resnap_hairline_never_lightens`, fix B) ruled OFF by Kent 11-11
 - [Bridge anchor limbs](bridge-anchor-wave-weld-2026-11-10.md) — "extra arms/legs" = the waves welded to the anchor in the 400 px JPEG (gaps < 1 px), one black component from stage 2; Kent 11-10: keep as manual edit, no build
@@ -85,7 +86,6 @@ the OLDEST lines whole to the archive.
 - [Reshape mode](reshape-mode-2026-11-03.md) — "Edit points" on both lanes: cross-shape marquee so a seam moves as one gesture; arrows 0.1/1 mm, Delete per ring, one patch + one undo (elupdate.discrete); panel SVG editor retired
 - [Robust-PC sweep](robust-pc-sweep-2026-11-13.md) — 77 images both photo lanes: cutout runs on 14, changes all 14; CI lane = no rembg venv; THREAD_MATCH_POOR false blocks (#1460); tone pass OFF; faulthandler crash = the tool; SAM2 GPU no gain per job
 - [Satin/fill oracle split](satin-fill-oracle-2026-11-06.md) — C3 bound: cutting our grounds along the pro's 10+ cell blobs lifts mean kappa 0.381 -> 0.482 (5 cells 0.561, 20 cells 0.427): no verdict; reads the pro, a max
-- [Satin/fill re-measure](satin-fill-remeasure-2026-10-29.md) — defect 5: kappa 0.387, per-region oracle 0.365 (no router left); pro vs pro 0.5 mm 0.650 = ceiling; shape kappa by AREA; satin_per_stroke a wash
 - [Scorecard recapture 11-05](scorecard-recapture-2026-11-05.md) — ruler d000e370 -> 292418a8 via the new `Corpus scorecard` CI button (diff/capture): 9/18/7/6/12 -> 10/20/8/10/4, mean 61.8 -> 71.9 = THREAD_MATCH_POOR quiet (#1200); Fremont F 28/16
 - [Scorecard recapture 11-12](scorecard-recapture-2026-11-12.md) — ruler 292418a8 -> ffefc3b1, run 43253187536: 10/20/8/10/4 -> 8/20/6/10/8, mean 71.9 -> 68.7 FELL; flag-off CI arms name #1301, #1263, #1329, #1378; 1 row part unattributed
 - [Seam order's costs](seam-order-costs-2026-10-30.md) — beanie's rise = one knockdown walk (ProSeal the other way); drone's +6 cuts = the chord; `knockdown_shorter_walk`, `fill_seam_order_priced` ON (Kent 10-30): flips 59 -> 2
@@ -100,7 +100,6 @@ the OLDEST lines whole to the archive.
 - [Sparse smooth nodes](sparse-nodes-spec-2026-11-04.md) — Kent 11-04: Ember-style few smooth/corner nodes on digitized rings, 9 rulings; PR 1 lib `sparseNodes.js`, PR 2 Studio; add-hole in, Knife out
 - [Sparse nodes in the Studio](sparse-nodes-studio-2026-11-05.md) — PR 2 shipped: nodes drawn/dragged/inserted/toggled in shapeOverrides; real seeds red-disc 44 smooth, squares 4 corners; PointerEvent.detail is 0 (old dblclick dead)
 - [Stacked PR trap](stacked-pr-auto-merge-trap-2026-11-06.md) — #1259 stacked on #1255's head with auto-merge armed merged INTO that branch after #1255 landed (deleteBranchOnMerge off, no retarget); base follow-ups on main, never arm a stacked PR
-- [Scene speed](stage7-scene-speed-2026-10-29.md) — kept-frame scenes' 349-2,100 s was 2 procs on a loaded laptop: 64-104 s plan quiet, 2 concurrent = 4.1x EACH, md5 same; stage 2 bincount + stage 6 prepared covers / threaded angle search, exact
 - [Starter pack sourcing](starter-pack-sourcing-2026-11-10.md) — Kent 11-10: 12 designs, strict CC0/PD-mark art digitized by EMB-Bot itself; no open stitch files, commission or CC-BY; no logos; provenance per design
 - [Starter weak spots](starter-weak-spots-2026-11-12.md) — baseball flat + monarch borders_last off SHIPPED 11-12; "drift" was a width slip: re-digitize at the original target, not manifest width_mm
 - [Stitchist teardown](stitchist-teardown-2026-11-04.md) — server-side engine, $50 Pro; MFab at 36.7: 3,018 st, keyline as tatami, readable; trace re-runs per size
@@ -108,7 +107,6 @@ the OLDEST lines whole to the archive.
 
 - [Defect 28 leftovers](thread-match-leftovers-2026-11-10.md) — bridge_bar 3, screenshot 1, stub 0722 = CHART LIMITS: best of 398 spools still 10.6-29.4 dE00 per pixel; nothing built; excess-over-chart yardstick priced only
 - [Transparent white in-fill](transparent-white-infill-2026-11-11.md) — `enclosed_white_skip_transparent` ON (Kent 11-11 "Flip ON"): transparent enclosed areas open unless a hollow letter body; kanji 39 open, Becker kept; moves Drone tripwire + logo_alpha
-- [Trims re-measured 10-29](trim-defects-4-6-2026-10-29.md) — cuts 391 vs pro 409 (3.1x gone), breaks 2.07x (488 uncut floats); fill sections 32 vs 0; `fill_section_cuts_first` OFF: 377 cuts, exposed 723 -> 651
 - [Eye, 100 pairs](vlm-judge-100-2026-11-06.md) — Opus session, 99 pairs: kappa +0.34 [+0.17, +0.49] above chance; sides +0.65 n 22; proposal only
 - [Claude as the eye](vlm-judge-2026-11-04.md) — session judged pro-lettering-1102 blind: kappa +0.36 [+0.16, +0.55] above chance (n 54); sides n 16 no evidence; agreement = shared ties + base picks
 - [Vision pre-screen](vlm-prescreen-2026-11-06.md) — threshold 4: settled kappa +0.39 (39/54), +0.29 (67/99), both above chance; row PROPOSAL only; tie label holds 13/29, 18/40 side picks

@@ -250,3 +250,6 @@ live index; new archive lines go at the bottom.
 - [Placement axis sizing](placement-axis-sizing-2026-10-28.md) — size = most that fits WHERE it sits: `PLACEMENTS` table, 3 pro boxes kept, rest `seeded` = Kent's; upload fits the box, typed width stays
 - [Shape memo](shape-memo-2026-10-28.md) — Column lane's rank-only 2nd stage-7 pass was 79 of owl flat's 137 s; `shape_memo` memoizes stitch_shape/satin_shape/rim per job: 137 -> 113 s flat, 123 -> 97 gradient, md5 same
 - [Colour cap on the sewn design](colour-cap-sewn-2026-10-29.md) — census item 3 misnamed the hole: sew-white recolours AFTER the cap + blend bands snap chart-wide; `color_cap_sewn` ON 11-01 re-caps final regions, folds strays on blocks
+- [Satin/fill re-measure](satin-fill-remeasure-2026-10-29.md) — defect 5: kappa 0.387, per-region oracle 0.365 (no router left); pro vs pro 0.5 mm 0.650 = ceiling; shape kappa by AREA; satin_per_stroke a wash
+- [Scene speed](stage7-scene-speed-2026-10-29.md) — kept-frame scenes' 349-2,100 s was 2 procs on a loaded laptop: 64-104 s plan quiet, 2 concurrent = 4.1x EACH, md5 same; stage 2 bincount + stage 6 prepared covers / threaded angle search, exact
+- [Trims re-measured 10-29](trim-defects-4-6-2026-10-29.md) — cuts 391 vs pro 409 (3.1x gone), breaks 2.07x (488 uncut floats); fill sections 32 vs 0; `fill_section_cuts_first` OFF: 377 cuts, exposed 723 -> 651
