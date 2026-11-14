@@ -9,10 +9,14 @@ thickness swings by at least the shortest stitch keeps the loop, but:
 
   * each cross is cut where it leaves the ART (long on a tooth, short in a
     root), not at one width;
-  * the needle is locked to the teeth: every tooth gets the same whole number
-    of stitches, none of them on the step between a tooth and a root;
-  * the toothed edge itself is drawn by one bean, a needle point on every
-    corner.
+  * a band round ONE body is laid out from its OUTER edge (`shaped_band`,
+    Kent the same day: "it's an improvement but not across the board"): a
+    needle hole on every corner of it, the density held out there, each side
+    wall sewn once, the ring's holes short-stitched where they bunch, and no
+    line on top;
+  * a band shared by several bodies keeps the ring-cast loop: the needle
+    locked to the teeth (`art_outline.shaped_stations`) and one bean on the
+    outer edge.
 
 A band of one width (To-a-T's frame, which the pro widens) and a band too
 thick to be a satin (Becker's drop shadow) are left exactly as they were.
@@ -24,14 +28,17 @@ import math
 
 import pytest
 from shapely import affinity
-from shapely.geometry import Point, box
+from shapely.geometry import LineString, Point, box
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, machine, stitches
+from digitizer_core import art_outline
 from digitizer_core.art_outline import band_thickness, shaped_stations, shaped_width_mm
 from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.pipeline import _art_outlines
 from digitizer_core.regions import Region
+from digitizer_core.keyline_bean import keyline_width_mm
+from digitizer_core.shaped_band import layout, sews_shaped, stepped_share
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage7_sequence import sequence
 
@@ -59,9 +66,18 @@ def _region(sid, poly, thread, layer, **meta):
                   area_mm2=poly.area, source="test", meta={"layer": layer, **meta})
 
 
-def _plan(band, **cfg_kw):
-    b, o = _region("Sbody", DISC, 0, 0), _region("Souter", band, 1, 1)
-    planned = [PlannedRegion(region=b, polygon=DISC, sew_index=0),
+def _frame(half=6.0, t=1.6, notch=0.9):
+    """A rectangular frame with square notches cut in its long sides. -> (band, body)."""
+    inner = box(-half, -half * 0.6, half, half * 0.6)
+    top = half * 0.6 + t
+    cuts = [box(x - notch / 2, top - notch, x + notch / 2, top + 1) for x in (-4.5, -1.5, 1.5, 4.5)]
+    cuts += [affinity.scale(c, yfact=-1, origin=(0, 0)) for c in cuts]
+    return inner.buffer(t, join_style=2).difference(unary_union(cuts)).difference(inner), inner
+
+
+def _plan(band, body=DISC, **cfg_kw):
+    b, o = _region("Sbody", body, 0, 0), _region("Souter", band, 1, 1)
+    planned = [PlannedRegion(region=b, polygon=body, sew_index=0),
                PlannedRegion(region=o, polygon=band, sew_index=1)]
     cfg = PipelineConfig(underlay=False, **cfg_kw)
     outlines = _art_outlines([b, o], cfg)
@@ -118,9 +134,26 @@ def test_a_band_of_one_width_is_not_shaped():
     assert shaped_width_mm(RING, DISC) is None
 
 
-def test_teeth_shorter_than_a_stitch_are_not_a_shape():
-    """Ahora's gear at 40 mm swings 0.36 mm: thread cannot show it."""
-    assert shaped_width_mm(_gear(r_tip=R_ROOT + 0.3), DISC) is None
+def test_a_step_two_needle_holes_cannot_show_is_not_a_shape():
+    """Two holes nearer than the short-stitch line are one hole. A 0.45 mm
+    tooth is a step (it was not while the loop was cast from the ring)."""
+    assert art_outline.SHAPED_MIN_SWING_MM == machine.SATIN_SHORT_STITCH_AT_MM
+    assert shaped_width_mm(_gear(r_tip=R_ROOT + 0.2), DISC) is None
+    assert shaped_width_mm(_gear(r_tip=R_ROOT + 0.45), DISC) is not None
+
+
+def test_a_line_whose_width_only_wanders_is_not_a_shape():
+    """Under the shortest stitch a swing must be STEPPED. A ring round an
+    off-centre disc swings as far as small teeth do and has no step in it:
+    the pro's widened loop ("(hed) p.e." at 180 mm, 0.57 to 0.92 mm)."""
+    lopsided = Point(0.2, 0).buffer(R_HOLE + 0.75, quad_segs=48).difference(DISC)   # 0.55 to 0.95 mm
+    t = sorted(band_thickness(lopsided, DISC))
+    swing = t[int(0.9 * (len(t) - 1))] - t[int(0.1 * (len(t) - 1))]
+    assert machine.SATIN_SHORT_STITCH_AT_MM <= swing < machine.SATIN_MIN_CROSS_MM
+    assert stepped_share(lopsided, DISC) < 0.1
+    assert shaped_width_mm(lopsided, DISC) is None
+    small = _gear(r_tip=R_ROOT + 0.45)
+    assert stepped_share(small, DISC) > 0.9
 
 
 def test_a_band_too_thick_for_one_satin_is_not_shaped():
@@ -162,6 +195,94 @@ def test_a_band_with_no_step_has_nothing_to_lock_to():
     assert shaped_stations(RING, DISC, machine.BORDER_DENSITY_MM) is None
 
 
+# --- laid out from the outer edge (`shaped_band.layout`) -----------------------
+
+def _tooth_corners(r=R_TIP, r_root=R_ROOT, teeth=TEETH):
+    half = math.pi * r_root / teeth / 2.0
+    out = []
+    for k in range(teeth):
+        for x in (-half, half):
+            c = affinity.rotate(Point(x, r), 360.0 * k / teeth, origin=(0, 0))
+            out.append((c.x, c.y))
+    return out
+
+
+def test_every_corner_of_the_outer_edge_is_a_needle_hole():
+    outer = [o for _r, o in layout(GEAR, DISC)]
+    for c in _tooth_corners():                                 # each tooth's two tip corners
+        assert min(math.dist(c, o) for o in outer) < 1e-6
+    # ... and the root corners under them: a tooth's side wall, top and bottom
+    half = math.pi * R_ROOT / TEETH / 2.0
+    root = (half, math.sqrt(R_ROOT ** 2 - half ** 2))
+    assert min(math.dist(root, o) for o in outer) < 1e-3       # the root circle is a polygon
+
+
+def test_every_tooth_gets_the_same_stitches_and_the_density_is_held_outside():
+    crosses = layout(GEAR, DISC)
+    pitch = 2.0 * math.pi / TEETH
+    tips = [0] * TEETH
+    for _r, (x, y) in crosses:
+        if math.hypot(x, y) > R_TIP - 0.05:
+            tips[int(round((math.atan2(x, y) % (2 * math.pi)) / pitch)) % TEETH] += 1
+    assert len(set(tips)) == 1 and tips[0] >= 3                # 1.3 mm of tip at 0.4 mm, both corners
+    # along a tip and along a root, never further apart than the density allows
+    for (_r0, o0), (r1, o1) in zip(crosses, crosses[1:] + crosses[:1]):
+        if r1 is not None:
+            assert math.dist(o0, o1) <= 1.35 * machine.BORDER_DENSITY_MM
+
+
+def test_a_side_wall_is_sewn_once():
+    """A wall's two ends share a ring point: the second is reached along the
+    wall, outer hole to outer hole. Two walls a tooth."""
+    crosses = layout(GEAR, DISC)
+    assert sum(1 for r, _o in crosses if r is None) == 2 * TEETH
+    for (_r0, o0), (r1, o1) in zip(crosses, crosses[1:] + crosses[:1]):
+        if r1 is None:
+            assert math.dist(o0, o1) == pytest.approx(R_TIP - R_ROOT, abs=0.15)
+
+
+def test_ring_holes_that_bunch_are_short_stitched_no_further_than_they_must_be():
+    crosses = layout(GEAR, DISC)
+    ring = [r for r, _o in crosses if r is not None]
+    for a, b, c in zip(ring, ring[1:] + ring[:1], ring[2:] + ring[:2]):
+        assert math.dist(c, b) >= machine.SATIN_SHORT_STITCH_AT_MM - 1e-6
+        assert math.dist(c, a) >= machine.SATIN_SHORT_STITCH_AT_MM - 1e-6
+    off = [math.hypot(*r) - R_HOLE for r in ring]
+    assert max(off) <= machine.SATIN_SHORT_STITCH_PULL_MAX_MM + 1e-6
+    assert sum(1 for d in off if d < 1e-6) >= len(off) // 3     # the ring's edge is still sewn
+
+
+def test_a_square_corner_of_the_hole_is_fanned():
+    """Round the body's corner the outer edge runs on for twice the band's
+    thickness: the stitches pivot on the corner and the outer corner has a hole."""
+    band, body = _frame()
+    crosses = layout(band, body)
+    corner_in, corner_out = (6.0, 3.6), (7.6, 5.2)
+    assert min(math.dist(corner_out, o) for _r, o in crosses) < 1e-6
+    fan = [o for r, o in crosses if r is not None and math.dist(r, corner_in) < 0.65
+           and o[0] > 6.0 and o[1] > 3.6]
+    assert len(fan) >= 6
+    for (_r0, o0), (r1, o1) in zip(crosses, crosses[1:] + crosses[:1]):
+        if r1 is not None:
+            assert math.dist(o0, o1) <= 1.5 * machine.BORDER_DENSITY_MM
+
+
+def test_what_cannot_be_laid_out_is_left_to_the_loop():
+    assert layout(_gear(r_tip=R_HOLE + machine.SATIN_MAX_WIDTH_MM + 0.5), DISC) is None
+    assert layout(GEAR, affinity.translate(DISC, 40.0, 0.0)) is None      # not this band's ring
+
+
+def test_which_bands_are_sewn_from_the_outer_edge():
+    """`sews_shaped`: what the hairline gate asks, so a band with teeth is
+    not read as a thin line (2 x area / perimeter, and teeth are perimeter)."""
+    assert sews_shaped(GEAR, [DISC])
+    assert not sews_shaped(RING, [DISC])                                   # one width: the pro's loop
+    assert not sews_shaped(GEAR, [DISC, DISC])                             # shared by two bodies
+    small = _gear(R_ROOT * 0.42, R_TIP * 0.42, TEETH, R_HOLE * 0.42)       # 0.59 to 1.0 mm thick
+    assert sews_shaped(small, [Point(0, 0).buffer(R_HOLE * 0.42, quad_segs=48)])
+    assert keyline_width_mm(small) < 0.6 < 2.0 * small.area / (2 * math.pi * (R_HOLE + R_ROOT) * 0.42)
+
+
 # --- through stage 7 ----------------------------------------------------------
 
 def test_off_the_gear_sews_a_ring_that_ignores_its_teeth():
@@ -174,26 +295,51 @@ def test_off_the_gear_sews_a_ring_that_ignores_its_teeth():
     assert sorted(far)[len(far) // 2] > R_ROOT + 0.5
 
 
-def test_on_the_gear_sews_long_on_a_tooth_and_short_in_a_root():
-    far = _far_radii(_plan(GEAR, **{FLAG: True}))
-    tips = [r for r in far if r > (R_ROOT + R_TIP) / 2.0]
-    roots = [r for r in far if r <= (R_ROOT + R_TIP) / 2.0]
-    assert tips and roots
-    assert max(tips) == pytest.approx(R_TIP, abs=0.1) and min(tips) > R_TIP - 0.3
-    assert max(roots) < R_ROOT + 0.25 and min(roots) > R_ROOT - 0.25
+def _satin(runs):
+    return [r for r in runs if r.shape_id == "Souter" and r.kind == stitches.SATIN]
 
 
-def test_on_the_toothed_edge_is_drawn_with_a_needle_on_every_corner():
-    runs = _plan(GEAR, **{FLAG: True})
-    edge = [r for r in runs if r.shape_id == "Souter" and r.kind == stitches.RUN]
-    assert len(edge) == 1
-    holes = {tuple(p) for p in edge[0].points}
-    assert tuple(edge[0].points[0]) == tuple(edge[0].points[-1])          # closed on its first hole
-    half = math.pi * R_ROOT / TEETH / 2.0
-    for k in range(TEETH):
-        for corner in ((-half, R_TIP), (half, R_TIP)):                     # each tooth's two tip corners
-            c = affinity.rotate(Point(corner), 360.0 * k / TEETH, origin=(0, 0))
-            assert min(math.dist((c.x, c.y), h) for h in holes) < 0.02
+@pytest.mark.parametrize("scale", [1.0, 0.6, 0.45])
+def test_on_the_gear_is_one_satin_with_a_hole_on_every_corner_and_no_thread_off_the_art(scale):
+    band = _gear(R_ROOT * scale, R_TIP * scale, TEETH, R_HOLE * scale)
+    body = Point(0, 0).buffer(R_HOLE * scale, quad_segs=48)
+    runs = _plan(band, body, **{FLAG: True})
+    assert not [r for r in runs if r.shape_id == "Souter" and r.kind == stitches.RUN]   # no line on top
+    satin = _satin(runs)
+    assert len(satin) == 1
+    pts = [tuple(p) for p in satin[0].points]
+    for c in _tooth_corners(R_TIP * scale, R_ROOT * scale):
+        assert min(math.dist(c, h) for h in pts) < 1e-6
+    # every stitch lies on the art: none across the gap between two teeth,
+    # none past a tip
+    assert band.buffer(0.05).covers(LineString(pts))
+
+
+def test_on_the_notched_frame_keeps_its_notches_and_its_corners():
+    band, body = _frame()
+    off, on = _plan(band, body), _plan(band, body, **{FLAG: True})
+    assert not band.buffer(0.05).covers(LineString([tuple(p) for p in _satin(off)[0].points]))
+    pts = [tuple(p) for p in _satin(on)[0].points]
+    assert band.buffer(0.05).covers(LineString(pts))
+    for c in ((7.6, 5.2), (-7.6, 5.2), (7.6, -5.2), (-7.6, -5.2)):
+        assert min(math.dist(c, h) for h in pts) < 1e-6
+
+
+def test_the_real_gear_at_40_mm_is_a_satin_not_a_thin_line():
+    """Commons "Ahora" at 40 mm: the gear is 4.8 mm across, its band 0.57 to
+    0.93 mm thick. The hairline gate reads 2 x area / perimeter, teeth are
+    perimeter, and it sewed as a bean inside its own outline. ON it is a band
+    with teeth: one white satin, no white run."""
+    from dataclasses import replace
+    from pathlib import Path
+
+    from digitizer_core.pipeline import digitize
+
+    art = Path(__file__).resolve().parents[1] / "testdata" / "art" / "commons_lettering" / "logo_ahora.png"
+    _result, plan = digitize(art.read_bytes(),
+                             replace(PipelineConfig(), target_width_mm=40.0, **{FLAG: True}))
+    kinds = {r.kind for b in plan.blocks if min(b.rgb) > 235 for r in b.runs}
+    assert stitches.SATIN in kinds and stitches.RUN not in kinds
 
 
 def test_on_the_body_and_a_band_of_one_width_are_byte_identical():

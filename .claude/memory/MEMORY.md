@@ -88,7 +88,7 @@ the OLDEST lines whole to the archive.
 - [Second digitize timing](second-digitize-timing-2026-11-13.md) — 11-12's 44 s = laptop contention (same run 19 -> 55 s as load moved); Cancel held the worker 1.4-5.5 s: seams added in neck splits, letterform priors, keyline -> 0.2 s
 - [Service timeout cancel](service-timeout-cancel-2026-10-30.md) — a job past JOB_TIMEOUT_S or cancelled STOPS at the next `deadline.check` (seams + inner loops; a BaseException); next upload waited 497.9 s -> 10.5 s; no flag
 - [Sew-out card v8](sewout-card-v8-2026-11-01.md) — cut_every_jump walks Fremont's 148 floats on the white field, cuts ENTHUSIAST's; JS cuts 15; Drone's lever is the halo (0.3: x1.74); 0.01 mm oracle: 1 walk 0.029 mm off
-- [Shaped outline gear](shaped-outline-gear-2026-11-13.md) — `border_from_outline_follow_shape` OFF: Ahora's gear sewed a ring; ON = crosses end at the art's edge, needle locked to teeth
+- [Shaped outline gear](shaped-outline-gear-2026-11-13.md) — `border_from_outline_follow_shape` OFF: gear sewed a ring; ON = laid out from the OUTER edge, a hole on every corner
 - [Simplify points](simplify-points-2026-11-03.md) — popover row 0.2/0.5/1 mm, closed-ring Douglas-Peucker `simplifyRing`, rides the similar tick in one patch; never automatic; red-disc 64 -> 44 at 0.5 mm
 - [Size recount](size-recount-2026-11-05.md) — `POST /recount` + the reading row's "N shapes, M colors at W mm" (Kent 11-05, counts only); own route, stages 0-4 cost 5-60 s; leaves the generation cached; MFab 36.7: 22/2, 113.5: 93/2
 - [Sliver prune](sliver-prune-2026-11-10.md) — `sliver_prune` OFF: Pooh 54 mm white edge runs = page-halo masks, red arm spike = shirt tendril on a crease; enlarged x1.25+ only; 80 mm sheet 20/20 same; his on-screen run was gradient, not flat
