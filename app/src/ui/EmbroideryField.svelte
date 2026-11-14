@@ -81,6 +81,10 @@
   // Download's "Run time" row, so the two agree. Not named in any `$: if
   // (canvas)` block, so a quote change never repaints the field.
   export let quote = null;
+  // App's `currentId`: which design `project` is. Element ids repeat across
+  // designs, so a mode entered on one must end when this changes (see
+  // leaveDesign, 2026-11-13). null in a mount that never switches design.
+  export let projectId = null;
   $: simRate = runSpm(quote);
 
   const dispatch = createEventDispatcher();
@@ -2419,6 +2423,38 @@
   // "clear on any selection change" because shapeUnderPointer dispatches
   // `select` and sets the shape in the same tick: the tag already names the
   // new element when this block sees it, so that selection survives.
+  //
+  // ANOTHER DESIGN opened (Kent's approval 2026-11-13). Element ids repeat
+  // across designs (almost every one has an "e1") and the field is not
+  // remounted per design, so the id checks below let Reshape, a hole draft
+  // and Move shape carry over, and Discard then wrote design A's entry
+  // snapshot into design B's same-id element. A change of `projectId` ends
+  // every mode WITHOUT committing (a Move shape is dropped, not committed:
+  // committing would write A's move into B), drops a queued drag patch and
+  // any drag, and drops the shape selection and its popover. It sits ABOVE
+  // the selection block so that block never sees a mode from the old design.
+  // Not a {#key} remount in App: that would also reset zoom and pan and
+  // replay the whole field's setup for what is a few fields' worth of state.
+  let lastProjectId = projectId;
+  $: if (projectId !== lastProjectId) {
+    lastProjectId = projectId;
+    leaveDesign();
+  }
+  function leaveDesign() {
+    endReshape();
+    cancelHoleDraft();
+    endShapeMove();
+    pendingPatch = null;
+    dragMode = null;
+    shapeEdit = null;
+    nodeEdit = null;
+    liveRing = null;
+    pressEdge = null;
+    if (shapePop) closeShapePop();
+    selectedShapeId = null;
+    selectedShapeElId = null;
+    focusedAnchor = null;
+  }
   $: if (project && project.selectedId !== undefined) {
     const sel = selectedElement();
     // Reshape mode belongs to the element it was entered on: another element

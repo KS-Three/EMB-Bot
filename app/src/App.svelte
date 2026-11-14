@@ -1362,6 +1362,7 @@
   <section class="field">
     <EmbroideryField
       {project}
+      projectId={currentId}
       {runtime}
       showDragHint={showDragFieldHint}
       {hoverShape}
