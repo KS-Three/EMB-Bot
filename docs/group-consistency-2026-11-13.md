@@ -71,10 +71,19 @@ Four flags, all OFF, byte-identical OFF, each separable:
   one spool at 39 and 134 deg, as "differnt colors"). Group: the
   `regular_structure` worker's `meta["congruent_group"]` when present (angle
   relative to each member's `angle_deg`), else one spool, areas within 1.5x,
-  elongations within 1.25x. Fill rows only where no rule names an angle;
-  satin crosses as the house angle of a non-lettering shape with none (the
-  slot `cfg.design_angle` uses), never on a column under 0.6 mm. Lettering
-  and the photo classes are out.
+  elongations within 1.25x. Fill rows only where no rule names an angle.
+  Satin crosses only for a tagged, unmirrored congruent group (inert on main
+  until the `regular-structure` tag lands): the house angle of a
+  non-lettering member with none (the slot `cfg.design_angle` uses), never
+  on a column under 0.6 mm. **Measured negative:** the likeness fallback on
+  satin (tried first) pushed To a T machine's mirrored satin pair from 9 to
+  15 deg apart and turned a 286 mm^2 shape 5.5 deg; on the flag it only
+  nudged the stripes 87.2-88.2 -> 87.3-87.4 deg. Neither named satin case
+  is reachable here: the flag's 50 stars sit in the lettering house-angle
+  group (`fill_angle_deg`, `satin_angle_deg` already written) and sew via
+  the fill emitter's small-shape path, where an angle does not set the
+  stitch direction; To a T's rule lines are 0.4-0.6 mm, under the guard.
+  Lettering and the photo classes are out.
 
 ## Proof
 

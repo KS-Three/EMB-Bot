@@ -266,11 +266,14 @@ def _congruent(r) -> dict | None:
     return tag if isinstance(tag, dict) and tag.get("id") is not None else None
 
 
-def shared_angles(regions: Iterable, own_angle: Callable[[object], float | None]) -> dict[str, float]:
+def shared_angles(regions: Iterable, own_angle: Callable[[object], float | None], *,
+                  fallback: bool = True, mirrored: bool = True) -> dict[str, float]:
     """-> {shape_id: angle deg mod 180} for every member of a group of like
     shapes: the biggest member's `own_angle`, relative to each member's
     `congruent_group["angle_deg"]` for a tagged group, absolute otherwise. A
-    group whose biggest member has no angle of its own is left alone."""
+    group whose biggest member has no angle of its own is left alone.
+    `fallback` False: tagged groups only, no `like_shapes`. `mirrored` False:
+    a tagged member marked `mirror` is left out."""
     regs = list(regions)
     tagged: dict = {}
     loose = []
@@ -278,10 +281,11 @@ def shared_angles(regions: Iterable, own_angle: Callable[[object], float | None]
         tag = _congruent(r)
         if tag is None:
             loose.append(r)
-        else:
+        elif mirrored or not tag.get("mirror"):
             tagged.setdefault(tag["id"], []).append(r)
     groups = [(g, True) for _k, g in sorted(tagged.items(), key=lambda kv: str(kv[0])) if len(g) >= 2]
-    groups += [(g, False) for g in like_shapes(loose)]
+    if fallback:
+        groups += [(g, False) for g in like_shapes(loose)]
     out: dict[str, float] = {}
     for g, relative in groups:
         ref = max(g, key=lambda r: (r.polygon.area, r.shape_id))

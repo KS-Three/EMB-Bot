@@ -362,3 +362,14 @@ def test_every_named_angle_outranks_the_group():
     assert _fill_angle_for(p, PipelineConfig()) == 30.0
     assert GROUP_SATIN_MIN_DIM_MM == 0.6
     assert PipelineConfig().group_consistent_fill_angle is False
+
+
+def test_satin_reads_tagged_unmirrored_groups_only():
+    left, right = _foot(0, sid="L"), _foot(60, mirror=True, scale=0.96, sid="R")
+    assert gc.shared_angles([left, right], lambda r: 10.0, fallback=False) == {}
+    stars = _word([2, 2, 2], height=2.0)
+    for i, r in enumerate(stars):
+        r.meta["congruent_group"] = {"id": "G1", "kind": "grid", "n": 3, "index": i,
+                                     "angle_deg": 0.0, "mirror": i == 2, "moved": False}
+    out = gc.shared_angles(stars, lambda r: 36.0, fallback=False, mirrored=False)
+    assert out == {"L0": 36.0, "L1": 36.0}

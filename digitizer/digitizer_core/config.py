@@ -3783,10 +3783,13 @@ class PipelineConfig:
     # 1.5x, elongations within 1.25x. Every member takes the biggest's own
     # angle -- one angle, not mirrored, for a mirrored pair too. Fill rows
     # only where no rule names an angle (review, global, design angle, stage
-    # 5's axis, the pro-offset keys all outrank it); satin crosses as the
-    # house angle of a non-lettering shape that has none, never on a column
-    # under 0.6 mm. Lettering is out (it has its house angle). Not on the
-    # photo classes. Off, byte-identical.
+    # 5's axis, the pro-offset keys all outrank it). Satin crosses ONLY for a
+    # `congruent_group`-tagged, unmirrored group (inert on main until that
+    # tag lands): the house angle of a non-lettering member that has none,
+    # never on a column under 0.6 mm -- the likeness fallback on satin pushed
+    # To a T's mirrored pair from 9 to 15 deg apart. Lettering is out (it has
+    # its house angle); the flag's stars are in the lettering house group, so
+    # out too. Not on the photo classes. Off, byte-identical.
     group_consistent_fill_angle: bool = False
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane

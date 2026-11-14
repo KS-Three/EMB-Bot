@@ -3126,12 +3126,16 @@ def sequence(
     # at 8 angles, To a T's rule lines satin at 64-85 deg. Fill rows: only a
     # shape no rule names an angle for (`_fill_angle_for` left None), each
     # member at the group's biggest shape's own `best_fill_angle_deg`. Satin
-    # crosses: a non-lettering shape with no house angle takes the group's
-    # as its house (the slot `cfg.design_angle` uses), the biggest member's
-    # perpendicular to its long side; not a column under
-    # `GROUP_SATIN_MIN_DIM_MM`, where a house angle drops crosses (see the
-    # note above `_clamp_to_span`'s callers in stage6_satin). Off: both
-    # empty, every call is today's.
+    # crosses: ONLY a `congruent_group`-tagged, unmirrored group (the
+    # `regular_structure` tag; none on main 2026-11-13, so inert until it
+    # lands): a non-lettering member with no house angle takes the group's as
+    # its house (the slot `cfg.design_angle` uses), the biggest member's
+    # perpendicular to its long side, relative to each member's own angle;
+    # not a column under `GROUP_SATIN_MIN_DIM_MM`, where a house angle drops
+    # crosses (stage6_satin's note after `_clamp_to_span`). The likeness
+    # fallback reaches satin NOT: measured on To a T machine, it pushed a
+    # mirrored satin pair from 9 to 15 deg apart and moved a 286 mm^2 shape
+    # 5.5 deg. Off: both empty, every call is today's.
     group_fill: dict[str, float] = {}
     group_satin: dict[str, float] = {}
     if cfg.group_consistent_fill_angle and design_class not in PHOTO_CLASSES:
@@ -3151,7 +3155,8 @@ def sequence(
                  if _pr.region.meta.get("satin_angle_deg") is None
                  and _pr.region.meta.get("design_angle_deg") is None
                  and _gmin_dim(_pr.region.polygon) >= GROUP_SATIN_MIN_DIM_MM],
-                lambda r: (rect_axis(r.polygon)[0] + 90.0) % 180.0)
+                lambda r: (rect_axis(r.polygon)[0] + 90.0) % 180.0,
+                fallback=False, mirrored=False)
 
     def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
         if (pr_tier == "auto" and cfg.bean_only_lines

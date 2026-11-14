@@ -1,6 +1,6 @@
 ---
 name: group-consistency-2026-11-13
-description: Kent's "like things sewn unlike" pins traced on main 7ad9c124 — 2 of 11 are a tier threshold straddled in a line (AHORA outline body 1.06 vs 1.0, K-Line run floor), 2 thread per letter, 2 fill angle per shape, 2 fixed by 11-11 flip; 3 OFF flags built
+description: Kent's "like things sewn unlike" pins traced on main 7ad9c124 — 2 of 11 tier straddles (AHORA outline body, K-Line run floor), 2 thread, 2 fill angle, 2 fixed by 11-11 flip; 4 OFF flags, AHORA ON rougher, feet ON still two render tones
 metadata:
   type: project
 ---
@@ -22,11 +22,18 @@ by stage-7 rung trace (`docs/group-consistency-2026-11-13.md`):
 **Built OFF:** `group_consistent_tier` (run floor per line; a moved letter
 skips `small_solids_satin`, which sewed W/K as one column), `group_consistent_
 outline_body` (outline body test per line), `group_consistent_thread` (lone
-cluster letter < 1/4 of word, <= 25 dE00, takes the word's thread). Rule:
-members > `MARGIN` 1.5x off the threshold decide; band members follow.
+cluster letter < 1/4 of word, <= 25 dE00, takes the word's thread, drops a
+dark-ink bean its mates lack), `group_consistent_fill_angle` (like shapes
+share the biggest's fill angle; satin only for `congruent_group`-tagged).
+Rule: members > `MARGIN` 1.5x off the threshold decide; band members follow.
 
 **Price seen:** AHORA ON is consistent but AH/RA sew rougher as fused satin
 (apex lump, A-H foot zigzag) than OFF's fills. K-Line ON reads better.
+Mascot feet ON share 39.4 deg but still RENDER as two tones: the mirrored
+foot's rows break into shorter stitches (median 2.34 vs 2.98 mm) and
+`stitchviz` draws a dot per penetration. Measured negative: the likeness
+fallback on SATIN pushed To a T's mirrored pair 9 -> 15 deg apart. Flag
+stars are lettering-house-grouped, out of reach.
 
 **How to apply:** a "this one differs" pin: trace the rung first
 (`stitch_one` emitters wrapped, caller line number) before blaming a tagger;
