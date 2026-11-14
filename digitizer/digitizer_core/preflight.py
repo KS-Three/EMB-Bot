@@ -4476,6 +4476,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     worst_de: float | None = None
     colour_rows: list[dict] | None = None
     raw_rows: list[dict] | None = None
+    graded = None
     if p is not None and result is not None:
         view = _two_tone_view(p, plan, cfg)
         # Graded on the raster the pipeline matched spools to (2026-11-13,
@@ -4661,6 +4662,17 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
         else:       # no artwork or no regions: nothing to read against, all None
             from .glyph_read import design_metrics
             metrics.update(design_metrics([]))
+    # The proof-read (`digitizer_core/proofread.py`, `cfg.proofread`, built
+    # OFF 2026-11-13): what the plan sews against the raster the thread grader
+    # reads, per component, with the rule that produced each difference.
+    # Metrics only (Kent 2026-10-02: no warning reaches the customer); OFF
+    # writes no key, so the report is the pre-change one byte for byte.
+    if getattr(cfg, "proofread", False):
+        if graded is not None:
+            from . import proofread as _proofread
+            metrics.update(_proofread.metrics(_proofread.read(graded, result, plan, cfg)))
+        else:       # no artwork or no regions: nothing to read against
+            metrics["proofread_checked"] = False
 
     # Last, over the finished list: it tags findings, it does not make any.
     _tag_break_risk(findings, plan, result)
