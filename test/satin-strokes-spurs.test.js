@@ -70,3 +70,38 @@ test("the 12-tooth fishbone through the image lane's builder is satin, and its l
   }
   assert.ok(longest < 3.5, `longest ${longest.toFixed(1)} mm (was 60.2)`);
 });
+
+// ---- spurs: a bar is one column at every angle ----
+// A bar `len` x `w` mm turned `deg` about its corner.
+function bar(len, w, deg) {
+  const t = (deg * Math.PI) / 180, c = Math.cos(t), s = Math.sin(t);
+  return [[0, 0], [len, 0], [len, w], [0, w]].map(([x, y]) => ({ x: 400 + (x * c - y * s) * S, y: 400 + (x * s + y * c) * S }));
+}
+test("a bar 1.5 to 2.9 mm wide, 6 to 25 mm long, is one stroke at every angle in 3 degree steps (720 bars)", () => {
+  // Was 94 of these 720 in two or more strokes, with jumps between them: the
+  // corner twigs at a turned bar's ends survived the spur pruning. A 6 x 2 mm
+  // bar at 18 degrees sewed three strokes and two jumps, +32% thread.
+  const split = [];
+  for (const w of [1.5, 2, 2.5, 2.9]) for (const len of [6, 12, 25]) for (let deg = 0; deg < 180; deg += 3) {
+    const pts = satin.medialSatin(bar(len, w, deg), { spacingMm: 0.4, pxPerMm: S, smallShapes: true });
+    if (pts.some((p) => p.travel)) split.push(`${len}x${w}@${deg}`);
+  }
+  assert.deepStrictEqual(split, []);
+});
+test("an upright bar sews the bytes it sewed before the spur change (no twigs to prune)", () => {
+  const crypto = require("node:crypto");
+  const up = (len, w, deg) => [[0, 0], [len, 0], [len, w], [0, w]].map(([x, y]) => (deg ? [w - y, x] : [x, y])).map(([x, y]) => ({ x: x * S + 400, y: y * S + 400 }));
+  // md5 of medialSatin's points on main before 2026-11-13 (x, y in 1/1000 px, travel)
+  const PINS = {
+    "6x2@0": "6881d43bddc83e60a2811b709f9aa770", "6x2@90": "e91107c599b450207225015773bda021",
+    "12x3@0": "e46ef94eacbd61338220626e97c5dad3", "12x3@90": "61a5ba1d0afc9a426e5983d7eb01d965",
+    "25x1.5@0": "eaae938d341c660449a16b1011902bb8", "25x1.5@90": "b2426485c0ab0b708cdee92ee368275d",
+    "6x2.9@0": "bcd06103ca9b1a9aefeed692d7e1c666", "6x2.9@90": "46faa4baf4a2d9a7a47d62efe307847a",
+  };
+  for (const key of Object.keys(PINS)) {
+    const [len, w, deg] = key.split(/[x@]/).map(Number);
+    const pts = satin.medialSatin(up(len, w, deg), { spacingMm: 0.4, pxPerMm: S, smallShapes: true });
+    const md5 = crypto.createHash("md5").update(JSON.stringify(pts.map((p) => [Math.round(p.x * 1000), Math.round(p.y * 1000), p.travel ? 1 : 0]))).digest("hex");
+    assert.strictEqual(md5, PINS[key], key);
+  }
+});

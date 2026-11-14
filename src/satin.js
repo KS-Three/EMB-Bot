@@ -826,14 +826,32 @@
     // loops (O) a single clean cycle. Only short one-free-end edges are erased,
     // so real open strokes (both ends free) and long arms are untouched. Iterate
     // because erasing one spur can expose another.
-    const spurLenGrid = Math.max(3, halfWidthPx * gscale * 1.6);
+    //
+    // HOW SHORT IS SHORT (2026-11-13, Kent's approval that day; the catch
+    // accepted: "any shape whose spurs sat near the threshold changes"). A
+    // spur is measured from its free end to its node in a straight line, and
+    // held against 1.6 x the radius of the largest circle inside the shape at
+    // that node. It was the length of its pixel path held against 1.6 x the
+    // shape's MEAN half-width (2 x area / perimeter), and neither is the same
+    // at every angle: a turned bar's corner twigs are staircases whose paths
+    // run longer than they reach, and a short bar's mean half-width is well
+    // under its true one (6 x 2 mm: 0.75 mm, not 1), so the twigs at its ends
+    // survived at some angles and split the bar into three strokes and two
+    // jumps (+32% thread at 18 degrees; 94 of 720 turned bars from 1.5 to
+    // 2.9 mm wide). A blunt corner's twig reaches about 1.3 x the node's
+    // radius and goes; a sharp tip's (under ~77 degrees) or a real arm's
+    // reaches further and stays. An upright bar's skeleton has no twigs, so
+    // it sews what it sewed.
     for (let pass = 0; pass < 4; pass++) {
       let removed = 0;
       for (const e of skeletonEdges(mask, gw, gh)) {
         if (((e.freeStart ? 1 : 0) + (e.freeEnd ? 1 : 0)) !== 1) continue; // spur = exactly one free end
-        let L = 0; for (let i = 0; i + 1 < e.pts.length; i++) L += Math.hypot(e.pts[i + 1][0] - e.pts[i][0], e.pts[i + 1][1] - e.pts[i][1]);
-        if (L >= spurLenGrid) continue;
         const keep = e.freeStart ? e.pts[e.pts.length - 1] : e.pts[0]; // preserve the branch node
+        const tip = e.freeStart ? e.pts[0] : e.pts[e.pts.length - 1];
+        const kx = minX + (keep[0] + 0.5) / gscale, ky = minY + (keep[1] + 0.5) / gscale;
+        const near = nearestOnContours(contours, kx, ky);
+        const nodeRadiusGrid = near ? Math.hypot(near.x - kx, near.y - ky) * gscale : 0;
+        if (Math.hypot(tip[0] - keep[0], tip[1] - keep[1]) >= Math.max(3, nodeRadiusGrid * 1.6)) continue;
         for (const [gx, gy] of e.pts) { if (gx === keep[0] && gy === keep[1]) continue; mask[gy * gw + gx] = 0; removed++; }
       }
       if (!removed) break;
