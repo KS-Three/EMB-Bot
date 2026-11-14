@@ -90,3 +90,51 @@ export function refitDigitized(project) {
   });
   return changed ? { ...project, elements } : project;
 }
+
+// ---- the size boxes before the first run (Kent 2026-11-13 walkthrough, item 5)
+//
+// Art uploaded but not yet digitized has no stitches, so the Size panel's W
+// box had nothing to show and a width typed there landed in `element.sizeMm`,
+// the SCALE of stitches that do not exist. The first run reads
+// `params.target_width_mm` (the Design width) and ignored it; the run's own
+// result then differed from `sizeMm` by the gap to the default, and the
+// "Resized to N mm ... restitch" cue sent the customer through a second full
+// digitize. Until a result exists the size boxes ARE the Design width: what is
+// typed is the width the first run digitizes at ("a typed width stays",
+// 2026-10-27), and the box shows the width that run would use.
+export function undigitizedImage(el) {
+  return !!el && el.type === "digitized" && !!el.sourcePng && !el.result;
+}
+
+// The width the W box shows for such an element, in mm; null for any other.
+export function preRunWidthMm(el) {
+  if (!undigitizedImage(el)) return null;
+  const w = el.params && el.params.target_width_mm;
+  return w > 0 ? w : null;
+}
+
+// A SizePanel patch re-aimed at the Design width for an undigitized image:
+// a typed width becomes `target_width_mm` (kept, like the Design width box:
+// `widthTyped`), "Auto-fit" (`sizeMm: null`) goes back to the placement's fit.
+// `sizeMm` itself stays null: there is nothing yet to scale. Any other patch
+// (offsets) and any other element go through untouched.
+export function preRunSizePatch(el, patch, project) {
+  if (!undigitizedImage(el) || !patch || !("sizeMm" in patch)) return patch;
+  const { sizeMm, ...rest } = patch;
+  if (sizeMm == null) {
+    const fit = el.sourcePx ? fitTargetWidthMm(el.sourcePx, el.crop, project) : null;
+    return {
+      ...rest,
+      sizeMm: null,
+      widthTyped: false,
+      ...(fit != null ? { params: { ...(el.params || {}), target_width_mm: fit } } : {}),
+    };
+  }
+  const w = Math.min(400, Math.max(10, Math.round(sizeMm * 10) / 10));
+  return {
+    ...rest,
+    sizeMm: null,
+    widthTyped: true,
+    params: { ...(el.params || {}), target_width_mm: w },
+  };
+}

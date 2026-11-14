@@ -1656,6 +1656,35 @@ describe("a resize on the field", () => {
     expect(getByTestId("digitize-stale")).toHaveTextContent(/Resized to 60 mm/);
   });
 
+  // Kent's 2026-11-13 walkthrough, item 4: a press after a resize under the 2%
+  // tolerance came back in 3 s with the same stitches and said nothing, and the
+  // panel's size line kept the digitized 80x40 beside a canvas that said 81x40.
+  test("a press after a resize under 2% says nothing needed restitching, and the size line follows the canvas", async () => {
+    const { run, patches, getByTestId, queryByTestId, container } = await panel({ sizeMm: 80.8 });
+    expect(queryByTestId("digitize-stale")).toBeNull();           // not stale: under the 2% rule
+    expect(container.querySelector(".dgp-stats")).toHaveTextContent(/81×40 mm/);   // the canvas's, not 80x40
+    await fireEvent.click(run());
+    await settle();
+    expect(cfgs).toHaveLength(1);
+    expect(cfgs[0].target_width_mm).toBe(80);                      // the 2% rule is untouched
+    expect(getByTestId("digitize-no-restitch")).toHaveTextContent("No restitch needed: size changed by under 2%.");
+    expect(patches[patches.length - 1].patch.sizeMm).toBeUndefined();
+    expect(queryByTestId("digitize-stale")).toBeNull();
+  });
+
+  test("no 'no restitch' line when the width is exactly the digitized one, or when something else changed", async () => {
+    const same = await panel({ sizeMm: 80 });
+    await fireEvent.click(same.run());
+    await settle();
+    expect(same.queryByTestId("digitize-no-restitch")).toBeNull();
+    same.unmount();
+
+    const other = await panel({ sizeMm: 80.8, params: { ...DEFAULT_DIGITIZE_PARAMS, max_colors: 3 } });
+    await fireEvent.click(other.run());
+    await settle();
+    expect(other.queryByTestId("digitize-no-restitch")).toBeNull();
+  });
+
   test("Auto Digitize Image runs AT the dragged width and the scale goes on landing", async () => {
     const { run, patches } = await panel({ sizeMm: 60 });
     await fireEvent.click(run());

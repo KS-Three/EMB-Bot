@@ -66,7 +66,7 @@ test("an over-box width is clamped AND the field is corrected — every time, no
   for (const asked of [110, 150, 200]) {
     const w = await typeWidth(getByLabelText, asked);
     expect(updates.at(-1).sizeMm).toBeCloseTo(101.6, 3);
-    expect(w.value).toBe("102");
+    expect(w.value).toBe("101.6");   // to a tenth, like the stored width
   }
 });
 
@@ -125,8 +125,11 @@ test("a design change after an edit does NOT reach the field — recorded, not f
   await typeWidth(getByLabelText, 90);          // honoured — 90 < the 101.6 bound
   expect(getByLabelText("Width").value).toBe("90");
 
-  await rerender({ project, designDims: { widthMM: 90.2, heightMM: 13.5 }, onUpdate: () => {} });
-  expect(getByLabelText("Width").value).toBe("90");   // ...not "90.2"
+  await rerender({ project, designDims: { widthMM: 90.04, heightMM: 13.5 }, onUpdate: () => {} });
+  // The box now shows a tenth of a millimetre (2026-11-14), so a residual of
+  // 0.2 mm would show; 0.04 mm is below what the box displays, which is the
+  // case this test records.
+  expect(getByLabelText("Width").value).toBe("90");   // ...not "90.04"
 });
 
 // ---- The align row names what it actually aligns to -----------------------
