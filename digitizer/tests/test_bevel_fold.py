@@ -125,6 +125,19 @@ def test_distinct_colours_and_wide_shapes_are_left_alone():
     assert [(r.shape_id, r.thread_index, r.polygon.wkb) for r in regions] == before
 
 
+def test_the_dark_wall_of_a_counter_folds_into_the_letter():
+    """GOLF's O: a dark inner bevel lines the counter; the pro sews the O one
+    gold with the counter open."""
+    o = Point(0, 0).buffer(5, 64)
+    counter = Point(0, 0).buffer(2.0, 64)
+    wall = Point(0, 0).buffer(2.5, 64).difference(counter)          # 0.5 mm dark ring
+    letter = o.difference(Point(0, 0).buffer(2.5, 64))
+    regions = [_r(letter, GOLD, "O"), _r(wall, BLACK, "WALL"), _r(counter, WHITE, "C", counter=True)]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert [b["shape_id"] for b in rep["bands"]] == ["WALL"]
+    assert {r.shape_id for r in regions} == {"O", "C"}
+
+
 def test_the_page_showing_through_is_never_folded():
     """To a T: white slivers between black brush strokes are the page."""
     stroke = box(0, 0, 10, 4).difference(box(3, 1.8, 7, 2.0))
