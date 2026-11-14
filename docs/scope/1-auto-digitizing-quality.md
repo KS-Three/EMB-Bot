@@ -5370,18 +5370,49 @@ Kent on Commons "Ahora": "now fix the Ahora gear so it sews as a gear". The
 outline rule sews one loop of one width on the body's edge, so the 17-tooth
 white gear round the yellow disc sewed a ring at every size. ON, a band that
 fits one satin everywhere (never over `SATIN_MAX_WIDTH_MM`) and whose thickness
-swings by a stitch (p90 - p10 at least `SATIN_MIN_CROSS_MM`) cuts each cross
-where it leaves the art, locks the needle to the teeth (a whole, even number
-of stations per tooth and per root, none on a step) and runs one corner-exact
-bean round the band's outer ring. No new constant.
+swings (p90 - p10) by at least `SATIN_SHORT_STITCH_AT_MM` is sewn to the art's
+own outer edge. No new constant.
 
-- Gear band, square to the disc's ring: 60 mm 0.86-1.40, 100 mm 1.43-2.32; at
-  40 mm the swing is 0.36, under a stitch, and it stays a ring.
-- Of 22 repo logos only the gear is taken. Plans at 100 mm with the flag on
-  and off: MFab, Becker, To-a-T and `hed_p_e_logo` byte-identical.
-- Gear at 100 mm: 13,095 to 13,320 stitches.
-- **Open:** pull on a 0.6 mm tooth is a sew-out question (gate 1); the flip is
-  Kent's.
+**Second build, same day (Kent: "it's an improvement but not across the
+board").** The first build (#1455) cast its crosses from the body's ring and
+laid a bean on the outer edge. Rendered on the gear at eight sizes and five
+drawn shapes, the faults were one fault, the needle placed from the wrong
+edge: two or three stitch ends a tooth wherever they fell, open corners, no
+pivot round a square corner of the body, lumps from the bean under 80 mm, and
+40 and 50 mm not taken. `digitizer_core/shaped_band.py` lays a band round one
+body out from its OUTER ring instead: a needle hole on every corner and on
+both ends of every side wall (read off the edge, so a traced tooth's rounded
+corners still get theirs), the spacing between them measured square to the
+stitch, each wall sewn once, the ring's holes short-stitched by the least
+pull that clears them, and no line on top. A band shared by several bodies
+keeps the first build's loop.
+
+- **Drawn shapes, bare band / thread past the art (0.4 mm thread), OFF to
+  ON:** 12-tooth gear 5.6% / 10.1 mm2 to 0.3% / 0.00; the same at x0.6 4.6% /
+  3.7 to 0.2% / 0.00; 24-tooth gear 4.4% / 5.2 to 0.0% / 0.00; 10-lobe scallop
+  5.1% / 9.1 to 0.6% / 0.00; notched frame 10.0% / 5.8 to 0.1% / 0.00.
+- **The gear, by eye, 40 to 160 mm wide (4.8 to 19.2 mm across):** 17 teeth at
+  every size, each on the traced outline. White satin points OFF to ON: 40 mm
+  a 50-point bean to 80; 50 mm 67 to 100; 60 mm 78 to 131; 80 mm 101 to 154;
+  100 mm 125 to 195; 127 mm 156 to 226; 160 mm 192 (plus a 132-point fill) to
+  283. Design at 100 mm 13,095 to 13,185 points.
+- **40 mm was a thin ring.** The hairline gate's width is 2 x area /
+  perimeter and teeth are perimeter: the band (0.57 to 0.93 mm thick) read
+  0.6 and sewed as a bean inside its own outline, the ground showing where
+  the teeth were. A band the layout takes is kept out of the hairline mark.
+- **Under 0.5 mm of swing the swing must be stepped**
+  (`shaped_band.stepped_share`: the share of the thickness change that
+  happens where the edge runs within 30 degrees of its crosses, at least
+  half). "(hed) p.e." at 180 mm has a white keyline 0.57 to 0.92 mm thick,
+  share 0.09: a line of uneven width, left to the pro's widened loop. The
+  gear at 40 mm is 0.76, at 50 mm 0.78.
+- **Scan, flag ON, every repo logo with an outline loop** (To-a-T Machine 40 /
+  60 / 100, Becker 60 / 100, MFab hat 36.7 / 100, MFab LC 100, hed 60 / 100 /
+  180, K-Line 100, To-a-T beanie 100, Bridge 100): none taken but the gear.
+- **Open:** pull on a 0.6 mm tooth is a sew-out question (gate 1); the 1.4 mm
+  closing overlap is a dense patch on a 5 to 7 mm gear, as on every loop; a
+  band with a few notches (under 10% of its ring) is not shaped; a star round
+  a disc is not read as an outline at all; the flip is Kent's.
 
 *(measured 2026-11-13 — memory `shaped-outline-gear-2026-11-13`,
 `tests/test_outline_follow_shape.py`)*
