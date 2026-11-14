@@ -61,6 +61,9 @@ def _bar_cov() -> np.ndarray:
 
 def _ink(art: Path, **cfg_kw):
     """-> (Prep, the sewn regions) from stages 0-4."""
+    # `outline_redraw_k` (0.75 since 2026-11-14, Kent) re-fits every upscaled outline;
+    # this file prices `coverage_edges` against the engine it was measured on.
+    cfg_kw.setdefault("outline_redraw_k", PRE_FLIP["outline_redraw_k"])
     gen = build_generation(str(art), PipelineConfig(target_width_mm=WIDTH_MM, **cfg_kw))
     return gen.p, [r for r in gen.regions if not r.meta.get("enclosed_background")]
 
@@ -245,7 +248,7 @@ def test_becker_loses_its_reversals_and_keeps_its_ink():
     assert all(r.meta.get("coverage_edges") for r in on)
     # The enclosed letter bodies are the same contour from the other side.
     holes = [r for r in build_generation(str(art), PipelineConfig(
-        target_width_mm=WIDTH_MM, coverage_edges=True, **pre)).regions if r.meta.get("enclosed_background")]
+        target_width_mm=WIDTH_MM, coverage_edges=True, outline_redraw_k=PRE_FLIP["outline_redraw_k"], **pre)).regions if r.meta.get("enclosed_background")]
     assert holes and all(r.meta.get("coverage_edges") for r in holes)
     spikes_off, spikes_on = (sum(_spikes(r.polygon) for r in rs) for rs in (off, on))
     assert spikes_off > 25, spikes_off                       # what it is for

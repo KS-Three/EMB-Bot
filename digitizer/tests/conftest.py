@@ -999,6 +999,9 @@ PRE_FLIP.update(BASELINE_2026_11_14_OFF)
 # `_outline_body` and `_thread` OFF the same day): `tests/test_group_consistency.py`.
 GROUP_2026_11_14_OFF = {"group_consistent_tier": False, "group_consistent_fill_angle": False}
 PRE_FLIP.update(GROUP_2026_11_14_OFF)
+# `outline_redraw_k` ("Set 0.75"; None before): `tests/test_outline_redraw.py`.
+REDRAW_2026_11_14_OFF = {"outline_redraw_k": None}
+PRE_FLIP.update(REDRAW_2026_11_14_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

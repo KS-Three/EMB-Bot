@@ -1638,7 +1638,7 @@ class PipelineConfig:
     # None keeps the OFF path, byte-identical to the pre-flag engine
     # (`tests/test_letterform_priors.py` pins it with an explicit None).
     letterform_priors_k: float | None = 0.75
-    # Outline redraw (2026-11-13, `outline_redraw.py`, DEFAULT None = OFF):
+    # Outline redraw (2026-11-13, `outline_redraw.py`, built None = OFF):
     # the pen-tool redraw for EVERY shape, not only lettering. Each ring of
     # each region is refit to straight lines and circular arcs (letterform
     # priors' geometry, no word snaps), corners kept as the exact meet of
@@ -1656,8 +1656,15 @@ class PipelineConfig:
     # radius in mm. No physical constant; no sew-out has seen it.
     # It touches only an upload stage 1 UPSCALED (Becker, Bridge, MFab): a
     # source at its own resolution comes through byte-identical unless
-    # `outline_redraw_native` below is also set. `tests/test_outline_redraw.py`.
-    outline_redraw_k: float | None = None
+    # `outline_redraw_native` below is also set. **0.75 since 2026-11-14,
+    # Kent's flip** ("Set 0.75", from the OFF | ON sheets beside the art):
+    # roughness falls on all 12 upscaled pro jobs (Becker 2.8-3.1 deg at every
+    # size), at the cost Kent accepted of Becker's bare fabric in the art
+    # +0.07 to 0.35 mm^2 at 4 of its 5 sizes (`docs/satin-flat-ends-
+    # 2026-11-14.md`). None is the engine as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # None. `tests/test_outline_redraw.py`.
+    outline_redraw_k: float | None = 0.75
     # With `outline_redraw_k`, ALSO a source at its own resolution, in the
     # arcs-only regime: straight runs and corners keep stage 4's vertices
     # exactly and only runs one circle explains (bowls, circles) are

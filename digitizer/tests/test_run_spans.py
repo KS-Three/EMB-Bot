@@ -56,7 +56,9 @@ def becker():
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
                          border="auto", edge_cap="satin",
                          subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"],
-                         sew_enclosed_white=PRE_FLIP["sew_enclosed_white"])
+                         sew_enclosed_white=PRE_FLIP["sew_enclosed_white"],
+                         # and `outline_redraw_k` (0.75 since 2026-11-14, Kent) re-fits every upscaled outline
+                         outline_redraw_k=PRE_FLIP["outline_redraw_k"])
     result = run_stages(TESTDATA / "becker_marine_logo.png", cfg)
     plan = plan_stitches(result, cfg)
     return plan, _design(plan, "Becker")

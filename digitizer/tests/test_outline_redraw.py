@@ -1,5 +1,7 @@
 """Outline redraw (`digitizer_core/outline_redraw.py`, behind
-`PipelineConfig.outline_redraw_k`, default None = OFF; 2026-11-13).
+`PipelineConfig.outline_redraw_k`, built None = OFF 2026-11-13; 0.75 since
+2026-11-14 by Kent's flip, "Set 0.75"). `_cfg` below is the OFF arm unless a
+test sets k.
 
 Geometry first: a source staircase comes back as straight lines with square
 corners, a faceted circle as an arc, a triangle keeps its tips, a counter
@@ -154,7 +156,9 @@ def test_arcs_only_keeps_straight_runs_and_corners_vertex_for_vertex():
 
 
 def _cfg(**kw):
+    """OFF (k None, the engine before Kent's 2026-11-14 flip) unless `kw` sets k."""
     from digitizer_core import PipelineConfig
+    kw.setdefault("outline_redraw_k", None)
     return PipelineConfig(target_width_mm=60.0, garment_id="left_chest", max_colors=6, **kw)
 
 
@@ -163,7 +167,7 @@ def test_off_path_never_imports_the_module():
     from digitizer_core import PipelineConfig
     from digitizer_core.pipeline import run_stages
 
-    assert PipelineConfig().outline_redraw_k is None
+    assert PipelineConfig().outline_redraw_k == 0.75     # Kent's flip 2026-11-14
     src = HERE.parent / "digitizer_core" / "pipeline.py"
     tree = ast.parse(src.read_text(encoding="utf-8"))
     top = [n for n in ast.walk(tree)
