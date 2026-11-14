@@ -585,6 +585,28 @@ def test_a_two_shade_region_is_judged_shade_by_shade_not_as_one_spool():
         run_preflight(result, plan_, c, image=img))
 
 
+# --- Subject edge recall (metric only) ---------------------------------------
+
+def test_subject_edge_recall_rides_out_as_a_metric_and_moves_no_grade(whitebg, monkeypatch):
+    """2026-11-14 (`docs/subject-loss-2026-11-14.md`): how much of the art's
+    strong-edge detail the sewn result still draws. Metrics only -- Kent's
+    2026-10-02 ruling -- so the findings and the score must not depend on it."""
+    from digitizer_core import subject_detail
+    c = cfg(**PLAN_CFG_KW)
+    plan = plan_stitches(whitebg, c)
+    sewn = run_preflight(whitebg, plan, c, image=ART)
+    bare = run_preflight(whitebg, StitchPlan(blocks=[], palette=[]), c, image=ART)
+    assert 0.8 < sewn["metrics"]["subject_edge_recall"] <= 1.0      # a flat logo sewn whole
+    assert bare["metrics"]["subject_edge_recall"] < 0.2              # nothing sewn: nothing drawn
+    assert run_preflight(whitebg, plan, c)["metrics"]["subject_edge_recall"] is None  # no artwork
+
+    for forced in (0.0, 1.0):
+        monkeypatch.setattr(subject_detail, "metrics", lambda *_a, v=forced: {"subject_edge_recall": v})
+        again = run_preflight(whitebg, plan, c, image=ART)
+        assert again["score"] == sewn["score"] and again["grade"] == sewn["grade"]
+        assert [f["code"] for f in again["findings"]] == [f["code"] for f in sewn["findings"]]
+
+
 # --- Lettering size ----------------------------------------------------------
 
 def test_satin_below_sewable_lettering_size_is_flagged():

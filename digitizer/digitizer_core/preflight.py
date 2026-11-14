@@ -4646,6 +4646,19 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
                         "artwork_checked": False, "artwork_reached_frac": None,
                         "artwork_mm2": None})
 
+    # How much of the artwork's strong-edge detail the sewn result still draws
+    # (`subject_detail.py`, 2026-11-14, the toadstool photo that lost its stem
+    # and graded B 76). A METRIC only: no finding, no grade (Kent 2026-10-02).
+    # Separates Kent's "detail lost" rows from his Good ones, but every Good
+    # row was flat art and photo-ness alone nearly does the same
+    # (`docs/subject-loss-2026-11-14.md`). None without the artwork.
+    deadline.check("preflight")
+    if p is not None:
+        from . import subject_detail as _subject_detail
+        metrics.update(_subject_detail.metrics(p, plan, cfg))
+    else:
+        metrics["subject_edge_recall"] = None
+
     # Elements the pipeline itself reported losing. Two of its four causes
     # read the plan and the regions alone, so it runs without the artwork
     # and says which half it could judge.
