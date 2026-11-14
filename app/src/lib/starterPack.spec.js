@@ -261,13 +261,13 @@ describe("what lands on the canvas", () => {
   // StarterOverflow.spec.js). Before, every starter fitted every garment; the
   // table of what overflows now is in PR 1495.
   test("on every garment and placement a design either fits it or sits exactly at the 75% limit", async () => {
-    const MM_PER_INCH = 25.4;
+    // the clamp box the engine uses: the hat front on its PLACEMENTS box (Kent 2026-11-14), else the inch pair
     const patches = await Promise.all(designs.map((d) => pack.loadStarterPatch(d, packFetch())));
     let shrunk = 0, atLimit = 0;
     for (const base of EMB.GARMENTS) {
       for (const pid of EMB.GARMENT_PLACEMENTS[base.id] || [base.id]) {
         const garment = EMB.resolvePlacement(base.id, pid === base.id ? null : pid); // as placed, like the Studio
-        const boxW = garment.widthIn * MM_PER_INCH, boxH = garment.heightIn * MM_PER_INCH;
+        const { w: boxW, h: boxH } = EMB.clampBoxMm(garment);
         for (const patch of patches) {
           const where = `${patch.name} on ${pid}`;
           const el = { ...project.defaultDesignElement("e1"), ...patch };
@@ -285,7 +285,7 @@ describe("what lands on the canvas", () => {
       }
     }
     // Not vacuous: some placements are smaller than some designs, and the
-    // limit is reached (Shamrock on the hat front: 58.95 mm tall in a 57.2 box).
+    // limit is reached (Bur oak leaf on the hat front: 67.9 mm tall at 75% in a 64 box).
     expect(shrunk).toBeGreaterThan(0);
     expect(atLimit).toBeGreaterThan(0);
   });

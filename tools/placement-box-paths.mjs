@@ -136,17 +136,28 @@ export function loadStarters() {
   });
 }
 
-// variant "inch" = today (buildImportedDesign reads the placed garment's inch
-// pair); "placements" = the same call handed the PLACEMENTS box instead.
+// variant "inch"       = before Kent's 2026-11-14 hat-front ruling: every
+//                        garment clamps to its inch pair;
+//         "current"    = the code as it is: the hat front on its PLACEMENTS box,
+//                        left chest and beanie still on the inch pair;
+//         "placements" = the same call handed the PLACEMENTS box everywhere
+//                        (what unifying left chest and beanie too would do).
 export function overflowRows(starters, variant) {
   const out = [];
   for (const garment of g.GARMENTS) {
     for (const pid of g.GARMENT_PLACEMENTS[garment.id] || [garment.id]) {
       const placed = placedOf(garment.id, pid);
-      const box = variant === "inch"
-        ? { w: placed.widthIn * MM_PER_IN, h: placed.heightIn * MM_PER_IN }
-        : g.placementBoxMm(placed);
-      const asPlaced = { ...placed, widthIn: box.w / MM_PER_IN, heightIn: box.h / MM_PER_IN };
+      let box, asPlaced;
+      if (variant === "inch") {
+        box = { w: placed.widthIn * MM_PER_IN, h: placed.heightIn * MM_PER_IN };
+        asPlaced = { ...placed, clampBox: undefined };
+      } else if (variant === "current") {
+        box = g.clampBoxMm(placed);
+        asPlaced = placed;
+      } else {
+        box = g.placementBoxMm(placed);
+        asPlaced = { ...placed, clampBox: undefined, widthIn: box.w / MM_PER_IN, heightIn: box.h / MM_PER_IN };
+      }
       for (const s of starters) {
         const built = dstimport.buildImportedDesign(s.decoded, { garment: asPlaced, autoScaleRange: AUTO_RANGE });
         const ow = Math.max(0, built.widthMM - box.w), oh = Math.max(0, built.heightMM - box.h);
@@ -162,10 +173,10 @@ export function overflowRows(starters, variant) {
   return out;
 }
 
-export function overflowDiff(starters) {
-  const a = overflowRows(starters, "inch");
-  const b = overflowRows(starters, "placements");
-  const key = (r) => `${r.placement}|${r.starter}`;
+export function overflowDiff(starters, from = "current", to = "placements") {
+  const a = overflowRows(starters, from);
+  const b = overflowRows(starters, to);
+  const key = (r) => `${r.garment}|${r.placement}|${r.starter}`; // garment too: left_chest is a placement of three garments
   const bm = new Map(b.map((r) => [key(r), r]));
   const changed = [];
   for (const r of a) {
@@ -202,55 +213,60 @@ function pathTable(rows) {
   return lines;
 }
 
-export function docLines(rows, diff) {
-  const dis = rows.filter((r) => r.disagree);
-  const nOver = (list) => list.filter((r) => r.overflows).length;
+const cellOf = (r) => `${Math.round(r.scale * 100)}%, ${r.overflows ? `${f1(r.ow)} / ${f1(r.oh)}` : "fits"}`;
+const worse = (c) => (c.after.ow + c.after.oh) > (c.before.ow + c.before.oh) + 0.05;
+export const verdictOf = (c) => !c.before.overflows && c.after.overflows ? "NEW overflow"
+  : c.before.overflows && !c.after.overflows ? "now fits"
+    : worse(c) ? "worse" : "better";
+const nOver = (list) => list.filter((r) => r.overflows).length;
+
+// One before/after section of the starter overflow table.
+function overflowSection(title, fromLabel, toLabel, diff, filter) {
+  const keep = (c) => !filter || filter(c.before.placement);
+  const changed = diff.changed.filter(keep);
+  const rescaled = diff.rescaled.filter(keep);
   const lines = [];
-  lines.push(`**Paths disagree on ${dis.length} of ${rows.length} placements**: ${dis.map((r) => r.placementId).join(", ")}.`);
-  lines.push("");
-  lines.push("## Path table (measured by probe, mm, W x H)");
-  lines.push("");
-  lines.push(...pathTable(rows));
-  lines.push("");
-  lines.push("## Square logo through the digitized upload path");
-  lines.push("");
-  lines.push("Auto-fit sizes a square logo into the PLACEMENTS box; the service result then re-enters `buildImportedDesign` at native size and meets the inch-pair clamp.");
-  lines.push("");
-  lines.push("| Placement | Fitted side (auto-fit) | Drawn side after import clamp |");
-  lines.push("|---|---|---|");
-  for (const r of rows.filter((x) => x.disagree)) {
-    lines.push(`| ${r.placementId} | ${f1(r.square.fitted)} | ${f1(r.square.drawn)}${r.square.drawn < r.square.fitted - 0.05 ? " (shrunk)" : ""} |`);
-  }
-  lines.push("");
-  lines.push("## Starter overflow at the 75% stop: inch pair (today) vs PLACEMENTS box");
-  lines.push("");
-  lines.push(`Overflowing starter x placement combinations: **${nOver(diff.before)}** today, **${nOver(diff.after)}** if \`buildImportedDesign\` read the PLACEMENTS box. ${diff.changed.length} of ${diff.before.length} combinations change.`);
-  lines.push("");
-  lines.push("| Placement | Box today | Box PLACEMENTS | Starter | Today (scale, overflow w/h) | PLACEMENTS (scale, overflow w/h) | Verdict |");
+  lines.push(`### ${title}`, "");
+  lines.push(`Overflowing starter x placement combinations: **${nOver(diff.before)}** ${fromLabel}, **${nOver(diff.after)}** ${toLabel}. ${diff.changed.length} of ${diff.before.length} combinations change overflow.`, "");
+  lines.push(`| Placement | Box (${fromLabel}) | Box (${toLabel}) | Starter | ${fromLabel} (scale, overflow w/h) | ${toLabel} (scale, overflow w/h) | Verdict |`);
   lines.push("|---|---|---|---|---|---|---|");
-  const cellOf = (r) => `${Math.round(r.scale * 100)}%, ${r.overflows ? `${f1(r.ow)} / ${f1(r.oh)}` : "fits"}`;
-  const worse = (c) => (c.after.ow + c.after.oh) > (c.before.ow + c.before.oh) + 0.05;
-  const verdict = (c) => !c.before.overflows && c.after.overflows ? "NEW overflow"
-    : c.before.overflows && !c.after.overflows ? "now fits"
-      : worse(c) ? "worse" : "better";
-  for (const c of diff.changed) {
-    lines.push(`| ${c.before.placement} | ${cell(c.before.box)} | ${cell(c.after.box)} | ${c.before.starter} | ${cellOf(c.before)} | ${cellOf(c.after)} | ${verdict(c)} |`);
+  for (const c of changed) {
+    lines.push(`| ${c.before.placement} | ${cell(c.before.box)} | ${cell(c.after.box)} | ${c.before.starter} | ${cellOf(c.before)} | ${cellOf(c.after)} | ${verdictOf(c)} |`);
   }
   lines.push("");
   const tally = { "now fits": 0, better: 0, worse: 0, "NEW overflow": 0 };
-  for (const c of diff.changed) tally[verdict(c)]++;
-  lines.push(`Tally: ${Object.entries(tally).map(([k, v]) => `${k} ${v}`).join(", ")}.`);
-  lines.push("");
-  lines.push(`Fits under both boxes but drawn at a different scale: ${diff.rescaled.length} combinations.`);
-  lines.push("");
-  if (diff.rescaled.length) {
-    lines.push("| Placement | Starter | Scale today | Scale PLACEMENTS |");
-    lines.push("|---|---|---|---|");
-    for (const c of diff.rescaled) {
+  for (const c of changed) tally[verdictOf(c)]++;
+  lines.push(`Tally: ${Object.entries(tally).map(([k, v]) => `${k} ${v}`).join(", ")}.`, "");
+  lines.push(`Fits under both boxes but drawn at a different scale: ${rescaled.length} combinations.`, "");
+  if (rescaled.length) {
+    lines.push(`| Placement | Starter | Scale ${fromLabel} | Scale ${toLabel} |`, "|---|---|---|---|");
+    for (const c of rescaled) {
       lines.push(`| ${c.before.placement} | ${c.before.starter} | ${Math.round(c.before.scale * 100)}% | ${Math.round(c.after.scale * 100)}% |`);
     }
     lines.push("");
   }
+  return lines;
+}
+
+// `rulingDiff`: before Kent's hat-front ruling vs the code now (hat front rows
+// only; the other placements do not move). `restDiff`: the code now vs the
+// PLACEMENTS box everywhere (what is still split: left chest, beanie).
+export function docLines(rows, rulingDiff, restDiff) {
+  const dis = rows.filter((r) => r.disagree);
+  const lines = [];
+  lines.push(`**Paths still disagree on ${dis.length} of ${rows.length} placements**: ${dis.map((r) => r.placementId).join(", ")} (Kent's ruling 2026-11-14: hat front only; left chest and beanie stay split on purpose).`, "");
+  lines.push("## Path table (measured by probe, mm, W x H)", "");
+  lines.push(...pathTable(rows), "");
+  lines.push("## Square logo through the digitized upload path", "");
+  lines.push("Auto-fit sizes a square logo into the PLACEMENTS box; the service result then re-enters `buildImportedDesign` at native size and meets the clamp box.", "");
+  lines.push("| Placement | Fitted side (auto-fit) | Drawn side after import clamp |", "|---|---|---|");
+  for (const r of rows.filter((x) => x.isDefault && ["hat_front", "left_chest", "beanie"].includes(x.placementId))) {
+    lines.push(`| ${r.placementId} | ${f1(r.square.fitted)} | ${f1(r.square.drawn)}${r.square.drawn < r.square.fitted - 0.05 ? " (shrunk)" : ""} |`);
+  }
+  lines.push("");
+  lines.push("## Starter overflow at the 75% stop", "");
+  lines.push(...overflowSection("Kent's hat-front ruling: before vs after", "before", "after", rulingDiff, (p) => p === "hat_front"));
+  lines.push(...overflowSection("Still open: the code now vs the PLACEMENTS box everywhere", "now", "all PLACEMENTS", restDiff));
   return lines;
 }
 
@@ -260,7 +276,8 @@ if (isMain) {
   if (process.argv.includes("--rows-only")) {
     process.stdout.write(pathTable(rows).join("\n") + "\n");
   } else {
-    const diff = overflowDiff(loadStarters());
-    process.stdout.write(docLines(rows, diff).join("\n") + "\n");
+    const starters = loadStarters();
+    const out = docLines(rows, overflowDiff(starters, "inch", "current"), overflowDiff(starters, "current", "placements"));
+    process.stdout.write(out.join("\n") + "\n");
   }
 }

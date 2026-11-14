@@ -39,8 +39,13 @@ most that fits there, with live mm readouts while resizing. #1159, three parts.
 the LC cap as the pro's 96 mm (3.78 in); `digitize-shape-identity` and
 `digitize-stale-edits` type 80 first (`setDesignWidth`) because a Tote auto-fits
 two-squares.png to 198 mm, where the service promotes the white ground to a
-third row. Not done: the canvas does not draw the placement box; `digitize.js`'s
-typed-width clamp still reads the inch pair for default placements.
+third row. Not done: the canvas does not draw the placement box. Kent 2026-11-14,
+"Hat front only": the hat front's engine clamp (`buildImportedDesign`,
+`digitize.js` typed width, preview, worksheet) now reads its PLACEMENTS box
+113.5 x 64.0 (`clampBox`, `CLAMP_ON_PLACEMENT_BOX` in `src/garments.js`; a square
+logo fitted at 64.0 is drawn 64, was 57.2). Left chest and beanie still clamp to
+their inch pair on purpose (pinned in `test/placement-box-paths.test.js`; the
+why, `docs/placement-box-paths-2026-11-14.md`): don't unify without a new ruling.
 
 **Why:** the pro sizes to the placement ([[garment-size-like-pro-2026-10-26]]);
 the hoop was never the constraint Kent meant.

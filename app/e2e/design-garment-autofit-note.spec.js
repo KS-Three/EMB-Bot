@@ -47,20 +47,22 @@ test("switching to Hat shrinks a stitch file and the panel says so; Undo restore
   await expect(page.locator(".dp-stats")).not.toContainText("(file:");
 });
 
-// The starter picker on a placement a starter overflows (Shamrock is 58.95 mm
-// tall on the hat front, whose box is 57.2): it lands at the 75% limit with
-// the does-not-fit line, and still exports a complete file.
+// The starter picker on a placement a starter overflows (the Bur oak leaf is
+// 67.9 mm tall at 75% on the hat front, whose box is 64 since Kent's ruling
+// 2026-11-14, "Hat front only"; the Shamrock used to overflow the old 57.2 mm
+// box and now fits): it lands at the 75% limit with the does-not-fit line, and
+// still exports a complete file.
 test("a starter that overflows the hat front sits at 75%, says so, and still downloads", async ({ page }) => {
   await startStudio(page);
   await pickGarment(page, "Hat Front");
   await page.getByRole("group", { name: "Start with" }).getByRole("button", { name: "Starter designs" }).click();
-  await page.getByRole("dialog", { name: "Starter designs" }).getByRole("button", { name: "Add Shamrock", exact: true }).click();
+  await page.getByRole("dialog", { name: "Starter designs" }).getByRole("button", { name: "Add Bur oak leaf", exact: true }).click();
   await expect(page.locator(".dp-stats")).toBeVisible({ timeout: 60_000 });
   await openAdvanced(page);
   const note = page.locator(".dp-note").filter({ hasText: "Resized to" });
   await expect(note).toContainText("Resized to 75%", { timeout: 30_000 });
   await expect(note).toContainText("does not fit the placement");
-  await expect(page.locator("span.stats").first()).toContainText("55×59 mm");
+  await expect(page.locator("span.stats").first()).toContainText("41×68 mm");
 
   await openDownload(page);
   const dl = page.waitForEvent("download");
@@ -68,9 +70,9 @@ test("a starter that overflows the hat front sits at 75%, says so, and still dow
   const anyway = page.getByRole("button", { name: "Download DST anyway", exact: true });
   if (await anyway.isVisible().catch(() => false)) await anyway.click();
   const file = await dl;
-  expect(file.suggestedFilename()).toBe("shamrock.dst");
+  expect(file.suggestedFilename()).toBe("bur-oak-leaf.dst");
   const out = decodeDSTStandard(new Uint8Array(readFileSync(await file.path())));
-  expect(out.stitchCount).toBe(13465);
-  expect(Math.abs(out.widthMM - 55.1)).toBeLessThanOrEqual(0.3);
-  expect(Math.abs(out.heightMM - 58.9)).toBeLessThanOrEqual(0.3);
+  expect(out.stitchCount).toBe(12357);
+  expect(Math.abs(out.widthMM - 41.3)).toBeLessThanOrEqual(0.3);
+  expect(Math.abs(out.heightMM - 67.9)).toBeLessThanOrEqual(0.3);
 });
