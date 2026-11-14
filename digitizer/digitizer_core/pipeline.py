@@ -1283,6 +1283,16 @@ def build_generation(
         from .regular_structure import apply_regular_structure
         apply_regular_structure(regions, p, cfg)
 
+    # Thin bars kept whole (`cfg.fine_bar_survive`, built OFF 2026-11-14, To
+    # a T's speed lines): a straight thin ink bar stages 2-4 split or
+    # notched is read off the art and redrawn as one straight bar, and tagged
+    # so stage 5 cannot clip it away. Here, with the art raster in hand and
+    # before the stitch-width read, so every later stage sees the one bar.
+    # Logos only. Off, the module never loads.
+    if cfg.fine_bar_survive and classification.class_ not in PHOTO_CLASSES:
+        from .fine_bar import apply_fine_bar_survive
+        apply_fine_bar_survive(regions, p, cfg)
+
     # Stitch width (2026-09-29, `stitchwidth.py`): what column each shape
     # measures, and the one width a detected word's letters will share.
     # Metadata only, read off the FINAL polygons for the same reason the two
@@ -2070,6 +2080,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # `cfg.lettering_columns_apex_cut` (built OFF): `outline_cut` reads no
     # config, so the flag is set there for the length of this plan
     from .outline_cut import apex_cut_scope
+    from .outline_cut import apex_guard_scope    # `cfg.extra["lettering_columns_apex_guard"]` (built OFF), the same way
     from .stage6_border import loop_mitre_scope   # `cfg.outline_loop_mitre` (built OFF), the same way
     from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
@@ -2081,7 +2092,9 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .stage6_fill import one_pass_scope       # `cfg.fill_one_pass_sections` (built OFF), the same way
     from .stage6_fill import seam_aware_scope     # `cfg.fill_seam_aware_sections` (built OFF), the same way
     from .stage6_satin import chord_aim_scope     # `cfg.satin_free_end_chord_aim` (built OFF), the same way
-    with apex_cut_scope(cfg.lettering_columns_apex_cut), fill_section_travel.enabled(cfg), \
+    with apex_cut_scope(cfg.lettering_columns_apex_cut), \
+            apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))), \
+            fill_section_travel.enabled(cfg), \
             loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
             cut_exposed_scope(cfg.fill_bridge_cut_exposed), seam_order_scope(cfg.fill_seam_order), \
             seam_priced_scope(cfg.fill_seam_order_priced), one_pass_scope(cfg.fill_one_pass_sections), \

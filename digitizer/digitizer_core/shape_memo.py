@@ -62,6 +62,7 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("stage6_fill", "_SEAM_AWARE"),
     ("stage6_fill", "_ONE_PASS"),
     ("outline_cut", "_APEX_CUT"),
+    ("outline_cut", "_APEX_GUARD"),
     ("outline_cut", "_RAIL_AXIS"),
     ("outline_cut", "_SMALL_BOLD"),
     ("outline_cut", "_SMALL_BOLD_SIMPLIFY"),
