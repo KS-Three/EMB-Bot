@@ -1360,6 +1360,20 @@ class PipelineConfig:
     # colour. False is the engine before the flag, byte for byte. Tests:
     # `tests/test_bevel_fold.py`.
     bevel_ring_fold: bool = False
+    # Thin bars kept whole (built OFF 2026-11-14, Kent's five To a T pins on
+    # the speed lines: "Missing top bar", "Gap/Jump in the line", "Gap in the
+    # line") (`fine_bar.apply_fine_bar_survive`). A straight dark bar the art
+    # draws 0.3 mm thick is split by stages 2-4 into pieces with gaps, or lost
+    # at stage 5 under the white field's under-fill. On: a bar the trace
+    # BROKE (split, cut short, or edged by an anti-aliased sliver) is read off
+    # the art's own ink and redrawn as ONE straight tapering bar (its other
+    # pieces absorbed); every straight ink bar, redrawn or not, sews its art
+    # over the colours already down rather than be clipped away. A whole bar
+    # keeps its outline; curved strokes are left as traced. No fabric
+    # constant: gate 1 does not apply.
+    # False is the engine before the flag, byte for byte. Tests:
+    # `tests/test_fine_bar.py`.
+    fine_bar_survive: bool = False
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
