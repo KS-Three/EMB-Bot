@@ -3096,8 +3096,10 @@ def sequence(
     # bean outlines and 6 satin, one thread, one line. A member is moved off
     # the run tier only onto satin the ladder will give it (`_sews_satin`).
     # Off, the dict is empty and the floor is each shape's own, as before.
+    # Not on the photo classes: a band of same-thread specks there is not a
+    # line of letters.
     group_small: dict[str, bool] = {}
-    if cfg.group_consistent_tier and rescue:
+    if cfg.group_consistent_tier and rescue and design_class not in PHOTO_CLASSES:
         from .group_consistency import run_floor_overrides
         group_small = run_floor_overrides(
             [_pr.region for _pr in planned
