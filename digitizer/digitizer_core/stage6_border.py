@@ -843,6 +843,35 @@ def _bean_arc(arc: list[tuple[float, float]], entry: tuple[float, float] | None,
 
 # --- Entry point -----------------------------------------------------------
 
+def ring_has_room(visible, width_mm: float | None = None,
+                  density_mm: float | None = None) -> bool:
+    """Whether the "auto" border of `visible` would sew a COLUMN ring on at
+    least one of its parts. Built from the same host, centreline and core
+    `_border_runs` builds, so the two cannot disagree.
+
+    False when every part has no centreline, or lightens to a bean loop
+    because no core is left inside the column. Such a loop runs 0.85 mm
+    inside the shape's own fill and covers no edge, which is all a border is
+    for. `cfg.extra["border_significant_ring_room"]` (2026-11-14, built
+    OFF, `stage7_sequence._border_wanted`) uses this to stop "significant"
+    from earning that loop. MFab's A counter, a 3.35 mm white triangle on the
+    photo lane, sewed one on top of its fill: Kent's "random stitch in the
+    middle". The pro sews the counter as one piece."""
+    width = machine.BORDER_WIDTH_MM if width_mm is None else float(width_mm)
+    density = machine.BORDER_DENSITY_MM if density_mm is None else float(density_mm)
+    if visible is None or width <= 0 or density <= 0:
+        return False
+    half = width / 2.0
+    inset = _centre_inset(half)
+    for part in _parts(visible):
+        for host in _parts(round_inward(part, machine.BORDER_CORNER_RADIUS_MM, density / 2.0)):
+            if _keep_polygons(host.buffer(-inset)) is None:
+                continue
+            if not host.buffer(-(inset + half + machine.BORDER_HOST_MARGIN_MM)).is_empty:
+                return True
+    return False
+
+
 def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
                 trim_at_mm: float, style: str = "auto",
                 width_mm: float | None = None,
