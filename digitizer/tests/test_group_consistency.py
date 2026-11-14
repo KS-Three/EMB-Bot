@@ -165,12 +165,12 @@ def test_outline_decider_never_makes_a_thin_body():
 
 def test_outline_side_by_ink_then_by_the_wider_strokes():
     word = _word([3, 3, 3, 3])                       # 42 mm^2 each
-    stroke = {"L0": 3.0, "L1": 3.0, "L2": 2.0, "L3": 2.0}
+    stroke = {"L0": 3.5, "L1": 3.5, "L2": 2.0, "L3": 2.0}     # wider by 1.75x: past MARGIN
     own = {"L0": True, "L1": False, "L2": False, "L3": False}
     assert gc.outline_side(word, own, stroke) is False          # 42 vs 126: ink says no body
     own = {"L0": True, "L1": True, "L2": False, "L3": False}
     assert gc.outline_side(word, own, stroke) is True           # 84 vs 84: close, wider strokes are bodies
-    stroke = {"L0": 2.0, "L1": 2.0, "L2": 3.0, "L3": 3.0}
+    stroke = {"L0": 2.0, "L1": 2.0, "L2": 3.5, "L3": 3.5}
     assert gc.outline_side(word, own, stroke) is False          # close, wider strokes are not
     assert gc.outline_side(word, {k: True for k in own}, stroke) is None
 
