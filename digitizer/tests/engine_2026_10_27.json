@@ -120,6 +120,7 @@
  "fill_travel_under_cover": true,
  "fill_turn_slant": true,
  "fill_underlay_cross": true,
+ "fine_bar_survive": false,
  "fine_bars_satin": true,
  "flat_outline_max_mm": 0.8,
  "flat_light_text_runs": false,

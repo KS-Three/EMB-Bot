@@ -1283,6 +1283,16 @@ def build_generation(
         from .regular_structure import apply_regular_structure
         apply_regular_structure(regions, p, cfg)
 
+    # Thin bars kept whole (`cfg.fine_bar_survive`, built OFF 2026-11-14, To
+    # a T's speed lines): a straight thin ink bar stages 2-4 split or
+    # notched is read off the art and redrawn as one straight bar, and tagged
+    # so stage 5 cannot clip it away. Here, with the art raster in hand and
+    # before the stitch-width read, so every later stage sees the one bar.
+    # Logos only. Off, the module never loads.
+    if cfg.fine_bar_survive and classification.class_ not in PHOTO_CLASSES:
+        from .fine_bar import apply_fine_bar_survive
+        apply_fine_bar_survive(regions, p, cfg)
+
     # Stitch width (2026-09-29, `stitchwidth.py`): what column each shape
     # measures, and the one width a detected word's letters will share.
     # Metadata only, read off the FINAL polygons for the same reason the two
