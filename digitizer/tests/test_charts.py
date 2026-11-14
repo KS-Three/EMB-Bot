@@ -59,6 +59,48 @@ def test_brand_colour_counts_match_the_browser():
         )
 
 
+BROWSER_DATA = REPO / "app" / "src" / "lib" / "threadBrandsData.js"
+
+
+@pytest.mark.skipif(not BROWSER_DATA.is_file(), reason="browser bundle not present")
+def test_every_thread_row_matches_the_browser():
+    """Name, code and rgb, row by row. Ids and counts alone let the Simthread
+    L,a,b column ship as the thread number in one parser and not the other."""
+    text = BROWSER_DATA.read_text(encoding="utf-8")
+    m = re.search(r"THREAD_BRANDS\s*=\s*(\[.*\]);", text, re.S)
+    assert m, f"could not find THREAD_BRANDS in {BROWSER_DATA}"
+    theirs = {b["id"]: [(t["code"], t["name"], tuple(t["rgb"])) for t in b["threads"]]
+              for b in json.loads(m.group(1))}
+    for entry in brand_index():
+        ours = [(t.number, t.name, tuple(t.rgb)) for t in load_chart(entry["id"])]
+        assert ours == theirs[entry["id"]], f"{entry['id']}: rows differ from the browser's"
+
+
+def test_no_thread_number_is_a_lab_triple():
+    lab = re.compile(r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$")
+    for entry in brand_index():
+        for t in load_chart(entry["id"]):
+            assert "," not in t.number and not lab.match(t.number), (
+                f"{entry['id']}: {t.name!r} has number {t.number!r}")
+
+
+def test_simthread_lab_column_and_na_are_not_codes():
+    black = next(t for t in load_chart("simthread-polyester-63-brother-colors")
+                 if t.rgb == (52, 54, 54))
+    assert (black.name, black.number) == ("Black", "900")
+    glow = list(load_chart("simthread-glow-in-the-dark-15-colors"))
+    assert len(glow) == 15
+    assert all(t.number == "" and not t.name.endswith("n/a") for t in glow)
+
+
+def test_parser_drops_lab_triple_and_na():
+    assert parse_gpl("52 54 54 Black 900 22.34,-0.6,-0.46\n"
+                     "229 228 29 N. Yellow n/a 88.08,-18.93,83.81\n") == [
+        ("900", "Black", (52, 54, 54)),
+        ("", "N. Yellow", (229, 228, 29)),
+    ]
+
+
 def test_policy_excluded_brands_are_absent():
     """No charts from companies selling embroidery software or machines."""
     ids = {b["id"] for b in brand_index()}
