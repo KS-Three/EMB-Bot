@@ -35,16 +35,31 @@ adds arcs-only on clean uploads (the (b) cure).
 
 **Readings (n=1 per design, instrument only).**
 - Upscaled: roughness Becker 8.30 -> 5.25, Bridge 6.78 -> 6.11, MFab
-  7.11 -> 6.81. Becker's staircase border sews as one even band. Cost: Becker
-  +24 mm of travel on bare fabric (stage 7 re-sequenced).
+  7.11 -> 6.81. Becker's staircase border sews as one even band.
+- 2026-11-14 (`docs/satin-flat-ends-2026-11-14.md`), all 12 upscaled pro
+  jobs: roughness falls on every one (Becker 2.8-3.1 deg at every size),
+  exposed travel 0 in both arms. Becker's bare fabric in the art rises
+  0.07-0.35 mm2 at 4 of its 5 sizes.
+- The "+24 mm bare travel" in #1479 was a bad metric (it counted travel the
+  border covers). The line seen beside Becker's border is a STAGE-7 fault,
+  in both arms: single needle-down stitches of 14-92 mm joining a shape's
+  own fill runs, with no jump or trim (Becker, MFab).
 - Native opt-in: the polygons' facets are gone, but the stitches are mixed.
   The and_pizza "p" sewed a straight cut across a perfect arc and opened a
   seam, and n_sync's roughness rose 6.77 -> 7.92. On clean art the Column
   lane's satin, not the polygon, sets the edge.
 
-**How to apply:** the polygon is not the light switch for most pins. The
-next lever is the satin emitter: square or parallel ends where a satin meets
-a straight edge (14 pins), then rail wobble on rings. `coverage_edges` (the
+**How to apply:** the polygon is not the light switch for most pins.
+The 14 satin-end pins, traced 2026-11-14:
+- No majority: 6 ends fan or turn onto a flat face, 5 are acute
+  joints, 2 caps stop short, 1 matches the pro.
+- The EXISTING OFF flag `lettering_columns_apex_cut` cures all 4 Z-joint
+  pins with no regression seen. It is unflipped since 10-25 (Kent's call).
+- Becker's flat tops are an ANGLE choice: the pro sews MARINE with
+  near-vertical crosses.
+- Snapping end points onto the edge line was measured useless (the ends
+  were already collinear).
+- Rail wobble on rings is still open. `coverage_edges` (the
 10-10 iso-contour) WAS built (#818) and Kent ruled it no on 10-12. Related:
 [[edge-fault-reader-2026-11-10]], [[defect-marks-sitting-2026-11-10]],
 [[eye-first-diagnosis-2026-11-13]].
