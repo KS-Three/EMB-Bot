@@ -48,6 +48,7 @@ design runs clean on a machine or produces a garment covered in loose ends:
 """
 from __future__ import annotations
 
+import functools
 import heapq
 import math
 from dataclasses import replace
@@ -79,7 +80,7 @@ from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
                             keyline_band, keyline_rest, keyline_runs,
-                            outline_holes, run_outline, silhouette_cap,
+                            outline_holes, ring_has_room, run_outline, silhouette_cap,
                             underfill_rim_after)
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
@@ -2052,7 +2053,7 @@ def _owned_by_later(
 
 
 def _border_wanted(region, border_style: str, total_area: float,
-                   share_min: float, iso_max: float) -> tuple[bool, str]:
+                   share_min: float, iso_max: float, room=None) -> tuple[bool, str]:
     """Does this shape get a border, and in which style? -> (want, style).
 
     Per-shape intent from the review screen beats the mode in both
@@ -2066,6 +2067,12 @@ def _border_wanted(region, border_style: str, total_area: float,
     One function, read by BOTH the border block in `stitch_one` and the
     seam-ownership prediction ahead of it, so the two cannot disagree about
     which shapes are the bordered ones.
+
+    `room` (`cfg.extra["border_significant_ring_room"]`, built OFF
+    2026-11-14): a callable, the shape's `stage6_border.ring_has_room`.
+    "significant" earns no border where the ring has no room for a column,
+    only for a bean loop inside the fill. Per-shape intent still beats it.
+    None: as before.
     """
     want = region.meta.get("border")
     style = "bean" if border_style == "bean" else "auto"
@@ -2076,6 +2083,8 @@ def _border_wanted(region, border_style: str, total_area: float,
     if want is None:
         if border_style == "significant":
             want = _border_worthy(region.polygon, total_area, share_min, iso_max)
+            if want and room is not None and not room():
+                want = False
         else:
             want = border_style != "off"
     return bool(want), style
@@ -3077,6 +3086,11 @@ def sequence(
     # a photograph stage 0 routes to gradient does not get borders
     # automatically. That is a stage-0 routing question, not a border one.
     border_style = (cfg.border or ("significant" if photo else "off")).lower()
+    # `cfg.extra["border_significant_ring_room"]` (built OFF 2026-11-14):
+    # "significant" earns no ring where it would only lighten to a bean loop
+    # inside the shape's fill (`stage6_border.ring_has_room`, MFab's A counter)
+    ring_room = (border_style == "significant"
+                 and bool((getattr(cfg, "extra", None) or {}).get("border_significant_ring_room")))
     # The significance denominator: the design's own stitched area, so the
     # gate is a SHARE and moves with the design instead of being a mm floor
     # (which would be a physical constant, and gate 1 territory).
@@ -3506,7 +3520,10 @@ def sequence(
         if _sews_satin(_p.region, cfg, satin_max, design_class, outline_rings):
             continue
         if _border_wanted(_p.region, border_style, border_total_area,
-                          border_share_min, border_iso_max)[0]:
+                          border_share_min, border_iso_max,
+                          **({"room": functools.partial(ring_has_room, _p.visible_geom,
+                                                        cfg.border_width_mm)}
+                             if ring_room else {}))[0]:
             border_later[_p.shape_id] = _p.visible_geom
         elif (_border_by_size_width(_p.region, cfg) is not None
               and not cfg.border_by_size_fabric_edges):
@@ -4682,7 +4699,10 @@ def sequence(
             # is left alone with the mode on.
             want, style = _border_wanted(p.region, border_style,
                                          border_total_area, border_share_min,
-                                         border_iso_max)
+                                         border_iso_max,
+                                         **({"room": functools.partial(ring_has_room, p.visible_geom,
+                                                                       cfg.border_width_mm)}
+                                            if ring_room else {}))
             border_width_mm = cfg.border_width_mm
             if not want and by_size_width is not None:
                 # `cfg.border_by_size`: the pro's ring at his width for the
