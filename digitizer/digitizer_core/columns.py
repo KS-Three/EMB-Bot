@@ -61,7 +61,7 @@ from __future__ import annotations
 
 import math
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 
 from shapely.geometry import LineString, Point, Polygon
@@ -89,6 +89,19 @@ _END_FRAC = 0.06
 _TUCK_MAX_WIDTHS = 0.5
 # The running underpath under a later column: the font engine's 2 mm step.
 _UNDERPATH_STEP_MM = 2.0
+# `connectors_buried` (`cfg.lettering_columns_connectors_buried`): the most
+# running stitch a hop may leave on top of satin the letter has finished.
+# Read off the stitch list (a run of straight short stitches over an earlier
+# zigzag, uncovered after), 17 of the professional's 22 job files leave none
+# and two at most 0.97 mm (Becker LC, Fremont hat); the other three are
+# not connectors across a stroke: Drone's are its outline detail, sewn as
+# running stitch on purpose, and ProSeal's run along a stroke's edge. Ours
+# crossed finished strokes for 2.8-6.0 mm a hop on Becker, MFab, k_line and
+# and_pizza (`docs/connectors-on-top-2026-11-14.md`).
+_ON_TOP_MAX_MM = 1.0
+# ... and a leg's end rail changes only for a hop this much less on top
+# (a measurement's rounding, so a letter with nothing on top keeps its walk)
+_ON_TOP_SWAP_MM = 0.05
 # Centre-walk underlay: step and end inset (satinfont.js UNDERLAY_*).
 _UNDERLAY_STEP_MM = 3.0
 _UNDERLAY_INSET_MM = 0.4
@@ -1965,6 +1978,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 short_columns: bool = False,
                 inside_stagger: bool = False,
                 apex_crosses: list | None = None,
+                connectors_buried: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
@@ -2002,7 +2016,14 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     `dead_ends`), and its satin leaves on the rail nearer the next leg;
     every other leg of the letter ends on the rail whose hop lies least
     outside the satin still to come, and a hop keeps off a tip sewn before
-    it. The cut and every station are the flag's: only the walk moves."""
+    it. The cut and every station are the flag's: only the walk moves.
+    `connectors_buried` (`cfg.lettering_columns_connectors_buried`, built
+    OFF 2026-11-14): no needle-down hop between two of the letter's runs
+    lies on satin it has already finished. Each satin leg ends on the rail
+    whose hop to the next leg lies least on finished satin and not under
+    satin still to come; a hop that still leaves more than
+    `_ON_TOP_MAX_MM` on top is walked under satin still to come
+    (`_connectors_under`), else cut. Off, the walk as it was."""
     from .stage6_satin import (_JUNCTION_TUCK_MM, _comb_thresholds,   # same package,
                                _short_stitch_guard, _split_points)      # same rules
 
@@ -2232,7 +2253,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     # every stitch's reach: half a 0.4 mm thread past them
     leg_ground: list = []
     laid = None
-    if apex_crosses:
+    if apex_crosses or connectors_buried:
         for x in all_legs:
             if not x["sat"]:
                 leg_ground.append(None)
@@ -2242,7 +2263,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             st_ = x["head"] + (st_[::-1] if x["i1"] < x["i0"] else st_) + x["tail"]
             leg_ground.append(Polygon([a for a, _ in st_] + [b for _, b in st_][::-1]).buffer(0)
                               if len(st_) >= 2 else None)
-        laid = unary_union([g_ for g_ in leg_ground if g_ is not None]).buffer(_APEX_EXIT_MM)
+        if apex_crosses:
+            laid = unary_union([g_ for g_ in leg_ground if g_ is not None]).buffer(_APEX_EXIT_MM)
     for li, leg in enumerate(all_legs):
         col = ready[leg["ci"]]
         lo, hi = min(leg["i0"], leg["i1"]), max(leg["i0"], leg["i1"])
@@ -2316,6 +2338,21 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                             round(hop.length - hop.intersection(later).length, 2), hop.length)
                 ba, bb = bare(sts[-1][0]), bare(sts[-1][1])
                 if not (ba[0] and bb[0]) and ba < bb:
+                    sts = [(b, a) for a, b in sts]
+            elif connectors_buried and li + 1 < len(all_legs):
+                # `connectors_buried`: the zigzag ends on its last cross's b
+                # rail; the hop from there to the next leg ran back across the
+                # stroke just sewn, on top of it (Becker's MARINE E: 2.8-3.9 mm
+                # of running stitch on its finished arms, Kent's "random cross
+                # over stitch"). Ended on the rail whose hop lies less on
+                # satin already sewn and not under satin still to come.
+                nxt = all_legs[li + 1]
+                nst = (nxt["head"] or ready[nxt["ci"]].stations[nxt["i0"]:nxt["i0"] + 1])[0]
+                g = _mids([nst])[0]
+                done = unary_union([*sewn.values(), *([leg_ground[li]] if leg_ground[li] is not None else [])])
+                later = unary_union([g_ for g_ in leg_ground[li + 1:] if g_ is not None])
+                ta, tb = (_on_top([e, g], done, later) for e in (sts[-1][0], sts[-1][1]))
+                if ta + _ON_TOP_SWAP_MM < tb:
                     sts = [(b, a) for a, b in sts]
         mids = _mids(sts)
         # The walk is continuous along CENTRELINES; a zigzag ends on a
@@ -2496,7 +2533,90 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         cur.trim = d > trim_at_mm
         report["jumps"] += 1
         linked.append(cur)
+    if connectors_buried and sewn:
+        ground_of = {id(r): sewn[run_leg[k]] for k, r in enumerate(runs)
+                     if r.kind == stitches.SATIN and run_leg[k] in sewn}
+        linked = _connectors_under(linked, ground_of, allow, poly_hop, ready, nodes, spans,
+                                   _CONNECTOR_WIDTHS * W, walk, shape_id, report)
     return linked, report
+
+
+def _on_top(path, done, later) -> float:
+    """mm of the polyline `path` lying on `done` (satin the letter has
+    finished) and not under `later` (satin still to come); either may be
+    None (nothing there)."""
+    if len(path) < 2 or done is None or done.is_empty:
+        return 0.0
+    line = LineString(path)
+    if line.length < 1e-9:
+        return 0.0
+    over = line.intersection(done)
+    if later is not None and not later.is_empty:
+        over = over.difference(later)
+    return over.length
+
+
+def _connectors_under(linked: list[StitchRun], ground_of: dict, allow: float, poly_hop,
+                      columns, nodes, spans, reach: float, walk, shape_id: str,
+                      report: dict) -> list[StitchRun]:
+    """`connectors_buried`'s last pass over one letter's linked runs. A
+    travel run, or the needle-down step into a run, that lies more than
+    `_ON_TOP_MAX_MM` on satin sewn before it and not under satin sewn after
+    it is walked instead along the centrelines (`_inside_path`) over ground
+    clear of the finished satin or under satin still to come -- laid before
+    the cover that hides it -- when that walk leaves no more on top and no
+    more uncovered than the link rule's `allow`; otherwise it is cut: the
+    run it leads to starts with a trim, as the pro's cuts at the same
+    joins. `ground_of`: id of each SATIN run in `linked` -> its ground."""
+    order = [k for k, r in enumerate(linked) if id(r) in ground_of]
+
+    def ground(ks):
+        gs = [ground_of[id(linked[j])] for j in ks]
+        return unary_union(gs) if gs else None
+
+    out: list[StitchRun] = []
+    lift = False
+    for k, r in enumerate(linked):
+        if lift and out and r.points and not r.jump:
+            lift = False
+            if math.dist(out[-1].points[-1], r.points[0]) >= machine.TINY_STITCH_MM:
+                out.append(replace(r, jump=True, trim=True))
+                report["jumps"] += 1
+                continue
+        lift = False
+        if not out or r.jump or not r.points or not out[-1].points:
+            out.append(r)
+            continue
+        a = out[-1].points[-1]
+        travel = r.kind == stitches.TRAVEL
+        path = [a, *r.points] if travel else [a, r.points[0]]
+        if not travel and math.dist(a, r.points[0]) < machine.TINY_STITCH_MM:
+            out.append(r)
+            continue
+        done = ground([j for j in order if j < k])
+        later = ground([j for j in order if j >= k])
+        if _on_top(path, done, later) <= _ON_TOP_MAX_MM:
+            out.append(r)
+            continue
+        clear = poly_hop.difference(done)
+        inside = clear if later is None else unary_union([clear, later])
+        route = _inside_path(columns, nodes, spans, a, path[-1], reach, inside, strict=True)
+        if route is not None and _on_top(route, done, later) <= _ON_TOP_MAX_MM:
+            line = LineString(route)
+            bare = line.length if later is None else line.difference(later).length
+            if bare <= allow:
+                out.append(StitchRun(points=walk(route), kind=stitches.TRAVEL, shape_id=shape_id))
+                if not travel:
+                    out.append(r)
+                report["connectors_rerouted"] = report.get("connectors_rerouted", 0) + 1
+                continue
+        report["connectors_cut"] = report.get("connectors_cut", 0) + 1
+        if travel:
+            lift = True             # dropped: the run after it starts with a trim
+        else:
+            out.append(replace(r, jump=True, trim=True))
+            report["jumps"] += 1
+    return out
 
 
 def _floor_crosses(stations, min_cross_mm: float):
@@ -2581,6 +2701,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             corner_fold: bool = False,
                             text_lean_deg: float | None = None,
                             inside_stagger: bool = False,
+                            connectors_buried: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -2616,7 +2737,9 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     was, station for station.
     `inside_stagger`: `cfg.lettering_columns_inside_stagger` (2026-10-23) --
     the inside of every pivot walked and short-stitched the pro's way
-    (`_inside_stagger`); off, `_short_stitch_guard` as before."""
+    (`_inside_stagger`); off, `_short_stitch_guard` as before.
+    `connectors_buried`: `cfg.lettering_columns_connectors_buried`
+    (2026-11-14) -- see `column_runs`."""
     from .outline_cut import letter_columns, stroke_width
 
     if small_bold:
@@ -2655,6 +2778,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   **({"short_columns": True} if short_columns else {}),
                   # `cfg.lettering_columns_inside_stagger`: the pro's inside at a pivot
                   **({"inside_stagger": True} if inside_stagger else {}),
+                  # `cfg.lettering_columns_connectors_buried`: no hop on finished satin
+                  **({"connectors_buried": True} if connectors_buried else {}),
                   **({"counter_poly": counter_hold_polygon(poly, counter_holes)} if cored else {}))
 
     def recorded(cpoly):

@@ -161,6 +161,7 @@
  "line_chain_one_thread": false,
  "lettering_columns": true,
  "lettering_columns_apex_cut": false,
+ "lettering_columns_connectors_buried": false,
  "lettering_columns_corner_fold": true,
  "lettering_columns_cover_handback": false,
  "lettering_columns_fold_cuts": true,
