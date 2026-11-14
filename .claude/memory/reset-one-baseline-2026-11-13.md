@@ -39,6 +39,10 @@ a cluster 3/4 of whose members are solid (stroke >= 0.45 of the longer side)
 is not tagged. Per-member was wrong: a small o with a dropped counter reads
 0.65; all-members was wrong: the triangle reads 0.33. ON: fill, gaps 2.2/2.1.
 
+**No regression:** Fremont hat/patch, ProSeal hat/beanie, MFab hat/lc
+replayed both ways from one stages-0-4 pass: 0 shapes differ (all-caps
+lines are one height class; the re-set acted on Fremont and ProSeal).
+
 **Named, not fixed (other lanes):** Bukit ring gap 0.417 mm art, unchanged
 at stage 5, needle paths 0.000 = stage 6 satin rails; its dots lost at stage
 4. Jakarta's dotted edges/rounded stem tops = satin rail penetrations/ends.
