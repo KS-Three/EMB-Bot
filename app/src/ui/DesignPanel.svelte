@@ -6,6 +6,7 @@
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
   import Advanced from "./Advanced.svelte";
+  import { rotationPatch } from "../lib/hoop.js";
 
   // Editor panel for an imported pre-digitized design element (.dst file).
   // The file's raw bytes live on the element as base64 (see project.js's
@@ -28,6 +29,8 @@
   function patch(p) {
     d("elupdate", { id: element.id, patch: p });
   }
+  // Rotation keeps the design's size (hoop.js rotationPatch, 2026-11-13).
+  const turnTo = (deg) => patch(rotationPatch(element, deg));
 
   async function onFile(e) {
     error = "";
@@ -242,14 +245,14 @@
         max="360"
         step="1"
         value={rotation}
-        on:input={(e) => patch({ rotationDeg: parseInt(e.target.value, 10) })}
+        on:input={(e) => turnTo(parseInt(e.target.value, 10))}
       />
       <span class="label">{rotation}°</span>
     </label>
     <button
       type="button"
       class="upsidedown"
-      on:click={() => patch({ rotationDeg: rotation === 180 ? 0 : 180 })}
+      on:click={() => turnTo(rotation === 180 ? 0 : 180)}
     >
       {rotation === 180 ? "Right-side up" : "Flip upside-down"}
     </button>

@@ -940,8 +940,6 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 "stroke": 2.0 * float(members[0].meta.get("text_cluster_stroke_mm") or 0.0),
                 "mid": (hull.bounds[1] + hull.bounds[3]) / 2.0,
             })
-        except deadline.Abandoned:
-            raise                       # a cancel / the job timeout is not a bad cluster
         except Exception as exc:  # fail open: never take the pipeline down
             row["skipped"] = f"error:{type(exc).__name__}"
 
@@ -1121,8 +1119,6 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                                             if r.meta.get("small_text_enlarged")])
                 if carved:
                     line[0]["row"]["carved"] = carved
-        except deadline.Abandoned:
-            raise
         except Exception as exc:  # fail open
             for it in line:
                 it["row"]["skipped"] = f"error:{type(exc).__name__}"
@@ -1897,8 +1893,6 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 row["stray_line"] = _release(kept, f"{cid}.line{at}", clusters, order)
             row.update(adopted=len(group) - len(members), retraced=len(traced),
                        strays=len(strays))
-        except deadline.Abandoned:
-            raise
         except Exception as exc:  # fail open
             row["skipped"] = f"error:{type(exc).__name__}"
     return report

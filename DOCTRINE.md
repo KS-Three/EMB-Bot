@@ -646,6 +646,20 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   singly; an unavailable cutout skips prep entirely rather than degrading onto
   prep-alone. **Ships KNOWINGLY INERT for real uploads** — all four acceptance
   photos classify `gradient` at 1.00, which the gate excludes; revisit at gate 2. *(ruled 2026-08-24 — Kent; [area 1](docs/scope/1-auto-digitizing-quality.md))*
+
+  **Corrected 2026-11-13: "knowingly inert" no longer holds; the ruling's
+  other half (ON as a pair, rembg a deploy requirement) stands.** Stage 0's
+  photo gate (`stage0_texture_gate`, ON since 2026-10-28) now routes real
+  photographs to a photo class, so the cutout runs on real uploads. A sweep of
+  77 images (39 Commons corpus + 38 in-repo; 80 mm `left_chest`, 6 colours,
+  commit `2489ac48`) run on both lanes (defaults with the rembg
+  venv, and `photo_prep=False`): 63 designs
+  byte-identical on both lanes (47 never attempt the cutout, 16 attempt it and
+  are refused, `PHOTO_CUTOUT_REFUSED`); all 14 where the cutout ran differ,
+  with 0.4% to 64% fewer stitches on the cutout lane; no class or route
+  change. **So a photo-lane claim must say which lane it was measured on**
+  ("2026-11-13 — Two photo lanes", end of this file). *(measured 2026-11-13 — memory
+  `robust-pc-sweep-2026-11-13`, PR #1439)*
 - **The ERROR path is customer copy too — and an error caused by the
   CALLER'S own edit must keep its own message.** `jobs.py` set
   `job.error = f"{type(exc).__name__}: {exc}"` and `digitizer.js` throws that
@@ -9458,3 +9472,63 @@ memory `flat-page-fringe-2026-11-03`)*
 **Digitized shapes edit as sparse smooth/corner nodes, seeded by Douglas-Peucker 0.5 mm and a 35 degree corner turn; the measured seeds are what the spec's guesses were checked against (2026-11-05, Kent's nine rulings of 2026-11-04).** Rulings: nodes live Studio-side in `shapeOverrides[sid].nodes` and never on the wire; Catmull-Rom between nodes, a corner breaks the tangent; only spans at a changed node rebuild; insert is a free corner, toggle and delete rebuild. Measured on real rings in PR 2: red-disc is a 198 mm disc traced at 64 vertices 9.7 mm apart and seeds 44 smooth nodes (the spec guessed 8-16; the count follows ring size at a fixed tolerance, 1 mm gives 32 and 3 mm 16 on that ring), two-squares 4 corners per square, the holed fixture 4 corners on the shell and on its 8-vertex hole. Kept 0.5 mm and 35 degrees. A rebuilt span is re-flattened at 0.3-1.0 mm, so one drag on a sparse ring grows it (red-disc 64 to 108 vertices). `PointerEvent.detail` is always 0: the Studio counts double presses itself (`countPress`); the earlier `e.detail >= 2` double-click insert never ran. *(measured 2026-11-05 — `app/e2e/field-reshape-mode.spec.js` (s1)-(s5), `docs/superpowers/specs/2026-11-04-sparse-smooth-nodes-design.md` section 3, memory `sparse-nodes-studio-2026-11-05`)*
 
 **Add hole draws a polygon inside a digitized shape and appends it to `holes_override`; a hole that leaves or crosses the shape is refused with `boundaryIssues`' own wording and the draft stays open (2026-11-05, Kent's ruling of 2026-11-04).** Entry is the shape popover's "Add hole" row or the same row in the right-click menu inside a shape; clicks place vertices (Backspace takes one back), a click on the first vertex or Enter closes at three or more, Escape or the cross cancels with no patch. Close commits ONE `elupdate` (`discrete`, one undo step) through `ringEditOverrides`' new `added` argument: the new ring goes after the surviving holes, the shell is untouched, `nodes.holes` gains `seedNodes` of the drawn ring (every vertex a node, a drawn square is 4 corners). The refusal is "Hole N crosses the outline." / "is outside the outline." / "crosses Hole M."; nothing is patched and no new warning text exists. A hole wholly inside another hole, or wholly around one, has no crossing edges, so `boundaryIssues` also tests each ring's first vertex against the other and refuses it as "crosses Hole M." (the service would refuse the nesting late as "not a valid simple polygon"). Knife (splitting a shape) stays a non-goal. The vertices are held in field mm, so a zoom or pan mid-draw cannot move them. A trap found writing the e2e: the restitch that follows an edit sits on the undo stack ABOVE the edit, so one Undo after waiting for the restitch undoes the restitch, not the hole. *(measured 2026-11-05 — `app/e2e/field-reshape-mode.spec.js` (h1)-(h6), `shapeNodes.spec.js` "Add hole", PR #1244, memory `add-hole-2026-11-05`)*
+
+## 2026-11-13 — Two photo lanes, a tone pass switched off, a crash that was the tool, and SAM2 on a GPU
+
+**Two photo lanes: name the lane before quoting a photo number (trap).** A
+service with the isolated rembg venv (a required deploy step) attempts the
+background cutout on a photo-class job and, when the cutout is accepted, runs
+photo prep. CI has no rembg venv: the cutout fails and prep is skipped with
+it. `photo_prep=False` reproduces the CI lane exactly on any machine. **So a
+number measured without the venv (every CI run, the corpus scorecard
+workflow) describes the CI lane, not what production sews.** Do: pin a test
+that depends on the CI lane to `photo_prep=False`; put a claim about the
+cutout lane in a test that skips without the venv
+(`tests/test_mfab_cutout_lane.py` is the pattern); judge any photo-lane flag
+flip on the cutout lane. Found when five MFab tests failed only on a machine
+with the venv built. **The same blind spot hid a grader reading the wrong
+raster:** `THREAD_MATCH_POOR`, closed 2026-11-12 on the CI lane, blocked 9 of
+the 14 cutout images (B → F) because preflight graded threads against the raw
+re-read while stage 2 matched spools to the prepped raster. A grader must read
+the raster the pipeline chose from; the gap to the raw photo is a metric, not
+a finding (fixed in #1460). The 2026-08-24 "knowingly inert" correction
+(Standing rulings) has the 77-image sweep. *(measured 2026-11-13 — PRs #1439,
+#1460)*
+
+**Photo prep's tone pass is OFF by default; do not switch it back on for every
+photo without a new measurement (measured negative, Kent 2026-11-13: "Switch
+it off by default").** The pass (contrast stretch of L over the foreground,
+then CLAHE) sits behind `cfg.photo_prep_tone`, default False; the texture kill
+still runs. On the 14 cutout images, tone on against off: area-weighted
+per-region dE00 to the raw photo **10.54 against 5.16**, and tone-on is never
+the closest arm; lightness order reversed among the 6 largest regions on **4
+of 14 images against 0**; `kanji_brush`'s black ink and `dark_dog`'s black fur
+sewed as grey patchwork. **Mechanism:** after the cutout the foreground can be
+a narrow tone range, and a stretch measured on the foreground maps it to the
+full range. **Not measured:** no sew-out; a washed-out photo loses its
+contrast rescue (the accepted cost). One request can still ask for it
+(`"photo_prep_tone": true`); the frozen 2026-10-27 engine keeps it on.
+*(ruled 2026-11-13 — Kent; measured 2026-11-13 —
+`docs/photo-prep-tone-off-2026-11-13.md`, PR #1461)*
+
+**A 0xC0000005 whose stderr ends mid-traceback at a watchdog tick is the
+sampler, not GEOS: time the row alone before blaming a native library (trap).**
+A corpus run on Windows lost rows with an access violation at exactly N × 120 s,
+each stderr cut off mid-dump with a shapely frame on top, which reads exactly
+like a crash in GEOS. It was `faulthandler.dump_traceback_later(repeat=True)`:
+the dump walks the main thread's frames without the GIL and killed about 1
+dump in 6 on Windows CPython 3.12 (6 row-runs lost in a 77-image, two-lane sweep). The top frame is only
+what happened to be running. Do: sample stacks from a Python thread
+(`faulthandler.dump_traceback` there holds the GIL), and stop and join the
+sampler before the process exits. The shipped service never used that call.
+*(measured 2026-11-13 — PR #1459)*
+
+**SAM2 on a GPU does not pay per job: do not revive the device opt-in until a
+worker outlives a job (measured negative, shelved by Kent 2026-11-13).** On an
+RTX 4070 inference runs 10–12x faster (about 3.2 s → 0.3 s), with masks within
+0.99999 IoU of CPU's, but the seam starts a fresh worker per job and importing
+CUDA torch costs about 3 s more than CPU torch, so per-job wall is 6.4–6.7 s on
+CPU against 7.0–7.6 s on the GPU. Only a worker kept alive between jobs would
+pay. The opt-in is on unmerged `feat/sam2-device-opt-in` (commit `102854dc`);
+SAM2 stays off by default (`photo_segment_sam2`). *(measured 2026-11-13 —
+memory `robust-pc-sweep-2026-11-13`)*

@@ -125,6 +125,49 @@ test("deleting an element right after adding it can still be undone", async ({ p
   await expect(rows(page)).toHaveCount(2);
 });
 
+// The first element's vertical offset, from the project the app keeps in localStorage.
+function savedOffsetY(page) {
+  return page.evaluate(() => {
+    const id = localStorage.getItem("embstudio:current");
+    const project = id && JSON.parse(localStorage.getItem("embstudio:p:" + id) || "null");
+    const el = project && (project.elements || [])[0];
+    return el ? el.offsetYMm || 0 : null;
+  });
+}
+
+test("one drag is one undo step, even when the pointer rests mid-drag, and the next drag is its own", async ({ page }) => {
+  // Until 2026-11-13 history.js split field drags on its 500 ms clock: a
+  // drag held still for 0.7 s undid in two steps, and two drags under
+  // 500 ms apart in one. Each drag's flushes now carry its press's token.
+  await lettering(page);
+  const canvas = page.locator(".hoop canvas");
+  const box = await canvas.boundingBox();
+  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  const start = await savedOffsetY(page);
+
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx, cy + 15, { steps: 6 });
+  await expect.poll(() => savedOffsetY(page)).not.toBe(start);
+  await page.waitForTimeout(700); // rest, button still down
+  await page.mouse.move(cx, cy + 30, { steps: 6 });
+  await page.mouse.up();
+  await expect.poll(() => savedOffsetY(page)).toBeLessThan(start - 2);
+  const afterFirst = await savedOffsetY(page);
+
+  // a second drag straight away, well inside 500 ms of the first
+  await page.mouse.move(cx, cy + 30);
+  await page.mouse.down();
+  await page.mouse.move(cx, cy + 45, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(() => savedOffsetY(page)).toBeLessThan(afterFirst - 1);
+
+  await undo(page).click();
+  await expect.poll(() => savedOffsetY(page)).toBeCloseTo(afterFirst, 6);
+  await undo(page).click();
+  await expect.poll(() => savedOffsetY(page)).toBeCloseTo(start, 6);
+});
+
 // The hand-drawn element's shapes, from the project the app keeps in
 // localStorage ([] until there is one).
 function savedShapes(page) {
