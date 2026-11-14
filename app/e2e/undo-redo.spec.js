@@ -82,6 +82,11 @@ test("undo after a resize restores the previous width", async ({ page }) => {
   await lettering(page);
   const w = widthInput(page);
   await expect(w).toBeVisible();
+  // Past history.js's 500 ms coalesce window: a width typed inside it REPLACES
+  // the template load's step, so one Undo goes back to an empty project (no
+  // design, an empty box). The old string checks passed on that empty box; the
+  // numeric ones above do not (they read NaN), which is how this showed.
+  await page.waitForTimeout(600);
   await setWidth(page, 60);
   await undo(page).click();
   await expect.poll(async () => Math.abs(parseFloat(await w.inputValue()) - 60)).toBeGreaterThanOrEqual(0.5);
