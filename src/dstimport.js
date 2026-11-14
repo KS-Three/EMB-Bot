@@ -266,8 +266,13 @@
     const o = opts || {};
     const garment = o.garment;
     if (!garment) throw new Error("buildImportedDesign needs a garment");
-    const hoopWmm = garment.widthIn * MM_PER_INCH;
-    const hoopHmm = garment.heightIn * MM_PER_INCH;
+    // The clamp box: `garment.clampBox` where the garment carries one (the hat
+    // front, on its PLACEMENTS box, Kent 2026-11-14; src/garments.js
+    // CLAMP_ON_PLACEMENT_BOX), else the inch pair. Named "hoop" for the callers
+    // below; it has never been a hoop.
+    const clampBox = garment.clampBox;
+    const hoopWmm = clampBox ? clampBox.w : garment.widthIn * MM_PER_INCH;
+    const hoopHmm = clampBox ? clampBox.h : garment.heightIn * MM_PER_INCH;
 
     // Rotation happens in decoded (unscaled, centered) space, in floats —
     // rounding waits for the single scale-time round below so a rotated
