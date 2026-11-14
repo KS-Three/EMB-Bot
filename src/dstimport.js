@@ -258,6 +258,8 @@
   //                  the dimensions the user actually sees — a landscape
   //                  design rotated 90 clamps by its new (portrait) extents.
   //   offsetXMm/offsetYMm  placement translation, DST-space (+y up), mm.
+  //   autoScaleRange [min, max] scale an AUTO-fit (no targetWidthMm) result may
+  //                  take, e.g. [0.75, 1.5]; absent = the box clamp alone.
   //   blockColors    { [blockIndex]: [r,g,b] } overrides; missing blocks get
   //                  IMPORT_BLOCK_COLORS defaults.
   function buildImportedDesign(decoded, opts) {
@@ -322,6 +324,18 @@
     targetWmm = Math.min(targetWmm, hoopWmm);
     let sc = targetWmm / nativeWmm;
     if (nativeHmm * sc > hoopHmm) sc = hoopHmm / nativeHmm; // height clamp
+    // AUTO-fit only (no typed width) of a pre-digitized stitch file: the box
+    // clamp above must not push it outside the scale range a stitch file
+    // survives. Stitches only scale, so under 75% the density climbs toward
+    // gaps and bunching. The file then stops at the edge and overflows the
+    // box (the hoop note says so) instead of shrinking to fit (Kent,
+    // 2026-11-14: "Stop at 75%, say so"). A TYPED width is the customer's own
+    // number and is never touched; digitized art and outline lettering do not
+    // pass `autoScaleRange` and keep fitting the box.
+    const range = o.autoScaleRange;
+    if (!typedW && Array.isArray(range) && range.length === 2) {
+      sc = Math.min(range[1], Math.max(range[0], sc));
+    }
 
     const offXu = Math.round((o.offsetXMm || 0) * DST_UNITS_PER_MM);
     const offYu = Math.round((o.offsetYMm || 0) * DST_UNITS_PER_MM);
