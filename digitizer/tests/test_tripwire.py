@@ -139,6 +139,36 @@ def test_capture_from_passes_writes_a_valid_ledger(tmp_path, capsys):
     assert "wrote" in capsys.readouterr().out
 
 
+def test_capture_warns_on_a_zero_stitch_tolerance_from_fewer_than_five_passes(tmp_path, capsys):
+    """Three passes that agree on a stitch count read as spread 0, which may only mean they
+    landed on one runner mode (2026-11-14); the warning names the row and never fails."""
+    paths = []
+    for i in range(3):
+        p = tmp_path / f"p{i}.json"
+        p.write_text(json.dumps(_pass()), encoding="utf-8")
+        paths.append(str(p))
+    out = tmp_path / "ledger.json"
+    assert tw.main(["capture", "--from", *paths, "--ledger", str(out)]) == 0
+    err = capsys.readouterr().err
+    assert f"{JOB} stitches: tolerance 0 from 3 pass(es)" in err and "false zero" in err
+    assert tw.false_zero_warnings(json.loads(out.read_text(encoding="utf-8"))) != []
+
+
+def test_no_false_zero_warning_from_five_passes_or_a_measured_spread():
+    same = tw.build_ledger([_pass() for _ in range(5)])
+    assert tw.false_zero_warnings(same) == []            # five agreeing passes: trusted
+    moved = _pass()
+    moved["values"][JOB]["stitches"] += 4
+    spread = tw.build_ledger([_pass(), moved, _pass()])
+    assert _row(spread, "stitches")["tolerance"] == 4
+    assert tw.false_zero_warnings(spread) == []          # a measured spread is not a zero
+
+
+def test_a_zero_trims_or_kappa_tolerance_is_not_a_stitch_count_warning():
+    led = tw.build_ledger([_pass(), _pass()])
+    assert [w.split(":")[0] for w in tw.false_zero_warnings(led)] == [f"{JOB} stitches"]
+
+
 # ------------------------------------------------------------------ the compare
 def test_a_wrong_way_move_past_tolerance_exits_1_and_names_the_job_and_figure(tmp_path, ledger, capsys):
     run = _pass()
@@ -301,6 +331,21 @@ def test_materialise_uses_a_scratch_kent_that_already_holds_the_files(tmp_path, 
     assert not (tmp_path / "unused").exists()
 
 
+# ------------------------------------------------------------------ the capture workflow
+def test_the_capture_workflow_measures_five_passes_and_builds_the_ledger_from_all_of_them():
+    """Three agreeing passes read 8 jittery rows as spread 0 (2026-11-14); a matrix and a
+    `--from` list that drift apart would drop a pass silently."""
+    import re
+    text = (DIGITIZER.parent / ".github" / "workflows" / "nightly-tripwire.yml").read_text(encoding="utf-8")
+    matrix = re.search(r"pass:\s*\[([^\]]*)\]", text)
+    assert matrix, "capture matrix not found"
+    passes = [int(x) for x in matrix.group(1).split(",")]
+    assert passes == [1, 2, 3, 4, 5]
+    from_args = re.search(r"--from\s+((?:\.\./passes/tripwire-pass-\d+\.json\s*)+)", text)
+    assert from_args, "capture --from list not found"
+    assert re.findall(r"tripwire-pass-(\d+)\.json", from_args.group(1)) == [str(p) for p in passes]
+
+
 # ------------------------------------------------------------------ the committed ledger
 def test_the_committed_ledger_is_well_formed_and_covers_every_committed_pair():
     assert tw.LEDGER.is_file(), f"{tw.LEDGER} is missing: capture it on the Linux runner (nightly-tripwire.yml, capture)"
@@ -316,6 +361,20 @@ def test_the_committed_ledger_is_well_formed_and_covers_every_committed_pair():
         assert {"stitches", "trims", "hops", "needle_up_mm"} <= figs, job
     for key in ("raw", "agreement"):
         assert key not in text.lower().replace("direction", ""), key
+
+
+def test_the_committed_ledgers_hand_edits_match_its_rows():
+    """A hand edit of a tool-produced file keeps its provenance: each named row carries the
+    recorded tolerance and the baseline it was captured with (2026-11-14, `hand_edits`)."""
+    led = json.loads(tw.LEDGER.read_text(encoding="utf-8"))
+    he = led.get("hand_edits")
+    if not he:
+        pytest.skip("no hand edits in the committed ledger (a fresh capture drops them)")
+    assert he["tolerance_from_run"].startswith("https://github.com/") and he["baseline_from_run"].startswith("https://github.com/")
+    rows = {(r["job"], r["figure"]): r for r in led["rows"]}
+    for e in he["rows"]:
+        r = rows[(e["job"], e["figure"])]
+        assert (r["baseline"], r["tolerance"], r["spread"]) == (e["baseline"], e["tolerance"], e["spread"]), e
 
 
 # ------------------------------------------------------------------ --help

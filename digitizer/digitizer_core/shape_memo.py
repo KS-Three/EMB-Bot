@@ -81,8 +81,16 @@ _CACHES: frozenset[tuple[str, str]] = frozenset({("outline_cut", "_MEMO"),
 #: shape a stitch -- a hit under one deadline is the miss under any other.
 #: `deadline._CANCEL` is the customer's cancel flag beside it: the same
 #: `check` reads it, to stop the job or not at all.
+#: `stage5_overlap._KEEP_ART` (`cfg.proofread_guard_clipped`, built OFF) is
+#: read by stage 5's clip alone, in `resolve_overlaps`, which
+#: `pipeline._plan_stitches` calls BEFORE it opens this scope round stage 7.
+#: No emitter reads it: what it changes reaches them as the clipped polygons
+#: they are handed, which are arguments and so already in the key. It is set
+#: for one guarded `_plan_stitches` call and reset in a `finally`, and that
+#: call opens its own scope, so the un-guarded plan's memo is gone before it.
 _INERT: frozenset[tuple[str, str]] = frozenset({
-    ("deadline", "_DEADLINE"), ("deadline", "_CANCEL")})
+    ("deadline", "_DEADLINE"), ("deadline", "_CANCEL"),
+    ("stage5_overlap", "_KEEP_ART")})
 
 _UNIMPORTED = "<unimported>"
 

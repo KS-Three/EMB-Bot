@@ -158,6 +158,9 @@ export function buildDigitizeConfig(element, project) {
     // absent IS the service's own False, and existing designs keep their
     // cache key. See project.js's DEFAULT_DIGITIZE_PARAMS for why it is off.
     ...(p.stitch_width_auto ? { stitch_width_auto: true } : {}),
+    // "Flatten shading", the same way: sent only when ticked, so a design
+    // that never ticked it keeps its cache key (project.js has why it is off).
+    ...(p.bevel_ring_fold ? { bevel_ring_fold: true } : {}),
     // Sent both ways since the service's default went ON (2026-10-26, Kent's
     // flip): absent would be True, so an unticked box must say `false`. The
     // two follow-ons ride only with it ON.

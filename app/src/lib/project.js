@@ -153,6 +153,14 @@ export const DEFAULT_DIGITIZE_PARAMS = {
   // only when true (absent IS false server-side), so existing designs keep
   // their cache key.
   stitch_width_auto: false,
+  // "Flatten shading" (PipelineConfig.bevel_ring_fold, built OFF 2026-11-13;
+  // Kent 2026-11-14: "Studio tickbox, OFF"): the drop shadow, the ramp the
+  // palette split in two and the thin bevel / ring bands of a logo fold into
+  // the shape they shade, the way the pro flattens them (Golden Tee 6 -> 5
+  // threads). A design change, so the box is the customer's and starts off.
+  // Sent only when true (absent IS false server-side), so existing designs
+  // keep their cache key.
+  bevel_ring_fold: false,
   // "Sew white areas" (PipelineConfig.sew_enclosed_white, built OFF
   // 2026-10-21; ON by default since 2026-10-26, Kent's flip): sew the white
   // or hollow areas INSIDE the design -- badge fields, hollow letters,
