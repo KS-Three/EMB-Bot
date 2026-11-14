@@ -151,6 +151,70 @@ def test_mfab_keyline_holds_and_the_small_line_rides_on(width):
         assert off["riders"] == [] and off["fields"] == 3
 
 
+# --- 35-40 mm: the line-art guard read the restored keyline as a drawing -------------
+#
+# ON, the keyline round the hyphen and AND WELDING LLC comes back whole, round holes
+# too short to loop. `art_outline.line_art_reading` counted that band as strokes the
+# loops leave (0.020-0.026 at 35-40 mm, cut 0.02), the outline was dropped as line
+# art, `white_keyline_art.detect` said no, the photo gate turned the under-fill off,
+# and the black band sewed over the keyline: White, Black, one black patch.
+
+def _small_hole_keyline():
+    """A 0.9 mm hairline round a 16 x 6 mm cell (one looped hole), carrying a
+    0.4 mm ring round a 1.5 mm square 3 mm off the cell -- a hole too short to
+    loop, its band further than the loop width from the cell."""
+    from shapely.geometry import box
+    from shapely.ops import unary_union
+    cell = box(-8, -3, 8, 3)
+    small = box(11.0, -0.75, 12.5, 0.75)
+    outline = unary_union([cell.buffer(0.9, join_style=2).difference(cell),
+                           small.buffer(0.4, join_style=2).difference(small),
+                           box(8.5, -0.2, 11.2, 0.2)]).difference(small)
+    return cell, outline
+
+
+def test_band_round_a_hole_too_short_to_loop_is_not_a_stroke():
+    from digitizer_core import machine
+    from digitizer_core.art_outline import find_art_outlines, line_art_reading
+    from digitizer_core.regions import Region
+    cell, outline = _small_hole_keyline()
+    assert outline.geom_type == "Polygon" and len(outline.interiors) == 2
+    regs = [Region(shape_id=sid, polygon=poly, thread_index=t, thread_number=str(t),
+                   area_mm2=poly.area, source="test", meta={"layer": t})
+            for sid, poly, t in (("Sbody", cell, 0), ("Souter", outline, 1))]
+    raw = find_art_outlines(regs, line_art_guard=False)["Souter"]
+    bodies = [(regs[0], h) for _b, h in raw]
+    fill, today = line_art_reading(regs[1], bodies)
+    _fill, ringed = line_art_reading(regs[1], bodies, round_any_hole=True)
+    assert fill < machine.OUTLINE_LINE_ART_FILL_SHARE
+    assert today >= machine.OUTLINE_LINE_ART_DROP_FRAC     # OFF: line art
+    assert ringed == 0.0                                   # ON: keyline
+    off = PipelineConfig(border_from_outline_line_art_guard=True)
+    on = PipelineConfig(border_from_outline_line_art_guard=True, photo_enclosed_rim=True)
+    assert find_art_outlines(regs, off) == {}
+    assert list(find_art_outlines(regs, on)) == ["Souter"]
+
+
+def test_a_drawing_stays_line_art_with_the_rim_on():
+    # Bridge's bowl, `test_outline_line_art_guard`'s: its dropped pieces are stroke
+    # ends running away from every hole
+    from tests.test_outline_line_art_guard import BOWL, CELL, _pair
+    from digitizer_core.art_outline import find_art_outlines
+    on = PipelineConfig(border_from_outline_line_art_guard=True, photo_enclosed_rim=True)
+    assert find_art_outlines(_pair(BOWL, CELL), on) == {}
+
+
+@pytest.mark.parametrize("width", [35.0, 36.7, 40.0])
+def test_mfab_small_widths_keep_the_keyline_under_the_black(width):
+    """ON at 35-40 mm (no-cutout lane): the under-fill runs (one white field, the
+    small line rides) and the black sews first, as at 30 and 60 mm."""
+    design, on = _mfab(width, True)
+    names = [c["name"] for c in design["colors"]]
+    assert names[:2] == ["0020 Black", "0015 White"], names
+    assert on.get("fields") == 1
+    assert len(on["riders"]) >= 12
+
+
 # --- a real photograph: no enclosed ground, nothing moves ----------------------------
 
 class _Stop(Exception):
