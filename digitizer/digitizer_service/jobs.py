@@ -49,11 +49,13 @@ MAX_CACHED = 32
 
 # A job running longer than this is reported as failed, and (since
 # 2026-10-30) stopped: the worker arms `digitizer_core.deadline` around the
-# work, the pipeline reads it at every stage seam and once per shape in
-# stage 7, and the job ends at the first seam past the deadline, freeing
-# the worker for the next upload. Python cannot stop a thread mid-call, so
-# one long call (stage 2's region former, a rembg/SAM2 subprocess with its
-# own timeout) still runs to its end first. A healthy job is tens of
+# work, the pipeline reads it between its stages and inside the loops that
+# can run long (`grep deadline.check digitizer_core` is the list), and the job
+# ends at the first check past the deadline, freeing the worker for the next
+# upload. Python cannot stop a thread mid-call, so one numpy / cv2 / GEOS call
+# with no loop of ours around it still runs to its end first
+# (`digitizer_core.deadline` names the longest measured); the rembg / SAM2
+# subprocesses are killed. A healthy job is tens of
 # seconds; this is a runaway guard, not a performance budget. An operator
 # shortens it with EMBBOT_JOB_TIMEOUT_S (read in `app.py`).
 JOB_TIMEOUT_S = 600.0
@@ -93,7 +95,7 @@ class Job:
     started: float | None = None
     _future: Future | None = field(default=None, repr=False)
     # Set by `JobRegistry.cancel`; the worker's `deadline.scope` reads it at
-    # every stage seam.
+    # every `deadline.check` (stage seams and the inner loops).
     _cancel: threading.Event = field(default_factory=threading.Event, repr=False)
 
     def public(self) -> dict:
@@ -261,7 +263,11 @@ class JobRegistry:
                         job.error = TIMED_OUT
                         job.detail = (f"TimeoutError: stopped at {exc.stage}, "
                                       f"{exc.over_s:.0f}s past the {self.timeout_s:.0f}s limit")
-                raise
+                # The future keeps this exception for as long as the Job sits
+                # in the registry (MAX_CACHED), and its traceback would pin
+                # every unwound frame's locals -- rasters, polygons -- with it.
+                # Nothing reads that traceback: the verdict is `stage`/`over_s`.
+                raise exc.with_traceback(None)
             except Exception as exc:                      # noqa: BLE001
                 log.exception("digitize job %s failed", job.id)
                 with self._lock:
@@ -300,15 +306,15 @@ class JobRegistry:
 
     def cancel(self, job_id: str) -> Job | None:
         """The customer's Cancel: mark a QUEUED or RUNNING job `cancelled` and
-        set the flag its worker reads at the next stage seam (see
+        set the flag its worker reads at its next `deadline.check` (see
         `digitizer_core.deadline`). -> the job, or None for an id this
         registry does not hold.
 
         Harmless on anything else: a finished, failed or already-cancelled
         job is returned untouched (a finished result stays cached). The
         verdict is immediate for a poller; the worker itself is freed at the
-        next seam, which is as soon as Python allows -- one uninterruptible
-        call at most. A resubmit of the same request starts a fresh job
+        next check -- 1-2 s on the fixtures timed, and never more than one
+        uninterruptible numpy / cv2 / GEOS call. A resubmit of the same request starts a fresh job
         (`_cached_locked`) queued behind that remainder.
 
         One job per content key means two callers of one identical request

@@ -100,6 +100,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from . import deadline
 from .config import PipelineConfig
 from .warnings_codes import PHOTO_PREP_APPLIED, warn
 
@@ -415,7 +416,9 @@ def remove_background_seam(
             return None, "failed to write a temp input image for the rembg worker"
 
         try:
-            proc = subprocess.run(
+            # `deadline.run_subprocess` is `subprocess.run` that also reads the
+            # cancel / job deadline while the child runs and kills it then.
+            proc = deadline.run_subprocess(
                 [
                     str(REMBG_VENV_PYTHON),
                     str(REMBG_WORKER_PATH),
@@ -423,8 +426,6 @@ def remove_background_seam(
                     str(out_path),
                     cfg.photo_prep_background_removal_model,
                 ],
-                capture_output=True,
-                text=True,
                 timeout=cfg.photo_prep_background_removal_timeout_s,
             )
         except subprocess.TimeoutExpired:

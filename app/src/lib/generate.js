@@ -277,7 +277,8 @@ export function generateElement(element, garment, runtime) {
   }
 
   // text
-  const text = (element.text || "").trim();
+  const rawText = element.text || "";
+  const text = rawText.trim();
   if (!text) return null;
   if (isOutlineKey(element.fontKey)) {
     // An outline font (lib/outlineFonts.js): the SERVICE laid the text out
@@ -305,7 +306,7 @@ export function generateElement(element, garment, runtime) {
   return EMB.buildLetteringDesign(fontData, text, {
     garment, pxPerMm: 8, underlay: element.underlay,
     rgb: element.colorRgb,
-    colorRanges: element.colorRanges || [],
+    colorRanges: rangesForTrimmed(element.colorRanges || [], rawText.length - rawText.trimStart().length),
     weightPreset: element.weightPreset || "normal",
     slantDeg: element.slantDeg || 0,
     targetWidthMm: element.sizeMm || undefined,
@@ -316,6 +317,30 @@ export function generateElement(element, garment, runtime) {
     rotationDeg: element.rotationDeg || 0,
     align: element.align || "center",
   });
+}
+
+// Colour ranges are textarea indices into the UNTRIMMED element.text (the
+// ColorRangesEditor's selection), but the engine is handed the trimmed text
+// and matches ranges by its charIdx. Every whitespace character trim() can
+// remove at the front shifted every colour that many letters right: "\nSMITH"
+// with the S coloured red sewed the M red. Shift the ranges by what was
+// trimmed instead of passing the untrimmed text (fixed 2026-11-13, Kent
+// approved): untrimmed text would lay leading blank lines and spaces out, and
+// measured over 83 fonts that moved saved designs beyond indentation too (1-6
+// records re-rounded by 0.1 mm on "  SMITH  " and "\n\nAB\nCDE\n\n" in a few
+// fonts). This moves no stitch; only which colour a letter gets. Trailing
+// whitespace needs nothing: it follows every index. A range wholly inside the
+// trimmed lead is dropped, one straddling it is clipped. `lead` is in UTF-16 code units, the
+// textarea's own; every character trim() removes is a single unit.
+export function rangesForTrimmed(ranges, lead) {
+  if (!lead) return ranges;
+  const out = [];
+  for (const r of ranges) {
+    const endIdx = r.endIdx - lead;
+    if (endIdx <= 0) continue;
+    out.push({ ...r, startIdx: Math.max(0, r.startIdx - lead), endIdx });
+  }
+  return out;
 }
 
 // Generates every ready element in a project (in array order), combines them

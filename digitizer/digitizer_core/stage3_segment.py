@@ -750,6 +750,7 @@ def resolve_small_regions(
         return (areas[i], box[0], box[1]) if box else (areas[i], 0, 0)
 
     for i in sorted(small, key=sort_key):
+        deadline.check("stage 3")
         box = boxes[i]
         if box is None:
             dropped += 1
