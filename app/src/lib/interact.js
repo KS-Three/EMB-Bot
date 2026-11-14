@@ -72,6 +72,23 @@ export function dragResize(startWidthMm, startHeightMm, handle, dxMm, dyMm, minW
   return newW;
 }
 
+// The corner handle sits on the SEWN box, so dragResize measures the pointer
+// in sewn mm; what the field writes is `sizeMm`, the REQUESTED width. The
+// two differ by pull compensation (+0.2 mm upright) and, on turned
+// lettering, by the gap between the engine's rotated-rect fit and the
+// letters (-2.5 mm on 120 mm at 45 degrees), and the field used to write the
+// sewn number as the request: one touch with 1 px of jitter took that
+// lettering from 120 to 117.5, and five to 108.1 (review repro,
+// 2026-11-13). The request now moves in proportion to the sewn width, so a
+// zero-distance resize is the identity and a drag changes the sewn width by
+// what the handle moved. The snap path converts its matched sewn width
+// through the same line, so the two paths agree. Without a sewn width or a
+// request there is nothing to map through, and the sewn width is the answer.
+export function resizeTargetMm(startTargetMm, startSewnWmm, newSewnWmm) {
+  if (!(startSewnWmm > 0) || !(startTargetMm > 0)) return newSewnWmm;
+  return (startTargetMm * newSewnWmm) / startSewnWmm;
+}
+
 // Clamps an absolute design offset (from hoop center, mm, +y UP) so the
 // design's mm bbox stays fully inside the hoop. If the design is larger
 // than the hoop on an axis, the clamp range collapses to 0 (centered) on

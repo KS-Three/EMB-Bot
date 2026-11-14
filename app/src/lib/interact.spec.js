@@ -560,3 +560,17 @@ test("groupResizeInBox leaves a centred group, and any factor that already fits,
   expect(r.dyMm).toBe(0);
   expect(r.patches.e1).toEqual({ sizeMm: 40, offsetXMm: 0, offsetYMm: 0 });
 });
+
+// ---- resize writes the request, not the sewn width (2026-11-13) -------------
+import { resizeTargetMm } from "./interact.js";
+
+test("resizeTargetMm: the request moves in proportion to the sewn width; zero movement is the identity", () => {
+  expect(resizeTargetMm(120, 117.5, 117.5)).toBe(120);
+  expect(resizeTargetMm(120, 117.5, 235)).toBeCloseTo(240, 9);
+  expect(resizeTargetMm(80, 80.2, 40.1)).toBeCloseTo(40, 9);
+});
+
+test("resizeTargetMm falls back to the sewn width with nothing to map through", () => {
+  expect(resizeTargetMm(0, 50, 60)).toBe(60);
+  expect(resizeTargetMm(40, 0, 60)).toBe(60);
+});
