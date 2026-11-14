@@ -1323,6 +1323,27 @@ class PipelineConfig:
     # tendril moved (the 7.1 mm red spike). False is the engine before the
     # flag, byte for byte. Tests: `tests/test_sliver_prune.py`.
     sliver_prune: bool = False
+    # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
+    # Kent on Bridge's wheel: "All of the wheel handles look different from
+    # eachother, this would be better if they all looked the same")
+    # (`regular_structure.apply_regular_structure`). On the stage-4 regions,
+    # after the text taggers and before the stitch-width read: congruent
+    # same-thread shapes (translation, rotation, mirror) on a fitted
+    # arrangement (N-fold rotation, row or grid at one pitch, mirrored pair)
+    # each take the group's mean shape at their own fitted place, and ONE
+    # region that repeats itself round its centre (the wheel: rim and eight
+    # handles in one black) becomes the mean of its own rotations. Every
+    # gate is in SOURCE pixels (`Prep.input_px_per_mm`), a raster read, not a
+    # stitch value: gate 1 does not apply. Lettering is never a member; seams
+    # with another colour stay where they were traced; no outline moves more
+    # than 3 source pixels, and nothing is redrawn for less than the Design's
+    # 0.1 mm unit. Members carry `meta["congruent_group"]` for later stages.
+    # Bridge hat 63 mm: the eight handles, 0.18 mm apart pairwise (worst
+    # handle 1.15 source px off their mean), come out 0.006 mm apart; Kent's
+    # flag, already within 0.09 mm, keeps its outlines and only gains the
+    # tags. False is the engine before the flag, byte for byte (md5 against
+    # main on three designs). Tests: `tests/test_regular_structure.py`.
+    regular_structure: bool = False
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
@@ -3773,6 +3794,71 @@ class PipelineConfig:
     # byte-identical.
     # Tests: `tests/test_word_tiers.py`.
     lettering_word_tiers: bool = False
+    # LIKE SHAPES DECIDED ONCE PER GROUP (built OFF 2026-11-13,
+    # `group_consistency.py`). Kent's pins name like things sewn unlike ("This
+    # stitch is different than the AH RA"); two of them, traced on main, are
+    # one shape's own measure straddling a threshold its line-mates sit on the
+    # other side of. Both flags below share one rule: a line of like shapes
+    # (one thread, like heights, one band; at least three) decides the call
+    # once -- members more than `group_consistency.MARGIN` (1.5x) off the
+    # threshold are the evidence, a member inside that band takes their side
+    # -- and never onto a construction its shape cannot take. Neither touches
+    # the word tagger, the text cluster or any other tier. Census:
+    # `docs/group-consistency-2026-11-13.md`. Layout (ruling 2026-10-22:
+    # judged in the preview). Off, nothing calls either, byte-identical.
+    # Tests: `tests/test_group_consistency.py`.
+    #
+    # The run tier's area floor (`cfg.min_detail_mm`^2) per line: K-Line's
+    # 2.5 mm subline sewed 17 letters under 2.25 mm^2 as bean outlines and 6
+    # at 2.54-3.07 satin; ON all 24 bean outlines. A letter moved ONTO the run
+    # tier sews the run its line-mates sew (not `small_solids_satin`'s one
+    # column across it); one moved OFF it only onto satin `_sews_satin` grants.
+    group_consistent_tier: bool = False
+    # The art-outline body test (`art_outline.find_art_outlines`) per line of
+    # like candidates within one outline: AHORA's sewn pink field took AH
+    # (1.059) and RA (1.023, against `machine.OUTLINE_BODY_RATIO` 1.0) as
+    # bodies -- fill under a pink loop -- and left O (0.612) and ! (0.456) to
+    # the classifier, satin; Kent pinned the O and the ! as the odd ones. ON
+    # the line decides by INK, not region count (AH and RA are four letters,
+    # 435 mm^2, against 121), and when the two sides are within 1.5x by the
+    # wider strokes' construction -- a wide stroke forced into satin is the
+    # lumpy case (`group_consistency.outline_side`). AHORA ON: O, ! and its
+    # dot fill under the loop like AH and RA. A two-piece glyph (the ! and
+    # its dot) joins a line its pieces span together. A candidate made a body
+    # must be `machine.MIN_FILL_WIDTH_MM` across on average.
+    group_consistent_outline_body: bool = False
+    # A word's THREAD decided once (`lettering_thread.word_thread`): a
+    # text-cluster letter on a thread under a quarter of its word takes the
+    # thread over half the word sews, within `lettering_thread.STRAY_MAX_DE00`
+    # (25) -- the stray rule's own limit, for a letter that stayed in its
+    # cluster. Bridge's U of RESTAURANT, blue art on yellow read green at its
+    # thin strokes, snapped to 5422 Swiss Ivy 18.4 dE00 off ten Caribbean
+    # siblings and sewed as the one thin letter ("This is the only letter that
+    # is thinly stitched"). The U came from the dark-ink lightness read, so a
+    # moved letter also drops a dark-ink bean none of its word-mates carries
+    # and takes the ladder with them (ON: Caribbean satin like the rest). A
+    # customer's own recolour is never moved; the cap still has the last
+    # word. Not the (hed)p.e. e: no cluster fires there.
+    group_consistent_thread: bool = False
+    # ONE ANGLE per group of like shapes (`group_consistency.shared_angles`,
+    # read in stage 7). Kent: "feet are differnt colors" (gradient_mascot: one
+    # spool, fills at 39 and 134 deg, two directions read as two shades) and
+    # "right leg infill doesn't match left leg" (flat_emoji_icon: 11 and 180
+    # deg); the flag's 50 congruent stars fill at 8 angles and To a T's 4 rule
+    # lines satin at 64-85 deg (`regular-structure` census). Group: the
+    # `regular_structure` tag `meta["congruent_group"]` when present (angle
+    # relative to each member's own `angle_deg`), else one spool, areas within
+    # 1.5x, elongations within 1.25x. Every member takes the biggest's own
+    # angle -- one angle, not mirrored, for a mirrored pair too. Fill rows
+    # only where no rule names an angle (review, global, design angle, stage
+    # 5's axis, the pro-offset keys all outrank it). Satin crosses ONLY for a
+    # `congruent_group`-tagged, unmirrored group (inert on main until that
+    # tag lands): the house angle of a non-lettering member that has none,
+    # never on a column under 0.6 mm -- the likeness fallback on satin pushed
+    # To a T's mirrored pair from 9 to 15 deg apart. Lettering is out (it has
+    # its house angle); the flag's stars are in the lettering house group, so
+    # out too. Not on the photo classes. Off, byte-identical.
+    group_consistent_fill_angle: bool = False
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the

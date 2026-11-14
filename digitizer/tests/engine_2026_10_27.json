@@ -176,6 +176,10 @@
  "lettering_columns_text_lean": true,
  "lettering_min_column_mm": null,
  "lettering_word_tiers": false,
+ "group_consistent_tier": false,
+ "group_consistent_outline_body": false,
+ "group_consistent_thread": false,
+ "group_consistent_fill_angle": false,
  "lettering_words": false,
  "max_colors": 12,
  "merge_adjacent_same_thread": true,
@@ -333,5 +337,6 @@
  "photo_work_grid": false,
  "photo_enclosed_rim": false,
  "underfill_untagged_riders": false,
- "stage0_scale_relative_grad": false
+ "stage0_scale_relative_grad": false,
+ "regular_structure": false
 }
