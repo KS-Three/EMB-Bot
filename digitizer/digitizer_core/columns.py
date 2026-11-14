@@ -102,6 +102,15 @@ _ON_TOP_MAX_MM = 1.0
 # ... and a leg's end rail changes only for a hop this much less on top
 # (a measurement's rounding, so a letter with nothing on top keeps its walk)
 _ON_TOP_SWAP_MM = 0.05
+# `edge_walk` (`cfg.lettering_columns_connectors_edge_walk`): the walk orders
+# priced per component -- every Euler trail of the spans the postman gave it,
+# then of those spans with one more doubled -- up to this many trails, and
+# only for a component of at most this many span visits (a letter's
+# components hold 1-8; a larger one keeps the walk it has).
+_EDGE_WALK_MAX_TRAILS = 400
+_EDGE_WALK_MAX_VISITS = 12
+# ... of which this many, best priced first, are sewn and measured
+_EDGE_WALK_TRY = 8
 # Centre-walk underlay: step and end inset (satinfont.js UNDERLAY_*).
 _UNDERLAY_STEP_MM = 3.0
 _UNDERLAY_INSET_MM = 0.4
@@ -1979,6 +1988,9 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 inside_stagger: bool = False,
                 apex_crosses: list | None = None,
                 connectors_buried: bool = False,
+                edge_walk: bool = False,
+                _walk: list | None = None,
+                _feet: dict | None = None,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
@@ -2023,7 +2035,19 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     whose hop to the next leg lies least on finished satin and not under
     satin still to come; a hop that still leaves more than
     `_ON_TOP_MAX_MM` on top is walked under satin still to come
-    (`_connectors_under`), else cut. Off, the walk as it was."""
+    (`_connectors_under`), else cut. Off, the walk as it was.
+    `edge_walk` (`cfg.lettering_columns_connectors_edge_walk`, built OFF
+    2026-11-14; implies `connectors_buried`): before any of that, each
+    component's walk is the one whose hops lie least on finished satin
+    (`_edge_walk_trails`), so a stroke ends at the join the next one covers
+    and the needle reaches the next stroke inside it, under its satin to
+    come -- the professional's order at every join read (Becker's MARINE E,
+    N and A): a stroke with a free tip run out under itself and sewn back to
+    its join. A cut is left only where no walk order buries the hop.
+    `_walk` (`_edge_walk` only): the walk to sew, in place of the postman's;
+    `_feet`, filled with each satin run's ground (by `id`) for `_walk_cost`."""
+    _call = dict(locals())
+    connectors_buried = connectors_buried or edge_walk
     from .stage6_satin import (_JUNCTION_TUCK_MM, _comb_thresholds,   # same package,
                                _short_stitch_guard, _split_points)      # same rules
 
@@ -2141,9 +2165,10 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                      if idx == (len(ready[sp["ci"]].stations) - 1 if tips[sp["ci"]]["cut"] == 0 else 0))
     span_mm = [LineString(_mids(ready[sp["ci"]].stations[sp["i0"]:sp["i1"] + 1])).length
                if sp["i1"] > sp["i0"] else 0.0 for sp in spans] if dead else ()
-    components = _euler_trail(nodes, spans, start_near, frozenset(prefer), trim_at_mm,
-                              end_near=end_near,
-                              **({"dead_ends": dead, "span_mm": span_mm} if dead else {}))
+    components = (_euler_trail(nodes, spans, start_near, frozenset(prefer), trim_at_mm,
+                               end_near=end_near,
+                               **({"dead_ends": dead, "span_mm": span_mm} if dead else {}))
+                  if _walk is None else _walk)
 
     # 3. Emit: the last visit of a span sews satin, earlier visits run under it.
     #    (`poly_link` is the sew-or-jump rule's polygon, see step 4; the
@@ -2178,27 +2203,18 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     else:
         poly_hop = poly_link
     hop_strict = inside_connectors or counter_clear_mm > 0
+    if edge_walk and _walk is None:
+        # the walk order that buries the hops: the postman's walk sewn, and
+        # when it leaves a cut or a hop on finished satin, the best-priced
+        # others sewn beside it (`_edge_walk`); never past a merged tip's walk
+        def candidates():
+            return [] if dead else _edge_walk_trails(
+                components, nodes, spans, ready, poly_hop,
+                max(trim_at_mm, _CONNECTOR_WIDTHS * W), trim_at_mm, start_near, end_near)
+        return _edge_walk(_call, candidates)
     all_legs: list[dict] = []       # ci, sat, i0, i1 in traversal order (i0 may be > i1)
     for circuit in components:
-        seen: set[int] = set()
-        is_satin = [False] * len(circuit)
-        for k in range(len(circuit) - 1, -1, -1):
-            si = circuit[k][0]
-            if si not in seen:
-                seen.add(si)
-                is_satin[k] = True
-        # collapse contiguous visits of one column, same type, same direction
-        legs: list[dict] = []
-        for k, (si, frm, _to) in enumerate(circuit):
-            s = spans[si]
-            fwd = frm == s["na"] or s["na"] == s["nb"]      # a ring's self-loop walks forward
-            i0, i1 = (s["i0"], s["i1"]) if fwd else (s["i1"], s["i0"])
-            prev = legs[-1] if legs else None
-            if prev and prev["ci"] == s["ci"] and prev["sat"] == is_satin[k] and prev["i1"] == i0:
-                prev["i1"] = i1
-            else:
-                legs.append(dict(ci=s["ci"], sat=is_satin[k], i0=i0, i1=i1, head=[], tail=[]))
-        all_legs.extend(legs)
+        all_legs.extend(_trail_legs(circuit, spans))
     # The junction tuck: a butting column that sews BEFORE the column it
     # butts runs on under it, so the later stroke covers the seam. Decided on
     # the satin order the walk produced -- sewn after, it stays square.
@@ -2538,7 +2554,278 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                      if r.kind == stitches.SATIN and run_leg[k] in sewn}
         linked = _connectors_under(linked, ground_of, allow, poly_hop, ready, nodes, spans,
                                    _CONNECTOR_WIDTHS * W, walk, shape_id, report)
+        if _feet is not None:
+            _feet.update(ground_of)
     return linked, report
+
+
+def _trail_legs(circuit, spans) -> list[dict]:
+    """One component's walk -> its legs in sew order: contiguous visits of
+    one column, same type, same direction, collapsed; a span sews satin on
+    its LAST visit and runs under it on every earlier one."""
+    seen: set[int] = set()
+    is_satin = [False] * len(circuit)
+    for k in range(len(circuit) - 1, -1, -1):
+        si = circuit[k][0]
+        if si not in seen:
+            seen.add(si)
+            is_satin[k] = True
+    legs: list[dict] = []
+    for k, (si, frm, _to) in enumerate(circuit):
+        s = spans[si]
+        fwd = frm == s["na"] or s["na"] == s["nb"]      # a ring's self-loop walks forward
+        i0, i1 = (s["i0"], s["i1"]) if fwd else (s["i1"], s["i0"])
+        prev = legs[-1] if legs else None
+        if prev and prev["ci"] == s["ci"] and prev["sat"] == is_satin[k] and prev["i1"] == i0:
+            prev["i1"] = i1
+        else:
+            legs.append(dict(ci=s["ci"], sat=is_satin[k], i0=i0, i1=i1, head=[], tail=[]))
+    return legs
+
+
+def _all_euler_trails(visits, start, cap: int) -> list[list[tuple[int, int, int]]]:
+    """Every Euler trail from `start` over the multigraph whose edges are
+    `visits` ((span, a, b), parallel visits of one span allowed), as
+    (span, from, to) lists, up to `cap`; two trails that differ only in
+    which of a span's parallel visits they take are one."""
+    adj: dict[int, list[tuple[int, int]]] = {}
+    for iid, (_si, a, b) in enumerate(visits):
+        adj.setdefault(a, []).append((iid, b))
+        if a != b:
+            adj.setdefault(b, []).append((iid, a))
+    used = [False] * len(visits)
+    out: list[list[tuple[int, int, int]]] = []
+    path: list[tuple[int, int, int]] = []
+
+    def dfs(v):
+        if len(out) >= cap:
+            return
+        if len(path) == len(visits):
+            out.append(list(path))
+            return
+        tried = set()
+        for iid, to in adj.get(v, ()):
+            key = (visits[iid][0], to)
+            if used[iid] or key in tried:
+                continue
+            tried.add(key)
+            used[iid] = True
+            path.append((visits[iid][0], v, to))
+            dfs(to)
+            path.pop()
+            used[iid] = False
+
+    dfs(start)
+    return out
+
+
+def _edge_walk_trails(components, nodes, spans, columns, poly_hop, allow: float,
+                      trim_at_mm: float, start_near, end_near) -> list:
+    """`edge_walk`: the walks to try in place of the postman's, best
+    first -- each the postman's with one component's trail replaced.
+
+    The professional, at every join read on Becker's MARINE (the E's three,
+    the N's two, the A's three), ends the stroke he sews first AT the join,
+    starts the next stroke's satin there so it covers the join, and reaches
+    it inside that next stroke as its underlay, before its satin. A stroke
+    with a free tip -- the E's middle arm, the A's crossbar -- is run out to
+    the tip under itself and sewn back to its join. The postman's walk is
+    blind to which way a stroke is sewn: on MARINE's N it sewed the diagonal
+    down to its foot and then hopped back up across it to the right stem
+    (4.1 mm on top), where the walk the other way round buries every hop.
+
+    Priced per component, in the walk's order, with the components before it
+    as chosen and after it as walked: every Euler trail of its spans as the
+    postman doubled them (any start the parity allows), then of those spans
+    with any one more doubled (a run out under a stroke). A hop from a
+    satin leg's last cross (the better rail) to the next leg's first centre
+    point costs a trim when it would be cut (more than `_ON_TOP_MAX_MM` on
+    finished satin and not under satin still to come) or jumped past
+    `trim_at_mm`; the walk-in and the walk-out past `trim_at_mm` cost one
+    each. Ranked by (trims, mm on top, the hops in and out, mm run under),
+    at most `_EDGE_WALK_TRY` returned: the price reads stations, so
+    `_edge_walk` sews each and keeps what the stitches say."""
+    visits_of = [[(si, spans[si]["na"], spans[si]["nb"]) for si, _f, _t in c] for c in components]
+    if not any(len(v) <= _EDGE_WALK_MAX_VISITS for v in visits_of):
+        return []
+    grounds: dict[tuple, Polygon] = {}
+    unions: dict[tuple, object] = {}
+    covers: dict[tuple, bool] = {}
+
+    def leg_geo(lg):
+        lo, hi = min(lg["i0"], lg["i1"]), max(lg["i0"], lg["i1"])
+        st = columns[lg["ci"]].stations[lo:hi + 1]
+        if lg["i1"] < lg["i0"]:
+            st = st[::-1]
+        key = (lg["ci"], lo, hi)
+        if lg["sat"] and key not in grounds and len(st) >= 2:
+            grounds[key] = Polygon([a for a, _ in st] + [b for _, b in st][::-1]).buffer(0)
+        return st, (key if lg["sat"] and len(st) >= 2 else None)
+
+    def union(keys):
+        keys = tuple(sorted(set(keys)))
+        if keys not in unions:
+            unions[keys] = (keys, unary_union([grounds[k] for k in keys]) if keys else None)
+        return unions[keys]
+
+    tops: dict[tuple, float] = {}
+
+    def top(e, p, done, later):
+        # many trails share a hop and what lies sewn and to come round it
+        tk = (round(e[0], 4), round(e[1], 4), round(p[0], 4), round(p[1], 4), done[0], later[0])
+        if tk not in tops:
+            tops[tk] = _on_top([e, p], done[1], later[1])
+        return tops[tk]
+
+    def price(comp_legs):
+        legs = [lg for c in comp_legs for lg in c]
+        geo = [leg_geo(lg) for lg in legs]
+        trims, on_top, travel, reach = 0, 0.0, 0.0, 0.0
+        first = _mids(geo[0][0][:1])[0] if geo and geo[0][0] else None
+        if start_near is not None and first is not None:
+            d = math.dist(start_near, first)
+            reach += d
+            trims += d > trim_at_mm
+        for i in range(1, len(legs)):
+            st_prev, _k = geo[i - 1]
+            st, _k2 = geo[i]
+            if not st or not st_prev:
+                continue
+            p = _mids(st[:1])[0]
+            ends = list(st_prev[-1]) if legs[i - 1]["sat"] else [_mids(st_prev[-1:])[0]]
+            done = union(k for _s, k in geo[:i] if k is not None)
+            later = union(k for _s, k in geo[i:] if k is not None)
+            best = None
+            for e in ends:
+                d = math.dist(e, p)
+                if d < machine.TINY_STITCH_MM:
+                    cost = (0, 0.0)
+                else:
+                    ck = (round(e[0], 4), round(e[1], 4), round(p[0], 4), round(p[1], 4))
+                    if ck not in covers:
+                        covers[ck] = poly_hop.covers(LineString([e, p]))
+                    t = top(e, p, done, later)
+                    if d > allow or not covers[ck]:
+                        cost = (1, 0.0) if d > trim_at_mm else (0, t)
+                    else:
+                        cost = (1, 0.0) if t > _ON_TOP_MAX_MM else (0, t)
+                if best is None or cost < best:
+                    best = cost
+            trims += best[0]
+            on_top += best[1]
+            if not legs[i]["sat"] and len(st) >= 2:
+                travel += LineString(_mids(st)).length
+        if end_near is not None and geo and geo[-1][0]:
+            st = geo[-1][0]
+            ends = list(st[-1]) if legs[-1]["sat"] else [_mids(st[-1:])[0]]
+            d = min(math.dist(e, end_near) for e in ends)
+            reach += d
+            trims += d > trim_at_mm
+        return trims, round(on_top, 1), round(reach, 1), round(travel, 1)
+
+    chosen = [_trail_legs(c, spans) for c in components]
+    ranked: list[tuple[tuple, int, list]] = []
+    for ci_, visits in enumerate(visits_of):
+        if len(visits) > _EDGE_WALK_MAX_VISITS:
+            continue
+        deg: dict[int, int] = {}
+        for _si, a, b in visits:
+            deg[a] = deg.get(a, 0) + 1
+            deg[b] = deg.get(b, 0) + 1
+        odd = [n for n in sorted(deg) if deg[n] % 2]
+        starts = odd if odd else sorted(deg)
+        budget = _EDGE_WALK_MAX_TRAILS
+        here = [tuple(v) for v in components[ci_]]
+        for extra in [None, *sorted({si for si, _a, _b in visits})]:
+            vis = visits if extra is None else [*visits, (extra, spans[extra]["na"], spans[extra]["nb"])]
+            if len(vis) > _EDGE_WALK_MAX_VISITS or budget <= 0:
+                break
+            for s0 in starts:
+                trails = _all_euler_trails(vis, s0, budget)
+                budget -= len(trails)
+                for tr in trails:
+                    if tr == here:
+                        continue
+                    trial = chosen[:ci_] + [_trail_legs(tr, spans)] + chosen[ci_ + 1:]
+                    ranked.append((price(trial), len(ranked), [*components[:ci_], tr, *components[ci_ + 1:]]))
+    ranked.sort(key=lambda t: t[:2])
+    return [walk for _k, _n, walk in ranked[:_EDGE_WALK_TRY]]
+
+
+def _walk_cost(runs: list[StitchRun], start_near, end_near, trim_at_mm: float,
+               grounds: dict | None = None) -> tuple:
+    """One letter's emitted runs -> (trims, mm on finished satin of the hops
+    that leave more than `_ON_TOP_MAX_MM` there, mm on finished satin of
+    every hop, mm of travel, the hops in and out). On top = a hop or travel
+    run's path on satin sewn before it and under none sewn after; a stitch's
+    ground is its thread's own footprint, half a 0.4 mm thread either side
+    of it. A hop in or out past `trim_at_mm` counts as a trim, as the link
+    into the next letter would. `grounds` (`column_runs`' `_feet`): a satin
+    run's ground on its stations, by `id`, grown by that half thread in
+    place of its stitches' own footprint -- the same ground, two orders of
+    magnitude cheaper to draw for the walks `_edge_walk` compares."""
+    grounds = grounds or {}
+
+    def foot(r):
+        g = grounds.get(id(r))
+        return (g if g is not None else LineString(r.points)).buffer(_APEX_EXIT_MM)
+    sat = [(k, foot(r)) for k, r in enumerate(runs)
+           if r.kind == stitches.SATIN and len(r.points) >= 2]
+    on_top, over, travel = 0.0, 0.0, 0.0
+    for k, r in enumerate(runs):
+        if r.kind == stitches.TRAVEL and len(r.points) >= 2:
+            travel += LineString(r.points).length
+        if k == 0 or r.jump or not r.points:
+            continue
+        a = runs[k - 1].points[-1]
+        path = [a, *r.points] if r.kind == stitches.TRAVEL else [a, r.points[0]]
+        if len(path) == 2 and math.dist(path[0], path[1]) < 1e-9:
+            continue
+        done = [g for j, g in sat if j < k]
+        if not done:
+            continue
+        later = [g for j, g in sat if j >= k]
+        t = _on_top(path, unary_union(done), unary_union(later) if later else None)
+        on_top += t
+        over += t if t > _ON_TOP_MAX_MM else 0.0
+    trims = sum(bool(r.trim) for r in runs)
+    reach = 0.0
+    if runs and start_near is not None:
+        d = math.dist(start_near, runs[0].points[0])
+        reach += d
+        trims += d > trim_at_mm
+    if runs and end_near is not None:
+        d = math.dist(runs[-1].points[-1], end_near)
+        reach += d
+        trims += d > trim_at_mm
+    return trims, round(over, 1), round(on_top, 1), round(travel, 1), round(reach, 1)
+
+
+def _edge_walk(call: dict, candidates) -> tuple[list[StitchRun], dict]:
+    """`edge_walk`: the letter sewn with `connectors_buried` on the
+    postman's walk, and, when that leaves a trim inside the letter or a hop
+    more than `_ON_TOP_MAX_MM` on finished satin, on each of the walks
+    `_edge_walk_trails` ranks best too (its price reads stations, not the
+    emitted runs: tucks, rails and underlay move the real hops). A walk
+    replaces the postman's only when its stitches are strictly better on
+    (trims, mm of such hops on top); the best of those by `_walk_cost`.
+    A letter the postman's walk sews clean keeps it, byte for byte."""
+    kw = {**call, "edge_walk": False, "connectors_buried": True}
+    feet: dict = {}
+    runs, rep = column_runs(**{**kw, "_feet": feet})
+    base = _walk_cost(runs, call["start_near"], call["end_near"], call["trim_at_mm"], feet)
+    if not any(r.trim for r in runs) and base[1] == 0.0:
+        return runs, rep
+    best = (base, runs, rep)
+    for walk in candidates():
+        feet2: dict = {}
+        r2, rep2 = column_runs(**{**kw, "_walk": walk, "_feet": feet2})
+        key = _walk_cost(r2, call["start_near"], call["end_near"], call["trim_at_mm"], feet2)
+        if key[:2] < base[:2] and key < best[0]:
+            best = (key, r2, rep2)
+    if best[1] is not runs:
+        best[2]["edge_walk_reordered"] = 1
+    return best[1], best[2]
 
 
 def _on_top(path, done, later) -> float:
@@ -2702,6 +2989,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             text_lean_deg: float | None = None,
                             inside_stagger: bool = False,
                             connectors_buried: bool = False,
+                            edge_walk: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -2739,7 +3027,9 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     the inside of every pivot walked and short-stitched the pro's way
     (`_inside_stagger`); off, `_short_stitch_guard` as before.
     `connectors_buried`: `cfg.lettering_columns_connectors_buried`
-    (2026-11-14) -- see `column_runs`."""
+    (2026-11-14) -- see `column_runs`.
+    `edge_walk`: `cfg.lettering_columns_connectors_edge_walk` (2026-11-14)
+    -- see `column_runs`."""
     from .outline_cut import letter_columns, stroke_width
 
     if small_bold:
@@ -2780,6 +3070,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   **({"inside_stagger": True} if inside_stagger else {}),
                   # `cfg.lettering_columns_connectors_buried`: no hop on finished satin
                   **({"connectors_buried": True} if connectors_buried else {}),
+                  # `cfg.lettering_columns_connectors_edge_walk`: the walk that buries its hops
+                  **({"edge_walk": True} if edge_walk else {}),
                   **({"counter_poly": counter_hold_polygon(poly, counter_holes)} if cored else {}))
 
     def recorded(cpoly):
@@ -2791,9 +3083,14 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         # this letter will be, and read for folds and knots
         # (`outline_cut._fold_refine`, `outline_cut.sewn_knots`)
         from .outline_cut import sewn_knots
+        # `edge_walk` orders the walk, not the cut: the judge reads the cut
+        # on `connectors_buried`'s walk, so the cut is the one that arm takes
+        # and each candidate is sewn once, not once per walk tried
+        judge_kw = ({**{k: v for k, v in run_kw.items() if k != "edge_walk"}, "connectors_buried": True}
+                    if edge_walk else run_kw)
 
         def judge(cols, cpoly):
-            return sewn_knots(column_runs(leaned(cols), recorded(cpoly), shape_id, **run_kw)[0])
+            return sewn_knots(column_runs(leaned(cols), recorded(cpoly), shape_id, **judge_kw)[0])
         lc_kw["judge"] = judge
 
     def leaned(cols):
