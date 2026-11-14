@@ -69,6 +69,10 @@ HUG_FRAC = 0.3
 # has the page on one side: it needs this share of its outline on bodies
 # and half of what is not on the page.
 EDGE_HUG_FRAC = 0.15
+# A band can be the parent of a band (stacked two deep: a keyline on an
+# outline) only when it has at least this many times its area: the one that
+# stays is plainly the main line.
+BAND_PARENT_RATIO = 2.0
 # A band covering this share of its parent's outer outline or more wraps it:
 # a keyline or an art outline (ADAPTATIONS.md item 1's 60%). Never folded.
 ALL_ROUND = 0.6
@@ -267,8 +271,11 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
             for j, v in graph.contacts(i).items():
                 o = regions[j]
                 if (o.thread_index == r.thread_index or not _poly(o) or o.meta.get("counter")
-                        or o.polygon.area < g.area or _width(o.polygon) <= BAND_MAX_MM
-                        or near_page(o)):
+                        or o.polygon.area < g.area or near_page(o)):
+                    continue
+                # a band is a parent only for a band it dwarfs: a keyline
+                # stacked on an outline (Golden Tee's red on GT's black)
+                if _width(o.polygon) <= BAND_MAX_MM and o.polygon.area < BAND_PARENT_RATIO * g.area:
                     continue
                 cands.append((_de00(lab(r), lab(o)), -v, j, v))
             if not cands:
