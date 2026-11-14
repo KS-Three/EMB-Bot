@@ -849,7 +849,17 @@
       strokes = [{ spine: gp.map(toWorld), freeStart: true, freeEnd: true, closed: false }];
     }
     strokes.sort((a, b) => chainLength(b.spine) - chainLength(a.spine));
-    if (strokes.length > 24) strokes = strokes.slice(0, 24);
+    // No cap on the stroke count (2026-11-13, Kent's approval that day; the
+    // catch accepted: "very branchy thin shapes take longer or become fill").
+    // `strokes.slice(0, 24)` sat here since the skeleton was first split into
+    // strokes (3e4f8cc3, no reason given), and a shape with more strokes was
+    // sewn with the shortest ones missing: the satin of what was left raked
+    // across the gaps. A 2 mm "fishbone" with 12 teeth a side sewed a 60.2 mm
+    // stitch along its spine and 87 stitches outside it (16 and 20 teeth: 80
+    // and 100 mm). No guard replaces it: the strokes are pieces of one
+    // skeleton on a grid of at most 260 cells a side, so their total length,
+    // and the work, does not grow with their number (the 20-tooth fishbone,
+    // 60 strokes, builds in about 5 ms against 3.4 capped, best of five).
     return { strokes, contours, halfWidthPx, minEdgeLen };
   }
 
