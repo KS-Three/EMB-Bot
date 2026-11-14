@@ -26,6 +26,7 @@ The bridge, its timeout, and its never-raises contract mirror
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -78,7 +79,16 @@ def _site_packages_exists(venv_dir: Path) -> bool:
     return any((venv_dir / "lib").glob("python*/site-packages"))
 
 
-SAM2_VENV_DIR = _SAM2_ISOLATED_DIR / "venv"
+# EMB_SAM2_VENV points the seam at a DIFFERENT venv directory, read once at
+# import like the paths around it — the workstation hook for a CUDA torch
+# build kept outside the repo (sam2_isolated/README.md, "GPU opt-in"), used
+# together with the worker's own EMB_SAM2_DEVICE. Unset (the deployed case)
+# leaves the default path exactly as it was. The availability checks below
+# apply to it unchanged.
+SAM2_VENV_DIR = (
+    Path(os.environ["EMB_SAM2_VENV"]) if os.environ.get("EMB_SAM2_VENV")
+    else _SAM2_ISOLATED_DIR / "venv"
+)
 SAM2_VENV_PYTHON = _resolve_venv_python(SAM2_VENV_DIR)
 
 # Hard upper clamp on `cfg.photo_segment_sam2_timeout_s`, applied here in the
@@ -390,7 +400,8 @@ def sam2_segment_seam(
             f"SAM2 segmentation produced {len(kept)} region"
             f"{'s' if len(kept) != 1 else ''} from {raw_mask_count} raw mask"
             f"{'s' if raw_mask_count != 1 else ''} "
-            f"({cfg.photo_segment_sam2_checkpoint} checkpoint, CPU).",
+            f"({cfg.photo_segment_sam2_checkpoint} checkpoint, "
+            f"{(os.environ.get('EMB_SAM2_DEVICE', '').strip() or 'cpu').upper()}).",
             raw_masks=raw_mask_count,
             regions=len(kept),
             checkpoint=cfg.photo_segment_sam2_checkpoint,

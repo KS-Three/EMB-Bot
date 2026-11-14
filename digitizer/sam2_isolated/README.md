@@ -143,6 +143,63 @@ workstation/deploy-time setup step, the same shape as building
 SLIC+RAG region former, exactly as it does today. Every other part of the
 pipeline is unaffected.
 
+## GPU opt-in (workstation only)
+
+Default is CPU, and nothing below changes it: with neither variable set, the
+seam runs this directory's venv and the worker builds SAM2 on `cpu`, exactly
+as before (worker output re-checked array-for-array against the unmodified
+worker on 2 images, 2026-11-13). A deployed service is CPU-only, and every
+test and golden was measured on CPU.
+
+Two environment variables, both read only when set:
+
+- `EMB_SAM2_DEVICE=cuda` — read by `sam2_worker.py` (job mode). Unset or
+  empty means `cpu`; any value other than `cpu`/`cuda` exits 2. If `cuda` is
+  asked for and the venv's torch cannot see a GPU it exits 3 with the reason
+  — it never falls back to CPU silently (the seam then falls back to the
+  classical segmenter and says why, as for any worker failure).
+- `EMB_SAM2_VENV=<venv dir>` — read by `stage2_sam2_segment.py` at import:
+  run the worker under that venv instead of `sam2_isolated/venv`. Same
+  availability checks apply. Set both before starting the service.
+
+A CUDA venv, kept OUTSIDE the repo (built 2026-11-13 on an RTX 4070, driver
+565.90 = CUDA 12.7, Python 3.14.8). `cu126` is the newest index whose wheels
+this driver can run: torch 2.15.0 is only on `cu132`, which needs a CUDA 13
+driver, so this venv is on 2.14.1 while the CPU venv is on 2.15.0.
+
+```
+uv venv --python 3.14 $env:USERPROFILE\.cache\embot-sam2-cuda-venv
+uv pip install --python $env:USERPROFILE\.cache\embot-sam2-cuda-venv\Scripts\python.exe --index-url https://download.pytorch.org/whl/cu126 "torch==2.14.1+cu126" "torchvision==0.29.1+cu126"
+$env:SAM2_BUILD_CUDA=0; uv pip install --python $env:USERPROFILE\.cache\embot-sam2-cuda-venv\Scripts\python.exe --no-build-isolation "sam-2 @ git+https://github.com/facebookresearch/sam2.git@2b90b9f5ceec907a1c18123530e92e794ad901a4" "opencv-python-headless==5.0.0.93"
+```
+
+Measured 2026-11-13, tiny checkpoint, `points_per_side` 12, on the inputs
+the seam actually sends (8 `testdata/photo/` images, 520-1024 px long side),
+fp32 on both devices (no autocast):
+
+- **Inference (`generate()`, model already loaded, warm-up excluded,
+  median of 3), machine quiet (3-10 % CPU load):** CPU 3.05-3.47 s (one
+  outlier 4.83 s), GPU 0.25-0.35 s — about 10-12x.
+- **Per job, which is what the seam pays (a fresh worker process each
+  time), machine quiet: GPU is NOT faster.** Worker wall, median of 3, on
+  three images: CPU 6.5 / 6.4 / 6.7 s against GPU 7.0 / 7.1 / 7.6 s; the
+  whole pipeline on `owl_kent.jpg`, 4 runs each, CPU 8.3 s against GPU
+  8.9 s. Process start eats the saving: importing CUDA torch costs 5.2 s
+  against 2.3 s for CPU torch, plus 0.5 s model load and a 0.3-0.6 s first
+  call, against the ~2.9 s of inference it saves. (Under heavy load from
+  other jobs the GPU did come out ahead, 1.3-1.5x, because only the CPU
+  side competes for cores.) The inference ratio would only pay with a
+  worker that stays alive between jobs, which this does not add.
+- **VRAM:** 289 MiB after model load, 2.37-2.39 GiB peak allocated, 3.95 GiB
+  reserved by torch's caching allocator. Fits beside other GPU users on a
+  12 GB card, but not beside one holding more than ~8 GB.
+- **GPU masks are NOT identical to CPU.** On 7 of 8 images the `.npz` differs:
+  same mask count every time, but 0-3 label pixels differ per image (out of
+  ~300-800 k) and the scores differ in the 5th-6th decimal. After the seam's
+  own floor and merge the kept-region count, final region count and thread
+  count matched on all 8, but on 4 of them two kept regions trade 1-18 pixels.
+  Each device was deterministic across 4 runs of its own.
+
 ## Disk
 
 Budget roughly 2-3 GB for this venv on top of the checkpoint. The machine

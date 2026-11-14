@@ -35,6 +35,9 @@ Usage — two invocation modes, never confused with each other:
     what an embroidery-scale flat-region split needs — not fine-grained
     natural-scene accuracy).
   * <points_per_side> is SAM2's own prompt-grid density.
+  * The torch device comes from the EMB_SAM2_DEVICE environment variable,
+    not argv: unset means "cpu" (the shipped behaviour); "cuda" is a
+    workstation opt-in (see DEVICE_ENV below).
   * <min_mask_region_area> is a PIXEL area floor handed straight to SAM2's
     `min_mask_region_area` — pixels in <input_image> AS GIVEN to this
     script, which the caller may have already downscaled
@@ -70,8 +73,10 @@ Output (job mode only): a compressed .npz at <output_npz> with
 
 Exit code 0 = success (job mode: npz written; pre-warm mode: checkpoint now
 cached — no npz). Any other exit code means failure and the reason is on
-stderr: 2 = bad arguments (either mode), 3 = import failed (job mode only —
-pre-warm mode never imports torch/sam2, only urllib), 4 = checkpoint
+stderr: 2 = bad arguments (either mode; job mode also counts an unknown
+EMB_SAM2_DEVICE value), 3 = import failed, or EMB_SAM2_DEVICE=cuda with no
+usable CUDA device (job mode only — pre-warm mode never imports torch/sam2,
+only urllib), 4 = checkpoint
 problem (job mode: not cached, refused before any download attempt;
 pre-warm mode: the download itself failed), 5 = mask generation failed (job
 mode only), 6 = writing the output failed (job mode only). In job mode the
@@ -102,6 +107,24 @@ CHECKPOINTS: dict[str, tuple[str, str]] = {
     "large": ("sam2.1_hiera_large.pt", "configs/sam2.1/sam2.1_hiera_l.yaml"),
 }
 CHECKPOINT_BASE_URL = "https://dl.fbaipublicfiles.com/segment_anything_2/092824/"
+
+# Which torch device job mode runs on. OPT-IN and workstation-only: unset (or
+# empty) means "cpu", which is what every deployed service, golden and test
+# was measured on, and leaves this script's behaviour exactly as it was before
+# the variable existed. "cuda" needs a CUDA torch build in whatever venv runs
+# this script (see sam2_isolated/README.md, "GPU opt-in") and is NOT
+# guaranteed to return the same masks as CPU. Any other value is refused
+# (exit 2) rather than guessed at.
+DEVICE_ENV = "EMB_SAM2_DEVICE"
+DEVICES = ("cpu", "cuda")
+
+
+def _requested_device() -> str | None:
+    """`DEVICE_ENV`'s value, defaulting to "cpu"; None when it is not one of
+    `DEVICES`. Read-only, imports nothing heavy."""
+    value = os.environ.get(DEVICE_ENV, "").strip().lower() or "cpu"
+    return value if value in DEVICES else None
+
 
 # Seconds allowed for the FIRST-use checkpoint download. Deliberately shorter
 # than the caller's own subprocess timeout so a stalled download reports a
@@ -305,6 +328,15 @@ def main(argv: list[str]) -> int:
     if points_per_side < 1:
         print("sam2_worker: points_per_side must be >= 1", file=sys.stderr)
         return 2
+    device = _requested_device()
+    if device is None:
+        print(
+            f"sam2_worker: unknown {DEVICE_ENV} value "
+            f"{os.environ.get(DEVICE_ENV)!r} (known: {list(DEVICES)}; unset "
+            "means cpu)",
+            file=sys.stderr,
+        )
+        return 2
 
     # Fail fast, BEFORE the slow imports below (torch's own cold import is
     # itself a meaningful chunk of the measured 155.98s cold-start cost) and
@@ -335,6 +367,18 @@ def main(argv: list[str]) -> int:
     except Exception as exc:  # environment problem (missing deps), not logic
         print(f"sam2_worker: import failed: {exc}", file=sys.stderr)
         return 3
+    # Requested GPU but this venv cannot reach one: an environment problem,
+    # same class (and exit code) as a failed import. Never a silent CPU
+    # fallback — whoever set the variable asked for the GPU on purpose.
+    if device == "cuda" and not torch.cuda.is_available():
+        print(
+            f"sam2_worker: {DEVICE_ENV}=cuda but torch.cuda.is_available() is "
+            f"False in this venv (torch {torch.__version__}, CUDA build "
+            f"{torch.version.cuda}) — install a CUDA torch build per "
+            f"sam2_isolated/README.md, or unset {DEVICE_ENV}",
+            file=sys.stderr,
+        )
+        return 3
 
     try:
         checkpoint = _ensure_checkpoint(tier)
@@ -344,10 +388,11 @@ def main(argv: list[str]) -> int:
 
     try:
         image = np.array(Image.open(in_path).convert("RGB"))
-        # CPU-only by construction: this machine has no GPU, and the isolated
-        # venv installs CPU torch wheels. No autocast — bfloat16 autocast is a
-        # CUDA-path optimization in Meta's own examples and buys nothing here.
-        model = build_sam2(CHECKPOINTS[tier][1], str(checkpoint), device="cpu")
+        # CPU unless DEVICE_ENV opts in to cuda (see its comment). No
+        # autocast on either device: bfloat16 autocast is a CUDA-path
+        # optimization in Meta's own examples, buys nothing on CPU, and on
+        # cuda fp32 keeps the masks as close to CPU's as the hardware allows.
+        model = build_sam2(CHECKPOINTS[tier][1], str(checkpoint), device=device)
         generator = SAM2AutomaticMaskGenerator(
             model,
             points_per_side=points_per_side,

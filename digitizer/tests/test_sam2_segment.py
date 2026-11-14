@@ -902,3 +902,26 @@ def test_flat_lane_is_byte_identical_with_the_sam2_flag_on(fixture):
         ],
     }
     assert snap == _golden_snapshot(fixture)
+
+
+def test_emb_sam2_venv_overrides_the_venv_dir_and_is_absent_by_default(tmp_path):
+    """EMB_SAM2_VENV (the GPU opt-in's alternate venv, sam2_isolated/README.md)
+    is read at import: set, the seam points there; unset, the default is the
+    repo's own sam2_isolated/venv exactly as before. Run in a child
+    interpreter so this process's already-imported constants stay untouched."""
+    import os
+    import sys
+
+    code = ("from digitizer_core import stage2_sam2_segment as s; "
+            "print(s.SAM2_VENV_DIR)")
+    cwd = Path(__file__).resolve().parent.parent
+    base = {k: v for k, v in os.environ.items() if k != "EMB_SAM2_VENV"}
+    unset = subprocess.run([sys.executable, "-c", code], cwd=cwd, env=base,
+                           capture_output=True, text=True, timeout=120)
+    assert unset.returncode == 0, unset.stderr
+    assert Path(unset.stdout.strip()) == cwd / "sam2_isolated" / "venv"
+    alt = subprocess.run([sys.executable, "-c", code], cwd=cwd,
+                         env={**base, "EMB_SAM2_VENV": str(tmp_path)},
+                         capture_output=True, text=True, timeout=120)
+    assert alt.returncode == 0, alt.stderr
+    assert Path(alt.stdout.strip()) == tmp_path

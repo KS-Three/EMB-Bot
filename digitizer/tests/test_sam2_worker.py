@@ -219,3 +219,75 @@ def test_checkpoint_table_is_meta_hosted_and_self_consistent():
         assert filename.endswith(".pt"), tier
         assert config_name.startswith("configs/sam2.1/"), tier
         assert config_name.endswith(".yaml"), tier
+
+
+# --- EMB_SAM2_DEVICE: the opt-in GPU device (sam2_isolated/README.md) --------
+# None of these need a GPU, torch or sam2: the device is validated before the
+# heavy imports, and the "cuda requested but unavailable" branch is driven
+# with stub modules.
+
+
+def test_default_device_is_cpu(monkeypatch):
+    monkeypatch.delenv(sam2_worker.DEVICE_ENV, raising=False)
+    assert sam2_worker._requested_device() == "cpu"
+    monkeypatch.setenv(sam2_worker.DEVICE_ENV, "")
+    assert sam2_worker._requested_device() == "cpu"
+
+
+def test_device_env_var_is_honoured(monkeypatch):
+    monkeypatch.setenv(sam2_worker.DEVICE_ENV, "cuda")
+    assert sam2_worker._requested_device() == "cuda"
+    monkeypatch.setenv(sam2_worker.DEVICE_ENV, " CUDA ")
+    assert sam2_worker._requested_device() == "cuda"
+    monkeypatch.setenv(sam2_worker.DEVICE_ENV, "cpu")
+    assert sam2_worker._requested_device() == "cpu"
+
+
+def test_bad_device_value_exits_2_before_anything_else():
+    import os
+
+    env = {**os.environ, sam2_worker.DEVICE_ENV: "tpu"}
+    proc = subprocess.run(
+        [sys.executable, str(WORKER), "in.png", "out.npz", "tiny", "16", "9"],
+        capture_output=True, text=True, timeout=120, env=env,
+    )
+    assert proc.returncode == 2
+    assert "unknown EMB_SAM2_DEVICE value 'tpu'" in proc.stderr
+    assert "checkpoint" not in proc.stderr
+
+
+def test_cuda_requested_but_unavailable_exits_3_not_a_cpu_fallback(
+    tmp_path, monkeypatch, capsys
+):
+    """A stub torch whose CUDA is unavailable: the worker must refuse with an
+    environment message (exit 3, the import-failure class), never build the
+    model on CPU instead."""
+    import types
+
+    (tmp_path / sam2_worker.CHECKPOINTS["tiny"][0]).write_bytes(b"x")
+    monkeypatch.setenv("SAM2_CHECKPOINT_DIR", str(tmp_path))
+    monkeypatch.setenv(sam2_worker.DEVICE_ENV, "cuda")
+
+    built = []
+    torch = types.ModuleType("torch")
+    torch.__version__ = "0.0+cpu"
+    torch.version = types.SimpleNamespace(cuda=None)
+    torch.cuda = types.SimpleNamespace(is_available=lambda: False)
+    amg = types.ModuleType("sam2.automatic_mask_generator")
+    amg.SAM2AutomaticMaskGenerator = object
+    bs = types.ModuleType("sam2.build_sam")
+    bs.build_sam2 = lambda *a, **k: built.append(k)
+    pil = types.ModuleType("PIL")
+    pil.Image = types.SimpleNamespace()
+    for name, mod in {
+        "torch": torch, "sam2": types.ModuleType("sam2"),
+        "sam2.automatic_mask_generator": amg, "sam2.build_sam": bs,
+        "PIL": pil,
+    }.items():
+        monkeypatch.setitem(sys.modules, name, mod)
+
+    rc = sam2_worker.main(["sam2_worker.py", "in.png", "out.npz", "tiny", "12", "9"])
+    err = capsys.readouterr().err
+    assert rc == 3
+    assert "EMB_SAM2_DEVICE=cuda but torch.cuda.is_available() is False" in err
+    assert built == []
