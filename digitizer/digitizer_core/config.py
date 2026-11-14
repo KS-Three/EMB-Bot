@@ -1323,6 +1323,27 @@ class PipelineConfig:
     # tendril moved (the 7.1 mm red spike). False is the engine before the
     # flag, byte for byte. Tests: `tests/test_sliver_prune.py`.
     sliver_prune: bool = False
+    # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
+    # Kent on Bridge's wheel: "All of the wheel handles look different from
+    # eachother, this would be better if they all looked the same")
+    # (`regular_structure.apply_regular_structure`). On the stage-4 regions,
+    # after the text taggers and before the stitch-width read: congruent
+    # same-thread shapes (translation, rotation, mirror) on a fitted
+    # arrangement (N-fold rotation, row or grid at one pitch, mirrored pair)
+    # each take the group's mean shape at their own fitted place, and ONE
+    # region that repeats itself round its centre (the wheel: rim and eight
+    # handles in one black) becomes the mean of its own rotations. Every
+    # gate is in SOURCE pixels (`Prep.input_px_per_mm`), a raster read, not a
+    # stitch value: gate 1 does not apply. Lettering is never a member; seams
+    # with another colour stay where they were traced; no outline moves more
+    # than 3 source pixels, and nothing is redrawn for less than the Design's
+    # 0.1 mm unit. Members carry `meta["congruent_group"]` for later stages.
+    # Bridge hat 63 mm: the eight handles, 0.18 mm apart pairwise (worst
+    # handle 1.15 source px off their mean), come out 0.006 mm apart; Kent's
+    # flag, already within 0.09 mm, keeps its outlines and only gains the
+    # tags. False is the engine before the flag, byte for byte (md5 against
+    # main on three designs). Tests: `tests/test_regular_structure.py`.
+    regular_structure: bool = False
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a

@@ -1230,6 +1230,18 @@ def build_generation(
         from .columns import tag_ink_strays
         tag_ink_strays(regions, chart_for(cfg))
 
+    # Regular structure (`cfg.regular_structure`, built OFF 2026-11-13): what
+    # the art repeats becomes one shape repeated -- congruent shapes on a
+    # fitted arrangement take their mean shape, a region that repeats itself
+    # round its centre takes the mean of its rotations. After every text
+    # tagger (lettering is never a member) and before the stitch-width read,
+    # so widths, angles and tiers see the shape that will sew. Logos only: a
+    # photograph's fragments repeat nothing and would cost minutes of
+    # alignment. Off, the module never loads.
+    if cfg.regular_structure and classification.class_ not in PHOTO_CLASSES:
+        from .regular_structure import apply_regular_structure
+        apply_regular_structure(regions, p, cfg)
+
     # Stitch width (2026-09-29, `stitchwidth.py`): what column each shape
     # measures, and the one width a detected word's letters will share.
     # Metadata only, read off the FINAL polygons for the same reason the two
