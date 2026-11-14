@@ -29,12 +29,38 @@ test("dx=5 = +9-3-1", () => assert.deepStrictEqual(dst.encodeRecord(5,0,"stitch"
 test("dy=2 = +3-1", () => assert.deepStrictEqual(dst.encodeRecord(0,2,"stitch"), b(0x40,0x80,0x03)));
 test("end record", () => assert.deepStrictEqual(dst.endRecord(), b(0x00,0x00,0xF3)));
 test("header is 512 bytes and contains ST field", () => {
-  const h = dst.buildHeader({ label:"TEST", stitchCount:5, colorCount:1, xMin:-10,xMax:10,yMin:-5,yMax:5 });
+  // buildHeader writes colorCount as given; encodeDST passes the number of
+  // colour CHANGES it wrote (2026-11-13), so 2 here is a three-colour design.
+  const h = dst.buildHeader({ label:"TEST", stitchCount:5, colorCount:2, xMin:-10,xMax:10,yMin:-5,yMax:5 });
   assert.strictEqual(h.length, 512);
   const s = Buffer.from(h).toString("latin1");
   assert.ok(s.includes("LA:TEST"));
   assert.ok(s.includes("ST:0000005"));
-  assert.ok(s.includes("CO:001"));
+  assert.ok(s.includes("CO:002"));
+});
+// CO is the colour-change count, as pystitch.DstWriter writes it and every
+// third-party DST in the repo carries it; encodeDST wrote colors.length, one
+// more on every file and CO:001 for a single colour (found 2026-11-13).
+const headerCO = (bytes) => Buffer.from(bytes.subarray(0, 512)).toString("latin1").match(/CO:(\d{3})/)[1];
+const changeRecords = (bytes) => require("../src/dstimport.js").readDSTRecords(bytes).records.filter((r) => r.kind === "C").length;
+test("encodeDST: a one-colour design declares CO:000", () => {
+  const out = dst.encodeDST({ stitches:[{x:0,y:0,type:"stitch"},{x:30,y:0,type:"stitch"},{x:30,y:0,type:"end"}], colors:[{r:0,g:0,b:0,name:"a"}] });
+  assert.strictEqual(headerCO(out), "000");
+  assert.strictEqual(changeRecords(out), 0);
+});
+test("encodeDST: CO equals the colour-change records in the body (three colours, two changes)", () => {
+  const stitches = [
+    {x:0,y:0,type:"stitch"},{x:30,y:0,type:"stitch"},
+    {x:30,y:0,type:"color"},{x:30,y:30,type:"stitch"},{x:60,y:30,type:"stitch"},
+    {x:60,y:30,type:"color"},{x:60,y:60,type:"stitch"},{x:90,y:60,type:"stitch"},
+    {x:0,y:0,type:"end"},
+  ];
+  const out = dst.encodeDST({ stitches, colors:[{r:0,g:0,b:0},{r:255,g:0,b:0},{r:0,g:0,b:255}] });
+  assert.strictEqual(changeRecords(out), 2);
+  assert.strictEqual(headerCO(out), "002");
+  // Counted from what was written, not from the palette: a stream with no
+  // colors[] (lettering ships none) still declares its changes.
+  assert.strictEqual(headerCO(dst.encodeDST({ stitches })), "002");
 });
 test("encodeDST splits large jump >121", () => {
   const design = { stitches:[{x:0,y:0,type:"stitch"},{x:300,y:0,type:"stitch"}], colors:[{r:0,g:0,b:0,name:"a"}] };
