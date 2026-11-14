@@ -330,5 +330,6 @@
  "photo_work_grid": false,
  "photo_enclosed_rim": false,
  "underfill_untagged_riders": false,
- "stage0_scale_relative_grad": false
+ "stage0_scale_relative_grad": false,
+ "regular_structure": false
 }
