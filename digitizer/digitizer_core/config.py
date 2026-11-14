@@ -1325,10 +1325,13 @@ class PipelineConfig:
     # gate is in SOURCE pixels (`Prep.input_px_per_mm`), a raster read, not a
     # stitch value: gate 1 does not apply. Lettering is never a member; seams
     # with another colour stay where they were traced; no outline moves more
-    # than 3 source pixels. Members carry `meta["congruent_group"]` for later
-    # stages. Bridge hat 63 mm: the wheel's eight handles go from 0.31-1.17 px
-    # apart to one shape. False is the engine before the flag, byte for
-    # byte. Tests: `tests/test_regular_structure.py`.
+    # than 3 source pixels, and nothing is redrawn for less than the Design's
+    # 0.1 mm unit. Members carry `meta["congruent_group"]` for later stages.
+    # Bridge hat 63 mm: the eight handles, 0.18 mm apart pairwise (worst
+    # handle 1.15 source px off their mean), come out 0.006 mm apart; Kent's
+    # flag, already within 0.09 mm, keeps its outlines and only gains the
+    # tags. False is the engine before the flag, byte for byte (md5 against
+    # main on three designs). Tests: `tests/test_regular_structure.py`.
     regular_structure: bool = False
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").

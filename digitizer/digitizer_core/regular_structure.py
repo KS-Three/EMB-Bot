@@ -19,24 +19,38 @@ kinds of repetition, both measured against the size of one SOURCE pixel
   wheel is a single region (rim + eight handles in one black), so no grouping
   of regions can see its handles.
 
-`find_structure` only reads. `apply_regular_structure` (`cfg.regular_structure`,
-built OFF) replaces each confirmed member by the group's mean shape -- the
-aligned average of the members' signed distance fields, which also averages
-the pixel noise out -- placed at its own fitted position on the fitted
-arrangement, and tags `meta["congruent_group"]` so later stages can decide once
-per group. A self-symmetric region becomes the average of its own N rotations
-(and mirrors, when it is mirror-symmetric too).
+`find_groups` and `find_self_symmetry` only read (the census tool prints
+them). `apply_regular_structure` (`cfg.regular_structure`, built OFF) replaces
+each confirmed member by the group's mean shape -- the aligned average of the
+members' signed distance fields, which also averages the pixel noise out --
+placed at its own fitted position on the fitted arrangement, and tags
+`meta["congruent_group"]` (`id`, `kind`, `n`, `index`, `angle_deg`, `mirror`,
+`moved`) so later stages can decide tier and angle once per group. A
+self-symmetric region becomes the average of its own N rotations (and
+mirrors, when it is mirror-symmetric too).
 
 Guards (when in doubt, do nothing):
 
-* lettering is out of scope: text-cluster / word members are never candidates;
-* a group needs three members (a mirrored pair two), every member within
-  `MATCH_PX` source pixels (mean boundary distance) of the mean shape;
-* no member's outline moves further than `MOVE_PX` source pixels (Hausdorff);
-* a SEAM with a region of another colour is held where it was traced: the new
-  outline is clipped off that neighbour and the old outline is kept within a
-  source pixel of it, so nothing is pushed over or pulled off a neighbour. A
-  member whose outline is all seam therefore stays as it was.
+* lettering is out of scope: text-cluster / word / small-text members are
+  never candidates;
+* a group needs three members on an arrangement (a mirrored pair two); a
+  "loose" set of look-alikes is reported, never moved;
+* every member within `MATCH_PX` source pixels (mean boundary distance),
+  `DIL_PX` (uniform dilation: a deliberate SIZE step is refused) and
+  `HAUS_PX` (worst point: a deliberate SHAPE difference) of the mean shape;
+* no outline moves further than `MOVE_PX` source pixels, and nothing is
+  redrawn when no member would move more than `FLOOR_MM` (the Design unit);
+* a SEAM with a region of another colour is held where it was traced (a
+  region lying under the member is a layer, not a seam);
+* a self-repeat must have parts that stick out (`SELF_SOLIDITY_MAX`).
+
+What the census found (2026-11-13, eleven designs): only Bridge's wheel is a
+stage-4 geometry fault. The rest of the family Kent pinned is later: the
+flag's stripes already agree to 0.015 mm (their widths come from pull), its
+stars and toat's rule lines are congruent but sew at different satin angles,
+the mascot's feet and the emoji's legs are not congruent at all (the same
+thread lit at different fill angles), and Jakarta's dot grid is claimed by
+the text tagger. The tag is the table those stages read.
 """
 from __future__ import annotations
 
@@ -64,9 +78,13 @@ DIL_PX = 0.5
 HAUS_PX = 4.0
 # The furthest any member's outline may move (Hausdorff old -> new).
 MOVE_PX = 3.0
-# A region whose every repeat already sits this close to its symmetrized
-# mean (mean AND worst point) is left as traced.
-NOOP_PX = 0.25
+# Nothing is redrawn unless it would move by more than this, mm: the Design
+# contract's own unit (0.1 mm integers, `adapter`). Kent's flag shows why:
+# its stripes and stars already agree to 0.05-0.09 mm, and redrawing them
+# that little re-planned the long red satin (500 -> 1,399 stitches, the
+# columns tilted 5 deg) for no change anyone could see. Such a group keeps
+# its traced outlines and still carries its tag.
+FLOOR_MM = 0.1
 # A member smaller than this many square source pixels is trace noise.
 MIN_AREA_PX2 = 12.0
 # Arrangement fit: a centroid may sit this many source pixels off the fit.
@@ -862,6 +880,12 @@ def apply_regular_structure(regions, p, cfg=None, *, match_px=MATCH_PX, move_px=
                  "confirmed": g.confirmed, "reason": g.reason, **g.arrangement, "members": []}
         report["groups"].append(entry)
         ok = g.ok
+        placed = {}
+        if g.confirmed:
+            placed = {m.idx: _place(g.template, *m.fitted, m.mirror) for m in ok}
+        # the group is redrawn only when some member would move past the floor
+        redraw = any(_haus(placed[m.idx], regions[m.idx].polygon) > FLOOR_MM for m in ok) \
+            if placed else False
         for m in g.members:
             rec = {"shape_id": m.shape_id, "dev_mm": round(m.dev_mm, 4),
                    "haus_mm": round(m.haus_mm, 4), "dil_mm": round(m.dil_mm, 4), "moved": False}
@@ -872,14 +896,17 @@ def apply_regular_structure(regions, p, cfg=None, *, match_px=MATCH_PX, move_px=
             if not g.confirmed:
                 rec["held"] = g.reason
                 continue
-            fx, fy, fa = m.fitted
-            moved, why, move = _replace(regions, m.idx, _place(g.template, fx, fy, fa, m.mirror),
-                                        band, cap)
-            rec["moved"] = moved
-            if move is not None:
-                rec["move_mm"] = round(move, 4)
-            if why:
-                rec["held"] = why
+            fa = m.fitted[2]
+            moved = False
+            if redraw:
+                moved, why, move = _replace(regions, m.idx, placed[m.idx], band, cap)
+                rec["moved"] = moved
+                if move is not None:
+                    rec["move_mm"] = round(move, 4)
+                if why:
+                    rec["held"] = why
+            else:
+                rec["held"] = "already regular"
             regions[m.idx].meta[META_KEY] = {
                 "id": g.gid, "kind": kind, "n": len(ok), "index": ok.index(m),
                 "angle_deg": round(math.degrees(fa) % 360.0, 3), "mirror": bool(m.mirror),
@@ -898,9 +925,9 @@ def apply_regular_structure(regions, p, cfg=None, *, match_px=MATCH_PX, move_px=
         report["self"].append(rec)
         if not s.confirmed:
             continue
-        if max(s.wedge_devs + s.wedge_haus) <= NOOP_PX * src:
-            # Already regular to a quarter pixel: re-tracing it through the
-            # raster would only round its corners.
+        if _haus(s.sym, r.polygon) <= FLOOR_MM:
+            # Already regular below the Design unit: re-tracing it through
+            # the raster would only round its corners.
             rec["held"] = "already regular"
             continue
         moved, why, move = _replace(regions, s.idx, s.sym, band, cap)

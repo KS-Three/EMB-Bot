@@ -123,7 +123,7 @@ def test_five_stripes_of_uneven_width_sew_one_width_at_one_pitch():
     widths = [3.9, 4.1, 3.95, 4.08, 3.97]           # within half a source pixel of 4
     regions = []
     for k, w in enumerate(widths):
-        y = 8.0 * k + rng.uniform(-0.1, 0.1)
+        y = 8.0 * k + rng.uniform(-0.2, 0.2)
         regions.append(_region(box(-40.0, y, 40.0, y + w), sid=f"T{k}"))
     report = rs.apply_regular_structure(regions, P)
     g, = report["groups"]
@@ -132,6 +132,22 @@ def test_five_stripes_of_uneven_width_sew_one_width_at_one_pitch():
     assert max(after) - min(after) < 0.02, after
     tops = sorted(r.polygon.bounds[1] for r in regions)
     assert np.ptp(np.diff(tops)) < 0.02
+
+
+def test_an_already_regular_group_keeps_its_outlines_and_its_tag():
+    """Kent's flag: stripes that agree below the Design's 0.1 mm unit are not
+    redrawn (redrawing them re-planned the long satin for nothing), but later
+    stages still get the group."""
+    regions = [_region(box(-40.0, 8.0 * k + 0.01 * k, 40.0, 8.0 * k + 4.0 + 0.02 * (k % 2)), sid=f"F{k}")
+               for k in range(5)]
+    before = [r.polygon.wkb for r in regions]
+    report = rs.apply_regular_structure(regions, P)
+    g, = report["groups"]
+    assert g["confirmed"] and g["kind"] == "row"
+    assert all(m.get("held") == "already regular" and not m["moved"] for m in g["members"])
+    assert [r.polygon.wkb for r in regions] == before
+    assert all(r.meta[rs.META_KEY]["id"] == g["id"] and r.meta[rs.META_KEY]["moved"] is False
+               for r in regions)
 
 
 def test_look_alikes_of_deliberately_different_sizes_do_not_group():
@@ -200,8 +216,8 @@ def test_mirrored_pair_is_found_and_made_exact_mirrors():
     rng = np.random.default_rng(7)
     # a boot: an L with unequal arms has no mirror symmetry of its own
     foot = Polygon([(0, 0), (7, 0), (7, 1.5), (2.5, 1.5), (2.5, 6), (0, 6)])
-    left = _jitter(affinity.translate(foot, -9.0, 0.0), rng, 0.07)
-    right = _jitter(affinity.scale(affinity.translate(foot, -9.0, 0.0), -1.0, 1.0, origin=(0, 0)), rng, 0.07)
+    left = _jitter(affinity.translate(foot, -9.0, 0.0), rng, 0.1)
+    right = _jitter(affinity.scale(affinity.translate(foot, -9.2, 0.15), -1.0, 1.0, origin=(0, 0)), rng, 0.1)
     regions = [_region(left, sid="L"), _region(right, sid="R")]
     report = rs.apply_regular_structure(regions, P)
     g, = report["groups"]
