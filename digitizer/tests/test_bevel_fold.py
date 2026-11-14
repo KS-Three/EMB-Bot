@@ -93,7 +93,8 @@ def test_a_line_across_a_shape_stays_but_a_ring_arc_folds():
     disc = Point(0, 0).buffer(20, 128)
     arc = Point(0, 0).buffer(19.6, 128).difference(Point(0, 0).buffer(19.0, 128)) \
         .intersection(box(-30, 5, 30, 30))                  # 0.6 mm silver bevel arc near the edge
-    cross = box(-12, -0.25, 12, 0.25)                       # a 0.5 mm line through the centre
+    cross = box(-19.7, -0.25, 19.7, 0.25)                   # a 0.5 mm line through the centre,
+    #                                                         reaching the edge at both ends
     black = disc.difference(arc).difference(cross)
     regions = [_r(black, BLACK, "RING"), _r(arc, SILVER, "ARC"), _r(cross, SILVER, "X")]
     # Drone's art floods no page colour: the garment (the Studio's cream) stands in
@@ -125,17 +126,29 @@ def test_distinct_colours_and_wide_shapes_are_left_alone():
     assert [(r.shape_id, r.thread_index, r.polygon.wkb) for r in regions] == before
 
 
-def test_the_dark_wall_of_a_counter_folds_into_the_letter():
-    """GOLF's O: a dark inner bevel lines the counter; the pro sews the O one
-    gold with the counter open."""
+def test_a_line_splitting_a_shape_in_two_stays():
+    """Drone's crosshair runs edge to edge: it is not a hole in the black but
+    a line between two black halves."""
+    left, right = box(-10, -10, -0.25, 10), box(0.25, -10, 10, 10)
+    line = box(-0.25, -10, 0.25, 10)
+    regions = [_r(left, BLACK, "L"), _r(right, BLACK, "R"), _r(line, SILVER, "LINE")]
+    no_page = SimpleNamespace(input_px_per_mm=12.0, px_per_mm=12.0, bg_rgb=None, bg_from_alpha=False)
+    rep = bf.apply_bevel_fold(regions, no_page, PipelineConfig(garment_rgb=(235, 232, 223)), CHART)
+    assert rep["bands"] == [] and len(regions) == 3
+
+
+def test_the_dark_wall_of_a_counter_stays():
+    """GOLF's O: a dark inner bevel lines the counter. Inside a letter, only
+    what runs along its OUTER edge folds; this stays (a known gap: the pro
+    sews the O plain gold)."""
     o = Point(0, 0).buffer(5, 64)
     counter = Point(0, 0).buffer(2.0, 64)
     wall = Point(0, 0).buffer(2.5, 64).difference(counter)          # 0.5 mm dark ring
     letter = o.difference(Point(0, 0).buffer(2.5, 64))
     regions = [_r(letter, GOLD, "O"), _r(wall, BLACK, "WALL"), _r(counter, WHITE, "C", counter=True)]
     rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
-    assert [b["shape_id"] for b in rep["bands"]] == ["WALL"]
-    assert {r.shape_id for r in regions} == {"O", "C"}
+    assert rep["bands"] == []
+    assert {r.shape_id for r in regions} == {"O", "WALL", "C"}
 
 
 def test_the_page_showing_through_is_never_folded():

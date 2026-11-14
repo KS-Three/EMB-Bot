@@ -76,10 +76,9 @@ EDGE_HUG_FRAC = 0.15
 # outline) only when it has at least this many times its area: the one that
 # stays is plainly the main line.
 BAND_PARENT_RATIO = 2.0
-# A band in a hole of its parent FILLS it when it is at least this share of
-# the hole (a shape drawn inside); less, and it lines the hole (a counter's
-# wall, with the counter itself inside).
-FILLS_HOLE_FRAC = 0.9
+# A band touching two shapes of one colour along at least this share of its
+# outline each lies between them: a line drawn across that colour.
+SPLIT_FRAC = 0.15
 # A band covering this share of its parent's outer outline or more wraps it:
 # a keyline or an art outline (ADAPTATIONS.md item 1's 60%). Never folded.
 ALL_ROUND = 0.6
@@ -121,6 +120,16 @@ def _lab(rgb) -> np.ndarray:
 
 def _width(g) -> float:
     return 2.0 * g.area / g.length if g.length > 0 else 0.0
+
+
+def _farthest(g, line) -> float:
+    """How far the farthest point of `g`'s outline lies from `line`: a band
+    ALONG an edge stays within its own width of it all the way; a line drawn
+    across (Drone's crosshair, which reaches the edge only at its ends) does
+    not."""
+    pts = np.asarray(g.exterior.segmentize(0.2).coords)     # every 0.2 mm, not just corners
+    from shapely import distance, points
+    return float(distance(points(pts), line).max())
 
 
 def _protected(r) -> bool:
@@ -311,35 +320,48 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
                 cands.append((_de00(lab(r), lab(o)), -v, j, v))
             if not cands:
                 continue
-            # It runs ALONG the bodies: HUG_FRAC of its outline against them,
-            # or -- a band lying on the page, which has only one other side
-            # (GOLF's extrusion: 72% on the page, nearly all the rest on the
-            # gold) -- half its off-page outline and EDGE_HUG_FRAC overall.
-            on_bodies = sum(c[3] for c in cands)
+            # It runs ALONG one colour: HUG_FRAC of its outline against shapes
+            # of that colour, or -- a band lying on the page, which has only
+            # one other side (GOLF's extrusion: 72% on the page, nearly all the
+            # rest on the gold) -- half its off-page outline and EDGE_HUG_FRAC
+            # overall. A line drawn across several colours (Drone's reticle)
+            # runs along none of them. Of the colours it runs along, the
+            # nearest is the parent; the shape of it it touches most takes it.
             off_page = per - graph.page_contact(i)
-            if not (on_bodies >= HUG_FRAC * per
-                    or (on_bodies >= EDGE_HUG_FRAC * per and on_bodies >= 0.5 * off_page)):
+            by_thread: dict[int, list] = {}
+            for c in cands:
+                by_thread.setdefault(regions[c[2]].thread_index, []).append(c)
+            hugged = []
+            for t, cs in by_thread.items():
+                tot = sum(c[3] for c in cs)
+                if tot >= HUG_FRAC * per or (tot >= EDGE_HUG_FRAC * per and tot >= 0.5 * off_page):
+                    best = max(cs, key=lambda c: (c[3], -c[2]))
+                    hugged.append((best[0], -tot, t, best))
+            if not hugged:
                 continue
-            _de, _neg, j, shared = min(cands)
+            _de, _neg, j, shared = min(hugged)[3]
+            # A band lying BETWEEN two shapes of its parent's colour is a line
+            # drawn across that colour (Drone's crosshair splits its black
+            # badge in two), not a bevel on one side of one shape.
+            same = [c for c in cands if regions[c[2]].thread_index == regions[j].thread_index
+                    and c[3] >= SPLIT_FRAC * per]
+            if len(same) >= 2:
+                continue
             P = regions[j].polygon
+            # In a hole of its parent, a band folds only when it runs along the
+            # parent's OUTER edge all the way (Drone's ring arcs). Anything
+            # else inside is drawn there: Drone's reticle crosses the badge,
+            # a counter's dark wall (GOLF's O) is the letter's own drawing.
             inside = Polygon(P.exterior).contains(g.representative_point())
-            hole = next((Polygon(h) for h in P.interiors
-                         if Polygon(h).contains(g.representative_point())), None)
-            # In a hole of its parent, a band either FILLS the hole (a shape
-            # drawn inside: Drone's crosshair, its ring arcs) or LINES a larger
-            # one (the wall of a counter: GOLF's O, whose dark inner bevel
-            # rings the counter).
-            fills = inside and (hole is None or g.area >= FILLS_HOLE_FRAC * hole.area)
             if inside and r.meta.get("rescued_small_shape"):
                 continue                  # a detail stage 3 kept inside a shape: a counter
-            if fills and g.distance(P.exterior) > BAND_MAX_MM:
-                continue                  # drawn across the inside: a line, not a bevel
-            if not inside or fills:
-                # how far it runs along the parent's outline (a band filling a
-                # hole touches it on both long sides: half its contact)
-                along = shared / 2.0 if fills else shared
-                if along >= ALL_ROUND * P.exterior.length:
-                    continue              # wraps its parent: a keyline, a full inner ring
+            if inside and _farthest(g, P.exterior) > BAND_MAX_MM + _width(g):
+                continue                  # drawn inside, not along the edge
+            # how far it runs along the parent's outline (a band inside touches
+            # it on both long sides: half its contact)
+            along = shared / 2.0 if inside else shared
+            if along >= ALL_ROUND * P.exterior.length:
+                continue                  # wraps its parent: a keyline, a full inner ring
             folds[i] = j
         if not folds:
             break
