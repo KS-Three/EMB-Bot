@@ -1478,6 +1478,67 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   ground like the Python lane's. Kent 2026-11-13: "Ship it switched off".
   *(measured 2026-11-13 — PR #1470)*
 
+- **"The pro makes repeats identical" is disproved: on Bridge the art's
+  repeats are already alike, and the irregularity is ours.** The art's eight
+  wheel handles lie 0.21 mm apart (p95 boundary distance after rotation
+  alignment, mean over 28 pairs), the pro's 0.21, ours 0.58. His real change
+  is the handle's SHAPE (spindle to paddle with a collar). On the arc text it
+  is SIZE (1.65x), not a more regular baseline (0.56 vs the art's 0.52 mm).
+  Do not build "make repeats regular" as a pro habit. Find where our pipeline
+  spreads them (trace, simplify or satin construction) with a `debug_dir`
+  stage trace. `regular_structure` (OFF, PR #1480) reads modest by eye.
+  *(measured 2026-11-13 — `docs/director-night-2026-11-13.md`, "Where the pro
+  departs from the art")*
+- **"We sew fatter than the pro" is disproved as stated; we are heavier on
+  MFab and Gaulke only.** The earlier "ours 18-30% heavier, the pro within
+  1% of the art" was a dark-pixel count on shaded renders. The width ledger,
+  which draws both files the same way, reads thread area over art area:
+  Becker 1.18 ours vs 1.19 the pro, Bridge 1.09 vs 1.09, MFab 1.12 vs 0.95,
+  Gaulke 1.37 vs 0.74. Do not cut width across the board to match the pro.
+  What closes small counters is pull compensation on satin rails plus thread
+  width, and the pull amount is a fabric constant (ROADMAP gate 1).
+  *(measured 2026-11-13 — width ledger on PR #1485, open;
+  `docs/director-night-2026-11-13.md`, "What I got wrong")*
+- **The proof-read (`cfg.proofread`) is a tracing tool, not a guard.** Its
+  findings land on Kent's fault groups barely above chance: satin 38 groups
+  against 29.7 by chance, fill 23 against 19.7. It also raises findings on
+  designs he graded Good. Its first Jakarta counter findings were
+  transparent holes read as ink (fixed). Do not gate, block or steer the
+  engine on its findings. Use it to name the stage behind a pin.
+  *(measured 2026-11-14 — PR #1487, open, Table A; memory
+  `proofread-2026-11-13`)*
+- **An agent eye with the original beside the render is PARTIAL against
+  Kent's pins. It is no stand-in for him at his spot, though it is the
+  closest instrument yet.** The protocol was pre-registered (45 designs, his
+  270 pins as 139 groups):
+  - The Opus reader finds his gross faults at his spot 0.35 above chance
+    [0.25, 0.49], against a bar of 0.40.
+  - It names the same fault somewhere in the design 0.52 above chance.
+  - Its grade agrees with his at linear kappa 0.66 [0.52, 0.78], and 0.44
+    without his Terrible designs.
+  - It is weakest on jagged edges (2 of 18 at his spot) and pen flow (4 of
+    21).
+
+  **Ruled 2026-11-14 (Kent: "Yes, gross faults only"):** it is the working
+  judge for GROSS faults in the dev loop (missing, merged, invented,
+  unreadable). It does not judge jagged edges, pen flow or close A/B picks,
+  there is no nightly run, and flips stay his. *(measured 2026-11-13, ruled
+  2026-11-14 — `docs/director-night-2026-11-13.md`, "The agent eye against
+  Kent's pins" and "Kent's rulings")*
+- **`lettering_columns_apex_cut` needs a guard before any flip; do not flip
+  it as built.** It cures and_pizza's Z-joint pins, but on 43 lettering
+  designs 25 moved:
+  - 10 better;
+  - 10 the same;
+  - 1 mixed;
+  - 4 worse. outline_lineart_logo is badly worse (Kent graded it Great):
+    line art tagged as text turns into long bars. k_line, Precision Drone
+    and MFab LC are the other three.
+
+  A guard on the length of a tip's stitches comes first, then the table is
+  re-run. *(measured 2026-11-14 — PR #1489,
+  `docs/apex-cut-corpus-2026-11-14.md`)*
+
 ---
 
 ## SAM2 does not see a logo as a scene of objects — refuted on all nine real logos (2026-09-22)

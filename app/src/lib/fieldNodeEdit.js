@@ -323,7 +323,10 @@ export function predictedFit(element, shapes, garment) {
   const b = flatBBox(shapes || []);
   if (!b) return null;
   const wPx = (b.maxX - b.minX) || PX_PER_MM, hPx = (b.maxY - b.minY) || PX_PER_MM;
-  const boxW = garment.widthIn * MM_PER_INCH, boxH = garment.heightIn * MM_PER_INCH;
+  // the engine's clamp box: the hat front's PLACEMENTS box (`clampBox`, Kent
+  // 2026-11-14), else the inch pair
+  const boxW = garment.clampBox ? garment.clampBox.w : garment.widthIn * MM_PER_INCH;
+  const boxH = garment.clampBox ? garment.clampBox.h : garment.heightIn * MM_PER_INCH;
   const typed = element && typeof element.sizeMm === "number" && isFinite(element.sizeMm) && element.sizeMm > 0;
   // Auto-fit sizes to the box capped to the largest hoop (garments.fitScale);
   // a typed size clamps to the full placement box.

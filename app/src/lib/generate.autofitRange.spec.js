@@ -28,7 +28,7 @@ async function hat() {
   return { generateElement, garment: EMB.getGarment("hat_front") };
 }
 
-test("a stitch file the Hat box would shrink to 66% lands at 75%, past the box", async () => {
+test("a stitch file the Hat box would shrink to 74% lands at 75%, past the box", async () => {
   const { generateElement, garment } = await hat();
   const d = generateElement(designEl(91, 86), garment, {});
   expect(d._debug.scale).toBe(0.75);
@@ -38,7 +38,7 @@ test("a stitch file the Hat box would shrink to 66% lands at 75%, past the box",
 test("a stitch file that lands at 90% is unchanged", async () => {
   const { generateElement, garment } = await hat();
   const noRange = (await import("./emb.js")).EMB;
-  const el = designEl(60, 63);
+  const el = designEl(60, 72); // 64 mm Hat box height / 72 = 89%: inside 75-100%
   const d = generateElement(el, garment, {});
   const plain = noRange.buildImportedDesign(noRange.decodeDSTStandard(Uint8Array.from(Buffer.from(el.dstBase64, "base64"))), { garment });
   expect(d._debug.scale).toBeGreaterThan(0.75);
@@ -60,5 +60,5 @@ test("digitized art still fits the box (no 75% floor)", async () => {
   };
   const d = generateElement({ id: "g1", type: "digitized", result, sizeMm: null, rotationDeg: 0, offsetXMm: 0, offsetYMm: 0 }, garment, {});
   expect(d._debug.scale).toBeLessThan(0.75);
-  expect(d.heightMM).toBeLessThanOrEqual(garment.heightIn * 25.4 + 1e-6);
+  expect(d.heightMM).toBeLessThanOrEqual(64 + 1e-6); // the hat front clamps to its PLACEMENTS box, 113.5 x 64.0 (Kent 2026-11-14), not the 2.25 in inch pair
 });

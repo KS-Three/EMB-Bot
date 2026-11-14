@@ -219,7 +219,26 @@ one index line per PR. Delete nothing under `.claude/worktrees/`.
   `& "C:\Program Files\Git\bin\bash.exe" <script>`; `start ""` is cmd, not
   PowerShell (`Invoke-Item` opens a file).
 - A session started on a turn that an automated event began cannot start
-  sessions; it proposes cards and Kent clicks.
+  sessions; it proposes cards and Kent clicks. **Since 2026-11-13 that covers
+  a timer-fired turn and a turn another session's message began as well.**
+  On the director night, after the first wave the director could only
+  re-task workers that already existed. Start every worker you will need on
+  a turn Kent typed.
+- **The app caps a session at 20 messages to other sessions until its user
+  types there.** On the 11-13 night the director hit it at about 02:50. From
+  then on it could not re-task, nudge or redirect anyone, and four finished
+  workers sat idle until morning. Spend messages on tasks, not acknowledgements,
+  and put the whole next task in one message.
+- **A worker's final message reaches the director only through an explicit
+  `SendMessage`.** The app's turn-end note is a truncated recap, not the
+  report. Brief every worker to send its report with `SendMessage` before it
+  ends its turn.
+- **`archive_session` leaves the lane folder behind.** Remove a landed lane
+  yourself: `git worktree unlock`, then `git worktree remove` (never
+  `--force`), then `git branch -d`. A file lock at removal can still leave
+  an empty folder behind (`.claude/worktrees/pen-stroke`, 11-14). Evidence
+  for these four: `docs/director-night-2026-11-13.md`, "Limits the director
+  hit".
 - Disk: 0.35 GB free killed three census jobs on 10-23. Scratch worktrees under
   `%TEMP%\embwt` were 4.4 GB; 29 clean lanes were 11.7 GB. Clean after each wave.
 - "Finished" sessions still hold Remote Control links the app counts as live

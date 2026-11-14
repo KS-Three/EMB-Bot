@@ -1257,7 +1257,7 @@
     // become the actual design dims (bbox*sc), not the (unused) fit target.
     if (!noGeometry && typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0) {
       const bw = bboxWmm || 1, bh = bboxHmm || 1;
-      const hoopWmm = units.inToMm(garment.widthIn), hoopHmm = units.inToMm(garment.heightIn);
+      const clampBox = garments.clampBoxMm(garment), hoopWmm = clampBox.w, hoopHmm = clampBox.h; // the hat front on its PLACEMENTS box (Kent 2026-11-14), else the inch pair
       const clampedTargetWmm = Math.min(Math.max(o.targetWidthMm, 1), hoopWmm);
       sc = Math.min(clampedTargetWmm / bw, hoopHmm / bh);
       designWmm = bw * sc;
@@ -2078,7 +2078,7 @@
     // become the actual design dims (bbox*sc), not the (unused) fit target.
     if (typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0) {
       const bw = fitBboxWmm || 1, bh = fitBboxHmm || 1;
-      const hoopWmm = units.inToMm(garment.widthIn), hoopHmm = units.inToMm(garment.heightIn);
+      const clampBox = garments.clampBoxMm(garment), hoopWmm = clampBox.w, hoopHmm = clampBox.h; // the hat front on its PLACEMENTS box (Kent 2026-11-14), else the inch pair
       const clampedTargetWmm = Math.min(Math.max(o.targetWidthMm, 1), hoopWmm);
       sc = Math.min(clampedTargetWmm / bw, hoopHmm / bh);
       designWmm = bw * sc;
