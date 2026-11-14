@@ -2702,6 +2702,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             text_lean_deg: float | None = None,
                             inside_stagger: bool = False,
                             connectors_buried: bool = False,
+                            corner_fold_apex_side: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -2739,8 +2740,16 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     the inside of every pivot walked and short-stitched the pro's way
     (`_inside_stagger`); off, `_short_stitch_guard` as before.
     `connectors_buried`: `cfg.lettering_columns_connectors_buried`
-    (2026-11-14) -- see `column_runs`."""
-    from .outline_cut import letter_columns, stroke_width
+    (2026-11-14) -- see `column_runs`.
+    `corner_fold_apex_side`: `cfg.lettering_columns_corner_fold_apex_side`
+    (2026-11-14) -- under `corner_fold`, a corner's fold counts only the
+    pieces on its apex side (`outline_cut._FOLD_APEX_SIDE`)."""
+    _args = dict(locals())
+    from .outline_cut import fold_apex_side_scope, letter_columns, stroke_width
+
+    if corner_fold_apex_side:
+        with fold_apex_side_scope(True):
+            return lettering_columns_shape(**{**_args, "corner_fold_apex_side": False})
 
     if small_bold:
         pull_mm = min(pull_mm, SMALL_BOLD_PULL_FRAC * stroke_width(poly))
