@@ -93,12 +93,20 @@ test("the satinfont limit is the encoder's record", () => {
   assert.strictEqual(DST.DST_MAX_DELTA / 10, 12.1);
 });
 
-test("byte-identical to pre-split main for the 9 fonts at 25 and 60 mm cap", async () => {
+// The pins were taken while a cross-stitch font's cap height read the em proxy
+// (0.73 em) because glyph ink could not see cross regions; fixed 2026-11-13.
+// Calibrating on the measured cap now lands a different width, so this builds
+// at the width the pins were taken at: the trial cap scaled back to the proxy.
+// Every pin reproduced exactly that way on the fix branch, so the split's
+// byte-identity guarantee is still the one checked here.
+const SF = require("../src/satinfont.js");
+test("byte-identical to pre-split main for the 9 fonts at the widths the 25 and 60 mm pins were taken at", async () => {
   const { loadFont, calibrate } = await tools();
   for (const name of FONTS) {
     const font = loadFont(name), cal = calibrate(font, "AB");
+    const proxyTrialCap = cal.trialCap * 0.73 / SF.capHeightMm(font, 1).mm;
     for (const cap of [25, 60]) {
-      const d = build(font, "AB", "full_back", cal.trialWidth * cap / cal.trialCap, TRIO_OFF);
+      const d = build(font, "AB", "full_back", cal.trialWidth * cap / proxyTrialCap, TRIO_OFF);
       const h = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex").slice(0, 16);
       assert.strictEqual(h, BEFORE[name + "@" + cap], name + " @ " + cap + " mm moved");
     }
@@ -112,11 +120,12 @@ function hoop(font, text, garment) {
   });
 }
 
-test("hoop-size cap (full_back 'AB' egyptian ~250 mm): nothing past a record, X endpoints unchanged", async () => {
+test("hoop-size cap (full_back 'AB' egyptian ~152 mm): nothing past a record, X endpoints unchanged", async () => {
   const { loadFont } = await tools();
   const font = loadFont("egyptian");
   const split = hoop(font, "AB", "full_back");
-  assert.ok(split.lettering.capMm > 200, "hoop-filling cap " + split.lettering.capMm);
+  // 152 mm measured; it read ~250 while cap height was the em proxy (to 2026-11-13).
+  assert.ok(split.lettering.capMm > 140, "hoop-filling cap " + split.lettering.capMm);
   assert.ok(maxAxisMm(split) <= 12.1 + 1e-9, "max axis " + maxAxisMm(split));
 
   // Same build with the split switched off (the engine calls crossFill through the module).
