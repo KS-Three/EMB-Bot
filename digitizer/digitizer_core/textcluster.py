@@ -1036,6 +1036,37 @@ def _cluster(cands: list[_Candidate],
     return list(groups.values())
 
 
+# SOLID GUARD (`cfg.extra["text_cluster_solid_guard"]`, 2026-11-13, built
+# OFF). A letter is drawn with a pen: its stroke is a fraction of its extent.
+# +Jakarta's mark is a grid of solid squares; three of them in a row (2.54 x
+# 2.62 mm at 80 mm, 2.71-2.75 mm apart) passed the letter door -- aspect
+# 0.97, a square's skeleton is a tidy X, CV low -- and clustered as a
+# three-letter "word". The small-text re-set then grew the "word" x1.52,
+# widened it 0.52 mm a side (4.92 mm squares) and closed its gaps to a
+# letter gap (0.59 mm of polygon); sewn as satin, their needle paths touch
+# (0.000 mm): Kent saw three of the mark's five equal squares sewn twice
+# their size, fused into one bar.
+# A candidate whose stroke (2 x its mean skeleton half-width) is at least
+# this share of its LONGER side is a solid blob: the squares read 0.58; the
+# letters beside them 0.15-0.21 (the tagline) and ~0.19 (Jakarta itself); a
+# black-weight sans stem, the stroke as wide as an I, ~0.25-0.3. ONE blob is
+# not refused: a small letter whose counter stage 4 filled under its hole
+# floor is a blob too (a 1.3 mm "o" traced solid reads 0.65), and the line
+# it belongs to is still a line. A cluster at least `SOLID_GROUP_SHARE` of
+# whose members are blobs is a row of shapes, not a word, and is not tagged.
+# Not "every member": the mark's cluster is its five squares AND its corner
+# triangle, which reads 0.33 (a right triangle's skeleton runs out to its
+# corners). (A word of nothing but closed letters traced solid -- "808" --
+# would go with it; none is in the corpus this was read on.)
+SOLID_STROKE_FRAC = 0.45
+SOLID_GROUP_SHARE = 0.75
+
+
+def _solid(c: _Candidate) -> bool:
+    """`c` is a solid blob (`SOLID_STROKE_FRAC`)."""
+    return 2.0 * c.stroke_mean_mm >= SOLID_STROKE_FRAC * max(c.width_mm, c.height_mm)
+
+
 def _text_cluster_id(shape_ids: list[str]) -> str:
     """Same blake2s-digest(4)-of-sorted-ids pattern as `regions._merge_shape_id`
     / `_split_shape_id`, copied rather than imported (it is three lines, and
@@ -1053,7 +1084,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
                          part_touching: bool = False,
                          nest_guard: bool = False,
                          nest_guard_rotated: bool = False,
-                         nest_door_aspect: bool = False) -> None:
+                         nest_door_aspect: bool = False,
+                         solid_guard: bool = False) -> None:
     """Post-vectorization pass: tag every member of a qualifying group of
     glyph-shaped regions as a text candidate (`text_candidate`,
     `text_cluster_id`, `text_cluster_stroke_mm`, `text_cluster_all_rescued`
@@ -1131,6 +1163,11 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
        shares with a line-mate (`_turned_candidate`), passes the door and
        links (`_adopt_turned`): a letter turned on a ring. It joins a line,
        never makes one. False: byte for byte.
+       `solid_guard` (`cfg.extra["text_cluster_solid_guard"]`, 2026-11-13,
+       built OFF): a cluster `SOLID_GROUP_SHARE` of whose members are solid
+       blobs (`_solid`, a stroke `SOLID_STROKE_FRAC` of the longer side or
+       more) is not tagged, in either round: a row of a logo's solid squares
+       is not a word. False: byte for byte.
 
     `chart` is the thread chart the regions' `thread_index` values name --
     `threads.chart_for(cfg)` from the pipeline; the default chart when not
@@ -1170,10 +1207,14 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
             c.region.meta["text_cluster_stroke_mm"] = stroke_mm
             c.region.meta["text_cluster_all_rescued"] = all_rescued
 
+    def blobs(group: list[_Candidate]) -> bool:
+        """`solid_guard`: a row of shapes, not a word (`SOLID_GROUP_SHARE`)."""
+        return solid_guard and sum(_solid(c) for c in group) >= SOLID_GROUP_SHARE * len(group)
+
     rescued = _candidates(regions)
     taken: set[str] = set()
     for group in _cluster(rescued, SIMILARITY_RATIO, chart if rescued_ink_link else None):
-        if len(group) < MIN_CLUSTER_MEMBERS:
+        if len(group) < MIN_CLUSTER_MEMBERS or blobs(group):
             continue
         tag(group)
         taken.update(c.region.shape_id for c in group)
@@ -1184,13 +1225,13 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
         if not nest_door_aspect:
             for group in _cluster(_drop_nested(pool + letters, nest_guard, nest_guard_rotated),
                                   LETTER_HEIGHT_RATIO, chart):
-                if len(group) < MIN_CLUSTER_MEMBERS:
+                if len(group) < MIN_CLUSTER_MEMBERS or blobs(group):
                     continue
                 tag(group)
             return
         groups = [g for g in _cluster(_drop_nested(pool + letters, nest_guard, nest_guard_rotated),
                                       LETTER_HEIGHT_RATIO, chart)
-                  if len(g) >= MIN_CLUSTER_MEMBERS]
+                  if len(g) >= MIN_CLUSTER_MEMBERS and not blobs(g)]
         for group in _adopt_turned(groups, _turned_regions(regions, chart, counters_as_drawn), chart):
             tag(group)
         return
@@ -1212,7 +1253,7 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
                                           counters_as_drawn=counters_as_drawn)
         kept_cands = _drop_nested(cands, nest_guard, nest_guard_rotated)
         groups = [g for g in _cluster(kept_cands, LETTER_HEIGHT_RATIO, chart)
-                  if len(g) >= MIN_CLUSTER_MEMBERS]
+                  if len(g) >= MIN_CLUSTER_MEMBERS and not blobs(g)]
         if wide_letters:
             wide = _letter_candidates(trial, chart=chart, counters_as_drawn=counters_as_drawn,
                                       aspect=(ASPECT_RATIO_MAX, WIDE_LETTER_ASPECT_MAX))

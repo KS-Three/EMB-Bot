@@ -1344,6 +1344,22 @@ class PipelineConfig:
     # tags. False is the engine before the flag, byte for byte (md5 against
     # main on three designs). Tests: `tests/test_regular_structure.py`.
     regular_structure: bool = False
+    # Shading the pro flattens sews as the shape it shades (built OFF
+    # 2026-11-13, Kent on Golden Tee, 20 pins: "The bean stitching makes
+    # 'golf' look to bust"; Drone pin 3, "border changes colour too much")
+    # (`bevel_fold.apply_bevel_fold`). Just after the colour cap: a light band on
+    # the page hugging one side of the art (a drop shadow) goes to the page;
+    # two shapes within 15 dE00 sharing a long seam (a ramp the palette split)
+    # become one thread and one shape; a band no wider than two laid threads
+    # (0.8 mm, what we sew as runs and beans) running along a body folds into
+    # it. A band wrapping its parent (a keyline, 60% of its outline), a line
+    # across a shape's inside, and any edge of a page-coloured shape are kept.
+    # Widths are mm at the sewn size, colours CIEDE2000; no fabric constant:
+    # gate 1 does not apply. A DESIGN CHANGE (pro-digitizer-rules 10-21 s4):
+    # the default is Kent's. Golden Tee hat: 6 -> 4 threads; Drone's ring one
+    # colour. False is the engine before the flag, byte for byte. Tests:
+    # `tests/test_bevel_fold.py`.
+    bevel_ring_fold: bool = False
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
@@ -2161,6 +2177,23 @@ class PipelineConfig:
     # `border_from_outline`. Off, byte-identical.
     # Tests: `tests/test_outline_follow_shape.py`.
     border_from_outline_follow_shape: bool = False
+    # `inshape_piece_lift` (2026-11-14, built OFF): where stage 7 sews ONE
+    # shape as several `stitch_shape` pieces and concatenates them
+    # (`border_from_outline`'s body pieces, `enclosed_white_keyline`'s, both
+    # off `keyline_rest`), the step from one piece's last stitch to the next
+    # piece's first was written as a single needle-down stitch whatever its
+    # length and whatever it crossed: on Becker hat large a 15.0 mm and a
+    # 37.5 mm straight thread across the white letters, both pinned by Kent as
+    # "Random Cross over stitch shouldn't be here" (`docs/long-stitch-joins-
+    # 2026-11-14.md`). Longer than a DST record holds, so the writer flies it
+    # as jump records with the thread down. ON, a step that stays on the
+    # shape is sewn as travel split at `machine.MAX_STITCH_MM`; one that
+    # leaves it is a lift (`jump`, cut past `trim_at`, `_shade_blocks`' rule),
+    # which stage 7's own chain then buries under later thread where it can.
+    # `cfg.extra["split_long_inshape_stitches"]` (2026-11-07) tacks the same
+    # line down where it lies; this one stops laying it. Off, never read.
+    # Tests: `tests/test_inshape_piece_lift.py`.
+    inshape_piece_lift: bool = False
     # The rule's false positive (2026-10-25, #1078): a hairline DRAWING is
     # not an outline. Bridge Bar's bowl-and-waves (0.8-1.0 mm black lines round
     # yellow cells of the disc they sit on) reads as one, and ON sews each
@@ -3775,8 +3808,13 @@ class PipelineConfig:
     # across `textcluster.LETTER_STROKE_CV_MAX`), sewed one arm: cover 0.656,
     # against >= 0.964 sewn untagged (docs/monarch-size-cliff-2026-11-13.md).
     # It acts where the area is lost, whatever the tagger read; the shape stays
-    # tagged for every other reader. False: the lane's output is final, as
-    # before, byte for byte. Flipping it is Kent's.
+    # tagged for every other reader. NARROWED 2026-11-13 (Kent: "Narrow it,
+    # re-census"): the ladder is sewn as a trial and its runs replace the
+    # lane's only when `columns.handback_wins` says they are better; the first
+    # census handed back small letters whose ladder satin spilled about one
+    # shape-area outside them (docs/column-cover-handback-census-2026-11-13.md).
+    # False: the lane's output is final, as before, byte for byte. Flipping it
+    # is Kent's.
     lettering_columns_cover_handback: bool = False
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
@@ -6467,6 +6505,16 @@ class PipelineConfig:
     # (2026-10-14), on every job with lettering. OFF, the report is the
     # pre-change report byte for byte (no key is written).
     preflight_glyph_metric: bool = False
+    # The proof-read as preflight METRICS (`digitizer_core/proofread.py`,
+    # built OFF 2026-11-13): the plan's top thread against the art raster the
+    # thread grader reads, per colour class, in mm -- MISSING, EXTRA, MOVED,
+    # MERGED, CLOSED, SHAPE, WIDTH -- each with the shapes whose stitches lie
+    # there and the region tags that explain a deliberate departure. Report
+    # only: `proofread_unexplained`, `_misfires`, `_explained`, `_findings`
+    # and the full payload under `proofread`; no finding, no deduction,
+    # nothing the customer sees (Kent 2026-10-02). It changes no stitch. OFF
+    # writes no key.
+    proofread: bool = False
 
     # Stage 7 — chaining. Whether a needle-up move that would be trimmed may
     # instead be sewn as a needle-down link, when its path is buried under a

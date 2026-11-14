@@ -19,6 +19,7 @@ the OLDEST lines whole to the archive.
 - [Add hole](add-hole-2026-11-05.md) — PR 3: Add hole draws a polygon in a digitized shape, appended to holes_override; refusal reuses boundaryIssues wording, draft stays open; e2e (h1)-(h6)
 - [No Fable agents](agents-cheap-models-2026-11-02.md) — Kent 11-02 "don't release fable agents, we should be saving on usage": every start_session / Agent passes model (Sonnet default, Haiku read-only); a Fable director dispatches, never spawns Fable
 - [Bash heredoc Python trap](bash-heredoc-python-repl-trap-2026-11-02.md) — Windows Bash tool `python - <<'E'` lost stdin: Python 3.14 fell into _pyrepl, one core for 26 h (3.68 GB of prompts); a `||` fallback respawned it when killed. Run a script FILE
+- [Bevel and ring fold](bevel-ring-fold-2026-11-13.md) — `bevel_ring_fold` OFF: Golden Tee GOLF one gold (shadow -> page, ramp -> one thread, <= 0.8 mm bands -> body), Drone ring arcs -> black; keylines kept; design change, Kent picks the default
 - [Big-size speed](big-size-speed-2026-11-11.md) — 300 mm: hoist 320 -> 26 s (STRtree over parts), build fns 241 -> 51 s; 198 mm plan 539 -> 431 s (angle scan in numpy, bridge memo); md5 same; no exact cut over 25 s left
 - [Blend band thread](blend-band-2026-11-14.md) — flat_blend_band_any_scale OFF: JPEG blend rim sewed as a thread on rasters not enlarged (ramp round was enlarged-only); ON 2 px, Lab or RGB chord, band pixels to nearest non-band pixel
 - [Blend shade median](blend-shade-median-2026-11-09.md) — defect 28: Fremont fixed 11-07 (stale scope line); summit 0111 = mean of a 9-sample speckled end bucket; `blend_shade_median` ON (Kent 11-09) clears it, 20 entries md5 same
@@ -32,7 +33,6 @@ the OLDEST lines whole to the archive.
 - [Defect-marks sitting](defect-marks-sitting-2026-11-10.md) — why eye != yardstick; `tools/defect_marks.py` asks where + what (pins); SAT 11-10: 15 items, 95 pins, smooth edges + closed/merged letters lead, 4 photos Terrible; docs/defect-marks-2026-11-10
 - [Digitized image study](digitized-image-study-2026-11-13.md) — Kent 11-13: 108 pro pictures read by eye, 18 rules; rule 7 MEASURED: pro stacks under ~5.2 mm, we stack too (not on photo classes); real gap = no contrast halo
 - [Dropped-element finding](dropped-element-finding-2026-11-01.md) — `ARTWORK_ELEMENT_DROPPED`: preflight reads clipped / unsewn-enclosed / colour-cap-folded / stage-4 drops by AREA; floor 5 mm2, block at 10%; fires on 2 rows Kent graded Good/Great
-- [Edge cap re-measured](edge-cap-remeasure-2026-10-29.md) — defect 19: edge 0-4% bare with NO cap (rim + border_by_size); swing gone; default "none" + defect closed (Kent 10-29, #1192)
 - [Edge-fault reader](edge-fault-reader-2026-11-10.md) — edge_wobble flag locations vs Kent's 20 smooth-edge pins: 0.60 vs chance 0.49 at 3 mm, CI crosses 0 = not shown; harness `fault_reader_harness.py` reusable; next reader closed/merged letters
 - [Ember reshape measured](ember-reshape-measured-2026-11-04.md) — Ember's drag moves 1 point, 0.0 px on the rest; accept/reject session; built: exact drag + Done/Discard; open: sparse nodes, insert, smooth toggle
 - [Export read-back](export-readback-2026-11-05.md) — every export re-read, download BLOCKED on mismatch (Kent 11-05): service pystitch 500 + headers, browser DST/EXP/PES; skipped checks per format; 20k stitches +7-13 ms browser
@@ -50,7 +50,7 @@ the OLDEST lines whole to the archive.
 - [Foreman wake-up](foreman-wakeup-while-wave-out-2026-11-12.md) — Kent 11-12 "stale for 10 hours": 7 cloud sessions merged while the foreman idled; a wave out = set a wake-up (CronCreate sweep / gh run watch) before ending the turn, delete when empty
 - [Free-digitizer follow-ups](free-digitizer-followups-2026-11-05.md) — Kent 11-05 on the 7 untaken ideas: score metrics-only, recount only, zip only, re-read BLOCKS, TSP skip, heatstitch floor row ADD, literature parked
 - [Free digitizer survey](free-digitizer-survey-2026-11-04.md) — Kent 11-04: 40+ tools, no free desktop auto-digitizer; bench tier 1 heatstitch (MIT) + openstitch (AGPL, output only) + Nuizu (CLI); Hatch 30-export list approved, Wilcom skipped (hardware)
-- [Group consistency](group-consistency-2026-11-13.md) — "like things differ" pins: 2 of 11 tier straddles, 2 thread, 2 fill angle, 2 fixed; 4 OFF flags; AHORA ON rougher, feet ON one angle still two tones
+- [Group consistency](group-consistency-2026-11-13.md) — "like things differ" pins: 2 tier straddles, 2 thread, 2 fill angle, 2 fixed; 4 OFF flags; decide by ink not region count; render tone was row order
 - [Hairline keyline bean](hairline-keyline-bean-2026-11-13.md) — `border_from_outline_hairline_run` OFF: 0.4 mm keyline sewed 1.5 mm satin; ON = corner-exact bean
 - [heatstitch floor row](heatstitch-floor-row-2026-11-05.md) — `tripwire floor`: ours' sttype kappa beside heatstitch's untuned rule per job, margin, flag < 0.05 (never fails); laptop-only, n/a without scratch_bench files
 - [Holes override](holes-override-2026-11-03.md) — contract v1.9 `holes_override` (service half): replaces interior rings, [] = solid, absent = carry-over; Studio half next
@@ -80,11 +80,12 @@ the OLDEST lines whole to the archive.
 - [Pot slot swing](pot-slot-swing-2026-11-03.md) — Pooh pot = one shaded body, chart has no olive; fringe votes + size drag k-means centres (Lloyd decides, not dissolve/cap); Becker mid-tone shares it; nothing built
 - [Preflight score](preflight-score-2026-11-05.md) — 0-100 `score` ALREADY existed (grade derives from it; Studio QualityReport.svelte:189 shows it); 11-05 added only the mapping comment, pins, tool columns. Don't build a 2nd
 - [Pro-sized lettering sitting](pro-size-lettering-sitting-2026-11-02.md) — pro-lettering-1102, 56 live pairs, 8 one-flag arms; Kent sat 11-03: trims control did NOT replicate, repeats unstable (3 of 4), no flip
+- [Proof-read](proofread-2026-11-13.md) — `cfg.proofread` OFF, metrics: thread vs art per colour in mm, attributed to region tags; re-set letters MOVED; kanji claim retracted 11-14 (alpha holes); 20/34 pins vs 0.38
 - [Regular structure](regular-structure-2026-11-13.md) — `regular_structure` OFF: Bridge's 8 handles 0.18 -> 0.006 mm apart; census of 11: only Bridge is geometry, rest of the "alike" family = angle/tag/pull/text; group tag for later stages
+- [Re-set on one baseline](reset-one-baseline-2026-11-13.md) — Jakarta/Bukit 'letters jumped': re-set grew a lowercase line's x-height and ascender clusters as 2 lines; `small_text_reset_one_baseline` + `text_cluster_solid_guard` (mark squares) built OFF
 - [Reshape mode](reshape-mode-2026-11-03.md) — "Edit points" on both lanes: cross-shape marquee so a seam moves as one gesture; arrows 0.1/1 mm, Delete per ring, one patch + one undo (elupdate.discrete); panel SVG editor retired
 - [Robust-PC sweep](robust-pc-sweep-2026-11-13.md) — 77 images both photo lanes: cutout runs on 14, changes all 14; CI lane = no rembg venv; THREAD_MATCH_POOR false blocks (#1460); tone pass OFF; faulthandler crash = the tool; SAM2 GPU no gain per job
 - [Satin/fill oracle split](satin-fill-oracle-2026-11-06.md) — C3 bound: cutting our grounds along the pro's 10+ cell blobs lifts mean kappa 0.381 -> 0.482 (5 cells 0.561, 20 cells 0.427): no verdict; reads the pro, a max
-- [Satin/fill re-measure](satin-fill-remeasure-2026-10-29.md) — defect 5: kappa 0.387, per-region oracle 0.365 (no router left); pro vs pro 0.5 mm 0.650 = ceiling; shape kappa by AREA; satin_per_stroke a wash
 - [Scorecard recapture 11-05](scorecard-recapture-2026-11-05.md) — ruler d000e370 -> 292418a8 via the new `Corpus scorecard` CI button (diff/capture): 9/18/7/6/12 -> 10/20/8/10/4, mean 61.8 -> 71.9 = THREAD_MATCH_POOR quiet (#1200); Fremont F 28/16
 - [Scorecard recapture 11-12](scorecard-recapture-2026-11-12.md) — ruler 292418a8 -> ffefc3b1, run 43253187536: 10/20/8/10/4 -> 8/20/6/10/8, mean 71.9 -> 68.7 FELL; flag-off CI arms name #1301, #1263, #1329, #1378; 1 row part unattributed
 - [Seam order's costs](seam-order-costs-2026-10-30.md) — beanie's rise = one knockdown walk (ProSeal the other way); drone's +6 cuts = the chord; `knockdown_shorter_walk`, `fill_seam_order_priced` ON (Kent 10-30): flips 59 -> 2
@@ -99,16 +100,13 @@ the OLDEST lines whole to the archive.
 - [Sparse smooth nodes](sparse-nodes-spec-2026-11-04.md) — Kent 11-04: Ember-style few smooth/corner nodes on digitized rings, 9 rulings; PR 1 lib `sparseNodes.js`, PR 2 Studio; add-hole in, Knife out
 - [Sparse nodes in the Studio](sparse-nodes-studio-2026-11-05.md) — PR 2 shipped: nodes drawn/dragged/inserted/toggled in shapeOverrides; real seeds red-disc 44 smooth, squares 4 corners; PointerEvent.detail is 0 (old dblclick dead)
 - [Stacked PR trap](stacked-pr-auto-merge-trap-2026-11-06.md) — #1259 stacked on #1255's head with auto-merge armed merged INTO that branch after #1255 landed (deleteBranchOnMerge off, no retarget); base follow-ups on main, never arm a stacked PR
-- [Scene speed](stage7-scene-speed-2026-10-29.md) — kept-frame scenes' 349-2,100 s was 2 procs on a loaded laptop: 64-104 s plan quiet, 2 concurrent = 4.1x EACH, md5 same; stage 2 bincount + stage 6 prepared covers / threaded angle search, exact
 - [Starter pack sourcing](starter-pack-sourcing-2026-11-10.md) — Kent 11-10: 12 designs, strict CC0/PD-mark art digitized by EMB-Bot itself; no open stitch files, commission or CC-BY; no logos; provenance per design
 - [Starter weak spots](starter-weak-spots-2026-11-12.md) — baseball flat + monarch borders_last off SHIPPED 11-12; "drift" was a width slip: re-digitize at the original target, not manifest width_mm
 - [Stitchist teardown](stitchist-teardown-2026-11-04.md) — server-side engine, $50 Pro; MFab at 36.7: 3,018 st, keyline as tatami, readable; trace re-runs per size
-
 - [Studio no silent fallback](studio-no-silent-fallback-2026-11-02.md) — image + service down: keep art, Retry / Use browser engine; results name engine
-- [Excess on gradient](thread-match-excess-gradient-2026-10-29.md) — defect 28 ON 10-30: F-with-block 14 -> 4, md5s same
+
 - [Defect 28 leftovers](thread-match-leftovers-2026-11-10.md) — bridge_bar 3, screenshot 1, stub 0722 = CHART LIMITS: best of 398 spools still 10.6-29.4 dE00 per pixel; nothing built; excess-over-chart yardstick priced only
 - [Transparent white in-fill](transparent-white-infill-2026-11-11.md) — `enclosed_white_skip_transparent` ON (Kent 11-11 "Flip ON"): transparent enclosed areas open unless a hollow letter body; kanji 39 open, Becker kept; moves Drone tripwire + logo_alpha
-- [Trims re-measured 10-29](trim-defects-4-6-2026-10-29.md) — cuts 391 vs pro 409 (3.1x gone), breaks 2.07x (488 uncut floats); fill sections 32 vs 0; `fill_section_cuts_first` OFF: 377 cuts, exposed 723 -> 651
 - [Eye, 100 pairs](vlm-judge-100-2026-11-06.md) — Opus session, 99 pairs: kappa +0.34 [+0.17, +0.49] above chance; sides +0.65 n 22; proposal only
 - [Claude as the eye](vlm-judge-2026-11-04.md) — session judged pro-lettering-1102 blind: kappa +0.36 [+0.16, +0.55] above chance (n 54); sides n 16 no evidence; agreement = shared ties + base picks
 - [Vision pre-screen](vlm-prescreen-2026-11-06.md) — threshold 4: settled kappa +0.39 (39/54), +0.29 (67/99), both above chance; row PROPOSAL only; tie label holds 13/29, 18/40 side picks

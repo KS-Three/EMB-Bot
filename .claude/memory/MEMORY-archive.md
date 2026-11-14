@@ -14,6 +14,7 @@ indexed in exactly one of this file and `MEMORY.md`
 (`digitizer/tests/test_memory_budget.py` enforces both). Order is kept from the
 live index; new archive lines go at the bottom.
 
+- [Edge cap re-measured](edge-cap-remeasure-2026-10-29.md) — defect 19: edge 0-4% bare with NO cap (rim + border_by_size); swing gone; default "none" + defect closed (Kent 10-29, #1192)
 - [Browser fill lane state](embot-browser-fill-lane-state.md) — SNAPSHOT 10-03: #606/#609/#611 built OFF, flips Kent's; island fix #613 merged PRE-audit, cures in #620; cleanup only Kent can run
 - [Closed-ring lane](embot-closed-ring-lane.md) — SNAPSHOT: #621 `offsetRing` on a repeated point, #625 stacked on it; defect 55's offset half is Kent's call
 - [Handover numbers and stacked branches](embot-handover-numbers-and-stacked-branches.md) — SNAPSHOT: reproduce a handed-over number with its own script
@@ -31,6 +32,8 @@ live index; new archive lines go at the bottom.
 - [Pro trim threshold](pro-trim-threshold.md) — CORRECTED 10-21: the "16.1 mm floats" were needle-DOWN hops; the pro cuts every jump, we leave 1-3 mm ones
 - [Real-artwork parity](real-artwork-parity.md) — honest baseline 42.5; a pro scores only 75-84 vs a pro, so 95 is above the ceiling; synthetic refs flatter
 - [Satin gate attribution](satin-gate-attribution.md) — DT regularity loses pro satin ground; `explained` promotion 45.8 → 48.1; flat-art sub-1mm floor DISPROVED
+- [Stage-0 texture gate](stage0-texture-gate-2026-10-28.md) — grain gate missed 15/18 downsampled photos; `texture_frac` >= 0.13 route + two-ink veto ON (`stage0_texture_gate`); 6 "logo" rows are photographs by medium; cut-outs keep the old tree
+- [Excess on gradient](thread-match-excess-gradient-2026-10-29.md) — defect 28 ON 10-30: F-with-block 14 -> 4, md5s same
 - [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
 - [Windows goldens fail locally](windows-goldens-fail-locally.md) — golden set MOVES per-fixture; CORRECTED 2026-08-22: Linux fails CI's three; never re-capture on Windows
 - [Digitizer local env](digitizer-local-env.md) — Kent's box: no tesseract so OCR tests skip; rembg venv EXISTS per-checkout, inert outside photo classes
@@ -247,4 +250,6 @@ live index; new archive lines go at the bottom.
 - [Placement axis sizing](placement-axis-sizing-2026-10-28.md) — size = most that fits WHERE it sits: `PLACEMENTS` table, 3 pro boxes kept, rest `seeded` = Kent's; upload fits the box, typed width stays
 - [Shape memo](shape-memo-2026-10-28.md) — Column lane's rank-only 2nd stage-7 pass was 79 of owl flat's 137 s; `shape_memo` memoizes stitch_shape/satin_shape/rim per job: 137 -> 113 s flat, 123 -> 97 gradient, md5 same
 - [Colour cap on the sewn design](colour-cap-sewn-2026-10-29.md) — census item 3 misnamed the hole: sew-white recolours AFTER the cap + blend bands snap chart-wide; `color_cap_sewn` ON 11-01 re-caps final regions, folds strays on blocks
-- [Stage-0 texture gate](stage0-texture-gate-2026-10-28.md) — grain gate missed 15/18 downsampled photos; `texture_frac` >= 0.13 route + two-ink veto ON (`stage0_texture_gate`); 6 "logo" rows are photographs by medium; cut-outs keep the old tree
+- [Satin/fill re-measure](satin-fill-remeasure-2026-10-29.md) — defect 5: kappa 0.387, per-region oracle 0.365 (no router left); pro vs pro 0.5 mm 0.650 = ceiling; shape kappa by AREA; satin_per_stroke a wash
+- [Scene speed](stage7-scene-speed-2026-10-29.md) — kept-frame scenes' 349-2,100 s was 2 procs on a loaded laptop: 64-104 s plan quiet, 2 concurrent = 4.1x EACH, md5 same; stage 2 bincount + stage 6 prepared covers / threaded angle search, exact
+- [Trims re-measured 10-29](trim-defects-4-6-2026-10-29.md) — cuts 391 vs pro 409 (3.1x gone), breaks 2.07x (488 uncut floats); fill sections 32 vs 0; `fill_section_cuts_first` OFF: 377 cuts, exposed 723 -> 651

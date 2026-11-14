@@ -47,6 +47,7 @@
  "border_from_outline": true,
  "border_from_outline_follow_shape": false,
  "border_from_outline_hairline_run": false,
+ "inshape_piece_lift": false,
  "border_from_outline_line_art_guard": true,
  "border_significant_area_share": null,
  "border_width_mm": null,
@@ -212,6 +213,7 @@
  "preflight": true,
  "preflight_glyph_metric": false,
  "pro_measured_values": false,
+ "proofread": false,
  "pull_comp_by_stroke": false,
  "rehome_resnapped": true,
  "report_absorb_frac": 0.25,
@@ -339,5 +341,6 @@
  "photo_enclosed_rim": false,
  "underfill_untagged_riders": false,
  "stage0_scale_relative_grad": false,
- "regular_structure": false
+ "regular_structure": false,
+ "bevel_ring_fold": false
 }
