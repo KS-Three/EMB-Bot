@@ -864,8 +864,10 @@ export function hoopTransform(garment, cw, ch, pad, hoop) {
   // The PLACEMENT BOX, in mm. Named `hoopWmm` for the callers and the specs
   // that already read it; it has never been a hoop. See `boxWmm` below for the
   // name this should have had.
-  const hoopWmm = garment.widthIn * MM_PER_INCH;
-  const hoopHmm = garment.heightIn * MM_PER_INCH;
+  // `clampBox` is the hat front's PLACEMENTS box (Kent 2026-11-14, src/garments.js
+  // CLAMP_ON_PLACEMENT_BOX); every other garment object has the inch pair only.
+  const hoopWmm = garment.clampBox ? garment.clampBox.w : garment.widthIn * MM_PER_INCH;
+  const hoopHmm = garment.clampBox ? garment.clampBox.h : garment.heightIn * MM_PER_INCH;
   const realWmm = hoop ? hoop.widthMm : null;
   const realHmm = hoop ? hoop.heightMm : null;
   const fitW = realWmm ? Math.max(hoopWmm, realWmm) : hoopWmm;
