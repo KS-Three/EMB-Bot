@@ -616,6 +616,7 @@ def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion],
     """
     laid: list[object] = []
     for i, r in enumerate(runs):
+        deadline.check("stage 7 link cover")
         if r.kind == stitches.TRAVEL:
             continue
         if len(r.points) >= 2:
@@ -642,6 +643,7 @@ def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion],
     parts: list[object] = list(laid)
     seen: list[object] = []
     for p in regions:
+        deadline.check("stage 7 link cover")
         c = p.covered_by
         if c is not None and not c.is_empty and not any(c is s for s in seen):
             seen.append(c)
@@ -717,6 +719,7 @@ def _link_route(a: tuple[float, float], b: tuple[float, float], cover,
     best[0] = 0.0
     heap: list[tuple[float, int]] = [(0.0, 0)]
     while heap:
+        deadline.check("stage 7 link route")
         d, u = heapq.heappop(heap)
         if done[u]:
             continue
@@ -824,6 +827,7 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int
     out = [runs[0]]
     in_shape = 0
     for run in runs[1:]:
+        deadline.check("stage 7 chain")
         if not run.jump:
             out.append(run)
             continue

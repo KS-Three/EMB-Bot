@@ -1705,7 +1705,7 @@ def job_status(job_id: str, x_embbot_token: str | None = Header(None)) -> dict:
 def cancel_job(job_id: str, x_embbot_token: str | None = Header(None)) -> dict:
     """The customer pressed Cancel (service 0.7.0). A queued or running job
     reads `cancelled` from this answer on; its worker stops at the next
-    stage seam (`digitizer_core.deadline` names what cannot be interrupted)
+    `deadline.check` (`digitizer_core.deadline` names what cannot be interrupted)
     and takes the next upload. Any other job is left exactly as it was and
     its state returned, so cancelling twice, or a job that finished a moment
     ago, costs nothing. The reply is the state alone, never the result."""

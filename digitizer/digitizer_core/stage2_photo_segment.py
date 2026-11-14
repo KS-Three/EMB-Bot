@@ -1081,6 +1081,7 @@ def _boundary_contrast_initial_adjust(rag) -> None:
 
 
 def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
+    deadline.check("stage 2")      # the merge runs 1-2 s inside skimage's own loop
     da = g.nodes[dst]["mean color"]
     na = g.nodes[n]["mean color"]
     # The scalar twin of skimage's dE00 — the same float bit for bit, ~4x
@@ -2586,6 +2587,7 @@ def enclosed_rim(labels: np.ndarray, valid: np.ndarray, enclosed: np.ndarray,
     comp = np.zeros((h, w), np.int32)
     n = 0
     for lbl in np.unique(labels[valid]):
+        deadline.check("stage 2")
         m = ((labels == lbl) & valid).astype(np.uint8)
         k, cc = cv2.connectedComponents(m, connectivity=8)
         if k > 1:
@@ -2869,6 +2871,7 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # machinery, applied one step earlier.
     regions: list[RegionMask] = []
     for lbl in sorted(set(np.unique(merged[base_valid]).tolist())):
+        deadline.check("stage 2")
         # `& base_valid`: a merged label id is not on its own proof of
         # foreground (see the note above) — intersecting with the real
         # per-population mask is what actually keeps background AND

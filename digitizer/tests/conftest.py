@@ -193,7 +193,18 @@ def wait_for_job(client, job_id: str, *, interval_s: float = 0.1) -> dict:
         time.sleep(interval_s)
 
 
-TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
+def wait_idle(registry, within_s: float = 10.0) -> float:
+    """Seconds until a `JobRegistry` holds no in-flight work (the worker is
+    free). Raises AssertionError, naming the registry's counts, past `within_s`.
+    The cancel tests share it (`test_cancel_in_fill.py`, `test_service_cancel.py`)."""
+    t0 = time.monotonic()
+    while registry.stats()["inflight"]:
+        assert time.monotonic() - t0 < within_s, registry.stats()
+        time.sleep(0.005)
+    return time.monotonic() - t0
+
+
+TESTDATA =Path(__file__).resolve().parent.parent / "testdata"
 
 
 def draw_tiny_logo(path: Path, extra_dot: bool = False) -> Path:
