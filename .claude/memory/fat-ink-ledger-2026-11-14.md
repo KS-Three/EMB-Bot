@@ -35,9 +35,12 @@ ART's own medial points.
   1.33-1.70 mm at stage 4 (a floor in stages 2-4).
 
 **Built OFF (stage5_overlap.py, `cfg.extra`).** `pull_comp_along_stitch_only`:
-a fill grows only along the axis it sews (square corners); a fill with no angle
-of its own keeps stage 6's pick on the old-grown shape (first build turned
-Bridge's round field from upright rows to diagonal). `growth_keeps_gaps`:
+a fill grows only along the axis it sews (square corners). A fill with no angle
+of its own: stage 5 runs once with neither flag (`_off_angles`) and hands stage 7
+the angle stage 6 picks on THAT shape, under either flag. Three builds that
+guessed the old shape turned Bridge's round field 90 -> 102, 78, 34 degrees: on
+a round field the pick is a near tie any change tips. Check row angles (design
+runs, `fat-ink-1113/scripts`) on any change to a fill's planned shape. `growth_keeps_gaps`:
 growth stays out of bare fabric the art keeps between shapes (>= 0.5 mm any
 colour, any gap on one thread) up to 2 mm, and counters of that width keep
 their art size. Magnitude (`Fabric.pull_comp_mm`) untouched: gate 1.

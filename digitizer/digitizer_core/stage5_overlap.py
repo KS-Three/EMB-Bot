@@ -826,10 +826,13 @@ def _hairline_ground(regions: list[Region], hairline: dict,
 #   pulls the cloth in ALONG its stitches; growth across a fill's rows is not
 #   physics, and the round join turns every square corner and tip of the art
 #   into an arc (Jakarta's mark: square corners sewn round, +0.58 mm across a
-#   1.40 mm triangle). ON, a FILL grows only along its own stitch axis
-#   (`_comp_axis`, the axis `cfg.directional_comp` gives fills), which keeps
-#   convex corners square: a Minkowski sum with a segment, not a disc. Satin
-#   on its rails and widened lettering are as before; the satin end cutback of
+#   1.40 mm triangle). ON, a FILL grows only along the axis it sews, which
+#   keeps convex corners square: a Minkowski sum with a segment, not a disc.
+#   A fill told its angle grows along it (`_comp_axis`, the axis
+#   `cfg.directional_comp` gives fills); one with none, along the angle stage
+#   6 picked for it with neither flag (`_off_angles`), handed to stage 7 under
+#   either flag so its rows do not move. Satin on its rails
+#   and widened lettering are as before; the satin end cutback of
 #   `directional_comp` (a sew-out-gated push constant) is not part of this.
 # - `growth_keeps_gaps`: growth runs into the bare fabric the art keeps
 #   between shapes and inside counters (MFab's keyline gap went 1.55 ->
@@ -896,18 +899,36 @@ def _angle_is_free(r: Region, cfg: PipelineConfig) -> bool:
                                                       base_deg=explicit) is None
 
 
-def _sewn_fill_axis(shape, row_mm: float, axis: float) -> float:
-    """`pull_comp_along_stitch_only`, a fill with no angle of its own: the
-    axis it is grown along must be the axis it SEWS along, and growing it must
-    not move that. Off, stage 6 picks `best_fill_angle_deg` on the shape stage
-    5 hands it -- grown every way by the pull, clipped by the colours already
-    down -- so that pick, made on that shape, is the axis, and stage 7 is
-    handed it (`stitch_angle_deg`). Grown along its art's principal axis,
-    Bridge's round field turned its rows 12 degrees."""
-    try:
-        return float(best_fill_angle_deg(shape, row_mm))
-    except Exception:  # noqa: BLE001 -- a shape the scan cannot read keeps its axis
-        return axis
+#: the two geometry flags (comment at `GAP_SEWABLE_MM`): a pass with neither
+#: is the engine as it was
+GROWTH_FLAGS = ("pull_comp_along_stitch_only", "growth_keeps_gaps")
+
+
+def _off_angles(regions, fabric, cfg, design_class, hairline) -> dict[str, float]:
+    """Either geometry flag changes the shape a fill with no angle of its own
+    is handed, and stage 6 picks that fill's row angle on the shape it gets
+    (`best_fill_angle_deg`): a near tie on a round field that any change
+    tips (Bridge's: rows 90 -> 102, 78, 34 degrees across three builds that
+    guessed the old shape). So stage 5 runs once as it was, and each such
+    fill's angle is read off the shape that run plans for it. -> {shape id:
+    the angle stage 6 would have sewn it at}."""
+    off = replace(cfg, extra={k: v for k, v in (cfg.extra or {}).items() if k not in GROWTH_FLAGS})
+    planned, _w = resolve_overlaps(regions, fabric, off, design_class, hairline)
+    row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
+    by_id = {r.shape_id: r for r in regions}
+    out: dict[str, float] = {}
+    for pr in planned:
+        sid = pr.region.shape_id
+        r = by_id.get(sid)
+        if r is None or sid in out or pr.satin_tier or pr.stitch_angle_deg is not None:
+            continue
+        if not _angle_is_free(r, cfg):
+            continue
+        try:
+            out[sid] = float(best_fill_angle_deg(pr.polygon, row_mm))
+        except Exception:  # noqa: BLE001 -- unreadable: stage 6 picks as before
+            continue
+    return out
 
 
 def resolve_overlaps(
@@ -940,9 +961,11 @@ def resolve_overlaps(
     directional = bool(cfg.directional_comp) and pull > 0
     # `cfg.extra["pull_comp_along_stitch_only"]` / `["growth_keeps_gaps"]`
     # (comment at `GAP_SEWABLE_MM`, both built OFF). Absent: as before.
-    extra = getattr(cfg, "extra", None) or {}
-    along = bool(extra.get("pull_comp_along_stitch_only")) and pull > 0
-    keep_gaps = bool(extra.get("growth_keeps_gaps"))
+    flags_extra = getattr(cfg, "extra", None) or {}
+    along = bool(flags_extra.get("pull_comp_along_stitch_only")) and pull > 0
+    keep_gaps = bool(flags_extra.get("growth_keeps_gaps"))
+    # a fill with no angle of its own keeps the angle it sewed at (`_off_angles`)
+    pinned = _off_angles(regions, fabric, cfg, design_class, hairline) if along or keep_gaps else {}
     # `cfg.satin_rail_comp` (2026-09-09): a satin-tier shape keeps its
     # artwork polygon here and takes the pull on its rails in stage 6. The
     # tier is read with the same call directional comp uses, for the same
@@ -952,13 +975,13 @@ def resolve_overlaps(
     satin_max = satin_ceiling_mm(cfg)
     axis_by_id: dict[str, float | None] = {}
     satin_by_id: dict[str, bool] = {}
-    free_axis: set[str] = set()             # `along`: fills whose axis is stage 6's pick
-    free_row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     for r in regions:
         axis, is_satin = (_comp_axis(r, cfg, satin_max, design_class)
                           if directional or rail_comp or along else (None, False))
         if along and not directional and not is_satin and axis is not None and _angle_is_free(r, cfg):
-            free_axis.add(r.shape_id)       # picked in the loop below, on the old-grown shape
+            # grown along the rows it sewed with before; one the old pass did
+            # not plan (lost there) grows as before
+            axis = pinned.get(r.shape_id)
         axis_by_id[r.shape_id] = (axis if directional
                                   else axis if along and not is_satin else None)
         satin_by_id[r.shape_id] = is_satin
@@ -1176,12 +1199,6 @@ def resolve_overlaps(
             deadline.check("stage 5")
             poly = span.get(r.shape_id, r.polygon)
             axis = axis_by_id[r.shape_id]
-            if r.shape_id in free_axis:
-                old = poly.buffer(pull)
-                if earlier[L] is not None and not widened_lettering(r):
-                    old = _largest_polygon(old.difference(earlier[L])) or old
-                axis = _sewn_fill_axis(old, free_row_mm, axis)
-                axis_by_id[r.shape_id] = axis
             on_rails = rail_comp and satin_by_id[r.shape_id] and not widened_lettering(r)
             grown = poly if on_rails else _grow(poly, pull, axis)
 
@@ -1410,7 +1427,8 @@ def resolve_overlaps(
                     extra.append(PlannedRegion(region=sub, polygon=pc,
                                                sew_index=sew_index, visible=pv,
                                                covered_by=later[L],
-                                               stitch_angle_deg=axis,
+                                               stitch_angle_deg=(axis if axis is not None
+                                                                 else pinned.get(r.shape_id)),
                                                satin_tier=satin_by_id[r.shape_id]))
                 left = _largest_polygon(art_left)
                 if extra and left is not None:
@@ -1419,7 +1437,8 @@ def resolve_overlaps(
             planned.append(PlannedRegion(region=parent, polygon=grown,
                                          sew_index=sew_index, visible=visible,
                                          covered_by=later[L],
-                                         stitch_angle_deg=axis,
+                                         stitch_angle_deg=(axis if axis is not None
+                                                           else pinned.get(r.shape_id)),
                                          satin_tier=satin_by_id[r.shape_id]))
             planned.extend(extra)
 

@@ -124,19 +124,40 @@ def test_a_counter_the_art_keeps_is_held_at_its_size():
     assert abs(hole_area(on) - hole.area) < 0.02, hole_area(on)
 
 
-def test_a_fill_with_no_angle_of_its_own_keeps_the_angle_it_sewed_at():
-    """Grown along its art's principal axis, Bridge's round field turned its
-    rows from upright to diagonal. ON, a fill with no angle of its own is
-    grown along, and handed down, stage 6's own pick on the shape grown the
-    old way: the rows stay where they were."""
+def _off_angle(regions, sid):
+    """The row angle stage 6 picks for `sid` on the shape stage 5 plans
+    with neither flag."""
     from digitizer_core.machine import FILL_ROW_MM
-    from digitizer_core.stage5_overlap import resolve_overlaps as ro
     from digitizer_core.stage6_fill import best_fill_angle_deg
+    planned, _w = resolve_overlaps(regions, PIQUE, PipelineConfig(overlap_mm=0.25))
+    poly = next(p.polygon for p in planned if p.region.shape_id == sid)
+    return best_fill_angle_deg(poly, FILL_ROW_MM * max(0.1, PIQUE.density_adjust))
+
+
+def _same_angle(a, b):
+    return abs(((a - b + 90) % 180) - 90) < 1e-6
+
+
+def test_a_fill_with_no_angle_of_its_own_keeps_the_angle_it_sewed_at():
+    """Bridge's round field: grown along its art's principal axis, or along
+    a guess of the old shape's pick, its rows turned 12, 12 and 56 degrees
+    across three builds. Either flag ON, a fill with no angle of its own is
+    handed (and, along its rows, grown along) the angle stage 6 picked for it
+    on the shape stage 5 plans with neither flag."""
+    from shapely import affinity
     from shapely.geometry import Point
-    art = Point(0, 0).buffer(9.0, 64).difference(box(-3, -2, 4, 3))
-    region = _r(art, "D", tier="fill")
-    c_on = PipelineConfig(overlap_mm=0.25, extra={"pull_comp_along_stitch_only": True})
-    planned, _w = ro([region], PIQUE, c_on)
-    want = best_fill_angle_deg(art.buffer(PULL), (FILL_ROW_MM) * max(0.1, PIQUE.density_adjust))
-    assert planned[0].stitch_angle_deg is not None
-    assert abs(((planned[0].stitch_angle_deg - want + 90) % 180) - 90) < 1e-6
+    shapes = {"E": affinity.rotate(box(-10, -3, 10, 3), 20, origin=(0, 0)).difference(box(-2, -1, 3, 1)),
+              "D": Point(30, 0).buffer(9.0, 64).difference(box(27, -2, 34, 3))}
+    for flags in ({"pull_comp_along_stitch_only": True}, {"growth_keeps_gaps": True},
+                  {"pull_comp_along_stitch_only": True, "growth_keeps_gaps": True}):
+        def scene():
+            return [_r(g, sid, tier="fill") for sid, g in shapes.items()]
+        planned, _w = resolve_overlaps(scene(), PIQUE, PipelineConfig(overlap_mm=0.25, extra=dict(flags)))
+        for p in planned:
+            want = _off_angle(scene(), p.region.shape_id)
+            assert p.stitch_angle_deg is not None and _same_angle(p.stitch_angle_deg, want), (flags, p.region.shape_id)
+
+
+def test_off_hands_stage_7_no_angle_for_a_free_fill():
+    planned, _w = resolve_overlaps([_r(box(0, 0, 20, 6), "F", tier="fill")], PIQUE, PipelineConfig(overlap_mm=0.25))
+    assert planned[0].stitch_angle_deg is None
