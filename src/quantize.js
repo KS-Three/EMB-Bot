@@ -251,6 +251,31 @@
       cornerB = rgba[2];
     }
 
+    // `connected` (2026-11-13, ON by default; Kent's approval that day, the
+    // catch accepted: "enclosed white details now sew as white thread (more
+    // stitches, one more colour) where they used to be left open"). The test
+    // below used to be applied to each pixel on its own, so a white letter
+    // inside a red badge was knocked out with the page round it and sewed as
+    // bare garment: a 60 x 60 badge with a 17 x 17 white square lost all 289
+    // of the square's pixels and flattened to one colour. Now a pixel is
+    // background only if it reaches the image's border through pixels that
+    // pass the SAME test: near-white through near-white, the corner's colour
+    // through the corner's colour. One flood per test, not one through
+    // either: through either, black art on a white band on a black page
+    // (logo_gaulke_roofing) is reached from the page through the band and
+    // keyed out letter by letter, and an off-white tile on black
+    // (black_ground_holes) stays or goes on whether its anti-aliased rim
+    // happens to close. A transparent pixel is in both (it is background
+    // already), so a white halo round a mark keyed on alpha still goes, as it
+    // did. 4-connected, not 8: art is drawn 8-connected (a one-pixel diagonal
+    // stroke is a closed line), so the background must be 4-connected or it
+    // leaks through the corners of every diagonal stroke into what the
+    // stroke encloses; on the repo's logos 8 keys out up to 503 more art
+    // pixels (logo_gaulke_roofing's letters) and saves none.
+    // `connected: false` is the off arm: the per-pixel test, byte for byte.
+    const connected = options.connected !== false;
+    // bit 1: passes the near-white test; bit 2: passes the corner test
+    const passes = new Uint8Array(count);
     for (let i = 0; i < count; i++) {
       const off = i * 4;
       const r = rgba[off], g = rgba[off + 1], b = rgba[off + 2];
@@ -266,7 +291,28 @@
       }
 
       if (isNearWhite || isNearCorner) {
-        out[off + 3] = 0;
+        if (!connected) out[off + 3] = 0;
+      }
+      passes[i] = rgba[off + 3] === 0 ? 3 : (isNearWhite ? 1 : 0) | (isNearCorner ? 2 : 0);
+    }
+    if (!connected) return out;
+
+    // One flood per test, from the border pixels that pass it.
+    const stack = new Int32Array(count);
+    const seen = new Uint8Array(count);
+    for (const bit of [1, 2]) {
+      let top = 0;
+      seen.fill(0);
+      const seed = (i) => { if ((passes[i] & bit) && !seen[i]) { seen[i] = 1; stack[top++] = i; } };
+      for (let x = 0; x < w; x++) { seed(x); seed((h - 1) * w + x); }
+      for (let y = 0; y < h; y++) { seed(y * w); seed(y * w + w - 1); }
+      while (top > 0) {
+        const i = stack[--top], x = i % w;
+        out[i * 4 + 3] = 0;
+        if (x > 0) seed(i - 1);
+        if (x < w - 1) seed(i + 1);
+        if (i >= w) seed(i - w);
+        if (i + w < count) seed(i + w);
       }
     }
 

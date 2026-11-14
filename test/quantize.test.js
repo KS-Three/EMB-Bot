@@ -131,7 +131,10 @@ function legacyKnockout(rgba, w, h, opts) {
   }
   return out;
 }
-test("knockoutBackground: opaque-corner inputs are byte-identical to the pre-change function", () => {
+// Since 2026-11-13 this pins the OFF arm (`connected: false`): the per-pixel
+// test is what `legacyKnockout` froze, and the default now floods from the
+// border instead (tests below).
+test("knockoutBackground: opaque-corner inputs are byte-identical to the pre-change function (connected: false)", () => {
   let seed = 12345; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
   const W = 16, H = 16;
   for (const corner of [[255, 255, 255], [0, 0, 0], [10, 120, 10], [240, 240, 240], [35, 31, 32]]) {
@@ -142,8 +145,66 @@ test("knockoutBackground: opaque-corner inputs are byte-identical to the pre-cha
       px[i * 4 + 3] = rnd() < 0.1 ? 0 : (rnd() < 0.2 ? 128 : 255);
     }
     px.set([corner[0], corner[1], corner[2], 255], 0); // opaque corner
-    for (const o of [undefined, {}, { tolerance: 5 }, { sampleCorner: false }]) {
-      assert.deepStrictEqual(Array.from(q.knockoutBackground(px, W, H, o)), Array.from(legacyKnockout(px, W, H, o)));
+    for (const o of [{}, { tolerance: 5 }, { sampleCorner: false }]) {
+      const off = Object.assign({ connected: false }, o);
+      assert.deepStrictEqual(Array.from(q.knockoutBackground(px, W, H, off)), Array.from(legacyKnockout(px, W, H, o)));
     }
   }
+});
+
+// ---- only background that reaches the border (2026-11-13, Kent's approval) ----
+// Each pixel used to be judged on its own, so an enclosed white detail was
+// keyed out with the page and sewed as bare garment.
+function badge(bg, ring, inner) {
+  const W = 60, H = 60, px = new Uint8ClampedArray(W * H * 4);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const o = (y * W + x) * 4, inDisc = (x - 30) ** 2 + (y - 30) ** 2 <= 24 ** 2;
+    const c = !inDisc ? bg : (Math.abs(x - 30) <= 8 && Math.abs(y - 30) <= 8) ? inner : ring;
+    px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; px[o + 3] = 255;
+  }
+  return { px, W, H };
+}
+const keyedIn = (out, W, inside) => { let n = 0; for (let i = 3; i < out.length; i += 4) { const p = (i - 3) / 4; if (out[i] === 0 && inside(p % W, Math.floor(p / W))) n++; } return n; };
+const inDisc = (x, y) => (x - 30) ** 2 + (y - 30) ** 2 <= 24 ** 2;
+test("knockoutBackground: a white square inside a red badge on white keeps its 289 pixels; the page goes", () => {
+  const { px, W, H } = badge([255, 255, 255], [200, 20, 30], [255, 255, 255]);
+  const out = q.knockoutBackground(px, W, H, {});
+  assert.strictEqual(keyedIn(out, W, inDisc), 0);
+  assert.strictEqual(keyedIn(out, W, (x, y) => !inDisc(x, y)), W * H - 1793);
+  assert.strictEqual(q.medianCut(out, 4).palette.length, 2, "white is a sewn colour now");
+  // the off arm is the old answer: all 289 keyed out
+  assert.strictEqual(keyedIn(q.knockoutBackground(px, W, H, { connected: false }), W, inDisc), 289);
+});
+test("knockoutBackground: a corner-coloured detail inside the badge keeps its colour", () => {
+  const navy = [20, 30, 90];
+  const { px, W, H } = badge(navy, [250, 200, 0], navy);
+  assert.strictEqual(keyedIn(q.knockoutBackground(px, W, H), W, inDisc), 0);
+});
+test("knockoutBackground: each test floods only through itself (black on a white band on a black page)", () => {
+  // a black page, a full-width white band, a black square on the band: the
+  // band reaches the border through white, the square reaches the page only
+  // through the band, so it is art.
+  const W = 30, H = 30, px = new Uint8ClampedArray(W * H * 4);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const o = (y * W + x) * 4, band = y >= 10 && y < 20, sq = band && y >= 13 && y < 17 && x >= 13 && x < 17;
+    const v = band && !sq ? 255 : 0; px[o] = px[o + 1] = px[o + 2] = v; px[o + 3] = 255;
+  }
+  const out = q.knockoutBackground(px, W, H);
+  assert.strictEqual(opaqueCount(out), 16);
+  assert.strictEqual(out[(15 * W + 15) * 4 + 3], 255);
+});
+test("knockoutBackground: a one-pixel diagonal ring closes what it encloses (4-connected background)", () => {
+  // a diamond outline drawn 8-connected: background reaches its inside only
+  // through the diagonal corners
+  const W = 21, H = 21, px = new Uint8ClampedArray(W * H * 4).fill(255);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (Math.abs(x - 10) + Math.abs(y - 10) === 7) { const o = (y * W + x) * 4; px[o] = 200; px[o + 1] = 0; px[o + 2] = 0; }
+  const out = q.knockoutBackground(px, W, H);
+  assert.strictEqual(out[(10 * W + 10) * 4 + 3], 255, "the white inside the diamond is kept");
+  assert.strictEqual(out[3], 0, "the page outside is keyed out");
+});
+test("knockoutBackground: a white halo round a mark on a transparent page still goes", () => {
+  const { px, W, H } = markOnTransparent([0, 0, 0]);
+  for (let y = 1; y < 7; y++) for (let x = 1; x < 7; x++) { const o = (y * W + x) * 4; if (px[o + 3] === 0) { px[o] = px[o + 1] = px[o + 2] = 250; px[o + 3] = 255; } }
+  const out = q.knockoutBackground(px, W, H);
+  assert.strictEqual(opaqueCount(out), 16, "the 16 black pixels stay; the 20 halo pixels go");
 });

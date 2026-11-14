@@ -32,6 +32,18 @@ function fillRect(rgba, w, x0, y0, x1, y1, rgb) {
   }
 }
 
+// A transparent hole. Until 2026-11-13 the hole tests below painted their
+// holes WHITE on a white page, and "Remove background" keyed every white
+// pixel out wherever it lay, so a white hole read as a hole. It now keys out
+// only white that reaches the image's border (src/quantize.js `connected`,
+// Kent's approval that day): an enclosed white region is ART, a white shape
+// of its own (the last test of this group). These tests are about the
+// cut-out machinery, so their holes are made transparent, which is a hole
+// under either rule.
+function clearRect(rgba, w, x0, y0, x1, y1) {
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) rgba.fill(0, (y * w + x) * 4, (y * w + x) * 4 + 4);
+}
+
 const WHITE = [255, 255, 255];
 const RED = [200, 30, 30];
 const BLUE = [30, 30, 200];
@@ -74,13 +86,13 @@ function resolveBatch(shapes) {
   return { withIds, res: resolveCutOuts(withIds) };
 }
 
-test("traceShapesFromRGBA: an annulus (ring with a same-background-color hole) traces as the ring plus a cut-out right after it, no warning", async () => {
+test("traceShapesFromRGBA: an annulus (ring with a transparent hole) traces as the ring plus a cut-out right after it, no warning", async () => {
   const { traceShapesFromRGBA } = await import("./manualTrace.js");
   const w = 24, h = 24;
   const rgba = makeCanvas(w, h);
   fillRect(rgba, w, 0, 0, 24, 24, WHITE);
   fillRect(rgba, w, 4, 4, 20, 20, GREEN); // the ring
-  fillRect(rgba, w, 9, 9, 15, 15, WHITE); // the hole, same color as background
+  clearRect(rgba, w, 9, 9, 15, 15); // the hole
   const { shapes, warnings } = traceShapesFromRGBA(rgba, w, h, { nColors: 1, removeBg: true });
   expect(shapes).toHaveLength(2);
   expect(shapes[0].cutOut).toBeUndefined();
@@ -91,13 +103,25 @@ test("traceShapesFromRGBA: an annulus (ring with a same-background-color hole) t
   expect(res.parentOf).toEqual({ s2: "s1" });
 });
 
+test("traceShapesFromRGBA: a WHITE middle on a white page is art since 2026-11-13: ring, its cut-out, and a white shape", async () => {
+  const { traceShapesFromRGBA } = await import("./manualTrace.js");
+  const w = 24, h = 24;
+  const rgba = makeCanvas(w, h);
+  fillRect(rgba, w, 0, 0, 24, 24, WHITE);
+  fillRect(rgba, w, 4, 4, 20, 20, GREEN);
+  fillRect(rgba, w, 9, 9, 15, 15, WHITE); // enclosed: no longer keyed out with the page
+  const { shapes, warnings } = traceShapesFromRGBA(rgba, w, h, { nColors: 2, removeBg: true });
+  expect(shapes.map((s) => [s.colorRgb, !!s.cutOut])).toEqual([[GREEN, false], [GREEN, true], [WHITE, false]]);
+  expect(warnings).toEqual([]);
+});
+
 test("traceShapesFromRGBA: a square with a square hole -> one shape then one cut-out, resolving to the square", async () => {
   const { traceShapesFromRGBA } = await import("./manualTrace.js");
   const w = 200, h = 200;
   const rgba = makeCanvas(w, h);
   fillRect(rgba, w, 0, 0, w, h, WHITE);
   fillRect(rgba, w, 40, 40, 160, 160, RED);
-  fillRect(rgba, w, 80, 80, 120, 120, WHITE);
+  clearRect(rgba, w, 80, 80, 120, 120);
   const { shapes, warnings } = traceShapesFromRGBA(rgba, w, h, { nColors: 1, removeBg: true });
   expect(shapes.filter((s) => !s.cutOut)).toHaveLength(1);
   expect(shapes.filter((s) => s.cutOut)).toHaveLength(1);
@@ -124,8 +148,8 @@ test("traceShapesFromRGBA: two separate holes -> two cut-outs straight after the
   const rgba = makeCanvas(w, h);
   fillRect(rgba, w, 0, 0, w, h, WHITE);
   fillRect(rgba, w, 20, 20, 180, 180, BLUE);
-  fillRect(rgba, w, 40, 40, 80, 80, WHITE);
-  fillRect(rgba, w, 110, 100, 150, 150, WHITE);
+  clearRect(rgba, w, 40, 40, 80, 80);
+  clearRect(rgba, w, 110, 100, 150, 150);
   const { shapes, warnings } = traceShapesFromRGBA(rgba, w, h, { nColors: 1, removeBg: true });
   expect(shapes.map((s) => !!s.cutOut)).toEqual([false, true, true]);
   expect(warnings).toEqual([]);
@@ -140,6 +164,7 @@ test("traceShapesFromRGBA: a round hole in a round disc is fitted with curves th
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const d = Math.hypot(x + 0.5 - 120, y + 0.5 - 120);
     if (d < 100 && d > 40) fillRect(rgba, w, x, y, x + 1, y + 1, GREEN);
+    else if (d <= 40) clearRect(rgba, w, x, y, x + 1, y + 1);
   }
   // A small tolerance forces the hole ring to be curve-fitted.
   const { shapes, warnings } = traceShapesFromRGBA(rgba, w, h, { nColors: 1, removeBg: true, simplifyTolPx: 6, curveTolPx: 0.5 });
@@ -175,8 +200,8 @@ function thinWallImage() {
   const rgba = makeCanvas(w, h);
   fillRect(rgba, w, 0, 0, w, h, WHITE);
   fillRect(rgba, w, 40, 40, 160, 160, RED);
-  fillRect(rgba, w, 42, 42, 98, 158, WHITE); // left hole
-  fillRect(rgba, w, 100, 42, 158, 158, WHITE); // right hole, 2px wall away, 2px from the edge
+  clearRect(rgba, w, 42, 42, 98, 158); // left hole
+  clearRect(rgba, w, 100, 42, 158, 158); // right hole, 2px wall away, 2px from the edge
   return { rgba, w, h };
 }
 
@@ -201,8 +226,8 @@ test("traceShapesFromRGBA: a parent that loses a hole gets exactly one warning w
   const rgba = makeCanvas(w, h);
   fillRect(rgba, w, 0, 0, w, h, WHITE);
   fillRect(rgba, w, 40, 40, 160, 160, RED);
-  fillRect(rgba, w, 50, 50, 90, 150, WHITE);
-  fillRect(rgba, w, 110, 50, 150, 150, WHITE);
+  clearRect(rgba, w, 50, 50, 90, 150);
+  clearRect(rgba, w, 110, 50, 150, 150);
   // A synthetic image cannot make the real builder fail, so force it through the holeBuilder seam:
   // the first hole is refused, the second kept.
   let calls = 0;
