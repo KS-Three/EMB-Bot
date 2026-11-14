@@ -66,3 +66,20 @@ test("a typed size still wins over designDims", () => {
   const { container } = render(DesignPanel, { props: { element: el({ sizeMm: 38.22 }), designDims: dims(38, 36) } });
   expect(container.textContent).toMatch(/Resized to 42%/);
 });
+
+// Kent 2026-11-14, "Stop at 75%, say so": auto-fit stops at the range edge, so
+// the monarch on Hat is 68x65 and the note says the file does not fit.
+test("auto-fit stopped at the 75% limit: one short line says the file does not fit the placement", () => {
+  const { container } = render(DesignPanel, { props: { element: el(), designDims: dims(68.2, 64.5) } });
+  expect(container.textContent).toMatch(/Resized to 75%/);
+  expect(container.textContent).toMatch(/Auto-fit stopped\s+at the 75% limit/);
+  expect(container.textContent).toMatch(/does\s+not fit the placement/);
+  expect(container.textContent).not.toMatch(/well outside/);
+  expect(container.textContent).toMatch(/68×65 mm \(file: 91×86\)/);
+});
+
+test("a TYPED 75% is just a resize: no 'auto-fit stopped' line", () => {
+  const { container } = render(DesignPanel, { props: { element: el({ sizeMm: 68.25 }), designDims: dims(68.2, 64.5) } });
+  expect(container.textContent).toMatch(/Resized to 75%/);
+  expect(container.textContent).not.toMatch(/Auto-fit stopped/);
+});

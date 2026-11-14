@@ -25,8 +25,13 @@ test("switching to Hat shrinks a stitch file and the panel says so; Undo restore
 
   await pickGarment(page, "Hat Front");
 
-  await expect(note).toContainText(/Resized to \d+%/, { timeout: 30_000 });
-  await expect(note).toContainText("well outside the safe 75–150% range");
+  // Kent 2026-11-14 ("Stop at 75%, say so"): auto-fit stops at the range edge,
+  // 91x86 -> 68x64, and the note says the file does not fit the placement.
+  await expect(note).toContainText("Resized to 75%", { timeout: 30_000 });
+  await expect(note).toContainText("Auto-fit stopped at the 75% limit");
+  await expect(note).toContainText("does not fit the placement");
+  await expect(note).not.toContainText("well outside");
+  await expect(page.locator("span.stats").first()).toContainText("68×64 mm");
   await expect(note).not.toContainText("sews exactly as digitized");
   // the file's size line names the size on the canvas, and the native size
   const canvas = (await page.locator("span.stats").first().textContent()) || "";

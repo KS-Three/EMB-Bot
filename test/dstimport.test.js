@@ -595,3 +595,47 @@ test("a decoded DST carries no index, and the import invents none", () => {
   const out = buildImportedDesign(decoded, { garment: GARMENT });
   assert.ok(!("runs" in out), "the import must not invent them either");
 });
+
+// ---- autoScaleRange (Kent 2026-11-14, "Stop at 75%, say so") -----------------
+// Garment-switch auto-fit of a stitch file may not shrink it under the safe
+// range; the file then overflows the box. A typed width and callers that pass
+// no range (digitized art, outline lettering) are untouched.
+function box(wMm, hMm) {
+  const w = Math.round((wMm * 10) / 2), h = Math.round((hMm * 10) / 2);
+  return decodeDST(dst.encodeDST({
+    stitches: [
+      { x: -w, y: -h, type: "stitch" }, { x: w, y: h, type: "stitch" }, { x: w, y: h, type: "end" },
+    ],
+    colors: [{ r: 0, g: 0, b: 0 }],
+  }));
+}
+const RANGE = [0.75, 1.5];
+
+test("autoScaleRange: a file the box would shrink to 63% lands at 75% and overflows the box", () => {
+  const d = box(80, 160); // 101.6 / 160 = 0.635
+  assert.ok(buildImportedDesign(d, { garment: GARMENT })._debug.scale < 0.64);
+  const design = buildImportedDesign(d, { garment: GARMENT, autoScaleRange: RANGE });
+  assert.strictEqual(design._debug.scale, 0.75);
+  assert.ok(design.heightMM > 101.6);
+});
+
+test("autoScaleRange: a file the box shrinks to 78% (inside the range) is unchanged", () => {
+  const d = box(80, 130); // 101.6 / 130 = 0.78
+  const a = buildImportedDesign(d, { garment: GARMENT });
+  const b = buildImportedDesign(d, { garment: GARMENT, autoScaleRange: RANGE });
+  assert.strictEqual(b._debug.scale, a._debug.scale);
+  assert.ok(b._debug.scale > 0.75 && b._debug.scale < 1);
+});
+
+test("autoScaleRange: a file that fits stays at native size", () => {
+  assert.strictEqual(buildImportedDesign(box(60, 60), { garment: GARMENT, autoScaleRange: RANGE })._debug.scale, 1);
+});
+
+test("autoScaleRange: the upper edge is honored (auto-fit never scales a stitch file past it)", () => {
+  assert.strictEqual(buildImportedDesign(box(60, 60), { garment: GARMENT, autoScaleRange: [0.5, 0.9] })._debug.scale, 0.9);
+});
+
+test("autoScaleRange: a TYPED width is never clamped to the range", () => {
+  const design = buildImportedDesign(box(80, 80), { garment: GARMENT, targetWidthMm: 33.6, autoScaleRange: RANGE });
+  assert.ok(Math.abs(design._debug.scale - 0.42) < 1e-9);
+});
