@@ -84,6 +84,19 @@ export function dragResize(startWidthMm, startHeightMm, handle, dxMm, dyMm, minW
 // what the handle moved. The snap path converts its matched sewn width
 // through the same line, so the two paths agree. Without a sewn width or a
 // request there is nothing to map through, and the sewn width is the answer.
+// The request a resize starts from, single element or group member: the
+// element's sizeMm, or for an auto-fit (null) one the request auto-fit made:
+// lettering's fit width (`design.fitMm.w`), else the sewn width (a stitch
+// file's own). Seeding an auto-fit LETTERING member with its sewn width wrote
+// that width as the request on a bare touch of the group corner: upright
+// 96.2 grew to 97.2 over five touches, and at 45 degrees 72.8 shrank to 58.0
+// (review follow-up, 2026-11-13).
+export function resizeStartTargetMm(el, design, sewnWmm) {
+  if (el && el.sizeMm != null) return el.sizeMm;
+  const fitW = el && el.type === "text" && design && design.fitMm && design.fitMm.w;
+  return fitW > 0 ? fitW : sewnWmm;
+}
+
 export function resizeTargetMm(startTargetMm, startSewnWmm, newSewnWmm) {
   if (!(startSewnWmm > 0) || !(startTargetMm > 0)) return newSewnWmm;
   return (startTargetMm * newSewnWmm) / startSewnWmm;
@@ -303,7 +316,8 @@ export function groupResizePatches(members, factor, groupCxMm, groupCyMm, minWmm
   const patches = {};
   for (const m of members || []) {
     patches[m.id] = {
-      sizeMm: m.targetMm * f,
+      // through the single resize's own mapping (resizeTargetMm), 2026-11-13
+      sizeMm: resizeTargetMm(m.targetMm, m.widthMm, m.widthMm * f),
       offsetXMm: groupCxMm + ((m.offsetXMm || 0) - groupCxMm) * f,
       offsetYMm: groupCyMm + ((m.offsetYMm || 0) - groupCyMm) * f,
     };

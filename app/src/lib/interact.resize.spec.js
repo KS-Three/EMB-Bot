@@ -79,3 +79,35 @@ test("the size-match snap and a plain drag to the same sewn width write the same
     expect(Math.abs(target - (S - 30)), `rot ${rot}: lands on the matched width`).toBeLessThan(0.25);
   }
 });
+
+// The group corner (review follow-up, 2026-11-13): an auto-fit lettering
+// member was seeded with its SEWN width as its request, so even a factor-1
+// touch rewrote its size (upright 96.2 -> 97.2 over five touches, 45 degrees
+// 72.8 -> 58.0). The field seeds every member through resizeStartTargetMm.
+test("five factor-1 touches of the group corner leave auto-fit lettering at its size", async () => {
+  const { groupResizePatches, resizeStartTargetMm } = await import("./interact.js");
+  for (const rot of [0, 45]) {
+    let els = [textEl({ id: "a", sizeMm: null, rotationDeg: rot }), textEl({ id: "b", text: "HI", sizeMm: 40, offsetYMm: -40 })];
+    const sewn0 = sewnBox(els[0]).w;
+    for (let i = 0; i < 5; i++) {
+      const members = els.map((el) => {
+        const d = generateElement(el, garment(), {});
+        const b = bboxMmFromStitches(d.stitches);
+        const w = b.x1 - b.x0;
+        return { id: el.id, offsetXMm: el.offsetXMm, offsetYMm: el.offsetYMm, widthMm: w, targetMm: resizeStartTargetMm(el, d, w) };
+      });
+      const r = groupResizePatches(members, 1, 0, 0, 5);
+      els = els.map((el) => ({ ...el, ...r.patches[el.id] }));
+    }
+    expect(Math.abs(sewnBox(els[0]).w - sewn0), `rot ${rot}: ${sewnBox(els[0]).w} vs ${sewn0}`).toBeLessThan(0.15);
+    expect(els[1].sizeMm).toBeCloseTo(40, 9);
+  }
+});
+
+test("resizeStartTargetMm: sizeMm when set, lettering's fit width when auto-fit, else the sewn width", async () => {
+  const { resizeStartTargetMm } = await import("./interact.js");
+  expect(resizeStartTargetMm({ type: "text", sizeMm: 50 }, { fitMm: { w: 70 } }, 71)).toBe(50);
+  expect(resizeStartTargetMm({ type: "text", sizeMm: null }, { fitMm: { w: 70 } }, 71)).toBe(70);
+  expect(resizeStartTargetMm({ type: "design", sizeMm: null }, { widthMM: 80 }, 80)).toBe(80);
+  expect(resizeStartTargetMm({ type: "text", sizeMm: null }, null, 71)).toBe(71);
+});
