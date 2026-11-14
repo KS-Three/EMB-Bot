@@ -42,3 +42,22 @@ def test_bare_inside_art_counts_an_unsewn_hole_and_not_a_covered_one():
                                   if not 2.0 < pts[0][0] < 4.0])]]}
     mm2, patches = js.bare_inside_art(cap, gap)
     assert mm2 > 3.0 and patches == 1
+
+
+def test_travel_under_other_stitching_is_not_exposed_and_travel_off_it_is():
+    rows =[[(0.0, y), (6.0, y)] for y in np.arange(0, 6.01, 0.3)]
+    under = [(1.0, 1.0), (5.0, 5.0)]               # inside the fill's footprint
+    over_bare = [(6.0, 6.0), (16.0, 6.0)]          # 10 mm past it
+    cap = {"runs": [[((0, 0, 0), [(r, "fill", False, False, "S") for r in rows]
+                      + [(under, "travel", False, False, "S"), (over_bare, "travel", False, False, "S")])]]}
+    got = js.exposed_travel(cap)
+    assert 9.0 < got < 10.0, got                    # the 0.3 mm grace off the fill's last point
+
+
+def test_long_joins_count_needle_down_stitches_between_runs_only():
+    st = [{"type": "stitch", "x": 0, "y": 0}, {"type": "stitch", "x": 30, "y": 0},      # run 0, 3 mm
+          {"type": "stitch", "x": 130, "y": 0},                                            # run 1 starts 10 mm on
+          {"type": "stitch", "x": 230, "y": 0},                                            # run 1, a 10 mm stitch
+          {"type": "jump", "x": 330, "y": 0}, {"type": "stitch", "x": 330, "y": 0}]        # run 2 after a jump
+    design = {"stitches": st, "runs": [{"i0": 0, "i1": 1}, {"i0": 2, "i1": 3}, {"i0": 5, "i1": 5}]}
+    assert js.long_joins({"design": design}) == (1, 10.0)
