@@ -241,3 +241,57 @@ Frozen 2026-10-27 engine (`frozen_cfg`), the tests' config; OFF unchanged.
 Colour blocks are Black, White, Black in every ON cell. The no-cutout 100.8 ON
 design changed (md5) with the same counts; 113.5 ON on both lanes and
 cutout 100.8 ON are md5-identical to before.
+
+## Addendum 2026-11-14: the flag on the LIVE engine, both lanes — stays OFF
+
+Measured 2026-11-13 on tree `fd8a0359` (main `7ad9c124` plus PR #1461, tone
+pass off), live `PipelineConfig` defaults, `photo_enclosed_rim` OFF vs ON.
+Cutout lane = the isolated rembg venv present; no-cutout lane =
+`photo_prep=False`. Renders were looked at for every changed pair.
+
+### MFab hat, `hat_front` (fields / riders; colour blocks)
+
+| width mm | lane | OFF | ON | what ON sews |
+|---|---|---|---|---|
+| 30 | cutout | 2 / 8, Black White | 2 / 11, Black White | faces and small line black, near legible |
+| 30 | no cutout | 2 / 8, Black White | 2 / 11, Black White | same |
+| 36.7 | cutout | 2 / 4, Black White | probe did not run, **White Black** | **one black patch** |
+| 36.7 | no cutout | 2 / 4, Black White | probe did not run, **White Black** | **one black patch** |
+| 60 | cutout | 2 / 7, Black White Black | 1 / 16, Black White Black | small line reads |
+| 60 | no cutout | 3 / 0, Black White | 1 / 14, Black White Black | small line reads |
+| 80 | cutout | 1 / 12 | 1 / 16 | white block over W-E gone |
+| 80 | no cutout | 1 / 10 | 1 / 14 | same |
+| 100.8 | cutout | 1 / 13 | 1 / 16 | `LETTERING_TOO_SMALL` clears |
+| 100.8 | no cutout | 1 / 11 | 1 / 14 | small line clean |
+| 113.5 | cutout | 2 / 8 | 1 / 14 | `LETTERING_TOO_SMALL` clears |
+| 113.5 | no cutout | 1 / 12 | 1 / 14 | small line clean |
+
+### Widths between those (cutout lane, ON arm)
+
+| width mm | ON | reads as |
+|---|---|---|
+| 33 | 1 / 13, Black White | fine |
+| 35, 36, 37, 40 | probe did not run, White Black | one black patch, as 36.7 |
+| 38 | 1 / 13, Black White Black | fine |
+| 45, 50 | 1 / 13 and 1 / 16, Black White Black | M-FAB faces sew WHITE, hyphen dropped; small line reads |
+
+The 36.7 mm collapse is deterministic (same md5 on a repeat) and
+`ARTWORK_UNCOVERED` appears with it.
+
+### The 77-image set (80 mm, left_chest, 6 colours)
+
+ON changes 4 designs on the cutout lane and 5 on the no-cutout lane; the other
+rows are byte-identical to OFF, stained_glass included.
+
+| image | lanes | ON against OFF |
+|---|---|---|
+| logo_mfab_hat | both | better: the white block over W-E goes |
+| summit_badge | both (gradient class, lanes identical) | outer ground band more uniform, `THREAD_MATCH_POOR` clears, 1,453 fewer stitches |
+| kanji_brush | no cutout | worse: a fifth block (dark grey) inside the black strokes |
+| vintage_engraved_badge | both | cutout lane worse: 24% more stitches, silver speckle; no-cutout about the same |
+| watercolor | both | worse: white specks (cutout); a block added and grade B to C (no cutout) |
+
+**Ruling (Kent, 2026-11-14): "Keep off, fix the collapse".** The flag stays
+OFF; the collapse at 35 to 37 and 40 mm and the white faces at 45 to 50 mm are to be
+fixed behind the flag and the same widths and images re-measured before the
+question comes back.
