@@ -32,6 +32,16 @@ white + gold extrusion + black outline; tee and ball arc keep their black edge.
    mm from its edge (a crosshair), any edge of a page-coloured shape (the ball
    arc, GT faces), counters, dark ink.
 
+**Guards the controls forced (each was a real md5 change first):** To a T's 67
+white gaps between brush strokes folded into the black (a band of the art's own
+page colour is the page: never folded); Gaulke lost its white the same way;
+Hotel Fremont has NO page colour (`bg_rgb` None), so the garment stands in, and
+its small letters' white insides folded (a rescued detail lying INSIDE its
+parent is a counter: kept); ProSeal's 0.13 mm light fringe read as a shadow (a
+shadow is at least 2 source px wide). On a cream garment, Drone's silver arcs
+(7.7 dE00) and Fremont's white (6.4) are equally "page", so only the art's OWN
+page decides "page showing through".
+
 **Traps found on the way:** `rescued_small_shape` slivers must NOT be protected
 (they are the bevel noise between bands and body); a band on the page has one
 other side, so the hug is judged on its off-page outline; a band inside its

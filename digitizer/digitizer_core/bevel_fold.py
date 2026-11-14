@@ -197,7 +197,10 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
         return own_page is not None and near_page(r)
 
     # ---- 1. shadows -------------------------------------------------------
-    if page_lab is not None:
+    # A drop shadow is cast on the art's OWN page: on a cut-out (no page of
+    # its own) the garment stands in, and white art at the cut-out's edge (the
+    # heraldic crest's dome, 19 mm2) would read as a shadow on it.
+    if own_page is not None:
         graph = _Graph(regions, touch)
         drop = []
         for i, r in enumerate(regions):
