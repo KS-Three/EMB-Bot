@@ -33,6 +33,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from . import deadline
 from .config import PipelineConfig
 from .stage1_prep import Prep
 from .stage2_photo_segment import kept_masks_to_quant
@@ -298,7 +299,9 @@ def sam2_segment_seam(
 
         timeout_s = min(cfg.photo_segment_sam2_timeout_s, SAM2_TIMEOUT_HARD_CAP_S)
         try:
-            proc = subprocess.run(
+            # `deadline.run_subprocess` is `subprocess.run` that also reads the
+            # cancel / job deadline while the child runs and kills it then.
+            proc = deadline.run_subprocess(
                 [
                     str(SAM2_VENV_PYTHON),
                     str(SAM2_WORKER_PATH),
@@ -308,8 +311,6 @@ def sam2_segment_seam(
                     str(int(cfg.photo_segment_sam2_points_per_side)),
                     str(min_mask_region_area),
                 ],
-                capture_output=True,
-                text=True,
                 timeout=timeout_s,
             )
         except subprocess.TimeoutExpired:

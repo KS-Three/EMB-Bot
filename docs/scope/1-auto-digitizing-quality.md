@@ -5385,3 +5385,35 @@ bean round the band's outer ring. No new constant.
 
 *(measured 2026-11-13 — memory `shaped-outline-gear-2026-11-13`,
 `tests/test_outline_follow_shape.py`)*
+
+## Twenty-fourth pass: overflow moved from MASTER_SCOPE (2026-11-13)
+
+Moved verbatim from `MASTER_SCOPE.md` to make room for the 2026-11-13 photo-lane entries (two lanes, the cutout-lane thread grade, the tone pass). The live entries carry the current readings.
+
+### The scorecard's earlier recaptures, as they stood before the 2026-11-13 refresh
+
+**Recaptured 2026-10-04 at `6e0cb943`** on cloud Linux after 50
+pipeline commits: 48 of 52 rows moved, five fell a band, every mover attributed
+by bisection over the 51 trees; the step that crosses a band line is a new
+preflight check on all five falls (#572, #573), not a stitch
+([notes](../scorecard-baseline-attribution-2026-10-04.md), scope-history 10-04).
+**Recaptured again 2026-10-05 at `d000e370`** after Kent made both checks
+`info` (#630): 21 rows moved, every one of them those two findings, 12 rose a
+band, no other leaf moved (scope-history 10-05). **Recaptured 2026-11-05 at
+`292418a8`** on GitHub Actions (the `Corpus scorecard` workflow, `diff` or
+`capture` as a button): 30 of 52 rows moved, A/B/C/D/F 9/18/7/6/12 →
+10/20/8/10/4, mean 61.8 → 71.9, the rise `THREAD_MATCH_POOR` going quiet on the
+gradient lane (#1200)
+([notes](../scorecard-baseline-attribution-2026-11-05.md)).
+
+### Closed defect 15's census, as it stood before the 2026-11-13 refresh
+
+Census, 19 real photographs at 80 mm on the config the Studio sends: all 19 reach a photo class at stage 0, detection rescues 0, escapes 0, false positives 0 of 30 logos; Cohen's kappa against the hand label (chance-corrected) **1.000 for the photo class, 0.187 for detection alone.** **Caveats:** in-sample (the gate's threshold came from this same corpus, PR #1178, so 19 of 19 is a regression check, not an out-of-sample rate); no alpha cut-outs; nothing under 500 px. Cones only, nothing sewn. *(measured 2026-11-06 — PR #1272, [`docs/photo-detection-census-2026-11-06.md`](../photo-detection-census-2026-11-06.md))*
+
+### SAM2 on logo art, as it stood in the Studio-lane paragraph before the 2026-11-13 refresh
+
+**REFUTED as a region former for LOGO art**: 0–8 masks at the shipped
+`points_per_side=12` against the shipped former's 17–164, either finding
+essentially nothing or segmenting the BACKGROUND as the object, at
+`predicted_iou` 0.88–0.99 throughout. *(measured 2026-09-22 —
+[`docs/sam2-on-logo-art-2026-09-22.md`](../sam2-on-logo-art-2026-09-22.md))*

@@ -39,15 +39,6 @@ def _staged_work(stages: int, stage_s: float, ran: list, entered: threading.Even
     return work
 
 
-def _wait_idle(registry: JobRegistry, within_s: float = 10.0) -> float:
-    """Seconds until the registry holds no in-flight work (the worker freed)."""
-    t0 = time.monotonic()
-    while registry.stats()["inflight"]:
-        assert time.monotonic() - t0 < within_s, registry.stats()
-        time.sleep(0.005)
-    return time.monotonic() - t0
-
-
 # --- the registry ------------------------------------------------------------
 
 def test_cancel_mid_job_stops_it_at_the_next_seam_and_says_cancelled_not_error():

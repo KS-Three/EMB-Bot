@@ -6306,8 +6306,6 @@ def _junction_patch_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
                 patch, shape_id, angle_deg=None,
                 row_mm=machine.FILL_ROW_MM, stitch_mm=machine.FILL_STITCH_MM,
                 underlay_style="none", trim_at_mm=math.inf, start_near=cursor)
-        except deadline.Abandoned:
-            raise                       # a cancel / the job timeout is not a bad patch
         except Exception:  # noqa: BLE001 -- an additive pass must never sink a shape
             continue
         for r in got:
@@ -6491,8 +6489,6 @@ def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
                 pts = satin_stroke(patch, column, max(half, machine.SATIN_MIN_CROSS_MM / 2),
                                    None, split_above_mm, 0.0, spacing_mm, None,
                                    max_width_mm=max_width_mm)
-        except deadline.Abandoned:
-            raise
         except Exception:  # noqa: BLE001 -- an additive pass must never sink a shape
             pts = []
         if len(pts) >= 4:
@@ -6523,8 +6519,6 @@ def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
                 patch, shape_id, angle_deg=None,
                 row_mm=machine.FILL_ROW_MM, stitch_mm=machine.FILL_STITCH_MM,
                 underlay_style="none", trim_at_mm=math.inf, start_near=cursor)
-        except deadline.Abandoned:
-            raise
         except Exception:  # noqa: BLE001
             continue
         for r in got_runs:

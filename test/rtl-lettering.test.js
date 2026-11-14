@@ -84,6 +84,28 @@ test("RTL multi-line keeps each line's own order and global char indices", () =>
     "index 2 is the newline and must consume exactly one position");
 });
 
+// Trailing spaces (2026-11-13): an RTL line is walked reversed, so its LOGICAL
+// trailing space sits at the pen START, the visual left. Justification drops
+// it there, as it drops an LTR line's from the pen end; a logical LEADING
+// space (visual right) still counts as indentation, as in LTR.
+test("RTL justification ignores a logical trailing space, at the visual left", () => {
+  const lineOf = (text, align) => {
+    const lay = EMB.layoutText(font("rtl"), text, { emMm: 20, pxPerMm: 8, align });
+    const nl = text.indexOf("\n");
+    const mid = (lo, hi) => {
+      let a = Infinity, b = -Infinity;
+      for (const r of lay.runs) if (r.charIdx >= lo && r.charIdx < hi) for (const p of r.pts) { a = Math.min(a, p.x); b = Math.max(b, p.x); }
+      return (a + b) / 2;
+    };
+    return mid(0, nl) - mid(nl + 1, text.length);
+  };
+  for (const align of ["left", "center", "right"]) {
+    assert.ok(Math.abs(lineOf("AB \nAB", align)) < 1e-6, align + ": a trailing space leaves the lines aligned");
+  }
+  // 30-unit space at emMm 20 / 100 upm, 8 px/mm = 48 px; centred, half of it.
+  assert.ok(Math.abs(lineOf(" AB\nAB", "center") - (-24)) < 1e-6, "a leading space indents from the right, as typed");
+});
+
 test("a shipped RTL font carries dir and its glyphs are Hebrew, not Arabic", () => {
   const fs = require("node:fs");
   const path = require("node:path");
