@@ -292,6 +292,25 @@ def build_ledger(passes: list[dict], run_url: str | None = None) -> dict:
             "rows": rows}
 
 
+#: Passes a stitch-count row needs before a tolerance of 0 is believable. The 2026-11-14
+#: capture read 8 rows that move by 3-6 stitches between runners as spread 0, from 3 passes
+#: that happened to land on one side (check run 43623404176 then read toat_machine_hat
+#: 18,921 against 18,917 at tolerance 0); the 11-12 capture, of 3 other passes, had seen it.
+MIN_PASSES_FOR_ZERO = 5
+
+
+def false_zero_warnings(led: dict) -> list[str]:
+    """Stitch-count rows whose tolerance is exactly 0 from fewer than `MIN_PASSES_FOR_ZERO`
+    passes: a spread of 0 over a few passes may only mean they landed together. A WARNING
+    at capture time (never a failure, never in `check`)."""
+    passes = (led.get("captured") or {}).get("passes") or 0
+    if passes >= MIN_PASSES_FOR_ZERO:
+        return []
+    return [f"{r['job']} stitches: tolerance 0 from {passes} pass(es); runner jitter can move a stitch count by "
+            f"a few, so this 0 may be a false zero (need {MIN_PASSES_FOR_ZERO}+ passes to trust it)"
+            for r in led.get("rows", []) if r.get("figure") == "stitches" and r.get("tolerance") == 0]
+
+
 def validate_ledger(led: dict) -> list[str]:
     """Schema problems, [] when the ledger is well-formed."""
     bad = []
@@ -637,6 +656,8 @@ def main(argv=None) -> int:
         _dump(led, a.ledger)
         if len(passes) < 2:
             print("WARNING: one pass only -- every tolerance is 0 and unmeasured; capture from 2+ passes", file=sys.stderr)
+        for w in false_zero_warnings(led):
+            print(f"WARNING: {w}", file=sys.stderr)
         print(ledger_table(led))
         for sk in led["skipped"]:
             print(f"\nno row: {sk['job']} {sk['figure']} was read in {sk['passes_read']} of {len(passes)} pass(es)")
