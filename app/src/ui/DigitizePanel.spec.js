@@ -1748,6 +1748,26 @@ describe("the run button while Download is locked", () => {
     expect(run()).not.toHaveClass("dgp-run-lit");
     expect(run().dataset.blocksDownload).toBe("false");
   });
+
+  // Art uploaded but never digitized locks Download too (lib/staleness.js
+  // isUndigitizedArt, 2026-11-13), and Download says nothing in words, so the
+  // halo is the only pointer to the way out. Not "stale": there are no
+  // stitches to be behind, so the button stays solid and no "Changed since
+  // the last run" / "Restitch now" appears before any run.
+  test("art uploaded but never digitized lights it without calling it stale", async () => {
+    const { run, queryByTestId } = await panel({ extra: { result: null, appliedConfig: null, review: null } });
+    expect(run()).toHaveClass("dgp-run-lit");
+    expect(run().dataset.blocksDownload).toBe("true");
+    expect(run()).not.toHaveClass("dgp-run-stale");
+    expect(queryByTestId("digitize-stale")).toBeNull();
+    expect(queryByTestId("digitize-restitch-now")).toBeNull();
+  });
+
+  test("never-digitized art with the service down is not lit", async () => {
+    const { run } = await panel({ health: null, extra: { result: null, appliedConfig: null, review: null } });
+    expect(run()).not.toHaveClass("dgp-run-lit");
+    expect(run().dataset.blocksDownload).toBe("false");
+  });
 });
 
 describe("a file picked before the element existed", () => {
