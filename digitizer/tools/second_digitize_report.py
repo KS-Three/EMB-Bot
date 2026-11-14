@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from collections import defaultdict
 
 GROUPS = ["s0", "s1", "s1.5", "s2", "s3", "s4", "finish", "s5", "s6-7", "preflight"]
@@ -128,4 +127,11 @@ def main(runs_path: str, probe_path: str) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    import argparse
+
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("runs", help="runs-*.jsonl written by tools/second_digitize_timing.py")
+    ap.add_argument("probe", help="probe-*.jsonl written by the same run's probe service")
+    args = ap.parse_args()
+    main(args.runs, args.probe)
