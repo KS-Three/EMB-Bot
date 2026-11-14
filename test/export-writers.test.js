@@ -43,7 +43,9 @@ test("DST header: fixed-width fields, CR-terminated, space-padded to 512", () =>
   assert.strictEqual(h.length, HEADER);
   const f = fields(h);
   assert.strictEqual(f.LA, "HELLO");
-  assert.strictEqual(f.CO, "002");
+  // Two colours defined but no colour record in the stream: CO counts the
+  // changes written, not colors.length (2026-11-13; was "002").
+  assert.strictEqual(f.CO, "000");
   assert.strictEqual(f["+X"], "00080");
   assert.strictEqual(f["-X"], "00050");
   assert.strictEqual(f["+Y"], "00020");

@@ -1252,6 +1252,11 @@ export function reviewFromJob(review, blocks = null) {
       // trusted", the same "absent key = default" convention `stitched`
       // above already follows.
       enclosedColourUnknown: s.enclosed_colour_unknown === true,
+      // Contract v1.10: the digitizer read this shape as a HAIRLINE OUTLINE,
+      // a thin line the art draws round its shapes (never a letter). The
+      // Studio glows it and asks Keep / Remove (lib/outlinePrompt.js). A
+      // pre-contract service sends nothing, which reads as "not one".
+      hairlineOutline: s.hairline_outline === true,
       outline: thinOutline(s.outline_mm),
       outlineFull: thinOutline(dedupeRing(s.outline_mm), BOUNDARY_MAX_POINTS),
       // Interior rings (contract v1.9 Studio side): `holes_mm` has always been

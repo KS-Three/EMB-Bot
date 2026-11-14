@@ -160,3 +160,26 @@ test("designToSVG tolerates a null/undefined design entirely", () => {
   assert.doesNotThrow(() => designToSVG(null));
   assert.doesNotThrow(() => designToSVG({}));
 });
+
+// buildQualityDesign ends every stream with { type: "end" } at the absolute
+// origin while the stitches carry the element's hoop offset, so an
+// off-centre element exported a box stretching back to (0,0): a 20 x 10 mm
+// rectangle at (40, 25) mm came out 50 x 30 mm (found 2026-11-13).
+test("an off-centre element exports at its own size: the end sentinel is not a point of the drawing", () => {
+  const DG = require("../src/digitize.js");
+  const sq = [{ x: 0, y: 0 }, { x: 160, y: 0 }, { x: 160, y: 80 }, { x: 0, y: 80 }];
+  const d = DG.buildQualityDesign([{ rgb: [200, 30, 30], shapes: [{ outer: sq, holes: [] }] }],
+    { garment: { widthIn: 12, heightIn: 12 }, pxPerMm: 8, targetWidthMm: 20, offsetXMm: 40, offsetYMm: 25 });
+  assert.strictEqual(d.stitches[d.stitches.length - 1].type, "end");
+  const s = designToSVG(d);
+  const svgTag = s.match(/<svg[^>]*>/)[0];
+  const [, , vbW, vbH] = attr(svgTag, "viewBox").split(" ").map(Number);
+  assert.ok(Math.abs(vbW - d.widthMM) < 0.01, `width ${vbW} vs design ${d.widthMM}`);
+  assert.ok(Math.abs(vbH - d.heightMM) < 0.01, `height ${vbH} vs design ${d.heightMM}`);
+  assert.strictEqual(attr(svgTag, "width"), vbW + "mm");
+  // The paths are offset by the same origin as the box, so they fill it.
+  const pts = polylines(s).flatMap((l) => attr(l, "points").split(" ").map((p) => p.split(",").map(Number)));
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  assert.ok(Math.abs(Math.min(...xs)) < 0.01 && Math.abs(Math.max(...xs) - vbW) < 0.01, `x ${Math.min(...xs)}..${Math.max(...xs)}`);
+  assert.ok(Math.abs(Math.min(...ys)) < 0.01 && Math.abs(Math.max(...ys) - vbH) < 0.01, `y ${Math.min(...ys)}..${Math.max(...ys)}`);
+});

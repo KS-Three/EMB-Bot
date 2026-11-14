@@ -607,6 +607,14 @@ PRE_FLIP["flat_ramp_blend_dissolve"] = False
 # cap sews nothing -- so an arm measured before that day was measured with
 # those rings present. `tests/engine_2026_10_27.json` carries it False too.
 PRE_FLIP["bean_only_lines"] = False
+# `border_from_outline_hairline_run` joined the flipped set 2026-11-13 (Kent:
+# "sewn thin, but do not include letters for this"), for the reason every
+# entry above gives. ON, a thread that is nearly all hairline outline sews as
+# a bean and sews last, and its bodies' fill is held to the line; of 22 repo
+# logos at 60 and 100 mm only `commons_lettering/hed_p_e_logo.png` is taken.
+# `tests/engine_2026_10_27.json` carries it False too;
+# `tests/test_outline_hairline_run.py` names the flag itself.
+PRE_FLIP["border_from_outline_hairline_run"] = False
 # `keep_dark_thin_strokes` joined the flipped set 2026-10-28 (Kent's "Flip ON
 # now (worker's pick)" on PR #1170). Gradient class only: ON, a dark thin
 # stroke the merge absorbed into its shaded ground is carved out after the
