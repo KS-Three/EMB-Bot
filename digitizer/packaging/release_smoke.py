@@ -64,6 +64,14 @@ def bare_env() -> dict:
     return env
 
 
+def frozen_service(exe: Path, port: int) -> list[str]:
+    """The shipped exe as the bare service on `port`, without the launcher's
+    one-port rule (that rule is `one_origin_smoke.py`'s to prove, on 8721):
+    the launcher's own `--serve` child, with the bundled Studio and the
+    bundled tessdata as its defaults."""
+    return [str(exe), "--serve", "--port", str(port)]
+
+
 class Service:
     """One child process and its log. Stopped on exit, whatever happened."""
 
@@ -116,7 +124,7 @@ def stamp_inside_a_checkout(exe: Path, port: int, expect_commit: str, log: Path)
         # Ask exactly as the service's probe does: git, run in the folder that holds the packages.
         head = subprocess.run([git, "rev-parse", "HEAD"], cwd=exe.parent / "_internal", **quiet).stdout.strip()
         # Full PATH here, on purpose: git has to stay findable for this to prove anything.
-        with Service([str(exe), str(port)], around, scrubbed_env(), log):
+        with Service(frozen_service(exe, port), around, scrubbed_env(), log):
             health, _ = freeze_check._wait_health(f"http://127.0.0.1:{port}", 120)
     finally:
         if made.exists():
@@ -201,7 +209,7 @@ def main(argv: list[str] | None = None) -> int:
                  DIGITIZER, venv_env, work / "venv-service.log"):
         venv = freeze_check.run(f"http://127.0.0.1:{args.venv_port}", work / "venv.json", [], suite=True)
 
-    with Service([str(exe), str(args.frozen_port)], work, bare_env(), work / "frozen-service.log"):
+    with Service(frozen_service(exe, args.frozen_port), work, bare_env(), work / "frozen-service.log"):
         frozen = freeze_check.run(f"http://127.0.0.1:{args.frozen_port}", work / "frozen.json", [], suite=True)
 
     differ = freeze_check.compare(venv, frozen)

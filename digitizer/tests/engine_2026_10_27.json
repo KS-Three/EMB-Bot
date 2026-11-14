@@ -159,6 +159,7 @@
  "lettering_columns": true,
  "lettering_columns_apex_cut": false,
  "lettering_columns_corner_fold": true,
+ "lettering_columns_cover_handback": false,
  "lettering_columns_fold_cuts": true,
  "lettering_columns_icon_guard": true,
  "lettering_columns_ink_link": true,

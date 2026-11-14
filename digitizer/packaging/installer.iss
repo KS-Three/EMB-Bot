@@ -9,10 +9,10 @@
 ; UNSIGNED. Windows SmartScreen will warn on download and on first run until
 ; there is a code-signing certificate (Kent's call, not made).
 ;
-; THE SHORTCUT STARTS THE SERVICE, NOT A LAUNCHER. Until the launcher lands
-; (step 3 of docs/packaging-freeze-spike-2026-11-10.md) the Start-menu entry
-; opens a console window that prints the Studio's address; it does not open
-; a browser. Repoint the [Icons] line when build_freeze.py --entry changes.
+; THE SHORTCUT STARTS THE LAUNCHER (embbot_launcher.py, the frozen entry since
+; 2026-11-13): it holds port 8721, reuses a copy already running, opens the
+; browser at http://127.0.0.1:8721/ and starts itself with --serve as the
+; service. No arguments: the one port is the launcher's own rule.
 
 #ifndef SourceDir
   #error Pass /DSourceDir=<the frozen folder>

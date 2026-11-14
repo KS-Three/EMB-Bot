@@ -3652,6 +3652,18 @@ class PipelineConfig:
     # screenshot only: 33 -> 30 lane shapes); False reads nothing.
     # Tests: `tests/test_column_capture.py`.
     lettering_columns_icon_guard: bool = True
+    # Under `lettering_columns`, hand a text-tagged shape BACK to the ordinary
+    # ladder when the Column lane's satin covers under
+    # `columns.HANDBACK_COVER_MIN` of it (`columns.satin_cover`), so it sews as
+    # it would untagged (2026-11-13, built OFF; Kent's ruling that day:
+    # "Hand-back, built OFF"). The starter monarch's V-shaped wing cell, read
+    # as a letter only at targets 90.50 and 91.75 mm (a stroke CV jittering
+    # across `textcluster.LETTER_STROKE_CV_MAX`), sewed one arm: cover 0.656,
+    # against >= 0.964 sewn untagged (docs/monarch-size-cliff-2026-11-13.md).
+    # It acts where the area is lost, whatever the tagger read; the shape stays
+    # tagged for every other reader. False: the lane's output is final, as
+    # before, byte for byte. Flipping it is Kent's.
+    lettering_columns_cover_handback: bool = False
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --

@@ -145,6 +145,13 @@ SMALL_BOLD_PULL_FRAC = 0.15
 # zigzag across its 0.3 mm counter.
 SMALL_BOLD_COVER_MIN = 0.9
 SMALL_BOLD_PLAIN_GAIN = 0.05
+# `cfg.lettering_columns_cover_handback` (2026-11-13, built OFF): the share of a
+# tagged shape the lane's satin must cover (`satin_cover`) or the shape goes
+# back to the ordinary ladder. The lane's own floor, `SMALL_BOLD_COVER_MIN`,
+# reused rather than tuned: a coverage share of the drawn shape, read off the
+# geometry, not a property of fabric or thread (ROADMAP gate 1 does not
+# apply). Measured 2026-11-13: the monarch's misread wing cell 0.656.
+HANDBACK_COVER_MIN = SMALL_BOLD_COVER_MIN
 # `cfg.pull_comp_by_stroke` (2026-10-22, built OFF): each column's pull is
 # read off its OWN drawn stroke width, by the rule the professional's hat
 # files sew. Measured 2026-10-22 over the pro's files in `Embroidery
