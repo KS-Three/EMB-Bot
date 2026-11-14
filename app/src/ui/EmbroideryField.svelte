@@ -35,7 +35,7 @@
     borderRequestPending,
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
-  import { boundaryIssues } from "../lib/digitizer.js";
+  import { boundaryIssues, deletedFromStitches } from "../lib/digitizer.js";
   import { isElementStale } from "../lib/staleness.js";
   import { popoverModel, popoverPatch, recolorPatch, SIMPLIFY_TOLS_MM } from "../lib/shapePopover.js";
   import { similarShapeIds, similarOverridesPatch } from "../lib/similarShapes.js";
@@ -773,8 +773,9 @@
     const rows = el && el.review && el.review.shapes;
     if (!Array.isArray(rows) || !rows.length) return null;
     // A shape the user hid or deleted in review is not something the app
-    // "found" any more — but it still counts toward the shared transform (see
-    // shapeOverlay.outlineBBoxMm), so filter for DRAWING only.
+    // "found" any more, so drawing filters it out (hiddenShapeIds). All rows
+    // are returned: the fit itself chooses the ones the stitches still hold
+    // (shapeOverlay sewnRows, from deletedFromStitches), 2026-11-13.
     return rows;
   }
 
@@ -2196,7 +2197,8 @@
         rows,
         // Sparse nodes (2026-11-05): every ring carries its node list, the stored
         // one when valid, else seeds (never written until a node edit commits).
-        mm: withNodes(shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el), pendingHoles(el)), el.shapeOverrides),
+        // Fitted on the shapes the stitches still hold (deletedFromStitches).
+        mm: withNodes(shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el), pendingHoles(el), deletedFromStitches(el)), el.shapeOverrides),
         // The silhouette cap, one open polyline per stretch: selectable like a
         // shape (see lib/capPieces.js), never editable as one.
         caps: capOutlinesMm(el, pe.design),
@@ -2312,6 +2314,8 @@
       rows: edit.rows,
       bboxMm: edit.pe.bboxMm,
       rotationDeg: edit.el.rotationDeg || 0,
+      // The same left-out shapes the forward fit used (outlinesMmFor).
+      unsewnIds: deletedFromStitches(edit.el),
       // The node lists the rings were shown with (frozen with them: a node's
       // index only means something against the ring it was read from).
       nodesById: edit.nodesById,

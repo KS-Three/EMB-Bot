@@ -174,7 +174,8 @@ export function ringEditOverrides(el, basis, live, removed = null, liveNodes = n
   }
   for (const sid of gone.keys()) note(sid);
   for (const sid of grown.keys()) note(sid);
-  const toService = (pts) => fieldMmToOutlineMm(pts, basis.rows, basis.bboxMm, basis.rotationDeg);
+  // `unsewnIds`: the deleted shapes the forward fit left out (editBasis).
+  const toService = (pts) => fieldMmToOutlineMm(pts, basis.rows, basis.bboxMm, basis.rotationDeg, basis.unsewnIds);
   for (const [sid, t] of touched) {
     const row = basis.rows.find((r) => r && r.id === sid) || {};
     const entry = { ...(cur[sid] || {}) };
