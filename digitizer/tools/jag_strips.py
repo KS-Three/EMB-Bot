@@ -405,7 +405,95 @@ def metrics(cap_off: dict, cap_on: dict) -> dict:
         row[f"curve_fidelity_{lab}"] = {k: m.get(k) for k in ("roughness_deg", "turn_gini")}
     row["bare_inside_art_off"] = bare_inside_art(cap_off, cap_off)
     row["bare_inside_art_on"] = bare_inside_art(cap_off, cap_on)
+    row["exposed_travel_mm"] = [exposed_travel(cap_off), exposed_travel(cap_on)]
+    row["long_joins"] = [long_joins(cap_off), long_joins(cap_on)]
+    row["trims"] = [sum(1 for s in c["design"]["stitches"] if s.get("type") == "trim") for c in (cap_off, cap_on)]
     return row
+
+
+def exposed_travel(cap: dict, grace_mm: float = 0.3) -> float:
+    """mm of needle-down travel with no other stitching within `grace_mm`:
+    thread lying on bare fabric. Travel under a later fill or border is not
+    exposed (that is what a region-only count got wrong on Becker,
+    `docs/satin-flat-ends-2026-11-14.md`)."""
+    from shapely.geometry import LineString
+    from shapely.ops import unary_union
+    lines, travels = [], []
+    for blk in cap["runs"]:
+        for _rgb, runs in blk:
+            for pts, kind, *_ in runs:
+                if len(pts) >= 2:
+                    (travels if kind == "travel" else lines).append(LineString(pts))
+    if not travels:
+        return 0.0
+    foot = unary_union([ln.buffer(grace_mm, quad_segs=2) for ln in lines])
+    return round(sum(t.difference(foot).length for t in travels), 1)
+
+
+def long_joins(cap: dict, over_mm: float = 6.0) -> tuple[int, float]:
+    """(count, mm) of single needle-down stitches over `over_mm` that join two
+    runs of the design (`design["runs"]` spans) with no jump, trim or travel
+    run between them: a thread laid straight across whatever lies between."""
+    st, spans = cap["design"]["stitches"], cap["design"].get("runs") or []
+    run_at = {}
+    for k, r in enumerate(spans):
+        for i in range(r["i0"], r["i1"] + 1):
+            run_at[i] = k
+    n, tot = 0, 0.0
+    for i in range(1, len(st)):
+        s0, s1 = st[i - 1], st[i]
+        if s1.get("type") != "stitch" or s0.get("type") != "stitch":
+            continue
+        d = float(np.hypot(s1["x"] - s0["x"], s1["y"] - s0["y"])) / 10.0
+        if d > over_mm and run_at.get(i - 1) != run_at.get(i):
+            n += 1
+            tot += d
+    return n, round(tot, 1)
+
+
+def runs_panel(cap: dict, x0: float, y0: float, w: float) -> np.ndarray:
+    """Every run but underlay in its own colour with its needle points and a
+    kind/block.run label, over the art polygons: which emitter laid what."""
+    W = int(w * D)
+    img = np.full((W, W, 3), 245, np.uint8)
+    rng = np.random.default_rng(5)
+    for bi, blk in enumerate(cap["runs"]):
+        for _rgb, runs in blk:
+            for ri, (pts, kind, *_r) in enumerate(runs):
+                a = np.asarray(pts)
+                if len(a) < 2 or kind == "underlay":
+                    continue
+                inwin = (a[:, 0] > x0 - 1) & (a[:, 0] < x0 + w + 1) & (a[:, 1] > y0 - 1) & (a[:, 1] < y0 + w + 1)
+                if not inwin.any():
+                    continue
+                col = tuple(int(c) for c in rng.integers(30, 220, 3))
+                q = np.round((a - [x0, y0]) * D * 4).astype(np.int32)
+                for i in range(1, len(q)):
+                    if inwin[i] or inwin[i - 1]:
+                        cv2.line(img, tuple(q[i - 1]), tuple(q[i]), col, 2, cv2.LINE_AA, shift=2)
+                for i in np.flatnonzero(inwin):
+                    cv2.circle(img, (int(q[i][0] / 4), int(q[i][1] / 4)), 3, (0, 0, 0), -1)
+                j = int(np.flatnonzero(inwin)[0])
+                cv2.putText(img, f"{kind[:2]}{bi}.{ri}", (int(q[j][0] / 4) + 4, int(q[j][1] / 4) - 4),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.35, col, 1, cv2.LINE_AA)
+    for poly, *_ in cap["regions"]:
+        for r in rings(poly):
+            draw_poly(img, r, x0, y0, (255, 0, 255), 1)
+    return img
+
+
+def ends(spot: dict, capdir: str) -> np.ndarray:
+    """art | our thread | our runs and needles | pro, zoomed on one spot."""
+    ctx = _Ctx(os.path.join(capdir, spot["cap"] + ".pkl"))
+    pmx, pmy, pxy, it, pin, imgdir = ctx.plan_mm(spot)
+    half = spot.get("zoom_half", 2.0)
+    x0, y0, w = pmx - half, pmy - half, 2 * half
+    panels = [label(ctx.source_panel(x0, y0, w, w), f"art {ctx.src_ppm:.1f} px/mm"),
+              label(thread_panel(design_runs_mm(ctx.cap["design"]), x0, y0, w, w), "ours thread"),
+              label(runs_panel(ctx.cap, x0, y0, w), "ours runs (no underlay)")]
+    if spot.get("pro"):
+        panels.append(pro_panel(spot, it, imgdir, pxy, half))
+    return _hstack(panels, spot["id"], pin.get("note") or "")
 
 
 # ---------------------------------------------------------------------- cli
@@ -417,6 +505,8 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("garment"); c.add_argument("out"); c.add_argument("set", nargs="*")
     s = sub.add_parser("strips")
     s.add_argument("spots"); s.add_argument("capdir"); s.add_argument("outdir"); s.add_argument("only", nargs="*")
+    e = sub.add_parser("ends")
+    e.add_argument("spots"); e.add_argument("capdir"); e.add_argument("outdir"); e.add_argument("only", nargs="*")
     o = sub.add_parser("offon")
     o.add_argument("spots"); o.add_argument("cap_off"); o.add_argument("cap_on"); o.add_argument("outdir")
     o.add_argument("name")
@@ -430,12 +520,16 @@ def main(argv: list[str] | None = None) -> int:
               "stitches", len(blob["design"]["stitches"]), "s", round(blob["elapsed"], 1))
         return 0
     spots = json.loads(Path(a.spots).read_text(encoding="utf-8"))
-    if a.cmd == "strips":
+    if a.cmd in ("strips", "ends"):
+        global D
         os.makedirs(a.outdir, exist_ok=True)
+        if a.cmd == "ends":
+            D = 110.0
         for sp in spots:
             if (a.only and sp["id"] not in a.only) or not os.path.exists(os.path.join(a.capdir, sp["cap"] + ".pkl")):
                 continue
-            cv2.imwrite(os.path.join(a.outdir, sp["id"] + ".png"), strip(sp, a.capdir))
+            img = strip(sp, a.capdir) if a.cmd == "strips" else ends(sp, a.capdir)
+            cv2.imwrite(os.path.join(a.outdir, sp["id"] + ("_ends" if a.cmd == "ends" else "") + ".png"), img)
             print(sp["id"])
         return 0
     if a.cmd == "offon":
