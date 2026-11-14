@@ -337,7 +337,34 @@ The app limits are in the traps list of
   white triangle gets a bean loop sewn on top of the fill; the pro sews one
   fanned satin. See `docs/connectors-on-top-2026-11-14.md`.
 
-## Decisions waiting for Kent
+## Kent's rulings, 2026-11-14
+
+He picked each option on its sheet. *(ruled 2026-11-14 — Kent, relayed by the director)*
+
+1. `inshape_piece_lift`: "Flip ON".
+2. `small_text_reset_one_baseline` + `text_cluster_solid_guard`: "Flip both ON".
+3. The four `group_consistent_*` flags: "Flip all four ON".
+4. `outline_redraw_k`: "Set 0.75".
+5. `flat_blend_band_any_scale`: "Flip ON".
+6. `lettering_columns_connectors_buried` stays OFF. His words, on the Becker
+   pin #14 OFF | ON sheet: "Build edge-walk, notice how the pro makes a nice
+   corner with the thread andc continues the stitch to the right".
+7. `bevel_ring_fold`: "Studio tickbox, OFF".
+8. An agent eye, with the original beside the render, as the working judge:
+   "Yes, gross faults only" (missing, merged, invented, unreadable). It does
+   not judge jagged edges, pen flow or close A/B picks, and there is no nightly
+   run. Flips stay his.
+9. The run: "Builds + next wave".
+   - First the flips PR, the edge-walk and the tickbox.
+   - Then arc text with the skip report, thin bars kept whole, flat satin ends
+     and the apex_cut guard.
+   - At most 4 of the director's workers at once, Opus. Stop at 90% usage or
+     under 10 GB of disk.
+
+Flips 1 to 5 land in their own PR. Until that merges, every flag on this page
+is still OFF on main.
+
+## Decisions that were waiting for Kent (before his 11-14 rulings)
 
 1. The flips in the table above.
 2. Flattening shaded art: default ON, OFF, or a Studio tickbox.

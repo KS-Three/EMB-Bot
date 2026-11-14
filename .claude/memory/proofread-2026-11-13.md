@@ -53,5 +53,21 @@ by eye ~20 of the 22 are real departures he graded through (honeycomb gaps
 closed, gun highlights lost, keyline thickened), 2 sit at the floor; plus 2
 Fremont misfires that are anti-alias grey read as the tan thread.
 
+**Census 2026-11-14 (34 of 45 kit items; `tools/proofread.py census`, tables
+in `eye_pairs_out/proofread-1113/census/`):** ranked by misfires, the steps not
+being fixed elsewhere that night were stage 5's clip (`clipped_stage5`: 42 on 6
+designs, 2,577 mm2), enclosed white 30, per-shape border 29, colour-cap fold
+25, run-tier rescue 20. Untagged satin/fill departures (Column lane, outline
+loops, plain shape error) are the bulk: 610 findings. Good/Great designs carry
+3.2 unexplained findings each (6 of 13 none), the rest 29.4; by eye about a
+quarter of those on Good/Great are false (AA fringe, a 1 mm eye).
+
+**First guard: `cfg.proofread_guard_clipped` (built OFF).** A shape stage 5
+dropped or cut whose own-colour ink the art shows is re-planned with its art
+sewn over the earlier colour (`stage5_overlap.keep_art_scope`), kept only when
+the read improves by 5 mm2. qr_code: finder squares and modules back. A first
+guard on `left_unsewn` was built and dropped the same night: its evidence was
+the alpha-hole error above. See the PR for the sheets and plan-time cost.
+
 Pictures: primary checkout `digitizer/eye_pairs_out/proofread-1113/`. Next:
-tag the untagged departures, then guards at the hooks in the PR body.
+tag the untagged departures (outline loop, Column lane, sliver prune).
