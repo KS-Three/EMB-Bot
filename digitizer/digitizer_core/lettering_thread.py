@@ -117,7 +117,16 @@ def word_thread(regions: list[Region], chart, shape_overrides: dict) -> int:
     stray rule's own limit, for a letter that stayed IN its cluster. Bridge's
     U of RESTAURANT is blue art on yellow, read green at its thin strokes,
     and snapped to 5422 Swiss Ivy 18.4 dE00 off its ten Caribbean siblings;
-    sewn on its own it came out the one thin letter. -> how many moved."""
+    sewn on its own it came out the one thin letter. -> how many moved.
+
+    The U came from the dark-ink lightness read, so its own (wrong) colour
+    against the yellow also made it a dark-ink bean (`thin_ink.bean_dark_ink`)
+    -- the thin stitching Kent pinned. A letter moved here drops a dark-ink
+    bean none of its word-mates carries, as a review-pinned tier drops it
+    (`thin_ink.settle_dark_ink_bean`), and takes the ladder with them."""
+    from .beanletters import BEAN_LETTER_KEY
+    from .thin_ink import DARK_INK_GROUND_KEY
+
     moved = 0
     for members in _clusters(regions).values():
         counts: dict[int, int] = {}
@@ -135,6 +144,10 @@ def word_thread(regions: list[Region], chart, shape_overrides: dict) -> int:
             if _pinned(r, shape_overrides) or chart.delta_e(t, word_t) > STRAY_MAX_DE00:
                 continue
             _set_thread(r, chart, word_t, "lettering_word_thread_from")
+            if (r.meta.get(BEAN_LETTER_KEY) and r.meta.get(DARK_INK_GROUND_KEY)
+                    and not any(m.meta.get(BEAN_LETTER_KEY) for m in members if m is not r)):
+                del r.meta[BEAN_LETTER_KEY]
+                r.meta["lettering_word_unbeaned"] = True
             moved += 1
     return moved
 

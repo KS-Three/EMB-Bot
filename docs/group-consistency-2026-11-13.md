@@ -50,7 +50,7 @@ decided disagree. A member inside the band follows, unless its shape cannot
 take that construction. `MARGIN` is a grouping candidate fitted on this census
 (gate 1 does not apply: no machine settles it).
 
-Two flags, both OFF, byte-identical OFF:
+Three flags, all OFF, byte-identical OFF (the third, thread, is below):
 
 * `cfg.group_consistent_tier`: the run tier's area floor per line. A letter
   moved onto the run tier sews the run its line-mates sew (skips
@@ -59,19 +59,47 @@ Two flags, both OFF, byte-identical OFF:
 * `cfg.group_consistent_outline_body`: the art-outline body test per line of
   like candidates within one outline. A candidate made a body must be
   `machine.MIN_FILL_WIDTH_MM` across on average.
+* `cfg.group_consistent_thread` (`lettering_thread.word_thread`): a
+  text-cluster letter on a thread held by under a quarter of its word takes
+  the thread over half the word sews, within `STRAY_MAX_DE00` (25), and drops
+  a dark-ink bean none of its word-mates carries. A pinned recolour never
+  moves.
 
 ## Proof
 
 OFF byte-identical: lt_ahora 80 mm, design md5 `3108dbd3ea975ff8542d27493b2e499f`
 (9,262 stitches) on main and on this branch with both flags off.
 
-PROOF_TABLE
+ON below is every flag this note builds. Sheets (art | OFF | ON):
+`digitizer/eye_pairs_out/group-consistency-1113/sheets/`.
+
+| design (mm, garment) | OFF st | ON st | what changed, by eye |
+|---|---|---|---|
+| lt_ahora (80, left chest) | 9,262 | 8,732 | AH and RA leave the pink loop and sew satin like O and !: one construction for the word. **Price:** AH and RA are fused in the art, and as one satin shape each they sew rougher than OFF's fills (the A's apex a lump, a zigzag at the A-H foot). |
+| lt_k_line (80) | 3,372 | 3,442 | The six satin letters of the grey subline (W, three K's, H, D) sew bean outlines like the other 18; W, K, H and D read cleaner than OFF's satin tangles. |
+| Bridge hat (63.3, hat) | 8,569 | 8,594 | RESTAURANT's U: thin Swiss Ivy skeleton bean -> Caribbean satin like its ten siblings. |
+| lt_hed_p_e (80) | 3,849 | same md5 | nothing: its e is a stage-2 thread split with no text cluster |
+| devanagari_logo (80) | 4,960 | same md5 | nothing |
+| kanji_seal (80) | 10,996 | same md5 | nothing |
+| Hotel Fremont hat (92.6, hat) | 16,106 | same md5 | nothing |
+| ProSeal hat (85.9, hat) | 6,434 | same md5 | nothing |
+| Becker hat large (101.9, hat) | 16,289 | same md5 | nothing |
+
+Fremont, ProSeal and Becker were digitized ON with the two tier flags; the
+thread flag moves no region on any of them (`word_thread` over their final
+regions: 0, 0, 0), so with it they are the same.
+
+The thread rule also drops the moved letter's dark-ink bean when none of its
+word-mates carries one: Bridge's U came from the dark-ink lightness read, and
+its own mis-snapped green against the yellow is what made it a skeleton bean.
 
 ## Not built here
 
-* Thread decided per letter (Bridge's U, the p.e. e and periods) and fill
-  angle per like shape (emoji legs, mascot feet): proposed to the Director as
-  the next flags.
+* The (hed)p.e. e and periods: a thread split with no text cluster to group
+  by; the fix is at stage 2 (an anti-aliased stroke snapping to a second
+  spool 2.4 dE00 off), not here.
+* Fill angle per like shape (emoji legs, mascot feet): proposed to the
+  Director as the next flag.
 * AHORA's fused letters: the satin tier sews AH and RA as one shape each. A
   per-letter split belongs to the text tagger's neck split (another worker's
   file).

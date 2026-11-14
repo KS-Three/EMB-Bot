@@ -262,3 +262,18 @@ def test_word_thread_is_off_by_default():
     lt.apply_lettering_thread(word, CHART, PipelineConfig(group_consistent_thread=True), {})
     assert word[-1].thread_index == CARIBBEAN
     assert PipelineConfig().group_consistent_thread is False
+
+
+def test_a_moved_dark_ink_bean_letter_takes_the_ladder_with_its_word():
+    from digitizer_core.beanletters import BEAN_LETTER_KEY
+    from digitizer_core.thin_ink import DARK_INK_GROUND_KEY
+    word = _cluster([CARIBBEAN] * 10 + [SWISS_IVY])
+    word[-1].meta.update({BEAN_LETTER_KEY: [[(0, 0), (1, 1)]], DARK_INK_GROUND_KEY: "Sground", "dark_ink": True})
+    lt.word_thread(word, CHART, {})
+    assert BEAN_LETTER_KEY not in word[-1].meta and word[-1].meta["lettering_word_unbeaned"]
+    # a word whose other letters are beans too keeps the bean
+    word = _cluster([CARIBBEAN] * 10 + [SWISS_IVY])
+    for r in word:
+        r.meta.update({BEAN_LETTER_KEY: [[(0, 0), (1, 1)]], DARK_INK_GROUND_KEY: "Sground"})
+    lt.word_thread(word, CHART, {})
+    assert BEAN_LETTER_KEY in word[-1].meta

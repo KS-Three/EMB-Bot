@@ -3755,8 +3755,11 @@ class PipelineConfig:
     # cluster. Bridge's U of RESTAURANT, blue art on yellow read green at its
     # thin strokes, snapped to 5422 Swiss Ivy 18.4 dE00 off ten Caribbean
     # siblings and sewed as the one thin letter ("This is the only letter that
-    # is thinly stitched"). A customer's own recolour is never moved; the cap
-    # still has the last word. Not the (hed)p.e. e: no cluster fires there.
+    # is thinly stitched"). The U came from the dark-ink lightness read, so a
+    # moved letter also drops a dark-ink bean none of its word-mates carries
+    # and takes the ladder with them (ON: Caribbean satin like the rest). A
+    # customer's own recolour is never moved; the cap still has the last
+    # word. Not the (hed)p.e. e: no cluster fires there.
     group_consistent_thread: bool = False
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
