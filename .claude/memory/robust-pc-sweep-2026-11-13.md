@@ -33,22 +33,21 @@ request (80 mm, left_chest, 6 colours), both lanes, commit 2489ac48:
 
 - `THREAD_MATCH_POOR` blocked 9 of 14 (B → F): preflight graded threads
   against the raw re-read while stage 2 matched spools to the prepped raster.
-  PR #1460 (open at writing) grades on the pipeline's raster and keeps the
+  PR #1460 grades on the pipeline's raster and keeps the
   raw gap as metrics `thread_raw_worst_delta_e` / `thread_raw_median_delta_e`:
   0 thread-match findings on all 14, stitches unchanged. MASTER_SCOPE item 28
   had been closed on the CI lane.
 - Photo prep's tone pass (foreground contrast stretch + CLAHE) moved threads
   away from the photo: area-weighted region dE00 10.54 on against 5.16 off,
   lightness order reversed on 4 of 14 against 0, black ink and black fur sewn
-  as greys. Kent: "Switch it off by default". `cfg.photo_prep_tone`, OFF, on
-  branch `feat/photo-prep-tone-off-by-default`
+  as greys. Kent: "Switch it off by default". `cfg.photo_prep_tone`, OFF, PR #1461
   (`docs/photo-prep-tone-off-2026-11-13.md`); frozen 2026-10-27 engine keeps
   it on.
 - `photo_enclosed_rim` (still OFF): PR #1451 reads a rim piece by its median
   Lab; cutout-lane MFab 60 mm 2 fields / 10 riders → 1 / 15. 113.5 mm still
   loses one rider to text clustering (strict xfail).
 
-**A crash that was the tool.** 6 of 154 sweep rows died 0xC0000005 at exactly
+**A crash that was the tool.** 6 sweep row-runs died 0xC0000005 at exactly
 120 s with a shapely frame on top of a truncated dump. It was the corpus
 worker's `faulthandler.dump_traceback_later(repeat=True)`, which walks the
 main thread's frames without the GIL; about 1 dump in 6 was fatal on Windows

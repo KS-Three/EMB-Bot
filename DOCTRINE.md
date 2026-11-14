@@ -652,7 +652,8 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   photo gate (`stage0_texture_gate`, ON since 2026-10-28) now routes real
   photographs to a photo class, so the cutout runs on real uploads. A sweep of
   77 images (39 Commons corpus + 38 in-repo; 80 mm `left_chest`, 6 colours,
-  commit `2489ac48`) run with and without the rembg venv: 63 designs
+  commit `2489ac48`) run on both lanes (defaults with the rembg
+  venv, and `photo_prep=False`): 63 designs
   byte-identical on both lanes (47 never attempt the cutout, 16 attempt it and
   are refused, `PHOTO_CUTOUT_REFUSED`); all 14 where the cutout ran differ,
   with 0.4% to 64% fewer stitches on the cutout lane; no class or route
@@ -9490,7 +9491,7 @@ raster:** `THREAD_MATCH_POOR`, closed 2026-11-12 on the CI lane, blocked 9 of
 the 14 cutout images (B → F) because preflight graded threads against the raw
 re-read while stage 2 matched spools to the prepped raster. A grader must read
 the raster the pipeline chose from; the gap to the raw photo is a metric, not
-a finding (fix open in #1460). The 2026-08-24 "knowingly inert" correction
+a finding (fixed in #1460). The 2026-08-24 "knowingly inert" correction
 (Standing rulings) has the 77-image sweep. *(measured 2026-11-13 — PRs #1439,
 #1460)*
 
@@ -9508,8 +9509,7 @@ full range. **Not measured:** no sew-out; a washed-out photo loses its
 contrast rescue (the accepted cost). One request can still ask for it
 (`"photo_prep_tone": true`); the frozen 2026-10-27 engine keeps it on.
 *(ruled 2026-11-13 — Kent; measured 2026-11-13 —
-`docs/photo-prep-tone-off-2026-11-13.md` on `feat/photo-prep-tone-off-by-default`,
-PR pending)*
+`docs/photo-prep-tone-off-2026-11-13.md`, PR #1461)*
 
 **A 0xC0000005 whose stderr ends mid-traceback at a watchdog tick is the
 sampler, not GEOS: time the row alone before blaming a native library (trap).**
@@ -9517,7 +9517,7 @@ A corpus run on Windows lost rows with an access violation at exactly N × 120 s
 each stderr cut off mid-dump with a shapely frame on top, which reads exactly
 like a crash in GEOS. It was `faulthandler.dump_traceback_later(repeat=True)`:
 the dump walks the main thread's frames without the GIL and killed about 1
-dump in 6 on Windows CPython 3.12 (6 of 154 rows lost). The top frame is only
+dump in 6 on Windows CPython 3.12 (6 row-runs lost in a 77-image, two-lane sweep). The top frame is only
 what happened to be running. Do: sample stacks from a Python thread
 (`faulthandler.dump_traceback` there holds the GIL), and stop and join the
 sampler before the process exits. The shipped service never used that call.
