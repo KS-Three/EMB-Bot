@@ -633,6 +633,58 @@ def test_a_healthy_column_is_not_lettering_too_small():
     assert LETTERING_TOO_SMALL not in _codes(run_preflight(None, healthy, cfg()))
 
 
+def _small_satin_job(meta: dict | None):
+    """One 3 mm, 0.8 mm-column satin shape (it fires the size check) on a
+    region carrying `meta` -- a text tag, or nothing at all."""
+    from shapely.geometry import box
+    plan = _plan(_satin_column(8, width_mm=0.8, spacing_mm=0.4))
+    return _result_with(box(0.0, 0.0, 3.0, 0.8), meta=meta), plan
+
+
+@pytest.mark.parametrize("meta", [
+    {"text_candidate": True, "text_cluster_id": "T1"},   # stage 4's text tagger
+    {"text_candidate": True},                           # typed text (outline fonts)
+    {"word_id": "W1"},                                  # the words pass
+])
+def test_a_job_with_lettering_keeps_the_lettering_advice(meta):
+    result, plan = _small_satin_job(meta)
+    report = run_preflight(result, plan, cfg())
+    flagged = [f for f in report["findings"] if f["code"] == LETTERING_TOO_SMALL]
+    assert len(flagged) == 1
+    assert flagged[0]["message"].endswith("Remove or simplify the smallest lettering.")
+    assert flagged[0]["extra"]["lettering"] is True
+
+
+def test_a_job_with_no_lettering_is_not_told_about_lettering():
+    """Build walkthrough 2026-11-13, section 4: `photo_dof_meadow` (two
+    toadstools, no text, 0 text clusters) went down the photo lane and the
+    Download step said "Remove or simplify the smallest lettering". The size
+    check keys on SATIN shapes, and a photo's small spots and slivers are
+    satin too. The shapes are still too small to sew cleanly, so the finding,
+    its code, severity and grade cost are unchanged -- only the advice stops
+    naming lettering the job does not have."""
+    result, plan = _small_satin_job({"lettering_group": False})  # thin_ink's explicit "no"
+    plain = run_preflight(result, plan, cfg())
+    flagged = [f for f in plain["findings"] if f["code"] == LETTERING_TOO_SMALL]
+    assert len(flagged) == 1
+    assert flagged[0]["severity"] == "warn"
+    assert "lettering" not in flagged[0]["message"].lower()
+    assert flagged[0]["message"].endswith("Remove or simplify the smallest details.")
+    assert flagged[0]["extra"]["lettering"] is False
+    # Same grade as the lettering job: the wording moved, the bill did not.
+    lettered = run_preflight(*_small_satin_job({"text_candidate": True}), cfg())
+    assert plain["score"] == lettered["score"] and plain["grade"] == lettered["grade"]
+
+
+def test_a_bare_plan_cannot_tell_so_it_keeps_the_old_wording():
+    """No regions (a caller re-scoring a stored plan): nothing says whether
+    the job has lettering, so the message is the one it always was."""
+    report = run_preflight(None, _plan(_satin_column(8, width_mm=0.8, spacing_mm=0.4)), cfg())
+    flagged = [f for f in report["findings"] if f["code"] == LETTERING_TOO_SMALL]
+    assert flagged[0]["message"].endswith("Remove or simplify the smallest lettering.")
+    assert flagged[0]["extra"]["lettering"] is None
+
+
 # --- Tight gaps inside a satin shape ------------------------------------------
 # Kent's pick 2026-09-30 after the script-as-lettering measurement: bridge's
 # "Bridge" sews its inter-letter gaps closed at 80 mm because two facing
@@ -782,6 +834,12 @@ def test_lettering_the_artwork_cannot_carry_gets_the_resolution_fact_and_the_two
                  shapes=[{"shape_id": "S1", "column_mm": 0.8, "extent_mm": 3.4}])
     _resolution_note([ok], _res_prep(12.0), plan, cfg())
     assert ok["message"] == "small." and "input_px_per_mm" not in ok["extra"]
+    # A job with no lettering is told about "these shapes", never lettering.
+    shapes = finding(LETTERING_TOO_SMALL, "warn", "small.", count=1, satin_total=1, lettering=False,
+                     shapes=[{"shape_id": "S1", "column_mm": 0.8, "extent_mm": 2.0}])
+    _resolution_note([shapes], _res_prep(8.4), plan, cfg())
+    assert "smallest of these shapes" in shapes["message"]
+    assert "lettering" not in shapes["message"].lower()
     # No artwork: nothing changes.
     _resolution_note([ok], None, plan, cfg())
     assert ok["message"] == "small."
