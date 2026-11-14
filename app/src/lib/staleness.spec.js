@@ -15,6 +15,7 @@ import {
   canRedigitize,
   blocksDownload,
   pendingEdits,
+  isUndigitizedArt,
 } from "./staleness.js";
 
 // 80 x 40 mm as digitized (0.1 mm units), so a sizeMm of 62 is a 77.5% drag.
@@ -201,6 +202,44 @@ describe("the project-level questions Download asks", () => {
     expect(blocksDownload(noArt, { status: "ok" })).toBe(false);
     expect(canRedigitize(stale("a"), { status: "ok" })).toBe(true);
     expect(canRedigitize(stale("a"), null)).toBe(false);
+  });
+
+  test("art uploaded but never digitized holds Download, like an outline text never digitized", () => {
+    // The bug (review 2026-11-13): type text, upload a logo, never press Auto
+    // Digitize, open Download -- the buttons were enabled and the file held
+    // only the text, the logo silently left out (flow.js: a digitized element
+    // with no result sews nothing). Kent 2026-11-13: it is behind until it is
+    // digitized or removed, knowing that locks Download until then.
+    const text = { id: "t", type: "text", text: "BOB'S BAKERY" };
+    const logo = digitized({ id: "logo", result: null, appliedConfig: null });
+    const project = { ...TEE, elements: [text, logo] };
+    expect(blocksDownload(project, { status: "ok" })).toBe(true);
+    expect(staleElements(project).map((e) => e.id)).toEqual(["logo"]);
+    expect(isUndigitizedArt(logo)).toBe(true);
+    // The same rule that already held an outline text never digitized.
+    const outline = { id: "o", type: "text", fontKey: "outline:anything", text: "BOB" };
+    expect(blocksDownload({ ...TEE, elements: [text, outline] }, { status: "ok" })).toBe(true);
+  });
+
+  test("never-digitized art is not 'stitches out of date': the panel's cue and the field's hatch stay off", () => {
+    // isElementStale drives the panel's transparent button and its "Changed
+    // since the last run" line, and the field's hatch over stitches. Art with
+    // no stitches has neither a last run nor stitches to hatch.
+    expect(isElementStale(digitized({ result: null }), TEE)).toBe(false);
+  });
+
+  test("never-digitized art blocks only when the customer can digitize it", () => {
+    const logo = digitized({ id: "logo", result: null, appliedConfig: null });
+    // Service down: the run button cannot run, so a lock would have no way out.
+    expect(blocksDownload({ ...TEE, elements: [logo] }, null)).toBe(false);
+    // No art yet (an empty image element): nothing to press, nothing to sew.
+    const empty = { ...logo, sourcePng: null };
+    expect(isUndigitizedArt(empty)).toBe(false);
+    expect(blocksDownload({ ...TEE, elements: [empty] }, { status: "ok" })).toBe(false);
+    // A result, or another element type, is not "never digitized".
+    expect(isUndigitizedArt(digitized())).toBe(false);
+    expect(isUndigitizedArt({ id: "i", type: "image", sourcePng: "x" })).toBe(false);
+    expect(isUndigitizedArt(null)).toBe(false);
   });
 
   test("a project with no elements, or none at all, is not a crash", () => {

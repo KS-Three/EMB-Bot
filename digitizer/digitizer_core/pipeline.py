@@ -99,6 +99,7 @@ from .warnings_codes import (
     PHOTO_DETECTED,
     PHOTO_FACE_PRIORS_UNAVAILABLE,
     PHOTO_FACES_DETECTED,
+    PHOTO_PREP_APPLIED,
     PHOTO_SAM2_SEGMENTATION_UNAVAILABLE,
     SHAPES_LEFT_UNSEWN,
     warn,
@@ -283,6 +284,15 @@ class PipelineResult:
     # folds the recipe into its caller's config the way it folds the photo
     # verdict. False on a hand-built result and whenever the flag was off.
     white_keyline_art: bool = False
+    # The raster stage 1.5's photo prep handed to segmentation and stage 4's
+    # thread revalidation (`p.rgb` after `photo_prep`): a REFERENCE to the
+    # array the Generation already holds, no copy, and None whenever prep did
+    # not run (no PHOTO_PREP_APPLIED). Read by preflight only (2026-11-13):
+    # its thread grader re-read the RAW artwork and blocked 9 of the 14 jobs
+    # whose cutout ran, on spools the pipeline had matched to the prepped
+    # pixels (`preflight._prepped_view` carries the measurement). No stitch
+    # depends on it.
+    photo_prep_rgb: np.ndarray | None = None
 
     @property
     def shape_ids(self) -> list[str]:
@@ -1861,6 +1871,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         hair_fur_ids=hair_fur_ids,
         hair_fur_read=read,
         white_keyline_art=keyline_art,
+        photo_prep_rgb=(p.rgb if any(w.get("code") == PHOTO_PREP_APPLIED
+                                     for w in prep_warnings) else None),
     )
 
 

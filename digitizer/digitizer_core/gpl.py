@@ -10,6 +10,13 @@ always contains a digit in these charts, which is how it is told apart from a
 name-only line — some palettes ship without codes, and then the whole
 remainder is the name.
 
+Two Simthread charts add a fifth column after the number: the spool's measured
+L,a,b ("Black 900 22.34,-0.6,-0.46"). That triple is not a catalog number, so
+it is dropped before the last field is read (taking it as the number shipped
+"22.34,-0.6,-0.46" as the Thread # for all 78 rows, found 2026-11-13). The Glow
+chart's number column is a literal "n/a", which means "no number", not a name
+word: it becomes an empty number with a clean name.
+
 This mirrors `parseGpl` in `tools/build-threads.mjs` deliberately and exactly.
 The browser and the service must agree on how many colors a brand has and what
 they are called, so `tests/test_charts.py` asserts the two agree rather than
@@ -20,6 +27,7 @@ from __future__ import annotations
 import re
 
 _LINE = re.compile(r"^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\s+(.+)$")
+_LAB_TRIPLE = re.compile(r"\s+-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$")
 _HEADER = re.compile(r"^(gimp palette|name:|columns:)", re.IGNORECASE)
 
 
@@ -36,9 +44,11 @@ def parse_gpl(text: str) -> list[tuple[str, str, tuple[int, int, int]]]:
         r, g, b = int(m.group(1)), int(m.group(2)), int(m.group(3))
         if max(r, g, b) > 255:
             continue
-        rest = m.group(4).strip()
+        rest = _LAB_TRIPLE.sub("", m.group(4).strip())
         parts = rest.rsplit(None, 1)
-        if len(parts) == 2 and any(c.isdigit() for c in parts[1]):
+        if len(parts) == 2 and parts[1].lower() == "n/a":
+            name, number = parts[0].strip(), ""
+        elif len(parts) == 2 and any(c.isdigit() for c in parts[1]):
             name, number = parts[0].strip(), parts[1].strip()
         else:
             name, number = rest, ""
