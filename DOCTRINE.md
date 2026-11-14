@@ -1519,11 +1519,12 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   - It is weakest on jagged edges (2 of 18 at his spot) and pen flow (4 of
     21).
 
-  Use it to find gross faults in the dev loop, not to stand in for his eye
-  on edges or flow, nor to pick between close variants. Whether it becomes
-  the working judge is Kent's call. *(measured 2026-11-13 —
-  `docs/director-night-2026-11-13.md`, "The agent eye against Kent's
-  pins")*
+  **Ruled 2026-11-14 (Kent: "Yes, gross faults only"):** it is the working
+  judge for GROSS faults in the dev loop (missing, merged, invented,
+  unreadable). It does not judge jagged edges, pen flow or close A/B picks,
+  there is no nightly run, and flips stay his. *(measured 2026-11-13, ruled
+  2026-11-14 — `docs/director-night-2026-11-13.md`, "The agent eye against
+  Kent's pins" and "Kent's rulings")*
 - **`lettering_columns_apex_cut` needs a guard before any flip; do not flip
   it as built.** It cures and_pizza's Z-joint pins, but on 43 lettering
   designs 25 moved:

@@ -42,6 +42,12 @@ export const HELP = {
     changes: "A letter traced fatter or thinner than its neighbours is evened out to them. Off, each letter sews the width it was drawn at.",
     when: "Turn it on when lettering looks lumpy in the preview. Leave it off for fonts whose strokes vary on purpose.",
   },
+  flattenShading: {
+    title: "Flatten shading",
+    what: "Sews a logo's shading as the shape it shades: a drop shadow, a colour ramp split into two tones, and thin bevel or ring bands along a shape.",
+    changes: "The shadow is left as garment, the two tones of a ramp sew as one thread, and bands too thin to sew well join the shape beside them. Outlines that go all the way round a shape are kept. Usually fewer threads and stitches.",
+    when: "Turn it on when the preview shows shading as busy stripes or extra colours, as on a 3D or beveled logo. Leave it off when the shading is part of the look you want.",
+  },
   sewWhite: {
     title: "Sew white areas",
     what: "Sews the white or hollow areas inside the design — a badge's field, the inside of outlined letters, a white keyline — instead of leaving the garment showing there.",

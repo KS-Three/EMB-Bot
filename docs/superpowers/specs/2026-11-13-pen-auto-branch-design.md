@@ -156,6 +156,44 @@ and any other shape, the existing `trimAtMm` rule is unchanged.
 **Start point.** The router's own. Dragging a group's entry or exit is out of
 scope until a real drawing shows it is needed (§6).
 
+*Amended in the build, 2026-11-14 (PR 2).* Five things above are not what was
+built, each for a reason found while building:
+
+- **What touches.** `routeGlyph` dices a glyph by a radius read off the glyph
+  (1.3 x its median column width) and by fractions of a column's length. For a
+  drawing that joins a 4 mm stroke to anything within 5.2 mm of it, across
+  bare cloth, and misses a stem landing in the last 6% of a long bar. Hand-drawn
+  columns get a graph of their own (`joinGraph`, `src/satinfont.js`) with one
+  rule and no constant: an end touches a column when it lies inside that
+  column's body (within half ITS width of its spine); two columns touch where
+  their spines cross; a column whose own ends lie that close is a closed loop.
+  The walk after the graph (postman, Euler trail, last visit sews satin) is
+  `routeGlyph`'s, unchanged, and every font's stream is byte-identical
+  (`satinfont.test.js`'s md5 pins).
+- **One rule, asked twice.** The Studio does not restate it: `shapesToRegions`
+  is handed the engine's `joinComponents` and groups by what it returns, and
+  `routeColumnGroup` dices by the same `joinGraph`.
+- **Hand-off: no proxy ring.** A group is one region whose shapes are its
+  members, each an ordinary column shape with its own id, rail ring and rails,
+  plus `sewAs.join: true`. The engine sews a region's joined columns as one
+  path. A proxy `outer` of the first member would have left the others out of
+  the design's bbox and without an outline to click. A group the router cannot
+  sew falls through: its members sew one by one.
+- **Where a group sews.** At the place of its LAST-drawn member, so strokes
+  drawn over a fill still sew over it.
+- **Underlay.** No shape carries a per-shape underlay override today, so that
+  clause had nothing to test. A group takes the router's centre walk under
+  each satin span. On the two fabrics whose satin underlay is `zigzag`
+  (fleece, terry) that is NOT what a lone column gets there; the router has no
+  zigzag pass.
+
+Also built, not in the first draft: **the tuck** (`tuckSatinEnds`). A satin
+span ends on a rail and the walk then steps needle-down to the next span's
+start on a spine. Measured, that step lay across finished satin half the time
+(an L of two 4 mm strokes: 2.1 mm, or none, by which way the walk went). When
+the step from the other end of the span's last cross is covered and this one
+is not, the span sews that cross back, one stitch, and leaves from there.
+
 ## 4. The instrument, before any flip
 
 A group's promise is "no jumps, no trims, no bare travel". The third is the
@@ -172,6 +210,32 @@ Fixtures, each drawn as Columns at 1 mm and at 4 mm: a T, an X, a Y fork, a
 closed loop with a stem (the video's rose, redrawn by us), two components that
 do not touch. Kent gets renders of each, joined beside unjoined, before he is
 asked about the default.
+
+*As built, 2026-11-14.* `tools/join-strokes.mjs` (the table; `--svg` writes
+the sheet), bars in `test/join-strokes.test.js`. It reports two lengths per
+group: travel no LATER satin covers, and of that, travel under no satin at all
+(bare cloth).
+
+| | bar | measured, 12 groups | with the tuck off |
+|---|---|---|---|
+| jumps + trims inside a group | 0 | 0 on all | 0 on all |
+| travel no later satin covers | 0.00 mm | 0.00 on all | 0.00 on 7; 0.50, 0.52, 0.55, 2.02, 2.10 |
+| of that, on bare cloth | 0.00 mm | 0.00 on all | 0.00 on all |
+
+Trims per design, as drawn -> joined: T 1 -> 0, X 1 -> 0, Y 2 -> 0, loop +
+stem 2 -> 0, two sets 3 -> 1. Not sewn.
+
+**The instrument was wrong twice before it was right**, and read plausibly
+both times. A satin span's body was first taken as "even stitches are one
+rail, odd the other". The zigzag leads with the other rail on every second
+cross, so that polygon crosses itself and holds about half the column; it
+read 0.00 to 0.29 mm (the repo reviewer caught it, and the tuck shared the
+mistake). The second try, the triangles of each three stitches in a row,
+leaves a gap at alternate rails that pinches to the spine, where the travel
+runs: it read up to 11 mm on bare cloth. The body is now the quad of each four
+stitches in a row, and `measure` is held to three cases with known answers
+(30 mm of travel under a later satin, on top of an earlier one, beside one).
+ROADMAP gate 3 in miniature: a bar met by an instrument nobody checked.
 
 ## 5. Tests
 
@@ -206,6 +270,16 @@ thread today, or take a colour record each, was not traced through
 Observed while building PR 1 (2026-11-13, browser, not traced through the
 code): one drawing holding two Columns of the same default colour reads
 "2 colors" in the Studio's footer. That points at a colour record per shape.
+
+*Traced, 2026-11-14 (PR 2).* It is a colour record per shape. `shapesToRegions`
+emits a region per shape; `buildQualityDesign` opens a colour block (a trim
+and a colour change) per region unless `minimizeColorChanges` is passed, and
+the manual branch of `generate.js` does not pass it. So every hand-drawn shape
+is a machine stop, same thread or not. Already on file as a `todo` in
+`test/colour-order.test.js` ("engine default emits a needless colour change
+between adjacent same-rgb regions"). Auto-branch does not depend on it: a
+group is one region, so one block. Left as it is here, because changing it
+moves every existing drawing with two same-colour shapes; it is Kent's call.
 
 ## 8. Rulings
 

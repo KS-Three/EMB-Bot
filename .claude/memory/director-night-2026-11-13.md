@@ -14,16 +14,18 @@ was look beside the ORIGINAL, trace to a stage, fix one cause (see
 [[eye-first-diagnosis-2026-11-13]]). It gave 11 merged PRs (#1476-#1490) and
 5 fixes the director confirmed by eye.
 
-**Flips recommended to Kent**, all still OFF:
-- `inshape_piece_lift` (a plain bug);
-- `small_text_reset_one_baseline` + `text_cluster_solid_guard`;
-- the four `group_consistent_*` flags;
-- `outline_redraw_k` 0.75;
-- `flat_blend_band_any_scale`.
-
-`lettering_columns_connectors_buried` is his call, with no recommendation
-([[connectors-on-top-2026-11-14]]). `lettering_columns_apex_cut` must not be
-flipped as built: 4 of 43 designs are worse ([[flip-candidates-2026-11-14]]).
+**Kent's rulings, 2026-11-14:**
+- He approved five flips, which land in their own PR:
+  - `inshape_piece_lift`;
+  - `small_text_reset_one_baseline` + `text_cluster_solid_guard`;
+  - the four `group_consistent_*` flags;
+  - `outline_redraw_k` 0.75;
+  - `flat_blend_band_any_scale`.
+- `lettering_columns_connectors_buried` stays OFF: "Build edge-walk" ([[connectors-on-top-2026-11-14]]).
+- `bevel_ring_fold` is a Studio tickbox, OFF.
+- An agent eye is the working judge for gross faults only.
+- `lettering_columns_apex_cut` must not be flipped as built: 4 of 43 designs
+  are worse ([[flip-candidates-2026-11-14]]).
 
 **Disproved that night:**
 - "The pro makes repeats identical": the art's Bridge handles are 0.21 mm
