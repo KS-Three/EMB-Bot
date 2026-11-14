@@ -359,6 +359,45 @@ def _merge_similar(centers: np.ndarray, weights: np.ndarray, tol: float) -> list
     return out
 
 
+#: `cfg.flat_blend_band_any_scale`: the ramp round's depth, in working px,
+#: on a raster the grid did NOT enlarge. A JPEG's blend rim is made by its
+#: compression and the art's anti-aliasing, not by resampling, so it has no
+#: `flat_page_fringe_ramp_src_px` to scale. Measured 2026-11-14 on the
+#: cluster that sews it (share of its pixels within this many px of a label
+#: change, against the 0.9 gate): silhouette_logo's mint rim round its white
+#: letters 0.98 at 1 px, its dark-green ring round the bear 0.72 at 1 and
+#: 0.95 at 2; ProSeal's pale band over its teal bar 0.97 at 1. Two working px
+#: (0.25 mm at 8 px/mm) is the smaller depth that reaches all three.
+BLEND_BAND_PX = 2
+
+
+def _rgb_chord_t(j: int, oa, ob, mean_rgb: dict, bg_edge_rgb, delta_e: float) -> float | None:
+    """`band_mode`'s second reading of "is cluster `j` a blend of `oa` and
+    `ob`" (None = the page): on the RGB segment between their mean colours,
+    the space a blend is mixed in, with the residual judged in Lab against
+    `delta_e` -- round one's `enlarged_past_line` test, for one pair.
+    -> t on that segment when it is a blend inside (0.15, 0.85), else None.
+    ProSeal's pale band over its teal bar sits 6.3 off the Lab chord from the
+    page to the teal and on the RGB one."""
+    def rgb(o):
+        if o is None:
+            return None if bg_edge_rgb is None else np.asarray(bg_edge_rgb, np.float64).reshape(3)
+        return mean_rgb.get(o)
+    ra, rb, rj = rgb(oa), rgb(ob), mean_rgb.get(j)
+    if ra is None or rb is None or rj is None:
+        return None
+    ab = rb - ra
+    L = float(np.dot(ab, ab))
+    if L <= 0:
+        return None
+    t = float(np.dot(rj - ra, ab)) / L
+    if not (0.15 < t < 0.85):
+        return None
+    on_chord = rgb_to_lab((ra + t * ab).reshape(1, 3))[0]
+    lab_j = rgb_to_lab(rj.reshape(1, 3))[0]
+    return t if float(np.linalg.norm(lab_j - on_chord)) < delta_e else None
+
+
 def _quantize_population(
     flat_rgb: np.ndarray,
     valid: np.ndarray,
@@ -370,6 +409,8 @@ def _quantize_population(
     fringe: np.ndarray | None = None,
     inner: tuple[float, float] | None = None,
     ramp_px: int = 0,
+    band_mode: bool = False,
+    band_min_px: int = 0,
 ) -> tuple[np.ndarray, list[int], list[dict]]:
     """Fit -> assign -> anti-alias cleanup -> spool-snap, over exactly the
     pixels in `valid`. This is the entire body `quantize()` has always run,
@@ -405,6 +446,20 @@ def _quantize_population(
     it then joins the NEARER END of that chord, not whichever kept centre is
     nearest in Lab (Bridge's olive yellow-to-black ramp sits nearer its blue
     than black). The first round is unchanged.
+
+    `band_mode` (`cfg.flat_blend_band_any_scale`, built OFF 2026-11-14; the
+    caller passes it only for a raster NOT enlarged, with `ramp_px` =
+    `BLEND_BAND_PX`): the same second round for a JPEG's blend rim on a
+    source the grid shrank or kept, where no resampling ramp exists but
+    compression and anti-aliasing leave one. A candidate is a blend on the
+    Lab chord OR the RGB one (the round-one `enlarged_past_line` reading),
+    and each of its pixels joins the label of the NEAREST pixel outside the
+    band, the page included (-1: a rim splits between what it touches),
+    never a piece under `band_min_px` or thinner than a hairline.
+    Once that round dissolves a band, round one's blends join the nearest
+    pixel outside it too, ink only, instead of the nearest kept centre in
+    Lab, which the dissolved band no longer is. False: the round as it
+    always was.
 
     -> (labels (h, w) int32, -1 outside `valid`; final spool indices, one
     per output label; warnings).
@@ -470,9 +525,10 @@ def _quantize_population(
         else None
     )
 
-    # Each cluster's mean RGB, for the RGB-segment test (`enlarged_past_line`).
+    # Each cluster's mean RGB, for the RGB-segment test (`enlarged_past_line`,
+    # and the ramp round under `band_mode`).
     mean_rgb: dict[int, np.ndarray] = {}
-    if enlarged_past_line:
+    if enlarged_past_line or band_mode:
         flat_labels = labels.reshape(-1)
         for j in range(k):
             members = flat_labels == j
@@ -549,43 +605,109 @@ def _quantize_population(
     # between its own charcoal and sterling ramp clusters) -- and joins the
     # nearer end of that chord.
     chord_end: dict[int, int] = {}
+    band_ids: list[int] = []
     if ramp_cand:
         base_keep = list(keep)
         ends = [(o, centers[o]) for o in base_keep]
         if bg_endpoint is not None:
             ends.append((None, bg_endpoint))
+        pairs = [(a, b) for a in range(len(ends)) for b in range(a + 1, len(ends))]
         for j in ramp_cand:
             cj = centers[j]
             blend = False
-            for a in range(len(ends)):
-                for b in range(a + 1, len(ends)):
-                    (oa, ca), (ob, cb) = ends[a], ends[b]
-                    ab = cb - ca
-                    L = float(np.dot(ab, ab))
-                    if L <= 0:
+            for a, b in pairs:
+                (oa, ca), (ob, cb) = ends[a], ends[b]
+                ab = cb - ca
+                L = float(np.dot(ab, ab))
+                if L <= 0:
+                    continue
+                t = float(np.dot(cj - ca, ab)) / L
+                if not (0.15 < t < 0.85) or np.linalg.norm(cj - (ca + t * ab)) >= cfg.merge_delta_e:
+                    if not band_mode:
                         continue
-                    t = float(np.dot(cj - ca, ab)) / L
-                    if not (0.15 < t < 0.85):
+                    t = _rgb_chord_t(j, oa, ob, mean_rgb, bg_edge_rgb, cfg.merge_delta_e)
+                    if t is None:
                         continue
-                    if np.linalg.norm(cj - (ca + t * ab)) < cfg.merge_delta_e:
-                        blend = True
-                        end = oa if t < 0.5 else ob
-                        if end is not None:
-                            chord_end[j] = end
-                        break
-                if blend:
-                    break
+                blend = True
+                if band_mode:
+                    band_ids.append(j)
+                else:
+                    end = oa if t < 0.5 else ob
+                    if end is not None:
+                        chord_end[j] = end
+                break
             (phantom if blend else keep).append(j)
         keep.sort()
         phantom.sort()
+    ramp_band: list[int] = []
+    if band_mode and band_ids:
+        # ... and so does every round-one blend. Joined to the nearest KEPT
+        # centre in Lab, a black letter's grey anti-alias edge (ProSeal's
+        # subline, L* 60 and 83) went to the pale band colour while that was
+        # kept; with the band dissolved the nearest kept centre is the teal,
+        # and every letter grew a teal rim that stage 4 sewed in the I and N.
+        ramp_band = list(band_ids)
+        band_ids = list(phantom)
 
     if phantom:
         keep_centers = centers[keep]
         for j in phantom:
+            if j in band_ids:
+                continue
             near = keep[int(np.argmin(np.linalg.norm(keep_centers - centers[j], axis=1)))]
             if j in chord_end:
                 near = chord_end[j]
             labels[labels == j] = near
+    if band_ids:
+        # `band_mode`: each band pixel takes the label of the NEAREST pixel
+        # outside the band -- a rim joins what it physically touches, half to
+        # each side (round one's blends: ink only, below). Folding
+        # the whole cluster into one end painted every speck of that colour
+        # elsewhere in the design with it: ProSeal's pale band went teal, and
+        # so did the same pale JPEG ringing on its black lettering.
+        band = valid & np.isin(labels, band_ids)
+        src = valid & ~band
+        if band_min_px > 0 and src.any():
+            # ... from a piece at least stage 4's hole floor (`band_min_px`)
+            # and thicker than a hairline (it survives a one-pixel erosion)
+            # only; a lesser piece the band touches goes with it. A speck or
+            # a hairline must not grow by swallowing the rim beside it:
+            # silhouette_logo's disc edge is a green-to-page ramp whose
+            # outer one or two pixels carry the pale letter colour and the
+            # next the mint. OFF stage 3 cut that into specks and dropped
+            # them; with the mint joined to the pale row, the row became
+            # long strips three pixels deep and sewed white on the border.
+            near_band = cv2.dilate(band.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+            k3 = np.ones((3, 3), np.uint8)
+            big = np.zeros_like(src)
+            for lab_id in np.unique(labels[src]):
+                m = (src & (labels == lab_id)).astype(np.uint8)
+                _n, cc, stats, _c = cv2.connectedComponentsWithStats(m, 8)
+                ok_ids = np.intersect1d(
+                    np.flatnonzero(stats[1:, cv2.CC_STAT_AREA] >= band_min_px) + 1,
+                    np.unique(cc[cv2.erode(m, k3) > 0]))
+                big |= np.isin(cc, ok_ids)
+                small_ids = np.setdiff1d(np.unique(cc[(cc > 0) & near_band]), ok_ids)
+                if len(small_ids):
+                    band |= np.isin(cc, small_ids)
+            if big.any():
+                src = big & ~band
+        if src.any():
+            flat_l = labels.reshape(-1).copy()
+            near_idx = _nearest_source(src)
+            by, bx = np.nonzero(band)
+            new = flat_l[near_idx[by, bx]]
+            rb = np.isin(labels[by, bx], ramp_band)
+            if rb.any():
+                # The band round's own rims split with the PAGE too (-1): a
+                # pale rim between ink and page is half each. Joined all to
+                # the ink, ProSeal's hexagon cells grew a pixel a side into
+                # their 0.3-0.5 mm white gaps and stage 6 closed them. Round
+                # one's greys stay ink-only: they are a letter's own edge,
+                # and a thin letter keeps the width it had.
+                near_p = _nearest_source(src | ~valid)[by[rb], bx[rb]]
+                new[rb] = np.where(valid.reshape(-1)[near_p], flat_l[near_p], -1)
+            labels[by, bx] = new
     active = keep
 
     # --- merge split-but-identical colors, then merge same-spool colors -----
@@ -731,13 +853,25 @@ def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
     # px (`flat_page_fringe_ramp_src_px` source px, upscaled), on an enlarged
     # raster only; 0 = the phantom dissolve as it always was.
     ramp_px = 0
+    band_mode = False
     if cfg.flat_ramp_blend_dissolve and enlarged:
         ramp_px = int(np.ceil(float(cfg.flat_page_fringe_ramp_src_px)
                               * float(p.px_per_mm) / source_px / 2.0))
+    elif getattr(cfg, "flat_blend_band_any_scale", False) and not enlarged:
+        # `cfg.flat_blend_band_any_scale` (built OFF 2026-11-14): the same
+        # round on a raster the grid shrank or kept (`BLEND_BAND_PX`,
+        # band pixels to their nearest non-band pixel). An enlarged raster
+        # keeps the line above, ON or OFF.
+        ramp_px = BLEND_BAND_PX
+        band_mode = True
 
     base_labels, base_spools, warnings = _quantize_population(
         flat_rgb, base_valid, h, w, cfg, p.bg_edge_rgb, enlarged_past_line=enlarged,
         fringe=fringe, inner=inner, ramp_px=ramp_px,
+        # stage 4's hole floor (`min_detail_mm`^2 / 4), in working px
+        **({"band_mode": True,
+            "band_min_px": int(np.ceil((float(cfg.min_detail_mm) * float(p.px_per_mm)) ** 2 / 4.0))}
+           if band_mode else {}),
     )
 
     if has_enclosed:

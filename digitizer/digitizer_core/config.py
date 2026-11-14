@@ -1344,6 +1344,22 @@ class PipelineConfig:
     # tags. False is the engine before the flag, byte for byte (md5 against
     # main on three designs). Tests: `tests/test_regular_structure.py`.
     regular_structure: bool = False
+    # Shading the pro flattens sews as the shape it shades (built OFF
+    # 2026-11-13, Kent on Golden Tee, 20 pins: "The bean stitching makes
+    # 'golf' look to bust"; Drone pin 3, "border changes colour too much")
+    # (`bevel_fold.apply_bevel_fold`). Just after the colour cap: a light band on
+    # the page hugging one side of the art (a drop shadow) goes to the page;
+    # two shapes within 15 dE00 sharing a long seam (a ramp the palette split)
+    # become one thread and one shape; a band no wider than two laid threads
+    # (0.8 mm, what we sew as runs and beans) running along a body folds into
+    # it. A band wrapping its parent (a keyline, 60% of its outline), a line
+    # across a shape's inside, and any edge of a page-coloured shape are kept.
+    # Widths are mm at the sewn size, colours CIEDE2000; no fabric constant:
+    # gate 1 does not apply. A DESIGN CHANGE (pro-digitizer-rules 10-21 s4):
+    # the default is Kent's. Golden Tee hat: 6 -> 4 threads; Drone's ring one
+    # colour. False is the engine before the flag, byte for byte. Tests:
+    # `tests/test_bevel_fold.py`.
+    bevel_ring_fold: bool = False
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
@@ -1416,6 +1432,36 @@ class PipelineConfig:
     # (Recommended)". OFF pinned in `PRE_FLIP` and
     # `tests/engine_2026_10_27.json`.
     flat_ramp_blend_dissolve: bool = True
+    # The same round on a raster the grid SHRANK or kept (built OFF
+    # 2026-11-14, `stage2_quantize.BLEND_BAND_PX`). A JPEG's
+    # blend rim between two inks is made by compression and anti-aliasing,
+    # not resampling, and on a source at or above the grid it sews as a
+    # thread of its own: silhouette_logo's white letters in mint satin
+    # outlines (Kent: "all of the extra green stitches ... are the same
+    # issue", 30 pins), its bear in a dark-green ring, ProSeal's teal bar
+    # topped by a 0.33 mm Spearmint band ("The satin border is changing
+    # colors too much"). Each is a blend by colour (mint 5.4 dE off the
+    # green-white chord, the ring 3.8) that the one-pixel edge gate keeps
+    # (0.64, 0.36, 0.65 against 0.9), and this round never ran: it was
+    # enlarged rasters only. ON: a 2-working-px band, the Lab OR the RGB
+    # chord (ProSeal's band is 6.3 off the Lab one), and each band pixel
+    # takes the label of the nearest pixel outside the band, the page
+    # included, so a rim splits between the two things it lies between
+    # (joined all to the ink, ProSeal's hexagon cells closed their gaps),
+    # and only to a piece over stage 4's hole floor and thicker than a
+    # hairline (silhouette's pale disc-edge row grew into white strips).
+    # (Folding the whole cluster into one end, tried first, painted the same
+    # pale colour's specks elsewhere with it: ProSeal's subline grew a teal
+    # N.) Once a band dissolves, the one-pixel round's blends join the same
+    # way, to the ink only: by nearest kept centre in Lab, the black
+    # letters' grey edge went to the teal once the pale band was gone. A
+    # thin colour that is NOT between its
+    # neighbours (a keyline) is untouched: the colour test is unchanged. An
+    # enlarged raster is unchanged. Different from the bevel/shadow fold in
+    # `enforce_color_cap` (`regular-structure` lane): that folds a ONE-sided
+    # band by size after the cap; this folds a TWO-sided blend at stage 2,
+    # before any thread exists. Off, byte-identical.
+    flat_blend_band_any_scale: bool = False
     # Also under `flat_page_fringe_exclude`: the blend between a THIN DARK
     # OUTLINE and the fill beside it (`stage2_quantize.outline_inner_blend`) is
     # fringe too. An outline is the darkest label when half of its pixels sit
@@ -3779,8 +3825,13 @@ class PipelineConfig:
     # across `textcluster.LETTER_STROKE_CV_MAX`), sewed one arm: cover 0.656,
     # against >= 0.964 sewn untagged (docs/monarch-size-cliff-2026-11-13.md).
     # It acts where the area is lost, whatever the tagger read; the shape stays
-    # tagged for every other reader. False: the lane's output is final, as
-    # before, byte for byte. Flipping it is Kent's.
+    # tagged for every other reader. NARROWED 2026-11-13 (Kent: "Narrow it,
+    # re-census"): the ladder is sewn as a trial and its runs replace the
+    # lane's only when `columns.handback_wins` says they are better; the first
+    # census handed back small letters whose ladder satin spilled about one
+    # shape-area outside them (docs/column-cover-handback-census-2026-11-13.md).
+    # False: the lane's output is final, as before, byte for byte. Flipping it
+    # is Kent's.
     lettering_columns_cover_handback: bool = False
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
@@ -6471,6 +6522,16 @@ class PipelineConfig:
     # (2026-10-14), on every job with lettering. OFF, the report is the
     # pre-change report byte for byte (no key is written).
     preflight_glyph_metric: bool = False
+    # The proof-read as preflight METRICS (`digitizer_core/proofread.py`,
+    # built OFF 2026-11-13): the plan's top thread against the art raster the
+    # thread grader reads, per colour class, in mm -- MISSING, EXTRA, MOVED,
+    # MERGED, CLOSED, SHAPE, WIDTH -- each with the shapes whose stitches lie
+    # there and the region tags that explain a deliberate departure. Report
+    # only: `proofread_unexplained`, `_misfires`, `_explained`, `_findings`
+    # and the full payload under `proofread`; no finding, no deduction,
+    # nothing the customer sees (Kent 2026-10-02). It changes no stitch. OFF
+    # writes no key.
+    proofread: bool = False
 
     # Stage 7 — chaining. Whether a needle-up move that would be trimmed may
     # instead be sewn as a needle-down link, when its path is buried under a
