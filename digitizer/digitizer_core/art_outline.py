@@ -233,7 +233,11 @@ def shaped_width_mm(band, hole: Polygon) -> float | None:
     max 1.45) and 0.89 at 100 (max 2.40); at 40 mm 0.36, under a stitch, and
     it stays a ring. To-a-T Machine's frame swings 0.14 to 0.19 (a band of
     one width, which the pro widens). Becker's, MFab's and the Drone's bands
-    all run past 7 mm somewhere. So of the corpus only the gear is shaped.
+    all run past 7 mm somewhere. MFab's hat at 100 mm has two small loops
+    that read shaped among its outline's eight; the caller asks for ALL of
+    an outline's loops or none, so it is untouched. Plans compared with the
+    flag on and off at 100 mm: MFab, Becker, To-a-T and `hed_p_e_logo`
+    byte-identical, the gear alone changed.
 
     The width returned is the band's thickest reading: the caller cuts each
     cross where it leaves the ART (not the art widened), so a cross is as

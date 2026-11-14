@@ -239,3 +239,5 @@ live index; new archive lines go at the bottom.
 - [White recipe on every job](white-recipe-every-job-2026-10-27.md) — Kent 10-27 "Every job": recipe switches are PLAIN defaults (a gate would override the Studio's unticked white box); D1-D3 + Becker counter growth fixed first
 - [Band rings](border-by-size-colour-seams-2026-10-28.md) — Instagram: `border_by_size` satin rings each band, not bean; fix ON 10-28: ring fabric edges only
 - [Dark thin strokes ON](dark-thin-strokes-flip-2026-10-28.md) — flipped ON (Kent, #1170); OFF pinned in PRE_FLIP/FLIP_2026_10_23; owl 16 reads, patch 14
+- [Dark ink bean](dark-ink-bean-2026-10-28.md) — `dark_ink_bean` ON 10-29 (Kent, Pooh): dark read within 50 dE00 of its ground beans along its skeleton, ground sews through; Fremont wordmark (100) stays satin
+- [Dark read refusal](dark-read-refusal-2026-10-28.md) — `dark_ink_refuse_strays` OFF: edge (4 px) or not-under-ring reads refused; #1172's 10 not-ink rows = the 10 at the frame (its art window stretched)
