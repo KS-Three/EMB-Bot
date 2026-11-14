@@ -16,7 +16,7 @@ at the bottom for the authority model behind the confidence ratings.
 (**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling.
 Its code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-11-14 (the rim flag and 11-13 review fixes against main `03c85c7e`; not a re-read of every area). **This file is current state only, under a
+**Last updated:** 2026-11-14 (Kent's five flips of entry 79, against main `f2c4a19b`; not a re-read of every area). **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14). Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
@@ -511,7 +511,7 @@ about the facts.
 
 78. **Hairline keyline — `border_from_outline_hairline_run` is ON (Kent 2026-11-13: "sewn thin, but do not include letters for this"), and the Studio asks Keep / Remove on it.** Marked shapes (`hairline_outline`, contract v1.10) glow until answered; never a letter. OFF, a 0.4 mm keyline sewed 1.50 mm satin loops. ON, a thread that is nearly all hairline keyline (0.6 mm at 40 wt) sews each ring as a corner-exact bean, last, no fill past it. `hed_p_e_logo.png`, OFF → ON: 60 mm 3,492 → 2,527 stitches, 100 mm 6,291 → 5,228. Of 22 repo logos only this one is taken; no paired job moves. **Open:** fill held at the line is a sew-out question (gate 1); no pro file shows a 0.4 mm keyline. *(measured 2026-11-13 — memory `hairline-keyline-bean-2026-11-13`, `tests/test_outline_hairline_run.py`)*
 
-79. **The 2026-11-13 director night: all its flags were built OFF. Kent ruled 2026-11-14.** Flip ON, in a separate PR: `inshape_piece_lift`, `small_text_reset_one_baseline` + `text_cluster_solid_guard`, the four `group_consistent_*`, `outline_redraw_k` 0.75 and `flat_blend_band_any_scale`. `lettering_columns_connectors_buried` stays OFF until an edge-walk is built and he sees it. `bevel_ring_fold` becomes a Studio tickbox, OFF. Not yet: `regular_structure`, `cfg.proofread` (a tracing tool, not a guard), and `lettering_columns_apex_cut` (built 10-25) not as built. Table and catches: [`docs/director-night-2026-11-13.md`](docs/director-night-2026-11-13.md). *(measured 2026-11-13/14 — PRs #1476–#1490; ruled 2026-11-14 — Kent)*
+79. **The 2026-11-13 director night: its flags were built OFF. Kent ruled 2026-11-14.** Flipped ON (confirmed 2026-11-14 — `config.py` defaults): `inshape_piece_lift`, `small_text_reset_one_baseline` + `text_cluster_solid_guard`, `group_consistent_tier` + `_fill_angle` (`_outline_body` and `_thread` held OFF, a guard each first), `outline_redraw_k` 0.75 and `flat_blend_band_any_scale`. `lettering_columns_connectors_buried` stays OFF until an edge-walk is built and he sees it. `bevel_ring_fold` becomes a Studio tickbox, OFF. Not yet: `regular_structure`, `cfg.proofread` (a tracing tool, not a guard), and `lettering_columns_apex_cut` (built 10-25) not as built. Table and catches: [`docs/director-night-2026-11-13.md`](docs/director-night-2026-11-13.md). *(measured 2026-11-13/14 — PRs #1476–#1490; ruled 2026-11-14 — Kent)*
 
 ## Cross-cutting issues
 
