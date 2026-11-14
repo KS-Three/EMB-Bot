@@ -171,12 +171,34 @@ def test_a_band_two_bodies_share_is_sewn_once():
     band = unary_union([a, b]).buffer(0.4, join_style=2).difference(unary_union([a, b]))
     runs, report = keyline_bean.keyline_bean_runs(band, "Souter", entry=None, trim_at_mm=7.0)
     assert report["loops"] == 1 and report["arcs"] == 1
-    first, arc = ([tuple(p) for p in r.points] for r in runs)
+    first, arc = ([tuple(p) for p in r.points] for r in runs if r.kind == stitches.RUN)
     assert first[0] == first[-1] and arc[0] != arc[-1]
     assert arc[0] in set(first) and arc[-1] in set(first)
     strip = box(0.0, -3.0, 0.4, 3.0)
     inner = [p for p in set(arc) - {arc[0], arc[-1]}]
     assert inner and not any(strip.buffer(0.01).contains(Point(p)) for p in inner)
+    # and the needle WALKS from the loop to the arc along the line: no lift, no cut
+    assert report["jumps"] == 0 and not any(r.jump or r.trim for r in runs)
+
+
+def test_the_needle_walks_the_line_between_loops_instead_of_cutting():
+    """Six letters inside one keyline band, each with its own loop. Sewn
+    longest-first with a lift between loops, MFab's hat at 36.7 mm cut the
+    thread 14 times inside this one shape and fell a preflight grade
+    (TRIM_HEAVY). Nearest loop next, and the way there walked on the line."""
+    letters = [box(4.4 * k, 0, 4.4 * k + 4, 6) for k in range(6)]          # 0.4 mm apart
+    band = unary_union(letters).buffer(0.4, join_style=2).difference(unary_union(letters))
+    runs, report = keyline_bean.keyline_bean_runs(band, "Souter", entry=(0.0, 0.0), trim_at_mm=3.0)
+    assert not report["empty"]
+    assert report["jumps"] == 0 and not any(r.jump or r.trim for r in runs)
+    # every needle point of every walk is a needle point of the line itself
+    line_holes = {tuple(p) for r in runs if r.kind == stitches.RUN for p in r.points}
+    walked = [tuple(p) for r in runs if r.kind == stitches.TRAVEL for p in r.points]
+    assert all(p in line_holes for p in walked)
+    # and no step of it is longer than a run stitch
+    for r in runs:
+        if r.kind == stitches.TRAVEL:
+            assert max(math.dist(a, b) for a, b in zip(r.points, r.points[1:])) <= machine.RUN_STITCH_MM + 1e-9
 
 
 def test_a_keyline_with_a_tail_no_loop_follows_is_handed_back():
@@ -282,6 +304,36 @@ def test_a_letter_is_never_a_keyline():
     assert keyline_bean.keyline_regions(regs, {"Skey"}, cfg) == {"Skey", "Sring"}
     regs[3] = _region("Sring", _ring(0.4, o_body), 1, 1, text_candidate=True)
     assert keyline_bean.keyline_regions(regs, {"Skey"}, cfg) == {"Skey"}
+
+
+def test_the_rasters_fringe_is_never_an_outline():
+    """Thinner than the art can draw is not a drawn line. The caller passes
+    1.5 source pixels as `min_width_mm`."""
+    cfg = PipelineConfig()
+    regs = [_region("Sbody", FACE, 0, 0), _region("Skey", _ring(0.16), 1, 1)]
+    assert keyline_bean.keyline_regions(regs, {"Skey"}, cfg) == {"Skey"}
+    # a 180 px image at 198 mm: 1.1 mm a pixel, so the floor is 1.65 mm
+    assert keyline_bean.keyline_regions(regs, {"Skey"}, cfg, min_width_mm=1.5 * 1.1) == set()
+    # Kent's logo: 8 source pixels of outline, 0.42 mm at 100 mm; floor 0.08 mm
+    regs[1] = _region("Skey", _ring(0.42), 1, 1)
+    assert keyline_bean.keyline_regions(regs, {"Skey"}, cfg, min_width_mm=1.5 * 100 / 1920) == {"Skey"}
+
+
+@pytest.mark.parametrize("fixture", ["trace-holes-and-colors.png", "two-squares.png"])
+def test_a_small_image_blown_up_marks_nothing(fixture):
+    """The Studio's own e2e fixtures, 180 px wide, on a Tote at 198 mm: the
+    blend ring between two flat colours is a seventh of a source pixel. It
+    was marked, glowed, and asked Keep / Remove about nothing; CI's
+    `field-reshape-move.spec.js` (m4), `field-panel-sync.spec.js` and
+    `field-reshape-mode.spec.js` (e3) caught it."""
+    from digitizer_core.pipeline import run_stages
+
+    from .conftest import TESTDATA
+
+    art = TESTDATA.parent.parent / "app" / "e2e" / "fixtures" / fixture
+    result = run_stages(art.read_bytes(), PipelineConfig(target_width_mm=198.0))
+    assert result.regions
+    assert not any(r.meta.get("hairline_outline") for r in result.regions)
 
 
 def test_the_mark_survives_remove():
