@@ -349,11 +349,26 @@ GARMENT = "left_chest"
 #: One digitize, the service's own call sequence, in its own process. argv[1] is a
 #: json spec {photo, out, config, tree}; `tree` goes first on sys.path so the
 #: merge-base's digitizer_core is the one imported under `--base`. faulthandler
-#: dumps every thread's stack to stderr every 120 s, so a killed row still says
+#: dumps every thread's stack to stderr every 120 s (from a thread, see below), so a killed row still says
 #: which stage it was in (the census's trick).
 WORKER = r'''
-import faulthandler, json, sys, time
-faulthandler.dump_traceback_later(120, repeat=True, file=sys.stderr)
+import faulthandler, json, sys, threading, time
+# 2026-11-13: NOT faulthandler's dump_traceback_later with repeat=True. That dump runs on
+# a C watchdog thread that walks the main thread's frames WITHOUT the GIL while the main
+# thread keeps running; on Windows CPython 3.12 it sometimes reads freed frames and the
+# worker dies 0xC0000005 mid-dump (about 1 dump in 6; 6 of 77 rows lost, all at 120 s).
+# A dump from a Python thread holds the GIL, so the frames are stable. Do not "simplify"
+# this back. The header mimics the old one's, for anything reading stderr.
+_DUMP_EVERY_S = 120
+_sampler_stop = threading.Event()
+def _sampler():
+    while not _sampler_stop.wait(_DUMP_EVERY_S):
+        sys.stderr.write("Timeout (%d s)!\n" % _DUMP_EVERY_S); sys.stderr.flush()
+        faulthandler.dump_traceback(file=sys.stderr, all_threads=True)
+_sampler_thread = threading.Thread(target=_sampler, daemon=True, name="stack-sampler")
+_sampler_thread.start()
+def _stop_sampler():  # joined before exit: a dump racing interpreter shutdown dies 0xC0000409
+    _sampler_stop.set(); _sampler_thread.join()
 spec = json.loads(sys.argv[1])
 sys.path.insert(0, spec["tree"])
 from digitizer_core import PipelineConfig
@@ -380,6 +395,7 @@ json.dump({"state": "done", "design": design,
                      "class": gen.classification_class, "class_conf": round(float(cls.confidence), 3),
                      "config_sent": spec["config"], "tree_sha": spec.get("tree_sha")}},
           open(spec["out"], "w", encoding="utf-8"))
+_stop_sampler()
 '''
 
 

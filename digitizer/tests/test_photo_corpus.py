@@ -536,3 +536,13 @@ def test_kents_logo_grades_name_corpus_rows_on_one_tree():
     assert g["tally"] == {k: sum(r["grade"] == k for r in g["rows"].values()) for k in GRADES}
     readme = (pc.SCOREBOARD_DIR / "README.md").read_text(encoding="utf-8")
     assert "grades-5ff48c5-2026-10-28.json" in readme
+
+
+def test_worker_samples_stacks_from_a_thread_not_the_c_watchdog():
+    # 2026-11-13: dump_traceback_later walks frames without the GIL and killed workers
+    # with 0xC0000005 on Windows. A Python thread's dump holds the GIL.
+    assert "dump_traceback_later(" not in pc.WORKER
+    assert "threading.Thread(target=_sampler, daemon=True" in pc.WORKER
+    assert "_stop_sampler()" in pc.WORKER.split("spec = json.loads")[1]
+    assert "faulthandler.dump_traceback(file=sys.stderr, all_threads=True)" in pc.WORKER
+    compile(pc.WORKER, "<worker>", "exec")
