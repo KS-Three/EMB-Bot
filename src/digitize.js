@@ -1701,6 +1701,39 @@
         // the design-wide default. 0 = perpendicular.
         const slantDeg = (shape.slantDeg != null && isFinite(shape.slantDeg))
           ? shape.slantDeg : (o.satinSlantDeg || 0);
+        // A CROSS NO MACHINE SEWS AS ONE STITCH (2026-11-13, Kent: "Narrow it
+        // to the stitch limit"). The test above is on the MEAN width (2 x area
+        // / perimeter), and the medial satin has no width limit of its own, so
+        // a shape thin on average and wide somewhere was one satin: a 100 x
+        // 2 mm stick with a 14 mm head (mean 2.90 mm) sewed 30 crosses over
+        // 12.1 mm, the widest 14.2. A stitch that long is past the longest
+        // single stitch the engine writes (one DST record a side, dst.js
+        // MAX_DELTA, 12.1 mm: satinfont's MAX_STITCH_MM, the Python
+        // machine.MAX_STITCH_MM), so the column is not a satin at all. An
+        // auto-routed satin is built here, before its underlay, and goes to
+        // fill if any sewn stitch of it is longer than that. Only that:
+        // satinMaxWidthMm and the mean-width test stay as they were, and a
+        // wide satin under the limit (a 6 mm wedge, the small shapes Kent's
+        // 2026-10-20 `satinSmallShapes` ruling made satin) is still satin.
+        // No slack: the limit is on the stitch as emitted, not on a measure
+        // of the shape, so there is no error of measurement to absorb. On the
+        // repo's 305 Studio-lane designs (1,214 auto-routed satins) the widest
+        // stitches are 11.7 mm and below, then 13.5 mm and above: nothing sits
+        // near the line. The satin built here is the one sewn when the shape stays
+        // satin (same call, same arguments): a shape that stays sews what it
+        // sewed. A human's choice (tierOverride) is not second-guessed.
+        let autoSatin = null;
+        if (thin && !runSew && tierOv !== "satin" && !(shape.sewAs && shape.sewAs.kind === "column")) {
+          try {
+            const sat = satinmod.medialSatin || satinmod.satinColumn;
+            autoSatin = sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg, smallShapes: satinSmallShapes });
+            const limitPx = (dstmod.DST_MAX_DELTA / units.DST_UNITS_PER_MM) * pxPerFinalMm;
+            for (let k = 1; k < autoSatin.length; k++) {
+              if (autoSatin[k].travel) continue;
+              if (Math.hypot(autoSatin[k].x - autoSatin[k - 1].x, autoSatin[k].y - autoSatin[k - 1].y) > limitPx) { thin = false; autoSatin = null; break; }
+            }
+          } catch (e) { autoSatin = null; }   // the satin fails in its turn below, as it did
+        }
 
         // Build this shape's runs in sew order; trim (if needed) is decided once
         // per shape so we never trim between a shape's own underlay and top.
@@ -1853,7 +1886,7 @@
             pts = column
               ? satinplaymod.satinFromRails(column.railA, column.railB, colRungs,
                   { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg })
-              : sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg, smallShapes: satinSmallShapes });
+              : (autoSatin || sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg, smallShapes: satinSmallShapes }));
             if (underlayDirection) pts = satinmod.startNear(pts, endOfRuns(runs));
             nSatin++;
           }

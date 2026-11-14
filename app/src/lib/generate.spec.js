@@ -746,8 +746,15 @@ test("generateElement: a preset shape leaves no float a DST machine reads as a c
     // arms round one centre zone and leaves neither shape a float the writer
     // lays as three records, so the half that proves the reading can see one
     // builds the pre-flip satin, `satinSmallShapes: false`, on and off the flag.
+    // Since 2026-11-13 the shape lane sends this pre-flip star to FILL: its
+    // satin lays a stitch over the 12.1 mm machine limit (src/digitize.js,
+    // "A CROSS NO MACHINE SEWS AS ONE STITCH"). So that half sets it to satin,
+    // as a user can, to keep the satin it sewed.
+    const preRegions = kind === "star" ? shapesToRegions([
+      { id: "shape", points: shapePresetPoints(kind, params, sizeMm), curves: {}, stitchType: "satin", colorRgb: el.colorRgb, angleDeg: null },
+    ]).regions : regions;
     const pre = { ...call, satinSmallShapes: false };
-    const preOff = EMB.buildQualityDesign(regions, pre), preOn = EMB.buildQualityDesign(regions, { ...pre, cutFloats: true });
+    const preOff = EMB.buildQualityDesign(preRegions, pre), preOn = EMB.buildQualityDesign(preRegions, { ...pre, cutFloats: true });
     expect(unasked(preOff)).toBeGreaterThan(0);
     expect(unasked(preOn)).toBe(0);
     expect(trims(preOn)).toBeGreaterThan(trims(preOff));
