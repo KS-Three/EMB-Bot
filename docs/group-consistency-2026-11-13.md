@@ -104,8 +104,12 @@ row axis: same spool, same block, same axis. The rows advance opposite ways
 and `stitchviz` draws each row over the shaded half of the one before, so the
 visible half -- the tone -- follows which way the rows advance. Its own
 comment keeps sew direction out of tone (`|x|` in the Lambert term); row
-overlap brings it back. Whether cloth shows it too is a sew-out question;
-Kent's "feet are differnt colors" was read off this render.
+overlap brings it back. Kent's "feet are differnt colors" was read off this
+render. **Fixed 2026-11-14** in `stitchviz.py`: the lit core is centred on
+the thread, so whichever edge stays in view looks the same (synthetic 155.8
+/ 105.8 -> 127.8 / 127.9; coverage bit for bit). The Studio's `preview.js`
+never had it: it paints layer by layer inside a block, not stitch by
+stitch.
 
 ## Proof
 
