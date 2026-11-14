@@ -2364,6 +2364,20 @@
         />
         Even out lettering widths<i class="tipmark" aria-hidden="true"></i>
       </label>
+      <!-- Flatten shading (PipelineConfig.bevel_ring_fold; Kent 2026-11-14:
+           "Studio tickbox, OFF"). It changes the design, so it is the
+           customer's box, unticked to start. Ticking it makes the design
+           stale like any other option; the run button re-digitizes. The
+           result says nothing extra about it (no-warnings ruling). -->
+      <label class="dgp-checkline" use:tip={"flattenShading"}>
+        <input
+          type="checkbox"
+          data-testid="flatten-shading"
+          checked={!!element.params.bevel_ring_fold}
+          on:change={(e) => setParam("bevel_ring_fold", e.currentTarget.checked)}
+        />
+        Flatten shading<i class="tipmark" aria-hidden="true"></i>
+      </label>
       <!-- Sew white areas (PipelineConfig.sew_enclosed_white, on by default
            since 2026-10-26, Kent's flip; it changes the design, so the box
            stays the customer's). The colour and the counters box show only

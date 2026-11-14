@@ -6532,6 +6532,19 @@ class PipelineConfig:
     # nothing the customer sees (Kent 2026-10-02). It changes no stitch. OFF
     # writes no key.
     proofread: bool = False
+    # The first proof-read GUARD (`digitizer_core/proofread_guard.py`, built
+    # OFF 2026-11-14), on the step the kit census ranked first among those not
+    # being fixed elsewhere: stage 5's clip. After planning, when the
+    # proof-read finds a shape stage 5 dropped or cut (`SHAPE_NOT_STITCHED` /
+    # `CLIP_DROPPED_SLIVER`) whose own-colour ink is at least `GUARD_MIN_FRAC`
+    # of it and `GUARD_MIN_MM2` in all, the design is re-planned with those
+    # shapes' artwork sewn over the earlier colours
+    # (`stage5_overlap.keep_art_scope`), and the re-plan is kept only when the
+    # proof-read's MISSING/SHAPE/EXTRA/MERGED/CLOSED error+misfire area falls by
+    # more than `GUARD_MIN_MM2`. Needs the traced raster on the result
+    # (`PipelineResult.proof_art`, set by `finish_generation` when this is on).
+    # OFF: no read, no re-plan, the plan and report byte for byte.
+    proofread_guard_clipped: bool = False
 
     # Stage 7 — chaining. Whether a needle-up move that would be trimmed may
     # instead be sewn as a needle-down link, when its path is buried under a

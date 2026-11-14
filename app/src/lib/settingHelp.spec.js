@@ -45,7 +45,7 @@ test("helpText joins the parts in order and labels the middle two; an unknown ke
 
 test("the keys the components attach exist", () => {
   const wanted = [
-    "designWidth", "colors", "satinThin", "evenWidths", "fillAngle", "border", "designEdge", "photoReading",
+    "designWidth", "colors", "satinThin", "evenWidths", "flattenShading", "fillAngle", "border", "designEdge", "photoReading",
     "shapeTier", "shapeAngle", "shapeUnderlay", "shapeBorder", "stitchWidth", "wholeWord",
     "fitToHoop", "autoSnap", "outlines", "jumps", "trims", "flatView", "realistic", "simulator",
     "letterSpacing", "curve", "rotation",

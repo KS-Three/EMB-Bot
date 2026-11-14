@@ -4673,6 +4673,11 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
             metrics.update(_proofread.metrics(_proofread.read(graded, result, plan, cfg)))
         else:       # no artwork or no regions: nothing to read against
             metrics["proofread_checked"] = False
+    # `cfg.proofread_guard_clipped` (built OFF): what the guard decided
+    # while planning (`plan.proofread_guard`; None when it could not run, a
+    # result without the traced raster). OFF writes no key.
+    if getattr(cfg, "proofread_guard_clipped", False):
+        metrics["proofread_guard"] = getattr(plan, "proofread_guard", None)
 
     # Last, over the finished list: it tags findings, it does not make any.
     _tag_break_risk(findings, plan, result)
