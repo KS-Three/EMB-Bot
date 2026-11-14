@@ -87,6 +87,12 @@ MOVE_PX = 3.0
 FLOOR_MM = 0.1
 # A member smaller than this many square source pixels is trace noise.
 MIN_AREA_PX2 = 12.0
+# Pair alignments one design may spend finding groups (each ~150 outline
+# comparisons); past it the design has too many look-alikes to be a logo's
+# few repeats, and nothing is done. The census's busiest design, Kent's flag
+# (50 stars), spent 128 alignments in all (17 s on a loaded laptop); the
+# drone's 117 regions 101.
+MAX_ALIGNS = 2000
 # Arrangement fit: a centroid may sit this many source pixels off the fit.
 POS_PX = 1.5
 # Self-symmetry folds tried, largest first, and how many that pass the
@@ -546,6 +552,7 @@ def find_groups(regions, src_px, *, match_px=MATCH_PX, any_colour=False,
     shapes = [_shape(i, r.polygon) for i, r in enumerate(regions) if _candidate(r, min_area)]
     shapes.sort(key=lambda s: (-s.area, regions[s.idx].shape_id))
     seeds: list[tuple[_Shape, Polygon, list]] = []
+    aligns = 0
     for s in shapes:
         placed = False
         for rep, rep_c, mem in seeds:
@@ -553,6 +560,9 @@ def find_groups(regions, src_px, *, match_px=MATCH_PX, any_colour=False,
                 continue
             if not _similar(rep, s, tol):
                 continue
+            aligns += 1
+            if aligns > MAX_ALIGNS:
+                return []    # too many look-alikes to compare: do nothing
             # two noisy traces differ by up to twice what one differs from the mean
             d, ang, m = _align(rep_c, s, margin=0.25 * src_px)
             if d <= 2 * tol:

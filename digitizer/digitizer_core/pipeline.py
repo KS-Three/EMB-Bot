@@ -1224,9 +1224,10 @@ def build_generation(
     # fitted arrangement take their mean shape, a region that repeats itself
     # round its centre takes the mean of its rotations. After every text
     # tagger (lettering is never a member) and before the stitch-width read,
-    # so widths, angles and tiers see the shape that will sew. Off, the
-    # module never loads.
-    if cfg.regular_structure:
+    # so widths, angles and tiers see the shape that will sew. Logos only: a
+    # photograph's fragments repeat nothing and would cost minutes of
+    # alignment. Off, the module never loads.
+    if cfg.regular_structure and classification.class_ not in PHOTO_CLASSES:
         from .regular_structure import apply_regular_structure
         apply_regular_structure(regions, p, cfg)
 
