@@ -55,3 +55,7 @@ widths (DOCTRINE 2026-09-16).
   - the monarch cell at 90.50 / 91.75 mm;
   - the Gaulke '&' bowl;
   - the owl's −4.5% black.
+- Kent's eye on the Gaulke '&' at 93.8 mm (2026-11-14), verbatim: "the & was better on". The figures were cover
+  0.62 -> 0.97 and counter 0.23 -> 0.50. He then chose "Record my eye, stay OFF".
+  - *Interpretation, not his words:* evidence that the branch-drop fix is worth doing, and that the holes figure
+    overstates the harm on this shape.

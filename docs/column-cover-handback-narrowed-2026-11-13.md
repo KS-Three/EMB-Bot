@@ -29,6 +29,10 @@ The reason, as measured:
 - **The principled route nobody has built:** the first census's option 4, which is to fix the Column lane where it
   drops a branch. The '&' bowl and the V cell are both branches the lane's cut does not sew. A hand-back swaps whole
   shapes onto the ladder instead of sewing the missing branch.
+  - Kent's eye on the Gaulke '&', 2026-11-14, verbatim: **"the & was better on"**. Asked whether that changes the
+    ruling, he chose **"Record my eye, stay OFF"**.
+  - *Interpretation, not his words:* this is evidence that sewing the dropped branch is worth doing. It also suggests
+    the counter (holes) figure overstates the harm on this shape.
 
 ### The sheets Kent ruled on
 
@@ -47,7 +51,10 @@ Read by eye:
 - **Monarch:** the lower butterfly's V cell is bare under OFF and filled under NET ON.
 - **Drone:** the THERMAL 'E' turns from stacked bars into a criss-cross ladder.
 - **Bukit 'a':** identical, and the whole design is byte-identical OFF vs ON.
-- **Gaulke '&'** (not committed): the bowl is sewn, but thread covers half the counter (0.23 → 0.50).
+- **Gaulke '&'** (93.8 mm, not committed): the bowl is sewn, but thread covers half the counter. Cover 0.62 → 0.97,
+  counter 0.23 → 0.50.
+  - **Kent judged the ON render better by eye** despite the smaller counter, verbatim: "the & was better on".
+  - The ruling stays OFF ("Record my eye, stay OFF").
 
 ## In short
 
