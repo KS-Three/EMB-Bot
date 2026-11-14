@@ -37,7 +37,7 @@
 // statically at the top of this file (a static import would evaluate — and
 // throw inside emb.js's "engine not loaded" guard — before beforeAll ever
 // runs), same pattern TraceImportPanel.spec.js uses for its own Harness.
-import { beforeAll, describe, expect, test } from "vitest";
+import { beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { render, fireEvent } from "@testing-library/svelte";
 // toBeDisabled()/etc. — scoped to this file (not a global vitest setupFile)
 // since it's the only spec that currently needs DOM matchers.
@@ -74,7 +74,15 @@ beforeAll(async () => {
   });
 
   ({ default: Harness } = await import("./ManualPanel.testHarness.svelte"));
+  penMemory = await import("../lib/penStroke.js");
 });
+
+// The width and colour the next stroke is born with live in penStroke.js's
+// module, across panel mounts (that is the point of them). Every element here
+// is "e1", so without this one test's selection would colour the next test's
+// line.
+let penMemory;
+beforeEach(() => penMemory.resetPenMemory());
 
 function baseElement(shapes = []) {
   return { id: "e1", type: "manual", shapes };
@@ -1159,7 +1167,7 @@ describe("Column mode", () => {
     const { getByRole, container } = renderColumnPanel();
     await fireEvent.click(columnBtn(getByRole));
     expect(container.querySelector(".mp-modehint").textContent.trim())
-      .toBe("Click along the middle of the stroke, then double-click to finish.");
+      .toBe("Drag along the middle of the stroke to draw it. Or click along it, then double-click to finish.");
   });
 
   test("two clicks and a double-click make a kind: column shape with a width and no stitch type or angle", async () => {
@@ -1329,7 +1337,7 @@ describe("Line mode", () => {
   test("its hint line says how to draw one", async () => {
     const { getByRole, container } = renderColumnPanel();
     await fireEvent.click(lineBtn(getByRole));
-    expect(container.querySelector(".mp-modehint").textContent.trim()).toBe("Click along the line, then double-click to finish.");
+    expect(container.querySelector(".mp-modehint").textContent.trim()).toBe("Drag along the line to draw it. Or click along it, then double-click to finish.");
   });
 
   test("two clicks and a double-click make a kind: run shape, with nothing else stored", async () => {
@@ -1462,5 +1470,224 @@ describe("shape add and remove are discrete undo steps", () => {
     expect(patches).toHaveLength(1);
     expect(patches[0].patch.shapes[0].angleDeg).toBe(30);
     expect(patches[0].discrete).toBeUndefined();
+  });
+});
+
+// ---- The pen: a drag draws a Column or a Line -------------------------------
+// Spec docs/superpowers/specs/2026-11-13-pen-auto-branch-design.md section 2.
+// A browser follows a drag's pointerup with a `click` on the same element, so
+// drag() fires one too: a stroke must not ALSO place a point there.
+async function drag(canvas, pts, { altKey = false, click = true } = {}) {
+  // `buttons: 1`: the primary button is held for the whole drag, as a browser
+  // reports it. A move with no button down disarms the pen (see below).
+  const ev = (p) => ({ clientX: p[0], clientY: p[1], pointerId: 7, button: 0, buttons: 1, altKey });
+  await fireEvent.pointerDown(canvas, ev(pts[0]));
+  for (const p of pts.slice(1)) await fireEvent.pointerMove(canvas, ev(p));
+  await fireEvent.pointerUp(canvas, ev(pts[pts.length - 1]));
+  if (click) await fireEvent.click(canvas, { clientX: pts.at(-1)[0], clientY: pts.at(-1)[1], detail: 1 });
+}
+// A straight drag from a to b in 10 px steps.
+function steps(a, b) {
+  const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 10), out = [];
+  for (let i = 0; i <= n; i++) out.push([a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n]);
+  return out;
+}
+
+describe("the pen", () => {
+  test("Line mode: one drag is one finished line, its ends where the pointer went down and up", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    await drag(canvas, steps([100, 100], [300, 150]));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].discrete).toBe(true);
+    const s = patches[0].patch.shapes[0];
+    expect(s.kind).toBe("run");
+    expect(s.points[0]).toEqual({ x: 100, y: 100 });
+    expect(s.points.at(-1)).toEqual({ x: 300, y: 150 });
+    // a straight drag is two points
+    expect(s.points).toHaveLength(2);
+    expect(s.curves).toEqual({});
+    // and the click that follows the drag placed nothing
+    expect(getByRole("button", { name: "Undo point" })).toBeDisabled();
+  });
+
+  test("Column mode: one drag is one finished column at the new-column width", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(columnBtn(getByRole));
+    await drag(canvas, steps([100, 100], [300, 150]));
+    expect(patches).toHaveLength(1);
+    const s = patches[0].patch.shapes[0];
+    expect(s.kind).toBe("column");
+    expect(s.widthPx).toBeCloseTo(24, 9); // 4.0 mm at the nominal 6 px per mm
+    expect(s.points).toEqual([{ x: 100, y: 100 }, { x: 300, y: 150 }]);
+  });
+
+  test("a curved drag comes back as a few anchors with curves, not one point per sample", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    const arc = [];
+    for (let a = 0; a <= 180; a += 3) arc.push([300 + 100 * Math.cos(a * Math.PI / 180), 250 - 100 * Math.sin(a * Math.PI / 180)]);
+    await drag(canvas, arc);
+    const s = patches[0].patch.shapes[0];
+    expect(s.points.length).toBeLessThanOrEqual(6);
+    expect(Object.keys(s.curves).length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("a press that never leaves the dead zone is still a click: it places a point", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    await drag(canvas, [[100, 100], [102, 101], [102, 101]]);
+    expect(patches).toHaveLength(0);
+    expect(getByRole("button", { name: "Undo point" })).toBeEnabled();
+  });
+
+  test("a drag too short to be a line is a click that slipped: a point, not a shape", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    await drag(canvas, [[100, 100], [104, 103], [108, 104]]); // 8.2 px
+    expect(patches).toHaveLength(0);
+    expect(getByRole("button", { name: "Undo point" })).toBeEnabled();
+  });
+
+  test("Shape mode: a drag draws nothing", async () => {
+    const { canvas, patches } = renderColumnPanel();
+    await drag(canvas, steps([100, 100], [300, 150]), { click: false });
+    expect(patches).toHaveLength(0);
+  });
+
+  test("a click-drawn draft in progress is never preempted by a drag", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    await clickAt(canvas, 100, 100);
+    await drag(canvas, steps([150, 300], [400, 300]), { click: false });
+    expect(patches).toHaveLength(0);
+    // the draft still holds exactly its one clicked point
+    await fireEvent.click(getByRole("button", { name: "Undo point" }));
+    expect(getByRole("button", { name: "Undo point" })).toBeDisabled();
+  });
+
+  test("a stroke that starts or ends near another line's end lands on it; Alt draws free", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel([LINE()]); // (100,100) -> (400,100)
+    await fireEvent.click(lineBtn(getByRole));
+    await drag(canvas, steps([404, 103], [404, 300]));
+    expect(patches[0].patch.shapes[1].points[0]).toEqual({ x: 400, y: 100 });
+    await drag(canvas, steps([250, 300], [97, 104]));
+    expect(patches[1].patch.shapes.at(-1).points.at(-1)).toEqual({ x: 100, y: 100 });
+    await drag(canvas, steps([404, 103], [500, 300]), { altKey: true });
+    expect(patches[2].patch.shapes.at(-1).points[0]).toEqual({ x: 404, y: 103 });
+  });
+
+  test("a Line does not snap to a Column", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel([COL()]); // spine (100,100) -> (400,100)
+    await fireEvent.click(lineBtn(getByRole));
+    await drag(canvas, steps([404, 103], [404, 300]));
+    expect(patches[0].patch.shapes[1].points[0]).toEqual({ x: 404, y: 103 });
+  });
+
+  test("pointercancel and Escape throw the stroke away", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    const ev = (p) => ({ clientX: p[0], clientY: p[1], pointerId: 7, button: 0, buttons: 1 });
+    await fireEvent.pointerDown(canvas, ev([100, 100]));
+    await fireEvent.pointerMove(canvas, ev([200, 120]));
+    await fireEvent.pointerCancel(canvas, ev([200, 120]));
+    await fireEvent.pointerUp(canvas, ev([300, 150]));
+    expect(patches).toHaveLength(0);
+    await fireEvent.pointerDown(canvas, ev([100, 100]));
+    await fireEvent.pointerMove(canvas, ev([200, 120]));
+    await fireEvent.keyDown(canvas, { key: "Escape" });
+    // the button is still down: its release brings a click with it, and that
+    // click must not leave a point where the stroke was dropped
+    await fireEvent.pointerUp(canvas, ev([300, 150]));
+    await fireEvent.click(canvas, { clientX: 300, clientY: 150, detail: 1 });
+    expect(patches).toHaveLength(0);
+    expect(getByRole("button", { name: "Undo point" })).toBeDisabled();
+  });
+
+  test("a press released where the canvas could not see it does not leave the pen armed for the next hover", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    // down, then nothing: no move past the dead zone, no pointerup
+    await fireEvent.pointerDown(canvas, { clientX: 100, clientY: 100, pointerId: 7, button: 0, buttons: 1 });
+    // later the pointer crosses the canvas with no button held
+    for (const p of steps([100, 100], [400, 300])) await fireEvent.pointerMove(canvas, { clientX: p[0], clientY: p[1], pointerId: 7, buttons: 0 });
+    await fireEvent.pointerUp(canvas, { clientX: 400, clientY: 300, pointerId: 7, button: 0 });
+    expect(patches).toHaveLength(0);
+    expect(getByRole("button", { name: "Undo point" })).toBeDisabled();
+  });
+
+  test("a column that would fold over itself is not added: it stays as the draft, with the reason", async () => {
+    const { canvas, getByRole, patches, container } = renderColumnPanel();
+    await fireEvent.click(columnBtn(getByRole));
+    // out and straight back 6 px beside itself: the 24 px rails cross
+    await drag(canvas, [...steps([100, 200], [300, 200]), ...steps([300, 206], [100, 206])]);
+    expect(patches).toHaveLength(0);
+    expect(container.querySelector(".mp-draftissue").textContent).toMatch(/folds over itself/);
+    expect(getByRole("button", { name: "Clear shape" })).toBeEnabled();
+    // ...and it does not swallow the next attempt: drawing again replaces it
+    await drag(canvas, steps([100, 300], [400, 300]));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].points).toEqual([{ x: 100, y: 300 }, { x: 400, y: 300 }]);
+    expect(container.querySelector(".mp-draftissue")).toBeNull();
+    expect(getByRole("button", { name: "Undo point" })).toBeDisabled();
+  });
+
+  test("a drag that runs off the canvas is held to its edge", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    await drag(canvas, [...steps([500, 200], [700, 200]), [700, 460]]);
+    const pts = patches[0].patch.shapes[0].points;
+    for (const p of pts) {
+      expect(p.x).toBeLessThanOrEqual(CANVAS_W);
+      expect(p.y).toBeLessThanOrEqual(CANVAS_H);
+    }
+    expect(pts.at(-1)).toEqual({ x: CANVAS_W, y: CANVAS_H });
+  });
+
+  test("a second pointer cannot take over or end a running stroke", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    const a = (p) => ({ clientX: p[0], clientY: p[1], pointerId: 7, button: 0, buttons: 1 });
+    const b = (p) => ({ clientX: p[0], clientY: p[1], pointerId: 9, button: 0, buttons: 1 });
+    await fireEvent.pointerDown(canvas, a([100, 100]));
+    await fireEvent.pointerMove(canvas, a([200, 100]));
+    await fireEvent.pointerDown(canvas, b([400, 350])); // a palm
+    await fireEvent.pointerMove(canvas, b([420, 360]));
+    await fireEvent.pointerUp(canvas, b([420, 360]));
+    expect(patches).toHaveLength(0); // the stroke is still running
+    await fireEvent.pointerMove(canvas, a([300, 100]));
+    await fireEvent.pointerUp(canvas, a([300, 100]));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].points).toEqual([{ x: 100, y: 100 }, { x: 300, y: 100 }]);
+  });
+
+  test("the next column takes the width of the column last edited (Kent, 2026-11-13)", async () => {
+    const { canvas, getByRole, patches, rerender } = renderColumnPanel([COL()]); // 24 px = 4.0 mm
+    await rerender({ element: baseElement([COL({ widthPx: 6 })]) }); // edited to 1.0 mm
+    await fireEvent.click(columnBtn(getByRole));
+    await drag(canvas, steps([100, 300], [400, 300]));
+    expect(patches[0].patch.shapes.at(-1).widthPx).toBeCloseTo(6, 9);
+  });
+
+  test("the first column is still 4.0 mm when nothing was edited (ruling 9 stands)", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel([COL({ widthPx: 6 })]);
+    await fireEvent.click(columnBtn(getByRole));
+    await drag(canvas, steps([100, 300], [400, 300]));
+    expect(patches[0].patch.shapes.at(-1).widthPx).toBeCloseTo(24, 9);
+  });
+
+  test("with nothing selected, a new stroke takes the colour of the shape drawn last", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel([COL(), LINE({ id: "s2" })]); // red, then green
+    await fireEvent.click(lineBtn(getByRole));
+    await drag(canvas, steps([100, 300], [400, 300]));
+    expect(patches[0].patch.shapes.at(-1).colorRgb).toEqual([30, 120, 30]);
+  });
+
+  test("a new stroke takes the colour of the selected shape", async () => {
+    const { canvas, getByRole, getByText, patches } = renderColumnPanel([COL()]); // red
+    await fireEvent.click(getByText("Shape 1 · Column", { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.click(lineBtn(getByRole));
+    await drag(canvas, steps([100, 300], [400, 300]));
+    expect(patches[0].patch.shapes.at(-1).colorRgb).toEqual([200, 30, 30]);
   });
 });
