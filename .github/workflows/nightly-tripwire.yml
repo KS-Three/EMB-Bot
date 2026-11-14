@@ -13,7 +13,7 @@
 # with the DSTs that were measured so the mover can be attributed.
 #
 # `workflow_dispatch` runs the same check on any branch that carries this
-# file, or in `capture` mode measures the SAME tree on three runners and
+# file, or in `capture` mode measures the SAME tree on FIVE runners and
 # builds a fresh ledger from the spread between them: baseline = lower
 # median, tolerance = the spread rounded up to the figure's resolution. That
 # is the only honest source of a tolerance here (run-to-run noise on the
@@ -33,7 +33,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'check the ledger (the nightly), or capture a new ledger from three passes'
+        description: 'check the ledger (the nightly), or capture a new ledger from five passes'
         type: choice
         options: [check, capture]
         default: check
@@ -152,7 +152,7 @@ jobs:
             digitizer/tripwire-runs/*/ours.dst
           if-no-files-found: warn
 
-  # CAPTURE, dispatch only: three passes of the same tree, one per runner.
+  # CAPTURE, dispatch only: five passes of the same tree, one per runner (was three until 2026-11-14: three passes that agreed read 8 jittery rows as a false zero, so the capture needs 5, tripwire.MIN_PASSES_FOR_ZERO).
   measure:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'capture'
     runs-on: ubuntu-latest
@@ -160,7 +160,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pass: [1, 2, 3]
+        pass: [1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -233,11 +233,11 @@ jobs:
           pattern: tripwire-pass-*-${{ github.run_id }}
           path: passes
           merge-multiple: true
-      - name: Build the ledger from the three passes
+      - name: Build the ledger from the five passes
         working-directory: digitizer
         run: >
           python -m tools.tripwire capture
-          --from ../passes/tripwire-pass-1.json ../passes/tripwire-pass-2.json ../passes/tripwire-pass-3.json
+          --from ../passes/tripwire-pass-1.json ../passes/tripwire-pass-2.json ../passes/tripwire-pass-3.json ../passes/tripwire-pass-4.json ../passes/tripwire-pass-5.json
           --ledger tripwire-ledger.json
           --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           > tripwire-ledger.md
