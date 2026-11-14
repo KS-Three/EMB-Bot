@@ -5448,3 +5448,29 @@ Census, 19 real photographs at 80 mm on the config the Studio sends: all 19 reac
 essentially nothing or segmenting the BACKGROUND as the object, at
 `predicted_iou` 0.88–0.99 throughout. *(measured 2026-09-22 —
 [`docs/sam2-on-logo-art-2026-09-22.md`](../sam2-on-logo-art-2026-09-22.md))*
+
+## Browser satin, stage 6 seam pruning and the rim flag on the live engine (2026-11-14)
+
+**Browser medial satin (`src/satin.js`).** No stroke is dropped past the 24th,
+and a spur is judged by its straight-line reach against 1.6 × the inscribed
+radius at its node, so a bar sews the same at any rotation.
+*(fixed 2026-11-13 — PR #1463)*
+
+**An auto-routed browser satin with a sewn stitch over the single-record limit
+goes to fill** (12.1 mm, `DST_MAX_DELTA / DST_UNITS_PER_MM`; Kent 2026-11-13:
+"Narrow it to the stitch limit"). No new constant, and the mean-width test is
+unchanged. A satin the user picked is kept; the `satinSmallShapes` shapes
+(MASTER_SCOPE item 57) stay satin with the md5 they had.
+*(measured 2026-11-13 — PR #1471, `test/satin-widest-cross.test.js`)*
+
+**Stage 6 seam order skips pairs that cannot touch.** `_seam_apart` clears a
+section pair when `_seam_side` would certainly answer 0; output is
+byte-identical. The stained_glass row is still slow: DOCTRINE, measured
+negatives. *(measured 2026-11-13 — PR #1472, `tests/test_stage6_speed_exact.py`)*
+
+**`photo_enclosed_rim` stays OFF after a live-engine measurement (Kent
+2026-11-14: "Keep off, fix the collapse").** ON reads MFab's small line at 30
+and at 60 to 113.5 mm on both lanes, but sews the badge as one black patch at
+35 to 40 mm and sews the M-FAB faces white at 45 and 50 mm; of 77 other images
+it changes 5, three for the worse. A fix behind the flag is in progress.
+*(measured 2026-11-13 — [`docs/photo-enclosed-rim-2026-11-06.md`](../photo-enclosed-rim-2026-11-06.md), addendum 2026-11-14)*

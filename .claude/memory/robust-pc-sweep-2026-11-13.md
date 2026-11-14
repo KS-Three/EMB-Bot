@@ -45,7 +45,20 @@ request (80 mm, left_chest, 6 colours), both lanes, commit 2489ac48:
   it on.
 - `photo_enclosed_rim` (still OFF): PR #1451 reads a rim piece by its median
   Lab; cutout-lane MFab 60 mm 2 fields / 10 riders → 1 / 15. 113.5 mm still
-  loses one rider to text clustering (strict xfail).
+  loses one rider to text clustering (strict xfail). On the LIVE engine
+  (11-13, both lanes) ON reads the small line at 30 and 60 to 113.5 mm but
+  sews one black patch at 35 to 40 mm (order flips to White, Black) and white
+  M-FAB faces at 45 and 50 mm; 3 of 77 other images get worse. Kent 11-14:
+  "Keep off, fix the collapse". Tables: the rim doc's 11-14 addendum.
+
+**Second round (merged 11-14).** Reviews of the browser engine and the Studio
+gave PRs #1463 to #1475: browser satin, undo, lettering, canvas rotate and
+resize, Reshape. Two rulings worth knowing before touching those areas: an
+auto-routed browser satin with a stitch over 12.1 mm goes to fill ("Narrow it
+to the stitch limit", #1471), and border-connected background removal is
+built OFF (`knockoutBackground` option `connected`, #1470; DOCTRINE has why).
+Stage 6 has no byte-identical 2x for `stained_glass` (DOCTRINE; #1472 took
+the 4% that was exact).
 
 **A crash that was the tool.** 6 sweep row-runs died 0xC0000005 at exactly
 120 s with a shapely frame on top of a truncated dump. It was the corpus
