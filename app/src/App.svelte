@@ -719,9 +719,9 @@
   // Multi-select group edits (EmbroideryField's group move/resize and
   // ContentStep's bulk-edit panel): one patch per member, applied in a
   // single immutable pass so undo records ONE step for the whole gesture.
-  function elUpdateMany(patchById, record = true) {
+  function elUpdateMany(patchById, record = true, discrete = false) {
     project = updateElements(project, patchById);
-    persist(record);
+    persist(record, discrete);
   }
 
   function onToggleSelect(id) {
@@ -1371,6 +1371,7 @@
       on:shapefocus={(e) => (selectedShape = e.detail)}
       on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet, !!e.detail.discrete)}
       on:elupdatemany={(e) => elUpdateMany(e.detail)}
+      on:elupdatemanydiscrete={(e) => elUpdateMany(e.detail, true, true)}
       on:select={(e) => onSelect(e.detail)}
       on:toggleselect={(e) => onToggleSelect(e.detail)}
       on:dims={(e) => onDims(e.detail)}

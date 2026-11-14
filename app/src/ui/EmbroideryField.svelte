@@ -3592,7 +3592,7 @@
     // — it was the one place printing a bare 1289 where the rest say 1,289.
     stats = `${c.stitchCount.toLocaleString()} stitches · ${c.widthMM.toFixed(0)}×${c.heightMM.toFixed(0)} mm · ${hoop.label} hoop`;
     hoopNote = hoopFitNote(c.widthMM, c.heightMM, hoop) || "";
-    rotateFix = rotateToFitPatches(project.elements, c, hoop);
+    rotateFix = rotateToFitPatches(project.elements, c, hoop, result.perElement, placementBoxOf(project));
     // Something DID stitch, but not all of it — e.g. Latin mixed into Hebrew.
     // Rides the stats line next to the other warnings rather than blocking.
     unsupportedNote = (result.unsupported && result.unsupported.length)
@@ -5728,6 +5728,6 @@
     <!-- &nbsp; before each separator, not a plain space: Svelte strips leading
          whitespace inside an element, so " · " rendered as "…hoop· This font".
          Pre-existing on the two older warnings; visible on all three now. -->
-    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{#if rotateFix}&nbsp;<button type="button" class="twolines" data-testid="rotate-to-fit" on:click={() => dispatch("elupdatemany", rotateFix)}>Rotate to fit</button>{/if}{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{#if twoLinesFix}&nbsp;<button type="button" class="twolines" on:click={() => dispatch("elupdate", { id: twoLinesFix.id, patch: { text: twoLinesFix.text } })}>Put on two lines</button>{/if}{/if}{#if contrastNote}<span class="warn" data-testid="contrast-note">&nbsp;· {contrastNote}</span>{/if}{/if}
+    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{#if rotateFix}&nbsp;<button type="button" class="twolines" data-testid="rotate-to-fit" on:click={() => dispatch("elupdatemanydiscrete", rotateFix)}>Rotate to fit</button>{/if}{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{#if twoLinesFix}&nbsp;<button type="button" class="twolines" on:click={() => dispatch("elupdate", { id: twoLinesFix.id, patch: { text: twoLinesFix.text } })}>Put on two lines</button>{/if}{/if}{#if contrastNote}<span class="warn" data-testid="contrast-note">&nbsp;· {contrastNote}</span>{/if}{/if}
   </div>
 </div>
