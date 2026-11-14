@@ -7,6 +7,55 @@ Kent's call.
 The rule below is a **foreman's decision, not a Kent ruling**. Among three candidates (STRICT, NET, a 10 mm² floor),
 the foreman picked NET.
 
+## Ruling, 2026-11-14: "Keep OFF, record"
+
+Kent ruled on 2026-11-14 after seeing the OFF vs NET ON sheets below: **"Keep OFF, record"**.
+
+- `lettering_columns_cover_handback` stays **OFF**.
+- No flip, no further narrowing, and no 10 mm² floor build.
+- The code (#1445, #1484) stays in the tree, built OFF.
+
+The reason, as measured:
+- **NET fails its own pass line on the 13 shapes it was chosen on.** Drone reach falls 2.06 → 1.64 octaves (4-6 mm
+  band), all from one 8 mm² shape: the 'E' of THERMAL.
+- **The fresh run left it untested:** 158 jobs, 51 candidates, **1 hand-back**. That one is the monarch wing cell at
+  91.8 mm, a re-sighting of a shape the rule was chosen on.
+
+**Open items, recorded and NOT tasked:**
+- The monarch loses its V wing cell at 90.50 / 91.75 mm targets
+  ([`monarch-size-cliff-2026-11-13.md`](monarch-size-cliff-2026-11-13.md)).
+- The Gaulke beanie's '&' bowl stays bare (93.8 mm, the pro's width).
+- The owl's −4.5% black at 79.2 / 79.6 / 80.8 / 81.6 mm is untraced (section at the end).
+- **The principled route nobody has built:** the first census's option 4, which is to fix the Column lane where it
+  drops a branch. The '&' bowl and the V cell are both branches the lane's cut does not sew. A hand-back swaps whole
+  shapes onto the ladder instead of sewing the missing branch.
+  - Kent's eye on the Gaulke '&', 2026-11-14, verbatim: **"the & was better on"**. Asked whether that changes the
+    ruling, he chose **"Record my eye, stay OFF"**.
+  - *Interpretation, not his words:* this is evidence that sewing the dropped branch is worth doing. It also suggests
+    the counter (holes) figure overstates the harm on this shape.
+
+### The sheets Kent ruled on
+
+These are OFF vs NET ON, each pair digitized fresh. The Gaulke '&' sheet is a board pair's art, so it stays in
+gitignored `pro_renders/` and is not committed.
+
+![monarch whole design, 90.50 mm, OFF vs NET ON](renders/handback-narrowed-2026-11-14/monarch-whole-90.50-off-vs-net.jpg)
+
+![drone THERMAL line, 62.6 mm, OFF vs NET ON](renders/handback-narrowed-2026-11-14/drone-line-off-vs-net.jpg)
+
+![drone 'E' shape S95978c7e, OFF vs NET ON](renders/handback-narrowed-2026-11-14/drone-shape-off-vs-net.jpg)
+
+![bukit_asam 'a', 80 mm: NET leaves it on the lane, identical to OFF](renders/handback-narrowed-2026-11-14/bukit-a-off-vs-net.jpg)
+
+Read by eye:
+- **Monarch:** the lower butterfly's V cell is bare under OFF and filled under NET ON.
+- **Drone:** the THERMAL 'E' turns from stacked bars into a criss-cross ladder.
+- **Bukit 'a':** identical, and the whole design is byte-identical OFF vs ON.
+- **Gaulke '&'** (93.8 mm, not committed): the bowl is sewn, but thread covers half the counter. Cover 0.62 → 0.97,
+  counter 0.23 → 0.50.
+  - **Kent judged the ON render better by eye** despite the smaller counter, verbatim: "the & was better on".
+  - The ruling stays OFF ("Record my eye, stay OFF").
+
 ## In short
 
 - **The 13 shapes NET was chosen on (a description, not a test):**

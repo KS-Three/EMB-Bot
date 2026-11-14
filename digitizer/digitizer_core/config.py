@@ -1344,6 +1344,22 @@ class PipelineConfig:
     # tags. False is the engine before the flag, byte for byte (md5 against
     # main on three designs). Tests: `tests/test_regular_structure.py`.
     regular_structure: bool = False
+    # Shading the pro flattens sews as the shape it shades (built OFF
+    # 2026-11-13, Kent on Golden Tee, 20 pins: "The bean stitching makes
+    # 'golf' look to bust"; Drone pin 3, "border changes colour too much")
+    # (`bevel_fold.apply_bevel_fold`). Just after the colour cap: a light band on
+    # the page hugging one side of the art (a drop shadow) goes to the page;
+    # two shapes within 15 dE00 sharing a long seam (a ramp the palette split)
+    # become one thread and one shape; a band no wider than two laid threads
+    # (0.8 mm, what we sew as runs and beans) running along a body folds into
+    # it. A band wrapping its parent (a keyline, 60% of its outline), a line
+    # across a shape's inside, and any edge of a page-coloured shape are kept.
+    # Widths are mm at the sewn size, colours CIEDE2000; no fabric constant:
+    # gate 1 does not apply. A DESIGN CHANGE (pro-digitizer-rules 10-21 s4):
+    # the default is Kent's. Golden Tee hat: 6 -> 4 threads; Drone's ring one
+    # colour. False is the engine before the flag, byte for byte. Tests:
+    # `tests/test_bevel_fold.py`.
+    bevel_ring_fold: bool = False
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
@@ -1416,6 +1432,36 @@ class PipelineConfig:
     # (Recommended)". OFF pinned in `PRE_FLIP` and
     # `tests/engine_2026_10_27.json`.
     flat_ramp_blend_dissolve: bool = True
+    # The same round on a raster the grid SHRANK or kept (built OFF
+    # 2026-11-14, `stage2_quantize.BLEND_BAND_PX`). A JPEG's
+    # blend rim between two inks is made by compression and anti-aliasing,
+    # not resampling, and on a source at or above the grid it sews as a
+    # thread of its own: silhouette_logo's white letters in mint satin
+    # outlines (Kent: "all of the extra green stitches ... are the same
+    # issue", 30 pins), its bear in a dark-green ring, ProSeal's teal bar
+    # topped by a 0.33 mm Spearmint band ("The satin border is changing
+    # colors too much"). Each is a blend by colour (mint 5.4 dE off the
+    # green-white chord, the ring 3.8) that the one-pixel edge gate keeps
+    # (0.64, 0.36, 0.65 against 0.9), and this round never ran: it was
+    # enlarged rasters only. ON: a 2-working-px band, the Lab OR the RGB
+    # chord (ProSeal's band is 6.3 off the Lab one), and each band pixel
+    # takes the label of the nearest pixel outside the band, the page
+    # included, so a rim splits between the two things it lies between
+    # (joined all to the ink, ProSeal's hexagon cells closed their gaps),
+    # and only to a piece over stage 4's hole floor and thicker than a
+    # hairline (silhouette's pale disc-edge row grew into white strips).
+    # (Folding the whole cluster into one end, tried first, painted the same
+    # pale colour's specks elsewhere with it: ProSeal's subline grew a teal
+    # N.) Once a band dissolves, the one-pixel round's blends join the same
+    # way, to the ink only: by nearest kept centre in Lab, the black
+    # letters' grey edge went to the teal once the pale band was gone. A
+    # thin colour that is NOT between its
+    # neighbours (a keyline) is untouched: the colour test is unchanged. An
+    # enlarged raster is unchanged. Different from the bevel/shadow fold in
+    # `enforce_color_cap` (`regular-structure` lane): that folds a ONE-sided
+    # band by size after the cap; this folds a TWO-sided blend at stage 2,
+    # before any thread exists. Off, byte-identical.
+    flat_blend_band_any_scale: bool = False
     # Also under `flat_page_fringe_exclude`: the blend between a THIN DARK
     # OUTLINE and the fill beside it (`stage2_quantize.outline_inner_blend`) is
     # fringe too. An outline is the darkest label when half of its pixels sit
@@ -3704,6 +3750,23 @@ class PipelineConfig:
     # three in-letter hops with no on-letter route. Tests:
     # `tests/test_column_ends.py`.
     lettering_columns_inside_connectors: bool = True
+    # Under `lettering_columns`, no needle-down hop between two of a
+    # letter's runs lies on satin the letter has already finished (2026-11-14,
+    # built OFF; `columns._connectors_under`). The walk ends each leg's zigzag
+    # on its last cross's b rail, and the connector to the next leg ran back
+    # across the stroke just sewn, on top of it: Kent's "random cross over
+    # stitch" pins #14/#15 on Becker hat large (5.8 and 5.9 mm of running
+    # stitch on the E's finished arms). Read off the stitch lists, ours left
+    # running stitch on finished satin on every Becker (5.5-8.7 mm) and MFab
+    # (4.2-12.3 mm) job; 17 of the pro's 22 files leave none, two at most
+    # 0.97 mm, and the other three are outline detail (Drone) or a run along
+    # a stroke's edge (ProSeal) where read, not a hop across a finished
+    # stroke (`docs/connectors-on-top-2026-11-14.md`). ON: each leg ends on
+    # the rail whose hop lies less on finished satin, and a hop still
+    # leaving more than `columns._ON_TOP_MAX_MM` on top walks the centrelines
+    # under satin still to come, else is cut (a trim). False is the walk as
+    # it was, byte for byte. Tests: `tests/test_column_connectors_buried.py`.
+    lettering_columns_connectors_buried: bool = False
     # Under `lettering_columns`, let a thin STEM under the area floor reach
     # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
     # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2

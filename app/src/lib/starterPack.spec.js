@@ -255,20 +255,47 @@ describe("what lands on the canvas", () => {
     }
   });
 
-  test("on every garment a design fits the placement, like any other import", async () => {
+  // Kent 2026-11-14, "Stop at 75%, say so": auto-fit of a stitch file no longer
+  // shrinks it to the placement at any cost. It fits, or it sits exactly at the
+  // 75% edge of the safe range and overflows the box (DesignPanel then says so:
+  // StarterOverflow.spec.js). Before, every starter fitted every garment; the
+  // table of what overflows now is in PR 1495.
+  test("on every garment and placement a design either fits it or sits exactly at the 75% limit", async () => {
     const MM_PER_INCH = 25.4;
     const patches = await Promise.all(designs.map((d) => pack.loadStarterPatch(d, packFetch())));
-    let clamped = 0;
-    for (const garment of EMB.GARMENTS) {
-      for (const patch of patches) {
-        const el = { ...project.defaultDesignElement("e1"), ...patch };
-        const built = generate.generateElement(el, garment, {});
-        expect(built.widthMM, `${patch.name} on ${garment.id}`).toBeLessThanOrEqual(garment.widthIn * MM_PER_INCH + 0.05);
-        expect(built.heightMM, `${patch.name} on ${garment.id}`).toBeLessThanOrEqual(garment.heightIn * MM_PER_INCH + 0.05);
-        if (built._debug.scale < 1) clamped++;
+    let shrunk = 0, atLimit = 0;
+    for (const base of EMB.GARMENTS) {
+      for (const pid of EMB.GARMENT_PLACEMENTS[base.id] || [base.id]) {
+        const garment = EMB.resolvePlacement(base.id, pid === base.id ? null : pid); // as placed, like the Studio
+        const boxW = garment.widthIn * MM_PER_INCH, boxH = garment.heightIn * MM_PER_INCH;
+        for (const patch of patches) {
+          const where = `${patch.name} on ${pid}`;
+          const el = { ...project.defaultDesignElement("e1"), ...patch };
+          const built = generate.generateElement(el, garment, {});
+          const sc = built._debug.scale;
+          expect(sc, where).toBeGreaterThanOrEqual(0.75 - 1e-9);
+          expect(sc, where).toBeLessThanOrEqual(1.5 + 1e-9);
+          if (sc < 1) shrunk++;
+          const fits = built.widthMM <= boxW + 0.05 && built.heightMM <= boxH + 0.05;
+          if (!fits) {
+            atLimit++;
+            expect(sc, `${where} overflows, so it must sit exactly at the limit`).toBeCloseTo(0.75, 9);
+          }
+        }
       }
     }
-    // The check above is not vacuous: some placements are smaller than some designs.
-    expect(clamped).toBeGreaterThan(0);
+    // Not vacuous: some placements are smaller than some designs, and the
+    // limit is reached (Shamrock on the hat front: 58.95 mm tall in a 57.2 box).
+    expect(shrunk).toBeGreaterThan(0);
+    expect(atLimit).toBeGreaterThan(0);
+  });
+
+  test("a design that fits a placement is inserted as it always was (no limit, no shrink)", async () => {
+    const patches = await Promise.all(designs.map((d) => pack.loadStarterPatch(d, packFetch())));
+    const garment = EMB.getGarment("full_back"); // 12 in: everything fits
+    for (const patch of patches) {
+      const built = generate.generateElement({ ...project.defaultDesignElement("e1"), ...patch }, garment, {});
+      expect(built._debug.scale, patch.name).toBe(1);
+    }
   });
 });

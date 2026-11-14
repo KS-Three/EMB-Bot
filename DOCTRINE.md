@@ -1455,6 +1455,29 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   bodies; the lettering tag is the guard. *(ruled 2026-11-11 —
   `docs/transparent-white-infill-2026-11-11.md`)*
 
+- **No byte-identical change makes a slow photo row twice as fast in stage 6;
+  do not hunt for a memo.** `stained_glass` (80 mm, 6 colours) spends about
+  325 of its 354 s in `plan_stitches`, 215 s of that in `travel_path`, and the
+  expensive GEOS work there is unique per query: of 7,675 covered
+  `travel_path` calls that miss the bridge memo only 9 repeat their full
+  input, and plain repeats are worth 2.5 s. A memo, a hoist or a prepared
+  geometry therefore reaches nothing without changing a GEOS call sequence,
+  which can move a coordinate in the last bit. The one exact gain shipped
+  (`_seam_apart`, about 4% on the row). A step change needs a decision that
+  changes stitches: fewer covered pricing walks, pricing the emitted order
+  once, or a cheaper stand-in for the unsewn-ground inset. Kent 2026-11-13:
+  "Leave it there". *(measured 2026-11-13 — PR #1472)*
+
+- **Border-connected background removal is not a default for the browser
+  engine as built.** `knockoutBackground`'s `connected: true` keys out only
+  background that reaches the image border, which keeps a white square inside
+  a badge. Switched on across 305 Studio-built designs it moves 79: any closed
+  outline sews its whole interior (toat_beanie 8,946 → 19,460 stitches, white
+  takes a colour slot), and Hotel Fremont keeps its O counters while the band
+  round them is keyed out. A default needs a garment-aware rule for enclosed
+  ground like the Python lane's. Kent 2026-11-13: "Ship it switched off".
+  *(measured 2026-11-13 — PR #1470)*
+
 ---
 
 ## SAM2 does not see a logo as a scene of objects — refuted on all nine real logos (2026-09-22)

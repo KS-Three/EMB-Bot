@@ -8,6 +8,7 @@
   import Advanced from "./Advanced.svelte";
   import { rotationPatch } from "../lib/hoop.js";
   import { rotatedWidth } from "../lib/staleness.js";
+  import { STITCH_FILE_AUTO_RANGE } from "../lib/generate.js";
 
   // Editor panel for an imported pre-digitized design element (.dst file).
   // The file's raw bytes live on the element as base64 (see project.js's
@@ -15,6 +16,8 @@
   // panel only ever decodes for DISPLAY (block list, stats) — generation
   // decodes through generate.js's cache.
   export let element;
+  // The field's report of the selected element's drawn size (App's designDims).
+  export let designDims = null;
 
   const d = createEventDispatcher();
   const MAX_BYTES = 1024 * 1024; // 1MB — DSTs are KB-scale; localStorage isn't infinite
@@ -162,13 +165,26 @@
   // the decoded design's extents in the CURRENT orientation.
   $: rotation = element.rotationDeg || 0;
   $: nativeWidthNow = rotatedWidth(decoded, rotation);
-  $: scaleFactor = decoded && element.sizeMm ? element.sizeMm / Math.max(0.1, nativeWidthNow) : 1;
+  // The width it is DRAWN at: the typed/dragged `sizeMm`, or -- while sizeMm
+  // is null, i.e. auto-fit -- the width the field reports (`designDims`, the
+  // selected element's stitch bbox). A garment switch re-fits an auto-fit
+  // design (hat: 91 -> 60 mm) without touching sizeMm, so reading sizeMm alone
+  // said "100%" and "sews exactly as digitized" over a design scaled to 66%
+  // (2026-11-14). Derived, not stored: one Undo of the switch restores it.
+  $: drawnWidthMm = element.sizeMm || (designDims && designDims.widthMM) || 0;
+  $: scaleFactor = decoded && drawnWidthMm ? drawnWidthMm / Math.max(0.1, nativeWidthNow) : 1;
   // Kent's rule (2026-07-29): ANY resize of an uploaded stitch file gets a
   // warning — density silently changes from the first percent, not just
   // past the old 75–150% band. The band still marks the "expect visible
   // problems" escalation.
   $: resized = Math.abs(scaleFactor - 1) > 0.02;
-  $: scaleWarnHard = scaleFactor < 0.75 || scaleFactor > 1.5;
+  // Auto-fit stops a stitch file at the range's edge (generate.js
+  // STITCH_FILE_AUTO_RANGE) instead of shrinking it to the placement: with no
+  // typed width, a factor sitting on an edge means the file did not fit.
+  // 1% slack: designDims is the stitch bbox, rounded to 0.1 mm.
+  $: autoStopEdge = element.sizeMm ? null
+    : STITCH_FILE_AUTO_RANGE.find((e) => Math.abs(scaleFactor - e) < 0.01 && e !== 1) ?? null;
+  $: scaleWarnHard = autoStopEdge == null && (scaleFactor < 0.75 || scaleFactor > 1.5);
   // `rotatedWidth` is staleness.js's, the engine's own measure of the turned
   // stitches (review follow-up, 2026-11-13). This panel kept a turned-
   // RECTANGLE copy, which read a round design turned 45 degrees as 41% wider
@@ -188,7 +204,7 @@
   {#if decoded}
     <p class="dp-stats">
       {element.name || "Imported design"} — {decoded.stitchCount.toLocaleString()} stitches ·
-      {decoded.widthMM.toFixed(0)}×{decoded.heightMM.toFixed(0)} mm ·
+      {#if resized && designDims}{designDims.widthMM.toFixed(0)}×{designDims.heightMM.toFixed(0)} mm (file: {decoded.widthMM.toFixed(0)}×{decoded.heightMM.toFixed(0)}) ·{:else}{decoded.widthMM.toFixed(0)}×{decoded.heightMM.toFixed(0)} mm ·{/if}
       {decoded.colorCount} color{decoded.colorCount === 1 ? "" : "s"} · {decoded.trimCount} trims
     </p>
 
@@ -259,7 +275,9 @@
         <span class="dp-warn-icon"><Icon name="warning" size={14} /></span> Resized to {(scaleFactor * 100).toFixed(0)}% — a stitch file is NOT re-digitized when
         you resize it: the existing stitches just scale, so thread density and detail change
         with the size.{#if scaleWarnHard}&nbsp;This is well outside the safe 75–150% range —
-        expect gaps or bunching when it sews.{:else}&nbsp;Small changes are usually fine; stay
+        expect gaps or bunching when it sews.{:else if autoStopEdge != null}&nbsp;Auto-fit stopped
+        at the {(autoStopEdge * 100).toFixed(0)}% limit of the safe 75–150% range: this file does
+        not fit the placement, so it sits past its edge.{:else}&nbsp;Small changes are usually fine; stay
         inside 75–150% of the original.{/if}
       {:else}
         Pre-digitized file: it sews exactly as digitized. Resizing scales the stitches

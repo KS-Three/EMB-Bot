@@ -4010,7 +4010,11 @@ def sequence(
                     **({"text_lean_deg": _lean} if _lean is not None else {}),
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
-                       if cfg.lettering_columns_inside_connectors else {}))
+                       if cfg.lettering_columns_inside_connectors else {}),
+                    # `cfg.lettering_columns_connectors_buried` (built OFF 2026-11-14):
+                    # no hop left on the letter's finished satin; off, today's call
+                    **({"connectors_buried": True}
+                       if cfg.lettering_columns_connectors_buried else {}))
                 # `cfg.lettering_columns_cover_handback` (built OFF): a shape the
                 # lane covers under `HANDBACK_COVER_MIN` is sewn down the ladder
                 # as well, as it would be untagged, ONCE (`handback_trying`), and

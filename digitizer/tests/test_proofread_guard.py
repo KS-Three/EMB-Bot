@@ -11,6 +11,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 from shapely.geometry import box
 
 from digitizer_core import proofread_guard as pg
@@ -95,18 +96,48 @@ def test_keep_art_scope_is_empty_outside_a_guarded_replan():
     assert s5._KEEP_ART.get() == frozenset()
     with s5.keep_art_scope([]):
         assert s5._KEEP_ART.get() == frozenset()
+    # a re-plan that dies (a deadline, a cancel) leaves nothing for the next job
+    with pytest.raises(RuntimeError):
+        with s5.keep_art_scope(["A"]):
+            raise RuntimeError("stopped mid re-plan")
+    assert s5._KEEP_ART.get() == frozenset()
+    # and the next job's thread never sees one set on this one
+    import threading
+    seen = []
+    with s5.keep_art_scope(["A"]):
+        t = threading.Thread(target=lambda: seen.append(s5._KEEP_ART.get()))
+        t.start()
+        t.join()
+    assert seen == [frozenset()]
 
 
-def test_on_a_flat_golden_the_guard_reads_and_changes_nothing():
+def test_on_a_flat_golden_the_guard_reads_and_changes_nothing(monkeypatch):
     """The real path: `finish_generation` hands the traced raster on, the
     guard reads the plan, nothing was clipped away, so the plan is the
     golden's own (md5 as `test_small_print.py` pins it), and preflight
-    carries the guard's record only with the flag on."""
+    carries the guard's record only with the flag on.
+
+    Also the order `shape_memo` relies on to list `_KEEP_ART` as inert: stage
+    5, its only reader, runs before `_plan_stitches` opens the memo scope. If
+    that ever changes, the memo key would miss it."""
     import hashlib
     import json
     from pathlib import Path
+    from digitizer_core import pipeline, shape_memo
     from digitizer_core import preflight as pf
     from digitizer_core.pipeline import digitize
+    order = []
+    real_resolve, real_scope = pipeline.resolve_overlaps, shape_memo.scope
+
+    def resolve_spy(*a, **k):
+        order.append(("stage5", shape_memo.active()))
+        return real_resolve(*a, **k)
+
+    def scope_spy(*a, **k):
+        order.append(("memo_scope", None))
+        return real_scope(*a, **k)
+    monkeypatch.setattr(pipeline, "resolve_overlaps", resolve_spy)
+    monkeypatch.setattr(shape_memo, "scope", scope_spy)
     from tests.conftest import FLAT_GOLDEN_MD5
     testdata = Path(__file__).resolve().parents[1] / "testdata"
     fixture = sorted(FLAT_GOLDEN_MD5)[0]
@@ -122,3 +153,5 @@ def test_on_a_flat_golden_the_guard_reads_and_changes_nothing():
     off = pf.run_preflight(result, plan, PipelineConfig(**kw), image=testdata / fixture)
     assert "proofread_guard" not in off["metrics"]
     assert np.isfinite(on["metrics"]["proofread_guard"]["read_s"])
+    assert [e for e, _ in order] == ["stage5", "memo_scope"], order
+    assert not any(active for e, active in order if e == "stage5"), order
