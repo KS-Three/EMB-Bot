@@ -7,6 +7,7 @@
   import Icon from "./Icon.svelte";
   import Advanced from "./Advanced.svelte";
   import { rotationPatch } from "../lib/hoop.js";
+  import { rotatedWidth } from "../lib/staleness.js";
 
   // Editor panel for an imported pre-digitized design element (.dst file).
   // The file's raw bytes live on the element as base64 (see project.js's
@@ -168,17 +169,12 @@
   // problems" escalation.
   $: resized = Math.abs(scaleFactor - 1) > 0.02;
   $: scaleWarnHard = scaleFactor < 0.75 || scaleFactor > 1.5;
-
-  function rotatedWidth(dec, deg) {
-    if (!dec) return 0.1;
-    const rot = ((deg % 360) + 360) % 360;
-    if (rot === 0 || rot === 180) return dec.widthMM;
-    if (rot === 90 || rot === 270) return dec.heightMM;
-    const rad = (rot * Math.PI) / 180;
-    // Bbox width of a rotated axis-aligned box — close enough for a warning
-    // threshold (the engine computes the true rotated stitch bbox itself).
-    return Math.abs(dec.widthMM * Math.cos(rad)) + Math.abs(dec.heightMM * Math.sin(rad));
-  }
+  // `rotatedWidth` is staleness.js's, the engine's own measure of the turned
+  // stitches (review follow-up, 2026-11-13). This panel kept a turned-
+  // RECTANGLE copy, which read a round design turned 45 degrees as 41% wider
+  // than it sews: "Resized to 71%" on a design at 100%. With the true width
+  // the factor is the scale the engine applies, so the 2% note and the
+  // 75-150% band still mean what they say: how far the stitches were scaled.
 </script>
 
 <div class="designpanel">
