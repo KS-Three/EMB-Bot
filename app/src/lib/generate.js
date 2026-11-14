@@ -176,7 +176,14 @@ export function generateElement(element, garment, runtime) {
     // trims/sequencing pipeline (digitize.js's shape.tierOverride is what
     // makes the manual satin/fill CHOICE stick instead of being
     // re-classified by width/branch-guard heuristics).
-    const { regions, pxPerMm } = shapesToRegions(element.shapes);
+    //
+    // "Join touching strokes" (pen + auto-branch spec 2026-11-13 §3; built
+    // OFF, Kent): with the drawing's tick on, same-colour Columns that touch
+    // arrive as one region and the engine sews them as one path. Off or
+    // absent, shapesToRegions is called exactly as it always was.
+    const { regions, pxPerMm } = element.joinStrokes
+      ? shapesToRegions(element.shapes, { joinStrokes: true, joinComponents: EMB.joinComponents })
+      : shapesToRegions(element.shapes);
     if (!regions.length) return null;
     const fabric = fabricInForce(garment.id, runtime && runtime.fabricProfile);
     return EMB.buildQualityDesign(regions, {

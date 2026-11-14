@@ -1,6 +1,6 @@
 ---
 name: pen-stroke-2026-11-13
-description: Pen (PR 1 of pen + auto-branch): a drag in Column or Line mode draws the stroke; tangent curve fit, snap with hook trim, next column takes the last edited width; Kent's 3 rulings; auto-branch is PR 2, built OFF
+description: Pen + auto-branch: a drag in Column or Line mode draws the stroke (tangent fit, snap with hook trim, last edited width); "Join touching strokes" tick built OFF sews touching same-colour Columns as one path; Kent's 3 rulings
 metadata:
   type: project
 ---
@@ -18,6 +18,16 @@ metadata:
 - A refused stroke stays as the draft (`draftFromPen`) and the next drag replaces it; a clicked draft is never preempted. `snapSpines` is computed per shapes change, never per pointer move (`shapeProblems` on a column is a self-crossing test).
 - A 90 degree corner is NOT kept sharp: jittered, it reads as little as 54 degrees over the 8 px window and a 2 mm-radius loop reads up to 68, so no threshold separates them. It rounds by about the sigma (0.7 mm at the nominal scale).
 - Driving the pen from a page script: a draft left by an earlier synthetic click stops the pen arming (pen needs an empty draft), and localStorage restores earlier test elements after a reload, so count the element rows before reading "colors".
-- Observed, not traced: one drawing with two same-colour Columns reads "2 colors" in the footer. `shapesToRegions` emits a region per shape and the Studio never passes `minimizeColorChanges`. Spec section 7 makes this PR 2's first check.
+- Traced 2026-11-14: every hand-drawn shape is its own colour block (a trim and a colour change), same thread or not. `shapesToRegions` emits a region per shape and the manual branch never passes `minimizeColorChanges`; already a `todo` in `test/colour-order.test.js`. Not changed: it moves every existing drawing with two same-colour shapes, so it is Kent's call.
 
-**Next (PR 2):** `joinStrokes` tick, same-colour touching Columns routed by lettering's `routeGlyph` (`src/satinfont.js`), X crossings diced behind an option so fonts stay byte-identical, and the exposed-travel instrument (bar 0.00 mm) before Kent is asked about the default.
+**PR 2, auto-branch (2026-11-14), built OFF.** `joinStrokes` on the manual element, tick "Join touching strokes" in ManualPanel. Ticked, same-colour Columns that touch are one region (members keep their own id, ring, rails; `sewAs.join: true`) and `buildQualityDesign` sews them as one path through `satinfont.routeColumnGroup`.
+- The glyph router's touch rule is wrong for a drawing: its radius is 1.3 x the median column width (a 4 mm stroke joins anything within 5.2 mm, over bare cloth) and it cuts only between 6% and 94% of a column. Hand-drawn columns use `joinGraph`: an end touches when inside the other column's body (half ITS width), spines that cross touch, no constant. The walk after the graph is `routeGlyph`'s, fonts byte-identical.
+- One rule asked twice: the Studio groups with `EMB.joinComponents`, handed into `shapesToRegions` (which stays engine-free); do not restate the touch test in the Studio.
+- No proxy ring (the first spec draft had one): it leaves the other members out of the design bbox and unclickable.
+- `tuckSatinEnds`: a satin span ends on a rail and the step to the next span lay across finished satin half the time (2.1 mm on a 4 mm L, by walk direction). Sew the last cross back and leave from the other rail when that step is covered.
+- Instrument `tools/join-strokes.mjs` (`--svg` for the sheet): 12 groups, jumps + trims inside 0, travel no later satin covers 0.00 mm, on bare cloth 0.00 mm. Tuck off (`joinTuck: false`): up to 2.10 mm on finished satin, never bare cloth.
+- A satin run's stitches are NOT rail A on even indices and rail B on odd: `emitZigzag` leads with the other rail on every second cross (A0 B0 B1 A1 A2 B2). A body polygon built on parity crosses itself (holds half the column) and still read a plausible 0.00 to 0.29 mm; stitch triangles (three in a row) leave gaps that pinch to the spine and read 11 mm bare. Use the quad of each four stitches in a row, and give any such measure known-answer cases (the test has three). The reviewer agent caught the first; the tuck shared it.
+- A group sews where its LAST member was drawn. On fleece and terry (satin underlay `zigzag`) a group takes the centre walk, not what a lone column gets.
+- Lane trap: `node_modules` as a junction to the main checkout's (disk at 10 GB) needs `server.fs.strict: false` for component specs and the dev server, and local Playwright reuses whatever is on :5183, which may be another lane's server.
+
+**Next:** Kent sees the sheet (joined beside as drawn) before any question about the default. Lines in a group, entry/exit dragging: out of scope (spec section 6).

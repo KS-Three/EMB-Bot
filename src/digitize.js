@@ -1570,6 +1570,81 @@
       return out;
     }
 
+    // JOINED COLUMNS (pen + auto-branch spec 2026-11-13 §3). Hand-drawn
+    // columns that touch, which the Studio hands over in ONE region with
+    // `sewAs.join` set on each, sew as one needle-down path: satinfont's
+    // routeColumnGroup lays the travel first, as a running underpath along a
+    // column's own spine, and the satin over it. No trim and no jump inside
+    // the group; the trim before a long travel IN is the one any shape gets.
+    //
+    // Satin spacing, pull compensation and slant are the lone column's. The
+    // underlay is the router's centre walk under each satin span, at the
+    // underlay stitch length used here. For a fabric whose satin underlay is
+    // `center_run` that is the pass a lone column gets; for one whose style is
+    // `zigzag` it is not (the router has no such pass), and a joined group
+    // there takes the centre walk.
+    //
+    // Never reached without `sewAs.join`, which only the Studio's "Join
+    // touching strokes" tick sets (built OFF, Kent 2026-11-13).
+    const isJoinedColumn = (s) => !!(s && s.sewAs && s.sewAs.kind === "column" && s.sewAs.join &&
+      Array.isArray(s.sewAs.railA) && Array.isArray(s.sewAs.railB) && s.sewAs.railA.length >= 2 && s.sewAs.railB.length >= 2);
+    const GROUP_SPAN_KIND = { satin: "satin", underlay: "underlay", underpath: "travel" };
+    // -> true when the group sewed; false (and nothing emitted) when the
+    // router returned no satin, so the caller can sew the members one by one.
+    function sewColumnGroup(members) {
+      let routed = [];
+      try {
+        routed = satinfontmod.routeColumnGroup(members.map((s) => ({ railA: s.sewAs.railA, railB: s.sewAs.railB })), {
+          pxPerMm: pxPerFinalMm, spacingMm: satinSpacingMm, pullCompMm, slantDeg: o.satinSlantDeg || 0,
+          underlay: useUnderlay ? "center" : null, underlayStepMm: underlayStitchPx / pxPerFinalMm,
+          tuck: o.joinTuck !== false,   // off only for the instrument (tools/join-strokes.mjs)
+        });
+      } catch (e) { routed = []; }
+      routed = (routed || []).filter((run) => run && run.pts && run.pts.length >= 2 && GROUP_SPAN_KIND[run.kind]);
+      if (!routed.some((run) => run.kind === "satin")) return false;
+      // A member that sewed no satin has an outline over no stitches.
+      const sewed = new Set(routed.filter((run) => run.kind === "satin").map((run) => run.col));
+      members.forEach((s, i) => { if (!sewed.has(i)) dropOutline(s.outer); });
+      const gapTo = (p) => Math.hypot(p.x - lastPx.x, p.y - lastPx.y);
+      // A stitch on the hole the last stitch made is not laid: the walk comes
+      // back to a junction as often as a span ends on it.
+      const lay = (q) => {
+        const d = T(q), p = stitches[stitches.length - 1];
+        if (p && p.type === "stitch" && p.x === d.x && p.y === d.y) return;
+        stitches.push({ x: d.x, y: d.y, type: "stitch" });
+      };
+      let firstRun = true;
+      for (const run of routed) {
+        const id = members[run.col] ? members[run.col].id : "";
+        const start = run.pts[0];
+        if (firstRun) {
+          if (started && !justChangedColor && gapTo(start) > trimAtPx) emitTrimAtLast();
+          justChangedColor = false;
+          const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
+        } else if (run.jump) {
+          // The router found two sets where the Studio found one. Not expected
+          // (one rule serves both); if it happens the float is cut, not sewn.
+          if (gapTo(start) > trimAtPx) emitTrimAtLast();
+          const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
+        } else {
+          // Needle down from where the last span ended to where this begins:
+          // both ends are at one junction, inside a column's body.
+          const steps = Math.max(1, Math.ceil(gapTo(start) / maxPx));
+          const ti0 = stitches.length, from = lastPx;
+          for (let k = 1; k < steps; k++) { const t = k / steps; lay({ x: from.x + (start.x - from.x) * t, y: from.y + (start.y - from.y) * t }); }
+          pushSpan(ti0, "travel", id);
+        }
+        const ri0 = stitches.length;
+        for (const q of run.pts) lay(q);
+        pushSpan(ri0, GROUP_SPAN_KIND[run.kind], id);
+        if (run.kind === "satin") nSatin++;
+        lastPx = run.pts[run.pts.length - 1];
+        firstRun = false;
+      }
+      started = true;
+      return true;
+    }
+
     let prevRgb = null;
     for (const r of regions) {
       // minimizeColorChanges: when the current region's EXACT rgb matches the
@@ -1611,7 +1686,16 @@
         : (o.angleOverrides != null ? o.angleOverrides[r._origIdx] : null);
       if (ov != null && isFinite(ov)) regionAngle = ((ov % 180) + 180) % 180;
       const shapes = orderShapes(shapes0, lastPx);
+      // The region's joined columns sew once, as one path, where the first of
+      // them comes up in the order above. A group the router cannot sew falls
+      // through: each member is still a whole column and sews as one below.
+      const joined = shapes.filter(isJoinedColumn);
+      let group = joined.length >= 2 ? "pending" : "none";
       for (const shape of shapes) {
+        if ((group === "pending" || group === "sewn") && isJoinedColumn(shape)) {
+          if (group === "pending") group = sewColumnGroup(joined) ? "sewn" : "failed";
+          if (group === "sewn") continue;
+        }
         const poly = shape.outer;
         if (!poly || poly.length < 3) { if (poly) dropOutline(poly); continue; } // see the shapes0 filter's comment above
         // Hole floor is 3 too, for the reason in the shapes0 comment above: it was missed when the outer floor was relaxed.
