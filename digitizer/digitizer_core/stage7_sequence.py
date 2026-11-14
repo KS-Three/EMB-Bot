@@ -3135,28 +3135,11 @@ def sequence(
     # crosses (stage6_satin's note after `_clamp_to_span`). The likeness
     # fallback reaches satin NOT: measured on To a T machine, it pushed a
     # mirrored satin pair from 9 to 15 deg apart and moved a 286 mm^2 shape
-    # 5.5 deg. Off: both empty, every call is today's.
+    # 5.5 deg. Off: both empty, every call is today's. Computed below, once
+    # the outline bodies are known: a member's own angle is read on the
+    # polygon its rung fills (an outline body's is grown by the pull).
     group_fill: dict[str, float] = {}
     group_satin: dict[str, float] = {}
-    if cfg.group_consistent_fill_angle and design_class not in PHOTO_CLASSES:
-        from .bean_rule import min_dim_mm as _gmin_dim
-        from .group_consistency import rect_axis, shared_angles
-        from .stage6_fill import best_fill_angle_deg
-        _auto = [_pr for _pr in planned
-                 if str(_pr.region.meta.get("tier", "auto")).lower() == "auto"
-                 and not is_lettering(_pr.region, cfg) and not is_text(_pr.region, cfg)]
-        _by_id = {_pr.shape_id: _pr for _pr in _auto}
-        group_fill = shared_angles(
-            [_pr.region for _pr in _auto if _fill_angle_for(_pr, cfg) is None],
-            lambda r: best_fill_angle_deg(_by_id[r.shape_id].polygon, row_mm))
-        if cfg.satin_angle_deg is None:
-            group_satin = shared_angles(
-                [_pr.region for _pr in _auto
-                 if _pr.region.meta.get("satin_angle_deg") is None
-                 and _pr.region.meta.get("design_angle_deg") is None
-                 and _gmin_dim(_pr.region.polygon) >= GROUP_SATIN_MIN_DIM_MM],
-                lambda r: (rect_axis(r.polygon)[0] + 90.0) % 180.0,
-                fallback=False, mirrored=False)
 
     def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
         if (pr_tier == "auto" and cfg.bean_only_lines
@@ -3434,6 +3417,39 @@ def sequence(
         keyline_beans = (keyline_regions([_p.region for _p in planned], set(outline_rings),
                                          cfg, ink=ink_source) if outline_rings else set())
     keyline_limits = keyline_body_limits(planned, keyline_beans) if keyline_beans else {}
+    # `cfg.group_consistent_fill_angle`: the shared angles (see the
+    # declaration of `group_fill` above).
+    if cfg.group_consistent_fill_angle and design_class not in PHOTO_CLASSES:
+        from .bean_rule import min_dim_mm as _gmin_dim
+        from .group_consistency import rect_axis, shared_angles
+        from .stage6_fill import best_fill_angle_deg
+
+        def _fill_poly(_pr):
+            # the polygon `stitch_one` fills: an outline body's grown body
+            # (its rung, below), every other fill's own
+            if _pr.shape_id not in outline_bodies:
+                return _pr.polygon
+            body = _pr.polygon
+            if _pr.satin_tier and fabric.pull_comp_mm > 0:
+                body = keyline_held(grown_body(body, fabric.pull_comp_mm),
+                                    keyline_limits.get(_pr.shape_id))
+            return body
+
+        _auto = [_pr for _pr in planned
+                 if str(_pr.region.meta.get("tier", "auto")).lower() == "auto"
+                 and not is_lettering(_pr.region, cfg) and not is_text(_pr.region, cfg)]
+        _by_id = {_pr.shape_id: _pr for _pr in _auto}
+        group_fill = shared_angles(
+            [_pr.region for _pr in _auto if _fill_angle_for(_pr, cfg) is None],
+            lambda r: best_fill_angle_deg(_fill_poly(_by_id[r.shape_id]), row_mm))
+        if cfg.satin_angle_deg is None:
+            group_satin = shared_angles(
+                [_pr.region for _pr in _auto
+                 if _pr.region.meta.get("satin_angle_deg") is None
+                 and _pr.region.meta.get("design_angle_deg") is None
+                 and _gmin_dim(_pr.region.polygon) >= GROUP_SATIN_MIN_DIM_MM],
+                lambda r: (rect_axis(r.polygon)[0] + 90.0) % 180.0,
+                fallback=False, mirrored=False)
     # Seam ownership's "still to sew" set — see `border_later`'s declaration
     # above for the predicate and its blind spots.
     for _p in planned:

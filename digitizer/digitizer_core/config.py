@@ -3753,11 +3753,14 @@ class PipelineConfig:
     # like candidates within one outline: AHORA's sewn pink field took AH
     # (1.059) and RA (1.023, against `machine.OUTLINE_BODY_RATIO` 1.0) as
     # bodies -- fill under a pink loop -- and left O (0.612) and ! (0.456) to
-    # the classifier, satin. ON every letter is satin. Its own flag because
-    # the price differs: AH and RA are fused in the art and sew rougher as
-    # one satin shape (the A's apex a lump, a zigzag at the A-H foot) than
-    # as OFF's fills. A candidate made a body must be `machine.MIN_FILL_WIDTH_MM`
-    # across on average.
+    # the classifier, satin; Kent pinned the O and the ! as the odd ones. ON
+    # the line decides by INK, not region count (AH and RA are four letters,
+    # 435 mm^2, against 121), and when the two sides are within 1.5x by the
+    # wider strokes' construction -- a wide stroke forced into satin is the
+    # lumpy case (`group_consistency.outline_side`). AHORA ON: O, ! and its
+    # dot fill under the loop like AH and RA. A two-piece glyph (the ! and
+    # its dot) joins a line its pieces span together. A candidate made a body
+    # must be `machine.MIN_FILL_WIDTH_MM` across on average.
     group_consistent_outline_body: bool = False
     # A word's THREAD decided once (`lettering_thread.word_thread`): a
     # text-cluster letter on a thread under a quarter of its word takes the

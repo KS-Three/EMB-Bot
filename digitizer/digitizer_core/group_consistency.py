@@ -27,7 +27,8 @@ GROUP    like shapes on one line (`like_lines`): one thread, heights within
          `lettering_thread.STRAY_HEIGHT_RATIO`, sharing
          `STRAY_MIN_OVERLAP` of the shorter height, within `STRAY_MAX_GAP_H`
          heights of a member -- the stray-letter rule's own line test -- and at
-         least `textcluster.MIN_CLUSTER_MEMBERS` of them. No new constant.
+         least `textcluster.MIN_CLUSTER_MEMBERS` of them; a two-piece glyph
+         joins a line its pieces span (`STACK_BAND_TOL`).
 DECIDED  a member whose measure sits more than `MARGIN` times off the
          threshold, either way, is evidence; one inside the band is not.
 VERDICT  the decided members' side when they all agree; the median measure's
@@ -36,6 +37,11 @@ VERDICT  the decided members' side when they all agree; the median measure's
 FOLLOW   an undecided member takes the verdict, unless the caller's guard says
          its shape cannot take that construction (a satin the classifier
          refuses, a fill body under the fill floor).
+
+That is the run floor's rule. The outline body is decided by INK instead
+(`outline_side`): the side with more area, or, within `MARGIN`, the side
+with the wider strokes, and every member follows -- AHORA's odd ones, the
+O and the !, were decided readings (0.61, 0.46) on the minority of ink.
 
 Pure: reads geometry and thread indices, decides nothing about cloth. Off,
 nothing calls it.
@@ -55,6 +61,60 @@ from .textcluster import MIN_CLUSTER_MEMBERS
 #: a cloth value (ROADMAP gate 1: no machine settles it); fitted on the census
 #: above and nothing else -- a CANDIDATE.
 MARGIN = 1.5
+
+
+#: A glyph in two stacked pieces (the ! and its dot, an i) joins a line its
+#: pieces span together: the union's top and bottom each within this share of
+#: the line's height of the line's own (median) top and bottom. AHORA's ! bar
+#: is 10.25 mm against its line's 14.0 (0.73, under `STRAY_HEIGHT_RATIO`);
+#: bar and dot together are -7.02..6.98 against the line's -7.03..6.98.
+STACK_BAND_TOL = 0.1
+#: ... the pieces apart by at most this share of the line's height, sharing
+#: half the narrower's width.
+STACK_GAP_MAX = 0.5
+
+
+def _stacked(a, b) -> bool:
+    """Two boxes one above the other: half the narrower's width shared, no
+    vertical overlap (a counter or a gear's centre sits INSIDE, not on)."""
+    if min(a[2], b[2]) - max(a[0], b[0]) < 0.5 * min(a[2] - a[0], b[2] - b[0]):
+        return False
+    return max(b[1] - a[3], a[1] - b[3]) >= 0
+
+
+def _adopt_stacked(regs: list, groups: list[list[int]]) -> None:
+    """Add to a line (index lists, edited in place) each pair of UNGROUPED
+    same-thread pieces stacked on one another whose union spans the line's
+    band (`STACK_BAND_TOL`), close enough to it (`STRAY_MAX_GAP_H`). Pieces a
+    line already holds never move: MFab's small lower words sit under its big
+    letters, but those letters are a line of their own."""
+    import statistics as st
+    grouped = {i for g in groups for i in g}
+    free = [i for i in range(len(regs)) if i not in grouped]
+    for x in free:
+        for y in free:
+            if y <= x or regs[x].thread_index != regs[y].thread_index:
+                continue
+            a, b = regs[x].polygon.bounds, regs[y].polygon.bounds
+            if not _stacked(a, b):
+                continue
+            u = (min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3]))
+            for g in groups:
+                if regs[g[0]].thread_index != regs[x].thread_index:
+                    continue
+                top = st.median(regs[i].polygon.bounds[1] for i in g)
+                bot = st.median(regs[i].polygon.bounds[3] for i in g)
+                H = bot - top
+                if H <= 0 or abs(u[1] - top) > STACK_BAND_TOL * H or abs(u[3] - bot) > STACK_BAND_TOL * H:
+                    continue
+                gap = max(b[1] - a[3], a[1] - b[3])
+                if gap > STACK_GAP_MAX * H:
+                    continue
+                near = min(regs[i].polygon.distance(regs[k].polygon) for i in g for k in (x, y))
+                if near > STRAY_MAX_GAP_H * H:
+                    continue
+                g.extend([x, y])
+                break
 
 
 def _line_mates(a, b) -> bool:
@@ -91,9 +151,11 @@ def like_lines(regions: Iterable, *, min_members: int = MIN_CLUSTER_MEMBERS) -> 
                 if ri != rj:
                     parent[max(ri, rj)] = min(ri, rj)
     by: dict[int, list] = {}
-    for i, r in enumerate(regs):
-        by.setdefault(find(i), []).append(r)
-    return [g for _k, g in sorted(by.items()) if len(g) >= min_members]
+    for i in range(len(regs)):
+        by.setdefault(find(i), []).append(i)
+    groups = [g for _k, g in sorted(by.items()) if len(g) >= min_members]
+    _adopt_stacked(regs, groups)
+    return [[regs[i] for i in sorted(g)] for g in groups]
 
 
 def decided(measure: float, threshold: float, margin: float = MARGIN) -> bool:
@@ -158,14 +220,44 @@ def run_floor_overrides(regions: Iterable, floor_mm2: float, *,
     return out
 
 
+def outline_side(members: list, own: dict, stroke: dict, *,
+                 close: float = MARGIN) -> bool | None:
+    """The construction a line of like outline candidates takes: True (a body,
+    filled under the outline's loop) or False (its own ladder), None when
+    every member already agrees.
+
+    Decided by INK, not by region count: AHORA's AH and RA are four letters in
+    two fused shapes against O and ! (two letters, two regions), and Kent's
+    pins sit on the O and the ! ("This stitch is different than the AH RA") --
+    the odd ones are the minority of ink, 121 against 435 mm^2. The side with
+    more area wins; when the two are within `close` of each other, the side
+    whose strokes are wider (area-weighted mean of 2 x area / perimeter) wins,
+    because a wide stroke forced into satin is the lumpy case (AHORA's AH as
+    split satin: an A in pieces at three angles, a blocky bar)."""
+    a_in = sum(r.polygon.area for r in members if own[r.shape_id])
+    a_out = sum(r.polygon.area for r in members if not own[r.shape_id])
+    if a_in <= 0 or a_out <= 0:
+        return None
+    if max(a_in, a_out) > close * min(a_in, a_out):
+        return a_in > a_out
+
+    def wide(side: bool) -> float:
+        ms = [r for r in members if own[r.shape_id] == side]
+        return sum(stroke[r.shape_id] * r.polygon.area for r in ms) / sum(r.polygon.area for r in ms)
+    return wide(True) >= wide(False)
+
+
 def outline_body_decider(min_body_mm: float):
     """A `find_art_outlines(group_decide=...)` hook: the art-outline body test
-    decided per line of like candidates within one outline (AHORA).
+    decided per line of like candidates within one outline (AHORA), by
+    `outline_side`, every member following -- a member's own reading is no
+    exemption here, since the ink side is the evidence.
 
-    Each candidate is (body, hole, band, stroke); the measure is stroke / band
-    against `machine.OUTLINE_BODY_RATIO`. A candidate the group makes a body
-    must be at least `min_body_mm` across on average (2 x area / perimeter):
-    it will be filled. -> the kept (body, hole) pairs, candidate order."""
+    Each candidate is (body, hole, band, stroke); a member's own side is
+    stroke / band against `machine.OUTLINE_BODY_RATIO`. A candidate the group
+    makes a body must be at least `min_body_mm` across on average (2 x area /
+    perimeter): it will be filled. -> the kept (body, hole) pairs, candidate
+    order."""
     from . import machine
 
     def ratio(band: float, stroke: float) -> float:
@@ -173,12 +265,15 @@ def outline_body_decider(min_body_mm: float):
 
     def decide(_holder, cands: list) -> list:
         own = {c[0].shape_id: ratio(c[2], c[3]) >= machine.OUTLINE_BODY_RATIO for c in cands}
-        meas = {c[0].shape_id: ratio(c[2], c[3]) for c in cands}
         stroke = {c[0].shape_id: c[3] for c in cands}
         side = dict(own)
         for group in like_lines([c[0] for c in cands]):
-            side.update(follow(group, lambda r: meas[r.shape_id], machine.OUTLINE_BODY_RATIO,
-                               can_take=lambda r, body: (not body) or stroke[r.shape_id] >= min_body_mm))
+            verdict = outline_side(group, own, stroke)
+            if verdict is None:
+                continue
+            for r in group:
+                if own[r.shape_id] != verdict and ((not verdict) or stroke[r.shape_id] >= min_body_mm):
+                    side[r.shape_id] = verdict
         return [(c[0], c[1]) for c in cands if side[c[0].shape_id]]
 
     return decide
@@ -208,6 +303,10 @@ LIKE_AREA_RATIO = 1.5
 #: elongations (long / short side of the minimum rectangle) within this factor
 #: are like -- `tools/inconsistency_fault_reader.ELONG_RATIO`
 LIKE_ELONG_RATIO = 1.25
+#: a group whose members' own angles all sit within this of the biggest's
+#: already agrees and is left alone (one of `best_fill_angle_deg`'s 16
+#: candidate directions is 11.25 deg; under half of that is "the same").
+AGREE_DEG = 5.0
 
 
 def rect_axis(poly) -> tuple[float, float]:
@@ -293,6 +392,20 @@ def shared_angles(regions: Iterable, own_angle: Callable[[object], float | None]
         if base is None:
             continue
         a_ref = float(_congruent(ref).get("angle_deg") or 0.0) if relative else 0.0
+        # A group whose members already agree is left as it sews: its own
+        # angle may be read on another polygon than the one its rung fills
+        # ((hed)p.e.'s parentheses, both 123.7 deg under their keyline loop,
+        # read 90 on the art polygon), and moving both helps nothing.
+        owns = []
+        for r in g:
+            a = base if r is ref else own_angle(r)
+            if a is None:
+                owns = []
+                break
+            d = float(_congruent(r).get("angle_deg") or 0.0) - a_ref if relative else 0.0
+            owns.append((float(a) - d - float(base) + 90.0) % 180.0 - 90.0)
+        if owns and max(abs(x) for x in owns) <= AGREE_DEG:
+            continue
         for r in g:
             d = float(_congruent(r).get("angle_deg") or 0.0) - a_ref if relative else 0.0
             out[r.shape_id] = (float(base) + d) % 180.0

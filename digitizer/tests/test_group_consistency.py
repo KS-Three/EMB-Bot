@@ -138,7 +138,8 @@ def test_ahora_field_is_mixed_off_and_one_way_on():
     off = find_art_outlines(regs, PipelineConfig(), line_art_guard=False)
     assert [b for b, _h in off["Sfield"]] == ["L0", "L2"]                   # the straddle
     on = find_art_outlines(regs, PipelineConfig(group_consistent_outline_body=True), line_art_guard=False)
-    assert on == {}                                                         # every letter its own
+    # the wide bars hold 259 of 337 mm^2 of ink: the thin ones join them
+    assert [b for b, _h in on["Sfield"]] == ["L0", "L1", "L2", "L3"]
     # the run-floor flag alone does not reach the outline test
     tier_only = find_art_outlines(regs, PipelineConfig(group_consistent_tier=True), line_art_guard=False)
     assert tier_only == off
@@ -160,6 +161,18 @@ def test_outline_decider_never_makes_a_thin_body():
     assert [b.shape_id for b, _h in keep_all] == ["L0", "L1", "L2"]
     keep_thick = gc.outline_body_decider(0.9)(None, cands)
     assert [b.shape_id for b, _h in keep_thick] == ["L0", "L1"]
+
+
+def test_outline_side_by_ink_then_by_the_wider_strokes():
+    word = _word([3, 3, 3, 3])                       # 42 mm^2 each
+    stroke = {"L0": 3.0, "L1": 3.0, "L2": 2.0, "L3": 2.0}
+    own = {"L0": True, "L1": False, "L2": False, "L3": False}
+    assert gc.outline_side(word, own, stroke) is False          # 42 vs 126: ink says no body
+    own = {"L0": True, "L1": True, "L2": False, "L3": False}
+    assert gc.outline_side(word, own, stroke) is True           # 84 vs 84: close, wider strokes are bodies
+    stroke = {"L0": 2.0, "L1": 2.0, "L2": 3.0, "L3": 3.0}
+    assert gc.outline_side(word, own, stroke) is False          # close, wider strokes are not
+    assert gc.outline_side(word, {k: True for k in own}, stroke) is None
 
 
 # ---------------------------------------------------------------- stage 7, end to end
@@ -371,5 +384,24 @@ def test_satin_reads_tagged_unmirrored_groups_only():
     for i, r in enumerate(stars):
         r.meta["congruent_group"] = {"id": "G1", "kind": "grid", "n": 3, "index": i,
                                      "angle_deg": 0.0, "mirror": i == 2, "moved": False}
-    out = gc.shared_angles(stars, lambda r: 36.0, fallback=False, mirrored=False)
-    assert out == {"L0": 36.0, "L1": 36.0}
+    own = {"L0": 36.0, "L1": 80.0, "L2": 10.0}
+    out = gc.shared_angles(stars, lambda r: own[r.shape_id], fallback=False, mirrored=False)
+    assert out == {"L0": 80.0, "L1": 80.0}           # L2 (mirrored) out; L1 the biggest by id
+    # members that already agree are left as they sew
+    assert gc.shared_angles(stars, lambda r: 36.0, fallback=False, mirrored=False) == {}
+
+
+def test_a_two_piece_glyph_joins_the_line_its_pieces_span():
+    # AHORA's ! : a 10.25 mm bar and a 3 mm dot under it, on a 14 mm line
+    line = _word([9, 3, 9.5])                                       # y -7..7
+    bar = _region("B", box(-19.5, -7.0, -16.5, 3.25), 2)
+    dot = _region("D", box(-19.5, 4.0, -16.5, 7.0), 2)
+    assert [sorted(r.shape_id for r in g) for g in gc.like_lines(line + [bar, dot])] == \
+        [["B", "D", "L0", "L1", "L2"]]
+
+
+def test_small_words_under_a_big_line_stay_out_of_it():
+    # MFab: small lettering stacked under the big letters is not a piece of them
+    line = _word([9, 3, 9.5])
+    under = [_region("U", box(-49, 8.0, -42, 12.5), 2), _region("V", box(-36, 8.0, -30, 12.5), 2)]
+    assert [sorted(r.shape_id for r in g) for g in gc.like_lines(line + under)] == [["L0", "L1", "L2"]]
