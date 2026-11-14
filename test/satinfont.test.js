@@ -385,6 +385,43 @@ test("layoutText: align left/center/right position a short second line correctly
   closeTo(minX(D, 4), lCenter, 1e-6, "align absent = center");
 });
 
+// Trailing spaces (2026-11-13, Kent approved with the catch "none for
+// single-line text"): justification measures each line to its last glyph, so
+// a trailing space no longer shoves a centred or right-aligned line sideways.
+// Before: "HELLO \nHELLO" centred put line 1 2.12 mm left of line 2 and
+// "HELLO  \nHELLO" right-aligned 8.50 mm (amitaclo, em 20).
+test("layoutText: a trailing space does not move a centred or right-aligned line; a leading one still does", () => {
+  const opts = (align) => ({ emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: false, align });
+  const inkMid = (lay, lo, hi) => {
+    let a = Infinity, b = -Infinity;
+    for (const r of lay.runs) if (r.charIdx >= lo && r.charIdx < hi) for (const p of r.pts) { a = Math.min(a, p.x); b = Math.max(b, p.x); }
+    return (a + b) / 2;
+  };
+  for (const [text, align] of [["HAH \nHAH", "center"], ["HAH  \nHAH", "right"], ["HAH \nHAH  ", "left"], ["HAH\t\nHAH", "center"]]) {
+    const lay = SF.layoutText(font, text, opts(align));
+    const nl = text.indexOf("\n");
+    closeTo(inkMid(lay, 0, nl), inkMid(lay, nl + 1, text.length), 1e-6, `${JSON.stringify(text)} ${align}: lines line up`);
+    // And each line sits exactly where it does without the spaces.
+    const bare = SF.layoutText(font, text.replace(/[ \t]+(?=\n|$)/g, ""), opts(align));
+    assert.deepStrictEqual(lay.bbox, bare.bbox, `${JSON.stringify(text)} ${align}: same as typed without trailing spaces`);
+  }
+  // A leading space is indentation, as typed: under centre it widens its line
+  // by one space, so the line's ink sits half a space right of the other.
+  const sp = (font.advSpace || font.advDefault) * (18 / font.unitsPerEm) * 8;
+  const ind = SF.layoutText(font, " HAH\nHAH", opts("center"));
+  closeTo(inkMid(ind, 1, 4) - inkMid(ind, 5, 8), sp / 2, 1e-6, "leading space under centre");
+});
+
+test("layoutText: trailing-space fix leaves single-line text and lines without trailing spaces byte-identical", () => {
+  const o = { emMm: 18, pxPerMm: 8, spacingMm: 0.4, pullCompMm: 0.2, underlay: false };
+  // Single line: one line has nothing to justify against.
+  for (const align of ["left", "center", "right"]) {
+    const a = SF.layoutText(font, "HAH  ", { ...o, align }), b = SF.layoutText(font, " HAH ", { ...o, align });
+    assert.deepStrictEqual(a.bbox, SF.layoutText(font, "HAH", { ...o, align }).bbox, align + ": trailing spaces, one line, origin unmoved");
+    assert.ok(b.bbox.x0 > a.bbox.x0, align + ": a leading space on one line still indents, as before");
+  }
+});
+
 // ---- Lettering parity round: two-line circular badge layout (circleLayout) ----
 // Contract (documented in src/satinfont.js): the FIRST line arcs along the
 // TOP of a circle, the LAST line arcs along the BOTTOM (upright, reading
