@@ -12,8 +12,20 @@
 // undo()/redo() reset the coalescing clock — an edit made right after an
 // undo must never merge itself into the restored snapshot.
 //
+// POINTER GESTURES do not use the window (2026-11-13, Kent's approval). A
+// field drag (move, resize, rotate, group move, group resize) flushes one
+// record per pointer move, and the clock split them on timing, not on
+// gestures: a drag held still for over 500 ms was two undo steps, and two
+// separate drags under 500 ms apart were one. Such a record carries the
+// `gesture` token of its pointerdown instead: its first record always
+// pushes, however recent the record before it, and later records with the
+// same token merge into that step however long the pointer rests. A record
+// with no token never merges into a gesture's step either, so the step holds
+// the gesture and nothing else. Typing, sliders, discrete and structural
+// edits keep the rules below unchanged.
+//
 // The window is for CONTINUOUS gestures only. A `discrete` record — a
-// keyboard nudge, a committed point edit, an element added or removed —
+// Reshape point nudge, a committed point edit, an element added or removed —
 // always pushes, so the state before it stays reachable: a delete made 100 ms
 // after an add must not overwrite the add's snapshot (it did until
 // 2026-11-12, and Undo then skipped past both without restoring the element).
@@ -30,16 +42,20 @@ export function createHistory(initial, opts) {
   let stack = [initial];
   let idx = 0;
   let lastRecordAt = -Infinity;
+  let lastGesture = null; // the top entry's gesture token, or null
 
   return {
     // `now` is injectable for tests; defaults to the wall clock. `discrete`
-    // (a keyboard nudge, a committed point edit, an element added or removed)
-    // never merges into the entry before it: each is its own undo step
-    // however fast they come.
-    record(snapshot, now, discrete = false) {
+    // (a Reshape point nudge, a committed point edit, an element added or
+    // removed) never merges into the entry before it: each is its own undo
+    // step however fast they come. `gesture` (any value, compared with ===)
+    // is a pointer gesture's token: see the header.
+    record(snapshot, now, discrete = false, gesture = null) {
       if (snapshot === stack[idx]) return; // identical reference: nothing changed
       const t = now == null ? Date.now() : now;
-      const coalesce = !discrete && idx > 0 && t - lastRecordAt < coalesceMs;
+      const coalesce = !discrete && idx > 0 && (gesture != null
+        ? gesture === lastGesture
+        : lastGesture == null && t - lastRecordAt < coalesceMs);
       stack = stack.slice(0, idx + 1); // any redo branch dies on a new edit
       if (coalesce) {
         stack[idx] = snapshot;
@@ -52,17 +68,20 @@ export function createHistory(initial, opts) {
         }
       }
       lastRecordAt = t;
+      lastGesture = gesture;
     },
     undo() {
       if (idx === 0) return null;
       idx--;
       lastRecordAt = -Infinity;
+      lastGesture = null;
       return stack[idx];
     },
     redo() {
       if (idx >= stack.length - 1) return null;
       idx++;
       lastRecordAt = -Infinity;
+      lastGesture = null;
       return stack[idx];
     },
     canUndo() {
@@ -76,6 +95,7 @@ export function createHistory(initial, opts) {
       stack = [snapshot];
       idx = 0;
       lastRecordAt = -Infinity;
+      lastGesture = null;
     },
   };
 }
