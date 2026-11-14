@@ -6322,6 +6322,16 @@ class PipelineConfig:
     # (2026-10-14), on every job with lettering. OFF, the report is the
     # pre-change report byte for byte (no key is written).
     preflight_glyph_metric: bool = False
+    # The proof-read as preflight METRICS (`digitizer_core/proofread.py`,
+    # built OFF 2026-11-13): the plan's top thread against the art raster the
+    # thread grader reads, per colour class, in mm -- MISSING, EXTRA, MOVED,
+    # MERGED, CLOSED, SHAPE, WIDTH -- each with the shapes whose stitches lie
+    # there and the region tags that explain a deliberate departure. Report
+    # only: `proofread_unexplained`, `_misfires`, `_explained`, `_findings`
+    # and the full payload under `proofread`; no finding, no deduction,
+    # nothing the customer sees (Kent 2026-10-02). It changes no stitch. OFF
+    # writes no key.
+    proofread: bool = False
 
     # Stage 7 — chaining. Whether a needle-up move that would be trimmed may
     # instead be sewn as a needle-down link, when its path is buried under a

@@ -205,6 +205,7 @@
  "preflight": true,
  "preflight_glyph_metric": false,
  "pro_measured_values": false,
+ "proofread": false,
  "pull_comp_by_stroke": false,
  "rehome_resnapped": true,
  "report_absorb_frac": 0.25,
