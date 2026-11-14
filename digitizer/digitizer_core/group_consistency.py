@@ -233,7 +233,17 @@ def outline_side(members: list, own: dict, stroke: dict, *,
     more area wins; when the two are within `close` of each other, the side
     whose strokes are wider (area-weighted mean of 2 x area / perimeter) wins,
     because a wide stroke forced into satin is the lumpy case (AHORA's AH as
-    split satin: an A in pieces at three angles, a blocky bar)."""
+    split satin: an A in pieces at three angles, a blocky bar).
+
+    GUARD (2026-11-14, Kent held the flag: "G4 alone looks the best"): the
+    width tie-break needs the same evidence as everything else here -- one
+    side's strokes wider by more than `close` -- else no verdict and every
+    member keeps its own call. MFab hat's small line (113.5 mm, Studio hat
+    config) read ink 2.54x to the ladder side; `outline_redraw_k` 0.75's
+    re-fit moved two letters' own readings to 1.46x, inside `close`, and a
+    3.4% width difference (1.336 / 1.292 mm) made the line bodies: its
+    words stopped riding the white panel and the keyline loops swallowed
+    the black letters. AHORA is decided by ink (3.42x) and never gets here."""
     a_in = sum(r.polygon.area for r in members if own[r.shape_id])
     a_out = sum(r.polygon.area for r in members if not own[r.shape_id])
     if a_in <= 0 or a_out <= 0:
@@ -244,7 +254,10 @@ def outline_side(members: list, own: dict, stroke: dict, *,
     def wide(side: bool) -> float:
         ms = [r for r in members if own[r.shape_id] == side]
         return sum(stroke[r.shape_id] * r.polygon.area for r in ms) / sum(r.polygon.area for r in ms)
-    return wide(True) >= wide(False)
+    w_in, w_out = wide(True), wide(False)
+    if max(w_in, w_out) <= close * min(w_in, w_out):
+        return None
+    return w_in > w_out
 
 
 def outline_body_decider(min_body_mm: float):
