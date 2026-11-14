@@ -35,7 +35,7 @@
     borderRequestPending,
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
-  import { boundaryIssues } from "../lib/digitizer.js";
+  import { boundaryIssues, deletedFromStitches } from "../lib/digitizer.js";
   import { isElementStale } from "../lib/staleness.js";
   import { popoverModel, popoverPatch, recolorPatch, SIMPLIFY_TOLS_MM } from "../lib/shapePopover.js";
   import { similarShapeIds, similarOverridesPatch } from "../lib/similarShapes.js";
@@ -81,6 +81,10 @@
   // Download's "Run time" row, so the two agree. Not named in any `$: if
   // (canvas)` block, so a quote change never repaints the field.
   export let quote = null;
+  // App's `currentId`: which design `project` is. Element ids repeat across
+  // designs, so a mode entered on one must end when this changes (see
+  // leaveDesign, 2026-11-13). null in a mount that never switches design.
+  export let projectId = null;
   $: simRate = runSpm(quote);
 
   const dispatch = createEventDispatcher();
@@ -782,8 +786,9 @@
     const rows = el && el.review && el.review.shapes;
     if (!Array.isArray(rows) || !rows.length) return null;
     // A shape the user hid or deleted in review is not something the app
-    // "found" any more — but it still counts toward the shared transform (see
-    // shapeOverlay.outlineBBoxMm), so filter for DRAWING only.
+    // "found" any more, so drawing filters it out (hiddenShapeIds). All rows
+    // are returned: the fit itself chooses the ones the stitches still hold
+    // (shapeOverlay sewnRows, from deletedFromStitches), 2026-11-13.
     return rows;
   }
 
@@ -2205,7 +2210,8 @@
         rows,
         // Sparse nodes (2026-11-05): every ring carries its node list, the stored
         // one when valid, else seeds (never written until a node edit commits).
-        mm: withNodes(shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el), pendingHoles(el)), el.shapeOverrides),
+        // Fitted on the shapes the stitches still hold (deletedFromStitches).
+        mm: withNodes(shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el), pendingHoles(el), deletedFromStitches(el)), el.shapeOverrides),
         // The silhouette cap, one open polyline per stretch: selectable like a
         // shape (see lib/capPieces.js), never editable as one.
         caps: capOutlinesMm(el, pe.design),
@@ -2321,6 +2327,8 @@
       rows: edit.rows,
       bboxMm: edit.pe.bboxMm,
       rotationDeg: edit.el.rotationDeg || 0,
+      // The same left-out shapes the forward fit used (outlinesMmFor).
+      unsewnIds: deletedFromStitches(edit.el),
       // The node lists the rings were shown with (frozen with them: a node's
       // index only means something against the ring it was read from).
       nodesById: edit.nodesById,
@@ -2424,6 +2432,38 @@
   // "clear on any selection change" because shapeUnderPointer dispatches
   // `select` and sets the shape in the same tick: the tag already names the
   // new element when this block sees it, so that selection survives.
+  //
+  // ANOTHER DESIGN opened (Kent's approval 2026-11-13). Element ids repeat
+  // across designs (almost every one has an "e1") and the field is not
+  // remounted per design, so the id checks below let Reshape, a hole draft
+  // and Move shape carry over, and Discard then wrote design A's entry
+  // snapshot into design B's same-id element. A change of `projectId` ends
+  // every mode WITHOUT committing (a Move shape is dropped, not committed:
+  // committing would write A's move into B), drops a queued drag patch and
+  // any drag, and drops the shape selection and its popover. It sits ABOVE
+  // the selection block so that block never sees a mode from the old design.
+  // Not a {#key} remount in App: that would also reset zoom and pan and
+  // replay the whole field's setup for what is a few fields' worth of state.
+  let lastProjectId = projectId;
+  $: if (projectId !== lastProjectId) {
+    lastProjectId = projectId;
+    leaveDesign();
+  }
+  function leaveDesign() {
+    endReshape();
+    cancelHoleDraft();
+    endShapeMove();
+    pendingPatch = null;
+    dragMode = null;
+    shapeEdit = null;
+    nodeEdit = null;
+    liveRing = null;
+    pressEdge = null;
+    if (shapePop) closeShapePop();
+    selectedShapeId = null;
+    selectedShapeElId = null;
+    focusedAnchor = null;
+  }
   $: if (project && project.selectedId !== undefined) {
     const sel = selectedElement();
     // Reshape mode belongs to the element it was entered on: another element

@@ -24,7 +24,7 @@ import { test, expect } from "@playwright/test";
 import { pickGarment, uploadArtwork, runDigitize, pinDigitizeConfig, openAdvanced } from "./helpers.js";
 import fs, { existsSync, readFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
-import { useDigitizerService, readDigitized, ringOf, movedVertices, blackSquareCorners, statsText, drag, digitizeSquares, clickLeftSquare, enterReshape, selectedCount, restitched, drawRectangle, readManual, darkBBox, settle, digitizeHoled, greenSquareAndHole, pixelAt, readHoled, selectGreenShape, stripButton, amberNodes, kinds, outsideTwoSpansIsOriginal, __dirname, serviceUp, skipReason } from "./reshape-helpers.js";
+import { useDigitizerService, readDigitized, ringOf, movedVertices, blackSquareCorners, statsText, drag, digitizeSquares, clickLeftSquare, enterReshape, selectedCount, restitched, drawRectangle, readManual, darkBBox, settle, digitizeHoled, greenSquareAndHole, pixelAt, readHoled, selectGreenShape, stripButton, amberNodes, kinds, outsideTwoSpansIsOriginal, __dirname, serviceUp, skipReason, ART_PNG } from "./reshape-helpers.js";
 
 // SERVICE_URL (the digitizer service at 127.0.0.1:8721): this file needs it, so
 // playwright.config.js runs it in the serial step.
@@ -471,4 +471,30 @@ test("(n) keyboard node cursor: ] and Tab step the points, Space selects, arrows
   await expect(live).toHaveText(/^Point 1 of \d+, ring 1, selected$/);
   await page.keyboard.press("[");
   await expect(live).toHaveText(/^Point \d+ of \d+, ring \d+, /);
+});
+
+// (r2) 2026-11-13: Reshape belonged to an element ID, and ids repeat across
+// designs, so the mode carried into the next design's same-id element and its
+// Discard wrote this design's entry snapshot there. Opening another design
+// now ends the mode.
+test("(r2) opening another design ends Reshape, even on an element with the same id", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+  await digitizeSquares(page);
+  await enterReshape(page);
+  const idOf = () => page.evaluate(() => {
+    const id = localStorage.getItem("embstudio:current");
+    const p = id && JSON.parse(localStorage.getItem("embstudio:p:" + id) || "null");
+    return p ? p.selectedId : null;
+  });
+  const idA = await idOf();
+
+  await page.getByRole("button", { name: /My designs/ }).first().click();
+  await expect(page.locator(".drawer")).toBeVisible();
+  await page.getByRole("button", { name: "+ New design" }).click();
+  await page.getByTestId("art-file").setInputFiles(ART_PNG); // same element id as A's, not digitized
+  await expect.poll(idOf).toBe(idA);
+
+  await expect(page.locator(".hoop canvas")).toHaveAttribute("data-reshape", "off");
+  await expect(page.getByRole("button", { name: "Discard" })).toHaveCount(0);
 });

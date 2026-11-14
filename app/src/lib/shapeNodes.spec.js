@@ -357,3 +357,28 @@ describe("translateRing / moveShapeOverrides", () => {
     expect(out.shape_overrides.a.holes_override).toHaveLength(1);
   });
 });
+
+// A node edit after a shape was deleted: d mm on the canvas is d mm in the
+// service's space (2026-11-13). The basis carries the deleted ids the forward
+// fit left out; before, the inverse refitted every row and a 1 mm drag went
+// out as 5 mm (review repro).
+describe("ringEditOverrides after a shape is deleted", () => {
+  it("a 1 mm drag of a corner is a 1 mm move of that corner", async () => {
+    const { shapeOutlinesInFieldMm } = await import("./shapeOverlay.js");
+    const sq = (x0, y0, s) => [[x0, y0], [x0 + s, y0], [x0 + s, y0 + s], [x0, y0 + s]];
+    const A = { id: "s0", outlineFull: sq(-25, -5, 10) };
+    const B = { id: "s1", outlineFull: sq(15, -5, 10) };
+    const basis = { rows: [A, B], bboxMm: { x0: -5, y0: -5, x1: 5, y1: 5 }, rotationDeg: 0, unsewnIds: ["s1"], nodesById: new Map() };
+    const drawn = shapeOutlinesInFieldMm(basis.rows, basis.bboxMm, 0, null, null, basis.unsewnIds).find((o) => o.id === "s0").points;
+    const live = drawn.map(([x, y]) => [x, y]);
+    live[1] = [live[1][0] + 1, live[1][1]];
+    const res = ringEditOverrides({ shapeOverrides: {} }, basis, new Map([["s0", live]]));
+    const sent = res.cur.s0.boundary_override;
+    expect(sent).toHaveLength(4);
+    sent.forEach(([x, y], i) => {
+      const want = A.outlineFull[i];
+      expect(x).toBeCloseTo(want[0] + (i === 1 ? 1 : 0), 9);
+      expect(y).toBeCloseTo(want[1], 9);
+    });
+  });
+});
