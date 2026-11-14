@@ -18,7 +18,7 @@
   import { chartIdForProject } from "../lib/designChart.js";
   import { getCachedPalette, loadPalette, loadPreferredPaletteId, STUDIO_PALETTE } from "../lib/threads.js";
   import { EMB } from "../lib/emb.js";
-  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
+  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizeInBox } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote, rotateToFitPatches, rotationPatch } from "../lib/hoop.js";
   import { garmentOf, placementBoxOf } from "../lib/placement.js";
@@ -5149,20 +5149,16 @@
       } else {
         // Group resize: one factor from the union box's aspect-locked
         // corner drag, fanned out to every member (targets AND offsets
-        // scale about the group center). Factor capped so the scaled
-        // union still fits the hoop; groupResizePatches raises it if any
-        // member would fall below the stitchable minimum.
+        // scale about the group center), then shifted together so the
+        // scaled union stays inside the box (interact.js groupResizeInBox,
+        // 2026-11-13); groupResizePatches raises the factor if any member
+        // would fall below the stitchable minimum.
         const gW = dragGroupBBoxMm.x1 - dragGroupBBoxMm.x0;
         const gH = dragGroupBBoxMm.y1 - dragGroupBBoxMm.y0;
         const newW = dragResize(gW, gH, dragHandle, gdxMm, gdyMm, MIN_SIZE_MM, hoop.wMm || gW);
-        let f = gW > 0 ? newW / gW : 1;
-        const fMax = Math.min(hoop.wMm ? hoop.wMm / gW : Infinity, hoop.hMm ? hoop.hMm / gH : Infinity);
-        if (f > fMax) f = fMax;
-        const gcx = (dragGroupBBoxMm.x0 + dragGroupBBoxMm.x1) / 2;
-        const gcy = (dragGroupBBoxMm.y0 + dragGroupBBoxMm.y1) / 2;
-        const r = groupResizePatches(dragMembers, f, gcx, gcy, MIN_SIZE_MM);
-        // the union box as it will measure, about its (unmoving) centre
-        sizeBadge = { wMm: gW * f, hMm: gH * f, xMm: gcx, yMm: gcy };
+        const r = groupResizeInBox(dragMembers, gW > 0 ? newW / gW : 1, dragGroupBBoxMm, hoop.wMm, hoop.hMm, MIN_SIZE_MM);
+        // the union box as it will measure
+        sizeBadge = { wMm: gW * r.factor, hMm: gH * r.factor, xMm: (r.bboxMm.x0 + r.bboxMm.x1) / 2, yMm: (r.bboxMm.y0 + r.bboxMm.y1) / 2 };
         pendingPatch = { multi: r.patches };
       }
       schedulePatchFlush();
