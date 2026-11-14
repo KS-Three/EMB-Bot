@@ -28,8 +28,8 @@ white + gold extrusion + black outline; tee and ball arc keep their black edge.
 3. band (mean width 2A/P <= 0.8 mm = two laid 40 wt threads, what we sew as
    runs/beans) along a body -> folds into the nearest-coloured one. A band can
    be a band's parent only at 2x its area (a keyline stacked on an outline).
-   Kept: wrapping >= 60% of the parent (keylines), inside the parent but > 0.8
-   mm from its edge (a crosshair), any edge of a page-coloured shape (the ball
+   Kept: wrapping >= 60% of the parent (keylines), inside the parent but not
+   all along its outer edge (a reticle), any edge of a page-coloured shape (the ball
    arc, GT faces), counters, dark ink.
 
 **Guards the controls forced (each was a real md5 change first):** To a T's 67
@@ -50,13 +50,17 @@ re-threaded regions must move to their cone's layer (one spool, one position).
 **The pass runs AFTER the colour cap, not before (the brief said before):**
 folding first FREED a slot, the cap stopped merging the art's teal bevel (50
 mm2) into black, and GOLF's O sewed dark teal. Cap first, then fold: the count
-still only falls. A band lining a counter (the O's inner wall) folds; a shape
-filling its own hole far from the edge (Drone's crosshair) stays. No shadow on a
-cut-out (the crest's white dome read as one on the garment).
+still only falls. Inside a shape only a band running along its OUTER edge
+folds (Drone's ring arcs; farthest point within 0.8 mm + its width); Drone's
+reticle and GOLF's O inner wall stay. A band must run along ONE colour (a line
+across several is drawn art) and never lie between two shapes of one colour.
+No shadow on a cut-out (the crest's white dome read as one on the garment).
 
-**Not done / open:** GT's G keeps a black inner bevel where the pro has gold;
-grey highlight patches stay inside GOLF's G and O (bodies of the page's colour);
-the tee's upper black band piece (0.79 mm) folds while the pro keeps it.
+**Not done / open:** black inner walls stay in GOLF's G and O and a red
+segment on the T's side (the pro has gold); grey highlight patches stay inside
+GOLF (page-coloured bodies); the merged gold is Candlelight (larger area) where
+the pro sews an orange gold; the heraldic crest loses its grey rib shading (the
+catch for default ON); Drone's arms lose some grey highlight edges.
 Flattening is a design change (pro-digitizer-rules 10-21 s4): Kent chooses
 default ON / OFF / a Studio "flatten shading" option (PR body).
 
