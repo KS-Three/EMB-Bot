@@ -114,6 +114,69 @@ describe("proposeCrop", () => {
     expect(r.y1 - r.y0).toBeLessThan(0.9);
   });
 
+  describe("transparent art that touches the frame edge (starter owl.svg, 2026-11-14)", () => {
+    // owl.svg rasterises at 1200 x 909 with a transparent frame and the owl's
+    // brown body running along the bottom edge. The only OPAQUE border pixels
+    // were that body, so the median "background" was the body's own brown and
+    // the whole body read as background: the proposal boxed the eyes and beak
+    // (cropPx 180,210,990,780 against art spanning the full frame; 33% of the
+    // art outside it). Measured in Chrome with the committed owl.svg.
+    const BODY = [111, 96, 73];
+    function owl(w, h, bodyRect, marks) {
+      const data = new Uint8ClampedArray(w * h * 4); // transparent, RGB 0
+      const paint = ([x0, y0, x1, y1], rgb) => {
+        for (let y = y0; y < y1; y++) {
+          for (let x = x0; x < x1; x++) {
+            const i = (y * w + x) * 4;
+            data[i] = rgb[0]; data[i + 1] = rgb[1]; data[i + 2] = rgb[2]; data[i + 3] = 255;
+          }
+        }
+      };
+      paint(bodyRect, BODY);
+      for (const [rect, rgb] of marks) paint(rect, rgb);
+      return { data, width: w, height: h };
+    }
+    const inside = (r, w, h, [x0, y0, x1, y1]) =>
+      r.x0 <= x0 / w && r.y0 <= y0 / h && r.x1 >= x1 / w && r.y1 >= y1 / h;
+
+    it("includes the body that touches the bottom edge, not just the eyes", () => {
+      const w = 600, h = 450;
+      const body = [60, 40, 560, 450]; // runs off the bottom edge
+      const img = owl(w, h, body, [
+        [[200, 150, 260, 210], [0, 0, 0]],   // eye
+        [[340, 150, 400, 210], [0, 0, 0]],   // eye
+        [[280, 230, 320, 270], [230, 180, 0]], // beak
+      ]);
+      const r = proposeCrop(img, 80);
+      expect(inside(r, w, h, body)).toBe(true);
+    });
+
+    it("includes a body that touches the left edge", () => {
+      const w = 600, h = 450;
+      const body = [0, 60, 400, 400];
+      const img = owl(w, h, body, [[[150, 150, 200, 200], [0, 0, 0]]]);
+      const r = proposeCrop(img, 80);
+      expect(inside(r, w, h, body)).toBe(true);
+    });
+
+    it("still boxes a lone mark on an opaque coloured ground", () => {
+      // An opaque brown ground (no transparency at all): the border IS the
+      // background, so the dark mark alone is the art.
+      const w = 400, h = 300;
+      const data = new Uint8ClampedArray(w * h * 4);
+      for (let p = 0; p < w * h; p++) {
+        data[p * 4] = BODY[0]; data[p * 4 + 1] = BODY[1]; data[p * 4 + 2] = BODY[2]; data[p * 4 + 3] = 255;
+      }
+      for (let y = 100; y < 160; y++) for (let x = 150; x < 250; x++) {
+        const i = (y * w + x) * 4;
+        data[i] = data[i + 1] = data[i + 2] = 10;
+      }
+      const r = proposeCrop({ data, width: w, height: h }, 80);
+      expect((r.x1 - r.x0) * (r.y1 - r.y0)).toBeLessThan(0.5);
+      expect(inside(r, w, h, [150, 100, 250, 160])).toBe(true);
+    });
+  });
+
   it("stays sane when a large ink region touches the frame edge", () => {
     // Half of two border sides is ink here. A per-channel MEAN over the
     // border lands ~59 units off white -- past INK_TOLERANCE -- so the white
