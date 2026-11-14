@@ -1701,50 +1701,37 @@
         // the design-wide default. 0 = perpendicular.
         const slantDeg = (shape.slantDeg != null && isFinite(shape.slantDeg))
           ? shape.slantDeg : (o.satinSlantDeg || 0);
-        // THE WIDEST CROSS (2026-11-13, Kent's approval that day; the catch
-        // accepted: "tapered shapes that sew as satin today become fill"). The
-        // test above is on the MEAN width (2 x area / perimeter), and the
-        // medial satin has no width limit of its own, so a shape thin on
-        // average and wide somewhere was one satin: a 100 x 2 mm stick with a
-        // 14 mm head (mean 2.90 mm) sewed 30 crosses over 12.1 mm, the widest
-        // 14.2, against a stated limit of 3.0. So an auto-routed satin is
-        // built here, before its underlay, and a shape whose widest sewn cross
-        // (less the pull compensation the satin adds to every cross) is over
-        // `satinMaxWidthMm` goes to fill, as a shape too wide on average does.
-        // The satin it built is the one sewn when it stays a satin: same call,
-        // same arguments, so a shape that stays sews what it sewed.
-        //
-        // The slack is the measurement's own error, not a margin of taste, and
-        // it has two parts, both measured 2026-11-13:
-        //  - An angle. A cross is laid along the smoothed normal of a skeleton
-        //    found on a grid, so on a column of one true width it runs a few
-        //    degrees off square and longer. Exact polygons (bars 1 to 3 mm
-        //    wide, 6 to 50 mm long, every 3 degrees; arcs of radius 5 to
-        //    20 mm; at 4, 8 and 16 px/mm): at most 5.2% over the true width,
-        //    the same at every resolution. Hence 6%. (Measured on the spurs as
-        //    pruned since 2026-11-13; before that a short turned bar split into
-        //    strokes and crossed up to 1.3 mm over.)
-        //  - A pixel each side. The image lane's shape is the outline of a
-        //    flattened raster, and an anti-aliased edge pixel goes to the art
-        //    or to the ground: a bar drawn 2 or 3 mm wide is traced up to 2.5
-        //    pixels wider (at 4.8, 8 and 16 px/mm). Hence two pixels of the art
-        //    at its final size.
-        // So a drawn 3.0 mm column stays satin at every angle and resolution
-        // measured; one wide enough to cross more than that does not.
-        // A human's choice (tierOverride) is not second-guessed.
+        // A CROSS NO MACHINE SEWS AS ONE STITCH (2026-11-13, Kent: "Narrow it
+        // to the stitch limit"). The test above is on the MEAN width (2 x area
+        // / perimeter), and the medial satin has no width limit of its own, so
+        // a shape thin on average and wide somewhere was one satin: a 100 x
+        // 2 mm stick with a 14 mm head (mean 2.90 mm) sewed 30 crosses over
+        // 12.1 mm, the widest 14.2. A stitch that long is past the longest
+        // single stitch the engine writes (one DST record a side, dst.js
+        // MAX_DELTA, 12.1 mm: satinfont's MAX_STITCH_MM, the Python
+        // machine.MAX_STITCH_MM), so the column is not a satin at all. An
+        // auto-routed satin is built here, before its underlay, and goes to
+        // fill if any sewn stitch of it is longer than that. Only that:
+        // satinMaxWidthMm and the mean-width test stay as they were, and a
+        // wide satin under the limit (a 6 mm wedge, the small shapes Kent's
+        // 2026-10-20 `satinSmallShapes` ruling made satin) is still satin.
+        // No slack: the limit is on the stitch as emitted, not on a measure
+        // of the shape, so there is no error of measurement to absorb. On the
+        // repo's 305 Studio-lane designs (1,214 auto-routed satins) the widest
+        // stitches are 11.7 mm and below, then 13.5 mm and above: nothing sits
+        // near the line. The satin built here is the one sewn when the shape stays
+        // satin (same call, same arguments): a shape that stays sews what it
+        // sewed. A human's choice (tierOverride) is not second-guessed.
         let autoSatin = null;
         if (thin && !runSew && tierOv !== "satin" && !(shape.sewAs && shape.sewAs.kind === "column")) {
           try {
             const sat = satinmod.medialSatin || satinmod.satinColumn;
             autoSatin = sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg, smallShapes: satinSmallShapes });
-            let widestPx = 0;
+            const limitPx = (dstmod.DST_MAX_DELTA / units.DST_UNITS_PER_MM) * pxPerFinalMm;
             for (let k = 1; k < autoSatin.length; k++) {
               if (autoSatin[k].travel) continue;
-              const d = Math.hypot(autoSatin[k].x - autoSatin[k - 1].x, autoSatin[k].y - autoSatin[k - 1].y);
-              if (d > widestPx) widestPx = d;
+              if (Math.hypot(autoSatin[k].x - autoSatin[k - 1].x, autoSatin[k].y - autoSatin[k - 1].y) > limitPx) { thin = false; autoSatin = null; break; }
             }
-            const widestMm = (widestPx / pxPerFinalMm - pullCompMm) * Math.cos((slantDeg * Math.PI) / 180);
-            if (widestMm > satinMaxWidthMm * 1.06 + 2 * mmPerPxFinal) { thin = false; autoSatin = null; }
           } catch (e) { autoSatin = null; }   // the satin fails in its turn below, as it did
         }
 

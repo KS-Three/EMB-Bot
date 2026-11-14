@@ -45,14 +45,7 @@ const spec = async (id) => { const T = await tool(); return T.SHAPES.find((s) =>
 // not its subject, so every design here is built with them OFF.
 // + the three JS twins Kent flipped ON 2026-10-23 (fill turn slant, cross underlay, short-column underlay)
 const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false, fillTurnSlant: false, crossUnderlay: false, underlayShortColumns: false };
-// Every shape here is SET to satin (stitchType "satin", as a user sets one in
-// the manual lane), since 2026-11-13: the shape tool's auto route now sends a
-// shape whose widest cross is over `satinMaxWidthMm` to fill (digitize.js,
-// "THE WIDEST CROSS"), and the 10 mm star, the 6 mm square and the 6 mm dot
-// are all wider than 3 mm somewhere. This file is about what the satin does
-// to them, so it asks for the satin; a shape that was satin already sews the
-// same bytes set as auto (the pins below did not move).
-const shape = async (id, on) => { const T = await tool(); const s = await spec(id); return T.buildShape(Object.assign({}, s, { tier: s.tier || "satin" }), on, TRIO_OFF); };
+const shape = async (id, on) => { const T = await tool(); return T.buildShape(await spec(id), on, TRIO_OFF); };
 const word = async (id, on) => { const T = await tool(); return T.buildWord(await spec(id), on, TRIO_OFF); };
 const longestStitchMm = (d) => {
   let m = 0;

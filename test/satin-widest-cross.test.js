@@ -1,10 +1,13 @@
 const assert = require("node:assert");
 const { test } = require("node:test");
+const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 const digitize = require("../src/digitize.js");
 
-// The auto-routed satin obeys `satinMaxWidthMm` at its WIDEST cross, not on
-// its mean width (2026-11-13, Kent's approval that day; the catch accepted:
-// "tapered shapes that sew as satin today become fill").
+// An auto-routed satin whose sewn stitch would be longer than the longest
+// single stitch the engine writes (12.1 mm, dst.js MAX_DELTA) is a fill
+// (2026-11-13, Kent: "Narrow it to the stitch limit"). Nothing narrower moves:
+// satinMaxWidthMm and the mean-width test are as they were.
 
 const S = 8; // px per mm
 const build = (ring, extra) => {
@@ -28,26 +31,30 @@ function lollipop() {
   pts.push({ x: 100, y: hw }, { x: 0, y: hw });
   return pts.map((p) => ({ x: (p.x + 5) * S, y: (p.y + 50) * S }));
 }
-const bar = (len, w) => [[0, 0], [len, 0], [len, w], [0, w]].map(([x, y]) => ({ x: (x + 5) * S, y: (y + 5) * S }));
 
-test("a stick with a 14 mm head (mean width 2.90 mm) is fill, not one satin with 14 mm crosses", () => {
+test("a stick with a 14 mm head (mean width 2.90 mm) is fill, not one satin with 14 mm stitches", () => {
   // Was satin: 30 crosses over 12.1 mm, the widest 14.2.
   const d = build(lollipop());
-  assert.deepStrictEqual(kinds(d).includes("satin"), false, `kinds ${kinds(d)}`);
+  assert.strictEqual(kinds(d).includes("satin"), false, `kinds ${kinds(d)}`);
   assert.ok(kinds(d).includes("fill"));
 });
-test("a 45 x 6 mm wedge (mean width 2.81 mm) is fill", () => {
+test("a 45 x 6 mm wedge (mean width 2.81 mm, crosses to about 6 mm) is still satin: under the stitch limit", () => {
   const d = build([{ x: 0, y: 0 }, { x: 45, y: 3 }, { x: 0, y: 6 }].map((p) => ({ x: (p.x + 5) * S, y: (p.y + 5) * S })));
-  assert.deepStrictEqual(kinds(d).includes("satin"), false);
-});
-test("uniform bars up to 3.0 mm wide stay satin, and sew what they sewed", () => {
-  for (const [len, w] of [[30, 2], [30, 3], [60, 3], [12, 2.5]]) {
-    const d = build(bar(len, w));
-    assert.ok(kinds(d).includes("satin"), `${len} x ${w}`);
-    assert.ok(longestSatin(d) <= w + 0.5, `${len} x ${w}: ${longestSatin(d).toFixed(2)} mm`);
-  }
+  assert.ok(kinds(d).includes("satin"), `kinds ${kinds(d)}`);
+  assert.ok(longestSatin(d) < 12.1, `${longestSatin(d).toFixed(2)} mm`);
 });
 test("a shape the user set to satin is satin however wide it is (tierOverride is a human's choice)", () => {
-  const d = build(lollipop(), { tierOverride: "satin" });
-  assert.ok(kinds(d).includes("satin"));
+  assert.ok(kinds(build(lollipop(), { tierOverride: "satin" })).includes("satin"));
+});
+test("the shape tool's 6 mm dot, 6 mm square and 10 mm star stay satin and sew main's bytes", async () => {
+  // md5 (tools/satin-small-shapes.mjs md5Of, default options) on origin/main
+  // 0a0c3603, before this gate: the shapes the 2026-10-20 satinSmallShapes
+  // ruling made satin.
+  const MAIN = { dot6: "3d759edfae49a16d0e260543a881a033", square6: "6134bd14f5c08e60e8e18a01d2343f83", star5: "315abb071909fdc21a2c49b54c48a311" };
+  const T = await import(pathToFileURL(path.join(__dirname, "..", "tools", "satin-small-shapes.mjs")).href);
+  for (const [id, md5] of Object.entries(MAIN)) {
+    const d = await T.buildShape(T.SHAPES.find((s) => s.id === id), true);
+    assert.strictEqual(d._debug.nSatin, 1, id);
+    assert.strictEqual(T.md5Of(d), md5, id);
+  }
 });
