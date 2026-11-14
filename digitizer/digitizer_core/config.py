@@ -3767,6 +3767,32 @@ class PipelineConfig:
     # under satin still to come, else is cut (a trim). False is the walk as
     # it was, byte for byte. Tests: `tests/test_column_connectors_buried.py`.
     lettering_columns_connectors_buried: bool = False
+    # Under `lettering_columns`, the connector between a letter's strokes runs
+    # inside the stroke sewn next, under its satin to come, because the walk
+    # is ordered so that it can (2026-11-14, built OFF; implies
+    # `lettering_columns_connectors_buried`; `columns._edge_walk_trails`).
+    # Kent on #1490's Becker pin #14 sheet, 2026-11-14: "Build edge-walk,
+    # notice how the pro makes a nice corner with the thread andc continues
+    # the stitch to the right". Read on the pro's Becker MARINE E, N and A:
+    # at every join the stroke sewn first ENDS at the join and the next
+    # stroke's satin STARTS there and covers it, reached inside that stroke
+    # as its underlay; a stroke with a free tip (the E's middle arm, the A's
+    # crossbar) runs out under itself and is sewn back to its join; the E's
+    # bottom-left corner is one column turning the corner. The postman's walk
+    # is blind to direction: on MARINE's N it sewed the diagonal down to its
+    # foot and hopped back up across it, and `connectors_buried` could only
+    # cut that hop (+50 trims over 28 lettering designs). ON: each
+    # component's walk is the Euler trail -- of the postman's spans, or of
+    # those with one more doubled -- whose hops leave the fewest trims, then
+    # the least on finished satin; `connectors_buried`'s rail choice and cut
+    # then run on it. A letter with nothing on top keeps its walk, byte for
+    # byte; False is the walk as it was. Over #1490's 28 lettering designs:
+    # letters' travel on finished thread 268 mm OFF, 44 buried, 32 edge-walk;
+    # trims 589 / 639 / 596 (`docs/connector-edge-walk-2026-11-14.md`). It
+    # does not make the pro's corner: the E's stem and foot still butt, the
+    # fold refused there (that doc, "Not done"). Layout (the needle's
+    # order), not a physical constant. Tests: `tests/test_column_edge_walk.py`.
+    lettering_columns_connectors_edge_walk: bool = False
     # Under `lettering_columns`, let a thin STEM under the area floor reach
     # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
     # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2
