@@ -81,3 +81,31 @@ def test_a_letter_the_lane_covers_is_not_handed_back():
     _, off = _sew(cell)
     _, on = _sew(cell, lettering_columns_cover_handback=True)
     assert _md5(on) == _md5(off)
+
+
+# --- narrowed 2026-11-13 (Kent: "Narrow it, re-census"): the ladder must win --
+SMALL = json.loads((Path(__file__).resolve().parent.parent / "testdata"
+                    / "handback_monarch_cells.json").read_text(encoding="utf-8"))["small_kept"]
+
+
+@pytest.mark.parametrize("cell", SMALL, ids=[c["job"].split(":")[0] + "-" + c["shape_id"] for c in SMALL])
+def test_a_small_shape_the_ladder_would_spill_over_keeps_the_lane(cell):
+    poly, off = _sew(cell)
+    _, on = _sew(cell, lettering_columns_cover_handback=True)
+    assert satin_cover(off, poly) < HANDBACK_COVER_MIN          # it is a candidate
+    assert _md5(on) == _md5(off)                                # and the lane is kept
+
+
+def test_handback_wins_reads_spill_as_well_as_cover():
+    from shapely.geometry import LineString, box
+    from digitizer_core.columns import handback_wins, thread_cover_spill
+    from digitizer_core.stitches import SATIN, StitchRun
+    shape = box(0, 0, 10, 2)
+    half = [StitchRun(points=[(x, 0.2), (x, 1.0)], kind=SATIN) for x in (1, 3, 5)]
+    whole = [StitchRun(points=[(x, 0.2), (x, 1.8)], kind=SATIN) for x in (1, 3, 5, 7, 9)]
+    sprawl = [StitchRun(points=[(x, -3.0), (x, 5.0)], kind=SATIN) for x in (1, 3, 5, 7, 9)]
+    assert thread_cover_spill(whole, shape)[0] > thread_cover_spill(half, shape)[0]
+    assert handback_wins(half, whole, shape)                    # more in, nothing more out
+    assert not handback_wins(half, sprawl, shape)               # more in, far more out
+    assert not handback_wins(whole, half, shape)                # less in
+    assert handback_wins(half, whole, shape, rule="strict")

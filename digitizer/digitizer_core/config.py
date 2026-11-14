@@ -3762,8 +3762,13 @@ class PipelineConfig:
     # across `textcluster.LETTER_STROKE_CV_MAX`), sewed one arm: cover 0.656,
     # against >= 0.964 sewn untagged (docs/monarch-size-cliff-2026-11-13.md).
     # It acts where the area is lost, whatever the tagger read; the shape stays
-    # tagged for every other reader. False: the lane's output is final, as
-    # before, byte for byte. Flipping it is Kent's.
+    # tagged for every other reader. NARROWED 2026-11-13 (Kent: "Narrow it,
+    # re-census"): the ladder is sewn as a trial and its runs replace the
+    # lane's only when `columns.handback_wins` says they are better; the first
+    # census handed back small letters whose ladder satin spilled about one
+    # shape-area outside them (docs/column-cover-handback-census-2026-11-13.md).
+    # False: the lane's output is final, as before, byte for byte. Flipping it
+    # is Kent's.
     lettering_columns_cover_handback: bool = False
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
