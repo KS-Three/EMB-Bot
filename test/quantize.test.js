@@ -131,10 +131,7 @@ function legacyKnockout(rgba, w, h, opts) {
   }
   return out;
 }
-// Since 2026-11-13 this pins the OFF arm (`connected: false`): the per-pixel
-// test is what `legacyKnockout` froze, and the default now floods from the
-// border instead (tests below).
-test("knockoutBackground: opaque-corner inputs are byte-identical to the pre-change function (connected: false)", () => {
+test("knockoutBackground: opaque-corner inputs are byte-identical to the pre-change function", () => {
   let seed = 12345; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
   const W = 16, H = 16;
   for (const corner of [[255, 255, 255], [0, 0, 0], [10, 120, 10], [240, 240, 240], [35, 31, 32]]) {
@@ -145,16 +142,16 @@ test("knockoutBackground: opaque-corner inputs are byte-identical to the pre-cha
       px[i * 4 + 3] = rnd() < 0.1 ? 0 : (rnd() < 0.2 ? 128 : 255);
     }
     px.set([corner[0], corner[1], corner[2], 255], 0); // opaque corner
-    for (const o of [{}, { tolerance: 5 }, { sampleCorner: false }]) {
-      const off = Object.assign({ connected: false }, o);
-      assert.deepStrictEqual(Array.from(q.knockoutBackground(px, W, H, off)), Array.from(legacyKnockout(px, W, H, o)));
+    for (const o of [undefined, {}, { tolerance: 5 }, { sampleCorner: false }]) {
+      assert.deepStrictEqual(Array.from(q.knockoutBackground(px, W, H, o)), Array.from(legacyKnockout(px, W, H, o)));
     }
   }
 });
 
-// ---- only background that reaches the border (2026-11-13, Kent's approval) ----
-// Each pixel used to be judged on its own, so an enclosed white detail was
-// keyed out with the page and sewed as bare garment.
+// ---- `connected` (built OFF 2026-11-13, Kent: "Ship it switched off") ----
+// Asked for, only background that reaches the border through pixels passing
+// the same test is keyed out. Absent, the per-pixel test above is unchanged.
+const ON = { connected: true };
 function badge(bg, ring, inner) {
   const W = 60, H = 60, px = new Uint8ClampedArray(W * H * 4);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -166,45 +163,66 @@ function badge(bg, ring, inner) {
 }
 const keyedIn = (out, W, inside) => { let n = 0; for (let i = 3; i < out.length; i += 4) { const p = (i - 3) / 4; if (out[i] === 0 && inside(p % W, Math.floor(p / W))) n++; } return n; };
 const inDisc = (x, y) => (x - 30) ** 2 + (y - 30) ** 2 <= 24 ** 2;
-test("knockoutBackground: a white square inside a red badge on white keeps its 289 pixels; the page goes", () => {
+test("knockoutBackground connected: a white square inside a red badge on white keeps its 289 pixels; the page goes", () => {
   const { px, W, H } = badge([255, 255, 255], [200, 20, 30], [255, 255, 255]);
-  const out = q.knockoutBackground(px, W, H, {});
+  const out = q.knockoutBackground(px, W, H, ON);
   assert.strictEqual(keyedIn(out, W, inDisc), 0);
   assert.strictEqual(keyedIn(out, W, (x, y) => !inDisc(x, y)), W * H - 1793);
-  assert.strictEqual(q.medianCut(out, 4).palette.length, 2, "white is a sewn colour now");
-  // the off arm is the old answer: all 289 keyed out
-  assert.strictEqual(keyedIn(q.knockoutBackground(px, W, H, { connected: false }), W, inDisc), 289);
+  assert.strictEqual(q.medianCut(out, 4).palette.length, 2, "white is a sewn colour");
+  // the default is the per-pixel test: all 289 keyed out
+  assert.strictEqual(keyedIn(q.knockoutBackground(px, W, H, {}), W, inDisc), 289);
 });
-test("knockoutBackground: a corner-coloured detail inside the badge keeps its colour", () => {
+test("knockoutBackground connected: a corner-coloured detail inside the badge keeps its colour", () => {
   const navy = [20, 30, 90];
   const { px, W, H } = badge(navy, [250, 200, 0], navy);
-  assert.strictEqual(keyedIn(q.knockoutBackground(px, W, H), W, inDisc), 0);
+  assert.strictEqual(keyedIn(q.knockoutBackground(px, W, H, ON), W, inDisc), 0);
 });
-test("knockoutBackground: each test floods only through itself (black on a white band on a black page)", () => {
-  // a black page, a full-width white band, a black square on the band: the
-  // band reaches the border through white, the square reaches the page only
-  // through the band, so it is art.
+test("knockoutBackground connected: each test floods only through itself (black on a white band on a black page)", () => {
+  // the band reaches the border through white; the black square on it reaches
+  // the page only through the band, so it is art
   const W = 30, H = 30, px = new Uint8ClampedArray(W * H * 4);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const o = (y * W + x) * 4, band = y >= 10 && y < 20, sq = band && y >= 13 && y < 17 && x >= 13 && x < 17;
     const v = band && !sq ? 255 : 0; px[o] = px[o + 1] = px[o + 2] = v; px[o + 3] = 255;
   }
-  const out = q.knockoutBackground(px, W, H);
+  const out = q.knockoutBackground(px, W, H, ON);
   assert.strictEqual(opaqueCount(out), 16);
   assert.strictEqual(out[(15 * W + 15) * 4 + 3], 255);
 });
-test("knockoutBackground: a one-pixel diagonal ring closes what it encloses (4-connected background)", () => {
-  // a diamond outline drawn 8-connected: background reaches its inside only
-  // through the diagonal corners
+test("knockoutBackground connected: a one-pixel diagonal ring closes what it encloses (4-connected background)", () => {
   const W = 21, H = 21, px = new Uint8ClampedArray(W * H * 4).fill(255);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (Math.abs(x - 10) + Math.abs(y - 10) === 7) { const o = (y * W + x) * 4; px[o] = 200; px[o + 1] = 0; px[o + 2] = 0; }
-  const out = q.knockoutBackground(px, W, H);
+  const out = q.knockoutBackground(px, W, H, ON);
   assert.strictEqual(out[(10 * W + 10) * 4 + 3], 255, "the white inside the diamond is kept");
   assert.strictEqual(out[3], 0, "the page outside is keyed out");
 });
-test("knockoutBackground: a white halo round a mark on a transparent page still goes", () => {
+test("knockoutBackground connected: a white halo round a mark on a transparent page still goes", () => {
   const { px, W, H } = markOnTransparent([0, 0, 0]);
   for (let y = 1; y < 7; y++) for (let x = 1; x < 7; x++) { const o = (y * W + x) * 4; if (px[o + 3] === 0) { px[o] = px[o + 1] = px[o + 2] = 250; px[o + 3] = 255; } }
-  const out = q.knockoutBackground(px, W, H);
-  assert.strictEqual(opaqueCount(out), 16, "the 16 black pixels stay; the 20 halo pixels go");
+  assert.strictEqual(opaqueCount(q.knockoutBackground(px, W, H, ON)), 16);
+});
+test("knockoutBackground: the Studio's flatten of six real images is the bytes main gave (the option is OFF by default)", async () => {
+  // md5 of flattenRGBA (removeBg, 4 colours, the Studio's prep) captured on
+  // origin/main 0a0c3603 before `connected` existed.
+  const MAIN = {
+    "art/logo_toat_beanie.png": "c387056d4917c0087d3431780ede5d63",
+    "art/logo_hotel_fremont_patch.png": "f0977cf4c4feac65aa41a8ff772b4e2b",
+    "logo_whitebg.png": "f64d895c07f4adbac941d976c25b0daa",
+    "black_ground_holes.png": "bbc91a33e8d998270807c2b4f1c8d5db",
+    "photo/repro_gradient_white_icon.png": "68fc211c238b161e18e4a85b79334f5a",
+    "logo_alpha.png": "3664933b38e191c2d9841ca2a5998965",
+  };
+  const path = require("node:path"), { pathToFileURL } = require("node:url"), crypto = require("node:crypto");
+  globalThis.window = globalThis;
+  for (const f of ["units", "garments", "fabrics", "fill", "geometry", "quantize", "flatten", "satin", "satinplay", "satinfont", "fontbin", "dst", "exp", "digitize"]) require("../src/" + f + ".js");
+  const { decodePNG, downscale } = await import(pathToFileURL(path.join(__dirname, "..", "tools", "png.mjs")).href);
+  const { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF } = await import(pathToFileURL(path.join(__dirname, "..", "app", "src", "lib", "flatten.js")).href);
+  for (const [rel, md5] of Object.entries(MAIN)) {
+    let img = decodePNG(path.join(__dirname, "..", "digitizer", "testdata", rel));
+    if (Math.max(img.width, img.height) > WORK_MAX_PX) img = downscale(img, WORK_MAX_PX);
+    const rgba = Uint8ClampedArray.from(img.rgba);
+    for (let i = 3; i < rgba.length; i += 4) if (rgba[i] < ALPHA_CUTOFF) rgba[i] = 0;
+    const f = flattenRGBA(rgba, img.width, img.height, { nColors: 4, removeBg: true });
+    assert.strictEqual(crypto.createHash("md5").update(JSON.stringify(f.palette)).update(Buffer.from(f.indices)).digest("hex"), md5, rel);
+  }
 });

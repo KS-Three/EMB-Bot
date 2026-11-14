@@ -59,18 +59,10 @@ test("upload -> trace preview (colors, hole kept as a cut-out) -> add shapes -> 
   // (manual-holes plan Task 7). The fallback that still drops a hole says
   // "A traced hole could not be kept ..." -- so the absence of BOTH texts is
   // asserted, not just an empty list.
-  //
-  // 2026-11-13: FIVE shapes and four colours, not four and three. "Remove
-  // background" keys out only white that reaches the image's border
-  // (src/quantize.js `connected`, Kent's approval that day), so the white
-  // inside the ring is a white square of its own now, sewn over the ring's
-  // cut-out; the cut-out itself is unchanged. Counted in Node with the real
-  // trace (traceShapesFromRGBA on this PNG): green ring, its cut-out, blue,
-  // red, white.
   const addBtn = page.getByRole("button", { name: /^Add \d+ shapes?$/ });
-  await expect(addBtn).toHaveText("Add 5 shapes", { timeout: 15_000 });
+  await expect(addBtn).toHaveText("Add 4 shapes", { timeout: 15_000 });
   await expect(page.locator(".tip-preview")).toBeVisible();
-  await expect(page.locator(".tip-swatch")).toHaveCount(4);
+  await expect(page.locator(".tip-swatch")).toHaveCount(3);
 
   await expect(page.locator(".tip-warnings li")).toHaveCount(0);
   await expect(page.getByText(/interior hole|traced hole could not be kept/)).toHaveCount(0);
@@ -79,7 +71,7 @@ test("upload -> trace preview (colors, hole kept as a cut-out) -> add shapes -> 
   await addBtn.click();
   await expect(page.locator(".tip-upload")).toHaveCount(0); // panel closes itself on a successful add
   const rows = page.locator(".mp-shaperow");
-  await expect(rows).toHaveCount(5);
+  await expect(rows).toHaveCount(4);
   // The ring's hole is a cut-out row, and it cuts its ring: the row ENDS at
   // its name, with no "cuts nothing" reason line under it.
   const cutRows = rows.filter({ hasText: "· Cut out" });
@@ -155,5 +147,5 @@ test("upload -> trace preview (colors, hole kept as a cut-out) -> add shapes -> 
   // The anchor drag reshapes the shape: the caption's stitch count moves,
   // and the shape survives under the same row/id.
   await expect.poll(() => stats.innerText(), { timeout: 20_000 }).not.toBe(before);
-  await expect(rows).toHaveCount(5);
+  await expect(rows).toHaveCount(4);
 });
