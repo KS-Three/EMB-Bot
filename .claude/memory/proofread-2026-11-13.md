@@ -26,12 +26,21 @@ and `lettering_ink_stray` explain nothing (they move no outline). Three
 departures leave NO tag (outline-loop border, Column lane, sliver prune), so
 they always read as unexplained.
 
-**What it found on main 7ad9c124 (80 mm left_chest):** kanji_seal sews its solid
-red bodies HOLLOW: 39 red regions, 999 mm2, tagged `enclosed_background` +
-`stitched=False` (preflight B). bukit_asam's "e o n" MOVED 3.1 mm up
-(`small_text_reset`); jakarta's tagline MOVED/MERGED and its three squares
-joined into one bar; ahora's H-O and A-! joined across the pink ground; TOAT's
-0.7 mm keyline hexagon sewn as a 1 mm-wider satin (untagged outline loop).
+**What it found on main 7ad9c124 (80 mm left_chest):** bukit_asam's "e o n"
+MOVED 3.1 mm up (`small_text_reset`); jakarta's tagline MOVED/MERGED and its
+three squares joined into one bar; ahora's H-O and A-! joined across the pink
+ground; TOAT's 0.7 mm keyline hexagon sewn as a 1 mm-wider satin (untagged
+outline loop).
+
+**RETRACTED 2026-11-14: "kanji_seal sews its solid red bodies hollow".** The
+bodies are TRANSPARENT empty spaces in the source; the red was RGB flattened
+under the alpha, which the first read took for ink because stage 1 keeps
+enclosed holes out of `bg_mask` (`Prep.enclosed_mask`). The hollow render is
+right. jakarta's boxed "a" counters were the same error. Since then
+`proofread.page_mask` reads `bg_mask | enclosed_mask` as page, and on non-alpha
+art a thread within 10 dE of `bg_edge_rgb` reads as page (a white field sewn
+white). The lesson: look at the SOURCE composited over white, not the prepped
+raster, before calling ink missing ([[eye-first-diagnosis-2026-11-13]]).
 
 **Against Kent's pins (instrument reading, n small, 13 items' renders were on
 older trees):** on the 7 items where a random pin hits under 0.6 of the time,

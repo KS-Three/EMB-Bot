@@ -113,6 +113,7 @@ def raster_check(rep_r: dict, plan, size_mm, debug_dir: Path) -> dict | None:
 
 
 def overlay(rep: dict, rasters: dict, p, design: dict, out_png: Path, title: str) -> None:
+    from digitizer_core import proofread as pr
     from digitizer_core import stitchviz
     grid = rasters["grid"]
     art = rasters["art"]
@@ -126,7 +127,7 @@ def overlay(rep: dict, rasters: dict, p, design: dict, out_png: Path, title: str
                   [0, kk, grid.px * (-cy / p.px_per_mm - grid.y0)]], np.float64)
     src = cv2.warpAffine(cv2.cvtColor(p.rgb, cv2.COLOR_RGB2BGR), M, (grid.w, grid.h),
                          flags=cv2.INTER_AREA, borderValue=(255, 255, 255))
-    bgm = cv2.warpAffine(np.asarray(p.bg_mask, np.uint8), M, (grid.w, grid.h),
+    bgm = cv2.warpAffine(np.asarray(pr.page_mask(p), np.uint8), M, (grid.w, grid.h),
                          flags=cv2.INTER_NEAREST, borderValue=1) > 0
     src[bgm] = (src[bgm] * 0.35 + 255 * 0.65).astype(np.uint8)
     # panel 2: the classes
@@ -323,6 +324,184 @@ def chance_rate(out: Path, name: str, record: dict, radius: float) -> float | No
     return round(float((near.astype(bool) & thread).sum()) / n, 3) if n else None
 
 
+def rules_of(f: dict) -> list[str]:
+    """The step a finding is charged to: its `explained_by` labels, else
+    `untagged/<the top producing run's kind or role>`, else the region (or no
+    region) that should have sewn it."""
+    if f["explained_by"]:
+        return list(f["explained_by"])
+    pb = f.get("produced_by") or []
+    if pb:
+        kinds = set(pb[0]["kinds"]) | set(pb[0]["roles"])
+        k = next((x for x in ("border", "edge_cap", "bean", "run", "satin", "fill", "underlay") if x in kinds),
+                 sorted(kinds)[0] if kinds else "?")
+        return [f"untagged/{k}"]
+    return ["untagged/unsewn_region" if f.get("meant_for") else "untagged/no_region"]
+
+
+def _near_mask(record: dict, shape, findings: list[dict], radius: float) -> np.ndarray:
+    gx0, gy0 = record["report"]["grid_origin_mm"]
+    near = np.zeros(shape, np.uint8)
+    for f in findings:
+        x0, y0, x1, y1 = f["box_mm"]
+        cv2.rectangle(near, (int((x0 - gx0) * PXMM), int((y0 - gy0) * PXMM)),
+                      (int((x1 - gx0) * PXMM), int((y1 - gy0) * PXMM)), 1, -1)
+    if near.any():
+        k = int(round(radius * PXMM))
+        near = cv2.dilate(near, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * k + 1, 2 * k + 1)))
+    return near.astype(bool)
+
+
+def census(out: Path, kent_path: Path, match_dir: Path, dest: Path, radius: float = 3.0) -> dict:
+    """Tables A (per rule) and B (per finding kind x Kent's fault class) over
+    every kit item with a kept proof-read, plus the Good/Great false-alarm
+    reading. Group level: a Kent fault group is hit when any of its pins has
+    a finding within `radius`; its chance is 1 - (1 - share)^pins, `share`
+    the stitched area within `radius` of those findings."""
+    kent = json.loads(kent_path.read_text(encoding="utf-8"))
+    match = {}
+    for fp in sorted(match_dir.glob("*.json")):
+        match.update(json.loads(fp.read_text(encoding="utf-8")))
+    from collections import defaultdict
+    A = defaultdict(lambda: dict(designs=set(), findings=0, misfire=0, error=0, explained=0, mm2=0.0,
+                                 groups_hit=0, chance=0.0, good_designs=set(), good_findings=0))
+    B = defaultdict(lambda: dict(n=0, hit=0, chance=0.0))
+    items, missing = [], []
+    for iid, k in sorted(kent.items()):
+        pj = out / f"{iid}.proofread.json"
+        npz = out / f"{iid}.rasters.npz"
+        if not pj.exists() or not npz.exists():
+            missing.append(iid)
+            continue
+        rec = json.loads(pj.read_text(encoding="utf-8"))
+        fr = rec["frame"]
+        thread = np.load(npz)["top_cls"] >= 0
+        nthread = max(1, int(thread.sum()))
+        fs = rec["report"]["findings"]
+        good = k.get("grade") in ("Good", "Great")
+        cls_of = {int(g.lstrip("G")): int(c) for g, c in (match.get(iid, {}).get("kent") or {}).items()}
+        pins = {p["idx"]: p for p in k["pins"]}
+        groups = [(g["gid"], [pins[i] for i in g["pins"] if i in pins], g.get("severity")) for g in k.get("groups", [])]
+
+        def gx(p):
+            return p["x_mm"] + fr["x0_mm"], p["y_mm"] - fr["y1_mm"]
+
+        def near_any(fl, p):
+            x, y = gx(p)
+            return any(_finding_dist(f, x, y) <= radius for f in fl)
+
+        # per rule
+        by_rule = defaultdict(list)
+        for f in fs:
+            for r in rules_of(f):
+                by_rule[r].append(f)
+        for r, fl in by_rule.items():
+            e = A[r]
+            e["designs"].add(iid)
+            e["findings"] += len(fl)
+            for f in fl:
+                e[f["severity"]] += 1
+                e["mm2"] += f["area_mm2"]
+            if good:
+                e["good_designs"].add(iid)
+                e["good_findings"] += sum(f["severity"] != "explained" for f in fl)
+            share = float((_near_mask(rec, thread.shape, fl, radius) & thread).sum()) / nthread
+            for _gid, gp, _sev in groups:
+                if not gp:
+                    continue
+                e["groups_hit"] += any(near_any(fl, p) for p in gp)
+                e["chance"] += 1 - (1 - share) ** len(gp)
+        # per kind x class (every group counts in its class's n once per kind)
+        kinds = sorted({f["kind"] for f in fs} | {"MISSING", "EXTRA", "MOVED", "MERGED", "CLOSED", "SHAPE", "WIDTH"})
+        for kd in kinds + ["ANY"]:
+            fl = fs if kd == "ANY" else [f for f in fs if f["kind"] == kd]
+            share = (float((_near_mask(rec, thread.shape, fl, radius) & thread).sum()) / nthread) if fl else 0.0
+            for gid, gp, _sev in groups:
+                if not gp:
+                    continue
+                c = cls_of.get(gid, 16)
+                e = B[(kd, c)]
+                e["n"] += 1
+                e["hit"] += bool(fl) and any(near_any(fl, p) for p in gp)
+                e["chance"] += 1 - (1 - share) ** len(gp)
+        sev = defaultdict(int)
+        for f in fs:
+            sev[f["severity"]] += 1
+        items.append(dict(item=iid, group=k.get("group"), grade=k.get("grade"), size=k.get("size"),
+                          groups=len([g for g in groups if g[1]]), findings=len(fs), error=sev["error"],
+                          misfire=sev["misfire"], explained=sev["explained"],
+                          mm2_flagged=round(sum(f["area_mm2"] for f in fs if f["severity"] != "explained"), 1)))
+    rows_a = sorted(({"rule": r, "designs": len(e["designs"]), "findings": e["findings"], "misfire": e["misfire"],
+                      "unexplained": e["error"], "explained": e["explained"], "mm2": round(e["mm2"], 1),
+                      "groups_hit": e["groups_hit"], "chance": round(e["chance"], 1),
+                      "good_designs": len(e["good_designs"]), "good_findings": e["good_findings"]}
+                     for r, e in A.items()), key=lambda r: (-(r["misfire"] + r["unexplained"]), -r["mm2"]))
+    rows_b = [{"kind": kd, "cls": c, "groups": e["n"], "hit": e["hit"], "chance": round(e["chance"], 1)}
+              for (kd, c), e in sorted(B.items())]
+    res = {"radius_mm": radius, "items": items, "missing": missing, "table_a": rows_a, "table_b": rows_b}
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / "census.json").write_text(json.dumps(res, indent=1) + "\n", encoding="utf-8")
+    (dest / "tables.md").write_text(census_markdown(res), encoding="utf-8")
+    return res
+
+
+CENSUS_CLASSES = {
+    1: "displaced off line", 2: "like elements treated differently", 3: "shape detail lost",
+    4: "letters merged / counters closed", 5: "jagged / wavy edge", 6: "element missing / broken off",
+    7: "element invented", 8: "wrong thread colour", 9: "stray travel", 10: "whole design unreadable",
+    11: "stitch direction / pen flow", 12: "wrong stitch type", 13: "stroke weight wrong",
+    14: "coverage gap", 15: "blob / pile-up", 16: "other"}
+
+
+def census_markdown(res: dict) -> str:
+    r = res["radius_mm"]
+    L = [f"# Proof-read census over the defect-marks kits ({len(res['items'])} items)", "",
+         "Instrument readings (ROADMAP gate 4). Hits are Kent's fault GROUPS with a finding within "
+         f"{r} mm of any of their pins; chance is the expected hits for findings placed where they are "
+         "but pins dropped at random on the thread (sum over groups of 1 - (1 - share)^pins). Kent pinned "
+         "renders from older trees (950855bf, ea13a362); these findings read main + the proof-read.", "",
+         "## Table A: per rule (the step a finding is charged to: `explained_by`, else `untagged/<producing tier>`)",
+         "", "| rule | designs | findings | misfire | unexplained | mm2 | Kent groups hit | chance | Good/Great designs | their misfire+unexplained |",
+         "|---|---|---|---|---|---|---|---|---|---|"]
+    for a in res["table_a"]:
+        L.append(f"| {a['rule']} | {a['designs']} | {a['findings']} | {a['misfire']} | {a['unexplained']} | "
+                 f"{a['mm2']} | {a['groups_hit']} | {a['chance']} | {a['good_designs']} | {a['good_findings']} |")
+    kinds = ["MISSING", "EXTRA", "MOVED", "MERGED", "CLOSED", "SHAPE", "WIDTH", "ANY"]
+    cell = {(b["kind"], b["cls"]): b for b in res["table_b"]}
+    classes = sorted({b["cls"] for b in res["table_b"]})
+    L += ["", "## Table B: Kent's fault groups hit, per finding kind and fault class (hit/groups, chance)", "",
+          "| class | " + " | ".join(kinds) + " |", "|---|" + "---|" * len(kinds)]
+    for c in classes:
+        row = []
+        for k in kinds:
+            b = cell.get((k, c))
+            row.append(f"{b['hit']}/{b['groups']} ({b['chance']})" if b else "-")
+        L.append(f"| {c} {CENSUS_CLASSES.get(c, '')} | " + " | ".join(row) + " |")
+    L += ["", "## Per design", "", "| item | grade | groups | findings | unexplained | misfire | explained | mm2 flagged |",
+          "|---|---|---|---|---|---|---|---|"]
+    for it in sorted(res["items"], key=lambda x: (x["grade"] or "", x["item"])):
+        L.append(f"| {it['item']} | {it['grade']} | {it['groups']} | {it['findings']} | {it['error']} | "
+                 f"{it['misfire']} | {it['explained']} | {it['mm2_flagged']} |")
+    good = [it for it in res["items"] if it["grade"] in ("Good", "Great")]
+    if good:
+        n = len(good)
+        L += ["", f"## Good/Great designs ({n}): what the read flags on work Kent passed", "",
+              f"unexplained per design: mean {sum(i['error'] for i in good) / n:.1f}, "
+              f"misfire per design: mean {sum(i['misfire'] for i in good) / n:.1f}; "
+              f"designs with no unexplained finding: {sum(i['error'] == 0 for i in good)}/{n}."]
+    if res["missing"]:
+        L += ["", "Not run (no kept proof-read): " + ", ".join(res["missing"])]
+    return "\n".join(L) + "\n"
+
+
+def cmd_census(a) -> int:
+    res = census(Path(a.out), Path(a.kent), Path(a.match), Path(a.dest), a.radius)
+    print("items", len(res["items"]), "missing", res["missing"])
+    for r in res["table_a"][:25]:
+        print(r)
+    return 0
+
+
 def cmd_summary(a) -> int:
     out = Path(a.out)
     for pj in sorted(out.glob("*.proofread.json")):
@@ -363,8 +542,15 @@ def main(argv=None) -> int:
     q.add_argument("--radius", type=float, default=3.0)
     s = sub.add_parser("summary")
     s.add_argument("--out", required=True)
+    c = sub.add_parser("census", help="tables per rule and per kind x Kent fault class")
+    c.add_argument("--out", required=True, help="the run dir (<item>.proofread.json + .rasters.npz)")
+    c.add_argument("--kent", required=True, help="kent.json: every kit's pins grouped (agent-eye-1113)")
+    c.add_argument("--match", required=True, help="match_out/ dir: Kent group -> census class")
+    c.add_argument("--dest", required=True)
+    c.add_argument("--radius", type=float, default=3.0)
     a = ap.parse_args(argv)
-    return {"run": cmd_run, "reread": cmd_reread, "pins": cmd_pins, "summary": cmd_summary}[a.cmd](a)
+    return {"run": cmd_run, "reread": cmd_reread, "pins": cmd_pins, "summary": cmd_summary,
+            "census": cmd_census}[a.cmd](a)
 
 
 if __name__ == "__main__":

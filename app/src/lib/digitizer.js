@@ -1847,6 +1847,20 @@ export function pruneDeletedShapes(design, deletedIds, knownIds) {
   return { ...design, stitches, runs, frame: { minX, maxX, minY, maxY } };
 }
 
+// The deleted shapes the element's CURRENT stitches no longer hold, which the
+// canvas overlay must leave out of its fit (shapeOverlay sewnRows,
+// 2026-11-13): every applied delete (the run that made `result` dropped the
+// region), and the pending ones once displayResult has pruned them from what
+// is drawn. A pending delete on a result that carries no runs to prune by is
+// still in the stitches, so it still counts toward the fit.
+export function deletedFromStitches(element) {
+  const all = (element && element.deletedShapeIds) || [];
+  if (!all.length) return [];
+  const pending = new Set(pendingDeletedIds(element));
+  const pruned = displayResult(element) !== (element && element.result);
+  return all.filter((id) => pruned || !pending.has(id));
+}
+
 // Deletions the current result does not know about yet: in the element's
 // deletedShapeIds, not in the list the result was digitized with.
 export function pendingDeletedIds(element) {

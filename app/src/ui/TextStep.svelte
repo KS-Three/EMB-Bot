@@ -13,6 +13,8 @@
   import { rotationPatch } from "../lib/hoop.js";
   import { generateElement } from "../lib/generate.js";
   import { garmentOf } from "../lib/placement.js";
+  import { ensureFont } from "../lib/fontLoader.js";
+  import { EMB } from "../lib/emb.js";
 
   // Element-scoped text editor (Task 5, Slice 5): bound to whichever text
   // element is currently selected in ContentStep's element list, not a
@@ -45,14 +47,33 @@
 
   // Rotation keeps the lettering's size (hoop.js rotationPatch, 2026-11-13):
   // it needs the lettering's fit aspect, which only a generated design
-  // reports. Without a project (tests that mount this alone) or a font yet,
-  // the patch turns it only.
-  function turnTo(deg) {
+  // reports. Without a project (tests that mount this alone) the patch turns
+  // it only; outline fonts are not turned in size at all (rotationPatch).
+  function turnPatchNow(el, deg) {
     let design = null;
     try {
-      if (project && element.sizeMm > 0 && !outline) design = generateElement(element, garmentOf(project), {});
+      if (project && el.sizeMm > 0 && !outline) design = generateElement(el, garmentOf(project), {});
     } catch (e) { design = null; }
-    patch(rotationPatch(element, deg, design));
+    return rotationPatch(el, deg, design);
+  }
+  // A font not loaded yet (review follow-up, 2026-11-13): turning without the
+  // aspect refit the lettering to the old sizeMm at the new angle, the
+  // original bug, and nothing put it right once the font arrived. So the
+  // turn WAITS for fontLoader's own ensureFont (the promise and cache the
+  // field loads through) and is patched once, from the element as it then
+  // stands; a failed load turns it only, as before. Usually milliseconds: the
+  // field cannot draw the lettering without that font either.
+  function turnTo(deg) {
+    const key = element.fontKey;
+    if (project && element.sizeMm > 0 && !outline && key && !(EMB.SATIN_FONTS || {})[key]) {
+      const id = element.id, proj = projectId;
+      ensureFont(key).catch(() => null).then(() => {
+        if (destroyed || element.id !== id || element.fontKey !== key) return;
+        patch(turnPatchNow(element, deg), id, proj);
+      });
+      return;
+    }
+    patch(turnPatchNow(element, deg));
   }
 
   // ---- Outline font: digitize on the service ------------------------------
@@ -275,10 +296,13 @@
 {/if}
 <label class="letterspacing" use:tip={"rotation"}>
   <span>Rotation<i class="tipmark" aria-hidden="true"></i></span>
+  <!-- max 359, not 360: a turn is stored in [0, 360) (hoop.js rotationPatch),
+       so 360 was saved as 0 and the thumb jumped back to the left end
+       (review follow-up, 2026-11-13). -->
   <input
     type="range"
     min="0"
-    max="360"
+    max="359"
     step="1"
     value={element.rotationDeg || 0}
     on:input={(e) => turnTo(parseInt(e.target.value, 10))}
