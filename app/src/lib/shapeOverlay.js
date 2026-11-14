@@ -65,9 +65,10 @@ export function outlineOf(shape) {
 }
 
 // Bounding box over every shape's outline, in the service's own mm space.
-// Shapes that are hidden (`stitched === false`, or deleted by the user) still
-// count: the transform must not shift when a shape is toggled off, or every
-// remaining outline would jump.
+// (This said hidden and deleted shapes keep the fit steady when toggled off.
+// They do not: the service drops a deleted region and leaves a `stitched:
+// false` one out, so the STITCH box the fit lands on shrinks without them.
+// The overlay fit therefore uses `sewnRows` below, 2026-11-13.)
 export function outlineBBoxMm(shapes) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const s of shapes || []) {
@@ -99,6 +100,24 @@ export function rotatePointsDeg(points, deg) {
   return points.map(([x, y]) => [x * cos - y * sin, x * sin + y * cos]);
 }
 
+// The rows whose outlines the fit's SOURCE box is built from: the shapes the
+// element's current stitches contain, because the box they are fitted onto
+// (`bboxMm`, generateAll's perElement) is measured from those stitches
+// (Kent's approval 2026-11-13). Every row of the last run is drawn, but a
+// row is left out of the box when that run did not sew it (`stitched ===
+// false` on the review row, which echoes the run) or when it is in
+// `unsewnIds` (the caller's list of deleted shapes the stitches no longer
+// hold: lib/digitizer.js deletedFromStitches). Before, a deleted edge shape
+// still widened the source box after the stitches had lost it, and every
+// other outline was drawn and edited at the wrong scale and place (one fifth
+// size in the review repro). With nothing to leave out, or nothing left,
+// every row counts: the fit is then exactly what it always was.
+function sewnRows(rows, unsewnIds) {
+  const gone = unsewnIds ? new Set(unsewnIds) : null;
+  const sewn = rows.filter((s) => s.stitched !== false && !(gone && gone.has(s.id)));
+  return sewn.length ? sewn : rows;
+}
+
 function bboxOf(points) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const [x, y] of points) {
@@ -122,7 +141,7 @@ function bboxOf(points) {
  * @returns [{ id, points: [[x, y], ...] }], empty when there is nothing
  *          trustworthy to draw
  */
-export function shapeOutlinesInFieldMm(shapes, bboxMm, rotationDeg = 0, pendingById = null, pendingHolesById = null) {
+export function shapeOutlinesInFieldMm(shapes, bboxMm, rotationDeg = 0, pendingById = null, pendingHolesById = null, unsewnIds = null) {
   const rows = (shapes || []).filter((s) => outlineOf(s));
   if (!rows.length || !bboxMm) return [];
 
@@ -161,9 +180,9 @@ export function shapeOutlinesInFieldMm(shapes, bboxMm, rotationDeg = 0, pendingB
 
   // Fitted from the ORIGINAL outlines, never from the pending edits — see
   // ringFor above. An edit that moved the fit would drag every other shape
-  // sideways as a side effect.
+  // sideways as a side effect. Only the SEWN rows: see sewnRows.
   const src = bboxOf(
-    rows.flatMap((s) =>
+    sewnRows(rows, unsewnIds).flatMap((s) =>
       rotatePointsDeg(outlineOf(s).map(([x, y]) => [x, -y]), rotationDeg))
   );
   const srcW = src.maxX - src.minX;
@@ -722,10 +741,10 @@ export function insertNode(points, index, at) {
  * spun by the element's own angle — the failure mode that would make editing
  * a rotated design feel broken while looking fine on an unrotated one.
  */
-export function fieldMmToOutlineMm(pointsFieldMm, shapes, bboxMm, rotationDeg = 0) {
+export function fieldMmToOutlineMm(pointsFieldMm, shapes, bboxMm, rotationDeg = 0, unsewnIds = null) {
   const rows = (shapes || []).filter((s) => outlineOf(s));
   if (!rows.length || !bboxMm) return null;
-  const rotated = rows.flatMap((s) =>
+  const rotated = sewnRows(rows, unsewnIds).flatMap((s) =>
     rotatePointsDeg(outlineOf(s).map(([x, y]) => [x, -y]), rotationDeg)
   );
   const src = bboxOf(rotated);

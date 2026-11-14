@@ -15,7 +15,7 @@
 // fixes it — on purpose: whoever fixes it deletes the `test.fail()` line in
 // the same PR, and the guard then holds the fix.
 import { test, expect } from "@playwright/test";
-import { startStudio, pickTemplate, openDownload, uploadArtwork, runDigitize } from "./helpers.js";
+import { startStudio, pickTemplate, openDownload, uploadArtwork, runDigitize, openAdvanced, typeText } from "./helpers.js";
 import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -267,3 +267,139 @@ for (const [fmt, magic] of [["DST", "LA:"], ["PES", "#PES"], ["EXP", null]]) {
     if (magic) expect(readFileSync(p).subarray(0, magic.length).toString("latin1")).toBe(magic);
   });
 }
+
+// ---- a touch is not a resize; the grip turns without rescaling (2026-11-13) --
+// Review follow-up. A corner press that does not travel the field's 4 px
+// click threshold writes nothing, on one element and on a group's corner,
+// and the rotate grip turns lettering at its own size.
+
+// Every saved element's sizeMm and rotation, in element order.
+function savedSizes(page) {
+  return page.evaluate(() => {
+    const id = localStorage.getItem("embstudio:current");
+    const p = id && JSON.parse(localStorage.getItem("embstudio:p:" + id) || "null");
+    return p ? (p.elements || []).map((e) => ({ sizeMm: e.sizeMm ?? null, rotationDeg: e.rotationDeg || 0 })) : null;
+  });
+}
+
+// The selection chrome, read off the overlay: its indigo handle pixels' box
+// (client px), and the rotate grip (indigo pixels above that box's handles).
+function selectionChrome(page) {
+  return page.evaluate(() => {
+    const c = document.querySelector(".hoop canvas");
+    const overlay = [...document.querySelectorAll(".hoop canvas")].pop();
+    const r = c.getBoundingClientRect();
+    const d = overlay.getContext("2d").getImageData(0, 0, overlay.width, overlay.height).data;
+    const k = overlay.width / r.width;
+    const pts = [];
+    for (let i = 0, px = 0; i < d.length; i += 4, px++) {
+      if (d[i + 2] > 200 && d[i] > 70 && d[i] < 130 && d[i + 1] > 70 && d[i + 1] < 130) pts.push({ x: px % overlay.width, y: Math.floor(px / overlay.width) });
+    }
+    if (!pts.length) return null;
+    const br = pts.reduce((a, b) => (b.x + b.y > a.x + a.y ? b : a));
+    const tl = pts.reduce((a, b) => (b.x + b.y < a.x + a.y ? b : a));
+    const above = pts.filter((p) => p.y < tl.y - 6);
+    const grip = above.length ? { x: above.reduce((s, p) => s + p.x, 0) / above.length, y: above.reduce((s, p) => s + p.y, 0) / above.length } : null;
+    const toClient = (p) => p && { x: r.x + p.x / k, y: r.y + p.y / k };
+    return { br: toClient({ x: br.x - 2 * k, y: br.y - 2 * k }), tl: toClient(tl), grip: toClient(grip) };
+  });
+}
+
+// The exact handle spot: hover near `near` until the field shows a corner
+// resize cursor (hitTest's own answer), so a press there is a resize press.
+async function cornerAt(page, near) {
+  const canvas = page.locator(".hoop canvas").first();
+  for (let r = 0; r <= 14; r += 2) {
+    for (const [dx, dy] of [[0, 0], [-r, -r], [-r, 0], [0, -r], [r, r], [r, 0], [0, r], [-r, r], [r, -r]]) {
+      await page.mouse.move(near.x + dx, near.y + dy);
+      const cur = await canvas.evaluate((c) => c.style.cursor);
+      if (/nwse-resize|nesw-resize/.test(cur)) return { x: near.x + dx, y: near.y + dy };
+    }
+  }
+  return null;
+}
+
+async function touch(page, at) {
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await page.mouse.move(at.x + 2, at.y + 1); // jitter under the 4 px click threshold
+  await page.mouse.up();
+}
+
+test("a press on a corner handle that does not travel writes nothing", async ({ page }) => {
+  await lettering(page);
+  const box = await page.locator(".hoop canvas").boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect.poll(() => selectionChrome(page)).not.toBeNull();
+  await page.waitForTimeout(400);
+  const before = await savedSizes(page);
+  const at = await cornerAt(page, (await selectionChrome(page)).br);
+  expect(at, "found the corner handle").not.toBeNull();
+  for (let i = 0; i < 3; i++) await touch(page, at);
+  await page.waitForTimeout(400);
+  expect(await savedSizes(page)).toEqual(before);
+});
+
+test("a press on a GROUP's corner that does not travel writes nothing", async ({ page }) => {
+  await lettering(page);
+  await openAdvanced(page);
+  await page.locator(".eladd", { hasText: "Text" }).click();
+  await typeText(page, "HI");
+  await page.locator(".elrow").first().click({ modifiers: ["Control"] });
+  await expect(page.getByRole("heading", { name: "2 selected" })).toBeVisible();
+  await expect.poll(() => selectionChrome(page)).not.toBeNull();
+  await page.waitForTimeout(400);
+  const before = await savedSizes(page);
+  expect(before).toHaveLength(2);
+  const at = await cornerAt(page, (await selectionChrome(page)).br);
+  expect(at, "found the group's corner handle").not.toBeNull();
+  for (let i = 0; i < 3; i++) await touch(page, at);
+  await page.waitForTimeout(400);
+  expect(await savedSizes(page)).toEqual(before);
+});
+
+test("the rotate grip turns lettering at its own size: same stitches, the box turned", async ({ page }) => {
+  await lettering(page);
+  // 60 mm, so the turned lettering fits the left chest either way and no
+  // box clamp hides what the grip did to the size.
+  const unit = page.getByLabel("Size unit").first();
+  if ((await unit.inputValue()) !== "mm") await unit.selectOption("mm");
+  const width = page.getByLabel("Width", { exact: true }).first();
+  await width.fill("60");
+  await width.press("Tab");
+  await expect.poll(() => savedSizes(page).then((s) => s[0].sizeMm)).toBe(60);
+  const caption = page.locator("span.stats");
+  const box = await page.locator(".hoop canvas").boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect.poll(() => selectionChrome(page).then((s) => s && s.grip)).not.toBeNull();
+  const read = async () => {
+    const t = await caption.innerText();
+    const m = t.match(/([\d.]+)×([\d.]+) mm/), n = t.match(/([\d,]+) stitches/);
+    return { w: parseFloat(m[1]), h: parseFloat(m[2]), stitches: parseInt(n[1].replace(/,/g, ""), 10) };
+  };
+  const before = await read();
+  const { grip, tl, br } = await selectionChrome(page);
+  // the grip swept a quarter of the way round, CCW, about the selection centre
+  const cx = (tl.x + br.x) / 2, cy = (tl.y + br.y) / 2;
+  const r = Math.hypot(grip.x - cx, grip.y - cy);
+  await page.mouse.move(grip.x, grip.y);
+  await page.mouse.down();
+  for (let a = 90; a <= 135; a += 5) {
+    const rad = (a * Math.PI) / 180;
+    await page.mouse.move(cx + r * Math.cos(rad), cy - r * Math.sin(rad));
+  }
+  await page.mouse.up();
+  // about 45 (the sweep's centre is read off pixels, so not to the degree)
+  await expect.poll(() => savedSizes(page).then((s) => s[0].rotationDeg)).toBeGreaterThan(34);
+  const deg = (await savedSizes(page))[0].rotationDeg;
+  expect(deg).toBeLessThan(56);
+  await expect.poll(async () => (await read()).w).not.toBe(before.w);
+  const after = await read();
+  // Turned at its own size: the satin is laid out upright and then turned, so
+  // the stitch count holds, and the box is about the turned rectangle (the
+  // letters sit inside it). The old grip kept the WIDTH: about before.w wide.
+  const rad = (deg * Math.PI) / 180;
+  expect(after.stitches).toBe(before.stitches);
+  expect(after.w).toBeLessThan(before.w * Math.cos(rad) + before.h * Math.sin(rad) + 0.5);
+  expect(after.w).toBeLessThan(before.w * 0.9);
+});

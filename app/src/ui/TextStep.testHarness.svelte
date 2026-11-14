@@ -14,6 +14,7 @@
   // rendered TextStep here reacts to its own edits (a badge disappearing on
   // input) the same way it does live in the Studio.
   export let element;
+  export let project = null;
   export let onPatch = () => {};
 
   function handle(e) {
@@ -22,4 +23,4 @@
   }
 </script>
 
-<TextStep {element} on:elupdate={handle} />
+<TextStep {element} {project} on:elupdate={handle} />
