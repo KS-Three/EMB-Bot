@@ -18,6 +18,11 @@
   import { SATIN_CUTOUT_NOTE, columnWidthNote, runRows } from "../lib/shapePopover.js";
   import { columnWidthMm, withColumnWidthMm, refitShapesPatch, newColumnWidthPx, convertOpenShape } from "../lib/fieldNodeEdit.js";
   import { traceFitRect } from "../lib/manualTrace.js";
+  import {
+    PEN_DEAD_ZONE_PX, PEN_MIN_STROKE_PX, pastPenDeadZone, pathLength, strokeToPath,
+    snapSpines, snapTarget, withSnappedEnds, clampToCanvas,
+    nextColumnWidthMm, rememberColumnWidthMm, nextOpenShapeColor, widthEditedColumn,
+  } from "../lib/penStroke.js";
   import Advanced from "./Advanced.svelte";
 
   // Node colours, straight vs curved. Same vocabulary the Ember demo uses
@@ -221,17 +226,40 @@
   $: draftRing = draftColumn && draft.length >= 2 ? shapeRing(draftColumn) : [];
 
   // A new column record: no stitchType, no angleDeg (the rails are the
-  // direction), COLUMN_DEFAULT_MM wide (ruling 9) in the design it lands in.
+  // direction), as wide as the column last drawn or edited — COLUMN_DEFAULT_MM
+  // (ruling 9) until there has been one (Kent, 2026-11-13: "Remember last
+  // width") — in the design it lands in.
   function newColumn(id, points, curves, f, g, list) {
+    const mm = nextColumnWidthMm();
     const col = {
       id, kind: "column", points, curves,
-      widthPx: COLUMN_DEFAULT_MM / mmFitOf(f).mmPerPx,
-      colorRgb: defaultManualShape(id).colorRgb,
+      widthPx: mm / mmFitOf(f).mmPerPx,
+      colorRgb: openShapeColor(),
     };
-    const solved = g && points.length >= 2 ? newColumnWidthPx(element, list, col, g) : null;
+    const solved = g && points.length >= 2 ? newColumnWidthPx(element, list, col, g, mm) : null;
     if (solved > 0) col.widthPx = solved;
     return col;
   }
+
+  // ---- What the next stroke is born with (pen spec 2026-11-13 §2) ----------
+  // A new Column or Line takes the colour of the selected shape — and a shape
+  // is selected the moment it is finished, so a run of strokes stays one
+  // colour until the author changes it — else of the shape drawn last. Without
+  // this every stroke of a second colour is drawn black and recoloured one at
+  // a time. Read off the drawing itself; nothing is remembered anywhere.
+  function openShapeColor() {
+    const list = element.shapes || [];
+    return nextOpenShapeColor(list, list.find((s) => s.id === selectedShapeId) || null, defaultManualShape("").colorRgb);
+  }
+  // A width EDIT, wherever it was typed (this panel's Width row or the hoop's
+  // popover): exactly one column's widthPx changed between two shape lists.
+  let widthWatch = null;
+  function watchWidthEdit(next) {
+    const edited = widthWatch ? widthEditedColumn(widthWatch, next) : null;
+    if (edited) rememberColumnWidthMm(columnWidthMm(edited, mmFit));
+    widthWatch = next;
+  }
+  $: watchWidthEdit(shapes);
 
   // Bring the drawing canvas into view on entry, but only when it is actually
   // clipped. Measured 2026-08-26 in a real browser: the panel opens with a
@@ -314,7 +342,7 @@
     if (drawMode === "run") {
       // A line: no stitchType, no width, no passes/stitch length stored — the
       // engine's bean stands until the author changes it (ruling 6).
-      const run = { id: nextShapeId(shapes), kind: "run", points: draft, curves: draftCurves, colorRgb: defaultManualShape("").colorRgb };
+      const run = { id: nextShapeId(shapes), kind: "run", points: draft, curves: draftCurves, colorRgb: openShapeColor() };
       if (runIssues(run).length) return;
       patchShapeSet({ shapes: [...shapes, run] });
       draft = [];
@@ -408,6 +436,8 @@
       return;
     }
     draft = [...draft, pt];
+    // A point clicked onto a refused pen stroke makes it the author's draft.
+    draftFromPen = false;
   }
 
   // Right-click places a CURVED node: same point, but the segment arriving at
@@ -454,6 +484,7 @@
       draftCurves = { ...draftCurves, [segIdx]: quadraticControlForPointOnCurve(prev, through, pt) };
     }
     draft = next;
+    draftFromPen = false;
   }
 
   // A double-click is two `click` events THEN one `dblclick`. onCanvasClick
@@ -709,6 +740,114 @@
         capturePointer(e);
       }
     }
+    // The pen (spec 2026-11-13 §2): in Column or Line mode, with no draft
+    // open, a press ARMS a stroke. Nothing else happens yet — if the pointer
+    // never leaves the dead zone this was a click, and the click handler
+    // places a point exactly as it always has. A draft the author is CLICKING
+    // is never preempted: click-drawing and pen-drawing do not mix in one
+    // shape. A draft that is only a refused pen stroke (`draftFromPen`) does
+    // not block the next stroke; drawing again replaces it.
+    //
+    // A stroke already running is never re-armed by a second pointer (a palm,
+    // another finger): the stroke belongs to the pointer that started it.
+    if (pen && pen.drawing) return;
+    if (openMode && curveDragSeg == null && (draft.length === 0 || draftFromPen)) {
+      const snap = e.altKey ? null : snapTarget(pt, penSpines);
+      pen = { pointerId: e.pointerId, down: pt, pts: [pt], drawing: false, startSnap: snap ? { x: snap.x, y: snap.y } : null };
+    }
+  }
+
+  // ---- The pen ---------------------------------------------------------------
+  // `pen` is the armed or running stroke; `penPath` is its samples as render()
+  // sees them (empty until the stroke leaves the dead zone); `snapDot` is what
+  // the pointer would land on right now, drawn as a dot. All three are
+  // ephemeral, like `draft`.
+  let pen = null;
+  let penPath = [];
+  let snapDot = null;
+  // The width a Column stroke is previewed at while it is drawn. The real one
+  // is solved for the fit the column lands in (newColumn); this is the same
+  // millimetres through the fit the panel has now, close enough for a ghost.
+  // (`shapes` is named so a width edit, which changes the remembered width,
+  // recomputes it.)
+  $: penWidthPx = (shapes, drawMode === "column" ? nextColumnWidthMm() / mmFit.mmPerPx : 0);
+
+  // What a stroke's end can land on, worked out once per change to the drawing
+  // or the mode (penStroke.snapSpines), not on every pointer move.
+  $: penSpines = openMode ? snapSpines(shapes, drawMode) : [];
+  // True while `draft` is nothing but a pen stroke the gate refused. Such a
+  // draft shows its reason and can be fixed or cleared, but it must not
+  // swallow the author's next attempt: the next stroke replaces it.
+  let draftFromPen = false;
+  $: if (draft.length === 0) draftFromPen = false;
+
+  function snapAt(e, pt) {
+    return openMode && !e.altKey ? snapTarget(pt, penSpines) : null;
+  }
+  // A screen (CSS px) length in authored canvas px. The canvas is drawn
+  // narrower than its 600 px, and how far a finger slips is a screen matter.
+  function penPx(cssPx) {
+    const r = canvasEl.getBoundingClientRect();
+    return r.width > 0 ? cssPx * (canvasEl.width / r.width) : cssPx;
+  }
+  const samePointer = (e) => !pen || pen.pointerId == null || !e || e.pointerId == null || e.pointerId === pen.pointerId;
+
+  function movePen(e) {
+    const pt = clampToCanvas(canvasPointFromEvent(e));
+    if (!pen.drawing) {
+      // Armed, but no button is down any more: the release happened where
+      // this canvas could not see it (off the canvas, before the stroke had
+      // started and captured the pointer). Without this the next plain hover
+      // across the canvas would draw.
+      if (e.buttons === 0) { pen = null; return; }
+      if (!pastPenDeadZone(pen.down, pt, penPx(PEN_DEAD_ZONE_PX))) return;
+      pen.drawing = true;
+      capturePointer(e);
+      // A refused stroke still on the canvas gives way to this one.
+      if (draftFromPen) clearDraft();
+    }
+    const last = pen.pts[pen.pts.length - 1];
+    if (Math.hypot(pt.x - last.x, pt.y - last.y) >= 1) pen.pts.push(pt);
+    penPath = pen.pts;
+    snapDot = snapAt(e, pt);
+    canvasEl.style.cursor = "crosshair";
+  }
+
+  // Ends the stroke. `commit` false (pointercancel, Escape) throws it away.
+  // A stroke too short to be a line is handed back to the click path: the
+  // `click` that follows the pointerup is left alone and places a point.
+  function endPen(e, commit) {
+    const p = pen;
+    pen = null;
+    penPath = [];
+    snapDot = null;
+    if (!p || !p.drawing) return;
+    if (e) releasePointer(e);
+    if (!commit || !e) return;
+    const up = clampToCanvas(canvasPointFromEvent(e));
+    const raw = p.pts.slice();
+    const last = raw[raw.length - 1];
+    if (Math.hypot(up.x - last.x, up.y - last.y) > 1e-6) raw.push(up);
+    // Short is judged on what the hand did, before any end is moved: a snap
+    // must not turn a slipped click into a stroke, or a stroke into a click.
+    if (pathLength(raw) < penPx(PEN_MIN_STROKE_PX)) return;
+    const snap = snapAt(e, up);
+    const samples = withSnappedEnds(raw, p.startSnap, snap ? { x: snap.x, y: snap.y } : null);
+    // Nothing left to fit (a wobble that never left the radius of the end it
+    // snapped to): not a stroke after all, so the click path keeps its click.
+    const path = strokeToPath(samples);
+    if (!path) return;
+    // From here the gesture was a stroke: the click that follows it must not
+    // also place a point where the pointer came up.
+    suppressNextClick = true;
+    // The stroke becomes the draft and is finished at once, through the same
+    // gate a clicked shape passes. One that fails it (a Column that folds
+    // over itself at its width) stays on the canvas as the draft, with the
+    // reason under it, to be fixed, cleared, or simply drawn again.
+    draft = path.points;
+    draftCurves = path.curves;
+    finishShape();
+    draftFromPen = draft.length > 0;
   }
 
   function onCanvasPointerMove(e) {
@@ -717,7 +856,36 @@
       canvasEl.style.cursor = "copy";
       return;
     }
-    updateHoverCursor(canvasPointFromEvent(e));
+    if (pen) {
+      // another pointer moving while a stroke runs is not part of it
+      if (!samePointer(e)) return;
+      movePen(e);
+      if (pen && pen.drawing) return;
+    }
+    const pt = canvasPointFromEvent(e);
+    // Before a stroke starts, the dot shows where its first point would land.
+    snapDot = draft.length === 0 || draftFromPen ? snapAt(e, pt) : null;
+    updateHoverCursor(pt);
+  }
+
+  function onCanvasPointerUp(e) {
+    endCurveDrag(e);
+    if (samePointer(e)) endPen(e, true);
+  }
+  function onCanvasPointerCancel(e) {
+    endCurveDrag(e);
+    if (samePointer(e)) endPen(e, false);
+  }
+  // With the pointer captured (every real browser) a drag that leaves the
+  // canvas keeps reporting to it, and the stroke ends on pointerup wherever
+  // that is. Without capture (jsdom, some embedded views) leaving the canvas
+  // is the last event there will be, so the stroke ends here.
+  function onCanvasPointerLeave(e) {
+    endCurveDrag(e);
+    snapDot = null;
+    let captured = false;
+    try { captured = !!(canvasEl.hasPointerCapture && canvasEl.hasPointerCapture(e.pointerId)); } catch (err) { /* see capturePointer */ }
+    if (pen && !captured && samePointer(e)) endPen(e, pen.drawing);
   }
 
   // Canvas has no per-element CSS :hover, so the cursor has to be set from JS
@@ -876,6 +1044,15 @@
   //     and nuke a different, already-finished shape by surprise.
   function onCanvasKeydown(e) {
     if (e.key === "Escape") {
+      // A stroke in progress is thrown away, like a draft.
+      if (pen && pen.drawing) {
+        endPen(null, false);
+        // The button is still down. Its release is followed by a `click`,
+        // and that click must not place a point where the stroke was dropped.
+        suppressNextClick = true;
+        e.preventDefault();
+        return;
+      }
       if (draft.length) {
         clearDraft();
         e.preventDefault();
@@ -1095,7 +1272,7 @@
 
   function render(
     canvas, shapeList, draftPts, draftCrv, selectedId,
-    dragSeg, dragPoint, cutMap, draftRing
+    dragSeg, dragPoint, cutMap, draftRing, stroke, strokeWidthPx, snap
   ) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -1211,6 +1388,37 @@
         ctx.stroke();
       }
     }
+
+    // A pen stroke while it is being drawn: the raw samples, and under them
+    // (Column mode) a ghost of the width the column will be born with.
+    if (stroke && stroke.length >= 2) {
+      const trace = () => {
+        ctx.beginPath();
+        ctx.moveTo(stroke[0].x, stroke[0].y);
+        for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x, stroke[i].y);
+      };
+      if (strokeWidthPx > 0) {
+        trace();
+        ctx.strokeStyle = "rgba(79,70,229,0.14)";
+        ctx.lineWidth = strokeWidthPx;
+        ctx.stroke();
+      }
+      trace();
+      ctx.strokeStyle = "#4f46e5";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Where a stroke's start or end would land on another stroke.
+    if (snap) {
+      ctx.beginPath();
+      ctx.arc(snap.x, snap.y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = "#dc2626";
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
   }
 
   // backdropCanvas/backdropOn/backdropOpacity are listed as arguments, not
@@ -1221,7 +1429,7 @@
   // because nothing drawn depends on it.
   $: render(
     canvasEl, shapes, draft, draftCurves, selectedShapeId,
-    curveDragSeg, curveDragPoint, cut, draftRing,
+    curveDragSeg, curveDragPoint, cut, draftRing, penPath, penWidthPx, snapDot,
     backdropCanvas, backdropOn, backdropOpacity, shapeAlpha
   );
 </script>
@@ -1303,9 +1511,9 @@
       on:dblclick={onCanvasDblClick}
       on:pointerdown={onCanvasPointerDown}
       on:pointermove={onCanvasPointerMove}
-      on:pointerup={endCurveDrag}
-      on:pointercancel={endCurveDrag}
-      on:pointerleave={endCurveDrag}
+      on:pointerup={onCanvasPointerUp}
+      on:pointercancel={onCanvasPointerCancel}
+      on:pointerleave={onCanvasPointerLeave}
       on:keydown={onCanvasKeydown}
       role="img"
       aria-label="Shape drawing canvas"
@@ -1336,9 +1544,9 @@
   {#if drawMode === "hole"}
     <p class="mp-modehint">Draw inside a shape — it cuts that shape.</p>
   {:else if drawMode === "column"}
-    <p class="mp-modehint">Click along the middle of the stroke, then double-click to finish.</p>
+    <p class="mp-modehint">Drag along the middle of the stroke to draw it. Or click along it, then double-click to finish.</p>
   {:else if drawMode === "run"}
-    <p class="mp-modehint">Click along the line, then double-click to finish.</p>
+    <p class="mp-modehint">Drag along the line to draw it. Or click along it, then double-click to finish.</p>
   {/if}
 
   <div class="mp-tools">

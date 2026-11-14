@@ -35,8 +35,12 @@ def _ellipse_cutout(rgb, px_per_mm, cfg):
 
 
 def _cfg(**kw) -> PipelineConfig:
+    # photo_prep_tone=True: the tone pass is what moves the prepped raster far
+    # enough from the raw one for the two grades to disagree, and it is OFF by
+    # default since 2026-11-13. With the texture kill alone the raw and the
+    # prepped grade agree here (no findings on either), which tests nothing.
     return PipelineConfig(target_width_mm=80.0, forced_class="photo_scene",
-                          legibility_check=False, **kw)
+                          legibility_check=False, photo_prep_tone=True, **kw)
 
 
 @pytest.fixture(scope="module")
