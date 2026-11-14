@@ -20,6 +20,12 @@ Photo plan §2 rows 3-4, build step 3's zero-new-dependency first slice
    is the one that runs in CI and any freshly-installed venv; the fallback
    branch skips there and only fires in a pre-swap env.
 5. Determinism — same input, same bytes, twice.
+6. The tone switch (`photo_prep_tone`, OFF by default since 2026-11-13):
+   off never calls `_tone_prep` and still runs the texture kill; on is
+   byte-identical to the engine before the switch; the warning says which
+   passes ran. Tests that measure the texture-kill constants set
+   `photo_prep_tone=True`, because those constants were swept on the toned
+   raster.
 """
 from __future__ import annotations
 
@@ -39,6 +45,7 @@ from digitizer_core.stage1_photo_prep import (
 from digitizer_core.stage1_prep import prep
 from digitizer_core.warnings_codes import PHOTO_PREP_APPLIED
 
+from .conftest import frozen_cfg
 from .test_flat_lane_byte_identical import GOLDEN
 from .test_flat_lane_byte_identical import _snapshot as _golden_snapshot
 
@@ -172,6 +179,8 @@ def test_flag_off_emits_no_prep_and_flag_on_emits_one():
     assert w["fallback"] is False
     assert w["kill_px"] >= 2
     assert w["tone_ms"] >= 0 and w["texture_ms"] >= 0
+    # Production default since 2026-11-13: the tone pass does not run.
+    assert w["tone"] is False and w["tone_ms"] == 0.0
 
 
 def test_prep_actually_changes_the_raster_the_photo_lane_sees():
@@ -204,7 +213,10 @@ def test_tone_prep_expands_foreground_l_contrast():
 def test_texture_kill_flattens_grain_but_keeps_the_step_edge():
     rgb = _grainy_step_image()
     h, w = rgb.shape[:2]
-    cfg = _cfg(photo_prep=True, photo_prep_texture_kill="bilateral")
+    # `photo_prep_tone=True` (OFF by default since 2026-11-13): the filter
+    # constants were swept on the TONE-AMPLIFIED grain (~27 std), so this
+    # bar is measured on that raster, as it was written.
+    cfg = _cfg(photo_prep=True, photo_prep_texture_kill="bilateral", photo_prep_tone=True)
     pp = photo_prep(rgb, _no_bg((h, w)), px_per_mm=4.0, cfg=cfg)
 
     # Grain: within-half std, measured well away from the edge, against the
@@ -236,8 +248,9 @@ def test_texture_kill_flattens_grain_but_keeps_the_step_edge():
 def test_rolling_guidance_without_contrib_falls_back_to_bilateral_and_says_so():
     rgb = _grainy_step_image()
     bg = _no_bg(rgb.shape[:2])
-    want_rg = _cfg(photo_prep=True, photo_prep_texture_kill="rolling_guidance")
-    want_bl = _cfg(photo_prep=True, photo_prep_texture_kill="bilateral")
+    want_rg = _cfg(photo_prep=True, photo_prep_texture_kill="rolling_guidance",
+                   photo_prep_tone=True)
+    want_bl = _cfg(photo_prep=True, photo_prep_texture_kill="bilateral", photo_prep_tone=True)
 
     pp_rg = photo_prep(rgb, bg, 4.0, want_rg)
     pp_bl = photo_prep(rgb, bg, 4.0, want_bl)
@@ -251,7 +264,8 @@ def test_rolling_guidance_without_contrib_falls_back_to_bilateral_and_says_so():
 def test_rolling_guidance_with_contrib_takes_the_real_path():
     rgb = _grainy_step_image()
     bg = _no_bg(rgb.shape[:2])
-    pp = photo_prep(rgb, bg, 4.0, _cfg(photo_prep=True, photo_prep_texture_kill="rolling_guidance"))
+    pp = photo_prep(rgb, bg, 4.0, _cfg(photo_prep=True, photo_prep_texture_kill="rolling_guidance",
+                                       photo_prep_tone=True))  # RGF_SIGMA_COLOR's sweep raster
     assert pp.fallback is False and pp.technique == "rolling_guidance"
     # It must still do the job: grain collapses (same bar as bilateral's).
     w = rgb.shape[1]
@@ -267,7 +281,8 @@ def test_rolling_guidance_with_contrib_takes_the_real_path():
 def test_meanshift_runs_and_flattens():
     rgb = _grainy_step_image()
     pp = photo_prep(rgb, _no_bg(rgb.shape[:2]), 4.0,
-                    _cfg(photo_prep=True, photo_prep_texture_kill="meanshift"))
+                    _cfg(photo_prep=True, photo_prep_texture_kill="meanshift",
+                         photo_prep_tone=True))  # MEANSHIFT_SR's sweep raster
     assert pp.technique == "meanshift" and pp.fallback is False
     assert pp.rgb.shape == rgb.shape and pp.rgb.dtype == np.uint8
     w = rgb.shape[1]
@@ -280,9 +295,10 @@ def test_meanshift_runs_and_flattens():
 def test_technique_none_is_tone_prep_only():
     rgb = _grainy_step_image()
     pp = photo_prep(rgb, _no_bg(rgb.shape[:2]), 4.0,
-                    _cfg(photo_prep=True, photo_prep_texture_kill="none"))
+                    _cfg(photo_prep=True, photo_prep_texture_kill="none", photo_prep_tone=True))
     assert pp.technique == "none"
     assert np.array_equal(pp.rgb, pp.rgb_tone)
+    assert not np.array_equal(pp.rgb, rgb), "the tone pass was asked for and did nothing"
 
 
 def test_determinism():
@@ -292,6 +308,84 @@ def test_determinism():
     b: PhotoPrepResult = photo_prep(p.rgb, p.bg_mask, p.px_per_mm, cfg)
     assert np.array_equal(a.rgb, b.rgb)
     assert np.array_equal(a.rgb_tone, b.rgb_tone)
+
+
+# --- 6. The tone switch (`photo_prep_tone`, OFF since 2026-11-13) -------------
+# docs/photo-prep-tone-off-2026-11-13.md. Main's prep output on FIXTURE at
+# d9737a7b (the commit before the switch), frozen 2026-10-27 engine at 80 mm:
+# md5 of the raw bytes of `pp.rgb` and `pp.rgb_tone`.
+MAIN_PREP_RGB_MD5 = "0578755a44d4c1cb42de770370a6e515"
+MAIN_PREP_TONE_MD5 = "7d08b35bb6c0a6280f8724888bb0ba8f"
+
+
+def _md5(a: np.ndarray) -> str:
+    import hashlib
+    return hashlib.md5(np.ascontiguousarray(a).tobytes()).hexdigest()
+
+
+def _boom(*_a, **_k):
+    raise AssertionError("_tone_prep ran with photo_prep_tone off")
+
+
+def test_tone_switch_defaults_off_and_the_frozen_engine_keeps_it_on():
+    assert PipelineConfig().photo_prep_tone is False
+    assert frozen_cfg().photo_prep_tone is True
+
+
+def test_tone_off_never_calls_tone_prep_and_the_texture_kill_still_runs(monkeypatch):
+    import digitizer_core.stage1_photo_prep as spp
+    monkeypatch.setattr(spp, "_tone_prep", _boom)
+    rgb = _grainy_step_image()
+    cfg = _cfg(photo_prep=True)
+    pp = photo_prep(rgb, _no_bg(rgb.shape[:2]), 4.0, cfg)
+    assert pp.tone is False and pp.technique == "bilateral" and pp.tone_ms == 0.0
+    # The raster entering the texture kill is the un-toned input (the
+    # 2026-11-13 study's arm B), and the kill is exactly bilateral on it.
+    assert np.array_equal(pp.rgb_tone, rgb) and pp.rgb_tone is not rgb
+    assert np.array_equal(pp.rgb, spp._bilateral(rgb, spp._kill_scale_px(4.0, cfg)))
+    assert not np.array_equal(pp.rgb, rgb)
+
+
+def test_tone_off_through_the_pipeline_never_calls_tone_prep(monkeypatch):
+    import digitizer_core.stage1_photo_prep as spp
+    monkeypatch.setattr(spp, "_tone_prep", _boom)
+    out = run_stages(FIXTURE, _cfg(forced_class="photo_scene", photo_prep=True,
+                                   photo_prep_background_removal=False))
+    applied = [w for w in out.warnings if w["code"] == PHOTO_PREP_APPLIED]
+    assert len(applied) == 1 and applied[0]["tone"] is False
+
+
+def test_tone_on_is_byte_identical_to_main():
+    for c in (frozen_cfg(target_width_mm=80.0),
+              frozen_cfg(target_width_mm=80.0, photo_prep_tone=True)):
+        p = prep(FIXTURE, c)
+        pp = photo_prep(p.rgb, p.bg_mask, p.px_per_mm, c)
+        assert pp.tone is True
+        assert _md5(pp.rgb_tone) == MAIN_PREP_TONE_MD5
+        assert _md5(pp.rgb) == MAIN_PREP_RGB_MD5
+
+
+def test_warning_says_which_passes_ran():
+    rgb = _grainy_step_image()
+    bg = _no_bg(rgb.shape[:2])
+
+    def warning(**kw):
+        (w,) = photo_prep(rgb, bg, 4.0, _cfg(photo_prep=True, **kw)).warnings
+        assert w["code"] == PHOTO_PREP_APPLIED
+        return w
+
+    on = warning(photo_prep_tone=True)
+    assert on["tone"] is True
+    assert on["message"] == ("Photo prep applied: tone (CLAHE clip 2.5, 8x8 tiles) + "
+                             f"texture kill 'bilateral' at {on['kill_px']} px.")
+    off = warning()
+    assert off["tone"] is False and "CLAHE" not in off["message"]
+    assert off["message"] == (f"Photo prep applied: texture kill 'bilateral' at "
+                              f"{off['kill_px']} px (tone pass off).")
+    neither = warning(photo_prep_texture_kill="none")
+    assert neither["tone"] is False and neither["technique"] == "none"
+    assert neither["message"] == ("Photo prep applied: no pass ran "
+                                  "(tone pass off, texture kill 'none').")
 
 
 def test_unknown_technique_raises():

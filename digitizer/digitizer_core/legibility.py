@@ -44,6 +44,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from . import deadline
 from .adapter import plan_to_design
 from .stage1_prep import Prep
 from .stitchviz import UNITS_PER_MM, _bounds, render_design
@@ -411,6 +412,7 @@ def measure(p: Prep, result, plan, px_per_mm: float = RENDER_PX_PER_MM,
                 if getattr(r, "shape_id", None) and len(r.points)}
     if clusters:
         for cid, box in clusters:
+            deadline.check("legibility")
             polys = [m.polygon for m in members[cid]]
             # the other clusters' letters, painted out of both crops
             others = [m.polygon for oc, ms in members.items() if oc != cid for m in ms]

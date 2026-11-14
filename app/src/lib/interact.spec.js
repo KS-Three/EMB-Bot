@@ -499,3 +499,78 @@ test("the + button (x1.25) and the wheel (x1.15) both land exactly on 800%", () 
     expect(Math.round(z * 100)).toBe(800); // the zoom bar's label
   }
 });
+
+// ---- group resize stays inside the placement box (2026-11-13) ----------------
+// An off-centre group scaled about its own centre used to cross the box edge
+// (the factor cap only bounded its SIZE); the per-element reclamp then pushed
+// each member in on its own and the layout broke. groupResizeInBox shifts
+// every member by one shared amount instead. Numbers from the review repro:
+// left_chest's 96 x 76.5 box, a union x -40.1..4.1 dragged far past the cap.
+import { groupResizeInBox } from "./interact.js";
+
+const REPRO = {
+  box: { w: 96, h: 76.5 },
+  group: { x0: -40.1, y0: -3.7, x1: 4.1, y1: 3.7 },
+  members: [
+    { id: "a", widthMm: 19.9, targetMm: 20, offsetXMm: -30, offsetYMm: 0 },
+    { id: "b", widthMm: 19.9, targetMm: 20, offsetXMm: -6, offsetYMm: 0 },
+  ],
+};
+
+test("groupResizeInBox: the scaled union never leaves the box, at any factor", () => {
+  const { box, group, members } = REPRO;
+  for (const f of [0.5, 1, 1.5, 2, 2.172, 5]) {
+    const r = groupResizeInBox(members, f, group, box.w, box.h, 5);
+    expect(r.bboxMm.x0, `f=${f}`).toBeGreaterThanOrEqual(-box.w / 2 - 1e-9);
+    expect(r.bboxMm.x1, `f=${f}`).toBeLessThanOrEqual(box.w / 2 + 1e-9);
+    expect(r.bboxMm.y0, `f=${f}`).toBeGreaterThanOrEqual(-box.h / 2 - 1e-9);
+    expect(r.bboxMm.y1, `f=${f}`).toBeLessThanOrEqual(box.h / 2 + 1e-9);
+  }
+});
+
+test("groupResizeInBox: members keep their layout (offsets scale by one factor, shift by one amount)", () => {
+  const { box, group, members } = REPRO;
+  const r = groupResizeInBox(members, 5, group, box.w, box.h, 5);
+  const gap0 = members[1].offsetXMm - members[0].offsetXMm;
+  expect(r.patches.b.offsetXMm - r.patches.a.offsetXMm).toBeCloseTo(gap0 * r.factor, 9);
+  expect(r.patches.a.sizeMm / members[0].targetMm).toBeCloseTo(r.factor, 9);
+  expect(r.patches.b.sizeMm / members[1].targetMm).toBeCloseTo(r.factor, 9);
+  // each member's own box (offset +/- half its scaled width) is inside too, so
+  // the field's per-element reclamp finds nothing to move
+  for (const m of members) {
+    const half = (m.widthMm * r.factor) / 2, x = r.patches[m.id].offsetXMm;
+    expect(x - half).toBeGreaterThanOrEqual(-box.w / 2 - 0.05);
+    expect(x + half).toBeLessThanOrEqual(box.w / 2 + 0.05);
+  }
+});
+
+test("groupResizeInBox grows to the full box like a single element does, shifted, not stopped at the edge", () => {
+  const { box, group, members } = REPRO;
+  const r = groupResizeInBox(members, 5, group, box.w, box.h, 5);
+  expect(r.factor).toBeCloseTo(box.w / (group.x1 - group.x0), 9); // the size cap, unchanged
+  expect(r.dxMm).toBeGreaterThan(0); // pushed right, off the left edge
+  expect(r.dyMm).toBe(0);
+});
+
+test("groupResizeInBox leaves a centred group, and any factor that already fits, unshifted", () => {
+  const g = { x0: -10, y0: -5, x1: 10, y1: 5 };
+  const members = [{ id: "e1", widthMm: 20, targetMm: 20, offsetXMm: 0, offsetYMm: 0 }];
+  const r = groupResizeInBox(members, 2, g, 100, 50, 5);
+  expect(r.dxMm).toBe(0);
+  expect(r.dyMm).toBe(0);
+  expect(r.patches.e1).toEqual({ sizeMm: 40, offsetXMm: 0, offsetYMm: 0 });
+});
+
+// ---- resize writes the request, not the sewn width (2026-11-13) -------------
+import { resizeTargetMm } from "./interact.js";
+
+test("resizeTargetMm: the request moves in proportion to the sewn width; zero movement is the identity", () => {
+  expect(resizeTargetMm(120, 117.5, 117.5)).toBe(120);
+  expect(resizeTargetMm(120, 117.5, 235)).toBeCloseTo(240, 9);
+  expect(resizeTargetMm(80, 80.2, 40.1)).toBeCloseTo(40, 9);
+});
+
+test("resizeTargetMm falls back to the sewn width with nothing to map through", () => {
+  expect(resizeTargetMm(0, 50, 60)).toBe(60);
+  expect(resizeTargetMm(40, 0, 60)).toBe(60);
+});

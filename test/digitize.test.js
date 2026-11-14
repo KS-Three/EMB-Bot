@@ -4086,7 +4086,10 @@ const _cfStar = (extra) => {
   }
   // The float this star is here for is cast arm to arm, which the pre-flip
   // satin does and `satinSmallShapes` (ON since 2026-10-20, Kent) does not.
-  return _cfRun({ outer: star }, 20, Object.assign({ underlay: false, satinSmallShapes: false }, extra));
+  // SET to satin since 2026-11-13: that arm-to-arm satin lays a stitch over
+  // the 12.1 mm machine limit, so the auto route now sends it to fill
+  // ("A CROSS NO MACHINE SEWS AS ONE STITCH"); set, it sews the satin it sewed.
+  return _cfRun({ outer: star, tierOverride: "satin" }, 20, Object.assign({ underlay: false, satinSmallShapes: false }, extra));
 };
 const _cfCases = [
   ["a fill across a gap", (x) => _cfProngs(300, x)],
