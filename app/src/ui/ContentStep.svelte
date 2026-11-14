@@ -331,7 +331,7 @@
 {:else}
   {#key projectId + "/" + el.id}
     {#if el.type === "design"}
-      <DesignPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)}>
+      <DesignPanel element={el} {designDims} on:elupdate={(e) => d("elupdate", e.detail)}>
         {@render size()}
         <svelte:fragment slot="advanced">{@render extras()}</svelte:fragment>
       </DesignPanel>
