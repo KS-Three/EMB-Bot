@@ -36,7 +36,9 @@ Guards (when in doubt, do nothing):
   across the inside (Drone's crosshair) stays.
 * A body near the page colour is never a parent: a white shape on a white
   page is SEEN by its edge, so that edge stays (Golden Tee's ball arc and its
-  GT faces keep their outlines and bevels, as the pro's do).
+  GT faces keep their outlines and bevels, as the pro's do). Nor is a band
+  of the page's colour ever folded: it is the page showing through (To a T's
+  white gaps between its brush strokes).
 * Counters, enclosed background and dark-ink lines are never folded. A
   rescued small detail is: one that runs along a body is bevel noise, and
   a free-standing one (the dot of an i) has no body to fold into.
@@ -264,7 +266,10 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
         folds: dict[int, int] = {}
         for i, r in enumerate(regions):
             g = r.polygon
-            if _protected(r) or not _poly(r) or _width(g) > BAND_MAX_MM:
+            # A band of the page's own colour is the page showing through (a
+            # gap between brush strokes, a counter): To a T's 67 white slivers
+            # inside its black lettering would close up.
+            if _protected(r) or not _poly(r) or _width(g) > BAND_MAX_MM or near_page(r):
                 continue
             per = g.length
             cands = []
