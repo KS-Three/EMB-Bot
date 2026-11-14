@@ -1796,6 +1796,25 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             )
         )
 
+    # Hairline outlines, marked for the review screen (Kent 2026-11-13: "can
+    # you have items like this throb/pulse and glow (ask user to keep or
+    # remove)"): the shapes `keyline_bean.keyline_regions` reads as a thin
+    # drawn outline carry `meta["hairline_outline"]`, sewn or not, so the
+    # Studio can point at them and ask. Read after every recolour above (the
+    # gate is per thread). A mark only: nothing here changes a stitch.
+    if cfg.border_from_outline_hairline_run and cfg.border_from_outline:
+        _outlines = _art_outlines(regions, cfg, source_pixels)
+        if _outlines:
+            # nothing thinner than the art can draw: 1.5 SOURCE pixels, the
+            # line `sliver_prune` already holds a page sliver to
+            _ip = float(getattr(p, "input_px_per_mm", 0.0) or 0.0)
+            _marked = keyline_bean.keyline_regions(
+                regions, set(_outlines), cfg, sewn_only=False,
+                min_width_mm=(sliver_prune.SLIVER_WIDTH_SRC_PX / _ip) if _ip > 0 else 0.0)
+            for r in regions:
+                if r.shape_id in _marked:
+                    r.meta["hairline_outline"] = True
+
     # Fur regions (`cfg.hair_regions_directional`, default OFF): read where
     # the pixels are. The raster rides on the result only when the gate
     # found fur, so a design with none is byte-identical with the flag on.
@@ -2140,8 +2159,9 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     # 5 no body's fill passes its line. Off: None, nothing moved.
     keyline_beans = None
     if cfg.border_from_outline_hairline_run and art_outlines:
-        keyline_beans = keyline_bean.keyline_regions(
-            stitched_regions, set(art_outlines), cfg, ink=getattr(result, "ink_source", None))
+        # the shapes `finish_generation` marked (it knows the source's pixel
+        # size, which the read needs), less what the customer turned off
+        keyline_beans = {r.shape_id for r in stitched_regions if r.meta.get("hairline_outline")}
         stitched_regions = keyline_bean.sew_last(stitched_regions, keyline_beans)
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
                                                  design_class=result.design_class,

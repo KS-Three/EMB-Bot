@@ -20,10 +20,17 @@ riders = small-line letters riding on the black):
 
 So with the cutout the shipped default is already better at 60 mm (the small
 line sews black over white, which the no-cutout lane's KNOWN_WRONG_ORDER says
-it does not), but `photo_enclosed_rim` does NOT deliver its claim there: the
-keyline stays in two fields at 60 mm and loses a rider at 113.5 mm. The rim was
+it does not), but `photo_enclosed_rim` did NOT deliver its claim there: the
+keyline stayed in two fields at 60 mm and lost a rider at 113.5 mm. The rim was
 measured on the no-cutout lane only (docs/photo-enclosed-rim-2026-11-06.md).
-The two strict xfails below are that gap; when one passes, its mark must go.
+
+60 mm, fixed 2026-11-13: the rim read a piece by its MEAN Lab, and an 89 px
+piece between A and N held 7 ink pixels from a superpixel straddling the edge
+(dE 7.7, over the 6.0 bound); the floor gave it to the black, A and N joined,
+AND lost its text tag and D's counter read as a second field. It reads the
+median now: 60 mm ON is 1 field, 15 riders (no cutout: 1, 13).
+
+113.5 mm stays a strict xfail, a different mechanism (`_RIM_113`).
 """
 from __future__ import annotations
 
@@ -73,11 +80,20 @@ def test_default_sews_the_keyline_on_the_black_with_the_cutout(width):
     assert blocks == BLACK_WHITE_BLACK
 
 
-_RIM_GAP = pytest.mark.xfail(strict=True, reason="photo_enclosed_rim not yet measured or tuned on the cutout lane")
+#: Not the rim. OFF, the floor hands the rim to the ink, fattening the line's
+#: letters a pixel: the one 9.1 mm letter beside G is 0.81 of G's 11.2 mm (its
+#: tail), over the letter door's LETTER_HEIGHT_RATIO 0.8, and that link alone
+#: tags G. ON the keyline stays white, that letter reads 8.8 mm (0.786), G goes
+#: untagged and stops riding: 11 riders against 12. The 2026-10-27 engine has
+#: `text_cluster_part_touching` OFF; with it ON (the live default since then),
+#: `_adopt_band` takes G and the row reads OFF 2 fields / 8, ON 1 / 14.
+_RIM_113 = pytest.mark.xfail(strict=True, reason=(
+    "frozen engine's letter door: G links to its line only through a letter the "
+    "OFF floor fattened by the rim (height ratio 0.81 -> 0.786 ON, bound 0.8); "
+    "text_cluster_part_touching (ON since 2026-10-27) adopts it"))
 
 
-@pytest.mark.parametrize("width", [pytest.param(60.0, marks=_RIM_GAP), 100.8,
-                                   pytest.param(113.5, marks=_RIM_GAP)])
+@pytest.mark.parametrize("width", [60.0, 100.8, pytest.param(113.5, marks=_RIM_113)])
 def test_rim_holds_the_keyline_and_keeps_every_rider_with_the_cutout(width):
     _blocks_off, off = _mfab(width, False)
     blocks, on = _mfab(width, True)

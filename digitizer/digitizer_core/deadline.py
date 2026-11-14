@@ -35,7 +35,11 @@ angle search, order pricing, reorders and emit, the satin's rails, seam close
 and rail push, the outline column builder, stage 7's passes after emission,
 the borders, streamlines, small-text placement, stage 5, stage 4's thread
 revalidation, stage 2's k-means and majority filter, and the preflight's
-regions and render. The longest wait for the worker on the fixtures timed
+regions and render. Since 2026-11-13 also stage 4's text-cluster neck cut
+and letterform-prior fit, and the keyline's loops (`keyline_runs`, the
+exact `_satin_loop`, `_bury_walks`): on Becker at 96 mm those were the
+three longest seam-free stretches left, 2-6 s each
+(`docs/second-digitize-timing-2026-11-13.md`, `tests/test_cancel_seams_1113.py`). The longest wait for the worker on the fixtures timed
 (`tests/test_cancel_in_fill.py`, PR body) fell from 15-76 s to 1-2 s inside
 stage 7. What `except Exception` handlers sit around those loops re-raise
 `Abandoned` first, and `stitch_shape` undoes its per-shape state in a

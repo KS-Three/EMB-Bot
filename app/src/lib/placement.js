@@ -14,6 +14,8 @@
 // existed, and every spec that builds `{ garmentId }` alone, resolves to the
 // very garment object `EMB.getGarment` returns, and nothing downstream moves.
 import { EMB } from "./emb.js";
+import { resizedTargetWidth } from "./digitizer.js";
+import { nativeWidthOf } from "./staleness.js";
 
 const MM_PER_INCH = 25.4;
 
@@ -66,11 +68,21 @@ export function fitTargetWidthMm(px, crop, project) {
 // are left alone. The stitches of a re-fitted element go stale under the
 // usual rule (lib/staleness.js): nothing re-runs on its own (Kent 2026-10-05)
 // and Download waits for the re-digitize (Kent 2026-10-25).
+//
+// A corner drag not yet re-run is the customer's width too (Kent 2026-11-13).
+// `widthTyped` is stamped only when a drag LANDS with a run, so before this a
+// pending drag was re-fitted like an untouched default: `sizeMm` kept the
+// canvas at the dragged 74.4 mm while resizedTargetWidth scaled the NEW fit by
+// the old drag ratio, and Design width and the next run said 153.5. Left
+// alone, all three read the drag. The catch, accepted: the dragged size goes
+// onto the new garment as it is, too big for it or not, exactly like a typed
+// width (the field's hoop note and Download's confirm are what say so).
 export function refitDigitized(project) {
   if (!project || !Array.isArray(project.elements)) return project;
   let changed = false;
   const elements = project.elements.map((el) => {
     if (!el || el.type !== "digitized" || el.widthTyped || !el.sourcePx) return el;
+    if (resizedTargetWidth(el, nativeWidthOf(el)) != null) return el;
     const w = fitTargetWidthMm(el.sourcePx, el.crop, project);
     if (w == null || (el.params && el.params.target_width_mm === w)) return el;
     changed = true;

@@ -56,6 +56,16 @@ SWEEP = [
 #: session is diagnosing; expected to fail until that lands. strict: when it
 #: starts passing, this mark must go.
 KNOWN_WRONG_ORDER = {(60.0, None)}
+#: 30 and 36.7 mm since 2026-11-13 (`border_from_outline_hairline_run` ON, Kent:
+#: "sewn thin, but do not include letters for this"): at these widths the white
+#: keyline is 0.16-0.45 mm, a hairline, so it sews as one bean line and sews
+#: LAST. The letters' fill goes down with the band, in the one black block, and
+#: the white rides both: black, white, one colour stop fewer. Rendered both ways
+#: with this config: OFF the 1.5 mm white loops swallow M-FAB (a white blob); ON
+#: M-FAB reads, outlined. The grade floors above are unchanged and still met
+#: (measured B, B, C, B).
+BLACK_WHITE = ["0020 Black", "0015 White"]
+HAIRLINE_KEYLINE = {(30.0, "flat"), (30.0, None), (36.7, "flat"), (36.7, None)}
 
 
 def _run(width_mm, forced, photo_work_grid=False):
@@ -86,7 +96,7 @@ def test_mfab_hat_size_sweep_order_and_grade(width, forced, floor):
     # the white keyline sews ON the black band, never under it, at every size; the
     # preflight grade does not fall below what it was when this was written
     blocks, grade = _run(width, forced)
-    assert blocks == BLACK_WHITE_BLACK
+    assert blocks == (BLACK_WHITE if (width, forced) in HAIRLINE_KEYLINE else BLACK_WHITE_BLACK)
     assert _GRADE_RANK[grade] >= _GRADE_RANK[floor], f"grade {grade} under the {floor} floor"
 
 

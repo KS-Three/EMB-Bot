@@ -351,7 +351,7 @@ from shapely.geometry import LineString, MultiLineString, Polygon, box
 
 from . import ocr as _ocr   # one Tesseract: tesserocr in-process, pytesseract fallback (2026-11-06)
 
-from . import machine, threads
+from . import deadline, machine, threads
 from .regions import Region
 from .shapecontext import shape_context_distance
 from .shapefield import ShapeField, build_shape_field
@@ -1312,6 +1312,9 @@ def _neck_split(poly: Polygon, half_width_mm: float,
     owned: list[list[Polygon]] = [[g] for g in parts]
     neck_area = 0.0
     for piece in getattr(rest, "geoms", [rest]):
+        # Once per leftover piece: Becker's ring border at 96 mm leaves 393
+        # of them and this loop was 5 s with no seam (2026-11-13).
+        deadline.check("text cluster neck splits")
         if piece.is_empty or piece.geom_type != "Polygon":
             continue
         edge = piece.boundary
@@ -1368,6 +1371,11 @@ def _neck_splits(regions: list[Region], cands: list[_Candidate],
                   <= PROXIMITY_HEIGHT_MULT * h]
         if not beside:
             continue
+        # The service's cancel/deadline (`deadline.py`), once per region the
+        # neck cut is tried on: ~0.5 s each on Becker at 96 mm, and with the
+        # letterform priors the longest stretch of a digitize with no seam
+        # (4-6 s quiet, 19 s loaded; 2026-11-13). Moves no number.
+        deadline.check("text cluster neck splits")
         stats = _skeleton_stroke_stats(r)
         if stats is None:
             continue
