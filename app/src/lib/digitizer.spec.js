@@ -2358,6 +2358,36 @@ test("remapBlockColors: two blocks collapsing onto one colour keep the EARLIER c
   expect(remapBlockColors(oldPalette, { 1: B, 0: A }, newPalette)).toEqual({ 0: A });
 });
 
+test("remapBlockColors: a spool pick survives a re-run on EVERY block that still sews that thread", async () => {
+  // The bug (review 2026-11-13): the remap matched each colour to its FIRST
+  // new index only. A logo sewing red, white, red; navy picked for the red
+  // spool (DigitizePanel.pickSpool writes {0, 2}); any re-run, even one that
+  // returns the identical palette, left {0: navy} -- block 2 rendered and
+  // EXPORTED red while the spool row still showed navy. "A pick recolours
+  // every block of that spool" (docs/scope/3-studio-app-wizard.md).
+  const { remapBlockColors, digitizedBlockColors } = await import("./digitizer.js");
+  const red = { r: 200, g: 20, b: 20, name: "1147 Red" };
+  const white = { r: 255, g: 255, b: 255, name: "1001 White" };
+  const NAVY = [20, 30, 90];
+  const colors = [red, white, red];
+  const after = remapBlockColors(colors, { 0: NAVY, 2: NAVY }, colors);
+  expect(after).toEqual({ 0: NAVY, 2: NAVY });
+  expect(digitizedBlockColors({ result: { colors }, blockColors: after })).toEqual({ 0: NAVY, 1: [255, 255, 255], 2: NAVY });
+
+  // The spool moves and gains a block: every red block of the new palette is navy.
+  expect(remapBlockColors(colors, { 0: NAVY, 2: NAVY }, [white, red, white, red, red])).toEqual({ 1: NAVY, 3: NAVY, 4: NAVY });
+  // ... or loses one.
+  expect(remapBlockColors(colors, { 0: NAVY, 2: NAVY }, [red, white])).toEqual({ 0: NAVY });
+
+  // Two blocks of one thread carrying DIFFERENT picks (a design saved when the
+  // list was per block, before 2026-09-30): an identical re-run is a no-op,
+  // block for block, and a block the new palette adds takes the earliest pick.
+  const A = [1, 1, 1], B = [2, 2, 2];
+  expect(remapBlockColors(colors, { 0: A, 2: B }, colors)).toEqual({ 0: A, 2: B });
+  expect(remapBlockColors(colors, { 2: B }, colors)).toEqual({ 2: B });
+  expect(remapBlockColors(colors, { 0: A, 2: B }, [red, red, red])).toEqual({ 0: A, 1: B, 2: A });
+});
+
 test("reviewFromJob's rgb fallback indexes the machine block list by sew_block, never the per-layer palette", async () => {
   stubStorage({});
   const { reviewFromJob } = await import("./digitizer.js");
