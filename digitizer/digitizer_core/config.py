@@ -3718,6 +3718,46 @@ class PipelineConfig:
     # byte-identical.
     # Tests: `tests/test_word_tiers.py`.
     lettering_word_tiers: bool = False
+    # LIKE SHAPES DECIDED ONCE PER GROUP (built OFF 2026-11-13,
+    # `group_consistency.py`). Kent's pins name like things sewn unlike ("This
+    # stitch is different than the AH RA"); two of them, traced on main, are
+    # one shape's own measure straddling a threshold its line-mates sit on the
+    # other side of. Both flags below share one rule: a line of like shapes
+    # (one thread, like heights, one band; at least three) decides the call
+    # once -- members more than `group_consistency.MARGIN` (1.5x) off the
+    # threshold are the evidence, a member inside that band takes their side
+    # -- and never onto a construction its shape cannot take. Neither touches
+    # the word tagger, the text cluster or any other tier. Census:
+    # `docs/group-consistency-2026-11-13.md`. Layout (ruling 2026-10-22:
+    # judged in the preview). Off, nothing calls either, byte-identical.
+    # Tests: `tests/test_group_consistency.py`.
+    #
+    # The run tier's area floor (`cfg.min_detail_mm`^2) per line: K-Line's
+    # 2.5 mm subline sewed 17 letters under 2.25 mm^2 as bean outlines and 6
+    # at 2.54-3.07 satin; ON all 24 bean outlines. A letter moved ONTO the run
+    # tier sews the run its line-mates sew (not `small_solids_satin`'s one
+    # column across it); one moved OFF it only onto satin `_sews_satin` grants.
+    group_consistent_tier: bool = False
+    # The art-outline body test (`art_outline.find_art_outlines`) per line of
+    # like candidates within one outline: AHORA's sewn pink field took AH
+    # (1.059) and RA (1.023, against `machine.OUTLINE_BODY_RATIO` 1.0) as
+    # bodies -- fill under a pink loop -- and left O (0.612) and ! (0.456) to
+    # the classifier, satin. ON every letter is satin. Its own flag because
+    # the price differs: AH and RA are fused in the art and sew rougher as
+    # one satin shape (the A's apex a lump, a zigzag at the A-H foot) than
+    # as OFF's fills. A candidate made a body must be `machine.MIN_FILL_WIDTH_MM`
+    # across on average.
+    group_consistent_outline_body: bool = False
+    # A word's THREAD decided once (`lettering_thread.word_thread`): a
+    # text-cluster letter on a thread under a quarter of its word takes the
+    # thread over half the word sews, within `lettering_thread.STRAY_MAX_DE00`
+    # (25) -- the stray rule's own limit, for a letter that stayed in its
+    # cluster. Bridge's U of RESTAURANT, blue art on yellow read green at its
+    # thin strokes, snapped to 5422 Swiss Ivy 18.4 dE00 off ten Caribbean
+    # siblings and sewed as the one thin letter ("This is the only letter that
+    # is thinly stitched"). A customer's own recolour is never moved; the cap
+    # still has the last word. Not the (hed)p.e. e: no cluster fires there.
+    group_consistent_thread: bool = False
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the

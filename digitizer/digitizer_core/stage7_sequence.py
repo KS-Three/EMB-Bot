@@ -3086,6 +3086,21 @@ def sequence(
                     and is_fine_bar(_pr.region, _pr.region.polygon, _sewn, cfg)):
                 fine_bars.add(_pr.shape_id)
     fine_bar_trying: set[str] = set()
+    # `cfg.group_consistent_tier` (built OFF 2026-11-13): the area floor below
+    # decided once per line of like shapes (`group_consistency.
+    # run_floor_overrides`) -- K-Line's 2.5 mm subline sewed 17 letters as
+    # bean outlines and 6 satin, one thread, one line. A member is moved off
+    # the run tier only onto satin the ladder will give it (`_sews_satin`).
+    # Off, the dict is empty and the floor is each shape's own, as before.
+    group_small: dict[str, bool] = {}
+    if cfg.group_consistent_tier and rescue:
+        from .group_consistency import run_floor_overrides
+        group_small = run_floor_overrides(
+            [_pr.region for _pr in planned
+             if str(_pr.region.meta.get("tier", "auto")).lower() == "auto"
+             and not widened_lettering(_pr.region)],
+            detail_mm2,
+            can_leave_run=lambda r: _sews_satin(r, cfg, satin_max, design_class))
 
     def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
         if (pr_tier == "auto" and cfg.bean_only_lines
@@ -3104,7 +3119,8 @@ def sequence(
         if pr_tier == "auto" and pr.shape_id in fine_bars:
             return False                # a fine ink bar: the satin tier (`is_fine_bar`)
         return pr_tier == "run" or (pr_tier == "auto" and rescue
-                                    and pr.region.polygon.area < detail_mm2
+                                    and group_small.get(pr.shape_id,
+                                                        pr.region.polygon.area < detail_mm2)
                                     and not widened_lettering(pr.region))
     # DT-first migration M1 (docs/dt-first-architecture-2026-08-01.md §2):
     # off by default, so `bool(cfg.extra.get(...))` reads False on both an
@@ -3591,8 +3607,12 @@ def sequence(
             # -- no hole, not lettering, its inside left bare by a ring --
             # sews one satin column across its own width instead. A column
             # that comes out degenerate keeps the ring below. Off, unread.
+            # A shape `cfg.group_consistent_tier` moved ONTO the run tier sews
+            # the run its line-mates sew: read as a small solid it came out
+            # one satin column across a whole letter (K-Line's W and K).
             if (cfg.small_solids_satin and cfg.satin and tier == "auto"
                     and routes_to_run(p, tier)
+                    and not group_small.get(p.shape_id, False)
                     and not is_lettering(p.region, cfg)
                     and is_small_solid(p.region.polygon, profile_for(p).width_mm)):
                 runs, report = small_solid_satin(

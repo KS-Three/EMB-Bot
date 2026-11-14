@@ -104,6 +104,41 @@ def stray_word_thread(regions: list[Region], chart, shape_overrides: dict) -> in
     return moved
 
 
+#: `cfg.group_consistent_thread`: a thread held by under this share of a
+#: word's letters is a lone letter's snap, and the word's thread is the one
+#: held by over half of them (Bridge's RESTAURANT: 1 of 11 against 10).
+WORD_THREAD_LONE_SHARE = 0.25
+
+
+def word_thread(regions: list[Region], chart, shape_overrides: dict) -> int:
+    """`cfg.group_consistent_thread` (built OFF 2026-11-13): a text-cluster
+    letter on a thread under `WORD_THREAD_LONE_SHARE` of its word takes the
+    thread over half the word sews, when within `STRAY_MAX_DE00` of it -- the
+    stray rule's own limit, for a letter that stayed IN its cluster. Bridge's
+    U of RESTAURANT is blue art on yellow, read green at its thin strokes,
+    and snapped to 5422 Swiss Ivy 18.4 dE00 off its ten Caribbean siblings;
+    sewn on its own it came out the one thin letter. -> how many moved."""
+    moved = 0
+    for members in _clusters(regions).values():
+        counts: dict[int, int] = {}
+        for r in members:
+            counts[r.thread_index] = counts.get(r.thread_index, 0) + 1
+        if len(counts) < 2:
+            continue
+        word_t, n = max(counts.items(), key=lambda kv: (kv[1], -kv[0]))
+        if 2 * n <= len(members):
+            continue
+        for r in members:
+            t = r.thread_index
+            if t == word_t or counts[t] >= WORD_THREAD_LONE_SHARE * len(members):
+                continue
+            if _pinned(r, shape_overrides) or chart.delta_e(t, word_t) > STRAY_MAX_DE00:
+                continue
+            _set_thread(r, chart, word_t, "lettering_word_thread_from")
+            moved += 1
+    return moved
+
+
 def _floor_target(thread: int, sewn: set[int], chart, ok: np.ndarray) -> int | None:
     """The thread a cluster in `thread` moves to: the nearest one on the design
     that clears (`ok`, per chart index) within `FLOOR_MAX_MOVE_DE00`, else the
@@ -159,6 +194,9 @@ def _on_sewn_ground(members: list[Region], regions: list[Region]) -> bool:
 def apply_lettering_thread(regions: list[Region], chart, cfg, shape_overrides: dict) -> None:
     """Both rules, in `finish_generation`, with `stitched` resolved. The floor
     first: a stray then takes the thread its word finally sews in."""
+    if getattr(cfg, "group_consistent_thread", False):
+        # first: the floor then moves the word on the one thread it sews
+        word_thread(regions, chart, shape_overrides)
     if cfg.lettering_contrast_floor and cfg.garment_rgb is not None:
         contrast_floor(regions, chart, cfg.garment_rgb,
                        cfg.lettering_contrast_floor_de00, shape_overrides)
