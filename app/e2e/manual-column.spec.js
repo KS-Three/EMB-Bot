@@ -196,7 +196,7 @@ async function oneColumn(page) {
   await toContent(page);
   await openDrawing(page);
   await setMode(page, "Column");
-  await expect(page.locator(".mp-modehint")).toHaveText("Click along the middle of the stroke, then double-click to finish.");
+  await expect(page.locator(".mp-modehint")).toHaveText("Drag along the middle of the stroke to draw it. Or click along it, then double-click to finish.");
   await drawPoly(page, SPINE);
   await expect(page.locator(".mp-shaperow")).toHaveCount(1);
   await expect(page.locator(".mp-shaperow").first()).toContainText("Shape 1 · Column");
