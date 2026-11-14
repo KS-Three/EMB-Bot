@@ -389,6 +389,65 @@ APEX_SHOULDER_FAR = 0.36
 APEX_STEM_DEPTH = 0.4          # a cut this far toward the tip retries at the crotch (`_apex_stems`)
 
 
+# `apex_guard` (`cfg.extra["lettering_columns_apex_guard"]`, 2026-11-14,
+# built OFF; read only while `apex_cut` is on). The corpus table
+# (`docs/apex-cut-corpus-2026-11-14.md`, 43 designs) found apex_cut better on
+# 10, worse on 4 and mixed on 1. Read tip by tip, the merged tips behind the
+# losses are of two kinds, and the gains are neither:
+# - a STROKE UNDER ONE SATIN CROSS (`machine.SATIN_MIN_CROSS_MM`): the
+#   0.18-0.19 mm white rings outline_lineart_logo's tagger took for letters.
+#   Merged, the ring's notches walked long bars across the black letter
+#   inside it. The gains' strokes are 0.69 mm and up.
+# - a cross the walk found only by SLIDING TO ITS LIMIT. The cut sits below
+#   the crotch (an "apex_stub") and the cross takes `APEX_GUARD_SHARE` or
+#   more of the limit (`APEX_CROSS_W` x W, or `APEX_CROSS_MM`). The walk
+#   stepped off the crotch until a cross first fitted, so the limit chose
+#   that cross, not the strokes closing: a stroke END, not a V. The losses
+#   read 0.96-1.00 of the limit: k_line's K foot and N, Drone's N top (two
+#   long stitches across the stem), mfab_lc's W middle apex and N tops,
+#   duotone's "2" foot, and_pizza's Z joints. The gains that slid read
+#   0.39-0.76 (Bridge's crossed blocks, duotone's N, Becker LC's M). The
+#   rest cut through the crotch itself (Becker's M, ProSeal's A and M), and
+#   most crosses there sit at 0.9-1.0 of the limit too, so the share alone
+#   separates nothing.
+# The guard refuses the crotch outright. It does not try the next tip, so a
+# refused letter cuts as it does OFF. Kept back with it: and_pizza's Z-joint
+# cure. Each Z's two joints are one shape turned 180 deg, and only the
+# top-right one fans, so what fans is the sewing order there, not the tip.
+# A candidate, not a fabric constant (gate 1): layout, judged by eye.
+_APEX_GUARD: contextvars.ContextVar[bool] = contextvars.ContextVar("apex_guard", default=False)
+APEX_GUARD_SHARE = 0.9
+
+
+@contextlib.contextmanager
+def apex_guard_scope(on: bool):
+    """`cfg.extra["lettering_columns_apex_guard"]` for one plan, beside
+    `apex_cut_scope`. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _APEX_GUARD.set(True)
+    try:
+        yield
+    finally:
+        _APEX_GUARD.reset(token)
+
+
+def _apex_guard_refuses(recs: list, W: float) -> str | None:
+    """`apex_guard`: why this merged tip (`_apex_walk`'s records,
+    `_apex_pieces`) is refused, or None. A cut below the crotch carries an
+    "apex_stub"; one through it is two "apex" records and is not judged on
+    its share."""
+    from .machine import SATIN_MIN_CROSS_MM
+    if W < SATIN_MIN_CROSS_MM:
+        return "guard_hairline"
+    if any(r[2] == "apex_stub" for r in recs):
+        cross = sum(r[3] for r in recs if r[2] == "apex")
+        if cross >= APEX_GUARD_SHARE * min(APEX_CROSS_W * W, APEX_CROSS_MM):
+            return "guard_slid_to_limit"
+    return None
+
+
 @contextlib.contextmanager
 def apex_cut_scope(on: bool):
     """`cfg.lettering_columns_apex_cut` for the length of one plan
@@ -610,6 +669,11 @@ def _apex_cuts(poly: Polygon, W: float, cuts: list, reflex, convex) -> list:
                     alt = _apex_walk(poly, p, q, others, W, _apex_stems(poly, W, p, reflex), True)
                     found = alt if alt is not None else found
                 break
+        if found is not None and _APEX_GUARD.get():
+            why = _apex_guard_refuses(found, W)
+            if why is not None:     # this crotch cuts as it does OFF (comment at `_APEX_GUARD`)
+                _apex_refused(why)
+                found = None
         if found is not None:
             drop += mine
             add += found
