@@ -45,9 +45,12 @@ takes is the professional's on one file; nothing here has been sewn.
 from __future__ import annotations
 
 import math
+from dataclasses import replace
+from types import SimpleNamespace
 
 import cv2
 import numpy as np
+import shapely
 from shapely import affinity
 from shapely.geometry import MultiPolygon, Point, Polygon, box
 from shapely.ops import unary_union
@@ -994,6 +997,276 @@ def _place_line(items: list[dict], bounds: Polygon, s_max: float, cap_mm: float,
     return None
 
 
+# ARC RE-SET (`cfg.extra["small_text_arc_reset"]`, 2026-11-14, built OFF; the
+# Director's next-wave brief, Kent approved it 2026-11-14). The pass above
+# grows HORIZONTAL lines (`MAX_LINE_HEIGHT_RATIO`). A line set on an arc
+# stands its letters at every slant, so their axis-aligned boxes read tall
+# and `_core` keeps only the few that sit at one height. Bridge's
+# BAR & RESTAURANT (hat, 62.9 mm): 11 members, box cap 3.65 against the
+# 3.6 limit, `tall_enough`, never raised. The pro sews it 4.43 mm radial on
+# the same arc, 1.65x the art (`eye_pairs_out/pro-redraws-1113/REPORT.md`).
+#
+# A cluster the horizontal pass refused (`tall_enough`, `not_one_line`)
+# whose letters' centres sit on a circle is UNROLLED (`_ArcFrame`): x is arc
+# length along the circle at its radius, y the radial distance, feet down.
+# The shapes near the line and the source raster are unrolled with it, and
+# the SAME pass re-sets the line there, with its gates, retrace, placement,
+# widening, bays and inner pieces. One thing differs: the cap is read off
+# the RETRACED letters (`cap_from_trace`), the art's own ink edge. Bridge's
+# polygons stand 3.7-4.2 mm radial where its JPEG's letters are 3.1-3.4
+# (blur traced as ink in stages 2-4), so the polygon cap would call the
+# line tall enough a second time. Only what the re-set moved is rolled back
+# onto the circle, and the ground's old letter holes are closed where they
+# were (`_fill_old_holes`). Fails open: a line that does not fit, unroll or
+# roll back is left as drawn, with the reason in its row's `arc`.
+ARC_MIN_LETTERS = 4
+# Letter centres off the fitted circle (RMS), as a share of the letters'
+# radial height. Bridge: 0.18 mm on 4.0 (0.05). A letter's centre moves with
+# its shape (a T's sits high), so a true arc is not zero.
+ARC_FIT_CAPS = 0.2
+# A circle so flat that the line rises less than this (in caps) across its
+# span is a straight line, and the horizontal pass has already judged it.
+ARC_MIN_SAGITTA_CAPS = 0.5
+# No line wraps further than this either side of its middle: a full ring of
+# text has no one reading frame to unroll.
+ARC_MAX_HALF_SPAN_DEG = 150.0
+# A line whose middle sits beside its centre (|sin| under this) reads up or
+# down the ring, and which way is up is not known.
+ARC_MIN_SIDE = 0.5
+# Edge length a shape is densified to before the unroll bends it.
+ARC_SEGMENT_MM = 0.05
+# The unrolled band's inner edge, as a share of the radius: toward the
+# centre, arc length stretches without bound.
+ARC_INNER_SHARE = 0.25
+# Pixels in the unrolled raster, past which the line is left as drawn.
+ARC_MAX_PX = 25_000_000
+# What the re-set writes into a region it moved; the arc pass copies these
+# back, never the unrolled `TRACED_POLYGON_KEY`.
+_ARC_MOVE_KEYS = ("small_text_enlarged", "small_text_inner", "small_text_bar_moved_mm")
+_ARC_COPY_KEYS = _ARC_MOVE_KEYS + ("small_text_reset", WIDENED_LETTERING_KEY, "text_cluster_stroke_mm")
+
+
+def _fit_circle(pts) -> tuple[float, float, float, float] | None:
+    """Least-squares circle through `pts` (Kasa). -> (cx, cy, r, rms) or None."""
+    a = np.asarray(pts, dtype=np.float64)
+    if len(a) < 3:
+        return None
+    A = np.c_[a[:, 0], a[:, 1], np.ones(len(a))]
+    b = -(a[:, 0] ** 2 + a[:, 1] ** 2)
+    try:
+        (d, e, f), *_ = np.linalg.lstsq(A, b, rcond=None)
+    except np.linalg.LinAlgError:
+        return None
+    cx, cy = -d / 2.0, -e / 2.0
+    r2 = cx * cx + cy * cy - f
+    if not np.isfinite(r2) or r2 <= 0:
+        return None
+    r = math.sqrt(r2)
+    res = np.hypot(a[:, 0] - cx, a[:, 1] - cy) - r
+    return float(cx), float(cy), float(r), float(np.sqrt(np.mean(res ** 2)))
+
+
+def _polygonal(g):
+    """`g` made valid, its polygons only."""
+    if not g.is_valid:
+        g = shapely.make_valid(g)
+    parts = [q for q in _polys(g) if q.area > 0]
+    if not parts:
+        return Polygon()
+    return parts[0] if len(parts) == 1 else MultiPolygon(parts)
+
+
+class _ArcFrame:
+    """The polar unroll about (cx, cy). u: arc length at radius r0 from the
+    line's middle angle, increasing in reading order; v: radial, feet down
+    (a line above its centre stands its tops outward, one below inward)."""
+
+    def __init__(self, cx: float, cy: float, r0: float, phi_m: float, top: bool):
+        self.cx, self.cy, self.r0, self.phi_m, self.top = cx, cy, r0, phi_m, top
+
+    def unroll_xy(self, xy: np.ndarray) -> np.ndarray:
+        dx, dy = xy[:, 0] - self.cx, xy[:, 1] - self.cy
+        rho = np.hypot(dx, dy)
+        d = (np.arctan2(dy, dx) - self.phi_m + math.pi) % (2.0 * math.pi) - math.pi
+        if self.top:
+            return np.c_[self.r0 * d, self.r0 - rho]
+        return np.c_[-self.r0 * d, rho - self.r0]
+
+    def roll_xy(self, uv: np.ndarray) -> np.ndarray:
+        if self.top:
+            d, rho = uv[:, 0] / self.r0, self.r0 - uv[:, 1]
+        else:
+            d, rho = -uv[:, 0] / self.r0, self.r0 + uv[:, 1]
+        a = self.phi_m + d
+        return np.c_[self.cx + rho * np.cos(a), self.cy + rho * np.sin(a)]
+
+    def unroll(self, geom):
+        return _polygonal(shapely.transform(shapely.segmentize(geom, ARC_SEGMENT_MM), self.unroll_xy))
+
+    def roll(self, geom):
+        return _polygonal(shapely.transform(shapely.segmentize(geom, ARC_SEGMENT_MM), self.roll_xy))
+
+
+def _arc_prep(p: Prep, frame: _ArcFrame, u0: float, v0: float, u1: float, v1: float):
+    """The source raster unrolled onto the box (u0, v0)-(u1, v1), as the
+    duck-typed prep `_retrace` reads (`rgb`, `px_per_mm`, `art_bbox`)."""
+    ppm = float(p.px_per_mm)
+    ax0, ay0, ax1, ay1 = p.art_bbox
+    cx, cy = (ax0 + ax1) / 2.0, (ay0 + ay1) / 2.0
+    w = int(math.ceil((u1 - u0) * ppm)) + 1
+    h = int(math.ceil((v1 - v0) * ppm)) + 1
+    if w < 4 or h < 4 or w * h > ARC_MAX_PX:
+        return None
+    gu, gv = np.meshgrid(u0 + np.arange(w) / ppm, v0 + np.arange(h) / ppm)
+    xy = frame.roll_xy(np.c_[gu.ravel(), gv.ravel()])
+    mx = (xy[:, 0] * ppm + cx).reshape(h, w).astype(np.float32)
+    my = (xy[:, 1] * ppm + cy).reshape(h, w).astype(np.float32)
+    rgb = cv2.remap(np.ascontiguousarray(p.rgb), mx, my, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    c = (-u0 * ppm, -v0 * ppm)
+    return SimpleNamespace(rgb=rgb, px_per_mm=ppm, art_bbox=(c[0], c[1], c[0], c[1]))
+
+
+def _respine(r: Region) -> bool:
+    """`small_text_reset_respine`: a grown letter that carries dark-ink bean
+    spines (`thin_ink.bean_dark_ink`, written at the art's size BEFORE the
+    re-set) has them re-read from its grown polygon, the same call that
+    wrote them. -> whether it did."""
+    from .beanletters import BEAN_LETTER_KEY
+    if not r.meta.get(BEAN_LETTER_KEY) or not isinstance(r.polygon, Polygon):
+        return False
+    from .shapefield import build_shape_field
+    from .textcluster import _skeleton_chains_mm
+    field = build_shape_field(r.polygon)
+    spines = _skeleton_chains_mm(field) if field is not None else []
+    if not spines:
+        return False
+    r.meta[BEAN_LETTER_KEY] = spines
+    r.meta["small_text_respined"] = True
+    return True
+
+
+def _arc_line(cid: str, regions: list[Region], p: Prep, cap_mm: float, design: Polygon,
+              claimed: set[int], traced_in: dict[int, Polygon], row: dict, kw: dict,
+              respine: bool = False) -> None:
+    """Re-set the refused cluster `cid` along its own arc (comment at
+    `ARC_MIN_LETTERS`), writing what it did into `row["arc"]`."""
+    out: dict = {}
+    row["arc"] = out
+    members = [r for r in regions if r.meta.get("text_cluster_id") == cid]
+    if any(id(r) in claimed for r in members):
+        out["skipped"] = "member_claimed"
+        return
+    threads: dict[int, int] = {}
+    for r in members:
+        threads[r.thread_index] = threads.get(r.thread_index, 0) + 1
+    thread = max(sorted(threads), key=lambda t: threads[t]) if threads else None
+    same = [r for r in members if r.thread_index == thread and isinstance(r.polygon, Polygon)
+            and not r.polygon.is_empty]
+    if len(same) < ARC_MIN_LETTERS:
+        out["skipped"] = "few_letters"
+        return
+    fit = _fit_circle([(r.polygon.centroid.x, r.polygon.centroid.y) for r in same])
+    if fit is None:
+        out["skipped"] = "no_circle"
+        return
+    cx, cy, r0, rms = fit
+    hs = []
+    for r in same:
+        xy = np.asarray(r.polygon.exterior.coords)
+        rho = np.hypot(xy[:, 0] - cx, xy[:, 1] - cy)
+        hs.append(float(rho.max() - rho.min()))
+    cap_r = float(np.median(hs))
+    ang = np.array([math.atan2(r.polygon.centroid.y - cy, r.polygon.centroid.x - cx) for r in same])
+    phi_m = math.atan2(float(np.sin(ang).mean()), float(np.cos(ang).mean()))
+    half = float(np.abs((ang - phi_m + math.pi) % (2.0 * math.pi) - math.pi).max())
+    side = math.sin(phi_m)
+    out.update(radius_mm=round(r0, 2), fit_mm=round(rms, 3), cap_radial_mm=round(cap_r, 3),
+               half_span_deg=round(math.degrees(half), 1), side="top" if side < 0 else "bottom")
+    if cap_r <= 0 or rms > ARC_FIT_CAPS * cap_r:
+        out["skipped"] = "off_circle"
+        return
+    if r0 * (1.0 - math.cos(half)) < ARC_MIN_SAGITTA_CAPS * cap_r:
+        out["skipped"] = "straight"
+        return
+    if half > math.radians(ARC_MAX_HALF_SPAN_DEG):
+        out["skipped"] = "ring"
+        return
+    if abs(side) < ARC_MIN_SIDE:
+        out["skipped"] = "side_of_ring"
+        return
+    top = side < 0
+    frame = _ArcFrame(cx, cy, r0, phi_m, top)
+    reach = cap_mm * (MAX_SHIFT_CAPS + MAX_SCALE) + 2.0 * CLEAR_MM
+    inner = (1.0 - ARC_INNER_SHARE) * r0
+    v0, v1 = (-reach, min(reach, inner)) if top else (-min(reach, inner), reach)
+    a = min(math.pi - 0.15, half * MAX_SCALE + reach / r0)
+    u0, u1 = -a * r0, a * r0
+    sector = frame.roll(box(u0, v0, u1, v1))
+    if sector.is_empty or not all(sector.contains(r.polygon) for r in members):
+        out["skipped"] = "outside_band"
+        return
+    vp = _arc_prep(p, frame, u0, v0, u1, v1)
+    if vp is None:
+        out["skipped"] = "raster"
+        return
+    mids = {id(r) for r in members}
+    vregions: list[Region] = []
+    back: dict[int, Region] = {}
+    vin: dict[int, object] = {}
+    for r in regions:
+        if r.polygon is None or r.polygon.is_empty or not r.polygon.intersects(sector):
+            continue
+        g = r.polygon if id(r) in mids else r.polygon.intersection(sector)
+        vg = frame.unroll(g)
+        if vg.is_empty:
+            continue
+        meta = (dict(r.meta) if id(r) in mids
+                else {k: v for k, v in r.meta.items() if k not in _CLUSTER_TAGS})
+        vr = replace(r, polygon=vg, area_mm2=float(vg.area), meta=meta)
+        vregions.append(vr)
+        back[id(vr)] = r
+        vin[id(vr)] = vg
+    rows = enlarge_small_text(vregions, vp, cap_mm=cap_mm, cap_from_trace=True, **kw)
+    mine = next((x for x in rows if x.get("cluster") == cid), {})
+    out.update({k: v for k, v in mine.items() if k not in ("cluster", "members")})
+    moved = [vr for vr in vregions
+             if vr.polygon is not vin[id(vr)]
+             and any(k in vr.meta and vr.meta.get(k) != back[id(vr)].meta.get(k) for k in _ARC_MOVE_KEYS)]
+    if not moved:
+        return
+    if any(id(back[id(vr)]) in claimed for vr in moved):
+        out["skipped"] = "member_claimed"
+        return
+    edge = design.buffer(1e-6)
+    rolled = []
+    for vr in moved:
+        parts = _polys(frame.roll(vr.polygon))
+        q = max(parts, key=lambda g: g.area) if parts else None
+        if q is None or not q.is_valid or q.area < 0.5 * vr.polygon.area or not edge.contains(q):
+            out["skipped"] = "roll_back"
+            return
+        rolled.append((back[id(vr)], vr, q))
+    old_union = unary_union([r.polygon for r, _vr, _q in rolled])
+    respined = 0
+    for r, vr, q in rolled:
+        _keep_traced(r, traced_in)
+        r.polygon = q
+        r.area_mm2 = float(q.area)
+        for k in _ARC_COPY_KEYS:
+            if k in vr.meta:
+                r.meta[k] = vr.meta[k]
+        r.meta["small_text_arc"] = round(r0, 3)
+        if respine and _respine(r):
+            respined += 1
+        claimed.add(id(r))
+    _fill_old_holes(regions, {id(r) for r, _vr, _q in rolled}, old_union)
+    out["moved"] = len(rolled)
+    if respined:
+        out["respined"] = respined
+    if "skipped" in row:
+        row["flat_skipped"] = row.pop("skipped")
+
+
 def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        max_width_scale: float | None = None,
                        min_stroke_mm: float | None = None,
@@ -1002,9 +1275,21 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        reach_edges: bool = False,
                        bay_mouth: bool = False,
                        grow_away: bool = False,
-                       one_baseline: bool = False) -> list[dict]:
+                       one_baseline: bool = False,
+                       arc: bool = False,
+                       respine: bool = False,
+                       cap_from_trace: bool = False) -> list[dict]:
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
+
+    `arc` (`cfg.extra["small_text_arc_reset"]`, built OFF 2026-11-14;
+    comment at `ARC_MIN_LETTERS`): after the horizontal lines, each cluster
+    refused as `tall_enough` or `not_one_line` whose letters sit on a circle
+    is re-set along its own arc (`_arc_line`), and its row gains `arc`.
+    `cap_from_trace` is that pass's own: the cap read off the retraced
+    letters. `respine` (`cfg.extra["small_text_reset_respine"]`, built OFF
+    2026-11-14): a grown letter carrying dark-ink bean spines has them
+    re-read from its grown polygon (`_respine`). False: byte for byte.
 
     `one_baseline` (`cfg.extra["small_text_reset_one_baseline"]`, built OFF
     2026-11-13; comment at `BASELINE_CLASS_RATIO`): the height classes of a
@@ -1078,7 +1363,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 continue
             cap = float(np.median([_height(r) for r in members]))
             row["cap_mm"] = round(cap, 3)
-            if cap <= 0 or cap >= 0.9 * cap_mm:
+            if cap <= 0 or (cap >= 0.9 * cap_mm and not cap_from_trace):
                 row["skipped"] = "tall_enough"
                 if one_baseline and cap > 0:
                     ms = [r.polygon for r in members]
@@ -1096,6 +1381,14 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 row["skipped"] = "not_one_line"
                 continue
             traced = _retrace(group, p, cap)
+            if cap_from_trace:      # the arc pass: the art's ink edge sets the cap
+                th = [traced[i].bounds[3] - traced[i].bounds[1] for i in traced]
+                if th and 2 * len(th) >= len(group):
+                    cap = min(cap, float(np.median(th)))
+                    row["cap_traced_mm"] = round(cap, 3)
+                if cap >= 0.9 * cap_mm:
+                    row["skipped"] = "tall_enough"
+                    continue
             shapes = [traced.get(i, r.polygon) for i, r in enumerate(group)]
             hull = unary_union(shapes).convex_hull
             if hull.is_empty or hull.area <= 0:
@@ -1247,7 +1540,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 continue
             if reset:
                 _reset_apply(regions, line, bars, inner, found, bay_mouth=bay_mouth,
-                             traced_in=traced_in)
+                             traced_in=traced_in, **({"respine": True} if respine else {}))
                 continue
             s, dy, dxs = found
             sx = _sx(s, max_width_scale)
@@ -1282,6 +1575,8 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                     r.polygon = final
                     r.area_mm2 = float(final.area)
                     r.meta["small_text_enlarged"] = round(s, 3)
+                    if respine:
+                        _respine(r)
                     # The line now lies ON its ground, not in the holes the
                     # ground was traced with. Stage 5 clips every shape to
                     # what earlier colours left bare -- which sewed nine of
@@ -1302,6 +1597,18 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
         except Exception as exc:  # fail open
             for it in line:
                 it["row"]["skipped"] = f"error:{type(exc).__name__}"
+    if arc:
+        kw = {"max_width_scale": max_width_scale, "min_stroke_mm": min_stroke_mm,
+              "letter_gap_mm": letter_gap_mm, "bold_scale": bold_scale, "reach_edges": reach_edges,
+              "bay_mouth": bay_mouth, "grow_away": grow_away, "one_baseline": one_baseline}
+        for row in report:
+            if row.get("skipped") not in ("tall_enough", "not_one_line"):
+                continue
+            try:
+                _arc_line(row["cluster"], regions, p, cap_mm, design, claimed, traced_in, row, kw,
+                          respine=respine)
+            except Exception as exc:  # fail open
+                row.setdefault("arc", {})["skipped"] = f"error:{type(exc).__name__}"
     return report
 
 
@@ -1794,7 +2101,7 @@ def _join_line_ends(line: list[dict], regions: list[Region], taken: set[int], ca
 
 def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
                  inner: dict[int, list[Region]], found, bay_mouth: bool = False,
-                 traced_in: dict[int, Polygon] | None = None) -> None:
+                 traced_in: dict[int, Polygon] | None = None, respine: bool = False) -> None:
     """Write a re-set line (`_place_line_reset`'s answer) into its regions:
     each shape scaled about its letter's centre and moved to its place, then
     widened as the growth widens; a word's inner pieces go with the letter
@@ -1837,6 +2144,8 @@ def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
             r.area_mm2 = float(final.area)
             r.meta["small_text_enlarged"] = round(s, 3)
             r.meta["small_text_reset"] = True       # the regularizer leaves it as set
+            if respine:
+                _respine(r)
             r.meta[WIDENED_LETTERING_KEY] = round(max(widen, 1e-4), 4)
             if r.meta.get("text_cluster_stroke_mm"):
                 # grow away: the half-stroke drawn, from the traced stroke
