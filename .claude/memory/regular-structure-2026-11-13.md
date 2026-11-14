@@ -34,13 +34,19 @@ fill took 13 s per copy, cv2 0.15 s).
   `enclosed_background`, 15 plain holes.
 - Jakarta dot grid: equal at stage 4 but text-tagged (`small_text_*`); the
   lettering path merges it. Out of scope here.
-- Drone, Golden Tee, QR: nothing worth moving.
+- QR: three finder rings + cores at stage 4, congruent to 0.03 mm, but the
+  rings are MISSING from the stitches (sewn under the white layer): Kent's
+  "Entire black square and black border is missing" is a layering defect
+  downstream, not geometry. Moving one ring 0.11 mm onto the lattice let a
+  sliver peek out -- hence the floor below.
+- Drone, Golden Tee: nothing worth moving.
 
 **Gates (source px):** mean distance 1.5 (1.0 refused Bridge's worst handle,
 1.15), dilation 0.5 (a size step is coherent, noise nets out: this is what
-separates the two), worst point 4, move cap 3. Plus: nothing redrawn below
-0.1 mm (the Design unit) -- redrawing the flag's 0.005 mm stripes re-planned
-the long red satin 500 -> 1,399 stitches at a 5 deg tilt; a stacked layer is
+separates the two), worst point 4, move cap 3. Plus: nothing redrawn unless
+some member moves more than max(0.1 mm Design unit, 1.5 src px) --
+redrawing the flag's 0.005 mm stripes re-planned the long red satin 500 ->
+1,399 stitches at a 5 deg tilt; a stacked layer is
 not a seam (QR cores lie ON white squares); a self-repeat needs solidity <=
 0.9 (the drone's 2 mm2 grey blob passed as a 3-fold triangle).
 
