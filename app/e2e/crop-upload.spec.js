@@ -77,3 +77,22 @@ test("an uploaded logo gets a crop proposal that can be adjusted and reset", asy
   expect(whole).toEqual({ x0: 0, y0: 0, x1: 1, y1: 1 });
   await expect(reset).toBeDisabled();
 });
+
+// 2026-11-14: the committed starter owl (owl.svg) is a transparent SVG whose
+// body runs along the bottom edge. Its proposal boxed only the eyes and beak
+// (33% of the art outside the box) because the only opaque border pixels were
+// the body, which became the "background". The proposal must hold every mark.
+test("a transparent SVG whose body touches the frame edge is proposed whole (starter owl)", async ({ page }) => {
+  await mockHealth(page);
+  await startStudio(page);
+  await uploadArtwork(page, path.join(__dirname, "..", "public", "starter", "owl.svg"), { run: false });
+
+  await expect(page.getByRole("group", { name: "Crop area" })).toBeVisible();
+  const box = await fractions(page);
+  // The ears and the head outline sit at the frame edge, so the box has to
+  // reach it on every side (the owl spans the whole raster).
+  expect(box.x0).toBeLessThan(0.02);
+  expect(box.y0).toBeLessThan(0.02);
+  expect(box.x1).toBeGreaterThan(0.98);
+  expect(box.y1).toBeGreaterThan(0.98);
+});
