@@ -1429,11 +1429,15 @@ class PipelineConfig:
     # (0.64, 0.36, 0.65 against 0.9), and this round never ran: it was
     # enlarged rasters only. ON: a 2-working-px band, the Lab OR the RGB
     # chord (ProSeal's band is 6.3 off the Lab one), and each band pixel
-    # takes the label of the nearest pixel outside the band, so a rim splits
-    # between the two things it lies between and the page is never one.
+    # takes the label of the nearest pixel outside the band, the page
+    # included, so a rim splits between the two things it lies between
+    # (joined all to the ink, ProSeal's hexagon cells closed their gaps).
     # (Folding the whole cluster into one end, tried first, painted the same
     # pale colour's specks elsewhere with it: ProSeal's subline grew a teal
-    # N.) A thin colour that is NOT between its
+    # N.) Once a band dissolves, the one-pixel round's blends join the same
+    # way, to the ink only: by nearest kept centre in Lab, the black
+    # letters' grey edge went to the teal once the pale band was gone. A
+    # thin colour that is NOT between its
     # neighbours (a keyline) is untouched: the colour test is unchanged. An
     # enlarged raster is unchanged. Different from the bevel/shadow fold in
     # `enforce_color_cap` (`regular-structure` lane): that folds a ONE-sided

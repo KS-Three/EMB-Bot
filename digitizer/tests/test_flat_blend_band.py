@@ -106,6 +106,33 @@ def test_a_speck_of_the_band_colour_elsewhere_joins_what_it_touches():
     assert lab_at >= 0 and not _is_letter(chart[on.thread_indices[lab_at]].rgb)
 
 
+def test_a_rim_against_the_page_splits_with_the_page():
+    # ProSeal's hexagon cells: teal on white, each ringed by a pale JPEG rim,
+    # 0.3-0.5 mm apart. Joined all to the ink, every cell grew a pixel a side
+    # into the white gaps and stage 6 closed them. Half to each side keeps
+    # the gap: each square takes about half its rim, the page the rest.
+    teal = (0, 150, 170)
+    img = np.full((800, 800, 3), PAGE, np.uint8)
+    pale = _blend(PAGE, teal, 0.3)
+    for x0 in (150, 406):
+        cv2.rectangle(img, (x0 - 3, 250 - 3), (x0 + 240 + 2, 550 + 2), pale, -1)
+    for x0 in (150, 406):
+        cv2.rectangle(img, (x0, 250), (x0 + 239, 549), teal, -1)
+    img = img[:, :, ::-1].copy()
+    p, off, cfg = _quant(img)
+    assert p.px_per_mm == p.input_px_per_mm
+    assert len(off.thread_indices) == 2, _threads(off, cfg)      # teal + the rim's own
+    _p, on, cfg = _quant(img, flat_blend_band_any_scale=True)
+    assert len(on.thread_indices) == 1, _threads(on, cfg)
+    m = (on.labels == 0).astype(np.uint8)
+    n, _cc, stats, _c = cv2.connectedComponentsWithStats(m, 8)
+    rim = 246 * 306 - 240 * 300
+    assert n - 1 == 2
+    for a in stats[1:, cv2.CC_STAT_AREA]:
+        assert 240 * 300 + 0.3 * rim < a < 240 * 300 + 0.7 * rim, (a, rim)
+    assert (on.labels[400, 392:404] == -1).all()                 # the gap is page
+
+
 def test_a_keyline_that_is_not_a_blend_stays():
     # A 4 px black ring between a white field and a blue disc: thin, all edge
     # at 2 px, and not between white and blue. It keeps its thread.

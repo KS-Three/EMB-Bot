@@ -453,8 +453,11 @@ def _quantize_population(
     compression and anti-aliasing leave one. A candidate is a blend on the
     Lab chord OR the RGB one (the round-one `enlarged_past_line` reading),
     and each of its pixels joins the label of the NEAREST pixel outside the
-    band (a rim splits between what it touches; the page is never a target).
-    False: the round as it always was.
+    band, the page included (-1: a rim splits between what it touches).
+    Once that round dissolves a band, round one's blends join the nearest
+    pixel outside it too, ink only, instead of the nearest kept centre in
+    Lab, which the dissolved band no longer is. False: the round as it
+    always was.
 
     -> (labels (h, w) int32, -1 outside `valid`; final spool indices, one
     per output label; warnings).
@@ -634,6 +637,15 @@ def _quantize_population(
             (phantom if blend else keep).append(j)
         keep.sort()
         phantom.sort()
+    ramp_band: list[int] = []
+    if band_mode and band_ids:
+        # ... and so does every round-one blend. Joined to the nearest KEPT
+        # centre in Lab, a black letter's grey anti-alias edge (ProSeal's
+        # subline, L* 60 and 83) went to the pale band colour while that was
+        # kept; with the band dissolved the nearest kept centre is the teal,
+        # and every letter grew a teal rim that stage 4 sewed in the I and N.
+        ramp_band = list(band_ids)
+        band_ids = list(phantom)
 
     if phantom:
         keep_centers = centers[keep]
@@ -647,16 +659,28 @@ def _quantize_population(
     if band_ids:
         # `band_mode`: each band pixel takes the label of the NEAREST pixel
         # outside the band -- a rim joins what it physically touches, half to
-        # each side, and the page (never `valid`) is never a target. Folding
+        # each side (round one's blends: ink only, below). Folding
         # the whole cluster into one end painted every speck of that colour
         # elsewhere in the design with it: ProSeal's pale band went teal, and
-        # so did the same pale JPEG ringing on its black lettering (a teal N).
+        # so did the same pale JPEG ringing on its black lettering.
         band = valid & np.isin(labels, band_ids)
         src = valid & ~band
         if src.any():
+            flat_l = labels.reshape(-1).copy()
             near_idx = _nearest_source(src)
             by, bx = np.nonzero(band)
-            labels[by, bx] = labels.reshape(-1)[near_idx[by, bx]]
+            new = flat_l[near_idx[by, bx]]
+            rb = np.isin(labels[by, bx], ramp_band)
+            if rb.any():
+                # The band round's own rims split with the PAGE too (-1): a
+                # pale rim between ink and page is half each. Joined all to
+                # the ink, ProSeal's hexagon cells grew a pixel a side into
+                # their 0.3-0.5 mm white gaps and stage 6 closed them. Round
+                # one's greys stay ink-only: they are a letter's own edge,
+                # and a thin letter keeps the width it had.
+                near_p = _nearest_source(src | ~valid)[by[rb], bx[rb]]
+                new[rb] = np.where(valid.reshape(-1)[near_p], flat_l[near_p], -1)
+            labels[by, bx] = new
     active = keep
 
     # --- merge split-but-identical colors, then merge same-spool colors -----
