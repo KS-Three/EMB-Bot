@@ -273,8 +273,8 @@
    "figure": "stitches",
    "baseline": 10547,
    "worse": "up",
-   "tolerance": 0,
-   "spread": 0,
+   "tolerance": 6,
+   "spread": 6,
    "pro": 8694
   },
   {
@@ -309,8 +309,8 @@
    "figure": "sttype_kappa",
    "baseline": 0.529,
    "worse": "down",
-   "tolerance": 0.0,
-   "spread": 0.0,
+   "tolerance": 0.01,
+   "spread": 0.004,
    "chance": 0.502
   },
   {
@@ -326,8 +326,8 @@
    "figure": "stitches",
    "baseline": 10310,
    "worse": "up",
-   "tolerance": 0,
-   "spread": 0,
+   "tolerance": 3,
+   "spread": 3,
    "pro": 8694
   },
   {
@@ -362,8 +362,8 @@
    "figure": "sttype_kappa",
    "baseline": 0.575,
    "worse": "down",
-   "tolerance": 0.0,
-   "spread": 0.0,
+   "tolerance": 0.01,
+   "spread": 0.003,
    "chance": 0.502
   },
   {
@@ -371,8 +371,8 @@
    "figure": "direction_kappa",
    "baseline": 0.444,
    "worse": "down",
-   "tolerance": 0.0,
-   "spread": 0.0
+   "tolerance": 0.01,
+   "spread": 0.001
   },
   {
    "job": "becker_beanie",
@@ -770,8 +770,8 @@
    "figure": "stitches",
    "baseline": 17853,
    "worse": "up",
-   "tolerance": 0,
-   "spread": 0,
+   "tolerance": 5,
+   "spread": 5,
    "pro": 15786
   },
   {
@@ -982,8 +982,8 @@
    "figure": "stitches",
    "baseline": 18917,
    "worse": "up",
-   "tolerance": 0,
-   "spread": 0,
+   "tolerance": 4,
+   "spread": 4,
    "pro": 13886
   },
   {
@@ -1009,8 +1009,8 @@
    "figure": "needle_up_mm",
    "baseline": 264.8,
    "worse": "up",
-   "tolerance": 0.0,
-   "spread": 0.0,
+   "tolerance": 0.1,
+   "spread": 0.1,
    "pro": 528.0
   },
   {
@@ -1136,5 +1136,77 @@
    "tolerance": 0.0,
    "spread": 0.0
   }
- ]
+ ],
+ "hand_edits": {
+  "what": "tolerance and spread of these 8 rows restored from the 2026-11-12 capture; baselines and every other row are the 2026-11-14 capture's",
+  "why": "the 2026-11-14 capture's 3 passes agreed (spread 0) on rows that vary by a few stitches between runners; check run 43623404176 read toat_machine_hat 18,921 against 18,917 at tolerance 0",
+  "tolerance_from_run": "https://github.com/KS-Three/EMB-Bot/actions/runs/43147117899",
+  "baseline_from_run": "https://github.com/KS-Three/EMB-Bot/actions/runs/43618563785",
+  "rows": [
+   {
+    "job": "becker_hat_small",
+    "figure": "stitches",
+    "baseline": 10547,
+    "tolerance_run_43618563785": 0,
+    "tolerance": 6,
+    "spread": 6
+   },
+   {
+    "job": "becker_hat_small",
+    "figure": "sttype_kappa",
+    "baseline": 0.529,
+    "tolerance_run_43618563785": 0.0,
+    "tolerance": 0.01,
+    "spread": 0.004
+   },
+   {
+    "job": "becker_chest_small",
+    "figure": "stitches",
+    "baseline": 10310,
+    "tolerance_run_43618563785": 0,
+    "tolerance": 3,
+    "spread": 3
+   },
+   {
+    "job": "becker_chest_small",
+    "figure": "sttype_kappa",
+    "baseline": 0.575,
+    "tolerance_run_43618563785": 0.0,
+    "tolerance": 0.01,
+    "spread": 0.003
+   },
+   {
+    "job": "becker_chest_small",
+    "figure": "direction_kappa",
+    "baseline": 0.444,
+    "tolerance_run_43618563785": 0.0,
+    "tolerance": 0.01,
+    "spread": 0.001
+   },
+   {
+    "job": "mfab_lc",
+    "figure": "stitches",
+    "baseline": 17853,
+    "tolerance_run_43618563785": 0,
+    "tolerance": 5,
+    "spread": 5
+   },
+   {
+    "job": "toat_machine_hat",
+    "figure": "stitches",
+    "baseline": 18917,
+    "tolerance_run_43618563785": 0,
+    "tolerance": 4,
+    "spread": 4
+   },
+   {
+    "job": "toat_machine_hat",
+    "figure": "needle_up_mm",
+    "baseline": 264.8,
+    "tolerance_run_43618563785": 0.0,
+    "tolerance": 0.1,
+    "spread": 0.1
+   }
+  ]
+ }
 }

@@ -293,6 +293,15 @@ class PipelineResult:
     # pixels (`preflight._prepped_view` carries the measurement). No stitch
     # depends on it.
     photo_prep_rgb: np.ndarray | None = None
+    # `Generation.small_text_reset` handed on (2026-11-14): the re-set's
+    # rows, or None. Read by preflight only, under
+    # `cfg.extra["small_text_reset_report"]`. No stitch depends on it.
+    small_text_reset: list[dict] | None = None
+    # The traced raster for the proof-read guards (`proofread_guard`): the
+    # stage-1 picture stage 2 read, its background mask, art box and grid,
+    # as references. Set by `finish_generation` only when a guard flag is
+    # on; None otherwise (and on a hand-built result), so the guards stay off.
+    proof_art: object | None = None
 
     @property
     def shape_ids(self) -> list[str]:
@@ -363,6 +372,11 @@ class Generation:
     # stage 6's frame. None for every other class and for a hand-built
     # Generation.
     design_ramp: DesignRamp | None = None
+    # `small_text.enlarge_small_text`'s report (one row per text cluster:
+    # grown, or skipped and why), or None when the re-set did not run.
+    # Read by preflight only, under `cfg.extra["small_text_reset_report"]`
+    # (2026-11-14); no stitch depends on it.
+    small_text_reset: list[dict] | None = None
 
     def fork(self) -> "Generation":
         """A copy safe to finish from, sharing what is immutable.
@@ -399,6 +413,8 @@ class Generation:
             # reason `p`'s rasters are (this docstring's own rule): nothing
             # in stages 5-7 assigns into it.
             subject_mask=self.subject_mask,
+            small_text_reset=(copy.deepcopy(self.small_text_reset)
+                              if self.small_text_reset is not None else None),
         )
 
 
@@ -1143,9 +1159,13 @@ def build_generation(
                            min_counter_mm=true_size_min_counter(cfg),
                            thread_wts=block_thread_wt(regions, cfg),
                            default_wt=int(cfg.thread_wt))
+    # The re-set's own record, one row per text cluster: what it grew, and
+    # why it skipped a line (2026-11-14). Kept on the generation; preflight
+    # reports it as metrics only under `cfg.extra["small_text_reset_report"]`.
+    small_text_rows = None
     if cfg.small_text_cap_mm:
         from .small_text import enlarge_small_text
-        enlarge_small_text(regions, p, cap_mm=cfg.small_text_cap_mm,
+        small_text_rows = enlarge_small_text(regions, p, cap_mm=cfg.small_text_cap_mm,
                            max_width_scale=cfg.small_text_cap_max_width_scale,
                            min_stroke_mm=cfg.small_text_cap_min_stroke_mm,
                            letter_gap_mm=cfg.small_text_cap_letter_gap_mm,
@@ -1333,6 +1353,7 @@ def build_generation(
         # "which of these pixels are the artwork", and spelling each one the
         # way its consumer thinks removes a `~` from every call site.
         subject_mask=(~subject_bg_mask if subject_bg_mask is not None else None),
+        small_text_reset=small_text_rows,
     )
 
 
@@ -1928,7 +1949,16 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         white_keyline_art=keyline_art,
         photo_prep_rgb=(p.rgb if any(w.get("code") == PHOTO_PREP_APPLIED
                                      for w in prep_warnings) else None),
+        small_text_reset=gen.small_text_reset,
+        proof_art=(_proof_art(p) if getattr(cfg, "proofread_guard_clipped", False) else None),
     )
+
+
+def _proof_art(p):
+    """The traced raster, as the proof-read reads one (`proofread.read`'s `p`):
+    stage 1's own Prep, by reference (its page mask, enclosed holes and page
+    colour all count, `proofread.page_mask`)."""
+    return p
 
 
 def run_stages(
@@ -2057,7 +2087,21 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             seam_priced_scope(cfg.fill_seam_order_priced), one_pass_scope(cfg.fill_one_pass_sections), \
             seam_aware_scope(cfg.fill_seam_aware_sections), \
             chord_aim_scope(cfg.satin_free_end_chord_aim):
-        return _plan_stitches(result, cfg)
+        plan = _plan_stitches(result, cfg)
+        # `cfg.proofread_guard_clipped` (built OFF): the proof-read reads
+        # this plan against the traced raster and, where stage 5's clip cut
+        # a shape's own ink away, re-plans inside these same scopes with that
+        # artwork sewn over the earlier colour (`proofread_guard`), kept only
+        # when the read improves. OFF: not imported.
+        if getattr(cfg, "proofread_guard_clipped", False) and getattr(result, "proof_art", None) is not None:
+            from .proofread_guard import guard_clipped
+            from .stage5_overlap import keep_art_scope
+
+            def replan(ids):
+                with keep_art_scope(ids):
+                    return _plan_stitches(result, cfg)
+            plan = guard_clipped(result, cfg, plan, replan)
+        return plan
 
 
 def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:

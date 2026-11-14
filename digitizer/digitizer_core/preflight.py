@@ -1177,6 +1177,26 @@ def _best_loaded_spool_error(lab_px: np.ndarray, loaded: list[int],
 # `_GRADE_TRACED_KEY`) re-aims the grade there instead of skipping it.
 _SKIP_ENLARGED_TEXT_KEY = "thread_match_skip_enlarged_text"
 
+# `cfg.extra["small_text_reset_report"]` (built OFF 2026-11-14): the small-
+# text re-set's own record (`small_text.enlarge_small_text`'s rows) as the
+# metric `small_text_reset`, so a trace can name why a line was not raised
+# (`skipped`: not_one_line / tall_enough / member_claimed / no_room, with
+# `blocked_by`) instead of guessing it (the pro-redraws census 2026-11-13
+# left Fremont's EST 1895 and Bridge's arc UNCONFIRMED for want of it).
+# Metrics only: no finding, no score, nothing a customer sees.
+_SMALL_TEXT_REPORT_KEY = "small_text_reset_report"
+
+
+def _plain(v):
+    """`v` as plain JSON values: tuples to lists, numpy scalars to Python."""
+    if isinstance(v, dict):
+        return {str(k): _plain(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [_plain(x) for x in v]
+    if isinstance(v, np.generic):
+        return v.item()
+    return v
+
 
 def _enlarged_text_ids(result, cfg: PipelineConfig) -> set[str]:
     """Shape ids the thread grader leaves out under the flag above; empty
@@ -4509,6 +4529,11 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
         # Only under the flag, so a default report's metrics keys are unchanged.
         metrics["thread_match_enlarged_text_skipped"] = (
             len(_enlarged_text_ids(result, cfg)) if result is not None else None)
+    if (getattr(cfg, "extra", None) or {}).get(_SMALL_TEXT_REPORT_KEY):
+        # Only under the flag, so a default report's metrics keys are
+        # unchanged; None when the re-set did not run (or no result).
+        rows = getattr(result, "small_text_reset", None) if result is not None else None
+        metrics["small_text_reset"] = _plain(rows) if rows is not None else None
     if getattr(cfg, _GRADE_TRACED_KEY, False):
         # Only under the flag (ON by default since 2026-11-07), so an OFF
         # report's metrics keys are the ones it always had.
@@ -4673,6 +4698,11 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
             metrics.update(_proofread.metrics(_proofread.read(graded, result, plan, cfg)))
         else:       # no artwork or no regions: nothing to read against
             metrics["proofread_checked"] = False
+    # `cfg.proofread_guard_clipped` (built OFF): what the guard decided
+    # while planning (`plan.proofread_guard`; None when it could not run, a
+    # result without the traced raster). OFF writes no key.
+    if getattr(cfg, "proofread_guard_clipped", False):
+        metrics["proofread_guard"] = getattr(plan, "proofread_guard", None)
 
     # Last, over the finished list: it tags findings, it does not make any.
     _tag_break_risk(findings, plan, result)
