@@ -39,7 +39,8 @@ Guards (when in doubt, do nothing):
   `DIL_PX` (uniform dilation: a deliberate SIZE step is refused) and
   `HAUS_PX` (worst point: a deliberate SHAPE difference) of the mean shape;
 * no outline moves further than `MOVE_PX` source pixels, and nothing is
-  redrawn when no member would move more than `FLOOR_MM` (the Design unit);
+  redrawn when no member would move more than `FLOOR_MM` (the Design unit)
+  and `POS_PX` source pixels;
 * a SEAM with a region of another colour is held where it was traced (a
   region lying under the member is a layer, not a seam);
 * a self-repeat must have parts that stick out (`SELF_SOLIDITY_MAX`).
@@ -83,7 +84,10 @@ MOVE_PX = 3.0
 # its stripes and stars already agree to 0.05-0.09 mm, and redrawing them
 # that little re-planned the long red satin (500 -> 1,399 stitches, the
 # columns tilted 5 deg) for no change anyone could see. Such a group keeps
-# its traced outlines and still carries its tag.
+# its traced outlines and still carries its tag. The floor is also never
+# below the arrangement's own tolerance (`POS_PX`): Kent's QR has its three
+# finder rings within 0.03 mm, and putting one 0.11 mm onto the fitted
+# lattice let a sliver of it out from under the white layer that hides them.
 FLOOR_MM = 0.1
 # A member smaller than this many square source pixels is trace noise.
 MIN_AREA_PX2 = 12.0
@@ -344,7 +348,7 @@ def _wrap(a):
     return (a + math.pi) % (2 * math.pi) - math.pi
 
 
-def _fit_rotation(cs, angs, pos_tol):
+def _fit_rotation(cs, angs, pos_tol, ang_tol=math.radians(4.0)):
     """N-fold rotation about a fitted centre. -> (params, fitted [(x, y, ang)]) or None."""
     n = len(cs)
     if n < 3:
@@ -371,7 +375,7 @@ def _fit_rotation(cs, angs, pos_tol):
     if max(abs(_wrap(phi[i] - fit_phi[i])) for i in range(n)) * r > pos_tol:
         return None
     beta = _circ_mean([angs[i] - phi[i] for i in range(n)])
-    if max(abs(_wrap(angs[i] - phi[i] - beta)) for i in range(n)) > math.radians(4.0):
+    if max(abs(_wrap(angs[i] - phi[i] - beta)) for i in range(n)) > ang_tol:
         return None
     fitted = [(cx + r * math.cos(fit_phi[i]), cy + r * math.sin(fit_phi[i]), fit_phi[i] + beta)
               for i in range(n)]
@@ -379,14 +383,14 @@ def _fit_rotation(cs, angs, pos_tol):
             "radius": round(r, 4)}, fitted
 
 
-def _fit_lattice(cs, angs, pos_tol):
+def _fit_lattice(cs, angs, pos_tol, ang_tol=math.radians(3.0)):
     """Row or grid at equal pitch (some sites may be empty). Members must
     all face one way. -> (params, fitted) or None."""
     n = len(cs)
     if n < 3:
         return None
     a0 = _circ_mean(angs)
-    if max(abs(_wrap(a - a0)) for a in angs) > math.radians(3.0):
+    if max(abs(_wrap(a - a0)) for a in angs) > ang_tol:
         return None
     d = cs[None, :, :] - cs[:, None, :]
     vecs = d.reshape(-1, 2)
@@ -426,7 +430,7 @@ def _fit_lattice(cs, angs, pos_tol):
     return {"kind": kind, "pitch_mm": pitch}, fitted
 
 
-def _fit_mirror_pair(cs, angs, pos_tol):
+def _fit_mirror_pair(cs, angs, pos_tol, ang_tol=math.radians(4.0)):
     if len(cs) != 2:
         return None
     (x1, y1), (x2, y2) = cs
@@ -435,7 +439,7 @@ def _fit_mirror_pair(cs, angs, pos_tol):
     psi_c = math.atan2(y2 - y1, x2 - x1) + math.pi / 2
     # axis directions are mod pi
     dd = _wrap(2 * (psi_o - psi_c)) / 2
-    if abs(dd) > math.radians(4.0):
+    if abs(dd) > ang_tol:
         return None
     psi = psi_c + dd / 2
     mx, my = 0.5 * (x1 + x2), 0.5 * (y1 + y2)
@@ -630,7 +634,8 @@ def _confirm_group(regions, mem, tol, src_px, match_px, res, pos_px) -> Group | 
                 per = 2 * math.pi / order
                 mm.ang = a_ref + ((mm.ang - a_ref + per / 2) % per) - per / 2
     g = Group("", regions[members[0].idx].thread_index, members, tmpl)
-    g.arrangement = _arrangement(ok, regions, pos_px * src_px) if len(ok) >= 2 else {"kind": "none"}
+    g.arrangement = (_arrangement(ok, regions, pos_px * src_px, _ang_tol(tmpl, pos_px * src_px))
+                     if len(ok) >= 2 else {"kind": "none"})
     kind = g.arrangement["kind"]
     if len(ok) < 2:
         g.reason = "members not alike"
@@ -645,7 +650,16 @@ def _confirm_group(regions, mem, tol, src_px, match_px, res, pos_px) -> Group | 
     return g
 
 
-def _arrangement(ok: list[Member], regions, pos_tol) -> dict:
+def _ang_tol(tmpl, pos_tol) -> float:
+    """How far members' orientations may scatter round the arrangement's:
+    3 degrees, or as much as moves the member's furthest point no more than
+    the position tolerance (a lump tilts a 3 mm square's best fit by more
+    than 3 degrees while moving nothing past a pixel)."""
+    rad = max(math.hypot(x, y) for x, y in tmpl.exterior.coords)
+    return max(math.radians(3.0), pos_tol / max(rad, 1e-6))
+
+
+def _arrangement(ok: list[Member], regions, pos_tol, ang_tol=math.radians(3.0)) -> dict:
     cs = np.array([[regions[m.idx].polygon.centroid.x, regions[m.idx].polygon.centroid.y]
                    for m in ok])
     angs = [m.ang for m in ok]
@@ -654,7 +668,7 @@ def _arrangement(ok: list[Member], regions, pos_tol) -> dict:
     if len(ok) == 2:
         if mirrors == {False, True}:
             order = sorted(range(2), key=lambda i: ok[i].mirror)   # unmirrored first
-            fit = _fit_mirror_pair(cs[order], [angs[i] for i in order], pos_tol)
+            fit = _fit_mirror_pair(cs[order], [angs[i] for i in order], pos_tol, ang_tol)
             if fit is not None:
                 params, fitted = fit
                 back = [None, None]
@@ -662,7 +676,7 @@ def _arrangement(ok: list[Member], regions, pos_tol) -> dict:
                     back[i] = fitted[j]
                 fit = (params, back)
     elif len(mirrors) == 1:
-        fit = _fit_rotation(cs, angs, pos_tol) or _fit_lattice(cs, angs, pos_tol)
+        fit = _fit_rotation(cs, angs, pos_tol, ang_tol) or _fit_lattice(cs, angs, pos_tol, ang_tol)
     if fit is None:
         for m in ok:
             c = regions[m.idx].polygon.centroid
@@ -882,6 +896,7 @@ def apply_regular_structure(regions, p, cfg=None, *, match_px=MATCH_PX, move_px=
     res = _res(src)
     cap = move_px * src
     band = src
+    floor = max(FLOOR_MM, POS_PX * src)
     report = {"src_px_mm": round(src, 4), "groups": [], "self": []}
 
     for g in find_groups(regions, src, match_px=match_px):
@@ -894,7 +909,7 @@ def apply_regular_structure(regions, p, cfg=None, *, match_px=MATCH_PX, move_px=
         if g.confirmed:
             placed = {m.idx: _place(g.template, *m.fitted, m.mirror) for m in ok}
         # the group is redrawn only when some member would move past the floor
-        redraw = any(_haus(placed[m.idx], regions[m.idx].polygon) > FLOOR_MM for m in ok) \
+        redraw = any(_haus(placed[m.idx], regions[m.idx].polygon) > floor for m in ok) \
             if placed else False
         for m in g.members:
             rec = {"shape_id": m.shape_id, "dev_mm": round(m.dev_mm, 4),
@@ -935,7 +950,7 @@ def apply_regular_structure(regions, p, cfg=None, *, match_px=MATCH_PX, move_px=
         report["self"].append(rec)
         if not s.confirmed:
             continue
-        if _haus(s.sym, r.polygon) <= FLOOR_MM:
+        if _haus(s.sym, r.polygon) <= floor:
             # Already regular below the Design unit: re-tracing it through
             # the raster would only round its corners.
             rec["held"] = "already regular"

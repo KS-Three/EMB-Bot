@@ -38,6 +38,23 @@ def _jitter(poly, rng, amp):
     return out if out.is_valid else rs._largest(out.buffer(0))
 
 
+def _lumpy(poly, rng, amp=0.05, lumps=2, r=2.0 * SRC):
+    """`_jitter` plus a few lumps (discs 2 source px across, one pushed out,
+    one bitten in, ...): what a low-resolution JPEG's trace carries. Each
+    member then differs from the mean by a source pixel or two at its worst
+    point while its mean distance and dilation stay small, as Bridge's
+    handles do (worst 1.5-2.8 px, mean <= 1.15 px, dilation <= 0.17 px)."""
+    g = _jitter(poly, rng, amp)
+    ring = g.exterior
+    for k in range(lumps):
+        p = ring.interpolate(rng.uniform(0, ring.length))
+        disc = Point(p.x, p.y).buffer(r, 16)
+        g = g.union(disc) if k % 2 == 0 else g.difference(disc)
+        g = rs._largest(g.buffer(0))
+        ring = g.exterior
+    return g
+
+
 def _region(poly, thread=5, sid=None, **meta):
     return Region(shape_id=sid or f"S{abs(hash(poly.wkb)) % 10**8:08d}", polygon=poly,
                   thread_index=thread, thread_number=str(thread), area_mm2=poly.area, meta=dict(meta))
@@ -70,7 +87,7 @@ def _wheel_members(rng, n=8, radius=20.0, amp=0.08, pos=0.08):
         g = affinity.rotate(base, a, origin=(0, 0), use_radians=True)
         g = affinity.translate(g, radius * math.cos(a) + rng.uniform(-pos, pos),
                                radius * math.sin(a) + rng.uniform(-pos, pos))
-        out.append(_jitter(g, rng, amp))
+        out.append(_lumpy(g, rng))
     return out
 
 
@@ -99,7 +116,7 @@ def test_jittered_three_by_three_grid_sits_on_one_pitch():
         for j in range(3):
             sq = box(0, 0, 3.0, 3.0)
             sq = affinity.translate(sq, 5.0 * i + rng.uniform(-0.1, 0.1), 5.0 * j + rng.uniform(-0.1, 0.1))
-            regions.append(_region(_jitter(sq, rng, 0.07), sid=f"Q{i}{j}"))
+            regions.append(_region(_lumpy(sq, rng), sid=f"Q{i}{j}"))
     before = _spread([r.polygon for r in regions])
     report = rs.apply_regular_structure(regions, P)
     g, = report["groups"]
@@ -120,11 +137,11 @@ def _widths(regions):
 
 def test_five_stripes_of_uneven_width_sew_one_width_at_one_pitch():
     rng = np.random.default_rng(3)
-    widths = [3.9, 4.1, 3.95, 4.08, 3.97]           # within half a source pixel of 4
+    widths = [3.95, 4.05, 3.97, 4.04, 3.98]         # a quarter source pixel either side of 4
     regions = []
     for k, w in enumerate(widths):
-        y = 8.0 * k + rng.uniform(-0.2, 0.2)
-        regions.append(_region(box(-40.0, y, 40.0, y + w), sid=f"T{k}"))
+        y = 8.0 * k + rng.uniform(-0.1, 0.1)
+        regions.append(_region(_lumpy(box(-40.0, y, 40.0, y + w), rng), sid=f"T{k}"))
     report = rs.apply_regular_structure(regions, P)
     g, = report["groups"]
     assert g["kind"] == "row"
@@ -174,7 +191,7 @@ def test_a_wheel_traced_as_one_region_repeats_one_handle():
     handles = [affinity.rotate(_handle(), 360.0 * k / 8, origin=(0, 0)) for k in range(8)]
     handles = [affinity.translate(h, 16.0 * math.cos(math.radians(45 * k)),
                                   16.0 * math.sin(math.radians(45 * k))) for k, h in enumerate(handles)]
-    wheel = _jitter(unary_union([rim, *handles]), rng, 0.1)
+    wheel = _lumpy(unary_union([rim, *handles]), rng, lumps=8)
     assert isinstance(wheel, Polygon) and len(wheel.interiors) == 1
     regions = [_region(wheel, sid="W")]
     report = rs.apply_regular_structure(regions, P)
@@ -216,8 +233,8 @@ def test_mirrored_pair_is_found_and_made_exact_mirrors():
     rng = np.random.default_rng(7)
     # a boot: an L with unequal arms has no mirror symmetry of its own
     foot = Polygon([(0, 0), (7, 0), (7, 1.5), (2.5, 1.5), (2.5, 6), (0, 6)])
-    left = _jitter(affinity.translate(foot, -9.0, 0.0), rng, 0.1)
-    right = _jitter(affinity.scale(affinity.translate(foot, -9.2, 0.15), -1.0, 1.0, origin=(0, 0)), rng, 0.1)
+    left = _lumpy(affinity.translate(foot, -9.0, 0.0), rng)
+    right = _lumpy(affinity.scale(affinity.translate(foot, -9.2, 0.15), -1.0, 1.0, origin=(0, 0)), rng)
     regions = [_region(left, sid="L"), _region(right, sid="R")]
     report = rs.apply_regular_structure(regions, P)
     g, = report["groups"]
@@ -248,7 +265,7 @@ def test_a_member_on_another_colours_layer_still_moves():
         for j in range(3):
             sq = affinity.translate(box(0, 0, 3.0, 3.0), 6.0 * i + rng.uniform(-0.1, 0.1),
                                     6.0 * j + rng.uniform(-0.1, 0.1))
-            regions.append(_region(_jitter(sq, rng, 0.07), sid=f"Q{i}{j}"))
+            regions.append(_region(_lumpy(sq, rng), sid=f"Q{i}{j}"))
     regions.append(_region(box(-3, -3, 18, 18), thread=9, sid="PLATE"))
     report = rs.apply_regular_structure(regions, P)
     g, = report["groups"]
@@ -267,7 +284,13 @@ def _wheel_bgr():
         p0 = (int(c[0] + 140 * math.cos(a)), int(c[1] + 140 * math.sin(a)))
         p1 = (int(c[0] + 185 * math.cos(a)), int(c[1] + 185 * math.sin(a)))
         cv2.line(big, p0, p1, (0, 0, 0), 14)
-        cv2.circle(big, (int(c[0] + 200 * math.cos(a)), int(c[1] + 200 * math.sin(a))), 22, (0, 0, 0), -1)
+        knob = (c[0] + 200 * math.cos(a), c[1] + 200 * math.sin(a))
+        cv2.circle(big, (int(knob[0]), int(knob[1])), 22, (0, 0, 0), -1)
+        # each knob its own lump, about two source pixels across, as the
+        # JPEG gave each of Bridge's handles its own
+        b = a + (k * 2.4) % (2 * math.pi)
+        cv2.circle(big, (int(knob[0] + 22 * math.cos(b)), int(knob[1] + 22 * math.sin(b))), 7,
+                   (0, 0, 0) if k % 2 == 0 else (255, 255, 255), -1)
     return cv2.resize(big, (150, 150), interpolation=cv2.INTER_AREA)
 
 
