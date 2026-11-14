@@ -1,5 +1,8 @@
 """Like shapes decided once per group (`cfg.group_consistent_tier` and
-`cfg.group_consistent_outline_body`, both built OFF 2026-11-13).
+`cfg.group_consistent_outline_body`, both built OFF 2026-11-13; with
+`_thread` and `_fill_angle`; `_tier` and `_fill_angle` ON since 2026-11-14
+by Kent's flip, the other two held OFF for a guard). Every arm here spreads `GROUP_2026_11_14_OFF` and sets
+the one flag it is about, so "off" is the engine before the flip.
 
 Two thresholds split lines of like letters on main (`docs/group-consistency-
 2026-11-13.md`): the art-outline body test (AHORA: AH, RA fill under a loop,
@@ -23,6 +26,12 @@ from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage7_sequence import sequence
 from digitizer_core.textcluster import MIN_CLUSTER_MEMBERS
+from tests.conftest import GROUP_2026_11_14_OFF
+
+
+def _cfg(**kw) -> PipelineConfig:
+    """The engine with the group flags as they were before the flip, `kw` over it."""
+    return PipelineConfig(**{**GROUP_2026_11_14_OFF, **kw})
 
 
 def _region(sid, poly, thread, **meta):
@@ -135,20 +144,20 @@ def _field(widths):
 
 def test_ahora_field_is_mixed_off_and_one_way_on():
     regs = _field([9.0, 3.0, 9.5, 2.6])     # AH-like, O-like, RA-like, !-like
-    off = find_art_outlines(regs, PipelineConfig(), line_art_guard=False)
+    off = find_art_outlines(regs, _cfg(), line_art_guard=False)
     assert [b for b, _h in off["Sfield"]] == ["L0", "L2"]                   # the straddle
-    on = find_art_outlines(regs, PipelineConfig(group_consistent_outline_body=True), line_art_guard=False)
+    on = find_art_outlines(regs, _cfg(group_consistent_outline_body=True), line_art_guard=False)
     # the wide bars hold 259 of 337 mm^2 of ink: the thin ones join them
     assert [b for b, _h in on["Sfield"]] == ["L0", "L1", "L2", "L3"]
     # the run-floor flag alone does not reach the outline test
-    tier_only = find_art_outlines(regs, PipelineConfig(group_consistent_tier=True), line_art_guard=False)
+    tier_only = find_art_outlines(regs, _cfg(group_consistent_tier=True), line_art_guard=False)
     assert tier_only == off
 
 
 def test_outline_decider_keeps_a_line_of_clear_bodies():
     regs = _field([9.0, 9.5, 10.0])
-    off = find_art_outlines(regs, PipelineConfig(), line_art_guard=False)
-    on = find_art_outlines(regs, PipelineConfig(group_consistent_outline_body=True), line_art_guard=False)
+    off = find_art_outlines(regs, _cfg(), line_art_guard=False)
+    on = find_art_outlines(regs, _cfg(group_consistent_outline_body=True), line_art_guard=False)
     assert [b for b, _h in on["Sfield"]] == [b for b, _h in off["Sfield"]] == ["L0", "L1", "L2"]
 
 
@@ -203,7 +212,7 @@ def test_ring_word_straddles_the_floor():
 def _kinds(letters, **cfg_kw):
     word = _rings(letters)
     planned = [PlannedRegion(region=r, polygon=r.polygon, sew_index=0) for r in word]
-    cfg = PipelineConfig(underlay=False, **cfg_kw)
+    cfg = _cfg(underlay=False, **cfg_kw)
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg)
     out: dict[str, set] = {}
     for blk in blocks:
@@ -225,12 +234,12 @@ def test_sequence_sews_a_mixed_line_one_way_with_the_flag(flag):
         assert not (kinds["L2"] <= run_like) and not (kinds["L3"] <= run_like), kinds
 
 
-def test_off_is_the_engine_as_it_was():
+def test_off_is_the_engine_as_it_was_and_on_ships():
     a = _kinds(RING_WORD)
     b = _kinds(RING_WORD, group_consistent_tier=False)
     assert a == b
-    assert PipelineConfig().group_consistent_tier is False
-    assert PipelineConfig().group_consistent_outline_body is False
+    assert PipelineConfig().group_consistent_tier is True     # Kent's flip 2026-11-14
+    assert PipelineConfig().group_consistent_outline_body is False    # held OFF by Kent 2026-11-14
     assert machine.OUTLINE_BODY_RATIO == 1.0     # the census numbers above are read against it
 
 
@@ -268,13 +277,13 @@ def test_a_far_colour_a_pinned_letter_and_a_two_colour_word_keep_their_threads()
     assert lt.word_thread(two_tone, CHART, {}) == 0
 
 
-def test_word_thread_is_off_by_default():
+def test_word_thread_is_held_off_by_default():
     word = _cluster([CARIBBEAN] * 10 + [SWISS_IVY])
-    lt.apply_lettering_thread(word, CHART, PipelineConfig(), {})
+    lt.apply_lettering_thread(word, CHART, _cfg(), {})
     assert word[-1].thread_index == SWISS_IVY
-    lt.apply_lettering_thread(word, CHART, PipelineConfig(group_consistent_thread=True), {})
+    lt.apply_lettering_thread(word, CHART, _cfg(group_consistent_thread=True), {})
     assert word[-1].thread_index == CARIBBEAN
-    assert PipelineConfig().group_consistent_thread is False
+    assert PipelineConfig().group_consistent_thread is False    # held OFF by Kent 2026-11-14
 
 
 def test_a_moved_dark_ink_bean_letter_takes_the_ladder_with_its_word():
@@ -338,7 +347,7 @@ def test_a_congruent_tag_shares_the_angle_relative_to_each_member():
 
 def _fill_angles(regs, **cfg_kw):
     planned = [PlannedRegion(region=r, polygon=r.polygon, sew_index=0) for r in regs]
-    cfg = PipelineConfig(underlay=False, satin=False, **cfg_kw)
+    cfg = _cfg(underlay=False, satin=False, **cfg_kw)
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg)
     acc: dict[str, list] = {}
     for blk in blocks:
@@ -368,13 +377,13 @@ def test_mirrored_feet_fill_at_two_angles_off_and_one_on():
 def test_every_named_angle_outranks_the_group():
     r = _foot(0, sid="L")
     p = PlannedRegion(region=r, polygon=r.polygon, sew_index=0)
-    assert _fill_angle_for(p, PipelineConfig(), {"L": 12.0}) == 12.0
-    assert _fill_angle_for(p, PipelineConfig(fill_angle_deg=45.0), {"L": 12.0}) == 45.0
+    assert _fill_angle_for(p, _cfg(), {"L": 12.0}) == 12.0
+    assert _fill_angle_for(p, _cfg(fill_angle_deg=45.0), {"L": 12.0}) == 45.0
     r.meta["fill_angle_deg"] = 30.0
-    assert _fill_angle_for(p, PipelineConfig(), {"L": 12.0}) == 30.0
-    assert _fill_angle_for(p, PipelineConfig()) == 30.0
+    assert _fill_angle_for(p, _cfg(), {"L": 12.0}) == 30.0
+    assert _fill_angle_for(p, _cfg()) == 30.0
     assert GROUP_SATIN_MIN_DIM_MM == 0.6
-    assert PipelineConfig().group_consistent_fill_angle is False
+    assert PipelineConfig().group_consistent_fill_angle is True     # Kent's flip 2026-11-14
 
 
 def test_satin_reads_tagged_unmirrored_groups_only():

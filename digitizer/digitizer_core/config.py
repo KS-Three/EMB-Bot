@@ -3883,7 +3883,7 @@ class PipelineConfig:
     # byte-identical.
     # Tests: `tests/test_word_tiers.py`.
     lettering_word_tiers: bool = False
-    # LIKE SHAPES DECIDED ONCE PER GROUP (built OFF 2026-11-13,
+    # LIKE SHAPES DECIDED ONCE PER GROUP (built OFF 2026-11-13, ON since 11-14,
     # `group_consistency.py`). Kent's pins name like things sewn unlike ("This
     # stitch is different than the AH RA"); two of them, traced on main, are
     # one shape's own measure straddling a threshold its line-mates sit on the
@@ -3895,6 +3895,13 @@ class PipelineConfig:
     # the word tagger, the text cluster or any other tier. Census:
     # `docs/group-consistency-2026-11-13.md`. Layout (ruling 2026-10-22:
     # judged in the preview). Off, nothing calls either, byte-identical.
+    # **`group_consistent_tier` and `_fill_angle` ON since 2026-11-14, Kent's
+    # flip** ("Flip all four ON", from the OFF | ON sheets of AHORA, K-Line,
+    # Bridge, the mascot's feet and the emoji's legs; a small corpus). He held
+    # `_outline_body` and `_thread` OFF the same day, each for a guard first
+    # (the reason at each field). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin the
+    # two flipped False.
     # Tests: `tests/test_group_consistency.py`.
     #
     # The run tier's area floor (`cfg.min_detail_mm`^2) per line: K-Line's
@@ -3902,7 +3909,7 @@ class PipelineConfig:
     # at 2.54-3.07 satin; ON all 24 bean outlines. A letter moved ONTO the run
     # tier sews the run its line-mates sew (not `small_solids_satin`'s one
     # column across it); one moved OFF it only onto satin `_sews_satin` grants.
-    group_consistent_tier: bool = False
+    group_consistent_tier: bool = True
     # The art-outline body test (`art_outline.find_art_outlines`) per line of
     # like candidates within one outline: AHORA's sewn pink field took AH
     # (1.059) and RA (1.023, against `machine.OUTLINE_BODY_RATIO` 1.0) as
@@ -3915,6 +3922,11 @@ class PipelineConfig:
     # dot fill under the loop like AH and RA. A two-piece glyph (the ! and
     # its dot) joins a line its pieces span together. A candidate made a body
     # must be `machine.MIN_FILL_WIDTH_MM` across on average.
+    # HELD OFF (Kent 2026-11-14, "G4 alone looks the best"): beside
+    # `outline_redraw_k` 0.75 the re-fit tips MFab hat's small line (113.5 mm,
+    # Studio hat config) into outline bodies -- thick white borders over the
+    # black letters -- where each flag alone reads clean. Wants a guard so the
+    # re-fit cannot tip the vote.
     group_consistent_outline_body: bool = False
     # A word's THREAD decided once (`lettering_thread.word_thread`): a
     # text-cluster letter on a thread under a quarter of its word takes the
@@ -3928,6 +3940,11 @@ class PipelineConfig:
     # and takes the ladder with them (ON: Caribbean satin like the rest). A
     # customer's own recolour is never moved; the cap still has the last
     # word. Not the (hed)p.e. e: no cluster fires there.
+    # HELD OFF (Kent 2026-11-14, "Hold it, guard first"): on the drone render
+    # (80 mm left_chest) it moved a Pumpkin 1102 shape onto its word's Fox
+    # Fire 1305, whose thread match went warn -> block (scorecard D -> F).
+    # Wants a guard: never move a shape onto a thread that matches its art
+    # worse.
     group_consistent_thread: bool = False
     # ONE ANGLE per group of like shapes (`group_consistency.shared_angles`,
     # read in stage 7). Kent: "feet are differnt colors" (gradient_mascot: one
@@ -3947,7 +3964,7 @@ class PipelineConfig:
     # To a T's mirrored pair from 9 to 15 deg apart. Lettering is out (it has
     # its house angle); the flag's stars are in the lettering house group, so
     # out too. Not on the photo classes. Off, byte-identical.
-    group_consistent_fill_angle: bool = False
+    group_consistent_fill_angle: bool = True
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the
